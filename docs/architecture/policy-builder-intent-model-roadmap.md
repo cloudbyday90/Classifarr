@@ -4302,9 +4302,17 @@ Implementation status:
   outcome record is [Native Profile Refresh Circuit Post-Exhaustion Cooldown
   Re-Probe
   Integration](policy-native-profile-refresh-circuit-post-exhaustion-cooldown-reprobe-integration.md).
-  The next task is repeated-probe-failure integration coverage proving multiple
-  failed automatic cycles retain one active successor, bounded recovery history,
-  and no duplicate work or browser intervention.
+  A repeated-probe-failure database integration case now proves two terminal
+  automatic failure cycles reopen only their matching active circuit, retain a
+  capped circuit failure count, and let concurrent schedulers create exactly
+  one later successor. It preserves durable terminal rows for separate
+  retention compaction and never needs browser or operator action. Its design
+  and outcome record is [Native Profile Refresh Circuit Repeated-Probe-Failure
+  Integration](policy-native-profile-refresh-circuit-repeated-probe-failure-integration.md).
+  The next task is native profile-refresh recovery retention-compaction
+  integration coverage proving stale terminal circuit and outbox history is
+  removed only after the retention window, while active circuits and protected
+  current revisions remain intact.
 - Successful native creation now remains visible through a compact handoff that
   reads the persisted policy before displaying declared-intent counts and
   routing state. It uses the successful create receipt when that follow-up read

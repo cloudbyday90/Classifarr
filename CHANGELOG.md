@@ -64,6 +64,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   concurrent schedulers create one successor probe. A successful successor
   returns native profile recovery to current without operator intervention.
 
+- **Bounded Repeated Automatic Recovery**: Repeated terminal automatic probes
+  now retain a capped circuit failure count and exactly one later successor.
+  Concurrent schedulers cannot duplicate that recovery work, while terminal
+  outbox history remains under the existing server-side retention boundary.
+
 - **Native Policy Recovery Status**: Persisted native policy views now show
   server-derived automatic profile-recovery status instead of presenting stale
   profiles as a browser refresh action. When an automatic recovery circuit is

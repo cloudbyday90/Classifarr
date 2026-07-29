@@ -97,6 +97,7 @@ node ./scripts/run-jest.mjs -c jest.integration.config.mjs --runInBand --no-cove
 
 ## Next Step
 
-Add repeated-probe-failure integration coverage. It must prove multiple failed
-automatic cycles retain one active successor, keep the circuit's recovery
-history bounded, and never create duplicate work or browser intervention.
+Add native profile-refresh recovery retention-compaction integration coverage.
+It must prove stale terminal circuit and outbox history is removed only after
+the retention window, while active circuits and protected current revisions
+remain intact.

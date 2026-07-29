@@ -38,6 +38,7 @@ const {
 const CIRCUIT_OPENED_AT = new Date('2000-01-01T00:00:00.000Z');
 const CIRCUIT_PROBE_DUE_AT = new Date('2000-01-01T02:00:00.000Z');
 const CIRCUIT_REOPENED_PROBE_DUE_AT = new Date('2000-01-01T04:00:00.000Z');
+const CIRCUIT_SECOND_REOPENED_PROBE_DUE_AT = new Date('2000-01-01T06:00:00.000Z');
 
 function buildNativeIntent({ policyId, libraryId }) {
   return {
@@ -1045,5 +1046,196 @@ describe('Native profile refresh circuit lifecycle integration', () => {
         message: 'No automatic profile recovery is needed.',
       },
     }));
+  });
+
+  test('reopens after repeated automatic probe failures with one bounded successor', async () => {
+    const fixture = await createNativeProfileRefreshFixture();
+    libraryIds.push(fixture.libraryId);
+    const request = buildPolicyNativeProfileRefreshRequest({
+      libraryId: fixture.libraryId,
+      profileState: 'missing_profile',
+      observedItemCount: 1,
+      observedItemHighWaterMark: fixture.observedItemHighWaterMark,
+    });
+    expect(request.ready).toBe(true);
+
+    await db.withTransaction(client => enqueuePolicyProfileRefresh({
+      client,
+      record: request.record,
+    }));
+    await expect(createWorker({
+      claimToken: '33333333-3333-4333-8333-333333333333',
+      profileService: {
+        getProfile: jest.fn().mockResolvedValue(null),
+      },
+    }).run()).resolves.toMatchObject({ failed: 1 });
+    await expect(createPlanner({ now: CIRCUIT_OPENED_AT }).run()).resolves.toMatchObject({
+      circuitOpened: 1,
+      successorBlocked: 1,
+    });
+    await expect(createPlanner({ now: CIRCUIT_PROBE_DUE_AT }).run()).resolves.toMatchObject({
+      circuitProbeQueued: 1,
+      circuitProbeDeferred: 0,
+    });
+
+    const abandonedClaimToken = '44444444-4444-4444-8444-444444444444';
+    const abandonedWorker = createWorker({
+      claimToken: abandonedClaimToken,
+      profileService: {},
+      maxAttempts: 1,
+    });
+    const abandonedClaim = await abandonedWorker.claimBatch(abandonedClaimToken);
+    expect(abandonedClaim.records).toEqual([expect.objectContaining({
+      libraryId: String(fixture.libraryId),
+      requestType: 'native_readiness',
+      attemptCount: 1,
+    })]);
+    const abandonedProbeId = abandonedClaim.records[0].id;
+    await db.query(
+      `UPDATE policy_profile_refresh_outbox
+       SET lease_expires_at = NOW() - INTERVAL '1 second'
+       WHERE id = $1
+         AND claim_token = $2::uuid`,
+      [abandonedProbeId, abandonedClaimToken],
+    );
+    const expiredProbeProfileService = {
+      getProfile: jest.fn(),
+      generateProfile: jest.fn(),
+    };
+    await expect(createWorker({
+      claimToken: '55555555-5555-4555-8555-555555555555',
+      profileService: expiredProbeProfileService,
+      maxAttempts: 1,
+    }).run()).resolves.toMatchObject({
+      claimed: 0,
+      failed: 1,
+      completed: 0,
+      circuitsCleared: 0,
+    });
+    expect(expiredProbeProfileService.getProfile).not.toHaveBeenCalled();
+    expect(expiredProbeProfileService.generateProfile).not.toHaveBeenCalled();
+    await expect(createPlanner({ now: CIRCUIT_PROBE_DUE_AT }).run()).resolves.toMatchObject({
+      circuitOpened: 1,
+      circuitBlocked: 1,
+      circuitProbeQueued: 0,
+    });
+
+    const firstReProbePlannerResults = await Promise.all([
+      createPlanner({ now: CIRCUIT_REOPENED_PROBE_DUE_AT }).run(),
+      createPlanner({ now: CIRCUIT_REOPENED_PROBE_DUE_AT }).run(),
+    ]);
+    expect(firstReProbePlannerResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({ circuitProbeQueued: 1, circuitBlocked: 0 }),
+      expect.objectContaining({ circuitProbeQueued: 0, circuitBlocked: 1 }),
+    ]));
+    const firstReProbeRows = await db.query(
+      `SELECT id, processing_state
+       FROM policy_profile_refresh_outbox
+       WHERE library_id = $1
+         AND source_event_id LIKE $2
+       ORDER BY id`,
+      [fixture.libraryId, `${request.record.sourceEventId}:retry:%`],
+    );
+    expect(firstReProbeRows.rows).toEqual([
+      { id: Number(abandonedProbeId), processing_state: 'failed' },
+      { id: expect.any(Number), processing_state: 'pending' },
+    ]);
+    const failedReProbeId = firstReProbeRows.rows[1].id;
+
+    const failingRecoveryProfileService = {
+      getProfile: jest.fn().mockResolvedValue(null),
+      generateProfile: jest.fn().mockRejectedValue(new Error('Simulated automatic probe failure.')),
+    };
+    await expect(createWorker({
+      claimToken: '66666666-6666-4666-8666-666666666666',
+      profileService: failingRecoveryProfileService,
+      maxAttempts: 1,
+    }).run()).resolves.toMatchObject({
+      claimed: 1,
+      completed: 0,
+      failed: 1,
+      circuitsCleared: 0,
+    });
+    expect(failingRecoveryProfileService.getProfile).toHaveBeenCalledTimes(1);
+    expect(failingRecoveryProfileService.generateProfile).toHaveBeenCalledTimes(1);
+
+    const failedReProbeRows = await db.query(
+      `SELECT processing_state, attempt_count, claim_token, failure_code
+       FROM policy_profile_refresh_outbox
+       WHERE id = $1`,
+      [failedReProbeId],
+    );
+    expect(failedReProbeRows.rows).toEqual([{
+      processing_state: 'failed',
+      attempt_count: 1,
+      claim_token: null,
+      failure_code: 'profile_refresh_unknown_failed',
+    }]);
+    await expect(createPlanner({ now: CIRCUIT_REOPENED_PROBE_DUE_AT }).run()).resolves.toMatchObject({
+      circuitOpened: 1,
+      circuitBlocked: 1,
+      circuitProbeQueued: 0,
+    });
+
+    const reopenedCircuitRows = await db.query(
+      `SELECT circuit_state, consecutive_failure_count, last_terminal_outbox_id,
+              last_failure_code, probe_outbox_id, next_probe_at
+       FROM policy_native_profile_refresh_circuits
+       WHERE library_id = $1`,
+      [fixture.libraryId],
+    );
+    expect(reopenedCircuitRows.rows).toEqual([expect.objectContaining({
+      circuit_state: 'open',
+      consecutive_failure_count: 3,
+      last_terminal_outbox_id: Number(failedReProbeId),
+      last_failure_code: 'profile_refresh_unknown_failed',
+      probe_outbox_id: null,
+      next_probe_at: expect.anything(),
+    })]);
+
+    const secondReProbePlannerResults = await Promise.all([
+      createPlanner({ now: CIRCUIT_SECOND_REOPENED_PROBE_DUE_AT }).run(),
+      createPlanner({ now: CIRCUIT_SECOND_REOPENED_PROBE_DUE_AT }).run(),
+    ]);
+    expect(secondReProbePlannerResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({ circuitProbeQueued: 1, circuitBlocked: 0 }),
+      expect.objectContaining({ circuitProbeQueued: 0, circuitBlocked: 1 }),
+    ]));
+
+    const successorRows = await db.query(
+      `SELECT id, processing_state, attempt_count
+       FROM policy_profile_refresh_outbox
+       WHERE library_id = $1
+         AND source_event_id LIKE $2
+       ORDER BY id`,
+      [fixture.libraryId, `${request.record.sourceEventId}:retry:%`],
+    );
+    expect(successorRows.rows).toEqual([
+      { id: Number(abandonedProbeId), processing_state: 'failed', attempt_count: 1 },
+      { id: Number(failedReProbeId), processing_state: 'failed', attempt_count: 1 },
+      { id: expect.any(Number), processing_state: 'pending', attempt_count: 0 },
+    ]);
+
+    const halfOpenCircuitRows = await db.query(
+      `SELECT circuit_state, consecutive_failure_count, last_terminal_outbox_id,
+              last_failure_code, probe_outbox_id, next_probe_at
+       FROM policy_native_profile_refresh_circuits
+       WHERE library_id = $1`,
+      [fixture.libraryId],
+    );
+    expect(halfOpenCircuitRows.rows).toEqual([expect.objectContaining({
+      circuit_state: 'half_open',
+      consecutive_failure_count: 3,
+      last_terminal_outbox_id: Number(failedReProbeId),
+      last_failure_code: 'profile_refresh_unknown_failed',
+      probe_outbox_id: successorRows.rows[2].id,
+      next_probe_at: null,
+    })]);
+
+    const profileRows = await db.query(
+      'SELECT library_id FROM library_profiles WHERE library_id = $1',
+      [fixture.libraryId],
+    );
+    expect(profileRows.rows).toEqual([]);
   });
 });
