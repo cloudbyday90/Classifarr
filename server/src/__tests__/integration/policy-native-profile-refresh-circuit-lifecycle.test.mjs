@@ -37,6 +37,7 @@ const {
 
 const CIRCUIT_OPENED_AT = new Date('2000-01-01T00:00:00.000Z');
 const CIRCUIT_PROBE_DUE_AT = new Date('2000-01-01T02:00:00.000Z');
+const CIRCUIT_REOPENED_PROBE_DUE_AT = new Date('2000-01-01T04:00:00.000Z');
 
 function buildNativeIntent({ policyId, libraryId }) {
   return {
@@ -840,7 +841,7 @@ describe('Native profile refresh circuit lifecycle integration', () => {
     expect(profileRows.rows).toEqual([{ library_id: fixture.libraryId }]);
   });
 
-  test('terminalizes an exhausted expired probe before the planner reopens its circuit', async () => {
+  test('terminalizes an exhausted probe, re-probes after cooldown, and returns to current', async () => {
     const fixture = await createNativeProfileRefreshFixture();
     libraryIds.push(fixture.libraryId);
     const request = buildPolicyNativeProfileRefreshRequest({
@@ -950,5 +951,99 @@ describe('Native profile refresh circuit lifecycle integration', () => {
       next_probe_at: expect.anything(),
     })]);
     expect(profileRows.rows).toEqual([]);
+
+    const reProbePlannerResults = await Promise.all([
+      createPlanner({ now: CIRCUIT_REOPENED_PROBE_DUE_AT }).run(),
+      createPlanner({ now: CIRCUIT_REOPENED_PROBE_DUE_AT }).run(),
+    ]);
+    expect(reProbePlannerResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        circuitProbeQueued: 1,
+        circuitBlocked: 0,
+        queued: 0,
+      }),
+      expect.objectContaining({
+        circuitProbeQueued: 0,
+        circuitBlocked: 1,
+        queued: 0,
+      }),
+    ]));
+
+    const reProbeRows = await db.query(
+      `SELECT id, processing_state
+       FROM policy_profile_refresh_outbox
+       WHERE library_id = $1
+         AND source_event_id LIKE $2
+       ORDER BY id`,
+      [fixture.libraryId, `${request.record.sourceEventId}:retry:%`],
+    );
+    expect(reProbeRows.rows).toEqual([
+      {
+        id: Number(abandonedProbeId),
+        processing_state: 'failed',
+      },
+      {
+        id: expect.any(Number),
+        processing_state: 'pending',
+      },
+    ]);
+    const reProbeId = reProbeRows.rows[1].id;
+
+    const recoveryProfileService = {
+      getProfile: jest.fn(async libraryId => {
+        const result = await db.query(
+          'SELECT * FROM library_profiles WHERE library_id = $1',
+          [libraryId],
+        );
+        return result.rows[0] || null;
+      }),
+      generateProfile: jest.fn(libraryId => persistCurrentProfile({ libraryId })),
+    };
+    await expect(createWorker({
+      claimToken: '22222222-3333-4444-8555-666666666666',
+      profileService: recoveryProfileService,
+    }).run()).resolves.toMatchObject({
+      claimed: 1,
+      completed: 1,
+      circuitsCleared: 1,
+    });
+    expect(recoveryProfileService.getProfile).toHaveBeenCalledTimes(1);
+    expect(recoveryProfileService.generateProfile).toHaveBeenCalledTimes(1);
+
+    const [recoveredCircuitRows, completedReProbeRows, recoveredProfileRows] = await Promise.all([
+      db.query(
+        'SELECT source_event_id FROM policy_native_profile_refresh_circuits WHERE library_id = $1',
+        [fixture.libraryId],
+      ),
+      db.query(
+        `SELECT processing_state, attempt_count, claim_token
+         FROM policy_profile_refresh_outbox
+         WHERE id = $1`,
+        [reProbeId],
+      ),
+      db.query(
+        'SELECT library_id FROM library_profiles WHERE library_id = $1',
+        [fixture.libraryId],
+      ),
+    ]);
+    expect(recoveredCircuitRows.rows).toEqual([]);
+    expect(completedReProbeRows.rows).toEqual([{
+      processing_state: 'completed',
+      attempt_count: 1,
+      claim_token: null,
+    }]);
+    expect(recoveredProfileRows.rows).toEqual([{ library_id: fixture.libraryId }]);
+
+    await expect(createReadinessSummaryService(fixture).getSummary({
+      dbClient: db,
+      policyId: fixture.policyId,
+    })).resolves.toEqual(expect.objectContaining({
+      readiness: expect.objectContaining({ stateId: 'ready', ready: true }),
+      profileRecovery: {
+        stateId: 'not_required',
+        label: 'Profile current',
+        message: 'No automatic profile recovery is needed.',
+      },
+    }));
   });
 });

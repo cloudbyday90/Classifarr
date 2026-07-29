@@ -107,6 +107,8 @@ node ./scripts/run-jest.mjs -c jest.integration.config.mjs --runInBand --no-cove
 
 ## Next Step
 
-Add a post-exhaustion cooldown re-probe integration case. It must prove the
-reopened circuit queues exactly one later automatic probe and returns to current
-after that probe succeeds, without browser or operator intervention.
+Post-exhaustion cooldown re-probe coverage is complete. It proves concurrent
+schedulers queue one later probe and successful completion returns recovery to
+current; see [Native Profile Refresh Circuit Post-Exhaustion Cooldown Re-Probe
+Integration](policy-native-profile-refresh-circuit-post-exhaustion-cooldown-reprobe-integration.md).
+Next, cover repeated automatic probe failures and bounded recovery history.

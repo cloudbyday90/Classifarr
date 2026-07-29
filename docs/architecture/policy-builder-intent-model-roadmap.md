@@ -4295,9 +4295,16 @@ Implementation status:
   transition, and blocks work until cooldown. Its design and outcome record is
   [Native Profile Refresh Circuit Lease-Exhaustion Terminalization
   Integration](policy-native-profile-refresh-circuit-lease-exhaustion-terminalization-integration.md).
-  The next task is a post-exhaustion cooldown re-probe integration case proving
-  the reopened circuit queues exactly one later automatic probe and returns to
-  current after that probe succeeds without browser or operator intervention.
+  A post-exhaustion cooldown re-probe database integration case now proves two
+  scheduler instances create exactly one later automatic probe for the reopened
+  circuit. Its successful worker completion clears runtime state and returns
+  readiness to current without browser or operator intervention. Its design and
+  outcome record is [Native Profile Refresh Circuit Post-Exhaustion Cooldown
+  Re-Probe
+  Integration](policy-native-profile-refresh-circuit-post-exhaustion-cooldown-reprobe-integration.md).
+  The next task is repeated-probe-failure integration coverage proving multiple
+  failed automatic cycles retain one active successor, bounded recovery history,
+  and no duplicate work or browser intervention.
 - Successful native creation now remains visible through a compact handoff that
   reads the persisted policy before displaying declared-intent counts and
   routing state. It uses the successful create receipt when that follow-up read

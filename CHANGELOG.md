@@ -60,6 +60,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   The scheduler recognizes only its matching failed probe and reopens the
   bounded recovery cooldown.
 
+- **Automatic Post-Exhaustion Recovery**: After an exhausted probe's cooldown,
+  concurrent schedulers create one successor probe. A successful successor
+  returns native profile recovery to current without operator intervention.
+
 - **Native Policy Recovery Status**: Persisted native policy views now show
   server-derived automatic profile-recovery status instead of presenting stale
   profiles as a browser refresh action. When an automatic recovery circuit is

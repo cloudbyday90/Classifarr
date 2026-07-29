@@ -106,4 +106,7 @@ Integration](policy-native-profile-refresh-circuit-post-generation-claim-loss-in
 Lease-exhaustion terminalization is complete; see [Native Profile Refresh
 Circuit Lease-Exhaustion Terminalization
 Integration](policy-native-profile-refresh-circuit-lease-exhaustion-terminalization-integration.md).
-Next, prove one later cooldown probe returns the circuit to current automatically.
+Post-exhaustion cooldown re-probe coverage is complete; see [Native Profile
+Refresh Circuit Post-Exhaustion Cooldown Re-Probe
+Integration](policy-native-profile-refresh-circuit-post-exhaustion-cooldown-reprobe-integration.md).
+Next, cover repeated automatic probe failures and bounded recovery history.
