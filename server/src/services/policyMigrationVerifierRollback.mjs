@@ -6,10 +6,12 @@ import {
   validatePolicyMigrationDeletionPlan,
 } from './policyMigrationDeletionPath.mjs';
 import {
-  POLICY_REBUILD_PROPOSAL_STATUS_IDS,
   buildPolicyLibraryPolicyRebuildProposalFromRuntimeInput,
   validatePolicyLibraryPolicyRebuildProposal,
 } from './policyLibraryPolicyRebuild.mjs';
+import {
+  buildPolicyMigrationGeneratedIntentOutcome,
+} from './policyMigrationGeneratedIntentOutcome.mjs';
 import {
   POLICY_LIBRARY_REBUILD_ACCEPTANCE_STATUS_IDS,
   POLICY_LIBRARY_REBUILD_ACCEPTANCE_TRANSITION_VERSION,
@@ -388,19 +390,6 @@ function requireValidAcceptanceTransition(input = {}, proposal = {}) {
   return acceptanceTransition;
 }
 
-function buildGeneratedIntentDefault(proposal = {}) {
-  return {
-    destinationLibraryId: proposal.library?.libraryId ?? null,
-    destinationLibraryName: proposal.library?.libraryName ?? '',
-    statusId: proposal.statusId,
-    routeReady: proposal.readiness?.ready === true,
-    blocked: proposal.statusId === POLICY_REBUILD_PROPOSAL_STATUS_IDS.BLOCKED,
-    needsReview: proposal.statusId !== POLICY_REBUILD_PROPOSAL_STATUS_IDS.READY_FOR_REVIEW,
-    confidenceScore: proposal.confidence?.score ?? null,
-    confidenceLevel: proposal.confidence?.level ?? '',
-  };
-}
-
 function getRepresentativeClassifications(input = {}) {
   const hasContractInput = Object.hasOwn(input, 'representativeClassifications');
   const hasLegacyInput = Object.hasOwn(input, 'legacyComparisonSamples');
@@ -427,7 +416,7 @@ function buildPolicyMigrationVerifierReportFromRebuildProposal(input = {}) {
     maxDifferences: verifierInput.maxDifferences,
     confidenceDeltaThreshold: verifierInput.confidenceDeltaThreshold,
   });
-  const generatedIntentDefault = buildGeneratedIntentDefault(proposal);
+  const generatedIntentDefault = buildPolicyMigrationGeneratedIntentOutcome(proposal);
   const samples = asArray(getRepresentativeClassifications(verifierInput))
     .map(sample => normalizePolicyMigrationPreviewClassification(sample, generatedIntentDefault));
   const sampleSetFingerprint = buildSampleSetFingerprint({

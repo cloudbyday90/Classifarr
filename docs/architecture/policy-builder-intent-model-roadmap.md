@@ -4423,6 +4423,11 @@ Tasks:
   from persisted policy and classification records. Carry compact source
   provenance, treat missing legacy baselines as insufficient coverage, and do
   not call providers, render browser controls, route media, or write state.
+- **6R.6.3 Migration Verification Coordinator**: invoke the representative
+  source only for an accepted, validated rebuild proposal; pass ready samples
+  through preview and verifier contracts; and stop on insufficient coverage or
+  an audit failure. Keep coordination server-only and prohibit browser
+  controls, routing, and policy writes.
 - Use old impact/replay/parity tooling only as migration verification machinery,
   not product workflow.
 - Define a migration preview that compares legacy policy behavior to generated
@@ -4451,6 +4456,19 @@ Implementation status:
   usable legacy baseline, caps emitted differences, suppresses raw payloads,
   and returns explicit insufficient coverage instead of claiming parity from
   no comparison.
+- The representative-classification source decision, design, and outcome are
+  documented in [Policy Migration Representative Classification Source](policy-migration-representative-classification-source.md).
+- `server/src/services/policyMigrationRepresentativeClassificationSource.mjs`
+  now resolves the active persisted policy library before selecting a bounded
+  set of finalized classification outcomes for its media type. It emits only
+  compact destination outcomes and generated-intent results, with deterministic
+  provenance and no provider, browser, routing, or write action.
+- The source deliberately treats these records as destination-library outcomes,
+  not historical policy-owned replays: `classification_history` has no durable
+  policy ID. Empty usable coverage remains explicit and cannot claim parity.
+- `server/src/services/policyMigrationGeneratedIntentOutcome.mjs` provides the
+  shared generated-outcome projection used by the representative source and
+  verifier so default outcome semantics remain aligned.
 - `server/src/services/policyMigrationVerifierRollback.mjs` consumes the
   preview contract while retaining rebuild acceptance, rollback, fingerprint,
   trace, and deletion gates. It rejects ambiguous old/new sample input names.

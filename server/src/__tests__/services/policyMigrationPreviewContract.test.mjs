@@ -92,6 +92,29 @@ describe('policyMigrationPreviewContract', () => {
     expect(validatePolicyMigrationPreview(preview).ok).toBe(true);
   });
 
+  test('does not manufacture a confidence-label difference when persisted history has no label', () => {
+    const preview = buildPolicyMigrationPreview({
+      representativeClassifications: [{
+        itemId: 10674,
+        legacyOutcome: {
+          destinationLibraryId: 6,
+          routeReady: true,
+          confidenceScore: 0.8,
+        },
+        generatedIntentOutcome: {
+          destinationLibraryId: 6,
+          routeReady: true,
+          confidenceScore: 0.8,
+          confidenceLevel: 'high',
+        },
+      }],
+    });
+
+    expect(preview.statusId).toBe(POLICY_MIGRATION_PREVIEW_STATUS_IDS.NO_MIGRATION_DIFFERENCES);
+    expect(preview.differenceSummary.totalCount).toBe(0);
+    expect(validatePolicyMigrationPreview(preview).ok).toBe(true);
+  });
+
   test('emits bounded, sanitized migration differences from legacy aliases', () => {
     const preview = buildPolicyMigrationPreview({
       maxDifferences: 1,

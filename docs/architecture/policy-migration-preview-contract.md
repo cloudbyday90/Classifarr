@@ -2,7 +2,8 @@
 
 ## Status
 
-Implemented for Phase 6R.6 Task 6R.6.1.
+Implemented for Phase 6R.6 Task 6R.6.1. Its persisted sample-source dependency
+is implemented by Task 6R.6.2.
 
 The migration preview is a small, server-owned comparison contract. It compares
 sanitized legacy outcomes with generated native-intent outcomes for a bounded
@@ -151,7 +152,8 @@ Focused server tests cover:
 
 ## Next Task
 
-Phase 6R.6 Task 6R.6.2: implement a server-only representative-classification
-source adapter. It must select a deterministic, bounded set from persisted
-classification and legacy-policy records, carry compact source provenance, and
-perform no provider, browser, routing, or write action.
+Phase 6R.6 Task 6R.6.3: add a server-only migration verification coordinator.
+It must invoke the persisted representative-classification source only for a
+validated accepted rebuild, pass ready samples into this preview contract and
+the verifier, and stop on insufficient coverage or an audit failure. It must
+not expose a browser control, route media, or write policy state.

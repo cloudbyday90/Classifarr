@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Persisted Migration Samples**: migration verification can now select a
+  bounded, deterministic set of finalized destination-library outcomes from
+  persisted policy context. Missing usable history stays an explicit
+  insufficient-coverage state; no provider call, browser control, routing, or
+  write is used to manufacture migration evidence.
+
 - **Bounded Native-Intent Migration Preview**: migration verification now uses
   a server-owned, comparison-only contract. It requires a usable legacy
   baseline before reporting parity, caps and sanitizes emitted differences, and

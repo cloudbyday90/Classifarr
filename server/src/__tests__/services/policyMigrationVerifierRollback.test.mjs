@@ -344,7 +344,7 @@ describe('policyMigrationVerifierRollback', () => {
       [POLICY_MIGRATION_DIFFERENCE_TYPE_IDS.NEWLY_BLOCKED_ITEM]: 1,
       [POLICY_MIGRATION_DIFFERENCE_TYPE_IDS.NEWLY_REVIEW_REQUIRED_ITEM]: 1,
       [POLICY_MIGRATION_DIFFERENCE_TYPE_IDS.ROUTE_READINESS_CHANGE]: 1,
-      [POLICY_MIGRATION_DIFFERENCE_TYPE_IDS.EVIDENCE_CONFIDENCE_CHANGE]: 2,
+      [POLICY_MIGRATION_DIFFERENCE_TYPE_IDS.EVIDENCE_CONFIDENCE_CHANGE]: 1,
     }));
     expect(report.sampleSummary.rawPayloadSuppressed).toBe(true);
     expect(report.sampleSetFingerprint).toEqual(expect.objectContaining({

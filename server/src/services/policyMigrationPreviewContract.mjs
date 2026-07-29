@@ -73,6 +73,11 @@ function normalizeConfidence(value) {
   return Math.max(0, Math.min(1, numeric));
 }
 
+function normalizeClassificationId(value) {
+  const numeric = Number(value);
+  return Number.isInteger(numeric) && numeric > 0 ? numeric : null;
+}
+
 function normalizeBoolean(value) {
   return value === true;
 }
@@ -122,21 +127,28 @@ function normalizePolicyMigrationPreviewClassification(value = {}, generatedInte
   const normalizedLegacyOutcome = asObject(legacyOutcome);
   const normalizedGeneratedIntentOutcome = asObject(generatedIntentOutcome);
   const normalizedGeneratedIntentDefault = asObject(generatedIntentDefault);
+  const itemId = normalizeClassificationId(
+    classification.itemId ?? classification.classificationId ?? classification.id
+  );
+  const legacy = normalizePolicyMigrationPreviewOutcome(normalizedLegacyOutcome);
+  const generatedIntent = normalizePolicyMigrationPreviewOutcome({
+    ...normalizedGeneratedIntentDefault,
+    ...normalizedGeneratedIntentOutcome,
+  });
+  const hasLegacyDestination = legacy.destinationLibraryId !== null ||
+    Boolean(legacy.destinationLibraryName);
+  const hasGeneratedIntentDestination = generatedIntent.destinationLibraryId !== null ||
+    Boolean(generatedIntent.destinationLibraryName);
 
   return {
-    itemId: classification.itemId ?? classification.classificationId ?? classification.id ?? null,
+    itemId,
     title: normalizeString(classification.title ?? classification.name),
     year: classification.year ?? null,
     mediaType: normalizeString(classification.mediaType ?? classification.media_type),
-    legacy: normalizePolicyMigrationPreviewOutcome(normalizedLegacyOutcome),
-    generatedIntent: normalizePolicyMigrationPreviewOutcome({
-      ...normalizedGeneratedIntentDefault,
-      ...normalizedGeneratedIntentOutcome,
-    }),
-    hasLegacyBaseline: Object.keys(normalizedLegacyOutcome).length > 0,
-    hasGeneratedIntentOutcome:
-      Object.keys(normalizedGeneratedIntentOutcome).length > 0 ||
-      Object.keys(normalizedGeneratedIntentDefault).length > 0,
+    legacy,
+    generatedIntent,
+    hasLegacyBaseline: itemId !== null && hasLegacyDestination,
+    hasGeneratedIntentOutcome: hasGeneratedIntentDestination,
     exposesRawPayload: Boolean(
       classification.exposesRawPayload === true ||
       classification.rawPayload ||
@@ -226,8 +238,14 @@ function comparePolicyMigrationPreviewClassification(classification, confidenceD
   const confidenceDelta = legacyConfidence !== null && generatedIntentConfidence !== null
     ? Math.abs(legacyConfidence - generatedIntentConfidence)
     : 0;
+  const confidenceLevelsAreComparable = Boolean(
+    classification.legacy.confidenceLevel && classification.generatedIntent.confidenceLevel
+  );
   if (confidenceDelta >= confidenceDeltaThreshold ||
-      valuesDiffer(classification.legacy.confidenceLevel, classification.generatedIntent.confidenceLevel)) {
+      (confidenceLevelsAreComparable && valuesDiffer(
+        classification.legacy.confidenceLevel,
+        classification.generatedIntent.confidenceLevel
+      ))) {
     differences.push(buildDifference({
       typeId: POLICY_MIGRATION_PREVIEW_DIFFERENCE_TYPE_IDS.EVIDENCE_CONFIDENCE_CHANGE,
       classification,
@@ -445,7 +463,13 @@ function validatePolicyMigrationPreview(preview = {}) {
 
   const coverageSufficient = representativeSummary.coverageSufficient === true;
   const comparedCount = Number(representativeSummary.comparedCount);
+  const receivedCount = Number(representativeSummary.receivedCount);
+  const unusableCount = Number(representativeSummary.unusableCount);
   if (
+    !Number.isInteger(receivedCount) ||
+    !Number.isInteger(comparedCount) ||
+    !Number.isInteger(unusableCount) ||
+    receivedCount !== comparedCount + unusableCount ||
     coverageSufficient !== (comparedCount >= MIN_REPRESENTATIVE_CLASSIFICATIONS) ||
     (coverageSufficient &&
       normalized.statusId === POLICY_MIGRATION_PREVIEW_STATUS_IDS.INSUFFICIENT_REPRESENTATIVE_COVERAGE) ||
