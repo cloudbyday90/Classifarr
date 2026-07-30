@@ -41,8 +41,8 @@ selected server-owned classification destination
   -> persisted library profile + stored Arr mapping
   -> runtime evidence projection
   -> automation decision
-  -> policy.runtime_question_reduction.v1 plan
-  -> request/import destination admission
+  -> policy.runtime_question_reduction.v1 plan for pending-question persistence
+  -> optional queue question-reduction producer for queue terminal proof
 ```
 
 `server/src/services/policyNativeClassificationQuestionHandoff.mjs` applies the
@@ -61,10 +61,14 @@ following rules:
    and missing or conflicting purpose result in review plans, while an active,
    mapped, sufficiently identified, final destination may suppress a question.
    A retry or clarification-pending classifier result remains a review plan.
-5. It performs no workflow writes. The audit explicitly rejects a handoff that
+5. For queue-owned classification only, it passes the same current structural
+   inputs to the dedicated queue producer. The resulting opaque envelope is
+   task- and attempt-bound; it does not expose profile input, task data, or raw
+   classification data.
+6. It performs no workflow writes. The audit explicitly rejects a handoff that
    claims media-server/provider access, quota use, routing, question creation,
    learning, classification, or policy-storage mutation.
-6. A legacy result, an unselected native candidate, an invalid native contract,
+7. A legacy result, an unselected native candidate, an invalid native contract,
    or no selected library produces no plan. It remains outcome-only downstream.
 
 `classificationServiceCore.mjs` treats a failed handoff as supplemental: it is
@@ -73,8 +77,9 @@ Arr routing continue. A valid `create_operator_question` handoff is now also
 passed to the runtime persistence admission boundary before classification
 persistence. An admitted review plan becomes an existing pending item through
 that established persistence path and therefore stops automatic routing at the
-normal final-state gate. Non-question plans remain supplemental output for the
-request/import admission adapter to validate again.
+normal final-state gate. For queue work, the generic plan does not leave the
+classification result as terminal request-time proof; only the producer's
+opaque queue envelope does.
 
 ## Recommendations
 
@@ -85,7 +90,7 @@ request/import admission adapter to validate again.
 3. Treat a missing library profile as a no-write refresh instruction, not a
    live media-server lookup.
 4. Validate the automation decision and question-reduction contracts before
-   exposing the plan to any queue or learning component.
+   exposing a queue proof to request-time learning.
 5. Use the runtime persistence admission component as the only path permitted
    to materialize a native `create_operator_question` plan.
 
@@ -116,22 +121,23 @@ Cons:
    native runtime candidate and builds a bounded plan from persisted state.
 3. `policyRuntimeQuestionPersistenceAdmission.mjs` re-audits and reconstructs
    a native review plan before it can become a pending question.
-4. `policyRequestImportDestinationAdmission.mjs` validates the plan again
-   before it invokes the request-time reducer.
-5. `classificationServiceCore.mjs` applies an admitted pending-question patch
+4. `policyRuntimeQueueQuestionReductionProducer.mjs` converts fresh native
+   inputs into the only queue terminal-proof envelope.
+5. `policyRequestImportDestinationAdmission.mjs` validates the queue envelope
+   again before it invokes the request-time reducer.
+6. `classificationServiceCore.mjs` applies an admitted pending-question patch
    before the existing classification persistence call and preserves normal
    behavior when the handoff fails.
 
 ## Verification
 
-Focused tests cover active mapped native intent, missing profile evidence,
-failed hard limits, missing native purpose, selected-library mismatches, legacy
-results, no selected destination, and classification continuity when the
-supplemental handoff fails.
+Focused tests cover active mapped native intent, queue envelope production,
+missing profile evidence, failed hard limits, missing native purpose,
+selected-library mismatches, legacy results, no selected destination, and
+classification continuity when the supplemental handoff fails.
 
 ## Next Step
 
-Implement the **native pending-question resolution presentation adapter**. It
-must expose normalized outcome actions in browser and Discord views without
-legacy duplicate controls, keep manual destination changes explicit, and never
-turn an item-level answer into durable learning by default.
+Proceed with **Phase 7R.5 request-time learning provenance cutover**. Retire
+obsolete terminal direct-plan compatibility inputs while preserving this
+handoff's independent pending-question persistence role.

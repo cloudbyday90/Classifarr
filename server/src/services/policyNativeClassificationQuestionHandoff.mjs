@@ -24,6 +24,12 @@ import {
   validatePolicyRuntimeQuestionReduction,
 } from './policyRuntimeQuestionReduction.mjs';
 import {
+  buildPolicyRuntimeQueueQuestionReductionProducer,
+} from './policyRuntimeQueueQuestionReductionProducer.mjs';
+import {
+  buildPolicyRuntimeQueueQuestionReductionAudit,
+} from './policyRuntimeQueueQuestionReduction.mjs';
+import {
   resolveRoutingConfig,
 } from './classificationRoutingService.mjs';
 
@@ -44,6 +50,7 @@ const POLICY_NATIVE_CLASSIFICATION_QUESTION_HANDOFF_RISK_IDS = Object.freeze({
   UNSAFE_SIDE_EFFECT: 'unsafe_side_effect',
   RAW_CLASSIFICATION_DATA_EXPOSED: 'raw_classification_data_exposed',
   INVALID_DECISION_CONTRACT: 'invalid_decision_contract',
+  INVALID_QUEUE_QUESTION_REDUCTION: 'invalid_queue_question_reduction',
 });
 
 const MAX_DECLARED_RULES_PER_ROLE = 24;
@@ -266,6 +273,7 @@ function buildSideEffects({ profileRead = false, routingConfigRead = false } = {
 function buildResult({
   statusId,
   plan = null,
+  queueQuestionReduction = null,
   profileRead = false,
   routingConfigRead = false,
   profileAvailable = false,
@@ -285,6 +293,7 @@ function buildResult({
     statusId,
     reasonCode,
     plan: questionReductionValidation?.ok === true ? plan : null,
+    queueQuestionReduction,
     summary: {
       nativeRuntimeStatusId,
       profileAvailable,
@@ -308,6 +317,7 @@ function buildResult({
 
 async function buildPolicyNativeClassificationQuestionHandoff({
   classificationResult = {},
+  queueTask = null,
   loadProfileEvidence = loadPolicyLibraryProfileEvidence,
   resolveStoredRoutingConfig = resolveRoutingConfig,
 } = {}) {
@@ -364,6 +374,21 @@ async function buildPolicyNativeClassificationQuestionHandoff({
   }
   const questionReductionValidation = validatePolicyRuntimeQuestionReduction(plan);
 
+  const runtimeEvidenceInput = {
+    libraryProfile: profileInput.libraryProfile,
+    operatorIntent: buildOperatorIntent(nativeRuntime.contract),
+    profileFreshness: profileInput.profileFreshness,
+  };
+  const queueProducer = queueTask
+    ? buildPolicyRuntimeQueueQuestionReductionProducer({
+      task: queueTask,
+      runtimeEvidenceInput,
+      routing: buildRoutingInput(resolvedLibrary),
+      classification: buildClassificationState(result),
+      policyEvaluation: buildPolicyEvaluation(nativeRuntime, result),
+    })
+    : null;
+
   return buildResult({
     statusId: questionReductionValidation.ok
       ? profileInput.profileAvailable
@@ -371,6 +396,9 @@ async function buildPolicyNativeClassificationQuestionHandoff({
         : POLICY_NATIVE_CLASSIFICATION_QUESTION_HANDOFF_STATUS_IDS.PROFILE_UNAVAILABLE
       : POLICY_NATIVE_CLASSIFICATION_QUESTION_HANDOFF_STATUS_IDS.INVALID_RUNTIME_CONTRACT,
     plan,
+    queueQuestionReduction: queueProducer?.ok === true
+      ? queueProducer.queueQuestionReduction
+      : null,
     profileRead: true,
     routingConfigRead: typeof resolveStoredRoutingConfig === 'function',
     profileAvailable: profileInput.profileAvailable,
@@ -412,6 +440,16 @@ function buildPolicyNativeClassificationQuestionHandoffAudit(result = {}) {
     issues.push({
       riskId: POLICY_NATIVE_CLASSIFICATION_QUESTION_HANDOFF_RISK_IDS.BLOCKED_WITH_PLAN,
       message: 'A non-native classifier result cannot manufacture a question-reduction plan.',
+    });
+  }
+
+  if (
+    handoff.queueQuestionReduction !== null &&
+    buildPolicyRuntimeQueueQuestionReductionAudit(handoff.queueQuestionReduction).ok !== true
+  ) {
+    issues.push({
+      riskId: POLICY_NATIVE_CLASSIFICATION_QUESTION_HANDOFF_RISK_IDS.INVALID_QUEUE_QUESTION_REDUCTION,
+      message: 'Native classification handoff can expose queue proof only when the queue question-reduction envelope remains valid.',
     });
   }
 

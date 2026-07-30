@@ -5124,17 +5124,23 @@ Implementation status:
   `policyRequestImportDestinationAdmission.mjs` adapter after classification.
   It records only successful Arr routes and missing Arr mappings in the
   completed task result, never infers a requester destination choice, and
-  requires a valid native question-reduction plan before it can call the
-  request-time reducer. `policyNativeClassificationQuestionHandoff.mjs` now
-  supplies that plan only when the selected library matches a validated native
-  runtime candidate. It derives bounded structural evidence from declared
-  intent, the persisted library profile, and stored routing mapping; it cannot
-  read live media/provider state, consume quota, route, create a question, or
-  write learning. Legacy, malformed, and selected-library-mismatched results
-  remain outcome-only through the learning guard. Its design records are
+  requires a valid task- and attempt-bound queue question-reduction envelope
+  before it can call the request-time reducer. The live queue invokes
+  `classificationServiceCore.mjs` through its queue-only entry point, and
+  `policyNativeClassificationQuestionHandoff.mjs` supplies current native
+  inputs only when the selected library matches a validated native runtime
+  candidate. `policyRuntimeQueueQuestionReductionProducer.mjs` rebuilds the
+  queue evidence, decision, and opaque envelope from declared intent, the
+  persisted library profile, and stored routing mapping; it cannot read live
+  media/provider state, consume quota, route, create a question, or write
+  learning. Direct generic plans remain internal to pending-question
+  persistence and are retired as request/import terminal proof. Legacy,
+  malformed, and selected-library-mismatched results remain outcome-only
+  through the learning guard. Its design records are
   [Policy Native Classification Question Handoff](policy-native-classification-question-handoff.md)
   and
-  [Policy Request/Import Destination Admission](policy-request-import-destination-admission.md).
+  [Policy Request/Import Destination Admission](policy-request-import-destination-admission.md),
+  plus [Policy Runtime Queue Question-Reduction Producer](policy-runtime-queue-question-reduction-producer.md).
 - Queue-produced question-reduction plans now reach request-time learning only
   through `policyRequestTimeQueueQuestionReduction.mjs`. It re-audits the queue
   envelope, binds its opaque evidence to the current classification task and
@@ -5143,10 +5149,11 @@ Implementation status:
   record is [Policy Request-Time Queue Question-Reduction Admission](policy-request-time-queue-question-reduction.md).
 - Request-time terminal-route integration is now audited by
   `policyRequestTimeTerminalRouteIntegrationAudit.mjs`. It inventories the
-  request/import queue's direct-plan proof and outcome-only fallback alongside
-  native pending's outcome-only route persistence, and explicitly reports the
-  queue-bound proof adapter as available but not live until a producer exists.
-  Its design record is [Policy Request-Time Terminal-Route Integration Audit](policy-request-time-terminal-route-integration-audit.md).
+  request/import queue's active queue-bound proof and outcome-only fallback
+  alongside native pending's outcome-only route persistence. It verifies the
+  queue-specific classification call, queue producer, queue-only terminal
+  handoff, and absence of a direct terminal plan. Its design record is [Policy
+  Request-Time Terminal-Route Integration Audit](policy-request-time-terminal-route-integration-audit.md).
 - Queue webhook history now writes the normalized selected library name rather
   than treating the legacy string result as an object.
 - The first live runtime adapter now handles authenticated manual classification

@@ -117,11 +117,11 @@ function queueQuestionReduction(overrides = {}) {
 }
 
 describe('policyRequestImportDestinationAdmission', () => {
-  test('records successful request routing as an outcome without inferring a requester choice', () => {
+  test('records successful request routing from queue-bound proof without inferring a requester choice', () => {
     const result = buildPolicyRequestImportDestinationAdmission({
       task: task(),
       classification: classification(),
-      questionReductionPlan: questionReductionPlan(),
+      queueQuestionReduction: queueQuestionReduction(),
     });
 
     expect(result).toEqual(expect.objectContaining({
@@ -282,6 +282,26 @@ describe('policyRequestImportDestinationAdmission', () => {
     expect(result.audit.ok).toBe(true);
   });
 
+  test('retires direct question-reduction proof from the request/import terminal route', () => {
+    const result = buildPolicyRequestImportDestinationAdmission({
+      task: task(),
+      classification: classification(),
+      questionReductionPlan: questionReductionPlan(),
+    });
+
+    expect(result.questionReduction).toEqual({
+      statusId: 'invalid',
+      evidenceFingerprint: null,
+    });
+    expect(result.requestTimeDecision).toBeNull();
+    expect(result.learning.canWriteLearning).toBe(false);
+    expect(result.reasonCodes).toContain(
+      POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS
+        .DIRECT_QUESTION_REDUCTION_PROOF_RETIRED
+    );
+    expect(result.audit.ok).toBe(true);
+  });
+
   test('stays outcome-only when legacy classification has no native question-reduction proof', () => {
     const result = buildPolicyRequestImportDestinationAdmission({
       task: task({
@@ -316,7 +336,7 @@ describe('policyRequestImportDestinationAdmission', () => {
     expect(result.audit.ok).toBe(true);
   });
 
-  test('rejects a tampered question-reduction plan without falling back to inferred evidence', () => {
+  test('retires a tampered direct question-reduction plan without inferred evidence', () => {
     const validPlan = questionReductionPlan();
     const tamperedPlan = {
       ...validPlan,
@@ -338,7 +358,8 @@ describe('policyRequestImportDestinationAdmission', () => {
     expect(result.requestTimeDecision).toBeNull();
     expect(result.learning.canWriteLearning).toBe(false);
     expect(result.reasonCodes).toContain(
-      POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.INVALID_QUESTION_REDUCTION_PROOF
+      POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS
+        .DIRECT_QUESTION_REDUCTION_PROOF_RETIRED
     );
     expect(result.audit.ok).toBe(true);
   });

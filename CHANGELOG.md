@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Queue Question-Reduction Producer Cutline**: Request/import classification
+  now creates one current, task- and attempt-bound queue proof inside the
+  server-owned classification workflow. Terminal admission consumes only that
+  opaque proof; the former direct generic plan remains internal to
+  pending-question persistence and cannot authorize request-time learning.
+
 - **Request-Time Terminal-Route Integration Audit**: The server now inventories
   live request/import and native pending terminal-route callers, verifies their
   guarded proof or outcome-only fallback, and accurately reports the

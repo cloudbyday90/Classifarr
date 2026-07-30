@@ -205,6 +205,7 @@ Required policy runtime/rebuild contract surface coverage includes:
 
 - runtime evidence projection,
 - runtime evidence fingerprinting,
+- queue question-reduction production,
 - automation decision contract,
 - runtime question reduction,
 - request-time learning,

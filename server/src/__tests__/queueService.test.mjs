@@ -32,7 +32,7 @@ const mockDb = {
     DB_ADVISORY_LOCKS,
 };
 
-const mockClassification = { classify: jest.fn() };
+const mockClassification = { classifyQueueTask: jest.fn() };
 
 const mockOmdb = {
     getByTitle: jest.fn(),
@@ -159,7 +159,7 @@ describe('QueueService', () => {
                 payload: JSON.stringify({ title: 'Test Movie' }),
             };
 
-            classificationService.classify.mockResolvedValue({
+            classificationService.classifyQueueTask.mockResolvedValue({
                 library: { name: 'Movies' },
                 bestMatch: { type: 'movie', confidence: 90 },
             });
@@ -168,7 +168,10 @@ describe('QueueService', () => {
 
             await queueService.processTask(task);
 
-            expect(classificationService.classify).toHaveBeenCalled();
+            expect(classificationService.classifyQueueTask).toHaveBeenCalledWith(
+                task,
+                expect.objectContaining({ taskId: 1 }),
+            );
             expect(db.query).toHaveBeenCalledWith(
                 expect.stringMatching(/UPDATE task_queue\s+SET status = 'completed'/),
                 expect.any(Array),

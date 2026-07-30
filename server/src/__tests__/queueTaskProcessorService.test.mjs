@@ -77,7 +77,7 @@ function makeSvc(overrides = {}) {
   return new QueueTaskProcessorService({
     db,
     logger: createMockLogger(),
-    classificationService: { classify: jest.fn().mockResolvedValue({ bestMatch: null, library: null }) },
+    classificationService: { classifyQueueTask: jest.fn().mockResolvedValue({ bestMatch: null, library: null }) },
     omdbService: {},
     tmdbService: {},
     completeTask: jest.fn().mockResolvedValue(),
@@ -132,14 +132,17 @@ describe('resolveSourceLibraryName', () => {
 });
 
 describe('processClassificationTask', () => {
-  test('calls classify and completeTask', async () => {
+  test('calls the queue-specific classification path and completes the task', async () => {
     const classifyResult = { bestMatch: null, library: null };
-    const classificationService = { classify: jest.fn().mockResolvedValueOnce(classifyResult) };
+    const classificationService = { classifyQueueTask: jest.fn().mockResolvedValueOnce(classifyResult) };
     const completeTask = jest.fn().mockResolvedValue();
     const svc = makeSvc({ classificationService, completeTask });
 
     await svc.processClassificationTask({ id: 'task1', payload: { title: 'Movie', itemId: null }, webhook_log_id: null });
-    expect(classificationService.classify).toHaveBeenCalled();
+    expect(classificationService.classifyQueueTask).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'task1' }),
+      expect.objectContaining({ taskId: 'task1' }),
+    );
     expect(completeTask).toHaveBeenCalledWith('task1', classifyResult);
   });
 
@@ -148,7 +151,7 @@ describe('processClassificationTask', () => {
       bestMatch: { type: 'movie', confidence: 95 },
       library: { name: 'Movies' }
     };
-    const classificationService = { classify: jest.fn().mockResolvedValueOnce(classifyResult) };
+    const classificationService = { classifyQueueTask: jest.fn().mockResolvedValueOnce(classifyResult) };
     const queryWithTimeout = jest.fn().mockResolvedValue({});
     const svc = makeSvc({ classificationService, queryWithTimeout });
 
@@ -182,7 +185,7 @@ describe('processClassificationTask', () => {
       build: jest.fn().mockReturnValue(requestDestinationAdmission),
     };
     const classificationService = {
-      classify: jest.fn().mockResolvedValue({
+      classifyQueueTask: jest.fn().mockResolvedValue({
         classification_id: 87,
         library: 'Movies',
         destination: {
@@ -225,7 +228,7 @@ describe('processClassificationTask', () => {
           libraryName: 'Movies',
         },
       }),
-      questionReductionPlan: undefined,
+      queueQuestionReduction: undefined,
     });
     expect(completeTask).toHaveBeenCalledWith('task1', expect.objectContaining({
       requestDestinationAdmission,

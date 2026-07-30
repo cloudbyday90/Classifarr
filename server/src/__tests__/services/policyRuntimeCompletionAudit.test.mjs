@@ -54,14 +54,14 @@ describe('policyRuntimeCompletionAudit', () => {
     expect(audit.componentChecks.find(check =>
       check.componentId === POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.REQUEST_TIME_LEARNING
     )).toEqual(expect.objectContaining({
-      requiredSupportingArtifactCount: 3,
+      requiredSupportingArtifactCount: 4,
       auditSummary: expect.objectContaining({
         terminalRouteIntegrationAudit: {
           version: 'policy.request_time_terminal_route_integration_audit.v1',
           ok: true,
           callerCount: 2,
           coveredCallerCount: 2,
-          queueQuestionReductionStatusId: 'available_no_live_producer',
+          queueQuestionReductionStatusId: 'active',
         },
       }),
       supportingArtifactChecks: expect.arrayContaining([
@@ -78,6 +78,11 @@ describe('policyRuntimeCompletionAudit', () => {
         expect.objectContaining({
           supportingArtifactId:
             POLICY_RUNTIME_COMPLETION_SUPPORTING_ARTIFACT_IDS.TERMINAL_ROUTE_INTEGRATION_AUDIT,
+          ok: true,
+        }),
+        expect.objectContaining({
+          supportingArtifactId:
+            POLICY_RUNTIME_COMPLETION_SUPPORTING_ARTIFACT_IDS.QUEUE_QUESTION_REDUCTION_PRODUCER,
           ok: true,
         }),
       ]),

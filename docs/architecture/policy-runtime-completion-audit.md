@@ -23,6 +23,8 @@ The completion audit must prove:
 - request-time learning is checked with a valid bounded question-proof sample,
 - native pending selection and route outcome adapters retain their design,
   service, and focused-test inventory under request-time learning,
+- the live queue question-reduction producer retains its design, service, and
+  focused-test inventory under request-time learning,
 - rollback evidence is persisted before replacement and never grants
   replacement authority on its own,
 - native replacement preserves explicit strict-rule semantics rather than
@@ -63,7 +65,9 @@ The completion audit must prove:
    a generic passing status alone is not enough.
 6. Require request-time learning to inventory the native pending selection and
    route outcome supporting artifacts, including route persistence coverage.
-7. Require policy-engine completion before runtime completion can advance to
+7. Require request-time learning to inventory the active queue producer and
+   queue-only terminal-route cutline.
+8. Require policy-engine completion before runtime completion can advance to
    native intent storage readiness.
 8. Keep the audit side-effect-free and focused on current repository evidence.
 
@@ -100,6 +104,8 @@ Cons:
   - automation decision contract,
   - runtime question reduction,
   - request-time learning,
+  - active queue question-reduction production as required request-time
+    supporting evidence,
   - native pending selection provenance and native pending route outcomes as
     required request-time supporting artifacts,
   - library-derived policy rebuild,

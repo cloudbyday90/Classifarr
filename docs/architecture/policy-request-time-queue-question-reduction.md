@@ -17,10 +17,10 @@ fresh, evidence-bound automation decision. A later terminal routing outcome
 must not accept that plan merely because it is structurally valid. Without a
 same-task binding, an old plan could be replayed for another task or attempt.
 
-The request/import destination admission already supports a direct validated
-question-reduction plan. Queue execution needs an equivalent, narrower proof
-source that preserves the existing learning guard rather than creating a second
-learning path.
+Request/import destination admission now consumes this narrower queue proof as
+its sole terminal proof source. The generic plan remains internal to
+pending-question persistence, preserving the learning guard without creating a
+second learning path.
 
 ## Official Guidance Reviewed
 
@@ -81,7 +81,7 @@ Pros:
 - Reuses the existing request-time reducer and policy learning guard.
 - Keeps raw task identifiers, queue payloads, and provider data out of the
   result.
-- Allows the request/import admission to preserve direct-plan compatibility.
+- Allows request/import admission to retire direct terminal-plan compatibility.
 
 Cons:
 
@@ -105,7 +105,7 @@ Cons:
 6. Delegate the admitted generic plan to
    `policyRequestTimeLearning.mjs`, which remains the only request-time route
    to the learning guard.
-7. On invalid, missing, stale, or competing proof, retain only the existing
+7. On invalid, missing, stale, direct, or competing proof, retain only the existing
    outcome-only learning decision.
 8. Never persist, route, create a question, send a notification, call a
    provider, queue a profile refresh, or write learning in this boundary.
@@ -137,11 +137,10 @@ The adapter returns an opaque `queueEvidence` proof and a validated
 `policy.request_time_learning.v1` decision. It excludes the queue task id,
 payload, provider payloads, raw evidence, and raw labels.
 
-`policyRequestImportDestinationAdmission.mjs` accepts the queue envelope as an
-optional alternative to its existing direct plan. Passing both proof types is
-explicitly ambiguous and falls back to the outcome-only decision. A malformed
-or mismatched queue proof also falls back to outcome-only behavior. No existing
-direct-plan caller changes behavior.
+`policyRequestImportDestinationAdmission.mjs` accepts the queue envelope as
+its sole terminal proof. A supplied direct plan is explicitly retired; both
+proof types together remain ambiguous and fall back to outcome-only behavior.
+A malformed or mismatched queue proof also falls back to outcome-only behavior.
 
 ## Security And Outcome
 
@@ -164,13 +163,11 @@ Focused tests verify:
 - task and attempt mismatch is rejected,
 - non-terminal events and raw input are rejected,
 - raw result fields, altered fingerprints, and claimed side effects fail audit,
-- request/import admission accepts only one valid proof source and falls back
-  when proof sources compete.
+- request/import admission accepts only valid queue proof and falls back for
+  direct, missing, malformed, or competing proof.
 
 ## Next Item
 
-Complete the Phase 7R.5 request-time integration audit: identify every
-request/import terminal routing caller and either supply a validated direct or
-queue-bound proof, or assert the existing outcome-only fallback. This should
-be completed before any caller is allowed to request durable learning or profile
-refresh work.
+Proceed with **Phase 7R.5 request-time learning provenance cutover**: audit
+remaining request-time producers and remove obsolete direct-proof compatibility
+inputs while retaining outcome-only fallback for every invalid proof state.

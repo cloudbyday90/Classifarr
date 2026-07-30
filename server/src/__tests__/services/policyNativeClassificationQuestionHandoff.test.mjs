@@ -11,6 +11,7 @@ import {
   POLICY_NATIVE_INTENT_RUNTIME_STATUS_IDS,
 } from '../../services/policyNativeIntentRuntimeEvaluator.mjs';
 import {
+  POLICY_NATIVE_CLASSIFICATION_QUESTION_HANDOFF_RISK_IDS,
   POLICY_NATIVE_CLASSIFICATION_QUESTION_HANDOFF_STATUS_IDS,
   buildPolicyNativeClassificationQuestionHandoff,
   buildPolicyNativeClassificationQuestionHandoffAudit,
@@ -144,6 +145,65 @@ describe('policyNativeClassificationQuestionHandoff', () => {
     expect(JSON.stringify(result)).not.toContain('Untrusted request title');
     expect(JSON.stringify(result)).not.toContain('Studio Ghibli');
     expect(JSON.stringify(result)).not.toContain('/media/animated');
+  });
+
+  test('adds opaque queue proof from the same current native inputs when invoked by a queue task', async () => {
+    const result = await buildPolicyNativeClassificationQuestionHandoff({
+      classificationResult: classificationResult({
+        title: 'Queue transport title must not leave native handoff',
+      }),
+      queueTask: {
+        id: 'classification-task-42',
+        task_type: 'classification',
+        attempts: 2,
+      },
+      loadProfileEvidence: jest.fn().mockResolvedValue(currentProfileHandoff()),
+      resolveStoredRoutingConfig: jest.fn().mockResolvedValue(mappedLibrary()),
+    });
+
+    expect(result.queueQuestionReduction).toEqual(expect.objectContaining({
+      version: 'policy.runtime_queue_question_reduction.v1',
+      ok: true,
+      statusId: 'ready',
+      queueEvidence: expect.objectContaining({
+        taskType: 'classification',
+        attempt: 2,
+        taskFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+      }),
+    }));
+    expect(result.audit.ok).toBe(true);
+    expect(JSON.stringify(result)).not.toContain('classification-task-42');
+    expect(JSON.stringify(result)).not.toContain('Queue transport title must not leave native handoff');
+  });
+
+  test('rejects a handoff with altered queue proof', async () => {
+    const result = await buildPolicyNativeClassificationQuestionHandoff({
+      classificationResult: classificationResult(),
+      queueTask: {
+        id: 'classification-task-42',
+        task_type: 'classification',
+        attempts: 2,
+      },
+      loadProfileEvidence: jest.fn().mockResolvedValue(currentProfileHandoff()),
+      resolveStoredRoutingConfig: jest.fn().mockResolvedValue(mappedLibrary()),
+    });
+    const audit = buildPolicyNativeClassificationQuestionHandoffAudit({
+      ...result,
+      queueQuestionReduction: {
+        ...result.queueQuestionReduction,
+        queueEvidence: {
+          ...result.queueQuestionReduction.queueEvidence,
+          executionFingerprint: 'altered',
+        },
+      },
+    });
+
+    expect(audit.ok).toBe(false);
+    expect(audit.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_NATIVE_CLASSIFICATION_QUESTION_HANDOFF_RISK_IDS.INVALID_QUEUE_QUESTION_REDUCTION,
+      }),
+    ]));
   });
 
   test('fails closed to a profile-refresh plan when stored profile evidence is unavailable', async () => {

@@ -110,11 +110,14 @@ export class QueueTaskProcessorService {
 
     async processClassificationTask(task) {
         const payload = parsePayload(task.payload);
-        const result = await this.classificationService.classify({ ...payload, taskId: task.id });
+        const result = await this.classificationService.classifyQueueTask(task, {
+            ...payload,
+            taskId: task.id,
+        });
         const requestDestinationAdmission = this.policyRequestImportDestinationAdmissionService.build({
             task,
             classification: result,
-            questionReductionPlan: result.runtimeQuestionReductionPlan,
+            queueQuestionReduction: result.runtimeQueueQuestionReduction,
         });
         const completedResult = requestDestinationAdmission.statusId ===
             POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_STATUS_IDS.NOT_APPLICABLE

@@ -174,12 +174,14 @@ fresh queue evidence admission
 ```
 
 The queue question-reduction component itself remains side-effect-free. Its
+live producer is separately bounded in [Policy Runtime Queue Question-Reduction
+Producer](policy-runtime-queue-question-reduction-producer.md), and its
 request-time consumer is separately bounded in
 [Policy Request-Time Queue Question-Reduction Admission](policy-request-time-queue-question-reduction.md).
 
 ## Next Task
 
-Perform the Queue Question-Reduction Producer Cutline. The request-time
-integration audit now confirms the live queue caller uses a direct-plan proof
-with outcome-only fallback; queue-bound proof remains inactive until a real
-queue producer can supply current evidence without competing proof sources.
+Proceed with **Phase 7R.5 request-time learning provenance cutover**. The live
+queue producer now supplies queue-bound proof and request/import admission has
+retired direct terminal proof; audit remaining request-time producers for
+obsolete compatibility inputs.

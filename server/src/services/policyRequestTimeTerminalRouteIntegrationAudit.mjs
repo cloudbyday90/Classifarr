@@ -23,7 +23,6 @@ const POLICY_REQUEST_TIME_TERMINAL_ROUTE_CALLER_IDS = Object.freeze({
 });
 
 const POLICY_REQUEST_TIME_PROOF_MODE_IDS = Object.freeze({
-  DIRECT_QUESTION_REDUCTION_PLAN: 'direct_question_reduction_plan',
   QUEUE_QUESTION_REDUCTION: 'queue_question_reduction',
   OUTCOME_ONLY: 'outcome_only',
 });
@@ -42,6 +41,7 @@ const POLICY_REQUEST_TIME_TERMINAL_ROUTE_INTEGRATION_RISK_IDS = Object.freeze({
   MISSING_OUTCOME_ONLY_FALLBACK: 'missing_outcome_only_fallback',
   DIRECT_LEARNING_ALLOWED: 'direct_learning_allowed',
   QUEUE_PROOF_ADAPTER_PATH_NOT_FOUND: 'queue_proof_adapter_path_not_found',
+  QUEUE_PROOF_PRODUCER_PATH_NOT_FOUND: 'queue_proof_producer_path_not_found',
 });
 
 const PROOF_MODE_IDS = Object.freeze(Object.values(POLICY_REQUEST_TIME_PROOF_MODE_IDS));
@@ -50,6 +50,8 @@ const REQUIRED_CALLER_IDS = Object.freeze(
 );
 const QUEUE_PROOF_ADAPTER_PATH =
   'server/src/services/policyRequestTimeQueueQuestionReduction.mjs';
+const QUEUE_PROOF_PRODUCER_PATH =
+  'server/src/services/policyRuntimeQueueQuestionReductionProducer.mjs';
 
 const REQUEST_TIME_TERMINAL_ROUTE_CALLERS = Object.freeze([
   Object.freeze({
@@ -59,9 +61,10 @@ const REQUEST_TIME_TERMINAL_ROUTE_CALLERS = Object.freeze([
     contractPaths: [
       'server/src/services/policyRequestImportDestinationAdmission.mjs',
       'server/src/services/policyRequestTimeLearning.mjs',
+      QUEUE_PROOF_PRODUCER_PATH,
     ],
     proofModeIds: [
-      POLICY_REQUEST_TIME_PROOF_MODE_IDS.DIRECT_QUESTION_REDUCTION_PLAN,
+      POLICY_REQUEST_TIME_PROOF_MODE_IDS.QUEUE_QUESTION_REDUCTION,
       POLICY_REQUEST_TIME_PROOF_MODE_IDS.OUTCOME_ONLY,
     ],
     outcomeOnlyFallbackRequired: true,
@@ -73,7 +76,15 @@ const REQUEST_TIME_TERMINAL_ROUTE_CALLERS = Object.freeze([
       },
       {
         path: 'server/src/services/queueTaskProcessorService.mjs',
-        value: 'questionReductionPlan: result.runtimeQuestionReductionPlan,',
+        value: 'classifyQueueTask(task, {',
+      },
+      {
+        path: 'server/src/services/queueTaskProcessorService.mjs',
+        value: 'queueQuestionReduction: result.runtimeQueueQuestionReduction,',
+      },
+      {
+        path: 'server/src/services/policyNativeClassificationQuestionHandoff.mjs',
+        value: 'buildPolicyRuntimeQueueQuestionReductionProducer({',
       },
       {
         path: 'server/src/services/policyRequestImportDestinationAdmission.mjs',
@@ -364,6 +375,14 @@ function buildPolicyRequestTimeTerminalRouteIntegrationAudit({
     ));
   }
 
+  if (checkPathExists && !pathExists(QUEUE_PROOF_PRODUCER_PATH)) {
+    issues.push(buildIssue(
+      POLICY_REQUEST_TIME_TERMINAL_ROUTE_INTEGRATION_RISK_IDS.QUEUE_PROOF_PRODUCER_PATH_NOT_FOUND,
+      'The queue-bound question-reduction producer is missing.',
+      { path: QUEUE_PROOF_PRODUCER_PATH }
+    ));
+  }
+
   const queueProofCallerIds = normalizedCallers
     .filter(caller => caller.proofModeIds.includes(
       POLICY_REQUEST_TIME_PROOF_MODE_IDS.QUEUE_QUESTION_REDUCTION
@@ -382,6 +401,7 @@ function buildPolicyRequestTimeTerminalRouteIntegrationAudit({
     callers: callerResults.map(result => buildCallerSummary(result.caller)),
     queueQuestionReduction: {
       adapterPath: QUEUE_PROOF_ADAPTER_PATH,
+      producerPath: QUEUE_PROOF_PRODUCER_PATH,
       statusId: queueProofStatusId,
       activeCallerIds: queueProofCallerIds,
     },
@@ -395,10 +415,10 @@ function buildPolicyRequestTimeTerminalRouteIntegrationAudit({
       profileRefreshQueued: false,
     },
     nextStep: {
-      stepId: 'queue_question_reduction_producer_cutline',
-      label: 'Queue Question-Reduction Producer Cutline',
+      stepId: 'request_time_learning_provenance_cutover',
+      label: 'Request-Time Learning Provenance Cutover',
       reason: queueProofStatusId === 'active'
-        ? 'Queue-bound proof is active and requires ongoing source verification.'
+        ? 'Queue-bound proof is active; audit the remaining request-time callers and retire obsolete direct-proof compatibility paths.'
         : 'The queue proof adapter has no live producer; define one only after it can derive current evidence without competing with the direct-plan handoff.',
     },
   };

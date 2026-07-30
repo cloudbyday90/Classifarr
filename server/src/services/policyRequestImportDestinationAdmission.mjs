@@ -36,7 +36,6 @@ import {
 } from './policyLearningIntakeContract.mjs';
 import {
   POLICY_REQUEST_EVENT_TYPE_IDS,
-  buildPolicyRequestTimeLearningDecisionFromQuestionReductionPlan,
   validatePolicyRequestTimeLearningDecision,
 } from './policyRequestTimeLearning.mjs';
 import {
@@ -49,9 +48,6 @@ import {
 import {
   buildPolicyFinalOutcomeAudit,
 } from './policyFinalOutcomeNormalizer.mjs';
-import {
-  validatePolicyRuntimeQuestionReduction,
-} from './policyRuntimeQuestionReduction.mjs';
 
 const POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_VERSION =
   'policy.request_import_destination_admission.v1';
@@ -72,6 +68,7 @@ const POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS = Object.freeze({
   INVALID_QUESTION_REDUCTION_PROOF: 'request_import_invalid_question_reduction_proof',
   VALID_QUESTION_REDUCTION_PROOF: 'request_import_valid_question_reduction_proof',
   AMBIGUOUS_QUESTION_REDUCTION_PROOF: 'request_import_ambiguous_question_reduction_proof',
+  DIRECT_QUESTION_REDUCTION_PROOF_RETIRED: 'request_import_direct_question_reduction_proof_retired',
 });
 
 const POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_AUDIT_RISK_IDS = Object.freeze({
@@ -207,30 +204,6 @@ function buildOutcomeOnlyLearningDecision(requestEvent) {
     decision: intakeAudit.ok && guardInput
       ? buildPolicyLearningDecision(guardInput)
       : null,
-  };
-}
-
-function buildQuestionReductionSummary(questionReductionPlan) {
-  const plan = asObject(questionReductionPlan);
-
-  if (!plan.version) {
-    return {
-      statusId: 'missing',
-      evidenceFingerprint: null,
-    };
-  }
-
-  const validation = validatePolicyRuntimeQuestionReduction(plan);
-  if (!validation.ok) {
-    return {
-      statusId: 'invalid',
-      evidenceFingerprint: null,
-    };
-  }
-
-  return {
-    statusId: 'valid',
-    evidenceFingerprint: normalizeString(plan.decisionEvidenceFingerprint?.fingerprint, 128) || null,
   };
 }
 
@@ -389,6 +362,18 @@ function buildPolicyRequestImportDestinationAdmission({
     reasonCodes.push(
       POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.AMBIGUOUS_QUESTION_REDUCTION_PROOF
     );
+  } else if (hasDirectQuestionReductionPlan) {
+    questionReduction = {
+      statusId: 'invalid',
+      evidenceFingerprint: null,
+    };
+    const fallbackResult = buildOutcomeOnlyLearningDecision(requestEvent);
+    learningDecision = fallbackResult.decision;
+    learningIntake = fallbackResult.intake;
+    reasonCodes.push(
+      POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS
+        .DIRECT_QUESTION_REDUCTION_PROOF_RETIRED
+    );
   } else if (hasQueueQuestionReduction) {
     const queueRequestTimeReduction = buildPolicyRequestTimeQueueQuestionReduction({
       queueQuestionReduction,
@@ -413,30 +398,16 @@ function buildPolicyRequestImportDestinationAdmission({
       );
     }
   } else {
-    questionReduction = buildQuestionReductionSummary(questionReductionPlan);
-  }
-
-  if (!learningDecision) {
-    if (questionReduction.statusId === 'valid') {
-      requestTimeDecision = buildPolicyRequestTimeLearningDecisionFromQuestionReductionPlan({
-        questionReductionPlan,
-        requestEvent,
-      });
-      learningDecision = requestTimeDecision.learningDecision;
-      learningIntake = requestTimeDecision.intake;
-      reasonCodes.push(
-        POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.VALID_QUESTION_REDUCTION_PROOF
-      );
-    } else {
-      const fallbackResult = buildOutcomeOnlyLearningDecision(requestEvent);
-      learningDecision = fallbackResult.decision;
-      learningIntake = fallbackResult.intake;
-      reasonCodes.push(
-        questionReduction.statusId === 'invalid'
-          ? POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.INVALID_QUESTION_REDUCTION_PROOF
-          : POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.MISSING_QUESTION_REDUCTION_PROOF
-      );
-    }
+    questionReduction = {
+      statusId: 'missing',
+      evidenceFingerprint: null,
+    };
+    const fallbackResult = buildOutcomeOnlyLearningDecision(requestEvent);
+    learningDecision = fallbackResult.decision;
+    learningIntake = fallbackResult.intake;
+    reasonCodes.push(
+      POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.MISSING_QUESTION_REDUCTION_PROOF
+    );
   }
 
   const result = {

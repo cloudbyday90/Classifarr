@@ -76,6 +76,7 @@ const POLICY_RUNTIME_COMPLETION_SUPPORTING_ARTIFACT_IDS = Object.freeze({
   NATIVE_PENDING_SELECTION: 'native_pending_selection',
   NATIVE_PENDING_ROUTE_OUTCOME: 'native_pending_route_outcome',
   TERMINAL_ROUTE_INTEGRATION_AUDIT: 'terminal_route_integration_audit',
+  QUEUE_QUESTION_REDUCTION_PRODUCER: 'queue_question_reduction_producer',
 });
 
 const POLICY_RUNTIME_COMPLETION_RISK_IDS = Object.freeze({
@@ -137,7 +138,7 @@ const REQUEST_TIME_LEARNING_SUPPORTING_ARTIFACTS = Object.freeze([
   Object.freeze({
     id: POLICY_RUNTIME_COMPLETION_SUPPORTING_ARTIFACT_IDS.TERMINAL_ROUTE_INTEGRATION_AUDIT,
     label: 'Terminal request-time route integration audit',
-    evidence: 'Every current terminal request-time caller is source-checked for a guarded proof or explicit outcome-only fallback before later queue-proof activation.',
+    evidence: 'Every current terminal request-time caller is source-checked for an active guarded proof or explicit outcome-only fallback.',
     docPaths: [
       'docs/architecture/policy-request-time-terminal-route-integration-audit.md',
     ],
@@ -146,6 +147,20 @@ const REQUEST_TIME_LEARNING_SUPPORTING_ARTIFACTS = Object.freeze([
     ],
     testPaths: [
       'server/src/__tests__/services/policyRequestTimeTerminalRouteIntegrationAudit.test.mjs',
+    ],
+  }),
+  Object.freeze({
+    id: POLICY_RUNTIME_COMPLETION_SUPPORTING_ARTIFACT_IDS.QUEUE_QUESTION_REDUCTION_PRODUCER,
+    label: 'Queue question-reduction producer cutline',
+    evidence: 'The live classification queue derives one opaque question-reduction proof from current server-owned evidence and retires direct terminal proof from request/import admission.',
+    docPaths: [
+      'docs/architecture/policy-runtime-queue-question-reduction-producer.md',
+    ],
+    servicePaths: [
+      'server/src/services/policyRuntimeQueueQuestionReductionProducer.mjs',
+    ],
+    testPaths: [
+      'server/src/__tests__/services/policyRuntimeQueueQuestionReductionProducer.test.mjs',
     ],
   }),
 ]);

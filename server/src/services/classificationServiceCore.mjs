@@ -14,6 +14,19 @@ import {
 import {
   validatePolicyRuntimeQuestionReduction,
 } from './policyRuntimeQuestionReduction.mjs';
+import {
+  buildPolicyRuntimeQueueQuestionReductionAudit,
+} from './policyRuntimeQueueQuestionReduction.mjs';
+
+function buildQueueTaskContext(task = {}) {
+  const source = task && typeof task === 'object' && !Array.isArray(task) ? task : {};
+
+  return {
+    id: source.id,
+    task_type: source.task_type ?? source.taskType,
+    attempts: source.attempts,
+  };
+}
 
 export function normalizeClassificationServiceConfig(config = {}) {
   const {
@@ -214,15 +227,18 @@ export class ClassificationService {
     };
   }
 
-  async buildRuntimeQuestionHandoff(result) {
+  async buildRuntimeQuestionHandoff(result, queueTask = null) {
     if (typeof this.policyNativeClassificationQuestionHandoffService?.build !== 'function') {
       return null;
     }
 
     try {
-      const handoff = await this.policyNativeClassificationQuestionHandoffService.build({
+      const handoffInput = {
         classificationResult: result,
-      });
+      };
+      if (queueTask !== null) handoffInput.queueTask = queueTask;
+
+      const handoff = await this.policyNativeClassificationQuestionHandoffService.build(handoffInput);
       const plan = handoff?.plan;
       const validation = plan
         ? validatePolicyRuntimeQuestionReduction(plan)
@@ -246,8 +262,8 @@ export class ClassificationService {
     }
   }
 
-  async buildRuntimeQuestionReductionPlan(result) {
-    const handoff = await this.buildRuntimeQuestionHandoff(result);
+  async buildRuntimeQuestionReductionPlan(result, queueTask = null) {
+    const handoff = await this.buildRuntimeQuestionHandoff(result, queueTask);
     return handoff?.plan || null;
   }
 
@@ -283,12 +299,19 @@ export class ClassificationService {
     }
   }
 
-  async classify(overseerrPayload) {
+  async classifyQueueTask(task, payload = {}) {
+    return this.classify(payload, {
+      queueTask: buildQueueTaskContext(task),
+    });
+  }
+
+  async classify(overseerrPayload, runtimeContext = {}) {
     const startTime = Date.now();
     return this._withCatch('Classification error', async () => {
       this.idleDetector.recordActivity();
 
       const { media_type, tmdbId, title, year, existingMetadata, taskId } = this.parseOverseerrPayload(overseerrPayload);
+      const queueTask = runtimeContext?.queueTask ?? null;
 
       this.logger.info(`Starting classification for ${media_type}: ${title} (TMDB: ${tmdbId || 'searching...'})`);
 
@@ -373,8 +396,16 @@ export class ClassificationService {
       }
 
       const result = await this.runDecisionTree(metadata, media_type, taskId);
-      const runtimeQuestionHandoff = await this.buildRuntimeQuestionHandoff(result);
-      const runtimeQuestionReductionPlan = runtimeQuestionHandoff?.plan || null;
+      const runtimeQuestionHandoff = await this.buildRuntimeQuestionHandoff(result, queueTask);
+      const runtimeQuestionReductionPlan = queueTask === null
+        ? runtimeQuestionHandoff?.plan || null
+        : null;
+      const runtimeQueueQuestionReduction = queueTask !== null &&
+        buildPolicyRuntimeQueueQuestionReductionAudit(
+          runtimeQuestionHandoff?.queueQuestionReduction
+        ).ok === true
+        ? runtimeQuestionHandoff.queueQuestionReduction
+        : null;
       const runtimeQuestionPersistenceAdmission = this.admitRuntimeQuestionPersistence(
         result,
         runtimeQuestionHandoff,
@@ -468,6 +499,7 @@ export class ClassificationService {
         destination: buildClassificationDestinationSummary(result),
         routingOutcome: buildClassificationRoutingSummary({ routingOutcome }),
         runtimeQuestionReductionPlan,
+        runtimeQueueQuestionReduction,
         runtimeQuestionPersistence: runtimeQuestionPersistenceAdmission
           ? {
             statusId: runtimeQuestionPersistenceAdmission.statusId,

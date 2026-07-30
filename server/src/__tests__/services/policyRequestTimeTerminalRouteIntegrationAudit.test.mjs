@@ -29,8 +29,9 @@ describe('policyRequestTimeTerminalRouteIntegrationAudit', () => {
       coveredCallerCount: 2,
       queueQuestionReduction: {
         adapterPath: 'server/src/services/policyRequestTimeQueueQuestionReduction.mjs',
-        statusId: 'available_no_live_producer',
-        activeCallerIds: [],
+        producerPath: 'server/src/services/policyRuntimeQueueQuestionReductionProducer.mjs',
+        statusId: 'active',
+        activeCallerIds: [POLICY_REQUEST_TIME_TERMINAL_ROUTE_CALLER_IDS.REQUEST_IMPORT_QUEUE],
       },
       sideEffects: {
         filesRead: true,
@@ -45,7 +46,7 @@ describe('policyRequestTimeTerminalRouteIntegrationAudit', () => {
       expect.objectContaining({
         id: POLICY_REQUEST_TIME_TERMINAL_ROUTE_CALLER_IDS.REQUEST_IMPORT_QUEUE,
         proofModeIds: [
-          POLICY_REQUEST_TIME_PROOF_MODE_IDS.DIRECT_QUESTION_REDUCTION_PLAN,
+          POLICY_REQUEST_TIME_PROOF_MODE_IDS.QUEUE_QUESTION_REDUCTION,
           POLICY_REQUEST_TIME_PROOF_MODE_IDS.OUTCOME_ONLY,
         ],
         outcomeOnlyFallbackRequired: true,

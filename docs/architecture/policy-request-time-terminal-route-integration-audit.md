@@ -21,13 +21,14 @@ The audit found two current terminal routing callers:
 
 | Caller | Current proof mode | Fallback | Result |
 | --- | --- | --- | --- |
-| Request/import classification queue | Validated direct question-reduction plan | Outcome-only | Guarded through request/import admission |
+| Request/import classification queue | Current queue question-reduction envelope | Outcome-only | Guarded through queue-only request/import admission |
 | Native pending terminal routing | Outcome-only | Outcome-only | Never turns route completion into learning |
 
-`policyRequestTimeQueueQuestionReduction.mjs` is available as a queue-bound
-proof adapter, but no live queue producer currently emits its envelope. Its
-state is deliberately reported as `available_no_live_producer`; the audit does
-not treat availability as active automation.
+`policyRuntimeQueueQuestionReductionProducer.mjs` now emits the queue-bound
+envelope during queue-owned classification. The audit reports the proof as
+`active` only when the queue-specific classification entry point, producer, and
+queue-envelope request/import handoff remain present. It no longer treats the
+former direct generic plan as terminal proof.
 
 ## Official Guidance Reviewed
 
@@ -82,7 +83,7 @@ Pros:
 
 - Preserves the existing modular contracts.
 - Fails when registered callers lose their guarded handoff or fallback.
-- Explicitly reports queue proof as inactive until a real producer exists.
+- Requires the live queue producer and queue-only terminal proof handoff.
 - Adds no queue, provider, routing, profile, or learning side effects.
 
 Cons:
@@ -103,8 +104,8 @@ Cons:
 4. Reject any caller that directly authorizes durable learning.
 5. Check server-owned caller and contract paths plus exact guarded-handoff
    fragments without exposing their source content.
-6. Report a queue-proof adapter as available, not active, until an audited live
-   producer supplies an evidence-bound envelope.
+6. Report queue proof as active only when an audited live producer supplies an
+   evidence-bound envelope through the queue-specific classification call.
 7. Require the runtime completion audit to include this component before native
    storage or legacy-removal gates can rely on request-time coverage.
 
@@ -119,10 +120,11 @@ exports:
 - `POLICY_REQUEST_TIME_PROOF_MODE_IDS`
 - `POLICY_REQUEST_TIME_TERMINAL_ROUTE_INTEGRATION_RISK_IDS`
 
-It verifies the queue processor still calls request/import admission with the
-server-created direct plan and that request/import admission still contains the
-outcome-only reduction. It also verifies native pending route persistence still
-builds an outcome-only terminal route record and stops on invalid audit output.
+It verifies the queue processor calls the queue-specific classification method,
+passes only `runtimeQueueQuestionReduction` to request/import admission, and
+retains outcome-only fallback. It also verifies the native handoff invokes the
+queue producer and native pending route persistence still builds an outcome-only
+terminal route record and stops on invalid audit output.
 
 The audit is registered in `policyRuntimeDecisionInventory.mjs` and is executed
 inside the request-time component check of `policyRuntimeCompletionAudit.mjs`.
@@ -133,16 +135,14 @@ inside the request-time component check of `policyRuntimeCompletionAudit.mjs`.
 - Missing or invalid proof always has an explicit outcome-only path.
 - The audit reads fixed repository-owned paths only and returns no source,
   queue, provider, media, identity, or prompt content.
-- The queue-bound proof adapter is accurately non-live; it grants no hidden
-  path around the current direct-plan admission.
+- The active queue-bound proof has no hidden direct-plan terminal fallback.
 - Every test is ES Module-based and covers absent callers, duplicate callers,
   altered caller configuration, missing source handoffs, and unsupported proof
   modes.
 
 ## Next Item
 
-Perform the **Queue Question-Reduction Producer Cutline**. Before activating
-queue-bound proof, define a producer that derives current evidence and its
-automation decision inside the real queue classification workflow, then retire
-the competing direct-plan handoff in the same bounded change. Do not activate
-both proof sources for one terminal route.
+Proceed with **Phase 7R.5 request-time learning provenance cutover**. Audit
+the remaining request-time event producers, remove obsolete direct-proof
+compatibility inputs, and preserve outcome-only handling where no independent
+validated evidence chain exists.

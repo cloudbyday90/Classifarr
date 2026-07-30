@@ -20,6 +20,9 @@ import {
 import {
   buildPolicyRuntimeEvidenceProjection,
 } from '../services/policyRuntimeEvidenceProjection.mjs';
+import {
+  buildPolicyRuntimeQueueQuestionReductionProducer,
+} from '../services/policyRuntimeQueueQuestionReductionProducer.mjs';
 
 function buildValidRuntimeQuestionReductionPlan() {
   const automationDecision = buildPolicyAutomationDecisionFromEvidenceProjection({
@@ -52,6 +55,45 @@ function buildValidRuntimeQuestionReductionPlan() {
 
   expect(validatePolicyRuntimeQuestionReduction(plan).ok).toBe(true);
   return plan;
+}
+
+function buildValidQueueQuestionReduction() {
+  const result = buildPolicyRuntimeQueueQuestionReductionProducer({
+    task: {
+      id: 'queue-task-42',
+      task_type: 'classification',
+      attempts: 1,
+    },
+    runtimeEvidenceInput: {
+      libraryProfile: {
+        identityCandidates: [{ label: 'Animated Movies', count: 12, trusted: true }],
+      },
+      operatorIntent: {
+        belongsHere: [{ key: 'purpose:genres:1', label: 'genres declared purpose' }],
+      },
+      profileFreshness: {
+        key: 'library_profile',
+        label: 'Library profile',
+        stale: false,
+        updatedAt: '2026-07-25T12:00:00.000Z',
+      },
+    },
+    routing: {
+      mapped: true,
+      configured: true,
+      targetId: 'radarr:4',
+      arrConfigId: '4',
+    },
+    classification: { completed: true, status: 'completed' },
+    policyEvaluation: {
+      hardLimitsSatisfied: true,
+      avoidRulesSatisfied: true,
+      highRiskConflicts: [],
+    },
+  });
+
+  expect(result.audit.ok).toBe(true);
+  return result.queueQuestionReduction;
 }
 
 function createService({ handoff, admission } = {}) {
@@ -184,6 +226,31 @@ describe('classificationServiceCore native question-reduction handoff', () => {
     expect(result.success).toBe(true);
     expect(result.runtimeQuestionReductionPlan).toBeNull();
     expect(service.classificationRoutingService.routeToArr).toHaveBeenCalledTimes(1);
+  });
+
+  test('emits queue-bound proof and suppresses the direct terminal proof for queue classification', async () => {
+    const runtimeQuestionReductionPlan = buildValidRuntimeQuestionReductionPlan();
+    const runtimeQueueQuestionReduction = buildValidQueueQuestionReduction();
+    const handoff = {
+      build: jest.fn().mockResolvedValue({
+        plan: runtimeQuestionReductionPlan,
+        queueQuestionReduction: runtimeQueueQuestionReduction,
+      }),
+    };
+    const service = createService({ handoff });
+    const task = { id: 'queue-task-42', task_type: 'classification', attempts: 1 };
+
+    const result = await service.classifyQueueTask(task, { media: { tmdbId: 10674 } });
+
+    expect(handoff.build).toHaveBeenCalledWith({
+      classificationResult: expect.objectContaining({
+        library: { id: 6, name: 'Animated Movies' },
+      }),
+      queueTask: task,
+    });
+    expect(result.runtimeQuestionReductionPlan).toBeNull();
+    expect(result.runtimeQueueQuestionReduction).toEqual(runtimeQueueQuestionReduction);
+    expect(JSON.stringify(result)).not.toContain('queue-task-42');
   });
 
   test('persists an admitted native question through the existing pending path and skips routing', async () => {
