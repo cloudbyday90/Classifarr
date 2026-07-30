@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Library Rebuild Final-Removal Audit**: A server-owned, transaction-scoped
+  audit now recomputes cutover readiness and the current removal inventory
+  before producing a compact per-library release-retirement plan. It blocks
+  stale or mismatched evidence and never authorizes repository mutation,
+  runtime deletion, routing, or browser controls.
+
 - **Library Rebuild Deletion Readiness**: A server-only, read-only gate now
   binds completed rebuild provenance to the exact verification receipt,
   rollback snapshot/window disposition, replacement event, active native

@@ -4465,6 +4465,11 @@ Tasks:
   inventory to produce one non-executing, controlled final-removal plan.
   Recheck provenance inside its own transaction, report exact blockers, and do
   not delete, hide, archive, route, or expose a browser control.
+- **6R.6.10 Library Rebuild Legacy-Path Global Release Retirement Gate**:
+  aggregate fresh 6R.6.9 plans for the deployment's current enabled policies,
+  bind them to one current removal inventory and release state, and report a
+  non-executing repository-retirement decision. It must fail closed and must
+  not delete, hide, archive, route, or expose a browser control.
 - Use old impact/replay/parity tooling only as migration verification machinery,
   not product workflow.
 - Define a migration preview that compares legacy policy behavior to generated
@@ -4558,6 +4563,14 @@ Implementation status:
   native authority, and a compact removal-inventory fingerprint. It writes no
   readiness state and cannot delete, hide, archive, route, or expose a browser
   control.
+- The final-removal-audit decision, design, and outcome are documented in
+  [Policy Library-Rebuild Legacy Final-Removal Audit](policy-library-rebuild-legacy-final-removal-audit.md).
+  `policyLibraryRebuildLegacyFinalRemovalAuditService.mjs` now rebuilds compact
+  cutover evidence, inventory, and readiness in one transaction before it
+  returns a non-executing per-library plan. It rejects stale or future
+  readiness, inventory drift, and forged execution permissions, and stops at
+  the deployment-wide release-retirement boundary without deleting, hiding,
+  archiving, routing, or exposing a browser control.
 - `server/src/services/policyMigrationVerifierRollback.mjs` consumes the
   preview contract while retaining rebuild acceptance, rollback, fingerprint,
   trace, and deletion gates. It rejects ambiguous old/new sample input names.
