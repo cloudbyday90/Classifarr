@@ -118,8 +118,6 @@ Official sources reviewed as of June 2026:
   `client/src/components/policies/PolicyBuilderFooterActions.vue`
 - Destination-question action hierarchy:
   `client/src/components/policies/PolicyBuilderDestinationQuestions.vue`
-- Native evidence recovery:
-  `client/src/components/policies/PolicyNativeEvidenceRecovery.vue`
 - Destination empty-state recovery:
   `client/src/components/policies/PolicyDestinationEmptyStateNotice.vue`
 - Workflow status priority:

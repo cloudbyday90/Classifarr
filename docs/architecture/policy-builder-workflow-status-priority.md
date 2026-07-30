@@ -45,11 +45,10 @@ Official sources reviewed as of June 2026:
    2. workflow loading;
    3. active empty-state action;
    4. active profile refresh;
-   5. native evidence recovery;
-   6. completed profile refresh result.
-4. Keep recovery cards visible with their action and description, but suppress
-   their local live-region behavior when the workflow shell owns the
-   announcement.
+   5. completed profile refresh result.
+4. Keep explicit empty-state recovery actions visible with their action and
+   description, but suppress their local live-region behavior when the
+   workflow shell owns the announcement.
 5. Keep static library freshness and result text readable without making each
    card an additional live region.
 6. Preserve the status element's stable identifier so disabled empty-state
@@ -60,7 +59,7 @@ Official sources reviewed as of June 2026:
 ### Pros
 
 - Prevents screen-reader announcement storms when a refresh also causes a
-  workflow reread and an evidence-recovery card to appear.
+  workflow reread and a recovery action to update.
 - Makes one operator-relevant condition clear without hiding the local action
   or explanation needed to resolve it.
 - Retains assertive delivery for bounded failure states and polite delivery for
@@ -72,9 +71,7 @@ Official sources reviewed as of June 2026:
 
 - Adds a small resolver and presentation component to the client workflow.
 - A lower-priority completed success result waits until the more important
-  recovery condition is resolved before it is announced.
-- Standalone recovery-card consumers must retain the default local announcement
-  behavior; only the workflow shell suppresses it.
+  progress condition is resolved before it is announced.
 
 ## Final Recommendation Stack
 
@@ -87,8 +84,6 @@ Official sources reviewed as of June 2026:
 - Empty-state action descriptions:
   `client/src/components/policies/PolicyBuilderDestinationQuestions.vue`
   and `client/src/components/policies/PolicyDestinationEmptyStateNotice.vue`
-- Embedded recovery presentation:
-  `client/src/components/policies/PolicyNativeEvidenceRecovery.vue`
 - Static source-of-truth context:
   `client/src/components/policies/PolicyBuilderLibraryContext.vue`
 - Boundary classifications:

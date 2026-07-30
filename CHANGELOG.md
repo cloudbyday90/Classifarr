@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Native Policy Evidence Recovery**: Native policy creation no longer offers
+  browser-triggered profile refresh or workflow reload actions. It renders
+  observed signal controls only from current server projection or
+  server-admitted custom entry while server-owned profile recovery handles the
+  lifecycle.
+
 - **Library Rebuild Global Retirement Gate**: A server-owned, transaction-
   scoped aggregate now rebuilds compact final-removal plans for every current
   enabled policy against one removal inventory. It emits a fingerprint-bound,

@@ -66,8 +66,6 @@
           @constraint-draft-command-plan="applyConstraintDraftCommandPlan"
           @clear-constraint-draft="resetConstraintDraft"
           @validate-custom-signal="validateActiveCustomIntentSignal"
-          @refresh-profile="refreshActiveLibraryProfile"
-          @reload-workflow="reloadActiveLibraryWorkflow"
           @empty-state-action="handleEmptyStateAction"
         />
 
@@ -218,7 +216,6 @@ const {
   libraryProfileFreshness,
   loadInitialData,
   loadLibraryContext,
-  loadLibraryProfile,
   dismissPresetMigrationNotice,
   watchLibraryProfile,
   refreshLibraryProfile,
@@ -421,16 +418,6 @@ const handleEmptyStateAction = async (emptyState) => {
     } finally {
       activeEmptyStateActionId.value = ''
     }
-  }
-}
-
-const reloadActiveLibraryWorkflow = async () => {
-  const recoveryFocusTrigger = captureRecoveryFocus()
-  try {
-    await loadLibraryProfile(form.value.library_id)
-    await loadOperatorWorkflow(form.value.library_id)
-  } finally {
-    await restoreRecoveryFocus(recoveryFocusTrigger)
   }
 }
 

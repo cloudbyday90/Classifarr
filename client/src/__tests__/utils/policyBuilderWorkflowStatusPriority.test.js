@@ -11,18 +11,6 @@ import {
   POLICY_BUILDER_WORKFLOW_STATUS_IDS,
   buildPolicyBuilderWorkflowStatus,
 } from '@/utils/policyBuilderWorkflowStatusPriority'
-import { POLICY_NATIVE_EVIDENCE_RECOVERY_STATUS_IDS } from '@/utils/policyNativeEvidenceRecovery'
-
-function buildRecovery(overrides = {}) {
-  return {
-    statusId: POLICY_NATIVE_EVIDENCE_RECOVERY_STATUS_IDS.PROFILE_NEEDS_REFRESH,
-    heading: 'Library evidence needs a refresh',
-    message: 'Refresh the library profile before using observed values.',
-    requiresAction: true,
-    tone: 'warning',
-    ...overrides,
-  }
-}
 
 describe('policyBuilderWorkflowStatusPriority', () => {
   it('gives a workflow error priority over every waiting state', () => {
@@ -32,7 +20,6 @@ describe('policyBuilderWorkflowStatusPriority', () => {
       refreshing: true,
       activeEmptyStateActionId: 'sync_media_server_library',
       activeEmptyStateActionMessage: 'Classifarr is syncing this library.',
-      nativeEvidenceRecovery: buildRecovery(),
     })).toEqual({
       id: POLICY_BUILDER_WORKFLOW_STATUS_IDS.WORKFLOW_ERROR,
       role: 'alert',
@@ -42,7 +29,7 @@ describe('policyBuilderWorkflowStatusPriority', () => {
     })
   })
 
-  it('gives a workflow load priority over in-flight recovery work', () => {
+  it('gives a workflow load priority over in-flight profile work', () => {
     expect(buildPolicyBuilderWorkflowStatus({
       loading: true,
       refreshing: true,
@@ -60,7 +47,6 @@ describe('policyBuilderWorkflowStatusPriority', () => {
       refreshing: true,
       activeEmptyStateActionId: 'sync_media_server_library',
       activeEmptyStateActionMessage: 'Classifarr is syncing this library and refreshing its profile.',
-      nativeEvidenceRecovery: buildRecovery(),
     })).toMatchObject({
       id: POLICY_BUILDER_WORKFLOW_STATUS_IDS.EMPTY_STATE_ACTION,
       message: 'Classifarr is syncing this library and refreshing its profile.',
@@ -68,10 +54,9 @@ describe('policyBuilderWorkflowStatusPriority', () => {
     })
   })
 
-  it('announces profile refresh progress before a static recovery card', () => {
+  it('announces profile refresh progress without exposing a retry control', () => {
     expect(buildPolicyBuilderWorkflowStatus({
       refreshing: true,
-      nativeEvidenceRecovery: buildRecovery(),
     })).toMatchObject({
       id: POLICY_BUILDER_WORKFLOW_STATUS_IDS.LIBRARY_PROFILE_REFRESH,
       message: 'Classifarr is refreshing library evidence.',
@@ -79,50 +64,19 @@ describe('policyBuilderWorkflowStatusPriority', () => {
     })
   })
 
-  it('uses an assertive status only for a completed refresh failure', () => {
+  it('announces a completed refresh result when no higher-priority state exists', () => {
     expect(buildPolicyBuilderWorkflowStatus({
-      nativeEvidenceRecovery: buildRecovery({
-        statusId: POLICY_NATIVE_EVIDENCE_RECOVERY_STATUS_IDS.REFRESH_FAILED,
-        heading: 'Library profile refresh did not complete',
-        message: 'Try again when the connected library is available.',
-      }),
-    })).toMatchObject({
-      id: POLICY_BUILDER_WORKFLOW_STATUS_IDS.NATIVE_EVIDENCE_RECOVERY,
-      role: 'alert',
-      message: 'Library profile refresh did not complete Try again when the connected library is available.',
-      busy: false,
-    })
-  })
-
-  it('keeps advisory recovery ahead of a completed refresh summary', () => {
-    expect(buildPolicyBuilderWorkflowStatus({
-      nativeEvidenceRecovery: buildRecovery(),
       refreshResult: {
-        status: 'success_empty',
+        status: 'error',
         tone: 'warning',
-        label: 'Profile refreshed',
-        message: 'No usable signals were found.',
-      },
-    })).toMatchObject({
-      id: POLICY_BUILDER_WORKFLOW_STATUS_IDS.NATIVE_EVIDENCE_RECOVERY,
-      role: 'status',
-      message: 'Library evidence needs a refresh Refresh the library profile before using observed values.',
-    })
-  })
-
-  it('announces a completed refresh result only when no higher-priority state exists', () => {
-    expect(buildPolicyBuilderWorkflowStatus({
-      refreshResult: {
-        status: 'success',
-        tone: 'success',
-        label: 'Profile refreshed',
-        message: '2 genres are available from the current library profile.',
+        label: 'Profile refresh deferred',
+        message: 'Classifarr will retry automatically when the source is available.',
       },
     })).toEqual({
       id: POLICY_BUILDER_WORKFLOW_STATUS_IDS.PROFILE_REFRESH_RESULT,
-      role: 'status',
-      tone: 'success',
-      message: 'Profile refreshed: 2 genres are available from the current library profile.',
+      role: 'alert',
+      tone: 'warning',
+      message: 'Profile refresh deferred: Classifarr will retry automatically when the source is available.',
       busy: false,
     })
   })

@@ -48,15 +48,6 @@
           @next-action="emit('empty-state-action', $event)"
         />
 
-        <PolicyNativeEvidenceRecovery
-          v-if="showsObservedEvidenceActions(section) && nativeEvidenceRecovery?.requiresAction"
-          :recovery="nativeEvidenceRecovery"
-          :refreshing="refreshing"
-          :announce="false"
-          @refresh-profile="emit('refresh-profile')"
-          @reload-workflow="emit('reload-workflow')"
-        />
-
         <IntentSignalPicker
           v-if="showsIntentSignalPicker(section)"
           :accepted-signals="acceptedSignals"
@@ -90,7 +81,6 @@
 
 <script setup>
 import PolicyDestinationEmptyStateNotice from './PolicyDestinationEmptyStateNotice.vue'
-import PolicyNativeEvidenceRecovery from './PolicyNativeEvidenceRecovery.vue'
 import IntentSignalPicker from './IntentSignalPicker.vue'
 
 const props = defineProps({
@@ -99,14 +89,6 @@ const props = defineProps({
     default: () => [],
   },
   selectionEnabled: {
-    type: Boolean,
-    default: false,
-  },
-  nativeEvidenceRecovery: {
-    type: Object,
-    default: null,
-  },
-  refreshing: {
     type: Boolean,
     default: false,
   },
@@ -159,8 +141,6 @@ const props = defineProps({
 const emit = defineEmits({
   'draft-command-plan': plan => Boolean(plan?.commands?.length),
   'validate-custom-signal': payload => Boolean(payload?.signalType && payload?.value && payload?.explanation),
-  'refresh-profile': () => true,
-  'reload-workflow': () => true,
   'empty-state-action': emptyState => Boolean(emptyState?.stateId && emptyState?.nextAction?.actionId),
 })
 
@@ -172,7 +152,7 @@ const showsObservedEvidenceActions = section => (
 
 const showsIntentSignalPicker = section => (
   showsObservedEvidenceActions(section) && (
-    props.nativeEvidenceRecovery?.canSelectObservedCandidates ||
+    props.intentSignalOptions.some(option => option?.selectable === true) ||
     props.customEntryInput?.enabled === true
   )
 )

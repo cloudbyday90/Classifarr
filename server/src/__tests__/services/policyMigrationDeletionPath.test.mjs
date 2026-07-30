@@ -103,8 +103,6 @@ describe('policyMigrationDeletionPath', () => {
     expect(paths).toEqual(expect.arrayContaining([
       'client/src/components/policies/PolicyIntentImpactPreviewCard.vue',
       'client/src/components/policies/PolicyIntentReplayPreviewCard.vue',
-      'client/src/components/policies/PolicyNativeEvidenceRecovery.vue',
-      'client/src/utils/policyNativeEvidenceRecovery.js',
       'client/src/composables/usePolicyIntentImpactPreview.js',
       'client/src/composables/usePolicyIntentReplayPreview.js',
       'server/src/routes/policiesRouteMigrationVerifier.mjs',

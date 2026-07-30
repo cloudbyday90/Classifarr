@@ -6,14 +6,11 @@
  * See LICENSE file for details.
  */
 
-import { POLICY_NATIVE_EVIDENCE_RECOVERY_STATUS_IDS } from './policyNativeEvidenceRecovery'
-
 export const POLICY_BUILDER_WORKFLOW_STATUS_IDS = Object.freeze({
   WORKFLOW_ERROR: 'policy-builder-workflow-error-status',
   WORKFLOW_LOADING: 'policy-builder-workflow-loading-status',
   EMPTY_STATE_ACTION: 'policy-builder-empty-state-action-status',
   LIBRARY_PROFILE_REFRESH: 'policy-builder-library-profile-refresh-status',
-  NATIVE_EVIDENCE_RECOVERY: 'policy-builder-native-evidence-recovery-status',
   PROFILE_REFRESH_RESULT: 'policy-builder-profile-refresh-result-status',
 })
 
@@ -44,17 +41,12 @@ function buildStatus({ id, role = 'status', tone = 'info', message, busy = false
   }
 }
 
-function isRefreshFailure(recovery) {
-  return recovery?.statusId === POLICY_NATIVE_EVIDENCE_RECOVERY_STATUS_IDS.REFRESH_FAILED
-}
-
 export function buildPolicyBuilderWorkflowStatus({
   loading = false,
   error = '',
   refreshing = false,
   activeEmptyStateActionId = '',
   activeEmptyStateActionMessage = '',
-  nativeEvidenceRecovery = null,
   refreshResult = null,
 } = {}) {
   const workflowError = asText(error)
@@ -90,23 +82,6 @@ export function buildPolicyBuilderWorkflowStatus({
       id: POLICY_BUILDER_WORKFLOW_STATUS_IDS.LIBRARY_PROFILE_REFRESH,
       message: activeActionMessage || PROFILE_REFRESHING_MESSAGE,
       busy: true,
-    })
-  }
-
-  if (isRefreshFailure(nativeEvidenceRecovery)) {
-    return buildStatus({
-      id: POLICY_BUILDER_WORKFLOW_STATUS_IDS.NATIVE_EVIDENCE_RECOVERY,
-      role: 'alert',
-      tone: 'warning',
-      message: joinMessage(nativeEvidenceRecovery.heading, nativeEvidenceRecovery.message),
-    })
-  }
-
-  if (nativeEvidenceRecovery?.requiresAction) {
-    return buildStatus({
-      id: POLICY_BUILDER_WORKFLOW_STATUS_IDS.NATIVE_EVIDENCE_RECOVERY,
-      tone: nativeEvidenceRecovery.tone || 'warning',
-      message: joinMessage(nativeEvidenceRecovery.heading, nativeEvidenceRecovery.message),
     })
   }
 

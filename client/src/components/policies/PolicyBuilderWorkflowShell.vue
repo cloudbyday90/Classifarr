@@ -22,18 +22,7 @@
       :status="workflowStatus"
     />
 
-    <template v-if="error">
-      <PolicyNativeEvidenceRecovery
-        v-if="selectionEnabled && nativeEvidenceRecovery.requiresAction"
-        :recovery="nativeEvidenceRecovery"
-        :refreshing="refreshing"
-        :announce="false"
-        @refresh-profile="emit('refresh-profile')"
-        @reload-workflow="emit('reload-workflow')"
-      />
-    </template>
-
-    <template v-else-if="!loading && workflowRead">
+    <template v-if="!loading && workflowRead">
       <ObservedProfileSummary
         :library-name="libraryName"
         :observed-profile="observedProfile"
@@ -44,8 +33,6 @@
       <PolicyBuilderDestinationQuestions
         :sections="sections"
         :selection-enabled="selectionEnabled"
-        :native-evidence-recovery="nativeEvidenceRecovery"
-        :refreshing="refreshing"
         :accepted-signals="acceptedSignals"
         :observed-evidence="observedEvidence"
         :intent-signal-options="intentSignalOptions"
@@ -59,8 +46,6 @@
         :active-empty-state-status-id="emptyStateActionStatusId"
         @draft-command-plan="emit('draft-command-plan', $event)"
         @validate-custom-signal="emit('validate-custom-signal', $event)"
-        @refresh-profile="emit('refresh-profile')"
-        @reload-workflow="emit('reload-workflow')"
         @empty-state-action="emit('empty-state-action', $event)"
       />
 
@@ -86,11 +71,9 @@ import { computed, ref } from 'vue'
 import DestinationContextCard from './DestinationContextCard.vue'
 import ObservedProfileSummary from './ObservedProfileSummary.vue'
 import PolicyBuilderDestinationQuestions from './PolicyBuilderDestinationQuestions.vue'
-import PolicyNativeEvidenceRecovery from './PolicyNativeEvidenceRecovery.vue'
 import PolicyBuilderWorkflowStatusNotice from './PolicyBuilderWorkflowStatusNotice.vue'
 import PolicyIntentConstraintControlSurface from './PolicyIntentConstraintControlSurface.vue'
 import ReadinessNextActionCard from './ReadinessNextActionCard.vue'
-import { buildPolicyNativeEvidenceRecovery } from '@/utils/policyNativeEvidenceRecovery'
 import { buildPolicyBuilderWorkflowStatus } from '@/utils/policyBuilderWorkflowStatusPriority'
 
 const props = defineProps({
@@ -153,8 +136,6 @@ const emit = defineEmits({
   'constraint-draft-command-plan': plan => Boolean(plan?.commands?.length),
   'clear-constraint-draft': () => true,
   'validate-custom-signal': payload => Boolean(payload?.signalType && payload?.value && payload?.explanation),
-  'refresh-profile': () => true,
-  'reload-workflow': () => true,
   'empty-state-action': emptyState => Boolean(emptyState?.stateId && emptyState?.nextAction?.actionId),
 })
 
@@ -188,13 +169,6 @@ const destinationSummary = computed(() => (
     ? 'Classifarr starts with what is already in this library. Accept only the observed values that should define future matches.'
     : workflow.value?.summary || 'Use the connected library to understand this destination before adding policy details.'
 ))
-const nativeEvidenceRecovery = computed(() => buildPolicyNativeEvidenceRecovery({
-  selectionEnabled: props.selectionEnabled,
-  workflowRead: props.workflowRead,
-  loading: props.loading,
-  error: props.error,
-  refreshResult: props.refreshResult,
-}))
 const activeEmptyStateActionMessage = computed(() => {
   const activeAction = emptyStates.value.find(
     emptyState => emptyState?.nextAction?.actionId === props.activeEmptyStateActionId
@@ -211,7 +185,6 @@ const workflowStatus = computed(() => buildPolicyBuilderWorkflowStatus({
   refreshing: props.refreshing,
   activeEmptyStateActionId: props.activeEmptyStateActionId,
   activeEmptyStateActionMessage: activeEmptyStateActionMessage.value,
-  nativeEvidenceRecovery: nativeEvidenceRecovery.value,
   refreshResult: props.refreshResult,
 }))
 const emptyStateActionStatusId = computed(() => (

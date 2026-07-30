@@ -2645,15 +2645,12 @@ Implementation status:
   labels. Explicit recovery actions remain in their owning card, while generic
   compatibility-edit readiness remains workflow-level:
   [Policy Authoring Destination Question Action Hierarchy](policy-authoring-destination-question-action-hierarchy.md).
-- Native evidence recovery now uses a projection-owned busy label for each
-  bounded action and describes the action with its visible recovery message:
-  [Policy Native Evidence Recovery Action Resolution](policy-native-evidence-recovery-action-resolution.md).
 - Destination empty-state recovery now uses an active action identifier,
   projection-owned busy copy, and a polite progress status without repeating
   an actionable card's next-action label:
   [Policy Destination Empty-State Action Resolution](policy-destination-empty-state-action-resolution.md).
-- Workflow loading, profile refresh, native evidence recovery, empty-state
-  progress, and completed refresh results now resolve to one ordered live
+- Workflow loading, profile refresh, empty-state progress, and completed
+  refresh results now resolve to one ordered live
   announcement:
   [Policy Builder Workflow Status Priority](policy-builder-workflow-status-priority.md).
 - **3R.8.4 Keyboard Recovery-Flow Audit is complete.** The shared modal now
@@ -4214,12 +4211,12 @@ Implementation status:
   implementation is documented in [Persisted Native Policy
   Summary](policy-persisted-native-summary.md) and [Policy Native Readiness
   Summary Contract](policy-native-readiness-summary-contract.md).
-- Native creation now recovers insufficient profile evidence through one
-  bounded action: unavailable, stale, empty, and failed-refresh states hide
-  observed candidates, offer an explicit profile refresh or a display-only
-  reread, and remain safe to defer. It does not reopen legacy templates or raw
-  authoring controls. Its design record is [Policy Native Evidence
-  Recovery](policy-native-evidence-recovery.md).
+- Native creation now reads insufficient profile evidence as status only:
+  unavailable, stale, empty, and failed-read states hide observed candidates
+  without offering browser refresh or reread actions. It does not reopen legacy
+  templates or raw authoring controls. Server-owned profile recovery establishes
+  later evidence; the retirement record is [Policy Library-Rebuild Native
+  Evidence Recovery Retirement](policy-library-rebuild-native-evidence-recovery-retirement.md).
 - The native-readiness recovery action is now scheduler-owned. Missing and stale
   active-native profiles are queued automatically through the durable profile
   refresh outbox, while the current read-only summary remains side-effect free.
@@ -4476,6 +4473,18 @@ Tasks:
   artifacts and unreachable references/tests/docs together, keep the running
   service without repository-write authority, and require normal CI and
   deployment-health gates before release.
+  - **6R.6.11.1 Native Browser Evidence-Recovery Retirement**: delete the
+    native-create browser refresh/reload panel, client state utility, tests,
+    imports, and stale documentation. Render observed-signal controls only
+    from current selectable server projection or server-admitted custom entry;
+    keep profile lifecycle recovery server-owned.
+  - **6R.6.11.2 Browser Impact And Replay Preview Retirement**: delete the
+    legacy impact/replay cards, composables, utilities, tests, imports, and
+    documentation from policy authoring while preserving the bounded
+    server-side migration verifier outside normal workflow.
+  - **6R.6.11.3 Legacy Migration-Verifier Service Retirement**: delete
+    superseded verifier route/service paths only after the retained
+    server-owned cutover evidence proves their replacement and removal gates.
 - Use old impact/replay/parity tooling only as migration verification machinery,
   not product workflow.
 - Define a migration preview that compares legacy policy behavior to generated
@@ -4585,12 +4594,17 @@ Implementation status:
   repository-retirement proposal. Missing, duplicate, invalid, stale, or
   mismatched evidence fails closed; it cannot mutate the repository, delete
   runtime data, route media, or add a browser control.
+- Native browser evidence recovery is retired from policy creation. The
+  destination picker consumes only current selectable server projection or
+  server-admitted custom entry; it cannot refresh a profile or retry a
+  workflow read from the browser. The design and outcome are documented in
+  [Policy Library-Rebuild Native Evidence Recovery
+  Retirement](policy-library-rebuild-native-evidence-recovery-retirement.md).
 - `server/src/services/policyMigrationVerifierRollback.mjs` consumes the
   preview contract while retaining rebuild acceptance, rollback, fingerprint,
   trace, and deletion gates. It rejects ambiguous old/new sample input names.
-- The deletion plan now embeds the versioned preview contract and classifies
-  the creation-only browser evidence-refresh component and utility as
-  delete-after-migration targets; no normal workflow surface was added.
+- The deletion plan now embeds the versioned preview contract. Native browser
+  evidence recovery has been retired; no normal workflow surface was added.
 - The server-owned migration cutline lives in
   `server/src/services/policyMigrationDeletionPath.mjs`.
 - The focused migration/deletion test suite lives in

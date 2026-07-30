@@ -220,7 +220,7 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
 
     expect(wrapper.findAll('[role="alert"]')).toHaveLength(1)
     expect(wrapper.findAll('[role="status"]')).toHaveLength(0)
-    expect(wrapper.text()).toContain('Try evidence check again')
+    expect(wrapper.findAll('button')).toHaveLength(0)
   })
 
   it('describes disabled empty-state actions with an active profile-refresh status', () => {
@@ -257,7 +257,7 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
       .toContain('policy-builder-library-profile-refresh-status')
   })
 
-  it('announces a refresh failure once while keeping its recovery action visible', () => {
+  it('announces an automatic refresh deferral without rendering a recovery action', () => {
     const workflowRead = buildWorkflowRead()
     workflowRead.observedProfile = {
       available: false,
@@ -280,8 +280,8 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
 
     expect(wrapper.findAll('[role="alert"]')).toHaveLength(1)
     expect(wrapper.findAll('[role="status"]')).toHaveLength(0)
-    expect(wrapper.find('[role="alert"]').text()).toContain('Library profile refresh did not complete')
-    expect(wrapper.text()).toContain('Refresh library profile')
+    expect(wrapper.find('[role="alert"]').text()).toContain('Refresh failed: The queue is unavailable.')
+    expect(wrapper.findAll('button')).toHaveLength(0)
   })
 
   it('announces a completed refresh only when current evidence needs no recovery', () => {
@@ -309,7 +309,7 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
     expect(wrapper.findAll('[role="alert"]')).toHaveLength(0)
   })
 
-  it('keeps native observed values unavailable until a stale profile is refreshed', async () => {
+  it('keeps native observed values unavailable until server-owned profile refresh completes', () => {
     const workflowRead = buildWorkflowRead()
     workflowRead.observedProfile = {
       available: true,
@@ -329,14 +329,12 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
       },
     })
 
-    expect(wrapper.text()).toContain('Library evidence needs a refresh')
+    expect(wrapper.text()).toContain('Profile needs refresh')
     expect(wrapper.text()).not.toContain('What should define this destination?')
-
-    await wrapper.find('button').trigger('click')
-    expect(wrapper.emitted('refresh-profile')).toHaveLength(1)
+    expect(wrapper.findAll('button')).toHaveLength(0)
   })
 
-  it('offers a bounded workflow reload when native evidence cannot be read', async () => {
+  it('keeps a failed native workflow read informational without offering a reload action', () => {
     const wrapper = mount(PolicyBuilderWorkflowShell, {
       props: {
         error: 'Classifarr could not load the library workflow.',
@@ -344,11 +342,8 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
       },
     })
 
-    expect(wrapper.text()).toContain('Library evidence is unavailable')
-    expect(wrapper.text()).toContain('Try evidence check again')
-
-    await wrapper.findAll('button').at(-1).trigger('click')
-    expect(wrapper.emitted('reload-workflow')).toHaveLength(1)
+    expect(wrapper.text()).toContain('Classifarr could not load the library workflow.')
+    expect(wrapper.findAll('button')).toHaveLength(0)
   })
 
   it('keeps native policy creation focused on accepted library evidence', () => {

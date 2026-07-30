@@ -138,7 +138,6 @@ Cons:
 - `server/src/__tests__/services/policyOperatorWorkflowReadService.test.mjs`
 - `server/src/__tests__/policies-operator-workflow-read-routes.test.mjs`
 - `client/src/__tests__/utils/policyIntentSignalDraft.test.js`
-- `client/src/__tests__/utils/policyNativeEvidenceRecovery.test.js`
 - `client/src/__tests__/composables/usePolicyOperatorWorkflow.test.js`
 - `client/src/__tests__/IntentSignalPicker.test.js`
 - `client/src/__tests__/PolicyBuilderWorkflowShell.test.js`

@@ -116,4 +116,49 @@ describe('PolicyBuilderDestinationQuestions.vue', () => {
       .toContain('policy-builder-empty-state-action-status')
     expect(wrapper.text()).not.toContain('Opening library mapping...')
   })
+
+  it('renders observed signal selection only for selectable server projection', () => {
+    const nonSelectableWrapper = mount(PolicyBuilderDestinationQuestions, {
+      props: {
+        sections: buildSections(),
+        selectionEnabled: true,
+        intentSignalOptions: [{
+          candidateId: 'genre:anime',
+          label: 'Anime',
+          selectable: false,
+        }],
+      },
+    })
+
+    expect(nonSelectableWrapper.find('#intent-signal-picker-title').exists()).toBe(false)
+    expect(nonSelectableWrapper.findAll('button')).toHaveLength(0)
+
+    const selectableWrapper = mount(PolicyBuilderDestinationQuestions, {
+      props: {
+        sections: buildSections(),
+        selectionEnabled: true,
+        intentSignalOptions: [{
+          candidateId: 'genre:anime',
+          value: 'Anime',
+          label: 'Anime',
+          sourceId: 'suggested_from_observed_profile',
+          sourceLabel: 'Suggested from this library',
+          selectionStateId: 'selectable_suggestion',
+          selectable: true,
+          readOnlyEvidence: false,
+          requiresExplicitAcceptance: true,
+          canAutoDeclare: false,
+          commandId: 'add_signal_value',
+          signalType: 'genres',
+          operator: 'require_any',
+          questionId: 'what_belongs_here',
+          explanation: 'Anime appears in the current library.',
+          evidence: { count: 4 },
+        }],
+      },
+    })
+
+    expect(selectableWrapper.find('#intent-signal-picker-title').exists()).toBe(true)
+    expect(selectableWrapper.text()).toContain('Add declared destination signals')
+  })
 })

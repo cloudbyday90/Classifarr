@@ -72,7 +72,6 @@ Official sources reviewed as of June 2026:
   `client/src/components/policies/ReadinessNextActionCard.vue`
 - Explicit card-scoped recovery:
   `client/src/components/policies/PolicyDestinationEmptyStateNotice.vue`
-  `client/src/components/policies/PolicyNativeEvidenceRecovery.vue`
 - Component regression coverage:
   `client/src/__tests__/PolicyBuilderDestinationQuestions.test.js`
   `client/src/__tests__/PolicyBuilderWorkflowShell.test.js`
@@ -84,6 +83,7 @@ readiness labels such as `Next: Connect a routing target`. It still renders
 explicit recovery actions in the question that owns them and native contextual
 guidance that explains that policy creation does not route media. The workflow
 continues to expose compatibility-edit readiness once through
-`ReadinessNextActionCard`. An absent optional native-recovery projection is
-treated as no recovery action, so the component remains safe to render while
-workflow data is still being assembled.
+`ReadinessNextActionCard`. Native creation has no browser recovery projection:
+the component is safe to render while workflow data is assembled because it
+renders observed controls only from selectable server values or an admitted
+custom entry.

@@ -728,7 +728,7 @@ describe('PolicyBuilderModal.vue', () => {
     expect(wrapper.emitted('close')).toHaveLength(1);
   });
 
-  it('refreshes insufficient native evidence and reloads the bounded workflow before showing candidates', async () => {
+  it('shows insufficient native evidence without a browser recovery action', async () => {
     const workflowRead = buildOperatorWorkflowRead();
     workflowRead.observedProfile = {
       available: false,
@@ -744,41 +744,6 @@ describe('PolicyBuilderModal.vue', () => {
       if (url === '/libraries/1/profile') return Promise.resolve({ data: null });
       return Promise.resolve({ data: { suggestions: [] } });
     });
-    api.refreshLibraryProfile.mockImplementation(async () => {
-      workflowRead.observedProfile = {
-        available: true,
-        current: true,
-        suggestionCount: 1,
-        suggestions: [{ key: 'genre:Science Fiction', label: 'Science Fiction', count: 18 }],
-        intentSignalProjection: { options: [{
-          candidateId: 'genre:Science Fiction:purpose',
-          value: 'Science Fiction',
-          label: 'Science Fiction',
-          signalType: 'genres',
-          operator: 'require_any',
-          questionId: 'what_belongs_here',
-          sourceId: 'suggested_from_observed_profile',
-          sourceLabel: 'Suggested from this library',
-          selectionStateId: 'selectable_suggestion',
-          selectable: true,
-          readOnlyEvidence: false,
-          commandId: 'add_signal_value',
-          explanation: 'Science Fiction appears in 18 items in the current library.',
-          evidence: { count: 18, confidence: 0.8 },
-          requiresExplicitAcceptance: true,
-          canAutoDeclare: false,
-        }] },
-      };
-      return {
-        data: {
-          profile: {
-            genre_distribution: { 'Science Fiction': 18 },
-            last_generated_at: '2026-07-19T12:00:00.000Z',
-          },
-        },
-      };
-    });
-
     mount(PolicyBuilderModal, {
       props: {
         modelValue: true,
@@ -789,17 +754,13 @@ describe('PolicyBuilderModal.vue', () => {
 
     await flushPromises();
 
-    expect(document.body.textContent).toContain('A current library profile is needed');
+    expect(document.body.textContent).toContain('Profile unavailable');
     expect(document.body.textContent).not.toContain('What should define this destination?');
-
-    const refreshButton = Array.from(document.body.querySelectorAll('button'))
-      .find(button => button.textContent.includes('Refresh library profile'));
-    expect(refreshButton).toBeTruthy();
-    refreshButton.click();
-    await flushPromises();
-
-    expect(api.refreshLibraryProfile).toHaveBeenCalledWith(1);
-    expect(document.body.textContent).toContain('What should define this destination?');
+    expect(Array.from(document.body.querySelectorAll('button')).some(button => (
+      button.textContent.includes('Refresh library profile')
+      || button.textContent.includes('Try evidence check again')
+    ))).toBe(false);
+    expect(api.refreshLibraryProfile).not.toHaveBeenCalled();
   });
 
   it('awaits the parent save operation and shows an actionable save failure', async () => {

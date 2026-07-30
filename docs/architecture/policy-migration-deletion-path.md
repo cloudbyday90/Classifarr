@@ -202,9 +202,10 @@ Default decisions:
   old diagnostic tests, provider-readiness replay helpers, TMDB adapter
   execution helpers, and legacy replay execution adapters for deletion after
   migration gates pass.
-- Mark the creation-only `PolicyNativeEvidenceRecovery` component and utility
-  for deletion after server-owned policy-establishment readiness fully replaces
-  their browser refresh behavior.
+- The creation-only browser evidence-recovery component and utility are
+  retired now that server-owned profile recovery supplies the authoritative
+  lifecycle. See [Policy Library-Rebuild Native Evidence Recovery
+  Retirement](policy-library-rebuild-native-evidence-recovery-retirement.md).
 - Treat `database/schema/current.sql` as a native-storage blocker.
 
 Default gates:

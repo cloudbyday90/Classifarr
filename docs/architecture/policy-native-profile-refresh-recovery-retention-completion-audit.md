@@ -92,14 +92,11 @@ worker still delivers durable work.
 
 ## Concrete Follow-On Cutline
 
-`PolicyNativeEvidenceRecovery.vue` remains in the initial creation workflow
-and can emit `refresh-profile`; `PolicyBuilderModal.vue` handles it by calling
-the browser-side library-profile refresh API. This is not reachable from the
-persisted native-policy recovery-status surface and does not participate in
-circuit retention. It must remain isolated while Phase 6R.6 creates the
-migration preview and deletion checklist. That phase must either replace it
-with a server-owned creation prerequisite or delete it after parity and
-rollback gates pass.
+`PolicyNativeEvidenceRecovery.vue` and its browser-side refresh/reload path
+were retired in Phase 6R.6.11.1. Native creation now consumes current
+server-projected evidence only; persisted profile recovery and retention remain
+the scheduler-owned lifecycle. The retirement outcome is documented in
+[Policy Library-Rebuild Native Evidence Recovery Retirement](policy-library-rebuild-native-evidence-recovery-retirement.md).
 
 ## Final Recommendation Stack
 
@@ -110,8 +107,8 @@ rollback gates pass.
    invocation.
 4. Treat overlapping compaction zero-results as successful idempotency.
 5. Preserve read-only persisted recovery status with no operator controls.
-6. Use Phase 6R.6, not a recovery patch, to decide the creation-only manual
-   evidence-refresh cutline.
+6. Keep creation-only evidence recovery retired; future browser paths must not
+   bypass the scheduler-owned recovery lifecycle.
 
 ## Security Outcome
 
