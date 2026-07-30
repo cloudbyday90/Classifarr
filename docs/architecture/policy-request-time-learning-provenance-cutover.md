@@ -134,7 +134,7 @@ expects the audit to fail.
 
 ## Next Task
 
-Proceed with **Phase 7R.6, Task 7R.6.3: guarded-outcome rebuild admission
-cutover**. The component should accept only existing validated request-time
-projections, preserve explicit constraints, and remain proposal-only until the
-existing acceptance transition is used.
+Proceed with **Phase 7R.8, Task 7R.8.1: Runtime Metrics Persistence
+Admission**. The component should admit only validated bounded metric and trace
+summaries, enforce retention and export policy server-side, and preserve raw
+payload, prompt, embedding, and identity suppression.

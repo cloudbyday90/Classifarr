@@ -5533,6 +5533,11 @@ Implementation status:
   action required.
 - Metrics persistence and OpenTelemetry export remain future integration work;
   this slice is a side-effect-free projection contract.
+- Next is Task 7R.8.1, **Runtime Metrics Persistence Admission**: add one
+  server-owned admission boundary for validated bounded metric and trace
+  summaries. It must enforce retention and export policy before any storage or
+  exporter integration, reject raw payload, prompt, embedding, and identity
+  fields, and add no operator UI controls.
 
 ### 7R.9 Runtime And Rebuild Test Reset
 
