@@ -73,16 +73,19 @@ binds it to the current classification task and attempt through
 `policyRequestTimeQueueQuestionReduction.mjs`, then invokes the request-time
 reducer. The live queue derives that envelope from declared native intent,
 persisted library-profile evidence, and stored routing configuration during the
-same classification run. Legacy, mismatched, malformed, stale, or direct-plan
-proof remains outcome-only through canonical learning intake and a
-`do_not_learn` learning-guard decision; the adapter does not synthesize
-evidence from a legacy result or label. The producer design record is [Policy
+same classification run. Legacy, mismatched, malformed, or stale proof remains
+outcome-only through canonical learning intake and a `do_not_learn`
+learning-guard decision; the adapter does not synthesize evidence from a legacy
+result or label. It has no direct generic-plan input. The producer design record is [Policy
 Runtime Queue Question-Reduction Producer](policy-runtime-queue-question-reduction-producer.md).
 
 The terminal-route integration audit confirms this is the current live
-request/import proof path. The queue-bound producer is active and direct generic
-plans are retired at this terminal boundary. The audit and its caller inventory
-are documented in [Policy Request-Time Terminal-Route Integration Audit](policy-request-time-terminal-route-integration-audit.md).
+request/import proof path. The queue-bound producer is active, and the audit
+rejects a future direct generic-plan input at this terminal boundary. The audit
+and its caller inventory are documented in [Policy Request-Time Terminal-Route
+Integration Audit](policy-request-time-terminal-route-integration-audit.md). The
+producer inventory and cutover outcome are documented in [Policy Request-Time
+Learning Provenance Cutover](policy-request-time-learning-provenance-cutover.md).
 
 The queue stores the bounded admission result in the existing completed task
 payload after the classification path has already persisted the classification
@@ -99,8 +102,8 @@ result mismatch.
    thresholds, provider failures, or free-form errors to native learning
    events.
 3. Require a valid task- and attempt-bound queue question-reduction proof
-   before calling the request-time reducer. Missing, invalid, stale, direct, or
-   competing proof must remain outcome-only.
+   before calling the request-time reducer. Missing, invalid, or stale proof
+   must remain outcome-only; direct generic plans are not an admission input.
 4. Keep the admission service pure and persist only its bounded summary through
    the existing queue completion path.
 5. Maintain the normalized destination result as the single queue-facing
@@ -156,12 +159,13 @@ Cons:
 ## Verification
 
 Focused tests cover successful route admission, missing Arr mapping, absent,
-direct, competing, stale, and tampered queue proof, ignored
+stale, and tampered queue proof, ignored direct-plan properties,
 non-request/unfinished states, queue result persistence, and webhook
 library-name persistence.
 
 ## Next Step
 
-Proceed with **Phase 7R.5 request-time learning provenance cutover**. Audit
-remaining request-time producers and retire obsolete direct-proof compatibility
-inputs without changing the independent pending-question persistence boundary.
+Proceed with **Phase 7R.6, Task 7R.6.3: guarded-outcome rebuild admission
+cutover**. It should consume only validated request-time projections from the
+existing library rebuild input contract, preserve explicit constraints, and
+remain proposal-only until the already-defined acceptance transition is used.

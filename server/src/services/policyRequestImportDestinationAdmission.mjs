@@ -67,8 +67,6 @@ const POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS = Object.freeze({
   MISSING_QUESTION_REDUCTION_PROOF: 'request_import_missing_question_reduction_proof',
   INVALID_QUESTION_REDUCTION_PROOF: 'request_import_invalid_question_reduction_proof',
   VALID_QUESTION_REDUCTION_PROOF: 'request_import_valid_question_reduction_proof',
-  AMBIGUOUS_QUESTION_REDUCTION_PROOF: 'request_import_ambiguous_question_reduction_proof',
-  DIRECT_QUESTION_REDUCTION_PROOF_RETIRED: 'request_import_direct_question_reduction_proof_retired',
 });
 
 const POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_AUDIT_RISK_IDS = Object.freeze({
@@ -305,7 +303,6 @@ function buildLearningGuardSnapshot(learningDecision = {}) {
 function buildPolicyRequestImportDestinationAdmission({
   task = {},
   classification = {},
-  questionReductionPlan = null,
   queueQuestionReduction = null,
 } = {}) {
   const queueTask = asObject(task);
@@ -347,34 +344,10 @@ function buildPolicyRequestImportDestinationAdmission({
   let learningDecision;
   let learningIntake;
   let requestTimeDecision = null;
-  const hasDirectQuestionReductionPlan = questionReductionPlan !== null;
   const hasQueueQuestionReduction = queueQuestionReduction !== null;
   let questionReduction;
 
-  if (hasDirectQuestionReductionPlan && hasQueueQuestionReduction) {
-    questionReduction = {
-      statusId: 'invalid',
-      evidenceFingerprint: null,
-    };
-    const fallbackResult = buildOutcomeOnlyLearningDecision(requestEvent);
-    learningDecision = fallbackResult.decision;
-    learningIntake = fallbackResult.intake;
-    reasonCodes.push(
-      POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.AMBIGUOUS_QUESTION_REDUCTION_PROOF
-    );
-  } else if (hasDirectQuestionReductionPlan) {
-    questionReduction = {
-      statusId: 'invalid',
-      evidenceFingerprint: null,
-    };
-    const fallbackResult = buildOutcomeOnlyLearningDecision(requestEvent);
-    learningDecision = fallbackResult.decision;
-    learningIntake = fallbackResult.intake;
-    reasonCodes.push(
-      POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS
-        .DIRECT_QUESTION_REDUCTION_PROOF_RETIRED
-    );
-  } else if (hasQueueQuestionReduction) {
+  if (hasQueueQuestionReduction) {
     const queueRequestTimeReduction = buildPolicyRequestTimeQueueQuestionReduction({
       queueQuestionReduction,
       queueTaskContext: buildQueueTaskContext(queueTask),

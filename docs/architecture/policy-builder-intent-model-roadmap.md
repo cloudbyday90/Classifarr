@@ -5154,6 +5154,14 @@ Implementation status:
   queue-specific classification call, queue producer, queue-only terminal
   handoff, and absence of a direct terminal plan. Its design record is [Policy
   Request-Time Terminal-Route Integration Audit](policy-request-time-terminal-route-integration-audit.md).
+- Task 7R.5.2 is complete: the request/import terminal admission no longer
+  accepts a direct generic question-reduction plan. A source-backed terminal
+  audit fails if that obsolete input returns. The producer cutover retains the
+  persisted native pending-question plan solely for separately validated manual
+  selection provenance; native pending route results remain outcome-only and
+  manual corrections retain their own exact-item learning guard. Its design
+  record is [Policy Request-Time Learning Provenance
+  Cutover](policy-request-time-learning-provenance-cutover.md).
 - Queue webhook history now writes the normalized selected library name rather
   than treating the legacy string result as an object.
 - The first live runtime adapter now handles authenticated manual classification

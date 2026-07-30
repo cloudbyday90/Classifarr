@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Request-Time Learning Provenance Cutover**: Request/import terminal
+  admission now accepts only task- and attempt-bound queue proof. Obsolete
+  direct generic-plan input has been removed and a source-backed audit prevents
+  it returning, while validated pending-question selection remains independent
+  and terminal pending routing remains outcome-only.
+
 - **Queue Question-Reduction Producer Cutline**: Request/import classification
   now creates one current, task- and attempt-bound queue proof inside the
   server-owned classification workflow. Terminal admission consumes only that

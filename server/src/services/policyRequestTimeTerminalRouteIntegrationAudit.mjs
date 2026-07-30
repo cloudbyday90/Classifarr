@@ -40,6 +40,7 @@ const POLICY_REQUEST_TIME_TERMINAL_ROUTE_INTEGRATION_RISK_IDS = Object.freeze({
   UNKNOWN_PROOF_MODE: 'unknown_proof_mode',
   MISSING_OUTCOME_ONLY_FALLBACK: 'missing_outcome_only_fallback',
   DIRECT_LEARNING_ALLOWED: 'direct_learning_allowed',
+  OBSOLETE_DIRECT_PROOF_INPUT_PRESENT: 'obsolete_direct_proof_input_present',
   QUEUE_PROOF_ADAPTER_PATH_NOT_FOUND: 'queue_proof_adapter_path_not_found',
   QUEUE_PROOF_PRODUCER_PATH_NOT_FOUND: 'queue_proof_producer_path_not_found',
 });
@@ -89,6 +90,12 @@ const REQUEST_TIME_TERMINAL_ROUTE_CALLERS = Object.freeze([
       {
         path: 'server/src/services/policyRequestImportDestinationAdmission.mjs',
         value: 'buildOutcomeOnlyLearningDecision(',
+      },
+    ],
+    forbiddenSourceFragments: [
+      {
+        path: 'server/src/services/policyRequestImportDestinationAdmission.mjs',
+        value: 'questionReductionPlan',
       },
     ],
   }),
@@ -182,6 +189,11 @@ function normalizeCaller(caller = {}) {
     outcomeOnlyFallbackRequired: source.outcomeOnlyFallbackRequired === true,
     directLearningAllowed: source.directLearningAllowed === true,
     requiredSourceFragments: asArray(source.requiredSourceFragments)
+      .map(fragment => ({
+        path: normalizeString(asObject(fragment).path, 240),
+        value: normalizeString(asObject(fragment).value, 240),
+      })),
+    forbiddenSourceFragments: asArray(source.forbiddenSourceFragments)
       .map(fragment => ({
         path: normalizeString(asObject(fragment).path, 240),
         value: normalizeString(asObject(fragment).value, 240),
@@ -314,6 +326,27 @@ function validateCaller(caller = {}, {
       issues.push(buildIssue(
         POLICY_REQUEST_TIME_TERMINAL_ROUTE_INTEGRATION_RISK_IDS.MISSING_REQUIRED_SOURCE_FRAGMENT,
         'Terminal request-time source no longer contains a required guarded handoff.',
+        { callerId: candidate.id, path: fragment.path }
+      ));
+    }
+  });
+
+  (canonical.forbiddenSourceFragments || []).forEach(fragment => {
+    const source = readSourceCached(fragment.path, readSourceFile, sourceCache);
+    if (source === null) {
+      issues.push(buildIssue(
+        POLICY_REQUEST_TIME_TERMINAL_ROUTE_INTEGRATION_RISK_IDS.SOURCE_UNREADABLE,
+        'Terminal request-time source could not be read for integration verification.',
+        { callerId: candidate.id, path: fragment.path }
+      ));
+      return;
+    }
+
+    if (source.includes(fragment.value)) {
+      issues.push(buildIssue(
+        POLICY_REQUEST_TIME_TERMINAL_ROUTE_INTEGRATION_RISK_IDS
+          .OBSOLETE_DIRECT_PROOF_INPUT_PRESENT,
+        'Terminal request/import admission must not retain a direct generic proof input.',
         { callerId: candidate.id, path: fragment.path }
       ));
     }

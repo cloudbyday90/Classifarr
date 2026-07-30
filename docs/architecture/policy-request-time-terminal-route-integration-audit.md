@@ -97,13 +97,13 @@ Cons:
 
 1. Maintain a server-owned registry of current terminal request-time callers.
 2. Require each caller to declare only approved proof modes:
-   `direct_question_reduction_plan`, `queue_question_reduction`, or
-   `outcome_only`.
+   `queue_question_reduction` or `outcome_only`.
 3. Require every caller to retain `outcome_only` for missing, invalid, stale,
    or ambiguous proof.
 4. Reject any caller that directly authorizes durable learning.
 5. Check server-owned caller and contract paths plus exact guarded-handoff
-   fragments without exposing their source content.
+   fragments without exposing their source content, and fail if request/import
+   admission reintroduces a direct generic-plan input.
 6. Report queue proof as active only when an audited live producer supplies an
    evidence-bound envelope through the queue-specific classification call.
 7. Require the runtime completion audit to include this component before native
@@ -137,12 +137,11 @@ inside the request-time component check of `policyRuntimeCompletionAudit.mjs`.
   queue, provider, media, identity, or prompt content.
 - The active queue-bound proof has no hidden direct-plan terminal fallback.
 - Every test is ES Module-based and covers absent callers, duplicate callers,
-  altered caller configuration, missing source handoffs, and unsupported proof
-  modes.
+  altered caller configuration, missing source handoffs, reintroduced direct
+  proof input, and unsupported proof modes.
 
 ## Next Item
 
-Proceed with **Phase 7R.5 request-time learning provenance cutover**. Audit
-the remaining request-time event producers, remove obsolete direct-proof
-compatibility inputs, and preserve outcome-only handling where no independent
-validated evidence chain exists.
+The terminal cutover is complete. The producer inventory and the independent
+pending-question boundary are documented in [Policy Request-Time Learning
+Provenance Cutover](policy-request-time-learning-provenance-cutover.md).

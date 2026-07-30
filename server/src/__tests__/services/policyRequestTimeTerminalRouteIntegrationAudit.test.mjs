@@ -127,6 +127,33 @@ describe('policyRequestTimeTerminalRouteIntegrationAudit', () => {
     ]));
   });
 
+  test('rejects an obsolete direct proof input in request/import admission source', () => {
+    const audit = buildPolicyRequestTimeTerminalRouteIntegrationAudit({
+      checkPathExists: false,
+      readSourceFile: () => [
+        'policyRequestImportDestinationAdmissionService.build({',
+        'classifyQueueTask(task, {',
+        'queueQuestionReduction: result.runtimeQueueQuestionReduction,',
+        'buildPolicyRuntimeQueueQuestionReductionProducer({',
+        'buildOutcomeOnlyLearningDecision(',
+        'policyNativePendingRouteOutcomeService.build({',
+        'routeOutcome.statusId !== POLICY_NATIVE_PENDING_ROUTE_OUTCOME_STATUS_IDS.OUTCOME_ONLY',
+        'routeOutcome.audit.ok !== true',
+        'questionReductionPlan',
+      ].join('\n'),
+    });
+
+    expect(audit.ok).toBe(false);
+    expect(audit.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_REQUEST_TIME_TERMINAL_ROUTE_INTEGRATION_RISK_IDS
+          .OBSOLETE_DIRECT_PROOF_INPUT_PRESENT,
+        callerId: POLICY_REQUEST_TIME_TERMINAL_ROUTE_CALLER_IDS.REQUEST_IMPORT_QUEUE,
+        path: 'server/src/services/policyRequestImportDestinationAdmission.mjs',
+      }),
+    ]));
+  });
+
   test('rejects caller proof modes outside the server-owned vocabulary', () => {
     const callers = listPolicyRequestTimeTerminalRouteCallers();
     const audit = buildPolicyRequestTimeTerminalRouteIntegrationAudit({

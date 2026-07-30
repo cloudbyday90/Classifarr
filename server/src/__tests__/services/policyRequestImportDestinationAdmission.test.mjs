@@ -24,9 +24,6 @@ import {
   buildPolicyRequestImportDestinationAdmissionAudit,
 } from '../../services/policyRequestImportDestinationAdmission.mjs';
 import {
-  buildPolicyRuntimeQuestionReductionFromRuntimeInput,
-} from '../../services/policyRuntimeQuestionReduction.mjs';
-import {
   buildPolicyRuntimeQueueAutomationDecision,
 } from '../../services/policyRuntimeQueueAutomationDecision.mjs';
 import {
@@ -41,17 +38,6 @@ import {
 import {
   buildPolicyLearningIntakeEvent,
 } from '../../services/policyLearningIntakeContract.mjs';
-
-function questionReductionPlan(overrides = {}) {
-  return buildPolicyRuntimeQuestionReductionFromRuntimeInput({
-    libraryProfile: {
-      identityCandidates: [
-        { label: 'Animation', count: 4, confidence: 0.9 },
-      ],
-    },
-    ...overrides,
-  });
-}
 
 function task(overrides = {}) {
   return {
@@ -262,42 +248,42 @@ describe('policyRequestImportDestinationAdmission', () => {
     expect(result.audit.ok).toBe(true);
   });
 
-  test('falls back to outcome-only when queue and direct question-reduction proofs compete', () => {
+  test('ignores a retired direct proof property when queue-bound proof is valid', () => {
     const result = buildPolicyRequestImportDestinationAdmission({
       task: task(),
       classification: classification(),
-      questionReductionPlan: questionReductionPlan(),
+      questionReductionPlan: { version: 'policy.runtime_question_reduction.v1' },
       queueQuestionReduction: queueQuestionReduction(),
     });
 
-    expect(result.questionReduction).toEqual({
-      statusId: 'invalid',
-      evidenceFingerprint: null,
+    expect(result.questionReduction).toEqual(expect.objectContaining({ statusId: 'valid' }));
+    expect(result.requestTimeDecision).toEqual({
+      validationOk: true,
+      dispositionId: 'outcome_only',
     });
-    expect(result.requestTimeDecision).toBeNull();
     expect(result.learning.canWriteLearning).toBe(false);
     expect(result.reasonCodes).toContain(
-      POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.AMBIGUOUS_QUESTION_REDUCTION_PROOF
+      POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.VALID_QUESTION_REDUCTION_PROOF
     );
     expect(result.audit.ok).toBe(true);
   });
 
-  test('retires direct question-reduction proof from the request/import terminal route', () => {
+  test('does not admit a retired direct proof property without queue-bound proof', () => {
     const result = buildPolicyRequestImportDestinationAdmission({
       task: task(),
       classification: classification(),
-      questionReductionPlan: questionReductionPlan(),
+      questionReductionPlan: { version: 'policy.runtime_question_reduction.v1' },
     });
 
     expect(result.questionReduction).toEqual({
-      statusId: 'invalid',
+      statusId: 'missing',
       evidenceFingerprint: null,
     });
     expect(result.requestTimeDecision).toBeNull();
     expect(result.learning.canWriteLearning).toBe(false);
     expect(result.reasonCodes).toContain(
       POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS
-        .DIRECT_QUESTION_REDUCTION_PROOF_RETIRED
+        .MISSING_QUESTION_REDUCTION_PROOF
     );
     expect(result.audit.ok).toBe(true);
   });
@@ -333,34 +319,6 @@ describe('policyRequestImportDestinationAdmission', () => {
     );
     expect(JSON.stringify(result)).not.toContain('operator@example.test');
     expect(JSON.stringify(result)).not.toContain('Must not leave the adapter');
-    expect(result.audit.ok).toBe(true);
-  });
-
-  test('retires a tampered direct question-reduction plan without inferred evidence', () => {
-    const validPlan = questionReductionPlan();
-    const tamperedPlan = {
-      ...validPlan,
-      question: {
-        ...validPlan.question,
-        dispositionId: 'auto_route',
-      },
-    };
-    const result = buildPolicyRequestImportDestinationAdmission({
-      task: task(),
-      classification: classification(),
-      questionReductionPlan: tamperedPlan,
-    });
-
-    expect(result.questionReduction).toEqual({
-      statusId: 'invalid',
-      evidenceFingerprint: null,
-    });
-    expect(result.requestTimeDecision).toBeNull();
-    expect(result.learning.canWriteLearning).toBe(false);
-    expect(result.reasonCodes).toContain(
-      POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS
-        .DIRECT_QUESTION_REDUCTION_PROOF_RETIRED
-    );
     expect(result.audit.ok).toBe(true);
   });
 
