@@ -4876,6 +4876,13 @@ Implementation status:
 - The projection is deterministic, side-effect-free, does not call live
   providers, suppresses raw payloads, and emits bounded trace attributes for
   later runtime decision tracing.
+- Queue-dispatched classification now has a separate server-owned evidence
+  admission boundary. It projects only allowlisted current evidence, rejects
+  cached projections/automation decisions and unsupported inputs, and binds a
+  fresh projection fingerprint to an opaque task fingerprint and retry attempt.
+  It remains side-effect-free and does not yet alter worker execution. The
+  design and outcome are documented in [Policy Runtime Queue Evidence
+  Admission](policy-runtime-queue-evidence-admission.md).
 - Each runtime evidence projection now includes a stable sanitized SHA-256
   fingerprint with bounded provenance counts/source ids, allowing automation
   decisions to bind to the exact evidence projection without

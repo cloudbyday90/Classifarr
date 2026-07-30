@@ -108,6 +108,12 @@ allowed to change.
     match the recomputed projection fingerprint. Diagnostics cannot become a
     raw-data or explanation-forgery path.
 
+11. **Require fresh evidence at queue execution.**
+    Classification queue work must pass only an allowlisted current-evidence
+    input to the queue evidence admission contract. A queued payload is
+    transport data, not evidence; cached projections and automation decisions
+    must be rejected before later decision wiring can consume them.
+
 ## Pros And Cons
 
 Pros:
@@ -138,6 +144,8 @@ Cons:
   `server/src/services/policyRuntimeEvidenceFingerprint.mjs`
 - Runtime evidence trace contract:
   `server/src/services/policyRuntimeEvidenceTraceContract.mjs`
+- Queue execution evidence admission:
+  `server/src/services/policyRuntimeQueueEvidenceAdmission.mjs`
 - Test module:
   `server/src/__tests__/services/policyRuntimeEvidenceProjection.test.mjs`
 - Policy evidence vocabulary:
@@ -177,6 +185,12 @@ Runtime inputs supported:
 - metadata signals,
 - Arr routing outcomes,
 - profile freshness.
+
+Queue execution admission accepts only classification tasks and allowlisted
+current-evidence fields. It returns a fresh projection, its existing sanitized
+fingerprint, and an execution fingerprint bound to an opaque queue-task
+fingerprint, task type, and retry attempt. It never returns a raw queue ID or
+payload.
 
 Demotion reasons:
 
@@ -227,6 +241,9 @@ rejects:
 - Fingerprint provenance is sanitized and label-free.
 - Fingerprint, provenance, and trace attributes are verified together before
   downstream runtime decisions can trust the projection.
+- Queue execution admission rejects stored projections, stored automation
+  decisions, and unsupported queue-evidence input fields before they can cross
+  the projection boundary.
 - AI/RAG/provider evidence cannot become destination identity by itself.
 - Stale profiles and failed routing become insufficient evidence, not silent
   success.

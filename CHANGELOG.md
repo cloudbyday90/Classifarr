@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Runtime Queue Evidence Admission**: Classification queue work now has a
+  server-owned, side-effect-free boundary that rebuilds runtime evidence from
+  allowlisted current inputs, rejects cached decision/projection data, and
+  emits opaque execution provenance without exposing queue payloads.
+
 - **Runtime Queue Dispatch Cutline**: The server-owned runtime inventory now
   distinguishes queue dispatch from retry and requires queue lifecycle,
   processor, mutation, and scheduled-retry paths to declare their authority,
