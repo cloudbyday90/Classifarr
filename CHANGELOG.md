@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Runtime Queue Question Reduction**: Classification queue work now derives
+  bounded question and next-action plans only from revalidated queue automation
+  decisions, preserves opaque execution provenance, and rejects raw or
+  unsupported input without persisting, sending, routing, or learning.
+
 - **Runtime Queue Automation Decision**: Classification queue work now derives
   a side-effect-free automation decision only from revalidated fresh evidence,
   binds it to opaque execution provenance, and fails closed on altered,

@@ -5022,6 +5022,11 @@ Implementation status:
   [Policy Runtime Question Reduction Architecture Cutover](policy-runtime-question-reduction-architecture-cutover.md).
 - The server-owned runtime question reducer lives in
   `server/src/services/policyRuntimeQuestionReduction.mjs`.
+- Queue-dispatched classification now uses the separate, side-effect-free
+  `server/src/services/policyRuntimeQueueQuestionReduction.mjs` adapter. It
+  re-audits a ready queue automation decision, retains only opaque execution
+  provenance, and binds the resulting question plan to the same evidence
+  fingerprint without persisting or sending a question.
 - The focused runtime-question test suite lives in
   `server/src/__tests__/services/policyRuntimeQuestionReduction.test.mjs`.
 - Current implementation consumes `policy.automation_decision.v1` and returns

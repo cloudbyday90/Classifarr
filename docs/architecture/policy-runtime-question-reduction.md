@@ -14,6 +14,12 @@ Clarification construction now separates raw runtime composition from the
 decision-only reducer. The reducer accepts a valid automation decision and
 question-specific inputs; raw runtime data must use the explicit adapter.
 
+Classification queue work has a separate adapter,
+`policy.runtime_queue_question_reduction.v1`. It re-audits a ready queue
+automation decision, passes only the embedded decision and a strict
+question-specific input subset to this reducer, and returns opaque queue
+provenance with the plan. It does not create, persist, or send a question.
+
 ## Problem
 
 Runtime questions had drifted toward explaining internal uncertainty:
@@ -139,13 +145,22 @@ Cons:
     trace from the embedded decision before accepting a plan. A changed plan
     cannot turn an automatic route into a routing configuration or question
     workflow.
+14. For classification queue execution, use the dedicated queue adapter rather
+    than passing a queue envelope directly to the generic reducer. Re-audit the
+    queue decision, retain only opaque task/evidence/execution fingerprints,
+    and bind the plan fingerprint to queue evidence before any later admission
+    or persistence component acts.
 
 ## Implemented Files
 
 - Runtime question reduction contract:
   `server/src/services/policyRuntimeQuestionReduction.mjs`
+- Queue question-reduction adapter:
+  `server/src/services/policyRuntimeQueueQuestionReduction.mjs`
 - Focused tests:
   `server/src/__tests__/services/policyRuntimeQuestionReduction.test.mjs`
+- Queue adapter tests:
+  `server/src/__tests__/services/policyRuntimeQueueQuestionReduction.test.mjs`
 - Automation decision dependency:
   `server/src/services/policyAutomationDecisionContract.mjs`
 - Clarification decision-boundary outcome:
@@ -215,6 +230,10 @@ The service exports:
   metadata, reason records, counts, or additional trace attributes.
 - The decision-only reducer rejects raw decision inputs and requires a valid
   `policy.automation_decision.v1` contract before it plans a clarification.
+- The queue adapter accepts only a revalidated ready
+  `policy.runtime_queue_automation_decision.v1` envelope and a strict subset
+  of stale-question-cleanup and frame-override fields. It rejects raw queue,
+  provider, and runtime data instead of forwarding them to this reducer.
 
 ## Test Coverage
 
@@ -235,6 +254,9 @@ The focused test suite verifies:
 - invalid plans with rejected frames, learning enabled, auto-route questions, or
   side effects fail validation,
 - the component audit points to the request-time learning step.
+- queue question reduction re-audits queue decisions, preserves only opaque
+  execution provenance, binds plan evidence to queue evidence, and rejects raw
+  or unsupported input and all claimed side effects.
 
 ## Outcome
 

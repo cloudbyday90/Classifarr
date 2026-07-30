@@ -128,8 +128,8 @@ Cons:
 
 ## Next Task
 
-Phase 7R.4, Runtime Question Reduction, should consume valid queue automation
-decisions and produce only bounded, destination-focused questions for states
-that genuinely require an operator. It must not ask about provider, queue, or
-internal decision details, and it must preserve the route-versus-classification
-distinction.
+The queue-aware Phase 7R.4 adapter is implemented in
+[Policy Runtime Queue Question Reduction](policy-runtime-queue-question-reduction.md).
+The next discrete component is Phase 7R.5, Task 7R.5.1: admit request-time
+destination evidence only from validated question-reduction or manual-outcome
+contracts before it reaches the learning guard.
