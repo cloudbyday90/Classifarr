@@ -4606,6 +4606,13 @@ Implementation status:
   server-side verification remains outside normal authoring. The design and
   outcome are documented in [Policy Library-Rebuild Browser Impact And Replay
   Preview Retirement](policy-library-rebuild-browser-impact-replay-preview-retirement.md).
+- Legacy migration-verifier service retirement is complete. The current
+  removal ledger no longer describes the already-deleted verifier HTTP route,
+  impact/replay services, enrichment services, or focused tests. The retained
+  `policyMigrationVerifierRollback` module is an internal cutover and rollback
+  safety contract with active conversion/runtime consumers, not a legacy route.
+  The design and outcome are documented in [Policy Library-Rebuild Legacy
+  Migration-Verifier Service Retirement](policy-library-rebuild-legacy-migration-verifier-service-retirement.md).
 - `server/src/services/policyMigrationVerifierRollback.mjs` consumes the
   preview contract while retaining rebuild acceptance, rollback, fingerprint,
   trace, and deletion gates. It rejects ambiguous old/new sample input names.

@@ -29,6 +29,21 @@ const FINGERPRINTS = Object.freeze({
   proposal: 'b'.repeat(64),
   verifier: 'd'.repeat(64),
 });
+const REMOVAL_CANDIDATE = Object.freeze({
+  path: 'server/src/routes/legacyPolicyVerifier.mjs',
+  owner: 'policy-rebuild-test',
+  decisionId: 'delete_after_migration',
+  verifierKindId: 'representative_replay',
+  replacement: 'Bounded native policy contracts',
+  removalGateIds: ['native_intent_runtime_authority'],
+  rollbackPlan: {
+    snapshotRequired: true,
+    restorePathRequired: true,
+    retentionWindowDays: 30,
+    nativeStorageMigrationAllowed: false,
+  },
+  normalWorkflowAllowed: false,
+});
 
 function readyEvidence() {
   return {
@@ -94,7 +109,7 @@ function readyEvidence() {
 }
 
 function readyInventory() {
-  return buildPolicyLibraryRebuildLegacyRemovalInventory();
+  return buildPolicyLibraryRebuildLegacyRemovalInventory({ artifacts: [REMOVAL_CANDIDATE] });
 }
 
 function readyReadiness({ inventory = readyInventory(), now = NOW } = {}) {

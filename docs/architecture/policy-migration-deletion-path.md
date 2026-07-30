@@ -4,9 +4,8 @@
 
 Implemented as the durable policy migration/deletion cutline contract.
 
-This contract classifies old policy-builder impact, replay, provider readiness,
-TMDB coverage, scoring, write-route, and schema artifacts as one of three
-decisions:
+This contract classifies current policy-engine and native-storage artifacts as
+one of three decisions:
 
 ```text
 keep engine primitive
@@ -14,8 +13,11 @@ delete after migration
 native storage blocker
 ```
 
-It does not delete code yet, add native intent storage, expose old diagnostics
-in the normal product workflow, or run migration against production data.
+The historical impact/replay, provider-readiness, TMDB, scoring, and verifier
+route removals are recorded in their retirement decisions and version history;
+they are not pending artifacts in this current inventory. This contract does
+not delete code, add native intent storage, expose old diagnostics in the
+normal product workflow, or run migration against production data.
 
 The compatibility migration-plan builder remains available for focused tests
 and inventory work, but runtime and rebuild callers should use the bounded
@@ -31,8 +33,7 @@ returning the migration/deletion plan.
 The plan now embeds the versioned, server-owned
 [Policy Migration Preview Contract](policy-migration-preview-contract.md). A
 plan cannot pass validation without that bounded representative-comparison
-contract, and the creation-only browser profile-refresh component and utility
-are explicit delete-after-migration targets.
+contract.
 
 ## Problem
 
@@ -77,9 +78,10 @@ delete replaced surfaces after gates pass
 
 ## Recommendations
 
-1. **Classify every replaced artifact.**
-   Each policy-builder artifact must declare whether it is kept, deleted after
-   migration, or blocking native storage work.
+1. **Classify every current artifact.**
+   Each current policy-builder artifact must declare whether it is kept or
+   blocking native storage work. Historical retirement records stay in their
+   dedicated architecture documents, not the live inventory.
 
 2. **Keep migration diagnostics out of the normal workflow.**
    Impact preview, replay preview, replay parity, provider readiness, TMDB
@@ -138,7 +140,8 @@ Pros:
 
 Cons:
 
-- This contract does not delete the old components or services yet.
+- This contract is non-executing; a future replacement still requires its own
+  controlled, versioned source-removal change.
 - It does not implement a runtime migration verifier endpoint.
 - It adds one more server contract before the UI can be simplified.
 - The 30-day retention window is a starting contract, not a final release
@@ -183,27 +186,15 @@ The service exports:
 Default decisions:
 
 - Keep policy evidence and intent engines as engine primitives.
-- Retire old server-side impact, replay, enrichment eligibility, evidence
-  completeness, and TMDB coverage artifacts when they duplicate bounded engine
-  contracts without an independent migration decision.
-- Retire replay draft-fit scoring, policy-engine comparison, execution-context,
-  and parity-delta artifacts when they duplicate the bounded evidence and
-  readiness contracts instead of providing source-authorized migration proof.
-- Retire replay provider-readiness, quota/cooldown, selected-provider, and live
-  TMDB-preview artifacts from migration verification. Dedicated metadata and
-  web-search provider contracts own provider behavior outside this verifier.
-- Retire the replay migration endpoint and its provider-free sample,
-  completeness, and adapter reducers when they do not provide independent
-  migration proof beyond bounded evidence, intent, readiness, and rollback
-  contracts.
-- Retire the impact migration endpoint and service when its legacy comparison
-  duplicates bounded evidence, intent, readiness, and rollback contracts.
-- The already-deleted browser impact/replay panels, composables, utilities, and
-  focused tests are excluded from the current ledger. The ledger tracks only
-  still-present server verifier artifacts, including provider-readiness replay
-  helpers, TMDB adapter execution helpers, and legacy replay execution
-  adapters. See [Policy Library-Rebuild Browser Impact And Replay Preview
+- The browser impact/replay preview family is retired. See [Policy
+  Library-Rebuild Browser Impact And Replay Preview
   Retirement](policy-library-rebuild-browser-impact-replay-preview-retirement.md).
+- The legacy server verifier HTTP route, impact/replay services, enrichment
+  services, and focused tests are retired. See [Policy Library-Rebuild Legacy
+  Migration-Verifier Service
+  Retirement](policy-library-rebuild-legacy-migration-verifier-service-retirement.md).
+- The server-internal `policyMigrationVerifierRollback` contract remains a
+  current rollback/cutover primitive and is not a deletion candidate.
 - The creation-only browser evidence-recovery component and utility are
   retired now that server-owned profile recovery supplies the authoritative
   lifecycle. See [Policy Library-Rebuild Native Evidence Recovery

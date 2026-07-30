@@ -29,6 +29,21 @@ import {
 } from '../../services/policyLibraryRebuildLegacyGlobalReleaseRetirementGateService.mjs';
 
 const NOW = '2026-07-30T14:00:00.000Z';
+const REMOVAL_CANDIDATE = Object.freeze({
+  path: 'server/src/routes/legacyPolicyVerifier.mjs',
+  owner: 'policy-rebuild-test',
+  decisionId: 'delete_after_migration',
+  verifierKindId: 'representative_replay',
+  replacement: 'Bounded native policy contracts',
+  removalGateIds: ['native_intent_runtime_authority'],
+  rollbackPlan: {
+    snapshotRequired: true,
+    restorePathRequired: true,
+    retentionWindowDays: 30,
+    nativeStorageMigrationAllowed: false,
+  },
+  normalWorkflowAllowed: false,
+});
 
 function readyEvidence(policyId, libraryId) {
   return {
@@ -97,7 +112,9 @@ describe('policyLibraryRebuildLegacyGlobalReleaseRetirementGateService', () => {
   test('evaluates one shared-lock inventory and fresh plan per enabled policy in one transaction', async () => {
     const calls = [];
     const client = {};
-    const inventory = buildPolicyLibraryRebuildLegacyRemovalInventory();
+    const inventory = buildPolicyLibraryRebuildLegacyRemovalInventory({
+      artifacts: [REMOVAL_CANDIDATE],
+    });
     const loadEnabledPolicyInventory = jest.fn(async () => {
       calls.push('inventory-lock');
       return [

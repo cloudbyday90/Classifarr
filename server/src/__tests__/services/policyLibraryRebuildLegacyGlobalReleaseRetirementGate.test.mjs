@@ -25,9 +25,28 @@ import {
 } from '../../services/policyLibraryRebuildLegacyRemovalInventory.mjs';
 
 const NOW = '2026-07-30T14:00:00.000Z';
+const REMOVAL_CANDIDATE = Object.freeze({
+  path: 'server/src/routes/legacyPolicyVerifier.mjs',
+  owner: 'policy-rebuild-test',
+  decisionId: 'delete_after_migration',
+  verifierKindId: 'representative_replay',
+  replacement: 'Bounded native policy contracts',
+  removalGateIds: ['native_intent_runtime_authority'],
+  rollbackPlan: {
+    snapshotRequired: true,
+    restorePathRequired: true,
+    retentionWindowDays: 30,
+    nativeStorageMigrationAllowed: false,
+  },
+  normalWorkflowAllowed: false,
+});
 
 function fingerprint(character) {
   return character.repeat(64);
+}
+
+function readyInventory() {
+  return buildPolicyLibraryRebuildLegacyRemovalInventory({ artifacts: [REMOVAL_CANDIDATE] });
 }
 
 function readyEvidence({ policyId, libraryId }) {
@@ -111,7 +130,7 @@ function readyPlan({ policyId, libraryId, inventory }) {
 
 describe('policyLibraryRebuildLegacyGlobalReleaseRetirementGate', () => {
   test('requires every currently enabled policy to have one current ready final-removal plan', () => {
-    const inventory = buildPolicyLibraryRebuildLegacyRemovalInventory();
+    const inventory = readyInventory();
     const finalRemovalPlans = [
       readyPlan({ policyId: 44, libraryId: 6, inventory }),
       readyPlan({ policyId: 45, libraryId: 7, inventory }),
@@ -151,7 +170,7 @@ describe('policyLibraryRebuildLegacyGlobalReleaseRetirementGate', () => {
   });
 
   test('fails closed when enabled-policy coverage or current inventory agreement is incomplete', () => {
-    const inventory = buildPolicyLibraryRebuildLegacyRemovalInventory();
+    const inventory = readyInventory();
     const changedInventory = buildPolicyLibraryRebuildLegacyRemovalInventory({ artifacts: [] });
     const gate = buildPolicyLibraryRebuildLegacyGlobalReleaseRetirementGate({
       policyInventory: [
@@ -179,7 +198,7 @@ describe('policyLibraryRebuildLegacyGlobalReleaseRetirementGate', () => {
   });
 
   test('rejects a forged destructive authorization even if every plan is ready', () => {
-    const inventory = buildPolicyLibraryRebuildLegacyRemovalInventory();
+    const inventory = readyInventory();
     const gate = buildPolicyLibraryRebuildLegacyGlobalReleaseRetirementGate({
       policyInventory: [{ policy_id: 44, library_id: 6 }],
       finalRemovalPlans: [readyPlan({ policyId: 44, libraryId: 6, inventory })],
@@ -206,7 +225,7 @@ describe('policyLibraryRebuildLegacyGlobalReleaseRetirementGate', () => {
   });
 
   test('rejects a release-state fingerprint that no longer binds the policy plans and inventory', () => {
-    const inventory = buildPolicyLibraryRebuildLegacyRemovalInventory();
+    const inventory = readyInventory();
     const gate = buildPolicyLibraryRebuildLegacyGlobalReleaseRetirementGate({
       policyInventory: [{ policy_id: 44, library_id: 6 }],
       finalRemovalPlans: [readyPlan({ policyId: 44, libraryId: 6, inventory })],

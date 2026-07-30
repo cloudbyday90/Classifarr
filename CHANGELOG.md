@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Legacy Migration-Verifier Service Retirement**: The current migration
+  removal ledger now excludes legacy verifier routes, services, and tests
+  already removed from source. It retains only current engine/schema artifacts;
+  the server-internal rollback verifier remains a live safety contract, not an
+  HTTP endpoint or normal authoring feature.
+
 - **Browser Migration Preview Retirement**: Retirement inventories and modal
   orchestration now exclude the already-deleted impact/replay browser preview
   family. Server-side migration verification remains isolated from normal
