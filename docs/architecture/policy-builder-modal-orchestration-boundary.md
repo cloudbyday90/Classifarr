@@ -75,13 +75,11 @@ Pros:
 - Keeps future engine results pass-through friendly: server-owned results can be
   rendered without the modal calculating them.
 - Removes a blocking browser dialog from save failure flow.
-- Leaves diagnostic preview and advanced scoring panels visible only as explicit
-  extraction targets.
+- Keeps only still-present modal responsibilities as explicit extraction
+  targets.
 
 Cons:
 
-- The modal still composes transitional diagnostic panels while engine cutline
-  work decides whether they become verifier tools or are removed.
 - Summary projection and starter-template command adaptation still need later
   ownership refactors.
 - Toast presentation is a client-side UX improvement only; saved policies still
@@ -129,7 +127,6 @@ Current extraction targets:
 
 | Target | Boundary Handoff |
 | --- | --- |
-| Diagnostic preview surfaces | Engine cutline. |
 | Advanced scoring controls | Operator surface plus engine cutline. |
 | Summary view projection | Modal orchestration/view-model boundary. |
 | Legacy command adapters | Legacy bridge boundary. |
@@ -143,7 +140,6 @@ Current modal touchpoints:
 | Save payload delegation | Keep in modal only as high-level save action; payload authority remains delegated. |
 | Draft signal command routing | Keep in modal as command routing to composables. |
 | Profile refresh command routing | Keep in modal as command routing to reference data. |
-| Diagnostic preview composition | Reclassify or delete after engine cutline. |
 | Advanced scoring composition | Reclassify or delete after operator/engine cutline. |
 | Summary view projection | Move to focused composable/view-model. |
 | Legacy template command adapters | Move to bridge ownership. |

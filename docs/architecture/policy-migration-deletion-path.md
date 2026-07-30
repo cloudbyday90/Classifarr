@@ -198,10 +198,12 @@ Default decisions:
   contracts.
 - Retire the impact migration endpoint and service when its legacy comparison
   duplicates bounded evidence, intent, readiness, and rollback contracts.
-- Mark old client impact/replay panels, preview composables, preview utilities,
-  old diagnostic tests, provider-readiness replay helpers, TMDB adapter
-  execution helpers, and legacy replay execution adapters for deletion after
-  migration gates pass.
+- The already-deleted browser impact/replay panels, composables, utilities, and
+  focused tests are excluded from the current ledger. The ledger tracks only
+  still-present server verifier artifacts, including provider-readiness replay
+  helpers, TMDB adapter execution helpers, and legacy replay execution
+  adapters. See [Policy Library-Rebuild Browser Impact And Replay Preview
+  Retirement](policy-library-rebuild-browser-impact-replay-preview-retirement.md).
 - The creation-only browser evidence-recovery component and utility are
   retired now that server-owned profile recovery supplies the authoritative
   lifecycle. See [Policy Library-Rebuild Native Evidence Recovery

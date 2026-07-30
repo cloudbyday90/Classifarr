@@ -101,10 +101,6 @@ describe('policyMigrationDeletionPath', () => {
     const paths = listPolicyMigrationDeletionArtifacts().map(artifact => artifact.path);
 
     expect(paths).toEqual(expect.arrayContaining([
-      'client/src/components/policies/PolicyIntentImpactPreviewCard.vue',
-      'client/src/components/policies/PolicyIntentReplayPreviewCard.vue',
-      'client/src/composables/usePolicyIntentImpactPreview.js',
-      'client/src/composables/usePolicyIntentReplayPreview.js',
       'server/src/routes/policiesRouteMigrationVerifier.mjs',
       'server/src/services/policyIntentImpactPreview.mjs',
       'server/src/services/policyImpactPreviewMigrationVerifier.mjs',
@@ -113,6 +109,7 @@ describe('policyMigrationDeletionPath', () => {
       'server/src/services/policyIntentReplayTmdbMetadataCoverageComparison.mjs',
       'database/schema/current.sql',
     ]));
+    expect(paths.some(path => path.startsWith('client/'))).toBe(false);
   });
 
   test('separates keep, verifier, delete, and native storage blocker decisions', () => {
@@ -491,7 +488,7 @@ describe('policyMigrationDeletionPath', () => {
 
   test('rejects migration artifacts without owner, replacement, gates, or rollback', () => {
     const result = validateMigrationArtifact({
-      path: 'client/src/components/policies/PolicyIntentReplayPreviewCard.vue',
+      path: 'server/src/routes/policiesRouteMigrationVerifier.mjs',
       decisionId: POLICY_MIGRATION_ARTIFACT_DECISION_IDS.DELETE_AFTER_MIGRATION,
       verifierKindId: POLICY_MIGRATION_VERIFIER_KIND_IDS.REPRESENTATIVE_REPLAY,
       normalWorkflowAllowed: true,

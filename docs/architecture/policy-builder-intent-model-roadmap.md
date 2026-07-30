@@ -4600,6 +4600,12 @@ Implementation status:
   workflow read from the browser. The design and outcome are documented in
   [Policy Library-Rebuild Native Evidence Recovery
   Retirement](policy-library-rebuild-native-evidence-recovery-retirement.md).
+- Browser impact/replay preview retirement is complete. The current removal
+  inventory, modal orchestration contract, and migration candidate report no
+  longer describe the browser family already deleted from source; bounded
+  server-side verification remains outside normal authoring. The design and
+  outcome are documented in [Policy Library-Rebuild Browser Impact And Replay
+  Preview Retirement](policy-library-rebuild-browser-impact-replay-preview-retirement.md).
 - `server/src/services/policyMigrationVerifierRollback.mjs` consumes the
   preview contract while retaining rebuild acceptance, rollback, fingerprint,
   trace, and deletion gates. It rejects ambiguous old/new sample input names.

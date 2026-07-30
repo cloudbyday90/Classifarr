@@ -22,7 +22,6 @@ const MODAL_PROHIBITED_RESPONSIBILITY_IDS = Object.freeze({
 });
 
 const MODAL_EXTRACTION_TARGET_IDS = Object.freeze({
-  DIAGNOSTIC_PREVIEW_SURFACES: 'diagnostic_preview_surfaces',
   ADVANCED_SCORING_CONTROLS: 'advanced_scoring_controls',
   SUMMARY_VIEW_PROJECTION: 'summary_view_projection',
   LEGACY_COMMAND_ADAPTERS: 'legacy_command_adapters',
@@ -42,7 +41,6 @@ const MODAL_TOUCHPOINT_IDS = Object.freeze({
   SAVE_PAYLOAD_DELEGATION: 'save_payload_delegation',
   DRAFT_SIGNAL_COMMAND_ROUTING: 'draft_signal_command_routing',
   PROFILE_REFRESH_COMMAND_ROUTING: 'profile_refresh_command_routing',
-  DIAGNOSTIC_PREVIEW_COMPOSITION: 'diagnostic_preview_composition',
   ADVANCED_SCORING_COMPOSITION: 'advanced_scoring_composition',
   SUMMARY_VIEW_PROJECTION: 'summary_view_projection',
   LEGACY_TEMPLATE_COMMAND_ADAPTERS: 'legacy_template_command_adapters',
@@ -62,7 +60,6 @@ const MODAL_EVENT_PAYLOAD_AUTHORITY_IDS = Object.freeze({
 });
 
 const MODAL_TARGET_BOUNDARY_IDS = Object.freeze({
-  ENGINE_CUTLINE: 'engine_cutline',
   OPERATOR_SURFACE_ENGINE_CUTLINE: 'operator_surface_engine_cutline',
   MODAL_ORCHESTRATION: 'modal_orchestration',
   LEGACY_BRIDGE: 'legacy_bridge',
@@ -160,17 +157,6 @@ const MODAL_PROHIBITED_RESPONSIBILITIES = deepFreeze([
 
 const MODAL_EXTRACTION_TARGETS = deepFreeze([
   {
-    id: MODAL_EXTRACTION_TARGET_IDS.DIAGNOSTIC_PREVIEW_SURFACES,
-    currentOwner: 'PolicyBuilderModal.vue composes impact and replay preview cards in the normal modal flow.',
-    targetDecisionId: MODAL_ORCHESTRATION_DECISION_IDS.RECLASSIFY_OR_DELETE_AFTER_ENGINE_CUTLINE,
-    targetBoundaryId: MODAL_TARGET_BOUNDARY_IDS.ENGINE_CUTLINE,
-    reason: 'Impact and replay previews are diagnostics; engine cutline review must classify them as engine primitives, migration verifiers, or deletion candidates.',
-    relatedRiskIds: [
-      POLICY_BUILDER_BOUNDARY_RISK_IDS.DIAGNOSTIC_PRODUCT_SURFACE,
-      POLICY_BUILDER_BOUNDARY_RISK_IDS.CLIENT_ENGINE_LOGIC,
-    ],
-  },
-  {
     id: MODAL_EXTRACTION_TARGET_IDS.ADVANCED_SCORING_CONTROLS,
     currentOwner: 'PolicyBuilderModal.vue composes advanced scoring and weight controls.',
     targetDecisionId: MODAL_ORCHESTRATION_DECISION_IDS.RECLASSIFY_OR_DELETE_AFTER_ENGINE_CUTLINE,
@@ -236,13 +222,6 @@ const MODAL_TOUCHPOINTS = deepFreeze([
     description: 'Modal routes profile refresh requests to the reference-data composable.',
     responsibilityId: MODAL_ALLOWED_RESPONSIBILITY_IDS.COMMAND_ROUTING_TO_COMPOSABLES,
     decisionId: MODAL_ORCHESTRATION_DECISION_IDS.KEEP_IN_MODAL,
-  },
-  {
-    id: MODAL_TOUCHPOINT_IDS.DIAGNOSTIC_PREVIEW_COMPOSITION,
-    description: 'Modal composes impact and replay preview cards in the current flow.',
-    responsibilityId: MODAL_ALLOWED_RESPONSIBILITY_IDS.CHILD_COMPONENT_COMPOSITION,
-    extractionTargetId: MODAL_EXTRACTION_TARGET_IDS.DIAGNOSTIC_PREVIEW_SURFACES,
-    decisionId: MODAL_ORCHESTRATION_DECISION_IDS.RECLASSIFY_OR_DELETE_AFTER_ENGINE_CUTLINE,
   },
   {
     id: MODAL_TOUCHPOINT_IDS.ADVANCED_SCORING_COMPOSITION,

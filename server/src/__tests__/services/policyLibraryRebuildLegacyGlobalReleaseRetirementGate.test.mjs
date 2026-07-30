@@ -147,7 +147,7 @@ describe('policyLibraryRebuildLegacyGlobalReleaseRetirementGate', () => {
     expect(gate.validation).toEqual({ ok: true, issueCount: 0, issues: [] });
     expect(gate).not.toHaveProperty('policyInventory');
     expect(gate).not.toHaveProperty('finalRemovalPlans');
-    expect(JSON.stringify(gate)).not.toContain('PolicyIntentImpactPreviewCard.vue');
+    expect(JSON.stringify(gate)).not.toContain('client/src/');
   });
 
   test('fails closed when enabled-policy coverage or current inventory agreement is incomplete', () => {

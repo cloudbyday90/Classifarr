@@ -438,6 +438,7 @@ describe('policyIntentMigrationCandidateReport', () => {
         eligibleAfterConversion: false,
       }),
     ]));
+    expect(candidate.deletionImpact).toHaveLength(4);
   });
 
   test('bounds output and suppresses raw legacy JSON unless maintainer mode explicitly requests it', () => {

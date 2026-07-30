@@ -149,14 +149,14 @@ The implementation provides:
   - documents the policy-list card as outside authoring scope,
   - defines required policy-authoring presentation behaviors,
   - keeps draft bridge coverage owned by the draft bridge contract,
-  - marks old impact, replay, and template-mechanics diagnostics for removal or
-    compatibility-bridge-only handling,
+  - keeps migration diagnostics out of presentation ownership and retains only
+    compatibility-bridge coverage where it remains active,
   - audits missing behavior coverage, unknown owners, and internal diagnostic
     wording in normal product tests.
 - `server/src/__tests__/services/policyAuthoringPresentationTests.test.mjs`
   - verifies the classification map,
   - verifies all required behaviors are covered,
-  - proves replay and impact preview tests are not normal-path tests,
+  - proves normal-path tests contain no internal migration diagnostic language,
   - proves draft bridge tests stay outside presentation ownership,
   - proves unknown files, unknown categories, unknown behaviors, missing
     protected behaviors, incomplete inventory classifications, duplicate
@@ -171,7 +171,7 @@ The implementation provides:
 | Simplified workflow protected | Yes; required behavior records map to destination-first flow, evidence options, readiness, and accessibility. |
 | Product vocabulary preserved | Yes; normal presentation tests fail when internal diagnostic language appears. |
 | Draft/bridge duplication avoided | Yes; six compatibility-editor and bridge tests are explicitly draft-bridge-owned. |
-| Diagnostic panels removed from normal path | Yes; impact and replay preview tests are removal candidates, not normal-path assertions. |
+| Diagnostic panels removed from normal path | Yes; the browser preview family is retired and retained verifier coverage is server-owned. |
 | Inventory drift detected | Yes; the audit fails for missing, duplicate, out-of-inventory, overlapping-exclusion, and invalid-exclusion records. |
 
 ## Next Step

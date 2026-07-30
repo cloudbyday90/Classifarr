@@ -1,6 +1,5 @@
 import {
   POLICY_BUILDER_BOUNDARY_CATEGORIES,
-  POLICY_BUILDER_BOUNDARY_RISK_IDS,
 } from '../../services/policyBuilderBoundaryInventory.mjs';
 import {
   MODAL_ALLOWED_RESPONSIBILITY_IDS,
@@ -99,24 +98,14 @@ describe('policyBuilderModalOrchestrationContract', () => {
     });
   });
 
-  test('identifies the current modal extraction targets', () => {
+  test('identifies the remaining modal extraction targets', () => {
     expect(listModalExtractionTargets().map(target => target.id)).toEqual([
-      MODAL_EXTRACTION_TARGET_IDS.DIAGNOSTIC_PREVIEW_SURFACES,
       MODAL_EXTRACTION_TARGET_IDS.ADVANCED_SCORING_CONTROLS,
       MODAL_EXTRACTION_TARGET_IDS.SUMMARY_VIEW_PROJECTION,
       MODAL_EXTRACTION_TARGET_IDS.LEGACY_COMMAND_ADAPTERS,
       MODAL_EXTRACTION_TARGET_IDS.SAVE_FAILURE_NOTIFICATION,
     ]);
 
-    expect(getModalExtractionTarget(MODAL_EXTRACTION_TARGET_IDS.DIAGNOSTIC_PREVIEW_SURFACES))
-      .toEqual(expect.objectContaining({
-        targetDecisionId: MODAL_ORCHESTRATION_DECISION_IDS.RECLASSIFY_OR_DELETE_AFTER_ENGINE_CUTLINE,
-        targetBoundaryId: MODAL_TARGET_BOUNDARY_IDS.ENGINE_CUTLINE,
-        relatedRiskIds: [
-          POLICY_BUILDER_BOUNDARY_RISK_IDS.DIAGNOSTIC_PRODUCT_SURFACE,
-          POLICY_BUILDER_BOUNDARY_RISK_IDS.CLIENT_ENGINE_LOGIC,
-        ],
-      }));
   });
 
   test('uses engine-cutline language for advanced scoring controls', () => {
@@ -146,7 +135,6 @@ describe('policyBuilderModalOrchestrationContract', () => {
       MODAL_TOUCHPOINT_IDS.SAVE_PAYLOAD_DELEGATION,
       MODAL_TOUCHPOINT_IDS.DRAFT_SIGNAL_COMMAND_ROUTING,
       MODAL_TOUCHPOINT_IDS.PROFILE_REFRESH_COMMAND_ROUTING,
-      MODAL_TOUCHPOINT_IDS.DIAGNOSTIC_PREVIEW_COMPOSITION,
       MODAL_TOUCHPOINT_IDS.ADVANCED_SCORING_COMPOSITION,
       MODAL_TOUCHPOINT_IDS.SUMMARY_VIEW_PROJECTION,
       MODAL_TOUCHPOINT_IDS.LEGACY_TEMPLATE_COMMAND_ADAPTERS,
@@ -160,12 +148,7 @@ describe('policyBuilderModalOrchestrationContract', () => {
       }));
   });
 
-  test('maps transitional modal touchpoints to extraction targets', () => {
-    expect(getModalTouchpoint(MODAL_TOUCHPOINT_IDS.DIAGNOSTIC_PREVIEW_COMPOSITION))
-      .toEqual(expect.objectContaining({
-        extractionTargetId: MODAL_EXTRACTION_TARGET_IDS.DIAGNOSTIC_PREVIEW_SURFACES,
-        decisionId: MODAL_ORCHESTRATION_DECISION_IDS.RECLASSIFY_OR_DELETE_AFTER_ENGINE_CUTLINE,
-      }));
+  test('maps remaining transitional modal touchpoints to extraction targets', () => {
     expect(getModalTouchpoint(MODAL_TOUCHPOINT_IDS.SAVE_FAILURE_BROWSER_ALERT))
       .toEqual(expect.objectContaining({
         extractionTargetId: MODAL_EXTRACTION_TARGET_IDS.SAVE_FAILURE_NOTIFICATION,
@@ -232,7 +215,6 @@ describe('policyBuilderModalOrchestrationContract', () => {
         ok: true,
       }),
       extractionTouchpointIds: [
-        MODAL_TOUCHPOINT_IDS.DIAGNOSTIC_PREVIEW_COMPOSITION,
         MODAL_TOUCHPOINT_IDS.ADVANCED_SCORING_COMPOSITION,
         MODAL_TOUCHPOINT_IDS.SUMMARY_VIEW_PROJECTION,
         MODAL_TOUCHPOINT_IDS.LEGACY_TEMPLATE_COMMAND_ADAPTERS,
@@ -288,7 +270,6 @@ describe('policyBuilderModalOrchestrationContract', () => {
         MODAL_PROHIBITED_RESPONSIBILITY_IDS.RAW_LEGACY_PAYLOAD_MUTATION,
       ],
       extractionTargetIds: [
-        MODAL_EXTRACTION_TARGET_IDS.DIAGNOSTIC_PREVIEW_SURFACES,
         MODAL_EXTRACTION_TARGET_IDS.ADVANCED_SCORING_CONTROLS,
         MODAL_EXTRACTION_TARGET_IDS.SUMMARY_VIEW_PROJECTION,
         MODAL_EXTRACTION_TARGET_IDS.LEGACY_COMMAND_ADAPTERS,
@@ -304,7 +285,6 @@ describe('policyBuilderModalOrchestrationContract', () => {
         MODAL_TOUCHPOINT_IDS.SAVE_PAYLOAD_DELEGATION,
         MODAL_TOUCHPOINT_IDS.DRAFT_SIGNAL_COMMAND_ROUTING,
         MODAL_TOUCHPOINT_IDS.PROFILE_REFRESH_COMMAND_ROUTING,
-        MODAL_TOUCHPOINT_IDS.DIAGNOSTIC_PREVIEW_COMPOSITION,
         MODAL_TOUCHPOINT_IDS.ADVANCED_SCORING_COMPOSITION,
         MODAL_TOUCHPOINT_IDS.SUMMARY_VIEW_PROJECTION,
         MODAL_TOUCHPOINT_IDS.LEGACY_TEMPLATE_COMMAND_ADAPTERS,

@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Browser Migration Preview Retirement**: Retirement inventories and modal
+  orchestration now exclude the already-deleted impact/replay browser preview
+  family. Server-side migration verification remains isolated from normal
+  policy authoring pending its own gated retirement.
+
 - **Native Policy Evidence Recovery**: Native policy creation no longer offers
   browser-triggered profile refresh or workflow reload actions. It renders
   observed signal controls only from current server projection or

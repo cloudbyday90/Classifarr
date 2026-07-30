@@ -145,7 +145,7 @@ describe('policyLibraryRebuildLegacyFinalRemovalPlan', () => {
     }));
     expect(plan).not.toHaveProperty('readiness');
     expect(JSON.stringify(plan)).not.toContain('snapshot_payload');
-    expect(JSON.stringify(plan)).not.toContain('PolicyIntentImpactPreviewCard.vue');
+    expect(JSON.stringify(plan)).not.toContain('client/src/');
   });
 
   test('blocks stale or future readiness instead of accepting stored evidence', () => {

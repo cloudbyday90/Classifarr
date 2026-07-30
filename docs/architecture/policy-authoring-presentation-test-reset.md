@@ -106,26 +106,16 @@ Client tests updated:
 - `client/src/__tests__/PolicyBuilderModal.test.js`
   - verifies the setup workflow exposes one recommended next action with
     `aria-current="step"` and an explanatory `aria-describedby` reference,
-  - continues proving impact and replay verifier panels are absent from the
-    default workflow.
-- `client/src/__tests__/PolicyIntentImpactPreviewCard.test.js`
-  - verifies stale impact previews remain read-only and emit only the preview
-    command.
-- `client/src/__tests__/PolicyIntentReplayPreviewCard.test.js`
-  - reduces the main replay fixture to the operator-facing verifier contract,
-  - preserves read-only, no-execution, sample, and TMDB opt-in gate assertions,
-  - explicitly avoids requiring sample-selection, provider-readiness, and
-    policy-engine diagnostic wording.
+  - protects the default workflow from migration diagnostic presentation.
 
 ## Checklist Result
 
 | Check | Result |
 | --- | --- |
 | Normal workflow protects one next action | Yes; modal setup card test checks `aria-current` on the destination action. |
-| Verifier panels stay out of default workflow | Yes; modal test continues asserting impact and replay panels are absent unless explicitly enabled. |
-| Impact verifier remains bounded | Yes; stale/read-only copy and preview emission are covered. |
-| Replay verifier remains bounded | Yes; no-execution, read-only, sample context, and TMDB request gate are covered. |
-| Diagnostic detail removed from presentation contract | Yes; the replay presentation test no longer requires sample-selection, provider-readiness, scoring, parity, or detailed TMDB coverage text. |
+| Browser verifier panels stay out of default workflow | Yes; the browser preview family is retired and the modal test protects the normal workflow. |
+| Server verifier remains bounded | Yes; server-only verifier contracts retain no-execution, evidence, and migration coverage. |
+| Diagnostic detail removed from presentation contract | Yes; no browser presentation test owns migration diagnostic wording. |
 
 ## Next Step
 

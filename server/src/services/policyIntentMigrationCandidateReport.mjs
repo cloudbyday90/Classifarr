@@ -61,7 +61,6 @@ const POLICY_INTENT_MIGRATION_CANDIDATE_DELETION_IMPACT_IDS = Object.freeze({
   POLICY_PRESETS: 'policy_presets',
   POLICY_OVERRIDES: 'policy_overrides',
   CUSTOM_SIGNALS: 'custom_signals',
-  IMPACT_REPLAY_PREVIEW_DIAGNOSTICS: 'impact_replay_preview_diagnostics',
   COMPATIBILITY_BRIDGE_READ: 'compatibility_bridge_read',
 });
 
@@ -299,12 +298,6 @@ function buildDeletionImpactEstimate(contract = {}) {
       summary: unsupportedCount === 0
         ? 'No unsupported custom signal shape blocks native conversion.'
         : 'Unsupported custom signal shape must be reviewed before deletion.',
-    },
-    {
-      impactId: POLICY_INTENT_MIGRATION_CANDIDATE_DELETION_IMPACT_IDS.IMPACT_REPLAY_PREVIEW_DIAGNOSTICS,
-      eligibleAfterConversion: false,
-      affectedCount: 0,
-      summary: 'Impact/replay preview diagnostic deletion remains gated by the native storage test reset.',
     },
     {
       impactId: POLICY_INTENT_MIGRATION_CANDIDATE_DELETION_IMPACT_IDS.COMPATIBILITY_BRIDGE_READ,

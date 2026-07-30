@@ -66,15 +66,14 @@ Cons:
 - `server/src/services/policyAuthoringWorkflowCompletionAudit.mjs`
 - `server/src/__tests__/services/policyAuthoringWorkflowCompletionAudit.test.mjs`
 - `client/src/__tests__/PolicyBuilderModal.test.js`
-- `client/src/__tests__/PolicyIntentImpactPreviewCard.test.js`
-- `client/src/__tests__/PolicyIntentReplayPreviewCard.test.js`
 
 ## Outcome
 
 The cutover renamed the presentation-test reset architecture document, updated
 the workflow completion audit slice to
-`policy_authoring_presentation_test_reset`, updated roadmap and contract links
-to the durable artifact, and kept the existing test behavior unchanged.
+`policy_authoring_presentation_test_reset`, and updated roadmap and contract
+links to the durable artifact. Browser preview test artifacts were subsequently
+retired with the browser migration-preview family.
 
 ## Next Step
 

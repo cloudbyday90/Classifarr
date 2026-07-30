@@ -79,15 +79,6 @@ describe('policyAuthoringPresentationTests', () => {
     });
   });
 
-  test('does not retain removed replay and impact preview presentation tests', () => {
-    [
-      'client/src/__tests__/PolicyIntentImpactPreviewCard.test.js',
-      'client/src/__tests__/PolicyIntentReplayPreviewCard.test.js',
-    ].forEach(filePath => {
-      expect(getPolicyAuthoringPresentationTestRecord(filePath)).toBeNull();
-    });
-  });
-
   test('audits the default policy authoring presentation test plan', () => {
     expect(buildPolicyAuthoringPresentationTestAudit()).toEqual(expect.objectContaining({
       ok: true,

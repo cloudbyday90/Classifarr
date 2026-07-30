@@ -54,9 +54,11 @@ migration-only APIs.
 - Removed the browser API methods that posted to migration-verifier endpoints.
 - Deleted all browser-only preview state, response formatting, and test files.
 - Updated current workflow, boundary, compatibility, presentation, draft-state,
-  and runtime-test inventories so they no longer treat deleted browser files as
-  live artifacts. The migration-deletion ledger remains the sole retained
-  removal record.
+  runtime-test inventories, and the migration-deletion ledger so they no longer
+  treat deleted browser files as live artifacts. The ledger now retains only
+  still-present server verifier candidates; the completion record is [Policy
+  Library-Rebuild Browser Impact And Replay Preview
+  Retirement](policy-library-rebuild-browser-impact-replay-preview-retirement.md).
 - Retained the server migration verifier and its focused server coverage as
   controlled migration infrastructure.
 
