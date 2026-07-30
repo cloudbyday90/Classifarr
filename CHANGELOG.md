@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Server-Owned Rebuild Cutover**: Accepted library rebuilds now follow one
+  idempotent server workflow that reuses a persisted verification
+  receipt/rollback snapshot before applying native replacement. It stops with
+  compact states on invalid evidence, performs routing only in the existing
+  replacement transaction, and never authorizes legacy-path deletion.
+
 - **Verified Rebuild Replacement**: Native library-rebuild replacement now
   consumes only the immutable migration-verification receipt bound to its
   persisted execution gate. Missing, mismatched, review-required, stale, or

@@ -4454,6 +4454,12 @@ Tasks:
   bounded stop states only, never a browser control or raw verification output;
   do not rerun completed receipts, write routing outside the replacement
   transaction, or authorize legacy deletion.
+- **6R.6.8 Library Rebuild Legacy-Path Deletion Readiness Gate**: define one
+  bounded, server-owned final-removal readiness artifact from completed native
+  cutover, exact receipt/snapshot provenance, rollback-window disposition,
+  runtime authority confirmation, and a removal inventory. It must fail closed
+  on missing or conflicting evidence and must not delete, hide, archive, route,
+  or expose a browser control.
 - Use old impact/replay/parity tooling only as migration verification machinery,
   not product workflow.
 - Define a migration preview that compares legacy policy behavior to generated
@@ -4531,6 +4537,13 @@ Implementation status:
   persisted execution gate before it can write native intent, routing, or a
   migration event. The receipt ID and verifier fingerprint must agree, and the
   event retains only receipt provenance rather than raw verification output.
+- The server-owned cutover decision, design, and outcome are documented in
+  [Policy Library-Rebuild Cutover Orchestration](policy-library-rebuild-cutover-orchestration.md).
+  `policyLibraryRebuildCutoverOrchestrator.mjs` probes the snapshot gate first
+  and invokes verification only for a fixed missing-receipt result; it then
+  applies native replacement only after a current or newly persisted rollback
+  snapshot. Its compact contract suppresses raw verification output, browser
+  controls, direct routing, and legacy deletion authority.
 - `server/src/services/policyMigrationVerifierRollback.mjs` consumes the
   preview contract while retaining rebuild acceptance, rollback, fingerprint,
   trace, and deletion gates. It rejects ambiguous old/new sample input names.
