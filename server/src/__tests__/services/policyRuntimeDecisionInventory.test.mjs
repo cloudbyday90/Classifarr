@@ -8,6 +8,7 @@ import {
   POLICY_RUNTIME_STAGE_IDS,
   buildPolicyRuntimeDecisionInventory,
   listPolicyBadQuestionPaths,
+  listPolicyRequiredQueueDispatchSurfacePaths,
   listPolicyRequiredRuntimeContractSurfacePaths,
   listPolicyRequiredRuntimeSurfacePaths,
   listPolicyRuntimeArtifacts,
@@ -38,6 +39,7 @@ describe('policyRuntimeDecisionInventory', () => {
       [POLICY_RUNTIME_STAGE_IDS.LEARNING_SIDE_EFFECT]: expect.any(Number),
       [POLICY_RUNTIME_STAGE_IDS.ARR_ROUTING]: expect.any(Number),
       [POLICY_RUNTIME_STAGE_IDS.MEDIA_PROFILE_REFRESH]: expect.any(Number),
+      [POLICY_RUNTIME_STAGE_IDS.QUEUE_DISPATCH]: expect.any(Number),
       [POLICY_RUNTIME_STAGE_IDS.QUEUE_RETRY]: expect.any(Number),
     }));
   });
@@ -86,6 +88,42 @@ describe('policyRuntimeDecisionInventory', () => {
     expect(inventory.artifacts.map(artifact => artifact.path)).toEqual(
       expect.arrayContaining(requiredPaths)
     );
+  });
+
+  test('requires queue dispatch and retry execution surfaces to be inventoried', () => {
+    const requiredQueueDispatchPaths = listPolicyRequiredQueueDispatchSurfacePaths();
+    const inventory = buildPolicyRuntimeDecisionInventory();
+
+    expect(requiredQueueDispatchPaths).toEqual([
+      'server/src/services/queueService.mjs',
+      'server/src/services/queueWorkerLoopService.mjs',
+      'server/src/services/queueTaskProcessorService.mjs',
+      'server/src/services/queueMutationService.mjs',
+      'server/src/services/schedulerOperationalTasks.mjs',
+    ]);
+    expect(inventory.artifacts).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        path: 'server/src/services/queueService.mjs',
+        stageId: POLICY_RUNTIME_STAGE_IDS.QUEUE_DISPATCH,
+        decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
+        riskIds: expect.arrayContaining([
+          'classification_success_can_be_conflated_with_routing_success',
+        ]),
+      }),
+      expect.objectContaining({
+        path: 'server/src/services/queueWorkerLoopService.mjs',
+        stageId: POLICY_RUNTIME_STAGE_IDS.QUEUE_DISPATCH,
+        decisionId: POLICY_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+      }),
+      expect.objectContaining({
+        path: 'server/src/services/queueTaskProcessorService.mjs',
+        stageId: POLICY_RUNTIME_STAGE_IDS.QUEUE_DISPATCH,
+        decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
+        riskIds: expect.arrayContaining([
+          'classification_success_can_be_conflated_with_routing_success',
+        ]),
+      }),
+    ]));
   });
 
   test('keeps the RAG lifecycle helper on durable stage terminology', () => {
@@ -258,6 +296,25 @@ describe('policyRuntimeDecisionInventory', () => {
       expect.objectContaining({
         riskId: POLICY_RUNTIME_RISK_IDS.MISSING_RUNTIME_CONTRACT_SURFACE,
         path: 'server/src/services/policyAutomationDecisionContract.mjs',
+      }),
+    ]));
+  });
+
+  test('rejects inventories missing a required queue dispatch surface', () => {
+    const inventory = buildPolicyRuntimeDecisionInventory({
+      artifacts: listPolicyRuntimeArtifacts()
+        .filter(artifact => artifact.path !== 'server/src/services/queueTaskProcessorService.mjs'),
+      checkPathExists: false,
+    });
+
+    expect(inventory.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_RUNTIME_RISK_IDS.MISSING_QUEUE_DISPATCH_SURFACE_ARTIFACT,
+        path: 'server/src/services/queueTaskProcessorService.mjs',
+      }),
+      expect.objectContaining({
+        riskId: POLICY_RUNTIME_RISK_IDS.CLASSIFICATION_ROUTING_CONFLATION_NOT_LISTED,
+        path: 'server/src/services/queueTaskProcessorService.mjs',
       }),
     ]));
   });

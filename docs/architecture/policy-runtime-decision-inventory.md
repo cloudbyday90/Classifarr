@@ -63,28 +63,35 @@ This inventory also calls out two known failure modes:
    itself is mandatory, so a route can never be silently reclassified as only
    a downstream decision or routing concern.
 
-3. **Guard runtime contract surface coverage.**
+3. **Separate queue dispatch from retry.**
+   The queue service, worker loop, task processor, queue mutation service, and
+   scheduled retry driver are distinct decision-bearing runtime surfaces. The
+   inventory must require them, classify the worker loop as a retained lifecycle
+   primitive, and mark dispatch, mutation, and scheduled retry paths for
+   rewrite around current automation decisions.
+
+4. **Guard runtime contract surface coverage.**
    Runtime/rebuild contracts that replace old behavior must also be listed as
    inventory artifacts. A new contract service without an explicit cutline
    decision should fail inventory before later runtime wiring proceeds.
 
-4. **Require authority sources.**
+5. **Require authority sources.**
    Every runtime artifact must identify whether it is driven by observed media
    server contents, declared operator intent, manual outcome, AI output,
    metadata evidence, or legacy template compatibility. Values outside the
    server-owned vocabulary must fail validation rather than becoming an
    implicit authority source.
 
-5. **Separate classification from routing.**
+6. **Separate classification from routing.**
    Missing Arr mapping or failed Arr push must become a distinct runtime state,
    not a silent classification success.
 
-6. **Replace known bad question paths.**
+7. **Replace known bad question paths.**
    Genre-priority prompts, AI invalid-response prompts, AI disagreement prompts,
    and pending resolution flags that generate rules must be routed through the
    policy question contract and policy learning guard.
 
-7. **Keep AI/RAG as evidence.**
+8. **Keep AI/RAG as evidence.**
    AI explanations, RAG neighbors, and provider metadata can support evidence
    quality, but they cannot own final destination intent or durable learning.
 
@@ -99,6 +106,8 @@ Pros:
 - Preserves useful runtime primitives such as Arr executors, outcome ledger,
   profile sync, and bounded event persistence.
 - Creates a stable handoff to runtime evidence projection.
+- Makes queue dispatch and retry entrypoints auditable before they can be
+  rewired to policy automation decisions.
 
 Cons:
 
@@ -107,6 +116,7 @@ Cons:
 - Requires intentional updates when classification route or metadata surfaces
   are renamed.
 - Does not delete legacy signal or question code yet.
+- Does not alter queue processing, retry scheduling, or routing behavior.
 
 ## Final Recommendation Stack
 
@@ -132,6 +142,7 @@ The service exports:
 - `listPolicyRuntimeArtifacts`
 - `listPolicyBadQuestionPaths`
 - `listPolicyRequiredRuntimeSurfacePaths`
+- `listPolicyRequiredQueueDispatchSurfacePaths`
 - `listPolicyRequiredRuntimeContractSurfacePaths`
 - `validateRuntimeArtifact`
 - `buildPolicyRuntimeDecisionInventory`
@@ -162,6 +173,7 @@ Runtime stages:
 - learning side effects,
 - Arr routing,
 - media-server profile refresh,
+- queue dispatch,
 - queues and retry paths.
 
 Known bad question paths:
@@ -182,6 +194,13 @@ Required runtime surface coverage includes:
 - metadata enrichment paths,
 - Discord pending notification rendering.
 
+Required queue-dispatch surface coverage includes:
+
+- queue service and worker-loop lifecycle,
+- classification task processor,
+- manual queue mutation operations,
+- scheduled retry operations.
+
 Required policy runtime/rebuild contract surface coverage includes:
 
 - runtime evidence projection,
@@ -199,6 +218,9 @@ Required policy runtime/rebuild contract surface coverage includes:
 - Critical runtime surfaces cannot fall out of the inventory silently.
 - Runtime route-entry coverage cannot fall out of the inventory silently.
 - Policy runtime/rebuild contracts cannot fall out of the inventory silently.
+- Queue dispatch and retry surfaces cannot fall out of the inventory silently.
+- Queue dispatch paths explicitly flag stale-decision replay and
+  classification/routing-conflation risks before runtime wiring changes.
 - AI/RAG/provider output is not treated as final authority.
 - Unknown authority identifiers are rejected by focused regression coverage.
 - Learning side effects are flagged for policy learning guard wiring.

@@ -25,6 +25,7 @@ const POLICY_RUNTIME_STAGE_IDS = Object.freeze({
   LEARNING_SIDE_EFFECT: 'learning_side_effect',
   ARR_ROUTING: 'arr_routing',
   MEDIA_PROFILE_REFRESH: 'media_profile_refresh',
+  QUEUE_DISPATCH: 'queue_dispatch',
   QUEUE_RETRY: 'queue_retry',
   RUNTIME_ROUTE: 'runtime_route',
 });
@@ -43,6 +44,7 @@ const POLICY_RUNTIME_RISK_IDS = Object.freeze({
   CLASSIFICATION_ROUTING_CONFLATION_NOT_LISTED: 'classification_routing_conflation_not_listed',
   BAD_QUESTION_PATH_NOT_LISTED: 'bad_question_path_not_listed',
   MISSING_RUNTIME_SURFACE_ARTIFACT: 'missing_runtime_surface_artifact',
+  MISSING_QUEUE_DISPATCH_SURFACE_ARTIFACT: 'missing_queue_dispatch_surface_artifact',
   MISSING_RUNTIME_CONTRACT_SURFACE: 'missing_runtime_contract_surface',
   ARTIFACT_PATH_NOT_FOUND: 'artifact_path_not_found',
 });
@@ -69,6 +71,7 @@ const REQUIRED_STAGE_IDS = Object.freeze([
   POLICY_RUNTIME_STAGE_IDS.LEARNING_SIDE_EFFECT,
   POLICY_RUNTIME_STAGE_IDS.ARR_ROUTING,
   POLICY_RUNTIME_STAGE_IDS.MEDIA_PROFILE_REFRESH,
+  POLICY_RUNTIME_STAGE_IDS.QUEUE_DISPATCH,
   POLICY_RUNTIME_STAGE_IDS.QUEUE_RETRY,
 ]);
 
@@ -76,6 +79,8 @@ const REQUIRED_CONFLATION_RISK_PATHS = Object.freeze([
   'server/src/services/classificationPersistenceService.mjs',
   'server/src/routes/classificationRoutePending.mjs',
   'server/src/services/classificationRoutingService.mjs',
+  'server/src/services/queueService.mjs',
+  'server/src/services/queueTaskProcessorService.mjs',
 ]);
 
 const REQUIRED_BROAD_GENRE_RISK_PATHS = Object.freeze([
@@ -104,6 +109,14 @@ const REQUIRED_RUNTIME_SURFACE_PATHS = Object.freeze([
   'server/src/services/classificationMetadataEnrichmentService.mjs',
   'server/src/services/classificationRagLoopStages.mjs',
   'server/src/services/discordPendingNotification.mjs',
+]);
+
+const REQUIRED_QUEUE_DISPATCH_SURFACE_PATHS = Object.freeze([
+  'server/src/services/queueService.mjs',
+  'server/src/services/queueWorkerLoopService.mjs',
+  'server/src/services/queueTaskProcessorService.mjs',
+  'server/src/services/queueMutationService.mjs',
+  'server/src/services/schedulerOperationalTasks.mjs',
 ]);
 
 const REQUIRED_RUNTIME_CONTRACT_SURFACE_PATHS = Object.freeze([
@@ -536,6 +549,66 @@ const RUNTIME_ARTIFACTS = Object.freeze([
     normalRuntimeAuthorityAllowed: true,
   },
   {
+    path: 'server/src/services/queueService.mjs',
+    owner: 'runtime-queue-dispatch',
+    stageId: POLICY_RUNTIME_STAGE_IDS.QUEUE_DISPATCH,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
+    authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    replacementTarget: 'policy decision-state queue coordinator that dispatches only current automation decisions',
+    riskIds: [
+      'queue_dispatch_can_repeat_stale_decision_state',
+      'classification_success_can_be_conflated_with_routing_success',
+    ],
+    normalRuntimeAuthorityAllowed: false,
+  },
+  {
+    path: 'server/src/services/queueWorkerLoopService.mjs',
+    owner: 'runtime-queue-lifecycle',
+    stageId: POLICY_RUNTIME_STAGE_IDS.QUEUE_DISPATCH,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+    authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    replacementTarget: 'queue lifecycle executor behind server-owned automation-decision admission',
+    riskIds: [],
+    normalRuntimeAuthorityAllowed: true,
+  },
+  {
+    path: 'server/src/services/queueTaskProcessorService.mjs',
+    owner: 'runtime-queue-dispatch',
+    stageId: POLICY_RUNTIME_STAGE_IDS.QUEUE_DISPATCH,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
+    authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    replacementTarget: 'policy automation-decision executor that preserves classified-not-routed and review states',
+    riskIds: [
+      'queue_task_processor_can_execute_stale_decision_state',
+      'classification_success_can_be_conflated_with_routing_success',
+    ],
+    normalRuntimeAuthorityAllowed: false,
+  },
+  {
+    path: 'server/src/services/queueMutationService.mjs',
+    owner: 'runtime-queue-control',
+    stageId: POLICY_RUNTIME_STAGE_IDS.QUEUE_RETRY,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
+    authoritySourceId: AUTHORITY_SOURCE_IDS.MANUAL_OUTCOME,
+    replacementTarget: 'manual queue retry boundary that rechecks current policy decision state',
+    riskIds: [
+      'manual_queue_retry_can_reapply_stale_decision_state',
+    ],
+    normalRuntimeAuthorityAllowed: false,
+  },
+  {
+    path: 'server/src/services/schedulerOperationalTasks.mjs',
+    owner: 'runtime-retry-scheduler',
+    stageId: POLICY_RUNTIME_STAGE_IDS.QUEUE_RETRY,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.REWRITE_AROUND_POLICY_CONTRACTS,
+    authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    replacementTarget: 'scheduled retry coordinator that rechecks current policy decision state before reclassification',
+    riskIds: [
+      'scheduled_retry_can_reapply_stale_decision_state',
+    ],
+    normalRuntimeAuthorityAllowed: false,
+  },
+  {
     path: 'server/src/services/classificationRetryService.mjs',
     owner: 'runtime-retry',
     stageId: POLICY_RUNTIME_STAGE_IDS.QUEUE_RETRY,
@@ -757,6 +830,10 @@ function listPolicyRequiredRuntimeSurfacePaths() {
   return REQUIRED_RUNTIME_SURFACE_PATHS;
 }
 
+function listPolicyRequiredQueueDispatchSurfacePaths() {
+  return REQUIRED_QUEUE_DISPATCH_SURFACE_PATHS;
+}
+
 function listPolicyRequiredRuntimeContractSurfacePaths() {
   return REQUIRED_RUNTIME_CONTRACT_SURFACE_PATHS;
 }
@@ -933,6 +1010,16 @@ function buildPolicyRuntimeDecisionInventory({
       ));
     });
 
+  REQUIRED_QUEUE_DISPATCH_SURFACE_PATHS
+    .filter(path => !artifactByPath.has(path))
+    .forEach(path => {
+      issues.push(buildIssue(
+        POLICY_RUNTIME_RISK_IDS.MISSING_QUEUE_DISPATCH_SURFACE_ARTIFACT,
+        `Queue dispatch surface path is missing from the policy runtime inventory: ${path}.`,
+        { path }
+      ));
+    });
+
   REQUIRED_RUNTIME_CONTRACT_SURFACE_PATHS
     .filter(path => !artifactByPath.has(path))
     .forEach(path => {
@@ -979,6 +1066,7 @@ export {
   POLICY_RUNTIME_STAGE_IDS,
   buildPolicyRuntimeDecisionInventory,
   listPolicyBadQuestionPaths,
+  listPolicyRequiredQueueDispatchSurfacePaths,
   listPolicyRequiredRuntimeContractSurfacePaths,
   listPolicyRequiredRuntimeSurfacePaths,
   listPolicyRuntimeArtifacts,

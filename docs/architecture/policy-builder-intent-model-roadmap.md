@@ -4803,6 +4803,12 @@ Implementation status:
   diagnostics, metadata enrichment, Discord pending notifications,
   classification orchestration, routing, and persistence paths so new runtime
   behavior cannot bypass the cutline silently.
+- The inventory now separates queue dispatch from retry and requires the queue
+  service, worker loop, task processor, mutation service, and scheduled retry
+  driver. Dispatch paths explicitly identify stale-decision replay and
+  classification/routing-conflation risks before runtime wiring changes. The
+  design and outcome are documented in [Policy Runtime Queue Dispatch
+  Cutline](policy-runtime-queue-dispatch-cutline.md).
 - Runtime entrypoints are also a required stage, and authority identifiers
   outside the server-owned vocabulary fail focused inventory validation.
 - The inventory now also requires Phase 7R runtime/rebuild contract surface

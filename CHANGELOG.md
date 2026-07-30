@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Runtime Queue Dispatch Cutline**: The server-owned runtime inventory now
+  distinguishes queue dispatch from retry and requires queue lifecycle,
+  processor, mutation, and scheduled-retry paths to declare their authority,
+  replacement decision, and stale-decision/routing risks before runtime wiring
+  can change.
+
 - **Legacy Migration-Verifier Service Retirement**: The current migration
   removal ledger now excludes legacy verifier routes, services, and tests
   already removed from source. It retains only current engine/schema artifacts;
