@@ -164,6 +164,9 @@ Cons:
     proof before request-time learning can pass validation.
 14. Use a normalized request event and a valid clarification plan as the only
     decision inputs. Raw runtime input must use the explicit runtime adapter.
+15. When the proof originates in queue execution, use the dedicated queue
+    admission adapter to bind it to the current classification task and
+    attempt before the generic reducer consumes it.
 
 ## Implemented Files
 
@@ -171,6 +174,10 @@ Cons:
   `server/src/services/policyRequestTimeLearning.mjs`
 - Request-event normalizer:
   `server/src/services/policyRequestTimeEvent.mjs`
+- Queue question-reduction admission:
+  `server/src/services/policyRequestTimeQueueQuestionReduction.mjs`
+- Queue question-reduction admission design and outcome:
+  `docs/architecture/policy-request-time-queue-question-reduction.md`
 - Request-time input-boundary outcome:
   `docs/architecture/policy-request-time-learning-input-boundary.md`
 - Focused tests:
@@ -236,6 +243,10 @@ The service exports:
 - The validated-plan reducer rejects raw event, question, automation, and
   fingerprint fields; upstream provenance comes only from the clarification
   plan.
+- Queue-produced plans must also prove their current task id, classification
+  task type, attempt, and re-computed execution fingerprint through the
+  dedicated queue admission adapter. The adapter exposes opaque fingerprints
+  only and accepts terminal routing outcomes only.
 
 ## Test Coverage
 

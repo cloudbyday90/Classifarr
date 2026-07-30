@@ -5135,6 +5135,12 @@ Implementation status:
   [Policy Native Classification Question Handoff](policy-native-classification-question-handoff.md)
   and
   [Policy Request/Import Destination Admission](policy-request-import-destination-admission.md).
+- Queue-produced question-reduction plans now reach request-time learning only
+  through `policyRequestTimeQueueQuestionReduction.mjs`. It re-audits the queue
+  envelope, binds its opaque evidence to the current classification task and
+  attempt, admits terminal routing outcomes only, and preserves outcome-only
+  fallback for invalid, stale, cross-task, or competing proof. Its design
+  record is [Policy Request-Time Queue Question-Reduction Admission](policy-request-time-queue-question-reduction.md).
 - Queue webhook history now writes the normalized selected library name rather
   than treating the legacy string result as an object.
 - The first live runtime adapter now handles authenticated manual classification

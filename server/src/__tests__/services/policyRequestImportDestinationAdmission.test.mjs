@@ -27,6 +27,15 @@ import {
   buildPolicyRuntimeQuestionReductionFromRuntimeInput,
 } from '../../services/policyRuntimeQuestionReduction.mjs';
 import {
+  buildPolicyRuntimeQueueAutomationDecision,
+} from '../../services/policyRuntimeQueueAutomationDecision.mjs';
+import {
+  buildPolicyRuntimeQueueEvidenceAdmission,
+} from '../../services/policyRuntimeQueueEvidenceAdmission.mjs';
+import {
+  buildPolicyRuntimeQueueQuestionReduction,
+} from '../../services/policyRuntimeQueueQuestionReduction.mjs';
+import {
   POLICY_REQUEST_EVENT_TYPE_IDS,
 } from '../../services/policyRequestTimeLearning.mjs';
 import {
@@ -48,6 +57,8 @@ function task(overrides = {}) {
   return {
     id: 41,
     source: 'webhook',
+    task_type: 'classification',
+    attempts: 0,
     ...overrides,
   };
 }
@@ -70,6 +81,39 @@ function classification(overrides = {}) {
     },
     ...overrides,
   };
+}
+
+function queueQuestionReduction(overrides = {}) {
+  const queueTask = task(overrides.task);
+  const evidenceAdmission = buildPolicyRuntimeQueueEvidenceAdmission({
+    task: queueTask,
+    runtimeEvidenceInput: {
+      libraryProfile: {
+        identityCandidates: [
+          { label: 'Animated Movies', count: 8, confidence: 0.9, trusted: true },
+        ],
+      },
+      operatorIntent: {
+        belongsHere: [{ key: 'genre:animated', label: 'Animated Movies' }],
+        routingTargets: ['Radarr Animated Movies'],
+      },
+      routingOutcomes: [{ label: 'Radarr route mapped', routed: true }],
+      profileFreshness: {
+        key: 'profile',
+        label: 'Profile is current',
+        updatedAt: '2026-07-30T00:00:00.000Z',
+        stale: false,
+      },
+    },
+  });
+  const automationDecision = buildPolicyRuntimeQueueAutomationDecision({
+    evidenceAdmission,
+    routing: { mapped: true, targetName: 'Radarr Animated Movies' },
+  });
+
+  return buildPolicyRuntimeQueueQuestionReduction({
+    queueAutomationDecision: automationDecision,
+  });
 }
 
 describe('policyRequestImportDestinationAdmission', () => {
@@ -168,6 +212,73 @@ describe('policyRequestImportDestinationAdmission', () => {
       POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.MISSING_MAPPING_RECORDED,
       POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.MISSING_QUESTION_REDUCTION_PROOF,
     ]));
+    expect(result.audit.ok).toBe(true);
+  });
+
+  test('admits matching queue question-reduction proof only through the request-time bridge', () => {
+    const result = buildPolicyRequestImportDestinationAdmission({
+      task: task(),
+      classification: classification(),
+      queueQuestionReduction: queueQuestionReduction(),
+    });
+
+    expect(result.questionReduction).toEqual({
+      statusId: 'valid',
+      evidenceFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+    });
+    expect(result.requestTimeDecision).toEqual({
+      validationOk: true,
+      dispositionId: 'outcome_only',
+    });
+    expect(result.learning).toEqual(expect.objectContaining({
+      canWriteLearning: false,
+      profileRefreshQueued: false,
+    }));
+    expect(result.reasonCodes).toContain(
+      POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.VALID_QUESTION_REDUCTION_PROOF
+    );
+    expect(result.audit.ok).toBe(true);
+  });
+
+  test('keeps a cross-attempt queue proof outcome-only', () => {
+    const result = buildPolicyRequestImportDestinationAdmission({
+      task: task({ attempts: 1 }),
+      classification: classification(),
+      queueQuestionReduction: queueQuestionReduction(),
+    });
+
+    expect(result.questionReduction).toEqual({
+      statusId: 'invalid',
+      evidenceFingerprint: null,
+    });
+    expect(result.requestTimeDecision).toBeNull();
+    expect(result.learning).toEqual(expect.objectContaining({
+      canWriteLearning: false,
+      profileRefreshQueued: false,
+    }));
+    expect(result.reasonCodes).toContain(
+      POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.INVALID_QUESTION_REDUCTION_PROOF
+    );
+    expect(result.audit.ok).toBe(true);
+  });
+
+  test('falls back to outcome-only when queue and direct question-reduction proofs compete', () => {
+    const result = buildPolicyRequestImportDestinationAdmission({
+      task: task(),
+      classification: classification(),
+      questionReductionPlan: questionReductionPlan(),
+      queueQuestionReduction: queueQuestionReduction(),
+    });
+
+    expect(result.questionReduction).toEqual({
+      statusId: 'invalid',
+      evidenceFingerprint: null,
+    });
+    expect(result.requestTimeDecision).toBeNull();
+    expect(result.learning.canWriteLearning).toBe(false);
+    expect(result.reasonCodes).toContain(
+      POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.AMBIGUOUS_QUESTION_REDUCTION_PROOF
+    );
     expect(result.audit.ok).toBe(true);
   });
 

@@ -169,16 +169,17 @@ The queue path now has a narrow handoff:
 fresh queue evidence admission
   -> queue automation decision
   -> queue question-reduction plan
+  -> request-time queue admission for a matching terminal route outcome
   -> later persistence or notification admission, only when independently valid
 ```
 
-No live queue worker or pending-question persistence path is changed by this
-component.
+The queue question-reduction component itself remains side-effect-free. Its
+request-time consumer is separately bounded in
+[Policy Request-Time Queue Question-Reduction Admission](policy-request-time-queue-question-reduction.md).
 
 ## Next Task
 
-Phase 7R.5, Task 7R.5.1 should introduce a request-time destination-evidence
-admission contract. It should consume only a validated question-reduction plan
-or bounded manual outcome, represent the request-time choice separately from a
-successful route, and hand off to the existing learning guard without writing
-policy directly.
+Complete the Phase 7R.5 request-time integration audit: every request/import
+terminal routing caller must supply a validated direct or queue-bound proof, or
+explicitly retain the outcome-only fallback before it can ask the learning guard
+to consider durable evidence.

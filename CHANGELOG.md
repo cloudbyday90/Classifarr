@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Request-Time Queue Question-Reduction Admission**: Terminal request/import
+  routing outcomes can now use only a revalidated, current-task-bound queue
+  question-reduction proof before reaching the existing learning guard. Invalid,
+  stale, cross-task, or competing proof remains outcome-only, without provider,
+  routing, notification, profile-refresh, or learning writes.
+
 - **Runtime Queue Question Reduction**: Classification queue work now derives
   bounded question and next-action plans only from revalidated queue automation
   decisions, preserves opaque execution provenance, and rejects raw or

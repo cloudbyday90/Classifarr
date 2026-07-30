@@ -43,6 +43,10 @@ import {
   buildPolicyRequestTimeEvent,
 } from './policyRequestTimeEvent.mjs';
 import {
+  POLICY_REQUEST_TIME_QUEUE_QUESTION_REDUCTION_STATUS_IDS,
+  buildPolicyRequestTimeQueueQuestionReduction,
+} from './policyRequestTimeQueueQuestionReduction.mjs';
+import {
   buildPolicyFinalOutcomeAudit,
 } from './policyFinalOutcomeNormalizer.mjs';
 import {
@@ -67,6 +71,7 @@ const POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS = Object.freeze({
   MISSING_QUESTION_REDUCTION_PROOF: 'request_import_missing_question_reduction_proof',
   INVALID_QUESTION_REDUCTION_PROOF: 'request_import_invalid_question_reduction_proof',
   VALID_QUESTION_REDUCTION_PROOF: 'request_import_valid_question_reduction_proof',
+  AMBIGUOUS_QUESTION_REDUCTION_PROOF: 'request_import_ambiguous_question_reduction_proof',
 });
 
 const POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_AUDIT_RISK_IDS = Object.freeze({
@@ -229,6 +234,35 @@ function buildQuestionReductionSummary(questionReductionPlan) {
   };
 }
 
+function buildQueueTaskContext(task = {}) {
+  const queueTask = asObject(task);
+
+  return {
+    id: queueTask.id,
+    taskType: queueTask.task_type ?? queueTask.taskType,
+    attempts: queueTask.attempts,
+  };
+}
+
+function buildQueueQuestionReductionSummary(queueQuestionReduction = {}) {
+  const queueResult = asObject(queueQuestionReduction);
+
+  if (
+    queueResult.statusId !== POLICY_REQUEST_TIME_QUEUE_QUESTION_REDUCTION_STATUS_IDS.READY ||
+    queueResult.audit?.ok !== true
+  ) {
+    return {
+      statusId: 'invalid',
+      evidenceFingerprint: null,
+    };
+  }
+
+  return {
+    statusId: 'valid',
+    evidenceFingerprint: normalizeString(queueResult.queueEvidence?.evidenceFingerprint, 128) || null,
+  };
+}
+
 function buildEventSummary(requestEvent) {
   return {
     eventTypeId: requestEvent.eventTypeId,
@@ -299,6 +333,7 @@ function buildPolicyRequestImportDestinationAdmission({
   task = {},
   classification = {},
   questionReductionPlan = null,
+  queueQuestionReduction = null,
 } = {}) {
   const queueTask = asObject(task);
   if (!REQUEST_IMPORT_SOURCE_IDS.has(normalizeString(queueTask.source, 40).toLowerCase())) {
@@ -331,7 +366,6 @@ function buildPolicyRequestImportDestinationAdmission({
     );
   }
 
-  const questionReduction = buildQuestionReductionSummary(questionReductionPlan);
   const reasonCodes = [
     requestEvent.eventTypeId === POLICY_REQUEST_EVENT_TYPE_IDS.ROUTE_SUCCEEDED
       ? POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.ROUTE_SUCCEEDED_RECORDED
@@ -340,24 +374,69 @@ function buildPolicyRequestImportDestinationAdmission({
   let learningDecision;
   let learningIntake;
   let requestTimeDecision = null;
+  const hasDirectQuestionReductionPlan = questionReductionPlan !== null;
+  const hasQueueQuestionReduction = queueQuestionReduction !== null;
+  let questionReduction;
 
-  if (questionReduction.statusId === 'valid') {
-    requestTimeDecision = buildPolicyRequestTimeLearningDecisionFromQuestionReductionPlan({
-      questionReductionPlan,
-      requestEvent,
-    });
-    learningDecision = requestTimeDecision.learningDecision;
-    learningIntake = requestTimeDecision.intake;
-    reasonCodes.push(POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.VALID_QUESTION_REDUCTION_PROOF);
-  } else {
+  if (hasDirectQuestionReductionPlan && hasQueueQuestionReduction) {
+    questionReduction = {
+      statusId: 'invalid',
+      evidenceFingerprint: null,
+    };
     const fallbackResult = buildOutcomeOnlyLearningDecision(requestEvent);
     learningDecision = fallbackResult.decision;
     learningIntake = fallbackResult.intake;
     reasonCodes.push(
-      questionReduction.statusId === 'invalid'
-        ? POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.INVALID_QUESTION_REDUCTION_PROOF
-        : POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.MISSING_QUESTION_REDUCTION_PROOF
+      POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.AMBIGUOUS_QUESTION_REDUCTION_PROOF
     );
+  } else if (hasQueueQuestionReduction) {
+    const queueRequestTimeReduction = buildPolicyRequestTimeQueueQuestionReduction({
+      queueQuestionReduction,
+      queueTaskContext: buildQueueTaskContext(queueTask),
+      requestEvent,
+    });
+    questionReduction = buildQueueQuestionReductionSummary(queueRequestTimeReduction);
+
+    if (questionReduction.statusId === 'valid') {
+      requestTimeDecision = queueRequestTimeReduction.decision;
+      learningDecision = requestTimeDecision.learningDecision;
+      learningIntake = requestTimeDecision.intake;
+      reasonCodes.push(
+        POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.VALID_QUESTION_REDUCTION_PROOF
+      );
+    } else {
+      const fallbackResult = buildOutcomeOnlyLearningDecision(requestEvent);
+      learningDecision = fallbackResult.decision;
+      learningIntake = fallbackResult.intake;
+      reasonCodes.push(
+        POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.INVALID_QUESTION_REDUCTION_PROOF
+      );
+    }
+  } else {
+    questionReduction = buildQuestionReductionSummary(questionReductionPlan);
+  }
+
+  if (!learningDecision) {
+    if (questionReduction.statusId === 'valid') {
+      requestTimeDecision = buildPolicyRequestTimeLearningDecisionFromQuestionReductionPlan({
+        questionReductionPlan,
+        requestEvent,
+      });
+      learningDecision = requestTimeDecision.learningDecision;
+      learningIntake = requestTimeDecision.intake;
+      reasonCodes.push(
+        POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.VALID_QUESTION_REDUCTION_PROOF
+      );
+    } else {
+      const fallbackResult = buildOutcomeOnlyLearningDecision(requestEvent);
+      learningDecision = fallbackResult.decision;
+      learningIntake = fallbackResult.intake;
+      reasonCodes.push(
+        questionReduction.statusId === 'invalid'
+          ? POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.INVALID_QUESTION_REDUCTION_PROOF
+          : POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.MISSING_QUESTION_REDUCTION_PROOF
+      );
+    }
   }
 
   const result = {
