@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Library Rebuild Global Retirement Gate**: A server-owned, transaction-
+  scoped aggregate now rebuilds compact final-removal plans for every current
+  enabled policy against one removal inventory. It emits a fingerprint-bound,
+  non-executing repository-retirement proposal, fails closed on incomplete or
+  mismatched evidence, and cannot mutate source, delete runtime data, route
+  media, or add browser controls.
+
 - **Library Rebuild Final-Removal Audit**: A server-owned, transaction-scoped
   audit now recomputes cutover readiness and the current removal inventory
   before producing a compact per-library release-retirement plan. It blocks

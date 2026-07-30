@@ -4470,6 +4470,12 @@ Tasks:
   bind them to one current removal inventory and release state, and report a
   non-executing repository-retirement decision. It must fail closed and must
   not delete, hide, archive, route, or expose a browser control.
+- **6R.6.11 Library Rebuild Legacy-Path Controlled Repository Retirement**:
+  use a ready 6R.6.10 result only as a release prerequisite for one small,
+  version-controlled source-removal change. Delete the classified legacy
+  artifacts and unreachable references/tests/docs together, keep the running
+  service without repository-write authority, and require normal CI and
+  deployment-health gates before release.
 - Use old impact/replay/parity tooling only as migration verification machinery,
   not product workflow.
 - Define a migration preview that compares legacy policy behavior to generated
@@ -4571,6 +4577,14 @@ Implementation status:
   readiness, inventory drift, and forged execution permissions, and stops at
   the deployment-wide release-retirement boundary without deleting, hiding,
   archiving, routing, or exposing a browser control.
+- The global release-retirement decision, design, and outcome are documented
+  in [Policy Library-Rebuild Legacy Global Release Retirement Gate](policy-library-rebuild-legacy-global-release-retirement-gate.md).
+  `policyLibraryRebuildLegacyGlobalReleaseRetirementGateService.mjs` now locks
+  the current enabled-policy inventory, rebuilds each compact final-removal
+  plan against one inventory and timestamp, and emits only a fingerprint-bound
+  repository-retirement proposal. Missing, duplicate, invalid, stale, or
+  mismatched evidence fails closed; it cannot mutate the repository, delete
+  runtime data, route media, or add a browser control.
 - `server/src/services/policyMigrationVerifierRollback.mjs` consumes the
   preview contract while retaining rebuild acceptance, rollback, fingerprint,
   trace, and deletion gates. It rejects ambiguous old/new sample input names.
