@@ -4970,6 +4970,12 @@ Implementation status:
   runtime evidence projection fingerprint and fails validation when a decision
   lacks that proof, carries malformed fingerprint data, exposes raw provenance,
   or reports a trace fingerprint that differs from the evidence block.
+- Queue-dispatched classification now has a separate server-owned decision
+  adapter. It revalidates the fresh queue evidence admission, binds the existing
+  automation decision to opaque task/evidence/execution fingerprints, rejects
+  raw or unsupported inputs, and remains side-effect-free without changing
+  worker behavior. The design and outcome are documented in [Policy Runtime
+  Queue Automation Decision](policy-runtime-queue-automation-decision.md).
 - The decision contract also requires nested runtime evidence validation proof
   and rejects decisions whose bounded trace evidence-valid attribute disagrees
   with the evidence block.

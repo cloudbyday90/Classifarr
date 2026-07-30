@@ -126,10 +126,8 @@ Cons:
 - Projection, automation-decision, and inventory suites verify reuse of the
   existing evidence and policy contracts.
 
-## Next Task
+## Follow-On Contract
 
-Phase 7R.3, Automation Decision Contract, should consume a ready queue-evidence
-admission result and enforce its execution fingerprint immediately before a
-classification task can auto-route, classify-only, ask, skip, or block. It must
-remain server-owned and separate decision construction from queue mutation or
-routing execution.
+The Phase 7R.3 queue decision adapter now consumes a ready admission, enforces
+its execution fingerprint, and binds the decision to its fresh evidence. See
+[Policy Runtime Queue Automation Decision](policy-runtime-queue-automation-decision.md).

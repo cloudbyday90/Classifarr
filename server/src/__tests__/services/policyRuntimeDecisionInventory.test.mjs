@@ -146,6 +146,7 @@ describe('policyRuntimeDecisionInventory', () => {
       'server/src/services/policyRuntimeEvidenceProjection.mjs',
       'server/src/services/policyRuntimeEvidenceFingerprint.mjs',
       'server/src/services/policyRuntimeQueueEvidenceAdmission.mjs',
+      'server/src/services/policyRuntimeQueueAutomationDecision.mjs',
       'server/src/services/policyAutomationDecisionContract.mjs',
       'server/src/services/policyRuntimeQuestionReduction.mjs',
       'server/src/services/policyRequestTimeLearning.mjs',

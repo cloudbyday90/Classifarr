@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Runtime Queue Automation Decision**: Classification queue work now derives
+  a side-effect-free automation decision only from revalidated fresh evidence,
+  binds it to opaque execution provenance, and fails closed on altered,
+  unsupported, or raw queue data.
+
 - **Runtime Queue Evidence Admission**: Classification queue work now has a
   server-owned, side-effect-free boundary that rebuilds runtime evidence from
   allowlisted current inputs, rejects cached decision/projection data, and

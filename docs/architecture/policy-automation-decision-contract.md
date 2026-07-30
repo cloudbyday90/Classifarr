@@ -12,6 +12,11 @@ Decision construction now separates the explicit runtime-input adapter from the
 projection-only reducer. The reducer accepts a verified runtime evidence
 projection and operational decision facts; it rejects raw evidence fields.
 
+Queue execution uses a separate adapter so queue transport provenance remains
+outside this general reducer. The adapter revalidates fresh queue evidence and
+binds an existing decision to opaque execution provenance before a later queue
+executor may act.
+
 ## Problem
 
 The existing runtime path historically allowed several states to blur together:
@@ -144,6 +149,8 @@ Cons:
   `server/src/__tests__/services/policyAutomationDecisionContract.test.mjs`
 - Runtime evidence dependency:
   `server/src/services/policyRuntimeEvidenceProjection.mjs`
+- Queue execution adapter:
+  `server/src/services/policyRuntimeQueueAutomationDecision.mjs`
 - Decision input-boundary outcome:
   `docs/architecture/policy-automation-decision-input-boundary.md`
 - Roadmap owner:
