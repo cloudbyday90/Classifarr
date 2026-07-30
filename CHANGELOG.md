@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Runtime Metrics Persistence Admission**: Validated runtime metrics now pass
+  through a server-owned, no-write admission boundary that retains only a
+  minimized fingerprinted snapshot, requires a bounded expiration policy, and
+  keeps storage and telemetry export disabled until a separately reviewed sink
+  integration exists.
+
 - **Request-Time Learning Provenance Cutover**: Request/import terminal
   admission now accepts only task- and attempt-bound queue proof. Obsolete
   direct generic-plan input has been removed and a source-backed audit prevents

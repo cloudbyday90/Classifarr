@@ -8,7 +8,8 @@ trace projection.
 This change does not persist telemetry, export spans, or add an observability
 backend. It removes temporary roadmap naming from the production metrics/trace
 contract while preserving bounded counters, sanitized traces, and action-only
-operator summaries.
+operator summaries. A separate persistence-admission contract now limits a
+future sink to a minimized, retention-bound no-write snapshot.
 
 ## Official Guidance Reviewed
 
@@ -63,8 +64,8 @@ Cons:
 
 - Leaves native intent storage readiness architecture naming for a later
   cutover slice.
-- Does not persist or export telemetry; transport and retention remain later
-  integration work.
+- Does not persist or export telemetry; physical expiry and transport remain
+  later integration work after admission.
 - Requires downstream consumers to import the renamed metrics contract.
 
 ## Final Implementation Stack
@@ -78,7 +79,7 @@ Cons:
 6. Move the rebuild fingerprint-set version to
    `policy.library_policy_rebuild_guarded_outcome_fingerprint_set.v1`.
 7. Replace the contract-local audit handoff with
-   `nextStep.stepId = runtime_rebuild_test_reset`.
+   `nextStep.stepId = runtime_metrics_persistence_admission`.
 8. Use the runtime completion audit to verify the semantic `nextStep` handoff sequence.
 9. Update direct runtime consumers, docs, changelog, and naming regression
    baseline after inventory validation proves the count decreased.
@@ -88,6 +89,8 @@ Cons:
 - The projection does not call providers.
 - The projection does not persist metrics.
 - The projection does not export telemetry.
+- A separate admission contract must minimize and retention-bind any future
+  metrics snapshot before it reaches a sink.
 - The projection does not write policies, learning, routing, or rollback state.
 - Trace records can carry only supported SHA-256 source fingerprints.
 - Raw payloads, prompts, embeddings, provider payloads, replay payloads, impact
@@ -124,5 +127,5 @@ npm --prefix server run test:unit -- --no-coverage --runInBand
 
 ## Next Step
 
-Continue with native intent storage readiness after runtime cutover records are
-durable.
+Complete the runtime metrics persistence-admission and test-reset handoff before
+considering a telemetry sink or Phase 8R storage work.

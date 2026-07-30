@@ -135,6 +135,7 @@ const REQUIRED_RUNTIME_CONTRACT_SURFACE_PATHS = Object.freeze([
   'server/src/services/policyLibraryRebuildAcceptanceTransition.mjs',
   'server/src/services/policyMigrationVerifierRollback.mjs',
   'server/src/services/policyRuntimeMetricsTrace.mjs',
+  'server/src/services/policyRuntimeMetricsPersistenceAdmission.mjs',
 ]);
 
 const RUNTIME_ARTIFACTS = Object.freeze([
@@ -831,6 +832,16 @@ const RUNTIME_ARTIFACTS = Object.freeze([
     decisionId: POLICY_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
     authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
     replacementTarget: 'Bounded runtime metrics and decision trace projection',
+    riskIds: [],
+    normalRuntimeAuthorityAllowed: true,
+  },
+  {
+    path: 'server/src/services/policyRuntimeMetricsPersistenceAdmission.mjs',
+    owner: 'policy-runtime-contract',
+    stageId: POLICY_RUNTIME_STAGE_IDS.RUNTIME_ROUTE,
+    decisionId: POLICY_RUNTIME_DECISION_IDS.KEEP_RUNTIME_ENGINE_PRIMITIVE,
+    authoritySourceId: AUTHORITY_SOURCE_IDS.OPERATOR_DECLARED_INTENT,
+    replacementTarget: 'Bounded runtime metrics persistence admission with retention and telemetry export disabled',
     riskIds: [],
     normalRuntimeAuthorityAllowed: true,
   },

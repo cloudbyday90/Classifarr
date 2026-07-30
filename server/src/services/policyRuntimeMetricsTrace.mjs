@@ -750,9 +750,9 @@ function buildPolicyRuntimeMetricsTraceAudit(
     checkedTraceCount: asArray(metrics.traces).length,
     validation,
     nextStep: {
-      stepId: 'runtime_rebuild_test_reset',
-      label: 'Runtime And Rebuild Test Reset',
-      reason: 'Runtime metrics and traces now expose bounded counters and reason codes, so runtime/rebuild tests can be reset around the new behavior.',
+      stepId: 'runtime_metrics_persistence_admission',
+      label: 'Runtime Metrics Persistence Admission',
+      reason: 'Runtime metrics and traces now expose bounded counters and reason codes, so a minimized snapshot can be admitted before any future sink integration.',
     },
   };
 }

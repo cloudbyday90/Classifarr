@@ -9,9 +9,11 @@ request-time learning decisions, rebuild proposals, migration verifier
 reports, and rebuild lifecycle events into bounded counters, sanitized trace
 records, and action-oriented operator summaries. Trace records retain
 supported upstream source fingerprints for correlation without copying raw
-evidence. It does not persist telemetry, export to an observability backend,
-expose raw provider payloads, or surface diagnostic internals as normal policy
-UI.
+evidence. The projection does not itself persist telemetry or export to an
+observability backend; the separate persistence-admission contract now reduces
+validated projection output to a retention-bound, no-write snapshot before any
+future sink can be considered. Neither contract exposes raw provider payloads
+or surfaces diagnostic internals as normal policy UI.
 
 Metrics construction now separates raw runtime adaptation from the
 decision-only aggregation reducer. The reducer accepts a valid normalized
@@ -102,7 +104,7 @@ Pros:
 Cons:
 
 - Does not yet persist metrics or export to OpenTelemetry.
-- Later integration must decide retention and transport.
+- A later sink still must implement physical expiry and transport controls.
 - Counts are only as complete as the policy runtime contract events passed into
   the projection.
 - Source correlation is intentionally limited to known SHA-256 fingerprint
@@ -140,8 +142,8 @@ Cons:
 7. Suppress raw payloads, prompts, embeddings, provider payloads, and diagnostic
    internals.
 8. Surface only action-oriented operator summaries.
-9. Leave persistence, retention, and OpenTelemetry export to a later integration
-   slice.
+9. Pass only a valid projection through the separate persistence admission
+   boundary before any future storage or OpenTelemetry integration.
 10. Require normalized metrics input before aggregating counters or traces;
     preserve sensitive input only as a suppression marker.
 11. Keep operator summaries and validation diagnostics tied to the durable
@@ -153,6 +155,10 @@ Cons:
   `server/src/services/policyRuntimeMetricsTrace.mjs`
 - Runtime metrics-input normalizer:
   `server/src/services/policyRuntimeMetricsInput.mjs`
+- Runtime metrics persistence admission:
+  `server/src/services/policyRuntimeMetricsPersistenceAdmission.mjs`
+- Persistence-admission design:
+  `docs/architecture/policy-runtime-metrics-persistence-admission.md`
 - Metrics input-boundary outcome:
   `docs/architecture/policy-runtime-metrics-input-boundary.md`
 - Focused tests:
@@ -188,8 +194,9 @@ The service exports:
 ## Security And Data Handling
 
 - The projection does not call providers.
-- The projection does not persist metrics.
-- The projection does not export telemetry.
+- The projection does not persist metrics or export telemetry.
+- The adjacent persistence admission emits no storage or export side effect; it
+  retains only a minimized, retention-bound candidate snapshot in memory.
 - Trace records suppress raw payloads, prompts, embeddings, provider payloads,
   replay payloads, impact preview payloads, and diagnostic internals.
 - Trace records can carry supported upstream SHA-256 source fingerprints for
@@ -221,7 +228,8 @@ The focused test suite verifies:
 - unknown/negative/non-integer counters fail validation,
 - sensitive trace exposure fails validation,
 - trace summary mismatches fail validation,
-- the component audit points to `nextStep.stepId = runtime_rebuild_test_reset`.
+- the projection audit points to
+  `nextStep.stepId = runtime_metrics_persistence_admission`.
 
 ## Outcome
 
@@ -233,6 +241,7 @@ policy runtime contract outputs
   -> sanitized trace records with supported source-fingerprint correlation
   -> action-oriented operator summaries
   -> no persistence/export side effects
+  -> separate minimized persistence admission before a future sink
 ```
 
 This makes policy runtime behavior auditable without reintroducing noisy
@@ -240,6 +249,6 @@ diagnostic UI.
 
 ## Next Step
 
-Runtime And Rebuild Test Reset should categorize old runtime and rebuild tests,
-then define the regression coverage that protects the new evidence, automation,
-question, learning, rebuild, verifier, rollback, and metrics contracts.
+The persistence-admission contract now protects a future telemetry sink. Runtime
+and rebuild test reset must include that focused admission test before the
+Phase 7R completion audit advances to Phase 8R storage work.

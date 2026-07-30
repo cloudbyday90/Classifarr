@@ -44,6 +44,9 @@ import {
   buildPolicyRuntimeMetricsTraceAudit,
 } from './policyRuntimeMetricsTrace.mjs';
 import {
+  buildPolicyRuntimeMetricsPersistenceAdmissionAuditFromDefaultMetrics,
+} from './policyRuntimeMetricsPersistenceAdmission.mjs';
+import {
   buildPolicyRuntimeQuestionReductionFromRuntimeInput,
   buildPolicyRuntimeQuestionReductionAudit,
 } from './policyRuntimeQuestionReduction.mjs';
@@ -69,6 +72,7 @@ const POLICY_RUNTIME_COMPLETION_COMPONENT_IDS = Object.freeze({
   LIBRARY_REBUILD_REPLACEMENT_GATE: 'library_rebuild_replacement_gate',
   STRICT_CONSTRAINT_DESCRIPTORS: 'strict_constraint_descriptors',
   RUNTIME_METRICS_TRACE: 'runtime_metrics_trace',
+  RUNTIME_METRICS_PERSISTENCE_ADMISSION: 'runtime_metrics_persistence_admission',
   RUNTIME_REBUILD_TEST_RESET: 'runtime_rebuild_test_reset',
 });
 
@@ -275,8 +279,17 @@ const POLICY_RUNTIME_COMPLETION_COMPONENT_RECORDS = Object.freeze([
     docPath: 'docs/architecture/policy-runtime-metrics-trace-module-cutover.md',
     servicePath: 'server/src/services/policyRuntimeMetricsTrace.mjs',
     testPath: 'server/src/__tests__/services/policyRuntimeMetricsTrace.test.mjs',
-    expectedNextStepId: 'runtime_rebuild_test_reset',
+    expectedNextStepId: 'runtime_metrics_persistence_admission',
     evidence: 'Runtime and rebuild outcomes are projected into bounded counters, sanitized trace records, and action-oriented summaries.',
+  },
+  {
+    id: POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.RUNTIME_METRICS_PERSISTENCE_ADMISSION,
+    label: 'Runtime metrics persistence admission',
+    docPath: 'docs/architecture/policy-runtime-metrics-persistence-admission.md',
+    servicePath: 'server/src/services/policyRuntimeMetricsPersistenceAdmission.mjs',
+    testPath: 'server/src/__tests__/services/policyRuntimeMetricsPersistenceAdmission.test.mjs',
+    expectedNextStepId: 'runtime_rebuild_test_reset',
+    evidence: 'Validated runtime metrics become a minimized bounded snapshot with required retention and telemetry export disabled before any future sink integration.',
   },
   {
     id: POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.RUNTIME_REBUILD_TEST_RESET,
@@ -382,6 +395,8 @@ function buildDefaultComponentAudits() {
       buildPolicyStrictConstraintDescriptorAudit(),
     [POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.RUNTIME_METRICS_TRACE]:
       buildPolicyRuntimeMetricsTraceAudit(),
+    [POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.RUNTIME_METRICS_PERSISTENCE_ADMISSION]:
+      buildPolicyRuntimeMetricsPersistenceAdmissionAuditFromDefaultMetrics(),
     [POLICY_RUNTIME_COMPLETION_COMPONENT_IDS.RUNTIME_REBUILD_TEST_RESET]:
       buildPolicyRuntimeRebuildTestResetAudit(),
   };

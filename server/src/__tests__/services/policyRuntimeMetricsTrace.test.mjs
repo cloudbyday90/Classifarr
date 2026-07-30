@@ -489,8 +489,8 @@ describe('policyRuntimeMetricsTrace', () => {
     expect(audit.issueCount).toBe(0);
     expect(audit.checkedCounterCount).toBe(Object.keys(POLICY_RUNTIME_METRIC_COUNTER_IDS).length);
     expect(audit.nextStep).toEqual(expect.objectContaining({
-      stepId: 'runtime_rebuild_test_reset',
-      label: 'Runtime And Rebuild Test Reset',
+      stepId: 'runtime_metrics_persistence_admission',
+      label: 'Runtime Metrics Persistence Admission',
     }));
     expect(metrics.traces[0].reasons).toEqual(expect.arrayContaining([
       expect.objectContaining({

@@ -5531,13 +5531,17 @@ Implementation status:
 - Operator summaries are limited to action-oriented next steps such as configure
   routing, review pending items, refresh profile, review rebuild verifier, or no
   action required.
-- Metrics persistence and OpenTelemetry export remain future integration work;
-  this slice is a side-effect-free projection contract.
-- Next is Task 7R.8.1, **Runtime Metrics Persistence Admission**: add one
-  server-owned admission boundary for validated bounded metric and trace
-  summaries. It must enforce retention and export policy before any storage or
-  exporter integration, reject raw payload, prompt, embedding, and identity
-  fields, and add no operator UI controls.
+- Task 7R.8.1 is complete: the server-owned runtime metrics persistence
+  admission accepts only the validated metrics-trace contract, rejects
+  unsupported, raw, prompt, embedding, provider, and identity fields, and
+  produces only a minimized counter/trace-summary snapshot. It requires a
+  1-90 day `recorded_at` retention policy with a 30-day default, fingerprints
+  the snapshot, and keeps storage and OpenTelemetry export disabled. Its design
+  record is [Policy Runtime Metrics Persistence
+  Admission](policy-runtime-metrics-persistence-admission.md).
+- Metrics storage and OpenTelemetry export remain future integration work. Any
+  future sink must consume only a revalidated admitted snapshot, enforce
+  physical expiry, and add no ordinary policy-authoring control.
 
 ### 7R.9 Runtime And Rebuild Test Reset
 
@@ -5585,7 +5589,8 @@ Implementation status:
 - The reset now also verifies contract-to-test ownership: every required
   runtime service has a focused ESM test artifact that statically imports its
   declared service. Guarded-outcome projection and runtime-metrics input are
-  distinct required contracts; unknown, missing, or mismatched mappings fail
+  distinct required contracts, and the retention-bound metrics persistence
+  admission is also required; unknown, missing, or mismatched mappings fail
   closed. The design record is
   [Policy Runtime Rebuild Test Contract Coverage](policy-runtime-rebuild-test-contract-coverage.md).
 - Required reset coverage now explicitly includes broad genre no specialized
@@ -5645,10 +5650,11 @@ Implementation record:
   `server/src/services/policyRuntimeCompletionAudit.mjs`.
 - The focused completion audit suite lives in
   `server/src/__tests__/services/policyRuntimeCompletionAudit.test.mjs`.
-- Current completion audit verifies all thirteen runtime/rebuild components:
+- Current completion audit verifies all fourteen runtime/rebuild components:
   the runtime evidence and decision chain, library rebuild proposal and
   acceptance, migration verifier, persisted rollback snapshot, native
-  replacement, structured strict constraints, metrics, and test reset. Each
+  replacement, structured strict constraints, metrics trace, metrics
+  persistence admission, and test reset. Each
   must have current docs, services, focused tests, a passing component audit,
   and the expected semantic `nextStep` handoff before the native intent storage
   boundary can begin. It also requires the runtime/rebuild test reset to report

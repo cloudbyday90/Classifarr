@@ -31,7 +31,7 @@ describe('policyRuntimeRebuildTestReset', () => {
       [POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_QUESTION_CONTRACT]: 1,
       [POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_LEARNING_GUARD]: 5,
       [POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_REBUILD_VERIFIER]: 6,
-      [POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_RUNTIME_METRICS]: 2,
+      [POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_RUNTIME_METRICS]: 3,
     }));
     expect(reset.summary.existingArtifactCount).toBe(reset.summary.artifactCount);
     expect(reset.artifactAvailability.every(artifact =>
@@ -44,8 +44,8 @@ describe('policyRuntimeRebuildTestReset', () => {
       }),
     ]));
     expect(reset.validation.ok).toBe(true);
-    expect(reset.summary.requiredContractCount).toBe(15);
-    expect(reset.summary.coveredRequiredContractCount).toBe(15);
+    expect(reset.summary.requiredContractCount).toBe(16);
+    expect(reset.summary.coveredRequiredContractCount).toBe(16);
   });
 
   test('rejects missing or repository-escaping reset artifact paths', () => {
@@ -284,8 +284,8 @@ describe('policyRuntimeRebuildTestReset', () => {
       ok: true,
       issueCount: 0,
       artifactCount: reset.artifacts.length,
-      requiredContractCount: 15,
-      coveredRequiredContractCount: 15,
+      requiredContractCount: 16,
+      coveredRequiredContractCount: 16,
       nextStep: expect.objectContaining({
         stepId: 'completion_audit',
       }),

@@ -42,6 +42,7 @@ const POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS = Object.freeze({
   STRICT_CONSTRAINT_DESCRIPTORS: 'strict_constraint_descriptors',
   RUNTIME_METRICS_INPUT: 'runtime_metrics_input',
   RUNTIME_METRICS_TRACE: 'runtime_metrics_trace',
+  RUNTIME_METRICS_PERSISTENCE_ADMISSION: 'runtime_metrics_persistence_admission',
 });
 
 const POLICY_RUNTIME_TEST_RESET_AUDIT_RISK_IDS = Object.freeze({
@@ -98,6 +99,7 @@ const REQUIRED_CONTRACT_IDS = Object.freeze([
   POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.STRICT_CONSTRAINT_DESCRIPTORS,
   POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_METRICS_INPUT,
   POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_METRICS_TRACE,
+  POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_METRICS_PERSISTENCE_ADMISSION,
 ]);
 const CONTRACT_IMPORT_MARKERS = Object.freeze({
   [POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_EVIDENCE_PROJECTION]:
@@ -132,6 +134,8 @@ const CONTRACT_IMPORT_MARKERS = Object.freeze({
     '../../services/policyRuntimeMetricsInput.mjs',
   [POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_METRICS_TRACE]:
     '../../services/policyRuntimeMetricsTrace.mjs',
+  [POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_METRICS_PERSISTENCE_ADMISSION]:
+    '../../services/policyRuntimeMetricsPersistenceAdmission.mjs',
 });
 const SERVER_AUTHORITY_DECISION_IDS = Object.freeze([
   POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_EVIDENCE_PROJECTION,
@@ -453,6 +457,24 @@ const DEFAULT_TEST_RESET_ARTIFACTS = Object.freeze([
     deleteAfterMigration: false,
     normalWorkflowAllowed: true,
     traceReasons: ['runtime_metrics_rewrite'],
+  }),
+  Object.freeze({
+    path: 'server/src/__tests__/services/policyRuntimeMetricsPersistenceAdmission.test.mjs',
+    owner: 'server',
+    decisionId: POLICY_RUNTIME_TEST_RESET_DECISION_IDS.REWRITE_RUNTIME_METRICS,
+    coverageIds: [
+      POLICY_RUNTIME_TEST_RESET_COVERAGE_IDS.RUNTIME_METRICS_SUPPRESS_DIAGNOSTICS,
+    ],
+    contractIds: [
+      POLICY_RUNTIME_TEST_RESET_CONTRACT_IDS.RUNTIME_METRICS_PERSISTENCE_ADMISSION,
+    ],
+    replacement: 'Admit only minimized runtime metric snapshots with bounded retention and telemetry export disabled before any future sink integration.',
+    protectsAuthority: true,
+    distinguishesClassificationFromRouting: false,
+    preservesOldPreviewUi: false,
+    deleteAfterMigration: false,
+    normalWorkflowAllowed: true,
+    traceReasons: ['runtime_metrics_persistence_admission'],
   }),
 ]);
 
