@@ -29,6 +29,9 @@ import {
   buildPolicyRequestTimeLearningDecisionFromQuestionReductionPlan,
 } from './policyRequestTimeLearning.mjs';
 import {
+  buildPolicyRequestTimeTerminalRouteIntegrationAudit,
+} from './policyRequestTimeTerminalRouteIntegrationAudit.mjs';
+import {
   buildPolicyRequestTimeEvent,
 } from './policyRequestTimeEvent.mjs';
 import {
@@ -72,6 +75,7 @@ const POLICY_RUNTIME_COMPLETION_COMPONENT_IDS = Object.freeze({
 const POLICY_RUNTIME_COMPLETION_SUPPORTING_ARTIFACT_IDS = Object.freeze({
   NATIVE_PENDING_SELECTION: 'native_pending_selection',
   NATIVE_PENDING_ROUTE_OUTCOME: 'native_pending_route_outcome',
+  TERMINAL_ROUTE_INTEGRATION_AUDIT: 'terminal_route_integration_audit',
 });
 
 const POLICY_RUNTIME_COMPLETION_RISK_IDS = Object.freeze({
@@ -128,6 +132,20 @@ const REQUEST_TIME_LEARNING_SUPPORTING_ARTIFACTS = Object.freeze([
     testPaths: [
       'server/src/__tests__/services/policyNativePendingRouteOutcome.test.mjs',
       'server/src/__tests__/services/policyNativePendingRouteOutcomePersistence.test.mjs',
+    ],
+  }),
+  Object.freeze({
+    id: POLICY_RUNTIME_COMPLETION_SUPPORTING_ARTIFACT_IDS.TERMINAL_ROUTE_INTEGRATION_AUDIT,
+    label: 'Terminal request-time route integration audit',
+    evidence: 'Every current terminal request-time caller is source-checked for a guarded proof or explicit outcome-only fallback before later queue-proof activation.',
+    docPaths: [
+      'docs/architecture/policy-request-time-terminal-route-integration-audit.md',
+    ],
+    servicePaths: [
+      'server/src/services/policyRequestTimeTerminalRouteIntegrationAudit.mjs',
+    ],
+    testPaths: [
+      'server/src/__tests__/services/policyRequestTimeTerminalRouteIntegrationAudit.test.mjs',
     ],
   }),
 ]);
@@ -302,7 +320,25 @@ function buildPassingRequestTimeLearningAudit() {
     requestEvent,
   });
 
-  return buildPolicyRequestTimeLearningAudit(decision);
+  const requestTimeLearningAudit = buildPolicyRequestTimeLearningAudit(decision);
+  const terminalRouteIntegrationAudit = buildPolicyRequestTimeTerminalRouteIntegrationAudit();
+
+  return {
+    ...requestTimeLearningAudit,
+    ok: requestTimeLearningAudit.ok === true && terminalRouteIntegrationAudit.ok === true,
+    issueCount: (requestTimeLearningAudit.issueCount || 0) + terminalRouteIntegrationAudit.issues.length,
+    issues: [
+      ...(requestTimeLearningAudit.issues || []),
+      ...terminalRouteIntegrationAudit.issues,
+    ],
+    terminalRouteIntegrationAudit: {
+      version: terminalRouteIntegrationAudit.version,
+      ok: terminalRouteIntegrationAudit.ok,
+      callerCount: terminalRouteIntegrationAudit.callerCount,
+      coveredCallerCount: terminalRouteIntegrationAudit.coveredCallerCount,
+      queueQuestionReductionStatusId: terminalRouteIntegrationAudit.queueQuestionReduction.statusId,
+    },
+  };
 }
 
 function buildDefaultComponentAudits() {
@@ -531,6 +567,32 @@ function buildPolicyEngineCompletionSummary(audit = {}) {
   };
 }
 
+function buildComponentAuditSummary(audit = {}) {
+  const terminalRouteAudit = audit?.terminalRouteIntegrationAudit;
+
+  return {
+    version: typeof audit?.version === 'string' ? audit.version : null,
+    ok: audit?.ok === true,
+    issueCount: Number.isInteger(Number(audit?.issueCount))
+      ? Number(audit.issueCount)
+      : null,
+    terminalRouteIntegrationAudit: terminalRouteAudit
+      ? {
+        version: terminalRouteAudit.version || null,
+        ok: terminalRouteAudit.ok === true,
+        callerCount: Number.isInteger(Number(terminalRouteAudit.callerCount))
+          ? Number(terminalRouteAudit.callerCount)
+          : null,
+        coveredCallerCount: Number.isInteger(Number(terminalRouteAudit.coveredCallerCount))
+          ? Number(terminalRouteAudit.coveredCallerCount)
+          : null,
+        queueQuestionReductionStatusId:
+          terminalRouteAudit.queueQuestionReductionStatusId || null,
+      }
+      : null,
+  };
+}
+
 function buildPolicyRuntimeCompletionAudit({
   components = listPolicyRuntimeCompletionComponents(),
   componentAudits = buildDefaultComponentAudits(),
@@ -612,6 +674,7 @@ function buildPolicyRuntimeCompletionAudit({
       testContractCoverageOk,
       requiredSupportingArtifactCount: recordValidation.requiredSupportingArtifactCount,
       supportingArtifactChecks: recordValidation.supportingArtifactChecks,
+      auditSummary: buildComponentAuditSummary(componentAudit),
       issueCount: componentAudit?.issueCount ?? null,
       expectedNextStepId: record.expectedNextStepId || null,
       actualNextStepId: nextStepId,

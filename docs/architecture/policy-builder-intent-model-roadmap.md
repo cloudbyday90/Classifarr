@@ -5141,6 +5141,12 @@ Implementation status:
   attempt, admits terminal routing outcomes only, and preserves outcome-only
   fallback for invalid, stale, cross-task, or competing proof. Its design
   record is [Policy Request-Time Queue Question-Reduction Admission](policy-request-time-queue-question-reduction.md).
+- Request-time terminal-route integration is now audited by
+  `policyRequestTimeTerminalRouteIntegrationAudit.mjs`. It inventories the
+  request/import queue's direct-plan proof and outcome-only fallback alongside
+  native pending's outcome-only route persistence, and explicitly reports the
+  queue-bound proof adapter as available but not live until a producer exists.
+  Its design record is [Policy Request-Time Terminal-Route Integration Audit](policy-request-time-terminal-route-integration-audit.md).
 - Queue webhook history now writes the normalized selected library name rather
   than treating the legacy string result as an object.
 - The first live runtime adapter now handles authenticated manual classification

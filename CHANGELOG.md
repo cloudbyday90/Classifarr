@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Request-Time Terminal-Route Integration Audit**: The server now inventories
+  live request/import and native pending terminal-route callers, verifies their
+  guarded proof or outcome-only fallback, and accurately reports the
+  queue-bound proof adapter as available until a live producer exists. The
+  audit is read-only and cannot route, persist learning, refresh profiles, or
+  expose queue/provider data.
+
 - **Request-Time Queue Question-Reduction Admission**: Terminal request/import
   routing outcomes can now use only a revalidated, current-task-bound queue
   question-reduction proof before reaching the existing learning guard. Invalid,

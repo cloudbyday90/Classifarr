@@ -78,6 +78,12 @@ learning-guard decision; the adapter still does not synthesize evidence from a
 legacy result or label. The design record is [Policy Request-Import Fallback
 Learning Intake Adoption](policy-request-import-fallback-learning-intake-adoption.md).
 
+The terminal-route integration audit confirms this is the current live
+request/import proof path. The queue-bound proof adapter is supported by this
+admission contract but has no live queue producer yet, so it must not be
+reported as active automation. The audit and its caller inventory are documented
+in [Policy Request-Time Terminal-Route Integration Audit](policy-request-time-terminal-route-integration-audit.md).
+
 The queue stores the bounded admission result in the existing completed task
 payload after the classification path has already persisted the classification
 history and routing outcome. It also normalizes the destination when writing
@@ -139,6 +145,9 @@ Cons:
    completion and writes the normalized destination name to webhook history.
 6. `policyRequestTimeLearning.mjs` remains the sole request-time reducer when
    a valid native question-reduction plan is available.
+7. `policyRequestTimeTerminalRouteIntegrationAudit.mjs` prevents current
+   request/import and native pending terminal-route callers from silently
+   losing their guarded proof or outcome-only fallback.
 
 ## Verification
 

@@ -178,6 +178,10 @@ Cons:
   `server/src/services/policyRequestTimeQueueQuestionReduction.mjs`
 - Queue question-reduction admission design and outcome:
   `docs/architecture/policy-request-time-queue-question-reduction.md`
+- Terminal-route integration audit:
+  `server/src/services/policyRequestTimeTerminalRouteIntegrationAudit.mjs`
+- Terminal-route integration audit design and outcome:
+  `docs/architecture/policy-request-time-terminal-route-integration-audit.md`
 - Request-time input-boundary outcome:
   `docs/architecture/policy-request-time-learning-input-boundary.md`
 - Focused tests:
@@ -247,6 +251,9 @@ The service exports:
   task type, attempt, and re-computed execution fingerprint through the
   dedicated queue admission adapter. The adapter exposes opaque fingerprints
   only and accepts terminal routing outcomes only.
+- The terminal-route integration audit inventories the live request/import and
+  native pending callers. It requires a guarded proof or outcome-only fallback
+  and reports queue proof as inactive until a real queue producer exists.
 
 ## Test Coverage
 

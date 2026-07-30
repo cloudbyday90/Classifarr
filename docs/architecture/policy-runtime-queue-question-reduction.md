@@ -179,7 +179,7 @@ request-time consumer is separately bounded in
 
 ## Next Task
 
-Complete the Phase 7R.5 request-time integration audit: every request/import
-terminal routing caller must supply a validated direct or queue-bound proof, or
-explicitly retain the outcome-only fallback before it can ask the learning guard
-to consider durable evidence.
+Perform the Queue Question-Reduction Producer Cutline. The request-time
+integration audit now confirms the live queue caller uses a direct-plan proof
+with outcome-only fallback; queue-bound proof remains inactive until a real
+queue producer can supply current evidence without competing proof sources.
