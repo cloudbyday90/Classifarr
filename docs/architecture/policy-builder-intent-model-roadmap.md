@@ -4460,6 +4460,11 @@ Tasks:
   runtime authority confirmation, and a removal inventory. It must fail closed
   on missing or conflicting evidence and must not delete, hide, archive, route,
   or expose a browser control.
+- **6R.6.9 Library Rebuild Legacy-Path Final-Removal Audit**: consume only a
+  freshly evaluated 6R.6.8 artifact and the current server-owned removal
+  inventory to produce one non-executing, controlled final-removal plan.
+  Recheck provenance inside its own transaction, report exact blockers, and do
+  not delete, hide, archive, route, or expose a browser control.
 - Use old impact/replay/parity tooling only as migration verification machinery,
   not product workflow.
 - Define a migration preview that compares legacy policy behavior to generated
@@ -4544,6 +4549,15 @@ Implementation status:
   applies native replacement only after a current or newly persisted rollback
   snapshot. Its compact contract suppresses raw verification output, browser
   controls, direct routing, and legacy deletion authority.
+- The deletion-readiness decision, design, and outcome are documented in
+  [Policy Library-Rebuild Legacy Deletion Readiness](policy-library-rebuild-legacy-deletion-readiness.md).
+  `policyLibraryRebuildLegacyDeletionReadinessService.mjs` now loads exact
+  completed cutover provenance under shared locks and produces only a transient
+  readiness artifact. It requires a matching immutable receipt, replacement
+  event, expired-and-redacted un-restored rollback snapshot, one semantic
+  native authority, and a compact removal-inventory fingerprint. It writes no
+  readiness state and cannot delete, hide, archive, route, or expose a browser
+  control.
 - `server/src/services/policyMigrationVerifierRollback.mjs` consumes the
   preview contract while retaining rebuild acceptance, rollback, fingerprint,
   trace, and deletion gates. It rejects ambiguous old/new sample input names.

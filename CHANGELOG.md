@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Library Rebuild Deletion Readiness**: A server-only, read-only gate now
+  binds completed rebuild provenance to the exact verification receipt,
+  rollback snapshot/window disposition, replacement event, active native
+  authority, and compact removal inventory. It fails closed, never persists
+  deletion authorization, and cannot delete, hide, archive, route, or expose a
+  browser control.
+
 - **Server-Owned Rebuild Cutover**: Accepted library rebuilds now follow one
   idempotent server workflow that reuses a persisted verification
   receipt/rollback snapshot before applying native replacement. It stops with
