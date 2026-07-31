@@ -165,15 +165,7 @@ describe('policyBuilderBoundaryInventory', () => {
     });
   });
 
-  test('keeps empty-state recovery orchestration separate from presentation', () => {
-    expect(classifyPolicyBuilderClientPath('client/src/composables/usePolicyBuilderLibrarySync.js'))
-      .toEqual(expect.objectContaining({
-        category: POLICY_BUILDER_BOUNDARY_CATEGORIES.UI_ORCHESTRATION,
-        ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_ORCHESTRATION,
-        actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.KEEP_ORCHESTRATION,
-        clientEngineAuthorityAllowed: false,
-      }));
-
+  test('keeps empty-state guidance as presentation without recovery orchestration', () => {
     expect(classifyPolicyBuilderClientPath('client/src/components/policies/PolicyDestinationEmptyStateNotice.vue'))
       .toEqual(expect.objectContaining({
         category: POLICY_BUILDER_BOUNDARY_CATEGORIES.PRESENTATION_ONLY,

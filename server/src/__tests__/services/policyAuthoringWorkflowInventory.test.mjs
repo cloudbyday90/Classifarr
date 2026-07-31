@@ -93,7 +93,6 @@ describe('policyAuthoringWorkflowInventory', () => {
       'client/src/components/policies/PolicyBuilderLibraryContext.vue',
       'client/src/utils/policyBuilderLibraryGenreOptions.js',
       'client/src/composables/usePolicyBuilderReferenceData.js',
-      'client/src/composables/usePolicyBuilderLibrarySync.js',
     ].forEach((filePath) => {
       expect(classifyPolicyAuthoringWorkflowSurface(filePath)).toEqual(expect.objectContaining({
         decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,

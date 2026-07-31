@@ -14,97 +14,59 @@ function buildEmptyState(overrides = {}) {
   return {
     stateId: 'new_library',
     label: 'New library',
-    description: 'No observed profile is available yet.',
+    description: 'No observed profile is available yet. Declare the destination intent instead of treating an empty library as evidence.',
     nextAction: {
-      actionId: 'sync_media_server_library',
-      label: 'Sync library now',
-      busyLabel: 'Syncing library...',
-      busyMessage: 'Classifarr is syncing this library and refreshing its profile.',
-      targetId: 'policy-builder-library-context',
-      mode: 'sync_library',
+      actionId: 'add_declared_intent',
+      label: 'Add declared intent',
+      targetId: 'policy-builder-belongs-here',
+      mode: 'guidance',
     },
     ...overrides,
   }
 }
 
 describe('PolicyDestinationEmptyStateNotice.vue', () => {
-  it('renders and emits a bounded actionable next step', async () => {
+  it('renders new-library guidance without a browser recovery action', () => {
     const emptyState = buildEmptyState()
     const wrapper = mount(PolicyDestinationEmptyStateNotice, {
       props: { emptyState },
     })
 
     expect(wrapper.text()).toContain('New library')
-    expect(wrapper.text()).toContain('Sync library now')
-    expect(wrapper.text()).not.toContain('Next:')
-    expect(wrapper.get('button').attributes('aria-describedby'))
-      .toBe('policy-destination-empty-state-new_library-description')
-
-    await wrapper.get('button').trigger('click')
-    expect(wrapper.emitted('next-action')).toEqual([[emptyState]])
-  })
-
-  it('keeps progress feedback scoped to the action currently running', async () => {
-    const syncState = buildEmptyState()
-    const syncWrapper = mount(PolicyDestinationEmptyStateNotice, {
-      props: {
-        emptyState: syncState,
-        activeActionId: syncState.nextAction.actionId,
-        activeActionStatusId: 'policy-builder-empty-state-action-status',
-      },
-    })
-
-    expect(syncWrapper.get('button').text()).toBe('Syncing library...')
-    expect(syncWrapper.get('button').attributes('disabled')).toBeDefined()
-    expect(syncWrapper.get('button').attributes('aria-describedby'))
-      .toBe('policy-destination-empty-state-new_library-description policy-builder-empty-state-action-status')
-
-    await syncWrapper.get('button').trigger('click')
-    expect(syncWrapper.emitted('next-action')).toBeUndefined()
-
-    const mappingWrapper = mount(PolicyDestinationEmptyStateNotice, {
-      props: {
-        emptyState: buildEmptyState({
-          stateId: 'unmapped_library',
-          label: 'Unmapped library',
-          nextAction: {
-            actionId: 'map_routing_destination',
-            label: 'Open library mapping',
-            busyLabel: 'Opening library mapping...',
-            busyMessage: 'Classifarr is opening the library mapping page.',
-            targetId: 'library-arr-mapping',
-            mode: 'open_library_mapping',
-          },
-        }),
-        activeActionId: syncState.nextAction.actionId,
-        activeActionStatusId: 'policy-builder-empty-state-action-status',
-      },
-    })
-
-    expect(mappingWrapper.get('button').text()).toBe('Open library mapping')
-    expect(mappingWrapper.get('button').attributes('disabled')).toBeDefined()
-    expect(mappingWrapper.get('button').attributes('aria-describedby'))
-      .toBe('policy-destination-empty-state-unmapped_library-description policy-builder-empty-state-action-status')
-  })
-
-  it('keeps an unavailable declared-intent control as guidance instead of a dead button', () => {
-    const wrapper = mount(PolicyDestinationEmptyStateNotice, {
-      props: {
-        emptyState: buildEmptyState({
-          stateId: 'sparse_library',
-          label: 'Sparse library',
-          nextAction: {
-            actionId: 'add_declared_intent',
-            label: 'Add declared intent',
-            targetId: 'policy-builder-belongs-here',
-            mode: 'guidance',
-          },
-        }),
-      },
-    })
-
+    expect(wrapper.text()).toContain('Next:')
     expect(wrapper.text()).toContain('Add declared intent')
     expect(wrapper.text()).toContain('will not guess a destination')
+    expect(wrapper.text()).not.toContain('Sync library now')
     expect(wrapper.find('button').exists()).toBe(false)
+  })
+
+  it('keeps progress feedback scoped to an actionable mapping transition', async () => {
+    const mappingState = buildEmptyState({
+      stateId: 'unmapped_library',
+      label: 'Unmapped library',
+      nextAction: {
+        actionId: 'map_routing_destination',
+        label: 'Open library mapping',
+        busyLabel: 'Opening library mapping...',
+        busyMessage: 'Classifarr is opening the library mapping page.',
+        targetId: 'library-arr-mapping',
+        mode: 'open_library_mapping',
+      },
+    })
+    const wrapper = mount(PolicyDestinationEmptyStateNotice, {
+      props: {
+        emptyState: mappingState,
+        activeActionId: mappingState.nextAction.actionId,
+        activeActionStatusId: 'policy-builder-empty-state-action-status',
+      },
+    })
+
+    expect(wrapper.get('button').text()).toBe('Opening library mapping...')
+    expect(wrapper.get('button').attributes('disabled')).toBeDefined()
+    expect(wrapper.get('button').attributes('aria-describedby'))
+      .toBe('policy-destination-empty-state-unmapped_library-description policy-builder-empty-state-action-status')
+
+    await wrapper.get('button').trigger('click')
+    expect(wrapper.emitted('next-action')).toBeUndefined()
   })
 })

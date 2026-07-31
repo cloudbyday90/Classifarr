@@ -72,8 +72,8 @@ Cons:
 
 - An operator waits for the server lifecycle instead of forcing a browser
   retry.
-- Existing empty-state actions remain a separate concern and require their own
-  retirement decision.
+- The separate empty-state sync action required a follow-on retirement
+  decision.
 
 ## Final Recommendation Stack
 
@@ -88,6 +88,9 @@ Cons:
    they are not reintroduced as native evidence-recovery controls.
 5. Remove the retired paths from the outstanding legacy-removal inventory so
    future release gates fingerprint only remaining candidates.
+
+The separate new-library empty-state action is now retired as documented in
+[Policy Library-Rebuild Empty-State Sync Retirement](policy-library-rebuild-empty-state-sync-retirement.md).
 
 ## Implementation Outcome
 

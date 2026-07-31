@@ -4439,9 +4439,9 @@ Implementation status:
   [Native Profile Refresh Recovery-Retention Completion
   Audit](policy-native-profile-refresh-recovery-retention-completion-audit.md).
   The audit identified one separate Phase 6R.6 cutline: the initial native
-  creation workflow still contains a browser-triggered evidence-refresh path.
-  It is not part of persisted recovery or retention and must be classified as
-  replace or delete by the migration preview rather than changed incidentally.
+  creation workflow contained a browser-triggered evidence-refresh path. It is
+  now retired through the bounded migration cutline rather than treated as part
+  of persisted recovery or retention.
 - Successful native creation now remains visible through a compact handoff that
   reads the persisted policy before displaying declared-intent counts and
   routing state. It uses the successful create receipt when that follow-up read
@@ -4573,7 +4573,10 @@ Tasks:
     native-create browser refresh/reload panel, client state utility, tests,
     imports, and stale documentation. Render observed-signal controls only
     from current selectable server projection or server-admitted custom entry;
-    keep profile lifecycle recovery server-owned.
+    keep profile lifecycle recovery server-owned. Retire the remaining
+    `sync_media_server_library` empty-state action and its browser
+    `sync -> refresh -> reload` composable; a profile-less library must show
+    declared-intent guidance instead of recovery work.
   - **6R.6.11.2 Browser Impact And Replay Preview Retirement**: delete the
     legacy impact/replay cards, composables, utilities, tests, imports, and
     documentation from policy authoring while preserving the bounded
@@ -4696,6 +4699,11 @@ Implementation status:
   workflow read from the browser. The design and outcome are documented in
   [Policy Library-Rebuild Native Evidence Recovery
   Retirement](policy-library-rebuild-native-evidence-recovery-retirement.md).
+- The residual new-library `sync_media_server_library` browser path is also
+  retired. Missing persisted profiles now show declared-intent guidance; the
+  native-create browser cannot sync a library, refresh a profile, or reload the
+  workflow. The design and outcome are documented in [Policy Library-Rebuild
+  Empty-State Sync Retirement](policy-library-rebuild-empty-state-sync-retirement.md).
 - Browser impact/replay preview retirement is complete. The current removal
   inventory, modal orchestration contract, and migration candidate report no
   longer describe the browser family already deleted from source; bounded

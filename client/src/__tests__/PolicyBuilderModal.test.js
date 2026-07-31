@@ -810,6 +810,7 @@ describe('PolicyBuilderModal.vue', () => {
     expect(Array.from(document.body.querySelectorAll('button')).some(button => (
       button.textContent.includes('Refresh library profile')
       || button.textContent.includes('Try evidence check again')
+      || button.textContent.includes('Sync library now')
     ))).toBe(false);
     expect(api.refreshLibraryProfile).not.toHaveBeenCalled();
   });

@@ -4,11 +4,11 @@ Status: implemented as Phase 3R.8.4 keyboard recovery-flow behavior.
 
 ## Scope
 
-Policy authoring has bounded recovery actions for refreshing library evidence,
-retrying a workflow read, synchronizing an empty library, and opening the
-library mapping destination. These actions can update or replace the control
-that initiated them, so a keyboard user must never lose their place in the
-application.
+Policy authoring has one bounded navigation action for opening the library
+mapping destination. Missing or stale observed evidence is read-only guidance
+and server-owned lifecycle state, not a browser recovery action. Navigation
+can replace the initiating control, so a keyboard user must never lose their
+place in the application.
 
 This design covers modal semantics, keyboard containment, recovery-action
 completion, and the successful mapping-route handoff. It does not change
@@ -47,7 +47,7 @@ Official sources reviewed as of June 2026:
 2. Capture the invoking element only when a modal opens and restore it on an
    ordinary close. Support an explicit no-return path for a completed action
    that has moved the operator to a new workflow.
-3. Preserve recovery focus without creating focus churn:
+3. Preserve mapping-navigation focus without creating focus churn:
    - if the initiating action still exists and is enabled after completion,
      return focus to it;
    - if it was removed by the rerender, focus the current workflow result;
@@ -58,7 +58,7 @@ Official sources reviewed as of June 2026:
    configuration. Keep the modal open and clear the handoff when navigation is
    cancelled or blocked.
 5. Keep ordinary status changes as live announcements only. Do not focus every
-   refresh, warning, or successful result.
+   warning or successful result.
 
 ## Pros And Cons
 
@@ -106,9 +106,10 @@ Official sources reviewed as of June 2026:
 
 The policy builder now opens in a labelled modal dialog with focus on its
 orienting title, keeps keyboard navigation inside the dialog, closes with
-Escape, and restores focus to the opener for normal close paths. Recovery
-refresh, retry, and sync actions preserve focus when possible and move it to
-the current workflow result only when their initiating control disappears.
+Escape, and restores focus to the opener for normal close paths. Declared-
+intent guidance does not start browser work or move focus; mapping navigation
+preserves focus when possible and moves it to the current workflow result only
+when its initiating control disappears.
 
 When an empty-state mapping action succeeds, the modal suppresses its normal
 focus restoration and sends focus to the library mapping section. The handoff

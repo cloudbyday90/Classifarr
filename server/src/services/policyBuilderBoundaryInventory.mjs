@@ -95,17 +95,6 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     matches: (filePath) => filePath.endsWith('/usePolicyOperatorWorkflow.js'),
   },
   {
-    id: 'policy_library_sync_recovery_orchestration',
-    category: POLICY_BUILDER_BOUNDARY_CATEGORIES.UI_ORCHESTRATION,
-    ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_ORCHESTRATION,
-    actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.KEEP_ORCHESTRATION,
-    clientEngineAuthorityAllowed: false,
-    engineCutlineDecisionRequired: false,
-    riskIds: [],
-    notes: 'The library-sync recovery composable coordinates explicit authenticated recovery and a profile reread. It cannot infer intent, decide automation, or route media.',
-    matches: (filePath) => filePath.endsWith('/usePolicyBuilderLibrarySync.js'),
-  },
-  {
     id: 'policy_builder_tests',
     category: POLICY_BUILDER_BOUNDARY_CATEGORIES.TEST_BOUNDARY,
     ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.TEST_CONTRACT,

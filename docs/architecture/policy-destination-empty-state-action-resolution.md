@@ -4,9 +4,10 @@ Status: implemented as durable destination-first policy-authoring behavior.
 
 ## Scope
 
-Destination empty states present a single bounded recovery action when the
-current library cannot yet establish enough context for a policy. This work
-keeps progress feedback attached to the action that actually started it.
+Destination empty states present either declared-intent guidance or one bounded
+navigation action when the current library cannot establish enough context for
+a policy. This work keeps progress feedback attached only to the action that
+actually started it.
 
 It does not infer policy intent, add actions, route media, expand the browser's
 authority, expose diagnostics, change database schema, or alter provider and
@@ -30,14 +31,13 @@ Official sources reviewed as of June 2026:
 
 ## Recommendations
 
-1. Keep the normal label, busy label, and concise busy message in the audited
-   server-owned empty-state projection.
+1. Keep the normal label, and, for actionable transitions only, the busy label
+   and concise busy message in the audited server-owned empty-state projection.
 2. Pass the active action identifier through the modal, workflow shell, and
    destination-question components. Do not send a shared boolean that makes
    unrelated actions appear in progress.
 3. Render the active action's busy label and one workflow-level polite status
-   message. Disable competing empty-state actions until the active operation
-   resolves.
+   message. Guidance states remain text-only and cannot start browser work.
 4. Associate each actionable button with its visible empty-state explanation.
 5. Show the static `Next` text only for guidance-only states, where no button
    exists. An actionable card's button already expresses the next step.
@@ -48,8 +48,8 @@ Official sources reviewed as of June 2026:
 
 ### Pros
 
-- Prevents an open-mapping action from being mislabeled as a library sync.
-- Preserves a single bounded recovery action for each destination state.
+- Prevents an open-mapping action from being mislabeled as profile recovery.
+- Keeps missing-library evidence from becoming a browser-controlled sync path.
 - Provides visible and programmatic progress without moving focus.
 - Protects against concurrent empty-state actions and leaves retry available
   after a navigation failure.
@@ -58,8 +58,8 @@ Official sources reviewed as of June 2026:
 
 ### Cons
 
-- The workflow projection adds two small presentation fields for actionable
-  states.
+- The workflow projection adds two small presentation fields only for
+  actionable states.
 - The modal maintains one transient action identifier while an operation runs.
 - Existing clients that receive an older projection retain the normal action
   label as a safe fallback instead of presenting specialized busy copy.
@@ -87,11 +87,11 @@ Official sources reviewed as of June 2026:
 
 | Action | Normal label | Busy label | Polite status |
 | --- | --- | --- | --- |
-| Library sync | Sync library now | Syncing library... | Classifarr is syncing this library and refreshing its profile. |
+| Add declared intent | Add declared intent | Not applicable | Not applicable; this is guidance. |
 | Open mapping | Open library mapping | Opening library mapping... | Classifarr is opening the library mapping page. |
 
 Only the action whose identifier matches the modal's active action ID receives
 the busy label. One workflow-level status names the active operation and is
 referenced by every temporarily disabled empty-state action. Guidance-only
-sparse-library states remain text-only and do not acquire a non-functional
-button.
+new-library and sparse-library states remain text-only and do not acquire a
+non-functional button or browser recovery behavior.

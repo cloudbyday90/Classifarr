@@ -107,7 +107,7 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
     expect(wrapper.text()).toContain('A current library profile is not available yet.')
   })
 
-  it('puts bounded empty-state actions in their owning destination question', async () => {
+  it('keeps new-library guidance in its owning destination question without a recovery action', async () => {
     const workflowRead = buildWorkflowRead()
     workflowRead.emptyStateProjection = {
       version: 'policy.operator_workflow_empty_state.v1',
@@ -116,14 +116,12 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
           stateId: 'new_library',
           sectionId: 'what_belongs_here',
           label: 'New library',
-          description: 'No observed profile is available yet.',
+          description: 'No observed profile is available yet. Declare the destination intent instead of treating an empty library as evidence.',
           nextAction: {
-            actionId: 'sync_media_server_library',
-            label: 'Sync library now',
-            busyLabel: 'Syncing library...',
-            busyMessage: 'Classifarr is syncing this library and refreshing its profile.',
-            targetId: 'policy-builder-library-context',
-            mode: 'sync_library',
+            actionId: 'add_declared_intent',
+            label: 'Add declared intent',
+            targetId: 'policy-builder-belongs-here',
+            mode: 'guidance',
           },
         },
         {
@@ -149,16 +147,17 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
 
     const belongsHereArticle = wrapper.find('#policy-builder-workflow-what_belongs_here-title').element.closest('article')
     const routingArticle = wrapper.find('#policy-builder-workflow-can_this_route-title').element.closest('article')
-    expect(belongsHereArticle?.textContent).toContain('Sync library now')
+    expect(belongsHereArticle?.textContent).toContain('Add declared intent')
+    expect(belongsHereArticle?.textContent).not.toContain('Sync library now')
     expect(routingArticle?.textContent).toContain('Open library mapping')
 
-    await wrapper.findAll('button').find(button => button.text() === 'Sync library now').trigger('click')
+    await wrapper.findAll('button').find(button => button.text() === 'Open library mapping').trigger('click')
     expect(wrapper.emitted('empty-state-action')?.[0]?.[0]).toEqual(
-      workflowRead.emptyStateProjection.states[0]
+      workflowRead.emptyStateProjection.states[1]
     )
   })
 
-  it('forwards an empty-state action ID without relabeling other recovery actions', () => {
+  it('forwards only the active mapping transition status', () => {
     const workflowRead = buildWorkflowRead()
     workflowRead.emptyStateProjection = {
       version: 'policy.operator_workflow_empty_state.v1',
@@ -167,14 +166,12 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
           stateId: 'new_library',
           sectionId: 'what_belongs_here',
           label: 'New library',
-          description: 'No observed profile is available yet.',
+          description: 'No observed profile is available yet. Declare the destination intent instead of treating an empty library as evidence.',
           nextAction: {
-            actionId: 'sync_media_server_library',
-            label: 'Sync library now',
-            busyLabel: 'Syncing library...',
-            busyMessage: 'Classifarr is syncing this library and refreshing its profile.',
-            targetId: 'policy-builder-library-context',
-            mode: 'sync_library',
+            actionId: 'add_declared_intent',
+            label: 'Add declared intent',
+            targetId: 'policy-builder-belongs-here',
+            mode: 'guidance',
           },
         },
         {
@@ -198,16 +195,16 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
       props: {
         workflowRead,
         selectionEnabled: true,
-        activeEmptyStateActionId: 'sync_media_server_library',
+        activeEmptyStateActionId: 'map_routing_destination',
       },
     })
 
-    expect(wrapper.text()).toContain('Syncing library...')
-    expect(wrapper.text()).toContain('Open library mapping')
-    expect(wrapper.text()).not.toContain('Opening library mapping...')
+    expect(wrapper.text()).toContain('Add declared intent')
+    expect(wrapper.text()).toContain('Opening library mapping...')
+    expect(wrapper.text()).not.toContain('Syncing library...')
     expect(wrapper.findAll('[role="status"]')).toHaveLength(1)
     expect(wrapper.find('[role="status"]').text())
-      .toContain('syncing this library and refreshing its profile')
+      .toContain('opening the library mapping page')
   })
 
   it('keeps a failed workflow load as the only assertive announcement', () => {
@@ -221,92 +218,6 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
     expect(wrapper.findAll('[role="alert"]')).toHaveLength(1)
     expect(wrapper.findAll('[role="status"]')).toHaveLength(0)
     expect(wrapper.findAll('button')).toHaveLength(0)
-  })
-
-  it('describes disabled empty-state actions with an active profile-refresh status', () => {
-    const workflowRead = buildWorkflowRead()
-    workflowRead.emptyStateProjection = {
-      version: 'policy.operator_workflow_empty_state.v1',
-      states: [{
-        stateId: 'new_library',
-        sectionId: 'what_belongs_here',
-        label: 'New library',
-        description: 'No observed profile is available yet.',
-        nextAction: {
-          actionId: 'sync_media_server_library',
-          label: 'Sync library now',
-          busyLabel: 'Syncing library...',
-          busyMessage: 'Classifarr is syncing this library and refreshing its profile.',
-          targetId: 'policy-builder-library-context',
-          mode: 'sync_library',
-        },
-      }],
-    }
-
-    const wrapper = mount(PolicyBuilderWorkflowShell, {
-      props: {
-        workflowRead,
-        activeEmptyStateActionId: 'refresh_library_profile',
-        refreshing: true,
-      },
-    })
-
-    expect(wrapper.find('[role="status"]').text()).toContain('refreshing library evidence')
-    expect(wrapper.find('button').attributes('disabled')).toBeDefined()
-    expect(wrapper.find('button').attributes('aria-describedby'))
-      .toContain('policy-builder-library-profile-refresh-status')
-  })
-
-  it('announces an automatic refresh deferral without rendering a recovery action', () => {
-    const workflowRead = buildWorkflowRead()
-    workflowRead.observedProfile = {
-      available: false,
-      current: false,
-      intentSignalProjection: { options: [] },
-    }
-
-    const wrapper = mount(PolicyBuilderWorkflowShell, {
-      props: {
-        workflowRead,
-        selectionEnabled: true,
-        refreshResult: {
-          status: 'error',
-          tone: 'warning',
-          label: 'Refresh failed',
-          message: 'The queue is unavailable.',
-        },
-      },
-    })
-
-    expect(wrapper.findAll('[role="alert"]')).toHaveLength(1)
-    expect(wrapper.findAll('[role="status"]')).toHaveLength(0)
-    expect(wrapper.find('[role="alert"]').text()).toContain('Refresh failed: The queue is unavailable.')
-    expect(wrapper.findAll('button')).toHaveLength(0)
-  })
-
-  it('announces a completed refresh only when current evidence needs no recovery', () => {
-    const workflowRead = buildWorkflowRead()
-    workflowRead.observedProfile.intentSignalProjection = {
-      options: [{ candidateId: 'genre:Animation:purpose', selectable: true }],
-    }
-
-    const wrapper = mount(PolicyBuilderWorkflowShell, {
-      props: {
-        workflowRead,
-        selectionEnabled: true,
-        refreshResult: {
-          status: 'success',
-          tone: 'success',
-          label: 'Profile refreshed',
-          message: '2 genres are available from the current library profile.',
-        },
-      },
-    })
-
-    expect(wrapper.findAll('[role="status"]')).toHaveLength(1)
-    expect(wrapper.find('[role="status"]').text())
-      .toContain('Profile refreshed: 2 genres are available')
-    expect(wrapper.findAll('[role="alert"]')).toHaveLength(0)
   })
 
   it('keeps native observed values unavailable until server-owned profile refresh completes', () => {

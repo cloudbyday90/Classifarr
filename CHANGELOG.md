@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Native Creation Evidence-Recovery Cutline**: A profile-less library now
+  receives declared-intent guidance instead of a browser-controlled library
+  sync, profile refresh, and workflow reload sequence. Native creation retains
+  server-owned evidence recovery and the bounded library-mapping navigation
+  action.
+
 - **Native Policy Recovery Admission**: Persisted policies now open the native
   summary only after the server confirms a valid active native intent read.
   Invalid, conflicting, or incomplete native state is read-only and cannot

@@ -108,26 +108,22 @@ Cons:
 - `client/src/composables/usePolicyOperatorWorkflow.js`
   - validates the versioned display-only read contract and discards stale
     library responses before they reach the workflow shell.
-- `client/src/composables/usePolicyBuilderLibrarySync.js`
-  - coordinates only the explicit authenticated recovery sequence of library
-    sync followed by profile refresh; it has no engine authority.
 
 ## Current Inventory Summary
 
-The live client tree currently classifies 119 policy-builder paths:
+The live client tree currently classifies 101 policy-builder paths:
 
 | Decision | Count | Meaning |
 | --- | ---: | --- |
-| Keep | 36 | Useful as-is for destination-first authoring or implementation support. |
-| Rewrite | 73 | Concept survives, but current shape is tied to old modal, templates, tests, or migration support. |
-| Replace | 10 | Product need remains, but current UI or mechanic is the wrong model. |
+| Keep | 43 | Useful as-is for destination-first authoring or implementation support. |
+| Rewrite | 58 | Concept survives, but current shape is tied to old modal, templates, tests, or migration support. |
 
 Role split:
 
 | Role | Count |
 | --- | ---: |
-| Normal authoring path | 45 paths |
-| Migration/support-only path | 74 paths |
+| Normal authoring path | 44 paths |
+| Migration/support-only path | 57 paths |
 
 Normal authoring can include:
 

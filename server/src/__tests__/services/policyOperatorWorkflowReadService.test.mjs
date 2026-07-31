@@ -216,7 +216,7 @@ describe('policyOperatorWorkflowReadService', () => {
     expect(buildPolicyOperatorWorkflowReadAudit(result).ok).toBe(true);
   });
 
-  test('maps a missing persisted profile to a sync action without relabeling other profile failures', async () => {
+  test('maps a missing persisted profile to declared-intent guidance without relabeling other profile failures', async () => {
     const { service } = buildService({ profile: null });
 
     const result = await service.getWorkflow({
@@ -231,14 +231,12 @@ describe('policyOperatorWorkflowReadService', () => {
         stateId: 'new_library',
         sectionId: 'what_belongs_here',
         label: 'New library',
-        description: 'No observed profile is available yet.',
+        description: 'No observed profile is available yet. Declare the destination intent instead of treating an empty library as evidence.',
         nextAction: {
-          actionId: 'sync_media_server_library',
-          label: 'Sync library now',
-          busyLabel: 'Syncing library...',
-          busyMessage: 'Classifarr is syncing this library and refreshing its profile.',
-          targetId: 'policy-builder-library-context',
-          mode: POLICY_OPERATOR_WORKFLOW_EMPTY_STATE_ACTION_MODE_IDS.SYNC_LIBRARY,
+          actionId: 'add_declared_intent',
+          label: 'Add declared intent',
+          targetId: 'policy-builder-belongs-here',
+          mode: POLICY_OPERATOR_WORKFLOW_EMPTY_STATE_ACTION_MODE_IDS.GUIDANCE,
         },
       }],
     });

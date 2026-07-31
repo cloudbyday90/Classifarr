@@ -69,7 +69,7 @@ describe('PolicyBuilderDestinationQuestions.vue', () => {
     expect(wrapper.text()).not.toContain('Next:')
   })
 
-  it('shows progress only on the empty-state action that is in flight', () => {
+  it('keeps new-library guidance actionless while mapping progress is in flight', () => {
     const wrapper = mount(PolicyBuilderDestinationQuestions, {
       props: {
         sections: buildSections(),
@@ -78,14 +78,12 @@ describe('PolicyBuilderDestinationQuestions.vue', () => {
             stateId: 'new_library',
             sectionId: 'what_belongs_here',
             label: 'New library',
-            description: 'No observed profile is available yet.',
+            description: 'No observed profile is available yet. Declare the destination intent instead of treating an empty library as evidence.',
             nextAction: {
-              actionId: 'sync_media_server_library',
-              label: 'Sync library now',
-              busyLabel: 'Syncing library...',
-              busyMessage: 'Classifarr is syncing this library and refreshing its profile.',
-              targetId: 'policy-builder-library-context',
-              mode: 'sync_library',
+              actionId: 'add_declared_intent',
+              label: 'Add declared intent',
+              targetId: 'policy-builder-belongs-here',
+              mode: 'guidance',
             },
           },
           {
@@ -103,18 +101,18 @@ describe('PolicyBuilderDestinationQuestions.vue', () => {
             },
           },
         ],
-        activeEmptyStateActionId: 'sync_media_server_library',
+        activeEmptyStateActionId: 'map_routing_destination',
         activeEmptyStateStatusId: 'policy-builder-empty-state-action-status',
       },
     })
 
     const buttons = wrapper.findAll('button')
-    expect(buttons.find(button => button.text() === 'Syncing library...')?.attributes('disabled')).toBeDefined()
-    expect(buttons.find(button => button.text() === 'Open library mapping')?.attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).toContain('Add declared intent')
+    expect(wrapper.text()).not.toContain('Sync library now')
+    expect(buttons.find(button => button.text() === 'Opening library mapping...')?.attributes('disabled')).toBeDefined()
     expect(wrapper.find('[role="status"]').exists()).toBe(false)
-    expect(buttons.find(button => button.text() === 'Syncing library...')?.attributes('aria-describedby'))
+    expect(buttons.find(button => button.text() === 'Opening library mapping...')?.attributes('aria-describedby'))
       .toContain('policy-builder-empty-state-action-status')
-    expect(wrapper.text()).not.toContain('Opening library mapping...')
   })
 
   it('renders observed signal selection only for selectable server projection', () => {

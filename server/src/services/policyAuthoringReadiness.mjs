@@ -26,12 +26,10 @@ const POLICY_AUTHORING_READINESS_ISSUE_IDS = Object.freeze({
 
 const POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS = Object.freeze({
   SAVE_POLICY: 'save_policy',
-  SYNC_MEDIA_SERVER_LIBRARY: 'sync_media_server_library',
   ADD_DECLARED_INTENT: 'add_declared_intent',
   REVIEW_INTENT_SECTION: 'review_intent_section',
   MAP_ROUTING_DESTINATION: 'map_routing_destination',
   REVIEW_HARD_LIMITS: 'review_hard_limits',
-  REFRESH_OBSERVED_PROFILE: 'refresh_observed_profile',
 });
 
 const POLICY_AUTHORING_READINESS_RISK_IDS = Object.freeze({
@@ -88,8 +86,8 @@ const POLICY_AUTHORING_READINESS_STATE_RECORDS = deepFreeze([
     label: 'Needs examples',
     tone: 'info',
     statusRole: 'status',
-    message: 'This destination needs more observed examples or an explicit declared intent.',
-    nextActionId: POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS.SYNC_MEDIA_SERVER_LIBRARY,
+    message: 'This destination needs explicit declared intent before it can rely on observed examples.',
+    nextActionId: POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS.ADD_DECLARED_INTENT,
   },
   {
     id: POLICY_AUTHORING_READINESS_STATE_IDS.NEEDS_REVIEW,
@@ -120,8 +118,8 @@ const POLICY_AUTHORING_READINESS_STATE_RECORDS = deepFreeze([
     label: 'Stale profile',
     tone: 'info',
     statusRole: 'status',
-    message: 'Refresh the observed library profile before trusting suggestions.',
-    nextActionId: POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS.REFRESH_OBSERVED_PROFILE,
+    message: 'Observed suggestions are unavailable because this library profile is stale. Add declared intent or defer this policy.',
+    nextActionId: POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS.ADD_DECLARED_INTENT,
   },
 ]);
 
@@ -129,11 +127,11 @@ const POLICY_AUTHORING_READINESS_ISSUE_RECORDS = deepFreeze([
   {
     issueId: POLICY_AUTHORING_READINESS_ISSUE_IDS.NO_OBSERVED_EXAMPLES,
     stateId: POLICY_AUTHORING_READINESS_STATE_IDS.NEEDS_EXAMPLES,
-    nextActionId: POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS.SYNC_MEDIA_SERVER_LIBRARY,
+    nextActionId: POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS.ADD_DECLARED_INTENT,
     flowStepId: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.REVIEW_OBSERVED_DESTINATION,
     componentId: POLICY_AUTHORING_COMPONENT_IDS.OBSERVED_PROFILE_SUMMARY,
-    destinationNextActionId: POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.SYNC_MEDIA_SERVER_LIBRARY,
-    message: 'Sync or add examples so the destination has observable context.',
+    destinationNextActionId: POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.ADD_DECLARED_INTENT,
+    message: 'Add declared intent while this destination has no usable observed examples.',
   },
   {
     issueId: POLICY_AUTHORING_READINESS_ISSUE_IDS.MISSING_DESTINATION_INTENT,
@@ -174,11 +172,11 @@ const POLICY_AUTHORING_READINESS_ISSUE_RECORDS = deepFreeze([
   {
     issueId: POLICY_AUTHORING_READINESS_ISSUE_IDS.OBSERVED_PROFILE_STALE,
     stateId: POLICY_AUTHORING_READINESS_STATE_IDS.STALE_PROFILE,
-    nextActionId: POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS.REFRESH_OBSERVED_PROFILE,
+    nextActionId: POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS.ADD_DECLARED_INTENT,
     flowStepId: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.REVIEW_OBSERVED_DESTINATION,
     componentId: POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_CONTEXT_CARD,
-    destinationNextActionId: POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.SYNC_MEDIA_SERVER_LIBRARY,
-    message: 'Refresh the observed library profile before using suggestions.',
+    destinationNextActionId: POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.ADD_DECLARED_INTENT,
+    message: 'Observed suggestions are stale; add declared intent or defer this policy.',
   },
 ]);
 

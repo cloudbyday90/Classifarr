@@ -54,6 +54,26 @@ describe('policyAuthoringReadiness', () => {
     expect(actionIds).not.toContain('native_constraint_storage');
   });
 
+  test('directs missing or stale observed evidence to declared intent without browser recovery vocabulary', () => {
+    expect(Object.values(POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS)).not.toContain('sync_media_server_library');
+    expect(Object.values(POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS)).not.toContain('refresh_observed_profile');
+
+    expect(getPolicyAuthoringReadinessStateRecord(POLICY_AUTHORING_READINESS_STATE_IDS.NEEDS_EXAMPLES))
+      .toEqual(expect.objectContaining({
+        nextActionId: POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS.ADD_DECLARED_INTENT,
+      }));
+    expect(getPolicyAuthoringReadinessIssueRecord(POLICY_AUTHORING_READINESS_ISSUE_IDS.NO_OBSERVED_EXAMPLES))
+      .toEqual(expect.objectContaining({
+        nextActionId: POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS.ADD_DECLARED_INTENT,
+        destinationNextActionId: POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.ADD_DECLARED_INTENT,
+      }));
+    expect(getPolicyAuthoringReadinessIssueRecord(POLICY_AUTHORING_READINESS_ISSUE_IDS.OBSERVED_PROFILE_STALE))
+      .toEqual(expect.objectContaining({
+        nextActionId: POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS.ADD_DECLARED_INTENT,
+        destinationNextActionId: POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.ADD_DECLARED_INTENT,
+      }));
+  });
+
   test('maps each readiness issue to exactly one next action and resolving component', () => {
     for (const issue of listPolicyAuthoringReadinessIssueRecords()) {
       expect(validatePolicyAuthoringReadinessIssue(issue.issueId)).toEqual(expect.objectContaining({

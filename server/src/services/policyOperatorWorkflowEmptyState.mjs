@@ -20,7 +20,6 @@ import {
 const POLICY_OPERATOR_WORKFLOW_EMPTY_STATE_VERSION = 'policy.operator_workflow_empty_state.v1';
 
 const POLICY_OPERATOR_WORKFLOW_EMPTY_STATE_ACTION_MODE_IDS = Object.freeze({
-  SYNC_LIBRARY: 'sync_library',
   OPEN_LIBRARY_MAPPING: 'open_library_mapping',
   GUIDANCE: 'guidance',
 });
@@ -37,11 +36,9 @@ const POLICY_OPERATOR_WORKFLOW_EMPTY_STATE_AUDIT_RISK_IDS = Object.freeze({
 const EMPTY_STATE_PRESENTATION = Object.freeze({
   [POLICY_AUTHORING_DESTINATION_EMPTY_STATE_IDS.NEW_LIBRARY]: Object.freeze({
     sectionId: POLICY_AUTHORING_DESTINATION_QUESTION_IDS.WHAT_BELONGS_HERE,
-    actionLabel: 'Sync library now',
-    busyLabel: 'Syncing library...',
-    busyMessage: 'Classifarr is syncing this library and refreshing its profile.',
-    targetId: 'policy-builder-library-context',
-    actionMode: POLICY_OPERATOR_WORKFLOW_EMPTY_STATE_ACTION_MODE_IDS.SYNC_LIBRARY,
+    actionLabel: 'Add declared intent',
+    targetId: 'policy-builder-belongs-here',
+    actionMode: POLICY_OPERATOR_WORKFLOW_EMPTY_STATE_ACTION_MODE_IDS.GUIDANCE,
   }),
   [POLICY_AUTHORING_DESTINATION_EMPTY_STATE_IDS.SPARSE_LIBRARY]: Object.freeze({
     sectionId: POLICY_AUTHORING_DESTINATION_QUESTION_IDS.WHAT_BELONGS_HERE,

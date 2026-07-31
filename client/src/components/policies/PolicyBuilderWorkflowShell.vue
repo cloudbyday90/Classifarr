@@ -89,14 +89,6 @@ const props = defineProps({
     type: String,
     default: '',
   },
-  refreshResult: {
-    type: Object,
-    default: null,
-  },
-  refreshing: {
-    type: Boolean,
-    default: false,
-  },
   acceptedSignals: {
     type: Array,
     default: () => [],
@@ -110,10 +102,6 @@ const props = defineProps({
     default: false,
   },
   activeEmptyStateActionId: {
-    type: String,
-    default: '',
-  },
-  activeEmptyStateActionMessage: {
     type: String,
     default: '',
   },
@@ -160,6 +148,9 @@ const sections = computed(() => Array.isArray(workflow.value?.sections)
 const emptyStates = computed(() => Array.isArray(props.workflowRead?.emptyStateProjection?.states)
   ? props.workflowRead.emptyStateProjection.states
   : [])
+const activeEmptyStateAction = computed(() => emptyStates.value.find(
+  emptyState => emptyState?.nextAction?.actionId === props.activeEmptyStateActionId
+)?.nextAction || null)
 const libraryName = computed(() => props.workflowRead?.library?.name || 'this library')
 const destinationTitle = computed(() => (
   props.selectionEnabled ? 'Define this destination' : workflow.value?.title || 'Destination setup'
@@ -169,23 +160,12 @@ const destinationSummary = computed(() => (
     ? 'Classifarr starts with what is already in this library. Accept only the observed values that should define future matches.'
     : workflow.value?.summary || 'Use the connected library to understand this destination before adding policy details.'
 ))
-const activeEmptyStateActionMessage = computed(() => {
-  const activeAction = emptyStates.value.find(
-    emptyState => emptyState?.nextAction?.actionId === props.activeEmptyStateActionId
-  )?.nextAction
-
-  return props.activeEmptyStateActionMessage ||
-    activeAction?.busyMessage ||
-    activeAction?.busyLabel ||
-    ''
-})
 const workflowStatus = computed(() => buildPolicyBuilderWorkflowStatus({
   loading: props.loading,
   error: props.error,
-  refreshing: props.refreshing,
   activeEmptyStateActionId: props.activeEmptyStateActionId,
-  activeEmptyStateActionMessage: activeEmptyStateActionMessage.value,
-  refreshResult: props.refreshResult,
+  activeEmptyStateActionMessage: activeEmptyStateAction.value?.busyMessage ||
+    activeEmptyStateAction.value?.busyLabel || '',
 }))
 const emptyStateActionStatusId = computed(() => (
   props.activeEmptyStateActionId ? workflowStatus.value?.id || '' : ''

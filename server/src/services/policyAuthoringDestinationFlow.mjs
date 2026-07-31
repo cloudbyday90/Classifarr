@@ -27,7 +27,6 @@ const POLICY_AUTHORING_DESTINATION_EMPTY_STATE_IDS = Object.freeze({
 
 const POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS = Object.freeze({
   SELECT_CONNECTED_LIBRARY: 'select_connected_library',
-  SYNC_MEDIA_SERVER_LIBRARY: 'sync_media_server_library',
   REVIEW_OBSERVED_PROFILE: 'review_observed_profile',
   ACCEPT_OBSERVED_SUGGESTIONS: 'accept_observed_suggestions',
   ADD_DECLARED_INTENT: 'add_declared_intent',
@@ -197,8 +196,8 @@ const POLICY_AUTHORING_DESTINATION_EMPTY_STATES = deepFreeze([
   {
     id: POLICY_AUTHORING_DESTINATION_EMPTY_STATE_IDS.NEW_LIBRARY,
     label: 'New library',
-    description: 'No observed profile is available yet.',
-    nextActionId: POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.SYNC_MEDIA_SERVER_LIBRARY,
+    description: 'No observed profile is available yet. Declare the destination intent instead of treating an empty library as evidence.',
+    nextActionId: POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.ADD_DECLARED_INTENT,
     internalDetailsAllowed: false,
   },
   {

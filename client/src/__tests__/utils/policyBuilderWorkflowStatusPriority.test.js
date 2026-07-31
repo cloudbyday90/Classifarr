@@ -17,9 +17,8 @@ describe('policyBuilderWorkflowStatusPriority', () => {
     expect(buildPolicyBuilderWorkflowStatus({
       error: 'Classifarr could not load the library workflow.',
       loading: true,
-      refreshing: true,
-      activeEmptyStateActionId: 'sync_media_server_library',
-      activeEmptyStateActionMessage: 'Classifarr is syncing this library.',
+      activeEmptyStateActionId: 'map_routing_destination',
+      activeEmptyStateActionMessage: 'Classifarr is opening the library mapping page.',
     })).toEqual({
       id: POLICY_BUILDER_WORKFLOW_STATUS_IDS.WORKFLOW_ERROR,
       role: 'alert',
@@ -29,12 +28,11 @@ describe('policyBuilderWorkflowStatusPriority', () => {
     })
   })
 
-  it('gives a workflow load priority over in-flight profile work', () => {
+  it('gives a workflow load priority over an in-flight bounded action', () => {
     expect(buildPolicyBuilderWorkflowStatus({
       loading: true,
-      refreshing: true,
-      activeEmptyStateActionId: 'sync_media_server_library',
-      activeEmptyStateActionMessage: 'Classifarr is syncing this library.',
+      activeEmptyStateActionId: 'map_routing_destination',
+      activeEmptyStateActionMessage: 'Classifarr is opening the library mapping page.',
     })).toMatchObject({
       id: POLICY_BUILDER_WORKFLOW_STATUS_IDS.WORKFLOW_LOADING,
       role: 'status',
@@ -42,42 +40,14 @@ describe('policyBuilderWorkflowStatusPriority', () => {
     })
   })
 
-  it('keeps the active empty-state operation ahead of generic profile refresh feedback', () => {
+  it('announces the active bounded empty-state operation', () => {
     expect(buildPolicyBuilderWorkflowStatus({
-      refreshing: true,
-      activeEmptyStateActionId: 'sync_media_server_library',
-      activeEmptyStateActionMessage: 'Classifarr is syncing this library and refreshing its profile.',
+      activeEmptyStateActionId: 'map_routing_destination',
+      activeEmptyStateActionMessage: 'Classifarr is opening the library mapping page.',
     })).toMatchObject({
       id: POLICY_BUILDER_WORKFLOW_STATUS_IDS.EMPTY_STATE_ACTION,
-      message: 'Classifarr is syncing this library and refreshing its profile.',
+      message: 'Classifarr is opening the library mapping page.',
       busy: true,
-    })
-  })
-
-  it('announces profile refresh progress without exposing a retry control', () => {
-    expect(buildPolicyBuilderWorkflowStatus({
-      refreshing: true,
-    })).toMatchObject({
-      id: POLICY_BUILDER_WORKFLOW_STATUS_IDS.LIBRARY_PROFILE_REFRESH,
-      message: 'Classifarr is refreshing library evidence.',
-      busy: true,
-    })
-  })
-
-  it('announces a completed refresh result when no higher-priority state exists', () => {
-    expect(buildPolicyBuilderWorkflowStatus({
-      refreshResult: {
-        status: 'error',
-        tone: 'warning',
-        label: 'Profile refresh deferred',
-        message: 'Classifarr will retry automatically when the source is available.',
-      },
-    })).toEqual({
-      id: POLICY_BUILDER_WORKFLOW_STATUS_IDS.PROFILE_REFRESH_RESULT,
-      role: 'alert',
-      tone: 'warning',
-      message: 'Profile refresh deferred: Classifarr will retry automatically when the source is available.',
-      busy: false,
     })
   })
 })

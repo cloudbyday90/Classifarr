@@ -105,16 +105,6 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
     matches: filePath => filePath.endsWith('/ReadinessNextActionCard.vue'),
   },
   {
-    id: 'library_sync_recovery_orchestration',
-    decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
-    roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.DESTINATION_CONTEXT,
-    normalAuthoringAllowed: true,
-    migrationSupportOnly: false,
-    riskIds: [],
-    notes: 'The library-sync recovery composable coordinates an explicit authenticated sync and profile refresh without deriving intent, readiness, or routing decisions.',
-    matches: filePath => filePath.endsWith('/usePolicyBuilderLibrarySync.js'),
-  },
-  {
     id: 'presentation_tests',
     decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.REWRITE,
     roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.TEST_BOUNDARY,

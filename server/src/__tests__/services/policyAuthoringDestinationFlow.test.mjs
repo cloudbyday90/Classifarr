@@ -124,7 +124,7 @@ describe('policyAuthoringDestinationFlow', () => {
     expect(listPolicyAuthoringDestinationEmptyStates()).toEqual([
       expect.objectContaining({
         id: POLICY_AUTHORING_DESTINATION_EMPTY_STATE_IDS.NEW_LIBRARY,
-        nextActionId: POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.SYNC_MEDIA_SERVER_LIBRARY,
+        nextActionId: POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.ADD_DECLARED_INTENT,
         internalDetailsAllowed: false,
       }),
       expect.objectContaining({

@@ -28,10 +28,10 @@
             :profile="libraryProfile"
             :genre-summary="libraryProfileGenreSummary"
             :freshness="libraryProfileFreshness"
-            :refresh-result="libraryProfileRefreshResult"
+            :refresh-result="experienceMode.isLegacyEdit ? libraryProfileRefreshResult : null"
             :loading="libraryProfileLoading"
-            :refreshing="libraryProfileRefreshing"
-            :can-refresh="Boolean(form.library_id)"
+            :refreshing="experienceMode.isLegacyEdit ? libraryProfileRefreshing : false"
+            :can-refresh="experienceMode.isLegacyEdit ? Boolean(form.library_id) : false"
             :show-refresh-action="experienceMode.isLegacyEdit"
             :show-freshness="!experienceMode.isNativeView"
             @refresh-profile="refreshActiveLibraryProfile"
@@ -54,13 +54,10 @@
           :workflow-read="operatorWorkflowRead"
           :loading="operatorWorkflowLoading"
           :error="operatorWorkflowError"
-          :refresh-result="libraryProfileRefreshResult"
-          :refreshing="libraryProfileRefreshing"
           :accepted-signals="acceptedIntentSignals"
           :constraint-draft-commands="constraintDraftCommands"
           :selection-enabled="experienceMode.isNativeCreate"
-          :active-empty-state-action-id="emptyStateActionBusyId"
-          :active-empty-state-action-message="emptyStateActionBusyMessage"
+          :active-empty-state-action-id="activeEmptyStateActionId"
           :custom-entry-busy="customIntentSignalValidationLoading"
           :custom-entry-error="customIntentSignalValidationError"
           :custom-entry-message="customIntentSignalValidationMessage"
@@ -116,7 +113,6 @@ import PolicyNativePolicyRecoveryNotice from '@/components/policies/PolicyNative
 import PolicyNativePolicySummary from '@/components/policies/PolicyNativePolicySummary.vue'
 import PolicyBuilderLibraryContext from '@/components/policies/PolicyBuilderLibraryContext.vue'
 import { usePolicyBuilderReferenceData } from '@/composables/usePolicyBuilderReferenceData'
-import { usePolicyBuilderLibrarySync } from '@/composables/usePolicyBuilderLibrarySync'
 import { usePolicyBuilderState } from '@/composables/usePolicyBuilderState'
 import { usePolicyOperatorWorkflow } from '@/composables/usePolicyOperatorWorkflow'
 import { usePolicyNativeReadinessSummary } from '@/composables/usePolicyNativeReadinessSummary'
@@ -296,6 +292,8 @@ const {
 } = usePolicyRecoveryFocus({ workflowShellRef })
 
 const refreshActiveLibraryProfile = async () => {
+  if (!experienceMode.value.isLegacyEdit) return
+
   const recoveryFocusTrigger = captureRecoveryFocus()
   try {
     const refreshed = await refreshLibraryProfile(form.value.library_id)
@@ -311,45 +309,11 @@ const refreshActiveLibraryProfile = async () => {
   }
 }
 
-const {
-  syncAndRefreshProfile,
-} = usePolicyBuilderLibrarySync({ refreshProfile: refreshLibraryProfile })
-
-const emptyStateActionBusyId = computed(() => (
-  activeEmptyStateActionId.value || (
-    libraryProfileRefreshing.value ? 'refresh_library_profile' : ''
-  )
-))
-const emptyStateActionBusyMessage = computed(() => (
-  !activeEmptyStateActionId.value && libraryProfileRefreshing.value
-    ? 'Classifarr is refreshing library evidence.'
-    : ''
-))
-
 const handleEmptyStateAction = async (emptyState) => {
   if (!experienceMode.value.isNativeCreate) return
 
   const actionId = emptyState?.nextAction?.actionId
   if (!actionId || activeEmptyStateActionId.value) return
-
-  if (actionId === 'sync_media_server_library') {
-    activeEmptyStateActionId.value = actionId
-    const recoveryFocusTrigger = captureRecoveryFocus()
-    try {
-      const synced = await syncAndRefreshProfile(form.value.library_id)
-      if (!synced) {
-        toast.error('Classifarr could not sync this library and refresh its profile.')
-        return
-      }
-
-      await loadOperatorWorkflow(form.value.library_id)
-      toast.success('Library sync and profile refresh completed.')
-    } finally {
-      activeEmptyStateActionId.value = ''
-      await restoreRecoveryFocus(recoveryFocusTrigger)
-    }
-    return
-  }
 
   if (actionId === 'map_routing_destination') {
     const libraryId = Number(form.value.library_id)
