@@ -34,8 +34,12 @@ describe('PolicyBuilderAdvancedSettings.vue', () => {
 
   it('renders scoring weights and combination modes when expanded', async () => {
     const wrapper = mountComponent()
+    const disclosure = wrapper.find('button')
 
-    await wrapper.find('button').trigger('click')
+    expect(disclosure.attributes('aria-expanded')).toBe('false')
+    expect(disclosure.attributes('aria-controls')).toMatch(/^policy-builder-advanced-settings-panel-/)
+
+    await disclosure.trigger('click')
 
     expect(wrapper.text()).toContain('Scoring Weights')
     expect(wrapper.text()).toContain('Presets: 35%')
@@ -43,6 +47,8 @@ describe('PolicyBuilderAdvancedSettings.vue', () => {
     expect(wrapper.text()).toContain('Total: 100%')
     expect(wrapper.text()).toContain('Best Match')
     expect(wrapper.text()).toContain('Require All')
+    expect(disclosure.attributes('aria-expanded')).toBe('true')
+    expect(wrapper.find(`#${disclosure.attributes('aria-controls')}`).exists()).toBe(true)
   })
 
   it('emits bounded form field update requests', async () => {

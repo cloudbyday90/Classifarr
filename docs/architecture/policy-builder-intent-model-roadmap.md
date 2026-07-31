@@ -4209,6 +4209,13 @@ Implementation status:
   view, while compatibility contracts retain the compatibility editor. Its
   design record is [Policy Native-First Create
   Surface](policy-native-first-create-surface.md).
+- Persisted compatibility policies now enter
+  `PolicyCompatibilityMaintenanceSurface.vue`, rather than sharing the native
+  destination-first workflow. The retained editor, migration acknowledgement,
+  and compatibility footer behavior remain available, while the policy neither
+  requests nor presents the native operator-workflow projection. Its design
+  record is [Policy Compatibility Maintenance
+  Surface](policy-compatibility-maintenance-surface.md).
 - Persisted native policies now use a compact, read-only summary instead of
   reopening the five-section creation workflow. It shows display-safe stored
   purpose from the policy detail contract and **policy** readiness from active

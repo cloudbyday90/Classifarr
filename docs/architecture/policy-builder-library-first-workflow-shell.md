@@ -7,10 +7,12 @@ library-first workflow. New policies can now explicitly accept bounded
 observed-library candidates through the shell; the native create boundary
 persists that accepted intent atomically.
 
-The normal policy-builder entry path now renders a display-only destination
-summary from `GET /api/policies/operator-workflow/libraries/:libraryId` before
-the retained compatibility editor. It replaces the prior setup-card grid and
-standalone routing-readiness panel without changing policy writes.
+The native-create policy-builder entry path now renders a display-only
+destination summary from `GET /api/policies/operator-workflow/libraries/:libraryId`.
+It replaces the prior setup-card grid and standalone routing-readiness panel
+without changing policy writes. Persisted compatibility policies use a separate
+maintenance surface and do not request or render this workflow; see [Policy
+Compatibility Maintenance Surface](policy-compatibility-maintenance-surface.md).
 
 ## Problem
 
@@ -96,8 +98,9 @@ Pros:
 Cons:
 
 - The retained compatibility editor, template accelerator, and advanced
-  settings are still visible later in the modal until their individual
-  replacement/deletion tasks complete.
+  settings still require maintenance until their individual replacement/deletion
+  tasks complete, although they are now isolated from the native-create modal
+  path.
 - Operators must explicitly accept observed candidates before they become a
   native purpose draft; evidence remains deliberately non-authoritative.
 - The shell does not yet merge saved native intent with the read projection.
@@ -109,8 +112,8 @@ Cons:
 2. Use the workflow shell for display, accessibility, and stale-request
    protection only.
 3. Keep native grouped multi-select controls on typed draft commands.
-4. Replace the retained compatibility editor only after those command paths
-   save and round-trip safely.
+4. Keep the retained compatibility editor in its dedicated maintenance surface
+   until server-owned migration conditions permit its removal.
 5. Delete the old template and advanced-control surfaces only through the
    established migration/deletion gates.
 

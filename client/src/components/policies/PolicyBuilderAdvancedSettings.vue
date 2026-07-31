@@ -11,6 +11,8 @@
     <button
       type="button"
       class="flex items-center gap-2 text-sm font-semibold text-gray-300 hover:text-white transition-colors"
+      :aria-expanded="showAdvanced"
+      :aria-controls="advancedSettingsContentId"
       @click="showAdvanced = !showAdvanced"
     >
       <span>{{ showAdvanced ? '▼' : '▶' }}</span>
@@ -19,6 +21,7 @@
 
     <div
       v-if="showAdvanced"
+      :id="advancedSettingsContentId"
       class="space-y-6 pl-6"
     >
       <div class="space-y-4">
@@ -114,7 +117,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, useId } from 'vue'
 import {
   POLICY_BUILDER_COMBINATION_MODE_CONTROLS,
   POLICY_BUILDER_THRESHOLD_CONTROLS,
@@ -138,6 +141,7 @@ const emit = defineEmits({
 })
 
 const showAdvanced = ref(false)
+const advancedSettingsContentId = `policy-builder-advanced-settings-panel-${useId()}`
 
 const weightControls = POLICY_BUILDER_WEIGHT_CONTROLS
 const combinationModes = POLICY_BUILDER_COMBINATION_MODE_CONTROLS

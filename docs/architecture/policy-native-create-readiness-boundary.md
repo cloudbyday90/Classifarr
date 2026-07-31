@@ -108,18 +108,12 @@ status without compatibility controls or a save footer. Existing and malformed
 contracts fail closed to the compatibility editor; server routes still enforce
 the authority decision for every mutation.
 
-## Next Item
+The Phase 6R.5 compact persisted-native view is implemented in [Persisted
+Native Policy Summary](policy-persisted-native-summary.md). It keeps the
+five-section setup workflow for native creation only. Compatibility edits use a
+dedicated maintenance surface, while an established native policy shows stored
+purpose, current policy readiness, and one server-provided next action.
 
-The Phase 6R.5 compact persisted-native view is now implemented in
-[Persisted Native Policy Summary](policy-persisted-native-summary.md). It keeps
-the five-section setup workflow for creation and compatibility editing, while
-an established native policy shows stored purpose, current library readiness,
-and one server-provided next action.
-
-## Next Item
-
-Create a policy-specific server readiness summary that evaluates the active
-native intent against current stored profile and routing state. The present
-compact view deliberately labels the existing server result as *library*
-readiness because the library-first workflow endpoint does not yet evaluate the
-stored native intent itself.
+The native summary now uses a policy-specific server read that evaluates active
+native intent, cached profile freshness, and stored routing state. It no longer
+labels that result as generic library readiness.

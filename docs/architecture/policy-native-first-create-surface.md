@@ -18,7 +18,9 @@ prevents automatic application of approved matches until it is complete.
 
 Existing persisted policies continue to use the compatibility edit surface in
 this slice. That is an intentionally bounded transition state, not a second
-new-policy authoring path.
+new-policy authoring path. The retained compatibility editor is now composed
+by [Policy Compatibility Maintenance Surface](policy-compatibility-maintenance-surface.md),
+which does not load or display the native creation workflow.
 
 ## Design Decisions
 

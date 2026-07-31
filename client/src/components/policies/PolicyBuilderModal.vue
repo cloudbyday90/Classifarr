@@ -47,7 +47,7 @@
         />
 
         <PolicyBuilderWorkflowShell
-          v-else
+          v-if="experienceMode.isNativeCreate"
           ref="workflowShellRef"
           :workflow-read="operatorWorkflowRead"
           :loading="operatorWorkflowLoading"
@@ -69,40 +69,25 @@
           @empty-state-action="handleEmptyStateAction"
         />
 
-        <template v-if="experienceMode.isLegacyEdit">
-          <PolicyPresetMigrationNotice
-            v-if="presetMigrationNotice"
-            :notice="presetMigrationNotice"
-            @dismiss="dismissPresetMigrationNotice"
-          />
-
-          <PolicyIntentSummaryCard :summary="intentSummary" />
-
-          <div id="policy-builder-intent-editor">
-            <PolicyIntentEditor
-              :selected-presets="selectedPresets"
-              :all-presets="allPresets"
-              :intent-draft="intentDraft"
-              :available-genres="availableGenres"
-              :available-genre-options="availableGenreOptions"
-              :available-ratings="availableRatings"
-              @draft-add-signal="addIntentSignal"
-              @draft-remove-signal-value="removeIntentSignalValue"
-              @draft-set-signal-config="setIntentSignalConfig"
-              @draft-clear-signal-config="clearIntentSignalConfig"
-            />
-          </div>
-
-          <div class="border-t border-gray-700 my-4" />
-
-          <div id="policy-builder-advanced-settings">
-            <PolicyBuilderAdvancedSettings
-              :form="form"
-              :total-weight="totalWeight"
-              @update-field="setFormField"
-            />
-          </div>
-        </template>
+        <PolicyCompatibilityMaintenanceSurface
+          v-else-if="experienceMode.isLegacyEdit"
+          :preset-migration-notice="presetMigrationNotice"
+          :intent-summary="intentSummary"
+          :selected-presets="selectedPresets"
+          :all-presets="allPresets"
+          :intent-draft="intentDraft"
+          :available-genres="availableGenres"
+          :available-genre-options="availableGenreOptions"
+          :available-ratings="availableRatings"
+          :form="form"
+          :total-weight="totalWeight"
+          @dismiss-migration-notice="dismissPresetMigrationNotice"
+          @draft-add-signal="addIntentSignal"
+          @draft-remove-signal-value="removeIntentSignalValue"
+          @draft-set-signal-config="setIntentSignalConfig"
+          @draft-clear-signal-config="clearIntentSignalConfig"
+          @update-field="setFormField"
+        />
       </template>
     </div>
 
@@ -125,15 +110,12 @@
 import { computed, nextTick, onMounted, ref, toRef, watch } from 'vue'
 import { isNavigationFailure, useRouter } from 'vue-router'
 import Modal from '@/components/common/Modal.vue'
-import PolicyBuilderAdvancedSettings from '@/components/policies/PolicyBuilderAdvancedSettings.vue'
+import PolicyCompatibilityMaintenanceSurface from '@/components/policies/PolicyCompatibilityMaintenanceSurface.vue'
 import PolicyBuilderFooterActions from '@/components/policies/PolicyBuilderFooterActions.vue'
 import PolicyBuilderWorkflowShell from '@/components/policies/PolicyBuilderWorkflowShell.vue'
 import PolicyNativeCreateHandoff from '@/components/policies/PolicyNativeCreateHandoff.vue'
 import PolicyNativePolicySummary from '@/components/policies/PolicyNativePolicySummary.vue'
-import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
-import PolicyIntentSummaryCard from '@/components/policies/PolicyIntentSummaryCard.vue'
 import PolicyBuilderLibraryContext from '@/components/policies/PolicyBuilderLibraryContext.vue'
-import PolicyPresetMigrationNotice from '@/components/policies/PolicyPresetMigrationNotice.vue'
 import { usePolicyBuilderReferenceData } from '@/composables/usePolicyBuilderReferenceData'
 import { usePolicyBuilderLibrarySync } from '@/composables/usePolicyBuilderLibrarySync'
 import { usePolicyBuilderState } from '@/composables/usePolicyBuilderState'
@@ -320,7 +302,7 @@ onMounted(() => {
 
 watchLibraryProfile(computed(() => form.value.library_id))
 watchOperatorWorkflow(computed(() => (
-  experienceMode.value.isNativeView ? null : form.value.library_id
+  experienceMode.value.isNativeCreate ? form.value.library_id : null
 )))
 watchNativeReadinessSummary(computed(() => (
   experienceMode.value.isNativeView ? props.policy?.id : null
@@ -342,7 +324,7 @@ const refreshActiveLibraryProfile = async () => {
     if (refreshed) {
       if (experienceMode.value.isNativeView) {
         await loadNativeReadinessSummary(props.policy?.id)
-      } else {
+      } else if (experienceMode.value.isNativeCreate) {
         await loadOperatorWorkflow(form.value.library_id)
       }
     }
@@ -367,6 +349,8 @@ const emptyStateActionBusyMessage = computed(() => (
 ))
 
 const handleEmptyStateAction = async (emptyState) => {
+  if (!experienceMode.value.isNativeCreate) return
+
   const actionId = emptyState?.nextAction?.actionId
   if (!actionId || activeEmptyStateActionId.value) return
 
@@ -423,6 +407,8 @@ const handleEmptyStateAction = async (emptyState) => {
 }
 
 const validateActiveCustomIntentSignal = async (payload) => {
+  if (!experienceMode.value.isNativeCreate) return false
+
   await validateCustomIntentSignal(form.value.library_id, payload)
 }
 

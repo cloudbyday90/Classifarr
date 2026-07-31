@@ -902,7 +902,7 @@ describe('PolicyBuilderModal.vue', () => {
     alertSpy.mockRestore();
   });
 
-  it('does not render retired diagnostic panels when passed their former visibility prop', async () => {
+  it('isolates compatibility maintenance from the destination-first workflow and retired diagnostics', async () => {
     api.get.mockImplementation((url) => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
       if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
@@ -930,15 +930,13 @@ describe('PolicyBuilderModal.vue', () => {
 
     await flushPromises();
 
-    expect(document.body.textContent).toContain('Policy setup');
-    expect(document.body.textContent).toContain('What Classifarr sees in Sci-Fi Movies');
-    expect(document.body.textContent).toMatch(/Science Fiction\s*18\s*currently here/);
-    expect(document.body.textContent).toContain('What belongs here');
-    expect(document.body.textContent).toContain('What should not go here');
-    expect(document.body.textContent).toContain('What helps but should not decide alone');
-    expect(document.body.textContent).toContain('When should Classifarr ask');
-    expect(document.body.textContent).toContain('Can this route');
-    expect(document.body.textContent).toContain('Connect a routing target');
+    expect(document.body.textContent).toContain('Compatibility policy maintenance');
+    expect(document.body.textContent).toContain('New policies use destination-first setup');
+    expect(document.body.textContent).toContain('Policy Intent Builder');
+    expect(document.body.textContent).toContain('Advanced Settings');
+    expect(document.body.textContent).not.toContain('Policy setup');
+    expect(document.body.textContent).not.toContain('What Classifarr sees in Sci-Fi Movies');
+    expect(document.body.textContent).not.toMatch(/Science Fiction\s*18\s*currently here/);
     expect(document.body.textContent).not.toContain('Policy Setup');
     expect(document.body.textContent).not.toContain('What already belongs here?');
     expect(document.body.textContent).not.toContain('Set destination rules');
@@ -947,6 +945,7 @@ describe('PolicyBuilderModal.vue', () => {
     expect(document.body.textContent).not.toContain('Representative Replay Preview');
     expect(document.body.textContent).not.toContain('Preview Impact');
     expect(document.body.textContent).not.toContain('Preview Replay');
+    expect(api.get).not.toHaveBeenCalledWith('/policies/operator-workflow/libraries/1', undefined);
   });
 
   it('shows the intent-first editor and saves intent edits as structured custom signals', async () => {

@@ -70,8 +70,9 @@ to its own server command boundary.
 - `PolicyNativePolicySummary.vue` renders declared purpose, current policy
   readiness, and one next action with semantic definition-list markup.
 - `PolicyBuilderModal.vue` renders this summary for `native_view` and does not
-  request the generic operator workflow; native creation and compatibility edit
-  retain their appropriate workflow surfaces.
+  request the generic operator workflow; native creation retains the
+  destination-first workflow, while compatibility edit uses its isolated
+  maintenance surface.
 
 ## Security And Accessibility Outcome
 
