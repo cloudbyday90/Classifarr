@@ -174,14 +174,9 @@ describe('policyAuthoringWorkflowInventory', () => {
       .not.toContain('preview_replay_diagnostics');
   });
 
-  test('replaces raw advanced scoring without retaining deleted combined-signal mechanics', () => {
-    expect(classifyPolicyAuthoringWorkflowSurface('client/src/components/policies/PolicyBuilderAdvancedSettings.vue'))
-      .toEqual(expect.objectContaining({
-        decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.REPLACE,
-        roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.ADVANCED_SUPPORT_ONLY,
-        normalAuthoringAllowed: false,
-      }));
-
+  test('does not retain raw advanced scoring or deleted combined-signal mechanics', () => {
+    expect(listPolicyAuthoringWorkflowRules().map(rule => rule.id))
+      .not.toContain('advanced_scoring_surfaces');
     expect(listPolicyAuthoringWorkflowRules().map(rule => rule.id))
       .not.toContain('combined_signal_and_engine_candidates');
   });

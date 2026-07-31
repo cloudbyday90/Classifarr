@@ -7,6 +7,10 @@ Scope: intent draft bridge, legacy-compatible save contract
 > combined-signal surfaces described below were deleted by the 3R.7
 > starter-template role reset. Current behavior is documented in
 > [Policy Authoring Starter Template Role Reset](policy-authoring-starter-template-role-reset.md).
+> The raw advanced scoring surface and its client-side field mutation boundary
+> were deleted by the 6R.5 compatibility editor scope cutline. Current
+> behavior is documented in [Policy Compatibility Editor Scope
+> Audit](policy-compatibility-editor-scope-audit.md).
 
 ## Goal
 
@@ -145,7 +149,9 @@ The eleventh implemented component extracts the combined signals summary:
 5. Add direct component coverage for visibility rules, source counts, and empty
    sections.
 
-The twelfth implemented component extracts the advanced scoring settings:
+The twelfth implemented component extracted the advanced scoring settings;
+that component was retired by the Phase 6R.5 compatibility editor scope
+cutline:
 
 1. Move scoring weights, combination mode, and classification threshold controls
    into `PolicyBuilderAdvancedSettings.vue`.
@@ -184,7 +190,9 @@ The fourteenth implemented component extracts the preset migration notice:
 5. Add direct component coverage for notice copy, optional preview rendering,
    and dismiss behavior.
 
-The fifteenth implemented component hardens advanced settings control metadata:
+The fifteenth implemented component hardened advanced settings control metadata;
+that utility was retired with the advanced scoring surface by the Phase 6R.5
+compatibility editor scope cutline:
 
 1. Move advanced weight, threshold, and combination-mode definitions into
    `policyBuilderAdvancedControls.js`.

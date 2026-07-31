@@ -4223,6 +4223,13 @@ Implementation status:
   request, or a browser repair action. Its design record is [Policy
   Compatibility Maintenance Entry
   Audit](policy-compatibility-maintenance-entry-audit.md).
+- The compatibility editor scope audit now retains typed destination-rule
+  maintenance while removing raw scoring-weight, combination-mode, and
+  threshold controls. Existing compatibility decision values are preserved in
+  the serializer and validated only by the server; the client no longer owns a
+  scoring mutation path or weight-total save gate. Its design record is [Policy
+  Compatibility Editor Scope
+  Audit](policy-compatibility-editor-scope-audit.md).
 - Persisted native policies now use a compact, read-only summary instead of
   reopening the five-section creation workflow. It shows display-safe stored
   purpose from the policy detail contract and **policy** readiness from active

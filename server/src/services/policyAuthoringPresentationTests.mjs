@@ -116,7 +116,6 @@ const REQUIRED_POLICY_AUTHORING_PRESENTATION_BEHAVIORS = deepFreeze([
 ]);
 
 const POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS = deepFreeze([
-  'client/src/__tests__/PolicyBuilderAdvancedSettings.test.js',
   'client/src/__tests__/PolicyBuilderDestinationQuestions.test.js',
   'client/src/__tests__/PolicyBuilderFooterActions.test.js',
   'client/src/__tests__/PolicyBuilderLibraryContext.test.js',
@@ -124,6 +123,7 @@ const POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS = deepFreeze([
   'client/src/__tests__/PolicyBuilderRoutingReadinessCard.test.js',
   'client/src/__tests__/PolicyBuilderSetupCards.test.js',
   'client/src/__tests__/PolicyBuilderWorkflowShell.test.js',
+  'client/src/__tests__/PolicyCompatibilityMaintenanceSurface.test.js',
   'client/src/__tests__/PolicyDestinationEmptyStateNotice.test.js',
   'client/src/__tests__/PolicyIntentActionButton.test.js',
   'client/src/__tests__/PolicyIntentCertificationControl.test.js',
@@ -142,6 +142,7 @@ const POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS = deepFreeze([
   'client/src/__tests__/PolicyIntentSummaryCard.test.js',
   'client/src/__tests__/PolicyNativeCreateHandoff.test.js',
   'client/src/__tests__/PolicyNativeIntentReconciliation.test.js',
+  'client/src/__tests__/PolicyNativePolicyRecoveryNotice.test.js',
   'client/src/__tests__/PolicyNativeProfileRecoveryStatus.test.js',
   'client/src/__tests__/PolicyPresetMigrationNotice.test.js',
   'client/src/__tests__/IntentSignalPicker.test.js',
@@ -177,14 +178,6 @@ function presentationTestRecord(
 }
 
 const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
-  presentationTestRecord(
-    'client/src/__tests__/PolicyBuilderAdvancedSettings.test.js',
-    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_WORKFLOW_REGRESSION,
-    false,
-    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.NATIVE_STORAGE_CLEANUP,
-    [],
-    'Compatibility-only advanced settings remain outside native authoring until native intent storage replaces legacy policy storage.'
-  ),
   presentationTestRecord(
     'client/src/__tests__/PolicyBuilderDestinationQuestions.test.js',
     POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_DESTINATION_FIRST_FLOW,
@@ -259,6 +252,14 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
       POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.INTERNAL_DIAGNOSTIC_PANELS_ABSENT,
     ],
     'The workflow shell proves library-first authoring, one readiness outcome, and no diagnostic control path.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyCompatibilityMaintenanceSurface.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.REMOVE_ABANDONED_DIAGNOSTIC_SURFACE,
+    false,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.NATIVE_STORAGE_CLEANUP,
+    [],
+    'Compatibility maintenance retains typed destination-rule commands while raw scoring and threshold controls remain deleted.'
   ),
   presentationTestRecord(
     'client/src/__tests__/PolicyDestinationEmptyStateNotice.test.js',
@@ -431,6 +432,14 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
     POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.RUNTIME_VERIFIER,
     [],
     'Reconciliation status is runtime verification feedback and remains outside policy authoring setup.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyNativePolicyRecoveryNotice.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_WORKFLOW_REGRESSION,
+    false,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.NATIVE_STORAGE_CLEANUP,
+    [],
+    'Invalid native policy state is read-only recovery feedback and cannot reopen a compatibility or native setup control path.'
   ),
   presentationTestRecord(
     'client/src/__tests__/PolicyNativeProfileRecoveryStatus.test.js',

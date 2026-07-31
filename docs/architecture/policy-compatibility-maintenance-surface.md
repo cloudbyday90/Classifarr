@@ -15,12 +15,16 @@ The policy modal now has three explicit presentation modes:
 | `native_view` | Inspect an established native policy | `PolicyNativePolicySummary.vue` | Not requested |
 | `legacy_edit` | Maintain an existing compatibility policy | `PolicyCompatibilityMaintenanceSurface.vue` | Not requested |
 
-The compatibility surface preserves the existing editor, migration notice,
-advanced settings, footer commands, and serializer. It no longer appears below
-the five-question native creation workflow, and it does not request the native
-operator-workflow projection. This prevents native destination setup from
-being presented as an incomplete task for an already-persisted compatibility
-policy.
+The compatibility surface preserves the existing intent editor, migration
+notice, footer commands, and serializer. It no longer appears below the
+five-question native creation workflow, and it does not request the native
+operator-workflow projection. This prevents native destination setup from being
+presented as an incomplete task for an already-persisted compatibility policy.
+
+The subsequent [Policy Compatibility Editor Scope
+Audit](policy-compatibility-editor-scope-audit.md) removes raw browser-side
+scoring, combination-mode, and threshold controls. Existing compatibility
+decision values remain preserved by the serializer and validated by the server.
 
 The subsequent [Policy Compatibility Maintenance Entry
 Audit](policy-compatibility-maintenance-entry-audit.md) makes native inspection
@@ -54,10 +58,6 @@ June 2026:
   close control, and restore focus when it closes. The maintained shared modal
   already provides that boundary; this work changes the content mode rather
   than introducing a nested dialog.
-- [W3C WAI-ARIA Authoring Practices: Disclosure](https://www.w3.org/WAI/ARIA/apg/patterns/disclosure/)
-  requires a disclosure control to convey its expanded state. Advanced Settings
-  now uses `aria-expanded` and a stable `aria-controls` relationship with its
-  conditional content.
 - [OWASP Business Logic Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Business_Logic_Security_Cheat_Sheet.html)
   recommends enforcing workflow state and business rules on the server rather
   than assuming a browser sequence is authoritative. The client uses the
@@ -89,10 +89,10 @@ June 2026:
    `PolicyCompatibilityMaintenanceSurface`.
 
 The compatibility surface is a thin event-forwarding composition boundary. It
-accepts the existing preset, intent-draft, reference-data, form, and summary
-props. It forwards the existing draft commands and `update-field` event without
-changing their payloads. Save, authorization, serialization, and routing
-readiness remain in their existing modules.
+accepts the existing preset, intent-draft, reference-data, and summary props.
+It forwards typed draft commands without changing their payloads. Save,
+authorization, serialization, and routing readiness remain in their existing
+modules.
 
 Library-profile refresh remains available only for compatibility maintenance,
 where it existed before. A successful refresh does not reload the native
@@ -109,8 +109,8 @@ turn observed evidence into a policy declaration.
   authority. No route, service, database contract, or payload was broadened.
 - The existing modal focus lifecycle remains the sole dialog boundary; the
   maintenance surface adds no nested modal behavior.
-- Advanced Settings now exposes the disclosure state and target relationship to
-  assistive technology.
+- Raw scoring controls are absent; the retained operator controls are only
+  labeled destination-rule maintenance actions.
 
 ## Verification
 
@@ -120,8 +120,8 @@ turn observed evidence into a policy declaration.
 - `client/src/__tests__/PolicyBuilderModal.test.js` verifies that a
   compatibility policy renders the maintenance surface and does not request or
   render the native workflow or retired diagnostic panels.
-- `client/src/__tests__/PolicyBuilderAdvancedSettings.test.js` verifies the
-  disclosure state and controlled content relationship.
+- `client/src/__tests__/PolicyCompatibilityMaintenanceSurface.test.js` verifies
+  raw advanced controls are absent while retained typed commands remain.
 
 ## Final Recommendation Stack
 
@@ -132,13 +132,13 @@ turn observed evidence into a policy declaration.
    until a server-owned migration and deletion gate permits removal.
 4. Keep policy authority, mutation validation, and migration decisions on the
    server.
-5. Preserve accessible modal and disclosure semantics as components are split.
+5. Keep raw scoring and threshold configuration outside the operator surface
+   while server validation preserves compatibility safety.
 
 ## Next Item
 
-Phase 6R.5 should next perform a **compatibility-maintenance entry audit**:
-inventory every persisted-policy condition that selects `legacy_edit`, verify
-the server read contract cannot misclassify a partial or malformed native
-record, and identify the minimal server-owned migration state needed before a
-compatibility policy can leave this surface. This is an audit and contract task,
-not a new browser control or a client-side conversion action.
+Phase 6R.5 should next perform a **compatibility intent readiness-boundary
+audit**: determine whether the client-derived compatibility readiness dashboard
+can be removed now, or define the minimum server read projection required to
+replace it with one bounded next action. This is an audit and contract task,
+not a new browser control or a client-side readiness engine.

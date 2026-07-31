@@ -10,23 +10,7 @@
 
 import { computed, ref, unref, watch } from 'vue'
 import { usePolicyIntentDraft } from '@/composables/usePolicyIntentDraft'
-import {
-  POLICY_BUILDER_COMBINATION_MODES,
-  POLICY_BUILDER_THRESHOLD_FIELDS,
-  POLICY_BUILDER_WEIGHT_FIELDS,
-  normalizePolicyBuilderFormField,
-} from '@/utils/policyBuilderAdvancedControls'
 import { clonePolicyIntentDraftForWrite } from '@/utils/policyIntentWritePreflight'
-
-export {
-  POLICY_BUILDER_COMBINATION_MODES,
-  POLICY_BUILDER_THRESHOLD_FIELDS,
-  POLICY_BUILDER_WEIGHT_FIELDS,
-}
-
-export function normalizePolicyFormField(field, value) {
-  return normalizePolicyBuilderFormField(field, value)
-}
 
 export function createDefaultPolicyForm(libraryId = null) {
   return {
@@ -70,10 +54,10 @@ export function mapPolicyToForm(policy) {
     name: policy.name,
     description: policy.description || '',
     enabled: policy.enabled !== false,
-    priority: policy.priority || 5,
-    sort_order: policy.sort_order || 0,
-    auto_classify_threshold: policy.auto_classify_threshold || 85,
-    prompt_threshold: policy.prompt_threshold || 60,
+    priority: policy.priority ?? 5,
+    sort_order: policy.sort_order ?? 0,
+    auto_classify_threshold: policy.auto_classify_threshold ?? 85,
+    prompt_threshold: policy.prompt_threshold ?? 60,
     require_ai_validation: policy.require_ai_validation !== false,
     trust_patterns: policy.trust_patterns !== false,
     trust_rag: policy.trust_rag !== false,
@@ -166,11 +150,6 @@ export function usePolicyBuilderState({ policy, libraryId, libraries }) {
     buildSelectedPresetsFromDraft,
   } = usePolicyIntentDraft(selectedPresets)
 
-  const totalWeight = computed(() => {
-    return form.value.preset_weight + form.value.profile_weight + form.value.pattern_weight +
-      form.value.rag_weight + form.value.history_weight
-  })
-
   const currentLibrary = computed(() => {
     if (!form.value.library_id) return null
     const availableLibraries = Array.isArray(unref(libraries)) ? unref(libraries) : []
@@ -181,9 +160,7 @@ export function usePolicyBuilderState({ policy, libraryId, libraries }) {
   })
 
   const isValid = computed(() => {
-    const hasBasicInfo = Boolean(form.value.library_id)
-    const weightsValid = Math.abs(totalWeight.value - 1) <= 0.001
-    return hasBasicInfo && weightsValid
+    return Boolean(form.value.library_id)
   })
 
   const resetForm = () => {
@@ -209,14 +186,6 @@ export function usePolicyBuilderState({ policy, libraryId, libraries }) {
     }
   }, { immediate: true })
 
-  const setFormField = ({ field, value }) => {
-    const normalizedValue = normalizePolicyFormField(field, value)
-    if (normalizedValue === null) return false
-
-    form.value[field] = normalizedValue
-    return true
-  }
-
   const addIntentSignal = ({ presetId, signalType, key, value, extras = {} }) => {
     addIntentDraftSignal({ presetId, signalType, key, value, extras })
   }
@@ -241,12 +210,10 @@ export function usePolicyBuilderState({ policy, libraryId, libraries }) {
     form,
     selectedPresets,
     intentDraft,
-    totalWeight,
     currentLibrary,
     isValid,
     resetForm,
     loadPolicy,
-    setFormField,
     addIntentSignal,
     removeIntentSignalValue,
     setIntentSignalConfig,

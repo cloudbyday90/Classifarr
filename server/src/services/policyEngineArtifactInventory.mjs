@@ -217,15 +217,15 @@ const DEFAULT_POLICY_ENGINE_ARTIFACT_GROUPS = Object.freeze([
     id: 'advanced_builder_controls',
     categoryId: POLICY_ENGINE_ARTIFACT_CATEGORY_IDS.INTERNAL_SUMMARY,
     owner: 'policy-operator-workflow',
-    decisionId: POLICY_ENGINE_ARTIFACT_DECISION_IDS.REPLACE_WITH_ENGINE,
-    replacement: 'Server-owned automation readiness with a single next action.',
+    decisionId: POLICY_ENGINE_ARTIFACT_DECISION_IDS.DELETE_AFTER_CUTOVER,
+    replacement: 'Server-owned automation readiness with no compatibility-side raw scoring controls.',
     testDispositionId:
-      POLICY_ENGINE_TEST_DISPOSITION_IDS.REPLACE_WITH_ENGINE_CONTRACT,
+      POLICY_ENGINE_TEST_DISPOSITION_IDS.DELETE_WITH_SURFACE,
     normalWorkflowAllowed: false,
     artifactPaths: [
-      'client/src/components/policies/PolicyBuilderAdvancedSettings.vue',
-      'client/src/utils/policyBuilderAdvancedControls.js',
-      'client/src/__tests__/PolicyBuilderAdvancedSettings.test.js',
+      'client/src/components/policies/PolicyCompatibilityMaintenanceSurface.vue',
+      'client/src/__tests__/PolicyCompatibilityMaintenanceSurface.test.js',
+      'docs/architecture/policy-compatibility-editor-scope-audit.md',
     ],
   },
   {

@@ -9,20 +9,19 @@ import {
 } from '@/utils/policyCompatibilitySaveActionBoundary'
 
 describe('policyCompatibilitySaveActionBoundary', () => {
-  it('keeps compatibility weight validation separate from native creation', () => {
+  it('does not apply browser-owned weight validation to compatibility saves', () => {
     expect(buildPolicyCompatibilitySaveActionBoundary({
       form: { library_id: 1 },
       totalWeight: 0.85,
     })).toMatchObject({
-      canSave: false,
-      statusLabel: 'Adjust weights before saving',
+      canSave: true,
+      statusLabel: 'Ready to save',
     })
   })
 
   it('preserves the non-blocking compatibility routing warning', () => {
     expect(buildPolicyCompatibilitySaveActionBoundary({
       form: { library_id: 1 },
-      totalWeight: 1,
       compatibilityRoutingReadiness: { canRoute: false },
     })).toMatchObject({
       canSave: true,

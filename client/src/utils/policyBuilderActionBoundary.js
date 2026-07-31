@@ -13,7 +13,6 @@ import {
 function buildPolicyBuilderSaveBoundary({
   form = {},
   selectedPresets = [],
-  totalWeight = 0,
   hasExistingPolicy = false,
   nativeIntentEstablishment = null,
   compatibilityRoutingReadiness = null,
@@ -25,7 +24,6 @@ function buildPolicyBuilderSaveBoundary({
   return buildPolicyCompatibilitySaveActionBoundary({
     form,
     selectedPresets,
-    totalWeight,
     compatibilityRoutingReadiness,
   })
 }

@@ -8,7 +8,6 @@
 
 import { describe, expect, it } from 'vitest'
 import { shallowMount } from '@vue/test-utils'
-import PolicyBuilderAdvancedSettings from '@/components/policies/PolicyBuilderAdvancedSettings.vue'
 import PolicyCompatibilityMaintenanceSurface from '@/components/policies/PolicyCompatibilityMaintenanceSurface.vue'
 import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
 import PolicyPresetMigrationNotice from '@/components/policies/PolicyPresetMigrationNotice.vue'
@@ -24,11 +23,6 @@ const baseProps = {
   availableGenres: ['Family'],
   availableGenreOptions: [{ value: 'Family', label: 'Family' }],
   availableRatings: ['PG'],
-  form: {
-    auto_classify_threshold: 85,
-    prompt_threshold: 60,
-  },
-  totalWeight: 1,
 }
 
 function mountSurface(overrides = {}) {
@@ -52,24 +46,21 @@ describe('PolicyCompatibilityMaintenanceSurface.vue', () => {
       .toContain('New policies use destination-first setup')
     expect(wrapper.find('#policy-builder-intent-editor').attributes('aria-label'))
       .toBe('Compatibility policy intent editor')
-    expect(wrapper.find('#policy-builder-advanced-settings').attributes('aria-label'))
-      .toBe('Compatibility policy settings')
+    expect(wrapper.text()).toContain('preserves its decision behavior')
+    expect(wrapper.text()).not.toContain('Advanced Settings')
+    expect(wrapper.text()).not.toContain('Scoring Weights')
+    expect(wrapper.text()).not.toContain('Classification Thresholds')
   })
 
-  it('forwards the retained compatibility editor commands without changing their shape', () => {
+  it('forwards retained compatibility intent commands without raw scoring updates', () => {
     const wrapper = mountSurface()
     const editor = wrapper.findComponent(PolicyIntentEditor)
-    const settings = wrapper.findComponent(PolicyBuilderAdvancedSettings)
 
     editor.vm.$emit('draft-add-signal', {
       presetId: 7,
       signalType: 'genres',
       key: 'require_any',
       value: 'Family',
-    })
-    settings.vm.$emit('update-field', {
-      field: 'auto_classify_threshold',
-      value: '90',
     })
 
     expect(wrapper.emitted('draft-add-signal')).toEqual([[
@@ -80,12 +71,7 @@ describe('PolicyCompatibilityMaintenanceSurface.vue', () => {
         value: 'Family',
       },
     ]])
-    expect(wrapper.emitted('update-field')).toEqual([[
-      {
-        field: 'auto_classify_threshold',
-        value: '90',
-      },
-    ]])
+    expect(wrapper.emitted('update-field')).toBeUndefined()
   })
 
   it('keeps migration acknowledgement inside the maintenance boundary', () => {

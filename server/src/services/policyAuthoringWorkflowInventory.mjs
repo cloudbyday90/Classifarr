@@ -229,22 +229,6 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
     ]),
   },
   {
-    id: 'advanced_scoring_surfaces',
-    decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.REPLACE,
-    roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.ADVANCED_SUPPORT_ONLY,
-    normalAuthoringAllowed: false,
-    migrationSupportOnly: true,
-    riskIds: [
-      POLICY_AUTHORING_WORKFLOW_RISK_IDS.RAW_SCORING_WEIGHT_EXPOSURE,
-      POLICY_AUTHORING_WORKFLOW_RISK_IDS.CLIENT_ENGINE_DECISION,
-    ],
-    notes: 'Raw weights and scoring controls should not be part of normal policy authoring.',
-    matches: filePath => hasAnySegment(filePath, [
-      '/PolicyBuilderAdvancedSettings.vue',
-      '/policyBuilderAdvancedControls.js',
-    ]),
-  },
-  {
     id: 'migration_notice_surfaces',
     decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.REWRITE,
     roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.COMPATIBILITY_BRIDGE,

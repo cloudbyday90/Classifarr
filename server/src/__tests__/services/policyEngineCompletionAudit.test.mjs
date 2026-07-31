@@ -99,7 +99,7 @@ describe('policyEngineCompletionAudit', () => {
       .map(artifact => artifact.path);
 
     expect(requiredPaths).toEqual(expect.arrayContaining([
-      'client/src/components/policies/PolicyBuilderAdvancedSettings.vue',
+      'client/src/components/policies/PolicyCompatibilityMaintenanceSurface.vue',
       'server/src/services/policyEngine.mjs',
       'server/src/services/policyIntentSignalOptionProjection.mjs',
       'client/src/components/policies/IntentSignalPicker.vue',

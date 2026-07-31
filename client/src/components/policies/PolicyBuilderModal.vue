@@ -81,14 +81,11 @@
           :available-genres="availableGenres"
           :available-genre-options="availableGenreOptions"
           :available-ratings="availableRatings"
-          :form="form"
-          :total-weight="totalWeight"
           @dismiss-migration-notice="dismissPresetMigrationNotice"
           @draft-add-signal="addIntentSignal"
           @draft-remove-signal-value="removeIntentSignalValue"
           @draft-set-signal-config="setIntentSignalConfig"
           @draft-clear-signal-config="clearIntentSignalConfig"
-          @update-field="setFormField"
         />
       </template>
     </div>
@@ -211,9 +208,7 @@ const {
   form,
   selectedPresets,
   intentDraft,
-  totalWeight,
   currentLibrary,
-  setFormField,
   addIntentSignal,
   removeIntentSignalValue,
   setIntentSignalConfig,
@@ -289,7 +284,6 @@ const {
 const saveBoundary = computed(() => buildPolicyBuilderSaveBoundary({
   form: form.value,
   selectedPresets: selectedPresets.value,
-  totalWeight: totalWeight.value,
   hasExistingPolicy: experienceMode.value.isLegacyEdit,
   nativeIntentEstablishment: nativeIntentEstablishment.value,
   compatibilityRoutingReadiness: compatibilityRoutingReadiness.value,

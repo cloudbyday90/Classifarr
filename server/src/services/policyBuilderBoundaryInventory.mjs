@@ -288,7 +288,6 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
       '/policyBuilderRoutingReadiness.js',
       '/policyBuilderSetupCards.js',
       '/policyIntentEditorGroups.js',
-      '/policyBuilderAdvancedControls.js',
     ]),
   },
   {
@@ -357,20 +356,6 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
         '/PolicyIntentSummaryCard.vue',
         '/PolicyPresetMigrationNotice.vue',
       ]),
-  },
-  {
-    id: 'policy_advanced_settings_component',
-    category: POLICY_BUILDER_BOUNDARY_CATEGORIES.REWRITE_OR_DELETE_AFTER_ENGINE_CUTLINE,
-    ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.MAINTAINER_VERIFIER_OR_DELETE,
-    actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.RECLASSIFY_AS_MAINTAINER_VERIFIER_OR_DELETE,
-    clientEngineAuthorityAllowed: false,
-    engineCutlineDecisionRequired: true,
-    riskIds: [
-      POLICY_BUILDER_BOUNDARY_RISK_IDS.DIAGNOSTIC_PRODUCT_SURFACE,
-      POLICY_BUILDER_BOUNDARY_RISK_IDS.CLIENT_ENGINE_LOGIC,
-    ],
-    notes: 'Advanced scoring/weight controls conflict with the destination-first model and need operator-surface and engine replacement criteria.',
-    matches: (filePath) => filePath.endsWith('/PolicyBuilderAdvancedSettings.vue'),
   },
 ]);
 

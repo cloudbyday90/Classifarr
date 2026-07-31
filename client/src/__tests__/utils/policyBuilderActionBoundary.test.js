@@ -11,7 +11,6 @@ describe('policyBuilderActionBoundary', () => {
     const boundary = buildPolicyBuilderSaveBoundary({
       form: {},
       selectedPresets: [{ id: 1 }],
-      totalWeight: 1,
     })
 
     expect(boundary).toMatchObject({
@@ -26,7 +25,6 @@ describe('policyBuilderActionBoundary', () => {
     const boundary = buildPolicyBuilderSaveBoundary({
       form: { library_id: 1 },
       selectedPresets: [],
-      totalWeight: 1,
     })
 
     expect(boundary).toMatchObject({
@@ -38,10 +36,9 @@ describe('policyBuilderActionBoundary', () => {
     expect(boundary.statusMessage).toContain('Accept at least one observed value')
   })
 
-  it('does not apply legacy scoring-weight validation to native policy creation', () => {
+  it('does not apply compatibility state to native policy creation', () => {
     const boundary = buildPolicyBuilderSaveBoundary({
       form: { library_id: 1 },
-      totalWeight: 0.85,
       nativeIntentEstablishment: {
         declared_intent: {
           purpose: [{ signal_type: 'genres' }],
@@ -55,7 +52,7 @@ describe('policyBuilderActionBoundary', () => {
     })
   })
 
-  it('requires weights to total 100 percent when editing a compatibility policy', () => {
+  it('does not block compatibility saves on browser-owned scoring state', () => {
     const boundary = buildPolicyBuilderSaveBoundary({
       form: { library_id: 1 },
       totalWeight: 0.85,
@@ -63,16 +60,14 @@ describe('policyBuilderActionBoundary', () => {
     })
 
     expect(boundary).toMatchObject({
-      canSave: false,
-      statusLabel: 'Adjust weights before saving',
+      canSave: true,
+      statusLabel: 'Ready to save',
     })
-    expect(boundary.statusMessage).toContain('85%')
   })
 
   it('does not derive native creation readiness from local routing data', () => {
     const boundary = buildPolicyBuilderSaveBoundary({
       form: { library_id: 1 },
-      totalWeight: 1,
       nativeIntentEstablishment: {
         declared_intent: {
           purpose: [{ signal_type: 'genres' }],
@@ -96,7 +91,6 @@ describe('policyBuilderActionBoundary', () => {
     const boundary = buildPolicyBuilderSaveBoundary({
       form: { library_id: 1 },
       selectedPresets: [{ id: 1 }],
-      totalWeight: 1,
       hasExistingPolicy: true,
       compatibilityRoutingReadiness: {
         canRoute: true,
@@ -116,7 +110,6 @@ describe('policyBuilderActionBoundary', () => {
     const boundary = buildPolicyBuilderSaveBoundary({
       form: { library_id: 1 },
       selectedPresets: [],
-      totalWeight: 1,
       hasExistingPolicy: true,
     })
 

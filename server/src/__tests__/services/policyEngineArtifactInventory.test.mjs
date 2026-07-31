@@ -65,14 +65,15 @@ describe('policyEngineArtifactInventory', () => {
     )).toBe(false);
   });
 
-  test('gives current advanced scoring and bounded template intent surfaces explicit decisions', () => {
+  test('records retired advanced scoring and bounded template intent surfaces explicitly', () => {
     const artifacts = listPolicyEngineArtifactInventoryArtifacts();
     const byPath = new Map(artifacts.map(artifact => [artifact.path, artifact]));
 
-    expect(byPath.get('client/src/components/policies/PolicyBuilderAdvancedSettings.vue'))
+    expect(byPath.get('client/src/components/policies/PolicyCompatibilityMaintenanceSurface.vue'))
       .toEqual(expect.objectContaining({
-        decisionId: POLICY_ENGINE_ARTIFACT_DECISION_IDS.REPLACE_WITH_ENGINE,
+        decisionId: POLICY_ENGINE_ARTIFACT_DECISION_IDS.DELETE_AFTER_CUTOVER,
       }));
+    expect(byPath.has('client/src/components/policies/PolicyBuilderAdvancedSettings.vue')).toBe(false);
     expect(byPath.get('server/src/services/policyIntentSignalOptionProjection.mjs'))
       .toEqual(expect.objectContaining({
         decisionId: POLICY_ENGINE_ARTIFACT_DECISION_IDS.KEEP_ENGINE_PRIMITIVE,

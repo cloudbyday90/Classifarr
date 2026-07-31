@@ -19,8 +19,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 - **Compatibility Policy Maintenance Surface**: Persisted compatibility
   policies now use a dedicated maintenance view that retains validated legacy
   editing but no longer loads or displays the native destination workflow.
-  Advanced Settings now exposes its disclosure state and controlled content to
-  assistive technology.
+  Raw scoring, combination-mode, and threshold controls have been removed;
+  existing decision values remain preserved for server-validated compatibility
+  writes.
 
 - **Native Policy Create Payload Cutline**: New native policies now submit only
   library identity, policy name, and explicitly accepted native intent. The

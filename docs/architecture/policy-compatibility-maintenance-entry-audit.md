@@ -151,8 +151,10 @@ June 2026:
 
 ## Next Item
 
-Phase 6R.5 should next perform a **compatibility editor scope audit**. Classify
-every control in `PolicyIntentEditor.vue` and `PolicyBuilderAdvancedSettings.vue`
-as retained maintenance, server-owned automatic behavior, or deletion target.
-The task must reduce manual policy decisions without changing legacy writes or
-adding a second migration workflow.
+Phase 6R.5 compatibility editor scope is now implemented in [Policy
+Compatibility Editor Scope Audit](policy-compatibility-editor-scope-audit.md).
+The next task is its **compatibility intent readiness-boundary audit**: decide
+whether the client-derived compatibility readiness dashboard can be removed
+now, or define the minimum server read projection required for one bounded next
+action. It must not add a client-side readiness engine or broaden compatibility
+writes.

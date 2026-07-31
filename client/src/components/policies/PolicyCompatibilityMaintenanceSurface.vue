@@ -23,7 +23,7 @@
         Compatibility policy maintenance
       </h2>
       <p class="text-sm text-gray-300">
-        Maintain this policy's existing behavior while it remains on the compatibility model.
+        Maintain this policy's existing destination rules while Classifarr preserves its decision behavior.
       </p>
       <p
         class="rounded border border-amber-700/50 bg-background/50 px-3 py-2 text-xs text-amber-100"
@@ -58,23 +58,10 @@
         @draft-clear-signal-config="emit('draft-clear-signal-config', $event)"
       />
     </section>
-
-    <section
-      id="policy-builder-advanced-settings"
-      class="border-t border-amber-700/40 pt-5"
-      aria-label="Compatibility policy settings"
-    >
-      <PolicyBuilderAdvancedSettings
-        :form="form"
-        :total-weight="totalWeight"
-        @update-field="emit('update-field', $event)"
-      />
-    </section>
   </section>
 </template>
 
 <script setup>
-import PolicyBuilderAdvancedSettings from '@/components/policies/PolicyBuilderAdvancedSettings.vue'
 import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
 import PolicyIntentSummaryCard from '@/components/policies/PolicyIntentSummaryCard.vue'
 import PolicyPresetMigrationNotice from '@/components/policies/PolicyPresetMigrationNotice.vue'
@@ -112,14 +99,6 @@ defineProps({
     type: Array,
     default: () => [],
   },
-  form: {
-    type: Object,
-    required: true,
-  },
-  totalWeight: {
-    type: Number,
-    required: true,
-  },
 })
 
 const emit = defineEmits({
@@ -128,6 +107,5 @@ const emit = defineEmits({
   'draft-remove-signal-value': payload => Boolean(payload),
   'draft-set-signal-config': payload => Boolean(payload),
   'draft-clear-signal-config': payload => Boolean(payload),
-  'update-field': payload => Boolean(payload),
 })
 </script>

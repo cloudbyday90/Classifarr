@@ -485,7 +485,7 @@ describe('PolicyBuilderModal.vue', () => {
     expect(api.get).not.toHaveBeenCalledWith('/policies/operator-workflow/libraries/1', undefined);
   });
 
-  it('includes profile weight in the advanced total and save payload', async () => {
+  it('preserves hidden compatibility decision values in the legacy save payload', async () => {
     api.get.mockImplementation((url) => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
       if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
@@ -516,14 +516,9 @@ describe('PolicyBuilderModal.vue', () => {
 
     await flushPromises();
 
-    const advancedButton = Array.from(document.body.querySelectorAll('button'))
-      .find(button => button.textContent.includes('Advanced Settings'));
-    expect(advancedButton).toBeTruthy();
-    advancedButton.click();
-    await flushPromises();
-
-    expect(document.body.textContent).toContain('Profile: 25%');
-    expect(document.body.textContent).toContain('Total: 100%');
+    expect(document.body.textContent).not.toContain('Advanced Settings');
+    expect(document.body.textContent).not.toContain('Scoring Weights');
+    expect(document.body.textContent).not.toContain('Classification Thresholds');
 
     await wrapper.vm.save();
 
@@ -981,7 +976,8 @@ describe('PolicyBuilderModal.vue', () => {
     expect(document.body.textContent).toContain('Compatibility policy maintenance');
     expect(document.body.textContent).toContain('New policies use destination-first setup');
     expect(document.body.textContent).toContain('Policy Intent Builder');
-    expect(document.body.textContent).toContain('Advanced Settings');
+    expect(document.body.textContent).not.toContain('Advanced Settings');
+    expect(document.body.textContent).not.toContain('Scoring Weights');
     expect(document.body.textContent).not.toContain('Policy setup');
     expect(document.body.textContent).not.toContain('What Classifarr sees in Sci-Fi Movies');
     expect(document.body.textContent).not.toMatch(/Science Fiction\s*18\s*currently here/);
@@ -1093,7 +1089,7 @@ describe('PolicyBuilderModal.vue', () => {
     });
   });
 
-  it('orders policy behavior and intent editing before advanced compatibility settings', async () => {
+  it('shows policy behavior and intent editing without a raw scoring section', async () => {
     api.get.mockImplementation((url) => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
       if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
@@ -1122,11 +1118,12 @@ describe('PolicyBuilderModal.vue', () => {
     const text = document.body.textContent;
     const summaryIndex = text.indexOf('Policy Behavior Summary');
     const editorIndex = text.indexOf('Policy Intent Builder');
-    const advancedSettingsIndex = text.indexOf('Advanced Settings');
 
     expect(summaryIndex).toBeGreaterThan(-1);
     expect(editorIndex).toBeGreaterThan(summaryIndex);
-    expect(advancedSettingsIndex).toBeGreaterThan(editorIndex);
+    expect(text).not.toContain('Advanced Settings');
+    expect(text).not.toContain('Scoring Weights');
+    expect(text).not.toContain('Classification Thresholds');
   });
 
   it('preserves unchanged legacy custom signals when saving through the draft bridge', async () => {
