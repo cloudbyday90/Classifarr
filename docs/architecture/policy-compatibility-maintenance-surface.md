@@ -137,9 +137,9 @@ turn observed evidence into a policy declaration.
 
 ## Next Item
 
-The compatibility section-advisory cutline is implemented in [Policy
-Compatibility Section Advisory Scope
-Audit](policy-compatibility-section-advisory-scope-audit.md). The next task is
-a **compatibility section-configuration summary scope audit** for
-`policyIntentSectionProjection.js`, without adding a compatibility API or
+The compatibility section-configuration summary cutline is implemented in
+[Policy Compatibility Section Configuration Summary Scope
+Audit](policy-compatibility-section-configuration-summary-scope-audit.md). The
+next task is a **compatibility group-instruction scope audit** for
+`policyIntentEditorGroups.js`, without adding a compatibility API or
 browser-owned runtime interpretation.

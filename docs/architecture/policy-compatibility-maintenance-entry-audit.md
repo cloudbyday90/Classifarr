@@ -151,13 +151,16 @@ June 2026:
 
 ## Next Item
 
-Phase 6R.5 compatibility editor scope, readiness boundary, and section
-advisory cutline are now implemented in [Policy Compatibility Editor Scope
-Audit](policy-compatibility-editor-scope-audit.md), [Policy Compatibility
-Intent Readiness Boundary Audit](policy-compatibility-intent-readiness-boundary-audit.md),
-and [Policy Compatibility Section Advisory Scope
-Audit](policy-compatibility-section-advisory-scope-audit.md). The next task is
-a **compatibility section-configuration summary scope audit** for
-`policyIntentSectionProjection.js`. It must preserve direct configuration
-display without adding a compatibility API, browser-owned runtime
-interpretation, or broader writes.
+Phase 6R.5 compatibility editor scope, readiness boundary, section-advisory,
+and configuration-summary cutlines are now implemented in [Policy
+Compatibility Editor Scope Audit](policy-compatibility-editor-scope-audit.md),
+[Policy Compatibility Intent Readiness Boundary
+Audit](policy-compatibility-intent-readiness-boundary-audit.md), [Policy
+Compatibility Section Advisory Scope
+Audit](policy-compatibility-section-advisory-scope-audit.md), and [Policy
+Compatibility Section Configuration Summary Scope
+Audit](policy-compatibility-section-configuration-summary-scope-audit.md). The
+next task is a **compatibility group-instruction scope audit** for
+`policyIntentEditorGroups.js`. It must retain concise direct instructions
+without adding a compatibility API, browser-owned runtime interpretation, or
+broader writes.

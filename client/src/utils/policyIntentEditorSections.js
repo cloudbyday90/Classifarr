@@ -16,7 +16,6 @@ import {
   buildDraftRemoveCommandForIntentEntry,
   formatPolicyIntentEntryForSection,
   projectPolicyIntentEntriesForSection,
-  summarizePolicyIntentSection,
 } from './policyIntentSectionProjection'
 
 export {
@@ -25,7 +24,6 @@ export {
   buildDraftRemoveCommandForIntentEntry,
   buildPolicyIntentOptionStates,
   formatPolicyIntentEntryForSection,
-  summarizePolicyIntentSection,
 }
 
 function asArray(value) {
@@ -148,7 +146,6 @@ export function buildPolicyIntentEditorSections(intentView = {}, options = {}) {
     return {
       ...definition,
       entries,
-      behaviorSummary: summarizePolicyIntentSection(definition.key, entries),
       options: sectionOptions,
       optionStates,
       optionDiagnostics: buildPolicyIntentOptionDiagnostics(definition.key, optionStates),

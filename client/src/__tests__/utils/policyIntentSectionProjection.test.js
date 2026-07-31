@@ -18,7 +18,6 @@ import {
   formatPolicyIntentEntryForSection,
   projectPolicyIntentEntriesForSection,
   resolvePolicyIntentOptionStates,
-  summarizePolicyIntentSection,
   validatePolicyIntentOptionSelection,
 } from '@/utils/policyIntentSectionProjection'
 
@@ -265,23 +264,6 @@ describe('policyIntentSectionProjection', () => {
       code: 'allowed',
       reason: '',
     })
-  })
-
-  it('summarizes projected section behavior with operator-facing language', () => {
-    expect(summarizePolicyIntentSection(POLICY_INTENT_BUCKETS.COMPATIBILITY, [
-      { displayText: 'Helpful match: Comedy' },
-      { displayText: 'Helpful match: Romance' },
-    ])).toBe('Comedy, Romance can support a match, but should not decide alone.')
-
-    expect(summarizePolicyIntentSection(POLICY_INTENT_BUCKETS.BOOSTERS, [
-      { displayText: 'Confidence boost: Adventure' },
-    ])).toBe('Adventure can raise confidence after the item already fits.')
-
-    expect(summarizePolicyIntentSection(POLICY_INTENT_BUCKETS.EXCLUSIONS, [
-      { displayText: 'Avoid rating: R' },
-    ])).toBe('R should count against this destination.')
-
-    expect(summarizePolicyIntentSection(POLICY_INTENT_BUCKETS.IDENTITY, [])).toBe('')
   })
 
   it('builds allow-listed draft add commands from section definitions', () => {

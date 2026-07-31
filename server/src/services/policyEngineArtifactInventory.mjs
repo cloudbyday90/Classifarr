@@ -246,6 +246,7 @@ const DEFAULT_POLICY_ENGINE_ARTIFACT_GROUPS = Object.freeze([
       'client/src/__tests__/utils/policyIntentSummary.test.js',
       'docs/architecture/policy-compatibility-intent-readiness-boundary-audit.md',
       'docs/architecture/policy-compatibility-section-advisory-scope-audit.md',
+      'docs/architecture/policy-compatibility-section-configuration-summary-scope-audit.md',
     ],
   },
   {

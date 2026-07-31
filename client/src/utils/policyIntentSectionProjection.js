@@ -281,13 +281,6 @@ function expandArrayBackedEntries(sectionKey, entry = {}) {
   return [entry]
 }
 
-function joinDisplayValues(entries) {
-  return asArray(entries)
-    .map(entry => String(entry.displayText || '').replace(/^[^:]+:\s*/, '').trim())
-    .filter(Boolean)
-    .join(', ')
-}
-
 export function formatPolicyIntentEntryForSection(sectionKey, entry = {}) {
   const values = asObject(entry.values)
 
@@ -587,40 +580,6 @@ export function validatePolicyIntentOptionSelection(sectionKey, { value, entries
     code: 'allowed',
     reason: '',
   }
-}
-
-export function summarizePolicyIntentSection(sectionKey, entries = []) {
-  const projectedEntries = asArray(entries)
-  if (projectedEntries.length === 0) return ''
-
-  const values = joinDisplayValues(projectedEntries)
-  if (!values) return ''
-
-  if (sectionKey === POLICY_INTENT_BUCKETS.IDENTITY) {
-    return `This destination is defined by ${values}.`
-  }
-
-  if (sectionKey === POLICY_INTENT_BUCKETS.COMPATIBILITY) {
-    return `${values} can support a match, but should not decide alone.`
-  }
-
-  if (sectionKey === POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS) {
-    return `Items must stay within ${values}.`
-  }
-
-  if (sectionKey === POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS) {
-    return `Classifarr should ask when ${values}.`
-  }
-
-  if (sectionKey === POLICY_INTENT_BUCKETS.BOOSTERS) {
-    return `${values} can raise confidence after the item already fits.`
-  }
-
-  if (sectionKey === POLICY_INTENT_BUCKETS.EXCLUSIONS) {
-    return `${values} should count against this destination.`
-  }
-
-  return ''
 }
 
 export function buildDraftCommandForIntentSectionDefinition(definition = {}, { presetId, value, currentEntries } = {}) {

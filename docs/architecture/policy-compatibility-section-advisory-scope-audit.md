@@ -14,7 +14,7 @@ The compatibility editor now retains only:
 
 - section title and static descriptive help;
 - direct action label and instruction beside the editable control;
-- selected configured signals and a factual summary of those signals;
+- selected configured signals as labeled chips;
 - duplicate-safe option state, disabled reasons, and typed draft commands.
 
 Native policy workflow readiness remains the one server-owned projection. This
@@ -72,7 +72,7 @@ adding a second status system.
   test suite.
 - Removed `warnings`, `completion`, and `nextAction` from the compatibility
   section projection and card rendering.
-- Preserved section descriptions, configured-signal summaries, option
+- Preserved section descriptions, labeled configured-signal chips, option
   diagnostics, disabled duplicate explanations, and typed draft commands.
 - Updated policy authoring, engine-artifact, and client-engine boundary
   inventories to stop classifying deleted artifacts.
@@ -88,9 +88,10 @@ adding a second status system.
 
 ## Next Item
 
-Perform a **compatibility section-configuration summary scope audit** for
-`client/src/utils/policyIntentSectionProjection.js`. Classify each
-`summarizePolicyIntentSection` message as either a factual display of configured
-values or an impermissible browser interpretation of runtime behavior. Keep
-direct configuration display, but do not add a compatibility API, broaden
-writes, or recreate readiness.
+The configuration-summary cutline is implemented in [Policy Compatibility
+Section Configuration Summary Scope
+Audit](policy-compatibility-section-configuration-summary-scope-audit.md). The
+next task is a **compatibility group-instruction scope audit** for
+`policyIntentEditorGroups.js`. It must retain concise directions for grouped
+controls without adding a compatibility API, browser-owned runtime
+interpretation, or broader writes.

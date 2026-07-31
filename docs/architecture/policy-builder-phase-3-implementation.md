@@ -29,7 +29,7 @@ The checkpoint is based on these criteria:
 | --- | --- | --- |
 | Intent is the first editable policy surface | Met | `PolicyIntentEditor.vue` renders directly below `PolicyIntentSummaryCard.vue`; starter-template mechanics render after it. |
 | Legacy starter-template mechanics are supporting context | Met | `PolicyStarterTemplateMechanics.vue` wraps template browser, selected-template details, and combined signal diagnostics behind disclosure. |
-| Policy behavior is readable before mechanics | Met | `PolicyIntentSummaryCard.vue` and factual per-section configured-signal summaries remain; native readiness is server-owned and compatibility cards do not derive readiness, warnings, badges, or next actions from draft state. |
+| Policy behavior is readable before mechanics | Met | `PolicyIntentSummaryCard.vue` and labeled configured-signal chips remain; native readiness is server-owned and compatibility cards do not derive readiness, behavior summaries, warnings, badges, or next actions from draft state. |
 | Intent edits avoid raw preset JSON mutation | Met | Editor controls emit draft commands; `usePolicyIntentDraft` serializes back to legacy-compatible `customSignals`. |
 | Controls explain intent rather than signal internals | Met | Belongs Here, Helpful Matches, Hard Limits, Boosts, and Avoid use section-specific labels, actions, disabled reasons, diagnostics, and chips. |
 | Shared UI extraction has clear ownership | Met | Option select, action button, secondary button, option/action shell, option-action composable, projection helpers, and control-view facade have focused modules; the retired visual-state helper has no replacement. |
@@ -221,7 +221,8 @@ The twelfth implemented component adds inline chip provenance:
 5. Keep raw source keys out of the UI while giving operators enough provenance
    to understand why a chip exists.
 
-The thirteenth implemented component adds per-section behavior summaries:
+The thirteenth implemented component added per-section behavior summaries.
+This is a superseded historical record:
 
 1. Add `summarizePolicyIntentSection` to
    `policyIntentEditorSections.js`.
@@ -627,8 +628,8 @@ The thirty-third implemented component adds editor-to-draft parity coverage:
 - Surface provenance close to each configured signal. Operators should not need
   to open advanced template mechanics just to learn whether a chip came from an
   intent edit, policy override, or starter template.
-- Show effective behavior before controls and chips. Summaries should be
-  deterministic projections of configured intent, not AI-generated copy.
+- Show configured signals as labeled chips. Do not add a second browser summary
+  that interprets policy behavior from an unsaved compatibility draft.
 - Do not derive weak-section warnings from browser draft state. Static control
   instructions explain the edit; server-owned native readiness explains
   automation safety.
@@ -726,8 +727,8 @@ Cons:
 - Chip provenance is intentionally concise. It explains source category, not
   full raw signal history; deeper debugging still belongs in advanced template
   mechanics.
-- Section summaries are intentionally compact and derived from chip text. They
-  do not replace the top-level behavior summary or warning model.
+- Section behavior summaries were retired because they duplicated chips and
+  interpreted runtime effects from an unsaved compatibility draft.
 - Weak-section warnings and consequence copy were retired because even passive
   browser interpretation can become stale or imply runtime authority.
 - Readiness is intentionally advisory. It improves reviewability but does not
@@ -866,14 +867,13 @@ Added tests in `client/src/__tests__/PolicyIntentChip.test.js` covering:
 Updated tests in `client/src/__tests__/utils/policyIntentEditorSections.test.js`
 and `client/src/__tests__/PolicyIntentSectionCard.test.js` covering:
 
-- per-section behavior summary projection,
-- summary rendering before configured chips,
-- empty sections without summary text.
+- absence of client-derived per-section behavior summaries;
+- labeled configured-signal chips as the compatibility draft display.
 - absence of the top-level compatibility readiness summary and its
   focus-navigation path,
 - absence of client-derived section warnings, completion badges, and generated
   next actions beside compatibility edit controls.
-- static control instructions and factual configured-signal summaries remain
+- static control instructions and factual configured-signal chips remain
   available beside their related edit controls.
 - projection and draft-command helper extraction into a focused module,
 - stable public wrapper compatibility from the section contract,
@@ -960,7 +960,7 @@ Intent chip provenance validation:
 npm --prefix client run test -- PolicyIntentChip.test.js PolicyIntentSectionCard.test.js PolicyIntentGenreControl.test.js PolicyIntentCertificationControl.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
 ```
 
-Section behavior summary validation:
+Section card projection validation:
 
 ```bash
 npm --prefix client run test -- policyIntentEditorSections.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js

@@ -102,10 +102,10 @@ typecheck, coverage, and affected server checks provide the release gate.
 
 ## Next Item
 
-The compatibility section-advisory cutline is implemented in [Policy
-Compatibility Section Advisory Scope
-Audit](policy-compatibility-section-advisory-scope-audit.md). The next task is
-a **compatibility section-configuration summary scope audit** for
-`policyIntentSectionProjection.js`. It must preserve direct configuration
-display without adding a compatibility API, browser-owned runtime
-interpretation, or broader writes.
+The compatibility section-configuration summary cutline is implemented in
+[Policy Compatibility Section Configuration Summary Scope
+Audit](policy-compatibility-section-configuration-summary-scope-audit.md). The
+next task is a **compatibility group-instruction scope audit** for
+`policyIntentEditorGroups.js`. It must retain concise direct instructions
+without adding a compatibility API, browser-owned runtime interpretation, or
+broader writes.

@@ -15,7 +15,6 @@ function mountCard(overrides = {}) {
         key: POLICY_INTENT_BUCKETS.IDENTITY,
         label: 'Belongs Here',
         help: 'Signals that define what this library is for.',
-        behaviorSummary: 'This destination is defined by Family.',
         entries: [{
           role: POLICY_INTENT_BUCKETS.IDENTITY,
           preset_id: 7,
@@ -47,7 +46,6 @@ describe('PolicyIntentSectionCard.vue', () => {
 
     expect(wrapper.text()).toContain('Belongs Here')
     expect(wrapper.text()).toContain('Signals that define what this library is for.')
-    expect(wrapper.text()).toContain('This destination is defined by Family.')
     expect(wrapper.text()).toContain('Belongs here: Family')
     expect(wrapper.text()).not.toContain('genres: Family')
     expect(wrapper.text()).toContain('(Family Template)')
@@ -56,7 +54,7 @@ describe('PolicyIntentSectionCard.vue', () => {
     expect(wrapper.text()).toContain('Use this for identity evidence that should define the destination.')
   })
 
-  it('does not render client-derived readiness or advisory content', () => {
+  it('does not render client-derived summaries, readiness, or advisory content', () => {
     const wrapper = mountCard({
       props: {
         section: {
@@ -89,7 +87,7 @@ describe('PolicyIntentSectionCard.vue', () => {
       },
     })
 
-    expect(wrapper.text()).toContain('This destination is defined by Family.')
+    expect(wrapper.text()).not.toContain('This destination is defined by Family.')
     expect(wrapper.text()).not.toContain('Add at least one belongs-here signal so this policy has a clear destination identity.')
     expect(wrapper.text()).not.toContain('Needs identity')
     expect(wrapper.text()).not.toContain('Next: add a belongs-here genre that clearly defines this destination.')

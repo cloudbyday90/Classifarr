@@ -31,6 +31,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   messages have been removed so unsaved compatibility drafts cannot imply
   automation readiness, review behavior, confidence, routing, or enforcement.
 
+- **Compatibility Configuration Summary Cutline**: Compatibility section cards
+  now use their labeled configured-signal chips as the single source of draft
+  display. The redundant client-generated behavior summary is removed, so the
+  browser does not restate policy effects, confidence, review, or enforcement
+  semantics from unsaved compatibility data.
+
 - **Native Policy Create Payload Cutline**: New native policies now submit only
   library identity, policy name, and explicitly accepted native intent. The
   server rejects hidden legacy configuration before validation or persistence

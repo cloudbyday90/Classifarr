@@ -66,7 +66,6 @@ describe('policyIntentEditorSections', () => {
       addLabel: 'Choose identity genre...',
       controlKind: 'genre_intent',
       entries: [{ preset_id: 7, signal_type: 'genres', values: { require_any: ['Family'] }, displayText: 'Belongs here: Family' }],
-      behaviorSummary: 'This destination is defined by Family.',
       options: ['Family'],
       optionStates: [{
         value: 'Family',
@@ -92,13 +91,13 @@ describe('policyIntentEditorSections', () => {
     expect(sections.every(section => (
       !Object.hasOwn(section, 'warnings') &&
       !Object.hasOwn(section, 'completion') &&
-      !Object.hasOwn(section, 'nextAction')
+      !Object.hasOwn(section, 'nextAction') &&
+      !Object.hasOwn(section, 'behaviorSummary')
     ))).toBe(true)
     expect(sections.find(section => section.key === POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS)).toMatchObject({
       label: 'Hard Limits',
       controlKind: 'certification',
       entries: [{ preset_id: 7, signal_type: 'certifications', values: { mode: 'max', max: 'PG-13' }, displayText: 'Maximum rating: PG-13' }],
-      behaviorSummary: 'Items must stay within PG-13.',
       options: ['PG-13'],
       hasClearAction: true,
     })
@@ -110,7 +109,6 @@ describe('policyIntentEditorSections', () => {
       label: 'Ask When Unsure',
       controlKind: 'review_trigger',
       entries: [{ preset_id: 7, signal_type: 'review_triggers', values: { when_any: ['evidence_missing'] }, displayText: 'Ask when: Evidence is missing' }],
-      behaviorSummary: 'Classifarr should ask when Evidence is missing.',
       options: [{ value: 'evidence_missing', label: 'Evidence is missing' }],
       optionStates: [{
         value: 'evidence_missing',
