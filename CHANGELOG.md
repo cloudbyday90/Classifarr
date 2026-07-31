@@ -46,6 +46,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   Browser explanations of save mechanics, reconciliation, new-policy
   establishment, and redundant context counts have been removed.
 
+- **Compatibility Maintenance Framing Cutline**: Compatibility maintenance now
+  states only the direct destination-editing task for an existing policy.
+  Browser-owned workflow comparisons and the permanent live-status announcement
+  have been removed without changing typed editing commands or server-validated
+  compatibility writes.
+
 - **Native Policy Create Payload Cutline**: New native policies now submit only
   library identity, policy name, and explicitly accepted native intent. The
   server rejects hidden legacy configuration before validation or persistence

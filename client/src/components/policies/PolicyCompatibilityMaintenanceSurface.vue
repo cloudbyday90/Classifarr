@@ -20,16 +20,10 @@
         id="policy-compatibility-maintenance-title"
         class="text-lg font-semibold text-white"
       >
-        Compatibility policy maintenance
+        Maintain destination intent
       </h2>
       <p class="text-sm text-gray-300">
-        Maintain this policy's existing destination rules while Classifarr preserves its decision behavior.
-      </p>
-      <p
-        class="rounded border border-amber-700/50 bg-background/50 px-3 py-2 text-xs text-amber-100"
-        role="status"
-      >
-        New policies use destination-first setup. This maintenance view does not establish native policy intent.
+        Update the destination signals for this existing policy.
       </p>
     </header>
 
@@ -43,7 +37,7 @@
 
     <section
       id="policy-builder-intent-editor"
-      aria-label="Compatibility policy intent editor"
+      aria-label="Destination intent editor"
     >
       <PolicyIntentEditor
         :selected-presets="selectedPresets"

@@ -973,9 +973,11 @@ describe('PolicyBuilderModal.vue', () => {
 
     await flushPromises();
 
-    expect(document.body.textContent).toContain('Compatibility policy maintenance');
-    expect(document.body.textContent).toContain('New policies use destination-first setup');
+    expect(document.body.textContent).toContain('Maintain destination intent');
+    expect(document.body.textContent).toContain('Update the destination signals for this existing policy.');
     expect(document.body.textContent).toContain('Edit destination intent');
+    expect(document.body.textContent).not.toContain('New policies use destination-first setup');
+    expect(document.body.textContent).not.toContain('preserves its decision behavior');
     expect(document.body.textContent).not.toContain('Advanced Settings');
     expect(document.body.textContent).not.toContain('Scoring Weights');
     expect(document.body.textContent).not.toContain('Policy setup');

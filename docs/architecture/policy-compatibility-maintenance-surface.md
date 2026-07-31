@@ -137,9 +137,9 @@ turn observed evidence into a policy declaration.
 
 ## Next Item
 
-The compatibility editor framing-copy scope audit is implemented in [Policy
-Compatibility Editor Framing Copy Scope
-Audit](policy-compatibility-editor-framing-copy-scope-audit.md). The next task
-is a **compatibility maintenance-surface framing audit** for
-`PolicyCompatibilityMaintenanceSurface.vue`, without adding a compatibility API
-or browser-owned workflow interpretation.
+The compatibility maintenance-surface framing audit is implemented in [Policy
+Compatibility Maintenance Surface Framing
+Audit](policy-compatibility-maintenance-surface-framing-audit.md). The next
+task is a **compatibility migration-notice audit** for
+`PolicyPresetMigrationNotice.vue`, without adding a compatibility API or
+browser-owned workflow interpretation.

@@ -35,18 +35,20 @@ function mountSurface(overrides = {}) {
 }
 
 describe('PolicyCompatibilityMaintenanceSurface.vue', () => {
-  it('labels the retained editor as compatibility maintenance', () => {
+  it('labels the retained editor as direct destination-intent maintenance', () => {
     const wrapper = mountSurface()
 
     expect(wrapper.find('#policy-compatibility-maintenance').attributes('aria-labelledby'))
       .toBe('policy-compatibility-maintenance-title')
     expect(wrapper.find('#policy-compatibility-maintenance-title').text())
-      .toBe('Compatibility policy maintenance')
-    expect(wrapper.find('[role="status"]').text())
-      .toContain('New policies use destination-first setup')
+      .toBe('Maintain destination intent')
+    expect(wrapper.text()).toContain('Update the destination signals for this existing policy.')
+    expect(wrapper.find('[role="status"]').exists()).toBe(false)
     expect(wrapper.find('#policy-builder-intent-editor').attributes('aria-label'))
-      .toBe('Compatibility policy intent editor')
-    expect(wrapper.text()).toContain('preserves its decision behavior')
+      .toBe('Destination intent editor')
+    expect(wrapper.text()).not.toContain('preserves its decision behavior')
+    expect(wrapper.text()).not.toContain('New policies use destination-first setup')
+    expect(wrapper.text()).not.toContain('does not establish native policy intent')
     expect(wrapper.text()).not.toContain('Advanced Settings')
     expect(wrapper.text()).not.toContain('Scoring Weights')
     expect(wrapper.text()).not.toContain('Classification Thresholds')

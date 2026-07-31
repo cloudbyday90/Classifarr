@@ -76,11 +76,11 @@ accessible context without a redundant behavior paragraph.
 
 ## Next Item
 
-The editor framing-copy scope audit is implemented in [Policy Compatibility
-Editor Framing Copy Scope
-Audit](policy-compatibility-editor-framing-copy-scope-audit.md). Next, perform
-a **compatibility maintenance-surface framing audit** for
-`client/src/components/policies/PolicyCompatibilityMaintenanceSurface.vue`.
-Classify static maintenance headers and explanatory copy as direct maintenance
-context or browser-owned workflow interpretation. Do not add a compatibility
-API, broaden writes, or recreate readiness.
+The maintenance-surface framing audit is implemented in [Policy Compatibility
+Maintenance Surface Framing
+Audit](policy-compatibility-maintenance-surface-framing-audit.md). Next,
+perform a **compatibility migration-notice audit** for
+`client/src/components/policies/PolicyPresetMigrationNotice.vue`. Keep a
+factual, server-provided migration outcome and dismissal action while removing
+static implementation framing or unsupported status semantics. Do not add a
+compatibility API, broaden writes, or recreate readiness.

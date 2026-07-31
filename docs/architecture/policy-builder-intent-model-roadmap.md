@@ -4259,6 +4259,12 @@ Implementation status:
   removed from the browser. Its design and outcome record is [Policy
   Compatibility Editor Framing Copy Scope
   Audit](policy-compatibility-editor-framing-copy-scope-audit.md).
+- Compatibility maintenance framing now states only the direct destination
+  editing task for the existing policy. The permanent browser-owned workflow
+  comparison and static live-status announcement were removed; typed command
+  forwarding and server-validated writes remain unchanged. Its design and
+  outcome record is [Policy Compatibility Maintenance Surface Framing
+  Audit](policy-compatibility-maintenance-surface-framing-audit.md).
 - Persisted native policies now use a compact, read-only summary instead of
   reopening the five-section creation workflow. It shows display-safe stored
   purpose from the policy detail contract and **policy** readiness from active
