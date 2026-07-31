@@ -41,6 +41,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   concise editing directions. It no longer predicts automation safety, review
   behavior, fit, or confidence effects from a browser-side compatibility draft.
 
+- **Compatibility Editor Framing Cutline**: Compatibility editor framing now
+  states only the direct edit task, current selection, and factual empty state.
+  Browser explanations of save mechanics, reconciliation, new-policy
+  establishment, and redundant context counts have been removed.
+
 - **Native Policy Create Payload Cutline**: New native policies now submit only
   library identity, policy name, and explicitly accepted native intent. The
   server rejects hidden legacy configuration before validation or persistence

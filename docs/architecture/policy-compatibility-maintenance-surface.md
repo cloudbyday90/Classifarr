@@ -137,9 +137,9 @@ turn observed evidence into a policy declaration.
 
 ## Next Item
 
-The compatibility group-instruction scope audit is implemented in [Policy
-Compatibility Group Instruction Scope
-Audit](policy-compatibility-group-instruction-scope-audit.md). The next task is
-a **compatibility editor framing-copy scope audit** for
-`PolicyIntentEditor.vue`, without adding a compatibility API or browser-owned
-workflow interpretation.
+The compatibility editor framing-copy scope audit is implemented in [Policy
+Compatibility Editor Framing Copy Scope
+Audit](policy-compatibility-editor-framing-copy-scope-audit.md). The next task
+is a **compatibility maintenance-surface framing audit** for
+`PolicyCompatibilityMaintenanceSurface.vue`, without adding a compatibility API
+or browser-owned workflow interpretation.

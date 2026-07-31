@@ -975,7 +975,7 @@ describe('PolicyBuilderModal.vue', () => {
 
     expect(document.body.textContent).toContain('Compatibility policy maintenance');
     expect(document.body.textContent).toContain('New policies use destination-first setup');
-    expect(document.body.textContent).toContain('Policy Intent Builder');
+    expect(document.body.textContent).toContain('Edit destination intent');
     expect(document.body.textContent).not.toContain('Advanced Settings');
     expect(document.body.textContent).not.toContain('Scoring Weights');
     expect(document.body.textContent).not.toContain('Policy setup');
@@ -1034,8 +1034,8 @@ describe('PolicyBuilderModal.vue', () => {
 
     await flushPromises();
 
-    expect(document.body.textContent).toContain('Policy Intent Builder');
-    expect(document.body.textContent).toContain('The media server shows how this library is used today');
+    expect(document.body.textContent).toContain('Edit destination intent');
+    expect(document.body.textContent).not.toContain('The media server shows how this library is used today');
     expect(document.body.textContent).toContain('Belongs Here');
     expect(document.body.textContent).toContain('Hard Limits');
     expect(document.body.textContent).not.toContain('Starter Template Accelerator');
@@ -1117,7 +1117,7 @@ describe('PolicyBuilderModal.vue', () => {
 
     const text = document.body.textContent;
     const summaryIndex = text.indexOf('Policy Behavior Summary');
-    const editorIndex = text.indexOf('Policy Intent Builder');
+    const editorIndex = text.indexOf('Edit destination intent');
 
     expect(summaryIndex).toBeGreaterThan(-1);
     expect(editorIndex).toBeGreaterThan(summaryIndex);

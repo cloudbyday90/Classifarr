@@ -4253,6 +4253,12 @@ Implementation status:
   automation safety, review behavior, matching fit, or confidence effects were
   removed. Its design and outcome record is [Policy Compatibility Group
   Instruction Scope Audit](policy-compatibility-group-instruction-scope-audit.md).
+- Compatibility editor framing now names the direct editing task and retains
+  only the selectable context and factual empty state. Save mechanics,
+  reconciliation, new-policy establishment, and redundant context counts were
+  removed from the browser. Its design and outcome record is [Policy
+  Compatibility Editor Framing Copy Scope
+  Audit](policy-compatibility-editor-framing-copy-scope-audit.md).
 - Persisted native policies now use a compact, read-only summary instead of
   reopening the five-section creation workflow. It shows display-safe stored
   purpose from the policy detail contract and **policy** readiness from active

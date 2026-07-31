@@ -161,7 +161,10 @@ Audit](policy-compatibility-section-advisory-scope-audit.md), and [Policy
 Compatibility Section Configuration Summary Scope
 Audit](policy-compatibility-section-configuration-summary-scope-audit.md), and
 [Policy Compatibility Group Instruction Scope
-Audit](policy-compatibility-group-instruction-scope-audit.md). The next task is
-a **compatibility editor framing-copy scope audit** for
-`PolicyIntentEditor.vue`. It must retain direct editing context without adding
-a compatibility API, browser-owned workflow interpretation, or broader writes.
+Audit](policy-compatibility-group-instruction-scope-audit.md), and [Policy
+Compatibility Editor Framing Copy Scope
+Audit](policy-compatibility-editor-framing-copy-scope-audit.md). The next task
+is a **compatibility maintenance-surface framing audit** for
+`PolicyCompatibilityMaintenanceSurface.vue`. It must retain direct maintenance
+context without adding a compatibility API, browser-owned workflow
+interpretation, or broader writes.

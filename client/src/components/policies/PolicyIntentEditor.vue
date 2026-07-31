@@ -12,17 +12,8 @@
       <div>
         <h4 class="font-semibold flex items-center gap-2">
           <span class="text-primary">🧭</span>
-          Policy Intent Builder
+          Edit destination intent
         </h4>
-        <p class="text-xs text-gray-400 mt-1">
-          Describe what should belong here without changing how existing policies save.
-        </p>
-        <p class="text-xs text-gray-400 mt-1 max-w-2xl">
-          The media server shows how this library is used today. The policy explains what should belong going forward. Classifarr reconciles both.
-        </p>
-      </div>
-      <div class="text-xs text-gray-400">
-        {{ selectedPresets.length }} existing policy context{{ selectedPresets.length === 1 ? '' : 's' }}
       </div>
     </div>
 
@@ -31,11 +22,9 @@
       id="policy-builder-destination-rules"
       tabindex="-1"
       class="rounded-lg border border-gray-700 bg-background-light p-3 text-sm text-gray-400"
-      aria-label="Destination rules unavailable"
+      aria-label="Destination intent unavailable"
     >
-      This existing policy has no editable compatibility context. New policy
-      intent is established from the connected library, not by attaching a
-      starter template.
+      No editable destination signals are available for this policy.
     </div>
 
     <template v-else>
@@ -72,7 +61,7 @@
       </section>
 
       <label class="block text-xs font-medium text-gray-300">
-        Edit existing policy context
+        Choose policy context
         <select
           v-model="activePresetId"
           class="mt-1 w-full px-2 py-1 bg-background border border-gray-700 rounded-sm text-sm"

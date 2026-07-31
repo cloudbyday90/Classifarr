@@ -76,10 +76,11 @@ accessible context without a redundant behavior paragraph.
 
 ## Next Item
 
-The group-instruction scope audit is implemented in [Policy Compatibility Group
-Instruction Scope Audit](policy-compatibility-group-instruction-scope-audit.md).
-Next, perform a **compatibility editor framing-copy scope audit** for
-`client/src/components/policies/PolicyIntentEditor.vue`. Classify the static
-header, context count, and empty-state language as direct editing context or
-browser-owned workflow interpretation. Do not add a compatibility API, broaden
-writes, or recreate readiness.
+The editor framing-copy scope audit is implemented in [Policy Compatibility
+Editor Framing Copy Scope
+Audit](policy-compatibility-editor-framing-copy-scope-audit.md). Next, perform
+a **compatibility maintenance-surface framing audit** for
+`client/src/components/policies/PolicyCompatibilityMaintenanceSurface.vue`.
+Classify static maintenance headers and explanatory copy as direct maintenance
+context or browser-owned workflow interpretation. Do not add a compatibility
+API, broaden writes, or recreate readiness.

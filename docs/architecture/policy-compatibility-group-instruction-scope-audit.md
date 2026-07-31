@@ -78,8 +78,10 @@ helpers satisfy those needs without duplicating policy-runtime semantics.
 
 ## Next Item
 
-Perform a **compatibility editor framing-copy scope audit** for
-`client/src/components/policies/PolicyIntentEditor.vue`. Classify its static
-header, context count, and empty-state copy as direct editing context or
-browser-owned workflow interpretation. Do not add a compatibility API, broaden
-writes, or recreate readiness.
+The framing-copy scope audit is implemented in [Policy Compatibility Editor
+Framing Copy Scope Audit](policy-compatibility-editor-framing-copy-scope-audit.md).
+Next, perform a **compatibility maintenance-surface framing audit** for
+`client/src/components/policies/PolicyCompatibilityMaintenanceSurface.vue`.
+Classify static maintenance headers and explanatory copy as direct maintenance
+context or browser-owned workflow interpretation. Do not add a compatibility
+API, broaden writes, or recreate readiness.

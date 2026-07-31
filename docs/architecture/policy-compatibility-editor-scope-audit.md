@@ -116,10 +116,10 @@ June 2026:
 
 ## Next Item
 
-The compatibility group-instruction scope audit is implemented in [Policy
-Compatibility Group Instruction Scope
-Audit](policy-compatibility-group-instruction-scope-audit.md). The next task is
-a **compatibility editor framing-copy scope audit** for
-`PolicyIntentEditor.vue`. It must retain direct editing context without
-asserting browser-owned workflow behavior, adding a compatibility API, or
-broadening compatibility writes.
+The compatibility editor framing-copy scope audit is implemented in [Policy
+Compatibility Editor Framing Copy Scope
+Audit](policy-compatibility-editor-framing-copy-scope-audit.md). The next task
+is a **compatibility maintenance-surface framing audit** for
+`PolicyCompatibilityMaintenanceSurface.vue`. It must retain direct maintenance
+context without asserting browser-owned workflow behavior, adding a
+compatibility API, or broadening compatibility writes.

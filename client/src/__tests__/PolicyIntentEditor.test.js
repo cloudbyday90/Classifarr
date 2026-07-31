@@ -54,10 +54,12 @@ describe('PolicyIntentEditor.vue', () => {
     expect(wrapper.emitted('add-signal')).toBeUndefined()
   })
 
-  it('renders direct control guidance without browser-derived advisory state', () => {
+  it('renders direct editing context without browser-derived workflow claims', () => {
     const wrapper = mountEditor()
     const text = wrapper.text()
 
+    expect(text).toContain('Edit destination intent')
+    expect(text).toContain('Choose policy context')
     expect(text).toContain('When should Classifarr ask?')
     expect(text).toContain('Ask When Unsure')
     expect(text).toContain('What clearly belongs here?')
@@ -68,7 +70,12 @@ describe('PolicyIntentEditor.vue', () => {
     expect(text).not.toContain('Ready with notes')
     expect(text).not.toContain('Needs identity')
     expect(text).not.toContain('Why it matters:')
-    expect(text.indexOf('Ask When Unsure')).toBeLessThan(text.indexOf('Edit existing policy context'))
+    expect(text).not.toContain('Policy Intent Builder')
+    expect(text).not.toContain('without changing how existing policies save')
+    expect(text).not.toContain('The media server shows how this library is used today')
+    expect(text).not.toContain('Classifarr reconciles both')
+    expect(text).not.toMatch(/\d+\s+existing policy context/)
+    expect(text.indexOf('Ask When Unsure')).toBeLessThan(text.indexOf('Choose policy context'))
     expect(wrapper.find('#policy-builder-review-behavior').exists()).toBe(true)
     expect(wrapper.find('#policy-builder-destination-identity').exists()).toBe(true)
     expect(wrapper.find('#policy-builder-destination-rules').exists()).toBe(true)
@@ -76,7 +83,7 @@ describe('PolicyIntentEditor.vue', () => {
     expect(text.indexOf('What should always or never belong here?')).toBeLessThan(text.indexOf('Helpful Matches'))
   })
 
-  it('keeps the no-compatibility-context empty state as a focusable setup action target', () => {
+  it('keeps the no-compatibility-context empty state as a focusable status target', () => {
     const wrapper = mount(PolicyIntentEditor, {
       props: {
         selectedPresets: [],
@@ -91,8 +98,9 @@ describe('PolicyIntentEditor.vue', () => {
 
     expect(emptyState.exists()).toBe(true)
     expect(emptyState.attributes('tabindex')).toBe('-1')
-    expect(emptyState.attributes('aria-label')).toBe('Destination rules unavailable')
-    expect(emptyState.text()).toContain('New policy intent is established from the connected library')
+    expect(emptyState.attributes('aria-label')).toBe('Destination intent unavailable')
+    expect(emptyState.text()).toContain('No editable destination signals are available for this policy.')
+    expect(emptyState.text()).not.toContain('New policy intent is established')
   })
 
   it('emits review trigger draft commands from the review behavior section', async () => {
