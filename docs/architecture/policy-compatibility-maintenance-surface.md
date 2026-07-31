@@ -137,9 +137,9 @@ turn observed evidence into a policy declaration.
 
 ## Next Item
 
-The compatibility maintenance-surface framing audit is implemented in [Policy
-Compatibility Maintenance Surface Framing
-Audit](policy-compatibility-maintenance-surface-framing-audit.md). The next
-task is a **compatibility migration-notice audit** for
-`PolicyPresetMigrationNotice.vue`, without adding a compatibility API or
-browser-owned workflow interpretation.
+The compatibility migration-notice audit is implemented in [Policy
+Compatibility Migration Notice
+Audit](policy-compatibility-migration-notice-audit.md). The next task is a
+**compatibility intent-summary audit** for `PolicyIntentSummaryCard.vue`,
+without adding summary actions, a compatibility API, or browser-owned
+policy-behavior interpretation.

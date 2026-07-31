@@ -102,10 +102,10 @@ typecheck, coverage, and affected server checks provide the release gate.
 
 ## Next Item
 
-The compatibility maintenance-surface framing audit is implemented in [Policy
-Compatibility Maintenance Surface Framing
-Audit](policy-compatibility-maintenance-surface-framing-audit.md). The next
-task is a **compatibility migration-notice audit** for
-`PolicyPresetMigrationNotice.vue`. It must retain factual server-provided
-migration outcome and dismissal behavior without adding a compatibility API,
-browser-owned workflow interpretation, or broader writes.
+The compatibility migration-notice audit is implemented in [Policy
+Compatibility Migration Notice
+Audit](policy-compatibility-migration-notice-audit.md). The next task is a
+**compatibility intent-summary audit** for `PolicyIntentSummaryCard.vue`. It
+must retain factual stored-intent context without adding summary actions, a
+compatibility API, browser-owned policy-behavior interpretation, or broader
+writes.

@@ -86,8 +86,8 @@ describe('usePolicyBuilderReferenceData composable', () => {
 
     expect(report).toEqual({
       version: '2026-06-26T00:00:00Z',
-      summary: '2 incompatible preset attachments were removed automatically across 1 policy. Reapply corrected presets where needed.',
-      preview: 'Recently removed: Old Regional, legacy_language, Third, ...',
+      summary: '2 incompatible preset attachments were removed automatically across 1 policy.',
+      preview: 'Affected presets: Old Regional, legacy_language, Third, ...',
     })
 
     const dismissedStorage = createStorage({

@@ -250,6 +250,7 @@ const DEFAULT_POLICY_ENGINE_ARTIFACT_GROUPS = Object.freeze([
       'docs/architecture/policy-compatibility-group-instruction-scope-audit.md',
       'docs/architecture/policy-compatibility-editor-framing-copy-scope-audit.md',
       'docs/architecture/policy-compatibility-maintenance-surface-framing-audit.md',
+      'docs/architecture/policy-compatibility-migration-notice-audit.md',
     ],
   },
   {

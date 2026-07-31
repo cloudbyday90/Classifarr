@@ -15,9 +15,6 @@
           aria-hidden="true"
         >⚠️</span>
         <div class="space-y-2">
-          <div class="font-medium text-amber-200">
-            Legacy preset attachments were auto-dropped after upgrade
-          </div>
           <p class="text-sm text-amber-100/90">
             {{ notice.summary }}
           </p>
@@ -34,7 +31,7 @@
         class="shrink-0 text-xs px-2 py-1 rounded-sm border border-amber-400/40 text-amber-200 hover:bg-amber-500/10"
         @click="$emit('dismiss')"
       >
-        Dismiss
+        Dismiss migration notice
       </button>
     </div>
   </div>

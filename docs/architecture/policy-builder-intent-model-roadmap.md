@@ -4265,6 +4265,12 @@ Implementation status:
   forwarding and server-validated writes remain unchanged. Its design and
   outcome record is [Policy Compatibility Maintenance Surface Framing
   Audit](policy-compatibility-maintenance-surface-framing-audit.md).
+- Compatibility migration notices now retain only a bounded, report-derived
+  removal outcome, affected-preset preview, and version-scoped local dismissal.
+  The browser-authored upgrade headline and manual reapply prompt were removed;
+  the notice neither changes policy state nor establishes workflow authority.
+  Its design and outcome record is [Policy Compatibility Migration Notice
+  Audit](policy-compatibility-migration-notice-audit.md).
 - Persisted native policies now use a compact, read-only summary instead of
   reopening the five-section creation workflow. It shows display-safe stored
   purpose from the policy detail contract and **policy** readiness from active

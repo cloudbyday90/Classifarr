@@ -78,11 +78,11 @@ helpers satisfy those needs without duplicating policy-runtime semantics.
 
 ## Next Item
 
-The maintenance-surface framing audit is implemented in [Policy Compatibility
-Maintenance Surface Framing
-Audit](policy-compatibility-maintenance-surface-framing-audit.md). Next,
-perform a **compatibility migration-notice audit** for
-`client/src/components/policies/PolicyPresetMigrationNotice.vue`. Keep a
-factual, server-provided migration outcome and dismissal action while removing
-static implementation framing or unsupported status semantics. Do not add a
-compatibility API, broaden writes, or recreate readiness.
+The compatibility migration-notice audit is implemented in [Policy
+Compatibility Migration Notice
+Audit](policy-compatibility-migration-notice-audit.md). Next, perform a
+**compatibility intent-summary audit** for
+`client/src/components/policies/PolicyIntentSummaryCard.vue`. Classify static
+headings and display-only status as factual stored-intent context or
+browser-owned policy-behavior interpretation. Do not add summary actions,
+compatibility APIs, broader writes, or readiness derivation.

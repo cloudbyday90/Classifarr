@@ -52,6 +52,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   have been removed without changing typed editing commands or server-validated
   compatibility writes.
 
+- **Compatibility Migration Notice Cutline**: Migration notices now show only
+  the bounded, report-derived removal outcome and affected-preset preview.
+  The browser-authored upgrade headline and manual reapply prompt are removed;
+  dismissal remains local to the reported migration version and does not write
+  policy state.
+
 - **Native Policy Create Payload Cutline**: New native policies now submit only
   library identity, policy name, and explicitly accepted native intent. The
   server rejects hidden legacy configuration before validation or persistence

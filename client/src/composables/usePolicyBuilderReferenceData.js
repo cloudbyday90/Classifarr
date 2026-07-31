@@ -68,9 +68,9 @@ export function parsePresetMigrationReport(rawValue, storage = getBrowserStorage
 
     return {
       version: reportVersion,
-      summary: `${summaryParts.join(' ')}. Reapply corrected presets where needed.`,
+      summary: `${summaryParts.join(' ')}.`,
       preview: previewNames.length > 0
-        ? `Recently removed: ${previewNames.join(', ')}${droppedAttachments.length > previewNames.length ? ', ...' : ''}`
+        ? `Affected presets: ${previewNames.join(', ')}${droppedAttachments.length > previewNames.length ? ', ...' : ''}`
         : '',
     }
   } catch (_error) {

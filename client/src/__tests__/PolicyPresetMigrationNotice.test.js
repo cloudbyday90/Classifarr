@@ -18,12 +18,13 @@ const mountComponent = (notice = {}) => mount(PolicyPresetMigrationNotice, {
 })
 
 describe('PolicyPresetMigrationNotice.vue', () => {
-  it('renders the upgrade notice summary and preview', () => {
+  it('renders only the supplied migration outcome and preview', () => {
     const wrapper = mountComponent()
 
-    expect(wrapper.text()).toContain('Legacy preset attachments were auto-dropped after upgrade')
     expect(wrapper.text()).toContain('2 incompatible preset attachments were removed.')
     expect(wrapper.text()).toContain('Family Policy, Movies Policy')
+    expect(wrapper.text()).not.toContain('auto-dropped after upgrade')
+    expect(wrapper.text()).not.toContain('Reapply corrected presets')
   })
 
   it('omits the preview when the notice has no preview text', () => {
@@ -35,6 +36,8 @@ describe('PolicyPresetMigrationNotice.vue', () => {
 
   it('emits dismiss when the operator dismisses the notice', async () => {
     const wrapper = mountComponent()
+
+    expect(wrapper.find('button').text()).toBe('Dismiss migration notice')
 
     await wrapper.find('button').trigger('click')
 

@@ -163,10 +163,12 @@ Audit](policy-compatibility-section-configuration-summary-scope-audit.md), and
 [Policy Compatibility Group Instruction Scope
 Audit](policy-compatibility-group-instruction-scope-audit.md), [Policy
 Compatibility Editor Framing Copy Scope
-Audit](policy-compatibility-editor-framing-copy-scope-audit.md), and [Policy
+Audit](policy-compatibility-editor-framing-copy-scope-audit.md), [Policy
 Compatibility Maintenance Surface Framing
-Audit](policy-compatibility-maintenance-surface-framing-audit.md). The next
-task is a **compatibility migration-notice audit** for
-`PolicyPresetMigrationNotice.vue`. It must retain factual server-provided
-migration outcome and dismissal behavior without adding a compatibility API,
-browser-owned workflow interpretation, or broader writes.
+Audit](policy-compatibility-maintenance-surface-framing-audit.md), and [Policy
+Compatibility Migration Notice
+Audit](policy-compatibility-migration-notice-audit.md). The next task is a
+**compatibility intent-summary audit** for `PolicyIntentSummaryCard.vue`. It
+must retain factual stored-intent context without adding summary actions, a
+compatibility API, browser-owned policy-behavior interpretation, or broader
+writes.

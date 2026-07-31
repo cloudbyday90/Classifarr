@@ -90,8 +90,11 @@ through static copy.
 
 ## Next Item
 
-Perform a **compatibility migration-notice audit** for
-`client/src/components/policies/PolicyPresetMigrationNotice.vue`. Keep the
-server-provided migration outcome and dismissal action factual and bounded;
-remove static implementation framing or unsupported status semantics. Do not
-add a compatibility API, broaden writes, or recreate readiness.
+The compatibility migration-notice audit is implemented in [Policy
+Compatibility Migration Notice
+Audit](policy-compatibility-migration-notice-audit.md). Next, perform a
+**compatibility intent-summary audit** for
+`client/src/components/policies/PolicyIntentSummaryCard.vue`. Classify its
+static headings and display-only status as factual stored-intent context or
+browser-owned policy-behavior interpretation. Do not add summary actions,
+compatibility APIs, broader writes, or readiness derivation.

@@ -1359,9 +1359,10 @@ describe('PolicyBuilderModal.vue', () => {
 
     await flushPromises();
 
-    expect(document.body.textContent).toContain('Legacy preset attachments were auto-dropped after upgrade');
     expect(document.body.textContent).toContain('2 incompatible preset attachments were removed automatically across 1 policy.');
-    expect(document.body.textContent).toContain('Recently removed: Scandinavian, Korean');
+    expect(document.body.textContent).toContain('Affected presets: Scandinavian, Korean');
+    expect(document.body.textContent).not.toContain('Legacy preset attachments were auto-dropped after upgrade');
+    expect(document.body.textContent).not.toContain('Reapply corrected presets where needed.');
   });
 
   it('lets users dismiss the preset migration notice and keeps it hidden for the same report', async () => {
@@ -1401,13 +1402,13 @@ describe('PolicyBuilderModal.vue', () => {
 
     await flushPromises();
 
-    expect(document.body.textContent).toContain('Legacy preset attachments were auto-dropped after upgrade');
+    expect(document.body.textContent).toContain('1 incompatible preset attachment was removed automatically across 1 policy.');
 
     expect(typeof wrapper.vm.dismissPresetMigrationNotice).toBe('function');
     wrapper.vm.dismissPresetMigrationNotice();
     await flushPromises();
 
-    expect(document.body.textContent).not.toContain('Legacy preset attachments were auto-dropped after upgrade');
+    expect(document.body.textContent).not.toContain('1 incompatible preset attachment was removed automatically across 1 policy.');
     expect(window.localStorage.getItem('classifarr.presetMigrationNotice.dismissed')).toBe('2026-03-13T23:45:00Z');
 
     wrapper.unmount();
@@ -1428,6 +1429,6 @@ describe('PolicyBuilderModal.vue', () => {
 
     await flushPromises();
 
-    expect(document.body.textContent).not.toContain('Legacy preset attachments were auto-dropped after upgrade');
+    expect(document.body.textContent).not.toContain('1 incompatible preset attachment was removed automatically across 1 policy.');
   });
 });
