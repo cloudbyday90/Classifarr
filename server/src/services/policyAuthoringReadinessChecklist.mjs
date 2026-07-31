@@ -130,9 +130,9 @@ const POLICY_AUTHORING_COMPONENT_RECORDS = deepFreeze([
     servicePath: 'server/src/services/policyUserMentalModel.mjs',
     testPath: 'server/src/__tests__/services/policyUserMentalModel.test.mjs',
     protects: [
-      'destination-first setup language',
-      'approved policy UX labels',
-      'broad genre framing',
+      'destination-first term identifiers',
+      'operator-workflow control kinds',
+      'internal diagnostic-language guard',
     ],
   },
   {

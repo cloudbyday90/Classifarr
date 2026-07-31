@@ -73,7 +73,7 @@ const DEFAULT_POLICY_EVIDENCE_ARTIFACT_SUCCESSORS = freezeSuccessorMappings([
     successorId: POLICY_EVIDENCE_ARTIFACT_SUCCESSOR_IDS.AUTOMATION_READINESS,
   },
   {
-    groupId: 'policy_builder_summary_shell',
+    groupId: 'policy_builder_compatibility_shell',
     successorId: POLICY_EVIDENCE_ARTIFACT_SUCCESSOR_IDS.OPERATOR_WORKFLOW,
   },
 ]);

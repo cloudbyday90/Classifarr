@@ -57,6 +57,17 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   tests, and retired routing anchor. Native creation continues to use the
   server-owned destination workflow and readiness surface.
 
+- **User-Mental-Model Setup-Card Contract Retirement**: Removed the unreachable
+  server-side four-step setup-card, journey, copy, field-group, answer-shape,
+  and self-audit metadata. Shared UX term IDs, active workflow control kinds,
+  and the server-side internal-diagnostic language guard remain for their live
+  consumers.
+
+- **Policy Artifact Cutline Alignment**: Rebound the evidence successor map to
+  the current compatibility-maintenance inventory group so completion audits
+  continue to verify every active replacement surface has one bounded engine
+  successor.
+
 - **Compatibility Group Guidance Cutline**: Group helper text now gives only
   concise editing directions. It no longer predicts automation safety, review
   behavior, fit, or confidence effects from a browser-side compatibility draft.

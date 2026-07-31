@@ -251,6 +251,7 @@ const DEFAULT_POLICY_ENGINE_ARTIFACT_GROUPS = Object.freeze([
       'docs/architecture/policy-compatibility-save-footer-admission-audit.md',
       'docs/architecture/policy-compatibility-routing-readiness-card-retirement-audit.md',
       'docs/architecture/policy-compatibility-setup-card-grid-retirement-audit.md',
+      'docs/architecture/policy-compatibility-user-mental-model-setup-card-contract-retirement-audit.md',
     ],
   },
   {

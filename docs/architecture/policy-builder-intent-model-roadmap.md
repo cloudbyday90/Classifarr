@@ -4192,6 +4192,13 @@ Implementation status:
   the server-owned destination workflow and readiness surface; its design and
   outcome record is [Policy Compatibility Setup-Card Grid Retirement
   Audit](policy-compatibility-setup-card-grid-retirement-audit.md).
+- The unreachable server-side four-step setup-card contract is deleted. The
+  user-mental-model service now retains only live shared UX term IDs,
+  operator-workflow control-kind IDs, and its internal diagnostic-language
+  guard; the five-section workflow remains the single server-owned projection.
+  Its design and outcome record is [Policy Compatibility User-Mental-Model
+  Setup-Card Contract Retirement
+  Audit](policy-compatibility-user-mental-model-setup-card-contract-retirement-audit.md).
 - Native policy creation now accepts only the explicit typed-draft result and
   establishes the policy row, native authority, audit records, routing target,
   and rollback snapshot in one transaction. It rejects legacy preset

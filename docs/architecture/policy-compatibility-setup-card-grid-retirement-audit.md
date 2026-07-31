@@ -98,8 +98,8 @@ are release gates.
 
 ## Next Item
 
-Perform the **Phase 6R.5 policy user-mental-model setup-card contract audit**.
-Trace the server-side `DEFAULT_POLICY_SETUP_CARDS` and related card-specific
-audits in `policyUserMentalModel.mjs`, keep only current server workflow
-contracts, and remove unreachable legacy card data without affecting vocabulary,
-evidence, intent, readiness, or migration authority.
+The follow-on user-mental-model setup-card audit is complete in [Policy
+Compatibility User-Mental-Model Setup-Card Contract Retirement
+Audit](policy-compatibility-user-mental-model-setup-card-contract-retirement-audit.md).
+
+Next, start **Phase 6R.6, Task 6R.6.1: Migration Preview Contract**.
