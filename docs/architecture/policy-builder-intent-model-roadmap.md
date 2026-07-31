@@ -2799,10 +2799,9 @@ Implementation record:
   as the outcome record.
 - The fourth Vue-facing rewrite slice is documented in
   [Policy Authoring Routing Readiness](policy-authoring-routing-readiness.md).
-  The routing setup card now targets a dedicated read-only readiness surface
-  that projects selected-library routing context into one visible status and one
-  next action without executing routing, calling providers, or saving policy
-  intent.
+  Its local projection and unmounted card are historical artifacts: the card
+  has been deleted because the active server-owned workflow now provides the
+  normal readiness next action.
 - The policy-authoring routing-readiness cutover renamed that design record and
   completion-audit entry to durable product-domain names, updated the workflow
   completion audit id to `policy_authoring_routing_readiness`, and added
@@ -4283,6 +4282,11 @@ Implementation status:
   projection was removed. Its design and outcome record is [Policy
   Compatibility Save-Footer Admission
   Audit](policy-compatibility-save-footer-admission-audit.md).
+- The unmounted compatibility routing-readiness card and its focused test are
+  deleted. Native creation continues to present only server-owned readiness
+  through the operator workflow and its bounded next-action card. Its design
+  and outcome record is [Policy Compatibility Routing-Readiness Card
+  Retirement Audit](policy-compatibility-routing-readiness-card-retirement-audit.md).
 - Persisted native policies now use a compact, read-only summary instead of
   reopening the five-section creation workflow. It shows display-safe stored
   purpose from the policy detail contract and **policy** readiness from active

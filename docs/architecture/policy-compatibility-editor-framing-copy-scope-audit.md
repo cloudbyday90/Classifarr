@@ -82,9 +82,9 @@ controls save behavior, reconciliation, establishment, or readiness.
 
 ## Next Item
 
-The compatibility save-footer admission audit is implemented in [Policy
-Compatibility Save-Footer Admission Audit](policy-compatibility-save-footer-admission-audit.md).
-Next, perform a **compatibility routing-readiness card retirement audit** for
-`PolicyBuilderRoutingReadinessCard.vue`. It is unmounted; confirm it has no
-server-owned read contract or production caller, then remove it rather than
-preserve a dormant client readiness surface.
+The compatibility routing-readiness card retirement audit is implemented in
+[Policy Compatibility Routing-Readiness Card Retirement Audit](policy-compatibility-routing-readiness-card-retirement-audit.md).
+Next, perform a **compatibility setup-card grid retirement audit** for
+`PolicyBuilderSetupCards.vue` and `policyBuilderSetupCards.js`. Confirm the
+grid remains unmounted, then remove it rather than preserve stale anchors or
+browser-derived readiness state.

@@ -209,20 +209,6 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
     ]),
   },
   {
-    id: 'summary_and_readiness_surface',
-    decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.REPLACE,
-    roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.READINESS_NEXT_ACTION,
-    normalAuthoringAllowed: true,
-    migrationSupportOnly: false,
-    riskIds: [
-      POLICY_AUTHORING_WORKFLOW_RISK_IDS.OLD_MODAL_SHAPE,
-    ],
-    notes: 'The remaining routing card must become a server-owned next action or be removed; save admission does not infer readiness.',
-    matches: filePath => hasAnySegment(filePath, [
-      '/PolicyBuilderRoutingReadinessCard.vue',
-    ]),
-  },
-  {
     id: 'policy_save_admission_surface',
     decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
     roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.ACTION_ADMISSION,

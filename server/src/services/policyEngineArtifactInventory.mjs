@@ -249,6 +249,7 @@ const DEFAULT_POLICY_ENGINE_ARTIFACT_GROUPS = Object.freeze([
       'docs/architecture/policy-compatibility-migration-notice-audit.md',
       'docs/architecture/policy-compatibility-intent-summary-audit.md',
       'docs/architecture/policy-compatibility-save-footer-admission-audit.md',
+      'docs/architecture/policy-compatibility-routing-readiness-card-retirement-audit.md',
     ],
   },
   {

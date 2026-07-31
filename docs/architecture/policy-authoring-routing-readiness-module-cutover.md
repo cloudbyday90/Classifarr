@@ -9,8 +9,9 @@ This document records the prior phase-name cutover for a client-side
 routing-readiness projection. The [Policy Compatibility Save-Footer Admission
 Audit](policy-compatibility-save-footer-admission-audit.md) removed that
 projection and its modal integration because browser routing conclusions are
-not policy-write authority. The unmounted routing card remains pending its own
-retirement audit.
+not policy-write authority. The [Policy Compatibility Routing-Readiness Card
+Retirement Audit](policy-compatibility-routing-readiness-card-retirement-audit.md)
+then removed the unmounted card and its focused test.
 
 ## Official Guidance Reviewed
 
@@ -31,27 +32,27 @@ retirement audit.
 
 1. Do not restore client-derived routing readiness to a save or create flow.
 2. Keep server validation and returned write outcomes authoritative.
-3. Retire the unmounted routing card unless a server-owned read contract and a
-   concrete product caller require a replacement surface.
+3. Keep server-owned readiness in `ReadinessNextActionCard.vue`, and do not
+   restore the retired local routing card.
 
 ## Pros And Cons
 
 Pros:
 
 - Preserves the historical rationale for the prior cutover.
-- Makes the removed projection and pending card retirement explicit.
+- Makes the removed projection and card explicit.
 
 Cons:
 
 - This document no longer describes active behavior.
-- The unmounted card needs its own contract/caller audit before deletion.
+- The separate unmounted setup-card grid needs its own retirement audit.
 
 ## Final Recommendation Stack
 
 - Historical cutover record: this document.
 - Deleted local projection:
   `client/src/utils/policyBuilderRoutingReadiness.js`.
-- Pending retirement artifacts:
+- Deleted retirement artifacts:
   `client/src/components/policies/PolicyBuilderRoutingReadinessCard.vue` and
   `client/src/__tests__/PolicyBuilderRoutingReadinessCard.test.js`.
 
@@ -64,6 +65,7 @@ uses a browser routing conclusion.
 
 ## Next Step
 
-Perform the **compatibility routing-readiness card retirement audit**. Confirm
-that the unmounted card has no server-owned read contract or production caller,
-then remove it rather than preserve a dormant client readiness surface.
+Perform the **compatibility setup-card grid retirement audit**. Confirm that
+the unmounted grid and its local projection have no production caller, then
+remove them rather than preserve stale anchors or browser-derived readiness
+state.

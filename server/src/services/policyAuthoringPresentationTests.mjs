@@ -120,7 +120,6 @@ const POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS = deepFreeze([
   'client/src/__tests__/PolicyBuilderFooterActions.test.js',
   'client/src/__tests__/PolicyBuilderLibraryContext.test.js',
   'client/src/__tests__/PolicyBuilderModal.test.js',
-  'client/src/__tests__/PolicyBuilderRoutingReadinessCard.test.js',
   'client/src/__tests__/PolicyBuilderSetupCards.test.js',
   'client/src/__tests__/PolicyBuilderWorkflowShell.test.js',
   'client/src/__tests__/PolicyCompatibilityMaintenanceSurface.test.js',
@@ -218,17 +217,6 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
       POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.INTERNAL_DIAGNOSTIC_PANELS_ABSENT,
     ],
     'The modal protects destination-first authoring rather than compatibility layout shape.'
-  ),
-  presentationTestRecord(
-    'client/src/__tests__/PolicyBuilderRoutingReadinessCard.test.js',
-    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_READINESS_NEXT_ACTIONS,
-    true,
-    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
-    [
-      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.READINESS_LINKS_TO_NEXT_ACTION,
-      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS,
-    ],
-    'Routing readiness presents one bounded status and one resolving action without executing routing.'
   ),
   presentationTestRecord(
     'client/src/__tests__/PolicyBuilderSetupCards.test.js',

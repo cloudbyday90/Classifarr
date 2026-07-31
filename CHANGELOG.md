@@ -48,6 +48,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   success, routing, and policy-readiness messages are removed; compatibility
   saves still use the existing server-validated write contract.
 
+- **Compatibility Routing-Readiness Retirement**: Removed the unmounted local
+  routing-readiness card and its test. Native policy creation continues to use
+  the server-owned operator-workflow readiness and next-action surface.
+
 - **Compatibility Group Guidance Cutline**: Group helper text now gives only
   concise editing directions. It no longer predicts automation safety, review
   behavior, fit, or confidence effects from a browser-side compatibility draft.

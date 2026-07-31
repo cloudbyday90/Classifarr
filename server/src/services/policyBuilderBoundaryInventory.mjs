@@ -343,7 +343,6 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
         '/IntentSignalPicker.vue',
         '/ObservedProfileSummary.vue',
         '/PolicyBuilderLibraryContext.vue',
-        '/PolicyBuilderRoutingReadinessCard.vue',
         '/PolicyBuilderSetupCards.vue',
         '/PolicyBuilderDestinationQuestions.vue',
         '/PolicyBuilderWorkflowShell.vue',

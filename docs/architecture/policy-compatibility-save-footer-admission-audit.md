@@ -101,8 +101,9 @@ release gates.
 
 ## Next Item
 
-Perform the **compatibility routing-readiness card retirement audit** for
-`client/src/components/policies/PolicyBuilderRoutingReadinessCard.vue`.
-It is unmounted after this change. Confirm it has no server-owned read contract
-or production caller, then remove the component and focused test rather than
-preserve a dormant client readiness surface.
+The compatibility routing-readiness card retirement audit is implemented in
+[Policy Compatibility Routing-Readiness Card Retirement Audit](policy-compatibility-routing-readiness-card-retirement-audit.md).
+Next, perform a **compatibility setup-card grid retirement audit** for
+`client/src/components/policies/PolicyBuilderSetupCards.vue` and
+`policyBuilderSetupCards.js`. Confirm the grid remains unmounted, then remove
+it rather than preserve stale anchors or browser-derived readiness state.
