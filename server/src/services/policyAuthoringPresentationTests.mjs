@@ -120,7 +120,6 @@ const POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS = deepFreeze([
   'client/src/__tests__/PolicyBuilderFooterActions.test.js',
   'client/src/__tests__/PolicyBuilderLibraryContext.test.js',
   'client/src/__tests__/PolicyBuilderModal.test.js',
-  'client/src/__tests__/PolicyBuilderSetupCards.test.js',
   'client/src/__tests__/PolicyBuilderWorkflowShell.test.js',
   'client/src/__tests__/PolicyCompatibilityMaintenanceSurface.test.js',
   'client/src/__tests__/PolicyDestinationEmptyStateNotice.test.js',
@@ -217,14 +216,6 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
       POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.INTERNAL_DIAGNOSTIC_PANELS_ABSENT,
     ],
     'The modal protects destination-first authoring rather than compatibility layout shape.'
-  ),
-  presentationTestRecord(
-    'client/src/__tests__/PolicyBuilderSetupCards.test.js',
-    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.REMOVE_ABANDONED_DIAGNOSTIC_SURFACE,
-    false,
-    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.NATIVE_STORAGE_CLEANUP,
-    [],
-    'The setup-card grid is a superseded compatibility surface and must not become the native destination-first workflow.'
   ),
   presentationTestRecord(
     'client/src/__tests__/PolicyBuilderWorkflowShell.test.js',

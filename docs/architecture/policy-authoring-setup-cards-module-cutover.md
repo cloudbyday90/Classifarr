@@ -1,6 +1,7 @@
 # Policy Authoring Setup Cards Module Cutover
 
-Status: implemented.
+Status: superseded for the deleted compatibility grid. See [Policy Compatibility
+Setup-Card Grid Retirement Audit](policy-compatibility-setup-card-grid-retirement-audit.md).
 
 ## Scope
 
@@ -33,11 +34,11 @@ Official sources reviewed as of June 2026:
 
 1. Use `policy_authoring_setup_cards` as the durable completion-audit id.
 2. Keep setup-card documentation in `policy-authoring-setup-cards.md`.
-3. Treat setup cards as product entry points, not roadmap rewrite artifacts.
-4. Keep links, headings, helper text, and action labels as the testable
-   behavior surface.
-5. Leave historical Vue follow-up docs in place until their own cutover slices
-   are addressed.
+3. Treat the setup-card record as historical after the native workflow replaces
+   the grid.
+4. Retire stale links, headings, helper text, action labels, and focused tests
+   with the disconnected component.
+5. Keep the historical design record only as context for the deletion audit.
 
 ## Pros And Cons
 
@@ -45,34 +46,35 @@ Official sources reviewed as of June 2026:
 
 - Removes a phase-coded architecture path from the workflow completion audit.
 - Keeps the setup-card behavior documented in operator-facing vocabulary.
-- Preserves the existing Vue component/test stack without unnecessary churn.
+- Removes an unmounted duplicate workflow and stale navigation targets.
 - Reduces production naming inventory counts without changing runtime behavior.
 
 ### Cons
 
 - Later Vue workflow docs still carry phase-coded filenames until they are cut
   over one at a time.
-- The client component names still include `PolicyBuilder`, which is durable
-  product language for the current feature and not part of this cleanup.
+- The shared server mental-model card data needs a separate consumer audit.
 
 ## Final Stack
 
-- Design record:
+- Historical design record:
   [Policy Authoring Setup Cards](policy-authoring-setup-cards.md)
+- Deletion outcome:
+  [Policy Compatibility Setup-Card Grid Retirement Audit](policy-compatibility-setup-card-grid-retirement-audit.md)
 - Completion gate:
   `server/src/services/policyAuthoringWorkflowCompletionAudit.mjs`
-- Client component:
+- Deleted client component:
   `client/src/components/policies/PolicyBuilderSetupCards.vue`
-- Client utility:
+- Deleted client utility:
   `client/src/utils/policyBuilderSetupCards.js`
 
 ## Outcome
 
-The completion audit now tracks `policy_authoring_setup_cards` and points at
-the durable setup-card design record. Historical roadmap references remain in
-roadmap/history docs only.
+The prior completion-audit record remains historical. The client component,
+utility, and focused tests are deleted because the native workflow owns the
+current destination questions and readiness result.
 
 ## Next Step
 
-Cut over **Policy Authoring Destination Section Split** so the next Vue-facing
-workflow design record no longer depends on a phase-coded architecture path.
+Audit the server-side setup-card data in `policyUserMentalModel.mjs` and retain
+only contracts with a current server workflow consumer.

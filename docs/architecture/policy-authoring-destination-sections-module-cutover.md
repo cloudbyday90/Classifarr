@@ -2,6 +2,10 @@
 
 Status: implemented.
 
+> **Historical setup-card context:** The compatibility grid is deleted. Current
+> native workflow sections are server-owned; see [Policy Compatibility Setup-Card
+> Grid Retirement Audit](policy-compatibility-setup-card-grid-retirement-audit.md).
+
 ## Scope
 
 This cutover removes phase-specific naming from the policy-authoring

@@ -104,14 +104,15 @@ after the setup cards. The surface answered one question:
 Can approved matches for this destination route later?
 ```
 
-The prior setup-card action jumped to `#policy-builder-routing-readiness`
+The deleted setup-card action jumped to `#policy-builder-routing-readiness`
 instead of advanced settings. If routing context was incomplete, the card
 showed one next action; if routing was ready, it showed the selected service
 and root folder. Those local conclusions are no longer surfaced from the modal.
 
 ## Follow-Up
 
-The next high-value item is the **compatibility setup-card grid retirement
-audit**. Confirm that the unmounted grid and its local projection have no
-production caller, then remove them rather than preserve stale anchors or
-browser-derived readiness state.
+The compatibility grid retirement is implemented in [Policy Compatibility
+Setup-Card Grid Retirement Audit](policy-compatibility-setup-card-grid-retirement-audit.md).
+Next, audit the server-side setup-card contract in `policyUserMentalModel.mjs`
+and remove unreachable card-specific data without disturbing the active
+operator workflow.

@@ -65,7 +65,8 @@ uses a browser routing conclusion.
 
 ## Next Step
 
-Perform the **compatibility setup-card grid retirement audit**. Confirm that
-the unmounted grid and its local projection have no production caller, then
-remove them rather than preserve stale anchors or browser-derived readiness
-state.
+The compatibility grid retirement is implemented in [Policy Compatibility
+Setup-Card Grid Retirement Audit](policy-compatibility-setup-card-grid-retirement-audit.md).
+Next, audit the server-side setup-card contract in `policyUserMentalModel.mjs`
+and remove unreachable card-specific data without disturbing the active
+operator workflow.

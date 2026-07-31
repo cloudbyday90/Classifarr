@@ -1,12 +1,13 @@
 # Policy Authoring Setup Cards
 
-Status: implemented as the policy-authoring setup-card surface.
+Status: superseded. The client grid and local projection are deleted; the active
+native workflow is server-owned. See [Policy Compatibility Setup-Card Grid
+Retirement Audit](policy-compatibility-setup-card-grid-retirement-audit.md).
 
 ## Scope
 
-Policy authoring setup cards provide the first visible entry points after the
-library context in the policy-builder modal. The cards orient operators around
-four product questions:
+This document records the prior compatibility setup-card grid. It presented four
+entry points after library context:
 
 1. What already belongs here?
 2. What should always or never belong here?
@@ -69,25 +70,21 @@ Official sources reviewed as of June 2026:
 - The old intent editor and starter-template mechanics still exist below the
   setup surface until later slices replace them.
 
-## Final Stack
+## Historical Stack
 
-- Client setup-card contract:
+- Deleted client setup-card contract:
   `client/src/utils/policyBuilderSetupCards.js`
-- Client setup-card component:
+- Deleted client setup-card component:
   `client/src/components/policies/PolicyBuilderSetupCards.vue`
-- Modal integration:
-  `client/src/components/policies/PolicyBuilderModal.vue`
-- Unit coverage:
+- Deleted focused coverage:
   `client/src/__tests__/utils/policyBuilderSetupCards.test.js`
   `client/src/__tests__/PolicyBuilderSetupCards.test.js`
-  `client/src/__tests__/PolicyBuilderModal.test.js`
-- Related server contract:
-  `server/src/services/policyUserMentalModel.mjs`
 
-## Implemented Outcome
+## Historical Outcome
 
-The policy-builder modal renders `PolicyBuilderSetupCards` after the library
-context. Each card links to one existing section:
+The compatibility modal previously rendered `PolicyBuilderSetupCards` after
+library context. The disconnected grid is now deleted rather than retained as a
+second policy workflow.
 
 | Setup Question | Action | Target |
 | --- | --- | --- |
@@ -99,9 +96,8 @@ context. Each card links to one existing section:
 Migration verifier panels remain outside the default workflow through
 `showMigrationVerifierPanels`.
 
-## Follow-Up Status
+## Follow-Up
 
-The setup cards now target distinct review behavior and destination-rule
-sections instead of pointing both actions at one editor anchor. That follow-up
-is documented in
-[Policy Authoring Destination Sections](policy-authoring-destination-sections.md).
+The active native workflow uses server-owned destination questions and
+readiness. Next, audit the legacy server-side setup-card data in
+`policyUserMentalModel.mjs` before retaining any card-specific contract.

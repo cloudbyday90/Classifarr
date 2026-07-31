@@ -2,6 +2,11 @@
 
 Status: implemented as the durable policy-authoring destination-section layout.
 
+> **Historical setup-card context:** The grid discussed below is deleted. The
+> active native workflow uses the server-owned operator-workflow response; see
+> [Policy Compatibility Setup-Card Grid Retirement
+> Audit](policy-compatibility-setup-card-grid-retirement-audit.md).
+
 ## Scope
 
 This document defines the current policy intent editor sections that support

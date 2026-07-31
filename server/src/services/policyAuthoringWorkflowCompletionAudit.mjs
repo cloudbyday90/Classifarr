@@ -172,7 +172,7 @@ const POLICY_AUTHORING_CLIENT_WORKFLOW_COMPONENTS = Object.freeze([
     label: 'Policy authoring accessibility and decision-load audit',
     docPath: 'docs/architecture/policy-authoring-accessibility-decision-load-audit.md',
     testPath: 'client/src/__tests__/PolicyBuilderModal.test.js',
-    evidence: 'Marks one recommended next action and routes setup links to existing targets.',
+    evidence: 'Protects the native destination-first workflow from legacy setup-card navigation and browser-derived readiness gates.',
   },
   {
     id: 'policy_authoring_presentation_test_reset',

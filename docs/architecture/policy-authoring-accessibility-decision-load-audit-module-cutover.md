@@ -1,6 +1,8 @@
 # Policy Authoring Accessibility And Decision Load Audit Module Cutover
 
-Status: implemented.
+Status: partly historical. The setup-card-specific behavior is deleted; retained
+native workflow accessibility behavior remains current. See [Policy
+Compatibility Setup-Card Grid Retirement Audit](policy-compatibility-setup-card-grid-retirement-audit.md).
 
 ## Scope
 

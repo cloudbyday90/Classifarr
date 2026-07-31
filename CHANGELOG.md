@@ -52,6 +52,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   routing-readiness card and its test. Native policy creation continues to use
   the server-owned operator-workflow readiness and next-action surface.
 
+- **Compatibility Setup-Card Grid Retirement**: Removed the unmounted
+  destination setup-card grid, its browser-derived progress projection, focused
+  tests, and retired routing anchor. Native creation continues to use the
+  server-owned destination workflow and readiness surface.
+
 - **Compatibility Group Guidance Cutline**: Group helper text now gives only
   concise editing directions. It no longer predicts automation safety, review
   behavior, fit, or confidence effects from a browser-side compatibility draft.

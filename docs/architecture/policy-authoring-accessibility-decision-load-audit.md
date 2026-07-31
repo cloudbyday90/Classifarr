@@ -1,6 +1,9 @@
 # Policy Authoring Accessibility And Decision Load Audit
 
-Status: implemented as durable policy-authoring accessibility and decision-load behavior.
+Status: partly historical. The setup-card-specific behavior is superseded by
+the server-owned native workflow; retained focus, recovery, and status behavior
+remains current. See [Policy Compatibility Setup-Card Grid Retirement
+Audit](policy-compatibility-setup-card-grid-retirement-audit.md).
 
 ## Scope
 

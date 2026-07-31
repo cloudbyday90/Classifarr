@@ -314,8 +314,6 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
     riskIds: [],
     notes: 'Reference data remains allowed when it supports observed library evidence and available-option separation.',
     matches: filePath => hasAnySegment(filePath, [
-      '/PolicyBuilderSetupCards.vue',
-      '/policyBuilderSetupCards.js',
       '/usePolicyBuilderReferenceData.js',
     ]),
   },

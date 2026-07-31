@@ -4187,6 +4187,11 @@ Implementation status:
   that produces typed local draft commands; observations remain unselected
   unless the operator explicitly accepts them. Its design record is
   [Policy Builder Library-First Workflow Shell](policy-builder-library-first-workflow-shell.md).
+- The unmounted compatibility setup-card grid, its browser-derived progress
+  projection, and focused tests are deleted. Native creation continues to use
+  the server-owned destination workflow and readiness surface; its design and
+  outcome record is [Policy Compatibility Setup-Card Grid Retirement
+  Audit](policy-compatibility-setup-card-grid-retirement-audit.md).
 - Native policy creation now accepts only the explicit typed-draft result and
   establishes the policy row, native authority, audit records, routing target,
   and rollback snapshot in one transaction. It rejects legacy preset

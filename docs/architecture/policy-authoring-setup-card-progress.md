@@ -1,12 +1,13 @@
 # Policy Authoring Setup Card Progress
 
-Status: implemented as durable policy-authoring setup-card progress.
+Status: superseded. The local setup-card progress projection and grid are
+deleted. See [Policy Compatibility Setup-Card Grid Retirement
+Audit](policy-compatibility-setup-card-grid-retirement-audit.md).
 
 ## Scope
 
-This document defines how setup cards behave as a small read-only progress
-surface. Each card reflects existing modal state and shows whether that step is
-complete, needs setup, optional, or checking.
+This document records the prior browser-derived setup-card progress surface.
+Each card projected modal state as complete, needs setup, optional, or checking.
 
 This slice does not add API calls, persistence, routing execution, learning,
 classification, provider calls, TMDB calls, or Arr writes. It derives setup-card
@@ -73,20 +74,17 @@ Official sources reviewed as of June 2026:
 - Optional review-trigger state may become stricter after the
   automation-readiness engine is finalized.
 
-## Final Stack
+## Historical Stack
 
-- Setup-card state projection:
+- Deleted setup-card state projection:
   `client/src/utils/policyBuilderSetupCards.js`
-- Setup-card rendering:
+- Deleted setup-card rendering:
   `client/src/components/policies/PolicyBuilderSetupCards.vue`
-- Modal integration:
-  `client/src/components/policies/PolicyBuilderModal.vue`
-- Unit coverage:
+- Deleted focused coverage:
   `client/src/__tests__/utils/policyBuilderSetupCards.test.js`
   `client/src/__tests__/PolicyBuilderSetupCards.test.js`
-  `client/src/__tests__/PolicyBuilderModal.test.js`
 
-## Implemented Outcome
+## Historical Outcome
 
 Each setup card now renders a status pill and short status message:
 
@@ -104,13 +102,12 @@ Each setup card now renders a status pill and short status message:
   - complete when the routing readiness projection can route,
   - needs setup otherwise.
 
-The card action links remain unchanged except for the prior routing-readiness
-target correction. Cards do not mutate policy, run routing, or call providers.
+The card action links included a retired routing-readiness target. The grid is
+deleted; the active native workflow owns the current server-derived readiness
+status and next action.
 
 ## Follow-Up
 
-The next high-value item is **Policy Authoring Starter Template Accelerator**.
-The setup flow now shows state and the modal footer has an explicit save/defer
-boundary, but starter-template mechanics still occupy a large normal-path
-surface. The next slice should keep templates as optional accelerators without
-adding routing, learning, provider, or classification side effects.
+The next high-value item is the **Phase 6R.5 policy user-mental-model
+setup-card contract audit**. It must remove or reclassify server-side card data
+that has no current operator-workflow consumer.

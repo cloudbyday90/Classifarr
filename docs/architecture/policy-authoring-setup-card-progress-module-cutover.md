@@ -1,12 +1,13 @@
 # Policy Authoring Setup Card Progress Module Cutover
 
-Status: implemented.
+Status: superseded for the deleted compatibility grid. See [Policy Compatibility
+Setup-Card Grid Retirement Audit](policy-compatibility-setup-card-grid-retirement-audit.md).
 
 ## Scope
 
-This cutover removes phase-specific naming from the setup-card state-binding
-evidence while preserving the existing read-only card progress projection,
-recommended-next-action behavior, setup-card anchors, and regression coverage.
+This cutover records the prior setup-card state-binding evidence. The local
+progress projection, recommended-next-action behavior, anchors, and focused
+coverage are deleted with the disconnected compatibility grid.
 
 ## Official Guidance Reviewed
 
@@ -30,48 +31,35 @@ recommended-next-action behavior, setup-card anchors, and regression coverage.
 ## Recommendations
 
 1. Name the artifact after the durable product behavior: setup-card progress.
-2. Keep setup cards as read-only navigation and progress, not policy authority.
-3. Preserve a small status vocabulary with visible labels and explanatory text.
-4. Preserve one action link per setup card and one recommended next action.
-5. Keep status derivation in a utility so the Vue card component remains
-   presentational.
+2. Keep the server-owned native workflow as the only destination-progress and
+   readiness presentation.
+3. Remove local status derivation rather than preserve a duplicate read model.
 
 ## Pros And Cons
 
 Pros:
 
 - Removes phase-coded completion-audit metadata from another Vue rewrite slice.
-- Keeps setup cards scan-friendly without adding API calls, persistence, or
-  routing/classification side effects.
-- Preserves the existing tests that cover card status, action targets, and
-  recommended-next-action behavior.
+- Removes stale state, navigation, and tests without adding API calls,
+  persistence, or routing/classification side effects.
 
 Cons:
 
-- The progress projection still depends on modal-local projections until
-  server-owned readiness contracts replace them.
-- Starter-template accelerator metadata still needs its own durable naming
-  cutover.
+- The server-side legacy setup-card data still needs its own consumer audit.
 
 ## Final Recommendation Stack
 
-- `docs/architecture/policy-authoring-setup-card-progress.md`
+- `docs/architecture/policy-compatibility-setup-card-grid-retirement-audit.md`
 - `server/src/services/policyAuthoringWorkflowCompletionAudit.mjs`
 - `server/src/__tests__/services/policyAuthoringWorkflowCompletionAudit.test.mjs`
-- `client/src/utils/policyBuilderSetupCards.js`
-- `client/src/components/policies/PolicyBuilderSetupCards.vue`
-- `client/src/__tests__/utils/policyBuilderSetupCards.test.js`
-- `client/src/__tests__/PolicyBuilderSetupCards.test.js`
 
 ## Outcome
 
-The cutover renamed the setup-card progress architecture document, updated the
-workflow completion audit slice to `policy_authoring_setup_card_progress`,
-updated roadmap links to the durable artifact, and kept the existing
-setup-card progress projection and Vue behavior unchanged.
+The prior cutover remains a historical naming record. The client projection,
+grid, and focused tests are now deleted; the native workflow supplies the
+current server-derived destination and readiness status.
 
 ## Next Step
 
-Cut over the policy-authoring starter-template accelerator naming because it is
-the next Vue rewrite slice that still uses phase-coded completion-audit
-metadata after the save/defer action-boundary cutover.
+Audit the server-side setup-card data in `policyUserMentalModel.mjs` and delete
+unreachable card-specific contracts without disturbing active workflow data.

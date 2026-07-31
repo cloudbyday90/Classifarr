@@ -92,7 +92,8 @@ through static copy.
 
 The compatibility routing-readiness card retirement audit is implemented in
 [Policy Compatibility Routing-Readiness Card Retirement Audit](policy-compatibility-routing-readiness-card-retirement-audit.md).
-Next, perform a **compatibility setup-card grid retirement audit** for
-`PolicyBuilderSetupCards.vue` and `policyBuilderSetupCards.js`. Confirm the
-grid remains unmounted, then remove it rather than preserve stale anchors or
-browser-derived readiness state.
+The grid retirement is implemented in [Policy Compatibility Setup-Card Grid
+Retirement Audit](policy-compatibility-setup-card-grid-retirement-audit.md).
+Next, perform the **Phase 6R.5 policy user-mental-model setup-card contract
+audit** and remove unreachable server-side card data without disturbing active
+workflow contracts.

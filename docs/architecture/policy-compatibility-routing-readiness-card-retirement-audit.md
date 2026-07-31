@@ -94,8 +94,8 @@ ESM checks are release gates.
 
 ## Next Item
 
-Perform the **compatibility setup-card grid retirement audit** for
-`client/src/components/policies/PolicyBuilderSetupCards.vue` and its
-`policyBuilderSetupCards.js` projection. Confirm the grid remains unmounted,
-then delete the component, local setup-card model, focused tests, and inventory
-records rather than preserve stale anchors or browser-derived readiness state.
+The compatibility grid retirement is implemented in [Policy Compatibility
+Setup-Card Grid Retirement Audit](policy-compatibility-setup-card-grid-retirement-audit.md).
+Next, perform the **Phase 6R.5 policy user-mental-model setup-card contract
+audit** for `policyUserMentalModel.mjs` and remove unreachable card-specific
+data without disturbing active server workflow contracts.
