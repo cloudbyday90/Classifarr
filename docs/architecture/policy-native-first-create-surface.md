@@ -39,6 +39,13 @@ library that Classifarr can already observe. The server still owns validation
 and transactionality for native establishment; the browser only proposes the
 explicitly accepted candidate set.
 
+Native creation also has a separate wire contract from compatibility editing.
+It sends only `library_id`, `name`, and `native_intent_establishment`; the
+server rejects every other input field before legacy validation or a database
+transaction begins. This prevents hidden compatibility form defaults from
+becoming de facto native policy controls. See [Policy Native Create Payload
+Cutline](policy-native-create-payload-cutline.md).
+
 ### Candidate Selection Is Explicit and Accessible
 
 Observed values remain unchecked. They are presented as a semantically grouped

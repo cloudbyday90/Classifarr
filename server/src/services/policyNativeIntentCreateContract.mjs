@@ -12,6 +12,11 @@ import {
 } from './policyInitialIntentEstablishmentContract.mjs';
 
 const NATIVE_INTENT_ESTABLISHMENT_FIELD = 'native_intent_establishment';
+const NATIVE_POLICY_CREATE_ALLOWED_FIELDS = Object.freeze([
+  'library_id',
+  'name',
+  NATIVE_INTENT_ESTABLISHMENT_FIELD,
+]);
 
 export class PolicyNativeIntentCreateRequestError extends Error {
   constructor(message) {
@@ -30,6 +35,23 @@ function normalizePositiveInteger(value) {
   return Number.isInteger(numericValue) && numericValue > 0 ? numericValue : null;
 }
 
+function validateNativePolicyCreateFields(payload) {
+  const createPayload = asObject(payload);
+  if (!createPayload) {
+    throw new PolicyNativeIntentCreateRequestError(
+      'Native intent creation requires an object payload.'
+    );
+  }
+
+  const hasUnexpectedField = Object.keys(createPayload)
+    .some(field => !NATIVE_POLICY_CREATE_ALLOWED_FIELDS.includes(field));
+  if (hasUnexpectedField) {
+    throw new PolicyNativeIntentCreateRequestError(
+      'Native intent creation accepts only library_id, name, and native_intent_establishment.'
+    );
+  }
+}
+
 function buildNativeIntentCreateRequest({
   payload = {},
   actorId,
@@ -39,6 +61,8 @@ function buildNativeIntentCreateRequest({
   if (payload?.[NATIVE_INTENT_ESTABLISHMENT_FIELD] === undefined) {
     return null;
   }
+
+  validateNativePolicyCreateFields(payload);
 
   if (Number(legacyPresetCount) > 0) {
     throw new PolicyNativeIntentCreateRequestError(
@@ -86,5 +110,6 @@ function buildNativeIntentCreateRequest({
 
 export {
   NATIVE_INTENT_ESTABLISHMENT_FIELD,
+  NATIVE_POLICY_CREATE_ALLOWED_FIELDS,
   buildNativeIntentCreateRequest,
 };

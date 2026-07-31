@@ -1,4 +1,5 @@
 import {
+  NATIVE_POLICY_CREATE_ALLOWED_FIELDS,
   PolicyNativeIntentCreateRequestError,
   buildNativeIntentCreateRequest,
 } from '../../services/policyNativeIntentCreateContract.mjs';
@@ -44,9 +45,31 @@ describe('policyNativeIntentCreateContract', () => {
     })).toBeNull();
   });
 
+  test('allows only the bounded native policy-create request fields', () => {
+    expect(buildNativeIntentCreateRequest({
+      payload: {
+        library_id: 4,
+        name: 'Animation Policy',
+        ...validPayload(),
+      },
+      actorId: 7,
+      idempotencyKey: IDEMPOTENCY_KEY,
+    })).toEqual(expect.objectContaining({
+      declared_intent: validPayload().native_intent_establishment.declared_intent,
+    }));
+    expect(NATIVE_POLICY_CREATE_ALLOWED_FIELDS).toEqual([
+      'library_id',
+      'name',
+      'native_intent_establishment',
+    ]);
+  });
+
   test.each([
     ['legacy presets are present', { legacyPresetCount: 1 }],
     ['the actor is missing', { actorId: null }],
+    ['a hidden legacy setting is present', {
+      payload: validPayload({ auto_classify_threshold: 100 }),
+    }],
     ['the shape contains unrecognized keys', {
       payload: validPayload({
         native_intent_establishment: {

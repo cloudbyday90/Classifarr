@@ -821,6 +821,44 @@ describe('Policies routes coverage', () => {
         expect.stringContaining('INSERT INTO policy_intents'),
         expect.any(Array)
       );
+
+      const nativePolicyInsert = db.query.mock.calls.find(([sql]) => (
+        String(sql).includes('INSERT INTO library_policies')
+      ));
+      expect(nativePolicyInsert[1]).toEqual([
+        4, 'Animation Policy', undefined, true, 5, 0,
+        85, 60, true, true, true, true,
+        0.35, 0.25, 0.15, 0.15, 0.10, 'best_match',
+      ]);
+    });
+
+    test('rejects hidden legacy configuration on native intent creation', async () => {
+      const res = await request(app)
+        .post('/api/policies')
+        .set('x-test-native-admin', 'true')
+        .send({
+          library_id: 4,
+          name: 'Animation Policy',
+          auto_classify_threshold: 100,
+          native_intent_establishment: {
+            declared_intent: {
+              purpose: [{
+                signal_type: 'genres',
+                operator: 'require_any',
+                values: { require_any: ['Animation'] },
+              }],
+              hard_limits: [],
+              helpful_hints: [],
+              avoid: [],
+            },
+          },
+        })
+        .expect(400);
+
+      expect(res.body.error).toContain(
+        'Native intent creation accepts only library_id, name, and native_intent_establishment.'
+      );
+      expect(db.withTransaction).not.toHaveBeenCalled();
     });
 
     test('reports valid native intent draft preflight without persisting draft content on create', async () => {

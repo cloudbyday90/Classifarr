@@ -148,6 +148,7 @@ import { buildPolicyBuilderRoutingReadiness } from '@/utils/policyBuilderRouting
 import { buildPolicyBuilderExperienceMode } from '@/utils/policyBuilderExperienceMode'
 import { buildPolicyIntentViewFromDraft } from '@/utils/policyIntentDraftView'
 import { buildPolicyIntentSummary } from '@/utils/policyIntentSummary'
+import { buildNativePolicyCreatePayload } from '@/utils/policyNativeCreatePayload'
 import {
   clearRouteFocusHandoff,
   requestRouteFocusHandoff,
@@ -432,7 +433,14 @@ const defer = () => {
 const save = async () => {
   if (!saveBoundary.value.canSave || saving.value) return
 
-  const policyData = buildSavePayload()
+  const policyData = experienceMode.value.isNativeCreate
+    ? buildNativePolicyCreatePayload({
+      formValue: form.value,
+      currentLibrary: currentLibrary.value,
+      nativeIntentEstablishment: nativeIntentEstablishment.value,
+    })
+    : buildSavePayload()
+
   if (experienceMode.value.isNativeCreate) {
     if (selectedPresets.value.length > 0) {
       const message = 'Remove starter templates before creating a native intent policy from observed library values.'
@@ -441,8 +449,12 @@ const save = async () => {
       return
     }
 
-    delete policyData.policyIntentDraft
-    policyData.native_intent_establishment = nativeIntentEstablishment.value
+    if (!policyData) {
+      const message = 'Classifarr could not prepare the native policy request.'
+      saveError.value = message
+      toast.error(message, 'Unable to save policy')
+      return
+    }
   }
 
   saveError.value = ''

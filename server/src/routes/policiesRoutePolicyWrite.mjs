@@ -111,56 +111,16 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
       throw new ValidationError('library_id and name are required');
     }
 
-    const intentWritePreflight = buildRouteIntentWritePreflight(req.body);
-
-    const thresholdValidationError = validatePolicyThresholdPayload({
-      auto_classify_threshold,
-      prompt_threshold,
-    }, validatePolicyDecisionThresholds);
-    if (thresholdValidationError) {
-      throw new ValidationError(thresholdValidationError);
-    }
-
-    const normalizedAutoClassifyThreshold = Number(auto_classify_threshold);
-    const normalizedPromptThreshold = Number(prompt_threshold);
-    const combinationModeError = validateCombinationMode(combination_mode);
-    if (combinationModeError) {
-      throw new ValidationError(combinationModeError);
-    }
-
-    if (preset_weight < 0 || preset_weight > 1) {
-      throw new ValidationError('preset_weight must be between 0 and 1');
-    }
-    if (profile_weight < 0 || profile_weight > 1) {
-      throw new ValidationError('profile_weight must be between 0 and 1');
-    }
-    if (pattern_weight < 0 || pattern_weight > 1) {
-      throw new ValidationError('pattern_weight must be between 0 and 1');
-    }
-    if (rag_weight < 0 || rag_weight > 1) {
-      throw new ValidationError('rag_weight must be between 0 and 1');
-    }
-    if (history_weight < 0 || history_weight > 1) {
-      throw new ValidationError('history_weight must be between 0 and 1');
-    }
-
-    const totalWeight = preset_weight + profile_weight + pattern_weight + rag_weight + history_weight;
-    if (Math.abs(totalWeight - 1.0) > 0.001) {
-      throw new ValidationError(`Weights must sum to 1.0 (currently ${totalWeight.toFixed(3)})`);
-    }
-
-    const normalizedPresets = normalizePresetAttachmentInputs(presets);
-    const presetAttachmentWeightError = validatePresetAttachmentWeights(normalizedPresets, 'presets');
-    if (presetAttachmentWeightError) {
-      throw new ValidationError(presetAttachmentWeightError);
-    }
-
     const nativeIntentRequested = req.body?.native_intent_establishment !== undefined;
     const actorId = toPositiveInteger(req.user?.id);
     if (nativeIntentRequested && req.user?.role !== 'admin') {
       throw new ForbiddenError('Admin access required');
     }
 
+    let intentWritePreflight = null;
+    let normalizedAutoClassifyThreshold = Number(auto_classify_threshold);
+    let normalizedPromptThreshold = Number(prompt_threshold);
+    let normalizedPresets = [];
     let nativeIntentEstablishmentRequest = null;
     if (nativeIntentRequested) {
       try {
@@ -168,13 +128,55 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
           payload: req.body,
           actorId,
           idempotencyKey: randomUUID(),
-          legacyPresetCount: normalizedPresets.length,
+          legacyPresetCount: 0,
         });
       } catch (error) {
         if (error instanceof PolicyNativeIntentCreateRequestError) {
           throw new ValidationError(error.message, { code: error.code });
         }
         throw error;
+      }
+    } else {
+      intentWritePreflight = buildRouteIntentWritePreflight(req.body);
+
+      const thresholdValidationError = validatePolicyThresholdPayload({
+        auto_classify_threshold,
+        prompt_threshold,
+      }, validatePolicyDecisionThresholds);
+      if (thresholdValidationError) {
+        throw new ValidationError(thresholdValidationError);
+      }
+
+      const combinationModeError = validateCombinationMode(combination_mode);
+      if (combinationModeError) {
+        throw new ValidationError(combinationModeError);
+      }
+
+      if (preset_weight < 0 || preset_weight > 1) {
+        throw new ValidationError('preset_weight must be between 0 and 1');
+      }
+      if (profile_weight < 0 || profile_weight > 1) {
+        throw new ValidationError('profile_weight must be between 0 and 1');
+      }
+      if (pattern_weight < 0 || pattern_weight > 1) {
+        throw new ValidationError('pattern_weight must be between 0 and 1');
+      }
+      if (rag_weight < 0 || rag_weight > 1) {
+        throw new ValidationError('rag_weight must be between 0 and 1');
+      }
+      if (history_weight < 0 || history_weight > 1) {
+        throw new ValidationError('history_weight must be between 0 and 1');
+      }
+
+      const totalWeight = preset_weight + profile_weight + pattern_weight + rag_weight + history_weight;
+      if (Math.abs(totalWeight - 1.0) > 0.001) {
+        throw new ValidationError(`Weights must sum to 1.0 (currently ${totalWeight.toFixed(3)})`);
+      }
+
+      normalizedPresets = normalizePresetAttachmentInputs(presets);
+      const presetAttachmentWeightError = validatePresetAttachmentWeights(normalizedPresets, 'presets');
+      if (presetAttachmentWeightError) {
+        throw new ValidationError(presetAttachmentWeightError);
       }
     }
 

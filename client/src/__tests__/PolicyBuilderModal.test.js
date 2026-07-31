@@ -546,9 +546,9 @@ describe('PolicyBuilderModal.vue', () => {
     await flushPromises();
     await wrapper.vm.save();
 
-    expect(wrapper.emitted('save')[0][0]).toMatchObject({
+    const nativeCreatePayload = wrapper.emitted('save')[0][0]
+    expect(nativeCreatePayload).toMatchObject({
       library_id: 1,
-      presets: [],
       native_intent_establishment: {
         declared_intent: {
           purpose: [{
@@ -562,6 +562,11 @@ describe('PolicyBuilderModal.vue', () => {
         },
       },
     });
+    expect(Object.keys(nativeCreatePayload).sort()).toEqual([
+      'library_id',
+      'name',
+      'native_intent_establishment',
+    ])
   });
 
   it('keeps staged constraint commands out of the native policy-create payload', async () => {

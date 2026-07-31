@@ -4194,6 +4194,12 @@ Implementation status:
   attachments, non-administrator calls, unsupported observed values, and
   partial writes. Its design record is [Policy Observed Suggestion Native
   Creation](policy-observed-suggestion-native-creation.md).
+- Native creation now uses a dedicated three-field request contract. The
+  browser sends only library identity, policy name, and explicit native intent;
+  the server rejects hidden compatibility fields before legacy validation or a
+  transaction begins and applies its own retained compatibility-column
+  defaults. Its design record is [Policy Native Create Payload
+  Cutline](policy-native-create-payload-cutline.md).
 - New policy creation now uses a dedicated native-first surface: it loads only
   the library context, presents unchecked observed destination values, requires
   explicit accepted purpose before creation, and omits legacy templates,

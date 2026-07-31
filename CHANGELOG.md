@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Native Policy Create Payload Cutline**: New native policies now submit only
+  library identity, policy name, and explicitly accepted native intent. The
+  server rejects hidden legacy configuration before validation or persistence
+  and owns retained compatibility-column defaults.
+
 - **Runtime Metrics Persistence Admission**: Validated runtime metrics now pass
   through a server-owned, no-write admission boundary that retains only a
   minimized fingerprinted snapshot, requires a bounded expiration policy, and

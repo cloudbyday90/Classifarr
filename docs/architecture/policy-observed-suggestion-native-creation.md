@@ -69,7 +69,11 @@ provider as part of this interaction.
 for a verified administrator and only when no legacy preset attachments are
 present. `policyNativeIntentCreateContract.mjs` accepts only
 `declared_intent`, generates an idempotency key server-side, and reuses the
-native declared-intent schema validation.
+native declared-intent schema validation. Its native-create request allowlist
+also accepts only `library_id`, `name`, and `native_intent_establishment`, so
+legacy thresholds, weights, trust flags, presets, and draft payloads cannot be
+smuggled into a native policy. See [Policy Native Create Payload
+Cutline](policy-native-create-payload-cutline.md).
 
 The policy row and native initial establishment execute in one PostgreSQL
 transaction through `applyPolicyInitialIntentEstablishmentInTransaction`.
