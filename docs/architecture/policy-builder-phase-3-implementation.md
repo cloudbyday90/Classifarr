@@ -29,10 +29,10 @@ The checkpoint is based on these criteria:
 | --- | --- | --- |
 | Intent is the first editable policy surface | Met | `PolicyIntentEditor.vue` renders directly below `PolicyIntentSummaryCard.vue`; starter-template mechanics render after it. |
 | Legacy starter-template mechanics are supporting context | Met | `PolicyStarterTemplateMechanics.vue` wraps template browser, selected-template details, and combined signal diagnostics behind disclosure. |
-| Policy behavior is readable before mechanics | Met | `PolicyIntentSummaryCard.vue`, per-section summaries, readiness, completion badges, next-action guidance, and warning consequences are derived from the intent draft. |
+| Policy behavior is readable before mechanics | Met | `PolicyIntentSummaryCard.vue` and factual per-section configured-signal summaries remain; native readiness is server-owned and compatibility cards do not derive readiness, warnings, badges, or next actions from draft state. |
 | Intent edits avoid raw preset JSON mutation | Met | Editor controls emit draft commands; `usePolicyIntentDraft` serializes back to legacy-compatible `customSignals`. |
 | Controls explain intent rather than signal internals | Met | Belongs Here, Helpful Matches, Hard Limits, Boosts, and Avoid use section-specific labels, actions, disabled reasons, diagnostics, and chips. |
-| Shared UI extraction has clear ownership | Met | Option select, action button, secondary button, option/action shell, option-action composable, visual-state helpers, projection helpers, and control-view facade have focused modules. |
+| Shared UI extraction has clear ownership | Met | Option select, action button, secondary button, option/action shell, option-action composable, projection helpers, and control-view facade have focused modules; the retired visual-state helper has no replacement. |
 | Legacy save contract remains stable | Met | Editor-to-draft parity coverage proves representative controls serialize to the expected `customSignals` shapes. |
 
 Code-shape checkpoint:
@@ -261,15 +261,19 @@ The fifteenth implemented component adds warning consequence helpers:
    scoring, routing, or save behavior.
 5. Preserve legacy starter-template compatibility and the current save payload.
 
-Historical note: the sixteenth and seventeenth components introduced a
-browser-derived aggregate readiness summary and its issue-navigation path.
-Phase 6R.5 retired both. Compatibility maintenance cannot truthfully claim
-automation readiness from unsaved legacy draft values; the current browser now
-shows only direct per-section editing guidance. Server-owned native readiness
-remains the sole automation readiness projection. See [Policy Compatibility
-Intent Readiness Boundary Audit](policy-compatibility-intent-readiness-boundary-audit.md).
+Historical note: the sixteenth through twentieth components introduced a
+browser-derived aggregate readiness summary, section warnings, completion
+badges, generated next actions, and their issue-navigation path. Phase 6R.5
+retired all of those browser-derived advisory states. Compatibility maintenance
+now shows only static control instructions and factual configured-signal
+summaries; server-owned native readiness remains the sole automation readiness
+projection. See [Policy Compatibility Section Advisory Scope
+Audit](policy-compatibility-section-advisory-scope-audit.md).
 
-The eighteenth implemented component adds section completion badges:
+The following eighteenth through twentieth component descriptions are
+superseded historical records.
+
+The eighteenth implemented component added section completion badges:
 
 1. Add `buildPolicyIntentSectionCompletion` to
    `policyIntentEditorSections.js`.
@@ -282,7 +286,7 @@ The eighteenth implemented component adds section completion badges:
 5. Keep badges presentation-only; they do not block save, mutate draft state,
    change scoring, route items, or change the legacy-compatible payload.
 
-The nineteenth implemented component adds section next-action guidance:
+The nineteenth implemented component added section next-action guidance:
 
 1. Add `buildPolicyIntentSectionNextAction` to
    `policyIntentEditorSections.js`.
@@ -295,7 +299,7 @@ The nineteenth implemented component adds section next-action guidance:
 5. Keep the guidance passive and deterministic; controls remain the only edit
    surface and save/scoring behavior is unchanged.
 
-The twentieth implemented component extracts section visual state:
+The twentieth implemented component extracted section visual state:
 
 1. Add `policyIntentSectionVisualState.js` as the focused utility for
    section warnings, completion badges, next-action guidance, and readiness
@@ -315,8 +319,8 @@ commands:
 1. Add `policyIntentSectionProjection.js` as the focused utility for intent chip
    display labels, multi-value chip projection, behavior summaries, remove
    commands, add commands, and clear commands.
-2. Keep `policyIntentEditorSections.js` responsible for section definitions and
-   composition of projection, visual state, and available options.
+2. Keep `policyIntentEditorSections.js` responsible for section definitions,
+   projection composition, and available options.
 3. Pass section definitions into projection/command helpers instead of importing
    definitions from the utility, avoiding circular ownership between contract
    data and behavior.
@@ -625,20 +629,18 @@ The thirty-third implemented component adds editor-to-draft parity coverage:
   intent edit, policy override, or starter template.
 - Show effective behavior before controls and chips. Summaries should be
   deterministic projections of configured intent, not AI-generated copy.
-- Surface weak-section warnings at the section boundary. The warning should
-  explain missing policy structure without changing draft data, scoring, or
-  save behavior.
-- Pair each weak-section warning with a compact consequence. Operators should
-  see both what to fix and why it matters before saving.
-- Retire the compatibility readiness aggregate and its focus-jump path. An
-  unsaved compatibility draft cannot establish automation readiness; keep
-  direct per-section guidance next to the edit it describes.
-- Make each section self-describing with a compact completion badge and direct
-  next-action line.
-- Pair each section state with a concise next-action line. The badge explains
-  the state; the line explains the smallest useful edit.
-- Keep visual-state derivation in a focused module. The section contract should
-  compose display state, not become the long-term owner of every UI state rule.
+- Do not derive weak-section warnings from browser draft state. Static control
+  instructions explain the edit; server-owned native readiness explains
+  automation safety.
+- Keep direct instructions close to the control they describe, without
+  predicting review, scoring, routing, or enforcement results.
+- Retire compatibility readiness aggregates and dynamic section advisory
+  states. An unsaved compatibility draft cannot establish automation readiness.
+- Make each section self-describing through its title, static help, action
+  label, and action help rather than a completion badge.
+- Do not emit browser-generated next-action lines; the control itself is the
+  direct editing path, while native readiness is server-owned.
+- Do not retain a visual-state decision module for compatibility sections.
 - Keep projection and draft-command derivation in a focused module. The section
   contract should define the operator-facing sections, then delegate display and
   command mechanics to deterministic helpers.
@@ -726,25 +728,17 @@ Cons:
   mechanics.
 - Section summaries are intentionally compact and derived from chip text. They
   do not replace the top-level behavior summary or warning model.
-- Weak-section warnings are intentionally advisory in this slice. They improve
-  builder clarity but do not yet enforce save blocking or runtime scoring
-  changes.
-- Consequence copy can become stale if runtime semantics change. Keep it
-  generated from the same section warning contract so tests catch drift when
-  warning codes change.
+- Weak-section warnings and consequence copy were retired because even passive
+  browser interpretation can become stale or imply runtime authority.
 - Readiness is intentionally advisory. It improves reviewability but does not
   replace server-side validation, runtime scoring, or future authoritative
   intent persistence.
 - Readiness navigation uses DOM focus and scrolling, so it must remain scoped
   to editor-owned wrappers. Child cards should not expose internal methods just
   to support navigation.
-- Completion badges are intentionally coarse. They improve scanability but do
-  not replace section warnings, consequences, or future server-side validation.
-- Next-action guidance is intentionally advisory. It should never imply that
-  Classifarr is enforcing or auto-applying the suggested edit.
-- Re-exporting visual-state helpers preserves compatibility but can hide the
-  new boundary. New direct helper tests should import the focused module so the
-  ownership remains clear.
+- Completion badges, generated next actions, and visual-state helper re-exports
+  were retired. Static instructions and factual configuration display remain
+  the compatibility card's only advisory surface.
 - Re-exporting projection and command helpers preserves compatibility but can
   make the old section contract look like it still owns the behavior. New direct
   tests should import `policyIntentSectionProjection.js`.
@@ -875,22 +869,12 @@ and `client/src/__tests__/PolicyIntentSectionCard.test.js` covering:
 - per-section behavior summary projection,
 - summary rendering before configured chips,
 - empty sections without summary text.
-- deterministic weak-section warning projection,
-- warning suppression when required sibling context exists,
-- warning rendering inside section cards.
-- warning consequence projection,
-- visible consequence rendering inside section cards.
 - absence of the top-level compatibility readiness summary and its
   focus-navigation path,
-- direct section warnings and completion guidance remain available beside their
-  related edit controls.
-- deterministic section completion badge projection,
-- completion badge rendering for configured and weak sections.
-- deterministic section next-action projection,
-- next-action rendering for configured and weak sections.
-- visual-state helper extraction into a focused module,
-- stable re-export compatibility from the section contract,
-- direct visual-state helper coverage.
+- absence of client-derived section warnings, completion badges, and generated
+  next actions beside compatibility edit controls.
+- static control instructions and factual configured-signal summaries remain
+  available beside their related edit controls.
 - projection and draft-command helper extraction into a focused module,
 - stable public wrapper compatibility from the section contract,
 - direct projection and command helper coverage.
@@ -994,28 +978,10 @@ Warning consequence validation:
 npm --prefix client run test -- policyIntentEditorSections.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
 ```
 
-Compatibility readiness-boundary validation:
-
-```bash
-npm --prefix client run test -- policyIntentSectionVisualState.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
-```
-
-Section completion badge validation:
+Compatibility section-advisory cutline validation:
 
 ```bash
 npm --prefix client run test -- policyIntentEditorSections.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
-```
-
-Section next-action validation:
-
-```bash
-npm --prefix client run test -- policyIntentEditorSections.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
-```
-
-Section visual-state extraction validation:
-
-```bash
-npm --prefix client run test -- policyIntentSectionVisualState.test.js policyIntentEditorSections.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
 ```
 
 Section projection and draft-command extraction validation:

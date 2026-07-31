@@ -4236,6 +4236,12 @@ Implementation status:
   single server-owned readiness next action. Its design record is [Policy
   Compatibility Intent Readiness Boundary
   Audit](policy-compatibility-intent-readiness-boundary-audit.md).
+- Compatibility section cards no longer translate an unsaved draft into
+  warnings, completion badges, or generated next actions. They retain direct
+  edit instructions, configured-signal summaries, and duplicate-safe controls;
+  native policies remain the only surface with server-owned readiness. Its
+  design and outcome record is [Policy Compatibility Section Advisory Scope
+  Audit](policy-compatibility-section-advisory-scope-audit.md).
 - Persisted native policies now use a compact, read-only summary instead of
   reopening the five-section creation workflow. It shows display-safe stored
   purpose from the policy detail contract and **policy** readiness from active

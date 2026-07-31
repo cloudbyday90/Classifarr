@@ -137,9 +137,9 @@ turn observed evidence into a policy declaration.
 
 ## Next Item
 
-The compatibility readiness-boundary audit is implemented in [Policy
-Compatibility Intent Readiness Boundary
-Audit](policy-compatibility-intent-readiness-boundary-audit.md). The next task
-is a **compatibility section-advisory scope audit** for
-`policyIntentSectionVisualState.js`, without recreating aggregate readiness or
-adding a compatibility API.
+The compatibility section-advisory cutline is implemented in [Policy
+Compatibility Section Advisory Scope
+Audit](policy-compatibility-section-advisory-scope-audit.md). The next task is
+a **compatibility section-configuration summary scope audit** for
+`policyIntentSectionProjection.js`, without adding a compatibility API or
+browser-owned runtime interpretation.

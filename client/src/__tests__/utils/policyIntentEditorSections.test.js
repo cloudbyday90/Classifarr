@@ -67,13 +67,6 @@ describe('policyIntentEditorSections', () => {
       controlKind: 'genre_intent',
       entries: [{ preset_id: 7, signal_type: 'genres', values: { require_any: ['Family'] }, displayText: 'Belongs here: Family' }],
       behaviorSummary: 'This destination is defined by Family.',
-      completion: {
-        status: 'configured',
-        tone: 'success',
-        label: 'Configured',
-        description: 'This section has configured intent signals.',
-      },
-      nextAction: 'Next: add helpful matches only if they support this identity without replacing it.',
       options: ['Family'],
       optionStates: [{
         value: 'Family',
@@ -96,6 +89,11 @@ describe('policyIntentEditorSections', () => {
       canRemove: true,
       removeLabel: 'Remove Belongs here: Family',
     })
+    expect(sections.every(section => (
+      !Object.hasOwn(section, 'warnings') &&
+      !Object.hasOwn(section, 'completion') &&
+      !Object.hasOwn(section, 'nextAction')
+    ))).toBe(true)
     expect(sections.find(section => section.key === POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS)).toMatchObject({
       label: 'Hard Limits',
       controlKind: 'certification',

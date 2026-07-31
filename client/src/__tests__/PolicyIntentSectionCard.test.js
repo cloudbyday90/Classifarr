@@ -33,13 +33,6 @@ function mountCard(overrides = {}) {
         actionHelp: 'Use this for identity evidence that should define the destination.',
         addLabel: 'Choose identity genre...',
         badgeClass: 'bg-green-900/30 text-green-300',
-        completion: {
-          status: 'configured',
-          tone: 'success',
-          label: 'Configured',
-          description: 'This section has configured intent signals.',
-        },
-        nextAction: 'Next: add helpful matches only if they support this identity without replacing it.',
         hasClearAction: false,
       },
       canEdit: true,
@@ -54,9 +47,6 @@ describe('PolicyIntentSectionCard.vue', () => {
 
     expect(wrapper.text()).toContain('Belongs Here')
     expect(wrapper.text()).toContain('Signals that define what this library is for.')
-    expect(wrapper.text()).toContain('Configured')
-    expect(wrapper.find('.text-green-200').exists()).toBe(true)
-    expect(wrapper.text()).toContain('Next: add helpful matches only if they support this identity without replacing it.')
     expect(wrapper.text()).toContain('This destination is defined by Family.')
     expect(wrapper.text()).toContain('Belongs here: Family')
     expect(wrapper.text()).not.toContain('genres: Family')
@@ -66,14 +56,14 @@ describe('PolicyIntentSectionCard.vue', () => {
     expect(wrapper.text()).toContain('Use this for identity evidence that should define the destination.')
   })
 
-  it('renders deterministic weak-section warnings', () => {
+  it('does not render client-derived readiness or advisory content', () => {
     const wrapper = mountCard({
       props: {
         section: {
           key: POLICY_INTENT_BUCKETS.IDENTITY,
           label: 'Belongs Here',
           help: 'Signals that define what this library is for.',
-          behaviorSummary: '',
+          behaviorSummary: 'This destination is defined by Family.',
           warnings: [{
             code: 'missing_identity',
             severity: 'warning',
@@ -99,11 +89,11 @@ describe('PolicyIntentSectionCard.vue', () => {
       },
     })
 
-    expect(wrapper.text()).toContain('Add at least one belongs-here signal so this policy has a clear destination identity.')
-    expect(wrapper.text()).toContain('Needs identity')
-    expect(wrapper.text()).toContain('Next: add a belongs-here genre that clearly defines this destination.')
-    expect(wrapper.text()).toContain('Why it matters: Without identity evidence, broad hints and RAG neighbors are more likely to force manual review.')
-    expect(wrapper.find('.text-amber-200').exists()).toBe(true)
+    expect(wrapper.text()).toContain('This destination is defined by Family.')
+    expect(wrapper.text()).not.toContain('Add at least one belongs-here signal so this policy has a clear destination identity.')
+    expect(wrapper.text()).not.toContain('Needs identity')
+    expect(wrapper.text()).not.toContain('Next: add a belongs-here genre that clearly defines this destination.')
+    expect(wrapper.text()).not.toContain('Why it matters:')
   })
 
   it('emits add-value payloads and resets genre multi-select controls', async () => {

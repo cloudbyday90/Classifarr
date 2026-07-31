@@ -25,6 +25,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   are also removed; automation readiness remains server-owned for native
   policies.
 
+- **Compatibility Section Advisory Cutline**: Compatibility section cards now
+  show direct control instructions and factual configured-signal summaries
+  only. Browser-derived warnings, completion badges, and generated next-action
+  messages have been removed so unsaved compatibility drafts cannot imply
+  automation readiness, review behavior, confidence, routing, or enforcement.
+
 - **Native Policy Create Payload Cutline**: New native policies now submit only
   library identity, policy name, and explicitly accepted native intent. The
   server rejects hidden legacy configuration before validation or persistence

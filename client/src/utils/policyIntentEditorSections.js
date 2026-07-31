@@ -8,11 +8,6 @@
 
 import { POLICY_INTENT_BUCKETS } from './policyIntentModel'
 import {
-  buildPolicyIntentSectionCompletion,
-  buildPolicyIntentSectionNextAction,
-  buildPolicyIntentSectionWarnings,
-} from './policyIntentSectionVisualState'
-import {
   buildPolicyIntentControlReadiness,
   buildPolicyIntentOptionDiagnostics,
   buildPolicyIntentOptionStates,
@@ -29,9 +24,6 @@ export {
   buildPolicyIntentOptionDiagnostics,
   buildDraftRemoveCommandForIntentEntry,
   buildPolicyIntentOptionStates,
-  buildPolicyIntentSectionCompletion,
-  buildPolicyIntentSectionNextAction,
-  buildPolicyIntentSectionWarnings,
   formatPolicyIntentEntryForSection,
   summarizePolicyIntentSection,
 }
@@ -145,15 +137,8 @@ export const POLICY_INTENT_EDITOR_SECTION_DEFINITIONS = Object.freeze([
 ])
 
 export function buildPolicyIntentEditorSections(intentView = {}, options = {}) {
-  const projectedEntriesBySection = POLICY_INTENT_EDITOR_SECTION_DEFINITIONS.reduce((sectionMap, definition) => {
-    sectionMap[definition.key] = projectPolicyIntentEntriesForSection(definition, intentView[definition.key])
-    return sectionMap
-  }, {})
-
   return POLICY_INTENT_EDITOR_SECTION_DEFINITIONS.map((definition) => {
-    const entries = projectedEntriesBySection[definition.key]
-    const warnings = buildPolicyIntentSectionWarnings(definition.key, entries, projectedEntriesBySection)
-    const completion = buildPolicyIntentSectionCompletion(definition.key, entries, warnings)
+    const entries = projectPolicyIntentEntriesForSection(definition, intentView[definition.key])
     const sectionOptions = definition.optionSource === 'ratings'
       ? asArray(options.availableRatings)
       : definition.optionSource === 'review_triggers'
@@ -164,9 +149,6 @@ export function buildPolicyIntentEditorSections(intentView = {}, options = {}) {
       ...definition,
       entries,
       behaviorSummary: summarizePolicyIntentSection(definition.key, entries),
-      warnings,
-      completion,
-      nextAction: buildPolicyIntentSectionNextAction(definition.key, completion),
       options: sectionOptions,
       optionStates,
       optionDiagnostics: buildPolicyIntentOptionDiagnostics(definition.key, optionStates),

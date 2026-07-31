@@ -219,7 +219,6 @@ describe('policyBuilderBoundaryInventory', () => {
   test('classifies client-side readiness and section helpers as engine candidates', () => {
     [
       'client/src/utils/policyIntentSectionProjection.js',
-      'client/src/utils/policyIntentSectionVisualState.js',
       'client/src/utils/policyIntentSummary.js',
     ].forEach((filePath) => {
       const record = classifyPolicyBuilderClientPath(filePath);

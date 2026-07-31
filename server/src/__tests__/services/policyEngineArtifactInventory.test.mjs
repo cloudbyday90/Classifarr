@@ -17,7 +17,7 @@ describe('policyEngineArtifactInventory', () => {
     expect(audit.ok).toBe(true);
     expect(audit.issueCount).toBe(0);
     expect(audit.groupCount).toBeGreaterThanOrEqual(6);
-    expect(audit.artifactCount).toBeGreaterThanOrEqual(39);
+    expect(audit.artifactCount).toBeGreaterThanOrEqual(38);
     expect(audit.coveredCategoryIds).toEqual(expect.arrayContaining([
       POLICY_ENGINE_ARTIFACT_CATEGORY_IDS.IMPACT_PREVIEW,
       POLICY_ENGINE_ARTIFACT_CATEGORY_IDS.REPRESENTATIVE_REPLAY,

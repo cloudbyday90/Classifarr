@@ -88,22 +88,24 @@ until cutover, and it cannot represent unsaved compatibility draft changes.
 - Deleted the client aggregate helper and its aggregate-specific tests.
 - Removed aggregate status rendering and focus-only section references from
   `PolicyIntentEditor.vue`.
-- Retained direct section warnings, completion badges, and typed draft commands.
+- Retained typed draft commands while retiring all client-derived section
+  advisory state.
 - Updated policy-engine inventories and presentation-test records to represent
   the deleted compatibility surface.
 
 ## Verification
 
-Focused client tests cover retained section guidance and the absence of the
-aggregate readiness surface. Server inventory tests verify the deleted test and
-component are not classified as active workflow artifacts. Full client tests,
-build, lint, typecheck, coverage, and affected server checks provide the
-release gate.
+Focused client tests cover the absence of aggregate and section-level browser
+advisory state. Server inventory tests verify deleted artifacts are not
+classified as active workflow artifacts. Full client tests, build, lint,
+typecheck, coverage, and affected server checks provide the release gate.
 
 ## Next Item
 
-Phase 6R.5 should next perform a **compatibility section-advisory scope audit**
-for `policyIntentSectionVisualState.js`. Classify every remaining badge,
-warning, and next-action string as either direct local editing guidance or an
-engine-owned concern to delete. Do not recreate aggregate readiness, add a
-compatibility API, or broaden compatibility writes.
+The compatibility section-advisory cutline is implemented in [Policy
+Compatibility Section Advisory Scope
+Audit](policy-compatibility-section-advisory-scope-audit.md). The next task is
+a **compatibility section-configuration summary scope audit** for
+`policyIntentSectionProjection.js`. It must preserve direct configuration
+display without adding a compatibility API, browser-owned runtime
+interpretation, or broader writes.

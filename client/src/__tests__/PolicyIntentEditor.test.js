@@ -54,7 +54,7 @@ describe('PolicyIntentEditor.vue', () => {
     expect(wrapper.emitted('add-signal')).toBeUndefined()
   })
 
-  it('renders direct section guidance without an aggregate compatibility readiness state', () => {
+  it('renders direct control guidance without browser-derived advisory state', () => {
     const wrapper = mountEditor()
     const text = wrapper.text()
 
@@ -63,9 +63,11 @@ describe('PolicyIntentEditor.vue', () => {
     expect(text).toContain('What clearly belongs here?')
     expect(text).toContain('What should always or never belong here?')
     expect(text).toContain('What helps after fit is clear?')
-    expect(text).toContain('Add at least one belongs-here signal so this policy has a clear destination identity.')
+    expect(text).toContain('Use this for identity evidence that should define the destination.')
     expect(text).not.toContain('Policy Readiness')
     expect(text).not.toContain('Ready with notes')
+    expect(text).not.toContain('Needs identity')
+    expect(text).not.toContain('Why it matters:')
     expect(text.indexOf('Ask When Unsure')).toBeLessThan(text.indexOf('Edit existing policy context'))
     expect(wrapper.find('#policy-builder-review-behavior').exists()).toBe(true)
     expect(wrapper.find('#policy-builder-destination-identity').exists()).toBe(true)

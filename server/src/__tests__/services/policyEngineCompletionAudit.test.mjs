@@ -113,7 +113,7 @@ describe('policyEngineCompletionAudit', () => {
     expect(audit.ok).toBe(true);
     expect(audit.issueCount).toBe(0);
     expect(audit.groupCount).toBeGreaterThanOrEqual(6);
-    expect(audit.artifactCount).toBeGreaterThanOrEqual(39);
+    expect(audit.artifactCount).toBeGreaterThanOrEqual(38);
     expect(audit.nextStep).toEqual(expect.objectContaining({
       stepId: 'evidence_engine',
       label: 'Evidence Engine',

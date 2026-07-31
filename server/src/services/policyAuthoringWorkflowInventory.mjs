@@ -181,7 +181,6 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
       '/policyIntentEditorGroups.js',
       '/policyIntentEditorSections.js',
       '/policyIntentSectionProjection.js',
-      '/policyIntentSectionVisualState.js',
     ]),
   },
   {

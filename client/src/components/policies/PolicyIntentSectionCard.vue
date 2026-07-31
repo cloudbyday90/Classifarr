@@ -9,27 +9,11 @@
 <template>
   <div class="rounded-lg border border-gray-700 bg-background-light p-3 space-y-3">
     <div>
-      <div class="flex flex-wrap items-center gap-2">
-        <div class="text-sm font-semibold text-white">
-          {{ section.label }}
-        </div>
-        <span
-          v-if="section.completion"
-          class="rounded-full border px-2 py-0.5 text-[11px] font-medium"
-          :class="completionClass(section.completion)"
-          :title="section.completion.description"
-        >
-          {{ section.completion.label }}
-        </span>
+      <div class="text-sm font-semibold text-white">
+        {{ section.label }}
       </div>
       <p class="text-xs text-gray-400">
         {{ section.help }}
-      </p>
-      <p
-        v-if="section.nextAction"
-        class="mt-1 text-[11px] text-gray-500"
-      >
-        {{ section.nextAction }}
       </p>
       <p
         v-if="section.behaviorSummary"
@@ -37,27 +21,6 @@
       >
         {{ section.behaviorSummary }}
       </p>
-      <div
-        v-if="section.warnings?.length"
-        class="mt-2 space-y-1"
-      >
-        <p
-          v-for="warning in section.warnings"
-          :key="warning.code"
-          class="rounded-md border px-2 py-1 text-xs"
-          :class="warningClass(warning)"
-        >
-          <span class="block font-medium">
-            {{ warning.message }}
-          </span>
-          <span
-            v-if="warning.consequence"
-            class="mt-0.5 block opacity-85"
-          >
-            Why it matters: {{ warning.consequence }}
-          </span>
-        </p>
-      </div>
     </div>
 
     <div class="flex flex-wrap gap-1">
@@ -173,30 +136,6 @@ const emitAddValue = (event) => {
     sectionKey: props.section.key,
     value,
   })
-}
-
-const warningClass = (warning = {}) => {
-  if (warning.severity === 'warning') {
-    return 'border-amber-700/70 bg-amber-950/30 text-amber-200'
-  }
-
-  return 'border-blue-800/70 bg-blue-950/30 text-blue-200'
-}
-
-const completionClass = (completion = {}) => {
-  if (completion.tone === 'warning') {
-    return 'border-amber-700/70 bg-amber-950/30 text-amber-200'
-  }
-
-  if (completion.tone === 'info') {
-    return 'border-blue-800/70 bg-blue-950/30 text-blue-200'
-  }
-
-  if (completion.tone === 'success') {
-    return 'border-green-800/70 bg-green-950/30 text-green-200'
-  }
-
-  return 'border-gray-700 bg-background text-gray-400'
 }
 
 const entryKey = (entry) => {
