@@ -10,8 +10,9 @@ coverage, scoring, or automation authorization from browser state.
 
 The server remains the authority that validates and establishes native intent.
 The post-create handoff reports the server-derived routing state. Existing
-compatibility-policy editing retains its local save and routing warning until
-the migration/deletion path removes that legacy workflow.
+compatibility-policy editing uses the same action-only footer: direct
+prerequisites may disable the control for usability, but no browser routing or
+save-readiness conclusion is presented.
 
 ## Official Guidance Reviewed
 
@@ -24,10 +25,10 @@ Research reviewed in July 2026 against the sources current through June 2026:
   recommends server-generated verification data and server-controlled allowed
   state transitions. Native establishment keeps that validation in the
   transaction-owning server path.
-- [W3C WAI-ARIA `status` role](https://www.w3.org/TR/aria-role/roles#status)
-  defines a polite, advisory live status that should not take focus. The
-  existing footer status remains an advisory explanation, not an additional
-  control or an asserted automation decision.
+- [W3C WAI: Status Messages](https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html)
+  distinguishes dynamic outcome, progress, and error notifications. The footer
+  now announces a changing unmet prerequisite or returned error, rather than a
+  permanent browser-generated success conclusion.
 
 ## Options Considered
 
@@ -60,24 +61,25 @@ by the footer. Selected.
 
 - `policyNativeCreateActionBoundary.js` owns only selected-library and
   explicit-purpose checks for a new native policy.
-- `policyCompatibilitySaveActionBoundary.js` retains compatibility-editor
-  weight and routing warnings as an explicit legacy boundary.
-- `policyBuilderActionBoundary.js` dispatches by mode and does not use local
-  routing readiness for native creation.
-- `PolicyBuilderModal.vue` does not calculate routing readiness unless it is
-  rendering an existing compatibility policy.
-- The native footer retains one short `role="status"` message. The atomic
-  server establishment route and the server-response handoff remain the
-  authority for policy creation and routing state.
+- `policyCompatibilitySaveActionBoundary.js` owns only the direct selected-
+  library prerequisite for compatibility saves.
+- `policyBuilderActionBoundary.js` dispatches by mode and contains no local
+  routing-readiness input.
+- `PolicyBuilderModal.vue` does not calculate local routing readiness for its
+  footer.
+- The footer shows a polite direct prerequisite only while its action is
+  disabled, and exposes returned save failures as alerts. The atomic server
+  establishment route and the server-response handoff remain the authority for
+  policy creation and routing state.
 
 ## Security And Accessibility Outcome
 
 - Browser state cannot authorize a native policy or automatic routing.
 - The native creation request is still subject to server-side actor,
   transaction, idempotency, policy, and declared-intent validation.
-- A stale local Arr mapping cannot change the native footer's ready state.
-- The footer remains advisory and screen-reader-friendly without competing
-  alerts or duplicated readiness panels.
+- A stale local Arr mapping cannot affect footer state.
+- The footer is screen-reader-friendly without a permanent success status,
+  compatibility routing warning, or duplicated readiness panel.
 
 ## Verification
 
@@ -92,7 +94,7 @@ by the footer. Selected.
 1. Use the native action boundary only for local draft completeness.
 2. Treat the server transaction and response handoff as the authority for
    native creation and routing state.
-3. Preserve compatibility-only UI logic behind an explicit module boundary.
+3. Keep compatibility save admission to direct prerequisites only.
 4. Keep diagnostic, provider, replay, TMDB, and scoring state out of normal
    native authoring.
 5. Delete the compatibility boundary only through the Phase 6R.6/8R migration

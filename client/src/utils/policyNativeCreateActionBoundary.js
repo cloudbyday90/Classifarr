@@ -21,10 +21,6 @@ function buildPolicyNativeCreateActionBoundary({
       canSave: false,
       saveLabel: 'Create Policy',
       deferLabel: 'Defer for now',
-      status: 'blocked',
-      tone: 'warning',
-      statusLabel: 'Choose a library before creating',
-      statusMessage: 'Select the media-server library this policy should describe.',
       disabledReason: 'Choose a destination library before creating a policy.',
     }
   }
@@ -34,10 +30,6 @@ function buildPolicyNativeCreateActionBoundary({
       canSave: false,
       saveLabel: 'Create Policy',
       deferLabel: 'Defer for now',
-      status: 'blocked',
-      tone: 'warning',
-      statusLabel: 'Choose destination meaning',
-      statusMessage: 'Accept at least one observed value that should define this destination before creating the policy.',
       disabledReason: 'Accept one or more observed values that should define this destination.',
     }
   }
@@ -46,10 +38,6 @@ function buildPolicyNativeCreateActionBoundary({
     canSave: true,
     saveLabel: 'Create Policy',
     deferLabel: 'Defer for now',
-    status: 'ready',
-    tone: 'success',
-    statusLabel: 'Ready to create',
-    statusMessage: 'Classifarr will validate and establish this destination policy on the server.',
     disabledReason: '',
   }
 }

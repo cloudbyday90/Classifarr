@@ -189,14 +189,13 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
   ),
   presentationTestRecord(
     'client/src/__tests__/PolicyBuilderFooterActions.test.js',
-    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_READINESS_NEXT_ACTIONS,
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_ACCESSIBILITY_DECISION_LOAD,
     true,
     POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
     [
-      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.READINESS_LINKS_TO_NEXT_ACTION,
       POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS,
     ],
-    'Footer actions explain save readiness and preserve a clear defer path without creating another workflow state.'
+    'Footer actions expose direct prerequisites, save and defer controls, and returned errors without creating a browser readiness state.'
   ),
   presentationTestRecord(
     'client/src/__tests__/PolicyBuilderLibraryContext.test.js',

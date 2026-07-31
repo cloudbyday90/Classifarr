@@ -519,6 +519,9 @@ describe('PolicyBuilderModal.vue', () => {
     expect(document.body.textContent).not.toContain('Advanced Settings');
     expect(document.body.textContent).not.toContain('Scoring Weights');
     expect(document.body.textContent).not.toContain('Classification Thresholds');
+    expect(document.body.textContent).not.toContain('Ready to save');
+    expect(document.body.textContent).not.toContain('routing still needs setup');
+    expect(wrapper.find('#policy-builder-save-status').exists()).toBe(false);
 
     await wrapper.vm.save();
 

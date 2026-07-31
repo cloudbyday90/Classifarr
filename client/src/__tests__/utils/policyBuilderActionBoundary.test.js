@@ -10,13 +10,10 @@ describe('policyBuilderActionBoundary', () => {
   it('requires a selected library before creating a native policy', () => {
     const boundary = buildPolicyBuilderSaveBoundary({
       form: {},
-      selectedPresets: [{ id: 1 }],
     })
 
     expect(boundary).toMatchObject({
       canSave: false,
-      status: 'blocked',
-      statusLabel: 'Choose a library before creating',
       disabledReason: 'Choose a destination library before creating a policy.',
     })
   })
@@ -24,16 +21,12 @@ describe('policyBuilderActionBoundary', () => {
   it('requires declared native purpose before creating a policy', () => {
     const boundary = buildPolicyBuilderSaveBoundary({
       form: { library_id: 1 },
-      selectedPresets: [],
     })
 
     expect(boundary).toMatchObject({
       canSave: false,
-      status: 'blocked',
-      statusLabel: 'Choose destination meaning',
       disabledReason: 'Accept one or more observed values that should define this destination.',
     })
-    expect(boundary.statusMessage).toContain('Accept at least one observed value')
   })
 
   it('does not apply compatibility state to native policy creation', () => {
@@ -48,24 +41,27 @@ describe('policyBuilderActionBoundary', () => {
 
     expect(boundary).toMatchObject({
       canSave: true,
-      statusLabel: 'Ready to create',
+      saveLabel: 'Create Policy',
+      disabledReason: '',
     })
   })
 
-  it('does not block compatibility saves on browser-owned scoring state', () => {
+  it('does not block compatibility saves on browser-owned scoring or routing state', () => {
     const boundary = buildPolicyBuilderSaveBoundary({
       form: { library_id: 1 },
       totalWeight: 0.85,
       hasExistingPolicy: true,
+      compatibilityRoutingReadiness: { canRoute: false },
     })
 
     expect(boundary).toMatchObject({
       canSave: true,
-      statusLabel: 'Ready to save',
+      saveLabel: 'Save Policy',
+      disabledReason: '',
     })
   })
 
-  it('does not derive native creation readiness from local routing data', () => {
+  it('does not derive native creation state from local routing data', () => {
     const boundary = buildPolicyBuilderSaveBoundary({
       form: { library_id: 1 },
       nativeIntentEstablishment: {
@@ -80,29 +76,20 @@ describe('policyBuilderActionBoundary', () => {
 
     expect(boundary).toMatchObject({
       canSave: true,
-      status: 'ready',
-      tone: 'success',
-      statusLabel: 'Ready to create',
       disabledReason: '',
     })
   })
 
-  it('marks the policy ready when save requirements and routing are ready', () => {
+  it('enables an existing policy save from the selected library alone', () => {
     const boundary = buildPolicyBuilderSaveBoundary({
       form: { library_id: 1 },
-      selectedPresets: [{ id: 1 }],
       hasExistingPolicy: true,
-      compatibilityRoutingReadiness: {
-        canRoute: true,
-      },
     })
 
     expect(boundary).toMatchObject({
       canSave: true,
       saveLabel: 'Save Policy',
-      status: 'ready',
-      tone: 'success',
-      statusLabel: 'Ready to save',
+      disabledReason: '',
     })
   })
 

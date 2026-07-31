@@ -9,24 +9,26 @@ import {
 } from '@/utils/policyCompatibilitySaveActionBoundary'
 
 describe('policyCompatibilitySaveActionBoundary', () => {
-  it('does not apply browser-owned weight validation to compatibility saves', () => {
+  it('enables an existing policy save from the direct library prerequisite only', () => {
     expect(buildPolicyCompatibilitySaveActionBoundary({
       form: { library_id: 1 },
       totalWeight: 0.85,
-    })).toMatchObject({
-      canSave: true,
-      statusLabel: 'Ready to save',
-    })
-  })
-
-  it('preserves the non-blocking compatibility routing warning', () => {
-    expect(buildPolicyCompatibilitySaveActionBoundary({
-      form: { library_id: 1 },
       compatibilityRoutingReadiness: { canRoute: false },
     })).toMatchObject({
       canSave: true,
-      status: 'ready_with_warning',
-      statusLabel: 'Ready to save; routing still needs setup',
+      saveLabel: 'Save Policy',
+      disabledReason: '',
+    })
+    expect(buildPolicyCompatibilitySaveActionBoundary({ form: { library_id: 1 } }))
+      .not.toHaveProperty('status')
+  })
+
+  it('reports only a direct missing-library prerequisite', () => {
+    expect(buildPolicyCompatibilitySaveActionBoundary({
+      form: {},
+    })).toMatchObject({
+      canSave: false,
+      disabledReason: 'Choose a destination library before saving.',
     })
   })
 })

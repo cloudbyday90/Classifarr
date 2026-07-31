@@ -43,6 +43,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   the sole draft representation; no compatibility save contract or server
   validation behavior changed.
 
+- **Compatibility Save-Footer Admission**: Policy footer actions now show only
+  direct unmet prerequisites and returned server errors. Browser-derived
+  success, routing, and policy-readiness messages are removed; compatibility
+  saves still use the existing server-validated write contract.
+
 - **Compatibility Group Guidance Cutline**: Group helper text now gives only
   concise editing directions. It no longer predicts automation safety, review
   behavior, fit, or confidence effects from a browser-side compatibility draft.

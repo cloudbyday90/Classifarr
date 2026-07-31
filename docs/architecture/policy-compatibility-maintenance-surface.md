@@ -137,8 +137,9 @@ turn observed evidence into a policy declaration.
 
 ## Next Item
 
-The compatibility intent-summary audit is implemented in [Policy Compatibility
-Intent Summary Audit](policy-compatibility-intent-summary-audit.md). The next
-task is a **compatibility save-footer admission audit** for
-`PolicyBuilderFooterActions.vue`, without adding readiness state, a
-compatibility API, browser workflow gating, or broader writes.
+The compatibility save-footer admission audit is implemented in [Policy
+Compatibility Save-Footer Admission Audit](policy-compatibility-save-footer-admission-audit.md).
+Next, perform a **compatibility routing-readiness card retirement audit** for
+`PolicyBuilderRoutingReadinessCard.vue`. It is unmounted; confirm it has no
+server-owned read contract or production caller, then remove it rather than
+preserve a dormant client readiness surface.

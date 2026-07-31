@@ -168,9 +168,9 @@ Compatibility Maintenance Surface Framing
 Audit](policy-compatibility-maintenance-surface-framing-audit.md), and [Policy
 Compatibility Migration Notice
 Audit](policy-compatibility-migration-notice-audit.md). The compatibility
-intent-summary audit is implemented in [Policy Compatibility Intent Summary
-Audit](policy-compatibility-intent-summary-audit.md). The next task is a
-**compatibility save-footer admission audit** for
-`PolicyBuilderFooterActions.vue`. It must retain truthful save and defer
-feedback from the existing validated boundary without adding readiness state, a
-compatibility API, browser workflow gating, or broader writes.
+save-footer admission audit is implemented in [Policy Compatibility Save-Footer
+Admission Audit](policy-compatibility-save-footer-admission-audit.md). Next,
+perform a **compatibility routing-readiness card retirement audit** for
+`PolicyBuilderRoutingReadinessCard.vue`. It is unmounted; confirm it has no
+server-owned read contract or production caller, then remove it rather than
+preserve a dormant client readiness surface.

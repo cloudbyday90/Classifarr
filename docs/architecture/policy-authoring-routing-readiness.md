@@ -1,6 +1,13 @@
 # Policy Authoring Routing Readiness
 
-Status: implemented as the durable policy-authoring routing-readiness surface.
+Status: historical local routing projection. It is no longer mounted by the
+policy modal or used by the policy footer.
+
+> **Superseded scope:** The [Policy Compatibility Save-Footer Admission
+> Audit](policy-compatibility-save-footer-admission-audit.md) removed the
+> modal's local routing calculation and its footer warning. The unmounted
+> `PolicyBuilderRoutingReadinessCard.vue` remains a separate Phase 6R.5
+> component-retirement audit; this document records the previous design only.
 
 ## Scope
 
@@ -78,39 +85,30 @@ Official sources reviewed as of June 2026:
 - The advanced-settings link remains the resolver path until a dedicated
   routing settings route is available inside the builder.
 
-## Final Stack
+## Historical Stack
 
-- Readiness projection:
-  `client/src/utils/policyBuilderRoutingReadiness.js`
-- Read-only status card:
-  `client/src/components/policies/PolicyBuilderRoutingReadinessCard.vue`
-- Modal integration:
-  `client/src/components/policies/PolicyBuilderModal.vue`
-- Setup-card target update:
-  `client/src/utils/policyBuilderSetupCards.js`
-- Unit coverage:
-  `client/src/__tests__/utils/policyBuilderRoutingReadiness.test.js`
-  `client/src/__tests__/PolicyBuilderRoutingReadinessCard.test.js`
-  `client/src/__tests__/PolicyBuilderSetupCards.test.js`
-  `client/src/__tests__/PolicyBuilderModal.test.js`
+- The client routing projection and its focused utility test are deleted.
+- The policy modal no longer integrates a local routing-readiness calculation.
+- `PolicyBuilderRoutingReadinessCard.vue` and its component test are unmounted
+  historical artifacts pending their dedicated retirement audit.
 
-## Implemented Outcome
+## Historical Outcome
 
-The policy builder now renders a **Routing Readiness** surface directly after
-the setup cards. The surface answers one question:
+The prior policy builder rendered a **Routing Readiness** surface directly
+after the setup cards. The surface answered one question:
 
 ```text
 Can approved matches for this destination route later?
 ```
 
-The setup-card action now jumps to `#policy-builder-routing-readiness` instead
-of advanced settings. If routing context is incomplete, the card shows a single
-next action that links to the settings area that can resolve it. If routing is
-ready, the card shows the selected service and root folder.
+The prior setup-card action jumped to `#policy-builder-routing-readiness`
+instead of advanced settings. If routing context was incomplete, the card
+showed one next action; if routing was ready, it showed the selected service
+and root folder. Those local conclusions are no longer surfaced from the modal.
 
 ## Follow-Up
 
-The next high-value item is **Policy Authoring Setup Card Progress**. Setup
-cards are now correctly targeted, but they still render as static guidance. The
-next slice should derive card completion/needs-attention state from existing
-visible projections without adding new persistence, API calls, or automation.
+The next high-value item is the **compatibility routing-readiness card
+retirement audit**. Confirm that the unmounted card has no server-owned
+replacement contract or caller, then remove it rather than preserve a dormant
+client readiness surface.

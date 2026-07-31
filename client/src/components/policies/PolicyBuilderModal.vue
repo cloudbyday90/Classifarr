@@ -125,7 +125,6 @@ import { usePolicyIntentConstraintDraft } from '@/composables/usePolicyIntentCon
 import { usePolicyNativeCreateHandoff } from '@/composables/usePolicyNativeCreateHandoff'
 import { usePolicyRecoveryFocus } from '@/composables/usePolicyRecoveryFocus'
 import { buildPolicyBuilderSaveBoundary } from '@/utils/policyBuilderActionBoundary'
-import { buildPolicyBuilderRoutingReadiness } from '@/utils/policyBuilderRoutingReadiness'
 import { buildPolicyBuilderExperienceMode } from '@/utils/policyBuilderExperienceMode'
 import { buildNativePolicyCreatePayload } from '@/utils/policyNativeCreatePayload'
 import {
@@ -219,15 +218,6 @@ const {
 
 const experienceMode = computed(() => buildPolicyBuilderExperienceMode(props.policy))
 
-const compatibilityRoutingReadiness = computed(() => (
-  experienceMode.value.isLegacyEdit
-    ? buildPolicyBuilderRoutingReadiness({
-      library: currentLibrary.value,
-      form: form.value,
-    })
-    : null
-))
-
 const {
   workflowRead: operatorWorkflowRead,
   loading: operatorWorkflowLoading,
@@ -276,10 +266,8 @@ const {
 
 const saveBoundary = computed(() => buildPolicyBuilderSaveBoundary({
   form: form.value,
-  selectedPresets: selectedPresets.value,
   hasExistingPolicy: experienceMode.value.isLegacyEdit,
   nativeIntentEstablishment: nativeIntentEstablishment.value,
-  compatibilityRoutingReadiness: compatibilityRoutingReadiness.value,
 }))
 
 onMounted(() => {

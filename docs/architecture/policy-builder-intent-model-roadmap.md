@@ -4277,6 +4277,12 @@ Implementation status:
   server validation remains authoritative for every write. Its design and
   outcome record is [Policy Compatibility Intent Summary
   Audit](policy-compatibility-intent-summary-audit.md).
+- Policy footers now report only an unmet direct prerequisite or a returned
+  server error. The browser no longer presents save success, compatibility
+  routing, or automation-readiness state, and the local compatibility routing
+  projection was removed. Its design and outcome record is [Policy
+  Compatibility Save-Footer Admission
+  Audit](policy-compatibility-save-footer-admission-audit.md).
 - Persisted native policies now use a compact, read-only summary instead of
   reopening the five-section creation workflow. It shows display-safe stored
   purpose from the policy detail contract and **policy** readiness from active

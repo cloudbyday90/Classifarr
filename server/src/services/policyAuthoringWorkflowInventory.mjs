@@ -10,6 +10,7 @@ const POLICY_AUTHORING_WORKFLOW_ROLE_IDS = Object.freeze({
   WORKFLOW_SHELL: 'workflow_shell',
   DESTINATION_CONTEXT: 'destination_context',
   DECLARED_INTENT_EDITING: 'declared_intent_editing',
+  ACTION_ADMISSION: 'action_admission',
   READINESS_NEXT_ACTION: 'readiness_next_action',
   ADVANCED_SUPPORT_ONLY: 'advanced_support_only',
   COMPATIBILITY_BRIDGE: 'compatibility_bridge',
@@ -216,12 +217,22 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
     riskIds: [
       POLICY_AUTHORING_WORKFLOW_RISK_IDS.OLD_MODAL_SHAPE,
     ],
-    notes: 'Summary/readiness concepts survive, but they must become action-oriented destination checks, not diagnostic dashboards.',
+    notes: 'The remaining routing card must become a server-owned next action or be removed; save admission does not infer readiness.',
+    matches: filePath => hasAnySegment(filePath, [
+      '/PolicyBuilderRoutingReadinessCard.vue',
+    ]),
+  },
+  {
+    id: 'policy_save_admission_surface',
+    decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
+    roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.ACTION_ADMISSION,
+    normalAuthoringAllowed: true,
+    migrationSupportOnly: false,
+    riskIds: [],
+    notes: 'Save admission may explain one direct unmet prerequisite and forward a command, but it cannot claim readiness, authorize a write, or infer routing or automation state.',
     matches: filePath => hasAnySegment(filePath, [
       '/PolicyBuilderFooterActions.vue',
-      '/PolicyBuilderRoutingReadinessCard.vue',
       '/policyBuilderActionBoundary.js',
-      '/policyBuilderRoutingReadiness.js',
     ]),
   },
   {

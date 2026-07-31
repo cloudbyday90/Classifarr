@@ -1,12 +1,16 @@
 # Policy Authoring Routing Readiness Module Cutover
 
-Status: implemented.
+Status: superseded historical cutover. The client projection and modal
+integration described here are removed.
 
 ## Scope
 
-This cutover removes phase-specific naming from the routing-readiness surface
-evidence while preserving the existing read-only client projection, status
-message behavior, setup-card anchor target, and regression coverage.
+This document records the prior phase-name cutover for a client-side
+routing-readiness projection. The [Policy Compatibility Save-Footer Admission
+Audit](policy-compatibility-save-footer-admission-audit.md) removed that
+projection and its modal integration because browser routing conclusions are
+not policy-write authority. The unmounted routing card remains pending its own
+retirement audit.
 
 ## Official Guidance Reviewed
 
@@ -25,50 +29,41 @@ message behavior, setup-card anchor target, and regression coverage.
 
 ## Recommendations
 
-1. Keep routing readiness named after the durable product behavior, not the
-   roadmap slice that introduced it.
-2. Keep the card read-only and status-oriented until a server-owned readiness
-   result replaces the client projection.
-3. Preserve `role="status"` and `aria-live="polite"` for state messages.
-4. Preserve the existing `#policy-builder-routing-readiness` anchor because it
-   is a stable UI target, not phase-coded product debt.
-5. Keep one next action per incomplete routing state.
+1. Do not restore client-derived routing readiness to a save or create flow.
+2. Keep server validation and returned write outcomes authoritative.
+3. Retire the unmounted routing card unless a server-owned read contract and a
+   concrete product caller require a replacement surface.
 
 ## Pros And Cons
 
 Pros:
 
-- Removes phase-coded completion-audit metadata from the routing readiness
-  slice.
-- Keeps the current setup-card routing target and card behavior unchanged.
-- Preserves the accessibility rationale for status messages and read-only
-  facts.
+- Preserves the historical rationale for the prior cutover.
+- Makes the removed projection and pending card retirement explicit.
 
 Cons:
 
-- The client projection remains a temporary compatibility surface until
-  runtime readiness owns the authoritative result.
-- Later setup-card state binding still has phase-coded metadata until its own
-  cutover.
+- This document no longer describes active behavior.
+- The unmounted card needs its own contract/caller audit before deletion.
 
 ## Final Recommendation Stack
 
-- `docs/architecture/policy-authoring-routing-readiness.md`
-- `server/src/services/policyAuthoringWorkflowCompletionAudit.mjs`
-- `server/src/__tests__/services/policyAuthoringWorkflowCompletionAudit.test.mjs`
-- `client/src/components/policies/PolicyBuilderRoutingReadinessCard.vue`
-- `client/src/utils/policyBuilderRoutingReadiness.js`
-- `client/src/__tests__/PolicyBuilderRoutingReadinessCard.test.js`
-- `client/src/__tests__/utils/policyBuilderRoutingReadiness.test.js`
+- Historical cutover record: this document.
+- Deleted local projection:
+  `client/src/utils/policyBuilderRoutingReadiness.js`.
+- Pending retirement artifacts:
+  `client/src/components/policies/PolicyBuilderRoutingReadinessCard.vue` and
+  `client/src/__tests__/PolicyBuilderRoutingReadinessCard.test.js`.
 
 ## Outcome
 
-The cutover renamed the routing-readiness architecture document, updated the
-workflow completion audit slice to `policy_authoring_routing_readiness`,
-updated roadmap links to the durable artifact, and kept the existing read-only
-status card, anchor target, and client projection behavior unchanged.
+The historical cutover renamed the routing-readiness architecture document and
+updated the workflow completion audit slice. Later Phase 6R.5 work removed the
+client projection, its focused test, and modal integration; no save footer now
+uses a browser routing conclusion.
 
 ## Next Step
 
-Cut over the policy-authoring setup-card progress naming because it is the
-next Vue rewrite slice that still uses phase-coded completion-audit metadata.
+Perform the **compatibility routing-readiness card retirement audit**. Confirm
+that the unmounted card has no server-owned read contract or production caller,
+then remove it rather than preserve a dormant client readiness surface.

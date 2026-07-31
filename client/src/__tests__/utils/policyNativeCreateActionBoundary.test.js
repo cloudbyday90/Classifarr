@@ -9,21 +9,21 @@ import {
 } from '@/utils/policyNativeCreateActionBoundary'
 
 describe('policyNativeCreateActionBoundary', () => {
-  it('requires a library and declared purpose before enabling policy creation', () => {
+  it('reports direct prerequisites before enabling policy creation', () => {
     expect(buildPolicyNativeCreateActionBoundary()).toMatchObject({
       canSave: false,
-      statusLabel: 'Choose a library before creating',
+      disabledReason: 'Choose a destination library before creating a policy.',
     })
 
     expect(buildPolicyNativeCreateActionBoundary({
       form: { library_id: 1 },
     })).toMatchObject({
       canSave: false,
-      statusLabel: 'Choose destination meaning',
+      disabledReason: 'Accept one or more observed values that should define this destination.',
     })
   })
 
-  it('keeps the native footer limited to client-owned draft readiness', () => {
+  it('keeps the native footer limited to direct draft prerequisites', () => {
     const boundary = buildPolicyNativeCreateActionBoundary({
       form: { library_id: 1 },
       nativeIntentEstablishment: {
@@ -37,10 +37,6 @@ describe('policyNativeCreateActionBoundary', () => {
       canSave: true,
       saveLabel: 'Create Policy',
       deferLabel: 'Defer for now',
-      status: 'ready',
-      tone: 'success',
-      statusLabel: 'Ready to create',
-      statusMessage: 'Classifarr will validate and establish this destination policy on the server.',
       disabledReason: '',
     })
   })

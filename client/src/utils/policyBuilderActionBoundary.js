@@ -12,10 +12,8 @@ import {
 
 function buildPolicyBuilderSaveBoundary({
   form = {},
-  selectedPresets = [],
   hasExistingPolicy = false,
   nativeIntentEstablishment = null,
-  compatibilityRoutingReadiness = null,
 } = {}) {
   if (!hasExistingPolicy) {
     return buildPolicyNativeCreateActionBoundary({ form, nativeIntentEstablishment })
@@ -23,8 +21,6 @@ function buildPolicyBuilderSaveBoundary({
 
   return buildPolicyCompatibilitySaveActionBoundary({
     form,
-    selectedPresets,
-    compatibilityRoutingReadiness,
   })
 }
 

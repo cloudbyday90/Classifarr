@@ -98,8 +98,9 @@ documentation lint are release gates.
 
 ## Next Item
 
-Perform the **compatibility save-footer admission audit** for
-`client/src/components/policies/PolicyBuilderFooterActions.vue`. Limit the
-footer to truthful save and defer feedback from the existing server-validated
-boundary, while preserving error feedback and avoiding a new readiness model,
-compatibility API, browser workflow gate, or broader write contract.
+The compatibility save-footer admission audit is implemented in [Policy
+Compatibility Save-Footer Admission Audit](policy-compatibility-save-footer-admission-audit.md).
+Next, perform a **compatibility routing-readiness card retirement audit** for
+`client/src/components/policies/PolicyBuilderRoutingReadinessCard.vue`. It is
+unmounted; confirm it has no server-owned read contract or production caller,
+then remove it rather than preserve a dormant client readiness surface.
