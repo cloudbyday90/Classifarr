@@ -16,7 +16,7 @@ const POLICY_INTENT_EDITOR_GROUP_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: POLICY_INTENT_EDITOR_GROUP_IDS.REVIEW_BEHAVIOR,
     title: 'When should Classifarr ask?',
-    help: 'Review readiness before editing details. Classifarr should ask when evidence, intent, or freshness is not safe enough to automate.',
+    help: 'Choose the conditions that need review.',
     targetId: 'policy-builder-review-behavior',
     sectionKeys: Object.freeze([
       POLICY_INTENT_BUCKETS.REVIEW_TRIGGERS,
@@ -25,7 +25,7 @@ const POLICY_INTENT_EDITOR_GROUP_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: POLICY_INTENT_EDITOR_GROUP_IDS.DESTINATION_IDENTITY,
     title: 'What clearly belongs here?',
-    help: 'Accept destination identity from observed examples or explicit operator intent.',
+    help: 'Add signals that identify this destination.',
     targetId: 'policy-builder-destination-identity',
     sectionKeys: Object.freeze([
       POLICY_INTENT_BUCKETS.IDENTITY,
@@ -34,7 +34,7 @@ const POLICY_INTENT_EDITOR_GROUP_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: POLICY_INTENT_EDITOR_GROUP_IDS.DESTINATION_RULES,
     title: 'What should always or never belong here?',
-    help: 'Set helpful matches, hard limits, and avoid values as explicit destination rules.',
+    help: 'Add helpful matches, hard limits, or avoid values.',
     targetId: 'policy-builder-destination-rules',
     sectionKeys: Object.freeze([
       POLICY_INTENT_BUCKETS.COMPATIBILITY,
@@ -45,7 +45,7 @@ const POLICY_INTENT_EDITOR_GROUP_DEFINITIONS = Object.freeze([
   Object.freeze({
     id: POLICY_INTENT_EDITOR_GROUP_IDS.CONFIDENCE_SUPPORT,
     title: 'What helps after fit is clear?',
-    help: 'Use boosts only after the item already fits this destination.',
+    help: 'Add optional supporting signals.',
     targetId: 'policy-builder-confidence-support',
     sectionKeys: Object.freeze([
       POLICY_INTENT_BUCKETS.BOOSTERS,

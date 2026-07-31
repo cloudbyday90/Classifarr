@@ -159,8 +159,9 @@ Audit](policy-compatibility-intent-readiness-boundary-audit.md), [Policy
 Compatibility Section Advisory Scope
 Audit](policy-compatibility-section-advisory-scope-audit.md), and [Policy
 Compatibility Section Configuration Summary Scope
-Audit](policy-compatibility-section-configuration-summary-scope-audit.md). The
-next task is a **compatibility group-instruction scope audit** for
-`policyIntentEditorGroups.js`. It must retain concise direct instructions
-without adding a compatibility API, browser-owned runtime interpretation, or
-broader writes.
+Audit](policy-compatibility-section-configuration-summary-scope-audit.md), and
+[Policy Compatibility Group Instruction Scope
+Audit](policy-compatibility-group-instruction-scope-audit.md). The next task is
+a **compatibility editor framing-copy scope audit** for
+`PolicyIntentEditor.vue`. It must retain direct editing context without adding
+a compatibility API, browser-owned workflow interpretation, or broader writes.

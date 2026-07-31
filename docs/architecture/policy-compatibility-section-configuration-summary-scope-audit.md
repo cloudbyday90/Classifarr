@@ -76,8 +76,10 @@ accessible context without a redundant behavior paragraph.
 
 ## Next Item
 
-Perform a **compatibility group-instruction scope audit** for
-`client/src/utils/policyIntentEditorGroups.js`. Classify each group `help`
-string as direct editing instruction or browser-owned runtime interpretation.
-Keep concise directions for grouped controls, but do not add a compatibility
-API, broaden writes, or recreate readiness.
+The group-instruction scope audit is implemented in [Policy Compatibility Group
+Instruction Scope Audit](policy-compatibility-group-instruction-scope-audit.md).
+Next, perform a **compatibility editor framing-copy scope audit** for
+`client/src/components/policies/PolicyIntentEditor.vue`. Classify the static
+header, context count, and empty-state language as direct editing context or
+browser-owned workflow interpretation. Do not add a compatibility API, broaden
+writes, or recreate readiness.

@@ -102,10 +102,9 @@ typecheck, coverage, and affected server checks provide the release gate.
 
 ## Next Item
 
-The compatibility section-configuration summary cutline is implemented in
-[Policy Compatibility Section Configuration Summary Scope
-Audit](policy-compatibility-section-configuration-summary-scope-audit.md). The
-next task is a **compatibility group-instruction scope audit** for
-`policyIntentEditorGroups.js`. It must retain concise direct instructions
-without adding a compatibility API, browser-owned runtime interpretation, or
-broader writes.
+The compatibility group-instruction scope audit is implemented in [Policy
+Compatibility Group Instruction Scope
+Audit](policy-compatibility-group-instruction-scope-audit.md). The next task is
+a **compatibility editor framing-copy scope audit** for
+`PolicyIntentEditor.vue`. It must retain direct editing context without adding
+a compatibility API, browser-owned workflow interpretation, or broader writes.

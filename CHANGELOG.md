@@ -26,7 +26,7 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   policies.
 
 - **Compatibility Section Advisory Cutline**: Compatibility section cards now
-  show direct control instructions and factual configured-signal summaries
+  show direct control instructions and labeled configured-signal chips
   only. Browser-derived warnings, completion badges, and generated next-action
   messages have been removed so unsaved compatibility drafts cannot imply
   automation readiness, review behavior, confidence, routing, or enforcement.
@@ -36,6 +36,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   display. The redundant client-generated behavior summary is removed, so the
   browser does not restate policy effects, confidence, review, or enforcement
   semantics from unsaved compatibility data.
+
+- **Compatibility Group Guidance Cutline**: Group helper text now gives only
+  concise editing directions. It no longer predicts automation safety, review
+  behavior, fit, or confidence effects from a browser-side compatibility draft.
 
 - **Native Policy Create Payload Cutline**: New native policies now submit only
   library identity, policy name, and explicitly accepted native intent. The

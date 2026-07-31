@@ -88,10 +88,8 @@ adding a second status system.
 
 ## Next Item
 
-The configuration-summary cutline is implemented in [Policy Compatibility
-Section Configuration Summary Scope
-Audit](policy-compatibility-section-configuration-summary-scope-audit.md). The
-next task is a **compatibility group-instruction scope audit** for
-`policyIntentEditorGroups.js`. It must retain concise directions for grouped
-controls without adding a compatibility API, browser-owned runtime
-interpretation, or broader writes.
+The group-instruction scope audit is implemented in [Policy Compatibility Group
+Instruction Scope Audit](policy-compatibility-group-instruction-scope-audit.md).
+The next task is a **compatibility editor framing-copy scope audit** for
+`PolicyIntentEditor.vue`. It must retain direct editing context without adding
+a compatibility API, browser-owned workflow interpretation, or broader writes.

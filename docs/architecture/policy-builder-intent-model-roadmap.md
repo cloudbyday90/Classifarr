@@ -4248,6 +4248,11 @@ Implementation status:
   runtime policy behavior. Its design and outcome record is [Policy
   Compatibility Section Configuration Summary Scope
   Audit](policy-compatibility-section-configuration-summary-scope-audit.md).
+- Compatibility editor group helpers now provide only concise instructions for
+  the editable signals in each group. Browser-generated claims about
+  automation safety, review behavior, matching fit, or confidence effects were
+  removed. Its design and outcome record is [Policy Compatibility Group
+  Instruction Scope Audit](policy-compatibility-group-instruction-scope-audit.md).
 - Persisted native policies now use a compact, read-only summary instead of
   reopening the five-section creation workflow. It shows display-safe stored
   purpose from the policy detail contract and **policy** readiness from active

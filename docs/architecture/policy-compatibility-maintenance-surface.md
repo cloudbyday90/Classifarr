@@ -137,9 +137,9 @@ turn observed evidence into a policy declaration.
 
 ## Next Item
 
-The compatibility section-configuration summary cutline is implemented in
-[Policy Compatibility Section Configuration Summary Scope
-Audit](policy-compatibility-section-configuration-summary-scope-audit.md). The
-next task is a **compatibility group-instruction scope audit** for
-`policyIntentEditorGroups.js`, without adding a compatibility API or
-browser-owned runtime interpretation.
+The compatibility group-instruction scope audit is implemented in [Policy
+Compatibility Group Instruction Scope
+Audit](policy-compatibility-group-instruction-scope-audit.md). The next task is
+a **compatibility editor framing-copy scope audit** for
+`PolicyIntentEditor.vue`, without adding a compatibility API or browser-owned
+workflow interpretation.
