@@ -74,7 +74,6 @@
         <PolicyCompatibilityMaintenanceSurface
           v-else-if="experienceMode.isLegacyEdit"
           :preset-migration-notice="presetMigrationNotice"
-          :intent-summary="intentSummary"
           :selected-presets="selectedPresets"
           :all-presets="allPresets"
           :intent-draft="intentDraft"
@@ -128,8 +127,6 @@ import { usePolicyRecoveryFocus } from '@/composables/usePolicyRecoveryFocus'
 import { buildPolicyBuilderSaveBoundary } from '@/utils/policyBuilderActionBoundary'
 import { buildPolicyBuilderRoutingReadiness } from '@/utils/policyBuilderRoutingReadiness'
 import { buildPolicyBuilderExperienceMode } from '@/utils/policyBuilderExperienceMode'
-import { buildPolicyIntentViewFromDraft } from '@/utils/policyIntentDraftView'
-import { buildPolicyIntentSummary } from '@/utils/policyIntentSummary'
 import { buildNativePolicyCreatePayload } from '@/utils/policyNativeCreatePayload'
 import {
   clearRouteFocusHandoff,
@@ -219,10 +216,6 @@ const {
   libraryId: toRef(props, 'libraryId'),
   libraries,
 })
-
-const intentSummary = computed(() => buildPolicyIntentSummary(
-  buildPolicyIntentViewFromDraft(intentDraft.value),
-))
 
 const experienceMode = computed(() => buildPolicyBuilderExperienceMode(props.policy))
 

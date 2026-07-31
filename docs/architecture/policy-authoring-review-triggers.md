@@ -98,7 +98,6 @@ Official sources reviewed as of June 2026:
   `client/src/utils/policyIntentDraftBridge.js`
   `client/src/utils/policyIntentDraftView.js`
   `client/src/utils/policyIntentSectionProjection.js`
-  `client/src/utils/policyIntentSummary.js`
 - Draft command integration:
   `client/src/composables/usePolicyIntentDraft.js`
   `client/src/utils/policyIntentEditorSections.js`
@@ -110,7 +109,6 @@ Official sources reviewed as of June 2026:
   `client/src/__tests__/utils/policyReviewTriggers.test.js`
   `client/src/__tests__/utils/policyIntentModel.test.js`
   `client/src/__tests__/utils/policyIntentDraftBridge.test.js`
-  `client/src/__tests__/utils/policyIntentSummary.test.js`
   `client/src/__tests__/composables/usePolicyIntentDraft.test.js`
   `client/src/__tests__/PolicyIntentReviewTriggerControl.test.js`
   `client/src/__tests__/PolicyIntentEditor.test.js`

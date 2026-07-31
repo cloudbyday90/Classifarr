@@ -279,7 +279,6 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     notes: 'Client-side projection/readiness helpers may remain display adapters temporarily, but engine cutline review must decide which logic belongs server-side.',
     matches: (filePath) => hasAnySegment(filePath, [
       '/policyIntentSectionProjection.js',
-      '/policyIntentSummary.js',
       '/policyIntentControlView.js',
       '/policyIntentCertificationControl.js',
       '/policyIntentGenreControl.js',
@@ -351,7 +350,6 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
         '/PolicyIntentReviewTriggerControl.vue',
         '/PolicyIntentSecondaryActionButton.vue',
         '/PolicyIntentSectionCard.vue',
-        '/PolicyIntentSummaryCard.vue',
         '/PolicyPresetMigrationNotice.vue',
       ]),
   },

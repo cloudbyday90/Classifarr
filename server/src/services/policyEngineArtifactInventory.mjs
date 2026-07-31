@@ -229,21 +229,17 @@ const DEFAULT_POLICY_ENGINE_ARTIFACT_GROUPS = Object.freeze([
     ],
   },
   {
-    id: 'policy_builder_summary_shell',
+    id: 'policy_builder_compatibility_shell',
     categoryId: POLICY_ENGINE_ARTIFACT_CATEGORY_IDS.INTERNAL_SUMMARY,
     owner: 'policy-operator-workflow',
     decisionId: POLICY_ENGINE_ARTIFACT_DECISION_IDS.REWRITE_FOR_ENGINE,
-    replacement: 'Destination-first workflow shell backed by bounded readiness.',
+    replacement: 'Compatibility maintenance shell with direct controls and server-validated writes; no client-derived policy summary remains.',
     testDispositionId:
       POLICY_ENGINE_TEST_DISPOSITION_IDS.REWRITE_ENGINE_CONTRACT,
     normalWorkflowAllowed: false,
     artifactPaths: [
       'client/src/components/policies/PolicyBuilderModal.vue',
       'client/src/__tests__/PolicyBuilderModal.test.js',
-      'client/src/components/policies/PolicyIntentSummaryCard.vue',
-      'client/src/utils/policyIntentSummary.js',
-      'client/src/__tests__/PolicyIntentSummaryCard.test.js',
-      'client/src/__tests__/utils/policyIntentSummary.test.js',
       'docs/architecture/policy-compatibility-intent-readiness-boundary-audit.md',
       'docs/architecture/policy-compatibility-section-advisory-scope-audit.md',
       'docs/architecture/policy-compatibility-section-configuration-summary-scope-audit.md',
@@ -251,6 +247,7 @@ const DEFAULT_POLICY_ENGINE_ARTIFACT_GROUPS = Object.freeze([
       'docs/architecture/policy-compatibility-editor-framing-copy-scope-audit.md',
       'docs/architecture/policy-compatibility-maintenance-surface-framing-audit.md',
       'docs/architecture/policy-compatibility-migration-notice-audit.md',
+      'docs/architecture/policy-compatibility-intent-summary-audit.md',
     ],
   },
   {

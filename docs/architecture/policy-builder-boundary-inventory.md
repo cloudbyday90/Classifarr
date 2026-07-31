@@ -111,7 +111,7 @@ Boundary categories:
 | Draft state | Holds editable client projection and save preparation. | `usePolicyBuilderState.js`, `usePolicyIntentDraft.js` |
 | Legacy compatibility bridge | Reads/writes legacy preset/custom-signal projection. | `policyIntentDraftBridge.js`, `policyIntentModel.js` |
 | Reference data adapter | Fetches or adapts options and observed-profile suggestions. | `usePolicyBuilderReferenceData.js`, `policyBuilderLibraryGenreOptions.js` |
-| Engine candidate | Client display logic that may need server ownership. | `policyIntentSectionProjection.js`, `policyIntentSummary.js` |
+| Engine candidate | Client display logic that may need server ownership. | `policyIntentSectionProjection.js` |
 | Rewrite/delete after engine cutline | Diagnostic or legacy surfaces awaiting durable ownership. | Impact/replay preview utilities, combined-signal summary |
 | Test boundary | Tests that protect architecture contracts without freezing transitional UI. | Policy-builder component/composable/util tests |
 

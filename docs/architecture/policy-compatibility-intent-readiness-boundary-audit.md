@@ -102,10 +102,9 @@ typecheck, coverage, and affected server checks provide the release gate.
 
 ## Next Item
 
-The compatibility migration-notice audit is implemented in [Policy
-Compatibility Migration Notice
-Audit](policy-compatibility-migration-notice-audit.md). The next task is a
-**compatibility intent-summary audit** for `PolicyIntentSummaryCard.vue`. It
-must retain factual stored-intent context without adding summary actions, a
-compatibility API, browser-owned policy-behavior interpretation, or broader
-writes.
+The compatibility intent-summary audit is implemented in [Policy Compatibility
+Intent Summary Audit](policy-compatibility-intent-summary-audit.md). The next
+task is a **compatibility save-footer admission audit** for
+`PolicyBuilderFooterActions.vue`. It must retain truthful save and defer
+feedback from the existing validated boundary without adding readiness state, a
+compatibility API, browser workflow gating, or broader writes.

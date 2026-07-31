@@ -138,7 +138,6 @@ const POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS = deepFreeze([
   'client/src/__tests__/PolicyIntentReviewTriggerControl.test.js',
   'client/src/__tests__/PolicyIntentSecondaryActionButton.test.js',
   'client/src/__tests__/PolicyIntentSectionCard.test.js',
-  'client/src/__tests__/PolicyIntentSummaryCard.test.js',
   'client/src/__tests__/PolicyNativeCreateHandoff.test.js',
   'client/src/__tests__/PolicyNativeIntentReconciliation.test.js',
   'client/src/__tests__/PolicyNativePolicyRecoveryNotice.test.js',
@@ -396,14 +395,6 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
     POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
     [POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS],
     'Section cards expose a bounded destination-authoring step with readable status and action context.'
-  ),
-  presentationTestRecord(
-    'client/src/__tests__/PolicyIntentSummaryCard.test.js',
-    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_WORKFLOW_REGRESSION,
-    false,
-    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.NATIVE_STORAGE_CLEANUP,
-    [],
-    'The compatibility-policy summary remains read-only while native authoring uses one automation-readiness outcome.'
   ),
   presentationTestRecord(
     'client/src/__tests__/PolicyNativeCreateHandoff.test.js',

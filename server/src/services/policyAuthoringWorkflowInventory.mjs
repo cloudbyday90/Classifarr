@@ -220,10 +220,8 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
     matches: filePath => hasAnySegment(filePath, [
       '/PolicyBuilderFooterActions.vue',
       '/PolicyBuilderRoutingReadinessCard.vue',
-      '/PolicyIntentSummaryCard.vue',
       '/policyBuilderActionBoundary.js',
       '/policyBuilderRoutingReadiness.js',
-      '/policyIntentSummary.js',
     ]),
   },
   {

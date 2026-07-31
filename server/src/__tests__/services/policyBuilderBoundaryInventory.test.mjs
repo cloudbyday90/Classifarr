@@ -216,10 +216,9 @@ describe('policyBuilderBoundaryInventory', () => {
       .not.toContain('policy_legacy_summary_surfaces');
   });
 
-  test('classifies client-side readiness and section helpers as engine candidates', () => {
+  test('classifies the client-side section helper as an engine candidate', () => {
     [
       'client/src/utils/policyIntentSectionProjection.js',
-      'client/src/utils/policyIntentSummary.js',
     ].forEach((filePath) => {
       const record = classifyPolicyBuilderClientPath(filePath);
 

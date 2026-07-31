@@ -37,6 +37,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   browser does not restate policy effects, confidence, review, or enforcement
   semantics from unsaved compatibility data.
 
+- **Compatibility Intent-Summary Retirement**: The remaining global
+  compatibility policy-behavior summary and its draft-derived warnings are now
+  removed. Existing policy maintenance uses the editor's labelled controls as
+  the sole draft representation; no compatibility save contract or server
+  validation behavior changed.
+
 - **Compatibility Group Guidance Cutline**: Group helper text now gives only
   concise editing directions. It no longer predicts automation safety, review
   behavior, fit, or confidence effects from a browser-side compatibility draft.

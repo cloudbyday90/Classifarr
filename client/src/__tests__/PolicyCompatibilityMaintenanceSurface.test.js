@@ -13,10 +13,6 @@ import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
 import PolicyPresetMigrationNotice from '@/components/policies/PolicyPresetMigrationNotice.vue'
 
 const baseProps = {
-  intentSummary: {
-    has_warnings: false,
-    sections: [],
-  },
   selectedPresets: [{ id: 7, name: 'Family' }],
   allPresets: [{ id: 7, name: 'Family' }],
   intentDraft: { schema_version: 1 },

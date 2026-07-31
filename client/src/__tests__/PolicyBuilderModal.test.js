@@ -1091,7 +1091,7 @@ describe('PolicyBuilderModal.vue', () => {
     });
   });
 
-  it('shows policy behavior and intent editing without a raw scoring section', async () => {
+  it('shows direct intent editing without a client-derived behavior summary or raw scoring section', async () => {
     api.get.mockImplementation((url) => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
       if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
@@ -1118,11 +1118,9 @@ describe('PolicyBuilderModal.vue', () => {
     await flushPromises();
 
     const text = document.body.textContent;
-    const summaryIndex = text.indexOf('Policy Behavior Summary');
-    const editorIndex = text.indexOf('Edit destination intent');
 
-    expect(summaryIndex).toBeGreaterThan(-1);
-    expect(editorIndex).toBeGreaterThan(summaryIndex);
+    expect(text).toContain('Edit destination intent');
+    expect(text).not.toContain('Policy Behavior Summary');
     expect(text).not.toContain('Advanced Settings');
     expect(text).not.toContain('Scoring Weights');
     expect(text).not.toContain('Classification Thresholds');

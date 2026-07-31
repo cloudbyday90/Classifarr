@@ -98,12 +98,10 @@ Official sources reviewed as of June 2026:
   `client/src/components/policies/PolicyStarterTemplateAccelerator.vue`
 - No-template copy cleanup:
   `client/src/components/policies/PolicyIntentEditor.vue`
-  `client/src/utils/policyIntentSummary.js`
 - Unit coverage:
   `client/src/__tests__/PolicyStarterTemplateAccelerator.test.js`
   `client/src/__tests__/utils/policyBuilderActionBoundary.test.js`
   `client/src/__tests__/composables/usePolicyBuilderState.test.js`
-  `client/src/__tests__/utils/policyIntentSummary.test.js`
   `client/src/__tests__/PolicyBuilderModal.test.js`
   `client/src/__tests__/PolicyIntentEditor.test.js`
 

@@ -4271,6 +4271,12 @@ Implementation status:
   the notice neither changes policy state nor establishes workflow authority.
   Its design and outcome record is [Policy Compatibility Migration Notice
   Audit](policy-compatibility-migration-notice-audit.md).
+- Compatibility maintenance no longer renders a global policy-behavior summary
+  or derives its warnings from the unsaved draft. The retained editor's labeled
+  configured-signal controls are the sole compatibility-draft representation;
+  server validation remains authoritative for every write. Its design and
+  outcome record is [Policy Compatibility Intent Summary
+  Audit](policy-compatibility-intent-summary-audit.md).
 - Persisted native policies now use a compact, read-only summary instead of
   reopening the five-section creation workflow. It shows display-safe stored
   purpose from the policy detail contract and **policy** readiness from active

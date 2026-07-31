@@ -82,11 +82,9 @@ controls save behavior, reconciliation, establishment, or readiness.
 
 ## Next Item
 
-The compatibility migration-notice audit is implemented in [Policy
-Compatibility Migration Notice
-Audit](policy-compatibility-migration-notice-audit.md). Next, perform a
-**compatibility intent-summary audit** for
-`client/src/components/policies/PolicyIntentSummaryCard.vue`. Classify static
-headings and display-only status as factual stored-intent context or
-browser-owned policy-behavior interpretation. Do not add summary actions,
-compatibility APIs, broader writes, or readiness derivation.
+The compatibility intent-summary audit is implemented in [Policy Compatibility
+Intent Summary Audit](policy-compatibility-intent-summary-audit.md). Next,
+perform a **compatibility save-footer admission audit** for
+`PolicyBuilderFooterActions.vue`. It must retain truthful save and defer
+feedback from the existing validated boundary without adding readiness state, a
+compatibility API, browser workflow gating, or broader writes.

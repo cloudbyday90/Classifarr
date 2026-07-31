@@ -33,8 +33,6 @@
       @dismiss="emit('dismiss-migration-notice')"
     />
 
-    <PolicyIntentSummaryCard :summary="intentSummary" />
-
     <section
       id="policy-builder-intent-editor"
       aria-label="Destination intent editor"
@@ -57,17 +55,12 @@
 
 <script setup>
 import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
-import PolicyIntentSummaryCard from '@/components/policies/PolicyIntentSummaryCard.vue'
 import PolicyPresetMigrationNotice from '@/components/policies/PolicyPresetMigrationNotice.vue'
 
 defineProps({
   presetMigrationNotice: {
     type: Object,
     default: null,
-  },
-  intentSummary: {
-    type: Object,
-    required: true,
   },
   selectedPresets: {
     type: Array,
