@@ -4230,6 +4230,12 @@ Implementation status:
   scoring mutation path or weight-total save gate. Its design record is [Policy
   Compatibility Editor Scope
   Audit](policy-compatibility-editor-scope-audit.md).
+- Compatibility maintenance no longer derives aggregate `Ready`, `Ready with
+  notes`, or `Needs review` state from its unsaved browser draft. It retains
+  direct per-section edit guidance while native policies continue to receive a
+  single server-owned readiness next action. Its design record is [Policy
+  Compatibility Intent Readiness Boundary
+  Audit](policy-compatibility-intent-readiness-boundary-audit.md).
 - Persisted native policies now use a compact, read-only summary instead of
   reopening the five-section creation workflow. It shows display-safe stored
   purpose from the policy detail contract and **policy** readiness from active

@@ -146,7 +146,7 @@ describe('policyAuthoringPresentationTests', () => {
     expect(includesInternalPresentationLanguage('Readiness links to the next action.')).toBe(false);
 
     const result = validatePolicyAuthoringPresentationTestRecord({
-      ...getPolicyAuthoringPresentationTestRecord('client/src/__tests__/PolicyIntentReadinessSummary.test.js'),
+      ...getPolicyAuthoringPresentationTestRecord('client/src/__tests__/PolicyIntentSectionCard.test.js'),
       productAssertions: [
         'Shows TMDB live preview scoring details.',
       ],
@@ -162,7 +162,7 @@ describe('policyAuthoringPresentationTests', () => {
       requiredBehaviorCount: listRequiredPolicyAuthoringPresentationBehaviors().length,
       inventoryFilePathCount: listPolicyAuthoringPresentationTestInventoryFilePaths().length,
       exclusionCount: listPolicyAuthoringPresentationTestExclusionRecords().length,
-      normalPathRecordCount: 21,
+      normalPathRecordCount: 20,
       draftBridgeOwnedRecordCount: 6,
       countsByCategory: expect.objectContaining({
         [POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_DRAFT_BRIDGE_COVERAGE]: 6,

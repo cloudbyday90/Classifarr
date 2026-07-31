@@ -244,10 +244,9 @@ const DEFAULT_POLICY_ENGINE_ARTIFACT_GROUPS = Object.freeze([
       'client/src/utils/policyIntentSummary.js',
       'client/src/__tests__/PolicyIntentSummaryCard.test.js',
       'client/src/__tests__/utils/policyIntentSummary.test.js',
-      'client/src/components/policies/PolicyIntentReadinessSummary.vue',
       'client/src/utils/policyIntentSectionVisualState.js',
-      'client/src/__tests__/PolicyIntentReadinessSummary.test.js',
       'client/src/__tests__/utils/policyIntentSectionVisualState.test.js',
+      'docs/architecture/policy-compatibility-intent-readiness-boundary-audit.md',
     ],
   },
   {

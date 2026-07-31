@@ -261,32 +261,13 @@ The fifteenth implemented component adds warning consequence helpers:
    scoring, routing, or save behavior.
 5. Preserve legacy starter-template compatibility and the current save payload.
 
-The sixteenth implemented component adds a non-blocking policy readiness
-summary:
-
-1. Add `buildPolicyIntentReadinessSummary` to
-   `policyIntentEditorSections.js`.
-2. Fold section warnings into one top-level readiness state:
-   `Ready`, `Ready with notes`, or `Needs review`.
-3. Add `PolicyIntentReadinessSummary.vue` as a prop-only status component that
-   shows warning/note counts and concise section issue rows.
-4. Render the readiness summary above the starter-template selector in
-   `PolicyIntentEditor.vue` so operators see policy state before editing.
-5. Keep readiness advisory only; it does not block save, mutate draft state,
-   change scoring, route items, or change the legacy-compatible payload.
-
-The seventeenth implemented component adds readiness issue navigation:
-
-1. Render readiness issues as explicit buttons inside
-   `PolicyIntentReadinessSummary.vue`.
-2. Emit a narrow `focus-section` event with the affected section key instead of
-   letting the summary own DOM behavior.
-3. Wrap each `PolicyIntentSectionCard` in a focusable section anchor owned by
-   `PolicyIntentEditor.vue`.
-4. Use function refs plus `scrollIntoView` and focus to move operators from a
-   readiness issue to the affected section.
-5. Keep navigation non-mutating and advisory; it does not affect draft data,
-   save behavior, scoring, routing, or legacy template compatibility.
+Historical note: the sixteenth and seventeenth components introduced a
+browser-derived aggregate readiness summary and its issue-navigation path.
+Phase 6R.5 retired both. Compatibility maintenance cannot truthfully claim
+automation readiness from unsaved legacy draft values; the current browser now
+shows only direct per-section editing guidance. Server-owned native readiness
+remains the sole automation readiness projection. See [Policy Compatibility
+Intent Readiness Boundary Audit](policy-compatibility-intent-readiness-boundary-audit.md).
 
 The eighteenth implemented component adds section completion badges:
 
@@ -297,8 +278,7 @@ The eighteenth implemented component adds section completion badges:
 3. Attach the completion model to each projected intent section alongside
    entries, summaries, and warnings.
 4. Render the badge beside each section title in `PolicyIntentSectionCard.vue`
-   so sections are self-describing even when the top readiness summary is out
-   of view.
+   so sections are self-describing without a global readiness summary.
 5. Keep badges presentation-only; they do not block save, mutate draft state,
    change scoring, route items, or change the legacy-compatible payload.
 
@@ -650,14 +630,11 @@ The thirty-third implemented component adds editor-to-draft parity coverage:
   save behavior.
 - Pair each weak-section warning with a compact consequence. Operators should
   see both what to fix and why it matters before saving.
-- Add one readiness summary above detailed section cards. Operators should see
-  whether the policy is ready, ready with notes, or needs review before they
-  scan individual sections.
-- Make readiness issues directly navigable. Issue rows should point to the
-  affected section without mutating policy data or introducing save blocking.
-- Make each section self-describing with a compact completion badge. The badge
-  should summarize section state without requiring the operator to re-read the
-  global readiness summary.
+- Retire the compatibility readiness aggregate and its focus-jump path. An
+  unsaved compatibility draft cannot establish automation readiness; keep
+  direct per-section guidance next to the edit it describes.
+- Make each section self-describing with a compact completion badge and direct
+  next-action line.
 - Pair each section state with a concise next-action line. The badge explains
   the state; the line explains the smallest useful edit.
 - Keep visual-state derivation in a focused module. The section contract should
@@ -903,12 +880,10 @@ and `client/src/__tests__/PolicyIntentSectionCard.test.js` covering:
 - warning rendering inside section cards.
 - warning consequence projection,
 - visible consequence rendering inside section cards.
-- top-level readiness summary projection,
-- readiness status rendering with warning/note counts,
-- readiness placement before detailed section editing.
-- readiness issue navigation events,
-- editor-owned section focus and scroll behavior,
-- readiness issue buttons with accessible labels.
+- absence of the top-level compatibility readiness summary and its
+  focus-navigation path,
+- direct section warnings and completion guidance remain available beside their
+  related edit controls.
 - deterministic section completion badge projection,
 - completion badge rendering for configured and weak sections.
 - deterministic section next-action projection,
@@ -1019,16 +994,10 @@ Warning consequence validation:
 npm --prefix client run test -- policyIntentEditorSections.test.js PolicyIntentSectionCard.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
 ```
 
-Policy readiness summary validation:
+Compatibility readiness-boundary validation:
 
 ```bash
-npm --prefix client run test -- policyIntentEditorSections.test.js PolicyIntentReadinessSummary.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
-```
-
-Readiness issue navigation validation:
-
-```bash
-npm --prefix client run test -- PolicyIntentReadinessSummary.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
+npm --prefix client run test -- policyIntentSectionVisualState.test.js PolicyIntentEditor.test.js PolicyBuilderModal.test.js
 ```
 
 Section completion badge validation:

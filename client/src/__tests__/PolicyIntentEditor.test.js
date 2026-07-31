@@ -6,19 +6,12 @@
  * See LICENSE file for details.
  */
 
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import PolicyIntentEditor from '../components/policies/PolicyIntentEditor.vue'
 import { buildPolicyIntentDraft } from '../utils/policyIntentDraftBridge'
 
 describe('PolicyIntentEditor.vue', () => {
-  const originalScrollIntoView = Element.prototype.scrollIntoView
-
-  afterEach(() => {
-    vi.restoreAllMocks()
-    Element.prototype.scrollIntoView = originalScrollIntoView
-  })
-
   const selectedPresets = [
     {
       id: 7,
@@ -61,7 +54,7 @@ describe('PolicyIntentEditor.vue', () => {
     expect(wrapper.emitted('add-signal')).toBeUndefined()
   })
 
-  it('renders policy readiness before section editing', () => {
+  it('renders direct section guidance without an aggregate compatibility readiness state', () => {
     const wrapper = mountEditor()
     const text = wrapper.text()
 
@@ -70,11 +63,10 @@ describe('PolicyIntentEditor.vue', () => {
     expect(text).toContain('What clearly belongs here?')
     expect(text).toContain('What should always or never belong here?')
     expect(text).toContain('What helps after fit is clear?')
-    expect(text).toContain('Policy Readiness')
-    expect(text).toContain('Needs review')
-    expect(text).toContain('Belongs Here: Add at least one belongs-here signal so this policy has a clear destination identity.')
-    expect(text.indexOf('Policy Readiness')).toBeLessThan(text.indexOf('Edit existing policy context'))
-    expect(text.indexOf('Policy Readiness')).toBeLessThan(text.indexOf('Belongs Here'))
+    expect(text).toContain('Add at least one belongs-here signal so this policy has a clear destination identity.')
+    expect(text).not.toContain('Policy Readiness')
+    expect(text).not.toContain('Ready with notes')
+    expect(text.indexOf('Ask When Unsure')).toBeLessThan(text.indexOf('Edit existing policy context'))
     expect(wrapper.find('#policy-builder-review-behavior').exists()).toBe(true)
     expect(wrapper.find('#policy-builder-destination-identity').exists()).toBe(true)
     expect(wrapper.find('#policy-builder-destination-rules').exists()).toBe(true)
@@ -114,19 +106,6 @@ describe('PolicyIntentEditor.vue', () => {
       value: 'evidence_missing',
       extras: { semantics: 'review' },
     })
-  })
-
-  it('focuses the affected section from readiness issues', async () => {
-    const scrollIntoView = vi.fn()
-    Element.prototype.scrollIntoView = scrollIntoView
-    const focus = vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(() => {})
-    const wrapper = mountEditor()
-
-    await wrapper.find('button[aria-label="Review Belongs Here section"]').trigger('click')
-
-    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' })
-    expect(focus).toHaveBeenCalledWith({ preventScroll: true })
-    expect(wrapper.find('#policy-intent-section-identity_signals').exists()).toBe(true)
   })
 
   it('emits draft signal config and clear commands', async () => {

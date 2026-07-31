@@ -8,7 +8,6 @@
 
 import { POLICY_INTENT_BUCKETS } from './policyIntentModel'
 import {
-  buildPolicyIntentReadinessSummary,
   buildPolicyIntentSectionCompletion,
   buildPolicyIntentSectionNextAction,
   buildPolicyIntentSectionWarnings,
@@ -30,7 +29,6 @@ export {
   buildPolicyIntentOptionDiagnostics,
   buildDraftRemoveCommandForIntentEntry,
   buildPolicyIntentOptionStates,
-  buildPolicyIntentReadinessSummary,
   buildPolicyIntentSectionCompletion,
   buildPolicyIntentSectionNextAction,
   buildPolicyIntentSectionWarnings,

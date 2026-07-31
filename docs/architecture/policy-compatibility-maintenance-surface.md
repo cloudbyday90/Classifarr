@@ -137,8 +137,9 @@ turn observed evidence into a policy declaration.
 
 ## Next Item
 
-Phase 6R.5 should next perform a **compatibility intent readiness-boundary
-audit**: determine whether the client-derived compatibility readiness dashboard
-can be removed now, or define the minimum server read projection required to
-replace it with one bounded next action. This is an audit and contract task,
-not a new browser control or a client-side readiness engine.
+The compatibility readiness-boundary audit is implemented in [Policy
+Compatibility Intent Readiness Boundary
+Audit](policy-compatibility-intent-readiness-boundary-audit.md). The next task
+is a **compatibility section-advisory scope audit** for
+`policyIntentSectionVisualState.js`, without recreating aggregate readiness or
+adding a compatibility API.

@@ -21,7 +21,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   editing but no longer loads or displays the native destination workflow.
   Raw scoring, combination-mode, and threshold controls have been removed;
   existing decision values remain preserved for server-validated compatibility
-  writes.
+  writes. The browser-derived readiness aggregate and its focus-navigation path
+  are also removed; automation readiness remains server-owned for native
+  policies.
 
 - **Native Policy Create Payload Cutline**: New native policies now submit only
   library identity, policy name, and explicitly accepted native intent. The

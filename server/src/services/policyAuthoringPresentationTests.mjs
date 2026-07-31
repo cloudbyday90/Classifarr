@@ -135,7 +135,6 @@ const POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS = deepFreeze([
   'client/src/__tests__/PolicyIntentGenreControl.test.js',
   'client/src/__tests__/PolicyIntentOptionActionGroup.test.js',
   'client/src/__tests__/PolicyIntentOptionSelect.test.js',
-  'client/src/__tests__/PolicyIntentReadinessSummary.test.js',
   'client/src/__tests__/PolicyIntentReviewTriggerControl.test.js',
   'client/src/__tests__/PolicyIntentSecondaryActionButton.test.js',
   'client/src/__tests__/PolicyIntentSectionCard.test.js',
@@ -370,17 +369,6 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
       POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS,
     ],
     'Option selection protects source grouping, selected state, and disabled reasons.'
-  ),
-  presentationTestRecord(
-    'client/src/__tests__/PolicyIntentReadinessSummary.test.js',
-    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_READINESS_NEXT_ACTIONS,
-    true,
-    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
-    [
-      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.READINESS_LINKS_TO_NEXT_ACTION,
-      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.INTERNAL_DIAGNOSTIC_PANELS_ABSENT,
-    ],
-    'Readiness keeps the highest-priority next action visible instead of detailed diagnostics.'
   ),
   presentationTestRecord(
     'client/src/__tests__/PolicyIntentReviewTriggerControl.test.js',

@@ -17,7 +17,7 @@ describe('policyEngineArtifactInventory', () => {
     expect(audit.ok).toBe(true);
     expect(audit.issueCount).toBe(0);
     expect(audit.groupCount).toBeGreaterThanOrEqual(6);
-    expect(audit.artifactCount).toBeGreaterThanOrEqual(40);
+    expect(audit.artifactCount).toBeGreaterThanOrEqual(39);
     expect(audit.coveredCategoryIds).toEqual(expect.arrayContaining([
       POLICY_ENGINE_ARTIFACT_CATEGORY_IDS.IMPACT_PREVIEW,
       POLICY_ENGINE_ARTIFACT_CATEGORY_IDS.REPRESENTATIVE_REPLAY,
@@ -74,6 +74,7 @@ describe('policyEngineArtifactInventory', () => {
         decisionId: POLICY_ENGINE_ARTIFACT_DECISION_IDS.DELETE_AFTER_CUTOVER,
       }));
     expect(byPath.has('client/src/components/policies/PolicyBuilderAdvancedSettings.vue')).toBe(false);
+    expect(byPath.has('client/src/components/policies/PolicyIntentReadinessSummary.vue')).toBe(false);
     expect(byPath.get('server/src/services/policyIntentSignalOptionProjection.mjs'))
       .toEqual(expect.objectContaining({
         decisionId: POLICY_ENGINE_ARTIFACT_DECISION_IDS.KEEP_ENGINE_PRIMITIVE,

@@ -151,10 +151,10 @@ June 2026:
 
 ## Next Item
 
-Phase 6R.5 compatibility editor scope is now implemented in [Policy
-Compatibility Editor Scope Audit](policy-compatibility-editor-scope-audit.md).
-The next task is its **compatibility intent readiness-boundary audit**: decide
-whether the client-derived compatibility readiness dashboard can be removed
-now, or define the minimum server read projection required for one bounded next
-action. It must not add a client-side readiness engine or broaden compatibility
-writes.
+Phase 6R.5 compatibility editor scope and readiness boundary are now
+implemented in [Policy Compatibility Editor Scope
+Audit](policy-compatibility-editor-scope-audit.md) and [Policy Compatibility
+Intent Readiness Boundary Audit](policy-compatibility-intent-readiness-boundary-audit.md).
+The next task is a **compatibility section-advisory scope audit** for
+`policyIntentSectionVisualState.js`. It must not recreate aggregate readiness,
+add a compatibility API, or broaden compatibility writes.

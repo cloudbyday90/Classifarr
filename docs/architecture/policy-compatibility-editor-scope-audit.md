@@ -111,14 +111,14 @@ June 2026:
    checks on the server.
 4. Do not add a browser repair, conversion, or hidden fallback workflow for
    invalid persisted compatibility configuration.
-5. Replace client-derived readiness diagnostics only when a bounded
-   server-owned compatibility readiness projection is available.
+5. Remove client-derived compatibility readiness diagnostics; native readiness
+   remains the bounded server-owned automation projection after cutover.
 
 ## Next Item
 
-Phase 6R.5 should next perform a **compatibility intent readiness-boundary
-audit** for `PolicyIntentReadinessSummary.vue`. Determine whether its
-client-derived multi-warning display can be removed from compatibility
-maintenance now, or define the minimum server read projection required to
-replace it with one bounded next action. Do not add a new client-side readiness
-engine or broaden compatibility writes.
+The compatibility readiness-boundary audit is implemented in [Policy
+Compatibility Intent Readiness Boundary
+Audit](policy-compatibility-intent-readiness-boundary-audit.md). The next task
+is a **compatibility section-advisory scope audit** for
+`policyIntentSectionVisualState.js`. It must not recreate aggregate readiness,
+add a compatibility API, or broaden compatibility writes.

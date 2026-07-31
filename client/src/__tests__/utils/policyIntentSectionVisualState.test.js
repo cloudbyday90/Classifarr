@@ -6,7 +6,6 @@
 import { describe, expect, it } from 'vitest'
 import { POLICY_INTENT_BUCKETS } from '@/utils/policyIntentModel'
 import {
-  buildPolicyIntentReadinessSummary,
   buildPolicyIntentSectionCompletion,
   buildPolicyIntentSectionNextAction,
   buildPolicyIntentSectionWarnings,
@@ -80,56 +79,6 @@ describe('policyIntentSectionVisualState', () => {
         [POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS]: [{ displayText: 'Maximum rating: PG-13' }],
       },
     )).toEqual([])
-  })
-
-  it('summarizes policy readiness from section warnings', () => {
-    expect(buildPolicyIntentReadinessSummary([
-      {
-        key: POLICY_INTENT_BUCKETS.IDENTITY,
-        label: 'Belongs Here',
-        warnings: [{ code: 'missing_identity', severity: 'warning', message: 'Missing identity.' }],
-      },
-      {
-        key: POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS,
-        label: 'Hard Limits',
-        warnings: [{ code: 'missing_hard_limit', severity: 'info', message: 'No hard limit.' }],
-      },
-    ])).toMatchObject({
-      status: 'needs_review',
-      tone: 'warning',
-      label: 'Needs review',
-      message: '1 structural warning should be reviewed before relying on this policy.',
-      warningCount: 1,
-      infoCount: 1,
-      issues: [
-        expect.objectContaining({ sectionLabel: 'Belongs Here', code: 'missing_identity' }),
-        expect.objectContaining({ sectionLabel: 'Hard Limits', code: 'missing_hard_limit' }),
-      ],
-    })
-
-    expect(buildPolicyIntentReadinessSummary([
-      {
-        key: POLICY_INTENT_BUCKETS.STRICT_CONSTRAINTS,
-        label: 'Hard Limits',
-        warnings: [{ code: 'missing_hard_limit', severity: 'info', message: 'No hard limit.' }],
-      },
-    ])).toMatchObject({
-      status: 'ready_with_notes',
-      tone: 'info',
-      label: 'Ready with notes',
-      warningCount: 0,
-      infoCount: 1,
-    })
-
-    expect(buildPolicyIntentReadinessSummary([])).toEqual({
-      status: 'ready',
-      tone: 'success',
-      label: 'Ready',
-      message: 'This policy has clear destination identity and no weak-section warnings.',
-      warningCount: 0,
-      infoCount: 0,
-      issues: [],
-    })
   })
 
   it('builds section completion badges from warnings and configured entries', () => {
