@@ -409,10 +409,15 @@ describe('PolicyBuilderModal.vue', () => {
           name: 'Sci-Fi Movies Policy',
           policy_intent_contract: {
             source: 'native_intent',
+            validation: { valid: true },
             purpose: [{
               signal_type: 'genres',
               values: { require_any: ['Science Fiction'] },
             }],
+          },
+          policy_intent_read_trace: {
+            source: 'native_intent',
+            status: 'native_intent_active',
           },
         },
       },
@@ -432,6 +437,49 @@ describe('PolicyBuilderModal.vue', () => {
     expect(wrapper.find('#policy-builder-intent-editor').exists()).toBe(false);
     expect(wrapper.find('#policy-builder-advanced-settings').exists()).toBe(false);
     expect(wrapper.find('#policy-builder-save-status').exists()).toBe(false);
+    expect(api.get).not.toHaveBeenCalledWith('/policies/presets/all');
+    expect(api.get).not.toHaveBeenCalledWith('/settings');
+    expect(api.get).not.toHaveBeenCalledWith('/policies/operator-workflow/libraries/1', undefined);
+  });
+
+  it('keeps an invalid native read policy read-only without requesting native readiness', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
+      return Promise.resolve({ data: { suggestions: [] } });
+    });
+
+    const wrapper = mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        libraryId: 1,
+        policy: {
+          id: 1,
+          library_id: 1,
+          name: 'Sci-Fi Movies Policy',
+          policy_intent_contract: {
+            source: 'native_intent',
+            validation: { valid: false },
+            purpose: [],
+          },
+          policy_intent_read_trace: {
+            source: 'native_intent',
+            status: 'native_intent_invalid',
+          },
+        },
+      },
+      attachTo: document.body,
+    });
+
+    await flushPromises();
+
+    expect(document.body.textContent).toContain('Native policy recovery in progress');
+    expect(document.body.textContent).toContain('server-owned reconciliation');
+    expect(document.body.textContent).not.toContain('Native policy summary');
+    expect(wrapper.find('#policy-compatibility-maintenance').exists()).toBe(false);
+    expect(wrapper.find('#policy-builder-intent-editor').exists()).toBe(false);
+    expect(wrapper.find('#policy-builder-advanced-settings').exists()).toBe(false);
+    expect(wrapper.find('#policy-builder-save-status').exists()).toBe(false);
+    expect(api.get).not.toHaveBeenCalledWith('/policies/1/native-intent/readiness-summary');
     expect(api.get).not.toHaveBeenCalledWith('/policies/presets/all');
     expect(api.get).not.toHaveBeenCalledWith('/settings');
     expect(api.get).not.toHaveBeenCalledWith('/policies/operator-workflow/libraries/1', undefined);

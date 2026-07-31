@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Native Policy Recovery Admission**: Persisted policies now open the native
+  summary only after the server confirms a valid active native intent read.
+  Invalid, conflicting, or incomplete native state is read-only and cannot
+  expose compatibility editing, policy setup, save actions, or readiness calls.
+
 - **Compatibility Policy Maintenance Surface**: Persisted compatibility
   policies now use a dedicated maintenance view that retains validated legacy
   editing but no longer loads or displays the native destination workflow.

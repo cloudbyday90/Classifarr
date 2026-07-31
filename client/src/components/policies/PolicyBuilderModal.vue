@@ -46,6 +46,8 @@
           :error="nativeReadinessError"
         />
 
+        <PolicyNativePolicyRecoveryNotice v-else-if="experienceMode.isNativeRecovery" />
+
         <PolicyBuilderWorkflowShell
           v-if="experienceMode.isNativeCreate"
           ref="workflowShellRef"
@@ -92,7 +94,7 @@
     </div>
 
     <template
-      v-if="!nativeCreateHandoff && !experienceMode.isNativeView"
+      v-if="!nativeCreateHandoff && !experienceMode.isNativeView && !experienceMode.isNativeRecovery"
       #footer
     >
       <PolicyBuilderFooterActions
@@ -114,6 +116,7 @@ import PolicyCompatibilityMaintenanceSurface from '@/components/policies/PolicyC
 import PolicyBuilderFooterActions from '@/components/policies/PolicyBuilderFooterActions.vue'
 import PolicyBuilderWorkflowShell from '@/components/policies/PolicyBuilderWorkflowShell.vue'
 import PolicyNativeCreateHandoff from '@/components/policies/PolicyNativeCreateHandoff.vue'
+import PolicyNativePolicyRecoveryNotice from '@/components/policies/PolicyNativePolicyRecoveryNotice.vue'
 import PolicyNativePolicySummary from '@/components/policies/PolicyNativePolicySummary.vue'
 import PolicyBuilderLibraryContext from '@/components/policies/PolicyBuilderLibraryContext.vue'
 import { usePolicyBuilderReferenceData } from '@/composables/usePolicyBuilderReferenceData'
@@ -417,7 +420,7 @@ const defer = () => {
 }
 
 const save = async () => {
-  if (!saveBoundary.value.canSave || saving.value) return
+  if (experienceMode.value.isNativeRecovery || !saveBoundary.value.canSave || saving.value) return
 
   const policyData = experienceMode.value.isNativeCreate
     ? buildNativePolicyCreatePayload({

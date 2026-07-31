@@ -79,6 +79,9 @@ to its own server command boundary.
 - No client code authorizes policy writes, routing, or automation.
 - Only canonical native-contract purpose is displayed; malformed or legacy
   contracts do not become native authority.
+- The native summary is admitted only by a validated active native read trace;
+  invalid, conflicting, incomplete, or mismatched native projections use
+  read-only recovery rather than this summary or compatibility editing.
 - The policy-specific read validates native authority and cannot fall back to a
   library-derived draft when authority is unavailable.
 - Raw workflow failures are replaced with a stable availability message.

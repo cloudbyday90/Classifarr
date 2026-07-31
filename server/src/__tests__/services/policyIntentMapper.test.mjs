@@ -185,4 +185,52 @@ describe('policyIntentMapper', () => {
     }));
     expect(projection.configuration_view.source).toBe('native_intent');
   });
+
+  test('projects invalid native intent as an explicit non-active native read', () => {
+    const projection = buildPolicyIntentProjection(policy({
+      native_intent: {
+        active: true,
+        intent_version: 2,
+        contract: {
+          schema_version: POLICY_INTENT_CONTRACT_SCHEMA_VERSION,
+          policy_id: 14,
+          library_id: 14,
+          library_name: 'Family',
+          library_media_type: 'movie',
+          source: POLICY_INTENT_SOURCES.NATIVE_INTENT,
+          inference_state: POLICY_INTENT_INFERENCE_STATES.INFERRED,
+          model: {
+            mode: 'native_intent',
+            intent_supported: true,
+            native_intent: true,
+            conversion_available: false,
+          },
+          purpose: [{
+            intent_role: POLICY_INTENT_ROLES.PURPOSE,
+            signal_type: 'certifications',
+            operator: 'max',
+            values: { max: 'R' },
+            constraint_mode: 'strict',
+            semantics: 'compatibility',
+          }],
+          hard_limits: [],
+          helpful_hints: [],
+          avoid: [],
+          review_behavior: {},
+          template_links: [],
+          warnings: [],
+          unsupported_signals: [],
+        },
+      },
+    }));
+
+    expect(projection.policy_intent_contract).toEqual(expect.objectContaining({
+      source: POLICY_INTENT_SOURCES.NATIVE_INTENT,
+      validation: expect.objectContaining({ valid: false }),
+    }));
+    expect(projection.policy_intent_read_trace).toEqual(expect.objectContaining({
+      source: 'native_intent',
+      status: 'native_intent_invalid',
+    }));
+  });
 });

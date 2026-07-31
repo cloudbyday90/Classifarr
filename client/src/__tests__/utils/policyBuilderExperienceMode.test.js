@@ -15,12 +15,14 @@ describe('policyBuilderExperienceMode', () => {
       mode: POLICY_BUILDER_EXPERIENCE_MODES.NATIVE_CREATE,
       isNativeCreate: true,
       isNativeView: false,
+      isNativeRecovery: false,
       isLegacyEdit: false,
     })
     expect(buildPolicyBuilderExperienceMode({ id: 'invalid' })).toEqual({
       mode: POLICY_BUILDER_EXPERIENCE_MODES.NATIVE_CREATE,
       isNativeCreate: true,
       isNativeView: false,
+      isNativeRecovery: false,
       isLegacyEdit: false,
     })
   })
@@ -30,18 +32,21 @@ describe('policyBuilderExperienceMode', () => {
       mode: POLICY_BUILDER_EXPERIENCE_MODES.LEGACY_EDIT,
       isNativeCreate: false,
       isNativeView: false,
+      isNativeRecovery: false,
       isLegacyEdit: true,
     })
   })
 
-  it('uses the native policy view only for a server-reported native contract', () => {
+  it('uses the native policy view only for a validated active server read', () => {
     expect(buildPolicyBuilderExperienceMode({
       id: 12,
-      policy_intent_contract: { source: 'native_intent' },
+      policy_intent_contract: { source: 'native_intent', validation: { valid: true } },
+      policy_intent_read_trace: { source: 'native_intent', status: 'native_intent_active' },
     })).toEqual({
       mode: POLICY_BUILDER_EXPERIENCE_MODES.NATIVE_VIEW,
       isNativeCreate: false,
       isNativeView: true,
+      isNativeRecovery: false,
       isLegacyEdit: false,
     })
 
@@ -52,7 +57,22 @@ describe('policyBuilderExperienceMode', () => {
       mode: POLICY_BUILDER_EXPERIENCE_MODES.LEGACY_EDIT,
       isNativeCreate: false,
       isNativeView: false,
+      isNativeRecovery: false,
       isLegacyEdit: true,
+    })
+  })
+
+  it('uses read-only recovery when native evidence is invalid or incomplete', () => {
+    expect(buildPolicyBuilderExperienceMode({
+      id: 12,
+      policy_intent_contract: { source: 'native_intent', validation: { valid: false } },
+      policy_intent_read_trace: { source: 'native_intent', status: 'native_intent_invalid' },
+    })).toEqual({
+      mode: POLICY_BUILDER_EXPERIENCE_MODES.NATIVE_RECOVERY,
+      isNativeCreate: false,
+      isNativeView: false,
+      isNativeRecovery: true,
+      isLegacyEdit: false,
     })
   })
 })

@@ -4216,6 +4216,13 @@ Implementation status:
   requests nor presents the native operator-workflow projection. Its design
   record is [Policy Compatibility Maintenance
   Surface](policy-compatibility-maintenance-surface.md).
+- The compatibility-maintenance entry audit now admits native inspection only
+  for a server-validated `native_intent_active` projection. Invalid, ambiguous,
+  incomplete, or trace-mismatched native projections are read-only recovery:
+  they do not render compatibility controls, a save footer, a native-readiness
+  request, or a browser repair action. Its design record is [Policy
+  Compatibility Maintenance Entry
+  Audit](policy-compatibility-maintenance-entry-audit.md).
 - Persisted native policies now use a compact, read-only summary instead of
   reopening the five-section creation workflow. It shows display-safe stored
   purpose from the policy detail contract and **policy** readiness from active

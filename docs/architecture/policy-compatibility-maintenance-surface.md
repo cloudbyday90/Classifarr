@@ -22,6 +22,11 @@ operator-workflow projection. This prevents native destination setup from
 being presented as an incomplete task for an already-persisted compatibility
 policy.
 
+The subsequent [Policy Compatibility Maintenance Entry
+Audit](policy-compatibility-maintenance-entry-audit.md) makes native inspection
+conditional on a validated active server read. Invalid or conflicting native
+records are read-only recovery, not compatibility maintenance.
+
 ## Problem
 
 One modal previously presented the native destination workflow and the retained

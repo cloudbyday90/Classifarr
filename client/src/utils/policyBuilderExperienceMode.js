@@ -6,11 +6,12 @@
  * See LICENSE file for details.
  */
 
-import { hasServerReportedNativePolicyIntent } from './policyNativePolicyAuthority'
+import { buildPolicyNativePolicyReadState } from './policyNativePolicyReadState'
 
 const POLICY_BUILDER_EXPERIENCE_MODES = Object.freeze({
   NATIVE_CREATE: 'native_create',
   NATIVE_VIEW: 'native_view',
+  NATIVE_RECOVERY: 'native_recovery',
   LEGACY_EDIT: 'legacy_edit',
 })
 
@@ -23,15 +24,19 @@ function buildPolicyBuilderExperienceMode(policy = null) {
   let mode = POLICY_BUILDER_EXPERIENCE_MODES.NATIVE_CREATE
 
   if (hasPersistedPolicyId(policy)) {
-    mode = hasServerReportedNativePolicyIntent(policy)
+    const nativeReadState = buildPolicyNativePolicyReadState(policy)
+    mode = nativeReadState.isValidatedNative
       ? POLICY_BUILDER_EXPERIENCE_MODES.NATIVE_VIEW
-      : POLICY_BUILDER_EXPERIENCE_MODES.LEGACY_EDIT
+      : nativeReadState.requiresNativeRecovery
+        ? POLICY_BUILDER_EXPERIENCE_MODES.NATIVE_RECOVERY
+        : POLICY_BUILDER_EXPERIENCE_MODES.LEGACY_EDIT
   }
 
   return {
     mode,
     isNativeCreate: mode === POLICY_BUILDER_EXPERIENCE_MODES.NATIVE_CREATE,
     isNativeView: mode === POLICY_BUILDER_EXPERIENCE_MODES.NATIVE_VIEW,
+    isNativeRecovery: mode === POLICY_BUILDER_EXPERIENCE_MODES.NATIVE_RECOVERY,
     isLegacyEdit: mode === POLICY_BUILDER_EXPERIENCE_MODES.LEGACY_EDIT,
   }
 }

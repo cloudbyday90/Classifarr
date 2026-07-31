@@ -14,12 +14,34 @@ describe('policyNativePolicySummary', () => {
     expect(buildNativePurposeSummary({
       policy_intent_contract: {
         source: 'native_intent',
+        validation: { valid: true },
         purpose: [{
           signal_type: 'genres',
           values: { require_any: ['Animation\u0000', 'Anime', 'Animation\u0000'] },
         }],
       },
+      policy_intent_read_trace: {
+        source: 'native_intent',
+        status: 'native_intent_active',
+      },
     })).toEqual(['Genres: Animation, Anime'])
+  })
+
+  it('does not present purpose from an unvalidated native read', () => {
+    expect(buildNativePurposeSummary({
+      policy_intent_contract: {
+        source: 'native_intent',
+        validation: { valid: false },
+        purpose: [{
+          signal_type: 'genres',
+          values: { require_any: ['Animation'] },
+        }],
+      },
+      policy_intent_read_trace: {
+        source: 'native_intent',
+        status: 'native_intent_invalid',
+      },
+    })).toEqual([])
   })
 
   it('does not present purpose lines for a non-native contract', () => {
