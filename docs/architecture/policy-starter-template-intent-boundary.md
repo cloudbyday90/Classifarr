@@ -34,6 +34,12 @@ bridge. Editing an existing policy cannot add, remove, or replace an attachment
 through a template picker. Static preset labels and values are option-only
 reference data, never observed evidence or intent.
 
+The complete retained attachment-reader, serializer, and compatibility-component
+scope is recorded in [Policy Starter-Template Compatibility Bridge
+Inventory](policy-starter-template-compatibility-bridge-inventory.md). Those
+paths remain outside normal authoring until the native-storage deletion gate
+passes in full.
+
 ## Research
 
 Official guidance reviewed in July 2026:

@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Starter-Template Compatibility Boundary**: Added an executable inventory
+  for every remaining preset-attachment reader, round-trip path, and
+  compatibility-only component. Each retained artifact is kept outside normal
+  authoring and is now tied to the complete native-storage cutover gate before
+  deletion or replacement.
+
 - **Policy Starter-Template Vocabulary Boundary**: Starter templates now
   project only exact `require_any` purpose candidates that have an existing
   typed command owner. Legacy `prefer`, hard-limit, and exclusion semantics

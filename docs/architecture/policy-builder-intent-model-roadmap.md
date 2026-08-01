@@ -2685,11 +2685,18 @@ Implementation status:
   source-aware candidate command contract match exactly. See [Policy
   Starter-Template Candidate Vocabulary
   Decision](policy-starter-template-candidate-vocabulary-decision.md).
+- **3R.7.3 Template Compatibility Bridge Inventory** is complete. The
+  executable inventory now covers 20 retained server, client bridge, and
+  compatibility-component artifacts; every artifact has the complete
+  native-storage deletion gate, a successor, and an explicit compatibility-only
+  boundary. The former raw template mechanics component is already retired.
+  See [Policy Starter-Template Compatibility Bridge
+  Inventory](policy-starter-template-compatibility-bridge-inventory.md).
 
-Next component task: **3R.7.3 Template Compatibility Bridge Inventory**. Audit
-every remaining preset attachment reader, round-trip serializer, and
-compatibility component; delete dead mechanics and record the precise
-native-storage deletion gate for each retained bridge artifact.
+Next component task: **3R.8.5 Compatibility Maintenance Decision-Load Audit**.
+Use the bridge inventory to reduce duplicate explanation and competing actions
+in the existing-policy maintenance surface while preserving typed draft commands
+and keeping that surface outside normal authoring.
 
 ### 3R.8 Accessibility And Decision Load
 
