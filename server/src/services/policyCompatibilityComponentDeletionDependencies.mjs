@@ -184,6 +184,10 @@ function buildPolicyCompatibilityComponentDeletionDependencyAudit(
   const dependencyIds = candidates.map(dependency => cleanString(dependency.id)).filter(Boolean);
   const duplicateDependencyIds = dependencyIds.filter((id, index) => dependencyIds.indexOf(id) !== index);
   const coveredComponentPaths = new Set(candidates.map(dependency => dependency.componentPath));
+  const nativeRehomeDependencyCount = candidates.filter(dependency =>
+    dependency.classificationId ===
+      POLICY_COMPATIBILITY_COMPONENT_DELETION_DEPENDENCY_CLASSIFICATION_IDS.NATIVE_REHOME
+  ).length;
   const issues = [
     ...validationResults.flatMap(result => result.issues),
     ...sourceAudit.issues,
@@ -217,8 +221,11 @@ function buildPolicyCompatibilityComponentDeletionDependencyAudit(
         ? POLICY_COMPATIBILITY_COMPONENT_DELETION_DEPENDENCY_STATUS_IDS.BLOCKED_BY_SOURCE_EVIDENCE
         : issues.length > 0
           ? POLICY_COMPATIBILITY_COMPONENT_DELETION_DEPENDENCY_STATUS_IDS.BLOCKED_BY_DEPENDENCY_EVIDENCE
-          : POLICY_COMPATIBILITY_COMPONENT_DELETION_DEPENDENCY_STATUS_IDS
-            .READY_FOR_REHOME_AND_MANIFEST_RECONCILIATION;
+          : nativeRehomeDependencyCount > 0
+            ? POLICY_COMPATIBILITY_COMPONENT_DELETION_DEPENDENCY_STATUS_IDS
+              .READY_FOR_REHOME_AND_MANIFEST_RECONCILIATION
+            : POLICY_COMPATIBILITY_COMPONENT_DELETION_DEPENDENCY_STATUS_IDS
+              .READY_FOR_RETIREMENT_AND_MANIFEST_RECONCILIATION;
 
   return {
     version: POLICY_COMPATIBILITY_COMPONENT_DELETION_DEPENDENCY_VERSION,
@@ -240,9 +247,15 @@ function buildPolicyCompatibilityComponentDeletionDependencyAudit(
     issueCount: issues.length,
     issues,
     nextStep: {
-      stepId: 'compatibility_native_contract_rehoming',
-      label: 'Compatibility Native Contract Rehoming',
-      reason: 'Rehome the active editor command and provenance regression scopes to native controls before reconciling named retirements and removal-manifest candidates. No component deletion is authorized.',
+      stepId: nativeRehomeDependencyCount > 0
+        ? 'compatibility_native_contract_rehoming'
+        : 'compatibility_retirement_manifest_reconciliation',
+      label: nativeRehomeDependencyCount > 0
+        ? 'Compatibility Native Contract Rehoming'
+        : 'Compatibility Retirement Manifest Reconciliation',
+      reason: nativeRehomeDependencyCount > 0
+        ? 'Rehome the active editor command and provenance regression scopes to native controls before reconciling named retirements and removal-manifest candidates. No component deletion is authorized.'
+        : 'Native contracts are rehomed. Reconcile the remaining named compatibility retirements and removal-manifest candidates against the native-storage cutover gate. No component deletion is authorized.',
     },
   };
 }

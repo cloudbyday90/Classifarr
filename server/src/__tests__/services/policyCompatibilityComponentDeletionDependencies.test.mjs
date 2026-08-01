@@ -54,13 +54,13 @@ describe('policyCompatibilityComponentDeletionDependencies', () => {
 
     expect(audit).toEqual(expect.objectContaining({
       statusId: POLICY_COMPATIBILITY_COMPONENT_DELETION_DEPENDENCY_STATUS_IDS
-        .READY_FOR_REHOME_AND_MANIFEST_RECONCILIATION,
+        .READY_FOR_RETIREMENT_AND_MANIFEST_RECONCILIATION,
       ok: true,
       deletionAuthorized: false,
-      checkedDependencyCount: 13,
+      checkedDependencyCount: 11,
       retiringComponentCount: 3,
       classificationCounts: {
-        [POLICY_COMPATIBILITY_COMPONENT_DELETION_DEPENDENCY_CLASSIFICATION_IDS.NATIVE_REHOME]: 2,
+        [POLICY_COMPATIBILITY_COMPONENT_DELETION_DEPENDENCY_CLASSIFICATION_IDS.NATIVE_REHOME]: 0,
         [POLICY_COMPATIBILITY_COMPONENT_DELETION_DEPENDENCY_CLASSIFICATION_IDS
           .NAMED_COMPATIBILITY_RETIREMENT]: 3,
         [POLICY_COMPATIBILITY_COMPONENT_DELETION_DEPENDENCY_CLASSIFICATION_IDS
@@ -71,7 +71,7 @@ describe('policyCompatibilityComponentDeletionDependencies', () => {
     }));
     expect(audit.sourceAudit).toEqual({
       ok: true,
-      checkedDependencyCount: 13,
+      checkedDependencyCount: 11,
       issues: [],
     });
     expect(audit.routeAudit).toEqual({
@@ -82,30 +82,28 @@ describe('policyCompatibilityComponentDeletionDependencies', () => {
     });
   });
 
-  test('keeps active editor command and parity coverage on the native-rehome path', () => {
+  test('keeps only named compatibility assertions on the retiring editor test path', () => {
     const nativeRehomes = listPolicyCompatibilityComponentDeletionDependencies()
       .filter(dependency => dependency.classificationId ===
         POLICY_COMPATIBILITY_COMPONENT_DELETION_DEPENDENCY_CLASSIFICATION_IDS.NATIVE_REHOME);
 
-    expect(nativeRehomes).toEqual([
-      expect.objectContaining({
-        id: 'policy_intent_editor_active_command_scope',
-        sourcePath: 'client/src/__tests__/PolicyIntentEditor.test.js',
-      }),
-      expect.objectContaining({
-        id: 'policy_intent_editor_parity_scope',
-        sourcePath: 'client/src/__tests__/PolicyIntentEditorParity.test.js',
-      }),
-    ]);
-    nativeRehomes.forEach(dependency => {
-      expect(dependency.nativeRehomeTargets.length).toBeGreaterThan(0);
-    });
+    expect(nativeRehomes).toEqual([]);
+    expect(listPolicyCompatibilityComponentDeletionDependencies()
+      .filter(dependency => dependency.componentPath ===
+        'client/src/components/policies/PolicyIntentEditor.vue')
+      .map(dependency => dependency.id))
+      .toEqual([
+        'maintenance_surface_editor_import',
+        'maintenance_surface_test_editor_import',
+        'policy_intent_editor_named_maintenance_scope',
+        'policy_builder_modal_named_editor_scope',
+      ]);
   });
 
   test('fails closed when source, route, or component-boundary evidence drifts', async () => {
     const sourceTextByPath = await readDependencySources();
     const routeSourceTextByPath = await readRouteSources();
-    sourceTextByPath['client/src/__tests__/PolicyIntentReviewTriggerControl.test.js'] =
+    sourceTextByPath['client/src/__tests__/PolicyIntentEditor.test.js'] =
       'unrelated native test';
     routeSourceTextByPath['client/src/router/index.js'] += '\nPolicyIntentEditor';
 
@@ -118,7 +116,7 @@ describe('policyCompatibilityComponentDeletionDependencies', () => {
       .toBe(POLICY_COMPATIBILITY_COMPONENT_DELETION_DEPENDENCY_STATUS_IDS.BLOCKED_BY_ROUTE_REFERENCE);
     expect(audit.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
       POLICY_COMPATIBILITY_COMPONENT_DELETION_DEPENDENCY_RISK_IDS
-        .NATIVE_REHOME_TARGET_ASSERTION_MISSING,
+        .DEPENDENCY_TEST_ASSERTION_MISSING,
       POLICY_COMPATIBILITY_COMPONENT_DELETION_DEPENDENCY_RISK_IDS.ROUTE_REFERENCE_RETAINED,
     ]));
   });
@@ -128,14 +126,17 @@ describe('policyCompatibilityComponentDeletionDependencies', () => {
       dependency.id === 'migration_notice_test_import'
         ? {
           ...dependency,
-          sourcePath: 'client/src/__tests__/PolicyIntentEditorParity.test.js',
-          sourceTextFragments: ['PolicyIntentEditor'],
+          sourcePath: 'client/src/__tests__/composables/usePolicyIntentDraft.test.js',
+          sourceTextFragments: ['usePolicyIntentDraft'],
         }
         : dependency
     ));
     const audit = buildPolicyCompatibilityComponentDeletionDependencyAudit({
       dependencies,
-      sourceTextByPath: await readDependencySources(),
+      sourceTextByPath: {
+        ...await readDependencySources(),
+        'client/src/__tests__/composables/usePolicyIntentDraft.test.js': 'usePolicyIntentDraft',
+      },
       routeSourceTextByPath: await readRouteSources(),
       sideEffects: {
         componentsDeleted: true,

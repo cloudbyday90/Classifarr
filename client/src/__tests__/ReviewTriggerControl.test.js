@@ -159,6 +159,7 @@ describe('ReviewTriggerControl.vue', () => {
         explicitOperatorAction: true,
       })],
     })]])
+    expect(wrapper.emitted('draft-add-signal')).toBeUndefined()
     expect(wrapper.get('#policy-intent-constraint-review_warning-value').element.value).toBe('')
   })
 

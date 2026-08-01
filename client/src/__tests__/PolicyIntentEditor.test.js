@@ -21,22 +21,15 @@ describe('PolicyIntentEditor.vue', () => {
     },
   ]
 
-  const mountEditor = (presetOverrides = {}) => {
-    const presets = selectedPresets.map(preset => ({
-      ...preset,
-      ...presetOverrides,
-    }))
-
-    return mount(PolicyIntentEditor, {
-      props: {
-        selectedPresets: presets,
-        allPresets: [],
-        intentDraft: buildPolicyIntentDraft(presets),
-        availableGenres: ['Family', 'Comedy'],
-        availableRatings: ['PG', 'PG-13', 'R'],
-      },
-    })
-  }
+  const mountEditor = () => mount(PolicyIntentEditor, {
+    props: {
+      selectedPresets,
+      allPresets: [],
+      intentDraft: buildPolicyIntentDraft(selectedPresets),
+      availableGenres: ['Family', 'Comedy'],
+      availableRatings: ['PG', 'PG-13', 'R'],
+    },
+  })
 
   it('emits draft add-signal commands instead of legacy signal events', async () => {
     const wrapper = mountEditor()
@@ -83,157 +76,5 @@ describe('PolicyIntentEditor.vue', () => {
     expect(wrapper.find('#policy-builder-destination-rules').exists()).toBe(true)
     expect(wrapper.find('#policy-builder-confidence-support').exists()).toBe(true)
     expect(text.indexOf('What should always or never belong here?')).toBeLessThan(text.indexOf('Helpful Matches'))
-  })
-
-  it('shows a labelled selector only when multiple attached policy contexts exist', () => {
-    const wrapper = mount(PolicyIntentEditor, {
-      props: {
-        selectedPresets: [
-          ...selectedPresets,
-          { id: 8, name: 'Secondary', weight: 1, customSignals: null },
-        ],
-        allPresets: [],
-        intentDraft: buildPolicyIntentDraft([
-          ...selectedPresets,
-          { id: 8, name: 'Secondary', weight: 1, customSignals: null },
-        ]),
-        availableGenres: ['Family', 'Comedy'],
-        availableRatings: ['PG', 'PG-13', 'R'],
-      },
-    })
-
-    const contextSelect = wrapper.find('#policy-builder-policy-context-select')
-
-    expect(contextSelect.exists()).toBe(true)
-    expect(contextSelect.attributes('aria-describedby')).toBe('policy-builder-policy-context-help')
-    expect(wrapper.find('label[for="policy-builder-policy-context-select"]').text())
-      .toBe('Policy context')
-    expect(contextSelect.findAll('option').map(option => option.text())).toEqual(['Starter', 'Secondary'])
-  })
-
-  it('keeps the no-compatibility-context empty state as a focusable status target', () => {
-    const wrapper = mount(PolicyIntentEditor, {
-      props: {
-        selectedPresets: [],
-        allPresets: [],
-        intentDraft: buildPolicyIntentDraft([]),
-        availableGenres: ['Family', 'Comedy'],
-        availableRatings: ['PG', 'PG-13', 'R'],
-      },
-    })
-
-    const emptyState = wrapper.find('#policy-builder-destination-rules')
-
-    expect(emptyState.exists()).toBe(true)
-    expect(emptyState.attributes('tabindex')).toBe('-1')
-    expect(emptyState.attributes('aria-label')).toBe('Destination intent unavailable')
-    expect(emptyState.text()).toContain('No editable destination signals are available for this policy.')
-    expect(emptyState.text()).not.toContain('New policy intent is established')
-  })
-
-  it('emits review trigger draft commands from the review behavior section', async () => {
-    const wrapper = mountEditor()
-
-    await wrapper.find('input[value="evidence_missing"]').setValue(true)
-    await wrapper.findAll('button').find(button => button.text() === 'Add review triggers').trigger('click')
-
-    expect(wrapper.emitted('draft-add-signal')?.[0]?.[0]).toMatchObject({
-      presetId: 7,
-      signalType: 'review_triggers',
-      key: 'when_any',
-      value: 'evidence_missing',
-      extras: { semantics: 'review' },
-    })
-  })
-
-  it('emits draft signal config and clear commands', async () => {
-    const wrapper = mountEditor()
-    const ratingSelect = wrapper.findAll('select').find(select =>
-      select.findAll('option').some(option => option.attributes('value') === 'PG-13')
-    )
-
-    await ratingSelect.setValue('PG-13')
-    await wrapper.findAll('button').find(button => button.text() === 'Set max rating').trigger('click')
-
-    expect(wrapper.emitted('draft-set-signal-config')?.[0]?.[0]).toMatchObject({
-      presetId: 7,
-      signalType: 'certifications',
-      config: {
-        mode: 'max',
-        max: 'PG-13',
-        constraint_mode: 'strict',
-      },
-    })
-    await wrapper.findAll('button').find(button => button.text() === 'Clear max rating').trigger('click')
-
-    expect(wrapper.emitted('draft-clear-signal-config')?.[0]?.[0]).toMatchObject({
-      presetId: 7,
-      signalType: 'certifications',
-    })
-    expect(wrapper.emitted('set-signal-config')).toBeUndefined()
-    expect(wrapper.emitted('clear-signal-config')).toBeUndefined()
-  })
-
-  it('emits draft remove commands for removable intent chips', async () => {
-    const wrapper = mountEditor({
-      customSignals: {
-        genres: {
-          require_any: ['Family'],
-          semantics: 'identity',
-        },
-      },
-    })
-
-    await wrapper.find('button[aria-label="Remove Belongs here: Family"]').trigger('click')
-
-    expect(wrapper.emitted('draft-remove-signal-value')?.[0]?.[0]).toEqual({
-      presetId: 7,
-      signalType: 'genres',
-      key: 'require_any',
-      value: 'Family',
-    })
-  })
-
-  it('does not emit duplicate draft add commands for already configured section values', async () => {
-    const wrapper = mountEditor({
-      customSignals: {
-        genres: {
-          require_any: ['Family'],
-          semantics: 'identity',
-        },
-      },
-    })
-
-    expect(wrapper.text()).toContain('Family is already configured as a belongs-here genre.')
-
-    const duplicateOption = wrapper.find('input[value="Family"]')
-    expect(duplicateOption.attributes('disabled')).toBeDefined()
-
-    await wrapper.findAll('button').find(button => button.text() === 'Add belongs-here genre').trigger('click')
-
-    expect(wrapper.emitted('draft-add-signal')).toBeUndefined()
-  })
-
-  it('emits value-specific remove commands for avoid-rating chips', async () => {
-    const wrapper = mountEditor({
-      customSignals: {
-        certifications: {
-          mode: 'exclude',
-          exclude: ['R', 'NC-17'],
-        },
-      },
-    })
-
-    expect(wrapper.text()).toContain('Avoid rating: R')
-    expect(wrapper.text()).toContain('Avoid rating: NC-17')
-
-    await wrapper.find('button[aria-label="Remove Avoid rating: NC-17"]').trigger('click')
-
-    expect(wrapper.emitted('draft-remove-signal-value')?.[0]?.[0]).toEqual({
-      presetId: 7,
-      signalType: 'certifications',
-      key: 'exclude',
-      value: 'NC-17',
-    })
   })
 })

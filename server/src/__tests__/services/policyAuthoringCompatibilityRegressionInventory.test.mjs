@@ -32,12 +32,12 @@ describe('policyAuthoringCompatibilityRegressionInventory', () => {
 
   test('summarizes compatibility coverage without making the client draft authoritative', () => {
     expect(summarizePolicyAuthoringCompatibilityRegressionCoverage()).toEqual({
-      recordCount: 13,
+      recordCount: 14,
       requiredRuleCount: 8,
       countsByCategory: {
         [POLICY_AUTHORING_COMPATIBILITY_TEST_CATEGORY_IDS.LEGACY_NO_OP_COMPATIBILITY]: 1,
         [POLICY_AUTHORING_COMPATIBILITY_TEST_CATEGORY_IDS.UI_STATE_SERIALIZATION_GUARD]: 2,
-        [POLICY_AUTHORING_COMPATIBILITY_TEST_CATEGORY_IDS.DRAFT_COMMAND_BOUNDARY]: 4,
+        [POLICY_AUTHORING_COMPATIBILITY_TEST_CATEGORY_IDS.DRAFT_COMMAND_BOUNDARY]: 5,
         [POLICY_AUTHORING_COMPATIBILITY_TEST_CATEGORY_IDS.DRAFT_VIEW_PROJECTION]: 2,
         [POLICY_AUTHORING_COMPATIBILITY_TEST_CATEGORY_IDS.PROVENANCE_COMPATIBILITY]: 1,
         [POLICY_AUTHORING_COMPATIBILITY_TEST_CATEGORY_IDS.BRIDGE_SERIALIZATION_ALLOWLIST]: 1,

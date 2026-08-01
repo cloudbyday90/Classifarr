@@ -131,7 +131,6 @@ const POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS = deepFreeze([
   'client/src/__tests__/PolicyIntentChip.test.js',
   'client/src/__tests__/PolicyIntentConstraintControlSurface.test.js',
   'client/src/__tests__/PolicyIntentCustomSignalEntry.test.js',
-  'client/src/__tests__/PolicyIntentEditorParity.test.js',
   'client/src/__tests__/PolicyIntentGenreControl.test.js',
   'client/src/__tests__/PolicyIntentOptionActionGroup.test.js',
   'client/src/__tests__/PolicyIntentOptionSelect.test.js',
@@ -293,14 +292,6 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
       POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS,
     ],
     'Optional custom evidence remains unaccepted until it is validated and explicitly accepted.'
-  ),
-  presentationTestRecord(
-    'client/src/__tests__/PolicyIntentEditorParity.test.js',
-    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_DRAFT_BRIDGE_COVERAGE,
-    false,
-    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.DRAFT_BRIDGE,
-    [],
-    'Draft bridge parity belongs to the bridge contract and must not be duplicated by presentation tests.'
   ),
   presentationTestRecord(
     'client/src/__tests__/PolicyIntentGenreControl.test.js',

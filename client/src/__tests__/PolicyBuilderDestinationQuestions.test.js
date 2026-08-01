@@ -37,6 +37,32 @@ function buildSections() {
   ]
 }
 
+function selectablePurposeOption(overrides = {}) {
+  return {
+    candidateId: 'genre:anime:purpose',
+    value: 'Anime',
+    label: 'Anime',
+    sourceId: 'suggested_from_observed_profile',
+    sourceLabel: 'Suggested from this library',
+    selectionStateId: 'selectable_suggestion',
+    selectable: true,
+    readOnlyEvidence: false,
+    requiresExplicitAcceptance: true,
+    canAutoDeclare: false,
+    commandId: 'add_signal_value',
+    signalType: 'genres',
+    operator: 'require_any',
+    questionId: 'what_belongs_here',
+    explanation: 'Anime appears in the current library.',
+    evidence: { count: 4 },
+    ...overrides,
+  }
+}
+
+function findButton(wrapper, label) {
+  return wrapper.findAll('button').find(button => button.text() === label)
+}
+
 describe('PolicyBuilderDestinationQuestions.vue', () => {
   it('keeps generic readiness actions out of individual legacy question cards', () => {
     const wrapper = mount(PolicyBuilderDestinationQuestions, {
@@ -181,5 +207,78 @@ describe('PolicyBuilderDestinationQuestions.vue', () => {
 
     expect(wrapper.find('#intent-signal-picker-title').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Add declared destination signals')
+  })
+
+  it('emits an accessible server-bound purpose plan without compatibility policy context', async () => {
+    const option = selectablePurposeOption()
+    const wrapper = mount(PolicyBuilderDestinationQuestions, {
+      props: {
+        sections: buildSections(),
+        selectionEnabled: true,
+        libraryName: 'Anime Movies',
+        intentSignalOptions: [option],
+      },
+    })
+
+    expect(wrapper.get('ol').attributes('aria-label')).toBe('Destination policy questions')
+    expect(wrapper.find('#policy-builder-policy-context-select').exists()).toBe(false)
+
+    const selection = wrapper.get(`input[value="${option.candidateId}"]`)
+    expect(wrapper.get('fieldset').attributes('aria-describedby'))
+      .toContain('intent-signal-picker-description')
+
+    await selection.setValue(true)
+    await findButton(wrapper, 'Add selected signals').trigger('click')
+
+    expect(wrapper.emitted('draft-command-plan')?.[0]?.[0]).toMatchObject({
+      version: 'policy.intent_signal_command_plan.v1',
+      componentId: 'intent_signal_picker',
+      commandBoundary: 'typed_draft_commands',
+      commands: [{
+        commandId: 'add_signal_value',
+        candidate: {
+          candidateId: option.candidateId,
+          signalType: 'genres',
+          operator: 'require_any',
+          questionId: 'what_belongs_here',
+        },
+      }],
+    })
+  })
+
+  it('keeps accepted values removable and rejects duplicate or retired signal semantics', async () => {
+    const acceptedOption = selectablePurposeOption()
+    const retiredOption = selectablePurposeOption({
+      candidateId: 'genre:adventure:retired-boost',
+      value: 'Adventure',
+      label: 'Adventure',
+      operator: 'prefer',
+      questionId: 'what_helps_after_fit_is_clear',
+      explanation: 'A retired confidence-boost candidate.',
+    })
+    const wrapper = mount(PolicyBuilderDestinationQuestions, {
+      props: {
+        sections: buildSections(),
+        selectionEnabled: true,
+        acceptedSignals: [acceptedOption],
+        intentSignalOptions: [acceptedOption, retiredOption],
+      },
+    })
+
+    expect(wrapper.find(`input[value="${acceptedOption.candidateId}"]`).exists()).toBe(false)
+    expect(wrapper.get(`input[value="${retiredOption.candidateId}"]`).attributes('disabled')).toBeDefined()
+    expect(findButton(wrapper, 'Add selected signals').attributes('disabled')).toBeDefined()
+
+    await wrapper.get('button[aria-label*="Remove Anime"]').trigger('click')
+
+    expect(wrapper.emitted('draft-command-plan')?.[0]?.[0]).toMatchObject({
+      version: 'policy.intent_signal_command_plan.v1',
+      commandBoundary: 'typed_draft_commands',
+      commands: [{
+        commandId: 'remove_signal_value',
+        candidate: { candidateId: acceptedOption.candidateId },
+      }],
+    })
+    expect(wrapper.emitted('draft-add-signal')).toBeUndefined()
   })
 })

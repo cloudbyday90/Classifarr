@@ -23,6 +23,8 @@ const POLICY_COMPATIBILITY_COMPONENT_DELETION_DEPENDENCY_CLASSIFICATION_IDS = Ob
 const POLICY_COMPATIBILITY_COMPONENT_DELETION_DEPENDENCY_STATUS_IDS = Object.freeze({
   READY_FOR_REHOME_AND_MANIFEST_RECONCILIATION:
     'ready_for_rehome_and_manifest_reconciliation',
+  READY_FOR_RETIREMENT_AND_MANIFEST_RECONCILIATION:
+    'ready_for_retirement_and_manifest_reconciliation',
   BLOCKED_BY_DEPENDENCY_EVIDENCE: 'blocked_by_dependency_evidence',
   BLOCKED_BY_SOURCE_EVIDENCE: 'blocked_by_source_evidence',
   BLOCKED_BY_ROUTE_REFERENCE: 'blocked_by_route_reference',
@@ -220,60 +222,6 @@ const POLICY_COMPATIBILITY_COMPONENT_DELETION_DEPENDENCIES = deepFreeze([
     ],
     compatibilityScopeId: 'compatibility_maintenance_editor',
     notes: 'The named maintenance assertions retire while the shared source path is reconciled separately.',
-  }),
-  createDependency({
-    id: 'policy_intent_editor_active_command_scope',
-    sourcePath: 'client/src/__tests__/PolicyIntentEditor.test.js',
-    componentPath: 'client/src/components/policies/PolicyIntentEditor.vue',
-    kindId: POLICY_COMPATIBILITY_COMPONENT_DELETION_DEPENDENCY_KIND_IDS.TEST_DEPENDENCY,
-    classificationId:
-      POLICY_COMPATIBILITY_COMPONENT_DELETION_DEPENDENCY_CLASSIFICATION_IDS.NATIVE_REHOME,
-    sourceTextFragments: ['PolicyIntentEditor'],
-    testNameFragments: [
-      'shows a labelled selector only when multiple attached policy contexts exist',
-      'keeps the no-compatibility-context empty state as a focusable status target',
-      'emits review trigger draft commands from the review behavior section',
-      'emits draft signal config and clear commands',
-      'emits draft remove commands for removable intent chips',
-      'does not emit duplicate draft add commands for already configured section values',
-      'emits value-specific remove commands for avoid-rating chips',
-    ],
-    nativeRehomeTargets: [
-      {
-        path: 'client/src/__tests__/PolicyBuilderDestinationQuestions.test.js',
-        testNameFragment: 'renders observed signal selection only for selectable server projection',
-      },
-      {
-        path: 'client/src/__tests__/PolicyIntentReviewTriggerControl.test.js',
-        testNameFragment: 'emits one typed add-value event for each selected trigger',
-      },
-      {
-        path: 'client/src/__tests__/PolicyIntentConstraintControlSurface.test.js',
-        testNameFragment: 'requires an explicit confirmation before staging a blocking hard limit',
-      },
-    ],
-    notes: 'Active command, accessibility, duplicate-prevention, and removal behavior must be rehomed before the editor can retire.',
-  }),
-  createDependency({
-    id: 'policy_intent_editor_parity_scope',
-    sourcePath: 'client/src/__tests__/PolicyIntentEditorParity.test.js',
-    componentPath: 'client/src/components/policies/PolicyIntentEditor.vue',
-    kindId: POLICY_COMPATIBILITY_COMPONENT_DELETION_DEPENDENCY_KIND_IDS.TEST_DEPENDENCY,
-    classificationId:
-      POLICY_COMPATIBILITY_COMPONENT_DELETION_DEPENDENCY_CLASSIFICATION_IDS.NATIVE_REHOME,
-    sourceTextFragments: ['PolicyIntentEditor'],
-    testNameFragments: ['keeps $name editor commands compatible with legacy customSignals'],
-    nativeRehomeTargets: [
-      {
-        path: 'client/src/__tests__/PolicyBuilderDestinationQuestions.test.js',
-        testNameFragment: 'renders observed signal selection only for selectable server projection',
-      },
-      {
-        path: 'client/src/__tests__/PolicyIntentConstraintControlSurface.test.js',
-        testNameFragment: 'requires an explicit confirmation before staging a blocking hard limit',
-      },
-    ],
-    notes: 'The active command and provenance regression must be rewritten for the native intent model rather than deleted with legacy customSignals.',
   }),
   createDependency({
     id: 'policy_builder_modal_named_surface_scope',

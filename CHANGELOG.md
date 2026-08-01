@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Compatibility Native Contract Rehoming**: Active destination-selection,
+  declared-signal removal, constraint, and review behavior coverage now lives
+  at native component boundaries and asserts typed intent command plans. The
+  compatibility editor retains only named maintenance assertions; its retired
+  `customSignals` parity spec is removed. No compatibility component or storage
+  contract changed.
+
 - **Compatibility Component Deletion Dependencies**: Added a source-backed,
   read-only inventory for retiring compatibility component imports and test
   scopes. It preserves active editor command and parity coverage for native

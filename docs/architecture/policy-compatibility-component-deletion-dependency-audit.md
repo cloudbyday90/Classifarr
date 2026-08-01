@@ -2,7 +2,7 @@
 
 **Status:** Complete
 
-**Roadmap task:** Phase 3R, Task 3R.10.4
+**Roadmap task:** Phase 3R, Task 3R.10.4, updated by Task 3R.10.5
 
 **Decision date:** 2026-08-01
 
@@ -13,21 +13,25 @@ cutover, but their executable dependencies are not uniform. This audit records
 each direct runtime and test dependency before any removal manifest is written.
 It finds no direct route-entry reference in `client/src/router/index.js`.
 
-The inventory has thirteen dependencies across the three retiring components:
+The initial inventory had thirteen dependencies, including two active editor
+test scopes that required native rehoming. Task 3R.10.5 completed that work.
+The live inventory now has eleven dependencies across the three retiring
+components:
 
 | Classification | Count | Outcome |
 | --- | ---: | --- |
-| Native rehome | 2 | Preserve active editor command and parity coverage by moving it to native destination, review, and constraint controls. |
+| Native rehome | 0 | Completed in Task 3R.10.5; active native behavior no longer imports the compatibility editor. |
 | Named compatibility retirement | 3 | Retire exact compatibility assertions from shared test files after their existing cutover handoff is satisfied. |
 | Removal-manifest candidate | 8 | Add compatibility-only runtime branches, dedicated tests, and migration-feedback assertions to a later authorized removal manifest. |
 
-The key correction is `PolicyIntentEditor.test.js` and
-`PolicyIntentEditorParity.test.js`. They import a retiring editor, but the
-authoring regression inventory marks active command and provenance coverage as
-retained. Deleting either test scope would lose product behavior coverage. The
-editor's named context-first maintenance assertions can retire; the remaining
-active command, accessibility, duplicate-prevention, removal, and parity
-contracts must first be rehomed to native controls.
+The key correction was `PolicyIntentEditor.test.js` and
+`PolicyIntentEditorParity.test.js`. Their active command, accessibility,
+duplicate-prevention, removal, and parity contracts are now owned by native
+destination-question, review-trigger, and constraint-control tests.
+`PolicyIntentEditor.test.js` retains only its two named context-first
+compatibility assertions, while `PolicyIntentEditorParity.test.js` was removed
+because it asserted the retired `customSignals` transport. The rehomed tests
+assert native intent command plans instead.
 
 Completed preset-migration feedback has no normal-authoring successor. Its
 dedicated component and tests, plus the two shared modal feedback assertions,
@@ -84,8 +88,8 @@ when an import or named test changes. Adopted.
 
 ## Final Recommendation Stack
 
-1. Rehome the two active editor test scopes to native destination-question,
-   review-trigger, and constraint-control contracts before deleting the editor.
+1. Keep the completed native contract rehomes at their owning destination and
+   constraint controls; do not restore legacy `customSignals` parity.
 2. Retire only the three already-declared compatibility assertions by named
    scope; keep the shared test files and their unrelated native coverage.
 3. Add the eight compatibility-only branches and test scopes to the later
@@ -119,15 +123,15 @@ when an import or named test changes. Adopted.
 - The audit rejects retiring components that re-enter normal authoring, gain
   raw legacy-payload mutation authority, or lose their delete-after-native-
   storage disposition.
-- Route-entry, component, test-file, test-scope, and native-target drift all
-  fail closed.
+- Route-entry, component, test-file, and named test-scope drift all fail
+  closed. Native behavior remains independently verified at the component
+  boundaries that now own it.
 - The service has no filesystem-write, deletion, storage, route-execution, or
   policy-execution capability.
 
 ## Next Step
 
-Proceed to **Phase 3R, Task 3R.10.5: Compatibility Native Contract
-Rehoming**. Rehome the active `PolicyIntentEditor` command and parity scopes to
-native controls, replacing legacy `customSignals` expectations with native
-intent-model assertions. Do not delete any compatibility component in that
-task.
+Proceed to **Phase 3R, Task 3R.10.6: Compatibility Retirement Manifest
+Reconciliation**. Reconcile the three named compatibility retirements and eight
+removal-manifest candidates with their exact native-storage cutover conditions.
+Do not delete a component or alter storage in that task.

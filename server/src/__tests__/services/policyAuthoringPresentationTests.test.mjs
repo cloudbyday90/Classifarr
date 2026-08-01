@@ -64,7 +64,7 @@ describe('policyAuthoringPresentationTests', () => {
   });
 
   test('keeps draft bridge behavior owned by the draft bridge instead of presentation tests', () => {
-    expect(getPolicyAuthoringPresentationTestRecord('client/src/__tests__/PolicyIntentEditorParity.test.js'))
+    expect(getPolicyAuthoringPresentationTestRecord('client/src/__tests__/utils/policyIntentDraftBridge.test.js'))
       .toEqual(expect.objectContaining({
         categoryId: POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_DRAFT_BRIDGE_COVERAGE,
         coverageOwnerId: POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.DRAFT_BRIDGE,
@@ -140,7 +140,7 @@ describe('policyAuthoringPresentationTests', () => {
       .toContain(POLICY_AUTHORING_PRESENTATION_TEST_RISK_IDS.NON_AUTHORING_OWNER_IN_NORMAL_PATH);
 
     const draftResult = validatePolicyAuthoringPresentationTestRecord({
-      ...getPolicyAuthoringPresentationTestRecord('client/src/__tests__/PolicyIntentEditorParity.test.js'),
+      ...getPolicyAuthoringPresentationTestRecord('client/src/__tests__/utils/policyIntentDraftBridge.test.js'),
       coverageOwnerId: POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
     });
 
@@ -170,9 +170,9 @@ describe('policyAuthoringPresentationTests', () => {
       inventoryFilePathCount: listPolicyAuthoringPresentationTestInventoryFilePaths().length,
       exclusionCount: listPolicyAuthoringPresentationTestExclusionRecords().length,
       normalPathRecordCount: 23,
-      draftBridgeOwnedRecordCount: 5,
+      draftBridgeOwnedRecordCount: 4,
       countsByCategory: expect.objectContaining({
-        [POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_DRAFT_BRIDGE_COVERAGE]: 5,
+        [POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_DRAFT_BRIDGE_COVERAGE]: 4,
       }),
     }));
   });

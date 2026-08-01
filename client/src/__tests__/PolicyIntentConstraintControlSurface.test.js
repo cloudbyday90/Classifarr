@@ -181,6 +181,34 @@ describe('PolicyIntentConstraintControlSurface.vue', () => {
     })
   })
 
+  it('emits a typed advisory avoid plan instead of a legacy certification config command', async () => {
+    const wrapper = mount(PolicyIntentConstraintControlSurface, {
+      props: {
+        constraintDecisionModel: constraintDecisionModel(),
+        constraintValueEligibility: constraintValueEligibility(),
+      },
+    })
+
+    const avoidButton = findButton(wrapper, 'Stage avoid value')
+    await wrapper.find('#policy-intent-constraint-avoid-value').setValue('R')
+    await wrapper.find('#policy-intent-constraint-avoid-confirmation').setValue(true)
+    await avoidButton.trigger('click')
+
+    expect(wrapper.emitted('draft-command-plan')?.[0]?.[0]).toMatchObject({
+      version: 'policy.intent_constraint_command_plan.v1',
+      componentId: 'intent_constraint_draft_adapter',
+      commandBoundary: 'typed_draft_commands',
+      commands: [{
+        commandId: 'add_avoid_value',
+        controlId: 'avoid',
+        decisionEffectId: 'reduce_confidence',
+        values: ['R'],
+        explicitOperatorAction: true,
+      }],
+    })
+    expect(wrapper.emitted('draft-set-signal-config')).toBeUndefined()
+  })
+
   it('announces that staged constraints are local only and allows them to be cleared', async () => {
     const wrapper = mount(PolicyIntentConstraintControlSurface, {
       props: {

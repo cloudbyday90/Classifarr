@@ -98,25 +98,36 @@ const POLICY_AUTHORING_COMPATIBILITY_TEST_RECORDS = deepFreeze([
     notes: 'Protects product-level draft mutations through bounded commands instead of direct projection edits.',
   },
   {
-    path: 'client/src/__tests__/PolicyIntentEditor.test.js',
+    path: 'client/src/__tests__/PolicyBuilderDestinationQuestions.test.js',
     categoryId: POLICY_AUTHORING_COMPATIBILITY_TEST_CATEGORY_IDS.DRAFT_COMMAND_BOUNDARY,
     actionId: POLICY_AUTHORING_COMPATIBILITY_ACTION_IDS.KEEP,
     coveredRuleIds: [
       POLICY_AUTHORING_COMPATIBILITY_RULE_IDS.PRODUCT_COMPONENTS_EMIT_TYPED_COMMANDS,
+      POLICY_AUTHORING_COMPATIBILITY_RULE_IDS.COMMANDS_CANNOT_MUTATE_READ_ONLY_PROJECTIONS,
     ],
     freezesLegacyUi: false,
-    notes: 'Keeps editor interaction coverage focused on emitted command payloads, not raw bridge storage.',
+    notes: 'Protects accessible server-bound destination selection, typed purpose commands, duplicate rejection, and declared-signal removal without compatibility policy context.',
   },
   {
-    path: 'client/src/__tests__/PolicyIntentEditorParity.test.js',
+    path: 'client/src/__tests__/PolicyIntentConstraintControlSurface.test.js',
     categoryId: POLICY_AUTHORING_COMPATIBILITY_TEST_CATEGORY_IDS.DRAFT_COMMAND_BOUNDARY,
     actionId: POLICY_AUTHORING_COMPATIBILITY_ACTION_IDS.KEEP,
     coveredRuleIds: [
       POLICY_AUTHORING_COMPATIBILITY_RULE_IDS.PRODUCT_COMPONENTS_EMIT_TYPED_COMMANDS,
-      POLICY_AUTHORING_COMPATIBILITY_RULE_IDS.PROVENANCE_PRESERVED_ACROSS_PROJECTION_AND_SERIALIZATION,
+      POLICY_AUTHORING_COMPATIBILITY_RULE_IDS.COMMANDS_CANNOT_MUTATE_READ_ONLY_PROJECTIONS,
     ],
     freezesLegacyUi: false,
-    notes: 'Protects editor parity through command and provenance behavior rather than visual snapshots.',
+    notes: 'Protects server-projected hard-limit, avoid, and review commands from falling back to legacy certification configuration events.',
+  },
+  {
+    path: 'client/src/__tests__/ReviewTriggerControl.test.js',
+    categoryId: POLICY_AUTHORING_COMPATIBILITY_TEST_CATEGORY_IDS.DRAFT_COMMAND_BOUNDARY,
+    actionId: POLICY_AUTHORING_COMPATIBILITY_ACTION_IDS.KEEP,
+    coveredRuleIds: [
+      POLICY_AUTHORING_COMPATIBILITY_RULE_IDS.PRODUCT_COMPONENTS_EMIT_TYPED_COMMANDS,
+    ],
+    freezesLegacyUi: false,
+    notes: 'Protects the native non-blocking review command plan and rejects the compatibility editor event boundary.',
   },
   {
     path: 'client/src/__tests__/utils/policyIntentDraftView.test.js',

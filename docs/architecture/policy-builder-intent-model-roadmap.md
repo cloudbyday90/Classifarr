@@ -2748,12 +2748,21 @@ Implementation status:
   Deletion Dependency
   Audit](policy-compatibility-component-deletion-dependency-audit.md).
 
-Next component task: **3R.10.5 Compatibility Native Contract Rehoming**.
-Rehome the active command, accessibility, duplicate-prevention, removal, and
-parity contracts that currently import `PolicyIntentEditor.vue` to native
-destination-question, review-trigger, and constraint-control tests. Replace
-legacy `customSignals` expectations with native intent-model assertions. Do
-not delete a compatibility component or alter storage in this task.
+- **3R.10.5 Compatibility Native Contract Rehoming** is complete. Active
+  command, accessibility, duplicate-prevention, removal, and parity contracts
+  no longer import `PolicyIntentEditor.vue`. Native destination-question and
+  constraint-control tests now assert typed command plans, while unsupported
+  legacy semantics fail closed. The compatibility editor retains only its two
+  named maintenance assertions, and the retired `customSignals` parity test is
+  removed. No compatibility component or storage contract changed. See
+  [Policy Compatibility Native Contract
+  Rehoming](policy-compatibility-native-contract-rehoming.md).
+
+Next component task: **3R.10.6 Compatibility Retirement Manifest
+Reconciliation**. Reconcile the three named compatibility retirements and
+eight removal-manifest candidates with their exact native-storage cutover
+conditions. Keep the manifest read-only and do not delete a component or alter
+storage in this task.
 
 ### 3R.8 Accessibility And Decision Load
 
