@@ -1,6 +1,6 @@
 # Policy Compatibility Retirement Candidate Plan Assembly Gate
 
-**Status:** Complete
+**Status:** Complete (v2 reconciled taxonomy)
 
 **Roadmap task:** Phase 3R, Task 3R.10.10
 
@@ -9,15 +9,15 @@
 ## Decision
 
 Candidate-plan assembly is a separate, read-only validation gate. It accepts a
-ready candidate projection and the existing deletion-gate model, revalidates
-both server-side, and emits exactly one category correlation record for each
-candidate target.
+ready candidate projection, the source-backed candidate taxonomy, and the
+existing deletion-gate model. It revalidates all three server-side and emits
+exactly one category correlation record for each candidate target.
 
-A correlation is valid only when one deletion-gate category declares the exact
-candidate path and owns the candidate action. Code targets may match their
-source path or retiring component path. Dedicated and shared test targets may
-match only their test source path, preventing a component category from being
-mistaken for permission to remove a test or named scope.
+A correlation is valid only when one candidate-taxonomy category contains the
+complete exact candidate identity and owns the candidate action. This includes
+kind, action, path, retiring component, dependency IDs, source fragments, and
+test-name fragments. A shared-test file path alone can never authorize removal
+of a named scope.
 
 The gate does not require `readyToDelete`; that release condition belongs to
 the later execution-plan evidence boundary. It does require structural gate
@@ -96,28 +96,24 @@ Cons:
    blocking findings.
 5. Do not use `readyToDelete` as approval and do not add manifest or execution
    behavior to this component.
-6. Reconcile the category taxonomy before assembling a later plan artifact.
+6. Require the source-backed taxonomy before assembling a later plan artifact.
 
 ## Implementation Outcome
 
 Implemented modular ESM services:
 
-- `policyCompatibilityDeletionCategoryAction.mjs` is now the single owner of
+- `policyCompatibilityDeletionCategoryAction.mjs` is the single owner of
   category-to-action semantics used by both the existing execution plan and the
   assembly gate.
-- `policyCompatibilityRetirementCandidatePlanAssemblyGate.mjs` derives an
-  action-aware mapping record for every projected candidate and validates its
+- `policyCompatibilityRetirementCandidatePlanAssemblyGate.mjs` v2 now binds
+  every candidate to an exact source-backed taxonomy target and validates its
   own non-authority and no-side-effect boundaries.
 
-The baseline reconciliation intentionally blocks:
-
-- one migration-notice component maps exactly to `client_bridge_ui`;
-- six targets have no exact category path; and
-- three shared modal test scopes match the stale-test path but conflict with
-  that category's whole-file `remove_test` action.
-
-This is correct fail-closed behavior. The gate neither broadens those scopes to
-file deletion nor guesses categories for the remaining paths.
+The initial broad release-gate taxonomy intentionally blocked assembly. Phase
+3R.10.11 resolved that mismatch with a distinct source-backed candidate
+taxonomy: all ten candidates now map exactly, including four retained-file
+named scopes. Release readiness remains false by default and is not altered by
+this result.
 
 ## Security Outcome
 
@@ -133,11 +129,14 @@ file deletion nor guesses categories for the remaining paths.
 
 ## Next Step
 
-Proceed to **Phase 3R, Task 3R.10.11: Compatibility Deletion-Category Taxonomy
-Reconciliation**. Reconcile the existing category definitions against every
-exact candidate target, including a distinct named-test-scope action category.
-Keep the taxonomy source-backed and read-only; do not approve, persist, or
-execute a manifest.
+**Phase 3R, Task 3R.10.11: Compatibility Deletion-Category Taxonomy
+Reconciliation** is complete. See [Policy Compatibility Retirement Candidate
+Taxonomy Reconciliation](policy-compatibility-retirement-candidate-taxonomy-reconciliation.md).
+
+Proceed to **Phase 3R, Task 3R.10.12: Compatibility Retirement Assembly
+Handoff Audit**. Audit the read-only handoff to existing release-readiness,
+approved artifact, and execution gates without creating a manifest, approving
+removal, or executing a change.
 
 ## Research Date
 

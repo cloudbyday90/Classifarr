@@ -2801,11 +2801,18 @@ Implementation status:
   See [Policy Compatibility Retirement Candidate Plan Assembly
   Gate](policy-compatibility-retirement-candidate-plan-assembly-gate.md).
 
-Next component task: **3R.10.11 Compatibility Deletion-Category Taxonomy
-Reconciliation**. Reconcile the existing category definitions against every
-exact candidate target, including a distinct named-test-scope action category.
-Keep the taxonomy source-backed and read-only; do not approve, persist, or
-execute a manifest.
+- **3R.10.11 Compatibility Deletion-Category Taxonomy Reconciliation** is
+  complete. A separate source-backed taxonomy now maps all ten exact candidates
+  to four action-owned categories, including a named-test-scope category that
+  retains complete source and test-name identity. Assembly gate v2 binds the
+  full candidate identity while the existing release gate remains independent
+  and unapproved. See [Policy Compatibility Retirement Candidate Taxonomy
+  Reconciliation](policy-compatibility-retirement-candidate-taxonomy-reconciliation.md).
+
+Next component task: **3R.10.12 Compatibility Retirement Assembly Handoff
+Audit**. Audit the read-only handoff from ready candidate assembly to the
+existing release-readiness, approved artifact, and execution gates. Do not
+create another manifest, approve a removal, or execute a change.
 
 ### 3R.8 Accessibility And Decision Load
 

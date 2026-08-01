@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Compatibility Retirement Taxonomy**: Added a source-backed, action-owned
+  category taxonomy for every current retirement candidate. Named test scopes
+  now retain exact source and test-name identity and cannot be widened into
+  whole-file removals; assembly remains read-only and unapproved.
+
 - **Compatibility Retirement Candidate Plan Assembly**: Added a read-only,
   action-aware correlation gate between source-backed retirement candidates and
   deletion categories. It fails closed on missing, ambiguous, or whole-file

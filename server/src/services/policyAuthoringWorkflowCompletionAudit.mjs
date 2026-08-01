@@ -201,7 +201,15 @@ const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
     docPath: 'docs/architecture/policy-compatibility-retirement-candidate-plan-assembly-gate.md',
     servicePath: 'server/src/services/policyCompatibilityRetirementCandidatePlanAssemblyGate.mjs',
     testPath: 'server/src/__tests__/services/policyCompatibilityRetirementCandidatePlanAssemblyGate.test.mjs',
-    evidence: 'Correlates each unapproved candidate target to one exact deletion-gate category and owned action, failing closed on missing, ambiguous, or whole-file-incompatible mappings without approving or executing removal.',
+    evidence: 'Correlates each unapproved candidate target to one exact source-backed taxonomy category and owned action, failing closed on candidate, taxonomy, or mapping drift without approving or executing removal.',
+  },
+  {
+    id: 'policy_compatibility_retirement_candidate_taxonomy',
+    label: 'Policy compatibility retirement candidate taxonomy',
+    docPath: 'docs/architecture/policy-compatibility-retirement-candidate-taxonomy-reconciliation.md',
+    servicePath: 'server/src/services/policyCompatibilityRetirementCandidateTaxonomy.mjs',
+    testPath: 'server/src/__tests__/services/policyCompatibilityRetirementCandidateTaxonomy.test.mjs',
+    evidence: 'Derives exact action-owned retirement categories from source-backed candidate identities, retains named test-scope fragments and no-whole-file boundaries, and remains read-only and unable to authorize or execute deletion.',
   },
 ]);
 

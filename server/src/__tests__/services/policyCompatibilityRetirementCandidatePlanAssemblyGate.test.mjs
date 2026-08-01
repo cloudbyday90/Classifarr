@@ -14,16 +14,18 @@ import {
   listPolicyCompatibilityComponentDeletionRouteSourcePaths,
 } from '../../services/policyCompatibilityComponentDeletionDependencies.mjs';
 import {
-  POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS,
   buildPolicyCompatibilityDeletionGates,
 } from '../../services/policyCompatibilityDeletionGates.mjs';
 import {
   buildPolicyCompatibilityRetirementCandidatePlanProjection,
 } from '../../services/policyCompatibilityRetirementCandidatePlanProjection.mjs';
 import {
+  POLICY_COMPATIBILITY_RETIREMENT_CANDIDATE_TAXONOMY_CATEGORY_IDS,
+  buildPolicyCompatibilityRetirementCandidateTaxonomy,
+} from '../../services/policyCompatibilityRetirementCandidateTaxonomy.mjs';
+import {
   POLICY_COMPATIBILITY_RETIREMENT_CANDIDATE_PLAN_ASSEMBLY_GATE_RISK_IDS,
   POLICY_COMPATIBILITY_RETIREMENT_CANDIDATE_PLAN_ASSEMBLY_GATE_STATUS_IDS,
-  POLICY_COMPATIBILITY_RETIREMENT_CANDIDATE_PLAN_ASSEMBLY_MAPPING_STATUS_IDS,
   buildPolicyCompatibilityRetirementCandidatePlanAssemblyGate,
   validatePolicyCompatibilityRetirementCandidatePlanAssemblyGate,
 } from '../../services/policyCompatibilityRetirementCandidatePlanAssemblyGate.mjs';
@@ -71,24 +73,8 @@ async function buildReadyCandidateProjection() {
   return buildPolicyCompatibilityRetirementCandidatePlanProjection({ reconciliation });
 }
 
-function buildSingleCandidateProjection(projection, candidateTargetEntry) {
-  return {
-    ...projection,
-    candidateTargetEntries: [candidateTargetEntry],
-    candidatePlanInput: {
-      ...projection.candidatePlanInput,
-      candidateTargetEntries: [candidateTargetEntry],
-      namedTestScopeEntries: [],
-    },
-    reconciliation: {
-      ...projection.reconciliation,
-      dependencyIds: candidateTargetEntry.dependencyIds,
-    },
-  };
-}
-
 describe('policyCompatibilityRetirementCandidatePlanAssemblyGate', () => {
-  test('fails closed on missing categories and named-scope action mismatches in the current gate model', async () => {
+  test('assembles every exact source-backed candidate through the reconciled taxonomy', async () => {
     const assembly = buildPolicyCompatibilityRetirementCandidatePlanAssemblyGate({
       candidateProjection: await buildReadyCandidateProjection(),
       deletionGatePlan: buildPolicyCompatibilityDeletionGates(),
@@ -96,75 +82,53 @@ describe('policyCompatibilityRetirementCandidatePlanAssemblyGate', () => {
 
     expect(assembly).toEqual(expect.objectContaining({
       statusId: POLICY_COMPATIBILITY_RETIREMENT_CANDIDATE_PLAN_ASSEMBLY_GATE_STATUS_IDS
-        .BLOCKED_BY_CATEGORY_MAPPING,
-      assemblyReady: false,
+        .ASSEMBLY_READY,
+      assemblyReady: true,
       readOnly: true,
       deletionAuthorized: false,
       executionManifestWritten: false,
       mappingCount: 10,
-      mappedTargetCount: 1,
-      unresolvedTargetCount: 9,
+      mappedTargetCount: 10,
+      unresolvedTargetCount: 0,
+      categoryTaxonomy: expect.objectContaining({
+        taxonomyReady: true,
+        categoryCount: 4,
+        targetCount: 10,
+      }),
       validation: {
         ok: true,
         issueCount: 0,
         issues: [],
       },
     }));
-    expect(assembly.mappings.filter(mapping => mapping.statusId ===
-      POLICY_COMPATIBILITY_RETIREMENT_CANDIDATE_PLAN_ASSEMBLY_MAPPING_STATUS_IDS
-        .MAPPED)).toEqual([
+    expect(assembly.gateModel).toEqual(expect.objectContaining({
+      readyToDelete: false,
+      validationOk: true,
+    }));
+    expect(assembly.mappings).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        categoryId: POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.CLIENT_BRIDGE_UI,
+        categoryId: POLICY_COMPATIBILITY_RETIREMENT_CANDIDATE_TAXONOMY_CATEGORY_IDS
+          .COMPATIBILITY_NAMED_TEST_SCOPES,
         candidate: expect.objectContaining({
-          path: 'client/src/components/policies/PolicyPresetMigrationNotice.vue',
+          path: 'client/src/__tests__/PolicyBuilderModal.test.js',
         }),
       }),
-    ]);
-    expect(assembly.mappings.filter(mapping => mapping.statusId ===
-      POLICY_COMPATIBILITY_RETIREMENT_CANDIDATE_PLAN_ASSEMBLY_MAPPING_STATUS_IDS
-        .CATEGORY_ACTION_MISMATCH)).toHaveLength(3);
-    expect(assembly.mappings.filter(mapping => mapping.statusId ===
-      POLICY_COMPATIBILITY_RETIREMENT_CANDIDATE_PLAN_ASSEMBLY_MAPPING_STATUS_IDS
-        .CATEGORY_MISSING)).toHaveLength(6);
-    expect(assembly.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
-      POLICY_COMPATIBILITY_RETIREMENT_CANDIDATE_PLAN_ASSEMBLY_GATE_RISK_IDS
-        .CANDIDATE_CATEGORY_MISSING,
-      POLICY_COMPATIBILITY_RETIREMENT_CANDIDATE_PLAN_ASSEMBLY_GATE_RISK_IDS
-        .CANDIDATE_CATEGORY_ACTION_MISMATCH,
+      expect.objectContaining({
+        categoryId: POLICY_COMPATIBILITY_RETIREMENT_CANDIDATE_TAXONOMY_CATEGORY_IDS
+          .POLICY_BUILDER_MODAL_LEGACY_BRANCH,
+        candidate: expect.objectContaining({
+          path: 'client/src/components/policies/PolicyBuilderModal.vue',
+        }),
+      }),
     ]));
   });
 
-  test('accepts an exact action-compatible category correlation without requiring deletion readiness', async () => {
-    const projection = await buildReadyCandidateProjection();
-    const migrationNoticeCandidate = projection.candidateTargetEntries.find(candidate => (
-      candidate.path === 'client/src/components/policies/PolicyPresetMigrationNotice.vue'
-    ));
-    const assembly = buildPolicyCompatibilityRetirementCandidatePlanAssemblyGate({
-      candidateProjection: buildSingleCandidateProjection(projection, migrationNoticeCandidate),
-      deletionGatePlan: buildPolicyCompatibilityDeletionGates(),
-    });
-
-    expect(assembly).toEqual(expect.objectContaining({
-      statusId: POLICY_COMPATIBILITY_RETIREMENT_CANDIDATE_PLAN_ASSEMBLY_GATE_STATUS_IDS
-        .ASSEMBLY_READY,
-      assemblyReady: true,
-      mappedTargetCount: 1,
-      unresolvedTargetCount: 0,
-      gateModel: expect.objectContaining({
-        readyToDelete: false,
-        validationOk: true,
-      }),
-      validation: {
-        ok: true,
-        issueCount: 0,
-        issues: [],
-      },
-    }));
-  });
-
-  test('rejects invalid candidate projections, invalid gate models, and action-mismatched category paths', async () => {
+  test('rejects invalid candidates, invalid gate models, and altered taxonomy categories', async () => {
     const projection = await buildReadyCandidateProjection();
     const gatePlan = buildPolicyCompatibilityDeletionGates();
+    const taxonomy = buildPolicyCompatibilityRetirementCandidateTaxonomy({
+      candidateProjection: projection,
+    });
     const invalidCandidateAssembly = buildPolicyCompatibilityRetirementCandidatePlanAssemblyGate({
       candidateProjection: {
         ...projection,
@@ -180,25 +144,20 @@ describe('policyCompatibilityRetirementCandidatePlanAssemblyGate', () => {
         categories: [...gatePlan.categories, gatePlan.categories[0]],
       },
     });
-    const actionMismatchAssembly = buildPolicyCompatibilityRetirementCandidatePlanAssemblyGate({
+    const invalidTaxonomyAssembly = buildPolicyCompatibilityRetirementCandidatePlanAssemblyGate({
       candidateProjection: projection,
-      deletionGatePlan: {
-        ...gatePlan,
-        categories: gatePlan.categories.map(category => (
-          category.categoryId === POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.STALE_COMPATIBILITY_TESTS
+      deletionGatePlan: gatePlan,
+      categoryTaxonomy: {
+        ...taxonomy,
+        categories: taxonomy.categories.map(category => (
+          category.categoryId ===
+            POLICY_COMPATIBILITY_RETIREMENT_CANDIDATE_TAXONOMY_CATEGORY_IDS
+              .COMPATIBILITY_NAMED_TEST_SCOPES
             ? {
               ...category,
-              paths: ['client/src/__tests__/RetiredCompatibilityTest.test.js'],
+              actionId: 'remove_test',
             }
-            : category.categoryId === POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.CLIENT_BRIDGE_UI
-              ? {
-                ...category,
-                paths: [
-                  ...category.paths,
-                  'client/src/__tests__/PolicyBuilderModal.test.js',
-                ],
-              }
-              : category
+            : category
         )),
       },
     });
@@ -221,12 +180,12 @@ describe('policyCompatibilityRetirementCandidatePlanAssemblyGate', () => {
       POLICY_COMPATIBILITY_RETIREMENT_CANDIDATE_PLAN_ASSEMBLY_GATE_RISK_IDS
         .GATE_CATEGORY_DUPLICATE,
     ]));
-    expect(actionMismatchAssembly.statusId)
+    expect(invalidTaxonomyAssembly.statusId)
       .toBe(POLICY_COMPATIBILITY_RETIREMENT_CANDIDATE_PLAN_ASSEMBLY_GATE_STATUS_IDS
-        .BLOCKED_BY_CATEGORY_MAPPING);
-    expect(actionMismatchAssembly.issues.map(issue => issue.riskId)).toContain(
+        .BLOCKED_BY_TAXONOMY);
+    expect(invalidTaxonomyAssembly.issues.map(issue => issue.riskId)).toContain(
       POLICY_COMPATIBILITY_RETIREMENT_CANDIDATE_PLAN_ASSEMBLY_GATE_RISK_IDS
-        .CANDIDATE_CATEGORY_ACTION_MISMATCH
+        .TAXONOMY_VALIDATION_FAILED
     );
   });
 

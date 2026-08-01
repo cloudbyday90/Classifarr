@@ -120,12 +120,13 @@ source-backed reconciliation, retaining native workflow successor evidence and
 performing no mutation. See [Policy Compatibility Retirement Candidate Plan
 Projection](policy-compatibility-retirement-candidate-plan-projection.md).
 
-**Phase 3R, Task 3R.10.10: Compatibility Retirement Candidate Plan Assembly
-Gate** is complete. It requires exact category-and-action correlation and
-blocks the current taxonomy before it can misstate named test scopes. See
-[Policy Compatibility Retirement Candidate Plan Assembly
-Gate](policy-compatibility-retirement-candidate-plan-assembly-gate.md).
+**Phase 3R, Task 3R.10.11: Compatibility Deletion-Category Taxonomy
+Reconciliation** is complete. The source-backed taxonomy now maps every exact
+target to one action-owned category, including the retained-file named test
+scopes. See [Policy Compatibility Retirement Candidate Taxonomy
+Reconciliation](policy-compatibility-retirement-candidate-taxonomy-reconciliation.md).
 
-Proceed to **Phase 3R, Task 3R.10.11: Compatibility Deletion-Category Taxonomy
-Reconciliation**. Reconcile categories to the exact candidates without
-approving, persisting, or executing a manifest.
+Proceed to **Phase 3R, Task 3R.10.12: Compatibility Retirement Assembly
+Handoff Audit**. Audit the read-only handoff to existing release-readiness,
+approved artifact, and execution gates without creating a manifest, approving
+removal, or executing a change.

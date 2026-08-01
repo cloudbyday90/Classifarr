@@ -145,16 +145,17 @@ decision, and source-backed regression coverage as an active server contract.
 
 ## Next Step
 
-**Phase 3R, Task 3R.10.10: Compatibility Retirement Candidate Plan Assembly
-Gate** is complete. It now validates exact path and action-aware category
-correlation without turning candidates into an approval or execution request.
-See [Policy Compatibility Retirement Candidate Plan Assembly
-Gate](policy-compatibility-retirement-candidate-plan-assembly-gate.md).
+**Phase 3R, Task 3R.10.11: Compatibility Deletion-Category Taxonomy
+Reconciliation** is complete. The source-backed taxonomy now maps every exact
+candidate identity to one action-owned category, including retained-file named
+test scopes. Candidate target counts are validated to prevent partial
+projections from reaching the taxonomy. See [Policy Compatibility Retirement
+Candidate Taxonomy Reconciliation](policy-compatibility-retirement-candidate-taxonomy-reconciliation.md).
 
-Proceed to **Phase 3R, Task 3R.10.11: Compatibility Deletion-Category Taxonomy
-Reconciliation**. Reconcile category definitions against every exact candidate,
-including a distinct named-test-scope action category, while remaining
-read-only.
+Proceed to **Phase 3R, Task 3R.10.12: Compatibility Retirement Assembly
+Handoff Audit**. Audit the read-only handoff to existing release-readiness,
+approved artifact, and execution gates without creating a manifest, approving
+removal, or executing a change.
 
 ## Research Date
 

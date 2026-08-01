@@ -137,6 +137,13 @@ taxonomy offers only a whole-file test-removal action. See [Policy Compatibility
 Retirement Candidate Plan Assembly
 Gate](policy-compatibility-retirement-candidate-plan-assembly-gate.md).
 
-Proceed to **Phase 3R, Task 3R.10.11: Compatibility Deletion-Category Taxonomy
-Reconciliation**. Add only source-backed, action-aware category coverage for
-the exact candidates; do not convert named scopes into whole-file removal.
+**Phase 3R, Task 3R.10.11: Compatibility Deletion-Category Taxonomy
+Reconciliation** is complete. The exact candidate taxonomy owns a distinct
+`remove_named_test_scope` category and retains the no-whole-file boundary. See
+[Policy Compatibility Retirement Candidate Taxonomy
+Reconciliation](policy-compatibility-retirement-candidate-taxonomy-reconciliation.md).
+
+Proceed to **Phase 3R, Task 3R.10.12: Compatibility Retirement Assembly
+Handoff Audit**. Audit the read-only handoff to existing release-readiness,
+approved artifact, and execution gates without creating a manifest, approving
+removal, or executing a change.

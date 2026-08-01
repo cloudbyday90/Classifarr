@@ -183,6 +183,7 @@ describe('policyCompatibilityRetirementCandidatePlanProjection', () => {
     });
     const validation = validatePolicyCompatibilityRetirementCandidatePlanProjection({
       ...projection,
+      targetCount: 0,
       deletionAuthorized: true,
       candidateTargetEntries: projection.candidateTargetEntries.map(entry => (
         entry.actionId === POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS
@@ -217,6 +218,8 @@ describe('policyCompatibilityRetirementCandidatePlanProjection', () => {
     expect(validation.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
       POLICY_COMPATIBILITY_RETIREMENT_CANDIDATE_PLAN_PROJECTION_RISK_IDS
         .CANDIDATE_AUTHORIZES_DELETION,
+      POLICY_COMPATIBILITY_RETIREMENT_CANDIDATE_PLAN_PROJECTION_RISK_IDS
+        .CANDIDATE_TARGET_COUNT_MISMATCH,
       POLICY_COMPATIBILITY_RETIREMENT_CANDIDATE_PLAN_PROJECTION_RISK_IDS
         .CANDIDATE_MANIFEST_APPROVED,
       POLICY_COMPATIBILITY_RETIREMENT_CANDIDATE_PLAN_PROJECTION_RISK_IDS

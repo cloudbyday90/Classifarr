@@ -46,6 +46,7 @@ const POLICY_COMPATIBILITY_RETIREMENT_CANDIDATE_PLAN_PROJECTION_RISK_IDS = Objec
   TARGET_PATH_MISSING: 'target_path_missing',
   TARGET_DEPENDENCY_MISSING: 'target_dependency_missing',
   TARGET_DEPENDENCY_UNKNOWN: 'target_dependency_unknown',
+  CANDIDATE_TARGET_COUNT_MISMATCH: 'candidate_target_count_mismatch',
   CANDIDATE_DEPENDENCY_COVERAGE_MISMATCH: 'candidate_dependency_coverage_mismatch',
   NATIVE_SUCCESSOR_MISSING: 'native_successor_missing',
   NATIVE_SUCCESSOR_INVALID: 'native_successor_invalid',
@@ -432,9 +433,9 @@ function buildPolicyCompatibilityRetirementCandidatePlanProjection({
     issueCount: issues.length,
     issues,
     nextStep: {
-      stepId: 'compatibility_retirement_candidate_plan_assembly_gate',
-      label: 'Compatibility Retirement Candidate Plan Assembly Gate',
-      reason: 'Correlate the read-only candidate targets to the existing deletion-gate categories without approving, persisting, or executing a manifest.',
+      stepId: 'compatibility_deletion_category_taxonomy_reconciliation',
+      label: 'Compatibility Deletion-Category Taxonomy Reconciliation',
+      reason: 'Derive exact action-owned taxonomy targets from the read-only candidate projection before assembling a later plan artifact.',
     },
   };
 
@@ -475,6 +476,14 @@ function validatePolicyCompatibilityRetirementCandidatePlanProjection(projection
     candidateTargetEntries,
     requireKnownDependencies: false,
   }).forEach(issue => issues.push(issue));
+
+  if (projection.targetCount !== candidateTargetEntries.length) {
+    issues.push(buildRisk(
+      POLICY_COMPATIBILITY_RETIREMENT_CANDIDATE_PLAN_PROJECTION_RISK_IDS
+        .CANDIDATE_TARGET_COUNT_MISMATCH,
+      'Candidate-plan projection target count must match its exact target entries.',
+    ));
+  }
 
   if (JSON.stringify(candidateDependencyIds) !== JSON.stringify(reconciliationDependencyIds)) {
     issues.push(buildRisk(

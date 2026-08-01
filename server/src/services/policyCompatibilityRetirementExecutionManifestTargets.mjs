@@ -11,7 +11,7 @@ import {
 } from './policyCompatibilityComponentDeletionDependencyInventory.mjs';
 import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS,
-} from './policyCompatibilityDeletionExecutionPlan.mjs';
+} from './policyCompatibilityDeletionExecutionActions.mjs';
 import {
   POLICY_COMPATIBILITY_RETIREMENT_MANIFEST_ENTRY_DISPOSITION_IDS,
 } from './policyCompatibilityRetirementManifestInventory.mjs';
