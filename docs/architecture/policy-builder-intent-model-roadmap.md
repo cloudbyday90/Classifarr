@@ -2718,11 +2718,22 @@ Implementation status:
   retire. It never authorizes or performs deletion. See [Policy Native-Storage
   Cutover Test Handoff Audit](policy-native-storage-cutover-test-handoff-audit.md).
 
-Next component task: **3R.10.2 Native-Storage Cutover Deletion-Evidence
-Integration Audit**. Connect the read-only handoff inventory to the existing
-authorized removal-completion artifact, final import/reference scan, and
-focused plus full validation evidence so a later deletion task cannot start
-without complete, current proof.
+- **3R.10.2 Native-Storage Cutover Deletion-Evidence Integration Audit** is
+  complete. The read-only handoff inventory now requires a complete authorized
+  removal artifact, exact manifest and verified-removal coverage for every
+  delete-with-bridge path, a clean final reference scan, focused and full
+  validation, and source evidence that shared test files have retired only
+  their named compatibility assertions. It remains observational and does not
+  authorize or perform deletion. See [Policy Native-Storage Cutover
+  Deletion-Evidence Integration
+  Audit](policy-native-storage-cutover-deletion-evidence-integration-audit.md).
+
+Next component task: **3R.10.3 Native Workflow Test Rehoming Audit**. Move
+active normal-workflow regression ownership away from test files that still
+import a compatibility component scheduled for deletion, beginning with the
+`PolicyIntentEditor` destination-section and review-trigger ownership records.
+Prove no active authoring completion record points to a component that the
+native-storage cutover manifest removes.
 
 ### 3R.8 Accessibility And Decision Load
 

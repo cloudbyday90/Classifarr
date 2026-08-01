@@ -139,6 +139,14 @@ const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
     testPath: 'server/src/__tests__/services/policyNativeStorageCutoverTestHandoff.test.mjs',
     evidence: 'Maps each retiring compatibility regression scope to named native workflow coverage and complete deletion evidence without authorizing deletion.',
   },
+  {
+    id: 'policy_native_storage_cutover_deletion_evidence',
+    label: 'Policy native-storage cutover deletion evidence',
+    docPath: 'docs/architecture/policy-native-storage-cutover-deletion-evidence-integration-audit.md',
+    servicePath: 'server/src/services/policyNativeStorageCutoverDeletionEvidence.mjs',
+    testPath: 'server/src/__tests__/services/policyNativeStorageCutoverDeletionEvidence.test.mjs',
+    evidence: 'Binds retiring paths and shared test scopes to a complete authorized removal artifact, reference scan, and focused plus full validation without authorizing deletion.',
+  },
 ]);
 
 const POLICY_AUTHORING_CLIENT_WORKFLOW_COMPONENTS = Object.freeze([

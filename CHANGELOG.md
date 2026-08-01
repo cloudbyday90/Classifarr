@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Native-Storage Cutover Deletion Evidence**: Added a read-only integration
+  audit that binds compatibility-test retirement to the existing authorized
+  removal-completion artifact, exact manifest and removal coverage, clean final
+  reference scans, focused and full validation, and shared-test assertion
+  retirement. It cannot authorize or perform deletion.
+
 - **Native-Storage Cutover Test Handoff**: Compatibility-maintenance
   regression scopes now map to named native workflow successors, explicit
   native-storage coverage, and full deletion evidence. The read-only audit

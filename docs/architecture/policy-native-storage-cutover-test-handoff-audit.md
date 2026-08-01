@@ -150,8 +150,10 @@ or intended native successors change.
 
 ## Next Step
 
-Proceed to **Phase 3R, Task 3R.10.2: Native-Storage Cutover Deletion-Evidence
-Integration Audit**. It should connect this handoff inventory to the existing
-compatibility-removal completion artifact and enforce current execution,
-reference-scan, and validation evidence before any destructive cutover action
-is allowed.
+**Phase 3R, Task 3R.10.2** is complete. The [Native-Storage Cutover
+Deletion-Evidence Integration
+Audit](policy-native-storage-cutover-deletion-evidence-integration-audit.md)
+now binds this handoff inventory to completion-artifact, reference-scan, and
+validation evidence. The next task is **3R.10.3 Native Workflow Test Rehoming
+Audit**, which must remove active native-workflow ownership from test files
+that import a compatibility component scheduled for deletion.
