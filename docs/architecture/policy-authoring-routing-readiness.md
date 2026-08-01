@@ -92,8 +92,8 @@ Official sources reviewed as of June 2026:
 - The client routing projection and its focused utility test are deleted.
 - The policy modal no longer integrates a local routing-readiness calculation.
 - `PolicyBuilderRoutingReadinessCard.vue` and its component test are deleted.
-- Active native readiness is presented by `ReadinessNextActionCard.vue` from
-  the server-owned operator-workflow response.
+- Active native readiness is presented by question-owned bounded empty-state
+  actions from the server-owned operator-workflow response.
 
 ## Historical Outcome
 

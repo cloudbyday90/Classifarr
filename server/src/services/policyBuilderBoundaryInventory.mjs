@@ -341,7 +341,6 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
         '/PolicyBuilderDestinationQuestions.vue',
         '/PolicyBuilderWorkflowShell.vue',
         '/PolicyDestinationEmptyStateNotice.vue',
-        '/ReadinessNextActionCard.vue',
         '/PolicyIntentActionButton.vue',
         '/PolicyIntentCertificationControl.vue',
         '/PolicyIntentChip.vue',

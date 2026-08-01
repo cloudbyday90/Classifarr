@@ -57,11 +57,6 @@
         @draft-command-plan="emit('constraint-draft-command-plan', $event)"
         @clear-constraint-draft="emit('clear-constraint-draft')"
       />
-
-      <ReadinessNextActionCard
-        v-if="!selectionEnabled"
-        :readiness="workflow.readiness"
-      />
     </template>
   </section>
 </template>
@@ -73,7 +68,6 @@ import ObservedProfileSummary from './ObservedProfileSummary.vue'
 import PolicyBuilderDestinationQuestions from './PolicyBuilderDestinationQuestions.vue'
 import PolicyBuilderWorkflowStatusNotice from './PolicyBuilderWorkflowStatusNotice.vue'
 import PolicyIntentConstraintControlSurface from './PolicyIntentConstraintControlSurface.vue'
-import ReadinessNextActionCard from './ReadinessNextActionCard.vue'
 import { buildPolicyBuilderWorkflowStatus } from '@/utils/policyBuilderWorkflowStatusPriority'
 
 const props = defineProps({

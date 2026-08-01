@@ -95,16 +95,6 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
     matches: filePath => filePath.endsWith('/PolicyDestinationEmptyStateNotice.vue'),
   },
   {
-    id: 'readiness_next_action_card',
-    decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
-    roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.READINESS_NEXT_ACTION,
-    normalAuthoringAllowed: true,
-    migrationSupportOnly: false,
-    riskIds: [],
-    notes: 'The readiness card renders one server-owned next action without diagnostics or client automation authority.',
-    matches: filePath => filePath.endsWith('/ReadinessNextActionCard.vue'),
-  },
-  {
     id: 'presentation_tests',
     decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.REWRITE,
     roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.TEST_BOUNDARY,

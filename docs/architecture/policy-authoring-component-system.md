@@ -39,7 +39,7 @@ Applied guidance:
 1. Keep the normal authoring path small:
    `DestinationContextCard`, `ObservedProfileSummary`, `IntentSignalPicker`,
    `IntentSignalChipList`, `HardLimitControl`, `AvoidControl`,
-   `ReviewTriggerControl`, and `ReadinessNextActionCard`.
+   `ReviewTriggerControl`, and `PolicyDestinationEmptyStateNotice`.
 2. Keep the optional accelerator explicit: `StarterTemplateSuggestion` can
    accelerate intent after destination context. Retired diagnostic panels are
    not alternate authoring surfaces.
@@ -53,8 +53,8 @@ Applied guidance:
    mutate raw bridge payloads.
 6. Require disabled choices, errors, and readiness issues to include visible and
    programmatic reason text.
-7. Make readiness cards point to the specific component that resolves the
-   issue.
+7. Keep readiness actions in the destination question that owns the condition
+   and map each server issue to its resolving component.
 
 ## Pros And Cons
 

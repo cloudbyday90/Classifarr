@@ -88,15 +88,14 @@ Cons:
 - `client/src/components/policies/PolicyBuilderWorkflowShell.vue`
   - renders the server-owned library-first workflow projection without client
     authority over policy persistence, automation, or routing.
-- `client/src/components/policies/DestinationContextCard.vue`,
-  `client/src/components/policies/ObservedProfileSummary.vue`, and
-  `client/src/components/policies/ReadinessNextActionCard.vue`
-  - render destination context, read-only observed evidence, and one
-    server-owned readiness next action without client engine authority.
+- `client/src/components/policies/DestinationContextCard.vue` and
+  `client/src/components/policies/ObservedProfileSummary.vue`
+  - render destination context and read-only observed evidence without client
+    engine authority.
 - `client/src/components/policies/PolicyBuilderDestinationQuestions.vue` and
   `client/src/components/policies/PolicyDestinationEmptyStateNotice.vue`
-  - render the ordered questions and server-owned empty-state actions without
-    classifying evidence, persisting intent, or routing media.
+  - render the ordered questions and their server-owned readiness actions
+    without classifying evidence, persisting intent, or routing media.
 - `client/src/components/policies/IntentSignalPicker.vue`,
   `client/src/composables/usePolicyIntentSignalDraft.js`, and
   `client/src/utils/policyIntentSignalDraft.js`

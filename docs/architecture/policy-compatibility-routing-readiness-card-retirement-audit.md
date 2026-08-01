@@ -11,9 +11,9 @@ was not imported or rendered by any production component, its local projection
 utility was already deleted, and it had no dedicated server read contract.
 
 Do not replace it with another compatibility routing card. The active native
-creation path already renders `ReadinessNextActionCard.vue` from the
-server-owned operator-workflow response. It is the only normal workflow surface
-for automation readiness and next action.
+creation path renders server-owned, question-owned empty-state actions from the
+operator-workflow response. They are the only normal workflow surfaces for
+automation readiness and next action.
 
 ## Scope Proof
 
@@ -22,7 +22,7 @@ for automation readiness and next action.
 | Legacy routing card | No production import or mount | Delete component and focused test. |
 | Local routing projection | Deleted in the prior footer-admission task | Do not recreate. |
 | Dedicated legacy read endpoint | None | Do not add one for a deleted surface. |
-| Native workflow readiness | `GET /api/policies/operator-workflow/libraries/:libraryId` returns display-only workflow readiness | Keep the existing server-owned contract and `ReadinessNextActionCard.vue`. |
+| Native workflow readiness | `GET /api/policies/operator-workflow/libraries/:libraryId` returns display-only workflow readiness | Keep the existing server-owned contract and question-owned empty-state action. |
 | Compatibility setup-card grid | Unmounted, but still holds the old routing anchor and local setup model | Audit as the next isolated component task. |
 
 ## Official Guidance Reviewed
@@ -56,8 +56,8 @@ June 2026:
 
 ## Final Recommendation Stack
 
-1. Keep `ReadinessNextActionCard.vue` and the server-owned operator-workflow
-   response as the sole normal-path readiness presentation.
+1. Keep the server-owned operator-workflow response and question-owned
+   empty-state action as the sole normal-path readiness presentation.
 2. Delete the unmounted legacy routing card, its test, and all inventory
    references.
 3. Do not add a compatibility readiness API, browser routing inference, or
@@ -70,8 +70,8 @@ June 2026:
 - Deleted `PolicyBuilderRoutingReadinessCard.vue` and its focused test.
 - Removed the retired test record and the obsolete workflow/boundary inventory
   classifications.
-- Preserved the server-owned native workflow endpoint, its response validation,
-  and `ReadinessNextActionCard.vue` unchanged.
+- Preserved the server-owned native workflow endpoint and its response
+  validation; later work retired the unreachable generic readiness card.
 - Updated historical routing-readiness records, the roadmap, and the
   compatibility-maintenance audit chain.
 

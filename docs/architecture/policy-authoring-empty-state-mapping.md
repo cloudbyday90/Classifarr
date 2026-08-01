@@ -117,4 +117,5 @@ its state-owned busy label and one workflow-level polite progress message.
 
 Begin Phase 3R.3 by replacing the current workflow shell's generic context and
 notice composition with the target `DestinationContextCard`,
-`ObservedProfileSummary`, and `ReadinessNextActionCard` component vocabulary.
+`ObservedProfileSummary`, and `PolicyDestinationEmptyStateNotice` component
+vocabulary.

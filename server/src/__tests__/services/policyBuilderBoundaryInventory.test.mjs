@@ -177,7 +177,6 @@ describe('policyBuilderBoundaryInventory', () => {
     [
       'client/src/components/policies/DestinationContextCard.vue',
       'client/src/components/policies/ObservedProfileSummary.vue',
-      'client/src/components/policies/ReadinessNextActionCard.vue',
     ].forEach((filePath) => {
       expect(classifyPolicyBuilderClientPath(filePath)).toEqual(expect.objectContaining({
         category: POLICY_BUILDER_BOUNDARY_CATEGORIES.PRESENTATION_ONLY,

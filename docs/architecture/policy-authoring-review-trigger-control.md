@@ -104,6 +104,5 @@ shared coordinator only.
 
 ## Next Task
 
-Start Phase 3R.6 with a source-backed audit of `ReadinessNextActionCard`.
-Verify it presents one resolving action per server-owned issue and no internal
-diagnostic, provider, quota, replay, or scoring detail.
+Phase 3R.6.2 retired the unreachable generic readiness card. Next, audit the
+live operator-workflow projection across all six readiness states.

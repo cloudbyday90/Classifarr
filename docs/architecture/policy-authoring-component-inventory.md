@@ -67,7 +67,7 @@ The 34 current policy Vue components are classified into four groups:
 | `HardLimitControl` | Implemented | `HardLimitControl.vue` |
 | `AvoidControl` | Implemented | `AvoidControl.vue` |
 | `ReviewTriggerControl` | Implemented | `ReviewTriggerControl.vue` |
-| `ReadinessNextActionCard` | Implemented | `ReadinessNextActionCard.vue` |
+| `PolicyDestinationEmptyStateNotice` | Implemented | `PolicyDestinationEmptyStateNotice.vue` |
 | `StarterTemplateSuggestion` | Optional and deferred | Server-projected evidence only |
 
 `PolicyBuilderLibraryContext.vue` remains a temporary destination-context
@@ -151,6 +151,7 @@ shared coordinator, and starter templates remain optional and non-primary.
 
 ## Next Task
 
-Start Phase 3R.6 with a source-backed audit of `ReadinessNextActionCard`.
-Verify it presents one resolving action per server-owned issue and no internal
-diagnostic, provider, quota, replay, or scoring detail.
+Phase 3R.6.2 retired the unreachable generic readiness card and records
+`PolicyDestinationEmptyStateNotice` as the implemented bounded readiness
+surface. Next, audit the live operator-workflow projection across all six
+readiness states.

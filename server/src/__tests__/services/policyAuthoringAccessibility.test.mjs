@@ -70,7 +70,7 @@ describe('policyAuthoringAccessibility', () => {
     );
 
     expect(readiness).toEqual(expect.objectContaining({
-      componentId: POLICY_AUTHORING_COMPONENT_IDS.READINESS_NEXT_ACTION_CARD,
+      componentId: POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_EMPTY_STATE_NOTICE,
       singleNextActionRequired: true,
       maxPrimaryActions: 1,
     }));

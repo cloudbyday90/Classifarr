@@ -91,7 +91,7 @@ describe('policyAuthoringReadiness', () => {
         stateId: POLICY_AUTHORING_READINESS_STATE_IDS.NEEDS_ROUTING,
         nextActionId: POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS.MAP_ROUTING_DESTINATION,
         flowStepId: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.CONFIRM_ROUTING_READINESS,
-        componentId: POLICY_AUTHORING_COMPONENT_IDS.READINESS_NEXT_ACTION_CARD,
+        componentId: POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_EMPTY_STATE_NOTICE,
         destinationNextActionId: POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.MAP_ROUTING_DESTINATION,
       }));
   });
@@ -111,7 +111,6 @@ describe('policyAuthoringReadiness', () => {
 
   test('builds ready projection with save action when there are no issues', () => {
     expect(buildPolicyAuthoringReadinessProjection([])).toEqual(expect.objectContaining({
-      componentId: POLICY_AUTHORING_COMPONENT_IDS.READINESS_NEXT_ACTION_CARD,
       interactionRuleId: POLICY_AUTHORING_INTERACTION_RULE_IDS.READINESS_LINKS_TO_RESOLVING_COMPONENT,
       stateId: POLICY_AUTHORING_READINESS_STATE_IDS.READY,
       label: 'Ready',
@@ -119,7 +118,7 @@ describe('policyAuthoringReadiness', () => {
         actionId: POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS.SAVE_POLICY,
         issueId: null,
         flowStepId: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.SAVE_OR_DEFER,
-        componentId: POLICY_AUTHORING_COMPONENT_IDS.READINESS_NEXT_ACTION_CARD,
+        componentId: null,
         destinationNextActionId: POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.SAVE_POLICY,
         message: 'Save this policy or defer without changing routing behavior.',
       },

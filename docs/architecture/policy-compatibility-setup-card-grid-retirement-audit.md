@@ -14,7 +14,7 @@ other consumers.
 Do not reconnect the grid to the active native workflow. The native path already
 uses the server-owned operator-workflow response through
 `PolicyBuilderWorkflowShell.vue`, `PolicyBuilderDestinationQuestions.vue`, and
-`ReadinessNextActionCard.vue`. Keeping a second card grid would duplicate
+`PolicyDestinationEmptyStateNotice.vue`. Keeping a second card grid would duplicate
 workflow state, create stale anchors, and give browser-derived status equal
 visual weight with authoritative server readiness.
 

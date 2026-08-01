@@ -32,8 +32,9 @@ then removed the unmounted card and its focused test.
 
 1. Do not restore client-derived routing readiness to a save or create flow.
 2. Keep server validation and returned write outcomes authoritative.
-3. Keep server-owned readiness in `ReadinessNextActionCard.vue`, and do not
-   restore the retired local routing card.
+3. Keep server-owned readiness in the destination question that owns the
+   bounded empty-state action, and do not restore the retired local routing
+   card.
 
 ## Pros And Cons
 

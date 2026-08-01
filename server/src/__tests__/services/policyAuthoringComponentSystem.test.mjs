@@ -35,7 +35,7 @@ describe('policyAuthoringComponentSystem', () => {
       'HardLimitControl',
       'AvoidControl',
       'ReviewTriggerControl',
-      'ReadinessNextActionCard',
+      'PolicyDestinationEmptyStateNotice',
       'StarterTemplateSuggestion',
     ]);
 
@@ -126,7 +126,7 @@ describe('policyAuthoringComponentSystem', () => {
         ]),
       }));
 
-    expect(validatePolicyAuthoringComponentInteraction(POLICY_AUTHORING_COMPONENT_IDS.READINESS_NEXT_ACTION_CARD))
+    expect(validatePolicyAuthoringComponentInteraction(POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_EMPTY_STATE_NOTICE))
       .toEqual(expect.objectContaining({
         valid: true,
         requiredRuleIds: [
@@ -175,7 +175,7 @@ describe('policyAuthoringComponentSystem', () => {
         POLICY_AUTHORING_COMPONENT_IDS.HARD_LIMIT_CONTROL,
         POLICY_AUTHORING_COMPONENT_IDS.AVOID_CONTROL,
         POLICY_AUTHORING_COMPONENT_IDS.REVIEW_TRIGGER_CONTROL,
-        POLICY_AUTHORING_COMPONENT_IDS.READINESS_NEXT_ACTION_CARD,
+        POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_EMPTY_STATE_NOTICE,
       ],
       supportOnlyComponentIds: [
         POLICY_AUTHORING_COMPONENT_IDS.STARTER_TEMPLATE_SUGGESTION,

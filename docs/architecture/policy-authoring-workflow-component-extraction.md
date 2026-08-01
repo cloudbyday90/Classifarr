@@ -1,6 +1,6 @@
 # Policy Authoring Workflow Component Extraction
 
-Status: implemented.
+Status: superseded in part by the Phase 3R.6.2 readiness-action audit.
 
 ## Scope
 
@@ -10,7 +10,7 @@ components:
 
 - `DestinationContextCard`
 - `ObservedProfileSummary`
-- `ReadinessNextActionCard`
+- `PolicyDestinationEmptyStateNotice`
 
 The change is deliberately client-presentational. It does not alter the
 policy-authoring read payload, draft-command contract, policy persistence,
@@ -43,8 +43,9 @@ Official sources reviewed in June 2026:
    readiness actions.
 3. Keep observed library values visibly read-only. They remain suggestions until
    an explicit future intent-control action emits a typed draft command.
-4. Render one server-owned readiness next action with `role="status"` and
-   `aria-live="polite"`; omit the card when no action exists.
+4. Render a server-owned readiness action only in the destination question
+   that owns a real bounded recovery; retain non-interactive guidance when no
+   resolver is available.
 5. Keep existing ids, labels, question ordering, and recovery routes intact so
    the extraction remains contract-preserving and does not create an alternate
    authoring surface.
@@ -94,8 +95,8 @@ Cons:
   - renders the setup heading and destination explanation.
 - `client/src/components/policies/ObservedProfileSummary.vue`
   - renders a named, read-only observed-profile region and library suggestions.
-- `client/src/components/policies/ReadinessNextActionCard.vue`
-  - announces one server-provided readiness next action without exposing
+- `client/src/components/policies/PolicyDestinationEmptyStateNotice.vue`
+  - presents one bounded recovery action or truthful guidance without exposing
     diagnostics.
 - `client/src/components/policies/PolicyBuilderWorkflowShell.vue`
   - composes the cards with existing recovery and destination-question flows.
@@ -108,8 +109,9 @@ Cons:
 ## Outcome
 
 The workflow shell no longer owns generic context, observed-profile rendering,
-or readiness notice markup. The client continues to display exactly the
-server-owned workflow projection and emits no new actions. Focused component
+or readiness notice markup. The generic readiness card was later retired
+because native creation could never mount it. The client continues to display
+only server-owned question-scoped recovery and emits no new actions. Focused component
 and inventory tests verify the accessible labels, read-only evidence handling,
 conditional readiness status, and ownership boundaries.
 

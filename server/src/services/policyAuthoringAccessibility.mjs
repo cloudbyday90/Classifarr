@@ -199,9 +199,9 @@ const POLICY_AUTHORING_ACCESSIBILITY_SURFACES = deepFreeze([
   },
   {
     id: POLICY_AUTHORING_ACCESSIBILITY_SURFACE_IDS.READINESS_NEXT_ACTION,
-    componentId: POLICY_AUTHORING_COMPONENT_IDS.READINESS_NEXT_ACTION_CARD,
-    label: 'Readiness next action',
-    helperText: 'Show the highest-priority readiness issue and one action that resolves it.',
+    componentId: POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_EMPTY_STATE_NOTICE,
+    label: 'Destination readiness action',
+    helperText: 'Show one bounded recovery action or truthful guidance in the destination question that owns the condition.',
     normalPath: true,
     keyboardOperable: true,
     visibleFocusRequired: true,

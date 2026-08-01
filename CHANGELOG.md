@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Authoring Readiness Actions**: Retired the unreachable generic
+  readiness card and its duplicate metadata. Native policy creation now keeps
+  server-owned readiness guidance or the bounded library-mapping action in the
+  destination question that owns the condition; browser focus, routing,
+  provider, quota, and persistence authority are unchanged.
+
 - **Policy Authoring Review-Trigger Control**: Native policy creation now uses
   a dedicated, server-projection-validated review-condition component. It keeps
   non-blocking review behavior distinct from hard-limit and avoid controls and

@@ -100,6 +100,5 @@ unapproved value into a draft command.
 
 ## Next Task
 
-Start Phase 3R.6 with a source-backed audit of `ReadinessNextActionCard`.
-Verify one resolving action per server-owned readiness issue and no diagnostic
-detail in the normal authoring workflow.
+Phase 3R.6.2 retired the unreachable generic readiness card. Next, audit the
+live operator-workflow projection across all six readiness states.

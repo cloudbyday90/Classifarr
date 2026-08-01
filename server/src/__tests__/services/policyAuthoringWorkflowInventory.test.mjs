@@ -102,16 +102,6 @@ describe('policyAuthoringWorkflowInventory', () => {
     });
   });
 
-  test('keeps the server-owned readiness next action in the normal authoring path', () => {
-    expect(classifyPolicyAuthoringWorkflowSurface('client/src/components/policies/ReadinessNextActionCard.vue'))
-      .toEqual(expect.objectContaining({
-        decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
-        roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.READINESS_NEXT_ACTION,
-        normalAuthoringAllowed: true,
-        migrationSupportOnly: false,
-      }));
-  });
-
   test('keeps destination empty-state notices as bounded readiness actions', () => {
     expect(classifyPolicyAuthoringWorkflowSurface(
       'client/src/components/policies/PolicyDestinationEmptyStateNotice.vue'

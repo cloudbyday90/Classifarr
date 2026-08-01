@@ -182,26 +182,15 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY = deepFreeze([
     notes: 'Coordinates valid projection availability, one status region, staged-count display, and draft clearing without changing the typed draft-command boundary.',
   },
   {
-    id: 'readiness_next_action_card',
-    path: 'client/src/components/policies/ReadinessNextActionCard.vue',
-    roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.READINESS,
-    decisionId: POLICY_AUTHORING_COMPONENT_DECISION_IDS.KEEP_AS_PRIMITIVE,
-    targetComponentIds: [
-      POLICY_AUTHORING_COMPONENT_IDS.READINESS_NEXT_ACTION_CARD,
-    ],
-    normalAuthoringAllowed: true,
-    notes: 'The target readiness primitive is implemented and receives server-owned next actions only.',
-  },
-  {
     id: 'policy_destination_empty_state_notice',
     path: 'client/src/components/policies/PolicyDestinationEmptyStateNotice.vue',
     roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.READINESS,
     decisionId: POLICY_AUTHORING_COMPONENT_DECISION_IDS.KEEP_AS_PRIMITIVE,
     targetComponentIds: [
-      POLICY_AUTHORING_COMPONENT_IDS.READINESS_NEXT_ACTION_CARD,
+      POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_EMPTY_STATE_NOTICE,
     ],
     normalAuthoringAllowed: true,
-    notes: 'Renders a bounded recovery action for a server-owned empty-state projection.',
+    notes: 'Renders one bounded recovery action in the destination question that owns a server-projected empty state.',
   },
   {
     id: 'policy_builder_workflow_status_notice',
@@ -440,10 +429,10 @@ const POLICY_AUTHORING_TARGET_IMPLEMENTATIONS = deepFreeze([
     notes: 'Implemented as a self-validating non-blocking review-trigger control with typed local-draft plan emission.',
   },
   {
-    targetComponentId: POLICY_AUTHORING_COMPONENT_IDS.READINESS_NEXT_ACTION_CARD,
+    targetComponentId: POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_EMPTY_STATE_NOTICE,
     statusId: POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.IMPLEMENTED,
-    sourcePaths: ['client/src/components/policies/ReadinessNextActionCard.vue'],
-    notes: 'Implemented as the server-owned readiness next-action card.',
+    sourcePaths: ['client/src/components/policies/PolicyDestinationEmptyStateNotice.vue'],
+    notes: 'Implemented as the bounded, destination-question-owned readiness action.',
   },
   {
     targetComponentId: POLICY_AUTHORING_COMPONENT_IDS.STARTER_TEMPLATE_SUGGESTION,

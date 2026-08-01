@@ -2277,7 +2277,7 @@ Tasks:
   - `HardLimitControl`,
   - `AvoidControl`,
   - `ReviewTriggerControl`,
-  - `ReadinessNextActionCard`,
+  - `PolicyDestinationEmptyStateNotice`,
   - `StarterTemplateSuggestion`.
 - Prefer multi-select and chip-based editing for simple belongs-here,
   helpful-match, avoid, and review-trigger values.
@@ -2331,10 +2331,11 @@ Implementation status:
   evidence acceptance, disabled-state explanations, and component-level
   accessibility requirements are pinned before Vue screen rebuild work starts.
 - The workflow shell now composes `DestinationContextCard`,
-  `ObservedProfileSummary`, and `ReadinessNextActionCard` instead of owning
-  generic context and readiness markup. The cards render server-owned display
-  values only; they add no policy, routing, provider, quota, learning, or media
-  authority. See
+  `ObservedProfileSummary`, and question-owned
+  `PolicyDestinationEmptyStateNotice` recovery actions instead of owning
+  generic context and readiness markup. The components render server-owned
+  display values only; they add no policy, routing, provider, quota, learning,
+  or media authority. See
   [Policy Authoring Workflow Component Extraction](policy-authoring-workflow-component-extraction.md).
 - The workflow and boundary inventories classify the new components and their
   tests with no unclassified policy-authoring paths.
@@ -2619,6 +2620,11 @@ Implementation status:
   next action. Its response has no normal-workflow handoff field, and the
   admission audit rejects one if introduced. See [Policy Constraint Admission
   Readiness Handoff](policy-constraint-admission-readiness-handoff.md).
+- **3R.6.2 Readiness Action Surface Audit** is complete. The unreachable
+  generic readiness card is retired. Normal readiness actions remain in the
+  destination question that owns the condition, and no browser focus action is
+  offered when no resolver exists. See [Policy Authoring Readiness Action
+  Surface Audit](policy-authoring-readiness-action-surface-audit.md).
 - Impact/replay browser panels and their client API facade are removed.
   Provider readiness, TMDB live preview, scoring details, and parity delta
   remain server-side migration-verifier or deletion material outside the normal
