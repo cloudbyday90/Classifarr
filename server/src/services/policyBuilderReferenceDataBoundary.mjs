@@ -11,7 +11,6 @@ const REFERENCE_DATA_SOURCE_IDS = Object.freeze({
   STATIC_PRESET_SIGNAL_VALUES: 'static_preset_signal_values',
   MEDIA_SERVER_LIBRARY_LIST: 'media_server_library_list',
   LIBRARY_PROFILE: 'library_profile',
-  LIBRARY_PROFILE_REFRESH: 'library_profile_refresh',
   GENERAL_SETTINGS_MIGRATION_REPORT: 'general_settings_migration_report',
   FUTURE_ROUTING_STATUS_ENDPOINT: 'future_routing_status_endpoint',
 });
@@ -147,19 +146,6 @@ const REFERENCE_DATA_RECORDS = deepFreeze([
     mayComputeReadiness: false,
     mayPersistPolicy: false,
     notes: 'Client freshness labels guide operator action but do not decide automation readiness.',
-  },
-  {
-    id: 'library_profile_refresh_result',
-    label: 'Library profile refresh result',
-    category: REFERENCE_DATA_CATEGORY_IDS.SERVER_PROJECTION_DISPLAY,
-    sourceId: REFERENCE_DATA_SOURCE_IDS.LIBRARY_PROFILE_REFRESH,
-    authorityId: REFERENCE_DATA_AUTHORITY_IDS.NON_AUTHORITY_DISPLAY,
-    owner: 'policyBuilderProfileRefreshResult',
-    currentPath: 'libraryProfileRefreshResult',
-    maySuggestIntent: false,
-    mayComputeReadiness: false,
-    mayPersistPolicy: false,
-    notes: 'Refresh result describes available profile signals after refresh.',
   },
   {
     id: 'routing_mapping_status',

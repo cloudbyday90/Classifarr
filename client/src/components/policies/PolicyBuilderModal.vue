@@ -28,13 +28,8 @@
             :profile="libraryProfile"
             :genre-summary="libraryProfileGenreSummary"
             :freshness="libraryProfileFreshness"
-            :refresh-result="experienceMode.isLegacyEdit ? libraryProfileRefreshResult : null"
             :loading="libraryProfileLoading"
-            :refreshing="experienceMode.isLegacyEdit ? libraryProfileRefreshing : false"
-            :can-refresh="experienceMode.isLegacyEdit ? Boolean(form.library_id) : false"
-            :show-refresh-action="experienceMode.isLegacyEdit"
             :show-freshness="!experienceMode.isNativeView"
-            @refresh-profile="refreshActiveLibraryProfile"
           />
         </div>
 
@@ -50,7 +45,6 @@
 
         <PolicyBuilderWorkflowShell
           v-if="experienceMode.isNativeCreate"
-          ref="workflowShellRef"
           :workflow-read="operatorWorkflowRead"
           :loading="operatorWorkflowLoading"
           :error="operatorWorkflowError"
@@ -119,7 +113,6 @@ import { usePolicyNativeReadinessSummary } from '@/composables/usePolicyNativeRe
 import { usePolicyIntentSignalDraft } from '@/composables/usePolicyIntentSignalDraft'
 import { usePolicyIntentConstraintDraft } from '@/composables/usePolicyIntentConstraintDraft'
 import { usePolicyNativeCreateHandoff } from '@/composables/usePolicyNativeCreateHandoff'
-import { usePolicyRecoveryFocus } from '@/composables/usePolicyRecoveryFocus'
 import { buildPolicyBuilderSaveBoundary } from '@/utils/policyBuilderActionBoundary'
 import { buildPolicyBuilderExperienceMode } from '@/utils/policyBuilderExperienceMode'
 import { buildNativePolicyCreatePayload } from '@/utils/policyNativeCreatePayload'
@@ -160,7 +153,6 @@ const saving = ref(false)
 const saveError = ref('')
 const nativeCreateHandoffRef = ref(null)
 const activeEmptyStateActionId = ref('')
-const workflowShellRef = ref(null)
 const restoreFocusAfterClose = ref(true)
 
 const isOpen = computed({
@@ -181,8 +173,6 @@ const {
   allPresets,
   libraryProfile,
   libraryProfileLoading,
-  libraryProfileRefreshing,
-  libraryProfileRefreshResult,
   presetMigrationNotice,
   availableRatings,
   availableGenres,
@@ -193,7 +183,6 @@ const {
   loadLibraryContext,
   dismissPresetMigrationNotice,
   watchLibraryProfile,
-  refreshLibraryProfile,
 } = referenceData
 
 const {
@@ -218,7 +207,6 @@ const {
   workflowRead: operatorWorkflowRead,
   loading: operatorWorkflowLoading,
   error: operatorWorkflowError,
-  loadWorkflow: loadOperatorWorkflow,
   watchWorkflow: watchOperatorWorkflow,
   customIntentSignalValidationLoading,
   customIntentSignalValidationError,
@@ -230,7 +218,6 @@ const {
   readinessSummary: nativeReadinessSummary,
   loading: nativeReadinessLoading,
   error: nativeReadinessError,
-  loadSummary: loadNativeReadinessSummary,
   watchSummary: watchNativeReadinessSummary,
 } = usePolicyNativeReadinessSummary()
 
@@ -285,29 +272,6 @@ watchNativeReadinessSummary(computed(() => (
 watch(() => props.modelValue, isOpen => {
   if (isOpen) restoreFocusAfterClose.value = true
 })
-
-const {
-  captureRecoveryFocus,
-  restoreRecoveryFocus,
-} = usePolicyRecoveryFocus({ workflowShellRef })
-
-const refreshActiveLibraryProfile = async () => {
-  if (!experienceMode.value.isLegacyEdit) return
-
-  const recoveryFocusTrigger = captureRecoveryFocus()
-  try {
-    const refreshed = await refreshLibraryProfile(form.value.library_id)
-    if (refreshed) {
-      if (experienceMode.value.isNativeView) {
-        await loadNativeReadinessSummary(props.policy?.id)
-      } else if (experienceMode.value.isNativeCreate) {
-        await loadOperatorWorkflow(form.value.library_id)
-      }
-    }
-  } finally {
-    await restoreRecoveryFocus(recoveryFocusTrigger)
-  }
-}
 
 const handleEmptyStateAction = async (emptyState) => {
   if (!experienceMode.value.isNativeCreate) return

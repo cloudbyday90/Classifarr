@@ -42,7 +42,7 @@ export function getLibraryProfile(libraryId) {
   return getDataRequest(`/libraries/${libraryId}/profile`)
 }
 
-export function refreshLibraryProfile(libraryId) {
+export function regenerateLibraryProfile(libraryId) {
   return apiClient.post(`/libraries/${libraryId}/profile/refresh`)
 }
 
@@ -53,7 +53,7 @@ const libraryRulesApi = {
   getLibraryArrOptions,
   updateLibraryArrSettings,
   getLibraryProfile,
-  refreshLibraryProfile,
+  regenerateLibraryProfile,
 }
 
 export default libraryRulesApi

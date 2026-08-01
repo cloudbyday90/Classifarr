@@ -17,20 +17,48 @@
 -->
 
 <template>
-  <div class="library-profile">
+  <div
+    class="library-profile"
+    :aria-busy="loading || regenerating"
+  >
     <div class="profile-header">
       <h3 class="font-semibold text-lg flex items-center gap-2">
         <span>📊</span> Library Profile
       </h3>
-      <button 
-        :disabled="refreshing" 
+      <button
+        :disabled="loading || regenerating"
+        aria-describedby="library-profile-regeneration-help"
         class="btn btn-sm btn-ghost"
-        @click="refreshProfile"
+        type="button"
+        @click="regenerateProfile"
       >
-        <span v-if="refreshing">Refreshing...</span>
-        <span v-else>↻ Refresh</span>
+        <span v-if="regenerating">Regenerating...</span>
+        <span v-else>Regenerate profile</span>
       </button>
     </div>
+
+    <p
+      id="library-profile-regeneration-help"
+      class="profile-maintenance-help"
+    >
+      Normal profile generation is server-managed. Regenerate only after an intentional library sync or metadata correction.
+    </p>
+
+    <p
+      v-if="statusMessage"
+      class="profile-status"
+      role="status"
+    >
+      {{ statusMessage }}
+    </p>
+
+    <p
+      v-if="error"
+      class="profile-status profile-status-error"
+      role="alert"
+    >
+      {{ error }}
+    </p>
 
     <div
       v-if="loading"
@@ -45,7 +73,7 @@
     >
       <p>No profile yet.</p>
       <p class="text-sm text-gray-500">
-        Profile will generate after library sync and enrichment.
+        The server-managed lifecycle will generate a profile when it has usable synced library data.
       </p>
     </div>
 
@@ -163,44 +191,24 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import api from '@/api'
+import { computed, onMounted, toRef } from 'vue'
+import { useLibraryProfileMaintenance } from '@/composables/useLibraryProfileMaintenance'
 
 const props = defineProps({
   libraryId: { type: Number, required: true }
 })
 
-const profile = ref(null)
-const loading = ref(true)
-const refreshing = ref(false)
-
-const loadProfile = async () => {
-  try {
-    loading.value = true
-    profile.value = await api.getLibraryProfile(props.libraryId)
-  } catch (err) {
-    console.error('Failed to load profile:', err)
-    profile.value = null
-    
-    // Auto-generate profile if it doesn't exist yet (404 = not found)
-    if (err.response?.status === 404 && !refreshing.value) {
-      await refreshProfile()
-      return // refreshProfile will call loadProfile again
-    }
-  } finally {
-    loading.value = false
-  }
-}
-
-const refreshProfile = async () => {
-  try {
-    refreshing.value = true
-    await api.refreshLibraryProfile(props.libraryId)
-    await loadProfile()
-  } finally {
-    refreshing.value = false
-  }
-}
+const {
+  profile,
+  loading,
+  regenerating,
+  error,
+  statusMessage,
+  loadProfile,
+  regenerateProfile,
+} = useLibraryProfileMaintenance({
+  libraryId: toRef(props, 'libraryId'),
+})
 
 const sortedRatings = computed(() => {
   if (!profile.value?.rating_distribution) return {}
@@ -264,6 +272,28 @@ onMounted(loadProfile)
   text-align: center;
   padding: 2rem;
   color: var(--text-muted, #6c7086);
+}
+
+.profile-maintenance-help {
+  margin: 0 0 0.75rem;
+  color: var(--text-muted, #6c7086);
+  font-size: 0.75rem;
+}
+
+.profile-status {
+  margin: 0 0 0.75rem;
+  border: 1px solid rgba(137, 180, 250, 0.5);
+  border-radius: 0.375rem;
+  background: rgba(137, 180, 250, 0.1);
+  color: #b4d0fb;
+  padding: 0.5rem 0.625rem;
+  font-size: 0.75rem;
+}
+
+.profile-status-error {
+  border-color: rgba(243, 139, 168, 0.6);
+  background: rgba(243, 139, 168, 0.12);
+  color: #f8b4c4;
 }
 
 .profile-content {

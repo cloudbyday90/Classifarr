@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Library Profile Regeneration Boundary**: Policy authoring now treats
+  library profiles as read-only observed evidence. The server retains automatic
+  profile lifecycle work, while an explicit, accessible Library Detail
+  regeneration command is the sole browser mutation path. Profile route IDs
+  are now strictly validated before reads or writes.
+
 - **Native Creation Evidence-Recovery Cutline**: A profile-less library now
   receives declared-intent guidance instead of a browser-controlled library
   sync, profile refresh, and workflow reload sequence. Native creation retains

@@ -25,6 +25,23 @@ import { registerLabelRoutes } from './librariesRouteLabels.mjs';
 import { registerRulesRoutes } from './librariesRouteRules.mjs';
 import { NotFoundError, ValidationError } from '../utils/appError.mjs';
 
+function parseProfileLibraryId(value) {
+  if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value)) {
+    throw new ValidationError('Invalid library ID', {
+      message: 'Library ID must be a positive integer.',
+    });
+  }
+
+  const libraryId = Number(value);
+  if (!Number.isSafeInteger(libraryId)) {
+    throw new ValidationError('Invalid library ID', {
+      message: 'Library ID must be a positive integer.',
+    });
+  }
+
+  return libraryId;
+}
+
 export function createLibrariesRouter({
   express,
   db,
@@ -58,12 +75,12 @@ export function createLibrariesRouter({
   registerPatternRoutes(router, { db, mediaPatternAnalyzer, requireReadWrite, logger });
 
   router.get('/:id/profile', asyncHandler(async (req, res) => {
-      const { id } = req.params;
+      const libraryId = parseProfileLibraryId(req.params.id);
 
-      const profile = await libraryProfileService.getProfile(parseInt(id));
+      const profile = await libraryProfileService.getProfile(libraryId);
       if (!profile) {
         throw new NotFoundError('Profile not found', {
-          message: 'Profile will be generated after library sync and enrichment',
+          message: 'The server-managed profile lifecycle has not generated a profile for this library yet.',
         });
       }
 
@@ -71,11 +88,11 @@ export function createLibrariesRouter({
   }));
 
   router.post('/:id/profile/refresh', requireReadWrite, asyncHandler(async (req, res) => {
-      const { id } = req.params;
+      const libraryId = parseProfileLibraryId(req.params.id);
 
-      logger.info('Refreshing library profile', { libraryId: id });
+      logger.info('Regenerating library profile from explicit maintenance request', { libraryId });
 
-      const profile = await libraryProfileService.generateProfile(parseInt(id));
+      const profile = await libraryProfileService.generateProfile(libraryId);
 
       if (!profile) {
         throw new ValidationError('Cannot generate profile', {

@@ -94,10 +94,12 @@ It forwards typed draft commands without changing their payloads. Save,
 authorization, serialization, and routing readiness remain in their existing
 modules.
 
-Library-profile refresh remains available only for compatibility maintenance,
-where it existed before. A successful refresh does not reload the native
-workflow for that policy. It therefore cannot manufacture native intent or
-turn observed evidence into a policy declaration.
+Library-profile regeneration is no longer a compatibility-maintenance control.
+Compatibility editing reads observed profile evidence without mutating it. An
+explicit read-write maintenance command remains only in Library Detail, outside
+policy authoring; it cannot manufacture native intent or turn observed evidence
+into a policy declaration. See [Library Profile Regeneration
+Boundary](library-profile-regeneration-boundary.md).
 
 ## Security And Accessibility Outcome
 

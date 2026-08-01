@@ -179,7 +179,6 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
       '/usePolicyBuilderReferenceData.js',
       '/policyBuilderLibraryGenreOptions.js',
       '/policyBuilderProfileFreshness.js',
-      '/policyBuilderProfileRefreshResult.js',
     ]),
   },
   {

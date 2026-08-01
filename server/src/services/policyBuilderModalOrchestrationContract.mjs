@@ -40,7 +40,6 @@ const MODAL_TOUCHPOINT_IDS = Object.freeze({
   MODEL_VALUE_BINDING: 'model_value_binding',
   SAVE_PAYLOAD_DELEGATION: 'save_payload_delegation',
   DRAFT_SIGNAL_COMMAND_ROUTING: 'draft_signal_command_routing',
-  PROFILE_REFRESH_COMMAND_ROUTING: 'profile_refresh_command_routing',
   ADVANCED_SCORING_COMPOSITION: 'advanced_scoring_composition',
   SUMMARY_VIEW_PROJECTION: 'summary_view_projection',
   LEGACY_TEMPLATE_COMMAND_ADAPTERS: 'legacy_template_command_adapters',
@@ -214,12 +213,6 @@ const MODAL_TOUCHPOINTS = deepFreeze([
   {
     id: MODAL_TOUCHPOINT_IDS.DRAFT_SIGNAL_COMMAND_ROUTING,
     description: 'Modal routes intent editor signal events to draft-state commands.',
-    responsibilityId: MODAL_ALLOWED_RESPONSIBILITY_IDS.COMMAND_ROUTING_TO_COMPOSABLES,
-    decisionId: MODAL_ORCHESTRATION_DECISION_IDS.KEEP_IN_MODAL,
-  },
-  {
-    id: MODAL_TOUCHPOINT_IDS.PROFILE_REFRESH_COMMAND_ROUTING,
-    description: 'Modal routes profile refresh requests to the reference-data composable.',
     responsibilityId: MODAL_ALLOWED_RESPONSIBILITY_IDS.COMMAND_ROUTING_TO_COMPOSABLES,
     decisionId: MODAL_ORCHESTRATION_DECISION_IDS.KEEP_IN_MODAL,
   },

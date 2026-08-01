@@ -127,9 +127,10 @@ Official sources reviewed as of June 2026:
   `client/src/utils/policyBuilderWorkflowStatusPriority.js`
   and `client/src/components/policies/PolicyBuilderWorkflowStatusNotice.vue`
 - Keyboard recovery flow:
-  `client/src/composables/useModalFocusManagement.js`,
-  `client/src/composables/usePolicyRecoveryFocus.js`, and
-  `client/src/utils/routeFocusHandoff.js`
+  `client/src/composables/useModalFocusManagement.js` and
+  `client/src/utils/routeFocusHandoff.js`. The former generic policy recovery
+  focus helper was retired with browser profile regeneration; policy authoring
+  now has only the bounded mapping navigation handoff.
 - Unit coverage:
   `client/src/__tests__/utils/policyBuilderSetupCards.test.js`
   `client/src/__tests__/PolicyBuilderSetupCards.test.js`

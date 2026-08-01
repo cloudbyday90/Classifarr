@@ -50,29 +50,16 @@ function profileTimestamp(profile = {}) {
 export function buildPolicyBuilderProfileFreshness({
   profile = null,
   loading = false,
-  refreshing = false,
   error = '',
   now = Date.now(),
   staleDays = POLICY_BUILDER_PROFILE_STALE_DAYS,
 } = {}) {
-  if (refreshing) {
-    return {
-      status: 'refreshing',
-      tone: 'info',
-      label: 'Refreshing profile',
-      message: 'Refreshing library profile from current synced media.',
-      canRefresh: false,
-      updatedAtLabel: '',
-    }
-  }
-
   if (loading) {
     return {
       status: 'loading',
       tone: 'info',
       label: 'Loading profile',
       message: 'Loading current library profile.',
-      canRefresh: false,
       updatedAtLabel: '',
     }
   }
@@ -83,7 +70,6 @@ export function buildPolicyBuilderProfileFreshness({
       tone: 'warning',
       label: 'Profile unavailable',
       message: error,
-      canRefresh: true,
       updatedAtLabel: '',
     }
   }
@@ -93,8 +79,7 @@ export function buildPolicyBuilderProfileFreshness({
       status: 'missing',
       tone: 'warning',
       label: 'No profile yet',
-      message: 'Generate a profile after library sync and enrichment before relying on library-derived intent suggestions.',
-      canRefresh: true,
+      message: 'Wait for the server-managed profile lifecycle before relying on library-derived intent suggestions.',
       updatedAtLabel: '',
     }
   }
@@ -105,8 +90,7 @@ export function buildPolicyBuilderProfileFreshness({
       status: 'unknown_age',
       tone: 'warning',
       label: 'Profile age unknown',
-      message: 'Refresh the profile before relying on library-derived intent suggestions.',
-      canRefresh: true,
+      message: 'Wait for the server-managed profile lifecycle before relying on library-derived intent suggestions.',
       updatedAtLabel: '',
     }
   }
@@ -120,9 +104,8 @@ export function buildPolicyBuilderProfileFreshness({
     tone: isStale ? 'warning' : 'success',
     label: isStale ? 'Profile may be stale' : 'Profile current',
     message: isStale
-      ? `Last generated ${ageLabel}. Refresh before using it as policy evidence.`
+      ? `Last generated ${ageLabel}. Wait for the server-managed profile lifecycle before using it as policy evidence.`
       : `Last generated ${ageLabel}.`,
-    canRefresh: true,
     updatedAtLabel: `Last generated: ${formatDateTime(timestamp)}`,
   }
 }

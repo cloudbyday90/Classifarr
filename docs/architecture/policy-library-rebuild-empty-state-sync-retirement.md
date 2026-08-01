@@ -84,9 +84,10 @@ Cons:
    native policy-authoring contracts.
 3. Delete `usePolicyBuilderLibrarySync` and remove native workflow refresh
    result/progress handling from the modal and workflow shell.
-4. Preserve the legacy-maintenance profile-refresh control and the
-   server-owned persisted-policy recovery lifecycle; they are different
-   boundaries and are not reintroduced into native creation.
+4. Keep the server-owned persisted-policy recovery lifecycle automatic and
+   retire profile regeneration from policy maintenance. A separate explicit
+   Library Detail maintenance command remains available after intentional sync
+   or metadata correction.
 5. Keep only mapping navigation as an actionable empty-state transition, with
    its existing server-supplied busy label and accessible status announcement.
 
@@ -120,9 +121,9 @@ routing operation, or persisted-policy recovery mechanism changed.
 - Full client and server test, typecheck, lint, and build gates remain required
   before release.
 
-## Next Item
+## Follow-On Outcome
 
-Audit the remaining legacy-maintenance `Refresh profile` control separately.
-It is intentionally outside native creation; the decision must establish
-whether it is an administrative library-management capability or another
-browser recovery path before changing it.
+The separate audit is implemented in [Library Profile Regeneration
+Boundary](library-profile-regeneration-boundary.md). It removes the remaining
+policy-builder and automatic-browser profile-refresh paths while retaining one
+strictly validated read-write Library Detail maintenance command.

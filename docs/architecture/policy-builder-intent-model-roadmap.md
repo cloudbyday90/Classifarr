@@ -1590,8 +1590,8 @@ Implementation record:
 - The server-side modal orchestration contract lives in
   `server/src/services/policyBuilderModalOrchestrationContract.mjs`.
 - The contract now includes a modal touchpoint audit for current save,
-  composition, preview, profile refresh, legacy-adapter, summary-projection, and
-  save-failure behavior.
+  composition, preview, legacy-adapter, summary-projection, and save-failure
+  behavior. Profile regeneration is intentionally outside modal orchestration.
 - The contract now includes a public event audit for `update:modelValue`,
   `save`, and `close`, and the Vue modal declares runtime emit validators for
   those events.
@@ -2242,12 +2242,14 @@ Implementation status:
   bounded guidance rather than non-functional actions. See
   [Policy Authoring Destination Question Flow](policy-authoring-destination-question-flow.md).
 - The workflow read now projects new, sparse, and unmapped destination states
-  from bounded stored data. A missing persisted profile offers the existing
-  explicit `sync -> profile refresh -> workflow reread` action; a sparse valid
-  profile remains guidance rather than guessed intent or a dead button; and an
-  unmapped destination opens the existing library mapping screen. Profile-load
-  and evidence-boundary failures remain recovery states, not false new-library
-  claims. See [Policy Authoring Empty-State Mapping](policy-authoring-empty-state-mapping.md).
+  from bounded stored data. Missing or stale observed evidence directs the
+  operator to declared intent while server-owned profile recovery remains
+  automatic; a sparse valid profile remains guidance rather than guessed
+  intent or a dead button; and an unmapped destination opens the existing
+  library mapping screen. Profile-load and evidence-boundary failures remain
+  recovery states, not false new-library claims. See [Policy Authoring
+  Empty-State Mapping](policy-authoring-empty-state-mapping.md) and [Library
+  Profile Regeneration Boundary](library-profile-regeneration-boundary.md).
 
 ### 3R.3 UI Component System And Interaction Reset
 
@@ -2649,9 +2651,8 @@ Implementation status:
   projection-owned busy copy, and a polite progress status without repeating
   an actionable card's next-action label:
   [Policy Destination Empty-State Action Resolution](policy-destination-empty-state-action-resolution.md).
-- Workflow loading, profile refresh, empty-state progress, and completed
-  refresh results now resolve to one ordered live
-  announcement:
+- Workflow loading, server-reported profile recovery, and empty-state progress
+  now resolve to one ordered live announcement:
   [Policy Builder Workflow Status Priority](policy-builder-workflow-status-priority.md).
 - **3R.8.4 Keyboard Recovery-Flow Audit is complete.** The shared modal now
   has dialog semantics, contained keyboard navigation, Escape support, and

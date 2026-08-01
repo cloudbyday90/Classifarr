@@ -70,7 +70,6 @@ const DRAFT_SAVE_ALLOWLIST_FIELDS = Object.freeze([
 const DRAFT_SAVE_PROHIBITED_FIELDS = Object.freeze([
   'libraryProfile',
   'libraryProfileFreshness',
-  'libraryProfileRefreshResult',
   'libraryProfileGenreSummary',
   'availableGenreOptions',
   'availableGenres',

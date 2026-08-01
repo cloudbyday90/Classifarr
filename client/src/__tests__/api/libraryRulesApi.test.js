@@ -39,7 +39,7 @@ import {
   getLibraryArrOptions,
   updateLibraryArrSettings,
   getLibraryProfile,
-  refreshLibraryProfile,
+  regenerateLibraryProfile,
 } from '../../api/libraryRulesApi'
 
 describe('libraryRulesApi', () => {
@@ -94,10 +94,10 @@ describe('libraryRulesApi', () => {
     expect(result).toEqual(profile)
   })
 
-  it('refreshLibraryProfile calls POST with library id in URL', async () => {
-    mockPost.mockResolvedValueOnce({ data: { refreshing: true } })
-    const result = await refreshLibraryProfile(10)
+  it('regenerateLibraryProfile calls POST with library id in URL', async () => {
+    mockPost.mockResolvedValueOnce({ data: { success: true } })
+    const result = await regenerateLibraryProfile(10)
     expect(mockPost).toHaveBeenCalledWith('/libraries/10/profile/refresh')
-    expect(result).toEqual({ data: { refreshing: true } })
+    expect(result).toEqual({ data: { success: true } })
   })
 })

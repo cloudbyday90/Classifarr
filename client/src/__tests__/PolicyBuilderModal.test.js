@@ -149,7 +149,6 @@ vi.mock('../api', () => ({
     getLibraries: vi.fn(),
     getGeneralSettings: vi.fn(),
     getLibraryProfile: vi.fn(),
-    refreshLibraryProfile: vi.fn(),
   }
 }));
 
@@ -308,7 +307,6 @@ describe('PolicyBuilderModal.vue', () => {
     api.getLibraries.mockImplementation((...args) => api.get('/libraries', ...args).then((response) => response.data));
     api.getGeneralSettings.mockImplementation((...args) => api.get('/settings', ...args).then((response) => response.data));
     api.getLibraryProfile.mockImplementation((libraryId) => api.get(`/libraries/${libraryId}/profile`).then((response) => response.data));
-    api.refreshLibraryProfile.mockImplementation((libraryId) => api.get(`/libraries/${libraryId}/profile/refresh`).then((response) => response.data));
     getDataRequest.mockImplementation((url, config) => api.get(url, config).then((response) => response.data));
     window.localStorage.clear();
     document.body.innerHTML = '';
@@ -812,7 +810,6 @@ describe('PolicyBuilderModal.vue', () => {
       || button.textContent.includes('Try evidence check again')
       || button.textContent.includes('Sync library now')
     ))).toBe(false);
-    expect(api.refreshLibraryProfile).not.toHaveBeenCalled();
   });
 
   it('awaits the parent save operation and shows an actionable save failure', async () => {

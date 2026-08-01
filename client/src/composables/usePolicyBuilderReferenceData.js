@@ -14,7 +14,6 @@ import {
   summarizeLibraryProfileGenres,
 } from '@/utils/policyBuilderLibraryGenreOptions'
 import { buildPolicyBuilderProfileFreshness } from '@/utils/policyBuilderProfileFreshness'
-import { buildPolicyBuilderProfileRefreshResult } from '@/utils/policyBuilderProfileRefreshResult'
 
 export const PRESET_MIGRATION_NOTICE_DISMISS_KEY = 'classifarr.presetMigrationNotice.dismissed'
 
@@ -87,9 +86,7 @@ export function usePolicyBuilderReferenceData({
   const allPresets = ref([])
   const libraryProfile = ref(null)
   const libraryProfileLoading = ref(false)
-  const libraryProfileRefreshing = ref(false)
   const libraryProfileError = ref('')
-  const libraryProfileRefreshResult = ref(null)
   const presetMigrationNotice = ref(null)
 
   const collectPresetSignalValues = (signalType, keys) => {
@@ -130,7 +127,6 @@ export function usePolicyBuilderReferenceData({
   const libraryProfileFreshness = computed(() => buildPolicyBuilderProfileFreshness({
     profile: libraryProfile.value,
     loading: libraryProfileLoading.value,
-    refreshing: libraryProfileRefreshing.value,
     error: libraryProfileError.value,
   }))
 
@@ -187,8 +183,6 @@ export function usePolicyBuilderReferenceData({
   }
 
   const loadLibraryProfile = async (libraryId) => {
-    libraryProfileRefreshResult.value = null
-
     if (!libraryId) {
       libraryProfile.value = null
       libraryProfileError.value = ''
@@ -214,41 +208,6 @@ export function usePolicyBuilderReferenceData({
     }
   }
 
-  const refreshLibraryProfile = async (libraryId) => {
-    if (!libraryId || libraryProfileRefreshing.value) return false
-
-    try {
-      libraryProfileRefreshing.value = true
-      libraryProfileError.value = ''
-      libraryProfileRefreshResult.value = null
-      const response = await apiClient.refreshLibraryProfile(libraryId)
-      const refreshedProfile = response?.data?.profile || response?.profile || null
-
-      if (refreshedProfile) {
-        libraryProfile.value = refreshedProfile
-      } else {
-        await loadLibraryProfile(libraryId)
-      }
-
-      libraryProfileRefreshResult.value = buildPolicyBuilderProfileRefreshResult({
-        outcome: 'success',
-        profile: libraryProfile.value,
-      })
-      return true
-    } catch (error) {
-      console.error('Failed to refresh library profile:', error)
-      const message = error?.response?.data?.message || 'Could not refresh the current library profile.'
-      libraryProfileError.value = message
-      libraryProfileRefreshResult.value = buildPolicyBuilderProfileRefreshResult({
-        outcome: 'error',
-        error: message,
-      })
-      return false
-    } finally {
-      libraryProfileRefreshing.value = false
-    }
-  }
-
   const watchLibraryProfile = (libraryIdSource) => {
     return watch(
       () => unref(libraryIdSource),
@@ -262,9 +221,7 @@ export function usePolicyBuilderReferenceData({
     allPresets,
     libraryProfile,
     libraryProfileLoading,
-    libraryProfileRefreshing,
     libraryProfileError,
-    libraryProfileRefreshResult,
     presetMigrationNotice,
     availableRatings,
     availableGenres,
@@ -275,7 +232,6 @@ export function usePolicyBuilderReferenceData({
     loadLibraries,
     loadPresets,
     loadLibraryProfile,
-    refreshLibraryProfile,
     loadPresetMigrationNotice,
     loadInitialData,
     loadLibraryContext,

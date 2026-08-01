@@ -9,10 +9,11 @@ Reference data can populate controls, provide configuration context, and show
 observed library-profile suggestions. It is not policy authority, learning
 authority, or automation-readiness authority.
 
-This slice does not change API calls, UI behavior, policy saves, classification
-scoring, database schema, routing, or profile refresh behavior. It removes
-phase-worded runtime notes from the reference-data boundary and keeps the active
-design record aligned with product-domain naming.
+The policy builder reads profile evidence but does not regenerate it. Profile
+regeneration is a separate Library Detail maintenance boundary documented in
+[Library Profile Regeneration Boundary](library-profile-regeneration-boundary.md).
+This record keeps the active reference-data design aligned with that product
+boundary.
 
 ## Official Guidance Reviewed
 
@@ -106,7 +107,6 @@ Cons:
   - `client/src/composables/usePolicyBuilderReferenceData.js`
   - `client/src/utils/policyBuilderLibraryGenreOptions.js`
   - `client/src/utils/policyBuilderProfileFreshness.js`
-  - `client/src/utils/policyBuilderProfileRefreshResult.js`
 - Roadmap:
   `docs/architecture/policy-builder-intent-model-roadmap.md`
 
@@ -136,7 +136,6 @@ Current boundary decisions:
 | `libraryProfile` | Observed profile suggestion | Observed evidence |
 | `availableGenreOptions` from profile | Observed profile suggestion | Observed evidence |
 | `libraryProfileFreshness` | Server projection display | Non-authority display |
-| `libraryProfileRefreshResult` | Server projection display | Non-authority display |
 | `routing_mapping_status` | Routing/mapping status | Server readiness context placeholder |
 | `presetMigrationNotice` | Migration notice | Migration context |
 
@@ -178,7 +177,7 @@ starter templates."
 
 ## Follow-Up
 
-The next high-value task is the legacy compatibility boundary cutover: contain
-preset attachments, starter-template weights, `customSignals`, removed markers,
-strict/advisory metadata, and compatibility fallback projections inside bridge
-ownership without phase-worded production contracts.
+The policy profile regeneration cutover is implemented in [Library Profile
+Regeneration Boundary](library-profile-regeneration-boundary.md). The next
+policy-authoring component work is the Phase 3R.3 UI component inventory and
+target ownership map.

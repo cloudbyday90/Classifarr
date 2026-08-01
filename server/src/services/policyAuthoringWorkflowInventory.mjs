@@ -152,7 +152,6 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
       '/PolicyBuilderLibraryContext.vue',
       '/policyBuilderLibraryGenreOptions.js',
       '/policyBuilderProfileFreshness.js',
-      '/policyBuilderProfileRefreshResult.js',
     ]),
   },
   {

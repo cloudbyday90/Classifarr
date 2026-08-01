@@ -21,6 +21,7 @@ const libraryProfileService = {
 const db = {
     query: jest.fn(),
 };
+const requireReadWrite = jest.fn((req, res, next) => next());
 
 const app = express();
 app.use(express.json());
@@ -28,6 +29,7 @@ app.use('/api/libraries', createLibrariesRouter(createLibrariesRouteTestDeps({
     express,
     db,
     libraryProfileService,
+    requireReadWrite,
 })));
 app.use(errorHandler);
 
@@ -58,7 +60,7 @@ describe('Library Profile API', () => {
             expect(libraryProfileService.getProfile).toHaveBeenCalledWith(1);
         });
 
-        it('should return 404 when profile does not exist (required for frontend auto-generation)', async () => {
+        it('should return 404 when the server-managed lifecycle has not generated a profile', async () => {
             libraryProfileService.getProfile.mockResolvedValue(null);
 
             const res = await request(app)
@@ -66,7 +68,15 @@ describe('Library Profile API', () => {
                 .expect(404);
 
             expect(res.body.error).toBe('Profile not found');
-            expect(res.body.message).toBe('Profile will be generated after library sync and enrichment');
+            expect(res.body.message).toBe('The server-managed profile lifecycle has not generated a profile for this library yet.');
+        });
+
+        it('rejects malformed identifiers without reading another library profile', async () => {
+            await request(app)
+                .get('/api/libraries/1abc/profile')
+                .expect(400);
+
+            expect(libraryProfileService.getProfile).not.toHaveBeenCalled();
         });
     });
 
@@ -88,6 +98,7 @@ describe('Library Profile API', () => {
             expect(res.body.success).toBe(true);
             expect(res.body.profile).toEqual(mockGeneratedProfile);
             expect(libraryProfileService.generateProfile).toHaveBeenCalledWith(1);
+            expect(requireReadWrite).toHaveBeenCalled();
         });
 
         it('should return 400 when library has no items', async () => {
@@ -99,6 +110,14 @@ describe('Library Profile API', () => {
 
             expect(res.body.error).toBe('Cannot generate profile');
         });
+
+        it('rejects malformed identifiers without generating another library profile', async () => {
+            await request(app)
+                .post('/api/libraries/1abc/profile/refresh')
+                .expect(400);
+
+            expect(libraryProfileService.generateProfile).not.toHaveBeenCalled();
+        });
     });
 });
 
@@ -107,7 +126,7 @@ describe('Profile Auto-Generation', () => {
         expect(typeof libraryProfileService.generateProfile).toBe('function');
     });
 
-    it('should have generateProfile method for on-demand generation', async () => {
+    it('should have generateProfile method for explicit administrative regeneration', async () => {
         expect(typeof libraryProfileService.generateProfile).toBe('function');
     });
 });

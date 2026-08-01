@@ -9,27 +9,21 @@ import { buildPolicyBuilderProfileFreshness } from '@/utils/policyBuilderProfile
 const NOW = Date.parse('2026-06-28T12:00:00.000Z')
 
 describe('policyBuilderProfileFreshness', () => {
-  it('reports loading and refreshing as non-refreshable transient states', () => {
+  it('reports loading as a transient display state', () => {
     expect(buildPolicyBuilderProfileFreshness({ loading: true })).toMatchObject({
       status: 'loading',
-      canRefresh: false,
-    })
-    expect(buildPolicyBuilderProfileFreshness({ refreshing: true })).toMatchObject({
-      status: 'refreshing',
-      canRefresh: false,
     })
   })
 
-  it('reports missing and error states as refreshable', () => {
+  it('reports missing and error states without exposing a browser recovery action', () => {
     expect(buildPolicyBuilderProfileFreshness({ now: NOW })).toMatchObject({
       status: 'missing',
       tone: 'warning',
-      canRefresh: true,
+      message: expect.stringContaining('server-managed profile lifecycle'),
     })
     expect(buildPolicyBuilderProfileFreshness({ error: 'Could not load profile.', now: NOW })).toMatchObject({
       status: 'error',
       message: 'Could not load profile.',
-      canRefresh: true,
     })
   })
 
@@ -52,7 +46,7 @@ describe('policyBuilderProfileFreshness', () => {
     })).toMatchObject({
       status: 'stale',
       tone: 'warning',
-      message: 'Last generated 10 days ago. Refresh before using it as policy evidence.',
+      message: 'Last generated 10 days ago. Wait for the server-managed profile lifecycle before using it as policy evidence.',
     })
   })
 })

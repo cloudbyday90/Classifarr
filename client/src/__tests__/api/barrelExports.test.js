@@ -100,7 +100,7 @@ describe('api/index.js barrel export validation', () => {
       expectFunction('getLibraryArrOptions')
       expectFunction('updateLibraryArrSettings')
       expectFunction('getLibraryProfile')
-      expectFunction('refreshLibraryProfile')
+      expectFunction('regenerateLibraryProfile')
     })
   })
 

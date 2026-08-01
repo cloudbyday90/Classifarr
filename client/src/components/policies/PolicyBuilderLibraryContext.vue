@@ -10,7 +10,7 @@
   <section
     class="flex items-center gap-3 p-3 bg-background-light rounded-lg border border-gray-700"
     aria-label="Policy library context"
-    :aria-busy="loading || refreshing"
+    :aria-busy="loading"
   >
     <span
       class="text-2xl"
@@ -25,20 +25,9 @@
       <div class="font-medium">
         {{ libraryName }}
       </div>
-      <div class="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p class="text-xs text-gray-500">
-          Uses the connected media server library as the source of truth.
-        </p>
-        <button
-          v-if="showRefreshAction"
-          type="button"
-          class="rounded border border-gray-600 px-2 py-1 text-xs text-gray-300 hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
-          :disabled="!canRefresh || loading || refreshing"
-          @click="emit('refresh-profile')"
-        >
-          {{ refreshing ? 'Refreshing...' : 'Refresh profile' }}
-        </button>
-      </div>
+      <p class="mt-1 text-xs text-gray-500">
+        Uses the connected media server library as the source of truth.
+      </p>
       <p
         v-if="showFreshness"
         class="mt-2 rounded border px-2 py-1 text-xs"
@@ -54,16 +43,6 @@
         class="mt-1 text-[11px] text-gray-500"
       >
         {{ freshness.updatedAtLabel }}
-      </p>
-      <p
-        v-if="refreshResult"
-        class="mt-2 rounded border px-2 py-1 text-xs"
-        :class="refreshResultClass"
-      >
-        <span class="font-medium">
-          {{ refreshResult.label }}:
-        </span>
-        {{ refreshResult.message }}
       </p>
       <p
         v-if="genreSummary.length"
@@ -106,8 +85,7 @@ const props = defineProps({
       status: 'missing',
       tone: 'warning',
       label: 'No profile yet',
-      message: 'Generate a profile after library sync and enrichment before relying on library-derived intent suggestions.',
-      canRefresh: true,
+      message: 'Wait for the server-managed profile lifecycle before relying on library-derived intent suggestions.',
       updatedAtLabel: '',
     }),
   },
@@ -115,38 +93,17 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
-  refreshing: {
-    type: Boolean,
-    default: false,
-  },
-  canRefresh: {
-    type: Boolean,
-    default: false,
-  },
-  showRefreshAction: {
-    type: Boolean,
-    default: true,
-  },
   showFreshness: {
     type: Boolean,
     default: true,
   },
-  refreshResult: {
-    type: Object,
-    default: null,
-  },
 })
 
 const libraryName = computed(() => props.library?.name || 'Unknown Library')
-const emit = defineEmits({
-  'refresh-profile': () => true,
-})
 
 const freshnessClass = computed(() => {
   return buildToneClass(props.freshness?.tone)
 })
-
-const refreshResultClass = computed(() => buildToneClass(props.refreshResult?.tone))
 
 function buildToneClass(tone) {
   if (tone === 'success') {

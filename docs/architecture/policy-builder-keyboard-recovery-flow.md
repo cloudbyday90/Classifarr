@@ -47,11 +47,10 @@ Official sources reviewed as of June 2026:
 2. Capture the invoking element only when a modal opens and restore it on an
    ordinary close. Support an explicit no-return path for a completed action
    that has moved the operator to a new workflow.
-3. Preserve mapping-navigation focus without creating focus churn:
-   - if the initiating action still exists and is enabled after completion,
-     return focus to it;
-   - if it was removed by the rerender, focus the current workflow result;
-   - if the operator moved focus while work was in flight, do nothing.
+3. Preserve mapping-navigation focus without creating focus churn. The only
+   remaining policy-builder transition is mapping navigation, so a successful
+   route handoff receives focus at its destination and a blocked navigation
+   leaves normal modal focus intact.
 4. Treat the mapping page as the logical next step after a successful mapping
    action. Hand focus to its mapping section, with the library title as a
    fallback, and never serialize that short-lived handoff into a URL or stored
@@ -87,11 +86,6 @@ Official sources reviewed as of June 2026:
 - Generic modal focus management:
   `client/src/composables/useModalFocusManagement.js`
   and `client/src/components/common/Modal.vue`
-- Recovery completion focus guard:
-  `client/src/composables/usePolicyRecoveryFocus.js`
-- Workflow-status fallback target:
-  `client/src/components/policies/PolicyBuilderWorkflowStatusNotice.vue`
-  and `client/src/components/policies/PolicyBuilderWorkflowShell.vue`
 - Policy-builder recovery and mapping orchestration:
   `client/src/components/policies/PolicyBuilderModal.vue`
 - Transient route handoff and library mapping focus target:
@@ -99,7 +93,6 @@ Official sources reviewed as of June 2026:
   and `client/src/views/LibraryDetail.vue`
 - Regression coverage:
   `client/src/__tests__/components/common/Modal.test.js`,
-  `client/src/__tests__/composables/usePolicyRecoveryFocus.test.js`, and
   `client/src/__tests__/utils/routeFocusHandoff.test.js`
 
 ## Implemented Outcome
@@ -114,4 +107,7 @@ when its initiating control disappears.
 When an empty-state mapping action succeeds, the modal suppresses its normal
 focus restoration and sends focus to the library mapping section. The handoff
 is one in-memory record consumed by the destination route; it is not stored,
-included in a query string, or available to runtime policy logic.
+included in a query string, or available to runtime policy logic. The former
+generic recovery-focus helper was retired with browser profile regeneration;
+there is no longer an asynchronous policy-builder recovery action that needs a
+fallback focus target.

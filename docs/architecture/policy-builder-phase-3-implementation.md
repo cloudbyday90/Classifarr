@@ -1122,71 +1122,35 @@ Validation:
 npm --prefix client run test -- policyBuilderLibraryGenreOptions.test.js usePolicyBuilderReferenceData.test.js usePolicyIntentOptionAction.test.js PolicyIntentOptionSelect.test.js PolicyIntentGenreControl.test.js PolicyIntentEditor.test.js PolicyBuilderLibraryContext.test.js policyIntentEditorSections.test.js PolicyBuilderModal.test.js
 ```
 
-## Library Profile Freshness and Refresh UX
+## Historical: Library Profile Freshness and Refresh UX
 
-The next refinement adds freshness handling around the library-derived genre
-suggestions introduced above.
+This intermediate policy-builder refresh design was superseded on July 31,
+2026. It incorrectly treated profile regeneration as a policy-authoring
+recovery action.
 
-### Research Basis
+### Current Outcome
 
-- Vue's official composable guidance keeps reusable async state outside
-  templates, so profile loading, errors, freshness, and refresh state live in
-  `usePolicyBuilderReferenceData()` while rendering stays in the context card:
-  <https://vuejs.org/guide/reusability/composables>
-- Vue's event handling guidance supports focused child events instead of
-  coupling child components to API clients. The context card emits
-  `refresh-profile`; the modal decides which selected library to refresh:
-  <https://vuejs.org/guide/essentials/event-handling.html>
-- MDN documents `aria-busy` as a state for regions being updated. The policy
-  library context marks itself busy while profile data is loading or refreshing:
-  <https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-busy>
-- WAI-ARIA guidance supports non-disruptive status messaging for state changes.
-  The profile freshness message uses `role="status"` instead of a blocking
-  dialog:
-  <https://www.w3.org/WAI/ARIA/apg/practices/names-and-descriptions/>
-- OWASP input-validation guidance still applies: refreshing the profile changes
-  available allow-listed options, but selected genre values continue through the
-  same known-option and duplicate guards before draft commands are emitted:
-  <https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html>
+`policyBuilderProfileFreshness.js` remains a read-only display adapter for
+loading, missing, unavailable, current, unknown-age, and stale observed
+evidence. It no longer exposes refreshing state or a browser recovery command.
+`PolicyBuilderLibraryContext.vue` displays only that evidence context and has
+no profile-mutation event.
 
-### Design
-
-1. Reuse existing profile endpoints:
-   - `GET /libraries/:id/profile` for the current read model,
-   - `POST /libraries/:id/profile/refresh` for explicit operator refresh.
-2. Add `policyBuilderProfileFreshness.js` as a pure browser utility for
-   loading, refreshing, missing, unavailable, current, unknown-age, and stale
-   states.
-3. Treat `404 Profile not found` as an expected missing-profile state, not as a
-   noisy client error.
-4. Use a conservative 7-day stale threshold for operator guidance only. It does
-   not block editing, saving, previewing, or classification.
-5. Display profile freshness and top existing genres in
-   `PolicyBuilderLibraryContext.vue`.
-6. Add a bounded refresh button that is disabled while loading or refreshing and
-   never writes policy drafts.
-7. Keep refresh failures local to the policy-builder context card. They do not
-   invalidate the current policy draft or erase preset-derived fallback genres.
-
-### Outcome
-
-Operators can now tell whether the library-derived genre suggestions are
-missing, current, stale, loading, or refreshing before using them to shape
-policy intent. This reduces the chance that policy identity is built from old or
-empty profile data while preserving the fallback path from starter templates.
+The explicit read-write regeneration command, strict server identifier
+validation, and accessible status feedback now belong to Library Detail. See
+[Library Profile Regeneration Boundary](library-profile-regeneration-boundary.md).
 
 Validation:
 
 ```bash
-npm --prefix client run test -- policyBuilderProfileFreshness.test.js policyBuilderLibraryGenreOptions.test.js usePolicyBuilderReferenceData.test.js PolicyBuilderLibraryContext.test.js PolicyBuilderModal.test.js
+npm --prefix client run test -- policyBuilderProfileFreshness.test.js policyBuilderLibraryGenreOptions.test.js usePolicyBuilderReferenceData.test.js PolicyBuilderLibraryContext.test.js PolicyBuilderModal.test.js LibraryProfile.test.js useLibraryProfileMaintenance.test.js
 ```
 
-## Library Profile Refresh Result Feedback
+## Retired: Policy-Builder Profile Refresh Result Feedback
 
-The next refinement closes the operator feedback loop after a manual profile
-refresh. Freshness tells the operator whether profile data is missing, current,
-or stale. Refresh result feedback tells the operator what the refresh actually
-produced.
+This historical refinement was retired on July 31, 2026. It placed manual
+profile regeneration and its result feedback inside policy authoring, which
+blurred observed evidence with policy-editing authority.
 
 ### Research Basis
 
@@ -1206,35 +1170,19 @@ produced.
   refresh completion because the operator remains in the policy builder:
   <https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html>
 
-### Design
+### Current Outcome
 
-1. Add `policyBuilderProfileRefreshResult.js` as a pure browser utility for
-   summarizing refresh outcomes from the refreshed profile read model.
-2. Track `libraryProfileRefreshResult` beside freshness in
-   `usePolicyBuilderReferenceData()`.
-3. On refresh success, summarize available positive profile buckets for genres,
-   ratings, and keywords.
-4. On refresh success with no usable evidence, show a warning result that tells
-   the operator to sync and enrich the library before relying on
-   library-derived suggestions.
-5. On refresh failure, show a bounded failure result using the server message
-   already surfaced by the existing refresh path.
-6. Render the result in `PolicyBuilderLibraryContext.vue` as a non-blocking
-   `role="status"` region with `aria-live="polite"` and `aria-atomic="true"`.
-7. Keep refresh results local to the policy builder. They do not mutate policy
-   drafts, save payloads, previews, classification scoring, or storage.
+`policyBuilderProfileRefreshResult.js`, its reference-data state, the modal
+command route, and recovery focus helper are deleted. Policy authoring now only
+reads observed evidence and server-managed freshness. Library Detail owns the
+explicit read-write regeneration command, presents scoped accessible result
+feedback, and never regenerates automatically after a `404` read.
 
-### Outcome
-
-After refreshing a library profile, operators now see whether usable profile
-signals exist instead of only seeing the freshness timestamp change. This makes
-the source-of-truth card more actionable: a successful refresh with evidence
-encourages library-derived policy editing, while a successful refresh with no
-evidence explains why the genre controls may still need preset fallback or
-manual input.
+The durable design and verification record is [Library Profile Regeneration
+Boundary](library-profile-regeneration-boundary.md).
 
 Validation:
 
 ```bash
-npm --prefix client run test -- policyBuilderProfileRefreshResult.test.js policyBuilderProfileFreshness.test.js policyBuilderLibraryGenreOptions.test.js usePolicyBuilderReferenceData.test.js PolicyBuilderLibraryContext.test.js PolicyBuilderModal.test.js
+npm --prefix client run test -- LibraryProfile.test.js useLibraryProfileMaintenance.test.js policyBuilderProfileFreshness.test.js policyBuilderLibraryGenreOptions.test.js usePolicyBuilderReferenceData.test.js PolicyBuilderLibraryContext.test.js PolicyBuilderModal.test.js
 ```
