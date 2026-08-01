@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Authoring Hard-Limit Control**: Native policy creation now uses a
+  dedicated, server-projection-validated hard-limit component. It preserves
+  explicit confirmation and the typed local-draft command boundary while
+  separating blocking constraints from advisory controls.
+
 - **Policy Authoring Intent-Signal Chip List**: Declared destination signals in
   native policy creation now use a dedicated, accessible chip-list component.
   It preserves the existing typed remove-command protocol while keeping option

@@ -32,7 +32,7 @@ describe('policyAuthoringComponentInventory', () => {
       checkedTargetImplementationCount: 9,
       issues: [],
       nextTargetImplementation: expect.objectContaining({
-        targetComponentId: POLICY_AUTHORING_COMPONENT_IDS.HARD_LIMIT_CONTROL,
+        targetComponentId: POLICY_AUTHORING_COMPONENT_IDS.AVOID_CONTROL,
         statusId: POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.SPLIT_REQUIRED,
       }),
     }));
@@ -54,6 +54,13 @@ describe('policyAuthoringComponentInventory', () => {
       targetComponentIds: [POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_CHIP_LIST],
     }));
     expect(classifyPolicyAuthoringComponent(
+      'client/src/components/policies/HardLimitControl.vue',
+    )).toEqual(expect.objectContaining({
+      roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.HARD_LIMIT_CONTROL,
+      normalAuthoringAllowed: true,
+      targetComponentIds: [POLICY_AUTHORING_COMPONENT_IDS.HARD_LIMIT_CONTROL],
+    }));
+    expect(classifyPolicyAuthoringComponent(
       'client/src/components/policies/PolicyCompatibilityMaintenanceSurface.vue',
     )).toEqual(expect.objectContaining({
       roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.COMPATIBILITY_MAINTENANCE,
@@ -67,15 +74,20 @@ describe('policyAuthoringComponentInventory', () => {
     }));
   });
 
-  test('records the completed chip-list extraction and remaining constraint split', () => {
+  test('records completed native extractions and the remaining constraint split', () => {
     expect(getPolicyAuthoringTargetImplementation(
       POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_CHIP_LIST,
     )).toEqual(expect.objectContaining({
       statusId: POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.IMPLEMENTED,
       sourcePaths: ['client/src/components/policies/IntentSignalChipList.vue'],
     }));
-    [
+    expect(getPolicyAuthoringTargetImplementation(
       POLICY_AUTHORING_COMPONENT_IDS.HARD_LIMIT_CONTROL,
+    )).toEqual(expect.objectContaining({
+      statusId: POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.IMPLEMENTED,
+      sourcePaths: ['client/src/components/policies/HardLimitControl.vue'],
+    }));
+    [
       POLICY_AUTHORING_COMPONENT_IDS.AVOID_CONTROL,
       POLICY_AUTHORING_COMPONENT_IDS.REVIEW_TRIGGER_CONTROL,
     ].forEach(targetComponentId => {
@@ -137,18 +149,18 @@ describe('policyAuthoringComponentInventory', () => {
     expect(Object.isFrozen(targetImplementations[0].sourcePaths)).toBe(true);
   });
 
-  test('summarizes current ownership and prioritizes the hard-limit control split', () => {
+  test('summarizes current ownership and prioritizes the avoid-control split', () => {
     expect(summarizePolicyAuthoringComponentInventory(policyComponentPaths)).toEqual(
       expect.objectContaining({
         total: policyComponentPaths.length,
         unclassifiedPaths: [],
         implementationStatusCounts: {
-          [POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.IMPLEMENTED]: 5,
-          [POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.SPLIT_REQUIRED]: 3,
+          [POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.IMPLEMENTED]: 6,
+          [POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.SPLIT_REQUIRED]: 2,
           [POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.OPTIONAL_DEFERRED]: 1,
         },
         nextTargetImplementation: expect.objectContaining({
-          targetComponentId: POLICY_AUTHORING_COMPONENT_IDS.HARD_LIMIT_CONTROL,
+          targetComponentId: POLICY_AUTHORING_COMPONENT_IDS.AVOID_CONTROL,
         }),
       }),
     );

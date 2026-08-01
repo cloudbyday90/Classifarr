@@ -233,6 +233,7 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     notes: 'Constraint control presentation consumes the server-owned decision model and eligibility allowlist, then forwards explicit local draft plans. It cannot create policy storage, runtime decisions, routing, learning, provider, quota, or compatibility effects.',
     matches: (filePath) => hasAnySegment(filePath, [
       '/PolicyIntentConstraintControlSurface.vue',
+      '/HardLimitControl.vue',
       '/policyIntentConstraintControlSurface.js',
     ]),
   },
@@ -327,6 +328,7 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     matches: (filePath) => filePath.includes('/components/policies/') &&
       hasAnySegment(filePath, [
         '/DestinationContextCard.vue',
+        '/HardLimitControl.vue',
         '/IntentSignalPicker.vue',
         '/IntentSignalChipList.vue',
         '/ObservedProfileSummary.vue',

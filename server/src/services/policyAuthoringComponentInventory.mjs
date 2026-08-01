@@ -14,6 +14,7 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS = Object.freeze({
   INTENT_SIGNAL_CUSTOM_ENTRY: 'intent_signal_custom_entry',
   DESTINATION_QUESTION_CONTAINER: 'destination_question_container',
   CONSTRAINT_COMPOSITE: 'constraint_composite',
+  HARD_LIMIT_CONTROL: 'hard_limit_control',
   READINESS: 'readiness',
   STATUS: 'status',
   ACTION_ADMISSION: 'action_admission',
@@ -143,17 +144,25 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY = deepFreeze([
     notes: 'Keeps destination-question layout while target controls replace its remaining generic mechanics.',
   },
   {
+    id: 'hard_limit_control',
+    path: 'client/src/components/policies/HardLimitControl.vue',
+    roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.HARD_LIMIT_CONTROL,
+    decisionId: POLICY_AUTHORING_COMPONENT_DECISION_IDS.KEEP_AS_PRIMITIVE,
+    targetComponentIds: [POLICY_AUTHORING_COMPONENT_IDS.HARD_LIMIT_CONTROL],
+    normalAuthoringAllowed: true,
+    notes: 'The target hard-limit control rebuilds the approved display projection, requires explicit confirmation, and emits the established typed local draft plan only.',
+  },
+  {
     id: 'policy_intent_constraint_control_surface',
     path: 'client/src/components/policies/PolicyIntentConstraintControlSurface.vue',
     roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.CONSTRAINT_COMPOSITE,
     decisionId: POLICY_AUTHORING_COMPONENT_DECISION_IDS.REWRITE_AS_TARGET,
     targetComponentIds: [
-      POLICY_AUTHORING_COMPONENT_IDS.HARD_LIMIT_CONTROL,
       POLICY_AUTHORING_COMPONENT_IDS.AVOID_CONTROL,
       POLICY_AUTHORING_COMPONENT_IDS.REVIEW_TRIGGER_CONTROL,
     ],
     normalAuthoringAllowed: true,
-    notes: 'Current native constraint control combines three target controls and must be split without changing the typed draft-command boundary.',
+    notes: 'Coordinates valid projection availability, remaining avoid and review controls, staged-count display, and draft clearing without changing the typed draft-command boundary.',
   },
   {
     id: 'readiness_next_action_card',
@@ -397,9 +406,9 @@ const POLICY_AUTHORING_TARGET_IMPLEMENTATIONS = deepFreeze([
   },
   {
     targetComponentId: POLICY_AUTHORING_COMPONENT_IDS.HARD_LIMIT_CONTROL,
-    statusId: POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.SPLIT_REQUIRED,
-    sourcePaths: ['client/src/components/policies/PolicyIntentConstraintControlSurface.vue'],
-    notes: 'Hard-limit presentation is currently one branch of the combined native constraint surface.',
+    statusId: POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.IMPLEMENTED,
+    sourcePaths: ['client/src/components/policies/HardLimitControl.vue'],
+    notes: 'Implemented as a self-validating hard-limit control with explicit confirmation and typed local-draft plan emission.',
   },
   {
     targetComponentId: POLICY_AUTHORING_COMPONENT_IDS.AVOID_CONTROL,

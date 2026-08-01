@@ -2320,8 +2320,8 @@ Implementation status:
 - The source-backed policy-authoring component inventory lives in
   `server/src/services/policyAuthoringComponentInventory.mjs`. It classifies
   every current policy Vue component, keeps compatibility controls out of the
-  normal path, and distinguishes implemented targets from the remaining chip
-  extraction and constraint-control split. See [Policy Authoring Component
+  normal path, and distinguishes implemented targets from the remaining
+  advisory constraint-control split. See [Policy Authoring Component
   Inventory](policy-authoring-component-inventory.md).
 - The target component vocabulary now includes destination context, observed
   profile, signal picker, chip list, hard-limit, avoid, review-trigger,
@@ -2355,6 +2355,13 @@ Implementation record:
   existing typed remove command plan. `IntentSignalPicker` retains source
   grouping, option selection, and typed add plans. See [Policy Authoring
   Intent-Signal Chip List](policy-authoring-intent-signal-chip-list.md).
+- `HardLimitControl` now owns the maximum-rating selector, explicit
+  confirmation, disabled reason, staged-value display, and typed local
+  hard-limit plan emission. It rebuilds the approved control from the existing
+  server-owned decision and eligibility projections; the composite surface
+  retains availability, status, draft clearing, and the remaining advisory
+  controls. See [Policy Authoring Hard-Limit
+  Control](policy-authoring-hard-limit-control.md).
 - The workflow read now publishes a versioned server-owned intent-signal option
   projection. It composes bounded observed evidence, observed-profile options,
   optional matching starter-template suggestions, future common/custom sources,
@@ -2416,6 +2423,15 @@ route media, evaluate runtime behavior, create learning, call providers, or
 read quota. Admission is explicitly not a reusable storage credential: a
 future writer must repeat it within its own transaction. See [Policy Constraint
 Write Admission](policy-constraint-write-admission.md).
+
+**3R.5 Task 3R.5.6, Hard-Limit Control Extraction** is complete. The native
+maximum-rating UI is now an isolated `HardLimitControl` component. It accepts
+only the existing validated server projections, requires explicit confirmation,
+and emits only the established typed local `set_hard_limit` command plan.
+Invalid projections expose no hard-limit control; this adds no policy write,
+routing, runtime-decision, learning, provider, quota, or compatibility authority.
+See [Policy Authoring Hard-Limit
+Control](policy-authoring-hard-limit-control.md).
 
 ### 3R.4 Evidence-Backed Option Selection
 

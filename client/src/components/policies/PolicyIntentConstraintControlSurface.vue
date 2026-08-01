@@ -42,6 +42,13 @@
       </p>
 
       <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <HardLimitControl
+          :constraint-decision-model="constraintDecisionModel"
+          :constraint-value-eligibility="constraintValueEligibility"
+          :constraint-draft-commands="constraintDraftCommands"
+          status-id="policy-intent-constraint-controls-status"
+          @draft-command-plan="emit('draft-command-plan', $event)"
+        />
         <fieldset
           v-for="control in primaryControls"
           :key="control.controlId"
@@ -226,6 +233,7 @@
 
 <script setup>
 import { computed, reactive } from 'vue'
+import HardLimitControl from './HardLimitControl.vue'
 import { buildPolicyIntentConstraintCommandPlan } from '@/utils/policyIntentConstraintDraft'
 import { buildPolicyIntentConstraintControlSurface } from '@/utils/policyIntentConstraintControlSurface'
 
@@ -259,7 +267,7 @@ const surface = computed(() => buildPolicyIntentConstraintControlSurface({
 }))
 
 const primaryControls = computed(() => surface.value.controls.filter(control => (
-  control.controlId !== 'review_warning'
+  control.controlId !== 'hard_limit' && control.controlId !== 'review_warning'
 )))
 const reviewControls = computed(() => surface.value.controls.filter(control => (
   control.controlId === 'review_warning'
