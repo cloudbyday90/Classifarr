@@ -140,12 +140,17 @@ Reconciliation](policy-compatibility-retirement-manifest-reconciliation.md).
 
 **Phase 3R, Task 3R.10.7: Compatibility Retirement Execution-Manifest
 Binding** is complete. It maps the eleven dependency records to ten exact
-execution targets and fails closed because the current execution manifest has
-no named-scope action for shared test files. See [Policy Compatibility
+execution targets and initially fails closed because the file-only execution
+manifest had no named-scope action for shared test files. See [Policy Compatibility
 Retirement Execution-Manifest
 Binding](policy-compatibility-retirement-execution-manifest-binding.md).
 
-Proceed to **Phase 3R, Task 3R.10.8: Compatibility Execution-Manifest
-Named-Scope Entry Model**. Add a fingerprinted, read-only named-scope entry to
-the existing manifest model before it can represent shared-test assertion
-retirements. Do not delete a component or alter storage in that task.
+**Phase 3R, Task 3R.10.8: Compatibility Execution-Manifest Named-Scope Entry
+Model** is complete. The plan and artifact carry fingerprint-bound exact source
+and test-name fragments while explicitly prohibiting whole-file deletion. See
+[Policy Compatibility Execution-Manifest Named-Scope Entry
+Model](policy-compatibility-execution-manifest-named-scope-entry-model.md).
+
+Proceed to **Phase 3R, Task 3R.10.9: Compatibility Retirement Candidate Plan
+Projection**. Derive a read-only candidate plan input from the reconciled
+dependencies without writing a manifest, removing source, or changing storage.

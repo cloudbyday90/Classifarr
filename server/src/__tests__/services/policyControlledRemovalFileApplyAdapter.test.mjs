@@ -94,6 +94,33 @@ describe('policyControlledRemovalFileApplyAdapter', () => {
     expect(fs.existsSync(targetPath)).toBe(false);
   });
 
+  test('does not delete a file for a named test-scope action even when apply is enabled', async () => {
+    const relativePath = 'compatibility/retained-test.mjs';
+    const targetPath = path.join(fixtureRoot, relativePath);
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    fs.writeFileSync(targetPath, 'retained test file\n');
+    const adapter = createPolicyControlledRemovalFileApplyAdapter({
+      applyFiles: true,
+      repoRoot: fixtureRoot,
+    });
+
+    const result = await adapter.applyEntry({
+      path: relativePath,
+      actionId:
+        POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.REMOVE_NAMED_TEST_SCOPE,
+      sourceTextFragments: ['legacy migration assertion'],
+      testNameFragments: ['keeps the retained test file'],
+      wholeFileDeletion: false,
+    });
+
+    expect(result).toEqual(expect.objectContaining({
+      applied: false,
+      operationId: null,
+      sideEffects: expect.objectContaining({ filesDeleted: false }),
+    }));
+    expect(fs.existsSync(targetPath)).toBe(true);
+  });
+
   test('rejects traversal and absolute paths before filesystem access', () => {
     expect(() => resolvePolicyControlledRemovalRepoRelativePath({
       repoPath: '../outside.mjs',

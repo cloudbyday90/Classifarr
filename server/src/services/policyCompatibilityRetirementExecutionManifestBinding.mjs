@@ -47,6 +47,7 @@ const POLICY_COMPATIBILITY_RETIREMENT_EXECUTION_MANIFEST_BINDING_RISK_IDS = Obje
   TARGET_DEPENDENCY_MISSING: 'target_dependency_missing',
   EXECUTION_TARGET_MISSING_FROM_MANIFEST: 'execution_target_missing_from_manifest',
   NAMED_SCOPE_ACTION_UNSUPPORTED: 'named_scope_action_unsupported',
+  ISSUE_COUNT_MISMATCH: 'issue_count_mismatch',
   SIDE_EFFECT_PERFORMED: 'side_effect_performed',
   BINDING_AUTHORIZES_DELETION: 'binding_authorizes_deletion',
 });
@@ -64,7 +65,7 @@ function cleanString(value) {
 }
 
 function uniqueStrings(values) {
-  return [...new Set(asArray(values).map(cleanString).filter(Boolean))];
+  return [...new Set(asArray(values).map(cleanString).filter(Boolean))].sort();
 }
 
 function sameStringList(left, right) {
@@ -252,6 +253,9 @@ function findManifestEntry(target, manifestEntries) {
       .NAMED_TEST_SCOPE || sameStringList(
       entry.testNameFragments,
       target.testNameFragments,
+    ) && sameStringList(
+      entry.sourceTextFragments,
+      target.sourceTextFragments,
     ))
   )) || null;
 }
@@ -410,7 +414,7 @@ function validatePolicyCompatibilityRetirementExecutionManifestBinding(binding =
   if (binding.issueCount !== asArray(binding.issues).length) {
     issues.push({
       riskId: POLICY_COMPATIBILITY_RETIREMENT_EXECUTION_MANIFEST_BINDING_RISK_IDS
-        .EXECUTION_TARGET_MISSING_FROM_MANIFEST,
+        .ISSUE_COUNT_MISMATCH,
       message: 'Execution-manifest binding issue count must match its issue list.',
     });
   }

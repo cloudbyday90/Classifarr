@@ -197,6 +197,22 @@ function readyExecutionPlan(overrides = {}) {
   });
 }
 
+function namedTestScopeEntry(overrides = {}) {
+  return {
+    actionId: POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.REMOVE_NAMED_TEST_SCOPE,
+    categoryId: POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.STALE_COMPATIBILITY_TESTS,
+    path: 'client/src/__tests__/PolicyCompatibilityMaintenanceSurface.test.js',
+    sourceTextFragments: [
+      "import PolicyPresetMigrationNotice from '../components/policies/PolicyPresetMigrationNotice.vue';",
+    ],
+    testNameFragments: [
+      'renders the preset migration notice',
+    ],
+    wholeFileDeletion: false,
+    ...overrides,
+  };
+}
+
 describe('policyCompatibilityDeletionExecutionPlan', () => {
   test('builds an approved side-effect-free execution manifest from deletion categories', () => {
     const plan = readyExecutionPlan();
@@ -271,6 +287,40 @@ describe('policyCompatibilityDeletionExecutionPlan', () => {
       POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.MISSING_REPLACEMENT_EVIDENCE
     );
     expect(plan.manifest.entries.some(entry => entry.ready === false)).toBe(true);
+  });
+
+  test('adds a fingerprintable exact named test scope without authorizing file deletion', () => {
+    const plan = readyExecutionPlan({
+      namedTestScopeEntries: [namedTestScopeEntry()],
+    });
+    const entry = plan.manifest.entries.find(candidate => candidate.actionId ===
+      POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.REMOVE_NAMED_TEST_SCOPE);
+
+    expect(plan.statusId)
+      .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS.READY_FOR_EXECUTION_GATE);
+    expect(entry).toEqual(expect.objectContaining({
+      kindId: 'named_test_scope',
+      wholeFileDeletion: false,
+      ready: true,
+      sourceTextFragments: namedTestScopeEntry().sourceTextFragments,
+      testNameFragments: namedTestScopeEntry().testNameFragments,
+    }));
+    expect(Object.values(plan.sideEffects).some(Boolean)).toBe(false);
+  });
+
+  test('blocks execution planning when a named test scope is not exact', () => {
+    const plan = readyExecutionPlan({
+      namedTestScopeEntries: [namedTestScopeEntry({ testNameFragments: [] })],
+    });
+
+    expect(plan.statusId)
+      .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS
+        .BLOCKED_BY_MANIFEST_EVIDENCE);
+    expect(plan.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.INVALID_NAMED_TEST_SCOPE,
+      }),
+    ]));
   });
 
   test('blocks execution planning without rollback stance, support stance, or manifest approval', () => {

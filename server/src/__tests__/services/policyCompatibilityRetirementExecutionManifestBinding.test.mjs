@@ -21,6 +21,7 @@ import {
   POLICY_COMPATIBILITY_RETIREMENT_EXECUTION_MANIFEST_BINDING_RISK_IDS,
   POLICY_COMPATIBILITY_RETIREMENT_EXECUTION_MANIFEST_BINDING_STATUS_IDS,
   buildPolicyCompatibilityRetirementExecutionManifestBinding,
+  validatePolicyCompatibilityRetirementExecutionManifestBinding,
 } from '../../services/policyCompatibilityRetirementExecutionManifestBinding.mjs';
 import {
   POLICY_COMPATIBILITY_RETIREMENT_EXECUTION_ACTION_IDS,
@@ -116,7 +117,7 @@ describe('policyCompatibilityRetirementExecutionManifestBinding', () => {
       }));
   });
 
-  test('blocks the current file-oriented execution plan until it can represent exact scope actions', async () => {
+  test('blocks an incomplete execution plan while preserving its no-side-effect boundary', async () => {
     const reconciliation = await buildSourceBackedReconciliation();
     const binding = buildPolicyCompatibilityRetirementExecutionManifestBinding({
       reconciliation,
@@ -134,9 +135,26 @@ describe('policyCompatibilityRetirementExecutionManifestBinding', () => {
     expect(binding.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
       POLICY_COMPATIBILITY_RETIREMENT_EXECUTION_MANIFEST_BINDING_RISK_IDS
         .EXECUTION_TARGET_MISSING_FROM_MANIFEST,
-      POLICY_COMPATIBILITY_RETIREMENT_EXECUTION_MANIFEST_BINDING_RISK_IDS
-        .NAMED_SCOPE_ACTION_UNSUPPORTED,
     ]));
+    expect(Object.values(binding.sideEffects).some(Boolean)).toBe(false);
+  });
+
+  test('binds an exact complete manifest without authorizing deletion', async () => {
+    const reconciliation = await buildSourceBackedReconciliation();
+    const targets = buildPolicyCompatibilityRetirementExecutionManifestTargets(
+      reconciliation.entries,
+    );
+    const binding = buildPolicyCompatibilityRetirementExecutionManifestBinding({
+      reconciliation,
+      executionPlan: readyPlan(targets),
+    });
+
+    expect(binding.statusId)
+      .toBe(POLICY_COMPATIBILITY_RETIREMENT_EXECUTION_MANIFEST_BINDING_STATUS_IDS
+        .BINDING_READY);
+    expect(binding.bindingReady).toBe(true);
+    expect(binding.deletionAuthorized).toBe(false);
+    expect(binding.coverage.every(record => record.covered)).toBe(true);
     expect(Object.values(binding.sideEffects).some(Boolean)).toBe(false);
   });
 
@@ -157,6 +175,23 @@ describe('policyCompatibilityRetirementExecutionManifestBinding', () => {
         .RECONCILIATION_MISSING,
       POLICY_COMPATIBILITY_RETIREMENT_EXECUTION_MANIFEST_BINDING_RISK_IDS
         .SIDE_EFFECT_PERFORMED,
+    ]));
+  });
+
+  test('reports a binding issue-count invariant separately from manifest coverage', () => {
+    const validation = validatePolicyCompatibilityRetirementExecutionManifestBinding({
+      deletionAuthorized: false,
+      issueCount: 1,
+      issues: [],
+      sideEffects: {},
+    });
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_COMPATIBILITY_RETIREMENT_EXECUTION_MANIFEST_BINDING_RISK_IDS
+          .ISSUE_COUNT_MISMATCH,
+      }),
     ]));
   });
 });

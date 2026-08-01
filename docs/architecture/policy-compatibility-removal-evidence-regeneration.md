@@ -96,7 +96,7 @@ Cons:
 ## Final Recommendation Stack
 
 1. Require the ready, fingerprint-valid execution-plan artifact that carries
-   the current `policy.compatibility_deletion_execution_plan.v1` contract;
+   the current `policy.compatibility_deletion_execution_plan.v2` contract;
    reject raw nested plan JSON at the public and service boundaries.
 2. Require the fingerprint-valid next-batch authorization artifact and the
    exact applied removal-review fingerprint bound to its runtime evidence.

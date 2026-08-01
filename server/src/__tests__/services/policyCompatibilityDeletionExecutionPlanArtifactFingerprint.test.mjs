@@ -16,7 +16,7 @@ import {
 
 function executionPlanArtifact({ manifestEntries = [] } = {}) {
   return {
-    version: 'policy.compatibility_deletion_execution_plan_artifact.v2',
+    version: 'policy.compatibility_deletion_execution_plan_artifact.v3',
     generatedAt: '2026-07-14T20:00:00.000Z',
     statusId: 'ready',
     ready: true,
@@ -35,7 +35,7 @@ function executionPlanArtifact({ manifestEntries = [] } = {}) {
       validationOk: true,
     },
     executionPlan: {
-      version: 'policy.compatibility_deletion_execution_plan.v1',
+      version: 'policy.compatibility_deletion_execution_plan.v2',
       statusId: 'ready_for_execution_gate',
       readyForExecutionGate: true,
       riskCount: 0,
@@ -89,6 +89,48 @@ describe('policyCompatibilityDeletionExecutionPlanArtifactFingerprint', () => {
               path: 'server/src/services/unapproved.mjs',
             },
           ],
+        },
+      },
+    };
+
+    const validation = validatePolicyCompatibilityDeletionExecutionPlanArtifactFingerprint({
+      artifact: mutatedArtifact,
+      artifactFingerprint,
+    });
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_FINGERPRINT_RISK_IDS
+          .FINGERPRINT_MISMATCH,
+      }),
+    ]));
+  });
+
+  test('rejects a fingerprint after an exact named test scope changes', () => {
+    const artifact = executionPlanArtifact({
+      manifestEntries: [{
+        kindId: 'named_test_scope',
+        actionId: 'remove_named_test_scope',
+        categoryId: 'stale_compatibility_tests',
+        path: 'client/src/__tests__/PolicyCompatibilityMaintenanceSurface.test.js',
+        sourceTextFragments: ['legacy migration assertion'],
+        testNameFragments: ['renders migration notice'],
+        wholeFileDeletion: false,
+      }],
+    });
+    const artifactFingerprint =
+      buildPolicyCompatibilityDeletionExecutionPlanArtifactFingerprint({ artifact });
+    const mutatedArtifact = {
+      ...artifact,
+      executionPlan: {
+        ...artifact.executionPlan,
+        manifest: {
+          ...artifact.executionPlan.manifest,
+          entries: [{
+            ...artifact.executionPlan.manifest.entries[0],
+            sourceTextFragments: ['different assertion'],
+          }],
         },
       },
     };

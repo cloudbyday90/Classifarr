@@ -2771,16 +2771,24 @@ Implementation status:
   The eleven reconciled dependencies now reduce to ten exact execution targets:
   one retained runtime code-path edit, three compatibility component deletions,
   two dedicated compatibility-test deletions, and four named shared-test scope
-  removals. The binding is read-only and blocks the current file-only execution
-  manifest because it cannot safely express the four named-scope actions. See
+  removals. The binding is read-only and initially blocked the file-only
+  execution manifest because it could not safely express the four named-scope
+  actions. See
   [Policy Compatibility Retirement Execution-Manifest
   Binding](policy-compatibility-retirement-execution-manifest-binding.md).
 
-Next component task: **3R.10.8 Compatibility Execution-Manifest Named-Scope
-Entry Model**. Extend the existing execution-manifest artifact and fingerprint
-model to represent an exact named test scope without admitting whole-file
-deletion. Keep the new model read-only; do not delete a component or alter
-storage in this task.
+- **3R.10.8 Compatibility Execution-Manifest Named-Scope Entry Model** is
+  complete. The execution plan v2 and artifact v3 now represent exact shared
+  test scopes with canonical paths, source and test-name fragments, and an
+  explicit no-whole-file-deletion boundary. The fingerprint binds every scope
+  field, while the existing file-removal adapter rejects the new action. See
+  [Policy Compatibility Execution-Manifest Named-Scope Entry
+  Model](policy-compatibility-execution-manifest-named-scope-entry-model.md).
+
+Next component task: **3R.10.9 Compatibility Retirement Candidate Plan
+Projection**. Derive a read-only candidate plan input from the source-backed
+reconciliation targets, including exact named-scope entries and their native
+successor evidence. Do not write a manifest, remove source, or change storage.
 
 ### 3R.8 Accessibility And Decision Load
 

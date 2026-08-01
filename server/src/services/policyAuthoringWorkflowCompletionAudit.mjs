@@ -179,6 +179,14 @@ const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
     testPath: 'server/src/__tests__/services/policyCompatibilityRetirementExecutionManifestBinding.test.mjs',
     evidence: 'Maps every reconciled dependency to exact file or named-test-scope execution targets and blocks the existing file-only manifest model before it can misrepresent shared native test ownership.',
   },
+  {
+    id: 'policy_compatibility_execution_manifest_named_scope_entry',
+    label: 'Policy compatibility execution-manifest named-scope entry',
+    docPath: 'docs/architecture/policy-compatibility-execution-manifest-named-scope-entry-model.md',
+    servicePath: 'server/src/services/policyCompatibilityDeletionExecutionManifestEntry.mjs',
+    testPath: 'server/src/__tests__/services/policyCompatibilityDeletionExecutionManifestEntry.test.mjs',
+    evidence: 'Defines a fingerprint-bound exact named-test-scope manifest entry that requires source and test-name fragments, explicitly prohibits whole-file deletion, and remains unavailable to the file-removal adapter.',
+  },
 ]);
 
 const POLICY_AUTHORING_CLIENT_WORKFLOW_COMPONENTS = Object.freeze([

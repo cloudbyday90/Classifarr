@@ -19,7 +19,7 @@
 import { createHash } from 'node:crypto';
 
 const POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_FINGERPRINT_VERSION =
-  'policy.compatibility_deletion_execution_plan_artifact_fingerprint.v1';
+  'policy.compatibility_deletion_execution_plan_artifact_fingerprint.v2';
 
 const POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_FINGERPRINT_RISK_IDS =
   Object.freeze({
@@ -67,13 +67,28 @@ function normalizeManifestEntries(entries = []) {
       return {
         actionId: value.actionId || null,
         categoryId: value.categoryId || null,
+        componentPath: value.componentPath || null,
         deletionIntent: value.deletionIntent || null,
+        kindId: value.kindId || null,
         path: value.path || null,
         ready: value.ready === true,
         replacementEvidence: value.replacementEvidence ?? null,
+        sourceTextFragments: asArray(value.sourceTextFragments)
+          .map(fragment => String(fragment || '').trim())
+          .filter(Boolean)
+          .sort(),
+        testNameFragments: asArray(value.testNameFragments)
+          .map(fragment => String(fragment || '').trim())
+          .filter(Boolean)
+          .sort(),
+        wholeFileDeletion: value.wholeFileDeletion === true
+          ? true
+          : value.wholeFileDeletion === false
+            ? false
+            : null,
       };
     })
-    .sort((left, right) => ['path', 'categoryId', 'actionId'].reduce((result, fieldName) => {
+    .sort((left, right) => ['path', 'categoryId', 'actionId', 'kindId'].reduce((result, fieldName) => {
       if (result !== 0) return result;
       return String(left[fieldName] || '').localeCompare(String(right[fieldName] || ''));
     }, 0));

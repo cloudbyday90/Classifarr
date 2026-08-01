@@ -9,21 +9,22 @@ import {
   POLICY_COMPATIBILITY_DELETION_CURRENT_INVENTORY_STATUS_IDS,
   POLICY_COMPATIBILITY_DELETION_CURRENT_INVENTORY_VERSION,
 } from './policyCompatibilityDeletionCurrentInventory.mjs';
+import {
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS,
+} from './policyCompatibilityDeletionExecutionActions.mjs';
+import {
+  normalizePolicyCompatibilityDeletionExecutionManifestEntry,
+  validatePolicyCompatibilityDeletionExecutionManifestEntry,
+} from './policyCompatibilityDeletionExecutionManifestEntry.mjs';
 
 const POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_VERSION =
-  'policy.compatibility_deletion_execution_plan.v1';
+  'policy.compatibility_deletion_execution_plan.v2';
 
 const POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS = Object.freeze({
   READY_FOR_EXECUTION_GATE: 'ready_for_execution_gate',
   BLOCKED_BY_READINESS: 'blocked_by_readiness',
   BLOCKED_BY_MANIFEST_EVIDENCE: 'blocked_by_manifest_evidence',
   BLOCKED_BY_APPROVAL: 'blocked_by_approval',
-});
-
-const POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS = Object.freeze({
-  DELETE_FILE: 'delete_file',
-  REPLACE_CODE_PATH: 'replace_code_path',
-  REMOVE_TEST: 'remove_test',
 });
 
 const POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS = Object.freeze({
@@ -33,6 +34,7 @@ const POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS = Object.freeze({
   MISSING_DELETION_CATEGORY: 'missing_deletion_category',
   MISSING_MANIFEST_ENTRY_PATH: 'missing_manifest_entry_path',
   MISSING_REPLACEMENT_EVIDENCE: 'missing_replacement_evidence',
+  INVALID_NAMED_TEST_SCOPE: 'invalid_named_test_scope',
   MISSING_ROLLBACK_STANCE: 'missing_rollback_stance',
   MISSING_SUPPORT_STANCE: 'missing_support_stance',
   MANIFEST_NOT_APPROVED: 'manifest_not_approved',
@@ -79,9 +81,36 @@ function getEvidenceForPath({ path, categoryId, replacementEvidence = {} }) {
   return evidence[path] || evidence[normalizePath(path)] || evidence[categoryId] || null;
 }
 
-function buildManifestEntries({ deletionGatePlan = {}, replacementEvidence = {} } = {}) {
+function buildNamedTestScopeManifestEntries({
+  namedTestScopeEntries = [],
+  replacementEvidence = {},
+} = {}) {
+  return asArray(namedTestScopeEntries).map(entry => {
+    const normalizedEntry = normalizePolicyCompatibilityDeletionExecutionManifestEntry(entry);
+    const entryValidation = validatePolicyCompatibilityDeletionExecutionManifestEntry(
+      normalizedEntry,
+    );
+    const evidence = normalizedEntry.replacementEvidence || getEvidenceForPath({
+      path: normalizedEntry.path,
+      categoryId: normalizedEntry.categoryId,
+      replacementEvidence,
+    });
+
+    return {
+      ...normalizedEntry,
+      replacementEvidence: evidence,
+      ready: entryValidation.ok && Boolean(evidence),
+    };
+  });
+}
+
+function buildManifestEntries({
+  deletionGatePlan = {},
+  replacementEvidence = {},
+  namedTestScopeEntries = [],
+} = {}) {
   const gatePlan = asObject(deletionGatePlan);
-  return asArray(gatePlan.categories)
+  const fileEntries = asArray(gatePlan.categories)
     .flatMap(category => asArray(category.paths).map(path => {
       const normalizedPath = normalizePath(path);
       const evidence = getEvidenceForPath({
@@ -101,6 +130,14 @@ function buildManifestEntries({ deletionGatePlan = {}, replacementEvidence = {} 
         ready: Boolean(normalizedPath) && Boolean(evidence),
       };
     }));
+
+  return [
+    ...fileEntries,
+    ...buildNamedTestScopeManifestEntries({
+      namedTestScopeEntries,
+      replacementEvidence,
+    }),
+  ];
 }
 
 function evaluateReadiness(deletionReadiness) {
@@ -163,6 +200,22 @@ function evaluateManifestEntries(entries = []) {
   }
 
   entries.forEach(entry => {
+    const entryValidation = validatePolicyCompatibilityDeletionExecutionManifestEntry(entry);
+
+    if (!entryValidation.ok) {
+      entryValidation.issues.forEach(issue => {
+        risks.push(buildRisk(
+          POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.INVALID_NAMED_TEST_SCOPE,
+          'Named test-scope manifest entries must be exact and must prohibit whole-file deletion.',
+          {
+            categoryId: entry.categoryId,
+            path: entry.path,
+            entryRiskId: issue.riskId,
+          }
+        ));
+      });
+    }
+
     if (!entry.path) {
       risks.push(buildRisk(
         POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.MISSING_MANIFEST_ENTRY_PATH,
@@ -229,6 +282,7 @@ function determineStatusId(risks = []) {
     POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.MISSING_DELETION_CATEGORY,
     POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.MISSING_MANIFEST_ENTRY_PATH,
     POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.MISSING_REPLACEMENT_EVIDENCE,
+    POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.INVALID_NAMED_TEST_SCOPE,
   ].includes(risk.riskId))) {
     return POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS
       .BLOCKED_BY_MANIFEST_EVIDENCE;
@@ -249,6 +303,7 @@ function buildPolicyCompatibilityDeletionExecutionPlan({
   deletionReadiness = null,
   deletionGatePlan = null,
   replacementEvidence = {},
+  namedTestScopeEntries = [],
   rollbackStance = null,
   supportStance = null,
   manifestApproved = false,
@@ -258,6 +313,7 @@ function buildPolicyCompatibilityDeletionExecutionPlan({
   const manifestEntries = buildManifestEntries({
     deletionGatePlan,
     replacementEvidence,
+    namedTestScopeEntries,
   });
   const risks = [
     ...readiness.risks,
@@ -342,6 +398,23 @@ function validatePolicyCompatibilityDeletionExecutionPlan(plan = {}) {
       'Compatibility path deletion execution plan risk count must match risk list length.'
     ));
   }
+
+  asArray(plan.manifest?.entries).forEach(entry => {
+    const entryValidation = validatePolicyCompatibilityDeletionExecutionManifestEntry(entry);
+
+    if (!entryValidation.ok) {
+      entryValidation.issues.forEach(issue => {
+        issues.push(buildRisk(
+          POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.INVALID_NAMED_TEST_SCOPE,
+          'Compatibility deletion execution plans must retain exact, non-file-deleting named test scopes.',
+          {
+            path: entry.path || null,
+            entryRiskId: issue.riskId,
+          }
+        ));
+      });
+    }
+  });
 
   Object.entries(plan.sideEffects || {}).forEach(([key, value]) => {
     if (value === true) {

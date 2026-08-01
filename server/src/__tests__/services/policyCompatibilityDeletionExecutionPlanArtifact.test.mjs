@@ -39,6 +39,21 @@ const MANIFEST_PATH =
 
 const COLLECTION_TIME = '2026-07-14T20:00:00.000Z';
 
+const NAMED_SCOPE_ENTRY = {
+  actionId: 'remove_named_test_scope',
+  categoryId: POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.STALE_COMPATIBILITY_TESTS,
+  path: 'client/src/__tests__/PolicyCompatibilityMaintenanceSurface.test.js',
+  sourceTextFragments: [
+    "import PolicyPresetMigrationNotice from '../components/policies/PolicyPresetMigrationNotice.vue';",
+  ],
+  testNameFragments: ['renders the preset migration notice'],
+  replacementEvidence: {
+    replacement: 'Native policy intent controls replace the removed compatibility assertion.',
+    tests: ['PolicyCompatibilityMaintenanceSurface.test.js'],
+  },
+  wholeFileDeletion: false,
+};
+
 function readyBackupRestoreEvidence() {
   return buildPolicyBackupRestoreVerificationEvidence({
     generatedAt: COLLECTION_TIME,
@@ -220,6 +235,24 @@ describe('policyCompatibilityDeletionExecutionPlanArtifact', () => {
       POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_RISK_IDS.SIDE_EFFECT_REPORTED,
     ]));
     expect(artifact.validation.ok).toBe(false);
+  });
+
+  test('preserves an exact named test scope in the fingerprint-valid artifact', () => {
+    const artifact = buildPolicyCompatibilityDeletionExecutionPlanArtifact({
+      input: readyInput({ namedTestScopeEntries: [NAMED_SCOPE_ENTRY] }),
+      generatedAt: '2026-08-01T00:00:00.000Z',
+    });
+    const entry = artifact.executionPlan.manifest.entries.find(candidate => candidate.actionId ===
+      NAMED_SCOPE_ENTRY.actionId);
+
+    expect(artifact.statusId)
+      .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_STATUS_IDS.READY);
+    expect(entry).toEqual(expect.objectContaining({
+      wholeFileDeletion: false,
+      sourceTextFragments: NAMED_SCOPE_ENTRY.sourceTextFragments,
+      testNameFragments: NAMED_SCOPE_ENTRY.testNameFragments,
+    }));
+    expect(artifact.validation.ok).toBe(true);
   });
 
   test('validates artifact invariants', () => {

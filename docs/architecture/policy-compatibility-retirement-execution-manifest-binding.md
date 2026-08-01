@@ -114,8 +114,12 @@ Adopted.
 
 ## Next Step
 
-Proceed to **Phase 3R, Task 3R.10.8: Compatibility Execution-Manifest
-Named-Scope Entry Model**. Extend the existing execution manifest and its
-fingerprint contract to represent an exact named test scope with its source
-path and test-name fragments. Keep that task read-only; do not remove files or
-change storage.
+**Phase 3R, Task 3R.10.8: Compatibility Execution-Manifest Named-Scope Entry
+Model** is complete. The plan and artifact now bind exact source and test-name
+fragments and prohibit whole-file deletion; the file-removal adapter still
+rejects the new action. See [Policy Compatibility Execution-Manifest Named-Scope
+Entry Model](policy-compatibility-execution-manifest-named-scope-entry-model.md).
+
+Proceed to **Phase 3R, Task 3R.10.9: Compatibility Retirement Candidate Plan
+Projection**. Project the source-backed reconciliation into a read-only plan
+candidate without writing a manifest, changing storage, or removing source.

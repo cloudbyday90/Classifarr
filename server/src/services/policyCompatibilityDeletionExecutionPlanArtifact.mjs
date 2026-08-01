@@ -13,7 +13,7 @@ import {
 } from './policyCompatibilityDeletionExecutionPlanArtifactFingerprint.mjs';
 
 const POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_VERSION =
-  'policy.compatibility_deletion_execution_plan_artifact.v2';
+  'policy.compatibility_deletion_execution_plan_artifact.v3';
 
 const POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_STATUS_IDS = Object.freeze({
   READY: 'ready',
@@ -61,6 +61,7 @@ function buildPlanFromInput(input = {}) {
       deletionReadiness: evidenceBundle.deletionReadiness,
       deletionGatePlan: evidenceBundle.deletionGatePlan,
       replacementEvidence: evidence.replacementEvidence,
+      namedTestScopeEntries: evidence.namedTestScopeEntries,
       rollbackStance: evidence.rollbackStance,
       supportStance: evidence.supportStance,
       manifestApproved: evidence.manifestApproved,

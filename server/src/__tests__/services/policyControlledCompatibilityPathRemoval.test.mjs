@@ -245,7 +245,7 @@ describe('policyControlledCompatibilityPathRemoval', () => {
       fingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
     }));
     expect(removal.executionPlanArtifact).toEqual(expect.objectContaining({
-      version: 'policy.compatibility_deletion_execution_plan_artifact.v2',
+      version: 'policy.compatibility_deletion_execution_plan_artifact.v3',
       statusId: 'ready',
       validationOk: true,
       ready: true,

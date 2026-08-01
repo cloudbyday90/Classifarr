@@ -179,14 +179,14 @@ Implemented:
 - Added the root runner
   `npm run policy:compatibility-deletion-execution-plan-artifact`.
 - Replaced the phase-coded payload version with
-  `policy.compatibility_deletion_execution_plan_artifact.v2` and a deterministic
+  `policy.compatibility_deletion_execution_plan_artifact.v3` and a deterministic
   SHA-256 artifact fingerprint that binds the current plan and evidence
-  summary.
+  summary, including exact named test-scope fields when present.
 - Updated storage-closure validation and requirement-audit evidence references
   to require the durable execution-plan artifact contract.
 - Preserved explicit input requirements, blocked-plan diagnostics,
   side-effect rejection, nested-plan writing, and optional wrapper-artifact
-  writing. The v2 wrapper is required by the execution gate, controlled batch
+  writing. The v3 wrapper is required by the execution gate, controlled batch
   artifact, and storage-closure final-removal audit; raw execution-plan JSON
   remains available for earlier read-only diagnostic tooling only.
 - Added a process-level generator suite at

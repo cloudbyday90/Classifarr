@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Compatibility Execution-Manifest Named Scopes**: Added fingerprint-bound,
+  exact named test-scope entries with canonical paths, source and test-name
+  fragments, and an explicit no-whole-file-deletion boundary. The plan and
+  artifact contracts are versioned forward, while the existing file-removal
+  adapter rejects the new action and no source, manifest, or storage mutation
+  occurs.
+
 - **Compatibility Execution-Manifest Binding**: Added a source-backed,
   read-only binding from compatibility retirement records to exact code,
   component, dedicated-test, and named shared-test-scope execution targets. It

@@ -84,7 +84,7 @@ Cons:
 
 ## Final Recommendation Stack
 
-1. Require `policy.compatibility_deletion_execution_plan_artifact.v2` as the
+1. Require `policy.compatibility_deletion_execution_plan_artifact.v3` as the
    only final-removal manifest source.
 2. Require ready status, successful artifact and nested-plan validation, and a
    valid deterministic SHA-256 fingerprint.
