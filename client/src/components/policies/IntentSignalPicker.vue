@@ -142,38 +142,10 @@
       @validate-custom-signal="emit('validate-custom-signal', $event)"
     />
 
-    <section
-      v-if="acceptedSignalList.length > 0"
-      class="mt-4 border-t border-gray-700 pt-3"
-      aria-labelledby="intent-signal-picker-accepted-title"
-    >
-      <p
-        id="intent-signal-picker-accepted-title"
-        class="text-xs font-medium text-gray-100"
-      >
-        Declared destination signals
-      </p>
-      <p class="mt-1 text-xs text-gray-400">
-        These values become native purpose rules only when this new policy is created.
-      </p>
-      <ul class="mt-2 flex flex-wrap gap-2">
-        <li
-          v-for="signal in acceptedSignalList"
-          :key="signal.candidateId"
-          class="inline-flex items-center gap-2 rounded border border-green-800/70 bg-green-950/30 px-2 py-1 text-xs text-green-100"
-        >
-          <span>{{ signal.label }}</span>
-          <button
-            class="rounded px-1 text-green-100 underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-primary"
-            type="button"
-            :aria-label="`Remove ${signal.label} from declared destination signals`"
-            @click="removeSignal(signal)"
-          >
-            Remove
-          </button>
-        </li>
-      </ul>
-    </section>
+    <IntentSignalChipList
+      :signals="acceptedSignalList"
+      @draft-command-plan="emit('draft-command-plan', $event)"
+    />
   </section>
 </template>
 
@@ -181,6 +153,7 @@
 import { computed, ref, watch } from 'vue'
 import Button from '@/components/common/Button.vue'
 import PolicyIntentCustomSignalEntry from './PolicyIntentCustomSignalEntry.vue'
+import IntentSignalChipList from './IntentSignalChipList.vue'
 import {
   buildIntentSignalCommandPlan,
   normalizeIntentSignalCandidates,
@@ -319,13 +292,4 @@ const addSelectedSignals = () => {
   selectedOptionIds.value = []
 }
 
-const removeSignal = (signal) => {
-  const plan = buildIntentSignalCommandPlan({
-    commandId: 'remove_signal_value',
-    candidates: [signal],
-  })
-  if (plan?.commands?.length) {
-    emit('draft-command-plan', plan)
-  }
-}
 </script>

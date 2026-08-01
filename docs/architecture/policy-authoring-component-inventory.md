@@ -63,7 +63,7 @@ The 30 current policy Vue components are classified into four groups:
 | `DestinationContextCard` | Implemented | `DestinationContextCard.vue` |
 | `ObservedProfileSummary` | Implemented | `ObservedProfileSummary.vue` |
 | `IntentSignalPicker` | Implemented | `IntentSignalPicker.vue` |
-| `IntentSignalChipList` | Extraction required | Inline in `IntentSignalPicker.vue` |
+| `IntentSignalChipList` | Implemented | `IntentSignalChipList.vue` |
 | `HardLimitControl` | Split required | `PolicyIntentConstraintControlSurface.vue` |
 | `AvoidControl` | Split required | `PolicyIntentConstraintControlSurface.vue` |
 | `ReviewTriggerControl` | Split required | `PolicyIntentConstraintControlSurface.vue` |
@@ -76,21 +76,18 @@ a second target component.
 
 ## Recommendations
 
-1. Extract `IntentSignalChipList` next. It has one source, a typed
-   add/remove-command boundary already exercised by `IntentSignalPicker`, and
-   a clear accessibility contract for chip removal names.
-2. Keep the picker responsible for option grouping, selection, and emitting an
-   add plan. Move accepted-signal display and remove-plan emission into the chip
-   list through explicit props and events.
-3. Split the combined constraint surface only after chip-list extraction. Make
+1. Keep `IntentSignalPicker` responsible for option grouping, selection, and
+   typed add plans; `IntentSignalChipList` now owns only declared-signal display
+   and remove-plan emission through explicit props and events.
+2. Split the combined constraint surface next. Make
    `HardLimitControl`, `AvoidControl`, and `ReviewTriggerControl` individually
    responsible for their labels, confirmation requirements, and staged-value
    display while retaining the existing server-owned decision and eligibility
    projections.
-4. Do not add a `StarterTemplateSuggestion` component until a server projection
+3. Do not add a `StarterTemplateSuggestion` component until a server projection
    can improve native setup without presenting templates as the primary mental
    model. Its absence is intentional, not a missing fallback.
-5. Delete or contain compatibility-only controls rather than reusing them in
+4. Delete or contain compatibility-only controls rather than reusing them in
    native work. Their legacy source/provenance and bridge semantics conflict
    with destination-first intent authoring.
 
@@ -113,7 +110,7 @@ Cons:
 - It intentionally adds a small server-side test contract even though it has no
   runtime request path.
 
-### Chip List Before Constraint Split
+### Chip List Extraction Before Constraint Split
 
 Pros:
 
@@ -135,23 +132,24 @@ Cons:
    its test.
 2. Treat four target components as implemented, one as an extraction, three as
    a later split, and the template accelerator as intentionally optional.
-3. Implement `IntentSignalChipList` as the next isolated component. It must
-   receive declared candidates, expose complete remove names, and emit only the
+3. Treat `IntentSignalChipList` as an implemented primitive. It receives
+   declared candidates, exposes complete remove names, and emits only the
    existing typed remove command plan.
-4. Preserve the server-owned option, constraint, readiness, and native-create
+4. Extract `HardLimitControl` next, followed by `AvoidControl` and
+   `ReviewTriggerControl`, without changing the server-owned decision model.
+5. Preserve the server-owned option, constraint, readiness, and native-create
    admission boundaries. This inventory adds no routes, policy writes, raw
    payload access, provider calls, media-server calls, quota reads, or secrets.
 
 ## Outcome
 
 The component tree now has an executable ownership and replacement map. The
-inventory reports `IntentSignalChipList` as the first required extraction,
-records the combined constraint surface as an explicit later split, and keeps
-starter templates optional and non-primary.
+inventory reports `IntentSignalChipList` as implemented, records the combined
+constraint surface as the next explicit split, and keeps starter templates
+optional and non-primary.
 
 ## Next Task
 
-Extract `IntentSignalChipList` from `IntentSignalPicker` with a minimal
-props/events contract. Preserve the picker as the only owner of option
-selection and typed add plans; the chip list may emit the existing typed remove
-plan only.
+Extract `HardLimitControl` from `PolicyIntentConstraintControlSurface` with a
+minimal props/events contract. Preserve server-owned value eligibility,
+explicit confirmation, and the current typed constraint-command boundary.

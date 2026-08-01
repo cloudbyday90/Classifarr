@@ -32,8 +32,8 @@ describe('policyAuthoringComponentInventory', () => {
       checkedTargetImplementationCount: 9,
       issues: [],
       nextTargetImplementation: expect.objectContaining({
-        targetComponentId: POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_CHIP_LIST,
-        statusId: POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.EXTRACTION_REQUIRED,
+        targetComponentId: POLICY_AUTHORING_COMPONENT_IDS.HARD_LIMIT_CONTROL,
+        statusId: POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.SPLIT_REQUIRED,
       }),
     }));
   });
@@ -44,10 +44,14 @@ describe('policyAuthoringComponentInventory', () => {
     )).toEqual(expect.objectContaining({
       roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.INTENT_SIGNAL_PICKER,
       normalAuthoringAllowed: true,
-      targetComponentIds: expect.arrayContaining([
-        POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_PICKER,
-        POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_CHIP_LIST,
-      ]),
+      targetComponentIds: [POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_PICKER],
+    }));
+    expect(classifyPolicyAuthoringComponent(
+      'client/src/components/policies/IntentSignalChipList.vue',
+    )).toEqual(expect.objectContaining({
+      roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.INTENT_SIGNAL_CHIP_RENDERING,
+      normalAuthoringAllowed: true,
+      targetComponentIds: [POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_CHIP_LIST],
     }));
     expect(classifyPolicyAuthoringComponent(
       'client/src/components/policies/PolicyCompatibilityMaintenanceSurface.vue',
@@ -63,12 +67,12 @@ describe('policyAuthoringComponentInventory', () => {
     }));
   });
 
-  test('records the component extraction and split work without overstating implementation', () => {
+  test('records the completed chip-list extraction and remaining constraint split', () => {
     expect(getPolicyAuthoringTargetImplementation(
       POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_CHIP_LIST,
     )).toEqual(expect.objectContaining({
-      statusId: POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.EXTRACTION_REQUIRED,
-      sourcePaths: ['client/src/components/policies/IntentSignalPicker.vue'],
+      statusId: POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.IMPLEMENTED,
+      sourcePaths: ['client/src/components/policies/IntentSignalChipList.vue'],
     }));
     [
       POLICY_AUTHORING_COMPONENT_IDS.HARD_LIMIT_CONTROL,
@@ -133,19 +137,18 @@ describe('policyAuthoringComponentInventory', () => {
     expect(Object.isFrozen(targetImplementations[0].sourcePaths)).toBe(true);
   });
 
-  test('summarizes current ownership and prioritizes the chip-list extraction', () => {
+  test('summarizes current ownership and prioritizes the hard-limit control split', () => {
     expect(summarizePolicyAuthoringComponentInventory(policyComponentPaths)).toEqual(
       expect.objectContaining({
         total: policyComponentPaths.length,
         unclassifiedPaths: [],
         implementationStatusCounts: {
-          [POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.IMPLEMENTED]: 4,
-          [POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.EXTRACTION_REQUIRED]: 1,
+          [POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.IMPLEMENTED]: 5,
           [POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.SPLIT_REQUIRED]: 3,
           [POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.OPTIONAL_DEFERRED]: 1,
         },
         nextTargetImplementation: expect.objectContaining({
-          targetComponentId: POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_CHIP_LIST,
+          targetComponentId: POLICY_AUTHORING_COMPONENT_IDS.HARD_LIMIT_CONTROL,
         }),
       }),
     );

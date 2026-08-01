@@ -328,6 +328,7 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
       hasAnySegment(filePath, [
         '/DestinationContextCard.vue',
         '/IntentSignalPicker.vue',
+        '/IntentSignalChipList.vue',
         '/ObservedProfileSummary.vue',
         '/PolicyBuilderLibraryContext.vue',
         '/PolicyBuilderDestinationQuestions.vue',

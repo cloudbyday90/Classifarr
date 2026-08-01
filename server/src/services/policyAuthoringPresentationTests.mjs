@@ -141,6 +141,7 @@ const POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS = deepFreeze([
   'client/src/__tests__/PolicyNativePolicyRecoveryNotice.test.js',
   'client/src/__tests__/PolicyNativeProfileRecoveryStatus.test.js',
   'client/src/__tests__/PolicyPresetMigrationNotice.test.js',
+  'client/src/__tests__/IntentSignalChipList.test.js',
   'client/src/__tests__/IntentSignalPicker.test.js',
   'client/src/__tests__/composables/usePolicyIntentDraft.test.js',
   'client/src/__tests__/utils/policyIntentDraftBridge.test.js',
@@ -413,6 +414,14 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
     POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.NATIVE_STORAGE_CLEANUP,
     [],
     'Preset migration notices are compatibility-only until native storage cleanup removes the legacy policy path.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/IntentSignalChipList.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_ACCESSIBILITY_DECISION_LOAD,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS],
+    'Declared-signal chips retain visible and programmatic removal names and emit only the existing typed remove plan.'
   ),
   presentationTestRecord(
     'client/src/__tests__/IntentSignalPicker.test.js',

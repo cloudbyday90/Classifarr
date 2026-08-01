@@ -109,12 +109,18 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY = deepFreeze([
     path: 'client/src/components/policies/IntentSignalPicker.vue',
     roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.INTENT_SIGNAL_PICKER,
     decisionId: POLICY_AUTHORING_COMPONENT_DECISION_IDS.KEEP_AS_PRIMITIVE,
-    targetComponentIds: [
-      POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_PICKER,
-      POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_CHIP_LIST,
-    ],
+    targetComponentIds: [POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_PICKER],
     normalAuthoringAllowed: true,
-    notes: 'The picker is implemented; its inline declared-signal chip rendering is the source for the planned chip-list extraction.',
+    notes: 'The picker owns evidence-backed option selection and typed add-command planning.',
+  },
+  {
+    id: 'intent_signal_chip_list',
+    path: 'client/src/components/policies/IntentSignalChipList.vue',
+    roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.INTENT_SIGNAL_CHIP_RENDERING,
+    decisionId: POLICY_AUTHORING_COMPONENT_DECISION_IDS.KEEP_AS_PRIMITIVE,
+    targetComponentIds: [POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_CHIP_LIST],
+    normalAuthoringAllowed: true,
+    notes: 'The target chip-list primitive renders declared candidates and emits existing typed remove-command plans only.',
   },
   {
     id: 'policy_intent_custom_signal_entry',
@@ -385,9 +391,9 @@ const POLICY_AUTHORING_TARGET_IMPLEMENTATIONS = deepFreeze([
   },
   {
     targetComponentId: POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_CHIP_LIST,
-    statusId: POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.EXTRACTION_REQUIRED,
-    sourcePaths: ['client/src/components/policies/IntentSignalPicker.vue'],
-    notes: 'Declared-signal chips are currently inline in the picker and need a dedicated typed-command child component.',
+    statusId: POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.IMPLEMENTED,
+    sourcePaths: ['client/src/components/policies/IntentSignalChipList.vue'],
+    notes: 'Implemented as a dedicated declared-signal chip list that emits the established typed remove plan.',
   },
   {
     targetComponentId: POLICY_AUTHORING_COMPONENT_IDS.HARD_LIMIT_CONTROL,

@@ -125,3 +125,8 @@ what is evidence, what is selectable, and what has become a local declared
 signal. The browser remains non-authoritative: it cannot auto-declare intent,
 write policy storage, route media, reinterpret library evidence, or infer
 option-source behavior.
+
+Declared-signal display and removal now live in
+`IntentSignalChipList.vue`. The picker retains option selection and typed add
+plans, while the chip list emits only the existing typed remove plan. See
+[Policy Authoring Intent-Signal Chip List](policy-authoring-intent-signal-chip-list.md).

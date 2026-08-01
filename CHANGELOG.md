@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Authoring Intent-Signal Chip List**: Declared destination signals in
+  native policy creation now use a dedicated, accessible chip-list component.
+  It preserves the existing typed remove-command protocol while keeping option
+  selection and add commands in the evidence-backed signal picker.
+
 - **Policy Authoring Component Inventory**: The policy UI now has a
   source-backed ownership map for every current policy component. It identifies
   the implemented destination, observed-profile, signal-picker, and readiness

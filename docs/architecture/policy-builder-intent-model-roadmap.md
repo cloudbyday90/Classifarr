@@ -2351,6 +2351,10 @@ Implementation record:
   than retained as parallel UI controls. The product path now uses
   `IntentSignalPicker`, `usePolicyIntentSignalDraft`, and
   `policyIntentSignalDraft` naming.
+- `IntentSignalChipList` now owns declared-signal rendering and emits only the
+  existing typed remove command plan. `IntentSignalPicker` retains source
+  grouping, option selection, and typed add plans. See [Policy Authoring
+  Intent-Signal Chip List](policy-authoring-intent-signal-chip-list.md).
 - The workflow read now publishes a versioned server-owned intent-signal option
   projection. It composes bounded observed evidence, observed-profile options,
   optional matching starter-template suggestions, future common/custom sources,
