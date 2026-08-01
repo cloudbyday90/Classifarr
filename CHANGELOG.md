@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Native-Storage Cutover Test Handoff**: Compatibility-maintenance
+  regression scopes now map to named native workflow successors, explicit
+  native-storage coverage, and full deletion evidence. The read-only audit
+  distinguishes retiring test files from shared files that only remove named
+  compatibility assertions, and cannot authorize or perform deletion.
+
 - **Compatibility Maintenance Test Ownership**: Added a dedicated audit for
   context-first compatibility editing, typed draft-command forwarding, and
   native-storage removal readiness. Compatibility scopes are now distinct from

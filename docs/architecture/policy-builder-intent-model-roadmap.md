@@ -2710,11 +2710,19 @@ Implementation status:
   See [Policy Compatibility Maintenance Test Ownership
   Audit](policy-compatibility-maintenance-test-ownership-audit.md).
 
-Next component task: **3R.10.1 Native-Storage Cutover Test Handoff Audit**.
-Define the test ownership transfer from compatibility maintenance to native
-intent storage: enumerate which regression scopes retire with the bridge,
-which native workflow tests replace them, and the evidence required before any
-legacy component or test is deleted.
+- **3R.10.1 Native-Storage Cutover Test Handoff Audit** is complete. Every
+  compatibility-maintenance regression scope is now mapped to a named native
+  workflow successor, explicit native-storage evidence, and the complete
+  bridge deletion gate. The audit distinguishes test files that retire with
+  their bridge from shared files where only named compatibility assertions
+  retire. It never authorizes or performs deletion. See [Policy Native-Storage
+  Cutover Test Handoff Audit](policy-native-storage-cutover-test-handoff-audit.md).
+
+Next component task: **3R.10.2 Native-Storage Cutover Deletion-Evidence
+Integration Audit**. Connect the read-only handoff inventory to the existing
+authorized removal-completion artifact, final import/reference scan, and
+focused plus full validation evidence so a later deletion task cannot start
+without complete, current proof.
 
 ### 3R.8 Accessibility And Decision Load
 

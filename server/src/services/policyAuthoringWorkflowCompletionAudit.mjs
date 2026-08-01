@@ -131,6 +131,14 @@ const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
     testPath: 'server/src/__tests__/services/policyCompatibilityMaintenanceTestOwnership.test.mjs',
     evidence: 'Keeps compatibility maintenance coverage outside normal authoring while tying each retained component to typed commands and native-storage removal gates.',
   },
+  {
+    id: 'policy_native_storage_cutover_test_handoff',
+    label: 'Policy native-storage cutover test handoff',
+    docPath: 'docs/architecture/policy-native-storage-cutover-test-handoff-audit.md',
+    servicePath: 'server/src/services/policyNativeStorageCutoverTestHandoff.mjs',
+    testPath: 'server/src/__tests__/services/policyNativeStorageCutoverTestHandoff.test.mjs',
+    evidence: 'Maps each retiring compatibility regression scope to named native workflow coverage and complete deletion evidence without authorizing deletion.',
+  },
 ]);
 
 const POLICY_AUTHORING_CLIENT_WORKFLOW_COMPONENTS = Object.freeze([
