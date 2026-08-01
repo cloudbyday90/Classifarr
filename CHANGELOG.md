@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Compatibility Component Deletion Dependencies**: Added a source-backed,
+  read-only inventory for retiring compatibility component imports and test
+  scopes. It preserves active editor command and parity coverage for native
+  rehoming, separates named compatibility retirements from later
+  removal-manifest candidates, verifies route entries, and cannot authorize or
+  perform deletion.
+
 - **Native Workflow Test Rehoming**: Active destination-section and
   review-trigger completion records now use their native component tests rather
   than the retiring compatibility editor test. A read-only audit verifies the

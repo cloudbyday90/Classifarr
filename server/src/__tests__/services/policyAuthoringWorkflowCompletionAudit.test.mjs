@@ -23,7 +23,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
     expect(audit).toEqual(expect.objectContaining({
       ok: true,
       issueCount: 0,
-      checkedServerContractCount: 16,
+      checkedServerContractCount: 17,
       checkedClientWorkflowComponentCount: 11,
       checkedNormalWorkflowRuleCount: 5,
       checkedNormalPathExclusionCount: 4,
@@ -51,6 +51,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
       'policy_native_storage_cutover_test_handoff',
       'policy_native_storage_cutover_deletion_evidence',
       'policy_native_workflow_test_rehoming',
+      'policy_compatibility_component_deletion_dependencies',
     ]);
 
     expect(listPolicyAuthoringClientWorkflowComponents().map(record => record.id)).toEqual([

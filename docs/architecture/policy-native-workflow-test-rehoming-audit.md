@@ -77,8 +77,10 @@ an intentional test rename. Adopted.
 
 ## Final Recommendation Stack
 
-1. Keep `PolicyIntentEditor.test.js` compatibility-only until the approved
-   native-storage cutover process retires its named compatibility scope.
+1. Keep the named compatibility-maintenance scope in
+   `PolicyIntentEditor.test.js` until the approved native-storage cutover
+   process retires it; separately rehome its remaining active command scopes
+   before the editor is deleted.
 2. Make `PolicyBuilderDestinationQuestions.test.js` the normal-workflow owner
    for observed destination-signal availability and stale-profile withholding.
 3. Make `PolicyIntentReviewTriggerControl.test.js` the normal-workflow owner
@@ -119,8 +121,7 @@ an intentional test rename. Adopted.
 
 ## Next Step
 
-Proceed to **Phase 3R, Task 3R.10.4: Compatibility Component Deletion
-Dependency Audit**. Inventory every import, route entry, and test dependency
-of each retiring compatibility component, then classify each dependency as a
-native rehome, a named compatibility retirement, or a cutover-manifest removal
-candidate. Do not delete or move any component in that audit.
+The completed follow-on audit is **Phase 3R, Task 3R.10.4: Compatibility
+Component Deletion Dependency Audit**. Its next task is **3R.10.5 Compatibility
+Native Contract Rehoming**: move the active editor command and parity scopes to
+native control tests before any compatibility component is deleted.

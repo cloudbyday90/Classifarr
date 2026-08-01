@@ -1,0 +1,133 @@
+# Policy Compatibility Component Deletion Dependency Audit
+
+**Status:** Complete
+
+**Roadmap task:** Phase 3R, Task 3R.10.4
+
+**Decision date:** 2026-08-01
+
+## Decision
+
+The compatibility components remain deletion targets after the native-storage
+cutover, but their executable dependencies are not uniform. This audit records
+each direct runtime and test dependency before any removal manifest is written.
+It finds no direct route-entry reference in `client/src/router/index.js`.
+
+The inventory has thirteen dependencies across the three retiring components:
+
+| Classification | Count | Outcome |
+| --- | ---: | --- |
+| Native rehome | 2 | Preserve active editor command and parity coverage by moving it to native destination, review, and constraint controls. |
+| Named compatibility retirement | 3 | Retire exact compatibility assertions from shared test files after their existing cutover handoff is satisfied. |
+| Removal-manifest candidate | 8 | Add compatibility-only runtime branches, dedicated tests, and migration-feedback assertions to a later authorized removal manifest. |
+
+The key correction is `PolicyIntentEditor.test.js` and
+`PolicyIntentEditorParity.test.js`. They import a retiring editor, but the
+authoring regression inventory marks active command and provenance coverage as
+retained. Deleting either test scope would lose product behavior coverage. The
+editor's named context-first maintenance assertions can retire; the remaining
+active command, accessibility, duplicate-prevention, removal, and parity
+contracts must first be rehomed to native controls.
+
+Completed preset-migration feedback has no normal-authoring successor. Its
+dedicated component and tests, plus the two shared modal feedback assertions,
+are removal-manifest candidates. This does not remove the automatic native
+reconciliation status.
+
+## Research
+
+Official sources were reviewed on 2026-08-01 and satisfy the requested
+current-through-June-2026 baseline.
+
+- NIST's Secure Software Development Framework calls for managing software
+  components and tracking the provenance of component data as part of secure
+  development. A source-backed dependency inventory provides that evidence
+  before a compatibility component is removed. [NIST SSDF
+  Project](https://csrc.nist.gov/Projects/ssdf)
+- OWASP recommends inventorying infrastructure and related assets during
+  decommissioning, then removing stale configuration only after the inventory
+  is understood. The same principle applies here: enumerate executable imports
+  and test contracts before deleting the component that owns them. [OWASP
+  Infrastructure as Code Security Cheat
+  Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Infrastructure_as_Code_Security_Cheat_Sheet.html)
+- OWASP's legacy-application guidance recommends a granular, documented
+  modernization plan. Separating a native rehome from a named retirement and
+  from a removal-manifest candidate keeps active behavior from being confused
+  with obsolete compatibility presentation. [OWASP Legacy Application
+  Management Cheat
+  Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Legacy_Application_Management_Cheat_Sheet.html)
+
+## Options Considered
+
+### Delete every test that imports a retiring component
+
+**Pros:** Smallest apparent removal diff.
+
+**Cons:** Deletes active editor command and provenance regression coverage.
+It contradicts the retained action in the compatibility regression inventory.
+Rejected.
+
+### Keep the compatibility components until every old test can remain unchanged
+
+**Pros:** Avoids near-term test movement.
+
+**Cons:** Preserves a legacy component as the owner of native product behavior
+and makes compatibility UI permanent. Rejected.
+
+### Classify each executable dependency before removal
+
+**Pros:** Keeps native behavior protected, permits precise assertion retirement
+inside shared test files, and leaves removal only to an authorized manifest.
+
+**Cons:** Adds a small source-backed audit that must be updated intentionally
+when an import or named test changes. Adopted.
+
+## Final Recommendation Stack
+
+1. Rehome the two active editor test scopes to native destination-question,
+   review-trigger, and constraint-control contracts before deleting the editor.
+2. Retire only the three already-declared compatibility assertions by named
+   scope; keep the shared test files and their unrelated native coverage.
+3. Add the eight compatibility-only branches and test scopes to the later
+   removal manifest, including the modal migration-feedback assertions.
+4. Keep route-entry scanning and source-fragment checks in the audit so a new
+   direct route or import fails closed.
+5. Do not authorize, move, rewrite, or delete a component from this audit.
+
+## Implementation
+
+- `policyCompatibilityComponentDeletionDependencyInventory.mjs` owns the
+  immutable ESM dependency records and route-entry scope.
+- `policyCompatibilityComponentDeletionDependencyValidation.mjs` owns
+  component-boundary, active-regression, named-handoff, and side-effect
+  validation.
+- `policyCompatibilityComponentDeletionDependencies.mjs` is the small
+  orchestration facade for source auditing, route auditing, and the final
+  read-only result.
+- `server/src/__tests__/services/policyCompatibilityComponentDeletionDependencies.test.mjs`
+  reads the real client sources and rejects source drift, route references,
+  active-regression removal candidates, and any attempted side effect.
+- `policyAuthoringWorkflowCompletionAudit.mjs` includes this audit as a required
+  policy-authoring server contract.
+
+## Security Outcome
+
+- An active retained regression cannot be silently classified as a deletion
+  candidate.
+- A named compatibility retirement must remain tied to its declared ownership
+  scope and existing native-storage handoff.
+- The audit rejects retiring components that re-enter normal authoring, gain
+  raw legacy-payload mutation authority, or lose their delete-after-native-
+  storage disposition.
+- Route-entry, component, test-file, test-scope, and native-target drift all
+  fail closed.
+- The service has no filesystem-write, deletion, storage, route-execution, or
+  policy-execution capability.
+
+## Next Step
+
+Proceed to **Phase 3R, Task 3R.10.5: Compatibility Native Contract
+Rehoming**. Rehome the active `PolicyIntentEditor` command and parity scopes to
+native controls, replacing legacy `customSignals` expectations with native
+intent-model assertions. Do not delete any compatibility component in that
+task.

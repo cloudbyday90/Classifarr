@@ -2732,15 +2732,28 @@ Implementation status:
   destination-section and review-trigger completion records now point to their
   native component tests, and a read-only audit rejects retiring-editor test
   ownership, bridge-boundary drift, absent named native assertions, and side
-  effects. `PolicyIntentEditor.test.js` remains compatibility-only until its
-  approved native-storage cutover. See [Policy Native Workflow Test Rehoming
+  effects. Its named maintenance assertions remain compatibility-only; active
+  editor command and parity scopes are inventoried separately for native
+  rehoming. See [Policy Native Workflow Test Rehoming
   Audit](policy-native-workflow-test-rehoming-audit.md).
 
-Next component task: **3R.10.4 Compatibility Component Deletion Dependency
-Audit**. Inventory every import, route entry, and test dependency of each
-retiring compatibility component, then classify each one as a native rehome, a
-named compatibility retirement, or a removal-manifest candidate. Do not delete
-or move any component in this audit.
+- **3R.10.4 Compatibility Component Deletion Dependency Audit** is complete.
+  Thirteen executable dependencies of the three retiring compatibility
+  components are now source-backed and classified: two active editor test
+  scopes require native rehomes, three shared-file assertions retire by named
+  compatibility scope, and eight compatibility-only branches or test scopes
+  are later removal-manifest candidates. The audit rejects direct route-entry
+  references, source drift, active-regression deletion candidates, and side
+  effects; it does not authorize deletion. See [Policy Compatibility Component
+  Deletion Dependency
+  Audit](policy-compatibility-component-deletion-dependency-audit.md).
+
+Next component task: **3R.10.5 Compatibility Native Contract Rehoming**.
+Rehome the active command, accessibility, duplicate-prevention, removal, and
+parity contracts that currently import `PolicyIntentEditor.vue` to native
+destination-question, review-trigger, and constraint-control tests. Replace
+legacy `customSignals` expectations with native intent-model assertions. Do
+not delete a compatibility component or alter storage in this task.
 
 ### 3R.8 Accessibility And Decision Load
 

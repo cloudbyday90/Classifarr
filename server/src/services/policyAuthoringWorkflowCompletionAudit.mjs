@@ -155,6 +155,14 @@ const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
     testPath: 'server/src/__tests__/services/policyNativeWorkflowTestRehoming.test.mjs',
     evidence: 'Keeps active normal-authoring completion records on native component contracts and rejects retiring-editor test ownership without authorizing deletion.',
   },
+  {
+    id: 'policy_compatibility_component_deletion_dependencies',
+    label: 'Policy compatibility component deletion dependencies',
+    docPath: 'docs/architecture/policy-compatibility-component-deletion-dependency-audit.md',
+    servicePath: 'server/src/services/policyCompatibilityComponentDeletionDependencies.mjs',
+    testPath: 'server/src/__tests__/services/policyCompatibilityComponentDeletionDependencies.test.mjs',
+    evidence: 'Inventories executable compatibility component dependencies, keeps active editor command and parity contracts on a native-rehome path, and separates named retirements from later removal-manifest candidates without authorizing deletion.',
+  },
 ]);
 
 const POLICY_AUTHORING_CLIENT_WORKFLOW_COMPONENTS = Object.freeze([
