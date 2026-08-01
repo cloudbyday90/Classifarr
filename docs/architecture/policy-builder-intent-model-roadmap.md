@@ -2702,11 +2702,19 @@ Implementation status:
   Compatibility Maintenance Decision-Load
   Audit](policy-compatibility-maintenance-decision-load-audit.md).
 
-Next component task: **3R.9.1 Compatibility Presentation-Test Ownership Audit**.
-Classify the retained compatibility maintenance tests separately from normal
-authoring tests, then require them to protect context-first order, typed-command
-forwarding, and native-storage removal readiness without preserving legacy
-layout or diagnostic behavior.
+- **3R.9.1 Compatibility Presentation-Test Ownership Audit** is complete.
+  Retained maintenance tests now have named observable-behavior ownership
+  outside normal authoring. The audit requires context-first order or typed
+  draft-command forwarding, maps each component to the complete native-storage
+  deletion gate, and rejects legacy-layout or diagnostic-behavior protection.
+  See [Policy Compatibility Maintenance Test Ownership
+  Audit](policy-compatibility-maintenance-test-ownership-audit.md).
+
+Next component task: **3R.10.1 Native-Storage Cutover Test Handoff Audit**.
+Define the test ownership transfer from compatibility maintenance to native
+intent storage: enumerate which regression scopes retire with the bridge,
+which native workflow tests replace them, and the evidence required before any
+legacy component or test is deleted.
 
 ### 3R.8 Accessibility And Decision Load
 

@@ -9,6 +9,9 @@
 import { readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import {
+  listPolicyCompatibilityMaintenanceTestSourcePaths,
+} from '../../services/policyCompatibilityMaintenanceTestOwnership.mjs';
+import {
   POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS,
   POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS,
   POLICY_AUTHORING_PRESENTATION_TEST_EXCLUSION_RECORDS,
@@ -37,8 +40,9 @@ describe('policyAuthoringPresentationTests', () => {
       .sort();
     const documentedPolicyTestPaths = [
       ...listPolicyAuthoringPresentationTestInventoryFilePaths().filter(filePath => !filePath.includes('/composables/') && !filePath.includes('/utils/')),
+      ...listPolicyCompatibilityMaintenanceTestSourcePaths(),
       ...listPolicyAuthoringPresentationTestExclusionRecords().map(record => record.filePath),
-    ].sort();
+    ].filter((filePath, index, paths) => paths.indexOf(filePath) === index).sort();
 
     expect(listPolicyAuthoringPresentationTestRecords().map(record => record.filePath).sort())
       .toEqual([...POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS].sort());
@@ -84,7 +88,10 @@ describe('policyAuthoringPresentationTests', () => {
       ok: true,
       checkedRecordCount: listPolicyAuthoringPresentationTestRecords().length,
       requiredBehaviorCount: listRequiredPolicyAuthoringPresentationBehaviors().length,
-      inventoryFilePathCount: listPolicyAuthoringPresentationTestInventoryFilePaths().length,
+      inventoryFilePathCount: new Set([
+        ...listPolicyAuthoringPresentationTestInventoryFilePaths(),
+        ...listPolicyCompatibilityMaintenanceTestSourcePaths(),
+      ]).size,
       exclusionCount: listPolicyAuthoringPresentationTestExclusionRecords().length,
       missingRequiredBehaviorIds: [],
       issueCount: 0,
@@ -163,9 +170,9 @@ describe('policyAuthoringPresentationTests', () => {
       inventoryFilePathCount: listPolicyAuthoringPresentationTestInventoryFilePaths().length,
       exclusionCount: listPolicyAuthoringPresentationTestExclusionRecords().length,
       normalPathRecordCount: 23,
-      draftBridgeOwnedRecordCount: 6,
+      draftBridgeOwnedRecordCount: 5,
       countsByCategory: expect.objectContaining({
-        [POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_DRAFT_BRIDGE_COVERAGE]: 6,
+        [POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_DRAFT_BRIDGE_COVERAGE]: 5,
       }),
     }));
   });

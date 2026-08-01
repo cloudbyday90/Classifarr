@@ -23,7 +23,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
     expect(audit).toEqual(expect.objectContaining({
       ok: true,
       issueCount: 0,
-      checkedServerContractCount: 12,
+      checkedServerContractCount: 13,
       checkedClientWorkflowComponentCount: 11,
       checkedNormalWorkflowRuleCount: 5,
       checkedNormalPathExclusionCount: 4,
@@ -47,6 +47,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
       'policy_authoring_starter_template_intent_boundary',
       'policy_authoring_accessibility',
       'policy_authoring_presentation_tests',
+      'policy_compatibility_maintenance_test_ownership',
     ]);
 
     expect(listPolicyAuthoringClientWorkflowComponents().map(record => record.id)).toEqual([

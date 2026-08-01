@@ -32,6 +32,11 @@ The presentation-test inventory is deliberately bounded and machine-checked:
 - Normal-path coverage can be owned only by `policy_authoring`. Compatibility
   storage cleanup, draft bridge, and runtime verifier coverage must remain
   outside that path.
+- Retained compatibility-maintenance presentation scopes have a separate,
+  named-behavior ownership audit. This avoids classifying the shared modal or
+  compatibility components as normal authoring merely because they share a
+  test file. See [Policy Compatibility Maintenance Test Ownership
+  Audit](policy-compatibility-maintenance-test-ownership-audit.md).
 
 The audit fails for a missing, duplicate, or out-of-inventory classification,
 an invalid exclusion, or a bridge, compatibility, or verifier owner appearing
@@ -149,8 +154,11 @@ The implementation provides:
   - documents the policy-list card as outside authoring scope,
   - defines required policy-authoring presentation behaviors,
   - keeps draft bridge coverage owned by the draft bridge contract,
-  - keeps migration diagnostics out of presentation ownership and retains only
+- keeps migration diagnostics out of presentation ownership and retains only
     compatibility-bridge coverage where it remains active,
+- delegates context-first compatibility maintenance, typed-command forwarding,
+  and native-storage removal readiness to the dedicated compatibility
+  maintenance ownership audit,
   - audits missing behavior coverage, unknown owners, and internal diagnostic
     wording in normal product tests.
 - `server/src/__tests__/services/policyAuthoringPresentationTests.test.mjs`
@@ -170,7 +178,7 @@ The implementation provides:
 | Tests categorized | Yes; all 30 direct policy-authoring tests and four adjacent bridge tests are classified, with the policy-list card explicitly excluded. |
 | Simplified workflow protected | Yes; required behavior records map to destination-first flow, evidence options, readiness, and accessibility. |
 | Product vocabulary preserved | Yes; normal presentation tests fail when internal diagnostic language appears. |
-| Draft/bridge duplication avoided | Yes; six compatibility-editor and bridge tests are explicitly draft-bridge-owned. |
+| Draft/bridge duplication avoided | Yes; five bridge tests remain draft-bridge-owned, while compatibility-maintenance presentation scopes are separately owned. |
 | Diagnostic panels removed from normal path | Yes; the browser preview family is retired and retained verifier coverage is server-owned. |
 | Inventory drift detected | Yes; the audit fails for missing, duplicate, out-of-inventory, overlapping-exclusion, and invalid-exclusion records. |
 

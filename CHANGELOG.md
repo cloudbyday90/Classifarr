@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Compatibility Maintenance Test Ownership**: Added a dedicated audit for
+  context-first compatibility editing, typed draft-command forwarding, and
+  native-storage removal readiness. Compatibility scopes are now distinct from
+  normal authoring coverage and cannot freeze legacy layout or diagnostics.
+
 - **Compatibility Policy Maintenance**: Existing-policy maintenance now
   establishes policy context before editable controls, removes duplicate editor
   framing, shows a context selector only when multiple attachments exist, and

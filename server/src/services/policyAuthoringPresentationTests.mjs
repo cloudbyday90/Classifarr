@@ -1,3 +1,7 @@
+import {
+  listPolicyCompatibilityMaintenanceTestSourcePaths,
+} from './policyCompatibilityMaintenanceTestOwnership.mjs';
+
 const POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS = Object.freeze({
   KEEP_WORKFLOW_REGRESSION: 'keep_workflow_regression',
   PROTECT_DESTINATION_FIRST_FLOW: 'protect_destination_first_flow',
@@ -121,14 +125,12 @@ const POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS = deepFreeze([
   'client/src/__tests__/PolicyBuilderLibraryContext.test.js',
   'client/src/__tests__/PolicyBuilderModal.test.js',
   'client/src/__tests__/PolicyBuilderWorkflowShell.test.js',
-  'client/src/__tests__/PolicyCompatibilityMaintenanceSurface.test.js',
   'client/src/__tests__/PolicyDestinationEmptyStateNotice.test.js',
   'client/src/__tests__/PolicyIntentActionButton.test.js',
   'client/src/__tests__/PolicyIntentCertificationControl.test.js',
   'client/src/__tests__/PolicyIntentChip.test.js',
   'client/src/__tests__/PolicyIntentConstraintControlSurface.test.js',
   'client/src/__tests__/PolicyIntentCustomSignalEntry.test.js',
-  'client/src/__tests__/PolicyIntentEditor.test.js',
   'client/src/__tests__/PolicyIntentEditorParity.test.js',
   'client/src/__tests__/PolicyIntentGenreControl.test.js',
   'client/src/__tests__/PolicyIntentOptionActionGroup.test.js',
@@ -140,7 +142,6 @@ const POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS = deepFreeze([
   'client/src/__tests__/PolicyNativeIntentReconciliation.test.js',
   'client/src/__tests__/PolicyNativePolicyRecoveryNotice.test.js',
   'client/src/__tests__/PolicyNativeProfileRecoveryStatus.test.js',
-  'client/src/__tests__/PolicyPresetMigrationNotice.test.js',
   'client/src/__tests__/AvoidControl.test.js',
   'client/src/__tests__/HardLimitControl.test.js',
   'client/src/__tests__/ReviewTriggerControl.test.js',
@@ -234,14 +235,6 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
     'The workflow shell proves library-first authoring, one readiness outcome, and no diagnostic control path.'
   ),
   presentationTestRecord(
-    'client/src/__tests__/PolicyCompatibilityMaintenanceSurface.test.js',
-    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.REMOVE_ABANDONED_DIAGNOSTIC_SURFACE,
-    false,
-    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.NATIVE_STORAGE_CLEANUP,
-    [],
-    'Compatibility maintenance retains typed destination-rule commands while raw scoring and threshold controls remain deleted.'
-  ),
-  presentationTestRecord(
     'client/src/__tests__/PolicyDestinationEmptyStateNotice.test.js',
     POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_READINESS_NEXT_ACTIONS,
     true,
@@ -300,14 +293,6 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
       POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS,
     ],
     'Optional custom evidence remains unaccepted until it is validated and explicitly accepted.'
-  ),
-  presentationTestRecord(
-    'client/src/__tests__/PolicyIntentEditor.test.js',
-    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_DRAFT_BRIDGE_COVERAGE,
-    false,
-    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.DRAFT_BRIDGE,
-    [],
-    'Compatibility-editor command serialization remains draft-bridge coverage rather than native workflow shape.'
   ),
   presentationTestRecord(
     'client/src/__tests__/PolicyIntentEditorParity.test.js',
@@ -409,14 +394,6 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
     POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.RUNTIME_VERIFIER,
     [],
     'Native profile recovery status is persisted-policy runtime feedback with no authoring control path.'
-  ),
-  presentationTestRecord(
-    'client/src/__tests__/PolicyPresetMigrationNotice.test.js',
-    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.REMOVE_ABANDONED_DIAGNOSTIC_SURFACE,
-    false,
-    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.NATIVE_STORAGE_CLEANUP,
-    [],
-    'Preset migration notices are compatibility-only until native storage cleanup removes the legacy policy path.'
   ),
   presentationTestRecord(
     'client/src/__tests__/AvoidControl.test.js',
@@ -667,10 +644,17 @@ function buildPolicyAuthoringPresentationTestInventoryAudit(
   exclusions = POLICY_AUTHORING_PRESENTATION_TEST_EXCLUSION_RECORDS
 ) {
   const candidates = asArray(records);
-  const expectedFilePaths = asArray(inventoryFilePaths).map(cleanString).filter(Boolean);
+  const compatibilityMaintenanceSourcePaths = listPolicyCompatibilityMaintenanceTestSourcePaths();
+  const expectedFilePaths = [...new Set([
+    ...asArray(inventoryFilePaths),
+    ...compatibilityMaintenanceSourcePaths,
+  ].map(cleanString).filter(Boolean))];
   const expectedFilePathSet = new Set(expectedFilePaths);
   const classifiedFilePathSet = new Set(
-    candidates.map(record => cleanString(record?.filePath)).filter(Boolean)
+    [
+      ...candidates.map(record => cleanString(record?.filePath)),
+      ...compatibilityMaintenanceSourcePaths.map(cleanString),
+    ].filter(Boolean)
   );
   const issues = [];
 

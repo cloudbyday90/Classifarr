@@ -123,6 +123,14 @@ const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
     testPath: 'server/src/__tests__/services/policyAuthoringPresentationTests.test.mjs',
     evidence: 'Classifies presentation tests so they protect simplified workflow behavior instead of old diagnostics.',
   },
+  {
+    id: 'policy_compatibility_maintenance_test_ownership',
+    label: 'Policy compatibility maintenance test ownership',
+    docPath: 'docs/architecture/policy-compatibility-maintenance-test-ownership-audit.md',
+    servicePath: 'server/src/services/policyCompatibilityMaintenanceTestOwnership.mjs',
+    testPath: 'server/src/__tests__/services/policyCompatibilityMaintenanceTestOwnership.test.mjs',
+    evidence: 'Keeps compatibility maintenance coverage outside normal authoring while tying each retained component to typed commands and native-storage removal gates.',
+  },
 ]);
 
 const POLICY_AUTHORING_CLIENT_WORKFLOW_COMPONENTS = Object.freeze([
