@@ -12,6 +12,12 @@ const INTENT_SIGNAL_PICKER_COMPONENT_ID = 'intent_signal_picker'
 const PURPOSE_QUESTION_ID = 'what_belongs_here'
 const SELECTABLE_SUGGESTION_STATE_ID = 'selectable_suggestion'
 const SUPPORTED_PURPOSE_SIGNAL_TYPES = new Set(['genres', 'keywords', 'studios'])
+const SUPPORTED_CANDIDATE_SOURCE_IDS = new Set([
+  'suggested_from_observed_profile',
+  'suggested_from_starter_template',
+  'common_static_option',
+  'operator_added_custom',
+])
 const MAX_ACCEPTED_SIGNALS = 20
 
 function asArray(value) {
@@ -108,6 +114,7 @@ function normalizeIntentSignalCandidate(candidate = {}) {
     || option.requiresExplicitAcceptance !== true
     || option.canAutoDeclare !== false
     || option.commandId !== 'add_signal_value'
+    || !SUPPORTED_CANDIDATE_SOURCE_IDS.has(option.sourceId)
     || !SUPPORTED_PURPOSE_SIGNAL_TYPES.has(option.signalType)
     || option.operator !== 'require_any'
     || option.questionId !== PURPOSE_QUESTION_ID

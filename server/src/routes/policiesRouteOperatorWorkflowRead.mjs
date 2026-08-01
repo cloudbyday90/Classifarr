@@ -19,6 +19,9 @@ import {
   loadPolicyOperatorWorkflowStarterTemplateSuggestions,
   normalizePolicyOperatorWorkflowLibraryId,
 } from './policyOperatorWorkflowRouteContext.mjs';
+import {
+  assertPolicyOperatorWorkflowReadResponse,
+} from './policyOperatorWorkflowReadResponse.mjs';
 
 export function registerPolicyOperatorWorkflowReadRoutes(router, {
   db,
@@ -44,6 +47,7 @@ export function registerPolicyOperatorWorkflowReadRoutes(router, {
       routing,
       intentSignalSources: { starterTemplateSuggestions },
     });
+    assertPolicyOperatorWorkflowReadResponse({ result, libraryId, logger });
 
     return sendData(res, result);
   }));

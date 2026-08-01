@@ -90,3 +90,9 @@ template controls or request raw template suggestions; that canonical template
 candidates require explicit typed acceptance; and that reference data remains
 option-only. Server completion and artifact inventories also fail if a deleted
 raw-selection artifact is recorded as an active path.
+
+The live route and projection enforcement audit is documented in [Policy
+Starter-Template Live Candidate Projection
+Audit](policy-starter-template-live-candidate-projection-audit.md). It verifies
+the final response before it is sent and rejects template provenance that does
+not belong in a canonical candidate.

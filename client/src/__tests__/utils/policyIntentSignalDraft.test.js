@@ -74,6 +74,8 @@ describe('policyIntentSignalDraft', () => {
           signalType: 'keywords',
           explanation: 'Suggested by the optional Holiday starter template.',
           evidence: { count: 0, confidence: null },
+          templateId: 'holiday',
+          templateName: 'Holiday',
         }),
         candidate({
           candidateId: 'common:mystery',
@@ -87,6 +89,17 @@ describe('policyIntentSignalDraft', () => {
     })
 
     expect(plan.commands.map(command => command.candidate.value)).toEqual(['Christmas', 'Mystery'])
+    expect(plan.commands[0].candidate).not.toHaveProperty('templateId')
+    expect(plan.commands[0].candidate).not.toHaveProperty('templateName')
+  })
+
+  it('rejects unapproved candidate sources before they can become draft commands', () => {
+    const plan = buildIntentSignalCommandPlan({
+      commandId: 'add_signal_value',
+      candidates: [candidate({ sourceId: 'raw_template_attachment' })],
+    })
+
+    expect(plan.commands).toEqual([])
   })
 
   it('adds and removes accepted signals only through typed command plans', () => {

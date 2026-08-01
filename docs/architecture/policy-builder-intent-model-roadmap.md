@@ -2673,6 +2673,15 @@ Implementation status:
 - Raw selection, browser, and suggestion endpoint surfaces are deleted.
 - Existing preset attachments remain read and round-trip compatibility context
   only until native storage migration; they are not current intent authority.
+- **3R.7.1 Live Template Candidate Projection Audit** is complete. Normal and
+  custom workflow reads now use the same server response guard, and the
+  candidate audit rejects raw starter-template provenance before a response can
+  reach the browser. See [Policy Starter-Template Live Candidate Projection
+  Audit](policy-starter-template-live-candidate-projection-audit.md).
+
+Next component task: **3R.7.2 Template Candidate Vocabulary Decision**. Audit
+the remaining template `prefer`, hard-limit, and avoid values against existing
+typed destination controls before adding any new candidate surface.
 
 ### 3R.8 Accessibility And Decision Load
 

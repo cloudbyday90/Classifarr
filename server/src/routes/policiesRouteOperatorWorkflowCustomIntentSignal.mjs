@@ -21,7 +21,6 @@ import {
   getPolicyIntentSignalCustomEntryCandidateKey,
 } from '../services/policyIntentSignalCustomEntry.mjs';
 import {
-  buildPolicyOperatorWorkflowReadAudit,
   policyOperatorWorkflowReadService,
 } from '../services/policyOperatorWorkflowReadService.mjs';
 import {
@@ -29,6 +28,9 @@ import {
   loadPolicyOperatorWorkflowStarterTemplateSuggestions,
   normalizePolicyOperatorWorkflowLibraryId,
 } from './policyOperatorWorkflowRouteContext.mjs';
+import {
+  assertPolicyOperatorWorkflowReadResponse,
+} from './policyOperatorWorkflowReadResponse.mjs';
 
 function createPolicyIntentSignalCustomEntryLimiter(rateLimit) {
   return typeof rateLimit === 'function'
@@ -92,9 +94,9 @@ export function registerPolicyOperatorWorkflowCustomIntentSignalRoutes(router, {
           customValueCandidates: [customCandidate],
         },
       });
-      const audit = buildPolicyOperatorWorkflowReadAudit(result);
+      const audit = assertPolicyOperatorWorkflowReadResponse({ result, libraryId, logger });
 
-      if (!audit.ok || !projectionContainsCustomEntry(result, customCandidate)) {
+      if (!projectionContainsCustomEntry(result, customCandidate)) {
         logger?.error('Custom policy intent-signal projection failed validation', {
           libraryId,
           auditIssues: audit.issues.map(issue => issue.riskId),

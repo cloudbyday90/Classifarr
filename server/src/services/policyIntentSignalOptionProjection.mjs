@@ -29,6 +29,39 @@ const POLICY_INTENT_SIGNAL_OPTION_PROJECTION_VERSION = 'policy.intent_signal_opt
 const MAX_PROJECTED_OPTIONS = 32;
 const MAX_PROJECTED_OBSERVED_EVIDENCE = 20;
 const MAX_VALUE_LENGTH = 160;
+const POLICY_INTENT_SIGNAL_OPTION_PROJECTION_AUDIT_RISK_IDS = Object.freeze({
+  INVALID_VERSION: 'invalid_version',
+  UNSAFE_AUTHORITY: 'unsafe_authority',
+  INVALID_OBSERVED_EVIDENCE: 'invalid_observed_evidence',
+  INVALID_OPTION: 'invalid_option',
+  TEMPLATE_PAYLOAD_EXPOSED: 'template_payload_exposed',
+  INVALID_SOURCE_SUMMARIES: 'invalid_source_summaries',
+  INVALID_CUSTOM_ENTRY_INPUT: 'invalid_custom_entry_input',
+});
+const STARTER_TEMPLATE_PROVENANCE_FIELD_NAMES = Object.freeze([
+  'id',
+  'key',
+  'name',
+  'templateId',
+  'templateName',
+  'template_id',
+  'template_name',
+  'presetId',
+  'preset_id',
+  'template',
+  'preset',
+  'templateAttachment',
+  'presetAttachment',
+  'attachment',
+  'signals',
+  'description',
+  'category',
+  'suggestion_score',
+  'suggestion_reasons',
+  'suggestion_warnings',
+  'match_score',
+  'match_reasons',
+]);
 const OPTION_SOURCE_ORDER = Object.freeze([
   POLICY_AUTHORING_OPTION_SOURCE_IDS.OBSERVED_IN_LIBRARY,
   POLICY_AUTHORING_OPTION_SOURCE_IDS.SUGGESTED_FROM_OBSERVED_PROFILE,
@@ -52,6 +85,10 @@ function asArray(value) {
 
 function asObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+}
+
+function hasOwn(value, key) {
+  return Object.prototype.hasOwnProperty.call(value, key);
 }
 
 function normalizeString(value, maximumLength = MAX_VALUE_LENGTH) {
@@ -122,6 +159,15 @@ function buildSourceSummary(sourceId, options = [], observedEvidence = []) {
     evidenceCount,
     emitted: sourceOptions.length > 0 || evidenceCount > 0,
   };
+}
+
+function exposesStarterTemplateProvenance(option = {}) {
+  const source = asObject(option);
+  if (source.sourceId !== POLICY_AUTHORING_OPTION_SOURCE_IDS.SUGGESTED_FROM_STARTER_TEMPLATE) {
+    return false;
+  }
+
+  return STARTER_TEMPLATE_PROVENANCE_FIELD_NAMES.some(fieldName => hasOwn(source, fieldName));
 }
 
 function toObservedEvidence(observation = {}) {
@@ -409,11 +455,11 @@ function buildPolicyIntentSignalOptionProjectionAudit(projection = {}) {
   const options = asArray(source.options);
 
   if (source.version !== POLICY_INTENT_SIGNAL_OPTION_PROJECTION_VERSION) {
-    issues.push('invalid_version');
+    issues.push(POLICY_INTENT_SIGNAL_OPTION_PROJECTION_AUDIT_RISK_IDS.INVALID_VERSION);
   }
 
   if (source.rawPayloadExposed !== false || source.authority?.canAutoDeclareIntent !== false) {
-    issues.push('unsafe_authority');
+    issues.push(POLICY_INTENT_SIGNAL_OPTION_PROJECTION_AUDIT_RISK_IDS.UNSAFE_AUTHORITY);
   }
 
   if (observedEvidence.some(option => (
@@ -422,7 +468,7 @@ function buildPolicyIntentSignalOptionProjectionAudit(projection = {}) {
     option?.requiresExplicitAcceptance !== true ||
     option?.canAutoDeclare !== false
   ))) {
-    issues.push('invalid_observed_evidence');
+    issues.push(POLICY_INTENT_SIGNAL_OPTION_PROJECTION_AUDIT_RISK_IDS.INVALID_OBSERVED_EVIDENCE);
   }
 
   if (options.some((option) => {
@@ -434,15 +480,19 @@ function buildPolicyIntentSignalOptionProjectionAudit(projection = {}) {
       option?.questionId !== POLICY_AUTHORING_DESTINATION_QUESTION_IDS.WHAT_BELONGS_HERE ||
       option?.canAutoDeclare !== false;
   })) {
-    issues.push('invalid_option');
+    issues.push(POLICY_INTENT_SIGNAL_OPTION_PROJECTION_AUDIT_RISK_IDS.INVALID_OPTION);
+  }
+
+  if (options.some(exposesStarterTemplateProvenance)) {
+    issues.push(POLICY_INTENT_SIGNAL_OPTION_PROJECTION_AUDIT_RISK_IDS.TEMPLATE_PAYLOAD_EXPOSED);
   }
 
   if (asArray(source.sourceSummaries).length !== OPTION_SOURCE_ORDER.length) {
-    issues.push('invalid_source_summaries');
+    issues.push(POLICY_INTENT_SIGNAL_OPTION_PROJECTION_AUDIT_RISK_IDS.INVALID_SOURCE_SUMMARIES);
   }
 
   if (!isPolicyIntentSignalCustomEntryInputContract(source.customEntryInput)) {
-    issues.push('invalid_custom_entry_input');
+    issues.push(POLICY_INTENT_SIGNAL_OPTION_PROJECTION_AUDIT_RISK_IDS.INVALID_CUSTOM_ENTRY_INPUT);
   }
 
   return {
@@ -456,6 +506,7 @@ export {
   MAX_PROJECTED_OBSERVED_EVIDENCE,
   MAX_PROJECTED_OPTIONS,
   OPTION_SOURCE_ORDER,
+  POLICY_INTENT_SIGNAL_OPTION_PROJECTION_AUDIT_RISK_IDS,
   POLICY_INTENT_SIGNAL_OPTION_PROJECTION_VERSION,
   buildPolicyIntentSignalOptionProjection,
   buildPolicyIntentSignalOptionProjectionAudit,

@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Starter-Template Candidates**: Operator-workflow responses now
+  validate their final canonical candidate projection before sending it. Raw
+  starter-template provenance is rejected, and template suggestions remain
+  source-labelled, explicitly accepted draft candidates without template
+  attachment, persistence, routing, or automation authority.
+
 - **Policy Authoring Readiness Actions**: Native policy creation now uses an
   audited server-owned owner map for every readiness state. Existing destination
   controls, the bounded library-mapping handoff, or automatic profile guidance

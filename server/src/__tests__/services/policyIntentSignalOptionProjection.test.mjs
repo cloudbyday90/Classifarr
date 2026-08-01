@@ -1,4 +1,5 @@
 import {
+  POLICY_INTENT_SIGNAL_OPTION_PROJECTION_AUDIT_RISK_IDS,
   POLICY_INTENT_SIGNAL_OPTION_PROJECTION_VERSION,
   buildPolicyIntentSignalOptionProjection,
   buildPolicyIntentSignalOptionProjectionAudit,
@@ -115,6 +116,12 @@ describe('policyIntentSignalOptionProjection', () => {
       ]),
     }));
     expect(projection.options.find(option => option.value === 'Animation').sourceId).toBe('already_declared');
+    const starterTemplateOption = projection.options.find(option => (
+      option.sourceId === 'suggested_from_starter_template'
+    ));
+    expect(starterTemplateOption).not.toHaveProperty('templateId');
+    expect(starterTemplateOption).not.toHaveProperty('templateName');
+    expect(starterTemplateOption).not.toHaveProperty('signals');
     expect(projection.sourceSummaries).toHaveLength(7);
     expect(buildPolicyIntentSignalOptionProjectionAudit(projection)).toEqual({
       ok: true,
@@ -214,7 +221,32 @@ describe('policyIntentSignalOptionProjection', () => {
 
     expect(buildPolicyIntentSignalOptionProjectionAudit(projection)).toEqual(expect.objectContaining({
       ok: false,
-      issues: expect.arrayContaining(['unsafe_authority']),
+      issues: expect.arrayContaining([
+        POLICY_INTENT_SIGNAL_OPTION_PROJECTION_AUDIT_RISK_IDS.UNSAFE_AUTHORITY,
+      ]),
+    }));
+  });
+
+  test('rejects starter-template provenance if it reaches the browser projection', () => {
+    const projection = buildPolicyIntentSignalOptionProjection({
+      starterTemplateSuggestions: [{
+        templateId: 'holiday',
+        templateName: 'Holiday',
+        signalType: 'keywords',
+        value: 'Christmas',
+        explanation: 'Suggested by the optional Holiday starter template.',
+      }],
+    });
+    const option = projection.options.find(candidate => (
+      candidate.sourceId === 'suggested_from_starter_template'
+    ));
+    option.templateAttachment = { id: 'holiday', name: 'Holiday' };
+
+    expect(buildPolicyIntentSignalOptionProjectionAudit(projection)).toEqual(expect.objectContaining({
+      ok: false,
+      issues: expect.arrayContaining([
+        POLICY_INTENT_SIGNAL_OPTION_PROJECTION_AUDIT_RISK_IDS.TEMPLATE_PAYLOAD_EXPOSED,
+      ]),
     }));
   });
 });
