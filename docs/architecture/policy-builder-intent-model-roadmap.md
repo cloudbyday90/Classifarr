@@ -2809,10 +2809,24 @@ Implementation status:
   and unapproved. See [Policy Compatibility Retirement Candidate Taxonomy
   Reconciliation](policy-compatibility-retirement-candidate-taxonomy-reconciliation.md).
 
-Next component task: **3R.10.12 Compatibility Retirement Assembly Handoff
-Audit**. Audit the read-only handoff from ready candidate assembly to the
-existing release-readiness, approved artifact, and execution gates. Do not
-create another manifest, approve a removal, or execute a change.
+- **3R.10.12 Compatibility Retirement Assembly Handoff Audit** is complete.
+  The audit requires ready source-backed assembly, existing release readiness,
+  a fingerprint-valid approved artifact with exact candidate coverage, and the
+  existing execution gate without creating, approving, or executing anything.
+  It proves that a schema-compliant artifact can retain all four named shared-
+  test scopes, but the existing execution-plan builder still starts from broad
+  release categories and the preflight gate blocks scopes as duplicate paths in
+  retained test files. See [Policy Compatibility Retirement Assembly Handoff
+  Audit](policy-compatibility-retirement-assembly-handoff-audit.md).
+
+Next component task: **3R.10.13 Compatibility Retirement Execution-Plan
+Candidate-Target Adapter**. Add a read-only adapter that derives exact candidate
+taxonomy targets as existing execution-plan inputs without creating, approving,
+or executing an artifact. Follow it with scope-aware preflight observation
+identity so several exact named scopes in one retained test file remain
+distinct while preserving duplicate exact-entry rejection, artifact
+fingerprints, freshness checks, approval, and the separate controlled-removal
+boundary.
 
 ### 3R.8 Accessibility And Decision Load
 

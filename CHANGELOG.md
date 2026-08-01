@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Compatibility Retirement Assembly Handoff Audit**: Added a read-only
+  audit from exact candidate assembly through existing release readiness,
+  fingerprinted approved artifact coverage, and the execution gate. It rejects
+  target substitution and preserves the existing fail-closed block for multiple
+  named scopes in a retained test file; it cannot create artifacts, approve,
+  invoke a gate, or perform removal.
+
 - **Compatibility Retirement Taxonomy**: Added a source-backed, action-owned
   category taxonomy for every current retirement candidate. Named test scopes
   now retain exact source and test-name identity and cannot be widened into

@@ -133,10 +133,14 @@ this result.
 Reconciliation** is complete. See [Policy Compatibility Retirement Candidate
 Taxonomy Reconciliation](policy-compatibility-retirement-candidate-taxonomy-reconciliation.md).
 
-Proceed to **Phase 3R, Task 3R.10.12: Compatibility Retirement Assembly
-Handoff Audit**. Audit the read-only handoff to existing release-readiness,
-approved artifact, and execution gates without creating a manifest, approving
-removal, or executing a change.
+**Phase 3R, Task 3R.10.12: Compatibility Retirement Assembly Handoff Audit**
+is complete. It preserves separate release, artifact, and execution authority
+while exposing the current duplicate-path preflight block for exact shared-test
+scopes. See [Policy Compatibility Retirement Assembly Handoff
+Audit](policy-compatibility-retirement-assembly-handoff-audit.md).
+
+Proceed to **Phase 3R, Task 3R.10.13: Compatibility Retirement Execution-Plan
+Candidate-Target Adapter**.
 
 ## Research Date
 

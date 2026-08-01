@@ -144,10 +144,15 @@ false` and grants no authority.
 
 ## Next Step
 
-Proceed to **Phase 3R, Task 3R.10.12: Compatibility Retirement Assembly
-Handoff Audit**. Audit the read-only handoff from the ready candidate assembly
-to the existing release-readiness, approved artifact, and execution gates. Do
-not create another manifest, approve a removal, or execute a change.
+**Phase 3R, Task 3R.10.12: Compatibility Retirement Assembly Handoff Audit**
+is complete. It proves exact candidate coverage through the existing release,
+artifact, and execution boundaries without granting authority, and exposes the
+execution gate's duplicate-path block for several named scopes in one retained
+test file. See [Policy Compatibility Retirement Assembly Handoff
+Audit](policy-compatibility-retirement-assembly-handoff-audit.md).
+
+Proceed to **Phase 3R, Task 3R.10.13: Compatibility Retirement Execution-Plan
+Candidate-Target Adapter**.
 
 ## Research Date
 
