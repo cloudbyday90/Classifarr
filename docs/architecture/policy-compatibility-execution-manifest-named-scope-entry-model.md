@@ -125,7 +125,12 @@ Implemented:
 
 ## Next Step
 
-Proceed to **Phase 3R, Task 3R.10.9: Compatibility Retirement Candidate Plan
-Projection**. Derive a read-only candidate plan input from the source-backed
-reconciliation targets, including exact named-scope entries and their native
-successor evidence. Do not write a manifest, remove source, or change storage.
+**Phase 3R, Task 3R.10.9: Compatibility Retirement Candidate Plan Projection**
+is complete. It now derives unapproved, source-backed candidates with exact
+named-scope entries and native successor evidence. See [Policy Compatibility
+Retirement Candidate Plan
+Projection](policy-compatibility-retirement-candidate-plan-projection.md).
+
+Proceed to **Phase 3R, Task 3R.10.10: Compatibility Retirement Candidate Plan
+Assembly Gate**. Correlate candidates to deletion-gate categories without
+approving, persisting, or executing a manifest.

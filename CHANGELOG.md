@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Compatibility Retirement Candidate Plan Projection**: Added a read-only,
+  source-backed projection of exact retirement candidates and named shared-test
+  scopes with their native workflow successor evidence. Candidates remain
+  explicitly unapproved and cannot write manifests, delete files, rewrite
+  source, or change storage.
+
 - **Compatibility Execution-Manifest Named Scopes**: Added fingerprint-bound,
   exact named test-scope entries with canonical paths, source and test-name
   fragments, and an explicit no-whole-file-deletion boundary. The plan and

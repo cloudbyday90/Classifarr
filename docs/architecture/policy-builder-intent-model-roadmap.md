@@ -2785,10 +2785,18 @@ Implementation status:
   [Policy Compatibility Execution-Manifest Named-Scope Entry
   Model](policy-compatibility-execution-manifest-named-scope-entry-model.md).
 
-Next component task: **3R.10.9 Compatibility Retirement Candidate Plan
-Projection**. Derive a read-only candidate plan input from the source-backed
-reconciliation targets, including exact named-scope entries and their native
-successor evidence. Do not write a manifest, remove source, or change storage.
+- **3R.10.9 Compatibility Retirement Candidate Plan Projection** is complete.
+  A pure ESM projection now derives ten exact source-backed retirement
+  candidates and four named-scope plan inputs from the ready reconciliation.
+  Each candidate retains declared native workflow successor evidence; the
+  candidate input is explicitly unapproved and cannot write a manifest, remove
+  source, or change storage. See [Policy Compatibility Retirement Candidate
+  Plan Projection](policy-compatibility-retirement-candidate-plan-projection.md).
+
+Next component task: **3R.10.10 Compatibility Retirement Candidate Plan
+Assembly Gate**. Correlate each unapproved source-backed candidate target to
+the existing deletion-gate category model, rejecting missing or ambiguous
+mappings. Do not approve, persist, or execute a manifest.
 
 ### 3R.8 Accessibility And Decision Load
 

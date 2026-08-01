@@ -187,6 +187,14 @@ const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
     testPath: 'server/src/__tests__/services/policyCompatibilityDeletionExecutionManifestEntry.test.mjs',
     evidence: 'Defines a fingerprint-bound exact named-test-scope manifest entry that requires source and test-name fragments, explicitly prohibits whole-file deletion, and remains unavailable to the file-removal adapter.',
   },
+  {
+    id: 'policy_compatibility_retirement_candidate_plan_projection',
+    label: 'Policy compatibility retirement candidate-plan projection',
+    docPath: 'docs/architecture/policy-compatibility-retirement-candidate-plan-projection.md',
+    servicePath: 'server/src/services/policyCompatibilityRetirementCandidatePlanProjection.mjs',
+    testPath: 'server/src/__tests__/services/policyCompatibilityRetirementCandidatePlanProjection.test.mjs',
+    evidence: 'Derives source-backed exact retirement candidates and named-scope plan inputs with native successor evidence while remaining unapproved, read-only, and unable to execute deletion.',
+  },
 ]);
 
 const POLICY_AUTHORING_CLIENT_WORKFLOW_COMPONENTS = Object.freeze([
