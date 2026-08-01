@@ -131,7 +131,15 @@ when an import or named test changes. Adopted.
 
 ## Next Step
 
-Proceed to **Phase 3R, Task 3R.10.6: Compatibility Retirement Manifest
-Reconciliation**. Reconcile the three named compatibility retirements and eight
-removal-manifest candidates with their exact native-storage cutover conditions.
-Do not delete a component or alter storage in that task.
+**Phase 3R, Task 3R.10.6: Compatibility Retirement Manifest Reconciliation**
+is complete. The eleven remaining records now have one read-only reconciliation
+entry each, including their exact component artifact, native-storage gate set,
+native workflow successor tests, and test-file disposition. See [Policy
+Compatibility Retirement Manifest
+Reconciliation](policy-compatibility-retirement-manifest-reconciliation.md).
+
+Proceed to **Phase 3R, Task 3R.10.7: Compatibility Retirement
+Execution-Manifest Binding**. Bind these read-only entries to the existing
+authorized removal-execution path only after the declared native-storage
+conditions are proven. Do not delete a component or alter storage in that
+task.

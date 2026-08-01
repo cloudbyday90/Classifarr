@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Compatibility Retirement Manifest Reconciliation**: Every remaining
+  compatibility dependency now has a read-only, source-backed cutover record
+  with its component disposition, full native-storage gate set, successor test
+  evidence, and exact runtime, dedicated-test, or shared-test retirement
+  action. The reconciliation cannot write an execution manifest, delete files,
+  or change storage.
+
 - **Compatibility Native Contract Rehoming**: Active destination-selection,
   declared-signal removal, constraint, and review behavior coverage now lives
   at native component boundaries and asserts typed intent command plans. The

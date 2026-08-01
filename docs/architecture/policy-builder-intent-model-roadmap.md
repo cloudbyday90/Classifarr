@@ -2758,11 +2758,20 @@ Implementation status:
   [Policy Compatibility Native Contract
   Rehoming](policy-compatibility-native-contract-rehoming.md).
 
-Next component task: **3R.10.6 Compatibility Retirement Manifest
-Reconciliation**. Reconcile the three named compatibility retirements and
-eight removal-manifest candidates with their exact native-storage cutover
-conditions. Keep the manifest read-only and do not delete a component or alter
-storage in this task.
+- **3R.10.6 Compatibility Retirement Manifest Reconciliation** is complete.
+  The three named compatibility retirements and eight removal-manifest
+  candidates now map one-to-one to their retiring component artifact, every
+  native-storage deletion gate, named native workflow successor evidence, and
+  the exact test-file or shared-scope disposition. The reconciliation is
+  source-backed, read-only, and cannot write an execution manifest, delete a
+  component, or alter storage. See [Policy Compatibility Retirement Manifest
+  Reconciliation](policy-compatibility-retirement-manifest-reconciliation.md).
+
+Next component task: **3R.10.7 Compatibility Retirement Execution-Manifest
+Binding**. Bind the eleven reconciled entries to the existing authorized
+removal-execution path, preserving every source-backed native-storage gate and
+shared-test scope condition. Keep the binding read-only; do not delete a
+component or alter storage in this task.
 
 ### 3R.8 Accessibility And Decision Load
 

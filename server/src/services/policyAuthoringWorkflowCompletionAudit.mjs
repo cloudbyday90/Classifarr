@@ -161,7 +161,15 @@ const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
     docPath: 'docs/architecture/policy-compatibility-component-deletion-dependency-audit.md',
     servicePath: 'server/src/services/policyCompatibilityComponentDeletionDependencies.mjs',
     testPath: 'server/src/__tests__/services/policyCompatibilityComponentDeletionDependencies.test.mjs',
-    evidence: 'Inventories executable compatibility component dependencies, keeps active editor command and parity contracts on a native-rehome path, and separates named retirements from later removal-manifest candidates without authorizing deletion.',
+    evidence: 'Inventories the eleven remaining executable compatibility dependencies after native contract rehoming and separates exact named retirements from later removal-manifest candidates without authorizing deletion.',
+  },
+  {
+    id: 'policy_compatibility_retirement_manifest_reconciliation',
+    label: 'Policy compatibility retirement manifest reconciliation',
+    docPath: 'docs/architecture/policy-compatibility-retirement-manifest-reconciliation.md',
+    servicePath: 'server/src/services/policyCompatibilityRetirementManifestReconciliation.mjs',
+    testPath: 'server/src/__tests__/services/policyCompatibilityRetirementManifestReconciliation.test.mjs',
+    evidence: 'Reconciles every remaining compatibility dependency to exact native-storage gates, named successor tests, and later execution dispositions while remaining read-only and unable to authorize deletion.',
   },
 ]);
 
