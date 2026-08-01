@@ -2449,6 +2449,16 @@ this adds no policy write, routing, runtime-decision, learning, provider, quota,
 or compatibility authority. See [Policy Authoring Avoid
 Control](policy-authoring-avoid-control.md).
 
+**3R.5 Task 3R.5.8, Review-Trigger Control Extraction** is complete. The
+native review-warning UI is now an isolated `ReviewTriggerControl` component.
+It accepts only the existing validated server projections, exposes one labelled
+review-condition select, and emits only the established typed local
+`add_review_warning` command plan. Review conditions remain non-blocking and do
+not require an additional confirmation; invalid projections expose no control.
+This adds no policy write, routing, runtime-decision, learning, provider, quota,
+or compatibility authority. See [Policy Authoring Review-Trigger
+Control](policy-authoring-review-trigger-control.md).
+
 ### 3R.4 Evidence-Backed Option Selection
 
 Intent: options should communicate whether they are generic choices or observed
@@ -2558,6 +2568,12 @@ non-persistent admission result. It is no substitute for a future transactional
 storage gate and adds no runtime, routing, learning, provider, quota, or
 media-server authority. See [Policy Constraint Write
 Admission](policy-constraint-write-admission.md).
+
+- **3R.5.6 through 3R.5.8 Constraint-Control Extractions** are complete.
+  `HardLimitControl`, `AvoidControl`, and `ReviewTriggerControl` now each own
+  their labelled native control and only emit the established typed local plan.
+  The composite surface retains shared availability, status, staged-count, and
+  clear-draft coordination; it no longer owns a constraint-specific editor.
 
 ### 3R.6 Readiness And Next Action Surface
 

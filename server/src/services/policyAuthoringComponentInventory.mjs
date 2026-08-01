@@ -16,6 +16,7 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS = Object.freeze({
   CONSTRAINT_COMPOSITE: 'constraint_composite',
   HARD_LIMIT_CONTROL: 'hard_limit_control',
   AVOID_CONTROL: 'avoid_control',
+  REVIEW_TRIGGER_CONTROL: 'review_trigger_control',
   READINESS: 'readiness',
   STATUS: 'status',
   ACTION_ADMISSION: 'action_admission',
@@ -163,15 +164,22 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY = deepFreeze([
     notes: 'The target avoid control rebuilds the approved advisory display projection, requires explicit confirmation, and emits the established typed local draft plan only.',
   },
   {
+    id: 'review_trigger_control',
+    path: 'client/src/components/policies/ReviewTriggerControl.vue',
+    roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.REVIEW_TRIGGER_CONTROL,
+    decisionId: POLICY_AUTHORING_COMPONENT_DECISION_IDS.KEEP_AS_PRIMITIVE,
+    targetComponentIds: [POLICY_AUTHORING_COMPONENT_IDS.REVIEW_TRIGGER_CONTROL],
+    normalAuthoringAllowed: true,
+    notes: 'The target review-trigger control rebuilds the approved non-blocking review projection and emits the established typed local draft plan only.',
+  },
+  {
     id: 'policy_intent_constraint_control_surface',
     path: 'client/src/components/policies/PolicyIntentConstraintControlSurface.vue',
     roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.CONSTRAINT_COMPOSITE,
-    decisionId: POLICY_AUTHORING_COMPONENT_DECISION_IDS.REWRITE_AS_TARGET,
-    targetComponentIds: [
-      POLICY_AUTHORING_COMPONENT_IDS.REVIEW_TRIGGER_CONTROL,
-    ],
+    decisionId: POLICY_AUTHORING_COMPONENT_DECISION_IDS.KEEP_AS_PRIMITIVE,
+    targetComponentIds: [],
     normalAuthoringAllowed: true,
-    notes: 'Coordinates valid projection availability, the remaining review-warning control, staged-count display, and draft clearing without changing the typed draft-command boundary.',
+    notes: 'Coordinates valid projection availability, one status region, staged-count display, and draft clearing without changing the typed draft-command boundary.',
   },
   {
     id: 'readiness_next_action_card',
@@ -427,9 +435,9 @@ const POLICY_AUTHORING_TARGET_IMPLEMENTATIONS = deepFreeze([
   },
   {
     targetComponentId: POLICY_AUTHORING_COMPONENT_IDS.REVIEW_TRIGGER_CONTROL,
-    statusId: POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.SPLIT_REQUIRED,
-    sourcePaths: ['client/src/components/policies/PolicyIntentConstraintControlSurface.vue'],
-    notes: 'Native review-warning presentation is currently one branch of the combined native constraint surface.',
+    statusId: POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.IMPLEMENTED,
+    sourcePaths: ['client/src/components/policies/ReviewTriggerControl.vue'],
+    notes: 'Implemented as a self-validating non-blocking review-trigger control with typed local-draft plan emission.',
   },
   {
     targetComponentId: POLICY_AUTHORING_COMPONENT_IDS.READINESS_NEXT_ACTION_CARD,

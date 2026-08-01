@@ -17,11 +17,11 @@ server-defined advisory `reduce_confidence` behavior; it cannot present or emit
 a hard-limit blocker.
 
 `PolicyIntentConstraintControlSurface.vue` continues to own the single
-unavailable message, local staged-command count, draft clearing, and the
-remaining review-warning control. The component does not mutate props, persist
-policy data, derive constraint meaning, route media, make runtime automation
-decisions, learn from a choice, call a provider, query quota data, or expose raw
-server payloads.
+unavailable message, local staged-command count, and draft clearing. Dedicated
+hard-limit and review-trigger controls own their individual presentation. The
+component does not mutate props, persist policy data, derive constraint meaning,
+route media, make runtime automation decisions, learn from a choice, call a
+provider, query quota data, or expose raw server payloads.
 
 ## Official Guidance Reviewed
 
@@ -87,11 +87,12 @@ Cons:
 2. `usePolicyIntentConstraintControl` owns bounded local selection mechanics;
    specialized components own their distinct decision language.
 3. `PolicyIntentConstraintControlSurface.vue` coordinates availability, status,
-   staged-command count, clearing, and the remaining review-warning control.
+   staged-command count, and clearing while specialized controls own individual
+   boundary types.
 4. `policyIntentConstraintDraft` remains the validation and local-draft
    boundary; native policy creation remains the server persistence boundary.
-5. Extract `ReviewTriggerControl` next without moving review semantics into the
-   browser.
+5. Keep `ReviewTriggerControl` separate without moving review semantics into
+   the browser.
 
 ## Outcome
 
@@ -102,6 +103,6 @@ value into either a draft command or a hard-limit assertion.
 
 ## Next Task
 
-Extract `ReviewTriggerControl` from `PolicyIntentConstraintControlSurface.vue`.
-Keep review conditions separate from constraint values and preserve the existing
-typed local-draft boundary.
+Start Phase 3R.6 with a source-backed audit of `ReadinessNextActionCard`.
+Verify one resolving action per server-owned readiness issue and no diagnostic
+detail in the normal authoring workflow.

@@ -143,6 +143,7 @@ const POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS = deepFreeze([
   'client/src/__tests__/PolicyPresetMigrationNotice.test.js',
   'client/src/__tests__/AvoidControl.test.js',
   'client/src/__tests__/HardLimitControl.test.js',
+  'client/src/__tests__/ReviewTriggerControl.test.js',
   'client/src/__tests__/IntentSignalChipList.test.js',
   'client/src/__tests__/IntentSignalPicker.test.js',
   'client/src/__tests__/composables/usePolicyIntentDraft.test.js',
@@ -435,6 +436,14 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
       POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.HARD_LIMITS_REQUIRE_EXPLICIT_ACTION,
     ],
     'Hard-limit staging exposes labelled controls and disabled reasons, requires explicit confirmation, and emits only the established typed local draft plan.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/ReviewTriggerControl.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_ACCESSIBILITY_DECISION_LOAD,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS],
+    'Review-trigger staging exposes labelled controls and disabled reasons, preserves non-blocking semantics, and emits only the established typed local draft plan.'
   ),
   presentationTestRecord(
     'client/src/__tests__/IntentSignalChipList.test.js',

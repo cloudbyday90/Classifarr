@@ -14,8 +14,8 @@ The control rebuilds the approved display surface from its inputs rather than
 accepting a parent-supplied rendering object. Invalid decision or eligibility
 projections therefore render no hard-limit input.
 `PolicyIntentConstraintControlSurface.vue` continues to own the single
-unavailable message, local staged-command
-count, draft clearing, and the still-combined avoid and review-warning controls.
+unavailable message, local staged-command count, and draft clearing. Dedicated
+avoid and review-trigger controls own their individual presentation.
 
 The component does not mutate props, persist policy data, derive constraint
 meaning, route media, make runtime automation decisions, learn from a choice,
@@ -48,8 +48,8 @@ call a provider, query quota data, or expose raw server payloads.
    validation in `buildPolicyIntentConstraintCommandPlan`.
 3. Preserve the existing command-plan version, component id, and local-draft
    boundary. Component extraction is not a storage or API migration.
-4. Keep the composite as the single owner of availability and status messaging
-   until `AvoidControl` and `ReviewTriggerControl` are extracted.
+4. Keep the composite as the single owner of availability and status messaging;
+   specialized controls own their individual selections and descriptions.
 
 ## Pros And Cons
 
@@ -84,11 +84,12 @@ Cons:
 1. `HardLimitControl.vue` derives an approved blocking control, renders native
    labelled inputs, requires confirmation, and emits only one typed local plan.
 2. `PolicyIntentConstraintControlSurface.vue` coordinates availability, status,
-   staged-command count, clearing, and the remaining advisory controls.
+   staged-command count, and clearing while specialized controls own the
+   individual boundary types.
 3. `policyIntentConstraintDraft` remains the validation and local-draft
    boundary; native policy creation remains the server persistence boundary.
-4. Keep `AvoidControl` as the separate advisory primitive, then extract
-   `ReviewTriggerControl` without moving decision semantics into the browser.
+4. Keep `AvoidControl` and `ReviewTriggerControl` as separate advisory and
+   review primitives without moving decision semantics into the browser.
 
 ## Outcome
 
@@ -99,6 +100,6 @@ unapproved value into a draft command.
 
 ## Next Task
 
-Extract `ReviewTriggerControl` from `PolicyIntentConstraintControlSurface.vue`.
-Keep review conditions distinct from blocking and advisory rating values while
-preserving the typed local draft-command boundary.
+Start Phase 3R.6 with a source-backed audit of `ReadinessNextActionCard`.
+Verify one resolving action per server-owned readiness issue and no diagnostic
+detail in the normal authoring workflow.

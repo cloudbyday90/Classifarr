@@ -275,6 +275,7 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
       '/PolicyIntentConstraintControlSurface.vue',
       '/AvoidControl.vue',
       '/HardLimitControl.vue',
+      '/ReviewTriggerControl.vue',
       '/usePolicyIntentConstraintControl.js',
       '/policyIntentConstraintControlSurface.js',
     ]),

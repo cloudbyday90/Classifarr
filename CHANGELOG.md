@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Authoring Review-Trigger Control**: Native policy creation now uses
+  a dedicated, server-projection-validated review-condition component. It keeps
+  non-blocking review behavior distinct from hard-limit and avoid controls and
+  emits only the existing typed local-draft command plan.
+
 - **Policy Authoring Avoid Control**: Native policy creation now uses a
   dedicated, server-projection-validated advisory avoid component. It preserves
   explicit confirmation and the typed local-draft command boundary while
