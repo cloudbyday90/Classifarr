@@ -145,10 +145,16 @@ decision, and source-backed regression coverage as an active server contract.
 
 ## Next Step
 
-Proceed to **Phase 3R, Task 3R.10.10: Compatibility Retirement Candidate Plan
-Assembly Gate**. Correlate each unapproved source-backed candidate target to
-the existing deletion-gate category model, reject missing or ambiguous mappings,
-and remain read-only. Do not approve, persist, or execute a manifest.
+**Phase 3R, Task 3R.10.10: Compatibility Retirement Candidate Plan Assembly
+Gate** is complete. It now validates exact path and action-aware category
+correlation without turning candidates into an approval or execution request.
+See [Policy Compatibility Retirement Candidate Plan Assembly
+Gate](policy-compatibility-retirement-candidate-plan-assembly-gate.md).
+
+Proceed to **Phase 3R, Task 3R.10.11: Compatibility Deletion-Category Taxonomy
+Reconciliation**. Reconcile category definitions against every exact candidate,
+including a distinct named-test-scope action category, while remaining
+read-only.
 
 ## Research Date
 

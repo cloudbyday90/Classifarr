@@ -2793,10 +2793,19 @@ Implementation status:
   source, or change storage. See [Policy Compatibility Retirement Candidate
   Plan Projection](policy-compatibility-retirement-candidate-plan-projection.md).
 
-Next component task: **3R.10.10 Compatibility Retirement Candidate Plan
-Assembly Gate**. Correlate each unapproved source-backed candidate target to
-the existing deletion-gate category model, rejecting missing or ambiguous
-mappings. Do not approve, persist, or execute a manifest.
+- **3R.10.10 Compatibility Retirement Candidate Plan Assembly Gate** is
+  complete. The new read-only gate revalidates the candidate and deletion-gate
+  model, then requires an exact path and action-aware category correlation for
+  every target. It correctly blocks the current incomplete taxonomy rather than
+  guessing a category or flattening shared test scopes into whole-file removal.
+  See [Policy Compatibility Retirement Candidate Plan Assembly
+  Gate](policy-compatibility-retirement-candidate-plan-assembly-gate.md).
+
+Next component task: **3R.10.11 Compatibility Deletion-Category Taxonomy
+Reconciliation**. Reconcile the existing category definitions against every
+exact candidate target, including a distinct named-test-scope action category.
+Keep the taxonomy source-backed and read-only; do not approve, persist, or
+execute a manifest.
 
 ### 3R.8 Accessibility And Decision Load
 

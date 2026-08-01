@@ -1,7 +1,4 @@
 import {
-  POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS,
-} from './policyCompatibilityDeletionGates.mjs';
-import {
   POLICY_COMPATIBILITY_DELETION_READINESS_STATUS_IDS,
   buildPolicyCompatibilityDeletionReadiness,
 } from './policyCompatibilityDeletionReadiness.mjs';
@@ -12,6 +9,9 @@ import {
 import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS,
 } from './policyCompatibilityDeletionExecutionActions.mjs';
+import {
+  getPolicyCompatibilityDeletionCategoryActionId,
+} from './policyCompatibilityDeletionCategoryAction.mjs';
 import {
   normalizePolicyCompatibilityDeletionExecutionManifestEntry,
   validatePolicyCompatibilityDeletionExecutionManifestEntry,
@@ -41,19 +41,6 @@ const POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS = Object.freeze({
   SIDE_EFFECT_PERFORMED: 'side_effect_performed',
   RISK_COUNT_MISMATCH: 'risk_count_mismatch',
   UNKNOWN_STATUS: 'unknown_status',
-});
-
-const CATEGORY_ACTION_IDS = Object.freeze({
-  [POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.CLIENT_BRIDGE_UI]:
-    POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.DELETE_FILE,
-  [POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.LEGACY_SERIALIZER_DESERIALIZER]:
-    POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.REPLACE_CODE_PATH,
-  [POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.CUSTOM_SIGNAL_MUTATION_HELPERS]:
-    POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.REPLACE_CODE_PATH,
-  [POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.PRESET_AS_POLICY_RUNTIME]:
-    POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.REPLACE_CODE_PATH,
-  [POLICY_COMPATIBILITY_DELETION_CATEGORY_IDS.STALE_COMPATIBILITY_TESTS]:
-    POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.REMOVE_TEST,
 });
 
 function asArray(value) {
@@ -122,7 +109,7 @@ function buildManifestEntries({
       return {
         categoryId: category.categoryId || null,
         actionId:
-          CATEGORY_ACTION_IDS[category.categoryId] ||
+          getPolicyCompatibilityDeletionCategoryActionId(category.categoryId) ||
           POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.REPLACE_CODE_PATH,
         path: normalizedPath,
         deletionIntent: category.deletionIntent || null,

@@ -195,6 +195,14 @@ const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
     testPath: 'server/src/__tests__/services/policyCompatibilityRetirementCandidatePlanProjection.test.mjs',
     evidence: 'Derives source-backed exact retirement candidates and named-scope plan inputs with native successor evidence while remaining unapproved, read-only, and unable to execute deletion.',
   },
+  {
+    id: 'policy_compatibility_retirement_candidate_plan_assembly_gate',
+    label: 'Policy compatibility retirement candidate-plan assembly gate',
+    docPath: 'docs/architecture/policy-compatibility-retirement-candidate-plan-assembly-gate.md',
+    servicePath: 'server/src/services/policyCompatibilityRetirementCandidatePlanAssemblyGate.mjs',
+    testPath: 'server/src/__tests__/services/policyCompatibilityRetirementCandidatePlanAssemblyGate.test.mjs',
+    evidence: 'Correlates each unapproved candidate target to one exact deletion-gate category and owned action, failing closed on missing, ambiguous, or whole-file-incompatible mappings without approving or executing removal.',
+  },
 ]);
 
 const POLICY_AUTHORING_CLIENT_WORKFLOW_COMPONENTS = Object.freeze([

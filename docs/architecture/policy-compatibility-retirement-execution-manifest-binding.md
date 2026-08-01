@@ -120,6 +120,12 @@ source-backed reconciliation, retaining native workflow successor evidence and
 performing no mutation. See [Policy Compatibility Retirement Candidate Plan
 Projection](policy-compatibility-retirement-candidate-plan-projection.md).
 
-Proceed to **Phase 3R, Task 3R.10.10: Compatibility Retirement Candidate Plan
-Assembly Gate**. Correlate the unapproved candidates to deletion-gate
-categories without approving, persisting, or executing a manifest.
+**Phase 3R, Task 3R.10.10: Compatibility Retirement Candidate Plan Assembly
+Gate** is complete. It requires exact category-and-action correlation and
+blocks the current taxonomy before it can misstate named test scopes. See
+[Policy Compatibility Retirement Candidate Plan Assembly
+Gate](policy-compatibility-retirement-candidate-plan-assembly-gate.md).
+
+Proceed to **Phase 3R, Task 3R.10.11: Compatibility Deletion-Category Taxonomy
+Reconciliation**. Reconcile categories to the exact candidates without
+approving, persisting, or executing a manifest.

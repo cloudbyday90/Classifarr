@@ -131,6 +131,12 @@ named-scope entries and native successor evidence. See [Policy Compatibility
 Retirement Candidate Plan
 Projection](policy-compatibility-retirement-candidate-plan-projection.md).
 
-Proceed to **Phase 3R, Task 3R.10.10: Compatibility Retirement Candidate Plan
-Assembly Gate**. Correlate candidates to deletion-gate categories without
-approving, persisting, or executing a manifest.
+**Phase 3R, Task 3R.10.10: Compatibility Retirement Candidate Plan Assembly
+Gate** is complete. It blocks named shared-test scopes when the existing
+taxonomy offers only a whole-file test-removal action. See [Policy Compatibility
+Retirement Candidate Plan Assembly
+Gate](policy-compatibility-retirement-candidate-plan-assembly-gate.md).
+
+Proceed to **Phase 3R, Task 3R.10.11: Compatibility Deletion-Category Taxonomy
+Reconciliation**. Add only source-backed, action-aware category coverage for
+the exact candidates; do not convert named scopes into whole-file removal.

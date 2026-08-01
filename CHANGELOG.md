@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Compatibility Retirement Candidate Plan Assembly**: Added a read-only,
+  action-aware correlation gate between source-backed retirement candidates and
+  deletion categories. It fails closed on missing, ambiguous, or whole-file
+  action mismatches and cannot approve, persist, or execute a manifest.
+
 - **Compatibility Retirement Candidate Plan Projection**: Added a read-only,
   source-backed projection of exact retirement candidates and named shared-test
   scopes with their native workflow successor evidence. Candidates remain
