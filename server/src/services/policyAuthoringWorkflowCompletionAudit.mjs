@@ -52,6 +52,14 @@ const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
     evidence: 'Defines the policy-authoring component vocabulary, option sources, interaction rules, and accessibility rules before Vue rebuilds.',
   },
   {
+    id: 'policy_authoring_component_inventory',
+    label: 'Policy authoring component inventory',
+    docPath: 'docs/architecture/policy-authoring-component-inventory.md',
+    servicePath: 'server/src/services/policyAuthoringComponentInventory.mjs',
+    testPath: 'server/src/__tests__/services/policyAuthoringComponentInventory.test.mjs',
+    evidence: 'Classifies every current policy Vue component and records whether each target component is implemented, extracted, split, deferred, or compatibility-only.',
+  },
+  {
     id: 'policy_authoring_option_selection',
     label: 'Policy authoring option selection',
     docPath: 'docs/architecture/policy-authoring-option-selection.md',

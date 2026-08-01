@@ -2317,6 +2317,12 @@ Implementation status:
   [Policy Authoring Component System](policy-authoring-component-system.md).
 - The server-side policy authoring component-system contract lives in
   `server/src/services/policyAuthoringComponentSystem.mjs`.
+- The source-backed policy-authoring component inventory lives in
+  `server/src/services/policyAuthoringComponentInventory.mjs`. It classifies
+  every current policy Vue component, keeps compatibility controls out of the
+  normal path, and distinguishes implemented targets from the remaining chip
+  extraction and constraint-control split. See [Policy Authoring Component
+  Inventory](policy-authoring-component-inventory.md).
 - The target component vocabulary now includes destination context, observed
   profile, signal picker, chip list, hard-limit, avoid, review-trigger,
   readiness next-action, and starter-template suggestion components. Retired
