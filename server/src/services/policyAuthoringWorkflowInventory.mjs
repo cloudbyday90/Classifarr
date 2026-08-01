@@ -273,7 +273,9 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
     notes: 'Constraint controls render the server-owned distinction between a blocker and advisory behavior and use only the server-owned eligibility allowlist, then emit local typed draft plans without persistence, routing, learning, provider, quota, or compatibility authority.',
     matches: filePath => hasAnySegment(filePath, [
       '/PolicyIntentConstraintControlSurface.vue',
+      '/AvoidControl.vue',
       '/HardLimitControl.vue',
+      '/usePolicyIntentConstraintControl.js',
       '/policyIntentConstraintControlSurface.js',
     ]),
   },

@@ -141,6 +141,7 @@ const POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS = deepFreeze([
   'client/src/__tests__/PolicyNativePolicyRecoveryNotice.test.js',
   'client/src/__tests__/PolicyNativeProfileRecoveryStatus.test.js',
   'client/src/__tests__/PolicyPresetMigrationNotice.test.js',
+  'client/src/__tests__/AvoidControl.test.js',
   'client/src/__tests__/HardLimitControl.test.js',
   'client/src/__tests__/IntentSignalChipList.test.js',
   'client/src/__tests__/IntentSignalPicker.test.js',
@@ -415,6 +416,14 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
     POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.NATIVE_STORAGE_CLEANUP,
     [],
     'Preset migration notices are compatibility-only until native storage cleanup removes the legacy policy path.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/AvoidControl.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_ACCESSIBILITY_DECISION_LOAD,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS],
+    'Avoid staging exposes labelled controls and disabled reasons, requires explicit confirmation, and preserves its advisory typed local draft plan.'
   ),
   presentationTestRecord(
     'client/src/__tests__/HardLimitControl.test.js',

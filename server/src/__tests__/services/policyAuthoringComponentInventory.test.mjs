@@ -32,7 +32,7 @@ describe('policyAuthoringComponentInventory', () => {
       checkedTargetImplementationCount: 9,
       issues: [],
       nextTargetImplementation: expect.objectContaining({
-        targetComponentId: POLICY_AUTHORING_COMPONENT_IDS.AVOID_CONTROL,
+        targetComponentId: POLICY_AUTHORING_COMPONENT_IDS.REVIEW_TRIGGER_CONTROL,
         statusId: POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.SPLIT_REQUIRED,
       }),
     }));
@@ -61,6 +61,13 @@ describe('policyAuthoringComponentInventory', () => {
       targetComponentIds: [POLICY_AUTHORING_COMPONENT_IDS.HARD_LIMIT_CONTROL],
     }));
     expect(classifyPolicyAuthoringComponent(
+      'client/src/components/policies/AvoidControl.vue',
+    )).toEqual(expect.objectContaining({
+      roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.AVOID_CONTROL,
+      normalAuthoringAllowed: true,
+      targetComponentIds: [POLICY_AUTHORING_COMPONENT_IDS.AVOID_CONTROL],
+    }));
+    expect(classifyPolicyAuthoringComponent(
       'client/src/components/policies/PolicyCompatibilityMaintenanceSurface.vue',
     )).toEqual(expect.objectContaining({
       roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.COMPATIBILITY_MAINTENANCE,
@@ -87,8 +94,13 @@ describe('policyAuthoringComponentInventory', () => {
       statusId: POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.IMPLEMENTED,
       sourcePaths: ['client/src/components/policies/HardLimitControl.vue'],
     }));
-    [
+    expect(getPolicyAuthoringTargetImplementation(
       POLICY_AUTHORING_COMPONENT_IDS.AVOID_CONTROL,
+    )).toEqual(expect.objectContaining({
+      statusId: POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.IMPLEMENTED,
+      sourcePaths: ['client/src/components/policies/AvoidControl.vue'],
+    }));
+    [
       POLICY_AUTHORING_COMPONENT_IDS.REVIEW_TRIGGER_CONTROL,
     ].forEach(targetComponentId => {
       expect(getPolicyAuthoringTargetImplementation(targetComponentId)).toEqual(
@@ -149,18 +161,18 @@ describe('policyAuthoringComponentInventory', () => {
     expect(Object.isFrozen(targetImplementations[0].sourcePaths)).toBe(true);
   });
 
-  test('summarizes current ownership and prioritizes the avoid-control split', () => {
+  test('summarizes current ownership and prioritizes the review-trigger control split', () => {
     expect(summarizePolicyAuthoringComponentInventory(policyComponentPaths)).toEqual(
       expect.objectContaining({
         total: policyComponentPaths.length,
         unclassifiedPaths: [],
         implementationStatusCounts: {
-          [POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.IMPLEMENTED]: 6,
-          [POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.SPLIT_REQUIRED]: 2,
+          [POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.IMPLEMENTED]: 7,
+          [POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.SPLIT_REQUIRED]: 1,
           [POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.OPTIONAL_DEFERRED]: 1,
         },
         nextTargetImplementation: expect.objectContaining({
-          targetComponentId: POLICY_AUTHORING_COMPONENT_IDS.AVOID_CONTROL,
+          targetComponentId: POLICY_AUTHORING_COMPONENT_IDS.REVIEW_TRIGGER_CONTROL,
         }),
       }),
     );

@@ -43,7 +43,7 @@ and replacement decision.
 
 ## Current Ownership
 
-The 32 current policy Vue components are classified into four groups:
+The 33 current policy Vue components are classified into four groups:
 
 1. Native authoring: the modal, workflow shell, destination context, observed
    evidence, signal picker, question container, constraint surface, readiness,
@@ -65,7 +65,7 @@ The 32 current policy Vue components are classified into four groups:
 | `IntentSignalPicker` | Implemented | `IntentSignalPicker.vue` |
 | `IntentSignalChipList` | Implemented | `IntentSignalChipList.vue` |
 | `HardLimitControl` | Implemented | `HardLimitControl.vue` |
-| `AvoidControl` | Split required | `PolicyIntentConstraintControlSurface.vue` |
+| `AvoidControl` | Implemented | `AvoidControl.vue` |
 | `ReviewTriggerControl` | Split required | `PolicyIntentConstraintControlSurface.vue` |
 | `ReadinessNextActionCard` | Implemented | `ReadinessNextActionCard.vue` |
 | `StarterTemplateSuggestion` | Optional and deferred | Server-projected evidence only |
@@ -79,10 +79,11 @@ a second target component.
 1. Keep `IntentSignalPicker` responsible for option grouping, selection, and
    typed add plans; `IntentSignalChipList` now owns only declared-signal display
    and remove-plan emission through explicit props and events.
-2. Keep `HardLimitControl` responsible for its blocking explanation, canonical
-   select, explicit confirmation, staged-value display, and typed local-plan
-   emission. Extract `AvoidControl` and `ReviewTriggerControl` next while
-   retaining the existing server-owned decision and eligibility projections.
+2. Keep `HardLimitControl` responsible for its blocking explanation and
+   `AvoidControl` responsible for its advisory explanation. Both retain their
+   canonical select, explicit confirmation, staged-value display, and typed
+   local-plan emission. Extract `ReviewTriggerControl` next while retaining the
+   existing server-owned decision and eligibility projections.
 3. Do not add a `StarterTemplateSuggestion` component until a server projection
    can improve native setup without presenting templates as the primary mental
    model. Its absence is intentional, not a missing fallback.
@@ -116,12 +117,12 @@ Pros:
 - Isolates a single visible behavior with a bounded typed-command interface.
 - Reduces `IntentSignalPicker` complexity without changing server projections,
   persistence, routing, learning, provider access, or quotas.
-- The hard-limit control now fails closed on invalid server projections and
-  keeps explicit confirmation separate from advisory controls.
+- The hard-limit and avoid controls now fail closed on invalid server
+  projections and keep blocking and advisory consequences distinct.
 
 Cons:
 
-- Avoid and review-warning controls remain composed temporarily.
+- The review-warning control remains composed temporarily.
 - Each extracted primitive adds a small explicit props/events interface.
 
 ## Final Recommendation Stack
@@ -129,14 +130,14 @@ Cons:
 1. Keep the executable component inventory in
    `policyAuthoringComponentInventory.mjs` and scan the actual Vue directory in
    its test.
-2. Treat six target components as implemented, two as a later split, and the
+2. Treat seven target components as implemented, one as a later split, and the
    template accelerator as intentionally optional.
 3. Treat `IntentSignalChipList` as an implemented primitive. It receives
    declared candidates, exposes complete remove names, and emits only the
    existing typed remove command plan.
-4. Treat `HardLimitControl` as an implemented primitive, then extract
-   `AvoidControl` followed by `ReviewTriggerControl`, without changing the
-   server-owned decision model.
+4. Treat `HardLimitControl` and `AvoidControl` as implemented primitives, then
+   extract `ReviewTriggerControl` without changing the server-owned decision
+   model.
 5. Preserve the server-owned option, constraint, readiness, and native-create
    admission boundaries. This inventory adds no routes, policy writes, raw
    payload access, provider calls, media-server calls, quota reads, or secrets.
@@ -144,13 +145,12 @@ Cons:
 ## Outcome
 
 The component tree now has an executable ownership and replacement map. The
-inventory reports `IntentSignalChipList` and `HardLimitControl` as implemented,
-records the remaining advisory constraint split, and keeps starter templates
-optional and non-primary.
+inventory reports `IntentSignalChipList`, `HardLimitControl`, and `AvoidControl`
+as implemented, records the remaining review-trigger split, and keeps starter
+templates optional and non-primary.
 
 ## Next Task
 
-Extract `AvoidControl` from `PolicyIntentConstraintControlSurface` with a
-minimal props/events contract. Preserve server-owned value eligibility,
-explicit confirmation, advisory semantics, and the current typed
-constraint-command boundary.
+Extract `ReviewTriggerControl` from `PolicyIntentConstraintControlSurface` with
+a minimal props/events contract. Preserve server-owned review-condition
+eligibility and the current typed constraint-command boundary.

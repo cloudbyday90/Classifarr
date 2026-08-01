@@ -8,37 +8,37 @@
 
 <template>
   <fieldset
-    v-if="hardLimitControl"
-    class="space-y-3 rounded-lg border border-amber-700/70 bg-amber-950/20 p-3"
+    v-if="avoidControl"
+    class="space-y-3 rounded-lg border border-blue-800/70 bg-blue-950/20 p-3"
   >
     <legend class="px-1 text-sm font-semibold text-white">
-      {{ hardLimitControl.label }}
+      {{ avoidControl.label }}
     </legend>
     <p class="text-xs text-gray-300">
-      {{ hardLimitControl.description }}
+      {{ avoidControl.description }}
     </p>
-    <p class="rounded border border-amber-700/70 px-2 py-1 text-[11px] text-amber-100">
-      This is a blocker: it can prevent automatic application.
+    <p class="rounded border border-blue-800/70 px-2 py-1 text-[11px] text-blue-100">
+      This is advisory: it does not become a hard block by default.
     </p>
 
     <label
       class="block text-xs font-medium text-gray-200"
-      for="policy-intent-constraint-hard_limit-value"
+      for="policy-intent-constraint-avoid-value"
     >
-      {{ hardLimitControl.valueLabel }}
+      {{ avoidControl.valueLabel }}
     </label>
     <select
-      id="policy-intent-constraint-hard_limit-value"
+      id="policy-intent-constraint-avoid-value"
       :value="draftValue"
       class="w-full rounded-sm border border-gray-700 bg-background px-2 py-1 text-sm text-white"
       :aria-describedby="describedBy"
       @change="setDraftValue($event.target.value)"
     >
       <option value="">
-        {{ hardLimitControl.valueEmptyLabel }}
+        {{ avoidControl.valueEmptyLabel }}
       </option>
       <option
-        v-for="option in hardLimitControl.options"
+        v-for="option in avoidControl.options"
         :key="option.value"
         :value="option.value"
       >
@@ -46,7 +46,7 @@
       </option>
     </select>
     <p
-      id="policy-intent-constraint-hard_limit-description"
+      id="policy-intent-constraint-avoid-description"
       class="text-[11px] text-gray-500"
     >
       Confirm the value below before staging it.
@@ -54,35 +54,35 @@
 
     <label
       class="flex cursor-pointer items-start gap-2 rounded border border-gray-700 bg-background px-2 py-2 text-xs text-gray-200"
-      for="policy-intent-constraint-hard_limit-confirmation"
+      for="policy-intent-constraint-avoid-confirmation"
     >
       <input
-        id="policy-intent-constraint-hard_limit-confirmation"
+        id="policy-intent-constraint-avoid-confirmation"
         v-model="confirmed"
         type="checkbox"
         class="mt-0.5"
       >
-      <span>{{ hardLimitControl.confirmationLabel }}</span>
+      <span>{{ avoidControl.confirmationLabel }}</span>
     </label>
 
     <button
       type="button"
-      class="rounded-sm border border-amber-600 px-3 py-1 text-xs text-amber-100 hover:bg-amber-950/40 disabled:cursor-not-allowed disabled:opacity-50"
+      class="rounded-sm border border-cyan-700 px-3 py-1 text-xs text-cyan-100 hover:bg-cyan-950/40 disabled:cursor-not-allowed disabled:opacity-50"
       :disabled="!canStage"
       :aria-label="stageActionLabel"
-      @click="stageHardLimit"
+      @click="stageAvoid"
     >
-      {{ hardLimitControl.actionLabel }}
+      {{ avoidControl.actionLabel }}
     </button>
 
     <ul
-      v-if="hardLimitControl.stagedValues.length"
+      v-if="avoidControl.stagedValues.length"
       class="space-y-1 border-t border-gray-700 pt-2 text-xs text-gray-300"
-      aria-label="Staged hard limit values"
+      aria-label="Staged avoid values"
     >
       <li
-        v-for="value in hardLimitControl.stagedValues"
-        :key="`hard_limit:${value}`"
+        v-for="value in avoidControl.stagedValues"
+        :key="`avoid:${value}`"
       >
         Staged: {{ value }}
       </li>
@@ -127,23 +127,23 @@ const {
   reset,
   buildCommandPlan,
 } = usePolicyIntentConstraintControl({
-  controlId: 'hard_limit',
+  controlId: 'avoid',
   constraintProps: props,
 })
 
-const hardLimitControl = computed(() => (
-  control.value?.canBlockAutomaticApplication === true &&
+const avoidControl = computed(() => (
+  control.value?.canBlockAutomaticApplication === false &&
   control.value.requiresExplicitOperatorAction === true
     ? control.value
     : null
 ))
 const describedBy = computed(() => [
-  'policy-intent-constraint-hard_limit-description',
+  'policy-intent-constraint-avoid-description',
   typeof props.statusId === 'string' ? props.statusId.trim() : '',
 ].filter(Boolean).join(' '))
 
-function stageHardLimit() {
-  if (!hardLimitControl.value || !canStage.value) return
+function stageAvoid() {
+  if (!avoidControl.value || !canStage.value) return
 
   const plan = buildCommandPlan()
   if (!plan) return

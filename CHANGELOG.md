@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Authoring Avoid Control**: Native policy creation now uses a
+  dedicated, server-projection-validated advisory avoid component. It preserves
+  explicit confirmation and the typed local-draft command boundary while
+  keeping confidence-lowering behavior separate from hard-limit blockers.
+
 - **Policy Authoring Hard-Limit Control**: Native policy creation now uses a
   dedicated, server-projection-validated hard-limit component. It preserves
   explicit confirmation and the typed local-draft command boundary while

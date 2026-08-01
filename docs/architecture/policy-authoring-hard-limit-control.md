@@ -87,8 +87,8 @@ Cons:
    staged-command count, clearing, and the remaining advisory controls.
 3. `policyIntentConstraintDraft` remains the validation and local-draft
    boundary; native policy creation remains the server persistence boundary.
-4. Extract `AvoidControl` next, then `ReviewTriggerControl`, without moving
-   decision semantics into the browser.
+4. Keep `AvoidControl` as the separate advisory primitive, then extract
+   `ReviewTriggerControl` without moving decision semantics into the browser.
 
 ## Outcome
 
@@ -99,6 +99,6 @@ unapproved value into a draft command.
 
 ## Next Task
 
-Extract `AvoidControl` from `PolicyIntentConstraintControlSurface.vue`. Keep its
-advisory, non-blocking server projection distinct from this hard-limit control,
-while preserving explicit confirmation and typed local draft commands.
+Extract `ReviewTriggerControl` from `PolicyIntentConstraintControlSurface.vue`.
+Keep review conditions distinct from blocking and advisory rating values while
+preserving the typed local draft-command boundary.

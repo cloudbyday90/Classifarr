@@ -32,7 +32,7 @@ describe('policyAuthoringPresentationTests', () => {
   test('classifies every in-scope presentation test once and documents adjacent policy test exclusions', async () => {
     const testDirectory = resolve(import.meta.dirname, '../../../..', 'client/src/__tests__');
     const directPolicyTestPaths = (await readdir(testDirectory))
-      .filter(fileName => /^(Policy|IntentSignal|HardLimit).*\.test\.js$/.test(fileName))
+      .filter(fileName => /^(Policy|IntentSignal|HardLimit|Avoid).*\.test\.js$/.test(fileName))
       .map(fileName => `client/src/__tests__/${fileName}`)
       .sort();
     const documentedPolicyTestPaths = [
@@ -162,7 +162,7 @@ describe('policyAuthoringPresentationTests', () => {
       requiredBehaviorCount: listRequiredPolicyAuthoringPresentationBehaviors().length,
       inventoryFilePathCount: listPolicyAuthoringPresentationTestInventoryFilePaths().length,
       exclusionCount: listPolicyAuthoringPresentationTestExclusionRecords().length,
-      normalPathRecordCount: 21,
+      normalPathRecordCount: 22,
       draftBridgeOwnedRecordCount: 6,
       countsByCategory: expect.objectContaining({
         [POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_DRAFT_BRIDGE_COVERAGE]: 6,

@@ -2362,6 +2362,13 @@ Implementation record:
   retains availability, status, draft clearing, and the remaining advisory
   controls. See [Policy Authoring Hard-Limit
   Control](policy-authoring-hard-limit-control.md).
+- `AvoidControl` now owns the advisory rating selector, explicit confirmation,
+  disabled reason, staged-value display, and typed local avoid-plan emission.
+  It rebuilds the approved control from the existing server-owned decision and
+  eligibility projections and cannot present advisory behavior as a hard
+  blocker. The composite surface retains availability, status, draft clearing,
+  and the remaining review-warning control. See [Policy Authoring Avoid
+  Control](policy-authoring-avoid-control.md).
 - The workflow read now publishes a versioned server-owned intent-signal option
   projection. It composes bounded observed evidence, observed-profile options,
   optional matching starter-template suggestions, future common/custom sources,
@@ -2432,6 +2439,15 @@ Invalid projections expose no hard-limit control; this adds no policy write,
 routing, runtime-decision, learning, provider, quota, or compatibility authority.
 See [Policy Authoring Hard-Limit
 Control](policy-authoring-hard-limit-control.md).
+
+**3R.5 Task 3R.5.7, Avoid Control Extraction** is complete. The native
+rating-to-avoid UI is now an isolated `AvoidControl` component. It accepts only
+the existing validated server projections, requires explicit confirmation, and
+emits only the established typed local `add_avoid_value` command plan with the
+server-defined advisory effect. Invalid projections expose no avoid control;
+this adds no policy write, routing, runtime-decision, learning, provider, quota,
+or compatibility authority. See [Policy Authoring Avoid
+Control](policy-authoring-avoid-control.md).
 
 ### 3R.4 Evidence-Backed Option Selection
 
