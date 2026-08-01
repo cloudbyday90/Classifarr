@@ -2728,12 +2728,19 @@ Implementation status:
   Deletion-Evidence Integration
   Audit](policy-native-storage-cutover-deletion-evidence-integration-audit.md).
 
-Next component task: **3R.10.3 Native Workflow Test Rehoming Audit**. Move
-active normal-workflow regression ownership away from test files that still
-import a compatibility component scheduled for deletion, beginning with the
-`PolicyIntentEditor` destination-section and review-trigger ownership records.
-Prove no active authoring completion record points to a component that the
-native-storage cutover manifest removes.
+- **3R.10.3 Native Workflow Test Rehoming Audit** is complete. Active
+  destination-section and review-trigger completion records now point to their
+  native component tests, and a read-only audit rejects retiring-editor test
+  ownership, bridge-boundary drift, absent named native assertions, and side
+  effects. `PolicyIntentEditor.test.js` remains compatibility-only until its
+  approved native-storage cutover. See [Policy Native Workflow Test Rehoming
+  Audit](policy-native-workflow-test-rehoming-audit.md).
+
+Next component task: **3R.10.4 Compatibility Component Deletion Dependency
+Audit**. Inventory every import, route entry, and test dependency of each
+retiring compatibility component, then classify each one as a native rehome, a
+named compatibility retirement, or a removal-manifest candidate. Do not delete
+or move any component in this audit.
 
 ### 3R.8 Accessibility And Decision Load
 

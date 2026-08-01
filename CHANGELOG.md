@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Native Workflow Test Rehoming**: Active destination-section and
+  review-trigger completion records now use their native component tests rather
+  than the retiring compatibility editor test. A read-only audit verifies the
+  native assertion contracts and compatibility boundary without moving files,
+  changing storage, or authorizing deletion.
+
 - **Native-Storage Cutover Deletion Evidence**: Added a read-only integration
   audit that binds compatibility-test retirement to the existing authorized
   removal-completion artifact, exact manifest and removal coverage, clean final

@@ -147,6 +147,14 @@ const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
     testPath: 'server/src/__tests__/services/policyNativeStorageCutoverDeletionEvidence.test.mjs',
     evidence: 'Binds retiring paths and shared test scopes to a complete authorized removal artifact, reference scan, and focused plus full validation without authorizing deletion.',
   },
+  {
+    id: 'policy_native_workflow_test_rehoming',
+    label: 'Policy native workflow test rehoming',
+    docPath: 'docs/architecture/policy-native-workflow-test-rehoming-audit.md',
+    servicePath: 'server/src/services/policyNativeWorkflowTestRehoming.mjs',
+    testPath: 'server/src/__tests__/services/policyNativeWorkflowTestRehoming.test.mjs',
+    evidence: 'Keeps active normal-authoring completion records on native component contracts and rejects retiring-editor test ownership without authorizing deletion.',
+  },
 ]);
 
 const POLICY_AUTHORING_CLIENT_WORKFLOW_COMPONENTS = Object.freeze([
@@ -161,15 +169,15 @@ const POLICY_AUTHORING_CLIENT_WORKFLOW_COMPONENTS = Object.freeze([
     id: 'policy_authoring_destination_sections',
     label: 'Policy authoring destination sections',
     docPath: 'docs/architecture/policy-authoring-destination-sections.md',
-    testPath: 'client/src/__tests__/PolicyIntentEditor.test.js',
-    evidence: 'Splits review behavior, destination identity, destination rules, and confidence support anchors.',
+    testPath: 'client/src/__tests__/PolicyBuilderDestinationQuestions.test.js',
+    evidence: 'Protects server-projected destination-signal selection and keeps stale observed-library data from exposing selectable intent inputs.',
   },
   {
     id: 'policy_authoring_review_triggers',
     label: 'Policy authoring review triggers',
     docPath: 'docs/architecture/policy-authoring-review-triggers.md',
-    testPath: 'client/src/__tests__/PolicyIntentEditor.test.js',
-    evidence: 'Adds Ask When Unsure review triggers through typed draft serialization.',
+    testPath: 'client/src/__tests__/PolicyIntentReviewTriggerControl.test.js',
+    evidence: 'Emits one explicit typed local review-trigger value for every operator-selected uncertainty condition.',
   },
   {
     id: 'policy_authoring_workflow_readiness',

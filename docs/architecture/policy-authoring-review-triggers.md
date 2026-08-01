@@ -147,3 +147,13 @@ Routing is still represented mostly as a setup-card target and readiness state.
 The next slice should give `Can this destination route?` a bounded, read-only
 readiness surface that explains whether a connected Arr target exists and what
 action is needed, without turning routing diagnostics into policy rules.
+
+## Current Native Test Ownership
+
+As of Phase 3R, Task 3R.10.3, normal-workflow review-trigger evidence is owned
+by `client/src/__tests__/PolicyIntentReviewTriggerControl.test.js`. It verifies
+that each explicit selected condition emits one typed local value and that a
+duplicate condition is disabled with an explanation. The legacy
+`PolicyIntentEditor.test.js` remains compatibility-only until the approved
+native-storage cutover. See [Policy Native Workflow Test Rehoming
+Audit](policy-native-workflow-test-rehoming-audit.md).

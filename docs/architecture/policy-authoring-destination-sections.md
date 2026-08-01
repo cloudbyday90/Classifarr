@@ -108,3 +108,13 @@ Completed by
 [Policy Authoring Review Triggers](policy-authoring-review-triggers.md).
 The review behavior group now has a bounded **Ask When Unsure** checkbox
 control backed by the draft bridge.
+
+## Current Native Test Ownership
+
+As of Phase 3R, Task 3R.10.3, normal-workflow destination-section evidence is
+owned by `client/src/__tests__/PolicyBuilderDestinationQuestions.test.js`.
+It verifies that only selectable server projection exposes observed-signal
+selection and that a stale observed profile withholds those inputs. The legacy
+`PolicyIntentEditor.test.js` remains compatibility-only until the approved
+native-storage cutover. See [Policy Native Workflow Test Rehoming
+Audit](policy-native-workflow-test-rehoming-audit.md).

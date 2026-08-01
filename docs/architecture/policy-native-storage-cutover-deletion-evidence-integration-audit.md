@@ -138,8 +138,9 @@ must not manufacture proof.
 
 ## Next Step
 
-Proceed to **Phase 3R, Task 3R.10.3: Native Workflow Test Rehoming Audit**.
-`PolicyIntentEditor.test.js` remains an active completion-audit owner for
-destination-section and review-trigger behavior while `PolicyIntentEditor.vue`
-is scheduled for deletion. Rehome those native behavior contracts to their
-actual destination workflow tests before any cutover execution is considered.
+Completed by **Phase 3R, Task 3R.10.3: Native Workflow Test Rehoming Audit**.
+The active destination-section and review-trigger completion records now point
+to their native component tests instead of `PolicyIntentEditor.test.js`. The
+shared editor test remains compatibility-only until the approved native-storage
+cutover. See [Policy Native Workflow Test Rehoming
+Audit](policy-native-workflow-test-rehoming-audit.md).

@@ -23,7 +23,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
     expect(audit).toEqual(expect.objectContaining({
       ok: true,
       issueCount: 0,
-      checkedServerContractCount: 15,
+      checkedServerContractCount: 16,
       checkedClientWorkflowComponentCount: 11,
       checkedNormalWorkflowRuleCount: 5,
       checkedNormalPathExclusionCount: 4,
@@ -50,6 +50,7 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
       'policy_compatibility_maintenance_test_ownership',
       'policy_native_storage_cutover_test_handoff',
       'policy_native_storage_cutover_deletion_evidence',
+      'policy_native_workflow_test_rehoming',
     ]);
 
     expect(listPolicyAuthoringClientWorkflowComponents().map(record => record.id)).toEqual([
@@ -65,6 +66,23 @@ describe('policyAuthoringWorkflowCompletionAudit', () => {
       'policy_authoring_constraint_draft_command_boundary',
       'policy_authoring_constraint_control_surface',
     ]);
+
+    expect(listPolicyAuthoringClientWorkflowComponents()
+      .filter(record => [
+        'policy_authoring_destination_sections',
+        'policy_authoring_review_triggers',
+      ].includes(record.id))
+      .map(record => ({ id: record.id, testPath: record.testPath })))
+      .toEqual([
+        {
+          id: 'policy_authoring_destination_sections',
+          testPath: 'client/src/__tests__/PolicyBuilderDestinationQuestions.test.js',
+        },
+        {
+          id: 'policy_authoring_review_triggers',
+          testPath: 'client/src/__tests__/PolicyIntentReviewTriggerControl.test.js',
+        },
+      ]);
   });
 
   test('describes server contracts with durable product behavior', () => {
