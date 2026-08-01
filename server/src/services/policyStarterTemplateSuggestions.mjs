@@ -8,21 +8,20 @@
  * (at your option) any later version.
  */
 
+import {
+  listPolicyStarterTemplatePurposeCandidateSignalEntries,
+} from './policyStarterTemplateCandidateVocabulary.mjs';
+
 const MAX_STARTER_TEMPLATE_SUGGESTIONS = 8;
 const MAX_TEMPLATE_SIGNAL_VALUES = 24;
 const MAX_VALUE_LENGTH = 160;
 
-const STARTER_TEMPLATE_SIGNAL_TYPES = Object.freeze({
-  genres: 'genres',
-  keywords: 'keywords',
-  studios: 'studios',
-});
-
-const STARTER_TEMPLATE_SIGNAL_ENTRIES = Object.freeze([
-  ['genres', STARTER_TEMPLATE_SIGNAL_TYPES.genres],
-  ['keywords', STARTER_TEMPLATE_SIGNAL_TYPES.keywords],
-  ['studios', STARTER_TEMPLATE_SIGNAL_TYPES.studios],
-]);
+const STARTER_TEMPLATE_SIGNAL_TYPES = Object.freeze(
+  Object.fromEntries(
+    listPolicyStarterTemplatePurposeCandidateSignalEntries()
+      .map(entry => [entry.signalTypeId, entry.signalTypeId]),
+  ),
+);
 
 const SUGGESTION_STOPWORDS = new Set([
   'a', 'an', 'and', 'for', 'in', 'of', 'on', 'the', 'to', 'with',
@@ -193,20 +192,20 @@ function buildPolicyStarterTemplateIntentSignalSuggestions({
     const signals = parseObject(source.signals);
     if (!templateId || !templateName) return;
 
-    STARTER_TEMPLATE_SIGNAL_ENTRIES.forEach(([signalKey, signalType]) => {
-      asArray(parseObject(signals[signalKey]).require_any).forEach((value) => {
+    listPolicyStarterTemplatePurposeCandidateSignalEntries().forEach((entry) => {
+      asArray(parseObject(signals[entry.signalTypeId])[entry.operatorId]).forEach((value) => {
         if (uniqueSuggestions.size >= boundedLimit) return;
 
         const normalizedValue = normalizeString(value);
         if (!normalizedValue) return;
 
-        const key = `${signalType}:${normalizedValue.toLocaleLowerCase()}`;
+        const key = `${entry.signalTypeId}:${normalizedValue.toLocaleLowerCase()}`;
         if (uniqueSuggestions.has(key)) return;
 
         uniqueSuggestions.set(key, {
           templateId,
           templateName,
-          signalType,
+          signalType: entry.signalTypeId,
           value: normalizedValue,
           label: normalizedValue,
           explanation: `Suggested by the optional ${templateName} starter template.`,

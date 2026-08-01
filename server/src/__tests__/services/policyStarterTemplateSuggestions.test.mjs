@@ -69,6 +69,44 @@ describe('policyStarterTemplateSuggestions', () => {
     expect(suggestions[0]).not.toHaveProperty('description');
   });
 
+  test('does not silently reinterpret template prefer, hard-limit, or avoid vocabulary as purpose', () => {
+    const suggestions = buildPolicyStarterTemplateIntentSignalSuggestions({
+      suggestions: [{
+        id: 11,
+        name: 'Anime Collection',
+        signals: {
+          genres: {
+            require_any: ['Animation'],
+            prefer: ['Adventure'],
+            exclude: ['Horror'],
+          },
+          keywords: {
+            prefer: ['manga'],
+            exclude: ['gore'],
+          },
+          certifications: {
+            include: ['PG'],
+            exclude: ['R'],
+          },
+          runtime: { max_minutes: 120 },
+        },
+      }],
+    });
+
+    expect(suggestions).toEqual([
+      expect.objectContaining({ signalType: 'genres', value: 'Animation' }),
+    ]);
+    expect(suggestions.map(suggestion => suggestion.value)).not.toEqual(expect.arrayContaining([
+      'Adventure',
+      'Horror',
+      'manga',
+      'gore',
+      'PG',
+      'R',
+      '120',
+    ]));
+  });
+
   test('fails closed when there is no usable library context or template identity', () => {
     expect(buildPolicyStarterTemplateSuggestions({ presets })).toEqual([]);
     expect(buildPolicyStarterTemplateIntentSignalSuggestions({

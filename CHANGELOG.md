@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Starter-Template Vocabulary Boundary**: Starter templates now
+  project only exact `require_any` purpose candidates that have an existing
+  typed command owner. Legacy `prefer`, hard-limit, and exclusion semantics
+  fail closed rather than being reinterpreted as destination identity or
+  bypassing explicit constraint controls.
+
 - **Policy Starter-Template Candidates**: Operator-workflow responses now
   validate their final canonical candidate projection before sending it. Raw
   starter-template provenance is rejected, and template suggestions remain

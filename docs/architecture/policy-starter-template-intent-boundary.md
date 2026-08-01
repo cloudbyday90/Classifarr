@@ -96,3 +96,9 @@ Starter-Template Live Candidate Projection
 Audit](policy-starter-template-live-candidate-projection-audit.md). It verifies
 the final response before it is sent and rejects template provenance that does
 not belong in a canonical candidate.
+
+The vocabulary audit is documented in [Policy Starter-Template Candidate
+Vocabulary Decision](policy-starter-template-candidate-vocabulary-decision.md).
+It permits only exact, currently owned `require_any` purpose candidates;
+legacy `prefer`, constraint, and exclusion vocabulary remains server-internal
+until its corresponding native candidate contract exists.

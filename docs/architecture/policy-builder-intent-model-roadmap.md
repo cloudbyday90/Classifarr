@@ -2678,10 +2678,18 @@ Implementation status:
   candidate audit rejects raw starter-template provenance before a response can
   reach the browser. See [Policy Starter-Template Live Candidate Projection
   Audit](policy-starter-template-live-candidate-projection-audit.md).
+- **3R.7.2 Template Candidate Vocabulary Decision** is complete. The server
+  now projects only exact `require_any` purpose candidates with an existing
+  typed command owner. Template `prefer`, hard-limit, and avoid vocabulary is
+  fail-closed until its semantics, server-owned eligibility, named control, and
+  source-aware candidate command contract match exactly. See [Policy
+  Starter-Template Candidate Vocabulary
+  Decision](policy-starter-template-candidate-vocabulary-decision.md).
 
-Next component task: **3R.7.2 Template Candidate Vocabulary Decision**. Audit
-the remaining template `prefer`, hard-limit, and avoid values against existing
-typed destination controls before adding any new candidate surface.
+Next component task: **3R.7.3 Template Compatibility Bridge Inventory**. Audit
+every remaining preset attachment reader, round-trip serializer, and
+compatibility component; delete dead mechanics and record the precise
+native-storage deletion gate for each retained bridge artifact.
 
 ### 3R.8 Accessibility And Decision Load
 
