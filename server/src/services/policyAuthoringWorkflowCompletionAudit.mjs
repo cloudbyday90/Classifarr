@@ -171,6 +171,14 @@ const POLICY_AUTHORING_SERVER_CONTRACTS = Object.freeze([
     testPath: 'server/src/__tests__/services/policyCompatibilityRetirementManifestReconciliation.test.mjs',
     evidence: 'Reconciles every remaining compatibility dependency to exact native-storage gates, named successor tests, and later execution dispositions while remaining read-only and unable to authorize deletion.',
   },
+  {
+    id: 'policy_compatibility_retirement_execution_manifest_binding',
+    label: 'Policy compatibility retirement execution-manifest binding',
+    docPath: 'docs/architecture/policy-compatibility-retirement-execution-manifest-binding.md',
+    servicePath: 'server/src/services/policyCompatibilityRetirementExecutionManifestBinding.mjs',
+    testPath: 'server/src/__tests__/services/policyCompatibilityRetirementExecutionManifestBinding.test.mjs',
+    evidence: 'Maps every reconciled dependency to exact file or named-test-scope execution targets and blocks the existing file-only manifest model before it can misrepresent shared native test ownership.',
+  },
 ]);
 
 const POLICY_AUTHORING_CLIENT_WORKFLOW_COMPONENTS = Object.freeze([

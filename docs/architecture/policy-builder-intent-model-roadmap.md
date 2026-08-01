@@ -2767,11 +2767,20 @@ Implementation status:
   component, or alter storage. See [Policy Compatibility Retirement Manifest
   Reconciliation](policy-compatibility-retirement-manifest-reconciliation.md).
 
-Next component task: **3R.10.7 Compatibility Retirement Execution-Manifest
-Binding**. Bind the eleven reconciled entries to the existing authorized
-removal-execution path, preserving every source-backed native-storage gate and
-shared-test scope condition. Keep the binding read-only; do not delete a
-component or alter storage in this task.
+- **3R.10.7 Compatibility Retirement Execution-Manifest Binding** is complete.
+  The eleven reconciled dependencies now reduce to ten exact execution targets:
+  one retained runtime code-path edit, three compatibility component deletions,
+  two dedicated compatibility-test deletions, and four named shared-test scope
+  removals. The binding is read-only and blocks the current file-only execution
+  manifest because it cannot safely express the four named-scope actions. See
+  [Policy Compatibility Retirement Execution-Manifest
+  Binding](policy-compatibility-retirement-execution-manifest-binding.md).
+
+Next component task: **3R.10.8 Compatibility Execution-Manifest Named-Scope
+Entry Model**. Extend the existing execution-manifest artifact and fingerprint
+model to represent an exact named test scope without admitting whole-file
+deletion. Keep the new model read-only; do not delete a component or alter
+storage in this task.
 
 ### 3R.8 Accessibility And Decision Load
 

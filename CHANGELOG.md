@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Compatibility Execution-Manifest Binding**: Added a source-backed,
+  read-only binding from compatibility retirement records to exact code,
+  component, dedicated-test, and named shared-test-scope execution targets. It
+  blocks the current file-only manifest before shared native test coverage can
+  be misrepresented, and cannot write a manifest, delete files, or change
+  storage.
+
 - **Compatibility Retirement Manifest Reconciliation**: Every remaining
   compatibility dependency now has a read-only, source-backed cutover record
   with its component disposition, full native-storage gate set, successor test

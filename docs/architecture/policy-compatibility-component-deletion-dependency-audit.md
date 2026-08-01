@@ -138,8 +138,14 @@ native workflow successor tests, and test-file disposition. See [Policy
 Compatibility Retirement Manifest
 Reconciliation](policy-compatibility-retirement-manifest-reconciliation.md).
 
-Proceed to **Phase 3R, Task 3R.10.7: Compatibility Retirement
-Execution-Manifest Binding**. Bind these read-only entries to the existing
-authorized removal-execution path only after the declared native-storage
-conditions are proven. Do not delete a component or alter storage in that
-task.
+**Phase 3R, Task 3R.10.7: Compatibility Retirement Execution-Manifest
+Binding** is complete. It maps the eleven dependency records to ten exact
+execution targets and fails closed because the current execution manifest has
+no named-scope action for shared test files. See [Policy Compatibility
+Retirement Execution-Manifest
+Binding](policy-compatibility-retirement-execution-manifest-binding.md).
+
+Proceed to **Phase 3R, Task 3R.10.8: Compatibility Execution-Manifest
+Named-Scope Entry Model**. Add a fingerprinted, read-only named-scope entry to
+the existing manifest model before it can represent shared-test assertion
+retirements. Do not delete a component or alter storage in that task.

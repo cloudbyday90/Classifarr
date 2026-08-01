@@ -166,6 +166,7 @@ function buildPolicyCompatibilityRetirementManifestEntry(
     dependencyKindId: cleanString(dependency?.kindId) || null,
     classificationId: cleanString(dependency?.classificationId) || null,
     entryDispositionId: determineEntryDisposition(dependency || {}, sourceTestHandoffs),
+    sourceTextFragments: uniqueStrings(dependency?.sourceTextFragments),
     testNameFragments: uniqueStrings(dependency?.testNameFragments),
     compatibilityScope: namedScope
       ? {
