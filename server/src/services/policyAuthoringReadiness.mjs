@@ -30,6 +30,7 @@ const POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS = Object.freeze({
   REVIEW_INTENT_SECTION: 'review_intent_section',
   MAP_ROUTING_DESTINATION: 'map_routing_destination',
   REVIEW_HARD_LIMITS: 'review_hard_limits',
+  AWAIT_AUTOMATIC_PROFILE_RECOVERY: 'await_automatic_profile_recovery',
 });
 
 const POLICY_AUTHORING_READINESS_RISK_IDS = Object.freeze({
@@ -118,8 +119,8 @@ const POLICY_AUTHORING_READINESS_STATE_RECORDS = deepFreeze([
     label: 'Stale profile',
     tone: 'info',
     statusRole: 'status',
-    message: 'Observed suggestions are unavailable because this library profile is stale. Add declared intent or defer this policy.',
-    nextActionId: POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS.ADD_DECLARED_INTENT,
+    message: 'Classifarr waits for automatic profile recovery before it uses stale observations for automation.',
+    nextActionId: POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS.AWAIT_AUTOMATIC_PROFILE_RECOVERY,
   },
 ]);
 
@@ -172,11 +173,12 @@ const POLICY_AUTHORING_READINESS_ISSUE_RECORDS = deepFreeze([
   {
     issueId: POLICY_AUTHORING_READINESS_ISSUE_IDS.OBSERVED_PROFILE_STALE,
     stateId: POLICY_AUTHORING_READINESS_STATE_IDS.STALE_PROFILE,
-    nextActionId: POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS.ADD_DECLARED_INTENT,
+    nextActionId: POLICY_AUTHORING_READINESS_NEXT_ACTION_IDS.AWAIT_AUTOMATIC_PROFILE_RECOVERY,
     flowStepId: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.REVIEW_OBSERVED_DESTINATION,
-    componentId: POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_CONTEXT_CARD,
-    destinationNextActionId: POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.ADD_DECLARED_INTENT,
-    message: 'Observed suggestions are stale; add declared intent or defer this policy.',
+    componentId: POLICY_AUTHORING_COMPONENT_IDS.OBSERVED_PROFILE_SUMMARY,
+    destinationNextActionId:
+      POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.AWAIT_AUTOMATIC_PROFILE_RECOVERY,
+    message: 'Classifarr waits for automatic profile recovery before it uses stale observations for automation.',
   },
 ]);
 

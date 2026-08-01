@@ -108,8 +108,10 @@ Cons:
 - Removed the fabricated ready-state component target while retaining the
   explicit save-or-defer action.
 
-## Next Task
+## Follow-On Audit
 
-Phase 3R.6.3: audit the live operator-workflow read projection against all six
-readiness states and verify that every state has either a real owner action or
-truthful non-interactive automated guidance.
+Phase 3R.6.3 is complete. The live read now maps every engine readiness state
+to an existing owner action or non-interactive automatic guidance. See [Policy
+Operator Workflow Live Readiness Presentation Audit](policy-operator-workflow-live-readiness-presentation-audit.md).
+
+The next Phase 3R task is 3R.7, Starter Template Role Reset.

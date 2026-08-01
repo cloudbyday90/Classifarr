@@ -103,6 +103,13 @@ describe('policyOperatorWorkflowReadService', () => {
         version: POLICY_OPERATOR_WORKFLOW_EMPTY_STATE_VERSION,
         states: [],
       },
+      readinessPresentation: expect.objectContaining({
+        primary: expect.objectContaining({
+          stateId: 'needs_more_examples',
+          ownerId: 'intent_signal_picker',
+          actionId: 'add_destination_examples',
+        }),
+      }),
       constraintDecisionModel: expect.objectContaining({
         version: POLICY_CONSTRAINT_DECISION_MODEL_VERSION,
         rawPayloadExposed: false,
@@ -189,6 +196,12 @@ describe('policyOperatorWorkflowReadService', () => {
       suggestionCount: 3,
     }));
     expect(result.sideEffects.liveMediaServerLookupPerformed).toBe(false);
+    expect(result.readinessPresentation.primary).toEqual(expect.objectContaining({
+      stateId: 'stale_profile',
+      kind: 'automated_guidance',
+      ownerId: 'observed_profile_summary',
+      actionId: null,
+    }));
   });
 
   test('fails closed to an empty normal workflow when the cached profile is unavailable', async () => {
@@ -213,6 +226,12 @@ describe('policyOperatorWorkflowReadService', () => {
       }),
     });
     expect(result.rawPayloadExposed).toBe(false);
+    expect(result.readinessPresentation.primary).toEqual(expect.objectContaining({
+      stateId: 'needs_more_examples',
+      kind: 'automated_guidance',
+      ownerId: 'observed_profile_summary',
+      actionId: null,
+    }));
     expect(buildPolicyOperatorWorkflowReadAudit(result).ok).toBe(true);
   });
 

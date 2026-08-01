@@ -92,6 +92,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  observedProfile: {
+    type: Object,
+    default: () => ({}),
+  },
   acceptedSignals: {
     type: Array,
     default: () => [],
@@ -147,7 +151,10 @@ const emit = defineEmits({
 const sectionHeadingId = sectionId => `policy-builder-workflow-${sectionId}-title`
 
 const showsObservedEvidenceActions = section => (
-  props.selectionEnabled && section?.sectionId === 'what_belongs_here'
+  props.selectionEnabled &&
+  section?.sectionId === 'what_belongs_here' &&
+  props.observedProfile?.available !== false &&
+  props.observedProfile?.current !== false
 )
 
 const showsIntentSignalPicker = section => (

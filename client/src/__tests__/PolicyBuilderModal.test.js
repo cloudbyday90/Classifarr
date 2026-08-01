@@ -203,7 +203,7 @@ describe('PolicyBuilderModal.vue', () => {
   ];
 
   const buildOperatorWorkflowRead = () => ({
-    version: 'policy.operator_workflow_read.v3',
+    version: 'policy.operator_workflow_read.v4',
     library: {
       id: 1,
       name: 'Sci-Fi Movies',
@@ -225,6 +225,7 @@ describe('PolicyBuilderModal.vue', () => {
       title: 'Destination setup',
       summary: 'Review what belongs here, what should not, when to ask, and whether confirmed matches can route.',
       readiness: {
+        stateId: 'needs_more_examples',
         ready: false,
         nextAction: { label: 'Connect a routing target' },
       },
@@ -243,6 +244,26 @@ describe('PolicyBuilderModal.vue', () => {
         editable: sectionId !== 'can_this_route',
         readiness: {},
       })),
+    },
+    readinessPresentation: {
+      version: 'policy.operator_workflow_readiness_presentation.v1',
+      primary: {
+        stateId: 'needs_more_examples',
+        kind: 'owner_action',
+        ownerId: 'intent_signal_picker',
+        actionId: 'add_destination_examples',
+        message: 'Accept a current library suggestion or add a declared destination value.',
+      },
+      issues: [
+        {
+          stateId: 'needs_more_examples',
+          kind: 'owner_action',
+          ownerId: 'intent_signal_picker',
+          actionId: 'add_destination_examples',
+          message: 'Accept a current library suggestion or add a declared destination value.',
+        },
+      ],
+      rawPayloadExposed: false,
     },
     constraintValueEligibility: buildConstraintValueEligibility(),
     authority: {

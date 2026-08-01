@@ -45,6 +45,14 @@
         ? 'Classifarr has not found reusable library observations yet.'
         : 'Classifarr has not found reusable library observations yet. You can still describe the destination below.' }}
     </p>
+    <p
+      v-if="automaticGuidance"
+      class="mt-3 rounded border border-blue-800/70 bg-blue-950/30 px-3 py-2 text-xs text-blue-100"
+      role="status"
+      aria-live="polite"
+    >
+      {{ automaticGuidance.message }}
+    </p>
     <ul
       v-else-if="!selectionEnabled"
       class="mt-3 flex flex-wrap gap-2"
@@ -86,6 +94,10 @@ const props = defineProps({
   selectionEnabled: {
     type: Boolean,
     default: false,
+  },
+  automaticGuidance: {
+    type: Object,
+    default: null,
   },
 })
 

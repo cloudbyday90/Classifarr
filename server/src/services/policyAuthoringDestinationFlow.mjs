@@ -32,6 +32,7 @@ const POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS = Object.freeze({
   ADD_DECLARED_INTENT: 'add_declared_intent',
   CONFIRM_HARD_LIMITS: 'confirm_hard_limits',
   MAP_ROUTING_DESTINATION: 'map_routing_destination',
+  AWAIT_AUTOMATIC_PROFILE_RECOVERY: 'await_automatic_profile_recovery',
   SAVE_POLICY: 'save_policy',
   DEFER_POLICY: 'defer_policy',
 });
@@ -87,6 +88,7 @@ const POLICY_AUTHORING_DESTINATION_FLOW_STEPS = deepFreeze([
     primaryQuestionId: POLICY_AUTHORING_DESTINATION_QUESTION_IDS.WHAT_BELONGS_HERE,
     requiredNextActionIds: [
       POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.REVIEW_OBSERVED_PROFILE,
+      POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.AWAIT_AUTOMATIC_PROFILE_RECOVERY,
     ],
     allowsStarterTemplates: false,
     allowsAdvancedMechanics: false,

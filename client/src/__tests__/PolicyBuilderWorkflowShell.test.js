@@ -230,7 +230,16 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
       intentSignalProjection: { options: [{
         candidateId: 'genre:Animation:purpose',
         value: 'Animation',
+        selectable: true,
       }] },
+    }
+    workflowRead.readinessPresentation = {
+      primary: {
+        kind: 'automated_guidance',
+        ownerId: 'observed_profile_summary',
+        actionId: null,
+        message: 'Classifarr waits for automatic profile recovery before it uses these observations for automation. No action is needed here.',
+      },
     }
 
     const wrapper = mount(PolicyBuilderWorkflowShell, {
@@ -241,6 +250,7 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
     })
 
     expect(wrapper.text()).toContain('Profile needs refresh')
+    expect(wrapper.text()).toContain('automatic profile recovery')
     expect(wrapper.text()).not.toContain('What should define this destination?')
     expect(wrapper.findAll('button')).toHaveLength(0)
   })

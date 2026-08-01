@@ -38,6 +38,9 @@ describe('policyAuthoringDestinationFlow', () => {
       .toEqual(expect.objectContaining({
         roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.DESTINATION_CONTEXT,
         primaryQuestionId: POLICY_AUTHORING_DESTINATION_QUESTION_IDS.WHAT_BELONGS_HERE,
+        requiredNextActionIds: expect.arrayContaining([
+          POLICY_AUTHORING_DESTINATION_NEXT_ACTION_IDS.AWAIT_AUTOMATIC_PROFILE_RECOVERY,
+        ]),
         allowsStarterTemplates: false,
         allowsAdvancedMechanics: false,
       }));

@@ -82,7 +82,7 @@ describe('policy operator workflow custom intent-signal routes', () => {
     expect(db.query).toHaveBeenCalledTimes(2);
     expect(loadProfileEvidence).toHaveBeenCalledWith({ libraryId: 6 });
     expect(response.body).toEqual(expect.objectContaining({
-      version: 'policy.operator_workflow_read.v3',
+      version: 'policy.operator_workflow_read.v4',
       authority: {
         displayProjection: true,
         automationDecision: false,

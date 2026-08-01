@@ -2625,6 +2625,13 @@ Implementation status:
   destination question that owns the condition, and no browser focus action is
   offered when no resolver exists. See [Policy Authoring Readiness Action
   Surface Audit](policy-authoring-readiness-action-surface-audit.md).
+- **3R.6.3 Live Readiness Presentation Audit** is complete. The v4
+  operator-workflow read now maps every engine state and live issue to an
+  existing owner action or truthful automatic guidance. Stale or unavailable
+  profiles cannot expose selectable intent inputs, and automatic profile
+  recovery is explained in the existing observed-profile summary. See [Policy
+  Operator Workflow Live Readiness Presentation
+  Audit](policy-operator-workflow-live-readiness-presentation-audit.md).
 - Impact/replay browser panels and their client API facade are removed.
   Provider readiness, TMDB live preview, scoring details, and parity delta
   remain server-side migration-verifier or deletion material outside the normal

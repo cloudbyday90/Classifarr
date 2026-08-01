@@ -67,4 +67,25 @@ describe('ObservedProfileSummary.vue', () => {
     expect(wrapper.text()).toContain('Profile unavailable')
     expect(wrapper.text()).toContain('A current library profile is not available yet.')
   })
+
+  it('announces server-owned automatic profile recovery without offering a browser action', () => {
+    const wrapper = mount(ObservedProfileSummary, {
+      props: {
+        observedProfile: {
+          available: true,
+          current: false,
+          suggestionCount: 2,
+        },
+        automaticGuidance: {
+          kind: 'automated_guidance',
+          ownerId: 'observed_profile_summary',
+          actionId: null,
+          message: 'Classifarr waits for automatic profile recovery before it uses these observations for automation. No action is needed here.',
+        },
+      },
+    })
+
+    expect(wrapper.find('[role="status"]').text()).toContain('automatic profile recovery')
+    expect(wrapper.findAll('button')).toHaveLength(0)
+  })
 })

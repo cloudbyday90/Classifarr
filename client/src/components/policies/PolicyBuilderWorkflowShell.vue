@@ -28,11 +28,13 @@
         :observed-profile="observedProfile"
         :suggestions="observedSuggestions"
         :selection-enabled="selectionEnabled"
+        :automatic-guidance="automaticProfileGuidance"
       />
 
       <PolicyBuilderDestinationQuestions
         :sections="sections"
         :selection-enabled="selectionEnabled"
+        :observed-profile="observedProfile"
         :accepted-signals="acceptedSignals"
         :observed-evidence="observedEvidence"
         :intent-signal-options="intentSignalOptions"
@@ -126,6 +128,7 @@ const observedProfile = computed(() => props.workflowRead?.observedProfile || {}
 const intentSignalProjection = computed(() => observedProfile.value.intentSignalProjection || {})
 const constraintDecisionModel = computed(() => props.workflowRead?.constraintDecisionModel || null)
 const constraintValueEligibility = computed(() => props.workflowRead?.constraintValueEligibility || null)
+const readinessPresentation = computed(() => props.workflowRead?.readinessPresentation || null)
 const observedSuggestions = computed(() => Array.isArray(observedProfile.value.suggestions)
   ? observedProfile.value.suggestions
   : [])
@@ -142,6 +145,13 @@ const sections = computed(() => Array.isArray(workflow.value?.sections)
 const emptyStates = computed(() => Array.isArray(props.workflowRead?.emptyStateProjection?.states)
   ? props.workflowRead.emptyStateProjection.states
   : [])
+const automaticProfileGuidance = computed(() => {
+  const primary = readinessPresentation.value?.primary
+  return primary?.kind === 'automated_guidance' &&
+    primary?.ownerId === 'observed_profile_summary'
+    ? primary
+    : null
+})
 const activeEmptyStateAction = computed(() => emptyStates.value.find(
   emptyState => emptyState?.nextAction?.actionId === props.activeEmptyStateActionId
 )?.nextAction || null)

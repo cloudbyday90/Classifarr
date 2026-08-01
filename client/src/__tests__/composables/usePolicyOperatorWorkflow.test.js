@@ -59,7 +59,7 @@ function buildConstraintValueEligibility() {
 
 function buildWorkflowRead(libraryId = 7) {
   return {
-    version: 'policy.operator_workflow_read.v3',
+    version: 'policy.operator_workflow_read.v4',
     library: {
       id: libraryId,
       name: 'Movies',
@@ -83,7 +83,28 @@ function buildWorkflowRead(libraryId = 7) {
       },
     },
     workflow: {
+      readiness: {
+        stateId: 'needs_more_examples',
+      },
       sections: [],
+    },
+    readinessPresentation: {
+      version: 'policy.operator_workflow_readiness_presentation.v1',
+      primary: {
+        stateId: 'needs_more_examples',
+        kind: 'owner_action',
+        ownerId: 'intent_signal_picker',
+        actionId: 'add_destination_examples',
+        message: 'Accept a current library suggestion or add a declared destination value.',
+      },
+      issues: [{
+        stateId: 'needs_more_examples',
+        kind: 'owner_action',
+        ownerId: 'intent_signal_picker',
+        actionId: 'add_destination_examples',
+        message: 'Accept a current library suggestion or add a declared destination value.',
+      }],
+      rawPayloadExposed: false,
     },
     constraintValueEligibility: buildConstraintValueEligibility(),
     authority: {

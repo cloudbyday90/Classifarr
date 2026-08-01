@@ -159,4 +159,27 @@ describe('PolicyBuilderDestinationQuestions.vue', () => {
     expect(selectableWrapper.find('#intent-signal-picker-title').exists()).toBe(true)
     expect(selectableWrapper.text()).toContain('Add declared destination signals')
   })
+
+  it('withholds selection while the observed profile is stale', () => {
+    const wrapper = mount(PolicyBuilderDestinationQuestions, {
+      props: {
+        sections: buildSections(),
+        selectionEnabled: true,
+        observedProfile: {
+          available: true,
+          current: false,
+        },
+        intentSignalOptions: [{
+          candidateId: 'genre:anime',
+          value: 'Anime',
+          label: 'Anime',
+          selectable: true,
+        }],
+        customEntryInput: { enabled: true },
+      },
+    })
+
+    expect(wrapper.find('#intent-signal-picker-title').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('Add declared destination signals')
+  })
 })

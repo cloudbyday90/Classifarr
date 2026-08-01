@@ -101,7 +101,7 @@ Cons:
 - `server/src/services/policyConstraintValueEligibility.mjs` derives and audits
   the immutable, media-type-aware eligibility projection.
 - `server/src/services/policyOperatorWorkflowReadService.mjs` publishes that
-  projection in `policy.operator_workflow_read.v3` without write authority.
+  projection in `policy.operator_workflow_read.v4` without write authority.
 - `client/src/utils/policyIntentConstraintValueEligibility.js` validates the
   display contract and resolves approved controls and values.
 - `client/src/utils/policyIntentConstraintDraft.js` requires a value to be in

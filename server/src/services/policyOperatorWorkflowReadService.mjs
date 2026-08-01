@@ -19,6 +19,9 @@ import {
   buildPolicyOperatorWorkflowAudit,
 } from './policyOperatorWorkflow.mjs';
 import {
+  buildPolicyAutomationReadinessFromContracts,
+} from './policyAutomationReadinessEngine.mjs';
+import {
   buildPolicyObservedSuggestionProjection,
 } from './policyObservedSuggestionCandidates.mjs';
 import {
@@ -37,8 +40,12 @@ import {
   buildPolicyConstraintValueEligibility,
   buildPolicyConstraintValueEligibilityAudit,
 } from './policyConstraintValueEligibility.mjs';
+import {
+  buildPolicyOperatorWorkflowReadinessPresentation,
+  buildPolicyOperatorWorkflowReadinessPresentationAudit,
+} from './policyOperatorWorkflowReadinessPresentation.mjs';
 
-const POLICY_OPERATOR_WORKFLOW_READ_VERSION = 'policy.operator_workflow_read.v3';
+const POLICY_OPERATOR_WORKFLOW_READ_VERSION = 'policy.operator_workflow_read.v4';
 const MAX_LABEL_LENGTH = 160;
 
 const POLICY_OPERATOR_WORKFLOW_READ_STATUS_IDS = Object.freeze({
@@ -59,6 +66,7 @@ const POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS = Object.freeze({
   INVALID_INTENT_SIGNAL_OPTION_PROJECTION: 'invalid_intent_signal_option_projection',
   INVALID_CONSTRAINT_DECISION_MODEL: 'invalid_constraint_decision_model',
   INVALID_CONSTRAINT_VALUE_ELIGIBILITY: 'invalid_constraint_value_eligibility',
+  INVALID_READINESS_PRESENTATION: 'invalid_readiness_presentation',
 });
 
 function asObject(value) {
@@ -131,13 +139,23 @@ function buildWorkflow({ profileHandoff, routing }) {
   const intentDraft = evidenceProjection?.version === 'policy.evidence.v1'
     ? buildPolicyIntentDraftFromEvidenceProjection(evidenceProjection)
     : undefined;
-
-  return buildPolicyOperatorWorkflow({
+  const readiness = buildPolicyAutomationReadinessFromContracts({
     ...(evidenceProjection ? { evidenceProjection } : {}),
     ...(intentDraft ? { intentDraft } : {}),
     routing,
     profileFreshness: profileHandoff?.profileFreshness,
   });
+
+  return {
+    readiness,
+    workflow: buildPolicyOperatorWorkflow({
+      ...(evidenceProjection ? { evidenceProjection } : {}),
+      ...(intentDraft ? { intentDraft } : {}),
+      readiness,
+      routing,
+      profileFreshness: profileHandoff?.profileFreshness,
+    }),
+  };
 }
 
 function buildSideEffects(profileHandoff = {}) {
@@ -158,7 +176,7 @@ function buildReadResult({
   statusId,
   intentSignalSources,
 } = {}) {
-  const workflow = buildWorkflow({ profileHandoff, routing });
+  const { workflow, readiness } = buildWorkflow({ profileHandoff, routing });
   const observedSuggestionProjection = buildPolicyObservedSuggestionProjection(profileHandoff);
   const intentSignalProjection = buildPolicyIntentSignalOptionProjection({
     observedProjection: observedSuggestionProjection,
@@ -183,6 +201,12 @@ function buildReadResult({
     observedProfile,
     routing,
   });
+  const readinessPresentation = buildPolicyOperatorWorkflowReadinessPresentation({
+    readiness,
+    observedProfile,
+    intentSignalProjection,
+    emptyStateProjection,
+  });
 
   return {
     version: POLICY_OPERATOR_WORKFLOW_READ_VERSION,
@@ -193,6 +217,7 @@ function buildReadResult({
     constraintDecisionModel: policyConstraintDecisionModel,
     constraintValueEligibility: buildPolicyConstraintValueEligibility({ library }),
     workflow,
+    readinessPresentation,
     authority: {
       displayProjection: true,
       automationDecision: false,
@@ -222,6 +247,13 @@ function buildPolicyOperatorWorkflowReadAudit(result = {}) {
     source.constraintValueEligibility,
     { library },
   );
+  const readinessPresentationAudit = buildPolicyOperatorWorkflowReadinessPresentationAudit({
+    presentation: source.readinessPresentation,
+    readiness: source.workflow?.readiness,
+    observedProfile: source.observedProfile,
+    intentSignalProjection: source.observedProfile?.intentSignalProjection,
+    emptyStateProjection: source.emptyStateProjection,
+  });
 
   if (source.version !== POLICY_OPERATOR_WORKFLOW_READ_VERSION) {
     issues.push({
@@ -276,6 +308,13 @@ function buildPolicyOperatorWorkflowReadAudit(result = {}) {
     issues.push({
       riskId: POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.INVALID_CONSTRAINT_VALUE_ELIGIBILITY,
       message: 'Constraint values must remain a valid server-owned eligibility projection.',
+    });
+  }
+
+  if (!readinessPresentationAudit.ok) {
+    issues.push({
+      riskId: POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.INVALID_READINESS_PRESENTATION,
+      message: 'Operator workflow reads require an owned action or truthful automated guidance for every readiness state.',
     });
   }
 

@@ -122,6 +122,9 @@ The implementation provides:
   - rejects retired diagnostic identifiers from normal readiness.
 - [Policy Constraint Admission Readiness Handoff](policy-constraint-admission-readiness-handoff.md)
   - records why constraint admission has no normal readiness state or action.
+- [Policy Operator Workflow Live Readiness Presentation Audit](policy-operator-workflow-live-readiness-presentation-audit.md)
+  - records the live six-state owner map, stale-evidence selection gate, and
+    automatic profile-recovery guidance.
 
 ## Checklist Result
 
@@ -131,11 +134,11 @@ The implementation provides:
 | One next action per readiness issue | Yes; every issue maps to one action. |
 | Links to resolving section or setting | Yes; each issue links to a destination flow step and component. |
 | Raw diagnostics removed from normal workflow | Yes; replay, provider, metadata, scoring, parity, and impact identifiers are rejected. |
-| Readiness answers what to do next | Yes; projection returns the highest-priority next action. |
+| Readiness answers what to do next | Yes; live reads map every issue to an existing owner action or automatic guidance. |
 | Diagnostic panel tests redirected | Yes; server tests now protect readiness semantics and diagnostic rejection. |
 
 ## Next Step
 
-Keep native constraint persistence separate. Only a successfully committed
-transaction may cause the server to recompute normal readiness from changed
-durable intent.
+Proceed to Phase 3R.7, Starter Template Role Reset. Keep template suggestions
+source-labelled and optional after destination context; they must not become
+normal policy authority.
