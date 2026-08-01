@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Compatibility Policy Maintenance**: Existing-policy maintenance now
+  establishes policy context before editable controls, removes duplicate editor
+  framing, shows a context selector only when multiple attachments exist, and
+  presents completed migration feedback as non-blocking status. Legacy editing
+  remains typed-command-only and outside normal policy authoring.
+
 - **Starter-Template Compatibility Boundary**: Added an executable inventory
   for every remaining preset-attachment reader, round-trip path, and
   compatibility-only component. Each retained artifact is kept outside normal

@@ -7,16 +7,7 @@
 -->
 
 <template>
-  <section class="border border-primary/30 rounded-lg p-4 bg-primary/5 space-y-4">
-    <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-      <div>
-        <h4 class="font-semibold flex items-center gap-2">
-          <span class="text-primary">🧭</span>
-          Edit destination intent
-        </h4>
-      </div>
-    </div>
-
+  <div class="space-y-4">
     <div
       v-if="selectedPresets.length === 0"
       id="policy-builder-destination-rules"
@@ -28,6 +19,52 @@
     </div>
 
     <template v-else>
+      <div
+        class="rounded-lg border border-gray-700 bg-background-light p-3"
+      >
+        <div
+          v-if="!hasMultiplePolicyContexts"
+          id="policy-builder-policy-context-title"
+          class="text-xs font-medium text-gray-300"
+        >
+          Policy context
+        </div>
+        <label
+          v-else
+          for="policy-builder-policy-context-select"
+          class="block text-xs font-medium text-gray-300"
+        >
+          Policy context
+        </label>
+        <p
+          id="policy-builder-policy-context-help"
+          class="mt-1 text-xs text-gray-400"
+        >
+          Changes apply only to this attached policy.
+        </p>
+        <p
+          v-if="!hasMultiplePolicyContexts"
+          class="mt-2 text-sm font-medium text-white"
+        >
+          {{ activePreset?.name || 'Current policy' }}
+        </p>
+        <select
+          v-else
+          id="policy-builder-policy-context-select"
+          v-model="activePresetId"
+          class="mt-2 w-full px-2 py-1 bg-background border border-gray-700 rounded-sm text-sm"
+          aria-describedby="policy-builder-policy-context-help"
+        >
+          <option
+            v-for="preset in selectedPresets"
+            :key="getPresetId(preset)"
+            :value="getPresetId(preset)"
+          >
+            {{ preset.name }}
+          </option>
+        </select>
+      </div>
+
       <section
         id="policy-builder-review-behavior"
         class="rounded-lg border border-gray-700 bg-background-light p-3 space-y-3"
@@ -59,22 +96,6 @@
           />
         </div>
       </section>
-
-      <label class="block text-xs font-medium text-gray-300">
-        Choose policy context
-        <select
-          v-model="activePresetId"
-          class="mt-1 w-full px-2 py-1 bg-background border border-gray-700 rounded-sm text-sm"
-        >
-          <option
-            v-for="preset in selectedPresets"
-            :key="getPresetId(preset)"
-            :value="getPresetId(preset)"
-          >
-            {{ preset.name }}
-          </option>
-        </select>
-      </label>
 
       <div class="space-y-4">
         <section
@@ -115,7 +136,7 @@
         </section>
       </div>
     </template>
-  </section>
+  </div>
 </template>
 
 <script setup>
@@ -229,6 +250,8 @@ watch(
 const activePreset = computed(() => {
   return props.selectedPresets.find((preset) => getPresetId(preset) === activePresetId.value) || null
 })
+
+const hasMultiplePolicyContexts = computed(() => props.selectedPresets.length > 1)
 
 const intentView = computed(() => {
   return props.intentDraft

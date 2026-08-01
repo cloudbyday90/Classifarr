@@ -11,6 +11,7 @@
     id="policy-compatibility-maintenance"
     class="space-y-5 rounded-lg border border-amber-700/50 bg-amber-950/10 p-4"
     aria-labelledby="policy-compatibility-maintenance-title"
+    aria-describedby="policy-compatibility-maintenance-description"
   >
     <header class="space-y-2">
       <p class="text-xs font-semibold uppercase tracking-wide text-amber-200">
@@ -20,10 +21,13 @@
         id="policy-compatibility-maintenance-title"
         class="text-lg font-semibold text-white"
       >
-        Maintain destination intent
+        Maintain existing policy
       </h2>
-      <p class="text-sm text-gray-300">
-        Update the destination signals for this existing policy.
+      <p
+        id="policy-compatibility-maintenance-description"
+        class="text-sm text-gray-300"
+      >
+        Choose a policy context, then make only the destination changes you need.
       </p>
     </header>
 
@@ -33,9 +37,8 @@
       @dismiss="emit('dismiss-migration-notice')"
     />
 
-    <section
+    <div
       id="policy-builder-intent-editor"
-      aria-label="Destination intent editor"
     >
       <PolicyIntentEditor
         :selected-presets="selectedPresets"
@@ -49,7 +52,7 @@
         @draft-set-signal-config="emit('draft-set-signal-config', $event)"
         @draft-clear-signal-config="emit('draft-clear-signal-config', $event)"
       />
-    </section>
+    </div>
   </section>
 </template>
 

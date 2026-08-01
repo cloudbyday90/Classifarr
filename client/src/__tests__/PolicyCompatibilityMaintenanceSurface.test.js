@@ -31,17 +31,19 @@ function mountSurface(overrides = {}) {
 }
 
 describe('PolicyCompatibilityMaintenanceSurface.vue', () => {
-  it('labels the retained editor as direct destination-intent maintenance', () => {
+  it('uses one context-first purpose statement for compatibility maintenance', () => {
     const wrapper = mountSurface()
 
     expect(wrapper.find('#policy-compatibility-maintenance').attributes('aria-labelledby'))
       .toBe('policy-compatibility-maintenance-title')
+    expect(wrapper.find('#policy-compatibility-maintenance').attributes('aria-describedby'))
+      .toBe('policy-compatibility-maintenance-description')
     expect(wrapper.find('#policy-compatibility-maintenance-title').text())
-      .toBe('Maintain destination intent')
-    expect(wrapper.text()).toContain('Update the destination signals for this existing policy.')
+      .toBe('Maintain existing policy')
+    expect(wrapper.find('#policy-compatibility-maintenance-description').text())
+      .toBe('Choose a policy context, then make only the destination changes you need.')
     expect(wrapper.find('[role="status"]').exists()).toBe(false)
-    expect(wrapper.find('#policy-builder-intent-editor').attributes('aria-label'))
-      .toBe('Destination intent editor')
+    expect(wrapper.find('#policy-builder-intent-editor').exists()).toBe(true)
     expect(wrapper.text()).not.toContain('preserves its decision behavior')
     expect(wrapper.text()).not.toContain('New policies use destination-first setup')
     expect(wrapper.text()).not.toContain('does not establish native policy intent')

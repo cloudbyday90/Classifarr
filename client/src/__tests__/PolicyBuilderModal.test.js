@@ -995,9 +995,12 @@ describe('PolicyBuilderModal.vue', () => {
 
     await flushPromises();
 
-    expect(document.body.textContent).toContain('Maintain destination intent');
-    expect(document.body.textContent).toContain('Update the destination signals for this existing policy.');
-    expect(document.body.textContent).toContain('Edit destination intent');
+    expect(document.body.textContent).toContain('Maintain existing policy');
+    expect(document.body.textContent).toContain('Choose a policy context, then make only the destination changes you need.');
+    expect(document.body.textContent).toContain('Policy context');
+    expect(document.body.textContent.indexOf('Policy context')).toBeLessThan(
+      document.body.textContent.indexOf('When should Classifarr ask?')
+    );
     expect(document.body.textContent).not.toContain('New policies use destination-first setup');
     expect(document.body.textContent).not.toContain('preserves its decision behavior');
     expect(document.body.textContent).not.toContain('Advanced Settings');
@@ -1016,7 +1019,7 @@ describe('PolicyBuilderModal.vue', () => {
     expect(api.get).not.toHaveBeenCalledWith('/policies/operator-workflow/libraries/1', undefined);
   });
 
-  it('shows the intent-first editor and saves intent edits as structured custom signals', async () => {
+  it('shows context-first compatibility editing and saves intent edits as structured custom signals', async () => {
     api.get.mockImplementation((url) => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
       if (url === '/policies/presets/all') {
@@ -1058,7 +1061,9 @@ describe('PolicyBuilderModal.vue', () => {
 
     await flushPromises();
 
-    expect(document.body.textContent).toContain('Edit destination intent');
+    expect(document.body.textContent).toContain('Maintain existing policy');
+    expect(document.body.textContent).toContain('Policy context');
+    expect(document.body.textContent).toContain('Changes apply only to this attached policy.');
     expect(document.body.textContent).not.toContain('The media server shows how this library is used today');
     expect(document.body.textContent).toContain('Belongs Here');
     expect(document.body.textContent).toContain('Hard Limits');
@@ -1141,7 +1146,8 @@ describe('PolicyBuilderModal.vue', () => {
 
     const text = document.body.textContent;
 
-    expect(text).toContain('Edit destination intent');
+    expect(text).toContain('Maintain existing policy');
+    expect(text).toContain('Policy context');
     expect(text).not.toContain('Policy Behavior Summary');
     expect(text).not.toContain('Advanced Settings');
     expect(text).not.toContain('Scoring Weights');

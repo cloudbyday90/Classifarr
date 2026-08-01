@@ -37,7 +37,9 @@ describe('PolicyPresetMigrationNotice.vue', () => {
   it('emits dismiss when the operator dismisses the notice', async () => {
     const wrapper = mountComponent()
 
-    expect(wrapper.find('button').text()).toBe('Dismiss migration notice')
+    expect(wrapper.attributes('role')).toBe('status')
+    expect(wrapper.attributes('aria-atomic')).toBe('true')
+    expect(wrapper.find('button').text()).toBe('Hide migration update')
 
     await wrapper.find('button').trigger('click')
 

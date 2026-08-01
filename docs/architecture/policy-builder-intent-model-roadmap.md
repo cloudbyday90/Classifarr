@@ -2693,10 +2693,20 @@ Implementation status:
   See [Policy Starter-Template Compatibility Bridge
   Inventory](policy-starter-template-compatibility-bridge-inventory.md).
 
-Next component task: **3R.8.5 Compatibility Maintenance Decision-Load Audit**.
-Use the bridge inventory to reduce duplicate explanation and competing actions
-in the existing-policy maintenance surface while preserving typed draft commands
-and keeping that surface outside normal authoring.
+- **3R.8.5 Compatibility Maintenance Decision-Load Audit** is complete. The
+  existing-policy surface now owns one purpose statement, establishes attached
+  policy context before every editable control, removes the nested duplicate
+  editor heading, shows a selector only when there is a genuine context choice,
+  and presents completed migration feedback as non-blocking status. Typed draft
+  commands and the compatibility-only boundary are unchanged. See [Policy
+  Compatibility Maintenance Decision-Load
+  Audit](policy-compatibility-maintenance-decision-load-audit.md).
+
+Next component task: **3R.9.1 Compatibility Presentation-Test Ownership Audit**.
+Classify the retained compatibility maintenance tests separately from normal
+authoring tests, then require them to protect context-first order, typed-command
+forwarding, and native-storage removal readiness without preserving legacy
+layout or diagnostic behavior.
 
 ### 3R.8 Accessibility And Decision Load
 

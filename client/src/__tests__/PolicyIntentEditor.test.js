@@ -54,12 +54,13 @@ describe('PolicyIntentEditor.vue', () => {
     expect(wrapper.emitted('add-signal')).toBeUndefined()
   })
 
-  it('renders direct editing context without browser-derived workflow claims', () => {
+  it('renders policy context before editable compatibility controls', () => {
     const wrapper = mountEditor()
     const text = wrapper.text()
 
-    expect(text).toContain('Edit destination intent')
-    expect(text).toContain('Choose policy context')
+    expect(text).toContain('Policy context')
+    expect(text).toContain('Changes apply only to this attached policy.')
+    expect(text).toContain('Starter')
     expect(text).toContain('When should Classifarr ask?')
     expect(text).toContain('Ask When Unsure')
     expect(text).toContain('What clearly belongs here?')
@@ -75,12 +76,39 @@ describe('PolicyIntentEditor.vue', () => {
     expect(text).not.toContain('The media server shows how this library is used today')
     expect(text).not.toContain('Classifarr reconciles both')
     expect(text).not.toMatch(/\d+\s+existing policy context/)
-    expect(text.indexOf('Ask When Unsure')).toBeLessThan(text.indexOf('Choose policy context'))
+    expect(text).not.toContain('Edit destination intent')
+    expect(text.indexOf('Policy context')).toBeLessThan(text.indexOf('Ask When Unsure'))
     expect(wrapper.find('#policy-builder-review-behavior').exists()).toBe(true)
     expect(wrapper.find('#policy-builder-destination-identity').exists()).toBe(true)
     expect(wrapper.find('#policy-builder-destination-rules').exists()).toBe(true)
     expect(wrapper.find('#policy-builder-confidence-support').exists()).toBe(true)
     expect(text.indexOf('What should always or never belong here?')).toBeLessThan(text.indexOf('Helpful Matches'))
+  })
+
+  it('shows a labelled selector only when multiple attached policy contexts exist', () => {
+    const wrapper = mount(PolicyIntentEditor, {
+      props: {
+        selectedPresets: [
+          ...selectedPresets,
+          { id: 8, name: 'Secondary', weight: 1, customSignals: null },
+        ],
+        allPresets: [],
+        intentDraft: buildPolicyIntentDraft([
+          ...selectedPresets,
+          { id: 8, name: 'Secondary', weight: 1, customSignals: null },
+        ]),
+        availableGenres: ['Family', 'Comedy'],
+        availableRatings: ['PG', 'PG-13', 'R'],
+      },
+    })
+
+    const contextSelect = wrapper.find('#policy-builder-policy-context-select')
+
+    expect(contextSelect.exists()).toBe(true)
+    expect(contextSelect.attributes('aria-describedby')).toBe('policy-builder-policy-context-help')
+    expect(wrapper.find('label[for="policy-builder-policy-context-select"]').text())
+      .toBe('Policy context')
+    expect(contextSelect.findAll('option').map(option => option.text())).toEqual(['Starter', 'Secondary'])
   })
 
   it('keeps the no-compatibility-context empty state as a focusable status target', () => {
