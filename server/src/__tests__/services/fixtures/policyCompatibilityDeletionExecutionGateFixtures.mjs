@@ -36,6 +36,9 @@ import {
 import {
   buildPolicyCompatibilityDeletionPreflightEvidenceArtifact,
 } from '../../../services/policyCompatibilityDeletionPreflightEvidenceArtifact.mjs';
+import {
+  buildPolicyCompatibilityDeletionPreflightManifestObservationIdentity,
+} from '../../../services/policyCompatibilityDeletionPreflightManifestObservationIdentity.mjs';
 
 const POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME =
   '2026-07-14T20:00:00.000Z';
@@ -153,6 +156,7 @@ function buildReadyExecutionGatePreflightEvidenceArtifact({
     executionPlanArtifact,
     generatedAt: observedAt,
     manifestObservations: value.manifestObservations || manifestEntries.map((entry, index) => ({
+      entryIdentity: buildPolicyCompatibilityDeletionPreflightManifestObservationIdentity(entry),
       index,
       path: entry.path,
       statusId: 'observed',

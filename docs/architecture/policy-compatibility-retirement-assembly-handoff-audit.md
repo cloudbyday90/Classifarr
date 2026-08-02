@@ -26,14 +26,13 @@ approved artifact. The comparison includes taxonomy category, action, canonical
 path, retiring component path, source fragments, and test-name fragments. A
 named scope must retain `wholeFileDeletion: false`.
 
-The audit identified two downstream mismatches and leaves both blocked. The
-current execution-plan builder starts from broad release-gate categories, so it
-cannot derive the exact candidate taxonomy into an approved artifact. A
-schema-compliant artifact can retain all ten target identities when they are
-supplied, but the existing preflight gate then treats four exact named scopes in
-two retained test files as duplicate paths. Its `manifest_duplicate_path`
-protection blocks the gate. Both blocks are safer than collapsing scopes or
-accepting a broad legacy category, so this task does not work around either.
+At audit time, the system had two downstream mismatches: broad release-gate
+categories could not derive the exact candidate taxonomy, and path-only
+preflight evidence treated four exact named scopes in two retained test files as
+duplicates. Tasks 3R.10.13 and 3R.10.14 resolved those read-only handoff
+boundaries. The audit now hands a ready exact-scope manifest to the separate
+scope-aware removal adapter rather than implying that the existing file-removal
+component can operate on shared test files.
 
 ## Official-Source Research
 
@@ -109,8 +108,8 @@ Cons:
 4. Use the read-only candidate-target adapter to derive exact execution-plan
    input before artifact construction or approval.
 5. Require the existing execution gate to bind the same artifact fingerprint.
-6. Preserve the duplicate-path block until preflight observations gain a stable
-   named-scope identity.
+6. Require preflight observations to bind stable named-scope identities while
+   preserving legacy file-path duplicate checks.
 7. Keep audit, artifact construction, approval, gate evaluation, and controlled
    removal as separate responsibilities.
 
@@ -140,7 +139,8 @@ Focused source-backed tests prove that:
 
 - a ready ten-target assembly still blocks without release readiness,
 - a schema-compliant artifact can represent all ten targets exactly,
-- the existing execution gate correctly blocks duplicate shared-test paths,
+- distinct shared-test scopes pass the read-only execution gate with separate
+  exact-entry identities,
 - broad legacy-category substitution is rejected before the execution gate,
 - requested writes or gate invocations and tampered audit fields fail closed.
 
@@ -152,18 +152,18 @@ Focused source-backed tests prove that:
 - Named scopes retain source and test-name identity and cannot widen to a
   whole-file removal.
 - The execution gate cannot be paired with a different artifact.
-- The active duplicate-path block remains enforced until a scope-aware preflight
-  observation identity is implemented.
+- The path-removal component remains unavailable for named scopes until a
+  separate scope-aware removal adapter is implemented.
 
 ## Next Step
 
-Proceed to **Phase 3R, Task 3R.10.14: Compatibility Deletion Execution-Gate
-Named-Scope Observation Identity**. The completed adapter can now derive exact
-candidate targets into the existing plan input without authority. The next task
-must extend preflight observation identity so multiple exact named scopes in one
-retained test file remain distinct while preserving duplicate exact-entry
-rejection, artifact fingerprinting, freshness checks, approval, and the
-separate controlled-removal boundary.
+Proceed to **Phase 3R, Task 3R.10.15: Compatibility Deletion Controlled-Removal
+Scope-Aware Execution Adapter**. The read-only handoff now supports distinct
+exact named scopes and still refuses to select them for whole-file removal. The
+next task must produce a separate fingerprint-bound dry-run scope edit, reject
+missing, ambiguous, stale, or changed source fragments, and remain unable to
+write source, delete files, or bypass recovery, stance, approval, or freshness
+controls.
 
 ## Research Date
 

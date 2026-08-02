@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Compatibility Deletion Named-Scope Preflight Identity**: Preflight evidence
+  and the execution gate now bind exact named test scopes to server-derived,
+  fingerprint-covered identities while retaining legacy path-only file
+  observations. Distinct scopes in a retained test file can complete the
+  read-only gate; duplicate exact entries and altered observations fail closed.
+  The current path-removal component explicitly refuses named scopes until a
+  separate scope-aware removal adapter is available.
+
 - **Compatibility Retirement Execution-Plan Candidate-Target Adapter**: Added
   a read-only, source-backed adapter that feeds all exact mapped retirement
   targets into the existing deletion-plan path without granting approval or
@@ -21,9 +29,8 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 - **Compatibility Retirement Assembly Handoff Audit**: Added a read-only
   audit from exact candidate assembly through existing release readiness,
   fingerprinted approved artifact coverage, and the execution gate. It rejects
-  target substitution and preserves the existing fail-closed block for multiple
-  named scopes in a retained test file; it cannot create artifacts, approve,
-  invoke a gate, or perform removal.
+  target substitution and cannot create artifacts, approve, invoke a gate, or
+  perform removal.
 
 - **Compatibility Retirement Taxonomy**: Added a source-backed, action-owned
   category taxonomy for every current retirement candidate. Named test scopes

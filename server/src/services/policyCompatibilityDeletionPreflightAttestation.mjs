@@ -25,6 +25,10 @@ import {
   validatePolicyCompatibilityDeletionExecutionPlanArtifactFingerprint,
 } from './policyCompatibilityDeletionExecutionPlanArtifactFingerprint.mjs';
 import {
+  buildPolicyCompatibilityDeletionPreflightManifestObservationIdentity,
+  isPolicyCompatibilityDeletionPreflightNamedScopeEntry,
+} from './policyCompatibilityDeletionPreflightManifestObservationIdentity.mjs';
+import {
   DEFAULT_MAX_EXECUTION_ARTIFACT_AGE_MS,
   MAX_FUTURE_TIMESTAMP_SKEW_MS,
   REVISION_PATTERN,
@@ -37,7 +41,7 @@ import {
 } from './policyCompatibilityDeletionExecutionGateShared.mjs';
 
 const POLICY_COMPATIBILITY_DELETION_PREFLIGHT_ATTESTATION_VERSION =
-  'policy.compatibility_deletion_preflight_attestation.v1';
+  'policy.compatibility_deletion_preflight_attestation.v2';
 
 const POLICY_COMPATIBILITY_DELETION_PREFLIGHT_ATTESTATION_STATUS_IDS = Object.freeze({
   OBSERVED: 'observed',
@@ -64,6 +68,7 @@ const POLICY_COMPATIBILITY_DELETION_PREFLIGHT_ATTESTATION_RISK_IDS = Object.free
   MANIFEST_INVALID: 'manifest_invalid',
   MANIFEST_ORDER_MISMATCH: 'manifest_order_mismatch',
   MANIFEST_DUPLICATE_PATH: 'manifest_duplicate_path',
+  MANIFEST_DUPLICATE_ENTRY_IDENTITY: 'manifest_duplicate_entry_identity',
   RUNTIME_EVIDENCE_INVALID: 'runtime_evidence_invalid',
   SIDE_EFFECT_REPORTED: 'side_effect_reported',
 });
@@ -270,8 +275,30 @@ function evaluateManifestObservation({ executionPlanArtifact, preflightEvidenceA
   const expectedEntries = asArray(executionPlanArtifact.executionPlan?.manifest?.entries);
   const observedEntries = asArray(preflightEvidenceArtifact.manifest?.entries);
   const risks = [];
-  const expectedPaths = expectedEntries.map(entry => entry?.path);
-  const observedPaths = observedEntries.map(entry => entry?.path);
+  const expectedIdentityEntries = expectedEntries.map(entry => ({
+    entryIdentity: buildPolicyCompatibilityDeletionPreflightManifestObservationIdentity(entry),
+    namedScope: isPolicyCompatibilityDeletionPreflightNamedScopeEntry(entry),
+    path: typeof entry?.path === 'string' ? entry.path : null,
+  }));
+  const observedIdentityEntries = observedEntries.map((entry, index) => ({
+    entryIdentity: typeof entry?.entryIdentity === 'string' && entry.entryIdentity.trim()
+      ? entry.entryIdentity.trim()
+      : expectedIdentityEntries[index]?.namedScope === false
+        ? buildPolicyCompatibilityDeletionPreflightManifestObservationIdentity({
+          path: entry?.path,
+        })
+        : null,
+    namedScope: expectedIdentityEntries[index]?.namedScope === true,
+  }));
+
+  const hasDuplicateIdentity = entries => {
+    const identities = entries.map(entry => entry?.entryIdentity).filter(Boolean);
+    return new Set(identities).size !== identities.length;
+  };
+  const hasDuplicateFilePathIdentity = entries => entries
+    .map(entry => entry?.entryIdentity)
+    .filter(identity => identity?.startsWith('file_path:'))
+    .some((identity, index, identities) => identities.indexOf(identity) !== index);
 
   if (
     preflightEvidenceArtifact.manifest?.statusId !==
@@ -293,27 +320,60 @@ function evaluateManifestObservation({ executionPlanArtifact, preflightEvidenceA
     ));
   }
   if (
-    new Set(expectedPaths).size !== expectedPaths.length ||
-    new Set(observedPaths).size !== observedPaths.length
+    expectedIdentityEntries.some(entry => !entry.path || !entry.entryIdentity) ||
+    observedIdentityEntries.some((entry, index) => (
+      expectedIdentityEntries[index]?.namedScope === true && !entry.entryIdentity
+    ))
+  ) {
+    risks.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_PREFLIGHT_ATTESTATION_RISK_IDS.MANIFEST_INVALID,
+      'Compatibility deletion preflight manifest observations require stable exact-entry identities.'
+    ));
+  }
+  if (
+    hasDuplicateFilePathIdentity(expectedIdentityEntries) ||
+    hasDuplicateFilePathIdentity(observedIdentityEntries)
   ) {
     risks.push(buildRisk(
       POLICY_COMPATIBILITY_DELETION_PREFLIGHT_ATTESTATION_RISK_IDS.MANIFEST_DUPLICATE_PATH,
       'Compatibility deletion preflight manifest observations cannot contain duplicate paths.'
     ));
   }
+  if (hasDuplicateIdentity(expectedIdentityEntries) || hasDuplicateIdentity(observedIdentityEntries)) {
+    risks.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_PREFLIGHT_ATTESTATION_RISK_IDS
+        .MANIFEST_DUPLICATE_ENTRY_IDENTITY,
+      'Compatibility deletion preflight manifest observations cannot repeat an exact entry identity.'
+    ));
+  }
 
   expectedEntries.forEach((entry, index) => {
     const observed = asObject(observedEntries[index]);
+    const expectedIdentityEntry = expectedIdentityEntries[index];
+    const observedIdentityEntry = observedIdentityEntries[index];
+    const observedEntryIdentity = typeof observed.entryIdentity === 'string' &&
+      observed.entryIdentity.trim()
+      ? observed.entryIdentity.trim()
+      : null;
+    const identityMatches = expectedIdentityEntry?.namedScope === true
+      ? observedIdentityEntry?.entryIdentity === expectedIdentityEntry.entryIdentity
+      : !observedEntryIdentity ||
+        observedEntryIdentity === expectedIdentityEntry?.entryIdentity;
 
     if (
       observed.index !== index ||
       observed.path !== entry?.path ||
+      !identityMatches ||
       observed.statusId !== POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_STATUS_IDS.OBSERVED
     ) {
       risks.push(buildRisk(
         POLICY_COMPATIBILITY_DELETION_PREFLIGHT_ATTESTATION_RISK_IDS.MANIFEST_ORDER_MISMATCH,
-        'Compatibility deletion preflight manifest observations must preserve approved path ordering.',
-        { index, expectedPath: entry?.path || null, observedPath: observed.path || null }
+        'Compatibility deletion preflight manifest observations must preserve approved exact-entry ordering.',
+        {
+          index,
+          expectedPath: entry?.path || null,
+          observedPath: observed.path || null,
+        }
       ));
     }
   });
@@ -321,6 +381,9 @@ function evaluateManifestObservation({ executionPlanArtifact, preflightEvidenceA
   return {
     manifest: {
       entries: observedEntries.map(entry => ({
+        entryIdentity: typeof entry?.entryIdentity === 'string' && entry.entryIdentity.trim()
+          ? entry.entryIdentity.trim()
+          : null,
         index: Number.isInteger(entry?.index) ? entry.index : null,
         path: typeof entry?.path === 'string' ? entry.path : null,
         statusId: entry?.statusId || null,

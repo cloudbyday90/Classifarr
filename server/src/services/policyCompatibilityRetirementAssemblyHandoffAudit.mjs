@@ -11,6 +11,9 @@ import {
   validatePolicyCompatibilityRetirementAssemblyArtifactCoverage,
 } from './policyCompatibilityRetirementAssemblyHandoffAuditCoverage.mjs';
 import {
+  isPolicyCompatibilityDeletionNamedTestScopeEntry,
+} from './policyCompatibilityDeletionExecutionManifestEntry.mjs';
+import {
   summarizeApprovedArtifact,
   summarizeCandidateAssembly,
   summarizeExecutionGate,
@@ -31,7 +34,7 @@ import {
 } from './policyCompatibilityRetirementAssemblyHandoffAuditShared.mjs';
 
 const POLICY_COMPATIBILITY_RETIREMENT_ASSEMBLY_HANDOFF_AUDIT_VERSION =
-  'policy.compatibility_retirement_assembly_handoff_audit.v1';
+  'policy.compatibility_retirement_assembly_handoff_audit.v2';
 
 function determineStatusId({ assemblyIssues, releaseReadinessIssues, artifactIssues, coverageIssues,
   executionGateIssues, sideEffects }) {
@@ -62,7 +65,11 @@ function determineStatusId({ assemblyIssues, releaseReadinessIssues, artifactIss
   return POLICY_COMPATIBILITY_RETIREMENT_ASSEMBLY_HANDOFF_AUDIT_STATUS_IDS.HANDOFF_READY;
 }
 
-function buildNextStep(statusId) {
+function buildNextStep(statusId, executionPlanArtifact = {}) {
+  const requiresScopeAwareRemoval = statusId ===
+      POLICY_COMPATIBILITY_RETIREMENT_ASSEMBLY_HANDOFF_AUDIT_STATUS_IDS.HANDOFF_READY &&
+    asArray(executionPlanArtifact?.executionPlan?.manifest?.entries)
+      .some(isPolicyCompatibilityDeletionNamedTestScopeEntry);
   const stepByStatus = {
     [POLICY_COMPATIBILITY_RETIREMENT_ASSEMBLY_HANDOFF_AUDIT_STATUS_IDS
       .BLOCKED_BY_ASSEMBLY]: {
@@ -90,10 +97,15 @@ function buildNextStep(statusId) {
       label: 'Compatibility Deletion Execution-Gate Named-Scope Observation Identity',
     },
   };
-  const nextStep = stepByStatus[statusId] || {
-    stepId: 'controlled_compatibility_path_removal',
-    label: 'Controlled Compatibility Path Removal',
-  };
+  const nextStep = requiresScopeAwareRemoval
+    ? {
+      stepId: 'compatibility_deletion_controlled_removal_scope_aware_execution_adapter',
+      label: 'Compatibility Deletion Controlled-Removal Scope-Aware Execution Adapter',
+    }
+    : stepByStatus[statusId] || {
+      stepId: 'controlled_compatibility_path_removal',
+      label: 'Controlled Compatibility Path Removal',
+    };
 
   return {
     ...nextStep,
@@ -178,7 +190,7 @@ function buildPolicyCompatibilityRetirementAssemblyHandoffAudit({
     sideEffects: normalizedSideEffects,
     issueCount: issues.length,
     issues,
-    nextStep: buildNextStep(statusId),
+    nextStep: buildNextStep(statusId, executionPlanArtifact),
   };
 
   return {

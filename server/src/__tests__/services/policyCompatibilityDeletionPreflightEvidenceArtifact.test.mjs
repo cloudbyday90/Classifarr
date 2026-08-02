@@ -26,9 +26,56 @@ import {
   buildPolicyCompatibilityDeletionPreflightEvidenceArtifact,
   validatePolicyCompatibilityDeletionPreflightEvidenceArtifact,
 } from '../../services/policyCompatibilityDeletionPreflightEvidenceArtifact.mjs';
+import {
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS,
+} from '../../services/policyCompatibilityDeletionExecutionActions.mjs';
+import {
+  buildPolicyCompatibilityDeletionPreflightManifestObservationIdentity,
+} from '../../services/policyCompatibilityDeletionPreflightManifestObservationIdentity.mjs';
 
 const SOURCE_REVISION = '0123456789abcdef0123456789abcdef01234567';
 const MANIFEST_PATH = 'server/src/services/legacyCompatibilityBridge.mjs';
+const SHARED_TEST_PATH = 'server/src/__tests__/services/policyLegacyCompatibility.test.mjs';
+
+function namedScope(overrides = {}) {
+  return {
+    actionId: POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.REMOVE_NAMED_TEST_SCOPE,
+    categoryId: 'compatibility_named_test_scopes',
+    componentPath: 'server/src/services/policyLegacyCompatibility.mjs',
+    dependencyIds: ['policy_legacy_compatibility'],
+    deletionIntent: 'Remove a legacy compatibility test without deleting its retained test file.',
+    path: SHARED_TEST_PATH,
+    sourceTextFragments: ["test('uses legacy bridge'"],
+    targetKindId: 'named_test_scope',
+    testNameFragments: ['uses legacy bridge'],
+    wholeFileDeletion: false,
+    ...overrides,
+  };
+}
+
+function buildNamedScopeArtifact(entries = [namedScope()]) {
+  return buildReadyExecutionPlanArtifact({
+    executionPlan: {
+      statusId: 'ready_for_execution_gate',
+      readyForExecutionGate: true,
+      validation: { ok: true, issueCount: 0, issues: [] },
+      manifest: {
+        approved: true,
+        approvedBy: 'policy-maintainer',
+        entries,
+      },
+    },
+  });
+}
+
+function observeEntries(entries = []) {
+  return entries.map((entry, index) => ({
+    entryIdentity: buildPolicyCompatibilityDeletionPreflightManifestObservationIdentity(entry),
+    index,
+    path: entry.path,
+    statusId: 'observed',
+  }));
+}
 
 function buildReadyArtifact({
   generatedAt = POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
@@ -119,6 +166,60 @@ describe('policyCompatibilityDeletionPreflightEvidenceArtifact', () => {
     expect(artifact).not.toHaveProperty('approval');
     expect(artifact).not.toHaveProperty('recovery');
     expect(artifact).not.toHaveProperty('stances');
+  });
+
+  test('keeps distinct named scopes in one retained file as separate observations', () => {
+    const entries = [
+      namedScope(),
+      namedScope({
+        sourceTextFragments: ["test('preserves legacy fallback'"],
+        testNameFragments: ['preserves legacy fallback'],
+      }),
+    ];
+    const artifact = buildObservedEvidence({
+      executionPlanArtifact: buildNamedScopeArtifact(entries),
+      manifestObservations: observeEntries(entries),
+    });
+
+    expect(artifact.statusId)
+      .toBe(POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_STATUS_IDS.OBSERVED);
+    expect(artifact.manifest.entries).toHaveLength(2);
+    expect(new Set(artifact.manifest.entries.map(entry => entry.entryIdentity)).size).toBe(2);
+    expect(artifact.validation.ok).toBe(true);
+  });
+
+  test('requires an exact identity for every named-scope observation', () => {
+    const entry = namedScope();
+    const artifact = buildObservedEvidence({
+      executionPlanArtifact: buildNamedScopeArtifact([entry]),
+      manifestObservations: [{ index: 0, path: entry.path, statusId: 'observed' }],
+    });
+
+    expect(artifact.statusId)
+      .toBe(POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_STATUS_IDS.INVALID);
+    expect(artifact.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_RISK_IDS.MANIFEST_INVALID,
+      }),
+    ]));
+  });
+
+  test('fails closed when the approved manifest repeats an exact named scope', () => {
+    const entry = namedScope();
+    const entries = [entry, { ...entry }];
+    const artifact = buildObservedEvidence({
+      executionPlanArtifact: buildNamedScopeArtifact(entries),
+      manifestObservations: observeEntries(entries),
+    });
+
+    expect(artifact.statusId)
+      .toBe(POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_STATUS_IDS.INVALID);
+    expect(artifact.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_RISK_IDS
+          .MANIFEST_DUPLICATE_ENTRY_IDENTITY,
+      }),
+    ]));
   });
 
   test('reports a missing artifact and does not turn it into a ready claim', () => {
@@ -286,6 +387,25 @@ describe('policyCompatibilityDeletionPreflightEvidenceArtifact', () => {
       expect.objectContaining({
         riskId: POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_RISK_IDS.STATUS_MISMATCH,
       }),
+      expect.objectContaining({
+        riskId: POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_RISK_IDS
+          .PREFLIGHT_ARTIFACT_FINGERPRINT_INVALID,
+      }),
+    ]));
+  });
+
+  test('binds named-scope observation identity in the preflight artifact fingerprint', () => {
+    const entry = namedScope();
+    const artifact = buildObservedEvidence({
+      executionPlanArtifact: buildNamedScopeArtifact([entry]),
+      manifestObservations: observeEntries([entry]),
+    });
+    artifact.manifest.entries[0].entryIdentity = 'named_test_scope:'.concat('0'.repeat(64));
+
+    const validation = validatePolicyCompatibilityDeletionPreflightEvidenceArtifact(artifact);
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId: POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_RISK_IDS
           .PREFLIGHT_ARTIFACT_FINGERPRINT_INVALID,

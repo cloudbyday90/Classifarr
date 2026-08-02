@@ -2830,13 +2830,25 @@ Implementation status:
   Execution-Plan Candidate-Target
   Adapter](policy-compatibility-retirement-execution-plan-candidate-target-adapter.md).
 
-Next component task: **3R.10.14 Compatibility Deletion Execution-Gate
-Named-Scope Observation Identity**. Replace path-only preflight manifest
-observations with stable exact-entry identities. Several named scopes in one
-retained test file must remain distinct, but duplicate exact entries must still
-fail closed. Preserve legacy file-entry observation behavior, artifact
-fingerprints, freshness checks, operator approval, and the separate
-controlled-removal boundary.
+- **3R.10.14 Compatibility Deletion Execution-Gate Named-Scope Observation
+  Identity** is complete. Preflight evidence now carries a server-derived
+  exact-entry identity: legacy file entries retain path identity while named
+  scopes hash their complete canonical target data. Artifact v3, fingerprint
+  v2, attestation v2, gate v5, and collector v2 bind and revalidate that
+  identity. Distinct scopes in one retained test file pass the read-only gate,
+  while duplicate exact entries, stale evidence, altered identities, and legacy
+  duplicate file paths still fail closed. The existing path-removal selector
+  explicitly refuses named scopes, preserving the no-whole-file-deletion
+  boundary. See [Policy Compatibility Deletion Execution-Gate Named-Scope
+  Observation Identity](policy-compatibility-deletion-execution-gate-named-scope-observation-identity.md).
+
+Next component task: **3R.10.15 Compatibility Deletion Controlled-Removal
+Scope-Aware Execution Adapter**. Create a separate review-only adapter for
+fingerprint-bound named-scope identities. It must re-read the exact retained
+file, derive a precise dry-run source edit, and fail closed for missing,
+ambiguous, stale, or changed source fragments. It must not write source, delete
+files, alter storage, or bypass the independent recovery, stance, approval, and
+freshness controls.
 
 ### 3R.8 Accessibility And Decision Load
 

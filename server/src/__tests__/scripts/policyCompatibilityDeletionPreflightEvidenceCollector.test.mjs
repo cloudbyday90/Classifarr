@@ -30,6 +30,12 @@ import {
 import {
   buildReadyExecutionPlanArtifact,
 } from '../services/fixtures/policyCompatibilityDeletionExecutionGateFixtures.mjs';
+import {
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS,
+} from '../../services/policyCompatibilityDeletionExecutionActions.mjs';
+import {
+  buildPolicyCompatibilityDeletionPreflightManifestObservationIdentity,
+} from '../../services/policyCompatibilityDeletionPreflightManifestObservationIdentity.mjs';
 
 const GENERATED_AT = '2026-07-14T20:00:00.000Z';
 const SOURCE_REVISION = '0123456789abcdef0123456789abcdef01234567';
@@ -48,7 +54,7 @@ function createDirectoryLink(targetPath, linkPath) {
   );
 }
 
-function buildReadyArtifact({ manifestPath = MANIFEST_PATH } = {}) {
+function buildReadyArtifact({ manifestEntries = null, manifestPath = MANIFEST_PATH } = {}) {
   return buildReadyExecutionPlanArtifact({
     generatedAt: GENERATED_AT,
     executionPlan: {
@@ -58,10 +64,26 @@ function buildReadyArtifact({ manifestPath = MANIFEST_PATH } = {}) {
       manifest: {
         approved: true,
         approvedBy: 'policy-maintainer',
-        entries: [{ path: manifestPath }],
+        entries: manifestEntries || [{ path: manifestPath }],
       },
     },
   });
+}
+
+function namedScope(overrides = {}) {
+  return {
+    actionId: POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.REMOVE_NAMED_TEST_SCOPE,
+    categoryId: 'compatibility_named_test_scopes',
+    componentPath: 'server/src/services/policyLegacyCompatibility.mjs',
+    dependencyIds: ['policy_legacy_compatibility'],
+    deletionIntent: 'Remove a legacy compatibility test without deleting its retained test file.',
+    path: MANIFEST_PATH,
+    sourceTextFragments: ["test('uses legacy bridge'"],
+    targetKindId: 'named_test_scope',
+    testNameFragments: ['uses legacy bridge'],
+    wholeFileDeletion: false,
+    ...overrides,
+  };
 }
 
 function createCommandRunner({
@@ -151,7 +173,12 @@ describe('policyCompatibilityDeletionPreflightEvidenceCollector', () => {
         sourceRevision: SOURCE_REVISION,
       }),
       manifest: expect.objectContaining({
-        entries: [{ index: 0, path: MANIFEST_PATH, statusId: 'observed' }],
+        entries: [{
+          entryIdentity: `file_path:${MANIFEST_PATH}`,
+          index: 0,
+          path: MANIFEST_PATH,
+          statusId: 'observed',
+        }],
       }),
       runtimeEvidence: expect.objectContaining({ statusId: 'observed' }),
       validation: expect.objectContaining({ ok: true }),
@@ -159,6 +186,36 @@ describe('policyCompatibilityDeletionPreflightEvidenceCollector', () => {
     expect(commandRunner.mock.calls.some(([call]) => call.command === 'docker')).toBe(false);
     expect(stderr).toEqual([]);
     expect(JSON.parse(stdout[0])).toEqual(expect.objectContaining({ statusId: 'observed' }));
+  });
+
+  test('collects distinct identities for named scopes in one retained test file', async () => {
+    const manifestEntries = [
+      namedScope(),
+      namedScope({
+        sourceTextFragments: ["test('preserves legacy fallback'"],
+        testNameFragments: ['preserves legacy fallback'],
+      }),
+    ];
+    writeJson(
+      path.join(fixtureRoot, '.artifacts', 'execution-plan.json'),
+      buildReadyArtifact({ manifestEntries })
+    );
+
+    const outcome = await runCollector();
+    const evidence = JSON.parse(fs.readFileSync(
+      path.join(fixtureRoot, '.tmp', 'preflight-evidence.json'),
+      'utf8'
+    ));
+
+    expect(outcome.statusId)
+      .toBe(POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_COLLECTOR_STATUS_IDS.OBSERVED);
+    expect(evidence.manifest.entries).toEqual(manifestEntries.map((entry, index) => ({
+      entryIdentity: buildPolicyCompatibilityDeletionPreflightManifestObservationIdentity(entry),
+      index,
+      path: MANIFEST_PATH,
+      statusId: 'observed',
+    })));
+    expect(new Set(evidence.manifest.entries.map(entry => entry.entryIdentity)).size).toBe(2);
   });
 
   test('writes bounded blocked evidence when the reviewed checkout is dirty', async () => {

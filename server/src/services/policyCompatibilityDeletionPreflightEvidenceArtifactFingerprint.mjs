@@ -19,7 +19,7 @@
 import { createHash } from 'node:crypto';
 
 const POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_ARTIFACT_FINGERPRINT_VERSION =
-  'policy.compatibility_deletion_preflight_evidence_artifact_fingerprint.v1';
+  'policy.compatibility_deletion_preflight_evidence_artifact_fingerprint.v2';
 
 const POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_ARTIFACT_FINGERPRINT_RISK_IDS =
   Object.freeze({

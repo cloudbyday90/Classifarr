@@ -37,6 +37,9 @@ import {
   validatePolicyControlledCompatibilityPathRemoval,
 } from '../../services/policyControlledCompatibilityPathRemoval.mjs';
 import {
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS,
+} from '../../services/policyCompatibilityDeletionExecutionActions.mjs';
+import {
   buildReadyPolicyCompatibilityDeletionReleasePrerequisiteEvidence,
 } from '../helpers/policyCompatibilityDeletionReleasePrerequisiteEvidence.mjs';
 
@@ -188,6 +191,32 @@ function readyExecutionPlan(overrides = {}) {
 
 function readyExecutionPlanArtifact(executionPlan = readyExecutionPlan()) {
   return buildReadyExecutionPlanArtifact({ executionPlan });
+}
+
+function namedScopeExecutionPlan() {
+  return {
+    statusId: 'ready_for_execution_gate',
+    readyForExecutionGate: true,
+    validation: { ok: true, issueCount: 0, issues: [] },
+    manifest: {
+      approved: true,
+      approvedBy: 'policy-maintainer',
+      entries: [{
+        actionId: POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.REMOVE_NAMED_TEST_SCOPE,
+        categoryId: 'compatibility_named_test_scopes',
+        componentPath: 'server/src/services/policyLegacyCompatibility.mjs',
+        dependencyIds: ['policy_legacy_compatibility'],
+        deletionIntent: 'Remove a legacy compatibility test without deleting its retained test file.',
+        path: 'server/src/__tests__/services/policyLegacyCompatibility.test.mjs',
+        ready: true,
+        replacementEvidence: { replacement: 'Native test coverage replaces this compatibility test.' },
+        sourceTextFragments: ["test('uses legacy bridge'"],
+        targetKindId: 'named_test_scope',
+        testNameFragments: ['uses legacy bridge'],
+        wholeFileDeletion: false,
+      }],
+    },
+  };
 }
 
 function readyGate(executionPlanArtifact, {
@@ -498,6 +527,28 @@ describe('policyControlledCompatibilityPathRemoval', () => {
       POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.MANIFEST_PATH_DUPLICATE,
       POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS.MANIFEST_PATH_INVALID,
     ]));
+  });
+
+  test('refuses a named test scope at the file-removal boundary', () => {
+    const executionPlanArtifact = readyExecutionPlanArtifact(namedScopeExecutionPlan());
+    const removal = buildPolicyControlledCompatibilityPathRemoval({
+      executionPlanArtifact,
+      executionGate: readyGate(executionPlanArtifact),
+      selectedPaths: ['server/src/__tests__/services/policyLegacyCompatibility.test.mjs'],
+      removalReason: 'Named scopes require a dedicated scope-aware removal component.',
+      reviewedBy: 'policy-maintainer',
+    });
+
+    expect(removal.statusId)
+      .toBe(POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_STATUS_IDS
+        .BLOCKED_BY_EXECUTION_ARTIFACT);
+    expect(removal.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_RISK_IDS
+          .MANIFEST_ENTRY_SCOPE_UNSUPPORTED,
+      }),
+    ]));
+    expect(removal.readyForRemovalReview).toBe(false);
   });
 
   test('blocks removal batches that are broader than the configured scope', () => {

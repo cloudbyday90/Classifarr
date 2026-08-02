@@ -14,6 +14,9 @@ import {
   hasMeaningfulReplacementEvidence,
   isCanonicalRepositoryPath,
 } from '../../services/policyControlledCompatibilityPathRemovalSelection.mjs';
+import {
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS,
+} from '../../services/policyCompatibilityDeletionExecutionActions.mjs';
 
 const MANIFEST_PATH = 'server/src/services/policyIntentMapper.mjs';
 
@@ -93,6 +96,28 @@ describe('policyControlledCompatibilityPathRemovalSelection', () => {
           .SELECTED_ENTRY_REPLACEMENT_EVIDENCE_INVALID,
         path: MANIFEST_PATH,
       }),
+    ]));
+  });
+
+  test('refuses named test scopes before they can become whole-file selections', () => {
+    const selection = evaluatePolicyControlledCompatibilityPathRemovalSelection({
+      manifestEntries: [manifestEntry({
+        actionId: POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.REMOVE_NAMED_TEST_SCOPE,
+        sourceTextFragments: ["test('uses legacy bridge'"],
+        testNameFragments: ['uses legacy bridge'],
+        wholeFileDeletion: false,
+      })],
+      selectedPaths: [MANIFEST_PATH],
+      maxBatchSize: 1,
+    });
+
+    expect(selection.manifestEntryCount).toBe(0);
+    expect(selection.selectedEntries).toEqual([]);
+    expect(selection.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_SELECTION_RISK_IDS
+        .MANIFEST_ENTRY_SCOPE_UNSUPPORTED,
+      POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_SELECTION_RISK_IDS
+        .SELECTED_PATH_NOT_IN_MANIFEST,
     ]));
   });
 });

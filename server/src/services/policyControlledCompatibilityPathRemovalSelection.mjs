@@ -10,7 +10,12 @@
 
 import path from 'node:path';
 
+import {
+  isPolicyCompatibilityDeletionNamedTestScopeEntry,
+} from './policyCompatibilityDeletionExecutionManifestEntry.mjs';
+
 const POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_SELECTION_RISK_IDS = Object.freeze({
+  MANIFEST_ENTRY_SCOPE_UNSUPPORTED: 'manifest_entry_scope_unsupported',
   MANIFEST_PATH_INVALID: 'manifest_path_invalid',
   MANIFEST_PATH_DUPLICATE: 'manifest_path_duplicate',
   SELECTED_PATH_INVALID: 'selected_path_invalid',
@@ -76,6 +81,16 @@ function evaluateManifestEntries(manifestEntries = []) {
   asArray(manifestEntries).forEach((entry, entryIndex) => {
     const value = asObject(entry);
     const repositoryPath = normalizeRepositoryPath(value.path);
+
+    if (isPolicyCompatibilityDeletionNamedTestScopeEntry(value)) {
+      risks.push(buildRisk(
+        POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_SELECTION_RISK_IDS
+          .MANIFEST_ENTRY_SCOPE_UNSUPPORTED,
+        'Controlled compatibility path removal cannot select named test scopes; they require a separate scope-aware removal component.',
+        { entryIndex, path: repositoryPath || null }
+      ));
+      return;
+    }
 
     if (!isCanonicalRepositoryPath(value.path)) {
       risks.push(buildRisk(

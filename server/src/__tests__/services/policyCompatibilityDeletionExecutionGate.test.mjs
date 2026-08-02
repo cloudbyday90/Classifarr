@@ -37,6 +37,9 @@ import {
   POLICY_COMPATIBILITY_DELETION_PREFLIGHT_ATTESTATION_RISK_IDS,
 } from '../../services/policyCompatibilityDeletionPreflightAttestation.mjs';
 import {
+  POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS,
+} from '../../services/policyCompatibilityDeletionExecutionActions.mjs';
+import {
   buildPolicyCompatibilityDeletionPreflightEvidenceArtifactFingerprint,
 } from '../../services/policyCompatibilityDeletionPreflightEvidenceArtifactFingerprint.mjs';
 import {
@@ -187,6 +190,35 @@ function readyExecutionPlan(overrides = {}) {
     approvedBy: 'policy-maintainer',
     ...overrides,
   });
+}
+
+function namedScope(overrides = {}) {
+  return {
+    actionId: POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.REMOVE_NAMED_TEST_SCOPE,
+    categoryId: 'compatibility_named_test_scopes',
+    componentPath: 'server/src/services/policyLegacyCompatibility.mjs',
+    deletionIntent: 'Remove a legacy compatibility test without deleting its retained test file.',
+    dependencyIds: ['policy_legacy_compatibility'],
+    path: 'server/src/__tests__/services/policyLegacyCompatibility.test.mjs',
+    sourceTextFragments: ["test('uses legacy bridge'"],
+    targetKindId: 'named_test_scope',
+    testNameFragments: ['uses legacy bridge'],
+    wholeFileDeletion: false,
+    ...overrides,
+  };
+}
+
+function namedScopeExecutionPlan(entries = [namedScope()]) {
+  return {
+    statusId: 'ready_for_execution_gate',
+    readyForExecutionGate: true,
+    validation: { ok: true, issueCount: 0, issues: [] },
+    manifest: {
+      approved: true,
+      approvedBy: 'policy-maintainer',
+      entries,
+    },
+  };
 }
 
 function readyGate({
@@ -583,6 +615,43 @@ describe('policyCompatibilityDeletionExecutionGate', () => {
     expect(gate.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
       POLICY_COMPATIBILITY_DELETION_PREFLIGHT_ATTESTATION_RISK_IDS.MANIFEST_DUPLICATE_PATH,
     ]));
+  });
+
+  test('allows distinct named scopes in one retained test file through the execution gate', () => {
+    const artifact = buildReadyExecutionPlanArtifact({
+      executionPlan: namedScopeExecutionPlan([
+        namedScope(),
+        namedScope({
+          sourceTextFragments: ["test('preserves legacy fallback'"],
+          testNameFragments: ['preserves legacy fallback'],
+        }),
+      ]),
+    });
+    const gate = readyGate({ executionPlanArtifact: artifact });
+
+    expect(gate.statusId)
+      .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
+        .READY_FOR_CONTROLLED_DELETION);
+    expect(gate.preflightAttestation.manifest.entries).toHaveLength(2);
+    expect(new Set(gate.preflightAttestation.manifest.entries
+      .map(entry => entry.entryIdentity)).size).toBe(2);
+  });
+
+  test('blocks duplicate exact named scopes before controlled deletion', () => {
+    const entry = namedScope();
+    const artifact = buildReadyExecutionPlanArtifact({
+      executionPlan: namedScopeExecutionPlan([entry, { ...entry }]),
+    });
+    const gate = readyGate({ executionPlanArtifact: artifact });
+
+    expect(gate.statusId)
+      .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
+        .BLOCKED_BY_MANIFEST_VERIFICATION);
+    expect(gate.risks.map(risk => risk.riskId)).toEqual(expect.arrayContaining([
+      POLICY_COMPATIBILITY_DELETION_PREFLIGHT_ATTESTATION_RISK_IDS
+        .MANIFEST_DUPLICATE_ENTRY_IDENTITY,
+    ]));
+    expect(gate.allowControlledDeletion).toBe(false);
   });
 
   test('rejects mutated gate output with side effects or stale risk count', () => {

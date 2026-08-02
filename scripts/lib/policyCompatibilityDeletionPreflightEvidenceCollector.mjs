@@ -26,9 +26,12 @@ import {
   POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_STATUS_IDS,
   buildPolicyCompatibilityDeletionPreflightEvidenceArtifact,
 } from '../../server/src/services/policyCompatibilityDeletionPreflightEvidenceArtifact.mjs';
+import {
+  buildPolicyCompatibilityDeletionPreflightManifestObservationIdentity,
+} from '../../server/src/services/policyCompatibilityDeletionPreflightManifestObservationIdentity.mjs';
 
 const PREFLIGHT_EVIDENCE_COLLECTOR_VERSION =
-  'policy.compatibility_deletion_preflight_evidence_collector.v1';
+  'policy.compatibility_deletion_preflight_evidence_collector.v2';
 const TEMPORARY_OUTPUT_DIRECTORY = '.tmp';
 const MAX_ARTIFACT_BYTES = 1024 * 1024;
 const REVISION_PATTERN = /^[a-f0-9]{40,64}$/u;
@@ -337,6 +340,7 @@ function observeManifestEntry({
 }) {
   const sourcePath = entry?.path;
   const base = {
+    entryIdentity: buildPolicyCompatibilityDeletionPreflightManifestObservationIdentity(entry),
     index,
     path: typeof sourcePath === 'string' ? sourcePath : null,
   };

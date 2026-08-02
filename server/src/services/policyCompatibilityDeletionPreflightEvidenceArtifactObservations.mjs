@@ -20,6 +20,10 @@ import {
   DEFAULT_MAX_EXECUTION_ARTIFACT_AGE_MS,
 } from './policyCompatibilityDeletionExecutionGateShared.mjs';
 import {
+  buildPolicyCompatibilityDeletionPreflightManifestObservationIdentity,
+  isPolicyCompatibilityDeletionPreflightNamedScopeEntry,
+} from './policyCompatibilityDeletionPreflightManifestObservationIdentity.mjs';
+import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_STATUS_IDS,
   POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_VERSION,
   validatePolicyCompatibilityDeletionExecutionPlanArtifact,
@@ -200,6 +204,9 @@ function summarizeManifestEntries(entries = []) {
     const value = asObject(entry);
 
     return {
+      entryIdentity: typeof value.entryIdentity === 'string' && value.entryIdentity.trim()
+        ? value.entryIdentity.trim()
+        : null,
       index: Number.isInteger(value.index) ? value.index : index,
       path: typeof value.path === 'string' ? value.path : null,
       statusId: normalizeStatusId(value.statusId),
@@ -207,8 +214,25 @@ function summarizeManifestEntries(entries = []) {
   });
 }
 
+function buildExpectedManifestEntries(entries = []) {
+  return asArray(entries).map(entry => ({
+    entryIdentity: buildPolicyCompatibilityDeletionPreflightManifestObservationIdentity(entry),
+    namedScope: isPolicyCompatibilityDeletionPreflightNamedScopeEntry(entry),
+    path: typeof entry?.path === 'string' ? entry.path : null,
+  }));
+}
+
+function hasDuplicateEntryIdentity(entries = []) {
+  const identities = entries
+    .map(entry => entry?.entryIdentity)
+    .filter(Boolean);
+
+  return new Set(identities).size !== identities.length;
+}
+
 function evaluateManifestObservation({ artifact, artifactStatusId, manifestObservations }) {
   const entries = asArray(artifact?.executionPlan?.manifest?.entries);
+  const expectedEntries = buildExpectedManifestEntries(entries);
   const observedEntries = summarizeManifestEntries(manifestObservations);
   const risks = [];
 
@@ -272,14 +296,42 @@ function evaluateManifestObservation({ artifact, artifactStatusId, manifestObser
     ));
   }
 
+  if (expectedEntries.some(entry => !entry.path || !entry.entryIdentity)) {
+    risks.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_RISK_IDS.MANIFEST_INVALID,
+      'Preflight evidence requires every approved manifest entry to have a stable observation identity.'
+    ));
+  }
+
+  if (hasDuplicateEntryIdentity(expectedEntries)) {
+    risks.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_RISK_IDS
+        .MANIFEST_DUPLICATE_ENTRY_IDENTITY,
+      'Preflight evidence cannot observe an approved manifest that repeats an exact entry identity.'
+    ));
+  }
+
   observedEntries.forEach((entry, index) => {
-    const expectedPath = typeof entries[index]?.path === 'string' ? entries[index].path : null;
+    const expectedEntry = expectedEntries[index];
+    const expectedPath = expectedEntry?.path || null;
+    const requiresExactIdentity = expectedEntry?.namedScope === true;
+    const identityMatches = requiresExactIdentity
+      ? entry.entryIdentity === expectedEntry?.entryIdentity
+      : !entry.entryIdentity || entry.entryIdentity === expectedEntry?.entryIdentity;
 
     if (!expectedPath || entry.path !== expectedPath) {
       risks.push(buildRisk(
         POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_RISK_IDS.MANIFEST_INVALID,
-        'Preflight evidence manifest observations must preserve the approved manifest path order.',
+        'Preflight evidence manifest observations must preserve the approved manifest entry order.',
         { index }
+      ));
+      return;
+    }
+    if (!identityMatches) {
+      risks.push(buildRisk(
+        POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_RISK_IDS.MANIFEST_INVALID,
+        'Preflight evidence manifest observations must preserve the approved exact-entry identity.',
+        { index, path: entry.path }
       ));
       return;
     }
@@ -298,8 +350,28 @@ function evaluateManifestObservation({ artifact, artifactStatusId, manifestObser
     }
   });
 
-  const statusId = risks.some(risk => risk.riskId ===
-    POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_RISK_IDS.MANIFEST_INVALID)
+  const observedIdentityEntries = observedEntries.map((entry, index) => ({
+    entryIdentity: entry.entryIdentity || (
+      expectedEntries[index]?.namedScope === false
+        ? buildPolicyCompatibilityDeletionPreflightManifestObservationIdentity({
+          path: entry.path,
+        })
+        : null
+    ),
+  }));
+  if (hasDuplicateEntryIdentity(observedIdentityEntries)) {
+    risks.push(buildRisk(
+      POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_RISK_IDS
+        .MANIFEST_DUPLICATE_ENTRY_IDENTITY,
+      'Preflight evidence cannot contain duplicate approved manifest entry identities.'
+    ));
+  }
+
+  const statusId = risks.some(risk => (
+    risk.riskId === POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_RISK_IDS.MANIFEST_INVALID ||
+    risk.riskId === POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_RISK_IDS
+      .MANIFEST_DUPLICATE_ENTRY_IDENTITY
+  ))
     ? POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_STATUS_IDS.INVALID
     : risks.length > 0
       ? POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_STATUS_IDS.MISSING

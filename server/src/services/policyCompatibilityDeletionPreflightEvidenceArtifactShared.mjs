@@ -17,7 +17,7 @@
  */
 
 const POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_ARTIFACT_VERSION =
-  'policy.compatibility_deletion_preflight_evidence_artifact.v2';
+  'policy.compatibility_deletion_preflight_evidence_artifact.v3';
 
 const POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_STATUS_IDS = Object.freeze({
   OBSERVED: 'observed',
@@ -43,6 +43,7 @@ const POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_RISK_IDS = Object.freeze(
   CHECKOUT_NOT_CLEAN: 'checkout_not_clean',
   MANIFEST_MISSING: 'manifest_missing',
   MANIFEST_INVALID: 'manifest_invalid',
+  MANIFEST_DUPLICATE_ENTRY_IDENTITY: 'manifest_duplicate_entry_identity',
   RUNTIME_EVIDENCE_MISSING: 'runtime_evidence_missing',
   RUNTIME_EVIDENCE_INVALID: 'runtime_evidence_invalid',
   RUNTIME_EVIDENCE_STALE: 'runtime_evidence_stale',

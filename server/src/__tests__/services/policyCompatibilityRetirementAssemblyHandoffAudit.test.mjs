@@ -324,7 +324,7 @@ describe('policyCompatibilityRetirementAssemblyHandoffAudit', () => {
     );
   });
 
-  test('blocks the existing execution gate when exact named scopes share a retained test file', async () => {
+  test('hands exact named scopes to a scope-aware removal adapter after the read-only gate', async () => {
     const candidateAssembly = await buildReadyCandidateAssembly();
     const deletionReadiness = buildReadyDeletionReadiness();
     const executionPlanArtifact = buildApprovedArtifact(candidateAssembly);
@@ -339,23 +339,19 @@ describe('policyCompatibilityRetirementAssemblyHandoffAudit', () => {
     expect(deletionReadiness.readyForDeletionExecutionPlan).toBe(true);
     expect(executionGate.statusId).toBe(
       POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS
-        .BLOCKED_BY_MANIFEST_VERIFICATION,
+        .READY_FOR_CONTROLLED_DELETION,
     );
-    expect(executionGate.risks.map(risk => risk.riskId)).toContain('manifest_duplicate_path');
     expect(audit).toEqual(expect.objectContaining({
       statusId: POLICY_COMPATIBILITY_RETIREMENT_ASSEMBLY_HANDOFF_AUDIT_STATUS_IDS
-        .BLOCKED_BY_EXECUTION_GATE,
-      handoffReady: false,
+        .HANDOFF_READY,
+      handoffReady: true,
       coverageCount: 10,
       coveredTargetCount: 10,
       uncoveredTargetCount: 0,
       validation: { ok: true, issueCount: 0, issues: [] },
     }));
-    expect(audit.issues.map(issue => issue.riskId)).toContain(
-      POLICY_COMPATIBILITY_RETIREMENT_ASSEMBLY_HANDOFF_AUDIT_RISK_IDS.EXECUTION_GATE_NOT_READY,
-    );
     expect(audit.nextStep.stepId)
-      .toBe('compatibility_deletion_execution_gate_named_scope_observation_identity');
+      .toBe('compatibility_deletion_controlled_removal_scope_aware_execution_adapter');
   });
 
   test('blocks a ready legacy artifact that substitutes a broad category for an assembled target', async () => {
