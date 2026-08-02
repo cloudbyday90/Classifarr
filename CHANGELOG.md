@@ -11,6 +11,20 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Native Storage Delivery Boundary**: Reframed the storage work so automatic
+  native-intent migration, authority, rollback, and runtime reads remain
+  platform behavior, while compatibility source retirement is isolated as
+  CI/release maintenance. The roadmap now rejects extending a running-service
+  review-context registry or source writer and starts with a reachability
+  inventory before any further retirement work.
+
+- **Policy Authoring Workflow Contract Closure**: Reclassified native-storage
+  and compatibility-retirement contracts out of the authoring workflow ledger.
+  Added a fail-closed, repository-evidence closure audit that assigns active
+  workflow contracts to durable live-authoring tasks without claiming that the
+  live browser flow is complete; entry-path inventory is the sole eligible
+  handoff.
+
 - **Compatibility Deletion Scope-Aware Production Admission**: Added a
   routerless server-only composition boundary for controlled named-scope apply.
   It derives admin identity only from authenticated middleware state, obtains

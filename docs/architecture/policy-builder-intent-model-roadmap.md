@@ -6,11 +6,11 @@ completion criteria for policy work.
 
 Current execution focus:
 
-1. **8R Completion Status Audit**: reconcile each Phase 8R component with its
-   implementation, focused tests, migration state, and closure evidence before
-   declaring the storage refactor complete. The audit must track authority
-   repair, candidate eligibility, runtime authority selection, reversion, and
-   retention independently rather than treating them as one broad component.
+1. **8R.37.1 Runtime Capability Inventory And Isolation Decision**: inventory
+   and remove any normal application reachability into compatibility source
+   mutation before continuing the controlled-removal direction. Native policy
+   automation remains automatic and installation-agnostic; repository
+   retirement belongs to CI/release maintenance, not the running platform.
 2. **8R.3.2.9 Semantic Native Authority Eligibility And Empty-Intent
    Recovery**: completed as a shared semantic-authority contract, safe
    compatibility fallback, guarded automatic-conversion eligibility, and a
@@ -2875,8 +2875,13 @@ Acceptance criteria:
 - No Phase 3R record claims a live interaction outcome without its Phase 4R
   rendered-path and end-to-end evidence.
 
-Status: planned. This is the only remaining Phase 3R task. The operational UI
-work that follows is Phase 4R, and compatibility-removal work is Phase 8R.
+Status: complete. The closure audit reconciles the active Phase 3R contract
+ledger against its source, test, and design artifacts; assigns each active
+server/client workflow contract one Phase 4R owner; and fails closed on a
+premature live-UI completion claim. The operational UI work that follows is
+Phase 4R, and compatibility-removal work is Phase 8R. See [Policy Authoring
+Workflow Closure And Phase 4R
+Handoff](policy-authoring-workflow-closure-handoff.md).
 Completed design records that retain a historical `3R.10.*` label describe the
 pre-reclassification source history only; they are not active Phase 3R tasks.
 
@@ -2907,11 +2912,14 @@ Implement Phase 3R in this order:
 
 Current starting point:
 
-- Complete **3R.10 Workflow Contract Closure And 4R Handoff**.
-- Do not add more warnings, readiness cards, or option controls as Phase 3R
-  work. Live presentation changes belong to a named Phase 4R component.
+- Phase 3R workflow-contract closure is complete.
+- After the active **8R.37.1 Runtime Capability Inventory And Isolation
+  Decision** completes, start **4R.1 Live Entry-Path And Action Inventory**.
+  Do not infer a live entry path, rendered control, or successful action from
+  the Phase 3R source contract or a historical implementation record.
+- Do not add more warnings, readiness cards, or option controls before the
+  Phase 4R inventory assigns the visible path and control to an owner.
 - Do not preserve old preview/replay/provider panels in the normal workflow.
-- Use Phase 3R as the operator-workflow contract for Phases 4R and 6R.
 
 Implementation record:
 
@@ -2933,12 +2941,15 @@ Implementation record:
   [Policy Authoring Starter Templates](policy-authoring-starter-templates.md).
 - policy authoring accessibility is documented in
   [Policy Authoring Accessibility](policy-authoring-accessibility.md).
+- Phase 3R closure and the explicit Phase 4R ownership handoff are documented
+  in [Policy Authoring Workflow Closure And Phase 4R
+  Handoff](policy-authoring-workflow-closure-handoff.md).
 - Policy authoring presentation tests are documented in
   [Policy Authoring Presentation Tests](policy-authoring-presentation-tests.md).
 - The presentation-test module cutover is documented in
   [Policy Authoring Presentation Tests Module Cutover](policy-authoring-presentation-tests-module-cutover.md).
-- Phase 3R contract checkpoints are now defined through 3R.9. Future Phase 3R
-  work should apply these contracts to the Vue components and client tests.
+- Phase 3R contract checkpoints are closed through 3R.10. Future rendered
+  component and browser-test work belongs to the named Phase 4R task sequence.
 - The first Vue-facing rewrite slice is documented in
   [Policy Authoring Setup Cards](policy-authoring-setup-cards.md).
 - The second Vue-facing rewrite slice is documented in
@@ -6341,6 +6352,31 @@ Non-negotiable storage principles:
   remain side-effect-free.
 - Runtime reads native intent as the authority once a policy is converted.
 
+### Phase 8R Delivery Lanes
+
+Phase 8R has four distinct delivery lanes. They are deliberately not one
+linear application workflow:
+
+1. **Native Intent Runtime Lifecycle**: 8R.1 through 8R.13 are platform
+   behavior. They own native storage, automatic conversion, authority,
+   rollback, backup/restore, and runtime reads.
+2. **Installation Cutover Evidence**: 8R.14 through 8R.16 establish current,
+   read-only instance evidence. They may report a blocked installation but
+   cannot create a policy UI, delete source, or mutate repositories.
+3. **Repository Retirement**: 8R.17 through 8R.21 are release-maintenance
+   concerns. Their evidence may support a reviewed CI change, but no browser,
+   route, scheduler, client API, or normal running-service path may mutate
+   repository source.
+4. **Closure Evidence**: 8R.22 through 8R.36 prove repository
+   `implementationReadiness` independently from installation `instanceCutover`.
+   Neither result is authorization for source mutation.
+
+The active boundary plan is [Policy Native Storage Runtime And
+Release-Maintenance Boundary](policy-native-storage-runtime-release-boundary.md).
+It rejects extending the production review-context registry proposed by the
+former 8R.17.3 continuation: a running policy service must not become a source
+code writer.
+
 ## Phase 8R Component Map
 
 ### 8R.1 Native Schema Contract
@@ -8271,11 +8307,10 @@ Tasks:
     composer. It has no browser flow, generic mutation endpoint, client actor,
     caller-owned clock, or repository write capability outside its bounded
     source-writer contract.
-  - Next component task: **8R.17.3 Server Review Context Registry**. Store
-    only a validated accepted review context behind an opaque server-issued
-    reference, provide it to the production-admission composer without request
-    input, and invalidate it on source, gate, or scope drift. It must not
-    expose source text, dry runs, or a generic mutation handle.
+  - Superseded direction: do not add a server review-context registry. It
+    would extend running-service reachability to repository source mutation.
+    Task 8R.37.1 now inventories and isolates any such reachability before a
+    CI/release-maintenance-only retirement command is considered.
 - Consume approved compatibility deletion manifest entries.
 - Consume compatibility deletion execution-gate output.
 - Require selected paths to exist in the approved manifest.
@@ -9795,6 +9830,50 @@ Implementation status:
   output. The design and outcome record is [Policy Storage Closure Evidence
   Launcher](policy-storage-closure-evidence-launcher.md).
 
+### 8R.37 Runtime And Release-Maintenance Boundary
+
+Intent: keep automatic native policy migration and runtime authority inside the
+platform while moving repository source retirement to a constrained
+CI/release-maintenance concern.
+
+Tasks:
+
+- **8R.37.1 Runtime Capability Inventory And Isolation Decision**
+  - Inventory every route, scheduler, bootstrap import, client API,
+    environment entry point, and production service that reaches controlled
+    compatibility removal.
+  - Classify every result as native runtime lifecycle, read-only instance
+    evidence, CI/release maintenance, or remove/decommission.
+  - Prove no normal policy route, browser action, client API leaf, or scheduler
+    can issue a source-removal authorization or invoke a source writer.
+- **8R.37.2 Runtime Reachability Removal**
+  - Remove runtime reachability found by 8R.37.1 without changing automatic
+    native-intent conversion or policy automation.
+  - Add repository searches and focused tests that fail if a running-service
+    source writer, source-removal authorization, or compatibility alias returns.
+- **8R.37.3 CI-Only Retirement Command Contract**
+  - Retain or create a deterministic release-maintenance command only when an
+    approved compatibility-removal change is actually ready.
+  - Require an explicit checkout, reviewed change input, fixed validation
+    commands, argument arrays, bounded output, and no browser or application
+    runtime input.
+- **8R.37.4 Closure-Map Reconciliation**
+  - Keep native runtime automation independent from repository retirement and
+    retain the `implementationReadiness` versus `instanceCutover` distinction
+    in every closure map and readout.
+
+Acceptance criteria:
+
+- The running policy platform has no source-mutation capability.
+- Policy conversion remains automatic, server-owned, transactional, and
+  platform-agnostic for each installation.
+- Compatibility source retirement is a reviewed release operation, never a
+  normal policy configuration or maintenance feature.
+- Phase 4R is not blocked by repository source retirement.
+
+Implementation status: planned. See [Policy Native Storage Runtime And
+Release-Maintenance Boundary](policy-native-storage-runtime-release-boundary.md).
+
 ## Phase 8R Work Sequence
 
 Implement Phase 8R in this order:
@@ -9949,6 +10028,11 @@ Implement Phase 8R in this order:
     plan, current repository state, operational reference scan, and fresh
     validation. It reports the actual readiness state and never converts a
     historical partial manifest into closure proof.
+37. **8R.37 Runtime And Release-Maintenance Boundary**
+    Separates automatic native policy behavior from repository-retirement
+    maintenance. Start with **8R.37.1 Runtime Capability Inventory And
+    Isolation Decision**; do not build the former production review-context
+    registry.
 
 Completion state:
 
