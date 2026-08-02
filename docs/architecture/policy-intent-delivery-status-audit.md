@@ -74,7 +74,7 @@ the per-installation cutover evidence owned by Phase 8R.
 | 1R | Complete foundation | Client orchestration, draft, reference-data, bridge, and test boundaries | Enforce as a guardrail in 4R |
 | 2R | Complete foundation | Typed draft commands and isolated compatibility serialization | Preserve until native storage fully replaces the bridge |
 | 3R | Complete contract cutline | Destination-first flow, component roles, accessibility rules, and normal-path exclusions | Live rendered-path proof moves to 4R |
-| 4R | Active | Automation-first authoring experience in the running product | Complete 4R.1 through 4R.9 in dependency order |
+| 4R | Active | Source inventory identifies the real authoring cutline and current remediation | Complete live 4R.1 verification, then 4R.2 through 4R.9 in dependency order |
 | 5R | Not closed | Required authority for server read/write, questions, answers, and learning | Close 5R.1 and 5R.2 before 4R.2/4R.3; complete 5R.3 through 5R.9 before material exceptions and final cutover |
 | 6R | Contract-complete foundation | Evidence, intent, learning, readiness, workflow, and migration boundaries | Consume through 4R; reopen only for a bounded contract gap |
 | 7R | Contract-complete foundation | Runtime decision, question, rebuild, verifier, rollback, and trace boundaries | Preserve through 5R and 8R authority/storage work |
@@ -83,11 +83,14 @@ the per-installation cutover evidence owned by Phase 8R.
 
 ## Required Delivery Order
 
-1. **4R.1 Live Entry-Path And Action Inventory** is next. It must observe
-   actual routes, modal or page entry, hash/deep-link behavior, new/sparse/
-   unmapped/recovering/persisted states, every visible control, and each action
-   result. It produces the exact component cutline, not another UI card.
-2. **5R.1 Server Intent Contract Authority** follows. It reconciles the server
+1. **4R.1 Live Entry-Path And Action Inventory** now has source-backed
+   evidence. It identifies `/policies` as the replacement cutline, documents
+   the absent normal native-create trigger, and records visible action owners.
+   Representative live-browser state and action verification remain pending;
+   static evidence is not treated as a rendered-path success. See [Policy
+   Authoring Live Entry-Path And Action
+   Inventory](policy-authoring-live-entry-path-inventory.md).
+2. **5R.1 Server Intent Contract Authority** is next. It reconciles the server
    read contract with the native authority and bounded workflow projection.
 3. **5R.2 Write Preflight And Persistence Boundary** follows. It establishes
    the admitted, idempotent create/update result the browser may invoke.

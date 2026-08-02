@@ -6,9 +6,10 @@ completion criteria for policy work.
 
 Current execution focus:
 
-1. **4R.1 Live Entry-Path And Action Inventory** is the next active product
-   task. It establishes the actual browser entry paths, rendered states, and
-   action outcomes before another policy-authoring component is changed.
+1. **4R.1 Live Entry-Path And Action Inventory** now has a source-backed
+   contract. It records that `/policies` has no normal native-create trigger,
+   classifies current actions and removal work, and keeps representative live
+   browser verification pending rather than claiming it from static evidence.
 2. **5R.1 Server Intent Contract Authority** and **5R.2 Write Preflight And
    Persistence Boundary** are the next dependency-gated server tranche. They
    must close before 4R.2 renders a new workflow adapter or 4R.3 binds create
@@ -2883,9 +2884,11 @@ Implement Phase 3R in this order:
 Current starting point:
 
 - Phase 3R workflow-contract closure is complete.
-- Start **4R.1 Live Entry-Path And Action Inventory**. Do not infer a live
-  entry path, rendered control, or successful action from the Phase 3R source
-  contract or a historical implementation record.
+- **4R.1 Live Entry-Path And Action Inventory** has now recorded the
+  source-backed normal-path gap and component/action ownership. Do not infer a
+  live entry path, rendered control, or successful action from the Phase 3R
+  source contract, the 4R.1 source audit, or a historical implementation
+  record.
 - Do not add more warnings, readiness cards, or option controls before the
   Phase 4R inventory assigns the visible path and control to an owner.
 - Do not preserve old preview/replay/provider panels in the normal workflow.
@@ -3184,6 +3187,22 @@ Acceptance criteria:
   historical implementation record as evidence that it is live.
 - The next component cutline identifies the exact live entry path to replace.
 
+Implementation record:
+
+- The source-backed inventory is documented in [Policy Authoring Live
+  Entry-Path And Action Inventory](policy-authoring-live-entry-path-inventory.md).
+  Its maintainer-facing contract is
+  `server/src/services/policyAuthoringLiveEntryPathInventory.mjs` with focused
+  Jest coverage.
+- It classifies `/policies`, existing Configure, native create, the obsolete
+  advanced-settings hash, and the reconciliation maintenance route. The audit
+  records that native create currently has no normal `/policies` trigger; it
+  does not accept source imports or historical screenshots as live-browser
+  evidence.
+- Representative browser-state verification remains required before Phase 4R
+  can claim this task's rendered-path acceptance. It is pending an approved
+  browser session, not treated as a product success or silently bypassed.
+
 ### 4R.2 Server Workflow Presentation Adapter
 
 Intent: create one narrow client-side presentation adapter that validates and
@@ -3423,10 +3442,13 @@ Implement Phase 4R in this order:
 9. **4R.9 Accessibility, Responsive Behavior, And End-To-End Workflow Tests**
    Proves the delivered flow works in the live product.
 
-Current starting point: **4R.1 Live Entry-Path And Action Inventory**. Do not
-modify the builder's information architecture, add another suggestion control,
-or expose a new advanced setting until the live inventory records the current
-entry path and action status for the state being changed.
+Next implementation task: **5R.1 Server Intent Contract Authority**. The 4R.1
+source inventory has identified `/policies` as the replacement cutline and
+recorded its current actions, but representative live-browser verification is
+still pending an approved browser session. Do not modify the builder's
+information architecture, add another suggestion control, or expose a new
+advanced setting before 5R.1 and 5R.2 establish the server authority required
+for 4R.2 and 4R.3.
 
 ## Phase 5R: Server Authority, Runtime Questions, And Learning Guard
 

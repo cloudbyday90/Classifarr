@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Authoring Entry-Path Inventory**: Added a deterministic,
+  source-backed inventory of current policy routes, modal and list entry points,
+  visible actions, client/server boundaries, and replacement ownership. It
+  explicitly identifies the unreachable native-create modal, legacy normal-path
+  card controls, and obsolete advanced-settings hash while keeping required
+  live-browser verification separate from static evidence.
+
 - **Policy Intent Delivery Plan**: Reconciled the roadmap around the delivered
   contract foundations, the remaining server-authority work, and the live
   authoring outcome. Live entry-path and action inventory is now the next
