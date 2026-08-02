@@ -80,7 +80,7 @@ function summarizeDryRun(dryRun = {}) {
   };
 }
 
-function buildPolicyControlledCompatibilityNamedScopeRemovalReviewReplay({
+function buildPolicyControlledCompatibilityNamedScopeRemovalReviewReplayDetails({
   now = new Date().toISOString(),
   review = null,
   reviewArtifact = null,
@@ -159,10 +159,19 @@ function buildPolicyControlledCompatibilityNamedScopeRemovalReviewReplay({
     }),
   };
 
-  return {
+  const replay = {
     ...result,
     validation: validatePolicyControlledCompatibilityNamedScopeRemovalReviewReplay(result),
   };
+
+  return {
+    freshDryRun: replay.readyForFutureRemovalAdmission === true ? freshDryRun : null,
+    replay,
+  };
+}
+
+function buildPolicyControlledCompatibilityNamedScopeRemovalReviewReplay(input = {}) {
+  return buildPolicyControlledCompatibilityNamedScopeRemovalReviewReplayDetails(input).replay;
 }
 
 function validatePolicyControlledCompatibilityNamedScopeRemovalReviewReplay(replay = {}) {
@@ -245,6 +254,12 @@ function createPolicyControlledCompatibilityNamedScopeRemovalReviewReplayAdapter
   return {
     replay(input = {}) {
       return buildPolicyControlledCompatibilityNamedScopeRemovalReviewReplay({
+        ...options,
+        ...input,
+      });
+    },
+    replayForControlledApply(input = {}) {
+      return buildPolicyControlledCompatibilityNamedScopeRemovalReviewReplayDetails({
         ...options,
         ...input,
       });

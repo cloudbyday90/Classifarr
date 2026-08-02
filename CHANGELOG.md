@@ -11,6 +11,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Compatibility Deletion Scope-Aware Controlled Apply**: Added the first
+  server-only bounded source-mutation component for one reviewed named test
+  scope. It requires a single-use expiring authorization, final server-derived
+  replay, exclusive scope lock, hash-checked edit ranges, repository-external
+  rollback evidence, durable outcome audit, and automatic restoration when the
+  final audit write fails. It rejects caller-supplied replay or dependencies,
+  path widening, whole-file deletion, Git commands, file deletion, and source
+  drift.
+
 - **Compatibility Deletion Scope-Aware Review Replay**: Added a server-derived,
   read-only replay boundary for named-test-scope removal reviews. It rejects
   caller-supplied snapshots, reruns current gate and source checks, and blocks

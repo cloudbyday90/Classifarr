@@ -2878,14 +2878,25 @@ introduce scoped-source mutation. See [Policy Compatibility Deletion
 Scope-Aware Removal Review Replay
 Adapter](policy-compatibility-deletion-scope-aware-removal-review-replay-adapter.md).
 
-Next component task: **3R.10.18 Compatibility Deletion Scope-Aware Controlled
-Apply Adapter**. Create the first mutation-capable component only after a ready
-3R.10.17 replay. It must own final replay, authenticated and explicitly scoped
-authorization, single-use and expiry semantics, a final source-fingerprint
-check, bounded replacement limited to the reviewed edit ranges, durable rollback
-evidence, and auditable output. It must reject API-supplied replay or
-authorization results, whole-file deletion, path widening, Git mutation
-commands, and any source change after its final check.
+**3R.10.18 Compatibility Deletion Scope-Aware Controlled Apply Adapter** is
+complete. The first mutation-capable, server-only ESM component now consumes
+one expiring authorization for one reviewed named scope only after a fresh
+3R.10.17 replay. It writes rollback evidence outside the repository before a
+hash-checked bounded source replacement, records a compact outcome, and restores
+the source if outcome persistence fails. Caller replay, dry-run, dependency,
+clock, and source-writer substitutions are ignored; authorization reuse, actor
+mismatch, expiry, lock loss, path widening, whole-file deletion, Git commands,
+file deletion, and source drift fail closed. See [Policy Compatibility Deletion
+Scope-Aware Controlled Apply](policy-compatibility-deletion-scope-aware-controlled-apply.md).
+
+Next component task: **3R.10.19 Compatibility Deletion Scope-Aware Controlled
+Apply Production Admission Adapter**. Add one server-only composition component
+that obtains the actor exclusively from existing trusted authentication
+middleware, uses a configured repository-external evidence root, adapts the
+existing database advisory-lock mechanism to the scoped-lock contract, and
+issues/apply authorizations from server-derived review context. It must not
+expose a client supplied actor, clock, authorization result, replay, dry run,
+file path, or lock result, and it must not add a generic mutation endpoint.
 
 ### 3R.8 Accessibility And Decision Load
 

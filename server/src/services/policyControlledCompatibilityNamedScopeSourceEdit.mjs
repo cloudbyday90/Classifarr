@@ -336,7 +336,7 @@ function countOccurrences(sourceText = '', fragment = '') {
   return count;
 }
 
-function applySourceEdits(sourceText = '', edits = []) {
+function applyPolicyControlledCompatibilityNamedScopeSourceEdits(sourceText = '', edits = []) {
   return [...edits]
     .sort((left, right) => right.startOffset - left.startOffset)
     .reduce((result, edit) => (
@@ -425,7 +425,9 @@ function derivePolicyControlledCompatibilityNamedScopeSourceEdit({
   });
 
   const sourceFingerprint = buildSha256(source);
-  const resultSourceText = risks.length === 0 ? applySourceEdits(source, edits) : null;
+  const resultSourceText = risks.length === 0
+    ? applyPolicyControlledCompatibilityNamedScopeSourceEdits(source, edits)
+    : null;
 
   return {
     version: POLICY_CONTROLLED_COMPATIBILITY_NAMED_SCOPE_SOURCE_EDIT_VERSION,
@@ -450,6 +452,7 @@ function derivePolicyControlledCompatibilityNamedScopeSourceEdit({
 export {
   POLICY_CONTROLLED_COMPATIBILITY_NAMED_SCOPE_SOURCE_EDIT_RISK_IDS,
   POLICY_CONTROLLED_COMPATIBILITY_NAMED_SCOPE_SOURCE_EDIT_VERSION,
+  applyPolicyControlledCompatibilityNamedScopeSourceEdits,
   derivePolicyControlledCompatibilityNamedScopeSourceEdit,
   findNamedTestDeclarations,
 };
