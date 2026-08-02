@@ -184,6 +184,6 @@ Acceptance criteria:
 ## Outcome
 
 The next Phase 8R implementation task is **8R.37.1 Runtime Capability
-Inventory And Isolation Decision**. Phase 4R remains queued after its required
-native workflow projection is proven for the state under inspection; it is not
-blocked by repository source retirement.
+Inventory And Isolation Decision**. It is a parallel release-maintenance
+boundary audit; **4R.1 Live Entry-Path And Action Inventory** remains the next
+active product task and is not blocked by repository source retirement.

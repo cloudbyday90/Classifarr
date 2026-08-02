@@ -98,6 +98,6 @@ work has live evidence.
 - The closure audit is read-only and fails closed on missing repository
   artifacts, incomplete contract evidence, invalid ownership, duplicate
   handoffs, incomplete Phase 4R handoffs, or premature sequence advancement.
-- The Phase 3R handoff target is **4R.1 Live Entry-Path And Action Inventory**.
-  The global roadmap currently prioritizes **8R.37.1 Runtime Capability
-  Inventory And Isolation Decision** before live UI work resumes.
+- The Phase 3R handoff target and active product task is **4R.1 Live
+  Entry-Path And Action Inventory**. The 8R.37.1 release-maintenance boundary
+  audit runs in parallel and does not block live UI work.

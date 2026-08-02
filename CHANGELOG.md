@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Intent Delivery Plan**: Reconciled the roadmap around the delivered
+  contract foundations, the remaining server-authority work, and the live
+  authoring outcome. Live entry-path and action inventory is now the next
+  product task; native storage and release-maintenance evidence remain
+  parallel, non-blocking lanes.
+
 - **Policy Native Storage Delivery Boundary**: Reframed the storage work so automatic
   native-intent migration, authority, rollback, and runtime reads remain
   platform behavior, while compatibility source retirement is isolated as

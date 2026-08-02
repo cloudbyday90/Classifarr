@@ -6,64 +6,36 @@ completion criteria for policy work.
 
 Current execution focus:
 
-1. **8R.37.1 Runtime Capability Inventory And Isolation Decision**: inventory
-   and remove any normal application reachability into compatibility source
-   mutation before continuing the controlled-removal direction. Native policy
-   automation remains automatic and installation-agnostic; repository
-   retirement belongs to CI/release maintenance, not the running platform.
-2. **8R.3.2.9 Semantic Native Authority Eligibility And Empty-Intent
-   Recovery**: completed as a shared semantic-authority contract, safe
-   compatibility fallback, guarded automatic-conversion eligibility, and a
-   database repair/invariant for active intent headers. It prevents empty
-   reconciliation placeholders from replacing real policy behavior.
-3. **8R.3.2.8 Runtime Provenance And Failed-Run Recovery**: completed as
-   bounded release-version and immutable-revision evidence on the scheduler
-   result, reconciliation ledger, and read-only administrator status. It makes
-   stale deployment triage possible without exposing container internals,
-   mutable tags, raw environment values, or a manual recovery path.
-4. **8R.5.2 Rollback Snapshot Retention Cleanup**: completed as bounded,
-   transactionally locked payload redaction with minimal audit retention. Its
-   migration, fresh-install schema, scheduler, restore behavior, and focused
-   tests are now required closure evidence.
-5. **Compatibility-Removal Evidence Regeneration**: regenerate the durable
-   compatibility-removal completion artifact from a current execution plan,
-   checkout path state, operational reference scan, and fresh validation, then
-   rerun the current-closure and requirement audits. The regeneration path
-   rejects predecessor plan contracts and does not manufacture deletion
-   approval. It can therefore report incomplete readiness rather than turning a
-   historical partial manifest into current closure proof.
-6. **Closure Scope Separation**: completed as explicit repository
-   `implementationReadiness` and active-installation `instanceCutover` results
-   across closure evidence. A pending installation cutover cannot downgrade the
-   source implementation conclusion or bypass deletion safety.
-7. Start **4R.1 Live Entry-Path And Action Inventory** only after the engine
-   inputs and native-authority invariants required by the inspected state are
-   reliable. It must prove which live builder path is rendered and which
-   controls function before 4R replaces the current manual builder. No new
-   layer of cards or advanced settings may be added as a substitute for that
-   cutover.
+1. **4R.1 Live Entry-Path And Action Inventory** is the next active product
+   task. It establishes the actual browser entry paths, rendered states, and
+   action outcomes before another policy-authoring component is changed.
+2. **5R.1 Server Intent Contract Authority** and **5R.2 Write Preflight And
+   Persistence Boundary** are the next dependency-gated server tranche. They
+   must close before 4R.2 renders a new workflow adapter or 4R.3 binds create
+   and save actions.
+3. **8R.37.1 Runtime Capability Inventory And Isolation Decision** is a
+   parallel release-maintenance/security audit. It cannot block 4R.1 or
+   automatic native policy behavior.
+4. Do not add another policy-builder card, option control, advanced setting,
+   or maintenance dialog as a substitute for the 4R.1 inventory.
 
-Phase 4R is an active **live UI convergence** workstream. Phase 3R defines the
-operator workflow and component vocabulary; Phase 5R, Phase 6R, and native
-storage establish the server-owned contracts that make automation safe. Phase
-4R is where those contracts replace the rendered builder. It must not be
-credited as complete because a component inventory, a screen extraction, or a
-documentation record exists.
+See [Policy Intent Delivery Status Audit](policy-intent-delivery-status-audit.md)
+for the current completion evidence, remaining work, and target end state.
 
 The execution dependency is intentionally not numeric:
 
 ```text
-0R vocabulary -> 1R/2R boundaries -> 3R workflow cutline
-  -> 5R server authority -> 6R evidence, intent, and readiness engines
-  -> 6R.5 server-owned workflow projection -> 4R live UI convergence
-  -> 7R runtime automation
+completed foundations: 0R -> 1R -> 2R -> 3R
+active product work: 4R.1 -> 5R.1/5R.2 -> 4R.2/4R.3 -> 4R.4/4R.5
+runtime trust work: 5R.3 through 5R.9 -> 4R.6 through 4R.9
+parallel safety work: 8R installation/runtime lanes + 9R zero-debt gate
 ```
 
-Phase numbers identify the workstream; the dependency order above controls
-implementation. Phase 4R may start only when its required server projection is
-available for the specific component being delivered. It must never invent
-browser-owned readiness, policy meaning, provider recovery, or mutation
-authority to unblock a screen.
+Phase numbers identify workstreams; their dependency gates control delivery.
+Phase 4R may start only when its required server projection is available for
+the specific component being delivered. It must never invent browser-owned
+readiness, policy meaning, provider recovery, or mutation authority to unblock
+a screen.
 
 ## Goal
 
@@ -1139,18 +1111,18 @@ legacy-to-intent migration
 The phases should be read in this order. Later sections may contain deeper
 design detail, but this table is the authoritative sequence.
 
-| Phase | Name | Primary Outcome | Storage Impact | Runtime Impact |
-| --- | --- | --- | --- | --- |
-| 0R | Source of truth and vocabulary reset | Shared authority model and product language | None | Later phases use one vocabulary |
-| 1R | Builder state and engine boundary reset | UI orchestration, draft state, reference data, and engine contracts have clear ownership | None | Prevents UI state from becoming policy authority |
-| 2R | Intent draft bridge as compatibility boundary | Draft edits are typed commands over declared intent, while legacy serialization stays isolated | Legacy-compatible save only | None directly |
-| 3R | Operator workflow rebuild | Policy authoring becomes destination-oriented and evidence-backed, not modal-internals-driven | None | Reduces manual policy decisions |
-| 4R | Folded presentation checkpoint | Prior summary/warning work is reclassified under Phase 3R workflow ownership | None | None |
-| 5R | Server authority, runtime questions, and learning guard | Server owns intent validation, question contracts, model authority, and learning decisions | Additive audit/cleanup only when needed | Runtime decisions use guarded server contracts |
-| 6R | Re-imagined policy engine roadmap | Existing Phase 6 artifacts are classified as keep/rewrite/replace/delete | None directly | Engine contracts replace diagnostic product flow |
-| 7R | Runtime automation and library rebuild | Runtime decisions use the new engine, and library-derived rebuild is explicit, guarded, and reversible | Rollback snapshots only until Phase 8R | Fewer questions and safer policy replacement |
-| 8R | Native intent storage and legacy removal | Native intent becomes the durable policy model after 0R-7R contracts prove stable | New intent tables plus bounded rollback snapshots | Runtime reads native intent and legacy paths are removed after gates |
-| 9R | Production naming and contract stabilization | Phase-coded implementation names are replaced with durable product names | No schema behavior change unless rename migrations are explicitly required | Runtime keeps native behavior while public/internal code names stop referencing roadmap phases |
+| Phase | Name | Delivery Status | Primary Outcome |
+| --- | --- | --- | --- |
+| 0R | Source of truth and vocabulary reset | Complete foundation | Shared authority model and product language |
+| 1R | Builder state and engine boundary reset | Complete foundation | UI, draft, bridge, and reference-data ownership is explicit |
+| 2R | Intent draft bridge as compatibility boundary | Complete foundation | Typed draft commands and isolated legacy serialization |
+| 3R | Operator workflow rebuild | Complete contract cutline | Destination-first workflow vocabulary and component boundaries, not live UI proof |
+| 4R | Live policy-authoring UI convergence | Active product work | One automation-first rendered authoring path, beginning with 4R.1 |
+| 5R | Server authority, runtime questions, and learning guard | Not yet closed | Server owns intent validation, questions, answers, model authority, and learning |
+| 6R | Re-imagined policy engine roadmap | Contract-complete foundation | Evidence, intent, readiness, workflow, and migration engine contracts |
+| 7R | Runtime automation and library rebuild | Contract-complete foundation | Guarded runtime decisions, questions, rebuild, verifier, and rollback contracts |
+| 8R | Native intent storage and legacy removal | Active parallel delivery lanes | Native storage lifecycle, per-install cutover evidence, and CI-only retirement |
+| 9R | Production naming and contract stabilization | Ongoing zero-debt gate | Durable product names remain mandatory for all current source |
 
 Non-negotiable sequencing rules:
 
@@ -1463,10 +1435,10 @@ Implement Phase 0R in this order:
 
 Current starting point:
 
-- Re-evaluate existing Phase 0 implementation artifacts against Phase 0R.
-- Do not add more policy-builder controls until old labels and assumptions are
-  classified as current, legacy/internal, or delete/replace.
-- Use Phase 0R as the vocabulary contract for Phase 1R through Phase 6R.
+- Phase 0R is complete as a vocabulary and authority foundation.
+- Treat its contracts as required guardrails for all remaining product and
+  runtime work. Reopen a Phase 0R task only when an approved product term or
+  authority boundary changes.
 
 Implementation record:
 
@@ -1791,11 +1763,10 @@ Implement Phase 1R in this order:
 
 Current starting point:
 
-- Re-evaluate existing Phase 1 implementation artifacts against Phase 1R.
-- Do not add new policy-builder state to the modal until the module inventory is
-  complete.
-- Do not let client reference data become evidence or learning authority.
-- Use Phase 1R as the client boundary contract for Phase 2R through Phase 6R.
+- Phase 1R is complete as a client-boundary foundation.
+- Treat its module inventory, orchestration, draft, reference-data, bridge,
+  and test contracts as required guardrails for 4R. Do not add client-owned
+  evidence, readiness, persistence, or learning authority.
 
 Implementation record:
 
@@ -2111,10 +2082,9 @@ Implement Phase 2R in this order:
 
 Current starting point:
 
-- Re-evaluate existing Phase 2 implementation artifacts against Phase 2R.
-- Do not expand draft state with evidence, learning, or readiness authority.
-- Do not let bridge serializer details leak into product components.
-- Use Phase 2R as the draft/editing contract for Phase 3R through Phase 6R.
+- Phase 2R is complete as the draft/editing compatibility foundation.
+- Do not expand draft state with evidence, learning, readiness, or persistence
+  authority. Do not let bridge serializer details leak into product components.
 
 Implementation record:
 
@@ -2913,10 +2883,9 @@ Implement Phase 3R in this order:
 Current starting point:
 
 - Phase 3R workflow-contract closure is complete.
-- After the active **8R.37.1 Runtime Capability Inventory And Isolation
-  Decision** completes, start **4R.1 Live Entry-Path And Action Inventory**.
-  Do not infer a live entry path, rendered control, or successful action from
-  the Phase 3R source contract or a historical implementation record.
+- Start **4R.1 Live Entry-Path And Action Inventory**. Do not infer a live
+  entry path, rendered control, or successful action from the Phase 3R source
+  contract or a historical implementation record.
 - Do not add more warnings, readiness cards, or option controls before the
   Phase 4R inventory assigns the visible path and control to an owner.
 - Do not preserve old preview/replay/provider panels in the normal workflow.
@@ -3461,6 +3430,11 @@ entry path and action status for the state being changed.
 
 ## Phase 5R: Server Authority, Runtime Questions, And Learning Guard
 
+Status: not yet closed. Existing services and tests are inputs to this phase,
+not a completion claim. The first required delivery tranche is 5R.1 and 5R.2
+because 4R cannot safely replace the browser workflow until the server-owned
+read and write boundary is reconciled and tested as one contract.
+
 Intent: make the server the authority for policy intent contracts, runtime
 question shape, AI/model authority, and durable learning decisions. Phase 5R is
 not just schema validation for a client draft sidecar; it is the runtime trust
@@ -3788,11 +3762,13 @@ Implement Phase 5R in this order:
 
 Current starting point:
 
-- Re-evaluate existing Phase 5 implementation artifacts against Phase 5R.
-- Do not add new preview/replay product UI before the verifier cutline is done.
-- Do not let AI clarification text, UI answers, or Discord payloads authorize
-  learning directly.
-- Use Phase 5R as the server authority contract for Phase 6R.
+- After 4R.1 identifies the live cutline, begin **5R.1 Server Intent Contract
+  Authority**. Its first output is a keep/rewrite/replace/delete inventory of
+  the active server read contract, not a completion claim for existing files.
+- Follow with **5R.2 Write Preflight And Persistence Boundary** before 4R.2 or
+  4R.3 changes a rendered create/save action.
+- Do not add preview/replay product UI or let AI clarification text, UI
+  answers, or Discord payloads authorize learning directly.
 
 Implementation record:
 
@@ -3802,6 +3778,11 @@ Implementation record:
   including which services are kept, rewritten, replaced, or deleted.
 
 ## Phase 6R: Re-Imagined Policy Engine Roadmap
+
+Status: contract-complete foundation. The focused completion audit passes for
+the checked-in artifact inventory, evidence, intent, learning, readiness,
+workflow, and migration contracts. This does not prove the live browser path;
+4R owns that evidence.
 
 Intent: rebuild Phase 6 around the underlying engine Classifarr actually needs:
 turn observed media-server application, operator outcomes, routing results, and
@@ -5350,13 +5331,17 @@ Completion gate:
 
 Current starting point:
 
-- Start with **6R.0 Artifact Inventory And Cutline**.
-- Do not add more controls to the existing policy builder before the cutline is
-  complete.
-- Do not implement new provider or replay behavior unless it is classified as an
-  engine primitive or migration verifier.
+- The 6R contract foundation is complete. Use it as the server projection input
+  for 4R, and reopen an engine component only when the Phase 5R authority
+  reconciliation or a live 4R state exposes a missing bounded contract.
+- Do not reintroduce provider, replay, impact, or diagnostic product UI.
 
 ## Phase 7R: Runtime Automation And Library Rebuild
+
+Status: contract-complete foundation. The focused runtime completion audit
+passes for the checked-in runtime/rebuild contract chain. Production delivery
+still requires 4R's live authoring evidence and 8R's installation-specific
+native-storage evidence where applicable.
 
 Intent: make the re-imagined engine operational at runtime. Phase 7R is where
 Classifarr stops treating policy intent as a builder-only concept and starts
@@ -6279,14 +6264,10 @@ Implement Phase 7R in this order:
 
 Current starting point:
 
-- Do not implement rebuild or automatic replacement before Phase 5R and Phase 6R
-  cutlines are complete.
-- Do not treat current impact/replay preview UI as the Phase 7R migration
-  surface until it is classified by Phase 5R/6R.
-- Do not let runtime classification learn from manual outcomes without the
-  policy learning guard.
-- Use Phase 7R as the runtime/rebuild contract that Phase 8R native storage must
-  preserve.
+- Treat the 7R contract chain as a protected runtime foundation.
+- Do not expose migration verifier details as normal authoring UI, and do not
+  advance a runtime behavior change without the Phase 5R learning authority
+  gate and the existing runtime completion audit.
 
 Implementation record:
 
@@ -6318,6 +6299,11 @@ Implementation record:
   [Policy Runtime Completion Engine Gate](policy-runtime-completion-engine-gate.md).
 
 ## Phase 8R: Native Intent Storage And Legacy Removal
+
+Status: active parallel delivery lanes. Native runtime lifecycle contracts are
+implemented in the repository; installation cutover remains evidence-driven per
+deployment. Repository retirement is CI/release maintenance and cannot block
+4R or add source-mutation capability to the running application.
 
 Intent: make native intent storage the durable policy model after the re-imagined
 contracts are stable, then remove replaced legacy preset/custom-signal paths.
@@ -10065,6 +10051,10 @@ Completion state:
 
 ## Phase 9R: Durable Product Naming Cutover
 
+Status: ongoing enforcement. The current production naming and delivery-term
+gates report zero prohibited production references; every remaining component
+must preserve that zero-debt baseline.
+
 Intent: remove temporary delivery language from production code as each rebuilt
 component reaches its tested contract. Roadmap phase labels are useful in
 planning and historical evidence, but must not become permanent product
@@ -11202,49 +11192,36 @@ Required coverage should follow the re-imagined phase boundaries:
 
 ## Recommended Next Work
 
-Work should move in two coordinated lanes after the re-imagination reset.
+The next sequence is dependency-gated rather than phase-number order:
 
-Builder lane:
+1. **4R.1 Live Entry-Path And Action Inventory**: record every real authoring
+   entry path, rendered state, visible action, and action result. This is the
+   current task and must identify the exact component cutline.
+2. **5R.1 Server Intent Contract Authority**: reconcile the active server read
+   model with the 6R workflow projection, native authority selection, and the
+   product vocabulary. Publish a focused completion audit rather than treating
+   existing services as a phase-level closure.
+3. **5R.2 Write Preflight And Persistence Boundary**: establish one admitted,
+   transactional create/update result for the proposal path. This must be
+   idempotent, actor-authorized, sanitized, and authoritative after rejection.
+4. **4R.2 Server Workflow Presentation Adapter** and **4R.3 Action Binding And
+   Admission Feedback**: build the one validated browser read boundary and make
+   every visible operation real before changing the information architecture.
+5. **4R.4 Destination Proposal Card** and **4R.5 Intent Adjustment
+   Disclosure**: deliver the automation-first create/edit surface. A ready
+   library must not require reselecting evidence that the server already
+   proposed.
+6. **5R.3 through 5R.9**, then **4R.6 through 4R.9**: finish model/question/
+   learning authority before exposing material exceptions, then complete
+   persisted summary, legacy UI cutover, accessibility, and browser end-to-end
+   evidence.
+7. Continue **8R** as separate native-runtime, per-installation evidence, and
+   CI-only retirement lanes. Continue the **9R** zero-debt naming gates on each
+   component. Neither lane may delay 4R's normal authoring path.
 
-1. Complete Phase 0R, 1R, 2R, 3R, and 6R inventories before adding new
-   policy-builder controls.
-2. Classify existing builder, draft, preview, replay, provider, and template
-   artifacts as keep, rewrite, replace, or delete.
-3. Use existing draft bridge and server intent contract tests as compatibility
-   guards, not as proof that the current product surface should remain.
-4. Start implementation with the Phase 6R artifact inventory and cutline, then
-   backfill Phase 0R through 3R implementation docs with the same ownership
-   decisions.
-5. Do not continue replay/provider/TMDB UI work unless the artifact inventory
-   classifies it as an engine primitive or migration verifier.
-6. Execute Phase 9R alongside every completed component so production code
-   names describe product domains rather than completed roadmap phases; do not
-   defer naming debt until after Phase 8R legacy removal.
-
-Runtime lane:
-
-1. Complete the Phase 5R server-authority inventory before adding new runtime
-   question or learning behavior.
-2. Classify server intent, AI parsing, question, answer, learning, cleanup,
-   impact-preview, and replay-preview services as keep, rewrite, replace, or
-   delete.
-3. Prioritize the Phase 5R runtime trust boundary:
-   - model authority modes,
-   - runtime clarification normalizer,
-   - question/answer contract,
-   - learning guard,
-   - stale question cleanup.
-4. Treat impact/replay services as verifier candidates until the Phase 5R and
-   Phase 6R cutlines decide their final role.
-
-The builder now has the start of a tested state boundary. The runtime needs the
-same boundary: AI may identify uncertainty, but deterministic server logic
-decides the final operator question, answer semantics, and whether the answer is
-allowed to become durable learning.
-
-Do not advance to library-derived policy generation until Phase 5R and Phase 6R
-define server authority, evidence, learning, readiness, migration verification,
-and deletion criteria.
+The completed 0R through 3R, 6R, and 7R contracts remain guardrails, not
+permission to restore a diagnostic, template-first, or browser-authoritative
+workflow.
 
 ## Open Questions
 
