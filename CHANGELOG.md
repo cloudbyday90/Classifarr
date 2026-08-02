@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Compatibility Deletion Scope-Aware Production Admission**: Added a
+  routerless server-only composition boundary for controlled named-scope apply.
+  It derives admin identity only from authenticated middleware state, obtains
+  review context from a server-owned provider, requires explicit absolute source
+  and external-evidence roots, uses the existing PostgreSQL advisory lock, and
+  rejects request-supplied actors, review data, clocks, collaborators, API-key
+  only state, and lock loss before source mutation.
+
 - **Compatibility Deletion Scope-Aware Controlled Apply**: Added the first
   server-only bounded source-mutation component for one reviewed named test
   scope. It requires a single-use expiring authorization, final server-derived

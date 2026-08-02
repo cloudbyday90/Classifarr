@@ -36,13 +36,34 @@ Current execution focus:
    `implementationReadiness` and active-installation `instanceCutover` results
    across closure evidence. A pending installation cutover cannot downgrade the
    source implementation conclusion or bypass deletion safety.
-7. Return to **6R.5 Operator Workflow Rebuild** only after the engine inputs
-   and native-authority invariants are reliable. It must replace the current
-   manual builder rather than add another layer of controls to it.
+7. Start **4R.1 Live Entry-Path And Action Inventory** only after the engine
+   inputs and native-authority invariants required by the inspected state are
+   reliable. It must prove which live builder path is rendered and which
+   controls function before 4R replaces the current manual builder. No new
+   layer of cards or advanced settings may be added as a substitute for that
+   cutover.
 
-Phase 4R remains folded into Phase 3R by design. It is not an unimplemented
-standalone phase. Phase 5R is the server-authority and learning boundary that
-must underpin, but does not itself render, the replacement UI.
+Phase 4R is an active **live UI convergence** workstream. Phase 3R defines the
+operator workflow and component vocabulary; Phase 5R, Phase 6R, and native
+storage establish the server-owned contracts that make automation safe. Phase
+4R is where those contracts replace the rendered builder. It must not be
+credited as complete because a component inventory, a screen extraction, or a
+documentation record exists.
+
+The execution dependency is intentionally not numeric:
+
+```text
+0R vocabulary -> 1R/2R boundaries -> 3R workflow cutline
+  -> 5R server authority -> 6R evidence, intent, and readiness engines
+  -> 6R.5 server-owned workflow projection -> 4R live UI convergence
+  -> 7R runtime automation
+```
+
+Phase numbers identify the workstream; the dependency order above controls
+implementation. Phase 4R may start only when its required server projection is
+available for the specific component being delivered. It must never invent
+browser-owned readiness, policy meaning, provider recovery, or mutation
+authority to unblock a screen.
 
 ## Goal
 
@@ -2693,211 +2714,6 @@ Implementation status:
   See [Policy Starter-Template Compatibility Bridge
   Inventory](policy-starter-template-compatibility-bridge-inventory.md).
 
-- **3R.8.5 Compatibility Maintenance Decision-Load Audit** is complete. The
-  existing-policy surface now owns one purpose statement, establishes attached
-  policy context before every editable control, removes the nested duplicate
-  editor heading, shows a selector only when there is a genuine context choice,
-  and presents completed migration feedback as non-blocking status. Typed draft
-  commands and the compatibility-only boundary are unchanged. See [Policy
-  Compatibility Maintenance Decision-Load
-  Audit](policy-compatibility-maintenance-decision-load-audit.md).
-
-- **3R.9.1 Compatibility Presentation-Test Ownership Audit** is complete.
-  Retained maintenance tests now have named observable-behavior ownership
-  outside normal authoring. The audit requires context-first order or typed
-  draft-command forwarding, maps each component to the complete native-storage
-  deletion gate, and rejects legacy-layout or diagnostic-behavior protection.
-  See [Policy Compatibility Maintenance Test Ownership
-  Audit](policy-compatibility-maintenance-test-ownership-audit.md).
-
-- **3R.10.1 Native-Storage Cutover Test Handoff Audit** is complete. Every
-  compatibility-maintenance regression scope is now mapped to a named native
-  workflow successor, explicit native-storage evidence, and the complete
-  bridge deletion gate. The audit distinguishes test files that retire with
-  their bridge from shared files where only named compatibility assertions
-  retire. It never authorizes or performs deletion. See [Policy Native-Storage
-  Cutover Test Handoff Audit](policy-native-storage-cutover-test-handoff-audit.md).
-
-- **3R.10.2 Native-Storage Cutover Deletion-Evidence Integration Audit** is
-  complete. The read-only handoff inventory now requires a complete authorized
-  removal artifact, exact manifest and verified-removal coverage for every
-  delete-with-bridge path, a clean final reference scan, focused and full
-  validation, and source evidence that shared test files have retired only
-  their named compatibility assertions. It remains observational and does not
-  authorize or perform deletion. See [Policy Native-Storage Cutover
-  Deletion-Evidence Integration
-  Audit](policy-native-storage-cutover-deletion-evidence-integration-audit.md).
-
-- **3R.10.3 Native Workflow Test Rehoming Audit** is complete. Active
-  destination-section and review-trigger completion records now point to their
-  native component tests, and a read-only audit rejects retiring-editor test
-  ownership, bridge-boundary drift, absent named native assertions, and side
-  effects. Its named maintenance assertions remain compatibility-only; active
-  editor command and parity scopes are inventoried separately for native
-  rehoming. See [Policy Native Workflow Test Rehoming
-  Audit](policy-native-workflow-test-rehoming-audit.md).
-
-- **3R.10.4 Compatibility Component Deletion Dependency Audit** is complete.
-  Thirteen executable dependencies of the three retiring compatibility
-  components are now source-backed and classified: two active editor test
-  scopes require native rehomes, three shared-file assertions retire by named
-  compatibility scope, and eight compatibility-only branches or test scopes
-  are later removal-manifest candidates. The audit rejects direct route-entry
-  references, source drift, active-regression deletion candidates, and side
-  effects; it does not authorize deletion. See [Policy Compatibility Component
-  Deletion Dependency
-  Audit](policy-compatibility-component-deletion-dependency-audit.md).
-
-- **3R.10.5 Compatibility Native Contract Rehoming** is complete. Active
-  command, accessibility, duplicate-prevention, removal, and parity contracts
-  no longer import `PolicyIntentEditor.vue`. Native destination-question and
-  constraint-control tests now assert typed command plans, while unsupported
-  legacy semantics fail closed. The compatibility editor retains only its two
-  named maintenance assertions, and the retired `customSignals` parity test is
-  removed. No compatibility component or storage contract changed. See
-  [Policy Compatibility Native Contract
-  Rehoming](policy-compatibility-native-contract-rehoming.md).
-
-- **3R.10.6 Compatibility Retirement Manifest Reconciliation** is complete.
-  The three named compatibility retirements and eight removal-manifest
-  candidates now map one-to-one to their retiring component artifact, every
-  native-storage deletion gate, named native workflow successor evidence, and
-  the exact test-file or shared-scope disposition. The reconciliation is
-  source-backed, read-only, and cannot write an execution manifest, delete a
-  component, or alter storage. See [Policy Compatibility Retirement Manifest
-  Reconciliation](policy-compatibility-retirement-manifest-reconciliation.md).
-
-- **3R.10.7 Compatibility Retirement Execution-Manifest Binding** is complete.
-  The eleven reconciled dependencies now reduce to ten exact execution targets:
-  one retained runtime code-path edit, three compatibility component deletions,
-  two dedicated compatibility-test deletions, and four named shared-test scope
-  removals. The binding is read-only and initially blocked the file-only
-  execution manifest because it could not safely express the four named-scope
-  actions. See
-  [Policy Compatibility Retirement Execution-Manifest
-  Binding](policy-compatibility-retirement-execution-manifest-binding.md).
-
-- **3R.10.8 Compatibility Execution-Manifest Named-Scope Entry Model** is
-  complete. The execution plan v2 and artifact v3 now represent exact shared
-  test scopes with canonical paths, source and test-name fragments, and an
-  explicit no-whole-file-deletion boundary. The fingerprint binds every scope
-  field, while the existing file-removal adapter rejects the new action. See
-  [Policy Compatibility Execution-Manifest Named-Scope Entry
-  Model](policy-compatibility-execution-manifest-named-scope-entry-model.md).
-
-- **3R.10.9 Compatibility Retirement Candidate Plan Projection** is complete.
-  A pure ESM projection now derives ten exact source-backed retirement
-  candidates and four named-scope plan inputs from the ready reconciliation.
-  Each candidate retains declared native workflow successor evidence; the
-  candidate input is explicitly unapproved and cannot write a manifest, remove
-  source, or change storage. See [Policy Compatibility Retirement Candidate
-  Plan Projection](policy-compatibility-retirement-candidate-plan-projection.md).
-
-- **3R.10.10 Compatibility Retirement Candidate Plan Assembly Gate** is
-  complete. The new read-only gate revalidates the candidate and deletion-gate
-  model, then requires an exact path and action-aware category correlation for
-  every target. It correctly blocks the current incomplete taxonomy rather than
-  guessing a category or flattening shared test scopes into whole-file removal.
-  See [Policy Compatibility Retirement Candidate Plan Assembly
-  Gate](policy-compatibility-retirement-candidate-plan-assembly-gate.md).
-
-- **3R.10.11 Compatibility Deletion-Category Taxonomy Reconciliation** is
-  complete. A separate source-backed taxonomy now maps all ten exact candidates
-  to four action-owned categories, including a named-test-scope category that
-  retains complete source and test-name identity. Assembly gate v2 binds the
-  full candidate identity while the existing release gate remains independent
-  and unapproved. See [Policy Compatibility Retirement Candidate Taxonomy
-  Reconciliation](policy-compatibility-retirement-candidate-taxonomy-reconciliation.md).
-
-- **3R.10.12 Compatibility Retirement Assembly Handoff Audit** is complete.
-  The audit requires ready source-backed assembly, existing release readiness,
-  a fingerprint-valid approved artifact with exact candidate coverage, and the
-  existing execution gate without creating, approving, or executing anything.
-  It proves that a schema-compliant artifact can retain all four named shared-
-  test scopes, but the existing execution-plan builder still starts from broad
-  release categories and the preflight gate blocks scopes as duplicate paths in
-  retained test files. See [Policy Compatibility Retirement Assembly Handoff
-  Audit](policy-compatibility-retirement-assembly-handoff-audit.md).
-
-- **3R.10.13 Compatibility Retirement Execution-Plan Candidate-Target Adapter**
-  is complete. A read-only adapter now derives all ten source-backed,
-  action-mapped targets as existing execution-plan input. Candidate-backed
-  manifest entries retain target kind, dependencies, component path, source and
-  test fragments, and named-scope boundaries; fingerprint v3 binds the added
-  identity. The adapter cannot approve, write an artifact, invoke a gate, or
-  perform removal, and the existing release, evidence, stance, approval, and
-  execution controls remain independent. See [Policy Compatibility Retirement
-  Execution-Plan Candidate-Target
-  Adapter](policy-compatibility-retirement-execution-plan-candidate-target-adapter.md).
-
-- **3R.10.14 Compatibility Deletion Execution-Gate Named-Scope Observation
-  Identity** is complete. Preflight evidence now carries a server-derived
-  exact-entry identity: legacy file entries retain path identity while named
-  scopes hash their complete canonical target data. Artifact v3, fingerprint
-  v2, attestation v2, gate v5, and collector v2 bind and revalidate that
-  identity. Distinct scopes in one retained test file pass the read-only gate,
-  while duplicate exact entries, stale evidence, altered identities, and legacy
-  duplicate file paths still fail closed. The existing path-removal selector
-  explicitly refuses named scopes, preserving the no-whole-file-deletion
-  boundary. See [Policy Compatibility Deletion Execution-Gate Named-Scope
-  Observation Identity](policy-compatibility-deletion-execution-gate-named-scope-observation-identity.md).
-
-- **3R.10.15 Compatibility Deletion Controlled-Removal Scope-Aware Execution
-  Adapter** is complete. A separate review-only adapter now binds only an exact
-  named-scope identity from the fingerprint-valid execution gate, revalidates
-  the gate at dry-run time, rechecks the retained file before and after capture,
-  and derives only bounded offset and hash-backed source edits. It rejects
-  missing or ambiguous test declarations, changed source fragments, stale gate
-  evidence, unobserved identities, unsafe paths, and source drift. It cannot
-  write source, delete files, mutate storage, or run Git mutation commands. See
-  [Policy Compatibility Deletion Scope-Aware Controlled-Removal Dry
-  Run](policy-compatibility-deletion-scope-aware-controlled-removal-dry-run.md).
-
-**3R.10.16 Compatibility Deletion Scope-Aware Removal Review Artifact** is
-complete. A pure, versioned SHA-256 artifact now binds each accepted 3R.10.15
-dry run to its exact named-scope identity, gate fingerprint, source and result
-hashes, ordered offset and expected-text-hash edits, and reviewer context. Its
-read-only validator requires a fresh, internally valid dry run, rejects artifact
-substitution, stale snapshots, altered edits, duplicate scope members, gate
-drift, and incomplete reviewer context, and exposes no source, filesystem,
-storage, Git, or mutation capability. See [Policy Compatibility Deletion
-Scope-Aware Removal Review
-Artifact](policy-compatibility-deletion-scope-aware-removal-review-artifact.md).
-
-**3R.10.17 Compatibility Deletion Scope-Aware Removal Review Replay Adapter**
-is complete. A separate read-only ESM adapter now rejects caller-supplied
-dry-run snapshots, independently reruns the 3R.10.15 gate, preflight,
-source-read, pre-apply, and bounded-edit dry run, then verifies the 3R.10.16
-review artifact against fresh server-derived evidence. Artifact v2 separates
-the exact original review digest from timestamp-independent scope and reviewer
-metadata provenance so a newly generated evaluation time does not obscure
-source, gate, scope, edit, or reviewer drift. It fails closed for caller input,
-source change, stale gate evidence, review drift, and duplicate selected scope
-identity, and cannot write source, delete files, alter storage, invoke Git, or
-introduce scoped-source mutation. See [Policy Compatibility Deletion
-Scope-Aware Removal Review Replay
-Adapter](policy-compatibility-deletion-scope-aware-removal-review-replay-adapter.md).
-
-**3R.10.18 Compatibility Deletion Scope-Aware Controlled Apply Adapter** is
-complete. The first mutation-capable, server-only ESM component now consumes
-one expiring authorization for one reviewed named scope only after a fresh
-3R.10.17 replay. It writes rollback evidence outside the repository before a
-hash-checked bounded source replacement, records a compact outcome, and restores
-the source if outcome persistence fails. Caller replay, dry-run, dependency,
-clock, and source-writer substitutions are ignored; authorization reuse, actor
-mismatch, expiry, lock loss, path widening, whole-file deletion, Git commands,
-file deletion, and source drift fail closed. See [Policy Compatibility Deletion
-Scope-Aware Controlled Apply](policy-compatibility-deletion-scope-aware-controlled-apply.md).
-
-Next component task: **3R.10.19 Compatibility Deletion Scope-Aware Controlled
-Apply Production Admission Adapter**. Add one server-only composition component
-that obtains the actor exclusively from existing trusted authentication
-middleware, uses a configured repository-external evidence root, adapts the
-existing database advisory-lock mechanism to the scoped-lock contract, and
-issues/apply authorizations from server-derived review context. It must not
-expose a client supplied actor, clock, authorization result, replay, dry run,
-file path, or lock result, and it must not add a generic mutation endpoint.
-
 ### 3R.8 Accessibility And Decision Load
 
 Intent: keep the new surface simple, keyboard-accessible, and lower decision
@@ -2957,6 +2773,14 @@ Implementation status:
   destination instead of returning to a closed modal opener. The design and
   outcome are documented in
   [Policy Builder Keyboard Recovery Flow](policy-builder-keyboard-recovery-flow.md).
+- **3R.8.5 Compatibility Maintenance Decision-Load Audit is complete.** The
+  existing-policy surface now owns one purpose statement, establishes attached
+  policy context before every editable control, removes the nested duplicate
+  editor heading, shows a selector only when there is a genuine context choice,
+  and presents completed migration feedback as non-blocking status. Typed draft
+  commands and the compatibility-only boundary are unchanged. See [Policy
+  Compatibility Maintenance Decision-Load
+  Audit](policy-compatibility-maintenance-decision-load-audit.md).
 
 ### 3R.9 Presentation Test Reset
 
@@ -3012,6 +2836,49 @@ Implementation status:
   The modal now renders four setup cards after library context and keeps impact
   and replay verifier panels out of the default workflow unless explicitly
   enabled.
+- **3R.9.1 Compatibility Presentation-Test Ownership Audit is complete.**
+  Retained maintenance tests now have named observable-behavior ownership
+  outside normal authoring. The audit requires context-first order or typed
+  draft-command forwarding, maps each component to the complete native-storage
+  deletion gate, and rejects legacy-layout or diagnostic-behavior protection.
+  See [Policy Compatibility Maintenance Test Ownership
+  Audit](policy-compatibility-maintenance-test-ownership-audit.md).
+
+### 3R.10 Workflow Contract Closure And 4R Handoff
+
+Intent: close Phase 3R as a workflow-definition workstream and create a
+truthful, component-level handoff for the live UI-convergence work in Phase 4R.
+
+Tasks:
+
+- Reconcile 3R.1 through 3R.9 against their current source, tests, and design
+  records. Mark each contract as complete, superseded, or missing evidence;
+  do not infer completion from a component name or a historical screenshot.
+- For every remaining live UI difference, create one 4R task/component owner
+  with its rendered entry path, required server projection, action contract,
+  and removal criterion.
+- Verify that Phase 3R contains no browser persistence authority, runtime
+  readiness derivation, provider recovery, migration action, or compatibility
+  deletion execution.
+- Reclassify native-storage, compatibility-retirement, rollback, and
+  controlled-removal work under Phase 8R. Preserve their design records, but
+  remove them from Phase 3R scope and numbering.
+- Update the Phase 3R implementation record so it describes contract evidence
+  and the Phase 4R handoff, not a claim that the complete live UI is delivered.
+
+Acceptance criteria:
+
+- Each 3R component has one truthful status and one next owner when work
+  remains.
+- Phase 3R has a complete, auditable handoff to 4R.1 through 4R.9.
+- No Phase 3R task is blocked by native-storage deletion work.
+- No Phase 3R record claims a live interaction outcome without its Phase 4R
+  rendered-path and end-to-end evidence.
+
+Status: planned. This is the only remaining Phase 3R task. The operational UI
+work that follows is Phase 4R, and compatibility-removal work is Phase 8R.
+Completed design records that retain a historical `3R.10.*` label describe the
+pre-reclassification source history only; they are not active Phase 3R tasks.
 
 ## Phase 3R Work Sequence
 
@@ -3035,14 +2902,16 @@ Implement Phase 3R in this order:
    Ensures the new workflow is actually simpler.
 9. **3R.9 Presentation Test Reset**
    Protects the new product shape.
+10. **3R.10 Workflow Contract Closure And 4R Handoff**
+    Separates complete workflow contracts from the live UI work that remains.
 
 Current starting point:
 
-- Re-evaluate existing Phase 3 implementation artifacts against Phase 3R.
-- Do not add more warnings, readiness cards, or option controls until the
-  workflow cutline and component-system reset are complete.
+- Complete **3R.10 Workflow Contract Closure And 4R Handoff**.
+- Do not add more warnings, readiness cards, or option controls as Phase 3R
+  work. Live presentation changes belong to a named Phase 4R component.
 - Do not preserve old preview/replay/provider panels in the normal workflow.
-- Use Phase 3R as the operator-surface contract for Phase 6R.
+- Use Phase 3R as the operator-workflow contract for Phases 4R and 6R.
 
 Implementation record:
 
@@ -3173,49 +3042,411 @@ Implementation record:
   `policy-builder-phase-*` artifact paths, and recorded the outcome in
   [Policy Authoring Workflow Completion Gate Audit](policy-authoring-workflow-completion-gate-audit.md).
 
-## Phase 4R: Folded Presentation Checkpoint
+## Phase 4R: Live Policy-Authoring UI Convergence
 
-Status: not an active standalone implementation phase. Prior implementation is
-folded into Phase 3R. Under the re-imagined roadmap, this scope should be
-treated as part of workflow inventory and readiness surface decisions, not as a
-separate client-presentation phase.
+Status: active planned workstream. This phase begins with a live rendered-path
+audit. Earlier component extractions and read-model work are inputs, not proof
+that the browser experience is complete.
 
-Intent: users should see policy behavior, not preset mechanics.
+Intent: deliver the automation-first policy-authoring experience in the running
+application. A library that has enough current evidence should start with a
+server-derived destination proposal, not a blank form that asks the operator to
+restate what Classifarr already knows.
 
-This checkpoint is no longer a separate implementation target. Its original scope
-was delivered during the earlier presentation work because the intent-first
-surface needed summary, warnings, provenance, readiness, and section diagnostics
-before the builder could be considered usable. Phase 3R must now reclassify
-those surfaces as keep, rewrite, replace, or delete.
+### Why Phase 4R Exists
 
-Changes:
+The former folded checkpoint confused three different kinds of work:
 
-- Added an intent summary card near the top of the builder:
-  - Purpose
-  - Hard limits
-  - Helpful hints
-  - Review triggers
-- Showed starter template provenance:
-  - `Seeded from Family template`
-  - `Modified from Comedy template`
-- Added warnings and diagnostics:
-  - `This policy has no hard rating limit.`
-  - `This policy relies only on soft matches.`
-  - `Generic Comedy is a hint, not a destination rule.`
+- Phase 3R defines the workflow vocabulary, component boundaries, and normal
+  path exclusions.
+- Phase 5R owns server authorization, question, answer, and learning
+  contracts.
+- Phase 6R.5 owns the server workflow projection and automation-readiness
+  inputs.
 
-Why this remains folded into Phase 3R:
+None of those alone proves that the live browser renders a clear, functioning,
+and low-decision experience. This phase owns that final composition and the
+removal of the old builder path.
 
-- Helps diagnose weak or ambiguous policies before classification.
-- Supports the recent Family, Comedy, and RAG failure modes.
-- Keeps the UI focused on decisions users understand.
+The current failure modes are explicit scope for this phase:
 
-Planning consequence:
+- known library evidence is displayed, then the operator is still required to
+  select it again before creating a policy;
+- optional hard limits, avoid rules, helpful matches, and review triggers are
+  displayed as if every one were a required setup task;
+- internal readiness, replay, provider, migration, or compatibility detail is
+  repeated as normal product UI;
+- a visible control has no bound action, a stale target, or a browser-inferred
+  outcome;
+- a component extraction is treated as a completed workflow even when its live
+  entry path is still the old modal or an incompatible editor.
+
+### Product Contract
+
+The normal path is intentionally small:
 
 ```text
-Do not start new Phase 4R client-presentation work. Route presentation changes
-through Phase 3R unless they fix a concrete defect or support a named
-server/runtime phase.
+choose library
+  -> read server-derived destination proposal and automation state
+  -> create or save the proposal when the server admits it
+  -> adjust only the part that is wrong or incomplete
+  -> let Classifarr recover evidence and ask only for a material exception
 ```
+
+For an existing, well-profiled library, the first screen must answer:
+
+```text
+What does this library appear to be for?
+What will Classifarr do next?
+Do I need to change anything before I continue?
+```
+
+It must not make the operator reconstruct observed genres, templates,
+thresholds, provider state, replay results, or review mechanics. A
+server-derived proposal is not a silent policy write: the browser may create a
+local native draft or submit an explicitly admitted create/update request, but
+the server remains the only persistence and authority boundary.
+
+The normal surface has three areas, in this order:
+
+1. **Destination proposal**: a concise, display-safe description of observed
+   library meaning, evidence quality, and declared intent when it already
+   exists.
+2. **One next action**: create, save, wait for automatic recovery, or answer a
+   specific material exception. It is the only primary action in the current
+   state.
+3. **Adjust this policy**: an optional disclosure containing the small,
+   task-relevant controls needed to correct the proposal. It is not expanded by
+   default for a ready library.
+
+### Phase Boundaries And Dependencies
+
+Phase 4R consumes, but does not replace, the surrounding authority work:
+
+- **3R** supplies the workflow vocabulary, component inventories, typed draft
+  commands, accessibility baseline, and normal-path exclusions.
+- **5R.1, 5R.2, 5R.4, and 5R.5** supply server-owned intent, write,
+  clarification, and answer contracts. Phase 4R cannot introduce a browser
+  alternative for any of them.
+- **6R.1, 6R.2, 6R.4, and 6R.5** supply observed evidence, declared-intent,
+  automation-readiness, and bounded workflow projections. A UI component may
+  ship only when the projection it requires exists and is validated.
+- **8R native storage** remains the persistence authority. Phase 4R does not
+  add a compatibility sidecar, a direct browser mutation path, or client-owned
+  migration state.
+
+Existing Vue-facing records in 3R and 6R.5 are treated as reusable inputs and
+verification evidence. They do not close a 4R task until the task's live entry
+path, error/recovery state, action binding, accessibility behavior, and legacy
+removal criteria have passed together.
+
+### UI And Security Rules
+
+- The browser renders bounded server projections and forwards only
+  allow-listed, typed commands through named client API functions. It never
+  derives policy readiness, actor identity, routing eligibility, recovery work,
+  provider state, or a mutation authorization.
+- Each visible action has one declared action identifier, one available
+  client API operation, an explicit loading/disabled/error state, and an
+  end-to-end test. When an operation is not implemented or not admitted, the
+  control is absent or renders plain guidance; it is never a dead button.
+- Observed evidence is a proposal by default. It may prefill a local draft only
+  when the server marks it eligible; it is never silently persisted or treated
+  as a hard limit, avoid rule, review trigger, or broad learning decision.
+- Multi-select and chip controls are adjustment tools, not the main workflow.
+  They appear only after the operator opens **Adjust this policy** or when the
+  server identifies a specific missing decision.
+- Hard limits, avoid values, review triggers, routing detail, and custom
+  signals remain hidden until they are materially relevant. Optional values
+  must not produce a generic warning or block a ready policy.
+- No normal policy screen renders raw provider payloads, raw evidence values,
+  replay/impact details, policy-storage migration data, database state,
+  internal failure causes, or a privileged maintenance operation.
+- The implementation uses native HTML controls where possible. A custom
+  disclosure follows the [WAI-ARIA disclosure pattern](https://www.w3.org/WAI/ARIA/apg/patterns/disclosure/);
+  grouped multi-select uses the [WAI-ARIA checkbox pattern](https://www.w3.org/WAI/ARIA/apg/patterns/checkbox/);
+  and a modal is used only when the implementation satisfies the
+  [WAI-ARIA modal-dialog pattern](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/).
+  Dynamic save, automatic-recovery, and error feedback follows [WCAG 2.2
+  status-message guidance](https://www.w3.org/WAI/WCAG22/Understanding/status-messages.html)
+  without turning the interface into a stream of announcements.
+
+## Phase 4R Component Map
+
+### 4R.1 Live Entry-Path And Action Inventory
+
+Intent: establish what the operator actually sees and can activate before
+changing another component.
+
+Tasks:
+
+- Inventory every route, modal, hash target, list action, create action, edit
+  action, and deep link that reaches policy authoring.
+- Capture the rendered state for a new library, a well-profiled library, a
+  sparse library, an unmapped library, a policy with an automatic recovery in
+  progress, and a persisted native policy.
+- Map every visible control to exactly one of:
+  - a server-backed action contract,
+  - a local, typed draft command,
+  - an accessible disclosure/navigation control,
+  - read-only information,
+  - delete or replace before the next slice.
+- Compare the live component tree against 3R's inventory and 6R.5's workflow
+  projection. Record stale documentation, dead controls, duplicate summaries,
+  browser-derived readiness, and legacy entry points as explicit removal work.
+- Add a small, deterministic inventory/audit contract rather than a new
+  browser diagnostic panel. It may be maintainer-facing test evidence only.
+
+Acceptance criteria:
+
+- Every normal authoring entry point and visible action is classified.
+- No planned UI slice relies on a screenshot, static component import, or
+  historical implementation record as evidence that it is live.
+- The next component cutline identifies the exact live entry path to replace.
+
+### 4R.2 Server Workflow Presentation Adapter
+
+Intent: create one narrow client-side presentation adapter that validates and
+projects the existing server workflow contract without recreating policy logic.
+
+Tasks:
+
+- Define a page-level view model for destination proposal, one next action,
+  optional adjustment availability, and bounded recovery status.
+- Reject malformed, stale, mismatched-library, or unsupported workflow
+  projections before they render actionable controls.
+- Keep server values display-safe and immutable; do not retain raw evidence,
+  provider payloads, hidden policy fields, or compatibility data in client
+  state.
+- Define a single status priority for loading, saving, automatic recovery, and
+  returned errors so cards cannot announce competing conclusions.
+- Route all transport through named `client/src/api` leaf functions and retain
+  existing stale-request cancellation/identity checks.
+
+Acceptance criteria:
+
+- The rendered authoring state comes from one validated server projection.
+- The adapter contains no scoring, readiness, profile-recovery, or mutation
+  decision logic.
+- An invalid projection fails closed into a bounded non-actionable state.
+
+### 4R.3 Action Binding And Admission Feedback
+
+Intent: make every button, link, and submit operation reliable before changing
+the information architecture around it.
+
+Tasks:
+
+- Bind each primary and adjustment action to its server-owned action contract
+  or a local typed-command boundary.
+- Supply per-action pending, success, rejection, retryable-error, and
+  unavailable states without exposing raw server errors or inventing success.
+- Prevent duplicate submission with an action-local pending state and preserve
+  the server's idempotency/concurrency result when one exists.
+- Remove or replace controls that cannot reach an admitted operation; a label
+  such as `Create Policy` must either submit the narrow native contract or not
+  be rendered.
+- Test the complete user-visible result for successful, rejected, stale, and
+  unavailable operations.
+
+Acceptance criteria:
+
+- Every rendered interactive control has a functioning, tested outcome.
+- The browser cannot turn an unavailable action into a request by changing
+  local state or deep-linking.
+- A rejected action leaves the server projection authoritative and reports one
+  understandable next state.
+
+### 4R.4 Destination Proposal Card
+
+Intent: make the already-known library meaning the default first decision.
+
+Tasks:
+
+- Build one `DestinationProposalCard` from the 4R.2 view model.
+- Show concise observed-library context, current declared purpose when it
+  exists, evidence quality, and a bounded explanation of why the proposal is
+  available or unavailable.
+- For eligible evidence, initialize a visible proposed intent that can be
+  created without reselecting every observed value. Clearly distinguish
+  `proposed` from `saved` and `adjusted` from `observed`.
+- For sparse or unavailable evidence, show the smallest safe starting action;
+  do not claim that absent data defines a policy or expose a browser refresh.
+- Do not render a generic `Belongs Here` multi-select as a mandatory first
+  step when the server has already supplied an eligible proposal.
+
+Acceptance criteria:
+
+- A well-profiled library can be understood and created/saved from one card
+  plus its admitted primary action.
+- Observed values never become durable policy state without explicit create or
+  save admission.
+- New and sparse libraries receive actionable guidance without a false
+  readiness failure.
+
+### 4R.5 Intent Adjustment Disclosure
+
+Intent: retain meaningful operator control without making editing the default
+workflow.
+
+Tasks:
+
+- Implement an optional **Adjust this policy** disclosure with explicit
+  collapsed/expanded state and a stable accessible name.
+- Compose the existing signal picker, chip list, and typed draft-command
+  adapters only for the relevant signal groups.
+- Surface source labels such as observed, proposal, template suggestion, and
+  explicit operator value. Do not use counts alone to imply a value is a rule.
+- Use grouped multi-select only for eligible known options, with one
+  explanation and disabled reason per unavailable value; custom entry remains
+  bounded by the server admission contract.
+- Preserve local changes only for the active library and clear/revalidate them
+  when the authoritative workflow revision changes.
+
+Acceptance criteria:
+
+- The normal ready path remains collapsed and decision-light.
+- Adjustments emit only existing typed draft commands and cannot write a
+  compatibility payload.
+- Keyboard and assistive-technology users can discover, operate, and leave the
+  adjustment area without losing context.
+
+### 4R.6 Material Exception Controls
+
+Intent: surface constraints, routing, and review only when they materially
+change the automatic outcome.
+
+Tasks:
+
+- Compose hard-limit, avoid, review-trigger, and routing components from their
+  existing server eligibility and admission projections.
+- Render a required exception only when the server declares a concrete blocked
+  or review-needed condition; leave optional controls inside the adjustment
+  disclosure.
+- Present one bounded exception explanation and its exact action. Do not stack
+  generic warnings such as missing avoid values, missing helpful matches, or
+  missing hard limits on every policy.
+- Make scheduler-owned evidence recovery status informational. The browser
+  must not offer refresh, retry, reset, or quota operations that bypass the
+  automatic lifecycle.
+- Keep question/answer handling on the server-owned 5R contract; free-form
+  labels and browser-generated review states cannot become commands.
+
+Acceptance criteria:
+
+- A ready destination is never described as incomplete merely because optional
+  controls have no value.
+- A real constraint or routing gap has one visible owner and one admitted
+  resolution path.
+- Automatic recovery remains automatic and does not create a maintainer
+  workflow in normal UI.
+
+### 4R.7 Persisted Policy Summary And Intentional Maintenance Entry
+
+Intent: separate new-policy establishment from routine inspection and the
+bounded maintenance of an existing policy.
+
+Tasks:
+
+- Render persisted native intent as a compact server-owned summary with
+  current automation status and the next admitted action, if any.
+- Enter editing only from an explicit maintenance intent; do not reopen the
+  create flow or require every original choice to be reselected.
+- Keep compatibility maintenance isolated until its Phase 8R deletion gate;
+  label it as maintenance without presenting it as the native normal path.
+- Preserve route/back-navigation/focus behavior across list, create, summary,
+  adjustment, and maintenance entry states.
+
+Acceptance criteria:
+
+- A saved policy has one unambiguous inspection surface.
+- Creating, editing, and compatibility maintenance cannot accidentally select
+  the wrong payload or workflow contract.
+- No persisted-policy page renders a browser-derived automation conclusion.
+
+### 4R.8 Legacy Builder Cutover And Removal
+
+Intent: make the new authoring flow the only normal product path rather than
+adding it beside the old modal.
+
+Tasks:
+
+- Switch each classified normal entry point to the 4R live flow only after its
+  component-level acceptance criteria and end-to-end evidence pass.
+- Remove obsolete summary cards, duplicated setup grids, raw threshold
+  controls, template-first entry, replay/impact/provider panels, stale anchors,
+  and their unused state/composables/tests/docs.
+- Retain migration verifier and compatibility maintenance artifacts only behind
+  their named server-side gates; do not hide them in an `advanced` normal-user
+  section.
+- Add repository searches and focused tests that fail when retired diagnostic
+  components are reintroduced into normal authoring.
+
+Acceptance criteria:
+
+- There is one normal policy-authoring path per native state.
+- Removed controls have no reachable event handler, route, test fixture, or
+  documentation claim.
+- Compatibility artifacts have an explicit temporary owner and Phase 8R
+  deletion criterion.
+
+### 4R.9 Accessibility, Responsive Behavior, And End-To-End Workflow Tests
+
+Intent: prove the replacement works for real interaction states, not only unit
+component props.
+
+Tasks:
+
+- Add browser-level coverage for each state in 4R.1, including action success,
+  admission rejection, stale response, automatic recovery, and no-action
+  guidance.
+- Test keyboard flow, focus placement/restoration, disclosure state,
+  multi-select/chip behavior, error/status announcement, and narrow viewport
+  layout against the live entry path.
+- Verify modal behavior only where a modal remains; otherwise test page or
+  panel navigation without modal-specific assumptions.
+- Measure normal-path decision load by asserting one primary action, no
+  duplicate readiness conclusion, and no diagnostic-only cards in each state.
+- Keep server-contract, client-unit, integration, and browser tests at their
+  appropriate boundary so a visual test does not replace authorization or
+  persistence tests.
+
+Acceptance criteria:
+
+- The full normal flow is keyboard-operable, responsive, and communicates
+  status without focus theft or duplicate announcements.
+- End-to-end tests catch a non-functional primary action before release.
+- Tests preserve automation-first outcomes, not the former layout or modal
+  structure.
+
+## Phase 4R Work Sequence
+
+Implement Phase 4R in this order:
+
+1. **4R.1 Live Entry-Path And Action Inventory**
+   Establishes the actual browser cutline and prevents another documentation-
+   only completion claim.
+2. **4R.2 Server Workflow Presentation Adapter**
+   Creates the single validated read boundary for rendered work.
+3. **4R.3 Action Binding And Admission Feedback**
+   Makes visible controls real before rearranging them.
+4. **4R.4 Destination Proposal Card**
+   Delivers the library-first automated default.
+5. **4R.5 Intent Adjustment Disclosure**
+   Adds bounded edit control without increasing normal-path decision load.
+6. **4R.6 Material Exception Controls**
+   Shows constraints and recovery only when they change the outcome.
+7. **4R.7 Persisted Policy Summary And Intentional Maintenance Entry**
+   Separates lifecycle states and prevents create/edit confusion.
+8. **4R.8 Legacy Builder Cutover And Removal**
+   Removes the parallel normal path.
+9. **4R.9 Accessibility, Responsive Behavior, And End-To-End Workflow Tests**
+   Proves the delivered flow works in the live product.
+
+Current starting point: **4R.1 Live Entry-Path And Action Inventory**. Do not
+modify the builder's information architecture, add another suggestion control,
+or expose a new advanced setting until the live inventory records the current
+entry path and action status for the state being changed.
 
 ## Phase 5R: Server Authority, Runtime Questions, And Learning Guard
 
@@ -4428,6 +4659,12 @@ Implementation status:
 ### 6R.5 Operator Workflow Rebuild
 
 Intent: make policy setup dead simple while preserving meaningful control.
+
+Boundary: 6R.5 owns the server-owned workflow projection and its automation
+inputs. Phase 4R owns the final live browser composition, action liveness,
+accessibility, responsive behavior, and retirement of parallel authoring UI.
+Vue-facing 6R.5 records are evidence that a projection consumer exists; they
+do not complete the Phase 4R UI-convergence acceptance criteria.
 
 Default workflow:
 
@@ -8023,6 +8260,22 @@ Tasks:
     evidence rather than a truthy empty object.
   - Completed: keeps this validation side-effect-free and binds its result into
     the existing removal review artifact.
+- **8R.17.3 Scope-Aware Controlled-Removal Continuation**
+  - Reclassified: the completed `3R.10.1` through `3R.10.19` design records
+    are Phase 8R compatibility-retirement history, not Phase 3R workflow work.
+    Their historical labels remain in their individual documents for source
+    traceability; this roadmap is the active task authority.
+  - Completed: the stream binds exact named test scopes to a current execution
+    gate, performs a fresh review replay, writes external rollback evidence,
+    and admits only one scoped apply through a server-owned production
+    composer. It has no browser flow, generic mutation endpoint, client actor,
+    caller-owned clock, or repository write capability outside its bounded
+    source-writer contract.
+  - Next component task: **8R.17.3 Server Review Context Registry**. Store
+    only a validated accepted review context behind an opaque server-issued
+    reference, provide it to the production-admission composer without request
+    input, and invalidate it on source, gate, or scope drift. It must not
+    expose source text, dry runs, or a generic mutation handle.
 - Consume approved compatibility deletion manifest entries.
 - Consume compatibility deletion execution-gate output.
 - Require selected paths to exist in the approved manifest.
