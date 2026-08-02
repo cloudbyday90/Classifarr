@@ -2842,13 +2842,25 @@ Implementation status:
   boundary. See [Policy Compatibility Deletion Execution-Gate Named-Scope
   Observation Identity](policy-compatibility-deletion-execution-gate-named-scope-observation-identity.md).
 
-Next component task: **3R.10.15 Compatibility Deletion Controlled-Removal
-Scope-Aware Execution Adapter**. Create a separate review-only adapter for
-fingerprint-bound named-scope identities. It must re-read the exact retained
-file, derive a precise dry-run source edit, and fail closed for missing,
-ambiguous, stale, or changed source fragments. It must not write source, delete
-files, alter storage, or bypass the independent recovery, stance, approval, and
-freshness controls.
+- **3R.10.15 Compatibility Deletion Controlled-Removal Scope-Aware Execution
+  Adapter** is complete. A separate review-only adapter now binds only an exact
+  named-scope identity from the fingerprint-valid execution gate, revalidates
+  the gate at dry-run time, rechecks the retained file before and after capture,
+  and derives only bounded offset and hash-backed source edits. It rejects
+  missing or ambiguous test declarations, changed source fragments, stale gate
+  evidence, unobserved identities, unsafe paths, and source drift. It cannot
+  write source, delete files, mutate storage, or run Git mutation commands. See
+  [Policy Compatibility Deletion Scope-Aware Controlled-Removal Dry
+  Run](policy-compatibility-deletion-scope-aware-controlled-removal-dry-run.md).
+
+Next component task: **3R.10.16 Compatibility Deletion Scope-Aware Removal
+Review Artifact**. Create a versioned, fingerprinted review artifact from an
+accepted 3R.10.15 dry run. It must bind the exact named-scope identity, gate
+artifact fingerprint, source and result fingerprints, offsets, edit hashes, and
+review metadata. It must fail closed on artifact substitution, stale source,
+altered edits, duplicate scope identity, or missing reviewer context. It remains
+read-only and must not write source, delete files, alter storage, or introduce
+scoped-source mutation.
 
 ### 3R.8 Accessibility And Decision Load
 

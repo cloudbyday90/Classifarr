@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Compatibility Deletion Scope-Aware Dry Run**: Added a separate read-only
+  adapter for fingerprint-bound named test scopes. It revalidates the execution
+  gate and checkout state, re-reads only a safe retained test file, and returns
+  exact hash-backed edit ranges while blocking stale evidence, changed fragments,
+  duplicate test declarations, and unsafe paths. It cannot write source, delete
+  files, mutate storage, or run Git mutation commands.
+
 - **Compatibility Deletion Named-Scope Preflight Identity**: Preflight evidence
   and the execution gate now bind exact named test scopes to server-derived,
   fingerprint-covered identities while retaining legacy path-only file
