@@ -97,4 +97,27 @@ describe('policyCompatibilityDeletionExecutionManifestEntry', () => {
       }),
     ]));
   });
+
+  test('retains source-backed target identity for file-level actions without treating it as a named test scope', () => {
+    const entry = normalizePolicyCompatibilityDeletionExecutionManifestEntry({
+      actionId: POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.REPLACE_CODE_PATH,
+      categoryId: 'policy_builder_modal_legacy_branch',
+      path: 'client/src/components/policies/PolicyBuilderModal.vue',
+      targetKindId: 'code_path',
+      dependencyIds: ['policy_builder_modal_legacy_branch'],
+      sourceTextFragments: ['legacy compatibility branch'],
+    });
+
+    expect(entry).toEqual(expect.objectContaining({
+      kindId: POLICY_COMPATIBILITY_DELETION_EXECUTION_MANIFEST_ENTRY_KIND_IDS.FILE_PATH,
+      targetKindId: 'code_path',
+      dependencyIds: ['policy_builder_modal_legacy_branch'],
+      sourceTextFragments: ['legacy compatibility branch'],
+      testNameFragments: [],
+      wholeFileDeletion: null,
+    }));
+    expect(validatePolicyCompatibilityDeletionExecutionManifestEntry(entry)).toEqual(
+      expect.objectContaining({ ok: true, issueCount: 0 }),
+    );
+  });
 });

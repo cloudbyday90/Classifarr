@@ -149,6 +149,48 @@ describe('policyCompatibilityDeletionExecutionPlanArtifactFingerprint', () => {
     ]));
   });
 
+  test('rejects a fingerprint after a bound candidate target kind or dependency changes', () => {
+    const artifact = executionPlanArtifact({
+      manifestEntries: [{
+        kindId: 'file_path',
+        targetKindId: 'code_path',
+        dependencyIds: ['policy_builder_modal_legacy_branch'],
+        actionId: 'replace_code_path',
+        categoryId: 'policy_builder_modal_legacy_branch',
+        path: 'client/src/components/policies/PolicyBuilderModal.vue',
+      }],
+    });
+    const artifactFingerprint =
+      buildPolicyCompatibilityDeletionExecutionPlanArtifactFingerprint({ artifact });
+    const mutatedArtifact = {
+      ...artifact,
+      executionPlan: {
+        ...artifact.executionPlan,
+        manifest: {
+          ...artifact.executionPlan.manifest,
+          entries: [{
+            ...artifact.executionPlan.manifest.entries[0],
+            targetKindId: 'test_file',
+            dependencyIds: ['substituted_dependency'],
+          }],
+        },
+      },
+    };
+
+    const validation = validatePolicyCompatibilityDeletionExecutionPlanArtifactFingerprint({
+      artifact: mutatedArtifact,
+      artifactFingerprint,
+    });
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_FINGERPRINT_RISK_IDS
+          .FINGERPRINT_MISMATCH,
+      }),
+    ]));
+  });
+
   test('rejects malformed fingerprint metadata and mismatched provenance', () => {
     const artifact = executionPlanArtifact();
     const fingerprint =

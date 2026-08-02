@@ -16,6 +16,10 @@ import {
   normalizePolicyCompatibilityDeletionExecutionManifestEntry,
   validatePolicyCompatibilityDeletionExecutionManifestEntry,
 } from './policyCompatibilityDeletionExecutionManifestEntry.mjs';
+import {
+  POLICY_COMPATIBILITY_RETIREMENT_EXECUTION_PLAN_CANDIDATE_TARGET_ADAPTER_STATUS_IDS,
+  validatePolicyCompatibilityRetirementExecutionPlanCandidateTargetAdapter,
+} from './policyCompatibilityRetirementExecutionPlanCandidateTargetAdapter.mjs';
 
 const POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_VERSION =
   'policy.compatibility_deletion_execution_plan.v2';
@@ -35,6 +39,7 @@ const POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS = Object.freeze({
   MISSING_MANIFEST_ENTRY_PATH: 'missing_manifest_entry_path',
   MISSING_REPLACEMENT_EVIDENCE: 'missing_replacement_evidence',
   INVALID_NAMED_TEST_SCOPE: 'invalid_named_test_scope',
+  CANDIDATE_TARGET_ADAPTER_INVALID: 'candidate_target_adapter_invalid',
   MISSING_ROLLBACK_STANCE: 'missing_rollback_stance',
   MISSING_SUPPORT_STANCE: 'missing_support_stance',
   MANIFEST_NOT_APPROVED: 'manifest_not_approved',
@@ -91,11 +96,43 @@ function buildNamedTestScopeManifestEntries({
   });
 }
 
+function buildCandidateTargetManifestEntries({
+  candidateTargetEntries = [],
+  replacementEvidence = {},
+} = {}) {
+  return asArray(candidateTargetEntries).map(entry => {
+    const normalizedEntry = normalizePolicyCompatibilityDeletionExecutionManifestEntry(entry);
+    const entryValidation = validatePolicyCompatibilityDeletionExecutionManifestEntry(
+      normalizedEntry,
+    );
+    const evidence = getEvidenceForPath({
+      path: normalizedEntry.path,
+      categoryId: normalizedEntry.categoryId,
+      replacementEvidence,
+    });
+
+    return {
+      ...normalizedEntry,
+      replacementEvidence: evidence,
+      ready: entryValidation.ok && Boolean(evidence),
+    };
+  });
+}
+
 function buildManifestEntries({
   deletionGatePlan = {},
   replacementEvidence = {},
   namedTestScopeEntries = [],
+  candidateTargetAdapter = null,
 } = {}) {
+  if (candidateTargetAdapter) {
+    return buildCandidateTargetManifestEntries({
+      candidateTargetEntries:
+        candidateTargetAdapter.executionPlanInput?.candidateTargetEntries,
+      replacementEvidence,
+    });
+  }
+
   const gatePlan = asObject(deletionGatePlan);
   const fileEntries = asArray(gatePlan.categories)
     .flatMap(category => asArray(category.paths).map(path => {
@@ -125,6 +162,33 @@ function buildManifestEntries({
       replacementEvidence,
     }),
   ];
+}
+
+function evaluateCandidateTargetAdapter(candidateTargetAdapter) {
+  if (!candidateTargetAdapter) {
+    return { risks: [] };
+  }
+
+  const validation =
+    validatePolicyCompatibilityRetirementExecutionPlanCandidateTargetAdapter(
+      candidateTargetAdapter,
+    );
+  const ready = candidateTargetAdapter.statusId ===
+      POLICY_COMPATIBILITY_RETIREMENT_EXECUTION_PLAN_CANDIDATE_TARGET_ADAPTER_STATUS_IDS
+        .ADAPTER_READY &&
+    candidateTargetAdapter.adapterReady === true &&
+    candidateTargetAdapter.validation?.ok === true &&
+    validation.ok;
+
+  return ready
+    ? { risks: [] }
+    : {
+      risks: [buildRisk(
+        POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.CANDIDATE_TARGET_ADAPTER_INVALID,
+        'Candidate-target execution-plan input must be ready, validated, read-only, and source-backed before it can replace broad deletion-category entries.',
+        { issueCount: validation.issueCount },
+      )],
+    };
 }
 
 function evaluateReadiness(deletionReadiness) {
@@ -270,6 +334,7 @@ function determineStatusId(risks = []) {
     POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.MISSING_MANIFEST_ENTRY_PATH,
     POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.MISSING_REPLACEMENT_EVIDENCE,
     POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.INVALID_NAMED_TEST_SCOPE,
+    POLICY_COMPATIBILITY_DELETION_EXECUTION_RISK_IDS.CANDIDATE_TARGET_ADAPTER_INVALID,
   ].includes(risk.riskId))) {
     return POLICY_COMPATIBILITY_DELETION_EXECUTION_STATUS_IDS
       .BLOCKED_BY_MANIFEST_EVIDENCE;
@@ -291,19 +356,25 @@ function buildPolicyCompatibilityDeletionExecutionPlan({
   deletionGatePlan = null,
   replacementEvidence = {},
   namedTestScopeEntries = [],
+  candidateTargetAdapter = null,
   rollbackStance = null,
   supportStance = null,
   manifestApproved = false,
   approvedBy = null,
 } = {}) {
   const readiness = evaluateReadiness(deletionReadiness);
+  const candidateTargetAdapterEvaluation = evaluateCandidateTargetAdapter(
+    candidateTargetAdapter,
+  );
   const manifestEntries = buildManifestEntries({
     deletionGatePlan,
     replacementEvidence,
     namedTestScopeEntries,
+    candidateTargetAdapter,
   });
   const risks = [
     ...readiness.risks,
+    ...candidateTargetAdapterEvaluation.risks,
     ...evaluateManifestEntries(manifestEntries),
     ...evaluateApproval({
       rollbackStance,

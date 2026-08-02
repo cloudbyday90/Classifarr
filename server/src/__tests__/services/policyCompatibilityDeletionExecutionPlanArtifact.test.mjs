@@ -255,6 +255,20 @@ describe('policyCompatibilityDeletionExecutionPlanArtifact', () => {
     expect(artifact.validation.ok).toBe(true);
   });
 
+  test('forwards a candidate-target adapter to the execution-plan validation boundary', () => {
+    const artifact = buildPolicyCompatibilityDeletionExecutionPlanArtifact({
+      input: readyInput({ candidateTargetAdapter: {} }),
+    });
+
+    expect(artifact.statusId)
+      .toBe(POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_STATUS_IDS.BLOCKED);
+    expect(artifact.executionPlan.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: 'candidate_target_adapter_invalid',
+      }),
+    ]));
+  });
+
   test('validates artifact invariants', () => {
     const artifact = buildPolicyCompatibilityDeletionExecutionPlanArtifact({
       input: readyInput(),

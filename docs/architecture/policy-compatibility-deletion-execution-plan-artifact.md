@@ -231,6 +231,6 @@ npm run --silent policy:storage-closure-final-removal-audit -- \
 
 ## Next Step
 
-Collect preflight evidence bound to the v2 artifact fingerprint, then evaluate
+Collect preflight evidence bound to the current artifact fingerprint, then evaluate
 the compatibility deletion execution gate. See
 [Policy Compatibility Deletion Execution Artifact Fingerprint](policy-compatibility-deletion-execution-artifact-fingerprint.md).

@@ -2819,14 +2819,24 @@ Implementation status:
   retained test files. See [Policy Compatibility Retirement Assembly Handoff
   Audit](policy-compatibility-retirement-assembly-handoff-audit.md).
 
-Next component task: **3R.10.13 Compatibility Retirement Execution-Plan
-Candidate-Target Adapter**. Add a read-only adapter that derives exact candidate
-taxonomy targets as existing execution-plan inputs without creating, approving,
-or executing an artifact. Follow it with scope-aware preflight observation
-identity so several exact named scopes in one retained test file remain
-distinct while preserving duplicate exact-entry rejection, artifact
-fingerprints, freshness checks, approval, and the separate controlled-removal
-boundary.
+- **3R.10.13 Compatibility Retirement Execution-Plan Candidate-Target Adapter**
+  is complete. A read-only adapter now derives all ten source-backed,
+  action-mapped targets as existing execution-plan input. Candidate-backed
+  manifest entries retain target kind, dependencies, component path, source and
+  test fragments, and named-scope boundaries; fingerprint v3 binds the added
+  identity. The adapter cannot approve, write an artifact, invoke a gate, or
+  perform removal, and the existing release, evidence, stance, approval, and
+  execution controls remain independent. See [Policy Compatibility Retirement
+  Execution-Plan Candidate-Target
+  Adapter](policy-compatibility-retirement-execution-plan-candidate-target-adapter.md).
+
+Next component task: **3R.10.14 Compatibility Deletion Execution-Gate
+Named-Scope Observation Identity**. Replace path-only preflight manifest
+observations with stable exact-entry identities. Several named scopes in one
+retained test file must remain distinct, but duplicate exact entries must still
+fail closed. Preserve legacy file-entry observation behavior, artifact
+fingerprints, freshness checks, operator approval, and the separate
+controlled-removal boundary.
 
 ### 3R.8 Accessibility And Decision Load
 

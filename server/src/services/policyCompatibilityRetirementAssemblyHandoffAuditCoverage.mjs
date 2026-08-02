@@ -31,7 +31,9 @@ function manifestEntryMatchesCandidate(entry = {}, mapping = {}) {
   return cleanString(entry.categoryId) === cleanString(mapping.categoryId) &&
     cleanString(entry.actionId) === cleanString(candidate.actionId) &&
     normalizePath(entry.path) === normalizePath(candidate.path) &&
+    cleanString(entry.targetKindId) === cleanString(candidate.kindId) &&
     normalizePath(entry.componentPath) === normalizePath(candidate.componentPath) &&
+    sameStringList(entry.dependencyIds, candidate.dependencyIds) &&
     sameStringList(entry.sourceTextFragments, candidate.sourceTextFragments) &&
     sameStringList(entry.testNameFragments, candidate.testNameFragments) &&
     (!isNamedScope || entry.wholeFileDeletion === false);

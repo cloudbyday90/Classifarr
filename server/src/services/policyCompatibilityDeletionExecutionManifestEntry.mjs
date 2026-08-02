@@ -53,6 +53,8 @@ function normalizePolicyCompatibilityDeletionExecutionManifestEntry(entry = {}) 
     actionId,
     categoryId: cleanString(entry.categoryId) || null,
     path: cleanString(entry.path),
+    targetKindId: cleanString(entry.targetKindId) || null,
+    dependencyIds: uniqueStrings(entry.dependencyIds),
     sourceTextFragments: uniqueStrings(entry.sourceTextFragments),
     testNameFragments: uniqueStrings(entry.testNameFragments),
     componentPath: cleanString(entry.componentPath) || null,
@@ -112,14 +114,10 @@ function validatePolicyCompatibilityDeletionExecutionManifestEntry(entry = {}) {
         'Named test-scope entries must explicitly prohibit whole-file deletion.'
       ));
     }
-  } else if (
-    value.sourceTextFragments.length > 0 ||
-    value.testNameFragments.length > 0 ||
-    value.wholeFileDeletion === true
-  ) {
+  } else if (value.testNameFragments.length > 0 || value.wholeFileDeletion === true) {
     issues.push(buildRisk(
       POLICY_COMPATIBILITY_DELETION_EXECUTION_MANIFEST_ENTRY_RISK_IDS.FILE_ENTRY_SCOPE_PRESENT,
-      'File-path manifest entries cannot carry named-test-scope fragments or whole-file-deletion scope flags.'
+      'File-path manifest entries cannot carry named-test-scope test fragments or whole-file-deletion scope flags.'
     ));
   }
 

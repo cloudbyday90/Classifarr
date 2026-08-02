@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Compatibility Retirement Execution-Plan Candidate-Target Adapter**: Added
+  a read-only, source-backed adapter that feeds all exact mapped retirement
+  targets into the existing deletion-plan path without granting approval or
+  removal authority. Candidate-backed manifest entries and fingerprint v3 now
+  retain target kind and dependency identity alongside exact source and named
+  test-scope boundaries.
+
 - **Compatibility Retirement Assembly Handoff Audit**: Added a read-only
   audit from exact candidate assembly through existing release readiness,
   fingerprinted approved artifact coverage, and the execution gate. It rejects

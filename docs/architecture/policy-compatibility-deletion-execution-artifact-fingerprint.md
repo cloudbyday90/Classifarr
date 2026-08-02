@@ -88,7 +88,7 @@ Cons:
 
 ## Final Recommendation Stack
 
-1. Build a v2 execution-plan artifact from current evidence.
+1. Build the current execution-plan artifact from current evidence.
 2. Compute and persist its deterministic SHA-256 fingerprint.
 3. Collect a fingerprinted preflight evidence artifact that names that
    fingerprint and records only machine-observed facts.
@@ -104,7 +104,8 @@ Implemented:
 
 - `policyCompatibilityDeletionExecutionPlanArtifactFingerprint.mjs` builds a
   stable, bounded SHA-256 projection and validates digest and provenance.
-- Execution-plan artifacts now use v2 and carry an `artifactFingerprint`.
+- Execution-plan artifacts carry an `artifactFingerprint`; fingerprint v3 also
+  binds candidate-backed target kind and dependency identity when present.
 - The execution gate and controlled batch artifact require the fingerprinted
   plan artifact, a matching collector artifact, and separate operator evidence.
 - Focused tests cover canonical ordering, manifest mutation, malformed digest,

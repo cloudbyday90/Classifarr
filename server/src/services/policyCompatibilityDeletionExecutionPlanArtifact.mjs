@@ -62,6 +62,7 @@ function buildPlanFromInput(input = {}) {
       deletionGatePlan: evidenceBundle.deletionGatePlan,
       replacementEvidence: evidence.replacementEvidence,
       namedTestScopeEntries: evidence.namedTestScopeEntries,
+      candidateTargetAdapter: evidence.candidateTargetAdapter,
       rollbackStance: evidence.rollbackStance,
       supportStance: evidence.supportStance,
       manifestApproved: evidence.manifestApproved,

@@ -19,7 +19,7 @@
 import { createHash } from 'node:crypto';
 
 const POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_FINGERPRINT_VERSION =
-  'policy.compatibility_deletion_execution_plan_artifact_fingerprint.v2';
+  'policy.compatibility_deletion_execution_plan_artifact_fingerprint.v3';
 
 const POLICY_COMPATIBILITY_DELETION_EXECUTION_PLAN_ARTIFACT_FINGERPRINT_RISK_IDS =
   Object.freeze({
@@ -68,6 +68,10 @@ function normalizeManifestEntries(entries = []) {
         actionId: value.actionId || null,
         categoryId: value.categoryId || null,
         componentPath: value.componentPath || null,
+        dependencyIds: asArray(value.dependencyIds)
+          .map(dependencyId => String(dependencyId || '').trim())
+          .filter(Boolean)
+          .sort(),
         deletionIntent: value.deletionIntent || null,
         kindId: value.kindId || null,
         path: value.path || null,
@@ -81,6 +85,7 @@ function normalizeManifestEntries(entries = []) {
           .map(fragment => String(fragment || '').trim())
           .filter(Boolean)
           .sort(),
+        targetKindId: value.targetKindId || null,
         wholeFileDeletion: value.wholeFileDeletion === true
           ? true
           : value.wholeFileDeletion === false

@@ -106,7 +106,7 @@ Cons:
    release approval.
 3. Require a ready, fingerprint-valid, manifest-approved artifact and compare
    every target by full identity, not path or label.
-4. Add a read-only candidate-target adapter to the existing execution-plan
+4. Use the read-only candidate-target adapter to derive exact execution-plan
    input before artifact construction or approval.
 5. Require the existing execution gate to bind the same artifact fingerprint.
 6. Preserve the duplicate-path block until preflight observations gain a stable
@@ -157,14 +157,13 @@ Focused source-backed tests prove that:
 
 ## Next Step
 
-Proceed to **Phase 3R, Task 3R.10.13: Compatibility Retirement Execution-Plan
-Candidate-Target Adapter**. Add a read-only adapter that derives exact candidate
-taxonomy targets as existing execution-plan inputs without creating, approving,
-or executing an artifact. The following task must then extend preflight
-observation identity so multiple exact named scopes in one retained test file
-remain distinct while preserving duplicate exact-entry rejection, artifact
-fingerprinting, freshness checks, approval, and the separate controlled-removal
-boundary.
+Proceed to **Phase 3R, Task 3R.10.14: Compatibility Deletion Execution-Gate
+Named-Scope Observation Identity**. The completed adapter can now derive exact
+candidate targets into the existing plan input without authority. The next task
+must extend preflight observation identity so multiple exact named scopes in one
+retained test file remain distinct while preserving duplicate exact-entry
+rejection, artifact fingerprinting, freshness checks, approval, and the
+separate controlled-removal boundary.
 
 ## Research Date
 
