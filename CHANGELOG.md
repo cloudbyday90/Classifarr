@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Compatibility Deletion Scope-Aware Review Artifact**: Added a pure,
+  versioned SHA-256 review artifact for accepted named-test-scope dry runs. It
+  binds exact scope, gate, source/result fingerprints, hash-backed edit ranges,
+  and reviewer context while rejecting stale snapshots, substitution, altered
+  edits, duplicate scope members, and incomplete reviews. The component remains
+  read-only with no source, file, storage, or Git mutation capability.
+
 - **Compatibility Deletion Scope-Aware Dry Run**: Added a separate read-only
   adapter for fingerprint-bound named test scopes. It revalidates the execution
   gate and checkout state, re-reads only a safe retained test file, and returns

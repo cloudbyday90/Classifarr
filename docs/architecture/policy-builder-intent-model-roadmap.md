@@ -2853,14 +2853,24 @@ Implementation status:
   [Policy Compatibility Deletion Scope-Aware Controlled-Removal Dry
   Run](policy-compatibility-deletion-scope-aware-controlled-removal-dry-run.md).
 
-Next component task: **3R.10.16 Compatibility Deletion Scope-Aware Removal
-Review Artifact**. Create a versioned, fingerprinted review artifact from an
-accepted 3R.10.15 dry run. It must bind the exact named-scope identity, gate
-artifact fingerprint, source and result fingerprints, offsets, edit hashes, and
-review metadata. It must fail closed on artifact substitution, stale source,
-altered edits, duplicate scope identity, or missing reviewer context. It remains
-read-only and must not write source, delete files, alter storage, or introduce
-scoped-source mutation.
+**3R.10.16 Compatibility Deletion Scope-Aware Removal Review Artifact** is
+complete. A pure, versioned SHA-256 artifact now binds each accepted 3R.10.15
+dry run to its exact named-scope identity, gate fingerprint, source and result
+hashes, ordered offset and expected-text-hash edits, and reviewer context. Its
+read-only validator requires a fresh, internally valid dry run, rejects artifact
+substitution, stale snapshots, altered edits, duplicate scope members, gate
+drift, and incomplete reviewer context, and exposes no source, filesystem,
+storage, Git, or mutation capability. See [Policy Compatibility Deletion
+Scope-Aware Removal Review
+Artifact](policy-compatibility-deletion-scope-aware-removal-review-artifact.md).
+
+Next component task: **3R.10.17 Compatibility Deletion Scope-Aware Removal
+Review Replay Adapter**. Create a separate read-only adapter that independently
+reruns the 3R.10.15 gate, preflight, source-read, and bounded-edit dry run, then
+validates the 3R.10.16 artifact against that fresh server-derived result. It
+must reject caller-supplied snapshot substitution, changed source, stale gate
+evidence, review drift, and duplicate scope identity. It must not write source,
+delete files, alter storage, invoke Git, or introduce scoped-source mutation.
 
 ### 3R.8 Accessibility And Decision Load
 
