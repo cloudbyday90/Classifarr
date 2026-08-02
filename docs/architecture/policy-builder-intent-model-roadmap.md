@@ -2864,13 +2864,28 @@ storage, Git, or mutation capability. See [Policy Compatibility Deletion
 Scope-Aware Removal Review
 Artifact](policy-compatibility-deletion-scope-aware-removal-review-artifact.md).
 
-Next component task: **3R.10.17 Compatibility Deletion Scope-Aware Removal
-Review Replay Adapter**. Create a separate read-only adapter that independently
-reruns the 3R.10.15 gate, preflight, source-read, and bounded-edit dry run, then
-validates the 3R.10.16 artifact against that fresh server-derived result. It
-must reject caller-supplied snapshot substitution, changed source, stale gate
-evidence, review drift, and duplicate scope identity. It must not write source,
-delete files, alter storage, invoke Git, or introduce scoped-source mutation.
+**3R.10.17 Compatibility Deletion Scope-Aware Removal Review Replay Adapter**
+is complete. A separate read-only ESM adapter now rejects caller-supplied
+dry-run snapshots, independently reruns the 3R.10.15 gate, preflight,
+source-read, pre-apply, and bounded-edit dry run, then verifies the 3R.10.16
+review artifact against fresh server-derived evidence. Artifact v2 separates
+the exact original review digest from timestamp-independent scope and reviewer
+metadata provenance so a newly generated evaluation time does not obscure
+source, gate, scope, edit, or reviewer drift. It fails closed for caller input,
+source change, stale gate evidence, review drift, and duplicate selected scope
+identity, and cannot write source, delete files, alter storage, invoke Git, or
+introduce scoped-source mutation. See [Policy Compatibility Deletion
+Scope-Aware Removal Review Replay
+Adapter](policy-compatibility-deletion-scope-aware-removal-review-replay-adapter.md).
+
+Next component task: **3R.10.18 Compatibility Deletion Scope-Aware Controlled
+Apply Adapter**. Create the first mutation-capable component only after a ready
+3R.10.17 replay. It must own final replay, authenticated and explicitly scoped
+authorization, single-use and expiry semantics, a final source-fingerprint
+check, bounded replacement limited to the reviewed edit ranges, durable rollback
+evidence, and auditable output. It must reject API-supplied replay or
+authorization results, whole-file deletion, path widening, Git mutation
+commands, and any source change after its final check.
 
 ### 3R.8 Accessibility And Decision Load
 

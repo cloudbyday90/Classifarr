@@ -98,7 +98,11 @@ The review-artifact service is split into ESM shared-normalization,
 canonical-projection, and validation modules. The projection contains only
 bounded review facts, then hashes it with SHA-256. The public artifact exposes
 the digest and compact provenance only; it does not expose retained test source
-text.
+text. Artifact v2 additionally emits a reviewer-metadata digest and a
+timestamp-independent scope-snapshot digest for Phase 3R.10.17 replay. The
+full digest remains time-bound for original-review verification; the snapshot
+digest excludes only the dry-run evaluation time and is not an authorization
+token.
 
 Validation separately checks dry-run admission, freshness, reviewer metadata,
 artifact structure, recomputed fingerprint, and provenance. It therefore fails
@@ -117,6 +121,9 @@ anything.
   test names, and every expected-text SHA-256 hash are fingerprint-covered.
 - A scope's test-name members must be unique; duplicates fail closed.
 - Review context is fingerprint-covered and cannot predate the dry run.
+- The full review digest and replay-specific scope snapshot are separate. A
+  fresh replay may change only its evaluation time; source, gate, scope, edit,
+  and reviewer facts remain fingerprint-covered.
 - The validator returns findings rather than granting authority. It does not
   read or write source, delete a file, alter storage, invoke Git, or expose a
   source-mutation path.
@@ -131,9 +138,8 @@ Phase 3R.10.15 adapter tests remain green.
 
 ## Next Task
 
-Phase 3R, Task 3R.10.17: Compatibility Deletion Scope-Aware Removal Review
-Replay Adapter. Create a separate read-only adapter that independently reruns
-the Phase 3R.10.15 source and gate checks, then validates the Phase 3R.10.16
-artifact against that fresh result. It must never accept a caller-supplied dry
-run as proof and must remain incapable of source, file, storage, or Git
-mutation.
+Phase 3R, Task 3R.10.18: Compatibility Deletion Scope-Aware Controlled Apply
+Adapter. Define the first mutation-capable component around a successful
+server-derived replay, explicit scoped authorization, one-time use, expiry,
+final source fingerprint validation, bounded edits, rollback evidence, and
+auditable output.

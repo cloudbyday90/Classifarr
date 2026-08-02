@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Compatibility Deletion Scope-Aware Review Replay**: Added a server-derived,
+  read-only replay boundary for named-test-scope removal reviews. It rejects
+  caller-supplied snapshots, reruns current gate and source checks, and blocks
+  source, gate, scope, edit, or reviewer drift. Review-artifact provenance now
+  separates the original time-bound digest from stable replay fingerprints;
+  neither component can mutate source, files, storage, or Git.
+
 - **Compatibility Deletion Scope-Aware Review Artifact**: Added a pure,
   versioned SHA-256 review artifact for accepted named-test-scope dry runs. It
   binds exact scope, gate, source/result fingerprints, hash-backed edit ranges,

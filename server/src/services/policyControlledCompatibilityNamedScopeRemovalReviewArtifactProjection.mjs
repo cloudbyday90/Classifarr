@@ -122,14 +122,60 @@ function buildPolicyControlledCompatibilityNamedScopeRemovalReviewArtifact({
       resultFingerprint: scopeDryRun.sourceEdit.resultFingerprint,
       reviewedAt: projection.review.reviewedAt,
       reviewedBy: projection.review.reviewedBy,
+      reviewMetadataFingerprint:
+        buildPolicyControlledCompatibilityNamedScopeRemovalReviewMetadataFingerprint({ review }),
       scopeIdentity: scopeDryRun.selectedScope.entryIdentity,
       scopeRemovalDryRunVersion: scopeDryRun.version,
+      scopeSnapshotFingerprint:
+        buildPolicyControlledCompatibilityNamedScopeRemovalReviewScopeSnapshotFingerprint({
+          scopeRemovalDryRun,
+        }),
       sourceFingerprint: scopeDryRun.source.fingerprint,
     },
   };
 }
 
+function buildPolicyControlledCompatibilityNamedScopeRemovalReviewScopeSnapshotProjection({
+  scopeRemovalDryRun = {},
+} = {}) {
+  const projection = buildPolicyControlledCompatibilityNamedScopeRemovalReviewArtifactProjection({
+    scopeRemovalDryRun,
+  });
+  const { evaluationTime: _evaluationTime, ...scopeSnapshot } = projection.scopeRemovalDryRun;
+
+  return {
+    version: POLICY_CONTROLLED_COMPATIBILITY_NAMED_SCOPE_REMOVAL_REVIEW_ARTIFACT_VERSION,
+    scopeRemovalDryRun: scopeSnapshot,
+  };
+}
+
+function buildPolicyControlledCompatibilityNamedScopeRemovalReviewScopeSnapshotFingerprint({
+  scopeRemovalDryRun = {},
+} = {}) {
+  return createHash('sha256')
+    .update(stableStringify(
+      buildPolicyControlledCompatibilityNamedScopeRemovalReviewScopeSnapshotProjection({
+        scopeRemovalDryRun,
+      })
+    ))
+    .digest('hex');
+}
+
+function buildPolicyControlledCompatibilityNamedScopeRemovalReviewMetadataFingerprint({
+  review = {},
+} = {}) {
+  return createHash('sha256')
+    .update(stableStringify({
+      version: POLICY_CONTROLLED_COMPATIBILITY_NAMED_SCOPE_REMOVAL_REVIEW_ARTIFACT_VERSION,
+      review: normalizeReviewMetadata(review),
+    }))
+    .digest('hex');
+}
+
 export {
   buildPolicyControlledCompatibilityNamedScopeRemovalReviewArtifact,
   buildPolicyControlledCompatibilityNamedScopeRemovalReviewArtifactProjection,
+  buildPolicyControlledCompatibilityNamedScopeRemovalReviewMetadataFingerprint,
+  buildPolicyControlledCompatibilityNamedScopeRemovalReviewScopeSnapshotFingerprint,
+  buildPolicyControlledCompatibilityNamedScopeRemovalReviewScopeSnapshotProjection,
 };

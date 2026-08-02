@@ -21,138 +21,16 @@ import os from 'node:os';
 import path from 'node:path';
 
 import {
-  POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS,
-} from '../../services/policyCompatibilityDeletionExecutionActions.mjs';
-import {
-  buildPolicyCompatibilityDeletionExecutionGate,
-} from '../../services/policyCompatibilityDeletionExecutionGate.mjs';
-import {
-  buildPolicyCompatibilityDeletionPreflightManifestObservationIdentity,
-} from '../../services/policyCompatibilityDeletionPreflightManifestObservationIdentity.mjs';
-import {
-  POLICY_COMPATIBILITY_DELETION_PRE_APPLY_CHANGE_DETECTOR_STATUS_IDS,
-} from '../../services/policyCompatibilityDeletionPreApplyChangeDetector.mjs';
-import {
-  buildPolicyControlledCompatibilityNamedScopeRemovalDryRun,
-} from '../../services/policyControlledCompatibilityNamedScopeRemovalAdapter.mjs';
-import {
   POLICY_CONTROLLED_COMPATIBILITY_NAMED_SCOPE_REMOVAL_REVIEW_ARTIFACT_RISK_IDS,
   POLICY_CONTROLLED_COMPATIBILITY_NAMED_SCOPE_REMOVAL_REVIEW_ARTIFACT_VERSION,
   buildPolicyControlledCompatibilityNamedScopeRemovalReviewArtifact,
   validatePolicyControlledCompatibilityNamedScopeRemovalReviewArtifact,
 } from '../../services/policyControlledCompatibilityNamedScopeRemovalReviewArtifact.mjs';
 import {
-  POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
-  buildReadyExecutionGateOperatorEvidence,
-  buildReadyExecutionGatePreflightEvidenceArtifact,
-  buildReadyExecutionGateRecoveryEvidence,
-  buildReadyExecutionPlanArtifact,
-} from './fixtures/policyCompatibilityDeletionExecutionGateFixtures.mjs';
-
-const REVIEW_TIME = '2026-07-14T20:01:00.000Z';
-
-function namedScopeEntry(overrides = {}) {
-  return {
-    actionId: POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS.REMOVE_NAMED_TEST_SCOPE,
-    categoryId: 'compatibility_named_test_scopes',
-    componentPath: 'client/src/components/policies/PolicyIntentEditor.vue',
-    deletionIntent: 'Remove explicitly retired compatibility assertions from a retained test file.',
-    dependencyIds: ['compatibility_named_scope_review_artifact_fixture'],
-    path: 'client/src/__tests__/retained-policy.test.js',
-    ready: true,
-    replacementEvidence: { replacement: 'Native destination test coverage is retained.' },
-    sourceTextFragments: ['legacy alpha marker', 'legacy beta marker'],
-    targetKindId: 'named_test_scope',
-    testNameFragments: ['removes legacy alpha', 'removes legacy beta'],
-    wholeFileDeletion: false,
-    ...overrides,
-  };
-}
-
-function namedScopeExecutionPlan(entry) {
-  return {
-    statusId: 'ready_for_execution_gate',
-    readyForExecutionGate: true,
-    validation: { ok: true, issueCount: 0, issues: [] },
-    manifest: {
-      approved: true,
-      approvedBy: 'policy-maintainer',
-      entries: [entry],
-    },
-  };
-}
-
-function buildReadyGate(entry) {
-  const executionPlanArtifact = buildReadyExecutionPlanArtifact({
-    executionPlan: namedScopeExecutionPlan(entry),
-  });
-
-  return buildPolicyCompatibilityDeletionExecutionGate({
-    executionPlanArtifact,
-    recoveryEvidence: buildReadyExecutionGateRecoveryEvidence({ executionPlanArtifact }),
-    operatorEvidence: buildReadyExecutionGateOperatorEvidence({ executionPlanArtifact }),
-    preflightEvidenceArtifact: buildReadyExecutionGatePreflightEvidenceArtifact({
-      executionPlanArtifact,
-    }),
-    generatedAt: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
-    now: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
-  });
-}
-
-function readyPreApplyVerification() {
-  return {
-    statusId: POLICY_COMPATIBILITY_DELETION_PRE_APPLY_CHANGE_DETECTOR_STATUS_IDS.VERIFIED,
-    verified: true,
-    validation: { ok: true, issueCount: 0, issues: [] },
-    risks: [],
-  };
-}
-
-function reviewMetadata(overrides = {}) {
-  return {
-    reviewReason: 'Reviewed the fresh, bounded named-test-scope dry run.',
-    reviewedAt: REVIEW_TIME,
-    reviewedBy: 'policy-maintainer',
-    ...overrides,
-  };
-}
-
-function sourceText(suffix = '') {
-  return [
-    "import { describe, expect, it } from 'vitest';",
-    '',
-    "describe('retained policy behavior', () => {",
-    "  it('removes legacy alpha', () => {",
-    "    expect('legacy alpha marker').toBe('legacy alpha marker');",
-    '  });',
-    '',
-    "  it('keeps native behavior', () => {",
-    "    expect('native').toBe('native');",
-    '  });',
-    '',
-    "  it('removes legacy beta', () => {",
-    "    expect('legacy beta marker').toBe('legacy beta marker');",
-    '  });',
-    '});',
-    suffix,
-  ].join('\n');
-}
-
-function buildReadyDryRun({ fixtureRoot, suffix = '' } = {}) {
-  const entry = namedScopeEntry();
-  const sourcePath = path.join(fixtureRoot, entry.path);
-  fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
-  fs.writeFileSync(sourcePath, sourceText(suffix));
-
-  return buildPolicyControlledCompatibilityNamedScopeRemovalDryRun({
-    executionGate: buildReadyGate(entry),
-    now: POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_TEST_TIME,
-    preApplyChangeDetector: readyPreApplyVerification,
-    repoRoot: fixtureRoot,
-    selectedEntryIdentity:
-      buildPolicyCompatibilityDeletionPreflightManifestObservationIdentity(entry),
-  });
-}
+  REVIEW_TIME,
+  buildReadyScopeRemovalDryRun,
+  reviewMetadata,
+} from './fixtures/policyControlledCompatibilityNamedScopeRemovalReviewFixtures.mjs';
 
 describe('policyControlledCompatibilityNamedScopeRemovalReviewArtifact', () => {
   let fixtureRoot;
@@ -166,7 +44,10 @@ describe('policyControlledCompatibilityNamedScopeRemovalReviewArtifact', () => {
   });
 
   test('binds a fresh accepted dry run, source snapshot, exact edits, and reviewer context', () => {
-    const scopeRemovalDryRun = buildReadyDryRun({ fixtureRoot, suffix: '// review-secret' });
+    const scopeRemovalDryRun = buildReadyScopeRemovalDryRun({
+      fixtureRoot,
+      suffix: '// review-secret',
+    });
     const review = reviewMetadata();
     const reviewArtifact = buildPolicyControlledCompatibilityNamedScopeRemovalReviewArtifact({
       review,
@@ -178,7 +59,9 @@ describe('policyControlledCompatibilityNamedScopeRemovalReviewArtifact', () => {
     expect(reviewArtifact.fingerprint).toMatch(/^[a-f0-9]{64}$/u);
     expect(reviewArtifact.provenance).toEqual(expect.objectContaining({
       editCount: 2,
+      reviewMetadataFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/u),
       scopeIdentity: scopeRemovalDryRun.selectedScope.entryIdentity,
+      scopeSnapshotFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/u),
       sourceFingerprint: scopeRemovalDryRun.source.fingerprint,
       resultFingerprint: scopeRemovalDryRun.dryRun.resultFingerprint,
     }));
@@ -192,13 +75,19 @@ describe('policyControlledCompatibilityNamedScopeRemovalReviewArtifact', () => {
   });
 
   test('rejects artifact substitution and changes to the reviewed source snapshot', () => {
-    const firstDryRun = buildReadyDryRun({ fixtureRoot, suffix: '// first source snapshot' });
+    const firstDryRun = buildReadyScopeRemovalDryRun({
+      fixtureRoot,
+      suffix: '// first source snapshot',
+    });
     const review = reviewMetadata();
     const firstArtifact = buildPolicyControlledCompatibilityNamedScopeRemovalReviewArtifact({
       review,
       scopeRemovalDryRun: firstDryRun,
     });
-    const secondDryRun = buildReadyDryRun({ fixtureRoot, suffix: '// second source snapshot' });
+    const secondDryRun = buildReadyScopeRemovalDryRun({
+      fixtureRoot,
+      suffix: '// second source snapshot',
+    });
 
     const validation = validatePolicyControlledCompatibilityNamedScopeRemovalReviewArtifact({
       now: REVIEW_TIME,
@@ -217,7 +106,7 @@ describe('policyControlledCompatibilityNamedScopeRemovalReviewArtifact', () => {
   });
 
   test('rejects altered edit ranges and hashes after an artifact has been reviewed', () => {
-    const scopeRemovalDryRun = buildReadyDryRun({ fixtureRoot });
+    const scopeRemovalDryRun = buildReadyScopeRemovalDryRun({ fixtureRoot });
     const review = reviewMetadata();
     const reviewArtifact = buildPolicyControlledCompatibilityNamedScopeRemovalReviewArtifact({
       review,
@@ -242,7 +131,7 @@ describe('policyControlledCompatibilityNamedScopeRemovalReviewArtifact', () => {
   });
 
   test('rejects stale dry-run source snapshots and duplicate named-scope members', () => {
-    const scopeRemovalDryRun = buildReadyDryRun({ fixtureRoot });
+    const scopeRemovalDryRun = buildReadyScopeRemovalDryRun({ fixtureRoot });
     const review = reviewMetadata();
     const reviewArtifact = buildPolicyControlledCompatibilityNamedScopeRemovalReviewArtifact({
       review,
@@ -271,7 +160,7 @@ describe('policyControlledCompatibilityNamedScopeRemovalReviewArtifact', () => {
   });
 
   test('rejects a reviewed dry run whose gate, observations, or side-effect boundary changes', () => {
-    const scopeRemovalDryRun = buildReadyDryRun({ fixtureRoot });
+    const scopeRemovalDryRun = buildReadyScopeRemovalDryRun({ fixtureRoot });
     const review = reviewMetadata();
     const reviewArtifact = buildPolicyControlledCompatibilityNamedScopeRemovalReviewArtifact({
       review,
@@ -300,7 +189,7 @@ describe('policyControlledCompatibilityNamedScopeRemovalReviewArtifact', () => {
   });
 
   test('rejects review artifacts without a complete reviewer context', () => {
-    const scopeRemovalDryRun = buildReadyDryRun({ fixtureRoot });
+    const scopeRemovalDryRun = buildReadyScopeRemovalDryRun({ fixtureRoot });
     const review = reviewMetadata({ reviewReason: '', reviewedBy: '' });
     const reviewArtifact = buildPolicyControlledCompatibilityNamedScopeRemovalReviewArtifact({
       review,

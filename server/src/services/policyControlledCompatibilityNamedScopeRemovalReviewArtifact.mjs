@@ -36,6 +36,8 @@ import {
 import {
   buildPolicyControlledCompatibilityNamedScopeRemovalReviewArtifact,
   buildPolicyControlledCompatibilityNamedScopeRemovalReviewArtifactProjection,
+  buildPolicyControlledCompatibilityNamedScopeRemovalReviewMetadataFingerprint,
+  buildPolicyControlledCompatibilityNamedScopeRemovalReviewScopeSnapshotFingerprint,
 } from './policyControlledCompatibilityNamedScopeRemovalReviewArtifactProjection.mjs';
 import {
   DEFAULT_MAX_SCOPE_REMOVAL_DRY_RUN_AGE_MS,
@@ -321,11 +323,100 @@ function validatePolicyControlledCompatibilityNamedScopeRemovalReviewArtifact({
       provenance.resultFingerprint !== expected.provenance.resultFingerprint ||
       Number(provenance.editCount) !== Number(expected.provenance.editCount) ||
       provenance.reviewedBy !== expected.provenance.reviewedBy ||
-      provenance.reviewedAt !== expected.provenance.reviewedAt) {
+      provenance.reviewedAt !== expected.provenance.reviewedAt ||
+      provenance.reviewMetadataFingerprint !== expected.provenance.reviewMetadataFingerprint ||
+      provenance.scopeSnapshotFingerprint !== expected.provenance.scopeSnapshotFingerprint) {
     issues.push(buildRisk(
       POLICY_CONTROLLED_COMPATIBILITY_NAMED_SCOPE_REMOVAL_REVIEW_ARTIFACT_RISK_IDS
         .REVIEW_ARTIFACT_PROVENANCE_MISMATCH,
       'Scope-aware removal review artifact provenance must match its reviewed scope, gate, snapshot, and reviewer.'
+    ));
+  }
+
+  return { ok: issues.length === 0, issueCount: issues.length, issues };
+}
+
+function validatePolicyControlledCompatibilityNamedScopeRemovalReviewArtifactReplay({
+  review = null,
+  reviewArtifact = null,
+  scopeRemovalDryRun = null,
+} = {}) {
+  const issues = [];
+  const metadata = normalizeReviewMetadata(review);
+
+  if (!scopeRemovalDryRun || typeof scopeRemovalDryRun !== 'object' ||
+      Array.isArray(scopeRemovalDryRun)) {
+    issues.push(buildRisk(
+      POLICY_CONTROLLED_COMPATIBILITY_NAMED_SCOPE_REMOVAL_REVIEW_ARTIFACT_RISK_IDS
+        .MISSING_SCOPE_REMOVAL_DRY_RUN,
+      'Scope-aware removal replay requires a fresh server-derived dry-run object.'
+    ));
+  }
+  if (!metadata.reviewedBy || !metadata.reviewReason) {
+    issues.push(buildRisk(
+      POLICY_CONTROLLED_COMPATIBILITY_NAMED_SCOPE_REMOVAL_REVIEW_ARTIFACT_RISK_IDS
+        .MISSING_REVIEWER_CONTEXT,
+      'Scope-aware removal replay requires a named reviewer and a non-empty review reason.'
+    ));
+  }
+  if (!metadata.reviewedAt) {
+    issues.push(buildRisk(
+      POLICY_CONTROLLED_COMPATIBILITY_NAMED_SCOPE_REMOVAL_REVIEW_ARTIFACT_RISK_IDS
+        .INVALID_REVIEW_TIMESTAMP,
+      'Scope-aware removal replay requires a valid review timestamp.'
+    ));
+  }
+  if (!reviewArtifact || typeof reviewArtifact !== 'object' || Array.isArray(reviewArtifact)) {
+    issues.push(buildRisk(
+      POLICY_CONTROLLED_COMPATIBILITY_NAMED_SCOPE_REMOVAL_REVIEW_ARTIFACT_RISK_IDS
+        .MISSING_REVIEW_ARTIFACT,
+      'Scope-aware removal replay requires a review artifact.'
+    ));
+    return { ok: false, issueCount: issues.length, issues };
+  }
+
+  const expectedArtifact = buildPolicyControlledCompatibilityNamedScopeRemovalReviewArtifact({
+    review,
+    scopeRemovalDryRun,
+  });
+  const actualFingerprint = cleanString(reviewArtifact.fingerprint).toLowerCase();
+  if (reviewArtifact.version !==
+      POLICY_CONTROLLED_COMPATIBILITY_NAMED_SCOPE_REMOVAL_REVIEW_ARTIFACT_VERSION ||
+      reviewArtifact.algorithm !== 'sha256' ||
+      !isSha256Fingerprint(actualFingerprint)) {
+    issues.push(buildRisk(
+      POLICY_CONTROLLED_COMPATIBILITY_NAMED_SCOPE_REMOVAL_REVIEW_ARTIFACT_RISK_IDS
+        .MALFORMED_REVIEW_ARTIFACT,
+      'Scope-aware removal replay requires a versioned SHA-256 review artifact.'
+    ));
+  }
+
+  const provenance = asObject(reviewArtifact.provenance);
+  const scopeSnapshotFingerprint =
+    buildPolicyControlledCompatibilityNamedScopeRemovalReviewScopeSnapshotFingerprint({
+      scopeRemovalDryRun,
+    });
+  const reviewMetadataFingerprint =
+    buildPolicyControlledCompatibilityNamedScopeRemovalReviewMetadataFingerprint({ review });
+  if (!isSha256Fingerprint(provenance.scopeSnapshotFingerprint) ||
+      !isSha256Fingerprint(provenance.reviewMetadataFingerprint) ||
+      provenance.scopeSnapshotFingerprint !== scopeSnapshotFingerprint ||
+      provenance.reviewMetadataFingerprint !== reviewMetadataFingerprint ||
+      provenance.scopeIdentity !== expectedArtifact.provenance.scopeIdentity ||
+      provenance.path !== expectedArtifact.provenance.path ||
+      provenance.executionPlanArtifactFingerprint !==
+        expectedArtifact.provenance.executionPlanArtifactFingerprint ||
+      provenance.sourceFingerprint !== expectedArtifact.provenance.sourceFingerprint ||
+      provenance.resultFingerprint !== expectedArtifact.provenance.resultFingerprint ||
+      Number(provenance.editCount) !== Number(expectedArtifact.provenance.editCount) ||
+      provenance.scopeRemovalDryRunVersion !==
+        expectedArtifact.provenance.scopeRemovalDryRunVersion ||
+      provenance.reviewedAt !== metadata.reviewedAt ||
+      provenance.reviewedBy !== metadata.reviewedBy) {
+    issues.push(buildRisk(
+      POLICY_CONTROLLED_COMPATIBILITY_NAMED_SCOPE_REMOVAL_REVIEW_ARTIFACT_RISK_IDS
+        .REVIEW_ARTIFACT_PROVENANCE_MISMATCH,
+      'Scope-aware removal replay requires the artifact scope snapshot and reviewer metadata to match the fresh replay.'
     ));
   }
 
@@ -339,4 +430,5 @@ export {
   buildPolicyControlledCompatibilityNamedScopeRemovalReviewArtifact,
   buildPolicyControlledCompatibilityNamedScopeRemovalReviewArtifactProjection,
   validatePolicyControlledCompatibilityNamedScopeRemovalReviewArtifact,
+  validatePolicyControlledCompatibilityNamedScopeRemovalReviewArtifactReplay,
 };

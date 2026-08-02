@@ -17,7 +17,7 @@
  */
 
 const POLICY_CONTROLLED_COMPATIBILITY_NAMED_SCOPE_REMOVAL_REVIEW_ARTIFACT_VERSION =
-  'policy.controlled_compatibility_named_scope_removal_review_artifact.v1';
+  'policy.controlled_compatibility_named_scope_removal_review_artifact.v2';
 const DEFAULT_MAX_SCOPE_REMOVAL_DRY_RUN_AGE_MS = 15 * 60 * 1000;
 const SHA256_FINGERPRINT_PATTERN = /^[a-f0-9]{64}$/u;
 
