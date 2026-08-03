@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Runtime Resolution Learning**: Resolved policy items now record a
+  compact, server-guarded outcome-only learning decision. The compatibility
+  `generateRule` request can no longer write exact-match or genre evidence;
+  failed outcome recording rolls the resolution transaction back instead of
+  completing without an audit record.
+
 - **Runtime Question Answer Contract**: Pending policy-runtime questions now
   expose one server-owned, fingerprint-bound answer contract for the UI and
   Discord. Resolution accepts only versioned action and destination IDs,

@@ -4001,24 +4001,90 @@ Completion:
 
 Intent: separate item resolution from durable learning.
 
-Tasks:
+Canonical learning vocabulary:
+
+- Decision status: `blocked`, `outcome_only`, `candidate`, or
+  `policy_edit_required`.
+- Durable tier: `none`, `exact_item_memory`, `compatibility_evidence`,
+  `identity_evidence`, or `hard_limit_evidence`.
+- Product shorthand: `exact_only` means `exact_item_memory`; and
+  `constraint_evidence` means `hard_limit_evidence`. The code and persistence
+  contracts use the canonical IDs above to avoid a second tier vocabulary.
+
+Tasks are intentionally ordered by authority boundary:
+
+#### 5R.6.1 Runtime Resolution Outcome-Only Admission
+
+Status: complete.
+
+- Record a compact, reason-coded final-outcome learning decision for every
+  non-native runtime resolution.
+- Preserve the existing native pending request-time provenance record, which
+  already records an outcome-only learning-guard decision.
+- Remove resolver-owned exact-match and genre-reinforcement writes.
+- Treat a compatibility `generateRule` request as an audit reason, never as a
+  durable-learning instruction.
+- Fail the transaction when the final outcome record cannot be persisted.
+
+Implementation: [Policy Runtime Resolution Learning Admission](policy-runtime-resolution-learning-admission.md).
+
+#### 5R.6.2 Exact-Item Memory Command Admission
+
+Status: next.
+
+- Define a separate server-authenticated exact-item memory command; do not add
+  an answer field or re-enable `mark_exact_item_memory` in the runtime answer
+  contract without this boundary.
+- Revalidate the final outcome, source-event identity, locked classification
+  state, actor authority, media type, TMDB ID, and destination before a write.
+- Use `policyManualCorrectionLearning.mjs` and
+  `policyAuthorizedOutcomeTransactionExecutor.mjs` as the established
+  admission/execution pattern.
+- Provide durable receipt replay and bounded outcome feedback without storing
+  model text, display labels, or provider payloads.
+
+Acceptance criteria:
+
+- A resolution remains outcome-only unless a separate exact-item command is
+  authorized and executed.
+- Replayed, stale, cross-item, cross-destination, or unauthorized commands
+  cannot write evidence.
+
+#### 5R.6.3 Compatibility And Identity Evidence Admission
+
+Status: pending.
+
+- Admit compatibility and identity evidence only through allow-listed
+  operations from the authorized outcome executor.
+- Require bounded intent/evidence-quality provenance and use the profile
+  refresh outbox where destination evidence changes.
+- Keep broad genre, weak overlap, RAG-only support, profile-only support,
+  missing metadata, and unsafe AI wording blocked or exact-only.
+
+#### 5R.6.4 Direct Writer Inventory And Cutover
+
+Status: pending.
+
+- Inventory each direct `classificationEvidenceService` and reinforcement
+  caller, including queue administration and legacy maintenance paths.
+- Classify each as an authorized executor integration, a migration-only tool,
+  or deletion candidate.
+- Remove any normal runtime path that can mutate evidence without a guard,
+  command audit, source-event receipt, and provenance record.
+
+#### 5R.6.5 Learning Boundary Regression Suite
+
+Status: pending.
+
+- Add path-level tests that fail on direct writer use, stale questions, raw AI
+  context retention, cross-destination writes, and duplicate source events.
+- Cover outcome-only, exact-item, compatibility, identity, and policy-edit
+  paths without freezing abandoned diagnostic UX.
+
+Phase acceptance criteria:
 
 - Record final outcome for every resolved question.
 - Route all possible learning side effects through one server guard.
-- Define learning tiers:
-  - `blocked`,
-  - `exact_only`,
-  - `compatibility_evidence`,
-  - `identity_evidence`,
-  - `constraint_evidence`,
-  - `policy_edit_required`.
-- Default broad genre ambiguity, weak overlap, RAG-only support, profile-only
-  support, unsafe AI wording, missing metadata, and stale questions to blocked
-  or exact-only learning.
-- Allow durable evidence updates only through allow-listed side effects.
-- Store learning-decision reason codes and provenance.
-
-Acceptance criteria:
 
 - `resolved` does not imply `learned`.
 - Every learning side effect has a reason and provenance trail.
@@ -4193,8 +4259,11 @@ Current starting point:
   answers, or Discord payloads authorize learning directly.
 - **5R.4 Runtime Clarification Normalizer and 5R.5 Question And Answer
   Contract are complete.** Current runtime questions are server-normalized and
-  resolved only through a versioned, fingerprint-bound answer contract. The
-  next Phase 5R component is 5R.6, Learning Guard And Outcome Separation.
+  resolved only through a versioned, fingerprint-bound answer contract.
+- **5R.6.1 Runtime Resolution Outcome-Only Admission is complete.** Ordinary
+  resolution now records a guarded outcome-only decision and cannot turn the
+  compatibility `generateRule` flag into a durable evidence write. The next
+  Phase 5R component is **5R.6.2 Exact-Item Memory Command Admission**.
 
 Implementation record:
 
@@ -4207,6 +4276,9 @@ Implementation record:
 - [Policy Runtime Question Answer Contract](policy-runtime-question-answer-contract.md)
   records the 5R.5 shared UI/Discord answer boundary, its security controls,
   and the implementation outcome.
+- [Policy Runtime Resolution Learning Admission](policy-runtime-resolution-learning-admission.md)
+  records the 5R.6.1 resolver cutover, compact outcome projection, and direct
+  writer removal.
 - [Policy Builder Phase 5 Implementation](policy-builder-phase-5-implementation.md)
   remains historical implementation context; it is not the current authority
   plan.

@@ -262,8 +262,15 @@ blocked_by_learning_audit
   intake boundary while retaining only the guard-blocking state needed to
   reject unsafe learning.
 
+## Runtime Resolution Adoption
+
+Phase 5R.6.1 applies this guard to the ordinary policy-resolution boundary.
+The resolver now records a compact outcome-only decision and cannot invoke an
+exact-item or genre evidence writer directly. See
+[Policy Runtime Resolution Learning Admission](policy-runtime-resolution-learning-admission.md).
+
 ## Next Step
 
-Proceed to **Phase 6R.3.2 Learning Intake Adapter Adoption**. That component
-should route each live manual, request-time, native pending, routing, and
-Discord path through the intake contract before it reaches this guard.
+Proceed to **Phase 5R.6.2 Exact-Item Memory Command Admission**. It must use
+the existing authorized outcome transaction executor and source-event receipt
+path, not a runtime-answer flag or resolver-side evidence write.

@@ -866,7 +866,7 @@ describe('ClarificationService', () => {
       });
     });
 
-    test('should handle null policy_question gracefully', async () => {
+    test('records a null policy question as outcome-only without direct evidence writes', async () => {
       const mockClassification = {
         id: 1,
         title: 'Test Movie',
@@ -903,17 +903,16 @@ describe('ClarificationService', () => {
 
       expect(result.success).toBe(true);
       
-      // Verify item_exact evidence was written with null original_question in payload
-      const evidenceInsertCall = mockClient.query.mock.calls.find(call => 
-        call[0] && call[0].includes('INSERT INTO classification_evidence') && call[1] && call[1][0] === 'item_exact'
-      );
-      expect(evidenceInsertCall).toBeDefined();
-      
-      const evidenceDataParam = JSON.parse(evidenceInsertCall[1][5]);
-      expect(evidenceDataParam.original_question).toBeNull();
+      expect(result.runtimeResolutionLearning).toEqual(expect.objectContaining({
+        statusId: 'outcome_only',
+        decision: expect.objectContaining({ canWriteLearning: false }),
+      }));
+      expect(mockClient.query.mock.calls.some(([sql]) =>
+        typeof sql === 'string' && sql.includes('classification_evidence')
+      )).toBe(false);
     });
 
-    test('should handle invalid policy_question string gracefully', async () => {
+    test('records an invalid policy-question string as outcome-only without direct evidence writes', async () => {
       const mockClassification = {
         id: 1,
         title: 'Test Movie',
@@ -949,18 +948,18 @@ describe('ClarificationService', () => {
 
       expect(result.success).toBe(true);
 
-      const evidenceInsertCall = mockClient.query.mock.calls.find(call =>
-        call[0] && call[0].includes('INSERT INTO classification_evidence') && call[1] && call[1][0] === 'item_exact'
-      );
-      expect(evidenceInsertCall).toBeDefined();
-
-      const evidenceDataParam = JSON.parse(evidenceInsertCall[1][5]);
-      expect(evidenceDataParam.original_question).toBeNull();
+      expect(result.runtimeResolutionLearning).toEqual(expect.objectContaining({
+        statusId: 'outcome_only',
+        decision: expect.objectContaining({ canWriteLearning: false }),
+      }));
+      expect(mockClient.query.mock.calls.some(([sql]) =>
+        typeof sql === 'string' && sql.includes('classification_evidence')
+      )).toBe(false);
     });
   });
 
-  describe('resolvePolicyQuestion - genre_pattern writing', () => {
-    test('validates SQL bind counts across the full successful resolution path', async () => {
+  describe('resolvePolicyQuestion - outcome-only learning boundary', () => {
+    test('validates SQL bind counts across the successful outcome-only resolution path', async () => {
       const mockClassification = {
         id: 1,
         title: 'Planet Earth',
@@ -980,9 +979,6 @@ describe('ClarificationService', () => {
           { rows: [mockClassification] }, // Get classification
           { rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] }, // selected library
           createDbRowsResult(), // UPDATE classification_history
-          { rows: [{ id: 1 }] }, // Phase 7: INSERT classification_evidence (item_exact)
-          { rows: [{ id: 2 }] }, // Phase 7: INSERT classification_evidence (genre: documentary)
-          { rows: [{ id: 3 }] }, // Phase 7: INSERT classification_evidence (genre: family)
           createDbRowsResult(), // COMMIT
         ]),
         release: jest.fn()
@@ -993,10 +989,11 @@ describe('ClarificationService', () => {
       const result = await clarificationService.resolvePolicyQuestion(1, 5, 'Movies', 'test-user', true);
 
       expect(result.success).toBe(true);
+      expect(result.runtimeResolutionLearning.statusId).toBe('outcome_only');
       expect(mockClient.query).toHaveBeenCalled();
     });
 
-    test('updates then inserts one genre_pattern per new genre when metadata has genres', async () => {
+    test('does not turn array-shaped genres into direct evidence writes', async () => {
       const mockClassification = {
         id: 1,
         title: 'Planet Earth',
@@ -1029,17 +1026,14 @@ describe('ClarificationService', () => {
 
       expect(result.success).toBe(true);
 
-      // Phase 7: genre evidence is written via INSERT INTO classification_evidence with ON CONFLICT DO UPDATE
       const genreEvidenceCalls = mockClient.query.mock.calls.filter(call =>
         call[0] && call[0].includes('INSERT INTO classification_evidence') && call[1] && call[1][0] === 'genre'
       );
-      expect(genreEvidenceCalls).toHaveLength(2);
-      // evidence_key is params[4]: 'genre:documentary', 'genre:family'
-      expect(genreEvidenceCalls[0][1][4]).toBe('genre:documentary');
-      expect(genreEvidenceCalls[1][1][4]).toBe('genre:family');
+      expect(genreEvidenceCalls).toHaveLength(0);
+      expect(result.runtimeResolutionLearning.statusId).toBe('outcome_only');
     });
 
-    test('stores genre lowercase in genre_pattern update and insert params', async () => {
+    test('does not turn a single genre into a direct evidence write', async () => {
       const mockClassification = {
         id: 1,
         title: 'Nature Film',
@@ -1069,16 +1063,13 @@ describe('ClarificationService', () => {
 
       await clarificationService.resolvePolicyQuestion(1, 5, 'Movies', 'test-user', true);
 
-      // Phase 7: genre evidence uses INSERT INTO classification_evidence with ON CONFLICT DO UPDATE (evidence_key is lowercase)
       const genreEvidenceCall = mockClient.query.mock.calls.find(call =>
         call[0] && call[0].includes('INSERT INTO classification_evidence') && call[1] && call[1][0] === 'genre'
       );
-      expect(genreEvidenceCall).toBeDefined();
-      // evidence_key (params[4]) should be lowercase
-      expect(genreEvidenceCall[1][4]).toBe('genre:documentary');
+      expect(genreEvidenceCall).toBeUndefined();
     });
 
-    test('handles object-shaped metadata genres when writing genre_pattern rows', async () => {
+    test('does not turn object-shaped metadata genres into direct evidence writes', async () => {
       const mockClassification = {
         id: 1,
         title: 'Nature Film',
@@ -1111,16 +1102,13 @@ describe('ClarificationService', () => {
 
       expect(result.success).toBe(true);
 
-      // Phase 7: genres are written as classification_evidence rows with lowercase evidence_key
       const genreEvidenceCalls = mockClient.query.mock.calls.filter(call =>
         call[0] && call[0].includes('INSERT INTO classification_evidence') && call[1] && call[1][0] === 'genre'
       );
-      expect(genreEvidenceCalls).toHaveLength(2);
-      expect(genreEvidenceCalls[0][1][4]).toBe('genre:documentary');
-      expect(genreEvidenceCalls[1][1][4]).toBe('genre:family');
+      expect(genreEvidenceCalls).toHaveLength(0);
     });
 
-    test('updates an existing genre_pattern without inserting a duplicate row', async () => {
+    test('does not use direct genre writes for a previously observed genre', async () => {
       const mockClassification = {
         id: 1,
         title: 'Nature Film',
@@ -1152,12 +1140,10 @@ describe('ClarificationService', () => {
 
       expect(result.success).toBe(true);
 
-      // Phase 7: single upsert per genre — ON CONFLICT DO UPDATE handles the existing-row case
       const genreEvidenceCalls = mockClient.query.mock.calls.filter(call =>
         call[0] && call[0].includes('INSERT INTO classification_evidence') && call[1] && call[1][0] === 'genre'
       );
-      expect(genreEvidenceCalls).toHaveLength(1);
-      expect(genreEvidenceCalls[0][1][4]).toBe('genre:documentary');
+      expect(genreEvidenceCalls).toHaveLength(0);
     });
 
     test('skips genre_pattern INSERTs when metadata has no genres', async () => {

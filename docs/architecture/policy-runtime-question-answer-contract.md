@@ -106,8 +106,9 @@ client-provided display label as a command.
   and destination. A replay is idempotent only when all four values match the
   final recorded outcome; it does not repeat routing.
 - The contract exposes `learning.eligible: false`; no answer action can write
-  learning or change a policy. Phase 5R.6 will own the sole durable-learning
-  admission guard.
+  learning or change a policy. Phase 5R.6.1 now records an outcome-only guard
+  decision for every applicable resolution. A separate command still owns any
+  future durable-learning admission.
 
 ## Implementation Outcome
 
@@ -136,7 +137,7 @@ client-provided display label as a command.
 
 ## Next Work
 
-Phase 5R.6, Learning Guard And Outcome Separation, is next. Its first task is
-to define the server-owned learning-admission guard and reason-code record so a
-resolved item cannot become durable learning without an explicit, allow-listed
-decision.
+Phase 5R.6.1 is complete. See
+[Policy Runtime Resolution Learning Admission](policy-runtime-resolution-learning-admission.md).
+Next is **5R.6.2 Exact-Item Memory Command Admission**, which must remain a
+separate server-authenticated command rather than a runtime-answer option.

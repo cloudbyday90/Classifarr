@@ -23,9 +23,7 @@ const mockDb = createTransactionalDbMock();
 
 const mockClassificationOutcomeService = createServiceStubs(['recordOutcome']);
 
-const mockClassificationEvidenceService = createServiceStubs(['rememberExactMatch', 'reinforceGenrePatterns']);
-
-const mockMetadataNormalization = createServiceStubs(['normalizeMetadataList', 'normalizeMetadataListLower']);
+const mockMetadataNormalization = createServiceStubs(['normalizeMetadataListLower']);
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
@@ -34,16 +32,13 @@ jest.unstable_mockModule('../utils/logger.mjs', () => loggerModuleMock.module);
 
 jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => createNamedMockModule('classificationOutcomeService', mockClassificationOutcomeService));
 
-jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => createNamedMockModule('classificationEvidenceService', mockClassificationEvidenceService));
-
 jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => createMockModule(mockMetadataNormalization));
 
 const { clarificationService: svc } = await import('../services/clarificationService.mjs');
 const db = mockDb;
 const mockLogger = loggerModuleMock.logger;
 const classificationOutcomeService = mockClassificationOutcomeService;
-const classificationEvidenceService = mockClassificationEvidenceService;
-const { normalizeMetadataList, normalizeMetadataListLower } = mockMetadataNormalization;
+const { normalizeMetadataListLower } = mockMetadataNormalization;
 
 const policyQuestionContext = {
     buildQuestionContextCacheKey: jest.fn(),
@@ -60,9 +55,6 @@ beforeEach(() => {
     db.query.mockReset();
     db.pool.connect.mockReset();
     classificationOutcomeService.recordOutcome.mockReset();
-    classificationEvidenceService.rememberExactMatch.mockReset();
-    classificationEvidenceService.reinforceGenrePatterns.mockReset();
-    normalizeMetadataList.mockReset();
     normalizeMetadataListLower.mockReset();
     policyQuestionContext.buildQuestionContextCacheKey.mockReset();
     policyQuestionContext.extractQuestionContext.mockReset();
@@ -690,8 +682,7 @@ describe('resolvePolicyQuestion', () => {
             .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', arr_type: 'radarr', media_type: 'movie', is_active: true }] })
             .mockResolvedValueOnce({})
             .mockResolvedValueOnce({});
-        classificationOutcomeService.recordOutcome.mockResolvedValueOnce({});
-        normalizeMetadataList.mockReturnValue([]);
+        classificationOutcomeService.recordOutcome.mockResolvedValueOnce({ updated: true });
         const result = await svc.resolvePolicyQuestion(1, 5, 'option_a', 'adminUser');
         expect(result.success).toBe(true);
         expect(result.libraryId).toBe(5);
@@ -872,11 +863,10 @@ describe('resolvePolicyQuestion', () => {
 
         await expect(svc.resolvePolicyQuestion(1, 5, 'opt', 'admin'))
             .rejects.toThrow('Policy question must be refreshed');
-        expect(classificationEvidenceService.rememberExactMatch).not.toHaveBeenCalled();
         expect(client.query).toHaveBeenCalledWith('ROLLBACK');
     });
 
-    test('generates learned pattern when generateRule=true and tmdb_id present', async () => {
+    test('records an outcome-only learning decision when legacy rule generation is requested', async () => {
         const client = makeMockClient();
         db.pool.connect.mockResolvedValueOnce(client);
         const classification = {
@@ -891,14 +881,32 @@ describe('resolvePolicyQuestion', () => {
             .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] })
             .mockResolvedValueOnce({})
             .mockResolvedValueOnce({});
-        classificationOutcomeService.recordOutcome.mockResolvedValueOnce({});
-        classificationEvidenceService.rememberExactMatch.mockResolvedValueOnce({ id: 77 });
-        classificationEvidenceService.reinforceGenrePatterns.mockResolvedValueOnce({});
-        normalizeMetadataList.mockReturnValue(['Action']);
+        classificationOutcomeService.recordOutcome.mockResolvedValueOnce({ updated: true });
         const result = await svc.resolvePolicyQuestion(1, 5, 'opt', 'admin', true);
-        expect(result.generatedPattern).toEqual({ id: 77 });
-        expect(classificationEvidenceService.rememberExactMatch).toHaveBeenCalled();
-        expect(classificationEvidenceService.reinforceGenrePatterns).toHaveBeenCalled();
+        expect(result.generatedPattern).toBeNull();
+        expect(result.runtimeResolutionLearning).toEqual(expect.objectContaining({
+            statusId: 'outcome_only',
+            decision: expect.objectContaining({
+                decisionId: 'outcome_only',
+                canWriteLearning: false,
+            }),
+            reasonCodes: expect.arrayContaining([
+                'runtime_resolution_legacy_rule_generation_blocked',
+            ]),
+        }));
+        expect(classificationOutcomeService.recordOutcome).toHaveBeenCalledWith(
+            1,
+            expect.objectContaining({
+                type: 'resolved',
+                runtime_resolution_learning: expect.objectContaining({
+                    status_id: 'outcome_only',
+                    decision: expect.objectContaining({
+                        can_write_learning: false,
+                    }),
+                }),
+            }),
+            { client },
+        );
     });
 
     test('does not generate pattern when generateRule=false', async () => {
@@ -916,10 +924,9 @@ describe('resolvePolicyQuestion', () => {
             .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] })
             .mockResolvedValueOnce({})
             .mockResolvedValueOnce({});
-        classificationOutcomeService.recordOutcome.mockResolvedValueOnce({});
-        normalizeMetadataList.mockReturnValue([]);
+        classificationOutcomeService.recordOutcome.mockResolvedValueOnce({ updated: true });
         const result = await svc.resolvePolicyQuestion(1, 5, 'opt', 'admin', false);
         expect(result.generatedPattern).toBeNull();
-        expect(classificationEvidenceService.rememberExactMatch).not.toHaveBeenCalled();
+        expect(result.runtimeResolutionLearning.statusId).toBe('outcome_only');
     });
 });
