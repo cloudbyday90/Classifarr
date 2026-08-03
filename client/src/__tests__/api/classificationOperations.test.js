@@ -38,6 +38,7 @@ import {
   getSecondPassEvaluation,
   getLiveFeed,
   getPendingClassifications,
+  rememberResolvedExactItem,
   resolvePendingClassification,
   retryClassifications,
 } from '../../api/classificationOperations'
@@ -137,6 +138,13 @@ describe('classificationOperations', () => {
     const result = await resolvePendingClassification('p1', payload)
     expect(mockPost).toHaveBeenCalledWith('/classification/pending/p1/resolve', payload)
     expect(result).toEqual({ data: { resolved: true } })
+  })
+
+  it('rememberResolvedExactItem calls the empty-body exact-item command', async () => {
+    mockPost.mockResolvedValueOnce({ data: { status: 'applied' } })
+    const result = await rememberResolvedExactItem('p1')
+    expect(mockPost).toHaveBeenCalledWith('/classification/history/p1/exact-item-memory')
+    expect(result).toEqual({ data: { status: 'applied' } })
   })
 
   it('retryClassifications calls POST with ids and empty default options', async () => {

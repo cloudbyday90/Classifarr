@@ -75,6 +75,8 @@ function buildPolicyAuthorizedOutcomePersistenceCommand({
   learningDecision: inputLearningDecision = {},
   authorization: inputAuthorization = {},
   currentState: inputCurrentState = {},
+  finalOutcomeOperationId =
+    POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS.RECORD_FINAL_OUTCOME,
 } = {}) {
   const intake = asObject(inputIntake);
   const learningDecision = asObject(inputLearningDecision);
@@ -85,6 +87,10 @@ function buildPolicyAuthorizedOutcomePersistenceCommand({
   const guardAudit = buildPolicyLearningGuardAudit(learningDecision);
   const finalOutcome = asObject(learningDecision.finalOutcome);
   const learning = asObject(learningDecision.learning);
+  const supportedFinalOutcomeOperationIds = new Set([
+    POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS.RECORD_FINAL_OUTCOME,
+    POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS.VERIFY_RECORDED_FINAL_OUTCOME,
+  ]);
 
   if (!intakeAudit.ok) {
     reasonCodes.push(POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_REASON_IDS.INVALID_INTAKE);
@@ -122,6 +128,9 @@ function buildPolicyAuthorizedOutcomePersistenceCommand({
   if (intake.actorId && authorization.actorId !== intake.actorId) {
     reasonCodes.push(POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_REASON_IDS.ACTOR_MISMATCH);
   }
+  if (!supportedFinalOutcomeOperationIds.has(finalOutcomeOperationId)) {
+    reasonCodes.push(POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_REASON_IDS.INVALID_INTAKE);
+  }
 
   if (reasonCodes.length > 0) {
     return buildBlockedCommand({
@@ -135,7 +144,7 @@ function buildPolicyAuthorizedOutcomePersistenceCommand({
 
   const operations = {
     finalOutcome: {
-      operationId: POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS.RECORD_FINAL_OUTCOME,
+      operationId: finalOutcomeOperationId,
       sourceId: intake.sourceId,
       sourceEventId: intake.sourceEventId,
       itemId: normalizeIdentifier(finalOutcome.itemId),
@@ -161,6 +170,25 @@ function buildPolicyAuthorizedOutcomePersistenceCommand({
       reasonCodes: [
         ...reasonCodes,
         POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_REASON_IDS.UNSUPPORTED_LEARNING_TIER,
+      ],
+    });
+  }
+
+  if (finalOutcomeOperationId ===
+      POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS.VERIFY_RECORDED_FINAL_OUTCOME &&
+      (!learningRequested ||
+       learningOperationId !==
+         POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS.WRITE_EXACT_ITEM_MEMORY ||
+       authorization.canWriteLearning !== true)) {
+    return buildBlockedCommand({
+      intake,
+      learningDecision,
+      authorization,
+      currentState,
+      reasonCodes: [
+        ...reasonCodes,
+        POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_REASON_IDS
+          .FINAL_OUTCOME_VERIFICATION_REQUIRES_EXACT_ITEM_MEMORY,
       ],
     });
   }

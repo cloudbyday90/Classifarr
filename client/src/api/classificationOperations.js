@@ -64,6 +64,10 @@ export function resolvePendingClassification(classificationId, payload) {
   return apiClient.post(`/classification/pending/${classificationId}/resolve`, payload)
 }
 
+export function rememberResolvedExactItem(classificationId) {
+  return apiClient.post(`/classification/history/${classificationId}/exact-item-memory`)
+}
+
 export function retryClassifications(classificationIds, options = {}) {
   return apiClient.post('/classification/retry', { classificationIds, options })
 }
@@ -80,6 +84,7 @@ const classificationOperationsApi = {
   getPendingClassifications,
   getPendingClassificationCount,
   resolvePendingClassification,
+  rememberResolvedExactItem,
   retryClassifications,
 }
 

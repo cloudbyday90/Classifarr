@@ -23,6 +23,7 @@ const POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_STATUS_IDS = Object.freeze({
 
 const POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS = Object.freeze({
   RECORD_FINAL_OUTCOME: 'record_final_outcome',
+  VERIFY_RECORDED_FINAL_OUTCOME: 'verify_recorded_final_outcome',
   WRITE_EXACT_ITEM_MEMORY: 'write_exact_item_memory',
   WRITE_COMPATIBILITY_EVIDENCE: 'write_compatibility_evidence',
   WRITE_IDENTITY_EVIDENCE: 'write_identity_evidence',
@@ -54,6 +55,8 @@ const POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_REASON_IDS = Object.freeze({
   UNSUPPORTED_LEARNING_TIER: 'authorized_persistence_unsupported_learning_tier',
   LEARNING_CANDIDATE_MISSING: 'authorized_persistence_learning_candidate_missing',
   LEARNING_DESTINATION_MISMATCH: 'authorized_persistence_learning_destination_mismatch',
+  FINAL_OUTCOME_VERIFICATION_REQUIRES_EXACT_ITEM_MEMORY:
+    'authorized_persistence_final_outcome_verification_requires_exact_item_memory',
 });
 
 const POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_AUDIT_RISK_IDS = Object.freeze({
@@ -61,6 +64,8 @@ const POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_AUDIT_RISK_IDS = Object.freeze({
   INVALID_STATUS: 'invalid_authorized_outcome_persistence_command_status',
   INVALID_FINAL_OUTCOME: 'invalid_authorized_outcome_persistence_final_outcome',
   MISSING_OUTCOME_OPERATION: 'missing_authorized_outcome_persistence_outcome_operation',
+  INVALID_FINAL_OUTCOME_VERIFICATION_OPERATION:
+    'invalid_authorized_outcome_persistence_final_outcome_verification_operation',
   INVALID_READY_LEARNING_OPERATION: 'invalid_ready_authorized_outcome_persistence_learning_operation',
   OUTCOME_ONLY_HAS_LEARNING_OPERATION: 'outcome_only_authorized_persistence_has_learning_operation',
   UNAUTHORIZED_OUTCOME_OPERATION: 'unauthorized_outcome_persistence_outcome_operation',

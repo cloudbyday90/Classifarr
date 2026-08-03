@@ -22,6 +22,7 @@ import { ValidationError } from '../utils/appError.mjs';
 import { registerHistoryRoutes } from './classificationRouteHistory.mjs';
 import { registerSecondPassRoute } from './classificationRouteSecondPass.mjs';
 import { registerCorrectionRoutes } from './classificationRouteCorrections.mjs';
+import { registerExactItemMemoryRoutes } from './classificationRouteExactItemMemory.mjs';
 import { registerPendingRoutes } from './classificationRoutePending.mjs';
 
 export function createClassificationRouter({
@@ -34,6 +35,7 @@ export function createClassificationRouter({
   requireReadWrite,
   STALE_AWAITING_DECISION_DAYS,
   reclassificationService,
+  policyRuntimeExactItemMemoryCommandService,
 }) {
   const router = express.Router();
   const logger = createLogger('classification');
@@ -64,6 +66,12 @@ export function createClassificationRouter({
     reclassificationService,
     logger,
     requireReadWrite,
+  });
+  registerExactItemMemoryRoutes(router, {
+    db,
+    logger,
+    requireReadWrite,
+    policyRuntimeExactItemMemoryCommandService,
   });
   registerPendingRoutes(router, { db, clarificationService, classificationService, STALE_AWAITING_DECISION_DAYS, logger });
 

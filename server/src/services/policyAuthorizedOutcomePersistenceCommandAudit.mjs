@@ -62,12 +62,28 @@ function buildPolicyAuthorizedOutcomePersistenceCommandAudit(command = {}) {
     });
   }
 
+  const finalOutcomeOperationIsRecord = finalOutcomeOperation.operationId ===
+    POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS.RECORD_FINAL_OUTCOME;
+  const finalOutcomeOperationIsVerification = finalOutcomeOperation.operationId ===
+    POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS.VERIFY_RECORDED_FINAL_OUTCOME;
   if (source.statusId !== POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_STATUS_IDS.BLOCKED &&
-      finalOutcomeOperation.operationId !==
-        POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS.RECORD_FINAL_OUTCOME) {
+      !finalOutcomeOperationIsRecord && !finalOutcomeOperationIsVerification) {
     issues.push({
       riskId: POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_AUDIT_RISK_IDS.MISSING_OUTCOME_OPERATION,
       message: 'An admitted command must include a final-outcome operation.',
+    });
+  }
+
+  if (finalOutcomeOperationIsVerification &&
+      (source.statusId !== POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_STATUS_IDS.READY ||
+       learningOperation?.operationId !==
+         POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS.WRITE_EXACT_ITEM_MEMORY ||
+       learningOperation?.tierId !== 'exact_item_memory' ||
+       profileRefreshOperation !== null)) {
+    issues.push({
+      riskId: POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_AUDIT_RISK_IDS
+        .INVALID_FINAL_OUTCOME_VERIFICATION_OPERATION,
+      message: 'Recorded-outcome verification is limited to admitted exact-item memory commands.',
     });
   }
 

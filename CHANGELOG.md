@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Runtime Exact-Item Memory**: Added a separate empty-body,
+  server-authenticated command for exact-item memory after a completed runtime
+  resolution. It derives and locks the item, TMDB ID, media type, destination,
+  answer fingerprint, and source event on the server; revalidates actor
+  authority; verifies rather than rewrites the final outcome; and uses durable
+  receipt replay to prevent stale, cross-item, cross-destination, and duplicate
+  evidence writes.
+
 - **Policy Runtime Resolution Learning**: Resolved policy items now record a
   compact, server-guarded outcome-only learning decision. The compatibility
   `generateRule` request can no longer write exact-match or genre evidence;

@@ -28,6 +28,7 @@ const POLICY_AUTHORIZED_OUTCOME_EXECUTION_REASON_IDS = Object.freeze({
   COMMAND_BLOCKED: 'authorized_outcome_execution_command_blocked',
   SOURCE_EVENT_MISMATCH: 'authorized_outcome_execution_source_event_mismatch',
   FINAL_OUTCOME_PERSISTED: 'authorized_outcome_execution_final_outcome_persisted',
+  FINAL_OUTCOME_VERIFIED: 'authorized_outcome_execution_final_outcome_verified',
   EXACT_ITEM_MEMORY_PERSISTED: 'authorized_outcome_execution_exact_item_memory_persisted',
   EXACT_ITEM_MEMORY_ALREADY_PRESENT: 'authorized_outcome_execution_exact_item_memory_already_present',
   COMPATIBILITY_EVIDENCE_PERSISTED: 'authorized_outcome_execution_compatibility_evidence_persisted',

@@ -4030,7 +4030,7 @@ Implementation: [Policy Runtime Resolution Learning Admission](policy-runtime-re
 
 #### 5R.6.2 Exact-Item Memory Command Admission
 
-Status: next.
+Status: complete.
 
 - Define a separate server-authenticated exact-item memory command; do not add
   an answer field or re-enable `mark_exact_item_memory` in the runtime answer
@@ -4049,6 +4049,8 @@ Acceptance criteria:
   authorized and executed.
 - Replayed, stale, cross-item, cross-destination, or unauthorized commands
   cannot write evidence.
+
+Implementation: [Policy Runtime Exact-Item Memory Command](policy-runtime-exact-item-memory-command.md).
 
 #### 5R.6.3 Compatibility And Identity Evidence Admission
 
@@ -4260,10 +4262,14 @@ Current starting point:
 - **5R.4 Runtime Clarification Normalizer and 5R.5 Question And Answer
   Contract are complete.** Current runtime questions are server-normalized and
   resolved only through a versioned, fingerprint-bound answer contract.
+- **5R.6.2 Exact-Item Memory Command Admission is complete.** A separate,
+  empty-body authenticated command derives exact-item memory strictly from the
+  locked completed runtime outcome, revalidates actor and source identity, and
+  uses durable receipt replay without re-recording the outcome. The next Phase
+  5R component is **5R.6.3 Compatibility And Identity Evidence Admission**.
 - **5R.6.1 Runtime Resolution Outcome-Only Admission is complete.** Ordinary
   resolution now records a guarded outcome-only decision and cannot turn the
-  compatibility `generateRule` flag into a durable evidence write. The next
-  Phase 5R component is **5R.6.2 Exact-Item Memory Command Admission**.
+  compatibility `generateRule` flag into a durable evidence write.
 
 Implementation record:
 
@@ -4279,6 +4285,9 @@ Implementation record:
 - [Policy Runtime Resolution Learning Admission](policy-runtime-resolution-learning-admission.md)
   records the 5R.6.1 resolver cutover, compact outcome projection, and direct
   writer removal.
+- [Policy Runtime Exact-Item Memory Command](policy-runtime-exact-item-memory-command.md)
+  records the 5R.6.2 server-derived command, revalidation, receipt replay, and
+  outcome-verification boundary.
 - [Policy Builder Phase 5 Implementation](policy-builder-phase-5-implementation.md)
   remains historical implementation context; it is not the current authority
   plan.
