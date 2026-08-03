@@ -175,6 +175,7 @@ describe('policyBuilderBoundaryInventory', () => {
       'client/src/composables/usePolicyAuthoringLifecycleList.js',
       'client/src/composables/usePolicyAuthoringDestinationProposal.js',
       'client/src/composables/usePolicyAuthoringProposalAdmission.js',
+      'client/src/composables/usePolicyAuthoringProposalOutcomeRecovery.js',
     ].forEach((filePath) => {
       expect(classifyPolicyBuilderClientPath(filePath)).toEqual(expect.objectContaining({
         category: POLICY_BUILDER_BOUNDARY_CATEGORIES.UI_ORCHESTRATION,

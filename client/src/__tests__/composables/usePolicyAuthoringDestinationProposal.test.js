@@ -11,6 +11,9 @@ import {
   usePolicyAuthoringProposalAdmission,
 } from '@/composables/usePolicyAuthoringProposalAdmission'
 import {
+  POLICY_AUTHORING_PROPOSAL_RECOVERY_REASON_IDS,
+} from '@/composables/usePolicyAuthoringProposalOutcomeRecovery'
+import {
   POLICY_AUTHORING_ACTION_FEEDBACK_STATUS_IDS,
 } from '@/utils/policyAuthoringActionFeedback'
 
@@ -122,6 +125,10 @@ describe('policy authoring proposal composables', () => {
       statusId: POLICY_AUTHORING_ACTION_FEEDBACK_STATUS_IDS.RETRYABLE_ERROR,
       retryable: true,
     })
+    expect(action.recovery.value).toEqual({
+      libraryId: 7,
+      reasonId: POLICY_AUTHORING_PROPOSAL_RECOVERY_REASON_IDS.UNCERTAIN_ADMISSION,
+    })
 
     await expect(action.admit(admission)).resolves.toMatchObject({
       policy: { id: 11, libraryId: 7 },
@@ -156,5 +163,47 @@ describe('policy authoring proposal composables', () => {
       retryable: false,
     })
     expect(action.feedback.value.message).not.toContain('proposal_stale')
+    expect(action.recovery.value).toEqual({
+      libraryId: 7,
+      reasonId: POLICY_AUTHORING_PROPOSAL_RECOVERY_REASON_IDS.ADMISSION_OUTCOME,
+    })
+  })
+
+  it('uses a bounded conflict response as a lifecycle-reconciliation signal', async () => {
+    const action = usePolicyAuthoringProposalAdmission({
+      admitProposalRequest: vi.fn().mockRejectedValue({
+        response: {
+          status: 409,
+          data: buildAdmissionResponse('existing_policy'),
+        },
+      }),
+      createIdempotencyKey: () => '6fe3d170-9390-4ec5-95f7-42ad6f8ec777',
+    })
+
+    await expect(action.admit(admission)).resolves.toBeNull()
+
+    expect(action.feedback.value).toMatchObject({
+      statusId: POLICY_AUTHORING_ACTION_FEEDBACK_STATUS_IDS.STALE,
+      retryable: false,
+    })
+    expect(action.recovery.value).toEqual({
+      libraryId: 7,
+      reasonId: POLICY_AUTHORING_PROPOSAL_RECOVERY_REASON_IDS.ADMISSION_OUTCOME,
+    })
+  })
+
+  it.each([
+    [401, POLICY_AUTHORING_ACTION_FEEDBACK_STATUS_IDS.UNAVAILABLE],
+    [403, POLICY_AUTHORING_ACTION_FEEDBACK_STATUS_IDS.REJECTED],
+  ])('keeps authorization rejection feedback-only for HTTP %i', async (status, statusId) => {
+    const action = usePolicyAuthoringProposalAdmission({
+      admitProposalRequest: vi.fn().mockRejectedValue({ response: { status } }),
+      createIdempotencyKey: () => '6fe3d170-9390-4ec5-95f7-42ad6f8ec777',
+    })
+
+    await expect(action.admit(admission)).resolves.toBeNull()
+
+    expect(action.feedback.value).toMatchObject({ statusId, retryable: false })
+    expect(action.recovery.value).toBeNull()
   })
 })

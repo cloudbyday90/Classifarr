@@ -151,6 +151,7 @@ const POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS = deepFreeze([
   'client/src/__tests__/IntentSignalPicker.test.js',
   'client/src/__tests__/composables/usePolicyIntentDraft.test.js',
   'client/src/__tests__/composables/usePolicyAuthoringDestinationProposal.test.js',
+  'client/src/__tests__/composables/usePolicyAuthoringProposalOutcomeRecovery.test.js',
   'client/src/__tests__/utils/policyIntentDraftBridge.test.js',
   'client/src/__tests__/utils/policyAuthoringProposalAdmission.test.js',
   'client/src/__tests__/utils/policyAuthoringProposalPresentation.test.js',
@@ -509,6 +510,14 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
     POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
     [],
     'Proposal preparation orchestration validates bounded server display contracts and does not create or infer policy intent in the browser.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/composables/usePolicyAuthoringProposalOutcomeRecovery.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_WORKFLOW_REGRESSION,
+    false,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [],
+    'Outcome recovery discards uncertain admission state, reads only the selected server lifecycle, and never retries or reconstructs policy intent in the browser.'
   ),
   presentationTestRecord(
     'client/src/__tests__/utils/policyAuthoringProposalAdmission.test.js',

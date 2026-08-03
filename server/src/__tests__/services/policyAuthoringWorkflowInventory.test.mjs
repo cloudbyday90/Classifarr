@@ -120,6 +120,7 @@ describe('policyAuthoringWorkflowInventory', () => {
       'client/src/composables/usePolicyNativeCreateAction.js',
       'client/src/utils/policyAuthoringProposalAdmission.js',
       'client/src/composables/usePolicyAuthoringProposalAdmission.js',
+      'client/src/composables/usePolicyAuthoringProposalOutcomeRecovery.js',
       'client/src/utils/policyAuthoringActionFeedback.js',
     ].forEach((filePath) => {
       expect(classifyPolicyAuthoringWorkflowSurface(filePath)).toEqual(expect.objectContaining({

@@ -177,8 +177,8 @@ Focused API, presentation, admission, component, and page tests cover the
 strict display split, malformed response rejection, empty adjustment command,
 idempotency forwarding, no-picker card, and confirmed creation path.
 
-## Next Task
+## Related Recovery
 
-**Phase 4R.4b, Proposal Outcome Recovery:** stale, expired, concurrent, and
-lost admission responses must discard the local proposal and reload the
-authoritative lifecycle before any new action is offered.
+Phase 4R.4b now supplies the recovery behavior for stale, expired, concurrent,
+and lost admission responses. See [Policy Authoring Proposal Outcome
+Recovery](policy-authoring-proposal-outcome-recovery.md).

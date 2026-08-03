@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Proposal Outcome Recovery**: Stale, concurrent, malformed, and
+  uncertain policy-proposal admissions now discard client-held proposal state
+  and reread the selected library's authoritative lifecycle before rendering
+  another action. Recovery never persists proposal data, retries admission, or
+  reconstructs policy intent in the browser.
+
 - **Policy Destination Proposal Card**: Eligible libraries now prepare one
   server-owned destination proposal from the current profile and display its
   bounded observed context and proposed intent in the normal policy route.

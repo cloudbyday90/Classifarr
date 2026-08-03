@@ -217,6 +217,7 @@ endpoint, validates its display-safe result, and admits only the opaque
 revision-bound proposal without recreating intent logic in Vue. See [Policy
 Destination Proposal Card](policy-destination-proposal-card.md).
 
-The next task is **Phase 4R.4b, Proposal Outcome Recovery**, which will discard
-stale, concurrent, and interrupted local proposal state and reload the
-authoritative lifecycle rather than offering a blind retry.
+Phase 4R.4b now consumes this boundary by discarding stale, concurrent, and
+interrupted local proposal state, then reading lifecycle rather than offering a
+blind retry. See [Policy Authoring Proposal Outcome
+Recovery](policy-authoring-proposal-outcome-recovery.md).

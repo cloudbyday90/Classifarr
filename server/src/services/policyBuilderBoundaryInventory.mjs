@@ -127,11 +127,12 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     clientEngineAuthorityAllowed: false,
     engineCutlineDecisionRequired: false,
     riskIds: [],
-    notes: 'Lifecycle and destination-proposal composables read or forward only server-owned contracts, retain idempotency per attempt, and cannot create browser-owned intent, authorize writes, or decide automation.',
+    notes: 'Lifecycle, destination-proposal, admission, and outcome-recovery composables read or forward only server-owned contracts, retain idempotency only for the active attempt, and cannot create browser-owned intent, authorize writes, or decide automation.',
     matches: (filePath) => hasAnySegment(filePath, [
       '/usePolicyAuthoringLifecycleList.js',
       '/usePolicyAuthoringDestinationProposal.js',
       '/usePolicyAuthoringProposalAdmission.js',
+      '/usePolicyAuthoringProposalOutcomeRecovery.js',
     ]),
   },
   {

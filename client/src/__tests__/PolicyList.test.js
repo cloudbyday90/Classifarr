@@ -206,4 +206,49 @@ describe('PolicyList.vue', () => {
     )
     expect(wrapper.text()).toContain('Policy created: Movies Policy')
   })
+
+  it('discards a concurrent admission attempt and renders the lifecycle-confirmed existing policy', async () => {
+    let moviesPolicyExists = false
+    state.getPolicyAuthoringLifecycle.mockImplementation(libraryId => Promise.resolve(
+      libraryId === 7
+        ? buildLifecycle({
+          libraryId: 7,
+          libraryName: 'Movies',
+          statusId: moviesPolicyExists ? 'existing_native_policy' : 'eligible_to_prepare_proposal',
+        })
+        : buildLifecycle({
+          libraryId: 8,
+          libraryName: 'Series',
+          statusId: 'existing_native_policy',
+        })
+    ))
+    state.admitPolicyAuthoringProposal.mockRejectedValue({
+      response: {
+        status: 409,
+        data: {
+          version: 'policy.authoring_proposal.v1',
+          statusId: 'existing_policy',
+          policy: null,
+          recovery: { lifecycleReloadRequired: true },
+        },
+      },
+    })
+    const wrapper = await mountView()
+    mountedView = wrapper
+
+    await wrapper.find('#policy-authoring-lifecycle-action-7').trigger('click')
+    await flushPromises()
+    moviesPolicyExists = true
+
+    await wrapper.findAll('button').find(button => button.text() === 'Create policy').trigger('click')
+    await flushPromises()
+
+    expect(state.getPolicyAuthoringLifecycle).toHaveBeenCalledTimes(4)
+    expect(state.preparePolicyAuthoringProposal).toHaveBeenCalledTimes(1)
+    expect(state.admitPolicyAuthoringProposal).toHaveBeenCalledTimes(1)
+    expect(wrapper.text()).toContain('Classifarr checked the current policy state.')
+    expect(wrapper.text()).toContain('Current policy: Movies Policy')
+    expect(wrapper.findAll('button').map(button => button.text())).not.toContain('Create policy')
+    expect(wrapper.findAll('input, select, textarea')).toHaveLength(0)
+  })
 })

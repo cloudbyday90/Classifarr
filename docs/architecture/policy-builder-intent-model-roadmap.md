@@ -16,8 +16,9 @@ Current execution focus:
    contracts do not yet provide an admitted, revision-bound destination
    proposal or a normal lifecycle entry. **5R.2a Proposal And Lifecycle
    Admission Contract**, **4R.4a Library Lifecycle Entry**, and **4R.4
-   Destination Proposal Card** are complete; **4R.4b Proposal Outcome
-   Recovery** is the next dependency-gated task.
+   Destination Proposal Card**, and **4R.4b Proposal Outcome Recovery** are
+   complete; **4R.5 Intent Adjustment Disclosure** is the next
+   dependency-gated task.
 3. **8R.37.1 Runtime Capability Inventory And Isolation Decision** is a
    parallel release-maintenance/security audit. It cannot block 4R.1 or
    automatic native policy behavior.
@@ -31,7 +32,7 @@ The execution dependency is intentionally not numeric:
 
 ```text
 completed foundations: 0R -> 1R -> 2R -> 3R
-active product work: 4R.1 -> 5R.1/5R.2/4R.2/4R.3/5R.2a/4R.4a/4R.4 (complete) -> 4R.4b -> 4R.5
+active product work: 4R.1 -> 5R.1/5R.2/4R.2/4R.3/5R.2a/4R.4a/4R.4/4R.4b (complete) -> 4R.5
 runtime trust work: 5R.3 through 5R.10 -> 4R.6 through 4R.9
 parallel safety work: 8R installation/runtime lanes + 9R zero-debt gate
 ```
@@ -3286,7 +3287,7 @@ This is not a claim that every legacy list-level action is accepted as the
 final product path. The current normal create opener is absent, and list-level
 reset, maintenance, and raw failure surfaces remain explicit 4R.8 removal
 work. Representative live-browser verification remains a separate 4R.1
-requirement. **5R.2a, 4R.4a, and 4R.4 are complete; 4R.4b is next.**
+requirement. **5R.2a, 4R.4a, 4R.4, and 4R.4b are complete; 4R.5 is next.**
 
 ### 4R.4a Library Lifecycle Entry
 
@@ -3400,6 +3401,15 @@ Acceptance criteria:
   second policy or leave the operator with an ambiguous result.
 - Recovery from any create outcome starts from a fresh authoritative lifecycle
   projection, not cached observed values or browser-derived intent.
+
+Implementation outcome: complete. The proposal admission boundary now classifies
+bounded non-success, malformed, stale, concurrent, interrupted, and uncertain
+outcomes without exposing raw errors. The policy list clears opaque proposal
+state, rereads only the selected library lifecycle, and renders one polite
+status message before offering any fresh server-derived guidance. It neither
+persists proposal data nor retries or reconstructs policy intent in the
+browser. See [Policy Authoring Proposal Outcome
+Recovery](policy-authoring-proposal-outcome-recovery.md).
 
 ### 4R.5 Intent Adjustment Disclosure
 
@@ -3589,8 +3599,8 @@ Implement Phase 4R in this order:
    Complete. It delivers the library-first automated default from the admitted
    proposal without asking the operator to reselect known evidence.
 7. **4R.4b Proposal Outcome Recovery**
-   Resolves stale proposals, competing attempts, and lost responses by
-   reloading the authoritative lifecycle state rather than retrying blindly.
+   Complete. It discards uncertain proposal state and reloads only the
+   authoritative selected-library lifecycle rather than retrying blindly.
 8. **4R.5 Intent Adjustment Disclosure**
    Adds bounded edit control without increasing normal-path decision load.
 9. **5R.3 through 5R.10 Server Runtime And Native-Change Authority**
@@ -3605,7 +3615,7 @@ Implement Phase 4R in this order:
 13. **4R.9 Accessibility, Responsive Behavior, And End-To-End Workflow Tests**
    Proves the delivered flow works in the live product.
 
-Next implementation task: **4R.4b Proposal Outcome Recovery**.
+Next implementation task: **4R.5 Intent Adjustment Disclosure**.
 The 4R.1 source inventory still requires representative live-browser
 verification, and 4R.3 has bound the existing component's controls to admitted
 actions and truthful outcomes. The completed 5R.2a contract supplies the
@@ -3796,9 +3806,9 @@ Implementation status:
   native-create idempotency replay, and bounded stale/expired/existing outcomes.
 - Focused service, route, and migration tests cover current, missing-profile,
   stale, expired, existing-policy, replay, invalid-input, and unauthorized
-  paths. The completed 4R.4a lifecycle entry and 4R.4 proposal card consume
-  the lifecycle, prepared-proposal, and admission boundaries; the next work is
-  **4R.4b Proposal Outcome Recovery**.
+  paths. The completed 4R.4a lifecycle entry, 4R.4 proposal card, and 4R.4b
+  outcome recovery consume the lifecycle, prepared-proposal, and admission
+  boundaries; the next work is **4R.5 Intent Adjustment Disclosure**.
 
 ### 5R.3 AI Provider Capability And Authority Modes
 
@@ -11539,10 +11549,10 @@ The next sequence is dependency-gated rather than phase-number order:
 6. **5R.2a Proposal And Lifecycle Admission Contract**: complete. It supplies
    the server-owned candidate lifecycle, opaque proposal reference,
    current-state recheck, and bounded stale/concurrency recovery outcomes.
-7. **4R.4a and 4R.4**: complete. They deliver the normal lifecycle entry and
-   automated proposal default without a second create path or a requirement to
-   reselect known evidence. **4R.4b** next delivers outcome recovery, followed
-   by **4R.5** exceptional adjustment disclosure.
+7. **4R.4a, 4R.4, and 4R.4b**: complete. They deliver the normal lifecycle
+   entry, automated proposal default, and bounded outcome recovery without a
+   second create path or a requirement to reselect known evidence. **4R.5**
+   next delivers exceptional adjustment disclosure.
 8. **5R.3 through 5R.10**, then **4R.6 through 4R.9**: finish model/question/
    learning and native-change authority before exposing material exceptions,
    then complete revision-safe maintenance, legacy UI cutover, accessibility,

@@ -64,6 +64,22 @@
       <p class="mt-4 text-sm leading-6 text-gray-200">
         {{ selectedEntry.message }}
       </p>
+      <p
+        v-if="selectedEntry.policy?.name"
+        class="mt-2 text-sm text-gray-300"
+      >
+        Current policy: <span class="font-medium text-gray-100">{{ selectedEntry.policy.name }}</span>
+      </p>
+      <div
+        v-if="proposalOutcomeRecoveryNotice"
+        class="mt-4 rounded border border-primary/60 bg-primary/10 p-4 text-sm text-primary-100"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        :aria-busy="proposalOutcomeRecoveryLoading"
+      >
+        {{ proposalOutcomeRecoveryNotice.message }}
+      </div>
       <div v-if="selectedEntry.canSelect">
         <p
           v-if="!destinationProposalLifecycle || destinationProposalLifecycle.canSelect"
@@ -215,6 +231,7 @@ import PolicyAuthoringLifecycleEntry from '@/components/policies/PolicyAuthoring
 import { usePolicyAuthoringDestinationProposal } from '@/composables/usePolicyAuthoringDestinationProposal'
 import { usePolicyAuthoringLifecycleList } from '@/composables/usePolicyAuthoringLifecycleList'
 import { usePolicyAuthoringProposalAdmission } from '@/composables/usePolicyAuthoringProposalAdmission'
+import { usePolicyAuthoringProposalOutcomeRecovery } from '@/composables/usePolicyAuthoringProposalOutcomeRecovery'
 
 const route = useRoute()
 const router = useRouter()
@@ -247,6 +264,7 @@ const {
 const {
   loading: proposalAdmissionLoading,
   feedback: proposalAdmissionFeedback,
+  recovery: proposalAdmissionRecovery,
   clear: clearProposalAdmission,
   admit: admitProposal,
 } = usePolicyAuthoringProposalAdmission()
@@ -317,9 +335,39 @@ const reloadLifecycleEntries = async () => {
   await loadLifecycleEntries(libraries.value)
 }
 
+const reloadSelectedLifecycle = async libraryId => {
+  const normalizedLibraryId = normalizeLibraryId(libraryId)
+  if (!normalizedLibraryId) return null
+
+  await reloadLifecycleEntries()
+  return lifecycleEntries.value.find(entry => entry.library.id === normalizedLibraryId)?.statusId || null
+}
+
+const {
+  loading: proposalOutcomeRecoveryLoading,
+  notice: proposalOutcomeRecoveryNotice,
+  clear: clearProposalOutcomeRecovery,
+  recover: recoverProposalOutcome,
+} = usePolicyAuthoringProposalOutcomeRecovery({
+  reloadLifecycle: reloadSelectedLifecycle,
+})
+
+const reconcileProposalOutcome = async recovery => {
+  const currentEntry = selectedEntry.value
+  if (!recovery || !currentEntry || currentEntry.library.id !== recovery.libraryId) return
+
+  successfulAdmission.value = null
+  clearDestinationProposal()
+  clearProposalAdmission()
+  await recoverProposalOutcome(recovery)
+}
+
 const admitDestinationProposal = async () => {
   const admissionResult = await admitProposal(destinationProposalAdmission.value)
-  if (!admissionResult?.policy) return
+  if (!admissionResult?.policy) {
+    await reconcileProposalOutcome(proposalAdmissionRecovery.value)
+    return
+  }
 
   successfulAdmission.value = admissionResult
   await reloadLifecycleEntries()
@@ -376,6 +424,7 @@ watch(selectedLibraryId, (nextLibraryId, previousLibraryId) => {
 
   if (nextLibraryId !== previousLibraryId) {
     successfulAdmission.value = null
+    clearProposalOutcomeRecovery()
   }
 
   applyRouteFocus()

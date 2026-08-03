@@ -234,7 +234,7 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
     normalAuthoringAllowed: true,
     migrationSupportOnly: false,
     riskIds: [],
-    notes: 'Action admission may explain one direct unmet prerequisite, preserve server idempotency outcomes, and forward a bounded command. It cannot claim readiness, authorize a write, or infer routing or automation state.',
+    notes: 'Action admission and outcome recovery may explain one direct unmet prerequisite, preserve only active-attempt server idempotency outcomes, and reread bounded lifecycle state. They cannot claim readiness, authorize a write, retry an uncertain admission, or infer routing or automation state.',
     matches: filePath => hasAnySegment(filePath, [
       '/PolicyBuilderFooterActions.vue',
       '/policyBuilderActionBoundary.js',
@@ -242,6 +242,7 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
       '/usePolicyNativeCreateAction.js',
       '/policyAuthoringProposalAdmission.js',
       '/usePolicyAuthoringProposalAdmission.js',
+      '/usePolicyAuthoringProposalOutcomeRecovery.js',
     ]),
   },
   {

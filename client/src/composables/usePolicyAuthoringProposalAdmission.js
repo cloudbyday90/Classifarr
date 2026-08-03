@@ -17,6 +17,9 @@ import {
   adaptPolicyAuthoringProposalAdmission,
 } from '@/utils/policyAuthoringProposalAdmission'
 import {
+  POLICY_AUTHORING_PROPOSAL_RECOVERY_REASON_IDS,
+} from '@/composables/usePolicyAuthoringProposalOutcomeRecovery'
+import {
   POLICY_AUTHORING_ACTION_FEEDBACK_STATUS_IDS,
   POLICY_AUTHORING_ACTION_IDS,
   buildPolicyAuthoringActionFailureFeedback,
@@ -44,6 +47,22 @@ function unwrapResponse(response) {
   return response?.data ?? response
 }
 
+function normalizeResponseStatus(value) {
+  const status = Number(value)
+  return Number.isInteger(status) && status >= 100 && status <= 599 ? status : null
+}
+
+function shouldReconcileAfterAdmissionFailure(error) {
+  const status = normalizeResponseStatus(error?.response?.status ?? error?.status)
+
+  return status === null || status === 404 || status === 408 || status === 409 ||
+    status === 429 || status >= 500
+}
+
+function buildRecovery(libraryId, reasonId) {
+  return Object.freeze({ libraryId, reasonId })
+}
+
 export function usePolicyAuthoringProposalAdmission({
   admitProposalRequest = admitPolicyAuthoringProposal,
   createIdempotencyKey = createNativePolicyCreateIdempotencyKey,
@@ -51,6 +70,7 @@ export function usePolicyAuthoringProposalAdmission({
   const loading = ref(false)
   const feedback = ref(null)
   const result = ref(null)
+  const recovery = ref(null)
   let activeRequestId = 0
   let attemptFingerprint = null
   let attemptIdempotencyKey = null
@@ -60,6 +80,7 @@ export function usePolicyAuthoringProposalAdmission({
     loading.value = false
     feedback.value = null
     result.value = null
+    recovery.value = null
     attemptFingerprint = null
     attemptIdempotencyKey = null
   }
@@ -80,6 +101,7 @@ export function usePolicyAuthoringProposalAdmission({
       attemptIdempotencyKey = null
       result.value = null
     }
+    recovery.value = null
 
     try {
       attemptIdempotencyKey ||= createIdempotencyKey()
@@ -113,6 +135,12 @@ export function usePolicyAuthoringProposalAdmission({
         expectedLibraryId: admission.libraryId,
       })
       if (!admissionResult.ok || !admissionResult.result.policy) {
+        recovery.value = buildRecovery(
+          admission.libraryId,
+          admissionResult.ok
+            ? POLICY_AUTHORING_PROPOSAL_RECOVERY_REASON_IDS.ADMISSION_OUTCOME
+            : POLICY_AUTHORING_PROPOSAL_RECOVERY_REASON_IDS.UNCERTAIN_ADMISSION
+        )
         feedback.value = buildPolicyAuthoringActionFeedback({
           actionId: ACTION_ID,
           statusId: POLICY_AUTHORING_ACTION_FEEDBACK_STATUS_IDS.STALE,
@@ -129,10 +157,33 @@ export function usePolicyAuthoringProposalAdmission({
       return admissionResult.result
     } catch (requestError) {
       if (requestId === activeRequestId) {
+        const admissionResult = adaptPolicyAuthoringProposalAdmission({
+          response: unwrapResponse(requestError?.response),
+          expectedLibraryId: admission.libraryId,
+        })
+        if (admissionResult.ok && !admissionResult.result.policy) {
+          recovery.value = buildRecovery(
+            admission.libraryId,
+            POLICY_AUTHORING_PROPOSAL_RECOVERY_REASON_IDS.ADMISSION_OUTCOME
+          )
+          feedback.value = buildPolicyAuthoringActionFeedback({
+            actionId: ACTION_ID,
+            statusId: POLICY_AUTHORING_ACTION_FEEDBACK_STATUS_IDS.STALE,
+            message: ADMISSION_CURRENT_STATE_MESSAGE,
+          })
+          return null
+        }
+
         feedback.value = buildPolicyAuthoringActionFailureFeedback({
           actionId: ACTION_ID,
           error: requestError,
         })
+        if (shouldReconcileAfterAdmissionFailure(requestError)) {
+          recovery.value = buildRecovery(
+            admission.libraryId,
+            POLICY_AUTHORING_PROPOSAL_RECOVERY_REASON_IDS.UNCERTAIN_ADMISSION
+          )
+        }
       }
       return null
     } finally {
@@ -146,6 +197,7 @@ export function usePolicyAuthoringProposalAdmission({
     loading,
     feedback,
     result,
+    recovery,
     clear,
     admit,
   }
