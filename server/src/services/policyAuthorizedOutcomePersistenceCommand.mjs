@@ -174,11 +174,15 @@ function buildPolicyAuthorizedOutcomePersistenceCommand({
     });
   }
 
+  const verificationLearningOperationIds = new Set([
+    POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS.WRITE_EXACT_ITEM_MEMORY,
+    POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS.WRITE_COMPATIBILITY_EVIDENCE,
+    POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS.WRITE_IDENTITY_EVIDENCE,
+  ]);
   if (finalOutcomeOperationId ===
       POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS.VERIFY_RECORDED_FINAL_OUTCOME &&
       (!learningRequested ||
-       learningOperationId !==
-         POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS.WRITE_EXACT_ITEM_MEMORY ||
+       !verificationLearningOperationIds.has(learningOperationId) ||
        authorization.canWriteLearning !== true)) {
     return buildBlockedCommand({
       intake,
@@ -188,7 +192,7 @@ function buildPolicyAuthorizedOutcomePersistenceCommand({
       reasonCodes: [
         ...reasonCodes,
         POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_REASON_IDS
-          .FINAL_OUTCOME_VERIFICATION_REQUIRES_EXACT_ITEM_MEMORY,
+          .FINAL_OUTCOME_VERIFICATION_REQUIRES_ADMITTED_LEARNING,
       ],
     });
   }

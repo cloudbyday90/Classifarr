@@ -9,6 +9,12 @@ import {
   isPolicyRuntimeQuestionResolutionAction,
   parsePolicyRuntimeQuestionAnswer,
 } from './policyRuntimeQuestionAnswerContract.mjs';
+import {
+  policyRuntimeDestinationEvidenceCommandService,
+} from './policyRuntimeDestinationEvidenceCommandService.mjs';
+import {
+  buildPolicyRuntimeDestinationEvidenceAuthorizationContext,
+} from './policyRuntimeDestinationEvidenceExecutionAuthorization.mjs';
 
 export { LOW_CONFIDENCE_THRESHOLD, SEED_INTEGRITY_CACHE_TTL_MS, clampConfidence, createStatusError, safeParseJson, parsePolicyQuestion, getQuestionOptionLibraryIds } from './clarificationUtils.mjs';
 export { getAllQuestions, createQuestion, updateQuestion, deleteQuestion, matchQuestions, hasLanguagePresets, isLanguageQuestionAllowed } from './clarificationQuestionManager.mjs';
@@ -17,6 +23,9 @@ export { getThresholds, getTierForConfidence, getTierFromPolicyThresholds, isReq
 class ClarificationService {
   constructor(deps = {}) {
     this.policyQuestionContext = deps.policyQuestionContext || policyQuestionContext;
+    this.runtimeDestinationEvidenceCommandService =
+      deps.runtimeDestinationEvidenceCommandService ||
+      policyRuntimeDestinationEvidenceCommandService;
     this._seedState = createSeedIntegrityState(deps.seedIntegrityCacheTtlMs);
   }
 
@@ -88,7 +97,12 @@ class ClarificationService {
     });
   }
 
-  async resolveRuntimeQuestionAnswer(classificationId, payload, resolvedBy) {
+  async resolveRuntimeQuestionAnswer(
+    classificationId,
+    payload,
+    resolvedBy,
+    { authenticated = false } = {},
+  ) {
     const parsed = parsePolicyRuntimeQuestionAnswer(payload);
     if (!parsed.ok) {
       throw createStatusError('Invalid policy question answer', 400, parsed.reason);
@@ -110,6 +124,12 @@ class ClarificationService {
       {
         policyQuestionContext: this.policyQuestionContext,
         answerContract: parsed.answer,
+        runtimeDestinationEvidenceCommandService: this.runtimeDestinationEvidenceCommandService,
+        runtimeDestinationEvidenceAuthorizationContext:
+          buildPolicyRuntimeDestinationEvidenceAuthorizationContext({
+            actorId: resolvedBy,
+            authenticated,
+          }),
       },
     );
   }

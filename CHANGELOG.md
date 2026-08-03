@@ -11,6 +11,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Automatic Runtime Destination Evidence Admission**: Completed the
+  server-derived compatibility and identity evidence path after a native runtime
+  resolution. Classifarr now admits only one unambiguous native-rule and
+  structured-metadata match with current bounded profile provenance, then uses
+  the locked authorized-outcome executor, durable receipt replay, and profile
+  refresh outbox. Broad genres, profile-only or RAG-only support, missing or
+  ambiguous metadata, unsafe AI wording, stale profiles, and client-supplied
+  learning data remain outcome-only.
+
 - **Policy Runtime Exact-Item Memory**: Added a separate empty-body,
   server-authenticated command for exact-item memory after a completed runtime
   resolution. It derives and locks the item, TMDB ID, media type, destination,
@@ -648,6 +657,15 @@ The entries below describe distinct product behavior and operational guarantees
 intended for the next release. They consolidate intermediate implementation work,
 temporary diagnostics, and refactors only when those changes resulted in one
 unchanged operator or runtime outcome.
+
+### Security
+
+- **Dependabot And Audit Remediation**: Updated server Undici to `8.10.0`,
+  including the `6.28.0` Discord transitive override, to resolve Dependabot
+  alert #96 for malformed cache-control handling. Updated
+  `express-rate-limit`, `ip-address`, `socket.io-parser`, `brace-expansion`,
+  and `minimatch` to current fixed releases; production and full npm audits
+  now report zero vulnerabilities.
 
 ### Added
 

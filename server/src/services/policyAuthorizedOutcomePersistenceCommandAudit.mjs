@@ -74,16 +74,26 @@ function buildPolicyAuthorizedOutcomePersistenceCommandAudit(command = {}) {
     });
   }
 
+  const verificationLearningOperationIds = new Set([
+    POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS.WRITE_EXACT_ITEM_MEMORY,
+    POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS.WRITE_COMPATIBILITY_EVIDENCE,
+    POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS.WRITE_IDENTITY_EVIDENCE,
+  ]);
+  const verificationRequiresProfileRefresh = [
+    POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS.WRITE_COMPATIBILITY_EVIDENCE,
+    POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS.WRITE_IDENTITY_EVIDENCE,
+  ].includes(learningOperation?.operationId);
   if (finalOutcomeOperationIsVerification &&
       (source.statusId !== POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_STATUS_IDS.READY ||
-       learningOperation?.operationId !==
-         POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS.WRITE_EXACT_ITEM_MEMORY ||
-       learningOperation?.tierId !== 'exact_item_memory' ||
-       profileRefreshOperation !== null)) {
+       !verificationLearningOperationIds.has(learningOperation?.operationId) ||
+       !LEARNING_OPERATION_BY_TIER[learningOperation?.tierId] ||
+       LEARNING_OPERATION_BY_TIER[learningOperation?.tierId] !== learningOperation?.operationId ||
+       (verificationRequiresProfileRefresh && !profileRefreshOperation) ||
+       (!verificationRequiresProfileRefresh && profileRefreshOperation !== null))) {
     issues.push({
       riskId: POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_AUDIT_RISK_IDS
         .INVALID_FINAL_OUTCOME_VERIFICATION_OPERATION,
-      message: 'Recorded-outcome verification is limited to admitted exact-item memory commands.',
+      message: 'Recorded-outcome verification requires an admitted allowlisted learning command.',
     });
   }
 

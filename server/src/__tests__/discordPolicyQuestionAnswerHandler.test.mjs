@@ -98,6 +98,7 @@ describe('discordPolicyQuestionAnswerHandler', () => {
         destination_library_id: 7,
       },
       'operator',
+      { authenticated: true },
     );
     expect(mockRouting.routeAfterClarification).not.toHaveBeenCalled();
     expect(currentInteraction.editReply).toHaveBeenCalledWith(expect.objectContaining({

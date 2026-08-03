@@ -89,6 +89,13 @@ function normalizeLockedClassification(row = {}) {
     status: normalizeString(source.status, 40) || null,
     currentDestinationLibraryId: normalizeIdentifier(source.library_id ?? source.libraryId),
     currentDestinationLibraryName: normalizeString(source.library_name ?? source.libraryName, 255) || null,
+    genreNames: Array.isArray(source.genre_names ?? source.genreNames)
+      ? source.genre_names ?? source.genreNames
+      : [],
+    primaryStudioName: normalizeString(
+      source.primary_studio_name ?? source.primaryStudioName,
+      255,
+    ) || null,
     metadata: safeParseJsonObject(source.metadata, {}),
   };
 }
@@ -145,6 +152,7 @@ async function lockPolicyRuntimeExactItemMemoryExecutionState({
   client,
   intake = {},
   classificationId = null,
+  sourceEventIdValidator = null,
 } = {}) {
   if (!client || typeof client.query !== 'function') {
     throw new TypeError('Runtime exact-item memory requires a transaction client.');
@@ -158,7 +166,16 @@ async function lockPolicyRuntimeExactItemMemoryExecutionState({
   }
 
   const classification = normalizeLockedClassification(firstRow(await client.query(
-    `SELECT id, tmdb_id, media_type, status, library_id, library_name, metadata
+    `SELECT
+       id,
+       tmdb_id,
+       media_type,
+       status,
+       library_id,
+       library_name,
+       metadata,
+       genre_names,
+       primary_studio_name
      FROM classification_history
      WHERE id = $1
      FOR UPDATE`,
@@ -228,13 +245,23 @@ async function lockPolicyRuntimeExactItemMemoryExecutionState({
 
   const expectedIntake = asObject(intake);
   const expectedOutcome = asObject(expectedIntake.finalOutcome);
+  const expectedSourceEventId = normalizeString(expectedIntake.sourceEventId, 160);
+  const sourceEventIsValid = expectedSourceEventId
+    ? typeof sourceEventIdValidator === 'function'
+      ? sourceEventIdValidator({
+        classification,
+        destination,
+        intake: expectedIntake,
+        resolution,
+      }) === true
+      : expectedSourceEventId === resolution.sourceEventId
+    : true;
   if (expectedOutcome.itemId && normalizeIdentifier(expectedOutcome.itemId) !== classification.id ||
       expectedOutcome.destinationLibraryId &&
         normalizeIdentifier(expectedOutcome.destinationLibraryId) !== destination.id ||
       expectedOutcome.destinationLibraryName &&
         normalizeString(expectedOutcome.destinationLibraryName, 255) !== destination.name ||
-      expectedIntake.sourceEventId &&
-        normalizeString(expectedIntake.sourceEventId, 160) !== resolution.sourceEventId) {
+      !sourceEventIsValid) {
     return buildBlockedExecutionState(
       POLICY_RUNTIME_EXACT_ITEM_MEMORY_STATE_REASON_IDS.SOURCE_EVENT_IDENTITY_MISMATCH,
     );
@@ -248,7 +275,7 @@ async function lockPolicyRuntimeExactItemMemoryExecutionState({
     resolution,
     currentState: {
       classificationId: classification.id,
-      sourceEventId: resolution.sourceEventId,
+      sourceEventId: expectedSourceEventId || resolution.sourceEventId,
       destinationLibraryId: destination.id,
       destinationLibraryName: destination.name,
       locked: true,

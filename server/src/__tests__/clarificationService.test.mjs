@@ -23,7 +23,10 @@ const mockDb = createTransactionalDbMock();
 
 const mockClassificationOutcomeService = createServiceStubs(['recordOutcome']);
 
-const mockMetadataNormalization = createServiceStubs(['normalizeMetadataListLower']);
+const mockMetadataNormalization = createServiceStubs([
+  'normalizeMetadataList',
+  'normalizeMetadataListLower',
+]);
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 

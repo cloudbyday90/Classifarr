@@ -55,8 +55,8 @@ const POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_REASON_IDS = Object.freeze({
   UNSUPPORTED_LEARNING_TIER: 'authorized_persistence_unsupported_learning_tier',
   LEARNING_CANDIDATE_MISSING: 'authorized_persistence_learning_candidate_missing',
   LEARNING_DESTINATION_MISMATCH: 'authorized_persistence_learning_destination_mismatch',
-  FINAL_OUTCOME_VERIFICATION_REQUIRES_EXACT_ITEM_MEMORY:
-    'authorized_persistence_final_outcome_verification_requires_exact_item_memory',
+  FINAL_OUTCOME_VERIFICATION_REQUIRES_ADMITTED_LEARNING:
+    'authorized_persistence_final_outcome_verification_requires_admitted_learning',
 });
 
 const POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_AUDIT_RISK_IDS = Object.freeze({

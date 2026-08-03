@@ -57,7 +57,12 @@ function createAnswerContractError(validation) {
     return createStatusError(message, staleReasons.has(reason) ? 409 : 400, reason);
 }
 
-export async function resolvePolicyQuestion(classificationId, selectedLibraryId, selectedOption, resolvedBy, generateRule = true, { policyQuestionContext, answerContract = null } = {}) {
+export async function resolvePolicyQuestion(classificationId, selectedLibraryId, selectedOption, resolvedBy, generateRule = true, {
+    policyQuestionContext,
+    answerContract = null,
+    runtimeDestinationEvidenceCommandService = null,
+    runtimeDestinationEvidenceAuthorizationContext = null,
+} = {}) {
     try {
         const result = await db.withTransaction(async (client) => {
 
@@ -338,12 +343,25 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
             );
         }
 
+        const runtimeDestinationEvidence = isNativeRuntimeQuestion &&
+            answerContract?.actionId !== POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.ROUTE_NOT_APPLICABLE &&
+            runtimeDestinationEvidenceAuthorizationContext?.authenticated === true &&
+            typeof runtimeDestinationEvidenceCommandService?.execute === 'function'
+            ? await runtimeDestinationEvidenceCommandService.execute({
+                client,
+                classificationId,
+                actorId: resolvedBy,
+                authorizationContext: runtimeDestinationEvidenceAuthorizationContext,
+            })
+            : null;
+
         logger.info('Policy question resolved', {
             classificationId,
             selectedLibrary: classification.library_name,
             resolvedBy,
             learningDecision: runtimeResolutionLearning?.decisionSummary?.decisionId ||
                 nativeResolutionProvenance?.learningGuard?.decisionId || null,
+            runtimeDestinationEvidence: runtimeDestinationEvidence?.statusId || null,
         });
 
         return {
@@ -366,6 +384,14 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
                     requestTimeDecision: nativeResolutionProvenance.requestTimeDecision,
                     learningGuard: nativeResolutionProvenance.learningGuard,
                     reasonCodes: nativeResolutionProvenance.reasonCodes,
+                }
+                : null,
+            runtimeDestinationEvidence: runtimeDestinationEvidence
+                ? {
+                    statusId: runtimeDestinationEvidence.statusId,
+                    reasonCodes: runtimeDestinationEvidence.reasonCodes,
+                    provenance: runtimeDestinationEvidence.provenance,
+                    admission: runtimeDestinationEvidence.admission,
                 }
                 : null,
             answerActionId: answerContract?.actionId || null,

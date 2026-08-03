@@ -4054,7 +4054,7 @@ Implementation: [Policy Runtime Exact-Item Memory Command](policy-runtime-exact-
 
 #### 5R.6.3 Compatibility And Identity Evidence Admission
 
-Status: pending.
+Status: complete.
 
 - Admit compatibility and identity evidence only through allow-listed
   operations from the authorized outcome executor.
@@ -4062,6 +4062,8 @@ Status: pending.
   refresh outbox where destination evidence changes.
 - Keep broad genre, weak overlap, RAG-only support, profile-only support,
   missing metadata, and unsafe AI wording blocked or exact-only.
+
+Implementation: [Policy Runtime Destination Evidence Admission](policy-runtime-destination-evidence-admission.md).
 
 #### 5R.6.4 Direct Writer Inventory And Cutover
 
@@ -4265,8 +4267,12 @@ Current starting point:
 - **5R.6.2 Exact-Item Memory Command Admission is complete.** A separate,
   empty-body authenticated command derives exact-item memory strictly from the
   locked completed runtime outcome, revalidates actor and source identity, and
-  uses durable receipt replay without re-recording the outcome. The next Phase
-  5R component is **5R.6.3 Compatibility And Identity Evidence Admission**.
+  uses durable receipt replay without re-recording the outcome.
+- **5R.6.3 Compatibility And Identity Evidence Admission is complete.** A
+  native runtime resolution can automatically admit one server-derived,
+  receipt-backed compatibility or identity evidence record only after bounded
+  provenance passes. The next Phase 5R component is **5R.6.4 Direct Writer
+  Inventory And Cutover**.
 - **5R.6.1 Runtime Resolution Outcome-Only Admission is complete.** Ordinary
   resolution now records a guarded outcome-only decision and cannot turn the
   compatibility `generateRule` flag into a durable evidence write.

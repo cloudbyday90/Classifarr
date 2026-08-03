@@ -101,6 +101,7 @@ export function registerPendingRoutes(router, { db, clarificationService, classi
       classificationId,
       answerPayload,
       resolveActor(req),
+      { authenticated: Boolean(req.user || req.apiKey) },
     );
 
     let wasRouted = false;

@@ -112,6 +112,7 @@ export async function processPolicyQuestionAnswer({
           destination_library_id: normalizedDestinationLibraryId,
         },
         interaction.user?.username || `discord:${interaction.user?.id || 'operator'}`,
+        { authenticated: Boolean(interaction.user?.id) },
       );
     } catch (error) {
       await sendResolutionError(interaction, error);
