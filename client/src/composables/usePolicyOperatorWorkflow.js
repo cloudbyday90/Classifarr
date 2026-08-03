@@ -19,6 +19,9 @@ import {
 import {
   isApprovedPolicyOperatorWorkflowReadinessPresentation,
 } from '@/utils/policyOperatorWorkflowReadinessPresentation'
+import {
+  adaptPolicyAuthoringWorkflowPresentation,
+} from '@/utils/policyAuthoringWorkflowPresentation'
 
 const WORKFLOW_LOAD_ERROR = 'Classifarr could not load the library workflow. You can still review the connected library details.'
 const CUSTOM_INTENT_SIGNAL_VALIDATION_ERROR = 'Classifarr could not validate that custom destination value.'
@@ -54,6 +57,7 @@ export function usePolicyOperatorWorkflow({
   validateCustomIntentSignalRequest = validatePolicyOperatorWorkflowCustomIntentSignal,
 } = {}) {
   const workflowRead = ref(null)
+  const workflowPresentation = ref(null)
   const loading = ref(false)
   const error = ref('')
   const customIntentSignalValidationLoading = ref(false)
@@ -66,6 +70,7 @@ export function usePolicyOperatorWorkflow({
     activeRequestId += 1
     activeCustomValidationRequestId += 1
     workflowRead.value = null
+    workflowPresentation.value = null
     loading.value = false
     error.value = ''
     customIntentSignalValidationLoading.value = false
@@ -84,6 +89,7 @@ export function usePolicyOperatorWorkflow({
     activeRequestId = requestId
     activeCustomValidationRequestId += 1
     workflowRead.value = null
+    workflowPresentation.value = null
     error.value = ''
     customIntentSignalValidationLoading.value = false
     customIntentSignalValidationError.value = ''
@@ -99,7 +105,17 @@ export function usePolicyOperatorWorkflow({
         return false
       }
 
+      const presentationResult = adaptPolicyAuthoringWorkflowPresentation({
+        workflowRead: result,
+        expectedLibraryId: libraryId,
+      })
+      if (!presentationResult.ok) {
+        error.value = WORKFLOW_LOAD_ERROR
+        return false
+      }
+
       workflowRead.value = result
+      workflowPresentation.value = presentationResult.presentation
       return true
     } catch {
       if (requestId === activeRequestId) {
@@ -147,7 +163,17 @@ export function usePolicyOperatorWorkflow({
         return false
       }
 
+      const presentationResult = adaptPolicyAuthoringWorkflowPresentation({
+        workflowRead: result,
+        expectedLibraryId: libraryId,
+      })
+      if (!presentationResult.ok) {
+        customIntentSignalValidationError.value = CUSTOM_INTENT_SIGNAL_VALIDATION_ERROR
+        return false
+      }
+
       workflowRead.value = result
+      workflowPresentation.value = presentationResult.presentation
       customIntentSignalValidationMessage.value = 'Classifarr checked the custom value. Review it below before adding it to this policy.'
       return true
     } catch (requestError) {
@@ -165,6 +191,7 @@ export function usePolicyOperatorWorkflow({
 
   return {
     workflowRead,
+    workflowPresentation,
     loading,
     error,
     customIntentSignalValidationLoading,

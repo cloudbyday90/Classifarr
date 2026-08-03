@@ -60,9 +60,11 @@ function buildConstraintValueEligibility() {
 function buildWorkflowRead(libraryId = 7) {
   return {
     version: 'policy.operator_workflow_read.v4',
+    statusId: 'ready',
     library: {
       id: libraryId,
       name: 'Movies',
+      mediaType: null,
     },
     observedProfile: {
       available: true,
@@ -106,6 +108,51 @@ function buildWorkflowRead(libraryId = 7) {
       }],
       rawPayloadExposed: false,
     },
+    presentation: {
+      version: 'policy.authoring_workflow_presentation.v1',
+      revision: 'a'.repeat(43),
+      library: {
+        id: libraryId,
+        name: 'Movies',
+        mediaType: null,
+      },
+      destinationProposal: {
+        statusId: 'ready',
+        title: 'Destination setup',
+        summary: 'Use the connected library as the destination context.',
+        available: true,
+        requiresExplicitAdmission: true,
+        observedContext: {
+          available: true,
+          current: true,
+          itemCount: null,
+          suggestionCount: 1,
+        },
+      },
+      nextAction: {
+        kind: 'owner_action',
+        ownerId: 'intent_signal_picker',
+        sectionId: null,
+        actionId: 'add_destination_examples',
+        message: 'Accept a current library suggestion or add a declared destination value.',
+      },
+      adjustment: {
+        available: false,
+        statusId: 'unavailable',
+      },
+      recovery: {
+        statusId: 'ready',
+        automated: false,
+        message: null,
+      },
+      authority: {
+        displayProjection: true,
+        automationDecision: false,
+        policyPersistence: false,
+        routingExecution: false,
+      },
+      rawPayloadExposed: false,
+    },
     constraintValueEligibility: buildConstraintValueEligibility(),
     authority: {
       displayProjection: true,
@@ -113,6 +160,7 @@ function buildWorkflowRead(libraryId = 7) {
       policyPersistence: false,
       routingExecution: false,
     },
+    rawPayloadExposed: false,
   }
 }
 
@@ -125,6 +173,11 @@ describe('usePolicyOperatorWorkflow', () => {
 
     expect(loadWorkflowRequest).toHaveBeenCalledWith(7)
     expect(workflow.workflowRead.value).toEqual(buildWorkflowRead())
+    expect(workflow.workflowPresentation.value).toEqual(expect.objectContaining({
+      version: 'policy.authoring_workflow_presentation.v1',
+      statusId: 'ready',
+      library: expect.objectContaining({ id: 7 }),
+    }))
     expect(workflow.loading.value).toBe(false)
     expect(workflow.error.value).toBe('')
   })

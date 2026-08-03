@@ -46,7 +46,9 @@
         <PolicyBuilderWorkflowShell
           v-if="experienceMode.isNativeCreate"
           :workflow-read="operatorWorkflowRead"
+          :workflow-presentation="operatorWorkflowPresentation"
           :loading="operatorWorkflowLoading"
+          :saving="saving"
           :error="operatorWorkflowError"
           :accepted-signals="acceptedIntentSignals"
           :constraint-draft-commands="constraintDraftCommands"
@@ -211,6 +213,7 @@ const experienceMode = computed(() => buildPolicyBuilderExperienceMode(props.pol
 
 const {
   workflowRead: operatorWorkflowRead,
+  workflowPresentation: operatorWorkflowPresentation,
   loading: operatorWorkflowLoading,
   error: operatorWorkflowError,
   watchWorkflow: watchOperatorWorkflow,

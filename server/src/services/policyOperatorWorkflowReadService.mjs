@@ -44,6 +44,10 @@ import {
   buildPolicyOperatorWorkflowReadinessPresentation,
   buildPolicyOperatorWorkflowReadinessPresentationAudit,
 } from './policyOperatorWorkflowReadinessPresentation.mjs';
+import {
+  buildPolicyAuthoringWorkflowPresentation,
+  buildPolicyAuthoringWorkflowPresentationAudit,
+} from './policyAuthoringWorkflowPresentation.mjs';
 
 const POLICY_OPERATOR_WORKFLOW_READ_VERSION = 'policy.operator_workflow_read.v4';
 const MAX_LABEL_LENGTH = 160;
@@ -67,6 +71,7 @@ const POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS = Object.freeze({
   INVALID_CONSTRAINT_DECISION_MODEL: 'invalid_constraint_decision_model',
   INVALID_CONSTRAINT_VALUE_ELIGIBILITY: 'invalid_constraint_value_eligibility',
   INVALID_READINESS_PRESENTATION: 'invalid_readiness_presentation',
+  INVALID_PRESENTATION: 'invalid_presentation',
 });
 
 function asObject(value) {
@@ -207,6 +212,13 @@ function buildReadResult({
     intentSignalProjection,
     emptyStateProjection,
   });
+  const presentation = buildPolicyAuthoringWorkflowPresentation({
+    library,
+    statusId,
+    observedProfile,
+    workflow,
+    readinessPresentation,
+  });
 
   return {
     version: POLICY_OPERATOR_WORKFLOW_READ_VERSION,
@@ -218,6 +230,7 @@ function buildReadResult({
     constraintValueEligibility: buildPolicyConstraintValueEligibility({ library }),
     workflow,
     readinessPresentation,
+    presentation,
     authority: {
       displayProjection: true,
       automationDecision: false,
@@ -253,6 +266,14 @@ function buildPolicyOperatorWorkflowReadAudit(result = {}) {
     observedProfile: source.observedProfile,
     intentSignalProjection: source.observedProfile?.intentSignalProjection,
     emptyStateProjection: source.emptyStateProjection,
+  });
+  const presentationAudit = buildPolicyAuthoringWorkflowPresentationAudit({
+    presentation: source.presentation,
+    library: source.library,
+    statusId: source.statusId,
+    observedProfile: source.observedProfile,
+    workflow: source.workflow,
+    readinessPresentation: source.readinessPresentation,
   });
 
   if (source.version !== POLICY_OPERATOR_WORKFLOW_READ_VERSION) {
@@ -315,6 +336,13 @@ function buildPolicyOperatorWorkflowReadAudit(result = {}) {
     issues.push({
       riskId: POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.INVALID_READINESS_PRESENTATION,
       message: 'Operator workflow reads require an owned action or truthful automated guidance for every readiness state.',
+    });
+  }
+
+  if (!presentationAudit.ok) {
+    issues.push({
+      riskId: POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.INVALID_PRESENTATION,
+      message: 'Operator workflow reads require a valid page-level presentation projection.',
     });
   }
 

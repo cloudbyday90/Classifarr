@@ -2,10 +2,13 @@
 
 ## Status
 
-Implemented as the first client-adoption component for the server-owned
-library-first workflow. New policies can now explicitly accept bounded
-observed-library candidates through the shell; the native create boundary
-persists that accepted intent atomically.
+Historical shell implementation record. The narrow page boundary is now
+[Policy Authoring Workflow Presentation Adapter](policy-authoring-workflow-presentation-adapter.md).
+This shell retains detail rendering until later Phase 4R components replace it,
+but it now requires that validated presentation before showing actionable
+controls. New policies can explicitly accept bounded observed-library
+candidates; the native create boundary persists that accepted intent
+atomically.
 
 The native-create policy-builder entry path now renders a display-only
 destination summary from `GET /api/policies/operator-workflow/libraries/:libraryId`.

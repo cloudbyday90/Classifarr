@@ -22,7 +22,7 @@
       :status="workflowStatus"
     />
 
-    <template v-if="!loading && workflowRead">
+    <template v-if="!loading && workflowRead && workflowPresentation?.statusId === 'ready'">
       <ObservedProfileSummary
         :library-name="libraryName"
         :observed-profile="observedProfile"
@@ -84,6 +84,14 @@ const props = defineProps({
   error: {
     type: String,
     default: '',
+  },
+  workflowPresentation: {
+    type: Object,
+    default: null,
+  },
+  saving: {
+    type: Boolean,
+    default: false,
   },
   acceptedSignals: {
     type: Array,
@@ -157,19 +165,23 @@ const activeEmptyStateAction = computed(() => emptyStates.value.find(
 )?.nextAction || null)
 const libraryName = computed(() => props.workflowRead?.library?.name || 'this library')
 const destinationTitle = computed(() => (
-  props.selectionEnabled ? 'Define this destination' : workflow.value?.title || 'Destination setup'
+  props.workflowPresentation?.destinationProposal?.title ||
+  'Destination setup'
 ))
 const destinationSummary = computed(() => (
-  props.selectionEnabled
-    ? 'Classifarr starts with what is already in this library. Accept only the observed values that should define future matches.'
-    : workflow.value?.summary || 'Use the connected library to understand this destination before adding policy details.'
+  props.workflowPresentation?.destinationProposal?.summary ||
+  'Use the connected library to understand this destination before adding policy details.'
 ))
 const workflowStatus = computed(() => buildPolicyBuilderWorkflowStatus({
   loading: props.loading,
+  saving: props.saving,
   error: props.error,
   activeEmptyStateActionId: props.activeEmptyStateActionId,
   activeEmptyStateActionMessage: activeEmptyStateAction.value?.busyMessage ||
     activeEmptyStateAction.value?.busyLabel || '',
+  automaticRecoveryMessage: props.workflowPresentation?.recovery?.automated === true
+    ? props.workflowPresentation.recovery.message
+    : '',
 }))
 const emptyStateActionStatusId = computed(() => (
   props.activeEmptyStateActionId ? workflowStatus.value?.id || '' : ''

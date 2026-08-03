@@ -18,6 +18,20 @@ const sectionIds = [
   'can_this_route',
 ]
 
+function buildWorkflowPresentation() {
+  return {
+    statusId: 'ready',
+    destinationProposal: {
+      title: 'Define this destination',
+      summary: 'Use the connected library as the current destination context.',
+    },
+    recovery: {
+      automated: false,
+      message: null,
+    },
+  }
+}
+
 function buildWorkflowRead() {
   return {
     library: {
@@ -60,6 +74,7 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
     const wrapper = mount(PolicyBuilderWorkflowShell, {
       props: {
         workflowRead: buildWorkflowRead(),
+        workflowPresentation: buildWorkflowPresentation(),
       },
     })
 
@@ -90,6 +105,37 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
     expect(errorWrapper.text()).not.toContain('stack trace')
   })
 
+  it('renders no actionable controls when the page presentation is unavailable', () => {
+    const wrapper = mount(PolicyBuilderWorkflowShell, {
+      props: {
+        workflowRead: buildWorkflowRead(),
+        workflowPresentation: { statusId: 'unavailable' },
+      },
+    })
+
+    expect(wrapper.text()).toContain('Destination setup')
+    expect(wrapper.find('[aria-label="Destination policy questions"]').exists()).toBe(false)
+    expect(wrapper.findAll('article')).toHaveLength(0)
+  })
+
+  it('uses the server-owned automatic recovery message after active work completes', () => {
+    const wrapper = mount(PolicyBuilderWorkflowShell, {
+      props: {
+        workflowRead: buildWorkflowRead(),
+        workflowPresentation: {
+          ...buildWorkflowPresentation(),
+          recovery: {
+            automated: true,
+            message: 'Classifarr is waiting for automatic profile recovery.',
+          },
+        },
+      },
+    })
+
+    expect(wrapper.find('[role="status"]').text())
+      .toContain('waiting for automatic profile recovery')
+  })
+
   it('explains when observed profile evidence is unavailable', () => {
     const workflowRead = buildWorkflowRead()
     workflowRead.observedProfile = {
@@ -100,7 +146,7 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
     }
 
     const wrapper = mount(PolicyBuilderWorkflowShell, {
-      props: { workflowRead },
+      props: { workflowRead, workflowPresentation: buildWorkflowPresentation() },
     })
 
     expect(wrapper.text()).toContain('Profile unavailable')
@@ -142,7 +188,11 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
     }
 
     const wrapper = mount(PolicyBuilderWorkflowShell, {
-      props: { workflowRead, selectionEnabled: true },
+      props: {
+        workflowRead,
+        workflowPresentation: buildWorkflowPresentation(),
+        selectionEnabled: true,
+      },
     })
 
     const belongsHereArticle = wrapper.find('#policy-builder-workflow-what_belongs_here-title').element.closest('article')
@@ -194,6 +244,7 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
     const wrapper = mount(PolicyBuilderWorkflowShell, {
       props: {
         workflowRead,
+        workflowPresentation: buildWorkflowPresentation(),
         selectionEnabled: true,
         activeEmptyStateActionId: 'map_routing_destination',
       },
@@ -245,6 +296,7 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
     const wrapper = mount(PolicyBuilderWorkflowShell, {
       props: {
         workflowRead,
+        workflowPresentation: buildWorkflowPresentation(),
         selectionEnabled: true,
       },
     })
@@ -294,6 +346,7 @@ describe('PolicyBuilderWorkflowShell.vue', () => {
     const wrapper = mount(PolicyBuilderWorkflowShell, {
       props: {
         workflowRead,
+        workflowPresentation: buildWorkflowPresentation(),
         selectionEnabled: true,
       },
     })

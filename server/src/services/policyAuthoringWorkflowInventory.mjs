@@ -39,7 +39,7 @@ const POLICY_AUTHORING_WORKFLOW_REQUIREMENT_IDS = Object.freeze({
 });
 
 const POLICY_AUTHORING_BUILDER_MATCHER =
-  /(PolicyBuilder|PolicyDestination|PolicyIntent|PolicySelected|PolicyStarter|PolicyPreset|DestinationContext|ObservedProfile|ReadinessNextAction|IntentSignal|policyBuilder|policyIntent|usePolicyBuilder|usePolicyIntent|usePolicyOperatorWorkflow)/;
+  /(PolicyBuilder|PolicyDestination|PolicyIntent|PolicySelected|PolicyStarter|PolicyPreset|DestinationContext|ObservedProfile|ReadinessNextAction|IntentSignal|policyAuthoring|policyBuilder|policyIntent|usePolicyBuilder|usePolicyIntent|usePolicyOperatorWorkflow)/;
 
 function deepFreeze(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) {
@@ -68,6 +68,16 @@ function basename(filePath) {
 }
 
 const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
+  {
+    id: 'policy_authoring_workflow_presentation_adapter',
+    decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
+    roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.WORKFLOW_SHELL,
+    normalAuthoringAllowed: true,
+    migrationSupportOnly: false,
+    riskIds: [],
+    notes: 'The policy authoring workflow presentation adapter validates and freezes the bounded server-owned page model without deriving readiness, policy meaning, recovery, or write authority.',
+    matches: filePath => filePath.endsWith('/policyAuthoringWorkflowPresentation.js'),
+  },
   {
     id: 'library_first_workflow_shell',
     decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,

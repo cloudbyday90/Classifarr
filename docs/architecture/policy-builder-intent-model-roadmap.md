@@ -10,10 +10,11 @@ Current execution focus:
    contract. It records that `/policies` has no normal native-create trigger,
    classifies current actions and removal work, and keeps representative live
    browser verification pending rather than claiming it from static evidence.
-2. **5R.1 Server Intent Contract Authority** and **5R.2 Write Preflight And
-   Persistence Boundary** are complete. **4R.2 Server Workflow Presentation
-   Adapter** is the next dependency-gated component; it must consume those
-   server contracts before 4R.3 binds create and save actions.
+2. **5R.1 Server Intent Contract Authority**, **5R.2 Write Preflight And
+   Persistence Boundary**, and **4R.2 Server Workflow Presentation Adapter**
+   are complete. **4R.3 Action Binding And Admission Feedback** is the next
+   dependency-gated component; it binds visible create and save actions to
+   those server contracts.
 3. **8R.37.1 Runtime Capability Inventory And Isolation Decision** is a
    parallel release-maintenance/security audit. It cannot block 4R.1 or
    automatic native policy behavior.
@@ -27,7 +28,7 @@ The execution dependency is intentionally not numeric:
 
 ```text
 completed foundations: 0R -> 1R -> 2R -> 3R
-active product work: 4R.1 -> 5R.1/5R.2 (complete) -> 4R.2 -> 4R.3 -> 4R.4/4R.5
+active product work: 4R.1 -> 5R.1/5R.2/4R.2 (complete) -> 4R.3 -> 4R.4/4R.5
 runtime trust work: 5R.3 through 5R.9 -> 4R.6 through 4R.9
 parallel safety work: 8R installation/runtime lanes + 9R zero-debt gate
 ```
@@ -3229,6 +3230,12 @@ Acceptance criteria:
   decision logic.
 - An invalid projection fails closed into a bounded non-actionable state.
 
+Implementation outcome: complete. The server now returns and audits
+`policy.authoring_workflow_presentation.v1`; the client validates and
+deep-freezes the display-safe subset, preserves request identity checks, and
+uses one status priority. See [Policy Authoring Workflow Presentation
+Adapter](policy-authoring-workflow-presentation-adapter.md). 4R.3 is next.
+
 ### 4R.3 Action Binding And Admission Feedback
 
 Intent: make every button, link, and submit operation reliable before changing
@@ -3426,7 +3433,7 @@ Implement Phase 4R in this order:
    Establishes the actual browser cutline and prevents another documentation-
    only completion claim.
 2. **4R.2 Server Workflow Presentation Adapter**
-   Creates the single validated read boundary for rendered work.
+   Complete. It creates the single validated read boundary for rendered work.
 3. **4R.3 Action Binding And Admission Feedback**
    Makes visible controls real before rearranging them.
 4. **4R.4 Destination Proposal Card**
@@ -3447,8 +3454,7 @@ source inventory has identified `/policies` as the replacement cutline and
 recorded its current actions, but representative live-browser verification is
 still pending an approved browser session. Do not modify the builder's
 information architecture, add another suggestion control, or expose a new
-advanced setting before 5R.1 and 5R.2 establish the server authority required
-for 4R.2 and 4R.3.
+advanced setting before 4R.3 binds actions to the established server authority.
 
 ## Phase 5R: Server Authority, Runtime Questions, And Learning Guard
 
@@ -3797,8 +3803,9 @@ Current starting point:
   creation is admitted transactionally with an idempotency key and returns a
   fresh authority projection; draft sidecars remain validation-only
   compatibility input. See [Policy Intent Write Admission](policy-intent-write-admission.md).
-- Follow with **4R.2 Server Workflow Presentation Adapter** before 4R.3 changes
-  a rendered create/save action.
+- **4R.2 Server Workflow Presentation Adapter is complete.** Follow with
+  **4R.3 Action Binding And Admission Feedback** before changing a rendered
+  create/save action.
 - Do not add preview/replay product UI or let AI clarification text, UI
   answers, or Discord payloads authorize learning directly.
 
@@ -11240,9 +11247,9 @@ The next sequence is dependency-gated rather than phase-number order:
 3. **5R.2 Write Preflight And Persistence Boundary**: complete. Native initial
    creation is idempotent, actor-authorized, transactional, sanitized, and
    authoritative after commit or replay.
-4. **4R.2 Server Workflow Presentation Adapter**: next. Build the one validated
-   browser read boundary from the authority and write-result contracts.
-5. **4R.3 Action Binding And Admission Feedback**: bind create and save actions
+4. **4R.2 Server Workflow Presentation Adapter**: complete. The browser has
+   one validated, immutable, non-authoritative page-read boundary.
+5. **4R.3 Action Binding And Admission Feedback**: next. Bind create and save actions
    to that adapter before changing the information architecture.
 6. **4R.4 Destination Proposal Card** and **4R.5 Intent Adjustment
    Disclosure**: deliver the automation-first create/edit surface. A ready

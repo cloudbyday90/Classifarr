@@ -162,10 +162,11 @@ Decision: Selected.
 1. **5R.1 Server Intent Contract Authority** and **5R.2 Write Preflight And
    Persistence Boundary** are complete. Their authority and admitted native
    create result are the required inputs for the presentation adapter.
-2. Implement **4R.2 Server Workflow Presentation Adapter** on `/policies` from
-   that validated projection. It replaces the legacy list as the normal
-   authoring cutline; it does not add a second modal path.
-3. Implement **4R.3 Action Binding And Admission Feedback** before placing the
+2. **4R.2 Server Workflow Presentation Adapter** is complete. The new
+   server-owned, client-validated page projection is documented in [Policy
+   Authoring Workflow Presentation Adapter](policy-authoring-workflow-presentation-adapter.md).
+   It does not add a second modal path.
+3. Implement **4R.3 Action Binding And Admission Feedback** next, before placing the
    new create/save action in the product. Each action must have one pending,
    success, rejection, unavailable, and focus/status outcome.
 4. Implement 4R.4 through 4R.8 in order: proposal first, adjustments and

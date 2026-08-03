@@ -125,6 +125,14 @@ describe('policyBuilderBoundaryInventory', () => {
   });
 
   test('keeps the library-first workflow read adapter and shell non-authoritative', () => {
+    expect(classifyPolicyBuilderClientPath('client/src/utils/policyAuthoringWorkflowPresentation.js'))
+      .toEqual(expect.objectContaining({
+        category: POLICY_BUILDER_BOUNDARY_CATEGORIES.REFERENCE_DATA_ADAPTER,
+        ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_REFERENCE_ADAPTER,
+        actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.SPLIT_REFERENCE_AND_EVIDENCE,
+        clientEngineAuthorityAllowed: false,
+      }));
+
     expect(classifyPolicyBuilderClientPath('client/src/composables/usePolicyOperatorWorkflow.js'))
       .toEqual(expect.objectContaining({
         category: POLICY_BUILDER_BOUNDARY_CATEGORIES.REFERENCE_DATA_ADAPTER,

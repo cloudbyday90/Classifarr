@@ -75,6 +75,7 @@ describe('policyAuthoringWorkflowInventory', () => {
       'client/src/components/policies/PolicyBuilderDestinationQuestions.vue',
       'client/src/components/policies/PolicyBuilderWorkflowStatusNotice.vue',
       'client/src/utils/policyBuilderWorkflowStatusPriority.js',
+      'client/src/utils/policyAuthoringWorkflowPresentation.js',
       'client/src/composables/usePolicyOperatorWorkflow.js',
     ].forEach((filePath) => {
       expect(classifyPolicyAuthoringWorkflowSurface(filePath)).toEqual(expect.objectContaining({

@@ -204,9 +204,11 @@ describe('PolicyBuilderModal.vue', () => {
 
   const buildOperatorWorkflowRead = () => ({
     version: 'policy.operator_workflow_read.v4',
+    statusId: 'ready',
     library: {
       id: 1,
       name: 'Sci-Fi Movies',
+      mediaType: null,
     },
     observedProfile: {
       available: true,
@@ -265,6 +267,51 @@ describe('PolicyBuilderModal.vue', () => {
       ],
       rawPayloadExposed: false,
     },
+    presentation: {
+      version: 'policy.authoring_workflow_presentation.v1',
+      revision: 'a'.repeat(43),
+      library: {
+        id: 1,
+        name: 'Sci-Fi Movies',
+        mediaType: null,
+      },
+      destinationProposal: {
+        statusId: 'ready',
+        title: 'Destination setup',
+        summary: 'Review what belongs here, what should not, when to ask, and whether confirmed matches can route.',
+        available: true,
+        requiresExplicitAdmission: true,
+        observedContext: {
+          available: true,
+          current: true,
+          itemCount: null,
+          suggestionCount: 2,
+        },
+      },
+      nextAction: {
+        kind: 'owner_action',
+        ownerId: 'intent_signal_picker',
+        sectionId: null,
+        actionId: 'add_destination_examples',
+        message: 'Accept a current library suggestion or add a declared destination value.',
+      },
+      adjustment: {
+        available: true,
+        statusId: 'available',
+      },
+      recovery: {
+        statusId: 'ready',
+        automated: false,
+        message: null,
+      },
+      authority: {
+        displayProjection: true,
+        automationDecision: false,
+        policyPersistence: false,
+        routingExecution: false,
+      },
+      rawPayloadExposed: false,
+    },
     constraintValueEligibility: buildConstraintValueEligibility(),
     authority: {
       displayProjection: true,
@@ -272,6 +319,7 @@ describe('PolicyBuilderModal.vue', () => {
       policyPersistence: false,
       routingExecution: false,
     },
+    rawPayloadExposed: false,
   });
 
   const buildNativeReadinessSummary = () => ({
@@ -594,7 +642,7 @@ describe('PolicyBuilderModal.vue', () => {
 
     await flushPromises();
 
-    expect(document.body.textContent).toContain('Define this destination');
+    expect(document.body.textContent).toContain('Destination setup');
     expect(document.body.textContent).toContain('What should define this destination?');
     expect(document.body.textContent).not.toContain('Policy Intent Builder');
     expect(document.body.textContent).not.toContain('Starter Template Accelerator');

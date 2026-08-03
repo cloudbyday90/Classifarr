@@ -110,6 +110,21 @@ describe('policyOperatorWorkflowReadService', () => {
           actionId: 'add_destination_examples',
         }),
       }),
+      presentation: expect.objectContaining({
+        version: 'policy.authoring_workflow_presentation.v1',
+        revision: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
+        destinationProposal: expect.objectContaining({
+          available: true,
+          requiresExplicitAdmission: true,
+        }),
+        authority: {
+          displayProjection: true,
+          automationDecision: false,
+          policyPersistence: false,
+          routingExecution: false,
+        },
+        rawPayloadExposed: false,
+      }),
       constraintDecisionModel: expect.objectContaining({
         version: POLICY_CONSTRAINT_DECISION_MODEL_VERSION,
         rawPayloadExposed: false,
@@ -201,6 +216,10 @@ describe('policyOperatorWorkflowReadService', () => {
       kind: 'automated_guidance',
       ownerId: 'observed_profile_summary',
       actionId: null,
+    }));
+    expect(result.presentation.recovery).toEqual(expect.objectContaining({
+      automated: true,
+      message: result.readinessPresentation.primary.message,
     }));
   });
 
@@ -339,6 +358,7 @@ describe('policyOperatorWorkflowReadService', () => {
     result.constraintValueEligibility.statusId = 'ready';
     result.sideEffects.providerQuotaRead = true;
     result.rawPayloadExposed = true;
+    result.presentation.rawPayloadExposed = true;
 
     expect(buildPolicyOperatorWorkflowReadAudit(result).issues.map(issue => issue.riskId)).toEqual(
       expect.arrayContaining([
@@ -346,6 +366,7 @@ describe('policyOperatorWorkflowReadService', () => {
         POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.OBSERVED_VALUE_AUTO_DECLARED,
         POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.INVALID_CONSTRAINT_DECISION_MODEL,
         POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.INVALID_CONSTRAINT_VALUE_ELIGIBILITY,
+        POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.INVALID_PRESENTATION,
         POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.UNSAFE_SIDE_EFFECT,
         POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.RAW_PAYLOAD_EXPOSED,
       ])

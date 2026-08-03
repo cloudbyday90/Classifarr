@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Authoring Workflow Presentation**: Added a versioned, audited,
+  display-only server projection and strict immutable client adapter for policy
+  authoring. Invalid, mismatched, unsafe, or raw-data-bearing workflow
+  projections now fail closed before actionable controls render; loading,
+  saving, local navigation, automatic recovery, and error feedback have one
+  deterministic status priority.
+
 - **Policy Intent Write Admission**: Added an authorized, transactional native
   policy-create boundary with client retry keys, PostgreSQL advisory-lock
   coordination, durable receipt replay, bounded conflict handling, and a fresh
