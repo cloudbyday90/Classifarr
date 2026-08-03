@@ -53,7 +53,11 @@ const mockProviderLock = {
 
 const mockClassificationService = createServiceStubs(['routeToArr']);
 
-const mockClarificationService = createServiceStubs(['getPendingClassifications', 'resolvePolicyQuestion']);
+const mockClarificationService = createServiceStubs([
+  'getPendingClassifications',
+  'resolvePolicyQuestion',
+  'resolveRuntimeQuestionAnswer',
+]);
 
 const mockClassificationOutcomeService = createServiceStubs();
 
@@ -102,6 +106,7 @@ const { PATTERN_SIGNAL_TYPES } = await import('../services/signalCollector.mjs')
 const { requireReadWrite } = await import('../middleware/apiKeyAuth.mjs');
 const { STALE_AWAITING_DECISION_DAYS } = await import('../constants/classificationFlow.mjs');
 const { classificationEvidenceService } = await import('../services/classificationEvidenceService.mjs');
+const { normalizePolicyRuntimeQuestion } = await import('../services/policyRuntimeQuestionNormalizer.mjs');
 
 const db = mockDb;
 const classificationService = mockClassificationService;
@@ -130,6 +135,14 @@ function buildClassificationRouter(reclassificationService = {}) {
   });
 }
 
+function normalizedPolicyQuestion() {
+  return normalizePolicyRuntimeQuestion({
+    metadata: { media_type: 'movie' },
+    libraries: [{ id: 8, name: 'Movies', media_type: 'movie', is_active: true }],
+    policyResult: { ranked: [{ library_id: 8, score: 90 }] },
+  });
+}
+
 describe('Classification Routes - Pending Resolution', () => {
   let app;
   let consoleWarnSpy;
@@ -149,6 +162,16 @@ describe('Classification Routes - Pending Resolution', () => {
     jest.clearAllMocks();
     clarificationService.getPendingClassifications.mockReset();
     clarificationService.getPendingClassifications.mockResolvedValue([]);
+    clarificationService.resolveRuntimeQuestionAnswer.mockReset();
+    clarificationService.resolveRuntimeQuestionAnswer.mockImplementation(
+      async (classificationId, answer, actor) => clarificationService.resolvePolicyQuestion(
+        classificationId,
+        answer.destination_library_id,
+        null,
+        actor,
+        false,
+      ),
+    );
     nativePendingRouteOutcomePersistence.recordNativePendingRouteOutcome.mockReset();
     nativePendingRouteOutcomePersistence.recordNativePendingRouteOutcome.mockResolvedValue({
       persisted: false,
@@ -167,6 +190,22 @@ describe('Classification Routes - Pending Resolution', () => {
     app = express();
     app.use(express.json());
     app.use((req, _res, next) => {
+      // These legacy routing assertions remain focused on post-resolution
+      // routing. The production client sends the contract payload directly.
+      const libraryId = Number(req.body?.library_id);
+      if (req.path.endsWith('/resolve') &&
+          !Object.hasOwn(req.body || {}, 'generate_rule') &&
+          Number.isInteger(libraryId) && libraryId > 0) {
+        req.body = {
+          contract_version: 'policy.runtime_question_answer.v1',
+          contract_fingerprint: 'test-contract-fingerprint',
+          action_id: 'confirm_destination',
+          destination_library_id: libraryId,
+        };
+      }
+      next();
+    });
+    app.use((req, _res, next) => {
       req.user = { id: 1, username: 'admin', role: 'admin' };
       next();
     });
@@ -175,7 +214,7 @@ describe('Classification Routes - Pending Resolution', () => {
   });
 
   describe('POST /pending/:id/resolve', () => {
-    test('should reject non-numeric library_id', async () => {
+    test('rejects a legacy free-form answer payload', async () => {
       const response = await request(app)
         .post('/api/classification/pending/1/resolve')
         .send({
@@ -185,11 +224,11 @@ describe('Classification Routes - Pending Resolution', () => {
         });
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toBe('Invalid library_id');
-      expect(clarificationService.resolvePolicyQuestion).not.toHaveBeenCalled();
+      expect(response.body.error).toBe('Invalid policy question answer');
+      expect(clarificationService.resolveRuntimeQuestionAnswer).not.toHaveBeenCalled();
     });
 
-    test('should reject numeric library_id that does not exist', async () => {
+    test('rejects an unknown destination before resolving', async () => {
       db.query.mockImplementationOnce(async () => createDbRowsResult());
 
       const response = await request(app)
@@ -201,11 +240,11 @@ describe('Classification Routes - Pending Resolution', () => {
         });
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toBe('Invalid library_id');
-      expect(clarificationService.resolvePolicyQuestion).not.toHaveBeenCalled();
+      expect(response.body.error).toBe('Invalid destination_library_id');
+      expect(clarificationService.resolveRuntimeQuestionAnswer).not.toHaveBeenCalled();
     });
 
-    test('should reject invalid generate_rule values', async () => {
+    test('rejects removed rule-generation input', async () => {
       const response = await request(app)
         .post('/api/classification/pending/1/resolve')
         .send({
@@ -214,8 +253,8 @@ describe('Classification Routes - Pending Resolution', () => {
         });
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toBe('Invalid generate_rule');
-      expect(clarificationService.resolvePolicyQuestion).not.toHaveBeenCalled();
+      expect(response.body.error).toBe('Invalid policy question answer');
+      expect(clarificationService.resolveRuntimeQuestionAnswer).not.toHaveBeenCalled();
     });
 
     test('should resolve and route to Radarr when library has arr mapping', async () => {
@@ -609,7 +648,7 @@ describe('Classification Routes - Pending Resolution', () => {
       );
     });
 
-    test('should return 400 when library_id is missing', async () => {
+    test('returns 400 when a contract destination is missing', async () => {
       const response = await request(app)
         .post('/api/classification/pending/1/resolve')
         .send({
@@ -617,7 +656,7 @@ describe('Classification Routes - Pending Resolution', () => {
         });
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toBe('library_id is required');
+      expect(response.body.error).toBe('Invalid policy question answer');
     });
 
     test('should not route when shouldRoute is false', async () => {
@@ -640,8 +679,8 @@ describe('Classification Routes - Pending Resolution', () => {
       expect(classificationService.routeToArr).not.toHaveBeenCalled();
     });
 
-    test('should normalize generate_rule false string before calling clarificationService', async () => {
-      clarificationService.resolvePolicyQuestion.mockResolvedValue({
+    test('passes only the normalized answer contract to the resolver', async () => {
+      clarificationService.resolveRuntimeQuestionAnswer.mockResolvedValueOnce({
         success: true,
         classificationId: 6,
         libraryId: 60,
@@ -652,17 +691,22 @@ describe('Classification Routes - Pending Resolution', () => {
       const response = await request(app)
         .post('/api/classification/pending/6/resolve')
         .send({
-          library_id: 60,
-          generate_rule: 'false'
+          contract_version: 'policy.runtime_question_answer.v1',
+          contract_fingerprint: 'current-contract-fingerprint',
+          action_id: 'confirm_destination',
+          destination_library_id: 60,
         });
 
       expect(response.status).toBe(200);
-      expect(clarificationService.resolvePolicyQuestion).toHaveBeenCalledWith(
+      expect(clarificationService.resolveRuntimeQuestionAnswer).toHaveBeenCalledWith(
         6,
-        60,
-        'Manual selection',
+        {
+          contract_version: 'policy.runtime_question_answer.v1',
+          contract_fingerprint: 'current-contract-fingerprint',
+          action_id: 'confirm_destination',
+          destination_library_id: 60,
+        },
         'admin',
-        false
       );
     });
 
@@ -742,6 +786,28 @@ describe('Classification Routes - Pending Resolution', () => {
       expect(response.body.items[0].policy_question_stale).toBe(true);
       expect(response.body.items[0].policy_question_stale_reason).toBe('policy_context_changed');
       expect(response.body.items[0].policy_question_current_context_version).toBe('2026-03-15T00:00:00.000Z');
+    });
+
+    test('adds a bounded answer contract only for a current normalized question', async () => {
+      clarificationService.getPendingClassifications.mockResolvedValueOnce([{
+        id: 102,
+        title: 'The Current Film',
+        media_type: 'movie',
+        status: 'awaiting_decision',
+        policy_question: normalizedPolicyQuestion(),
+        policy_question_stale: false,
+      }]);
+
+      const response = await request(app)
+        .get('/api/classification/pending');
+
+      expect(response.status).toBe(200);
+      expect(response.body.items[0].policy_question_answer).toMatchObject({
+        version: 'policy.runtime_question_answer.v1',
+        candidate_item: { classification_id: 102 },
+        candidate_destinations: [{ library_id: 8, library_name: 'Movies' }],
+        learning: { eligible: false, tier: 'blocked' },
+      });
     });
   });
 

@@ -18,6 +18,7 @@
 
 import { describe, expect, jest, test, beforeEach } from '@jest/globals';
 import { createNamedMockModule } from './helpers/mockFactory.mjs';
+import { normalizePolicyRuntimeQuestion } from '../services/policyRuntimeQuestionNormalizer.mjs';
 
 const mockDb = {
   query: jest.fn(),
@@ -26,6 +27,22 @@ const mockDb = {
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 const { sendPendingDecisionNotification } = await import('../services/discordPendingNotification.mjs');
+
+function normalizedPolicyQuestion() {
+  return normalizePolicyRuntimeQuestion({
+    metadata: { media_type: 'movie' },
+    libraries: [
+      { id: 15, name: 'Movies', media_type: 'movie', is_active: true },
+      { id: 14, name: 'Family', media_type: 'movie', is_active: true },
+    ],
+    policyResult: {
+      ranked: [
+        { library_id: 15, score: 80 },
+        { library_id: 14, score: 75 },
+      ],
+    },
+  });
+}
 
 describe('discordPendingNotification', () => {
   beforeEach(() => {
@@ -52,13 +69,7 @@ describe('discordPendingNotification', () => {
         classification_id: 77,
         confidence: 72,
         pending_reason: 'Needs clarification',
-        policy_question: {
-          question: 'Which library should receive this?',
-          options: [
-            { label: 'Movies', library_id: 15 },
-            { label: 'Family', library_id: 14 },
-          ],
-        },
+        policy_question: normalizedPolicyQuestion(),
       },
       {
         client,
@@ -116,7 +127,7 @@ describe('discordPendingNotification', () => {
     }));
   });
 
-  test('renders native runtime question outcomes without legacy duplicate controls', async () => {
+  test('renders one contract-bound native destination action', async () => {
     const send = jest.fn().mockResolvedValue({ id: 'discord-message-native' });
     const client = {
       channels: {
@@ -170,8 +181,10 @@ describe('discordPendingNotification', () => {
     const fields = payload.embeds[0].data.fields;
 
     expect(buttons).toEqual([
-      expect.objectContaining({ custom_id: 'ai_clarify_90_0', label: 'Resolve in Animated Movies' }),
-      expect.objectContaining({ custom_id: 'ai_clarify_90_1', label: 'Resolve without learning' }),
+      expect.objectContaining({
+        custom_id: expect.stringMatching(/^ai_answer_90_c_6_[A-Za-z0-9_-]{22}$/),
+        label: 'Resolve in Animated Movies',
+      }),
     ]);
     expect(buttons.map(button => button.label)).not.toContain('Confirm');
     expect(fields).toEqual(expect.arrayContaining([

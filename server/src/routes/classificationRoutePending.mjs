@@ -9,21 +9,44 @@
  */
 
 import {
-  parseOptionalBoolean,
   safeParseJsonObject,
   safeParsePolicyQuestion,
 } from './classificationRouteHelpers.mjs';
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { ValidationError } from '../utils/appError.mjs';
 import { recordNativePendingRouteOutcome } from '../services/policyNativePendingRouteOutcomePersistence.mjs';
+import {
+  buildPolicyRuntimeQuestionAnswerContract,
+  parsePolicyRuntimeQuestionAnswer,
+} from '../services/policyRuntimeQuestionAnswerContract.mjs';
+
+function resolveActor(req) {
+  const candidates = [
+    req.user?.username,
+    req.user?.email,
+    req.user?.id ? `user:${req.user.id}` : null,
+    req.auth?.subject ? `api:${req.auth.subject}` : null,
+  ];
+
+  return candidates.find(candidate => typeof candidate === 'string' && candidate.trim()) || 'authenticated_operator';
+}
 
 export function registerPendingRoutes(router, { db, clarificationService, classificationService, STALE_AWAITING_DECISION_DAYS, logger }) {
   router.get('/pending', asyncHandler(async (_req, res) => {
     const pending = await clarificationService.getPendingClassifications();
-    const items = pending.map((item) => ({
-      ...item,
-      policy_question: safeParsePolicyQuestion(item.policy_question),
-    }));
+    const items = pending.map((item) => {
+      const policyQuestion = safeParsePolicyQuestion(item.policy_question);
+      return {
+        ...item,
+        policy_question: policyQuestion,
+        policy_question_answer: buildPolicyRuntimeQuestionAnswerContract({
+          classification: item,
+          question: policyQuestion,
+          isStale: item.policy_question_stale === true,
+          currentContextVersion: item.policy_question_current_context_version,
+        }),
+      };
+    });
 
     res.json({
       count: items.length,
@@ -44,39 +67,40 @@ export function registerPendingRoutes(router, { db, clarificationService, classi
 
   router.post('/pending/:id/resolve', asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { library_id, selected_option, resolved_by = 'admin', generate_rule = true } = req.body;
-
-    if (!library_id) {
-      throw new ValidationError('library_id is required');
-    }
 
     const classificationId = Number.parseInt(id, 10);
-    const libraryId = Number.parseInt(library_id, 10);
 
     if (!Number.isInteger(classificationId) || classificationId < 1) {
       throw new ValidationError('Invalid classification id');
     }
 
-    if (!Number.isInteger(libraryId) || libraryId < 1) {
-      throw new ValidationError('Invalid library_id');
+    const parsedAnswer = parsePolicyRuntimeQuestionAnswer(req.body);
+    if (!parsedAnswer.ok) {
+      throw new ValidationError('Invalid policy question answer');
+    }
+    if (parsedAnswer.answer.destinationLibraryId) {
+      const libraryExists = await db.query(
+        'SELECT id FROM libraries WHERE id = $1 LIMIT 1',
+        [parsedAnswer.answer.destinationLibraryId],
+      );
+      if (libraryExists.rows.length === 0) {
+        throw new ValidationError('Invalid destination_library_id');
+      }
     }
 
-    const parsedGenerateRule = parseOptionalBoolean(generate_rule, true);
-    if (!parsedGenerateRule.valid) {
-      throw new ValidationError('Invalid generate_rule');
-    }
+    const answerPayload = {
+      contract_version: parsedAnswer.answer.contractVersion,
+      contract_fingerprint: parsedAnswer.answer.contractFingerprint,
+      action_id: parsedAnswer.answer.actionId,
+      ...(parsedAnswer.answer.destinationLibraryId
+        ? { destination_library_id: parsedAnswer.answer.destinationLibraryId }
+        : {}),
+    };
 
-    const libraryExists = await db.query('SELECT id FROM libraries WHERE id = $1 LIMIT 1', [libraryId]);
-    if (libraryExists.rows.length === 0) {
-      throw new ValidationError('Invalid library_id');
-    }
-
-    const result = await clarificationService.resolvePolicyQuestion(
+    const result = await clarificationService.resolveRuntimeQuestionAnswer(
       classificationId,
-      libraryId,
-      selected_option || 'Manual selection',
-      resolved_by,
-      parsedGenerateRule.value
+      answerPayload,
+      resolveActor(req),
     );
 
     let wasRouted = false;

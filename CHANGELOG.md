@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Runtime Question Answer Contract**: Pending policy-runtime questions now
+  expose one server-owned, fingerprint-bound answer contract for the UI and
+  Discord. Resolution accepts only versioned action and destination IDs,
+  validates current state and message ownership, records exact replay metadata,
+  and cannot create learning or policy changes. Older Discord policy-question
+  controls now fail closed to a refreshed queue state.
+
 - **Runtime Clarification Normalization**: Replaced AI- and legacy-authored
   pending-question wording with a versioned server-owned destination contract.
   Questions now use allow-listed uncertainty categories and server-known

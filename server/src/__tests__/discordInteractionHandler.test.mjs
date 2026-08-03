@@ -483,73 +483,7 @@ describe('processClarificationResponse', () => {
         );
     });
 
-    test('persists a native route result only after Discord routing returns', async () => {
-        db.query
-            .mockResolvedValueOnce({
-                rows: [{
-                    ...MOCK_CLASSIFICATION,
-                    status: 'awaiting_decision',
-                    policy_question: {
-                        options: [{ label: 'Movies', library_id: 10 }],
-                    },
-                }],
-            })
-            .mockResolvedValueOnce({
-                rows: [{
-                    ...MOCK_CLASSIFICATION,
-                    status: 'completed',
-                    library_id: 10,
-                    arr_type: 'radarr',
-                    arr_id: 22,
-                    library_name: 'Movies',
-                    radarr_settings: null,
-                    sonarr_settings: null,
-                    metadata: { title: 'Test Movie', tmdb_id: 1 },
-                }],
-            })
-            .mockResolvedValueOnce({ rows: [], rowCount: 1 })
-            .mockResolvedValueOnce({ rows: [{ name: 'Movies' }] });
-        clarificationService.resolvePolicyQuestion.mockResolvedValueOnce({
-            shouldRoute: true,
-            alreadyResolved: false,
-            nativeResolutionProvenance: {
-                statusId: 'outcome_only',
-                selection: {
-                    selectedDestination: {
-                        libraryId: 10,
-                        libraryName: 'Movies',
-                    },
-                },
-            },
-        });
-        classificationRoutingService.routeToArr.mockResolvedValueOnce({
-            attempted: true,
-            routed: true,
-            reason: 'routed',
-            error: null,
-        });
-        nativePendingRouteOutcomePersistence.recordNativePendingRouteOutcome.mockResolvedValueOnce({
-            persisted: true,
-            reason: null,
-            routeOutcome: { eventTypeId: 'route_succeeded' },
-        });
-
-        const interaction = makeInteraction();
-        await processClarificationResponse(100, 0, interaction);
-
-        expect(nativePendingRouteOutcomePersistence.recordNativePendingRouteOutcome).toHaveBeenCalledWith({
-            classificationId: 100,
-            nativeResolutionProvenance: expect.objectContaining({ statusId: 'outcome_only' }),
-            routingOutcome: expect.objectContaining({ routed: true, reason: 'routed' }),
-        });
-        expect(
-            classificationRoutingService.routeToArr.mock.invocationCallOrder[0],
-        ).toBeLessThan(
-            nativePendingRouteOutcomePersistence.recordNativePendingRouteOutcome.mock.invocationCallOrder[0],
-        );
-    });
-
-    test('uses the server-owned native destination for a do-not-learn runtime outcome', async () => {
+    test('rejects an old Discord button for a native policy-runtime question', async () => {
         db.query
             .mockResolvedValueOnce({
                 rows: [{
@@ -583,23 +517,19 @@ describe('processClarificationResponse', () => {
                         },
                     },
                 }],
-            })
-            .mockResolvedValueOnce({ rows: [{ name: 'Movies' }] });
-        clarificationService.resolvePolicyQuestion.mockResolvedValueOnce({
-            shouldRoute: false,
-            alreadyResolved: false,
-        });
+            });
 
         const interaction = makeInteraction();
         await processClarificationResponse(100, 1, interaction);
 
-        expect(clarificationService.resolvePolicyQuestion).toHaveBeenCalledWith(
-            100,
-            10,
-            'Do not learn',
-            'testUser',
-            false,
+        expect(interaction.followUp).toHaveBeenCalledWith(
+            expect.objectContaining({
+                content: expect.stringContaining('latest Classifarr queue state'),
+                ephemeral: true,
+            }),
         );
+        expect(clarificationService.resolvePolicyQuestion).not.toHaveBeenCalled();
+        expect(interaction.editReply).not.toHaveBeenCalled();
     });
 
     test('followUp (not reply) when classification is not found', async () => {

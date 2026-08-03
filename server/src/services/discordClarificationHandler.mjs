@@ -13,9 +13,8 @@ import { createLogger } from '../utils/logger.mjs';
 import { clarificationService } from './clarificationService.mjs';
 import * as notificationBuilder from './discordNotificationBuilder.mjs';
 import { routeAfterClarification } from './discordClarificationRouting.mjs';
-import { buildNativePendingQuestionPresentation } from './policyNativePendingQuestionPresentation.mjs';
 import { isPolicyRuntimeQuestionPersistenceEnvelope } from './policyRuntimeQuestionPersistenceContract.mjs';
-import { recordNativePendingRouteOutcome } from './policyNativePendingRouteOutcomePersistence.mjs';
+import { getRuntimeQuestionNormalizationStatus } from './policyRuntimeQuestionNormalizer.mjs';
 
 const logger = createLogger('discordClarificationHandler');
 
@@ -46,8 +45,6 @@ export async function processClarificationResponse(
     let libraryId = classification.library_id;
     let routingOutcome = { routed: false, reason: null, error: null };
     let policyQuestion = null;
-    let nativeResolutionProvenance = null;
-    let nativeRouteOutcomePersistence = null;
 
     if (classification.policy_question) {
       policyQuestion =
@@ -55,21 +52,21 @@ export async function processClarificationResponse(
           ? notificationBuilder.safeParseJson(classification.policy_question)
           : classification.policy_question;
 
-      const nativePresentation = buildNativePendingQuestionPresentation(policyQuestion);
-      const nativeAction = nativePresentation?.actions.find(
-        action => action.optionIndex === optionIndex,
-      );
-
-      if (nativeAction) {
-        selectedLabel = nativeAction.selectedOptionLabel;
-        libraryId = nativePresentation.destination.libraryId;
-      } else if (isPolicyRuntimeQuestionPersistenceEnvelope(policyQuestion)) {
+      // Policy-runtime questions must use the versioned answer contract. An
+      // older Discord button contains only a mutable option index and cannot
+      // safely authorize a policy resolution after the question has changed.
+      if (
+        isPolicyRuntimeQuestionPersistenceEnvelope(policyQuestion) ||
+        getRuntimeQuestionNormalizationStatus(policyQuestion).actionable
+      ) {
         await interaction.followUp({
-          content: 'This native decision cannot be safely resolved. Retry Classification from the latest queue state.',
+          content: 'This policy question must be answered from the latest Classifarr queue state. Retry Classification to refresh it.',
           ephemeral: true,
         });
         return;
-      } else if (policyQuestion?.options && policyQuestion.options[optionIndex]) {
+      }
+
+      if (policyQuestion?.options && policyQuestion.options[optionIndex]) {
         const selectedOption = policyQuestion.options[optionIndex];
         selectedLabel = selectedOption.label;
 
@@ -116,14 +113,6 @@ export async function processClarificationResponse(
 
       if (resolveResult.shouldRoute) {
         routingOutcome = await routeAfterClarification(classificationId);
-      }
-      nativeResolutionProvenance = resolveResult.nativeResolutionProvenance || null;
-      if (nativeResolutionProvenance) {
-        nativeRouteOutcomePersistence = await recordNativePendingRouteOutcome({
-          classificationId,
-          nativeResolutionProvenance,
-          routingOutcome,
-        });
       }
     } catch (resolveError) {
       if (resolveError?.statusCode === 404) {
@@ -177,20 +166,6 @@ export async function processClarificationResponse(
         [libraryId],
       );
       libraryName = libResult.rows[0]?.name || selectedLabel;
-    }
-
-    if (nativeResolutionProvenance) {
-      logger.info('Discord native pending resolution and route provenance evaluated', {
-        classificationId,
-        statusId: nativeResolutionProvenance.statusId,
-        eventTypeId: nativeResolutionProvenance.selection?.eventTypeId || null,
-        selectedOutcomeId: nativeResolutionProvenance.selection?.selectedOutcomeId || null,
-        learningDecisionId: nativeResolutionProvenance.learningGuard?.decisionId || null,
-        routeOutcomePersisted: nativeRouteOutcomePersistence?.persisted === true,
-        routeOutcomeEventTypeId: nativeRouteOutcomePersistence?.routeOutcome?.eventTypeId || null,
-        routeOutcomeReason: nativeRouteOutcomePersistence?.reason || null,
-        reasonCodes: nativeResolutionProvenance.reasonCodes || [],
-      });
     }
 
     const routingStatusText = routingOutcome.routed

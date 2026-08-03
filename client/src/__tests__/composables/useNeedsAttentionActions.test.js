@@ -13,12 +13,7 @@ vi.mock('@/api', () => ({
   },
 }))
 
-vi.mock('@/utils/needsAttention', () => ({
-  primaryPolicyOption: vi.fn(),
-}))
-
 import api from '@/api'
-import { primaryPolicyOption } from '@/utils/needsAttention'
 import { useNeedsAttentionActions } from '@/composables/useNeedsAttentionActions'
 
 function createDeps(overrides = {}) {
@@ -31,18 +26,44 @@ function createDeps(overrides = {}) {
   }
 }
 
+function currentAnswerContract(destinationLibraryId = 5) {
+  return {
+    version: 'policy.runtime_question_answer.v1',
+    fingerprint: 'current-contract-fingerprint',
+    candidate_destinations: [{ library_id: destinationLibraryId, library_name: 'Movies' }],
+    allowed_actions: [
+      {
+        id: 'confirm_destination',
+        available: true,
+        destination_required: true,
+      },
+    ],
+  }
+}
+
+function currentItem(id, title, destinationLibraryId = 5) {
+  return {
+    id,
+    title,
+    policy_question_answer: currentAnswerContract(destinationLibraryId),
+  }
+}
+
 describe('useNeedsAttentionActions composable', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('resolveWithOption toggles change mode when library_id is missing', async () => {
+  it('rejects an answer that does not contain a current contract destination', async () => {
     const deps = createDeps()
     const actions = useNeedsAttentionActions(deps)
 
-    await actions.resolveWithOption({ id: 1, title: 'Test Movie' }, { library_id: null })
+    await actions.resolveWithOption(currentItem(1, 'Test Movie'), {
+      actionId: 'confirm_destination',
+      destinationLibraryId: null,
+    })
 
-    expect(deps.setActionError).toHaveBeenCalledWith(expect.stringContaining('Library mapping is missing'))
+    expect(deps.setActionError).toHaveBeenCalledWith(expect.stringContaining('no longer valid'))
     expect(api.resolvePendingClassification).not.toHaveBeenCalled()
   })
 
@@ -54,11 +75,16 @@ describe('useNeedsAttentionActions composable', () => {
 
     const actions = useNeedsAttentionActions(deps)
     await actions.resolveWithOption(
-      { id: 2, title: 'Inception' },
-      { library_id: 5, label: 'Movies' },
+      currentItem(2, 'Inception'),
+      { actionId: 'confirm_destination', destinationLibraryId: 5 },
     )
 
-    expect(api.resolvePendingClassification).toHaveBeenCalledWith(2, expect.objectContaining({ library_id: 5 }))
+    expect(api.resolvePendingClassification).toHaveBeenCalledWith(2, {
+      contract_version: 'policy.runtime_question_answer.v1',
+      contract_fingerprint: 'current-contract-fingerprint',
+      action_id: 'confirm_destination',
+      destination_library_id: 5,
+    })
     expect(deps.setActionError).toHaveBeenCalledWith(expect.stringContaining('routing did not complete'))
   })
 
@@ -112,11 +138,10 @@ describe('useNeedsAttentionActions composable', () => {
   it('confirmAllNeedsAttention sets error for multiple routing warnings', async () => {
     const deps = createDeps({
       needsAttentionItems: ref([
-        { id: 1, title: 'A' },
-        { id: 2, title: 'B' },
+        currentItem(1, 'A'),
+        currentItem(2, 'B'),
       ]),
     })
-    primaryPolicyOption.mockReturnValue({ library_id: 5, label: 'Movies' })
     api.resolvePendingClassification
       .mockResolvedValueOnce({ data: { routed: false, routingReason: 'timeout' } })
       .mockResolvedValueOnce({ data: { routed: false, routingReason: 'error' } })

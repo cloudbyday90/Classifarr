@@ -7,10 +7,58 @@ import { createStatusError, safeParseJson, parsePolicyQuestion, getQuestionOptio
 import { isPolicyRuntimeQuestionPersistenceEnvelope } from './policyRuntimeQuestionPersistenceContract.mjs';
 import { policyNativePendingResolutionProvenanceService } from './policyNativePendingResolutionProvenance.mjs';
 import { getRuntimeQuestionNormalizationStatus } from './policyRuntimeQuestionNormalizer.mjs';
+import {
+    POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS,
+    POLICY_RUNTIME_QUESTION_ANSWER_REASON_IDS,
+    buildPolicyRuntimeQuestionAnswerOutcome,
+    getPolicyRuntimeQuestionAnswerSelectedOption,
+    validatePolicyRuntimeQuestionAnswer,
+} from './policyRuntimeQuestionAnswerContract.mjs';
 
 const logger = createLogger('PolicyResolution');
 
-export async function resolvePolicyQuestion(classificationId, selectedLibraryId, selectedOption, resolvedBy, generateRule = true, { policyQuestionContext }) {
+function getRecordedRuntimeQuestionAnswer(metadata) {
+    const details = metadata && typeof metadata === 'object'
+        ? metadata.classification_details
+        : null;
+    const outcome = details && typeof details === 'object'
+        ? details.outcome_link
+        : null;
+    const answer = outcome && typeof outcome === 'object'
+        ? outcome.runtime_question_answer
+        : null;
+
+    return answer && typeof answer === 'object' ? answer : null;
+}
+
+function isIdempotentRuntimeQuestionAnswer(recordedAnswer, answer) {
+    return recordedAnswer?.contract_version === answer?.contractVersion &&
+        recordedAnswer?.contract_fingerprint === answer?.contractFingerprint &&
+        recordedAnswer?.action_id === answer?.actionId &&
+        Number(recordedAnswer?.destination_library_id) === Number(answer?.destinationLibraryId);
+}
+
+function createAnswerContractError(validation) {
+    const reason = validation?.reason || POLICY_RUNTIME_QUESTION_ANSWER_REASON_IDS.INVALID_ANSWER;
+    const staleReasons = new Set([
+        POLICY_RUNTIME_QUESTION_ANSWER_REASON_IDS.STALE_QUESTION,
+        POLICY_RUNTIME_QUESTION_ANSWER_REASON_IDS.INVALID_QUESTION,
+        POLICY_RUNTIME_QUESTION_ANSWER_REASON_IDS.CONTRACT_FINGERPRINT_MISMATCH,
+        POLICY_RUNTIME_QUESTION_ANSWER_REASON_IDS.UNSUPPORTED_CONTRACT_VERSION,
+        POLICY_RUNTIME_QUESTION_ANSWER_REASON_IDS.ACTION_UNAVAILABLE,
+    ]);
+    const message = reason === POLICY_RUNTIME_QUESTION_ANSWER_REASON_IDS.STALE_QUESTION
+        ? 'Policy question is stale and must be retried'
+        : reason === POLICY_RUNTIME_QUESTION_ANSWER_REASON_IDS.ACTION_UNAVAILABLE
+            ? 'This policy question action is not currently available'
+            : reason === POLICY_RUNTIME_QUESTION_ANSWER_REASON_IDS.CONTRACT_FINGERPRINT_MISMATCH
+                ? 'Policy question changed and must be refreshed before it can be answered'
+                : 'Invalid policy question answer';
+
+    return createStatusError(message, staleReasons.has(reason) ? 409 : 400, reason);
+}
+
+export async function resolvePolicyQuestion(classificationId, selectedLibraryId, selectedOption, resolvedBy, generateRule = true, { policyQuestionContext, answerContract = null } = {}) {
     try {
         const result = await db.withTransaction(async (client) => {
 
@@ -36,7 +84,7 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
             }
 
             const existenceCheck = await client.query(
-                `SELECT status, library_id, library_name
+                `SELECT status, library_id, library_name, metadata
                  FROM classification_history
                  WHERE id = $1`,
                 [classificationId]
@@ -50,11 +98,19 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
 
             const existingClassification = existenceCheck.rows[0];
             const existingLibraryId = Number(existingClassification.library_id);
+            const existingMetadata = typeof existingClassification.metadata === 'string'
+                ? (safeParseJson(existingClassification.metadata) || {})
+                : (existingClassification.metadata || {});
+            const answerIsIdempotent = answerContract && isIdempotentRuntimeQuestionAnswer(
+                getRecordedRuntimeQuestionAnswer(existingMetadata),
+                answerContract,
+            );
             if (
                 existingClassification.status &&
                 ['completed', 'routed'].includes(existingClassification.status) &&
                 Number.isInteger(existingLibraryId) &&
-                existingLibraryId === selectedLibraryId
+                existingLibraryId === selectedLibraryId &&
+                (!answerContract || answerIsIdempotent)
             ) {
                 return {
                     success: true,
@@ -64,6 +120,7 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
                     generatedPattern: null,
                     shouldRoute: false,
                     alreadyResolved: true,
+                    idempotent: answerIsIdempotent === true,
                 };
             }
 
@@ -136,8 +193,24 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
                 );
             }
 
+            if (answerContract) {
+                const answerValidation = validatePolicyRuntimeQuestionAnswer({
+                    classification,
+                    question: policyQuestion,
+                    answer: answerContract,
+                    isStale: false,
+                    currentContextVersion,
+                });
+                if (!answerValidation.ok) {
+                    throw createAnswerContractError(answerValidation);
+                }
+                answerContract = answerValidation.answer;
+            }
+
             const optionLibraryIds = getQuestionOptionLibraryIds(policyQuestion);
-            if (optionLibraryIds.length > 0 && !optionLibraryIds.includes(selectedLibraryId)) {
+            const restrictToCandidateDestinations = !answerContract ||
+                answerContract.actionId === POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.CONFIRM_DESTINATION;
+            if (restrictToCandidateDestinations && optionLibraryIds.length > 0 && !optionLibraryIds.includes(selectedLibraryId)) {
                 throw createStatusError(
                     'Selected library is no longer valid for this policy question',
                     400,
@@ -146,11 +219,29 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
             }
         }
 
+        if (answerContract && !policyQuestion) {
+            throw createAnswerContractError({
+                reason: POLICY_RUNTIME_QUESTION_ANSWER_REASON_IDS.INVALID_QUESTION,
+            });
+        }
+
         const selectedLibraryName = selectedLibrary.name || classification.library_name;
         const metadata = typeof classification.metadata === 'string'
             ? (safeParseJson(classification.metadata) || {})
             : (classification.metadata || {});
         let nativeResolutionProvenance = null;
+        const serverSelectedOption = answerContract
+            ? getPolicyRuntimeQuestionAnswerSelectedOption({
+                question: policyQuestion,
+                answer: answerContract,
+            })
+            : selectedOption;
+
+        if (answerContract && !serverSelectedOption) {
+            throw createAnswerContractError({
+                reason: POLICY_RUNTIME_QUESTION_ANSWER_REASON_IDS.INVALID_QUESTION,
+            });
+        }
 
         if (isNativeRuntimeQuestion) {
             nativeResolutionProvenance = policyNativePendingResolutionProvenanceService.build({
@@ -160,7 +251,7 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
                     libraryId: selectedLibraryId,
                     libraryName: selectedLibraryName,
                 },
-                selectedOption,
+                selectedOption: serverSelectedOption,
             });
 
             if (nativeResolutionProvenance.audit.ok !== true) {
@@ -202,7 +293,7 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
                 classificationId,
                 selectedLibraryId,
                 selectedLibraryName,
-                `Resolved by ${resolvedBy}: ${selectedOption}`
+                `Resolved by ${resolvedBy}: ${serverSelectedOption}`
             ]
         );
 
@@ -210,9 +301,12 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
             type: 'resolved',
             source: 'policy_question',
             actor: resolvedBy,
-            selected_option: selectedOption || null,
+            selected_option: serverSelectedOption || null,
             final_library_id: selectedLibraryId,
-            final_library_name: selectedLibraryName
+            final_library_name: selectedLibraryName,
+            runtime_question_answer: answerContract
+                ? buildPolicyRuntimeQuestionAnswerOutcome(answerContract)
+                : undefined,
         }, { client });
 
         let learnedPattern = null;
@@ -226,7 +320,7 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
                     title: classification.title,
                     resolved_from: 'policy_question',
                     original_question: policyQuestion?.question || null,
-                    selected_option: selectedOption,
+                    selected_option: serverSelectedOption,
                 },
                 createdBy: resolvedBy,
                 client,
@@ -279,7 +373,8 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
                     reasonCodes: nativeResolutionProvenance.reasonCodes,
                 }
                 : null,
-            shouldRoute: true,
+            answerActionId: answerContract?.actionId || null,
+            shouldRoute: answerContract?.actionId !== POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.ROUTE_NOT_APPLICABLE,
         };
         }); // end withTransaction
         return result;

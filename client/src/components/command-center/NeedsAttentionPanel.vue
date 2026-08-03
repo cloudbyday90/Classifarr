@@ -44,17 +44,17 @@
       </p>
 
       <div
-        v-if="policyQuestion(item)"
+        v-if="answerContract(item) || policyQuestion(item)"
         class="action-item-question"
       >
         <p class="question-text">
-          {{ policyQuestion(item).question }}
+          {{ answerContract(item)?.question?.text || 'This policy question needs to be refreshed before it can be resolved.' }}
         </p>
         <p
-          v-if="policyQuestion(item).why_uncertain"
+          v-if="answerContract(item)?.question?.why_uncertain"
           class="question-why"
         >
-          {{ policyQuestion(item).why_uncertain }}
+          {{ answerContract(item).question.why_uncertain }}
         </p>
         <p
           v-if="item.policy_question_stale"
@@ -64,7 +64,7 @@
         </p>
 
         <div
-          v-if="item.policy_question_stale"
+          v-if="item.policy_question_stale || !answerContract(item)"
           class="native-pending-question-invalid"
           role="status"
         >
@@ -82,89 +82,28 @@
           </Button>
         </div>
 
-        <NativePendingQuestionActions
-          v-else-if="nativePendingQuestionPresentation(item)"
-          :item="item"
-          :presentation="nativePendingQuestionPresentation(item)"
-          :is-action-busy="isActionBusy"
-          @resolve-option="emitNativeResolution(item, $event)"
-          @choose-alternative="$emit('toggle-change-mode', item.id)"
-          @retry-item="$emit('retry-item', item)"
-        />
-
-        <div
-          v-else-if="isNativePendingQuestion(item)"
-          class="native-pending-question-invalid"
-          role="status"
-        >
-          <p>
-            This native decision cannot be safely displayed. Retry Classification to refresh it from the current policy state.
-          </p>
-          <Button
-            variant="warning"
-            size="sm"
-            :disabled="isActionBusy(`retry-classification-${item.id}`)"
-            :loading="isActionBusy(`retry-classification-${item.id}`)"
-            @click="$emit('retry-item', item)"
-          >
-            Retry Classification
-          </Button>
-        </div>
-
-        <div
-          v-else-if="binaryPolicyOptions(item)"
-          class="question-actions"
-        >
-          <Button
-            variant="success"
-            size="sm"
-            @click="emitResolveOption(item, binaryPolicyOptions(item).yes, 'Yes')"
-          >
-            Yes
-          </Button>
-          <Button
-            variant="error"
-            size="sm"
-            @click="emitResolveOption(item, binaryPolicyOptions(item).no, 'No')"
-          >
-            No
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            @click="$emit('toggle-change-mode', item.id)"
-          >
-            Change
-          </Button>
-          <Button
-            variant="warning"
-            size="sm"
-            :disabled="isActionBusy(`retry-classification-${item.id}`)"
-            :loading="isActionBusy(`retry-classification-${item.id}`)"
-            @click="$emit('retry-item', item)"
-          >
-            Retry Classification
-          </Button>
-        </div>
-
         <div
           v-else
           class="question-actions"
         >
           <Button
-            v-if="primaryPolicyOption(item)"
+            v-for="destination in answerContract(item).candidate_destinations"
+            :key="`${item.id}-confirm-${destination.library_id}`"
             variant="success"
             size="sm"
-            @click="emitResolveOption(item, primaryPolicyOption(item), 'Confirm')"
+            :disabled="isActionBusy(`resolve-${item.id}`) || !canConfirmDestination(item)"
+            :loading="isActionBusy(`resolve-${item.id}`)"
+            @click="emitResolveOption(item, confirmDestinationActionId, destination.library_id)"
           >
-            Confirm
+            Resolve in {{ destination.library_name }}
           </Button>
           <Button
+            v-if="canChangeDestination(item)"
             variant="ghost"
             size="sm"
             @click="$emit('toggle-change-mode', item.id)"
           >
-            Change
+            Change destination
           </Button>
           <Button
             variant="warning"
@@ -201,15 +140,8 @@
         class="action-item-fallback"
       >
         <p class="fallback-message">
-          Policy question data unavailable. Use Change to resolve manually.
+          Policy question data is unavailable or no longer current. Retry Classification to rebuild the server-owned question before resolving it.
         </p>
-        <Button
-          variant="ghost"
-          size="sm"
-          @click="$emit('toggle-change-mode', item.id)"
-        >
-          Change
-        </Button>
         <Button
           variant="warning"
           size="sm"
@@ -222,7 +154,7 @@
       </div>
 
       <div
-        v-if="!item.policy_question_stale && changeMode[item.id]"
+        v-if="!item.policy_question_stale && answerContract(item) && changeMode[item.id]"
         class="action-item-change"
       >
         <select
@@ -245,24 +177,18 @@
           variant="success"
           size="sm"
           :disabled="!manualLibraryValue(item.id)"
-          @click="$emit('resolve-manual', item)"
+          @click="emitResolveOption(item, changeDestinationActionId, manualLibraryValue(item.id))"
         >
           Resolve
         </Button>
-      </div>
-
-      <div
-        v-if="!item.policy_question_stale && !isNativePendingQuestion(item) && !binaryPolicyOptions(item) && policyOptions(item).length > 0 && !changeMode[item.id]"
-        class="action-item-options"
-      >
         <Button
-          v-for="option in policyOptions(item)"
-          :key="`${item.id}-${option.value || option.label}`"
-          variant="primary"
+          v-if="canResolveWithoutRouting(item)"
+          variant="secondary"
           size="sm"
-          @click="emitResolveOption(item, option)"
+          :disabled="!manualLibraryValue(item.id)"
+          @click="emitResolveOption(item, routeNotApplicableActionId, manualLibraryValue(item.id))"
         >
-          {{ option.label || option.value || 'Select' }}
+          Resolve without routing
         </Button>
       </div>
     </article>
@@ -322,22 +248,19 @@
 
 <script setup>
 import { Button } from '@/components/common'
-import NativePendingQuestionActions from './NativePendingQuestionActions.vue'
 import { computed } from 'vue'
 import {
-  binaryPolicyOptions,
   isQueuedForRetry,
-  policyOptions,
   policyQuestion,
-  primaryPolicyOption,
   primaryNeedsAttentionReason,
   suggestedLibraryLabel,
   targetedRecheckLine,
 } from '@/utils/needsAttention'
 import {
-  buildNativePendingQuestionPresentation,
-  isNativePendingQuestion as hasNativePendingQuestion,
-} from '@/utils/nativePendingQuestionPresentation'
+  POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS,
+  availablePolicyQuestionAnswerAction,
+  policyQuestionAnswer,
+} from '@/utils/policyQuestionAnswerContract'
 
 const props = defineProps({
   changeMode: {
@@ -372,7 +295,6 @@ const props = defineProps({
 
 const emit = defineEmits([
   'confirm-all',
-  'resolve-manual',
   'resolve-option',
   'retry-all',
   'retry-item',
@@ -380,20 +302,43 @@ const emit = defineEmits([
   'update-manual-library',
 ])
 
-function emitResolveOption(item, option, selectedOptionLabel = null) {
-  emit('resolve-option', { item, option, selectedOptionLabel })
+const confirmDestinationActionId = POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.CONFIRM_DESTINATION
+const changeDestinationActionId = POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.CHANGE_DESTINATION
+const routeNotApplicableActionId = POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.ROUTE_NOT_APPLICABLE
+
+function answerContract(item) {
+  return policyQuestionAnswer(item)
 }
 
-function nativePendingQuestionPresentation(item) {
-  return buildNativePendingQuestionPresentation(policyQuestion(item))
+function canConfirmDestination(item) {
+  return Boolean(availablePolicyQuestionAnswerAction(
+    answerContract(item),
+    confirmDestinationActionId,
+  ))
 }
 
-function isNativePendingQuestion(item) {
-  return hasNativePendingQuestion(policyQuestion(item))
+function canChangeDestination(item) {
+  return Boolean(availablePolicyQuestionAnswerAction(
+    answerContract(item),
+    changeDestinationActionId,
+  ))
 }
 
-function emitNativeResolution(item, action) {
-  emitResolveOption(item, action.option, action.selectedOptionLabel)
+function canResolveWithoutRouting(item) {
+  return Boolean(availablePolicyQuestionAnswerAction(
+    answerContract(item),
+    routeNotApplicableActionId,
+  ))
+}
+
+function emitResolveOption(item, actionId, destinationLibraryId) {
+  emit('resolve-option', {
+    item,
+    answerSelection: {
+      actionId,
+      destinationLibraryId: Number(destinationLibraryId),
+    },
+  })
 }
 
 function manualLibraryValue(itemId) {
@@ -401,7 +346,7 @@ function manualLibraryValue(itemId) {
 }
 
 const hasBulkConfirmableItems = computed(() => props.items.some(
-  item => !isNativePendingQuestion(item) && Boolean(primaryPolicyOption(item)?.library_id),
+  item => canConfirmDestination(item) && answerContract(item)?.candidate_destinations?.length,
 ))
 </script>
 

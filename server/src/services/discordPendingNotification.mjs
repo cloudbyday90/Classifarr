@@ -20,8 +20,11 @@ import {
   getMediaTypeEmoji,
   safeParseJson,
 } from './discordNotificationBuilder.mjs';
-import { buildNativePendingQuestionPresentation } from './policyNativePendingQuestionPresentation.mjs';
-import { isPolicyRuntimeQuestionPersistenceEnvelope } from './policyRuntimeQuestionPersistenceContract.mjs';
+import {
+  POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS,
+  buildPolicyRuntimeQuestionAnswerContract,
+  getPolicyRuntimeQuestionAnswerActionCode,
+} from './policyRuntimeQuestionAnswerContract.mjs';
 
 const MAX_BUTTONS_PER_ROW = 5;
 const MAX_FIELD_VALUE_LENGTH = 1024;
@@ -45,41 +48,61 @@ function normalizePolicyQuestion(policyQuestion) {
   return typeof policyQuestion === 'object' ? policyQuestion : null;
 }
 
-function buildPendingDecisionComponents(classificationId, policyQuestion) {
-  const question = normalizePolicyQuestion(policyQuestion);
-  const options = Array.isArray(question?.options) ? question.options : [];
-  if (!classificationId || options.length === 0) {
-    return [];
-  }
+function buildPendingDecisionAnswerContract(metadata, result) {
+  const question = normalizePolicyQuestion(result?.policy_question || result?.clarification);
 
-  const nativePresentation = buildNativePendingQuestionPresentation(question);
-  if (nativePresentation) {
-    const buttons = nativePresentation.actions.map(action => new ButtonBuilder()
-      .setCustomId(`ai_clarify_${classificationId}_${action.optionIndex}`)
-      .setLabel(truncateText(action.label, 80))
-      .setStyle(action.style === 'success' ? ButtonStyle.Success : ButtonStyle.Secondary));
-
-    return [new ActionRowBuilder().addComponents(buttons)];
-  }
-  if (isPolicyRuntimeQuestionPersistenceEnvelope(question)) {
-    return [];
-  }
-
-  const buttons = options.slice(0, MAX_BUTTONS_PER_ROW).map((option, index) => {
-    const label = typeof option?.label === 'string' && option.label.trim()
-      ? option.label.trim()
-      : `Option ${index + 1}`;
-
-    return new ButtonBuilder()
-      .setCustomId(`ai_clarify_${classificationId}_${index}`)
-      .setLabel(truncateText(label, 80))
-      .setStyle(index === 0 ? ButtonStyle.Primary : ButtonStyle.Secondary);
+  return buildPolicyRuntimeQuestionAnswerContract({
+    classification: {
+      id: result?.classification_id,
+      title: metadata?.title,
+      year: metadata?.year,
+      media_type: metadata?.media_type,
+    },
+    question,
   });
+}
 
-  return [new ActionRowBuilder().addComponents(buttons)];
+function buildPendingDecisionComponents(metadata, result) {
+  const classificationId = Number(result?.classification_id);
+  const answerContract = buildPendingDecisionAnswerContract(metadata, result);
+  const confirmAction = answerContract?.allowed_actions?.find(
+    action => action.id === POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.CONFIRM_DESTINATION,
+  );
+  const actionCode = getPolicyRuntimeQuestionAnswerActionCode(
+    POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.CONFIRM_DESTINATION,
+  );
+
+  if (!Number.isInteger(classificationId) || classificationId < 1 ||
+      !answerContract || confirmAction?.available !== true || !actionCode) {
+    return [];
+  }
+
+  const buttons = answerContract.candidate_destinations
+    .slice(0, MAX_BUTTONS_PER_ROW)
+    .map((destination, index) => {
+      const customId = [
+        'ai',
+        'answer',
+        classificationId,
+        actionCode,
+        destination.library_id,
+        answerContract.fingerprint,
+      ].join('_');
+      if (customId.length > 100) return null;
+
+      return new ButtonBuilder()
+        .setCustomId(customId)
+        .setLabel(truncateText(`Resolve in ${destination.library_name}`, 80))
+        .setStyle(index === 0 ? ButtonStyle.Success : ButtonStyle.Secondary);
+    })
+    .filter(Boolean);
+
+  return buttons.length > 0 ? [new ActionRowBuilder().addComponents(buttons)] : [];
 }
 
 function buildPendingDecisionEmbed(metadata = {}, result = {}) {
+  const question = normalizePolicyQuestion(result.policy_question || result.clarification);
+  const answerContract = buildPendingDecisionAnswerContract(metadata, result);
   const title = typeof metadata.title === 'string' && metadata.title.trim()
     ? metadata.title.trim()
     : 'Unknown title';
@@ -89,16 +112,14 @@ function buildPendingDecisionEmbed(metadata = {}, result = {}) {
     : null;
   const reason = result.pending_reason || result.reason || 'Manual review required';
 
-  const question = normalizePolicyQuestion(result.policy_question || result.clarification);
-  const nativePresentation = buildNativePendingQuestionPresentation(question);
-  const hasInvalidNativePresentation = isPolicyRuntimeQuestionPersistenceEnvelope(question) && !nativePresentation;
+  const hasInvalidQuestion = Boolean(question) && !answerContract;
 
   const embed = new EmbedBuilder()
     .setTitle(`${getMediaTypeEmoji(mediaType)} Pending classification: ${title} (${metadata.year || 'N/A'})`)
-    .setDescription(nativePresentation
-      ? 'Choose how to resolve this item. These actions resolve only this item and do not update future policy learning.'
-      : hasInvalidNativePresentation
-        ? 'This native decision cannot be safely displayed. Retry Classification in Classifarr to refresh it from the current policy state.'
+    .setDescription(answerContract
+      ? 'Choose a server-validated destination. This resolves only the current item and cannot update future policy learning.'
+      : hasInvalidQuestion
+        ? 'This policy question cannot be safely displayed. Retry Classification in Classifarr to refresh it from the current policy state.'
         : 'A classification needs an operator decision in Classifarr.')
     .setColor(confidence === null ? 0xf59e0b : getColorForConfidence(confidence))
     .setTimestamp();
@@ -132,24 +153,27 @@ function buildPendingDecisionEmbed(metadata = {}, result = {}) {
     });
   }
 
-  if (question?.question) {
+  if (answerContract?.question?.text) {
     fields.push({
       name: 'Question',
-      value: truncateText(question.question, MAX_FIELD_VALUE_LENGTH),
+      value: truncateText(answerContract.question.text, MAX_FIELD_VALUE_LENGTH),
       inline: false,
     });
   }
 
-  if (nativePresentation) {
+  if (answerContract?.candidate_destinations?.length) {
     fields.push(
       {
-        name: 'Suggested destination',
-        value: truncateText(nativePresentation.destination.libraryName, MAX_FIELD_VALUE_LENGTH),
+        name: 'Candidate destinations',
+        value: truncateText(
+          answerContract.candidate_destinations.map(destination => destination.library_name).join(', '),
+          MAX_FIELD_VALUE_LENGTH,
+        ),
         inline: true,
       },
       {
         name: 'Another destination',
-        value: 'Choose another destination in Classifarr. The Discord actions above resolve only the suggested destination.',
+        value: 'Choose another active library in Classifarr when none of these candidates is correct.',
         inline: false,
       },
     );
@@ -243,10 +267,7 @@ export async function sendPendingDecisionNotification(
     }
 
     const embed = buildPendingDecisionEmbed(metadata, result);
-    const components = buildPendingDecisionComponents(
-      result.classification_id,
-      result.policy_question || result.clarification,
-    );
+    const components = buildPendingDecisionComponents(metadata, result);
 
     const mentionPayload = buildPendingMentionPayload(config);
     const message = await channel.send({

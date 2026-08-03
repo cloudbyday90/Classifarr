@@ -185,9 +185,8 @@
                 :is-action-busy="isActionBusy"
                 @toggle-change-mode="toggleChangeMode"
                 @retry-item="retryNeedsAttentionItem"
-                @resolve-option="({ item, option, selectedOptionLabel }) => resolveWithOption(item, option, selectedOptionLabel)"
+                @resolve-option="({ item, answerSelection }) => resolveWithOption(item, answerSelection)"
                 @update-manual-library="updateManualLibrarySelection"
-                @resolve-manual="resolveManualChange"
                 @confirm-all="confirmAllNeedsAttention"
                 @retry-all="retryAllNeedsAttention"
               />
@@ -401,7 +400,6 @@ const {
   confirmAllNeedsAttention,
   librariesForMediaType,
   manualLibraryByItemId,
-  resolveManualChange,
   resolveWithOption,
   retryAllNeedsAttention,
   retryNeedsAttentionItem,

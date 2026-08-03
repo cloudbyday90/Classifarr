@@ -5,11 +5,11 @@
 
 import { ref } from 'vue'
 import api from '@/api'
-import { primaryPolicyOption } from '@/utils/needsAttention'
 import {
-  buildNativePendingQuestionPresentation,
-  isNativePendingQuestion,
-} from '@/utils/nativePendingQuestionPresentation'
+  POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS,
+  buildPolicyQuestionAnswerPayload,
+  policyQuestionAnswer,
+} from '@/utils/policyQuestionAnswerContract'
 
 export function useNeedsAttentionActions({
   activeLibraries,
@@ -50,72 +50,29 @@ export function useNeedsAttentionActions({
     if (message) setActionError(message)
   }
 
-  function buildResolutionPayload(item, option, selectedOptionLabel, libraryId) {
-    const question = item?.policy_question && typeof item.policy_question === 'object'
-      ? item.policy_question
-      : null
-    const isNative = isNativePendingQuestion(question)
-
-    return {
-      library_id: libraryId,
-      selected_option: selectedOptionLabel || option?.label || option?.value || 'Confirm',
-      resolved_by: 'admin',
-      generate_rule: !isNative,
-    }
+  function buildResolutionPayload(item, actionId, libraryId) {
+    return buildPolicyQuestionAnswerPayload(
+      policyQuestionAnswer(item),
+      actionId,
+      libraryId,
+    )
   }
 
-  async function resolveWithOption(item, option, selectedOptionLabel = null) {
+  async function resolveWithOption(item, answerSelection) {
     if (item?.policy_question_stale) {
       setActionError(`Policy question for "${item.title}" must be refreshed before it can be resolved.`)
       return
     }
-    const question = item?.policy_question
-    const nativePresentation = buildNativePendingQuestionPresentation(question)
-    if (isNativePendingQuestion(question) && !nativePresentation) {
-      setActionError(`Native review data for "${item.title}" cannot be safely resolved. Retry Classification to refresh it.`)
-      return
-    }
-    const libraryId = nativePresentation
-      ? nativePresentation.destination.libraryId
-      : Number(option?.library_id || 0)
-    if (!libraryId) {
-      toggleChangeMode(item.id)
-      setActionError(`Library mapping is missing for "${item.title}". Choose a library with Change.`)
+    const actionId = answerSelection?.actionId
+    const libraryId = Number(answerSelection?.destinationLibraryId || 0)
+    const payload = buildResolutionPayload(item, actionId, libraryId)
+    if (!payload) {
+      setActionError(`Policy question for "${item.title}" is no longer valid. Retry Classification to refresh it.`)
       return
     }
 
     await runActionWithBusy(`resolve-${item.id}`, async () => {
-      const response = await api.resolvePendingClassification(item.id, {
-        ...buildResolutionPayload(item, option, selectedOptionLabel, libraryId),
-      })
-      setRoutingOutcomeError(item.title, response)
-      changeMode.value = { ...changeMode.value, [item.id]: false }
-    })
-  }
-
-  async function resolveManualChange(item) {
-    if (item?.policy_question_stale) {
-      setActionError(`Policy question for "${item.title}" must be refreshed before it can be resolved.`)
-      return
-    }
-    const libraryId = Number(manualLibraryByItemId.value[item.id] || 0)
-    if (!libraryId) return
-
-    const nativePresentation = buildNativePendingQuestionPresentation(item?.policy_question)
-    if (isNativePendingQuestion(item?.policy_question) && !nativePresentation) {
-      setActionError(`Native review data for "${item.title}" cannot be safely resolved. Retry Classification to refresh it.`)
-      return
-    }
-
-    await runActionWithBusy(`resolve-${item.id}`, async () => {
-      const response = await api.resolvePendingClassification(item.id, {
-        ...buildResolutionPayload(
-          item,
-          null,
-          nativePresentation?.alternativeDestination.selectedOptionLabel || 'Manual selection',
-          libraryId,
-        ),
-      })
+      const response = await api.resolvePendingClassification(item.id, payload)
       setRoutingOutcomeError(item.title, response)
       changeMode.value = { ...changeMode.value, [item.id]: false }
     })
@@ -124,35 +81,35 @@ export function useNeedsAttentionActions({
   async function confirmAllNeedsAttention() {
     await runActionWithBusy('confirm-all', async () => {
       const routingWarnings = []
-      const skippedNativeItems = []
       const skippedStaleItems = []
+      const skippedUnavailableItems = []
 
       for (const item of needsAttentionItems.value) {
         if (item?.policy_question_stale) {
           skippedStaleItems.push(item)
           continue
         }
-        if (isNativePendingQuestion(item?.policy_question)) {
-          skippedNativeItems.push(item)
+        const answer = policyQuestionAnswer(item)
+        const destination = answer?.candidate_destinations?.[0]
+        const payload = buildResolutionPayload(
+          item,
+          POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.CONFIRM_DESTINATION,
+          destination?.library_id,
+        )
+        if (!payload) {
+          skippedUnavailableItems.push(item)
           continue
         }
-        const option = primaryPolicyOption(item)
-        if (!option?.library_id) continue
-        const response = await api.resolvePendingClassification(item.id, buildResolutionPayload(
-          item,
-          option,
-          option.label || option.value || 'Confirm',
-          Number(option.library_id),
-        ))
+        const response = await api.resolvePendingClassification(item.id, payload)
 
         const warning = getRoutingOutcomeMessage(item.title, response)
         if (warning) routingWarnings.push(warning)
       }
 
-      if (skippedNativeItems.length > 0 || skippedStaleItems.length > 0) {
+      if (skippedUnavailableItems.length > 0 || skippedStaleItems.length > 0) {
         const messages = []
-        if (skippedNativeItems.length > 0) {
-          messages.push(`Confirm All skipped ${skippedNativeItems.length} native review ${skippedNativeItems.length === 1 ? 'item' : 'items'}; choose an explicit outcome for each item.`)
+        if (skippedUnavailableItems.length > 0) {
+          messages.push(`Confirm All skipped ${skippedUnavailableItems.length} item${skippedUnavailableItems.length === 1 ? '' : 's'} without a current confirm action; choose an explicit destination or retry Classification.`)
         }
         if (skippedStaleItems.length > 0) {
           messages.push(`Confirm All skipped ${skippedStaleItems.length} stale ${skippedStaleItems.length === 1 ? 'item' : 'items'}; retry Classification to refresh each question.`)
@@ -207,7 +164,6 @@ export function useNeedsAttentionActions({
     confirmAllNeedsAttention,
     librariesForMediaType,
     manualLibraryByItemId,
-    resolveManualChange,
     resolveWithOption,
     retryAllNeedsAttention,
     retryNeedsAttentionItem,

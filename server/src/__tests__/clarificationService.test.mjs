@@ -729,6 +729,65 @@ describe('resolvePolicyQuestion', () => {
         expect(client.query).toHaveBeenCalledWith('COMMIT');
     });
 
+    test('replays only the exact completed runtime-question answer idempotently', async () => {
+        const client = makeMockClient();
+        db.pool.connect.mockResolvedValueOnce(client);
+        const answer = {
+            contract_version: 'policy.runtime_question_answer.v1',
+            contract_fingerprint: 'current-contract-fingerprint',
+            action_id: 'confirm_destination',
+            destination_library_id: 5,
+        };
+        client.query
+            .mockResolvedValueOnce({})
+            .mockResolvedValueOnce(createDbRowsResult())
+            .mockResolvedValueOnce({ rows: [{ id: 5 }] })
+            .mockResolvedValueOnce({
+                rows: [{
+                    status: 'completed',
+                    library_id: '5',
+                    library_name: 'Movies',
+                    metadata: {
+                        classification_details: {
+                            outcome_link: {
+                                runtime_question_answer: {
+                                    contract_version: answer.contract_version,
+                                    contract_fingerprint: answer.contract_fingerprint,
+                                    action_id: answer.action_id,
+                                    destination_library_id: answer.destination_library_id,
+                                },
+                            },
+                        },
+                    },
+                }],
+            })
+            .mockResolvedValueOnce({});
+
+        const result = await svc.resolveRuntimeQuestionAnswer(1, answer, 'admin');
+
+        expect(result).toMatchObject({
+            success: true,
+            libraryId: 5,
+            alreadyResolved: true,
+            idempotent: true,
+            shouldRoute: false,
+        });
+        expect(classificationOutcomeService.recordOutcome).not.toHaveBeenCalled();
+        expect(client.query).toHaveBeenCalledWith('COMMIT');
+    });
+
+    test('rejects a retry action at the resolver before it can mutate state', async () => {
+        await expect(svc.resolveRuntimeQuestionAnswer(1, {
+            contract_version: 'policy.runtime_question_answer.v1',
+            contract_fingerprint: 'current-contract-fingerprint',
+            action_id: 'retry_classification',
+        }, 'admin')).rejects.toMatchObject({
+            statusCode: 400,
+            code: 'runtime_question_answer_action_unavailable',
+        });
+        expect(db.pool.connect).not.toHaveBeenCalled();
+    });
+
     test('throws 409 when classification is no longer awaiting_decision (different state)', async () => {
         const client = makeMockClient();
         db.pool.connect.mockResolvedValueOnce(client);

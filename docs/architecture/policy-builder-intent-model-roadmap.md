@@ -3985,6 +3985,18 @@ Acceptance criteria:
 - Free-form labels do not become commands.
 - Stale or malformed answers cannot authorize learning.
 
+Completion:
+
+- Complete. `policyRuntimeQuestionAnswerContract.mjs` builds a versioned,
+  fingerprint-bound answer projection from current server-owned runtime
+  questions. UI and Discord now submit only an action ID and server library ID;
+  labels, request-supplied actors, and learning flags are rejected.
+- Complete. Resolution revalidates the question under the row lock, rejects
+  stale, changed, unknown, inactive, wrong-media, and unauthorized Discord
+  message targets, and records exact answer metadata for idempotent replay.
+  Legacy Discord clarification controls fail closed for policy-runtime
+  questions. See [Policy Runtime Question Answer Contract](policy-runtime-question-answer-contract.md).
+
 ### 5R.6 Learning Guard And Outcome Separation
 
 Intent: separate item resolution from durable learning.
@@ -4147,7 +4159,7 @@ Implement Phase 5R in this order:
 5. **5R.4 Runtime Clarification Normalizer**
    Replaces vague AI/operator questions with deterministic contracts.
 6. **5R.5 Question And Answer Contract**
-   Gives UI and Discord one answer model.
+   Complete. Gives UI and Discord one answer model.
 7. **5R.6 Learning Guard And Outcome Separation**
    Prevents resolved items from becoming accidental policy learning.
 8. **5R.7 Stale Question Cleanup And Migration Safety**
@@ -4179,6 +4191,10 @@ Current starting point:
   boundaries, but they do not substitute for 5R.2a admission authority.
 - Do not add preview/replay product UI or let AI clarification text, UI
   answers, or Discord payloads authorize learning directly.
+- **5R.4 Runtime Clarification Normalizer and 5R.5 Question And Answer
+  Contract are complete.** Current runtime questions are server-normalized and
+  resolved only through a versioned, fingerprint-bound answer contract. The
+  next Phase 5R component is 5R.6, Learning Guard And Outcome Separation.
 
 Implementation record:
 
@@ -4188,6 +4204,9 @@ Implementation record:
 - [Policy Intent Write Admission](policy-intent-write-admission.md) records the
   5R.2 native create transaction, retry contract, compatibility boundary, and
   deletion criteria.
+- [Policy Runtime Question Answer Contract](policy-runtime-question-answer-contract.md)
+  records the 5R.5 shared UI/Discord answer boundary, its security controls,
+  and the implementation outcome.
 - [Policy Builder Phase 5 Implementation](policy-builder-phase-5-implementation.md)
   remains historical implementation context; it is not the current authority
   plan.

@@ -13,6 +13,8 @@ import { processCorrection as correctionHandlerProcessCorrection } from './disco
 import { processVerification as verificationHandlerProcessVerification } from './discordVerificationHandler.mjs';
 import { processClarificationResponse as clarificationHandlerProcessClarificationResponse } from './discordClarificationHandler.mjs';
 import { showLibrarySelection as librarySelectionShowLibrarySelection, processQuestionResponse as librarySelectionProcessQuestionResponse } from './discordLibrarySelectionHandler.mjs';
+import { processPolicyQuestionAnswer as policyQuestionAnswerHandlerProcess } from './discordPolicyQuestionAnswerHandler.mjs';
+import { getPolicyRuntimeQuestionAnswerActionIdFromCode } from './policyRuntimeQuestionAnswerContract.mjs';
 
 const logger = createLogger('discordInteractionHandler');
 
@@ -43,6 +45,18 @@ export async function handleInteraction(interaction) {
             optionIndex,
             interaction,
           );
+        } else if (parts[1] === 'answer') {
+          const classificationId = Number.parseInt(parts[2], 10);
+          const actionId = getPolicyRuntimeQuestionAnswerActionIdFromCode(parts[3]);
+          const destinationLibraryId = Number.parseInt(parts[4], 10);
+          const contractFingerprint = parts[5];
+          await processPolicyQuestionAnswer({
+            classificationId,
+            destinationLibraryId,
+            contractVersion: 'policy.runtime_question_answer.v1',
+            contractFingerprint,
+            actionId,
+          }, interaction);
         }
       } else if (action === 'verify') {
         const subAction = parts[1];
@@ -107,6 +121,10 @@ export async function processClarificationResponse(
   interaction,
 ) {
   return clarificationHandlerProcessClarificationResponse(classificationId, optionIndex, interaction);
+}
+
+export async function processPolicyQuestionAnswer(answer, interaction) {
+  return policyQuestionAnswerHandlerProcess(answer, interaction);
 }
 
 export async function processVerification(classificationId, isCorrect, interaction) {

@@ -124,6 +124,35 @@ const createNativePendingQuestion = (overrides = {}) => ({
   ...overrides,
 })
 
+const createPolicyQuestionAnswer = ({
+  fingerprint = 'current-contract-fingerprint',
+  destinations = [{ library_id: 10, library_name: 'TV Shows' }],
+} = {}) => ({
+  version: 'policy.runtime_question_answer.v1',
+  fingerprint,
+  candidate_destinations: destinations,
+  allowed_actions: [
+    {
+      id: 'confirm_destination',
+      available: true,
+      destination_required: true,
+      destination_scope: 'candidate_destinations',
+    },
+    {
+      id: 'change_destination',
+      available: true,
+      destination_required: true,
+      destination_scope: 'active_matching_media_type',
+    },
+    {
+      id: 'route_not_applicable',
+      available: true,
+      destination_required: true,
+      destination_scope: 'active_matching_media_type',
+    },
+  ],
+})
+
 describe('CommandCenter action modules', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -178,6 +207,7 @@ describe('CommandCenter action modules', () => {
               { label: 'No', value: 'no', library_id: 8 },
             ],
           },
+          policy_question_answer: createPolicyQuestionAnswer(),
         }],
     })
     apiMock.retryClassifications.mockResolvedValue({
@@ -253,11 +283,12 @@ describe('CommandCenter action modules', () => {
     expect(buttonLabels).not.toContain('Confirm')
   })
 
-  it('renders explicit Yes/No controls for binary policy prompts', async () => {
+  it('renders server-provided destination controls rather than prompt labels', async () => {
     const wrapper = await mountCommandCenter()
     const buttonLabels = wrapper.findAll('button').map((node) => node.text())
-    expect(buttonLabels).toContain('Yes')
-    expect(buttonLabels).toContain('No')
+    expect(buttonLabels).toContain('Resolve in TV Shows')
+    expect(buttonLabels).not.toContain('Yes')
+    expect(buttonLabels).not.toContain('No')
   })
 
   it('renders explicit native outcome actions without generic duplicate controls', async () => {
@@ -268,6 +299,7 @@ describe('CommandCenter action modules', () => {
         media_type: 'tv',
         confidence: 55,
         policy_question: createNativePendingQuestion(),
+        policy_question_answer: createPolicyQuestionAnswer(),
       }],
     })
 
@@ -276,8 +308,7 @@ describe('CommandCenter action modules', () => {
 
     expect(buttonLabels).toEqual(expect.arrayContaining([
       'Resolve in TV Shows',
-      'Resolve without learning',
-      'Choose another destination',
+      'Change destination',
       'Retry Classification',
     ]))
     expect(buttonLabels).not.toContain('Confirm')
@@ -305,13 +336,13 @@ describe('CommandCenter action modules', () => {
     const wrapper = await mountCommandCenter()
     const buttonLabels = wrapper.findAll('button').map(node => node.text())
 
-    expect(wrapper.text()).toContain('cannot be safely displayed')
+    expect(wrapper.text()).toContain('must be refreshed before it can be resolved')
     expect(buttonLabels).toContain('Retry Classification')
     expect(buttonLabels).not.toContain('Confirm')
     expect(buttonLabels).not.toContain('Resolve current item')
   })
 
-  it('resolves native outcomes with the server-owned destination and no rule generation', async () => {
+  it('resolves a native runtime question through its server-owned answer contract', async () => {
     apiMock.getPendingClassifications.mockResolvedValueOnce({
       items: [{
         id: 204,
@@ -319,26 +350,27 @@ describe('CommandCenter action modules', () => {
         media_type: 'tv',
         confidence: 55,
         policy_question: createNativePendingQuestion(),
+        policy_question_answer: createPolicyQuestionAnswer(),
       }],
     })
     apiMock.resolvePendingClassification.mockResolvedValueOnce({ data: { routed: true } })
 
     const wrapper = await mountCommandCenter()
-    const resolveWithoutLearning = wrapper.findAll('button')
-      .find(node => node.text() === 'Resolve without learning')
+    const resolveDestination = wrapper.findAll('button')
+      .find(node => node.text() === 'Resolve in TV Shows')
 
-    await resolveWithoutLearning.trigger('click')
+    await resolveDestination.trigger('click')
     await flushPromises()
 
     expect(apiMock.resolvePendingClassification).toHaveBeenCalledWith(204, {
-      library_id: 10,
-      selected_option: 'Do not learn',
-      resolved_by: 'admin',
-      generate_rule: false,
+      contract_version: 'policy.runtime_question_answer.v1',
+      contract_fingerprint: 'current-contract-fingerprint',
+      action_id: 'confirm_destination',
+      destination_library_id: 10,
     })
   })
 
-  it('keeps a native alternate destination explicit and outcome-only', async () => {
+  it('submits a manual destination change with the declared contract action', async () => {
     apiMock.getPendingClassifications.mockResolvedValueOnce({
       items: [{
         id: 205,
@@ -346,14 +378,15 @@ describe('CommandCenter action modules', () => {
         media_type: 'tv',
         confidence: 55,
         policy_question: createNativePendingQuestion(),
+        policy_question_answer: createPolicyQuestionAnswer(),
       }],
     })
     apiMock.resolvePendingClassification.mockResolvedValueOnce({ data: { routed: true } })
 
     const wrapper = await mountCommandCenter()
-    const chooseAlternative = wrapper.findAll('button')
-      .find(node => node.text() === 'Choose another destination')
-    await chooseAlternative.trigger('click')
+    const changeDestination = wrapper.findAll('button')
+      .find(node => node.text() === 'Change destination')
+    await changeDestination.trigger('click')
     await flushPromises()
 
     const select = wrapper.find('.change-select')
@@ -363,10 +396,10 @@ describe('CommandCenter action modules', () => {
     await flushPromises()
 
     expect(apiMock.resolvePendingClassification).toHaveBeenCalledWith(205, {
-      library_id: 10,
-      selected_option: 'Choose another destination',
-      resolved_by: 'admin',
-      generate_rule: false,
+      contract_version: 'policy.runtime_question_answer.v1',
+      contract_fingerprint: 'current-contract-fingerprint',
+      action_id: 'change_destination',
+      destination_library_id: 10,
     })
   })
 
@@ -383,7 +416,7 @@ describe('CommandCenter action modules', () => {
 
     const wrapper = await mountCommandCenter()
     // New design has slightly different copy
-    expect(wrapper.text()).toContain('Policy question data unavailable')
+    expect(wrapper.text()).toContain('Policy question data is unavailable')
   })
 
   it('renders library sync coverage in the processing panel from live sync stats', async () => {
@@ -477,10 +510,11 @@ describe('CommandCenter action modules', () => {
     })
 
     const wrapper = await mountCommandCenter()
-    const yesButton = wrapper.findAll('button').find((node) => node.text() === 'Yes')
+    const resolveDestination = wrapper.findAll('button')
+      .find((node) => node.text() === 'Resolve in TV Shows')
 
-    expect(yesButton).toBeTruthy()
-    await yesButton.trigger('click')
+    expect(resolveDestination).toBeTruthy()
+    await resolveDestination.trigger('click')
     await flushPromises()
 
     expect(apiMock.resolvePendingClassification).toHaveBeenCalledTimes(1)
@@ -493,7 +527,8 @@ describe('CommandCenter action modules', () => {
     })
 
     const wrapper = await mountCommandCenter()
-    const changeButton = wrapper.findAll('button').find((node) => node.text() === 'Change')
+    const changeButton = wrapper.findAll('button')
+      .find((node) => node.text() === 'Change destination')
 
     expect(changeButton).toBeTruthy()
     await changeButton.trigger('click')
@@ -508,10 +543,12 @@ describe('CommandCenter action modules', () => {
     await resolveButton.trigger('click')
     await flushPromises()
 
-    expect(apiMock.resolvePendingClassification).toHaveBeenCalledWith(201, expect.objectContaining({
-      library_id: 10,
-      selected_option: 'Manual selection',
-    }))
+    expect(apiMock.resolvePendingClassification).toHaveBeenCalledWith(201, {
+      contract_version: 'policy.runtime_question_answer.v1',
+      contract_fingerprint: 'current-contract-fingerprint',
+      action_id: 'change_destination',
+      destination_library_id: 10,
+    })
     expect(wrapper.text()).toContain('Resolved "Motorvalley" but routing did not complete (Sonarr API connection failed).')
   })
 
@@ -528,6 +565,7 @@ describe('CommandCenter action modules', () => {
               question: 'Does this belong in TV Shows?',
               options: [{ label: 'Yes', value: 'yes', library_id: 10 }],
             },
+            policy_question_answer: createPolicyQuestionAnswer(),
           },
           {
             id: 202,
@@ -539,6 +577,10 @@ describe('CommandCenter action modules', () => {
               question: 'Movie or Family?',
               options: [{ label: 'Movies', value: 'movies', library_id: 8 }],
             },
+            policy_question_answer: createPolicyQuestionAnswer({
+              fingerprint: 'movie-contract-fingerprint',
+              destinations: [{ library_id: 8, library_name: 'Movies' }],
+            }),
           },
         ],
     })
@@ -557,7 +599,7 @@ describe('CommandCenter action modules', () => {
     expect(wrapper.text()).toContain('Resolved "Motorvalley" but routing did not complete (missing_tvdb_id).')
   })
 
-  it('skips native pending questions when confirming all legacy questions', async () => {
+  it('skips questions without a current confirm action when confirming all', async () => {
     apiMock.getPendingClassifications.mockResolvedValueOnce({
       items: [
         {
@@ -569,6 +611,7 @@ describe('CommandCenter action modules', () => {
             question: 'Does this belong in TV Shows?',
             options: [{ label: 'Yes', value: 'yes', library_id: 10 }],
           },
+          policy_question_answer: createPolicyQuestionAnswer(),
         },
         {
           id: 208,
@@ -587,10 +630,13 @@ describe('CommandCenter action modules', () => {
     await flushPromises()
 
     expect(apiMock.resolvePendingClassification).toHaveBeenCalledTimes(1)
-    expect(apiMock.resolvePendingClassification).toHaveBeenCalledWith(207, expect.objectContaining({
-      generate_rule: true,
-    }))
-    expect(wrapper.text()).toContain('Confirm All skipped 1 native review item')
+    expect(apiMock.resolvePendingClassification).toHaveBeenCalledWith(207, {
+      contract_version: 'policy.runtime_question_answer.v1',
+      contract_fingerprint: 'current-contract-fingerprint',
+      action_id: 'confirm_destination',
+      destination_library_id: 10,
+    })
+    expect(wrapper.text()).toContain('Confirm All skipped 1 item without a current confirm action')
   })
 
   it('retries a single needs-attention classification', async () => {
