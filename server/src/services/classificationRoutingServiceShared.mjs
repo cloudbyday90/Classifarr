@@ -68,6 +68,17 @@ export function suggestSeriesType(metadata, appliedLabels = []) {
 	return 'standard';
 }
 
+/**
+ * Model output may inform a candidate, but cannot independently authorize an
+ * Arr route. Native policy evaluation remains a separately deterministic path.
+ */
+export function isAiAuthorityRoutingBlocked(result = {}) {
+	return Boolean(
+		result?.method !== 'policy_auto'
+		&& result?.ai_authority?.sideEffects?.canRoute === false
+	);
+}
+
 export async function ensureDecisionQuestion({ metadata, result, policyResult = null, libraries = [], ragContext = null }) {
 	if (!result || result.needs_retry) {
 		return result;
@@ -75,6 +86,7 @@ export async function ensureDecisionQuestion({ metadata, result, policyResult = 
 
 	const effectivePolicyResult = result.policyResult || policyResult || null;
 	const requiresManualReview = Boolean(effectivePolicyResult?.decisionDiagnostics?.requires_manual_review);
+	const requiresAuthorityReview = isAiAuthorityRoutingBlocked(result);
 
 	const ranked = effectivePolicyResult?.ranked || [];
 	let policyAutoThreshold = null;
@@ -98,6 +110,7 @@ export async function ensureDecisionQuestion({ metadata, result, policyResult = 
 		result.method === 'fallback' ||
 		(result.confidence && result.confidence < 70) ||
 		requiresManualReview ||
+		requiresAuthorityReview ||
 		belowAutoRouteThreshold ||
 		(result.library && requireAllConfirmations)
 	);

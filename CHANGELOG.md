@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **AI Provider Capability Authority**: Added server-owned, inspectable
+  authority modes for local and cloud AI responses, shared output normalization,
+  privacy-bounded aggregate capability telemetry, and deterministic routing
+  restraint. Unsupported, local, fallback, pass-through, and non-strict model
+  paths are advisory by default; model output cannot directly authorize routing,
+  learning, policy mutation, notifications, provider calls, or domain-data
+  writes.
+
 - **Policy Proposal Outcome Recovery**: Stale, concurrent, malformed, and
   uncertain policy-proposal admissions now discard client-held proposal state
   and reread the selected library's authoritative lifecycle before rendering

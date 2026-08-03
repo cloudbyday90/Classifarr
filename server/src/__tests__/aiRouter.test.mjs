@@ -154,6 +154,8 @@ describe('AIRouterService', () => {
             expect(provider.type).toBe('ollama');
             expect(provider.config.host).toBe('http://ollama:11434');
             expect(provider.config.model).toBe('llama3.2');
+            expect(provider.authority.effectiveMode).toBe('proposal');
+            expect(provider.authority.capabilities.providerEnforcedStructuredOutput).toBe(false);
         });
 
         it('should return cloud provider when configured', async () => {
@@ -178,6 +180,10 @@ describe('AIRouterService', () => {
             expect(provider.type).toBe('openai');
             expect(provider.isCloud).toBe(true);
             expect(provider.config.model).toBe('gpt-4');
+            expect(provider.authority.supportedModeIds).toEqual(expect.arrayContaining([
+                'structured_contract',
+                'verification',
+            ]));
         });
 
         it('should fallback to Ollama when budget exhausted and fallback enabled', async () => {
@@ -398,6 +404,26 @@ describe('AIRouterService', () => {
             );
             expect(result).toBe('Cloud classification result');
         });
+
+        it('downgrades contract-grade requests to advisory unless contract authority is required', async () => {
+            mockDb.query.mockResolvedValue({
+                rows: [{
+                    primary_provider: 'ollama',
+                    ollama_model: 'llama3.2',
+                }]
+            });
+            mockOllamaService.generate.mockResolvedValue('Advisory classification result');
+
+            await expect(service.classify('Test prompt', {
+                authorityMode: 'structured_contract',
+            })).resolves.toBe('Advisory classification result');
+            expect(mockOllamaService.generate).toHaveBeenCalled();
+
+            await expect(service.classify('Test prompt', {
+                authorityMode: 'structured_contract',
+                requireAuthorityMode: true,
+            })).rejects.toThrow('AI provider cannot satisfy structured_contract authority');
+        });
     });
 
     describe('getStatus', () => {
@@ -416,6 +442,9 @@ describe('AIRouterService', () => {
             expect(status.activeProvider).toBe('ollama');
             expect(status.ollamaFallbackEnabled).toBe(true);
             expect(status.budgetInfo).toBeNull();
+            expect(status.authority).toEqual(expect.objectContaining({
+                effectiveMode: 'proposal',
+            }));
         });
 
         it('should return status for cloud provider with budget info', async () => {

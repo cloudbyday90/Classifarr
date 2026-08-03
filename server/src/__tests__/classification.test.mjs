@@ -3297,7 +3297,9 @@ describe('Phase 1 AI contract and stream guard', () => {
     });
 
     expect(result.format).toBe('confident');
-    expect(aiRouter.getProvider).toHaveBeenCalledWith('classification');
+    expect(aiRouter.getProvider).toHaveBeenCalledWith('classification', {
+      authorityMode: 'proposal',
+    });
     expect(aiRouter.classify).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({

@@ -11,6 +11,7 @@ import {
   buildClassificationDestinationSummary,
   buildClassificationRoutingSummary,
 } from './classificationResultOutcomeSummary.mjs';
+import { isAiAuthorityRoutingBlocked } from './classificationRoutingServiceShared.mjs';
 import {
   validatePolicyRuntimeQuestionReduction,
 } from './policyRuntimeQuestionReduction.mjs';
@@ -141,6 +142,10 @@ export class ClassificationService {
 
     if (requireAllConfirmations) {
       return { shouldRoute: false, reason: 'confirmation_required' };
+    }
+
+    if (isAiAuthorityRoutingBlocked(result)) {
+      return { shouldRoute: false, reason: 'ai_authority_advisory' };
     }
 
     if (result.method === 'policy_auto') {

@@ -117,6 +117,29 @@ describe('ensureDecisionQuestion', () => {
         expect(build).toHaveBeenCalled();
     });
 
+    it('requires a question for an AI-derived result even above the route threshold', async () => {
+        build.mockResolvedValue({ problem_summary: 'AI output requires review' });
+        const result = {
+            library: { id: 10 },
+            confidence: 99,
+            method: 'ai_analysis',
+            clarification: null,
+            policy_question: null,
+            ai_authority: {
+                sideEffects: { canRoute: false },
+            },
+            policyResult: {
+                ranked: [{ library_id: 10, auto_classify_threshold: 85 }],
+            },
+        };
+
+        const out = await ensureDecisionQuestion({ metadata: {}, result });
+
+        expect(out.needs_clarification).toBe(true);
+        expect(out.pending_reason).toBe('AI output requires review');
+        expect(build).toHaveBeenCalled();
+    });
+
     it('requires clarification when policy decision diagnostics recommend manual review', async () => {
         build.mockResolvedValue(null);
         const result = {

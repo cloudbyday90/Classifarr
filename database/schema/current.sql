@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-08-03T13:42:58.558Z
--- Latest Migration: 20260803_120000_add_policy_authoring_proposals.sql
+-- Generated: 2026-08-03T18:07:30.581Z
+-- Latest Migration: 20260803_130000_add_ai_provider_capability_metrics.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -416,6 +416,38 @@ $$;
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
+
+--
+-- Name: ai_provider_capability_metrics; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ai_provider_capability_metrics (
+    provider_id character varying(32) NOT NULL,
+    model character varying(255) NOT NULL,
+    authority_mode character varying(32) NOT NULL,
+    request_count bigint DEFAULT 0 NOT NULL,
+    structured_parse_success_count bigint DEFAULT 0 CONSTRAINT ai_provider_capability_metr_structured_parse_success_c_not_null NOT NULL,
+    semantic_contract_violation_count bigint DEFAULT 0 CONSTRAINT ai_provider_capability_metr_semantic_contract_violatio_not_null NOT NULL,
+    repair_attempt_count bigint DEFAULT 0 NOT NULL,
+    repair_success_count bigint DEFAULT 0 NOT NULL,
+    timeout_or_incomplete_stream_count bigint DEFAULT 0 CONSTRAINT ai_provider_capability_metr_timeout_or_incomplete_stre_not_null NOT NULL,
+    hallucinated_library_reference_count bigint DEFAULT 0 CONSTRAINT ai_provider_capability_metr_hallucinated_library_refer_not_null NOT NULL,
+    hallucinated_action_count bigint DEFAULT 0 CONSTRAINT ai_provider_capability_metri_hallucinated_action_count_not_null NOT NULL,
+    thinking_trace_leakage_count bigint DEFAULT 0 CONSTRAINT ai_provider_capability_metr_thinking_trace_leakage_cou_not_null NOT NULL,
+    last_observed_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT ai_provider_capability_metrics_authority_mode_chk CHECK (((authority_mode)::text = ANY (ARRAY[('structured_contract'::character varying)::text, ('verification'::character varying)::text, ('proposal'::character varying)::text, ('explanation'::character varying)::text, ('fallback_advisory'::character varying)::text, ('disabled'::character varying)::text]))),
+    CONSTRAINT ai_provider_capability_metrics_model_shape_chk CHECK (((length(btrim((model)::text)) >= 1) AND (length(btrim((model)::text)) <= 255))),
+    CONSTRAINT ai_provider_capability_metrics_nonnegative_counts_chk CHECK (((request_count >= 0) AND (structured_parse_success_count >= 0) AND (semantic_contract_violation_count >= 0) AND (repair_attempt_count >= 0) AND (repair_success_count >= 0) AND (timeout_or_incomplete_stream_count >= 0) AND (hallucinated_library_reference_count >= 0) AND (hallucinated_action_count >= 0) AND (thinking_trace_leakage_count >= 0))),
+    CONSTRAINT ai_provider_capability_metrics_provider_shape_chk CHECK (((provider_id)::text ~ '^[a-z0-9_-]{1,32}$'::text))
+);
+
+
+--
+-- Name: TABLE ai_provider_capability_metrics; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.ai_provider_capability_metrics IS 'Aggregate AI provider capability counters; no prompts, model output, media data, or actions.';
+
 
 --
 -- Name: ai_provider_config; Type: TABLE; Schema: public; Owner: -
@@ -7183,6 +7215,14 @@ ALTER TABLE ONLY public.webhook_log ALTER COLUMN id SET DEFAULT nextval('public.
 
 
 --
+-- Name: ai_provider_capability_metrics ai_provider_capability_metrics_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_provider_capability_metrics
+    ADD CONSTRAINT ai_provider_capability_metrics_pkey PRIMARY KEY (provider_id, model, authority_mode);
+
+
+--
 -- Name: ai_provider_config ai_provider_config_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13410,6 +13450,7 @@ FROM unnest(ARRAY[
     '20260728_120000_add_policy_native_profile_refresh_circuits.sql',
     '20260729_140000_add_policy_migration_verification_runs.sql',
     '20260729_150000_bind_policy_library_rebuild_verification_runs.sql',
-    '20260803_120000_add_policy_authoring_proposals.sql'
+    '20260803_120000_add_policy_authoring_proposals.sql',
+    '20260803_130000_add_ai_provider_capability_metrics.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

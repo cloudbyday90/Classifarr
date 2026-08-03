@@ -29,6 +29,8 @@ const mockOllamaService = createServiceStubs([
 ]);
 
 const mockAiRouter = createServiceStubs(['getProvider', 'classify']);
+const mockAiProviderCapabilityMetricsService = createServiceStubs(['record']);
+mockAiProviderCapabilityMetricsService.record.mockResolvedValue(undefined);
 
 const mockProviderLock = createServiceStubs(['acquireLock', 'releaseLock', 'heartbeat'], {
   config: { heartbeatInterval: 5000 },
@@ -60,6 +62,11 @@ jest.unstable_mockModule('../services/ollama.mjs', () => createNamedMockModule('
 
 jest.unstable_mockModule('../services/aiRouter.mjs', () => createNamedMockModule('aiRouterService', mockAiRouter));
 
+jest.unstable_mockModule('../services/aiProviderCapabilityMetricsService.mjs', () => createNamedMockModule(
+  'aiProviderCapabilityMetricsService',
+  mockAiProviderCapabilityMetricsService,
+));
+
 jest.unstable_mockModule('../services/providerLock.mjs', () => createNamedMockModule('providerLock', mockProviderLock));
 
 jest.unstable_mockModule('../services/aiPromptBuilder.mjs', () => createNamedStubModule('aiPromptBuilder', mockAiPromptBuilder));
@@ -77,6 +84,7 @@ const { classificationAiService } = await import('../services/classificationAiSe
 const db = mockDb;
 const ollamaService = mockOllamaService;
 const aiRouter = mockAiRouter;
+const aiProviderCapabilityMetricsService = mockAiProviderCapabilityMetricsService;
 const providerLock = mockProviderLock;
 const aiPromptBuilder = mockAiPromptBuilder;
 const aiResponseParser = mockAiResponseParser;
@@ -374,6 +382,7 @@ describe('aiClassify', () => {
     ollamaService.updateTokenCount.mockReset();
     aiRouter.getProvider.mockReset();
     aiRouter.classify.mockReset();
+    aiProviderCapabilityMetricsService.record.mockReset().mockResolvedValue(undefined);
     providerLock.acquireLock.mockReset().mockResolvedValue(undefined);
     providerLock.releaseLock.mockReset();
     providerLock.heartbeat.mockReset();
@@ -392,6 +401,32 @@ describe('aiClassify', () => {
     await expect(
       classificationAiService.aiClassify(baseMetadata, baseLibraries)
     ).rejects.toThrow('AI is not available');
+  });
+
+  test('normalizes every provider output and records a safe authority view', async () => {
+    setupHappyPath({
+      generatedResponse: '<think>hidden reasoning</think>\nCONFIDENT|1|85|genre match',
+    });
+
+    const result = await classificationAiService.aiClassify(baseMetadata, baseLibraries);
+
+    expect(aiResponseParser.parse).toHaveBeenCalledWith(
+      'CONFIDENT|1|85|genre match',
+      expect.any(Object),
+      expect.any(Object),
+    );
+    expect(result.ai_authority).toEqual(expect.objectContaining({
+      effectiveMode: 'proposal',
+      sideEffects: expect.objectContaining({
+        canRoute: false,
+        canLearn: false,
+        canMutatePolicy: false,
+      }),
+    }));
+    expect(aiProviderCapabilityMetricsService.record).toHaveBeenCalledWith(expect.objectContaining({
+      thinkingTraceDetected: true,
+      parseResult: result,
+    }));
   });
 
   test('uses "classify" mode when no signalContext', async () => {
@@ -416,6 +451,9 @@ describe('aiClassify', () => {
       expect.any(Object),
       { mode: 'verify' }
     );
+    expect(aiRouter.getProvider).toHaveBeenCalledWith('classification', {
+      authorityMode: 'verification',
+    });
   });
 
   test('options.mode overrides default mode derivation', async () => {

@@ -15,6 +15,12 @@ import {
     AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
     buildAiRuntimeDedupeKey,
 } from './aiEmbeddingProviderIntegrityService.mjs';
+import {
+    AI_PROVIDER_AUTHORITY_MODE_IDS,
+    buildAiProviderAuthorityProfile,
+    buildAiProviderAuthorityView,
+    isAiProviderAuthorityModeGranted,
+} from './aiProviderAuthority.mjs';
 import { ollamaService } from './ollama.mjs';
 
 const logger = createLogger('AIRouter');
@@ -58,20 +64,24 @@ class AIRouterService {
         this.configCacheTime = null;
     }
 
-    async getProvider(taskType = 'classification') {
+    async getProvider(taskType = 'classification', options = {}) {
         const config = await this.getConfig();
+        const requestedAuthorityMode = options.authorityMode;
 
         if (config.primary_provider === 'none') {
             if (config.ollama_fallback_enabled) {
                 logger.debug('No primary provider, using Ollama fallback');
-                return this.getOllamaProvider(config);
+                return this.getOllamaProvider(config, {
+                    requestedAuthorityMode,
+                    isFallback: true,
+                });
             }
             logger.debug('AI disabled - no provider configured');
             return null;
         }
 
         if (config.primary_provider === 'ollama') {
-            return this.getOllamaProvider(config);
+            return this.getOllamaProvider(config, { requestedAuthorityMode });
         }
 
         const budgetStatus = await cloudLLM.checkBudget();
@@ -92,7 +102,10 @@ class AIRouterService {
 
             if (budgetStatus.shouldPause && config.ollama_fallback_enabled && config.ollama_for_budget_exhausted) {
                 logger.info('Falling back to Ollama due to budget exhaustion');
-                return this.getOllamaProvider(config);
+                return this.getOllamaProvider(config, {
+                    requestedAuthorityMode,
+                    isFallback: true,
+                });
             }
 
             if (budgetStatus.shouldPause) {
@@ -112,31 +125,50 @@ class AIRouterService {
 
         if (config.ollama_for_basic_tasks && taskType === 'basic' && config.ollama_fallback_enabled) {
             logger.debug('Using Ollama for basic task');
-            return this.getOllamaProvider(config);
+            return this.getOllamaProvider(config, {
+                requestedAuthorityMode,
+                isFallback: true,
+            });
         }
 
+        const model = config.model || 'unknown';
         return {
             type: config.primary_provider,
             isCloud: true,
+            authority: buildAiProviderAuthorityProfile({
+                providerId: config.primary_provider,
+                model,
+                requestedMode: requestedAuthorityMode,
+            }),
             config: {
                 primary_provider: config.primary_provider,
                 api_endpoint: config.api_endpoint,
                 api_key: config.api_key,
-                model: config.model,
+                model,
                 temperature: config.temperature,
                 max_tokens: config.max_tokens
             }
         };
     }
 
-    getOllamaProvider(config) {
+    getOllamaProvider(config, {
+        requestedAuthorityMode,
+        isFallback = false,
+    } = {}) {
+        const model = config.ollama_model || 'llama3.2';
         return {
             type: 'ollama',
             isCloud: false,
+            authority: buildAiProviderAuthorityProfile({
+                providerId: 'ollama',
+                model,
+                requestedMode: requestedAuthorityMode,
+                isFallback,
+            }),
             config: {
                 host: config.ollama_host || 'http://ollama:11434',
                 port: config.ollama_port || 11434,
-                model: config.ollama_model || 'llama3.2'
+                model
             }
         };
     }
@@ -147,10 +179,27 @@ class AIRouterService {
     }
 
     async classify(prompt, options = {}) {
-        const provider = await this.getProvider(options.taskType || 'classification');
+        const requestedAuthorityMode = options.authorityMode;
+        const provider = options.provider || await this.getProvider(
+            options.taskType || 'classification',
+            { authorityMode: requestedAuthorityMode },
+        );
 
         if (!provider) {
             throw new ServiceUnavailableError('AI is not available - no provider configured or budget exhausted');
+        }
+
+        if (
+            [
+                AI_PROVIDER_AUTHORITY_MODE_IDS.STRUCTURED_CONTRACT,
+                AI_PROVIDER_AUTHORITY_MODE_IDS.VERIFICATION,
+            ].includes(requestedAuthorityMode)
+            && options.requireAuthorityMode === true
+            && !isAiProviderAuthorityModeGranted(provider.authority, requestedAuthorityMode)
+        ) {
+            throw new ServiceUnavailableError(
+                `AI provider cannot satisfy ${requestedAuthorityMode} authority`,
+            );
         }
 
         if (provider.type === 'ollama') {
@@ -180,7 +229,8 @@ class AIRouterService {
             primaryProvider: config.primary_provider,
             activeProvider: provider?.type || 'none',
             ollamaFallbackEnabled: config.ollama_fallback_enabled,
-            budgetInfo: null
+            budgetInfo: null,
+            authority: buildAiProviderAuthorityView(provider?.authority),
         };
 
         if (['openai', 'gemini', 'openrouter', 'litellm', 'custom'].includes(config.primary_provider)) {

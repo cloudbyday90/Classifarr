@@ -3877,6 +3877,32 @@ Acceptance criteria:
 - Local execution is not treated as automatically safe.
 - Runtime code can distinguish advisory text from contract-grade output.
 
+Implementation status:
+
+- Complete. `aiProviderAuthority.mjs` provides immutable server-owned profiles
+  for `structured_contract`, `verification`, `proposal`, `explanation`,
+  `fallback_advisory`, and `disabled`. Direct non-reasoning OpenAI and Gemini
+  adapters alone advertise contract modes; local/Ollama, pass-through, and
+  unsupported paths are conservatively downgraded.
+- `aiProviderOutputNormalization.mjs` applies the same thinking-block and
+  Markdown-fence normalization before the existing semantic parser for every
+  local and cloud response. `ai_authority` is an inspectable, display-safe
+  result projection with no raw output, credentials, or executable commands.
+- `ai_provider_capability_metrics` records only fixed aggregate capability
+  counters. The parameterized, fail-open recorder never stores prompts,
+  responses, media data, library IDs, or commands.
+- Deterministic classification routing and question construction recognize the
+  no-route authority flag, so AI-derived candidates cannot directly auto-route.
+  Native `policy_auto` remains independently eligible because it is policy
+  evaluation rather than model output.
+- Focused authority, normalization, telemetry, router, classification, and
+  question-boundary tests cover capability admission, downgrade, trace removal,
+  counter privacy, and routing restraint. See
+  `docs/architecture/ai-provider-capability-authority.md` for the complete
+  design and research record.
+
+The next work is **5R.4 Runtime Clarification Normalizer**.
+
 ### 5R.4 Runtime Clarification Normalizer
 
 Intent: convert AI or runtime uncertainty into deterministic server-owned

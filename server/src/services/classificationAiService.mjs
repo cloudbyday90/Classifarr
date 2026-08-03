@@ -8,6 +8,13 @@ import { aiPromptBuilder } from './aiPromptBuilder.mjs';
 import { aiResponseParser } from './aiResponseParser.mjs';
 import { buildAiResponseDiagnosticArtifact } from './aiResponseDiagnosticsService.mjs';
 import { isReasoningModel } from './aiResponseNormalizer.mjs';
+import {
+  AI_PROVIDER_AUTHORITY_MODE_IDS,
+  buildAiProviderAuthorityProfile,
+  buildAiProviderAuthorityView,
+} from './aiProviderAuthority.mjs';
+import { normalizeAiProviderOutput } from './aiProviderOutputNormalization.mjs';
+import { aiProviderCapabilityMetricsService } from './aiProviderCapabilityMetricsService.mjs';
 import { libraryProfileService } from './libraryProfileService.mjs';
 import { enrichWithWebSearch } from './classificationMetadataService.mjs';
 import { formatNormalizedWebSearchForAI } from './webSearchResultNormalizer.mjs';
@@ -66,6 +73,36 @@ export async function attemptAiResponseRepair({
     validationErrors,
     generateFn: (...args) => ollamaService.generate(...args)
   });
+}
+
+function resolveProviderAuthority(provider, model) {
+  return provider?.authority || buildAiProviderAuthorityProfile({
+    providerId: provider?.type,
+    model,
+    requestedMode: 'proposal',
+  });
+}
+
+async function attachAiProviderAuthority({
+  result,
+  authority,
+  diagnostics = null,
+  generationError = null,
+  thinkingTraceDetected = false,
+}) {
+  if (result && typeof result === 'object') {
+    result.ai_authority = buildAiProviderAuthorityView(authority);
+  }
+
+  await aiProviderCapabilityMetricsService.record({
+    authority,
+    parseResult: result,
+    diagnostics,
+    generationError,
+    thinkingTraceDetected,
+  });
+
+  return result;
 }
 
 async function aiClassifyImpl(metadata, libraries, signalContext = null, options = {}) {
@@ -158,13 +195,19 @@ Think step by step, then respond with ONLY one of the formats above.`;
     : { model: 'llama3.2', temperature: 0.30 };
   const aiResponseRepairEnabled = providerRow?.ai_response_repair_enabled !== false;
   const disallowPartialStreamResponse = providerRow?.classification_disallow_partial_stream_response !== false;
-  const provider = await aiRouter.getProvider('classification');
+  const requestedAuthorityMode = mode === 'verify'
+    ? AI_PROVIDER_AUTHORITY_MODE_IDS.VERIFICATION
+    : AI_PROVIDER_AUTHORITY_MODE_IDS.PROPOSAL;
+  const provider = await aiRouter.getProvider('classification', {
+    authorityMode: requestedAuthorityMode,
+  });
 
   if (!provider) {
     throw new ServiceUnavailableError('AI is not available - no provider configured or budget exhausted');
   }
 
   const generationModel = provider.config?.model || config.model;
+  const providerAuthority = resolveProviderAuthority(provider, generationModel);
   const reasoningModel = isReasoningModel(generationModel);
 
   await providerLock.acquireLock('classification', 'high');
@@ -172,6 +215,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
   const heartbeatIntervalMs = providerLock.config.heartbeatInterval;
   let heartbeatTimer = null;
   let response;
+  let thinkingTraceDetected = false;
 
   try {
     heartbeatTimer = setInterval(() => {
@@ -226,6 +270,8 @@ Think step by step, then respond with ONLY one of the formats above.`;
           } else {
             response = await aiRouter.classify(prompt, {
               taskType: 'classification',
+              provider,
+              authorityMode: requestedAuthorityMode,
               requestType: mode === 'verify' ? 'classification_verify' : 'classification',
               itemTitle,
               format: reasoningModel ? undefined : classificationResponseSchema
@@ -256,6 +302,12 @@ Think step by step, then respond with ONLY one of the formats above.`;
       if (!response && lastStreamError) {
         throw lastStreamError;
       }
+    } catch (generationError) {
+      await attachAiProviderAuthority({
+        authority: providerAuthority,
+        generationError,
+      });
+      throw generationError;
     } finally {
       ollamaService.setGenerationStatus(false);
     }
@@ -266,6 +318,11 @@ Think step by step, then respond with ONLY one of the formats above.`;
     }
     providerLock.releaseLock('classification');
   }
+
+  const rawProviderResponse = response;
+  const normalizedProviderOutput = normalizeAiProviderOutput(rawProviderResponse);
+  response = normalizedProviderOutput.normalizedOutput;
+  thinkingTraceDetected = normalizedProviderOutput.thinkingTraceDetected;
 
   const parseContext = {
     libraries: libraries,
@@ -281,7 +338,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
   });
   const firstFailureReason = _getParseFailureReason(firstParseResult);
   const responseArtifact = firstFailureReason
-    ? buildAiResponseDiagnosticArtifact(response)
+    ? buildAiResponseDiagnosticArtifact(rawProviderResponse)
     : null;
   const shouldAttemptRepair = aiResponseRepairEnabled && _isRepairEligibleParseResult(firstParseResult, mode);
 
@@ -292,7 +349,12 @@ Think step by step, then respond with ONLY one of the formats above.`;
       failureReason: firstFailureReason,
       responseArtifact,
     });
-    return firstParseResult;
+    return attachAiProviderAuthority({
+      result: firstParseResult,
+      authority: providerAuthority,
+      diagnostics: firstParseResult.parse_diagnostics,
+      thinkingTraceDetected,
+    });
   }
 
   let finalParseResult = firstParseResult;
@@ -331,7 +393,12 @@ Think step by step, then respond with ONLY one of the formats above.`;
             responseArtifact,
             repairResponseArtifact,
           });
-          return repairedParse;
+          return attachAiProviderAuthority({
+            result: repairedParse,
+            authority: providerAuthority,
+            diagnostics: repairedParse.parse_diagnostics,
+            thinkingTraceDetected,
+          });
         }
 
         finalParseResult = repairedParse;
@@ -363,7 +430,12 @@ Think step by step, then respond with ONLY one of the formats above.`;
     response: String(response || '').substring(0, 200)
   });
 
-  return finalParseResult;
+  return attachAiProviderAuthority({
+    result: finalParseResult,
+    authority: providerAuthority,
+    diagnostics: finalParseResult.parse_diagnostics,
+    thinkingTraceDetected,
+  });
 }
 
 export async function aiClassify(...args) {

@@ -15,6 +15,7 @@ import { routingConfigIntegrityService } from './routingConfigIntegrityService.m
 import { createLogger } from '../utils/logger.mjs';
 import {
   ensureDecisionQuestion,
+  isAiAuthorityRoutingBlocked,
   isSettingsEmpty,
   normalizeQualityProfileId,
   normalizeSettings,
@@ -188,6 +189,7 @@ export async function routeToArr(metadata, library) {
 
 export const classificationRoutingService = {
   ensureDecisionQuestion,
+  isAiAuthorityRoutingBlocked,
   isSettingsEmpty,
   normalizeQualityProfileId,
   normalizeSettings,
@@ -200,6 +202,7 @@ export const classificationRoutingService = {
 
 export {
   ensureDecisionQuestion,
+  isAiAuthorityRoutingBlocked,
   isSettingsEmpty,
   normalizeQualityProfileId,
   normalizeSettings,
