@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Library Lifecycle Entry**: Replaced the local policy grouping and
+  hidden create-modal path with a server-confirmed lifecycle entry for every
+  connected library. The new normal route uses strict fail-closed response
+  presentation, bounded concurrent reads, durable selected-library navigation,
+  focus restoration, and safe load feedback while keeping existing policies and
+  automatic profile recovery non-creating.
+
 - **Policy Authoring Proposal Admission**: Added an admin-only, profile-derived
   lifecycle and opaque proposal admission API. It revalidates the canonical
   candidate in one transaction, expires and consumes proposal references,

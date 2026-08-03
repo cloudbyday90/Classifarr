@@ -36,6 +36,7 @@ import {
   getPolicy,
   getPolicies,
   getPolicyOperatorWorkflow,
+  getPolicyAuthoringLifecycle,
   getPolicyNativeReadinessSummary,
   validatePolicyOperatorWorkflowCustomIntentSignal,
   createPolicy,
@@ -67,6 +68,16 @@ describe('policiesApi', () => {
     await getPolicyOperatorWorkflow(7)
 
     expect(mockGetDataRequest).toHaveBeenCalledWith('/policies/operator-workflow/libraries/7')
+  })
+
+  it('getPolicyAuthoringLifecycle calls the server-owned lifecycle endpoint', async () => {
+    mockGetDataRequest.mockResolvedValueOnce({ statusId: 'eligible_to_prepare_proposal' })
+
+    await getPolicyAuthoringLifecycle(7)
+
+    expect(mockGetDataRequest).toHaveBeenCalledWith(
+      '/policies/operator-workflow/libraries/7/authoring-lifecycle'
+    )
   })
 
   it('getPolicyNativeReadinessSummary calls the read-only stored-native readiness endpoint', async () => {

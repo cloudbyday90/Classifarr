@@ -35,6 +35,10 @@ export function getPolicyOperatorWorkflow(libraryId) {
   return getDataRequest(`/policies/operator-workflow/libraries/${libraryId}`)
 }
 
+export function getPolicyAuthoringLifecycle(libraryId) {
+  return getDataRequest(`/policies/operator-workflow/libraries/${libraryId}/authoring-lifecycle`)
+}
+
 export function getPolicyNativeReadinessSummary(id) {
   return getDataRequest(`/policies/${id}/native-intent/readiness-summary`)
 }
@@ -76,6 +80,7 @@ const policiesApi = {
   getPolicy,
   getPolicies,
   getPolicyOperatorWorkflow,
+  getPolicyAuthoringLifecycle,
   getPolicyNativeReadinessSummary,
   validatePolicyOperatorWorkflowCustomIntentSignal,
   createPolicy,

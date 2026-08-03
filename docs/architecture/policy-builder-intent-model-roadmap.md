@@ -15,8 +15,8 @@ Current execution focus:
    **4R.3 Action Binding And Admission Feedback** are complete. Their current
    contracts do not yet provide an admitted, revision-bound destination
    proposal or a normal lifecycle entry. **5R.2a Proposal And Lifecycle
-   Admission Contract** is complete; **4R.4a Library Lifecycle Entry** is now
-   the next dependency-gated task before the 4R.4 destination proposal card.
+   Admission Contract** and **4R.4a Library Lifecycle Entry** are complete;
+   **4R.4 Destination Proposal Card** is the next dependency-gated task.
 3. **8R.37.1 Runtime Capability Inventory And Isolation Decision** is a
    parallel release-maintenance/security audit. It cannot block 4R.1 or
    automatic native policy behavior.
@@ -30,7 +30,7 @@ The execution dependency is intentionally not numeric:
 
 ```text
 completed foundations: 0R -> 1R -> 2R -> 3R
-active product work: 4R.1 -> 5R.1/5R.2/4R.2/4R.3 (complete) -> 5R.2a -> 4R.4a/4R.4/4R.4b -> 4R.5
+active product work: 4R.1 -> 5R.1/5R.2/4R.2/4R.3/5R.2a/4R.4a (complete) -> 4R.4 -> 4R.4b -> 4R.5
 runtime trust work: 5R.3 through 5R.10 -> 4R.6 through 4R.9
 parallel safety work: 8R installation/runtime lanes + 9R zero-debt gate
 ```
@@ -3285,7 +3285,7 @@ This is not a claim that every legacy list-level action is accepted as the
 final product path. The current normal create opener is absent, and list-level
 reset, maintenance, and raw failure surfaces remain explicit 4R.8 removal
 work. Representative live-browser verification remains a separate 4R.1
-requirement. **5R.2a is complete; 4R.4a is next.**
+requirement. **5R.2a and 4R.4a are complete; 4R.4 is next.**
 
 ### 4R.4a Library Lifecycle Entry
 
@@ -3320,6 +3320,15 @@ Acceptance criteria:
   entry; an existing policy cannot enter native create.
 - Refresh, reload, and back navigation retain or safely restore the selected
   lifecycle state without browser-derived policy decisions.
+
+Implementation outcome: complete. `/policies` now renders one strict,
+server-confirmed lifecycle presentation per connected library and bounds reads
+to four concurrent requests. It replaces local policy grouping and the hidden
+create modal with durable `?library=<id>` selection and verified focus
+restoration. Existing, recovery, unavailable, and malformed states are
+non-creating; recovery exposes no refresh control; loading and failure feedback
+contains no browser dialog or raw error. See [Policy Library Lifecycle
+Entry](policy-library-lifecycle-entry.md).
 
 ### 4R.4 Destination Proposal Card
 
@@ -3563,8 +3572,8 @@ Implement Phase 4R in this order:
    reference, stale/concurrency outcomes, and admission reconstruction needed
    before the browser can create from observed library meaning.
 5. **4R.4a Library Lifecycle Entry**
-   Gives every library one authoritative create, inspect, recovery, or blocked
-   state before opening authoring UI.
+   Complete. It gives every library one authoritative create, inspect, recovery,
+   or blocked state before the destination proposal is prepared.
 6. **4R.4 Destination Proposal Card**
    Delivers the library-first automated default from the admitted proposal,
    without asking the operator to reselect known evidence.
@@ -3585,13 +3594,13 @@ Implement Phase 4R in this order:
 13. **4R.9 Accessibility, Responsive Behavior, And End-To-End Workflow Tests**
    Proves the delivered flow works in the live product.
 
-Next implementation task: **4R.4a Library Lifecycle Entry**.
+Next implementation task: **4R.4 Destination Proposal Card**.
 The 4R.1 source inventory still requires representative live-browser
 verification, and 4R.3 has bound the existing component's controls to admitted
 actions and truthful outcomes. The completed 5R.2a contract supplies the
 durable candidate lifecycle and admission-bound proposal; do not add another
 picker, generic suggestion control, advanced setting, or maintenance dialog in
-place of the 4R.4a lifecycle entry.
+place of the 4R.4 destination proposal card.
 
 ## Phase 5R: Server Authority, Runtime Questions, And Learning Guard
 
@@ -3776,7 +3785,8 @@ Implementation status:
   native-create idempotency replay, and bounded stale/expired/existing outcomes.
 - Focused service, route, and migration tests cover current, missing-profile,
   stale, expired, existing-policy, replay, invalid-input, and unauthorized
-  paths. The next work is **4R.4a Library Lifecycle Entry**.
+  paths. The completed 4R.4a lifecycle entry now consumes the read boundary;
+  the next work is **4R.4 Destination Proposal Card**.
 
 ### 5R.3 AI Provider Capability And Authority Modes
 
@@ -11517,10 +11527,11 @@ The next sequence is dependency-gated rather than phase-number order:
 6. **5R.2a Proposal And Lifecycle Admission Contract**: complete. It supplies
    the server-owned candidate lifecycle, opaque proposal reference,
    current-state recheck, and bounded stale/concurrency recovery outcomes.
-7. **4R.4a, 4R.4, 4R.4b, and 4R.5**: next deliver the normal lifecycle entry,
-   automated proposal default, outcome recovery, and exceptional adjustment
-   disclosure. A ready library must not require reselecting evidence the
-   server already proposed.
+7. **4R.4a**: complete. It delivers the normal lifecycle entry without a
+   second create path. **4R.4, 4R.4b, and 4R.5** next deliver the automated
+   proposal default, outcome recovery, and exceptional adjustment disclosure.
+   A ready library must not require reselecting evidence the server already
+   proposed.
 8. **5R.3 through 5R.10**, then **4R.6 through 4R.9**: finish model/question/
    learning and native-change authority before exposing material exceptions,
    then complete revision-safe maintenance, legacy UI cutover, accessibility,

@@ -1,244 +1,311 @@
 <!--
   Classifarr - AI-powered media classification for the *arr ecosystem
   Copyright (C) 2024-2026 Classifarr Contributors
-  
-  This program is free software: licensed under GPL-3.0
-  See LICENSE file for details.
 -->
 
 <template>
   <div class="space-y-6">
-    <div class="flex flex-wrap items-start justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-bold">
-          Library Policies
-        </h1>
-        <p class="text-gray-400 text-sm mt-1">
-          Configure policies with presets to classify your media
-        </p>
-      </div>
-      <RouterLink
-        to="/policies/native-intent-reconciliation"
-        class="rounded border border-gray-600 px-4 py-2 text-sm font-medium text-gray-200 hover:border-primary hover:text-white"
-      >
-        Native intent status
-      </RouterLink>
+    <div>
+      <h1 class="text-2xl font-bold">
+        Library Policy Setup
+      </h1>
+      <p class="mt-1 text-sm text-gray-400">
+        Classifarr checks each connected library and shows the one safe next policy-authoring state.
+      </p>
     </div>
 
     <div
-      v-if="policyIntentWritePreflightNotice"
-      :class="[
-        'rounded-lg border p-4 text-sm',
-        policyIntentWritePreflightNotice.tone === 'error'
-          ? 'border-red-500/40 bg-red-900/20 text-red-100'
-          : policyIntentWritePreflightNotice.tone === 'success'
-            ? 'border-green-500/40 bg-green-900/20 text-green-100'
-            : 'border-blue-500/40 bg-blue-900/20 text-blue-100'
-      ]"
-      role="status"
+      v-if="libraryLoadError"
+      class="rounded-lg border border-red-500/40 bg-red-900/20 p-4 text-sm text-red-100"
+      role="alert"
     >
-      <div class="flex items-start justify-between gap-4">
+      <p class="font-semibold">
+        Connected libraries are unavailable
+      </p>
+      <p class="mt-1">
+        {{ libraryLoadError }}
+      </p>
+      <button
+        type="button"
+        class="mt-3 rounded border border-red-400/70 px-3 py-1.5 font-medium hover:bg-red-950/50 focus:outline-none focus:ring-2 focus:ring-red-300 focus:ring-offset-2 focus:ring-offset-gray-950"
+        @click="loadAuthoringEntries"
+      >
+        Try again
+      </button>
+    </div>
+
+    <section
+      v-else-if="selectedEntry"
+      :id="`policy-authoring-selection-${selectedEntry.library.id}`"
+      ref="selectedLifecycleElement"
+      class="rounded-lg border border-primary/70 bg-primary/10 p-5"
+      tabindex="-1"
+      aria-labelledby="policy-authoring-selection-heading"
+    >
+      <div class="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <div class="font-semibold">
-            {{ policyIntentWritePreflightNotice.title }}
-          </div>
-          <p class="mt-1 text-gray-200">
-            {{ policyIntentWritePreflightNotice.message }}
+          <p class="text-xs font-semibold uppercase tracking-wide text-primary-200">
+            Destination proposal
+          </p>
+          <h2
+            id="policy-authoring-selection-heading"
+            class="mt-1 text-xl font-semibold text-white"
+          >
+            {{ selectedEntry.library.name }}
+          </h2>
+        </div>
+        <span
+          :class="selectedBadgeClass"
+          class="rounded-full border px-3 py-1 text-xs font-semibold"
+        >
+          {{ selectedEntry.label }}
+        </span>
+      </div>
+      <p class="mt-4 text-sm leading-6 text-gray-200">
+        {{ selectedEntry.message }}
+      </p>
+      <p
+        v-if="selectedEntry.canSelect"
+        class="mt-2 text-sm leading-6 text-gray-300"
+      >
+        No policy has been created. This route safely retains the selected library while Classifarr prepares the destination proposal in the next authoring step.
+      </p>
+      <p
+        v-else
+        class="mt-2 text-sm leading-6 text-gray-300"
+      >
+        Classifarr will not create another policy from this route.
+      </p>
+      <button
+        type="button"
+        class="mt-5 rounded border border-gray-600 px-4 py-2 text-sm font-medium text-gray-100 hover:border-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-gray-950"
+        @click="clearSelectedLibrary"
+      >
+        Back to library policy setup
+      </button>
+    </section>
+
+    <div
+      v-else-if="selectedLibraryId && !lifecycleLoading"
+      class="rounded-lg border border-amber-500/40 bg-amber-900/20 p-4 text-sm text-amber-100"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      The selected library is no longer available. Return to the current library policy setup list.
+      <button
+        type="button"
+        class="ml-2 font-semibold underline underline-offset-2 hover:text-white focus:outline-none focus:ring-2 focus:ring-amber-200"
+        @click="clearSelectedLibrary"
+      >
+        Return to list
+      </button>
+    </div>
+
+    <div
+      v-if="librariesLoading || lifecycleLoading"
+      class="rounded-lg border border-gray-700 bg-gray-900/40 p-4 text-sm text-gray-300"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      Checking current library authoring states...
+    </div>
+
+    <div
+      v-else-if="lifecycleEntries.length === 0"
+      class="rounded-lg border border-gray-700 bg-gray-900/40 p-6 text-center"
+    >
+      <h2 class="text-lg font-semibold text-white">
+        No connected libraries
+      </h2>
+      <p class="mt-2 text-sm text-gray-400">
+        Connect a media server library before setting up policy authoring.
+      </p>
+    </div>
+
+    <section
+      v-else
+      aria-labelledby="policy-authoring-lifecycle-heading"
+    >
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2
+            id="policy-authoring-lifecycle-heading"
+            class="text-lg font-semibold text-white"
+          >
+            Connected libraries
+          </h2>
+          <p class="mt-1 text-sm text-gray-400">
+            Each library has one server-confirmed authoring outcome.
           </p>
         </div>
         <button
+          v-if="hasUnavailableEntries"
           type="button"
-          class="text-xs text-gray-300 hover:text-white"
-          @click="clearPolicyIntentWritePreflightNotice"
+          class="rounded border border-gray-600 px-3 py-1.5 text-sm font-medium text-gray-100 hover:border-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-gray-950"
+          @click="reloadLifecycleEntries"
         >
-          Dismiss
+          Reload authoring states
         </button>
       </div>
-    </div>
 
-    <div
-      v-if="loading"
-      class="text-center py-12 text-gray-400"
-    >
-      Loading policies...
-    </div>
-
-    <div
-      v-else-if="Object.keys(librariesWithPolicies).length === 0"
-      class="text-center py-12"
-    >
-      <div class="text-gray-400 mb-4">
-        No policies found. Create one to get started.
+      <div class="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <PolicyAuthoringLifecycleEntry
+          v-for="entry in lifecycleEntries"
+          :key="entry.library.id"
+          :entry="entry"
+          @select="selectLibrary"
+        />
       </div>
-    </div>
-
-    <div
-      v-else
-      class="space-y-8"
-    >
-      <div
-        v-for="(library, libraryId) in librariesWithPolicies"
-        :key="libraryId"
-        class="space-y-4"
-      >
-        <div class="flex items-center justify-between">
-          <h2 class="text-xl font-semibold">
-            {{ library.name }}
-          </h2>
-        </div>
-        
-        <div class="grid grid-cols-1 gap-4">
-          <PolicyCard 
-            v-for="policy in library.policies" 
-            :key="policy.id"
-            :policy="policy"
-            @configure="editPolicy"
-            @delete="confirmReset"
-          />
-        </div>
-      </div>
-    </div>
-
-    <!-- Create/Edit Modal -->
-    <PolicyBuilderModal 
-      v-if="showCreateModal || editingPolicy"
-      v-model="showModal"
-      :policy="editingPolicy"
-      :library-id="selectedLibraryId"
-      :submit-policy="editingPolicy ? savePolicy : null"
-      @native-policy-created="refreshPoliciesAfterNativeCreate"
-      @close="closeModal"
-    />
+    </section>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import api from '@/api'
-import PolicyCard from '@/components/policies/PolicyCard.vue'
-import PolicyBuilderModal from '@/components/policies/PolicyBuilderModal.vue'
-import {
-  buildPolicyIntentWritePreflightNotice,
-  normalizePolicyIntentWritePreflight,
-} from '@/utils/policyIntentWritePreflight'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { getLibraries } from '@/api/libraryCatalogApi'
+import PolicyAuthoringLifecycleEntry from '@/components/policies/PolicyAuthoringLifecycleEntry.vue'
+import { usePolicyAuthoringLifecycleList } from '@/composables/usePolicyAuthoringLifecycleList'
 
-const loading = ref(false)
-const policies = ref([])
+const route = useRoute()
+const router = useRouter()
 const libraries = ref([])
-const showCreateModal = ref(false)
-const editingPolicy = ref(null)
-const selectedLibraryId = ref(null)
-const lastPolicyIntentWritePreflight = ref(null)
+const librariesLoading = ref(false)
+const libraryLoadError = ref('')
+const selectedLifecycleElement = ref(null)
+let activeLibraryRequestId = 0
+let focusSelection = false
+let restoreFocusLibraryId = null
 
-const policyIntentWritePreflightNotice = computed(() => (
-  buildPolicyIntentWritePreflightNotice(lastPolicyIntentWritePreflight.value)
-))
+const {
+  entries: lifecycleEntries,
+  loading: lifecycleLoading,
+  hasUnavailableEntries,
+  load: loadLifecycleEntries,
+} = usePolicyAuthoringLifecycleList()
 
-const showModal = computed({
-  get: () => showCreateModal.value || !!editingPolicy.value,
-  set: (val) => {
-    if (!val) {
-      closeModal()
-    }
+function normalizeLibraryId(value) {
+  const numericValue = Number(value)
+  return Number.isInteger(numericValue) && numericValue > 0 ? numericValue : null
+}
+
+function normalizeRouteLibraryId(value) {
+  if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value)) return null
+
+  return normalizeLibraryId(value)
+}
+
+function selectedQueryWithoutLibrary() {
+  const query = { ...route.query }
+  delete query.library
+  return query
+}
+
+const selectedLibraryId = computed(() => normalizeRouteLibraryId(route.query.library))
+const selectedEntry = computed(() => lifecycleEntries.value.find(entry => (
+  entry.library.id === selectedLibraryId.value
+)) || null)
+const selectedBadgeClass = computed(() => {
+  switch (selectedEntry.value?.tone) {
+    case 'success':
+      return 'border-green-700/80 bg-green-950/50 text-green-200'
+    case 'warning':
+      return 'border-amber-700/80 bg-amber-950/50 text-amber-100'
+    case 'danger':
+      return 'border-red-700/80 bg-red-950/50 text-red-100'
+    default:
+      return 'border-gray-600 bg-gray-800 text-gray-200'
   }
 })
 
-const librariesWithPolicies = computed(() => {
-  const grouped = {}
-  
-  policies.value.forEach(policy => {
-    const library = libraries.value.find(l => l.id === policy.library_id) || { name: policy.library_name || 'Unknown' }
-    
-    if (!grouped[policy.library_id]) {
-      grouped[policy.library_id] = {
-        name: library.name,
-        policies: []
-      }
-    }
-    grouped[policy.library_id].policies.push(policy)
-  })
-  
-  return grouped
-})
+const loadAuthoringEntries = async () => {
+  const requestId = activeLibraryRequestId + 1
+  activeLibraryRequestId = requestId
+  librariesLoading.value = true
+  libraryLoadError.value = ''
 
-onMounted(async () => {
-  await Promise.all([
-    fetchLibraries(),
-    fetchPolicies()
-  ])
-})
-
-const fetchPolicies = async () => {
-  loading.value = true
   try {
-    policies.value = await api.getPolicies()
-  } catch (error) {
-    console.error('Failed to fetch policies:', error)
-    alert('Failed to load policies: ' + error.message)
+    const result = await getLibraries()
+    if (requestId !== activeLibraryRequestId) return
+
+    libraries.value = Array.isArray(result) ? result : []
+    await loadLifecycleEntries(libraries.value)
+  } catch {
+    if (requestId === activeLibraryRequestId) {
+      libraries.value = []
+      libraryLoadError.value = 'Classifarr could not load connected libraries. Try again to check the current authoring states.'
+    }
   } finally {
-    loading.value = false
+    if (requestId === activeLibraryRequestId) {
+      librariesLoading.value = false
+    }
   }
 }
 
-const fetchLibraries = async () => {
-  try {
-    libraries.value = await api.getLibraries()
-  } catch (error) {
-    console.error('Failed to fetch libraries:', error)
-  }
+const reloadLifecycleEntries = async () => {
+  await loadLifecycleEntries(libraries.value)
 }
 
-const editPolicy = async (policy) => {
-  try {
-    // Fetch full policy details with presets
-    editingPolicy.value = await api.getPolicy(policy.id)
-    selectedLibraryId.value = policy.library_id
-    showCreateModal.value = false
-  } catch (error) {
-    console.error('Failed to fetch policy details:', error)
-    alert('Failed to load policy details: ' + error.message)
-  }
+const selectLibrary = async (libraryId) => {
+  const normalizedLibraryId = normalizeLibraryId(libraryId)
+  if (!normalizedLibraryId) return
+
+  await router.push({
+    name: 'Policies',
+    query: {
+      ...route.query,
+      library: String(normalizedLibraryId),
+    },
+  })
 }
 
-const savePolicy = async (policyData) => {
-  const response = await api.updatePolicy(editingPolicy.value.id, policyData)
-
-  lastPolicyIntentWritePreflight.value = normalizePolicyIntentWritePreflight(
-    response?.data?.policy_intent_write_preflight
-  )
-
-  await fetchPolicies()
-  closeModal()
-
-  return response
+const clearSelectedLibrary = async () => {
+  await router.push({
+    name: 'Policies',
+    query: selectedQueryWithoutLibrary(),
+  })
 }
 
-const refreshPoliciesAfterNativeCreate = async () => {
-  await fetchPolicies()
-}
+async function applyRouteFocus() {
+  await nextTick()
 
-const confirmReset = async (policy) => {
-  if (!confirm(`Are you sure you want to RESET the policy for "${policy.library_name || 'this library'}"?\n\nThis will remove all presets and restore default configuration.`)) {
+  if (focusSelection && selectedLifecycleElement.value) {
+    selectedLifecycleElement.value.focus()
+    focusSelection = false
     return
   }
-  
-  try {
-    // Delete effectively resets it now due to backend logic
-    await api.deletePolicy(policy.id)
-    await fetchPolicies()
-  } catch (error) {
-    console.error('Failed to reset policy:', error)
-    alert('Failed to reset policy: ' + error.message)
+
+  if (restoreFocusLibraryId) {
+    const action = document.getElementById(
+      `policy-authoring-lifecycle-action-${restoreFocusLibraryId}`
+    )
+    if (action) {
+      action.focus()
+      restoreFocusLibraryId = null
+    }
   }
 }
 
-const closeModal = () => {
-  showCreateModal.value = false
-  editingPolicy.value = null
-  selectedLibraryId.value = null
-}
+watch(selectedLibraryId, (nextLibraryId, previousLibraryId) => {
+  if (nextLibraryId && nextLibraryId !== previousLibraryId) {
+    focusSelection = true
+  }
 
-const clearPolicyIntentWritePreflightNotice = () => {
-  lastPolicyIntentWritePreflight.value = null
-}
+  if (!nextLibraryId && previousLibraryId) {
+    restoreFocusLibraryId = previousLibraryId
+  }
+
+  applyRouteFocus()
+})
+
+watch(selectedEntry, () => {
+  applyRouteFocus()
+})
+
+onMounted(() => {
+  focusSelection = selectedLibraryId.value !== null
+  loadAuthoringEntries()
+})
 </script>

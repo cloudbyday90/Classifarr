@@ -210,7 +210,9 @@ responses by reading lifecycle again, never by blindly resubmitting a proposal.
 
 ## Outcome
 
-Phase 5R.2a supplies the missing server authority needed to start Phase 4R.4a.
-The next task is **Phase 4R.4a, Library Lifecycle Entry**, which will render
-these bounded lifecycle states and call the prepare/admit actions without
-recreating intent logic in Vue.
+Phase 5R.2a supplied the missing server authority for Phase 4R.4a. The
+completed lifecycle entry renders only the bounded lifecycle read and retains
+the selected library in durable route state; it does not prepare or admit a
+proposal. The next task is **Phase 4R.4, Destination Proposal Card**, which
+will call the separate prepare endpoint and render its display-safe result
+without recreating intent logic in Vue.
