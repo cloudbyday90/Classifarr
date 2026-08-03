@@ -29,13 +29,20 @@ describe('policyAuthoringComponentInventory', () => {
     expect(audit).toEqual(expect.objectContaining({
       ok: true,
       checkedComponentCount: policyComponentPaths.length,
-      checkedTargetImplementationCount: 9,
+      checkedTargetImplementationCount: 10,
       issues: [],
       nextTargetImplementation: null,
     }));
   });
 
   test('records normal authoring, compatibility-only, and out-of-scope ownership explicitly', () => {
+    expect(classifyPolicyAuthoringComponent(
+      'client/src/components/policies/PolicyDestinationProposalCard.vue',
+    )).toEqual(expect.objectContaining({
+      roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.DESTINATION_PROPOSAL,
+      normalAuthoringAllowed: true,
+      targetComponentIds: [POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_PROPOSAL_CARD],
+    }));
     expect(classifyPolicyAuthoringComponent(
       'client/src/components/policies/IntentSignalPicker.vue',
     )).toEqual(expect.objectContaining({
@@ -86,6 +93,12 @@ describe('policyAuthoringComponentInventory', () => {
   });
 
   test('records completed native constraint-control extractions', () => {
+    expect(getPolicyAuthoringTargetImplementation(
+      POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_PROPOSAL_CARD,
+    )).toEqual(expect.objectContaining({
+      statusId: POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.IMPLEMENTED,
+      sourcePaths: ['client/src/components/policies/PolicyDestinationProposalCard.vue'],
+    }));
     expect(getPolicyAuthoringTargetImplementation(
       POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_CHIP_LIST,
     )).toEqual(expect.objectContaining({
@@ -167,7 +180,7 @@ describe('policyAuthoringComponentInventory', () => {
         total: policyComponentPaths.length,
         unclassifiedPaths: [],
         implementationStatusCounts: {
-          [POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.IMPLEMENTED]: 8,
+          [POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.IMPLEMENTED]: 9,
           [POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.OPTIONAL_DEFERRED]: 1,
         },
         nextTargetImplementation: null,

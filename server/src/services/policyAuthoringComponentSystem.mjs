@@ -6,6 +6,7 @@ import {
 const POLICY_AUTHORING_COMPONENT_IDS = Object.freeze({
   DESTINATION_CONTEXT_CARD: 'destination_context_card',
   OBSERVED_PROFILE_SUMMARY: 'observed_profile_summary',
+  DESTINATION_PROPOSAL_CARD: 'destination_proposal_card',
   INTENT_SIGNAL_PICKER: 'intent_signal_picker',
   INTENT_SIGNAL_CHIP_LIST: 'intent_signal_chip_list',
   HARD_LIMIT_CONTROL: 'hard_limit_control',
@@ -51,6 +52,7 @@ const POLICY_AUTHORING_INTERACTION_RULE_IDS = Object.freeze({
   DESTRUCTIVE_OR_BLOCKING_REQUIRES_CONFIRMATION: 'destructive_or_blocking_requires_confirmation',
   READINESS_LINKS_TO_RESOLVING_COMPONENT: 'readiness_links_to_resolving_component',
   OBSERVED_VALUES_REQUIRE_EXPLICIT_ACCEPTANCE: 'observed_values_require_explicit_acceptance',
+  PREPARED_PROPOSAL_REQUIRES_SERVER_ADMISSION: 'prepared_proposal_requires_server_admission',
 });
 
 const POLICY_AUTHORING_ACCESSIBILITY_RULE_IDS = Object.freeze({
@@ -110,6 +112,17 @@ const POLICY_AUTHORING_TARGET_COMPONENTS = deepFreeze([
     acceptsObservedEvidence: true,
     commandBoundaryRequired: false,
     notes: 'Shows observed library evidence as read-only context and suggestion source.',
+  },
+  {
+    id: POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_PROPOSAL_CARD,
+    label: 'PolicyDestinationProposalCard',
+    flowStepId: POLICY_AUTHORING_DESTINATION_FLOW_STEP_IDS.SAVE_OR_DEFER,
+    questionId: null,
+    normalPath: true,
+    defaultMultiSelect: false,
+    acceptsObservedEvidence: true,
+    commandBoundaryRequired: true,
+    notes: 'Explains one server-derived proposed destination and admits it through the opaque revision-bound server action without exposing a generic rule picker.',
   },
   {
     id: POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_PICKER,
@@ -381,6 +394,13 @@ const POLICY_AUTHORING_INTERACTION_RULES = deepFreeze([
     ],
     notes: 'Observed evidence may prefill suggestions but never silently becomes declared intent.',
   },
+  {
+    id: POLICY_AUTHORING_INTERACTION_RULE_IDS.PREPARED_PROPOSAL_REQUIRES_SERVER_ADMISSION,
+    requiredForComponentIds: [
+      POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_PROPOSAL_CARD,
+    ],
+    notes: 'A prepared proposal must forward only its server-issued reference and revision through the admitted create action; the browser cannot reconstruct policy intent.',
+  },
 ]);
 
 const POLICY_AUTHORING_ACCESSIBILITY_RULES = deepFreeze([
@@ -418,6 +438,7 @@ const POLICY_AUTHORING_ACCESSIBILITY_RULES = deepFreeze([
       POLICY_AUTHORING_COMPONENT_IDS.AVOID_CONTROL,
       POLICY_AUTHORING_COMPONENT_IDS.REVIEW_TRIGGER_CONTROL,
       POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_EMPTY_STATE_NOTICE,
+      POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_PROPOSAL_CARD,
     ],
     notes: 'Pointer targets should satisfy WCAG 2.2 target-size minimum or spacing exceptions.',
   },
@@ -428,6 +449,7 @@ const POLICY_AUTHORING_ACCESSIBILITY_RULES = deepFreeze([
       POLICY_AUTHORING_COMPONENT_IDS.HARD_LIMIT_CONTROL,
       POLICY_AUTHORING_COMPONENT_IDS.AVOID_CONTROL,
       POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_EMPTY_STATE_NOTICE,
+      POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_PROPOSAL_CARD,
     ],
     notes: 'Error and disabled reason text must be available to assistive technology.',
   },

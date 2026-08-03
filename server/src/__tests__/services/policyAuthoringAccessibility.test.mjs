@@ -20,6 +20,7 @@ describe('policyAuthoringAccessibility', () => {
     expect(surfaces.map(surface => surface.id)).toEqual([
       POLICY_AUTHORING_ACCESSIBILITY_SURFACE_IDS.DESTINATION_CONTEXT,
       POLICY_AUTHORING_ACCESSIBILITY_SURFACE_IDS.OBSERVED_PROFILE,
+      POLICY_AUTHORING_ACCESSIBILITY_SURFACE_IDS.DESTINATION_PROPOSAL,
       POLICY_AUTHORING_ACCESSIBILITY_SURFACE_IDS.INTENT_SIGNAL_PICKER,
       POLICY_AUTHORING_ACCESSIBILITY_SURFACE_IDS.INTENT_SIGNAL_CHIP_LIST,
       POLICY_AUTHORING_ACCESSIBILITY_SURFACE_IDS.HARD_LIMITS,
@@ -38,7 +39,7 @@ describe('policyAuthoringAccessibility', () => {
     const normalPathSurfaces = listPolicyAuthoringAccessibilitySurfaces()
       .filter(surface => surface.normalPath);
 
-    expect(normalPathSurfaces).toHaveLength(8);
+    expect(normalPathSurfaces).toHaveLength(9);
     normalPathSurfaces.forEach(surface => {
       expect(surface.maxPrimaryActions).toBeLessThanOrEqual(1);
       expect(surface.keyboardOperable).toBe(true);
@@ -48,6 +49,14 @@ describe('policyAuthoringAccessibility', () => {
   });
 
   test('requires multi-select state and disabled reasons where grouped editing can hide state', () => {
+    expect(getPolicyAuthoringAccessibilitySurface(
+      POLICY_AUTHORING_ACCESSIBILITY_SURFACE_IDS.DESTINATION_PROPOSAL,
+    )).toEqual(expect.objectContaining({
+      componentId: POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_PROPOSAL_CARD,
+      disabledReasonRequired: true,
+      maxPrimaryActions: 1,
+    }));
+
     expect(getPolicyAuthoringAccessibilitySurface(
       POLICY_AUTHORING_ACCESSIBILITY_SURFACE_IDS.INTENT_SIGNAL_PICKER,
     )).toEqual(expect.objectContaining({

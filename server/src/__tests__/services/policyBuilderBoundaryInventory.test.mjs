@@ -158,6 +158,39 @@ describe('policyBuilderBoundaryInventory', () => {
       }));
   });
 
+  test('keeps lifecycle and prepared-proposal boundaries server-owned', () => {
+    [
+      'client/src/utils/policyAuthoringLifecyclePresentation.js',
+      'client/src/utils/policyAuthoringProposalPresentation.js',
+      'client/src/utils/policyAuthoringProposalAdmission.js',
+    ].forEach((filePath) => {
+      expect(classifyPolicyBuilderClientPath(filePath)).toEqual(expect.objectContaining({
+        category: POLICY_BUILDER_BOUNDARY_CATEGORIES.REFERENCE_DATA_ADAPTER,
+        ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_REFERENCE_ADAPTER,
+        clientEngineAuthorityAllowed: false,
+      }));
+    });
+
+    [
+      'client/src/composables/usePolicyAuthoringLifecycleList.js',
+      'client/src/composables/usePolicyAuthoringDestinationProposal.js',
+      'client/src/composables/usePolicyAuthoringProposalAdmission.js',
+    ].forEach((filePath) => {
+      expect(classifyPolicyBuilderClientPath(filePath)).toEqual(expect.objectContaining({
+        category: POLICY_BUILDER_BOUNDARY_CATEGORIES.UI_ORCHESTRATION,
+        ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_ORCHESTRATION,
+        clientEngineAuthorityAllowed: false,
+      }));
+    });
+
+    expect(classifyPolicyBuilderClientPath('client/src/components/policies/PolicyDestinationProposalCard.vue'))
+      .toEqual(expect.objectContaining({
+        category: POLICY_BUILDER_BOUNDARY_CATEGORIES.PRESENTATION_ONLY,
+        ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_PRESENTATION,
+        clientEngineAuthorityAllowed: false,
+      }));
+  });
+
   test('keeps native create action binding and action feedback non-authoritative', () => {
     expect(classifyPolicyBuilderClientPath('client/src/composables/usePolicyNativeCreateAction.js'))
       .toEqual(expect.objectContaining({

@@ -37,6 +37,8 @@ import {
   getPolicies,
   getPolicyOperatorWorkflow,
   getPolicyAuthoringLifecycle,
+  preparePolicyAuthoringProposal,
+  admitPolicyAuthoringProposal,
   getPolicyNativeReadinessSummary,
   validatePolicyOperatorWorkflowCustomIntentSignal,
   createPolicy,
@@ -77,6 +79,41 @@ describe('policiesApi', () => {
 
     expect(mockGetDataRequest).toHaveBeenCalledWith(
       '/policies/operator-workflow/libraries/7/authoring-lifecycle'
+    )
+  })
+
+  it('prepares an empty server-owned proposal request for the selected library', async () => {
+    mockPost.mockResolvedValueOnce({ data: { statusId: 'proposal_prepared' } })
+
+    await preparePolicyAuthoringProposal(7)
+
+    expect(mockPost).toHaveBeenCalledWith(
+      '/policies/operator-workflow/libraries/7/proposals',
+      {}
+    )
+  })
+
+  it('admits only the opaque reference, revision, empty adjustments, and stable idempotency key', async () => {
+    mockPost.mockResolvedValueOnce({ data: { statusId: 'proposal_admission_created' } })
+
+    await admitPolicyAuthoringProposal(
+      7,
+      'proposal_reference_123456789012345678',
+      'a'.repeat(64),
+      { idempotencyKey: '6fe3d170-9390-4ec5-95f7-42ad6f8ec777' }
+    )
+
+    expect(mockPost).toHaveBeenCalledWith(
+      '/policies/operator-workflow/libraries/7/proposals/proposal_reference_123456789012345678/admission',
+      {
+        proposal_revision: 'a'.repeat(64),
+        adjustment_commands: [],
+      },
+      {
+        headers: {
+          'Idempotency-Key': '"6fe3d170-9390-4ec5-95f7-42ad6f8ec777"',
+        },
+      }
     )
   })
 

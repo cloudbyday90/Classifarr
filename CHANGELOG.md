@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Destination Proposal Card**: Eligible libraries now prepare one
+  server-owned destination proposal from the current profile and display its
+  bounded observed context and proposed intent in the normal policy route.
+  Creation forwards only an opaque reference, revision, empty allow-listed
+  adjustments, and an action-local idempotency key; it never submits
+  browser-assembled policy meaning or reintroduces generic evidence pickers.
+
 - **Policy Library Lifecycle Entry**: Replaced the local policy grouping and
   hidden create-modal path with a server-confirmed lifecycle entry for every
   connected library. The new normal route uses strict fail-closed response

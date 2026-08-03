@@ -30,6 +30,7 @@ describe('policyAuthoringComponentSystem', () => {
     expect(listPolicyAuthoringTargetComponents().map(component => component.label)).toEqual([
       'DestinationContextCard',
       'ObservedProfileSummary',
+      'PolicyDestinationProposalCard',
       'IntentSignalPicker',
       'IntentSignalChipList',
       'HardLimitControl',
@@ -113,6 +114,7 @@ describe('policyAuthoringComponentSystem', () => {
       POLICY_AUTHORING_INTERACTION_RULE_IDS.DESTRUCTIVE_OR_BLOCKING_REQUIRES_CONFIRMATION,
       POLICY_AUTHORING_INTERACTION_RULE_IDS.READINESS_LINKS_TO_RESOLVING_COMPONENT,
       POLICY_AUTHORING_INTERACTION_RULE_IDS.OBSERVED_VALUES_REQUIRE_EXPLICIT_ACCEPTANCE,
+      POLICY_AUTHORING_INTERACTION_RULE_IDS.PREPARED_PROPOSAL_REQUIRES_SERVER_ADMISSION,
     ]);
 
     expect(validatePolicyAuthoringComponentInteraction(POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_PICKER))
@@ -162,14 +164,15 @@ describe('policyAuthoringComponentSystem', () => {
 
   test('summarizes the component system without retired diagnostic panels', () => {
     expect(summarizePolicyAuthoringComponentSystem()).toEqual({
-      targetComponentCount: 9,
+      targetComponentCount: 10,
       primitiveDecisionCount: 9,
       optionSourceCount: 7,
-      interactionRuleCount: 6,
+      interactionRuleCount: 7,
       accessibilityRuleCount: 6,
       normalPathComponentIds: [
         POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_CONTEXT_CARD,
         POLICY_AUTHORING_COMPONENT_IDS.OBSERVED_PROFILE_SUMMARY,
+        POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_PROPOSAL_CARD,
         POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_PICKER,
         POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_CHIP_LIST,
         POLICY_AUTHORING_COMPONENT_IDS.HARD_LIMIT_CONTROL,
@@ -187,6 +190,7 @@ describe('policyAuthoringComponentSystem', () => {
         POLICY_AUTHORING_COMPONENT_IDS.REVIEW_TRIGGER_CONTROL,
       ],
       commandBoundaryComponentIds: [
+        POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_PROPOSAL_CARD,
         POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_PICKER,
         POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_CHIP_LIST,
         POLICY_AUTHORING_COMPONENT_IDS.HARD_LIMIT_CONTROL,
@@ -197,6 +201,7 @@ describe('policyAuthoringComponentSystem', () => {
       observedEvidenceComponentIds: [
         POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_CONTEXT_CARD,
         POLICY_AUTHORING_COMPONENT_IDS.OBSERVED_PROFILE_SUMMARY,
+        POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_PROPOSAL_CARD,
         POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_PICKER,
       ],
     });

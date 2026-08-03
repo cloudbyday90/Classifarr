@@ -26,6 +26,8 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS = Object.freeze({
   COMPATIBILITY_SIGNAL_CONTROL: 'compatibility_signal_control',
   MIGRATION_NOTICE: 'migration_notice',
   POLICY_LIST_CARD: 'policy_list_card',
+  LIBRARY_LIFECYCLE_ENTRY: 'library_lifecycle_entry',
+  DESTINATION_PROPOSAL: 'destination_proposal',
 });
 
 const POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS = Object.freeze({
@@ -86,6 +88,15 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY = deepFreeze([
     notes: 'Composes bounded workflow projections and target components without deriving policy or automation behavior.',
   },
   {
+    id: 'policy_authoring_lifecycle_entry',
+    path: 'client/src/components/policies/PolicyAuthoringLifecycleEntry.vue',
+    roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.LIBRARY_LIFECYCLE_ENTRY,
+    decisionId: POLICY_AUTHORING_COMPONENT_DECISION_IDS.KEEP_AS_PRIMITIVE,
+    targetComponentIds: [],
+    normalAuthoringAllowed: true,
+    notes: 'Renders one server-confirmed lifecycle outcome and emits only the selected library identifier; it does not prepare, infer, or create policy intent.',
+  },
+  {
     id: 'destination_context_card',
     path: 'client/src/components/policies/DestinationContextCard.vue',
     roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.DESTINATION_CONTEXT,
@@ -106,6 +117,17 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY = deepFreeze([
     ],
     normalAuthoringAllowed: true,
     notes: 'The target observed-profile primitive is implemented and keeps evidence distinct from declared intent.',
+  },
+  {
+    id: 'policy_destination_proposal_card',
+    path: 'client/src/components/policies/PolicyDestinationProposalCard.vue',
+    roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.DESTINATION_PROPOSAL,
+    decisionId: POLICY_AUTHORING_COMPONENT_DECISION_IDS.KEEP_AS_PRIMITIVE,
+    targetComponentIds: [
+      POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_PROPOSAL_CARD,
+    ],
+    normalAuthoringAllowed: true,
+    notes: 'Renders only the display-safe prepared proposal and emits one admitted create event without exposing generic rule selection.',
   },
   {
     id: 'intent_signal_picker',
@@ -397,6 +419,12 @@ const POLICY_AUTHORING_TARGET_IMPLEMENTATIONS = deepFreeze([
     statusId: POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.IMPLEMENTED,
     sourcePaths: ['client/src/components/policies/ObservedProfileSummary.vue'],
     notes: 'Implemented as a read-only observed-evidence summary.',
+  },
+  {
+    targetComponentId: POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_PROPOSAL_CARD,
+    statusId: POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.IMPLEMENTED,
+    sourcePaths: ['client/src/components/policies/PolicyDestinationProposalCard.vue'],
+    notes: 'Implemented as the display-safe proposal review and explicit server-admission card.',
   },
   {
     targetComponentId: POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_PICKER,

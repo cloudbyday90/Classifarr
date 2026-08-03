@@ -125,6 +125,8 @@ const POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS = deepFreeze([
   'client/src/__tests__/PolicyBuilderLibraryContext.test.js',
   'client/src/__tests__/PolicyBuilderModal.test.js',
   'client/src/__tests__/PolicyBuilderWorkflowShell.test.js',
+  'client/src/__tests__/PolicyAuthoringLifecycleEntry.test.js',
+  'client/src/__tests__/PolicyDestinationProposalCard.test.js',
   'client/src/__tests__/PolicyDestinationEmptyStateNotice.test.js',
   'client/src/__tests__/PolicyIntentActionButton.test.js',
   'client/src/__tests__/PolicyIntentCertificationControl.test.js',
@@ -141,13 +143,17 @@ const POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS = deepFreeze([
   'client/src/__tests__/PolicyNativeIntentReconciliation.test.js',
   'client/src/__tests__/PolicyNativePolicyRecoveryNotice.test.js',
   'client/src/__tests__/PolicyNativeProfileRecoveryStatus.test.js',
+  'client/src/__tests__/PolicyList.test.js',
   'client/src/__tests__/AvoidControl.test.js',
   'client/src/__tests__/HardLimitControl.test.js',
   'client/src/__tests__/ReviewTriggerControl.test.js',
   'client/src/__tests__/IntentSignalChipList.test.js',
   'client/src/__tests__/IntentSignalPicker.test.js',
   'client/src/__tests__/composables/usePolicyIntentDraft.test.js',
+  'client/src/__tests__/composables/usePolicyAuthoringDestinationProposal.test.js',
   'client/src/__tests__/utils/policyIntentDraftBridge.test.js',
+  'client/src/__tests__/utils/policyAuthoringProposalAdmission.test.js',
+  'client/src/__tests__/utils/policyAuthoringProposalPresentation.test.js',
   'client/src/__tests__/utils/policyIntentDraftView.test.js',
   'client/src/__tests__/utils/policyIntentModel.test.js',
 ]);
@@ -232,6 +238,29 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
       POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.INTERNAL_DIAGNOSTIC_PANELS_ABSENT,
     ],
     'The workflow shell proves library-first authoring, one readiness outcome, and no diagnostic control path.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyAuthoringLifecycleEntry.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_DESTINATION_FIRST_FLOW,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.OBSERVED_EVIDENCE_DISTINCT_FROM_DECLARED_INTENT,
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS,
+    ],
+    'Lifecycle entry keeps one server-confirmed library state selectable without turning observations into browser-owned policy intent.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyDestinationProposalCard.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_DESTINATION_FIRST_FLOW,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.OBSERVED_EVIDENCE_DISTINCT_FROM_DECLARED_INTENT,
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS,
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.INTERNAL_DIAGNOSTIC_PANELS_ABSENT,
+    ],
+    'The proposal card presents one server-derived destination and an explicit admission action without exposing a generic evidence picker or internal diagnostics.'
   ),
   presentationTestRecord(
     'client/src/__tests__/PolicyDestinationEmptyStateNotice.test.js',
@@ -460,6 +489,42 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
     POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.DRAFT_BRIDGE,
     [],
     'The legacy intent data model remains bridge-owned until native storage replaces compatibility payloads.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyList.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_WORKFLOW_REGRESSION,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.OBSERVED_EVIDENCE_DISTINCT_FROM_DECLARED_INTENT,
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.READINESS_LINKS_TO_NEXT_ACTION,
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.INTERNAL_DIAGNOSTIC_PANELS_ABSENT,
+    ],
+    'The policy list selects an eligible lifecycle entry, displays the server-derived proposal, and refreshes its server-owned lifecycle after admission.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/composables/usePolicyAuthoringDestinationProposal.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_WORKFLOW_REGRESSION,
+    false,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [],
+    'Proposal preparation orchestration validates bounded server display contracts and does not create or infer policy intent in the browser.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/utils/policyAuthoringProposalAdmission.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_WORKFLOW_REGRESSION,
+    false,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [],
+    'Admission receipt validation remains a bounded client transport concern and cannot establish policy meaning.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/utils/policyAuthoringProposalPresentation.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_WORKFLOW_REGRESSION,
+    false,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [],
+    'Prepared proposal presentation validates the server contract and separates opaque admission data from renderable content.'
   ),
 ]);
 

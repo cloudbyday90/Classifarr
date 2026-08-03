@@ -87,9 +87,39 @@ describe('policyAuthoringWorkflowInventory', () => {
     });
   });
 
+  test('keeps lifecycle entry as server-confirmed selection and prepared proposals as opaque admission', () => {
+    [
+      'client/src/components/policies/PolicyAuthoringLifecycleEntry.vue',
+      'client/src/utils/policyAuthoringLifecyclePresentation.js',
+      'client/src/composables/usePolicyAuthoringLifecycleList.js',
+    ].forEach((filePath) => {
+      expect(classifyPolicyAuthoringWorkflowSurface(filePath)).toEqual(expect.objectContaining({
+        decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
+        roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.WORKFLOW_SHELL,
+        normalAuthoringAllowed: true,
+        migrationSupportOnly: false,
+      }));
+    });
+
+    [
+      'client/src/components/policies/PolicyDestinationProposalCard.vue',
+      'client/src/utils/policyAuthoringProposalPresentation.js',
+      'client/src/composables/usePolicyAuthoringDestinationProposal.js',
+    ].forEach((filePath) => {
+      expect(classifyPolicyAuthoringWorkflowSurface(filePath)).toEqual(expect.objectContaining({
+        decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
+        roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.DESTINATION_PROPOSAL,
+        normalAuthoringAllowed: true,
+        migrationSupportOnly: false,
+      }));
+    });
+  });
+
   test('keeps native create action binding and safe feedback in the action-admission role', () => {
     [
       'client/src/composables/usePolicyNativeCreateAction.js',
+      'client/src/utils/policyAuthoringProposalAdmission.js',
+      'client/src/composables/usePolicyAuthoringProposalAdmission.js',
       'client/src/utils/policyAuthoringActionFeedback.js',
     ].forEach((filePath) => {
       expect(classifyPolicyAuthoringWorkflowSurface(filePath)).toEqual(expect.objectContaining({

@@ -39,6 +39,37 @@ export function getPolicyAuthoringLifecycle(libraryId) {
   return getDataRequest(`/policies/operator-workflow/libraries/${libraryId}/authoring-lifecycle`)
 }
 
+export function preparePolicyAuthoringProposal(libraryId) {
+  return apiClient.post(`/policies/operator-workflow/libraries/${libraryId}/proposals`, {})
+}
+
+/**
+ * Admits only the server-prepared proposal reference and revision. The server
+ * reconstructs the declared intent and refuses browser-supplied adjustments.
+ *
+ * @param {number} libraryId
+ * @param {string} proposalReference
+ * @param {string} proposalRevision
+ * @param {{ idempotencyKey?: string }} [options]
+ */
+export function admitPolicyAuthoringProposal(
+  libraryId,
+  proposalReference,
+  proposalRevision,
+  { idempotencyKey } = {}
+) {
+  const requestIdempotencyKey = idempotencyKey || createNativePolicyCreateIdempotencyKey()
+
+  return apiClient.post(
+    `/policies/operator-workflow/libraries/${libraryId}/proposals/${proposalReference}/admission`,
+    {
+      proposal_revision: proposalRevision,
+      adjustment_commands: [],
+    },
+    buildNativePolicyCreateRequestOptions(requestIdempotencyKey)
+  )
+}
+
 export function getPolicyNativeReadinessSummary(id) {
   return getDataRequest(`/policies/${id}/native-intent/readiness-summary`)
 }
@@ -81,6 +112,8 @@ const policiesApi = {
   getPolicies,
   getPolicyOperatorWorkflow,
   getPolicyAuthoringLifecycle,
+  preparePolicyAuthoringProposal,
+  admitPolicyAuthoringProposal,
   getPolicyNativeReadinessSummary,
   validatePolicyOperatorWorkflowCustomIntentSignal,
   createPolicy,

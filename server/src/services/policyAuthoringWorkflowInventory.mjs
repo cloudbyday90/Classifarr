@@ -9,6 +9,7 @@ const POLICY_AUTHORING_WORKFLOW_ROLE_IDS = Object.freeze({
   NORMAL_AUTHORING_PATH: 'normal_authoring_path',
   WORKFLOW_SHELL: 'workflow_shell',
   DESTINATION_CONTEXT: 'destination_context',
+  DESTINATION_PROPOSAL: 'destination_proposal',
   DECLARED_INTENT_EDITING: 'declared_intent_editing',
   ACTION_ADMISSION: 'action_admission',
   READINESS_NEXT_ACTION: 'readiness_next_action',
@@ -39,7 +40,7 @@ const POLICY_AUTHORING_WORKFLOW_REQUIREMENT_IDS = Object.freeze({
 });
 
 const POLICY_AUTHORING_BUILDER_MATCHER =
-  /(PolicyBuilder|PolicyDestination|PolicyIntent|PolicySelected|PolicyStarter|PolicyPreset|DestinationContext|ObservedProfile|ReadinessNextAction|IntentSignal|policyAuthoring|policyBuilder|policyIntent|usePolicyBuilder|usePolicyIntent|usePolicyOperatorWorkflow)/;
+  /(PolicyAuthoring|PolicyBuilder|PolicyDestination|PolicyIntent|PolicySelected|PolicyStarter|PolicyPreset|DestinationContext|ObservedProfile|ReadinessNextAction|IntentSignal|policyAuthoring|policyBuilder|policyIntent|usePolicyAuthoring|usePolicyBuilder|usePolicyIntent|usePolicyOperatorWorkflow)/;
 
 function deepFreeze(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) {
@@ -77,6 +78,34 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
     riskIds: [],
     notes: 'The policy authoring workflow presentation adapter validates and freezes the bounded server-owned page model without deriving readiness, policy meaning, recovery, or write authority.',
     matches: filePath => filePath.endsWith('/policyAuthoringWorkflowPresentation.js'),
+  },
+  {
+    id: 'policy_authoring_lifecycle_entry',
+    decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
+    roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.WORKFLOW_SHELL,
+    normalAuthoringAllowed: true,
+    migrationSupportOnly: false,
+    riskIds: [],
+    notes: 'The lifecycle entry renders one server-confirmed library state and routes selection without preparing or constructing policy intent.',
+    matches: filePath => hasAnySegment(filePath, [
+      '/PolicyAuthoringLifecycleEntry.vue',
+      '/policyAuthoringLifecyclePresentation.js',
+      '/usePolicyAuthoringLifecycleList.js',
+    ]),
+  },
+  {
+    id: 'server_prepared_destination_proposal',
+    decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
+    roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.DESTINATION_PROPOSAL,
+    normalAuthoringAllowed: true,
+    migrationSupportOnly: false,
+    riskIds: [],
+    notes: 'The proposal card and its preparation adapter display one server-derived destination, keep opaque references outside rendering, and expose no generic observed-evidence picker.',
+    matches: filePath => hasAnySegment(filePath, [
+      '/PolicyDestinationProposalCard.vue',
+      '/policyAuthoringProposalPresentation.js',
+      '/usePolicyAuthoringDestinationProposal.js',
+    ]),
   },
   {
     id: 'library_first_workflow_shell',
@@ -211,6 +240,8 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
       '/policyBuilderActionBoundary.js',
       '/policyAuthoringActionFeedback.js',
       '/usePolicyNativeCreateAction.js',
+      '/policyAuthoringProposalAdmission.js',
+      '/usePolicyAuthoringProposalAdmission.js',
     ]),
   },
   {

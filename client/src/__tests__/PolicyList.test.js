@@ -9,6 +9,9 @@ import { flushPromises, mount } from '@vue/test-utils'
 const state = vi.hoisted(() => ({
   getLibraries: vi.fn(),
   getPolicyAuthoringLifecycle: vi.fn(),
+  getPolicyOperatorWorkflow: vi.fn(),
+  preparePolicyAuthoringProposal: vi.fn(),
+  admitPolicyAuthoringProposal: vi.fn(),
   route: null,
   router: null,
 }))
@@ -16,6 +19,9 @@ const state = vi.hoisted(() => ({
 vi.mock('@/api/libraryCatalogApi', () => ({ getLibraries: state.getLibraries }))
 vi.mock('@/api/policiesApi', () => ({
   getPolicyAuthoringLifecycle: state.getPolicyAuthoringLifecycle,
+  getPolicyOperatorWorkflow: state.getPolicyOperatorWorkflow,
+  preparePolicyAuthoringProposal: state.preparePolicyAuthoringProposal,
+  admitPolicyAuthoringProposal: state.admitPolicyAuthoringProposal,
 }))
 vi.mock('vue-router', async () => {
   const { reactive } = await import('vue')
@@ -65,6 +71,26 @@ function buildLifecycle({
   }
 }
 
+function buildPreparedProposal(libraryId = 7, libraryName = 'Movies') {
+  return {
+    version: 'policy.authoring_proposal.v1',
+    statusId: 'proposal_prepared',
+    lifecycle: buildLifecycle({ libraryId, libraryName }),
+    proposal: {
+      reference: 'proposal_reference_123456789012345678',
+      revision: 'a'.repeat(64),
+      expiresAt: '2026-08-03T12:00:00.000Z',
+      summary: {
+        title: `${libraryName} Policy`,
+        purpose: [{ signalType: 'genres', operator: 'any_of', values: ['Animation'] }],
+        helpfulHints: [],
+        hardLimitCount: 0,
+        avoidCount: 0,
+      },
+    },
+  }
+}
+
 async function mountView() {
   const wrapper = mount(PolicyList, { attachTo: document.body })
   await flushPromises()
@@ -96,6 +122,16 @@ describe('PolicyList.vue', () => {
           statusId: 'existing_native_policy',
         })
     ))
+    state.getPolicyOperatorWorkflow.mockRejectedValue(new Error('workflow display is optional'))
+    state.preparePolicyAuthoringProposal.mockResolvedValue({ data: buildPreparedProposal() })
+    state.admitPolicyAuthoringProposal.mockResolvedValue({
+      data: {
+        version: 'policy.authoring_proposal.v1',
+        statusId: 'proposal_admission_created',
+        policy: { id: 12, libraryId: 7, name: 'Movies Policy' },
+        recovery: { lifecycleReloadRequired: false },
+      },
+    })
   })
 
   it('lists server-confirmed lifecycle outcomes without loading local policy cards or a create modal', async () => {
@@ -145,5 +181,29 @@ describe('PolicyList.vue', () => {
     expect(wrapper.find('#policy-authoring-selection-8').exists()).toBe(true)
     expect(wrapper.text()).toContain('Classifarr will not create another policy from this route.')
     expect(wrapper.find('#policy-authoring-lifecycle-action-8').exists()).toBe(false)
+    expect(state.preparePolicyAuthoringProposal).not.toHaveBeenCalled()
+  })
+
+  it('prepares and admits the selected server proposal without reopening a rule picker', async () => {
+    const wrapper = await mountView()
+    mountedView = wrapper
+
+    await wrapper.find('#policy-authoring-lifecycle-action-7').trigger('click')
+    await flushPromises()
+
+    expect(state.preparePolicyAuthoringProposal).toHaveBeenCalledWith(7)
+    expect(wrapper.text()).toContain('Proposed, not saved')
+    expect(wrapper.findAll('input, select, textarea')).toHaveLength(0)
+
+    await wrapper.findAll('button').find(button => button.text() === 'Create policy').trigger('click')
+    await flushPromises()
+
+    expect(state.admitPolicyAuthoringProposal).toHaveBeenCalledWith(
+      7,
+      'proposal_reference_123456789012345678',
+      'a'.repeat(64),
+      expect.objectContaining({ idempotencyKey: expect.any(String) })
+    )
+    expect(wrapper.text()).toContain('Policy created: Movies Policy')
   })
 })

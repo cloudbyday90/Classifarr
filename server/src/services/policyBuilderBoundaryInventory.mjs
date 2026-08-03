@@ -78,7 +78,7 @@ function basename(filePath) {
   return filePath.split('/').pop() || filePath;
 }
 
-const POLICY_BUILDER_MODULE_MATCHER = /(PolicyBuilder|PolicyDestination|PolicyIntent|PolicySelected|PolicyStarter|PolicyPreset|PolicyCombined|DestinationContext|ObservedProfile|ReadinessNextAction|IntentSignal|policyAuthoring|policyBuilder|policyIntent|usePolicyBuilder|usePolicyIntent|usePolicyNativeCreateAction|usePolicyOperatorWorkflow)/;
+const POLICY_BUILDER_MODULE_MATCHER = /(PolicyAuthoring|PolicyBuilder|PolicyDestination|PolicyIntent|PolicySelected|PolicyStarter|PolicyPreset|PolicyCombined|DestinationContext|ObservedProfile|ReadinessNextAction|IntentSignal|policyAuthoring|policyBuilder|policyIntent|usePolicyAuthoring|usePolicyBuilder|usePolicyIntent|usePolicyNativeCreateAction|usePolicyOperatorWorkflow)/;
 
 const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
   {
@@ -91,6 +91,48 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     riskIds: [],
     notes: 'The policy authoring workflow presentation adapter accepts only the bounded server-owned display model and freezes a smaller page view model. It cannot retain raw workflow data, persist policy intent, route media, or decide automation.',
     matches: (filePath) => filePath.endsWith('/policyAuthoringWorkflowPresentation.js'),
+  },
+  {
+    id: 'policy_authoring_lifecycle_presentation_adapter',
+    category: POLICY_BUILDER_BOUNDARY_CATEGORIES.REFERENCE_DATA_ADAPTER,
+    ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_REFERENCE_ADAPTER,
+    actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.SPLIT_REFERENCE_AND_EVIDENCE,
+    clientEngineAuthorityAllowed: false,
+    engineCutlineDecisionRequired: false,
+    riskIds: [],
+    notes: 'Lifecycle presentation validates one bounded server authoring state and emits no proposal, policy, profile, routing, or automation authority.',
+    matches: (filePath) => filePath.endsWith('/policyAuthoringLifecyclePresentation.js'),
+  },
+  {
+    id: 'policy_authoring_proposal_presentation_adapters',
+    category: POLICY_BUILDER_BOUNDARY_CATEGORIES.REFERENCE_DATA_ADAPTER,
+    ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_REFERENCE_ADAPTER,
+    actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.SPLIT_REFERENCE_AND_EVIDENCE,
+    clientEngineAuthorityAllowed: false,
+    engineCutlineDecisionRequired: false,
+    riskIds: [
+      POLICY_BUILDER_BOUNDARY_RISK_IDS.OBSERVED_EVIDENCE_ADAPTER,
+    ],
+    notes: 'Prepared-proposal and admission adapters validate bounded server transport data, separate opaque admission values from rendering, and cannot derive or persist policy meaning.',
+    matches: (filePath) => hasAnySegment(filePath, [
+      '/policyAuthoringProposalPresentation.js',
+      '/policyAuthoringProposalAdmission.js',
+    ]),
+  },
+  {
+    id: 'policy_authoring_lifecycle_and_proposal_orchestration',
+    category: POLICY_BUILDER_BOUNDARY_CATEGORIES.UI_ORCHESTRATION,
+    ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_ORCHESTRATION,
+    actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.KEEP_ORCHESTRATION,
+    clientEngineAuthorityAllowed: false,
+    engineCutlineDecisionRequired: false,
+    riskIds: [],
+    notes: 'Lifecycle and destination-proposal composables read or forward only server-owned contracts, retain idempotency per attempt, and cannot create browser-owned intent, authorize writes, or decide automation.',
+    matches: (filePath) => hasAnySegment(filePath, [
+      '/usePolicyAuthoringLifecycleList.js',
+      '/usePolicyAuthoringDestinationProposal.js',
+      '/usePolicyAuthoringProposalAdmission.js',
+    ]),
   },
   {
     id: 'policy_operator_workflow_read_adapter',
@@ -373,6 +415,8 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
         '/PolicyBuilderLibraryContext.vue',
         '/PolicyBuilderDestinationQuestions.vue',
         '/PolicyBuilderWorkflowShell.vue',
+        '/PolicyAuthoringLifecycleEntry.vue',
+        '/PolicyDestinationProposalCard.vue',
         '/PolicyDestinationEmptyStateNotice.vue',
         '/PolicyIntentActionButton.vue',
         '/PolicyIntentCertificationControl.vue',

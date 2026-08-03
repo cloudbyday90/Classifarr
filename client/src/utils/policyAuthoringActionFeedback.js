@@ -10,6 +10,7 @@
 
 export const POLICY_AUTHORING_ACTION_IDS = Object.freeze({
   CREATE_NATIVE_POLICY: 'create_native_policy',
+  ADMIT_POLICY_AUTHORING_PROPOSAL: 'admit_policy_authoring_proposal',
   VALIDATE_CUSTOM_INTENT_SIGNAL: 'validate_custom_intent_signal',
   OPEN_LIBRARY_MAPPING: 'open_library_mapping',
   SAVE_COMPATIBILITY_POLICY: 'save_compatibility_policy',
@@ -41,6 +42,11 @@ function getActionCopy(actionId) {
         verb: 'save this policy',
         noun: 'policy',
       }
+    case POLICY_AUTHORING_ACTION_IDS.ADMIT_POLICY_AUTHORING_PROPOSAL:
+      return {
+        verb: 'create this policy from the proposed destination',
+        noun: 'destination proposal',
+      }
     default:
       return {
         verb: 'create this policy',
@@ -66,7 +72,10 @@ function statusMessage({ statusId, actionId, message }) {
     case POLICY_AUTHORING_ACTION_FEEDBACK_STATUS_IDS.PENDING:
       return `Classifarr is working to ${action.verb}.`
     case POLICY_AUTHORING_ACTION_FEEDBACK_STATUS_IDS.SUCCEEDED:
-      return `Classifarr ${actionId === POLICY_AUTHORING_ACTION_IDS.CREATE_NATIVE_POLICY ? 'created the policy' : 'completed the action'}.`
+      return `Classifarr ${[
+        POLICY_AUTHORING_ACTION_IDS.CREATE_NATIVE_POLICY,
+        POLICY_AUTHORING_ACTION_IDS.ADMIT_POLICY_AUTHORING_PROPOSAL,
+      ].includes(actionId) ? 'created the policy' : 'completed the action'}.`
     case POLICY_AUTHORING_ACTION_FEEDBACK_STATUS_IDS.REJECTED:
       return `Classifarr could not accept this ${action.noun}. Review the current destination details and try again.`
     case POLICY_AUTHORING_ACTION_FEEDBACK_STATUS_IDS.STALE:

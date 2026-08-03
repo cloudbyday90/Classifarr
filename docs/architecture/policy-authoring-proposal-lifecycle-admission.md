@@ -210,9 +210,13 @@ responses by reading lifecycle again, never by blindly resubmitting a proposal.
 
 ## Outcome
 
-Phase 5R.2a supplied the missing server authority for Phase 4R.4a. The
-completed lifecycle entry renders only the bounded lifecycle read and retains
-the selected library in durable route state; it does not prepare or admit a
-proposal. The next task is **Phase 4R.4, Destination Proposal Card**, which
-will call the separate prepare endpoint and render its display-safe result
-without recreating intent logic in Vue.
+Phase 5R.2a supplied the missing server authority for the completed Phase 4R.4
+destination proposal card. The normal lifecycle entry retains the selected
+library in durable route state, and the card now calls the separate prepare
+endpoint, validates its display-safe result, and admits only the opaque
+revision-bound proposal without recreating intent logic in Vue. See [Policy
+Destination Proposal Card](policy-destination-proposal-card.md).
+
+The next task is **Phase 4R.4b, Proposal Outcome Recovery**, which will discard
+stale, concurrent, and interrupted local proposal state and reload the
+authoritative lifecycle rather than offering a blind retry.

@@ -64,17 +64,61 @@
       <p class="mt-4 text-sm leading-6 text-gray-200">
         {{ selectedEntry.message }}
       </p>
-      <p
-        v-if="selectedEntry.canSelect"
-        class="mt-2 text-sm leading-6 text-gray-300"
-      >
-        No policy has been created. This route safely retains the selected library while Classifarr prepares the destination proposal in the next authoring step.
-      </p>
+      <div v-if="selectedEntry.canSelect">
+        <p
+          v-if="!destinationProposalLifecycle || destinationProposalLifecycle.canSelect"
+          class="mt-2 text-sm leading-6 text-gray-300"
+        >
+          No policy has been created. Classifarr prepares one server-confirmed destination proposal from the current library profile.
+        </p>
+        <div
+          v-if="destinationProposalLoading"
+          class="mt-5 rounded border border-primary/60 bg-primary/10 p-4 text-sm text-primary-100"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          Preparing the current destination proposal...
+        </div>
+        <PolicyDestinationProposalCard
+          v-else-if="destinationProposalPresentation"
+          :proposal="destinationProposalPresentation"
+          :loading="proposalAdmissionLoading"
+          :feedback="proposalAdmissionFeedback"
+          :completed-policy="successfulAdmission?.policy || null"
+          @admit="admitDestinationProposal"
+        />
+        <div
+          v-else-if="destinationProposalLifecycle"
+          class="mt-5 rounded border border-amber-600/70 bg-amber-950/30 p-4 text-sm text-amber-100"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          {{ destinationProposalLifecycle.message }}
+        </div>
+        <div
+          v-else-if="destinationProposalError"
+          class="mt-5 rounded border border-red-600/70 bg-red-950/30 p-4 text-sm text-red-100"
+          role="alert"
+        >
+          {{ destinationProposalError }}
+        </div>
+      </div>
       <p
         v-else
         class="mt-2 text-sm leading-6 text-gray-300"
       >
         Classifarr will not create another policy from this route.
+      </p>
+      <p
+        v-if="successfulAdmission?.policy && successfulAdmission.policy.libraryId === selectedEntry.library.id"
+        class="mt-5 rounded border border-green-700/70 bg-green-950/40 p-4 text-sm font-medium text-green-100"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        Policy created: {{ successfulAdmission.policy.name }}
       </p>
       <button
         type="button"
@@ -166,8 +210,11 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getLibraries } from '@/api/libraryCatalogApi'
+import PolicyDestinationProposalCard from '@/components/policies/PolicyDestinationProposalCard.vue'
 import PolicyAuthoringLifecycleEntry from '@/components/policies/PolicyAuthoringLifecycleEntry.vue'
+import { usePolicyAuthoringDestinationProposal } from '@/composables/usePolicyAuthoringDestinationProposal'
 import { usePolicyAuthoringLifecycleList } from '@/composables/usePolicyAuthoringLifecycleList'
+import { usePolicyAuthoringProposalAdmission } from '@/composables/usePolicyAuthoringProposalAdmission'
 
 const route = useRoute()
 const router = useRouter()
@@ -178,6 +225,7 @@ const selectedLifecycleElement = ref(null)
 let activeLibraryRequestId = 0
 let focusSelection = false
 let restoreFocusLibraryId = null
+const successfulAdmission = ref(null)
 
 const {
   entries: lifecycleEntries,
@@ -185,6 +233,23 @@ const {
   hasUnavailableEntries,
   load: loadLifecycleEntries,
 } = usePolicyAuthoringLifecycleList()
+
+const {
+  presentation: destinationProposalPresentation,
+  admission: destinationProposalAdmission,
+  lifecycle: destinationProposalLifecycle,
+  loading: destinationProposalLoading,
+  error: destinationProposalError,
+  clear: clearDestinationProposal,
+  load: loadDestinationProposal,
+} = usePolicyAuthoringDestinationProposal()
+
+const {
+  loading: proposalAdmissionLoading,
+  feedback: proposalAdmissionFeedback,
+  clear: clearProposalAdmission,
+  admit: admitProposal,
+} = usePolicyAuthoringProposalAdmission()
 
 function normalizeLibraryId(value) {
   const numericValue = Number(value)
@@ -207,6 +272,10 @@ const selectedLibraryId = computed(() => normalizeRouteLibraryId(route.query.lib
 const selectedEntry = computed(() => lifecycleEntries.value.find(entry => (
   entry.library.id === selectedLibraryId.value
 )) || null)
+const destinationProposalSelectionKey = computed(() => {
+  const entry = selectedEntry.value
+  return entry?.canSelect ? `${entry.library.id}:${entry.statusId}` : null
+})
 const selectedBadgeClass = computed(() => {
   switch (selectedEntry.value?.tone) {
     case 'success':
@@ -246,6 +315,14 @@ const loadAuthoringEntries = async () => {
 
 const reloadLifecycleEntries = async () => {
   await loadLifecycleEntries(libraries.value)
+}
+
+const admitDestinationProposal = async () => {
+  const admissionResult = await admitProposal(destinationProposalAdmission.value)
+  if (!admissionResult?.policy) return
+
+  successfulAdmission.value = admissionResult
+  await reloadLifecycleEntries()
 }
 
 const selectLibrary = async (libraryId) => {
@@ -297,12 +374,25 @@ watch(selectedLibraryId, (nextLibraryId, previousLibraryId) => {
     restoreFocusLibraryId = previousLibraryId
   }
 
+  if (nextLibraryId !== previousLibraryId) {
+    successfulAdmission.value = null
+  }
+
   applyRouteFocus()
 })
 
 watch(selectedEntry, () => {
   applyRouteFocus()
 })
+
+watch(destinationProposalSelectionKey, nextSelectionKey => {
+  clearDestinationProposal()
+  clearProposalAdmission()
+
+  if (!nextSelectionKey || !selectedEntry.value) return
+
+  loadDestinationProposal(selectedEntry.value.library)
+}, { immediate: true })
 
 onMounted(() => {
   focusSelection = selectedLibraryId.value !== null
