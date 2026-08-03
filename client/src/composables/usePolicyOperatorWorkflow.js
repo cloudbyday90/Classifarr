@@ -22,6 +22,10 @@ import {
 import {
   adaptPolicyAuthoringWorkflowPresentation,
 } from '@/utils/policyAuthoringWorkflowPresentation'
+import {
+  POLICY_AUTHORING_ACTION_IDS,
+  buildPolicyAuthoringActionFailureFeedback,
+} from '@/utils/policyAuthoringActionFeedback'
 
 const WORKFLOW_LOAD_ERROR = 'Classifarr could not load the library workflow. You can still review the connected library details.'
 const CUSTOM_INTENT_SIGNAL_VALIDATION_ERROR = 'Classifarr could not validate that custom destination value.'
@@ -178,8 +182,10 @@ export function usePolicyOperatorWorkflow({
       return true
     } catch (requestError) {
       if (requestId === activeCustomValidationRequestId) {
-        customIntentSignalValidationError.value = requestError?.response?.data?.error ||
-          CUSTOM_INTENT_SIGNAL_VALIDATION_ERROR
+        customIntentSignalValidationError.value = buildPolicyAuthoringActionFailureFeedback({
+          actionId: POLICY_AUTHORING_ACTION_IDS.VALIDATE_CUSTOM_INTENT_SIGNAL,
+          error: requestError,
+        }).message
       }
       return false
     } finally {

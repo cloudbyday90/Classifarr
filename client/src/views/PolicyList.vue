@@ -105,7 +105,8 @@
       v-model="showModal"
       :policy="editingPolicy"
       :library-id="selectedLibraryId"
-      :submit-policy="savePolicy"
+      :submit-policy="editingPolicy ? savePolicy : null"
+      @native-policy-created="refreshPoliciesAfterNativeCreate"
       @close="closeModal"
     />
   </div>
@@ -199,26 +200,21 @@ const editPolicy = async (policy) => {
   }
 }
 
-const savePolicy = async (policyData, writeOptions) => {
-  let response
-  const nativeCreate = !editingPolicy.value && policyData?.native_intent_establishment !== undefined
-
-  if (editingPolicy.value) {
-    response = await api.updatePolicy(editingPolicy.value.id, policyData)
-  } else {
-    response = await api.createPolicy(policyData, writeOptions)
-  }
+const savePolicy = async (policyData) => {
+  const response = await api.updatePolicy(editingPolicy.value.id, policyData)
 
   lastPolicyIntentWritePreflight.value = normalizePolicyIntentWritePreflight(
     response?.data?.policy_intent_write_preflight
   )
 
   await fetchPolicies()
-  if (!nativeCreate) {
-    closeModal()
-  }
+  closeModal()
 
   return response
+}
+
+const refreshPoliciesAfterNativeCreate = async () => {
+  await fetchPolicies()
 }
 
 const confirmReset = async (policy) => {

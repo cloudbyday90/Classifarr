@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Authoring Action Feedback**: Bound native policy creation directly
+  to the named API contract with action-local idempotency, confirmed server
+  receipts, safe pending/rejection/stale/retry/unavailable feedback, bounded
+  list refresh, and non-interactive unsupported library actions.
+
 - **Policy Authoring Workflow Presentation**: Added a versioned, audited,
   display-only server projection and strict immutable client adapter for policy
   authoring. Invalid, mismatched, unsafe, or raw-data-bearing workflow

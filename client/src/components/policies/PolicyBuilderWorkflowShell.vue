@@ -109,6 +109,10 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  emptyStateActionFeedback: {
+    type: Object,
+    default: null,
+  },
   customEntryBusy: {
     type: Boolean,
     default: false,
@@ -179,12 +183,15 @@ const workflowStatus = computed(() => buildPolicyBuilderWorkflowStatus({
   activeEmptyStateActionId: props.activeEmptyStateActionId,
   activeEmptyStateActionMessage: activeEmptyStateAction.value?.busyMessage ||
     activeEmptyStateAction.value?.busyLabel || '',
+  emptyStateActionFeedback: props.emptyStateActionFeedback,
   automaticRecoveryMessage: props.workflowPresentation?.recovery?.automated === true
     ? props.workflowPresentation.recovery.message
     : '',
 }))
 const emptyStateActionStatusId = computed(() => (
-  props.activeEmptyStateActionId ? workflowStatus.value?.id || '' : ''
+  props.activeEmptyStateActionId || props.emptyStateActionFeedback?.message
+    ? workflowStatus.value?.id || ''
+    : ''
 ))
 
 const workflowStatusNoticeRef = ref(null)

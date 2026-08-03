@@ -158,6 +158,24 @@ describe('policyBuilderBoundaryInventory', () => {
       }));
   });
 
+  test('keeps native create action binding and action feedback non-authoritative', () => {
+    expect(classifyPolicyBuilderClientPath('client/src/composables/usePolicyNativeCreateAction.js'))
+      .toEqual(expect.objectContaining({
+        category: POLICY_BUILDER_BOUNDARY_CATEGORIES.UI_ORCHESTRATION,
+        ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_ORCHESTRATION,
+        actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.KEEP_ORCHESTRATION,
+        clientEngineAuthorityAllowed: false,
+      }));
+
+    expect(classifyPolicyBuilderClientPath('client/src/utils/policyAuthoringActionFeedback.js'))
+      .toEqual(expect.objectContaining({
+        category: POLICY_BUILDER_BOUNDARY_CATEGORIES.PRESENTATION_ONLY,
+        ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_PRESENTATION,
+        actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.KEEP_PRESENTATION,
+        clientEngineAuthorityAllowed: false,
+      }));
+  });
+
   test('keeps workflow status priority as display-only feedback', () => {
     [
       'client/src/components/policies/PolicyBuilderWorkflowStatusNotice.vue',

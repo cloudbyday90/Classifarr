@@ -87,6 +87,20 @@ describe('policyAuthoringWorkflowInventory', () => {
     });
   });
 
+  test('keeps native create action binding and safe feedback in the action-admission role', () => {
+    [
+      'client/src/composables/usePolicyNativeCreateAction.js',
+      'client/src/utils/policyAuthoringActionFeedback.js',
+    ].forEach((filePath) => {
+      expect(classifyPolicyAuthoringWorkflowSurface(filePath)).toEqual(expect.objectContaining({
+        decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
+        roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.ACTION_ADMISSION,
+        normalAuthoringAllowed: true,
+        migrationSupportOnly: false,
+      }));
+    });
+  });
+
   test('keeps destination context in the normal authoring path', () => {
     [
       'client/src/components/policies/DestinationContextCard.vue',

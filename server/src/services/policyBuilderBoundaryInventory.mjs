@@ -78,7 +78,7 @@ function basename(filePath) {
   return filePath.split('/').pop() || filePath;
 }
 
-const POLICY_BUILDER_MODULE_MATCHER = /(PolicyBuilder|PolicyDestination|PolicyIntent|PolicySelected|PolicyStarter|PolicyPreset|PolicyCombined|DestinationContext|ObservedProfile|ReadinessNextAction|IntentSignal|policyAuthoring|policyBuilder|policyIntent|usePolicyBuilder|usePolicyIntent|usePolicyOperatorWorkflow)/;
+const POLICY_BUILDER_MODULE_MATCHER = /(PolicyBuilder|PolicyDestination|PolicyIntent|PolicySelected|PolicyStarter|PolicyPreset|PolicyCombined|DestinationContext|ObservedProfile|ReadinessNextAction|IntentSignal|policyAuthoring|policyBuilder|policyIntent|usePolicyBuilder|usePolicyIntent|usePolicyNativeCreateAction|usePolicyOperatorWorkflow)/;
 
 const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
   {
@@ -104,6 +104,28 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     ],
     notes: 'The operator workflow composable may load and validate the server-owned display projection, but cannot persist policy intent, route media, or decide automation.',
     matches: (filePath) => filePath.endsWith('/usePolicyOperatorWorkflow.js'),
+  },
+  {
+    id: 'policy_native_create_action_contract',
+    category: POLICY_BUILDER_BOUNDARY_CATEGORIES.UI_ORCHESTRATION,
+    ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_ORCHESTRATION,
+    actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.KEEP_ORCHESTRATION,
+    clientEngineAuthorityAllowed: false,
+    engineCutlineDecisionRequired: false,
+    riskIds: [],
+    notes: 'Native create action orchestration forwards only the narrow server-owned create contract, preserves the idempotency key for retry, and requires a server establishment receipt before presenting success. It cannot derive policy meaning, authorize writes, route media, or decide automation.',
+    matches: (filePath) => filePath.endsWith('/usePolicyNativeCreateAction.js'),
+  },
+  {
+    id: 'policy_authoring_action_feedback',
+    category: POLICY_BUILDER_BOUNDARY_CATEGORIES.PRESENTATION_ONLY,
+    ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_PRESENTATION,
+    actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.KEEP_PRESENTATION,
+    clientEngineAuthorityAllowed: false,
+    engineCutlineDecisionRequired: false,
+    riskIds: [],
+    notes: 'Action feedback maps only transport classes and bounded server outcome codes to safe operator copy. It cannot expose raw server failures, infer success, authorize writes, or decide automation.',
+    matches: (filePath) => filePath.endsWith('/policyAuthoringActionFeedback.js'),
   },
   {
     id: 'policy_builder_tests',

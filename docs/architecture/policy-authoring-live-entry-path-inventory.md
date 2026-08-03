@@ -93,7 +93,7 @@ graph as a rendered-path success.
 | Open existing policy | `GET /policies/:id` | Opens an overloaded modal | Replace in 4R.7 |
 | Reset existing policy | `DELETE /policies/:id` | Deletes and recreates a legacy policy after browser confirmation | Remove in 4R.8 |
 | Show scoring weights | Local toggle | Exposes legacy scoring mechanics | Remove in 4R.8 |
-| Create native policy | `POST /policies` with native establishment | Server-owned transaction, but no normal opener reaches it | Bind after 5R.1/5R.2 in 4R.3 |
+| Create native policy | `POST /policies` with native establishment | Server-owned transaction and action-local confirmation, but no normal opener reaches it | Reduce to server proposal in 4R.4 |
 | Defer creation | Local modal close | Leaves persistence untouched | Retain as explicit no-save action |
 | Select and accept observed values | Local typed draft commands | Requires manual reselection before current create admission | Replace with proposal default in 4R.4 |
 | Validate custom value | Named API operation | Returns a display-only workflow refresh; no persistence | Retain inside 4R.5 adjustment disclosure |
@@ -166,9 +166,10 @@ Decision: Selected.
    server-owned, client-validated page projection is documented in [Policy
    Authoring Workflow Presentation Adapter](policy-authoring-workflow-presentation-adapter.md).
    It does not add a second modal path.
-3. Implement **4R.3 Action Binding And Admission Feedback** next, before placing the
-   new create/save action in the product. Each action must have one pending,
-   success, rejection, unavailable, and focus/status outcome.
+3. **4R.3 Action Binding And Admission Feedback** is complete. Native create
+   now has one pending, success, rejection, stale, retryable-error, and
+   unavailable outcome without raw server error text. See [Policy Authoring
+   Action Binding And Feedback](policy-authoring-action-binding-and-feedback.md).
 4. Implement 4R.4 through 4R.8 in order: proposal first, adjustments and
    material exceptions only when relevant, intentional persisted-policy
    maintenance, then legacy card/modal/hash removal.
@@ -189,6 +190,6 @@ Decision: Selected.
 
 ## Next Task
 
-**5R.1 Server Intent Contract Authority** is the next implementation task.
-It is the first dependency gate for the replacement `/policies` presentation
-and for an admitted native create or save action.
+**4R.4 Destination Proposal Card** is the next implementation task. It must
+replace manual observed-value reselection with the already-validated server
+proposal before any new normal `/policies` entry path is added.

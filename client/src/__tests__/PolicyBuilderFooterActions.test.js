@@ -64,7 +64,7 @@ describe('PolicyBuilderFooterActions.vue', () => {
     expect(wrapper.emitted('save')).toEqual([[]])
   })
 
-  it('prevents duplicate saves and exposes a returned server error', () => {
+  it('prevents duplicate saves and exposes safe returned-action feedback', () => {
     const wrapper = mount(PolicyBuilderFooterActions, {
       props: {
         boundary: {
@@ -74,7 +74,10 @@ describe('PolicyBuilderFooterActions.vue', () => {
           disabledReason: '',
         },
         saving: true,
-        saveError: 'The server rejected the policy intent draft.',
+        saveFeedback: {
+          statusId: 'rejected',
+          message: 'Classifarr could not accept this policy. Review the current destination details and try again.',
+        },
       },
     })
 
@@ -83,7 +86,7 @@ describe('PolicyBuilderFooterActions.vue', () => {
 
     expect(saveButton.attributes('disabled')).toBeDefined()
     expect(saveButton.attributes('aria-busy')).toBe('true')
-    expect(wrapper.find('[role="alert"]').text()).toContain('The server rejected the policy intent draft.')
+    expect(wrapper.find('[role="alert"]').text()).toContain('could not accept this policy')
     expect(saveButton.attributes('aria-describedby')).toContain('policy-builder-save-error')
   })
 })

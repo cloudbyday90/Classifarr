@@ -68,6 +68,22 @@ describe('policyBuilderWorkflowStatusPriority', () => {
     })
   })
 
+  it('reports a failed bounded action as one safe action-local result', () => {
+    expect(buildPolicyBuilderWorkflowStatus({
+      loading: true,
+      emptyStateActionFeedback: {
+        statusId: 'retryable_error',
+        message: 'Classifarr could not open the library mapping. Try again.',
+      },
+    })).toMatchObject({
+      id: POLICY_BUILDER_WORKFLOW_STATUS_IDS.EMPTY_STATE_ACTION_RESULT,
+      role: 'alert',
+      tone: 'warning',
+      message: 'Classifarr could not open the library mapping. Try again.',
+      busy: false,
+    })
+  })
+
   it('announces server-owned automatic recovery only when no active work takes priority', () => {
     expect(buildPolicyBuilderWorkflowStatus({
       automaticRecoveryMessage: 'Classifarr is waiting for automatic profile recovery.',

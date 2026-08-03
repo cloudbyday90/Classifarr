@@ -205,10 +205,12 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
     normalAuthoringAllowed: true,
     migrationSupportOnly: false,
     riskIds: [],
-    notes: 'Save admission may explain one direct unmet prerequisite and forward a command, but it cannot claim readiness, authorize a write, or infer routing or automation state.',
+    notes: 'Action admission may explain one direct unmet prerequisite, preserve server idempotency outcomes, and forward a bounded command. It cannot claim readiness, authorize a write, or infer routing or automation state.',
     matches: filePath => hasAnySegment(filePath, [
       '/PolicyBuilderFooterActions.vue',
       '/policyBuilderActionBoundary.js',
+      '/policyAuthoringActionFeedback.js',
+      '/usePolicyNativeCreateAction.js',
     ]),
   },
   {

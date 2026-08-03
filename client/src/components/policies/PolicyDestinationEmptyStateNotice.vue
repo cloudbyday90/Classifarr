@@ -32,7 +32,7 @@
         Classifarr will not guess a destination from sparse evidence. The next declared-intent control is introduced separately from this read-only state.
       </p>
     </template>
-    <template v-else>
+    <template v-else-if="isAdmittedAction">
       <Button
         class="mt-3"
         size="sm"
@@ -44,6 +44,12 @@
         {{ actionButtonLabel }}
       </Button>
     </template>
+    <p
+      v-else
+      class="mt-2 text-xs text-amber-100"
+    >
+      This library action is not available from this screen.
+    </p>
   </section>
 </template>
 
@@ -74,6 +80,10 @@ const headingId = computed(() => `policy-destination-empty-state-${props.emptySt
 const descriptionId = computed(() => `policy-destination-empty-state-${props.emptyState.stateId}-description`)
 const nextAction = computed(() => props.emptyState?.nextAction || {})
 const isGuidanceOnly = computed(() => nextAction.value.mode === 'guidance')
+const isAdmittedAction = computed(() => (
+  nextAction.value.actionId === 'map_routing_destination' &&
+  nextAction.value.mode === 'open_library_mapping'
+))
 const isActionBusy = computed(() => (
   Boolean(props.activeActionId) && props.activeActionId === nextAction.value.actionId
 ))

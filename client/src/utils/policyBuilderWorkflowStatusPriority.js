@@ -11,6 +11,7 @@ export const POLICY_BUILDER_WORKFLOW_STATUS_IDS = Object.freeze({
   POLICY_SAVE: 'policy-builder-policy-save-status',
   WORKFLOW_LOADING: 'policy-builder-workflow-loading-status',
   EMPTY_STATE_ACTION: 'policy-builder-empty-state-action-status',
+  EMPTY_STATE_ACTION_RESULT: 'policy-builder-empty-state-action-result-status',
   AUTOMATIC_RECOVERY: 'policy-builder-automatic-recovery-status',
 })
 
@@ -40,6 +41,7 @@ export function buildPolicyBuilderWorkflowStatus({
   error = '',
   activeEmptyStateActionId = '',
   activeEmptyStateActionMessage = '',
+  emptyStateActionFeedback = null,
   automaticRecoveryMessage = '',
 } = {}) {
   const workflowError = asText(error)
@@ -57,6 +59,15 @@ export function buildPolicyBuilderWorkflowStatus({
       id: POLICY_BUILDER_WORKFLOW_STATUS_IDS.POLICY_SAVE,
       message: POLICY_SAVE_MESSAGE,
       busy: true,
+    })
+  }
+
+  if (emptyStateActionFeedback?.message) {
+    return buildStatus({
+      id: POLICY_BUILDER_WORKFLOW_STATUS_IDS.EMPTY_STATE_ACTION_RESULT,
+      role: 'alert',
+      tone: emptyStateActionFeedback.statusId === 'succeeded' ? 'success' : 'warning',
+      message: emptyStateActionFeedback.message,
     })
   }
 

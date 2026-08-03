@@ -69,4 +69,21 @@ describe('PolicyDestinationEmptyStateNotice.vue', () => {
     await wrapper.get('button').trigger('click')
     expect(wrapper.emitted('next-action')).toBeUndefined()
   })
+
+  it('does not render a control for an unsupported server action', () => {
+    const wrapper = mount(PolicyDestinationEmptyStateNotice, {
+      props: {
+        emptyState: buildEmptyState({
+          nextAction: {
+            actionId: 'sync_library_now',
+            label: 'Sync library now',
+            mode: 'synchronize',
+          },
+        }),
+      },
+    })
+
+    expect(wrapper.find('button').exists()).toBe(false)
+    expect(wrapper.text()).toContain('This library action is not available from this screen.')
+  })
 })

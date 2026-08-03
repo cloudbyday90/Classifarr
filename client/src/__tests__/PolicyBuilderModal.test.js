@@ -20,7 +20,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import PolicyBuilderModal from '../components/policies/PolicyBuilderModal.vue';
 import api from '../api';
-import { getDataRequest } from '../api/core';
+import { apiClient, getDataRequest } from '../api/core';
 import { buildIntentSignalCommandPlan } from '@/utils/policyIntentSignalDraft';
 import { consumeRouteFocusHandoff } from '@/utils/routeFocusHandoff';
 
@@ -377,6 +377,19 @@ describe('PolicyBuilderModal.vue', () => {
     api.getGeneralSettings.mockImplementation((...args) => api.get('/settings', ...args).then((response) => response.data));
     api.getLibraryProfile.mockImplementation((libraryId) => api.get(`/libraries/${libraryId}/profile`).then((response) => response.data));
     getDataRequest.mockImplementation((url, config) => api.get(url, config).then((response) => response.data));
+    apiClient.post.mockResolvedValue({
+      data: {
+        id: 91,
+        name: 'Sci-Fi Movies Policy',
+        library_name: 'Sci-Fi Movies',
+        native_intent_establishment: {
+          statusId: 'initial_intent_established',
+          intentId: 501,
+          routingConfigured: false,
+          ruleCount: 1,
+        },
+      },
+    });
     window.localStorage.clear();
     document.body.innerHTML = '';
   });
@@ -424,6 +437,46 @@ describe('PolicyBuilderModal.vue', () => {
       targetId: 'library-arr-mapping',
       fallbackTargetId: 'library-detail-title',
     });
+  });
+
+  it('keeps a failed mapping transition in place with one safe retryable result', async () => {
+    const workflowRead = buildOperatorWorkflowRead();
+    const mappingState = {
+      stateId: 'unmapped_library',
+      sectionId: 'can_this_route',
+      label: 'Library routing needs a mapping',
+      description: 'Connect this library to a routing target before automation can apply approved matches.',
+      nextAction: {
+        actionId: 'map_routing_destination',
+        label: 'Open library mapping',
+        busyLabel: 'Opening library mapping...',
+        mode: 'open_library_mapping',
+      },
+    };
+    workflowRead.emptyStateProjection = { states: [mappingState] };
+    mockRouterPush.mockRejectedValue(new Error('Private router failure detail'));
+    api.get.mockImplementation((url) => {
+      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
+      if (url === '/policies/operator-workflow/libraries/1') return Promise.resolve({ data: workflowRead });
+      return Promise.resolve({ data: { suggestions: [] } });
+    });
+
+    const wrapper = mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        libraryId: 1,
+      },
+      attachTo: document.body,
+    });
+
+    await flushPromises();
+    await wrapper.vm.handleEmptyStateAction(mappingState);
+    await flushPromises();
+
+    expect(wrapper.emitted('update:modelValue')).toBeFalsy();
+    expect(document.body.querySelector('[role="alert"]')?.textContent)
+      .toContain('Classifarr could not open the library mapping. Try again.');
+    expect(document.body.textContent).not.toContain('Private router failure detail');
   });
 
   it('keeps raw template attachment controls and suggestion requests out of compatibility editing', async () => {
@@ -603,7 +656,7 @@ describe('PolicyBuilderModal.vue', () => {
     });
   });
 
-  it('creates a native intent establishment payload only after observed values are explicitly accepted', async () => {
+  it('submits the narrow native creation contract only after observed values are explicitly accepted', async () => {
     const workflowRead = buildOperatorWorkflowRead();
     workflowRead.observedProfile.intentSignalProjection = { options: [{
       candidateId: 'genre:Science Fiction:purpose',
@@ -659,7 +712,7 @@ describe('PolicyBuilderModal.vue', () => {
     await flushPromises();
     await wrapper.vm.save();
 
-    const nativeCreatePayload = wrapper.emitted('save')[0][0]
+    const nativeCreatePayload = apiClient.post.mock.calls[0][1]
     expect(nativeCreatePayload).toMatchObject({
       library_id: 1,
       native_intent_establishment: {
@@ -680,6 +733,13 @@ describe('PolicyBuilderModal.vue', () => {
       'name',
       'native_intent_establishment',
     ])
+    expect(apiClient.post.mock.calls[0][0]).toBe('/policies')
+    expect(apiClient.post.mock.calls[0][2]).toEqual(expect.objectContaining({
+      headers: expect.objectContaining({
+        'Idempotency-Key': expect.any(String),
+      }),
+    }))
+    expect(wrapper.emitted('save')).toBeFalsy()
   });
 
   it('keeps staged constraint commands out of the native policy-create payload', async () => {
@@ -745,7 +805,7 @@ describe('PolicyBuilderModal.vue', () => {
     }));
     await wrapper.vm.save();
 
-    expect(wrapper.emitted('save')?.[0]?.[0]).toMatchObject({
+    expect(apiClient.post.mock.calls[0][1]).toMatchObject({
       library_id: 1,
       native_intent_establishment: {
         declared_intent: {
@@ -754,8 +814,8 @@ describe('PolicyBuilderModal.vue', () => {
         },
       },
     });
-    expect(wrapper.emitted('save')?.[0]?.[0]).not.toHaveProperty('constraint_draft_commands');
-    expect(wrapper.emitted('save')?.[0]?.[0]).not.toHaveProperty('policyIntentConstraintDraft');
+    expect(apiClient.post.mock.calls[0][1]).not.toHaveProperty('constraint_draft_commands');
+    expect(apiClient.post.mock.calls[0][1]).not.toHaveProperty('policyIntentConstraintDraft');
   });
 
   it('keeps native creation open for a persisted server-owned policy handoff', async () => {
@@ -778,20 +838,6 @@ describe('PolicyBuilderModal.vue', () => {
       requiresExplicitAcceptance: true,
       canAutoDeclare: false,
     }] };
-    const submitPolicy = vi.fn().mockResolvedValue({
-      data: {
-        id: 91,
-        name: 'Sci-Fi Movies Policy',
-        library_name: 'Sci-Fi Movies',
-        native_intent_establishment: {
-          statusId: 'initial_intent_established',
-          intentId: 501,
-          routingConfigured: false,
-          ruleCount: 1,
-        },
-      },
-    });
-
     api.get.mockImplementation((url) => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
       if (url === '/policies/operator-workflow/libraries/1') return Promise.resolve({ data: workflowRead });
@@ -818,7 +864,6 @@ describe('PolicyBuilderModal.vue', () => {
       props: {
         modelValue: true,
         libraryId: 1,
-        submitPolicy,
       },
       attachTo: document.body,
     });
@@ -831,8 +876,9 @@ describe('PolicyBuilderModal.vue', () => {
     await wrapper.vm.save();
     await flushPromises();
 
-    expect(submitPolicy).toHaveBeenCalledTimes(1);
+    expect(apiClient.post).toHaveBeenCalledTimes(1);
     expect(api.get).toHaveBeenCalledWith('/policies/91', undefined);
+    expect(wrapper.emitted('native-policy-created')).toEqual([[91]]);
     expect(document.body.textContent).toContain('Policy created');
     expect(document.body.textContent).toContain('Declared destination intent');
     expect(document.body.textContent).toContain('Routing setup still needed');
@@ -881,7 +927,7 @@ describe('PolicyBuilderModal.vue', () => {
     ))).toBe(false);
   });
 
-  it('awaits the parent save operation and shows an actionable save failure', async () => {
+  it('awaits the parent save operation and shows safe actionable failure feedback', async () => {
     api.get.mockImplementation((url) => {
       if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
       if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
@@ -890,6 +936,7 @@ describe('PolicyBuilderModal.vue', () => {
     });
     const submitPolicy = vi.fn().mockRejectedValue({
       response: {
+        status: 422,
         data: {
           error: 'The policy intent draft is invalid.',
         },
@@ -920,11 +967,9 @@ describe('PolicyBuilderModal.vue', () => {
     expect(submitPolicy).toHaveBeenCalledTimes(1);
     expect(wrapper.emitted('save')).toBeFalsy();
     expect(document.body.querySelector('#policy-builder-save-error')?.textContent)
-      .toContain('The policy intent draft is invalid.');
-    expect(mockToast.error).toHaveBeenCalledWith(
-      'The policy intent draft is invalid.',
-      'Failed to save policy',
-    );
+      .toContain('Classifarr could not accept this policy. Review the current destination details and try again.');
+    expect(document.body.querySelector('#policy-builder-save-error')?.textContent)
+      .not.toContain('The policy intent draft is invalid.');
   });
 
   it('keeps modal public events bounded to visibility, close, and delegated save payloads', async () => {

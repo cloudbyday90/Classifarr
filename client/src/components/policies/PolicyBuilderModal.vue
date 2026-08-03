@@ -54,6 +54,7 @@
           :constraint-draft-commands="constraintDraftCommands"
           :selection-enabled="experienceMode.isNativeCreate"
           :active-empty-state-action-id="activeEmptyStateActionId"
+          :empty-state-action-feedback="emptyStateActionFeedback"
           :custom-entry-busy="customIntentSignalValidationLoading"
           :custom-entry-error="customIntentSignalValidationError"
           :custom-entry-message="customIntentSignalValidationMessage"
@@ -89,7 +90,7 @@
       <PolicyBuilderFooterActions
         :boundary="saveBoundary"
         :saving="saving"
-        :save-error="saveError"
+        :save-feedback="saveFeedback"
         @defer="defer"
         @save="save"
       />
@@ -114,19 +115,21 @@ import { usePolicyOperatorWorkflow } from '@/composables/usePolicyOperatorWorkfl
 import { usePolicyNativeReadinessSummary } from '@/composables/usePolicyNativeReadinessSummary'
 import { usePolicyIntentSignalDraft } from '@/composables/usePolicyIntentSignalDraft'
 import { usePolicyIntentConstraintDraft } from '@/composables/usePolicyIntentConstraintDraft'
+import { usePolicyNativeCreateAction } from '@/composables/usePolicyNativeCreateAction'
 import { usePolicyNativeCreateHandoff } from '@/composables/usePolicyNativeCreateHandoff'
 import { buildPolicyBuilderSaveBoundary } from '@/utils/policyBuilderActionBoundary'
 import { buildPolicyBuilderExperienceMode } from '@/utils/policyBuilderExperienceMode'
 import { buildNativePolicyCreatePayload } from '@/utils/policyNativeCreatePayload'
 import {
-  buildNativePolicyCreateAttemptFingerprint,
-  createNativePolicyCreateIdempotencyKey,
-} from '@/utils/policyNativeCreateIdempotency'
+  POLICY_AUTHORING_ACTION_FEEDBACK_STATUS_IDS,
+  POLICY_AUTHORING_ACTION_IDS,
+  buildPolicyAuthoringActionFailureFeedback,
+  buildPolicyAuthoringActionFeedback,
+} from '@/utils/policyAuthoringActionFeedback'
 import {
   clearRouteFocusHandoff,
   requestRouteFocusHandoff,
 } from '@/utils/routeFocusHandoff'
-import { useToast } from '@/stores/toast'
 
 const props = defineProps({
   modelValue: {
@@ -150,17 +153,16 @@ const props = defineProps({
 const emit = defineEmits({
   'update:modelValue': value => typeof value === 'boolean',
   save: payload => Boolean(payload) && typeof payload === 'object' && !Array.isArray(payload),
+  'native-policy-created': policyId => Number.isInteger(policyId) && policyId > 0,
   close: () => true,
 })
 
-const toast = useToast()
 const router = useRouter()
-const saving = ref(false)
-const saveError = ref('')
+const compatibilitySaving = ref(false)
+const compatibilitySaveFeedback = ref(null)
 const nativeCreateHandoffRef = ref(null)
-const nativeCreateIdempotencyKey = ref('')
-const nativeCreateAttemptFingerprint = ref('')
 const activeEmptyStateActionId = ref('')
+const emptyStateActionFeedback = ref(null)
 const restoreFocusAfterClose = ref(true)
 
 const isOpen = computed({
@@ -256,6 +258,20 @@ const {
   establishHandoff: establishNativeCreateHandoff,
 } = usePolicyNativeCreateHandoff()
 
+const nativeCreateAction = usePolicyNativeCreateAction()
+
+const saving = computed(() => (
+  experienceMode.value.isNativeCreate
+    ? nativeCreateAction.pending.value
+    : compatibilitySaving.value
+))
+
+const saveFeedback = computed(() => (
+  experienceMode.value.isNativeCreate
+    ? nativeCreateAction.feedback.value
+    : compatibilitySaveFeedback.value
+))
+
 const saveBoundary = computed(() => buildPolicyBuilderSaveBoundary({
   form: form.value,
   hasExistingPolicy: experienceMode.value.isLegacyEdit,
@@ -288,36 +304,59 @@ const handleEmptyStateAction = async (emptyState) => {
   const actionId = emptyState?.nextAction?.actionId
   if (!actionId || activeEmptyStateActionId.value) return
 
-  if (actionId === 'map_routing_destination') {
-    const libraryId = Number(form.value.library_id)
-    if (!Number.isInteger(libraryId) || libraryId <= 0) return
+  emptyStateActionFeedback.value = null
+  if (actionId !== 'map_routing_destination') {
+    emptyStateActionFeedback.value = buildPolicyAuthoringActionFeedback({
+      actionId: POLICY_AUTHORING_ACTION_IDS.OPEN_LIBRARY_MAPPING,
+      statusId: POLICY_AUTHORING_ACTION_FEEDBACK_STATUS_IDS.UNAVAILABLE,
+      message: 'This library action is unavailable. Review the current library setup from the policies page.',
+    })
+    return
+  }
 
-    activeEmptyStateActionId.value = actionId
-    try {
-      requestRouteFocusHandoff({
-        routeName: 'LibraryDetail',
-        targetId: 'library-arr-mapping',
-        fallbackTargetId: 'library-detail-title',
-      })
-      const navigationFailure = await router.push({
-        name: 'LibraryDetail',
-        params: { id: libraryId },
-      })
-      const routeName = router.currentRoute?.value?.name
-      if (isNavigationFailure(navigationFailure) || (routeName && routeName !== 'LibraryDetail')) {
-        clearRouteFocusHandoff('LibraryDetail')
-        toast.error('Classifarr could not open the library mapping.')
-        return
-      }
+  const libraryId = Number(form.value.library_id)
+  if (!Number.isInteger(libraryId) || libraryId <= 0) {
+    emptyStateActionFeedback.value = buildPolicyAuthoringActionFeedback({
+      actionId: POLICY_AUTHORING_ACTION_IDS.OPEN_LIBRARY_MAPPING,
+      statusId: POLICY_AUTHORING_ACTION_FEEDBACK_STATUS_IDS.UNAVAILABLE,
+      message: 'Library mapping is unavailable until a valid destination library is selected.',
+    })
+    return
+  }
 
-      restoreFocusAfterClose.value = false
-      isOpen.value = false
-    } catch {
+  activeEmptyStateActionId.value = actionId
+  try {
+    requestRouteFocusHandoff({
+      routeName: 'LibraryDetail',
+      targetId: 'library-arr-mapping',
+      fallbackTargetId: 'library-detail-title',
+    })
+    const navigationFailure = await router.push({
+      name: 'LibraryDetail',
+      params: { id: libraryId },
+    })
+    const routeName = router.currentRoute?.value?.name
+    if (isNavigationFailure(navigationFailure) || (routeName && routeName !== 'LibraryDetail')) {
       clearRouteFocusHandoff('LibraryDetail')
-      toast.error('Classifarr could not open the library mapping.')
-    } finally {
-      activeEmptyStateActionId.value = ''
+      emptyStateActionFeedback.value = buildPolicyAuthoringActionFeedback({
+        actionId: POLICY_AUTHORING_ACTION_IDS.OPEN_LIBRARY_MAPPING,
+        statusId: POLICY_AUTHORING_ACTION_FEEDBACK_STATUS_IDS.RETRYABLE_ERROR,
+        message: 'Classifarr could not open the library mapping. Try again.',
+      })
+      return
     }
+
+    restoreFocusAfterClose.value = false
+    isOpen.value = false
+  } catch {
+    clearRouteFocusHandoff('LibraryDetail')
+    emptyStateActionFeedback.value = buildPolicyAuthoringActionFeedback({
+      actionId: POLICY_AUTHORING_ACTION_IDS.OPEN_LIBRARY_MAPPING,
+      statusId: POLICY_AUTHORING_ACTION_FEEDBACK_STATUS_IDS.RETRYABLE_ERROR,
+      message: 'Classifarr could not open the library mapping. Try again.',
+    })
+  } finally {
+    activeEmptyStateActionId.value = ''
   }
 }
 
@@ -343,55 +382,60 @@ const save = async () => {
     : buildSavePayload()
 
   if (experienceMode.value.isNativeCreate) {
+    nativeCreateAction.reset()
+
     if (selectedPresets.value.length > 0) {
-      const message = 'Remove starter templates before creating a native intent policy from observed library values.'
-      saveError.value = message
-      toast.error(message, 'Unable to save policy')
+      nativeCreateAction.setFeedback(buildPolicyAuthoringActionFeedback({
+        actionId: POLICY_AUTHORING_ACTION_IDS.CREATE_NATIVE_POLICY,
+        statusId: POLICY_AUTHORING_ACTION_FEEDBACK_STATUS_IDS.REJECTED,
+        message: 'Remove starter templates before creating a native intent policy from observed library values.',
+      }))
       return
     }
 
     if (!policyData) {
-      const message = 'Classifarr could not prepare the native policy request.'
-      saveError.value = message
-      toast.error(message, 'Unable to save policy')
+      nativeCreateAction.setFeedback(buildPolicyAuthoringActionFeedback({
+        actionId: POLICY_AUTHORING_ACTION_IDS.CREATE_NATIVE_POLICY,
+        statusId: POLICY_AUTHORING_ACTION_FEEDBACK_STATUS_IDS.REJECTED,
+        message: 'Classifarr could not prepare this policy request. Review the selected destination values and try again.',
+      }))
       return
     }
+
+    const result = await nativeCreateAction.create(policyData)
+    if (!result.accepted) return
+
+    if (await establishNativeCreateHandoff(result.response)) {
+      emit('native-policy-created', nativeCreateHandoff.value?.policy?.id)
+      await nextTick()
+      nativeCreateHandoffRef.value?.focus()
+      return
+    }
+
+    nativeCreateAction.setFeedback(buildPolicyAuthoringActionFeedback({
+      actionId: POLICY_AUTHORING_ACTION_IDS.CREATE_NATIVE_POLICY,
+      statusId: POLICY_AUTHORING_ACTION_FEEDBACK_STATUS_IDS.RETRYABLE_ERROR,
+      message: 'Classifarr could not confirm the policy result. Try again to safely check the saved result.',
+    }))
+    return
   }
 
-  saveError.value = ''
-  saving.value = true
+  compatibilitySaveFeedback.value = null
+  compatibilitySaving.value = true
 
   try {
-    let response
     if (props.submitPolicy) {
-      let writeOptions
-      if (experienceMode.value.isNativeCreate) {
-        const attemptFingerprint = buildNativePolicyCreateAttemptFingerprint(policyData)
-        if (nativeCreateAttemptFingerprint.value !== attemptFingerprint) {
-          nativeCreateAttemptFingerprint.value = attemptFingerprint
-          nativeCreateIdempotencyKey.value = ''
-        }
-
-        writeOptions = {
-          idempotencyKey: nativeCreateIdempotencyKey.value
-            || (nativeCreateIdempotencyKey.value = createNativePolicyCreateIdempotencyKey()),
-        }
-      }
-      response = await props.submitPolicy(policyData, writeOptions)
+      await props.submitPolicy(policyData)
     } else {
       emit('save', policyData)
     }
-
-    if (experienceMode.value.isNativeCreate && await establishNativeCreateHandoff(response)) {
-      await nextTick()
-      nativeCreateHandoffRef.value?.focus()
-    }
   } catch (error) {
-    const message = error?.response?.data?.error || error?.message || 'Failed to save policy'
-    saveError.value = message
-    toast.error(message, 'Failed to save policy')
+    compatibilitySaveFeedback.value = buildPolicyAuthoringActionFailureFeedback({
+      actionId: POLICY_AUTHORING_ACTION_IDS.SAVE_COMPATIBILITY_POLICY,
+      error,
+    })
   } finally {
-    saving.value = false
+    compatibilitySaving.value = false
   }
 }
 </script>

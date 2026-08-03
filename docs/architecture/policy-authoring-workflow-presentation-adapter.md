@@ -16,8 +16,9 @@ and raw-data flags. It then deep-freezes a smaller view model. Invalid input
 returns one unavailable, non-actionable model; the detailed shell is not
 rendered.
 
-This change deliberately does not bind create, save, adjustment, or recovery
-actions. That is Phase 4R.3.
+This change deliberately did not bind create, save, adjustment, or recovery
+actions. Phase 4R.3 now supplies that action boundary; see [Policy Authoring
+Action Binding And Feedback](policy-authoring-action-binding-and-feedback.md).
 
 ## Guidance Reviewed
 
@@ -79,8 +80,8 @@ Decision: selected.
    retryable network failure.
 4. Treat unavailable or malformed presentation data as non-actionable. Do not
    fall back to browser-derived readiness, recovery, or policy meaning.
-5. Implement 4R.3 next, binding each visible action to an admitted operation
-   and its pending, success, rejection, unavailable, and focus outcomes.
+5. 4R.3 is complete. Implement 4R.4 next, using the existing display-safe
+   proposal as the normal-path default rather than another picker.
 
 ## Security And Verification
 

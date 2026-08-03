@@ -313,4 +313,33 @@ describe('usePolicyOperatorWorkflow', () => {
     expect(workflow.workflowRead.value).toEqual(buildWorkflowRead(7))
     expect(workflow.customIntentSignalValidationError.value).toContain('could not validate')
   })
+
+  it('keeps custom validation rejection feedback safe and leaves the current workflow authoritative', async () => {
+    const currentWorkflow = buildWorkflowRead(7)
+    const validateCustomIntentSignalRequest = vi.fn().mockRejectedValue({
+      response: {
+        status: 422,
+        data: {
+          error: 'Private validation implementation detail.',
+        },
+      },
+    })
+    const workflow = usePolicyOperatorWorkflow({
+      loadWorkflowRequest: vi.fn().mockResolvedValue(currentWorkflow),
+      validateCustomIntentSignalRequest,
+    })
+
+    await workflow.loadWorkflow(7)
+    await expect(workflow.validateCustomIntentSignal(7, {
+      signalType: 'keywords',
+      value: 'Holiday',
+      explanation: 'This library is intended for holiday films.',
+    })).resolves.toBe(false)
+
+    expect(workflow.workflowRead.value).toEqual(currentWorkflow)
+    expect(workflow.customIntentSignalValidationError.value)
+      .toContain('could not accept this custom destination value')
+    expect(workflow.customIntentSignalValidationError.value)
+      .not.toContain('Private validation implementation detail')
+  })
 })
