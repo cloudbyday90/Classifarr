@@ -100,6 +100,25 @@ describe('policiesApi', () => {
     expect(mockPost).toHaveBeenCalledWith('/policies', data)
   })
 
+  it('createPolicy forwards a caller-stable idempotency key for native creation', async () => {
+    const data = {
+      library_id: 1,
+      name: 'Native Policy',
+      native_intent_establishment: { declared_intent: { purpose: [] } },
+    }
+    mockPost.mockResolvedValueOnce({ data: { id: 2 } })
+
+    await createPolicy(data, {
+      idempotencyKey: '6fe3d170-9390-4ec5-95f7-42ad6f8ec777',
+    })
+
+    expect(mockPost).toHaveBeenCalledWith('/policies', data, {
+      headers: {
+        'Idempotency-Key': '"6fe3d170-9390-4ec5-95f7-42ad6f8ec777"',
+      },
+    })
+  })
+
   it('updatePolicy calls PUT with id and data', async () => {
     const data = { name: 'Updated' }
     mockPut.mockResolvedValueOnce({ data: {} })

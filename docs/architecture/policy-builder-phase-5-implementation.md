@@ -100,6 +100,12 @@ preset-backed storage.
 
 ## Fourth Implemented Component
 
+Historical note: this section describes the earlier non-persistent draft
+bridge. It is superseded for native initial creation by [Policy Intent Write
+Admission](policy-intent-write-admission.md). The retained draft-sidecar path
+is now explicitly validation-only compatibility input; it does not establish
+native authority.
+
 The fourth implemented component adds write-side native intent draft request
 validation without enabling storage:
 
@@ -116,10 +122,9 @@ validation without enabling storage:
    - strict-constraint bucket entries must carry strict metadata,
    - avoid bucket entries must use `exclude` values or `exclude` mode,
    - summary preset counts must match the draft preset array.
-6. Return `persistence_enabled: false` and
-   `persistence_reason_code: native_intent_storage_not_enabled` from the write
-   payload helper. This makes the helper safe to wire into later route preflight
-   flows before any migration or storage write exists.
+6. The retained draft-sidecar result returns `persistence_enabled: false` and
+   `persistence_reason_code: legacy_draft_sidecar_not_persisted`. Native initial
+   creation uses the separately admitted 5R.2 transaction instead.
 
 This component validates future input shape only. It does not change policy
 create/update behavior, does not persist native intent, and does not affect
@@ -139,8 +144,9 @@ create/update routes as a non-persistent preflight:
 4. Return `policy_intent_write_preflight` on successful create/update responses
    only when a native draft was submitted.
 5. Keep `persistence_enabled: false` and
-   `persistence_reason_code: native_intent_storage_not_enabled` in the response
-   diagnostic until a later explicit native storage migration exists.
+   `persistence_reason_code: legacy_draft_sidecar_not_persisted` in the
+   response diagnostic. Native initial creation now uses the separately
+   admitted 5R.2 transaction.
 6. Do not persist the native draft, do not echo the draft body, and do not use it
    for classification scoring.
 
@@ -160,7 +166,7 @@ preflight contract without changing persistence:
    display so raw server diagnostics do not leak into component state.
 4. `PolicyList.vue` consumes `policy_intent_write_preflight` from create/update
    responses and displays a bounded compatibility notice when the server
-   validates the draft but native intent storage remains disabled.
+   validates but does not persist the legacy draft sidecar.
 5. Invalid drafts still fail server-side before mutation; valid drafts are still
    saved only through the legacy preset/custom-signal path until a later native
    storage migration is explicitly implemented.

@@ -42,7 +42,7 @@ export function normalizePolicyIntentWritePreflight(preflight) {
     persistence_enabled: value.persistence_enabled === true,
     persistence_reason_code: typeof value.persistence_reason_code === 'string'
       ? value.persistence_reason_code
-      : 'unknown',
+      : 'legacy_draft_sidecar_not_persisted',
     draft_schema_version: Number(value.draft_schema_version) || null,
     source: typeof value.source === 'string' ? value.source : 'unknown',
     migration_state: typeof value.migration_state === 'string' ? value.migration_state : 'unknown',
@@ -72,7 +72,7 @@ export function buildPolicyIntentWritePreflightNotice(preflight) {
     return {
       tone: 'info',
       title: 'Compatibility save confirmed',
-      message: `The server validated ${templateCountLabel} as an intent draft. Native intent storage is not enabled yet, so the policy was saved through the legacy-compatible preset path.`,
+      message: `The server validated ${templateCountLabel} as an intent draft but did not store that draft as native authority. The policy was saved through the legacy-compatible preset path.`,
     }
   }
 

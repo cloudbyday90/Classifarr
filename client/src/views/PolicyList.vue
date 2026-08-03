@@ -199,14 +199,14 @@ const editPolicy = async (policy) => {
   }
 }
 
-const savePolicy = async (policyData) => {
+const savePolicy = async (policyData, writeOptions) => {
   let response
   const nativeCreate = !editingPolicy.value && policyData?.native_intent_establishment !== undefined
 
   if (editingPolicy.value) {
     response = await api.updatePolicy(editingPolicy.value.id, policyData)
   } else {
-    response = await api.createPolicy(policyData)
+    response = await api.createPolicy(policyData, writeOptions)
   }
 
   lastPolicyIntentWritePreflight.value = normalizePolicyIntentWritePreflight(

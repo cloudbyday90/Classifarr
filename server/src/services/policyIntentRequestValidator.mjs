@@ -52,6 +52,10 @@ const DRAFT_SOURCES = Object.freeze([
   'legacy_policy_builder',
   'native_intent_draft',
 ]);
+const DRAFT_PAYLOAD_FIELDS = Object.freeze([
+  'policy_intent_draft',
+  'policyIntentDraft',
+]);
 const MAX_DRAFT_JSON_BYTES = 64 * 1024;
 const MAX_LEGACY_FIELD_JSON_BYTES = 16 * 1024;
 
@@ -319,7 +323,21 @@ export function safeValidatePolicyIntentDraftRequest(draft) {
 }
 
 export function validatePolicyIntentWritePayload(payload = {}) {
-  const draft = payload?.policy_intent_draft ?? payload?.policyIntentDraft;
+  const presentDraftFields = DRAFT_PAYLOAD_FIELDS.filter(field => payload?.[field] !== undefined);
+  if (presentDraftFields.length > 1) {
+    throw new PolicyIntentRequestValidationError(
+      'Only one policy intent draft sidecar field may be supplied.',
+      [{
+        code: 'multiple_draft_sidecars',
+        path: [],
+        message: 'Use either policy_intent_draft or policyIntentDraft, not both.',
+      }]
+    );
+  }
+
+  const draft = presentDraftFields.length === 1
+    ? payload[presentDraftFields[0]]
+    : undefined;
 
   if (draft === undefined) {
     return {
@@ -330,7 +348,7 @@ export function validatePolicyIntentWritePayload(payload = {}) {
         errors: [],
       },
       persistence_enabled: false,
-      persistence_reason_code: 'native_intent_storage_not_enabled',
+      persistence_reason_code: 'legacy_draft_sidecar_not_persisted',
     };
   }
 
@@ -344,7 +362,7 @@ export function validatePolicyIntentWritePayload(payload = {}) {
       errors: [],
     },
     persistence_enabled: false,
-    persistence_reason_code: 'native_intent_storage_not_enabled',
+    persistence_reason_code: 'legacy_draft_sidecar_not_persisted',
   };
 }
 

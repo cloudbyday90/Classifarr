@@ -2,12 +2,15 @@ import {
   NATIVE_POLICY_CREATE_ALLOWED_FIELDS,
   PolicyNativeIntentCreateRequestError,
   buildNativeIntentCreateRequest,
+  validateNativePolicyCreateIdentity,
 } from '../../services/policyNativeIntentCreateContract.mjs';
 
 const IDEMPOTENCY_KEY = '6fe3d170-9390-4ec5-95f7-42ad6f8ec777';
 
 function validPayload(overrides = {}) {
   return {
+    library_id: 4,
+    name: 'Animation Policy',
     native_intent_establishment: {
       declared_intent: {
         purpose: [{
@@ -62,6 +65,19 @@ describe('policyNativeIntentCreateContract', () => {
       'name',
       'native_intent_establishment',
     ]);
+  });
+
+  test('validates and normalizes the bounded native policy identity', () => {
+    expect(validateNativePolicyCreateIdentity({
+      library_id: '4',
+      name: '  Animation Policy  ',
+      ...validPayload(),
+    })).toEqual({ libraryId: 4, name: 'Animation Policy' });
+
+    expect(() => validateNativePolicyCreateIdentity({
+      ...validPayload(),
+      library_id: 0,
+    })).toThrow(PolicyNativeIntentCreateRequestError);
   });
 
   test.each([

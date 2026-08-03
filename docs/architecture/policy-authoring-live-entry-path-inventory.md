@@ -159,9 +159,9 @@ Decision: Selected.
 
 ## Final Recommendation Stack
 
-1. Complete **5R.1 Server Intent Contract Authority**, then **5R.2 Write
-   Preflight And Persistence Boundary**. Establish one versioned, server-owned
-   intent and admitted write result for every client.
+1. **5R.1 Server Intent Contract Authority** and **5R.2 Write Preflight And
+   Persistence Boundary** are complete. Their authority and admitted native
+   create result are the required inputs for the presentation adapter.
 2. Implement **4R.2 Server Workflow Presentation Adapter** on `/policies` from
    that validated projection. It replaces the legacy list as the normal
    authoring cutline; it does not add a second modal path.

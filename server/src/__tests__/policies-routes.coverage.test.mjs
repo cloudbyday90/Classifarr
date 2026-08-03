@@ -780,6 +780,9 @@ describe('Policies routes coverage', () => {
 
       db.query.mockImplementation(async (sql) => {
         const statement = String(sql);
+        if (statement.includes('pg_try_advisory_xact_lock')) {
+          return { rows: [{ acquired: true }], rowCount: 1 };
+        }
         if (statement.includes('INSERT INTO library_policies')) {
           return { rows: [createdPolicy], rowCount: 1 };
         }
@@ -799,8 +802,38 @@ describe('Policies routes coverage', () => {
         if (statement.includes('FROM policy_presets') || statement.includes('FROM policy_overrides')) {
           return { rows: [], rowCount: 0 };
         }
+        if (statement.includes('FROM policy_intents') && statement.includes('AND active = TRUE')) {
+          return {
+            rows: [{
+              id: 601,
+              policy_id: 78,
+              library_id: 4,
+              schema_version: 1,
+              intent_version: 1,
+              active: true,
+              source: 'native_intent',
+              inference_state: 'inferred',
+              validation_status: 'valid',
+              purpose_rule_count: 1,
+              review_behavior: {},
+            }],
+            rowCount: 1,
+          };
+        }
         if (statement.includes('FROM policy_intents')) {
           return { rows: [], rowCount: 0 };
+        }
+        if (statement.includes('FROM policy_intent_rules')) {
+          return {
+            rows: [{
+              intent_id: 601,
+              intent_role: 'purpose',
+              signal_type: 'genres',
+              operator: 'require_any',
+              values: { require_any: ['Animation'] },
+            }],
+            rowCount: 1,
+          };
         }
         if (statement.includes('INSERT INTO policy_initial_intent_establishments')) {
           return { rows: [{ id: 501 }], rowCount: 1 };
@@ -833,6 +866,7 @@ describe('Policies routes coverage', () => {
       const res = await request(app)
         .post('/api/policies')
         .set('x-test-native-admin', 'true')
+        .set('Idempotency-Key', '"6fe3d170-9390-4ec5-95f7-42ad6f8ec777"')
         .send({
           library_id: 4,
           name: 'Animation Policy',
@@ -859,6 +893,20 @@ describe('Policies routes coverage', () => {
         routingConfigured: false,
         ruleCount: 1,
       });
+      expect(res.body.policy_intent_write_result).toEqual({
+        version: 1,
+        operation_id: 'native_initial_intent_create',
+        authority_mode: 'native_intent',
+        persistence_status: 'committed',
+        retry: {
+          mode: 'idempotency_key',
+          replayed: false,
+        },
+        draft_sidecar: {
+          status: 'not_present',
+        },
+      });
+      expect(res.body.policy_intent_authority.authority.source_id).toBe('native_intent');
       expect(db.query).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO policy_intents'),
         expect.any(Array)
@@ -903,6 +951,86 @@ describe('Policies routes coverage', () => {
       expect(db.withTransaction).not.toHaveBeenCalled();
     });
 
+    test('requires an idempotency key before native policy creation can begin', async () => {
+      const res = await request(app)
+        .post('/api/policies')
+        .set('x-test-native-admin', 'true')
+        .send({
+          library_id: 4,
+          name: 'Animation Policy',
+          native_intent_establishment: {
+            declared_intent: {
+              purpose: [{
+                signal_type: 'genres',
+                operator: 'require_any',
+                values: { require_any: ['Animation'] },
+              }],
+              hard_limits: [],
+              helpful_hints: [],
+              avoid: [],
+            },
+          },
+        })
+        .expect(400);
+
+      expect(res.body.code).toBe('POLICY_NATIVE_INTENT_CREATE_IDEMPOTENCY_KEY_REQUIRED');
+      expect(db.withTransaction).not.toHaveBeenCalled();
+    });
+
+    test('returns 422 when an idempotency key is reused for a different native policy create', async () => {
+      db.query.mockImplementation(async (sql) => {
+        const statement = String(sql);
+        if (statement.includes('pg_try_advisory_xact_lock')) {
+          return { rows: [{ acquired: true }], rowCount: 1 };
+        }
+        if (statement.includes('FROM policy_initial_intent_establishments establishment')) {
+          return {
+            rows: [{
+              policy_id: 77,
+              library_id: 4,
+              intent_id: 600,
+              policy_name: 'Different policy',
+              accepted_by: 7,
+              state: 'established',
+              request_fingerprint: 'different-request',
+              rule_count: 1,
+              routing_configured: false,
+            }],
+            rowCount: 1,
+          };
+        }
+        return { rows: [], rowCount: 0 };
+      });
+
+      const res = await request(app)
+        .post('/api/policies')
+        .set('x-test-native-admin', 'true')
+        .set('Idempotency-Key', '"6fe3d170-9390-4ec5-95f7-42ad6f8ec777"')
+        .send({
+          library_id: 4,
+          name: 'Animation Policy',
+          native_intent_establishment: {
+            declared_intent: {
+              purpose: [{
+                signal_type: 'genres',
+                operator: 'require_any',
+                values: { require_any: ['Animation'] },
+              }],
+              hard_limits: [],
+              helpful_hints: [],
+              avoid: [],
+            },
+          },
+        })
+        .expect(422);
+
+      expect(res.body.code).toBe('POLICY_NATIVE_INTENT_CREATE_IDEMPOTENCY_KEY_REUSED');
+      expect(db.query).not.toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO library_policies'),
+        expect.anything()
+      );
+    });
+
     test('reports valid native intent draft preflight without persisting draft content on create', async () => {
       db.query
         .mockResolvedValueOnce({
@@ -932,7 +1060,7 @@ describe('Policies routes coverage', () => {
           errors: [],
         },
         persistence_enabled: false,
-        persistence_reason_code: 'native_intent_storage_not_enabled',
+        persistence_reason_code: 'legacy_draft_sidecar_not_persisted',
         draft_schema_version: POLICY_INTENT_DRAFT_REQUEST_SCHEMA_VERSION,
         source: 'legacy_policy_builder',
         migration_state: 'legacy_compatible',
@@ -1025,6 +1153,7 @@ describe('Policies routes coverage', () => {
         .mockResolvedValueOnce({
           rows: [{ id: 8, name: 'Renamed', library_id: 1, library_name: 'Movies' }],
         })
+        .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] });
 
       const res = await request(app)
@@ -1187,7 +1316,7 @@ describe('Policies routes coverage', () => {
           errors: [],
         },
         persistence_enabled: false,
-        persistence_reason_code: 'native_intent_storage_not_enabled',
+        persistence_reason_code: 'legacy_draft_sidecar_not_persisted',
         draft_schema_version: POLICY_INTENT_DRAFT_REQUEST_SCHEMA_VERSION,
         source: 'legacy_policy_builder',
         migration_state: 'legacy_compatible',

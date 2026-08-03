@@ -35,6 +35,13 @@ function normalizePositiveInteger(value) {
   return Number.isInteger(numericValue) && numericValue > 0 ? numericValue : null;
 }
 
+function normalizePolicyName(value) {
+  if (typeof value !== 'string') return null;
+
+  const normalized = value.trim();
+  return normalized && normalized.length <= 255 ? normalized : null;
+}
+
 function validateNativePolicyCreateFields(payload) {
   const createPayload = asObject(payload);
   if (!createPayload) {
@@ -52,6 +59,20 @@ function validateNativePolicyCreateFields(payload) {
   }
 }
 
+function validateNativePolicyCreateIdentity(payload) {
+  validateNativePolicyCreateFields(payload);
+
+  const libraryId = normalizePositiveInteger(payload?.library_id);
+  const name = normalizePolicyName(payload?.name);
+  if (!libraryId || !name) {
+    throw new PolicyNativeIntentCreateRequestError(
+      'Native intent creation requires a positive library_id and a policy name of 255 characters or fewer.'
+    );
+  }
+
+  return { libraryId, name };
+}
+
 function buildNativeIntentCreateRequest({
   payload = {},
   actorId,
@@ -62,7 +83,7 @@ function buildNativeIntentCreateRequest({
     return null;
   }
 
-  validateNativePolicyCreateFields(payload);
+  validateNativePolicyCreateIdentity(payload);
 
   if (Number(legacyPresetCount) > 0) {
     throw new PolicyNativeIntentCreateRequestError(
@@ -112,4 +133,5 @@ export {
   NATIVE_INTENT_ESTABLISHMENT_FIELD,
   NATIVE_POLICY_CREATE_ALLOWED_FIELDS,
   buildNativeIntentCreateRequest,
+  validateNativePolicyCreateIdentity,
 };

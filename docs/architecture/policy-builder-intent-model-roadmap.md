@@ -11,9 +11,9 @@ Current execution focus:
    classifies current actions and removal work, and keeps representative live
    browser verification pending rather than claiming it from static evidence.
 2. **5R.1 Server Intent Contract Authority** and **5R.2 Write Preflight And
-   Persistence Boundary** are the next dependency-gated server tranche. They
-   must close before 4R.2 renders a new workflow adapter or 4R.3 binds create
-   and save actions.
+   Persistence Boundary** are complete. **4R.2 Server Workflow Presentation
+   Adapter** is the next dependency-gated component; it must consume those
+   server contracts before 4R.3 binds create and save actions.
 3. **8R.37.1 Runtime Capability Inventory And Isolation Decision** is a
    parallel release-maintenance/security audit. It cannot block 4R.1 or
    automatic native policy behavior.
@@ -27,7 +27,7 @@ The execution dependency is intentionally not numeric:
 
 ```text
 completed foundations: 0R -> 1R -> 2R -> 3R
-active product work: 4R.1 -> 5R.1/5R.2 -> 4R.2/4R.3 -> 4R.4/4R.5
+active product work: 4R.1 -> 5R.1/5R.2 (complete) -> 4R.2 -> 4R.3 -> 4R.4/4R.5
 runtime trust work: 5R.3 through 5R.9 -> 4R.6 through 4R.9
 parallel safety work: 8R installation/runtime lanes + 9R zero-debt gate
 ```
@@ -3529,8 +3529,8 @@ Acceptance criteria:
 
 ### 5R.2 Write Preflight And Persistence Boundary
 
-Intent: validate incoming intent-like payloads without accidentally persisting
-or trusting client-owned projections.
+Intent: validate and admit intent-like payloads without accidentally
+persisting or trusting client-owned projections.
 
 Tasks:
 
@@ -3540,7 +3540,8 @@ Tasks:
   - valid but non-persistent draft sidecar,
   - invalid draft sidecar,
   - legacy-compatible save payload,
-  - future native intent payload.
+  - admitted native initial-create payload, and
+  - unsupported native update payload.
 - Ensure raw draft bodies, raw preset JSON, prompts, traces, and provider data
   are never echoed in diagnostics.
 - Define deletion criteria for draft-sidecar preflight once native intent storage
@@ -3548,7 +3549,10 @@ Tasks:
 
 Acceptance criteria:
 
-- Preflight protects routes but does not become storage migration by accident.
+- Native creation is actor-authorized, idempotent, transactional, and returns
+  a fresh native authority projection after persistence or replay.
+- Preflight protects compatibility routes but does not become storage migration
+  by accident.
 - Diagnostics are sanitized and bounded.
 - Future native intent persistence has a clear insertion point.
 
@@ -3766,7 +3770,7 @@ Implement Phase 5R in this order:
 1. **5R.1 Server Intent Contract Authority**
    Establishes server-owned meaning.
 2. **5R.2 Write Preflight And Persistence Boundary**
-   Keeps compatibility saves safe while native storage is pending.
+   Keeps compatibility saves safe while native initial creation is admitted.
 3. **5R.3 AI Provider Capability And Authority Modes**
    Bounds model agency before runtime question work.
 4. **5R.4 Runtime Clarification Normalizer**
@@ -3789,8 +3793,12 @@ Current starting point:
   read-only v1 compatibility bridge, exposes only bounded routing and observed
   evidence references, and retires the obsolete preparation-only authority
   service. See [Policy Intent Contract Authority](policy-intent-contract-authority.md).
-- Follow with **5R.2 Write Preflight And Persistence Boundary** before 4R.2 or
-  4R.3 changes a rendered create/save action.
+- **5R.2 Write Preflight And Persistence Boundary is complete.** Native initial
+  creation is admitted transactionally with an idempotency key and returns a
+  fresh authority projection; draft sidecars remain validation-only
+  compatibility input. See [Policy Intent Write Admission](policy-intent-write-admission.md).
+- Follow with **4R.2 Server Workflow Presentation Adapter** before 4R.3 changes
+  a rendered create/save action.
 - Do not add preview/replay product UI or let AI clarification text, UI
   answers, or Discord payloads authorize learning directly.
 
@@ -3799,6 +3807,9 @@ Implementation record:
 - [Policy Intent Contract Authority](policy-intent-contract-authority.md)
   records the server source classification, security properties, migration
   bridge, and implementation outcome for 5R.1.
+- [Policy Intent Write Admission](policy-intent-write-admission.md) records the
+  5R.2 native create transaction, retry contract, compatibility boundary, and
+  deletion criteria.
 - [Policy Builder Phase 5 Implementation](policy-builder-phase-5-implementation.md)
   remains historical implementation context; it is not the current authority
   plan.
@@ -11226,21 +11237,22 @@ The next sequence is dependency-gated rather than phase-number order:
 2. **5R.1 Server Intent Contract Authority**: complete. The active read model
    now publishes native authority and marks the v1 projection as a read-only
    compatibility bridge.
-3. **5R.2 Write Preflight And Persistence Boundary**: next. Establish one admitted,
-   transactional create/update result for the proposal path. This must be
-   idempotent, actor-authorized, sanitized, and authoritative after rejection.
-4. **4R.2 Server Workflow Presentation Adapter** and **4R.3 Action Binding And
-   Admission Feedback**: build the one validated browser read boundary and make
-   every visible operation real before changing the information architecture.
-5. **4R.4 Destination Proposal Card** and **4R.5 Intent Adjustment
+3. **5R.2 Write Preflight And Persistence Boundary**: complete. Native initial
+   creation is idempotent, actor-authorized, transactional, sanitized, and
+   authoritative after commit or replay.
+4. **4R.2 Server Workflow Presentation Adapter**: next. Build the one validated
+   browser read boundary from the authority and write-result contracts.
+5. **4R.3 Action Binding And Admission Feedback**: bind create and save actions
+   to that adapter before changing the information architecture.
+6. **4R.4 Destination Proposal Card** and **4R.5 Intent Adjustment
    Disclosure**: deliver the automation-first create/edit surface. A ready
    library must not require reselecting evidence that the server already
    proposed.
-6. **5R.3 through 5R.9**, then **4R.6 through 4R.9**: finish model/question/
+7. **5R.3 through 5R.9**, then **4R.6 through 4R.9**: finish model/question/
    learning authority before exposing material exceptions, then complete
    persisted summary, legacy UI cutover, accessibility, and browser end-to-end
    evidence.
-7. Continue **8R** as separate native-runtime, per-installation evidence, and
+8. Continue **8R** as separate native-runtime, per-installation evidence, and
    CI-only retirement lanes. Continue the **9R** zero-debt naming gates on each
    component. Neither lane may delay 4R's normal authoring path.
 

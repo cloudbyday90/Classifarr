@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Intent Write Admission**: Added an authorized, transactional native
+  policy-create boundary with client retry keys, PostgreSQL advisory-lock
+  coordination, durable receipt replay, bounded conflict handling, and a fresh
+  authority projection after commit. Legacy draft sidecars now remain explicitly
+  validation-only compatibility input.
+
 - **Policy Intent Contract Authority**: Added a server-owned,
   product-vocabulary authority projection for native and compatibility policy
   reads. It exposes bounded routing and observed-evidence references, labels

@@ -34,7 +34,7 @@ describe('policyIntentWritePreflight utilities', () => {
         valid: true,
       },
       persistence_enabled: false,
-      persistence_reason_code: 'native_intent_storage_not_enabled',
+      persistence_reason_code: 'legacy_draft_sidecar_not_persisted',
       draft_schema_version: '1',
       source: 'legacy_policy_builder',
       migration_state: 'legacy_compatible',
@@ -49,7 +49,7 @@ describe('policyIntentWritePreflight utilities', () => {
         errors: [],
       },
       persistence_enabled: false,
-      persistence_reason_code: 'native_intent_storage_not_enabled',
+      persistence_reason_code: 'legacy_draft_sidecar_not_persisted',
       draft_schema_version: 1,
       source: 'legacy_policy_builder',
       migration_state: 'legacy_compatible',
@@ -65,7 +65,7 @@ describe('policyIntentWritePreflight utilities', () => {
         errors: [],
       },
       persistence_enabled: false,
-      persistence_reason_code: 'native_intent_storage_not_enabled',
+      persistence_reason_code: 'legacy_draft_sidecar_not_persisted',
       draft_schema_version: 1,
       source: 'legacy_policy_builder',
       migration_state: 'legacy_compatible',
@@ -73,7 +73,7 @@ describe('policyIntentWritePreflight utilities', () => {
     })).toEqual({
       tone: 'info',
       title: 'Compatibility save confirmed',
-      message: 'The server validated 1 starter template as an intent draft. Native intent storage is not enabled yet, so the policy was saved through the legacy-compatible preset path.',
+      message: 'The server validated 1 starter template as an intent draft but did not store that draft as native authority. The policy was saved through the legacy-compatible preset path.',
     })
   })
 })

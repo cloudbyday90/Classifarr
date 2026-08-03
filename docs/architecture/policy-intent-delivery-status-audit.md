@@ -75,7 +75,7 @@ the per-installation cutover evidence owned by Phase 8R.
 | 2R | Complete foundation | Typed draft commands and isolated compatibility serialization | Preserve until native storage fully replaces the bridge |
 | 3R | Complete contract cutline | Destination-first flow, component roles, accessibility rules, and normal-path exclusions | Live rendered-path proof moves to 4R |
 | 4R | Active | Source inventory identifies the real authoring cutline and current remediation | Complete live 4R.1 verification, then 4R.2 through 4R.9 in dependency order |
-| 5R | Not closed | Required authority for server read/write, questions, answers, and learning | Close 5R.1 and 5R.2 before 4R.2/4R.3; complete 5R.3 through 5R.9 before material exceptions and final cutover |
+| 5R | Not closed | Required authority for server read/write, questions, answers, and learning | 5R.1 and 5R.2 are complete; complete 5R.3 through 5R.9 before material exceptions and final cutover |
 | 6R | Contract-complete foundation | Evidence, intent, learning, readiness, workflow, and migration boundaries | Consume through 4R; reopen only for a bounded contract gap |
 | 7R | Contract-complete foundation | Runtime decision, question, rebuild, verifier, rollback, and trace boundaries | Preserve through 5R and 8R authority/storage work |
 | 8R | Active parallel lanes | Native lifecycle, installation evidence, CI-only retirement, and closure evidence | Collect current installation evidence and complete 8R.37 isolation without blocking 4R |
@@ -94,16 +94,19 @@ the per-installation cutover evidence owned by Phase 8R.
    server-owned `policy_intent_authority` contract, keeps v1 intent projection
    read-only and compatibility-scoped, and bounds routing/evidence metadata.
    See [Policy Intent Contract Authority](policy-intent-contract-authority.md).
-3. **5R.2 Write Preflight And Persistence Boundary** is next. It establishes
-   the admitted, idempotent create/update result the browser may invoke.
-4. **4R.2 and 4R.3** then build the one validated presentation adapter and bind
-   every interactive action to a truthful outcome.
-5. **4R.4 and 4R.5** deliver the destination proposal and optional adjustment
+3. **5R.2 Write Preflight And Persistence Boundary** is complete. Native
+   initial creation is admitted, idempotent, transactional, and followed by a
+   fresh authority read; draft sidecars remain validation-only compatibility
+   input. See [Policy Intent Write Admission](policy-intent-write-admission.md).
+4. **4R.2** now builds the one validated presentation adapter from those
+   authoritative read and write outcomes.
+5. **4R.3** binds every interactive action to a truthful outcome.
+6. **4R.4 and 4R.5** deliver the destination proposal and optional adjustment
    disclosure. They must reduce operator decisions rather than expose engine
    diagnostics.
-6. **5R.3 through 5R.9** close model authority, normalization, answer,
+7. **5R.3 through 5R.9** close model authority, normalization, answer,
    learning, stale-question, verifier, and server-test boundaries.
-7. **4R.6 through 4R.9** expose material exceptions only when needed, then
+8. **4R.6 through 4R.9** expose material exceptions only when needed, then
    deliver persisted-policy maintenance, legacy UI cutover, and browser-level
    accessibility/responsive/end-to-end evidence.
 

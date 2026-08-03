@@ -99,7 +99,8 @@ consumer migrations complete.
 1. Use `policy_intent_authority` for new server, browser, Discord, and runtime
    integrations.
 2. Treat `policy_intent_contract` as a compatibility-only v1 projection.
-3. Admit all writes through one server-authorized, idempotent 5R.2 boundary.
+3. Use the 5R.2 server-authorized, idempotent boundary for native initial
+   creation; legacy sidecars remain validation-only compatibility input.
 4. Move each remaining v1 consumer to the authority contract before removing
    the bridge and its legacy draft-sidecar validator.
 
@@ -119,7 +120,8 @@ route behavior remains covered.
 
 ## Next Task
 
-Proceed with **5R.2 Write Preflight And Persistence Boundary**. It must unify
-the current legacy and native create/update admission paths into a single
-authorized, idempotent transaction result and return the new authority
-projection after persistence.
+**5R.2 Write Preflight And Persistence Boundary is complete.** Its admission,
+idempotency, replay, and compatibility decisions are recorded in [Policy Intent
+Write Admission](policy-intent-write-admission.md). Proceed with **4R.2 Server
+Workflow Presentation Adapter** so browser presentation consumes these
+server-owned contracts without restoring browser-owned policy authority.

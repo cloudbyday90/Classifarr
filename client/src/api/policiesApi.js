@@ -17,6 +17,11 @@
  */
 
 import { apiClient, getDataRequest } from './core'
+import {
+  buildNativePolicyCreateRequestOptions,
+  createNativePolicyCreateIdempotencyKey,
+  isNativePolicyCreatePayload,
+} from '@/utils/policyNativeCreateIdempotency'
 
 export function getPolicy(id) {
   return getDataRequest(`/policies/${id}`)
@@ -38,8 +43,21 @@ export function validatePolicyOperatorWorkflowCustomIntentSignal(libraryId, payl
   return apiClient.post(`/policies/operator-workflow/libraries/${libraryId}/intent-signals/custom`, payload)
 }
 
-export function createPolicy(data) {
-  return apiClient.post('/policies', data)
+/**
+ * @param {Record<string, unknown>} data
+ * @param {{ idempotencyKey?: string }} [options]
+ */
+export function createPolicy(data, { idempotencyKey } = {}) {
+  if (!isNativePolicyCreatePayload(data)) {
+    return apiClient.post('/policies', data)
+  }
+
+  const requestIdempotencyKey = idempotencyKey || createNativePolicyCreateIdempotencyKey()
+  return apiClient.post(
+    '/policies',
+    data,
+    buildNativePolicyCreateRequestOptions(requestIdempotencyKey)
+  )
 }
 
 export function updatePolicy(id, data) {

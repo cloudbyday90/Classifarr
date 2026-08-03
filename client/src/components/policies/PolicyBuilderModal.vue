@@ -117,6 +117,10 @@ import { buildPolicyBuilderSaveBoundary } from '@/utils/policyBuilderActionBound
 import { buildPolicyBuilderExperienceMode } from '@/utils/policyBuilderExperienceMode'
 import { buildNativePolicyCreatePayload } from '@/utils/policyNativeCreatePayload'
 import {
+  buildNativePolicyCreateAttemptFingerprint,
+  createNativePolicyCreateIdempotencyKey,
+} from '@/utils/policyNativeCreateIdempotency'
+import {
   clearRouteFocusHandoff,
   requestRouteFocusHandoff,
 } from '@/utils/routeFocusHandoff'
@@ -152,6 +156,8 @@ const router = useRouter()
 const saving = ref(false)
 const saveError = ref('')
 const nativeCreateHandoffRef = ref(null)
+const nativeCreateIdempotencyKey = ref('')
+const nativeCreateAttemptFingerprint = ref('')
 const activeEmptyStateActionId = ref('')
 const restoreFocusAfterClose = ref(true)
 
@@ -355,7 +361,20 @@ const save = async () => {
   try {
     let response
     if (props.submitPolicy) {
-      response = await props.submitPolicy(policyData)
+      let writeOptions
+      if (experienceMode.value.isNativeCreate) {
+        const attemptFingerprint = buildNativePolicyCreateAttemptFingerprint(policyData)
+        if (nativeCreateAttemptFingerprint.value !== attemptFingerprint) {
+          nativeCreateAttemptFingerprint.value = attemptFingerprint
+          nativeCreateIdempotencyKey.value = ''
+        }
+
+        writeOptions = {
+          idempotencyKey: nativeCreateIdempotencyKey.value
+            || (nativeCreateIdempotencyKey.value = createNativePolicyCreateIdempotencyKey()),
+        }
+      }
+      response = await props.submitPolicy(policyData, writeOptions)
     } else {
       emit('save', policyData)
     }

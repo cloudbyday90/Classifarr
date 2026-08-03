@@ -189,7 +189,7 @@ describe('policyIntentRequestValidator', () => {
       errors: [],
     });
     expect(result.persistence_enabled).toBe(false);
-    expect(result.persistence_reason_code).toBe('native_intent_storage_not_enabled');
+    expect(result.persistence_reason_code).toBe('legacy_draft_sidecar_not_persisted');
   });
 
   test('accepts review-trigger entries emitted by the policy builder', () => {
@@ -226,7 +226,7 @@ describe('policyIntentRequestValidator', () => {
         errors: [],
       },
       persistence_enabled: false,
-      persistence_reason_code: 'native_intent_storage_not_enabled',
+      persistence_reason_code: 'legacy_draft_sidecar_not_persisted',
       draft_schema_version: POLICY_INTENT_DRAFT_REQUEST_SCHEMA_VERSION,
       source: 'legacy_policy_builder',
       migration_state: 'legacy_compatible',
@@ -257,7 +257,14 @@ describe('policyIntentRequestValidator', () => {
         errors: [],
       },
       persistence_enabled: false,
-      persistence_reason_code: 'native_intent_storage_not_enabled',
+      persistence_reason_code: 'legacy_draft_sidecar_not_persisted',
     });
+  });
+
+  test('rejects ambiguous draft-sidecar aliases before a policy write can begin', () => {
+    expect(() => validatePolicyIntentWritePayload({
+      policy_intent_draft: validDraft(),
+      policyIntentDraft: validDraft(),
+    })).toThrow(PolicyIntentRequestValidationError);
   });
 });

@@ -118,6 +118,20 @@ export class ConflictError extends AppError {
   }
 }
 
+export class UnprocessableContentError extends AppError {
+  /**
+   * @param {string} message
+   * @param {Record<string, unknown> & { code?: string }} [extra]
+   */
+  constructor(message, extra = {}) {
+    const { code, ...rest } = extra;
+    super(message, 422, { code });
+    this.name = 'UnprocessableContentError';
+    Object.assign(this, rest);
+    this.extra = rest;
+  }
+}
+
 export class ServiceUnavailableError extends AppError {
   /**
    * @param {string} message

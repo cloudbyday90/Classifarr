@@ -6,6 +6,7 @@ import {
   ForbiddenError,
   NotFoundError,
   ConflictError,
+  UnprocessableContentError,
   ServiceUnavailableError,
   isAppError,
 } from '../utils/appError.mjs';
@@ -190,6 +191,21 @@ describe('ConflictError', () => {
   });
 });
 
+describe('UnprocessableContentError', () => {
+  it('sets statusCode 422 and preserves bounded error details', () => {
+    const error = new UnprocessableContentError('payload differs', {
+      code: 'IDEMPOTENCY_KEY_REUSED',
+    });
+    expect(error).toBeInstanceOf(AppError);
+    expect(error.statusCode).toBe(422);
+    expect(error.name).toBe('UnprocessableContentError');
+    expect(error.toJSON()).toEqual({
+      error: 'payload differs',
+      code: 'IDEMPOTENCY_KEY_REUSED',
+    });
+  });
+});
+
 describe('ServiceUnavailableError', () => {
   it('sets statusCode 503 and name', () => {
     const error = new ServiceUnavailableError('not ready');
@@ -216,6 +232,7 @@ describe('isAppError', () => {
     expect(isAppError(new ForbiddenError('f'))).toBe(true);
     expect(isAppError(new NotFoundError('n'))).toBe(true);
     expect(isAppError(new ConflictError('c'))).toBe(true);
+    expect(isAppError(new UnprocessableContentError('u'))).toBe(true);
     expect(isAppError(new ServiceUnavailableError('s'))).toBe(true);
   });
 

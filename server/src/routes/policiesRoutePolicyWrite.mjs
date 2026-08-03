@@ -1,16 +1,14 @@
-import { randomUUID } from 'node:crypto';
-
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData } from '../utils/responseHelpers.mjs';
 import {
   ConflictError,
   ForbiddenError,
   NotFoundError,
+  UnprocessableContentError,
   ValidationError,
 } from '../utils/appError.mjs';
 import { withPolicyIntentProjection } from '../services/policyIntentMapper.mjs';
 import {
-  buildPolicyIntentWritePreflight,
   summarizePolicyIntentRequestValidationError,
 } from '../services/policyIntentRequestValidator.mjs';
 import {
@@ -32,13 +30,24 @@ import {
   lockPolicyAuthorityForWrite,
 } from '../services/policyLegacyWriteGuard.mjs';
 import {
-  POLICY_INITIAL_INTENT_ESTABLISHMENT_STATUS_IDS,
-  applyPolicyInitialIntentEstablishmentInTransaction,
-} from '../services/policyInitialIntentEstablishmentService.mjs';
-import {
   PolicyNativeIntentCreateRequestError,
-  buildNativeIntentCreateRequest,
 } from '../services/policyNativeIntentCreateContract.mjs';
+import {
+  PolicyIntentWriteAdmissionError,
+  buildPolicyCreateWriteAdmission,
+  buildPolicyIntentWriteResult,
+  buildPolicyUpdateWriteAdmission,
+} from '../services/policyIntentWriteAdmission.mjs';
+import {
+  PolicyNativeIntentCreateIdempotencyError,
+} from '../services/policyNativeIntentCreateIdempotency.mjs';
+import {
+  PolicyNativeIntentCreateConflictError,
+  createNativeIntentPolicyInTransaction,
+} from '../services/policyNativeIntentCreateService.mjs';
+import {
+  attachActiveNativeIntentForPolicy,
+} from '../services/policyNativePolicyReadService.mjs';
 
 function toPositiveInteger(value) {
   const numericValue = Number(value);
@@ -59,9 +68,22 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
     return annotatePresetAttachment(preset, normalizeSignalConfig, describePresetRuntimeSemantics);
   }
 
-  function buildRouteIntentWritePreflight(payload) {
+  function attachIntentWriteAdmission(response, admission, { replayed = false } = {}) {
+    return {
+      ...response,
+      ...(admission.intentWritePreflight
+        ? { policy_intent_write_preflight: admission.intentWritePreflight }
+        : {}),
+      policy_intent_write_result: buildPolicyIntentWriteResult({
+        admission,
+        replayed,
+      }),
+    };
+  }
+
+  function getWriteAdmissionOrThrow(buildAdmission) {
     try {
-      return buildPolicyIntentWritePreflight(payload);
+      return buildAdmission();
     } catch (error) {
       const issueSummary = summarizePolicyIntentRequestValidationError(error);
       if (issueSummary) {
@@ -69,19 +91,15 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
           code: 'POLICY_INTENT_REQUEST_INVALID',
         });
       }
+
+      if (error instanceof PolicyIntentWriteAdmissionError
+        || error instanceof PolicyNativeIntentCreateRequestError
+        || error instanceof PolicyNativeIntentCreateIdempotencyError) {
+        throw new ValidationError(error.message, { code: error.code });
+      }
+
       throw error;
     }
-  }
-
-  function attachIntentWritePreflight(response, preflight) {
-    if (!preflight) {
-      return response;
-    }
-
-    return {
-      ...response,
-      policy_intent_write_preflight: preflight,
-    };
   }
 
   router.post('/', asyncHandler(async (req, res) => {
@@ -107,38 +125,26 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
       presets = [],
     } = req.body;
 
-    if (!library_id || !name) {
-      throw new ValidationError('library_id and name are required');
-    }
-
     const nativeIntentRequested = req.body?.native_intent_establishment !== undefined;
     const actorId = toPositiveInteger(req.user?.id);
     if (nativeIntentRequested && req.user?.role !== 'admin') {
       throw new ForbiddenError('Admin access required');
     }
 
-    let intentWritePreflight = null;
+    const admission = getWriteAdmissionOrThrow(() => buildPolicyCreateWriteAdmission({
+      payload: req.body,
+      actorId,
+      actorRole: req.user?.role,
+      headers: req.headers,
+    }));
+    if (!nativeIntentRequested && (!library_id || !name)) {
+      throw new ValidationError('library_id and name are required');
+    }
+
     let normalizedAutoClassifyThreshold = Number(auto_classify_threshold);
     let normalizedPromptThreshold = Number(prompt_threshold);
     let normalizedPresets = [];
-    let nativeIntentEstablishmentRequest = null;
-    if (nativeIntentRequested) {
-      try {
-        nativeIntentEstablishmentRequest = buildNativeIntentCreateRequest({
-          payload: req.body,
-          actorId,
-          idempotencyKey: randomUUID(),
-          legacyPresetCount: 0,
-        });
-      } catch (error) {
-        if (error instanceof PolicyNativeIntentCreateRequestError) {
-          throw new ValidationError(error.message, { code: error.code });
-        }
-        throw error;
-      }
-    } else {
-      intentWritePreflight = buildRouteIntentWritePreflight(req.body);
-
+    if (!nativeIntentRequested) {
       const thresholdValidationError = validatePolicyThresholdPayload({
         auto_classify_threshold,
         prompt_threshold,
@@ -180,7 +186,37 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
       }
     }
 
-    const policy = await db.withTransaction(async (client) => {
+    let policy;
+    try {
+      policy = await db.withTransaction(async (client) => {
+        if (admission.nativeCreate) {
+          return createNativeIntentPolicyInTransaction({
+            client,
+            actorId,
+            establishmentRequest: admission.nativeCreate.establishmentRequest,
+            policy: {
+              libraryId: admission.nativeCreate.identity.libraryId,
+              name: admission.nativeCreate.identity.name,
+              description,
+              enabled,
+              priority,
+              sortOrder: sort_order,
+              autoClassifyThreshold: normalizedAutoClassifyThreshold,
+              promptThreshold: normalizedPromptThreshold,
+              requireAiValidation: require_ai_validation,
+              trustPatterns: trust_patterns,
+              trustRag: trust_rag,
+              trustHistory: trust_history,
+              presetWeight: preset_weight,
+              profileWeight: profile_weight,
+              patternWeight: pattern_weight,
+              ragWeight: rag_weight,
+              historyWeight: history_weight,
+              combinationMode: combination_mode,
+            },
+          });
+        }
+
       const policyResult = await client.query(`
         INSERT INTO library_policies (
           library_id, name, description, enabled, priority, sort_order,
@@ -209,32 +245,20 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
         }
       }
 
-      if (!nativeIntentEstablishmentRequest) {
-        return {
-          policy: policyRow,
-          nativeIntentEstablishment: null,
-        };
-      }
-
-      const nativeIntentEstablishment = await applyPolicyInitialIntentEstablishmentInTransaction({
-        client,
-        policyId: policyRow.id,
-        actorId,
-        request: nativeIntentEstablishmentRequest,
-      });
-      if (nativeIntentEstablishment.statusId
-        !== POLICY_INITIAL_INTENT_ESTABLISHMENT_STATUS_IDS.ESTABLISHED) {
-        throw new ConflictError(
-          'Native policy intent could not be created. No policy changes were saved.',
-          { code: 'POLICY_NATIVE_INTENT_CREATE_BLOCKED' }
-        );
-      }
-
       return {
         policy: policyRow,
-        nativeIntentEstablishment,
+        nativeIntentEstablishment: null,
       };
-    });
+      });
+    } catch (error) {
+      if (error instanceof PolicyNativeIntentCreateConflictError) {
+        if (error.code === 'POLICY_NATIVE_INTENT_CREATE_IDEMPOTENCY_KEY_REUSED') {
+          throw new UnprocessableContentError(error.message, { code: error.code });
+        }
+        throw new ConflictError(error.message, { code: error.code });
+      }
+      throw error;
+    }
 
     const completePolicy = await db.query(`
       SELECT 
@@ -256,11 +280,19 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
       WHERE pp.policy_id = $1
     `, [policy.policy.id]);
 
-    const result = completePolicy.rows[0];
+    let result = completePolicy.rows[0];
     result.presets = presetsResult.rows.map(annotate);
-    const response = attachIntentWritePreflight(
+    if (policy.nativeIntentEstablishment) {
+      result = await attachActiveNativeIntentForPolicy({
+        dbClient: db,
+        policy: result,
+      });
+    }
+    const replayed = policy.nativeIntentEstablishment?.establishment?.replayed === true;
+    const response = attachIntentWriteAdmission(
       withPolicyIntentProjection(result),
-      intentWritePreflight
+      admission,
+      { replayed }
     );
 
     if (policy.nativeIntentEstablishment) {
@@ -283,7 +315,7 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
           ),
         }
         : response,
-      201
+      replayed ? 200 : 201
     );
   }));
 
@@ -310,7 +342,9 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
       presets,
     } = req.body;
 
-    const intentWritePreflight = buildRouteIntentWritePreflight(req.body);
+    const admission = getWriteAdmissionOrThrow(() => buildPolicyUpdateWriteAdmission({
+      payload: req.body,
+    }));
 
     const autoThresholdField = validatePolicyThresholdField(auto_classify_threshold, 'auto_classify_threshold');
     if (!autoThresholdField.isValid) {
@@ -346,7 +380,7 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
       }
     }
 
-    await db.withTransaction(async (client) => {
+    const writeState = await db.withTransaction(async (client) => {
       const existingPolicy = await lockPolicyAuthorityForWrite({
         client,
         policyId: id,
@@ -424,6 +458,10 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
           }
         }
       }
+
+      return {
+        nativeIntentActive: existingPolicy.native_intent_active === true,
+      };
     });
 
     const policyResult = await db.query(`
@@ -450,12 +488,18 @@ export function registerPolicyWriteRoutes(router, { db, normalizeSignalConfig, d
       WHERE pp.policy_id = $1
     `, [id]);
 
-    const policy = policyResult.rows[0];
+    let policy = policyResult.rows[0];
     policy.presets = presetsResult.rows.map(annotate);
+    if (writeState.nativeIntentActive) {
+      policy = await attachActiveNativeIntentForPolicy({
+        dbClient: db,
+        policy,
+      });
+    }
 
     return sendData(
       res,
-      attachIntentWritePreflight(withPolicyIntentProjection(policy), intentWritePreflight)
+      attachIntentWriteAdmission(withPolicyIntentProjection(policy), admission)
     );
   }));
 
