@@ -2742,7 +2742,17 @@ describe('second-pass result materialization', () => {
     expect(policyQuestionBuilder.build).toHaveBeenCalledWith(expect.objectContaining({
       policyResult: updatedPolicyResult
     }));
-    expect(result.pending_reason).toBe('Use updated policy context');
+    expect(result.pending_reason).toBe('Missing evidence');
+    expect(result.policy_question).toMatchObject({
+      question: 'Is there enough evidence to treat this as a match?',
+      options: [{ library_id: 2, value: 'library:2' }],
+      meta: {
+        runtime_question_normalization: {
+          uncertainty_type: 'missing_identity_evidence',
+          learning: { eligible: false, tier: 'blocked' },
+        },
+      },
+    });
   });
 
   test('deriveClassificationPersistenceState drops stale question state for completed results', async () => {
@@ -3079,11 +3089,18 @@ describe('AI availability fallback handling', () => {
     expect(insertCalls).toHaveLength(1);
     expect(insertCalls[0][1][10]).toBe('awaiting_decision');
     expect(insertCalls[0][1][14]).not.toBeNull();
-    expect(JSON.parse(insertCalls[0][1][14])).toEqual(expect.objectContaining({
-      problem_summary: 'Low confidence',
-      question: 'Which library should this go to?'
-    }));
-    expect(insertCalls[0][1][13]).toBe('Low confidence');
+    expect(JSON.parse(insertCalls[0][1][14])).toMatchObject({
+      problem_summary: 'Missing evidence',
+      question: 'Is there enough evidence to treat this as a match?',
+      options: [{ library_id: 1, value: 'library:1' }],
+      meta: {
+        runtime_question_normalization: {
+          uncertainty_type: 'missing_identity_evidence',
+          learning: { eligible: false, tier: 'blocked' },
+        },
+      },
+    });
+    expect(insertCalls[0][1][13]).toBe('Missing evidence');
   });
 
   test('adds a manual-selection question when legacy signal fallback stays in awaiting-decision confidence band', async () => {
@@ -3120,11 +3137,18 @@ describe('AI availability fallback handling', () => {
     expect(insertCalls).toHaveLength(1);
     expect(insertCalls[0][1][10]).toBe('awaiting_decision');
     expect(insertCalls[0][1][14]).not.toBeNull();
-    expect(JSON.parse(insertCalls[0][1][14])).toEqual(expect.objectContaining({
-      problem_summary: 'Manual selection needed',
-      question: 'Which library should this go to?'
-    }));
-    expect(insertCalls[0][1][13]).toBe('Manual selection needed');
+    expect(JSON.parse(insertCalls[0][1][14])).toMatchObject({
+      problem_summary: 'Missing evidence',
+      question: 'Is there enough evidence to treat this as a match?',
+      options: [{ library_id: 1, value: 'library:1' }],
+      meta: {
+        runtime_question_normalization: {
+          uncertainty_type: 'missing_identity_evidence',
+          learning: { eligible: false, tier: 'blocked' },
+        },
+      },
+    });
+    expect(insertCalls[0][1][13]).toBe('Missing evidence');
   });
 });
 

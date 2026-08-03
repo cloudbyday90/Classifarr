@@ -65,6 +65,10 @@ export function useNeedsAttentionActions({
   }
 
   async function resolveWithOption(item, option, selectedOptionLabel = null) {
+    if (item?.policy_question_stale) {
+      setActionError(`Policy question for "${item.title}" must be refreshed before it can be resolved.`)
+      return
+    }
     const question = item?.policy_question
     const nativePresentation = buildNativePendingQuestionPresentation(question)
     if (isNativePendingQuestion(question) && !nativePresentation) {
@@ -90,6 +94,10 @@ export function useNeedsAttentionActions({
   }
 
   async function resolveManualChange(item) {
+    if (item?.policy_question_stale) {
+      setActionError(`Policy question for "${item.title}" must be refreshed before it can be resolved.`)
+      return
+    }
     const libraryId = Number(manualLibraryByItemId.value[item.id] || 0)
     if (!libraryId) return
 
@@ -117,8 +125,13 @@ export function useNeedsAttentionActions({
     await runActionWithBusy('confirm-all', async () => {
       const routingWarnings = []
       const skippedNativeItems = []
+      const skippedStaleItems = []
 
       for (const item of needsAttentionItems.value) {
+        if (item?.policy_question_stale) {
+          skippedStaleItems.push(item)
+          continue
+        }
         if (isNativePendingQuestion(item?.policy_question)) {
           skippedNativeItems.push(item)
           continue
@@ -136,8 +149,15 @@ export function useNeedsAttentionActions({
         if (warning) routingWarnings.push(warning)
       }
 
-      if (skippedNativeItems.length > 0) {
-        const message = `Confirm All skipped ${skippedNativeItems.length} native review ${skippedNativeItems.length === 1 ? 'item' : 'items'}; choose an explicit outcome for each item.`
+      if (skippedNativeItems.length > 0 || skippedStaleItems.length > 0) {
+        const messages = []
+        if (skippedNativeItems.length > 0) {
+          messages.push(`Confirm All skipped ${skippedNativeItems.length} native review ${skippedNativeItems.length === 1 ? 'item' : 'items'}; choose an explicit outcome for each item.`)
+        }
+        if (skippedStaleItems.length > 0) {
+          messages.push(`Confirm All skipped ${skippedStaleItems.length} stale ${skippedStaleItems.length === 1 ? 'item' : 'items'}; retry Classification to refresh each question.`)
+        }
+        const message = messages.join(' ')
         setActionError(routingWarnings.length > 0 ? `${message} ${routingWarnings.join(' ')}` : message)
       } else if (routingWarnings.length === 1) {
         setActionError(routingWarnings[0])

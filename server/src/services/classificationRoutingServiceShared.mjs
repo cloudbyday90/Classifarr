@@ -1,6 +1,7 @@
 import { policyQuestionBuilder } from './policyQuestionBuilder.mjs';
 import { isRequireAllConfirmationsEnabled } from './clarificationThresholdManager.mjs';
 import { normalizePolicyDecisionThresholds } from '../utils/policyThresholds.mjs';
+import { normalizePolicyRuntimeQuestion } from './policyRuntimeQuestionNormalizer.mjs';
 
 export function normalizeSettings(settings) {
 	if (!settings) {
@@ -125,10 +126,17 @@ export async function ensureDecisionQuestion({ metadata, result, policyResult = 
 
 	const existingQuestion = result.policy_question || result.clarification || null;
 	if (existingQuestion) {
+		const normalizedQuestion = normalizePolicyRuntimeQuestion({
+			question: existingQuestion,
+			metadata,
+			result,
+			policyResult: effectivePolicyResult,
+			libraries,
+		});
 		result.needs_clarification = true;
-		result.clarification = result.clarification || existingQuestion;
-		result.policy_question = result.policy_question || existingQuestion;
-		result.pending_reason = result.pending_reason || existingQuestion.problem_summary || result.reason || null;
+		result.clarification = normalizedQuestion;
+		result.policy_question = normalizedQuestion;
+		result.pending_reason = normalizedQuestion.problem_summary || result.pending_reason || result.reason || null;
 		return result;
 	}
 
@@ -142,12 +150,17 @@ export async function ensureDecisionQuestion({ metadata, result, policyResult = 
 		relatedEvidenceSummary: result.signalContext?.relatedEvidenceSummary ?? null,
 	});
 
-	if (policyQuestion) {
-		result.needs_clarification = true;
-		result.clarification = policyQuestion;
-		result.policy_question = policyQuestion;
-		result.pending_reason = policyQuestion.problem_summary;
-	}
+	const normalizedQuestion = normalizePolicyRuntimeQuestion({
+		question: policyQuestion,
+		metadata,
+		result,
+		policyResult: effectivePolicyResult,
+		libraries,
+	});
+	result.needs_clarification = true;
+	result.clarification = normalizedQuestion;
+	result.policy_question = normalizedQuestion;
+	result.pending_reason = normalizedQuestion.problem_summary;
 
 	return result;
 }

@@ -3938,6 +3938,21 @@ Acceptance criteria:
 - Schema-valid but semantically wrong AI output is rejected or rewritten.
 - Normalized questions include learning eligibility metadata.
 
+Completion:
+
+- Complete. `policyRuntimeQuestionNormalizer.mjs` now rebuilds every legacy or
+  AI/runtime question from deterministic state, allow-listed uncertainty types,
+  and current server-known destination IDs. Raw question wording and AI
+  rationale are discarded; only bounded diagnostic metadata remains.
+- Complete. The routing, persistence, pending-list, resolution, and existing
+  queue presentation boundaries fail closed for pre-normalization questions.
+  They require retry before resolution or learning, while the existing native
+  persistence envelope remains valid as a separately versioned server-owned
+  contract.
+- Complete. The normalized contract has no learning eligibility, blocks legacy
+  evidence generation, and reserves unified answer actions for 5R.5. See
+  [Runtime Question Normalization](policy-runtime-question-normalization.md).
+
 ### 5R.5 Question And Answer Contract
 
 Intent: make UI and Discord answers stable, narrow, and safe to resolve.

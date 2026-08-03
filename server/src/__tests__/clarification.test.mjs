@@ -590,7 +590,7 @@ describe('ClarificationService', () => {
   });
 
   describe('resolvePolicyQuestion - v0.39.7b Bug Fix', () => {
-    test('should handle classification.metadata as JSONB object', async () => {
+    test('requires refresh for a legacy question even when metadata is JSONB', async () => {
       const mockClassification = {
         id: 1,
         title: 'Test Movie',
@@ -616,34 +616,22 @@ describe('ClarificationService', () => {
 
       db.pool.connect.mockResolvedValueOnce(mockClient);
 
-      const result = await clarificationService.resolvePolicyQuestion(
+      await expect(clarificationService.resolvePolicyQuestion(
         1,
         2,
         'Yes',
         'test-user',
         true
-      );
-
-      expect(result.success).toBe(true);
-
-      const evidenceInsertCall = mockClient.query.mock.calls.find(call =>
-        call[0] && call[0].includes('INSERT INTO classification_evidence') && call[1] && call[1][0] === 'item_exact'
-      );
-      expect(evidenceInsertCall).toBeDefined();
-
-      const evidenceDataParam = JSON.parse(evidenceInsertCall[1][5]);
-      expect(evidenceDataParam.selected_option).toBe('Yes');
-      expect(classificationOutcomeService.recordOutcome).toHaveBeenCalledWith(1, expect.objectContaining({
-        type: 'resolved',
-        source: 'policy_question',
-        actor: 'test-user',
-        selected_option: 'Yes',
-        final_library_id: 2,
-        final_library_name: expect.any(String)
-      }), { client: mockClient });
+      )).rejects.toMatchObject({
+        statusCode: 409,
+        code: 'policy_question_normalization_required',
+      });
+      expect(mockClient.query.mock.calls.some(call =>
+        call[0] && call[0].includes('INSERT INTO classification_evidence')
+      )).toBe(false);
     });
 
-    test('should handle policy_question as JSONB object from database', async () => {
+    test('requires refresh for a legacy JSONB policy question', async () => {
       const mockClassification = {
         id: 1,
         title: 'Test Movie',
@@ -673,33 +661,16 @@ describe('ClarificationService', () => {
 
       db.pool.connect.mockResolvedValueOnce(mockClient);
 
-      const result = await clarificationService.resolvePolicyQuestion(
+      await expect(clarificationService.resolvePolicyQuestion(
         1, // classificationId
         2, // selectedLibraryId
         'No', // selectedOption
         'test-user',
         true // generateRule
-      );
-
-      expect(result.success).toBe(true);
-      expect(result.classificationId).toBe(1);
-      expect(result.libraryId).toBe(2);
-      
-      // Verify that item_exact evidence was written with correct payload
-      const evidenceInsertCall = mockClient.query.mock.calls.find(call => 
-        call[0] && call[0].includes('INSERT INTO classification_evidence') && call[1] && call[1][0] === 'item_exact'
-      );
-      expect(evidenceInsertCall).toBeDefined();
-      
-      // Parse the evidenceData parameter (position 5 in upsertEvidence params)
-      const evidenceDataParam = JSON.parse(evidenceInsertCall[1][5]);
-      expect(evidenceDataParam.original_question).toBe('Is this a documentary?');
-      expect(evidenceDataParam.selected_option).toBe('No');
-
-      const updateCall = mockClient.query.mock.calls.find(call =>
-        call[0] && call[0].includes('UPDATE classification_history')
-      );
-      expect(updateCall[0]).toContain('policy_question = NULL');
+      )).rejects.toMatchObject({
+        statusCode: 409,
+        code: 'policy_question_normalization_required',
+      });
     });
 
     test('rejects malformed native runtime questions before any legacy rule path can run', async () => {
@@ -856,7 +827,7 @@ describe('ClarificationService', () => {
       )).toBe(false);
     });
 
-    test('should handle policy_question as string (legacy data)', async () => {
+    test('requires refresh for a legacy string policy question', async () => {
       const mockClassification = {
         id: 1,
         title: 'Test Movie',
@@ -883,26 +854,16 @@ describe('ClarificationService', () => {
 
       db.pool.connect.mockResolvedValueOnce(mockClient);
 
-      const result = await clarificationService.resolvePolicyQuestion(
+      await expect(clarificationService.resolvePolicyQuestion(
         1, // classificationId
         2, // selectedLibraryId
         'No', // selectedOption
         'test-user',
         true // generateRule
-      );
-
-      expect(result.success).toBe(true);
-      
-      // Verify item_exact evidence was written with correct payload
-      const evidenceInsertCall = mockClient.query.mock.calls.find(call => 
-        call[0] && call[0].includes('INSERT INTO classification_evidence') && call[1] && call[1][0] === 'item_exact'
-      );
-      expect(evidenceInsertCall).toBeDefined();
-      
-      // Parse the evidenceData parameter (position 5 in upsertEvidence params)
-      const evidenceDataParam = JSON.parse(evidenceInsertCall[1][5]);
-      expect(evidenceDataParam.original_question).toBe('Is this a documentary?');
-      expect(evidenceDataParam.selected_option).toBe('No');
+      )).rejects.toMatchObject({
+        statusCode: 409,
+        code: 'policy_question_normalization_required',
+      });
     });
 
     test('should handle null policy_question gracefully', async () => {
@@ -1379,11 +1340,20 @@ describe('ClarificationService', () => {
         title: 'Test Movie',
         media_type: 'movie',
         policy_question: {
-          question: 'Which library should this go to?',
+          problem_summary: 'Missing evidence',
+          why_uncertain: 'Current evidence is not strong enough to establish destination identity automatically.',
+          question: 'Is there enough evidence to treat this as a match?',
           options: [
-            { label: 'Movies', library_id: 5 }
+            { label: 'Movies', library_name: 'Movies', library_id: 5, value: 'library:5' }
           ],
           meta: {
+            runtime_question_normalization: {
+              version: 'policy.runtime_question_normalization.v1',
+              uncertainty_type: 'missing_identity_evidence',
+              frame_id: 'missing_evidence',
+              cleanup_required: false,
+              learning: { eligible: false, tier: 'blocked' },
+            },
             question_context: {
               version: '2026-03-21T00:00:00.000Z',
               policy_ids: [1],
@@ -1421,11 +1391,20 @@ describe('ClarificationService', () => {
         title: 'Test Movie',
         media_type: 'movie',
         policy_question: {
-          question: 'Which library should this go to?',
+          problem_summary: 'Missing evidence',
+          why_uncertain: 'Current evidence is not strong enough to establish destination identity automatically.',
+          question: 'Is there enough evidence to treat this as a match?',
           options: [
-            { label: 'Movies', library_id: 5 }
+            { label: 'Movies', library_name: 'Movies', library_id: 5, value: 'library:5' }
           ],
           meta: {
+            runtime_question_normalization: {
+              version: 'policy.runtime_question_normalization.v1',
+              uncertainty_type: 'missing_identity_evidence',
+              frame_id: 'missing_evidence',
+              cleanup_required: false,
+              learning: { eligible: false, tier: 'blocked' },
+            },
             question_context: {
               version: '2026-03-20T00:00:00.000Z',
               policy_ids: [1],

@@ -131,21 +131,23 @@ describe('normalizePolicyQuestion', () => {
     expect(await classificationPersistenceService.normalizePolicyQuestion('{bad json')).toBeNull();
   });
 
-  test('parses valid JSON string and returns stamped serialized result', async () => {
+  test('replaces legacy JSON questions with a stamped cleanup contract', async () => {
     const input = JSON.stringify({ question: 'Is this anime?', options: ['yes', 'no'] });
     const result = await classificationPersistenceService.normalizePolicyQuestion(input);
     expect(result).not.toBeNull();
     const parsed = JSON.parse(result);
-    expect(parsed).toHaveProperty('question', 'Is this anime?');
+    expect(parsed).toHaveProperty('question', 'Retry classification before making a destination decision.');
+    expect(parsed.meta.runtime_question_normalization.cleanup_required).toBe(true);
     expect(policyQuestionContext.stampPolicyQuestionContext).toHaveBeenCalled();
   });
 
-  test('accepts an object directly', async () => {
+  test('replaces a legacy object directly', async () => {
     const input = { question: 'Genre?', options: ['drama', 'action'] };
     const result = await classificationPersistenceService.normalizePolicyQuestion(input);
     expect(result).not.toBeNull();
     const parsed = JSON.parse(result);
-    expect(parsed).toHaveProperty('question', 'Genre?');
+    expect(parsed).toHaveProperty('question', 'Retry classification before making a destination decision.');
+    expect(parsed.meta.runtime_question_normalization.cleanup_required).toBe(true);
   });
 
   test('returns stamped JSON string with _context_version attached', async () => {
@@ -163,7 +165,8 @@ describe('normalizePolicyQuestion', () => {
     const result = await classificationPersistenceService.normalizePolicyQuestion(input);
     expect(result).not.toBeNull();
     const parsed = JSON.parse(result);
-    expect(parsed).toHaveProperty('question', 'Is this anime?');
+    expect(parsed).toHaveProperty('question', 'Retry classification before making a destination decision.');
+    expect(parsed.meta.runtime_question_normalization.cleanup_required).toBe(true);
   });
 });
 

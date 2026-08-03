@@ -63,8 +63,27 @@
           This question may be outdated because policy or library settings changed after it was generated. Retry Classification to refresh it before confirming.
         </p>
 
+        <div
+          v-if="item.policy_question_stale"
+          class="native-pending-question-invalid"
+          role="status"
+        >
+          <p>
+            This question must be refreshed before it can be resolved. Retry Classification to rebuild it from the current policy state.
+          </p>
+          <Button
+            variant="warning"
+            size="sm"
+            :disabled="isActionBusy(`retry-classification-${item.id}`)"
+            :loading="isActionBusy(`retry-classification-${item.id}`)"
+            @click="$emit('retry-item', item)"
+          >
+            Retry Classification
+          </Button>
+        </div>
+
         <NativePendingQuestionActions
-          v-if="nativePendingQuestionPresentation(item)"
+          v-else-if="nativePendingQuestionPresentation(item)"
           :item="item"
           :presentation="nativePendingQuestionPresentation(item)"
           :is-action-busy="isActionBusy"
@@ -203,7 +222,7 @@
       </div>
 
       <div
-        v-if="changeMode[item.id]"
+        v-if="!item.policy_question_stale && changeMode[item.id]"
         class="action-item-change"
       >
         <select
@@ -233,7 +252,7 @@
       </div>
 
       <div
-        v-if="!isNativePendingQuestion(item) && !binaryPolicyOptions(item) && policyOptions(item).length > 0 && !changeMode[item.id]"
+        v-if="!item.policy_question_stale && !isNativePendingQuestion(item) && !binaryPolicyOptions(item) && policyOptions(item).length > 0 && !changeMode[item.id]"
         class="action-item-options"
       >
         <Button

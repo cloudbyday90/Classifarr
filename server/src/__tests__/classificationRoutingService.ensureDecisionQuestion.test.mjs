@@ -74,7 +74,7 @@ describe('ensureDecisionQuestion', () => {
         expect(build).not.toHaveBeenCalled();
     });
 
-    it('propagates existing question without calling builder when already present', async () => {
+    it('normalizes an existing question without calling the builder', async () => {
         const existingQ = { problem_summary: 'Which library?', question: 'Movies or Arthouse?' };
         const result = {
             needs_clarification: true,
@@ -85,7 +85,12 @@ describe('ensureDecisionQuestion', () => {
         const out = await ensureDecisionQuestion({ metadata: {}, result });
         expect(build).not.toHaveBeenCalled();
         expect(out.needs_clarification).toBe(true);
-        expect(out.policy_question).toBe(existingQ);
+        expect(out.policy_question).not.toBe(existingQ);
+        expect(out.policy_question.question).toBe('Does this item need a manual destination decision?');
+        expect(out.policy_question.meta.runtime_question_normalization).toMatchObject({
+            uncertainty_type: 'manual_selection_needed',
+            learning: { eligible: false, tier: 'blocked' },
+        });
     });
 
     it('builds and attaches a policy question when result has needs_clarification and no existing question', async () => {
@@ -98,9 +103,11 @@ describe('ensureDecisionQuestion', () => {
 
         const out = await ensureDecisionQuestion({ metadata, result, libraries });
         expect(out.needs_clarification).toBe(true);
-        expect(out.clarification).toBe(builtQ);
-        expect(out.policy_question).toBe(builtQ);
-        expect(out.pending_reason).toBe('Ambiguous genre');
+        expect(out.clarification).not.toBe(builtQ);
+        expect(out.policy_question.question).toBe('Does this item need a manual destination decision?');
+        expect(out.policy_question.question).not.toContain('horror');
+        expect(out.policy_question.options).toEqual([]);
+        expect(out.pending_reason).toBe('Destination fit');
     });
 
     it('requires clarification when method is fallback', async () => {
@@ -136,7 +143,7 @@ describe('ensureDecisionQuestion', () => {
         const out = await ensureDecisionQuestion({ metadata: {}, result });
 
         expect(out.needs_clarification).toBe(true);
-        expect(out.pending_reason).toBe('AI output requires review');
+        expect(out.pending_reason).toBe('Missing evidence');
         expect(build).toHaveBeenCalled();
     });
 
@@ -157,13 +164,16 @@ describe('ensureDecisionQuestion', () => {
         expect(build).toHaveBeenCalled();
     });
 
-    it('does not set clarification fields when builder returns null', async () => {
+    it('builds a bounded manual-decision question when the legacy builder returns null', async () => {
         build.mockResolvedValue(null);
         const result = { needs_clarification: true, clarification: null, policy_question: null };
         const out = await ensureDecisionQuestion({ metadata: {}, result });
         expect(out.needs_clarification).toBe(true);
-        expect(out.clarification).toBeNull();
-        expect(out.policy_question).toBeNull();
+        expect(out.clarification.question).toBe('Does this item need a manual destination decision?');
+        expect(out.policy_question.meta.runtime_question_normalization).toMatchObject({
+            uncertainty_type: 'manual_selection_needed',
+            learning: { eligible: false, tier: 'blocked' },
+        });
     });
 
     it('prefers result.policyResult over the passed-in policyResult arg', async () => {
@@ -192,7 +202,7 @@ describe('ensureDecisionQuestion', () => {
         };
         const out = await ensureDecisionQuestion({ metadata: {}, result });
         expect(out.needs_clarification).toBe(true);
-        expect(out.pending_reason).toBe('Below threshold');
+        expect(out.pending_reason).toBe('Missing evidence');
         expect(build).toHaveBeenCalled();
     });
 
@@ -208,7 +218,7 @@ describe('ensureDecisionQuestion', () => {
         };
         const out = await ensureDecisionQuestion({ metadata: {}, result });
         expect(out.needs_clarification).toBe(true);
-        expect(out.pending_reason).toBe('All confirmations required');
+        expect(out.pending_reason).toBe('Missing evidence');
         expect(build).toHaveBeenCalled();
     });
 });

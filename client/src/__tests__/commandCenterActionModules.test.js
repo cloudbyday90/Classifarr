@@ -247,6 +247,10 @@ describe('CommandCenter action modules', () => {
 
     expect(wrapper.text()).toContain('This question may be outdated because policy or library settings changed after it was generated.')
     expect(wrapper.text()).toContain('Retry Classification to refresh it before confirming.')
+    expect(wrapper.text()).toContain('This question must be refreshed before it can be resolved.')
+    const buttonLabels = wrapper.findAll('button').map(node => node.text())
+    expect(buttonLabels).toContain('Retry Classification')
+    expect(buttonLabels).not.toContain('Confirm')
   })
 
   it('renders explicit Yes/No controls for binary policy prompts', async () => {

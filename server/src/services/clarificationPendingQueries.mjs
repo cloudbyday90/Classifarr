@@ -1,6 +1,7 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { safeParseJson, SEED_INTEGRITY_CACHE_TTL_MS } from './clarificationUtils.mjs';
+import { getRuntimeQuestionNormalizationStatus } from './policyRuntimeQuestionNormalizer.mjs';
 
 const logger = createLogger('ClarificationQueries');
 
@@ -115,6 +116,17 @@ export async function getPendingClassifications(policyQuestionContext) {
                     policy_question_stale: false,
                     policy_question_current_context_version: null,
                     policy_question_stale_reason: null,
+                };
+            }
+
+            const normalizationStatus = getRuntimeQuestionNormalizationStatus(parsedQuestion);
+            if (!normalizationStatus.actionable) {
+                return {
+                    ...row,
+                    policy_question: parsedQuestion,
+                    policy_question_stale: true,
+                    policy_question_current_context_version: null,
+                    policy_question_stale_reason: normalizationStatus.reason,
                 };
             }
 

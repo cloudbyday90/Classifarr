@@ -6,6 +6,7 @@ import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 import { createStatusError, safeParseJson, parsePolicyQuestion, getQuestionOptionLibraryIds } from './clarificationUtils.mjs';
 import { isPolicyRuntimeQuestionPersistenceEnvelope } from './policyRuntimeQuestionPersistenceContract.mjs';
 import { policyNativePendingResolutionProvenanceService } from './policyNativePendingResolutionProvenance.mjs';
+import { getRuntimeQuestionNormalizationStatus } from './policyRuntimeQuestionNormalizer.mjs';
 
 const logger = createLogger('PolicyResolution');
 
@@ -103,8 +104,19 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
         }
 
         const policyQuestion = parsePolicyQuestion(classification.policy_question);
+        const normalizationStatus = getRuntimeQuestionNormalizationStatus(policyQuestion);
+        if (policyQuestion && !normalizationStatus.actionable) {
+            throw createStatusError(
+                'Policy question must be refreshed before it can be resolved',
+                409,
+                'policy_question_normalization_required'
+            );
+        }
         const isNativeRuntimeQuestion = isPolicyRuntimeQuestionPersistenceEnvelope(policyQuestion);
-        const allowLegacyRuleGeneration = generateRule === true && !isNativeRuntimeQuestion;
+        const isNormalizedRuntimeQuestion = normalizationStatus.contract === 'normalization';
+        const allowLegacyRuleGeneration = generateRule === true &&
+            !isNativeRuntimeQuestion &&
+            !isNormalizedRuntimeQuestion;
         if (policyQuestion) {
             const {
                 extractQuestionContext,

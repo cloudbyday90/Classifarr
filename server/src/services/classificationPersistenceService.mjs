@@ -24,6 +24,10 @@ import {
 import { discordBotService } from './discordBot.mjs';
 import { persistRagLoopStageEvents as _persistRagLoopStageEvents } from './classificationPersistenceRagEvents.mjs';
 import { rebindRetryLineage as _rebindRetryLineage } from './classificationPersistenceRetryLineage.mjs';
+import {
+  buildStaleRuntimeQuestionCleanup,
+  requiresRuntimeQuestionCleanup,
+} from './policyRuntimeQuestionNormalizer.mjs';
 
 const logger = createLogger('classificationPersistence');
 
@@ -135,6 +139,10 @@ export class ClassificationPersistenceService {
 
     if (!parsed || typeof parsed !== 'object') {
       return null;
+    }
+
+    if (requiresRuntimeQuestionCleanup(parsed)) {
+      parsed = buildStaleRuntimeQuestionCleanup(parsed);
     }
 
     try {

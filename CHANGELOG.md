@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Runtime Clarification Normalization**: Replaced AI- and legacy-authored
+  pending-question wording with a versioned server-owned destination contract.
+  Questions now use allow-listed uncertainty categories and server-known
+  library IDs, retain no raw AI rationale, block learning by default, and fail
+  closed to retry when a persisted question predates the contract.
+
 - **AI Provider Capability Authority**: Added server-owned, inspectable
   authority modes for local and cloud AI responses, shared output normalization,
   privacy-bounded aggregate capability telemetry, and deterministic routing

@@ -654,7 +654,7 @@ describe('getPendingClassifications', () => {
         expect(result[0].policy_question).toBeNull();
     });
 
-    test('enriches rows with stale check when policy_question present', async () => {
+    test('marks legacy persisted questions as requiring normalization cleanup', async () => {
         const parsedQ = { question: 'Where?', context: { version: 1 } };
         policyQuestionContext.buildQuestionContextCacheKey.mockReturnValue('key1');
         policyQuestionContext.extractQuestionContext.mockReturnValue({ version: 1 });
@@ -665,7 +665,8 @@ describe('getPendingClassifications', () => {
         });
         const result = await svc.getPendingClassifications();
         expect(result[0].policy_question_stale).toBe(true);
-        expect(result[0].policy_question_stale_reason).toBe('policy_context_changed');
+        expect(result[0].policy_question_stale_reason).toBe('normalization_required');
+        expect(policyQuestionContext.getPolicyQuestionContextVersion).not.toHaveBeenCalled();
     });
 
     test('returns [] on DB error', async () => {
@@ -768,7 +769,21 @@ describe('resolvePolicyQuestion', () => {
     test('throws 409 when policy question is stale', async () => {
         const client = makeMockClient();
         db.pool.connect.mockResolvedValueOnce(client);
-        const policyQ = { question: 'Where?', context: { version: 1 } };
+        const policyQ = {
+            problem_summary: 'Missing evidence',
+            why_uncertain: 'Current evidence is not strong enough to establish destination identity automatically.',
+            question: 'Is there enough evidence to treat this as a match?',
+            options: [{ label: 'Movies', library_name: 'Movies', library_id: 5, value: 'library:5' }],
+            meta: {
+                runtime_question_normalization: {
+                    version: 'policy.runtime_question_normalization.v1',
+                    uncertainty_type: 'missing_identity_evidence',
+                    frame_id: 'missing_evidence',
+                    cleanup_required: false,
+                    learning: { eligible: false, tier: 'blocked' },
+                },
+            },
+        };
         client.query
             .mockResolvedValueOnce({})
             .mockResolvedValueOnce({ rows: [{ id: 1, status: 'awaiting_decision', media_type: 'movie', metadata: null, library_name: 'M', policy_question: JSON.stringify(policyQ) }] })
@@ -778,6 +793,27 @@ describe('resolvePolicyQuestion', () => {
         policyQuestionContext.isPolicyQuestionStale.mockReturnValueOnce(true);
         await expect(svc.resolvePolicyQuestion(1, 5, 'opt', 'admin'))
             .rejects.toThrow('Policy question is stale');
+        expect(client.query).toHaveBeenCalledWith('ROLLBACK');
+    });
+
+    test('rejects a legacy policy question before resolution or learning', async () => {
+        const client = makeMockClient();
+        db.pool.connect.mockResolvedValueOnce(client);
+        client.query
+            .mockResolvedValueOnce({})
+            .mockResolvedValueOnce({ rows: [{
+                id: 1,
+                status: 'awaiting_decision',
+                media_type: 'movie',
+                metadata: null,
+                library_name: 'Movies',
+                policy_question: JSON.stringify({ question: 'Which genre should be prioritized?' }),
+            }] })
+            .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] });
+
+        await expect(svc.resolvePolicyQuestion(1, 5, 'opt', 'admin'))
+            .rejects.toThrow('Policy question must be refreshed');
+        expect(classificationEvidenceService.rememberExactMatch).not.toHaveBeenCalled();
         expect(client.query).toHaveBeenCalledWith('ROLLBACK');
     });
 
