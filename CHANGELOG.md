@@ -661,11 +661,12 @@ unchanged operator or runtime outcome.
 ### Security
 
 - **Dependabot And Audit Remediation**: Updated server Undici to `8.10.0`,
-  including the `6.28.0` Discord transitive override, to resolve Dependabot
-  alert #96 for malformed cache-control handling. Updated
-  `express-rate-limit`, `ip-address`, `socket.io-parser`, `brace-expansion`,
-  and `minimatch` to current fixed releases; production and full npm audits
-  now report zero vulnerabilities.
+  including the `6.28.0` Discord transitive override, and client Undici to
+  `7.29.0` to remediate Dependabot cache, retry, cookie, and header-injection
+  alerts. Updated client PostCSS to `8.5.25`, plus `express-rate-limit`,
+  `ip-address`, `socket.io-parser`, `brace-expansion`, and `minimatch` to
+  current fixed releases; production and full npm audits now report zero
+  vulnerabilities.
 
 ### Added
 

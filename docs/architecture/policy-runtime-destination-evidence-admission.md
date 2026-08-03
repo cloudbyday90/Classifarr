@@ -36,7 +36,7 @@ The design uses official guidance reviewed August 3, 2026:
   and [npm audit](https://docs.npmjs.com/cli/v11/commands/npm-audit/)
   support updating vulnerable direct and transitive dependencies from the
   lockfile-backed dependency graph. The implementation update also resolves
-  the active Undici Dependabot alert and current audit findings.
+  the active Undici and PostCSS Dependabot alerts and current audit findings.
 
 ## Options Considered
 
@@ -113,13 +113,15 @@ alter this value.
 
 ## Dependency Outcome
 
-- Updated direct `undici` to `8.10.0`; Dependabot alert #96 is fixed by the
-  upstream `8.9.0` patch line or later.
-- Updated the pinned Discord transitives to `undici` `6.28.0`.
+- Updated direct server `undici` to `8.10.0`, the pinned Discord transitives
+  to `6.28.0`, and client JSDOM's transitive Undici to `7.29.0`. Those lines
+  remediate Dependabot alerts #96 and #102 through #106.
+- Updated client PostCSS to `8.5.25`, above the `8.5.23` patched release for
+  Dependabot alert #101.
 - Updated `express-rate-limit` and transitive security overrides for
   `ip-address`, `socket.io-parser`, `brace-expansion`, and `minimatch`.
-- Both `npm audit --omit=dev --audit-level=high` and full `npm audit` report
-  zero vulnerabilities after the lockfile update.
+- Production and full audits in both server and client workspaces report zero
+  vulnerabilities after the lockfile updates.
 
 ## Verification
 
