@@ -12,9 +12,11 @@ Current execution focus:
    browser verification pending rather than claiming it from static evidence.
 2. **5R.1 Server Intent Contract Authority**, **5R.2 Write Preflight And
    Persistence Boundary**, **4R.2 Server Workflow Presentation Adapter**, and
-   **4R.3 Action Binding And Admission Feedback** are complete. **4R.4
-   Destination Proposal Card** is the next dependency-gated component; it
-   replaces manual observed-value reselection with the server-derived default.
+   **4R.3 Action Binding And Admission Feedback** are complete. Their current
+   contracts do not yet provide an admitted, revision-bound destination
+   proposal or a normal lifecycle entry. **5R.2a Proposal And Lifecycle
+   Admission Contract** is complete; **4R.4a Library Lifecycle Entry** is now
+   the next dependency-gated task before the 4R.4 destination proposal card.
 3. **8R.37.1 Runtime Capability Inventory And Isolation Decision** is a
    parallel release-maintenance/security audit. It cannot block 4R.1 or
    automatic native policy behavior.
@@ -28,8 +30,8 @@ The execution dependency is intentionally not numeric:
 
 ```text
 completed foundations: 0R -> 1R -> 2R -> 3R
-active product work: 4R.1 -> 5R.1/5R.2/4R.2 (complete) -> 4R.3 -> 4R.4/4R.5
-runtime trust work: 5R.3 through 5R.9 -> 4R.6 through 4R.9
+active product work: 4R.1 -> 5R.1/5R.2/4R.2/4R.3 (complete) -> 5R.2a -> 4R.4a/4R.4/4R.4b -> 4R.5
+runtime trust work: 5R.3 through 5R.10 -> 4R.6 through 4R.9
 parallel safety work: 8R installation/runtime lanes + 9R zero-debt gate
 ```
 
@@ -3109,9 +3111,9 @@ Phase 4R consumes, but does not replace, the surrounding authority work:
 
 - **3R** supplies the workflow vocabulary, component inventories, typed draft
   commands, accessibility baseline, and normal-path exclusions.
-- **5R.1, 5R.2, 5R.4, and 5R.5** supply server-owned intent, write,
-  clarification, and answer contracts. Phase 4R cannot introduce a browser
-  alternative for any of them.
+- **5R.1, 5R.2, 5R.2a, 5R.4, 5R.5, and 5R.10** supply server-owned intent,
+  initial-create, proposal/lifecycle, clarification, answer, and native-change
+  contracts. Phase 4R cannot introduce a browser alternative for any of them.
 - **6R.1, 6R.2, 6R.4, and 6R.5** supply observed evidence, declared-intent,
   automation-readiness, and bounded workflow projections. A UI component may
   ship only when the projection it requires exists and is validated.
@@ -3134,9 +3136,16 @@ removal criteria have passed together.
   client API operation, an explicit loading/disabled/error state, and an
   end-to-end test. When an operation is not implemented or not admitted, the
   control is absent or renders plain guidance; it is never a dead button.
-- Observed evidence is a proposal by default. It may prefill a local draft only
-  when the server marks it eligible; it is never silently persisted or treated
-  as a hard limit, avoid rule, review trigger, or broad learning decision.
+- Observed evidence is a proposal by default. The browser receives an opaque
+  proposal reference and a bounded display summary; it never receives a raw
+  observed-value payload merely to recreate the server proposal. The server
+  reconstructs, rechecks, and explicitly admits the proposal before any
+  persistence. Observed evidence is never silently persisted or treated as a
+  hard limit, avoid rule, review trigger, or broad learning decision.
+- A normal authoring entry is selected from a server-owned lifecycle state. A
+  library that already has a policy, has stale evidence, or is recovering is
+  routed to its bounded authoritative state instead of attempting another
+  create or exposing a database conflict.
 - Multi-select and chip controls are adjustment tools, not the main workflow.
   They appear only after the operator opens **Adjust this policy** or when the
   server identifies a specific missing decision.
@@ -3263,15 +3272,54 @@ Acceptance criteria:
 - A rejected action leaves the server projection authoritative and reports one
   understandable next state.
 
-Implementation outcome: complete. Native creation now calls the named API leaf
-through an action-local composable, preserves idempotency across safe retries,
-requires a server establishment receipt before success, and emits only a
-confirmed policy identifier for list refresh. Safe feedback now covers create,
-compatibility save, custom-value validation, and typed routing navigation;
-unsupported empty-state actions are non-interactive. See [Policy Authoring
-Action Binding And Feedback](policy-authoring-action-binding-and-feedback.md).
-Representative live-browser verification remains a separate 4R.1 requirement.
-**4R.4 is next.**
+Implementation outcome: the current native-create action component is complete.
+It calls the named API leaf through an action-local composable, preserves
+idempotency across safe retries, requires a server establishment receipt before
+success, and emits only a confirmed policy identifier for list refresh. Safe
+feedback now covers the currently reachable create, compatibility save,
+custom-value validation, and typed routing-navigation boundaries; unsupported
+empty-state actions are non-interactive. See [Policy Authoring Action Binding
+And Feedback](policy-authoring-action-binding-and-feedback.md).
+
+This is not a claim that every legacy list-level action is accepted as the
+final product path. The current normal create opener is absent, and list-level
+reset, maintenance, and raw failure surfaces remain explicit 4R.8 removal
+work. Representative live-browser verification remains a separate 4R.1
+requirement. **5R.2a is complete; 4R.4a is next.**
+
+### 4R.4a Library Lifecycle Entry
+
+Intent: give each connected library one authoritative authoring entry state
+before rendering a proposal or opening an editor.
+
+Dependencies: the completed 5R.2a contract provides a bounded candidate/lifecycle
+projection. This component does not infer whether a library can create, already has a
+policy, has stale evidence, or is recovering from local list state.
+
+Tasks:
+
+- Build one normal `/policies` entry component that lists only server-projected
+  candidate states: eligible to create, existing native policy, existing
+  compatibility maintenance, automatic recovery, or one bounded blocking
+  action.
+- Replace hidden local create-modal state with an explicit route or durable
+  route-state contract that preserves selected library, back navigation, and
+  focus restoration without exposing a second create path.
+- Send existing-policy candidates to their later 4R.7 inspection surface;
+  never let them issue another create request.
+- Keep automatic recovery informational and keep server-declared navigation
+  actions allow-listed. Do not add profile refresh, quota, reset, or
+  reconciliation controls to this entry.
+- Render safe load and action-result feedback. Remove browser `alert()` and
+  raw failure text from the replacement entry path.
+
+Acceptance criteria:
+
+- Every connected library has one visible, authoritative lifecycle outcome.
+- An eligible library can reach the proposal flow through one normal product
+  entry; an existing policy cannot enter native create.
+- Refresh, reload, and back navigation retain or safely restore the selected
+  lifecycle state without browser-derived policy decisions.
 
 ### 4R.4 Destination Proposal Card
 
@@ -3279,13 +3327,17 @@ Intent: make the already-known library meaning the default first decision.
 
 Tasks:
 
-- Build one `DestinationProposalCard` from the 4R.2 view model.
+- Build one `DestinationProposalCard` from the 4R.2 display model and the
+  5R.2a proposal-admission reference. The display model must not be widened
+  with raw observed values just to make the card actionable.
 - Show concise observed-library context, current declared purpose when it
   exists, evidence quality, and a bounded explanation of why the proposal is
   available or unavailable.
-- For eligible evidence, initialize a visible proposed intent that can be
-  created without reselecting every observed value. Clearly distinguish
-  `proposed` from `saved` and `adjusted` from `observed`.
+- For eligible evidence, render the server-derived proposed intent with its
+  opaque proposal reference and revision held only for the admitted action.
+  The browser forwards the reference and any allow-listed adjustment commands;
+  the server reconstructs and rechecks the intent before persistence.
+  Clearly distinguish `proposed` from `saved` and `adjusted` from `observed`.
 - For sparse or unavailable evidence, show the smallest safe starting action;
   do not claim that absent data defines a policy or expose a browser refresh.
 - Do not render a generic `Belongs Here` multi-select as a mandatory first
@@ -3300,10 +3352,44 @@ Acceptance criteria:
 - New and sparse libraries receive actionable guidance without a false
   readiness failure.
 
+### 4R.4b Proposal Outcome Recovery
+
+Intent: turn stale, concurrent, and interrupted proposal attempts into one
+authoritative next state instead of a blind browser retry.
+
+Dependencies: the completed 5R.2a contract returns bounded outcome identifiers
+for stale proposal, existing policy, recovery pending, authorization rejection, and
+retryable transport failure.
+
+Tasks:
+
+- On proposal revision mismatch, profile change, or stale admission, discard
+  the local proposal reference and reload the lifecycle/proposal projection.
+- On a duplicate or concurrent create, resolve the server-owned existing
+  policy state and offer its inspection path; never expose a database conflict
+  or resubmit a newly generated create payload.
+- On a lost response or browser return, query lifecycle state before offering
+  a new create. Retain the action idempotency key only for the unchanged active
+  attempt; do not persist raw request bodies in browser storage.
+- Keep success, stale, rejected, recovery, and retryable feedback mutually
+  exclusive and announced through the bounded status surface.
+
+Acceptance criteria:
+
+- Two tabs, a refresh after submission, and a changed profile cannot create a
+  second policy or leave the operator with an ambiguous result.
+- Recovery from any create outcome starts from a fresh authoritative lifecycle
+  projection, not cached observed values or browser-derived intent.
+
 ### 4R.5 Intent Adjustment Disclosure
 
-Intent: retain meaningful operator control without making editing the default
-workflow.
+Intent: retain meaningful create-time operator control without making editing
+the default workflow.
+
+Scope: this task is limited to a new policy proposal. Persisted native-policy
+changes remain unavailable until 5R.10 provides a separate native-change
+admission contract; this disclosure must not fall back to a legacy update
+payload.
 
 Tasks:
 
@@ -3317,7 +3403,10 @@ Tasks:
   explanation and disabled reason per unavailable value; custom entry remains
   bounded by the server admission contract.
 - Preserve local changes only for the active library and clear/revalidate them
-  when the authoritative workflow revision changes.
+  when the authoritative workflow or proposal revision changes.
+- Forward only allow-listed adjustment commands with the proposal reference;
+  the server resolves canonical values and rejects commands that no longer
+  apply to the current proposal.
 
 Acceptance criteria:
 
@@ -3326,11 +3415,17 @@ Acceptance criteria:
   compatibility payload.
 - Keyboard and assistive-technology users can discover, operate, and leave the
   adjustment area without losing context.
+- A persisted native policy never exposes a save action through this
+  create-time disclosure before 5R.10 is complete.
 
 ### 4R.6 Material Exception Controls
 
 Intent: surface constraints, routing, and review only when they materially
 change the automatic outcome.
+
+Dependencies: 5R.3 through 5R.5 must provide provider-authority,
+normalization, and question/answer contracts before a material exception can
+be rendered as an operator action.
 
 Tasks:
 
@@ -3362,12 +3457,18 @@ Acceptance criteria:
 Intent: separate new-policy establishment from routine inspection and the
 bounded maintenance of an existing policy.
 
+Dependencies: 5R.10 Native Intent Change Admission must be complete before
+this task exposes a persisted native-policy modification. Until then, native
+inspection remains read-only and compatibility maintenance remains isolated.
+
 Tasks:
 
 - Render persisted native intent as a compact server-owned summary with
   current automation status and the next admitted action, if any.
 - Enter editing only from an explicit maintenance intent; do not reopen the
   create flow or require every original choice to be reselected.
+- Bind a maintenance save only to the 5R.10 revision-checked native-change
+  command. Do not call the legacy policy update route with native fields.
 - Keep compatibility maintenance isolated until its Phase 8R deletion gate;
   label it as maintenance without presenting it as the native normal path.
 - Preserve route/back-navigation/focus behavior across list, create, summary,
@@ -3392,6 +3493,11 @@ Tasks:
 - Remove obsolete summary cards, duplicated setup grids, raw threshold
   controls, template-first entry, replay/impact/provider panels, stale anchors,
   and their unused state/composables/tests/docs.
+- Remove the unreachable native-create modal state, legacy list reset/recreate
+  control, reconciliation-maintenance link, compatibility-first copy, and
+  browser `alert()`/raw-error paths from normal policy authoring. Retained
+  maintenance must live behind its named server-side boundary, not a policies
+  page link.
 - Retain migration verifier and compatibility maintenance artifacts only behind
   their named server-side gates; do not hide them in an `advanced` normal-user
   section.
@@ -3403,6 +3509,9 @@ Acceptance criteria:
 - There is one normal policy-authoring path per native state.
 - Removed controls have no reachable event handler, route, test fixture, or
   documentation claim.
+- Repository and browser assertions fail if normal policy authoring reintroduces
+  raw alerts, reset/recreate behavior, reconciliation maintenance, or a second
+  create entry.
 - Compatibility artifacts have an explicit temporary owner and Phase 8R
   deletion criterion.
 
@@ -3413,9 +3522,10 @@ component props.
 
 Tasks:
 
-- Add browser-level coverage for each state in 4R.1, including action success,
-  admission rejection, stale response, automatic recovery, and no-action
-  guidance.
+- Add browser-level coverage for each state in 4R.1, including eligible
+  create, existing policy, sparse evidence, stale proposal, concurrent create,
+  lost-response recovery, admission rejection, automatic recovery, and
+  no-action guidance.
 - Test keyboard flow, focus placement/restoration, disclosure state,
   multi-select/chip behavior, error/status announcement, and narrow viewport
   layout against the live entry path.
@@ -3440,38 +3550,56 @@ Acceptance criteria:
 Implement Phase 4R in this order:
 
 1. **4R.1 Live Entry-Path And Action Inventory**
-   Establishes the actual browser cutline and prevents another documentation-
-   only completion claim.
+   Its source inventory is complete. Run its representative browser-state and
+   action verification after the new normal entry exists, then again as part of
+   final phase closure.
 2. **4R.2 Server Workflow Presentation Adapter**
    Complete. It creates the single validated read boundary for rendered work.
 3. **4R.3 Action Binding And Admission Feedback**
-   Complete. It makes visible controls real before rearranging them.
-4. **4R.4 Destination Proposal Card**
-   Delivers the library-first automated default.
-5. **4R.5 Intent Adjustment Disclosure**
+   Complete for the current native-create component. It is not a reachable
+   normal lifecycle entry.
+4. **5R.2a Proposal And Lifecycle Admission Contract**
+   Complete. It adds the server-owned candidate state, opaque proposal
+   reference, stale/concurrency outcomes, and admission reconstruction needed
+   before the browser can create from observed library meaning.
+5. **4R.4a Library Lifecycle Entry**
+   Gives every library one authoritative create, inspect, recovery, or blocked
+   state before opening authoring UI.
+6. **4R.4 Destination Proposal Card**
+   Delivers the library-first automated default from the admitted proposal,
+   without asking the operator to reselect known evidence.
+7. **4R.4b Proposal Outcome Recovery**
+   Resolves stale proposals, competing attempts, and lost responses by
+   reloading the authoritative lifecycle state rather than retrying blindly.
+8. **4R.5 Intent Adjustment Disclosure**
    Adds bounded edit control without increasing normal-path decision load.
-6. **4R.6 Material Exception Controls**
+9. **5R.3 through 5R.10 Server Runtime And Native-Change Authority**
+   Close the provider, question, learning, verifier, test, and native-change
+   contracts before rendering persistent exceptions or maintenance controls.
+10. **4R.6 Material Exception Controls**
    Shows constraints and recovery only when they change the outcome.
-7. **4R.7 Persisted Policy Summary And Intentional Maintenance Entry**
+11. **4R.7 Persisted Policy Summary And Intentional Maintenance Entry**
    Separates lifecycle states and prevents create/edit confusion.
-8. **4R.8 Legacy Builder Cutover And Removal**
+12. **4R.8 Legacy Builder Cutover And Removal**
    Removes the parallel normal path.
-9. **4R.9 Accessibility, Responsive Behavior, And End-To-End Workflow Tests**
+13. **4R.9 Accessibility, Responsive Behavior, And End-To-End Workflow Tests**
    Proves the delivered flow works in the live product.
 
-Next implementation task: **4R.4 Destination Proposal Card**. The 4R.1 source
-inventory still requires representative live-browser verification, but 4R.3
-has bound the available controls to admitted actions and truthful outcomes. Do
-not add another generic suggestion control, advanced setting, or maintenance
-dialog; reduce the normal path to the server-derived proposal and its one
-admitted create action.
+Next implementation task: **4R.4a Library Lifecycle Entry**.
+The 4R.1 source inventory still requires representative live-browser
+verification, and 4R.3 has bound the existing component's controls to admitted
+actions and truthful outcomes. The completed 5R.2a contract supplies the
+durable candidate lifecycle and admission-bound proposal; do not add another
+picker, generic suggestion control, advanced setting, or maintenance dialog in
+place of the 4R.4a lifecycle entry.
 
 ## Phase 5R: Server Authority, Runtime Questions, And Learning Guard
 
 Status: not yet closed. Existing services and tests are inputs to this phase,
-not a completion claim. The first required delivery tranche is 5R.1 and 5R.2
-because 4R cannot safely replace the browser workflow until the server-owned
-read and write boundary is reconciled and tested as one contract.
+not a completion claim. The completed 5R.1 and 5R.2 tranche established the
+server-owned read and initial-create boundary. 5R.2a is now the immediate
+delivery tranche because 4R cannot safely replace the browser workflow until
+that boundary also owns proposal lifecycle and create admission.
 
 Intent: make the server the authority for policy intent contracts, runtime
 question shape, AI/model authority, and durable learning decisions. Phase 5R is
@@ -3571,6 +3699,84 @@ Acceptance criteria:
   by accident.
 - Diagnostics are sanitized and bounded.
 - Future native intent persistence has a clear insertion point.
+
+`5R.2` deliberately admits only the initial native-create transaction. It does
+not expose a normal library candidate lifecycle, bind a server proposal to that
+transaction, or admit persisted native changes. Those distinct contracts are
+owned by `5R.2a` and `5R.10` respectively.
+
+### 5R.2a Proposal And Lifecycle Admission Contract
+
+Intent: make observed-library proposals, library lifecycle selection, and
+create outcomes server-authoritative so the normal browser path can automate
+known intent without accepting a client-reconstructed policy meaning.
+
+Dependencies: 5R.1 and 5R.2 are complete inputs. This task extends their
+authority boundary; it does not weaken preflight or turn a display projection
+into a write credential.
+
+Tasks:
+
+- Define one bounded server-owned lifecycle projection for each connected
+  library. Its allow-listed states must distinguish at least:
+  - eligible to create from a current proposal,
+  - an existing native policy,
+  - an existing compatibility policy that requires a bounded maintenance
+    route,
+  - evidence/profile recovery in progress or required, and
+  - a safely blocked state.
+- Publish an opaque, short-lived proposal reference and revision only when the
+  library is eligible. The accompanying display summary may describe evidence
+  quality and proposed purpose, but must not expose raw profile signals,
+  provider data, or a serializable observed-value payload.
+- Build and retain the canonical proposal server-side from current authority,
+  observed evidence, and policy constraints. Bind its reference to the library,
+  current source/profile revision, actor authorization scope, and intended
+  create operation.
+- Add a narrow proposal-admission create command. It accepts the library
+  identifier, proposal reference and revision, an idempotency key, and only
+  explicitly allow-listed adjustment commands. It reconstructs and rechecks
+  the canonical proposal inside the transaction; it never trusts a browser
+  recreation of observed signals or declared intent.
+- Recheck current lifecycle, authorization, proposal freshness, and the
+  one-policy-per-library invariant at admission time. Map duplicate,
+  concurrent, stale, recovery, authorization, and retryable outcomes to
+  stable bounded result identifiers and a refreshed lifecycle projection.
+- Make a lost browser response recoverable through a lifecycle read rather
+  than a second create request. Do not disclose idempotency material, raw
+  request bodies, database errors, or internal policy diagnostics in either
+  read or write responses.
+- Add focused service and route tests for current admission, stale proposal,
+  profile revision change, concurrent tabs, duplicate idempotency replay,
+  existing-policy conflict, recovery pending, unauthorized request, and
+  transport-loss recovery.
+
+Acceptance criteria:
+
+- A browser can select a library but cannot manufacture, broaden, or replay a
+  proposal outside its bounded server admission contract.
+- One library has exactly one authoritative authoring lifecycle state at a
+  time; an existing policy is returned as an existing-policy state, never as a
+  database error or a second-create invitation.
+- A profile change, stale proposal, competing browser, or lost response leads
+  to a safe next state without a duplicate policy or a blind browser retry.
+- The projection is sufficient for 4R.4a and 4R.4, but remains display-safe
+  and does not leak raw evidence or provider internals.
+
+Implementation status:
+
+- Complete. `policyAuthoringProposalLifecycleService.mjs` derives a candidate
+  only from `policyLibraryProfileInitialIntent.mjs`, which validates current
+  stored-profile rules before creating a proposal revision.
+- `policy_authoring_proposals` persists an opaque, actor- and library-bound,
+  15-minute proposal record containing canonical declared intent and a
+  display-safe summary, never raw profile or browser payload data.
+- Admin-only lifecycle, prepare, and admission routes enforce strict input,
+  no-store responses, rate limiting, transactional row locks, re-derivation,
+  native-create idempotency replay, and bounded stale/expired/existing outcomes.
+- Focused service, route, and migration tests cover current, missing-profile,
+  stale, expired, existing-policy, replay, invalid-input, and unauthorized
+  paths. The next work is **4R.4a Library Lifecycle Entry**.
 
 ### 5R.3 AI Provider Capability And Authority Modes
 
@@ -3779,6 +3985,44 @@ Acceptance criteria:
   migration verifier contracts.
 - Phase 6R can consume server contracts without inheriting old UI assumptions.
 
+### 5R.10 Native Intent Change Admission
+
+Intent: admit a persisted native-policy change through a distinct,
+revision-checked server command after runtime and learning authority are
+bounded.
+
+Dependencies: 5R.3 through 5R.9. Native updates remain unsupported until this
+task is complete; no generic legacy policy update route becomes an implicit
+native maintenance path.
+
+Tasks:
+
+- Define a narrow native-intent change command with a policy identifier, the
+  current native authority revision, client request identity, and only
+  allow-listed change commands. Do not expose a generic policy `PUT` or accept
+  browser-synthesized compatibility projections as a native update.
+- Authorize the actor, lock or otherwise serialize the active native authority
+  record, recheck its revision and lifecycle, validate the canonical command
+  set, and apply the change atomically with reason codes and audit provenance.
+- Return a fresh bounded authority and lifecycle projection for success,
+  stale-revision, policy-replaced, recovery-required, authorization-rejected,
+  and retryable outcomes. Preserve idempotent replay semantics without
+  disclosing request or persistence internals.
+- Keep legacy policy updates compatibility-scoped and explicitly reject any
+  attempt to smuggle native establishment or native-change fields through
+  their route.
+- Add focused tests for allowed changes, stale revisions, concurrent updates,
+  replay, unavailable authority, unauthorized actors, rejected unknown
+  commands, and legacy-route isolation.
+
+Acceptance criteria:
+
+- A persisted native policy changes only through a revision-bound, audited,
+  allow-listed server command.
+- A stale or competing edit cannot overwrite a newer policy state.
+- 4R.7 can provide intentional maintenance without reviving the legacy modal,
+  reset/recreate flow, or generic update semantics.
+
 ## Phase 5R Work Sequence
 
 Implement Phase 5R in this order:
@@ -3787,20 +4031,26 @@ Implement Phase 5R in this order:
    Establishes server-owned meaning.
 2. **5R.2 Write Preflight And Persistence Boundary**
    Keeps compatibility saves safe while native initial creation is admitted.
-3. **5R.3 AI Provider Capability And Authority Modes**
+3. **5R.2a Proposal And Lifecycle Admission Contract**
+   Complete. It provides the server-owned candidate lifecycle and
+   proposal-backed create admission needed by the active 4R normal-path work.
+4. **5R.3 AI Provider Capability And Authority Modes**
    Bounds model agency before runtime question work.
-4. **5R.4 Runtime Clarification Normalizer**
+5. **5R.4 Runtime Clarification Normalizer**
    Replaces vague AI/operator questions with deterministic contracts.
-5. **5R.5 Question And Answer Contract**
+6. **5R.5 Question And Answer Contract**
    Gives UI and Discord one answer model.
-6. **5R.6 Learning Guard And Outcome Separation**
+7. **5R.6 Learning Guard And Outcome Separation**
    Prevents resolved items from becoming accidental policy learning.
-7. **5R.7 Stale Question Cleanup And Migration Safety**
+8. **5R.7 Stale Question Cleanup And Migration Safety**
    Retires unsafe old questions.
-8. **5R.8 Preview, Replay, And Migration Verifier Cutline**
+9. **5R.8 Preview, Replay, And Migration Verifier Cutline**
    Keeps only verifier pieces that support migration or engine safety.
-9. **5R.9 Server Authority Test Reset**
+10. **5R.9 Server Authority Test Reset**
    Protects the new trust boundaries.
+11. **5R.10 Native Intent Change Admission**
+   Provides the only persisted native maintenance command after the runtime
+   and test authority boundaries are closed.
 
 Current starting point:
 
@@ -3813,9 +4063,12 @@ Current starting point:
   creation is admitted transactionally with an idempotency key and returns a
   fresh authority projection; draft sidecars remain validation-only
   compatibility input. See [Policy Intent Write Admission](policy-intent-write-admission.md).
+- **5R.2a Proposal And Lifecycle Admission Contract is complete.** It provides
+  the lifecycle state and opaque, revision-bound proposal needed to replace
+  manual observed-value reselection and prevent duplicate or stale creates.
 - **4R.2 Server Workflow Presentation Adapter and 4R.3 Action Binding And
-  Admission Feedback are complete.** Follow with **4R.4 Destination Proposal
-  Card** before adding another rendered create/save choice.
+  Admission Feedback are complete.** They are necessary display and action
+  boundaries, but they do not substitute for 5R.2a admission authority.
 - Do not add preview/replay product UI or let AI clarification text, UI
   answers, or Discord payloads authorize learning directly.
 
@@ -11248,9 +11501,9 @@ Required coverage should follow the re-imagined phase boundaries:
 
 The next sequence is dependency-gated rather than phase-number order:
 
-1. **4R.1 Live Entry-Path And Action Inventory**: record every real authoring
-   entry path, rendered state, visible action, and action result. This is the
-   current task and must identify the exact component cutline.
+1. **4R.1 Live Entry-Path And Action Inventory**: source-backed inventory is
+   complete. Representative browser-state and action verification remains a
+   closure gate after the normal entry is implemented.
 2. **5R.1 Server Intent Contract Authority**: complete. The active read model
    now publishes native authority and marks the v1 projection as a read-only
    compatibility bridge.
@@ -11261,15 +11514,18 @@ The next sequence is dependency-gated rather than phase-number order:
    one validated, immutable, non-authoritative page-read boundary.
 5. **4R.3 Action Binding And Admission Feedback**: complete. Native create
    now has an action-local admitted API boundary and safe result feedback.
-6. **4R.4 Destination Proposal Card** and **4R.5 Intent Adjustment
-   Disclosure**: deliver the automation-first create/edit surface. A ready
-   library must not require reselecting evidence that the server already
-   proposed.
-7. **5R.3 through 5R.9**, then **4R.6 through 4R.9**: finish model/question/
-   learning authority before exposing material exceptions, then complete
-   persisted summary, legacy UI cutover, accessibility, and browser end-to-end
-   evidence.
-8. Continue **8R** as separate native-runtime, per-installation evidence, and
+6. **5R.2a Proposal And Lifecycle Admission Contract**: complete. It supplies
+   the server-owned candidate lifecycle, opaque proposal reference,
+   current-state recheck, and bounded stale/concurrency recovery outcomes.
+7. **4R.4a, 4R.4, 4R.4b, and 4R.5**: next deliver the normal lifecycle entry,
+   automated proposal default, outcome recovery, and exceptional adjustment
+   disclosure. A ready library must not require reselecting evidence the
+   server already proposed.
+8. **5R.3 through 5R.10**, then **4R.6 through 4R.9**: finish model/question/
+   learning and native-change authority before exposing material exceptions,
+   then complete revision-safe maintenance, legacy UI cutover, accessibility,
+   and browser end-to-end evidence.
+9. Continue **8R** as separate native-runtime, per-installation evidence, and
    CI-only retirement lanes. Continue the **9R** zero-debt naming gates on each
    component. Neither lane may delay 4R's normal authoring path.
 

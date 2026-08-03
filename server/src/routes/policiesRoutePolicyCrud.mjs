@@ -2,6 +2,7 @@ import { registerPolicyReadRoutes } from './policiesRoutePolicyRead.mjs';
 import { registerPolicyOperatorWorkflowReadRoutes } from './policiesRouteOperatorWorkflowRead.mjs';
 import { registerPolicyOperatorWorkflowCustomIntentSignalRoutes } from './policiesRouteOperatorWorkflowCustomIntentSignal.mjs';
 import { registerPolicyConstraintAdmissionRoutes } from './policiesRoutePolicyConstraintAdmission.mjs';
+import { registerPolicyAuthoringProposalRoutes } from './policiesRoutePolicyAuthoringProposal.mjs';
 import { registerPolicyNativeIntentReversionRoutes } from './policiesRouteNativeIntentReversion.mjs';
 import { registerPolicyNativeIntentReconciliationRoutes } from './policiesRouteNativeIntentReconciliation.mjs';
 import { registerPolicyInitialIntentEstablishmentRoutes } from './policiesRouteInitialIntentEstablishment.mjs';
@@ -14,6 +15,7 @@ export function registerPolicyCrudRoutes(router, deps) {
   registerPolicyOperatorWorkflowReadRoutes(router, deps);
   registerPolicyOperatorWorkflowCustomIntentSignalRoutes(router, deps);
   registerPolicyConstraintAdmissionRoutes(router, deps);
+  registerPolicyAuthoringProposalRoutes(router, deps);
   registerPolicyReadRoutes(router, deps);
   registerPolicyNativeIntentReversionRoutes(router, deps);
   registerPolicyNativeIntentReconciliationRoutes(router, deps);

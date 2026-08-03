@@ -80,8 +80,9 @@ Decision: selected.
    retryable network failure.
 4. Treat unavailable or malformed presentation data as non-actionable. Do not
    fall back to browser-derived readiness, recovery, or policy meaning.
-5. 4R.3 is complete. Implement 4R.4 next, using the existing display-safe
-   proposal as the normal-path default rather than another picker.
+5. 4R.3 and 5R.2a are complete. The existing display-safe proposal remains a
+   read model; 4R.4a must consume the server lifecycle state and opaque,
+   revision-bound admission reference without widening either model.
 
 ## Security And Verification
 

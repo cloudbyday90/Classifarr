@@ -157,7 +157,7 @@ const POLICY_NATIVE_STORAGE_CUTOVER_TEST_HANDOFFS = deepFreeze([
       POLICY_NATIVE_STORAGE_CUTOVER_TEST_HANDOFF_SOURCE_DISPOSITION_IDS.REMOVE_NAMED_SCOPE_RETAIN_TEST_FILE,
     nativeWorkflowTestPath: 'client/src/__tests__/PolicyBuilderModal.test.js',
     nativeWorkflowTestNameFragments: [
-      'creates a native intent establishment payload only after observed values are explicitly accepted',
+      'submits the narrow native creation contract only after observed values are explicitly accepted',
       'keeps native creation open for a persisted server-owned policy handoff',
     ],
     nativeStorageCoverageIds: [

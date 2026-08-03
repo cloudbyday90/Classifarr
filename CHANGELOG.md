@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Authoring Proposal Admission**: Added an admin-only, profile-derived
+  lifecycle and opaque proposal admission API. It revalidates the canonical
+  candidate in one transaction, expires and consumes proposal references,
+  preserves durable idempotent native-create replay, returns bounded recovery
+  outcomes, and never accepts browser-assembled policy meaning.
+
 - **Policy Authoring Action Feedback**: Bound native policy creation directly
   to the named API contract with action-local idempotency, confirmed server
   receipts, safe pending/rejection/stale/retry/unavailable feedback, bounded

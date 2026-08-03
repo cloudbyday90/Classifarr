@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-07-29T22:58:51.319Z
--- Latest Migration: 20260729_150000_bind_policy_library_rebuild_verification_runs.sql
+-- Generated: 2026-08-03T13:42:58.558Z
+-- Latest Migration: 20260803_120000_add_policy_authoring_proposals.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3799,6 +3799,53 @@ ALTER SEQUENCE public.pattern_match_log_id_seq OWNED BY public.pattern_match_log
 
 
 --
+-- Name: policy_authoring_proposals; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_authoring_proposals (
+    id bigint NOT NULL,
+    proposal_reference character varying(96) NOT NULL,
+    library_id integer NOT NULL,
+    actor_id integer NOT NULL,
+    proposal_revision character(64) NOT NULL,
+    profile_fingerprint character(64) NOT NULL,
+    policy_name character varying(255) NOT NULL,
+    canonical_declared_intent jsonb NOT NULL,
+    display_summary jsonb NOT NULL,
+    state character varying(20) DEFAULT 'prepared'::character varying NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    consumed_policy_id integer,
+    consumed_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT policy_authoring_proposals_consumption_shape_chk CHECK (((((state)::text = 'prepared'::text) AND (consumed_policy_id IS NULL) AND (consumed_at IS NULL)) OR (((state)::text = 'consumed'::text) AND (consumed_policy_id IS NOT NULL) AND (consumed_at IS NOT NULL)))),
+    CONSTRAINT policy_authoring_proposals_payload_shape_chk CHECK (((jsonb_typeof(canonical_declared_intent) = 'object'::text) AND (jsonb_typeof(display_summary) = 'object'::text))),
+    CONSTRAINT policy_authoring_proposals_reference_shape_chk CHECK (((proposal_reference)::text ~ '^[A-Za-z0-9_-]{32,96}$'::text)),
+    CONSTRAINT policy_authoring_proposals_revision_shape_chk CHECK (((proposal_revision ~ '^[a-f0-9]{64}$'::text) AND (profile_fingerprint ~ '^[a-f0-9]{64}$'::text))),
+    CONSTRAINT policy_authoring_proposals_state_chk CHECK (((state)::text = ANY (ARRAY[('prepared'::character varying)::text, ('consumed'::character varying)::text])))
+);
+
+
+--
+-- Name: policy_authoring_proposals_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.policy_authoring_proposals_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: policy_authoring_proposals_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.policy_authoring_proposals_id_seq OWNED BY public.policy_authoring_proposals.id;
+
+
+--
 -- Name: policy_authorized_outcome_source_event_receipts; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -6800,6 +6847,13 @@ ALTER TABLE ONLY public.pattern_match_log ALTER COLUMN id SET DEFAULT nextval('p
 
 
 --
+-- Name: policy_authoring_proposals id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_authoring_proposals ALTER COLUMN id SET DEFAULT nextval('public.policy_authoring_proposals_id_seq'::regclass);
+
+
+--
 -- Name: policy_authorized_outcome_source_event_receipts id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -7806,6 +7860,22 @@ ALTER TABLE ONLY public.pattern_analysis_config
 
 ALTER TABLE ONLY public.pattern_match_log
     ADD CONSTRAINT pattern_match_log_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_authoring_proposals policy_authoring_proposals_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_authoring_proposals
+    ADD CONSTRAINT policy_authoring_proposals_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_authoring_proposals policy_authoring_proposals_reference_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_authoring_proposals
+    ADD CONSTRAINT policy_authoring_proposals_reference_unique UNIQUE (proposal_reference);
 
 
 --
@@ -9380,6 +9450,20 @@ CREATE INDEX idx_patterns_type_status ON public.discovered_patterns USING btree 
 
 
 --
+-- Name: idx_policy_authoring_proposals_actor_created; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_authoring_proposals_actor_created ON public.policy_authoring_proposals USING btree (actor_id, created_at DESC);
+
+
+--
+-- Name: idx_policy_authoring_proposals_library_state_expiry; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_authoring_proposals_library_state_expiry ON public.policy_authoring_proposals USING btree (library_id, state, expires_at);
+
+
+--
 -- Name: idx_policy_authorized_outcome_receipts_classification; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10801,6 +10885,22 @@ ALTER TABLE ONLY public.pattern_match_log
 
 ALTER TABLE ONLY public.pattern_match_log
     ADD CONSTRAINT pattern_match_log_pattern_id_fkey FOREIGN KEY (pattern_id) REFERENCES public.discovered_patterns(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_authoring_proposals policy_authoring_proposals_consumed_policy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_authoring_proposals
+    ADD CONSTRAINT policy_authoring_proposals_consumed_policy_id_fkey FOREIGN KEY (consumed_policy_id) REFERENCES public.library_policies(id) ON DELETE SET NULL;
+
+
+--
+-- Name: policy_authoring_proposals policy_authoring_proposals_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_authoring_proposals
+    ADD CONSTRAINT policy_authoring_proposals_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
 
 
 --
@@ -13309,6 +13409,7 @@ FROM unnest(ARRAY[
     '20260726_140000_generalize_policy_profile_refresh_outbox.sql',
     '20260728_120000_add_policy_native_profile_refresh_circuits.sql',
     '20260729_140000_add_policy_migration_verification_runs.sql',
-    '20260729_150000_bind_policy_library_rebuild_verification_runs.sql'
+    '20260729_150000_bind_policy_library_rebuild_verification_runs.sql',
+    '20260803_120000_add_policy_authoring_proposals.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

@@ -120,8 +120,9 @@ route behavior remains covered.
 
 ## Next Task
 
-**5R.2 Write Preflight And Persistence Boundary is complete.** Its admission,
-idempotency, replay, and compatibility decisions are recorded in [Policy Intent
-Write Admission](policy-intent-write-admission.md). Proceed with **4R.2 Server
-Workflow Presentation Adapter** so browser presentation consumes these
-server-owned contracts without restoring browser-owned policy authority.
+**5R.2 Write Preflight And Persistence Boundary and 5R.2a Proposal And
+Lifecycle Admission Contract are complete.** Their admission, idempotency,
+replay, lifecycle, and proposal decisions are recorded in [Policy Intent Write
+Admission](policy-intent-write-admission.md) and [Policy Authoring Proposal
+Lifecycle Admission](policy-authoring-proposal-lifecycle-admission.md). Proceed
+with **4R.4a Library Lifecycle Entry** before adding the normal browser path.

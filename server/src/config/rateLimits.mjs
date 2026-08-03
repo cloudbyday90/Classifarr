@@ -101,6 +101,16 @@ export const policyConstraintWriteAdmissionLimiterConfig = {
   skip: (_req) => process.env.NODE_ENV === 'test',
 };
 
+/** Policy authoring proposal preparation and admission (per IP, per 15 minutes). */
+export const policyAuthoringProposalLimiterConfig = {
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { error: 'Too many policy proposal requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (_req) => process.env.NODE_ENV === 'test',
+};
+
 /** Settings — SSL connectivity test (per IP, per hour). */
 export const sslTestLimiterConfig = {
   windowMs: 60 * 60 * 1000,

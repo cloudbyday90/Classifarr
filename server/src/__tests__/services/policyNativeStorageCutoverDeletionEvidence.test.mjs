@@ -165,7 +165,7 @@ function buildRetiredSharedScopeSourceText() {
       'withholds selection while the observed profile is stale',
     ].join('\n'),
     'client/src/__tests__/PolicyBuilderModal.test.js': [
-      'creates a native intent establishment payload only after observed values are explicitly accepted',
+      'submits the narrow native creation contract only after observed values are explicitly accepted',
       'keeps native creation open for a persisted server-owned policy handoff',
     ].join('\n'),
   };

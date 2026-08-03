@@ -28,8 +28,10 @@ routing exception is the typed `map_routing_destination` navigation action;
 navigation failure remains in place and receives one retryable result message.
 
 This does not claim the normal browser entry path is complete. The 4R.1
-representative browser verification remains pending, and 4R.4 will replace
-manual observed-value reselection with the server-derived destination proposal.
+representative browser verification remains pending. Before 4R.4 can replace
+manual observed-value reselection, the completed 5R.2a server contract supplies
+a server-derived destination proposal and library lifecycle state to the
+native-create admission command.
 
 ## Guidance Reviewed
 
@@ -101,9 +103,9 @@ Decision: rejected.
    never render raw response errors.
 5. Render only allow-listed local navigation actions. Keep unsupported actions
    non-interactive until a dedicated server or local typed contract exists.
-6. Implement 4R.4 next: use the validated server proposal as the default
-   destination decision, rather than requiring the operator to reselect values
-   already observed in the library.
+6. Keep the completed 5R.2a proposal contract as the only source of default
+   destination meaning, then let 4R.4 use that proposal rather than requiring
+   reselection of observed values.
 
 ## Security And Verification
 
@@ -123,6 +125,6 @@ Decision: rejected.
 
 ## Next Task
 
-**4R.4 Destination Proposal Card**. Build one decision-light card from the
-existing validated workflow presentation so a well-profiled library can be
-created from the server proposal without manually reselecting observed values.
+**4R.4a Library Lifecycle Entry**. Render the completed server-owned lifecycle
+and use its prepare/admit commands as the one normal authoring entry, without
+recreating readiness or intent decisions in the browser.

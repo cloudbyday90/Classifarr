@@ -93,9 +93,9 @@ graph as a rendered-path success.
 | Open existing policy | `GET /policies/:id` | Opens an overloaded modal | Replace in 4R.7 |
 | Reset existing policy | `DELETE /policies/:id` | Deletes and recreates a legacy policy after browser confirmation | Remove in 4R.8 |
 | Show scoring weights | Local toggle | Exposes legacy scoring mechanics | Remove in 4R.8 |
-| Create native policy | `POST /policies` with native establishment | Server-owned transaction and action-local confirmation, but no normal opener reaches it | Reduce to server proposal in 4R.4 |
-| Defer creation | Local modal close | Leaves persistence untouched | Retain as explicit no-save action |
-| Select and accept observed values | Local typed draft commands | Requires manual reselection before current create admission | Replace with proposal default in 4R.4 |
+| Create native policy | Proposal admission with native establishment | Server-owned lifecycle, transaction, and action-local confirmation, but no normal opener reaches it | Expose through the 4R.4a lifecycle entry, then 4R.4 proposal card |
+| Defer creation | Local modal close | Leaves persistence untouched | Retain as explicit no-save action after lifecycle entry exists |
+| Select and accept observed values | Local typed draft commands | Requires manual reselection before current create admission | Replace with the completed server proposal default in 4R.4 |
 | Validate custom value | Named API operation | Returns a display-only workflow refresh; no persistence | Retain inside 4R.5 adjustment disclosure |
 | Stage or clear boundaries | Local typed draft commands | Optional controls are default-visible | Move to material exception controls in 4R.6 |
 | Open library mapping | Router navigation and focus handoff | Opens library mapping; does not route media | Retain for a declared routing exception |
@@ -170,10 +170,13 @@ Decision: Selected.
    now has one pending, success, rejection, stale, retryable-error, and
    unavailable outcome without raw server error text. See [Policy Authoring
    Action Binding And Feedback](policy-authoring-action-binding-and-feedback.md).
-4. Implement 4R.4 through 4R.8 in order: proposal first, adjustments and
-   material exceptions only when relevant, intentional persisted-policy
-   maintenance, then legacy card/modal/hash removal.
-5. Run 4R.1 representative-state verification and 4R.9 browser end-to-end
+4. Implement 5R.2a first, then 4R.4a, 4R.4, 4R.4b, and 4R.5: server-owned
+   lifecycle/proposal admission before the normal lifecycle entry, automated
+   proposal default, outcome recovery, and exceptional adjustments.
+5. Complete 5R.3 through 5R.10 before 4R.6 material exceptions and 4R.7
+   revision-safe persisted-policy maintenance; then remove legacy cards,
+   modals, hashes, and reset/recreate behavior in 4R.8.
+6. Run 4R.1 representative-state verification and 4R.9 browser end-to-end
    coverage in a browser session permitted to access the local application.
 
 ## Outcome And Verification
@@ -190,6 +193,6 @@ Decision: Selected.
 
 ## Next Task
 
-**4R.4 Destination Proposal Card** is the next implementation task. It must
-replace manual observed-value reselection with the already-validated server
-proposal before any new normal `/policies` entry path is added.
+**5R.2a Proposal And Lifecycle Admission Contract** is the next implementation
+task. It must bind a current server proposal and a single library lifecycle
+state to native create before 4R can add a normal `/policies` entry path.

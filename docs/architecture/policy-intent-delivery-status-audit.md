@@ -74,8 +74,8 @@ the per-installation cutover evidence owned by Phase 8R.
 | 1R | Complete foundation | Client orchestration, draft, reference-data, bridge, and test boundaries | Enforce as a guardrail in 4R |
 | 2R | Complete foundation | Typed draft commands and isolated compatibility serialization | Preserve until native storage fully replaces the bridge |
 | 3R | Complete contract cutline | Destination-first flow, component roles, accessibility rules, and normal-path exclusions | Live rendered-path proof moves to 4R |
-| 4R | Active | Source inventory, validated workflow presentation, and action-admission feedback boundaries are complete | Complete live 4R.1 verification, then 4R.4 through 4R.9 in dependency order |
-| 5R | Not closed | Required authority for server read/write, questions, answers, and learning | 5R.1 and 5R.2 are complete; complete 5R.3 through 5R.9 before material exceptions and final cutover |
+| 4R | Active | Source inventory, validated workflow presentation, action-admission feedback, and its 5R.2a dependency are complete | Complete 4R.4a, 4R.4, 4R.4b, and 4R.5 before runtime-gated exceptions, maintenance, cutover, and final browser proof |
+| 5R | Not closed | Required authority for server read/write, proposal lifecycle, questions, answers, learning, and native changes | 5R.1, 5R.2, and 5R.2a are complete; complete 5R.3 through 5R.10 before persisted maintenance and final cutover |
 | 6R | Contract-complete foundation | Evidence, intent, learning, readiness, workflow, and migration boundaries | Consume through 4R; reopen only for a bounded contract gap |
 | 7R | Contract-complete foundation | Runtime decision, question, rebuild, verifier, rollback, and trace boundaries | Preserve through 5R and 8R authority/storage work |
 | 8R | Active parallel lanes | Native lifecycle, installation evidence, CI-only retirement, and closure evidence | Collect current installation evidence and complete 8R.37 isolation without blocking 4R |
@@ -106,14 +106,19 @@ the per-installation cutover evidence owned by Phase 8R.
    requires a confirmed server receipt, retries retain idempotency, and visible
    feedback is safe and action-local. See [Policy Authoring Action Binding And
    Feedback](policy-authoring-action-binding-and-feedback.md).
-6. **4R.4 and 4R.5** deliver the destination proposal and optional adjustment
+6. **5R.2a Proposal And Lifecycle Admission Contract** is complete. It
+   supplies an authoritative library lifecycle, opaque proposal reference,
+   fresh admission recheck, and bounded stale/concurrency recovery outcomes.
+7. **4R.4a, 4R.4, 4R.4b, and 4R.5** next deliver the lifecycle entry, automated
+   proposal default, proposal outcome recovery, and optional adjustment
    disclosure. They must reduce operator decisions rather than expose engine
    diagnostics.
-7. **5R.3 through 5R.9** close model authority, normalization, answer,
-   learning, stale-question, verifier, and server-test boundaries.
-8. **4R.6 through 4R.9** expose material exceptions only when needed, then
-   deliver persisted-policy maintenance, legacy UI cutover, and browser-level
-   accessibility/responsive/end-to-end evidence.
+8. **5R.3 through 5R.10** close model authority, normalization, answer,
+   learning, stale-question, verifier, server-test, and native-change
+   boundaries.
+9. **4R.6 through 4R.9** expose material exceptions only when needed, then
+   deliver revision-safe persisted-policy maintenance, legacy UI cutover, and
+   browser-level accessibility/responsive/end-to-end evidence.
 
 ## Phase 8R Boundaries
 

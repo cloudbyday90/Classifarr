@@ -104,6 +104,9 @@ lint and production builds remain part of the component gate.
 
 ## Next Task
 
-Proceed with **4R.2 Server Workflow Presentation Adapter**. It must consume the
-authoritative read and write outcomes above without restoring a browser-owned
-policy editor or exposing compatibility diagnostics as normal UI.
+**5R.2a Proposal And Lifecycle Admission Contract is complete.** It adds the
+server-owned library lifecycle and opaque revision-bound proposal reference
+described in [Policy Authoring Proposal Lifecycle
+Admission](policy-authoring-proposal-lifecycle-admission.md). Proceed with
+**4R.4a Library Lifecycle Entry** so the normal browser path consumes that
+authority without reconstructing observed library meaning.
