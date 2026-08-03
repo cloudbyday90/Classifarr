@@ -100,11 +100,12 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
     normalAuthoringAllowed: true,
     migrationSupportOnly: false,
     riskIds: [],
-    notes: 'The proposal card, its collapsed typed profile-derived adjustment disclosure, and its preparation adapter display one server-derived destination, keep opaque references outside rendering, and expose no generic observed-evidence picker.',
+    notes: 'The proposal card, its collapsed accessible typed profile-derived adjustment disclosure, and its preparation adapter display one server-derived destination, reset local adjustments on replacement or recovery, keep opaque references outside rendering, and expose no generic observed-evidence picker.',
     matches: filePath => hasAnySegment(filePath, [
       '/PolicyDestinationProposalCard.vue',
       '/PolicyDestinationProposalAdjustmentDisclosure.vue',
       '/policyAuthoringProposalPresentation.js',
+      '/usePolicyAuthoringProposalAdjustmentState.js',
       '/usePolicyAuthoringDestinationProposal.js',
     ]),
   },

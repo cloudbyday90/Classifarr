@@ -105,6 +105,7 @@ describe('policyAuthoringWorkflowInventory', () => {
       'client/src/components/policies/PolicyDestinationProposalCard.vue',
       'client/src/components/policies/PolicyDestinationProposalAdjustmentDisclosure.vue',
       'client/src/utils/policyAuthoringProposalPresentation.js',
+      'client/src/composables/usePolicyAuthoringProposalAdjustmentState.js',
       'client/src/composables/usePolicyAuthoringDestinationProposal.js',
     ].forEach((filePath) => {
       expect(classifyPolicyAuthoringWorkflowSurface(filePath)).toEqual(expect.objectContaining({

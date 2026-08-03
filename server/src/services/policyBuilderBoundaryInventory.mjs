@@ -121,6 +121,17 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     ]),
   },
   {
+    id: 'policy_authoring_proposal_adjustment_state',
+    category: POLICY_BUILDER_BOUNDARY_CATEGORIES.DRAFT_STATE,
+    ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_DRAFT_PROJECTION,
+    actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.EXTRACT_DRAFT_BOUNDARY,
+    clientEngineAuthorityAllowed: false,
+    engineCutlineDecisionRequired: false,
+    riskIds: [],
+    notes: 'Proposal adjustment state retains only explicit, validated operator commands for the current server-prepared proposal revision. It clears when that revision is no longer current and cannot derive intent, retry admission, persist policy data, or decide automation.',
+    matches: (filePath) => filePath.endsWith('/usePolicyAuthoringProposalAdjustmentState.js'),
+  },
+  {
     id: 'policy_authoring_lifecycle_and_proposal_orchestration',
     category: POLICY_BUILDER_BOUNDARY_CATEGORIES.UI_ORCHESTRATION,
     ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_ORCHESTRATION,

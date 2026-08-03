@@ -17,9 +17,10 @@ Current execution focus:
    proposal or a normal lifecycle entry. **5R.2a Proposal And Lifecycle
    Admission Contract**, **4R.4a Library Lifecycle Entry**, and **4R.4
    Destination Proposal Card**, and **4R.4b Proposal Outcome Recovery** are
-   complete. **4R.5.1 Revision-Bound Purpose-Genre Narrowing** and
-   **4R.5.2.1 Helpful-Studio Narrowing** are complete; **4R.5.3 Revision
-   Reset And Accessibility Closure** is the next dependency-gated task.
+   complete. **4R.5.1 Revision-Bound Purpose-Genre Narrowing**,
+   **4R.5.2.1 Helpful-Studio Narrowing**, and **4R.5.3 Revision Reset And
+   Accessibility Closure** are complete. **5R.3 AI Provider Capability And
+   Authority Modes** is the next dependency-gated task.
 3. **8R.37.1 Runtime Capability Inventory And Isolation Decision** is a
    parallel release-maintenance/security audit. It cannot block 4R.1 or
    automatic native policy behavior.
@@ -33,7 +34,7 @@ The execution dependency is intentionally not numeric:
 
 ```text
 completed foundations: 0R -> 1R -> 2R -> 3R
-active product work: 4R.1 -> 5R.1/5R.2/4R.2/4R.3/5R.2a/4R.4a/4R.4/4R.4b/4R.5.1/4R.5.2.1 (complete) -> 4R.5.3
+active product work: 4R.1 -> 5R.1/5R.2/4R.2/4R.3/5R.2a/4R.4a/4R.4/4R.4b/4R.5.1/4R.5.2.1/4R.5.3 (complete) -> 5R.3
 runtime trust work: 5R.3 through 5R.10 -> 4R.6 through 4R.9
 parallel safety work: 8R installation/runtime lanes + 9R zero-debt gate
 ```
@@ -3288,8 +3289,8 @@ This is not a claim that every legacy list-level action is accepted as the
 final product path. The current normal create opener is absent, and list-level
 reset, maintenance, and raw failure surfaces remain explicit 4R.8 removal
 work. Representative live-browser verification remains a separate 4R.1
-requirement. **5R.2a, 4R.4a, 4R.4, 4R.4b, 4R.5.1, and 4R.5.2.1 are complete;
-4R.5.3 is next.**
+requirement. **5R.2a, 4R.4a, 4R.4, 4R.4b, 4R.5.1, 4R.5.2.1, and 4R.5.3 are
+complete.**
 
 ### 4R.4a Library Lifecycle Entry
 
@@ -3458,10 +3459,11 @@ Implementation sequence:
    values, and compatibility-policy mutation remain excluded without their own
    authority contracts. See [Policy Authoring Proposal Helpful-Studio
    Adjustment](policy-authoring-proposal-helpful-studio-adjustment.md).
-3. **4R.5.3 Revision Reset And Accessibility Closure**: next. Verify disclosure
-   state clears across library, proposal, stale, expiry, and recovery changes;
-   add keyboard and assistive-technology end-to-end coverage for each admitted
-   group.
+3. **4R.5.3 Revision Reset And Accessibility Closure**: complete. Local
+   adjustment state now clears across library, proposal revision, stale,
+   expiry, and recovery changes. Native disclosure semantics and browser
+   keyboard coverage verify each admitted group. See [Policy Authoring Proposal
+   Adjustment Closure](policy-authoring-proposal-adjustment-closure.md).
 
 Acceptance criteria:
 
@@ -3630,7 +3632,9 @@ Implement Phase 4R in this order:
    4R.5.1 is complete: the normal path remains collapsed while current-profile
    purpose genres and helpful studios can be narrowed through revision-bound
    commands. 4R.5.2 is complete: the eligibility inventory excluded every
-   remaining group without a dedicated authority contract. 4R.5.3 is next.
+   remaining group without a dedicated authority contract. 4R.5.3 is complete:
+   adjustment state resets on every replacement or recovery, and the disclosure
+   has native keyboard and assistive-technology coverage.
 9. **5R.3 through 5R.10 Server Runtime And Native-Change Authority**
    Close the provider, question, learning, verifier, test, and native-change
    contracts before rendering persistent exceptions or maintenance controls.
@@ -3643,7 +3647,7 @@ Implement Phase 4R in this order:
 13. **4R.9 Accessibility, Responsive Behavior, And End-To-End Workflow Tests**
    Proves the delivered flow works in the live product.
 
-Next implementation task: **4R.5.3 Revision Reset And Accessibility Closure**.
+Next implementation task: **5R.3 AI Provider Capability And Authority Modes**.
 The 4R.1 source inventory still requires representative live-browser
 verification, and 4R.3 has bound the existing component's controls to admitted
 actions and truthful outcomes. The completed 5R.2a contract supplies the
@@ -3836,9 +3840,10 @@ Implementation status:
   stale, expired, existing-policy, replay, invalid-input, and unauthorized
   paths. The completed 4R.4a lifecycle entry, 4R.4 proposal card, and 4R.4b
   outcome recovery consume the lifecycle, prepared-proposal, and admission
-  boundaries; **4R.5.1** and **4R.5.2.1** now supply revision-bound
-  purpose-genre and helpful-studio narrowing. The next work is **4R.5.3
-  Revision Reset And Accessibility Closure**.
+  boundaries; **4R.5.1** and **4R.5.2.1** supply revision-bound purpose-genre
+  and helpful-studio narrowing, and **4R.5.3** closes revision reset and
+  accessibility evidence. The next work is **5R.3 AI Provider Capability And
+  Authority Modes**.
 
 ### 5R.3 AI Provider Capability And Authority Modes
 
@@ -11583,7 +11588,7 @@ The next sequence is dependency-gated rather than phase-number order:
    entry, automated proposal default, and bounded outcome recovery without a
    second create path or a requirement to reselect known evidence. **4R.5.1**
    and **4R.5.2.1** now provide the only eligible exceptional adjustments;
-   **4R.5.3** next closes reset and accessibility evidence.
+   **4R.5.3** completes reset and accessibility evidence.
 8. **5R.3 through 5R.10**, then **4R.6 through 4R.9**: finish model/question/
    learning and native-change authority before exposing material exceptions,
    then complete revision-safe maintenance, legacy UI cutover, accessibility,

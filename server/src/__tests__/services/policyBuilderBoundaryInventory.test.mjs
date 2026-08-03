@@ -173,6 +173,17 @@ describe('policyBuilderBoundaryInventory', () => {
     });
 
     [
+      'client/src/composables/usePolicyAuthoringProposalAdjustmentState.js',
+    ].forEach((filePath) => {
+      expect(classifyPolicyBuilderClientPath(filePath)).toEqual(expect.objectContaining({
+        category: POLICY_BUILDER_BOUNDARY_CATEGORIES.DRAFT_STATE,
+        ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_DRAFT_PROJECTION,
+        actionId: POLICY_BUILDER_BOUNDARY_ACTION_IDS.EXTRACT_DRAFT_BOUNDARY,
+        clientEngineAuthorityAllowed: false,
+      }));
+    });
+
+    [
       'client/src/composables/usePolicyAuthoringLifecycleList.js',
       'client/src/composables/usePolicyAuthoringDestinationProposal.js',
       'client/src/composables/usePolicyAuthoringProposalAdmission.js',

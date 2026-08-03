@@ -233,6 +233,7 @@ import PolicyAuthoringLifecycleEntry from '@/components/policies/PolicyAuthoring
 import { usePolicyAuthoringDestinationProposal } from '@/composables/usePolicyAuthoringDestinationProposal'
 import { usePolicyAuthoringLifecycleList } from '@/composables/usePolicyAuthoringLifecycleList'
 import { usePolicyAuthoringProposalAdmission } from '@/composables/usePolicyAuthoringProposalAdmission'
+import { usePolicyAuthoringProposalAdjustmentState } from '@/composables/usePolicyAuthoringProposalAdjustmentState'
 import { usePolicyAuthoringProposalOutcomeRecovery } from '@/composables/usePolicyAuthoringProposalOutcomeRecovery'
 
 const route = useRoute()
@@ -245,7 +246,12 @@ let activeLibraryRequestId = 0
 let focusSelection = false
 let restoreFocusLibraryId = null
 const successfulAdmission = ref(null)
-const proposalAdjustmentCommands = ref([])
+
+const {
+  commands: proposalAdjustmentCommands,
+  replace: replaceProposalAdjustmentCommands,
+  clear: clearProposalAdjustmentCommands,
+} = usePolicyAuthoringProposalAdjustmentState()
 
 const {
   entries: lifecycleEntries,
@@ -361,7 +367,7 @@ const reconcileProposalOutcome = async recovery => {
   if (!recovery || !currentEntry || currentEntry.library.id !== recovery.libraryId) return
 
   successfulAdmission.value = null
-  proposalAdjustmentCommands.value = []
+  clearProposalAdjustmentCommands()
   clearDestinationProposal()
   clearProposalAdmission()
   await recoverProposalOutcome(recovery)
@@ -382,7 +388,7 @@ const admitDestinationProposal = async () => {
 }
 
 const setProposalAdjustmentCommands = commands => {
-  proposalAdjustmentCommands.value = Array.isArray(commands) ? commands : []
+  replaceProposalAdjustmentCommands(commands)
 }
 
 const selectLibrary = async (libraryId) => {
@@ -436,6 +442,7 @@ watch(selectedLibraryId, (nextLibraryId, previousLibraryId) => {
 
   if (nextLibraryId !== previousLibraryId) {
     successfulAdmission.value = null
+    clearProposalAdjustmentCommands()
     clearProposalOutcomeRecovery()
   }
 
@@ -449,7 +456,7 @@ watch(selectedEntry, () => {
 watch(destinationProposalSelectionKey, nextSelectionKey => {
   clearDestinationProposal()
   clearProposalAdmission()
-  proposalAdjustmentCommands.value = []
+  clearProposalAdjustmentCommands()
 
   if (!nextSelectionKey || !selectedEntry.value) return
 
@@ -457,7 +464,7 @@ watch(destinationProposalSelectionKey, nextSelectionKey => {
 }, { immediate: true })
 
 watch(destinationProposalRevision, () => {
-  proposalAdjustmentCommands.value = []
+  clearProposalAdjustmentCommands()
 })
 
 onMounted(() => {

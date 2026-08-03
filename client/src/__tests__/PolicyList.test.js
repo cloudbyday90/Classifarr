@@ -71,14 +71,18 @@ function buildLifecycle({
   }
 }
 
-function buildPreparedProposal(libraryId = 7, libraryName = 'Movies') {
+function buildPreparedProposal(
+  libraryId = 7,
+  libraryName = 'Movies',
+  revision = 'a'.repeat(64)
+) {
   return {
     version: 'policy.authoring_proposal.v1',
     statusId: 'proposal_prepared',
     lifecycle: buildLifecycle({ libraryId, libraryName }),
     proposal: {
       reference: 'proposal_reference_123456789012345678',
-      revision: 'a'.repeat(64),
+      revision,
       expiresAt: '2026-08-03T12:00:00.000Z',
       adjustment: {
         purposeGenres: [
@@ -260,6 +264,92 @@ describe('PolicyList.vue', () => {
       })
     )
   })
+
+  it('clears adjustments when a different library prepares its own proposal', async () => {
+    state.getPolicyAuthoringLifecycle.mockImplementation(libraryId => Promise.resolve(
+      buildLifecycle({
+        libraryId,
+        libraryName: libraryId === 7 ? 'Movies' : 'Series',
+      })
+    ))
+    state.preparePolicyAuthoringProposal.mockImplementation(libraryId => Promise.resolve({
+      data: buildPreparedProposal(libraryId, libraryId === 7 ? 'Movies' : 'Series'),
+    }))
+    const wrapper = await mountView()
+    mountedView = wrapper
+
+    await wrapper.find('#policy-authoring-lifecycle-action-7').trigger('click')
+    await flushPromises()
+    await wrapper.findAll('button').find(button => button.text() === 'Adjust this policy').trigger('click')
+    await wrapper.get('input[value="Family"]').setValue(false)
+
+    await wrapper.findAll('button').find(button => button.text() === 'Back to library policy setup').trigger('click')
+    await flushPromises()
+    await wrapper.find('#policy-authoring-lifecycle-action-8').trigger('click')
+    await flushPromises()
+    await wrapper.findAll('button').find(button => button.text() === 'Adjust this policy').trigger('click')
+
+    expect(wrapper.get('input[value="Family"]').element.checked).toBe(true)
+    expect(wrapper.get('input[value="Studio Second"]').element.checked).toBe(true)
+  })
+
+  it.each(['proposal_stale', 'proposal_expired'])(
+    'clears adjustments and prepares a fresh proposal after %s reconciles as eligible',
+    async statusId => {
+    const initialRevision = 'a'.repeat(64)
+    const refreshedRevision = 'b'.repeat(64)
+    state.preparePolicyAuthoringProposal
+      .mockResolvedValueOnce({ data: buildPreparedProposal(7, 'Movies', initialRevision) })
+      .mockResolvedValueOnce({ data: buildPreparedProposal(7, 'Movies', refreshedRevision) })
+    state.admitPolicyAuthoringProposal
+      .mockRejectedValueOnce({
+        response: {
+          status: 409,
+          data: {
+            version: 'policy.authoring_proposal.v1',
+            statusId,
+            policy: null,
+            recovery: { lifecycleReloadRequired: true },
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          version: 'policy.authoring_proposal.v1',
+          statusId: 'proposal_admission_created',
+          policy: { id: 12, libraryId: 7, name: 'Movies Policy' },
+          recovery: { lifecycleReloadRequired: false },
+        },
+      })
+    const wrapper = await mountView()
+    mountedView = wrapper
+
+    await wrapper.find('#policy-authoring-lifecycle-action-7').trigger('click')
+    await flushPromises()
+    await wrapper.findAll('button').find(button => button.text() === 'Adjust this policy').trigger('click')
+    await wrapper.get('input[value="Family"]').setValue(false)
+    await wrapper.findAll('button').find(button => button.text() === 'Create policy').trigger('click')
+    await flushPromises()
+
+    expect(state.preparePolicyAuthoringProposal).toHaveBeenCalledTimes(2)
+    expect(wrapper.text()).toContain('Classifarr checked the current policy state.')
+    expect(wrapper.findAll('button').map(button => button.text())).toContain('Create policy')
+
+    await wrapper.findAll('button').find(button => button.text() === 'Adjust this policy').trigger('click')
+    expect(wrapper.get('input[value="Family"]').element.checked).toBe(true)
+    expect(wrapper.get('input[value="Studio Second"]').element.checked).toBe(true)
+
+    await wrapper.findAll('button').find(button => button.text() === 'Create policy').trigger('click')
+    await flushPromises()
+
+      expect(state.admitPolicyAuthoringProposal).toHaveBeenLastCalledWith(
+        7,
+        'proposal_reference_123456789012345678',
+        refreshedRevision,
+        expect.objectContaining({ adjustmentCommands: [] })
+      )
+    }
+  )
 
   it('discards a concurrent admission attempt and renders the lifecycle-confirmed existing policy', async () => {
     let moviesPolicyExists = false

@@ -7,6 +7,8 @@ the Phase 4R.5 exceptional-adjustment disclosure. It lets an operator narrow
 the server-proposed purpose genres while preserving the automated proposal as
 the normal default. Phase 4R.5.2.1 adds the separately documented
 [helpful-studio adjustment](policy-authoring-proposal-helpful-studio-adjustment.md).
+Phase 4R.5.3 completes reset and accessibility closure; see [Policy Authoring
+Proposal Adjustment Closure](policy-authoring-proposal-adjustment-closure.md).
 
 ## Goal
 
@@ -171,6 +173,6 @@ out-of-scope changes fail closed.
 
 ## Next Slice
 
-Phase 4R.5.3 will verify proposal-replacement reset behavior and complete
-keyboard and assistive-technology coverage for the admitted groups without
-recreating the broad legacy policy builder.
+Phase 5R.3 will define AI provider capability and authority modes before the
+product exposes runtime clarification, learned decisions, or material policy
+exceptions.

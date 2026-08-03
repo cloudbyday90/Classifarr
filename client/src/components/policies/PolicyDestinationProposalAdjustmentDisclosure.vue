@@ -7,17 +7,20 @@
   <section
     v-if="hasAdjustableOptions"
     class="mt-5 rounded border border-gray-700 bg-gray-900/40 p-4"
-    aria-labelledby="policy-destination-adjustment-heading"
+    :aria-labelledby="disclosureHeadingId"
   >
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h4
-          id="policy-destination-adjustment-heading"
+          :id="disclosureHeadingId"
           class="text-sm font-semibold text-white"
         >
           Fine-tune this proposal
         </h4>
-        <p class="mt-1 text-sm text-gray-400">
+        <p
+          :id="disclosureDescriptionId"
+          class="mt-1 text-sm text-gray-400"
+        >
           Optional. The proposed library meaning is used unless you narrow eligible values.
         </p>
       </div>
@@ -25,6 +28,8 @@
         type="button"
         class="rounded border border-gray-600 px-3 py-1.5 text-sm font-medium text-gray-100 hover:border-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-gray-950"
         :aria-expanded="expanded"
+        :aria-controls="expanded ? disclosureContentId : undefined"
+        :aria-describedby="disclosureDescriptionId"
         @click="expanded = !expanded"
       >
         {{ expanded ? 'Hide adjustments' : 'Adjust this policy' }}
@@ -33,6 +38,7 @@
 
     <div
       v-if="expanded"
+      :id="disclosureContentId"
       class="mt-4 space-y-5 border-t border-gray-700 pt-4"
     >
       <fieldset v-if="hasAdjustablePurposeGenres">
@@ -108,7 +114,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, ref, useId, watch } from 'vue'
 import {
   POLICY_AUTHORING_PROPOSAL_ADJUSTMENT_COMMAND_IDS,
   buildPolicyAuthoringProposalAdjustmentCommands,
@@ -133,6 +139,10 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:adjustment-commands'])
+const disclosureInstanceId = useId()
+const disclosureHeadingId = `policy-destination-adjustment-heading-${disclosureInstanceId}`
+const disclosureDescriptionId = `policy-destination-adjustment-description-${disclosureInstanceId}`
+const disclosureContentId = `policy-destination-adjustment-content-${disclosureInstanceId}`
 const expanded = ref(false)
 const selectedPurposeGenreValues = ref([])
 const selectedHelpfulStudioValues = ref([])

@@ -27,9 +27,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 - **Policy Proposal Adjustment Disclosure**: Added optional, collapsed
   purpose-genre and helpful-studio narrowing controls for newly prepared
   proposals. They use only current-library-profile values, send bounded
-  revision-bound allow-listed commands, reset local state when the proposal
-  changes, and are revalidated against the persisted and current server
-  candidate before native policy creation.
+  revision-bound allow-listed commands, reset local state across library,
+  revision, stale, expired, and recovery transitions, and are revalidated
+  against the persisted and current server candidate before native policy
+  creation. The rendered disclosure now has linked native semantics and
+  keyboard browser coverage for every admitted group.
 
 - **Policy Library Lifecycle Entry**: Replaced the local policy grouping and
   hidden create-modal path with a server-confirmed lifecycle entry for every

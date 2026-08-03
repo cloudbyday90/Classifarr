@@ -15,7 +15,8 @@ only that fresh state.
 
 ```text
 admit proposal -> bounded non-success or uncertain transport -> discard local state
--> read lifecycle -> show fresh server-confirmed state -> optional new manual action
+-> read lifecycle -> show fresh server-confirmed state -> prepare only if eligible
+-> explicit create from the new proposal
 ```
 
 This is recovery, not an admission retry. The browser never resubmits an old
@@ -80,8 +81,8 @@ Pros:
 Cons:
 
 - Adds one lifecycle read after an uncertain or non-successful admission.
-- A newly eligible lifecycle state may require the operator to explicitly
-  choose the next `Create policy` action on a new proposal.
+- A newly eligible lifecycle state may require the operator to repeat an
+  optional narrowing on a new proposal before explicitly creating it.
 
 Selected.
 
@@ -143,6 +144,6 @@ bounded name without reopening the retired policy editor.
 
 ## Next Task
 
-**Phase 4R.5.3, Revision Reset And Accessibility Closure:** verify that every
-proposal replacement and recovery path clears local adjustment state, then add
-keyboard and assistive-technology end-to-end evidence for each admitted group.
+**Phase 5R.3 AI Provider Capability And Authority Modes:** establish bounded
+provider authority before runtime clarification, learning, or material policy
+exceptions are introduced.

@@ -5,7 +5,8 @@
 Implemented by Phase 4R.5.2.1. This adds the only additional adjustment group
 that currently meets the create-time admission requirements: a bounded
 narrowing of helpful studio preferences proposed from the current library
-profile.
+profile. Phase 4R.5.3 completes the reset and accessibility closure; see
+[Policy Authoring Proposal Adjustment Closure](policy-authoring-proposal-adjustment-closure.md).
 
 ## Goal
 
@@ -122,6 +123,6 @@ supplied option does not pass strict source and shape validation.
 
 ## Next Task
 
-**Phase 4R.5.3 Revision Reset And Accessibility Closure:** prove disclosure
-state clears across every proposal replacement and recovery path, then add
-keyboard and assistive-technology end-to-end evidence for each admitted group.
+**Phase 5R.3 AI Provider Capability And Authority Modes:** establish bounded
+provider authority before runtime clarification, learning, or material policy
+exceptions are introduced.

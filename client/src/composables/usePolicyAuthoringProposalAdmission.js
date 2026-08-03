@@ -103,7 +103,7 @@ export function usePolicyAuthoringProposalAdmission({
       feedback.value = buildPolicyAuthoringActionFeedback({
         actionId: ACTION_ID,
         statusId: POLICY_AUTHORING_ACTION_FEEDBACK_STATUS_IDS.REJECTED,
-        message: 'Classifarr could not accept these proposal adjustments. Return to the current proposal and choose only the listed genres.',
+        message: 'Classifarr could not accept these proposal adjustments. Return to the current proposal and choose only the listed values.',
       })
       return null
     }

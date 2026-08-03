@@ -107,6 +107,7 @@ describe('policyAuthoringComponentInventory', () => {
       sourcePaths: [
         'client/src/components/policies/PolicyDestinationProposalCard.vue',
         'client/src/components/policies/PolicyDestinationProposalAdjustmentDisclosure.vue',
+        'client/src/composables/usePolicyAuthoringProposalAdjustmentState.js',
       ],
     }));
     expect(getPolicyAuthoringTargetImplementation(

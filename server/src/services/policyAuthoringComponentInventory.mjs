@@ -138,7 +138,7 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY = deepFreeze([
       POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_PROPOSAL_CARD,
     ],
     normalAuthoringAllowed: true,
-    notes: 'Keeps proposal adjustment collapsed and emits only revision-bound, profile-derived purpose-genre and helpful-studio narrowing commands; it cannot derive values or widen the admission contract.',
+    notes: 'Keeps proposal adjustment collapsed, accessible, and reset for every library, revision, and recovery transition; emits only revision-bound, profile-derived purpose-genre and helpful-studio narrowing commands and cannot derive values or widen the admission contract.',
   },
   {
     id: 'intent_signal_picker',
@@ -437,8 +437,9 @@ const POLICY_AUTHORING_TARGET_IMPLEMENTATIONS = deepFreeze([
     sourcePaths: [
       'client/src/components/policies/PolicyDestinationProposalCard.vue',
       'client/src/components/policies/PolicyDestinationProposalAdjustmentDisclosure.vue',
+      'client/src/composables/usePolicyAuthoringProposalAdjustmentState.js',
     ],
-    notes: 'Implemented as the display-safe proposal review, collapsed bounded adjustment disclosure, and explicit server-admission card.',
+    notes: 'Implemented as the display-safe proposal review, collapsed bounded accessible adjustment disclosure with revision-reset state, and explicit server-admission card.',
   },
   {
     targetComponentId: POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_PICKER,

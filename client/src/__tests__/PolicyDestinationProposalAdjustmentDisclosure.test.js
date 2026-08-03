@@ -35,6 +35,34 @@ describe('PolicyDestinationProposalAdjustmentDisclosure.vue', () => {
     expect(wrapper.findAll('input[type="checkbox"]')).toHaveLength(2)
   })
 
+  it('exposes native disclosure and grouped checkbox semantics to assistive technology', async () => {
+    const wrapper = mount(PolicyDestinationProposalAdjustmentDisclosure, {
+      props: { genreOptions, helpfulStudioOptions },
+    })
+
+    const section = wrapper.get('section')
+    const headingId = section.attributes('aria-labelledby')
+    const toggle = wrapper.get('button')
+    const descriptionId = toggle.attributes('aria-describedby')
+
+    expect(headingId).toBeTruthy()
+    expect(wrapper.get(`#${headingId}`).text()).toBe('Fine-tune this proposal')
+    expect(descriptionId).toBeTruthy()
+    expect(wrapper.get(`#${descriptionId}`).text()).toContain('Optional.')
+    expect(toggle.attributes('aria-controls')).toBeUndefined()
+
+    await toggle.trigger('click')
+
+    const contentId = toggle.attributes('aria-controls')
+    expect(contentId).toBeTruthy()
+    expect(wrapper.get(`#${contentId}`).exists()).toBe(true)
+    expect(wrapper.findAll('fieldset').map(fieldset => fieldset.find('legend').text())).toEqual([
+      'Keep these proposed genres',
+      'Keep these helpful studios',
+    ])
+    expect(wrapper.findAll('input[type="checkbox"]')).toHaveLength(4)
+  })
+
   it('emits only a typed narrowing command and keeps at least one proposed genre selected', async () => {
     const wrapper = mount(PolicyDestinationProposalAdjustmentDisclosure, {
       props: { genreOptions },
