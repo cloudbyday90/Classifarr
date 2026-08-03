@@ -85,6 +85,10 @@ function buildPreparedProposal(libraryId = 7, libraryName = 'Movies') {
           { value: 'Animation', sourceId: 'current_library_profile' },
           { value: 'Family', sourceId: 'current_library_profile' },
         ],
+        helpfulStudios: [
+          { value: 'Studio Example', sourceId: 'current_library_profile' },
+          { value: 'Studio Second', sourceId: 'current_library_profile' },
+        ],
       },
       summary: {
         title: `${libraryName} Policy`,
@@ -231,6 +235,28 @@ describe('PolicyList.vue', () => {
       'a'.repeat(64),
       expect.objectContaining({
         adjustmentCommands: [{ commandId: 'set_purpose_genres', values: ['Animation'] }],
+      })
+    )
+  })
+
+  it('forwards helpful-studio narrowing without turning a helpful preference into purpose', async () => {
+    const wrapper = await mountView()
+    mountedView = wrapper
+
+    await wrapper.find('#policy-authoring-lifecycle-action-7').trigger('click')
+    await flushPromises()
+    await wrapper.findAll('button').find(button => button.text() === 'Adjust this policy').trigger('click')
+    await wrapper.get('input[value="Studio Second"]').setValue(false)
+
+    await wrapper.findAll('button').find(button => button.text() === 'Create policy').trigger('click')
+    await flushPromises()
+
+    expect(state.admitPolicyAuthoringProposal).toHaveBeenCalledWith(
+      7,
+      'proposal_reference_123456789012345678',
+      'a'.repeat(64),
+      expect.objectContaining({
+        adjustmentCommands: [{ commandId: 'set_helpful_studios', values: ['Studio Example'] }],
       })
     )
   })

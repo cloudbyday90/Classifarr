@@ -24,11 +24,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   adjustments, and an action-local idempotency key; it never submits
   browser-assembled policy meaning or reintroduces generic evidence pickers.
 
-- **Policy Proposal Adjustment Disclosure**: Added an optional, collapsed
-  purpose-genre narrowing control for newly prepared proposals. It uses only
-  current-library-profile values, sends one revision-bound allow-listed command,
-  resets local state when the proposal changes, and is revalidated against the
-  persisted and current server candidate before native policy creation.
+- **Policy Proposal Adjustment Disclosure**: Added optional, collapsed
+  purpose-genre and helpful-studio narrowing controls for newly prepared
+  proposals. They use only current-library-profile values, send bounded
+  revision-bound allow-listed commands, reset local state when the proposal
+  changes, and are revalidated against the persisted and current server
+  candidate before native policy creation.
 
 - **Policy Library Lifecycle Entry**: Replaced the local policy grouping and
   hidden create-modal path with a server-confirmed lifecycle entry for every

@@ -5,7 +5,8 @@
 Implemented by Phase 4R.5.1. This is the first deliberately narrow slice of
 the Phase 4R.5 exceptional-adjustment disclosure. It lets an operator narrow
 the server-proposed purpose genres while preserving the automated proposal as
-the normal default.
+the normal default. Phase 4R.5.2.1 adds the separately documented
+[helpful-studio adjustment](policy-authoring-proposal-helpful-studio-adjustment.md).
 
 ## Goal
 
@@ -170,7 +171,6 @@ out-of-scope changes fail closed.
 
 ## Next Slice
 
-Phase 4R.5.2 will evaluate additional adjustment groups only where a concrete
-server eligibility projection and typed admission command exist. It must add
-source labels and disabled reasons without recreating the broad legacy policy
-builder.
+Phase 4R.5.3 will verify proposal-replacement reset behavior and complete
+keyboard and assistive-technology coverage for the admitted groups without
+recreating the broad legacy policy builder.

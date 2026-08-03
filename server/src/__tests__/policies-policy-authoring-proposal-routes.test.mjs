@@ -96,7 +96,10 @@ describe('policy authoring proposal routes', () => {
       .set('Idempotency-Key', IDEMPOTENCY_KEY)
       .send({
         proposal_revision: PROPOSAL_REVISION,
-        adjustment_commands: [{ command_id: 'set_purpose_genres', values: ['Animation'] }],
+        adjustment_commands: [
+          { command_id: 'set_helpful_studios', values: ['Studio Example'] },
+          { command_id: 'set_purpose_genres', values: ['Animation'] },
+        ],
       })
       .expect(409);
 
@@ -107,7 +110,10 @@ describe('policy authoring proposal routes', () => {
       proposalReference: PROPOSAL_REFERENCE,
       proposalRevision: PROPOSAL_REVISION,
       idempotencyKey: IDEMPOTENCY_KEY,
-      adjustmentCommands: [{ commandId: 'set_purpose_genres', values: ['Animation'] }],
+      adjustmentCommands: [
+        { commandId: 'set_purpose_genres', values: ['Animation'] },
+        { commandId: 'set_helpful_studios', values: ['Studio Example'] },
+      ],
     }));
   });
 

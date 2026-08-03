@@ -4,8 +4,8 @@
 
 Implemented by Phase 4R.4. This document records the normal policy-authoring
 card reached from the server-confirmed library lifecycle entry. It owns the
-automated default; Phase 4R.5.1 adds a separate bounded adjustment disclosure,
-and Phase 4R.4b owns stale/outcome recovery.
+automated default; Phase 4R.5.1 and 4R.5.2.1 add separately bounded
+adjustments, and Phase 4R.4b owns stale/outcome recovery.
 
 ## Goal
 
@@ -140,7 +140,8 @@ secure browser idempotency key per unchanged proposal attempt. It sends exactly:
 ```
 
 to the server-owned admission endpoint when the optional adjustment disclosure
-narrows the proposed purpose genres; unchanged proposals send an empty array.
+narrows proposed purpose genres or helpful studios; unchanged proposals send an
+empty array.
 The server re-derives the canonical intent from current evidence before
 persistence. The client validates the bounded result and shows a confirmed
 saved-policy outcome only when the server returns a created or replayed policy
@@ -168,9 +169,10 @@ receipt.
    them only through the narrow admission composable with an idempotency key.
 4. Make the prepared proposal the primary action and defer arbitrary adjustment
    controls to Phase 4R.5.
-5. Keep exceptional adjustment scope deliberately bounded; Phase 4R.5.1 adds
-   only revision-bound purpose-genre narrowing, while further controls require
-   their own server authority contracts.
+5. Keep exceptional adjustment scope deliberately bounded; Phase 4R.5.1 and
+   4R.5.2.1 add only revision-bound purpose-genre and helpful-studio
+   narrowing, while further controls require their own server authority
+   contracts.
 
 ## Outcome
 
@@ -193,6 +195,8 @@ Recovery](policy-authoring-proposal-outcome-recovery.md).
 
 ## Related Adjustment Disclosure
 
-Phase 4R.5.1 adds an optional, collapsed purpose-genre narrowing disclosure
-without reopening the legacy builder. See [Policy Authoring Proposal Adjustment
-Disclosure](policy-authoring-proposal-adjustment-disclosure.md).
+Phase 4R.5.1 and 4R.5.2.1 add optional, collapsed purpose-genre and
+helpful-studio narrowing without reopening the legacy builder. See [Policy
+Authoring Proposal Adjustment Disclosure](policy-authoring-proposal-adjustment-disclosure.md)
+and [Policy Authoring Proposal Helpful-Studio
+Adjustment](policy-authoring-proposal-helpful-studio-adjustment.md).

@@ -55,6 +55,7 @@ function buildPreparedProposal() {
       expiresAt: '2026-08-03T12:00:00.000Z',
       adjustment: {
         purposeGenres: [{ value: 'Animation', sourceId: 'current_library_profile' }],
+        helpfulStudios: [],
       },
       summary: {
         title: 'Anime Movies Policy',

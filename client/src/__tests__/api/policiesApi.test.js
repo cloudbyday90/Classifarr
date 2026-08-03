@@ -102,7 +102,10 @@ describe('policiesApi', () => {
       'a'.repeat(64),
       {
         idempotencyKey: '6fe3d170-9390-4ec5-95f7-42ad6f8ec777',
-        adjustmentCommands: [{ commandId: 'set_purpose_genres', values: ['Animation'] }],
+        adjustmentCommands: [
+          { commandId: 'set_purpose_genres', values: ['Animation'] },
+          { commandId: 'set_helpful_studios', values: ['Studio Example'] },
+        ],
       }
     )
 
@@ -110,7 +113,10 @@ describe('policiesApi', () => {
       '/policies/operator-workflow/libraries/7/proposals/proposal_reference_123456789012345678/admission',
       {
         proposal_revision: 'a'.repeat(64),
-        adjustment_commands: [{ command_id: 'set_purpose_genres', values: ['Animation'] }],
+        adjustment_commands: [
+          { command_id: 'set_purpose_genres', values: ['Animation'] },
+          { command_id: 'set_helpful_studios', values: ['Studio Example'] },
+        ],
       },
       {
         headers: {

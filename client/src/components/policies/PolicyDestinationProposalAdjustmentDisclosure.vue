@@ -5,7 +5,7 @@
 
 <template>
   <section
-    v-if="options.length > 0"
+    v-if="hasAdjustableOptions"
     class="mt-5 rounded border border-gray-700 bg-gray-900/40 p-4"
     aria-labelledby="policy-destination-adjustment-heading"
   >
@@ -18,7 +18,7 @@
           Fine-tune this proposal
         </h4>
         <p class="mt-1 text-sm text-gray-400">
-          Optional. The proposed library meaning is used unless you narrow its genres.
+          Optional. The proposed library meaning is used unless you narrow eligible values.
         </p>
       </div>
       <button
@@ -33,27 +33,26 @@
 
     <div
       v-if="expanded"
-      class="mt-4 border-t border-gray-700 pt-4"
+      class="mt-4 space-y-5 border-t border-gray-700 pt-4"
     >
-      <fieldset>
+      <fieldset v-if="hasAdjustablePurposeGenres">
         <legend class="text-sm font-semibold text-white">
           Keep these proposed genres
         </legend>
         <p class="mt-1 text-sm leading-6 text-gray-300">
-          Proposed from the current library profile. At least one genre is required. Custom values,
-          templates, limits, review behavior, and routing are unchanged.
+          Proposed from the current library profile. At least one genre is required.
         </p>
         <div class="mt-3 space-y-2">
           <label
-            v-for="option in options"
+            v-for="option in purposeGenreOptions"
             :key="option.value"
             class="flex items-start gap-3 rounded border border-gray-700 px-3 py-2 text-sm text-gray-100"
           >
             <input
-              v-model="selectedValues"
+              v-model="selectedPurposeGenreValues"
               type="checkbox"
               :value="option.value"
-              :disabled="isLastSelectedOption(option.value)"
+              :disabled="isLastSelectedOption(option.value, selectedPurposeGenreValues)"
               class="mt-1 h-4 w-4 rounded border-gray-500 bg-gray-950 text-primary focus:ring-primary disabled:cursor-not-allowed disabled:opacity-60"
             >
             <span>
@@ -63,13 +62,46 @@
           </label>
         </div>
       </fieldset>
+
+      <fieldset v-if="hasAdjustableHelpfulStudios">
+        <legend class="text-sm font-semibold text-white">
+          Keep these helpful studios
+        </legend>
+        <p class="mt-1 text-sm leading-6 text-gray-300">
+          Proposed from the current library profile. At least one studio is required. These are
+          helpful preferences, not destination identity.
+        </p>
+        <div class="mt-3 space-y-2">
+          <label
+            v-for="option in helpfulStudioOptions"
+            :key="option.value"
+            class="flex items-start gap-3 rounded border border-gray-700 px-3 py-2 text-sm text-gray-100"
+          >
+            <input
+              v-model="selectedHelpfulStudioValues"
+              type="checkbox"
+              :value="option.value"
+              :disabled="isLastSelectedOption(option.value, selectedHelpfulStudioValues)"
+              class="mt-1 h-4 w-4 rounded border-gray-500 bg-gray-950 text-primary focus:ring-primary disabled:cursor-not-allowed disabled:opacity-60"
+            >
+            <span>
+              <span class="font-medium">{{ option.value }}</span>
+              <span class="ml-2 text-xs text-gray-400">Current library profile</span>
+            </span>
+          </label>
+        </div>
+      </fieldset>
+
+      <p class="text-sm leading-6 text-gray-300">
+        Custom values, templates, limits, review behavior, and routing are unchanged.
+      </p>
       <button
         type="button"
-        class="mt-4 rounded border border-gray-600 px-3 py-1.5 text-sm font-medium text-gray-100 hover:border-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-gray-950 disabled:cursor-not-allowed disabled:opacity-60"
+        class="rounded border border-gray-600 px-3 py-1.5 text-sm font-medium text-gray-100 hover:border-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-gray-950 disabled:cursor-not-allowed disabled:opacity-60"
         :disabled="selectionMatchesProposal"
-        @click="restoreProposalGenres"
+        @click="restoreProposalValues"
       >
-        Restore proposed genres
+        Restore proposed values
       </button>
     </div>
   </section>
@@ -78,13 +110,19 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import {
-  buildPolicyAuthoringProposalPurposeGenreAdjustmentCommands,
+  POLICY_AUTHORING_PROPOSAL_ADJUSTMENT_COMMAND_IDS,
+  buildPolicyAuthoringProposalAdjustmentCommands,
   normalizePolicyAuthoringProposalAdjustmentCommands,
+  normalizePolicyAuthoringProposalHelpfulStudioOptions,
   normalizePolicyAuthoringProposalPurposeGenreOptions,
 } from '@/utils/policyAuthoringProposalAdjustment'
 
 const props = defineProps({
   genreOptions: {
+    type: Array,
+    default: () => [],
+  },
+  helpfulStudioOptions: {
     type: Array,
     default: () => [],
   },
@@ -96,45 +134,75 @@ const props = defineProps({
 
 const emit = defineEmits(['update:adjustment-commands'])
 const expanded = ref(false)
-const selectedValues = ref([])
-const options = computed(() => normalizePolicyAuthoringProposalPurposeGenreOptions(props.genreOptions))
-const proposedValues = computed(() => options.value.map(option => option.value))
-const selectionMatchesProposal = computed(() => selectedValues.value.length === proposedValues.value.length &&
-  selectedValues.value.every(value => proposedValues.value.includes(value)))
+const selectedPurposeGenreValues = ref([])
+const selectedHelpfulStudioValues = ref([])
+const purposeGenreOptions = computed(() => normalizePolicyAuthoringProposalPurposeGenreOptions(props.genreOptions))
+const helpfulStudioOptions = computed(() => normalizePolicyAuthoringProposalHelpfulStudioOptions(props.helpfulStudioOptions))
+const proposedPurposeGenreValues = computed(() => purposeGenreOptions.value.map(option => option.value))
+const proposedHelpfulStudioValues = computed(() => helpfulStudioOptions.value.map(option => option.value))
+const hasAdjustablePurposeGenres = computed(() => purposeGenreOptions.value.length > 1)
+const hasAdjustableHelpfulStudios = computed(() => helpfulStudioOptions.value.length > 1)
+const hasAdjustableOptions = computed(() => (
+  hasAdjustablePurposeGenres.value || hasAdjustableHelpfulStudios.value
+))
+const selectionMatchesProposal = computed(() => (
+  valuesMatch(selectedPurposeGenreValues.value, proposedPurposeGenreValues.value) &&
+  valuesMatch(selectedHelpfulStudioValues.value, proposedHelpfulStudioValues.value)
+))
 
-function selectionFromCommands(commands) {
+function valuesMatch(left, right) {
+  return left.length === right.length && left.every(value => right.includes(value))
+}
+
+function selectionFromCommands(commands, commandId, proposedValues) {
   const normalizedCommands = normalizePolicyAuthoringProposalAdjustmentCommands(commands)
-  if (normalizedCommands === null || normalizedCommands.length === 0) return [...proposedValues.value]
+  const command = normalizedCommands?.find(entry => entry.commandId === commandId)
+  if (!command || !command.values.every(value => proposedValues.includes(value))) return [...proposedValues]
 
-  const values = normalizedCommands[0].values
-  return values.every(value => proposedValues.value.includes(value)) ? [...values] : [...proposedValues.value]
+  return [...command.values]
 }
 
-function restoreProposalGenres() {
-  selectedValues.value = [...proposedValues.value]
+function restoreProposalValues() {
+  selectedPurposeGenreValues.value = [...proposedPurposeGenreValues.value]
+  selectedHelpfulStudioValues.value = [...proposedHelpfulStudioValues.value]
 }
 
-function isLastSelectedOption(value) {
-  return selectedValues.value.length === 1 && selectedValues.value[0] === value
+function isLastSelectedOption(value, selectedValues) {
+  return selectedValues.length === 1 && selectedValues[0] === value
 }
 
 function adjustmentCommandsMatch(left, right) {
   if (left === null || right === null || left.length !== right.length) return false
-  if (left.length === 0) return true
 
-  return left[0].commandId === right[0].commandId &&
-    left[0].values.length === right[0].values.length &&
-    left[0].values.every((value, index) => value === right[0].values[index])
+  return left.every((command, index) => (
+    command.commandId === right[index].commandId &&
+    valuesMatch(command.values, right[index].values)
+  ))
 }
 
-watch([proposedValues, () => props.adjustmentCommands], () => {
-  selectedValues.value = selectionFromCommands(props.adjustmentCommands)
+watch([
+  proposedPurposeGenreValues,
+  proposedHelpfulStudioValues,
+  () => props.adjustmentCommands,
+], () => {
+  selectedPurposeGenreValues.value = selectionFromCommands(
+    props.adjustmentCommands,
+    POLICY_AUTHORING_PROPOSAL_ADJUSTMENT_COMMAND_IDS.SET_PURPOSE_GENRES,
+    proposedPurposeGenreValues.value
+  )
+  selectedHelpfulStudioValues.value = selectionFromCommands(
+    props.adjustmentCommands,
+    POLICY_AUTHORING_PROPOSAL_ADJUSTMENT_COMMAND_IDS.SET_HELPFUL_STUDIOS,
+    proposedHelpfulStudioValues.value
+  )
 }, { immediate: true })
 
-watch(selectedValues, values => {
-  const commands = buildPolicyAuthoringProposalPurposeGenreAdjustmentCommands({
-    options: options.value,
-    selectedValues: values,
+watch([selectedPurposeGenreValues, selectedHelpfulStudioValues], ([purposeGenres, helpfulStudios]) => {
+  const commands = buildPolicyAuthoringProposalAdjustmentCommands({
+    purposeGenreOptions: purposeGenreOptions.value,
+    selectedPurposeGenreValues: purposeGenres,
+    helpfulStudioOptions: helpfulStudioOptions.value,
+    selectedHelpfulStudioValues: helpfulStudios,
   })
 
   const currentCommands = normalizePolicyAuthoringProposalAdjustmentCommands(props.adjustmentCommands)

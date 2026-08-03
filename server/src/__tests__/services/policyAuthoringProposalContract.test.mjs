@@ -63,7 +63,7 @@ describe('policyAuthoringProposalContract', () => {
     }));
   });
 
-  test('requires an exact revision and one allow-listed adjustment command at most', () => {
+  test('requires an exact revision and bounded allow-listed adjustment commands', () => {
     const candidate = buildCandidate();
 
     expect(validatePolicyAuthoringProposalAdmissionRequest({
@@ -79,18 +79,30 @@ describe('policyAuthoringProposalContract', () => {
     });
     expect(validatePolicyAuthoringProposalAdmissionRequest({
       proposal_revision: candidate.proposalRevision,
-      adjustment_commands: [{
-        command_id: 'set_purpose_genres',
-        values: ['Animation'],
-      }],
+      adjustment_commands: [
+        {
+          command_id: 'set_helpful_studios',
+          values: ['Studio Example'],
+        },
+        {
+          command_id: 'set_purpose_genres',
+          values: ['Animation'],
+        },
+      ],
     })).toEqual({
       ok: true,
       value: {
         proposalRevision: candidate.proposalRevision,
-        adjustmentCommands: [{
-          commandId: 'set_purpose_genres',
-          values: ['Animation'],
-        }],
+        adjustmentCommands: [
+          {
+            commandId: 'set_purpose_genres',
+            values: ['Animation'],
+          },
+          {
+            commandId: 'set_helpful_studios',
+            values: ['Studio Example'],
+          },
+        ],
       },
       errorId: null,
     });

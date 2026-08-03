@@ -11,6 +11,10 @@ const genreOptions = [
   { value: 'Animation', sourceId: 'current_library_profile' },
   { value: 'Family', sourceId: 'current_library_profile' },
 ]
+const helpfulStudioOptions = [
+  { value: 'Studio Example', sourceId: 'current_library_profile' },
+  { value: 'Studio Second', sourceId: 'current_library_profile' },
+]
 
 describe('PolicyDestinationProposalAdjustmentDisclosure.vue', () => {
   it('keeps optional genre narrowing collapsed until explicitly requested', async () => {
@@ -46,5 +50,36 @@ describe('PolicyDestinationProposalAdjustmentDisclosure.vue', () => {
       },
     ]])
     expect(wrapper.get('input[value="Animation"]').attributes('disabled')).toBeDefined()
+  })
+
+  it('keeps helpful studios distinct from purpose and emits their typed narrowing command', async () => {
+    const wrapper = mount(PolicyDestinationProposalAdjustmentDisclosure, {
+      props: { genreOptions, helpfulStudioOptions },
+    })
+
+    await wrapper.get('button').trigger('click')
+    expect(wrapper.text()).toContain('Keep these helpful studios')
+    expect(wrapper.text()).toContain('helpful preferences, not destination identity')
+
+    await wrapper.get('input[value="Studio Second"]').setValue(false)
+
+    expect(wrapper.emitted('update:adjustment-commands')).toContainEqual([[
+      {
+        commandId: 'set_helpful_studios',
+        values: ['Studio Example'],
+      },
+    ]])
+    expect(wrapper.get('input[value="Studio Example"]').attributes('disabled')).toBeDefined()
+  })
+
+  it('does not render a one-value group that cannot be narrowed', () => {
+    const wrapper = mount(PolicyDestinationProposalAdjustmentDisclosure, {
+      props: {
+        genreOptions: [{ value: 'Animation', sourceId: 'current_library_profile' }],
+        helpfulStudioOptions: [{ value: 'Studio Example', sourceId: 'current_library_profile' }],
+      },
+    })
+
+    expect(wrapper.find('section').exists()).toBe(false)
   })
 })

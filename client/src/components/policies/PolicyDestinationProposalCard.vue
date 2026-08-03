@@ -101,6 +101,7 @@
 
     <PolicyDestinationProposalAdjustmentDisclosure
       :genre-options="proposal.adjustment?.purposeGenres || []"
+      :helpful-studio-options="proposal.adjustment?.helpfulStudios || []"
       :adjustment-commands="adjustmentCommands"
       @update:adjustment-commands="$emit('update:adjustment-commands', $event)"
     />

@@ -33,6 +33,7 @@ function buildPreparedProposal(overrides = {}) {
       expiresAt: '2026-08-03T12:00:00.000Z',
       adjustment: {
         purposeGenres: [{ value: 'Animation', sourceId: 'current_library_profile' }],
+        helpfulStudios: [{ value: 'Studio Example', sourceId: 'current_library_profile' }],
       },
       summary: {
         title: 'Anime Movies Policy',
@@ -60,6 +61,7 @@ describe('policyAuthoringProposalPresentation', () => {
       purpose: [{ signalType: 'genres', operator: 'any_of', values: ['Animation'] }],
       adjustment: {
         purposeGenres: [{ value: 'Animation', sourceId: 'current_library_profile' }],
+        helpfulStudios: [{ value: 'Studio Example', sourceId: 'current_library_profile' }],
       },
       observedContext: {
         available: false,
@@ -81,6 +83,7 @@ describe('policyAuthoringProposalPresentation', () => {
     ['additional raw proposal field', response => { response.proposal.rawProfile = { private: true } }],
     ['unexpected summary field', response => { response.proposal.summary.profileItems = ['raw item'] }],
     ['invalid adjustment source', response => { response.proposal.adjustment.purposeGenres[0].sourceId = 'operator' }],
+    ['unexpected helpful-studio field', response => { response.proposal.adjustment.helpfulStudios[0].source = 'raw' }],
     ['mismatched lifecycle library', response => { response.lifecycle.library.id = 8 }],
     ['invalid opaque revision', response => { response.proposal.revision = 'browser-value' }],
   ])('fails closed for %s', (_label, mutate) => {

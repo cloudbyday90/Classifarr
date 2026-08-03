@@ -143,6 +143,6 @@ bounded name without reopening the retired policy editor.
 
 ## Next Task
 
-**Phase 4R.5, Intent Adjustment Disclosure:** introduce a collapsed, bounded
-adjustment surface for a new proposal without making rule editing the default
-or widening the admission contract beyond allow-listed commands.
+**Phase 4R.5.3, Revision Reset And Accessibility Closure:** verify that every
+proposal replacement and recovery path clears local adjustment state, then add
+keyboard and assistive-technology end-to-end evidence for each admitted group.

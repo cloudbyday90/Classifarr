@@ -124,6 +124,9 @@ describe('policyAuthoringProposalLifecycleService', () => {
           purposeGenres: expect.arrayContaining([
             expect.objectContaining({ value: 'Animation', sourceId: 'current_library_profile' }),
           ]),
+          helpfulStudios: expect.arrayContaining([
+            expect.objectContaining({ value: 'Studio Example', sourceId: 'current_library_profile' }),
+          ]),
         },
       }),
     }));
@@ -214,6 +217,43 @@ describe('policyAuthoringProposalLifecycleService', () => {
             expect.objectContaining({
               signal_type: 'media_type',
               values: { require_any: ['movie'] },
+            }),
+          ]),
+        }),
+      }),
+    }));
+  });
+
+  test('admits a server-allowed helpful-studio narrowing without changing purpose rules', async () => {
+    const profile = buildProfile({
+      studio_distribution: { 'Studio Example': 25, 'Studio Second': 20 },
+    });
+    const candidate = buildCandidate({ profile });
+    const { service, createNativePolicy, db } = createService({
+      profile,
+      proposal: storedProposal(candidate),
+    });
+
+    await service.admitProposal({
+      db,
+      libraryId: 6,
+      actorId: 7,
+      proposalReference: 'C5CSeInFAbrQK1soKk5dW-4faH0sZNqj-ZXo3mV45xA',
+      proposalRevision: candidate.proposalRevision,
+      idempotencyKey: IDEMPOTENCY_KEY,
+      adjustmentCommands: [{ commandId: 'set_helpful_studios', values: ['Studio Example'] }],
+      now: NOW,
+    });
+
+    expect(createNativePolicy).toHaveBeenCalledWith(expect.objectContaining({
+      establishmentRequest: expect.objectContaining({
+        declared_intent: expect.objectContaining({
+          purpose: candidate.declaredIntent.purpose,
+          helpful_hints: expect.arrayContaining([
+            expect.objectContaining({
+              signal_type: 'studios',
+              operator: 'prefer',
+              values: expect.objectContaining({ prefer: ['Studio Example'] }),
             }),
           ]),
         }),

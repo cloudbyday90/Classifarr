@@ -17,9 +17,9 @@ Current execution focus:
    proposal or a normal lifecycle entry. **5R.2a Proposal And Lifecycle
    Admission Contract**, **4R.4a Library Lifecycle Entry**, and **4R.4
    Destination Proposal Card**, and **4R.4b Proposal Outcome Recovery** are
-   complete. **4R.5.1 Revision-Bound Purpose-Genre Narrowing** is complete;
-   **4R.5.2 Additional Eligible Adjustment Groups** is the next
-   dependency-gated task.
+   complete. **4R.5.1 Revision-Bound Purpose-Genre Narrowing** and
+   **4R.5.2.1 Helpful-Studio Narrowing** are complete; **4R.5.3 Revision
+   Reset And Accessibility Closure** is the next dependency-gated task.
 3. **8R.37.1 Runtime Capability Inventory And Isolation Decision** is a
    parallel release-maintenance/security audit. It cannot block 4R.1 or
    automatic native policy behavior.
@@ -33,7 +33,7 @@ The execution dependency is intentionally not numeric:
 
 ```text
 completed foundations: 0R -> 1R -> 2R -> 3R
-active product work: 4R.1 -> 5R.1/5R.2/4R.2/4R.3/5R.2a/4R.4a/4R.4/4R.4b/4R.5.1 (complete) -> 4R.5.2
+active product work: 4R.1 -> 5R.1/5R.2/4R.2/4R.3/5R.2a/4R.4a/4R.4/4R.4b/4R.5.1/4R.5.2.1 (complete) -> 4R.5.3
 runtime trust work: 5R.3 through 5R.10 -> 4R.6 through 4R.9
 parallel safety work: 8R installation/runtime lanes + 9R zero-debt gate
 ```
@@ -3288,7 +3288,8 @@ This is not a claim that every legacy list-level action is accepted as the
 final product path. The current normal create opener is absent, and list-level
 reset, maintenance, and raw failure surfaces remain explicit 4R.8 removal
 work. Representative live-browser verification remains a separate 4R.1
-requirement. **5R.2a, 4R.4a, 4R.4, 4R.4b, and 4R.5.1 are complete; 4R.5.2 is next.**
+requirement. **5R.2a, 4R.4a, 4R.4, 4R.4b, 4R.5.1, and 4R.5.2.1 are complete;
+4R.5.3 is next.**
 
 ### 4R.4a Library Lifecycle Entry
 
@@ -3448,13 +3449,16 @@ Implementation sequence:
    persisted and current canonical intent before creation. See [Policy
    Authoring Proposal Adjustment
    Disclosure](policy-authoring-proposal-adjustment-disclosure.md).
-2. **4R.5.2 Additional Eligible Adjustment Groups**: next. Inventory only
-   signal groups with a server-projected source, typed command, bounded
-   allowlist, disabled reason when unavailable, and current-candidate recheck.
-   Do not expose custom entry, templates, routing, review triggers, hard
-   limits, or compatibility-policy mutation until their dedicated authority
-   contracts are complete.
-3. **4R.5.3 Revision Reset And Accessibility Closure**: verify disclosure
+2. **4R.5.2 Additional Eligible Adjustment Groups**: complete. The eligibility
+   inventory admitted only **4R.5.2.1 Helpful-Studio Narrowing**: it projects
+   up to three current-profile `helpful_hints.studios.prefer` values, permits
+   subset-only `set_helpful_studios` commands, and repeats locked-proposal and
+   current-candidate validation. Media type has no meaningful narrowing, while
+   custom entry, templates, routing, review triggers, hard limits, avoid
+   values, and compatibility-policy mutation remain excluded without their own
+   authority contracts. See [Policy Authoring Proposal Helpful-Studio
+   Adjustment](policy-authoring-proposal-helpful-studio-adjustment.md).
+3. **4R.5.3 Revision Reset And Accessibility Closure**: next. Verify disclosure
    state clears across library, proposal, stale, expiry, and recovery changes;
    add keyboard and assistive-technology end-to-end coverage for each admitted
    group.
@@ -3624,8 +3628,9 @@ Implement Phase 4R in this order:
    authoritative selected-library lifecycle rather than retrying blindly.
 8. **4R.5 Intent Adjustment Disclosure**
    4R.5.1 is complete: the normal path remains collapsed while current-profile
-   purpose genres can be narrowed through one revision-bound command. 4R.5.2
-   is next and may add only groups with their own server authority contracts.
+   purpose genres and helpful studios can be narrowed through revision-bound
+   commands. 4R.5.2 is complete: the eligibility inventory excluded every
+   remaining group without a dedicated authority contract. 4R.5.3 is next.
 9. **5R.3 through 5R.10 Server Runtime And Native-Change Authority**
    Close the provider, question, learning, verifier, test, and native-change
    contracts before rendering persistent exceptions or maintenance controls.
@@ -3638,7 +3643,7 @@ Implement Phase 4R in this order:
 13. **4R.9 Accessibility, Responsive Behavior, And End-To-End Workflow Tests**
    Proves the delivered flow works in the live product.
 
-Next implementation task: **4R.5.2 Additional Eligible Adjustment Groups**.
+Next implementation task: **4R.5.3 Revision Reset And Accessibility Closure**.
 The 4R.1 source inventory still requires representative live-browser
 verification, and 4R.3 has bound the existing component's controls to admitted
 actions and truthful outcomes. The completed 5R.2a contract supplies the
@@ -3831,8 +3836,9 @@ Implementation status:
   stale, expired, existing-policy, replay, invalid-input, and unauthorized
   paths. The completed 4R.4a lifecycle entry, 4R.4 proposal card, and 4R.4b
   outcome recovery consume the lifecycle, prepared-proposal, and admission
-  boundaries; **4R.5.1** now supplies revision-bound purpose-genre narrowing.
-  The next work is **4R.5.2 Additional Eligible Adjustment Groups**.
+  boundaries; **4R.5.1** and **4R.5.2.1** now supply revision-bound
+  purpose-genre and helpful-studio narrowing. The next work is **4R.5.3
+  Revision Reset And Accessibility Closure**.
 
 ### 5R.3 AI Provider Capability And Authority Modes
 
@@ -11575,8 +11581,9 @@ The next sequence is dependency-gated rather than phase-number order:
    current-state recheck, and bounded stale/concurrency recovery outcomes.
 7. **4R.4a, 4R.4, and 4R.4b**: complete. They deliver the normal lifecycle
    entry, automated proposal default, and bounded outcome recovery without a
-   second create path or a requirement to reselect known evidence. **4R.5**
-   next delivers exceptional adjustment disclosure.
+   second create path or a requirement to reselect known evidence. **4R.5.1**
+   and **4R.5.2.1** now provide the only eligible exceptional adjustments;
+   **4R.5.3** next closes reset and accessibility evidence.
 8. **5R.3 through 5R.10**, then **4R.6 through 4R.9**: finish model/question/
    learning and native-change authority before exposing material exceptions,
    then complete revision-safe maintenance, legacy UI cutover, accessibility,

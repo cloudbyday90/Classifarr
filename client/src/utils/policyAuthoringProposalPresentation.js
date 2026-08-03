@@ -17,6 +17,7 @@ import {
   POLICY_AUTHORING_WORKFLOW_PRESENTATION_VERSION,
 } from '@/utils/policyAuthoringWorkflowPresentation'
 import {
+  normalizePolicyAuthoringProposalHelpfulStudioOptions,
   normalizePolicyAuthoringProposalPurposeGenreOptions,
 } from '@/utils/policyAuthoringProposalAdjustment'
 
@@ -162,17 +163,28 @@ function buildUnavailablePresentation(library) {
     helpfulHints: [],
     hardLimitCount: null,
     avoidCount: null,
-    adjustment: Object.freeze({ purposeGenres: Object.freeze([]) }),
+    adjustment: Object.freeze({
+      purposeGenres: Object.freeze([]),
+      helpfulStudios: Object.freeze([]),
+    }),
     observedContext: null,
   })
 }
 
 function normalizeAdjustmentPresentation(value) {
-  if (!hasOnlyKeys(value, ['purposeGenres'])) return null
+  if (!hasOnlyKeys(value, ['purposeGenres', 'helpfulStudios'])) return null
 
   const purposeGenres = normalizePolicyAuthoringProposalPurposeGenreOptions(value.purposeGenres)
-  return purposeGenres.length > 0
-    ? Object.freeze({ purposeGenres })
+  const helpfulStudios = normalizePolicyAuthoringProposalHelpfulStudioOptions(value.helpfulStudios)
+  // Empty helpful-studio suggestions are valid. Any supplied option that does
+  // not survive the strict option normalizer is an unsafe server payload.
+  const hasValidOptionShapes = Array.isArray(value.purposeGenres) &&
+    Array.isArray(value.helpfulStudios) &&
+    purposeGenres.length === value.purposeGenres.length &&
+    helpfulStudios.length === value.helpfulStudios.length
+
+  return hasValidOptionShapes && purposeGenres.length > 0
+    ? Object.freeze({ purposeGenres, helpfulStudios })
     : null
 }
 

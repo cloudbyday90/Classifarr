@@ -138,7 +138,7 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY = deepFreeze([
       POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_PROPOSAL_CARD,
     ],
     normalAuthoringAllowed: true,
-    notes: 'Keeps proposal adjustment collapsed and emits only the revision-bound purpose-genre narrowing command; it cannot derive values or widen the admission contract.',
+    notes: 'Keeps proposal adjustment collapsed and emits only revision-bound, profile-derived purpose-genre and helpful-studio narrowing commands; it cannot derive values or widen the admission contract.',
   },
   {
     id: 'intent_signal_picker',
