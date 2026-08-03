@@ -72,7 +72,7 @@ Cons:
 Focused verification:
 
 - `server/src/__tests__/services/policyAuthoringDraftContract.test.mjs`
-- Draft command, view projection, and server authority preparation tests that
+- Draft command, view projection, and intent authority contract tests that
   consume the draft-field adapter.
 
 Supporting verification:

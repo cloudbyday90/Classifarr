@@ -46,6 +46,17 @@ function expectDetailedPolicyIntentProjection(policy, policyId) {
       errors: [],
     }),
   }));
+  expect(policy.policy_intent_authority).toEqual(expect.objectContaining({
+    version: 'policy.intent_authority.v1',
+    policy: expect.objectContaining({ id: policyId }),
+    authority: expect.objectContaining({
+      source_id: expect.any(String),
+      authoritative: expect.any(Boolean),
+    }),
+    legacy_projection: expect.objectContaining({
+      final_authority: false,
+    }),
+  }));
 }
 
 function validPolicyIntentDraft(overrides = {}) {
@@ -533,6 +544,22 @@ describe('Policies routes coverage', () => {
             errors: [],
             warnings: [],
           }],
+        })
+        .mockResolvedValueOnce({
+          rows: [{
+            arr_type: 'radarr',
+            target_status: 'configured',
+          }],
+        })
+        .mockResolvedValueOnce({
+          rows: [{
+            source_id: 'stored_library_profile',
+            capture_state: 'captured',
+            capture_reason_id: 'stored_profile_captured',
+            profile_freshness_state: 'current',
+            expires_at: '2026-08-16T00:00:00.000Z',
+            payload_redacted: false,
+          }],
         });
 
       const res = await request(app)
@@ -567,6 +594,21 @@ describe('Policies routes coverage', () => {
         status: 'native_intent_active',
         intent_version: 2,
       }));
+      expect(res.body.policy_intent_authority).toEqual(expect.objectContaining({
+        authority: expect.objectContaining({
+          source_id: 'native_intent',
+          authoritative: true,
+        }),
+        observed_evidence_reference: expect.objectContaining({
+          status_id: 'available',
+          source_id: 'stored_library_profile',
+        }),
+        routing_target: {
+          status_id: 'configured',
+          arr_type: 'radarr',
+        },
+      }));
+      expect(JSON.stringify(res.body.policy_intent_authority)).not.toContain('snapshot_payload');
       expect(res.body.presets).toHaveLength(1);
     });
   });

@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Intent Contract Authority**: Added a server-owned,
+  product-vocabulary authority projection for native and compatibility policy
+  reads. It exposes bounded routing and observed-evidence references, labels
+  the v1 intent contract as a read-only compatibility bridge, strips internal
+  metadata from responses, and retires the obsolete native-storage-disabled
+  preparation service.
+
 - **Policy Authoring Entry-Path Inventory**: Added a deterministic,
   source-backed inventory of current policy routes, modal and list entry points,
   visible actions, client/server boundaries, and replacement ownership. It

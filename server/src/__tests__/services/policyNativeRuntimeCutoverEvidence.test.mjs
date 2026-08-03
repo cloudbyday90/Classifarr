@@ -103,6 +103,12 @@ function createDbClient() {
       if (query.includes('FROM policy_intent_validation_status')) {
         return { rows: [{ intent_id: 501, status: 'valid', error_count: 0, warning_count: 0 }] };
       }
+      if (query.includes('FROM policy_intent_routing_targets')) {
+        return { rows: [] };
+      }
+      if (query.includes('FROM policy_observed_evidence_provenance_snapshots')) {
+        return { rows: [] };
+      }
 
       throw new Error(`Unexpected query: ${query}`);
     },

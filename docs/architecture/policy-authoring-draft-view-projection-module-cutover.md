@@ -66,5 +66,6 @@ Cons:
 
 ## Next Component
 
-Cut over the policy authoring server authority preparation family so request
-preflight and ownership metadata use durable product-domain names.
+The former preparation family is retired. The active successor is the
+server-owned policy intent authority contract, which keeps client draft state
+non-authoritative while native storage is active.

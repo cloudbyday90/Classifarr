@@ -11,6 +11,9 @@
 import {
   buildPolicyIntentRuntimeReadPath,
 } from './policyIntentRuntimeReadPath.mjs';
+import {
+  buildPolicyIntentAuthorityContract,
+} from './policyIntentAuthorityContract.mjs';
 
 export function buildPolicyIntentProjection(policy = {}) {
   const readPath = buildPolicyIntentRuntimeReadPath({ policy });
@@ -18,15 +21,21 @@ export function buildPolicyIntentProjection(policy = {}) {
   return {
     configuration_view: readPath.configuration_view,
     policy_intent_contract: readPath.policy_intent_contract,
+    policy_intent_authority: buildPolicyIntentAuthorityContract({
+      policy,
+      runtimeReadPath: readPath,
+      authorityContext: policy.policy_intent_authority_context,
+    }),
     policy_intent_read_trace: readPath.trace,
   };
 }
 
 export function withPolicyIntentProjection(policy = {}) {
   const projection = buildPolicyIntentProjection(policy);
+  const { policy_intent_authority_context: _authorityContext, ...publicPolicy } = policy;
 
   return {
-    ...policy,
+    ...publicPolicy,
     ...projection,
   };
 }

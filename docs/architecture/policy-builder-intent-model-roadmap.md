@@ -2019,15 +2019,13 @@ Acceptance criteria:
   points, warning reason-code drift, missing native-storage replacement steps,
   and premature native storage activation.
 
-Implementation record:
+Historical implementation record:
 
-- Policy authoring server authority preparation is documented in
+- The preparation-only authority record is retained as a retired document:
   [Policy Authoring Server Authority Preparation](policy-authoring-server-authority-preparation.md).
-- The server-side policy authoring authority preparation contract lives in
-  `server/src/services/policyAuthoringServerAuthorityPreparation.mjs`.
-- The current write path accepts explicit `policyIntentDraft` input only through
-  server request validation and sanitized preflight diagnostics; native intent
-  persistence remains disabled until migration, rollback, and parity gates pass.
+- Native storage is active. The current server contract is documented in
+  [Policy Intent Contract Authority](policy-intent-contract-authority.md), and
+  the remaining write-boundary work is 5R.2.
 
 ### 2R.6 Draft Parity And Regression Tests
 
@@ -2099,13 +2097,15 @@ Implementation record:
   [Policy Authoring Draft Command Boundary](policy-authoring-draft-command-boundary.md).
 - Policy authoring draft view projection is documented in
   [Policy Authoring Draft View Projection](policy-authoring-draft-view-projection.md).
-- Policy authoring server authority preparation is documented in
-  [Policy Authoring Server Authority Preparation](policy-authoring-server-authority-preparation.md).
+- The retired preparation record is retained at [Policy Authoring Server
+  Authority Preparation](policy-authoring-server-authority-preparation.md);
+  current authority lives in [Policy Intent Contract
+  Authority](policy-intent-contract-authority.md).
 - The compatibility regression inventory is documented in
   [Policy Authoring Compatibility Regression Inventory](policy-authoring-compatibility-regression-inventory.md).
 - Phase 2R is complete. Future updates should treat the draft bridge as a
-  compatibility boundary for Phase 3R, Phase 5R, Phase 6R, and Phase 8R until
-  native intent storage replaces it.
+  compatibility boundary while 5R migrates live writers and consumers to the
+  active native authority contract.
 
 ## Phase 3R: Operator Workflow Rebuild
 
@@ -3784,9 +3784,11 @@ Implement Phase 5R in this order:
 
 Current starting point:
 
-- After 4R.1 identifies the live cutline, begin **5R.1 Server Intent Contract
-  Authority**. Its first output is a keep/rewrite/replace/delete inventory of
-  the active server read contract, not a completion claim for existing files.
+- **5R.1 Server Intent Contract Authority is complete.** The server now
+  publishes `policy_intent_authority`, preserves `policy_intent_contract` as a
+  read-only v1 compatibility bridge, exposes only bounded routing and observed
+  evidence references, and retires the obsolete preparation-only authority
+  service. See [Policy Intent Contract Authority](policy-intent-contract-authority.md).
 - Follow with **5R.2 Write Preflight And Persistence Boundary** before 4R.2 or
   4R.3 changes a rendered create/save action.
 - Do not add preview/replay product UI or let AI clarification text, UI
@@ -3794,10 +3796,12 @@ Current starting point:
 
 Implementation record:
 
-- Existing implementation details are documented in
-  [Policy Builder Phase 5 Implementation](policy-builder-phase-5-implementation.md).
-- Future updates should turn that document into a server-authority inventory,
-  including which services are kept, rewritten, replaced, or deleted.
+- [Policy Intent Contract Authority](policy-intent-contract-authority.md)
+  records the server source classification, security properties, migration
+  bridge, and implementation outcome for 5R.1.
+- [Policy Builder Phase 5 Implementation](policy-builder-phase-5-implementation.md)
+  remains historical implementation context; it is not the current authority
+  plan.
 
 ## Phase 6R: Re-Imagined Policy Engine Roadmap
 
@@ -11219,11 +11223,10 @@ The next sequence is dependency-gated rather than phase-number order:
 1. **4R.1 Live Entry-Path And Action Inventory**: record every real authoring
    entry path, rendered state, visible action, and action result. This is the
    current task and must identify the exact component cutline.
-2. **5R.1 Server Intent Contract Authority**: reconcile the active server read
-   model with the 6R workflow projection, native authority selection, and the
-   product vocabulary. Publish a focused completion audit rather than treating
-   existing services as a phase-level closure.
-3. **5R.2 Write Preflight And Persistence Boundary**: establish one admitted,
+2. **5R.1 Server Intent Contract Authority**: complete. The active read model
+   now publishes native authority and marks the v1 projection as a read-only
+   compatibility bridge.
+3. **5R.2 Write Preflight And Persistence Boundary**: next. Establish one admitted,
    transactional create/update result for the proposal path. This must be
    idempotent, actor-authorized, sanitized, and authoritative after rejection.
 4. **4R.2 Server Workflow Presentation Adapter** and **4R.3 Action Binding And

@@ -56,6 +56,7 @@ describe('policyIntentMapper', () => {
     expect(projectedPolicy).not.toBe(originalPolicy);
     expect(originalPolicy.configuration_view).toBeUndefined();
     expect(originalPolicy.policy_intent_contract).toBeUndefined();
+    expect(originalPolicy.policy_intent_authority).toBeUndefined();
 
     expect(projectedPolicy.configuration_view).toEqual(expect.objectContaining({
       policy_id: 14,
@@ -79,6 +80,19 @@ describe('policyIntentMapper', () => {
       source: 'compatibility_bridge',
       status: 'compatibility_bridge_fallback',
       policy_id: 14,
+    }));
+    expect(projectedPolicy.policy_intent_authority).toEqual(expect.objectContaining({
+      authority: expect.objectContaining({
+        source_id: 'compatibility_bridge',
+        authoritative: false,
+      }),
+      declared_intent: expect.objectContaining({
+        status_id: 'not_declared',
+      }),
+      legacy_projection: expect.objectContaining({
+        status_id: 'read_only_compatibility_bridge',
+        final_authority: false,
+      }),
     }));
   });
 
@@ -132,6 +146,25 @@ describe('policyIntentMapper', () => {
     ]);
   });
 
+  test('does not expose server-only authority context alongside the public projection', () => {
+    const projectedPolicy = withPolicyIntentProjection(policy({
+      policy_intent_authority_context: {
+        routing_target: {
+          arr_type: 'radarr',
+          target_status: 'configured',
+          arr_root_folder_path: '/private/media',
+        },
+        observed_evidence_reference: {
+          snapshot_payload: { private: 'never expose this' },
+        },
+      },
+    }));
+
+    expect(projectedPolicy.policy_intent_authority_context).toBeUndefined();
+    expect(JSON.stringify(projectedPolicy)).not.toContain('snapshot_payload');
+    expect(JSON.stringify(projectedPolicy)).not.toContain('/private/media');
+  });
+
   test('projects active native intent through the same product contract shape', () => {
     const projection = buildPolicyIntentProjection(policy({
       native_intent: {
@@ -176,6 +209,19 @@ describe('policyIntentMapper', () => {
       source: POLICY_INTENT_SOURCES.NATIVE_INTENT,
       validation: expect.objectContaining({
         valid: true,
+      }),
+    }));
+    expect(projection.policy_intent_authority).toEqual(expect.objectContaining({
+      authority: expect.objectContaining({
+        source_id: 'native_intent',
+        authoritative: true,
+      }),
+      declared_intent: expect.objectContaining({
+        status_id: 'declared',
+        purpose: [expect.objectContaining({ signal_type: 'genres' })],
+      }),
+      legacy_projection: expect.objectContaining({
+        status_id: 'not_used',
       }),
     }));
     expect(projection.policy_intent_read_trace).toEqual(expect.objectContaining({

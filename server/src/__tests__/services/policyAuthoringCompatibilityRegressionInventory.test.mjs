@@ -57,7 +57,7 @@ describe('policyAuthoringCompatibilityRegressionInventory', () => {
       transitionCandidateCount: 0,
       legacyLayoutFreezeRecordPaths: [],
       clientDraftAuthoritative: false,
-      nativeIntentStorageEnabled: false,
+      nativeIntentStorageEnabled: true,
       policyAuthoringCompatibilityReady: true,
     });
   });
@@ -91,7 +91,7 @@ describe('policyAuthoringCompatibilityRegressionInventory', () => {
       summary: expect.objectContaining({
         uncoveredRequiredRuleIds: [],
         clientDraftAuthoritative: false,
-        nativeIntentStorageEnabled: false,
+        nativeIntentStorageEnabled: true,
       }),
     }));
   });

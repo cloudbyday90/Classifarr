@@ -90,9 +90,11 @@ the per-installation cutover evidence owned by Phase 8R.
    static evidence is not treated as a rendered-path success. See [Policy
    Authoring Live Entry-Path And Action
    Inventory](policy-authoring-live-entry-path-inventory.md).
-2. **5R.1 Server Intent Contract Authority** is next. It reconciles the server
-   read contract with the native authority and bounded workflow projection.
-3. **5R.2 Write Preflight And Persistence Boundary** follows. It establishes
+2. **5R.1 Server Intent Contract Authority** is complete. It publishes the
+   server-owned `policy_intent_authority` contract, keeps v1 intent projection
+   read-only and compatibility-scoped, and bounds routing/evidence metadata.
+   See [Policy Intent Contract Authority](policy-intent-contract-authority.md).
+3. **5R.2 Write Preflight And Persistence Boundary** is next. It establishes
    the admitted, idempotent create/update result the browser may invoke.
 4. **4R.2 and 4R.3** then build the one validated presentation adapter and bind
    every interactive action to a truthful outcome.

@@ -91,6 +91,8 @@ function attachNativeIntentToPolicy({
   templates = [],
   validation = null,
   authority = null,
+  routingTarget = null,
+  observedEvidenceReference = null,
 } = {}) {
   const resolvedAuthority = authority || buildNativeIntentAuthority({
     activeIntents: intent ? [intent] : [],
@@ -118,6 +120,10 @@ function attachNativeIntentToPolicy({
     native_intent_authority: resolvedAuthority,
     native_intent_active: intent.active !== false,
     native_intent_version: intent.intent_version ?? null,
+    policy_intent_authority_context: {
+      routing_target: asObject(routingTarget),
+      observed_evidence_reference: asObject(observedEvidenceReference),
+    },
     native_intent: {
       active: intent.active !== false,
       intent_version: intent.intent_version ?? null,
@@ -174,6 +180,8 @@ async function fetchActiveNativeIntentForPolicy(dbClient, policyId) {
     rulesResult,
     templatesResult,
     validationResult,
+    routingTargetResult,
+    observedEvidenceReferenceResult,
   ] = await Promise.all([
     dbClient.query(`
       SELECT *
@@ -194,6 +202,26 @@ async function fetchActiveNativeIntentForPolicy(dbClient, policyId) {
       ORDER BY validated_at DESC, id DESC
       LIMIT 1
     `, [intent.id]),
+    dbClient.query(`
+      SELECT arr_type, target_status
+      FROM policy_intent_routing_targets
+      WHERE intent_id = $1
+      ORDER BY id DESC
+      LIMIT 1
+    `, [intent.id]),
+    dbClient.query(`
+      SELECT
+        source_id,
+        capture_state,
+        capture_reason_id,
+        profile_freshness_state,
+        expires_at,
+        payload_redacted
+      FROM policy_observed_evidence_provenance_snapshots
+      WHERE intent_id = $1
+      ORDER BY id DESC
+      LIMIT 1
+    `, [intent.id]),
   ]);
 
   return {
@@ -202,6 +230,8 @@ async function fetchActiveNativeIntentForPolicy(dbClient, policyId) {
     rules: rulesResult.rows || [],
     templates: templatesResult.rows || [],
     validation: validationResult.rows?.[0] || null,
+    routingTarget: routingTargetResult.rows?.[0] || null,
+    observedEvidenceReference: observedEvidenceReferenceResult.rows?.[0] || null,
   };
 }
 
@@ -287,7 +317,13 @@ async function fetchActiveNativeIntentsForPolicies(dbClient, policies = []) {
   }
 
   const intentIds = authoritativeEntries.map(({ intent }) => intent.id);
-  const [rulesResult, templatesResult, validationsResult] = await Promise.all([
+  const [
+    rulesResult,
+    templatesResult,
+    validationsResult,
+    routingTargetsResult,
+    observedEvidenceReferencesResult,
+  ] = await Promise.all([
     dbClient.query(`
       SELECT *
       FROM policy_intent_rules
@@ -306,11 +342,38 @@ async function fetchActiveNativeIntentsForPolicies(dbClient, policies = []) {
       WHERE intent_id = ANY($1::integer[])
       ORDER BY intent_id, validated_at DESC, id DESC
     `, [intentIds]),
+    dbClient.query(`
+      SELECT DISTINCT ON (intent_id)
+        intent_id,
+        arr_type,
+        target_status
+      FROM policy_intent_routing_targets
+      WHERE intent_id = ANY($1::integer[])
+      ORDER BY intent_id, id DESC
+    `, [intentIds]),
+    dbClient.query(`
+      SELECT DISTINCT ON (intent_id)
+        intent_id,
+        source_id,
+        capture_state,
+        capture_reason_id,
+        profile_freshness_state,
+        expires_at,
+        payload_redacted
+      FROM policy_observed_evidence_provenance_snapshots
+      WHERE intent_id = ANY($1::integer[])
+      ORDER BY intent_id, id DESC
+    `, [intentIds]),
   ]);
 
   const rulesByIntentId = groupRowsBy(rulesResult.rows, 'intent_id');
   const templatesByIntentId = groupRowsBy(templatesResult.rows, 'intent_id');
   const validationsByIntentId = groupRowsBy(validationsResult.rows, 'intent_id');
+  const routingTargetsByIntentId = groupRowsBy(routingTargetsResult.rows, 'intent_id');
+  const observedEvidenceReferencesByIntentId = groupRowsBy(
+    observedEvidenceReferencesResult.rows,
+    'intent_id'
+  );
 
   for (const { policyId, authority, intent } of authoritativeEntries) {
     nativeIntentsByPolicyId.set(policyId, {
@@ -319,6 +382,8 @@ async function fetchActiveNativeIntentsForPolicies(dbClient, policies = []) {
       rules: rulesByIntentId.get(intent.id) || [],
       templates: templatesByIntentId.get(intent.id) || [],
       validation: validationsByIntentId.get(intent.id)?.[0] || null,
+      routingTarget: routingTargetsByIntentId.get(intent.id)?.[0] || null,
+      observedEvidenceReference: observedEvidenceReferencesByIntentId.get(intent.id)?.[0] || null,
     });
   }
 

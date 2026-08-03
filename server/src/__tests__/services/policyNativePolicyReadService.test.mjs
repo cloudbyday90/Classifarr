@@ -158,6 +158,18 @@ describe('policyNativePolicyReadService', () => {
         errors: [],
         warnings: [],
       },
+      routingTarget: {
+        arr_type: 'radarr',
+        target_status: 'configured',
+      },
+      observedEvidenceReference: {
+        source_id: 'stored_library_profile',
+        capture_state: 'captured',
+        capture_reason_id: 'stored_profile_captured',
+        profile_freshness_state: 'current',
+        expires_at: '2026-08-16T00:00:00.000Z',
+        payload_redacted: false,
+      },
     });
 
     expect(attached.presets).toHaveLength(1);
@@ -166,6 +178,16 @@ describe('policyNativePolicyReadService', () => {
     expect(attached.native_intent.contract.source).toBe('native_intent');
     expect(attached.native_intent.contract.purpose[0].values)
       .toEqual({ require_any: ['Animation'] });
+    expect(attached.policy_intent_authority_context).toEqual({
+      routing_target: {
+        arr_type: 'radarr',
+        target_status: 'configured',
+      },
+      observed_evidence_reference: expect.objectContaining({
+        source_id: 'stored_library_profile',
+        capture_state: 'captured',
+      }),
+    });
   });
 
   test('does not select a native intent when duplicate active rows are returned', async () => {
@@ -233,6 +255,20 @@ describe('policyNativePolicyReadService', () => {
         if (query.includes('policy_intent_validation_status')) {
           return { rows: [{ intent_id: 501, status: 'valid', error_count: 0, warning_count: 0 }] };
         }
+        if (query.includes('policy_intent_routing_targets')) {
+          return { rows: [{ intent_id: 501, arr_type: 'radarr', target_status: 'configured' }] };
+        }
+        if (query.includes('policy_observed_evidence_provenance_snapshots')) {
+          return { rows: [{
+            intent_id: 501,
+            source_id: 'stored_library_profile',
+            capture_state: 'captured',
+            capture_reason_id: 'stored_profile_captured',
+            profile_freshness_state: 'current',
+            expires_at: '2026-08-16T00:00:00.000Z',
+            payload_redacted: false,
+          }] };
+        }
         throw new Error(`Unexpected query: ${query}`);
       },
     };
@@ -257,6 +293,12 @@ describe('policyNativePolicyReadService', () => {
     expect(nativeIntents.has(16)).toBe(false);
     expect(calls.filter((query) => /^\s*SELECT \*\s+FROM policy_intent_rules/m.test(query))).toHaveLength(2);
     expect(attached[0].native_intent.contract.purpose).toHaveLength(1);
+    expect(attached[0].policy_intent_authority_context).toEqual(expect.objectContaining({
+      routing_target: expect.objectContaining({ target_status: 'configured' }),
+      observed_evidence_reference: expect.objectContaining({
+        source_id: 'stored_library_profile',
+      }),
+    }));
     expect(attached[1].native_intent).toBeUndefined();
     expect(attached[1].native_intent_authority.authoritative).toBe(false);
   });

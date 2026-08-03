@@ -196,14 +196,14 @@ const POLICY_AUTHORING_COMPATIBILITY_TEST_RECORDS = deepFreeze([
     notes: 'Protects server-side projection fields and raw legacy storage exposure checks.',
   },
   {
-    path: 'server/src/__tests__/services/policyAuthoringServerAuthorityPreparation.test.mjs',
+    path: 'server/src/__tests__/services/policyIntentAuthorityContract.test.mjs',
     categoryId: POLICY_AUTHORING_COMPATIBILITY_TEST_CATEGORY_IDS.SERVER_AUTHORITY_PREFLIGHT,
     actionId: POLICY_AUTHORING_COMPATIBILITY_ACTION_IDS.KEEP,
     coveredRuleIds: [
       POLICY_AUTHORING_COMPATIBILITY_RULE_IDS.CLIENT_DRAFT_IS_NOT_DURABLE_AUTHORITY,
     ],
     freezesLegacyUi: false,
-    notes: 'Protects the server-authority rule: validation remains authoritative and native intent storage remains disabled until its migration gates pass.',
+    notes: 'Protects server-owned intent authority, bounded observed-evidence references, and the read-only compatibility bridge after native storage activation.',
   },
   {
     path: 'server/src/__tests__/services/policyIntentRequestValidator.test.mjs',
@@ -263,7 +263,7 @@ function summarizePolicyAuthoringCompatibilityRegressionCoverage() {
     transitionCandidateCount: listPolicyAuthoringCompatibilityTransitionCandidates().length,
     legacyLayoutFreezeRecordPaths,
     clientDraftAuthoritative: false,
-    nativeIntentStorageEnabled: false,
+    nativeIntentStorageEnabled: true,
     policyAuthoringCompatibilityReady:
       uncoveredRequiredRuleIds.length === 0 && legacyLayoutFreezeRecordPaths.length === 0,
   };
