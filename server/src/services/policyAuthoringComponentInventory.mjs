@@ -130,6 +130,17 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY = deepFreeze([
     notes: 'Renders only the display-safe prepared proposal and emits one admitted create event without exposing generic rule selection.',
   },
   {
+    id: 'policy_destination_proposal_adjustment_disclosure',
+    path: 'client/src/components/policies/PolicyDestinationProposalAdjustmentDisclosure.vue',
+    roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.DESTINATION_PROPOSAL,
+    decisionId: POLICY_AUTHORING_COMPONENT_DECISION_IDS.KEEP_AS_PRIMITIVE,
+    targetComponentIds: [
+      POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_PROPOSAL_CARD,
+    ],
+    normalAuthoringAllowed: true,
+    notes: 'Keeps proposal adjustment collapsed and emits only the revision-bound purpose-genre narrowing command; it cannot derive values or widen the admission contract.',
+  },
+  {
     id: 'intent_signal_picker',
     path: 'client/src/components/policies/IntentSignalPicker.vue',
     roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.INTENT_SIGNAL_PICKER,
@@ -423,8 +434,11 @@ const POLICY_AUTHORING_TARGET_IMPLEMENTATIONS = deepFreeze([
   {
     targetComponentId: POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_PROPOSAL_CARD,
     statusId: POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.IMPLEMENTED,
-    sourcePaths: ['client/src/components/policies/PolicyDestinationProposalCard.vue'],
-    notes: 'Implemented as the display-safe proposal review and explicit server-admission card.',
+    sourcePaths: [
+      'client/src/components/policies/PolicyDestinationProposalCard.vue',
+      'client/src/components/policies/PolicyDestinationProposalAdjustmentDisclosure.vue',
+    ],
+    notes: 'Implemented as the display-safe proposal review, collapsed bounded adjustment disclosure, and explicit server-admission card.',
   },
   {
     targetComponentId: POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_PICKER,

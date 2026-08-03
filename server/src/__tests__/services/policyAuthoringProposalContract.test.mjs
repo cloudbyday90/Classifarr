@@ -63,7 +63,7 @@ describe('policyAuthoringProposalContract', () => {
     }));
   });
 
-  test('requires an exact revision and empty adjustment command list', () => {
+  test('requires an exact revision and one allow-listed adjustment command at most', () => {
     const candidate = buildCandidate();
 
     expect(validatePolicyAuthoringProposalAdmissionRequest({
@@ -79,7 +79,24 @@ describe('policyAuthoringProposalContract', () => {
     });
     expect(validatePolicyAuthoringProposalAdmissionRequest({
       proposal_revision: candidate.proposalRevision,
-      adjustment_commands: [{ operation: 'replace' }],
+      adjustment_commands: [{
+        command_id: 'set_purpose_genres',
+        values: ['Animation'],
+      }],
+    })).toEqual({
+      ok: true,
+      value: {
+        proposalRevision: candidate.proposalRevision,
+        adjustmentCommands: [{
+          commandId: 'set_purpose_genres',
+          values: ['Animation'],
+        }],
+      },
+      errorId: null,
+    });
+    expect(validatePolicyAuthoringProposalAdmissionRequest({
+      proposal_revision: candidate.proposalRevision,
+      adjustment_commands: [{ command_id: 'replace', values: ['Animation'] }],
     })).toEqual(expect.objectContaining({
       ok: false,
       errorId: POLICY_AUTHORING_PROPOSAL_ADMISSION_ERROR_IDS.INVALID_REQUEST,

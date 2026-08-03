@@ -94,7 +94,10 @@ describe('policy authoring proposal routes', () => {
     const response = await request(app)
       .post(`/api/policies/operator-workflow/libraries/6/proposals/${PROPOSAL_REFERENCE}/admission`)
       .set('Idempotency-Key', IDEMPOTENCY_KEY)
-      .send({ proposal_revision: PROPOSAL_REVISION, adjustment_commands: [] })
+      .send({
+        proposal_revision: PROPOSAL_REVISION,
+        adjustment_commands: [{ command_id: 'set_purpose_genres', values: ['Animation'] }],
+      })
       .expect(409);
 
     expect(response.body).toEqual(expect.objectContaining({ statusId: 'proposal_stale' }));
@@ -104,6 +107,7 @@ describe('policy authoring proposal routes', () => {
       proposalReference: PROPOSAL_REFERENCE,
       proposalRevision: PROPOSAL_REVISION,
       idempotencyKey: IDEMPOTENCY_KEY,
+      adjustmentCommands: [{ commandId: 'set_purpose_genres', values: ['Animation'] }],
     }));
   });
 

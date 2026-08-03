@@ -24,6 +24,10 @@ import {
   buildPolicyAuthoringNativePolicy,
 } from './policyAuthoringProposalDefaults.mjs';
 import {
+  applyPolicyAuthoringProposalAdjustmentCommands,
+  buildPolicyAuthoringProposalAdjustmentPresentation,
+} from './policyAuthoringProposalAdjustmentContract.mjs';
+import {
   POLICY_AUTHORING_LIFECYCLE_STATUS_IDS,
   POLICY_AUTHORING_PROPOSAL_STATUS_IDS,
   POLICY_AUTHORING_PROPOSAL_VERSION,
@@ -188,6 +192,7 @@ function buildPreparedProposalResponse({ lifecycle, proposal }) {
       revision: proposal.proposalRevision,
       expiresAt: proposal.expiresAt,
       summary: proposal.displaySummary,
+      adjustment: buildPolicyAuthoringProposalAdjustmentPresentation(proposal.declaredIntent),
     },
   };
 }
@@ -349,6 +354,7 @@ function createPolicyAuthoringProposalLifecycleService({
     proposalReference,
     proposalRevision,
     idempotencyKey,
+    adjustmentCommands = [],
     now = new Date(),
   } = {}) {
     const normalizedActorId = normalizeActorId(actorId);
@@ -375,9 +381,19 @@ function createPolicyAuthoringProposalLifecycleService({
         });
       }
 
+      const adjustedStoredDeclaredIntent = applyPolicyAuthoringProposalAdjustmentCommands({
+        declaredIntent: proposal.declaredIntent,
+        adjustmentCommands,
+      });
+      if (!adjustedStoredDeclaredIntent) {
+        return buildAdmissionResult({
+          statusId: POLICY_AUTHORING_PROPOSAL_STATUS_IDS.PROPOSAL_STALE,
+        });
+      }
+
       const establishmentRequest = buildEstablishmentRequest({
         idempotencyKey,
-        declaredIntent: proposal.declaredIntent,
+        declaredIntent: adjustedStoredDeclaredIntent,
       });
       if (!establishmentRequest) {
         return buildAdmissionResult({
@@ -442,6 +458,26 @@ function createPolicyAuthoringProposalLifecycleService({
         });
       }
 
+      const adjustedDeclaredIntent = applyPolicyAuthoringProposalAdjustmentCommands({
+        declaredIntent: context.candidate.declaredIntent,
+        adjustmentCommands,
+      });
+      if (!adjustedDeclaredIntent) {
+        return buildAdmissionResult({
+          statusId: POLICY_AUTHORING_PROPOSAL_STATUS_IDS.PROPOSAL_STALE,
+        });
+      }
+
+      const currentEstablishmentRequest = buildEstablishmentRequest({
+        idempotencyKey,
+        declaredIntent: adjustedDeclaredIntent,
+      });
+      if (!currentEstablishmentRequest) {
+        return buildAdmissionResult({
+          statusId: POLICY_AUTHORING_PROPOSAL_STATUS_IDS.PROPOSAL_STALE,
+        });
+      }
+
       try {
         const result = await createNativePolicy({
           client,
@@ -450,7 +486,7 @@ function createPolicyAuthoringProposalLifecycleService({
             policyName: context.candidate.policyName,
           }),
           actorId: normalizedActorId,
-          establishmentRequest,
+          establishmentRequest: currentEstablishmentRequest,
         });
         const consumed = await persistence.consumeProposal({
           client,

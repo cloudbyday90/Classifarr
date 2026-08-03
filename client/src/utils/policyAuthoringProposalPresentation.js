@@ -16,6 +16,9 @@ import {
   POLICY_AUTHORING_WORKFLOW_PRESENTATION_STATUS_IDS,
   POLICY_AUTHORING_WORKFLOW_PRESENTATION_VERSION,
 } from '@/utils/policyAuthoringWorkflowPresentation'
+import {
+  normalizePolicyAuthoringProposalPurposeGenreOptions,
+} from '@/utils/policyAuthoringProposalAdjustment'
 
 export const POLICY_AUTHORING_PROPOSAL_PRESENTATION_VERSION =
   'policy.authoring_proposal_presentation.v1'
@@ -159,8 +162,18 @@ function buildUnavailablePresentation(library) {
     helpfulHints: [],
     hardLimitCount: null,
     avoidCount: null,
+    adjustment: Object.freeze({ purposeGenres: Object.freeze([]) }),
     observedContext: null,
   })
+}
+
+function normalizeAdjustmentPresentation(value) {
+  if (!hasOnlyKeys(value, ['purposeGenres'])) return null
+
+  const purposeGenres = normalizePolicyAuthoringProposalPurposeGenreOptions(value.purposeGenres)
+  return purposeGenres.length > 0
+    ? Object.freeze({ purposeGenres })
+    : null
 }
 
 /**
@@ -185,7 +198,7 @@ export function adaptPolicyAuthoringPreparedProposalPresentation({
     !lifecycleResult.ok ||
     lifecycleResult.presentation.statusId !==
       POLICY_AUTHORING_LIFECYCLE_STATUS_IDS.ELIGIBLE_TO_PREPARE_PROPOSAL ||
-    !hasOnlyKeys(source.proposal, ['reference', 'revision', 'expiresAt', 'summary']) ||
+    !hasOnlyKeys(source.proposal, ['reference', 'revision', 'expiresAt', 'summary', 'adjustment']) ||
     !hasOnlyKeys(source.proposal.summary, [
       'title',
       'purpose',
@@ -211,6 +224,7 @@ export function adaptPolicyAuthoringPreparedProposalPresentation({
   const helpfulHints = normalizeDisplayRules(source.proposal.summary.helpfulHints)
   const hardLimitCount = normalizeNonNegativeInteger(source.proposal.summary.hardLimitCount)
   const avoidCount = normalizeNonNegativeInteger(source.proposal.summary.avoidCount)
+  const adjustment = normalizeAdjustmentPresentation(source.proposal.adjustment)
 
   if (
     !REFERENCE_PATTERN.test(reference || '') ||
@@ -220,7 +234,8 @@ export function adaptPolicyAuthoringPreparedProposalPresentation({
     !purpose ||
     !helpfulHints ||
     hardLimitCount === null ||
-    avoidCount === null
+    avoidCount === null ||
+    !adjustment
   ) {
     return {
       ok: false,
@@ -241,6 +256,7 @@ export function adaptPolicyAuthoringPreparedProposalPresentation({
       helpfulHints,
       hardLimitCount,
       avoidCount,
+      adjustment,
       observedContext: normalizeObservedContext(workflowPresentation, library.id),
     }),
     admission: deepFreeze({

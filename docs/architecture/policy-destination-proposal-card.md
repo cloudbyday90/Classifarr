@@ -3,9 +3,9 @@
 ## Status
 
 Implemented by Phase 4R.4. This document records the normal policy-authoring
-card reached from the server-confirmed library lifecycle entry. It deliberately
-does not introduce the later exceptional-adjustment editor or stale/outcome
-recovery work; those are Phase 4R.5 and 4R.4b respectively.
+card reached from the server-confirmed library lifecycle entry. It owns the
+automated default; Phase 4R.5.1 adds a separate bounded adjustment disclosure,
+and Phase 4R.4b owns stale/outcome recovery.
 
 ## Goal
 
@@ -42,7 +42,7 @@ the authorized admission action succeeds.
 - The [OWASP REST Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html)
   recommends server-side authorization, allow-listed input, and generic error
   messages. The browser posts an empty prepare body, then only the opaque
-  proposal reference, revision, empty allow-listed adjustments, and a stable
+  proposal reference, revision, typed allow-listed adjustments, and a stable
   idempotency key during admission. It never submits observed values or
   reconstructed policy intent.
 
@@ -130,14 +130,21 @@ secure browser idempotency key per unchanged proposal attempt. It sends exactly:
 ```json
 {
   "proposal_revision": "server proposal revision",
-  "adjustment_commands": []
+  "adjustment_commands": [
+    {
+      "command_id": "set_purpose_genres",
+      "values": ["Animation"]
+    }
+  ]
 }
 ```
 
-to the server-owned admission endpoint. The server re-derives the canonical
-intent from current evidence before persistence. The client validates the
-bounded result and shows a confirmed saved-policy outcome only when the server
-returns a created or replayed policy receipt.
+to the server-owned admission endpoint when the optional adjustment disclosure
+narrows the proposed purpose genres; unchanged proposals send an empty array.
+The server re-derives the canonical intent from current evidence before
+persistence. The client validates the bounded result and shows a confirmed
+saved-policy outcome only when the server returns a created or replayed policy
+receipt.
 
 ### UI states
 
@@ -161,8 +168,9 @@ returns a created or replayed policy receipt.
    them only through the narrow admission composable with an idempotency key.
 4. Make the prepared proposal the primary action and defer arbitrary adjustment
    controls to Phase 4R.5.
-5. Complete Phase 4R.4b next so stale, concurrent, and interrupted admissions
-   discard local state and reload the authoritative lifecycle automatically.
+5. Keep exceptional adjustment scope deliberately bounded; Phase 4R.5.1 adds
+   only revision-bound purpose-genre narrowing, while further controls require
+   their own server authority contracts.
 
 ## Outcome
 
@@ -174,11 +182,17 @@ template picker, advanced-setting, raw error, or browser-assembled intent
 surface. Existing and recovery lifecycle states remain non-creating.
 
 Focused API, presentation, admission, component, and page tests cover the
-strict display split, malformed response rejection, empty adjustment command,
-idempotency forwarding, no-picker card, and confirmed creation path.
+strict display split, malformed response rejection, typed adjustment command,
+idempotency forwarding, collapsed normal path, and confirmed creation path.
 
 ## Related Recovery
 
 Phase 4R.4b now supplies the recovery behavior for stale, expired, concurrent,
 and lost admission responses. See [Policy Authoring Proposal Outcome
 Recovery](policy-authoring-proposal-outcome-recovery.md).
+
+## Related Adjustment Disclosure
+
+Phase 4R.5.1 adds an optional, collapsed purpose-genre narrowing disclosure
+without reopening the legacy builder. See [Policy Authoring Proposal Adjustment
+Disclosure](policy-authoring-proposal-adjustment-disclosure.md).

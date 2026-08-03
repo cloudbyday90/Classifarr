@@ -99,6 +99,12 @@
       </div>
     </section>
 
+    <PolicyDestinationProposalAdjustmentDisclosure
+      :genre-options="proposal.adjustment?.purposeGenres || []"
+      :adjustment-commands="adjustmentCommands"
+      @update:adjustment-commands="$emit('update:adjustment-commands', $event)"
+    />
+
     <div
       v-if="feedback"
       class="mt-5 rounded border px-4 py-3 text-sm"
@@ -142,6 +148,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import PolicyDestinationProposalAdjustmentDisclosure from '@/components/policies/PolicyDestinationProposalAdjustmentDisclosure.vue'
 import {
   POLICY_AUTHORING_ACTION_FEEDBACK_STATUS_IDS,
 } from '@/utils/policyAuthoringActionFeedback'
@@ -163,9 +170,13 @@ const props = defineProps({
     type: Object,
     default: null,
   },
+  adjustmentCommands: {
+    type: Array,
+    default: () => [],
+  },
 })
 
-defineEmits(['admit'])
+defineEmits(['admit', 'update:adjustment-commands'])
 
 const feedbackClass = computed(() => {
   switch (props.feedback?.statusId) {

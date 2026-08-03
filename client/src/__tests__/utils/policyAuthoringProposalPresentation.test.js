@@ -31,6 +31,9 @@ function buildPreparedProposal(overrides = {}) {
       reference: 'proposal_reference_123456789012345678',
       revision: 'a'.repeat(64),
       expiresAt: '2026-08-03T12:00:00.000Z',
+      adjustment: {
+        purposeGenres: [{ value: 'Animation', sourceId: 'current_library_profile' }],
+      },
       summary: {
         title: 'Anime Movies Policy',
         purpose: [{ signalType: 'genres', operator: 'any_of', values: ['Animation'] }],
@@ -55,6 +58,9 @@ describe('policyAuthoringProposalPresentation', () => {
       statusId: POLICY_AUTHORING_PROPOSAL_PRESENTATION_STATUS_IDS.READY,
       title: 'Anime Movies Policy',
       purpose: [{ signalType: 'genres', operator: 'any_of', values: ['Animation'] }],
+      adjustment: {
+        purposeGenres: [{ value: 'Animation', sourceId: 'current_library_profile' }],
+      },
       observedContext: {
         available: false,
         summary: 'Classifarr prepared this proposal from the current safe library profile.',
@@ -74,6 +80,7 @@ describe('policyAuthoringProposalPresentation', () => {
   it.each([
     ['additional raw proposal field', response => { response.proposal.rawProfile = { private: true } }],
     ['unexpected summary field', response => { response.proposal.summary.profileItems = ['raw item'] }],
+    ['invalid adjustment source', response => { response.proposal.adjustment.purposeGenres[0].sourceId = 'operator' }],
     ['mismatched lifecycle library', response => { response.lifecycle.library.id = 8 }],
     ['invalid opaque revision', response => { response.proposal.revision = 'browser-value' }],
   ])('fails closed for %s', (_label, mutate) => {

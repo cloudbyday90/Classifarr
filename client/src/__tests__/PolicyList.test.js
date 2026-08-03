@@ -80,9 +80,15 @@ function buildPreparedProposal(libraryId = 7, libraryName = 'Movies') {
       reference: 'proposal_reference_123456789012345678',
       revision: 'a'.repeat(64),
       expiresAt: '2026-08-03T12:00:00.000Z',
+      adjustment: {
+        purposeGenres: [
+          { value: 'Animation', sourceId: 'current_library_profile' },
+          { value: 'Family', sourceId: 'current_library_profile' },
+        ],
+      },
       summary: {
         title: `${libraryName} Policy`,
-        purpose: [{ signalType: 'genres', operator: 'any_of', values: ['Animation'] }],
+        purpose: [{ signalType: 'genres', operator: 'any_of', values: ['Animation', 'Family'] }],
         helpfulHints: [],
         hardLimitCount: 0,
         avoidCount: 0,
@@ -202,9 +208,31 @@ describe('PolicyList.vue', () => {
       7,
       'proposal_reference_123456789012345678',
       'a'.repeat(64),
-      expect.objectContaining({ idempotencyKey: expect.any(String) })
+      expect.objectContaining({ idempotencyKey: expect.any(String), adjustmentCommands: [] })
     )
     expect(wrapper.text()).toContain('Policy created: Movies Policy')
+  })
+
+  it('forwards a collapsed proposal adjustment as the sole typed narrowing command', async () => {
+    const wrapper = await mountView()
+    mountedView = wrapper
+
+    await wrapper.find('#policy-authoring-lifecycle-action-7').trigger('click')
+    await flushPromises()
+    await wrapper.findAll('button').find(button => button.text() === 'Adjust this policy').trigger('click')
+    await wrapper.get('input[value="Family"]').setValue(false)
+
+    await wrapper.findAll('button').find(button => button.text() === 'Create policy').trigger('click')
+    await flushPromises()
+
+    expect(state.admitPolicyAuthoringProposal).toHaveBeenCalledWith(
+      7,
+      'proposal_reference_123456789012345678',
+      'a'.repeat(64),
+      expect.objectContaining({
+        adjustmentCommands: [{ commandId: 'set_purpose_genres', values: ['Animation'] }],
+      })
+    )
   })
 
   it('discards a concurrent admission attempt and renders the lifecycle-confirmed existing policy', async () => {

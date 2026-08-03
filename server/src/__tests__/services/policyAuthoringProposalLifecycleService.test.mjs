@@ -120,6 +120,11 @@ describe('policyAuthoringProposalLifecycleService', () => {
       proposal: expect.objectContaining({
         reference: expect.stringMatching(/^[A-Za-z0-9_-]{32,96}$/),
         revision: candidate.proposalRevision,
+        adjustment: {
+          purposeGenres: expect.arrayContaining([
+            expect.objectContaining({ value: 'Animation', sourceId: 'current_library_profile' }),
+          ]),
+        },
       }),
     }));
     expect(JSON.stringify(result)).not.toContain('canonical_declared_intent');
@@ -174,6 +179,62 @@ describe('policyAuthoringProposalLifecycleService', () => {
       proposalReference: 'C5CSeInFAbrQK1soKk5dW-4faH0sZNqj-ZXo3mV45xA',
       proposalRevision: originalCandidate.proposalRevision,
       idempotencyKey: IDEMPOTENCY_KEY,
+      now: NOW,
+    });
+
+    expect(result.statusId).toBe(POLICY_AUTHORING_PROPOSAL_STATUS_IDS.PROPOSAL_STALE);
+    expect(createNativePolicy).not.toHaveBeenCalled();
+  });
+
+  test('admits a server-allowed proposal genre narrowing without accepting browser-authored rules', async () => {
+    const candidate = buildCandidate();
+    const { service, createNativePolicy, db } = createService({
+      proposal: storedProposal(candidate),
+    });
+
+    await service.admitProposal({
+      db,
+      libraryId: 6,
+      actorId: 7,
+      proposalReference: 'C5CSeInFAbrQK1soKk5dW-4faH0sZNqj-ZXo3mV45xA',
+      proposalRevision: candidate.proposalRevision,
+      idempotencyKey: IDEMPOTENCY_KEY,
+      adjustmentCommands: [{ commandId: 'set_purpose_genres', values: ['Animation'] }],
+      now: NOW,
+    });
+
+    expect(createNativePolicy).toHaveBeenCalledWith(expect.objectContaining({
+      establishmentRequest: expect.objectContaining({
+        declared_intent: expect.objectContaining({
+          purpose: expect.arrayContaining([
+            expect.objectContaining({
+              signal_type: 'genres',
+              values: { require_any: ['Animation'] },
+            }),
+            expect.objectContaining({
+              signal_type: 'media_type',
+              values: { require_any: ['movie'] },
+            }),
+          ]),
+        }),
+      }),
+    }));
+  });
+
+  test('rejects an adjustment value that is not in the re-derived proposal', async () => {
+    const candidate = buildCandidate();
+    const { service, createNativePolicy, db } = createService({
+      proposal: storedProposal(candidate),
+    });
+
+    const result = await service.admitProposal({
+      db,
+      libraryId: 6,
+      actorId: 7,
+      proposalReference: 'C5CSeInFAbrQK1soKk5dW-4faH0sZNqj-ZXo3mV45xA',
+      proposalRevision: candidate.proposalRevision,
+      idempotencyKey: IDEMPOTENCY_KEY,
+      adjustmentCommands: [{ commandId: 'set_purpose_genres', values: ['Comedy'] }],
       now: NOW,
     });
 

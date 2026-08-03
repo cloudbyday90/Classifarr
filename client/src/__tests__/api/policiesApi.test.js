@@ -93,21 +93,24 @@ describe('policiesApi', () => {
     )
   })
 
-  it('admits only the opaque reference, revision, empty adjustments, and stable idempotency key', async () => {
+  it('admits the opaque reference, revision, typed adjustments, and stable idempotency key', async () => {
     mockPost.mockResolvedValueOnce({ data: { statusId: 'proposal_admission_created' } })
 
     await admitPolicyAuthoringProposal(
       7,
       'proposal_reference_123456789012345678',
       'a'.repeat(64),
-      { idempotencyKey: '6fe3d170-9390-4ec5-95f7-42ad6f8ec777' }
+      {
+        idempotencyKey: '6fe3d170-9390-4ec5-95f7-42ad6f8ec777',
+        adjustmentCommands: [{ commandId: 'set_purpose_genres', values: ['Animation'] }],
+      }
     )
 
     expect(mockPost).toHaveBeenCalledWith(
       '/policies/operator-workflow/libraries/7/proposals/proposal_reference_123456789012345678/admission',
       {
         proposal_revision: 'a'.repeat(64),
-        adjustment_commands: [],
+        adjustment_commands: [{ command_id: 'set_purpose_genres', values: ['Animation'] }],
       },
       {
         headers: {
@@ -115,6 +118,17 @@ describe('policiesApi', () => {
         },
       }
     )
+  })
+
+  it('does not post adjustment commands outside the narrow proposal contract', async () => {
+    expect(() => admitPolicyAuthoringProposal(
+      7,
+      'proposal_reference_123456789012345678',
+      'a'.repeat(64),
+      { adjustmentCommands: [{ commandId: 'set_hard_limit', values: ['PG-13'] }] }
+    )).toThrow('adjustment commands are invalid')
+
+    expect(mockPost).not.toHaveBeenCalled()
   })
 
   it('getPolicyNativeReadinessSummary calls the read-only stored-native readiness endpoint', async () => {

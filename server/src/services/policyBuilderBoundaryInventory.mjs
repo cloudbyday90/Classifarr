@@ -113,9 +113,10 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     riskIds: [
       POLICY_BUILDER_BOUNDARY_RISK_IDS.OBSERVED_EVIDENCE_ADAPTER,
     ],
-    notes: 'Prepared-proposal and admission adapters validate bounded server transport data, separate opaque admission values from rendering, and cannot derive or persist policy meaning.',
+    notes: 'Prepared-proposal, adjustment, and admission adapters validate bounded server transport data, separate opaque admission values from rendering, and cannot derive or persist policy meaning.',
     matches: (filePath) => hasAnySegment(filePath, [
       '/policyAuthoringProposalPresentation.js',
+      '/policyAuthoringProposalAdjustment.js',
       '/policyAuthoringProposalAdmission.js',
     ]),
   },
@@ -418,6 +419,7 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
         '/PolicyBuilderWorkflowShell.vue',
         '/PolicyAuthoringLifecycleEntry.vue',
         '/PolicyDestinationProposalCard.vue',
+        '/PolicyDestinationProposalAdjustmentDisclosure.vue',
         '/PolicyDestinationEmptyStateNotice.vue',
         '/PolicyIntentActionButton.vue',
         '/PolicyIntentCertificationControl.vue',

@@ -17,6 +17,9 @@ import {
   adaptPolicyAuthoringProposalAdmission,
 } from '@/utils/policyAuthoringProposalAdmission'
 import {
+  normalizePolicyAuthoringProposalAdjustmentCommands,
+} from '@/utils/policyAuthoringProposalAdjustment'
+import {
   POLICY_AUTHORING_PROPOSAL_RECOVERY_REASON_IDS,
 } from '@/composables/usePolicyAuthoringProposalOutcomeRecovery'
 import {
@@ -85,7 +88,7 @@ export function usePolicyAuthoringProposalAdmission({
     attemptIdempotencyKey = null
   }
 
-  const admit = async admissionValue => {
+  const admit = async (admissionValue, adjustmentCommands = []) => {
     const admission = normalizeAdmission(admissionValue)
     if (!admission || typeof admitProposalRequest !== 'function') {
       feedback.value = buildPolicyAuthoringActionFeedback({
@@ -95,7 +98,17 @@ export function usePolicyAuthoringProposalAdmission({
       return null
     }
 
-    const fingerprint = `${admission.libraryId}:${admission.reference}:${admission.revision}`
+    const normalizedAdjustmentCommands = normalizePolicyAuthoringProposalAdjustmentCommands(adjustmentCommands)
+    if (normalizedAdjustmentCommands === null) {
+      feedback.value = buildPolicyAuthoringActionFeedback({
+        actionId: ACTION_ID,
+        statusId: POLICY_AUTHORING_ACTION_FEEDBACK_STATUS_IDS.REJECTED,
+        message: 'Classifarr could not accept these proposal adjustments. Return to the current proposal and choose only the listed genres.',
+      })
+      return null
+    }
+
+    const fingerprint = `${admission.libraryId}:${admission.reference}:${admission.revision}:${JSON.stringify(normalizedAdjustmentCommands)}`
     if (attemptFingerprint !== fingerprint) {
       attemptFingerprint = fingerprint
       attemptIdempotencyKey = null
@@ -126,7 +139,10 @@ export function usePolicyAuthoringProposalAdmission({
         admission.libraryId,
         admission.reference,
         admission.revision,
-        { idempotencyKey: attemptIdempotencyKey }
+        {
+          idempotencyKey: attemptIdempotencyKey,
+          adjustmentCommands: normalizedAdjustmentCommands,
+        }
       )
       if (requestId !== activeRequestId) return null
 

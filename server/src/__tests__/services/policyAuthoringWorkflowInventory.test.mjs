@@ -103,6 +103,7 @@ describe('policyAuthoringWorkflowInventory', () => {
 
     [
       'client/src/components/policies/PolicyDestinationProposalCard.vue',
+      'client/src/components/policies/PolicyDestinationProposalAdjustmentDisclosure.vue',
       'client/src/utils/policyAuthoringProposalPresentation.js',
       'client/src/composables/usePolicyAuthoringDestinationProposal.js',
     ].forEach((filePath) => {
@@ -118,6 +119,7 @@ describe('policyAuthoringWorkflowInventory', () => {
   test('keeps native create action binding and safe feedback in the action-admission role', () => {
     [
       'client/src/composables/usePolicyNativeCreateAction.js',
+      'client/src/utils/policyAuthoringProposalAdjustment.js',
       'client/src/utils/policyAuthoringProposalAdmission.js',
       'client/src/composables/usePolicyAuthoringProposalAdmission.js',
       'client/src/composables/usePolicyAuthoringProposalOutcomeRecovery.js',

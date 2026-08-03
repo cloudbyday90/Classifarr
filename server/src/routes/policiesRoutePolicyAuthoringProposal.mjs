@@ -166,6 +166,7 @@ export function registerPolicyAuthoringProposalRoutes(router, {
       proposalReference,
       proposalRevision: request.proposalRevision,
       idempotencyKey,
+      adjustmentCommands: request.adjustmentCommands,
     });
 
     logger?.info('Policy authoring proposal admission completed', {

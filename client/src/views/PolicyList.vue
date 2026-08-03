@@ -102,7 +102,9 @@
           :loading="proposalAdmissionLoading"
           :feedback="proposalAdmissionFeedback"
           :completed-policy="successfulAdmission?.policy || null"
+          :adjustment-commands="proposalAdjustmentCommands"
           @admit="admitDestinationProposal"
+          @update:adjustment-commands="setProposalAdjustmentCommands"
         />
         <div
           v-else-if="destinationProposalLifecycle"
@@ -243,6 +245,7 @@ let activeLibraryRequestId = 0
 let focusSelection = false
 let restoreFocusLibraryId = null
 const successfulAdmission = ref(null)
+const proposalAdjustmentCommands = ref([])
 
 const {
   entries: lifecycleEntries,
@@ -294,6 +297,7 @@ const destinationProposalSelectionKey = computed(() => {
   const entry = selectedEntry.value
   return entry?.canSelect ? `${entry.library.id}:${entry.statusId}` : null
 })
+const destinationProposalRevision = computed(() => destinationProposalAdmission.value?.revision || null)
 const selectedBadgeClass = computed(() => {
   switch (selectedEntry.value?.tone) {
     case 'success':
@@ -357,13 +361,17 @@ const reconcileProposalOutcome = async recovery => {
   if (!recovery || !currentEntry || currentEntry.library.id !== recovery.libraryId) return
 
   successfulAdmission.value = null
+  proposalAdjustmentCommands.value = []
   clearDestinationProposal()
   clearProposalAdmission()
   await recoverProposalOutcome(recovery)
 }
 
 const admitDestinationProposal = async () => {
-  const admissionResult = await admitProposal(destinationProposalAdmission.value)
+  const admissionResult = await admitProposal(
+    destinationProposalAdmission.value,
+    proposalAdjustmentCommands.value
+  )
   if (!admissionResult?.policy) {
     await reconcileProposalOutcome(proposalAdmissionRecovery.value)
     return
@@ -371,6 +379,10 @@ const admitDestinationProposal = async () => {
 
   successfulAdmission.value = admissionResult
   await reloadLifecycleEntries()
+}
+
+const setProposalAdjustmentCommands = commands => {
+  proposalAdjustmentCommands.value = Array.isArray(commands) ? commands : []
 }
 
 const selectLibrary = async (libraryId) => {
@@ -437,11 +449,16 @@ watch(selectedEntry, () => {
 watch(destinationProposalSelectionKey, nextSelectionKey => {
   clearDestinationProposal()
   clearProposalAdmission()
+  proposalAdjustmentCommands.value = []
 
   if (!nextSelectionKey || !selectedEntry.value) return
 
   loadDestinationProposal(selectedEntry.value.library)
 }, { immediate: true })
+
+watch(destinationProposalRevision, () => {
+  proposalAdjustmentCommands.value = []
+})
 
 onMounted(() => {
   focusSelection = selectedLibraryId.value !== null

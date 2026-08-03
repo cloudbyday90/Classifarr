@@ -53,6 +53,9 @@ function buildPreparedProposal() {
       reference: admission.reference,
       revision: admission.revision,
       expiresAt: '2026-08-03T12:00:00.000Z',
+      adjustment: {
+        purposeGenres: [{ value: 'Animation', sourceId: 'current_library_profile' }],
+      },
       summary: {
         title: 'Anime Movies Policy',
         purpose: [{ signalType: 'genres', operator: 'any_of', values: ['Animation'] }],
@@ -137,9 +140,11 @@ describe('policy authoring proposal composables', () => {
     expect(createIdempotencyKey).toHaveBeenCalledTimes(1)
     expect(admitProposalRequest).toHaveBeenNthCalledWith(1, 7, admission.reference, admission.revision, {
       idempotencyKey: '6fe3d170-9390-4ec5-95f7-42ad6f8ec777',
+      adjustmentCommands: [],
     })
     expect(admitProposalRequest).toHaveBeenNthCalledWith(2, 7, admission.reference, admission.revision, {
       idempotencyKey: '6fe3d170-9390-4ec5-95f7-42ad6f8ec777',
+      adjustmentCommands: [],
     })
     expect(action.feedback.value).toMatchObject({
       statusId: POLICY_AUTHORING_ACTION_FEEDBACK_STATUS_IDS.SUCCEEDED,

@@ -161,6 +161,7 @@ describe('policyBuilderBoundaryInventory', () => {
   test('keeps lifecycle and prepared-proposal boundaries server-owned', () => {
     [
       'client/src/utils/policyAuthoringLifecyclePresentation.js',
+      'client/src/utils/policyAuthoringProposalAdjustment.js',
       'client/src/utils/policyAuthoringProposalPresentation.js',
       'client/src/utils/policyAuthoringProposalAdmission.js',
     ].forEach((filePath) => {
@@ -189,6 +190,10 @@ describe('policyBuilderBoundaryInventory', () => {
         category: POLICY_BUILDER_BOUNDARY_CATEGORIES.PRESENTATION_ONLY,
         ownerId: POLICY_BUILDER_BOUNDARY_OWNER_IDS.CLIENT_PRESENTATION,
         clientEngineAuthorityAllowed: false,
+      }));
+    expect(classifyPolicyBuilderClientPath('client/src/components/policies/PolicyDestinationProposalAdjustmentDisclosure.vue'))
+      .toEqual(expect.objectContaining({
+        category: POLICY_BUILDER_BOUNDARY_CATEGORIES.PRESENTATION_ONLY,
       }));
   });
 

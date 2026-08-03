@@ -12,6 +12,9 @@ import { createHash } from 'node:crypto';
 import {
   validatePolicyInitialDeclaredIntent,
 } from './policyInitialIntentEstablishmentContract.mjs';
+import {
+  normalizePolicyAuthoringProposalAdjustmentCommands,
+} from './policyAuthoringProposalAdjustmentContract.mjs';
 
 const POLICY_AUTHORING_PROPOSAL_VERSION = 'policy.authoring_proposal.v1';
 const MAX_POLICY_AUTHORING_PROPOSAL_REFERENCE_LENGTH = 96;
@@ -228,16 +231,15 @@ function validatePolicyAuthoringProposalAdmissionRequest(payload) {
     'adjustment_commands',
   ].includes(key));
   const proposalRevision = normalizeString(source.proposal_revision, 64);
-  const adjustmentCommands = source.adjustment_commands;
+  const adjustmentCommands = normalizePolicyAuthoringProposalAdjustmentCommands(source.adjustment_commands);
   const valid = unknownKeys.length === 0 &&
     REVISION_PATTERN.test(proposalRevision || '') &&
-    Array.isArray(adjustmentCommands) &&
-    adjustmentCommands.length === 0;
+    adjustmentCommands !== null;
 
   return {
     ok: valid,
     value: valid
-      ? { proposalRevision, adjustmentCommands: [] }
+      ? { proposalRevision, adjustmentCommands }
       : null,
     errorId: valid ? null : POLICY_AUTHORING_PROPOSAL_ADMISSION_ERROR_IDS.INVALID_REQUEST,
   };

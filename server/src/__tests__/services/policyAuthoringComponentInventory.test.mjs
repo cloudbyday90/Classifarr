@@ -44,6 +44,13 @@ describe('policyAuthoringComponentInventory', () => {
       targetComponentIds: [POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_PROPOSAL_CARD],
     }));
     expect(classifyPolicyAuthoringComponent(
+      'client/src/components/policies/PolicyDestinationProposalAdjustmentDisclosure.vue',
+    )).toEqual(expect.objectContaining({
+      roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.DESTINATION_PROPOSAL,
+      normalAuthoringAllowed: true,
+      targetComponentIds: [POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_PROPOSAL_CARD],
+    }));
+    expect(classifyPolicyAuthoringComponent(
       'client/src/components/policies/IntentSignalPicker.vue',
     )).toEqual(expect.objectContaining({
       roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.INTENT_SIGNAL_PICKER,
@@ -97,7 +104,10 @@ describe('policyAuthoringComponentInventory', () => {
       POLICY_AUTHORING_COMPONENT_IDS.DESTINATION_PROPOSAL_CARD,
     )).toEqual(expect.objectContaining({
       statusId: POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS.IMPLEMENTED,
-      sourcePaths: ['client/src/components/policies/PolicyDestinationProposalCard.vue'],
+      sourcePaths: [
+        'client/src/components/policies/PolicyDestinationProposalCard.vue',
+        'client/src/components/policies/PolicyDestinationProposalAdjustmentDisclosure.vue',
+      ],
     }));
     expect(getPolicyAuthoringTargetImplementation(
       POLICY_AUTHORING_COMPONENT_IDS.INTENT_SIGNAL_CHIP_LIST,

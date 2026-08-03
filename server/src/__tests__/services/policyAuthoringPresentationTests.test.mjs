@@ -169,7 +169,7 @@ describe('policyAuthoringPresentationTests', () => {
       requiredBehaviorCount: listRequiredPolicyAuthoringPresentationBehaviors().length,
       inventoryFilePathCount: listPolicyAuthoringPresentationTestInventoryFilePaths().length,
       exclusionCount: listPolicyAuthoringPresentationTestExclusionRecords().length,
-      normalPathRecordCount: 26,
+      normalPathRecordCount: 27,
       draftBridgeOwnedRecordCount: 4,
       countsByCategory: expect.objectContaining({
         [POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_DRAFT_BRIDGE_COVERAGE]: 4,

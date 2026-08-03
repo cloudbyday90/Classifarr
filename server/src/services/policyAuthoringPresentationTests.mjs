@@ -126,6 +126,7 @@ const POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS = deepFreeze([
   'client/src/__tests__/PolicyBuilderModal.test.js',
   'client/src/__tests__/PolicyBuilderWorkflowShell.test.js',
   'client/src/__tests__/PolicyAuthoringLifecycleEntry.test.js',
+  'client/src/__tests__/PolicyDestinationProposalAdjustmentDisclosure.test.js',
   'client/src/__tests__/PolicyDestinationProposalCard.test.js',
   'client/src/__tests__/PolicyDestinationEmptyStateNotice.test.js',
   'client/src/__tests__/PolicyIntentActionButton.test.js',
@@ -154,6 +155,7 @@ const POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS = deepFreeze([
   'client/src/__tests__/composables/usePolicyAuthoringProposalOutcomeRecovery.test.js',
   'client/src/__tests__/utils/policyIntentDraftBridge.test.js',
   'client/src/__tests__/utils/policyAuthoringProposalAdmission.test.js',
+  'client/src/__tests__/utils/policyAuthoringProposalAdjustment.test.js',
   'client/src/__tests__/utils/policyAuthoringProposalPresentation.test.js',
   'client/src/__tests__/utils/policyIntentDraftView.test.js',
   'client/src/__tests__/utils/policyIntentModel.test.js',
@@ -250,6 +252,18 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
       POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS,
     ],
     'Lifecycle entry keeps one server-confirmed library state selectable without turning observations into browser-owned policy intent.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyDestinationProposalAdjustmentDisclosure.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.PROTECT_DESTINATION_FIRST_FLOW,
+    true,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.MULTI_SELECT_EMITS_TYPED_DRAFT_COMMANDS,
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.ACCESSIBLE_NAMES_AND_DISABLED_REASONS,
+      POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.OBSERVED_EVIDENCE_DISTINCT_FROM_DECLARED_INTENT,
+    ],
+    'The collapsed disclosure permits only source-labelled profile genres to be narrowed through one typed command without replacing the automated proposal.'
   ),
   presentationTestRecord(
     'client/src/__tests__/PolicyDestinationProposalCard.test.js',
@@ -526,6 +540,14 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
     POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
     [],
     'Admission receipt validation remains a bounded client transport concern and cannot establish policy meaning.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/utils/policyAuthoringProposalAdjustment.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_WORKFLOW_REGRESSION,
+    false,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
+    [],
+    'Proposal adjustment normalization is a bounded client transport guard and cannot derive policy intent or expand the server command allowlist.'
   ),
   presentationTestRecord(
     'client/src/__tests__/utils/policyAuthoringProposalPresentation.test.js',

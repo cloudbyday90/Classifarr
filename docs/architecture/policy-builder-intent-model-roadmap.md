@@ -17,7 +17,8 @@ Current execution focus:
    proposal or a normal lifecycle entry. **5R.2a Proposal And Lifecycle
    Admission Contract**, **4R.4a Library Lifecycle Entry**, and **4R.4
    Destination Proposal Card**, and **4R.4b Proposal Outcome Recovery** are
-   complete; **4R.5 Intent Adjustment Disclosure** is the next
+   complete. **4R.5.1 Revision-Bound Purpose-Genre Narrowing** is complete;
+   **4R.5.2 Additional Eligible Adjustment Groups** is the next
    dependency-gated task.
 3. **8R.37.1 Runtime Capability Inventory And Isolation Decision** is a
    parallel release-maintenance/security audit. It cannot block 4R.1 or
@@ -32,7 +33,7 @@ The execution dependency is intentionally not numeric:
 
 ```text
 completed foundations: 0R -> 1R -> 2R -> 3R
-active product work: 4R.1 -> 5R.1/5R.2/4R.2/4R.3/5R.2a/4R.4a/4R.4/4R.4b (complete) -> 4R.5
+active product work: 4R.1 -> 5R.1/5R.2/4R.2/4R.3/5R.2a/4R.4a/4R.4/4R.4b/4R.5.1 (complete) -> 4R.5.2
 runtime trust work: 5R.3 through 5R.10 -> 4R.6 through 4R.9
 parallel safety work: 8R installation/runtime lanes + 9R zero-debt gate
 ```
@@ -3287,7 +3288,7 @@ This is not a claim that every legacy list-level action is accepted as the
 final product path. The current normal create opener is absent, and list-level
 reset, maintenance, and raw failure surfaces remain explicit 4R.8 removal
 work. Representative live-browser verification remains a separate 4R.1
-requirement. **5R.2a, 4R.4a, 4R.4, and 4R.4b are complete; 4R.5 is next.**
+requirement. **5R.2a, 4R.4a, 4R.4, 4R.4b, and 4R.5.1 are complete; 4R.5.2 is next.**
 
 ### 4R.4a Library Lifecycle Entry
 
@@ -3367,7 +3368,7 @@ Implementation outcome: complete. The selected eligible library now prepares
 one server-owned proposal and displays only its strict renderable projection:
 bounded observed context, proposed purpose, and declared-rule counts. Opaque
 reference and revision values are held outside the render component, then sent
-only through the admitted idempotent action with empty allow-listed adjustments.
+only through the admitted idempotent action with typed allow-listed adjustments.
 The card explicitly distinguishes `Proposed, not saved` from a confirmed saved
 policy and renders no generic `Belongs Here` picker, profile refresh, template
 shortcut, or raw failure text. See [Policy Destination Proposal
@@ -3437,6 +3438,26 @@ Tasks:
 - Forward only allow-listed adjustment commands with the proposal reference;
   the server resolves canonical values and rejects commands that no longer
   apply to the current proposal.
+
+Implementation sequence:
+
+1. **4R.5.1 Revision-Bound Purpose-Genre Narrowing**: complete. The optional
+   collapsed disclosure presents only current-library-profile genres, permits
+   exclusion only, sends one typed `set_purpose_genres` command, clears local
+   state on proposal invalidation, and revalidates the command against both
+   persisted and current canonical intent before creation. See [Policy
+   Authoring Proposal Adjustment
+   Disclosure](policy-authoring-proposal-adjustment-disclosure.md).
+2. **4R.5.2 Additional Eligible Adjustment Groups**: next. Inventory only
+   signal groups with a server-projected source, typed command, bounded
+   allowlist, disabled reason when unavailable, and current-candidate recheck.
+   Do not expose custom entry, templates, routing, review triggers, hard
+   limits, or compatibility-policy mutation until their dedicated authority
+   contracts are complete.
+3. **4R.5.3 Revision Reset And Accessibility Closure**: verify disclosure
+   state clears across library, proposal, stale, expiry, and recovery changes;
+   add keyboard and assistive-technology end-to-end coverage for each admitted
+   group.
 
 Acceptance criteria:
 
@@ -3602,7 +3623,9 @@ Implement Phase 4R in this order:
    Complete. It discards uncertain proposal state and reloads only the
    authoritative selected-library lifecycle rather than retrying blindly.
 8. **4R.5 Intent Adjustment Disclosure**
-   Adds bounded edit control without increasing normal-path decision load.
+   4R.5.1 is complete: the normal path remains collapsed while current-profile
+   purpose genres can be narrowed through one revision-bound command. 4R.5.2
+   is next and may add only groups with their own server authority contracts.
 9. **5R.3 through 5R.10 Server Runtime And Native-Change Authority**
    Close the provider, question, learning, verifier, test, and native-change
    contracts before rendering persistent exceptions or maintenance controls.
@@ -3615,7 +3638,7 @@ Implement Phase 4R in this order:
 13. **4R.9 Accessibility, Responsive Behavior, And End-To-End Workflow Tests**
    Proves the delivered flow works in the live product.
 
-Next implementation task: **4R.5 Intent Adjustment Disclosure**.
+Next implementation task: **4R.5.2 Additional Eligible Adjustment Groups**.
 The 4R.1 source inventory still requires representative live-browser
 verification, and 4R.3 has bound the existing component's controls to admitted
 actions and truthful outcomes. The completed 5R.2a contract supplies the
@@ -3808,7 +3831,8 @@ Implementation status:
   stale, expired, existing-policy, replay, invalid-input, and unauthorized
   paths. The completed 4R.4a lifecycle entry, 4R.4 proposal card, and 4R.4b
   outcome recovery consume the lifecycle, prepared-proposal, and admission
-  boundaries; the next work is **4R.5 Intent Adjustment Disclosure**.
+  boundaries; **4R.5.1** now supplies revision-bound purpose-genre narrowing.
+  The next work is **4R.5.2 Additional Eligible Adjustment Groups**.
 
 ### 5R.3 AI Provider Capability And Authority Modes
 

@@ -20,9 +20,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 - **Policy Destination Proposal Card**: Eligible libraries now prepare one
   server-owned destination proposal from the current profile and display its
   bounded observed context and proposed intent in the normal policy route.
-  Creation forwards only an opaque reference, revision, empty allow-listed
+  Creation forwards only an opaque reference, revision, typed allow-listed
   adjustments, and an action-local idempotency key; it never submits
   browser-assembled policy meaning or reintroduces generic evidence pickers.
+
+- **Policy Proposal Adjustment Disclosure**: Added an optional, collapsed
+  purpose-genre narrowing control for newly prepared proposals. It uses only
+  current-library-profile values, sends one revision-bound allow-listed command,
+  resets local state when the proposal changes, and is revalidated against the
+  persisted and current server candidate before native policy creation.
 
 - **Policy Library Lifecycle Entry**: Replaced the local policy grouping and
   hidden create-modal path with a server-confirmed lifecycle entry for every

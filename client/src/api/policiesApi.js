@@ -22,6 +22,9 @@ import {
   createNativePolicyCreateIdempotencyKey,
   isNativePolicyCreatePayload,
 } from '@/utils/policyNativeCreateIdempotency'
+import {
+  normalizePolicyAuthoringProposalAdjustmentCommands,
+} from '@/utils/policyAuthoringProposalAdjustment'
 
 export function getPolicy(id) {
   return getDataRequest(`/policies/${id}`)
@@ -44,27 +47,35 @@ export function preparePolicyAuthoringProposal(libraryId) {
 }
 
 /**
- * Admits only the server-prepared proposal reference and revision. The server
- * reconstructs the declared intent and refuses browser-supplied adjustments.
+ * Admits the server-prepared proposal reference and revision. The server
+ * accepts only bounded genre-narrowing commands and reconstructs the declared
+ * intent against the current proposal before creating a policy.
  *
  * @param {number} libraryId
  * @param {string} proposalReference
  * @param {string} proposalRevision
- * @param {{ idempotencyKey?: string }} [options]
+ * @param {{ idempotencyKey?: string, adjustmentCommands?: Array }} [options]
  */
 export function admitPolicyAuthoringProposal(
   libraryId,
   proposalReference,
   proposalRevision,
-  { idempotencyKey } = {}
+  { idempotencyKey, adjustmentCommands = [] } = {}
 ) {
+  const normalizedAdjustmentCommands = normalizePolicyAuthoringProposalAdjustmentCommands(adjustmentCommands)
+  if (normalizedAdjustmentCommands === null) {
+    throw new TypeError('Policy authoring proposal adjustment commands are invalid.')
+  }
   const requestIdempotencyKey = idempotencyKey || createNativePolicyCreateIdempotencyKey()
 
   return apiClient.post(
     `/policies/operator-workflow/libraries/${libraryId}/proposals/${proposalReference}/admission`,
     {
       proposal_revision: proposalRevision,
-      adjustment_commands: [],
+      adjustment_commands: normalizedAdjustmentCommands.map(command => ({
+        command_id: command.commandId,
+        values: command.values,
+      })),
     },
     buildNativePolicyCreateRequestOptions(requestIdempotencyKey)
   )
