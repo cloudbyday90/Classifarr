@@ -17,7 +17,6 @@ import { contentTypeAnalyzer } from './contentTypeAnalyzer.mjs';
 import { clarificationService } from './clarificationService.mjs';
 import { classificationProgressStageService } from './classificationProgressStageService.mjs';
 import { classificationRetryService } from './classificationRetryService.mjs';
-import { classificationEvidenceReinforcementService } from './classificationEvidenceReinforcementService.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 import { classificationMetadataService } from './classificationMetadataService.mjs';
 import { classificationUtilsService } from './classificationUtilsService.mjs';
@@ -48,7 +47,6 @@ export const classificationService = createClassificationService({
 	workflowServices: {
 		classificationProgressStageService,
 		classificationRetryService,
-		classificationEvidenceReinforcementService,
 		classificationEvidenceService,
 	},
 	domainServices: {

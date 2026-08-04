@@ -90,15 +90,18 @@ export function createClassificationRouter({
     if (!classificationIds.every((id) => Number.isInteger(Number(id)) && Number(id) > 0)) {
       throw new ValidationError('classificationIds must contain only positive integers');
     }
+    if (options?.purgeLearning === true) {
+      throw new ValidationError(
+        'Retry does not purge learning evidence; use an authorized evidence command instead',
+      );
+    }
 
     const actor = req.user?.username || req.user?.email || req.user?.id || 'admin';
     const correlationId = randomUUID();
-    const purgeLearning = options?.purgeLearning === true;
 
     const result = await classificationRetryService.retryClassifications({
         classificationIds,
         actor,
-        purgeLearning,
         correlationId,
       });
 

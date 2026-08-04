@@ -843,19 +843,7 @@ describe('Classification Routes - Pending Resolution', () => {
       expect(classificationRetryService.retryClassifications).not.toHaveBeenCalled();
     });
 
-    test('queues retries and returns summary payload', async () => {
-      classificationRetryService.retryClassifications.mockResolvedValueOnce({
-        correlationId: 'corr-id',
-        requested: 2,
-        queued: 2,
-        skipped: 0,
-        failed: 0,
-        results: [
-          { classificationId: 201, queued: true, reasonCode: 'queued', taskId: 9012 },
-          { classificationId: 202, queued: true, reasonCode: 'queued', taskId: 9013 }
-        ]
-      });
-
+    test('rejects retry requests that attempt to purge learning evidence', async () => {
       const response = await request(app)
         .post('/api/classification/retry')
         .send({
@@ -863,24 +851,14 @@ describe('Classification Routes - Pending Resolution', () => {
           options: { purgeLearning: true }
         });
 
-      expect(response.status).toBe(200);
-      expect(response.body).toMatchObject({
-        success: true,
-        requested: 2,
-        queued: 2,
-        skipped: 0,
-        failed: 0
-      });
-      expect(classificationRetryService.retryClassifications).toHaveBeenCalledWith(
-        expect.objectContaining({
-          classificationIds: [201, 202],
-          purgeLearning: true,
-          actor: 'admin'
-        })
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe(
+        'Retry does not purge learning evidence; use an authorized evidence command instead',
       );
+      expect(classificationRetryService.retryClassifications).not.toHaveBeenCalled();
     });
 
-    test('preserves exact-match learning by default for manual retries', async () => {
+    test('queues retries without changing learning evidence', async () => {
       classificationRetryService.retryClassifications.mockResolvedValueOnce({
         correlationId: 'corr-default-preserve',
         requested: 1,
@@ -907,7 +885,6 @@ describe('Classification Routes - Pending Resolution', () => {
       expect(classificationRetryService.retryClassifications).toHaveBeenCalledWith(
         expect.objectContaining({
           classificationIds: [204],
-          purgeLearning: false,
           actor: 'admin'
         })
       );

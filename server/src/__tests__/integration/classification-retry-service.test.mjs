@@ -66,7 +66,7 @@ describe('ClassificationRetryService integration', () => {
     };
   }
 
-  test('retries awaiting_decision item, cleans related state, and keeps unrelated enrichment rows', async () => {
+  test('retries awaiting_decision item without changing learning and keeps unrelated enrichment rows', async () => {
     const { mediaServerId, libraryId } = await seedBaseEntities({ suffix: 'cleanup', mediaType: 'movie' });
 
     const primaryMedia = await pool.query(
@@ -165,7 +165,6 @@ describe('ClassificationRetryService integration', () => {
     const response = await service.retryClassifications({
       classificationIds: [oldClassificationId],
       actor: 'integration-admin',
-      purgeLearning: true,
       correlationId: 'retry-int-cleanup'
     });
 
@@ -179,7 +178,7 @@ describe('ClassificationRetryService integration', () => {
       classificationId: oldClassificationId,
       queued: true,
       reasonCode: 'queued',
-      purgedLearning: true,
+      purgedLearning: false,
       enrichmentQueueRowsRemoved: 1,
       metadataEnrichmentTasksRemoved: 1,
       enrichmentMetadataReset: true,
@@ -205,7 +204,7 @@ describe('ClassificationRetryService integration', () => {
         source: 'manual_retry',
         actor: 'integration-admin',
         replacement_task_id: expect.any(Number),
-        purged_learning: true
+        purged_learning: false
       })
     );
 
@@ -245,7 +244,7 @@ describe('ClassificationRetryService integration', () => {
       `SELECT id FROM learning_patterns
        WHERE tmdb_id = 880001 AND media_type = 'movie' AND pattern_type = 'exact_match'`
     );
-    expect(learningPattern.rows).toHaveLength(0);
+    expect(learningPattern.rows).toHaveLength(1);
 
     const primaryRetryRow = await pool.query(
       'SELECT id FROM enrichment_retry_queue WHERE media_item_id = $1',
@@ -331,7 +330,6 @@ describe('ClassificationRetryService integration', () => {
     const response = await service.retryClassifications({
       classificationIds: [oldClassificationId],
       actor: 'integration-admin',
-      purgeLearning: false,
       correlationId: 'retry-int-no-link'
     });
 
@@ -403,7 +401,6 @@ describe('ClassificationRetryService integration', () => {
     const response = await service.retryClassifications({
       classificationIds: [oldClassificationId],
       actor: 'integration-admin',
-      purgeLearning: true,
       correlationId: 'retry-int-duplicate'
     });
 
@@ -459,13 +456,11 @@ describe('ClassificationRetryService integration', () => {
       service.retryClassifications({
         classificationIds: [oldClassificationId],
         actor: 'integration-admin-a',
-        purgeLearning: true,
         correlationId: 'retry-int-concurrent-a'
       }),
       service.retryClassifications({
         classificationIds: [oldClassificationId],
         actor: 'integration-admin-b',
-        purgeLearning: true,
         correlationId: 'retry-int-concurrent-b'
       })
     ]);
@@ -525,7 +520,6 @@ describe('ClassificationRetryService integration', () => {
     const retryResponse = await service.retryClassifications({
       classificationIds: [retryClassificationId],
       actor: 'integration-admin',
-      purgeLearning: false,
       correlationId: 'retry-int-ordering'
     });
 

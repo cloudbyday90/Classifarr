@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Learning Direct Writer Cutover**: Restricted automatic durable
+  learning to the authorized outcome executor. Classification completion,
+  queue administration, retry, reclassification, and media synchronization no
+  longer mutate learning evidence directly; retry-time learning purges now
+  fail closed, while backup, migration, and administrative maintenance paths
+  are explicitly inventoried and scoped.
+
 - **Automatic Runtime Destination Evidence Admission**: Completed the
   server-derived compatibility and identity evidence path after a native runtime
   resolution. Classifarr now admits only one unambiguous native-rule and

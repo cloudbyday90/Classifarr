@@ -75,7 +75,7 @@ describe('QueueAdminService', () => {
         });
     });
 
-    it('routes first, then writes history, completes the task, and stores learning patterns', async () => {
+    it('routes first, then writes history and completes the task without learning directly', async () => {
         client.query
             .mockResolvedValueOnce({
                 rows: [{
@@ -109,15 +109,7 @@ describe('QueueAdminService', () => {
             expect.objectContaining({ title: 'Hoppers', tmdb_id: 1327819 }),
             expect.objectContaining({ id: 7, name: 'Family' })
         );
-        expect(evidenceService.rememberExactMatch).toHaveBeenCalledWith(expect.objectContaining({
-            tmdbId: 1327819,
-            mediaType: 'movie',
-            libraryId: 7,
-            createdBy: 'admin-user',
-            client,
-            payloadColumn: 'metadata',
-            conflictMode: 'update_metadata'
-        }));
+        expect(evidenceService.rememberExactMatch).not.toHaveBeenCalled();
     });
 
     it('does not write history or task state when routing fails', async () => {

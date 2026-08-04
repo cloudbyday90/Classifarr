@@ -2803,7 +2803,6 @@ describe('Classification retry persistence', () => {
     expect(classificationRetryService.retryClassifications).toHaveBeenCalledWith({
       classificationIds: [123],
       actor: 'scheduler',
-      purgeLearning: false,
       correlationId: 'scheduler-retry-123',
       taskSource: 'retry_queue',
       metadataEnrichmentSource: 'retry_queue_followup',
@@ -2826,7 +2825,6 @@ describe('Classification retry persistence', () => {
     expect(classificationRetryService.retryClassifications).toHaveBeenCalledWith({
       classificationIds: [456],
       actor: 'scheduler',
-      purgeLearning: false,
       correlationId: 'scheduler-retry-456',
       taskSource: 'retry_queue',
       metadataEnrichmentSource: 'retry_queue_followup',

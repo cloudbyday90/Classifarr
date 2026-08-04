@@ -24,7 +24,6 @@ describe('ClassificationRetryService', () => {
   let client;
   let service;
   let followupService;
-  let evidenceService;
 
   beforeEach(() => {
     logger = createMockLogger();
@@ -55,13 +54,7 @@ describe('ClassificationRetryService', () => {
     followupService = {
       enqueueMetadataEnrichmentTask: jest.fn()
     };
-    evidenceService = {
-      purgeEvidence: jest.fn().mockResolvedValue({
-        deleted: 0,
-        deletedByScope: { item_exact: 0 }
-      })
-    };
-    service = new ClassificationRetryService({ db, logger, followupService, evidenceService });
+    service = new ClassificationRetryService({ db, logger, followupService });
     jest.spyOn(service, 'captureRetryLineage').mockResolvedValue(null);
   });
 
@@ -116,7 +109,7 @@ describe('ClassificationRetryService', () => {
     }));
   });
 
-  test('retryClassifications preserves exact-match learning by default', async () => {
+  test('retryClassifications does not pass learning mutation options to individual retries', async () => {
     const retrySingleSpy = jest.spyOn(service, 'retrySingle')
       .mockResolvedValueOnce({ queued: true, skipped: false, failed: false });
 
@@ -129,7 +122,6 @@ describe('ClassificationRetryService', () => {
     expect(retrySingleSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         classificationId: 103,
-        purgeLearning: false
       })
     );
   });
@@ -144,7 +136,6 @@ describe('ClassificationRetryService', () => {
     const result = await service.retrySingle({
       classificationId: 301,
       actor: 'admin',
-      purgeLearning: true,
       correlationId: 'corr-not-found'
     });
 
@@ -183,7 +174,6 @@ describe('ClassificationRetryService', () => {
     const result = await service.retrySingle({
       classificationId: 302,
       actor: 'admin',
-      purgeLearning: true,
       correlationId: 'corr-status'
     });
 
@@ -224,7 +214,6 @@ describe('ClassificationRetryService', () => {
     const result = await service.retrySingle({
       classificationId: 303,
       actor: 'admin',
-      purgeLearning: true,
       correlationId: 'corr-dup'
     });
 
@@ -267,7 +256,7 @@ describe('ClassificationRetryService', () => {
     );
   });
 
-  test('retrySingle queues retry with cleanup and optional learning purge', async () => {
+  test('retrySingle queues retry with cleanup without purging learning evidence', async () => {
     client.query.mockImplementation(async (sql) => {
       if (sql === 'BEGIN' || sql === 'COMMIT') return { rows: [] };
       if (sql.includes('FROM classification_history')) {
@@ -304,10 +293,6 @@ describe('ClassificationRetryService', () => {
       enrichmentMetadataReset: true,
       enrichmentCleanupSkipped: null
     });
-    evidenceService.purgeEvidence.mockResolvedValueOnce({
-      deleted: 1,
-      deletedByScope: { item_exact: 1 }
-    });
     followupService.enqueueMetadataEnrichmentTask.mockResolvedValueOnce({
       metadataEnrichmentQueued: true,
       metadataEnrichmentTaskId: 9902,
@@ -317,7 +302,6 @@ describe('ClassificationRetryService', () => {
     const result = await service.retrySingle({
       classificationId: 304,
       actor: 'admin',
-      purgeLearning: true,
       correlationId: 'corr-success'
     });
 
@@ -326,7 +310,7 @@ describe('ClassificationRetryService', () => {
       queued: true,
       reasonCode: 'queued',
       taskId: 9901,
-      purgedLearning: true,
+      purgedLearning: false,
       enrichmentQueueRowsRemoved: 1,
       metadataEnrichmentTasksRemoved: 1,
       enrichmentMetadataReset: true,
@@ -350,20 +334,12 @@ describe('ClassificationRetryService', () => {
       mediaItemId: 7001,
       metadataEnrichmentSource: 'manual_retry_followup'
     }));
-    expect(evidenceService.purgeEvidence).toHaveBeenCalledWith(expect.objectContaining({
-      tmdbId: 555,
-      mediaType: 'movie',
-      scopes: ['item_exact'],
-      client,
-      actor: 'admin',
-      reason: 'classification_retry'
-    }));
     expect(mockRecordOutcome).toHaveBeenCalledWith(304, expect.objectContaining({
       type: 'retried',
       source: 'manual_retry',
       actor: 'admin',
       replacement_task_id: 9901,
-      purged_learning: true
+      purged_learning: false
     }), { client });
     expect(logger.info).toHaveBeenCalledWith('Classification retry queued', expect.objectContaining({
       classificationId: 304,
@@ -418,7 +394,6 @@ describe('ClassificationRetryService', () => {
     const result = await service.retrySingle({
       classificationId: 305,
       actor: 'scheduler',
-      purgeLearning: false,
       correlationId: 'scheduler-retry-305',
       taskSource: 'retry_queue',
       metadataEnrichmentSource: 'retry_queue_followup',
@@ -473,7 +448,6 @@ describe('ClassificationRetryService', () => {
     const result = await service.retrySingle({
       classificationId: 306,
       actor: 'admin',
-      purgeLearning: true,
       correlationId: 'corr-metadata-enqueue-failure'
     });
 
@@ -526,7 +500,6 @@ describe('ClassificationRetryService', () => {
     const result = await service.retrySingle({
       classificationId: 305,
       actor: 'admin',
-      purgeLearning: true,
       correlationId: 'corr-failure'
     });
 

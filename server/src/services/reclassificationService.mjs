@@ -2,7 +2,7 @@ import * as db from '../config/database.mjs';
 import { libraryMappingService } from './libraryMappingService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { moveMovie, moveSeries } from './reclassificationMoves.mjs';
-import { saveLearnedCorrection, rollback as _rollback, previewReclassification as _previewReclassification, triggerPlexScan as _triggerPlexScan } from './reclassificationQueries.mjs';
+import { rollback as _rollback, previewReclassification as _previewReclassification, triggerPlexScan as _triggerPlexScan } from './reclassificationQueries.mjs';
 import { NotFoundError, ValidationError, AppError } from '../utils/appError.mjs';
 
 const logger = createLogger('ReclassificationService');
@@ -82,14 +82,6 @@ export class ReclassificationService {
         VALUES ($1, $2, $3, $4)
       `, [classificationId, originalLibraryId, targetLibraryId, correctedBy]);
 
-      await saveLearnedCorrection({
-        tmdbId: tmdb_id,
-        mediaType: media_type,
-        correctedLibraryId: targetLibraryId,
-        title,
-        correctedBy,
-      });
-
       try {
         const plexScanResult = await this.triggerPlexScan({
           targetLibraryId,
@@ -135,10 +127,6 @@ export class ReclassificationService {
 
   async moveSeries(params) {
     return moveSeries(params);
-  }
-
-  async saveLearnedCorrection(params) {
-    return saveLearnedCorrection(params);
   }
 
   async rollback(originalData) {

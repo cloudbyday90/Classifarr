@@ -85,22 +85,6 @@ export class MediaSyncLibraryStateService {
           items: reconciledResult.rows.map((row) => ({ title: row.title, library: row.library_name })),
         });
 
-        for (const item of reconciledResult.rows) {
-          try {
-            await this.db.query(`
-              INSERT INTO learned_corrections (tmdb_id, media_type, corrected_library_id, title, corrected_by)
-              VALUES ($1, $2, $3, $4, $5)
-              ON CONFLICT (tmdb_id, media_type) DO UPDATE
-              SET corrected_library_id = EXCLUDED.corrected_library_id,
-                  title = EXCLUDED.title
-            `, [item.tmdb_id, item.media_type, item.library_id, item.title, 'plex_reconciliation']);
-          } catch (error) {
-            this.logger.warn('Failed to create learned correction for reconciled item', {
-              tmdb_id: item.tmdb_id,
-              error: error.message,
-            });
-          }
-        }
       } else {
         this.logger.debug('No awaiting decisions to reconcile', { libraryId });
       }

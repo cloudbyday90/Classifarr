@@ -11,7 +11,6 @@ import { ValidationError } from '../utils/appError.mjs';
 import { classificationOutcomeService } from './classificationOutcomeService.mjs';
 import { ClassificationRetryFollowupService } from './classificationRetryFollowupService.mjs';
 import { ClassificationRetryStateService } from './classificationRetryStateService.mjs';
-import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 import * as classificationRetryPayloads from '../utils/classificationRetryPayloads.mjs';
 
 const logger = createLogger('ClassificationRetryService');
@@ -40,7 +39,6 @@ export class ClassificationRetryService {
     this.logger = deps.logger || logger;
     this.followupService = deps.followupService || new ClassificationRetryFollowupService();
     this.stateService = deps.stateService || new ClassificationRetryStateService();
-    this.evidenceService = deps.evidenceService || classificationEvidenceService;
     this.classificationRetryPayloads = deps.classificationRetryPayloads || classificationRetryPayloads;
   }
 
@@ -73,7 +71,6 @@ export class ClassificationRetryService {
   async retryClassifications({
     classificationIds,
     actor = 'admin',
-    purgeLearning = false,
     correlationId = null,
     taskSource = DEFAULT_RETRY_TASK_SOURCE,
     metadataEnrichmentSource = DEFAULT_RETRY_FOLLOWUP_SOURCE,
@@ -100,7 +97,6 @@ export class ClassificationRetryService {
       const itemResult = await this.retrySingle({
         classificationId,
         actor,
-        purgeLearning,
         correlationId,
         taskSource,
         metadataEnrichmentSource,
@@ -158,7 +154,6 @@ export class ClassificationRetryService {
   async retrySingle({
     classificationId,
     actor,
-    purgeLearning,
     correlationId,
     taskSource = DEFAULT_RETRY_TASK_SOURCE,
     metadataEnrichmentSource = DEFAULT_RETRY_FOLLOWUP_SOURCE,
@@ -252,19 +247,6 @@ export class ClassificationRetryService {
       await this.cleanupClassificationArtifacts(client, classificationId);
       const enrichmentCleanup = await this.cleanupEnrichmentState(client, mediaItemId);
 
-      let purgedLearning = false;
-      if (purgeLearning && identity.tmdbId) {
-        const learningResult = await this.evidenceService.purgeEvidence({
-          tmdbId: identity.tmdbId,
-          mediaType: identity.mediaType,
-          scopes: ['item_exact'],
-          client,
-          actor,
-          reason: 'classification_retry'
-        });
-        purgedLearning = (learningResult.deletedByScope?.item_exact || 0) > 0;
-      }
-
       const retryPayload = buildRetryPayload(row, metadata, mediaItemId, {
         resetRetryBudget: taskSource !== SCHEDULER_RETRY_TASK_SOURCE,
       });
@@ -287,13 +269,20 @@ export class ClassificationRetryService {
         type: 'retried',
         source: taskSource,
         actor,
-        purged_learning: purgedLearning,
+        purged_learning: false,
         replacement_task_id: taskId,
         correlation_id: correlationId,
         route
       }, { client });
 
-      return { taskId, purgedLearning, enrichmentCleanup, mediaItemId, retryPayload, metadata };
+      return {
+        taskId,
+        purgedLearning: false,
+        enrichmentCleanup,
+        mediaItemId,
+        retryPayload,
+        metadata,
+      };
       }); // end withTransaction
 
       if (txResult.skipped) return txResult;

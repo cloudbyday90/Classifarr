@@ -58,7 +58,6 @@ export class ClassificationService {
     clarificationService,
     classificationProgressStageService,
     classificationRetryService,
-    classificationEvidenceReinforcementService,
     classificationEvidenceService,
     classificationMetadataService,
     classificationUtilsService,
@@ -85,7 +84,6 @@ export class ClassificationService {
     this.clarificationService = clarificationService;
     this.classificationProgressStageService = classificationProgressStageService;
     this.classificationRetryService = classificationRetryService;
-    this.classificationEvidenceReinforcementService = classificationEvidenceReinforcementService;
     this.classificationEvidenceService = classificationEvidenceService;
     this.classificationMetadataService = classificationMetadataService;
     this.classificationUtilsService = classificationUtilsService;
@@ -420,24 +418,6 @@ export class ClassificationService {
       await this.rebindRetryLineage(classificationId, metadata);
       await this.persistRagLoopStageEvents({ classificationId, metadata, result });
 
-      if (result.signalContext && result.signalContext.patternSignals) {
-        const patternSignals = result.signalContext.patternSignals;
-        if (patternSignals.length > 0 && result.library) {
-          setImmediate(async () => {
-            try {
-              await this.classificationEvidenceReinforcementService.reinforceOnAccept(
-                classificationId,
-                patternSignals,
-                result.library.id,
-                { metadata, mediaType: metadata.media_type },
-              );
-            } catch (error) {
-              this.logger.debug('Pattern reinforcement error', { error: error.message });
-            }
-          });
-        }
-      }
-
       const requireAllConfirmations = await this.clarificationService.isRequireAllConfirmationsEnabled();
 
       const routingOutcome = await this.routeClassificationResult(
@@ -753,7 +733,6 @@ export class ClassificationService {
       const result = await this.classificationRetryService.retryClassifications({
         classificationIds: [classificationId],
         actor: 'scheduler',
-        purgeLearning: false,
         correlationId: `scheduler-retry-${classificationId}`,
         taskSource: 'retry_queue',
         metadataEnrichmentSource: 'retry_queue_followup',

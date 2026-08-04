@@ -74,7 +74,7 @@ describe('MediaSyncLibraryStateService', () => {
     });
   });
 
-  test('reconcileAwaitingDecisions updates awaiting items and writes learned corrections', async () => {
+  test('reconcileAwaitingDecisions updates awaiting items without creating learned corrections', async () => {
     db.query
       .mockResolvedValueOnce({
         rows: [{
@@ -85,8 +85,7 @@ describe('MediaSyncLibraryStateService', () => {
           library_id: 1,
           library_name: 'Movies',
         }],
-      })
-      .mockResolvedValueOnce({ rows: [] });
+      });
 
     await expect(service.reconcileAwaitingDecisions(1)).resolves.toBe(1);
     expect(db.query).toHaveBeenNthCalledWith(
@@ -94,10 +93,6 @@ describe('MediaSyncLibraryStateService', () => {
       expect.stringContaining("status = 'awaiting_decision'"),
       [1]
     );
-    expect(db.query).toHaveBeenNthCalledWith(
-      2,
-      expect.stringContaining('INSERT INTO learned_corrections'),
-      [12345, 'movie', 1, 'Test Movie', 'plex_reconciliation']
-    );
+    expect(db.query).toHaveBeenCalledTimes(1);
   });
 });

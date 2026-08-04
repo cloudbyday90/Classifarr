@@ -10,7 +10,6 @@
 
 import * as defaultDb from '../config/database.mjs';
 import { classificationService as defaultClassificationService } from './classification.mjs';
-import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 import * as ragGraphExtractor from './ragGraphExtractor.mjs';
 import { parsePayload as sharedParsePayload } from '../utils/queueHelpers.mjs';
 
@@ -20,7 +19,6 @@ export class QueueAdminService {
         this.logger = deps.logger;
         this.classificationService = deps.classificationService || defaultClassificationService;
         this.ragGraphExtractor = deps.ragGraphExtractor || ragGraphExtractor;
-        this.evidenceService = deps.evidenceService || classificationEvidenceService;
     }
 
     async manualClassifyTask(taskId, libraryId, resolvedBy = 'admin') {
@@ -102,19 +100,6 @@ export class QueueAdminService {
                  WHERE id = $1`,
                 [taskId]
             );
-
-            if (tmdbId) {
-                await this.evidenceService.rememberExactMatch({
-                    tmdbId,
-                    mediaType,
-                    libraryId,
-                    payload: { title, resolved_by: resolvedBy },
-                    createdBy: resolvedBy,
-                    client,
-                    payloadColumn: 'metadata',
-                    conflictMode: 'update_metadata'
-                });
-            }
 
             const classificationId = insertResult.rows[0].id;
             this.logger.info('Manually classified task', {

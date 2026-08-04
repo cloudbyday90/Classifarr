@@ -4067,14 +4067,19 @@ Implementation: [Policy Runtime Destination Evidence Admission](policy-runtime-d
 
 #### 5R.6.4 Direct Writer Inventory And Cutover
 
-Status: pending.
+Status: complete.
 
-- Inventory each direct `classificationEvidenceService` and reinforcement
-  caller, including queue administration and legacy maintenance paths.
-- Classify each as an authorized executor integration, a migration-only tool,
-  or deletion candidate.
-- Remove any normal runtime path that can mutate evidence without a guard,
-  command audit, source-event receipt, and provenance record.
+- The explicit writer inventory now classifies authorized executor,
+  maintenance-only, migration-only, removed-runtime, and deletion-candidate
+  paths.
+- Automatic reinforcement, queue-admin exact memory, retry-time evidence
+  purge, reclassification learned-correction writes, and media-sync
+  learned-correction writes are removed from normal runtime.
+- The authorized outcome executor remains the only automatic runtime learning
+  writer and requires the guard, command audit, source-event receipt, and
+  provenance record.
+
+Implementation: [Policy Learning Direct Writer Cutover](policy-learning-direct-writer-cutover.md).
 
 #### 5R.6.5 Learning Boundary Regression Suite
 
@@ -4271,8 +4276,12 @@ Current starting point:
 - **5R.6.3 Compatibility And Identity Evidence Admission is complete.** A
   native runtime resolution can automatically admit one server-derived,
   receipt-backed compatibility or identity evidence record only after bounded
-  provenance passes. The next Phase 5R component is **5R.6.4 Direct Writer
-  Inventory And Cutover**.
+  provenance passes.
+- **5R.6.4 Direct Writer Inventory And Cutover is complete.** Normal runtime
+  learning now has only the authorized outcome executor; legacy direct writers
+  are removed, maintenance-scoped, migration-only, or explicit deletion
+  candidates. The next Phase 5R component is **5R.6.5 Learning Boundary
+  Regression Suite**.
 - **5R.6.1 Runtime Resolution Outcome-Only Admission is complete.** Ordinary
   resolution now records a guarded outcome-only decision and cannot turn the
   compatibility `generateRule` flag into a durable evidence write.
@@ -4294,6 +4303,9 @@ Implementation record:
 - [Policy Runtime Exact-Item Memory Command](policy-runtime-exact-item-memory-command.md)
   records the 5R.6.2 server-derived command, revalidation, receipt replay, and
   outcome-verification boundary.
+- [Policy Learning Direct Writer Cutover](policy-learning-direct-writer-cutover.md)
+  records the 5R.6.4 writer authority inventory, removed runtime paths, and
+  maintenance/migration classifications.
 - [Policy Builder Phase 5 Implementation](policy-builder-phase-5-implementation.md)
   remains historical implementation context; it is not the current authority
   plan.

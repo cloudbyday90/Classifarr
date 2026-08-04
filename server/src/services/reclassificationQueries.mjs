@@ -6,26 +6,6 @@ import { NotFoundError } from '../utils/appError.mjs';
 
 const logger = createLogger('ReclassificationService');
 
-export async function saveLearnedCorrection({ tmdbId, mediaType, correctedLibraryId, title, correctedBy, userNote = null }) {
-  try {
-    await db.query(`
-      INSERT INTO learned_corrections (tmdb_id, media_type, corrected_library_id, title, corrected_by, user_note)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      ON CONFLICT (tmdb_id, media_type)
-      DO UPDATE SET
-        corrected_library_id = EXCLUDED.corrected_library_id,
-        title = EXCLUDED.title,
-        corrected_by = EXCLUDED.corrected_by,
-        user_note = EXCLUDED.user_note,
-        updated_at = NOW()
-    `, [tmdbId, mediaType, correctedLibraryId, title, correctedBy, userNote]);
-
-    logger.info('Learned correction saved', { tmdbId, mediaType, correctedLibraryId });
-  } catch (error) {
-    logger.error('Failed to save learned correction', { error: error.message });
-  }
-}
-
 export async function rollback(originalData) {
   try {
     logger.warn('Attempting rollback', { originalData });
