@@ -13,6 +13,9 @@ import {
   createPolicyMigrationVerificationCoordinator,
 } from './policyMigrationVerificationCoordinator.mjs';
 import {
+  buildPolicyMigrationVerificationInvocationAdmission,
+} from './policyMigrationVerificationInvocationBoundary.mjs';
+import {
   POLICY_MIGRATION_VERIFICATION_COORDINATOR_STATUS_IDS,
   buildPolicyMigrationVerificationCoordinatorAudit,
 } from './policyMigrationVerificationCoordinatorContract.mjs';
@@ -20,6 +23,7 @@ import {
   POLICY_MIGRATION_VERIFICATION_RUN_RISK_IDS,
   POLICY_MIGRATION_VERIFICATION_RUN_STATUS_IDS,
   buildPolicyMigrationVerificationRunResult,
+  validateCoordinatorForPersistence,
   validatePolicyMigrationVerificationRunResult,
 } from './policyMigrationVerificationRunContract.mjs';
 import {
@@ -30,6 +34,7 @@ function createPolicyMigrationVerificationRunHandoff({
   db = defaultDb,
   coordinator = createPolicyMigrationVerificationCoordinator(),
   verificationRunRepository = policyMigrationVerificationRunRepository,
+  invocationScopeId = null,
 } = {}) {
   function buildAuditedPersistenceResult({
     statusId,
@@ -51,6 +56,17 @@ function createPolicyMigrationVerificationRunHandoff({
   }
 
   async function recordMigrationVerificationRun(input = {}) {
+    const invocationAdmission = buildPolicyMigrationVerificationInvocationAdmission({
+      invocationScopeId,
+      input,
+    });
+    if (!invocationAdmission.ok) {
+      return buildPolicyMigrationVerificationRunResult({
+        statusId: POLICY_MIGRATION_VERIFICATION_RUN_STATUS_IDS.BOUNDARY_REJECTED,
+        persistenceError: invocationAdmission.issues[0]?.riskId,
+      });
+    }
+
     if (!coordinator || typeof coordinator.coordinateMigrationVerification !== 'function') {
       return buildPolicyMigrationVerificationRunResult({
         statusId: POLICY_MIGRATION_VERIFICATION_RUN_STATUS_IDS.COORDINATOR_AUDIT_FAILED,
@@ -59,7 +75,9 @@ function createPolicyMigrationVerificationRunHandoff({
 
     let coordinatorResult;
     try {
-      coordinatorResult = await coordinator.coordinateMigrationVerification(input);
+      coordinatorResult = await coordinator.coordinateMigrationVerification(
+        invocationAdmission.acceptedInput
+      );
     } catch {
       return buildPolicyMigrationVerificationRunResult({
         statusId: POLICY_MIGRATION_VERIFICATION_RUN_STATUS_IDS.COORDINATOR_AUDIT_FAILED,
@@ -78,6 +96,14 @@ function createPolicyMigrationVerificationRunHandoff({
         coordinatorResult.ok !== true) {
       return buildPolicyMigrationVerificationRunResult({
         statusId: POLICY_MIGRATION_VERIFICATION_RUN_STATUS_IDS.NOT_READY,
+        coordinatorResult,
+      });
+    }
+
+    const persistenceValidation = validateCoordinatorForPersistence(coordinatorResult);
+    if (!persistenceValidation.ok) {
+      return buildPolicyMigrationVerificationRunResult({
+        statusId: POLICY_MIGRATION_VERIFICATION_RUN_STATUS_IDS.COORDINATOR_AUDIT_FAILED,
         coordinatorResult,
       });
     }

@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Retained Migration Verification Boundary**: Limited the retained cutover
+  verifier to its server-owned invocation scope and a fixed cloned input tuple,
+  reject unknown authoring controls before reads or receipt transactions,
+  validate receipt fields before persistence, and add import-topology
+  regression coverage that prevents routes from exposing migration-only
+  components.
+
 - **Preview/Replay Migration-Verifier Cutline**: Added a server-only source
   inventory that keeps the remaining migration comparison as a bounded internal
   cutover guard, prevents retired browser and HTTP diagnostics from returning,

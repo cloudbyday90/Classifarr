@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented for Phase 6R.6 Task 6R.6.4.
+Implemented, with the retained invocation boundary completed afterward.
 
 This record defines the server-only persisted handoff between bounded migration
 verification and the later library-rebuild snapshot gate. It records a compact,
@@ -142,6 +142,16 @@ for an exact matching immutable receipt. Insufficient coverage, invalid output,
 missing transaction boundaries, conflicts, and persistence failures remain
 stable non-persisted statuses.
 
+The handoff factory is bound to the server-owned library-rebuild cutover scope.
+It accepts only a plain proposal, plain accepted transition, and valid server
+`Date`, clones that tuple before coordination, and rejects all other fields or
+scopes before database work. A `ready` coordinator result must also pass the
+fixed receipt-record validation before the handoff enters its transaction; this
+keeps malformed source summaries and verifier fingerprints out of the
+repository claim path. See [Policy Migration Verification
+Boundary](policy-migration-verification-boundary.md) for the import topology,
+alternatives, and focused regression coverage.
+
 `server/src/services/policyMigrationVerificationRunContract.mjs` owns the
 versioned status vocabulary, strict coordinator reduction, deterministic
 idempotency digest, result projection, and output audit. The projection has no
@@ -173,6 +183,9 @@ maintenance context before clearing runtime-only receipts.
   route, controller, client API, UI component, provider call, or quota access.
 - Snapshot creation, policy replacement, legacy deletion, routing, learning,
   and browser controls are declared false in the handoff contract and audited.
+- Scope mismatch, caller-controlled fields, invalid accepted transition, source
+  audit failure, malformed fingerprint, stale receipt, and receipt conflict
+  all fail closed without turning the handoff into a policy-authoring surface.
 
 ## Verification
 

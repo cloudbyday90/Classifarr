@@ -17,6 +17,9 @@ import {
   createPolicyMigrationVerificationRunHandoff,
 } from './policyMigrationVerificationRunHandoff.mjs';
 import {
+  POLICY_MIGRATION_VERIFICATION_INVOCATION_SCOPE_IDS,
+} from './policyMigrationVerificationInvocationBoundary.mjs';
+import {
   POLICY_LIBRARY_REBUILD_CUTOVER_RISK_IDS,
   POLICY_LIBRARY_REBUILD_CUTOVER_STAGE_IDS,
   POLICY_LIBRARY_REBUILD_CUTOVER_STATUS_IDS,
@@ -196,7 +199,11 @@ function buildCompletedResult({ now, replacementResult, checkpoints }) {
 
 function createPolicyLibraryRebuildCutoverOrchestrator({
   dbClient = defaultDb,
-  verificationRunHandoff = createPolicyMigrationVerificationRunHandoff({ db: dbClient }),
+  verificationRunHandoff = createPolicyMigrationVerificationRunHandoff({
+    db: dbClient,
+    invocationScopeId:
+      POLICY_MIGRATION_VERIFICATION_INVOCATION_SCOPE_IDS.LIBRARY_REBUILD_CUTOVER,
+  }),
   persistRollbackSnapshot = persistPolicyLibraryRebuildRollbackSnapshot,
   applyReplacement = applyPolicyLibraryRebuildReplacement,
 } = {}) {

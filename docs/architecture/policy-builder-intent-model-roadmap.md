@@ -4199,7 +4199,7 @@ Implementation: [Policy Preview/Replay Verifier Cutline](policy-preview-replay-v
 
 #### 5R.8.2 Retained Migration Boundary And Receipt Handoff Verification
 
-Status: next.
+Status: complete.
 
 - Verify that the coordinator, verification-run handoff, repository, and
   rebuild binding remain unreachable from ordinary policy authoring.
@@ -4209,6 +4209,8 @@ Status: next.
 - Add fail-closed coverage for invalid accepted transition, scope mismatch,
   source audit failure, malformed fingerprint, stale receipt, and receipt
   conflict.
+
+Implementation: [Policy Migration Verification Boundary](policy-migration-verification-boundary.md).
 
 #### 5R.8.3 Runtime Evidence Reducer Resolution
 
