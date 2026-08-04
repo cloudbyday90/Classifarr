@@ -4110,21 +4110,56 @@ Phase acceptance criteria:
 Intent: retire old pending question shapes before they can teach the new system
 bad behavior.
 
-Tasks:
+Tasks are ordered by read/decision/write authority:
 
-- Identify persisted pending questions with:
-  - missing contract version,
-  - vague genre-priority wording,
-  - missing learning metadata,
-  - stale candidate library references,
-  - policy intent changed after question creation.
-- Support dry-run and apply cleanup modes.
-- Decide per question whether to:
-  - regenerate under the new contract,
-  - mark stale and require retry,
-  - resolve outcome-only if already answered,
-  - block learning permanently.
-- Log cleanup actions with bounded metadata.
+#### 5R.7.1 Pending-Question Cleanup Classification Contract
+
+Status: complete.
+
+- Classify one persisted pending record without a database side effect.
+- Detect missing contract version, vague genre-priority wording, missing safe
+  learning metadata, stale candidate references, policy-context drift, proven
+  runtime answers, raw AI context, and untrusted legacy responses.
+- Return only a classification ID, action/reason IDs, contract category, and
+  permanently blocked learning disposition; never retain the raw question or
+  metadata in the plan.
+
+Implementation: [Policy Runtime Pending-Question Cleanup Plan](policy-runtime-pending-question-cleanup-plan.md).
+
+#### 5R.7.2 Dry-Run Pending-Question Inventory And Bounded Report
+
+Status: pending.
+
+- Query only `awaiting_decision` and `pending_retry` rows and obtain current
+  context versions and active candidate-library IDs on the server.
+- Produce an immutable, bounded per-record plan and aggregate counts without
+  mutating classifications, questions, outcomes, or learning evidence.
+- Expose the inventory only through an authenticated administrator boundary
+  with no client-supplied reason, action, or current-state fields.
+
+#### 5R.7.3 Transactional Cleanup Apply And Audit Record
+
+Status: pending.
+
+- Admit only a server-generated dry-run reference or selected classification
+  IDs; lock each current row and re-run the classifier before an apply action.
+- Regenerate only from a fresh server runtime evaluation; mark unsafe records
+  stale; resolve proven answers outcome-only; and clear/block unsafe legacy
+  learning without reconstructing an answer from free-form text.
+- Persist a bounded cleanup audit record with action, reason IDs, source
+  version, actor, and replay receipt. Do not persist raw question, AI, or
+  provider content in the audit record.
+
+#### 5R.7.4 Cleanup Rollout And Migration Safety Verification
+
+Status: pending.
+
+- Add idempotency, stale-scan, cross-library, authorization, interrupted-run,
+  and rollback tests for dry-run and apply behavior.
+- Verify current questions are unchanged and old unsafe questions cannot reach
+  answer, learning, or policy-edit paths after cleanup.
+- Define an upgrade-safe invocation path that does not make startup or normal
+  pending-question reads perform cleanup writes.
 
 Acceptance criteria:
 

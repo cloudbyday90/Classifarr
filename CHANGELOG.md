@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Pending Policy-Question Cleanup Planning**: Added a pure, server-owned
+  cleanup classifier for legacy and stale pending questions. It returns bounded
+  no-learning plans for retry, regeneration, outcome-only resolution, or
+  permanent blocking without reading or writing classifications, retaining raw
+  question/AI content, or changing normal pending-question reads.
+
 - **Policy Learning Boundary Regressions**: Added focused server regression
   coverage that prevents retired runtime learning writers from returning and
   verifies stale questions, raw AI explanation text, cross-destination
