@@ -4083,12 +4083,18 @@ Implementation: [Policy Learning Direct Writer Cutover](policy-learning-direct-w
 
 #### 5R.6.5 Learning Boundary Regression Suite
 
-Status: pending.
+Status: complete.
 
-- Add path-level tests that fail on direct writer use, stale questions, raw AI
-  context retention, cross-destination writes, and duplicate source events.
-- Cover outcome-only, exact-item, compatibility, identity, and policy-edit
-  paths without freezing abandoned diagnostic UX.
+- Path-level checks now fail when removed normal-runtime paths regain direct
+  reinforcement, exact-item memory, purge, or learned-correction writes, while
+  confirming the authorized executor retains its command, receipt, and effect
+  controls.
+- Behavioral coverage now blocks stale questions and raw AI explanation
+  context, rejects cross-destination learning, treats duplicate source events
+  as replay, and covers outcome-only, exact-item, compatibility, identity, and
+  hard-limit policy-edit decisions without freezing diagnostic UI.
+
+Implementation: [Policy Learning Boundary Regression Suite](policy-learning-boundary-regression-suite.md).
 
 Phase acceptance criteria:
 
@@ -4269,6 +4275,9 @@ Current starting point:
 - **5R.4 Runtime Clarification Normalizer and 5R.5 Question And Answer
   Contract are complete.** Current runtime questions are server-normalized and
   resolved only through a versioned, fingerprint-bound answer contract.
+- **5R.6.1 Runtime Resolution Outcome-Only Admission is complete.** Ordinary
+  resolution now records a guarded outcome-only decision and cannot turn the
+  compatibility `generateRule` flag into a durable evidence write.
 - **5R.6.2 Exact-Item Memory Command Admission is complete.** A separate,
   empty-body authenticated command derives exact-item memory strictly from the
   locked completed runtime outcome, revalidates actor and source identity, and
@@ -4280,11 +4289,12 @@ Current starting point:
 - **5R.6.4 Direct Writer Inventory And Cutover is complete.** Normal runtime
   learning now has only the authorized outcome executor; legacy direct writers
   are removed, maintenance-scoped, migration-only, or explicit deletion
-  candidates. The next Phase 5R component is **5R.6.5 Learning Boundary
-  Regression Suite**.
-- **5R.6.1 Runtime Resolution Outcome-Only Admission is complete.** Ordinary
-  resolution now records a guarded outcome-only decision and cannot turn the
-  compatibility `generateRule` flag into a durable evidence write.
+  candidates.
+- **5R.6.5 Learning Boundary Regression Suite is complete.** Source and
+  behavioral regressions now protect direct-writer removal, guarded learning
+  tiers, stale and AI-bound input, destination integrity, and receipt replay.
+  The next Phase 5R component is **5R.7 Stale Question Cleanup And Migration
+  Safety**.
 
 Implementation record:
 
@@ -4306,6 +4316,9 @@ Implementation record:
 - [Policy Learning Direct Writer Cutover](policy-learning-direct-writer-cutover.md)
   records the 5R.6.4 writer authority inventory, removed runtime paths, and
   maintenance/migration classifications.
+- [Policy Learning Boundary Regression Suite](policy-learning-boundary-regression-suite.md)
+  records the 5R.6.5 direct-writer, stale-input, destination-integrity, and
+  replay regression coverage.
 - [Policy Builder Phase 5 Implementation](policy-builder-phase-5-implementation.md)
   remains historical implementation context; it is not the current authority
   plan.

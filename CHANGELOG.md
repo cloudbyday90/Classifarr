@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Learning Boundary Regressions**: Added focused server regression
+  coverage that prevents retired runtime learning writers from returning and
+  verifies stale questions, raw AI explanation text, cross-destination
+  candidates, and duplicate source events cannot create durable learning.
+  The suite also protects the outcome-only, exact-item, compatibility,
+  identity, and explicit policy-edit boundaries without retaining retired
+  diagnostic UI.
+
 - **Policy Learning Direct Writer Cutover**: Restricted automatic durable
   learning to the authorized outcome executor. Classification completion,
   queue administration, retry, reclassification, and media synchronization no
