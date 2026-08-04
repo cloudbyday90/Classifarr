@@ -4158,7 +4158,7 @@ Implementation: [Policy Runtime Pending-Question Cleanup Apply](policy-runtime-p
 
 #### 5R.7.4 Cleanup Rollout And Migration Safety Verification
 
-Status: pending.
+Status: complete.
 
 - Add idempotency, stale-scan, cross-library, authorization, interrupted-run,
   and rollback tests for dry-run and apply behavior.
@@ -4172,6 +4172,8 @@ Acceptance criteria:
 - Old unsafe questions cannot create durable learning.
 - Cleanup can be previewed before apply.
 - Post-upgrade cleanup behavior is deterministic and auditable.
+
+Implementation: [Policy Runtime Pending-Question Cleanup Rollout Verification](policy-runtime-pending-question-cleanup-rollout-verification.md).
 
 ### 5R.8 Preview, Replay, And Migration Verifier Cutline
 

@@ -13,14 +13,17 @@ import { randomUUID } from 'node:crypto';
 import { ValidationError } from '../utils/appError.mjs';
 import {
   POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_ACTION_IDS,
+  POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_VERSION,
   buildPolicyRuntimePendingQuestionCleanupPlan,
 } from './policyRuntimePendingQuestionCleanupPlan.mjs';
 import {
   loadPendingQuestionCleanupCurrentContext,
 } from './policyRuntimePendingQuestionCleanupContext.mjs';
 import {
+  FRESH_RUNTIME_EVALUATION_PENDING_REASON,
   insertPendingQuestionCleanupAuditRecord,
   lockPendingQuestionCleanupClassification,
+  loadPendingQuestionCleanupFreshRuntimeReplay,
   queuePendingQuestionCleanupFreshRuntimeEvaluation,
 } from './policyRuntimePendingQuestionCleanupApplyRepository.mjs';
 import {
@@ -42,6 +45,8 @@ const FRESH_RUNTIME_EVALUATION_ACTION_IDS = new Set([
   POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_ACTION_IDS.MARK_STALE_REQUIRE_RETRY,
   POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_ACTION_IDS.BLOCK_LEARNING_PERMANENTLY,
 ]);
+const REPLAY_RECEIPT_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function normalizePositiveInteger(value) {
   const number = Number(value);
@@ -81,11 +86,61 @@ function requiresFreshRuntimeEvaluation(actionId) {
   return FRESH_RUNTIME_EVALUATION_ACTION_IDS.has(actionId);
 }
 
+function parseAuditReasonIds(value) {
+  let source = value;
+  if (typeof source === 'string') {
+    try {
+      source = JSON.parse(source);
+    } catch {
+      return null;
+    }
+  }
+
+  if (!Array.isArray(source) || source.length > 20) return null;
+
+  const reasonIds = uniqueReasonIds(source);
+  return reasonIds.length === source.length && reasonIds.every(reasonId =>
+    /^[a-z0-9_]{1,120}$/.test(reasonId)
+  ) ? reasonIds : null;
+}
+
+function normalizeFreshRuntimeReplayAudit(value) {
+  if (!value || typeof value !== 'object') return null;
+
+  const actionId = typeof value.action_id === 'string' ? value.action_id : '';
+  const resultStatusId = typeof value.result_status_id === 'string'
+    ? value.result_status_id
+    : '';
+  const sourceVersion = typeof value.source_version === 'string'
+    ? value.source_version
+    : '';
+  const replayReceipt = typeof value.replay_receipt === 'string'
+    ? value.replay_receipt
+    : '';
+  const reasonIds = parseAuditReasonIds(value.reason_ids);
+
+  if (!requiresFreshRuntimeEvaluation(actionId) ||
+      sourceVersion !== POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_VERSION ||
+      resultStatusId !== RESULT_STATUS_IDS.QUEUED_FRESH_RUNTIME_EVALUATION ||
+      !REPLAY_RECEIPT_PATTERN.test(replayReceipt) ||
+      !reasonIds) {
+    return null;
+  }
+
+  return {
+    actionId,
+    reasonIds,
+    resultStatusId,
+    replayReceipt,
+  };
+}
+
 export class PolicyRuntimePendingQuestionCleanupApplyService {
   constructor({
     db,
     lockClassification = lockPendingQuestionCleanupClassification,
     loadCurrentContext = loadPendingQuestionCleanupCurrentContext,
+    loadFreshRuntimeReplay = loadPendingQuestionCleanupFreshRuntimeReplay,
     queueFreshRuntimeEvaluation = queuePendingQuestionCleanupFreshRuntimeEvaluation,
     replayOutcome = replayRecordedRuntimeQuestionAnswer,
     insertAuditRecord = insertPendingQuestionCleanupAuditRecord,
@@ -98,6 +153,7 @@ export class PolicyRuntimePendingQuestionCleanupApplyService {
     this.db = db;
     this.lockClassification = lockClassification;
     this.loadCurrentContext = loadCurrentContext;
+    this.loadFreshRuntimeReplay = loadFreshRuntimeReplay;
     this.queueFreshRuntimeEvaluation = queueFreshRuntimeEvaluation;
     this.replayOutcome = replayOutcome;
     this.insertAuditRecord = insertAuditRecord;
@@ -126,6 +182,22 @@ export class PolicyRuntimePendingQuestionCleanupApplyService {
             replayReceipt: null,
           });
           continue;
+        }
+
+        if (classification.status === 'pending_retry' &&
+            classification.pending_reason === FRESH_RUNTIME_EVALUATION_PENDING_REASON) {
+          const replay = normalizeFreshRuntimeReplayAudit(
+            await this.loadFreshRuntimeReplay({ client, classificationId }),
+          );
+          if (replay) {
+            applied.push({
+              classificationId,
+              statusId: 'cleanup_already_queued',
+              ...replay,
+              replayed: true,
+            });
+            continue;
+          }
         }
 
         const currentContext = await this.loadCurrentContext({ client, classification });
@@ -192,10 +264,13 @@ export class PolicyRuntimePendingQuestionCleanupApplyService {
       records,
       summary: {
         requestedRecordCount: ids.length,
+        replayedRecordCount: records.filter(record => record.replayed === true).length,
         ...summarizeApplyRecords(records),
       },
       sideEffects: {
-        cleanupAuditWritten: true,
+        cleanupAuditWritten: records.some(record =>
+          record.replayed !== true && record.resultStatusId !== RESULT_STATUS_IDS.NOT_FOUND
+        ),
         learningWritten: false,
       },
     };
@@ -206,5 +281,6 @@ export {
   POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_APPLY_MAX_RECORDS,
   POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_APPLY_VERSION,
   RESULT_STATUS_IDS,
+  normalizeFreshRuntimeReplayAudit,
   normalizeClassificationIds,
 };

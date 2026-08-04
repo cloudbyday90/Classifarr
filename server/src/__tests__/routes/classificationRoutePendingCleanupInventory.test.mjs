@@ -16,6 +16,9 @@ import { errorHandler } from '../../middleware/errorHandler.mjs';
 import {
   registerPendingQuestionCleanupInventoryRoute,
 } from '../../routes/classificationRoutePendingCleanupInventory.mjs';
+import {
+  createClassificationRouter,
+} from '../../routes/classificationRouteShared.mjs';
 
 function createApp({ user = null, inventory = { mode: 'dry_run' } } = {}) {
   const inventoryService = { run: jest.fn().mockResolvedValue(inventory) };
@@ -74,5 +77,39 @@ describe('classificationRoutePendingCleanupInventory', () => {
       sideEffects: { classificationRowsMutated: false },
     });
     expect(inventoryService.run).toHaveBeenCalledWith();
+  });
+
+  test('does not invoke cleanup services during normal pending-question reads', async () => {
+    const inventoryService = { run: jest.fn() };
+    const applyService = { run: jest.fn() };
+    const app = express();
+    app.use(express.json());
+    app.use('/api/classification', createClassificationRouter({
+      express,
+      db: { query: jest.fn() },
+      classificationService: {
+        classify: jest.fn(),
+        routeToArr: jest.fn(),
+      },
+      classificationRetryService: { retryClassifications: jest.fn() },
+      clarificationService: {
+        getPendingClassifications: jest.fn().mockResolvedValue([]),
+      },
+      createLogger: () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn() }),
+      requireReadWrite: (_req, _res, next) => next(),
+      STALE_AWAITING_DECISION_DAYS: 7,
+      reclassificationService: {},
+      policyRuntimeExactItemMemoryCommandService: {},
+      policyRuntimePendingQuestionCleanupInventoryService: inventoryService,
+      policyRuntimePendingQuestionCleanupApplyService: applyService,
+    }));
+    app.use(errorHandler);
+
+    const response = await request(app).get('/api/classification/pending');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ count: 0, items: [] });
+    expect(inventoryService.run).not.toHaveBeenCalled();
+    expect(applyService.run).not.toHaveBeenCalled();
   });
 });

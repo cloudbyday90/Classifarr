@@ -12,6 +12,13 @@ const POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_AUDIT_TABLE =
   'policy_runtime_pending_question_cleanup_audits';
 const FRESH_RUNTIME_EVALUATION_PENDING_REASON =
   'policy_runtime_pending_question_cleanup_fresh_runtime_evaluation';
+const POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_SOURCE_VERSION =
+  'policy.runtime_pending_question_cleanup.v1';
+const FRESH_RUNTIME_EVALUATION_ACTION_IDS = Object.freeze([
+  'regenerate_under_current_contract',
+  'mark_stale_require_retry',
+  'block_learning_permanently',
+]);
 
 function requireTransactionClient(client) {
   if (!client || typeof client.query !== 'function') {
@@ -36,11 +43,41 @@ async function lockPendingQuestionCleanupClassification({ client, classification
        ch.library_name,
        ch.policy_question,
        ch.metadata,
-       ch.clarification_response
+       ch.clarification_response,
+       ch.pending_reason
      FROM classification_history AS ch
      WHERE ch.id = $1
      FOR UPDATE`,
     [classificationId],
+  );
+
+  return firstRow(result);
+}
+
+async function loadPendingQuestionCleanupFreshRuntimeReplay({
+  client,
+  classificationId,
+} = {}) {
+  requireTransactionClient(client);
+  const result = await client.query(
+    `SELECT
+       action_id,
+       reason_ids,
+       source_version,
+       result_status_id,
+       replay_receipt
+     FROM ${POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_AUDIT_TABLE}
+     WHERE classification_id = $1
+       AND source_version = $2
+       AND result_status_id = 'queued_fresh_runtime_evaluation'
+       AND action_id = ANY($3::text[])
+     ORDER BY id DESC
+     LIMIT 1`,
+    [
+      classificationId,
+      POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_SOURCE_VERSION,
+      FRESH_RUNTIME_EVALUATION_ACTION_IDS,
+    ],
   );
 
   return firstRow(result);
@@ -108,8 +145,10 @@ async function insertPendingQuestionCleanupAuditRecord({
 
 export {
   FRESH_RUNTIME_EVALUATION_PENDING_REASON,
+  FRESH_RUNTIME_EVALUATION_ACTION_IDS,
   POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_AUDIT_TABLE,
   insertPendingQuestionCleanupAuditRecord,
   lockPendingQuestionCleanupClassification,
+  loadPendingQuestionCleanupFreshRuntimeReplay,
   queuePendingQuestionCleanupFreshRuntimeEvaluation,
 };

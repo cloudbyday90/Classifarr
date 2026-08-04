@@ -17,9 +17,13 @@ import {
   registerPendingQuestionCleanupApplyRoute,
 } from '../../routes/classificationRoutePendingCleanupApply.mjs';
 
-function createApp({ user = null, applyResult = { mode: 'apply', records: [] } } = {}) {
+function createApp({
+  user = null,
+  applyResult = { mode: 'apply', records: [] },
+  requireReadWrite: providedRequireReadWrite = null,
+} = {}) {
   const applyService = { run: jest.fn().mockResolvedValue(applyResult) };
-  const requireReadWrite = jest.fn((_req, _res, next) => next());
+  const requireReadWrite = providedRequireReadWrite || jest.fn((_req, _res, next) => next());
   const app = express();
   const router = express.Router();
 
@@ -73,6 +77,24 @@ describe('classificationRoutePendingCleanupApply', () => {
       classificationIds: [4],
       actorId: 'user:a-17',
     });
+  });
+
+  test('does not run cleanup when the server is in read-only mode', async () => {
+    const requireReadWrite = jest.fn((_req, res) => {
+      res.status(403).json({ error: 'Read-only mode' });
+    });
+    const { app, applyService } = createApp({
+      user: { id: 1, role: 'admin' },
+      requireReadWrite,
+    });
+
+    const response = await request(app)
+      .post('/api/classification/pending-cleanup/apply')
+      .send({ classificationIds: [4] });
+
+    expect(response.status).toBe(403);
+    expect(requireReadWrite).toHaveBeenCalledTimes(1);
+    expect(applyService.run).not.toHaveBeenCalled();
   });
 
   test('rejects caller-supplied cleanup actions and leaves the apply service untouched', async () => {

@@ -24,6 +24,12 @@ before it changes that row.
 | `resolve_outcome_only` | Replay only a versioned, fingerprint-bound runtime answer that still validates against the locked question and an active, matching destination. Write the final outcome without a learning command. Invalid, stale, unavailable, or non-resolution answers become a fresh-runtime retry instead. |
 | `none` | Leave the classification unchanged and write a compact audit receipt. |
 
+When a previous unsafe cleanup has already queued the record, apply requires
+both the cleanup-owned retry marker and a matching bounded audit row before it
+reuses the original receipt. That rerun does not reset the retry schedule or
+write another audit record. A missing or malformed receipt is not trusted and
+falls through to a fresh server-derived plan.
+
 The apply path does not reconstruct an answer from a free-form legacy response.
 It never writes learning evidence. The existing retry scheduler performs the
 subsequent full runtime evaluation, which prevents a fresh question from being
@@ -77,11 +83,13 @@ supports the row-lock design.
 4. Permit outcome-only replay only after exact runtime-contract and destination
    validation, with learning disabled.
 5. Retain only bounded, append-only audit identifiers and receipts. Test
-   interrupted, duplicate, cross-library, authorization, and migration cases in
-   Phase 5R.7.4.
+   interrupted, duplicate, cross-library, authorization, and migration cases.
 
 ## Verification
 
 Focused server tests cover stable lock order, fresh-runtime queueing, stale
 answer fallback, valid outcome-only replay, no-learning behavior, request-body
-allow-listing, authorization, and no-cache responses.
+allow-listing, administrator/read-write authorization, receipt-safe duplicate
+replays, rollback propagation, and no-cache responses. Rollout and migration
+verification is documented in
+[Policy Runtime Pending-Question Cleanup Rollout Verification](policy-runtime-pending-question-cleanup-rollout-verification.md).

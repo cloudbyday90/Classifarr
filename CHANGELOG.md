@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Pending Policy-Question Cleanup Rollout Safety**: Cleanup reruns now reuse
+  a valid existing retry audit receipt instead of resetting the retry queue or
+  appending another audit record. Added server regression coverage for stale
+  and cross-library plans, current-question preservation, legacy question
+  removal, authorization, transaction rollback propagation, and isolation from
+  ordinary pending reads; documented the explicit, post-upgrade maintenance
+  invocation and schema-verification process.
+
 - **Pending Policy-Question Cleanup Apply**: Added an administrator-only,
   server-derived apply command for selected pending classifications. It locks
   and re-evaluates each current row, clears unsafe legacy question and response
