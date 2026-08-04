@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Preview/Replay Migration-Verifier Cutline**: Added a server-only source
+  inventory that keeps the remaining migration comparison as a bounded internal
+  cutover guard, prevents retired browser and HTTP diagnostics from returning,
+  restricts side effects to pure comparison, bounded reads, or idempotent
+  verification receipts, and records explicit deletion or promotion gates.
+
 - **Pending Policy-Question Cleanup Rollout Safety**: Cleanup reruns now reuse
   a valid existing retry audit receipt instead of resetting the retry queue or
   appending another audit record. Added server regression coverage for stale

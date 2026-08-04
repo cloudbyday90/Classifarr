@@ -4180,18 +4180,54 @@ Implementation: [Policy Runtime Pending-Question Cleanup Rollout Verification](p
 Intent: decide which preview/replay services remain as internal verifiers and
 which product surfaces are removed.
 
-Tasks:
+#### 5R.8.1 Source-Backed Verifier Inventory And Cutline
 
-- Classify current impact/replay services as:
-  - server contract verifier,
-  - migration parity verifier,
-  - evidence reducer candidate,
-  - delete with old UI surface.
-- Keep side-effect-free replay guarantees where they support migration safety.
-- Remove or replace product-facing preview/replay panels in Phase 3R/6R unless
-  they are explicitly classified as migration verifier UI.
-- Ensure verifier payloads remain sanitized and bounded.
-- Define deletion criteria after Phase 8R migration parity is proven.
+Status: complete.
+
+- Classify current preview/replay artifacts as server contract verifier,
+  migration parity verifier, evidence reducer candidate, or delete with old UI
+  surface.
+- Record that the retired browser panels, client APIs, service family, and
+  migration-verifier route must remain absent.
+- Require every retained artifact to be server-only, outside normal authoring,
+  payload-bounded, raw-payload-free, and limited to an allowed side-effect
+  profile.
+- Record explicit promotion or deletion criteria, including Phase 8R parity,
+  native-storage cutover, rollback expiry, and no active rebuild binding.
+
+Implementation: [Policy Preview/Replay Verifier Cutline](policy-preview-replay-verifier-cutline.md).
+
+#### 5R.8.2 Retained Migration Boundary And Receipt Handoff Verification
+
+Status: next.
+
+- Verify that the coordinator, verification-run handoff, repository, and
+  rebuild binding remain unreachable from ordinary policy authoring.
+- Prove that they can perform only bounded source reads and idempotent
+  verification-receipt persistence, never policy, routing, learning, provider,
+  or scheduler work.
+- Add fail-closed coverage for invalid accepted transition, scope mismatch,
+  source audit failure, malformed fingerprint, stale receipt, and receipt
+  conflict.
+
+#### 5R.8.3 Runtime Evidence Reducer Resolution
+
+Status: pending Phase 8R migration parity.
+
+- Decide whether the generated-intent outcome reducer becomes part of a
+  bounded runtime-evidence contract or is deleted with the migration verifier.
+- Do not promote migration comparison fields or historical samples into normal
+  runtime or authoring responses.
+
+#### 5R.8.4 Final Verifier Deletion Or Promotion Gate
+
+Status: pending Phase 8R cutover evidence.
+
+- Require proven migration parity, completed native-storage cutover, expired
+  rollback retention, and no active rebuild binding before deleting or
+  promoting any retained verifier artifact.
+- Remove retained verifier tests when their source is deleted; retain only
+  replacement-contract regression coverage.
 
 Acceptance criteria:
 
