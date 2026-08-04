@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Pending Policy-Question Cleanup Apply**: Added an administrator-only,
+  server-derived apply command for selected pending classifications. It locks
+  and re-evaluates each current row, clears unsafe legacy question and response
+  data into the automatic fresh-runtime retry path, replays only still-valid
+  structured outcomes without learning, and records bounded append-only audit
+  receipts without raw question, AI, provider, or response content.
+
 - **Pending Policy-Question Cleanup Inventory**: Added an administrator-only,
   bounded dry-run inventory for stale pending questions. It derives current
   state from a repeatable-read, read-only server snapshot and returns frozen,

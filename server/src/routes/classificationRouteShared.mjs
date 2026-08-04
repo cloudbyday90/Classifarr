@@ -27,6 +27,9 @@ import { registerPendingRoutes } from './classificationRoutePending.mjs';
 import {
   registerPendingQuestionCleanupInventoryRoute,
 } from './classificationRoutePendingCleanupInventory.mjs';
+import {
+  registerPendingQuestionCleanupApplyRoute,
+} from './classificationRoutePendingCleanupApply.mjs';
 
 export function createClassificationRouter({
   express,
@@ -40,6 +43,7 @@ export function createClassificationRouter({
   reclassificationService,
   policyRuntimeExactItemMemoryCommandService,
   policyRuntimePendingQuestionCleanupInventoryService,
+  policyRuntimePendingQuestionCleanupApplyService,
 }) {
   const router = express.Router();
   const logger = createLogger('classification');
@@ -81,6 +85,12 @@ export function createClassificationRouter({
   if (policyRuntimePendingQuestionCleanupInventoryService) {
     registerPendingQuestionCleanupInventoryRoute(router, {
       policyRuntimePendingQuestionCleanupInventoryService,
+    });
+  }
+  if (policyRuntimePendingQuestionCleanupApplyService) {
+    registerPendingQuestionCleanupApplyRoute(router, {
+      policyRuntimePendingQuestionCleanupApplyService,
+      requireReadWrite,
     });
   }
 

@@ -20,10 +20,15 @@ import { reclassificationService } from '../services/reclassificationService.mjs
 import {
   PolicyRuntimePendingQuestionCleanupInventoryService,
 } from '../services/policyRuntimePendingQuestionCleanupInventoryService.mjs';
+import {
+  PolicyRuntimePendingQuestionCleanupApplyService,
+} from '../services/policyRuntimePendingQuestionCleanupApplyService.mjs';
 import { createClassificationRouter } from './classificationRouteShared.mjs';
 
 const policyRuntimePendingQuestionCleanupInventoryService =
   new PolicyRuntimePendingQuestionCleanupInventoryService({ db });
+const policyRuntimePendingQuestionCleanupApplyService =
+  new PolicyRuntimePendingQuestionCleanupApplyService({ db });
 
 export const router = createClassificationRouter({
   express,
@@ -36,4 +41,5 @@ export const router = createClassificationRouter({
   STALE_AWAITING_DECISION_DAYS,
   reclassificationService,
   policyRuntimePendingQuestionCleanupInventoryService,
+  policyRuntimePendingQuestionCleanupApplyService,
 });

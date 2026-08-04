@@ -49,6 +49,8 @@ const POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_REASON_IDS = Object.freeze({
   STALE_CANDIDATE_LIBRARY: 'pending_question_cleanup_stale_candidate_library',
   POLICY_CONTEXT_CHANGED: 'pending_question_cleanup_policy_context_changed',
   RUNTIME_ANSWER_RECORDED: 'pending_question_cleanup_runtime_answer_recorded',
+  RUNTIME_ANSWER_INVALID_CURRENT_STATE: 'pending_question_cleanup_runtime_answer_invalid_current_state',
+  RUNTIME_ANSWER_REQUIRES_RETRY: 'pending_question_cleanup_runtime_answer_requires_retry',
   LEGACY_RESPONSE_UNTRUSTED: 'pending_question_cleanup_legacy_response_untrusted',
 });
 

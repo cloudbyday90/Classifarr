@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-08-03T18:07:30.581Z
--- Latest Migration: 20260803_130000_add_ai_provider_capability_metrics.sql
+-- Generated: 2026-08-04T19:21:53.018Z
+-- Latest Migration: 20260804_120000_add_policy_runtime_pending_question_cleanup_audits.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -296,6 +296,45 @@ BEGIN
     RETURN NEW;
 END;
 $$;
+
+
+--
+-- Name: guard_policy_runtime_pending_question_cleanup_audit_mutation(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.guard_policy_runtime_pending_question_cleanup_audit_mutation() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    RAISE EXCEPTION 'Pending-question cleanup audit records are append-only';
+END;
+$$;
+
+
+--
+-- Name: is_policy_runtime_pending_question_cleanup_reason_ids(jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.is_policy_runtime_pending_question_cleanup_reason_ids(value jsonb) RETURNS boolean
+    LANGUAGE plpgsql IMMUTABLE
+    AS $_$
+DECLARE
+    reason_id TEXT;
+BEGIN
+    IF jsonb_typeof(value) <> 'array' OR jsonb_array_length(value) > 20 THEN
+        RETURN FALSE;
+    END IF;
+
+    FOR reason_id IN SELECT jsonb_array_elements_text(value)
+    LOOP
+        IF reason_id !~ '^[a-z0-9_]{1,120}$' THEN
+            RETURN FALSE;
+        END IF;
+    END LOOP;
+
+    RETURN TRUE;
+END;
+$_$;
 
 
 --
@@ -5200,6 +5239,50 @@ ALTER SEQUENCE public.policy_profile_refresh_outbox_id_seq OWNED BY public.polic
 
 
 --
+-- Name: policy_runtime_pending_question_cleanup_audits; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_runtime_pending_question_cleanup_audits (
+    id bigint NOT NULL,
+    audit_version smallint DEFAULT 1 CONSTRAINT policy_runtime_pending_question_cleanup__audit_version_not_null NOT NULL,
+    classification_id bigint CONSTRAINT policy_runtime_pending_question_clea_classification_id_not_null NOT NULL,
+    action_id character varying(80) CONSTRAINT policy_runtime_pending_question_cleanup_audi_action_id_not_null NOT NULL,
+    reason_ids jsonb CONSTRAINT policy_runtime_pending_question_cleanup_aud_reason_ids_not_null NOT NULL,
+    source_version character varying(120) CONSTRAINT policy_runtime_pending_question_cleanup_source_version_not_null NOT NULL,
+    actor_id character varying(160) CONSTRAINT policy_runtime_pending_question_cleanup_audit_actor_id_not_null NOT NULL,
+    result_status_id character varying(80) CONSTRAINT policy_runtime_pending_question_clean_result_status_id_not_null NOT NULL,
+    replay_receipt uuid CONSTRAINT policy_runtime_pending_question_cleanup_replay_receipt_not_null NOT NULL,
+    created_at timestamp with time zone DEFAULT now() CONSTRAINT policy_runtime_pending_question_cleanup_aud_created_at_not_null NOT NULL,
+    CONSTRAINT policy_runtime_pending_question_cleanup_audits_action_chk CHECK (((action_id)::text = ANY (ARRAY[('none'::character varying)::text, ('regenerate_under_current_contract'::character varying)::text, ('mark_stale_require_retry'::character varying)::text, ('resolve_outcome_only'::character varying)::text, ('block_learning_permanently'::character varying)::text]))),
+    CONSTRAINT policy_runtime_pending_question_cleanup_audits_actor_chk CHECK (((actor_id)::text ~ '^[A-Za-z0-9:_-]{1,160}$'::text)),
+    CONSTRAINT policy_runtime_pending_question_cleanup_audits_classification_c CHECK ((classification_id > 0)),
+    CONSTRAINT policy_runtime_pending_question_cleanup_audits_reason_ids_chk CHECK (public.is_policy_runtime_pending_question_cleanup_reason_ids(reason_ids)),
+    CONSTRAINT policy_runtime_pending_question_cleanup_audits_source_chk CHECK (((source_version)::text = 'policy.runtime_pending_question_cleanup.v1'::text)),
+    CONSTRAINT policy_runtime_pending_question_cleanup_audits_status_chk CHECK (((result_status_id)::text = ANY (ARRAY[('unchanged'::character varying)::text, ('queued_fresh_runtime_evaluation'::character varying)::text, ('resolved_outcome_only'::character varying)::text]))),
+    CONSTRAINT policy_runtime_pending_question_cleanup_audits_version_chk CHECK ((audit_version = 1))
+);
+
+
+--
+-- Name: policy_runtime_pending_question_cleanup_audits_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.policy_runtime_pending_question_cleanup_audits_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: policy_runtime_pending_question_cleanup_audits_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.policy_runtime_pending_question_cleanup_audits_id_seq OWNED BY public.policy_runtime_pending_question_cleanup_audits.id;
+
+
+--
 -- Name: policy_tuning_suggestions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -7054,6 +7137,13 @@ ALTER TABLE ONLY public.policy_profile_refresh_outbox ALTER COLUMN id SET DEFAUL
 
 
 --
+-- Name: policy_runtime_pending_question_cleanup_audits id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_runtime_pending_question_cleanup_audits ALTER COLUMN id SET DEFAULT nextval('public.policy_runtime_pending_question_cleanup_audits_id_seq'::regclass);
+
+
+--
 -- Name: policy_tuning_suggestions id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -8276,6 +8366,22 @@ ALTER TABLE ONLY public.policy_profile_refresh_outbox
 
 ALTER TABLE ONLY public.policy_profile_refresh_outbox
     ADD CONSTRAINT policy_profile_refresh_outbox_source_event_unique UNIQUE (source_id, source_event_id);
+
+
+--
+-- Name: policy_runtime_pending_question_cleanup_audits policy_runtime_pending_question_cleanup_audits_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_runtime_pending_question_cleanup_audits
+    ADD CONSTRAINT policy_runtime_pending_question_cleanup_audits_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_runtime_pending_question_cleanup_audits policy_runtime_pending_question_cleanup_audits_replay_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_runtime_pending_question_cleanup_audits
+    ADD CONSTRAINT policy_runtime_pending_question_cleanup_audits_replay_unique UNIQUE (replay_receipt);
 
 
 --
@@ -9903,6 +10009,13 @@ CREATE INDEX idx_policy_profile_refresh_outbox_processing_lease ON public.policy
 
 
 --
+-- Name: idx_policy_runtime_pending_question_cleanup_audits_classificati; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_runtime_pending_question_cleanup_audits_classificati ON public.policy_runtime_pending_question_cleanup_audits USING btree (classification_id, created_at DESC, id DESC);
+
+
+--
 -- Name: idx_post_upgrade_tasks_task_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10432,6 +10545,13 @@ CREATE TRIGGER policy_migration_verification_run_mutation_guard BEFORE DELETE OR
 --
 
 CREATE TRIGGER policy_observed_evidence_provenance_snapshot_update_guard BEFORE UPDATE ON public.policy_observed_evidence_provenance_snapshots FOR EACH ROW EXECUTE FUNCTION public.guard_policy_observed_evidence_provenance_snapshot_update();
+
+
+--
+-- Name: policy_runtime_pending_question_cleanup_audits policy_runtime_pending_question_cleanup_audit_mutation_guard; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER policy_runtime_pending_question_cleanup_audit_mutation_guard BEFORE DELETE OR UPDATE ON public.policy_runtime_pending_question_cleanup_audits FOR EACH ROW EXECUTE FUNCTION public.guard_policy_runtime_pending_question_cleanup_audit_mutation();
 
 
 --
@@ -13451,6 +13571,7 @@ FROM unnest(ARRAY[
     '20260729_140000_add_policy_migration_verification_runs.sql',
     '20260729_150000_bind_policy_library_rebuild_verification_runs.sql',
     '20260803_120000_add_policy_authoring_proposals.sql',
-    '20260803_130000_add_ai_provider_capability_metrics.sql'
+    '20260803_130000_add_ai_provider_capability_metrics.sql',
+    '20260804_120000_add_policy_runtime_pending_question_cleanup_audits.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

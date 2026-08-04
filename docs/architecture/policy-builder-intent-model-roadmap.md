@@ -4143,7 +4143,7 @@ Implementation: [Policy Runtime Pending-Question Cleanup Inventory](policy-runti
 
 #### 5R.7.3 Transactional Cleanup Apply And Audit Record
 
-Status: pending.
+Status: complete.
 
 - Admit only a server-generated dry-run reference or selected classification
   IDs; lock each current row and re-run the classifier before an apply action.
@@ -4153,6 +4153,8 @@ Status: pending.
 - Persist a bounded cleanup audit record with action, reason IDs, source
   version, actor, and replay receipt. Do not persist raw question, AI, or
   provider content in the audit record.
+
+Implementation: [Policy Runtime Pending-Question Cleanup Apply](policy-runtime-pending-question-cleanup-apply.md).
 
 #### 5R.7.4 Cleanup Rollout And Migration Safety Verification
 
