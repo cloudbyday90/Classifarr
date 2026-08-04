@@ -110,7 +110,10 @@ audit behavior.
 
 ## Follow-on Work
 
-The next task is **Phase 5R.7.2: Dry-Run Pending-Question Inventory And
-Bounded Report**. It will query only pending rows, obtain current context and
-library state on the server, apply this classifier, and return an auditable
-preview without mutating classifications.
+Phase 5R.7.2 now supplies this classifier through an administrator-only,
+read-only, bounded inventory: [Policy Runtime Pending-Question Cleanup
+Inventory](policy-runtime-pending-question-cleanup-inventory.md).
+
+The next task is **Phase 5R.7.3: Transactional Cleanup Apply And Audit
+Record**. It will lock and reclassify the selected current rows before any
+mutation, rather than treating the inventory result as authorization.

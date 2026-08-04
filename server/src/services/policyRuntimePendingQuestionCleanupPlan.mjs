@@ -154,7 +154,32 @@ function hasRecordedRuntimeAnswer(metadata = {}) {
 }
 
 function hasUntrustedLegacyResponse(classification = {}) {
-  return Object.keys(asObject(asObject(classification).clarification_response)).length > 0;
+  const response = asObject(classification).clarification_response;
+  if (response === null || response === undefined) return false;
+
+  if (typeof response === 'string') {
+    const normalizedResponse = normalizeString(response, 240);
+    if (!normalizedResponse) return false;
+
+    try {
+      const parsedResponse = JSON.parse(normalizedResponse);
+      if (parsedResponse === null) return false;
+      if (Array.isArray(parsedResponse)) return parsedResponse.length > 0;
+      if (typeof parsedResponse === 'object') return Object.keys(parsedResponse).length > 0;
+      if (typeof parsedResponse === 'string') {
+        return normalizeString(parsedResponse, 240).length > 0;
+      }
+
+      return true;
+    } catch {
+      return true;
+    }
+  }
+
+  if (Array.isArray(response)) return response.length > 0;
+  if (typeof response === 'object') return Object.keys(response).length > 0;
+
+  return true;
 }
 
 function hasStaleCandidateLibrary(question = {}, activeLibraryIds) {

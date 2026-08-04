@@ -60,6 +60,10 @@ export function getPendingClassificationCount() {
   return getDataRequest('/classification/pending/count')
 }
 
+export function getPendingQuestionCleanupInventory() {
+  return getDataRequest('/classification/pending-cleanup/inventory')
+}
+
 export function resolvePendingClassification(classificationId, payload) {
   return apiClient.post(`/classification/pending/${classificationId}/resolve`, payload)
 }
@@ -83,6 +87,7 @@ const classificationOperationsApi = {
   getLiveFeed,
   getPendingClassifications,
   getPendingClassificationCount,
+  getPendingQuestionCleanupInventory,
   resolvePendingClassification,
   rememberResolvedExactItem,
   retryClassifications,

@@ -4128,14 +4128,18 @@ Implementation: [Policy Runtime Pending-Question Cleanup Plan](policy-runtime-pe
 
 #### 5R.7.2 Dry-Run Pending-Question Inventory And Bounded Report
 
-Status: pending.
+Status: complete.
 
-- Query only `awaiting_decision` and `pending_retry` rows and obtain current
-  context versions and active candidate-library IDs on the server.
-- Produce an immutable, bounded per-record plan and aggregate counts without
-  mutating classifications, questions, outcomes, or learning evidence.
-- Expose the inventory only through an authenticated administrator boundary
-  with no client-supplied reason, action, or current-state fields.
+- Queries only `awaiting_decision` and `pending_retry` rows from a bounded
+  repeatable-read, read-only transaction, then obtains current library and
+  policy state from that same server snapshot.
+- Produces a frozen 200-record maximum report with canonical per-record plans,
+  aggregate counts, explicit no-side-effect state, and a truncation indicator.
+- Exposes `GET /api/classification/pending-cleanup/inventory` only through the
+  existing classification admin mount and a route-level admin check. The route
+  accepts no cleanup control fields and returns `Cache-Control: no-store`.
+
+Implementation: [Policy Runtime Pending-Question Cleanup Inventory](policy-runtime-pending-question-cleanup-inventory.md).
 
 #### 5R.7.3 Transactional Cleanup Apply And Audit Record
 

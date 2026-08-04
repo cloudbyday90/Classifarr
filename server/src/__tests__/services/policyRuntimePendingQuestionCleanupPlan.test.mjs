@@ -215,8 +215,13 @@ describe('policyRuntimePendingQuestionCleanupPlan', () => {
       activeLibraryIds: [8],
       contextEvaluated: true,
     });
+    const legacyStringPlan = buildPolicyRuntimePendingQuestionCleanupPlan({
+      classification: pendingClassification({
+        clarification_response: 'legacy selection text',
+      }),
+    });
 
-    for (const plan of [legacyResponsePlan, rawAiPlan]) {
+    for (const plan of [legacyResponsePlan, rawAiPlan, legacyStringPlan]) {
       expect(plan).toMatchObject({
         statusId: POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_STATUS_IDS.CLEANUP_REQUIRED,
         actionId: POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_ACTION_IDS
@@ -231,6 +236,22 @@ describe('policyRuntimePendingQuestionCleanupPlan', () => {
     expect(rawAiPlan.reasonIds).toContain(
       POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_REASON_IDS.RAW_AI_CONTEXT,
     );
+    expect(legacyStringPlan.reasonIds).toContain(
+      POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_REASON_IDS.LEGACY_RESPONSE_UNTRUSTED,
+    );
+  });
+
+  test('does not treat an empty serialized legacy response as a recorded answer', () => {
+    const plan = buildPolicyRuntimePendingQuestionCleanupPlan({
+      classification: pendingClassification({ clarification_response: '{}' }),
+      activeLibraryIds: [8],
+      contextEvaluated: true,
+    });
+
+    expect(plan).toMatchObject({
+      statusId: POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_STATUS_IDS.CURRENT,
+      actionId: POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_ACTION_IDS.NONE,
+    });
   });
 
   test('fails the audit when a caller tries to carry raw persisted data in the plan', () => {

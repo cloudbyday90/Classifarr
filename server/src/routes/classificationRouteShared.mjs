@@ -24,6 +24,9 @@ import { registerSecondPassRoute } from './classificationRouteSecondPass.mjs';
 import { registerCorrectionRoutes } from './classificationRouteCorrections.mjs';
 import { registerExactItemMemoryRoutes } from './classificationRouteExactItemMemory.mjs';
 import { registerPendingRoutes } from './classificationRoutePending.mjs';
+import {
+  registerPendingQuestionCleanupInventoryRoute,
+} from './classificationRoutePendingCleanupInventory.mjs';
 
 export function createClassificationRouter({
   express,
@@ -36,6 +39,7 @@ export function createClassificationRouter({
   STALE_AWAITING_DECISION_DAYS,
   reclassificationService,
   policyRuntimeExactItemMemoryCommandService,
+  policyRuntimePendingQuestionCleanupInventoryService,
 }) {
   const router = express.Router();
   const logger = createLogger('classification');
@@ -74,6 +78,11 @@ export function createClassificationRouter({
     policyRuntimeExactItemMemoryCommandService,
   });
   registerPendingRoutes(router, { db, clarificationService, classificationService, STALE_AWAITING_DECISION_DAYS, logger });
+  if (policyRuntimePendingQuestionCleanupInventoryService) {
+    registerPendingQuestionCleanupInventoryRoute(router, {
+      policyRuntimePendingQuestionCleanupInventoryService,
+    });
+  }
 
   router.post('/retry', requireReadWrite, asyncHandler(async (req, res) => {
     const { classificationIds, options = {} } = req.body || {};

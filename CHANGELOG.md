@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Pending Policy-Question Cleanup Inventory**: Added an administrator-only,
+  bounded dry-run inventory for stale pending questions. It derives current
+  state from a repeatable-read, read-only server snapshot and returns frozen,
+  no-learning cleanup plans without returning raw question content or making
+  classification, outcome, learning, or audit writes.
+
 - **Pending Policy-Question Cleanup Planning**: Added a pure, server-owned
   cleanup classifier for legacy and stale pending questions. It returns bounded
   no-learning plans for retry, regeneration, outcome-only resolution, or

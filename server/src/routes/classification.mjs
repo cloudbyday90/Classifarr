@@ -17,7 +17,13 @@ import { createLogger } from '../utils/logger.mjs';
 import { requireReadWrite } from '../middleware/apiKeyAuth.mjs';
 import { STALE_AWAITING_DECISION_DAYS } from '../constants/classificationFlow.mjs';
 import { reclassificationService } from '../services/reclassificationService.mjs';
+import {
+  PolicyRuntimePendingQuestionCleanupInventoryService,
+} from '../services/policyRuntimePendingQuestionCleanupInventoryService.mjs';
 import { createClassificationRouter } from './classificationRouteShared.mjs';
+
+const policyRuntimePendingQuestionCleanupInventoryService =
+  new PolicyRuntimePendingQuestionCleanupInventoryService({ db });
 
 export const router = createClassificationRouter({
   express,
@@ -29,4 +35,5 @@ export const router = createClassificationRouter({
   requireReadWrite,
   STALE_AWAITING_DECISION_DAYS,
   reclassificationService,
+  policyRuntimePendingQuestionCleanupInventoryService,
 });

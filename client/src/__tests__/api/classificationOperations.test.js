@@ -38,6 +38,7 @@ import {
   getSecondPassEvaluation,
   getLiveFeed,
   getPendingClassifications,
+  getPendingQuestionCleanupInventory,
   rememberResolvedExactItem,
   resolvePendingClassification,
   retryClassifications,
@@ -130,6 +131,14 @@ describe('classificationOperations', () => {
     const result = await getPendingClassifications()
     expect(mockGetDataRequest).toHaveBeenCalledWith('/classification/pending')
     expect(result).toEqual(pending)
+  })
+
+  it('getPendingQuestionCleanupInventory requests the server-owned dry-run report', async () => {
+    const inventory = { mode: 'dry_run', records: [] }
+    mockGetDataRequest.mockResolvedValueOnce(inventory)
+    const result = await getPendingQuestionCleanupInventory()
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/classification/pending-cleanup/inventory')
+    expect(result).toEqual(inventory)
   })
 
   it('resolvePendingClassification calls POST with id in URL and payload', async () => {
