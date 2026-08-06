@@ -11,6 +11,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Native Intent Change Admission**: Added a pure, side-effect-free admission
+  contract that defines the narrow native-intent change command with revision
+  checking (optimistic concurrency), six allow-listed change operations,
+  actor authorization, idempotency key validation, and eight bounded outcomes
+  (admitted, stale-revision, policy-replaced, recovery-required,
+  authorization-rejected, unavailable-authority, unknown-command, retryable).
+  Explicitly rejects browser-synthesized compatibility projections and native
+  establishment fields. Completes the server authority workstream.
+
 - **Server Authority Test Reset**: Added a side-effect-free contract that
   inventories every server-authority test, maps it to a decision, coverage
   area, and declared service contract, and verifies each test exists on disk
@@ -24,6 +33,8 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 - **Bump eslint from 10.7.0 to 10.8.0** in /server (dependabot). Lint passes
   clean with the updated linter.
+- **Bump express-rate-limit from 8.6.1 to 8.6.2** in /server (dependabot).
+  Patch update to the rate-limiting middleware.
 
 - **Final Verifier Deletion Or Promotion Gate**: Added a side-effect-free,
   fail-closed gate that evaluates all four exit criteria (migration parity,

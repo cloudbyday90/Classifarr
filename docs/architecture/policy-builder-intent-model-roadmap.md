@@ -4304,29 +4304,21 @@ Intent: admit a persisted native-policy change through a distinct,
 revision-checked server command after runtime and learning authority are
 bounded.
 
-Dependencies: 5R.3 through 5R.9. Native updates remain unsupported until this
-task is complete; no generic legacy policy update route becomes an implicit
-native maintenance path.
+Status: complete.
 
-Tasks:
-
-- Define a narrow native-intent change command with a policy identifier, the
-  current native authority revision, client request identity, and only
-  allow-listed change commands. Do not expose a generic policy `PUT` or accept
-  browser-synthesized compatibility projections as a native update.
-- Authorize the actor, lock or otherwise serialize the active native authority
-  record, recheck its revision and lifecycle, validate the canonical command
-  set, and apply the change atomically with reason codes and audit provenance.
-- Return a fresh bounded authority and lifecycle projection for success,
-  stale-revision, policy-replaced, recovery-required, authorization-rejected,
-  and retryable outcomes. Preserve idempotent replay semantics without
-  disclosing request or persistence internals.
-- Keep legacy policy updates compatibility-scoped and explicitly reject any
-  attempt to smuggle native establishment or native-change fields through
-  their route.
-- Add focused tests for allowed changes, stale revisions, concurrent updates,
-  replay, unavailable authority, unauthorized actors, rejected unknown
-  commands, and legacy-route isolation.
+A pure, side-effect-free admission contract now defines the narrow
+native-intent change command with a policy identifier, current authority
+revision, authenticated administrator actor, idempotency key, and six
+allow-listed change operations (purpose, hard limits, avoid rules, helpful
+matches, routing target, review triggers). It uses optimistic concurrency:
+`expectedRevision` must match the current `intent_version`. It produces
+bounded outcomes for admitted, stale-revision, policy-replaced,
+recovery-required, authorization-rejected, unavailable-authority,
+unknown-command, and retryable. It explicitly rejects browser-synthesized
+compatibility projections and native establishment fields. It performs no
+database write, route mutation, or persistence — the transactional wiring
+follows the proven two-phase pattern. See
+[Policy Native Intent Change Admission](policy-native-intent-change-admission.md).
 
 Acceptance criteria:
 
