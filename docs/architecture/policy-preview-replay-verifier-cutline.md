@@ -139,4 +139,8 @@ Phase 5R.8 Task 5R.8.3 **Runtime Evidence Reducer Resolution** is complete.
 The generated-intent outcome reducer is retained as migration-only and is not
 promoted into the runtime-evidence contract. See
 [Policy Runtime Evidence Reducer Resolution](policy-runtime-evidence-reducer-resolution.md).
-Phase 5R.8 Task 5R.8.4 is **Final Verifier Deletion Or Promotion Gate**.
+Phase 5R.8 Task 5R.8.4 **Final Verifier Deletion Or Promotion Gate** is also
+complete. See
+[Policy Preview/Replay Verifier Deletion Or Promotion Gate](policy-preview-replay-verifier-deletion-gate.md).
+Phase 5R.8 is now complete; the next task is **5R.9 Server Authority Test
+Reset**.

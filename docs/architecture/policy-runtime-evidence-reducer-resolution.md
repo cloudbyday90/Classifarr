@@ -212,7 +212,11 @@ broken deletion binding, and a malformed resolution contract version.
 
 ## Next Task
 
-Phase 5R.8 Task 5R.8.4 is **Final Verifier Deletion Or Promotion Gate**. It
-requires proven migration parity, completed native-storage cutover, expired
-rollback retention, and no active rebuild binding before deleting or promoting
-any retained verifier artifact, including this reducer.
+Phase 5R.8 Task 5R.8.4 **Final Verifier Deletion Or Promotion Gate** is
+complete. It requires proven migration parity, completed native-storage
+cutover, expired rollback retention, and no active rebuild binding before
+deleting or promoting any retained verifier artifact, including this reducer.
+See
+[Policy Preview/Replay Verifier Deletion Or Promotion Gate](policy-preview-replay-verifier-deletion-gate.md).
+Phase 5R.8 is now complete; the next task is **5R.9 Server Authority Test
+Reset**.

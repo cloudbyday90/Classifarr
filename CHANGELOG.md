@@ -11,6 +11,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Final Verifier Deletion Or Promotion Gate**: Added a side-effect-free,
+  fail-closed gate that evaluates all four exit criteria (migration parity,
+  native-storage cutover, rollback retention expiry, no active rebuild binding)
+  before any retained preview/replay verifier artifact can be deleted or
+  promoted. It default-denies every artifact unless all conditions are
+  explicitly proven, consumes the cutline inventory for per-artifact decisions,
+  self-validates its ready status against derived risks, and enforces an
+  immutable deletion policy requiring a separate execution step.
+
 - **Runtime Evidence Reducer Resolution**: Resolved the generated-intent
   outcome reducer as migration-only. It is not promoted into the
   runtime-evidence contract and is bound to the same deletion gate as the

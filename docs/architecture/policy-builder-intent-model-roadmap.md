@@ -4234,13 +4234,23 @@ reference from the runtime-evidence projection or any route. See
 
 #### 5R.8.4 Final Verifier Deletion Or Promotion Gate
 
-Status: pending Phase 8R cutover evidence.
+Status: complete.
 
 - Require proven migration parity, completed native-storage cutover, expired
   rollback retention, and no active rebuild binding before deleting or
   promoting any retained verifier artifact.
 - Remove retained verifier tests when their source is deleted; retain only
   replacement-contract regression coverage.
+
+A side-effect-free, fail-closed gate now evaluates all four exit criteria
+against caller-supplied evidence. It default-denies every retained verifier
+artifact unless migration parity, native-storage cutover, rollback retention
+expiry, and no active rebuild binding are all explicitly proven. It consumes
+the cutline inventory so every active artifact has a bounded per-artifact
+decision, handles promotion evidence structurally (no current artifact
+qualifies since 5R.8.3 resolved the reducer as migration-only), and
+self-validates like the existing Phase 8R readiness gates. See
+[Policy Preview/Replay Verifier Deletion Or Promotion Gate](policy-preview-replay-verifier-deletion-gate.md).
 
 Acceptance criteria:
 
