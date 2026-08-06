@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Runtime Evidence Reducer Resolution**: Resolved the generated-intent
+  outcome reducer as migration-only. It is not promoted into the
+  runtime-evidence contract and is bound to the same deletion gate as the
+  verifier chain. Added a regression-tested source-graph audit that
+  default-denies every importer except the two declared migration-parity
+  consumers, rejects any route or runtime-evidence-projection importer, and
+  rejects any reference to the reducer from the runtime-evidence contract.
+
 - **Retained Migration Verification Boundary**: Limited the retained cutover
   verifier to its server-owned invocation scope and a fixed cloned input tuple,
   reject unknown authoring controls before reads or receipt transactions,

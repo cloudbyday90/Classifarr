@@ -170,7 +170,10 @@ browser work.
 
 ## Next Task
 
-The next item in this stream is **5R.8.3 Runtime Evidence Reducer
-Resolution**. It is correctly gated on migration-parity evidence from the
-native-storage work: decide whether the generated-intent outcome reducer has a
-bounded permanent runtime-evidence role, or delete it with the verifier.
+The next item in this stream is **5R.8.4 Final Verifier Deletion Or Promotion
+Gate**. It requires proven migration parity, completed native-storage cutover,
+expired rollback retention, and no active rebuild binding before any retained
+verifier artifact is deleted or promoted. The generated-intent outcome reducer
+(5R.8.3) is resolved as migration-only and will be deleted with the verifier
+chain at that gate; see
+[Policy Runtime Evidence Reducer Resolution](policy-runtime-evidence-reducer-resolution.md).

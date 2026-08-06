@@ -84,12 +84,9 @@ const ACTIVE_VERIFIER_ARTIFACTS = Object.freeze([
   {
     path: 'server/src/services/policyMigrationGeneratedIntentOutcome.mjs',
     dispositionId: POLICY_PREVIEW_REPLAY_VERIFIER_DISPOSITION_IDS.EVIDENCE_REDUCER_CANDIDATE,
-    purpose: 'Reduce an accepted rebuild proposal to the small outcome shape required by migration comparison.',
+    purpose: 'Reduce an accepted rebuild proposal to the small outcome shape required by migration comparison. Retained as migration-only; not promoted into runtime evidence.',
     sideEffectProfileId: POLICY_PREVIEW_REPLAY_VERIFIER_SIDE_EFFECT_PROFILE_IDS.NONE,
-    exitCriterionIds: [
-      POLICY_PREVIEW_REPLAY_VERIFIER_EXIT_CRITERION_IDS.NATIVE_MIGRATION_PARITY_PROVEN,
-      POLICY_PREVIEW_REPLAY_VERIFIER_EXIT_CRITERION_IDS.RUNTIME_EVIDENCE_REPLACEMENT_ACCEPTED,
-    ],
+    exitCriterionIds: MIGRATION_EXIT_CRITERIA,
   },
   {
     path: 'server/src/services/policyMigrationRepresentativeClassificationSource.mjs',

@@ -4214,12 +4214,23 @@ Implementation: [Policy Migration Verification Boundary](policy-migration-verifi
 
 #### 5R.8.3 Runtime Evidence Reducer Resolution
 
-Status: pending Phase 8R migration parity.
+Status: complete.
 
 - Decide whether the generated-intent outcome reducer becomes part of a
   bounded runtime-evidence contract or is deleted with the migration verifier.
 - Do not promote migration comparison fields or historical samples into normal
   runtime or authoring responses.
+
+Resolution: the reducer is retained as migration-only and is not promoted into
+the runtime-evidence contract. A comprehensive runtime-evidence projection
+already exists with a richer, bucketed, fingerprinted, demotion-aware model;
+the reducer's flat comparison shape is structurally and semantically distinct.
+Promoting it would create a competing, lower-fidelity runtime-evidence path.
+The reducer is bound to the same deletion gate as the verifier chain and is
+enforced by a regression-tested source-graph audit that default-denies every
+importer except the two declared migration-parity consumers and rejects any
+reference from the runtime-evidence projection or any route. See
+[Policy Runtime Evidence Reducer Resolution](policy-runtime-evidence-reducer-resolution.md).
 
 #### 5R.8.4 Final Verifier Deletion Or Promotion Gate
 

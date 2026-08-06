@@ -25,7 +25,7 @@ The new server-only cutline inventory classifies the current artifacts:
 | --- | --- | --- |
 | Server contract verifier | `policyMigrationPreviewContract.mjs` | Pure, bounded comparison contract; no reads or writes. |
 | Migration parity verifier | Representative source, verifier, coordinator, receipt contract/handoff/repository, and rebuild binding | Internal rebuild/cutover guard; only bounded reads and verification-receipt persistence are allowed. |
-| Evidence reducer candidate | `policyMigrationGeneratedIntentOutcome.mjs` | Pure projection of an accepted rebuild proposal. It may be promoted into a runtime evidence contract only after Phase 8R parity proves that use; otherwise it is deleted with the verifier chain. |
+| Evidence reducer candidate | `policyMigrationGeneratedIntentOutcome.mjs` | Pure projection of an accepted rebuild proposal. Resolved 5R.8.3: retained as migration-only, not promoted into the runtime-evidence contract. Deleted with the verifier chain after Phase 8R parity. |
 | Delete with old UI surface | Former endpoint, server impact/replay services, browser cards, composables, and utilities | Must remain absent. Historical retirement records remain as evidence, not executable paths. |
 
 Every active artifact must have a bounded purpose, prohibit normal authoring,
@@ -135,8 +135,8 @@ Cons:
 
 ## Next Task
 
-Phase 5R.8 Task 5R.8.2 is **Retained Migration Boundary and Receipt Handoff
-Verification**. It should prove that the coordinator, idempotent receipt
-handoff, and rebuild binding cannot be reached from ordinary policy authoring,
-cannot write policy/routing/learning state, and fail closed when their accepted
-transition, scope, source audit, fingerprint, or current receipt is invalid.
+Phase 5R.8 Task 5R.8.3 **Runtime Evidence Reducer Resolution** is complete.
+The generated-intent outcome reducer is retained as migration-only and is not
+promoted into the runtime-evidence contract. See
+[Policy Runtime Evidence Reducer Resolution](policy-runtime-evidence-reducer-resolution.md).
+Phase 5R.8 Task 5R.8.4 is **Final Verifier Deletion Or Promotion Gate**.
