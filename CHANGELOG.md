@@ -11,6 +11,20 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Server Authority Test Reset**: Added a side-effect-free contract that
+  inventories every server-authority test, maps it to a decision, coverage
+  area, and declared service contract, and verifies each test exists on disk
+  and statically imports its declared boundary. Enforces six required coverage
+  areas (server validation bypass, AI normalization, stale-question learning,
+  answer idempotency, allow-listed learning side effects, side-effect-free
+  retained verifier routes), rejects tests that freeze old diagnostic shapes,
+  and fails closed when server-authority protection is missing or weakened.
+
+### Security
+
+- **Bump eslint from 10.7.0 to 10.8.0** in /server (dependabot). Lint passes
+  clean with the updated linter.
+
 - **Final Verifier Deletion Or Promotion Gate**: Added a side-effect-free,
   fail-closed gate that evaluates all four exit criteria (migration parity,
   native-storage cutover, rollback retention expiry, no active rebuild binding)

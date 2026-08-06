@@ -4264,6 +4264,8 @@ Acceptance criteria:
 Intent: make tests protect server trust boundaries rather than old preview
 behavior.
 
+Status: complete.
+
 Tasks:
 
 - Categorize Phase 5 tests as:
@@ -4280,6 +4282,14 @@ Tasks:
   - answers are idempotent,
   - learning side effects are allow-listed,
   - preview/replay routes remain side-effect-free if retained.
+
+A side-effect-free server-owned contract now inventories every Phase 5R test
+artifact, maps it to a decision, coverage area, and declared contract, and
+verifies that each test exists on disk and statically imports the service it
+claims to protect. It enforces all six required coverage areas, rejects tests
+that freeze old diagnostic response shapes, and fails closed when server-
+authority protection is missing or weakened. See
+[Policy Server Authority Test Reset](policy-server-authority-test-reset.md).
 
 Acceptance criteria:
 
