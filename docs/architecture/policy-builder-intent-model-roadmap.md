@@ -3527,7 +3527,17 @@ Dependencies: 5R.10 Native Intent Change Admission must be complete before
 this task exposes a persisted native-policy modification. Until then, native
 inspection remains read-only and compatibility maintenance remains isolated.
 
-Tasks:
+Status: complete.
+
+A pure, side-effect-free maintenance-entry classification now consumes
+policy source, authority state, readiness state, and change-admission
+eligibility to produce one bounded disposition per persisted policy:
+`inspect_only`, `native_change_eligible`, `recovery_required`,
+`compatibility_maintenance_only`, or `create_path`. When disposition is
+`native_change_eligible`, it exposes the next admitted action bound to the
+six allow-listed 5R.10 change-command IDs with revision checking and
+administrator authorization. Compatibility maintenance remains isolated.
+See [Policy Persisted Policy Maintenance Entry](policy-persisted-policy-maintenance-entry.md).
 
 - Render persisted native intent as a compact server-owned summary with
   current automation status and the next admitted action, if any.

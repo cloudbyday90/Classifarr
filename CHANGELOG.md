@@ -11,6 +11,16 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Persisted Policy Maintenance Entry**: Added a pure, side-effect-free
+  classification that determines which inspection and editing surface is
+  admitted for a persisted policy. Produces one bounded disposition
+  (inspect-only, native-change-eligible, recovery-required,
+  compatibility-maintenance-only, or create-path) from policy source,
+  authority state, readiness state, and change-admission eligibility.
+  When native-change-eligible, exposes the next admitted action bound to
+  the revision-checked change-command IDs. Prevents create, edit, and
+  compatibility from accidentally selecting the wrong workflow contract.
+
 - **Material Exception Presentation**: Added a pure, side-effect-free
   projection that composes constraint decision model, readiness state, and
   routing availability into a bounded material exception view. Only surfaces
@@ -45,6 +55,8 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   Patch update to the rate-limiting middleware.
 - **Bump globals from 17.7.0 to 17.9.0** in /server (dependabot). Minor update
   to the ESLint globals definitions.
+- **Bump @types/node from 26.1.1 to 26.1.2** in /server (dependabot). Patch
+  update to Node.js type definitions.
 
 - **Final Verifier Deletion Or Promotion Gate**: Added a side-effect-free,
   fail-closed gate that evaluates all four exit criteria (migration parity,
