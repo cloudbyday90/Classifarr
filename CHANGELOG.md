@@ -11,6 +11,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **E2E Browser Specs**: Added seven Playwright browser-level spec files
+  covering the remaining workflow states (existing policy, sparse evidence,
+  stale proposal, concurrent create, lost-response recovery, automatic
+  recovery, no-action guidance). Each spec mocks the server-owned API
+  responses for its state and asserts the correct UI behavior, keyboard
+  accessibility, and decision-load constraints. All nine required workflow
+  states are now covered by browser specs registered in the E2E workflow
+  test contract.
+
 - **Native Intent Change Persistence Wiring**: Connected the pure change
   admission contract to a transactional persistence service, parameterized
   persistence layer, and administrator-only HTTP route. The full chain:

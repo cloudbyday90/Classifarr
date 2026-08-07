@@ -102,6 +102,70 @@ const DEFAULT_BROWSER_SPECS = Object.freeze([
     ],
     'Policy authoring adjustment E2E (eligible create, admission rejection)',
   ),
+  spec(
+    'client/browser-tests/policy-authoring-existing-policy.spec.js',
+    [POLICY_AUTHORING_E2E_WORKFLOW_STATE_IDS.EXISTING_POLICY],
+    [
+      POLICY_AUTHORING_E2E_ACCESSIBILITY_RULE_IDS.SINGLE_PRIMARY_ACTION,
+      POLICY_AUTHORING_E2E_ACCESSIBILITY_RULE_IDS.NO_INTERNAL_DIAGNOSTICS,
+    ],
+    'Existing native policy shows summary, not create flow',
+  ),
+  spec(
+    'client/browser-tests/policy-authoring-sparse-evidence.spec.js',
+    [POLICY_AUTHORING_E2E_WORKFLOW_STATE_IDS.SPARSE_EVIDENCE],
+    [
+      POLICY_AUTHORING_E2E_ACCESSIBILITY_RULE_IDS.SINGLE_PRIMARY_ACTION,
+      POLICY_AUTHORING_E2E_ACCESSIBILITY_RULE_IDS.NO_INTERNAL_DIAGNOSTICS,
+    ],
+    'Sparse library shows declared-intent guidance',
+  ),
+  spec(
+    'client/browser-tests/policy-authoring-stale-proposal.spec.js',
+    [POLICY_AUTHORING_E2E_WORKFLOW_STATE_IDS.STALE_PROPOSAL],
+    [
+      POLICY_AUTHORING_E2E_ACCESSIBILITY_RULE_IDS.SINGLE_PRIMARY_ACTION,
+      POLICY_AUTHORING_E2E_ACCESSIBILITY_RULE_IDS.NO_INTERNAL_DIAGNOSTICS,
+    ],
+    'Stale proposal shows recovery guidance',
+  ),
+  spec(
+    'client/browser-tests/policy-authoring-concurrent-create.spec.js',
+    [POLICY_AUTHORING_E2E_WORKFLOW_STATE_IDS.CONCURRENT_CREATE],
+    [
+      POLICY_AUTHORING_E2E_ACCESSIBILITY_RULE_IDS.SINGLE_PRIMARY_ACTION,
+      POLICY_AUTHORING_E2E_ACCESSIBILITY_RULE_IDS.NO_INTERNAL_DIAGNOSTICS,
+    ],
+    'Concurrent create does not produce a second policy',
+  ),
+  spec(
+    'client/browser-tests/policy-authoring-lost-response-recovery.spec.js',
+    [POLICY_AUTHORING_E2E_WORKFLOW_STATE_IDS.LOST_RESPONSE_RECOVERY],
+    [
+      POLICY_AUTHORING_E2E_ACCESSIBILITY_RULE_IDS.SINGLE_PRIMARY_ACTION,
+      POLICY_AUTHORING_E2E_ACCESSIBILITY_RULE_IDS.NO_INTERNAL_DIAGNOSTICS,
+    ],
+    'Lost response reloads lifecycle rather than resubmitting',
+  ),
+  spec(
+    'client/browser-tests/policy-authoring-automatic-recovery.spec.js',
+    [POLICY_AUTHORING_E2E_WORKFLOW_STATE_IDS.AUTOMATIC_RECOVERY],
+    [
+      POLICY_AUTHORING_E2E_ACCESSIBILITY_RULE_IDS.SINGLE_PRIMARY_ACTION,
+      POLICY_AUTHORING_E2E_ACCESSIBILITY_RULE_IDS.NO_DUPLICATE_WARNING_CONCEPT,
+      POLICY_AUTHORING_E2E_ACCESSIBILITY_RULE_IDS.NO_INTERNAL_DIAGNOSTICS,
+    ],
+    'Automatic profile recovery is informational',
+  ),
+  spec(
+    'client/browser-tests/policy-authoring-no-action-guidance.spec.js',
+    [POLICY_AUTHORING_E2E_WORKFLOW_STATE_IDS.NO_ACTION_GUIDANCE],
+    [
+      POLICY_AUTHORING_E2E_ACCESSIBILITY_RULE_IDS.SINGLE_PRIMARY_ACTION,
+      POLICY_AUTHORING_E2E_ACCESSIBILITY_RULE_IDS.NO_INTERNAL_DIAGNOSTICS,
+    ],
+    'Blocked library shows bounded guidance',
+  ),
 ]);
 
 function asArray(value) {
