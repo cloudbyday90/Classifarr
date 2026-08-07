@@ -9,6 +9,7 @@
  */
 
 import {
+  POLICY_NATIVE_INTENT_CHANGE_COMMAND_IDS,
   POLICY_NATIVE_INTENT_CHANGE_ADMISSION_STATUS_IDS,
   buildPolicyNativeIntentChangeAdmission,
 } from './policyNativeIntentChangeAdmission.mjs';
@@ -18,11 +19,16 @@ import {
   buildPolicyNativeIntentChangeResult,
 } from './policyNativeIntentChangeResult.mjs';
 import {
+  copyRoutingTargetFromPreviousIntent,
+  copyRulesFromPreviousIntent,
   deactivateActiveNativeIntentForChange,
   insertNativeIntentChangeEvent,
   insertNewNativeIntentVersion,
+  insertRoutingTargetForChange,
+  insertRulesForCollection,
   lockActiveNativeIntentForChange,
   lockPolicyForNativeIntentChange,
+  updateReviewBehavior,
 } from './policyNativeIntentChangePersistence.mjs';
 
 const ADMISSION_TO_RESULT_STATUS = Object.freeze({
@@ -174,6 +180,70 @@ async function applyPolicyNativeIntentChange({
 
       if (!newIntent?.id) {
         throw new Error('Failed to insert the new native intent version.');
+      }
+
+      const COMMAND_TO_COLLECTION = {
+        [POLICY_NATIVE_INTENT_CHANGE_COMMAND_IDS.UPDATE_PURPOSE]: 'purpose',
+        [POLICY_NATIVE_INTENT_CHANGE_COMMAND_IDS.UPDATE_HARD_LIMITS]: 'hard_limits',
+        [POLICY_NATIVE_INTENT_CHANGE_COMMAND_IDS.UPDATE_AVOID_RULES]: 'avoid',
+        [POLICY_NATIVE_INTENT_CHANGE_COMMAND_IDS.UPDATE_HELPFUL_MATCHES]: 'helpful_hints',
+      };
+
+      const changedCollections = appliedCommandIds
+        .map(id => COMMAND_TO_COLLECTION[id])
+        .filter(Boolean);
+
+      const hasRoutingChange = appliedCommandIds.includes(
+        POLICY_NATIVE_INTENT_CHANGE_COMMAND_IDS.UPDATE_ROUTING_TARGET);
+      const hasReviewTriggerChange = appliedCommandIds.includes(
+        POLICY_NATIVE_INTENT_CHANGE_COMMAND_IDS.UPDATE_REVIEW_TRIGGERS);
+
+      await copyRulesFromPreviousIntent({
+        client,
+        oldIntentId: activeIntent.id,
+        newIntentId: newIntent.id,
+        excludeCollections: changedCollections,
+      });
+
+      for (const command of admission.admittedCommands) {
+        const collection = COMMAND_TO_COLLECTION[command.commandId];
+        if (collection) {
+          await insertRulesForCollection({
+            client,
+            intentId: newIntent.id,
+            collection,
+            entries: command.values,
+          });
+        }
+      }
+
+      if (hasRoutingChange) {
+        const routingCommand = admission.admittedCommands.find(
+          cmd => cmd.commandId === POLICY_NATIVE_INTENT_CHANGE_COMMAND_IDS.UPDATE_ROUTING_TARGET);
+        await insertRoutingTargetForChange({
+          client,
+          intentId: newIntent.id,
+          libraryId: policy.library_id,
+          routingTarget: routingCommand?.values?.[0] ?? {},
+        });
+      } else {
+        await copyRoutingTargetFromPreviousIntent({
+          client,
+          oldIntentId: activeIntent.id,
+          newIntentId: newIntent.id,
+          libraryId: policy.library_id,
+        });
+      }
+
+      if (hasReviewTriggerChange) {
+        const reviewCommand = admission.admittedCommands.find(
+          cmd => cmd.commandId === POLICY_NATIVE_INTENT_CHANGE_COMMAND_IDS.UPDATE_REVIEW_TRIGGERS);
+        const reviewBehavior = reviewCommand?.values?.[0] ?? activeIntent.review_behavior ?? {};
+        await updateReviewBehavior({
+          client,
+          intentId: newIntent.id,
+          reviewBehavior,
+        });
       }
 
       const eventId = await insertNativeIntentChangeEvent({

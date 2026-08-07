@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Child Rule Persistence for Native Intent Change**: Extended the change
+  persistence layer to copy existing rules from the previous intent version
+  (excluding changed collections), insert new rules for changed collections,
+  copy or replace routing targets, and update review behavior JSONB. The
+  change service now dispatches all six change command types (purpose, hard
+  limits, avoid, helpful matches, routing target, review triggers) inside the
+  transaction, ensuring no rules are lost when a partial change is applied.
+
 - **Wire Material Exception Into Read API**: Composed the material exception
   presentation projection into the operator workflow read response
   (`GET /api/policies/operator-workflow/libraries/:libraryId`). The projection
