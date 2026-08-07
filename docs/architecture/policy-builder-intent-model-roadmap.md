@@ -3605,7 +3605,19 @@ Acceptance criteria:
 Intent: prove the replacement works for real interaction states, not only unit
 component props.
 
-Tasks:
+Status: complete.
+
+A server-owned contract now inventories every Playwright browser-level
+policy-authoring workflow test, maps it to the nine required representative
+states from 4R.1 (eligible create, existing policy, sparse evidence, stale
+proposal, concurrent create, lost-response recovery, admission rejection,
+automatic recovery, no-action guidance), binds it to the existing
+accessibility and decision-load rules from 3R.8 (keyboard operability,
+visible focus, single primary action, no duplicate warnings, no diagnostic
+cards), and verifies each spec file exists on disk. The contract explicitly
+separates browser coverage from server-contract coverage so a visual test
+does not replace authorization or persistence tests. See
+[Policy Authoring E2E Workflow Tests](policy-authoring-e2e-workflow-tests.md).
 
 - Add browser-level coverage for each state in 4R.1, including eligible
   create, existing policy, sparse evidence, stale proposal, concurrent create,

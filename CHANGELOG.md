@@ -11,6 +11,16 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **E2E Workflow Test Contract**: Added a server-owned contract that
+  inventories Playwright browser-level policy-authoring tests, maps them to
+  nine required workflow states (eligible create, existing policy, sparse
+  evidence, stale proposal, concurrent create, lost-response recovery,
+  admission rejection, automatic recovery, no-action guidance), and binds
+  them to accessibility rules (keyboard operability, visible focus, single
+  primary action, no duplicate warnings, no diagnostic cards). Verifies each
+  spec exists on disk and explicitly separates browser coverage from server-
+  contract coverage. Completes the live authoring UI convergence workstream.
+
 - **Legacy Builder Cutover Audit**: Added a server-owned source-scanning audit
   that verifies retired diagnostic components remain absent from normal
   authoring, prohibits browser alerts, reset/recreate controls,
@@ -67,6 +77,8 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   update to Node.js type definitions.
 - **Bump knip from 6.27.0 to 6.32.0** in /server (dependabot). Minor update
   to the unused-code detection tool.
+- **Bump js-yaml from 4.3.0 to 5.2.3** in /server (dependabot). Major version
+  update to the YAML parser. 0 vulnerabilities reported.
 
 - **Final Verifier Deletion Or Promotion Gate**: Added a side-effect-free,
   fail-closed gate that evaluates all four exit criteria (migration parity,

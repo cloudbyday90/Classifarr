@@ -19,7 +19,7 @@
 /* eslint-disable security/detect-non-literal-fs-filename -- paths come from trusted internal config, not user input */
 import { access, glob, readFile } from 'node:fs/promises';
 import path from 'node:path';
-import yaml from 'js-yaml';
+import { load } from 'js-yaml';
 
 function stripCommentLines(commentBody) {
   return commentBody.split('\n').map((line) => line.replace(/^\s*\* ?/, ''));
@@ -27,7 +27,7 @@ function stripCommentLines(commentBody) {
 
 function parseAndPush(yamlStr, blocks) {
   try {
-    const parsed = yaml.load(yamlStr);
+    const parsed = load(yamlStr);
     if (parsed && typeof parsed === 'object') {
       blocks.push(parsed);
     }
