@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Wire Material Exception Into Read API**: Composed the material exception
+  presentation projection into the operator workflow read response
+  (`GET /api/policies/operator-workflow/libraries/:libraryId`). The projection
+  is computed per-request from readiness state, constraint decision model, and
+  routing availability, then validated by the existing read audit. Surfaces
+  only material conditions (hard-limit conflict, routing gap, review-required,
+  recovery-in-progress) and hides optional controls when no conflict exists.
+
 - **E2E Browser Specs**: Added seven Playwright browser-level spec files
   covering the remaining workflow states (existing policy, sparse evidence,
   stale proposal, concurrent create, lost-response recovery, automatic

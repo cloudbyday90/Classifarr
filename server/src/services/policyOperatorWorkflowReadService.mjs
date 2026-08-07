@@ -48,6 +48,10 @@ import {
   buildPolicyAuthoringWorkflowPresentation,
   buildPolicyAuthoringWorkflowPresentationAudit,
 } from './policyAuthoringWorkflowPresentation.mjs';
+import {
+  buildPolicyMaterialExceptionPresentation,
+  validatePolicyMaterialExceptionPresentation,
+} from './policyMaterialExceptionPresentation.mjs';
 
 const POLICY_OPERATOR_WORKFLOW_READ_VERSION = 'policy.operator_workflow_read.v4';
 const MAX_LABEL_LENGTH = 160;
@@ -72,6 +76,7 @@ const POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS = Object.freeze({
   INVALID_CONSTRAINT_VALUE_ELIGIBILITY: 'invalid_constraint_value_eligibility',
   INVALID_READINESS_PRESENTATION: 'invalid_readiness_presentation',
   INVALID_PRESENTATION: 'invalid_presentation',
+  INVALID_MATERIAL_EXCEPTION_PRESENTATION: 'invalid_material_exception_presentation',
 });
 
 function asObject(value) {
@@ -219,6 +224,11 @@ function buildReadResult({
     workflow,
     readinessPresentation,
   });
+  const materialExceptionPresentation = buildPolicyMaterialExceptionPresentation({
+    readinessState: readiness,
+    constraintDecisionModel: policyConstraintDecisionModel,
+    routingAvailable: routing?.configured === true && routing?.routeReady === true,
+  });
 
   return {
     version: POLICY_OPERATOR_WORKFLOW_READ_VERSION,
@@ -231,6 +241,7 @@ function buildReadResult({
     workflow,
     readinessPresentation,
     presentation,
+    materialExceptionPresentation,
     authority: {
       displayProjection: true,
       automationDecision: false,
@@ -343,6 +354,20 @@ function buildPolicyOperatorWorkflowReadAudit(result = {}) {
     issues.push({
       riskId: POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.INVALID_PRESENTATION,
       message: 'Operator workflow reads require a valid page-level presentation projection.',
+    });
+  }
+
+  const materialExceptionValidation = validatePolicyMaterialExceptionPresentation(
+    source.materialExceptionPresentation,
+    {
+      readinessStateId: source.workflow?.readiness?.stateId,
+      hasMaterialException: source.materialExceptionPresentation?.hasMaterialException,
+    },
+  );
+  if (!materialExceptionValidation.ok) {
+    issues.push({
+      riskId: POLICY_OPERATOR_WORKFLOW_READ_AUDIT_RISK_IDS.INVALID_MATERIAL_EXCEPTION_PRESENTATION,
+      message: 'Operator workflow reads require a valid material exception presentation projection.',
     });
   }
 
