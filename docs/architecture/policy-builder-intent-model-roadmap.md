@@ -3484,7 +3484,16 @@ Dependencies: 5R.3 through 5R.5 must provide provider-authority,
 normalization, and question/answer contracts before a material exception can
 be rendered as an operator action.
 
-Tasks:
+Status: complete.
+
+A pure, side-effect-free material exception projection now composes the
+existing constraint decision model, automation readiness state, and routing
+availability into a bounded view that only surfaces controls when there is a
+concrete blocked, routing-gap, review-needed, or recovery condition. It
+defaults to empty for ready destinations, hides optional controls when no
+material conflict exists, selects one primary exception with its exact
+resolution action, and keeps recovery status informational. See
+[Policy Material Exception Presentation](policy-material-exception-presentation.md).
 
 - Compose hard-limit, avoid, review-trigger, and routing components from their
   existing server eligibility and admission projections.

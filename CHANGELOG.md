@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Material Exception Presentation**: Added a pure, side-effect-free
+  projection that composes constraint decision model, readiness state, and
+  routing availability into a bounded material exception view. Only surfaces
+  controls when there is a concrete blocked, routing-gap, review-needed, or
+  recovery condition. Defaults to empty for ready destinations, hides
+  optional controls when no material conflict exists, and selects one primary
+  exception with its exact resolution action.
+
 - **Native Intent Change Admission**: Added a pure, side-effect-free admission
   contract that defines the narrow native-intent change command with revision
   checking (optimistic concurrency), six allow-listed change operations,
@@ -35,6 +43,8 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   clean with the updated linter.
 - **Bump express-rate-limit from 8.6.1 to 8.6.2** in /server (dependabot).
   Patch update to the rate-limiting middleware.
+- **Bump globals from 17.7.0 to 17.9.0** in /server (dependabot). Minor update
+  to the ESLint globals definitions.
 
 - **Final Verifier Deletion Or Promotion Gate**: Added a side-effect-free,
   fail-closed gate that evaluates all four exit criteria (migration parity,
