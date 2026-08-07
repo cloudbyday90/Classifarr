@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Native Intent Change Persistence Wiring**: Connected the pure change
+  admission contract to a transactional persistence service, parameterized
+  persistence layer, and administrator-only HTTP route. The full chain:
+  admission validation -> transaction lock -> revision recheck -> deactivate
+  old intent -> insert new version -> migration event audit trail. Exposed
+  via `POST /api/policies/:id/native-intent/changes`.
+
 - **E2E Workflow Test Contract**: Added a server-owned contract that
   inventories Playwright browser-level policy-authoring tests, maps them to
   nine required workflow states (eligible create, existing policy, sparse
@@ -79,6 +86,8 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   to the unused-code detection tool.
 - **Bump js-yaml from 4.3.0 to 5.2.3** in /server (dependabot). Major version
   update to the YAML parser. 0 vulnerabilities reported.
+- **Bump @testcontainers/postgresql from 12.0.4 to 12.1.0** in /server
+  (dependabot). Minor update to the PostgreSQL test container library.
 
 - **Final Verifier Deletion Or Promotion Gate**: Added a side-effect-free,
   fail-closed gate that evaluates all four exit criteria (migration parity,

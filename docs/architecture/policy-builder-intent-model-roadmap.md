@@ -4355,10 +4355,17 @@ matches, routing target, review triggers). It uses optimistic concurrency:
 bounded outcomes for admitted, stale-revision, policy-replaced,
 recovery-required, authorization-rejected, unavailable-authority,
 unknown-command, and retryable. It explicitly rejects browser-synthesized
-compatibility projections and native establishment fields. It performs no
-database write, route mutation, or persistence — the transactional wiring
-follows the proven two-phase pattern. See
-[Policy Native Intent Change Admission](policy-native-intent-change-admission.md).
+compatibility projections and native establishment fields.
+
+The admission contract is wired to a transactional persistence service that
+locks the policy and active intent rows, rechecks the revision inside the
+transaction, deactivates the current active intent, inserts a new version,
+records a migration event, and returns a bounded result. An
+administrator-only route (`POST /:id/native-intent/changes`) exposes the
+full chain. See
+[Policy Native Intent Change Admission](policy-native-intent-change-admission.md)
+and
+[Policy Native Intent Change Persistence Wiring](policy-native-intent-change-persistence-wiring.md).
 
 Acceptance criteria:
 
