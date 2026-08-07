@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Legacy Builder Cutover Audit**: Added a server-owned source-scanning audit
+  that verifies retired diagnostic components remain absent from normal
+  authoring, prohibits browser alerts, reset/recreate controls,
+  reconciliation links, migration-verifier visibility props, and raw threshold
+  controls in policy authoring components, and confirms compatibility
+  artifacts carry explicit compatibility deletion owners. Fails closed on
+  reintroduction, enforcing one normal policy-authoring path per native state.
+
 - **Persisted Policy Maintenance Entry**: Added a pure, side-effect-free
   classification that determines which inspection and editing surface is
   admitted for a persisted policy. Produces one bounded disposition
@@ -57,6 +65,8 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   to the ESLint globals definitions.
 - **Bump @types/node from 26.1.1 to 26.1.2** in /server (dependabot). Patch
   update to Node.js type definitions.
+- **Bump knip from 6.27.0 to 6.32.0** in /server (dependabot). Minor update
+  to the unused-code detection tool.
 
 - **Final Verifier Deletion Or Promotion Gate**: Added a side-effect-free,
   fail-closed gate that evaluates all four exit criteria (migration parity,

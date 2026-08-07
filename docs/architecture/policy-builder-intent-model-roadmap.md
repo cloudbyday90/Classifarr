@@ -3562,7 +3562,16 @@ Acceptance criteria:
 Intent: make the new authoring flow the only normal product path rather than
 adding it beside the old modal.
 
-Tasks:
+Status: complete.
+
+A server-owned cutover audit now scans the policy-authoring source tree to
+verify that retired diagnostic components remain absent, that prohibited
+patterns (browser alerts, reset/recreate controls, reconciliation links,
+migration-verifier visibility props, raw threshold controls) do not appear
+in normal authoring components, and that compatibility artifacts carry
+explicit Phase 8R deletion owners. The audit fails closed when any check
+fails, enforcing one normal policy-authoring path per native state. See
+[Policy Legacy Builder Cutover Audit](policy-legacy-builder-cutover-audit.md).
 
 - Switch each classified normal entry point to the 4R live flow only after its
   component-level acceptance criteria and end-to-end evidence pass.
