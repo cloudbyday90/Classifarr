@@ -647,7 +647,7 @@ describe('CommandCenter action modules', () => {
     await retryButton.trigger('click')
     await flushPromises()
 
-    expect(apiMock.retryClassifications).toHaveBeenCalledWith([201], { purgeLearning: true })
+    expect(apiMock.retryClassifications).toHaveBeenCalledWith([201])
   })
 
   it('retries all needs-attention classifications from footer action', async () => {
@@ -696,6 +696,6 @@ describe('CommandCenter action modules', () => {
     await retryAllButton.trigger('click')
     await flushPromises()
 
-    expect(apiMock.retryClassifications).toHaveBeenCalledWith([201, 202], { purgeLearning: true })
+    expect(apiMock.retryClassifications).toHaveBeenCalledWith([201, 202])
   })
 })

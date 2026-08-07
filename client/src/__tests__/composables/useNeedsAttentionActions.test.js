@@ -101,7 +101,7 @@ describe('useNeedsAttentionActions composable', () => {
     const actions = useNeedsAttentionActions(deps)
     await actions.retryNeedsAttentionItem({ id: 10, title: 'Test' })
 
-    expect(api.retryClassifications).toHaveBeenCalledWith([10], { purgeLearning: true })
+    expect(api.retryClassifications).toHaveBeenCalledWith([10])
   })
 
   it('retryAllNeedsAttention throws when zero items queued', async () => {
@@ -118,7 +118,7 @@ describe('useNeedsAttentionActions composable', () => {
     const actions = useNeedsAttentionActions(deps)
     await actions.retryAllNeedsAttention()
 
-    expect(api.retryClassifications).toHaveBeenCalledWith([1, 2], { purgeLearning: true })
+    expect(api.retryClassifications).toHaveBeenCalledWith([1, 2])
   })
 
   it('retryAllNeedsAttention sets partial warning when some items skipped', async () => {

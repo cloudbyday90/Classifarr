@@ -126,7 +126,7 @@ export function useNeedsAttentionActions({
 
   async function retryNeedsAttentionItem(item) {
     await runActionWithBusy(`retry-classification-${item.id}`, async () => {
-      const response = await api.retryClassifications([item.id], { purgeLearning: true })
+      const response = await api.retryClassifications([item.id])
       const result = Array.isArray(response?.data?.results) ? response.data.results[0] : null
       if (!result || result.queued !== true) {
         const reason = result?.reasonCode || result?.error || 'retry_not_queued'
@@ -143,7 +143,7 @@ export function useNeedsAttentionActions({
 
       if (!ids.length) return
 
-      const response = await api.retryClassifications(ids, { purgeLearning: true })
+      const response = await api.retryClassifications(ids)
       const data = response?.data || {}
       const queued = Number(data.queued || 0)
       const skipped = Number(data.skipped || 0)
