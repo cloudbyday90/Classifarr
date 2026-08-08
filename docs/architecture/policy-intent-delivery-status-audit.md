@@ -80,7 +80,7 @@ the per-installation cutover evidence owned by Phase 8R.
 | 7R | Contract-complete foundation | Runtime decision, question, rebuild, verifier, rollback, and trace boundaries | Preserve through 5R and 8R authority/storage work |
 | 8R | Complete contracts with recurring evidence | Native lifecycle, installation evidence, CI-only retirement, and closure evidence | Regenerate current evidence and closure audits after mapped contract changes; retain automatic policy conversion |
 | 9R | Ongoing enforcement | Zero-debt durable naming and product-language gates | Preserve the baseline in every product change |
-| 10R | Active operational acceptance | Isolated real-boundary acceptance for AI authority, deterministic policy decisions, provider recovery, existing installations, and operational safety | Complete 10R.2 existing-installation lifecycle acceptance |
+| 10R | Active operational acceptance | Isolated real-boundary acceptance for AI authority, deterministic policy decisions, provider recovery, existing installations, and operational safety | Complete 10R.2.3 bounded lifecycle diagnostics, then 10R.3 operational safety and 10R.4 release assembly |
 
 ## Required Delivery Order
 
@@ -152,10 +152,21 @@ the per-installation cutover evidence owned by Phase 8R.
    allowance, while AI-derived, non-final, and provenance-invalid candidates
    remain non-routed with explicit outcomes.
 17. **10R.1.3 Provider Failure And Recovery Acceptance** is complete. A
-   versioned, privacy-bounded recovery projection now distinguishes transient
-   retry from permanent review, preserves deterministic policy evidence, and
-   blocks every recovery result from automatic routing. The next product
-   acceptance task is 10R.2 existing-installation lifecycle acceptance.
+    versioned, privacy-bounded recovery projection now distinguishes transient
+    retry from permanent review, preserves deterministic policy evidence, and
+    blocks every recovery result from automatic routing.
+18. **10R.2.1 Existing-State Conversion Matrix** is complete. The real
+    scheduler converts supported legacy and profile-backed installation state,
+    preserves already-native authority, leaves no-policy libraries unchanged,
+    and records bounded maintenance state for unsupported input.
+19. **10R.2.2 Reconciliation Idempotence And Native Runtime Read** is
+    complete. A second real scheduler run leaves converted authority and
+    migration history unchanged; the production policy-engine read selects the
+    validated native contract and suppresses compatibility presets.
+20. **10R.2.3 Bounded Lifecycle Diagnostics And Release-Evidence Separation**
+    is next. It must prove non-convertible state remains privacy-bounded and
+    that blocked installation-specific retirement evidence cannot interrupt
+    ordinary native policy automation.
 
 ## Phase 8R Boundaries
 

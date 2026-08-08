@@ -136,6 +136,52 @@ async function countPolicyIntents(policyId) {
   return result.rows[0].count;
 }
 
+async function readPolicyConversionSnapshot(policyId) {
+  const [intents, events, maintenanceStates, operatorEstablishments] = await Promise.all([
+    db.query(
+      `SELECT id, active, source, inference_state, validation_status
+       FROM policy_intents
+       WHERE policy_id = $1
+       ORDER BY id`,
+      [policyId],
+    ),
+    db.query(
+      `SELECT event_type
+       FROM policy_intent_migration_events
+       WHERE policy_id = $1
+       ORDER BY id`,
+      [policyId],
+    ),
+    db.query(
+      `SELECT outcome_state, reason_id
+       FROM policy_native_intent_reconciliation_states
+       WHERE policy_id = $1
+         AND outcome_state = 'requires_maintenance'
+       ORDER BY policy_id`,
+      [policyId],
+    ),
+    db.query(
+      `SELECT COUNT(*)::int AS count
+       FROM policy_initial_intent_establishments
+       WHERE policy_id = $1`,
+      [policyId],
+    ),
+  ]);
+
+  return {
+    intents: intents.rows,
+    eventTypes: events.rows.map(event => event.event_type),
+    maintenanceStates: maintenanceStates.rows,
+    operatorEstablishmentCount: operatorEstablishments.rows[0].count,
+  };
+}
+
+async function readNativeRuntimePolicy(policyId) {
+  const { getActivePolicies } = await import('../../services/policyEngineQueries.mjs');
+  const policies = await getActivePolicies();
+  return policies.find(policy => policy.id === policyId);
+}
+
 beforeAll(() => {
   db = getPool();
 });
@@ -296,6 +342,100 @@ describe('Existing-installation lifecycle acceptance', () => {
         reason_id: 'unsupported_legacy_shape',
       }),
     ]);
+    expect(await countPolicyIntents(legacyPolicy.id)).toBe(1);
+    expect(await countPolicyIntents(profilePolicy.id)).toBe(1);
+  });
+
+  test('keeps converted authority and migration history stable across scheduler re-runs', async () => {
+    const legacyLibrary = await createLibrary({ label: 'idempotent-legacy' });
+    const legacyPolicy = await createPolicy({
+      libraryId: legacyLibrary.id,
+      label: 'idempotent-legacy',
+    });
+    await attachPreset({
+      policyId: legacyPolicy.id,
+      label: 'idempotent-legacy',
+      signals: { genres: { require_any: ['Family'] } },
+    });
+
+    const profileLibrary = await createLibrary({ label: 'idempotent-profile' });
+    const profilePolicy = await createPolicy({
+      libraryId: profileLibrary.id,
+      label: 'idempotent-profile',
+    });
+    await persistCurrentProfile({
+      libraryId: profileLibrary.id,
+      genres: { Animation: 100, Family: 66.67 },
+    });
+
+    expect(await runReconciliationThroughScheduler()).toBe(true);
+
+    const [legacyBefore, profileBefore, legacyRuntime, profileRuntime] = await Promise.all([
+      readPolicyConversionSnapshot(legacyPolicy.id),
+      readPolicyConversionSnapshot(profilePolicy.id),
+      readNativeRuntimePolicy(legacyPolicy.id),
+      readNativeRuntimePolicy(profilePolicy.id),
+    ]);
+
+    expect(legacyBefore.intents).toEqual([
+      expect.objectContaining({
+        active: true,
+        source: 'native_intent',
+        inference_state: 'inferred',
+        validation_status: 'valid',
+      }),
+    ]);
+    expect(profileBefore.intents).toEqual([
+      expect.objectContaining({
+        active: true,
+        source: 'native_intent',
+        inference_state: 'inferred',
+        validation_status: 'valid',
+      }),
+    ]);
+    expect(legacyBefore.maintenanceStates).toEqual([]);
+    expect(profileBefore.maintenanceStates).toEqual([]);
+    expect(legacyBefore.operatorEstablishmentCount).toBe(0);
+    expect(profileBefore.operatorEstablishmentCount).toBe(0);
+
+    expect(legacyRuntime).toEqual(expect.objectContaining({
+      presets: [],
+      policy_runtime_authority: expect.objectContaining({
+        sourceId: 'native_intent',
+        validationOk: true,
+      }),
+      policy_intent_contract: expect.objectContaining({
+        source: 'native_intent',
+        purpose: expect.arrayContaining([expect.objectContaining({
+          signal_type: 'genres',
+          values: { require_any: ['Family'] },
+        })]),
+      }),
+    }));
+    expect(profileRuntime).toEqual(expect.objectContaining({
+      presets: [],
+      policy_runtime_authority: expect.objectContaining({
+        sourceId: 'native_intent',
+        validationOk: true,
+      }),
+      policy_intent_contract: expect.objectContaining({
+        source: 'native_intent',
+        purpose: expect.arrayContaining([expect.objectContaining({
+          signal_type: 'genres',
+          values: { require_any: ['Animation', 'Family'] },
+        })]),
+      }),
+    }));
+
+    expect(await runReconciliationThroughScheduler()).toBe(true);
+
+    const [legacyAfter, profileAfter] = await Promise.all([
+      readPolicyConversionSnapshot(legacyPolicy.id),
+      readPolicyConversionSnapshot(profilePolicy.id),
+    ]);
+
+    expect(legacyAfter).toEqual(legacyBefore);
+    expect(profileAfter).toEqual(profileBefore);
     expect(await countPolicyIntents(legacyPolicy.id)).toBe(1);
     expect(await countPolicyIntents(profilePolicy.id)).toBe(1);
   });

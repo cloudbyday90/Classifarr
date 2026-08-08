@@ -4,8 +4,8 @@
 
 Complete: 10R.2.1 adds the persisted conversion-matrix acceptance boundary.
 The scope is deliberately limited to the first automatic reconciliation run.
-Idempotent re-runs and runtime-native reads are separate 10R.2.2 acceptance
-work; compatibility-retirement evidence remains separate 10R.2.3 work.
+Idempotent re-runs and runtime-native reads are covered independently by
+10R.2.2. Compatibility-retirement evidence remains separate 10R.2.3 work.
 
 ## Decision
 
@@ -97,7 +97,10 @@ an opaque migration failure. [NIST AI RMF Manage](https://airc.nist.gov/airmf-re
 
 ## Next Task
 
-Implement **10R.2.2 Reconciliation Idempotence And Native Runtime Read**. It
-must rerun the production scheduler against the converted records and verify
-the native read boundary without combining this ordinary operational check with
-installation-specific compatibility-code retirement evidence.
+10R.2.2 is complete. See
+[Reconciliation Idempotence And Native Runtime Read Acceptance](reconciliation-idempotence-native-runtime-read-acceptance.md).
+
+Implement **10R.2.3 Bounded Lifecycle Diagnostics And Release-Evidence
+Separation**. It must verify bounded non-convertible state and keep ordinary
+native policy operation separate from installation-specific compatibility-code
+retirement evidence.

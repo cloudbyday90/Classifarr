@@ -37,7 +37,8 @@ completed foundations: 0R -> 1R -> 2R -> 3R -> 4R -> 5R -> 6R -> 7R
 completed boundary isolation: 8R.37.1 -> 8R.37.2 -> 8R.37.3 -> 8R.37.4
 active-installation prerequisite -> 8R.36.11 regeneration -> 8R.34/8R.35 current audits
 completed platform acceptance: 10R.1.1 -> 10R.1.2 -> 10R.1.3
-current platform acceptance: 10R.2.2
+completed lifecycle acceptance: 10R.2.1 -> 10R.2.2
+current platform acceptance: 10R.2.3
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
 
@@ -11852,6 +11853,7 @@ Design record:
 - [AI Authority Pipeline Acceptance](ai-authority-pipeline-acceptance.md).
 - [Provider Failure And Recovery Acceptance](provider-failure-recovery-acceptance.md).
 - [Existing-Installation Lifecycle Acceptance](existing-installation-lifecycle-acceptance.md).
+- [Reconciliation Idempotence And Native Runtime Read Acceptance](reconciliation-idempotence-native-runtime-read-acceptance.md).
 
 ### 10R.1 Classification And Authority Pipeline Acceptance
 
@@ -12003,6 +12005,19 @@ Tasks:
 - Read converted policies through the production native-policy read service and
   verify the authoritative native contract rather than compatibility input is
   returned.
+
+Completion:
+
+- Complete. The isolated PostgreSQL acceptance fixture converts supported
+  legacy and current-profile-backed policies, reruns the real scheduler, and
+  proves the original active native authority and conversion-event sequence
+  remain unchanged without a maintenance state or operator admission path.
+- Complete. The production policy-engine read returns a validated
+  `native_intent` contract for both converted policies and clears runtime
+  compatibility presets before scoring. See
+  `docs/architecture/reconciliation-idempotence-native-runtime-read-acceptance.md`
+  and
+  `server/src/__tests__/integration/native-intent-installation-lifecycle-acceptance.test.mjs`.
 
 #### 10R.2.3 Bounded Lifecycle Diagnostics And Release-Evidence Separation
 
@@ -12170,12 +12185,15 @@ The next sequence is dependency-gated rather than phase-number order:
     boundary accepts no-policy, legacy-only, already-native, profile-backed
     sparse-evidence, and invalid-source starting states, and verifies their
     bounded native or maintenance outcomes.
-14. **10R.2.2 Reconciliation Idempotence And Native Runtime Read**: next.
-    Re-run the scheduler from converted/native persisted state and verify it
-    produces no duplicate authority or migration history, then verify native
-    runtime reads return the authoritative contract without compatibility
-    fallback.
-15. **8R.36.11 Compatibility-Removal Evidence Regeneration**: revalidated
+14. **10R.2.2 Reconciliation Idempotence And Native Runtime Read**: complete.
+    Supported legacy and profile-backed policies remain one-authority,
+    unchanged-history conversions across a second real scheduler run. Runtime
+    reads are verified as native-sourced and compatibility-preset-free.
+15. **10R.2.3 Bounded Lifecycle Diagnostics And Release-Evidence Separation**:
+    next. Verify non-convertible lifecycle state is privacy-bounded and that
+    blocked installation-specific retirement evidence cannot block ordinary
+    native policy operation.
+16. **8R.36.11 Compatibility-Removal Evidence Regeneration**: revalidated
     after the closure-contract change. It produced fresh v3 repository
     validation evidence and bounded blocked diagnostics because the
     active-installation completion artifact remains blocked. The next
@@ -12187,28 +12205,35 @@ The completed 0R through 3R, 6R, and 7R contracts remain guardrails, not
 permission to restore a diagnostic, template-first, or browser-authoritative
 workflow.
 
-## Open Questions
+## Decision Register And Remaining Follow-Ups
 
-- What is the minimum observed-profile quality required before library contents
-  can seed intent suggestions?
-- Which evidence buckets may influence automation readiness, and which may only
-  influence review wording?
-- What exact states separate `classified`, `routed`, `classified_not_routed`,
-  `needs_operator_review`, and `needs_routing_mapping`?
-- Which manual outcomes are eligible for durable learning, and which are only
-  final outcomes?
-- What server-owned question shapes are allowed for UI and Discord, and which
-  answer options can create later policy suggestions?
-- Should AI output be limited to evidence extraction and uncertainty
-  explanation, or can it propose intent changes that a deterministic service
-  must validate?
-- How should starter-template provenance be retained after templates become
-  draft accelerators rather than policy authority?
-- What legacy preset/custom-signal cases are unconvertible, and what explicit
-  operator workflow handles them?
-- What rollback snapshot retention window is long enough for safety without
-  preserving a permanent dual model?
-- Which old builder panels, preview services, replay services, and diagnostics
-  are engine primitives, migration verifiers, or deletion candidates?
-- What is the first implementation slice that proves the new model reduces
-  operator decisions rather than adding new configuration work?
+The following review distinguishes implemented platform decisions from work
+that still needs operational acceptance. A resolved decision does not claim
+that every deployment has completed its separate installation-evidence gate.
+
+| Earlier question | Landing | Status |
+| --- | --- | --- |
+| Minimum observed-profile quality for an automatic baseline | The profile must be current, non-empty, and contain observed genre identity. It can create only advisory genre and media-type identity; it cannot create hard limits, avoid rules, learning, provider calls, or AI authority. | Resolved by 5R profile initialization and accepted in 10R.2.1/10R.2.2. |
+| Evidence buckets that affect automation | Current deterministic native policy evidence can establish automation readiness. Observed evidence can establish limited identity or review context. AI, provider, RAG, and compatibility evidence cannot independently grant a route. | Resolved by 5R decision and 10R.1 acceptance contracts. |
+| Separation of classified, routed, review, and mapping outcomes | The server-owned automation output contract binds each state to one action and permission tuple; `classified_not_routed`, `needs_operator_review`, and `needs_routing_mapping` cannot claim route authority. | Resolved by 5R output contract and 10R.1.2 acceptance. |
+| Manual outcomes eligible for durable learning | Learning is distinct from final resolution. Only allow-listed evidence-backed tiers may proceed; AI prose, stale questions, ambiguous answers, diagnostics, and broad one-off genre selections are blocked, and hard limits require a policy edit. | Resolved by 5R learning guard. |
+| UI and Discord question shapes | Only normalized server-owned frames with server-known destination IDs and bounded options may be rendered. Raw AI/provider wording and legacy question payloads fail closed. | Resolved by 5R question normalization and answer admission. |
+| AI involvement in intent changes | AI output is structured advisory evidence only. It cannot route or write policy intent; any later policy change must pass deterministic server proposal and admission boundaries. | Resolved by 5R.3 and 10R.1.1. |
+| Starter-template provenance after authority removal | Templates remain optional canonical candidates and persisted native template links. Raw attachments stay compatibility-only and do not define runtime policy authority. | Resolved by 3R/5R template boundaries. |
+| Unconvertible legacy configuration and operator workflow | Supported cases convert automatically. Unsupported source shapes persist only a bounded `requires_maintenance` state, with no native authority. The acceptance proof for privacy-bounded diagnostics and its separation from release-retirement evidence is still missing. | **Follow-up: 10R.2.3.** |
+| Rollback snapshot window | Native authority reversion defaults to 14 days, bounded to 1 through 30 days. After expiry, bulky payloads are redacted while minimal auditable metadata remains. | Resolved by 7R rollback and retention contracts. |
+| Old builder, preview, replay, and diagnostics artifacts | Normal browser and HTTP surfaces are retired. The remaining verifier is internal, bounded migration evidence with a deletion gate; compatibility retirement remains CI/release maintenance only. | Resolved for runtime reachability; installation-specific retirement evidence remains a separate 8R release task. |
+| Proof that the model reduces operator decisions | The normal authoring path and automatic conversion now remove routine library/profile recreation and conversion dialogs. A production decision-count baseline and release readout have not yet been defined. | **Follow-up: add to 10R.4 release acceptance.** |
+
+### Re-Review Boundaries
+
+- **Next:** 10R.2.3 must prove non-convertible lifecycle diagnostics expose
+  only bounded status, reason, and count fields, and prove a blocked
+  installation-specific retirement artifact cannot disrupt native policy
+  operation.
+- **Then:** 10R.3 must accept privacy-bounded observability and recovery under
+  retries, stale evidence, routing gaps, and restart conditions.
+- **Release:** 10R.4 must define the CI manifest, deployment-evidence readout,
+  and a measured operator-decision reduction signal. The separately blocked
+  8R.36.11 active-installation artifact remains a deployment prerequisite for
+  compatibility retirement, not a prerequisite for ordinary policy automation.

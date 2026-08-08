@@ -11,6 +11,19 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Reconciliation Idempotence And Native Runtime Read Acceptance**: Added
+  isolated PostgreSQL scheduler re-run coverage for converted legacy and
+  profile-backed policies. Repeat reconciliation preserves one active native
+  authority and unchanged migration history; the production policy-engine read
+  uses the validated native contract and removes compatibility presets from
+  runtime scoring.
+
+- **Policy Intent Decision Register**: Reconciled the roadmap's historical
+  open questions into implemented platform decisions and three explicit
+  follow-ups: bounded non-convertible lifecycle diagnostics, operational safety
+  acceptance, and a measured operator-decision reduction signal in release
+  acceptance.
+
 - **Existing-Installation Conversion Matrix**: Added isolated PostgreSQL
   scheduler acceptance coverage for no-policy, legacy-only, profile-backed
   sparse-evidence, already-native, and unsupported legacy-source
