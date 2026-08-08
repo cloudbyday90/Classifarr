@@ -170,6 +170,10 @@ describe('classificationPolicyPathService.execute', () => {
     const out = await execute(baseParams);
     expect(out.handled).toBe(true);
     expect(out.result.method).toBe('signal_calculation');
+    expect(out.result.provider_recovery).toEqual({
+      version: 'provider_recovery.v1',
+      mode: 'review_required',
+    });
   });
 
   it('returns fallback when AI fails, no suggestedLibrary, confidence >= 50 (not transient)', async () => {

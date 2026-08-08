@@ -15,6 +15,7 @@ import {
   isAiAuthorityRoutingBlocked,
   isCurrentDeterministicPolicyAuto,
 } from './classificationRoutingServiceShared.mjs';
+import { isProviderRecoveryRoutingBlocked } from './classificationProviderRecovery.mjs';
 import {
   validatePolicyRuntimeQuestionReduction,
 } from './policyRuntimeQuestionReduction.mjs';
@@ -143,6 +144,10 @@ export class ClassificationService {
 
     if (requireAllConfirmations) {
       return { shouldRoute: false, reason: 'confirmation_required' };
+    }
+
+    if (isProviderRecoveryRoutingBlocked(result)) {
+      return { shouldRoute: false, reason: 'provider_recovery_required' };
     }
 
     if (isAiAuthorityRoutingBlocked(result)) {

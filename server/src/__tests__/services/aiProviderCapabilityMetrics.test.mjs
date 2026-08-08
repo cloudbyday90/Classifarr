@@ -46,6 +46,19 @@ describe('aiProviderCapabilityMetrics', () => {
     expect(JSON.stringify(delta)).not.toContain('Unknown library option');
   });
 
+  test('does not retain provider exception text in aggregate telemetry', () => {
+    const delta = buildAiProviderCapabilityMetricDelta({
+      authority: buildAiProviderAuthorityProfile({ providerId: 'openai', model: 'gpt-4.1' }),
+      generationError: new Error('provider key=fixture-secret must not persist'),
+    });
+
+    expect(JSON.stringify(delta)).not.toContain('fixture-secret');
+    expect(delta).toEqual(expect.objectContaining({
+      requestCount: 1,
+      timeoutOrIncompleteStreamCount: 0,
+    }));
+  });
+
   test('uses parameterized upserts and fails open when telemetry is unavailable', async () => {
     const database = { query: jest.fn().mockRejectedValue(new Error('metrics table unavailable')) };
     const logger = { warn: jest.fn() };

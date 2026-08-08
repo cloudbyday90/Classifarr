@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Provider Failure Recovery Acceptance**: Provider failures now carry a
+  versioned, privacy-bounded recovery state. Disabled and transient provider
+  failures queue a bounded retry; permanent failures preserve deterministic
+  policy evidence but require review and cannot auto-route. Added isolated
+  acceptance coverage for policy bypass, disabled, transient, permanent, and
+  malformed provider outcomes, including telemetry redaction checks.
+
 - **Deterministic Policy Route Acceptance**: Policy-auto routing now requires
   current deterministic `auto_classify` provenance for the same selected
   library. AI-derived, mislabeled, non-final, and provenance-invalid candidates

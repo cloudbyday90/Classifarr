@@ -99,4 +99,27 @@ describe('ClassificationService auto-route authority boundary', () => {
       reason: 'invalid_policy_auto_provenance',
     });
   });
+
+  test('blocks a high-confidence policy candidate while provider recovery is pending review', () => {
+    const decision = ClassificationService.prototype.buildAutoRouteDecision({
+      result: {
+        library: { id: 1, name: 'Movies' },
+        confidence: 99,
+        method: 'signal_calculation',
+        policyResult: {
+          ranked: [{ library_id: 1, auto_classify_threshold: 85 }],
+        },
+        provider_recovery: {
+          version: 'provider_recovery.v1',
+          mode: 'review_required',
+        },
+      },
+      policyAutoThreshold: 85,
+    });
+
+    expect(decision).toEqual({
+      shouldRoute: false,
+      reason: 'provider_recovery_required',
+    });
+  });
 });

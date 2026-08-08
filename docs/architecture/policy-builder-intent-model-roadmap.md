@@ -36,8 +36,8 @@ The execution dependency is intentionally not numeric:
 completed foundations: 0R -> 1R -> 2R -> 3R -> 4R -> 5R -> 6R -> 7R
 completed boundary isolation: 8R.37.1 -> 8R.37.2 -> 8R.37.3 -> 8R.37.4
 active-installation prerequisite -> 8R.36.11 regeneration -> 8R.34/8R.35 current audits
-completed platform acceptance: 10R.1.1 -> 10R.1.2
-current platform acceptance: 10R.1.3
+completed platform acceptance: 10R.1.1 -> 10R.1.2 -> 10R.1.3
+current platform acceptance: 10R.2
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
 
@@ -11850,6 +11850,7 @@ automation, bounded AI assistance, and installation-specific release evidence.
 Design record:
 
 - [AI Authority Pipeline Acceptance](ai-authority-pipeline-acceptance.md).
+- [Provider Failure And Recovery Acceptance](provider-failure-recovery-acceptance.md).
 
 ### 10R.1 Classification And Authority Pipeline Acceptance
 
@@ -11942,6 +11943,19 @@ Acceptance criteria:
 - No provider failure causes an automatic AI route, policy mutation, learning,
   notification, or credential disclosure.
 - Result and recovery states are deterministic and separately observable.
+
+Completion:
+
+- Complete. Provider-failure results now carry the versioned,
+  privacy-bounded `provider_recovery.v1` projection. Transient and disabled
+  availability failures queue a retry; permanent failures preserve policy
+  evidence but require a server-owned question. Every valid recovery
+  projection is independently denied at the route boundary.
+- Complete. The isolated integration fixture covers deterministic policy-auto
+  bypass, disabled, transient, permanent, and malformed provider outcomes
+  without provider credentials, external calls, media-server connections, or
+  persisted exception text. See
+  `docs/architecture/provider-failure-recovery-acceptance.md`.
 
 ### 10R.2 Existing-Installation Lifecycle Acceptance
 
@@ -12100,10 +12114,17 @@ The next sequence is dependency-gated rather than phase-number order:
     complete. It proves native policy authority is verified at the route
     boundary and distinguishes routed, classified-not-routed, blocked, and
     question-required outcomes without an external dependency.
-12. **10R.1.3 Provider Failure And Recovery Acceptance**: next. Prove that
-    disabled, unavailable, malformed, and transient provider outcomes preserve
-    deterministic policy behavior and produce bounded recovery outcomes.
-13. **8R.36.11 Compatibility-Removal Evidence Regeneration**: revalidated
+12. **10R.1.3 Provider Failure And Recovery Acceptance**: complete. A
+    versioned recovery projection now separates transient retry from permanent
+    review, preserves deterministic policy evidence, prevents recovery-driven
+    routing, and omits provider exception text from result state and aggregate
+    telemetry.
+13. **10R.2 Existing-Installation Lifecycle Acceptance**: next. Build the
+    isolated no-policy, legacy-only, converted-native, already-native,
+    sparse-evidence, and invalid-source conversion matrix. Prove automatic,
+    idempotent reconciliation and bounded diagnostics without an operator or
+    maintainer dialog.
+14. **8R.36.11 Compatibility-Removal Evidence Regeneration**: revalidated
     after the closure-contract change. It produced fresh v3 repository
     validation evidence and bounded blocked diagnostics because the
     active-installation completion artifact remains blocked. The next

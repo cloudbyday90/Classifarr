@@ -129,7 +129,7 @@ makes an outbound request.
 
 ## Next Task
 
-Proceed with **10R.1.3 Provider Failure And Recovery Acceptance**. It must
-prove that disabled, unavailable, malformed, and transient provider outcomes
-cannot create an automatic route, hide a deterministic policy outcome, or
-expose non-bounded diagnostics.
+**10R.1.3 Provider Failure And Recovery Acceptance** is complete. Provider
+failure now has an explicit bounded retry-or-review state that cannot grant
+route authority. Proceed with **10R.2 Existing-Installation Lifecycle
+Acceptance**.

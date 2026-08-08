@@ -2,6 +2,7 @@ import { policyQuestionBuilder } from './policyQuestionBuilder.mjs';
 import { isRequireAllConfirmationsEnabled } from './clarificationThresholdManager.mjs';
 import { normalizePolicyDecisionThresholds } from '../utils/policyThresholds.mjs';
 import { normalizePolicyRuntimeQuestion } from './policyRuntimeQuestionNormalizer.mjs';
+import { requiresProviderRecoveryReview } from './classificationProviderRecovery.mjs';
 
 export function normalizeSettings(settings) {
 	if (!settings) {
@@ -141,6 +142,7 @@ export async function ensureDecisionQuestion({ metadata, result, policyResult = 
 	const effectivePolicyResult = result.policyResult || policyResult || null;
 	const requiresManualReview = Boolean(effectivePolicyResult?.decisionDiagnostics?.requires_manual_review);
 	const requiresAuthorityReview = isAiAuthorityRoutingBlocked(result);
+	const requiresRecoveryReview = requiresProviderRecoveryReview(result);
 	const requiresPolicyProvenanceReview =
 		result.method === 'policy_auto' && !isCurrentDeterministicPolicyAuto(result);
 
@@ -167,6 +169,7 @@ export async function ensureDecisionQuestion({ metadata, result, policyResult = 
 		(result.confidence && result.confidence < 70) ||
 		requiresManualReview ||
 		requiresAuthorityReview ||
+		requiresRecoveryReview ||
 		requiresPolicyProvenanceReview ||
 		belowAutoRouteThreshold ||
 		(result.library && requireAllConfirmations)

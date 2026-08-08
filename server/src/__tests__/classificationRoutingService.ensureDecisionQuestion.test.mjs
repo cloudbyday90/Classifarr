@@ -237,4 +237,27 @@ describe('ensureDecisionQuestion', () => {
         expect(out.needs_clarification).toBe(true);
         expect(build).toHaveBeenCalled();
     });
+
+    it('requires clarification for a bounded permanent provider recovery', async () => {
+        build.mockResolvedValue(null);
+        const result = {
+            library: { id: 10 },
+            confidence: 99,
+            method: 'signal_calculation',
+            clarification: null,
+            policy_question: null,
+            policyResult: {
+                ranked: [{ library_id: 10, auto_classify_threshold: 85 }],
+            },
+            provider_recovery: {
+                version: 'provider_recovery.v1',
+                mode: 'review_required',
+            },
+        };
+
+        const out = await ensureDecisionQuestion({ metadata: {}, result });
+
+        expect(out.needs_clarification).toBe(true);
+        expect(build).toHaveBeenCalled();
+    });
 });

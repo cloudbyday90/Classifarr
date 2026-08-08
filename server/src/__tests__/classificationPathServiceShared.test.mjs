@@ -146,7 +146,33 @@ describe('classificationPathServiceShared', () => {
 			previousRetryCount: 1,
 			maxRetries: 3,
 		}));
-		expect(result).toEqual({ needs_retry: true });
+		expect(result).toEqual(expect.objectContaining({
+			needs_retry: true,
+			provider_recovery: {
+				version: 'provider_recovery.v1',
+				mode: 'retry_queued',
+			},
+		}));
+	});
+
+	it('labels a low-confidence provider fallback as retry recovery even when the failure is permanent', () => {
+		const result = buildAiUnavailableResult({
+			isTransientAiAvailability: false,
+			confidence: 30,
+			suggestedLibrary: null,
+			libraries: [{ id: 1, name: 'Movies' }],
+			signalContext: { confidence: 30 },
+			transientError: new Error('provider authorization rejected'),
+			previousRetryCount: 0,
+			maxRetries: 3,
+			buildPendingRetryResult: jest.fn().mockReturnValue({ needs_retry: true }),
+			signalCalculationReason: 'Calculated from policy signals (AI unavailable)',
+		});
+
+		expect(result.provider_recovery).toEqual({
+			version: 'provider_recovery.v1',
+			mode: 'retry_queued',
+		});
 	});
 
 	it('builds a signal_calculation result when confidence is strong and a library is suggested', () => {
@@ -174,6 +200,10 @@ describe('classificationPathServiceShared', () => {
 			method: 'signal_calculation',
 			reason: 'Calculated from policy signals (AI unavailable)',
 			policyResult: { confidence: 65 },
+			provider_recovery: {
+				version: 'provider_recovery.v1',
+				mode: 'review_required',
+			},
 		}));
 	});
 
@@ -199,6 +229,10 @@ describe('classificationPathServiceShared', () => {
 			method: 'fallback',
 			reason: 'Default library - AI unavailable (fell back to Shows)',
 			libraries,
+			provider_recovery: {
+				version: 'provider_recovery.v1',
+				mode: 'review_required',
+			},
 		});
 	});
 
@@ -223,7 +257,10 @@ describe('classificationPathServiceShared', () => {
 			signalCalculationReason: 'Calculated from signals (AI unavailable)',
 		});
 
-		expect(result).toEqual({ needs_retry: true });
+		expect(result).toEqual(expect.objectContaining({
+			needs_retry: true,
+			provider_recovery: expect.objectContaining({ mode: 'retry_queued' }),
+		}));
 		expect(ensureDecisionQuestion).not.toHaveBeenCalled();
 	});
 
@@ -259,6 +296,10 @@ describe('classificationPathServiceShared', () => {
 				method: 'fallback',
 				reason: 'Default library - AI unavailable (fell back to Shows)',
 				libraries,
+				provider_recovery: {
+					version: 'provider_recovery.v1',
+					mode: 'review_required',
+				},
 			},
 			policyResult: { confidence: 65 },
 			libraries,
@@ -318,7 +359,10 @@ describe('classificationPathServiceShared', () => {
 			transient_ai_availability: true,
 		});
 		expect(ensureDecisionQuestion).not.toHaveBeenCalled();
-		expect(result).toEqual({ needs_retry: true });
+		expect(result).toEqual(expect.objectContaining({
+			needs_retry: true,
+			provider_recovery: expect.objectContaining({ mode: 'retry_queued' }),
+		}));
 	});
 
 	it('logs non-transient AI failures without retry queue logging when fallback can proceed', async () => {
@@ -354,6 +398,9 @@ describe('classificationPathServiceShared', () => {
 		expect(logger.error).toHaveBeenCalledWith('AI classification failed', { error: 'GPU OOM' });
 		expect(logger.info).not.toHaveBeenCalled();
 		expect(ensureDecisionQuestion).toHaveBeenCalledTimes(1);
-		expect(result).toEqual(expect.objectContaining({ method: 'fallback' }));
+		expect(result).toEqual(expect.objectContaining({
+			method: 'fallback',
+			provider_recovery: expect.objectContaining({ mode: 'review_required' }),
+		}));
 	});
 });

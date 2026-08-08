@@ -20,6 +20,10 @@ import {
 	buildAiRuntimeDedupeKey,
 	AI_EMBEDDING_WARNING_DEDUPE_WINDOW_MS,
 } from './aiEmbeddingProviderIntegrityService.mjs';
+import {
+	buildProviderRecovery,
+	PROVIDER_RECOVERY_MODE_IDS,
+} from './classificationProviderRecovery.mjs';
 
 function normalizeAiUnavailableConfidence(confidence) {
 	return Number(confidence) || 0;
@@ -27,6 +31,17 @@ function normalizeAiUnavailableConfidence(confidence) {
 
 function shouldQueueAiUnavailableRetry({ isTransientAiAvailability, confidence }) {
 	return isTransientAiAvailability || normalizeAiUnavailableConfidence(confidence) < 50;
+}
+
+function withProviderRecovery(result, { isRetryQueued }) {
+	return {
+		...result,
+		provider_recovery: buildProviderRecovery({
+			recoveryMode: isRetryQueued
+				? PROVIDER_RECOVERY_MODE_IDS.RETRY_QUEUED
+				: PROVIDER_RECOVERY_MODE_IDS.REVIEW_REQUIRED,
+		}),
+	};
 }
 
 export function buildClassificationPathAiResult({
@@ -106,37 +121,41 @@ export function buildAiUnavailableResult({
 	signalCalculationResultFields = {},
 }) {
 	const resolvedConfidence = normalizeAiUnavailableConfidence(confidence);
+	const isRetryQueued = shouldQueueAiUnavailableRetry({
+		isTransientAiAvailability,
+		confidence: resolvedConfidence,
+	});
 
-	if (shouldQueueAiUnavailableRetry({ isTransientAiAvailability, confidence: resolvedConfidence })) {
-		return buildPendingRetryResult({
+	if (isRetryQueued) {
+		return withProviderRecovery(buildPendingRetryResult({
 			confidence: resolvedConfidence,
 			libraries,
 			signalContext,
 			transientError,
 			previousRetryCount,
 			maxRetries,
-		});
+		}), { isRetryQueued });
 	}
 
 	if (suggestedLibrary && resolvedConfidence >= 50) {
-		return {
+		return withProviderRecovery({
 			library: suggestedLibrary,
 			confidence: resolvedConfidence,
 			method: 'signal_calculation',
 			reason: signalCalculationReason,
 			libraries,
 			...signalCalculationResultFields,
-		};
+		}, { isRetryQueued });
 	}
 
 	const fallbackLibrary = libraries[libraries.length - 1];
-	return {
+	return withProviderRecovery({
 		library: fallbackLibrary,
 		confidence: 50,
 		method: 'fallback',
 		reason: `Default library - AI unavailable (fell back to ${fallbackLibrary.name})`,
 		libraries,
-	};
+	}, { isRetryQueued });
 }
 
 export async function resolveAiUnavailableResult({
