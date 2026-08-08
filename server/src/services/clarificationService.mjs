@@ -16,10 +16,6 @@ import {
   buildPolicyRuntimeDestinationEvidenceAuthorizationContext,
 } from './policyRuntimeDestinationEvidenceExecutionAuthorization.mjs';
 
-export { LOW_CONFIDENCE_THRESHOLD, SEED_INTEGRITY_CACHE_TTL_MS, clampConfidence, createStatusError, safeParseJson, parsePolicyQuestion, getQuestionOptionLibraryIds } from './clarificationUtils.mjs';
-export { getAllQuestions, createQuestion, updateQuestion, deleteQuestion, matchQuestions, hasLanguagePresets, isLanguageQuestionAllowed } from './clarificationQuestionManager.mjs';
-export { getThresholds, getTierForConfidence, getTierFromPolicyThresholds, isRequireAllConfirmationsEnabled, updateThreshold, recordResponse, getResponses } from './clarificationThresholdManager.mjs';
-
 class ClarificationService {
   constructor(deps = {}) {
     this.policyQuestionContext = deps.policyQuestionContext || policyQuestionContext;

@@ -17,7 +17,6 @@ import {
 } from './policyLearningIntakeContract.mjs';
 import {
   LEARNING_OPERATION_BY_TIER,
-  POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_ACTOR_TYPE_IDS,
   POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_AUDIT_RISK_IDS,
   POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_COMMAND_VERSION,
   POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS,
@@ -270,13 +269,7 @@ function buildPolicyAuthorizedOutcomePersistenceCommand({
   };
 }
 
-const policyAuthorizedOutcomePersistenceCommandService = Object.freeze({
-  build: buildPolicyAuthorizedOutcomePersistenceCommand,
-  audit: buildPolicyAuthorizedOutcomePersistenceCommandAudit,
-});
-
 export {
-  POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_ACTOR_TYPE_IDS,
   POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_AUDIT_RISK_IDS,
   POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_COMMAND_VERSION,
   POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_OPERATION_IDS,
@@ -284,5 +277,4 @@ export {
   POLICY_AUTHORIZED_OUTCOME_PERSISTENCE_STATUS_IDS,
   buildPolicyAuthorizedOutcomePersistenceCommand,
   buildPolicyAuthorizedOutcomePersistenceCommandAudit,
-  policyAuthorizedOutcomePersistenceCommandService,
 };

@@ -8,20 +8,9 @@
  * (at your option) any later version.
  */
 
-import {
-  listPolicyStarterTemplatePurposeCandidateSignalEntries,
-} from './policyStarterTemplateCandidateVocabulary.mjs';
-
 const MAX_STARTER_TEMPLATE_SUGGESTIONS = 8;
 const MAX_TEMPLATE_SIGNAL_VALUES = 24;
 const MAX_VALUE_LENGTH = 160;
-
-const STARTER_TEMPLATE_SIGNAL_TYPES = Object.freeze(
-  Object.fromEntries(
-    listPolicyStarterTemplatePurposeCandidateSignalEntries()
-      .map(entry => [entry.signalTypeId, entry.signalTypeId]),
-  ),
-);
 
 const SUGGESTION_STOPWORDS = new Set([
   'a', 'an', 'and', 'for', 'in', 'of', 'on', 'the', 'to', 'with',
@@ -220,10 +209,12 @@ function buildPolicyStarterTemplateIntentSignalSuggestions({
 export {
   MAX_STARTER_TEMPLATE_SUGGESTIONS,
   MAX_TEMPLATE_SIGNAL_VALUES,
-  STARTER_TEMPLATE_SIGNAL_TYPES,
   buildPolicyStarterTemplateIntentSignalSuggestions,
   buildPolicyStarterTemplateSuggestions,
   compactStarterTemplateSuggestion,
   countTokenOverlap,
   tokenizeStarterTemplateSuggestion,
 };
+import {
+  listPolicyStarterTemplatePurposeCandidateSignalEntries,
+} from './policyStarterTemplateCandidateVocabulary.mjs';

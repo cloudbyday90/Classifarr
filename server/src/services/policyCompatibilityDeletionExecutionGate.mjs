@@ -43,7 +43,6 @@ import {
   evaluatePolicyCompatibilityDeletionPreflightAttestation,
 } from './policyCompatibilityDeletionPreflightAttestation.mjs';
 import {
-  DEFAULT_MAX_EXECUTION_ARTIFACT_AGE_MS,
   MAX_ARTIFACT_EVIDENCE_DELAY_MS,
   MAX_FUTURE_TIMESTAMP_SKEW_MS,
   asArray,
@@ -872,7 +871,6 @@ function validatePolicyCompatibilityDeletionExecutionGate(gate = {}) {
 }
 
 export {
-  DEFAULT_MAX_EXECUTION_ARTIFACT_AGE_MS,
   POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_RISK_IDS,
   POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS,
   POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_VERSION,

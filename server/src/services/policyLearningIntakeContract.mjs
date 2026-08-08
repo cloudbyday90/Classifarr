@@ -273,18 +273,11 @@ function buildPolicyLearningGuardInput(intakeEvent = {}) {
   };
 }
 
-const policyLearningIntakeContractService = Object.freeze({
-  build: buildPolicyLearningIntakeEvent,
-  validate: validatePolicyLearningIntakeEvent,
-  buildGuardInput: buildPolicyLearningGuardInput,
-});
-
 export {
   POLICY_LEARNING_EVENT_SOURCE_IDS,
   POLICY_LEARNING_INTAKE_AUDIT_RISK_IDS,
   POLICY_LEARNING_INTAKE_VERSION,
   buildPolicyLearningGuardInput,
   buildPolicyLearningIntakeEvent,
-  policyLearningIntakeContractService,
   validatePolicyLearningIntakeEvent,
 };

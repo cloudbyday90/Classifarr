@@ -111,11 +111,7 @@ class PolicyManualCorrectionTransactionService {
   }
 }
 
-const policyManualCorrectionTransactionService =
-  new PolicyManualCorrectionTransactionService();
-
 export {
   PolicyManualCorrectionTransactionError,
   PolicyManualCorrectionTransactionService,
-  policyManualCorrectionTransactionService,
 };

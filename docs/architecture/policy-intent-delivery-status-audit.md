@@ -1,6 +1,6 @@
 # Policy Intent Delivery Status Audit
 
-Status: Current repository audit recorded 2026-08-02.
+Status: Current repository audit updated 2026-08-08.
 
 ## Purpose
 
@@ -74,7 +74,7 @@ the per-installation cutover evidence owned by Phase 8R.
 | 1R | Complete foundation | Client orchestration, draft, reference-data, bridge, and test boundaries | Enforce as a guardrail in 4R |
 | 2R | Complete foundation | Typed draft commands and isolated compatibility serialization | Preserve until native storage fully replaces the bridge |
 | 3R | Complete contract cutline | Destination-first flow, component roles, accessibility rules, and normal-path exclusions | Live rendered-path proof moves to 4R |
-| 4R | Active | Source inventory, validated workflow presentation, action-admission feedback, and its 5R.2a dependency are complete | Complete 4R.4a, 4R.4, 4R.4b, and 4R.5 before runtime-gated exceptions, maintenance, cutover, and final browser proof |
+| 4R | Active | Source and controlled rendered-browser entry-path verification, lifecycle presentation, action-admission feedback, lifecycle/proposal/recovery, and bounded adjustment work are complete | Complete 5R.3 through 5R.10 before material exceptions, persisted maintenance, legacy cutover, and final responsive/browser closure work |
 | 5R | Not closed | Required authority for server read/write, proposal lifecycle, questions, answers, learning, and native changes | 5R.1, 5R.2, and 5R.2a are complete; complete 5R.3 through 5R.10 before persisted maintenance and final cutover |
 | 6R | Contract-complete foundation | Evidence, intent, learning, readiness, workflow, and migration boundaries | Consume through 4R; reopen only for a bounded contract gap |
 | 7R | Contract-complete foundation | Runtime decision, question, rebuild, verifier, rollback, and trace boundaries | Preserve through 5R and 8R authority/storage work |
@@ -83,12 +83,12 @@ the per-installation cutover evidence owned by Phase 8R.
 
 ## Required Delivery Order
 
-1. **4R.1 Live Entry-Path And Action Inventory** now has source-backed
-   evidence. It identifies `/policies` as the replacement cutline, documents
-   the absent normal native-create trigger, and records visible action owners.
-   Representative live-browser state and action verification remain pending;
-   static evidence is not treated as a rendered-path success. See [Policy
-   Authoring Live Entry-Path And Action
+1. **4R.1 Live Entry-Path And Action Inventory** is complete for source and
+   controlled rendered-browser evidence. `/policies` is the normal
+   lifecycle-first cutline; keyboard selection moves to the selected-library
+   route, and only an eligible selected library renders the server-admitted
+   create action. The retired advanced-settings hash is not an authoring
+   target. See [Policy Authoring Live Entry-Path And Action
    Inventory](policy-authoring-live-entry-path-inventory.md).
 2. **5R.1 Server Intent Contract Authority** is complete. It publishes the
    server-owned `policy_intent_authority` contract, keeps v1 intent projection
@@ -109,10 +109,9 @@ the per-installation cutover evidence owned by Phase 8R.
 6. **5R.2a Proposal And Lifecycle Admission Contract** is complete. It
    supplies an authoritative library lifecycle, opaque proposal reference,
    fresh admission recheck, and bounded stale/concurrency recovery outcomes.
-7. **4R.4a, 4R.4, 4R.4b, and 4R.5** next deliver the lifecycle entry, automated
-   proposal default, proposal outcome recovery, and optional adjustment
-   disclosure. They must reduce operator decisions rather than expose engine
-   diagnostics.
+7. **4R.4a, 4R.4, 4R.4b, and 4R.5** are complete. They deliver the lifecycle
+   entry, automated proposal default, proposal outcome recovery, and bounded
+   optional adjustment disclosure without exposing engine diagnostics.
 8. **5R.3 through 5R.10** close model authority, normalization, answer,
    learning, stale-question, verifier, server-test, and native-change
    boundaries.

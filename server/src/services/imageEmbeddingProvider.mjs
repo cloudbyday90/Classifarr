@@ -16,7 +16,6 @@ import {
     getEffectiveModel as _getEffectiveModel,
 } from './imageEmbeddingConfig.mjs';
 import {
-    MAX_IMAGE_BYTES,
     embedCloud as _embedCloud,
     embedLocal as _embedLocal,
     getLocalModels as _getLocalModels,
@@ -297,4 +296,4 @@ class ImageEmbeddingProvider {
 
 export const imageEmbeddingProvider = new ImageEmbeddingProvider();
 
-export { DEFAULTS, MAX_IMAGE_BYTES, SimpleRateLimiter };
+export { DEFAULTS, SimpleRateLimiter };

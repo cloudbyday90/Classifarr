@@ -13,33 +13,6 @@ import { normalizePolicyConstraintModeInput } from '../services/policyConstraint
 
 export const validCombinationModes = new Set(['best_match', 'average', 'weighted_average', 'require_all']);
 
-export const suggestionStopwords = new Set([
-  'a', 'an', 'and', 'for', 'in', 'of', 'on', 'the', 'to', 'with',
-  'library', 'libraries', 'media', 'content',
-]);
-
-export function tokenizeSuggestionText(value) {
-  return Array.from(new Set(
-    String(value || '')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, ' ')
-      .split(/\s+/)
-      .filter((token) => token.length >= 2)
-      .filter((token) => !suggestionStopwords.has(token)),
-  ));
-}
-
-export function compactSuggestionText(value) {
-  return String(value || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '');
-}
-
-export function countTokenOverlap(leftTokens, rightTokens) {
-  const right = new Set(rightTokens);
-  return leftTokens.filter((token) => right.has(token)).length;
-}
-
 export function sanitizeCustomSignals(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return null;

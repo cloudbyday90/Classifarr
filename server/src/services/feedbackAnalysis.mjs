@@ -11,12 +11,11 @@ import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { withServiceCatch } from '../utils/serviceCatch.mjs';
 
-import { normalizeGroupingValues, groupByMetadataField, extractSignificantPatterns, TUNING_CONSTANTS } from './feedbackAnalysisUtils.mjs';
+import { normalizeGroupingValues, groupByMetadataField, extractSignificantPatterns } from './feedbackAnalysisUtils.mjs';
 import { detectFailurePatterns, analyzeSignalEffectiveness, detectNewPatterns, analyzeThresholds } from './feedbackAnalysisPatternDetection.mjs';
 import { generateSuggestions, storeSuggestions, getPendingSuggestions, applySuggestion, rejectSuggestion, getImpactMetrics } from './feedbackAnalysisSuggestions.mjs';
 import { updateLearningStats } from './feedbackAnalysisLearning.mjs';
 
-export { TUNING_CONSTANTS };
 export { normalizeGroupingValues, groupByMetadataField, extractSignificantPatterns };
 export { detectFailurePatterns, analyzeSignalEffectiveness, detectNewPatterns, analyzeThresholds };
 export { generateSuggestions, storeSuggestions, getPendingSuggestions, applySuggestion, rejectSuggestion, getImpactMetrics };

@@ -10,7 +10,6 @@ import * as defaultDb from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import {
   DEFAULT_POLICY_ROLLBACK_SNAPSHOT_RETENTION_BATCH_SIZE,
-  POLICY_ROLLBACK_SNAPSHOT_RETENTION_REASON_IDS,
   POLICY_ROLLBACK_SNAPSHOT_RETENTION_RISK_IDS,
   POLICY_ROLLBACK_SNAPSHOT_RETENTION_STATUS_IDS,
   buildPolicyRollbackSnapshotRetentionResult,
@@ -156,7 +155,6 @@ export const policyRollbackSnapshotRetentionService =
   new PolicyRollbackSnapshotRetentionService();
 
 export {
-  POLICY_ROLLBACK_SNAPSHOT_RETENTION_REASON_IDS,
   POLICY_ROLLBACK_SNAPSHOT_RETENTION_RISK_IDS,
   POLICY_ROLLBACK_SNAPSHOT_RETENTION_STATUS_IDS,
   POLICY_ROLLBACK_SNAPSHOT_RETENTION_LOCK_KEY,

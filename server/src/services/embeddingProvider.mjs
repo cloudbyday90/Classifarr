@@ -412,5 +412,3 @@ class EmbeddingProvider {
 }
 
 export const embeddingProvider = new EmbeddingProvider();
-
-export { ConfigurationError, PROVIDER_DEFAULTS, RECOMMENDED_EMBEDDING_MODELS, SAME_MODE_DEFAULTS } from './embeddingProviderConfig.mjs';

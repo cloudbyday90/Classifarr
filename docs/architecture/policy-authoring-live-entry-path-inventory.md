@@ -1,198 +1,103 @@
 # Policy Authoring Live Entry-Path And Action Inventory
 
-Status: Source audit complete; live-browser evidence pending an approved browser
-session.
+Status: Complete for source and controlled rendered-browser verification on
+2026-08-08. This is not a production deployment or per-installation cutover
+claim.
 
-## Decision
+## Purpose
 
-Phase 4R.1 uses a small deterministic inventory contract rather than another
-policy-builder panel. It records each current policy-authoring entry point and
-visible action, its client and server boundary, the current reachability
-outcome, and the component that owns its replacement or removal.
+Phase 4R.1 verifies the policy-authoring path that an operator can actually
+reach. It prevents a legacy builder, a URL hash, or a maintainer surface from
+becoming a second normal create path.
 
-The inventory is intentionally evidence-oriented. It confirms that named source
-artifacts remain present and that every recorded control has one classification;
-it does not claim that importing a component, mounting it in a unit test, or
-capturing a historical screenshot proves the current browser flow works.
+## Current Design
 
-The current source audit establishes a material product gap: native policy
-creation is implemented behind `PolicyBuilderModal`, but `/policies` has no
-normal create trigger. `showCreateModal` is initialized and cleared in
-`PolicyList`, but no source path assigns it `true`. The current primary policy
-screen therefore reaches existing-policy configuration but not native creation.
+The normal path is intentionally short:
 
-## Scope And Method
+```text
+/policies
+  -> Review destination proposal
+  -> /policies?library=:libraryId
+  -> server-prepared proposal
+  -> Create policy
+```
 
-The inventory uses the current route, list, modal, workflow, API, and server
-route graph. It classifies controls as one of:
+The browser renders server-confirmed lifecycle and proposal data. It does not
+derive destination identity, readiness, authorization, or persistence results.
+The only mutation is the admitted proposal command, which sends the
+server-issued proposal reference, revision, a request idempotency key, and
+allow-listed adjustment commands.
 
-- server-backed action contract;
-- local typed draft command;
-- accessible navigation;
-- read-only information; or
-- replacement or removal candidate.
+## Entry And Action Inventory
 
-The contract lives in
-`server/src/services/policyAuthoringLiveEntryPathInventory.mjs` with a focused
-repository-artifact and classification test. It has no route, database,
-scheduler, provider, mutation, or browser authority.
-
-## Research Basis
-
-- W3C's conformance-evaluation methodology requires scope, exploration,
-  representative sampling, evaluation, and reporting. The source inventory is
-  therefore explicit evidence only; it is not a replacement for representative
-  rendered-state evaluation. [W3C Conformance Evaluation
-  Methodology](https://www.w3.org/WAI/test-evaluate/conformance/)
-- W3C's modal-dialog pattern requires focus to move into the dialog, remain
-  contained while modal, close with Escape, and return to the invoker or another
-  logical location. Any retained modal path must prove those behaviors in the
-  live browser. [W3C Modal Dialog
-  Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/)
-- WCAG 2.2 status-message guidance requires success, waiting, result, and
-  error updates that do not change context to be programmatically available
-  without unnecessarily interrupting the user. Action feedback must be scoped
-  to the action that produced it. [W3C Understanding Success Criterion
-  4.1.3](https://www.w3.org/WAI/WCAG22/Understanding/status-messages)
-- OWASP requires authorization on every request to be enforced server-side and
-  authorization failures to exit safely without exposing sensitive details.
-  Browser controls can describe availability, but the server remains the
-  authority for native policy creation and every protected operation. [OWASP
-  Authorization Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html)
-
-## Current Entry Points
-
-| Entry point | Current result | Classification | Owner |
+| Surface | Classification | Owner | Outcome |
 | --- | --- | --- | --- |
-| `/policies` | Renders `PolicyList`, the legacy list and modal host | Replace | 4R.2 |
-| Existing `Configure` | Fetches a policy, then opens one modal for native inspection, recovery, or legacy edit | Replace | 4R.7 |
-| Native create modal | Supports native-create mode, but has no normal `PolicyList` opener | Replace | 4R.2 / 4R.3 |
-| `/policies#policy-builder-advanced-settings` | Has no current hash target; a test asserts that the former target is absent | Remove | 4R.8 |
-| Native-intent reconciliation route | Explicit router `admin-maintenance` route | Out of normal authoring scope | 8R maintenance |
+| `/policies` | Normal entry | `PolicyList.vue` | Lists one server-confirmed lifecycle state per library |
+| `Review destination proposal` | Accessible navigation action | `PolicyAuthoringLifecycleEntry.vue` | Selects `/policies?library=:libraryId` and moves focus to the selected destination |
+| Selected library route | Normal proposal state | `PolicyList.vue` and `usePolicyAuthoringDestinationProposal.js` | Reads workflow context and requests a server-prepared proposal |
+| `Create policy` | Server-admitted mutation | `PolicyDestinationProposalCard.vue` | Sends only opaque proposal admission data; reports the server result |
+| Adjustment disclosure | Optional local draft command | `PolicyDestinationProposalAdjustmentDisclosure.vue` | Emits allow-listed narrowing commands for the current proposal revision |
+| Existing, blocked, and recovery states | Read-only or recovery state | Lifecycle presentation | Do not expose a create action |
+| `#policy-builder-advanced-settings` | Retired path | Router and `PolicyList.vue` | Does not expose a normal policy-authoring target |
+| Native reconciliation route | Administrator maintenance | Dedicated router entry | Outside normal authoring |
 
-## Representative States
+## Recommendations
 
-| State | Current source path | Current evidence status | Required outcome |
-| --- | --- | --- | --- |
-| New library | Native-create modal with no persisted policy | Component exists, normal entry is unreachable | One small safe starting action; no false identity claim |
-| Well-profiled library | Workflow shell and signal picker | Component exists, normal entry is unreachable | Server-derived proposal with explicit create admission, not mandatory reselection |
-| Sparse library | Empty-state notice | Component exists, normal entry is unreachable | Guidance or one admitted navigation without a browser recovery action |
-| Unmapped library | Empty-state route handoff to `LibraryDetail` | Component exists, normal entry is unreachable | Navigation with focus handoff; no routing execution in the browser |
-| Automatic recovery | Native summary or recovery notice through existing Configure | Source-reachable through legacy list action | Informational, read-only automatic recovery state |
-| Persisted native policy | Native summary through existing Configure | Source-reachable through legacy list action | Inspection and intentional maintenance must become separate actions |
+1. Use browser tests that locate controls by accessible role and name, exercise
+   keyboard activation, and assert visible outcomes. Vue directs interaction
+   behavior to end-to-end tests, and Playwright recommends user-facing
+   locators with automatic waiting. [Vue testing guide](https://vuejs.org/guide/scaling-up/testing.html)
+   and [Playwright locators](https://playwright.dev/docs/locators).
+2. Keep one visible primary action for an eligible selected library. The
+   browser may navigate or hold local typed adjustments, but the server remains
+   the authority for proposal validity and policy creation. This limits confused
+   deputy and duplicate-write risks.
+3. Treat focus placement as part of the navigation contract. The selected
+   destination receives focus after keyboard activation, consistent with the
+   [WAI-ARIA button pattern](https://www.w3.org/WAI/ARIA/apg/patterns/button/).
+4. Keep this controlled rendering evidence separate from deployment and
+   installation evidence. Authorization, idempotency, and persistence retain
+   their server-side verification obligations under the
+   [OWASP ASVS](https://owasp.org/www-project-application-security-verification-standard/).
 
-The browser session available for this audit was denied by an enforced
-local-access security check. That control was not bypassed. The inventory marks
-live-browser evidence as pending; it does not reinterpret the current source
-graph as a rendered-path success.
+## Alternatives
 
-## Action Ledger
+| Approach | Pros | Cons |
+| --- | --- | --- |
+| Selected lifecycle route plus one admitted action | Lowest decision load, accessible, server-authoritative, and testable | Requires the lifecycle and proposal APIs to remain stable |
+| Legacy modal or advanced hash entry | Familiar to prior users | Creates a second path, duplicates controls, and obscures automatic behavior |
+| Client-computed create form | Appears flexible | Lets the client reinterpret evidence and expands the security boundary |
 
-| Action | Boundary | Current outcome | Disposition |
-| --- | --- | --- | --- |
-| Open existing policy | `GET /policies/:id` | Opens an overloaded modal | Replace in 4R.7 |
-| Reset existing policy | `DELETE /policies/:id` | Deletes and recreates a legacy policy after browser confirmation | Remove in 4R.8 |
-| Show scoring weights | Local toggle | Exposes legacy scoring mechanics | Remove in 4R.8 |
-| Create native policy | Proposal admission with native establishment | Server-owned lifecycle, transaction, and action-local confirmation, but no normal opener reaches it | Expose through the 4R.4a lifecycle entry, then 4R.4 proposal card |
-| Defer creation | Local modal close | Leaves persistence untouched | Retain as explicit no-save action after lifecycle entry exists |
-| Select and accept observed values | Local typed draft commands | Requires manual reselection before current create admission | Replace with the completed server proposal default in 4R.4 |
-| Validate custom value | Named API operation | Returns a display-only workflow refresh; no persistence | Retain inside 4R.5 adjustment disclosure |
-| Stage or clear boundaries | Local typed draft commands | Optional controls are default-visible | Move to material exception controls in 4R.6 |
-| Open library mapping | Router navigation and focus handoff | Opens library mapping; does not route media | Retain for a declared routing exception |
-| Inspect native summary or recovery | Read-only readiness projection | No intentional maintenance entry after inspection | Split in 4R.7 |
+## Recommendation Stack
 
-## Findings
+1. Keep `/policies` and the selected-library query route as the only normal
+   authoring flow.
+2. Keep one server-admitted `Create policy` action and make adjustments
+   optional, typed, and revision-bound.
+3. Keep maintenance and migration controls outside this flow.
+4. Preserve the browser specification as a regression guard; run production
+   and per-installation evidence separately when those phases require it.
 
-1. Native creation has a valid protected server transaction but no normal UI
-   entry point. Adding a button directly to the legacy list would hide the
-   deeper presentation and action-admission gaps, so it is not the selected
-   fix.
-2. `PolicyCard` is still the normal authoring path and exposes preset counts,
-   threshold values, reset, Configure, and raw scoring weights. This conflicts
-   with the destination-first product model and must be removed only after its
-   replacement is live.
-3. The workflow already knows observed values, but its picker requires explicit
-   checkbox selection and an add action before creation. That is an adjustment
-   mechanism, not the ready-path default.
-4. Optional hard limits, avoid values, and review triggers render whenever the
-   constraint model is available. They should be hidden until a server-declared
-   material exception requires them.
-5. The native summary can report recovery and readiness, but it has no distinct
-   maintenance entry. `Configure` currently conflates inspection, recovery, and
-   legacy editing.
-6. The former advanced-settings hash is not live and must not be preserved as a
-   deep-link contract.
+## Verification
 
-## Options Considered
+- `policyAuthoringLiveEntryPathInventory.mjs` classifies the current sources
+  and refuses unknown browser-evidence states.
+- `policyAuthoringLiveEntryPathInventory.test.mjs` verifies the inventory,
+  next-task handoff, and invalid evidence rejection.
+- `policy-authoring-live-entry-path.spec.js` runs the rendered flow with
+  contract-shaped mocked server responses. It verifies keyboard route entry,
+  focus placement, one create action, opaque admission payload, success
+  feedback, and the retired hash behavior.
+- The spec is registered in `policyAuthoringE2eWorkflowTests.mjs` as eligible
+  create coverage. It complements, rather than replaces, server authorization
+  and persistence tests.
 
-### Add A Create Button To The Existing List
+## Outcome And Next Task
 
-Pros: Restores a visible path to the existing native-create modal quickly.
+4R.1 no longer asserts that a native create trigger is absent. The verified
+normal path is lifecycle-first and proposal-backed; legacy advanced-settings
+navigation is not a valid authoring entry.
 
-Cons: Makes the legacy list the permanent primary authoring surface, retains
-manual observed-value reselection, and binds a new visible action before the
-server contract and action result are reconciled.
-
-Decision: Rejected.
-
-### Rewrite The Builder Before Capturing The Current Path
-
-Pros: Can produce a cleaner visual result in a single change.
-
-Cons: Loses the baseline needed to prove which control was removed or replaced;
-risks recreating readiness or authorization logic in the browser; makes dead
-actions difficult to detect.
-
-Decision: Rejected.
-
-### Source Inventory, Then Server Authority And Presentation Work
-
-Pros: Keeps the browser as a bounded projection and command forwarder; exposes
-the missing create path as an explicit replacement requirement; lets 5R.1 and
-5R.2 establish the authoritative server contract before 4R.2 and 4R.3 create
-a new live action; preserves automatic recovery as automatic.
-
-Cons: Requires maintaining a small evidence ledger and completing a permitted
-live-browser run before Phase 4R acceptance is complete.
-
-Decision: Selected.
-
-## Final Recommendation Stack
-
-1. **5R.1 Server Intent Contract Authority** and **5R.2 Write Preflight And
-   Persistence Boundary** are complete. Their authority and admitted native
-   create result are the required inputs for the presentation adapter.
-2. **4R.2 Server Workflow Presentation Adapter** is complete. The new
-   server-owned, client-validated page projection is documented in [Policy
-   Authoring Workflow Presentation Adapter](policy-authoring-workflow-presentation-adapter.md).
-   It does not add a second modal path.
-3. **4R.3 Action Binding And Admission Feedback** is complete. Native create
-   now has one pending, success, rejection, stale, retryable-error, and
-   unavailable outcome without raw server error text. See [Policy Authoring
-   Action Binding And Feedback](policy-authoring-action-binding-and-feedback.md).
-4. Implement 5R.2a first, then 4R.4a, 4R.4, 4R.4b, and 4R.5: server-owned
-   lifecycle/proposal admission before the normal lifecycle entry, automated
-   proposal default, outcome recovery, and exceptional adjustments.
-5. Complete 5R.3 through 5R.10 before 4R.6 material exceptions and 4R.7
-   revision-safe persisted-policy maintenance; then remove legacy cards,
-   modals, hashes, and reset/recreate behavior in 4R.8.
-6. Run 4R.1 representative-state verification and 4R.9 browser end-to-end
-   coverage in a browser session permitted to access the local application.
-
-## Outcome And Verification
-
-- Added `policyAuthoringLiveEntryPathInventory.mjs`, a pure, versioned,
-  maintainer-facing inventory contract.
-- Added a focused Jest suite that verifies artifact presence, action and entry
-  classifications, known remediation records, and fail-closed invalid input.
-- The audit deliberately reports the current product state as
-  `source_audited_remediation_required`, not live-authoring ready.
-- Focused verification: `cd server && node ./scripts/run-jest.mjs
-  --testPathPatterns="policyAuthoringLiveEntryPathInventory.test.mjs"
-  --no-coverage`.
-
-## Next Task
-
-**5R.2a Proposal And Lifecycle Admission Contract** is the next implementation
-task. It must bind a current server proposal and a single library lifecycle
-state to native create before 4R can add a normal `/policies` entry path.
+Next dependency-gated task: **5R.3 AI Provider Capability And Authority
+Modes**. It must bound provider output before later runtime questions,
+material exceptions, or persisted-policy maintenance can rely on it.

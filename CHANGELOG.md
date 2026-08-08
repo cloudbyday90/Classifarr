@@ -11,6 +11,24 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Authoring Live Entry Verification**: Added a rendered Playwright
+  regression test for the lifecycle-first `/policies` path. It verifies
+  keyboard selection and focus transfer, a single server-admitted `Create
+  policy` action with opaque revision-bound data, success feedback, and the
+  retired advanced-settings hash exclusion. Updated the policy-authoring
+  inventory and delivery records to distinguish this controlled browser evidence from
+  server-side authorization and per-installation cutover evidence.
+
+- **Server Dependency Declaration Gate**: Restored the Knip CI gate by
+  removing stale unused exports and their unreachable implementations across
+  server route and service boundaries. The check remains strict; its one
+  root-maintenance export is explicitly documented and narrowly tagged because
+  its consumer sits outside the server workspace. This reduces stale public
+  API surface while preserving the runtime module graph.
+
+- **Vue 3.5.41 Maintenance**: Updated the client Vue runtime to 3.5.41 from
+  the selected Dependabot patch update.
+
 - **Node.js 24.18.1 And npm 12.0.2 Baseline**: Aligned the local version file,
   package engine contracts, Docker build and runtime stages, and GitHub
   Actions on Node.js 24.18.1 and npm 12.0.2. The supported ranges are

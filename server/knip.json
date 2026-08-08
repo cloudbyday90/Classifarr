@@ -36,6 +36,9 @@
     "socket.io"
   ],
   "ignoreExportsUsedInFile": true,
+  "tags": [
+    "-lintignore"
+  ],
   "ignoreIssues": {
     "src/utils/cliRuntime.mjs": ["files"],
     "src/services/webSocketService.mjs": ["files"],

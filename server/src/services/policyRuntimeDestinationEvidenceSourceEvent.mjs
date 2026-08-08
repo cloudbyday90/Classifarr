@@ -21,9 +21,6 @@ import {
   normalizeString,
 } from './policyAuthorizedOutcomePersistenceCommandValues.mjs';
 
-const POLICY_RUNTIME_DESTINATION_EVIDENCE_SOURCE_EVENT_VERSION =
-  'policy.runtime_destination_evidence_source_event.v1';
-
 const TIER_BY_ANSWER_OUTCOME_ID = Object.freeze({
   [ANSWER_OUTCOME_IDS.ADD_COMPATIBILITY_EVIDENCE]:
     POLICY_LEARNING_TIER_IDS.COMPATIBILITY_EVIDENCE,
@@ -62,7 +59,6 @@ function buildPolicyRuntimeDestinationEvidenceSourceEventId({
 }
 
 export {
-  POLICY_RUNTIME_DESTINATION_EVIDENCE_SOURCE_EVENT_VERSION,
   buildCandidateFingerprint,
   buildPolicyRuntimeDestinationEvidenceSourceEventId,
   getPolicyRuntimeDestinationEvidenceTierId,

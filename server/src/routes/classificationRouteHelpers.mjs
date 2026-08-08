@@ -30,37 +30,6 @@ export function safeParsePolicyQuestion(value) {
   }
 }
 
-export function parseOptionalBoolean(value, defaultValue = true) {
-  if (value === undefined) {
-    return { valid: true, value: defaultValue };
-  }
-
-  if (typeof value === 'boolean') {
-    return { valid: true, value };
-  }
-
-  if (typeof value === 'string') {
-    const normalized = value.trim().toLowerCase();
-    if (normalized === 'true') {
-      return { valid: true, value: true };
-    }
-    if (normalized === 'false') {
-      return { valid: true, value: false };
-    }
-  }
-
-  if (typeof value === 'number') {
-    if (value === 1) {
-      return { valid: true, value: true };
-    }
-    if (value === 0) {
-      return { valid: true, value: false };
-    }
-  }
-
-  return { valid: false, value: defaultValue };
-}
-
 export function parsePositiveIntWithBounds(value, fallback, { min = 1, max = 365 } = {}) {
   const parsed = Number.parseInt(value, 10);
   if (!Number.isInteger(parsed)) {

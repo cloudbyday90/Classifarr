@@ -20,9 +20,8 @@
 // All 272 server modules import from this file — the exported names must stay stable.
 
 export { sanitizeData } from './logging/sanitize.mjs';
-export { getSystemContext, getRequestContext } from './logging/requestContext.mjs';
-export { LoggerShim as Logger } from './logging/loggerShim.mjs';
-export { logDedupeCache, dedupeWriteCount, resetDedupeState } from './logging/dedupe.mjs';
+export { getSystemContext } from './logging/requestContext.mjs';
+export { resetDedupeState } from './logging/dedupe.mjs';
 
 import { createRootLogger } from './logging/pinoFactory.mjs';
 import { LoggerShim, setDb } from './logging/loggerShim.mjs';
@@ -76,5 +75,4 @@ export function setLoggerDb(db) {
 export function cleanupOldLogs() {
   // No-op: file rotation is delegated to pino-roll.
 }
-
 

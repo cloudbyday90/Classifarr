@@ -21,9 +21,6 @@ import {
   normalizeString,
 } from './policyAuthorizedOutcomePersistenceCommandValues.mjs';
 
-const POLICY_RUNTIME_DESTINATION_EVIDENCE_STATE_VERSION =
-  'policy.runtime_destination_evidence_execution_state.v1';
-
 function isPolicyRuntimeDestinationEvidenceSourceEvent({
   classification = {},
   intake = {},
@@ -56,7 +53,6 @@ async function lockPolicyRuntimeDestinationEvidenceExecutionState({
 }
 
 export {
-  POLICY_RUNTIME_DESTINATION_EVIDENCE_STATE_VERSION,
   isPolicyRuntimeDestinationEvidenceSourceEvent,
   lockPolicyRuntimeDestinationEvidenceExecutionState,
 };

@@ -404,5 +404,3 @@ export class ClassificationPersistenceService {
 }
 
 export const classificationPersistenceService = new ClassificationPersistenceService();
-
-export { buildRagLoopSummary } from './classificationPersistenceServiceShared.mjs';

@@ -246,17 +246,10 @@ async function claimPolicyAuthorizedOutcomeSourceEventReceipt({ client, command 
   });
 }
 
-const policyAuthorizedOutcomeReceiptRepository = Object.freeze({
-  claim: claimPolicyAuthorizedOutcomeSourceEventReceipt,
-  createRecord: createPolicyAuthorizedOutcomeSourceEventReceiptRecord,
-  find: findPolicyAuthorizedOutcomeSourceEventReceipt,
-});
-
 export {
   POLICY_AUTHORIZED_OUTCOME_RECEIPT_CLAIM_STATUS_IDS,
   POLICY_AUTHORIZED_OUTCOME_RECEIPT_REASON_IDS,
   claimPolicyAuthorizedOutcomeSourceEventReceipt,
   createPolicyAuthorizedOutcomeSourceEventReceiptRecord,
   findPolicyAuthorizedOutcomeSourceEventReceipt,
-  policyAuthorizedOutcomeReceiptRepository,
 };

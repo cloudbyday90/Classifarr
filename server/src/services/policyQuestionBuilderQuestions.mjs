@@ -1,5 +1,4 @@
 import {
-    LANGUAGE_LABELS,
     formatLanguage,
     formatLanguageList,
     toOption,
@@ -7,8 +6,6 @@ import {
     getLanguagesForPolicy,
     collectSignalTypes
 } from './policyQuestionBuilderUtils.mjs';
-
-export { LANGUAGE_LABELS };
 
 export function buildLanguageConflictQuestion(metadata, candidates, languageConflicts, extras, deps) {
     if (!languageConflicts || languageConflicts.length === 0) return null;

@@ -111,13 +111,9 @@ class PolicyRuntimeExactItemMemoryCommandService {
   }
 }
 
-const policyRuntimeExactItemMemoryCommandService =
-  new PolicyRuntimeExactItemMemoryCommandService();
-
 export {
   POLICY_RUNTIME_EXACT_ITEM_MEMORY_COMMAND_REASON_IDS,
   PolicyRuntimeExactItemMemoryCommandError,
   PolicyRuntimeExactItemMemoryCommandService,
   buildRuntimeExactItemMemoryCommand,
-  policyRuntimeExactItemMemoryCommandService,
 };

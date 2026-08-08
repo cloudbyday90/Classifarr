@@ -2,8 +2,6 @@ import { registerHealthProbeRoutes } from './systemRouteHealthProbes.mjs';
 import { registerHealthCheckRoutes } from './systemRouteHealthCheck.mjs';
 import { registerSystemInfoRoutes } from './systemRouteSystemInfo.mjs';
 
-export { mapServiceStatus } from './systemRouteHealthCheck.mjs';
-
 export function createSystemRouter({
   express,
   db,

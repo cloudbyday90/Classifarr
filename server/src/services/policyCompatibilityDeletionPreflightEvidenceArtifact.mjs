@@ -32,7 +32,6 @@ import {
   buildPolicyCompatibilityDeletionRuntimeEvidenceEscalation,
 } from './policyCompatibilityDeletionRuntimeEvidenceEscalation.mjs';
 import {
-  MAX_MANIFEST_ENTRY_COUNT,
   OBSERVATION_STATUS_IDS,
   POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_ARTIFACT_VERSION,
   POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_RISK_IDS,
@@ -270,10 +269,17 @@ function validatePolicyCompatibilityDeletionPreflightEvidenceArtifact(artifact =
 }
 
 export {
-  MAX_MANIFEST_ENTRY_COUNT,
   POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_ARTIFACT_VERSION,
   POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_RISK_IDS,
   POLICY_COMPATIBILITY_DELETION_PREFLIGHT_EVIDENCE_STATUS_IDS,
   buildPolicyCompatibilityDeletionPreflightEvidenceArtifact,
   validatePolicyCompatibilityDeletionPreflightEvidenceArtifact,
 };
+
+/**
+ * Root-level evidence maintenance consumes this bound from outside the server
+ * Knip workspace; keep the cross-workspace API explicit and narrowly tagged.
+ *
+ * @lintignore
+ */
+export { MAX_MANIFEST_ENTRY_COUNT } from './policyCompatibilityDeletionPreflightEvidenceArtifactShared.mjs';

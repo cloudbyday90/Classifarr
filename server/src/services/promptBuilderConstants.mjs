@@ -2,8 +2,6 @@ import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('PromptBuilder');
 
-export const LOW_CONFIDENCE_THRESHOLD = 70;
-export const CLOSE_RACE_SCORE_DELTA = 15;
 export const STRONG_SCORE_THRESHOLD = 70;
 export const PATTERN_REINFORCEMENT_THRESHOLD = 50;
 export const MAX_SUGGESTIONS = 3;

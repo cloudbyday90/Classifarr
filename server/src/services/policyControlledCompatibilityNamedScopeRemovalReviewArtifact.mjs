@@ -35,7 +35,6 @@ import {
 } from './policyControlledCompatibilityNamedScopeRemovalAdapter.mjs';
 import {
   buildPolicyControlledCompatibilityNamedScopeRemovalReviewArtifact,
-  buildPolicyControlledCompatibilityNamedScopeRemovalReviewArtifactProjection,
   buildPolicyControlledCompatibilityNamedScopeRemovalReviewMetadataFingerprint,
   buildPolicyControlledCompatibilityNamedScopeRemovalReviewScopeSnapshotFingerprint,
 } from './policyControlledCompatibilityNamedScopeRemovalReviewArtifactProjection.mjs';
@@ -428,7 +427,6 @@ export {
   POLICY_CONTROLLED_COMPATIBILITY_NAMED_SCOPE_REMOVAL_REVIEW_ARTIFACT_RISK_IDS,
   POLICY_CONTROLLED_COMPATIBILITY_NAMED_SCOPE_REMOVAL_REVIEW_ARTIFACT_VERSION,
   buildPolicyControlledCompatibilityNamedScopeRemovalReviewArtifact,
-  buildPolicyControlledCompatibilityNamedScopeRemovalReviewArtifactProjection,
   validatePolicyControlledCompatibilityNamedScopeRemovalReviewArtifact,
   validatePolicyControlledCompatibilityNamedScopeRemovalReviewArtifactReplay,
 };

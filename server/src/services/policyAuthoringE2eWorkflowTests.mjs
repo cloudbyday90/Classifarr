@@ -88,6 +88,17 @@ function spec(path, workflowStateIds, accessibilityRuleIds, owner) {
 
 const DEFAULT_BROWSER_SPECS = Object.freeze([
   spec(
+    'client/browser-tests/policy-authoring-live-entry-path.spec.js',
+    [POLICY_AUTHORING_E2E_WORKFLOW_STATE_IDS.ELIGIBLE_CREATE],
+    [
+      POLICY_AUTHORING_E2E_ACCESSIBILITY_RULE_IDS.KEYBOARD_OPERABLE,
+      POLICY_AUTHORING_E2E_ACCESSIBILITY_RULE_IDS.VISIBLE_FOCUS,
+      POLICY_AUTHORING_E2E_ACCESSIBILITY_RULE_IDS.SINGLE_PRIMARY_ACTION,
+      POLICY_AUTHORING_E2E_ACCESSIBILITY_RULE_IDS.NO_INTERNAL_DIAGNOSTICS,
+    ],
+    'Live lifecycle entry path and admitted create action',
+  ),
+  spec(
     'client/browser-tests/policy-authoring-adjustment.spec.js',
     [
       POLICY_AUTHORING_E2E_WORKFLOW_STATE_IDS.ELIGIBLE_CREATE,

@@ -19,12 +19,10 @@ import {
   isAiTransientAvailabilityError as _isAiTransientAvailabilityError,
   resolveAiFailureClassification as _resolveAiFailureClassification,
   resolveRetryReason as _resolveRetryReason,
-  RETRY_DELAY_MS as _RETRY_DELAY_MS,
 } from './classificationAiFailureUtils.mjs';
 
 export const RAG_LOOP_MIN_TIMEOUT_MS = 1000;
 export const RAG_LOOP_MAX_TIMEOUT_MS = 15000;
-export const RETRY_DELAY_MS = _RETRY_DELAY_MS;
 export const AI_PARSE_DIAGNOSTICS_CONTRACT_VERSION = 'classification.ai_parse_diagnostics.v1';
 
 export function resolveRagLoopTimeout(config = {}) {

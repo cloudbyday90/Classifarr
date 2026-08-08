@@ -17,9 +17,6 @@ import {
   POLICY_AUTHORING_DESTINATION_QUESTION_IDS,
 } from './policyAuthoringDestinationFlow.mjs';
 
-const POLICY_STARTER_TEMPLATE_CANDIDATE_VOCABULARY_VERSION =
-  'policy.starter_template_candidate_vocabulary.v1';
-
 const POLICY_STARTER_TEMPLATE_CANDIDATE_BUCKET_IDS = Object.freeze({
   PURPOSE: 'purpose',
   HELPFUL_HINT: 'helpful_hint',
@@ -223,7 +220,6 @@ export {
   POLICY_STARTER_TEMPLATE_CANDIDATE_BUCKET_IDS,
   POLICY_STARTER_TEMPLATE_CANDIDATE_DECISION_REASON_IDS,
   POLICY_STARTER_TEMPLATE_CANDIDATE_PROJECTION_ACTION_IDS,
-  POLICY_STARTER_TEMPLATE_CANDIDATE_VOCABULARY_VERSION,
   canProjectPolicyStarterTemplateCandidate,
   getPolicyStarterTemplateCandidateVocabularyDecision,
   listPolicyStarterTemplateCandidateVocabulary,

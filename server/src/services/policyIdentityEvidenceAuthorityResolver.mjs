@@ -306,10 +306,6 @@ class PolicyIdentityEvidenceAuthorityResolver {
 
 const policyIdentityEvidenceAuthorityResolver = new PolicyIdentityEvidenceAuthorityResolver();
 
-async function resolvePolicyIdentityEvidenceAuthority(input = {}) {
-  return policyIdentityEvidenceAuthorityResolver.resolveDeclared(input);
-}
-
 export {
   POLICY_IDENTITY_EVIDENCE_AUTHORITY_REASON_IDS,
   POLICY_IDENTITY_EVIDENCE_AUTHORITY_STATUS_IDS,
@@ -318,5 +314,4 @@ export {
   buildIdentityCandidate,
   normalizeVerifiedIdentityAuthority,
   policyIdentityEvidenceAuthorityResolver,
-  resolvePolicyIdentityEvidenceAuthority,
 };

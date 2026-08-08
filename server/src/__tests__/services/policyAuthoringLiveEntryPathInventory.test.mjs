@@ -32,13 +32,14 @@ describe('policy authoring live entry-path inventory', () => {
     const result = buildPolicyAuthoringLiveEntryPathInventory({ artifactExists });
 
     expect(result).toEqual(expect.objectContaining({
-      version: 1,
+      version: 2,
       auditId: 'policy_authoring_live_entry_path_inventory',
       inventoryComplete: true,
-      sourceExperienceReady: false,
-      statusId: POLICY_AUTHORING_LIVE_INVENTORY_STATUS_IDS.SOURCE_AUDITED_REMEDIATION_REQUIRED,
+      sourceExperienceReady: true,
+      renderedExperienceReady: false,
+      statusId: POLICY_AUTHORING_LIVE_INVENTORY_STATUS_IDS.SOURCE_AUDITED,
       nextStep: expect.objectContaining({
-        id: 'policy_intent_contract_authority',
+        id: 'live_entry_path_browser_verification',
       }),
     }));
     expect(result.artifactAudit).toEqual(expect.objectContaining({
@@ -60,34 +61,55 @@ describe('policy authoring live entry-path inventory', () => {
       })],
     }));
     expect(result.entryPoints).toContainEqual(expect.objectContaining({
-      id: 'native_create_modal',
+      id: 'selected_library_proposal_route',
       normalAuthoring: true,
-      reachable: false,
+      reachable: true,
     }));
     expect(result.actions).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        id: 'create_native_policy',
+        id: 'admit_server_prepared_proposal',
         kindId: POLICY_AUTHORING_LIVE_ACTION_KIND_IDS.SERVER_ACTION,
-        serverContract: 'POST /policies with native_intent_establishment',
+        serverContract: 'POST /policies/operator-workflow/libraries/:libraryId/proposals/:proposalReference/admission',
       }),
       expect.objectContaining({
-        id: 'automatic_native_recovery',
+        id: 'automatic_profile_recovery_status',
         kindId: POLICY_AUTHORING_LIVE_ACTION_KIND_IDS.READ_ONLY_INFORMATION,
       }),
     ]));
   });
 
-  test('keeps known product gaps as remediation, not invalid audit data', () => {
-    const result = buildPolicyAuthoringLiveEntryPathInventory({ artifactExists });
+  test('records controlled browser verification separately from source evidence', () => {
+    const result = buildPolicyAuthoringLiveEntryPathInventory({
+      artifactExists,
+      browserEvidenceStatus:
+        POLICY_AUTHORING_LIVE_BROWSER_EVIDENCE_STATUS_IDS.CONTROLLED_RENDER_VERIFIED,
+    });
 
-    expect(result.remediation.map(remediation => remediation.riskId)).toEqual(expect.arrayContaining([
-      POLICY_AUTHORING_LIVE_INVENTORY_RISK_IDS.NATIVE_CREATE_ENTRY_UNREACHABLE,
-      POLICY_AUTHORING_LIVE_INVENTORY_RISK_IDS.LEGACY_CARD_NORMAL_PATH,
-      POLICY_AUTHORING_LIVE_INVENTORY_RISK_IDS.OBSERVED_VALUES_REQUIRE_RESELECTION,
-      POLICY_AUTHORING_LIVE_INVENTORY_RISK_IDS.OPTIONAL_BOUNDARIES_DEFAULT_VISIBLE,
-      POLICY_AUTHORING_LIVE_INVENTORY_RISK_IDS.PERSISTED_POLICY_MAINTENANCE_UNSPECIFIED,
-      POLICY_AUTHORING_LIVE_INVENTORY_RISK_IDS.OBSOLETE_HASH_TARGET,
-    ]));
+    expect(result).toEqual(expect.objectContaining({
+      sourceExperienceReady: true,
+      renderedExperienceReady: true,
+      remediation: [],
+      nextStep: expect.objectContaining({
+        id: 'ai_provider_capability_authority_modes',
+      }),
+    }));
+    expect(result.browserEvidence).toEqual(expect.objectContaining({
+      statusId: POLICY_AUTHORING_LIVE_BROWSER_EVIDENCE_STATUS_IDS.CONTROLLED_RENDER_VERIFIED,
+      mode: 'controlled_browser_render',
+      issues: [],
+    }));
+  });
+
+  test('fails closed when the browser-evidence status is unknown', () => {
+    const result = buildPolicyAuthoringLiveEntryPathInventory({
+      artifactExists,
+      browserEvidenceStatus: 'unverified_environment',
+    });
+
+    expect(result.renderedExperienceReady).toBe(false);
+    expect(result.browserEvidence.issues).toEqual([expect.objectContaining({
+      riskId: POLICY_AUTHORING_LIVE_INVENTORY_RISK_IDS.LIVE_BROWSER_EVIDENCE_STATUS_INVALID,
+    })]);
   });
 
   test('fails closed when repository artifact evidence cannot be checked', () => {

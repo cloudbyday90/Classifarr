@@ -10,15 +10,7 @@
 import { createLogger } from '../utils/logger.mjs';
 import { libraryProfileService as defaultLibraryProfileService } from './libraryProfileService.mjs';
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
-import {
-    LOW_CONFIDENCE_THRESHOLD,
-    CLOSE_RACE_SCORE_DELTA,
-    STRONG_SCORE_THRESHOLD,
-    PATTERN_REINFORCEMENT_THRESHOLD,
-    MAX_SUGGESTIONS,
-    DARK_KEYWORDS,
-    safeJSONParse
-} from './promptBuilderConstants.mjs';
+import { safeJSONParse } from './promptBuilderConstants.mjs';
 import {
     determinePromptType,
     buildLowConfidencePrompt,
@@ -51,16 +43,6 @@ import {
 } from './promptBuilderFormatters.mjs';
 
 const logger = createLogger('PromptBuilder');
-
-export {
-    LOW_CONFIDENCE_THRESHOLD,
-    CLOSE_RACE_SCORE_DELTA,
-    STRONG_SCORE_THRESHOLD,
-    PATTERN_REINFORCEMENT_THRESHOLD,
-    MAX_SUGGESTIONS,
-    DARK_KEYWORDS,
-    safeJSONParse
-};
 
 export {
     determinePromptType,

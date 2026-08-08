@@ -6,10 +6,12 @@ completion criteria for policy work.
 
 Current execution focus:
 
-1. **4R.1 Live Entry-Path And Action Inventory** now has a source-backed
-   contract. It records that `/policies` has no normal native-create trigger,
-   classifies current actions and removal work, and keeps representative live
-   browser verification pending rather than claiming it from static evidence.
+1. **4R.1 Live Entry-Path And Action Inventory** is complete for source and
+   controlled rendered-browser verification. `/policies` is the normal
+   lifecycle-first entry; keyboard activation selects `/policies?library=:id`,
+   the server prepares the proposal, and one admitted `Create policy` action
+   is available only to an eligible selected library. The retired
+   advanced-settings hash is not an authoring target.
 2. **5R.1 Server Intent Contract Authority**, **5R.2 Write Preflight And
    Persistence Boundary**, **4R.2 Server Workflow Presentation Adapter**, and
    **4R.3 Action Binding And Admission Feedback** are complete. Their current
@@ -25,7 +27,7 @@ Current execution focus:
    parallel release-maintenance/security audit. It cannot block 4R.1 or
    automatic native policy behavior.
 4. Do not add another policy-builder card, option control, advanced setting,
-   or maintenance dialog as a substitute for the 4R.1 inventory.
+   or maintenance dialog as a substitute for the completed 4R.1 path.
 
 See [Policy Intent Delivery Status Audit](policy-intent-delivery-status-audit.md)
 for the current completion evidence, remaining work, and target end state.
@@ -3208,14 +3210,15 @@ Implementation record:
   Its maintainer-facing contract is
   `server/src/services/policyAuthoringLiveEntryPathInventory.mjs` with focused
   Jest coverage.
-- It classifies `/policies`, existing Configure, native create, the obsolete
-  advanced-settings hash, and the reconciliation maintenance route. The audit
-  records that native create currently has no normal `/policies` trigger; it
-  does not accept source imports or historical screenshots as live-browser
-  evidence.
-- Representative browser-state verification remains required before Phase 4R
-  can claim this task's rendered-path acceptance. It is pending an approved
-  browser session, not treated as a product success or silently bypassed.
+- It classifies the lifecycle list, selected-library proposal route, one
+  admitted create action, optional typed adjustments, existing/recovery states,
+  the obsolete advanced-settings hash, and the reconciliation maintenance
+  route. No retired modal entry is classified as normal authoring.
+- `client/browser-tests/policy-authoring-live-entry-path.spec.js` verifies the
+  rendered lifecycle-first path with contract-shaped server responses:
+  keyboard selection, focus transfer, a single create action, opaque admission
+  data, success feedback, and retired-hash exclusion. This controlled browser
+  evidence does not replace server authorization or 8R installation evidence.
 
 ### 4R.2 Server Workflow Presentation Adapter
 
@@ -3647,9 +3650,10 @@ Acceptance criteria:
 Implement Phase 4R in this order:
 
 1. **4R.1 Live Entry-Path And Action Inventory**
-   Its source inventory is complete. Run its representative browser-state and
-   action verification after the new normal entry exists, then again as part of
-   final phase closure.
+   Complete. Source and controlled browser verification cover lifecycle entry,
+   keyboard focus, the single admitted create action, and retired-hash
+   exclusion. Production authorization and installation cutover evidence
+   remain separate server and 8R responsibilities.
 2. **4R.2 Server Workflow Presentation Adapter**
    Complete. It creates the single validated read boundary for rendered work.
 3. **4R.3 Action Binding And Admission Feedback**
@@ -3687,11 +3691,9 @@ Implement Phase 4R in this order:
 13. **4R.9 Accessibility, Responsive Behavior, And End-To-End Workflow Tests**
    Proves the delivered flow works in the live product.
 
-Next implementation task: **4R.1 Live Entry-Path And Action Inventory
-rendered-path verification**.
-The 4R.1 source inventory still requires representative live-browser
-verification, and 4R.3 has bound the existing component's controls to admitted
-actions and truthful outcomes. The completed 5R.2a contract supplies the
+Next implementation task: **5R.3 AI Provider Capability And Authority Modes**.
+4R.1 now proves the lifecycle-first route and single admitted create action in
+a controlled rendered browser. The completed 5R.2a contract supplies the
 durable candidate lifecycle and admission-bound proposal; do not add another
 picker, generic suggestion control, advanced setting, or maintenance dialog in
 place of the completed 4R.4 destination proposal card.
@@ -11893,9 +11895,10 @@ Required coverage should follow the re-imagined phase boundaries:
 
 The next sequence is dependency-gated rather than phase-number order:
 
-1. **4R.1 Live Entry-Path And Action Inventory**: source-backed inventory is
-   complete. Representative browser-state and action verification remains a
-   closure gate after the normal entry is implemented.
+1. **4R.1 Live Entry-Path And Action Inventory**: complete for source and
+   controlled rendered-browser verification. The normal lifecycle-first entry
+   and one admitted create action are regression-covered; production and
+   installation evidence remain separate responsibilities.
 2. **5R.1 Server Intent Contract Authority**: complete. The active read model
    now publishes native authority and marks the v1 projection as a read-only
    compatibility bridge.

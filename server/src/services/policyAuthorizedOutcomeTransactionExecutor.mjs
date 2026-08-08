@@ -284,14 +284,10 @@ class PolicyAuthorizedOutcomeTransactionExecutor {
   }
 }
 
-const policyAuthorizedOutcomeTransactionExecutor =
-  new PolicyAuthorizedOutcomeTransactionExecutor();
-
 export {
   PolicyAuthorizedOutcomeTransactionExecutor,
   buildExecutionResult,
   defaultRevalidateAuthorization,
-  policyAuthorizedOutcomeTransactionExecutor,
   summarizeCommand,
   summarizeReceipt,
 };

@@ -3,7 +3,6 @@ import { createLogger } from '../utils/logger.mjs';
 import { mergePresetSignals, normalizeSignalConfig } from '../utils/policySignals.mjs';
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 import {
-    LANGUAGE_LABELS,
     buildLanguageConflictQuestion as _buildLanguageConflictQuestion,
     buildLanguageQuestion as _buildLanguageQuestion,
     buildCandidateQuestion as _buildCandidateQuestion,
@@ -23,7 +22,6 @@ import {
     getPresetsByPolicy as _getPresetsByPolicy
 } from './policyQuestionBuilderQueries.mjs';
 
-export { LANGUAGE_LABELS };
 
 export class PolicyQuestionBuilder {
     constructor(deps = {}) {

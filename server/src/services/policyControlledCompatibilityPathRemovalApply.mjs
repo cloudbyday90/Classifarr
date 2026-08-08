@@ -17,9 +17,6 @@
  */
 
 import {
-  POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS,
-} from './policyCompatibilityDeletionExecutionPlan.mjs';
-import {
   POLICY_COMPATIBILITY_DELETION_EXECUTION_GATE_STATUS_IDS,
   buildPolicyCompatibilityDeletionExecutionGate,
 } from './policyCompatibilityDeletionExecutionGate.mjs';
@@ -834,7 +831,6 @@ function validatePolicyControlledCompatibilityPathRemovalApply(applyResult = {})
 }
 
 export {
-  POLICY_COMPATIBILITY_DELETION_EXECUTION_ACTION_IDS,
   POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_HALT_REASON_IDS,
   POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_RISK_IDS,
   POLICY_CONTROLLED_COMPATIBILITY_PATH_REMOVAL_APPLY_STATUS_IDS,

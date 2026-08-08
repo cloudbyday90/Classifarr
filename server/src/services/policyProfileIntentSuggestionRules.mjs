@@ -2,7 +2,6 @@ import {
   AUTHORITY_SOURCE_IDS,
 } from './policyAuthorityVocabulary.mjs';
 import {
-  POLICY_BROAD_GENRE_LABELS,
   evaluatePolicyBroadGenreIdentityEligibility,
   isPolicyBroadGenreEvidence,
 } from './policyBroadGenreIdentityEligibility.mjs';
@@ -74,7 +73,6 @@ const POLICY_PROFILE_INTENT_SUGGESTION_AUDIT_RISK_IDS = Object.freeze({
   SUGGESTION_PLAN_MISMATCH: 'suggestion_plan_mismatch',
 });
 
-const POLICY_PROFILE_INTENT_BROAD_GENRE_LABELS = POLICY_BROAD_GENRE_LABELS;
 
 const RULES = Object.freeze({
   [POLICY_PROFILE_INTENT_SUGGESTION_RULE_IDS.OBSERVED_IDENTITY]: {
@@ -603,7 +601,6 @@ function buildPolicyProfileIntentSuggestionPlanAudit(
 }
 
 export {
-  POLICY_PROFILE_INTENT_BROAD_GENRE_LABELS,
   POLICY_PROFILE_INTENT_SUGGESTION_ASSUMPTION_IDS,
   POLICY_PROFILE_INTENT_SUGGESTION_AUDIT_RISK_IDS,
   POLICY_PROFILE_INTENT_SUGGESTION_DESCRIPTOR_VERSION,
