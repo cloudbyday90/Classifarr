@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Existing-Installation Conversion Matrix**: Added isolated PostgreSQL
+  scheduler acceptance coverage for no-policy, legacy-only, profile-backed
+  sparse-evidence, already-native, and unsupported legacy-source
+  installations. The real reconciler now has a durable acceptance boundary for
+  automatic native conversion and bounded non-convertible state without
+  provider credentials, media-server access, or an operator dialog.
+
 - **Provider Failure Recovery Acceptance**: Provider failures now carry a
   versioned, privacy-bounded recovery state. Disabled and transient provider
   failures queue a bounded retry; permanent failures preserve deterministic

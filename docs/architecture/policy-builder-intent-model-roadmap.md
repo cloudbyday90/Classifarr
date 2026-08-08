@@ -37,7 +37,7 @@ completed foundations: 0R -> 1R -> 2R -> 3R -> 4R -> 5R -> 6R -> 7R
 completed boundary isolation: 8R.37.1 -> 8R.37.2 -> 8R.37.3 -> 8R.37.4
 active-installation prerequisite -> 8R.36.11 regeneration -> 8R.34/8R.35 current audits
 completed platform acceptance: 10R.1.1 -> 10R.1.2 -> 10R.1.3
-current platform acceptance: 10R.2
+current platform acceptance: 10R.2.2
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
 
@@ -11851,6 +11851,7 @@ Design record:
 
 - [AI Authority Pipeline Acceptance](ai-authority-pipeline-acceptance.md).
 - [Provider Failure And Recovery Acceptance](provider-failure-recovery-acceptance.md).
+- [Existing-Installation Lifecycle Acceptance](existing-installation-lifecycle-acceptance.md).
 
 ### 10R.1 Classification And Authority Pipeline Acceptance
 
@@ -11964,12 +11965,58 @@ across valid combinations of libraries, policies, and configured providers.
 
 Tasks:
 
-- Build an isolated conversion matrix covering no-policy, legacy-only,
-  converted-native, already-native, sparse-evidence, and invalid source cases.
-- Verify idempotent automatic reconciliation, native reads, and bounded
-  non-convertible diagnostics with no maintainer dialog.
-- Separate normal platform readiness from installation-specific compatibility
-  release evidence.
+#### 10R.2.1 Existing-State Conversion Matrix
+
+Intent: prove the scheduler-owned reconciler reaches the correct durable state
+from the representative persisted states an installation can already contain.
+
+- Build an isolated PostgreSQL matrix covering no-policy, legacy-only,
+  profile-backed sparse-evidence, already-native, and invalid legacy-source
+  cases; assert native authority and conversion history for converted outputs.
+- Invoke the real reconciliation scheduler boundary with no operator request,
+  provider credentials, media-server connection, or maintainer-only command.
+- Assert only state-appropriate durable effects: conversion writes native
+  authority; no-policy and already-native cases do not receive conversion
+  writes; invalid input creates only a bounded maintenance state.
+
+Completion:
+
+- Complete. The isolated PostgreSQL scheduler fixture proves no-policy,
+  legacy-only, profile-backed sparse-evidence, already-native, and invalid
+  source states without provider credentials, media-server access, or an
+  operator request. Convertible cases persist one valid native authority and
+  conversion history; invalid input persists only the bounded
+  `requires_maintenance` state. See
+  `docs/architecture/existing-installation-lifecycle-acceptance.md` and
+  `server/src/__tests__/integration/native-intent-installation-lifecycle-acceptance.test.mjs`.
+
+#### 10R.2.2 Reconciliation Idempotence And Native Runtime Read
+
+Intent: prove automatic re-runs do not duplicate authority or migration
+history, and converted authority is consumed through the native read boundary.
+
+Tasks:
+
+- Re-run the scheduler against the 10R.2.1 converted cases and confirm one
+  active native intent, unchanged conversion-event count, and no maintenance
+  dialog or approval request.
+- Read converted policies through the production native-policy read service and
+  verify the authoritative native contract rather than compatibility input is
+  returned.
+
+#### 10R.2.3 Bounded Lifecycle Diagnostics And Release-Evidence Separation
+
+Intent: prove non-convertible installation states remain bounded and observable
+without conflating normal policy operation with compatibility-code retirement.
+
+Tasks:
+
+- Verify invalid and deferred installation outcomes expose only bounded status,
+  reason, and count fields; raw legacy configuration and provider payloads stay
+  excluded.
+- Verify native policy behavior remains available even when the separate
+  installation-specific compatibility-removal artifact is unavailable or
+  blocked.
 
 ### 10R.3 Operational Safety And Observability Acceptance
 
@@ -12119,12 +12166,16 @@ The next sequence is dependency-gated rather than phase-number order:
     review, preserves deterministic policy evidence, prevents recovery-driven
     routing, and omits provider exception text from result state and aggregate
     telemetry.
-13. **10R.2 Existing-Installation Lifecycle Acceptance**: next. Build the
-    isolated no-policy, legacy-only, converted-native, already-native,
-    sparse-evidence, and invalid-source conversion matrix. Prove automatic,
-    idempotent reconciliation and bounded diagnostics without an operator or
-    maintainer dialog.
-14. **8R.36.11 Compatibility-Removal Evidence Regeneration**: revalidated
+13. **10R.2.1 Existing-State Conversion Matrix**: complete. The real scheduler
+    boundary accepts no-policy, legacy-only, already-native, profile-backed
+    sparse-evidence, and invalid-source starting states, and verifies their
+    bounded native or maintenance outcomes.
+14. **10R.2.2 Reconciliation Idempotence And Native Runtime Read**: next.
+    Re-run the scheduler from converted/native persisted state and verify it
+    produces no duplicate authority or migration history, then verify native
+    runtime reads return the authoritative contract without compatibility
+    fallback.
+15. **8R.36.11 Compatibility-Removal Evidence Regeneration**: revalidated
     after the closure-contract change. It produced fresh v3 repository
     validation evidence and bounded blocked diagnostics because the
     active-installation completion artifact remains blocked. The next
