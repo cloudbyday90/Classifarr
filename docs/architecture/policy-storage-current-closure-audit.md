@@ -264,12 +264,16 @@ Implemented:
 - The downstream requirement audit validates that fingerprint and rebuilds the
   pure closure chain before it accepts the current-closure status. Altered,
   refingerprinted-but-inconsistent, or non-replayable artifacts block closure.
-- Current closure audit v5 also retains a bounded SHA-256 digest of the mapped
+- Current closure audit v6 retains a bounded SHA-256 digest of the mapped
   source, documentation, test, roadmap, and changelog content. The requirement
   audit v3 recomputes it from its selected checkout and blocks cross-checkout
   or stale evidence before evaluating completion.
 - The detailed integrity contract and trust boundary are documented in
   [Policy Storage Current Closure Audit Artifact Integrity](policy-storage-current-closure-audit-artifact-integrity.md).
+- The audit also retains a fingerprint-bound component scope map that proves
+  active-installation compatibility-removal components are not counted as
+  repository implementation evidence. See [Policy Closure-Map
+  Reconciliation](policy-closure-map-reconciliation.md).
 - Added an isolated-checkout command test proving that complete mapped evidence
   produces matching audit, checkpoint, and final-readout outputs; altered
   validation evidence writes nothing by default; and missing checkout evidence

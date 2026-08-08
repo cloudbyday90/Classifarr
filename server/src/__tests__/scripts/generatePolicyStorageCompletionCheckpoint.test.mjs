@@ -29,7 +29,7 @@ import {
   POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS,
 } from '../../services/policyStorageCompletionCheckpointArtifact.mjs';
 import {
-  POLICY_STORAGE_COMPLETION_COMPONENT_IDS,
+  POLICY_STORAGE_IMPLEMENTATION_COMPONENT_IDS,
   buildPolicyStorageCompletionCheckpointArtifactInputs,
   buildPolicyStorageCompletionCheckpointRoadmapEvidence,
 } from '../services/policyStorageCompletionCheckpointArtifactFixture.mjs';
@@ -157,8 +157,8 @@ describe('generate-policy-storage-completion-checkpoint', () => {
       validationEvidenceIntegrity: expect.objectContaining({ ok: true }),
     }));
     expect(artifact.checkpointSummary).toEqual(expect.objectContaining({
-      componentExpectedCount: POLICY_STORAGE_COMPLETION_COMPONENT_IDS.length,
-      componentImplementedCount: POLICY_STORAGE_COMPLETION_COMPONENT_IDS.length,
+      componentExpectedCount: POLICY_STORAGE_IMPLEMENTATION_COMPONENT_IDS.length,
+      componentImplementedCount: POLICY_STORAGE_IMPLEMENTATION_COMPONENT_IDS.length,
       validationPassedCount: 4,
     }));
   });
@@ -168,7 +168,7 @@ describe('generate-policy-storage-completion-checkpoint', () => {
     const alteredCompletionAuditArtifact = structuredClone(inputs.completionAuditArtifact);
     alteredCompletionAuditArtifact.auditSummary.manifestRemovedCount = 0;
     const incompleteRoadmapEvidence = buildPolicyStorageCompletionCheckpointRoadmapEvidence({
-      componentSequenceIds: POLICY_STORAGE_COMPLETION_COMPONENT_IDS.slice(1),
+      componentSequenceIds: POLICY_STORAGE_IMPLEMENTATION_COMPONENT_IDS.slice(1),
     });
     const alteredValidationEvidence = structuredClone(inputs.validationEvidence);
     alteredValidationEvidence.validationInput.commandResults[0].exitCode = 1;
@@ -197,7 +197,7 @@ describe('generate-policy-storage-completion-checkpoint', () => {
   test('writes a blocked checkpoint diagnostic only with explicit allowance', async () => {
     const inputs = await buildGeneratorInputs({
       roadmapEvidence: buildPolicyStorageCompletionCheckpointRoadmapEvidence({
-        implementationStatusComponentIds: POLICY_STORAGE_COMPLETION_COMPONENT_IDS.slice(1),
+        implementationStatusComponentIds: POLICY_STORAGE_IMPLEMENTATION_COMPONENT_IDS.slice(1),
       }),
     });
     const result = runGenerator({ fixtureRoot, allowBlocked: true, ...inputs });

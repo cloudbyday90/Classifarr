@@ -1,5 +1,5 @@
 import {
-  POLICY_STORAGE_COMPLETION_COMPONENTS,
+  POLICY_STORAGE_IMPLEMENTATION_COMPONENTS,
 } from '../../services/policyStorageCompletionCheckpoint.mjs';
 import {
   POLICY_STORAGE_IMPLEMENTATION_READINESS_RISK_IDS,
@@ -11,11 +11,11 @@ import {
   buildPolicyStorageClosureValidationEvidenceFixture,
 } from './policyStorageClosureValidationEvidenceFixture.mjs';
 
-const COMPONENT_IDS = POLICY_STORAGE_COMPLETION_COMPONENTS
+const COMPONENT_IDS = POLICY_STORAGE_IMPLEMENTATION_COMPONENTS
   .map(component => component.componentId);
 
 function componentEvidence(overrides = {}) {
-  return POLICY_STORAGE_COMPLETION_COMPONENTS.map(component => ({
+  return POLICY_STORAGE_IMPLEMENTATION_COMPONENTS.map(component => ({
     componentId: component.componentId,
     label: component.label,
     implemented: true,
@@ -29,7 +29,7 @@ function componentEvidence(overrides = {}) {
 
 function readinessInputs(overrides = {}) {
   return {
-    expectedComponents: POLICY_STORAGE_COMPLETION_COMPONENTS,
+    expectedComponents: POLICY_STORAGE_IMPLEMENTATION_COMPONENTS,
     componentEvidence: componentEvidence(),
     roadmapEvidence: {
       componentSequenceIds: COMPONENT_IDS,

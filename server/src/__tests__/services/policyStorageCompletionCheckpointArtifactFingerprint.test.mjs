@@ -81,6 +81,26 @@ describe('policyStorageCompletionCheckpointArtifactFingerprint', () => {
     ]));
   });
 
+  test('rejects a checkpoint artifact whose closure component scope map changes after fingerprinting', async () => {
+    const artifact = await buildCompleteArtifact();
+    artifact.componentScopeMap.instanceCutover.componentIds = [];
+
+    const validation =
+      validatePolicyStorageCompletionCheckpointArtifactFingerprint({
+        artifact,
+        artifactFingerprint: artifact.artifactFingerprint,
+      });
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId:
+          POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_FINGERPRINT_RISK_IDS
+            .FINGERPRINT_MISMATCH,
+      }),
+    ]));
+  });
+
   test('rejects provenance that does not agree with the bounded artifact', async () => {
     const artifact = await buildCompleteArtifact();
     const artifactFingerprint = structuredClone(artifact.artifactFingerprint);

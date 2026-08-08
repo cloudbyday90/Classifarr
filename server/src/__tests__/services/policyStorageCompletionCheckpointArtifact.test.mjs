@@ -16,7 +16,7 @@ import {
   buildCompletionAuditArtifactFixture,
 } from './policyCompatibilityRemovalCompletionAuditArtifactFixture.mjs';
 import {
-  POLICY_STORAGE_COMPLETION_COMPONENT_IDS,
+  POLICY_STORAGE_IMPLEMENTATION_COMPONENT_IDS,
   buildPolicyStorageCompletionCheckpointArtifactInputs,
   buildPolicyStorageCompletionCheckpointRoadmapEvidence,
 } from './policyStorageCompletionCheckpointArtifactFixture.mjs';
@@ -44,8 +44,8 @@ describe('policyStorageCompletionCheckpointArtifact', () => {
     expect(artifact.checkpoint.statusId)
       .toBe(POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE);
     expect(artifact.checkpointSummary).toEqual(expect.objectContaining({
-      componentExpectedCount: POLICY_STORAGE_COMPLETION_COMPONENT_IDS.length,
-      componentImplementedCount: POLICY_STORAGE_COMPLETION_COMPONENT_IDS.length,
+      componentExpectedCount: POLICY_STORAGE_IMPLEMENTATION_COMPONENT_IDS.length,
+      componentImplementedCount: POLICY_STORAGE_IMPLEMENTATION_COMPONENT_IDS.length,
       checkpointRiskCount: 0,
       finalRemovalAuditStatusId: 'complete',
       validationEvidenceIntegrityOk: true,
@@ -136,8 +136,8 @@ describe('policyStorageCompletionCheckpointArtifact', () => {
   test('blocks when checkpoint evidence is incomplete', async () => {
     const artifact = await completeArtifact({
       roadmapEvidence: buildPolicyStorageCompletionCheckpointRoadmapEvidence({
-        componentSequenceIds: POLICY_STORAGE_COMPLETION_COMPONENT_IDS.filter(componentId => (
-          componentId !== 'next_compatibility_removal_batch_authorization'
+        componentSequenceIds: POLICY_STORAGE_IMPLEMENTATION_COMPONENT_IDS.filter(componentId => (
+          componentId !== 'native_backup_restore_wiring'
         )),
       }),
     });

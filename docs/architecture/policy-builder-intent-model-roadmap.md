@@ -9,9 +9,13 @@ Current execution focus:
 - **Completed:** 0R through 7R establish the policy engine, runtime authority,
   and lifecycle-first authoring flow. `/policies` has one server-admitted
   normal path; the retired advanced-settings hash is not an authoring target.
-- **Next:** **8R.37.4 Closure-Map Reconciliation**. Preserve separate
-  repository implementation-readiness and installation-cutover outcomes without
-  changing automatic native policy conversion or normal policy automation.
+- **Completed:** **8R.37.4 Closure-Map Reconciliation**. Repository component
+  evidence and active-installation cutover evidence are now separate,
+  fingerprint-bound maps; automatic native policy conversion and normal policy
+  automation remain unchanged.
+- **Next operational evidence task:** rerun **8R.36.11 Compatibility-Removal
+  Evidence Regeneration** against the changed closure contracts, then regenerate
+  the current closure and requirement audits before making a closure claim.
 - **Continuous guardrail:** 9R naming and product-language gates remain
   required. Do not reintroduce a second policy-builder flow, advanced setting,
   or browser-owned automation decision.
@@ -23,8 +27,8 @@ The execution dependency is intentionally not numeric:
 
 ```text
 completed foundations: 0R -> 1R -> 2R -> 3R -> 4R -> 5R -> 6R -> 7R
-completed boundary isolation: 8R.37.1 -> 8R.37.2 -> 8R.37.3
-next focused work: 8R.37.4
+completed boundary isolation: 8R.37.1 -> 8R.37.2 -> 8R.37.3 -> 8R.37.4
+next operational evidence: 8R.36.11 regeneration -> 8R.34/8R.35 current audits
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
 
@@ -3680,8 +3684,9 @@ Implement Phase 4R in this order:
 13. **4R.9 Accessibility, Responsive Behavior, And End-To-End Workflow Tests**
    Proves the delivered flow works in the live product.
 
-Phase 4R is complete. The next implementation task is **8R.37.4 Closure-Map
-Reconciliation**. Do not add another picker,
+Phase 4R is complete. The release-boundary closure-map reconciliation is also
+complete; the next operational evidence task is **8R.36.11 Compatibility-
+Removal Evidence Regeneration** followed by current closure audits. Do not add another picker,
 generic suggestion control, advanced setting, or maintenance dialog in place
 of the completed lifecycle-first authoring path.
 
@@ -3873,7 +3878,8 @@ Implementation status:
   and helpful-studio narrowing, and **4R.5.3** closes revision reset and
   accessibility evidence. **5R.3 AI Provider Capability And Authority Modes**
   is complete after an August 2026 enforcement audit. The remaining 5R
-  authority components are also complete; Phase 5R now hands off to 8R.37.4.
+  authority components are also complete; Phase 5R now hands off to current
+  closure evidence regeneration after the completed 8R.37.4 reconciliation.
 
 ### 5R.3 AI Provider Capability And Authority Modes
 
@@ -3935,8 +3941,9 @@ Implementation status:
   `docs/architecture/ai-provider-capability-authority.md` for the complete
   design and research record.
 
-Phase 5R is complete. Its next dependency-gated task is **8R.37.4 Closure-Map
-Reconciliation**.
+Phase 5R is complete. Its next dependency-gated operational task is
+**8R.36.11 Compatibility-Removal Evidence Regeneration**, which must use the
+reconciled closure map before current closure status is asserted.
 
 ### 5R.4 Runtime Clarification Normalizer
 
@@ -10528,9 +10535,12 @@ Tasks:
     or workflow contents-write permission is reintroduced. See [Policy CI-Only
     Retirement Command Contract](policy-ci-only-retirement-command-contract.md).
 - **8R.37.4 Closure-Map Reconciliation**
-  - Next: keep native runtime automation independent from repository retirement and
-    retain the `implementationReadiness` versus `instanceCutover` distinction
-    in every closure map and readout.
+  - Complete: introduced an exact, fingerprint-bound component scope map.
+    Repository implementation evidence excludes the nine active-installation
+    compatibility workflow components; final closure remains strict and the
+    output retains `implementationReadiness` and `instanceCutover` in every
+    checkpoint, artifact, readout, and current audit. See [Policy Closure-Map
+    Reconciliation](policy-closure-map-reconciliation.md).
 
 Acceptance criteria:
 
@@ -10541,8 +10551,10 @@ Acceptance criteria:
   normal policy configuration or maintenance feature.
 - Phase 4R is not blocked by repository source retirement.
 
-Implementation status: 8R.37.1 through 8R.37.3 complete; 8R.37.4 is next. See
-[Policy Native Storage Runtime And Release-Maintenance Boundary](policy-native-storage-runtime-release-boundary.md).
+Implementation status: 8R.37.1 through 8R.37.4 complete. The next operational
+step is 8R.36.11 evidence regeneration, then current closure and requirement
+audit regeneration. See [Policy Native Storage Runtime And Release-Maintenance
+Boundary](policy-native-storage-runtime-release-boundary.md).
 
 ## Phase 8R Work Sequence
 
@@ -10701,9 +10713,9 @@ Implement Phase 8R in this order:
 37. **8R.37 Runtime And Release-Maintenance Boundary**
     Separates automatic native policy behavior from repository-retirement
     maintenance. **8R.37.1 Runtime Capability Inventory And Isolation
-    Decision**, **8R.37.2 Runtime Reachability Removal**, and **8R.37.3
-    CI-Only Retirement Command Contract** are complete; continue with
-    **8R.37.4 Closure-Map Reconciliation**. Do not build the former production
+    Decision**, **8R.37.2 Runtime Reachability Removal**, **8R.37.3
+    CI-Only Retirement Command Contract**, and **8R.37.4 Closure-Map
+    Reconciliation** are complete. Do not build the former production
     review-context registry.
 
 Completion state:
@@ -10718,10 +10730,11 @@ Completion state:
 - Closure output must keep these scopes explicit as `implementationReadiness`
   and `instanceCutover`. The first never reads an installation database; the
   second never acts as a claim that source implementation work is incomplete.
-- The current closure audit v5 and final readout now publish those scope
-  summaries at their top-level decision boundary. Their fingerprints bind the
-  scope states, readiness booleans, and selected-checkout content evidence
-  before a downstream requirement audit can rely on them.
+- The current closure audit v6 and final readout v2 now publish both scope
+  summaries and an exact component scope map at their top-level decision
+  boundary. Their fingerprints bind map membership, scope states, readiness
+  booleans, and selected-checkout content evidence before a downstream
+  requirement audit can rely on them.
 - The closure catalog independently requires semantic native-authority
   eligibility and empty-intent recovery. A structural active-header repair
   alone cannot satisfy closure evidence because it does not prove that the
@@ -11906,10 +11919,13 @@ The next sequence is dependency-gated rather than phase-number order:
    normalized model/question/learning and native-change authority, material
    exceptions, revision-safe maintenance, legacy UI cutover, accessibility,
    and browser end-to-end evidence.
-9. **8R.37.4 Closure-Map Reconciliation**: next. Keep repository
-   implementation readiness independent from installation cutover evidence and
-   from native policy automation.
-   Continue the **9R** zero-debt naming gates on every component.
+9. **8R.37.4 Closure-Map Reconciliation**: complete. Repository
+   implementation readiness now has a separate, integrity-bound component map
+   from installation cutover evidence and native policy automation.
+10. **8R.36.11 Compatibility-Removal Evidence Regeneration**: next operational
+    task. Regenerate current evidence and the 8R.34/8R.35 audits after this
+    closure-contract change; do not infer current closure from historical JSON.
+    Continue the **9R** zero-debt naming gates on every component.
 
 The completed 0R through 3R, 6R, and 7R contracts remain guardrails, not
 permission to restore a diagnostic, template-first, or browser-authoritative

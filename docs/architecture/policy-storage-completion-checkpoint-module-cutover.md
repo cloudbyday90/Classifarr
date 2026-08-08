@@ -10,8 +10,8 @@ The durable production names are:
 
 - `policyStorageCompletionCheckpoint.mjs`
 - `policyStorageCompletionCheckpointArtifact.mjs`
-- `policy.storage_completion_checkpoint.v4`
-- `policy.storage_completion_checkpoint_artifact.v5`
+- `policy.storage_completion_checkpoint.v5`
+- `policy.storage_completion_checkpoint_artifact.v6`
 - `npm run policy:storage-completion-checkpoint`
 
 ## Official-Source Research
@@ -94,6 +94,9 @@ Implemented:
 - Bound the checkpoint to the full completion-audit artifact and made the
   checkpoint, exporter, and closure consumers asynchronous so artifact
   fingerprint and replay verification complete before closure status is read.
+- Added a fingerprint-bound component scope map so repository implementation
+  coverage cannot include active-installation compatibility-removal evidence.
+  See [Policy Closure-Map Reconciliation](policy-closure-map-reconciliation.md).
 
 Next:
 

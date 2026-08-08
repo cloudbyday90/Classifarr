@@ -1,9 +1,9 @@
 # Policy Native Storage Runtime And Release-Maintenance Boundary
 
-Status: 8R.37.3 complete. The repository now has a read-only import-reachability
-audit, no server-resident source-mutation subsystem, and no generic
-repository-mutation command. 8R.37.4 will reconcile closure evidence without
-changing normal policy automation.
+Status: 8R.37.4 complete. The repository has a read-only import-reachability
+audit, no server-resident source-mutation subsystem, no generic
+repository-mutation command, and an integrity-bound closure map that separates
+repository implementation evidence from active-installation cutover evidence.
 
 ## Problem
 
@@ -248,9 +248,22 @@ Acceptance criteria:
 - Phase 4R can rely on the native server projection without waiting for source
   retirement.
 
+Implementation outcome: complete.
+
+- Added a pure component-scope map with a fixed active-installation
+  compatibility workflow catalog. Repository implementation readiness derives
+  its expected components by excluding that catalog.
+- Closure evidence, checkpoint artifacts, final readouts, and current audits
+  retain the same map; validators reject missing, relabeled, or count-mismatched
+  entries, and fingerprint projections bind the result.
+- The change adds no normal runtime dependency on closure tooling. Native
+  conversion and policy automation remain installation-agnostic and server
+  owned. See [Policy Closure-Map
+  Reconciliation](policy-closure-map-reconciliation.md).
+
 ## Outcome
 
-The next Phase 8R implementation task is **8R.37.4 Closure-Map Reconciliation**.
-It must preserve the distinction between repository implementation readiness and
-installation cutover evidence. Normal native policy conversion, runtime
-authority, and policy automation remain independent of this work.
+Task 8R.37 is complete. The next operational evidence task is **8R.36.11
+Compatibility-Removal Evidence Regeneration**, followed by regenerated current
+closure and requirement audits. Normal native policy conversion, runtime
+authority, and policy automation remain independent of that evidence refresh.

@@ -110,6 +110,15 @@ describe('policyStorageCurrentClosureAudit', () => {
       scope: 'active_installation',
       ready: true,
     }));
+    expect(audit.componentScopeMap).toEqual(expect.objectContaining({
+      implementationReadiness: expect.objectContaining({ scope: 'repository' }),
+      instanceCutover: expect.objectContaining({
+        scope: 'active_installation',
+        requiredForStorageClosure: true,
+      }),
+    }));
+    expect(audit.executionPolicy.repositoryRetirementAffectsOnlyInstanceCutover)
+      .toBe(true);
     expect(audit.sideEffects.filesRead).toBe(true);
     expect(audit.sideEffects.filesWritten).toBe(false);
     expect(audit.nextPhase).toBeUndefined();

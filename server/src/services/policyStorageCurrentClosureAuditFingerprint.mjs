@@ -11,7 +11,7 @@
 import { createHash } from 'node:crypto';
 
 const POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_FINGERPRINT_VERSION =
-  'policy.storage_current_closure_audit_fingerprint.v2';
+  'policy.storage_current_closure_audit_fingerprint.v3';
 
 const POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_FINGERPRINT_RISK_IDS = Object.freeze({
   MISSING_AUDIT: 'missing_audit',
@@ -70,6 +70,7 @@ function buildPolicyStorageCurrentClosureAuditProjection(audit = {}) {
       currentEvidence: stableValue(asObject(value.currentEvidence)),
       implementationReadiness: stableValue(asObject(value.implementationReadiness)),
       instanceCutover: stableValue(asObject(value.instanceCutover)),
+      componentScopeMap: stableValue(asObject(value.componentScopeMap)),
       checkpointArtifact: stableValue(asObject(value.checkpointArtifact)),
       finalReadout: stableValue(asObject(value.finalReadout)),
       summary: stableValue(asObject(value.summary)),

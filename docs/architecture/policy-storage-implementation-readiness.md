@@ -113,6 +113,11 @@ Implemented:
   proceed.
 - Added focused tests proving a blocked installation audit leaves source
   implementation readiness ready when repository evidence is complete.
+- Reconciled the closure component catalog so active-installation
+  compatibility-removal identifiers cannot enter the repository implementation
+  evaluator, including through a custom artifact map. The final closure
+  requirement remains unchanged. See [Policy Closure-Map
+  Reconciliation](policy-closure-map-reconciliation.md).
 
 Not implemented:
 

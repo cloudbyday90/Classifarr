@@ -18,7 +18,7 @@ import {
   buildCompletionAuditArtifactFixture,
 } from './policyCompatibilityRemovalCompletionAuditArtifactFixture.mjs';
 import {
-  POLICY_STORAGE_COMPLETION_COMPONENT_IDS,
+  POLICY_STORAGE_IMPLEMENTATION_COMPONENT_IDS,
   buildPolicyStorageCompletionCheckpointArtifactInputs,
 } from './policyStorageCompletionCheckpointArtifactFixture.mjs';
 
@@ -86,6 +86,13 @@ describe('policyStorageFinalClosureReadout', () => {
       validationOk: true,
       riskCount: 0,
     }));
+    expect(output.componentScopeMap).toEqual(expect.objectContaining({
+      implementationReadiness: expect.objectContaining({ scope: 'repository' }),
+      instanceCutover: expect.objectContaining({
+        scope: 'active_installation',
+        requiredForStorageClosure: true,
+      }),
+    }));
   });
 
   test('blocks with artifact-validation status when the checkpoint artifact is missing', async () => {
@@ -115,7 +122,7 @@ describe('policyStorageFinalClosureReadout', () => {
     const output = await readout({
       checkpointArtifact: await checkpointArtifact({
         componentEvidenceOverrides: {
-          [POLICY_STORAGE_COMPLETION_COMPONENT_IDS[0]]: {
+          [POLICY_STORAGE_IMPLEMENTATION_COMPONENT_IDS[0]]: {
             implemented: false,
           },
         },
@@ -138,7 +145,7 @@ describe('policyStorageFinalClosureReadout', () => {
       'roadmap',
       {
         roadmapEvidenceOverrides: {
-          componentSequenceIds: POLICY_STORAGE_COMPLETION_COMPONENT_IDS.slice(1),
+          componentSequenceIds: POLICY_STORAGE_IMPLEMENTATION_COMPONENT_IDS.slice(1),
         },
       },
       POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_ROADMAP_EVIDENCE,
@@ -171,7 +178,7 @@ describe('policyStorageFinalClosureReadout', () => {
       'changelog',
       {
         changelogEvidenceOverrides: {
-          componentIds: POLICY_STORAGE_COMPLETION_COMPONENT_IDS.slice(1),
+          componentIds: POLICY_STORAGE_IMPLEMENTATION_COMPONENT_IDS.slice(1),
         },
       },
       POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.BLOCKED_BY_CHANGELOG,

@@ -9,7 +9,7 @@ storage-domain terms.
 This cutover covers:
 
 - `policyStorageFinalClosureReadout.mjs`
-- `policy.storage_final_closure_readout.v1`
+- `policy.storage_final_closure_readout.v2`
 - `generate-policy-storage-final-closure-readout.mjs`
 - `npm run policy:storage-final-closure-readout`
 - `nextStep.stepId = policy_storage_closure_complete`
@@ -112,13 +112,16 @@ Implemented:
 - Renamed the root runner to `policy:storage-final-closure-readout`.
 - Renamed the design document to `policy-storage-final-closure-readout.md`.
 - Replaced the production readout version with
-  `policy.storage_final_closure_readout.v1`.
+  `policy.storage_final_closure_readout.v2`.
 - Replaced production `nextPhase.phaseId` completion output with
   `nextStep.stepId = policy_storage_closure_complete`.
 - Updated policy storage current closure audit imports and messages to consume the
   durable readout names.
 - Updated the roadmap, validation evidence command set, and changelog to point
   at the durable readout surface.
+- Added the verified component scope map to the final readout so operator and
+  downstream consumers can identify the repository and active-installation
+  evidence catalogs that support the two readiness outcomes.
 
 ## Next Step
 

@@ -17,7 +17,7 @@
  */
 
 import {
-  POLICY_STORAGE_COMPLETION_COMPONENTS,
+  POLICY_STORAGE_IMPLEMENTATION_COMPONENTS,
 } from '../../services/policyStorageCompletionCheckpoint.mjs';
 import {
   buildCompletionAuditArtifactFixture,
@@ -26,12 +26,12 @@ import {
   buildPolicyStorageClosureValidationEvidenceFixture,
 } from './policyStorageClosureValidationEvidenceFixture.mjs';
 
-const POLICY_STORAGE_COMPLETION_COMPONENT_IDS = Object.freeze(
-  POLICY_STORAGE_COMPLETION_COMPONENTS.map(component => component.componentId)
+const POLICY_STORAGE_IMPLEMENTATION_COMPONENT_IDS = Object.freeze(
+  POLICY_STORAGE_IMPLEMENTATION_COMPONENTS.map(component => component.componentId)
 );
 
 function buildPolicyStorageCompletionCheckpointComponentEvidence(overrides = {}) {
-  return POLICY_STORAGE_COMPLETION_COMPONENTS.map(component => ({
+  return POLICY_STORAGE_IMPLEMENTATION_COMPONENTS.map(component => ({
     componentId: component.componentId,
     label: component.label,
     implemented: true,
@@ -45,8 +45,8 @@ function buildPolicyStorageCompletionCheckpointComponentEvidence(overrides = {})
 
 function buildPolicyStorageCompletionCheckpointRoadmapEvidence(overrides = {}) {
   return {
-    componentSequenceIds: POLICY_STORAGE_COMPLETION_COMPONENT_IDS,
-    implementationStatusComponentIds: POLICY_STORAGE_COMPLETION_COMPONENT_IDS,
+    componentSequenceIds: POLICY_STORAGE_IMPLEMENTATION_COMPONENT_IDS,
+    implementationStatusComponentIds: POLICY_STORAGE_IMPLEMENTATION_COMPONENT_IDS,
     ...overrides,
   };
 }
@@ -66,7 +66,7 @@ function buildPolicyStorageCompletionCheckpointValidationEvidence(overrides = {}
 function buildPolicyStorageCompletionCheckpointChangelogEvidence(overrides = {}) {
   return {
     updated: true,
-    componentIds: POLICY_STORAGE_COMPLETION_COMPONENT_IDS,
+    componentIds: POLICY_STORAGE_IMPLEMENTATION_COMPONENT_IDS,
     ...overrides,
   };
 }
@@ -95,7 +95,7 @@ async function buildPolicyStorageCompletionCheckpointArtifactInputs({
 }
 
 export {
-  POLICY_STORAGE_COMPLETION_COMPONENT_IDS,
+  POLICY_STORAGE_IMPLEMENTATION_COMPONENT_IDS,
   buildPolicyStorageCompletionCheckpointArtifactInputs,
   buildPolicyStorageCompletionCheckpointChangelogEvidence,
   buildPolicyStorageCompletionCheckpointComponentEvidence,

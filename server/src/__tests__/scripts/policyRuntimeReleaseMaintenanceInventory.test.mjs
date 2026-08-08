@@ -110,7 +110,8 @@ describe('policy runtime release-maintenance inventory', () => {
       complete: true,
       generatedAt: GENERATED_AT,
       nextAction: expect.objectContaining({
-        resultId: 'closure_map_reconciliation_pending',
+        actionId: 'regenerate_current_closure_evidence',
+        resultId: 'current_closure_evidence_regeneration_required',
       }),
       scanScope: 'repository',
       sideEffects: expect.objectContaining({

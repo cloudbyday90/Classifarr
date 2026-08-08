@@ -6,6 +6,9 @@ import {
   validatePolicyStorageClosureEvidenceRun,
 } from '../../services/policyStorageClosureEvidenceRun.mjs';
 import {
+  POLICY_STORAGE_INSTANCE_CUTOVER_COMPONENT_IDS,
+} from '../../services/policyStorageClosureComponentScopeMap.mjs';
+import {
   MANIFEST_PATHS,
   buildCompletionAuditArtifactFixture,
 } from './policyCompatibilityRemovalCompletionAuditArtifactFixture.mjs';
@@ -98,12 +101,24 @@ describe('policyStorageClosureEvidenceRun', () => {
       POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP.length
     );
     expect(evidenceRun.componentEvidence.every(component => (
+      component.evidenceScope === 'repository' &&
       component.implemented &&
       component.designDocPresent &&
       component.contractEvidencePresent &&
       component.testEvidencePresent &&
       component.changelogEntryPresent
     ))).toBe(true);
+    expect(evidenceRun.componentScopeMap).toEqual(expect.objectContaining({
+      implementationReadiness: expect.objectContaining({
+        scope: 'repository',
+        componentIds: expect.not.arrayContaining(POLICY_STORAGE_INSTANCE_CUTOVER_COMPONENT_IDS),
+      }),
+      instanceCutover: expect.objectContaining({
+        scope: 'active_installation',
+        componentIds: POLICY_STORAGE_INSTANCE_CUTOVER_COMPONENT_IDS,
+        requiredForStorageClosure: true,
+      }),
+    }));
     expect(evidenceRun.checkpoint).toEqual(expect.objectContaining({
       statusId: 'complete',
       complete: true,
@@ -223,6 +238,27 @@ describe('policyStorageClosureEvidenceRun', () => {
 
     expect(evidenceRun.statusId).toBe(POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_STATUS_IDS.COMPLETE);
     expect(evidenceRun.artifactInventory.componentsWithMissingArtifactCount).toBe(0);
+  });
+
+  test('ignores active-installation artifact entries when building repository implementation evidence', async () => {
+    const evidenceRun = await completeRun({
+      componentArtifactMap: [
+        ...POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP,
+        {
+          componentId: 'compatibility_removal_completion_audit',
+          label: 'Compatibility Removal Completion Audit',
+          designDocPaths: ['missing-active-installation-design.md'],
+          contractPaths: ['missing-active-installation-contract.mjs'],
+          testPaths: ['missing-active-installation.test.mjs'],
+        },
+      ],
+    });
+
+    expect(evidenceRun.statusId).toBe(POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_STATUS_IDS.COMPLETE);
+    expect(evidenceRun.componentEvidence.map(component => component.componentId))
+      .not.toContain('compatibility_removal_completion_audit');
+    expect(evidenceRun.componentScopeMap.instanceCutover.componentIds)
+      .toContain('compatibility_removal_completion_audit');
   });
 
   test('blocks historical roadmap identifiers instead of normalizing them as component IDs', async () => {
@@ -410,7 +446,7 @@ describe('policyStorageClosureEvidenceRun', () => {
       changelogEvidence: changelogEvidence({
         componentIds:
           SOURCE_COMPONENT_IDS.filter(componentId => (
-            componentId !== 'compatibility_removal_completion_audit'
+            componentId !== 'native_backup_restore_wiring'
           )),
       }),
     });
@@ -427,7 +463,7 @@ describe('policyStorageClosureEvidenceRun', () => {
     expect(changelogBlocked.checkpoint.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId: 'changelog_entry_missing',
-        missingComponentIds: ['compatibility_removal_completion_audit'],
+        missingComponentIds: ['native_backup_restore_wiring'],
       }),
     ]));
   });
@@ -451,6 +487,22 @@ describe('policyStorageClosureEvidenceRun', () => {
       POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_RISK_IDS.SIDE_EFFECT_PERFORMED,
       POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_RISK_IDS.IMPLEMENTATION_READINESS_SCOPE_INVALID,
       POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_RISK_IDS.INSTANCE_CUTOVER_SCOPE_INVALID,
+    ]));
+  });
+
+  test('rejects a scope map that places active-installation evidence in repository readiness', async () => {
+    const evidenceRun = await completeRun();
+    evidenceRun.componentScopeMap.implementationReadiness.componentIds.push(
+      'compatibility_removal_completion_audit'
+    );
+
+    const validation = validatePolicyStorageClosureEvidenceRun(evidenceRun);
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_RISK_IDS.COMPONENT_SCOPE_MAP_INVALID,
+      }),
     ]));
   });
 });

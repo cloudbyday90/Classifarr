@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Closure-Map Reconciliation**: Split policy storage closure components into
+  fingerprint-bound repository implementation and active-installation cutover
+  maps. Installation-only compatibility-removal evidence can no longer block
+  repository readiness, but remains mandatory for final storage closure;
+  native policy conversion and normal automation are unchanged.
+
 - **Runtime Capability Isolation**: Added a read-only CI audit that traces
   normal server and client entry points to catalogued source-mutating modules.
   It fails closed on runtime reachability, retired mutation-path restoration,

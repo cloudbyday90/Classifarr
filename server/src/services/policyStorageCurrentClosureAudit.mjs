@@ -28,7 +28,7 @@ import {
 } from './policyStorageClosureScopes.mjs';
 
 const POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_VERSION =
-  'policy.storage_current_closure_audit.v5';
+  'policy.storage_current_closure_audit.v6';
 
 const POLICY_STORAGE_CURRENT_CLOSURE_AUDIT_STATUS_IDS = Object.freeze({
   COMPLETE: 'complete',
@@ -447,6 +447,8 @@ async function buildPolicyStorageCurrentClosureAuditFromEvidence({
     },
     implementationReadiness,
     instanceCutover,
+    componentScopeMap:
+      normalizedCurrentEvidence.evidenceRun?.componentScopeMap || {},
     closureInput: buildClosureInput({
       currentEvidence: normalizedCurrentEvidence,
       completionAuditArtifact,
@@ -469,6 +471,12 @@ async function buildPolicyStorageCurrentClosureAuditFromEvidence({
         validationEvidence.artifactFingerprint?.fingerprint || null,
       implementationReadinessReady: implementationReadiness.ready === true,
       instanceCutoverReady: instanceCutover.ready === true,
+      implementationComponentCount:
+        normalizedCurrentEvidence.evidenceRun?.componentScopeMap
+          ?.implementationReadiness?.componentCount ?? 0,
+      instanceCutoverComponentCount:
+        normalizedCurrentEvidence.evidenceRun?.componentScopeMap
+          ?.instanceCutover?.componentCount ?? 0,
     },
     riskCount: risks.length,
     risks,
@@ -486,6 +494,7 @@ async function buildPolicyStorageCurrentClosureAuditFromEvidence({
       retainClosureInputs: true,
       emitArtifactFingerprint: true,
       separateImplementationReadinessAndInstanceCutover: true,
+      repositoryRetirementAffectsOnlyInstanceCutover: true,
       allowFileWrites: false,
       allowStorageMutation: false,
       allowGitCommandsInsideAudit: false,

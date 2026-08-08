@@ -76,6 +76,7 @@ function buildPolicyStorageCompletionCheckpointArtifactProjection(artifact = {})
       statusId: value.statusId || null,
       complete: value.complete === true,
       componentEvidence: stableValue(asArray(value.componentEvidence)),
+      componentScopeMap: stableValue(asObject(value.componentScopeMap)),
       roadmapEvidence: stableValue(asObject(value.roadmapEvidence)),
       completionAuditArtifact: stableValue(asObject(value.completionAuditArtifact)),
       validationEvidence: stableValue(asObject(value.validationEvidence)),

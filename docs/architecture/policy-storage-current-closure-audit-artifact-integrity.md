@@ -112,7 +112,7 @@ Cons:
 
 ## Final Recommendation Stack
 
-1. Emit `policy.storage_current_closure_audit.v5` only with retained normalized
+1. Emit `policy.storage_current_closure_audit.v6` only with retained normalized
    current-state evidence, completion-audit artifact, validation evidence, and
    side-effect input.
 2. Bind the complete artifact projection using a versioned SHA-256 fingerprint.
@@ -141,7 +141,7 @@ Implemented:
 
 - `policyStorageCurrentClosureAuditFingerprint.mjs` produces and validates the
   SHA-256 projection and bounded provenance.
-- `policyStorageCurrentClosureAuditIntegrity.mjs` verifies a v5 artifact,
+- `policyStorageCurrentClosureAuditIntegrity.mjs` verifies a v6 artifact,
   reconstructs the pure closure chain from retained inputs, and rejects replay
   mismatches.
 - `policyStorageCurrentClosureAudit.mjs` now retains its closure inputs,
@@ -155,6 +155,8 @@ Implemented:
 - Focused tests cover valid replay, stale fingerprints, refingerprinted derived
   drift, missing replay input, selected-checkout content drift, and
   requirement-audit rejection.
+- The fingerprint projection also binds the reconciled repository and
+  active-installation component scope map.
 
 ## Security Boundary
 

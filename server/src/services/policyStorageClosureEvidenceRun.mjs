@@ -1,14 +1,19 @@
 import {
   POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS,
-  POLICY_STORAGE_COMPLETION_COMPONENTS,
+  POLICY_STORAGE_IMPLEMENTATION_COMPONENTS,
   buildPolicyStorageCompletionCheckpoint,
 } from './policyStorageCompletionCheckpoint.mjs';
 import {
   buildPolicyStorageClosureScopes,
 } from './policyStorageClosureScopes.mjs';
+import {
+  buildPolicyStorageClosureComponentScopeMap,
+  getPolicyStorageClosureComponentEvidenceScope,
+  POLICY_STORAGE_INSTANCE_CUTOVER_COMPONENT_IDS,
+} from './policyStorageClosureComponentScopeMap.mjs';
 
 const POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_VERSION =
-  'policy.storage_closure_evidence_run.v2';
+  'policy.storage_closure_evidence_run.v3';
 
 const POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_STATUS_IDS = Object.freeze({
   COMPLETE: 'complete',
@@ -24,6 +29,7 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_RISK_IDS = Object.freeze({
   RISK_COUNT_MISMATCH: 'risk_count_mismatch',
   IMPLEMENTATION_READINESS_SCOPE_INVALID: 'implementation_readiness_scope_invalid',
   INSTANCE_CUTOVER_SCOPE_INVALID: 'instance_cutover_scope_invalid',
+  COMPONENT_SCOPE_MAP_INVALID: 'component_scope_map_invalid',
   UNKNOWN_STATUS: 'unknown_status',
 });
 
@@ -32,7 +38,7 @@ const POLICY_STORAGE_CLOSURE_COMPLETION_CHECKPOINT_COMPONENT = Object.freeze({
   label: 'Policy Storage Completion Checkpoint',
 });
 
-const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
+const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACTS = Object.freeze([
   {
     componentId: 'native_schema_contract',
     label: 'Native Schema Contract',
@@ -519,9 +525,11 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
       'docs/architecture/policy-storage-completion-checkpoint-artifact-integrity-boundary.md',
       'docs/architecture/policy-storage-final-closure-readout.md',
       'docs/architecture/policy-storage-implementation-readiness.md',
+      'docs/architecture/policy-closure-map-reconciliation.md',
     ],
     contractPaths: [
       'server/src/services/policyStorageCompletionCheckpoint.mjs',
+      'server/src/services/policyStorageClosureComponentScopeMap.mjs',
       'server/src/services/policyStorageImplementationReadiness.mjs',
       'server/src/services/policyStorageCompletionCheckpointArtifact.mjs',
       'server/src/services/policyStorageCompletionCheckpointArtifactFingerprint.mjs',
@@ -532,6 +540,7 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     ],
     testPaths: [
       'server/src/__tests__/services/policyStorageCompletionCheckpoint.test.mjs',
+      'server/src/__tests__/services/policyStorageClosureComponentScopeMap.test.mjs',
       'server/src/__tests__/services/policyStorageImplementationReadiness.test.mjs',
       'server/src/__tests__/services/policyStorageCompletionCheckpointArtifact.test.mjs',
       'server/src/__tests__/services/policyStorageCompletionCheckpointArtifactFingerprint.test.mjs',
@@ -542,6 +551,17 @@ const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze([
     ],
   },
 ]);
+
+const POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP = Object.freeze(
+  POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACTS
+    .map(component => Object.freeze({
+      ...component,
+      evidenceScope: getPolicyStorageClosureComponentEvidenceScope(component.componentId),
+    }))
+    .filter(component => (
+      component.evidenceScope === 'repository'
+    ))
+);
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -603,6 +623,8 @@ function buildComponentEvidence({
     return {
       componentId,
       label: component.label,
+      evidenceScope:
+        component.evidenceScope || getPolicyStorageClosureComponentEvidenceScope(componentId),
       implemented:
         allPathsPresent(component.contractPaths, inventoryPathSet) &&
         allPathsPresent(component.designDocPaths, inventoryPathSet) &&
@@ -683,6 +705,46 @@ function determineStatusId({ risks = [], checkpoint = {} } = {}) {
   return POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_STATUS_IDS.COMPLETE;
 }
 
+function normalizedUniqueComponentIds(components = []) {
+  return [...new Set(asArray(components)
+    .map(component => normalizeComponentId(component?.componentId || component))
+    .filter(Boolean))]
+    .sort();
+}
+
+function hasExpectedComponentIds(actual = [], expected = []) {
+  const normalizedActual = normalizedUniqueComponentIds(actual);
+  const normalizedExpected = normalizedUniqueComponentIds(expected);
+
+  return normalizedActual.length === normalizedExpected.length &&
+    normalizedActual.every((componentId, index) => (
+      componentId === normalizedExpected[index]
+    ));
+}
+
+function hasValidComponentScopeMap(evidenceRun = {}) {
+  const componentScopeMap = evidenceRun.componentScopeMap || {};
+  const implementationScope = componentScopeMap.implementationReadiness || {};
+  const instanceScope = componentScopeMap.instanceCutover || {};
+  const expectedImplementationComponentIds = asArray(evidenceRun.componentEvidence)
+    .filter(component => component.evidenceScope === 'repository')
+    .map(component => component.componentId);
+
+  return implementationScope.scope === 'repository' &&
+    hasExpectedComponentIds(
+      implementationScope.componentIds,
+      expectedImplementationComponentIds
+    ) &&
+    implementationScope.componentCount === expectedImplementationComponentIds.length &&
+    instanceScope.scope === 'active_installation' &&
+    hasExpectedComponentIds(
+      instanceScope.componentIds,
+      POLICY_STORAGE_INSTANCE_CUTOVER_COMPONENT_IDS
+    ) &&
+    instanceScope.componentCount === POLICY_STORAGE_INSTANCE_CUTOVER_COMPONENT_IDS.length &&
+    instanceScope.requiredForStorageClosure === true;
+}
+
 async function buildPolicyStorageClosureEvidenceRun({
   artifactInventory = {},
   componentArtifactMap = POLICY_STORAGE_CLOSURE_EVIDENCE_ARTIFACT_MAP,
@@ -694,8 +756,12 @@ async function buildPolicyStorageClosureEvidenceRun({
 } = {}) {
   const normalizedRoadmapEvidence = normalizeRoadmapEvidence(roadmapEvidence);
   const normalizedChangelogEvidence = normalizeChangelogEvidence(changelogEvidence);
+  const repositoryComponentArtifactMap = asArray(componentArtifactMap)
+    .filter(component => (
+      getPolicyStorageClosureComponentEvidenceScope(component?.componentId) === 'repository'
+    ));
   const componentEvidence = buildComponentEvidence({
-    componentArtifactMap,
+    componentArtifactMap: repositoryComponentArtifactMap,
     artifactInventory,
     changelogComponentIds: normalizedChangelogEvidence.componentIds,
   });
@@ -704,7 +770,7 @@ async function buildPolicyStorageClosureEvidenceRun({
     componentEvidence,
   });
   const expectedComponents = [
-    ...POLICY_STORAGE_COMPLETION_COMPONENTS,
+    ...POLICY_STORAGE_IMPLEMENTATION_COMPONENTS,
     POLICY_STORAGE_CLOSURE_COMPLETION_CHECKPOINT_COMPONENT,
   ];
   const checkpoint = await buildPolicyStorageCompletionCheckpoint({
@@ -745,6 +811,9 @@ async function buildPolicyStorageClosureEvidenceRun({
     implementationReadiness: checkpoint.implementationReadiness,
     finalRemovalAudit: checkpoint.finalRemovalAudit,
   });
+  const componentScopeMap = buildPolicyStorageClosureComponentScopeMap({
+    implementationComponents: expectedComponents,
+  });
 
   const evidenceRun = {
     version: POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_VERSION,
@@ -762,6 +831,7 @@ async function buildPolicyStorageClosureEvidenceRun({
         artifactInventoryEvaluation.componentsWithMissingArtifacts,
     },
     componentEvidence,
+    componentScopeMap,
     implementationReadiness,
     instanceCutover,
     checkpoint: {
@@ -825,6 +895,13 @@ function validatePolicyStorageClosureEvidenceRun(evidenceRun = {}) {
     issues.push(buildRisk(
       POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_RISK_IDS.INSTANCE_CUTOVER_SCOPE_INVALID,
       'Policy storage closure instance cutover must be active-installation scoped and explicitly required for final closure.'
+    ));
+  }
+
+  if (!hasValidComponentScopeMap(evidenceRun)) {
+    issues.push(buildRisk(
+      POLICY_STORAGE_CLOSURE_EVIDENCE_RUN_RISK_IDS.COMPONENT_SCOPE_MAP_INVALID,
+      'Policy storage closure component scope map must distinguish repository implementation from active-installation cutover evidence.'
     ));
   }
 

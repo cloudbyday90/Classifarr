@@ -1,10 +1,13 @@
 import {
   POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS,
   POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS,
-  POLICY_STORAGE_COMPLETION_COMPONENTS,
+  POLICY_STORAGE_IMPLEMENTATION_COMPONENTS,
   buildPolicyStorageCompletionCheckpoint,
   validatePolicyStorageCompletionCheckpoint,
 } from '../../services/policyStorageCompletionCheckpoint.mjs';
+import {
+  POLICY_STORAGE_INSTANCE_CUTOVER_COMPONENT_IDS,
+} from '../../services/policyStorageClosureComponentScopeMap.mjs';
 import {
   MANIFEST_PATHS,
   buildCompletionAuditArtifactFixture,
@@ -14,10 +17,10 @@ import {
 } from './policyStorageClosureValidationEvidenceFixture.mjs';
 
 const COMPONENT_IDS =
-  POLICY_STORAGE_COMPLETION_COMPONENTS.map(component => component.componentId);
+  POLICY_STORAGE_IMPLEMENTATION_COMPONENTS.map(component => component.componentId);
 
 function componentEvidence(overrides = {}) {
-  return POLICY_STORAGE_COMPLETION_COMPONENTS.map(component => ({
+  return POLICY_STORAGE_IMPLEMENTATION_COMPONENTS.map(component => ({
     componentId: component.componentId,
     label: component.label,
     implemented: true,
@@ -92,15 +95,15 @@ describe('policyStorageCompletionCheckpoint', () => {
     expect(checkpoint.complete).toBe(true);
     expect(checkpoint.validation.ok).toBe(true);
     expect(checkpoint.componentCoverage).toEqual(expect.objectContaining({
-      expectedCount: POLICY_STORAGE_COMPLETION_COMPONENTS.length,
-      implementedCount: POLICY_STORAGE_COMPLETION_COMPONENTS.length,
-      documentedCount: POLICY_STORAGE_COMPLETION_COMPONENTS.length,
-      contractEvidenceCount: POLICY_STORAGE_COMPLETION_COMPONENTS.length,
-      testEvidenceCount: POLICY_STORAGE_COMPLETION_COMPONENTS.length,
+      expectedCount: POLICY_STORAGE_IMPLEMENTATION_COMPONENTS.length,
+      implementedCount: POLICY_STORAGE_IMPLEMENTATION_COMPONENTS.length,
+      documentedCount: POLICY_STORAGE_IMPLEMENTATION_COMPONENTS.length,
+      contractEvidenceCount: POLICY_STORAGE_IMPLEMENTATION_COMPONENTS.length,
+      testEvidenceCount: POLICY_STORAGE_IMPLEMENTATION_COMPONENTS.length,
     }));
     expect(checkpoint.roadmapEvidence).toEqual(expect.objectContaining({
-      sequenceCount: POLICY_STORAGE_COMPLETION_COMPONENTS.length,
-      implementationStatusCount: POLICY_STORAGE_COMPLETION_COMPONENTS.length,
+      sequenceCount: POLICY_STORAGE_IMPLEMENTATION_COMPONENTS.length,
+      implementationStatusCount: POLICY_STORAGE_IMPLEMENTATION_COMPONENTS.length,
       missingSequenceComponentIds: [],
       missingImplementationStatusComponentIds: [],
     }));
@@ -123,12 +126,45 @@ describe('policyStorageCompletionCheckpoint', () => {
       stepId: 'policy_storage_final_closure_readout',
       label: 'Policy Storage Final Closure Readout',
     }));
+    expect(checkpoint.componentScopeMap).toEqual(expect.objectContaining({
+      implementationReadiness: expect.objectContaining({
+        scope: 'repository',
+        componentIds: COMPONENT_IDS,
+      }),
+      instanceCutover: expect.objectContaining({
+        scope: 'active_installation',
+        componentIds: POLICY_STORAGE_INSTANCE_CUTOVER_COMPONENT_IDS,
+        requiredForStorageClosure: true,
+      }),
+    }));
+  });
+
+  test('does not let active-installation retirement evidence enter implementation readiness', async () => {
+    const checkpoint = await completeCheckpoint({
+      expectedComponents: [
+        ...POLICY_STORAGE_IMPLEMENTATION_COMPONENTS,
+        {
+          componentId: 'compatibility_removal_completion_audit',
+          label: 'Compatibility Removal Completion Audit',
+        },
+      ],
+    });
+
+    expect(checkpoint.implementationReadiness).toEqual(expect.objectContaining({
+      statusId: 'ready',
+      ready: true,
+      riskCount: 0,
+    }));
+    expect(checkpoint.componentScopeMap.implementationReadiness.componentIds)
+      .not.toContain('compatibility_removal_completion_audit');
+    expect(checkpoint.componentScopeMap.instanceCutover.componentIds)
+      .toContain('compatibility_removal_completion_audit');
   });
 
   test('blocks when component implementation evidence is missing or incomplete', async () => {
     const missing = await completeCheckpoint({
       componentEvidence: componentEvidence()
-        .filter(component => component.componentId !== 'compatibility_removal_completion_audit'),
+        .filter(component => component.componentId !== 'native_backup_restore_wiring'),
     });
     const incomplete = await completeCheckpoint({
       componentEvidence: componentEvidence({
@@ -161,11 +197,11 @@ describe('policyStorageCompletionCheckpoint', () => {
       roadmapEvidence: roadmapEvidence({
         componentSequenceIds:
           COMPONENT_IDS.filter(componentId => (
-            componentId !== 'next_compatibility_removal_batch_authorization'
+            componentId !== 'native_backup_restore_wiring'
           )),
         implementationStatusComponentIds:
           COMPONENT_IDS.filter(componentId => (
-            componentId !== 'post_removal_runtime_verification'
+            componentId !== 'post_upgrade_apply_gate'
           )),
       }),
     });
@@ -175,13 +211,13 @@ describe('policyStorageCompletionCheckpoint', () => {
     expect(checkpoint.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId: POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.ROADMAP_SEQUENCE_INCOMPLETE,
-        missingComponentIds: ['next_compatibility_removal_batch_authorization'],
+        missingComponentIds: ['native_backup_restore_wiring'],
       }),
       expect.objectContaining({
         riskId:
           POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS
             .ROADMAP_IMPLEMENTATION_STATUS_INCOMPLETE,
-        missingComponentIds: ['post_removal_runtime_verification'],
+        missingComponentIds: ['post_upgrade_apply_gate'],
       }),
     ]));
   });
@@ -291,7 +327,7 @@ describe('policyStorageCompletionCheckpoint', () => {
       changelogEvidence: changelogEvidence({
         updated: true,
         componentIds: COMPONENT_IDS.filter(componentId => (
-          componentId !== 'controlled_compatibility_path_removal_apply'
+          componentId !== 'native_backup_restore_wiring'
         )),
       }),
     });
@@ -301,7 +337,7 @@ describe('policyStorageCompletionCheckpoint', () => {
     expect(checkpoint.risks).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId: POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.CHANGELOG_ENTRY_MISSING,
-        missingComponentIds: ['controlled_compatibility_path_removal_apply'],
+        missingComponentIds: ['native_backup_restore_wiring'],
       }),
     ]));
   });
@@ -323,6 +359,20 @@ describe('policyStorageCompletionCheckpoint', () => {
     expect(validation.issues.map(issue => issue.riskId)).toEqual(expect.arrayContaining([
       POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.RISK_COUNT_MISMATCH,
       POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.SIDE_EFFECT_PERFORMED,
+    ]));
+  });
+
+  test('rejects a scope map that drops an active-installation cutover component', async () => {
+    const checkpoint = await completeCheckpoint();
+    checkpoint.componentScopeMap.instanceCutover.componentIds = [];
+
+    const validation = validatePolicyStorageCompletionCheckpoint(checkpoint);
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.COMPONENT_SCOPE_MAP_INVALID,
+      }),
     ]));
   });
 });

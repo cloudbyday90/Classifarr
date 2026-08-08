@@ -8,9 +8,17 @@ import {
   POLICY_STORAGE_IMPLEMENTATION_READINESS_RISK_IDS,
   buildPolicyStorageImplementationReadiness,
 } from './policyStorageImplementationReadiness.mjs';
+import {
+  buildPolicyStorageClosureComponentScopeMap,
+  getPolicyStorageClosureComponentEvidenceScope,
+  POLICY_STORAGE_INSTANCE_CUTOVER_COMPONENT_IDS,
+} from './policyStorageClosureComponentScopeMap.mjs';
+import {
+  POLICY_STORAGE_CLOSURE_SCOPE_IDS,
+} from './policyStorageClosureScopes.mjs';
 
 const POLICY_STORAGE_COMPLETION_CHECKPOINT_VERSION =
-  'policy.storage_completion_checkpoint.v4';
+  'policy.storage_completion_checkpoint.v5';
 
 const POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS = Object.freeze({
   COMPLETE: 'complete',
@@ -40,10 +48,11 @@ const POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS = Object.freeze({
   CHANGELOG_ENTRY_MISSING: 'changelog_entry_missing',
   SIDE_EFFECT_PERFORMED: 'side_effect_performed',
   RISK_COUNT_MISMATCH: 'risk_count_mismatch',
+  COMPONENT_SCOPE_MAP_INVALID: 'component_scope_map_invalid',
   UNKNOWN_STATUS: 'unknown_status',
 });
 
-const POLICY_STORAGE_COMPLETION_COMPONENTS = Object.freeze([
+const POLICY_STORAGE_CLOSURE_COMPONENTS = Object.freeze([
   {
     componentId: 'native_schema_contract',
     label: 'Native Schema Contract',
@@ -166,8 +175,19 @@ const POLICY_STORAGE_COMPLETION_COMPONENTS = Object.freeze([
   },
 ]);
 
+const POLICY_STORAGE_IMPLEMENTATION_COMPONENTS = Object.freeze(
+  POLICY_STORAGE_CLOSURE_COMPONENTS.filter(component => (
+    getPolicyStorageClosureComponentEvidenceScope(component.componentId) ===
+      POLICY_STORAGE_CLOSURE_SCOPE_IDS.REPOSITORY
+  ))
+);
+
 function asArray(value) {
   return Array.isArray(value) ? value : [];
+}
+
+function normalizeComponentId(value = '') {
+  return String(value || '').trim().toLowerCase();
 }
 
 function buildRisk(riskId, message, metadata = {}) {
@@ -282,8 +302,48 @@ function determineStatusId(risks = []) {
   return POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS.COMPLETE;
 }
 
+function normalizedUniqueComponentIds(components = []) {
+  return [...new Set(asArray(components)
+    .map(component => normalizeComponentId(component?.componentId || component))
+    .filter(Boolean))]
+    .sort();
+}
+
+function hasExpectedComponentIds(actual = [], expected = []) {
+  const normalizedActual = normalizedUniqueComponentIds(actual);
+  const normalizedExpected = normalizedUniqueComponentIds(expected);
+
+  return normalizedActual.length === normalizedExpected.length &&
+    normalizedActual.every((componentId, index) => (
+      componentId === normalizedExpected[index]
+    ));
+}
+
+function hasValidComponentScopeMap(checkpoint = {}) {
+  const componentScopeMap = checkpoint.componentScopeMap || {};
+  const expectedImplementationComponents =
+    checkpoint.componentCoverage?.components || [];
+  const implementationScope = componentScopeMap.implementationReadiness || {};
+  const instanceScope = componentScopeMap.instanceCutover || {};
+
+  return implementationScope.scope === POLICY_STORAGE_CLOSURE_SCOPE_IDS.REPOSITORY &&
+    hasExpectedComponentIds(
+      implementationScope.componentIds,
+      expectedImplementationComponents
+    ) &&
+    implementationScope.componentCount ===
+      normalizedUniqueComponentIds(expectedImplementationComponents).length &&
+    instanceScope.scope === POLICY_STORAGE_CLOSURE_SCOPE_IDS.ACTIVE_INSTALLATION &&
+    hasExpectedComponentIds(
+      instanceScope.componentIds,
+      POLICY_STORAGE_INSTANCE_CUTOVER_COMPONENT_IDS
+    ) &&
+    instanceScope.componentCount === POLICY_STORAGE_INSTANCE_CUTOVER_COMPONENT_IDS.length &&
+    instanceScope.requiredForStorageClosure === true;
+}
+
 async function buildPolicyStorageCompletionCheckpoint({
-  expectedComponents = POLICY_STORAGE_COMPLETION_COMPONENTS,
+  expectedComponents = POLICY_STORAGE_IMPLEMENTATION_COMPONENTS,
   componentEvidence = [],
   roadmapEvidence = {},
   completionAuditArtifact = {},
@@ -291,8 +351,13 @@ async function buildPolicyStorageCompletionCheckpoint({
   changelogEvidence = {},
   sideEffects = {},
 } = {}) {
+  const implementationComponents = asArray(expectedComponents)
+    .filter(component => (
+      getPolicyStorageClosureComponentEvidenceScope(component?.componentId) ===
+        POLICY_STORAGE_CLOSURE_SCOPE_IDS.REPOSITORY
+    ));
   const implementationReadiness = buildPolicyStorageImplementationReadiness({
-    expectedComponents,
+    expectedComponents: implementationComponents,
     componentEvidence,
     roadmapEvidence,
     validationEvidence,
@@ -300,6 +365,9 @@ async function buildPolicyStorageCompletionCheckpoint({
     sideEffects,
   });
   const finalRemoval = await evaluateFinalRemovalAudit(completionAuditArtifact);
+  const componentScopeMap = buildPolicyStorageClosureComponentScopeMap({
+    implementationComponents,
+  });
   const risks = [
     ...implementationReadiness.risks,
     ...finalRemoval.risks,
@@ -315,6 +383,7 @@ async function buildPolicyStorageCompletionCheckpoint({
       risks: implementationReadiness.risks,
       validationOk: implementationReadiness.validation?.ok === true,
     },
+    componentScopeMap,
     componentCoverage: implementationReadiness.componentCoverage,
     roadmapEvidence: implementationReadiness.roadmapEvidence,
     finalRemovalAudit: finalRemoval,
@@ -361,6 +430,13 @@ function validatePolicyStorageCompletionCheckpoint(checkpoint = {}) {
     ));
   }
 
+  if (!hasValidComponentScopeMap(checkpoint)) {
+    issues.push(buildRisk(
+      POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS.COMPONENT_SCOPE_MAP_INVALID,
+      'Policy storage completion checkpoint must bind repository implementation components separately from active-installation cutover components.'
+    ));
+  }
+
   Object.entries(checkpoint.sideEffects || {}).forEach(([key, value]) => {
     if (value === true) {
       issues.push(buildRisk(
@@ -381,7 +457,7 @@ export {
   POLICY_STORAGE_COMPLETION_CHECKPOINT_RISK_IDS,
   POLICY_STORAGE_COMPLETION_CHECKPOINT_STATUS_IDS,
   POLICY_STORAGE_COMPLETION_CHECKPOINT_VERSION,
-  POLICY_STORAGE_COMPLETION_COMPONENTS,
+  POLICY_STORAGE_IMPLEMENTATION_COMPONENTS,
   buildPolicyStorageCompletionCheckpoint,
   validatePolicyStorageCompletionCheckpoint,
 };

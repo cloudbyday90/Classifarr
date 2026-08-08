@@ -11,7 +11,7 @@ import {
 } from './policyStorageCompletionCheckpointArtifactFingerprint.mjs';
 
 const POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_VERSION =
-  'policy.storage_completion_checkpoint_artifact.v5';
+  'policy.storage_completion_checkpoint_artifact.v6';
 
 const POLICY_STORAGE_COMPLETION_CHECKPOINT_ARTIFACT_STATUS_IDS = Object.freeze({
   COMPLETE: 'complete',
@@ -249,12 +249,17 @@ async function buildPolicyStorageCompletionCheckpointArtifact({
     validationEvidence: asObject(validationEvidence),
     changelogEvidence: asObject(changelogEvidence),
     checkpoint,
+    componentScopeMap: checkpoint.componentScopeMap || {},
     checkpointSummary: {
       checkpointStatusId: checkpoint.statusId,
       checkpointComplete: checkpoint.complete === true,
       componentExpectedCount: checkpoint.componentCoverage?.expectedCount ?? 0,
       componentImplementedCount:
         checkpoint.componentCoverage?.implementedCount ?? 0,
+      implementationComponentCount:
+        checkpoint.componentScopeMap?.implementationReadiness?.componentCount ?? 0,
+      instanceCutoverComponentCount:
+        checkpoint.componentScopeMap?.instanceCutover?.componentCount ?? 0,
       checkpointRiskCount: checkpoint.riskCount ?? 0,
       finalRemovalAuditStatusId:
         checkpoint.finalRemovalAudit?.statusId || null,

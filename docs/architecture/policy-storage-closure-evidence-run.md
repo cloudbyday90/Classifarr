@@ -155,8 +155,8 @@ Cons:
    file reads and current-state evidence collection.
 3. Use `run-policy-storage-closure-evidence.mjs` as the CLI wrapper.
 4. Expose `npm run policy:storage-closure-evidence`.
-5. Emit `policy.storage_closure_evidence_run.v2` and
-   `policy.storage_closure_current_evidence_collector.v2` so consumers can
+5. Emit `policy.storage_closure_evidence_run.v3` and
+   `policy.storage_closure_current_evidence_collector.v3` so consumers can
    distinguish repository implementation readiness from active-installation
    cutover readiness.
 6. Emit `componentId` and semantic `nextStep` output rather than delivery
@@ -193,6 +193,11 @@ Implemented:
 - Added an active-installation `instanceCutover` projection for the existing
   compatibility-removal completion-audit state. It remains required for final
   storage closure and cannot authorize a deletion by itself.
+- Added an exact component scope map. The repository artifact catalog filters
+  installation-only compatibility workflow entries even when callers provide a
+  custom map; checkpoint and runner validators reject missing, relabeled, or
+  count-mismatched scope entries. See [Policy Closure-Map
+  Reconciliation](policy-closure-map-reconciliation.md).
 - The public command now resolves relative completion-audit and validation
   artifacts from `--cwd`, so a caller directory cannot mix another checkout's
   evidence with the selected repository inventory.

@@ -108,6 +108,6 @@ Decision: selected.
 
 ## Next Step
 
-Proceed with **8R.37.4 Closure-Map Reconciliation**. It must ensure closure
+8R.37.4 Closure-Map Reconciliation is complete. It ensures closure
 evidence reports repository implementation readiness separately from any
 installation's native-intent cutover state.

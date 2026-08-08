@@ -29,7 +29,7 @@ import {
   POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS,
 } from '../../services/policyStorageFinalClosureReadout.mjs';
 import {
-  POLICY_STORAGE_COMPLETION_COMPONENT_IDS,
+  POLICY_STORAGE_IMPLEMENTATION_COMPONENT_IDS,
   buildPolicyStorageCompletionCheckpointArtifactInputs,
 } from '../services/policyStorageCompletionCheckpointArtifactFixture.mjs';
 
@@ -150,7 +150,7 @@ describe('generate-policy-storage-final-closure-readout', () => {
   test('writes a replayable blocked diagnostic only with explicit allowance', async () => {
     const checkpointArtifact = await buildCheckpointArtifact({
       roadmapEvidenceOverrides: {
-        componentSequenceIds: POLICY_STORAGE_COMPLETION_COMPONENT_IDS.slice(1),
+        componentSequenceIds: POLICY_STORAGE_IMPLEMENTATION_COMPONENT_IDS.slice(1),
       },
     });
     const result = runGenerator({

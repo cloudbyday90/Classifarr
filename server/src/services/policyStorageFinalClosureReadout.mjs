@@ -14,7 +14,7 @@ import {
 } from './policyStorageClosureScopes.mjs';
 
 const POLICY_STORAGE_FINAL_CLOSURE_READOUT_VERSION =
-  'policy.storage_final_closure_readout.v1';
+  'policy.storage_final_closure_readout.v2';
 
 const POLICY_STORAGE_FINAL_CLOSURE_READOUT_STATUS_IDS = Object.freeze({
   COMPLETE: 'complete',
@@ -403,6 +403,7 @@ async function buildPolicyStorageFinalClosureReadout({
     }),
     implementationReadiness,
     instanceCutover,
+    componentScopeMap: normalized.checkpoint.componentScopeMap || {},
     checkpointArtifactSummary: {
       statusId: normalized.artifactStatusId,
       complete: normalized.artifactComplete,

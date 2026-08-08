@@ -102,6 +102,12 @@ Implemented:
 - Advanced the current closure audit to v4 and its fingerprint to v2 so the
   explicit scope conclusions are integrity-bound and replay-verified.
 - Added focused scope, current-audit, and final-readout coverage.
+- Reconciled the closure component catalog in 8R.37.4 so the nine
+  compatibility-removal workflow identifiers exist only in the
+  active-installation map. Repository implementation evidence is now derived
+  from the repository-scoped catalog, and both maps are checked and
+  fingerprint-bound. See [Policy Closure-Map
+  Reconciliation](policy-closure-map-reconciliation.md).
 
 ## Security Outcome
 
