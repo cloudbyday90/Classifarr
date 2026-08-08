@@ -253,7 +253,15 @@ describe('ClassificationService auto-routing thresholds', () => {
   describe('routeClassificationResult database persistence', () => {
     test('updates status and metadata when successfully routed', async () => {
       const metadata = { title: 'Test' };
-      const result = { library: { id: 1 }, confidence: 95, method: 'policy_auto' };
+      const result = {
+        library: { id: 1 },
+        confidence: 95,
+        method: 'policy_auto',
+        policyResult: {
+          action: 'auto_classify',
+          library: { library_id: 1 },
+        },
+      };
 
       jest.spyOn(classificationService, 'routeToArr').mockResolvedValue({ attempted: true, routed: true });
       mockDb.query.mockResolvedValue({});
@@ -286,7 +294,15 @@ describe('ClassificationService auto-routing thresholds', () => {
 
     test('updates metadata with failure reason when routing fails', async () => {
       const metadata = { title: 'Test' };
-      const result = { library: { id: 1 }, confidence: 95, method: 'policy_auto' };
+      const result = {
+        library: { id: 1 },
+        confidence: 95,
+        method: 'policy_auto',
+        policyResult: {
+          action: 'auto_classify',
+          library: { library_id: 1 },
+        },
+      };
 
       jest.spyOn(classificationService, 'routeToArr').mockResolvedValue({ attempted: true, routed: false, reason: 'missing_arr_id', error: 'API Error' });
       mockDb.query.mockResolvedValue({});

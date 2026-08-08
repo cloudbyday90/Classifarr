@@ -221,4 +221,20 @@ describe('ensureDecisionQuestion', () => {
         expect(out.pending_reason).toBe('Missing evidence');
         expect(build).toHaveBeenCalled();
     });
+
+    it('requires clarification when policy_auto lacks current policy provenance', async () => {
+        build.mockResolvedValue(null);
+        const result = {
+            library: { id: 10 },
+            confidence: 99,
+            method: 'policy_auto',
+            clarification: null,
+            policy_question: null,
+        };
+
+        const out = await ensureDecisionQuestion({ metadata: {}, result });
+
+        expect(out.needs_clarification).toBe(true);
+        expect(build).toHaveBeenCalled();
+    });
 });

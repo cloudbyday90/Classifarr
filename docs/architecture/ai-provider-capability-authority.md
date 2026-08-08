@@ -85,8 +85,9 @@ generation request. The following controls close them:
   semantic parsing. Thinking traces are counted but removed before parser
   diagnostics are retained.
 - Any `ai` or `ai_*` result that loses its authority view fails closed for
-  automatic routing. Policy evaluation remains the sole deterministic
-  `policy_auto` exception.
+  automatic routing. A `policy_auto` label is route-eligible only when the
+  selected library matches a current deterministic `auto_classify` policy
+  result; a label alone is never an exception.
 
 ## Output And Side-Effect Boundary
 
@@ -96,8 +97,10 @@ blocks and Markdown fences while retaining valid one-line JSON for the parser.
 
 The classification boundary enforces `ai_authority.sideEffects.canRoute ===
 false`: an AI-derived candidate requires a deterministic server-owned question
-and cannot satisfy final automatic routing. `policy_auto` remains eligible for
-routing because it is produced by native policy evaluation, not model output.
+and cannot satisfy final automatic routing. `policy_auto` remains eligible only
+when the routing boundary proves that it is produced by the current native
+policy evaluation for the selected destination, not by model output or an
+upstream method label.
 
 The platform does not expose model-selected commands or callbacks. Routing,
 learning, policy updates, notifications, provider calls, and domain-data writes

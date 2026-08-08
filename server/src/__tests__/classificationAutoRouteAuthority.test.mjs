@@ -47,8 +47,9 @@ describe('ClassificationService auto-route authority boundary', () => {
         library: { id: 1, name: 'Movies' },
         confidence: 99,
         method: 'policy_auto',
-        ai_authority: {
-          sideEffects: { canRoute: false },
+        policyResult: {
+          action: 'auto_classify',
+          library: { library_id: 1 },
         },
       },
       policyAutoThreshold: 85,
@@ -57,6 +58,45 @@ describe('ClassificationService auto-route authority boundary', () => {
     expect(decision).toEqual({
       shouldRoute: true,
       reason: 'policy_auto',
+    });
+  });
+
+  test('blocks an AI authority result that is mislabeled as policy_auto', () => {
+    const decision = ClassificationService.prototype.buildAutoRouteDecision({
+      result: {
+        library: { id: 1, name: 'Movies' },
+        confidence: 99,
+        method: 'policy_auto',
+        policyResult: {
+          action: 'auto_classify',
+          library: { library_id: 1 },
+        },
+        ai_authority: {
+          sideEffects: { canRoute: false },
+        },
+      },
+      policyAutoThreshold: 85,
+    });
+
+    expect(decision).toEqual({
+      shouldRoute: false,
+      reason: 'ai_authority_advisory',
+    });
+  });
+
+  test('blocks a policy_auto label without a current matching policy decision', () => {
+    const decision = ClassificationService.prototype.buildAutoRouteDecision({
+      result: {
+        library: { id: 1, name: 'Movies' },
+        confidence: 99,
+        method: 'policy_auto',
+      },
+      policyAutoThreshold: 85,
+    });
+
+    expect(decision).toEqual({
+      shouldRoute: false,
+      reason: 'invalid_policy_auto_provenance',
     });
   });
 });

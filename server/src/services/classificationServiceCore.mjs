@@ -11,7 +11,10 @@ import {
   buildClassificationDestinationSummary,
   buildClassificationRoutingSummary,
 } from './classificationResultOutcomeSummary.mjs';
-import { isAiAuthorityRoutingBlocked } from './classificationRoutingServiceShared.mjs';
+import {
+  isAiAuthorityRoutingBlocked,
+  isCurrentDeterministicPolicyAuto,
+} from './classificationRoutingServiceShared.mjs';
 import {
   validatePolicyRuntimeQuestionReduction,
 } from './policyRuntimeQuestionReduction.mjs';
@@ -146,8 +149,12 @@ export class ClassificationService {
       return { shouldRoute: false, reason: 'ai_authority_advisory' };
     }
 
-    if (result.method === 'policy_auto') {
+    if (isCurrentDeterministicPolicyAuto(result)) {
       return { shouldRoute: true, reason: 'policy_auto' };
+    }
+
+    if (result.method === 'policy_auto') {
+      return { shouldRoute: false, reason: 'invalid_policy_auto_provenance' };
     }
 
     if (typeof policyAutoThreshold === 'number' && result.confidence >= policyAutoThreshold) {

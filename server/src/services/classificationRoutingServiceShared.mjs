@@ -69,6 +69,56 @@ export function suggestSeriesType(metadata, appliedLabels = []) {
 	return 'standard';
 }
 
+function normalizeLibraryIdentifier(value) {
+	if (typeof value === 'number' && Number.isFinite(value)) {
+		return String(value);
+	}
+
+	if (typeof value === 'string' && value.trim()) {
+		return value.trim();
+	}
+
+	return null;
+}
+
+function getResultLibraryIdentifier(result = {}) {
+	return normalizeLibraryIdentifier(
+		result?.library?.id ?? result?.library?.library_id ?? result?.library_id,
+	);
+}
+
+function getPolicyLibraryIdentifier(policyResult = {}) {
+	const directLibraryIdentifier = normalizeLibraryIdentifier(
+		policyResult?.library?.library_id ?? policyResult?.library?.id,
+	);
+	if (directLibraryIdentifier) {
+		return directLibraryIdentifier;
+	}
+
+	return normalizeLibraryIdentifier(
+		policyResult?.ranked?.[0]?.library_id ?? policyResult?.ranked?.[0]?.id,
+	);
+}
+
+/**
+ * A policy-auto route must originate from the current deterministic policy
+ * evaluation, not from a method label carried by an upstream candidate.
+ */
+export function isCurrentDeterministicPolicyAuto(result = {}) {
+	if (result?.method !== 'policy_auto' || result?.policyResult?.action !== 'auto_classify') {
+		return false;
+	}
+
+	const resultLibraryIdentifier = getResultLibraryIdentifier(result);
+	const policyLibraryIdentifier = getPolicyLibraryIdentifier(result.policyResult);
+
+	return Boolean(
+		resultLibraryIdentifier &&
+		policyLibraryIdentifier &&
+		resultLibraryIdentifier === policyLibraryIdentifier,
+	);
+}
+
 /**
  * Model output may inform a candidate, but cannot independently authorize an
  * Arr route. Native policy evaluation remains a separately deterministic path.
@@ -78,11 +128,8 @@ export function isAiAuthorityRoutingBlocked(result = {}) {
 	const isAiDerivedMethod = /^ai(?:_|$)/.test(method);
 
 	return Boolean(
-		method !== 'policy_auto'
-		&& (
-			isAiDerivedMethod
-			|| result?.ai_authority?.sideEffects?.canRoute === false
-		)
+		isAiDerivedMethod ||
+		result?.ai_authority?.sideEffects?.canRoute === false,
 	);
 }
 
@@ -94,6 +141,8 @@ export async function ensureDecisionQuestion({ metadata, result, policyResult = 
 	const effectivePolicyResult = result.policyResult || policyResult || null;
 	const requiresManualReview = Boolean(effectivePolicyResult?.decisionDiagnostics?.requires_manual_review);
 	const requiresAuthorityReview = isAiAuthorityRoutingBlocked(result);
+	const requiresPolicyProvenanceReview =
+		result.method === 'policy_auto' && !isCurrentDeterministicPolicyAuto(result);
 
 	const ranked = effectivePolicyResult?.ranked || [];
 	let policyAutoThreshold = null;
@@ -118,6 +167,7 @@ export async function ensureDecisionQuestion({ metadata, result, policyResult = 
 		(result.confidence && result.confidence < 70) ||
 		requiresManualReview ||
 		requiresAuthorityReview ||
+		requiresPolicyProvenanceReview ||
 		belowAutoRouteThreshold ||
 		(result.library && requireAllConfirmations)
 	);

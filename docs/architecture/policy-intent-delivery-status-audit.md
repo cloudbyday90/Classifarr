@@ -80,7 +80,7 @@ the per-installation cutover evidence owned by Phase 8R.
 | 7R | Contract-complete foundation | Runtime decision, question, rebuild, verifier, rollback, and trace boundaries | Preserve through 5R and 8R authority/storage work |
 | 8R | Complete contracts with recurring evidence | Native lifecycle, installation evidence, CI-only retirement, and closure evidence | Regenerate current evidence and closure audits after mapped contract changes; retain automatic policy conversion |
 | 9R | Ongoing enforcement | Zero-debt durable naming and product-language gates | Preserve the baseline in every product change |
-| 10R | Active operational acceptance | Isolated real-boundary acceptance for AI authority, deterministic policy decisions, existing installations, and operational safety | Complete 10R.1.2 deterministic policy decision and route outcome acceptance |
+| 10R | Active operational acceptance | Isolated real-boundary acceptance for AI authority, deterministic policy decisions, existing installations, and operational safety | Complete 10R.1.3 provider failure and recovery acceptance |
 
 ## Required Delivery Order
 
@@ -145,8 +145,13 @@ the per-installation cutover evidence owned by Phase 8R.
    database-backed suite exercises configured provider selection, router
    admission, normalization, semantic parsing, safe authority projection, and
    routing restraint without an external provider, credential, or media-server
-   dependency. The next product acceptance task is 10R.1.2 deterministic
-   policy decision and route outcome acceptance.
+   dependency.
+16. **10R.1.2 Deterministic Policy Decision And Route Outcome Acceptance** is
+   complete. Its isolated fixture uses the real policy engine to prove that a
+   current deterministic policy result alone receives the policy route
+   allowance, while AI-derived, non-final, and provenance-invalid candidates
+   remain non-routed with explicit outcomes. The next product acceptance task
+   is 10R.1.3 provider failure and recovery acceptance.
 
 ## Phase 8R Boundaries
 

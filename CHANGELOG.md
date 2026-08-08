@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Deterministic Policy Route Acceptance**: Policy-auto routing now requires
+  current deterministic `auto_classify` provenance for the same selected
+  library. AI-derived, mislabeled, non-final, and provenance-invalid candidates
+  fail closed with explicit no-route outcomes. Added an isolated real-policy
+  acceptance suite that distinguishes routed, classified-not-routed, blocked,
+  and question-required results without external providers or media servers.
+
 - **AI Authority Pipeline Acceptance**: Added isolated database-backed
   acceptance coverage for configured AI authority. Disabled, schema-missing,
   and unsupported verification requests now prove zero provider invocation;

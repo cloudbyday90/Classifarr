@@ -163,6 +163,10 @@ function createService({ handoff, admission } = {}) {
     confidence: 95,
     method: 'policy_auto',
     reason: 'Server-owned policy result',
+    policyResult: {
+      action: 'auto_classify',
+      library: { library_id: 6, library_name: 'Animated Movies' },
+    },
   });
 
   return service;

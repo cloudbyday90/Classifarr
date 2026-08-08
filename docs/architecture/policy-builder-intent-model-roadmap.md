@@ -36,7 +36,8 @@ The execution dependency is intentionally not numeric:
 completed foundations: 0R -> 1R -> 2R -> 3R -> 4R -> 5R -> 6R -> 7R
 completed boundary isolation: 8R.37.1 -> 8R.37.2 -> 8R.37.3 -> 8R.37.4
 active-installation prerequisite -> 8R.36.11 regeneration -> 8R.34/8R.35 current audits
-current platform acceptance: 10R.1.1 -> 10R.1.2 -> 10R.1.3
+completed platform acceptance: 10R.1.1 -> 10R.1.2
+current platform acceptance: 10R.1.3
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
 
@@ -11910,6 +11911,18 @@ Acceptance criteria:
 - The test asserts observable classification outcome rather than internal
   implementation order.
 
+Completion:
+
+- Complete. The routing boundary now verifies that `policy_auto` carries a
+  current `auto_classify` policy result for the same selected library. A method
+  label, including one carried by an AI-authority result, cannot grant the
+  policy route allowance.
+- Complete. The isolated database-backed fixture runs the real policy engine,
+  then exercises routed, classified-not-routed, AI-blocked,
+  question-required, and provenance-invalid outcomes without a media-server or
+  AI-provider connection. See
+  `docs/architecture/deterministic-policy-decision-route-outcome-acceptance.md`.
+
 #### 10R.1.3 Provider Failure And Recovery Acceptance
 
 Intent: prove that bounded provider failures cannot convert into an unsafe
@@ -12084,10 +12097,13 @@ The next sequence is dependency-gated rather than phase-number order:
     configured provider authority pipeline in an isolated database-backed
     fixture without a live provider, secret, or outbound request.
 11. **10R.1.2 Deterministic Policy Decision And Route Outcome Acceptance**:
-    next. Prove a native policy decision can route only through deterministic
-    policy authority while every AI-derived or non-final outcome stays
-    explicitly non-routed.
-12. **8R.36.11 Compatibility-Removal Evidence Regeneration**: revalidated
+    complete. It proves native policy authority is verified at the route
+    boundary and distinguishes routed, classified-not-routed, blocked, and
+    question-required outcomes without an external dependency.
+12. **10R.1.3 Provider Failure And Recovery Acceptance**: next. Prove that
+    disabled, unavailable, malformed, and transient provider outcomes preserve
+    deterministic policy behavior and produce bounded recovery outcomes.
+13. **8R.36.11 Compatibility-Removal Evidence Regeneration**: revalidated
     after the closure-contract change. It produced fresh v3 repository
     validation evidence and bounded blocked diagnostics because the
     active-installation completion artifact remains blocked. The next
