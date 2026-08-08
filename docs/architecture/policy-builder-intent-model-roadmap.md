@@ -3687,7 +3687,8 @@ Implement Phase 4R in this order:
 13. **4R.9 Accessibility, Responsive Behavior, And End-To-End Workflow Tests**
    Proves the delivered flow works in the live product.
 
-Next implementation task: **5R.3 AI Provider Capability And Authority Modes**.
+Next implementation task: **4R.1 Live Entry-Path And Action Inventory
+rendered-path verification**.
 The 4R.1 source inventory still requires representative live-browser
 verification, and 4R.3 has bound the existing component's controls to admitted
 actions and truthful outcomes. The completed 5R.2a contract supplies the
@@ -4268,8 +4269,9 @@ the reducer's flat comparison shape is structurally and semantically distinct.
 Promoting it would create a competing, lower-fidelity runtime-evidence path.
 The reducer is bound to the same deletion gate as the verifier chain and is
 enforced by a regression-tested source-graph audit that default-denies every
-importer except the two declared migration-parity consumers and rejects any
-reference from the runtime-evidence projection or any route. See
+importer except the two declared migration-parity consumers, rejects any
+runtime-evidence-projection or route importer, and checks that the actual
+runtime-evidence top-level contract does not expose migration comparison fields. See
 [Policy Runtime Evidence Reducer Resolution](policy-runtime-evidence-reducer-resolution.md).
 
 #### 5R.8.4 Final Verifier Deletion Or Promotion Gate

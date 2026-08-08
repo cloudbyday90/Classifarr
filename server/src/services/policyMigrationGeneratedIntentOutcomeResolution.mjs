@@ -8,14 +8,18 @@
  * (at your option) any later version.
  */
 
-/* eslint-disable security/detect-non-literal-fs-filename -- The audit recursively reads only the fixed server source root declared below. */
-
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { dirname, relative, resolve } from 'node:path';
+import { existsSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import {
+  listPolicyMigrationStaticImportPaths,
+  listPolicyMigrationStaticSourceFiles,
+  normalizePolicyMigrationSourceFile,
+} from './policyMigrationStaticSourceInventory.mjs';
+import { buildPolicyRuntimeEvidenceProjection } from './policyRuntimeEvidenceProjection.mjs';
+
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
-const SERVER_SOURCE_ROOT = resolve(REPO_ROOT, 'server/src');
 
 const POLICY_MIGRATION_GENERATED_INTENT_OUTCOME_RESOLUTION_VERSION =
   'policy.migration_generated_intent_outcome_resolution.v1';
@@ -80,6 +84,7 @@ const POLICY_MIGRATION_GENERATED_INTENT_OUTCOME_RESOLUTION_RISK_IDS = Object.fre
   ROUTE_IMPORTER: 'route_importer',
   RUNTIME_EVIDENCE_IMPORTER: 'runtime_evidence_importer',
   RUNTIME_EVIDENCE_FIELD_OVERLAP: 'runtime_evidence_field_overlap',
+  INVALID_RUNTIME_EVIDENCE_PROJECTION: 'invalid_runtime_evidence_projection',
   REDUCER_SOURCE_NOT_FOUND: 'reducer_source_not_found',
   INVALID_SOURCE_INVENTORY: 'invalid_source_inventory',
 });
@@ -92,60 +97,12 @@ function normalizeString(value) {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-function normalizePath(value) {
-  return typeof value === 'string' ? value.replaceAll('\\', '/').trim() : '';
-}
-
-function listMjsFiles(directory) {
-  if (!existsSync(directory)) {
-    return [];
-  }
-
-  return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
-    const entryPath = resolve(directory, entry.name);
-    if (entry.isDirectory()) {
-      return entry.name === '__tests__' ? [] : listMjsFiles(entryPath);
-    }
-
-    return entry.isFile() && entry.name.endsWith('.mjs') ? [entryPath] : [];
-  });
+function isObject(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
 function listPolicyMigrationGeneratedIntentOutcomeResolutionSourceFiles() {
-  return listMjsFiles(SERVER_SOURCE_ROOT).map(path => ({
-    path: normalizePath(relative(REPO_ROOT, path)),
-    source: readFileSync(path, 'utf8'),
-  }));
-}
-
-function normalizeSourceFile(value = {}) {
-  return {
-    path: normalizePath(value.path),
-    source: typeof value.source === 'string' ? value.source : null,
-  };
-}
-
-function resolveImportedPath({ importerPath, specifier }) {
-  if (!specifier.startsWith('.')) {
-    return null;
-  }
-
-  return normalizePath(relative(
-    REPO_ROOT,
-    resolve(dirname(resolve(REPO_ROOT, importerPath)), specifier),
-  ));
-}
-
-function listStaticImportPaths(sourceFile = {}) {
-  const source = normalizeSourceFile(sourceFile);
-  if (!source.path || source.source === null) {
-    return [];
-  }
-
-  const importPattern = /(?:\bfrom\s*|\bimport\s*\()['"]([^'"]+)['"]/gu;
-  return [...source.source.matchAll(importPattern)]
-    .map(match => resolveImportedPath({ importerPath: source.path, specifier: match[1] }))
-    .filter(Boolean);
+  return listPolicyMigrationStaticSourceFiles();
 }
 
 function buildIssue(riskId, message, path = null, importerPath = null) {
@@ -218,10 +175,11 @@ function validatePolicyMigrationGeneratedIntentOutcomeResolutionContract(contrac
 }
 
 function checkReducerImportTopology({ sourceFiles, issues }) {
-  const normalizedSourceFiles = asArray(sourceFiles).map(normalizeSourceFile);
+  const normalizedSourceFiles = asArray(sourceFiles).map(normalizePolicyMigrationSourceFile);
   const importers = normalizedSourceFiles
     .filter(sourceFile =>
-      listStaticImportPaths(sourceFile).includes(POLICY_MIGRATION_GENERATED_INTENT_OUTCOME_PATH))
+      listPolicyMigrationStaticImportPaths(sourceFile)
+        .includes(POLICY_MIGRATION_GENERATED_INTENT_OUTCOME_PATH))
     .map(sourceFile => sourceFile.path)
     .sort();
 
@@ -269,39 +227,51 @@ function checkReducerImportTopology({ sourceFiles, issues }) {
   return importers;
 }
 
-function checkRuntimeEvidenceFieldOverlap({ sourceFiles, issues }) {
-  const normalizedSourceFiles = asArray(sourceFiles).map(normalizeSourceFile);
-  const runtimeEvidenceSource = normalizedSourceFiles.find(sourceFile =>
-    sourceFile.path === POLICY_RUNTIME_EVIDENCE_PROJECTION_PATH);
-
-  if (!runtimeEvidenceSource || runtimeEvidenceSource.source === null) {
-    return;
-  }
-
-  const reducerModulePattern = /policyMigrationGeneratedIntentOutcome/gu;
-  if (reducerModulePattern.test(runtimeEvidenceSource.source)) {
+function checkRuntimeEvidenceFieldOverlap({ buildRuntimeEvidenceProjection, issues }) {
+  let runtimeEvidenceProjection;
+  try {
+    runtimeEvidenceProjection = buildRuntimeEvidenceProjection();
+  } catch {
     issues.push(buildIssue(
-      POLICY_MIGRATION_GENERATED_INTENT_OUTCOME_RESOLUTION_RISK_IDS.RUNTIME_EVIDENCE_IMPORTER,
-      'The runtime-evidence projection must not reference the generated-intent outcome reducer module.',
+      POLICY_MIGRATION_GENERATED_INTENT_OUTCOME_RESOLUTION_RISK_IDS
+        .INVALID_RUNTIME_EVIDENCE_PROJECTION,
+      'The runtime-evidence projection must be available for migration boundary auditing.',
       POLICY_RUNTIME_EVIDENCE_PROJECTION_PATH,
     ));
+    return [];
   }
 
-  const exportPattern = /buildPolicyMigrationGeneratedIntentOutcome/gu;
-  if (exportPattern.test(runtimeEvidenceSource.source)) {
+  if (!isObject(runtimeEvidenceProjection)) {
+    issues.push(buildIssue(
+      POLICY_MIGRATION_GENERATED_INTENT_OUTCOME_RESOLUTION_RISK_IDS
+        .INVALID_RUNTIME_EVIDENCE_PROJECTION,
+      'The runtime-evidence projection must return a top-level object for migration boundary auditing.',
+      POLICY_RUNTIME_EVIDENCE_PROJECTION_PATH,
+    ));
+    return [];
+  }
+
+  const runtimeEvidenceOutputFields = Object.keys(runtimeEvidenceProjection).sort();
+  const overlappingFields = REDUCER_OUTPUT_FIELDS.filter(field =>
+    runtimeEvidenceOutputFields.includes(field));
+
+  if (overlappingFields.length > 0) {
     issues.push(buildIssue(
       POLICY_MIGRATION_GENERATED_INTENT_OUTCOME_RESOLUTION_RISK_IDS.RUNTIME_EVIDENCE_FIELD_OVERLAP,
-      'The runtime-evidence projection must not reference the generated-intent outcome reducer export.',
+      'The runtime-evidence projection top-level contract must not expose generated-intent outcome comparison fields.',
       POLICY_RUNTIME_EVIDENCE_PROJECTION_PATH,
     ));
   }
+
+  return runtimeEvidenceOutputFields;
 }
 
 function buildPolicyMigrationGeneratedIntentOutcomeResolutionAudit({
   sourceFiles = listPolicyMigrationGeneratedIntentOutcomeResolutionSourceFiles(),
   exists = existsSync,
+  buildRuntimeEvidenceProjection = buildPolicyRuntimeEvidenceProjection,
 } = {}) {
-  const normalizedSourceFiles = asArray(sourceFiles).map(normalizeSourceFile);
+  const normalizedSourceFiles = asArray(sourceFiles).map(normalizePolicyMigrationSourceFile);
   const contract = buildPolicyMigrationGeneratedIntentOutcomeResolutionContract();
   const issues = [];
 
@@ -325,7 +295,10 @@ function buildPolicyMigrationGeneratedIntentOutcomeResolutionAudit({
   issues.push(...validatePolicyMigrationGeneratedIntentOutcomeResolutionContract(contract).issues);
 
   const importers = checkReducerImportTopology({ sourceFiles: normalizedSourceFiles, issues });
-  checkRuntimeEvidenceFieldOverlap({ sourceFiles: normalizedSourceFiles, issues });
+  const runtimeEvidenceOutputFields = checkRuntimeEvidenceFieldOverlap({
+    buildRuntimeEvidenceProjection,
+    issues,
+  });
 
   return {
     version: POLICY_MIGRATION_GENERATED_INTENT_OUTCOME_RESOLUTION_VERSION,
@@ -340,6 +313,7 @@ function buildPolicyMigrationGeneratedIntentOutcomeResolutionAudit({
     prohibitedImporterPaths: contract.prohibitedImporterPaths,
     verifierChainExitCriterionIds: contract.verifierChainExitCriterionIds,
     importedByPaths: importers,
+    runtimeEvidenceOutputFields,
     normalWorkflowSurface: false,
     sideEffects: {
       databaseRead: false,
@@ -370,6 +344,6 @@ export {
   buildPolicyMigrationGeneratedIntentOutcomeResolutionAudit,
   buildPolicyMigrationGeneratedIntentOutcomeResolutionContract,
   listPolicyMigrationGeneratedIntentOutcomeResolutionSourceFiles,
-  listStaticImportPaths,
+  listPolicyMigrationStaticImportPaths as listStaticImportPaths,
   validatePolicyMigrationGeneratedIntentOutcomeResolutionContract,
 };

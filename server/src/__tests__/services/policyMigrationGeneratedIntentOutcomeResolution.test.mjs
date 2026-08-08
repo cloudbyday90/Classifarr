@@ -144,24 +144,36 @@ describe('policyMigrationGeneratedIntentOutcomeResolution', () => {
     ]));
   });
 
-  test('fails closed when the runtime-evidence projection references the reducer export by name', () => {
-    const sourceFiles = listPolicyMigrationGeneratedIntentOutcomeResolutionSourceFiles().map(file => {
-      if (file.path === POLICY_RUNTIME_EVIDENCE_PROJECTION_PATH) {
-        return buildSourceFile(
-          file.path,
-          `${file.source}\nconst _overlap = buildPolicyMigrationGeneratedIntentOutcome;\n`,
-        );
-      }
-      return file;
+  test('fails closed when the runtime-evidence top-level contract exposes a comparison field', () => {
+    const audit = buildPolicyMigrationGeneratedIntentOutcomeResolutionAudit({
+      buildRuntimeEvidenceProjection: () => ({
+        version: 'policy.runtime_evidence_projection.v1',
+        routeReady: true,
+      }),
     });
-
-    const audit = buildPolicyMigrationGeneratedIntentOutcomeResolutionAudit({ sourceFiles });
 
     expect(audit.ok).toBe(false);
     expect(audit.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({
         riskId:
           POLICY_MIGRATION_GENERATED_INTENT_OUTCOME_RESOLUTION_RISK_IDS.RUNTIME_EVIDENCE_FIELD_OVERLAP,
+        path: POLICY_RUNTIME_EVIDENCE_PROJECTION_PATH,
+      }),
+    ]));
+  });
+
+  test('fails closed when the runtime-evidence contract cannot be built', () => {
+    const audit = buildPolicyMigrationGeneratedIntentOutcomeResolutionAudit({
+      buildRuntimeEvidenceProjection: () => {
+        throw new Error('unexpected runtime projection failure');
+      },
+    });
+
+    expect(audit.ok).toBe(false);
+    expect(audit.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId:
+          POLICY_MIGRATION_GENERATED_INTENT_OUTCOME_RESOLUTION_RISK_IDS.INVALID_RUNTIME_EVIDENCE_PROJECTION,
         path: POLICY_RUNTIME_EVIDENCE_PROJECTION_PATH,
       }),
     ]));

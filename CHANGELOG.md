@@ -129,7 +129,9 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
   verifier chain. Added a regression-tested source-graph audit that
   default-denies every importer except the two declared migration-parity
   consumers, rejects any route or runtime-evidence-projection importer, and
-  rejects any reference to the reducer from the runtime-evidence contract.
+  verifies that the runtime-evidence top-level contract does not expose a
+  migration comparison field. Both retained migration topology audits now use
+  one internal static-source inventory.
 
 - **Retained Migration Verification Boundary**: Limited the retained cutover
   verifier to its server-owned invocation scope and a fixed cloned input tuple,

@@ -2,7 +2,7 @@
 
 ## Status
 
-Implemented as Phase 5R.8 Task 5R.8.3 on August 6, 2026.
+Implemented on August 6, 2026 and re-evaluated on August 8, 2026.
 
 ## Decision
 
@@ -29,9 +29,9 @@ The resolution is enforced by a regression-tested contract that:
 - scans the server source graph to prove the reducer is imported only by
   declared migration-parity consumers,
 - rejects any runtime, authoring, or route importer,
-- rejects any reference to the reducer from the runtime-evidence projection,
-- validates that the reducer's output shape is not duplicated inside the
-  runtime-evidence contract, and
+- rejects any runtime-evidence projection import of the reducer, and
+- validates that the runtime-evidence projection's actual top-level contract
+  does not expose any migration comparison field, and
 - binds the reducer's deletion to the same exit criteria as the verifier chain.
 
 Migration comparison fields and historical samples must not enter normal
@@ -172,9 +172,8 @@ Cons:
    migration-parity consumers may import the reducer. Every other importer,
    including any route, runtime, authoring, learning, provider, or scheduler
    path, fails the audit.
-4. Reject any reference to the reducer or its output shape from the
-   runtime-evidence projection so migration comparison fields cannot enter
-   runtime evidence.
+4. Reject a runtime-evidence import of the reducer and fail when the actual
+   runtime-evidence top-level contract exposes a migration comparison field.
 5. Run the resolution audit in regression coverage so the reducer cannot be
    silently promoted or leaked into a non-migration path.
 6. Reassess only after Phase 8R migration parity is proven; at that point the
@@ -188,12 +187,13 @@ migration-parity importers, the prohibited importer categories, the verifier
 chain deletion binding, and a pure resolution-contract validator. It performs
 no read, write, routing, learning, provider, or scheduler operation.
 
-The resolution audit scans the server source graph (reusing the proven
-`policyMigrationVerificationBoundaryAudit.mjs` static-import scanner) to prove
-the reducer is imported only by its declared migration-parity consumers. It
-fails closed for missing expected importers, unexpected importers, route
-importers, runtime-evidence-projection importers, and any field-shape overlap
-between the reducer output and the runtime-evidence projection contract.
+The resolution audit and migration-verification boundary audit share the
+internal `policyMigrationStaticSourceInventory.mjs` scanner. The resolution
+audit proves the reducer is imported only by its declared migration-parity
+consumers. It fails closed for missing expected importers, unexpected
+importers, route importers, runtime-evidence-projection importers, and any
+migration comparison field exposed by the actual top-level runtime-evidence
+projection contract.
 
 Focused regression tests cover the clean current-state audit, a missing
 expected importer, an unexpected non-migration importer, a route importer, a
@@ -204,19 +204,15 @@ broken deletion binding, and a malformed resolution contract version.
 
 - The migration reducer cannot be imported by any runtime, authoring, route,
   learning, provider, or scheduler path without failing the resolution audit.
-- The runtime-evidence projection cannot reference the reducer or its output
-  fields without failing the resolution audit.
+- The runtime-evidence projection cannot import the reducer, and its actual
+  top-level contract cannot expose migration comparison fields.
 - The reducer has an explicit, tested deletion gate tied to the verifier chain.
 - No migration comparison fields or historical samples enter normal runtime or
   authoring responses.
 
 ## Next Task
 
-Phase 5R.8 Task 5R.8.4 **Final Verifier Deletion Or Promotion Gate** is
-complete. It requires proven migration parity, completed native-storage
-cutover, expired rollback retention, and no active rebuild binding before
-deleting or promoting any retained verifier artifact, including this reducer.
-See
-[Policy Preview/Replay Verifier Deletion Or Promotion Gate](policy-preview-replay-verifier-deletion-gate.md).
-Phase 5R.8 is now complete; the next task is **5R.9 Server Authority Test
-Reset**.
+The verifier deletion gate and server-authority test reset are complete. The
+next remaining high-value work is **4R.1 Live Entry-Path And Action Inventory**
+rendered-path verification: exercise each normal authoring state in the live
+browser and reconcile the results with the already-complete source inventory.

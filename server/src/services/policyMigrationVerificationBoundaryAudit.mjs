@@ -8,14 +8,11 @@
  * (at your option) any later version.
  */
 
-/* eslint-disable security/detect-non-literal-fs-filename -- The audit recursively reads only the fixed server source root declared below. */
-
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { dirname, relative, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
-const SERVER_SOURCE_ROOT = resolve(REPO_ROOT, 'server/src');
+import {
+  listPolicyMigrationStaticImportPaths,
+  listPolicyMigrationStaticSourceFiles,
+  normalizePolicyMigrationSourceFile,
+} from './policyMigrationStaticSourceInventory.mjs';
 
 const POLICY_MIGRATION_VERIFICATION_BOUNDARY_AUDIT_VERSION =
   'policy.migration_verification_boundary_audit.v1';
@@ -59,60 +56,8 @@ function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
-function normalizePath(value) {
-  return typeof value === 'string' ? value.replaceAll('\\', '/').trim() : '';
-}
-
-function listMjsFiles(directory) {
-  if (!existsSync(directory)) {
-    return [];
-  }
-
-  return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
-    const entryPath = resolve(directory, entry.name);
-    if (entry.isDirectory()) {
-      return entry.name === '__tests__' ? [] : listMjsFiles(entryPath);
-    }
-
-    return entry.isFile() && entry.name.endsWith('.mjs') ? [entryPath] : [];
-  });
-}
-
 function listPolicyMigrationVerificationBoundarySourceFiles() {
-  return listMjsFiles(SERVER_SOURCE_ROOT).map(path => ({
-    path: normalizePath(relative(REPO_ROOT, path)),
-    source: readFileSync(path, 'utf8'),
-  }));
-}
-
-function normalizeSourceFile(value = {}) {
-  return {
-    path: normalizePath(value.path),
-    source: typeof value.source === 'string' ? value.source : null,
-  };
-}
-
-function resolveImportedPath({ importerPath, specifier }) {
-  if (!specifier.startsWith('.')) {
-    return null;
-  }
-
-  return normalizePath(relative(
-    REPO_ROOT,
-    resolve(dirname(resolve(REPO_ROOT, importerPath)), specifier),
-  ));
-}
-
-function listStaticImportPaths(sourceFile = {}) {
-  const source = normalizeSourceFile(sourceFile);
-  if (!source.path || source.source === null) {
-    return [];
-  }
-
-  const importPattern = /(?:\bfrom\s*|\bimport\s*\()['"]([^'"]+)['"]/gu;
-  return [...source.source.matchAll(importPattern)]
-    .map(match => resolveImportedPath({ importerPath: source.path, specifier: match[1] }))
-    .filter(Boolean);
+  return listPolicyMigrationStaticSourceFiles();
 }
 
 function buildIssue(riskId, message, path, importerPath = null) {
@@ -127,7 +72,7 @@ function buildIssue(riskId, message, path, importerPath = null) {
 function buildPolicyMigrationVerificationBoundaryAudit({
   sourceFiles = listPolicyMigrationVerificationBoundarySourceFiles(),
 } = {}) {
-  const normalizedSourceFiles = asArray(sourceFiles).map(normalizeSourceFile);
+  const normalizedSourceFiles = asArray(sourceFiles).map(normalizePolicyMigrationSourceFile);
   const issues = [];
 
   if (normalizedSourceFiles.some(sourceFile => !sourceFile.path || sourceFile.source === null)) {
@@ -140,7 +85,8 @@ function buildPolicyMigrationVerificationBoundaryAudit({
 
   const artifacts = PROTECTED_ARTIFACTS.map(artifact => {
     const importedByPaths = normalizedSourceFiles
-      .filter(sourceFile => listStaticImportPaths(sourceFile).includes(artifact.path))
+      .filter(sourceFile =>
+        listPolicyMigrationStaticImportPaths(sourceFile).includes(artifact.path))
       .map(sourceFile => sourceFile.path)
       .sort();
     const expectedImporterPaths = [...artifact.allowedImporterPaths].sort();
@@ -202,5 +148,5 @@ export {
   POLICY_MIGRATION_VERIFICATION_BOUNDARY_AUDIT_VERSION,
   buildPolicyMigrationVerificationBoundaryAudit,
   listPolicyMigrationVerificationBoundarySourceFiles,
-  listStaticImportPaths,
+  listPolicyMigrationStaticImportPaths as listStaticImportPaths,
 };
