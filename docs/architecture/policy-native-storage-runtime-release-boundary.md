@@ -1,7 +1,8 @@
 # Policy Native Storage Runtime And Release-Maintenance Boundary
 
-Status: Proposed execution plan for Phase 8R. No runtime behavior changes are
-made by this document.
+Status: 8R.37.1 complete. The repository now has a read-only import-reachability
+audit; 8R.37.2 will decommission the identified server-resident source-mutation
+path without changing normal policy automation.
 
 ## Problem
 
@@ -38,6 +39,20 @@ That boundary is inappropriate for the policy product:
   responsibility. [PostgreSQL SET
   TRANSACTION](https://www.postgresql.org/docs/current/sql-set-transaction.html),
   [PostgreSQL Explicit Locking](https://www.postgresql.org/docs/16/explicit-locking.html)
+- OWASP recommends applying least privilege and separation of duties to CI/CD
+  identities, with no broad credentials shared across jobs. That supports a
+  distinct release-maintenance command rather than repository write authority
+  in the application process. [OWASP CI/CD Security Cheat
+  Sheet](https://cheatsheetseries.owasp.org/cheatsheets/CI_CD_Security_Cheat_Sheet.html)
+- GitHub recommends setting `GITHUB_TOKEN` permissions explicitly and only at
+  the job that needs them. Its default recommendation is read-only repository
+  access, which matches read-only audit jobs and narrowly scoped release jobs.
+  [GitHub Actions secure use](https://docs.github.com/en/actions/reference/security/secure-use)
+- CISA's software supply-chain guidance names default deny, least privilege,
+  separation of privileges, and total mediation as defensive principles. A
+  static reachability audit gives those principles a repeatable repository
+  control instead of relying on a deployment convention. [CISA Securing the
+  Software Supply Chain: Recommended Practices for Developers](https://www.cisa.gov/sites/default/files/2023-12/ESF_SECURING_THE_SOFTWARE_SUPPLY_CHAIN_DEVELOPERS.pdf)
 
 ## Recommended Delivery Model
 
@@ -142,6 +157,22 @@ Acceptance criteria:
 - The inventory records only durable source paths and tests, never local
   checkout paths, policy names, library names, credentials, or source text.
 
+Implementation outcome:
+
+- `npm run policy:runtime-release-maintenance-audit` statically traces normal
+  server bootstrap, route, scheduler, configuration, client bootstrap, and
+  client API roots. It is now part of root `test:ci` and fails closed when a
+  normal runtime surface reaches a catalogued source-mutating module.
+- The audit reports two current capabilities with durable relative paths only:
+  `policyControlledRemovalFileApplyAdapter.mjs` is retained solely behind
+  `scripts/generate-policy-controlled-removal-apply.mjs`; the named-scope
+  source writer is marked for decommission.
+- The named-scope production-admission composer is also a decommission
+  candidate because it creates that source writer. Neither it nor the writer is
+  presently reachable from a normal runtime surface.
+- Focused fixture tests cover route reachability, a missing release-maintenance
+  owner, comment-safe static import parsing, and the current repository result.
+
 ### 8R.37.2 Runtime Reachability Removal
 
 Remove any production bootstrap, route, scheduler, or client reachability found
@@ -183,7 +214,9 @@ Acceptance criteria:
 
 ## Outcome
 
-The next Phase 8R implementation task is **8R.37.1 Runtime Capability
-Inventory And Isolation Decision**. It is a parallel release-maintenance
-boundary audit; **4R.1 Live Entry-Path And Action Inventory** remains the next
-active product task and is not blocked by repository source retirement.
+The next Phase 8R implementation task is **8R.37.2 Runtime Reachability
+Removal**. It must remove the named-scope source writer and production-admission
+composer from the server tree, then update the audit to prove they are absent.
+The retained file-removal adapter remains release-maintenance-only until its
+later CI-only command contract is evaluated. Normal native policy conversion,
+runtime authority, and policy automation remain independent of this work.

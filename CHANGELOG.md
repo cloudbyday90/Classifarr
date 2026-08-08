@@ -11,6 +11,17 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Runtime Capability Isolation**: Added a read-only CI audit that traces
+  normal server and client entry points to catalogued source-mutating modules.
+  It fails closed on runtime reachability or a missing release-maintenance
+  owner, records only repository-relative paths, and identifies the isolated
+  named-scope writer and admission composer for removal in the next task.
+
+- **Pinned GitHub Actions Maintenance**: Locally applied the selected
+  Dependabot workflow update for `actions/checkout` 7.0.1,
+  `docker/login-action` 4, and `github/codeql-action` 4 while preserving
+  full-commit SHA pinning and existing least-privilege job permissions.
+
 - **AI Provider Authority Hardening**: Disabled authority now stops provider
   calls; strict authority requires a structured response schema on the actual
   request. Primary and repair output share trace-redacting normalization before

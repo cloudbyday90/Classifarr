@@ -9,9 +9,10 @@ Current execution focus:
 - **Completed:** 0R through 7R establish the policy engine, runtime authority,
   and lifecycle-first authoring flow. `/policies` has one server-admitted
   normal path; the retired advanced-settings hash is not an authoring target.
-- **Next:** **8R.37.1 Runtime Capability Inventory And Isolation Decision**.
-  Remove any running-service path to compatibility source retirement without
-  changing automatic native policy conversion or normal policy automation.
+- **Next:** **8R.37.2 Runtime Reachability Removal**. Decommission the
+  server-resident named-scope source writer and its production-admission
+  composer without changing automatic native policy conversion or normal policy
+  automation.
 - **Continuous guardrail:** 9R naming and product-language gates remain
   required. Do not reintroduce a second policy-builder flow, advanced setting,
   or browser-owned automation decision.
@@ -23,7 +24,8 @@ The execution dependency is intentionally not numeric:
 
 ```text
 completed foundations: 0R -> 1R -> 2R -> 3R -> 4R -> 5R -> 6R -> 7R
-next focused work: 8R.37.1 -> 8R.37.2 -> 8R.37.3 -> 8R.37.4
+completed boundary audit: 8R.37.1
+next focused work: 8R.37.2 -> 8R.37.3 -> 8R.37.4
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
 
@@ -3679,8 +3681,8 @@ Implement Phase 4R in this order:
 13. **4R.9 Accessibility, Responsive Behavior, And End-To-End Workflow Tests**
    Proves the delivered flow works in the live product.
 
-Phase 4R is complete. The next implementation task is **8R.37.1 Runtime
-Capability Inventory And Isolation Decision**. Do not add another picker,
+Phase 4R is complete. The next implementation task is **8R.37.2 Runtime
+Reachability Removal**. Do not add another picker,
 generic suggestion control, advanced setting, or maintenance dialog in place
 of the completed lifecycle-first authoring path.
 
@@ -3872,7 +3874,7 @@ Implementation status:
   and helpful-studio narrowing, and **4R.5.3** closes revision reset and
   accessibility evidence. **5R.3 AI Provider Capability And Authority Modes**
   is complete after an August 2026 enforcement audit. The remaining 5R
-  authority components are also complete; Phase 5R now hands off to 8R.37.1.
+  authority components are also complete; Phase 5R now hands off to 8R.37.2.
 
 ### 5R.3 AI Provider Capability And Authority Modes
 
@@ -3934,8 +3936,8 @@ Implementation status:
   `docs/architecture/ai-provider-capability-authority.md` for the complete
   design and research record.
 
-Phase 5R is complete. Its next dependency-gated task is **8R.37.1 Runtime
-Capability Inventory And Isolation Decision**.
+Phase 5R is complete. Its next dependency-gated task is **8R.37.2 Runtime
+Reachability Removal**.
 
 ### 5R.4 Runtime Clarification Normalizer
 
@@ -8987,8 +8989,9 @@ Tasks:
     source-writer contract.
   - Superseded direction: do not add a server review-context registry. It
     would extend running-service reachability to repository source mutation.
-    Task 8R.37.1 now inventories and isolates any such reachability before a
-    CI/release-maintenance-only retirement command is considered.
+    Task 8R.37.1 completed the static inventory and found no normal runtime
+    reachability; 8R.37.2 now decommissions the isolated server-resident path
+    before a CI/release-maintenance-only retirement command is considered.
 - Consume approved compatibility deletion manifest entries.
 - Consume compatibility deletion execution-gate output.
 - Require selected paths to exist in the approved manifest.
@@ -10524,11 +10527,18 @@ Tasks:
     evidence, CI/release maintenance, or remove/decommission.
   - Prove no normal policy route, browser action, client API leaf, or scheduler
     can issue a source-removal authorization or invoke a source writer.
+  - Complete: `policy:runtime-release-maintenance-audit` now inventories the
+    source-mutating modules, fails closed on normal runtime reachability or a
+    missing release-maintenance owner, and records the named-scope writer and
+    production-admission composer for decommission. See [Policy Native Storage
+    Runtime And Release-Maintenance Boundary](policy-native-storage-runtime-release-boundary.md).
 - **8R.37.2 Runtime Reachability Removal**
-  - Remove runtime reachability found by 8R.37.1 without changing automatic
-    native-intent conversion or policy automation.
-  - Add repository searches and focused tests that fail if a running-service
-    source writer, source-removal authorization, or compatibility alias returns.
+  - Next: remove the named-scope source writer and production-admission
+    composer identified by 8R.37.1 without changing automatic native-intent
+    conversion or policy automation.
+  - Update the audit and focused tests to prove both modules are absent and no
+    running-service source writer, source-removal authorization, or
+    compatibility alias returns.
 - **8R.37.3 CI-Only Retirement Command Contract**
   - Retain or create a deterministic release-maintenance command only when an
     approved compatibility-removal change is actually ready.
@@ -10708,9 +10718,9 @@ Implement Phase 8R in this order:
     historical partial manifest into closure proof.
 37. **8R.37 Runtime And Release-Maintenance Boundary**
     Separates automatic native policy behavior from repository-retirement
-    maintenance. Start with **8R.37.1 Runtime Capability Inventory And
-    Isolation Decision**; do not build the former production review-context
-    registry.
+    maintenance. **8R.37.1 Runtime Capability Inventory And Isolation
+    Decision** is complete; continue with **8R.37.2 Runtime Reachability
+    Removal**. Do not build the former production review-context registry.
 
 Completion state:
 
@@ -11912,9 +11922,9 @@ The next sequence is dependency-gated rather than phase-number order:
    normalized model/question/learning and native-change authority, material
    exceptions, revision-safe maintenance, legacy UI cutover, accessibility,
    and browser end-to-end evidence.
-9. **8R.37.1 Runtime Capability Inventory And Isolation Decision**: next.
-   Inventory every running-service route to compatibility source retirement and
-   remove any such reachability without affecting native policy automation.
+9. **8R.37.2 Runtime Reachability Removal**: next. Decommission the
+   named-scope source writer and production-admission composer identified by
+   the completed inventory without affecting native policy automation.
    Continue the **9R** zero-debt naming gates on every component.
 
 The completed 0R through 3R, 6R, and 7R contracts remain guardrails, not

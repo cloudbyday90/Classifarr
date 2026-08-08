@@ -78,7 +78,7 @@ the per-installation cutover evidence owned by Phase 8R.
 | 5R | Complete | Server authority for reads/writes, provider capability, questions, answers, learning, verifier behavior, tests, and native changes | Preserve request-bound provider authority and fail-closed side effects |
 | 6R | Contract-complete foundation | Evidence, intent, learning, readiness, workflow, and migration boundaries | Consume through 4R; reopen only for a bounded contract gap |
 | 7R | Contract-complete foundation | Runtime decision, question, rebuild, verifier, rollback, and trace boundaries | Preserve through 5R and 8R authority/storage work |
-| 8R | Active parallel lanes | Native lifecycle, installation evidence, CI-only retirement, and closure evidence | Collect current installation evidence and complete 8R.37 isolation without blocking 4R |
+| 8R | Active parallel lanes | Native lifecycle, installation evidence, CI-only retirement, and closure evidence | Decommission the named-scope server source-mutation path in 8R.37.2; retain automatic policy conversion |
 | 9R | Ongoing enforcement | Zero-debt durable naming and product-language gates | Preserve the baseline in every product change |
 
 ## Required Delivery Order
@@ -122,9 +122,14 @@ the per-installation cutover evidence owned by Phase 8R.
 10. **4R.6 through 4R.9** are complete. They deliver material exceptions only
    when needed, revision-safe persisted-policy maintenance, legacy UI cutover,
    and browser-level accessibility/responsive/end-to-end evidence.
-11. **8R.37.1 Runtime Capability Inventory And Isolation Decision** is the
-   next task. It must prove that no route, scheduler, client API, bootstrap
-   path, or production service can reach compatibility source retirement.
+11. **8R.37.1 Runtime Capability Inventory And Isolation Decision** is
+   complete. A root CI audit proves that no route, scheduler, client API,
+   bootstrap path, configuration entry, or production service reaches either
+   catalogued source-mutating module; it also records the only valid
+   release-maintenance owner.
+12. **8R.37.2 Runtime Reachability Removal** is next. It must decommission the
+   named-scope source writer and its production-admission composer while
+   preserving normal automatic conversion and policy automation.
 
 ## Phase 8R Boundaries
 
@@ -140,9 +145,9 @@ Phase 8R is intentionally not a linear prerequisite for the live UI:
 - Closure artifacts report repository `implementationReadiness` independently
   of installation `instanceCutover`. Neither result authorizes a source change.
 
-The remaining Phase 8R product-adjacent task is 8R.37.1: inventory normal
-runtime reachability into source-mutation contracts and remove that reachability
-from the running application. It is parallel work and has no authoring UI.
+The remaining Phase 8R product-adjacent task is 8R.37.2: decommission the
+named-scope source-mutation contracts isolated by the completed inventory. It
+is parallel work and has no authoring UI.
 
 ## Consistency Decisions
 
