@@ -122,6 +122,9 @@ Implemented:
   distinguishes ready native policy automation from blocked compatibility-code
   retirement prerequisites. Its design record is [Policy Compatibility Deletion
   Installation Diagnostic Readout](policy-compatibility-deletion-installation-diagnostic-readout.md).
+- A rollback- or deletion-gate-blocked cutover summary remains a retirement
+  prerequisite when its native-read verification is valid; it does not make
+  normal policy automation unavailable.
 
 Not implemented:
 

@@ -52,6 +52,14 @@ const READINESS_RISK_TO_BLOCKER_ID = Object.freeze({
       .SUPPORT_DIAGNOSTICS,
 });
 
+// These cutover states have already verified native reads. Their remaining
+// risks govern compatibility-code retirement, not normal policy automation.
+const NATIVE_AUTOMATION_READY_CUTOVER_STATUS_IDS = Object.freeze([
+  'ready_for_cutover_monitoring',
+  'blocked_by_rollback',
+  'blocked_by_deletion_gate',
+]);
+
 const BLOCKER_ORDER = Object.freeze([
   POLICY_COMPATIBILITY_DELETION_EVIDENCE_DIAGNOSTIC_BLOCKER_IDS
     .NATIVE_POLICY_AUTOMATION,
@@ -85,7 +93,7 @@ function isNativePolicyAutomationReady(evidence = {}) {
     inventory.validationOk === true &&
     reconciliation.statusId === 'no_requires_maintenance_states' &&
     reconciliation.validationOk === true &&
-    cutover.statusId === 'ready_for_cutover_monitoring' &&
+    NATIVE_AUTOMATION_READY_CUTOVER_STATUS_IDS.includes(cutover.statusId) &&
     cutover.validationOk === true;
 }
 

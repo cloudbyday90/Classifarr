@@ -86,6 +86,32 @@ describe('policyCompatibilityDeletionEvidenceDiagnosticSummary', () => {
     expect(JSON.stringify(summary)).not.toContain('internal');
   });
 
+  test('keeps native automation ready when rollback blocks only compatibility retirement', () => {
+    const evidence = nativeAutomationReadyEvidence();
+    evidence.evidence.cutoverVerification.statusId = 'blocked_by_rollback';
+
+    const summary = buildPolicyCompatibilityDeletionEvidenceDiagnosticSummary(evidence);
+
+    expect(summary.nativePolicyAutomation).toEqual({ ready: true });
+    expect(summary.compatibilityDeletionRelease).toEqual({
+      ready: false,
+      blockerIds: [
+        POLICY_COMPATIBILITY_DELETION_EVIDENCE_DIAGNOSTIC_BLOCKER_IDS
+          .BACKUP_RESTORE_VERIFICATION,
+        POLICY_COMPATIBILITY_DELETION_EVIDENCE_DIAGNOSTIC_BLOCKER_IDS
+          .COMPATIBILITY_DELETION_GATES,
+        POLICY_COMPATIBILITY_DELETION_EVIDENCE_DIAGNOSTIC_BLOCKER_IDS
+          .ROLLBACK_SUPPORT,
+        POLICY_COMPATIBILITY_DELETION_EVIDENCE_DIAGNOSTIC_BLOCKER_IDS
+          .SUPPORT_DIAGNOSTICS,
+        POLICY_COMPATIBILITY_DELETION_EVIDENCE_DIAGNOSTIC_BLOCKER_IDS
+          .DELETION_MANIFEST_APPROVAL,
+      ],
+    });
+    expect(summary.nextStep.stepId)
+      .toBe('complete_compatibility_deletion_release_prerequisites');
+  });
+
   test('routes unresolved native automation to its own readiness step', () => {
     const summary = buildPolicyCompatibilityDeletionEvidenceDiagnosticSummary({
       readyForExecutionPlan: false,

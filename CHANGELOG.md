@@ -11,6 +11,11 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Policy Automation Versus Retirement Readiness**: Corrected the local
+  compatibility-maintenance diagnostic so verified native policy reads remain
+  available when rollback or deletion-gate evidence blocks only the separate
+  compatibility-code retirement release.
+
 - **Closure Evidence Regeneration**: Advanced the fingerprint-bound validation
   artifact to v3 so regenerated closure evidence directly covers the scoped
   repository versus active-installation closure map and its design record.

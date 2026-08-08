@@ -10345,6 +10345,10 @@ Tasks:
   - Completed: maintenance output now separates ready native policy automation
     from blocked compatibility-code retirement prerequisites using only fixed
     blocker IDs and one next step.
+  - A valid `blocked_by_rollback` or `blocked_by_deletion_gate` cutover summary
+    is a compatibility-retirement blocker, not a native-automation failure;
+    only invalid inventory, reconciliation, native-read, or fallback evidence
+    can route an installation to runtime remediation.
   - Completed: helper output must retain a coherent risk count and ready state
     before the readout can consume it; a claimed ready result must validate,
     while structurally coherent blocked evidence remains observable. Raw
@@ -10465,7 +10469,8 @@ Implementation status:
 - Task 8R.36.6 is implemented. Installation maintenance output now identifies
   whether native policy automation needs remediation or whether only
   compatibility-code retirement release prerequisites remain. It retains no
-  raw evidence in the compact readout. The design and outcome record is [Policy
+  raw evidence in the compact readout, and does not misclassify release-only
+  rollback or deletion-gate blockers as policy runtime failures. The design and outcome record is [Policy
   Compatibility Deletion Installation Diagnostic
   Readout](policy-compatibility-deletion-installation-diagnostic-readout.md).
 - Task 8R.36.7 is implemented. Release planning now accepts one compact,

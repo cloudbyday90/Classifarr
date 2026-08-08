@@ -84,7 +84,9 @@ Decision: selected.
    structurally coherent blocked result to retain its expected validation
    findings.
 2. Derive native automation from current policy inventory, reconciliation
-   state, and native-runtime cutover summaries.
+   state, and native-runtime cutover summaries. A valid `blocked_by_rollback`
+   or `blocked_by_deletion_gate` cutover summary retains verified native reads;
+   it blocks compatibility-code retirement, not normal policy automation.
 3. Derive release blockers only from allowlisted readiness risk IDs.
 4. Return a stable next step distinguishing runtime remediation from release
    prerequisite completion.
@@ -99,6 +101,10 @@ Implemented:
   bounded maintenance-outcome reducer.
 - Ready and blocked maintenance outcomes now include `diagnostic`, separating
   native policy automation from compatibility-deletion release readiness.
+- The reducer treats valid `blocked_by_rollback` and `blocked_by_deletion_gate`
+  cutover summaries as release-only blockers. Native automation is unavailable
+  only when inventory, reconciliation, or native-read/fallback verification is
+  not valid.
 - The helper result is rejected when risk-count and ready invariants do not
   agree, or when a claimed ready result fails validation. Structurally coherent
   blocked results remain observable.
