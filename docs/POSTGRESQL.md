@@ -73,8 +73,26 @@ PostgreSQL data directories are **version-specific**. A data directory created w
 ## Current Version
 
 - **Installed PostgreSQL**: 18 (from Alpine `postgresql18` package)
+- **Installed pgvector**: 0.8.6 (source-built for PostgreSQL 17 and 18)
 - **Data Directory**: `/app/data/postgres/`
 - **Version File**: `/app/data/postgres/PG_VERSION`
+
+## pgvector Extension Updates
+
+Classifarr source-builds the pinned pgvector release for both PostgreSQL 17 and
+18. On startup, normal database migrations upgrade an already-installed
+`vector` extension to the image's required version with PostgreSQL's
+transactional `ALTER EXTENSION vector UPDATE` operation.
+
+The migration does not create `vector` in an existing database that does not
+have it. Fresh installations create it through the schema snapshot and apply
+the same version normalization before historical migrations are marked as
+applied. This keeps new and persisted installations on the same extension
+version without changing optional-extension behavior.
+
+Before replacing a production image with a newer pgvector version, take a
+regular PostgreSQL backup. The upgrade is forward-only; downgrade requires
+restoring a compatible backup or following a separately tested recovery plan.
 
 ## Version Mismatch Error
 

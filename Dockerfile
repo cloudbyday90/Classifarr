@@ -1,10 +1,21 @@
 # ===========================================
 # CLASSIFARR DOCKERFILE
-# Optimized for production with Alpine 3.23 + Node.js 24 LTS
+# Optimized for production with Alpine 3.24 + Node.js 24.18.1 LTS
 # ===========================================
 
+ARG NODE_VERSION=24.18.1
+ARG ALPINE_VERSION=3.24
+ARG NPM_VERSION=12.0.2
+
+# Shared package-manager baseline. npm distributes npx, so both stay aligned.
+FROM node:${NODE_VERSION}-alpine${ALPINE_VERSION} AS node-runtime-base
+ARG NPM_VERSION
+RUN npm install --global npm@${NPM_VERSION} \
+  && npm --version \
+  && npx --version
+
 # Stage 1: Frontend Builder
-FROM node:24.15.0-alpine3.23 AS frontend-builder
+FROM node-runtime-base AS frontend-builder
 
 WORKDIR /build/client
 
@@ -20,7 +31,7 @@ COPY client/ ./
 RUN npm run build
 
 # Stage 2: Backend Builder  
-FROM node:24.15.0-alpine3.23 AS backend-builder
+FROM node-runtime-base AS backend-builder
 
 WORKDIR /build/server
 
@@ -35,7 +46,7 @@ RUN npm ci --omit=dev
 RUN npm rebuild bcrypt
 
 # Stage 3: Production Runtime
-FROM node:24.15.0-alpine3.23 AS production
+FROM node-runtime-base AS production
 
 # pgvector build mode:
 # - multi (default): build generic + AVX + AVX2 variants, select at runtime
@@ -43,6 +54,8 @@ FROM node:24.15.0-alpine3.23 AS production
 # - avx: build only AVX-optimized variant
 # - avx2: build only AVX2-optimized variant
 ARG PGVECTOR_BUILD=multi
+ARG PGVECTOR_VERSION=0.8.6
+ARG PGVECTOR_SHA256=10bf9938906e5d643bbc4a7eea104b6f57ba4898e5b76b20e60484ea1d5a7f8f
 ARG VCS_REF=unknown
 # Best practice for portability: OPTFLAGS="" (pgvector docs recommend this to avoid illegal instruction)
 ARG PGVECTOR_GENERIC_OPTFLAGS=""
@@ -95,18 +108,19 @@ RUN apk add --no-cache --virtual .pgvector-build-deps \
         musl-dev \
         postgresql17-dev \
         postgresql18-dev \
-    && curl -L https://github.com/pgvector/pgvector/archive/refs/tags/v0.8.2.tar.gz -o pgvector.tar.gz \
+    && curl --fail --location --retry 3 --retry-delay 2 https://github.com/pgvector/pgvector/archive/refs/tags/v${PGVECTOR_VERSION}.tar.gz -o pgvector.tar.gz \
+    && echo "${PGVECTOR_SHA256}  pgvector.tar.gz" | sha256sum -c - \
     && tar -xzf pgvector.tar.gz \
-    && cd pgvector-0.8.2 \
+    && cd pgvector-${PGVECTOR_VERSION} \
     && PG17_CONFIG="/usr/libexec/postgresql17/pg_config" \
     && PG18_CONFIG="/usr/libexec/postgresql18/pg_config" \
     && PKGLIBDIR17="$($PG17_CONFIG --pkglibdir)" \
     && PKGLIBDIR18="$($PG18_CONFIG --pkglibdir)" \
-    && echo "Building pgvector v0.8.2 for PostgreSQL 17..." \
+    && echo "Building pgvector v${PGVECTOR_VERSION} for PostgreSQL 17..." \
     && make clean PG_CONFIG=$PG17_CONFIG || true \
     && make OPTFLAGS="$PGVECTOR_GENERIC_OPTFLAGS" PG_CONFIG=$PG17_CONFIG \
     && make install PG_CONFIG=$PG17_CONFIG \
-    && echo "Building pgvector v0.8.2 for PostgreSQL 18..." \
+    && echo "Building pgvector v${PGVECTOR_VERSION} for PostgreSQL 18..." \
     && if [ "$PGVECTOR_BUILD" = "generic" ]; then \
         make clean PG_CONFIG=$PG18_CONFIG || true; \
         make OPTFLAGS="$PGVECTOR_GENERIC_OPTFLAGS" PG_CONFIG=$PG18_CONFIG; \
@@ -137,7 +151,7 @@ RUN apk add --no-cache --virtual .pgvector-build-deps \
         cp "$PKGLIBDIR18/vector.so" "$PKGLIBDIR18/vector_avx2.so"; \
         cp -f "$PKGLIBDIR18/vector_generic.so" "$PKGLIBDIR18/vector.so"; \
       fi \
-    && cd / && rm -rf pgvector-0.8.2 pgvector.tar.gz \
+    && cd / && rm -rf pgvector-${PGVECTOR_VERSION} pgvector.tar.gz \
     && apk del --no-cache .pgvector-build-deps
 
 # Remove setuid/setgid binaries for security (CIS Docker Benchmark 4.8)

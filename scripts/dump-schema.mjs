@@ -533,6 +533,8 @@ export function verifySourceDatabaseCurrent({
   });
 }
 
+const PGVECTOR_EXTENSION_VERSION = '0.8.6';
+
 function makePgStatStatementsOptional(schemaSql) {
   const pgStatStatementsBlockPattern = /--\s*\n-- Name: pg_stat_statements; Type: EXTENSION; Schema: -; Owner: -\n--\s*\n\nCREATE EXTENSION IF NOT EXISTS pg_stat_statements WITH SCHEMA public;\n\n\n--\s*\n-- Name: EXTENSION pg_stat_statements; Type: COMMENT; Schema: -; Owner: -\n--\s*\n\nCOMMENT ON EXTENSION pg_stat_statements IS 'track planning and execution statistics of all SQL statements executed';/;
 
@@ -566,6 +568,26 @@ END $$;
 --`;
 
   return schemaSql.replace(pgStatStatementsBlockPattern, () => replacement);
+}
+
+export function ensurePgvectorExtensionVersion(schemaSql) {
+  const vectorExtensionComment =
+    "COMMENT ON EXTENSION vector IS 'vector data type and ivfflat and hnsw access methods';";
+  const upgradeBlock = `DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
+        ALTER EXTENSION vector UPDATE TO '${PGVECTOR_EXTENSION_VERSION}';
+    END IF;
+END $$;`;
+
+  if (!schemaSql.includes(vectorExtensionComment) || schemaSql.includes(upgradeBlock)) {
+    return schemaSql;
+  }
+
+  return schemaSql.replace(
+    vectorExtensionComment,
+    () => `${vectorExtensionComment}\n\n\n${upgradeBlock}`
+  );
 }
 
 export function dumpSchema({
@@ -641,11 +663,13 @@ export function dumpSchema({
   // pg_dump from newer PostgreSQL versions can emit psql-only meta commands
   // (for example \restrict / \unrestrict) that are invalid through node-postgres.
   const schema = stripSchemaMigrationsDumpArtifacts(
-    makePgStatStatementsOptional(
-      schemaRaw
-        .split('\n')
-        .filter(line => !line.trim().startsWith('\\'))
-        .join('\n')
+    ensurePgvectorExtensionVersion(
+      makePgStatStatementsOptional(
+        schemaRaw
+          .split('\n')
+          .filter(line => !line.trim().startsWith('\\'))
+          .join('\n')
+      )
     )
   );
   

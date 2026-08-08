@@ -51,10 +51,10 @@ describe('pg_stat startup smoke helpers', () => {
   test('builds the PG17 upgrade carryover preparation command', () => {
     const command = buildPg17UpgradeCarryoverPreparationCommand();
 
-    expect(command).toContain('/usr/libexec/postgresql17');
+    expect(command).toContain('psql -U classifarr -d classifarr');
     expect(command).toContain("dynamic_library_path = '/run/postgresql/pgvector, \\$libdir'");
-    expect(command).toContain('createdb');
-    expect(command).toContain('pg_ctl');
+    expect(command).toContain("CREATE EXTENSION vector VERSION '0.8.2'");
+    expect(command).toContain('"$PGDATA/postgresql.auto.conf"');
   });
 
   test('builds the included-config failure preparation command', () => {
@@ -77,6 +77,7 @@ describe('pg_stat startup smoke helpers', () => {
       freshContainer: 'classifarr-pgss-smoke-fresh-run-1',
       baselineContainer: 'classifarr-pgss-smoke-existing-base-run-1',
       recoveryContainer: 'classifarr-pgss-smoke-existing-recovery-run-1',
+      upgradeSeedContainer: 'classifarr-pgss-smoke-upgrade-seed-run-1',
       upgradeContainer: 'classifarr-pgss-smoke-upgrade-run-1',
       includeContainer: 'classifarr-pgss-smoke-include-run-1',
     });

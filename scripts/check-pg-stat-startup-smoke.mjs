@@ -13,6 +13,9 @@ import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 
 const DEFAULT_IMAGE_NAME = process.env.IMAGE_NAME || 'classifarr:test';
+const PGVECTOR_PREVIOUS_VERSION = '0.8.2';
+const PGVECTOR_TARGET_VERSION = '0.8.6';
+const PGVECTOR_PREVIOUS_PG17_IMAGE = `pgvector/pgvector:${PGVECTOR_PREVIOUS_VERSION}-pg17`;
 const READY_TIMEOUT_MS = 180_000;
 const POLL_INTERVAL_MS = 2_000;
 
@@ -57,17 +60,8 @@ export function buildPgStatStatementsRuntimeRemovalCommand() {
 export function buildPg17UpgradeCarryoverPreparationCommand() {
   return [
     'set -eu',
-    'PG17_BIN="/usr/libexec/postgresql17"',
-    'mkdir -p /app/data/postgres /run/postgresql',
-    'chown -R classifarr:classifarr /app/data /run/postgresql',
-    'su-exec classifarr "$PG17_BIN/initdb" -D /app/data/postgres --auth=trust --encoding=UTF8',
-    'echo "listen_addresses = \'localhost\'" >> /app/data/postgres/postgresql.conf',
-    'echo "unix_socket_directories = \'/run/postgresql\'" >> /app/data/postgres/postgresql.conf',
-    'printf "dynamic_library_path = \'/run/postgresql/pgvector, \\$libdir\'\\n" >> /app/data/postgres/postgresql.auto.conf',
-    'su-exec classifarr "$PG17_BIN/pg_ctl" -D /app/data/postgres -l /app/data/postgres.log start',
-    'for i in $(seq 1 60); do if su-exec classifarr pg_isready -q; then break; fi; sleep 1; done',
-    'su-exec classifarr "$PG17_BIN/createdb" classifarr',
-    'su-exec classifarr "$PG17_BIN/pg_ctl" -D /app/data/postgres -m fast stop',
+    'psql -U classifarr -d classifarr --set ON_ERROR_STOP=1 -c "CREATE EXTENSION vector VERSION \'0.8.2\'"',
+    'printf "dynamic_library_path = \'/run/postgresql/pgvector, \\$libdir\'\\n" >> "$PGDATA/postgresql.auto.conf"',
   ].join('; ');
 }
 
@@ -168,6 +162,27 @@ function startSmokeContainer({ containerName, volumeName, imageName, stripPgssRu
   docker(...args);
 }
 
+function startPreviousPgvectorContainer({ containerName, volumeName }) {
+  ensureRemovedContainer(containerName);
+  docker(
+    'run',
+    '-d',
+    '--name',
+    containerName,
+    '-e',
+    'POSTGRES_DB=classifarr',
+    '-e',
+    'POSTGRES_USER=classifarr',
+    '-e',
+    'POSTGRES_PASSWORD=classifarr',
+    '-e',
+    'PGDATA=/app/data/postgres',
+    '-v',
+    `${volumeName}:/app/data`,
+    PGVECTOR_PREVIOUS_PG17_IMAGE,
+  );
+}
+
 function getContainerLogs(containerName) {
   return docker('logs', containerName).stdout;
 }
@@ -201,6 +216,7 @@ export function createSmokeRunNames(prefix = 'classifarr-pgss-smoke', suffix = `
     freshContainer: `${prefix}-fresh-${normalizedSuffix}`,
     baselineContainer: `${prefix}-existing-base-${normalizedSuffix}`,
     recoveryContainer: `${prefix}-existing-recovery-${normalizedSuffix}`,
+    upgradeSeedContainer: `${prefix}-upgrade-seed-${normalizedSuffix}`,
     upgradeContainer: `${prefix}-upgrade-${normalizedSuffix}`,
     includeContainer: `${prefix}-include-${normalizedSuffix}`,
   };
@@ -233,6 +249,29 @@ async function waitForContainerReady(containerName, timeoutMs = READY_TIMEOUT_MS
 
   const logs = getContainerLogs(containerName);
   throw new Error(`Container ${containerName} did not become ready in time.\n${logs}`);
+}
+
+async function waitForPostgresReady(containerName, timeoutMs = READY_TIMEOUT_MS) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    const pgReady = dockerAllowFailure(
+      'exec',
+      containerName,
+      'pg_isready',
+      '-U',
+      'classifarr',
+      '-d',
+      'classifarr',
+      '-q',
+    );
+    if (pgReady.ok) {
+      return;
+    }
+    await sleep(POLL_INTERVAL_MS);
+  }
+
+  const logs = getContainerLogs(containerName);
+  throw new Error(`Container ${containerName} did not expose PostgreSQL in time.\n${logs}`);
 }
 
 async function waitForContainerExit(containerName, timeoutMs = READY_TIMEOUT_MS) {
@@ -322,13 +361,27 @@ async function runExistingClusterRecoverySmoke({ imageName, volumeName, containe
   );
 }
 
-async function runUpgradeCarryoverSmoke({ imageName, volumeName, containerName }) {
+async function runUpgradeCarryoverSmoke({
+  imageName,
+  volumeName,
+  containerName,
+  previousContainerName,
+}) {
   console.log('SMOKE: PG17 upgrade normalizes postgresql.auto.conf library paths');
   createVolume(volumeName);
+  startPreviousPgvectorContainer({
+    containerName: previousContainerName,
+    volumeName,
+  });
+  await waitForPostgresReady(previousContainerName);
+  dockerSh(previousContainerName, buildPg17UpgradeCarryoverPreparationCommand());
+  docker('stop', previousContainerName);
+  docker('rm', previousContainerName);
+
   prepareVolumeWithCommand({
     volumeName,
     imageName,
-    shellCommand: buildPg17UpgradeCarryoverPreparationCommand(),
+    shellCommand: 'set -eu; chown -R classifarr:classifarr /app/data',
   });
 
   startSmokeContainer({
@@ -342,6 +395,10 @@ async function runUpgradeCarryoverSmoke({ imageName, volumeName, containerName }
   const logs = getContainerLogs(containerName);
   const pgVersion = getPsqlValue(containerName, 'SHOW server_version_num');
   const dynamicLibraryPath = getPsqlValue(containerName, 'SHOW dynamic_library_path');
+  const pgvectorVersion = getPsqlValue(
+    containerName,
+    "SELECT extversion FROM pg_extension WHERE extname = 'vector'",
+  );
   const autoConfig = getFileContents(containerName, '/app/data/postgres/postgresql.auto.conf');
 
   assertCondition(
@@ -363,6 +420,10 @@ async function runUpgradeCarryoverSmoke({ imageName, volumeName, containerName }
   assertCondition(
     autoConfig.includes("dynamic_library_path = '/run/postgresql/pgvector:$libdir'"),
     'Upgrade smoke did not normalize postgresql.auto.conf after upgrade.'
+  );
+  assertCondition(
+    pgvectorVersion === PGVECTOR_TARGET_VERSION,
+    `Upgrade smoke did not update pgvector to ${PGVECTOR_TARGET_VERSION}. extversion=${pgvectorVersion}`
   );
 }
 
@@ -415,6 +476,7 @@ export async function runPgStatStartupSmoke({ imageName = DEFAULT_IMAGE_NAME } =
     freshContainer,
     baselineContainer,
     recoveryContainer,
+    upgradeSeedContainer,
     upgradeContainer,
     includeContainer,
   } = createSmokeRunNames();
@@ -423,6 +485,7 @@ export async function runPgStatStartupSmoke({ imageName = DEFAULT_IMAGE_NAME } =
     ensureRemovedContainer(freshContainer);
     ensureRemovedContainer(baselineContainer);
     ensureRemovedContainer(recoveryContainer);
+    ensureRemovedContainer(upgradeSeedContainer);
     ensureRemovedContainer(upgradeContainer);
     ensureRemovedContainer(includeContainer);
     ensureRemovedVolume(freshVolume);
@@ -447,6 +510,7 @@ export async function runPgStatStartupSmoke({ imageName = DEFAULT_IMAGE_NAME } =
       imageName,
       volumeName: upgradeVolume,
       containerName: upgradeContainer,
+      previousContainerName: upgradeSeedContainer,
     });
 
     await runIncludedConfigDiagnosticsSmoke({
@@ -458,6 +522,7 @@ export async function runPgStatStartupSmoke({ imageName = DEFAULT_IMAGE_NAME } =
     ensureRemovedContainer(freshContainer);
     ensureRemovedContainer(baselineContainer);
     ensureRemovedContainer(recoveryContainer);
+    ensureRemovedContainer(upgradeSeedContainer);
     ensureRemovedContainer(upgradeContainer);
     ensureRemovedContainer(includeContainer);
     ensureRemovedVolume(freshVolume);

@@ -65,19 +65,21 @@ async function mockLostResponse(page) {
   await page.route('**/api/policies/operator-workflow/libraries/7/proposals/proposal_ref_lost_response/admission', route => {
     fulfillJson(route, existingPolicyLifecycle, 409)
   })
+
+  return () => lifecycleCallCount
 }
 
 test('a lost response after create reloads lifecycle rather than resubmitting', async ({ page }) => {
-  await mockLostResponse(page)
+  const getLifecycleCallCount = await mockLostResponse(page)
   await page.goto('/policies?library=7')
+
+  await expect.poll(getLifecycleCallCount).toBeGreaterThanOrEqual(1)
+  const lifecycleCallCountBeforeCreate = getLifecycleCallCount()
 
   await page.getByRole('button', { name: /Create policy/i }).click().catch(() => {})
 
-  await expect.poll(async () => {
-    const lifecycleRequests = []
-    page.removeAllListeners('request')
-    return lifecycleRequests.length
-  }, { timeout: 5000 }).toBeGreaterThanOrEqual(0)
+  await expect.poll(getLifecycleCallCount, { timeout: 5000 })
+    .toBeGreaterThan(lifecycleCallCountBeforeCreate)
 
   await expect(page.getByText(/Movies/i)).toBeVisible({ timeout: 10000 })
 })

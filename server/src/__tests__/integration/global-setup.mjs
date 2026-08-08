@@ -177,7 +177,7 @@ export default async () => {
         throw formatPreflightError(label, error);
     }
 
-    const container = await new PostgreSqlContainer('pgvector/pgvector:pg18')
+    const container = await new PostgreSqlContainer('pgvector/pgvector:0.8.6-pg18')
         .withDatabase('postgres')
         .withUsername('test')
         .withPassword('test')

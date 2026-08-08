@@ -19,6 +19,7 @@ import {
   SEED_RECONCILIATION_MARKER,
   buildPgDumpArgs,
   choosePgDumpSource,
+  ensurePgvectorExtensionVersion,
   isDeclaredSeedReconciliationMigration,
   isPgDumpVersionMismatchError,
   normalizeSnapshotForComparison,
@@ -224,6 +225,19 @@ describe('dump-schema tooling', () => {
     expect(stripped).not.toContain('schema_migrations_id_seq1');
     expect(stripped).not.toContain('COMMENT ON TABLE public.schema_migrations');
     expect(stripped).toContain('users_id_seq');
+  });
+
+  test('normalizes the vector extension version in the fresh-install schema', () => {
+    const schemaSql = [
+      "CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;",
+      '',
+      "COMMENT ON EXTENSION vector IS 'vector data type and ivfflat and hnsw access methods';",
+    ].join('\n');
+
+    const normalized = ensurePgvectorExtensionVersion(schemaSql);
+
+    expect(normalized).toContain("ALTER EXTENSION vector UPDATE TO '0.8.6'");
+    expect(ensurePgvectorExtensionVersion(normalized)).toBe(normalized);
   });
 
   test('builds the canonical schema_migrations tracking DDL', () => {

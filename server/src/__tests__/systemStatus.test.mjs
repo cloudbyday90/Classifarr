@@ -74,7 +74,7 @@ describe('System Status Endpoint', () => {
         rows: [{ pg_version: 'PostgreSQL 18.4 on x86_64-pc-linux-musl, compiled by gcc (Alpine 14.2.0) 14.2.0, 64-bit' }]
       })
       .mockResolvedValueOnce({
-        rows: [{ extversion: '0.8.2' }]
+        rows: [{ extversion: '0.8.6' }]
       });
 
     const response = await request(app)
@@ -90,7 +90,7 @@ describe('System Status Endpoint', () => {
       lastChecked: '2026-01-30T12:00:00Z'
     });
     expect(response.body.postgresVersion).toBe('18.4');
-    expect(response.body.pgvectorVersion).toBe('0.8.2');
+    expect(response.body.pgvectorVersion).toBe('0.8.6');
   });
 
   test('returns null pgvector when settings lookup fails', async () => {

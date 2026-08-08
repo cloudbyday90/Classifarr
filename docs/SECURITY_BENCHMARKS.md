@@ -219,11 +219,11 @@ user: "1000:1000"
 
 **Requirement:** Use only verified base images from trusted sources.
 
-**Classifarr Implementation:** Uses official `node:24.11.0-alpine` from Docker Hub.
+**Classifarr Implementation:** Uses official `node:24.18.1-alpine3.24` from Docker Hub.
 
-**Code Reference:** `Dockerfile:7-8`
+**Code Reference:** `Dockerfile:11`
 ```dockerfile
-FROM node:24.11.0-alpine AS frontend-builder
+FROM node:${NODE_VERSION}-alpine${ALPINE_VERSION} AS node-runtime-base
 ```
 
 **Status:** ✅ Compliant

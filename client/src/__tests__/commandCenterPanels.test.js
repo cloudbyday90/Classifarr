@@ -209,7 +209,7 @@ describe('CommandCenter extracted panels', () => {
     await buttons.find(node => node.text().includes('Retry Web Search')).trigger('click')
     await buttons.find(node => node.text() === 'Configure Media Server').trigger('click')
 
-    await wrapper.find('#errors .secondary-section-header').trigger('click')
+    await wrapper.find('section.secondary-section .secondary-section-header').trigger('click')
 
     expect(wrapper.emitted('retry-all-failed')).toHaveLength(1)
     expect(wrapper.emitted('retry-failed-task')).toEqual([[77]])

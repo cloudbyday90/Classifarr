@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-08-04T19:21:53.018Z
--- Latest Migration: 20260804_120000_add_policy_runtime_pending_question_cleanup_audits.sql
+-- Generated: 2026-08-08T13:25:41.472Z
+-- Latest Migration: 20260808_140000_upgrade_pgvector_to_0_8_6.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -111,6 +111,14 @@ CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
 --
 
 COMMENT ON EXTENSION vector IS 'vector data type and ivfflat and hnsw access methods';
+
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
+        ALTER EXTENSION vector UPDATE TO '0.8.6';
+    END IF;
+END $$;
 
 
 --
@@ -13572,6 +13580,7 @@ FROM unnest(ARRAY[
     '20260729_150000_bind_policy_library_rebuild_verification_runs.sql',
     '20260803_120000_add_policy_authoring_proposals.sql',
     '20260803_130000_add_ai_provider_capability_metrics.sql',
-    '20260804_120000_add_policy_runtime_pending_question_cleanup_audits.sql'
+    '20260804_120000_add_policy_runtime_pending_question_cleanup_audits.sql',
+    '20260808_140000_upgrade_pgvector_to_0_8_6.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

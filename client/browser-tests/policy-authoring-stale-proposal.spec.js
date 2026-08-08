@@ -22,15 +22,6 @@ const staleLifecycle = {
   proposal: { available: false, reasonId: 'proposal_revision_changed' },
 }
 
-const refreshedLifecycle = {
-  version: 'policy.authoring_proposal.v1',
-  statusId: 'eligible_to_prepare_proposal',
-  library: { id: 7, name: 'Movies', mediaType: 'movie' },
-  action: { id: 'prepare_proposal', available: true },
-  policy: null,
-  proposal: { available: true, reasonId: 'current_profile_candidate_available' },
-}
-
 function fulfillJson(route, body, status = 200) {
   return route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) })
 }

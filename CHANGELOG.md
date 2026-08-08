@@ -11,6 +11,24 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Node.js 24.18.1 And npm 12.0.2 Baseline**: Aligned the local version file,
+  package engine contracts, Docker build and runtime stages, and GitHub
+  Actions on Node.js 24.18.1 and npm 12.0.2. The supported ranges are
+  `>=24.18.1 <25` and `>=12.0.2 <13`; npx now remains version-aligned through
+  npm, and Node 25 is no longer an accepted runtime baseline. The image now
+  uses Alpine 3.24 while retaining the embedded PostgreSQL 17-to-18 upgrade
+  path and source-built pgvector variants.
+
+- **pgvector 0.8.6 Persisted Upgrade**: Updated the verified source build for
+  PostgreSQL 17 and 18 to pgvector 0.8.6. Existing `vector` extensions now
+  upgrade transactionally at startup; fresh-install snapshots normalize the
+  same version before historical migrations are recorded. Added database-level
+  migration and PostgreSQL 17-to-18 smoke coverage seeded from 0.8.2.
+
+- **Client Runtime Dependency Maintenance**: Updated root and client Axios to
+  1.19.0 and client VueUse to 14.4.0 after clean-install, lint, typecheck, and
+  full client test validation.
+
 - **Child Rule Persistence for Native Intent Change**: Extended the change
   persistence layer to copy existing rules from the previous intent version
   (excluding changed collections), insert new rules for changed collections,

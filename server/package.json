@@ -4,8 +4,8 @@
   "license": "GPL-3.0-or-later",
   "type": "module",
   "engines": {
-    "node": ">=24.11.0",
-    "npm": ">=10.0.0"
+    "node": ">=24.18.1 <25",
+    "npm": ">=12.0.2 <13"
   },
   "description": "AI-powered media classification for the *arr ecosystem",
   "main": "src/index.mjs",

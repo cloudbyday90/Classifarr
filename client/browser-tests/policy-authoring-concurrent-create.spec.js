@@ -12,6 +12,7 @@ const HEALTHY_SYSTEM_RESPONSE = {
 }
 
 const library = { id: 7, name: 'Movies', media_type: 'movie' }
+const existingPolicy = { id: 99, libraryId: 7, name: 'Movies Policy' }
 
 const lifecycle = {
   version: 'policy.authoring_proposal.v1',
@@ -32,15 +33,6 @@ const preparedProposal = {
     expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
     summary: { title: 'Movies Policy', purpose: [], helpfulHints: [], hardLimitCount: 0, avoidCount: 0 },
   },
-}
-
-const existingPolicyLifecycle = {
-  version: 'policy.authoring_proposal.v1',
-  statusId: 'existing_native_policy',
-  library: { id: 7, name: 'Movies', mediaType: 'movie' },
-  action: { id: 'inspect_policy', available: true },
-  policy: { id: 99, libraryId: 7, name: 'Movies Policy' },
-  proposal: { available: false, reasonId: 'existing_policy' },
 }
 
 function fulfillJson(route, body, status = 200) {
@@ -64,9 +56,8 @@ test('concurrent create from two tabs does not produce a second policy', async (
     await page.route('**/api/policies/operator-workflow/libraries/7/proposals/proposal_ref_concurrent_test/admission', async route => {
       admissions.push(route.request().postDataJSON())
       await fulfillJson(route, {
-        version: 'policy.authoring_proposal.v1',
         statusId: 'existing_policy',
-        policy: { id: 99, libraryId: 7, name: 'Movies Policy' },
+        policy: existingPolicy,
         recovery: { lifecycleReloadRequired: true },
       })
     })
@@ -83,8 +74,6 @@ test('concurrent create from two tabs does not produce a second policy', async (
 
   await page1.getByRole('button', { name: /Create policy/i }).click().catch(() => {})
   await page2.getByRole('button', { name: /Create policy/i }).click().catch(() => {})
-
-  await page.route
 
   await expect.poll(() => admissions.length).toBeGreaterThanOrEqual(1)
 })

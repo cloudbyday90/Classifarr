@@ -83,14 +83,20 @@ For routine npm maintenance, use the smallest verification surface that matches 
 
 Current maintenance posture:
 
-- GitHub Actions use the rolling Node `24` line.
-- Docker runtime/build stages are pinned to a concrete Node `24.x` Alpine image.
+- GitHub Actions read the exact Node version from `.nvmrc` and install the
+  exact supported npm version.
+- Docker runtime/build stages use concrete Node and npm versions in a shared
+  Alpine base stage.
 - CI service containers should prefer explicit image versions over floating tags.
 
 Recommended pattern:
 
-- CI runners: major-line pin such as `node-version: '24'`
-- Docker images: explicit patch/minor tag or digest pin
+- Local, CI, and Docker Node: one exact LTS patch version in `.nvmrc` and the
+  Docker build arguments
+- npm and npx: one exact npm version; npx is bundled with npm and must not be
+  managed independently
+- Docker images: explicit patch/minor tag, with a digest pin evaluated for
+  production release promotion
 - Service images: explicit version pin instead of `latest`
 
 ## Review Guidance
