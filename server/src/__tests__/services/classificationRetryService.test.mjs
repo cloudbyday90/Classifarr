@@ -507,15 +507,15 @@ describe('ClassificationRetryService', () => {
       classificationId: 305,
       failed: true,
       reasonCode: 'retry_failed',
-      error: 'insert failed'
     });
+    expect(result).not.toHaveProperty('error');
+    expect(JSON.stringify(result)).not.toContain('insert failed');
     expect(db.query).not.toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalledWith('Classification retry failed', expect.objectContaining({
       classificationId: 305,
       route: '/api/classification/retry',
       result: 'failed',
       reasonCode: 'retry_failed',
-      error: 'insert failed'
     }));
   });
 

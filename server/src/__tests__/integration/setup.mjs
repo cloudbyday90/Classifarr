@@ -166,6 +166,7 @@ function createIntegrationDatabaseFacade() {
             SCHEDULED_BACKFILL: 1002,
             MANUAL_BACKFILL: 1003,
             BACKFILL_OWNER: 1004,
+            STARTUP_RESET: 1234567890,
             NATIVE_INTENT_RECONCILIATION: 2008,
             NATIVE_INTENT_RECONCILIATION_LEDGER_RETENTION: 2009,
         },

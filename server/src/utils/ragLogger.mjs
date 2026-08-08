@@ -17,6 +17,30 @@ const DEDUPE_DEFAULT_WINDOW_MS = 30000;
 const DEDUPE_CACHE_MAX_ENTRIES = 1000;
 const DEDUPE_CACHE_PRUNE_INTERVAL = 100;
 const VALID_LEVELS = new Set(['INFO', 'WARN', 'ERROR']);
+const BOUNDED_IDENTIFIER_PATTERN = /^[a-z0-9][a-z0-9_.:-]{0,119}$/i;
+const BOUNDED_METRIC_STRING_FIELDS = new Set([
+    'stage',
+    'outcome',
+    'reason_code',
+    'sql_state',
+    'rollout_mode',
+    'strategy',
+    'trigger',
+    'fusionMethod',
+]);
+const BOUNDED_METRIC_NUMBER_FIELDS = new Set([
+    'duration_ms',
+    'semanticMatches',
+    'textMatches',
+    'graphMatches',
+    'fusedResults',
+    'expansionTermCount',
+]);
+const BOUNDED_METRIC_BOOLEAN_FIELDS = new Set([
+    'recoverable',
+    'graphEnabled',
+    'expandedQuery',
+]);
 const SECOND_PASS_SKIP_BY_DESIGN_REASONS = new Set([
     'feature_disabled',
     'gate_not_met',
@@ -63,6 +87,11 @@ const SECOND_PASS_RECOVERABLE_SOFT_ERROR_REASONS = new Set([
     'rag_pass1_candidate_failed',
     'rag_pass2_failed'
 ]);
+const RAG_READ_LOG_REASON_IDS = Object.freeze({
+    HEALTH_SUMMARY_FAILED: 'rag_health_summary_read_failed',
+    RECENT_ERRORS_FAILED: 'rag_recent_errors_read_failed',
+    METRICS_BY_OPERATION_FAILED: 'rag_metrics_by_operation_read_failed',
+});
 
 export class RAGLogger {
     constructor(deps = {}) {
@@ -89,6 +118,31 @@ export class RAGLogger {
             return null;
         }
         return /^(?=.*[0-9])[A-Z0-9]{1,10}$/.test(raw) ? raw : null;
+    }
+
+    normalizeBoundedIdentifier(value, fallback = null) {
+        const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
+        return BOUNDED_IDENTIFIER_PATTERN.test(normalized) ? normalized : fallback;
+    }
+
+    projectBoundedMetricMetadata(metadata = {}) {
+        if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+            return {};
+        }
+
+        const projection = {};
+        for (const [key, value] of Object.entries(metadata)) {
+            if (BOUNDED_METRIC_STRING_FIELDS.has(key)) {
+                const normalized = this.normalizeBoundedIdentifier(value);
+                if (normalized) projection[key] = normalized;
+            } else if (BOUNDED_METRIC_NUMBER_FIELDS.has(key) && Number.isFinite(Number(value))) {
+                projection[key] = Math.max(0, Math.round(Number(value)));
+            } else if (BOUNDED_METRIC_BOOLEAN_FIELDS.has(key) && typeof value === 'boolean') {
+                projection[key] = value;
+            }
+        }
+
+        return projection;
     }
 
     normalizeFallbackAction(value) {
@@ -232,6 +286,7 @@ export class RAGLogger {
             normalizeSecondPassStage
         } = await this.getRagErrorHandler();
         const stage = normalizeSecondPassStage(event.stage);
+        const outcome = this.normalizeBoundedIdentifier(event.outcome, 'event');
         const mapped = mapSecondPassError({
             stage,
             reasonCode: event.reason_code || event.reasonCode,
@@ -247,72 +302,52 @@ export class RAGLogger {
         const level = this.normalizeLevel(
             event.level,
             await this.resolveStageSeverity({
-                outcome: event.outcome,
+                outcome,
                 reasonCode,
                 fallbackAction,
                 recoverable,
                 error: event.error
             })
         );
-        const message = typeof event.message === 'string' && event.message.trim()
-            ? event.message.trim()
-            : `Second-pass stage ${stage || 'unknown'} ${event.outcome || 'event'} (${reasonCode || 'unspecified'})`;
-        const eventMetadata = event.metadata && typeof event.metadata === 'object' ? event.metadata : {};
-        const rawErrorMessage = eventMetadata.raw_error_message
-            || event.raw_error_message
-            || event.error?.message
-            || null;
-        const rawErrorName = eventMetadata.raw_error_name
-            || event.raw_error_name
-            || event.error?.name
-            || null;
-        const rawErrorCode = eventMetadata.raw_error_code
-            || event.raw_error_code
-            || event.error?.code
-            || null;
-        const rawReason = eventMetadata.raw_reason
-            || event.raw_reason
-            || null;
-        const rawReasonCode = eventMetadata.raw_reason_code
-            || event.raw_reason_code
-            || null;
+        const rolloutMode = this.normalizeBoundedIdentifier(event.rollout_mode || event.rolloutMode);
+        const strategy = this.normalizeBoundedIdentifier(event.strategy);
+        const trigger = this.normalizeBoundedIdentifier(event.trigger);
+        const ragOperation = this.normalizeBoundedIdentifier(event.rag_operation || event.ragOperation, 'second_pass');
+        const message = `Second-pass stage ${stage || 'unknown'} ${outcome} (${reasonCode || 'unspecified'})`;
 
         return {
             level,
             module: 'RAG',
             message,
-            stackTrace: event.error?.stack || null,
+            stackTrace: null,
             metadata: {
                 event_type: 'rag_second_pass_stage',
                 stage,
-                outcome: event.outcome || null,
+                outcome,
                 reason_code: reasonCode,
-                rollout_mode: event.rollout_mode || event.rolloutMode || null,
-                strategy: event.strategy || null,
+                rollout_mode: rolloutMode,
+                strategy,
                 fallback_action: fallbackAction,
                 recoverable,
-                trigger: event.trigger || null,
+                trigger,
                 dedupe_fingerprint: this.buildFingerprint({
                     module: 'RAG',
                     stage,
                     reasonCode,
                     sqlState
                 }),
-                ...eventMetadata,
-                raw_reason: rawReason,
-                raw_reason_code: rawReasonCode,
-                raw_error_message: rawErrorMessage,
-                raw_error_name: rawErrorName,
-                raw_error_code: rawErrorCode
+                duration_ms: Number.isFinite(Number(event.duration_ms || event.durationMs))
+                    ? Math.max(0, Math.round(Number(event.duration_ms || event.durationMs)))
+                    : null,
             },
-            ragOperation: event.rag_operation || event.ragOperation || 'second_pass',
+            ragOperation,
             ragContext: {
                 stage,
-                outcome: event.outcome || null,
+                outcome,
                 reason_code: reasonCode,
                 fallback_action: fallbackAction,
-                trigger: event.trigger || null,
-                strategy: event.strategy || null
+                trigger,
+                strategy,
             },
             durationMs: Number.isFinite(Number(event.duration_ms || event.durationMs))
                 ? Number(event.duration_ms || event.durationMs)
@@ -427,17 +462,17 @@ export class RAGLogger {
             }
 
             return { logged: true, deduped: false };
-        } catch (error) {
+        } catch {
             logger.warn('Failed to log second-pass stage event', {
-                error: error.message,
-                stage: event.stage || null,
-                reason_code: event.reason_code || event.reasonCode || null
+                stage: this.normalizeBoundedIdentifier(event.stage),
+                reason_code: 'rag_stage_log_failed'
             });
             return { logged: false, deduped: false };
         }
     }
 
     async logOperation(operation, durationMs, success = true, options = {}) {
+        const boundedOperation = this.normalizeBoundedIdentifier(operation, 'unknown');
         try {
             const {
                 itemsProcessed = 1,
@@ -456,24 +491,27 @@ export class RAGLogger {
                 periodStart = now;
             }
 
+            const boundedErrorType = this.normalizeBoundedIdentifier(errorType);
+            const boundedMetadata = this.projectBoundedMetricMetadata(metadata);
+
             await db.query(`
                 INSERT INTO rag_metrics 
                 (operation, duration_ms, items_processed, success, error_type, metadata, period_type, period_start)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             `, [
-                operation,
+                boundedOperation,
                 durationMs,
                 itemsProcessed,
                 success,
-                errorType,
-                JSON.stringify(metadata),
+                boundedErrorType,
+                JSON.stringify(boundedMetadata),
                 periodType,
                 periodStart
             ]);
-        } catch (error) {
+        } catch {
             logger.warn('Failed to log RAG operation', {
-                operation,
-                error: error.message
+                operation: boundedOperation,
+                reason_code: 'rag_operation_log_failed'
             });
         }
     }
@@ -501,21 +539,26 @@ export class RAGLogger {
             const errorType = categorizeError(error || {});
             const recoverable = error?.recoverable !== undefined ? error.recoverable : true;
             const durationMs = context.duration_ms || context.durationMs || error?.context?.duration_ms || null;
+            const boundedOperation = this.normalizeBoundedIdentifier(operation, 'unknown');
+            const boundedErrorType = this.normalizeBoundedIdentifier(errorType, 'unknown');
 
             await this.insertErrorLog({
                 level: 'ERROR',
                 module: 'RAG',
-                message: error?.message || 'Unknown RAG error',
-                stackTrace: error?.stack || null,
+                message: `RAG operation ${boundedOperation} failed (${boundedErrorType})`,
+                stackTrace: null,
                 metadata: {
-                    errorType,
-                    ...context
+                    event_type: 'rag_operation_failure',
+                    error_type: boundedErrorType,
                 },
-                ragOperation: operation,
-                ragContext: error?.context || context,
+                ragOperation: boundedOperation,
+                ragContext: {
+                    operation: boundedOperation,
+                    error_type: boundedErrorType,
+                },
                 durationMs,
-                recoverable,
-                classificationId: Number.isInteger(context.classification_id) ? context.classification_id : null,
+                recoverable: recoverable === false ? false : true,
+                classificationId: null,
                 errorStage: null,
                 reasonCode: null,
                 correlationId: null,
@@ -523,14 +566,13 @@ export class RAGLogger {
             });
 
             logger.error('RAG error logged', {
-                operation,
-                errorType,
-                message: error?.message
+                operation: boundedOperation,
+                errorType: boundedErrorType,
             });
             return { logged: true, deduped: false };
-        } catch (logError) {
+        } catch {
             logger.warn('Failed to log RAG error', {
-                error: logError.message
+                reason_code: 'rag_error_log_failed'
             });
             return { logged: false, deduped: false };
         }
@@ -569,8 +611,10 @@ export class RAGLogger {
                 embeddings_generated_24h: parseInt(row.embeddings_generated_24h, 10) || 0,
                 pattern_mining_runs_24h: parseInt(row.pattern_mining_runs_24h, 10) || 0
             };
-        } catch (error) {
-            logger.error('Failed to get health summary', { error: error.message });
+        } catch {
+            logger.error('Failed to get health summary', {
+                reason_code: RAG_READ_LOG_REASON_IDS.HEALTH_SUMMARY_FAILED,
+            });
             return null;
         }
     }
@@ -626,8 +670,10 @@ export class RAGLogger {
                 sqlState: row.sql_state,
                 createdAt: row.created_at
             }));
-        } catch (error) {
-            logger.error('Failed to get recent errors', { error: error.message });
+        } catch {
+            logger.error('Failed to get recent errors', {
+                reason_code: RAG_READ_LOG_REASON_IDS.RECENT_ERRORS_FAILED,
+            });
             return [];
         }
     }
@@ -662,8 +708,10 @@ export class RAGLogger {
                 maxDuration: Math.round(parseFloat(row.max_duration) || 0),
                 totalItems: parseInt(row.total_items, 10) || 0
             };
-        } catch (error) {
-            logger.error('Failed to get metrics by operation', { error: error.message });
+        } catch {
+            logger.error('Failed to get metrics by operation', {
+                reason_code: RAG_READ_LOG_REASON_IDS.METRICS_BY_OPERATION_FAILED,
+            });
             return null;
         }
     }

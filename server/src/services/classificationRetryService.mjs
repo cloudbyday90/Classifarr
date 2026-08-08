@@ -176,7 +176,6 @@ export class ClassificationRetryService {
       metadataEnrichmentReason: null,
       oldClassificationId: classificationId,
       newClassificationId: null,
-      error: null,
     };
 
     try {
@@ -319,7 +318,7 @@ export class ClassificationRetryService {
         ...txResult.enrichmentCleanup,
         ...metadataEnrichmentResult
       };
-    } catch (error) {
+      } catch {
       this.logger.error('Classification retry failed', {
         correlationId,
         actor,
@@ -327,14 +326,12 @@ export class ClassificationRetryService {
         classificationId,
         result: 'failed',
         reasonCode: 'retry_failed',
-        error: error.message
       });
 
       return {
         ...baseResult,
         failed: true,
         reasonCode: 'retry_failed',
-        error: error.message,
       };
     }
   }

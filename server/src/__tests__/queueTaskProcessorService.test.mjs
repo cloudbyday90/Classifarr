@@ -378,7 +378,7 @@ describe('processTask', () => {
   test('calls failTask for unknown task type', async () => {
     const svc = makeSvc();
     await svc.processTask({ id: 't1', task_type: 'bogus', attempts: 1, max_attempts: 3 });
-    expect(svc.failTask).toHaveBeenCalledWith('t1', expect.stringContaining('Unknown task type'), 1, 3);
+    expect(svc.failTask).toHaveBeenCalledWith('t1', 'task_unknown_type', 1, 3);
   });
 
   test('calls failTask on uncaught error', async () => {
@@ -392,7 +392,8 @@ describe('processTask', () => {
       max_attempts: 3,
       webhook_log_id: null
     });
-    expect(svc.failTask).toHaveBeenCalledWith('t1', 'crash', 1, 3);
+    expect(svc.failTask).toHaveBeenCalledWith('t1', 'task_processing_failed', 1, 3);
+    expect(JSON.stringify(svc.logger.error.mock.calls)).not.toContain('crash');
   });
 
   test('updates webhook_log on task error when webhook_log_id present', async () => {
@@ -408,7 +409,7 @@ describe('processTask', () => {
     });
     expect(svc.db.query).toHaveBeenCalledWith(
       expect.stringContaining('webhook_log'),
-      [77, 'crash']
+      [77, 'task_processing_failed']
     );
   });
 });

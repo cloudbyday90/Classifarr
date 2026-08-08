@@ -53,6 +53,10 @@ import { QueueWorkerLoopService } from './queueWorkerLoopService.mjs';
 import { QueueTaskProcessorService } from './queueTaskProcessorService.mjs';
 import { QueueRefillService } from './queueRefillService.mjs';
 import { queueMaintenanceService as defaultQueueMaintenanceService } from './queueMaintenanceService.mjs';
+import {
+  normalizeQueueTaskFailureReasonId,
+  QUEUE_TASK_LOG_REASON_IDS,
+} from './queueTaskFailureReason.mjs';
 import { QueueConcurrencySettingsService } from './queueConcurrencySettingsService.mjs';
 import { EnrichmentItemStateService } from './enrichmentItemStateService.mjs';
 
@@ -219,7 +223,7 @@ export class QueueService {
     try {
       return await fn();
     } catch (error) {
-      this.logger.error(label, { error: error.message, ...context });
+      this.logger.error(label, { reasonCode: QUEUE_TASK_LOG_REASON_IDS.ENQUEUE_FAILED, ...context });
       throw error;
     }
   }
@@ -248,8 +252,11 @@ export class QueueService {
         if (itemId) {
           try {
             await this.enrichmentItemStateService.syncItemState(itemId);
-          } catch (err) {
-            this.logger.error('Failed to sync item state on enqueue', { itemId, error: err.message });
+          } catch {
+            this.logger.error('Failed to sync item state on enqueue', {
+              itemId,
+              reasonCode: QUEUE_TASK_LOG_REASON_IDS.ENRICHMENT_STATE_SYNC_FAILED,
+            });
           }
         }
       }
@@ -285,8 +292,10 @@ export class QueueService {
       this._blockerCache = value;
       this._blockerCacheExpiresAt = Date.now() + 250;
       return value;
-    } catch (error) {
-      this.logger.error('Failed to check classification dispatch blockers', { error: error.message });
+    } catch {
+      this.logger.error('Failed to check classification dispatch blockers', {
+        reasonCode: QUEUE_TASK_LOG_REASON_IDS.DISPATCH_BLOCKER_LOOKUP_FAILED,
+      });
       return {
         hasProcessingClassification: false,
         lookupFailed: true,
@@ -332,8 +341,10 @@ export class QueueService {
       );
 
       return result.rows[0] || null;
-    } catch (error) {
-      this.logger.error('Failed to dequeue task', { error: error.message });
+    } catch {
+      this.logger.error('Failed to dequeue task', {
+        reasonCode: QUEUE_TASK_LOG_REASON_IDS.DEQUEUE_FAILED,
+      });
       return null;
     }
   }
@@ -347,13 +358,17 @@ export class QueueService {
         [taskId, JSON.stringify({ result })],
       );
       this.logger.info('Task completed', { taskId });
-    } catch (error) {
-      this.logger.error('Failed to complete task', { error: error.message, taskId });
+    } catch {
+      this.logger.error('Failed to complete task', {
+        taskId,
+        reasonCode: QUEUE_TASK_LOG_REASON_IDS.COMPLETE_FAILED,
+      });
     }
   }
 
-  async failTask(taskId, errorMessage, currentAttempts, maxAttempts) {
+  async failTask(taskId, failureReasonId, currentAttempts, maxAttempts) {
     const nextAttempt = currentAttempts + 1;
+    const boundedFailureReasonId = normalizeQueueTaskFailureReasonId(failureReasonId);
 
     try {
       if (nextAttempt >= maxAttempts) {
@@ -361,7 +376,7 @@ export class QueueService {
           `UPDATE task_queue
            SET status = 'failed', error_message = $2, attempts = $3, completed_at = NOW()
            WHERE id = $1`,
-          [taskId, errorMessage, nextAttempt],
+          [taskId, boundedFailureReasonId, nextAttempt],
         );
         this.logger.error('Task permanently failed', { taskId, attempts: nextAttempt });
       } else {
@@ -372,12 +387,15 @@ export class QueueService {
                next_retry_at = NOW() + INTERVAL '${delaySeconds} seconds',
                started_at = NULL, visible_at = NULL
            WHERE id = $1`,
-          [taskId, errorMessage, nextAttempt],
+          [taskId, boundedFailureReasonId, nextAttempt],
         );
         this.logger.warn('Task scheduled for retry', { taskId, attempt: nextAttempt, delaySeconds });
       }
-    } catch (error) {
-      this.logger.error('Failed to update task status', { error: error.message, taskId });
+    } catch {
+      this.logger.error('Failed to update task status', {
+        taskId,
+        reasonCode: QUEUE_TASK_LOG_REASON_IDS.STATUS_UPDATE_FAILED,
+      });
     }
   }
 

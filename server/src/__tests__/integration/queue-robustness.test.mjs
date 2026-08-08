@@ -151,7 +151,7 @@ describe('Queue Robustness Integration Tests', () => {
       );
 
       const row = await db.query('SELECT error_message FROM task_queue LIMIT 1');
-      expect(row.rows[0].error_message).toBe('Recovered: visibility timeout expired');
+      expect(row.rows[0].error_message).toBe('task_visibility_timeout_recovered');
     });
   });
 

@@ -2412,7 +2412,8 @@ describe('RAG loop orchestration', () => {
         metadata: expect.objectContaining({
           stage: 'gate',
           reason_code: 'rag_pass1_candidate_timeout',
-          classification_id: 6606
+          outcome: 'error',
+          recoverable: true
         })
       })
     );
@@ -2426,7 +2427,8 @@ describe('RAG loop orchestration', () => {
         metadata: expect.objectContaining({
           stage: 'retrieval_pass2',
           reason_code: 'rag_pass2_provider_failed',
-          classification_id: 6606
+          outcome: 'error',
+          recoverable: true
         })
       })
     );
@@ -2474,7 +2476,7 @@ describe('RAG loop orchestration', () => {
           stage: 'retrieval_pass2',
           outcome: 'applied',
           reason_code: 'hybrid',
-          classification_id: 7707
+          recoverable: true
         })
       })
     );
@@ -2513,9 +2515,8 @@ describe('RAG loop orchestration', () => {
       expect.objectContaining({
         stage: 'rag_candidate',
         reason_code: 'rag_candidate_built',
-        metadata: expect.objectContaining({
-          source_stage: 'rag_candidate'
-        })
+        outcome: 'applied',
+        recoverable: true
       })
     );
   });
@@ -2554,7 +2555,7 @@ describe('RAG loop orchestration', () => {
     expect(operationSpy).not.toHaveBeenCalled();
   });
 
-  test('refines generic pass2 reason codes and preserves raw stage error details', async () => {
+  test('refines generic pass2 reason codes without persisting raw stage error details', async () => {
     const stageSpy = jest.spyOn(ragLogger, 'logStageEvent')
       .mockResolvedValue({ logged: true, deduped: false });
     const operationSpy = jest.spyOn(ragLogger, 'logOperation')
@@ -2593,20 +2594,12 @@ describe('RAG loop orchestration', () => {
       expect.objectContaining({
         stage: 'retrieval_pass2',
         reason_code: 'rag_pass2_embed_failed',
-        error: expect.objectContaining({
-          message: 'Failed to generate embedding: provider unavailable',
-          name: 'Error',
-          code: 'EPIPE'
-        }),
-        metadata: expect.objectContaining({
-          raw_reason: 'Failed to generate embedding: provider unavailable',
-          raw_reason_code: 'rag_pass2_failed',
-          raw_error_message: 'Failed to generate embedding: provider unavailable',
-          raw_error_name: 'Error',
-          raw_error_code: 'EPIPE'
-        })
+        outcome: 'error',
+        recoverable: true
       })
     );
+    expect(JSON.stringify(stageSpy.mock.calls)).not.toContain('provider unavailable');
+    expect(JSON.stringify(stageSpy.mock.calls)).not.toContain('EPIPE');
     expect(operationSpy).toHaveBeenCalledWith(
       'second_pass_retrieval_pass2',
       0,

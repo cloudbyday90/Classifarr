@@ -177,32 +177,26 @@ class ClassificationRagLoopService {
       aliasMinTokenLength: config.rag_alias_min_token_length,
     };
     const addEvent = ({ stage, outcome, reason, reasonCode, fallbackAction = null, recoverable = true, sqlState = null, error = null, durationMs = null }) => {
-      const errorDetails = error ? {
-        error_message: error.message || String(error),
-        error_name: error.name || 'Error',
-        error_stack: error.stack || null,
-        error_code: error.code || null,
-      } : {};
       const spanId = spanCollector.getActiveSpanId(stage);
       events.push({
         stage,
         outcome,
-        reason: reason || reasonCode || (error ? error.message : null) || null,
+        // Provider and database exceptions can carry credentials, endpoint
+        // details, or source payload fragments. Event traces are persisted, so
+        // error paths retain only their application-owned reason identifier.
+        reason: error ? (reasonCode || null) : (reason || reasonCode || null),
         reason_code: reasonCode || null,
         fallback_action: fallbackAction,
         recoverable,
         sql_state: sqlState,
         span_id: spanId,
         duration_ms: Number.isFinite(Number(durationMs)) ? Math.max(0, Math.round(Number(durationMs))) : null,
-        ...errorDetails,
       });
     };
     const classifyStageError = async (stage, error, fallbackReasonCode) => {
       const mapped = mapSecondPassError({ stage, fallbackReasonCode, error });
-      const message = typeof error?.message === 'string' ? error.message.trim() : '';
-      const messageCode = /^[a-z0-9_]+$/i.test(message) ? message : null;
       return {
-        reasonCode: mapped.reasonCode || messageCode || fallbackReasonCode,
+        reasonCode: mapped.reasonCode || fallbackReasonCode,
         sqlState: mapped.sqlState,
         recoverable: mapped.recoverable,
       };
@@ -265,8 +259,8 @@ class ClassificationRagLoopService {
         } : null;
       } catch (error) {
         hadError = true;
-        addEvent({ stage: 'trace', outcome: 'error', reason: error.message, reasonCode: 'trace_build_failed', fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.TRACE_OMITTED });
-        logger.warn('Failed to build rag loop trace', { correlationId, stage: 'trace', reason_code: 'trace_build_failed', fallback_action: RAG_LOOP_FALLBACK_ACTIONS.TRACE_OMITTED, error: error.message });
+        addEvent({ stage: 'trace', outcome: 'error', reasonCode: 'trace_build_failed', fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.TRACE_OMITTED, error });
+        logger.warn('Failed to build rag loop trace', { correlationId, stage: 'trace', reason_code: 'trace_build_failed', fallback_action: RAG_LOOP_FALLBACK_ACTIONS.TRACE_OMITTED });
         return null;
       }
     };
@@ -318,7 +312,7 @@ class ClassificationRagLoopService {
           continue;
         }
         hadError = true;
-        addEvent({ stage: 'gate', outcome: 'error', reason: error.message, reasonCode: stageError.reasonCode, recoverable: stageError.recoverable, sqlState: stageError.sqlState, error });
+        addEvent({ stage: 'gate', outcome: 'error', reasonCode: stageError.reasonCode, recoverable: stageError.recoverable, sqlState: stageError.sqlState, error });
         pass1Candidates = [];
         break;
       }

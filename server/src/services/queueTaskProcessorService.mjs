@@ -10,6 +10,7 @@ import { queryWithTimeout as _sharedQueryWithTimeout } from '../utils/queryWithT
 import { processRatingNormalization as _processRatingNormalization } from './queueTaskProcessorRating.mjs';
 import { resolveSourceLibraryName as _resolveSourceLibraryName, processMetadataEnrichmentTask as _processMetadataEnrichmentTask } from './queueTaskProcessorEnrichment.mjs';
 import { rebuildImageIndexes as _rebuildImageIndexes } from './queueTaskProcessorIndexing.mjs';
+import { QUEUE_TASK_FAILURE_REASON_IDS } from './queueTaskFailureReason.mjs';
 import {
     buildClassificationDestinationSummary,
 } from './classificationResultOutcomeSummary.mjs';
@@ -203,11 +204,25 @@ export class QueueTaskProcessorService {
 
                 default:
                     this.logger.warn('Unknown task type', { taskType: task.task_type });
-                    await this.failTask(task.id, `Unknown task type: ${task.task_type}`, task.attempts, task.max_attempts);
+                    await this.failTask(
+                        task.id,
+                        QUEUE_TASK_FAILURE_REASON_IDS.UNKNOWN_TASK_TYPE,
+                        task.attempts,
+                        task.max_attempts,
+                    );
             }
-        } catch (error) {
-            this.logger.error('Task processing failed', { taskId: task.id, error: error.message });
-            await this.failTask(task.id, error.message, task.attempts, task.max_attempts);
+        } catch {
+            this.logger.error('Task processing failed', {
+                taskId: task.id,
+                taskType: task.task_type,
+                reasonCode: QUEUE_TASK_FAILURE_REASON_IDS.PROCESSING_FAILED,
+            });
+            await this.failTask(
+                task.id,
+                QUEUE_TASK_FAILURE_REASON_IDS.PROCESSING_FAILED,
+                task.attempts,
+                task.max_attempts,
+            );
 
             if (task.task_type === 'metadata_enrichment') {
                 const payload = parsePayload(task.payload);
@@ -219,7 +234,7 @@ export class QueueTaskProcessorService {
             if (task.webhook_log_id) {
                 await this.db.query(
                     `UPDATE webhook_log SET processing_status = 'failed', error_message = $2 WHERE id = $1`,
-                    [task.webhook_log_id, error.message]
+                    [task.webhook_log_id, QUEUE_TASK_FAILURE_REASON_IDS.PROCESSING_FAILED]
                 );
             }
         }

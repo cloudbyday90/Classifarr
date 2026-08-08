@@ -167,8 +167,8 @@ describe('ragLogger', () => {
         );
     });
 
-    test('captures raw error metadata consistently from error object', async () => {
-        const error = new Error('provider timeout');
+    test('redacts raw error metadata and stacks from persisted stage events', async () => {
+        const error = new Error('provider timeout token=fixture-secret');
         error.name = 'TimeoutError';
         error.code = 'ETIMEDOUT';
 
@@ -182,9 +182,12 @@ describe('ragLogger', () => {
 
         const params = db.query.mock.calls[0][1];
         const metadata = JSON.parse(params[4]);
-        expect(metadata.raw_error_message).toBe('provider timeout');
-        expect(metadata.raw_error_name).toBe('TimeoutError');
-        expect(metadata.raw_error_code).toBe('ETIMEDOUT');
+        expect(params[2]).toBe('Second-pass stage retrieval_pass2 error (rag_pass2_failed)');
+        expect(params[3]).toBeNull();
+        expect(JSON.stringify(metadata)).not.toContain('fixture-secret');
+        expect(metadata).not.toHaveProperty('raw_error_message');
+        expect(metadata).not.toHaveProperty('raw_error_name');
+        expect(metadata).not.toHaveProperty('raw_error_code');
     });
 
     test('suppresses non-actionable second-pass no-op events', async () => {

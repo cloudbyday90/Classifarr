@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Privacy-Bounded Recovery Acceptance**: Retry, queue, worker-restart, and
+  RAG recovery paths now retain fixed reason identifiers rather than upstream
+  exception data. A forward-only data migration redacts historical queue and
+  RAG recovery diagnostics, while isolated PostgreSQL acceptance covers retry
+  rollback, stale question gating, and startup recovery.
+
 - **Pending Decision Recommendation Presentation**: Pending policy questions
   now preserve a privacy-bounded, fingerprint-bound leading destination when a
   unique safe evidence score exists. The command center labels that value as an

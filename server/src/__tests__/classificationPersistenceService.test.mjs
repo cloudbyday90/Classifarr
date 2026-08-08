@@ -732,12 +732,8 @@ describe('persistRagLoopStageEvents', () => {
       strategy: 'hybrid',
       trigger: 'policy_prompt_select',
       correlation_id: 'corr-1',
-      metadata: expect.objectContaining({
-        trace_id: '4bf92f3577b34da6a3ce929d0e0e4736',
-        span_id: '00f067aa0ba902b7',
-        traceparent: '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01',
-      }),
     });
+    expect(firstCall[0]).not.toHaveProperty('metadata');
   });
 
   test('remaps strategy source stage to gate', async () => {
@@ -758,7 +754,7 @@ describe('persistRagLoopStageEvents', () => {
     });
 
     expect(ragLogger.logStageEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ stage: 'gate', metadata: expect.objectContaining({ source_stage: 'strategy' }) }),
+      expect.objectContaining({ stage: 'gate' }),
     );
   });
 

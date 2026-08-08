@@ -80,7 +80,7 @@ the per-installation cutover evidence owned by Phase 8R.
 | 7R | Contract-complete foundation | Runtime decision, question, rebuild, verifier, rollback, and trace boundaries | Preserve through 5R and 8R authority/storage work |
 | 8R | Complete contracts with recurring evidence | Native lifecycle, installation evidence, CI-only retirement, and closure evidence | Regenerate current evidence and closure audits after mapped contract changes; retain automatic policy conversion |
 | 9R | Ongoing enforcement | Zero-debt durable naming and product-language gates | Preserve the baseline in every product change |
-| 10R | Active operational acceptance | Isolated real-boundary acceptance for AI authority, deterministic policy decisions, provider recovery, existing installations, and operational safety | Complete 10R.3 operational safety, then 10R.4 release assembly |
+| 10R | Release acceptance next | Isolated real-boundary acceptance for AI authority, deterministic policy decisions, provider recovery, existing installations, and operational safety | Assemble the 10R.4 CI manifest and deployment-evidence readout |
 
 ## Required Delivery Order
 
@@ -176,10 +176,17 @@ the per-installation cutover evidence owned by Phase 8R.
     that recommendation; raw policy, provider, and diagnostic payloads remain
     outside the answer contract.
 22. **10R.3.2 Privacy-Bounded Retry, Recovery, Stale-Evidence, And Restart
-    Acceptance** is next. It must accept privacy-bounded logs and metrics,
-    retry and recovery state, stale evidence, routing gaps, and restart
-    recovery through real service boundaries without restoring a runtime
-    retirement path.
+    Acceptance** is complete. Retry, queue, RAG, stale-question, and restart
+    recovery state now use fixed bounded reason identifiers; historical queue
+    and RAG diagnostics receive a data-only redaction upgrade. Isolated
+    PostgreSQL acceptance proves retry rollback, stale answer gating, and
+    startup recovery without a live provider or media server. See
+    [Privacy-Bounded Retry, Recovery, Stale-Evidence, And Restart
+    Acceptance](privacy-bounded-retry-recovery-stale-restart-acceptance.md).
+23. **10R.4 Release Acceptance Assembly** is next. It must define the CI
+    acceptance manifest, bind installation evidence to a deployment fingerprint
+    and approval workflow, and publish a release readout including a measured
+    operator-decision reduction signal.
 
 ## Phase 8R Boundaries
 

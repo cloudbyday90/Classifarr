@@ -986,7 +986,7 @@ describe('QueueService', () => {
             }));
             expect(queueService.logger.error).toHaveBeenCalledWith(
                 'Failed to check classification dispatch blockers',
-                expect.objectContaining({ error: 'lookup failed' }),
+                { reasonCode: 'task_dispatch_blocker_lookup_failed' },
             );
         });
 
@@ -1039,11 +1039,11 @@ describe('QueueService', () => {
         it('should mark task as failed when max attempts reached', async () => {
             db.query.mockResolvedValue({});
 
-            await queueService.failTask(123, 'Error message', 3, 3);
+            await queueService.failTask(123, 'provider endpoint=https://private.example/?token=secret', 3, 3);
 
             expect(db.query).toHaveBeenCalledWith(
                 expect.stringMatching(/UPDATE task_queue.*SET status = 'failed'/s),
-                expect.arrayContaining([123, 'Error message']),
+                expect.arrayContaining([123, 'task_processing_failed']),
             );
         });
 
@@ -2104,7 +2104,7 @@ describe('QueueService', () => {
             expect(count).toBe(0);
             expect(queueService.logger.error).toHaveBeenCalledWith(
                 'Failed to recover expired visibility tasks',
-                expect.objectContaining({ error: 'connection lost' }),
+                { reasonCode: 'task_visibility_recovery_failed' },
             );
         });
 
@@ -2158,6 +2158,10 @@ describe('QueueService', () => {
             expect(updateCall).toBeDefined();
             expect(updateCall[0]).toMatch(/started_at.*<.*NOW\(\).*INTERVAL/s);
             expect(updateCall[0]).toMatch(/visible_at\s*=\s*NULL/);
+            expect(updateCall[1]).toEqual([
+                'task_startup_stale_recovered',
+                expect.any(Number),
+            ]);
             const commitCall = mockClient.query.mock.calls.find(([sql]) => sql === 'COMMIT');
             expect(commitCall).toBeDefined();
         });
@@ -2198,7 +2202,7 @@ describe('QueueService', () => {
             expect(count).toBe(0);
             expect(queueService.logger.error).toHaveBeenCalledWith(
                 'Failed to reset stale tasks',
-                expect.objectContaining({ error: 'connection refused' }),
+                { reasonCode: 'task_startup_reset_failed' },
             );
         });
     });
@@ -2214,7 +2218,8 @@ describe('QueueService', () => {
                 ([sql]) => typeof sql === 'string' && sql.includes("SET status = 'pending'"),
             );
             expect(updateCall).toBeDefined();
-            expect(updateCall[0]).toContain("error_message = 'Reset by graceful shutdown'");
+            expect(updateCall[0]).toContain('error_message = $1');
+            expect(updateCall[1]).toEqual(['task_graceful_shutdown_recovered']);
             expect(updateCall[0]).not.toMatch(/error_message\s*=\s*NULL/);
         });
 
@@ -2225,7 +2230,7 @@ describe('QueueService', () => {
             await expect(queueService.gracefulShutdown()).resolves.toBeUndefined();
             expect(queueService.logger.error).toHaveBeenCalledWith(
                 'Graceful shutdown: failed to reset in-flight tasks',
-                expect.objectContaining({ error: 'DB gone' }),
+                { reasonCode: 'task_graceful_shutdown_recovery_failed' },
             );
         });
     });
@@ -2305,8 +2310,9 @@ describe('QueueService', () => {
 
             expect(queueService.logger.error).toHaveBeenCalledWith(
                 'Task processing failed',
-                expect.objectContaining({ taskId: 100, error: 'index build failed' }),
+                expect.objectContaining({ taskId: 100, reasonCode: 'task_processing_failed' }),
             );
+            expect(JSON.stringify(queueService.logger.error.mock.calls)).not.toContain('index build failed');
 
             const failCall = db.query.mock.calls.find(
                 ([sql]) => typeof sql === 'string' && /UPDATE task_queue\s+SET status = 'failed'/i.test(sql),

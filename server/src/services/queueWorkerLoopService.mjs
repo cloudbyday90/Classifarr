@@ -8,6 +8,10 @@
 
 import { setImmediate as yieldForTurn, setTimeout as waitFor } from 'node:timers/promises';
 import * as db from '../config/database.mjs';
+import {
+    QUEUE_TASK_FAILURE_REASON_IDS,
+    QUEUE_TASK_RECOVERY_LOG_REASON_IDS,
+} from './queueTaskFailureReason.mjs';
 
 const { DB_ADVISORY_LOCKS } = db;
 
@@ -84,8 +88,10 @@ export class QueueWorkerLoopService {
         }
 
         this.setLastRecoveryCheck(now);
-        this.recoverExpiredVisibilityTasks().catch(err => {
-            this.logger.error('Visibility timeout recovery failed', { error: err.message });
+        this.recoverExpiredVisibilityTasks().catch(() => {
+            this.logger.error('Visibility timeout recovery failed', {
+                reasonCode: QUEUE_TASK_RECOVERY_LOG_REASON_IDS.VISIBILITY_RECOVERY_FAILED,
+            });
         });
     }
 
@@ -207,10 +213,14 @@ export class QueueWorkerLoopService {
                 const result = await client.query(
                     `UPDATE task_queue 
                      SET status = 'pending', started_at = NULL, visible_at = NULL,
-                         error_message = 'Reset on startup - previous worker crashed'
+                         error_message = $1
                      WHERE status = 'processing'
-                       AND (started_at IS NULL OR started_at < NOW() - INTERVAL '${this.visibilityTimeoutMinutes} minutes')
-                     RETURNING id`
+                       AND (started_at IS NULL OR started_at < NOW() - ($2::integer * INTERVAL '1 minute'))
+                     RETURNING id`,
+                    [
+                        QUEUE_TASK_FAILURE_REASON_IDS.STARTUP_STALE_RECOVERED,
+                        this.visibilityTimeoutMinutes,
+                    ]
                 );
                 if (result.rowCount > 0) {
                     this.logger.warn('Reset stale processing tasks on startup', {
@@ -220,8 +230,10 @@ export class QueueWorkerLoopService {
                 }
                 return result.rowCount;
             });
-        } catch (error) {
-            this.logger.error('Failed to reset stale tasks', { error: error.message });
+        } catch {
+            this.logger.error('Failed to reset stale tasks', {
+                reasonCode: QUEUE_TASK_RECOVERY_LOG_REASON_IDS.STARTUP_RESET_FAILED,
+            });
             return 0;
         }
     }
@@ -231,11 +243,12 @@ export class QueueWorkerLoopService {
             const result = await this.db.query(
                 `UPDATE task_queue
                  SET status = 'pending', started_at = NULL, visible_at = NULL,
-                     error_message = 'Recovered: visibility timeout expired'
+                     error_message = $1
                  WHERE status = 'processing'
                    AND visible_at IS NOT NULL
                    AND visible_at <= NOW()
-                 RETURNING id, task_type`
+                 RETURNING id, task_type`,
+                [QUEUE_TASK_FAILURE_REASON_IDS.VISIBILITY_TIMEOUT_RECOVERED]
             );
             if (result.rowCount > 0) {
                 for (const row of result.rows) {
@@ -248,8 +261,10 @@ export class QueueWorkerLoopService {
                 });
             }
             return result.rowCount;
-        } catch (error) {
-            this.logger.error('Failed to recover expired visibility tasks', { error: error.message });
+        } catch {
+            this.logger.error('Failed to recover expired visibility tasks', {
+                reasonCode: QUEUE_TASK_RECOVERY_LOG_REASON_IDS.VISIBILITY_RECOVERY_FAILED,
+            });
             return 0;
         }
     }
@@ -260,9 +275,10 @@ export class QueueWorkerLoopService {
             const result = await this.db.query(
                 `UPDATE task_queue
                  SET status = 'pending', started_at = NULL, visible_at = NULL,
-                     error_message = 'Reset by graceful shutdown'
+                     error_message = $1
                  WHERE status = 'processing'
-                 RETURNING id`
+                 RETURNING id`,
+                [QUEUE_TASK_FAILURE_REASON_IDS.GRACEFUL_SHUTDOWN_RECOVERED]
             );
             if (result.rowCount > 0) {
                 this.logger.info('Graceful shutdown: reset in-flight tasks to pending', {
@@ -270,8 +286,10 @@ export class QueueWorkerLoopService {
                     taskIds: result.rows.map(r => r.id),
                 });
             }
-        } catch (err) {
-            this.logger.error('Graceful shutdown: failed to reset in-flight tasks', { error: err.message });
+        } catch {
+            this.logger.error('Graceful shutdown: failed to reset in-flight tasks', {
+                reasonCode: QUEUE_TASK_RECOVERY_LOG_REASON_IDS.GRACEFUL_SHUTDOWN_RECOVERY_FAILED,
+            });
         }
     }
 
@@ -283,8 +301,10 @@ export class QueueWorkerLoopService {
 
         await this.resetStaleProcessingTasks();
 
-        this.backgroundDrainIfBloated().catch(err => {
-            this.logger.warn('Background task_queue drain failed', { error: err.message });
+        this.backgroundDrainIfBloated().catch(() => {
+            this.logger.warn('Background task_queue drain failed', {
+                reasonCode: QUEUE_TASK_RECOVERY_LOG_REASON_IDS.BACKGROUND_DRAIN_FAILED,
+            });
         });
 
         this.setRunning(true);
@@ -300,8 +320,10 @@ export class QueueWorkerLoopService {
                 if (dispatched) {
                     continue;
                 }
-            } catch (error) {
-                this.logger.error('Worker loop error', { error: error.message });
+            } catch {
+                this.logger.error('Worker loop error', {
+                    reasonCode: QUEUE_TASK_RECOVERY_LOG_REASON_IDS.WORKER_LOOP_FAILED,
+                });
             }
 
             await this.wait(this.pollIntervalMs);

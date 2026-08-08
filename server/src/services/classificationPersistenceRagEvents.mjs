@@ -13,7 +13,12 @@ import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('classificationPersistence');
 
-export async function persistRagLoopStageEvents({ classificationId, metadata = {}, result = {} } = {}, ragErrorHandler) {
+function normalizeSqlState(value) {
+  const normalized = typeof value === 'string' ? value.trim().toUpperCase() : '';
+  return /^(?=.*\d)[A-Z0-9]{5}$/.test(normalized) ? normalized : null;
+}
+
+export async function persistRagLoopStageEvents({ classificationId, result = {} } = {}, ragErrorHandler) {
   try {
     const { mapSecondPassError } = ragErrorHandler;
     const logContext = result?.ragLoopLogContext || null;
@@ -29,10 +34,6 @@ export async function persistRagLoopStageEvents({ classificationId, metadata = {
     const strategy = logContext?.strategy || result?.ragLoopTrace?.strategy || null;
     const trigger = logContext?.trigger || result?.ragLoopTrace?.trigger || null;
     const correlationId = logContext?.correlationId || null;
-    const traceContext = result?.ragLoopTrace?.trace_context || result?.decisionTrace || null;
-    const traceId = logContext?.traceId || traceContext?.trace_id || null;
-    const spanId = logContext?.spanId || traceContext?.root_span_id || null;
-    const traceparent = logContext?.traceparent || traceContext?.traceparent || null;
     const resolveStageMetricSpec = ({ stage, outcome, reasonCode }) => {
       const normalizedOutcome = typeof outcome === 'string' ? outcome.trim().toLowerCase() : '';
       if (stage === 'retrieval_pass2') {
@@ -61,12 +62,14 @@ export async function persistRagLoopStageEvents({ classificationId, metadata = {
       const stage = (sourceStage === 'strategy' || sourceStage === 'retrieval_pass1')
         ? 'gate'
         : sourceStage;
+      // This compatibility normalization happens before any persistence or
+      // logging boundary. It may inspect a legacy in-memory error only to
+      // select a fixed reason identifier; it never forwards the error itself.
       const stageEventError = rawEvent.error_message
         ? {
           message: rawEvent.error_message,
           name: rawEvent.error_name || 'Error',
           code: rawEvent.error_code || rawEvent.sql_state || rawEvent.sqlState || null,
-          stack: rawEvent.error_stack || null,
         }
         : ((rawEvent.sql_state || rawEvent.sqlState)
           ? { code: rawEvent.sql_state || rawEvent.sqlState }
@@ -77,7 +80,7 @@ export async function persistRagLoopStageEvents({ classificationId, metadata = {
         fallbackReasonCode: rawEvent.reason || null,
         error: stageEventError,
       });
-      let resolvedReasonCode = rawEvent.reason_code || rawEvent.reason || mappedError.reasonCode;
+      let resolvedReasonCode = mappedError.reasonCode;
       const normalizedResolvedReason = typeof resolvedReasonCode === 'string'
         ? resolvedReasonCode.trim().toLowerCase()
         : '';
@@ -87,55 +90,33 @@ export async function persistRagLoopStageEvents({ classificationId, metadata = {
       ) {
         const refinedMappedError = mapSecondPassError({
           stage,
-          reasonCode: null,
           fallbackReasonCode: normalizedResolvedReason,
           error: stageEventError,
         });
-        if (
-          refinedMappedError?.reasonCode &&
-          refinedMappedError.reasonCode !== normalizedResolvedReason
-        ) {
+        if (refinedMappedError?.reasonCode && refinedMappedError.reasonCode !== normalizedResolvedReason) {
           resolvedReasonCode = refinedMappedError.reasonCode;
         }
       }
-      const resolvedSqlState = rawEvent.sql_state || rawEvent.sqlState || mappedError.sqlState || null;
+      const resolvedSqlState = normalizeSqlState(rawEvent.sql_state || rawEvent.sqlState) || mappedError.sqlState || null;
       const resolvedOutcome = rawEvent.outcome || null;
       const resolvedRecoverable = rawEvent.recoverable === false ? false : mappedError.recoverable;
-      const eventSpanId = rawEvent.span_id || rawEvent.spanId || spanId;
       const rawDurationMs = rawEvent.duration_ms ?? rawEvent.durationMs;
       const eventDurationMs = Number.isFinite(Number(rawDurationMs))
         ? Math.max(0, Math.round(Number(rawDurationMs)))
         : null;
       const logResult = await ragLogger.logStageEvent({
         classification_id: classificationId,
-        tmdb_id: metadata.tmdb_id || null,
-        media_type: metadata.media_type || null,
         stage,
         outcome: resolvedOutcome,
         reason_code: resolvedReasonCode,
         fallback_action: rawEvent.fallback_action || rawEvent.fallbackAction || null,
         recoverable: resolvedRecoverable,
         sql_state: resolvedSqlState,
-        error: stageEventError,
         correlation_id: correlationId,
         rollout_mode: rolloutMode,
         strategy,
         trigger,
-        metadata: {
-          tmdb_id: metadata.tmdb_id || null,
-          media_type: metadata.media_type || null,
-          title: metadata.title || null,
-          source_stage: sourceStage,
-          raw_reason: rawEvent.reason || null,
-          raw_reason_code: rawEvent.reason_code || null,
-          raw_error_message: rawEvent.error_message || null,
-          raw_error_name: rawEvent.error_name || null,
-          raw_error_code: rawEvent.error_code || null,
-          trace_id: traceId,
-          span_id: eventSpanId,
-          traceparent,
-          duration_ms: eventDurationMs,
-        },
+        duration_ms: eventDurationMs,
       });
 
       if (logResult?.logged) {
@@ -154,24 +135,16 @@ export async function persistRagLoopStageEvents({ classificationId, metadata = {
               reason_code: resolvedReasonCode,
               recoverable: resolvedRecoverable,
               sql_state: resolvedSqlState,
-              correlation_id: correlationId,
-              trace_id: traceId,
-              span_id: eventSpanId,
-              traceparent,
               duration_ms: eventDurationMs,
-              classification_id: classificationId,
-              rollout_mode: rolloutMode,
-              strategy,
-              trigger,
             },
           });
         }
       }
     }
-  } catch (error) {
+  } catch {
     logger.warn('Failed to persist rag loop stage logs', {
       classificationId,
-      error: error.message,
+      reasonCode: 'rag_stage_log_persist_failed',
     });
   }
 }

@@ -17,6 +17,10 @@ Current execution focus:
   database-backed acceptance suite now proves disabled and under-specified
   strict requests never reach a provider transport, while a verified response
   is normalized, parsed, marked advisory, and blocked from automatic routing.
+- **Completed:** **10R.3.2 Privacy-Bounded Retry, Recovery, Stale-Evidence,
+  And Restart Acceptance**. Retry, queue, RAG, stale-question, and restart
+  boundaries now preserve only bounded operational state and have isolated
+  real-database acceptance coverage.
 - **Current operational finding:** **8R.36.11 Compatibility-Removal Evidence
   Regeneration** has rerun successfully with the v3 validation contract. The
   repository evidence is ready, while the active-installation completion artifact
@@ -38,8 +42,8 @@ completed boundary isolation: 8R.37.1 -> 8R.37.2 -> 8R.37.3 -> 8R.37.4
 active-installation prerequisite -> 8R.36.11 regeneration -> 8R.34/8R.35 current audits
 completed platform acceptance: 10R.1.1 -> 10R.1.2 -> 10R.1.3
 completed lifecycle acceptance: 10R.2.1 -> 10R.2.2 -> 10R.2.3
-completed operational presentation: 10R.3.1
-current platform acceptance: 10R.3.2
+completed operational safety acceptance: 10R.3.1 -> 10R.3.2
+current platform acceptance: 10R.4 Release Acceptance Assembly
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
 
@@ -12088,7 +12092,7 @@ Completion evidence:
 
 #### 10R.3.2 Privacy-Bounded Retry, Recovery, Stale-Evidence, And Restart Acceptance
 
-Status: next.
+Status: complete.
 
 Intent: prove retries and service recovery give an operator a bounded,
 actionable result across stale evidence, provider faults, routing gaps, and
@@ -12106,6 +12110,17 @@ Tasks:
   answer-contract, recommendation, routing, learning, or retirement guards.
 - Verify no normal runtime entry can invoke compatibility retirement or source
   mutation capabilities.
+
+Completion evidence:
+
+- Retry, queue task, worker restart, and RAG diagnostic paths now persist or
+  emit fixed recovery reason identifiers rather than upstream exception data.
+  The data-only upgrade redacts historical queue and RAG recovery diagnostics.
+- Isolated PostgreSQL coverage proves failed retries leave no partial task,
+  stale questions cannot authorize a destination-changing answer, and startup
+  recovery moves only expired work to pending with a bounded reason.
+- See [Privacy-Bounded Retry, Recovery, Stale-Evidence, And Restart
+  Acceptance](privacy-bounded-retry-recovery-stale-restart-acceptance.md).
 
 ### 10R.4 Release Acceptance Assembly
 
@@ -12255,10 +12270,15 @@ The next sequence is dependency-gated rather than phase-number order:
     complete. Real persisted unsupported and deferred states produce only
     bounded lifecycle diagnostics. Read-only, blocked compatibility-retirement
     evidence cannot change the validated native runtime projection.
-16. **10R.3 Operational Safety And Observability Acceptance**: next. Exercise
-    privacy-bounded logs, metrics, retry and recovery state, stale evidence,
-    routing gaps, and restart behavior through real service boundaries.
-17. **8R.36.11 Compatibility-Removal Evidence Regeneration**: revalidated
+16. **10R.3 Operational Safety And Observability Acceptance**: complete.
+    Privacy-bounded logs, metrics, retry and recovery state, stale evidence,
+    routing gaps, and restart behavior now have isolated real-service
+    acceptance coverage without live provider or media-server access.
+17. **10R.4 Release Acceptance Assembly**: next. Define the CI acceptance
+    manifest, bind active-installation evidence to the deployment fingerprint
+    and approval workflow, and publish a passed, blocked, and not-applicable
+    release readout with an operator-decision reduction measure.
+18. **8R.36.11 Compatibility-Removal Evidence Regeneration**: revalidated
     after the closure-contract change. It produced fresh v3 repository
     validation evidence and bounded blocked diagnostics because the
     active-installation completion artifact remains blocked. The next
@@ -12292,8 +12312,8 @@ that every deployment has completed its separate installation-evidence gate.
 
 ### Re-Review Boundaries
 
-- **Next:** 10R.3 must accept privacy-bounded observability and recovery under
-  retries, stale evidence, routing gaps, and restart conditions.
+- **Next:** 10R.4 must assemble the CI manifest, deployment-evidence readout,
+  and measured operator-decision reduction signal.
 - **Release:** 10R.4 must define the CI manifest, deployment-evidence readout,
   and a measured operator-decision reduction signal. The separately blocked
   8R.36.11 active-installation artifact remains a deployment prerequisite for
