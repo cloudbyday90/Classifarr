@@ -10,6 +10,9 @@ import {
   buildPolicyQuestionAnswerPayload,
   policyQuestionAnswer,
 } from '@/utils/policyQuestionAnswerContract'
+import {
+  leadingPolicyQuestionDestination,
+} from '@/utils/policyQuestionRecommendationPresentation'
 
 export function useNeedsAttentionActions({
   activeLibraries,
@@ -90,7 +93,7 @@ export function useNeedsAttentionActions({
           continue
         }
         const answer = policyQuestionAnswer(item)
-        const destination = answer?.candidate_destinations?.[0]
+        const destination = leadingPolicyQuestionDestination(answer)
         const payload = buildResolutionPayload(
           item,
           POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.CONFIRM_DESTINATION,
@@ -109,7 +112,7 @@ export function useNeedsAttentionActions({
       if (skippedUnavailableItems.length > 0 || skippedStaleItems.length > 0) {
         const messages = []
         if (skippedUnavailableItems.length > 0) {
-          messages.push(`Confirm All skipped ${skippedUnavailableItems.length} item${skippedUnavailableItems.length === 1 ? '' : 's'} without a current confirm action; choose an explicit destination or retry Classification.`)
+          messages.push(`Confirm All skipped ${skippedUnavailableItems.length} item${skippedUnavailableItems.length === 1 ? '' : 's'} without a current leading recommendation; choose a destination or retry Classification.`)
         }
         if (skippedStaleItems.length > 0) {
           messages.push(`Confirm All skipped ${skippedStaleItems.length} stale ${skippedStaleItems.length === 1 ? 'item' : 'items'}; retry Classification to refresh each question.`)

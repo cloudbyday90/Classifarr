@@ -17,6 +17,9 @@ import {
   buildNativePendingQuestionPresentation,
 } from './policyNativePendingQuestionPresentation.mjs';
 import {
+  buildPolicyRuntimeQuestionRecommendationPresentation,
+} from './policyRuntimeQuestionRecommendationPresentation.mjs';
+import {
   isPolicyRuntimeQuestionPersistenceEnvelope,
 } from './policyRuntimeQuestionPersistenceContract.mjs';
 
@@ -260,12 +263,17 @@ function buildPolicyRuntimeQuestionAnswerContract({
     candidateDestinations: questionProjection.candidate_destinations,
     isStale,
   });
+  const recommendation = buildPolicyRuntimeQuestionRecommendationPresentation({
+    question,
+    candidateDestinations: questionProjection.candidate_destinations,
+  });
   const fingerprint = buildContractFingerprint({
     version: POLICY_RUNTIME_QUESTION_ANSWER_CONTRACT_VERSION,
     classification_id: candidateItem.classification_id,
     media_type: candidateItem.media_type,
     question_contract: normalizationStatus.contract,
     question: questionProjection,
+    recommendation,
   });
 
   return {
@@ -279,6 +287,7 @@ function buildPolicyRuntimeQuestionAnswerContract({
     },
     candidate_item: candidateItem,
     candidate_destinations: questionProjection.candidate_destinations,
+    recommendation,
     allowed_actions: actions,
     selected_option_requirements: {
       values_are_server_ids: true,

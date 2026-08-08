@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Pending Decision Recommendation Presentation**: Pending policy questions
+  now preserve a privacy-bounded, fingerprint-bound leading destination when a
+  unique safe evidence score exists. The command center labels that value as an
+  evidence score, presents one primary confirmation, collapses alternatives,
+  and limits Confirm All to items with the same server-owned recommendation.
+
 - **Bounded Lifecycle Diagnostics And Release-Evidence Separation**: Added
   isolated PostgreSQL acceptance coverage for bounded deferred and unsupported
   reconciliation diagnostics. Compatibility-retirement evidence remains

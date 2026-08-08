@@ -127,10 +127,26 @@ const createNativePendingQuestion = (overrides = {}) => ({
 const createPolicyQuestionAnswer = ({
   fingerprint = 'current-contract-fingerprint',
   destinations = [{ library_id: 10, library_name: 'TV Shows' }],
+  recommendation = undefined,
+  question = undefined,
 } = {}) => ({
   version: 'policy.runtime_question_answer.v1',
   fingerprint,
   candidate_destinations: destinations,
+  ...(question ? { question } : {}),
+  recommendation: recommendation === undefined ? {
+    version: 'policy.runtime_question_recommendation_presentation.v1',
+    status_id: 'leading_candidate_available',
+    leading_destination: {
+      library_id: destinations[0]?.library_id,
+      library_name: destinations[0]?.library_name,
+      evidence_score: 75,
+    },
+    why_not_automatic: {
+      reason_id: 'missing_identity_evidence',
+      message: 'A score alone does not establish destination identity automatically.',
+    },
+  } : recommendation,
   allowed_actions: [
     {
       id: 'confirm_destination',
@@ -286,12 +302,12 @@ describe('CommandCenter action modules', () => {
   it('renders server-provided destination controls rather than prompt labels', async () => {
     const wrapper = await mountCommandCenter()
     const buttonLabels = wrapper.findAll('button').map((node) => node.text())
-    expect(buttonLabels).toContain('Resolve in TV Shows')
+    expect(buttonLabels).toContain('Confirm TV Shows')
     expect(buttonLabels).not.toContain('Yes')
     expect(buttonLabels).not.toContain('No')
   })
 
-  it('renders explicit native outcome actions without generic duplicate controls', async () => {
+  it('renders the bounded native current-destination outcome without an inferred leading recommendation', async () => {
     apiMock.getPendingClassifications.mockResolvedValueOnce({
       items: [{
         id: 203,
@@ -299,7 +315,10 @@ describe('CommandCenter action modules', () => {
         media_type: 'tv',
         confidence: 55,
         policy_question: createNativePendingQuestion(),
-        policy_question_answer: createPolicyQuestionAnswer(),
+        policy_question_answer: createPolicyQuestionAnswer({
+          recommendation: null,
+          question: { type: 'native_runtime_question' },
+        }),
       }],
     })
 
@@ -307,11 +326,12 @@ describe('CommandCenter action modules', () => {
     const buttonLabels = wrapper.findAll('button').map(node => node.text())
 
     expect(buttonLabels).toEqual(expect.arrayContaining([
-      'Resolve in TV Shows',
-      'Change destination',
+      'Confirm TV Shows',
+      'Choose a different destination',
       'Retry Classification',
     ]))
-    expect(buttonLabels).not.toContain('Confirm')
+    expect(wrapper.text()).toContain('Current destination')
+    expect(buttonLabels).not.toContain('Use TV Shows')
     expect(buttonLabels).not.toContain('Do not learn')
   })
 
@@ -350,14 +370,17 @@ describe('CommandCenter action modules', () => {
         media_type: 'tv',
         confidence: 55,
         policy_question: createNativePendingQuestion(),
-        policy_question_answer: createPolicyQuestionAnswer(),
+        policy_question_answer: createPolicyQuestionAnswer({
+          recommendation: null,
+          question: { type: 'native_runtime_question' },
+        }),
       }],
     })
     apiMock.resolvePendingClassification.mockResolvedValueOnce({ data: { routed: true } })
 
     const wrapper = await mountCommandCenter()
     const resolveDestination = wrapper.findAll('button')
-      .find(node => node.text() === 'Resolve in TV Shows')
+      .find(node => node.text() === 'Confirm TV Shows')
 
     await resolveDestination.trigger('click')
     await flushPromises()
@@ -378,14 +401,17 @@ describe('CommandCenter action modules', () => {
         media_type: 'tv',
         confidence: 55,
         policy_question: createNativePendingQuestion(),
-        policy_question_answer: createPolicyQuestionAnswer(),
+        policy_question_answer: createPolicyQuestionAnswer({
+          recommendation: null,
+          question: { type: 'native_runtime_question' },
+        }),
       }],
     })
     apiMock.resolvePendingClassification.mockResolvedValueOnce({ data: { routed: true } })
 
     const wrapper = await mountCommandCenter()
     const changeDestination = wrapper.findAll('button')
-      .find(node => node.text() === 'Change destination')
+      .find(node => node.text() === 'Choose a different destination')
     await changeDestination.trigger('click')
     await flushPromises()
 
@@ -511,7 +537,7 @@ describe('CommandCenter action modules', () => {
 
     const wrapper = await mountCommandCenter()
     const resolveDestination = wrapper.findAll('button')
-      .find((node) => node.text() === 'Resolve in TV Shows')
+      .find((node) => node.text() === 'Confirm TV Shows')
 
     expect(resolveDestination).toBeTruthy()
     await resolveDestination.trigger('click')
@@ -521,6 +547,65 @@ describe('CommandCenter action modules', () => {
     expect(wrapper.text()).toContain('Resolved "Motorvalley" but routing did not complete (missing_tvdb_id).')
   })
 
+  it('renders a single leading confirmation and keeps other candidates deliberate', async () => {
+    apiMock.getPendingClassifications.mockResolvedValueOnce({
+      items: [{
+        id: 251,
+        title: 'Deep Water',
+        year: 2006,
+        media_type: 'movie',
+        confidence: 75,
+        policy_question: {
+          question: 'Is there enough evidence to treat this as a match?',
+          options: [
+            { library_id: 8, library_name: 'Movies' },
+            { library_id: 9, library_name: 'Anime Movies' },
+          ],
+        },
+        policy_question_answer: createPolicyQuestionAnswer({
+          fingerprint: 'deep-water-contract-fingerprint',
+          destinations: [
+            { library_id: 8, library_name: 'Movies' },
+            { library_id: 9, library_name: 'Anime Movies' },
+          ],
+          recommendation: {
+            version: 'policy.runtime_question_recommendation_presentation.v1',
+            status_id: 'leading_candidate_available',
+            leading_destination: {
+              library_id: 8,
+              library_name: 'Movies',
+              evidence_score: 75,
+            },
+            why_not_automatic: {
+              reason_id: 'missing_identity_evidence',
+              message: 'A score alone does not establish destination identity automatically.',
+            },
+          },
+        }),
+      }],
+    })
+
+    const wrapper = await mountCommandCenter()
+
+    expect(wrapper.text()).toContain('Leading candidate')
+    expect(wrapper.text()).toContain('Evidence score: 75/100')
+    expect(wrapper.text()).toContain('A score alone does not establish destination identity automatically.')
+    expect(wrapper.findAll('button').some(node => node.text() === 'Confirm Movies')).toBe(true)
+    expect(wrapper.text()).toContain('Review 1 alternative candidate')
+    expect(wrapper.find('details').element.open).toBe(false)
+
+    const confirmButton = wrapper.findAll('button').find(node => node.text() === 'Confirm Movies')
+    await confirmButton.trigger('click')
+    await flushPromises()
+
+    expect(apiMock.resolvePendingClassification).toHaveBeenCalledWith(251, {
+      contract_version: 'policy.runtime_question_answer.v1',
+      contract_fingerprint: 'deep-water-contract-fingerprint',
+      action_id: 'confirm_destination',
+      destination_library_id: 8,
+    })
+  })
+
   it('shows routing error when manual change resolves but routing fails', async () => {
     apiMock.resolvePendingClassification.mockResolvedValueOnce({
       data: { routed: false, routingError: 'Sonarr API connection failed' },
@@ -528,7 +613,7 @@ describe('CommandCenter action modules', () => {
 
     const wrapper = await mountCommandCenter()
     const changeButton = wrapper.findAll('button')
-      .find((node) => node.text() === 'Change destination')
+      .find((node) => node.text() === 'Choose a different destination')
 
     expect(changeButton).toBeTruthy()
     await changeButton.trigger('click')
@@ -636,7 +721,7 @@ describe('CommandCenter action modules', () => {
       action_id: 'confirm_destination',
       destination_library_id: 10,
     })
-    expect(wrapper.text()).toContain('Confirm All skipped 1 item without a current confirm action')
+    expect(wrapper.text()).toContain('Confirm All skipped 1 item without a current leading recommendation')
   })
 
   it('retries a single needs-attention classification', async () => {

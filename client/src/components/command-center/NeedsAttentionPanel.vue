@@ -82,39 +82,15 @@
           </Button>
         </div>
 
-        <div
+        <PendingQuestionRecommendationActions
           v-else
-          class="question-actions"
-        >
-          <Button
-            v-for="destination in answerContract(item).candidate_destinations"
-            :key="`${item.id}-confirm-${destination.library_id}`"
-            variant="success"
-            size="sm"
-            :disabled="isActionBusy(`resolve-${item.id}`) || !canConfirmDestination(item)"
-            :loading="isActionBusy(`resolve-${item.id}`)"
-            @click="emitResolveOption(item, confirmDestinationActionId, destination.library_id)"
-          >
-            Resolve in {{ destination.library_name }}
-          </Button>
-          <Button
-            v-if="canChangeDestination(item)"
-            variant="ghost"
-            size="sm"
-            @click="$emit('toggle-change-mode', item.id)"
-          >
-            Change destination
-          </Button>
-          <Button
-            variant="warning"
-            size="sm"
-            :disabled="isActionBusy(`retry-classification-${item.id}`)"
-            :loading="isActionBusy(`retry-classification-${item.id}`)"
-            @click="$emit('retry-item', item)"
-          >
-            Retry Classification
-          </Button>
-        </div>
+          :answer="answerContract(item)"
+          :is-action-busy="isActionBusy"
+          :item-id="item.id"
+          @choose-destination="$emit('toggle-change-mode', item.id)"
+          @confirm-destination="emitResolveOption(item, $event.actionId, $event.destinationLibraryId)"
+          @retry="$emit('retry-item', item)"
+        />
       </div>
 
       <div
@@ -248,6 +224,7 @@
 
 <script setup>
 import { Button } from '@/components/common'
+import PendingQuestionRecommendationActions from './PendingQuestionRecommendationActions.vue'
 import { computed } from 'vue'
 import {
   isQueuedForRetry,
@@ -261,6 +238,9 @@ import {
   availablePolicyQuestionAnswerAction,
   policyQuestionAnswer,
 } from '@/utils/policyQuestionAnswerContract'
+import {
+  leadingPolicyQuestionDestination,
+} from '@/utils/policyQuestionRecommendationPresentation'
 
 const props = defineProps({
   changeMode: {
@@ -302,26 +282,11 @@ const emit = defineEmits([
   'update-manual-library',
 ])
 
-const confirmDestinationActionId = POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.CONFIRM_DESTINATION
 const changeDestinationActionId = POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.CHANGE_DESTINATION
 const routeNotApplicableActionId = POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.ROUTE_NOT_APPLICABLE
 
 function answerContract(item) {
   return policyQuestionAnswer(item)
-}
-
-function canConfirmDestination(item) {
-  return Boolean(availablePolicyQuestionAnswerAction(
-    answerContract(item),
-    confirmDestinationActionId,
-  ))
-}
-
-function canChangeDestination(item) {
-  return Boolean(availablePolicyQuestionAnswerAction(
-    answerContract(item),
-    changeDestinationActionId,
-  ))
 }
 
 function canResolveWithoutRouting(item) {
@@ -346,7 +311,12 @@ function manualLibraryValue(itemId) {
 }
 
 const hasBulkConfirmableItems = computed(() => props.items.some(
-  item => canConfirmDestination(item) && answerContract(item)?.candidate_destinations?.length,
+  item => Boolean(leadingPolicyQuestionDestination(answerContract(item))) && Boolean(
+    availablePolicyQuestionAnswerAction(
+      answerContract(item),
+      POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.CONFIRM_DESTINATION,
+    ),
+  ),
 ))
 </script>
 
@@ -423,12 +393,6 @@ const hasBulkConfirmableItems = computed(() => props.items.some(
   border-radius: 0.375rem;
   padding: 0.5rem;
   margin-bottom: 0.75rem;
-}
-
-.question-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
 }
 
 .native-pending-question-invalid {

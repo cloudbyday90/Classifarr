@@ -168,10 +168,18 @@ the per-installation cutover evidence owned by Phase 8R.
     bounded status projection with no raw fixture data or identifier fields.
     Blocked, read-only compatibility-retirement evidence does not interrupt the
     validated native policy-engine runtime read.
-21. **10R.3 Operational Safety And Observability Acceptance** is next. It
-    must accept privacy-bounded logs and metrics, retry and recovery state,
-    stale evidence, routing gaps, and restart recovery through real service
-    boundaries without restoring a runtime retirement path.
+21. **10R.3.1 Pending Decision Recommendation Presentation And Input-Safe
+    Resolution** is complete. A normalized question now carries a
+    fingerprint-bound, privacy-bounded leading recommendation only when its
+    safe candidate score is unique. The command center renders one primary
+    confirmation, collapses alternatives, and refuses bulk confirmation without
+    that recommendation; raw policy, provider, and diagnostic payloads remain
+    outside the answer contract.
+22. **10R.3.2 Privacy-Bounded Retry, Recovery, Stale-Evidence, And Restart
+    Acceptance** is next. It must accept privacy-bounded logs and metrics,
+    retry and recovery state, stale evidence, routing gaps, and restart
+    recovery through real service boundaries without restoring a runtime
+    retirement path.
 
 ## Phase 8R Boundaries
 

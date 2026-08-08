@@ -89,6 +89,19 @@ describe('policyRuntimeQuestionAnswerContract', () => {
         { library_id: 7, library_name: 'Family Movies' },
         { library_id: 8, library_name: 'Horror Movies' },
       ],
+      recommendation: {
+        status_id: 'leading_candidate_available',
+        leading_destination: {
+          library_id: 7,
+          library_name: 'Family Movies',
+          evidence_score: 86,
+        },
+        why_not_automatic: {
+          reason_id: 'missing_identity_evidence',
+          message: 'A score alone does not establish destination identity automatically.',
+        },
+        alternative_candidate_count: 1,
+      },
       selected_option_requirements: {
         values_are_server_ids: true,
         free_form_labels_accepted: false,
@@ -203,6 +216,7 @@ describe('policyRuntimeQuestionAnswerContract', () => {
         destinationLibraryId: answer.destination_library_id,
       },
     })).toBe('Resolve current item');
+    expect(contract.recommendation).toBeNull();
   });
 
   test('uses compact reversible Discord action codes', () => {

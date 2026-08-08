@@ -1,0 +1,251 @@
+<!--
+  Classifarr - AI-powered media classification for the *arr ecosystem
+  Copyright (C) 2024-2026 Classifarr Contributors
+
+  This program is free software: licensed under GPL-3.0
+  See LICENSE file for details.
+-->
+
+<template>
+  <section class="pending-question-actions">
+    <div
+      v-if="primaryDestination"
+      class="leading-recommendation"
+    >
+      <p class="recommendation-label">
+        {{ leadingDestination ? 'Leading candidate' : 'Current destination' }}
+      </p>
+      <p class="recommendation-destination">
+        {{ primaryDestination.library_name }}
+      </p>
+      <p class="recommendation-score">
+        <template v-if="leadingDestination">
+          Evidence score: {{ leadingDestination.evidence_score }}/100
+        </template>
+        <template v-else>
+          {{ answer?.question?.why_uncertain || 'The runtime decision requires a bounded operator outcome.' }}
+        </template>
+      </p>
+      <p class="recommendation-explanation">
+        {{ leadingDestination
+          ? recommendation.why_not_automatic.message
+          : 'This resolves this item only and does not change future policy learning.' }}
+      </p>
+      <Button
+        v-if="canConfirmDestination"
+        variant="success"
+        size="sm"
+        :disabled="isResolving"
+        :loading="isResolving"
+        @click="emitConfirmDestination(primaryDestination)"
+      >
+        Confirm {{ primaryDestination.library_name }}
+      </Button>
+    </div>
+
+    <div
+      v-else
+      class="manual-destination"
+    >
+      <p class="recommendation-label">
+        Manual destination decision
+      </p>
+      <p class="recommendation-explanation">
+        {{ recommendation?.why_not_automatic?.message || 'No single destination has enough evidence to lead this decision.' }}
+      </p>
+    </div>
+
+    <details
+      v-if="alternativeDestinations.length"
+      class="alternative-destinations"
+    >
+      <summary>
+        {{ alternativeReviewLabel }}
+      </summary>
+      <div class="alternative-actions">
+        <Button
+          v-for="destination in alternativeDestinations"
+          :key="`alternative-${destination.library_id}`"
+          variant="secondary"
+          size="sm"
+          :disabled="isResolving || !canConfirmDestination"
+          :loading="isResolving"
+          @click="emitConfirmDestination(destination)"
+        >
+          {{ leadingDestination ? `Use ${destination.library_name} instead` : `Use ${destination.library_name}` }}
+        </Button>
+      </div>
+    </details>
+
+    <div class="secondary-actions">
+      <Button
+        v-if="canChangeDestination"
+        variant="ghost"
+        size="sm"
+        @click="$emit('choose-destination')"
+      >
+        {{ primaryDestination ? 'Choose a different destination' : 'Choose destination' }}
+      </Button>
+      <Button
+        variant="warning"
+        size="sm"
+        :disabled="isRetrying"
+        :loading="isRetrying"
+        @click="$emit('retry')"
+      >
+        Retry Classification
+      </Button>
+    </div>
+
+    <p class="resolution-scope">
+      This resolves this item only. It does not change future policy learning.
+    </p>
+  </section>
+</template>
+
+<script setup>
+import { computed } from 'vue'
+
+import { Button } from '@/components/common'
+import {
+  POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS,
+  availablePolicyQuestionAnswerAction,
+} from '@/utils/policyQuestionAnswerContract'
+import {
+  policyQuestionRecommendation,
+  policyQuestionCandidateDestinations,
+} from '@/utils/policyQuestionRecommendationPresentation'
+
+const props = defineProps({
+  answer: {
+    type: Object,
+    required: true,
+  },
+  isActionBusy: {
+    type: Function,
+    required: true,
+  },
+  itemId: {
+    type: [Number, String],
+    required: true,
+  },
+})
+
+const emit = defineEmits([
+  'choose-destination',
+  'confirm-destination',
+  'retry',
+])
+
+const recommendation = computed(() => policyQuestionRecommendation(props.answer))
+const leadingDestination = computed(() => recommendation.value?.leading_destination || null)
+const candidateDestinations = computed(() => policyQuestionCandidateDestinations(props.answer))
+const isNativeQuestion = computed(() => props.answer?.question?.type === 'native_runtime_question')
+const primaryDestination = computed(() => {
+  if (leadingDestination.value) return leadingDestination.value
+  return isNativeQuestion.value && candidateDestinations.value.length === 1
+    ? candidateDestinations.value[0]
+    : null
+})
+const canConfirmDestination = computed(() => Boolean(availablePolicyQuestionAnswerAction(
+  props.answer,
+  POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.CONFIRM_DESTINATION,
+)))
+const canChangeDestination = computed(() => Boolean(availablePolicyQuestionAnswerAction(
+  props.answer,
+  POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.CHANGE_DESTINATION,
+)))
+const isResolving = computed(() => props.isActionBusy(`resolve-${props.itemId}`))
+const isRetrying = computed(() => props.isActionBusy(`retry-classification-${props.itemId}`))
+const alternativeDestinations = computed(() => {
+  return candidateDestinations.value
+    .filter(destination => destination?.library_id !== primaryDestination.value?.library_id)
+})
+const alternativeReviewLabel = computed(() => {
+  const count = alternativeDestinations.value.length
+  if (leadingDestination.value) {
+    return `Review ${count} ${count === 1 ? 'alternative candidate' : 'alternative candidates'}`
+  }
+  return `Review ${count} ${count === 1 ? 'candidate destination' : 'candidate destinations'}`
+})
+
+function emitConfirmDestination(destination) {
+  emit('confirm-destination', {
+    actionId: POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.CONFIRM_DESTINATION,
+    destinationLibraryId: destination.library_id,
+  })
+}
+</script>
+
+<style scoped>
+.pending-question-actions {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.leading-recommendation,
+.manual-destination {
+  padding: 0.75rem;
+  border: 1px solid #2563eb;
+  border-radius: 0.375rem;
+  background: rgba(30, 64, 175, 0.12);
+}
+
+.manual-destination {
+  border-color: #4b5563;
+  background: rgba(55, 65, 81, 0.2);
+}
+
+.recommendation-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #bfdbfe;
+}
+
+.recommendation-destination {
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #f3f4f6;
+}
+
+.recommendation-score,
+.recommendation-explanation,
+.resolution-scope {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: #cbd5e1;
+}
+
+.leading-recommendation :deep(.btn) {
+  margin-top: 0.75rem;
+}
+
+.alternative-destinations {
+  font-size: 0.75rem;
+  color: #cbd5e1;
+}
+
+.alternative-destinations summary {
+  width: fit-content;
+  cursor: pointer;
+  color: #bfdbfe;
+}
+
+.alternative-actions,
+.secondary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.alternative-actions {
+  margin-top: 0.75rem;
+}
+
+.resolution-scope {
+  color: #94a3b8;
+}
+</style>

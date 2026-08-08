@@ -38,7 +38,8 @@ completed boundary isolation: 8R.37.1 -> 8R.37.2 -> 8R.37.3 -> 8R.37.4
 active-installation prerequisite -> 8R.36.11 regeneration -> 8R.34/8R.35 current audits
 completed platform acceptance: 10R.1.1 -> 10R.1.2 -> 10R.1.3
 completed lifecycle acceptance: 10R.2.1 -> 10R.2.2 -> 10R.2.3
-current platform acceptance: 10R.3
+completed operational presentation: 10R.3.1
+current platform acceptance: 10R.3.2
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
 
@@ -12054,10 +12055,55 @@ Completion:
 Intent: prove safe operator-visible outcomes under retries, stale evidence,
 provider failures, routing gaps, and restart recovery.
 
+#### 10R.3.1 Pending Decision Recommendation Presentation And Input-Safe Resolution
+
+Status: complete.
+
+Intent: make a pending item explain its evidence boundary without asking the
+operator to reverse-engineer confidence or treat every candidate as equally
+recommended.
+
 Tasks:
 
-- Exercise privacy-bounded logs, metrics, retry/recovery state, and no-route
-  outcomes through real service boundaries.
+- Preserve a safe, ranked leading destination through the server-owned answer
+  contract, together with a bounded reason automation stopped.
+- Render exactly one primary confirmation only for a unique leader, or for an
+  established single native current-destination outcome; require an intentional
+  review for alternatives and a deliberate picker where no leader exists.
+- Keep resolution, fingerprint, candidate-scope, learning, and routing
+  authority server-owned. Reject malformed browser presentation data and never
+  project raw policy, provider, AI, or media-server diagnostics.
+- Prevent bulk confirmation from resolving an item solely because a candidate
+  happened to be first in an array.
+
+Completion evidence:
+
+- The answer contract fingerprints a privacy-bounded recommendation projection;
+  tied, missing, or invalid ranking data has no leader.
+- The command-center action surface shows an evidence score rather than a
+  misleading confidence label and collapses alternatives by default.
+- Focused server and client tests prove safe projection, fail-closed client
+  rendering, resolution payload preservation, and bulk-confirm gating. See
+  [Pending Question Recommendation Presentation](pending-question-recommendation-presentation.md).
+
+#### 10R.3.2 Privacy-Bounded Retry, Recovery, Stale-Evidence, And Restart Acceptance
+
+Status: next.
+
+Intent: prove retries and service recovery give an operator a bounded,
+actionable result across stale evidence, provider faults, routing gaps, and
+restart recovery without exposing provider internals or restoring retired
+runtime paths.
+
+Tasks:
+
+- Exercise retry, recovery, stale-question refresh, and restart behavior
+  through isolated real service boundaries with no live provider or media
+  server dependency.
+- Prove logs, metrics, and operator-facing recovery state use bounded reason
+  identifiers and redact provider, configuration, and source payloads.
+- Verify an unavailable, stale, or recovered action cannot bypass current
+  answer-contract, recommendation, routing, learning, or retirement guards.
 - Verify no normal runtime entry can invoke compatibility retirement or source
   mutation capabilities.
 

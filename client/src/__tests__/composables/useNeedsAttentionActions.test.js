@@ -31,6 +31,19 @@ function currentAnswerContract(destinationLibraryId = 5) {
     version: 'policy.runtime_question_answer.v1',
     fingerprint: 'current-contract-fingerprint',
     candidate_destinations: [{ library_id: destinationLibraryId, library_name: 'Movies' }],
+    recommendation: {
+      version: 'policy.runtime_question_recommendation_presentation.v1',
+      status_id: 'leading_candidate_available',
+      leading_destination: {
+        library_id: destinationLibraryId,
+        library_name: 'Movies',
+        evidence_score: 75,
+      },
+      why_not_automatic: {
+        reason_id: 'missing_identity_evidence',
+        message: 'A score alone does not establish destination identity automatically.',
+      },
+    },
     allowed_actions: [
       {
         id: 'confirm_destination',
@@ -150,5 +163,19 @@ describe('useNeedsAttentionActions composable', () => {
     await actions.confirmAllNeedsAttention()
 
     expect(deps.setActionError).toHaveBeenCalledWith(expect.stringContaining('2 items'))
+  })
+
+  it('does not bulk-confirm an item without a current leading recommendation', async () => {
+    const itemWithoutRecommendation = currentItem(3, 'Ambiguous')
+    delete itemWithoutRecommendation.policy_question_answer.recommendation
+    const deps = createDeps({
+      needsAttentionItems: ref([itemWithoutRecommendation]),
+    })
+    const actions = useNeedsAttentionActions(deps)
+
+    await actions.confirmAllNeedsAttention()
+
+    expect(api.resolvePendingClassification).not.toHaveBeenCalled()
+    expect(deps.setActionError).toHaveBeenCalledWith(expect.stringContaining('without a current leading recommendation'))
   })
 })
