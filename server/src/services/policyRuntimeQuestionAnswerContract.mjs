@@ -20,6 +20,9 @@ import {
   buildPolicyRuntimeQuestionRecommendationPresentation,
 } from './policyRuntimeQuestionRecommendationPresentation.mjs';
 import {
+  buildPolicyRuntimeQuestionDecisionPresentation,
+} from './policyRuntimeQuestionDecisionPresentation.mjs';
+import {
   isPolicyRuntimeQuestionPersistenceEnvelope,
 } from './policyRuntimeQuestionPersistenceContract.mjs';
 
@@ -267,6 +270,11 @@ function buildPolicyRuntimeQuestionAnswerContract({
     question,
     candidateDestinations: questionProjection.candidate_destinations,
   });
+  const decisionSummary = buildPolicyRuntimeQuestionDecisionPresentation({
+    classification,
+    question,
+    candidateDestinations: questionProjection.candidate_destinations,
+  });
   const fingerprint = buildContractFingerprint({
     version: POLICY_RUNTIME_QUESTION_ANSWER_CONTRACT_VERSION,
     classification_id: candidateItem.classification_id,
@@ -274,6 +282,7 @@ function buildPolicyRuntimeQuestionAnswerContract({
     question_contract: normalizationStatus.contract,
     question: questionProjection,
     recommendation,
+    decision_summary: decisionSummary,
   });
 
   return {
@@ -288,6 +297,7 @@ function buildPolicyRuntimeQuestionAnswerContract({
     candidate_item: candidateItem,
     candidate_destinations: questionProjection.candidate_destinations,
     recommendation,
+    decision_summary: decisionSummary,
     allowed_actions: actions,
     selected_option_requirements: {
       values_are_server_ids: true,

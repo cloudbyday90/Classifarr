@@ -94,66 +94,47 @@ export function createVerifyDisagreementResult(context, details = {}) {
         });
     }
 
-    const title = metadata?.title || 'this item';
-    const orderedAlternatives = [];
-
-    if (details.conflictingLibrary && details.conflictingLibrary.id !== suggestedLibrary.id) {
-        orderedAlternatives.push(details.conflictingLibrary);
-    }
-
-    for (const library of libraries) {
-        if (library.id !== suggestedLibrary.id && !orderedAlternatives.some(candidate => candidate.id === library.id)) {
-            orderedAlternatives.push(library);
-        }
-    }
-
-    const options = [
-        {
-            label: suggestedLibrary.name,
-            value: `library_${suggestedLibrary.id}`,
-            library_id: suggestedLibrary.id,
-            library_name: suggestedLibrary.name,
-        },
-        ...orderedAlternatives.slice(0, 3).map(lib => ({
-            label: lib.name,
-            value: `library_${lib.id}`,
-            library_id: lib.id,
-            library_name: lib.name,
-        }))
-    ].slice(0, 4);
-
-    const whyUncertain = details.conflictingLibrary
-        ? `The AI verify response selected "${details.conflictingLibrary.name}" instead of confirming the suggested library "${suggestedLibrary.name}".`
-        : 'The AI returned a narrative response instead of confirming the suggested library, indicating disagreement or uncertainty.';
-    const question = `The AI disagreed with classifying "${title}" as "${suggestedLibrary.name}". Please confirm or choose an alternative.`;
-    const policyQuestion = {
-        problem_summary: 'AI disagreed with suggested classification',
-        why_uncertain: whyUncertain,
-        question,
-        options,
-        generated_at: new Date().toISOString(),
-        signal_breakdown: signalContext?.breakdown || [],
-        calculated_confidence: signalContext?.confidence || null,
-        meta: {
-            source_format: details.sourceFormat || 'verify_disagreement',
-            conflicting_library_id: details.conflictingLibrary?.id || null,
-            conflicting_library_name: details.conflictingLibrary?.name || null,
-            disagreement_reason: details.disagreementReason || null
-        }
-    };
+    const selectedLibrary = details.conflictingLibrary && details.conflictingLibrary.id !== suggestedLibrary.id
+        ? details.conflictingLibrary
+        : null;
+    const statusId = selectedLibrary
+        ? 'alternative_selected'
+        : ['clarify', 'json_clarify'].includes(details.sourceFormat)
+            ? 'clarification_requested'
+            : 'verification_not_confirmed';
+    const message = selectedLibrary
+        ? `The model proposed "${selectedLibrary.name}" instead of "${suggestedLibrary.name}". The deterministic policy candidate was retained.`
+        : `The model did not confirm "${suggestedLibrary.name}". The deterministic policy candidate was retained.`;
 
     return {
         library: suggestedLibrary,
         confidence: Number.isFinite(Number(signalContext?.confidence))
             ? Number(signalContext.confidence)
             : 50,
-        reason: 'Needs clarification: AI disagreed with suggested classification',
-        needs_clarification: true,
-        clarification: policyQuestion,
-        pending_reason: 'AI disagreed with suggested classification',
-        policy_question: policyQuestion,
+        reason: 'AI advisory did not confirm the deterministic policy candidate',
+        needs_clarification: false,
+        clarification: null,
+        pending_reason: null,
+        policy_question: null,
+        ai_advisory: {
+            version: 'classification.ai_advisory.v1',
+            status_id: statusId,
+            message,
+            mode: 'verification',
+            deterministic_candidate: {
+                library_id: suggestedLibrary.id,
+                library_name: suggestedLibrary.name,
+            },
+            proposed_destination: selectedLibrary
+                ? {
+                    library_id: selectedLibrary.id,
+                    library_name: selectedLibrary.name,
+                }
+                : null,
+            source_format: details.sourceFormat || 'verify_disagreement',
+        },
         libraries,
-        format: details.sourceFormat === 'narrative' ? 'narrative_clarify' : 'verify_disagreement',
+        format: 'verify_advisory',
     };
 }
 

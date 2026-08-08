@@ -31,10 +31,10 @@
         <span v-if="suggestedLibraryLabel(item)">→ {{ suggestedLibraryLabel(item) }}</span>
       </div>
       <p
-        v-if="primaryNeedsAttentionReason(item)"
+        v-if="needsAttentionReason(item)"
         class="action-item-reason"
       >
-        {{ primaryNeedsAttentionReason(item) }}
+        {{ needsAttentionReason(item) }}
       </p>
       <p
         v-if="targetedRecheckLine(item)"
@@ -48,13 +48,13 @@
         class="action-item-question"
       >
         <p class="question-text">
-          {{ answerContract(item)?.question?.text || 'This policy question needs to be refreshed before it can be resolved.' }}
+          {{ questionText(item) }}
         </p>
         <p
-          v-if="answerContract(item)?.question?.why_uncertain"
+          v-if="questionExplanation(item)"
           class="question-why"
         >
-          {{ answerContract(item).question.why_uncertain }}
+          {{ questionExplanation(item) }}
         </p>
         <p
           v-if="item.policy_question_stale"
@@ -241,6 +241,9 @@ import {
 import {
   leadingPolicyQuestionDestination,
 } from '@/utils/policyQuestionRecommendationPresentation'
+import {
+  policyQuestionDecisionPresentation,
+} from '@/utils/policyQuestionDecisionPresentation'
 
 const props = defineProps({
   changeMode: {
@@ -287,6 +290,35 @@ const routeNotApplicableActionId = POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.ROU
 
 function answerContract(item) {
   return policyQuestionAnswer(item)
+}
+
+function decisionPresentation(item) {
+  return policyQuestionDecisionPresentation(answerContract(item))
+}
+
+function needsAttentionReason(item) {
+  const presentation = decisionPresentation(item)
+  if (presentation?.deterministic?.status_id === 'confirmation_required') {
+    return 'Policy confirmation required'
+  }
+
+  return primaryNeedsAttentionReason(item)
+}
+
+function questionExplanation(item) {
+  return decisionPresentation(item)?.deterministic?.message ||
+    answerContract(item)?.question?.why_uncertain ||
+    null
+}
+
+function questionText(item) {
+  const deterministic = decisionPresentation(item)?.deterministic
+  if (deterministic?.status_id === 'confirmation_required' && deterministic.destination?.library_name) {
+    return `Confirm ${deterministic.destination.library_name} or choose a different destination.`
+  }
+
+  return answerContract(item)?.question?.text ||
+    'This policy question needs to be refreshed before it can be resolved.'
 }
 
 function canResolveWithoutRouting(item) {

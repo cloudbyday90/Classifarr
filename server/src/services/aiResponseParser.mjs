@@ -117,7 +117,7 @@ export class AIResponseParser {
             const parser = this.formatParsers.get(formatName);
             if (!parser) continue;
 
-            const result = parser(normalized, context);
+            const result = parser(normalized, context, { mode });
             if (result) {
                 this.logger.debug('Parsed AI response', { 
                     format: formatName,
@@ -242,7 +242,7 @@ export class AIResponseParser {
         };
     }
 
-    parseClarifyFormat(response, context) {
+    parseClarifyFormat(response, context, parseOptions = {}) {
         const { libraries, signalContext, metadata } = context;
 
         // eslint-disable-next-line security/detect-unsafe-regex -- negated char class prevents backtracking
@@ -284,13 +284,20 @@ export class AIResponseParser {
             suggestedLibrary: signalContext?.suggestedLibrary?.name
         });
 
-        if (signalContext) {
+        if (parseOptions.mode === 'verify' && signalContext) {
             this.logger.debug('Signal breakdown with AI CLARIFY', {
                 title: metadata?.title,
                 confidence: signalContext.confidence,
                 suggestedLibrary: signalContext.suggestedLibrary?.name,
                 breakdown: signalContext.breakdown,
                 hasConflict: signalContext.hasConflict
+            });
+        }
+
+        if (parseOptions.mode === 'verify' && signalContext) {
+            return this.createVerifyDisagreementResult(context, {
+                disagreementReason: 'clarification_requested',
+                sourceFormat: 'clarify',
             });
         }
 
@@ -420,6 +427,13 @@ export class AIResponseParser {
                     violationReason: fallbackReason,
                     requestedOptions: optionTokens,
                     matchedOptions: options
+                });
+            }
+
+            if (signalContext) {
+                return this.createVerifyDisagreementResult(context, {
+                    disagreementReason: 'clarification_requested',
+                    sourceFormat: 'json_clarify',
                 });
             }
 

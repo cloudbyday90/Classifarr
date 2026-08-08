@@ -117,6 +117,19 @@ describe('useNeedsAttentionActions composable', () => {
     expect(api.retryClassifications).toHaveBeenCalledWith([10])
   })
 
+  it('treats an already-active retry as an idempotent refresh instead of an error', async () => {
+    const deps = createDeps()
+    api.retryClassifications.mockResolvedValueOnce({
+      data: { results: [{ queued: false, reasonCode: 'duplicate_pending_task' }] },
+    })
+
+    const actions = useNeedsAttentionActions(deps)
+    await expect(actions.retryNeedsAttentionItem({ id: 10, title: 'Test' })).resolves.toBeUndefined()
+
+    expect(api.retryClassifications).toHaveBeenCalledWith([10])
+    expect(deps.setActionError).not.toHaveBeenCalled()
+  })
+
   it('retryAllNeedsAttention throws when zero items queued', async () => {
     const deps = createDeps({
       needsAttentionItems: ref([{ id: 1 }, { id: 2 }]),

@@ -597,6 +597,44 @@ describe('logClassification', () => {
 
     const notifCall = db.query.mock.calls.find(c => c[0].includes('INSERT INTO app_notifications'));
     expect(notifCall).toBeDefined();
+    expect(notifCall[0]).toContain('active_pending_decision');
+    expect(notifCall[0]).toContain('FOR UPDATE');
+    expect(notifCall[1][4]).toBe(42);
+  });
+
+  test('persists only the bounded AI advisory projection', async () => {
+    const result = {
+      library: { id: 1, name: 'Movies' },
+      confidence: 88,
+      method: 'ai_analysis',
+      reason: 'Matched',
+      ai_advisory: {
+        version: 'classification.ai_advisory.v1',
+        status_id: 'alternative_selected',
+        message: 'The model proposed "Drama" instead of "Movies". The deterministic policy candidate was retained.',
+        mode: 'verification',
+        source_format: 'confirm',
+        deterministic_candidate: { library_id: 1, library_name: 'Movies' },
+        proposed_destination: { library_id: 2, library_name: 'Drama' },
+        raw_response: 'CONFIRM|2|Free-form provider rationale that must not persist',
+      },
+    };
+
+    await classificationPersistenceService.logClassification(baseMetadata, result);
+
+    const insertCall = db.query.mock.calls.find(c => c[0].includes('INSERT INTO classification_history'));
+    const persistedMetadata = JSON.parse(insertCall[1][9]);
+    expect(persistedMetadata.classification_details.ai_advisory).toEqual({
+      version: 'classification.ai_advisory.v1',
+      status_id: 'alternative_selected',
+      message: 'The model proposed "Drama" instead of "Movies". The deterministic policy candidate was retained.',
+      mode: 'verification',
+      source_format: 'confirm',
+      deterministic_candidate: { library_id: 1, library_name: 'Movies' },
+      proposed_destination: { library_id: 2, library_name: 'Drama' },
+    });
+    expect(JSON.stringify(persistedMetadata)).not.toContain('raw_response');
+    expect(JSON.stringify(persistedMetadata)).not.toContain('Free-form provider rationale');
   });
 
   test('sends Discord pending notification when bot is initialized and status is awaiting_decision', async () => {

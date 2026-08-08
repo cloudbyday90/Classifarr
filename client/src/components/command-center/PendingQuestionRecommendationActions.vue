@@ -20,17 +20,54 @@
       </p>
       <p class="recommendation-score">
         <template v-if="leadingDestination">
-          Evidence score: {{ leadingDestination.evidence_score }}/100
+          {{ deterministicScoreLabel }}
         </template>
         <template v-else>
           {{ answer?.question?.why_uncertain || 'The runtime decision requires a bounded operator outcome.' }}
         </template>
       </p>
-      <p class="recommendation-explanation">
+      <p
+        v-if="!decisionPresentation"
+        class="recommendation-explanation"
+      >
         {{ leadingDestination
           ? recommendation.why_not_automatic.message
           : 'This resolves this item only and does not change future policy learning.' }}
       </p>
+      <div
+        v-if="decisionPresentation"
+        class="decision-explanation"
+      >
+        <p class="decision-explanation-label">
+          Why review is needed
+        </p>
+        <p class="recommendation-explanation">
+          {{ decisionPresentation.deterministic.message }}
+        </p>
+        <ul
+          v-if="decisionPresentation.deterministic.evidence.length"
+          class="decision-evidence-list"
+        >
+          <li
+            v-for="fact in decisionPresentation.deterministic.evidence"
+            :key="fact.id"
+          >
+            {{ fact.label }}
+          </li>
+        </ul>
+        <details
+          v-if="decisionPresentation.ai_advisory"
+          class="ai-advisory"
+        >
+          <summary>AI advisory</summary>
+          <p>
+            {{ decisionPresentation.ai_advisory.message }}
+          </p>
+          <p v-if="decisionPresentation.ai_advisory.proposed_destination">
+            Proposed destination: {{ decisionPresentation.ai_advisory.proposed_destination.library_name }}.
+          </p>
+        </details>
+      </div>
       <Button
         v-if="canConfirmDestination"
         variant="success"
@@ -115,6 +152,9 @@ import {
   policyQuestionRecommendation,
   policyQuestionCandidateDestinations,
 } from '@/utils/policyQuestionRecommendationPresentation'
+import {
+  policyQuestionDecisionPresentation,
+} from '@/utils/policyQuestionDecisionPresentation'
 
 const props = defineProps({
   answer: {
@@ -138,6 +178,7 @@ const emit = defineEmits([
 ])
 
 const recommendation = computed(() => policyQuestionRecommendation(props.answer))
+const decisionPresentation = computed(() => policyQuestionDecisionPresentation(props.answer))
 const leadingDestination = computed(() => recommendation.value?.leading_destination || null)
 const candidateDestinations = computed(() => policyQuestionCandidateDestinations(props.answer))
 const isNativeQuestion = computed(() => props.answer?.question?.type === 'native_runtime_question')
@@ -167,6 +208,24 @@ const alternativeReviewLabel = computed(() => {
     return `Review ${count} ${count === 1 ? 'alternative candidate' : 'alternative candidates'}`
   }
   return `Review ${count} ${count === 1 ? 'candidate destination' : 'candidate destinations'}`
+})
+const deterministicScoreLabel = computed(() => {
+  const deterministic = decisionPresentation.value?.deterministic
+  if (deterministic?.score === null || deterministic?.score === undefined) {
+    return `Evidence score: ${leadingDestination.value?.evidence_score}/100`
+  }
+
+  const thresholds = []
+  if (deterministic.review_threshold !== null && deterministic.review_threshold !== undefined) {
+    thresholds.push(`confirmation at ${deterministic.review_threshold}`)
+  }
+  if (deterministic.automatic_threshold !== null && deterministic.automatic_threshold !== undefined) {
+    thresholds.push(`automatic at ${deterministic.automatic_threshold}`)
+  }
+
+  return thresholds.length
+    ? `Policy score: ${deterministic.score}/100 (${thresholds.join(', ')})`
+    : `Policy score: ${deterministic.score}/100`
 })
 
 function emitConfirmDestination(destination) {
@@ -217,6 +276,46 @@ function emitConfirmDestination(destination) {
   margin-top: 0.25rem;
   font-size: 0.75rem;
   color: #cbd5e1;
+}
+
+.decision-explanation {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.decision-explanation-label {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.decision-evidence-list {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0.25rem 0 0;
+  padding-left: 1rem;
+  font-size: 0.75rem;
+  color: #cbd5e1;
+}
+
+.ai-advisory {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #cbd5e1;
+}
+
+.ai-advisory summary {
+  width: fit-content;
+  cursor: pointer;
+  color: #bfdbfe;
+}
+
+.ai-advisory p {
+  margin-top: 0.5rem;
 }
 
 .leading-recommendation :deep(.btn) {

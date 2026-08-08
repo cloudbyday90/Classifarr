@@ -49,7 +49,7 @@ describe('AIResponseParser', () => {
                 metadata: mockMetadata
             };
 
-            const result = aiResponseParser.parse(response, context);
+            const result = aiResponseParser.parse(response, context, { mode: 'verify' });
 
             expect(result.library).toEqual(mockLibraries[0]);
             expect(result.confidence).toBe(85);
@@ -95,7 +95,7 @@ describe('AIResponseParser', () => {
             expect(result).toBeNull();
         });
 
-        it('turns verify-mode CONFIRM disagreement into clarification instead of confirming a different library', () => {
+        it('keeps the deterministic candidate when a verify response proposes a different library', () => {
             const response = 'CONFIRM|2|Drama signals are stronger than the suggested action profile';
             const context = {
                 libraries: mockLibraries,
@@ -105,12 +105,15 @@ describe('AIResponseParser', () => {
 
             const result = aiResponseParser.parse(response, context, { mode: 'verify' });
 
-            expect(result.format).toBe('verify_disagreement');
-            expect(result.needs_clarification).toBe(true);
+            expect(result.format).toBe('verify_advisory');
+            expect(result.needs_clarification).toBe(false);
             expect(result.library).toEqual(mockSignalContext.suggestedLibrary);
-            expect(result.policy_question.meta.conflicting_library_name).toBe('Drama Movies');
-            expect(result.policy_question.options[0].library_name).toBe('Action Movies');
-            expect(result.policy_question.options.map(option => option.library_name)).toContain('Drama Movies');
+            expect(result.policy_question).toBeNull();
+            expect(result.ai_advisory).toMatchObject({
+                status_id: 'alternative_selected',
+                deterministic_candidate: { library_name: 'Action Movies' },
+                proposed_destination: { library_name: 'Drama Movies' },
+            });
         });
     });
 
@@ -240,7 +243,7 @@ describe('AIResponseParser', () => {
                 metadata: mockMetadata
             };
 
-            const result = aiResponseParser.parse(response, context);
+            const result = aiResponseParser.parse(response, context, { mode: 'classify' });
 
             expect(result.policy_question.signal_breakdown).toEqual(mockSignalContext.breakdown);
             expect(result.policy_question.calculated_confidence).toBe(85);
@@ -398,9 +401,10 @@ describe('AIResponseParser', () => {
 
             const result = aiResponseParser.parse(response, context, { mode: 'verify' });
 
-            expect(result.format).toBe('narrative_clarify');
-            expect(result.needs_clarification).toBe(true);
+            expect(result.format).toBe('verify_advisory');
+            expect(result.needs_clarification).toBe(false);
             expect(result.library.name).toBe('Action Movies');
+            expect(result.ai_advisory.status_id).toBe('verification_not_confirmed');
         });
 
         it('should fall back to CLARIFY when others are not present', () => {
@@ -588,14 +592,14 @@ describe('AIResponseParser', () => {
 
             const result = aiResponseParser.parse(response, context, { mode: 'verify' });
 
-            expect(result.format).toBe('narrative_clarify');
-            expect(result.needs_clarification).toBe(true);
+            expect(result.format).toBe('verify_advisory');
+            expect(result.needs_clarification).toBe(false);
             expect(result.library.name).toBe('Comedy and Standup');
-            expect(result.policy_question.question).toContain('Comedy and Standup');
-            expect(result.policy_question.question).toContain('disagreed');
-            const optionNames = result.policy_question.options.map(o => o.library_name);
-            expect(optionNames).toContain('Comedy and Standup');
-            expect(optionNames.length).toBeGreaterThanOrEqual(2);
+            expect(result.policy_question).toBeNull();
+            expect(result.ai_advisory).toMatchObject({
+                status_id: 'verification_not_confirmed',
+                deterministic_candidate: { library_name: 'Comedy and Standup' },
+            });
         });
 
         it('should return fallback in verify mode when narrative response lacks signalContext.suggestedLibrary', () => {

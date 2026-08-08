@@ -21,6 +21,13 @@ Current execution focus:
   And Restart Acceptance**. Retry, queue, RAG, stale-question, and restart
   boundaries now preserve only bounded operational state and have isolated
   real-database acceptance coverage.
+- **Completed:** **10R.3.3 Pending Decision Identity, Explanation, And AI
+  Advisory Correction**. Local operator review identified duplicate active
+  decisions, a misleading generic "Missing evidence" label, and an advisory
+  verification rerun that could create a blocking clarification. This task
+  establishes the single-active-decision invariant, an operator-visible
+  deterministic evidence summary, and a privacy-bounded AI advisory that
+  cannot override policy authority.
 - **Current operational finding:** **8R.36.11 Compatibility-Removal Evidence
   Regeneration** has rerun successfully with the v3 validation contract. The
   repository evidence is ready, while the active-installation completion artifact
@@ -42,7 +49,7 @@ completed boundary isolation: 8R.37.1 -> 8R.37.2 -> 8R.37.3 -> 8R.37.4
 active-installation prerequisite -> 8R.36.11 regeneration -> 8R.34/8R.35 current audits
 completed platform acceptance: 10R.1.1 -> 10R.1.2 -> 10R.1.3
 completed lifecycle acceptance: 10R.2.1 -> 10R.2.2 -> 10R.2.3
-completed operational safety acceptance: 10R.3.1 -> 10R.3.2
+completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3
 current platform acceptance: 10R.4 Release Acceptance Assembly
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
@@ -12121,6 +12128,35 @@ Completion evidence:
   recovery moves only expired work to pending with a bounded reason.
 - See [Privacy-Bounded Retry, Recovery, Stale-Evidence, And Restart
   Acceptance](privacy-bounded-retry-recovery-stale-restart-acceptance.md).
+
+#### 10R.3.3 Pending Decision Identity, Explanation, And AI Advisory Correction
+
+Status: complete.
+
+Intent: make each pending classification understandable and singular without
+turning advisory model output into policy, routing, or lifecycle authority.
+
+Completion criteria:
+
+- an active pending decision has a stable identity only when the runtime has an
+  unambiguous external item identity, media-server-scoped item identity, or
+  source-library/title/year identity; title-only records are never merged,
+- a transaction plus partial unique index leaves at most one actionable
+  `awaiting_decision` or `pending_retry` row for that identity; a successor
+  supersedes older rows and reads their unresolved notifications without
+  deleting historical classification or notification records,
+- each operator answer contract names the deterministic policy score, review
+  and automatic thresholds, safe supporting evidence, and the leading
+  destination; legacy generic reasons do not replace that explanation,
+- an AI verification response is parsed only into a bounded advisory. It may
+  record a normalized configured alternative destination, but it cannot create
+  a pending question, override a deterministic destination, route media, or
+  expose raw prompts, provider output, or free-form rationale,
+- migration and service tests prove duplicate collapse, concurrent replacement
+  ordering, idempotent retry behavior, advisory normalization, and legacy
+  records whose prior model alternative was not safely retained.
+
+Design and acceptance detail: [Pending Decision Lifecycle And Explanation](pending-decision-lifecycle-and-explanation.md).
 
 ### 10R.4 Release Acceptance Assembly
 

@@ -115,6 +115,12 @@ describe('policyRuntimeQuestionAnswerContract', () => {
         status: 'current',
       },
     });
+    expect(contract.decision_summary).toMatchObject({
+      version: 'policy.runtime_question_decision_presentation.v1',
+      deterministic: {
+        destination: { library_id: 7, library_name: 'Family Movies' },
+      },
+    });
     expect(contract.allowed_actions).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.CONFIRM_DESTINATION,

@@ -1,0 +1,72 @@
+/*
+ * Classifarr - AI-powered media classification for the *arr ecosystem
+ * Copyright (C) 2024-2026 Classifarr Contributors
+ */
+
+export const POLICY_RUNTIME_QUESTION_DECISION_PRESENTATION_VERSION =
+  'policy.runtime_question_decision_presentation.v1'
+
+function boundedString(value, maximumLength = 280) {
+  if (typeof value !== 'string') return null
+
+  const normalized = value.replace(/[\r\n\t]/g, ' ').replace(/\s+/g, ' ').trim()
+  return normalized && normalized.length <= maximumLength ? normalized : null
+}
+
+function positiveInteger(value) {
+  const number = Number(value)
+  return Number.isInteger(number) && number > 0 ? number : null
+}
+
+function score(value) {
+  const number = Number(value)
+  return Number.isInteger(number) && number >= 0 && number <= 100 ? number : null
+}
+
+function destination(value) {
+  const libraryId = positiveInteger(value?.library_id)
+  const libraryName = boundedString(value?.library_name, 160)
+  return libraryId && libraryName ? { library_id: libraryId, library_name: libraryName } : null
+}
+
+function evidence(value) {
+  const id = boundedString(value?.id, 80)
+  const label = boundedString(value?.label, 220)
+  return id && label ? { id, label } : null
+}
+
+export function policyQuestionDecisionPresentation(answer = {}) {
+  const source = answer?.decision_summary
+  if (source?.version !== POLICY_RUNTIME_QUESTION_DECISION_PRESENTATION_VERSION) return null
+
+  const deterministic = source?.deterministic
+  const statusId = boundedString(deterministic?.status_id, 80)
+  const message = boundedString(deterministic?.message)
+  if (!statusId || !message) return null
+
+  const advisory = source?.ai_advisory
+  const advisoryStatusId = boundedString(advisory?.status_id, 80)
+  const advisoryMessage = boundedString(advisory?.message)
+
+  return {
+    deterministic: {
+      status_id: statusId,
+      destination: destination(deterministic?.destination),
+      score: score(deterministic?.score),
+      review_threshold: score(deterministic?.review_threshold),
+      automatic_threshold: score(deterministic?.automatic_threshold),
+      message,
+      evidence: (Array.isArray(deterministic?.evidence) ? deterministic.evidence : [])
+        .map(evidence)
+        .filter(Boolean)
+        .slice(0, 4),
+    },
+    ai_advisory: advisoryStatusId && advisoryMessage
+      ? {
+          status_id: advisoryStatusId,
+          message: advisoryMessage,
+          proposed_destination: destination(advisory?.proposed_destination),
+        }
+      : null,
+  }
+}

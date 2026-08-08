@@ -11,6 +11,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Pending Decision Identity And Explanation**: Awaiting decisions now use a
+  stable unambiguous media identity to ensure only one active decision is
+  actionable at a time; a forward-only migration marks older duplicates as
+  superseded without deleting their audit history. The Command Center now
+  distinguishes policy confirmation from missing evidence, shows the policy
+  score, thresholds, and safe evidence sources, treats an already-active retry
+  as an idempotent success, and presents a privacy-bounded AI advisory rather
+  than allowing a verification rerun to veto deterministic policy routing.
+
 - **Privacy-Bounded Recovery Acceptance**: Retry, queue, worker-restart, and
   RAG recovery paths now retain fixed reason identifiers rather than upstream
   exception data. A forward-only data migration redacts historical queue and

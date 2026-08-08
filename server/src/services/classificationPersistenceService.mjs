@@ -28,6 +28,10 @@ import {
   buildStaleRuntimeQuestionCleanup,
   requiresRuntimeQuestionCleanup,
 } from './policyRuntimeQuestionNormalizer.mjs';
+import {
+  buildPendingDecisionIdentity,
+  classificationPendingDecisionLifecycleService,
+} from './classificationPendingDecisionLifecycleService.mjs';
 
 const logger = createLogger('classificationPersistence');
 
@@ -46,10 +50,68 @@ function summarizeRankedCandidate(candidate) {
   };
 }
 
+function boundedString(value, maximumLength = 280) {
+  if (typeof value !== 'string') return null;
+
+  const normalized = value
+    .replace(/[\r\n\t]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return normalized && normalized.length <= maximumLength ? normalized : null;
+}
+
+function positiveInteger(value) {
+  const numericValue = Number(value);
+  return Number.isInteger(numericValue) && numericValue > 0 ? numericValue : null;
+}
+
+function buildAiAdvisoryPersistenceProjection(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value) ||
+      value.version !== 'classification.ai_advisory.v1') {
+    return null;
+  }
+
+  const deterministicCandidate = value.deterministic_candidate || {};
+  const proposedDestination = value.proposed_destination || {};
+  const statusId = boundedString(value.status_id, 80);
+  const mode = boundedString(value.mode, 40);
+  const sourceFormat = boundedString(value.source_format, 80);
+  const message = boundedString(value.message);
+  const deterministicLibraryId = positiveInteger(deterministicCandidate.library_id);
+  const deterministicLibraryName = boundedString(deterministicCandidate.library_name, 160);
+  const proposedLibraryId = positiveInteger(proposedDestination.library_id);
+  const proposedLibraryName = boundedString(proposedDestination.library_name, 160);
+
+  if (!statusId || !mode || !sourceFormat || !message ||
+      !deterministicLibraryId || !deterministicLibraryName) {
+    return null;
+  }
+
+  return {
+    version: 'classification.ai_advisory.v1',
+    status_id: statusId,
+    message,
+    mode,
+    source_format: sourceFormat,
+    deterministic_candidate: {
+      library_id: deterministicLibraryId,
+      library_name: deterministicLibraryName,
+    },
+    proposed_destination: proposedLibraryId && proposedLibraryName
+      ? {
+          library_id: proposedLibraryId,
+          library_name: proposedLibraryName,
+        }
+      : null,
+  };
+}
+
 export class ClassificationPersistenceService {
   constructor(deps = {}) {
     this.policyQuestionContext = deps.policyQuestionContext || policyQuestionContext;
     this.ragErrorHandler = deps.ragErrorHandler || ragErrorHandler;
+    this.pendingDecisionLifecycleService = deps.pendingDecisionLifecycleService ||
+      classificationPendingDecisionLifecycleService;
   }
 
   async getRagErrorHandler() {
@@ -58,9 +120,21 @@ export class ClassificationPersistenceService {
 
   async _createAwaitingDecisionNotification(classificationId, title, reason, mediaType) {
     try {
+      // The lifecycle service can supersede this classification immediately
+      // after it commits. Locking the row in the insert statement ensures a
+      // notification is created only while the decision remains actionable;
+      // a concurrent successor then observes and reads it before committing.
       await db.query(
-        `INSERT INTO app_notifications (type, title, message, data, created_at)
-         VALUES ($1, $2, $3, $4, NOW())`,
+        `WITH active_pending_decision AS (
+           SELECT id
+           FROM classification_history
+           WHERE id = $5
+             AND status IN ('awaiting_decision', 'pending_retry')
+           FOR UPDATE
+         )
+         INSERT INTO app_notifications (type, title, message, data, created_at)
+         SELECT $1, $2, $3, $4, NOW()
+         FROM active_pending_decision`,
         [
           'warning',
           `${title} needs attention`,
@@ -73,6 +147,7 @@ export class ClassificationPersistenceService {
             targetAnchor: 'needs-attention',
             dismissible: false,
           }),
+          classificationId,
         ],
       );
       logger.debug('Created awaiting_decision notification', { classificationId, title });
@@ -263,6 +338,7 @@ export class ClassificationPersistenceService {
       rag_loop_trace: result.ragLoopTrace || null,
       rag_loop_summary: this.buildRagLoopSummary(result),
       parse_diagnostics: result.parse_diagnostics || null,
+      ai_advisory: buildAiAdvisoryPersistenceProjection(result.ai_advisory),
       processing_time_ms: processingTimeMs,
     };
     classificationDetails.decision_trace = buildDecisionTraceMetadata({
@@ -284,41 +360,70 @@ export class ClassificationPersistenceService {
     };
 
     const graphRel = ragGraphExtractor.extract(enrichedMetadata);
-
-    const insertResult = await db.query(
-      `INSERT INTO classification_history 
-       (tmdb_id, media_type, title, year, library_id, library_name, confidence, method, reason, metadata, status, collection_id, signals_json, pending_reason, policy_question, profile_snapshot, retry_after, retry_count, max_retries, director_name, primary_studio_name, genre_names, cast_ids, cast_names)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
-       RETURNING id`,
-      [
-        enrichedMetadata.tmdb_id,
-        enrichedMetadata.media_type,
-        enrichedMetadata.title,
-        enrichedMetadata.year,
-        libraryId,
-        libraryName,
-        result.confidence,
-        result.method,
-        result.reason,
-        JSON.stringify(enrichedMetadata),
-        status,
-        collectionId,
-        signalsJson,
-        pendingReason,
-        policyQuestion,
-        profileSnapshot,
-        result.retry_after || null,
-        result.retry_count || 0,
-        result.max_retries || 3,
-        graphRel.director_name,
-        graphRel.primary_studio_name,
-        graphRel.genre_names,
-        graphRel.cast_ids,
-        graphRel.cast_names,
-      ],
-    );
-
-    const classificationId = insertResult.rows[0].id;
+    const pendingDecisionIdentity = buildPendingDecisionIdentity({
+      metadata: enrichedMetadata,
+      tmdbId: enrichedMetadata.tmdb_id,
+      mediaType: enrichedMetadata.media_type,
+      title: enrichedMetadata.title,
+      year: enrichedMetadata.year,
+    });
+    const lifecycleResult = await this.pendingDecisionLifecycleService.persist({
+      status,
+      identity: pendingDecisionIdentity,
+      insert: async (client, supersededClassificationIds) => {
+        const metadataForInsert = pendingDecisionIdentity
+          ? {
+              ...enrichedMetadata,
+              pending_decision_identity: pendingDecisionIdentity,
+              ...(supersededClassificationIds.length > 0
+                ? {
+                    pending_decision_lifecycle: {
+                      version: pendingDecisionIdentity.version,
+                      state: 'current',
+                      supersedes_classification_ids: supersededClassificationIds,
+                    },
+                  }
+                : {}),
+            }
+          : enrichedMetadata;
+        const executor = client || db;
+        const insertResult = await executor.query(
+          `INSERT INTO classification_history
+           (tmdb_id, media_type, title, year, library_id, library_name, confidence, method, reason, metadata, status, collection_id, signals_json, pending_reason, policy_question, profile_snapshot, retry_after, retry_count, max_retries, director_name, primary_studio_name, genre_names, cast_ids, cast_names, pending_identity_key)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
+           RETURNING id`,
+          [
+            metadataForInsert.tmdb_id,
+            metadataForInsert.media_type,
+            metadataForInsert.title,
+            metadataForInsert.year,
+            libraryId,
+            libraryName,
+            result.confidence,
+            result.method,
+            result.reason,
+            JSON.stringify(metadataForInsert),
+            status,
+            collectionId,
+            signalsJson,
+            pendingReason,
+            policyQuestion,
+            profileSnapshot,
+            result.retry_after || null,
+            result.retry_count || 0,
+            result.max_retries || 3,
+            graphRel.director_name,
+            graphRel.primary_studio_name,
+            graphRel.genre_names,
+            graphRel.cast_ids,
+            graphRel.cast_names,
+            pendingDecisionIdentity?.key || null,
+          ],
+        );
+        return insertResult.rows[0].id;
+      },
+    });
+    const classificationId = lifecycleResult.classificationId;
 
     if (result.needs_clarification) {
       logger.info('Classification pending - awaiting clarification', {

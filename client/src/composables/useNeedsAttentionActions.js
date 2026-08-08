@@ -133,6 +133,11 @@ export function useNeedsAttentionActions({
       const result = Array.isArray(response?.data?.results) ? response.data.results[0] : null
       if (!result || result.queued !== true) {
         const reason = result?.reasonCode || result?.error || 'retry_not_queued'
+        if (reason === 'duplicate_pending_task') {
+          // A retry is intentionally idempotent. The existing worker owns the
+          // media item, so refreshing the command center is the useful action.
+          return
+        }
         throw new Error(`Retry not queued for "${item.title}" (${reason})`)
       }
     })

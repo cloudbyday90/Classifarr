@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-08-08T22:45:07.778Z
--- Latest Migration: 20260808_150000_privacy_bound_recovery_diagnostics.sql
+-- Generated: 2026-08-08T23:39:55.318Z
+-- Latest Migration: 20260808_160000_single_active_pending_classification.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -2068,6 +2068,7 @@ CREATE TABLE public.classification_history (
     genre_names text[],
     cast_ids integer[],
     cast_names text[],
+    pending_identity_key character varying(600),
     CONSTRAINT chk_classification_completed_has_library CHECK ((((status)::text IS DISTINCT FROM 'completed'::text) OR (library_id IS NOT NULL))),
     CONSTRAINT chk_classification_confidence_range CHECK (((confidence IS NULL) OR ((confidence >= (0)::numeric) AND (confidence <= (100)::numeric)))),
     CONSTRAINT classification_history_media_type_check CHECK (((media_type)::text = ANY (ARRAY[('movie'::character varying)::text, ('tv'::character varying)::text]))),
@@ -2103,6 +2104,13 @@ COMMENT ON COLUMN public.classification_history.retry_count IS 'Number of retry 
 --
 
 COMMENT ON COLUMN public.classification_history.max_retries IS 'Maximum number of retry attempts allowed (default 3)';
+
+
+--
+-- Name: COLUMN classification_history.pending_identity_key; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.classification_history.pending_identity_key IS 'Stable unambiguous identity for the single active pending decision invariant.';
 
 
 --
@@ -8897,6 +8905,13 @@ CREATE INDEX idx_classification_evidence_tmdb ON public.classification_evidence 
 
 
 --
+-- Name: idx_classification_history_active_pending_identity; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_classification_history_active_pending_identity ON public.classification_history USING btree (pending_identity_key) WHERE (((status)::text = ANY ((ARRAY['awaiting_decision'::character varying, 'pending_retry'::character varying])::text[])) AND (pending_identity_key IS NOT NULL));
+
+
+--
 -- Name: idx_classification_history_cast_ids; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -13582,6 +13597,7 @@ FROM unnest(ARRAY[
     '20260803_130000_add_ai_provider_capability_metrics.sql',
     '20260804_120000_add_policy_runtime_pending_question_cleanup_audits.sql',
     '20260808_140000_upgrade_pgvector_to_0_8_6.sql',
-    '20260808_150000_privacy_bound_recovery_diagnostics.sql'
+    '20260808_150000_privacy_bound_recovery_diagnostics.sql',
+    '20260808_160000_single_active_pending_classification.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

@@ -129,11 +129,13 @@ const createPolicyQuestionAnswer = ({
   destinations = [{ library_id: 10, library_name: 'TV Shows' }],
   recommendation = undefined,
   question = undefined,
+  decisionSummary = undefined,
 } = {}) => ({
   version: 'policy.runtime_question_answer.v1',
   fingerprint,
   candidate_destinations: destinations,
   ...(question ? { question } : {}),
+  ...(decisionSummary ? { decision_summary: decisionSummary } : {}),
   recommendation: recommendation === undefined ? {
     version: 'policy.runtime_question_recommendation_presentation.v1',
     status_id: 'leading_candidate_available',
@@ -581,6 +583,26 @@ describe('CommandCenter action modules', () => {
               message: 'A score alone does not establish destination identity automatically.',
             },
           },
+          decisionSummary: {
+            version: 'policy.runtime_question_decision_presentation.v1',
+            deterministic: {
+              status_id: 'confirmation_required',
+              destination: { library_id: 8, library_name: 'Movies' },
+              score: 75,
+              review_threshold: 60,
+              automatic_threshold: 85,
+              message: 'Movies meets the confirmation threshold but not the automatic threshold.',
+              evidence: [
+                { id: 'declared_intent', label: 'Declared policy intent supports Movies.' },
+                { id: 'similar_items', label: 'Similar items already associated with Movies support this match.' },
+              ],
+            },
+            ai_advisory: {
+              status_id: 'alternative_selected',
+              message: 'The model proposed "Anime Movies" instead of "Movies". The deterministic policy candidate was retained.',
+              proposed_destination: { library_id: 9, library_name: 'Anime Movies' },
+            },
+          },
         }),
       }],
     })
@@ -588,8 +610,13 @@ describe('CommandCenter action modules', () => {
     const wrapper = await mountCommandCenter()
 
     expect(wrapper.text()).toContain('Leading candidate')
-    expect(wrapper.text()).toContain('Evidence score: 75/100')
-    expect(wrapper.text()).toContain('A score alone does not establish destination identity automatically.')
+    expect(wrapper.text()).toContain('Policy score: 75/100 (confirmation at 60, automatic at 85)')
+    expect(wrapper.text()).toContain('Policy confirmation required')
+    expect(wrapper.text()).toContain('Confirm Movies or choose a different destination.')
+    expect(wrapper.text()).not.toContain('A score alone does not establish destination identity automatically.')
+    expect(wrapper.text()).toContain('Why review is needed')
+    expect(wrapper.text()).toContain('Declared policy intent supports Movies.')
+    expect(wrapper.text()).toContain('Similar items already associated with Movies support this match.')
     expect(wrapper.findAll('button').some(node => node.text() === 'Confirm Movies')).toBe(true)
     expect(wrapper.text()).toContain('Review 1 alternative candidate')
     expect(wrapper.find('details').element.open).toBe(false)
