@@ -182,13 +182,9 @@ const POLICY_STORAGE_CLOSURE_REQUIREMENT_ARTIFACT_MAP = Object.freeze([
     designDocPaths: ['docs/architecture/policy-controlled-removal-apply-artifact-exporter.md'],
     contractPaths: [
       'server/src/services/policyControlledRemovalApplyArtifact.mjs',
-      'server/src/services/policyControlledRemovalFileApplyAdapter.mjs',
-      'scripts/generate-policy-controlled-removal-apply.mjs',
     ],
     testPaths: [
       'server/src/__tests__/services/policyControlledRemovalApplyArtifact.test.mjs',
-      'server/src/__tests__/services/policyControlledRemovalFileApplyAdapter.test.mjs',
-      'server/src/__tests__/scripts/generatePolicyControlledRemovalApply.test.mjs',
     ],
   },
   {

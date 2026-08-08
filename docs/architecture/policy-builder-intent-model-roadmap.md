@@ -9,10 +9,9 @@ Current execution focus:
 - **Completed:** 0R through 7R establish the policy engine, runtime authority,
   and lifecycle-first authoring flow. `/policies` has one server-admitted
   normal path; the retired advanced-settings hash is not an authoring target.
-- **Next:** **8R.37.3 CI-Only Retirement Command Contract**. Decide whether
-  the remaining release-maintenance adapter needs a deterministic command, and
-  constrain any such command to CI without changing automatic native policy
-  conversion or normal policy automation.
+- **Next:** **8R.37.4 Closure-Map Reconciliation**. Preserve separate
+  repository implementation-readiness and installation-cutover outcomes without
+  changing automatic native policy conversion or normal policy automation.
 - **Continuous guardrail:** 9R naming and product-language gates remain
   required. Do not reintroduce a second policy-builder flow, advanced setting,
   or browser-owned automation decision.
@@ -24,8 +23,8 @@ The execution dependency is intentionally not numeric:
 
 ```text
 completed foundations: 0R -> 1R -> 2R -> 3R -> 4R -> 5R -> 6R -> 7R
-completed boundary isolation: 8R.37.1 -> 8R.37.2
-next focused work: 8R.37.3 -> 8R.37.4
+completed boundary isolation: 8R.37.1 -> 8R.37.2 -> 8R.37.3
+next focused work: 8R.37.4
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
 
@@ -3681,8 +3680,8 @@ Implement Phase 4R in this order:
 13. **4R.9 Accessibility, Responsive Behavior, And End-To-End Workflow Tests**
    Proves the delivered flow works in the live product.
 
-Phase 4R is complete. The next implementation task is **8R.37.3 CI-Only
-Retirement Command Contract**. Do not add another picker,
+Phase 4R is complete. The next implementation task is **8R.37.4 Closure-Map
+Reconciliation**. Do not add another picker,
 generic suggestion control, advanced setting, or maintenance dialog in place
 of the completed lifecycle-first authoring path.
 
@@ -3874,7 +3873,7 @@ Implementation status:
   and helpful-studio narrowing, and **4R.5.3** closes revision reset and
   accessibility evidence. **5R.3 AI Provider Capability And Authority Modes**
   is complete after an August 2026 enforcement audit. The remaining 5R
-  authority components are also complete; Phase 5R now hands off to 8R.37.3.
+  authority components are also complete; Phase 5R now hands off to 8R.37.4.
 
 ### 5R.3 AI Provider Capability And Authority Modes
 
@@ -3936,8 +3935,8 @@ Implementation status:
   `docs/architecture/ai-provider-capability-authority.md` for the complete
   design and research record.
 
-Phase 5R is complete. Its next dependency-gated task is **8R.37.3 CI-Only
-Retirement Command Contract**.
+Phase 5R is complete. Its next dependency-gated task is **8R.37.4 Closure-Map
+Reconciliation**.
 
 ### 5R.4 Runtime Clarification Normalizer
 
@@ -9750,43 +9749,32 @@ Implementation status:
 
 ### 8R.28 Controlled Removal Apply Artifact Exporter
 
-Intent: generate a machine-readable controlled-removal apply artifact from a
-ready reviewed removal batch, explicit apply input evidence, operator
-confirmation, and a bounded apply adapter.
+Status: historical mutable-command design. 8R.37.3 retired its generator,
+filesystem adapter, and npm command. The retained
+`policyControlledRemovalApplyArtifact.mjs` module is an injected,
+read-only evidence builder; it has no concrete source-mutation capability.
+
+Historical intent: generate a machine-readable controlled-removal apply
+artifact from a ready reviewed removal batch, explicit apply input evidence,
+operator confirmation, and a bounded apply adapter.
 
 Tasks:
 
 - **8R.28.1 Public Apply Sandbox And Path-Boundary Verification**
-  - Completed: moves the file apply adapter into a focused ESM service that
-    resolves only repo-relative paths and rejects traversal or absolute input
-    before filesystem mutation.
-  - Completed: runs the public command in an isolated temporary repository and
-    proves no file or output changes occur without `--apply-files`, only the
-    reviewed file is removed with the flag, and an escaped path cannot touch a
-    sentinel outside the repository.
-- Require a ready reviewed removal-batch JSON artifact.
-- Require explicit apply input with `executeApply: true`,
-  `operatorConfirmation.confirmed: true`, and a confirming actor.
-- Reuse the controlled-removal apply contract.
-- Keep service-level file mutation adapter-bound.
-- Provide a CLI adapter that only deletes repo-relative files when
-  `--apply-files` is present.
-- Refuse path traversal, absolute paths, archive behavior, storage mutation,
-  and Git-command side effects.
-- Write the nested apply-result JSON for post-removal runtime verification.
+  - Completed historically: the command boundary was tested in a disposable
+    checkout before 8R.37.3 retired the command and its adapter.
+- The retained service continues to validate reviewed batch and confirmation
+  evidence through an injected adapter contract only.
+- No CLI, npm runner, filesystem adapter, archive behavior, storage mutation,
+  or Git-command side effect is available from this component.
 
 Acceptance criteria:
 
-- The exporter refuses to run without removal-batch and apply-input JSON.
-- Missing execute confirmation blocks apply output.
-- Unsupported actions block apply output instead of being silently treated as
-  file deletion.
-- Repo-relative delete/remove-test entries can be applied only when
-  `--apply-files` is passed.
-- Archive, storage, and Git-command side effects prevent applied artifact
-  status.
-- The generated apply-result JSON can be passed to post-removal runtime
-  verification.
+- The pure artifact builder rejects invalid reviewed evidence and unsupported
+  side effects.
+- No repository source change can be initiated from this component.
+- Its artifact output remains available to downstream verification as evidence
+  only.
 
 Implementation status:
 
@@ -9796,18 +9784,12 @@ Implementation status:
   [Policy Controlled Removal Apply Artifact Module Cutover](policy-controlled-removal-apply-artifact-module-cutover.md).
 - The controlled-removal apply artifact contract lives in
   `server/src/services/policyControlledRemovalApplyArtifact.mjs`.
-- The exporter script lives in
-  `scripts/generate-policy-controlled-removal-apply.mjs`.
-- The root runner is exposed as `npm run policy:controlled-removal-apply`.
 - The focused controlled-removal apply artifact test suite lives in
   `server/src/__tests__/services/policyControlledRemovalApplyArtifact.test.mjs`.
-- Current implementation applies only supported file-backed deletion actions
-  through an explicit CLI flag and emits semantic `nextStep` apply evidence
-  for post-removal runtime validation.
-- Task 8R.28.1 adds public-command sandbox coverage and a reusable
-  `policyControlledRemovalFileApplyAdapter.mjs` boundary. The CLI delegates
-  filesystem mutation to that adapter instead of retaining a local deletion
-  implementation.
+- The former public command, npm runner, filesystem adapter, and mutation
+  tests were retired by 8R.37.3. The runtime release-maintenance audit rejects
+  their restoration and rejects repository workflow contents-write
+  permissions. See [Policy CI-Only Retirement Command Contract](policy-ci-only-retirement-command-contract.md).
 
 ### 8R.29 Post-Removal Runtime Verification Artifact Exporter
 
@@ -10539,13 +10521,14 @@ Tasks:
   - The versioned audit fails closed if any retired module reappears and still
     reports source-writer runtime reachability independently.
 - **8R.37.3 CI-Only Retirement Command Contract**
-  - Next: retain or create a deterministic release-maintenance command only
-    when an approved compatibility-removal change is actually ready.
-  - Require an explicit checkout, reviewed change input, fixed validation
-    commands, argument arrays, bounded output, and no browser or application
-    runtime input.
+  - Complete: no approved target justified a generic executor, so the mutable
+    CLI, filesystem adapter, npm command, and dedicated mutable-boundary tests
+    were removed instead of receiving CI write credentials.
+  - The audit now fails closed if a retired mutator, entry command, npm script,
+    or workflow contents-write permission is reintroduced. See [Policy CI-Only
+    Retirement Command Contract](policy-ci-only-retirement-command-contract.md).
 - **8R.37.4 Closure-Map Reconciliation**
-  - Keep native runtime automation independent from repository retirement and
+  - Next: keep native runtime automation independent from repository retirement and
     retain the `implementationReadiness` versus `instanceCutover` distinction
     in every closure map and readout.
 
@@ -10558,7 +10541,7 @@ Acceptance criteria:
   normal policy configuration or maintenance feature.
 - Phase 4R is not blocked by repository source retirement.
 
-Implementation status: 8R.37.1 and 8R.37.2 complete; 8R.37.3 is next. See
+Implementation status: 8R.37.1 through 8R.37.3 complete; 8R.37.4 is next. See
 [Policy Native Storage Runtime And Release-Maintenance Boundary](policy-native-storage-runtime-release-boundary.md).
 
 ## Phase 8R Work Sequence
@@ -10718,9 +10701,10 @@ Implement Phase 8R in this order:
 37. **8R.37 Runtime And Release-Maintenance Boundary**
     Separates automatic native policy behavior from repository-retirement
     maintenance. **8R.37.1 Runtime Capability Inventory And Isolation
-    Decision** and **8R.37.2 Runtime Reachability Removal** are complete;
-    continue with **8R.37.3 CI-Only Retirement Command Contract**. Do not
-    build the former production review-context registry.
+    Decision**, **8R.37.2 Runtime Reachability Removal**, and **8R.37.3
+    CI-Only Retirement Command Contract** are complete; continue with
+    **8R.37.4 Closure-Map Reconciliation**. Do not build the former production
+    review-context registry.
 
 Completion state:
 
@@ -11922,9 +11906,9 @@ The next sequence is dependency-gated rather than phase-number order:
    normalized model/question/learning and native-change authority, material
    exceptions, revision-safe maintenance, legacy UI cutover, accessibility,
    and browser end-to-end evidence.
-9. **8R.37.3 CI-Only Retirement Command Contract**: next. Evaluate the
-   remaining release-maintenance adapter without affecting native policy
-   automation or exposing source mutation to application runtime.
+9. **8R.37.4 Closure-Map Reconciliation**: next. Keep repository
+   implementation readiness independent from installation cutover evidence and
+   from native policy automation.
    Continue the **9R** zero-debt naming gates on every component.
 
 The completed 0R through 3R, 6R, and 7R contracts remain guardrails, not

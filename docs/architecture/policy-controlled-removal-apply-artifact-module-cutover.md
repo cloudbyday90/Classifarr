@@ -1,13 +1,19 @@
 # Policy Controlled Removal Apply Artifact Module Cutover
 
-## Intent
+Status: Historical mutable-CLI record. The local generator and filesystem
+adapter were retired by 8R.37.3. The pure artifact module remains read-only
+evidence only. See [Policy CI-Only Retirement Command
+Contract](policy-ci-only-retirement-command-contract.md).
 
-This cutover removes production-facing phase naming from the controlled removal
-apply artifact wrapper and local generator command while preserving the same
-adapter-driven apply behavior, audit shape, and side-effect restrictions.
+## Historical Intent
 
-Post-removal verification remains a separate task. This keeps the rename scoped
-to the artifact wrapper and operator-facing apply command.
+This historical cutover removed production-facing phase naming from the
+controlled-removal artifact wrapper and its then-local generator command. The
+generator and its adapter were later retired; the remaining artifact module is
+read-only evidence infrastructure.
+
+Post-removal verification remains a separate evidence concern. No
+operator-facing source-mutation command remains.
 
 ## Official-Source Research
 
@@ -35,7 +41,7 @@ Sources:
 - Git `rm` documentation:
   <https://git-scm.com/docs/git-rm>
 
-## Recommendations
+## Historical Recommendations
 
 ### Rename Service, Test, Script, And Root Runner Together
 
@@ -81,7 +87,7 @@ Cons:
 
 - the artifact still carries nested apply details.
 
-## Final Recommendation Stack
+## Historical Recommendation Stack
 
 1. Rename the artifact service, test, generator script, and npm runner.
 2. Replace phase-coded constants, version, builder, and validator exports.
@@ -90,7 +96,7 @@ Cons:
 5. Preserve repo-relative deletion guardrails and side-effect validation.
 6. Update roadmap, changelog, validation evidence, and completion audit paths.
 
-## Implementation Outcome
+## Historical Implementation Outcome
 
 Implemented:
 
@@ -106,11 +112,12 @@ Implemented:
   `validatePolicyControlledRemovalApplyArtifact`.
 - Runtime output now emits
   `nextStep.stepId = post_removal_runtime_verification`.
-- Validation evidence and completion audit references now point at the durable
-  service, test, script, and design doc.
+- Validation evidence and completion audit references were updated for the
+  durable service, test, script, and design doc at the time of the cutover.
+- 8R.37.3 subsequently retired the script, npm runner, and filesystem adapter.
+  The durable service and test remain only as read-only evidence infrastructure.
 
 ## Next Step
 
-Proceed to **Completion Checkpoint module naming cutover** after
-post-removal verification, next-batch authorization, and completion-audit
-evidence report no remaining approved manifest paths.
+Superseded by the CI-only retirement contract. Source changes are now reviewed
+commits validated in CI, with no generic source-mutating command retained.

@@ -33,7 +33,6 @@
     "policy:storage-closure-evidence": "node scripts/run-policy-storage-closure-evidence.mjs",
     "policy:compatibility-deletion-execution-plan-artifact": "node scripts/generate-policy-compatibility-deletion-execution-plan-artifact.mjs",
     "policy:controlled-compatibility-removal-batch": "node scripts/generate-policy-controlled-compatibility-removal-batch-artifact.mjs",
-    "policy:controlled-removal-apply": "node scripts/generate-policy-controlled-removal-apply.mjs",
     "policy:post-removal-verification": "node scripts/generate-policy-post-removal-verification.mjs",
     "policy:next-batch-authorization": "node scripts/generate-policy-next-batch-authorization.mjs",
     "policy:compatibility-removal-completion-audit": "node scripts/generate-policy-compatibility-removal-completion-audit.mjs",

@@ -19,7 +19,7 @@
 import {
   buildPolicyRuntimeReleaseMaintenanceInventory,
   collectModuleSpecifiers,
-  RETIRED_NAMED_SCOPE_MODULE_PATHS,
+  RETIRED_SOURCE_MUTATION_MODULE_PATHS,
 } from '../../../../scripts/lib/policyRuntimeReleaseMaintenanceInventory.mjs';
 import {
   buildPolicyRuntimeReleaseMaintenanceRepositoryInventory,
@@ -37,15 +37,13 @@ const PRODUCTION_ADMISSION =
 const RELEASE_MAINTENANCE_SCRIPT = 'scripts/generate-policy-controlled-removal-apply.mjs';
 
 function fixtureFiles({
-  includeReleaseMaintenanceOwner = true,
+  includeRetiredCommand = false,
+  includeRetiredEntry = false,
   routeImportsWriter = false,
   retiredModulePaths = [],
+  workflowPermission = null,
 } = {}) {
   return [
-    {
-      path: FILE_APPLY_ADAPTER,
-      content: 'export function createFileApplyAdapter() {}\n',
-    },
     ...retiredModulePaths.map(modulePath => ({
       path: modulePath,
       content: 'export const retiredNamedScopeModule = true;\n',
@@ -76,15 +74,27 @@ function fixtureFiles({
       path: 'client/src/api/index.js',
       content: 'export const api = {};\n',
     },
-    ...(includeReleaseMaintenanceOwner ? [{
+    {
+      path: 'package.json',
+      content: JSON.stringify({
+        scripts: includeRetiredCommand
+          ? { 'policy:controlled-removal-apply': 'node scripts/generate-policy-controlled-removal-apply.mjs' }
+          : {},
+      }),
+    },
+    ...(workflowPermission ? [{
+      path: '.github/workflows/retirement.yml',
+      content: `${workflowPermission}\n`,
+    }] : []),
+    ...(includeRetiredEntry ? [{
       path: RELEASE_MAINTENANCE_SCRIPT,
-      content: `import { createFileApplyAdapter } from '../${FILE_APPLY_ADAPTER}';\n`,
+      content: 'export const retiredReleaseMaintenanceEntry = true;\n',
     }] : []),
   ];
 }
 
 describe('policy runtime release-maintenance inventory', () => {
-  test('records the current repository boundary and the removed named-scope subsystem', () => {
+  test('records the complete CI validation-only retirement boundary', () => {
     const inventory = buildPolicyRuntimeReleaseMaintenanceRepositoryInventory({
       generatedAt: GENERATED_AT,
       rootDir: REPOSITORY_ROOT,
@@ -100,7 +110,7 @@ describe('policy runtime release-maintenance inventory', () => {
       complete: true,
       generatedAt: GENERATED_AT,
       nextAction: expect.objectContaining({
-        resultId: 'ci_only_retirement_command_contract_pending',
+        resultId: 'closure_map_reconciliation_pending',
       }),
       scanScope: 'repository',
       sideEffects: expect.objectContaining({
@@ -110,22 +120,22 @@ describe('policy runtime release-maintenance inventory', () => {
         sourceMutationCapabilityInvoked: false,
       }),
       summary: expect.objectContaining({
-        activeSourceMutationCapabilityCount: 1,
-        decommissionCandidateCount: RETIRED_NAMED_SCOPE_MODULE_PATHS.length,
-        presentRetiredNamedScopeModuleCount: 0,
-        retiredNamedScopeModuleCount: RETIRED_NAMED_SCOPE_MODULE_PATHS.length,
+        activeSourceMutationCapabilityCount: 0,
+        decommissionCandidateCount: RETIRED_SOURCE_MUTATION_MODULE_PATHS.length,
+        presentRetiredSourceMutationModuleCount: 0,
+        retiredReleaseMaintenanceCommandCount: 1,
+        retiredReleaseMaintenanceEntryCount: 1,
+        retiredSourceMutationModuleCount: RETIRED_SOURCE_MUTATION_MODULE_PATHS.length,
+        cataloguedRetiredSourceMutationCapabilityCount: 2,
         runtimeReachabilityCount: 0,
-        sourceMutationCapabilityCount: 2,
+        workflowWritePermissionCount: 0,
       }),
       validation: expect.objectContaining({ ok: true }),
     }));
     expect(fileApplyCapability).toEqual(expect.objectContaining({
-      decisionId: 'release_maintenance_only',
-      moduleStateId: 'present',
-      releaseMaintenanceOwnership: [{
-        entryPath: RELEASE_MAINTENANCE_SCRIPT,
-        chains: [[RELEASE_MAINTENANCE_SCRIPT, FILE_APPLY_ADAPTER]],
-      }],
+      decisionId: 'decommission',
+      moduleStateId: 'removed',
+      releaseMaintenanceOwnership: [],
       runtimeReachability: [],
     }));
     expect(namedScopeWriterCapability).toEqual(expect.objectContaining({
@@ -137,7 +147,7 @@ describe('policy runtime release-maintenance inventory', () => {
     expect(JSON.stringify(inventory)).not.toContain(REPOSITORY_ROOT);
   });
 
-  test('fails closed when a retired named-scope module is reintroduced', () => {
+  test('fails closed when a retired source-mutation module is reintroduced', () => {
     const inventory = buildPolicyRuntimeReleaseMaintenanceInventory({
       files: fixtureFiles({ retiredModulePaths: [PRODUCTION_ADMISSION] }),
       generatedAt: GENERATED_AT,
@@ -145,14 +155,16 @@ describe('policy runtime release-maintenance inventory', () => {
 
     expect(inventory).toEqual(expect.objectContaining({
       complete: false,
-      nextAction: expect.objectContaining({ resultId: 'runtime_boundary_violation' }),
+      nextAction: expect.objectContaining({
+        resultId: 'ci_only_retirement_command_contract_violation',
+      }),
       validation: expect.objectContaining({
-        issueIds: ['retired_named_scope_module_present'],
+        issueIds: ['retired_source_mutation_module_present'],
         ok: false,
       }),
     }));
     expect(inventory.validation.issues).toContainEqual(expect.objectContaining({
-      issueId: 'retired_named_scope_module_present',
+      issueId: 'retired_source_mutation_module_present',
       modulePath: PRODUCTION_ADMISSION,
     }));
   });
@@ -167,7 +179,7 @@ describe('policy runtime release-maintenance inventory', () => {
     });
 
     expect(inventory.validation.issueIds).toEqual([
-      'retired_named_scope_module_present',
+      'retired_source_mutation_module_present',
       'runtime_surface_reaches_source_mutator',
     ]);
     expect(inventory.validation.issues).toContainEqual(expect.objectContaining({
@@ -178,18 +190,44 @@ describe('policy runtime release-maintenance inventory', () => {
     }));
   });
 
-  test('fails closed when the retained mutation capability loses its maintenance owner', () => {
+  test('fails closed when the retired command or entry script is reintroduced', () => {
     const inventory = buildPolicyRuntimeReleaseMaintenanceInventory({
-      files: fixtureFiles({ includeReleaseMaintenanceOwner: false }),
+      files: fixtureFiles({
+        includeRetiredCommand: true,
+        includeRetiredEntry: true,
+      }),
       generatedAt: GENERATED_AT,
     });
 
     expect(inventory).toEqual(expect.objectContaining({
       complete: false,
       validation: expect.objectContaining({
-        issueIds: ['release_maintenance_owner_missing'],
+        issueIds: [
+          'retired_release_maintenance_command_present',
+          'retired_release_maintenance_entry_present',
+        ],
         ok: false,
       }),
+    }));
+  });
+
+  test.each([
+    ['contents: write', 'contents_write'],
+    ['permissions: write-all', 'write_all'],
+    ['permissions: { contents: write }', 'contents_write'],
+  ])('fails closed when a workflow declares %s', (workflowPermission, permissionId) => {
+    const inventory = buildPolicyRuntimeReleaseMaintenanceInventory({
+      files: fixtureFiles({ workflowPermission }),
+      generatedAt: GENERATED_AT,
+    });
+
+    expect(inventory.validation.issueIds).toEqual([
+      'repository_workflow_write_permission_present',
+    ]);
+    expect(inventory.validation.issues).toContainEqual(expect.objectContaining({
+      issueId: 'repository_workflow_write_permission_present',
+      permissionId,
+      workflowPath: '.github/workflows/retirement.yml',
     }));
   });
 

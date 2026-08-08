@@ -13,14 +13,20 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 - **Runtime Capability Isolation**: Added a read-only CI audit that traces
   normal server and client entry points to catalogued source-mutating modules.
-  It fails closed on runtime reachability or a missing release-maintenance
-  owner, records only repository-relative paths, and keeps the retained file
-  removal adapter isolated behind its release-maintenance script owner.
+  It fails closed on runtime reachability, retired mutation-path restoration,
+  or repository workflow contents-write permission, and records only
+  repository-relative identifiers.
 
 - **Runtime Reachability Removal**: Removed the unreachable 19-module
   named-scope compatibility source-mutation subsystem, its dedicated tests,
   and fixture. The versioned CI audit now fails closed if any retired module is
   restored, while automatic native policy conversion remains unchanged.
+
+- **CI-Only Retirement Contract**: Retired the remaining speculative mutable
+  CLI, filesystem adapter, and npm command because no approved target requires
+  an executor. CI now validates reviewed source changes read-only; the audit
+  blocks reintroduced mutation commands, entry scripts, adapters, and write
+  permissions.
 
 - **CodeQL Action Maintenance**: Locally applied Dependabot PR #508 by moving
   CodeQL initialization, analysis, and SARIF uploads to the reviewed v4 commit

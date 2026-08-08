@@ -1,9 +1,9 @@
 # Policy Native Storage Runtime And Release-Maintenance Boundary
 
-Status: 8R.37.2 complete. The repository now has a read-only import-reachability
-audit and no server-resident named-scope source-mutation subsystem. 8R.37.3
-will define the remaining CI-only retirement-command contract without changing
-normal policy automation.
+Status: 8R.37.3 complete. The repository now has a read-only import-reachability
+audit, no server-resident source-mutation subsystem, and no generic
+repository-mutation command. 8R.37.4 will reconcile closure evidence without
+changing normal policy automation.
 
 ## Problem
 
@@ -168,10 +168,10 @@ Implementation outcome:
   server bootstrap, route, scheduler, configuration, client bootstrap, and
   client API roots. It is now part of root `test:ci` and fails closed when a
   normal runtime surface reaches a catalogued source-mutating module.
-- The audit reports two current capabilities with durable relative paths only:
-  `policyControlledRemovalFileApplyAdapter.mjs` is retained solely behind
-  `scripts/generate-policy-controlled-removal-apply.mjs`; the named-scope
-  source writer is marked for decommission.
+- At the 8R.37.1 inventory point, the audit catalogued two source-mutation
+  capabilities with durable relative paths: a generic file adapter behind a
+  local script and the named-scope source writer. 8R.37.3 later removed the
+  generic adapter and script; the named-scope writer is separately retired.
 - The named-scope production-admission composer is also a decommission
   candidate because it creates that source writer. Neither it nor the writer is
   presently reachable from a normal runtime surface.
@@ -200,10 +200,10 @@ Implementation outcome: complete.
   repository-relative service paths retired and fails closed when any one is
   reintroduced. It separately reports runtime reachability, so restoring the
   retired source writer through a route yields both violations.
-- The retained `policyControlledRemovalFileApplyAdapter.mjs` remains outside
-  application reachability and is owned only by
-  `scripts/generate-policy-controlled-removal-apply.mjs`. This task neither
-  invokes nor broadens that source-mutation capability.
+- At this historical point, the generic file adapter remained outside
+  application reachability and was owned only by a local script. 8R.37.3
+  subsequently removed both rather than retaining a generic source-mutation
+  capability.
 - Focused tests cover the removed repository state, a reintroduced support
   module, a route-reachable reintroduced source writer, a missing
   release-maintenance owner, and comment-safe import parsing.
@@ -222,6 +222,19 @@ Acceptance criteria:
 - Source mutation occurs only in the reviewed repository checkout and only
   after CI prerequisites pass.
 
+Implementation outcome: complete.
+
+- No approved target justified retaining a generic source-mutating executor.
+  The former CLI, its filesystem adapter, public npm command, and dedicated
+  mutable-boundary tests were removed.
+- CI validates reviewed source changes in a read-only checkout rather than
+  applying a deletion. The runtime release-maintenance audit rejects restored
+  mutator modules, command entry points, npm commands, and repository workflow
+  contents-write permissions.
+- Pure removal-evidence builders remain read-only closure inputs; no concrete
+  filesystem adapter remains in the repository.
+- See [Policy CI-Only Retirement Command Contract](policy-ci-only-retirement-command-contract.md).
+
 ### 8R.37.4 Closure-Map Reconciliation
 
 Update 8R.14 through 8R.36 evidence maps so repository retirement contributes
@@ -237,9 +250,7 @@ Acceptance criteria:
 
 ## Outcome
 
-The next Phase 8R implementation task is **8R.37.3 CI-Only Retirement Command
-Contract**. It must decide whether the remaining release-maintenance adapter
-needs a deterministic CI command and, if so, constrain it to an approved
-checkout, reviewed input, fixed validation, and narrowly scoped credentials.
-Normal native policy conversion, runtime authority, and policy automation remain
-independent of this work.
+The next Phase 8R implementation task is **8R.37.4 Closure-Map Reconciliation**.
+It must preserve the distinction between repository implementation readiness and
+installation cutover evidence. Normal native policy conversion, runtime
+authority, and policy automation remain independent of this work.

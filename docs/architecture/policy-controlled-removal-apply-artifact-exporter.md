@@ -1,6 +1,11 @@
 # Policy Controlled Removal Apply Artifact Exporter
 
-## Intent
+Status: Historical mutable-CLI record. The generator, filesystem adapter, and
+npm command described below were retired by 8R.37.3. The pure artifact builder
+remains a read-only evidence contract and cannot mutate source by itself. See
+[Policy CI-Only Retirement Command Contract](policy-ci-only-retirement-command-contract.md).
+
+## Historical Intent
 
 Controlled Removal Apply Artifact Exporter generates a machine-readable
 controlled removal apply artifact from:
@@ -10,12 +15,10 @@ controlled removal apply artifact from:
 - operator confirmation with an actor,
 - an injected apply adapter.
 
-This component is the local artifact wrapper around controlled removal apply. It
-can remove files only when the caller explicitly passes `--apply-files`. It
-does not decide what belongs in the batch, archive paths, mutate storage, or run
-Git mutation commands. It passes the command checkout root to the controlled
-apply boundary so every adapter entry receives final read-only Git and path
-verification.
+Historically, this component wrapped controlled removal apply and delegated to a
+CLI-provided adapter. That executor was retired. The current module only builds
+and validates evidence through an injected adapter contract; no concrete
+filesystem adapter, command, or npm runner remains.
 
 ## Official-Source Research
 
@@ -56,6 +59,9 @@ Sources:
   <https://owasp.org/www-community/attacks/Path_Traversal>
 
 ## Recommendations
+
+The following recommendations record the historical destructive-boundary
+design. They are not a current executable interface.
 
 ### Require Reviewed Batch Evidence
 
@@ -146,16 +152,13 @@ Use this stack for controlled removal apply artifact generation:
 8. Verify the public apply command in an isolated repository, including the
    explicit apply flag and containment failures.
 
-## Implementation Outcome
+## Historical Implementation Outcome
 
 Implemented:
 
 - Renamed the service to `policyControlledRemovalApplyArtifact.mjs`.
 - Renamed the focused test suite to
   `policyControlledRemovalApplyArtifact.test.mjs`.
-- Renamed the generator script to
-  `generate-policy-controlled-removal-apply.mjs`.
-- Renamed the root runner to `npm run policy:controlled-removal-apply`.
 - Replaced phase-coded contract exports with:
   - `POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_VERSION`,
   - `POLICY_CONTROLLED_REMOVAL_APPLY_ARTIFACT_STATUS_IDS`,
@@ -173,31 +176,12 @@ Implemented:
 - Preserved focused tests for successful apply artifact generation through an
   injected adapter, blocked apply when explicit execution is missing,
   forbidden side-effect rejection, and artifact validation invariants.
-- Extracted the CLI filesystem behavior to
-  `server/src/services/policyControlledRemovalFileApplyAdapter.mjs`. It permits
-  only repo-relative regular files within the configured root and rejects empty,
-  absolute, and escaping paths before file mutation.
-- Added isolated public-command coverage at
-  `server/src/__tests__/scripts/generatePolicyControlledRemovalApply.test.mjs`
-  and adapter coverage at
-  `server/src/__tests__/services/policyControlledRemovalFileApplyAdapter.test.mjs`.
-  The tests prove the no-apply default, explicit blocked diagnostics,
-  one-reviewed-file apply behavior, and traversal containment.
-
-Example:
-
-```bash
-npm run --silent policy:controlled-removal-apply -- \
-  --removal-batch .tmp/policy-removal/removal-batch.json \
-  --input .tmp/policy-removal/removal-apply-input.json \
-  --output .tmp/policy-removal/removal-apply.json \
-  --artifact-output .tmp/policy-removal/removal-apply-artifact.json \
-  --apply-files
-```
+- 8R.37.3 subsequently removed the generator, npm runner, concrete filesystem
+  adapter, and mutable-boundary tests. The pure artifact service and its
+  focused validation tests remain as read-only evidence infrastructure.
 
 ## Next Step
 
-Proceed with **Post-Removal Runtime Verification Artifact module naming
-cutover**. That verifier artifact should consume durable controlled apply
-evidence and drop phase-coded production names without changing verification
-behavior.
+This design was superseded by the CI-only retirement contract. Reviewed source
+changes are made through ordinary reviewed commits, and CI validates them
+without an executable source-mutating command.

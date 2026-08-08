@@ -20,13 +20,18 @@ import {
   buildPolicyRuntimeReleaseMaintenanceInventory,
 } from './policyRuntimeReleaseMaintenanceInventory.mjs';
 import {
+  RETIRED_RELEASE_MAINTENANCE_ENTRY_PATHS,
+} from './policyRuntimeReleaseMaintenanceRetirementContract.mjs';
+import {
   collectRepositoryTextFiles,
 } from './repositoryTextFileCollection.mjs';
 
 const DEFAULT_INCLUDED_ROOTS = Object.freeze([
   'server/src',
   'client/src',
-  'scripts/generate-policy-controlled-removal-apply.mjs',
+  '.github/workflows',
+  'package.json',
+  ...RETIRED_RELEASE_MAINTENANCE_ENTRY_PATHS,
 ]);
 
 function loadPolicyRuntimeReleaseMaintenanceRepositoryFiles({

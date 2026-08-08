@@ -78,7 +78,7 @@ the per-installation cutover evidence owned by Phase 8R.
 | 5R | Complete | Server authority for reads/writes, provider capability, questions, answers, learning, verifier behavior, tests, and native changes | Preserve request-bound provider authority and fail-closed side effects |
 | 6R | Contract-complete foundation | Evidence, intent, learning, readiness, workflow, and migration boundaries | Consume through 4R; reopen only for a bounded contract gap |
 | 7R | Contract-complete foundation | Runtime decision, question, rebuild, verifier, rollback, and trace boundaries | Preserve through 5R and 8R authority/storage work |
-| 8R | Active parallel lanes | Native lifecycle, installation evidence, CI-only retirement, and closure evidence | Define the CI-only retirement-command contract in 8R.37.3; retain automatic policy conversion |
+| 8R | Active parallel lanes | Native lifecycle, installation evidence, CI-only retirement, and closure evidence | Reconcile closure maps in 8R.37.4; retain automatic policy conversion |
 | 9R | Ongoing enforcement | Zero-debt durable naming and product-language gates | Preserve the baseline in every product change |
 
 ## Required Delivery Order
@@ -130,9 +130,13 @@ the per-installation cutover evidence owned by Phase 8R.
 12. **8R.37.2 Runtime Reachability Removal** is complete. It removed the
    closed 19-module named-scope source-mutation subsystem, its dedicated tests,
    and fixture. The CI audit now fails closed if any retired module returns.
-13. **8R.37.3 CI-Only Retirement Command Contract** is next. It must decide
-   whether the remaining release-maintenance adapter requires a constrained
-   deterministic command without exposing it to the running application.
+13. **8R.37.3 CI-Only Retirement Command Contract** is complete. No approved
+   target justified a generic executor, so the concrete mutable command and
+   filesystem adapter were removed. CI now validates reviewed source changes
+   read-only and fails closed when a mutator or workflow write permission
+   returns.
+14. **8R.37.4 Closure-Map Reconciliation** is next. It must preserve the
+   independent `implementationReadiness` and `instanceCutover` result scopes.
 
 ## Phase 8R Boundaries
 
@@ -148,9 +152,9 @@ Phase 8R is intentionally not a linear prerequisite for the live UI:
 - Closure artifacts report repository `implementationReadiness` independently
   of installation `instanceCutover`. Neither result authorizes a source change.
 
-The next Phase 8R repository-maintenance task is 8R.37.3: define the CI-only
-contract for the remaining release-maintenance adapter. It is parallel work and
-has no authoring UI.
+The next Phase 8R repository-maintenance task is 8R.37.4: reconcile closure
+maps without making installation evidence or repository retirement a prerequisite
+for the authoring UI. It is parallel work and has no authoring UI.
 
 ## Consistency Decisions
 
