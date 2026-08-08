@@ -19,6 +19,7 @@
 import {
   buildPolicyRuntimeReleaseMaintenanceInventory,
   collectModuleSpecifiers,
+  RETIRED_NAMED_SCOPE_MODULE_PATHS,
 } from '../../../../scripts/lib/policyRuntimeReleaseMaintenanceInventory.mjs';
 import {
   buildPolicyRuntimeReleaseMaintenanceRepositoryInventory,
@@ -35,20 +36,20 @@ const PRODUCTION_ADMISSION =
   'server/src/services/policyControlledCompatibilityNamedScopeRemovalProductionAdmission.mjs';
 const RELEASE_MAINTENANCE_SCRIPT = 'scripts/generate-policy-controlled-removal-apply.mjs';
 
-function fixtureFiles({ includeReleaseMaintenanceOwner = true, routeImportsWriter = false } = {}) {
+function fixtureFiles({
+  includeReleaseMaintenanceOwner = true,
+  routeImportsWriter = false,
+  retiredModulePaths = [],
+} = {}) {
   return [
     {
       path: FILE_APPLY_ADAPTER,
       content: 'export function createFileApplyAdapter() {}\n',
     },
-    {
-      path: NAMED_SCOPE_SOURCE_WRITER,
-      content: 'export function createSourceWriter() {}\n',
-    },
-    {
-      path: PRODUCTION_ADMISSION,
-      content: `import { createSourceWriter } from './${NAMED_SCOPE_SOURCE_WRITER.split('/').at(-1)}';\n`,
-    },
+    ...retiredModulePaths.map(modulePath => ({
+      path: modulePath,
+      content: 'export const retiredNamedScopeModule = true;\n',
+    })),
     {
       path: 'server/src/routes/policies.mjs',
       content: routeImportsWriter
@@ -83,7 +84,7 @@ function fixtureFiles({ includeReleaseMaintenanceOwner = true, routeImportsWrite
 }
 
 describe('policy runtime release-maintenance inventory', () => {
-  test('records the current repository boundary without local checkout data', () => {
+  test('records the current repository boundary and the removed named-scope subsystem', () => {
     const inventory = buildPolicyRuntimeReleaseMaintenanceRepositoryInventory({
       generatedAt: GENERATED_AT,
       rootDir: REPOSITORY_ROOT,
@@ -99,7 +100,7 @@ describe('policy runtime release-maintenance inventory', () => {
       complete: true,
       generatedAt: GENERATED_AT,
       nextAction: expect.objectContaining({
-        resultId: 'server_source_mutation_decommission_pending',
+        resultId: 'ci_only_retirement_command_contract_pending',
       }),
       scanScope: 'repository',
       sideEffects: expect.objectContaining({
@@ -109,7 +110,10 @@ describe('policy runtime release-maintenance inventory', () => {
         sourceMutationCapabilityInvoked: false,
       }),
       summary: expect.objectContaining({
-        decommissionCandidateCount: 2,
+        activeSourceMutationCapabilityCount: 1,
+        decommissionCandidateCount: RETIRED_NAMED_SCOPE_MODULE_PATHS.length,
+        presentRetiredNamedScopeModuleCount: 0,
+        retiredNamedScopeModuleCount: RETIRED_NAMED_SCOPE_MODULE_PATHS.length,
         runtimeReachabilityCount: 0,
         sourceMutationCapabilityCount: 2,
       }),
@@ -126,16 +130,16 @@ describe('policy runtime release-maintenance inventory', () => {
     }));
     expect(namedScopeWriterCapability).toEqual(expect.objectContaining({
       decisionId: 'decommission',
-      moduleStateId: 'present',
-      productionServiceImporters: [PRODUCTION_ADMISSION],
+      moduleStateId: 'removed',
+      productionServiceImporters: [],
       runtimeReachability: [],
     }));
     expect(JSON.stringify(inventory)).not.toContain(REPOSITORY_ROOT);
   });
 
-  test('fails closed when a route can reach a source-mutating module', () => {
+  test('fails closed when a retired named-scope module is reintroduced', () => {
     const inventory = buildPolicyRuntimeReleaseMaintenanceInventory({
-      files: fixtureFiles({ routeImportsWriter: true }),
+      files: fixtureFiles({ retiredModulePaths: [PRODUCTION_ADMISSION] }),
       generatedAt: GENERATED_AT,
     });
 
@@ -143,10 +147,29 @@ describe('policy runtime release-maintenance inventory', () => {
       complete: false,
       nextAction: expect.objectContaining({ resultId: 'runtime_boundary_violation' }),
       validation: expect.objectContaining({
-        issueIds: ['runtime_surface_reaches_source_mutator'],
+        issueIds: ['retired_named_scope_module_present'],
         ok: false,
       }),
     }));
+    expect(inventory.validation.issues).toContainEqual(expect.objectContaining({
+      issueId: 'retired_named_scope_module_present',
+      modulePath: PRODUCTION_ADMISSION,
+    }));
+  });
+
+  test('records both violations when a route reaches a reintroduced source writer', () => {
+    const inventory = buildPolicyRuntimeReleaseMaintenanceInventory({
+      files: fixtureFiles({
+        retiredModulePaths: [NAMED_SCOPE_SOURCE_WRITER],
+        routeImportsWriter: true,
+      }),
+      generatedAt: GENERATED_AT,
+    });
+
+    expect(inventory.validation.issueIds).toEqual([
+      'retired_named_scope_module_present',
+      'runtime_surface_reaches_source_mutator',
+    ]);
     expect(inventory.validation.issues).toContainEqual(expect.objectContaining({
       capabilityId: 'controlled_named_scope_source_writer',
       chain: ['server/src/routes/policies.mjs', NAMED_SCOPE_SOURCE_WRITER],

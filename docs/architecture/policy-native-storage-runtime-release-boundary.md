@@ -1,8 +1,9 @@
 # Policy Native Storage Runtime And Release-Maintenance Boundary
 
-Status: 8R.37.1 complete. The repository now has a read-only import-reachability
-audit; 8R.37.2 will decommission the identified server-resident source-mutation
-path without changing normal policy automation.
+Status: 8R.37.2 complete. The repository now has a read-only import-reachability
+audit and no server-resident named-scope source-mutation subsystem. 8R.37.3
+will define the remaining CI-only retirement-command contract without changing
+normal policy automation.
 
 ## Problem
 
@@ -48,6 +49,10 @@ That boundary is inappropriate for the policy product:
   the job that needs them. Its default recommendation is read-only repository
   access, which matches read-only audit jobs and narrowly scoped release jobs.
   [GitHub Actions secure use](https://docs.github.com/en/actions/reference/security/secure-use)
+- GitHub notes that a compromised runner can use every credential granted to
+  its job. Source-write permissions therefore belong only in a narrowly scoped
+  release job, not in the long-lived application runtime. [GitHub Actions
+  runner security](https://docs.github.com/en/actions/concepts/security/compromised-runners)
 - CISA's software supply-chain guidance names default deny, least privilege,
   separation of privileges, and total mediation as defensive principles. A
   static reachability audit gives those principles a repeatable repository
@@ -185,6 +190,24 @@ Acceptance criteria:
   reach a source writer.
 - Normal policy automation and native-intent conversion remain unaffected.
 
+Implementation outcome: complete.
+
+- Removed the full closed named-scope compatibility subsystem: 19 server
+  modules plus its dedicated tests and fixture. The subsystem had no route,
+  scheduler, bootstrap, configuration, client, production-service, or
+  release-maintenance consumer.
+- Version 2 of `policy:runtime-release-maintenance-audit` declares those 19
+  repository-relative service paths retired and fails closed when any one is
+  reintroduced. It separately reports runtime reachability, so restoring the
+  retired source writer through a route yields both violations.
+- The retained `policyControlledRemovalFileApplyAdapter.mjs` remains outside
+  application reachability and is owned only by
+  `scripts/generate-policy-controlled-removal-apply.mjs`. This task neither
+  invokes nor broadens that source-mutation capability.
+- Focused tests cover the removed repository state, a reintroduced support
+  module, a route-reachable reintroduced source writer, a missing
+  release-maintenance owner, and comment-safe import parsing.
+
 ### 8R.37.3 CI-Only Retirement Command Contract
 
 If compatibility code is still ready to retire, create or retain a
@@ -214,9 +237,9 @@ Acceptance criteria:
 
 ## Outcome
 
-The next Phase 8R implementation task is **8R.37.2 Runtime Reachability
-Removal**. It must remove the named-scope source writer and production-admission
-composer from the server tree, then update the audit to prove they are absent.
-The retained file-removal adapter remains release-maintenance-only until its
-later CI-only command contract is evaluated. Normal native policy conversion,
-runtime authority, and policy automation remain independent of this work.
+The next Phase 8R implementation task is **8R.37.3 CI-Only Retirement Command
+Contract**. It must decide whether the remaining release-maintenance adapter
+needs a deterministic CI command and, if so, constrain it to an approved
+checkout, reviewed input, fixed validation, and narrowly scoped credentials.
+Normal native policy conversion, runtime authority, and policy automation remain
+independent of this work.

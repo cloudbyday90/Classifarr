@@ -19,7 +19,7 @@
 import path from 'node:path';
 
 const POLICY_RUNTIME_RELEASE_MAINTENANCE_INVENTORY_VERSION =
-  'policy.runtime_release_maintenance_inventory.v1';
+  'policy.runtime_release_maintenance_inventory.v2';
 
 const POLICY_RUNTIME_RELEASE_MAINTENANCE_INVENTORY_STATUS_IDS = Object.freeze({
   COMPLETE: 'complete',
@@ -44,18 +44,38 @@ const SOURCE_MUTATION_CAPABILITIES = Object.freeze([
   }),
 ]);
 
-const DECOMMISSION_CANDIDATES = Object.freeze([
-  Object.freeze({
-    modulePath:
-      'server/src/services/policyControlledCompatibilityNamedScopeRemovalApplySourceWriter.mjs',
-    reasonId: 'source_mutation_is_not_an_application_runtime_capability',
-  }),
-  Object.freeze({
-    modulePath:
-      'server/src/services/policyControlledCompatibilityNamedScopeRemovalProductionAdmission.mjs',
-    reasonId: 'production_admission_composes_a_source_mutation_capability',
-  }),
+const RETIRED_NAMED_SCOPE_MODULE_PATHS = Object.freeze([
+  'server/src/services/policyControlledCompatibilityNamedScopePreApplyRecheck.mjs',
+  'server/src/services/policyControlledCompatibilityNamedScopeRemovalAdapter.mjs',
+  'server/src/services/policyControlledCompatibilityNamedScopeRemovalAdapterShared.mjs',
+  'server/src/services/policyControlledCompatibilityNamedScopeRemovalApply.mjs',
+  'server/src/services/policyControlledCompatibilityNamedScopeRemovalApplyOperationStore.mjs',
+  'server/src/services/policyControlledCompatibilityNamedScopeRemovalApplyShared.mjs',
+  'server/src/services/policyControlledCompatibilityNamedScopeRemovalApplySourceWriter.mjs',
+  'server/src/services/policyControlledCompatibilityNamedScopeRemovalDatabaseScopeLock.mjs',
+  'server/src/services/policyControlledCompatibilityNamedScopeRemovalGate.mjs',
+  'server/src/services/policyControlledCompatibilityNamedScopeRemovalProductionAdmission.mjs',
+  'server/src/services/policyControlledCompatibilityNamedScopeRemovalProductionAdmissionConfig.mjs',
+  'server/src/services/policyControlledCompatibilityNamedScopeRemovalReviewArtifact.mjs',
+  'server/src/services/policyControlledCompatibilityNamedScopeRemovalReviewArtifactProjection.mjs',
+  'server/src/services/policyControlledCompatibilityNamedScopeRemovalReviewArtifactShared.mjs',
+  'server/src/services/policyControlledCompatibilityNamedScopeRemovalReviewReplayAdapter.mjs',
+  'server/src/services/policyControlledCompatibilityNamedScopeRemovalReviewReplayAdapterShared.mjs',
+  'server/src/services/policyControlledCompatibilityNamedScopeRemovalSelection.mjs',
+  'server/src/services/policyControlledCompatibilityNamedScopeSourceEdit.mjs',
+  'server/src/services/policyControlledCompatibilityNamedScopeSourceRead.mjs',
 ]);
+
+const DECOMMISSION_CANDIDATES = Object.freeze(RETIRED_NAMED_SCOPE_MODULE_PATHS.map(modulePath => (
+  Object.freeze({
+    modulePath,
+    reasonId: modulePath.endsWith('RemovalApplySourceWriter.mjs')
+      ? 'source_mutation_is_not_an_application_runtime_capability'
+      : modulePath.endsWith('RemovalProductionAdmission.mjs')
+        ? 'production_admission_composes_a_source_mutation_capability'
+        : 'unreachable_named_scope_compatibility_subsystem',
+  })
+)));
 
 const RESOLVABLE_EXTENSIONS = Object.freeze(['.mjs', '.js', '.vue']);
 
@@ -299,7 +319,7 @@ function buildCapabilityInventory({ capability, graph, runtimeSurfaces }) {
   };
 }
 
-function buildValidation({ capabilities }) {
+function buildValidation({ capabilities, decommissionCandidates }) {
   const issues = [];
 
   capabilities.forEach(capability => {
@@ -322,6 +342,15 @@ function buildValidation({ capabilities }) {
     }
   });
 
+  decommissionCandidates
+    .filter(candidate => candidate.moduleStateId === 'present_pending_decommission')
+    .forEach(candidate => {
+      issues.push({
+        issueId: 'retired_named_scope_module_present',
+        modulePath: candidate.modulePath,
+      });
+    });
+
   return {
     issues,
     issueIds: [...new Set(issues.map(issue => issue.issueId))]
@@ -341,7 +370,15 @@ function buildPolicyRuntimeReleaseMaintenanceInventory({
   const capabilities = SOURCE_MUTATION_CAPABILITIES.map(capability => (
     buildCapabilityInventory({ capability, graph, runtimeSurfaces })
   ));
-  const validation = buildValidation({ capabilities });
+  const decommissionCandidates = DECOMMISSION_CANDIDATES.map(candidate => ({
+    ...candidate,
+    moduleStateId: graph.has(candidate.modulePath) ? 'present_pending_decommission' : 'removed',
+    productionServiceImporters: findProductionServiceImporters({
+      graph,
+      targetPath: candidate.modulePath,
+    }),
+  }));
+  const validation = buildValidation({ capabilities, decommissionCandidates });
   const complete = validation.ok;
 
   return {
@@ -352,23 +389,23 @@ function buildPolicyRuntimeReleaseMaintenanceInventory({
       : POLICY_RUNTIME_RELEASE_MAINTENANCE_INVENTORY_STATUS_IDS.BLOCKED,
     complete,
     capabilities,
-    decommissionCandidates: DECOMMISSION_CANDIDATES.map(candidate => ({
-      ...candidate,
-      moduleStateId: graph.has(candidate.modulePath) ? 'present_pending_decommission' : 'removed',
-      productionServiceImporters: findProductionServiceImporters({
-        graph,
-        targetPath: candidate.modulePath,
-      }),
-    })),
+    decommissionCandidates,
     runtimeSurfaces: runtimeSurfaces.map(surface => ({
       rootPaths: surface.rootPaths,
       surfaceId: surface.surfaceId,
     })),
     summary: {
       decommissionCandidateCount: DECOMMISSION_CANDIDATES.length,
+      activeSourceMutationCapabilityCount: capabilities.filter(capability => (
+        capability.moduleStateId === 'present'
+      )).length,
+      presentRetiredNamedScopeModuleCount: decommissionCandidates.filter(candidate => (
+        candidate.moduleStateId === 'present_pending_decommission'
+      )).length,
       releaseMaintenanceOwnedCapabilityCount: capabilities.filter(capability => (
         capability.decisionId === 'release_maintenance_only'
       )).length,
+      retiredNamedScopeModuleCount: RETIRED_NAMED_SCOPE_MODULE_PATHS.length,
       runtimeReachabilityCount: capabilities.reduce((count, capability) => (
         count + capability.runtimeReachability.length
       ), 0),
@@ -384,8 +421,8 @@ function buildPolicyRuntimeReleaseMaintenanceInventory({
     },
     nextAction: complete
       ? {
-        actionId: 'decommission_server_resident_source_mutation_path',
-        resultId: 'server_source_mutation_decommission_pending',
+        actionId: 'define_ci_only_retirement_command_contract',
+        resultId: 'ci_only_retirement_command_contract_pending',
       }
       : {
         actionId: 'remove_runtime_reachability_or_restore_release_maintenance_owner',
@@ -398,6 +435,7 @@ export {
   DECOMMISSION_CANDIDATES,
   POLICY_RUNTIME_RELEASE_MAINTENANCE_INVENTORY_STATUS_IDS,
   POLICY_RUNTIME_RELEASE_MAINTENANCE_INVENTORY_VERSION,
+  RETIRED_NAMED_SCOPE_MODULE_PATHS,
   SOURCE_MUTATION_CAPABILITIES,
   buildPolicyRuntimeReleaseMaintenanceInventory,
   collectModuleSpecifiers,
