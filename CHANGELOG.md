@@ -11,6 +11,10 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Closure Evidence Regeneration**: Advanced the fingerprint-bound validation
+  artifact to v3 so regenerated closure evidence directly covers the scoped
+  repository versus active-installation closure map and its design record.
+
 - **Closure-Map Reconciliation**: Split policy storage closure components into
   fingerprint-bound repository implementation and active-installation cutover
   maps. Installation-only compatibility-removal evidence can no longer block

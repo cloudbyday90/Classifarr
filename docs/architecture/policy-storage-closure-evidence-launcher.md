@@ -17,7 +17,7 @@ required explicit input.
 
 ## Research
 
-The design follows official guidance reviewed through June 2026:
+The design follows official guidance reviewed through August 2026:
 
 - [Node.js child process documentation](https://nodejs.org/api/child_process.html)
   distinguishes direct process spawning from shell execution. The launcher
@@ -32,6 +32,10 @@ The design follows official guidance reviewed through June 2026:
   not manufacture the completion audit; the existing assembler validates the
   supplied completion and generated validation artifacts before it can emit
   closure evidence.
+- [NIST SP 800-218](https://csrc.nist.gov/pubs/sp/800/218/final) describes
+  secure software development practices that can be integrated into each SDLC.
+  Versioning the fixed validation catalog makes a material verification-scope
+  change explicit and prevents older evidence from being reused silently.
 
 ## Options
 
@@ -100,6 +104,32 @@ a bounded ten-second grace period; it also returns a blocked result after that
 grace period if the child never closes. During execution it emits a compact
 `running` record for each stage, followed by a compact complete or blocked
 result.
+
+After 8R.37.4, the generated validation artifact uses the v3 fixed catalog.
+It directly runs the closure-map scope service tests and lints the
+reconciliation design record before attempting assembly. A prior validation
+artifact cannot be replayed as current evidence because both its version and
+command catalog differ.
+
+## 8R.36.11 Revalidation Outcome
+
+The August 2026 regeneration ran the v3 fixed validation catalog successfully:
+focused tests, server lint, fixed Markdown validation, and full server tests
+all passed. The generated artifact is fingerprint-valid and directly records
+the closure-map service test and reconciliation design record.
+
+The assembly intentionally remained blocked. The explicitly supplied,
+current-format compatibility-removal completion artifact reported a blocked
+active-installation state and did not have replay-valid approval evidence. The
+resulting current-closure audit therefore reported `blocked_by_instance_cutover`
+and the requirement audit reported `blocked_by_current_closure`. These are
+diagnostics, not closure claims, and the generated files remain ignored local
+evidence rather than repository release artifacts.
+
+The repository implementation evidence and its scoped component map are ready;
+only a current, explicitly approved active-installation completion artifact can
+resolve the remaining cutover state. The launcher must continue to reject any
+attempt to synthesize that artifact from checkout contents.
 
 Dry-run example:
 

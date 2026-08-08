@@ -13,9 +13,12 @@ Current execution focus:
   evidence and active-installation cutover evidence are now separate,
   fingerprint-bound maps; automatic native policy conversion and normal policy
   automation remain unchanged.
-- **Next operational evidence task:** rerun **8R.36.11 Compatibility-Removal
-  Evidence Regeneration** against the changed closure contracts, then regenerate
-  the current closure and requirement audits before making a closure claim.
+- **Current operational finding:** **8R.36.11 Compatibility-Removal Evidence
+  Regeneration** has rerun successfully with the v3 validation contract. The
+  repository evidence is ready, while the active-installation completion artifact
+  remains blocked. Obtain a current approved installation artifact through the
+  deletion workflow, then rerun 8R.36.11 and its generated current closure and
+  requirement audits. Do not infer closure from historical JSON or checkout state.
 - **Continuous guardrail:** 9R naming and product-language gates remain
   required. Do not reintroduce a second policy-builder flow, advanced setting,
   or browser-owned automation decision.
@@ -28,7 +31,7 @@ The execution dependency is intentionally not numeric:
 ```text
 completed foundations: 0R -> 1R -> 2R -> 3R -> 4R -> 5R -> 6R -> 7R
 completed boundary isolation: 8R.37.1 -> 8R.37.2 -> 8R.37.3 -> 8R.37.4
-next operational evidence: 8R.36.11 regeneration -> 8R.34/8R.35 current audits
+active-installation prerequisite -> 8R.36.11 regeneration -> 8R.34/8R.35 current audits
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
 
@@ -3684,9 +3687,9 @@ Implement Phase 4R in this order:
 13. **4R.9 Accessibility, Responsive Behavior, And End-To-End Workflow Tests**
    Proves the delivered flow works in the live product.
 
-Phase 4R is complete. The release-boundary closure-map reconciliation is also
-complete; the next operational evidence task is **8R.36.11 Compatibility-
-Removal Evidence Regeneration** followed by current closure audits. Do not add another picker,
+Phase 4R is complete. The release-boundary closure-map reconciliation and v3
+evidence regeneration are also complete; active-installation approval evidence
+must be refreshed before another current closure audit can complete. Do not add another picker,
 generic suggestion control, advanced setting, or maintenance dialog in place
 of the completed lifecycle-first authoring path.
 
@@ -3941,9 +3944,10 @@ Implementation status:
   `docs/architecture/ai-provider-capability-authority.md` for the complete
   design and research record.
 
-Phase 5R is complete. Its next dependency-gated operational task is
-**8R.36.11 Compatibility-Removal Evidence Regeneration**, which must use the
-reconciled closure map before current closure status is asserted.
+Phase 5R is complete. Its remaining dependency-gated operational prerequisite
+is a current approved active-installation completion artifact. The rerun of
+**8R.36.11 Compatibility-Removal Evidence Regeneration** already uses the
+reconciled closure map and must be repeated only after that artifact exists.
 
 ### 5R.4 Runtime Clarification Normalizer
 
@@ -10492,13 +10496,14 @@ Implementation status:
   read-only and fails closed when the assembled closure chain is incomplete.
   The design and outcome record is [Policy Storage Instance Closure-Evidence
   Assembly](policy-storage-instance-closure-evidence-assembly.md).
-- Task 8R.36.11 is implemented. The bounded launcher now runs only the fixed
-  validation-evidence producer and instance assembler using direct Node
-  processes with argument arrays and bounded timeouts. Completion-audit
-  provenance remains explicit, generated files must remain inside the selected
-  checkout, and a failed command stops the chain without relaying raw process
-  output. The design and outcome record is [Policy Storage Closure Evidence
-  Launcher](policy-storage-closure-evidence-launcher.md).
+- Task 8R.36.11 is revalidated after 8R.37.4. The bounded launcher runs only
+  the fixed validation-evidence producer and instance assembler using direct
+  Node processes with argument arrays and bounded timeouts. Its v3 validation
+  catalog now directly covers the closure-map scope service and reconciliation
+  design record. Completion-audit provenance remains explicit, generated files
+  must remain inside the selected checkout, and a failed command stops the
+  chain without relaying raw process output. The design and outcome record is
+  [Policy Storage Closure Evidence Launcher](policy-storage-closure-evidence-launcher.md).
 
 ### 8R.37 Runtime And Release-Maintenance Boundary
 
@@ -10551,9 +10556,10 @@ Acceptance criteria:
   normal policy configuration or maintenance feature.
 - Phase 4R is not blocked by repository source retirement.
 
-Implementation status: 8R.37.1 through 8R.37.4 complete. The next operational
-step is 8R.36.11 evidence regeneration, then current closure and requirement
-audit regeneration. See [Policy Native Storage Runtime And Release-Maintenance
+Implementation status: 8R.37.1 through 8R.37.4 complete, and 8R.36.11 has
+regenerated v3 validation evidence. The active-installation completion artifact
+must be refreshed before the generated current closure and requirement audits
+can become complete. See [Policy Native Storage Runtime And Release-Maintenance
 Boundary](policy-native-storage-runtime-release-boundary.md).
 
 ## Phase 8R Work Sequence
@@ -11922,10 +11928,13 @@ The next sequence is dependency-gated rather than phase-number order:
 9. **8R.37.4 Closure-Map Reconciliation**: complete. Repository
    implementation readiness now has a separate, integrity-bound component map
    from installation cutover evidence and native policy automation.
-10. **8R.36.11 Compatibility-Removal Evidence Regeneration**: next operational
-    task. Regenerate current evidence and the 8R.34/8R.35 audits after this
-    closure-contract change; do not infer current closure from historical JSON.
-    Continue the **9R** zero-debt naming gates on every component.
+10. **8R.36.11 Compatibility-Removal Evidence Regeneration**: revalidated
+    after the closure-contract change. It produced fresh v3 repository
+    validation evidence and bounded blocked diagnostics because the
+    active-installation completion artifact remains blocked. The next
+    operational prerequisite is a current approved installation artifact; then
+    rerun 8R.36.11 and the generated 8R.34/8R.35 audits. Continue the **9R**
+    zero-debt naming gates on every component.
 
 The completed 0R through 3R, 6R, and 7R contracts remain guardrails, not
 permission to restore a diagnostic, template-first, or browser-authoritative

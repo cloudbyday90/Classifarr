@@ -202,9 +202,20 @@ validation claim or nested completion-audit artifact. Supply an explicit path
 only when that artifact actually exists; a supplied path that cannot be read
 exits `2` and writes no output.
 
+## Revalidation Outcome
+
+The 8R.36.11 launcher was rerun in August 2026 after closure-map
+reconciliation. It regenerated fingerprint-valid v3 repository validation
+evidence and produced bounded blocked diagnostics from the existing
+active-installation completion artifact. The repository component map was ready
+and the remaining blocker was the active-installation approval chain, not a
+source implementation gap. The launcher did not infer or replace that chain.
+
 ## Next Step
 
-Run the regeneration command with the current plan and fresh validation
-evidence. If it reports remaining inventory or blocked readiness, complete the
-native cutover and deletion-readiness evidence before attempting another
-closure audit.
+Obtain a current, fingerprint-valid, approved active-installation
+compatibility-removal completion artifact through the established deletion
+workflow. Then rerun the bounded launcher, which will regenerate fresh v3
+validation evidence and current closure/requirement audit artifacts from that
+explicit input. Do not substitute historical JSON or checkout state for the
+active-installation approval chain.

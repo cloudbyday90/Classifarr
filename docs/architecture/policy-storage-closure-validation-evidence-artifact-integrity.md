@@ -84,7 +84,7 @@ Cons:
 
 ## Final Recommendation Stack
 
-1. Emit only `policy.storage_closure_validation_evidence.v2` from the fixed
+1. Emit only `policy.storage_closure_validation_evidence.v3` from the fixed
    source-controlled command catalog.
 2. Retain normalized check ID, exit code, signal, duration, timestamps,
    bounded message, and side-effect input.
@@ -103,7 +103,7 @@ Cons:
 
 Implemented:
 
-- `policyStorageClosureValidationEvidence.mjs` now emits v2 evidence with a
+- `policyStorageClosureValidationEvidence.mjs` now emits v3 evidence with a
   canonical command catalog, retained normalized input, validation counters,
   bounded risks, and fingerprint metadata.
 - `policyStorageClosureValidationEvidenceFingerprint.mjs` projects, hashes,
@@ -115,6 +115,9 @@ Implemented:
   v3 to reject older summary-only artifacts.
 - Focused tests cover valid replay, direct digest alteration, inconsistent
   fingerprint provenance, legacy summaries, and refingerprinted derived drift.
+- The v3 catalog directly validates the closure-map reconciliation service and
+  design record. Prior v2 artifacts fail version and catalog validation rather
+  than being reused after the repository/install scope contract changed.
 
 ## Security Boundary
 

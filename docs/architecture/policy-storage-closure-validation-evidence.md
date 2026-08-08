@@ -30,7 +30,7 @@ decisions.
   when it is available, keeping the command boundary shell-free for direct Node
   and Windows invocations.
 - SLSA verification guidance recommends comparing supplied provenance with
-  trusted expected values and rejecting unrecognized inputs. The v2 artifact
+  trusted expected values and rejecting unrecognized inputs. The v3 artifact
   uses a source-controlled command catalog as that expectation, then replays
   retained normalized input without executing commands.
 - Node.js `crypto` provides the SHA-256 primitive used to bind the bounded
@@ -112,7 +112,7 @@ Pros:
 Cons:
 
 - increases artifact size modestly,
-- requires current v2 evidence rather than legacy four-check summaries.
+- requires current v3 evidence rather than legacy four-check summaries.
 
 ## Final Recommendation Stack
 
@@ -121,7 +121,7 @@ Cons:
 2. Use `generate-policy-storage-closure-validation-evidence.mjs` as the CLI
    wrapper.
 3. Expose `npm run policy:storage-closure-validation-evidence`.
-4. Emit `policy.storage_closure_validation_evidence.v2` with a canonical
+4. Emit `policy.storage_closure_validation_evidence.v3` with a canonical
    command catalog, retained normalized input, and a versioned SHA-256 digest.
 5. Run command specs with array arguments and `shell: false`.
 6. Resolve npm and npx to their JavaScript CLI through the active or bundled
@@ -163,6 +163,12 @@ Implemented:
 - Added v2 fingerprint and pure replay services. The completion checkpoint and
   current-closure audit now reject validation evidence that is legacy,
   malformed, altered, or not reproducible from retained bounded inputs.
+- Advanced the artifact contract to v3 after closure-map reconciliation. Fixed
+  focused validation now directly includes
+  `policyStorageClosureComponentScopeMap`, and fixed Markdown validation
+  includes [Policy Closure-Map Reconciliation](policy-closure-map-reconciliation.md).
+  Fresh evidence therefore binds the repository versus active-installation
+  boundary before a current closure audit can consume it.
 
 Example:
 

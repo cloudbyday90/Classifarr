@@ -97,7 +97,7 @@ Cons:
    `scripts/generate-policy-storage-closure-validation-evidence.mjs`.
 4. Expose the root runner as
    `npm run policy:storage-closure-validation-evidence`.
-5. Emit the current version `policy.storage_closure_validation_evidence.v2`.
+5. Emit the current version `policy.storage_closure_validation_evidence.v3`.
 6. Keep command execution shell-free with fixed command specs and array
    arguments.
 7. Preserve unknown-check and side-effect rejection.
@@ -116,8 +116,8 @@ Implemented:
 - Preserved the focused, lint, markdown, and full validation command set.
 - Preserved bounded command metadata, failure metadata, unknown-check rejection,
   side-effect rejection, and no policy-storage mutation guarantees.
-- The current v2 contract adds canonical command-catalog binding, normalized
-  replay input, and a SHA-256 fingerprint. See
+- The v3 contract adds direct closure-map coverage to canonical command-catalog
+  binding, normalized replay input, and a SHA-256 fingerprint. See
   [Policy Storage Closure Validation Evidence Artifact Integrity](policy-storage-closure-validation-evidence-artifact-integrity.md)
   for the durable verification boundary.
 

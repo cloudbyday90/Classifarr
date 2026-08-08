@@ -53,6 +53,8 @@ describe('policyStorageClosureValidationEvidence', () => {
     expect(evidence.focused.command)
       .toContain('policyStorageClosureFinalRemovalAudit');
     expect(evidence.focused.command)
+      .toContain('policyStorageClosureComponentScopeMap');
+    expect(evidence.focused.command)
       .toContain('policyStorageClosurePathStateEvidenceIntegrity');
     expect(evidence.focused.command)
       .toContain('policyStorageCurrentClosureAuditIntegrity');
@@ -75,6 +77,8 @@ describe('policyStorageClosureValidationEvidence', () => {
     expect(evidence.markdown.command).toContain('markdownlint-cli2');
     expect(evidence.markdown.command)
       .toContain('policy-storage-closure-evidence-run-module-cutover.md');
+    expect(evidence.markdown.command)
+      .toContain('policy-closure-map-reconciliation.md');
     expect(evidence.markdown.command)
       .toContain('policy-storage-closure-final-removal-audit.md');
     expect(evidence.markdown.command)
