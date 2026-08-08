@@ -13,6 +13,10 @@ Current execution focus:
   evidence and active-installation cutover evidence are now separate,
   fingerprint-bound maps; automatic native policy conversion and normal policy
   automation remain unchanged.
+- **Completed:** **10R.1.1 AI Authority Pipeline Acceptance**. An isolated
+  database-backed acceptance suite now proves disabled and under-specified
+  strict requests never reach a provider transport, while a verified response
+  is normalized, parsed, marked advisory, and blocked from automatic routing.
 - **Current operational finding:** **8R.36.11 Compatibility-Removal Evidence
   Regeneration** has rerun successfully with the v3 validation contract. The
   repository evidence is ready, while the active-installation completion artifact
@@ -32,6 +36,7 @@ The execution dependency is intentionally not numeric:
 completed foundations: 0R -> 1R -> 2R -> 3R -> 4R -> 5R -> 6R -> 7R
 completed boundary isolation: 8R.37.1 -> 8R.37.2 -> 8R.37.3 -> 8R.37.4
 active-installation prerequisite -> 8R.36.11 regeneration -> 8R.34/8R.35 current audits
+current platform acceptance: 10R.1.1 -> 10R.1.2 -> 10R.1.3
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
 
@@ -3881,8 +3886,9 @@ Implementation status:
   and helpful-studio narrowing, and **4R.5.3** closes revision reset and
   accessibility evidence. **5R.3 AI Provider Capability And Authority Modes**
   is complete after an August 2026 enforcement audit. The remaining 5R
-  authority components are also complete; Phase 5R now hands off to current
-  closure evidence regeneration after the completed 8R.37.4 reconciliation.
+  authority components are also complete. Phase 5R's implementation evidence
+  now feeds the active 10R operational acceptance workstream; 8R closure
+  evidence remains a separate parallel release-maintenance responsibility.
 
 ### 5R.3 AI Provider Capability And Authority Modes
 
@@ -3944,10 +3950,12 @@ Implementation status:
   `docs/architecture/ai-provider-capability-authority.md` for the complete
   design and research record.
 
-Phase 5R is complete. Its remaining dependency-gated operational prerequisite
-is a current approved active-installation completion artifact. The rerun of
-**8R.36.11 Compatibility-Removal Evidence Regeneration** already uses the
-reconciled closure map and must be repeated only after that artifact exists.
+Phase 5R is complete. Its next product-quality dependency is **10R.1.2
+Deterministic Policy Decision And Route Outcome Acceptance**, following the
+completed 10R.1.1 authority pipeline acceptance. Separately, the rerun of
+**8R.36.11 Compatibility-Removal Evidence Regeneration** remains blocked on a
+current approved active-installation completion artifact; it is release
+maintenance and does not gate normal policy automation.
 
 ### 5R.4 Runtime Clarification Normalizer
 
@@ -11828,6 +11836,139 @@ Implementation status:
   from the active compatibility registry after confirming its replacement had
   already been deployed and the source file deleted.
 
+## Phase 10R: Production Acceptance And Operational Readiness
+
+Status: active. Phase 10R turns completed service contracts into deterministic,
+installation-agnostic acceptance evidence. It does not create a second runtime
+workflow, require an operator dialog, or depend on live external providers.
+
+Intent: prove that the re-imagined policy platform works end-to-end through its
+real service boundaries while preserving the distinction between deterministic
+automation, bounded AI assistance, and installation-specific release evidence.
+
+Design record:
+
+- [AI Authority Pipeline Acceptance](ai-authority-pipeline-acceptance.md).
+
+### 10R.1 Classification And Authority Pipeline Acceptance
+
+Intent: accept the full classification decision boundary in isolated fixtures
+before relying on completed component contracts as an operational claim.
+
+#### 10R.1.1 AI Authority Pipeline Acceptance
+
+Tasks:
+
+- Exercise persisted provider selection through the real router using a
+  disposable database and deterministic in-process transport.
+- Prove disabled authority, missing strict schema, and unsupported local
+  verification all stop before provider invocation.
+- Prove a schema-bound verification response crosses normalization, parser,
+  safe authority projection, and routing restraint without retaining thinking
+  text or obtaining route authority.
+- Keep the acceptance fixture free of provider credentials, external network
+  access, classification writes, policy writes, and media-server dependencies.
+
+Acceptance criteria:
+
+- The router can be instantiated with explicit transports without changing the
+  production singleton's real-client behavior.
+- Strict and disabled failures are verified by zero transport invocations.
+- A valid verified result remains advisory and produces
+  `ai_authority_advisory` at the real routing-decision boundary.
+- The suite runs under the existing disposable integration-database harness.
+
+Implementation status:
+
+- Complete. `AIRouterService` accepts explicit cloud and local transports for
+  isolated callers while the production singleton retains existing clients.
+- `classificationAiAuthorityAttachment.mjs` owns the safe result projection.
+- The integration suite covers disabled, schema-missing, unsupported-local,
+  and normalized verified-response paths end to end without a live provider.
+
+#### 10R.1.2 Deterministic Policy Decision And Route Outcome Acceptance
+
+Intent: prove that native policy automation and non-routed outcomes remain
+separate after the AI authority boundary.
+
+Tasks:
+
+- Exercise a policy-auto candidate through the real policy decision and route
+  outcome boundaries in an isolated fixture.
+- Prove the routing result distinguishes routed, classified-not-routed,
+  blocked, and question-required outcomes.
+- Verify AI-derived or policy-ineligible candidates cannot inherit the native
+  policy route decision.
+- Keep the fixture independent of a media-server connection and external AI
+  provider.
+
+Acceptance criteria:
+
+- `policy_auto` is route-eligible only from current deterministic policy
+  evaluation.
+- AI and non-final candidates remain non-routed with an explicit safe reason.
+- The test asserts observable classification outcome rather than internal
+  implementation order.
+
+#### 10R.1.3 Provider Failure And Recovery Acceptance
+
+Intent: prove that bounded provider failures cannot convert into an unsafe
+decision or obscure an otherwise deterministic policy outcome.
+
+Tasks:
+
+- Exercise disabled, unavailable, malformed, and transient provider outcomes
+  with deterministic policy and question boundaries.
+- Verify provider failure preserves a policy result when one exists and yields
+  a bounded review or retry state when it does not.
+- Verify aggregate capability telemetry remains privacy-bounded and does not
+  become a decision authority.
+
+Acceptance criteria:
+
+- No provider failure causes an automatic AI route, policy mutation, learning,
+  notification, or credential disclosure.
+- Result and recovery states are deterministic and separately observable.
+
+### 10R.2 Existing-Installation Lifecycle Acceptance
+
+Intent: prove existing installations reach native policy behavior automatically
+across valid combinations of libraries, policies, and configured providers.
+
+Tasks:
+
+- Build an isolated conversion matrix covering no-policy, legacy-only,
+  converted-native, already-native, sparse-evidence, and invalid source cases.
+- Verify idempotent automatic reconciliation, native reads, and bounded
+  non-convertible diagnostics with no maintainer dialog.
+- Separate normal platform readiness from installation-specific compatibility
+  release evidence.
+
+### 10R.3 Operational Safety And Observability Acceptance
+
+Intent: prove safe operator-visible outcomes under retries, stale evidence,
+provider failures, routing gaps, and restart recovery.
+
+Tasks:
+
+- Exercise privacy-bounded logs, metrics, retry/recovery state, and no-route
+  outcomes through real service boundaries.
+- Verify no normal runtime entry can invoke compatibility retirement or source
+  mutation capabilities.
+
+### 10R.4 Release Acceptance Assembly
+
+Intent: assemble repeatable repository, integration, and installation evidence
+without confusing a repository test pass with a specific installation cutover.
+
+Tasks:
+
+- Define the CI acceptance manifest and required isolated suites.
+- Bind active-installation evidence to its deployment fingerprint and approval
+  workflow while keeping normal automation available.
+- Provide a clear release readout with passed, blocked, and not-applicable
+  components.
+
 ## Testing Strategy
 
 Required coverage should follow the re-imagined phase boundaries:
@@ -11876,6 +12017,12 @@ Required coverage should follow the re-imagined phase boundaries:
   - trace attributes and runtime event labels use durable product-domain terms,
   - any remaining phase-coded references are allow-listed as docs, tests,
     migration history, or temporary adapter evidence.
+- Phase 10R operational acceptance tests:
+  - configured authority admission, normalization, parsing, safe projection,
+    and routing restraint execute together in an isolated fixture,
+  - deterministic policy automation and AI-advisory outcomes remain distinct,
+  - provider faults, routing gaps, and restart recovery preserve bounded,
+    observable outcomes without live provider or media-server credentials.
 
 ## Risks
 
@@ -11933,7 +12080,14 @@ The next sequence is dependency-gated rather than phase-number order:
 9. **8R.37.4 Closure-Map Reconciliation**: complete. Repository
    implementation readiness now has a separate, integrity-bound component map
    from installation cutover evidence and native policy automation.
-10. **8R.36.11 Compatibility-Removal Evidence Regeneration**: revalidated
+10. **10R.1.1 AI Authority Pipeline Acceptance**: complete. It proves the
+    configured provider authority pipeline in an isolated database-backed
+    fixture without a live provider, secret, or outbound request.
+11. **10R.1.2 Deterministic Policy Decision And Route Outcome Acceptance**:
+    next. Prove a native policy decision can route only through deterministic
+    policy authority while every AI-derived or non-final outcome stays
+    explicitly non-routed.
+12. **8R.36.11 Compatibility-Removal Evidence Regeneration**: revalidated
     after the closure-contract change. It produced fresh v3 repository
     validation evidence and bounded blocked diagnostics because the
     active-installation completion artifact remains blocked. The next

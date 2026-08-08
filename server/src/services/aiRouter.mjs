@@ -44,8 +44,13 @@ function resolveProviderAuthority(provider, requestedMode) {
     });
 }
 
-class AIRouterService {
-    constructor() {
+export class AIRouterService {
+    constructor({
+        cloudLLMService = cloudLLM,
+        ollamaClient = ollamaService,
+    } = {}) {
+        this.cloudLLM = cloudLLMService;
+        this.ollamaClient = ollamaClient;
         this.configCache = null;
         this.configCacheTime = null;
         this.cacheTTL = 30000;
@@ -103,7 +108,7 @@ class AIRouterService {
             return this.getOllamaProvider(config, { requestedAuthorityMode });
         }
 
-        const budgetStatus = await cloudLLM.checkBudget();
+        const budgetStatus = await this.cloudLLM.checkBudget();
 
         if (budgetStatus.exhausted) {
             logger.warn('Cloud AI budget exhausted', {
@@ -235,7 +240,12 @@ class AIRouterService {
         }
 
         if (provider.type === 'ollama') {
-            return ollamaService.generate(prompt, provider.config.model, provider.config.temperature, { format: options.format });
+            return this.ollamaClient.generate(
+                prompt,
+                provider.config.model,
+                provider.config.temperature,
+                { format: options.format },
+            );
         }
 
         const messages = [
@@ -243,7 +253,7 @@ class AIRouterService {
             { role: 'user', content: prompt }
         ];
 
-        const result = await cloudLLM.chat(messages, provider.config, {
+        const result = await this.cloudLLM.chat(messages, provider.config, {
             requestType: options.requestType || 'classification',
             itemTitle: options.itemTitle,
             format: options.format
@@ -266,7 +276,7 @@ class AIRouterService {
         };
 
         if (['openai', 'gemini', 'openrouter', 'litellm', 'custom'].includes(config.primary_provider)) {
-            const budgetStatus = await cloudLLM.checkBudget();
+            const budgetStatus = await this.cloudLLM.checkBudget();
             status.budgetInfo = budgetStatus;
         }
 

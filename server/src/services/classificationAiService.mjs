@@ -11,8 +11,10 @@ import { isReasoningModel } from './aiResponseNormalizer.mjs';
 import {
   AI_PROVIDER_AUTHORITY_MODE_IDS,
   buildAiProviderAuthorityProfile,
-  buildAiProviderAuthorityView,
 } from './aiProviderAuthority.mjs';
+import {
+  attachAiProviderAuthorityToClassificationResult,
+} from './classificationAiAuthorityAttachment.mjs';
 import {
   normalizeAiProviderOutput,
   sanitizeAiProviderOutputForDiagnostics,
@@ -95,19 +97,20 @@ async function attachAiProviderAuthority({
   generationError = null,
   thinkingTraceDetected = false,
 }) {
-  if (result && typeof result === 'object') {
-    result.ai_authority = buildAiProviderAuthorityView(authority);
-  }
+  const authorityBoundResult = attachAiProviderAuthorityToClassificationResult({
+    result,
+    authority,
+  });
 
   await aiProviderCapabilityMetricsService.record({
     authority,
-    parseResult: result,
+    parseResult: authorityBoundResult,
     diagnostics,
     generationError,
     thinkingTraceDetected,
   });
 
-  return result;
+  return authorityBoundResult;
 }
 
 async function aiClassifyImpl(metadata, libraries, signalContext = null, options = {}) {

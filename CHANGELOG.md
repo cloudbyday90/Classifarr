@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **AI Authority Pipeline Acceptance**: Added isolated database-backed
+  acceptance coverage for configured AI authority. Disabled, schema-missing,
+  and unsupported verification requests now prove zero provider invocation;
+  a verified response is normalized, parsed, marked advisory, and blocked from
+  automatic routing. Router transports are explicit injectable dependencies
+  for deterministic tests while production retains the existing clients.
+
 - **Policy Automation Versus Retirement Readiness**: Corrected the local
   compatibility-maintenance diagnostic so verified native policy reads remain
   available when rollback or deletion-gate evidence blocks only the separate

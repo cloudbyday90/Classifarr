@@ -199,8 +199,9 @@ and aggregate metrics for this component.
 
 ## Next Task
 
-Phase 5R is complete. Proceed with **8R.37.1, Runtime Capability Inventory And
-Isolation Decision**: prove that no route, scheduler, client API, bootstrap
-path, or production service can invoke compatibility source-retirement
-capabilities. This must not affect automatic native policy conversion or normal
-policy automation.
+Phase 5R is complete. **10R.1.1 AI Authority Pipeline Acceptance** now proves
+the configured authority boundary end to end with an isolated database and
+deterministic transport. Proceed with **10R.1.2 Deterministic Policy Decision
+And Route Outcome Acceptance**: prove native `policy_auto` routing remains
+separate from AI-derived and non-final outcomes without a media-server or live
+provider dependency.

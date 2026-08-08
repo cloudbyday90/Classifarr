@@ -51,7 +51,7 @@ A successful implementation also requires the following technical outcomes:
 
 ## Audit Method
 
-The roadmap was reviewed from its goal through Phase 9R, including every phase
+The roadmap was reviewed from its goal through Phase 10R, including every phase
 component map, current-starting-point statement, work sequence, implementation
 record, and completion gate. The following focused repository suites passed:
 
@@ -80,6 +80,7 @@ the per-installation cutover evidence owned by Phase 8R.
 | 7R | Contract-complete foundation | Runtime decision, question, rebuild, verifier, rollback, and trace boundaries | Preserve through 5R and 8R authority/storage work |
 | 8R | Complete contracts with recurring evidence | Native lifecycle, installation evidence, CI-only retirement, and closure evidence | Regenerate current evidence and closure audits after mapped contract changes; retain automatic policy conversion |
 | 9R | Ongoing enforcement | Zero-debt durable naming and product-language gates | Preserve the baseline in every product change |
+| 10R | Active operational acceptance | Isolated real-boundary acceptance for AI authority, deterministic policy decisions, existing installations, and operational safety | Complete 10R.1.2 deterministic policy decision and route outcome acceptance |
 
 ## Required Delivery Order
 
@@ -140,6 +141,12 @@ the per-installation cutover evidence owned by Phase 8R.
    active-installation compatibility-removal components without changing normal
    policy automation. The next operational step is 8R.36.11 evidence
    regeneration followed by refreshed current closure and requirement audits.
+15. **10R.1.1 AI Authority Pipeline Acceptance** is complete. Its isolated
+   database-backed suite exercises configured provider selection, router
+   admission, normalization, semantic parsing, safe authority projection, and
+   routing restraint without an external provider, credential, or media-server
+   dependency. The next product acceptance task is 10R.1.2 deterministic
+   policy decision and route outcome acceptance.
 
 ## Phase 8R Boundaries
 
@@ -171,6 +178,9 @@ repository retirement a prerequisite for normal policy automation.
 - Phase 5R closes with request-bound provider authority, deterministic runtime
   contracts, guarded learning, and revision-bound native changes; future work
   must preserve those server-owned boundaries.
+- Phase 10R acceptance uses deterministic isolated transports to test
+  Classifarr's boundaries. It does not claim a specific provider's uptime,
+  model quality, or a particular installation's compatibility retirement state.
 - Historical task labels and implementation records remain searchable, but the
   current execution sequence is the dependency-gated order in this audit and
   the roadmap's `Recommended Next Work` section.
