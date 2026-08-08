@@ -424,6 +424,72 @@ describe('AIRouterService', () => {
                 requireAuthorityMode: true,
             })).rejects.toThrow('AI provider cannot satisfy structured_contract authority');
         });
+
+        it('blocks disabled authority before invoking a configured provider', async () => {
+            mockDb.query.mockResolvedValue({
+                rows: [{
+                    primary_provider: 'ollama',
+                    ollama_model: 'llama3.2',
+                }]
+            });
+
+            await expect(service.classify('Test prompt', {
+                authorityMode: 'disabled',
+            })).rejects.toThrow('AI output is disabled by authority mode');
+            expect(mockOllamaService.generate).not.toHaveBeenCalled();
+        });
+
+        it('requires a structured response schema for admitted strict authority', async () => {
+            mockDb.query.mockResolvedValue({
+                rows: [{
+                    primary_provider: 'openai',
+                    api_key: 'test-key',
+                    model: 'gpt-4.1',
+                    temperature: 0.7,
+                    max_tokens: 1000,
+                }]
+            });
+            mockCloudLLM.checkBudget.mockResolvedValue({
+                exhausted: false,
+                usage: 5.0,
+                budget: 100.0,
+            });
+
+            await expect(service.classify('Test prompt', {
+                authorityMode: 'structured_contract',
+                requireAuthorityMode: true,
+            })).rejects.toThrow('without a structured response schema');
+            expect(mockCloudLLM.chat).not.toHaveBeenCalled();
+        });
+
+        it('allows strict authority when a structured response schema is provided', async () => {
+            mockDb.query.mockResolvedValue({
+                rows: [{
+                    primary_provider: 'openai',
+                    api_key: 'test-key',
+                    model: 'gpt-4.1',
+                    temperature: 0.7,
+                    max_tokens: 1000,
+                }]
+            });
+            mockCloudLLM.checkBudget.mockResolvedValue({
+                exhausted: false,
+                usage: 5.0,
+                budget: 100.0,
+            });
+            mockCloudLLM.chat.mockResolvedValue({ content: 'Structured result' });
+
+            await expect(service.classify('Test prompt', {
+                authorityMode: 'structured_contract',
+                requireAuthorityMode: true,
+                format: { type: 'object' },
+            })).resolves.toBe('Structured result');
+            expect(mockCloudLLM.chat).toHaveBeenCalledWith(
+                expect.any(Array),
+                expect.any(Object),
+                expect.objectContaining({ format: { type: 'object' } }),
+            );
+        });
     });
 
     describe('getStatus', () => {

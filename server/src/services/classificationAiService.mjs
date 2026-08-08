@@ -13,7 +13,10 @@ import {
   buildAiProviderAuthorityProfile,
   buildAiProviderAuthorityView,
 } from './aiProviderAuthority.mjs';
-import { normalizeAiProviderOutput } from './aiProviderOutputNormalization.mjs';
+import {
+  normalizeAiProviderOutput,
+  sanitizeAiProviderOutputForDiagnostics,
+} from './aiProviderOutputNormalization.mjs';
 import { aiProviderCapabilityMetricsService } from './aiProviderCapabilityMetricsService.mjs';
 import { libraryProfileService } from './libraryProfileService.mjs';
 import { enrichWithWebSearch } from './classificationMetadataService.mjs';
@@ -61,7 +64,8 @@ export async function attemptAiResponseRepair({
   mode,
   model,
   temperature,
-  validationErrors
+  validationErrors,
+  normalize = true,
 }) {
   return _attemptAiResponseRepair({
     response,
@@ -71,7 +75,8 @@ export async function attemptAiResponseRepair({
     model,
     temperature,
     validationErrors,
-    generateFn: (...args) => ollamaService.generate(...args)
+    generateFn: (...args) => ollamaService.generate(...args),
+    normalize,
   });
 }
 
@@ -323,6 +328,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
   const normalizedProviderOutput = normalizeAiProviderOutput(rawProviderResponse);
   response = normalizedProviderOutput.normalizedOutput;
   thinkingTraceDetected = normalizedProviderOutput.thinkingTraceDetected;
+  const safeProviderDiagnosticOutput = sanitizeAiProviderOutputForDiagnostics(rawProviderResponse);
 
   const parseContext = {
     libraries: libraries,
@@ -338,7 +344,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
   });
   const firstFailureReason = _getParseFailureReason(firstParseResult);
   const responseArtifact = firstFailureReason
-    ? buildAiResponseDiagnosticArtifact(rawProviderResponse)
+    ? buildAiResponseDiagnosticArtifact(safeProviderDiagnosticOutput)
     : null;
   const shouldAttemptRepair = aiResponseRepairEnabled && _isRepairEligibleParseResult(firstParseResult, mode);
 
@@ -370,12 +376,16 @@ Think step by step, then respond with ONLY one of the formats above.`;
         mode,
         model: config.model,
         temperature: config.temperature,
-        validationErrors
+        validationErrors,
+        normalize: false,
       });
 
       if (repairedResponse) {
-        repairResponseArtifact = buildAiResponseDiagnosticArtifact(repairedResponse);
-        const repairedParse = aiResponseParser.parse(repairedResponse, parseContext, {
+        const normalizedRepairOutput = normalizeAiProviderOutput(repairedResponse);
+        const repairedResponseForParsing = normalizedRepairOutput.normalizedOutput;
+        thinkingTraceDetected ||= normalizedRepairOutput.thinkingTraceDetected;
+        repairResponseArtifact = buildAiResponseDiagnosticArtifact(repairedResponseForParsing);
+        const repairedParse = aiResponseParser.parse(repairedResponseForParsing, parseContext, {
           mode,
           logInvalid: false,
           logMalformed: false

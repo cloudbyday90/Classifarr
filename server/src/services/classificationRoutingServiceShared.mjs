@@ -74,9 +74,15 @@ export function suggestSeriesType(metadata, appliedLabels = []) {
  * Arr route. Native policy evaluation remains a separately deterministic path.
  */
 export function isAiAuthorityRoutingBlocked(result = {}) {
+	const method = typeof result?.method === 'string' ? result.method : '';
+	const isAiDerivedMethod = /^ai(?:_|$)/.test(method);
+
 	return Boolean(
-		result?.method !== 'policy_auto'
-		&& result?.ai_authority?.sideEffects?.canRoute === false
+		method !== 'policy_auto'
+		&& (
+			isAiDerivedMethod
+			|| result?.ai_authority?.sideEffects?.canRoute === false
+		)
 	);
 }
 

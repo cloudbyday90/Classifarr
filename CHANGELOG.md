@@ -11,6 +11,16 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **AI Provider Authority Hardening**: Disabled authority now stops provider
+  calls; strict authority requires a structured response schema on the actual
+  request. Primary and repair output share trace-redacting normalization before
+  parsing or diagnostics, and AI-derived candidates fail closed for routing
+  when authority metadata is absent.
+
+- **Markdown Lint Maintenance**: Updated `markdownlint-cli2` to 0.23.2 from
+  the selected Dependabot patch update, including its compatible transitive
+  dependency updates.
+
 - **Policy Authoring Live Entry Verification**: Added a rendered Playwright
   regression test for the lifecycle-first `/policies` path. It verifies
   keyboard selection and focus transfer, a single server-admitted `Create

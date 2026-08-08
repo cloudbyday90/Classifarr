@@ -6,28 +6,15 @@ completion criteria for policy work.
 
 Current execution focus:
 
-1. **4R.1 Live Entry-Path And Action Inventory** is complete for source and
-   controlled rendered-browser verification. `/policies` is the normal
-   lifecycle-first entry; keyboard activation selects `/policies?library=:id`,
-   the server prepares the proposal, and one admitted `Create policy` action
-   is available only to an eligible selected library. The retired
-   advanced-settings hash is not an authoring target.
-2. **5R.1 Server Intent Contract Authority**, **5R.2 Write Preflight And
-   Persistence Boundary**, **4R.2 Server Workflow Presentation Adapter**, and
-   **4R.3 Action Binding And Admission Feedback** are complete. Their current
-   contracts do not yet provide an admitted, revision-bound destination
-   proposal or a normal lifecycle entry. **5R.2a Proposal And Lifecycle
-   Admission Contract**, **4R.4a Library Lifecycle Entry**, and **4R.4
-   Destination Proposal Card**, and **4R.4b Proposal Outcome Recovery** are
-   complete. **4R.5.1 Revision-Bound Purpose-Genre Narrowing**,
-   **4R.5.2.1 Helpful-Studio Narrowing**, and **4R.5.3 Revision Reset And
-   Accessibility Closure** are complete. **5R.3 AI Provider Capability And
-   Authority Modes** is the next dependency-gated task.
-3. **8R.37.1 Runtime Capability Inventory And Isolation Decision** is a
-   parallel release-maintenance/security audit. It cannot block 4R.1 or
-   automatic native policy behavior.
-4. Do not add another policy-builder card, option control, advanced setting,
-   or maintenance dialog as a substitute for the completed 4R.1 path.
+- **Completed:** 0R through 7R establish the policy engine, runtime authority,
+  and lifecycle-first authoring flow. `/policies` has one server-admitted
+  normal path; the retired advanced-settings hash is not an authoring target.
+- **Next:** **8R.37.1 Runtime Capability Inventory And Isolation Decision**.
+  Remove any running-service path to compatibility source retirement without
+  changing automatic native policy conversion or normal policy automation.
+- **Continuous guardrail:** 9R naming and product-language gates remain
+  required. Do not reintroduce a second policy-builder flow, advanced setting,
+  or browser-owned automation decision.
 
 See [Policy Intent Delivery Status Audit](policy-intent-delivery-status-audit.md)
 for the current completion evidence, remaining work, and target end state.
@@ -35,10 +22,9 @@ for the current completion evidence, remaining work, and target end state.
 The execution dependency is intentionally not numeric:
 
 ```text
-completed foundations: 0R -> 1R -> 2R -> 3R
-active product work: 4R.1 -> 5R.1/5R.2/4R.2/4R.3/5R.2a/4R.4a/4R.4/4R.4b/4R.5.1/4R.5.2.1/4R.5.3 (complete) -> 5R.3
-runtime trust work: 5R.3 through 5R.10 -> 4R.6 through 4R.9
-parallel safety work: 8R installation/runtime lanes + 9R zero-debt gate
+completed foundations: 0R -> 1R -> 2R -> 3R -> 4R -> 5R -> 6R -> 7R
+next focused work: 8R.37.1 -> 8R.37.2 -> 8R.37.3 -> 8R.37.4
+continuous guardrail: 9R zero-debt naming and product-language gates
 ```
 
 Phase numbers identify workstreams; their dependency gates control delivery.
@@ -3036,9 +3022,10 @@ Implementation record:
 
 ## Phase 4R: Live Policy-Authoring UI Convergence
 
-Status: active planned workstream. This phase begins with a live rendered-path
-audit. Earlier component extractions and read-model work are inputs, not proof
-that the browser experience is complete.
+Status: complete. The live rendered-path, lifecycle presentation, action
+admission, bounded adjustment, maintenance, cutover, accessibility, and
+browser workflow contracts are implemented and verified. Earlier component
+extractions and read-model work remain inputs, not browser authority.
 
 Intent: deliver the automation-first policy-authoring experience in the running
 application. A library that has enough current evidence should start with a
@@ -3679,9 +3666,10 @@ Implement Phase 4R in this order:
    remaining group without a dedicated authority contract. 4R.5.3 is complete:
    adjustment state resets on every replacement or recovery, and the disclosure
    has native keyboard and assistive-technology coverage.
-9. **5R.3 through 5R.10 Server Runtime And Native-Change Authority**
-   Close the provider, question, learning, verifier, test, and native-change
-   contracts before rendering persistent exceptions or maintenance controls.
+9. **5R.4 through 5R.10 Server Runtime And Native-Change Authority**
+   Complete. They provide the provider, question, learning, verifier, test,
+   and native-change contracts required by persistent exceptions and
+   maintenance controls.
 10. **4R.6 Material Exception Controls**
    Shows constraints and recovery only when they change the outcome.
 11. **4R.7 Persisted Policy Summary And Intentional Maintenance Entry**
@@ -3691,20 +3679,17 @@ Implement Phase 4R in this order:
 13. **4R.9 Accessibility, Responsive Behavior, And End-To-End Workflow Tests**
    Proves the delivered flow works in the live product.
 
-Next implementation task: **5R.3 AI Provider Capability And Authority Modes**.
-4R.1 now proves the lifecycle-first route and single admitted create action in
-a controlled rendered browser. The completed 5R.2a contract supplies the
-durable candidate lifecycle and admission-bound proposal; do not add another
-picker, generic suggestion control, advanced setting, or maintenance dialog in
-place of the completed 4R.4 destination proposal card.
+Phase 4R is complete. The next implementation task is **8R.37.1 Runtime
+Capability Inventory And Isolation Decision**. Do not add another picker,
+generic suggestion control, advanced setting, or maintenance dialog in place
+of the completed lifecycle-first authoring path.
 
 ## Phase 5R: Server Authority, Runtime Questions, And Learning Guard
 
-Status: not yet closed. Existing services and tests are inputs to this phase,
-not a completion claim. The completed 5R.1 and 5R.2 tranche established the
-server-owned read and initial-create boundary. 5R.2a is now the immediate
-delivery tranche because 4R cannot safely replace the browser workflow until
-that boundary also owns proposal lifecycle and create admission.
+Status: complete. The server owns the policy intent, provider authority,
+semantic normalization, runtime questions and answers, guarded learning,
+verifier cutline, authority test suite, and native-change admission. Existing
+services and tests remain inputs and evidence; they are not client authority.
 
 Intent: make the server the authority for policy intent contracts, runtime
 question shape, AI/model authority, and durable learning decisions. Phase 5R is
@@ -3885,8 +3870,9 @@ Implementation status:
   outcome recovery consume the lifecycle, prepared-proposal, and admission
   boundaries; **4R.5.1** and **4R.5.2.1** supply revision-bound purpose-genre
   and helpful-studio narrowing, and **4R.5.3** closes revision reset and
-  accessibility evidence. The next work is **5R.3 AI Provider Capability And
-  Authority Modes**.
+  accessibility evidence. **5R.3 AI Provider Capability And Authority Modes**
+  is complete after an August 2026 enforcement audit. The remaining 5R
+  authority components are also complete; Phase 5R now hands off to 8R.37.1.
 
 ### 5R.3 AI Provider Capability And Authority Modes
 
@@ -3938,13 +3924,18 @@ Implementation status:
   no-route authority flag, so AI-derived candidates cannot directly auto-route.
   Native `policy_auto` remains independently eligible because it is policy
   evaluation rather than model output.
+- The August 2026 re-evaluation closes request-time enforcement gaps: disabled
+  authority blocks generation, strict authority requires a supplied schema,
+  repair output uses the shared normalizer before parsing or diagnostics, and
+  missing AI authority fails closed for automatic routing.
 - Focused authority, normalization, telemetry, router, classification, and
   question-boundary tests cover capability admission, downgrade, trace removal,
   counter privacy, and routing restraint. See
   `docs/architecture/ai-provider-capability-authority.md` for the complete
   design and research record.
 
-The next work is **5R.4 Runtime Clarification Normalizer**.
+Phase 5R is complete. Its next dependency-gated task is **8R.37.1 Runtime
+Capability Inventory And Isolation Decision**.
 
 ### 5R.4 Runtime Clarification Normalizer
 
@@ -4391,9 +4382,10 @@ Implement Phase 5R in this order:
    Complete. It provides the server-owned candidate lifecycle and
    proposal-backed create admission needed by the active 4R normal-path work.
 4. **5R.3 AI Provider Capability And Authority Modes**
-   Bounds model agency before runtime question work.
+   Complete. It bounds model agency before runtime question work, including
+   request-time strict-schema and disabled-mode enforcement.
 5. **5R.4 Runtime Clarification Normalizer**
-   Replaces vague AI/operator questions with deterministic contracts.
+   Complete. Replaces vague AI/operator questions with deterministic contracts.
 6. **5R.5 Question And Answer Contract**
    Complete. Gives UI and Discord one answer model.
 7. **5R.6 Learning Guard And Outcome Separation**
@@ -4448,8 +4440,7 @@ Current starting point:
 - **5R.6.5 Learning Boundary Regression Suite is complete.** Source and
   behavioral regressions now protect direct-writer removal, guarded learning
   tiers, stale and AI-bound input, destination integrity, and receipt replay.
-  The next Phase 5R component is **5R.7 Stale Question Cleanup And Migration
-  Safety**.
+  5R.7 through 5R.10 are complete, closing Phase 5R.
 
 Implementation record:
 
@@ -11917,13 +11908,14 @@ The next sequence is dependency-gated rather than phase-number order:
    second create path or a requirement to reselect known evidence. **4R.5.1**
    and **4R.5.2.1** now provide the only eligible exceptional adjustments;
    **4R.5.3** completes reset and accessibility evidence.
-8. **5R.3 through 5R.10**, then **4R.6 through 4R.9**: finish model/question/
-   learning and native-change authority before exposing material exceptions,
-   then complete revision-safe maintenance, legacy UI cutover, accessibility,
+8. **5R.4 through 5R.10**, then **4R.6 through 4R.9**: complete. They deliver
+   normalized model/question/learning and native-change authority, material
+   exceptions, revision-safe maintenance, legacy UI cutover, accessibility,
    and browser end-to-end evidence.
-9. Continue **8R** as separate native-runtime, per-installation evidence, and
-   CI-only retirement lanes. Continue the **9R** zero-debt naming gates on each
-   component. Neither lane may delay 4R's normal authoring path.
+9. **8R.37.1 Runtime Capability Inventory And Isolation Decision**: next.
+   Inventory every running-service route to compatibility source retirement and
+   remove any such reachability without affecting native policy automation.
+   Continue the **9R** zero-debt naming gates on every component.
 
 The completed 0R through 3R, 6R, and 7R contracts remain guardrails, not
 permission to restore a diagnostic, template-first, or browser-authoritative

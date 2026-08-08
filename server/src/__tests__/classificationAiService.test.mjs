@@ -868,6 +868,46 @@ describe('aiClassify', () => {
     );
   });
 
+  test('normalizes repair output before parsing or retaining diagnostics', async () => {
+    db.query.mockResolvedValueOnce({ rows: [defaultProviderRow] });
+    aiRouter.getProvider.mockResolvedValueOnce(ollamaProvider);
+    ollamaService.generateWithProgress.mockResolvedValueOnce('garbled');
+    aiResponseParser.parse
+      .mockReturnValueOnce({ ...fallbackParseResult })
+      .mockReturnValueOnce({ ...goodParseResult });
+    ollamaService.generate.mockResolvedValueOnce('<think>private repair trace</think>\nCONFIDENT|1|80|match');
+
+    const result = await classificationAiService.aiClassify(baseMetadata, baseLibraries);
+
+    expect(aiResponseParser.parse).toHaveBeenLastCalledWith(
+      'CONFIDENT|1|80|match',
+      expect.any(Object),
+      expect.any(Object),
+    );
+    expect(result.parse_diagnostics.repairResponseArtifact).toEqual(expect.objectContaining({
+      preview: 'CONFIDENT|1|80|match',
+    }));
+    expect(result.parse_diagnostics.repairResponseArtifact.preview).not.toContain('private repair trace');
+    expect(aiProviderCapabilityMetricsService.record).toHaveBeenCalledWith(expect.objectContaining({
+      thinkingTraceDetected: true,
+    }));
+  });
+
+  test('does not retain a thinking trace in malformed-response diagnostics', async () => {
+    db.query.mockResolvedValueOnce({ rows: [defaultProviderRow] });
+    aiRouter.getProvider.mockResolvedValueOnce(ollamaProvider);
+    ollamaService.generateWithProgress.mockResolvedValueOnce('<think>private initial trace</think>\ngarbled');
+    aiResponseParser.parse.mockReturnValueOnce({ ...fallbackParseResult });
+    ollamaService.generate.mockResolvedValueOnce('');
+
+    const result = await classificationAiService.aiClassify(baseMetadata, baseLibraries);
+
+    expect(result.parse_diagnostics.responseArtifact).toEqual(expect.objectContaining({
+      preview: 'garbled',
+    }));
+    expect(result.parse_diagnostics.responseArtifact.preview).not.toContain('private initial trace');
+  });
+
   test('sets generation status to true before and false after generation', async () => {
     setupHappyPath();
     await classificationAiService.aiClassify(baseMetadata, baseLibraries);

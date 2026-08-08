@@ -25,6 +25,25 @@ import { ollamaService } from './ollama.mjs';
 
 const logger = createLogger('AIRouter');
 
+function isStrictAuthorityMode(mode) {
+    return [
+        AI_PROVIDER_AUTHORITY_MODE_IDS.STRUCTURED_CONTRACT,
+        AI_PROVIDER_AUTHORITY_MODE_IDS.VERIFICATION,
+    ].includes(mode);
+}
+
+function hasStructuredResponseSchema(format) {
+    return Boolean(format && typeof format === 'object' && !Array.isArray(format));
+}
+
+function resolveProviderAuthority(provider, requestedMode) {
+    return provider?.authority || buildAiProviderAuthorityProfile({
+        providerId: provider?.type,
+        model: provider?.config?.model,
+        requestedMode,
+    });
+}
+
 class AIRouterService {
     constructor() {
         this.configCache = null;
@@ -189,16 +208,29 @@ class AIRouterService {
             throw new ServiceUnavailableError('AI is not available - no provider configured or budget exhausted');
         }
 
+        const authority = resolveProviderAuthority(provider, requestedAuthorityMode);
+
+        if (authority.effectiveMode === AI_PROVIDER_AUTHORITY_MODE_IDS.DISABLED) {
+            throw new ServiceUnavailableError('AI output is disabled by authority mode');
+        }
+
         if (
-            [
-                AI_PROVIDER_AUTHORITY_MODE_IDS.STRUCTURED_CONTRACT,
-                AI_PROVIDER_AUTHORITY_MODE_IDS.VERIFICATION,
-            ].includes(requestedAuthorityMode)
+            isStrictAuthorityMode(requestedAuthorityMode)
             && options.requireAuthorityMode === true
-            && !isAiProviderAuthorityModeGranted(provider.authority, requestedAuthorityMode)
+            && !isAiProviderAuthorityModeGranted(authority, requestedAuthorityMode)
         ) {
             throw new ServiceUnavailableError(
                 `AI provider cannot satisfy ${requestedAuthorityMode} authority`,
+            );
+        }
+
+        if (
+            isStrictAuthorityMode(requestedAuthorityMode)
+            && isAiProviderAuthorityModeGranted(authority, requestedAuthorityMode)
+            && !hasStructuredResponseSchema(options.format)
+        ) {
+            throw new ServiceUnavailableError(
+                `AI provider cannot satisfy ${requestedAuthorityMode} authority without a structured response schema`,
             );
         }
 

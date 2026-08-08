@@ -2,9 +2,9 @@
 
 ## Status
 
-Phase 5R.3 is complete. This document defines the authority boundary for every
-AI classification response before later runtime-question and verification work
-uses it.
+Phase 5R.3 is complete and was re-evaluated on 2026-08-08. This document
+defines the authority boundary for every AI classification response before
+later runtime-question and verification work uses it.
 
 ## Problem
 
@@ -19,8 +19,8 @@ another provider, or write domain data.
 
 ## Official Research Basis
 
-The implementation follows the applicable official guidance reviewed for the
-requested June 2026 baseline:
+The implementation was re-evaluated against the applicable official guidance
+available for the requested August 2026 baseline:
 
 - [Ollama structured outputs](https://docs.ollama.com/capabilities/structured-outputs)
   documents schema-constrained generation but still requires application-side
@@ -28,17 +28,15 @@ requested June 2026 baseline:
 - [Ollama streaming](https://docs.ollama.com/api/streaming) distinguishes
   streaming from non-streaming responses; strict response handling must account
   for incomplete output.
-- [Google Gemini structured output](https://ai.google.dev/gemini-api/docs/structured-output)
-  documents schema support as a constrained schema subset, not an application
-  authorization mechanism.
-- [OpenAI structured outputs in the Responses API reference](https://platform.openai.com/docs/api-reference/responses-streaming/response/web_search_call?lang=curl)
-  documents strict JSON Schema support with a supported subset.
-- [NIST AI RMF Secure guidance](https://airc.nist.gov/airmf-resources/airmf/5-sec-core/)
-  calls for documented provider/system boundaries, output validation, and
-  oversight.
+- [Google Gemini structured output](https://ai.google.dev/gemini-api/docs/structured-output?authuser=14&hl=en)
+  documents a JSON Schema subset. Schema conformance is a transport property,
+  not application authorization.
+- [NIST AI RMF Generative AI Profile](https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.600-1.pdf)
+  calls for risk-tiered oversight, tracking, documentation, and governance
+  across the AI value chain.
 - [OWASP LLM06: Excessive Agency](https://genai.owasp.org/llmrisk/llm062025-excessive-agency/)
-  identifies excessive permissions and unbounded action as an LLM application
-  risk.
+  requires downstream complete mediation rather than an LLM decision for a
+  privileged action.
 
 ## Decision
 
@@ -71,6 +69,24 @@ Unsupported providers are downgraded to an effective `proposal` or
 set `requireAuthorityMode` only where a future task truly requires contract
 authority; the router then fails closed rather than silently elevating the
 provider.
+
+### August 2026 Re-evaluation Hardening
+
+The original capability profiles and semantic parser boundary were present, but
+the audit found enforcement gaps between an inspectable profile and an actual
+generation request. The following controls close them:
+
+- An effective `disabled` mode now rejects before either local or cloud provider
+  invocation. It is a no-generation state, not an advisory label.
+- A granted `structured_contract` or `verification` request now requires an
+  object JSON Schema at the router boundary. Provider capability alone cannot
+  represent a strict generation without the adapter submitting that schema.
+- Primary and repair responses both pass through the shared normalizer before
+  semantic parsing. Thinking traces are counted but removed before parser
+  diagnostics are retained.
+- Any `ai` or `ai_*` result that loses its authority view fails closed for
+  automatic routing. Policy evaluation remains the sole deterministic
+  `policy_auto` exception.
 
 ## Output And Side-Effect Boundary
 
@@ -129,6 +145,17 @@ OpenAI reasoning path does not submit the strict schema contract.
 
 Decision: rejected. Admission is provider-and-adapter-path specific.
 
+### Trust A Capability Profile Without A Strict Request
+
+Pros: fewer request-time checks.
+
+Cons: a configured provider can receive a normal text request even though its
+profile supports structured output. That makes the reported authority stronger
+than the executed adapter path.
+
+Decision: rejected. A granted strict mode must include a schema on the specific
+generation request.
+
 ### Record Raw Failure Samples For Debugging
 
 Pros: high-fidelity incident diagnosis.
@@ -142,12 +169,13 @@ and aggregate metrics for this component.
 ## Final Recommendation Stack
 
 1. Keep authority server-owned, immutable, and observable on every model
-   result.
-2. Admit contract/verification modes only when the current adapter actually
-   submits a supported strict schema; downgrade every other path.
-3. Normalize and semantically parse every response before downstream use.
-4. Keep model output declarative and block it from directly authorizing side
-   effects, including routing.
+   result, and deny `disabled` before provider invocation.
+2. Admit contract/verification only when a supported adapter submits a strict
+   schema on that specific request; downgrade every other path.
+3. Normalize and semantically parse primary and repair responses before any
+   downstream use or retained diagnostic artifact.
+4. Keep model output declarative and fail closed for AI-derived routing when
+   authority metadata is absent or advisory.
 5. Monitor capability through privacy-bounded aggregate counters and use those
    counters to guide future provider admission decisions.
 
@@ -164,11 +192,15 @@ and aggregate metrics for this component.
 - Route and question enforcement:
   `server/src/services/classificationRoutingServiceShared.mjs` and
   `server/src/services/classificationServiceCore.mjs`.
+- Enforcement and regression coverage: `server/src/services/aiRouter.mjs`,
+  `server/src/services/classificationAiService.mjs`, and their focused tests.
 - Storage migration:
   `database/migrations/20260803_130000_add_ai_provider_capability_metrics.sql`.
 
 ## Next Task
 
-Proceed with **Phase 5R.4, Runtime Clarification Normalizer**. It should consume
-the authority and parser facts above to turn uncertainty into one deterministic,
-versioned, server-owned question contract.
+Phase 5R is complete. Proceed with **8R.37.1, Runtime Capability Inventory And
+Isolation Decision**: prove that no route, scheduler, client API, bootstrap
+path, or production service can invoke compatibility source-retirement
+capabilities. This must not affect automatic native policy conversion or normal
+policy automation.

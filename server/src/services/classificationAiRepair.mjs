@@ -85,7 +85,8 @@ export async function attemptAiResponseRepair({
   model,
   temperature,
   validationErrors,
-  generateFn
+  generateFn,
+  normalize = true,
 }) {
   const repairPrompt = buildAiRepairPrompt({
     response,
@@ -105,5 +106,5 @@ export async function attemptAiResponseRepair({
     repairTemperature
   );
 
-  return normalizeAiResponseLine(repaired);
+  return normalize ? normalizeAiResponseLine(repaired) : repaired;
 }

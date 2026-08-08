@@ -74,8 +74,8 @@ the per-installation cutover evidence owned by Phase 8R.
 | 1R | Complete foundation | Client orchestration, draft, reference-data, bridge, and test boundaries | Enforce as a guardrail in 4R |
 | 2R | Complete foundation | Typed draft commands and isolated compatibility serialization | Preserve until native storage fully replaces the bridge |
 | 3R | Complete contract cutline | Destination-first flow, component roles, accessibility rules, and normal-path exclusions | Live rendered-path proof moves to 4R |
-| 4R | Active | Source and controlled rendered-browser entry-path verification, lifecycle presentation, action-admission feedback, lifecycle/proposal/recovery, and bounded adjustment work are complete | Complete 5R.3 through 5R.10 before material exceptions, persisted maintenance, legacy cutover, and final responsive/browser closure work |
-| 5R | Not closed | Required authority for server read/write, proposal lifecycle, questions, answers, learning, and native changes | 5R.1, 5R.2, and 5R.2a are complete; complete 5R.3 through 5R.10 before persisted maintenance and final cutover |
+| 4R | Complete | Live lifecycle entry, proposal, recovery, bounded adjustment, material exceptions, maintenance, cutover, and browser accessibility/workflow evidence | Preserve the single server-admitted authoring path |
+| 5R | Complete | Server authority for reads/writes, provider capability, questions, answers, learning, verifier behavior, tests, and native changes | Preserve request-bound provider authority and fail-closed side effects |
 | 6R | Contract-complete foundation | Evidence, intent, learning, readiness, workflow, and migration boundaries | Consume through 4R; reopen only for a bounded contract gap |
 | 7R | Contract-complete foundation | Runtime decision, question, rebuild, verifier, rollback, and trace boundaries | Preserve through 5R and 8R authority/storage work |
 | 8R | Active parallel lanes | Native lifecycle, installation evidence, CI-only retirement, and closure evidence | Collect current installation evidence and complete 8R.37 isolation without blocking 4R |
@@ -112,12 +112,19 @@ the per-installation cutover evidence owned by Phase 8R.
 7. **4R.4a, 4R.4, 4R.4b, and 4R.5** are complete. They deliver the lifecycle
    entry, automated proposal default, proposal outcome recovery, and bounded
    optional adjustment disclosure without exposing engine diagnostics.
-8. **5R.3 through 5R.10** close model authority, normalization, answer,
+8. **5R.3 AI Provider Capability And Authority Modes** is complete. The
+   authority profile is request-bound: disabled generation is denied, strict
+   modes require a schema, repair output is normalized, and AI-derived routing
+   fails closed when authority metadata is missing.
+9. **5R.4 through 5R.10** are complete. They close normalization, answer,
    learning, stale-question, verifier, server-test, and native-change
    boundaries.
-9. **4R.6 through 4R.9** expose material exceptions only when needed, then
-   deliver revision-safe persisted-policy maintenance, legacy UI cutover, and
-   browser-level accessibility/responsive/end-to-end evidence.
+10. **4R.6 through 4R.9** are complete. They deliver material exceptions only
+   when needed, revision-safe persisted-policy maintenance, legacy UI cutover,
+   and browser-level accessibility/responsive/end-to-end evidence.
+11. **8R.37.1 Runtime Capability Inventory And Isolation Decision** is the
+   next task. It must prove that no route, scheduler, client API, bootstrap
+   path, or production service can reach compatibility source retirement.
 
 ## Phase 8R Boundaries
 
@@ -139,13 +146,15 @@ from the running application. It is parallel work and has no authoring UI.
 
 ## Consistency Decisions
 
-- Phase 4R is an active live UI convergence phase, not a folded checkpoint.
-- Completed contract audits do not count as proof of a complete browser flow.
+- Phase 4R is complete only because its live UI convergence work includes
+  browser-level evidence; future work must preserve that proof.
+- Completed contract audits do not substitute for browser evidence in future
+  workflow changes.
 - Existing 6R and 7R completion gates establish reusable foundations, not a
   reason to restart those phases or expose their diagnostics.
-- Existing Phase 5R services are not a phase-level completion claim. The
-  server authority work needs a defined closure, beginning with its read/write
-  tranche.
+- Phase 5R closes with request-bound provider authority, deterministic runtime
+  contracts, guarded learning, and revision-bound native changes; future work
+  must preserve those server-owned boundaries.
 - Historical task labels and implementation records remain searchable, but the
   current execution sequence is the dependency-gated order in this audit and
   the roadmap's `Recommended Next Work` section.

@@ -14,6 +14,16 @@ function looksLikeJson(value) {
 }
 
 /**
+ * Removes provider-only wrappers before a diagnostic artifact is constructed.
+ * It intentionally preserves the remaining response text for bounded parser
+ * troubleshooting without retaining a thinking trace or Markdown wrapper.
+ */
+export function sanitizeAiProviderOutputForDiagnostics(value) {
+  const raw = typeof value === 'string' ? value : '';
+  return stripMarkdownFences(stripThinkingBlocks(raw));
+}
+
+/**
  * Applies the same parser-safe cleanup to every provider response before it
  * enters the semantic parser. Structured JSON remains intact for schema
  * validation; non-JSON output is normalized to the supported text contract.
@@ -21,11 +31,10 @@ function looksLikeJson(value) {
 export function normalizeAiProviderOutput(value) {
   const raw = typeof value === 'string' ? value : '';
   const thinkingTraceDetected = raw.toLowerCase().includes('<think');
-  const withoutThinking = stripThinkingBlocks(raw);
-  const withoutMarkdown = stripMarkdownFences(withoutThinking);
-  const normalizedOutput = looksLikeJson(withoutMarkdown)
-    ? withoutMarkdown
-    : normalizeResponseForParsing(withoutMarkdown);
+  const sanitizedOutput = sanitizeAiProviderOutputForDiagnostics(raw);
+  const normalizedOutput = looksLikeJson(sanitizedOutput)
+    ? sanitizedOutput
+    : normalizeResponseForParsing(sanitizedOutput);
 
   return Object.freeze({
     normalizedOutput,

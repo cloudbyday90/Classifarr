@@ -69,7 +69,7 @@ describe('ClassificationService auto-routing thresholds', () => {
       .mockResolvedValue({
         library,
         confidence: 88,
-        method: 'ai_analysis',
+        method: 'signal_calculation',
         policyResult: {
           ranked: [
             {
@@ -106,7 +106,7 @@ describe('ClassificationService auto-routing thresholds', () => {
       .mockResolvedValue({
         library,
         confidence: 88,
-        method: 'ai_analysis',
+        method: 'signal_calculation',
         policyResult: {
           ranked: [
             {
@@ -146,7 +146,7 @@ describe('ClassificationService auto-routing thresholds', () => {
       .mockResolvedValue({
         library,
         confidence: 84,
-        method: 'ai_analysis',
+        method: 'signal_calculation',
         policyResult: {
           ranked: [
             {
@@ -184,7 +184,7 @@ describe('ClassificationService auto-routing thresholds', () => {
       .mockResolvedValue({
         library,
         confidence: 95,
-        method: 'ai_analysis',
+        method: 'signal_calculation',
         policyResult: {
           ranked: [
             {
@@ -221,7 +221,7 @@ describe('ClassificationService auto-routing thresholds', () => {
       .mockResolvedValue({
         library,
         confidence: 95,
-        method: 'ai_analysis',
+        method: 'signal_calculation',
         policyResult: {
           ranked: [
             {
@@ -270,7 +270,7 @@ describe('ClassificationService auto-routing thresholds', () => {
 
     test('updates metadata with skip reason when skipped', async () => {
       const metadata = { title: 'Test' };
-      const result = { library: { id: 1 }, confidence: 80, method: 'ai_analysis' };
+      const result = { library: { id: 1 }, confidence: 80, method: 'signal_calculation' };
 
       mockDb.query.mockResolvedValue({});
 
