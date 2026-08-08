@@ -93,7 +93,10 @@ policy and a current-profile-backed policy:
 
 ## Next Task
 
-Implement **10R.2.3 Bounded Lifecycle Diagnostics And Release-Evidence
-Separation**. It must prove non-convertible state remains privacy-bounded and
-observable while a separate compatibility-retirement artifact cannot block
-ordinary native policy operation.
+10R.2.3 is complete. Its bounded diagnostic and release-evidence acceptance
+record is
+`docs/architecture/bounded-lifecycle-diagnostics-release-evidence-separation.md`.
+
+Implement **10R.3 Operational Safety And Observability Acceptance** next. It
+must accept privacy-bounded retry, recovery, stale-evidence, and no-route
+outcomes without introducing a normal runtime path to compatibility retirement.

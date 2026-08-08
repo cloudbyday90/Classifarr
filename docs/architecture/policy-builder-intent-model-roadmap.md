@@ -37,8 +37,8 @@ completed foundations: 0R -> 1R -> 2R -> 3R -> 4R -> 5R -> 6R -> 7R
 completed boundary isolation: 8R.37.1 -> 8R.37.2 -> 8R.37.3 -> 8R.37.4
 active-installation prerequisite -> 8R.36.11 regeneration -> 8R.34/8R.35 current audits
 completed platform acceptance: 10R.1.1 -> 10R.1.2 -> 10R.1.3
-completed lifecycle acceptance: 10R.2.1 -> 10R.2.2
-current platform acceptance: 10R.2.3
+completed lifecycle acceptance: 10R.2.1 -> 10R.2.2 -> 10R.2.3
+current platform acceptance: 10R.3
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
 
@@ -12033,6 +12033,22 @@ Tasks:
   installation-specific compatibility-removal artifact is unavailable or
   blocked.
 
+Completion:
+
+- Complete. An isolated PostgreSQL acceptance suite runs the real scheduler for
+  supported and unsupported legacy sources, persists a deferred reconciliation
+  state, and verifies the production status projection exposes only its
+  versioned safe fields, bounded count groups, and safe identifiers. Raw
+  fixture configuration, policy and library identifiers, preset signals, and
+  provider-payload fields are absent.
+- Complete. The count-only compatibility-deletion inventory and a missing
+  policy-storage closure artifact both remain blocked and side-effect-free,
+  while the converted policy retains the same validated native runtime
+  projection. See
+  `docs/architecture/bounded-lifecycle-diagnostics-release-evidence-separation.md`
+  and
+  `server/src/__tests__/integration/native-intent-lifecycle-diagnostics-release-evidence.test.mjs`.
+
 ### 10R.3 Operational Safety And Observability Acceptance
 
 Intent: prove safe operator-visible outcomes under retries, stale evidence,
@@ -12190,10 +12206,13 @@ The next sequence is dependency-gated rather than phase-number order:
     unchanged-history conversions across a second real scheduler run. Runtime
     reads are verified as native-sourced and compatibility-preset-free.
 15. **10R.2.3 Bounded Lifecycle Diagnostics And Release-Evidence Separation**:
-    next. Verify non-convertible lifecycle state is privacy-bounded and that
-    blocked installation-specific retirement evidence cannot block ordinary
-    native policy operation.
-16. **8R.36.11 Compatibility-Removal Evidence Regeneration**: revalidated
+    complete. Real persisted unsupported and deferred states produce only
+    bounded lifecycle diagnostics. Read-only, blocked compatibility-retirement
+    evidence cannot change the validated native runtime projection.
+16. **10R.3 Operational Safety And Observability Acceptance**: next. Exercise
+    privacy-bounded logs, metrics, retry and recovery state, stale evidence,
+    routing gaps, and restart behavior through real service boundaries.
+17. **8R.36.11 Compatibility-Removal Evidence Regeneration**: revalidated
     after the closure-contract change. It produced fresh v3 repository
     validation evidence and bounded blocked diagnostics because the
     active-installation completion artifact remains blocked. The next
@@ -12220,18 +12239,14 @@ that every deployment has completed its separate installation-evidence gate.
 | UI and Discord question shapes | Only normalized server-owned frames with server-known destination IDs and bounded options may be rendered. Raw AI/provider wording and legacy question payloads fail closed. | Resolved by 5R question normalization and answer admission. |
 | AI involvement in intent changes | AI output is structured advisory evidence only. It cannot route or write policy intent; any later policy change must pass deterministic server proposal and admission boundaries. | Resolved by 5R.3 and 10R.1.1. |
 | Starter-template provenance after authority removal | Templates remain optional canonical candidates and persisted native template links. Raw attachments stay compatibility-only and do not define runtime policy authority. | Resolved by 3R/5R template boundaries. |
-| Unconvertible legacy configuration and operator workflow | Supported cases convert automatically. Unsupported source shapes persist only a bounded `requires_maintenance` state, with no native authority. The acceptance proof for privacy-bounded diagnostics and its separation from release-retirement evidence is still missing. | **Follow-up: 10R.2.3.** |
+| Unconvertible legacy configuration and operator workflow | Supported cases convert automatically. Unsupported source shapes persist only a bounded `requires_maintenance` state, with no native authority. Real persisted deferred and unsupported state proves diagnostics exclude raw source data, while blocked release evidence does not alter native runtime authority. | Resolved by 10R.2.3. |
 | Rollback snapshot window | Native authority reversion defaults to 14 days, bounded to 1 through 30 days. After expiry, bulky payloads are redacted while minimal auditable metadata remains. | Resolved by 7R rollback and retention contracts. |
 | Old builder, preview, replay, and diagnostics artifacts | Normal browser and HTTP surfaces are retired. The remaining verifier is internal, bounded migration evidence with a deletion gate; compatibility retirement remains CI/release maintenance only. | Resolved for runtime reachability; installation-specific retirement evidence remains a separate 8R release task. |
 | Proof that the model reduces operator decisions | The normal authoring path and automatic conversion now remove routine library/profile recreation and conversion dialogs. A production decision-count baseline and release readout have not yet been defined. | **Follow-up: add to 10R.4 release acceptance.** |
 
 ### Re-Review Boundaries
 
-- **Next:** 10R.2.3 must prove non-convertible lifecycle diagnostics expose
-  only bounded status, reason, and count fields, and prove a blocked
-  installation-specific retirement artifact cannot disrupt native policy
-  operation.
-- **Then:** 10R.3 must accept privacy-bounded observability and recovery under
+- **Next:** 10R.3 must accept privacy-bounded observability and recovery under
   retries, stale evidence, routing gaps, and restart conditions.
 - **Release:** 10R.4 must define the CI manifest, deployment-evidence readout,
   and a measured operator-decision reduction signal. The separately blocked

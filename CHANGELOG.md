@@ -11,6 +11,12 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Bounded Lifecycle Diagnostics And Release-Evidence Separation**: Added
+  isolated PostgreSQL acceptance coverage for bounded deferred and unsupported
+  reconciliation diagnostics. Compatibility-retirement evidence remains
+  read-only and blocked when required, without changing validated native policy
+  runtime behavior or exposing raw configuration and provider payloads.
+
 - **Reconciliation Idempotence And Native Runtime Read Acceptance**: Added
   isolated PostgreSQL scheduler re-run coverage for converted legacy and
   profile-backed policies. Repeat reconciliation preserves one active native

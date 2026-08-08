@@ -80,7 +80,7 @@ the per-installation cutover evidence owned by Phase 8R.
 | 7R | Contract-complete foundation | Runtime decision, question, rebuild, verifier, rollback, and trace boundaries | Preserve through 5R and 8R authority/storage work |
 | 8R | Complete contracts with recurring evidence | Native lifecycle, installation evidence, CI-only retirement, and closure evidence | Regenerate current evidence and closure audits after mapped contract changes; retain automatic policy conversion |
 | 9R | Ongoing enforcement | Zero-debt durable naming and product-language gates | Preserve the baseline in every product change |
-| 10R | Active operational acceptance | Isolated real-boundary acceptance for AI authority, deterministic policy decisions, provider recovery, existing installations, and operational safety | Complete 10R.2.3 bounded lifecycle diagnostics, then 10R.3 operational safety and 10R.4 release assembly |
+| 10R | Active operational acceptance | Isolated real-boundary acceptance for AI authority, deterministic policy decisions, provider recovery, existing installations, and operational safety | Complete 10R.3 operational safety, then 10R.4 release assembly |
 
 ## Required Delivery Order
 
@@ -164,9 +164,14 @@ the per-installation cutover evidence owned by Phase 8R.
     migration history unchanged; the production policy-engine read selects the
     validated native contract and suppresses compatibility presets.
 20. **10R.2.3 Bounded Lifecycle Diagnostics And Release-Evidence Separation**
-    is next. It must prove non-convertible state remains privacy-bounded and
-    that blocked installation-specific retirement evidence cannot interrupt
-    ordinary native policy automation.
+    is complete. Real unsupported and deferred installation state produces a
+    bounded status projection with no raw fixture data or identifier fields.
+    Blocked, read-only compatibility-retirement evidence does not interrupt the
+    validated native policy-engine runtime read.
+21. **10R.3 Operational Safety And Observability Acceptance** is next. It
+    must accept privacy-bounded logs and metrics, retry and recovery state,
+    stale evidence, routing gaps, and restart recovery through real service
+    boundaries without restoring a runtime retirement path.
 
 ## Phase 8R Boundaries
 
