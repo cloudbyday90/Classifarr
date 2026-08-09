@@ -122,4 +122,28 @@ describe('ClassificationService auto-route authority boundary', () => {
       reason: 'provider_recovery_required',
     });
   });
+
+  test('blocks generic-confidence routing when the current policy requires selection', () => {
+    const decision = ClassificationService.prototype.buildAutoRouteDecision({
+      result: {
+        library: { id: 1, name: 'Movies' },
+        confidence: 99,
+        method: 'signal_calculation',
+        policyResult: {
+          action: 'prompt_select',
+          ranked: [{
+            library_id: 1,
+            score: 90,
+            auto_classify_threshold: 85,
+          }],
+        },
+      },
+      policyAutoThreshold: 85,
+    });
+
+    expect(decision).toEqual({
+      shouldRoute: false,
+      reason: 'policy_review_required',
+    });
+  });
 });

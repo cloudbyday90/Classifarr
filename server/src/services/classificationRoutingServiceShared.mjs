@@ -1,6 +1,12 @@
 import { policyQuestionBuilder } from './policyQuestionBuilder.mjs';
 import { isRequireAllConfirmationsEnabled } from './clarificationThresholdManager.mjs';
 import { normalizePolicyDecisionThresholds } from '../utils/policyThresholds.mjs';
+import {
+	getPolicyDecisionCandidate,
+	getPolicyDecisionCandidateScore,
+	policyDecisionAction,
+	isPolicyDecisionReviewRequired,
+} from '../utils/policyDecisionAuthority.mjs';
 import { normalizePolicyRuntimeQuestion } from './policyRuntimeQuestionNormalizer.mjs';
 import { requiresProviderRecoveryReview } from './classificationProviderRecovery.mjs';
 
@@ -134,26 +140,8 @@ export function isAiAuthorityRoutingBlocked(result = {}) {
 	);
 }
 
-function isPolicyConfirmationRequired({ result, policyResult }) {
-	if (policyResult?.action !== 'prompt_confirm' || !result?.library) {
-		return false;
-	}
-
-	const confidence = Number(result.confidence);
-	if (!Number.isFinite(confidence)) {
-		return false;
-	}
-
-	const resultLibraryIdentifier = getResultLibraryIdentifier(result);
-	const candidate = Array.isArray(policyResult.ranked)
-		? policyResult.ranked.find(entry => normalizeLibraryIdentifier(entry?.library_id ?? entry?.id) === resultLibraryIdentifier)
-		: null;
-	if (!candidate) {
-		return false;
-	}
-
-	const thresholds = normalizePolicyDecisionThresholds(candidate);
-	return confidence >= thresholds.promptThreshold && confidence < thresholds.autoClassifyThreshold;
+function isPolicyConfirmationRequired(policyResult) {
+	return policyDecisionAction(policyResult) === 'prompt_confirm';
 }
 
 export async function ensureDecisionQuestion({ metadata, result, policyResult = null, libraries = [], ragContext = null }) {
@@ -162,29 +150,30 @@ export async function ensureDecisionQuestion({ metadata, result, policyResult = 
 	}
 
 	const effectivePolicyResult = result.policyResult || policyResult || null;
-	const policyConfirmationRequired = isPolicyConfirmationRequired({
-		result,
-		policyResult: effectivePolicyResult,
-	});
+	const policyConfirmationRequired = isPolicyConfirmationRequired(effectivePolicyResult);
+	const requiresPolicyDecisionReview = isPolicyDecisionReviewRequired(effectivePolicyResult);
 	const requiresManualReview = Boolean(effectivePolicyResult?.decisionDiagnostics?.requires_manual_review);
 	const requiresAuthorityReview = isAiAuthorityRoutingBlocked(result);
 	const requiresRecoveryReview = requiresProviderRecoveryReview(result);
 	const requiresPolicyProvenanceReview =
 		result.method === 'policy_auto' && !isCurrentDeterministicPolicyAuto(result);
 
-	const ranked = effectivePolicyResult?.ranked || [];
-	let policyAutoThreshold = null;
-	if (result.library?.id && Array.isArray(ranked) && ranked.length > 0) {
-		const row = ranked.find((entry) => entry && (entry.library_id === result.library.id || entry.id === result.library.id));
-		if (row) {
-			policyAutoThreshold = normalizePolicyDecisionThresholds(row).autoClassifyThreshold;
-		}
-	}
+	const policyCandidate = getPolicyDecisionCandidate(effectivePolicyResult, result.library);
+	const policyAutoThreshold = policyCandidate
+		? normalizePolicyDecisionThresholds(policyCandidate).autoClassifyThreshold
+		: null;
+	const policyCandidateScore = getPolicyDecisionCandidateScore(effectivePolicyResult, result.library);
+	const genericConfidence = Number(result.confidence);
+	const routeConfidence = policyCandidate
+		? policyCandidateScore
+		: (Number.isFinite(genericConfidence) ? genericConfidence : null);
 
 	const belowAutoRouteThreshold = Boolean(
 		result.library &&
 		result.method !== 'policy_auto' &&
-		(typeof policyAutoThreshold !== 'number' || result.confidence < policyAutoThreshold)
+		(typeof policyAutoThreshold !== 'number' ||
+			routeConfidence === null ||
+			routeConfidence < policyAutoThreshold)
 	);
 
 	const requireAllConfirmations = await isRequireAllConfirmationsEnabled();
@@ -197,6 +186,7 @@ export async function ensureDecisionQuestion({ metadata, result, policyResult = 
 		requiresAuthorityReview ||
 		requiresRecoveryReview ||
 		requiresPolicyProvenanceReview ||
+		requiresPolicyDecisionReview ||
 		belowAutoRouteThreshold ||
 		(result.library && requireAllConfirmations)
 	);

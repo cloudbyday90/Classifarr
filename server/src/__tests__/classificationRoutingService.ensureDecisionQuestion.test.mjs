@@ -171,6 +171,57 @@ describe('ensureDecisionQuestion', () => {
         expect(out.policy_question.problem_summary).toBe('Missing evidence');
     });
 
+    it('uses the candidate-bound policy score instead of generic recheck confidence', async () => {
+        build.mockResolvedValue({ problem_summary: 'Missing evidence' });
+        const result = {
+            library: { id: 10 },
+            confidence: 99,
+            method: 'policy_recheck',
+            clarification: null,
+            policy_question: null,
+            policyResult: {
+                action: 'prompt_confirm',
+                ranked: [{
+                    library_id: 10,
+                    score: 80,
+                    prompt_threshold: 60,
+                    auto_classify_threshold: 85,
+                }],
+            },
+        };
+
+        const out = await ensureDecisionQuestion({ metadata: {}, result });
+
+        expect(out.needs_clarification).toBe(true);
+        expect(out.pending_reason).toBe('Policy confirmation required');
+        expect(build).toHaveBeenCalled();
+    });
+
+    it('preserves an explicit destination-selection review above the generic route threshold', async () => {
+        build.mockResolvedValue({ problem_summary: 'Missing evidence' });
+        const result = {
+            library: { id: 10 },
+            confidence: 99,
+            method: 'policy_recheck',
+            clarification: null,
+            policy_question: null,
+            policyResult: {
+                action: 'prompt_select',
+                ranked: [{
+                    library_id: 10,
+                    score: 90,
+                    prompt_threshold: 60,
+                    auto_classify_threshold: 85,
+                }],
+            },
+        };
+
+        const out = await ensureDecisionQuestion({ metadata: {}, result });
+
+        expect(out.needs_clarification).toBe(true);
+        expect(build).toHaveBeenCalled();
+    });
+
     it('requires clarification when policy decision diagnostics recommend manual review', async () => {
         build.mockResolvedValue(null);
         const result = {

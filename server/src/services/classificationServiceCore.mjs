@@ -15,6 +15,10 @@ import {
   isAiAuthorityRoutingBlocked,
   isCurrentDeterministicPolicyAuto,
 } from './classificationRoutingServiceShared.mjs';
+import {
+  getPolicyDecisionCandidate,
+  isPolicyDecisionReviewRequired,
+} from '../utils/policyDecisionAuthority.mjs';
 import { isProviderRecoveryRoutingBlocked } from './classificationProviderRecovery.mjs';
 import {
   validatePolicyRuntimeQuestionReduction,
@@ -120,12 +124,7 @@ export class ClassificationService {
   }
 
   resolvePolicyAutoThreshold(result = {}) {
-    const ranked = result?.policyResult?.ranked || [];
-    if (!Array.isArray(ranked) || ranked.length === 0 || !result.library?.id) {
-      return null;
-    }
-
-    const row = ranked.find((entry) => entry && entry.library_id === result.library.id);
+    const row = getPolicyDecisionCandidate(result?.policyResult, result.library);
     if (!row) {
       return null;
     }
@@ -152,6 +151,10 @@ export class ClassificationService {
 
     if (isAiAuthorityRoutingBlocked(result)) {
       return { shouldRoute: false, reason: 'ai_authority_advisory' };
+    }
+
+    if (isPolicyDecisionReviewRequired(result.policyResult)) {
+      return { shouldRoute: false, reason: 'policy_review_required' };
     }
 
     if (isCurrentDeterministicPolicyAuto(result)) {

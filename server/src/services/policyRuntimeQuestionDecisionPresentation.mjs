@@ -3,6 +3,11 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
+import {
+  getPolicyDecisionCandidate,
+  policyDecisionAction,
+} from '../utils/policyDecisionAuthority.mjs';
+
 export const POLICY_RUNTIME_QUESTION_DECISION_PRESENTATION_VERSION =
   'policy.runtime_question_decision_presentation.v1';
 
@@ -108,14 +113,26 @@ function buildDeterministicDecision({ classification, question, candidateDestina
   const thresholds = asObject(policyResult.thresholds);
   const leadingDestination = candidateDestinations[0] || null;
   const destinationName = leadingDestination?.library_name || 'the leading destination';
-  const candidate = candidateForLeadingDestination(question, candidateDestinations);
-  const decisionScore = score(classification?.confidence) ?? score(policyResult.confidence) ?? score(candidate?.score);
-  const reviewThreshold = score(thresholds.prompt);
-  const automaticThreshold = score(thresholds.auto_classify);
+  const policyCandidate = getPolicyDecisionCandidate(policyResult, leadingDestination);
+  const questionCandidate = candidateForLeadingDestination(question, candidateDestinations);
+  const candidate = policyCandidate || questionCandidate;
+  const decisionScore = score(policyCandidate?.score) ??
+    score(policyResult.confidence) ??
+    score(questionCandidate?.score) ??
+    score(classification?.confidence);
+  const reviewThreshold = score(policyCandidate?.prompt_threshold) ?? score(thresholds.prompt);
+  const automaticThreshold = score(policyCandidate?.auto_classify_threshold) ?? score(thresholds.auto_classify);
+  const action = policyDecisionAction(policyResult);
 
   let statusId = 'manual_selection_required';
   let message = 'The current policy result requires a destination decision.';
-  if (decisionScore !== null && automaticThreshold !== null && decisionScore >= automaticThreshold) {
+  if (action === 'prompt_select') {
+    statusId = 'destination_selection_required';
+    message = `${destinationName} is a viable destination, but the policy evaluation did not establish a unique destination. Choose the destination to use for this item.`;
+  } else if (action === 'prompt_confirm') {
+    statusId = 'confirmation_required';
+    message = `${destinationName} meets the confirmation threshold but requires your confirmation before it can route.`;
+  } else if (decisionScore !== null && automaticThreshold !== null && decisionScore >= automaticThreshold) {
     statusId = 'automatic_threshold_met';
     message = `${destinationName} meets the automatic policy threshold, but another safety gate requires review.`;
   } else if (decisionScore !== null && reviewThreshold !== null && decisionScore >= reviewThreshold) {

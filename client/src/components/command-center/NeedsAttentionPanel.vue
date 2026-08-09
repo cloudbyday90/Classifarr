@@ -26,7 +26,7 @@
         </h3>
       </div>
       <div class="action-item-meta">
-        <span>{{ safePercent(item.confidence) }}% confidence</span>
+        <span>{{ confidenceLabel(item) }}</span>
         <span>{{ formatMediaType(item.media_type) }}</span>
         <span v-if="suggestedLibraryLabel(item)">→ {{ suggestedLibraryLabel(item) }}</span>
       </div>
@@ -296,10 +296,22 @@ function decisionPresentation(item) {
   return policyQuestionDecisionPresentation(answerContract(item))
 }
 
+function confidenceLabel(item) {
+  const policyScore = decisionPresentation(item)?.deterministic?.score
+  if (policyScore !== null && policyScore !== undefined) {
+    return `${props.safePercent(policyScore)}% policy score`
+  }
+
+  return `${props.safePercent(item.confidence)}% confidence`
+}
+
 function needsAttentionReason(item) {
   const presentation = decisionPresentation(item)
   if (presentation?.deterministic?.status_id === 'confirmation_required') {
     return 'Policy confirmation required'
+  }
+  if (presentation?.deterministic?.status_id === 'destination_selection_required') {
+    return 'Policy destination selection required'
   }
 
   return primaryNeedsAttentionReason(item)
@@ -315,6 +327,9 @@ function questionText(item) {
   const deterministic = decisionPresentation(item)?.deterministic
   if (deterministic?.status_id === 'confirmation_required' && deterministic.destination?.library_name) {
     return `Confirm ${deterministic.destination.library_name} or choose a different destination.`
+  }
+  if (deterministic?.status_id === 'destination_selection_required' && deterministic.destination?.library_name) {
+    return `Choose ${deterministic.destination.library_name} or a different destination.`
   }
 
   return answerContract(item)?.question?.text ||

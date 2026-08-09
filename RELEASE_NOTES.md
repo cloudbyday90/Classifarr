@@ -2,6 +2,43 @@
 
 > Versioning note: these release notes and the UI use public labels such as `v0.48.0-beta`. Package files use semver-safe versions such as `0.48.0-beta`.
 
+## v0.48.0b-beta
+**Title: Policy review now shows the score that actually determines the route**
+
+> [!IMPORTANT]
+> No migration or policy rewrite is required. After updating, refresh Needs Attention to see current stored policy outcomes explained with their candidate-bound score and route action.
+
+### 🎉 What You'll Notice
+- **Accurate policy-score labels** — review cards no longer present a generic recheck confidence as though it were the score used for policy routing.
+- **Clear selection states** — a policy tie now explicitly says that a destination must be selected, rather than suggesting an automatic route was blocked by an unexplained gate.
+- **Confirmation safeguards stay intact** — scores below a library's automatic threshold continue to require confirmation even when an upstream recheck has high generic confidence.
+
+### 📊 Quick Visual
+```text
+Decision authority
+Generic recheck confidence  [advisory context]
+Candidate policy score      [██████████] route authority
+Prompt-select policy action [██████████] explicit operator decision
+```
+
+### ✨ Highlights
+- Current policy candidates, thresholds, and action states are now the common source for pending-decision routing and the Command Center explanation.
+- Existing decision records use the stored deterministic policy result; no retraining or destructive cleanup is needed.
+
+### 🔧 Reliability Improvements
+- A `prompt_confirm` or `prompt_select` policy action now blocks generic-confidence routing even if another workflow path loses its clarification flag.
+- The regression suite covers generic `90` confidence paired with an `80` candidate policy score and a three-way destination tie.
+
+### 👥 Who This Helps
+- **Reviewers:** see whether a card needs confirmation or destination selection, and why.
+- **Policy authors:** retain existing automatic and confirmation thresholds without hidden confidence substitution.
+- **Operators:** deploy this hotfix without a database migration or policy rebuild.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## v0.48.0a-beta
 **Title: Policy decisions stay clear when library history is incomplete**
 

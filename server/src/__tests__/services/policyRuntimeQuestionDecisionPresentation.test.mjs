@@ -53,6 +53,52 @@ describe('policyRuntimeQuestionDecisionPresentation', () => {
     ]));
   });
 
+  test('uses the current candidate-bound policy score for a destination-selection review', () => {
+    const presentation = buildPolicyRuntimeQuestionDecisionPresentation({
+      classification: {
+        confidence: 90,
+        metadata: {
+          policyResult: {
+            action: 'prompt_select',
+            thresholds: { prompt: 60, auto_classify: 85 },
+            ranked: [
+              {
+                library_id: 5,
+                score: 80,
+                prompt_threshold: 60,
+                auto_classify_threshold: 85,
+                candidate_diagnostics: {
+                  native_intent_runtime: {
+                    eligible: true,
+                    rule_counts: { purpose: 1 },
+                  },
+                },
+              },
+              { library_id: 6, score: 80 },
+              { library_id: 7, score: 80 },
+            ],
+          },
+        },
+      },
+      question: {
+        meta: {
+          candidates: [{ library_id: 5, score: 82 }],
+        },
+      },
+      candidateDestinations: candidates,
+    });
+
+    expect(presentation.deterministic).toMatchObject({
+      status_id: 'destination_selection_required',
+      destination: { library_id: 5, library_name: 'Movies' },
+      score: 80,
+      review_threshold: 60,
+      automatic_threshold: 85,
+    });
+    expect(presentation.deterministic.message).toContain('did not establish a unique destination');
+    expect(presentation.deterministic.message).not.toContain('automatic policy threshold');
+  });
+
   test('retains a structured advisory alternative without provider raw output', () => {
     const presentation = buildPolicyRuntimeQuestionDecisionPresentation({
       classification: {

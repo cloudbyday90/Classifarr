@@ -11,6 +11,12 @@ Archived changelogs: [August 2026 Pre-release Details](docs/changelog/CHANGELOG-
 
 Current development changes will be recorded here.
 
+## [0.48.0b-beta] - 2026-08-09
+
+### Fixed
+
+- **Policy-score authority** — Pending-decision routing and review cards now use the current candidate-bound policy score and action rather than a generic recheck confidence, preserving explicit confirmation and destination-selection safeguards.
+
 ## [0.48.0a-beta] - 2026-08-09
 
 ### Fixed

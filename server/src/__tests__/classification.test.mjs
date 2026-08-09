@@ -2735,7 +2735,7 @@ describe('second-pass result materialization', () => {
     expect(policyQuestionBuilder.build).toHaveBeenCalledWith(expect.objectContaining({
       policyResult: updatedPolicyResult
     }));
-    expect(result.pending_reason).toBe('Missing evidence');
+    expect(result.pending_reason).toBe('Policy confirmation required');
     expect(result.policy_question).toMatchObject({
       question: 'Is there enough evidence to treat this as a match?',
       options: [{ library_id: 2, value: 'library:2' }],

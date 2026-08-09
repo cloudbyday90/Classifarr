@@ -610,6 +610,8 @@ describe('CommandCenter action modules', () => {
     const wrapper = await mountCommandCenter()
 
     expect(wrapper.text()).toContain('Leading candidate')
+    expect(wrapper.text()).toContain('75% policy score')
+    expect(wrapper.text()).not.toContain('75% confidence')
     expect(wrapper.text()).toContain('Policy score: 75/100 (confirmation at 60, automatic at 85)')
     expect(wrapper.text()).toContain('Policy confirmation required')
     expect(wrapper.text()).toContain('Confirm Movies or choose a different destination.')
@@ -631,6 +633,52 @@ describe('CommandCenter action modules', () => {
       action_id: 'confirm_destination',
       destination_library_id: 8,
     })
+  })
+
+  it('labels a policy selection review with its policy score instead of generic confidence', async () => {
+    apiMock.getPendingClassifications.mockResolvedValueOnce({
+      items: [{
+        id: 252,
+        title: 'Spider-Man: Brand New Day',
+        year: 2026,
+        media_type: 'movie',
+        confidence: 90,
+        policy_question: {
+          question: 'Is there enough evidence to treat this as a match?',
+          options: [
+            { library_id: 8, library_name: 'Movies' },
+            { library_id: 9, library_name: 'Anime Movies' },
+          ],
+        },
+        policy_question_answer: createPolicyQuestionAnswer({
+          fingerprint: 'spider-man-selection-fingerprint',
+          destinations: [
+            { library_id: 8, library_name: 'Movies' },
+            { library_id: 9, library_name: 'Anime Movies' },
+          ],
+          decisionSummary: {
+            version: 'policy.runtime_question_decision_presentation.v1',
+            deterministic: {
+              status_id: 'destination_selection_required',
+              destination: { library_id: 8, library_name: 'Movies' },
+              score: 80,
+              review_threshold: 60,
+              automatic_threshold: 85,
+              message: 'Movies is a viable destination, but the policy evaluation did not establish a unique destination. Choose the destination to use for this item.',
+              evidence: [],
+            },
+            ai_advisory: null,
+          },
+        }),
+      }],
+    })
+
+    const wrapper = await mountCommandCenter()
+
+    expect(wrapper.text()).toContain('80% policy score')
+    expect(wrapper.text()).not.toContain('90% confidence')
+    expect(wrapper.text()).toContain('Policy destination selection required')
+    expect(wrapper.text()).toContain('Choose Movies or a different destination.')
   })
 
   it('shows routing error when manual change resolves but routing fails', async () => {
