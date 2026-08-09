@@ -265,10 +265,10 @@ decision.
 Candidate Publication And Evidence Recording** are implemented. The tag path
 now runs the digest-only consumer smoke in a separate job, validates its bounded
 evidence against the CI readout, attaches that evidence to a draft GitHub
-release, publishes only through the `release-publication` environment, and
-verifies the immutable release attestation. A release-specific execution still
-requires an intentionally selected tag, source revision, immutable-release
-configuration, and protected-environment reviewers. See [Release Candidate
+release, publishes only through the tag-restricted `release-publication`
+environment, and verifies the immutable release attestation. A release-specific
+execution still requires an intentionally selected tag and source revision.
+Immutable releases and the `v*` environment policy are configured. See [Release Candidate
 Publication And Evidence Recording](release-candidate-publication-and-evidence-recording.md).
 The parallel **8R.36.11 Compatibility-Removal Evidence Regeneration** task
 still requires a current approved active-installation completion artifact and

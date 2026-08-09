@@ -62,7 +62,7 @@ Cons:
 
 Decision: rejected.
 
-### Selected: tag-triggered draft, evidence attachment, protected publication
+### Selected: tag-triggered draft, evidence attachment, tag-restricted publication
 
 Pros:
 
@@ -70,8 +70,9 @@ Pros:
   Hub digest references, CI acceptance, and consumer-smoke result.
 - `--verify-tag` prevents the CLI from inventing a tag, while
   `--fail-on-no-commits` rejects duplicate release publication.
-- The release asset is attached while the release is a draft. After protected
-  environment approval, it is published and independently attestation-verified.
+- The release asset is attached while the release is a draft. The publication
+  environment admits only `v*` tags, after which the release is independently
+  attestation-verified.
 - The workflow only records bounded evidence: identifiers, timestamps, status
   identifiers, image digests, and a SHA-256 fingerprint. It contains no
   installation configuration, credentials, titles, policy content, or provider
@@ -79,9 +80,9 @@ Pros:
 
 Cons:
 
-- Repository administrators must enable immutable releases and configure
-  `release-publication` protection. The workflow can reference an environment
-  but cannot prove its reviewer policy from source code.
+- Repository administrators must enable immutable releases and configure the
+  `release-publication` tag policy. The workflow can reference an environment
+  but cannot prove its GitHub-side policy from source code.
 - Image publication occurs before the final GitHub release record. This is
   necessary to smoke the digest, so availability communication must wait for
   the final job.
@@ -109,24 +110,26 @@ The `CI/CD Pipeline` tag path now has four ordered boundaries:
    then independently validates both artifacts and their common source revision
    and digest. It writes a public-safe JSON asset, deterministic release notes,
    and an evidence SHA-256 fingerprint.
-4. The same protected publication job creates a GitHub draft with the JSON
+4. The same tag-restricted publication job creates a GitHub draft with the JSON
    asset, publishes it, then calls `gh release verify --format json` with five
    bounded retries while GitHub makes the immutable-release attestation
    available. Its `contents: write` permission is isolated to this final job.
    Image cleanup waits for this job to succeed.
 
 `checkReleaseCandidatePublicationWorkflow.mjs` prevents workflow drift that
-would widen smoke permissions, remove the protected environment, omit exact
+would widen smoke permissions, remove the tag-restricted environment, omit exact
 artifact names, synthesize tags, skip draft creation, omit attestation
 verification, or separate evidence assembly from the tag/digest inputs.
 
 ## Required Repository Configuration
 
 Before a release tag is selected, configure GitHub immutable releases and the
-`release-publication` deployment environment. Require appropriate reviewers,
-protect the release-tag source where the GitHub plan supports it, and prevent
-self-review when available. These settings are release-administration controls,
-not application configuration and not data stored in a Classifarr installation.
+`release-publication` deployment environment with a `v*` tag policy. This
+repository has one maintainer and intentionally does not configure a nominal
+self-review gate. Add an independent reviewer and self-review prevention if
+that ownership model changes. These settings are release-administration
+controls, not application configuration and not data stored in a Classifarr
+installation.
 
 ## Validation
 

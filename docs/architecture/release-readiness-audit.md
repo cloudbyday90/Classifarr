@@ -96,9 +96,9 @@ closure.
 **10R.4.3 Release Candidate Publication And Evidence Recording** is now
 implemented. Tag CI validates the accepted source and smoke evidence against
 one image digest, attaches a bounded JSON evidence asset to a draft release,
-publishes through the `release-publication` environment, and verifies the
-resulting immutable-release attestation. GitHub immutable releases and the
-environment's reviewer policy remain mandatory administrative prerequisites.
+publishes through the tag-restricted `release-publication` environment, and
+verifies the resulting immutable-release attestation. GitHub immutable releases
+and the environment's `v*` tag policy are configured administrative controls.
 See [Release Candidate Publication And Evidence
 Recording](release-candidate-publication-and-evidence-recording.md).
 

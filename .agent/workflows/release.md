@@ -293,12 +293,12 @@ by the workflow file alone:
 
 1. Enable **immutable releases** for the repository or organization. The
    workflow verifies the resulting release attestation after publication.
-2. Configure the `release-publication` environment with required reviewers,
-   protected tag or branch rules, and self-review prevention where available.
-   The final publication job waits at this environment before creating a public
-   release.
-3. Confirm the environment's approvers understand that approval publishes the
-   already-attested tag after the digest-only consumer smoke result has passed.
+2. Configure the `release-publication` environment with a custom **tag** policy
+   for `v*`. The final publication job may run only from a release tag.
+3. Add required reviewers and self-review prevention only when an independent
+   maintainer exists. This single-maintainer repository intentionally has no
+   reviewer policy; its publication controls are the tag restriction, CI gates,
+   immutable release record, and release-attestation verification.
 
 Do not use a personal access token, a manual GitHub release, or a local Docker
 build as a substitute for this tag-based evidence chain.
@@ -322,8 +322,8 @@ The tag workflow performs these operations in order:
 3. Validates the tag against all package-lock and package versions plus the
    public UI version, then revalidates the CI readout and consumer evidence
    against the tag, source revision, and digest. It uploads
-   `release-candidate-evidence` as a workflow artifact and waits for
-   `release-publication` approval.
+   `release-candidate-evidence` as a workflow artifact and enters the
+   tag-restricted `release-publication` environment.
 4. Creates a draft GitHub release with the evidence JSON attached, publishes
    that draft, and verifies the GitHub release attestation. Tags containing a
    prerelease suffix are marked prerelease and explicitly not latest.
@@ -405,5 +405,5 @@ Additional file when the release includes database/migration/schema changes:
 - **Docker smoke verification is part of release hygiene** - build `classifarr:test`, run `IMAGE_NAME=classifarr:test npm run docker:smoke:pgss`, and do not tag until the fresh-instance/upgrade smoke run passes and cleans up
 - **Coverage ratchet is a hard gate** - do not tag/release while `npm run coverage:ratchet:check` is failing
 - **Release is blocked on the complete evidence chain** - never communicate
-  availability before tag CI, digest provenance, consumer smoke, protected
-  publication approval, and GitHub release-attestation verification succeed
+  availability before tag CI, digest provenance, consumer smoke, tag-restricted
+  publication, and GitHub release-attestation verification succeed
