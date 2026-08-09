@@ -53,6 +53,7 @@ describe('policyStorageClosureEvidenceLauncherRunner', () => {
         cwd: path.join(process.cwd(), 'launcher-checkout'),
         shell: false,
         stdio: 'ignore',
+        windowsHide: true,
       })
     );
   });

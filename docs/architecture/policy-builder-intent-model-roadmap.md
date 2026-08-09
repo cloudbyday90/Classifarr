@@ -32,12 +32,18 @@ Current execution focus:
   now produces a passed or blocked manifest artifact, while a separate
   protected-environment workflow records active-installation evidence without
   coupling ordinary automation to a particular deployment.
-- **Current operational finding:** **8R.36.11 Compatibility-Removal Evidence
-  Regeneration** has rerun successfully with the v3 validation contract. The
-  repository evidence is ready, while the active-installation completion artifact
-  remains blocked. Obtain a current approved installation artifact through the
-  deletion workflow, then rerun 8R.36.11 and its generated current closure and
-  requirement audits. Do not infer closure from historical JSON or checkout state.
+- **Next repository release hardening:** **10R.4.1 Container Image Provenance
+  Attestation And Verification** will attest each pushed release-image digest
+  and verify the attestation against the expected repository and signer. It
+  supplements CI acceptance and deployment approval; it cannot replace either.
+- **Current operational finding:** On 2026-08-09, **8R.36.11
+  Compatibility-Removal Evidence Regeneration** produced passed v3 repository
+  validation and bounded blocked diagnostics. The active-installation completion
+  artifact is fingerprinted but not replay-valid or approved, so the current
+  closure and requirement audits remain blocked. Obtain a current approved
+  installation artifact through the deletion workflow, then rerun 8R.36.11 and
+  its generated audits. Do not infer closure from historical JSON, local Docker,
+  or checkout state.
 - **Continuous guardrail:** 9R naming and product-language gates remain
   required. Do not reintroduce a second policy-builder flow, advanced setting,
   or browser-owned automation decision.
@@ -55,6 +61,7 @@ completed platform acceptance: 10R.1.1 -> 10R.1.2 -> 10R.1.3
 completed lifecycle acceptance: 10R.2.1 -> 10R.2.2 -> 10R.2.3
 completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3
 completed release acceptance: 10R.4
+next repository release hardening: 10R.4.1
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
 
@@ -10527,14 +10534,18 @@ Implementation status:
   read-only and fails closed when the assembled closure chain is incomplete.
   The design and outcome record is [Policy Storage Instance Closure-Evidence
   Assembly](policy-storage-instance-closure-evidence-assembly.md).
-- Task 8R.36.11 is revalidated after 8R.37.4. The bounded launcher runs only
+- Task 8R.36.11 is revalidated after 8R.37.4 and again on 2026-08-09. The
+  bounded launcher runs only
   the fixed validation-evidence producer and instance assembler using direct
   Node processes with argument arrays and bounded timeouts. Its v3 validation
   catalog now directly covers the closure-map scope service and reconciliation
-  design record. Completion-audit provenance remains explicit, generated files
-  must remain inside the selected checkout, and a failed command stops the
-  chain without relaying raw process output. The design and outcome record is
-  [Policy Storage Closure Evidence Launcher](policy-storage-closure-evidence-launcher.md).
+  design record. The fresh validation artifact passed; the explicitly allowed
+  blocked assembly preserved diagnostics and returned nonzero because its
+  active-installation completion artifact was not replay-valid or approved.
+  Completion-audit provenance remains explicit, generated files must remain
+  inside the selected checkout, and a failed command stops the chain without
+  relaying raw process output. The design and outcome record is [Policy Storage
+  Closure Evidence Launcher](policy-storage-closure-evidence-launcher.md).
 
 ### 8R.37 Runtime And Release-Maintenance Boundary
 
@@ -11856,9 +11867,11 @@ Implementation status:
 
 ## Phase 10R: Production Acceptance And Operational Readiness
 
-Status: complete. Phase 10R turns completed service contracts into deterministic,
-installation-agnostic acceptance evidence. It does not create a second runtime
-workflow, require an operator dialog, or depend on live external providers.
+Status: 10R.1 through 10R.4 complete. Task 10R.4.1 is the next repository
+release-hardening follow-up. Phase 10R turns completed service contracts into
+deterministic, installation-agnostic acceptance evidence. It does not create a
+second runtime workflow, require an operator dialog, or depend on live external
+providers.
 
 Intent: prove that the re-imagined policy platform works end-to-end through its
 real service boundaries while preserving the distinction between deterministic
@@ -12186,6 +12199,30 @@ Implemented outcome:
 
 Design and implementation detail: [Release Acceptance Assembly](release-acceptance-assembly.md).
 
+### 10R.4.1 Container Image Provenance Attestation And Verification
+
+Status: next repository release-hardening task.
+
+Intent: bind each published release-image digest to its GitHub Actions build
+provenance and verify that binding before a release is promoted. The attestation
+supplements the existing source, integration, and protected-installation
+evidence; it cannot substitute for a passed test suite or deployment approval.
+
+Required outcome:
+
+- The tag image workflow grants only the GitHub permissions required to attest
+  its pushed digest and uses a SHA-pinned provenance action.
+- The workflow creates digest-bound container provenance after image push and
+  records the immutable digest rather than relying on a mutable tag.
+- A follow-up verification step uses the expected repository and signer
+  identity, fails closed when provenance is absent or mismatched, and exposes no
+  credentials in artifacts or logs.
+- Tests and documentation distinguish successful provenance verification from
+  repository acceptance, installation approval, and compatibility-retirement
+  closure.
+
+Design and current gap: [Release Readiness Audit](release-readiness-audit.md).
+
 ## Testing Strategy
 
 Required coverage should follow the re-imagined phase boundaries:
@@ -12331,13 +12368,13 @@ The next sequence is dependency-gated rather than phase-number order:
     evidence, and a read-only aggregate metric can state a comparable
     operator-review workload signal without changing automation authority. See
     [Release Acceptance Assembly](release-acceptance-assembly.md).
-18. **8R.36.11 Compatibility-Removal Evidence Regeneration**: next. It was revalidated
-    after the closure-contract change. It produced fresh v3 repository
-    validation evidence and bounded blocked diagnostics because the
-    active-installation completion artifact remains blocked. The next
-    operational prerequisite is a current approved installation artifact; then
-    rerun 8R.36.11 and the generated 8R.34/8R.35 audits. Continue the **9R**
-    zero-debt naming gates on every component.
+18. **8R.36.11 Compatibility-Removal Evidence Regeneration**: revalidated on
+    2026-08-09. It produced fresh passed v3 repository validation evidence and
+    bounded blocked diagnostics because the active-installation completion
+    artifact is not replay-valid or approved. The next operational prerequisite
+    is a current approved installation artifact; then rerun 8R.36.11 and the
+    generated 8R.34/8R.35 audits. Continue the **9R** zero-debt naming gates
+    on every component.
 
 The completed 0R through 3R, 6R, and 7R contracts remain guardrails, not
 permission to restore a diagnostic, template-first, or browser-authoritative

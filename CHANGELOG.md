@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Compatibility-Removal Evidence Regeneration**: Regenerated the fixed v3
+  repository validation evidence and retained only explicitly allowed blocked
+  closure diagnostics when active-installation removal approval is absent. The
+  launcher now suppresses child console windows on Windows, and regression
+  coverage proves blocked diagnostics are written without turning the command
+  into a successful closure result.
+
 - **Classification History Read Performance**: Reworked canonical history
   selection and lifecycle assembly so the paged API chooses each final outcome
   from narrow identifiers and aggregates lifecycle events once per page rather

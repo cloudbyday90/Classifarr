@@ -1,6 +1,6 @@
 # Policy Intent Delivery Status Audit
 
-Status: Current repository audit updated 2026-08-08.
+Status: Current repository audit updated 2026-08-09.
 
 ## Purpose
 
@@ -78,9 +78,9 @@ the per-installation cutover evidence owned by Phase 8R.
 | 5R | Complete | Server authority for reads/writes, provider capability, questions, answers, learning, verifier behavior, tests, and native changes | Preserve request-bound provider authority and fail-closed side effects |
 | 6R | Contract-complete foundation | Evidence, intent, learning, readiness, workflow, and migration boundaries | Consume through 4R; reopen only for a bounded contract gap |
 | 7R | Contract-complete foundation | Runtime decision, question, rebuild, verifier, rollback, and trace boundaries | Preserve through 5R and 8R authority/storage work |
-| 8R | Complete contracts with recurring evidence | Native lifecycle, installation evidence, CI-only retirement, and closure evidence | Regenerate current evidence and closure audits after mapped contract changes; retain automatic policy conversion |
+| 8R | Complete contracts with recurring evidence | Native lifecycle, installation evidence, CI-only retirement, and closure evidence | Fresh v3 validation passed on 2026-08-09; retain automatic policy conversion and obtain an approved active-installation completion artifact before compatibility-retirement closure |
 | 9R | Ongoing enforcement | Zero-debt durable naming and product-language gates | Preserve the baseline in every product change |
-| 10R | Complete | Isolated real-boundary acceptance for AI authority, deterministic policy decisions, provider recovery, existing installations, operational safety, and release evidence | Retain the CI manifest and protected installation-evidence workflow; capture comparable aggregate workload artifacts per deployment |
+| 10R | 10R.1-10R.4 complete; 10R.4.1 next | Isolated real-boundary acceptance for AI authority, deterministic policy decisions, provider recovery, existing installations, operational safety, and release evidence | Retain the CI manifest and protected installation-evidence workflow; add digest-bound container provenance attestation and verification before the next production promotion |
 
 ## Required Delivery Order
 
@@ -139,8 +139,9 @@ the per-installation cutover evidence owned by Phase 8R.
 14. **8R.37.4 Closure-Map Reconciliation** is complete. Its exact,
    fingerprint-bound map separates repository implementation components from
    active-installation compatibility-removal components without changing normal
-   policy automation. The next operational step is 8R.36.11 evidence
-   regeneration followed by refreshed current closure and requirement audits.
+   policy automation. On 2026-08-09, 8R.36.11 regenerated valid v3 repository
+   evidence; its downstream current-closure and requirement audits remain
+   blocked by the missing approved active-installation completion artifact.
 15. **10R.1.1 AI Authority Pipeline Acceptance** is complete. Its isolated
    database-backed suite exercises configured provider selection, router
    admission, normalization, semantic parsing, safe authority projection, and
@@ -188,7 +189,13 @@ the per-installation cutover evidence owned by Phase 8R.
     separate protected-environment workflow binds active-installation evidence
     to a deployment fingerprint and source revision. Aggregate operator-review
     workload evidence is privacy-bounded and is explicitly not-applicable
-    until a comparable baseline exists. See [Release Acceptance Assembly](release-acceptance-assembly.md).
+    until a comparable baseline exists. See [Release Acceptance
+    Assembly](release-acceptance-assembly.md).
+24. **10R.4.1 Container Image Provenance Attestation And Verification** is
+    next. The release tag workflow must attest the pushed immutable image digest
+    and verify its repository and signer identity before production promotion.
+    This supplements, but does not replace, CI acceptance or installation
+    approval. See [Release Readiness Audit](release-readiness-audit.md).
 
 ## Phase 8R Boundaries
 
@@ -204,10 +211,11 @@ Phase 8R is intentionally not a linear prerequisite for the live UI:
 - Closure artifacts report repository `implementationReadiness` independently
   of installation `instanceCutover`. Neither result authorizes a source change.
 
-The next Phase 8R operational evidence task is 8R.36.11: regenerate current
-evidence and its downstream audits after mapped closure-contract changes. It is
-parallel work, has no authoring UI, and cannot make installation evidence or
-repository retirement a prerequisite for normal policy automation.
+The next Phase 8R operational prerequisite is a current approved
+active-installation completion artifact. Then rerun 8R.36.11 and its downstream
+audits. This is parallel work, has no authoring UI, and cannot make
+installation evidence or repository retirement a prerequisite for normal policy
+automation.
 
 ## Consistency Decisions
 

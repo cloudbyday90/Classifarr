@@ -52,6 +52,7 @@ function runPolicyStorageClosureEvidenceCommand({
         cwd,
         shell: false,
         stdio: 'ignore',
+        windowsHide: true,
       });
     } catch {
       finish(createFailedCommandResult());

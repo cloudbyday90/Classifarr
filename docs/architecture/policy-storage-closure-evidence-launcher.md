@@ -113,18 +113,28 @@ command catalog differ.
 
 ## 8R.36.11 Revalidation Outcome
 
-The August 2026 regeneration ran the v3 fixed validation catalog successfully:
+The 2026-08-09 regeneration ran the v3 fixed validation catalog successfully:
 focused tests, server lint, fixed Markdown validation, and full server tests
 all passed. The generated artifact is fingerprint-valid and directly records
 the closure-map service test and reconciliation design record.
 
-The assembly intentionally remained blocked. The explicitly supplied,
-current-format compatibility-removal completion artifact reported a blocked
-active-installation state and did not have replay-valid approval evidence. The
-resulting current-closure audit therefore reported `blocked_by_instance_cutover`
-and the requirement audit reported `blocked_by_current_closure`. These are
-diagnostics, not closure claims, and the generated files remain ignored local
-evidence rather than repository release artifacts.
+The launcher was supplied the current-format
+`compatibility-removal-completion-artifact-current.json` input. That input is
+fingerprinted but blocked: it has no replay-valid, approved removal batch.
+The assembler wrote the explicitly allowed diagnostic files and deliberately
+returned a nonzero exit. The launcher therefore reported `blocked`, while the
+artifacts reported `blocked_by_current_closure`,
+`blocked_by_instance_cutover`, and `blocked_by_current_closure` respectively.
+This is the required fail-closed behavior: `--allow-blocked` permits bounded
+diagnostics to be preserved; it never changes a blocked cutover into a
+successful command result.
+
+The active-installation cutover is blocked by
+`final_removal_audit_artifact_integrity_failed`: a complete, fingerprint-valid,
+replayable compatibility-removal completion-audit artifact is still absent.
+These diagnostics are not closure claims, and the generated files remain
+ignored local evidence rather than repository release artifacts. A local Docker
+Compose runtime cannot substitute for the explicit protected approval artifact.
 
 The repository implementation evidence and its scoped component map are ready;
 only a current, explicitly approved active-installation completion artifact can

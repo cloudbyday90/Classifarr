@@ -163,4 +163,45 @@ describe('assemble-policy-storage-closure-instance-evidence', () => {
     expect(result.stderr).toContain('instance evidence assembly is blocked');
     expect(fs.existsSync(outputPath)).toBe(false);
   });
+
+  test('writes explicitly allowed blocked diagnostics while retaining a blocked exit status', async () => {
+    writeFixtureRepository(fixtureRoot);
+    const completionPath = writeJson(
+      fixtureRoot,
+      'completion-audit-artifact.json',
+      await buildCompletionAuditArtifactFixture()
+    );
+    const validationPath = writeJson(fixtureRoot, 'validation-evidence.json', {});
+    const outputPath = path.join(fixtureRoot, '.artifacts', 'assembly.json');
+    const currentClosurePath = path.join(fixtureRoot, '.artifacts', 'current-closure.json');
+    const requirementPath = path.join(fixtureRoot, '.artifacts', 'requirement-audit.json');
+    const result = spawnSync(process.execPath, [
+      GENERATOR_PATH,
+      '--cwd', fixtureRoot,
+      '--completion-audit-artifact', path.relative(fixtureRoot, completionPath),
+      '--validation-evidence', path.relative(fixtureRoot, validationPath),
+      '--output', outputPath,
+      '--current-closure-output', currentClosurePath,
+      '--requirement-audit-output', requirementPath,
+      '--allow-blocked',
+    ], {
+      cwd: callerRoot,
+      encoding: 'utf8',
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.status).toBe(1);
+    expect(result.stderr).toBe('');
+    expect(JSON.parse(result.stdout)).toEqual(expect.objectContaining({
+      complete: false,
+      currentClosureAudit: expect.objectContaining({ complete: false }),
+      requirementAudit: expect.objectContaining({ complete: false }),
+    }));
+    expect(JSON.parse(fs.readFileSync(outputPath, 'utf8')))
+      .toEqual(expect.objectContaining({ complete: false }));
+    expect(JSON.parse(fs.readFileSync(currentClosurePath, 'utf8')))
+      .toEqual(expect.objectContaining({ complete: false }));
+    expect(JSON.parse(fs.readFileSync(requirementPath, 'utf8')))
+      .toEqual(expect.objectContaining({ complete: false }));
+  });
 });
