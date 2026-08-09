@@ -59,4 +59,27 @@ describe('checkReleaseCandidatePublicationWorkflow', () => {
     expect(() => validateReleaseCandidatePublicationWorkflow(workflow))
       .toThrow('published-digest-consumer-smoke.permissions.contents');
   });
+
+  test('rejects an alias check that omits the clean-pull verification', () => {
+    const workflow = structuredClone(loadWorkflow());
+    const step = workflow.jobs['published-digest-consumer-smoke'].steps.find(
+      candidate => candidate.name === 'Verify published latest image alias'
+    );
+    step.run = step.run.replace('docker pull "${IMAGE}:latest"', '');
+
+    expect(() => validateReleaseCandidatePublicationWorkflow(workflow))
+      .toThrow('Verify published latest image alias must validate');
+  });
+
+  test('rejects generic package-version deletion for the multi-platform image', () => {
+    const workflow = structuredClone(loadWorkflow());
+    const cleanupJob = workflow.jobs['cleanup-old-releases'];
+    cleanupJob.steps.unshift({
+      name: 'Delete old GHCR packages',
+      uses: 'actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55',
+    });
+
+    expect(() => validateReleaseCandidatePublicationWorkflow(workflow))
+      .toThrow('cleanup-old-releases must not use generic GHCR package-version deletion.');
+  });
 });

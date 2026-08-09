@@ -26,6 +26,7 @@ jobs:
           SOURCE_TAG: ${{ inputs.source_tag }}
         run: |
           node --input-type=module <<'NODE'
+          import { spawnSync } from 'node:child_process';
           import { createHash } from 'node:crypto';
           import { mkdir, writeFile } from 'node:fs/promises';
 
@@ -35,6 +36,7 @@ jobs:
           const actor = String(process.env.GITHUB_ACTOR || '');
           const githubToken = String(process.env.GITHUB_TOKEN || '');
           const releaseTagPattern = /^v\d+\.\d+\.\d+(?:[a-z]+)?(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$/;
+          const manifestDigestPattern = /^sha256:[a-f0-9]{64}$/;
           const acceptedManifestTypes = [
             'application/vnd.oci.image.index.v1+json',
             'application/vnd.docker.distribution.manifest.list.v2+json',
@@ -98,6 +100,23 @@ jobs:
           }
           const sourceManifest = new Uint8Array(await sourceResponse.arrayBuffer());
           const sourceDigest = `sha256:${createHash('sha256').update(sourceManifest).digest('hex')}`;
+          const sourceIndex = JSON.parse(Buffer.from(sourceManifest).toString('utf8'));
+          if (!Array.isArray(sourceIndex.manifests) || sourceIndex.manifests.length === 0) {
+            throw new Error('Source release image index does not reference any manifests.');
+          }
+
+          for (const descriptor of sourceIndex.manifests) {
+            if (!manifestDigestPattern.test(descriptor?.digest || '')) {
+              throw new Error('Source release image index contains an invalid manifest digest.');
+            }
+            const childResponse = await fetch(
+              `https://ghcr.io/v2/${imageRepository}/manifests/${descriptor.digest}`,
+              { headers: registryHeaders },
+            );
+            if (!childResponse.ok) {
+              throw new Error(`Source child manifest ${descriptor.digest} is unavailable (HTTP ${childResponse.status}).`);
+            }
+          }
 
           const publishResponse = await fetch(
             `https://ghcr.io/v2/${imageRepository}/manifests/latest`,
@@ -125,6 +144,14 @@ jobs:
           const latestDigest = `sha256:${createHash('sha256').update(latestManifest).digest('hex')}`;
           if (latestDigest !== sourceDigest) {
             throw new Error(`latest digest mismatch: expected ${sourceDigest}, got ${latestDigest}.`);
+          }
+          const pullResult = spawnSync(
+            'docker',
+            ['pull', `ghcr.io/${imageRepository}:latest`],
+            { encoding: 'utf8', shell: false },
+          );
+          if (pullResult.status !== 0) {
+            throw new Error(`latest pull verification failed: ${(pullResult.stderr || pullResult.stdout || 'docker pull failed').trim()}`);
           }
 
           const evidence = {

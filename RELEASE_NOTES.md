@@ -2,6 +2,43 @@
 
 > Versioning note: these release notes and the UI use public labels such as `v0.48.0-beta`. Package files use semver-safe versions such as `0.48.0-beta`.
 
+## v0.48.0c-beta
+**Title: Reliable container updates on every supported architecture**
+
+> [!IMPORTANT]
+> If you deploy from GHCR, update to `v0.48.0c-beta` or `latest`. Do not pin new installations to `v0.48.0b-beta`; its multi-platform image was made unavailable by an earlier registry cleanup.
+
+### 🎉 What You'll Notice
+- **Updates work again** — Unraid and other Docker hosts can pull a complete image for their architecture from the normal `latest` channel.
+- **Safer published releases** — a release is accepted only after the advertised image and each supported platform variant can be read and pulled.
+- **Clear recovery behavior** — a missing `latest` alias can be repaired only when its immutable release image is proven complete.
+
+### 📊 Quick Visual
+```text
+Container release verification
+Release index       [██████████] exact digest retained
+Platform variants   [██████████] every child manifest available
+Consumer pull       [██████████] clean native-platform startup path
+```
+
+### ✨ Highlights
+- The release process now checks that `latest` and the immutable version tag reference the same published image.
+- Automatic registry cleanup no longer removes GHCR image versions, protecting platform-specific image data behind a release tag.
+
+### 🔧 Reliability Improvements
+- Release safeguards catch missing platform manifests before a new image is published to self-hosted operators.
+- The release workflow retains Docker Hub tag cleanup while treating GHCR multi-platform images as a manifest graph rather than independently disposable versions.
+
+### 👥 Who This Helps
+- **Operators:** can use `latest` for normal updates without receiving a `manifest unknown` error.
+- **Pinned deployments:** have a known-good new immutable tag for roll-forward or rollback planning.
+- **Maintainers:** cannot accidentally reintroduce generic GHCR package cleanup through workflow edits.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## v0.48.0b-beta
 **Title: Policy review now shows the score that actually determines the route**
 

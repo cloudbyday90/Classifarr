@@ -36,7 +36,9 @@ const GITHUB_REF_NAME_EXPRESSION = githubExpression('github.ref_name');
 const GITHUB_REPOSITORY_EXPRESSION = githubExpression('github.repository');
 const GITHUB_SHA_EXPRESSION = githubExpression('github.sha');
 const GITHUB_TOKEN_EXPRESSION = githubExpression('github.token');
+const IMAGE_VARIABLE = '$' + '{IMAGE}';
 const IMAGE_DIGEST_VARIABLE = '$' + '{IMAGE_DIGEST}';
+const MANIFEST_DIGEST_VARIABLE = '$' + '{MANIFEST_DIGEST}';
 const SOURCE_REVISION_VARIABLE = '$' + '{SOURCE_REVISION}';
 
 export const DEFAULT_WORKFLOW_PATH = resolve(
@@ -128,6 +130,39 @@ function assertDockerReleaseOutput(dockerRelease) {
   }, 'docker-release.outputs');
 }
 
+function assertSafeContainerRetentionJob(job, name) {
+  assertExactObject(job.permissions, {}, `${name}.permissions`);
+  if (!Array.isArray(job.steps)) {
+    throw new Error(`${name}.steps must be an array.`);
+  }
+  const unsafePackageDeletion = job.steps.some(step =>
+    typeof step?.uses === 'string' && step.uses.startsWith('actions/delete-package-versions@')
+  );
+  if (unsafePackageDeletion) {
+    throw new Error(`${name} must not use generic GHCR package-version deletion.`);
+  }
+}
+
+function assertLatestAliasStep(step) {
+  assertExactObject(step.env, {
+    IMAGE_DIGEST: DOCKER_RELEASE_DIGEST_EXPRESSION,
+  }, 'Verify published latest image alias.env');
+
+  const requiredFragments = [
+    'set -euo pipefail',
+    'IMAGE="ghcr.io/cloudbyday90/classifarr"',
+    'RELEASE_REFERENCE="' + IMAGE_VARIABLE + '@' + IMAGE_DIGEST_VARIABLE + '"',
+    'test "$RELEASE_DIGEST" = "$IMAGE_DIGEST"',
+    'test "$LATEST_DIGEST" = "$IMAGE_DIGEST"',
+    'docker buildx imagetools inspect --raw "$RELEASE_REFERENCE"',
+    'docker buildx imagetools inspect "' + IMAGE_VARIABLE + '@' + MANIFEST_DIGEST_VARIABLE + '" >/dev/null',
+    'docker pull "' + IMAGE_VARIABLE + ':latest"',
+  ];
+  if (typeof step.run !== 'string' || requiredFragments.some(fragment => !step.run.includes(fragment))) {
+    throw new Error('Verify published latest image alias must validate the index, child manifests, and a clean pull.');
+  }
+}
+
 function assertConsumerSmokeJob(job) {
   assertTagOnlyJob(job, 'published-digest-consumer-smoke');
   assertJobNeeds(job, ['docker-release'], 'published-digest-consumer-smoke');
@@ -171,6 +206,12 @@ function assertConsumerSmokeJob(job) {
     requiredFragments.some(fragment => !smokeStep.run.includes(fragment))) {
     throw new Error('Run published digest consumer smoke must use the published GHCR digest and source revision.');
   }
+
+  assertLatestAliasStep(findStep(
+    job.steps,
+    'Verify published latest image alias',
+    'published-digest-consumer-smoke'
+  ));
 
   assertArtifactStep({
     artifactName: PUBLISHED_DIGEST_SMOKE_ARTIFACT_NAME,
@@ -323,6 +364,14 @@ export function loadWorkflow(workflowPath = DEFAULT_WORKFLOW_PATH) {
 export function validateReleaseCandidatePublicationWorkflow(workflow) {
   const jobs = asRecord(asRecord(workflow, 'workflow').jobs, 'workflow.jobs');
   assertDockerReleaseOutput(asRecord(jobs['docker-release'], 'workflow.jobs.docker-release'));
+  assertSafeContainerRetentionJob(
+    asRecord(jobs['cleanup-old-releases'], 'workflow.jobs.cleanup-old-releases'),
+    'cleanup-old-releases'
+  );
+  assertSafeContainerRetentionJob(
+    asRecord(jobs['cleanup-old-releases-manual'], 'workflow.jobs.cleanup-old-releases-manual'),
+    'cleanup-old-releases-manual'
+  );
   assertConsumerSmokeJob(
     asRecord(jobs['published-digest-consumer-smoke'], 'workflow.jobs.published-digest-consumer-smoke')
   );

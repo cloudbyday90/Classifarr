@@ -11,9 +11,11 @@ Archived changelogs: [August 2026 Pre-release Details](docs/changelog/CHANGELOG-
 
 Current development changes will be recorded here.
 
+## [0.48.0c-beta] - 2026-08-09
+
 ### Fixed
 
-- **Published image aliases** — Release tags will publish the verified GHCR and Docker Hub digest as `latest`, and a constrained evidence-producing workflow can repair a missing GHCR `latest` alias for an existing immutable release without rebuilding it.
+- **Published image integrity** — Release tags publish the verified GHCR and Docker Hub digest as `latest`; pre-publication validation now checks every referenced OCI manifest and a clean `latest` pull. GHCR package-version cleanup is disabled because it can orphan multi-platform child manifests; alias recovery rejects incomplete release indexes.
 
 ## [0.48.0b-beta] - 2026-08-09
 

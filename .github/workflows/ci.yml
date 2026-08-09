@@ -492,6 +492,28 @@ jobs:
             --image "ghcr.io/cloudbyday90/classifarr@${IMAGE_DIGEST}" \
             --source-revision "$SOURCE_REVISION"
 
+      - name: Verify published latest image alias
+        env:
+          IMAGE_DIGEST: ${{ needs.docker-release.outputs.image_digest }}
+        run: |
+          set -euo pipefail
+
+          IMAGE="ghcr.io/cloudbyday90/classifarr"
+          RELEASE_REFERENCE="${IMAGE}@${IMAGE_DIGEST}"
+          RELEASE_DIGEST="$(docker buildx imagetools inspect "$RELEASE_REFERENCE" | sed -n 's/^Digest:[[:space:]]*//p')"
+          LATEST_DIGEST="$(docker buildx imagetools inspect "${IMAGE}:latest" | sed -n 's/^Digest:[[:space:]]*//p')"
+
+          test "$RELEASE_DIGEST" = "$IMAGE_DIGEST"
+          test "$LATEST_DIGEST" = "$IMAGE_DIGEST"
+
+          MANIFEST_DIGESTS="$(docker buildx imagetools inspect --raw "$RELEASE_REFERENCE" | jq -er '[.manifests[]?.digest | select(type == "string")] | unique[]')"
+          test -n "$MANIFEST_DIGESTS"
+          while IFS= read -r MANIFEST_DIGEST; do
+            docker buildx imagetools inspect "${IMAGE}@${MANIFEST_DIGEST}" >/dev/null
+          done <<< "$MANIFEST_DIGESTS"
+
+          docker pull "${IMAGE}:latest"
+
       - name: Upload published digest consumer smoke evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -599,27 +621,13 @@ jobs:
           done
 
   cleanup-old-releases:
-    name: Cleanup Old Container Images
+    name: Cleanup Old Docker Hub Tags
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [docker-release, release-candidate-publication]
-    env:
-      # `actions/delete-package-versions@v5` still declares `runs.using: node20`.
-      # Force JavaScript actions in this job onto Node 24 ahead of the runner default flip.
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
-
-    permissions:
-      packages: write
+    permissions: {}
 
     steps:
-      - name: Delete old GHCR packages (keep last 5)
-        uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55 # v5
-        with:
-          package-name: 'classifarr'
-          package-type: 'container'
-          min-versions-to-keep: 5
-          delete-only-untagged-versions: false
-
       - name: Get Docker Hub token
         id: docker-token
         run: |
@@ -678,26 +686,12 @@ jobs:
           done <<< "$TAGS_TO_DELETE"
 
   cleanup-old-releases-manual:
-    name: Cleanup Old Container Images (Manual)
+    name: Cleanup Old Docker Hub Tags (Manual)
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' && inputs.mode == 'cleanup'
-    env:
-      # `actions/delete-package-versions@v5` still declares `runs.using: node20`.
-      # Force JavaScript actions in this job onto Node 24 ahead of the runner default flip.
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
-
-    permissions:
-      packages: write
+    permissions: {}
 
     steps:
-      - name: Delete old GHCR packages (keep last 5)
-        uses: actions/delete-package-versions@e5bc658cc4c965c472efe991f8beea3981499c55 # v5
-        with:
-          package-name: 'classifarr'
-          package-type: 'container'
-          min-versions-to-keep: 5
-          delete-only-untagged-versions: false
-
       - name: Get Docker Hub token
         id: docker-token
         run: |

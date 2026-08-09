@@ -357,7 +357,9 @@ The tag workflow performs these operations in order:
    documented Docker Compose and Unraid update channel; the version tag remains
    the immutable rollback and pinning reference.
 2. Starts the exact GHCR digest from a separate hosted consumer job and uploads
-   bounded `published-digest-consumer-smoke` evidence.
+   bounded `published-digest-consumer-smoke` evidence. It also verifies that
+   `latest` resolves to that digest, every referenced OCI manifest is readable,
+   and a clean native-platform `docker pull` succeeds before publication.
 3. Validates the tag against all package-lock and package versions plus the
    public UI version, then revalidates the CI readout and consumer evidence
    against the tag, source revision, and digest. It uploads
@@ -420,14 +422,26 @@ docker buildx imagetools inspect ghcr.io/cloudbyday90/classifarr:vX.X.Xa-beta
 docker buildx imagetools inspect ghcr.io/cloudbyday90/classifarr:latest
 ```
 
-If `latest` is missing or resolves to a different digest, do not rebuild the
-image, republish the immutable version tag, or delete the GitHub release.
+If `latest` is missing or resolves to a different digest, first confirm that the
+version tag itself pulls cleanly. Do not rebuild the image, republish the
+immutable version tag, or delete the GitHub release.
 Dispatch **Promote Published Release Image Alias** from `main` and set
 `source_tag` to the published immutable `v*` release tag. The workflow rejects
-draft or mutable releases, copies the exact OCI index bytes to `:latest`,
-verifies the digests match, and uploads `published-release-image-alias-promotion`
-evidence. This is the only supported recovery path for an existing release
-image.
+draft or mutable releases and incomplete OCI indexes, copies the exact OCI index
+bytes to `:latest`, confirms all referenced manifests plus a native-platform
+pull are available, verifies the digests match, and uploads
+`published-release-image-alias-promotion` evidence. This is the only supported
+recovery path for an otherwise healthy existing release image. If the version
+tag itself does not pull, publish a corrective release on a new tag instead.
+
+### Container Image Retention
+
+Do not use generic GHCR package-version deletion for this multi-platform image.
+An OCI index references platform-specific manifests that can appear untagged in
+package-version inventory; removing those entries can make a still-tagged image
+unpullable. Automatic retention is limited to Docker Hub tags. Review GHCR
+storage manually with manifest-reference awareness and preserve every child of
+each retained release index.
 
 ## 10. Record Existing-Installation Acceptance
 
