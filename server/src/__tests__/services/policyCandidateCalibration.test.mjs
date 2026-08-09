@@ -27,6 +27,22 @@ describe('policyCandidateCalibration', () => {
     }));
   });
 
+  test('does not erase identity evidence for an advisory observed-profile difference', () => {
+    const result = calibratePolicyCandidate(candidate(80, {
+      primary_viability: 'identity_evidence',
+      evidence_class: 'identity',
+      primary_anchor_eligible: true,
+      profile_hard_excluded: true,
+      profile_observed_absence_advisory: true,
+    }));
+
+    expect(result.score).toBe(80);
+    expect(result.candidate_diagnostics.score_calibration).toEqual(expect.objectContaining({
+      applied: false,
+      reason_code: 'strong_evidence',
+    }));
+  });
+
   test('demotes compatibility-only evidence with multiplier and cap', () => {
     const result = calibratePolicyCandidate(candidate(92, {
       primary_viability: 'compatibility_only',

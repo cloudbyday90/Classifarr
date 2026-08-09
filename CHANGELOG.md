@@ -14,6 +14,7 @@ Current development changes will be recorded here.
 ### Fixed
 
 - **Release provenance repository normalization** — Canonicalized the tag-workflow GHCR image repository to lowercase and enforce it in the provenance contract so attestation verification receives a valid OCI reference.
+- **Declared-policy versus profile authority** — Prevented an inferred library-profile absence from erasing an active native identity match, falling through to legacy AI classification, or hiding the policy evidence needed for a safe operator decision. Destination labels no longer participate in candidate ordering.
 
 ## [0.48.0-beta] - 2026-08-09
 

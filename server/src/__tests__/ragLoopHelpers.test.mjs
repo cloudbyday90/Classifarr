@@ -484,6 +484,39 @@ describe('ragLoopHelpers', () => {
             expect(gate.reason).toBe('profile_hard_exclusion');
         });
 
+        test('policy recheck gate retains an eligible identity candidate with an advisory profile difference', () => {
+            const gate = evaluatePolicyRecheckGate({
+                policyBefore: { action: 'prompt_select', confidence: 50 },
+                policyAfter: {
+                    action: 'prompt_confirm',
+                    confidence: 80,
+                    ranked: [
+                        {
+                            library_id: 14,
+                            score: 80,
+                            candidate_diagnostics: {
+                                primary_viability: 'identity_evidence',
+                                primary_anchor_eligible: true,
+                                profile_hard_excluded: false,
+                                profile_observed_absence: true,
+                                profile_observed_absence_advisory: true,
+                            },
+                        },
+                    ],
+                },
+                pass1Diagnostics: { topSimilarity: 0.50, marginPoints: 5 },
+                pass2Diagnostics: { topSimilarity: 0.74, marginPoints: 35 },
+                config: {
+                    policy_recheck_min_similarity_delta: 0.08,
+                    policy_recheck_min_margin_delta: 10,
+                    policy_recheck_min_confidence_gain: 5,
+                },
+            });
+
+            expect(gate.shouldAdopt).toBe(true);
+            expect(gate.reason).toBe('policy_upgrade_accepted');
+        });
+
         test('comparePassResults blocks AI rerun adoption when selected policy anchor is weak', () => {
             const compare = comparePassResults({
                 baselineResult: { confidence: 65, library: { id: 15 } },

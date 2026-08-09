@@ -60,7 +60,7 @@ Apply deterministic caps to weak evidence classes:
 - compatibility-only: multiplier `0.60`, cap `55`,
 - profile-only: multiplier `0.65`, cap `60`,
 - RAG-only: multiplier `0.70`, cap `60`,
-- negative conflict: multiplier `0`, cap `0`.
+- negative conflict: multiplier `0`, cap `0` for a failed strict policy constraint or a profile-only conflict with no declared identity evidence.
 
 Pros:
 
@@ -74,7 +74,7 @@ Cons:
 
 ### 4. Keep Strong Evidence Unchanged
 
-Do not calibrate identity or multi-source candidates unless they have a negative conflict.
+Do not calibrate identity or multi-source candidates unless they have a negative conflict. An observed library-profile absence remains diagnostic when it differs from an active declared native identity rule; it is not a policy veto.
 
 Pros:
 
@@ -102,7 +102,7 @@ An `identity_evidence` candidate with score `70` now outranks a `compatibility_o
 
 A profile-only or RAG-only candidate can still appear in manual review, but it no longer reaches confirm or auto authority purely through a high raw score.
 
-A negative-conflict candidate calibrates to `0` and is removed from ranked results.
+A negative-conflict candidate calibrates to `0` and is removed from ranked results. Profile absence can still suppress a profile-only or RAG-only candidate, but cannot erase an active declared native identity match.
 
 ## Security and Privacy Boundaries
 

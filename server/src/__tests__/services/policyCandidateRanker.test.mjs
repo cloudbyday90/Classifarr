@@ -116,6 +116,29 @@ describe('PolicyCandidateRanker', () => {
       expect(ranked.map(e => e.policy_id)).toEqual([2]);
     });
 
+    it('retains an identity candidate when observed profile absence is advisory', async () => {
+      const ranked = await ranker.rankResults([
+        makeEval({
+          id: 1,
+          score: 80,
+          candidateDiagnostics: {
+            primary_viability: 'identity_evidence',
+            evidence_class: 'identity',
+            primary_anchor_eligible: true,
+            profile_hard_excluded: false,
+            profile_observed_absence: true,
+            profile_observed_absence_advisory: true,
+          },
+        }),
+      ]);
+
+      expect(ranked).toEqual([expect.objectContaining({
+        policy_id: 1,
+        raw_score: 80,
+        score: 80,
+      })]);
+    });
+
     it('uses deterministic secondary ordering for equal scores', async () => {
       const evals = [
         makeEval({ id: 2, score: 80 }),
@@ -124,6 +147,25 @@ describe('PolicyCandidateRanker', () => {
 
       const ranked = await ranker.rankResults(evals);
       expect(ranked.map((evaluation) => evaluation.policy_id)).toEqual([1, 2]);
+    });
+
+    it('does not use mutable library or policy labels as a ranking key', async () => {
+      const first = {
+        ...makeEval({ id: 1, score: 80 }),
+        source: 'first',
+        library_name: 'Renamed destination',
+        policy_name: 'Renamed policy',
+      };
+      const second = {
+        ...makeEval({ id: 1, score: 80 }),
+        source: 'second',
+        library_name: 'Another destination',
+        policy_name: 'Another policy',
+      };
+
+      const ranked = await ranker.rankResults([first, second]);
+
+      expect(ranked.map((evaluation) => evaluation.source)).toEqual(['first', 'second']);
     });
 
     it('normalizes invalid thresholds on ranked evaluations', async () => {

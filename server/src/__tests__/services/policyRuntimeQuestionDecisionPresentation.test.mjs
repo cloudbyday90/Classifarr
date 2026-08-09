@@ -77,6 +77,32 @@ describe('policyRuntimeQuestionDecisionPresentation', () => {
     });
   });
 
+  test('explains when observed profile absence is advisory to declared intent', () => {
+    const presentation = buildPolicyRuntimeQuestionDecisionPresentation({
+      classification: { confidence: 80 },
+      question: {
+        meta: {
+          candidates: [{
+            library_id: 5,
+            candidate_diagnostics: {
+              native_intent_runtime: {
+                eligible: true,
+                rule_counts: { purpose: 1 },
+              },
+              profile_observed_absence_advisory: true,
+            },
+          }],
+        },
+      },
+      candidateDestinations: candidates,
+    });
+
+    expect(presentation.deterministic.evidence).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'declared_intent' }),
+      expect.objectContaining({ id: 'observed_profile_difference' }),
+    ]));
+  });
+
   test('states when the AI verification aligns with the deterministic destination', () => {
     const presentation = buildPolicyRuntimeQuestionDecisionPresentation({
       classification: {

@@ -49,7 +49,7 @@ function normalizeScore(score) {
 
 function getCalibrationRule(candidate = {}) {
   const diagnostics = candidate?.candidate_diagnostics || {};
-  if (diagnostics.evidence_class === 'negative_conflict' || diagnostics.profile_hard_excluded) {
+  if (diagnostics.evidence_class === 'negative_conflict') {
     return CALIBRATION_RULES.negative_conflict;
   }
 

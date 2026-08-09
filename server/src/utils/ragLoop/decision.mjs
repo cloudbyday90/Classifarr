@@ -220,12 +220,10 @@ function candidateDiagnosticsDisqualifyAdoption(diagnostics = null) {
     return null;
   }
 
-  if (diagnostics.profile_hard_excluded === true) {
-    return 'profile_hard_exclusion';
-  }
-
   if (diagnostics.primary_anchor_eligible === false) {
-    return 'weak_policy_anchor';
+    return diagnostics.profile_hard_excluded === true
+      ? 'profile_hard_exclusion'
+      : 'weak_policy_anchor';
   }
 
   return null;

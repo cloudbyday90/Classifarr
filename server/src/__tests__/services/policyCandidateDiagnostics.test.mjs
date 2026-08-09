@@ -4,6 +4,7 @@ import {
   inferPresetEvidenceMode,
   isWeakCandidateViability,
   hasProfileHardExclusion,
+  hasProfileObservedAbsence,
 } from '../../services/policyCandidateDiagnostics.mjs';
 
 describe('policyCandidateDiagnostics', () => {
@@ -197,6 +198,86 @@ describe('policyCandidateDiagnostics', () => {
       suppression_reasons: expect.arrayContaining(['profile_hard_exclusion']),
     }));
     expect(isWeakCandidateViability(diagnostics)).toBe(true);
+  });
+
+  test('keeps declared identity evidence eligible when profile absence disagrees', () => {
+    const profileDiagnostics = {
+      schema_version: 1,
+      available: true,
+      exclusions: {
+        ratings: [{ value: 'TV-14', score_delta: -50 }],
+        genres: [],
+        keywords: [],
+      },
+    };
+    const policy = {
+      policy_runtime_authority: { sourceId: 'native_intent' },
+      policy_intent_contract: {
+        source: 'native_intent',
+        purpose: [{
+          signal_type: 'genres',
+          values: { require_any: ['Mystery', 'Drama'] },
+        }],
+      },
+    };
+
+    const diagnostics = buildCandidateDiagnostics(
+      policy,
+      { intent: 80, preset: 0, profile: 0, pattern: 0, rag: 0, history: 0 },
+      null,
+      { profileDiagnostics },
+    );
+
+    expect(hasProfileObservedAbsence(profileDiagnostics)).toBe(true);
+    expect(hasProfileHardExclusion(profileDiagnostics)).toBe(true);
+    expect(diagnostics).toEqual(expect.objectContaining({
+      primary_viability: CANDIDATE_VIABILITY.IDENTITY_EVIDENCE,
+      evidence_class: 'identity',
+      primary_anchor_eligible: true,
+      profile_hard_excluded: false,
+      profile_observed_absence: true,
+      profile_observed_absence_advisory: true,
+      advisory_reasons: ['profile_observed_absence'],
+    }));
+    expect(diagnostics.suppression_reasons).not.toContain('profile_hard_exclusion');
+    expect(isWeakCandidateViability(diagnostics)).toBe(false);
+  });
+
+  test.each([
+    ['rating', 'R'],
+    ['rating', 'PG-13'],
+    ['rating', 'TV-14'],
+    ['rating', 'TV-MA'],
+    ['genre', 'Horror'],
+    ['keyword', 'crime'],
+  ])('treats observed %s absence (%s) as advisory for declared identity evidence', (kind, value) => {
+    const exclusions = { ratings: [], genres: [], keywords: [] };
+    exclusions[`${kind}s`].push({ value, score_delta: -50 });
+
+    const diagnostics = buildCandidateDiagnostics(
+      {
+        policy_runtime_authority: { sourceId: 'native_intent' },
+        policy_intent_contract: {
+          source: 'native_intent',
+          purpose: [{
+            signal_type: 'genres',
+            values: { require_any: ['Mystery', 'Drama'] },
+          }],
+        },
+      },
+      { intent: 80, preset: 0, profile: 0, pattern: 0, rag: 0, history: 0 },
+      null,
+      { profileDiagnostics: { schema_version: 1, available: true, exclusions } },
+    );
+
+    expect(diagnostics).toEqual(expect.objectContaining({
+      primary_viability: CANDIDATE_VIABILITY.IDENTITY_EVIDENCE,
+      evidence_class: 'identity',
+      primary_anchor_eligible: true,
+      profile_hard_excluded: false,
+      profile_observed_absence: true,
+      profile_observed_absence_advisory: true,
+    }));
   });
 
   test('marks strict policy constraint failures as negative conflicts', () => {

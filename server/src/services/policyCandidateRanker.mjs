@@ -39,12 +39,7 @@ function compareRankedEvaluations(left, right) {
     return policyDelta;
   }
 
-  const libraryNameDelta = String(left.library_name || '').localeCompare(String(right.library_name || ''));
-  if (libraryNameDelta !== 0) {
-    return libraryNameDelta;
-  }
-
-  return String(left.policy_name || '').localeCompare(String(right.policy_name || ''));
+  return 0;
 }
 
 export class PolicyCandidateRanker {

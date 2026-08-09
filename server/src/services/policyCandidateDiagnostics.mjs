@@ -143,7 +143,7 @@ export function inferPresetEvidenceMode(policy, scores = {}) {
   return null;
 }
 
-export function hasProfileHardExclusion(profileDiagnostics = null) {
+export function hasProfileObservedAbsence(profileDiagnostics = null) {
   const exclusions = profileDiagnostics?.exclusions;
   if (!exclusions || typeof exclusions !== 'object') {
     return false;
@@ -152,9 +152,12 @@ export function hasProfileHardExclusion(profileDiagnostics = null) {
   return Object.values(exclusions).some((value) => Array.isArray(value) && value.length > 0);
 }
 
+// Retained for internal callers while profile diagnostics move to accurate terminology.
+export const hasProfileHardExclusion = hasProfileObservedAbsence;
+
 export function buildCandidateDiagnostics(policy, scores = {}, agreement = null, details = {}) {
   const presetEvidenceMode = inferPresetEvidenceMode(policy, scores);
-  const profileHardExcluded = hasProfileHardExclusion(details.profileDiagnostics);
+  const profileObservedAbsence = hasProfileObservedAbsence(details.profileDiagnostics);
   const constraintDiagnostics = details.constraintDiagnostics || null;
   const policyConstraintFailed = hasPolicyConstraintFailure(constraintDiagnostics);
   const positiveSources = {
@@ -221,12 +224,20 @@ export function buildCandidateDiagnostics(policy, scores = {}, agreement = null,
     primaryViability = CANDIDATE_VIABILITY.MULTI_SOURCE_SUPPORT;
   }
 
+  const profileAbsenceAdvisory = profileObservedAbsence &&
+    primaryViability === CANDIDATE_VIABILITY.IDENTITY_EVIDENCE;
+  const profileHardExcluded = profileObservedAbsence && !profileAbsenceAdvisory;
+
   const suppressionReasons = [];
+  const advisoryReasons = [];
   if (policyConstraintFailed) {
     suppressionReasons.push('policy_constraint_conflict');
   }
   if (profileHardExcluded) {
     suppressionReasons.push('profile_hard_exclusion');
+  }
+  if (profileAbsenceAdvisory) {
+    advisoryReasons.push('profile_observed_absence');
   }
   if (WEAK_CANDIDATE_VIABILITY.has(primaryViability)) {
     suppressionReasons.push('weak_primary_evidence');
@@ -260,6 +271,9 @@ export function buildCandidateDiagnostics(policy, scores = {}, agreement = null,
     primary_anchor_eligible: primaryAnchorEligible,
     suppression_reasons: suppressionReasons,
     profile_hard_excluded: profileHardExcluded,
+    profile_observed_absence: profileObservedAbsence,
+    profile_observed_absence_advisory: profileAbsenceAdvisory,
+    advisory_reasons: advisoryReasons,
     positive_sources: positiveSources,
     drivers,
     agreement_boosted: (agreement?.multiplier || 1) > 1,

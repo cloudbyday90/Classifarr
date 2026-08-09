@@ -36,7 +36,7 @@ Classify each policy candidate into explicit evidence classes:
 - `compatibility`: broad match that says the item can fit, but does not prove destination.
 - `profile_only`: historical profile affinity without corroboration.
 - `rag_only`: retrieval support without deterministic corroboration.
-- `negative_conflict`: hard profile exclusion or similar contradiction.
+- `negative_conflict`: a failed strict policy constraint, or a profile-only conflict with no declared identity evidence.
 
 Pros:
 - Explains why high score does not always mean high authority.
@@ -51,7 +51,7 @@ Cons:
 
 Keep all candidates visible, but suppress candidates from primary anchoring when they have:
 
-- profile hard exclusions,
+- observed profile absence when no declared identity rule matches,
 - weak primary evidence (`compatibility_only`, `profile_only`, `rag_improved`),
 - compatibility plus profile only, with no RAG/history/pattern corroboration.
 
@@ -100,7 +100,7 @@ Cons:
 - Candidate diagnostics now include `evidence_class`, `profile_hard_excluded`, `primary_anchor_eligible`, and `suppression_reasons`.
 - Broad generic genre and prefer-only keyword preset signals are compatibility evidence unless explicit semantics override them.
 - Policy question candidate ordering promotes eligible candidates ahead of weak or excluded anchors while retaining weak candidates as options.
-- Policy recheck and AI rerun adoption are blocked when the selected candidate has a hard profile exclusion or weak primary anchor.
+- Policy recheck and AI rerun adoption are blocked when the selected candidate has a profile-derived conflict without declared identity evidence or a weak primary anchor. A declared native identity match retains authority over an observed-profile difference.
 - RAG loop traces now persist bounded `retrieval_evidence` snapshots, copied to `classification_details.rag_evidence` for easier History consumption.
 - History detail modal renders the sanitized RAG evidence snapshot alongside profile scoring and targeted re-check trace details.
 
@@ -108,7 +108,7 @@ Cons:
 
 For the `Office Romance` failure shape:
 
-- `Family` remains visible as an evidence candidate, but a hard `R` rating profile exclusion marks it `negative_conflict` and ineligible as a primary anchor.
+- `Family` remains visible as an evidence candidate, but an observed `R` absence without declared identity support marks it `negative_conflict` and ineligible as a primary anchor.
 - `Comedy and Standup` can still receive compatibility credit from `Comedy`, but broad comedy evidence alone does not establish stand-up identity and cannot be the primary anchor without stronger corroboration.
 - `Movies` can become the first manual-review option when it has eligible corroborated evidence.
 - AI rerun cannot replace the baseline with a weak policy anchor just because its confidence improved.

@@ -80,6 +80,12 @@ function buildEvidenceFacts({ candidate, destinationName }) {
       label: `Observed contents of ${destinationName} support this match.`,
     });
   }
+  if (diagnostics.profile_observed_absence_advisory === true) {
+    facts.push({
+      id: 'observed_profile_difference',
+      label: `Observed library history differs, but does not override the declared policy intent for ${destinationName}.`,
+    });
+  }
   if (positiveSources.pattern === true) {
     facts.push({
       id: 'learned_pattern',
