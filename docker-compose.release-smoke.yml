@@ -1,0 +1,41 @@
+# Isolated consumer-boundary release smoke. Run only through
+# scripts/run-published-digest-consumer-smoke.mjs, which accepts a verified
+# immutable image digest and tears this project down after the check.
+services:
+  classifarr:
+    image: ${CLASSIFARR_RELEASE_SMOKE_IMAGE:?A published image digest is required.}
+    pull_policy: always
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: UTC
+      FORCE_SECURE_COOKIES: "false"
+      NODE_OPTIONS: --max-old-space-size=1536
+      TASK_QUEUE_RETENTION_DAYS: "7"
+      PGVECTOR_RUNTIME_STAGING: auto
+    volumes:
+      - classifarr_release_smoke_data:/app/data
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run/postgresql:rw,noexec,nosuid,nodev,uid=1000,gid=1000,mode=770
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:21324/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+      retries: 3
+    labels:
+      io.classifarr.release-smoke: "true"
+
+volumes:
+  classifarr_release_smoke_data:

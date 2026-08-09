@@ -86,10 +86,10 @@ the expected repository, signer workflow, source revision, GitHub-hosted runner
 boundary, and GitHub trust root. See [Container Image Provenance Attestation
 And Verification](container-image-provenance-attestation-and-verification.md).
 
-The next release-execution task is **10R.4.2 Published Digest Consumer Smoke
-Acceptance**. Once a version and source revision are selected, pull the exact
-published digest, verify it from the consumer boundary, and run the supported
-Compose smoke and health checks. Do not treat provenance as a substitute for
+**10R.4.2 Published Digest Consumer Smoke Acceptance** is now implemented.
+Once a version and source revision are selected, its digest-only runner pulls
+the exact published digest, verifies it from the consumer boundary, and runs an
+isolated supported-Compose smoke and health check. Do not treat provenance as a substitute for
 CI acceptance, protected installation approval, or compatibility-removal
 closure.
 
@@ -102,8 +102,8 @@ closure.
 3. Keep compatibility-removal closure separate and fail closed until its
    approved evidence chain exists.
 4. Require the 10R.4.1 provenance verification to pass for every release tag,
-   then complete 10R.4.2 consumer-side digest smoke acceptance before
-   communicating a selected release as available.
+   then execute 10R.4.2 consumer-side digest smoke acceptance and retain its
+   evidence before communicating a selected release as available.
 
 ## Research Basis
 

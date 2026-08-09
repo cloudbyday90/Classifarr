@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Published Digest Consumer Smoke**: Added a digest-only release-consumer
+  smoke command that verifies the expected GitHub provenance before starting
+  the published GHCR or Docker Hub image in an isolated, no-port, no-build
+  Compose project. It checks application and database readiness, always removes
+  its disposable volume, writes only bounded release evidence, and has a CI
+  contract gate preventing unsafe Compose drift.
+
 - **Container Image Provenance**: Tag releases now attach GitHub build
   provenance to the immutable multi-architecture digest in both GHCR and Docker
   Hub, then verify the expected repository, signer workflow, source revision,

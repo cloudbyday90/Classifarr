@@ -60,6 +60,11 @@ jobs:
           cd server
           npm run check:release-provenance
 
+      - name: Check published digest consumer smoke Compose contract
+        run: |
+          cd server
+          npm run check:release-consumer-smoke
+
       - name: Validate server dependency tree
         run: |
           cd server

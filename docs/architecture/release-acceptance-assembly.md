@@ -260,10 +260,13 @@ decision.
 
 ## Next Task
 
-The next repository release-execution task is **10R.4.2 Published Digest
-Consumer Smoke Acceptance** after a release candidate version and source
-revision are selected. It will verify and smoke-test the exact published image
-digest without treating that evidence as protected installation approval. The
-parallel **8R.36.11 Compatibility-Removal Evidence Regeneration** task still
-requires a current approved active-installation completion artifact and remains
-separate from routine policy automation.
+**10R.4.2 Published Digest Consumer Smoke Acceptance** is implemented. It
+accepts only an exact published Classifarr digest, verifies it from the consumer
+boundary, and starts it in an isolated bounded Compose project before producing
+redacted release evidence. The next repository release-execution task is
+**10R.4.3 Release Candidate Publication And Evidence Recording**: select a
+version and source revision, publish the tag, run 10R.4.2 against the attested
+digest, and retain the resulting evidence before communicating availability.
+The parallel **8R.36.11 Compatibility-Removal Evidence Regeneration** task
+still requires a current approved active-installation completion artifact and
+remains separate from routine policy automation.

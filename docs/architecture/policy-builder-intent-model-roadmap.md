@@ -12226,8 +12226,8 @@ Verification](container-image-provenance-attestation-and-verification.md).
 
 ### 10R.4.2 Published Digest Consumer Smoke Acceptance
 
-Status: next release-execution task after a release candidate version and
-source revision are selected.
+Status: implementation complete; release-specific execution is pending a
+selected release candidate version, source revision, and published digest.
 
 Intent: independently pull the exact released multi-architecture image digest,
 verify its provenance as a consumer, and perform bounded Compose startup and
@@ -12244,6 +12244,26 @@ Required outcome:
   titles, policy contents, or provider output.
 - The resulting evidence is release-specific and remains distinct from
   protected active-installation approval and compatibility-removal closure.
+
+Implemented design: [Published Digest Consumer Smoke Acceptance](published-digest-consumer-smoke-acceptance.md).
+
+### 10R.4.3 Release Candidate Publication And Evidence Recording
+
+Status: next release-execution task. This requires an intentional release
+candidate version and source-revision selection.
+
+Intent: publish and attest the selected tag, execute 10R.4.2 against the exact
+published digest, retain the bounded evidence with the release record, then
+communicate availability only when every release gate is satisfied.
+
+Required outcome:
+
+- The release record binds version, immutable source revision, immutable image
+  digest, provenance verification, and consumer smoke evidence.
+- No mutable tag, local source build, installation configuration, or unrelated
+  compatibility-removal artifact is substituted for that release evidence.
+- Publication remains blocked when provenance or consumer smoke acceptance is
+  absent, fails, or targets a different revision.
 
 ## Testing Strategy
 
