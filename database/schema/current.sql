@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-08-08T23:39:55.318Z
--- Latest Migration: 20260808_160000_single_active_pending_classification.sql
+-- Generated: 2026-08-09T00:01:00.755Z
+-- Latest Migration: 20260808_170000_policy_confirmation_pending_reason.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -13598,6 +13598,7 @@ FROM unnest(ARRAY[
     '20260804_120000_add_policy_runtime_pending_question_cleanup_audits.sql',
     '20260808_140000_upgrade_pgvector_to_0_8_6.sql',
     '20260808_150000_privacy_bound_recovery_diagnostics.sql',
-    '20260808_160000_single_active_pending_classification.sql'
+    '20260808_160000_single_active_pending_classification.sql',
+    '20260808_170000_policy_confirmation_pending_reason.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;
