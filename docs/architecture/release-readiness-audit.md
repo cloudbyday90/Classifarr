@@ -75,22 +75,23 @@ workflow, then rerun 8R.36.11 and the generated 8R.34 and 8R.35 audits.
 Neither historical JSON nor a local Docker Compose state can replace this
 artifact.
 
-## Supply-Chain Follow-Up
+## Supply-Chain Status
 
-The tag workflow currently validates and publishes images but does not create
-or verify a GitHub container image provenance attestation. GitHub documents
-that provenance attestations require the build workflow to grant
-`attestations: write` and `id-token: write`, publish an attestation for the
-image digest, and verify it with `gh attestation verify`. Therefore the next
-repository task is **10R.4.1 Container Image Provenance Attestation And
-Verification**:
+**10R.4.1 Container Image Provenance Attestation And Verification** is
+complete. The tag workflow now creates and verifies GitHub build provenance for
+the immutable multi-architecture digest published to GHCR and Docker Hub. It
+uses a SHA-pinned `actions/attest` action and grants only `attestations: write`,
+`contents: read`, `id-token: write`, and `packages: write`. Verification pins
+the expected repository, signer workflow, source revision, GitHub-hosted runner
+boundary, and GitHub trust root. See [Container Image Provenance Attestation
+And Verification](container-image-provenance-attestation-and-verification.md).
 
-1. attest the pushed container digest using a SHA-pinned GitHub action with the
-   minimum required workflow permissions;
-2. verify the image attestation against the repository and expected signer in
-   a release job; and
-3. publish the verified digest in release documentation without treating an
-   attestation as a substitute for tests or deployment approval.
+The next release-execution task is **10R.4.2 Published Digest Consumer Smoke
+Acceptance**. Once a version and source revision are selected, pull the exact
+published digest, verify it from the consumer boundary, and run the supported
+Compose smoke and health checks. Do not treat provenance as a substitute for
+CI acceptance, protected installation approval, or compatibility-removal
+closure.
 
 ## Recommendation Stack
 
@@ -100,8 +101,9 @@ Verification**:
    acceptance gate for one installation.
 3. Keep compatibility-removal closure separate and fail closed until its
    approved evidence chain exists.
-4. Implement 10R.4.1 before promoting the next production release so released
-   container images have verifiable provenance in addition to CI acceptance.
+4. Require the 10R.4.1 provenance verification to pass for every release tag,
+   then complete 10R.4.2 consumer-side digest smoke acceptance before
+   communicating a selected release as available.
 
 ## Research Basis
 

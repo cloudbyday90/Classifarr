@@ -80,7 +80,7 @@ the per-installation cutover evidence owned by Phase 8R.
 | 7R | Contract-complete foundation | Runtime decision, question, rebuild, verifier, rollback, and trace boundaries | Preserve through 5R and 8R authority/storage work |
 | 8R | Complete contracts with recurring evidence | Native lifecycle, installation evidence, CI-only retirement, and closure evidence | Fresh v3 validation passed on 2026-08-09; retain automatic policy conversion and obtain an approved active-installation completion artifact before compatibility-retirement closure |
 | 9R | Ongoing enforcement | Zero-debt durable naming and product-language gates | Preserve the baseline in every product change |
-| 10R | 10R.1-10R.4 complete; 10R.4.1 next | Isolated real-boundary acceptance for AI authority, deterministic policy decisions, provider recovery, existing installations, operational safety, and release evidence | Retain the CI manifest and protected installation-evidence workflow; add digest-bound container provenance attestation and verification before the next production promotion |
+| 10R | 10R.1-10R.4.1 complete; 10R.4.2 next | Isolated real-boundary acceptance for AI authority, deterministic policy decisions, provider recovery, existing installations, operational safety, release evidence, and verified image provenance | Retain the CI manifest and protected installation-evidence workflow; pull and smoke-test the exact verified published digest before the next production communication |
 
 ## Required Delivery Order
 
@@ -192,10 +192,15 @@ the per-installation cutover evidence owned by Phase 8R.
     until a comparable baseline exists. See [Release Acceptance
     Assembly](release-acceptance-assembly.md).
 24. **10R.4.1 Container Image Provenance Attestation And Verification** is
-    next. The release tag workflow must attest the pushed immutable image digest
-    and verify its repository and signer identity before production promotion.
-    This supplements, but does not replace, CI acceptance or installation
-    approval. See [Release Readiness Audit](release-readiness-audit.md).
+    complete. The tag workflow now attaches provenance to the immutable GHCR
+    and Docker Hub image subjects, verifies the expected repository, workflow,
+    source revision, and hosted-runner identity, and fails before downstream
+    release maintenance on a mismatch. See [Container Image Provenance
+    Attestation And Verification](container-image-provenance-attestation-and-verification.md).
+25. **10R.4.2 Published Digest Consumer Smoke Acceptance** is next after a
+    release candidate is selected. Pull the published digest, verify it from a
+    consumer boundary, and run bounded supported-Compose smoke validation. This
+    remains separate from installation approval and compatibility retirement.
 
 ## Phase 8R Boundaries
 

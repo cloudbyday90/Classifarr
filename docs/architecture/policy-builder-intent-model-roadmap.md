@@ -12201,7 +12201,7 @@ Design and implementation detail: [Release Acceptance Assembly](release-acceptan
 
 ### 10R.4.1 Container Image Provenance Attestation And Verification
 
-Status: next repository release-hardening task.
+Status: complete on 2026-08-09.
 
 Intent: bind each published release-image digest to its GitHub Actions build
 provenance and verify that binding before a release is promoted. The attestation
@@ -12221,7 +12221,29 @@ Required outcome:
   repository acceptance, installation approval, and compatibility-retirement
   closure.
 
-Design and current gap: [Release Readiness Audit](release-readiness-audit.md).
+Implemented design: [Container Image Provenance Attestation And
+Verification](container-image-provenance-attestation-and-verification.md).
+
+### 10R.4.2 Published Digest Consumer Smoke Acceptance
+
+Status: next release-execution task after a release candidate version and
+source revision are selected.
+
+Intent: independently pull the exact released multi-architecture image digest,
+verify its provenance as a consumer, and perform bounded Compose startup and
+health validation before communicating availability.
+
+Required outcome:
+
+- The release record identifies the immutable digest rather than relying on a
+  mutable tag.
+- Consumer-side verification requires the expected Classifarr repository,
+  signer workflow, and release source revision.
+- The supported Compose deployment starts from that digest and reports bounded
+  health and migration readiness without exporting configuration, secrets,
+  titles, policy contents, or provider output.
+- The resulting evidence is release-specific and remains distinct from
+  protected active-installation approval and compatibility-removal closure.
 
 ## Testing Strategy
 

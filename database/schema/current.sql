@@ -1,5 +1,5 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-08-09T00:46:30.227Z
+-- Generated: 2026-08-09T01:53:20.447Z
 -- Latest Migration: 20260809_010000_add_canonical_history_outcome_index.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
@@ -8921,8 +8921,8 @@ CASE
     ELSE ((((('title:'::text || (media_type)::text) || ':'::text) || lower(TRIM(BOTH FROM title))) || ':'::text) || COALESCE((year)::text, ''::text))
 END), (
 CASE
-    WHEN (((method)::text <> 'source_library'::text) AND ((status)::text = ANY ((ARRAY['completed'::character varying, 'corrected'::character varying, 'verified'::character varying, 'routed'::character varying])::text[]))) THEN 0
-    WHEN (((method)::text <> 'source_library'::text) AND ((status)::text = ANY ((ARRAY['awaiting_decision'::character varying, 'pending'::character varying, 'pending_retry'::character varying])::text[]))) THEN 1
+    WHEN (((method)::text <> 'source_library'::text) AND ((status)::text = ANY (ARRAY[('completed'::character varying)::text, ('corrected'::character varying)::text, ('verified'::character varying)::text, ('routed'::character varying)::text]))) THEN 0
+    WHEN (((method)::text <> 'source_library'::text) AND ((status)::text = ANY (ARRAY[('awaiting_decision'::character varying)::text, ('pending'::character varying)::text, ('pending_retry'::character varying)::text]))) THEN 1
     WHEN ((method)::text <> 'source_library'::text) THEN 2
     ELSE 3
 END), created_at DESC, id DESC);

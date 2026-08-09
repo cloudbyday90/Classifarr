@@ -25,6 +25,7 @@
     "lint": "npm run lint:tests && npm run lint:security",
     "lint:tests": "eslint \"src/__tests__/**/*.{js,mjs}\"",
     "lint:security": "eslint \"src/**/*.{js,mjs}\" --ignore-pattern \"src/__tests__/**\"",
+    "check:release-provenance": "node src/scripts/checkContainerImageProvenanceWorkflow.mjs",
     "lint:knip": "knip --reporter compact --no-progress --cache",
     "lint:knip:production": "knip --reporter compact --no-progress --cache --production --dependencies",
     "check-copyright": "node ../scripts/check-copyright.mjs",

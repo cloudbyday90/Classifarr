@@ -11,6 +11,17 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Container Image Provenance**: Tag releases now attach GitHub build
+  provenance to the immutable multi-architecture digest in both GHCR and Docker
+  Hub, then verify the expected repository, signer workflow, source revision,
+  and GitHub-hosted runner before downstream release maintenance. Added a
+  deterministic workflow-contract check that prevents provenance-permission
+  widening, mutable action references, subject drift, and signer drift.
+
+- **Schema Snapshot Reliability**: Regenerated the PostgreSQL 18 authoritative
+  schema snapshot after the canonical history-outcome index received its final
+  database rendering, restoring the containerized CI drift gate.
+
 - **Compatibility-Removal Evidence Regeneration**: Regenerated the fixed v3
   repository validation evidence and retained only explicitly allowed blocked
   closure diagnostics when active-installation removal approval is absent. The

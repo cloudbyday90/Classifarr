@@ -260,7 +260,10 @@ decision.
 
 ## Next Task
 
-The next operational task is **8R.36.11 Compatibility-Removal Evidence
-Regeneration** after a current protected installation-evidence artifact is
-available. It must regenerate the scoped 8R evidence and downstream audits;
-it remains separate from routine policy automation.
+The next repository release-execution task is **10R.4.2 Published Digest
+Consumer Smoke Acceptance** after a release candidate version and source
+revision are selected. It will verify and smoke-test the exact published image
+digest without treating that evidence as protected installation approval. The
+parallel **8R.36.11 Compatibility-Removal Evidence Regeneration** task still
+requires a current approved active-installation completion artifact and remains
+separate from routine policy automation.
