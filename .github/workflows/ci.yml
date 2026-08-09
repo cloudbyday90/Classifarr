@@ -389,6 +389,7 @@ jobs:
             cloudbyday90/classifarr
           tags: |
             type=ref,event=tag
+            type=raw,value=latest
 
       - name: Build and push Docker image
         id: build-and-push-image

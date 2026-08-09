@@ -1,0 +1,152 @@
+name: Promote Published Release Image Alias
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_tag:
+        description: Published immutable v* release tag to promote to ghcr.io/cloudbyday90/classifarr:latest
+        required: true
+        type: string
+
+jobs:
+  promote-latest:
+    name: Promote published GHCR digest to latest
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Promote immutable release manifest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          SOURCE_TAG: ${{ inputs.source_tag }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { createHash } from 'node:crypto';
+          import { mkdir, writeFile } from 'node:fs/promises';
+
+          const imageRepository = 'cloudbyday90/classifarr';
+          const sourceTag = String(process.env.SOURCE_TAG || '');
+          const repository = String(process.env.GITHUB_REPOSITORY || '');
+          const actor = String(process.env.GITHUB_ACTOR || '');
+          const githubToken = String(process.env.GITHUB_TOKEN || '');
+          const releaseTagPattern = /^v\d+\.\d+\.\d+(?:[a-z]+)?(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$/;
+          const acceptedManifestTypes = [
+            'application/vnd.oci.image.index.v1+json',
+            'application/vnd.docker.distribution.manifest.list.v2+json',
+          ].join(', ');
+
+          if (repository.toLowerCase() !== imageRepository) {
+            throw new Error(`Unexpected repository: ${repository}.`);
+          }
+          if (!releaseTagPattern.test(sourceTag)) {
+            throw new Error('source_tag must be a supported public v* release tag.');
+          }
+          if (!actor || !githubToken) {
+            throw new Error('GitHub Actions credentials are unavailable.');
+          }
+
+          const githubHeaders = {
+            accept: 'application/vnd.github+json',
+            authorization: `Bearer ${githubToken}`,
+            'x-github-api-version': '2022-11-28',
+          };
+          const releaseResponse = await fetch(
+            `https://api.github.com/repos/${repository}/releases/tags/${encodeURIComponent(sourceTag)}`,
+            { headers: githubHeaders },
+          );
+          if (!releaseResponse.ok) {
+            throw new Error(`Release lookup failed with HTTP ${releaseResponse.status}.`);
+          }
+          const release = await releaseResponse.json();
+          if (release.tag_name !== sourceTag || release.draft || !release.immutable) {
+            throw new Error('source_tag must identify a published immutable GitHub release.');
+          }
+
+          const basicAuth = Buffer.from(`${actor}:${githubToken}`).toString('base64');
+          const scope = `repository:${imageRepository}:pull,push`;
+          const registryTokenResponse = await fetch(
+            `https://ghcr.io/token?service=ghcr.io&scope=${encodeURIComponent(scope)}`,
+            { headers: { authorization: `Basic ${basicAuth}` } },
+          );
+          if (!registryTokenResponse.ok) {
+            throw new Error(`GHCR token request failed with HTTP ${registryTokenResponse.status}.`);
+          }
+          const registryToken = (await registryTokenResponse.json()).token;
+          if (!registryToken) {
+            throw new Error('GHCR did not return a registry token.');
+          }
+
+          const registryHeaders = {
+            accept: acceptedManifestTypes,
+            authorization: `Bearer ${registryToken}`,
+          };
+          const sourceResponse = await fetch(
+            `https://ghcr.io/v2/${imageRepository}/manifests/${encodeURIComponent(sourceTag)}`,
+            { headers: registryHeaders },
+          );
+          if (!sourceResponse.ok) {
+            throw new Error(`Source manifest lookup failed with HTTP ${sourceResponse.status}.`);
+          }
+          const mediaType = sourceResponse.headers.get('content-type')?.split(';', 1)[0];
+          if (!acceptedManifestTypes.split(', ').includes(mediaType)) {
+            throw new Error(`Source release must be a multi-platform image index, got ${mediaType || 'no content type'}.`);
+          }
+          const sourceManifest = new Uint8Array(await sourceResponse.arrayBuffer());
+          const sourceDigest = `sha256:${createHash('sha256').update(sourceManifest).digest('hex')}`;
+
+          const publishResponse = await fetch(
+            `https://ghcr.io/v2/${imageRepository}/manifests/latest`,
+            {
+              method: 'PUT',
+              headers: {
+                authorization: `Bearer ${registryToken}`,
+                'content-type': mediaType,
+              },
+              body: sourceManifest,
+            },
+          );
+          if (!publishResponse.ok) {
+            throw new Error(`latest promotion failed with HTTP ${publishResponse.status}.`);
+          }
+
+          const latestResponse = await fetch(
+            `https://ghcr.io/v2/${imageRepository}/manifests/latest`,
+            { headers: registryHeaders },
+          );
+          if (!latestResponse.ok) {
+            throw new Error(`latest verification failed with HTTP ${latestResponse.status}.`);
+          }
+          const latestManifest = new Uint8Array(await latestResponse.arrayBuffer());
+          const latestDigest = `sha256:${createHash('sha256').update(latestManifest).digest('hex')}`;
+          if (latestDigest !== sourceDigest) {
+            throw new Error(`latest digest mismatch: expected ${sourceDigest}, got ${latestDigest}.`);
+          }
+
+          const evidence = {
+            version: 'published_release_image_alias_promotion.v1',
+            source_tag: sourceTag,
+            source_digest: sourceDigest,
+            target_tag: 'latest',
+            target_digest: latestDigest,
+            release_id: release.id,
+            release_url: release.html_url,
+            promoted_at: new Date().toISOString(),
+          };
+          await mkdir('.tmp/ci', { recursive: true });
+          await writeFile('.tmp/ci/published-release-image-alias-promotion.json', `${JSON.stringify(evidence, null, 2)}\n`);
+          console.log(JSON.stringify(evidence));
+          NODE
+
+      - name: Upload promotion evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: published-release-image-alias-promotion
+          path: .tmp/ci/published-release-image-alias-promotion.json
+          if-no-files-found: error
+          retention-days: 90

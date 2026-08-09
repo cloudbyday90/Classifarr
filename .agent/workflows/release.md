@@ -352,7 +352,10 @@ gh run watch <run-id> --exit-status
 
 The tag workflow performs these operations in order:
 
-1. Builds, publishes, attests, and verifies the GHCR and Docker Hub digest.
+1. Builds, publishes, attests, and verifies the GHCR and Docker Hub digest. Each
+   validated release tag also publishes the same digest as `:latest` for the
+   documented Docker Compose and Unraid update channel; the version tag remains
+   the immutable rollback and pinning reference.
 2. Starts the exact GHCR digest from a separate hosted consumer job and uploads
    bounded `published-digest-consumer-smoke` evidence.
 3. Validates the tag against all package-lock and package versions plus the
@@ -404,6 +407,27 @@ If a GitHub release was already published, do not move, delete, or reuse that
 tag. Immutable releases prohibit doing so. Correct the release on a newer tag,
 rerun the full evidence chain, and avoid availability communication for the
 unverified release until the follow-up is published.
+
+### Repairing a Missing `latest` Alias
+
+After tag CI succeeds, verify that the public update alias resolves to the
+exact release digest. `latest` is an explicit OCI tag, not an automatic registry
+feature, so it must point to the same multi-platform image index as the release
+tag:
+
+```bash
+docker buildx imagetools inspect ghcr.io/cloudbyday90/classifarr:vX.X.Xa-beta
+docker buildx imagetools inspect ghcr.io/cloudbyday90/classifarr:latest
+```
+
+If `latest` is missing or resolves to a different digest, do not rebuild the
+image, republish the immutable version tag, or delete the GitHub release.
+Dispatch **Promote Published Release Image Alias** from `main` and set
+`source_tag` to the published immutable `v*` release tag. The workflow rejects
+draft or mutable releases, copies the exact OCI index bytes to `:latest`,
+verifies the digests match, and uploads `published-release-image-alias-promotion`
+evidence. This is the only supported recovery path for an existing release
+image.
 
 ## 10. Record Existing-Installation Acceptance
 

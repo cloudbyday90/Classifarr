@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Pre-release Details](docs/changelog/CHANGELOG-
 
 Current development changes will be recorded here.
 
+### Fixed
+
+- **Published image aliases** — Release tags will publish the verified GHCR and Docker Hub digest as `latest`, and a constrained evidence-producing workflow can repair a missing GHCR `latest` alias for an existing immutable release without rebuilding it.
+
 ## [0.48.0b-beta] - 2026-08-09
 
 ### Fixed
