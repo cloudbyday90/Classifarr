@@ -380,6 +380,14 @@ git tag -a vX.X.Xa-beta -m "vX.X.Xa-beta: re-release after CI fix"
 git push origin vX.X.Xa-beta
 ```
 
+If the multi-architecture Docker build fails during `npm ci` with a transient
+registry error such as `ETIMEDOUT`, first confirm that no GitHub release was
+created. Keep `npm ci` and lockfile verification intact; use npm's documented
+`fetch-retries` configuration in the Docker builder rather than a shell retry
+loop, `--force`, or a manual image publication. Rebuild the image locally,
+commit the focused fix, pass main-branch CI, and then follow the unpublished-tag
+replacement sequence above.
+
 If a GitHub release was already published, do not move, delete, or reuse that
 tag. Immutable releases prohibit doing so. Correct the release on a newer tag,
 rerun the full evidence chain, and avoid availability communication for the
