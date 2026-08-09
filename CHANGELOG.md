@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Pre-release Details](docs/changelog/CHANGELOG-
 
 Current development changes will be recorded here.
 
+### Fixed
+
+- **Release provenance repository normalization** — Canonicalized the tag-workflow GHCR image repository to lowercase and enforce it in the provenance contract so attestation verification receives a valid OCI reference.
+
 ## [0.48.0-beta] - 2026-08-09
 
 Detailed engineering history is retained in the [August 2026 pre-release archive](docs/changelog/CHANGELOG-2026-08-pre-release.md).

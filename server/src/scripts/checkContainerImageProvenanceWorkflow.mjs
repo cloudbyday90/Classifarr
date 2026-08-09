@@ -26,6 +26,7 @@ const IMAGE_DIGEST_VARIABLE = '$' + '{IMAGE_DIGEST}';
 
 export const ATTEST_ACTION_REFERENCE =
   'actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6';
+export const GHCR_IMAGE_NAME = 'cloudbyday90/classifarr';
 export const EXPECTED_SIGNER_WORKFLOW =
   `${GITHUB_REPOSITORY_EXPRESSION}/.github/workflows/ci.yml`;
 export const DEFAULT_WORKFLOW_PATH = resolve(
@@ -54,6 +55,10 @@ const EXPECTED_ATTESTATIONS = Object.freeze([
 const EXPECTED_DIGEST_EXPRESSION = githubExpression('steps.build-and-push-image.outputs.digest');
 const EXPECTED_BUILD_ACTION =
   'docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a';
+const EXPECTED_WORKFLOW_ENVIRONMENT = Object.freeze({
+  IMAGE_NAME: GHCR_IMAGE_NAME,
+  REGISTRY: 'ghcr.io',
+});
 
 function asRecord(value, label) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -159,7 +164,10 @@ export function loadWorkflow(workflowPath = DEFAULT_WORKFLOW_PATH) {
 }
 
 export function validateContainerImageProvenanceWorkflow(workflow) {
-  const jobs = asRecord(asRecord(workflow, 'workflow').jobs, 'workflow.jobs');
+  const parsedWorkflow = asRecord(workflow, 'workflow');
+  assertExactObject(parsedWorkflow.env, EXPECTED_WORKFLOW_ENVIRONMENT, 'workflow.env');
+
+  const jobs = asRecord(parsedWorkflow.jobs, 'workflow.jobs');
   const dockerRelease = asRecord(jobs['docker-release'], 'workflow.jobs.docker-release');
   const steps = dockerRelease.steps;
 

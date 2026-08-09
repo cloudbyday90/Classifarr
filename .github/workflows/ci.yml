@@ -20,7 +20,9 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  # OCI repository names must be lowercase. Keep this aligned with the
+  # published-digest consumer contract and Docker Hub image name.
+  IMAGE_NAME: cloudbyday90/classifarr
 
 jobs:
   build-and-test:

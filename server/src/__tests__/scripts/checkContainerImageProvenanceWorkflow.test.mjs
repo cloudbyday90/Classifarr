@@ -37,6 +37,14 @@ describe('checkContainerImageProvenanceWorkflow', () => {
       .toThrow('Verify container image provenance.env.EXPECTED_SIGNER_WORKFLOW');
   });
 
+  test('rejects a mixed-case GHCR repository before it can reach attestation verification', () => {
+    const workflow = structuredClone(loadWorkflow());
+    workflow.env.IMAGE_NAME = 'cloudbyday90/Classifarr';
+
+    expect(() => validateContainerImageProvenanceWorkflow(workflow))
+      .toThrow('workflow.env.IMAGE_NAME must equal "cloudbyday90/classifarr".');
+  });
+
   test('rejects a workflow that grants unneeded provenance metadata permission', () => {
     const workflow = structuredClone(loadWorkflow());
     workflow.jobs['docker-release'].permissions['artifact-metadata'] = 'write';
