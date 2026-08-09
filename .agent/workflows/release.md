@@ -388,6 +388,12 @@ loop, `--force`, or a manual image publication. Rebuild the image locally,
 commit the focused fix, pass main-branch CI, and then follow the unpublished-tag
 replacement sequence above.
 
+For this public repository, `gh attestation verify` must retain its default
+trusted roots. Do not add `--no-public-good`: GitHub publishes public-repository
+attestations through Sigstore Public Good, and that flag rejects the required
+release verification. Preserve the repository, signer-workflow, source-digest,
+and `--deny-self-hosted-runners` constraints.
+
 If a GitHub release was already published, do not move, delete, or reuse that
 tag. Immutable releases prohibit doing so. Correct the release on a newer tag,
 rerun the full evidence chain, and avoid availability communication for the

@@ -238,7 +238,6 @@ export function runPublishedDigestConsumerSmoke({
         '--source-digest',
         verifiedSourceRevision,
         '--deny-self-hosted-runners',
-        '--no-public-good',
       ],
       command: 'gh',
       commandRunner,

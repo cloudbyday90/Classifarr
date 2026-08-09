@@ -32,6 +32,7 @@ Release verification      [██████████] dependency and eviden
 - Release verification no longer fails on a duplicate diagnostics export, keeping dependency checks and acceptance evidence on the intended path.
 - The release guide includes a PowerShell-safe version-contract command for npm 12.
 - Container publication now tolerates transient npm registry connectivity failures without weakening dependency lockfile verification.
+- Public release images now complete their signed provenance verification using GitHub's supported public-repository trust path.
 
 ### 👥 Who This Helps
 - **Policy authors:** library intent remains stable even when observed collection history is sparse or stale.

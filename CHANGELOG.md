@@ -19,6 +19,7 @@ Current development changes will be recorded here.
 - **Declared-policy versus profile authority** — Prevented an inferred library-profile absence from erasing an active native identity match, falling through to legacy AI classification, or hiding the policy evidence needed for a safe operator decision. Destination labels no longer participate in candidate ordering.
 - **Release validation** — Removed a duplicate diagnostics export that blocked the dependency-declaration check and therefore the required release-acceptance readout.
 - **Multi-architecture image builds** — Retain `npm ci` lockfile integrity while increasing documented registry fetch retries so a transient ARM64 registry timeout does not abort an otherwise validated release image.
+- **Public image provenance verification** — Accept the Sigstore Public Good instance used for this public repository while continuing to require the exact repository, signer workflow, source revision, and GitHub-hosted runner.
 
 ## [0.48.0-beta] - 2026-08-09
 

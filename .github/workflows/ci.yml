@@ -438,8 +438,7 @@ jobs:
                 --repo "$SOURCE_REPOSITORY" \
                 --signer-workflow "$EXPECTED_SIGNER_WORKFLOW" \
                 --source-digest "$SOURCE_REVISION" \
-                --deny-self-hosted-runners \
-                --no-public-good; then
+                --deny-self-hosted-runners; then
                 return 0
               fi
 

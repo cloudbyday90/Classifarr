@@ -129,7 +129,8 @@ The verifier requires:
 - `--signer-workflow "$GITHUB_REPOSITORY/.github/workflows/ci.yml"`;
 - `--source-digest "$GITHUB_SHA"`;
 - `--deny-self-hosted-runners`; and
-- `--no-public-good`.
+- the default trusted roots, which include Sigstore Public Good for this public
+  repository.
 
 The workflow writes the verified digest and the two digest-qualified OCI URIs
 to the GitHub Actions job summary. It writes no credentials, Docker Hub token,
@@ -154,8 +155,7 @@ gh attestation verify \
   --repo cloudbyday90/Classifarr \
   --signer-workflow cloudbyday90/Classifarr/.github/workflows/ci.yml \
   --source-digest <release-commit-sha> \
-  --deny-self-hosted-runners \
-  --no-public-good
+  --deny-self-hosted-runners
 ```
 
 The command proves a signed builder identity and source binding. It does not

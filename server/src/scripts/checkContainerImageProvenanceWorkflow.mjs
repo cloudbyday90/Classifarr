@@ -144,7 +144,6 @@ function assertVerificationStep(step) {
     '--signer-workflow "$EXPECTED_SIGNER_WORKFLOW"',
     '--source-digest "$SOURCE_REVISION"',
     '--deny-self-hosted-runners',
-    '--no-public-good',
     `verify_image "oci://${ENV_REGISTRY_EXPRESSION}/${ENV_IMAGE_NAME_EXPRESSION}@${IMAGE_DIGEST_VARIABLE}"`,
     `verify_image "oci://docker.io/cloudbyday90/classifarr@${IMAGE_DIGEST_VARIABLE}"`,
     '>> "$GITHUB_STEP_SUMMARY"',
@@ -154,6 +153,12 @@ function assertVerificationStep(step) {
     if (!command.includes(fragment)) {
       throw new Error(`Verify container image provenance.run must contain ${JSON.stringify(fragment)}.`);
     }
+  }
+
+  if (command.includes('--no-public-good')) {
+    throw new Error(
+      'Verify container image provenance.run must not exclude the Sigstore Public Good instance used by public repositories.'
+    );
   }
 }
 

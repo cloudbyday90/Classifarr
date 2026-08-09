@@ -95,10 +95,13 @@ describe('publishedDigestConsumerSmoke', () => {
         '--signer-workflow',
         'cloudbyday90/Classifarr/.github/workflows/ci.yml',
         '--deny-self-hosted-runners',
-        '--no-public-good',
       ]),
       command: 'gh',
     }));
+    const provenanceInvocation = commandRunner.mock.calls
+      .map(([input]) => input)
+      .find(input => input.command === 'gh');
+    expect(provenanceInvocation.args).not.toContain('--no-public-good');
     expect(commandRunner).toHaveBeenCalledWith(expect.objectContaining({
       args: expect.arrayContaining([
         'up',

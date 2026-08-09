@@ -52,4 +52,15 @@ describe('checkContainerImageProvenanceWorkflow', () => {
     expect(() => validateContainerImageProvenanceWorkflow(workflow))
       .toThrow('docker-release.permissions must grant only');
   });
+
+  test('rejects a workflow that excludes the public-repository attestation trust root', () => {
+    const workflow = structuredClone(loadWorkflow());
+    const verificationStep = workflow.jobs['docker-release'].steps.find(
+      step => step.name === 'Verify container image provenance'
+    );
+    verificationStep.run += '\n  # Do not add this exclusion to public-repository verification.\n  --no-public-good';
+
+    expect(() => validateContainerImageProvenanceWorkflow(workflow))
+      .toThrow('must not exclude the Sigstore Public Good instance');
+  });
 });
