@@ -9,6 +9,10 @@ Archived changelogs: [August 2026 Pre-release Details](docs/changelog/CHANGELOG-
 
 ## [Unreleased]
 
+Current development changes will be recorded here.
+
+## [0.48.0-beta] - 2026-08-09
+
 Detailed engineering history is retained in the [August 2026 pre-release archive](docs/changelog/CHANGELOG-2026-08-pre-release.md).
 
 ### Added

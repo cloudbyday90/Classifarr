@@ -32,10 +32,15 @@ Current execution focus:
   now produces a passed or blocked manifest artifact, while a separate
   protected-environment workflow records active-installation evidence without
   coupling ordinary automation to a particular deployment.
-- **Next repository release hardening:** **10R.4.1 Container Image Provenance
-  Attestation And Verification** will attest each pushed release-image digest
-  and verify the attestation against the expected repository and signer. It
-  supplements CI acceptance and deployment approval; it cannot replace either.
+- **Completed:** **10R.4.1 Container Image Provenance Attestation And
+  Verification**. Tag releases now attest each pushed release-image digest and
+  verify it against the expected repository and signer. It supplements CI
+  acceptance and deployment approval; it cannot replace either.
+- **Current release candidate:** **v0.48.0-beta** is the intentional execution
+  of **10R.4.2 Published Digest Consumer Smoke Acceptance** and **10R.4.3
+  Release Candidate Publication And Evidence Recording**. Both release-specific
+  outcomes remain pending until the protected tag workflow publishes the exact
+  digest and retains its passed provenance, consumer-smoke, and release evidence.
 - **Current operational finding:** On 2026-08-09, **8R.36.11
   Compatibility-Removal Evidence Regeneration** produced passed v3 repository
   validation and bounded blocked diagnostics. The active-installation completion
@@ -60,8 +65,8 @@ active-installation prerequisite -> 8R.36.11 regeneration -> 8R.34/8R.35 current
 completed platform acceptance: 10R.1.1 -> 10R.1.2 -> 10R.1.3
 completed lifecycle acceptance: 10R.2.1 -> 10R.2.2 -> 10R.2.3
 completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3
-completed release acceptance: 10R.4
-next repository release hardening: 10R.4.1
+completed release hardening: 10R.4 -> 10R.4.1
+active release candidate: v0.48.0-beta -> 10R.4.2 -> 10R.4.3
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
 
@@ -11867,11 +11872,12 @@ Implementation status:
 
 ## Phase 10R: Production Acceptance And Operational Readiness
 
-Status: 10R.1 through 10R.4 complete. Task 10R.4.1 is the next repository
-release-hardening follow-up. Phase 10R turns completed service contracts into
-deterministic, installation-agnostic acceptance evidence. It does not create a
-second runtime workflow, require an operator dialog, or depend on live external
-providers.
+Status: 10R.1 through 10R.4.1 are complete. Release candidate `v0.48.0-beta`
+is executing 10R.4.2 and 10R.4.3; its release-specific evidence remains pending
+until the protected tag workflow publishes and verifies the exact digest. Phase
+10R turns completed service contracts into deterministic, installation-agnostic
+acceptance evidence. It does not create a second runtime workflow, require an
+operator dialog, or depend on live external providers.
 
 Intent: prove that the re-imagined policy platform works end-to-end through its
 real service boundaries while preserving the distinction between deterministic
@@ -12226,8 +12232,9 @@ Verification](container-image-provenance-attestation-and-verification.md).
 
 ### 10R.4.2 Published Digest Consumer Smoke Acceptance
 
-Status: implementation complete; release-specific execution is pending a
-selected release candidate version, source revision, and published digest.
+Status: implementation complete. Release candidate `v0.48.0-beta` is selected;
+release-specific execution remains pending its release commit, published digest,
+and passed protected tag workflow.
 
 Intent: independently pull the exact released multi-architecture image digest,
 verify its provenance as a consumer, and perform bounded Compose startup and
@@ -12249,8 +12256,9 @@ Implemented design: [Published Digest Consumer Smoke Acceptance](published-diges
 
 ### 10R.4.3 Release Candidate Publication And Evidence Recording
 
-Status: implementation complete on 2026-08-09; release-specific execution is
-pending an intentional release-candidate version and source-revision selection.
+Status: implementation complete on 2026-08-09. Release candidate
+`v0.48.0-beta` is selected; publication and evidence recording remain pending
+the release commit and the protected tag workflow.
 
 Intent: publish and attest the selected tag, execute 10R.4.2 against the exact
 published digest, retain the bounded evidence with the release record, then

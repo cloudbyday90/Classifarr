@@ -1,6 +1,48 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.47.5c-beta`. Package files use semver-safe versions such as `0.47.5-c.beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.48.0-beta`. Package files use semver-safe versions such as `0.48.0-beta`.
+
+## v0.48.0-beta
+**Title: Policies you can trust, clearer reviews, and safer AI assistance**
+
+> [!IMPORTANT]
+> Back up your database before updating, then allow startup migrations and policy reconciliation to finish. Supported existing policies are brought forward automatically; configurations needing attention are surfaced for maintenance rather than silently reinterpreted.
+
+### 🎉 What You'll Notice
+- **Create policies from the library you mean** — policy authoring starts with the selected media-server library and its observed context, then records the purpose, limits, review behavior, and routing target that define it.
+- **AI helps without taking control** — verified AI output can add bounded advisory context, but it cannot veto a deterministic policy match or choose a destination by itself.
+- **Review cards explain the decision** — Needs Attention shows the leading destination, policy score, confirmation and automatic thresholds, and the policy-backed reasons for a recommendation.
+- **One item, one decision** — duplicate pending decisions are safely superseded, retries are idempotent, and confirmations apply only to the decision you review.
+
+### 📊 Quick Visual
+```text
+v0.48.0-beta Snapshot
+Policy authority        [██████████] server-owned, deterministic decisions
+AI assistance           [██████████] advisory context, never a route veto
+Operator review         [██████████] one active decision with clear reasons
+Upgrade safety          [█████████░] native reconciliation and bounded recovery
+Release verification    [██████████] immutable image, provenance, consumer smoke
+```
+
+### ✨ Highlights
+- **Native policy lifecycle** — new and existing policies use a versioned, server-authoritative intent model that preserves routing and review behavior through supported upgrades.
+- **Reliable recovery** — provider failures, stale evidence, retries, restarts, and queue maintenance keep bounded operational state and preserve deterministic policy outcomes.
+- **Safer self-hosted operations** — the release pipeline verifies an immutable container image, its provenance, and a consumer startup check before release publication.
+
+### 🔧 Reliability Improvements
+- Classification history handles large installations more efficiently and returns a retryable response when PostgreSQL reaches its configured statement timeout.
+- Current client assets stay cacheable while stale content-hashed asset requests return a clean not-found response instead of an application error.
+- PostgreSQL 18, pgvector, fresh-install vector indexes, and task-queue retention received upgrade and recovery coverage.
+
+### 👥 Who This Helps
+- **Policy authors:** define what a destination means without tuning provider scores or relying on opaque AI disagreement.
+- **Reviewers:** confirm a clearly explained recommendation or choose a safer alternative without duplicate work.
+- **Operators:** upgrade with a reconciliation path, bounded maintenance states, and a release record tied to a verifiable container image.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
 
 ## v0.47.5c-beta
 **Title: RAG health fix, Docker startup hardening, and schema integrity guard**

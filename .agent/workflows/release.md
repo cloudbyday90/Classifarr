@@ -154,15 +154,9 @@ docker build -t classifarr:test .
 # the release snapshot. The live-container pg_dump can produce cosmetically
 # different CHECK constraint formatting from a fresh container, causing the
 # CI schema-drift check to fail even when the schema is functionally identical.
-# PowerShell: $env:IMAGE_NAME="classifarr:test"; npm run db:dump-schema:container
-IMAGE_NAME=classifarr:test npm run db:dump-schema:container
-IMAGE_NAME=classifarr:test npm run db:check-schema:container
-
 # Optional local guard: the host/compose-path snapshot check should also stay
 # green when the local environment matches the release image.
 npm run db:check-schema
-
-IMAGE_NAME=classifarr:test npm run docker:smoke:pgss
 
 # Check for dependency vulnerabilities
 npm --prefix server audit
@@ -183,6 +177,24 @@ npm run check-copyright
 
 # Optional but recommended: run full CI script locally
 npm run test:ci
+```
+
+Run the image-bound schema and smoke checks with the syntax for your shell:
+
+```powershell
+# PowerShell
+$env:IMAGE_NAME = "classifarr:test"
+npm run db:dump-schema:container
+npm run db:check-schema:container
+npm run docker:smoke:pgss
+Remove-Item Env:IMAGE_NAME
+```
+
+```bash
+# POSIX shells
+IMAGE_NAME=classifarr:test npm run db:dump-schema:container
+IMAGE_NAME=classifarr:test npm run db:check-schema:container
+IMAGE_NAME=classifarr:test npm run docker:smoke:pgss
 ```
 
 If `npm audit` finds vulnerabilities:
@@ -217,25 +229,33 @@ git commit -m "chore(ci): update coverage ratchet baseline for intentional chang
 ```
 
 If `db:check-schema:container` fails:
-```bash
+```powershell
 # Rebuild the committed snapshot from the same fresh image/path CI uses
 docker build -t classifarr:test .
-IMAGE_NAME=classifarr:test npm run db:dump-schema:container
+$env:IMAGE_NAME = "classifarr:test"
+npm run db:dump-schema:container
 git add database/schema/current.sql
 
 # Then rerun the guard to confirm there is no remaining drift
-IMAGE_NAME=classifarr:test npm run db:check-schema:container
+npm run db:check-schema:container
 npm run db:check-schema
+Remove-Item Env:IMAGE_NAME
 ```
 
+On POSIX shells, prefix each schema command with `IMAGE_NAME=classifarr:test`.
+
 If the Docker smoke check fails:
-```bash
+```powershell
 # Rebuild the verification image after your fix and rerun the full smoke suite.
 # The script is expected to create a fresh instance and remove its temporary
 # containers/volumes automatically after success or failure.
 docker build -t classifarr:test .
-IMAGE_NAME=classifarr:test npm run docker:smoke:pgss
+$env:IMAGE_NAME = "classifarr:test"
+npm run docker:smoke:pgss
+Remove-Item Env:IMAGE_NAME
 ```
+
+On POSIX shells, run `IMAGE_NAME=classifarr:test npm run docker:smoke:pgss`.
 
 The Docker smoke suite is a release gate. It must prove all of these before a tag is created:
 - A fresh instance boots cleanly.
