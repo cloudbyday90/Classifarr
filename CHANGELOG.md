@@ -13,37 +13,83 @@ Detailed engineering history is retained in the [August 2026 pre-release archive
 
 ### Added
 
-- **Native policy authoring and maintenance** — Delivered a library-first, accessible workflow for creating, inspecting, changing, and recovering native policy intent with profile-backed suggestions, bounded readiness guidance, optional templates, and revision-safe writes.
-- **Native intent lifecycle and storage** — Added automatic policy conversion, explicit migration planning, one-active-intent authority, transactional rollback/rebuild records, reconciliation state and alerts, and forward-only compatibility-preserving storage migrations.
-- **Evidence, decisions, and learning controls** — Added canonical evidence envelopes, provenance-aware candidate evaluation, bounded policy questions and resolutions, duplicate-safe pending decisions, and guarded learning from request, import, Discord, and manual-correction outcomes.
-- **Classification and RAG observability** — Added sanitized evidence snapshots, decision traces and stage timing, policy-candidate calibration, strict constraint evaluation, retrieval-recall audits, and canonical classification-history lifecycles.
-- **Provider-neutral web search** — Added provider configuration and settings for Tavily, Brave Search, and Serper with safe result normalization, quota-aware routing, cache and usage accounting, retention, health history, and calibration controls.
-- **Operator setup and notifications** — Added guarded Discord decision notifications plus consistent Radarr and Sonarr setup, connection testing, library mapping, and removal flows.
-- **Release and installation acceptance evidence** — Added CI and post-deployment acceptance artifacts that bind a release source revision, image digest, bounded operator attestation, and optional aggregate workload metric without reading installation configuration.
+- **Library-first native policy authoring** — Added an accessible destination-first workflow that starts with the selected media-server library, its observed collection, and the policy questions that define destination meaning.
+- **Bounded policy proposals** — Added short-lived, actor-bound proposal references, revision checks, typed allow-listed adjustments, idempotency keys, and one-time consumption so browsers submit commands rather than policy meaning.
+- **Native policy creation** — Added transactional, administrator-authorized native intent creation with advisory-lock coordination, durable receipt replay, bounded conflict outcomes, and a post-commit authority projection.
+- **Native policy maintenance** — Added persisted-policy entry classification, material-exception guidance, and revision-bound changes for purpose, hard limits, avoidance, helpful matches, routing targets, and review behavior.
+- **Accessible authoring controls** — Added keyboard-operable, labelled controls, visible focus handling, concise next-step feedback, scoped recovery actions, and browser acceptance coverage for the complete authoring workflow.
+- **Profile-backed policy context** — Added observed-library suggestions, profile freshness and recovery guidance, normalized rating distributions, and a post-upgrade repair path without treating AI or external metadata as policy authority.
+- **Native intent storage** — Added versioned headers, executable rules, routing references, validation state, migration events, and time-bounded rollback snapshots while excluding UI drafts, prompts, embeddings, and raw diagnostics.
+- **Conversion and reconciliation** — Added migration candidate reporting, conversion planning, scheduler-owned native-policy initialization, overlap protection, one-active-intent enforcement, and bounded non-convertible lifecycle state.
+- **Controlled rebuild and rollback** — Added fingerprinted rebuild proposals, comparison and acceptance gates, rollback snapshot persistence, replay-safe replacement, and structured strict-constraint conversion.
+- **Canonical policy evidence** — Added read-only evidence collectors and a canonical envelope for profiles, final outcomes, manual corrections, resolved decisions, routing outcomes, and normalized metadata.
+- **Evidence provenance controls** — Added deterministic ordering, deduplication, source ownership, freshness, contribution limits, fingerprints, and bounded quality states so repeated or untrusted input cannot gain policy authority.
+- **Deterministic decision contracts** — Added server-owned intent, readiness, runtime-decision, question-reduction, and route-outcome handoffs with reason codes, permitted actions, trace context, and audit boundaries.
+- **Policy-focused pending decisions** — Added versioned server-owned pending questions, safe leading-destination recommendations, alternative selection, answer replay protection, and one active decision per media identity.
+- **Guarded learning** — Added exact-item and outcome-only learning admission from completed runtime resolutions, requests, imports, Discord answers, and manual corrections without allowing them to create broad policy rules.
+- **AI authority capability modes** — Added inspectable local and cloud capability modes, shared normalized output handling, privacy-bounded telemetry, and explicit advisory treatment for unsupported, fallback, and non-strict responses.
+- **Provider recovery contracts** — Added versioned, redacted provider recovery states for disabled, transient, permanent, and malformed outcomes, including bounded retries and deterministic policy preservation.
+- **Classification evidence snapshots** — Added sanitized RAG first- and second-pass neighbor evidence, match counts, final-outcome versus input-signal views, and History detail projections.
+- **Decision observability** — Added W3C-compatible decision trace correlation, bounded stage timing, stable queue and WebSocket stage contracts, source fingerprints, and completion audits.
+- **RAG quality and recall controls** — Added policy-candidate calibration, trusted-neighbor quality gates, strict constraint evaluation, embedding-contention resilience, and an admin-only approximate-versus-exact recall audit.
+- **Provider-neutral web search** — Added shared configuration and adapters for Tavily, Brave Search, and Serper, including encrypted secrets, connectivity checks, purpose coverage, and priority controls.
+- **Safe search-provider operations** — Added result normalization, URL and content sanitization, error taxonomy, `Retry-After` handling, quota-aware routing, cooldowns, usage accounting, caching, and decision history.
+- **Provider retention and calibration** — Added independently configurable retention, health and cooldown history, per-purpose quality controls, guardrails, analytics, and rate-limited review digests.
+- **Discord decision notifications** — Added duplicate-safe pending-decision notifications with structured answer controls and optional server-scoped role or user mentions constrained by Discord allowed-mentions rules.
+- **Consistent media-server setup** — Added shared Radarr and Sonarr connection testing, connect-and-save behavior, root-folder and quality-profile feedback, library mapping, and instance removal flows.
+- **Live media-server state synchronization** — Added immediate enrichment-state updates for queue, cancel, retry, and dismiss actions plus safer rating-normalization reprioritization when source metadata changes.
+- **Release acceptance assembly** — Added versioned CI manifests and bounded evidence that distinguish repository acceptance from active-installation evidence without reading policy, provider, or classification content.
+- **Published digest consumer smoke** — Added a disposable, no-port, digest-only smoke command that verifies the expected provenance before starting the published image and checking application and database readiness.
+- **Container image provenance verification** — Added multi-architecture image attestations and verification of repository, signer workflow, source revision, and GitHub-hosted runner before release maintenance proceeds.
+- **Compatibility-retirement evidence contracts** — Added read-only, fingerprint-bound repository and active-installation closure evidence, explicit blocked diagnostics, and audit coverage without granting mutation authority.
 
 ### Changed
 
-- **Deterministic policy authority** — Policy evidence and current library context determine routing; AI output is normalized, schema-validated, privacy-bounded advisory input and cannot veto a deterministic match or auto-route on its own.
-- **Pending decision experience** — Command Center now presents one unambiguous active item, a policy-confirmation recommendation with score and safe evidence sources, collapsed alternatives, idempotent retries, and scoped bulk confirmation.
-- **Existing-installation upgrades** — Supported legacy policies reconcile automatically to native authority, unsupported input becomes bounded maintenance state, and normal runtime policy reads remain available while compatibility retirement is separately gated.
-- **Compatibility-retirement controls** — Replaced speculative mutation paths with read-only, fingerprint-bound evidence, approval, review, and closure contracts; retirement remains blocked until an approved active-installation chain exists and never interrupts normal automation.
-- **Release trust chain** — Tag releases now verify package-version alignment, publish and attest immutable multi-architecture images, smoke the exact digest from a consumer boundary, attach bounded evidence to a draft release, and verify the resulting immutable release attestation.
-- **Installation acceptance hardening** — The manual acceptance workflow is restricted to exact `v*` tags, has no reviewer fiction for the single-maintainer model, disables administrator bypass, validates the tag contract, and prevents manual inputs from reaching shell evaluation.
-- **Platform baseline and database upgrades** — Standardized Node.js 24.18.1 and npm 12.0.2, Alpine 3.24, PostgreSQL 18 upgrade coverage, pgvector 0.8.6 extension upgrades, and authoritative schema-snapshot verification.
-- **Runtime performance and delivery** — Optimized canonical history paging and outcome aggregation; database timeouts now return bounded retryable responses, and retired content-hashed client assets return true 404 responses instead of the SPA shell.
-- **Workflow and dependency maintenance** — Updated client and server dependencies, hardened action SHA pinning and CodeQL maintenance, restored dependency-declaration checks, and retained Markdown, ESM, and product-language quality gates.
+- **Deterministic routing authority** — Current policy evidence and library context now determine routes; AI output is normalized, schema-validated, privacy-bounded advisory input that cannot veto a deterministic match or route an item on its own.
+- **AI invocation boundaries** — Disabled authority, unsupported verification, and invalid schema states now stop provider calls before invocation; verified output is normalized and marked advisory before any downstream use.
+- **Pending-decision experience** — Command Center now presents one unambiguous active item, a scored policy-confirmation recommendation, safe evidence sources, collapsed alternatives, idempotent retries, and recommendation-scoped bulk confirmation.
+- **Pending-decision explanations** — Review cards now distinguish policy confirmation from missing evidence, explain automatic and confirmation thresholds, and avoid presenting a score alone as proof of destination identity.
+- **Privacy-bounded recovery** — Retry, queue, worker-restart, and RAG recovery retain fixed reason identifiers rather than provider exceptions; stale questions and old recovery diagnostics are safely redacted or regenerated.
+- **Existing-installation upgrades** — Supported legacy policies reconcile automatically to native authority, while unsupported input becomes bounded maintenance state and native runtime reads remain available.
+- **Compatibility retirement isolation** — Compatibility removal is now a separately gated release-maintenance concern; it cannot interrupt normal authoring, reconciliation, routing, or supported upgrade behavior.
+- **Policy authoring model** — Routine policy work now prioritizes destination meaning, observed library evidence, constraints, review behavior, and routing readiness rather than scoring thresholds, provider state, or migration analysis.
+- **Media-server authority** — Existing library behavior and media-server context are primary inputs to policy intent; AI, RAG, templates, and external metadata remain bounded supporting evidence.
+- **Release trust chain** — Tag releases now verify package-version alignment, publish and attest immutable multi-architecture images, smoke the exact digest, attach bounded evidence to a draft release, and verify immutable release attestation.
+- **Installation acceptance hardening** — The manual acceptance workflow accepts only exact `v*` tags, validates the tag contract, disables administrator bypass, avoids fictitious reviewer requirements, and prevents manual input from reaching shell evaluation.
+- **Runtime baseline** — Standardized Node.js 24.18.1, npm and npx 12.0.2, and Alpine 3.24 across local tooling, Docker, package engines, and CI.
+- **Database and vector upgrades** — Added PostgreSQL 17-to-18 upgrade coverage, pgvector 0.8.6 extension upgrades for existing databases, and authoritative schema-snapshot validation for fresh installs.
+- **Classification history performance** — Reworked canonical outcome selection and lifecycle assembly to use narrow identifiers, one per-page aggregation pass, stable `created_at, id` pagination, and a supporting index.
+- **Bounded database failures** — PostgreSQL statement timeouts from classification-history reads now return retryable `503` responses instead of internal-server errors.
+- **Client asset delivery** — Retired content-hashed Vite assets now return a bounded 404 response while current assets remain immutable and application navigation still receives the app shell.
+- **Workflow and dependency maintenance** — Updated client and server dependencies, restored dependency-declaration checks, refreshed CodeQL and action pins, and retained Markdown, ESM, source-reachability, and product-language gates.
 
 ### Removed
 
-- **Retired compatibility and authoring paths** — Removed unreachable compatibility source-mutation tooling, browser migration previews, legacy authoring diagnostics and controls, and obsolete verifier surfaces so normal policy work has one server-admitted native path.
+- **Compatibility source-mutation tooling** — Removed unreachable mutation commands, filesystem adapters, browser migration previews, dedicated fixtures, and speculative retirement executors; CI now audits against their reintroduction.
+- **Legacy authoring diagnostics** — Removed normal-path replay, parity, provider-readiness, metadata-coverage, raw-scoring, reset, and migration-verifier controls so policy work has one server-admitted native path.
 
 ### Fixed
 
-- **Policy and classification reliability** — Fixed stale or duplicate pending decisions, AI disagreement veto behavior, unsafe weak-evidence promotion, stale profile/recovery handling, classification-history query timeouts, and native policy change persistence gaps.
-- **Fresh-install and upgrade reliability** — Fixed schema-snapshot drift, pgvector index and extension upgrade handling, PostgreSQL startup fallback behavior, profile normalization repairs, and migration/reconciliation restart safety.
-- **Provider and media-server resilience** — Fixed provider failure classification and retry recovery, sanitized malformed provider data, protected media-server route outcomes, and corrected setup, library removal, and enrichment-state synchronization edge cases.
+- **AI disagreement vetoes** — Prevented advisory AI output from blocking deterministic policy matches or changing a selected destination without valid policy authority.
+- **Duplicate and stale pending decisions** — Supersede historical duplicates without deleting audit history, preserve the current decision, and treat retries for an already-active item as idempotent success.
+- **Native policy change persistence** — Preserve unchanged rules and routing targets, replace only requested values, and update review behavior atomically so partial policy changes do not lose intent.
+- **Weak-evidence promotion** — Prevented stale profiles, hard profile exclusions, broad compatibility, profile-only, and RAG-only signals from becoming primary policy anchors or automatic routes.
+- **Profile and reconciliation recovery** — Fixed stale and malformed profile handling, normalization repair, scheduler re-runs, and concurrent reconciliation so supported policy reads remain stable across restart and upgrade paths.
+- **Classification-history timeouts** — Fixed inefficient outcome and lifecycle queries that could exhaust the PostgreSQL statement timeout on large histories.
+- **Fresh-install RAG indexes** — Restored missing text HNSW snapshot infrastructure and added an integrity check so a fresh database cannot silently start with degraded vector retrieval.
+- **PostgreSQL and pgvector startup** — Corrected optimized-vector fallback behavior, PostgreSQL 18 migration handling, and container start timing to prevent affected Docker installations from cycling.
+- **Provider resilience** — Correctly classify disabled, transient, permanent, and malformed provider outcomes; sanitize provider data and recover without turning a provider incident into an unsafe route.
+- **Initial-account and media-server setup** — Prevented authenticated polling from interrupting first-admin setup and corrected valid Radarr and Sonarr configuration, save, and wizard actions.
+- **Library removal and enrichment synchronization** — Close related history before library deletion, prevent rating-normalization loops, and synchronize live media-server state after enrichment actions.
+- **RAG identity and recall** — Resolve live library identity when historical names are absent, preserve sanitized fallbacks, and centralize HNSW recall controls and iterative scans.
 
 ### Security
 
-- **Authority and input hardening** — Enforced server-owned policy, routing, learning, reconciliation, and rebuild authority; protected provider boundaries, shell-facing workflow inputs, bounded diagnostics, and Discord mentions from unsafe or sensitive data flow.
-- **Supply-chain maintenance** — Resolved workspace dependency alerts, updated runtime and tooling dependencies, preserved full-SHA GitHub Action pinning, added image provenance verification, and restricted release actions to least-privilege tag-only environments.
+- **Server-owned policy authority** — Enforced server authority over policy evidence, intent commands, readiness, routing, learning, reconciliation, rebuilds, and rollback with bounded inputs and explicit handoffs.
+- **Untrusted-input rejection** — Reject inherited values, accessors, prototype-pollution keys, unknown fields, stale handoffs, altered fingerprints, and client-supplied authority claims at their owning boundary.
+- **Learning and clarification containment** — Prevented stale questions, raw AI rationale, cross-destination candidates, duplicate source events, and legacy Discord controls from creating durable learning or policy changes.
+- **Provider-data and secret boundaries** — Mask provider credentials, sanitize normalized provider results, constrain raw-response retention, and keep operational diagnostics bounded.
+- **Discord mention safety** — Restrict Discord mentions to selected server-scoped targets through allowed-mentions rules rather than dynamic message content.
+- **Compatibility-retirement safeguards** — Require current, fingerprint-valid evidence for any retirement decision and fail closed on stale, cross-plan, malformed, or unsupported evidence without modifying runtime policy behavior.
+- **Release workflow hardening** — Preserve full-SHA action pinning, least-privilege permissions, provenance validation, immutable tag and environment contracts, and consumer-side digest verification.
+- **Dependency remediation** — Resolved workspace Dependabot alerts and patched audited runtime, tooling, YAML, Markdown, link-detection, glob, Engine.IO, and body-parsing dependency paths.
