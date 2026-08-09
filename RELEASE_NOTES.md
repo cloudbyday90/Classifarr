@@ -2,6 +2,46 @@
 
 > Versioning note: these release notes and the UI use public labels such as `v0.48.0-beta`. Package files use semver-safe versions such as `0.48.0-beta`.
 
+## v0.48.0a-beta
+**Title: Policy decisions stay clear when library history is incomplete**
+
+> [!IMPORTANT]
+> After updating from an earlier `v0.48.0-beta` build, retry any existing
+> Needs Attention item that says evidence is missing. The original audit entry
+> stays intact; retrying creates the corrected policy explanation.
+
+### 🎉 What You'll Notice
+- **Declared policies keep their authority** — an incomplete library history no longer erases a valid policy match or sends the item through an unrelated AI fallback.
+- **Clearer review evidence** — review cards retain the policy reason for a recommended destination while still showing when historical observations differ.
+- **Library renames stay safe** — changing a destination label cannot change policy matching or the stable order of equally scored candidates.
+
+### 📊 Quick Visual
+```text
+v0.48.0a-beta Snapshot
+Declared policy authority [██████████] remains authoritative
+Observed profile history  [████████░░] advisory, explained to reviewers
+Library rename safety     [██████████] labels do not affect routing
+Release verification      [██████████] dependency and evidence gates repaired
+```
+
+### ✨ Highlights
+- **Better policy precedence** — ratings, genres, and keywords observed in a library are useful context, but they are not treated as a user-authored prohibition when a declared policy has an identity match.
+- **One predictable decision path** — strict policy limits still prevent invalid routes, while AI remains advisory instead of becoming an accidental fallback for a valid deterministic result.
+
+### 🔧 Reliability Improvements
+- Release verification no longer fails on a duplicate diagnostics export, keeping dependency checks and acceptance evidence on the intended path.
+- The release guide includes a PowerShell-safe version-contract command for npm 12.
+
+### 👥 Who This Helps
+- **Policy authors:** library intent remains stable even when observed collection history is sparse or stale.
+- **Reviewers:** pending items explain the recommendation instead of presenting an unexplained missing-evidence state.
+- **Operators:** a release candidate cannot be published when its dependency-declaration or acceptance gates are blocked.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## v0.48.0-beta
 **Title: Policies you can trust, clearer reviews, and safer AI assistance**
 
