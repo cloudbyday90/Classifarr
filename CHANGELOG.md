@@ -20,6 +20,7 @@ Current development changes will be recorded here.
 - **Release validation** — Removed a duplicate diagnostics export that blocked the dependency-declaration check and therefore the required release-acceptance readout.
 - **Multi-architecture image builds** — Retain `npm ci` lockfile integrity while increasing documented registry fetch retries so a transient ARM64 registry timeout does not abort an otherwise validated release image.
 - **Public image provenance verification** — Accept the Sigstore Public Good instance used for this public repository while continuing to require the exact repository, signer workflow, source revision, and GitHub-hosted runner.
+- **Published digest consumer startup** — Run the disposable digest-smoke service as the image-owned `1000:1000` user and drop all capabilities, allowing its fresh scoped data volume to initialize without a root bypass.
 
 ## [0.48.0-beta] - 2026-08-09
 

@@ -51,6 +51,7 @@ const EXPECTED_HEALTHCHECK_TEST = Object.freeze([
   'CMD-SHELL',
   'curl -f http://localhost:21324/health || exit 1',
 ]);
+const EXPECTED_RUNTIME_USER = '1000:1000';
 
 function asRecord(value, label) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -118,7 +119,11 @@ export function validatePublishedDigestConsumerSmokeCompose(compose) {
   assertAbsent(service.container_name, 'compose.services.classifarr.container_name');
   assertAbsent(service.networks, 'compose.services.classifarr.networks');
   assertAbsent(service.ports, 'compose.services.classifarr.ports');
-  assertAbsent(service.user, 'compose.services.classifarr.user');
+  if (service.user !== EXPECTED_RUNTIME_USER) {
+    throw new Error(
+      `compose.services.classifarr.user must equal ${JSON.stringify(EXPECTED_RUNTIME_USER)}.`
+    );
+  }
   assertExactObject(service.environment, EXPECTED_ENVIRONMENT, 'compose.services.classifarr.environment');
   assertExactArray(
     service.volumes,
@@ -127,11 +132,7 @@ export function validatePublishedDigestConsumerSmokeCompose(compose) {
   );
   assertExactArray(service.tmpfs, EXPECTED_TMPFS, 'compose.services.classifarr.tmpfs');
   assertExactArray(service.cap_drop, ['ALL'], 'compose.services.classifarr.cap_drop');
-  assertExactArray(
-    service.cap_add,
-    ['CHOWN', 'SETUID', 'SETGID'],
-    'compose.services.classifarr.cap_add'
-  );
+  assertAbsent(service.cap_add, 'compose.services.classifarr.cap_add');
   assertExactArray(
     service.security_opt,
     ['no-new-privileges:true'],

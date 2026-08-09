@@ -1,8 +1,8 @@
 # Published Digest Consumer Smoke Acceptance
 
-Status: implemented release-consumer acceptance tooling. Its release-specific
-execution remains intentionally pending until a release candidate version,
-source revision, and published digest are selected.
+Status: implemented and enforced by the release tag workflow. Each candidate
+uses its selected source revision and published digest; a failed consumer smoke
+blocks release publication.
 
 ## Objective
 
@@ -84,7 +84,9 @@ Cons:
    repositories before calling Docker.
 2. Verify the selected digest with `gh attestation verify`, requiring the
    Classifarr repository, the pinned CI signer workflow, the selected full
-   source revision, GitHub-hosted execution, and no public-good fallback.
+   source revision, and GitHub-hosted execution. The normal GitHub CLI trust
+   roots include Sigstore Public Good for this public repository; the consumer
+   does not disable that supported verifier.
 3. Validate `docker-compose.release-smoke.yml`, then start it with a unique
    explicit Compose project name, `--pull always`, `--no-build`, `--wait`, and
    a bounded 30-300 second wait timeout.
@@ -107,11 +109,11 @@ it accepts no arbitrary output path and writes evidence only under
 
 `docker-compose.release-smoke.yml` starts a fresh Classifarr instance with a
 project-scoped named volume. It does not declare `build`, `ports`, media mounts,
-an external network, a fixed container name, or a restart policy. The entrypoint
-starts as root only to initialize the disposable volume and then drops to the
-configured Classifarr user, matching the image's designed lifecycle. Its runtime
-filesystem remains read-only, capabilities stay limited, and temporary runtime
-paths are mounted as no-exec tmpfs volumes.
+an external network, a fixed container name, or a restart policy. It runs as
+the image-owned `1000:1000` identity so an image-owned fresh named volume is
+writable without root privilege bypasses. Its runtime filesystem remains
+read-only, all Linux capabilities are dropped, and temporary runtime paths are
+mounted as no-exec tmpfs volumes.
 
 `server/src/scripts/checkPublishedDigestConsumerSmokeCompose.mjs` is a CI guard
 that rejects drift in these constraints. Unit coverage proves digest allowlisting,
@@ -120,10 +122,11 @@ and teardown after a health failure.
 
 ## Release Execution
 
-After the release candidate is published and attested, run:
+To reproduce the tag-workflow consumer check locally against a published and
+attested digest, run the ESM executable directly:
 
 ```powershell
-npm run release:smoke:published-digest -- `
+node scripts/run-published-digest-consumer-smoke.mjs `
   --image ghcr.io/cloudbyday90/classifarr@sha256:<published-digest> `
   --source-revision <full-release-commit-sha>
 ```
@@ -134,10 +137,10 @@ command prints only the evidence path; it does not print the health response or
 container logs. A successful execution produces the release-specific evidence
 required before availability is communicated.
 
-No such command has been executed in this implementation change because there
-is not yet a selected release candidate. Unit tests and Docker Compose
-configuration validation cover the command's deterministic behavior without
-claiming release evidence that does not exist.
+Tag CI runs this command before release publication. Unit tests and Docker
+Compose configuration validation protect its deterministic command contract;
+the candidate-specific evidence remains attached to the corresponding release
+rather than this design document.
 
 ## Completion Criteria
 
@@ -151,10 +154,9 @@ The release-specific acceptance completes only when the selected published
 digest has successfully passed this command and its evidence is retained with
 the release record.
 
-## Next Task
+## Follow-on
 
-**10R.4.3 Release Candidate Publication And Evidence Recording** is next. It
-requires an intentional version and source-revision selection, tag publication,
-successful provenance verification, this consumer smoke execution against the
-published digest, and retention of the resulting release evidence before release
-availability is communicated.
+Release candidate publication and evidence recording are implemented in the
+tag workflow. Existing-installation acceptance remains a separately dispatched,
+operator-supplied post-deploy evidence step; it does not inspect or mutate a
+consumer installation.

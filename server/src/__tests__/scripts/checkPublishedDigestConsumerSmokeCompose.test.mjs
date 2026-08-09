@@ -47,4 +47,20 @@ describe('checkPublishedDigestConsumerSmokeCompose', () => {
     expect(() => validatePublishedDigestConsumerSmokeCompose(compose))
       .toThrow('compose.services.classifarr.build must be absent');
   });
+
+  test('rejects the default root user because a fresh image-owned volume is writable by 1000:1000', () => {
+    const compose = structuredClone(loadPublishedDigestConsumerSmokeCompose());
+    delete compose.services.classifarr.user;
+
+    expect(() => validatePublishedDigestConsumerSmokeCompose(compose))
+      .toThrow('compose.services.classifarr.user must equal "1000:1000"');
+  });
+
+  test('rejects capabilities that the non-root smoke service does not need', () => {
+    const compose = structuredClone(loadPublishedDigestConsumerSmokeCompose());
+    compose.services.classifarr.cap_add = ['CHOWN'];
+
+    expect(() => validatePublishedDigestConsumerSmokeCompose(compose))
+      .toThrow('compose.services.classifarr.cap_add must be absent');
+  });
 });

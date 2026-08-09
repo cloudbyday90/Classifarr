@@ -5,6 +5,9 @@ services:
   classifarr:
     image: ${CLASSIFARR_RELEASE_SMOKE_IMAGE:?A published image digest is required.}
     pull_policy: always
+    # The image owns /app/data as 1000:1000. Running as that identity keeps a
+    # fresh named volume writable without retaining root filesystem bypasses.
+    user: "1000:1000"
     environment:
       PUID: "1000"
       PGID: "1000"
@@ -24,10 +27,6 @@ services:
       - /var/run/postgresql:rw,noexec,nosuid,nodev,uid=1000,gid=1000,mode=770
     cap_drop:
       - ALL
-    cap_add:
-      - CHOWN
-      - SETUID
-      - SETGID
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:21324/health || exit 1"]
       interval: 30s

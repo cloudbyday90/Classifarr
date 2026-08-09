@@ -394,6 +394,12 @@ attestations through Sigstore Public Good, and that flag rejects the required
 release verification. Preserve the repository, signer-workflow, source-digest,
 and `--deny-self-hosted-runners` constraints.
 
+The published-digest consumer smoke must run as `1000:1000`, matching the
+image-owned `/app/data` directory copied into its fresh project-scoped volume.
+Keep `read_only: true`, `cap_drop: [ALL]`, and no `cap_add`: capability-stripped
+root cannot write that image-owned directory, while the configured runtime user
+can initialize it without retaining privilege-escalation capabilities.
+
 If a GitHub release was already published, do not move, delete, or reuse that
 tag. Immutable releases prohibit doing so. Correct the release on a newer tag,
 rerun the full evidence chain, and avoid availability communication for the
