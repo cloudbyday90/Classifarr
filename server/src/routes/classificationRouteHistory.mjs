@@ -21,31 +21,35 @@ const historyIdentitySql = (alias) => `
   END
 `;
 
+const historyOutcomePrioritySql = (alias) => `
+  CASE
+    WHEN ${alias}.method != 'source_library'
+      AND ${alias}.status IN ('completed', 'corrected', 'verified', 'routed') THEN 0
+    WHEN ${alias}.method != 'source_library'
+      AND ${alias}.status IN ('awaiting_decision', 'pending', 'pending_retry') THEN 1
+    WHEN ${alias}.method != 'source_library' THEN 2
+    ELSE 3
+  END
+`;
+
 const canonicalHistoryCte = `
-  WITH history_ranked AS (
-    SELECT
-      source_row.*,
-      ${historyIdentitySql('source_row')} AS history_identity,
-      ROW_NUMBER() OVER (
-        PARTITION BY ${historyIdentitySql('source_row')}
-        ORDER BY
-          CASE
-            WHEN source_row.method != 'source_library'
-              AND source_row.status IN ('completed', 'corrected', 'verified', 'routed') THEN 0
-            WHEN source_row.method != 'source_library'
-              AND source_row.status IN ('awaiting_decision', 'pending', 'pending_retry') THEN 1
-            WHEN source_row.method != 'source_library' THEN 2
-            ELSE 3
-          END,
-          source_row.created_at DESC,
-          source_row.id DESC
-      ) AS outcome_rank
+  WITH canonical_ids AS (
+    SELECT DISTINCT ON (${historyIdentitySql('source_row')})
+      source_row.id,
+      ${historyIdentitySql('source_row')} AS history_identity
     FROM classification_history source_row
+    ORDER BY
+      ${historyIdentitySql('source_row')},
+      ${historyOutcomePrioritySql('source_row')},
+      source_row.created_at DESC,
+      source_row.id DESC
   ),
   canonical_history AS (
-    SELECT *
-    FROM history_ranked
-    WHERE outcome_rank = 1
+    SELECT
+      source_row.*,
+      canonical_ids.history_identity
+    FROM canonical_ids
+    JOIN classification_history source_row ON source_row.id = canonical_ids.id
   )
 `;
 
@@ -134,18 +138,16 @@ export function registerHistoryRoutes(router, { db }) {
           filtered_history.*,
           COUNT(*) OVER() AS total_count
         FROM filtered_history
-        ORDER BY created_at DESC
+        ORDER BY created_at DESC, id DESC
         LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
-      )
-      SELECT
-        ch.*,
-        ch.resolved_library_name AS library_name,
-        (SELECT COUNT(*) FROM classification_corrections WHERE classification_id = ch.id) as correction_count,
-        lifecycle.history_events,
-        lifecycle.history_event_count
-      FROM paged_history ch
-      LEFT JOIN LATERAL (
+      ),
+      paged_identities AS (
+        SELECT history_identity, id AS final_id
+        FROM paged_history
+      ),
+      lifecycle_events AS (
         SELECT
+          ${historyIdentitySql('event')} AS history_identity,
           JSONB_AGG(
             JSONB_BUILD_OBJECT(
               'id', event.id,
@@ -156,17 +158,27 @@ export function registerHistoryRoutes(router, { db }) {
               'library_name', COALESCE(event_library.name, event.library_name),
               'reason', event.reason,
               'created_at', event.created_at,
-              'is_final', event.id = ch.id,
+              'is_final', event.id = page_identity.final_id,
               'outcome', event.metadata->'classification_details'->'outcome_link'
             )
             ORDER BY event.created_at ASC, event.id ASC
           ) AS history_events,
           COUNT(*)::int AS history_event_count
-        FROM history_ranked event
+        FROM classification_history event
+        JOIN paged_identities page_identity
+          ON page_identity.history_identity = ${historyIdentitySql('event')}
         LEFT JOIN libraries event_library ON event.library_id = event_library.id
-        WHERE event.history_identity = ch.history_identity
-      ) lifecycle ON TRUE
-      ORDER BY ch.created_at DESC
+        GROUP BY ${historyIdentitySql('event')}, page_identity.final_id
+      )
+      SELECT
+        ch.*,
+        ch.resolved_library_name AS library_name,
+        (SELECT COUNT(*) FROM classification_corrections WHERE classification_id = ch.id) as correction_count,
+        lifecycle.history_events,
+        lifecycle.history_event_count
+      FROM paged_history ch
+      LEFT JOIN lifecycle_events lifecycle ON lifecycle.history_identity = ch.history_identity
+      ORDER BY ch.created_at DESC, ch.id DESC
     `;
 
     params.push(normalizedLimit, offset);
@@ -180,7 +192,6 @@ export function registerHistoryRoutes(router, { db }) {
         ${canonicalHistoryCte}
         SELECT COUNT(*) AS count
         FROM canonical_history ch
-        LEFT JOIN libraries l ON ch.library_id = l.id
         ${whereClause}
       `;
       const countResult = await db.query(countQuery, filterParams);

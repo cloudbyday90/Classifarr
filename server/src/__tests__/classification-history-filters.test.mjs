@@ -201,10 +201,13 @@ describe('Classification history filters', () => {
       .expect(200);
 
     const [historyQueryText] = db.query.mock.calls[0];
-    expect(historyQueryText).toContain('ROW_NUMBER() OVER');
+    expect(historyQueryText).toContain('DISTINCT ON');
     expect(historyQueryText).toContain('canonical_history');
+    expect(historyQueryText).toContain('lifecycle_events');
     expect(historyQueryText).toContain('history_events');
     expect(historyQueryText).toContain("source_row.method != 'source_library'");
+    expect(historyQueryText).not.toContain('FROM history_ranked event');
+    expect(historyQueryText).toContain('ORDER BY created_at DESC, id DESC');
     expect(response.body.data).toEqual([
       expect.objectContaining({
         id: 2,

@@ -10,6 +10,13 @@
 import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('ErrorHandler');
+const DATABASE_STATEMENT_TIMEOUT_CODE = 'DATABASE_STATEMENT_TIMEOUT';
+
+export function isDatabaseStatementTimeoutError(err) {
+  return err?.code === '57014'
+    && typeof err.message === 'string'
+    && err.message.toLowerCase().includes('statement timeout');
+}
 
 export function getStatusCode(err) {
   return err.statusCode || err.status || err.httpStatus || 500;
@@ -31,6 +38,25 @@ async function errorHandler(err, req, res, _next) {
   const malformedJson = isMalformedJsonError(err, statusCode);
   const isDevelopment = process.env.NODE_ENV === 'development';
   const isProduction = process.env.NODE_ENV === 'production';
+
+  if (isDatabaseStatementTimeoutError(err)) {
+    await logger.warn('Database statement timed out', {
+      name: err.name,
+      code: err.code,
+      statusCode: 503,
+    }, {
+      req,
+      error: err,
+    });
+
+    return res
+      .set('Retry-After', '1')
+      .status(503)
+      .json({
+        error: 'Request temporarily unavailable',
+        code: DATABASE_STATEMENT_TIMEOUT_CODE,
+      });
+  }
 
   if (malformedJson) {
     logger.info('Rejected malformed JSON payload', {

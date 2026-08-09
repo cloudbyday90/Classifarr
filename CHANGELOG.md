@@ -11,6 +11,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Classification History Read Performance**: Reworked canonical history
+  selection and lifecycle assembly so the paged API chooses each final outcome
+  from narrow identifiers and aggregates lifecycle events once per page rather
+  than repeatedly scanning ranked history. Added a matching canonical-outcome
+  index and stable `created_at, id` pagination ordering, preventing large
+  history reads from exhausting the PostgreSQL statement timeout. A genuine
+  database statement timeout now returns a bounded retryable `503` instead of
+  an internal-server error.
+
 - **Release Acceptance Assembly**: Added a versioned CI release manifest and
   artifact that distinguishes repository acceptance from an active
   installation. A protected-environment workflow now records

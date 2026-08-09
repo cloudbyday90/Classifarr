@@ -15,7 +15,10 @@ jest.unstable_mockModule('../utils/logger.mjs', () => ({
   default: { createLogger }
 }));
 
-const { errorHandler } = await import('../middleware/errorHandler.mjs');
+const {
+    errorHandler,
+    isDatabaseStatementTimeoutError,
+} = await import('../middleware/errorHandler.mjs');
 const {
     ValidationError,
     AuthenticationError,
@@ -111,6 +114,33 @@ describe('errorHandler middleware', () => {
         expect(response.body.errorId).toBeUndefined();
         expect(mockLogger.warn).toHaveBeenCalledTimes(1);
         expect(mockLogger.error).not.toHaveBeenCalled();
+    });
+
+    test('returns a bounded retryable response for database statement timeouts', async () => {
+        const timeoutError = new Error('canceling statement due to statement timeout');
+        timeoutError.code = '57014';
+
+        const app = express();
+        app.get('/history', (_req, _res, next) => next(timeoutError));
+        app.use(errorHandler);
+
+        const response = await request(app).get('/history');
+
+        expect(response.status).toBe(503);
+        expect(response.headers['retry-after']).toBe('1');
+        expect(response.body).toEqual({
+            error: 'Request temporarily unavailable',
+            code: 'DATABASE_STATEMENT_TIMEOUT',
+        });
+        expect(mockLogger.warn).toHaveBeenCalledTimes(1);
+        expect(mockLogger.error).not.toHaveBeenCalled();
+    });
+
+    test('does not misclassify other PostgreSQL query cancellations as statement timeouts', () => {
+        expect(isDatabaseStatementTimeoutError({
+            code: '57014',
+            message: 'canceling statement due to user request',
+        })).toBe(false);
     });
 
     describe('AppError subclasses with toJSON (statusCode < 500)', () => {
