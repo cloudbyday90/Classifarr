@@ -118,6 +118,21 @@ Archived changelogs: [May 2026 Early](docs/changelog/CHANGELOG-2026-05-early.md)
 
 5. Order archive links newest-first (left to right).
 
+### Large Pre-Release Consolidation
+
+When an unusually long development cycle makes the Unreleased section too
+large for release review, keep a concise release-facing summary in
+`CHANGELOG.md` and move the detailed pre-release record to
+`docs/changelog/CHANGELOG-YYYY-MM-pre-release.md`.
+
+1. Preserve the detailed Unreleased record verbatim in the pre-release archive.
+2. Add a short archive header that states the consolidation date and purpose.
+3. Link the archive from the root archive list and directly below
+   `## [Unreleased]`.
+4. Keep the root summary self-contained, non-duplicative, and within the
+   standard category order.
+5. Do not use a pre-release archive to replace released-version archives.
+
 ### Archive File Format
 
 Each archive file is self-contained:
