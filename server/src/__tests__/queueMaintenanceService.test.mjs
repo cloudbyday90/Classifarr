@@ -41,6 +41,7 @@ describe('QueueMaintenanceService', () => {
     let db;
     let logger;
     let service;
+    let withSessionAdvisoryLock;
 
     beforeEach(() => {
         jest.resetAllMocks();
@@ -51,7 +52,16 @@ describe('QueueMaintenanceService', () => {
             error: jest.fn(),
             debug: jest.fn(),
         };
-        service = new QueueMaintenanceService({ db, logger });
+        withSessionAdvisoryLock = jest.fn(async (_lockKey, handler) => {
+            await handler();
+            return true;
+        });
+        service = new QueueMaintenanceService({
+            db,
+            logger,
+            withSessionAdvisoryLock,
+            taskQueueMaintenanceLockKey: 2012,
+        });
     });
 
     function mockRetentionSettings(overrides = {}) {
@@ -157,9 +167,10 @@ describe('QueueMaintenanceService', () => {
 
             const deleteStatuses = getDeleteCalls().map(([, params]) => params[0]);
             expect(deleteStatuses).toEqual(['cancelled', 'completed', 'failed']);
-            expect(logger.warn).toHaveBeenCalledWith(
-                'task_queue bloat detected at startup; running background drain',
+            expect(logger.info).toHaveBeenCalledWith(
+                'task_queue retention backlog detected at worker startup; running background drain',
                 expect.objectContaining({
+                    cleanupOrigin: 'worker_startup',
                     trigger: 'age',
                     oldestRowsByStatus: expect.objectContaining({
                         failed: '2026-04-01T00:00:00.000Z',
@@ -176,6 +187,7 @@ describe('QueueMaintenanceService', () => {
                 })
             );
             expect(getCleanupHistoryInsertCalls()).toHaveLength(1);
+            expect(getCleanupHistoryInsertCalls()[0][1][1]).toBe('worker_startup');
         });
 
         test('trims count cap in cancelled-then-completed-then-failed order and logs recurrence telemetry', async () => {
@@ -212,6 +224,13 @@ describe('QueueMaintenanceService', () => {
             const countTrimCalls = getDeleteCalls().map(([, params]) => params[0]);
             expect(countTrimCalls).toEqual(['cancelled', 'cancelled', 'completed']);
             expect(logger.warn).toHaveBeenCalledWith(
+                'task_queue capacity pressure detected at worker startup; running background drain',
+                expect.objectContaining({
+                    cleanupOrigin: 'worker_startup',
+                    trigger: 'count',
+                })
+            );
+            expect(logger.warn).toHaveBeenCalledWith(
                 'task_queue count cap exceeded; trimming oldest rows',
                 expect.objectContaining({
                     remaining: 300000,
@@ -229,6 +248,48 @@ describe('QueueMaintenanceService', () => {
                 })
             );
             expect(getCleanupHistoryInsertCalls()).toHaveLength(1);
+        });
+
+        test('skips without querying when another process owns the maintenance advisory lock', async () => {
+            withSessionAdvisoryLock.mockResolvedValueOnce(false);
+
+            await expect(service.backgroundDrainIfBloated()).resolves.toEqual({
+                status: 'skipped',
+                cleanupOrigin: 'worker_startup',
+                reason: 'advisory_lock_held',
+            });
+
+            expect(withSessionAdvisoryLock).toHaveBeenCalledWith(2012, expect.any(Function));
+            expect(db.query).not.toHaveBeenCalled();
+            expect(logger.debug).toHaveBeenCalledWith(
+                'task_queue cleanup skipped because another process holds the advisory lock',
+                expect.objectContaining({ cleanupOrigin: 'worker_startup', lockKey: 2012 })
+            );
+        });
+
+        test('skips a second local cleanup while the first is in flight', async () => {
+            let releaseFirstCleanup;
+            const firstCleanupStarted = new Promise(resolve => {
+                releaseFirstCleanup = resolve;
+            });
+            const executeCleanup = jest.fn(() => firstCleanupStarted);
+
+            const firstRun = service.runSerializedCleanup('worker_startup', executeCleanup);
+            await Promise.resolve();
+
+            await expect(
+                service.runSerializedCleanup('cron', executeCleanup)
+            ).resolves.toEqual({
+                status: 'skipped',
+                cleanupOrigin: 'cron',
+                reason: 'local_in_flight',
+            });
+
+            expect(executeCleanup).toHaveBeenCalledTimes(1);
+            expect(withSessionAdvisoryLock).toHaveBeenCalledTimes(1);
+
+            releaseFirstCleanup();
+            await expect(firstRun).resolves.toBeUndefined();
         });
 
         test('uses database settings ahead of env fallback for all terminal statuses', async () => {
@@ -463,6 +524,7 @@ describe('QueueMaintenanceService', () => {
                 })
             );
             expect(getCleanupHistoryInsertCalls()).toHaveLength(1);
+            expect(getCleanupHistoryInsertCalls()[0][1][1]).toBe('cron');
             const vacuumCalls = db.query.mock.calls.filter(
                 ([sql]) => typeof sql === 'string' && sql.includes('VACUUM ANALYZE task_queue')
             );

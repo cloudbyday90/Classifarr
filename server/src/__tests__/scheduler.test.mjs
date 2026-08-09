@@ -679,7 +679,21 @@ describe('SchedulerService', () => {
 
             await expect(scheduler.runTaskQueueCleanup()).resolves.toBeUndefined();
 
-            expect(mockQueueMaintenanceService.runScheduledTaskQueueCleanup).toHaveBeenCalledTimes(1);
+            expect(mockQueueMaintenanceService.runScheduledTaskQueueCleanup).toHaveBeenCalledWith({
+                cleanupOrigin: 'cron',
+            });
+        });
+
+        it('forwards delayed-startup cleanup provenance to QueueMaintenanceService', async () => {
+            mockQueueMaintenanceService.runScheduledTaskQueueCleanup.mockResolvedValueOnce(undefined);
+
+            await expect(
+                scheduler.runTaskQueueCleanup({ cleanupOrigin: 'startup_delayed' })
+            ).resolves.toBeUndefined();
+
+            expect(mockQueueMaintenanceService.runScheduledTaskQueueCleanup).toHaveBeenCalledWith({
+                cleanupOrigin: 'startup_delayed',
+            });
         });
     });
 });

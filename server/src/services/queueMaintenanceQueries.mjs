@@ -263,6 +263,7 @@ export async function getRecentCapTrimSummary(db, logger) {
 
 export async function recordCleanupHistory(db, logger, {
     cleanupType,
+    cleanupOrigin,
     trigger,
     retentionPolicy,
     maxTotalRows,
@@ -280,6 +281,7 @@ export async function recordCleanupHistory(db, logger, {
         await db.query(
             `INSERT INTO task_queue_cleanup_history (
                  cleanup_type,
+                 cleanup_origin,
                  trigger,
                  retention_policy,
                  max_total_rows,
@@ -295,9 +297,10 @@ export async function recordCleanupHistory(db, logger, {
                  deleted_by_status,
                  oldest_remaining_by_status
              )
-             VALUES ($1, $2, $3::jsonb, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, $13::jsonb, $14::jsonb, $15::jsonb)`,
+             VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14::jsonb, $15::jsonb, $16::jsonb)`,
             [
                 cleanupType,
+                cleanupOrigin,
                 trigger,
                 JSON.stringify(retentionPolicy),
                 maxTotalRows,
@@ -321,6 +324,7 @@ export async function recordCleanupHistory(db, logger, {
     } catch (error) {
         await logger.warn('Failed to persist task_queue cleanup history', {
             cleanupType,
+            cleanupOrigin,
             trigger,
             error: error.message,
         }, {

@@ -13,6 +13,7 @@ import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { queueService } from './queueService.mjs';
 import { queueMaintenanceService } from './queueMaintenanceService.mjs';
+import { TASK_QUEUE_CLEANUP_ORIGINS } from './queueMaintenanceRunContract.mjs';
 import { schedulerRetentionService } from './schedulerRetentionService.mjs';
 import { classificationMaintenanceService } from './classificationMaintenanceService.mjs';
 import { ratingNormalizationQueueService } from './ratingNormalizationQueueService.mjs';
@@ -125,11 +126,23 @@ class SchedulerService {
         // Daily cleanup of stale awaiting_decision rows (4 AM)
         this.schedule('stale-awaiting-cleanup', '0 4 * * *', () => this.cleanupStaleAwaitingDecisions(), DB_ADVISORY_LOCKS.STALE_CLEANUP);
 
-        // Daily cleanup of old completed/failed task_queue rows (3:15 AM)
-        this.schedule('task-queue-cleanup', '15 3 * * *', () => this.runTaskQueueCleanup());
+        // Daily cleanup of old completed/failed task_queue rows (3:15 AM).
+        // QueueMaintenanceService owns the cross-process lock; noOverlap avoids
+        // redundant in-process cron invocations before that service boundary.
+        this.schedule(
+            'task-queue-cleanup',
+            '15 3 * * *',
+            () => this.runTaskQueueCleanup({ cleanupOrigin: TASK_QUEUE_CLEANUP_ORIGINS.CRON }),
+            null,
+            { noOverlap: true },
+        );
 
         // Run initial task_queue cleanup after startup (5 min delay)
-        setTimeout(() => this.runTaskQueueCleanup(), 300000);
+        this.scheduleInitial(
+            'task-queue-cleanup',
+            300000,
+            () => this.runTaskQueueCleanup({ cleanupOrigin: TASK_QUEUE_CLEANUP_ORIGINS.STARTUP_DELAYED }),
+        );
     }
 
     /**
@@ -200,8 +213,8 @@ class SchedulerService {
     /**
      * Daily cleanup of old completed and failed task_queue rows.
      */
-    async runTaskQueueCleanup() {
-        return queueMaintenanceService.runScheduledTaskQueueCleanup();
+    async runTaskQueueCleanup({ cleanupOrigin = TASK_QUEUE_CLEANUP_ORIGINS.CRON } = {}) {
+        return queueMaintenanceService.runScheduledTaskQueueCleanup({ cleanupOrigin });
     }
 
     /**

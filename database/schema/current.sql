@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-08-09T01:53:20.447Z
--- Latest Migration: 20260809_010000_add_canonical_history_outcome_index.sql
+-- Generated: 2026-08-09T11:16:55.546Z
+-- Latest Migration: 20260809_020000_add_task_queue_cleanup_origin.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -5937,8 +5937,10 @@ CREATE TABLE public.task_queue_cleanup_history (
     deleted_by_status jsonb NOT NULL,
     oldest_remaining_by_status jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
+    cleanup_origin character varying(32) DEFAULT 'legacy'::character varying NOT NULL,
     CONSTRAINT task_queue_cleanup_history_age_deleted_check CHECK ((age_deleted >= 0)),
     CONSTRAINT task_queue_cleanup_history_cap_excess_before_check CHECK ((cap_excess_before >= 0)),
+    CONSTRAINT task_queue_cleanup_history_cleanup_origin_check CHECK (((cleanup_origin)::text = ANY (ARRAY[('legacy'::character varying)::text, ('worker_startup'::character varying)::text, ('startup_delayed'::character varying)::text, ('cron'::character varying)::text]))),
     CONSTRAINT task_queue_cleanup_history_cleanup_type_check CHECK (((cleanup_type)::text = ANY (ARRAY[('startup'::character varying)::text, ('scheduled'::character varying)::text]))),
     CONSTRAINT task_queue_cleanup_history_count_cap_deleted_check CHECK ((count_cap_deleted >= 0)),
     CONSTRAINT task_queue_cleanup_history_max_total_rows_check CHECK ((max_total_rows > 0)),
@@ -13617,6 +13619,7 @@ FROM unnest(ARRAY[
     '20260808_150000_privacy_bound_recovery_diagnostics.sql',
     '20260808_160000_single_active_pending_classification.sql',
     '20260808_170000_policy_confirmation_pending_reason.sql',
-    '20260809_010000_add_canonical_history_outcome_index.sql'
+    '20260809_010000_add_canonical_history_outcome_index.sql',
+    '20260809_020000_add_task_queue_cleanup_origin.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

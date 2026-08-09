@@ -515,12 +515,13 @@ describe('Database Resilience', () => {
             expect(result).toBe(false);
         });
 
-        it('DB_ADVISORY_LOCKS has IDLE_BACKFILL, SCHEDULED_BACKFILL, MANUAL_BACKFILL, BACKFILL_OWNER keys', async () => {
+        it('DB_ADVISORY_LOCKS includes task queue maintenance alongside existing lock keys', async () => {
             const { db } = await loadDatabaseModule();
             expect(db.DB_ADVISORY_LOCKS).toHaveProperty('IDLE_BACKFILL', 1001);
             expect(db.DB_ADVISORY_LOCKS).toHaveProperty('SCHEDULED_BACKFILL', 1002);
             expect(db.DB_ADVISORY_LOCKS).toHaveProperty('MANUAL_BACKFILL', 1003);
             expect(db.DB_ADVISORY_LOCKS).toHaveProperty('BACKFILL_OWNER', 1004);
+            expect(db.DB_ADVISORY_LOCKS).toHaveProperty('TASK_QUEUE_MAINTENANCE', 2012);
         });
     });
 

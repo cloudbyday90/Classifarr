@@ -28,6 +28,12 @@ import {
     createStatusMap,
     summarizeOldestByStatus
 } from './queueMaintenanceQueries.mjs';
+import {
+    assertTaskQueueCleanupOrigin,
+    createCleanupSkipResult,
+    getBackgroundDrainLogDescriptor,
+    TASK_QUEUE_CLEANUP_ORIGINS,
+} from './queueMaintenanceRunContract.mjs';
 
 const BLOAT_THRESHOLD = 1000;
 const TERMINAL_QUEUE_STATUSES = Object.freeze(['cancelled', 'completed', 'failed']);
@@ -38,10 +44,22 @@ function parsePositiveInt(value) {
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
+function getCleanupTrigger(ageBloated, countBloated) {
+    if (ageBloated && countBloated) return 'age+count';
+    return ageBloated ? 'age' : 'count';
+}
+
 export class QueueMaintenanceService {
     constructor(deps = {}) {
         this.db = deps.db || defaultDb;
         this.logger = deps.logger || createLogger('QueueMaintenance');
+        this.withSessionAdvisoryLock = deps.withSessionAdvisoryLock
+            ?? this.db.withSessionAdvisoryLock
+            ?? defaultDb.withSessionAdvisoryLock;
+        this.taskQueueMaintenanceLockKey = deps.taskQueueMaintenanceLockKey
+            ?? this.db.DB_ADVISORY_LOCKS?.TASK_QUEUE_MAINTENANCE
+            ?? defaultDb.DB_ADVISORY_LOCKS?.TASK_QUEUE_MAINTENANCE;
+        this.activeCleanupRun = null;
     }
 
     async getTaskQueueRetentionPolicy() {
@@ -73,6 +91,61 @@ export class QueueMaintenanceService {
     }
 
     async backgroundDrainIfBloated() {
+        const cleanupOrigin = TASK_QUEUE_CLEANUP_ORIGINS.WORKER_STARTUP;
+        return this.runSerializedCleanup(cleanupOrigin, () => this.runBackgroundDrain(cleanupOrigin));
+    }
+
+    async runScheduledTaskQueueCleanup({ cleanupOrigin = TASK_QUEUE_CLEANUP_ORIGINS.CRON } = {}) {
+        return this.runSerializedCleanup(
+            cleanupOrigin,
+            () => this.runScheduledCleanup(cleanupOrigin),
+        );
+    }
+
+    async runSerializedCleanup(cleanupOrigin, executeCleanup) {
+        assertTaskQueueCleanupOrigin(cleanupOrigin);
+
+        if (this.activeCleanupRun) {
+            this.logger.debug('task_queue cleanup skipped because another local cleanup is in flight', {
+                cleanupOrigin,
+            });
+            return createCleanupSkipResult(cleanupOrigin, 'local_in_flight');
+        }
+
+        if (typeof this.withSessionAdvisoryLock !== 'function') {
+            throw new Error('task_queue cleanup requires withSessionAdvisoryLock');
+        }
+        if (!Number.isInteger(this.taskQueueMaintenanceLockKey)) {
+            throw new Error('task_queue cleanup requires an advisory lock key');
+        }
+
+        let cleanupResult;
+        const activeRun = this.withSessionAdvisoryLock(
+            this.taskQueueMaintenanceLockKey,
+            async () => {
+                cleanupResult = await executeCleanup();
+            },
+        );
+        this.activeCleanupRun = activeRun;
+
+        try {
+            const acquired = await activeRun;
+            if (!acquired) {
+                this.logger.debug('task_queue cleanup skipped because another process holds the advisory lock', {
+                    cleanupOrigin,
+                    lockKey: this.taskQueueMaintenanceLockKey,
+                });
+                return createCleanupSkipResult(cleanupOrigin, 'advisory_lock_held');
+            }
+            return cleanupResult;
+        } finally {
+            if (this.activeCleanupRun === activeRun) {
+                this.activeCleanupRun = null;
+            }
+        }
+    }
+
+    async runBackgroundDrain(cleanupOrigin) {
         const cleanupType = 'startup';
         const MAX_TOTAL_ROWS = this.getTaskQueueMaxTotalRows();
         const retentionPolicy = await this.getTaskQueueRetentionPolicy();
@@ -85,14 +158,17 @@ export class QueueMaintenanceService {
 
         if (!ageBloated && !countBloated) return;
 
-        this.logger.warn('task_queue bloat detected at startup; running background drain', {
+        const trigger = getCleanupTrigger(ageBloated, countBloated);
+        const logDescriptor = getBackgroundDrainLogDescriptor(trigger);
+        this.logger[logDescriptor.level](logDescriptor.message, {
+            cleanupOrigin,
             staleRows: staleCount,
             totalRows: totalCount,
             retentionDays: retentionPolicy,
             maxTotalRows: MAX_TOTAL_ROWS,
             terminalRowsByStatus: counts.perStatus,
             oldestRowsByStatus: summarizeOldestByStatus(counts.perStatus),
-            trigger: ageBloated && countBloated ? 'age+count' : ageBloated ? 'age' : 'count'
+            trigger,
         });
 
         let totalDeleted = 0;
@@ -121,6 +197,7 @@ export class QueueMaintenanceService {
             const excess = remainingAfterAge - MAX_TOTAL_ROWS;
             const recentCapTrimSummary = await this.getRecentCapTrimSummary();
             this.logger.warn('task_queue count cap exceeded; trimming oldest rows', {
+                cleanupOrigin,
                 remaining: remainingAfterAge,
                 maxTotalRows: MAX_TOTAL_ROWS,
                 toDelete: excess,
@@ -139,6 +216,8 @@ export class QueueMaintenanceService {
         }
 
         this.logger.info('Background task_queue drain complete', {
+            cleanupOrigin,
+            trigger,
             deleted: totalDeleted,
             ageDeleted,
             countCapDeleted,
@@ -160,7 +239,8 @@ export class QueueMaintenanceService {
         if (totalDeleted > 0) {
             await this.recordCleanupHistory({
                 cleanupType,
-                trigger: ageBloated && countBloated ? 'age+count' : ageBloated ? 'age' : 'count',
+                cleanupOrigin,
+                trigger,
                 retentionPolicy,
                 maxTotalRows: MAX_TOTAL_ROWS,
                 countsBefore: counts,
@@ -177,15 +257,16 @@ export class QueueMaintenanceService {
 
         try {
             await this.db.query('VACUUM ANALYZE task_queue');
-            this.logger.info('task_queue VACUUM ANALYZE complete after background drain');
+            this.logger.info('task_queue VACUUM ANALYZE complete after background drain', { cleanupOrigin });
         } catch (vacuumErr) {
             this.logger.warn('task_queue VACUUM ANALYZE failed after background drain (non-fatal)', {
+                cleanupOrigin,
                 error: vacuumErr.message
             });
         }
     }
 
-    async runScheduledTaskQueueCleanup() {
+    async runScheduledCleanup(cleanupOrigin) {
         const cleanupType = 'scheduled';
         const retentionPolicy = await this.getTaskQueueRetentionPolicy();
         const MAX_TOTAL_ROWS = this.getTaskQueueMaxTotalRows();
@@ -212,6 +293,7 @@ export class QueueMaintenanceService {
                 const excess = remaining - MAX_TOTAL_ROWS;
                 const recentCapTrimSummary = await this.getRecentCapTrimSummary();
                 this.logger.warn('task_queue count cap exceeded during scheduled cleanup; trimming oldest rows', {
+                    cleanupOrigin,
                     remaining,
                     maxTotalRows: MAX_TOTAL_ROWS,
                     toDelete: excess,
@@ -231,6 +313,7 @@ export class QueueMaintenanceService {
 
             if (totalDeleted > 0) {
                 this.logger.info('Task queue cleanup complete', {
+                    cleanupOrigin,
                     deleted: totalDeleted,
                     ageDeleted,
                     countCapDeleted,
@@ -250,6 +333,7 @@ export class QueueMaintenanceService {
                 });
                 await this.recordCleanupHistory({
                     cleanupType,
+                    cleanupOrigin,
                     trigger: ageDeleted > 0 && countCapDeleted > 0 ? 'age+count' : ageDeleted > 0 ? 'age' : 'count',
                     retentionPolicy,
                     maxTotalRows: MAX_TOTAL_ROWS,
@@ -265,14 +349,16 @@ export class QueueMaintenanceService {
                 });
                 try {
                     await this.db.query('VACUUM ANALYZE task_queue');
-                    this.logger.info('task_queue VACUUM ANALYZE complete after scheduled cleanup');
+                    this.logger.info('task_queue VACUUM ANALYZE complete after scheduled cleanup', { cleanupOrigin });
                 } catch (vacuumErr) {
                     this.logger.warn('task_queue VACUUM ANALYZE failed after scheduled cleanup (non-fatal)', {
+                        cleanupOrigin,
                         error: vacuumErr.message
                     });
                 }
             } else {
                 this.logger.debug('Task queue cleanup: no rows to delete', {
+                    cleanupOrigin,
                     retentionDays: retentionPolicy,
                     maxTotalRows: MAX_TOTAL_ROWS,
                     terminalRowsByStatus: postAgeCounts.perStatus,
@@ -280,7 +366,7 @@ export class QueueMaintenanceService {
                 });
             }
         } catch (error) {
-            this.logger.error('Task queue cleanup failed', { error: error.message });
+            this.logger.error('Task queue cleanup failed', { cleanupOrigin, error: error.message });
         }
     }
 }

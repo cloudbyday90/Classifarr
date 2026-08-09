@@ -61,6 +61,7 @@ Detailed engineering history is retained in the [August 2026 pre-release archive
 - **Developer tooling dependencies** — Updated ESLint to 10.8.0, Knip to 6.32.0, Testcontainers PostgreSQL to 12.1.0, and Markdownlint CLI2 to 0.23.2 while retaining their quality gates.
 - **Database and vector upgrades** — Added PostgreSQL 17-to-18 upgrade coverage, pgvector 0.8.6 extension upgrades for existing databases, and authoritative schema-snapshot validation for fresh installs.
 - **Classification history performance** — Reworked canonical outcome selection and lifecycle assembly to use narrow identifiers, one per-page aggregation pass, stable `created_at, id` pagination, and a supporting index.
+- **Task queue retention maintenance** — Serialized worker-startup, delayed-startup, and cron cleanup through a nonblocking service-owned advisory lock; cleanup history now records its origin, and age-only retention drains log as routine information rather than capacity pressure.
 - **Bounded database failures** — PostgreSQL statement timeouts from classification-history reads now return retryable `503` responses instead of internal-server errors.
 - **Client asset delivery** — Retired content-hashed Vite assets now return a bounded 404 response while current assets remain immutable and application navigation still receives the app shell.
 - **Workflow and dependency maintenance** — Updated client and server dependencies, restored dependency-declaration checks, refreshed CodeQL and action pins, and retained Markdown, ESM, source-reachability, and product-language gates.
