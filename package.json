@@ -17,6 +17,8 @@
     "docker:smart:rebuild": "npm run docker:smart:down && npm run docker:smart:build && npm run docker:smart:up:wait",
     "docker:smart:provenance-rebuild": "node scripts/docker-compose-smart.mjs build --no-cache --require-provenance && node scripts/docker-compose-smart.mjs up -d --no-build --force-recreate --wait",
     "release:smoke:published-digest": "node scripts/run-published-digest-consumer-smoke.mjs",
+    "release:assemble-candidate-evidence": "node scripts/assemble-release-candidate-evidence.mjs",
+    "release:check-candidate-version": "node scripts/check-release-candidate-version.mjs",
     "lint": "npm run lint:npm-cli-flags && npm run lint:server && npm run lint:client",
     "lint:npm-cli-flags": "node scripts/check-npm-cli-flags.mjs",
     "lint:server": "npm run lint:server:tests && npm run lint:server:security",

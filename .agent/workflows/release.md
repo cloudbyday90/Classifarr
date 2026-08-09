@@ -285,9 +285,27 @@ git tag -a vX.X.Xa-beta -m "vX.X.Xa-beta: Title - ADDITIONAL NOTES"
 git push origin main --tags
 ```
 
-## 8. Verify GitHub Actions Pass Before Release
+## 8. Configure Release Publication Controls
 
-Do not create a GitHub release until the pushed commit and tag workflow are green.
+Before relying on the tag workflow for a release, configure these repository
+controls in GitHub. They are administrative controls and cannot be established
+by the workflow file alone:
+
+1. Enable **immutable releases** for the repository or organization. The
+   workflow verifies the resulting release attestation after publication.
+2. Configure the `release-publication` environment with required reviewers,
+   protected tag or branch rules, and self-review prevention where available.
+   The final publication job waits at this environment before creating a public
+   release.
+3. Confirm the environment's approvers understand that approval publishes the
+   already-attested tag after the digest-only consumer smoke result has passed.
+
+Do not use a personal access token, a manual GitHub release, or a local Docker
+build as a substitute for this tag-based evidence chain.
+
+## 9. Verify Tag Workflow And Release Evidence
+
+Do not communicate a release until the pushed tag workflow has completed.
 ```bash
 # After push, inspect recent CI/CD runs
 gh run list --workflow "CI/CD Pipeline" --limit 10
@@ -296,11 +314,28 @@ gh run list --workflow "CI/CD Pipeline" --limit 10
 gh run watch <run-id> --exit-status
 ```
 
-If a tag run fails:
+The tag workflow performs these operations in order:
+
+1. Builds, publishes, attests, and verifies the GHCR and Docker Hub digest.
+2. Starts the exact GHCR digest from a separate hosted consumer job and uploads
+   bounded `published-digest-consumer-smoke` evidence.
+3. Validates the tag against all package-lock and package versions plus the
+   public UI version, then revalidates the CI readout and consumer evidence
+   against the tag, source revision, and digest. It uploads
+   `release-candidate-evidence` as a workflow artifact and waits for
+   `release-publication` approval.
+4. Creates a draft GitHub release with the evidence JSON attached, publishes
+   that draft, and verifies the GitHub release attestation. Tags containing a
+   prerelease suffix are marked prerelease and explicitly not latest.
+
+Do **not** run `gh release create` manually. The workflow uses `--verify-tag`
+and `--fail-on-no-commits`, preventing an unreviewed command from creating a
+tag or publishing a duplicate release.
+
+If the tag run fails before the publication job creates a release:
 ```bash
 # 1) Fix code on main and push
-# 2) Delete broken release/tag
-gh release delete vX.X.Xa-beta --yes
+# 2) Delete the unpublished broken tag
 git tag -d vX.X.Xa-beta
 git push origin :refs/tags/vX.X.Xa-beta
 
@@ -309,29 +344,10 @@ git tag -a vX.X.Xa-beta -m "vX.X.Xa-beta: re-release after CI fix"
 git push origin vX.X.Xa-beta
 ```
 
-## 9. Create GitHub Release
-
-Create an actual release on GitHub (tags alone don't appear as releases).
-
-**Using GitHub CLI (preferred):**
-
-// turbo
-```bash
-gh release create vX.X.Xa-beta --title "vX.X.Xa-beta: Title" --notes-file RELEASE_NOTES.md --latest
-```
-
-> **Note:** Prefer curated notes from `RELEASE_NOTES.md`. Do not rely on `--generate-notes` for public releases.
-
-**Or manually via web UI:**
-
-1. Go to: https://github.com/cloudbyday90/Classifarr/releases/new
-2. Select the tag you just created
-3. Set release title: `vX.X.Xa-beta: Title`
-4. Copy the release notes from `RELEASE_NOTES.md` into the description
-5. Ensure "Set as the latest release" is checked
-6. Click "Publish release"
-
-> **Important:** Do NOT check "pre-release" for alpha versions - the `-alpha` suffix is sufficient. Pre-release prevents "Latest" badge.
+If a GitHub release was already published, do not move, delete, or reuse that
+tag. Immutable releases prohibit doing so. Correct the release on a newer tag,
+rerun the full evidence chain, and avoid availability communication for the
+unverified release until the follow-up is published.
 
 ## 10. Rebuild Docker (if local testing)
 
@@ -341,10 +357,15 @@ docker compose down; docker compose up -d --build
 
 ## 11. Verify
 
-1. Check GitHub releases page shows new release as "Latest"
-2. Verify version shows correctly in UI (bottom-left sidebar)
-3. Test any breaking changes documented
-4. Confirm latest `CI/CD Pipeline` and `OSV Dependency Scan` runs for the tag are `success`
+1. Check the GitHub release has the attached `Release candidate evidence` JSON
+   asset and displays as immutable.
+2. Verify the release attestation independently:
+   ```bash
+   gh release verify vX.X.Xa-beta --repo cloudbyday90/Classifarr --format json
+   ```
+3. Verify version shows correctly in UI (bottom-left sidebar).
+4. Test any breaking changes documented.
+5. Confirm latest `CI/CD Pipeline` and `OSV Dependency Scan` runs for the tag are `success`.
 
 ---
 
@@ -383,4 +404,6 @@ Additional file when the release includes database/migration/schema changes:
 - **Schema-changing work must update `database/schema/current.sql` in the same change** - whenever you add or modify migrations, change schema-affecting SQL, or change the snapshot generator, regenerate `current.sql`, stage it with the schema work, and rerun both the containerized and local schema checks so CI does not fail on snapshot drift
 - **Docker smoke verification is part of release hygiene** - build `classifarr:test`, run `IMAGE_NAME=classifarr:test npm run docker:smoke:pgss`, and do not tag until the fresh-instance/upgrade smoke run passes and cleans up
 - **Coverage ratchet is a hard gate** - do not tag/release while `npm run coverage:ratchet:check` is failing
-- **Release is blocked on green CI for the tag** - never publish release notes before tag workflow success
+- **Release is blocked on the complete evidence chain** - never communicate
+  availability before tag CI, digest provenance, consumer smoke, protected
+  publication approval, and GitHub release-attestation verification succeed

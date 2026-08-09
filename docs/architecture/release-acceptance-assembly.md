@@ -2,10 +2,11 @@
 
 ## Status
 
-Phase 10R.4 is complete as of 2026-08-09. This document defines the release
-acceptance boundary for Classifarr source revisions and active installations.
-It deliberately keeps ordinary policy conversion, classification, routing, and
-provider use independent from release evidence collection.
+Phase 10R.4 tooling is complete as of 2026-08-09. This document defines the
+release-acceptance boundary for Classifarr source revisions and active
+installations. It deliberately keeps ordinary policy conversion,
+classification, routing, and provider use independent from release evidence
+collection.
 
 ## Problem
 
@@ -260,13 +261,15 @@ decision.
 
 ## Next Task
 
-**10R.4.2 Published Digest Consumer Smoke Acceptance** is implemented. It
-accepts only an exact published Classifarr digest, verifies it from the consumer
-boundary, and starts it in an isolated bounded Compose project before producing
-redacted release evidence. The next repository release-execution task is
-**10R.4.3 Release Candidate Publication And Evidence Recording**: select a
-version and source revision, publish the tag, run 10R.4.2 against the attested
-digest, and retain the resulting evidence before communicating availability.
+**10R.4.2 Published Digest Consumer Smoke Acceptance** and **10R.4.3 Release
+Candidate Publication And Evidence Recording** are implemented. The tag path
+now runs the digest-only consumer smoke in a separate job, validates its bounded
+evidence against the CI readout, attaches that evidence to a draft GitHub
+release, publishes only through the `release-publication` environment, and
+verifies the immutable release attestation. A release-specific execution still
+requires an intentionally selected tag, source revision, immutable-release
+configuration, and protected-environment reviewers. See [Release Candidate
+Publication And Evidence Recording](release-candidate-publication-and-evidence-recording.md).
 The parallel **8R.36.11 Compatibility-Removal Evidence Regeneration** task
 still requires a current approved active-installation completion artifact and
 remains separate from routine policy automation.

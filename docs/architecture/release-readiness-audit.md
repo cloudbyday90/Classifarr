@@ -93,6 +93,15 @@ isolated supported-Compose smoke and health check. Do not treat provenance as a 
 CI acceptance, protected installation approval, or compatibility-removal
 closure.
 
+**10R.4.3 Release Candidate Publication And Evidence Recording** is now
+implemented. Tag CI validates the accepted source and smoke evidence against
+one image digest, attaches a bounded JSON evidence asset to a draft release,
+publishes through the `release-publication` environment, and verifies the
+resulting immutable-release attestation. GitHub immutable releases and the
+environment's reviewer policy remain mandatory administrative prerequisites.
+See [Release Candidate Publication And Evidence
+Recording](release-candidate-publication-and-evidence-recording.md).
+
 ## Recommendation Stack
 
 1. Treat the final CI release-readout artifact as the publication gate for the
@@ -101,9 +110,10 @@ closure.
    acceptance gate for one installation.
 3. Keep compatibility-removal closure separate and fail closed until its
    approved evidence chain exists.
-4. Require the 10R.4.1 provenance verification to pass for every release tag,
-   then execute 10R.4.2 consumer-side digest smoke acceptance and retain its
-   evidence before communicating a selected release as available.
+4. Require the 10R.4.1 provenance verification and 10R.4.2 consumer-side
+   digest smoke to pass for every release tag. Retain their 10R.4.3 bounded
+   evidence asset in an immutable release record before communicating a selected
+   release as available.
 
 ## Research Basis
 

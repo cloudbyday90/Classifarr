@@ -80,7 +80,7 @@ the per-installation cutover evidence owned by Phase 8R.
 | 7R | Contract-complete foundation | Runtime decision, question, rebuild, verifier, rollback, and trace boundaries | Preserve through 5R and 8R authority/storage work |
 | 8R | Complete contracts with recurring evidence | Native lifecycle, installation evidence, CI-only retirement, and closure evidence | Fresh v3 validation passed on 2026-08-09; retain automatic policy conversion and obtain an approved active-installation completion artifact before compatibility-retirement closure |
 | 9R | Ongoing enforcement | Zero-debt durable naming and product-language gates | Preserve the baseline in every product change |
-| 10R | 10R.1-10R.4.2 tooling complete; 10R.4.3 next | Isolated real-boundary acceptance for AI authority, deterministic policy decisions, provider recovery, existing installations, operational safety, release evidence, verified image provenance, and a digest-only consumer smoke path | Select a release candidate, then retain successful provenance and consumer-smoke evidence for its exact published digest before production communication |
+| 10R | 10R.1-10R.4.3 tooling complete; release execution pending | Isolated real-boundary acceptance for AI authority, deterministic policy decisions, provider recovery, existing installations, operational safety, release evidence, verified image provenance, a digest-only consumer smoke path, and immutable release recording | Select a release candidate, configure protected immutable release publication, then retain verified provenance and consumer-smoke evidence for its exact published digest before production communication |
 
 ## Required Delivery Order
 
@@ -203,9 +203,12 @@ the per-installation cutover evidence owned by Phase 8R.
     ports, installation mounts, or source build. Its release-specific evidence
     must still be produced after a release candidate is selected. This remains
     separate from installation approval and compatibility retirement.
-26. **10R.4.3 Release Candidate Publication And Evidence Recording** is next.
-    Select the version and source revision, publish the tag, run 10R.4.2 against
-    its attested digest, and retain the resulting evidence before communication.
+26. **10R.4.3 Release Candidate Publication And Evidence Recording** is
+    implemented. Tag CI now assembles the readout and consumer-smoke evidence
+    into a bounded JSON asset, waits at the `release-publication` environment,
+    creates a draft with that asset, publishes it, and verifies the immutable
+    GitHub release attestation. Select a version and source revision only after
+    configuring the administrative environment and immutable-release controls.
 
 ## Phase 8R Boundaries
 

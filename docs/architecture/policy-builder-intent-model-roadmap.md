@@ -12249,8 +12249,8 @@ Implemented design: [Published Digest Consumer Smoke Acceptance](published-diges
 
 ### 10R.4.3 Release Candidate Publication And Evidence Recording
 
-Status: next release-execution task. This requires an intentional release
-candidate version and source-revision selection.
+Status: implementation complete on 2026-08-09; release-specific execution is
+pending an intentional release-candidate version and source-revision selection.
 
 Intent: publish and attest the selected tag, execute 10R.4.2 against the exact
 published digest, retain the bounded evidence with the release record, then
@@ -12264,6 +12264,9 @@ Required outcome:
   compatibility-removal artifact is substituted for that release evidence.
 - Publication remains blocked when provenance or consumer smoke acceptance is
   absent, fails, or targets a different revision.
+
+Implemented design: [Release Candidate Publication And Evidence
+Recording](release-candidate-publication-and-evidence-recording.md).
 
 ## Testing Strategy
 

@@ -11,6 +11,15 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Immutable Release Evidence**: Tag publication now runs the published image
+  in a separate digest-only consumer smoke job, validates that bounded result
+  with the CI readout, enforces tag/package-lock/package/UI-version alignment,
+  attaches a fingerprinted evidence asset to a draft GitHub release, and
+  verifies the immutable release attestation through a protected publication
+  environment. Release guidance now documents the required immutable-release
+  and reviewer configuration and prohibits manual release creation outside this
+  evidence chain.
+
 - **Published Digest Consumer Smoke**: Added a digest-only release-consumer
   smoke command that verifies the expected GitHub provenance before starting
   the published GHCR or Docker Hub image in an isolated, no-port, no-build
