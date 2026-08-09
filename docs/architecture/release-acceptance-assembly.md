@@ -2,11 +2,11 @@
 
 ## Status
 
-Phase 10R.4 tooling is complete as of 2026-08-09. This document defines the
-release-acceptance boundary for Classifarr source revisions and active
-installations. It deliberately keeps ordinary policy conversion,
-classification, routing, and provider use independent from release evidence
-collection.
+Phase 10R.4 tooling and the single-maintainer GitHub environment configuration
+are complete as of 2026-08-09. This document defines the release-acceptance
+boundary for Classifarr source revisions and active installations. It
+deliberately keeps ordinary policy conversion, classification, routing, and
+provider use independent from release evidence collection.
 
 ## Problem
 
@@ -34,10 +34,14 @@ or compatibility-code retirement.
   The CI manifest is an artifact, not a replacement for source control or a
   deployment record.
 - [GitHub deployment environments](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments)
-  documents required reviewers, branch restrictions, self-review prevention,
-  and environment-scoped secrets. A workflow file can reference an
+  documents required reviewers, branch and tag restrictions, administrator
+  bypass, and environment-scoped secrets. A workflow file can reference an
   environment, but repository administrators must configure its protection
   rules; code cannot truthfully infer that configuration.
+- [GitHub deployment-environment REST API](https://docs.github.com/en/rest/deployments/environments?apiVersion=2026-03-10)
+  and [deployment branch-policy REST API](https://docs.github.com/en/rest/deployments/branch-policies?apiVersion=2026-03-10)
+  document custom tag policies. The acceptance workflow uses this capability
+  to bind a manually dispatched record to the tag's `GITHUB_REF`.
 - [SLSA provenance](https://slsa.dev/spec/v1.2/provenance) defines provenance
   as verifiable information about where, when, and how an artifact was made.
   The deployment fingerprint and source revision are kept as distinct values
@@ -82,8 +86,8 @@ Decision: rejected.
 Pros:
 
 - The normal CI manifest is deterministic and installation-agnostic.
-- A separate protected-environment workflow binds an installation attestation
-  to an immutable deployment fingerprint and exact source revision.
+- A separate tag-restricted environment workflow binds an installation
+  attestation to an immutable deployment fingerprint and exact source revision.
 - The workload signal reads five aggregate counters only and never changes
   runtime authority.
 - A missing baseline becomes `not_applicable`, rather than a fabricated
@@ -105,9 +109,10 @@ Decision: selected.
    jobs, writes a `policy-release-acceptance-readout` artifact in every run,
    and blocks tag image publication when a required component did not pass.
 2. Keep live installation evidence in the manual `Release Installation
-   Evidence` workflow. Configure its `release-acceptance` environment with
-   required reviewers, protected tag or branch rules, and self-review
-   prevention where the GitHub plan supports those controls.
+   Evidence` workflow. Configure its `release-acceptance` environment with a
+   custom `v*` **tag** policy and disable administrator bypass. This
+   single-maintainer repository intentionally has no reviewer policy; add an
+   independent reviewer and self-review prevention only if ownership changes.
 3. Bind every installation artifact to both an immutable deployment fingerprint
    and the checked-out source revision. The evidence also records the
    protected workflow-run URL and a bounded change reference, but no operator
@@ -152,11 +157,20 @@ must not claim that it has.
 - bounded change reference; and
 - attestation timestamp.
 
-The manual workflow uses the `release-acceptance` environment. Configure the
-environment in GitHub before relying on this workflow for approval. The
-artifact proves that the workflow ran under that environment name; only
-GitHub's environment configuration enforces required reviewer and
-self-review protections.
+The manual workflow uses the `release-acceptance` environment. The workflow
+fails closed unless its dispatch ref is an exact `v*` tag and its package,
+lockfile, and UI versions satisfy the tag contract. It passes manually entered
+values through environment variables, not expression-expanded shell commands.
+The artifact is an operator attestation of a supplied immutable deployment
+fingerprint; it does not connect to, inspect, or alter a live installation.
+
+### GitHub Environment Outcome
+
+As of 2026-08-09, `release-acceptance` is configured with a custom `v*` tag
+policy, no required reviewers, and administrator bypass disabled. The same
+bypass restriction applies to `release-publication`. An operator must select
+the exact deployed `v*` tag when dispatching the workflow. This is a
+single-maintainer execution boundary, not independent human approval.
 
 ### Operator-Decision Signal
 
@@ -187,8 +201,9 @@ baseline, it is `not_applicable`.
 1. Allow normal CI to produce a passing `policy-release-acceptance-readout`
    artifact for the exact source revision.
 2. Deploy the immutable image or compose build.
-3. Run `Release Installation Evidence` from that deployed source revision and
-   approve it through the configured protected environment.
+3. Run `Release Installation Evidence` from the exact deployed `v*` tag with
+   its immutable image digest and bounded change reference. The tag-restricted
+   environment runs without a reviewer prompt in this single-maintainer model.
 4. Download the CI and installation evidence artifacts.
 5. Capture an aggregate metric from the active installation, using an explicit
    time window. Capture a comparable baseline before claiming a reduction.
@@ -243,6 +258,9 @@ decision.
   fingerprints. These fingerprints detect accidental mixing or alteration;
   they are not a substitute for GitHub artifact attestation or protected
   environment controls.
+- The manual workflow has read-only repository permission, a ten-minute
+  timeout, credential persistence disabled after checkout, a CI-enforced
+  workflow contract, and quoted environment-variable input handling.
 - The normal CI readout does not require a running Classifarr installation.
   This preserves platform and configuration agnosticism.
 - The separate 8R.36.11 compatibility-removal artifact remains an
@@ -256,6 +274,10 @@ decision.
   installation status composition.
 - The repository test and isolated PostgreSQL acceptance jobs are inputs to
   the CI readout. A failed prerequisite produces a blocked readout artifact.
+- `checkReleaseInstallationEvidenceWorkflow.mjs` rejects workflow drift that
+  would accept a branch ref, skip version-contract validation, persist checkout
+  credentials, widen permissions, omit the timeout, or interpolate a manual
+  input directly into shell code.
 - The current audit found no open pull requests and no open Dependabot alerts,
   so there was no dependency PR to implement locally for this component.
 

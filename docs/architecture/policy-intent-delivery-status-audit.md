@@ -80,7 +80,7 @@ the per-installation cutover evidence owned by Phase 8R.
 | 7R | Contract-complete foundation | Runtime decision, question, rebuild, verifier, rollback, and trace boundaries | Preserve through 5R and 8R authority/storage work |
 | 8R | Complete contracts with recurring evidence | Native lifecycle, installation evidence, CI-only retirement, and closure evidence | Fresh v3 validation passed on 2026-08-09; retain automatic policy conversion and obtain an approved active-installation completion artifact before compatibility-retirement closure |
 | 9R | Ongoing enforcement | Zero-debt durable naming and product-language gates | Preserve the baseline in every product change |
-| 10R | 10R.1-10R.4.3 tooling and release controls complete; release execution pending | Isolated real-boundary acceptance for AI authority, deterministic policy decisions, provider recovery, existing installations, operational safety, release evidence, verified image provenance, a digest-only consumer smoke path, and immutable release recording | Select a release candidate, then retain verified provenance and consumer-smoke evidence for its exact published digest before production communication |
+| 10R | 10R.1-10R.4.3 tooling and release controls complete; release execution pending | Isolated real-boundary acceptance for AI authority, deterministic policy decisions, provider recovery, existing installations, operational safety, release evidence, verified image provenance, a digest-only consumer smoke path, and immutable release recording | Select a release candidate, deploy its digest, then record tag-restricted installation evidence and retain verified provenance and consumer-smoke evidence before production communication |
 
 ## Required Delivery Order
 

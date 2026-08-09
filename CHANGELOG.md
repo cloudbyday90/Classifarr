@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Tag-Restricted Installation Acceptance**: Hardened the manual
+  `Release Installation Evidence` workflow so it accepts only an exact `v*`
+  tag, validates that tag's version contract, uses read-only checkout without
+  persisted credentials, bounds runtime to ten minutes, and passes manual
+  inputs through quoted environment variables. Added a CI-enforced workflow
+  contract, configured `release-acceptance` with the same `v*` policy as
+  publication, and disabled administrator bypass on both release environments.
+
 - **Immutable Release Evidence**: Tag publication now runs the published image
   in a separate digest-only consumer smoke job, validates that bounded result
   with the CI readout, enforces tag/package-lock/package/UI-version alignment,

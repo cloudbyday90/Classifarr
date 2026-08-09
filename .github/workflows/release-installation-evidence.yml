@@ -19,6 +19,9 @@ jobs:
   record-installation-evidence:
     name: Record Installation Evidence
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
     environment:
       name: release-acceptance
     concurrency:
@@ -28,20 +31,41 @@ jobs:
     steps:
       - name: Checkout deployed source revision
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: '.nvmrc'
 
+      - name: Verify tagged release context
+        env:
+          RELEASE_REF: ${{ github.ref }}
+          RELEASE_REF_TYPE: ${{ github.ref_type }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [[ "$RELEASE_REF_TYPE" != "tag" || "$RELEASE_REF" != "refs/tags/$RELEASE_TAG" || "$RELEASE_TAG" != v* ]]; then
+            printf '%s\n' 'Release Installation Evidence must run from a v* release tag.' >&2
+            exit 1
+          fi
+
+          npm run release:check-candidate-version -- --tag "$RELEASE_TAG"
+
       - name: Create fingerprint-bound installation evidence
+        env:
+          APPROVAL_WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          CHANGE_REFERENCE: ${{ inputs.change_reference }}
+          DEPLOYMENT_FINGERPRINT: ${{ inputs.deployment_fingerprint }}
+          SOURCE_REVISION: ${{ github.sha }}
         run: |
           node scripts/generate-policy-release-installation-evidence.mjs \
-            --deployment-fingerprint "${{ inputs.deployment_fingerprint }}" \
-            --source-revision "${{ github.sha }}" \
+            --deployment-fingerprint "$DEPLOYMENT_FINGERPRINT" \
+            --source-revision "$SOURCE_REVISION" \
             --approval-environment release-acceptance \
-            --approval-workflow-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            --change-reference "${{ inputs.change_reference }}" \
+            --approval-workflow-url "$APPROVAL_WORKFLOW_URL" \
+            --change-reference "$CHANGE_REFERENCE" \
             --attested-at "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)" \
             --output .tmp/release/policy-release-installation-evidence.json
 

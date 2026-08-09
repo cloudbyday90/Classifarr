@@ -299,6 +299,9 @@ by the workflow file alone:
    maintainer exists. This single-maintainer repository intentionally has no
    reviewer policy; its publication controls are the tag restriction, CI gates,
    immutable release record, and release-attestation verification.
+4. Configure `release-acceptance` with the same custom `v*` tag policy and
+   disable administrator bypass for both release environments. The post-deploy
+   evidence workflow must be dispatched from the exact deployed release tag.
 
 Do not use a personal access token, a manual GitHub release, or a local Docker
 build as a substitute for this tag-based evidence chain.
@@ -349,13 +352,33 @@ tag. Immutable releases prohibit doing so. Correct the release on a newer tag,
 rerun the full evidence chain, and avoid availability communication for the
 unverified release until the follow-up is published.
 
-## 10. Rebuild Docker (if local testing)
+## 10. Record Existing-Installation Acceptance
+
+After the immutable release digest is deployed to a supported installation:
+
+1. In GitHub Actions, dispatch `Release Installation Evidence` from the exact
+   `v*` tag. Supply the deployed digest and a bounded change or deployment
+   reference. It rejects branch dispatches and invalid tag/package versions.
+2. Download the workflow's `policy-release-installation-evidence` artifact and
+   the matching tag CI `policy-release-acceptance-readout` artifact.
+3. Optionally collect the aggregate operator-decision metric for a declared
+   time window. Only compare it with an equal-duration, same-scope baseline.
+4. Assemble the installation readout with
+   `npm run policy:release:acceptance-readout -- --mode installation ...` as
+   documented in `docs/architecture/release-acceptance-assembly.md`.
+
+This is a bounded operator attestation of a supplied deployed digest, not a
+remote inspection or mutation of Docker Compose. Do not treat it as evidence
+for compatibility-code retirement; that requires the separate active-
+installation approval chain.
+
+## 11. Rebuild Docker (if local testing)
 
 ```bash
 docker compose down; docker compose up -d --build
 ```
 
-## 11. Verify
+## 12. Verify
 
 1. Check the GitHub release has the attached `Release candidate evidence` JSON
    asset and displays as immutable.

@@ -56,10 +56,11 @@ accepted:
 
 1. Run the manual `Release Installation Evidence` workflow from the deployed
    source revision with its immutable image digest and bounded change reference.
-2. Ensure GitHub's `release-acceptance` environment is protected with required
-   reviewers, appropriate branch or tag restrictions, and self-review
-   prevention where supported. The workflow file names the environment but
-   cannot verify its repository-side protection settings.
+2. Dispatch that workflow from the exact deployed `v*` tag. GitHub's
+   `release-acceptance` environment is configured with a `v*` tag policy and
+   administrator bypass disabled. This single-maintainer repository has no
+   required-reviewer policy; it is a tag-restricted execution boundary, not an
+   independent approval gate.
 3. Download the CI and installation artifacts and assemble the installation
    readout. Capture an aggregate operator-decision metric only when a
    same-scope, same-duration baseline exists; otherwise retain

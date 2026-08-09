@@ -70,6 +70,11 @@ jobs:
           cd server
           npm run check:release-candidate-publication
 
+      - name: Check release installation evidence workflow contract
+        run: |
+          cd server
+          npm run check:release-installation-evidence
+
       - name: Validate server dependency tree
         run: |
           cd server

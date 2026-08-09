@@ -72,7 +72,7 @@ Pros:
   `--fail-on-no-commits` rejects duplicate release publication.
 - The release asset is attached while the release is a draft. The publication
   environment admits only `v*` tags, after which the release is independently
-  attestation-verified.
+  attestation-verified. Administrator bypass is disabled for that environment.
 - The workflow only records bounded evidence: identifiers, timestamps, status
   identifiers, image digests, and a SHA-256 fingerprint. It contains no
   installation configuration, credentials, titles, policy content, or provider
@@ -124,12 +124,12 @@ verification, or separate evidence assembly from the tag/digest inputs.
 ## Required Repository Configuration
 
 Before a release tag is selected, configure GitHub immutable releases and the
-`release-publication` deployment environment with a `v*` tag policy. This
-repository has one maintainer and intentionally does not configure a nominal
-self-review gate. Add an independent reviewer and self-review prevention if
-that ownership model changes. These settings are release-administration
-controls, not application configuration and not data stored in a Classifarr
-installation.
+`release-publication` deployment environment with a `v*` tag policy and
+administrator bypass disabled. This repository has one maintainer and
+intentionally does not configure a nominal self-review gate. Add an independent
+reviewer and self-review prevention if that ownership model changes. These
+settings are release-administration controls, not application configuration and
+not data stored in a Classifarr installation.
 
 ## Validation
 
