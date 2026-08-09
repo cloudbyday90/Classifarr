@@ -147,6 +147,30 @@ describe('ensureDecisionQuestion', () => {
         expect(build).toHaveBeenCalled();
     });
 
+    it('persists policy confirmation rather than missing evidence in the confirmation band', async () => {
+        build.mockResolvedValue({ problem_summary: 'Missing evidence' });
+        const result = {
+            library: { id: 10 },
+            confidence: 75,
+            method: 'ai_verified',
+            clarification: null,
+            policy_question: null,
+            policyResult: {
+                action: 'prompt_confirm',
+                ranked: [{
+                    library_id: 10,
+                    prompt_threshold: 60,
+                    auto_classify_threshold: 85,
+                }],
+            },
+        };
+
+        const out = await ensureDecisionQuestion({ metadata: {}, result });
+
+        expect(out.pending_reason).toBe('Policy confirmation required');
+        expect(out.policy_question.problem_summary).toBe('Missing evidence');
+    });
+
     it('requires clarification when policy decision diagnostics recommend manual review', async () => {
         build.mockResolvedValue(null);
         const result = {

@@ -134,12 +134,38 @@ export function isAiAuthorityRoutingBlocked(result = {}) {
 	);
 }
 
+function isPolicyConfirmationRequired({ result, policyResult }) {
+	if (policyResult?.action !== 'prompt_confirm' || !result?.library) {
+		return false;
+	}
+
+	const confidence = Number(result.confidence);
+	if (!Number.isFinite(confidence)) {
+		return false;
+	}
+
+	const resultLibraryIdentifier = getResultLibraryIdentifier(result);
+	const candidate = Array.isArray(policyResult.ranked)
+		? policyResult.ranked.find(entry => normalizeLibraryIdentifier(entry?.library_id ?? entry?.id) === resultLibraryIdentifier)
+		: null;
+	if (!candidate) {
+		return false;
+	}
+
+	const thresholds = normalizePolicyDecisionThresholds(candidate);
+	return confidence >= thresholds.promptThreshold && confidence < thresholds.autoClassifyThreshold;
+}
+
 export async function ensureDecisionQuestion({ metadata, result, policyResult = null, libraries = [], ragContext = null }) {
 	if (!result || result.needs_retry) {
 		return result;
 	}
 
 	const effectivePolicyResult = result.policyResult || policyResult || null;
+	const policyConfirmationRequired = isPolicyConfirmationRequired({
+		result,
+		policyResult: effectivePolicyResult,
+	});
 	const requiresManualReview = Boolean(effectivePolicyResult?.decisionDiagnostics?.requires_manual_review);
 	const requiresAuthorityReview = isAiAuthorityRoutingBlocked(result);
 	const requiresRecoveryReview = requiresProviderRecoveryReview(result);
@@ -195,7 +221,9 @@ export async function ensureDecisionQuestion({ metadata, result, policyResult = 
 		result.needs_clarification = true;
 		result.clarification = normalizedQuestion;
 		result.policy_question = normalizedQuestion;
-		result.pending_reason = normalizedQuestion.problem_summary || result.pending_reason || result.reason || null;
+		result.pending_reason = policyConfirmationRequired
+			? 'Policy confirmation required'
+			: (normalizedQuestion.problem_summary || result.pending_reason || result.reason || null);
 		return result;
 	}
 
@@ -219,7 +247,9 @@ export async function ensureDecisionQuestion({ metadata, result, policyResult = 
 	result.needs_clarification = true;
 	result.clarification = normalizedQuestion;
 	result.policy_question = normalizedQuestion;
-	result.pending_reason = normalizedQuestion.problem_summary;
+	result.pending_reason = policyConfirmationRequired
+		? 'Policy confirmation required'
+		: normalizedQuestion.problem_summary;
 
 	return result;
 }

@@ -27,6 +27,7 @@ import {
 } from '../middleware/csrf.mjs';
 import { generateSpec as generateSwaggerSpecDefault } from '../utils/swaggerSpec.mjs';
 import { evaluateCorsOrigin as evaluateCorsOriginDefault } from '../utils/corsPolicy.mjs';
+import { registerStaticApplicationDelivery } from './staticApplicationDelivery.mjs';
 const publicDir = path.resolve(import.meta.dirname, '../../public');
 const ACCESS_LOG_NOTIFICATION_PATHS = new Set(['/api/notifications', '/api/notifications/unread-count']);
 const ACCESS_LOG_HEALTH_PATHS = new Set(['/health', '/api/system/health']);
@@ -204,10 +205,7 @@ export async function createApp({
 
   registerHealthRoute(app, database);
 
-  app.use(express.static(publicDir));
-  app.get('{*splat}', (_req, res) => {
-    res.sendFile(path.join(publicDir, 'index.html'));
-  });
+  registerStaticApplicationDelivery({ app, publicDir });
   app.use(errorHandler);
 
   return app;

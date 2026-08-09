@@ -55,18 +55,22 @@
             {{ fact.label }}
           </li>
         </ul>
-        <details
+        <div
           v-if="decisionPresentation.ai_advisory"
           class="ai-advisory"
         >
-          <summary>AI advisory</summary>
+          <p class="ai-advisory-label">
+            {{ decisionPresentation.ai_advisory.status_id === 'aligned_with_deterministic'
+              ? 'AI check'
+              : 'AI advisory' }}
+          </p>
           <p>
             {{ decisionPresentation.ai_advisory.message }}
           </p>
           <p v-if="decisionPresentation.ai_advisory.proposed_destination">
             Proposed destination: {{ decisionPresentation.ai_advisory.proposed_destination.library_name }}.
           </p>
-        </details>
+        </div>
       </div>
       <Button
         v-if="canConfirmDestination"
@@ -308,14 +312,14 @@ function emitConfirmDestination(destination) {
   color: #cbd5e1;
 }
 
-.ai-advisory summary {
-  width: fit-content;
-  cursor: pointer;
-  color: #bfdbfe;
-}
-
 .ai-advisory p {
   margin-top: 0.5rem;
+}
+
+.ai-advisory-label {
+  margin: 0;
+  font-weight: 600;
+  color: #bfdbfe;
 }
 
 .leading-recommendation :deep(.btn) {

@@ -25,6 +25,11 @@ has a leading destination but requires confirmation; it does not mean that
 evidence is absent. The UI uses `Policy confirmation required` rather than the
 legacy generic `Missing evidence` label in that case.
 
+The persisted `pending_reason` follows the same distinction for deterministic
+`prompt_confirm` outcomes. Existing active records are updated by a
+forward-only migration; their stored question payloads and audit history remain
+unchanged.
+
 ## AI Verification Boundary
 
 The verification input contains the current item context, the deterministic

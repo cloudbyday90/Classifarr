@@ -131,7 +131,7 @@ function buildDeterministicDecision({ classification, question, candidateDestina
   };
 }
 
-function buildAiAdvisory({ classification }) {
+function buildAiAdvisory({ classification, destinationName }) {
   const sourceMetadata = metadata(classification?.metadata);
   const details = asObject(sourceMetadata.classification_details);
   const advisory = asObject(details.ai_advisory);
@@ -161,6 +161,14 @@ function buildAiAdvisory({ classification }) {
     };
   }
 
+  if (classification?.method === 'ai_verified') {
+    return {
+      status_id: 'aligned_with_deterministic',
+      message: `AI verification aligned with ${destinationName}. It remains advisory and did not determine the policy outcome.`,
+      proposed_destination: null,
+    };
+  }
+
   return null;
 }
 
@@ -181,14 +189,18 @@ export function buildPolicyRuntimeQuestionDecisionPresentation({
       library_name: boundedString(destination?.library_name),
     }))
     .filter((destination) => destination.library_id && destination.library_name);
+  const deterministic = buildDeterministicDecision({
+    classification,
+    question: asObject(question),
+    candidateDestinations: destinations,
+  });
 
   return {
     version: POLICY_RUNTIME_QUESTION_DECISION_PRESENTATION_VERSION,
-    deterministic: buildDeterministicDecision({
+    deterministic,
+    ai_advisory: buildAiAdvisory({
       classification,
-      question: asObject(question),
-      candidateDestinations: destinations,
+      destinationName: deterministic.destination?.library_name || 'the deterministic destination',
     }),
-    ai_advisory: buildAiAdvisory({ classification }),
   };
 }

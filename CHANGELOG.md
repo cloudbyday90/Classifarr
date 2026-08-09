@@ -11,6 +11,13 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Client Asset Delivery**: Retired Vite asset URLs now return a real 404
+  with a bounded response instead of the SPA HTML shell. The app shell is
+  revalidated on navigation, while current content-hashed assets are immutable;
+  this prevents stale bundles from rendering retired decision UI after a
+  deployment. Verified AI runs also state that they aligned with the
+  deterministic destination without gaining authority over the policy outcome.
+
 - **Pending Decision Identity And Explanation**: Awaiting decisions now use a
   stable unambiguous media identity to ensure only one active decision is
   actionable at a time; a forward-only migration marks older duplicates as

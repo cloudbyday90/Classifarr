@@ -77,6 +77,21 @@ describe('policyRuntimeQuestionDecisionPresentation', () => {
     });
   });
 
+  test('states when the AI verification aligns with the deterministic destination', () => {
+    const presentation = buildPolicyRuntimeQuestionDecisionPresentation({
+      classification: {
+        method: 'ai_verified',
+      },
+      candidateDestinations: candidates,
+    });
+
+    expect(presentation.ai_advisory).toEqual({
+      status_id: 'aligned_with_deterministic',
+      message: 'AI verification aligned with Movies. It remains advisory and did not determine the policy outcome.',
+      proposed_destination: null,
+    });
+  });
+
   test('describes historic disagreement honestly when its normalized alternative was not retained', () => {
     const presentation = buildPolicyRuntimeQuestionDecisionPresentation({
       classification: {
