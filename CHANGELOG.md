@@ -57,6 +57,8 @@ Detailed engineering history is retained in the [August 2026 pre-release archive
 - **Release trust chain** — Tag releases now verify package-version alignment, publish and attest immutable multi-architecture images, smoke the exact digest, attach bounded evidence to a draft release, and verify immutable release attestation.
 - **Installation acceptance hardening** — The manual acceptance workflow accepts only exact `v*` tags, validates the tag contract, disables administrator bypass, avoids fictitious reviewer requirements, and prevents manual input from reaching shell evaluation.
 - **Runtime baseline** — Standardized Node.js 24.18.1, npm and npx 12.0.2, and Alpine 3.24 across local tooling, Docker, package engines, and CI.
+- **Client runtime dependencies** — Updated Vue to 3.5.41, Axios to 1.19.0, and VueUse to 14.4.0 after clean-install, lint, typecheck, and full client-test validation.
+- **Developer tooling dependencies** — Updated ESLint to 10.8.0, Knip to 6.32.0, Testcontainers PostgreSQL to 12.1.0, and Markdownlint CLI2 to 0.23.2 while retaining their quality gates.
 - **Database and vector upgrades** — Added PostgreSQL 17-to-18 upgrade coverage, pgvector 0.8.6 extension upgrades for existing databases, and authoritative schema-snapshot validation for fresh installs.
 - **Classification history performance** — Reworked canonical outcome selection and lifecycle assembly to use narrow identifiers, one per-page aggregation pass, stable `created_at, id` pagination, and a supporting index.
 - **Bounded database failures** — PostgreSQL statement timeouts from classification-history reads now return retryable `503` responses instead of internal-server errors.
@@ -93,3 +95,4 @@ Detailed engineering history is retained in the [August 2026 pre-release archive
 - **Compatibility-retirement safeguards** — Require current, fingerprint-valid evidence for any retirement decision and fail closed on stale, cross-plan, malformed, or unsupported evidence without modifying runtime policy behavior.
 - **Release workflow hardening** — Preserve full-SHA action pinning, least-privilege permissions, provenance validation, immutable tag and environment contracts, and consumer-side digest verification.
 - **Dependency remediation** — Resolved workspace Dependabot alerts and patched audited runtime, tooling, YAML, Markdown, link-detection, glob, Engine.IO, and body-parsing dependency paths.
+- **Server dependency hardening** — Updated Express Rate Limit to 8.6.2, js-yaml to 5.2.3, Node type definitions to 26.1.2, and their locked transitive dependencies to remediate reported security exposure.
