@@ -80,7 +80,7 @@ the per-installation cutover evidence owned by Phase 8R.
 | 7R | Contract-complete foundation | Runtime decision, question, rebuild, verifier, rollback, and trace boundaries | Preserve through 5R and 8R authority/storage work |
 | 8R | Complete contracts with recurring evidence | Native lifecycle, installation evidence, CI-only retirement, and closure evidence | Regenerate current evidence and closure audits after mapped contract changes; retain automatic policy conversion |
 | 9R | Ongoing enforcement | Zero-debt durable naming and product-language gates | Preserve the baseline in every product change |
-| 10R | Release acceptance next | Isolated real-boundary acceptance for AI authority, deterministic policy decisions, provider recovery, existing installations, and operational safety | Assemble the 10R.4 CI manifest and deployment-evidence readout |
+| 10R | Complete | Isolated real-boundary acceptance for AI authority, deterministic policy decisions, provider recovery, existing installations, operational safety, and release evidence | Retain the CI manifest and protected installation-evidence workflow; capture comparable aggregate workload artifacts per deployment |
 
 ## Required Delivery Order
 
@@ -183,10 +183,12 @@ the per-installation cutover evidence owned by Phase 8R.
     startup recovery without a live provider or media server. See
     [Privacy-Bounded Retry, Recovery, Stale-Evidence, And Restart
     Acceptance](privacy-bounded-retry-recovery-stale-restart-acceptance.md).
-23. **10R.4 Release Acceptance Assembly** is next. It must define the CI
-    acceptance manifest, bind installation evidence to a deployment fingerprint
-    and approval workflow, and publish a release readout including a measured
-    operator-decision reduction signal.
+23. **10R.4 Release Acceptance Assembly** is complete. The CI manifest names
+    required acceptance suites and records a passed or blocked artifact. A
+    separate protected-environment workflow binds active-installation evidence
+    to a deployment fingerprint and source revision. Aggregate operator-review
+    workload evidence is privacy-bounded and is explicitly not-applicable
+    until a comparable baseline exists. See [Release Acceptance Assembly](release-acceptance-assembly.md).
 
 ## Phase 8R Boundaries
 

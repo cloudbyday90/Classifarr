@@ -1,0 +1,54 @@
+name: Release Installation Evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      deployment_fingerprint:
+        description: "Immutable deployed image digest or equivalent deployment fingerprint"
+        required: true
+        type: string
+      change_reference:
+        description: "Bounded release, change, or deployment reference"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  record-installation-evidence:
+    name: Record Installation Evidence
+    runs-on: ubuntu-latest
+    environment:
+      name: release-acceptance
+    concurrency:
+      group: release-installation-evidence-${{ inputs.deployment_fingerprint }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout deployed source revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Create fingerprint-bound installation evidence
+        run: |
+          node scripts/generate-policy-release-installation-evidence.mjs \
+            --deployment-fingerprint "${{ inputs.deployment_fingerprint }}" \
+            --source-revision "${{ github.sha }}" \
+            --approval-environment release-acceptance \
+            --approval-workflow-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --change-reference "${{ inputs.change_reference }}" \
+            --attested-at "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)" \
+            --output .tmp/release/policy-release-installation-evidence.json
+
+      - name: Upload installation evidence artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: policy-release-installation-evidence
+          path: .tmp/release/policy-release-installation-evidence.json
+          if-no-files-found: error
+          retention-days: 90

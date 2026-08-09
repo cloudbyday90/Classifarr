@@ -28,6 +28,10 @@ Current execution focus:
   establishes the single-active-decision invariant, an operator-visible
   deterministic evidence summary, and a privacy-bounded AI advisory that
   cannot override policy authority.
+- **Completed:** **10R.4 Release Acceptance Assembly**. Repository acceptance
+  now produces a passed or blocked manifest artifact, while a separate
+  protected-environment workflow records active-installation evidence without
+  coupling ordinary automation to a particular deployment.
 - **Current operational finding:** **8R.36.11 Compatibility-Removal Evidence
   Regeneration** has rerun successfully with the v3 validation contract. The
   repository evidence is ready, while the active-installation completion artifact
@@ -50,7 +54,7 @@ active-installation prerequisite -> 8R.36.11 regeneration -> 8R.34/8R.35 current
 completed platform acceptance: 10R.1.1 -> 10R.1.2 -> 10R.1.3
 completed lifecycle acceptance: 10R.2.1 -> 10R.2.2 -> 10R.2.3
 completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3
-current platform acceptance: 10R.4 Release Acceptance Assembly
+completed release acceptance: 10R.4
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
 
@@ -11852,7 +11856,7 @@ Implementation status:
 
 ## Phase 10R: Production Acceptance And Operational Readiness
 
-Status: active. Phase 10R turns completed service contracts into deterministic,
+Status: complete. Phase 10R turns completed service contracts into deterministic,
 installation-agnostic acceptance evidence. It does not create a second runtime
 workflow, require an operator dialog, or depend on live external providers.
 
@@ -11866,6 +11870,7 @@ Design record:
 - [Provider Failure And Recovery Acceptance](provider-failure-recovery-acceptance.md).
 - [Existing-Installation Lifecycle Acceptance](existing-installation-lifecycle-acceptance.md).
 - [Reconciliation Idempotence And Native Runtime Read Acceptance](reconciliation-idempotence-native-runtime-read-acceptance.md).
+- [Release Acceptance Assembly](release-acceptance-assembly.md).
 
 ### 10R.1 Classification And Authority Pipeline Acceptance
 
@@ -12160,16 +12165,26 @@ Design and acceptance detail: [Pending Decision Lifecycle And Explanation](pendi
 
 ### 10R.4 Release Acceptance Assembly
 
+Status: complete as of 2026-08-09.
+
 Intent: assemble repeatable repository, integration, and installation evidence
 without confusing a repository test pass with a specific installation cutover.
 
-Tasks:
+Implemented outcome:
 
-- Define the CI acceptance manifest and required isolated suites.
-- Bind active-installation evidence to its deployment fingerprint and approval
-  workflow while keeping normal automation available.
-- Provide a clear release readout with passed, blocked, and not-applicable
-  components.
+- The versioned CI manifest names the required repository and isolated-runtime
+  acceptance components, creates a retained readout artifact even when a
+  prerequisite fails, and prevents tag image publication without a passed
+  readout.
+- The manual protected-environment workflow records a SHA-256-bound deployment
+  fingerprint, source revision, workflow-run URL, and change reference without
+  reading installation configuration, secrets, or classification data.
+- A read-only aggregate metric measures open operator-review workload. A
+  baseline-free metric is explicitly not-applicable; only equal-scope,
+  equal-duration artifacts can state whether the rate improved, was unchanged,
+  or increased. The signal never changes routing or policy authority.
+
+Design and implementation detail: [Release Acceptance Assembly](release-acceptance-assembly.md).
 
 ## Testing Strategy
 
@@ -12310,11 +12325,13 @@ The next sequence is dependency-gated rather than phase-number order:
     Privacy-bounded logs, metrics, retry and recovery state, stale evidence,
     routing gaps, and restart behavior now have isolated real-service
     acceptance coverage without live provider or media-server access.
-17. **10R.4 Release Acceptance Assembly**: next. Define the CI acceptance
-    manifest, bind active-installation evidence to the deployment fingerprint
-    and approval workflow, and publish a passed, blocked, and not-applicable
-    release readout with an operator-decision reduction measure.
-18. **8R.36.11 Compatibility-Removal Evidence Regeneration**: revalidated
+17. **10R.4 Release Acceptance Assembly**: complete. A CI readout artifact
+    now records required repository and isolated-runtime acceptance, a
+    protected-environment workflow records fingerprint-bound installation
+    evidence, and a read-only aggregate metric can state a comparable
+    operator-review workload signal without changing automation authority. See
+    [Release Acceptance Assembly](release-acceptance-assembly.md).
+18. **8R.36.11 Compatibility-Removal Evidence Regeneration**: next. It was revalidated
     after the closure-contract change. It produced fresh v3 repository
     validation evidence and bounded blocked diagnostics because the
     active-installation completion artifact remains blocked. The next
@@ -12344,13 +12361,13 @@ that every deployment has completed its separate installation-evidence gate.
 | Unconvertible legacy configuration and operator workflow | Supported cases convert automatically. Unsupported source shapes persist only a bounded `requires_maintenance` state, with no native authority. Real persisted deferred and unsupported state proves diagnostics exclude raw source data, while blocked release evidence does not alter native runtime authority. | Resolved by 10R.2.3. |
 | Rollback snapshot window | Native authority reversion defaults to 14 days, bounded to 1 through 30 days. After expiry, bulky payloads are redacted while minimal auditable metadata remains. | Resolved by 7R rollback and retention contracts. |
 | Old builder, preview, replay, and diagnostics artifacts | Normal browser and HTTP surfaces are retired. The remaining verifier is internal, bounded migration evidence with a deletion gate; compatibility retirement remains CI/release maintenance only. | Resolved for runtime reachability; installation-specific retirement evidence remains a separate 8R release task. |
-| Proof that the model reduces operator decisions | The normal authoring path and automatic conversion now remove routine library/profile recreation and conversion dialogs. A production decision-count baseline and release readout have not yet been defined. | **Follow-up: add to 10R.4 release acceptance.** |
+| Proof that the model reduces operator decisions | The normal authoring path and automatic conversion remove routine library/profile recreation and conversion dialogs. The release assembly now collects a privacy-bounded open-review workload metric and compares it only with a same-scope, same-duration baseline. A deployment without that baseline is explicitly not-applicable rather than claiming a reduction. | Resolved by 10R.4; capture comparable installation artifacts before making a production reduction claim. |
 
 ### Re-Review Boundaries
 
-- **Next:** 10R.4 must assemble the CI manifest, deployment-evidence readout,
-  and measured operator-decision reduction signal.
-- **Release:** 10R.4 must define the CI manifest, deployment-evidence readout,
-  and a measured operator-decision reduction signal. The separately blocked
-  8R.36.11 active-installation artifact remains a deployment prerequisite for
+- **Next:** 8R.36.11 must regenerate current compatibility-removal evidence
+  after a protected active-installation artifact is available.
+- **Release:** 10R.4 now distinguishes repository, installation, and
+  aggregate-workload evidence. The separately blocked 8R.36.11
+  active-installation artifact remains a deployment prerequisite for
   compatibility retirement, not a prerequisite for ordinary policy automation.

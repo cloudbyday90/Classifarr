@@ -11,6 +11,14 @@ Archived changelogs: [May 2026 Late](docs/changelog/CHANGELOG-2026-05-late.md) |
 
 ### Changed
 
+- **Release Acceptance Assembly**: Added a versioned CI release manifest and
+  artifact that distinguishes repository acceptance from an active
+  installation. A protected-environment workflow now records
+  fingerprint-bound installation evidence, while a read-only aggregate metric
+  can report a comparable open operator-review workload signal without
+  exposing classification data or changing routing authority. Tag image
+  publication now requires the assembled release-acceptance readout.
+
 - **Client Asset Delivery**: Retired Vite asset URLs now return a real 404
   with a bounded response instead of the SPA HTML shell. The app shell is
   revalidated on navigation, while current content-hashed assets are immutable;
