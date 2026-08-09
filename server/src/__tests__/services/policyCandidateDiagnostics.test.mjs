@@ -3,7 +3,6 @@ import {
   buildCandidateDiagnostics,
   inferPresetEvidenceMode,
   isWeakCandidateViability,
-  hasProfileHardExclusion,
   hasProfileObservedAbsence,
 } from '../../services/policyCandidateDiagnostics.mjs';
 
@@ -171,7 +170,7 @@ describe('policyCandidateDiagnostics', () => {
     }));
   });
 
-  test('marks profile hard exclusions as ineligible primary anchors', () => {
+  test('marks profile-only observed absence as an ineligible primary anchor', () => {
     const profileDiagnostics = {
       schema_version: 1,
       available: true,
@@ -189,7 +188,7 @@ describe('policyCandidateDiagnostics', () => {
       { profileDiagnostics },
     );
 
-    expect(hasProfileHardExclusion(profileDiagnostics)).toBe(true);
+    expect(hasProfileObservedAbsence(profileDiagnostics)).toBe(true);
     expect(diagnostics).toEqual(expect.objectContaining({
       primary_viability: CANDIDATE_VIABILITY.RAG_IMPROVED,
       evidence_class: 'negative_conflict',
@@ -229,7 +228,6 @@ describe('policyCandidateDiagnostics', () => {
     );
 
     expect(hasProfileObservedAbsence(profileDiagnostics)).toBe(true);
-    expect(hasProfileHardExclusion(profileDiagnostics)).toBe(true);
     expect(diagnostics).toEqual(expect.objectContaining({
       primary_viability: CANDIDATE_VIABILITY.IDENTITY_EVIDENCE,
       evidence_class: 'identity',

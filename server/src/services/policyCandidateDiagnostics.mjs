@@ -152,9 +152,6 @@ export function hasProfileObservedAbsence(profileDiagnostics = null) {
   return Object.values(exclusions).some((value) => Array.isArray(value) && value.length > 0);
 }
 
-// Retained for internal callers while profile diagnostics move to accurate terminology.
-export const hasProfileHardExclusion = hasProfileObservedAbsence;
-
 export function buildCandidateDiagnostics(policy, scores = {}, agreement = null, details = {}) {
   const presetEvidenceMode = inferPresetEvidenceMode(policy, scores);
   const profileObservedAbsence = hasProfileObservedAbsence(details.profileDiagnostics);

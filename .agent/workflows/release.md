@@ -69,6 +69,19 @@ Then verify every package and lockfile root version agrees:
 npm --prefix client test -- --run src/__tests__/codeHealth.test.js
 ```
 
+Verify the public tag contract before tagging:
+```bash
+npm run release:check-candidate-version -- --tag vX.X.Xa-beta
+```
+
+On Windows PowerShell with npm 12, invoke the script directly because npm can
+interpret `--tag` as its own configuration option instead of forwarding it:
+```powershell
+node scripts/check-release-candidate-version.mjs --tag vX.X.Xa-beta
+```
+The CI workflow runs the npm form in Bash, where it forwards the argument as
+expected.
+
 ## 3. Update Changelog and Release Notes
 
 ### CHANGELOG.md
