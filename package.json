@@ -16,6 +16,7 @@
     "docker:smart:down": "docker compose down",
     "docker:smart:rebuild": "npm run docker:smart:down && npm run docker:smart:build && npm run docker:smart:up:wait",
     "docker:smart:provenance-rebuild": "node scripts/docker-compose-smart.mjs build --no-cache --require-provenance && node scripts/docker-compose-smart.mjs up -d --no-build --force-recreate --wait",
+    "ghcr:retention:inventory": "node scripts/generate-ghcr-manifest-retention-inventory.mjs",
     "release:smoke:published-digest": "node scripts/run-published-digest-consumer-smoke.mjs",
     "release:assemble-candidate-evidence": "node scripts/assemble-release-candidate-evidence.mjs",
     "release:check-candidate-version": "node scripts/check-release-candidate-version.mjs",

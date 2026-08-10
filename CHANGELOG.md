@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Pre-release Details](docs/changelog/CHANGELOG-
 
 Current development changes will be recorded here.
 
+### Added
+
+- **GHCR manifest retention inventory** — Added a GET-only, graph-aware inventory that protects tagged OCI indexes and every referenced platform or attestation manifest while reporting untagged artifacts for manual review only.
+
 ## [0.48.0c-beta] - 2026-08-09
 
 ### Fixed

@@ -443,6 +443,26 @@ unpullable. Automatic retention is limited to Docker Hub tags. Review GHCR
 storage manually with manifest-reference awareness and preserve every child of
 each retained release index.
 
+For a GHCR storage review, run the read-only manifest inventory before proposing
+any retention action. This is not a release gate and it must not be given a
+delete-capable token:
+
+```powershell
+$env:GH_TOKEN = '<GitHub token with read:packages>'
+$env:GHCR_ACTOR = '<GitHub account that owns the token>'
+npm run ghcr:retention:inventory
+Remove-Item Env:GH_TOKEN
+Remove-Item Env:GHCR_ACTOR
+```
+
+The output under `.tmp/ghcr-manifest-retention/` must show a complete graph,
+zero unresolved references, an empty `incompleteRetainedTags` list, and every
+tagged root and child manifest protected. `manualReviewRequired` is
+investigation evidence only. It never authorizes a package deletion; any future
+removal needs a separate approved procedure with post-removal multi-platform
+pull verification. See
+`docs/architecture/ghcr-manifest-retention-inventory.md`.
+
 ## 10. Record Existing-Installation Acceptance
 
 After the immutable release digest is deployed to a supported installation:
