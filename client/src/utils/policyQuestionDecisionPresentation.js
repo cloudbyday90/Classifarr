@@ -35,6 +35,13 @@ function evidence(value) {
   return id && label ? { id, label } : null
 }
 
+function safetyGate(value) {
+  const id = boundedString(value?.id, 80)
+  const label = boundedString(value?.label, 120)
+  const message = boundedString(value?.message)
+  return id && label && message ? { id, label, message } : null
+}
+
 export function policyQuestionDecisionPresentation(answer = {}) {
   const source = answer?.decision_summary
   if (source?.version !== POLICY_RUNTIME_QUESTION_DECISION_PRESENTATION_VERSION) return null
@@ -60,6 +67,13 @@ export function policyQuestionDecisionPresentation(answer = {}) {
         .map(evidence)
         .filter(Boolean)
         .slice(0, 4),
+      safety_gate: safetyGate(deterministic?.safety_gate),
+      additional_safety_gates: (Array.isArray(deterministic?.additional_safety_gates)
+        ? deterministic.additional_safety_gates
+        : [])
+        .map(safetyGate)
+        .filter(Boolean)
+        .slice(0, 3),
     },
     ai_advisory: advisoryStatusId && advisoryMessage
       ? {

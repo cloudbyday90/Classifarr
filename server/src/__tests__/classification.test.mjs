@@ -3091,7 +3091,7 @@ describe('AI availability fallback handling', () => {
         },
       },
     });
-    expect(insertCalls[0][1][13]).toBe('Missing evidence');
+    expect(insertCalls[0][1][13]).toBe('Provider recovery review required');
   });
 
   test('adds a manual-selection question when legacy signal fallback stays in awaiting-decision confidence band', async () => {
@@ -3139,7 +3139,7 @@ describe('AI availability fallback handling', () => {
         },
       },
     });
-    expect(insertCalls[0][1][13]).toBe('Missing evidence');
+    expect(insertCalls[0][1][13]).toBe('Provider recovery review required');
   });
 });
 

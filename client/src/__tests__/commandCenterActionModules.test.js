@@ -596,6 +596,12 @@ describe('CommandCenter action modules', () => {
                 { id: 'declared_intent', label: 'Declared policy intent supports Movies.' },
                 { id: 'similar_items', label: 'Similar items already associated with Movies support this match.' },
               ],
+              safety_gate: {
+                id: 'policy_confirmation_required',
+                label: 'Policy confirmation required',
+                message: 'The current policy outcome requires an operator confirmation before this item can route.',
+              },
+              additional_safety_gates: [],
             },
             ai_advisory: {
               status_id: 'alternative_selected',
@@ -617,6 +623,8 @@ describe('CommandCenter action modules', () => {
     expect(wrapper.text()).toContain('Confirm Movies or choose a different destination.')
     expect(wrapper.text()).not.toContain('A score alone does not establish destination identity automatically.')
     expect(wrapper.text()).toContain('Why review is needed')
+    expect(wrapper.text()).toContain('Routing safeguard')
+    expect(wrapper.text()).toContain('requires an operator confirmation before this item can route.')
     expect(wrapper.text()).toContain('Declared policy intent supports Movies.')
     expect(wrapper.text()).toContain('Similar items already associated with Movies support this match.')
     expect(wrapper.findAll('button').some(node => node.text() === 'Confirm Movies')).toBe(true)

@@ -7,6 +7,10 @@ import {
   getPolicyDecisionCandidate,
   policyDecisionAction,
 } from '../utils/policyDecisionAuthority.mjs';
+import {
+  buildClassificationRouteSafetyProjection,
+  evaluateClassificationRouteSafety,
+} from './classificationRouteSafetyGate.mjs';
 
 export const POLICY_RUNTIME_QUESTION_DECISION_PRESENTATION_VERSION =
   'policy.runtime_question_decision_presentation.v1';
@@ -110,6 +114,7 @@ function buildEvidenceFacts({ candidate, destinationName }) {
 function buildDeterministicDecision({ classification, question, candidateDestinations }) {
   const sourceMetadata = metadata(classification?.metadata);
   const policyResult = asObject(sourceMetadata.policyResult);
+  const details = asObject(sourceMetadata.classification_details);
   const thresholds = asObject(policyResult.thresholds);
   const leadingDestination = candidateDestinations[0] || null;
   const destinationName = leadingDestination?.library_name || 'the leading destination';
@@ -123,15 +128,44 @@ function buildDeterministicDecision({ classification, question, candidateDestina
   const reviewThreshold = score(policyCandidate?.prompt_threshold) ?? score(thresholds.prompt);
   const automaticThreshold = score(policyCandidate?.auto_classify_threshold) ?? score(thresholds.auto_classify);
   const action = policyDecisionAction(policyResult);
+  const persistedRouteSafety = buildClassificationRouteSafetyProjection(details.route_safety);
+  const routeSafety = persistedRouteSafety ||
+    buildClassificationRouteSafetyProjection(evaluateClassificationRouteSafety({
+      result: {
+        method: classification?.method,
+        confidence: classification?.confidence,
+        library: leadingDestination,
+        policyResult,
+      },
+      policyResult,
+    }));
+  const primarySafetyGate = routeSafety?.primary_gate || null;
+  const displaySafetyGate = !persistedRouteSafety &&
+    primarySafetyGate?.id === 'policy_threshold_unavailable'
+    ? null
+    : primarySafetyGate;
 
   let statusId = 'manual_selection_required';
   let message = 'The current policy result requires a destination decision.';
-  if (action === 'prompt_select') {
+  if (displaySafetyGate?.id === 'policy_destination_selection_required' || action === 'prompt_select') {
     statusId = 'destination_selection_required';
-    message = `${destinationName} is a viable destination, but the policy evaluation did not establish a unique destination. Choose the destination to use for this item.`;
-  } else if (action === 'prompt_confirm') {
+    message = displaySafetyGate?.message ||
+      `${destinationName} is a viable destination, but the policy evaluation did not establish a unique destination. Choose the destination to use for this item.`;
+  } else if (
+    displaySafetyGate?.id === 'policy_confirmation_required' ||
+    displaySafetyGate?.id === 'policy_score_below_automatic_threshold' ||
+    action === 'prompt_confirm'
+  ) {
     statusId = 'confirmation_required';
-    message = `${destinationName} meets the confirmation threshold but requires your confirmation before it can route.`;
+    message = displaySafetyGate?.message ||
+      `${destinationName} meets the confirmation threshold but requires your confirmation before it can route.`;
+  } else if (displaySafetyGate) {
+    statusId = decisionScore !== null && automaticThreshold !== null && decisionScore >= automaticThreshold
+      ? 'automatic_threshold_blocked'
+      : 'automatic_route_blocked';
+    message = decisionScore !== null && automaticThreshold !== null && decisionScore >= automaticThreshold
+      ? `${destinationName} meets the automatic policy threshold, but automatic routing remains blocked because ${displaySafetyGate.message}`
+      : displaySafetyGate.message;
   } else if (decisionScore !== null && automaticThreshold !== null && decisionScore >= automaticThreshold) {
     statusId = 'automatic_threshold_met';
     message = `${destinationName} meets the automatic policy threshold, but another safety gate requires review.`;
@@ -151,6 +185,8 @@ function buildDeterministicDecision({ classification, question, candidateDestina
     automatic_threshold: automaticThreshold,
     message,
     evidence: buildEvidenceFacts({ candidate, destinationName }),
+    safety_gate: displaySafetyGate,
+    additional_safety_gates: displaySafetyGate ? routeSafety?.blocking_gates?.slice(1) || [] : [],
   };
 }
 

@@ -143,7 +143,10 @@ describe('ensureDecisionQuestion', () => {
         const out = await ensureDecisionQuestion({ metadata: {}, result });
 
         expect(out.needs_clarification).toBe(true);
-        expect(out.pending_reason).toBe('Missing evidence');
+        expect(out.pending_reason).toBe('AI advisory review required');
+        expect(out.route_safety.primary_gate).toMatchObject({
+            id: 'ai_advisory_cannot_route',
+        });
         expect(build).toHaveBeenCalled();
     });
 
@@ -168,6 +171,9 @@ describe('ensureDecisionQuestion', () => {
         const out = await ensureDecisionQuestion({ metadata: {}, result });
 
         expect(out.pending_reason).toBe('Policy confirmation required');
+        expect(out.route_safety.primary_gate).toMatchObject({
+            id: 'policy_confirmation_required',
+        });
         expect(out.policy_question.problem_summary).toBe('Missing evidence');
     });
 
@@ -194,6 +200,9 @@ describe('ensureDecisionQuestion', () => {
 
         expect(out.needs_clarification).toBe(true);
         expect(out.pending_reason).toBe('Policy confirmation required');
+        expect(out.route_safety.primary_gate).toMatchObject({
+            id: 'policy_confirmation_required',
+        });
         expect(build).toHaveBeenCalled();
     });
 
@@ -219,6 +228,9 @@ describe('ensureDecisionQuestion', () => {
         const out = await ensureDecisionQuestion({ metadata: {}, result });
 
         expect(out.needs_clarification).toBe(true);
+        expect(out.route_safety.primary_gate).toMatchObject({
+            id: 'policy_destination_selection_required',
+        });
         expect(build).toHaveBeenCalled();
     });
 
@@ -236,6 +248,9 @@ describe('ensureDecisionQuestion', () => {
             },
         };
         await ensureDecisionQuestion({ metadata: {}, result });
+        expect(result.route_safety.primary_gate).toMatchObject({
+            id: 'manual_policy_evidence_review_required',
+        });
         expect(build).toHaveBeenCalled();
     });
 
@@ -277,7 +292,7 @@ describe('ensureDecisionQuestion', () => {
         };
         const out = await ensureDecisionQuestion({ metadata: {}, result });
         expect(out.needs_clarification).toBe(true);
-        expect(out.pending_reason).toBe('Missing evidence');
+        expect(out.pending_reason).toBe('AI advisory review required');
         expect(build).toHaveBeenCalled();
     });
 
@@ -293,7 +308,7 @@ describe('ensureDecisionQuestion', () => {
         };
         const out = await ensureDecisionQuestion({ metadata: {}, result });
         expect(out.needs_clarification).toBe(true);
-        expect(out.pending_reason).toBe('Missing evidence');
+        expect(out.pending_reason).toBe('Policy-route provenance review required');
         expect(build).toHaveBeenCalled();
     });
 
@@ -310,6 +325,9 @@ describe('ensureDecisionQuestion', () => {
         const out = await ensureDecisionQuestion({ metadata: {}, result });
 
         expect(out.needs_clarification).toBe(true);
+        expect(out.route_safety.primary_gate).toMatchObject({
+            id: 'policy_auto_provenance_required',
+        });
         expect(build).toHaveBeenCalled();
     });
 
@@ -333,6 +351,9 @@ describe('ensureDecisionQuestion', () => {
         const out = await ensureDecisionQuestion({ metadata: {}, result });
 
         expect(out.needs_clarification).toBe(true);
+        expect(out.route_safety.primary_gate).toMatchObject({
+            id: 'provider_recovery_review_required',
+        });
         expect(build).toHaveBeenCalled();
     });
 });

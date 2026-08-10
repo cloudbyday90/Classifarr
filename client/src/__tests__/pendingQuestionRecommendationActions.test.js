@@ -37,6 +37,12 @@ const answer = {
       automatic_threshold: 85,
       message: 'Movies meets the confirmation threshold but not the automatic threshold.',
       evidence: [],
+      safety_gate: {
+        id: 'policy_confirmation_required',
+        label: 'Policy confirmation required',
+        message: 'The current policy outcome requires an operator confirmation before this item can route.',
+      },
+      additional_safety_gates: [],
     },
     ai_advisory: {
       status_id: 'aligned_with_deterministic',
@@ -64,5 +70,7 @@ describe('PendingQuestionRecommendationActions', () => {
     expect(wrapper.text()).toContain('AI check')
     expect(wrapper.text()).toContain('AI verification aligned with Movies.')
     expect(wrapper.text()).toContain('did not determine the policy outcome.')
+    expect(wrapper.text()).toContain('Routing safeguard')
+    expect(wrapper.text()).toContain('requires an operator confirmation before this item can route.')
   })
 })

@@ -307,6 +307,10 @@ function confidenceLabel(item) {
 
 function needsAttentionReason(item) {
   const presentation = decisionPresentation(item)
+  const safetyGate = presentation?.deterministic?.safety_gate
+  if (safetyGate?.label) {
+    return safetyGate.label
+  }
   if (presentation?.deterministic?.status_id === 'confirmation_required') {
     return 'Policy confirmation required'
   }

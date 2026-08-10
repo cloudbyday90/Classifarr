@@ -1,14 +1,11 @@
 import { policyQuestionBuilder } from './policyQuestionBuilder.mjs';
 import { isRequireAllConfirmationsEnabled } from './clarificationThresholdManager.mjs';
-import { normalizePolicyDecisionThresholds } from '../utils/policyThresholds.mjs';
-import {
-	getPolicyDecisionCandidate,
-	getPolicyDecisionCandidateScore,
-	policyDecisionAction,
-	isPolicyDecisionReviewRequired,
-} from '../utils/policyDecisionAuthority.mjs';
 import { normalizePolicyRuntimeQuestion } from './policyRuntimeQuestionNormalizer.mjs';
-import { requiresProviderRecoveryReview } from './classificationProviderRecovery.mjs';
+import {
+    evaluateClassificationRouteSafety,
+    isAiAuthorityRoutingBlocked,
+    isCurrentDeterministicPolicyAuto,
+} from './classificationRouteSafetyGate.mjs';
 
 export function normalizeSettings(settings) {
 	if (!settings) {
@@ -76,73 +73,7 @@ export function suggestSeriesType(metadata, appliedLabels = []) {
 	return 'standard';
 }
 
-function normalizeLibraryIdentifier(value) {
-	if (typeof value === 'number' && Number.isFinite(value)) {
-		return String(value);
-	}
-
-	if (typeof value === 'string' && value.trim()) {
-		return value.trim();
-	}
-
-	return null;
-}
-
-function getResultLibraryIdentifier(result = {}) {
-	return normalizeLibraryIdentifier(
-		result?.library?.id ?? result?.library?.library_id ?? result?.library_id,
-	);
-}
-
-function getPolicyLibraryIdentifier(policyResult = {}) {
-	const directLibraryIdentifier = normalizeLibraryIdentifier(
-		policyResult?.library?.library_id ?? policyResult?.library?.id,
-	);
-	if (directLibraryIdentifier) {
-		return directLibraryIdentifier;
-	}
-
-	return normalizeLibraryIdentifier(
-		policyResult?.ranked?.[0]?.library_id ?? policyResult?.ranked?.[0]?.id,
-	);
-}
-
-/**
- * A policy-auto route must originate from the current deterministic policy
- * evaluation, not from a method label carried by an upstream candidate.
- */
-export function isCurrentDeterministicPolicyAuto(result = {}) {
-	if (result?.method !== 'policy_auto' || result?.policyResult?.action !== 'auto_classify') {
-		return false;
-	}
-
-	const resultLibraryIdentifier = getResultLibraryIdentifier(result);
-	const policyLibraryIdentifier = getPolicyLibraryIdentifier(result.policyResult);
-
-	return Boolean(
-		resultLibraryIdentifier &&
-		policyLibraryIdentifier &&
-		resultLibraryIdentifier === policyLibraryIdentifier,
-	);
-}
-
-/**
- * Model output may inform a candidate, but cannot independently authorize an
- * Arr route. Native policy evaluation remains a separately deterministic path.
- */
-export function isAiAuthorityRoutingBlocked(result = {}) {
-	const method = typeof result?.method === 'string' ? result.method : '';
-	const isAiDerivedMethod = /^ai(?:_|$)/.test(method);
-
-	return Boolean(
-		isAiDerivedMethod ||
-		result?.ai_authority?.sideEffects?.canRoute === false,
-	);
-}
-
-function isPolicyConfirmationRequired(policyResult) {
-	return policyDecisionAction(policyResult) === 'prompt_confirm';
-}
+export { isAiAuthorityRoutingBlocked, isCurrentDeterministicPolicyAuto };
 
 export async function ensureDecisionQuestion({ metadata, result, policyResult = null, libraries = [], ragContext = null }) {
 	if (!result || result.needs_retry) {
@@ -150,48 +81,16 @@ export async function ensureDecisionQuestion({ metadata, result, policyResult = 
 	}
 
 	const effectivePolicyResult = result.policyResult || policyResult || null;
-	const policyConfirmationRequired = isPolicyConfirmationRequired(effectivePolicyResult);
-	const requiresPolicyDecisionReview = isPolicyDecisionReviewRequired(effectivePolicyResult);
-	const requiresManualReview = Boolean(effectivePolicyResult?.decisionDiagnostics?.requires_manual_review);
-	const requiresAuthorityReview = isAiAuthorityRoutingBlocked(result);
-	const requiresRecoveryReview = requiresProviderRecoveryReview(result);
-	const requiresPolicyProvenanceReview =
-		result.method === 'policy_auto' && !isCurrentDeterministicPolicyAuto(result);
-
-	const policyCandidate = getPolicyDecisionCandidate(effectivePolicyResult, result.library);
-	const policyAutoThreshold = policyCandidate
-		? normalizePolicyDecisionThresholds(policyCandidate).autoClassifyThreshold
-		: null;
-	const policyCandidateScore = getPolicyDecisionCandidateScore(effectivePolicyResult, result.library);
-	const genericConfidence = Number(result.confidence);
-	const routeConfidence = policyCandidate
-		? policyCandidateScore
-		: (Number.isFinite(genericConfidence) ? genericConfidence : null);
-
-	const belowAutoRouteThreshold = Boolean(
-		result.library &&
-		result.method !== 'policy_auto' &&
-		(typeof policyAutoThreshold !== 'number' ||
-			routeConfidence === null ||
-			routeConfidence < policyAutoThreshold)
-	);
-
 	const requireAllConfirmations = await isRequireAllConfirmationsEnabled();
-
-	const requiresDecisionQuestion = Boolean(
-		result.needs_clarification ||
-		result.method === 'fallback' ||
-		(result.confidence && result.confidence < 70) ||
-		requiresManualReview ||
-		requiresAuthorityReview ||
-		requiresRecoveryReview ||
-		requiresPolicyProvenanceReview ||
-		requiresPolicyDecisionReview ||
-		belowAutoRouteThreshold ||
-		(result.library && requireAllConfirmations)
-	);
+	const routeSafety = evaluateClassificationRouteSafety({
+		result,
+		policyResult: effectivePolicyResult,
+		requireAllConfirmations,
+	});
+	const requiresDecisionQuestion = routeSafety.automatic_route_allowed === false;
 
 	if (!requiresDecisionQuestion) {
+		result.route_safety = null;
 		result.needs_clarification = false;
 		result.clarification = null;
 		result.policy_question = null;
@@ -209,11 +108,11 @@ export async function ensureDecisionQuestion({ metadata, result, policyResult = 
 			libraries,
 		});
 		result.needs_clarification = true;
+		result.route_safety = routeSafety;
 		result.clarification = normalizedQuestion;
 		result.policy_question = normalizedQuestion;
-		result.pending_reason = policyConfirmationRequired
-			? 'Policy confirmation required'
-			: (normalizedQuestion.problem_summary || result.pending_reason || result.reason || null);
+		result.pending_reason = routeSafety.primary_gate?.pendingReason ||
+			(normalizedQuestion.problem_summary || result.pending_reason || result.reason || null);
 		return result;
 	}
 
@@ -235,11 +134,10 @@ export async function ensureDecisionQuestion({ metadata, result, policyResult = 
 		libraries,
 	});
 	result.needs_clarification = true;
+	result.route_safety = routeSafety;
 	result.clarification = normalizedQuestion;
 	result.policy_question = normalizedQuestion;
-	result.pending_reason = policyConfirmationRequired
-		? 'Policy confirmation required'
-		: normalizedQuestion.problem_summary;
+	result.pending_reason = routeSafety.primary_gate?.pendingReason || normalizedQuestion.problem_summary;
 
 	return result;
 }

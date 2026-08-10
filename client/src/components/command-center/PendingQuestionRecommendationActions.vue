@@ -44,6 +44,17 @@
         <p class="recommendation-explanation">
           {{ decisionPresentation.deterministic.message }}
         </p>
+        <div
+          v-if="decisionPresentation.deterministic.safety_gate"
+          class="route-safety-gate"
+        >
+          <p class="route-safety-gate-label">
+            Routing safeguard
+          </p>
+          <p>
+            {{ decisionPresentation.deterministic.safety_gate.message }}
+          </p>
+        </div>
         <ul
           v-if="decisionPresentation.deterministic.evidence.length"
           class="decision-evidence-list"
@@ -55,6 +66,20 @@
             {{ fact.label }}
           </li>
         </ul>
+        <details
+          v-if="decisionPresentation.deterministic.additional_safety_gates.length"
+          class="additional-safety-gates"
+        >
+          <summary>Review additional routing safeguards</summary>
+          <ul>
+            <li
+              v-for="gate in decisionPresentation.deterministic.additional_safety_gates"
+              :key="gate.id"
+            >
+              <strong>{{ gate.label }}:</strong> {{ gate.message }}
+            </li>
+          </ul>
+        </details>
         <div
           v-if="decisionPresentation.ai_advisory"
           class="ai-advisory"
@@ -310,6 +335,36 @@ function emitConfirmDestination(destination) {
   margin-top: 0.5rem;
   font-size: 0.75rem;
   color: #cbd5e1;
+}
+
+.route-safety-gate,
+.additional-safety-gates {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #cbd5e1;
+}
+
+.route-safety-gate p,
+.additional-safety-gates ul {
+  margin-top: 0.25rem;
+}
+
+.route-safety-gate-label {
+  margin: 0;
+  font-weight: 600;
+  color: #bfdbfe;
+}
+
+.additional-safety-gates summary {
+  width: fit-content;
+  cursor: pointer;
+  color: #bfdbfe;
+}
+
+.additional-safety-gates ul {
+  display: grid;
+  gap: 0.25rem;
+  padding-left: 1rem;
 }
 
 .ai-advisory p {

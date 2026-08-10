@@ -99,6 +99,39 @@ describe('policyRuntimeQuestionDecisionPresentation', () => {
     expect(presentation.deterministic.message).not.toContain('automatic policy threshold');
   });
 
+  test('explains the AI authority gate when a high policy score is advisory', () => {
+    const presentation = buildPolicyRuntimeQuestionDecisionPresentation({
+      classification: {
+        method: 'ai_verified',
+        confidence: 90,
+        metadata: {
+          policyResult: {
+            action: 'auto_classify',
+            ranked: [{
+              library_id: 5,
+              score: 90,
+              prompt_threshold: 60,
+              auto_classify_threshold: 85,
+            }],
+          },
+        },
+      },
+      candidateDestinations: candidates,
+    });
+
+    expect(presentation.deterministic).toMatchObject({
+      status_id: 'automatic_threshold_blocked',
+      score: 90,
+      automatic_threshold: 85,
+      safety_gate: {
+        id: 'ai_advisory_cannot_route',
+        label: 'AI advisory review required',
+      },
+    });
+    expect(presentation.deterministic.message).toContain('AI-derived output is advisory');
+    expect(presentation.deterministic.message).not.toContain('another safety gate');
+  });
+
   test('retains a structured advisory alternative without provider raw output', () => {
     const presentation = buildPolicyRuntimeQuestionDecisionPresentation({
       classification: {

@@ -32,6 +32,7 @@ import {
   buildPendingDecisionIdentity,
   classificationPendingDecisionLifecycleService,
 } from './classificationPendingDecisionLifecycleService.mjs';
+import { buildClassificationRouteSafetyProjection } from './classificationRouteSafetyGate.mjs';
 
 const logger = createLogger('classificationPersistence');
 
@@ -339,6 +340,7 @@ export class ClassificationPersistenceService {
       rag_loop_summary: this.buildRagLoopSummary(result),
       parse_diagnostics: result.parse_diagnostics || null,
       ai_advisory: buildAiAdvisoryPersistenceProjection(result.ai_advisory),
+      route_safety: buildClassificationRouteSafetyProjection(result.route_safety),
       processing_time_ms: processingTimeMs,
     };
     classificationDetails.decision_trace = buildDecisionTraceMetadata({
