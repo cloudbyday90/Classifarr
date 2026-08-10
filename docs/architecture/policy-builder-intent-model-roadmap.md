@@ -12281,6 +12281,35 @@ Completion criteria:
 Design and outcome detail: [Historic Route-Safety Refresh Receipt
 Reconciliation](historic-route-safety-refresh-receipt-reconciliation.md).
 
+#### 10R.3.7 Historic Route-Safety Refresh Maintenance Surface
+
+Status: complete.
+
+Intent: provide an administrator product surface for the bounded historic
+route-safety recovery lifecycle without converting a read-only inventory into
+an automatic retry or expanding the receipt data contract.
+
+Completion criteria:
+
+- exposes the recovery flow only through an administrator-maintenance route,
+  with normal navigation unchanged and server-side authorization retained as
+  the authority,
+- starts with an empty operator selection, permits at most the server-advertised
+  50 records, and requires a separate acknowledgement before it sends selected
+  IDs to the existing retry command,
+- uses only the inventory, execution, and receipt API contracts; it does not
+  create a client-side route, policy, AI, provider, task, or learning command,
+- presents a receipt-bound runtime report with allow-listed IDs, fixed status
+  labels, timestamps, and aggregate counts while excluding raw history,
+  metadata, provider data, task IDs, reason payloads, and replacement IDs,
+- polls only visible, worker-in-flight receipt states, stops at stable states
+  or failures, does not persist receipt data, and provides a manual refresh,
+- distinguishes advisory status updates from failures with appropriate live
+  region semantics and preserves operator focus.
+
+Design and outcome detail: [Historic Route-Safety Refresh Maintenance
+Surface](historic-route-safety-refresh-maintenance.md).
+
 ### 10R.4 Release Acceptance Assembly
 
 Status: complete as of 2026-08-09.

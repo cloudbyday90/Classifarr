@@ -141,6 +141,7 @@ const POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS = deepFreeze([
   'client/src/__tests__/PolicyIntentSecondaryActionButton.test.js',
   'client/src/__tests__/PolicyIntentSectionCard.test.js',
   'client/src/__tests__/PolicyNativeCreateHandoff.test.js',
+  'client/src/__tests__/PolicyHistoricRouteSafetyRefresh.test.js',
   'client/src/__tests__/PolicyNativeIntentReconciliation.test.js',
   'client/src/__tests__/PolicyNativePolicyRecoveryNotice.test.js',
   'client/src/__tests__/PolicyNativeProfileRecoveryStatus.test.js',
@@ -405,6 +406,14 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
     POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.POLICY_AUTHORING,
     [POLICY_AUTHORING_PRESENTATION_TEST_BEHAVIOR_IDS.READINESS_LINKS_TO_NEXT_ACTION],
     'Native creation handoff confirms the saved outcome with a bounded follow-up rather than unsaved browser state.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyHistoricRouteSafetyRefresh.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_WORKFLOW_REGRESSION,
+    false,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.RUNTIME_VERIFIER,
+    [],
+    'Historic route-safety refresh is an administrator maintenance recovery surface that preserves explicit selection, acknowledgment, and protected runtime feedback outside normal policy authoring.'
   ),
   presentationTestRecord(
     'client/src/__tests__/PolicyNativeIntentReconciliation.test.js',

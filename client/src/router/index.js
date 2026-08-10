@@ -34,6 +34,7 @@ const Settings = () => import('@/views/Settings.vue')
 const System = () => import('@/views/System.vue')
 const PolicyList = () => import('@/views/PolicyList.vue')
 const PolicyNativeIntentReconciliation = () => import('@/views/PolicyNativeIntentReconciliation.vue')
+const PolicyHistoricRouteSafetyRefresh = () => import('@/views/PolicyHistoricRouteSafetyRefresh.vue')
 const PresetsManager = () => import('@/views/PresetsManager.vue')
 const TuningSuggestionsDashboard = () => import('@/views/TuningSuggestionsDashboard.vue')
 const Evidence = () => import('@/views/Evidence.vue')
@@ -169,6 +170,12 @@ const router = createRouter({
           name: 'PolicyNativeIntentReconciliation',
           meta: { routeMode: 'admin-maintenance' },
           component: PolicyNativeIntentReconciliation,
+        },
+        {
+          path: '/policies/historic-route-safety-refresh',
+          name: 'PolicyHistoricRouteSafetyRefresh',
+          meta: { routeMode: 'admin-maintenance' },
+          component: PolicyHistoricRouteSafetyRefresh,
         },
         {
           path: '/presets',

@@ -116,6 +116,15 @@ describe('router auth/setup guard', () => {
     expect(router.resolve('/policies/native-intent-migration').matched).toHaveLength(0)
   })
 
+  it('allows authenticated administrators to reach historic route-safety maintenance', async () => {
+    const router = await loadRouter()
+
+    await router.push('/policies/historic-route-safety-refresh')
+    await flushPromises()
+
+    expect(router.currentRoute.value.name).toBe('PolicyHistoricRouteSafetyRefresh')
+  })
+
   it('logs setup-status failures and still allows navigation', async () => {
     apiMock.getSetupStatus.mockRejectedValueOnce(new Error('setup offline'))
 
