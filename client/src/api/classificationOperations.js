@@ -64,6 +64,10 @@ export function getPendingQuestionCleanupInventory() {
   return getDataRequest('/classification/pending-cleanup/inventory')
 }
 
+export function getHistoricRouteSafetyRefreshInventory(params = {}) {
+  return getDataRequest('/classification/pending/route-safety-refresh-inventory', { params })
+}
+
 export function resolvePendingClassification(classificationId, payload) {
   return apiClient.post(`/classification/pending/${classificationId}/resolve`, payload)
 }
@@ -88,6 +92,7 @@ const classificationOperationsApi = {
   getPendingClassifications,
   getPendingClassificationCount,
   getPendingQuestionCleanupInventory,
+  getHistoricRouteSafetyRefreshInventory,
   resolvePendingClassification,
   rememberResolvedExactItem,
   retryClassifications,

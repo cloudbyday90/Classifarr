@@ -29,6 +29,10 @@ Current execution focus:
   deterministic evidence summary, a privacy-bounded AI advisory that cannot
   override policy authority, and an explicit retry-required explanation for
   historic high-score records that did not retain their route-safety state.
+- **Completed:** **10R.3.4 Historic Route-Safety Refresh Inventory And Bounded
+  Retry Plan**. Administrators can now identify active historic records that
+  require a current policy evaluation through a bounded, no-side-effect
+  inventory; the report cannot queue retries or alter pending decisions.
 - **Completed:** **10R.4 Release Acceptance Assembly**. Repository acceptance
   now produces a passed or blocked manifest artifact, while a separate
   protected-environment workflow records active-installation evidence without
@@ -65,7 +69,7 @@ completed boundary isolation: 8R.37.1 -> 8R.37.2 -> 8R.37.3 -> 8R.37.4
 active-installation prerequisite -> 8R.36.11 regeneration -> 8R.34/8R.35 current audits
 completed platform acceptance: 10R.1.1 -> 10R.1.2 -> 10R.1.3
 completed lifecycle acceptance: 10R.2.1 -> 10R.2.2 -> 10R.2.3
-completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3
+completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3 -> 10R.3.4
 completed release hardening: 10R.4 -> 10R.4.1
 active release candidate: v0.48.0-beta -> 10R.4.2 -> 10R.4.3
 continuous guardrail: 9R zero-debt naming and product-language gates
@@ -12187,6 +12191,34 @@ Completion criteria:
 Design and acceptance detail: [Pending Decision Lifecycle And Explanation](pending-decision-lifecycle-and-explanation.md)
 and [Historic Route-Safety Explanation](historic-route-safety-explanation.md).
 
+#### 10R.3.4 Historic Route-Safety Refresh Inventory And Bounded Retry Plan
+
+Status: complete.
+
+Intent: let an administrator identify active decisions that cannot state their
+historic route-safety blocker, while preserving the rule that a current
+evaluation and separately authorized retry are required before any work is
+queued.
+
+Completion criteria:
+
+- a repeatable-read, read-only, keyset-paginated inventory evaluates only
+  `awaiting_decision` and `pending_retry` records and caps each report at 50,
+- only records with the server-owned
+  `historical_route_safety_details_unavailable` decision status are emitted;
+  records with a retained gate, low score, invalid question, or unrelated
+  cleanup condition are not included,
+- the report contains no metadata, policy question, provider data, raw model
+  content, route result, or learning state, and explicitly declares no side
+  effects,
+- the report's retry plan is `not_executed`, has a 50-ID maximum, requires
+  administrator access, and delegates any later retry to the existing
+  authorization and current-state checks,
+- a partial active-pending ID index supports the bounded keyset scan without
+  altering historic records.
+
+Design and outcome detail: [Historic Route-Safety Refresh Inventory](historic-route-safety-refresh-inventory.md).
+
 ### 10R.4 Release Acceptance Assembly
 
 Status: complete as of 2026-08-09.
@@ -12418,8 +12450,9 @@ The next sequence is dependency-gated rather than phase-number order:
     evidence cannot change the validated native runtime projection.
 16. **10R.3 Operational Safety And Observability Acceptance**: complete.
     Privacy-bounded logs, metrics, retry and recovery state, stale evidence,
-    routing gaps, and restart behavior now have isolated real-service
-    acceptance coverage without live provider or media-server access.
+    routing gaps, restart behavior, and read-only historic route-safety
+    refresh planning now have isolated real-service acceptance coverage without
+    live provider or media-server access.
 17. **10R.4 Release Acceptance Assembly**: complete. A CI readout artifact
     now records required repository and isolated-runtime acceptance, a
     protected-environment workflow records fingerprint-bound installation

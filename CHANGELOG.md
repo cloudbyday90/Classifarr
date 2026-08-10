@@ -13,6 +13,7 @@ Current development changes will be recorded here.
 
 ### Added
 
+- **Historic route-safety refresh inventory** — Added an admin-only, GET-only, keyset-paginated report that identifies active decisions missing their historic route gate and produces a 50-item retry plan without executing it.
 - **GHCR manifest retention inventory** — Added a GET-only, graph-aware inventory that protects tagged OCI indexes and every referenced platform or attestation manifest while reporting untagged artifacts for manual review only.
 - **Immutable image-release retirement assessment** — Added a GET-only, evidence-bound plan that connects an incomplete retained GHCR graph to its named GitHub release, rejects republishing the tag, and requires an external advisory plus separate approval before any remote retirement action.
 

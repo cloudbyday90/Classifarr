@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-08-09T11:16:55.546Z
--- Latest Migration: 20260809_020000_add_task_queue_cleanup_origin.sql
+-- Generated: 2026-08-10T14:39:22.657Z
+-- Latest Migration: 20260810_120000_add_active_pending_refresh_inventory_index.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -8914,6 +8914,13 @@ CREATE UNIQUE INDEX idx_classification_history_active_pending_identity ON public
 
 
 --
+-- Name: idx_classification_history_active_pending_refresh_inventory; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_classification_history_active_pending_refresh_inventory ON public.classification_history USING btree (id) WHERE ((status)::text = ANY (ARRAY[('awaiting_decision'::character varying)::text, ('pending_retry'::character varying)::text]));
+
+
+--
 -- Name: idx_classification_history_canonical_outcome; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -13620,6 +13627,7 @@ FROM unnest(ARRAY[
     '20260808_160000_single_active_pending_classification.sql',
     '20260808_170000_policy_confirmation_pending_reason.sql',
     '20260809_010000_add_canonical_history_outcome_index.sql',
-    '20260809_020000_add_task_queue_cleanup_origin.sql'
+    '20260809_020000_add_task_queue_cleanup_origin.sql',
+    '20260810_120000_add_active_pending_refresh_inventory_index.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

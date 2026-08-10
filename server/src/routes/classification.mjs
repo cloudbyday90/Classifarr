@@ -23,12 +23,17 @@ import {
 import {
   PolicyRuntimePendingQuestionCleanupApplyService,
 } from '../services/policyRuntimePendingQuestionCleanupApplyService.mjs';
+import {
+  PolicyRuntimeHistoricRouteSafetyRefreshInventoryService,
+} from '../services/policyRuntimeHistoricRouteSafetyRefreshInventory.mjs';
 import { createClassificationRouter } from './classificationRouteShared.mjs';
 
 const policyRuntimePendingQuestionCleanupInventoryService =
   new PolicyRuntimePendingQuestionCleanupInventoryService({ db });
 const policyRuntimePendingQuestionCleanupApplyService =
   new PolicyRuntimePendingQuestionCleanupApplyService({ db });
+const policyRuntimeHistoricRouteSafetyRefreshInventoryService =
+  new PolicyRuntimeHistoricRouteSafetyRefreshInventoryService({ db });
 
 export const router = createClassificationRouter({
   express,
@@ -42,4 +47,5 @@ export const router = createClassificationRouter({
   reclassificationService,
   policyRuntimePendingQuestionCleanupInventoryService,
   policyRuntimePendingQuestionCleanupApplyService,
+  policyRuntimeHistoricRouteSafetyRefreshInventoryService,
 });

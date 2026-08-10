@@ -59,6 +59,12 @@ This is a presentation compatibility state, not a routing rule. It cannot:
 - change pending-decision identity or audit history, or
 - bypass answer-contract validation.
 
+Administrators can identify active records in this compatibility state through
+the separate, bounded [Historic Route-Safety Refresh
+Inventory](historic-route-safety-refresh-inventory.md). That inventory only
+plans existing retry commands; it does not mutate the historical record or run
+a retry from its GET endpoint.
+
 The message is fixed server text and contains no title, prompt, provider
 response, credentials, endpoint, or free-form rationale. Current records still
 show their actual persisted gate, such as AI advisory authority or provider

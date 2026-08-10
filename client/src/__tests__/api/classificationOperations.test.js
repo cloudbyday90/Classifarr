@@ -39,6 +39,7 @@ import {
   getLiveFeed,
   getPendingClassifications,
   getPendingQuestionCleanupInventory,
+  getHistoricRouteSafetyRefreshInventory,
   rememberResolvedExactItem,
   resolvePendingClassification,
   retryClassifications,
@@ -138,6 +139,17 @@ describe('classificationOperations', () => {
     mockGetDataRequest.mockResolvedValueOnce(inventory)
     const result = await getPendingQuestionCleanupInventory()
     expect(mockGetDataRequest).toHaveBeenCalledWith('/classification/pending-cleanup/inventory')
+    expect(result).toEqual(inventory)
+  })
+
+  it('getHistoricRouteSafetyRefreshInventory requests the bounded read-only report', async () => {
+    const inventory = { mode: 'read_only', records: [] }
+    mockGetDataRequest.mockResolvedValueOnce(inventory)
+    const result = await getHistoricRouteSafetyRefreshInventory({ cursor: 41, limit: 25 })
+    expect(mockGetDataRequest).toHaveBeenCalledWith(
+      '/classification/pending/route-safety-refresh-inventory',
+      { params: { cursor: 41, limit: 25 } },
+    )
     expect(result).toEqual(inventory)
   })
 
