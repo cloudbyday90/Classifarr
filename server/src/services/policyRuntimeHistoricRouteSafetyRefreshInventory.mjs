@@ -9,18 +9,15 @@
  */
 
 import {
-  POLICY_RUNTIME_QUESTION_DECISION_STATUS_IDS,
-} from './policyRuntimeQuestionDecisionPresentation.mjs';
-import {
-  buildPolicyRuntimeQuestionAnswerContract,
   POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS,
 } from './policyRuntimeQuestionAnswerContract.mjs';
+import {
+  evaluateHistoricRouteSafetyRefreshEligibility,
+  POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_REASON_ID,
+} from './policyRuntimeHistoricRouteSafetyRefreshEligibility.mjs';
 
 export const POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_INVENTORY_VERSION =
   'policy.runtime_historic_route_safety_refresh_inventory.v1';
-
-export const POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_REASON_ID =
-  'historical_route_safety_details_unavailable';
 
 export const POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_MAX_RECORDS = 50;
 export const POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_DEFAULT_RECORDS = 25;
@@ -52,16 +49,6 @@ function normalizeBoundedInteger(value, fallback, maximum) {
   return Math.min(parsed, maximum);
 }
 
-function parsePersistedObject(value) {
-  if (typeof value !== 'string') return asObject(value);
-
-  try {
-    return asObject(JSON.parse(value));
-  } catch {
-    return {};
-  }
-}
-
 function normalizeTimestamp(value) {
   const date = value ? new Date(value) : new Date();
   return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
@@ -83,30 +70,15 @@ function buildRefreshRecord(row = {}) {
   const classificationId = positiveInteger(row.id);
   if (!classificationId) return null;
 
-  const question = parsePersistedObject(row.policy_question);
-  const answerContract = buildPolicyRuntimeQuestionAnswerContract({
-    classification: {
-      id: classificationId,
-      title: row.title,
-      year: row.year,
-      media_type: row.media_type,
-      status: row.status,
-      confidence: row.confidence,
-      method: row.method,
-      metadata: parsePersistedObject(row.metadata),
-    },
-    question,
-  });
-
-  if (answerContract?.decision_summary?.deterministic?.status_id !==
-      POLICY_RUNTIME_QUESTION_DECISION_STATUS_IDS.HISTORICAL_ROUTE_SAFETY_DETAILS_UNAVAILABLE) {
+  const eligibility = evaluateHistoricRouteSafetyRefreshEligibility(row);
+  if (!eligibility.eligible) {
     return null;
   }
 
   return {
     classificationId,
     pendingStatus: PENDING_STATUS_IDS.includes(row.status) ? row.status : null,
-    candidateItem: answerContract.candidate_item,
+    candidateItem: eligibility.candidateItem,
     reasonId: POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_REASON_ID,
     retry: {
       actionId: POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.RETRY_CLASSIFICATION,
@@ -201,7 +173,7 @@ export async function loadHistoricRouteSafetyRefreshInventoryRows(dbClient, opti
        ch.media_type,
        ch.confidence,
        ch.method,
-     ch.policy_question,
+       ch.policy_question,
        ch.metadata
      FROM classification_history AS ch
      WHERE ch.status IN ('awaiting_decision', 'pending_retry')

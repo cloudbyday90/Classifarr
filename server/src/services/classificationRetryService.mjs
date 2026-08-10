@@ -20,6 +20,8 @@ const ELIGIBLE_STATUSES = new Set(['awaiting_decision', 'pending_retry']);
 const RETRY_ROUTE = '/api/classification/retry';
 const DEFAULT_RETRY_TASK_SOURCE = 'manual_retry';
 const DEFAULT_RETRY_FOLLOWUP_SOURCE = 'manual_retry_followup';
+const DEFAULT_INELIGIBLE_RETRY_REASON_CODE = 'retry_eligibility_not_met';
+const RETRY_REASON_CODE_PATTERN = /^[a-z0-9_]{1,120}$/;
 
 // Task source used by the scheduler's automatic retry queue. Retries from this
 // source preserve the carried-forward retry_count so the auto-retry loop stays
@@ -31,6 +33,18 @@ const SCHEDULER_RETRY_TASK_SOURCE = 'retry_queue';
 function toPositiveInt(value) {
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function normalizeEligibilityResult(value) {
+  if (value?.eligible === true) {
+    return { eligible: true, reasonCode: null };
+  }
+
+  const reasonCode = typeof value?.reasonCode === 'string' &&
+    RETRY_REASON_CODE_PATTERN.test(value.reasonCode)
+    ? value.reasonCode
+    : DEFAULT_INELIGIBLE_RETRY_REASON_CODE;
+  return { eligible: false, reasonCode };
 }
 
 export class ClassificationRetryService {
@@ -74,7 +88,8 @@ export class ClassificationRetryService {
     correlationId = null,
     taskSource = DEFAULT_RETRY_TASK_SOURCE,
     metadataEnrichmentSource = DEFAULT_RETRY_FOLLOWUP_SOURCE,
-    route = RETRY_ROUTE
+    route = RETRY_ROUTE,
+    retryEligibilityCheck = null,
   } = {}) {
     const normalized = this.normalizeIds(classificationIds);
     if (normalized.error) {
@@ -100,7 +115,8 @@ export class ClassificationRetryService {
         correlationId,
         taskSource,
         metadataEnrichmentSource,
-        route
+        route,
+        retryEligibilityCheck,
       });
       results.push(itemResult);
     }
@@ -157,7 +173,8 @@ export class ClassificationRetryService {
     correlationId,
     taskSource = DEFAULT_RETRY_TASK_SOURCE,
     metadataEnrichmentSource = DEFAULT_RETRY_FOLLOWUP_SOURCE,
-    route = RETRY_ROUTE
+    route = RETRY_ROUTE,
+    retryEligibilityCheck = null,
   }) {
     const baseResult = {
       classificationId,
@@ -182,7 +199,7 @@ export class ClassificationRetryService {
       const txResult = await this.db.withTransaction(async (client) => {
 
       const rowResult = await client.query(
-        `SELECT id, tmdb_id, media_type, title, year, status, metadata, retry_count, max_retries
+        `SELECT id, tmdb_id, media_type, title, year, status, metadata, policy_question, retry_count, max_retries
          FROM classification_history
          WHERE id = $1
          FOR UPDATE`,
@@ -221,6 +238,22 @@ export class ClassificationRetryService {
         safeParseJsonObject,
       } = this.classificationRetryPayloads;
       const metadata = safeParseJsonObject(row.metadata, {});
+      if (typeof retryEligibilityCheck === 'function') {
+        const eligibility = normalizeEligibilityResult(await retryEligibilityCheck({
+          classification: row,
+        }));
+        if (!eligibility.eligible) {
+          this.logger.warn('Classification retry skipped: eligibility not met', {
+            correlationId,
+            actor,
+            route,
+            classificationId,
+            result: 'skipped',
+            reasonCode: eligibility.reasonCode,
+          });
+          return { ...baseResult, skipped: true, reasonCode: eligibility.reasonCode };
+        }
+      }
       const identity = buildRetryIdentity(row, metadata);
       const existingTask = await this.hasPendingClassificationTask(client, identity);
       if (existingTask) {

@@ -231,6 +231,52 @@ describe('ClassificationRetryService', () => {
     }));
   });
 
+  test('retrySingle runs a server-owned eligibility check against the locked current row', async () => {
+    client.query.mockImplementation(async (sql) => {
+      if (sql === 'BEGIN' || sql === 'ROLLBACK' || sql === 'COMMIT') return { rows: [] };
+      if (sql.includes('FROM classification_history')) {
+        return {
+          rows: [{
+            id: 309,
+            tmdb_id: 222,
+            media_type: 'movie',
+            title: 'No Longer Historic',
+            year: 2026,
+            status: 'awaiting_decision',
+            metadata: '{"server_only":"value"}',
+            policy_question: '{"version":"current"}',
+          }],
+        };
+      }
+      throw new Error(`Unexpected query: ${sql}`);
+    });
+    const retryEligibilityCheck = jest.fn().mockResolvedValue({
+      eligible: false,
+      reasonCode: 'historic_route_safety_refresh_not_required',
+    });
+
+    const result = await service.retrySingle({
+      classificationId: 309,
+      actor: 'admin',
+      correlationId: 'corr-eligibility',
+      retryEligibilityCheck,
+    });
+
+    expect(result).toMatchObject({
+      classificationId: 309,
+      skipped: true,
+      reasonCode: 'historic_route_safety_refresh_not_required',
+    });
+    expect(retryEligibilityCheck).toHaveBeenCalledWith(expect.objectContaining({
+      classification: expect.objectContaining({ id: 309, status: 'awaiting_decision' }),
+    }));
+    expect(client.query).not.toHaveBeenCalledWith(expect.stringContaining('INSERT INTO task_queue'), expect.anything());
+    expect(logger.warn).toHaveBeenCalledWith('Classification retry skipped: eligibility not met', expect.objectContaining({
+      classificationId: 309,
+      reasonCode: 'historic_route_safety_refresh_not_required',
+    }));
+  });
+
   test('hasPendingClassificationTask falls back to title/year when TMDB lookup misses', async () => {
     client.query
       .mockResolvedValueOnce({ rows: [] })

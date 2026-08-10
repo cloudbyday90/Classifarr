@@ -26,6 +26,9 @@ import {
 import {
   PolicyRuntimeHistoricRouteSafetyRefreshInventoryService,
 } from '../services/policyRuntimeHistoricRouteSafetyRefreshInventory.mjs';
+import {
+  PolicyRuntimeHistoricRouteSafetyRefreshExecutionService,
+} from '../services/policyRuntimeHistoricRouteSafetyRefreshExecutionService.mjs';
 import { createClassificationRouter } from './classificationRouteShared.mjs';
 
 const policyRuntimePendingQuestionCleanupInventoryService =
@@ -34,6 +37,8 @@ const policyRuntimePendingQuestionCleanupApplyService =
   new PolicyRuntimePendingQuestionCleanupApplyService({ db });
 const policyRuntimeHistoricRouteSafetyRefreshInventoryService =
   new PolicyRuntimeHistoricRouteSafetyRefreshInventoryService({ db });
+const policyRuntimeHistoricRouteSafetyRefreshExecutionService =
+  new PolicyRuntimeHistoricRouteSafetyRefreshExecutionService({ classificationRetryService });
 
 export const router = createClassificationRouter({
   express,
@@ -48,4 +53,5 @@ export const router = createClassificationRouter({
   policyRuntimePendingQuestionCleanupInventoryService,
   policyRuntimePendingQuestionCleanupApplyService,
   policyRuntimeHistoricRouteSafetyRefreshInventoryService,
+  policyRuntimeHistoricRouteSafetyRefreshExecutionService,
 });

@@ -129,6 +129,7 @@ describe('api/index.js barrel export validation', () => {
       expectFunction('getPendingClassifications')
       expectFunction('getPendingClassificationCount')
       expectFunction('getHistoricRouteSafetyRefreshInventory')
+      expectFunction('executeHistoricRouteSafetyRefresh')
       expectFunction('resolvePendingClassification')
       expectFunction('rememberResolvedExactItem')
       expectFunction('retryClassifications')

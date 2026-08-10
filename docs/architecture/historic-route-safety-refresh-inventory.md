@@ -64,8 +64,8 @@ Options considered:
    questions, prompts, provider data, and free-form model output.
 5. `GET /api/classification/pending/route-safety-refresh-inventory` requires
    an authenticated administrator and returns `Cache-Control: no-store`. It
-   produces a plan only; the existing authorized retry command rechecks live
-   state before it queues any retry.
+   produces a plan only; the separately authorized, bounded execution command
+   rechecks the locked current row before it queues any retry.
 
 ## Implemented Outcome
 
@@ -78,6 +78,9 @@ service. Its `operatorRetryPlan` has a maximum of 50 IDs, an explicit
 service only to administrators. The matching client API method is
 `getHistoricRouteSafetyRefreshInventory`; it only reads the report and does
 not wire an automatic bulk retry into the command center.
+
+The follow-on execution contract is documented in
+[Historic Route-Safety Refresh Execution](historic-route-safety-refresh-execution.md).
 
 The new migration adds
 `idx_classification_history_active_pending_refresh_inventory`, a partial index

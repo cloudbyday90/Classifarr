@@ -56,7 +56,7 @@ function pendingRow({
   return {
     id,
     status: 'awaiting_decision',
-  title: 'Historical Example',
+    title: 'Historical Example',
     year: 2026,
     media_type: 'movie',
     confidence,

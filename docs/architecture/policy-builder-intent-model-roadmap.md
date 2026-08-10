@@ -33,6 +33,10 @@ Current execution focus:
   Retry Plan**. Administrators can now identify active historic records that
   require a current policy evaluation through a bounded, no-side-effect
   inventory; the report cannot queue retries or alter pending decisions.
+- **Completed:** **10R.3.5 Controlled Historic Route-Safety Refresh
+  Execution**. A separate administrator-authorized command accepts a reviewed
+  bounded subset, rechecks the historic condition after the current row is
+  locked, and reports a privacy-bounded retry receipt.
 - **Completed:** **10R.4 Release Acceptance Assembly**. Repository acceptance
   now produces a passed or blocked manifest artifact, while a separate
   protected-environment workflow records active-installation evidence without
@@ -69,7 +73,7 @@ completed boundary isolation: 8R.37.1 -> 8R.37.2 -> 8R.37.3 -> 8R.37.4
 active-installation prerequisite -> 8R.36.11 regeneration -> 8R.34/8R.35 current audits
 completed platform acceptance: 10R.1.1 -> 10R.1.2 -> 10R.1.3
 completed lifecycle acceptance: 10R.2.1 -> 10R.2.2 -> 10R.2.3
-completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3 -> 10R.3.4
+completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3 -> 10R.3.4 -> 10R.3.5
 completed release hardening: 10R.4 -> 10R.4.1
 active release candidate: v0.48.0-beta -> 10R.4.2 -> 10R.4.3
 continuous guardrail: 9R zero-debt naming and product-language gates
@@ -12218,6 +12222,32 @@ Completion criteria:
   altering historic records.
 
 Design and outcome detail: [Historic Route-Safety Refresh Inventory](historic-route-safety-refresh-inventory.md).
+
+#### 10R.3.5 Controlled Historic Route-Safety Refresh Execution
+
+Status: complete.
+
+Intent: execute an operator-reviewed subset of the historic route-safety
+inventory without treating the inventory snapshot, AI output, or client input
+as authority over the current pending state.
+
+Completion criteria:
+
+- accepts only one to 50 unique selected classification IDs through an
+  administrator and read-write-authorized command; actor, task source, and
+  eligibility criteria are server-owned,
+- delegates task queueing and duplicate-task protection to the existing retry
+  transaction rather than adding another task writer,
+- re-evaluates the historic route-safety condition from the locked current
+  classification row immediately before queueing; changed, resolved,
+  duplicate, or no-longer-eligible records are bounded skipped results,
+- returns a correlation receipt containing only item IDs, fixed outcome and
+  reason identifiers, and aggregate counts; raw metadata, questions, provider
+  content, task IDs, route data, and learning state remain excluded,
+- never routes a destination or writes learning. Each queued retry remains a
+  fresh current-runtime evaluation under the existing retry lineage.
+
+Design and outcome detail: [Historic Route-Safety Refresh Execution](historic-route-safety-refresh-execution.md).
 
 ### 10R.4 Release Acceptance Assembly
 

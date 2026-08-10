@@ -33,6 +33,9 @@ import {
 import {
   registerHistoricRouteSafetyRefreshInventoryRoute,
 } from './classificationRouteHistoricRouteSafetyRefreshInventory.mjs';
+import {
+  registerHistoricRouteSafetyRefreshExecutionRoute,
+} from './classificationRouteHistoricRouteSafetyRefreshExecution.mjs';
 
 export function createClassificationRouter({
   express,
@@ -48,6 +51,7 @@ export function createClassificationRouter({
   policyRuntimePendingQuestionCleanupInventoryService,
   policyRuntimePendingQuestionCleanupApplyService,
   policyRuntimeHistoricRouteSafetyRefreshInventoryService,
+  policyRuntimeHistoricRouteSafetyRefreshExecutionService,
 }) {
   const router = express.Router();
   const logger = createLogger('classification');
@@ -100,6 +104,12 @@ export function createClassificationRouter({
   if (policyRuntimeHistoricRouteSafetyRefreshInventoryService) {
     registerHistoricRouteSafetyRefreshInventoryRoute(router, {
       policyRuntimeHistoricRouteSafetyRefreshInventoryService,
+    });
+  }
+  if (policyRuntimeHistoricRouteSafetyRefreshExecutionService) {
+    registerHistoricRouteSafetyRefreshExecutionRoute(router, {
+      policyRuntimeHistoricRouteSafetyRefreshExecutionService,
+      requireReadWrite,
     });
   }
 
