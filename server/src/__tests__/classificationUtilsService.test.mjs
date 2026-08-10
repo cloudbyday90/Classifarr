@@ -427,6 +427,24 @@ describe('buildParseDiagnostics', () => {
     const result = classificationUtilsService.buildParseDiagnostics({ mode: 'x', attemptCount: 0 });
     expect(result.contract_version).toBe('classification.ai_parse_diagnostics.v1');
   });
+
+  test('includes server-owned repair provenance when supplied', () => {
+    const repairProvenance = {
+      version: 'classification.ai_repair_provenance.v1',
+      source: { provider_id: 'openai' },
+      repair: { provider_id: 'ollama' },
+      cross_provider: true,
+      cross_model: true,
+    };
+
+    const result = classificationUtilsService.buildParseDiagnostics({
+      mode: 'classify',
+      attemptCount: 2,
+      repairProvenance,
+    });
+
+    expect(result.repair_provenance).toBe(repairProvenance);
+  });
 });
 
 describe('resolveRetryReason', () => {

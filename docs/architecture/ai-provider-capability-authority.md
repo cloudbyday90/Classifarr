@@ -84,6 +84,11 @@ generation request. The following controls close them:
 - Primary and repair responses both pass through the shared normalizer before
   semantic parsing. Thinking traces are counted but removed before parser
   diagnostics are retained.
+- A repair result is attributed to the provider and model that produced it. A
+  cross-provider or cross-model local repair receives `fallback_advisory`,
+  never the source response's cloud verification or structured authority. Its
+  bounded provenance retains only server-owned provider and mode facts; see
+  [AI Repair Authority Integrity](ai-repair-authority-integrity.md).
 - Any `ai` or `ai_*` result that loses its authority view fails closed for
   automatic routing. A `policy_auto` label is route-eligible only when the
   selected library matches a current deterministic `auto_classify` policy
@@ -126,6 +131,10 @@ identifiers, selected library identifiers, or commands. The write is
 parameterized, idempotent by `(provider_id, model, authority_mode)`, and
 fail-open for telemetry availability so classification cannot fail because an
 observability counter is unavailable.
+
+When repair runs, the initial provider response and the local repair execution
+are recorded separately. A primary parse failure cannot be relabeled as a
+successful strict response merely because a later local repair parsed.
 
 ## Alternatives
 
@@ -179,7 +188,9 @@ and aggregate metrics for this component.
    downstream use or retained diagnostic artifact.
 4. Keep model output declarative and fail closed for AI-derived routing when
    authority metadata is absent or advisory.
-5. Monitor capability through privacy-bounded aggregate counters and use those
+5. Attribute accepted repair output and aggregate capability observations to
+   their actual provider and model; downgrade cross-provider repair.
+6. Monitor capability through privacy-bounded aggregate counters and use those
    counters to guide future provider admission decisions.
 
 ## Implementation Evidence

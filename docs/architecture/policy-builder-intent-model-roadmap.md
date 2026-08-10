@@ -37,6 +37,10 @@ Current execution focus:
   Execution**. A separate administrator-authorized command accepts a reviewed
   bounded subset, rechecks the historic condition after the current row is
   locked, and reports a privacy-bounded retry receipt.
+- **Completed:** **11R.1.1 AI Repair Authority Integrity**. Accepted repair
+  output now carries the authority of the actual repair provider and model;
+  cross-provider or cross-model local repair is `fallback_advisory`, with
+  bounded provenance and separately attributed aggregate observations.
 - **Completed:** **10R.4 Release Acceptance Assembly**. Repository acceptance
   now produces a passed or blocked manifest artifact, while a separate
   protected-environment workflow records active-installation evidence without
@@ -76,6 +80,7 @@ completed lifecycle acceptance: 10R.2.1 -> 10R.2.2 -> 10R.2.3
 completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3 -> 10R.3.4 -> 10R.3.5
 completed release hardening: 10R.4 -> 10R.4.1
 active release candidate: v0.48.0-beta -> 10R.4.2 -> 10R.4.3
+completed post-release authority hardening: 11R.1.1
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
 
@@ -12404,6 +12409,47 @@ Required outcome:
 Implemented design: [Release Candidate Publication And Evidence
 Recording](release-candidate-publication-and-evidence-recording.md).
 
+## Phase 11R: Post-Release Authority And Decision Quality Hardening
+
+Phase 11R contains bounded production-hardening work discovered after the
+initial authority and release-acceptance implementation. It cannot grant AI
+route, learning, policy, notification, provider, or domain-write authority.
+
+### 11R.1 AI Response Integrity
+
+#### 11R.1.1 AI Repair Authority Integrity
+
+Status: complete on 2026-08-10.
+
+Intent: prevent an accepted local repair response from inheriting stronger
+authority, provenance, or capability telemetry from a malformed primary
+provider response.
+
+Completion criteria:
+
+- the final accepted repair result names the actual provider and model that
+  generated it;
+- cross-provider or cross-model local repair is server-owned
+  `fallback_advisory` with all side-effect permissions false;
+- failed repair does not fabricate accepted repair authority;
+- diagnostics retain only bounded provider and mode facts, never prompts,
+  responses, media data, credentials, library IDs, or commands;
+- aggregate metrics distinguish the primary provider request from the repair
+  execution; and
+- focused tests cover cloud-to-local repair, same-model local repair, failed
+  repair, and the existing AI route restraint.
+
+Implemented design: [AI Repair Authority Integrity](ai-repair-authority-integrity.md).
+
+#### 11R.1.2 Deterministic-Outcome-Aware AI Modes
+
+Status: pending.
+
+Intent: choose AI mode from the server-owned policy outcome. A unique
+deterministic destination that needs review should request bounded verification;
+ambiguous candidates should receive advisory diagnostics or abstention; generic
+AI classification remains limited to a genuine no-policy fallback.
+
 ## Testing Strategy
 
 Required coverage should follow the re-imagined phase boundaries:
@@ -12458,6 +12504,11 @@ Required coverage should follow the re-imagined phase boundaries:
   - deterministic policy automation and AI-advisory outcomes remain distinct,
   - provider faults, routing gaps, and restart recovery preserve bounded,
     observable outcomes without live provider or media-server credentials.
+- Phase 11R authority-integrity tests:
+  - accepted repair output names its actual provider and model,
+  - cross-provider or cross-model repair is fallback advisory,
+  - failed repair cannot fabricate an accepted repair result, and
+  - primary and repair capability observations remain separate and content-free.
 
 ## Risks
 
@@ -12554,9 +12605,16 @@ The next sequence is dependency-gated rather than phase-number order:
     2026-08-09. It produced fresh passed v3 repository validation evidence and
     bounded blocked diagnostics because the active-installation completion
     artifact is not replay-valid or approved. The next operational prerequisite
-    is a current approved installation artifact; then rerun 8R.36.11 and the
-    generated 8R.34/8R.35 audits. Continue the **9R** zero-debt naming gates
-    on every component.
+   is a current approved installation artifact; then rerun 8R.36.11 and the
+   generated 8R.34/8R.35 audits. Continue the **9R** zero-debt naming gates
+   on every component.
+19. **11R.1.1 AI Repair Authority Integrity**: complete. Accepted repair output
+    now reflects the actual repair provider and model; cross-provider or
+    cross-model repair is fallback advisory, and aggregate metrics retain the
+    primary and repair executions separately.
+20. **11R.1.2 Deterministic-Outcome-Aware AI Modes**: next. Align AI request
+    mode with the deterministic policy outcome without allowing AI to select a
+    route or override policy authority.
 
 The completed 0R through 3R, 6R, and 7R contracts remain guardrails, not
 permission to restore a diagnostic, template-first, or browser-authoritative

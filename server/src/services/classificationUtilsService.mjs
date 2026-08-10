@@ -139,6 +139,7 @@ export function buildParseDiagnostics({
   repairSucceeded = false,
   responseArtifact = null,
   repairResponseArtifact = null,
+  repairProvenance = null,
 }) {
   const diagnostics = {
     contract_version: AI_PARSE_DIAGNOSTICS_CONTRACT_VERSION,
@@ -156,6 +157,10 @@ export function buildParseDiagnostics({
 
   if (repairResponseArtifact) {
     diagnostics.repair_response_artifact = repairResponseArtifact;
+  }
+
+  if (repairProvenance) {
+    diagnostics.repair_provenance = repairProvenance;
   }
 
   return diagnostics;

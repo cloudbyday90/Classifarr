@@ -39,6 +39,10 @@ import {
   isRepairEligibleParseResult as _isRepairEligibleParseResult,
   getValidationError as _getValidationError
 } from './classificationAiParseHelpers.mjs';
+import {
+  buildClassificationAiRepairProvenance,
+  resolveClassificationAiRepairAuthority,
+} from './classificationAiRepairAuthority.mjs';
 
 const logger = createLogger('classificationAiService');
 
@@ -82,11 +86,11 @@ export async function attemptAiResponseRepair({
   });
 }
 
-function resolveProviderAuthority(provider, model) {
+function resolveProviderAuthority(provider, model, requestedMode) {
   return provider?.authority || buildAiProviderAuthorityProfile({
     providerId: provider?.type,
     model,
-    requestedMode: 'proposal',
+    requestedMode,
   });
 }
 
@@ -96,21 +100,40 @@ async function attachAiProviderAuthority({
   diagnostics = null,
   generationError = null,
   thinkingTraceDetected = false,
+  recordCapabilityMetric = true,
 }) {
   const authorityBoundResult = attachAiProviderAuthorityToClassificationResult({
     result,
     authority,
   });
 
+  if (recordCapabilityMetric) {
+    await recordAiProviderCapabilityObservation({
+      authority,
+      parseResult: authorityBoundResult,
+      diagnostics,
+      generationError,
+      thinkingTraceDetected,
+    });
+  }
+
+  return authorityBoundResult;
+}
+
+async function recordAiProviderCapabilityObservation({
+  authority,
+  parseResult = null,
+  diagnostics = null,
+  generationError = null,
+  thinkingTraceDetected = false,
+}) {
   await aiProviderCapabilityMetricsService.record({
     authority,
-    parseResult: authorityBoundResult,
+    parseResult,
     diagnostics,
     generationError,
     thinkingTraceDetected,
   });
-
-  return authorityBoundResult;
 }
 
 async function aiClassifyImpl(metadata, libraries, signalContext = null, options = {}) {
@@ -215,7 +238,11 @@ Think step by step, then respond with ONLY one of the formats above.`;
   }
 
   const generationModel = provider.config?.model || config.model;
-  const providerAuthority = resolveProviderAuthority(provider, generationModel);
+  const providerAuthority = resolveProviderAuthority(
+    provider,
+    generationModel,
+    requestedAuthorityMode,
+  );
   const reasoningModel = isReasoningModel(generationModel);
 
   await providerLock.acquireLock('classification', 'high');
@@ -330,7 +357,8 @@ Think step by step, then respond with ONLY one of the formats above.`;
   const rawProviderResponse = response;
   const normalizedProviderOutput = normalizeAiProviderOutput(rawProviderResponse);
   response = normalizedProviderOutput.normalizedOutput;
-  thinkingTraceDetected = normalizedProviderOutput.thinkingTraceDetected;
+  const sourceThinkingTraceDetected = normalizedProviderOutput.thinkingTraceDetected;
+  thinkingTraceDetected = sourceThinkingTraceDetected;
   const safeProviderDiagnosticOutput = sanitizeAiProviderOutputForDiagnostics(rawProviderResponse);
 
   const parseContext = {
@@ -368,8 +396,24 @@ Think step by step, then respond with ONLY one of the formats above.`;
 
   let finalParseResult = firstParseResult;
   let repairResponseArtifact = null;
+  let repairAuthority = null;
+  let repairProvenance = null;
+  let repairParseResult = null;
+  let repairGenerationError = null;
+  let repairThinkingTraceDetected = false;
+  let repairSucceeded = false;
 
   if (shouldAttemptRepair) {
+    const repairModel = config.model || 'llama3.2';
+    repairAuthority = resolveClassificationAiRepairAuthority({
+      sourceAuthority: providerAuthority,
+      repairModel,
+    });
+    repairProvenance = buildClassificationAiRepairProvenance({
+      sourceAuthority: providerAuthority,
+      repairAuthority,
+    });
+
     try {
       const validationErrors = _getValidationError(firstParseResult);
       const repairedResponse = await attemptAiResponseRepair({
@@ -377,7 +421,7 @@ Think step by step, then respond with ONLY one of the formats above.`;
         libraries,
         signalContext,
         mode,
-        model: config.model,
+        model: repairModel,
         temperature: config.temperature,
         validationErrors,
         normalize: false,
@@ -386,37 +430,26 @@ Think step by step, then respond with ONLY one of the formats above.`;
       if (repairedResponse) {
         const normalizedRepairOutput = normalizeAiProviderOutput(repairedResponse);
         const repairedResponseForParsing = normalizedRepairOutput.normalizedOutput;
-        thinkingTraceDetected ||= normalizedRepairOutput.thinkingTraceDetected;
+        repairThinkingTraceDetected = normalizedRepairOutput.thinkingTraceDetected;
+        thinkingTraceDetected ||= repairThinkingTraceDetected;
         repairResponseArtifact = buildAiResponseDiagnosticArtifact(repairedResponseForParsing);
         const repairedParse = aiResponseParser.parse(repairedResponseForParsing, parseContext, {
           mode,
           logInvalid: false,
           logMalformed: false
         });
+        repairParseResult = repairedParse;
         const repairedStillNeedsRepair = _isRepairEligibleParseResult(repairedParse, mode);
 
         if (repairedParse.format !== 'fallback' && !repairedStillNeedsRepair) {
-          repairedParse.parse_diagnostics = buildParseDiagnostics({
-            mode,
-            attemptCount: 2,
-            failureReason: firstFailureReason,
-            repaired: true,
-            repairAttempted: true,
-            repairSucceeded: true,
-            responseArtifact,
-            repairResponseArtifact,
-          });
-          return attachAiProviderAuthority({
-            result: repairedParse,
-            authority: providerAuthority,
-            diagnostics: repairedParse.parse_diagnostics,
-            thinkingTraceDetected,
-          });
+          finalParseResult = repairedParse;
+          repairSucceeded = true;
+        } else {
+          finalParseResult = repairedParse;
         }
-
-        finalParseResult = repairedParse;
       }
     } catch (repairError) {
+      repairGenerationError = repairError;
       logger.warn('AI response repair attempt failed', {
         title: metadata?.title,
         mode,
@@ -429,25 +462,60 @@ Think step by step, then respond with ONLY one of the formats above.`;
     mode,
     attemptCount: shouldAttemptRepair ? 2 : 1,
     failureReason: _getParseFailureReason(finalParseResult) || firstFailureReason,
-    repaired: false,
+    repaired: repairSucceeded,
     repairAttempted: shouldAttemptRepair,
-    repairSucceeded: false,
+    repairSucceeded,
     responseArtifact,
     repairResponseArtifact,
+    repairProvenance,
   });
 
-  logger.warn('AI response malformed after parse/repair attempts', {
-    title: metadata?.title,
-    mode,
-    parseFailureReason: finalParseResult.parse_diagnostics.failure_reason,
-    response: String(response || '').substring(0, 200)
-  });
+  if (shouldAttemptRepair) {
+    const sourceDiagnostics = buildParseDiagnostics({
+      mode,
+      attemptCount: 1,
+      failureReason: firstFailureReason,
+      repairAttempted: true,
+      repairSucceeded,
+      repairProvenance,
+    });
+    const repairDiagnostics = buildParseDiagnostics({
+      mode,
+      attemptCount: 1,
+      failureReason: repairSucceeded ? null : _getParseFailureReason(repairParseResult),
+      repairProvenance,
+    });
+
+    await recordAiProviderCapabilityObservation({
+      authority: providerAuthority,
+      parseResult: firstParseResult,
+      diagnostics: sourceDiagnostics,
+      thinkingTraceDetected: sourceThinkingTraceDetected,
+    });
+    await recordAiProviderCapabilityObservation({
+      authority: repairAuthority,
+      parseResult: repairParseResult,
+      diagnostics: repairDiagnostics,
+      generationError: repairGenerationError,
+      thinkingTraceDetected: repairThinkingTraceDetected,
+    });
+  }
+
+  if (!repairSucceeded) {
+    logger.warn('AI response malformed after parse/repair attempts', {
+      title: metadata?.title,
+      mode,
+      parseFailureReason: finalParseResult.parse_diagnostics.failure_reason,
+      response: String(response || '').substring(0, 200)
+    });
+  }
 
   return attachAiProviderAuthority({
     result: finalParseResult,
-    authority: providerAuthority,
+    authority: repairSucceeded ? repairAuthority : providerAuthority,
     diagnostics: finalParseResult.parse_diagnostics,
     thinkingTraceDetected,
+    recordCapabilityMetric: !shouldAttemptRepair,
   });
 }
 

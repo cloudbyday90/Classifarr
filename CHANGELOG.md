@@ -27,6 +27,8 @@ Current development changes will be recorded here.
 
 ### Fixed
 
+- **AI repair authority attribution** — Cross-provider or cross-model local repairs now report `fallback_advisory` authority and separate aggregate capability observations instead of inheriting the original provider's authority.
+
 - **Image-retirement command** — Accepted npm 12's documented `tag` configuration forwarding so the retirement-assessment command reaches its bounded release-tag contract.
 - **Automatic-route explanations** — Persisted bounded route-safety gates so high-score pending decisions name the actual blocker, including AI advisory authority, weak policy evidence, provider recovery, provenance, and administrative confirmation. Historic decisions that predate this projection now state when their original route-safety details cannot be recovered and require a current retry rather than showing an unnamed safeguard.
 

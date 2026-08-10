@@ -55,6 +55,7 @@ const mockClassificationUtilsService = createServiceStubs(
     buildParseDiagnostics: jest.fn((p) => ({ ...p, _diagnostics: true })),
   }
 );
+const mockLoggerModule = createLoggerModuleMock();
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
@@ -78,7 +79,7 @@ jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createNa
 jest.unstable_mockModule('../services/classificationMetadataService.mjs', () => createNamedMockModule('classificationMetadataService', mockClassificationMetadataService));
 jest.unstable_mockModule('../services/classificationUtilsService.mjs', () => createMockModule(mockClassificationUtilsService));
 
-jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
+jest.unstable_mockModule('../utils/logger.mjs', () => mockLoggerModule.module);
 
 const { classificationAiService } = await import('../services/classificationAiService.mjs');
 const db = mockDb;
@@ -91,6 +92,7 @@ const aiResponseParser = mockAiResponseParser;
 const libraryProfileService = mockLibraryProfileService;
 const classificationMetadataService = mockClassificationMetadataService;
 const classificationUtilsService = mockClassificationUtilsService;
+const logger = mockLoggerModule.logger;
 
 const baseMetadata = { title: 'Test Movie', tmdb_id: 111, year: 2024 };
 const baseLibraries = [
@@ -393,6 +395,7 @@ describe('aiClassify', () => {
     classificationUtilsService.sleep.mockReset().mockResolvedValue(undefined);
     classificationUtilsService.buildParseDiagnostics.mockReset().mockImplementation((p) => ({ ...p, _diagnostics: true }));
     libraryProfileService.getProfileStats.mockReset();
+    logger.warn.mockReset();
   });
 
   test('throws when no provider is available', async () => {
@@ -711,6 +714,104 @@ describe('aiClassify', () => {
     const result = await classificationAiService.aiClassify(baseMetadata, baseLibraries);
     expect(result.format).toBe('CONFIDENT');
     expect(result.parse_diagnostics).toMatchObject({ repairSucceeded: true, attemptCount: 2 });
+  });
+
+  test('downgrades a cloud verification response repaired by Ollama and records both executions', async () => {
+    db.query.mockResolvedValueOnce({ rows: [defaultProviderRow] });
+    aiRouter.getProvider.mockResolvedValueOnce(cloudProvider);
+    aiRouter.classify.mockResolvedValueOnce('garbled response');
+    aiResponseParser.parse
+      .mockReturnValueOnce({ ...fallbackParseResult })
+      .mockReturnValueOnce({ ...goodParseResult, format: 'CONFIRM' });
+    ollamaService.generate.mockResolvedValueOnce('CONFIRM|1|match');
+
+    const result = await classificationAiService.aiClassify(
+      baseMetadata,
+      baseLibraries,
+      null,
+      { mode: 'verify' },
+    );
+
+    expect(result.ai_authority).toEqual(expect.objectContaining({
+      providerId: 'ollama',
+      model: 'llama3.2',
+      requestedMode: 'verification',
+      effectiveMode: 'fallback_advisory',
+      isFallback: true,
+      capabilities: expect.objectContaining({ contractGrade: false }),
+      sideEffects: expect.objectContaining({ canRoute: false }),
+    }));
+    expect(aiProviderCapabilityMetricsService.record).toHaveBeenCalledTimes(2);
+    expect(aiProviderCapabilityMetricsService.record).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        authority: expect.objectContaining({ providerId: 'openai', effectiveMode: 'verification' }),
+        parseResult: expect.objectContaining({ format: 'fallback' }),
+        diagnostics: expect.objectContaining({ repairSucceeded: true }),
+      }),
+    );
+    expect(aiProviderCapabilityMetricsService.record).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        authority: expect.objectContaining({ providerId: 'ollama', effectiveMode: 'fallback_advisory' }),
+        parseResult: expect.objectContaining({ format: 'CONFIRM' }),
+      }),
+    );
+    expect(logger.warn).not.toHaveBeenCalledWith(
+      'AI response malformed after parse/repair attempts',
+      expect.any(Object),
+    );
+  });
+
+  test('preserves direct Ollama authority when the accepted repair uses the same model', async () => {
+    db.query.mockResolvedValueOnce({ rows: [defaultProviderRow] });
+    aiRouter.getProvider.mockResolvedValueOnce(ollamaProvider);
+    ollamaService.generateWithProgress.mockResolvedValueOnce('garbled response');
+    aiResponseParser.parse
+      .mockReturnValueOnce({ ...fallbackParseResult })
+      .mockReturnValueOnce({ ...goodParseResult });
+    ollamaService.generate.mockResolvedValueOnce('CONFIDENT|1|85|match');
+
+    const result = await classificationAiService.aiClassify(baseMetadata, baseLibraries);
+
+    expect(result.ai_authority).toEqual(expect.objectContaining({
+      providerId: 'ollama',
+      model: 'llama3.2',
+      effectiveMode: 'proposal',
+      isFallback: false,
+    }));
+    expect(aiProviderCapabilityMetricsService.record).toHaveBeenCalledTimes(2);
+  });
+
+  test('keeps the original cloud authority when no repair response is accepted', async () => {
+    db.query.mockResolvedValueOnce({ rows: [defaultProviderRow] });
+    aiRouter.getProvider.mockResolvedValueOnce(cloudProvider);
+    aiRouter.classify.mockResolvedValueOnce('garbled response');
+    aiResponseParser.parse.mockReturnValueOnce({ ...fallbackParseResult });
+    ollamaService.generate.mockRejectedValueOnce(new Error('repair model unavailable'));
+
+    const result = await classificationAiService.aiClassify(
+      baseMetadata,
+      baseLibraries,
+      null,
+      { mode: 'verify' },
+    );
+
+    expect(result.ai_authority).toEqual(expect.objectContaining({
+      providerId: 'openai',
+      model: 'gpt-4o',
+      effectiveMode: 'verification',
+      isFallback: false,
+    }));
+    expect(result.parse_diagnostics).toMatchObject({
+      repairAttempted: true,
+      repairSucceeded: false,
+      repairProvenance: expect.objectContaining({
+        cross_provider: true,
+        repair: expect.objectContaining({ provider_id: 'ollama' }),
+      }),
+    });
+    expect(aiProviderCapabilityMetricsService.record).toHaveBeenCalledTimes(2);
   });
 
   test('calls repair when first parse is repair-eligible contract_violation and repair enabled', async () => {
