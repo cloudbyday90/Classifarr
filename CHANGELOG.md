@@ -24,7 +24,7 @@ Current development changes will be recorded here.
 ### Fixed
 
 - **Image-retirement command** — Accepted npm 12's documented `tag` configuration forwarding so the retirement-assessment command reaches its bounded release-tag contract.
-- **Automatic-route explanations** — Persisted bounded route-safety gates so high-score pending decisions name the actual blocker, including AI advisory authority, weak policy evidence, provider recovery, provenance, and administrative confirmation.
+- **Automatic-route explanations** — Persisted bounded route-safety gates so high-score pending decisions name the actual blocker, including AI advisory authority, weak policy evidence, provider recovery, provenance, and administrative confirmation. Historic decisions that predate this projection now state when their original route-safety details cannot be recovered and require a current retry rather than showing an unnamed safeguard.
 
 ## [0.48.0c-beta] - 2026-08-09
 

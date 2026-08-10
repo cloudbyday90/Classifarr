@@ -26,8 +26,9 @@ Current execution focus:
   decisions, a misleading generic "Missing evidence" label, and an advisory
   verification rerun that could create a blocking clarification. This task
   establishes the single-active-decision invariant, an operator-visible
-  deterministic evidence summary, and a privacy-bounded AI advisory that
-  cannot override policy authority.
+  deterministic evidence summary, a privacy-bounded AI advisory that cannot
+  override policy authority, and an explicit retry-required explanation for
+  historic high-score records that did not retain their route-safety state.
 - **Completed:** **10R.4 Release Acceptance Assembly**. Repository acceptance
   now produces a passed or blocked manifest artifact, while a separate
   protected-environment workflow records active-installation evidence without
@@ -12172,6 +12173,9 @@ Completion criteria:
 - each operator answer contract names the deterministic policy score, review
   and automatic thresholds, safe supporting evidence, and the leading
   destination; legacy generic reasons do not replace that explanation,
+- a historic high-score decision that predates the route-safety projection
+  reports that its original block is unavailable and requires retry; it does
+  not reconstruct a gate, authorize routing, or use a generic unnamed reason,
 - an AI verification response is parsed only into a bounded advisory. It may
   record a normalized configured alternative destination, but it cannot create
   a pending question, override a deterministic destination, route media, or
@@ -12180,7 +12184,8 @@ Completion criteria:
   ordering, idempotent retry behavior, advisory normalization, and legacy
   records whose prior model alternative was not safely retained.
 
-Design and acceptance detail: [Pending Decision Lifecycle And Explanation](pending-decision-lifecycle-and-explanation.md).
+Design and acceptance detail: [Pending Decision Lifecycle And Explanation](pending-decision-lifecycle-and-explanation.md)
+and [Historic Route-Safety Explanation](historic-route-safety-explanation.md).
 
 ### 10R.4 Release Acceptance Assembly
 

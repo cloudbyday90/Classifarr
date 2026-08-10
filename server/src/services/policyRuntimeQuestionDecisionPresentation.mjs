@@ -15,7 +15,16 @@ import {
 export const POLICY_RUNTIME_QUESTION_DECISION_PRESENTATION_VERSION =
   'policy.runtime_question_decision_presentation.v1';
 
+export const POLICY_RUNTIME_QUESTION_DECISION_STATUS_IDS = Object.freeze({
+  HISTORICAL_ROUTE_SAFETY_DETAILS_UNAVAILABLE: 'historical_route_safety_details_unavailable',
+});
+
 const MAX_EVIDENCE_FACTS = 4;
+const HISTORICAL_ROUTE_SAFETY_UNAVAILABLE = Object.freeze({
+  id: POLICY_RUNTIME_QUESTION_DECISION_STATUS_IDS.HISTORICAL_ROUTE_SAFETY_DETAILS_UNAVAILABLE,
+  label: 'Historical routing details unavailable',
+  message: 'This historical pending decision did not retain the route-safety state that prevented automatic routing. Retry Classification to evaluate the current policy before confirming.',
+});
 
 function asObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
@@ -140,10 +149,18 @@ function buildDeterministicDecision({ classification, question, candidateDestina
       policyResult,
     }));
   const primarySafetyGate = routeSafety?.primary_gate || null;
-  const displaySafetyGate = !persistedRouteSafety &&
+  let displaySafetyGate = !persistedRouteSafety &&
     primarySafetyGate?.id === 'policy_threshold_unavailable'
     ? null
     : primarySafetyGate;
+  const lacksHistoricRouteSafetyDetails = !displaySafetyGate &&
+    decisionScore !== null &&
+    automaticThreshold !== null &&
+    decisionScore >= automaticThreshold;
+
+  if (lacksHistoricRouteSafetyDetails) {
+    displaySafetyGate = HISTORICAL_ROUTE_SAFETY_UNAVAILABLE;
+  }
 
   let statusId = 'manual_selection_required';
   let message = 'The current policy result requires a destination decision.';
@@ -160,15 +177,17 @@ function buildDeterministicDecision({ classification, question, candidateDestina
     message = displaySafetyGate?.message ||
       `${destinationName} meets the confirmation threshold but requires your confirmation before it can route.`;
   } else if (displaySafetyGate) {
-    statusId = decisionScore !== null && automaticThreshold !== null && decisionScore >= automaticThreshold
-      ? 'automatic_threshold_blocked'
-      : 'automatic_route_blocked';
-    message = decisionScore !== null && automaticThreshold !== null && decisionScore >= automaticThreshold
-      ? `${destinationName} meets the automatic policy threshold, but automatic routing remains blocked because ${displaySafetyGate.message}`
-      : displaySafetyGate.message;
-  } else if (decisionScore !== null && automaticThreshold !== null && decisionScore >= automaticThreshold) {
-    statusId = 'automatic_threshold_met';
-    message = `${destinationName} meets the automatic policy threshold, but another safety gate requires review.`;
+    if (displaySafetyGate.id === HISTORICAL_ROUTE_SAFETY_UNAVAILABLE.id) {
+      statusId = POLICY_RUNTIME_QUESTION_DECISION_STATUS_IDS.HISTORICAL_ROUTE_SAFETY_DETAILS_UNAVAILABLE;
+      message = `${destinationName} meets the automatic policy threshold, but the historic pending decision did not retain the state that prevented automatic routing. Retry Classification to evaluate the current policy before confirming.`;
+    } else {
+      statusId = decisionScore !== null && automaticThreshold !== null && decisionScore >= automaticThreshold
+        ? 'automatic_threshold_blocked'
+        : 'automatic_route_blocked';
+      message = decisionScore !== null && automaticThreshold !== null && decisionScore >= automaticThreshold
+        ? `${destinationName} meets the automatic policy threshold, but automatic routing remains blocked because ${displaySafetyGate.message}`
+        : displaySafetyGate.message;
+    }
   } else if (decisionScore !== null && reviewThreshold !== null && decisionScore >= reviewThreshold) {
     statusId = 'confirmation_required';
     message = `${destinationName} meets the confirmation threshold but not the automatic threshold.`;

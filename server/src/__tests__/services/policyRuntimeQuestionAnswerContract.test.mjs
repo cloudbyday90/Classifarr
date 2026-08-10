@@ -182,6 +182,54 @@ describe('policyRuntimeQuestionAnswerContract', () => {
     });
   });
 
+  test('requires retry when a historic high-score record lacks route-safety details', () => {
+    const question = normalizedQuestion();
+    const historicClassification = {
+      ...classification(),
+      method: 'signal_calculation',
+      confidence: 90,
+      metadata: {
+        policyResult: {
+          action: 'auto_classify',
+          ranked: [{
+            library_id: 7,
+            score: 90,
+            prompt_threshold: 60,
+            auto_classify_threshold: 85,
+          }],
+        },
+      },
+    };
+    const contract = buildPolicyRuntimeQuestionAnswerContract({
+      classification: historicClassification,
+      question,
+    });
+    const confirmAction = contract.allowed_actions.find(action => (
+      action.id === POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.CONFIRM_DESTINATION
+    ));
+    const retryAction = contract.allowed_actions.find(action => (
+      action.id === POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.RETRY_CLASSIFICATION
+    ));
+
+    expect(contract.freshness).toMatchObject({
+      status: 'stale',
+      reason: 'route_safety_details_unavailable',
+    });
+    expect(confirmAction).toMatchObject({
+      available: false,
+      unavailable_reason: 'route_safety_details_unavailable',
+    });
+    expect(retryAction).toMatchObject({ available: true });
+    expect(validatePolicyRuntimeQuestionAnswer({
+      classification: historicClassification,
+      question,
+      answer: answerFor(contract, POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.CONFIRM_DESTINATION, 7),
+    })).toMatchObject({
+      ok: false,
+      reason: POLICY_RUNTIME_QUESTION_ANSWER_REASON_IDS.STALE_QUESTION,
+    });
+  });
+
   test('allows an active-media destination change without treating its label as an instruction', () => {
     const question = normalizedQuestion();
     const contract = buildPolicyRuntimeQuestionAnswerContract({

@@ -88,9 +88,8 @@ safety gate.
 The persistence projection is allow-listed and bounded. It rejects unrecognized
 gate IDs and excludes pending-internal reasons, prompts, raw model output,
 provider exceptions, endpoints, and credentials. Existing records receive a
-best-effort explanation from their stored method and policy result; a new retry
-persists the complete gate projection. No database migration is required because
-the projection is additive JSON metadata.
+best-effort explanation from their stored method and policy result. A high-score
+historic record that lacks enough retained state now reports `historical_route_safety_details_unavailable` and requires a retry; it never invents an old gate or treats the score as authorization. A new retry persists the complete gate projection. No database migration is required because the projection is additive JSON metadata.
 
 ## Verification
 

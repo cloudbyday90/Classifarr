@@ -21,6 +21,7 @@ import {
 } from './policyRuntimeQuestionRecommendationPresentation.mjs';
 import {
   buildPolicyRuntimeQuestionDecisionPresentation,
+  POLICY_RUNTIME_QUESTION_DECISION_STATUS_IDS,
 } from './policyRuntimeQuestionDecisionPresentation.mjs';
 import {
   isPolicyRuntimeQuestionPersistenceEnvelope,
@@ -197,10 +198,10 @@ function buildAction({ id, available, destinationRequired, destinationScope, una
   };
 }
 
-function buildActions({ candidateDestinations, isStale }) {
+function buildActions({ candidateDestinations, isStale, unavailableReason = null }) {
   const canConfirm = !isStale && candidateDestinations.length > 0;
   const canChooseDestination = !isStale;
-  const blockedReason = isStale ? 'question_stale' : null;
+  const blockedReason = isStale ? (unavailableReason || 'question_stale') : null;
 
   return [
     buildAction({
@@ -262,10 +263,6 @@ function buildPolicyRuntimeQuestionAnswerContract({
   const questionProjection = buildQuestionProjection(question);
   if (!questionProjection) return null;
 
-  const actions = buildActions({
-    candidateDestinations: questionProjection.candidate_destinations,
-    isStale,
-  });
   const recommendation = buildPolicyRuntimeQuestionRecommendationPresentation({
     question,
     candidateDestinations: questionProjection.candidate_destinations,
@@ -274,6 +271,17 @@ function buildPolicyRuntimeQuestionAnswerContract({
     classification,
     question,
     candidateDestinations: questionProjection.candidate_destinations,
+  });
+  const routeSafetyDetailsUnavailable = decisionSummary?.deterministic?.status_id ===
+    POLICY_RUNTIME_QUESTION_DECISION_STATUS_IDS.HISTORICAL_ROUTE_SAFETY_DETAILS_UNAVAILABLE;
+  const effectiveIsStale = isStale || routeSafetyDetailsUnavailable;
+  const staleReason = isStale
+    ? 'question_stale'
+    : (routeSafetyDetailsUnavailable ? 'route_safety_details_unavailable' : null);
+  const actions = buildActions({
+    candidateDestinations: questionProjection.candidate_destinations,
+    isStale: effectiveIsStale,
+    unavailableReason: staleReason,
   });
   const fingerprint = buildContractFingerprint({
     version: POLICY_RUNTIME_QUESTION_ANSWER_CONTRACT_VERSION,
@@ -311,7 +319,8 @@ function buildPolicyRuntimeQuestionAnswerContract({
       reason: 'learning_guard_required',
     },
     freshness: {
-      status: isStale ? 'stale' : 'current',
+      status: effectiveIsStale ? 'stale' : 'current',
+      reason: staleReason,
       current_context_version: normalizeString(currentContextVersion, 80),
     },
   };

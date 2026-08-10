@@ -132,6 +132,37 @@ describe('policyRuntimeQuestionDecisionPresentation', () => {
     expect(presentation.deterministic.message).not.toContain('another safety gate');
   });
 
+  test('does not invent a route-safety gate for a historic high-score decision', () => {
+    const presentation = buildPolicyRuntimeQuestionDecisionPresentation({
+      classification: {
+        method: 'signal_calculation',
+        confidence: 90,
+        metadata: {
+          policyResult: {
+            action: 'auto_classify',
+            ranked: [{
+              library_id: 5,
+              score: 90,
+              prompt_threshold: 60,
+              auto_classify_threshold: 85,
+            }],
+          },
+        },
+      },
+      candidateDestinations: candidates,
+    });
+
+    expect(presentation.deterministic).toMatchObject({
+      status_id: 'historical_route_safety_details_unavailable',
+      safety_gate: {
+        id: 'historical_route_safety_details_unavailable',
+        label: 'Historical routing details unavailable',
+      },
+    });
+    expect(presentation.deterministic.message).toContain('Retry Classification');
+    expect(presentation.deterministic.message).not.toContain('another safety gate');
+  });
+
   test('retains a structured advisory alternative without provider raw output', () => {
     const presentation = buildPolicyRuntimeQuestionDecisionPresentation({
       classification: {
