@@ -637,6 +637,32 @@ describe('logClassification', () => {
     expect(JSON.stringify(persistedMetadata)).not.toContain('Free-form provider rationale');
   });
 
+  test('persists only the bounded candidate-bound verification status', async () => {
+    const result = {
+      library: { id: 1, name: 'Movies' },
+      confidence: 88,
+      method: 'ai_analysis',
+      reason: 'Matched',
+      candidate_bound_verification: {
+        version: 'classification.candidate_bound_verification.v1',
+        status_id: 'confirmed',
+        candidate_library_id: 1,
+        provider_reason: 'The detailed model explanation must not persist',
+      },
+    };
+
+    await classificationPersistenceService.logClassification(baseMetadata, result);
+
+    const insertCall = db.query.mock.calls.find(c => c[0].includes('INSERT INTO classification_history'));
+    const persistedMetadata = JSON.parse(insertCall[1][9]);
+    expect(persistedMetadata.classification_details.candidate_bound_verification).toEqual({
+      version: 'classification.candidate_bound_verification.v1',
+      status_id: 'confirmed',
+    });
+    expect(JSON.stringify(persistedMetadata)).not.toContain('candidate_library_id');
+    expect(JSON.stringify(persistedMetadata)).not.toContain('detailed model explanation');
+  });
+
   test('sends Discord pending notification when bot is initialized and status is awaiting_decision', async () => {
     mockDiscordBotService.isInitialized = true;
     const result = {

@@ -234,7 +234,11 @@ export class ClassificationPolicyPathService {
 					metadata,
 					libraries,
 					policySignalContext,
-					{ mode: aiModeDecision.mode, ragContext },
+					{
+						mode: aiModeDecision.mode,
+						ragContext,
+						verificationCandidate: policyResult.library || policyResult.ranked?.[0] || null,
+					},
 				)),
 				deterministic_ai_mode: aiModeDecision,
 			};

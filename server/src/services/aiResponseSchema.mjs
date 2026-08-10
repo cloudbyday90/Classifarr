@@ -71,3 +71,27 @@ export const classificationResponseSchema = {
     ],
     additionalProperties: false
 };
+
+/**
+ * Strict contract for a server-selected, candidate-bound verification. The
+ * candidate is deliberately absent from model output: only the server may
+ * bind a confirmation to a library.
+ */
+export const candidateBoundVerificationResponseSchema = {
+    type: 'object',
+    properties: {
+        decision: {
+            type: 'string',
+            enum: ['CONFIRM', 'ABSTAIN'],
+            description: 'Confirm the server-selected candidate or abstain from verification.'
+        },
+        reason: {
+            type: 'string',
+            // Keep the provider-facing schema within the shared structured-output
+            // subset. The strict parser applies the non-empty, 280-character bound.
+            description: 'Brief verification or abstention reason. It cannot select a destination.'
+        }
+    },
+    required: ['decision', 'reason'],
+    additionalProperties: false
+};

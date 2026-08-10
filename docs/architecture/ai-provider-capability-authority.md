@@ -70,6 +70,24 @@ set `requireAuthorityMode` only where a future task truly requires contract
 authority; the router then fails closed rather than silently elevating the
 provider.
 
+### Candidate-Bound Verification Admission
+
+11R.2 turns verification into a narrow, candidate-bound contract rather than
+an advisory selection prompt. A policy-path or RAG recheck must supply the
+server-selected active candidate, and that candidate must match the current
+deterministic signal. Before a prompt, enrichment, generation, or repair, the
+classification service requires effective `verification` authority and
+server-enforced structured output. The request then uses a two-field JSON
+Schema: `CONFIRM` or `ABSTAIN` plus a bounded reason. The response cannot name
+or select a library; the server binds a confirmation to the candidate.
+
+Unsupported, fallback, local, reasoning, missing-candidate, and mismatch
+cases retain the deterministic candidate for operator review before a
+verification prompt exists. Malformed output from an admitted provider also
+retains that candidate and cannot invoke local repair. Only a versioned status
+identifier is retained. See [Candidate-Bound Verification Contract And
+Capability Admission](candidate-bound-verification-contract-and-capability-admission.md).
+
 ### Deterministic Outcome Selection
 
 The classification request's `classify` or `verify` prompt role is selected by

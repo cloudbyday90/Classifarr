@@ -86,7 +86,11 @@ describe('classificationRagLoopStages.runAiRerunStage', () => {
       ctx.expandedMetadata,
       libraries,
       ctx.signalContext,
-      { mode: 'verify', ragContext: ctx.pass2RagContext },
+      {
+        mode: 'verify',
+        ragContext: ctx.pass2RagContext,
+        verificationCandidate: { library_id: 1, library_name: 'Movies' },
+      },
     );
     expect(ctx.buildAiRerunCandidate).toHaveBeenCalledWith(expect.objectContaining({
       aiRerunMatch: expect.objectContaining({

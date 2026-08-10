@@ -141,6 +141,19 @@ const cloudProvider = {
   config: { model: 'gpt-4o' },
 };
 
+const verificationSignalContext = {
+  confidence: 90,
+  suggestedLibrary: { id: 1, name: 'Movies' },
+};
+
+function candidateBoundVerificationOptions(overrides = {}) {
+  return {
+    mode: 'verify',
+    verificationCandidate: { id: 1, name: 'Movies' },
+    ...overrides,
+  };
+}
+
 function setupHappyPath({
   providerRow = defaultProviderRow,
   provider = ollamaProvider,
@@ -459,21 +472,26 @@ describe('aiClassify', () => {
     });
   });
 
-  test('uses verification mode only when the caller requests it explicitly', async () => {
+  test('does not invoke an unadmitted provider for verification', async () => {
     db.query.mockResolvedValueOnce({ rows: [defaultProviderRow] });
     aiRouter.getProvider.mockResolvedValueOnce(ollamaProvider);
-    ollamaService.generateWithProgress.mockResolvedValueOnce('CONFIRM|1|looks right');
-    aiResponseParser.parse.mockReturnValueOnce({ ...goodParseResult, format: 'CONFIRM' });
-    const signalContext = { confidence: 90, suggestedLibrary: { id: 1, name: 'Movies' } };
 
-    await classificationAiService.aiClassify(baseMetadata, baseLibraries, signalContext, { mode: 'verify' });
-
-    expect(aiPromptBuilder.buildPrompt).toHaveBeenCalledWith(
-      expect.any(Object),
-      { mode: 'verify' },
+    const result = await classificationAiService.aiClassify(
+      baseMetadata,
+      baseLibraries,
+      verificationSignalContext,
+      candidateBoundVerificationOptions(),
     );
+
     expect(aiRouter.getProvider).toHaveBeenCalledWith('classification', {
       authorityMode: 'verification',
+    });
+    expect(aiPromptBuilder.buildPrompt).not.toHaveBeenCalled();
+    expect(ollamaService.generateWithProgress).not.toHaveBeenCalled();
+    expect(aiRouter.classify).not.toHaveBeenCalled();
+    expect(result.candidate_bound_verification).toEqual({
+      version: 'classification.candidate_bound_verification.v1',
+      status_id: 'provider_capability_unavailable',
     });
   });
 
@@ -663,13 +681,59 @@ describe('aiClassify', () => {
     aiRouter.getProvider.mockResolvedValueOnce(cloudProvider);
     aiRouter.classify.mockResolvedValueOnce('CONFIRM|1|ok');
     aiResponseParser.parse.mockReturnValueOnce({ ...goodParseResult, format: 'CONFIRM' });
-    const signalContext = { confidence: 90, suggestedLibrary: { id: 1, name: 'Movies' } };
     libraryProfileService.getProfileStats.mockResolvedValueOnce({ totalItems: 0 });
-    await classificationAiService.aiClassify(baseMetadata, baseLibraries, signalContext, { mode: 'verify' });
+    await classificationAiService.aiClassify(
+      baseMetadata,
+      baseLibraries,
+      verificationSignalContext,
+      candidateBoundVerificationOptions(),
+    );
     expect(aiRouter.classify).toHaveBeenCalledWith(
       expect.any(String),
-      expect.objectContaining({ requestType: 'classification_verify' })
+      expect.objectContaining({
+        requestType: 'classification_verify',
+        requireAuthorityMode: true,
+        format: expect.objectContaining({
+          properties: expect.objectContaining({
+            decision: expect.objectContaining({ enum: ['CONFIRM', 'ABSTAIN'] }),
+          }),
+        }),
+      })
     );
+    expect(aiPromptBuilder.buildPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ragContext: null,
+        verificationContract: expect.objectContaining({
+          valid: true,
+          candidate: expect.objectContaining({ libraryId: 1, libraryName: 'Movies' }),
+        }),
+      }),
+      { mode: 'verify' },
+    );
+  });
+
+  test('does not repair malformed candidate-bound verification output', async () => {
+    db.query.mockResolvedValueOnce({ rows: [defaultProviderRow] });
+    aiRouter.getProvider.mockResolvedValueOnce(cloudProvider);
+    aiRouter.classify.mockResolvedValueOnce('not valid verification JSON');
+    aiResponseParser.parse.mockReturnValueOnce({
+      format: 'verify_advisory',
+      library: baseLibraries[0],
+      candidate_bound_verification: {
+        version: 'classification.candidate_bound_verification.v1',
+        status_id: 'contract_violation',
+      },
+    });
+
+    const result = await classificationAiService.aiClassify(
+      baseMetadata,
+      baseLibraries,
+      verificationSignalContext,
+      candidateBoundVerificationOptions(),
+    );
+
+    expect(result.parse_diagnostics).toMatchObject({ attemptCount: 1, repairAttempted: false });
+    expect(ollamaService.generate).not.toHaveBeenCalled();
   });
 
   test('retries once on transient stream error then succeeds', async () => {
@@ -734,7 +798,7 @@ describe('aiClassify', () => {
     expect(result.parse_diagnostics).toMatchObject({ repairSucceeded: true, attemptCount: 2 });
   });
 
-  test('downgrades a cloud verification response repaired by Ollama and records both executions', async () => {
+  test('downgrades a cloud classification response repaired by Ollama and records both executions', async () => {
     db.query.mockResolvedValueOnce({ rows: [defaultProviderRow] });
     aiRouter.getProvider.mockResolvedValueOnce(cloudProvider);
     aiRouter.classify.mockResolvedValueOnce('garbled response');
@@ -747,13 +811,13 @@ describe('aiClassify', () => {
       baseMetadata,
       baseLibraries,
       null,
-      { mode: 'verify' },
+      { mode: 'classify' },
     );
 
     expect(result.ai_authority).toEqual(expect.objectContaining({
       providerId: 'ollama',
       model: 'llama3.2',
-      requestedMode: 'verification',
+      requestedMode: 'proposal',
       effectiveMode: 'fallback_advisory',
       isFallback: true,
       capabilities: expect.objectContaining({ contractGrade: false }),
@@ -763,7 +827,7 @@ describe('aiClassify', () => {
     expect(aiProviderCapabilityMetricsService.record).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        authority: expect.objectContaining({ providerId: 'openai', effectiveMode: 'verification' }),
+        authority: expect.objectContaining({ providerId: 'openai', effectiveMode: 'proposal' }),
         parseResult: expect.objectContaining({ format: 'fallback' }),
         diagnostics: expect.objectContaining({ repairSucceeded: true }),
       }),
@@ -801,7 +865,7 @@ describe('aiClassify', () => {
     expect(aiProviderCapabilityMetricsService.record).toHaveBeenCalledTimes(2);
   });
 
-  test('keeps the original cloud authority when no repair response is accepted', async () => {
+  test('keeps the original cloud authority when no classification repair response is accepted', async () => {
     db.query.mockResolvedValueOnce({ rows: [defaultProviderRow] });
     aiRouter.getProvider.mockResolvedValueOnce(cloudProvider);
     aiRouter.classify.mockResolvedValueOnce('garbled response');
@@ -812,13 +876,13 @@ describe('aiClassify', () => {
       baseMetadata,
       baseLibraries,
       null,
-      { mode: 'verify' },
+      { mode: 'classify' },
     );
 
     expect(result.ai_authority).toEqual(expect.objectContaining({
       providerId: 'openai',
       model: 'gpt-4o',
-      effectiveMode: 'verification',
+      effectiveMode: 'proposal',
       isFallback: false,
     }));
     expect(result.parse_diagnostics).toMatchObject({

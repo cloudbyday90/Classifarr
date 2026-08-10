@@ -1,7 +1,10 @@
 import { ServiceUnavailableError } from '../utils/appError.mjs';
 import * as db from '../config/database.mjs';
 import { ollamaService } from './ollama.mjs';
-import { classificationResponseSchema } from './aiResponseSchema.mjs';
+import {
+  candidateBoundVerificationResponseSchema,
+  classificationResponseSchema,
+} from './aiResponseSchema.mjs';
 import { aiRouterService as aiRouter } from './aiRouter.mjs';
 import { providerLock } from './providerLock.mjs';
 import { aiPromptBuilder } from './aiPromptBuilder.mjs';
@@ -12,6 +15,13 @@ import {
   AI_PROVIDER_AUTHORITY_MODE_IDS,
   buildAiProviderAuthorityProfile,
 } from './aiProviderAuthority.mjs';
+import {
+  buildCandidateBoundVerificationContract,
+  resolveCandidateBoundVerificationAdmission,
+} from './classificationCandidateBoundVerificationContract.mjs';
+import {
+  createCandidateBoundVerificationAdmissionResult,
+} from './aiResponseParserResults.mjs';
 import {
   attachAiProviderAuthorityToClassificationResult,
 } from './classificationAiAuthorityAttachment.mjs';
@@ -137,90 +147,17 @@ async function recordAiProviderCapabilityObservation({
 }
 
 async function aiClassifyImpl(metadata, libraries, signalContext = null, options = {}) {
-  const webSearchResults = await enrichWithWebSearch(metadata);
-
-  const _getDefaultLibrary = (libraries, mediaType) => {
-    const generalNames = mediaType === 'movie'
-      ? ['movies', 'films', 'general movies']
-      : ['tv shows', 'tv series', 'series', 'television'];
-
-    const generalLib = libraries.find(l =>
-      generalNames.some(name => l.name.toLowerCase().includes(name))
-    );
-
-    return generalLib || libraries[libraries.length - 1];
-  };
-
-  const promptContext = {
-    metadata: metadata,
-    libraries: libraries,
-    signalContext: signalContext,
-    policySignals: options.policySignals || signalContext,
-    ragContext: options.ragContext || null,
-  };
-
-  if (signalContext && signalContext.suggestedLibrary) {
-    try {
-      const profileStats = await libraryProfileService.getProfileStats(signalContext.suggestedLibrary.id);
-      if (profileStats.totalItems > 0) {
-        promptContext.libraryProfile = profileStats;
-      }
-    } catch (error) {
-      logger.warn('Failed to load library profile for AI prompt', {
-        libraryId: signalContext.suggestedLibrary.id,
-        error: error.message
-      });
-    }
-  }
-
   // Every caller must select a deterministic mode. The default remains the
   // generic proposal path for backwards-compatible direct callers; signal
   // context alone must never escalate a request into verification.
   const mode = options.mode || 'classify';
-
-  let prompt = `You are a media classification ${mode === 'verify' ? 'VERIFIER' : 'AI'} for a home media server. ${mode === 'verify' ? 'Your role is to VERIFY a pre-calculated classification decision.' : 'Your role is to classify media items into the appropriate library.'}
-
-${mode === 'verify' ? `CRITICAL RULES:
-1. You CANNOT override the calculated confidence score.
-2. Your job is to VERIFY the suggested library makes sense, OR request clarification if there are conflicts.
-3. If the calculated confidence is high and signals align, CONFIRM the decision.
-4. If signals conflict or you see a potential error, REQUEST CLARIFICATION.
-` : ''}`;
-
-  const signalSections = await aiPromptBuilder.buildPrompt(promptContext, { mode });
-  prompt += '\n\n' + signalSections;
-
-  if (webSearchResults) {
-    prompt += `\n\n--- ADDITIONAL WEB RESEARCH ---`;
-
-    if (webSearchResults.imdb) {
-      prompt += `\n${formatNormalizedWebSearchForAI(webSearchResults.imdb)}`;
-    }
-
-    if (webSearchResults.advisory) {
-      prompt += `\n\nContent Advisory: ${formatNormalizedWebSearchForAI(webSearchResults.advisory)}`;
-    }
-
-    if (webSearchResults.anime) {
-      prompt += `\n\nAnime Database: ${formatNormalizedWebSearchForAI(webSearchResults.anime)}`;
-    }
-  }
-
-  prompt += `\n\nIMPORTANT FOR CLARIFICATION:
-- The problem_summary should be SHORT (max 50 chars)
-- The why_uncertain should explain WHAT DATA conflicts and WHY you can't decide
-- The question should be SPECIFIC and help the user understand what choosing each option means
-- Always provide 2-3 clear options (not just yes/no when possible)
-
-CRITICAL - DO NOT HALLUCINATE CONFLICTS:
-- Only mention libraries that have ACTUAL signal support (genres, keywords, patterns matching that library)
-- Certification (G, PG, TV-PG, R, TV-MA, etc.) is a CONTENT RATING for age-appropriateness, NOT a library indicator - do not use it to suggest which library content belongs to
-- DO NOT suggest "Family" library for R-rated Horror/Thriller content with no family-related signals
-- If signals clearly point to one library with no real conflict, use ${mode === 'verify' ? 'CONFIRM' : 'CONFIDENT'} format, not CLARIFY
-- In ${mode === 'verify' ? 'verify' : 'classify'} mode, NEVER use ${mode === 'verify' ? 'CONFIDENT' : 'CONFIRM'} format
-- Only use CLARIFY when there are genuinely conflicting signals pointing to different libraries
-
-Think step by step, then respond with ONLY one of the formats above.`;
+  const verificationContract = mode === 'verify'
+    ? buildCandidateBoundVerificationContract({
+        libraries,
+        signalContext,
+        verificationCandidate: options.verificationCandidate,
+      })
+    : null;
 
   const configResult = await db.query('SELECT * FROM ai_provider_config WHERE id = 1');
   const providerRow = configResult.rows[0] || null;
@@ -247,6 +184,100 @@ Think step by step, then respond with ONLY one of the formats above.`;
     requestedAuthorityMode,
   );
   const reasoningModel = isReasoningModel(generationModel);
+  const verificationAdmission = mode === 'verify'
+    ? resolveCandidateBoundVerificationAdmission({
+        contract: verificationContract,
+        authority: providerAuthority,
+      })
+    : null;
+
+  // Admission happens before profile reads, web search, prompt construction,
+  // locks, and provider generation. An unsupported provider must never see a
+  // verification request that it cannot satisfy contractually.
+  if (mode === 'verify' && verificationAdmission?.admitted !== true) {
+    return attachAiProviderAuthority({
+      result: createCandidateBoundVerificationAdmissionResult({
+        libraries,
+        signalContext,
+        metadata,
+      }, verificationAdmission),
+      authority: providerAuthority,
+      recordCapabilityMetric: false,
+    });
+  }
+
+  const webSearchResults = mode === 'classify'
+    ? await enrichWithWebSearch(metadata)
+    : null;
+  const promptContext = {
+    metadata,
+    libraries,
+    signalContext,
+    policySignals: options.policySignals || signalContext,
+    // Similar-item candidate names are not needed for a bound confirmation.
+    ragContext: mode === 'verify' ? null : (options.ragContext || null),
+    verificationContract,
+  };
+
+  if (signalContext?.suggestedLibrary) {
+    try {
+      const profileStats = await libraryProfileService.getProfileStats(signalContext.suggestedLibrary.id);
+      if (profileStats.totalItems > 0) {
+        promptContext.libraryProfile = profileStats;
+      }
+    } catch (error) {
+      logger.warn('Failed to load library profile for AI prompt', {
+        libraryId: signalContext.suggestedLibrary.id,
+        error: error.message
+      });
+    }
+  }
+
+  let prompt = `You are a media classification ${mode === 'verify' ? 'VERIFIER' : 'AI'} for a home media server. ${mode === 'verify' ? 'Your role is to VERIFY a pre-calculated classification decision.' : 'Your role is to classify media items into the appropriate library.'}
+
+${mode === 'verify' ? `CRITICAL RULES:
+1. You CANNOT override the calculated confidence score.
+2. You can only CONFIRM the server-selected candidate or ABSTAIN.
+3. You MUST NOT select, name, rank, compare, or request another destination.
+4. Return only the required JSON object; do not include analysis or a preamble.
+` : ''}`;
+
+  const signalSections = await aiPromptBuilder.buildPrompt(promptContext, { mode });
+  prompt += '\n\n' + signalSections;
+
+  if (webSearchResults) {
+    prompt += `\n\n--- ADDITIONAL WEB RESEARCH ---`;
+
+    if (webSearchResults.imdb) {
+      prompt += `\n${formatNormalizedWebSearchForAI(webSearchResults.imdb)}`;
+    }
+
+    if (webSearchResults.advisory) {
+      prompt += `\n\nContent Advisory: ${formatNormalizedWebSearchForAI(webSearchResults.advisory)}`;
+    }
+
+    if (webSearchResults.anime) {
+      prompt += `\n\nAnime Database: ${formatNormalizedWebSearchForAI(webSearchResults.anime)}`;
+    }
+  }
+
+  if (mode === 'classify') {
+    prompt += `\n\nIMPORTANT FOR CLARIFICATION:
+- The problem_summary should be SHORT (max 50 chars)
+- The why_uncertain should explain WHAT DATA conflicts and WHY you can't decide
+- The question should be SPECIFIC and help the user understand what choosing each option means
+- Always provide 2-3 clear options (not just yes/no when possible)
+
+CRITICAL - DO NOT HALLUCINATE CONFLICTS:
+- Only mention libraries that have ACTUAL signal support (genres, keywords, patterns matching that library)
+- Certification (G, PG, TV-PG, R, TV-MA, etc.) is a CONTENT RATING for age-appropriateness, NOT a library indicator - do not use it to suggest which library content belongs to
+- DO NOT suggest "Family" library for R-rated Horror/Thriller content with no family-related signals
+- If signals clearly point to one library with no real conflict, use CONFIDENT format, not CLARIFY
+- In classify mode, NEVER use CONFIRM format
+- Only use CLARIFY when there are genuinely conflicting signals pointing to different libraries
+
+Respond with ONLY one of the formats above.`;
+  }
 
   await providerLock.acquireLock('classification', 'high');
 
@@ -295,7 +326,9 @@ Think step by step, then respond with ONLY one of the formats above.`;
                 allowPartialOnAbort: !disallowPartialStreamResponse,
                 allowPartialOnStall: !disallowPartialStreamResponse,
                 requireDoneSignal: disallowPartialStreamResponse,
-                format: reasoningModel ? undefined : classificationResponseSchema,
+                format: reasoningModel ? undefined : (mode === 'verify'
+                  ? candidateBoundVerificationResponseSchema
+                  : classificationResponseSchema),
                 ...(reasoningModel
                   ? {
                       initialTimeout: REASONING_INITIAL_TIMEOUT_MS,
@@ -312,7 +345,10 @@ Think step by step, then respond with ONLY one of the formats above.`;
               authorityMode: requestedAuthorityMode,
               requestType: mode === 'verify' ? 'classification_verify' : 'classification',
               itemTitle,
-              format: reasoningModel ? undefined : classificationResponseSchema
+              requireAuthorityMode: mode === 'verify',
+              format: reasoningModel ? undefined : (mode === 'verify'
+                ? candidateBoundVerificationResponseSchema
+                : classificationResponseSchema)
             });
           }
           lastStreamError = null;
@@ -365,9 +401,10 @@ Think step by step, then respond with ONLY one of the formats above.`;
   const safeProviderDiagnosticOutput = sanitizeAiProviderOutputForDiagnostics(rawProviderResponse);
 
   const parseContext = {
-    libraries: libraries,
-    signalContext: signalContext,
-    metadata: metadata
+    libraries,
+    signalContext,
+    metadata,
+    verificationContract,
   };
 
   const suppressParseWarnings = aiResponseRepairEnabled;
@@ -380,13 +417,19 @@ Think step by step, then respond with ONLY one of the formats above.`;
   const responseArtifact = firstFailureReason
     ? buildAiResponseDiagnosticArtifact(safeProviderDiagnosticOutput)
     : null;
-  const shouldAttemptRepair = aiResponseRepairEnabled && _isRepairEligibleParseResult(firstParseResult, mode);
+  // A strict verification response cannot be rewritten by another model. A
+  // malformed bound response is an abstention, not a repaired confirmation.
+  const shouldAttemptRepair = mode !== 'verify'
+    && aiResponseRepairEnabled
+    && _isRepairEligibleParseResult(firstParseResult, mode);
 
   if (firstParseResult.format !== 'fallback' && !shouldAttemptRepair) {
     firstParseResult.parse_diagnostics = buildParseDiagnostics({
       mode,
       attemptCount: 1,
       failureReason: firstFailureReason,
+      repairAttempted: false,
+      repairSucceeded: false,
       responseArtifact,
     });
     return attachAiProviderAuthority({

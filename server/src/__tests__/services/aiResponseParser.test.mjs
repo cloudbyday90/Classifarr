@@ -12,6 +12,9 @@ jest.unstable_mockModule('../../utils/logger.mjs', () => ({
 }));
 
 const { aiResponseParser } = await import('../../services/aiResponseParser.mjs');
+const {
+    buildCandidateBoundVerificationContract,
+} = await import('../../services/classificationCandidateBoundVerificationContract.mjs');
 
 describe('AIResponseParser', () => {
     beforeEach(() => {
@@ -114,6 +117,80 @@ describe('AIResponseParser', () => {
                 deterministic_candidate: { library_name: 'Action Movies' },
                 proposed_destination: { library_name: 'Drama Movies' },
             });
+        });
+    });
+
+    describe('candidate-bound verification', () => {
+        function candidateBoundContext() {
+            const signalContext = {
+                confidence: 85,
+                suggestedLibrary: mockLibraries[0],
+                breakdown: [],
+            };
+
+            return {
+                libraries: mockLibraries,
+                signalContext,
+                metadata: mockMetadata,
+                verificationContract: buildCandidateBoundVerificationContract({
+                    libraries: mockLibraries,
+                    signalContext,
+                    verificationCandidate: { library_id: 1 },
+                }),
+            };
+        }
+
+        it('binds a structured confirmation to the server-selected candidate', () => {
+            const result = aiResponseParser.parse(
+                '{"decision":"CONFIRM","reason":"The declared policy evidence aligns."}',
+                candidateBoundContext(),
+                { mode: 'verify' },
+            );
+
+            expect(result).toMatchObject({
+                library: mockLibraries[0],
+                confidence: 85,
+                verified_by_ai: true,
+                format: 'candidate_bound_confirm',
+                candidate_bound_verification: {
+                    version: 'classification.candidate_bound_verification.v1',
+                    status_id: 'confirmed',
+                },
+            });
+            expect(JSON.stringify(result)).not.toContain('The declared policy evidence aligns.');
+        });
+
+        it('turns an abstention into advisory-only review without accepting provider text', () => {
+            const result = aiResponseParser.parse(
+                '{"decision":"ABSTAIN","reason":"The metadata is incomplete."}',
+                candidateBoundContext(),
+                { mode: 'verify' },
+            );
+
+            expect(result).toMatchObject({
+                library: mockLibraries[0],
+                format: 'verify_advisory',
+                ai_advisory: { status_id: 'verification_abstained' },
+                candidate_bound_verification: { status_id: 'abstained' },
+            });
+            expect(result.verified_by_ai).toBeUndefined();
+            expect(JSON.stringify(result)).not.toContain('The metadata is incomplete.');
+        });
+
+        it('rejects alternate destinations and malformed output instead of using legacy recovery', () => {
+            const result = aiResponseParser.parse(
+                '{"decision":"CONFIRM","reason":"Choose Drama instead.","library_number":2}',
+                candidateBoundContext(),
+                { mode: 'verify' },
+            );
+
+            expect(result).toMatchObject({
+                library: mockLibraries[0],
+                format: 'verify_advisory',
+                ai_advisory: { status_id: 'verification_contract_violation' },
+                candidate_bound_verification: { status_id: 'contract_violation' },
+            });
+            expect(JSON.stringify(result)).not.toContain('Choose Drama instead.');
         });
     });
 
@@ -372,7 +449,7 @@ describe('AIResponseParser', () => {
                 metadata: mockMetadata
             };
 
-            const result = aiResponseParser.parse(response, context);
+            const result = aiResponseParser.parse(response, context, { mode: 'verify' });
 
             expect(result.format).toBe('confirm');
             expect(result.library).toEqual(mockLibraries[0]);

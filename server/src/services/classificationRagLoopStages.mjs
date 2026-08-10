@@ -325,6 +325,7 @@ export async function runAiRerunStage(ctx) {
             ...(await aiClassify(expandedMetadata, libraries, signalContext, {
                 mode: aiModeDecision.mode,
                 ragContext: pass2RagContext,
+                verificationCandidate: policyAfter?.library || policyAfter?.ranked?.[0] || null,
             })),
             deterministic_ai_mode: aiModeDecision,
         };

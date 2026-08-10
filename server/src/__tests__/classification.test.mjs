@@ -3029,7 +3029,7 @@ describe('AI availability fallback handling', () => {
       }]
     });
 
-    jest.spyOn(classificationService, 'aiClassify').mockRejectedValue(
+    jest.spyOn(classificationPolicyPathService, 'aiClassify').mockRejectedValue(
       new Error('response_parse_failure')
     );
 

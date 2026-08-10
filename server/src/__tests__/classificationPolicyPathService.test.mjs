@@ -166,7 +166,11 @@ describe('classificationPolicyPathService.execute', () => {
       baseParams.metadata,
       libraries,
       expect.any(Object),
-      { mode: 'verify', ragContext: null },
+      {
+        mode: 'verify',
+        ragContext: null,
+        verificationCandidate: { library_id: 1, library_name: 'Movies' },
+      },
     );
     expect(classificationRagLoopService.evaluateRagLoopSecondPass).toHaveBeenCalledWith(expect.objectContaining({
       baselineResult: expect.objectContaining({

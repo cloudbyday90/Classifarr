@@ -34,6 +34,7 @@ import {
 } from './classificationPendingDecisionLifecycleService.mjs';
 import { buildClassificationRouteSafetyProjection } from './classificationRouteSafetyGate.mjs';
 import { buildDeterministicOutcomeAiModeProjection } from './classificationDeterministicAiMode.mjs';
+import { buildCandidateBoundVerificationProjection } from './classificationCandidateBoundVerificationContract.mjs';
 
 const logger = createLogger('classificationPersistence');
 
@@ -342,6 +343,7 @@ export class ClassificationPersistenceService {
       parse_diagnostics: result.parse_diagnostics || null,
       ai_advisory: buildAiAdvisoryPersistenceProjection(result.ai_advisory),
       deterministic_ai_mode: buildDeterministicOutcomeAiModeProjection(result.deterministic_ai_mode),
+      candidate_bound_verification: buildCandidateBoundVerificationProjection(result.candidate_bound_verification),
       route_safety: buildClassificationRouteSafetyProjection(result.route_safety),
       processing_time_ms: processingTimeMs,
     };

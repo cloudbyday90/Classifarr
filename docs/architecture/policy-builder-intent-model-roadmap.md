@@ -41,6 +41,11 @@ Current execution focus:
   output now carries the authority of the actual repair provider and model;
   cross-provider or cross-model local repair is `fallback_advisory`, with
   bounded provenance and separately attributed aggregate observations.
+- **Completed:** **11R.2 Candidate-Bound Verification Contract And Capability
+  Admission**. Verification now binds to the server-selected policy candidate,
+  admits only contract-grade structured providers before prompt construction,
+  and treats abstention, malformed output, and unsupported providers as bounded
+  operator review.
 - **Completed:** **10R.4 Release Acceptance Assembly**. Repository acceptance
   now produces a passed or blocked manifest artifact, while a separate
   protected-environment workflow records active-installation evidence without
@@ -80,7 +85,7 @@ completed lifecycle acceptance: 10R.2.1 -> 10R.2.2 -> 10R.2.3
 completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3 -> 10R.3.4 -> 10R.3.5
 completed release hardening: 10R.4 -> 10R.4.1
 active release candidate: v0.48.0-beta -> 10R.4.2 -> 10R.4.3
-completed post-release authority hardening: 11R.1.1
+completed post-release authority hardening: 11R.1.1 -> 11R.1.2 -> 11R.2
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
 
@@ -12466,6 +12471,35 @@ Completion criteria:
 
 Implemented design: [Deterministic-Outcome-Aware AI Modes](ai-deterministic-outcome-aware-modes.md).
 
+### 11R.2 Candidate-Bound Verification Contract And Capability Admission
+
+Status: complete on 2026-08-10.
+
+Intent: bind a verification request to the unique, server-selected
+`prompt_confirm` candidate. The model may confirm or abstain, but cannot select
+or propose a destination. Unsupported provider paths must never receive the
+verification prompt.
+
+Completion criteria:
+
+- policy-path and RAG recheck calls carry the current server-selected
+  candidate into the verification boundary;
+- verification admission requires the matching active deterministic candidate,
+  effective `verification` authority, server-enforced structured output, and a
+  dedicated JSON Schema on the generation request;
+- unsupported, fallback, local, reasoning, missing-candidate, or
+  candidate-mismatch paths return a server-owned advisory review without prompt
+  construction, enrichment, generation, or repair;
+- strict output has only `CONFIRM` and `ABSTAIN`, cannot contain a destination,
+  and is semantically validated again by the server;
+- malformed strict output and abstention retain the deterministic candidate for
+  operator confirmation and cannot fall through to local repair; and
+- history retains only a versioned verification status identifier, not model
+  text, candidate identity, prompts, or raw responses.
+
+Implemented design: [Candidate-Bound Verification Contract And Capability
+Admission](candidate-bound-verification-contract-and-capability-admission.md).
+
 ## Testing Strategy
 
 Required coverage should follow the re-imagined phase boundaries:
@@ -12525,6 +12559,13 @@ Required coverage should follow the re-imagined phase boundaries:
   - cross-provider or cross-model repair is fallback advisory,
   - failed repair cannot fabricate an accepted repair result, and
   - primary and repair capability observations remain separate and content-free.
+- Phase 11R candidate-bound verification tests:
+  - only a matching policy and deterministic candidate can form a contract,
+  - unsupported providers make no prompt, enrichment, generation, or repair
+    call,
+  - structured confirmation is bound by the server to that candidate,
+  - abstention and invalid output retain only bounded advisory status, and
+  - persistence excludes candidate identifiers and model reasons.
 
 ## Risks
 
@@ -12628,9 +12669,18 @@ The next sequence is dependency-gated rather than phase-number order:
     now reflects the actual repair provider and model; cross-provider or
     cross-model repair is fallback advisory, and aggregate metrics retain the
     primary and repair executions separately.
-20. **11R.1.2 Deterministic-Outcome-Aware AI Modes**: next. Align AI request
-    mode with the deterministic policy outcome without allowing AI to select a
-    route or override policy authority.
+20. **11R.1.2 Deterministic-Outcome-Aware AI Modes**: complete. Policy and RAG
+    outcomes now select explicit verification, generic fallback, or
+    server-owned abstention without allowing AI to select a route or override
+    policy authority.
+21. **11R.2 Candidate-Bound Verification Contract And Capability Admission**:
+    complete. Verification is now bound to the server-selected candidate,
+    requires a structured contract-grade provider before prompt construction,
+    and fails to bounded operator review without local repair.
+    **Next: 11R.3 Candidate-Bound Verification Observability And Operator
+    Explanation**. Surface bounded admission, abstention, and contract-status
+    facts in the existing review explanation without raw provider content or a
+    new decision path.
 
 The completed 0R through 3R, 6R, and 7R contracts remain guardrails, not
 permission to restore a diagnostic, template-first, or browser-authoritative

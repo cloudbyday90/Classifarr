@@ -410,6 +410,30 @@ describe('AIPromptBuilder', () => {
             expect(result).toContain('CRITICAL FORMAT RULES');
         });
 
+        it('formats a candidate-bound verification without destination choices', () => {
+            const result = aiPromptBuilder.formatInstructions({
+                mode: 'verify',
+                libraries: [
+                    { name: 'Movies', media_type: 'movie' },
+                    { name: 'TV Shows', media_type: 'tv' },
+                ],
+                signalContext: {
+                    confidence: 85,
+                    suggestedLibrary: { name: 'Movies' },
+                },
+                verificationContract: {
+                    valid: true,
+                    candidate: { libraryName: 'Movies' },
+                },
+            });
+
+            expect(result).toContain('CANDIDATE-BOUND VERIFICATION MODE');
+            expect(result).toContain('{"decision":"CONFIRM"|"ABSTAIN","reason":"brief plain-text reason"}');
+            expect(result).toContain('Do not select, name, rank, compare, or request another destination');
+            expect(result).not.toContain('--- AVAILABLE LIBRARIES ---');
+            expect(result).not.toContain('TV Shows');
+        });
+
         it('should default to classify mode when mode not specified', () => {
             const data = {
                 libraries: []

@@ -14,8 +14,12 @@ import {
     getDefaultLibrary as _getDefaultLibrary,
     createFallbackResult as _createFallbackResult,
     createVerifyDisagreementResult as _createVerifyDisagreementResult,
+    createCandidateBoundVerificationResult as _createCandidateBoundVerificationResult,
     createContractViolationResult as _createContractViolationResult,
 } from './aiResponseParserResults.mjs';
+import {
+    parseCandidateBoundVerificationResponse,
+} from './classificationCandidateBoundVerificationContract.mjs';
 import {
     mapOptionsToLibraries as _mapOptionsToLibraries,
     resolveOptionsFromTokens as _resolveOptionsFromTokens,
@@ -48,7 +52,7 @@ export class AIResponseParser {
 
     parse(response, context, options = {}) {
         const { libraries, metadata } = context;
-        const mode = options.mode || (context.signalContext ? 'verify' : 'classify');
+        const mode = options.mode || 'classify';
         const logInvalid = options.logInvalid !== false;
         const logMalformed = options.logMalformed !== false;
 
@@ -59,6 +63,10 @@ export class AIResponseParser {
             return this.createFallbackResult(libraries, metadata, {
                 parseFailureReason: 'invalid_response'
             });
+        }
+
+        if (mode === 'verify' && context.verificationContract) {
+            return this.parseCandidateBoundVerification(response, context);
         }
 
         const trimmed = response.trim();
@@ -201,6 +209,15 @@ export class AIResponseParser {
             verified_by_ai: true,
             format: 'confirm'
         };
+    }
+
+    parseCandidateBoundVerification(response, context) {
+        const parsedResponse = parseCandidateBoundVerificationResponse(response);
+        return this.createCandidateBoundVerificationResult(
+            context,
+            context.verificationContract,
+            parsedResponse,
+        );
     }
 
     parseConfidentFormat(response, context) {
@@ -484,6 +501,10 @@ export class AIResponseParser {
 
     createVerifyDisagreementResult(context, details) {
         return _createVerifyDisagreementResult(context, details);
+    }
+
+    createCandidateBoundVerificationResult(context, contract, response) {
+        return _createCandidateBoundVerificationResult(context, contract, response);
     }
 
     validateJsonWithZod(json, libraryCount) {

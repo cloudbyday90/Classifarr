@@ -35,7 +35,8 @@ export function getSectionData(sectionType, context, mode) {
             return {
                 mode,
                 libraries: context.libraries || [],
-                signalContext: context.signalContext || null
+                signalContext: context.signalContext || null,
+                verificationContract: context.verificationContract || null,
             };
 
         default:
@@ -248,11 +249,23 @@ export function formatInstructions(data) {
     const mode = data.mode || 'classify';
     const libraries = data.libraries || [];
     const signalContext = data.signalContext;
+    const verificationContract = data.verificationContract;
 
     const lines = [];
     lines.push('=== YOUR TASK ===');
 
-    if (mode === 'verify' && signalContext) {
+    if (mode === 'verify' && verificationContract?.valid === true) {
+        lines.push(`CANDIDATE-BOUND VERIFICATION MODE: The server selected "${verificationContract.candidate.libraryName}" at ${signalContext?.confidence ?? 'unknown'}% confidence.`);
+        lines.push('');
+        lines.push('Evaluate only whether the server-selected candidate is supported by the supplied item evidence.');
+        lines.push('Do not select, name, rank, compare, or request another destination.');
+        lines.push('');
+        lines.push('Respond with JSON only, using exactly this object shape:');
+        lines.push('{"decision":"CONFIRM"|"ABSTAIN","reason":"brief plain-text reason"}');
+        lines.push('');
+        lines.push('Use CONFIRM only when the supplied evidence supports the server-selected candidate. Use ABSTAIN for uncertainty or conflict.');
+        lines.push('Do not add keys, markdown, preamble, analysis, or pipe-delimited text.');
+    } else if (mode === 'verify' && signalContext) {
         lines.push(`VERIFICATION MODE: The system has pre-calculated confidence of ${signalContext.confidence}% for library "${signalContext.suggestedLibrary?.name}".`);
         lines.push('');
         lines.push('Your role is to VERIFY this decision or REQUEST CLARIFICATION if you see conflicts.');
@@ -276,20 +289,22 @@ export function formatInstructions(data) {
         lines.push('CLARIFY|<problem_summary>|<why_uncertain>|<question>|<library_number_1>|<library_number_2>|<library_number_3_optional>');
     }
 
-    lines.push('');
-    lines.push('=== CRITICAL FORMAT RULES ===');
-    lines.push('1. Respond with EXACTLY one line of pipe-delimited values. No intro/outro text, no preamble, and no conversational explanations.');
-    lines.push('2. Do NOT wrap your response in markdown code blocks (e.g. ```text or ```json) or backticks. Do NOT use markdown bold styling (e.g. **CONFIDENT**). Output pure, raw text only.');
-    lines.push('3. <library_number> (and any library options for CLARIFY) MUST be a pure integer number from the AVAILABLE LIBRARIES list below (e.g. 4, NOT "4." or "4)"). Use the index number, not the library name.');
-    lines.push('4. <confidence_integer> MUST be a whole number between 0 and 100 with NO percent sign, NO decimals, and NO other symbols (e.g. 95, NOT "95%" or "~95").');
-    lines.push('5. <brief_reason> (or verification reason) must be plain text and must NOT contain any pipe ("|") characters.');
-
-    if (libraries.length > 0) {
+    if (!(mode === 'verify' && verificationContract?.valid === true)) {
         lines.push('');
-        lines.push('--- AVAILABLE LIBRARIES ---');
-        libraries.forEach((lib, i) => {
-            lines.push(`${i + 1}. "${lib.name}" (${lib.media_type})`);
-        });
+        lines.push('=== CRITICAL FORMAT RULES ===');
+        lines.push('1. Respond with EXACTLY one line of pipe-delimited values. No intro/outro text, no preamble, and no conversational explanations.');
+        lines.push('2. Do NOT wrap your response in markdown code blocks (e.g. ```text or ```json) or backticks. Do NOT use markdown bold styling (e.g. **CONFIDENT**). Output pure, raw text only.');
+        lines.push('3. <library_number> (and any library options for CLARIFY) MUST be a pure integer number from the AVAILABLE LIBRARIES list below (e.g. 4, NOT "4." or "4)"). Use the index number, not the library name.');
+        lines.push('4. <confidence_integer> MUST be a whole number between 0 and 100 with NO percent sign, NO decimals, and NO other symbols (e.g. 95, NOT "95%" or "~95").');
+        lines.push('5. <brief_reason> (or verification reason) must be plain text and must NOT contain any pipe ("|") characters.');
+
+        if (libraries.length > 0) {
+            lines.push('');
+            lines.push('--- AVAILABLE LIBRARIES ---');
+            libraries.forEach((lib, i) => {
+                lines.push(`${i + 1}. "${lib.name}" (${lib.media_type})`);
+            });
+        }
     }
 
     lines.push('=================');

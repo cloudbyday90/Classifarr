@@ -13,6 +13,12 @@ Current development changes will be recorded here.
 
 ### Added
 
+- **Candidate-bound AI verification** — Added a strict `CONFIRM` or `ABSTAIN`
+  response contract that binds verification to the server-selected policy
+  candidate, requires contract-grade structured-provider admission before any
+  prompt or generation, and retains only bounded verification status in
+  history.
+
 - **Historic route-safety maintenance surface** — Added a bounded administrator maintenance route for explicit historical retry selection, acknowledgement, and privacy-preserving receipt status monitoring without local receipt persistence or background-tab polling.
 - **Historic retry receipt reconciliation** — Added durable, transaction-bound historic route-safety retry receipts and an administrator-only, read-only status endpoint that reports bounded current-runtime outcomes without exposing history metadata, task IDs, or provider content.
 - **Controlled historic route-safety refresh** — Added an administrator-authorized, 50-item maximum retry command that rechecks the historic condition from the locked current row, preserves duplicate-task protection, and returns a privacy-bounded outcome receipt.
@@ -21,6 +27,11 @@ Current development changes will be recorded here.
 - **Immutable image-release retirement assessment** — Added a GET-only, evidence-bound plan that connects an incomplete retained GHCR graph to its named GitHub release, rejects republishing the tag, and requires an external advisory plus separate approval before any remote retirement action.
 
 ### Changed
+
+- **Verification safety boundary** — Unsupported, fallback, local, reasoning,
+  and candidate-mismatch verification paths now fail to operator-confirmation
+  review before prompt construction. Malformed verification output cannot
+  select an alternate destination or invoke local response repair.
 
 - **Deterministic AI invocation modes** — Policy and RAG outcomes now select
   explicit AI verification, generic fallback, or server-owned abstention. AI
