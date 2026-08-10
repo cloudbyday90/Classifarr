@@ -14,6 +14,15 @@ Current development changes will be recorded here.
 ### Added
 
 - **GHCR manifest retention inventory** — Added a GET-only, graph-aware inventory that protects tagged OCI indexes and every referenced platform or attestation manifest while reporting untagged artifacts for manual review only.
+- **Immutable image-release retirement assessment** — Added a GET-only, evidence-bound plan that connects an incomplete retained GHCR graph to its named GitHub release, rejects republishing the tag, and requires an external advisory plus separate approval before any remote retirement action.
+
+### Changed
+
+- **OSV scanner action pins** — Updated the Dependabot-proposed `google/osv-scanner-action` references to v2.5.0 across pull-request, merge-group, and full-scan workflows.
+
+### Fixed
+
+- **Image-retirement command** — Accepted npm 12's documented `tag` configuration forwarding so the retirement-assessment command reaches its bounded release-tag contract.
 
 ## [0.48.0c-beta] - 2026-08-09
 

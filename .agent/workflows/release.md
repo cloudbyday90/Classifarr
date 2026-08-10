@@ -463,6 +463,29 @@ removal needs a separate approved procedure with post-removal multi-platform
 pull verification. See
 `docs/architecture/ghcr-manifest-retention-inventory.md`.
 
+### Existing Broken Image Release
+
+Do not republish an existing release tag to repair an incomplete retained image
+graph. First create fresh read-only retirement evidence for that exact tag. The
+command below performs only GitHub Packages, GHCR, and GitHub Releases `GET`
+requests; it cannot change registry content, package versions, aliases, tags, or
+release metadata:
+
+```powershell
+$env:GH_TOKEN = '<GitHub token with read:packages and repository read access>'
+npm run release:assess-image-retirement -- --tag vX.Y.Z-beta
+Remove-Item Env:GH_TOKEN
+```
+
+When the evidence reports
+`immutable_release_requires_external_advisory`, retain the generated report,
+publish an external incident advisory that names the affected immutable release
+and digest, and request explicit approval before any remote retirement action.
+Do not use generic package-version deletion. A remote action must begin with a
+fresh complete inventory, scope the action to the exact affected tagged root,
+and finish with a new inventory plus supported-platform pull checks. See
+`docs/architecture/published-image-release-retirement.md`.
+
 ## 10. Record Existing-Installation Acceptance
 
 After the immutable release digest is deployed to a supported installation:
