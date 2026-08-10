@@ -18,6 +18,9 @@ import {
   evaluateHistoricRouteSafetyRefreshEligibility,
   POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_NOT_REQUIRED_REASON_ID,
 } from './policyRuntimeHistoricRouteSafetyRefreshEligibility.mjs';
+import {
+  PolicyRuntimeHistoricRouteSafetyRefreshReceiptRepository,
+} from './policyRuntimeHistoricRouteSafetyRefreshReceiptRepository.mjs';
 
 export const POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_EXECUTION_VERSION =
   'policy.runtime_historic_route_safety_refresh_execution.v1';
@@ -103,6 +106,8 @@ function summarizeRecords(records = []) {
 export class PolicyRuntimeHistoricRouteSafetyRefreshExecutionService {
   constructor({
     classificationRetryService,
+    db,
+    receiptRepository = null,
     createReceipt = randomUUID,
   } = {}) {
     if (typeof classificationRetryService?.retryClassifications !== 'function') {
@@ -111,9 +116,20 @@ export class PolicyRuntimeHistoricRouteSafetyRefreshExecutionService {
     if (typeof createReceipt !== 'function') {
       throw new TypeError('Historic route-safety refresh execution requires a receipt factory.');
     }
+    if (!receiptRepository && (!db || typeof db.withTransaction !== 'function')) {
+      throw new TypeError('Historic route-safety refresh execution requires receipt storage.');
+    }
+    if (receiptRepository && (
+      typeof receiptRepository.createReceipt !== 'function' ||
+      typeof receiptRepository.markRetryQueued !== 'function' ||
+      typeof receiptRepository.finalizeReceipt !== 'function'
+    )) {
+      throw new TypeError('Historic route-safety refresh execution requires a complete receipt repository.');
+    }
 
     this.classificationRetryService = classificationRetryService;
     this.createReceipt = createReceipt;
+    this.receiptRepository = receiptRepository || new PolicyRuntimeHistoricRouteSafetyRefreshReceiptRepository({ db });
   }
 
   async run({ classificationIds, actorId = 'admin' } = {}) {
@@ -125,9 +141,15 @@ export class PolicyRuntimeHistoricRouteSafetyRefreshExecutionService {
     }
 
     const retryReceipt = this.createReceipt();
+    const normalizedActorId = normalizeActorId(actorId);
+    await this.receiptRepository.createReceipt({
+      receiptId: retryReceipt,
+      actorId: normalizedActorId,
+      classificationIds: ids,
+    });
     const retryResult = await this.classificationRetryService.retryClassifications({
       classificationIds: ids,
-      actor: normalizeActorId(actorId),
+      actor: normalizedActorId,
       correlationId: retryReceipt,
       taskSource: HISTORIC_ROUTE_SAFETY_REFRESH_TASK_SOURCE,
       metadataEnrichmentSource: HISTORIC_ROUTE_SAFETY_REFRESH_FOLLOWUP_SOURCE,
@@ -139,6 +161,14 @@ export class PolicyRuntimeHistoricRouteSafetyRefreshExecutionService {
           reasonCode: eligibility.reasonId,
         };
       },
+      retryReceiptRecorder: ({ client, classificationId, retryTaskId }) => (
+        this.receiptRepository.markRetryQueued({
+          client,
+          receiptId: retryReceipt,
+          classificationId,
+          retryTaskId,
+        })
+      ),
     });
     const resultByClassificationId = new Map(
       (Array.isArray(retryResult?.results) ? retryResult.results : [])
@@ -152,6 +182,7 @@ export class PolicyRuntimeHistoricRouteSafetyRefreshExecutionService {
     const metadataEnrichmentTasksQueued = ids.filter(classificationId => (
       resultByClassificationId.get(classificationId)?.metadataEnrichmentQueued === true
     )).length;
+    await this.receiptRepository.finalizeReceipt({ receiptId: retryReceipt, records });
 
     return Object.freeze({
       version: POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_EXECUTION_VERSION,

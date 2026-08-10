@@ -77,8 +77,14 @@ describe('PolicyRuntimeHistoricRouteSafetyRefreshExecutionService', () => {
         ],
       }),
     };
+    const receiptRepository = {
+      createReceipt: jest.fn(),
+      markRetryQueued: jest.fn(),
+      finalizeReceipt: jest.fn(),
+    };
     const service = new PolicyRuntimeHistoricRouteSafetyRefreshExecutionService({
       classificationRetryService,
+      receiptRepository,
       createReceipt: () => '2ea36ed7-87df-45a8-a9cd-5501f39724f1',
     });
 
@@ -126,6 +132,23 @@ describe('PolicyRuntimeHistoricRouteSafetyRefreshExecutionService', () => {
       route: '/api/classification/pending/route-safety-refresh/retry',
     }));
     expect(typeof command.retryEligibilityCheck).toBe('function');
+    expect(typeof command.retryReceiptRecorder).toBe('function');
+    await command.retryReceiptRecorder({ client: 'transaction-client', classificationId: 42, retryTaskId: 993 });
+    expect(receiptRepository.createReceipt).toHaveBeenCalledWith({
+      receiptId: '2ea36ed7-87df-45a8-a9cd-5501f39724f1',
+      actorId: 'user:17',
+      classificationIds: [42, 77],
+    });
+    expect(receiptRepository.markRetryQueued).toHaveBeenCalledWith({
+      client: 'transaction-client',
+      receiptId: '2ea36ed7-87df-45a8-a9cd-5501f39724f1',
+      classificationId: 42,
+      retryTaskId: 993,
+    });
+    expect(receiptRepository.finalizeReceipt).toHaveBeenCalledWith({
+      receiptId: '2ea36ed7-87df-45a8-a9cd-5501f39724f1',
+      records: result.records,
+    });
     expect(command.retryEligibilityCheck({
       classification: historicClassification(),
     })).toEqual({
@@ -142,8 +165,14 @@ describe('PolicyRuntimeHistoricRouteSafetyRefreshExecutionService', () => {
 
   test('rejects duplicate, unbounded, and non-positive operator selections before retry execution', async () => {
     const classificationRetryService = { retryClassifications: jest.fn() };
+    const receiptRepository = {
+      createReceipt: jest.fn(),
+      markRetryQueued: jest.fn(),
+      finalizeReceipt: jest.fn(),
+    };
     const service = new PolicyRuntimeHistoricRouteSafetyRefreshExecutionService({
       classificationRetryService,
+      receiptRepository,
     });
 
     for (const classificationIds of [[], [1, 1], [0], Array.from({ length: 51 }, (_, index) => index + 1)]) {
@@ -153,14 +182,21 @@ describe('PolicyRuntimeHistoricRouteSafetyRefreshExecutionService', () => {
       });
     }
     expect(classificationRetryService.retryClassifications).not.toHaveBeenCalled();
+    expect(receiptRepository.createReceipt).not.toHaveBeenCalled();
   });
 
   test('fails closed when the retry service does not return an item result', async () => {
     const classificationRetryService = {
       retryClassifications: jest.fn().mockResolvedValue({ results: [] }),
     };
+    const receiptRepository = {
+      createReceipt: jest.fn(),
+      markRetryQueued: jest.fn(),
+      finalizeReceipt: jest.fn(),
+    };
     const service = new PolicyRuntimeHistoricRouteSafetyRefreshExecutionService({
       classificationRetryService,
+      receiptRepository,
       createReceipt: () => 'a5c7fdf3-6aad-44d7-911d-9d36e4b9a754',
     });
 
@@ -173,5 +209,9 @@ describe('PolicyRuntimeHistoricRouteSafetyRefreshExecutionService', () => {
     }]);
     expect(result.sideEffects.retryCommandsExecuted).toBe(false);
     expect(result.sideEffects.metadataEnrichmentTasksQueued).toBe(0);
+    expect(receiptRepository.finalizeReceipt).toHaveBeenCalledWith({
+      receiptId: 'a5c7fdf3-6aad-44d7-911d-9d36e4b9a754',
+      records: result.records,
+    });
   });
 });

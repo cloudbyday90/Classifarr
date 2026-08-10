@@ -90,6 +90,7 @@ export class ClassificationRetryService {
     metadataEnrichmentSource = DEFAULT_RETRY_FOLLOWUP_SOURCE,
     route = RETRY_ROUTE,
     retryEligibilityCheck = null,
+    retryReceiptRecorder = null,
   } = {}) {
     const normalized = this.normalizeIds(classificationIds);
     if (normalized.error) {
@@ -117,6 +118,7 @@ export class ClassificationRetryService {
         metadataEnrichmentSource,
         route,
         retryEligibilityCheck,
+        retryReceiptRecorder,
       });
       results.push(itemResult);
     }
@@ -175,6 +177,7 @@ export class ClassificationRetryService {
     metadataEnrichmentSource = DEFAULT_RETRY_FOLLOWUP_SOURCE,
     route = RETRY_ROUTE,
     retryEligibilityCheck = null,
+    retryReceiptRecorder = null,
   }) {
     const baseResult = {
       classificationId,
@@ -289,6 +292,16 @@ export class ClassificationRetryService {
         ['classification', JSON.stringify(retryPayload), 2, taskSource, 5]
       );
       const taskId = queueResult.rows[0]?.id || null;
+
+      if (typeof retryReceiptRecorder === 'function') {
+        await retryReceiptRecorder({
+          client,
+          classificationId,
+          retryTaskId: taskId,
+          correlationId,
+          taskSource,
+        });
+      }
 
       await client.query(
         `UPDATE classification_history

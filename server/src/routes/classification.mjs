@@ -29,6 +29,12 @@ import {
 import {
   PolicyRuntimeHistoricRouteSafetyRefreshExecutionService,
 } from '../services/policyRuntimeHistoricRouteSafetyRefreshExecutionService.mjs';
+import {
+  PolicyRuntimeHistoricRouteSafetyRefreshReceiptRepository,
+} from '../services/policyRuntimeHistoricRouteSafetyRefreshReceiptRepository.mjs';
+import {
+  PolicyRuntimeHistoricRouteSafetyRefreshReceiptReconciliationService,
+} from '../services/policyRuntimeHistoricRouteSafetyRefreshReceiptReconciliationService.mjs';
 import { createClassificationRouter } from './classificationRouteShared.mjs';
 
 const policyRuntimePendingQuestionCleanupInventoryService =
@@ -37,8 +43,18 @@ const policyRuntimePendingQuestionCleanupApplyService =
   new PolicyRuntimePendingQuestionCleanupApplyService({ db });
 const policyRuntimeHistoricRouteSafetyRefreshInventoryService =
   new PolicyRuntimeHistoricRouteSafetyRefreshInventoryService({ db });
+const policyRuntimeHistoricRouteSafetyRefreshReceiptRepository =
+  new PolicyRuntimeHistoricRouteSafetyRefreshReceiptRepository({ db });
 const policyRuntimeHistoricRouteSafetyRefreshExecutionService =
-  new PolicyRuntimeHistoricRouteSafetyRefreshExecutionService({ classificationRetryService });
+  new PolicyRuntimeHistoricRouteSafetyRefreshExecutionService({
+    classificationRetryService,
+    receiptRepository: policyRuntimeHistoricRouteSafetyRefreshReceiptRepository,
+  });
+const policyRuntimeHistoricRouteSafetyRefreshReceiptReconciliationService =
+  new PolicyRuntimeHistoricRouteSafetyRefreshReceiptReconciliationService({
+    db,
+    receiptRepository: policyRuntimeHistoricRouteSafetyRefreshReceiptRepository,
+  });
 
 export const router = createClassificationRouter({
   express,
@@ -54,4 +70,5 @@ export const router = createClassificationRouter({
   policyRuntimePendingQuestionCleanupApplyService,
   policyRuntimeHistoricRouteSafetyRefreshInventoryService,
   policyRuntimeHistoricRouteSafetyRefreshExecutionService,
+  policyRuntimeHistoricRouteSafetyRefreshReceiptReconciliationService,
 });

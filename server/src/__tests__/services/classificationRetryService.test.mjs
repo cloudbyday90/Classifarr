@@ -398,6 +398,70 @@ describe('ClassificationRetryService', () => {
     }));
   });
 
+  test('records a controlled receipt inside the retry transaction after task insertion', async () => {
+    client.query.mockImplementation(async (sql) => {
+      if (sql === 'BEGIN' || sql === 'COMMIT') return { rows: [] };
+      if (sql.includes('FROM classification_history')) {
+        return { rows: [{
+          id: 401,
+          tmdb_id: 701,
+          media_type: 'movie',
+          title: 'Receipt Item',
+          year: 2026,
+          status: 'awaiting_decision',
+          retry_count: 0,
+          max_retries: 5,
+          metadata: '{}',
+        }] };
+      }
+      if (sql.includes('INSERT INTO task_queue')) return { rows: [{ id: 9913 }] };
+      if (sql.includes('UPDATE classification_history') && sql.includes("status = 'reclassified'")) {
+        return { rowCount: 1, rows: [] };
+      }
+      throw new Error(`Unexpected query: ${sql}`);
+    });
+    jest.spyOn(service, 'hasPendingClassificationTask').mockResolvedValueOnce(null);
+    jest.spyOn(service, 'resolveMediaItemId').mockResolvedValueOnce(7003);
+    jest.spyOn(service, 'cleanupClassificationArtifacts').mockResolvedValueOnce();
+    jest.spyOn(service, 'cleanupEnrichmentState').mockResolvedValueOnce({
+      enrichmentQueueRowsRemoved: 0,
+      metadataEnrichmentTasksRemoved: 0,
+      enrichmentMetadataReset: false,
+      enrichmentCleanupSkipped: null,
+    });
+    followupService.enqueueMetadataEnrichmentTask.mockResolvedValueOnce({
+      metadataEnrichmentQueued: false,
+      metadataEnrichmentTaskId: null,
+      metadataEnrichmentReason: 'not_needed',
+    });
+    const retryReceiptRecorder = jest.fn().mockResolvedValue();
+
+    const result = await service.retrySingle({
+      classificationId: 401,
+      actor: 'user:1',
+      correlationId: '4b8d027d-8daf-4186-a9f8-89df6f69c95e',
+      taskSource: 'historic_route_safety_refresh',
+      retryReceiptRecorder,
+    });
+
+    expect(result).toMatchObject({ queued: true, taskId: 9913 });
+    expect(retryReceiptRecorder).toHaveBeenCalledWith({
+      client,
+      classificationId: 401,
+      retryTaskId: 9913,
+      correlationId: '4b8d027d-8daf-4186-a9f8-89df6f69c95e',
+      taskSource: 'historic_route_safety_refresh',
+    });
+    const queueCallIndex = client.query.mock.calls.findIndex(([sql]) =>
+      typeof sql === 'string' && sql.includes('INSERT INTO task_queue'),
+    );
+    const classificationUpdateIndex = client.query.mock.calls.findIndex(([sql]) =>
+      typeof sql === 'string' && sql.includes("status = 'reclassified'"),
+    );
+    expect(queueCallIndex).toBeGreaterThan(-1);
+    expect(classificationUpdateIndex).toBeGreaterThan(queueCallIndex);
+  });
+
   test('retrySingle preserves retry_count for scheduler-sourced (auto) retries', async () => {
     client.query.mockImplementation(async (sql) => {
       if (sql === 'BEGIN' || sql === 'COMMIT') return { rows: [] };

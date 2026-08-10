@@ -72,6 +72,12 @@ export function executeHistoricRouteSafetyRefresh(classificationIds) {
   return apiClient.post('/classification/pending/route-safety-refresh/retry', { classificationIds })
 }
 
+export function getHistoricRouteSafetyRefreshReceipt(retryReceipt) {
+  return getDataRequest(
+    `/classification/pending/route-safety-refresh/receipts/${encodeURIComponent(retryReceipt)}`,
+  )
+}
+
 export function resolvePendingClassification(classificationId, payload) {
   return apiClient.post(`/classification/pending/${classificationId}/resolve`, payload)
 }
@@ -98,6 +104,7 @@ const classificationOperationsApi = {
   getPendingQuestionCleanupInventory,
   getHistoricRouteSafetyRefreshInventory,
   executeHistoricRouteSafetyRefresh,
+  getHistoricRouteSafetyRefreshReceipt,
   resolvePendingClassification,
   rememberResolvedExactItem,
   retryClassifications,

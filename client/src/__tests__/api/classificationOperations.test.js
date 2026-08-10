@@ -41,6 +41,7 @@ import {
   getPendingQuestionCleanupInventory,
   getHistoricRouteSafetyRefreshInventory,
   executeHistoricRouteSafetyRefresh,
+  getHistoricRouteSafetyRefreshReceipt,
   rememberResolvedExactItem,
   resolvePendingClassification,
   retryClassifications,
@@ -161,6 +162,16 @@ describe('classificationOperations', () => {
       classificationIds: [41, 42],
     })
     expect(result).toEqual({ data: { retryReceipt: 'receipt', records: [] } })
+  })
+
+  it('getHistoricRouteSafetyRefreshReceipt uses an encoded receipt-bound read endpoint', async () => {
+    const receipt = { mode: 'read_only', records: [] }
+    mockGetDataRequest.mockResolvedValueOnce(receipt)
+    const result = await getHistoricRouteSafetyRefreshReceipt('4b8d027d-8daf-4186-a9f8-89df6f69c95e')
+    expect(mockGetDataRequest).toHaveBeenCalledWith(
+      '/classification/pending/route-safety-refresh/receipts/4b8d027d-8daf-4186-a9f8-89df6f69c95e',
+    )
+    expect(result).toEqual(receipt)
   })
 
   it('resolvePendingClassification calls POST with id in URL and payload', async () => {

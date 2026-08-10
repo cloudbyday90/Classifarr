@@ -68,7 +68,8 @@ Options considered:
    provider output, and learning state. It names only the aggregate count of
    existing metadata-enrichment follow-up tasks queued by the retry flow.
    Queued retries retain the correlation ID in the existing classification
-   outcome lineage.
+   outcome lineage and a durable, privacy-bounded receipt item that can later
+   be reconciled without searching raw history.
 
 ## Implemented Outcome
 
@@ -82,6 +83,9 @@ check, and projects a privacy-bounded receipt.
 command only through the dual administrator and read-write authorization gate.
 `executeHistoricRouteSafetyRefresh` is the named client API leaf; no UI flow
 automatically submits an inventory plan.
+
+The follow-on read path is documented in [Historic Route-Safety Refresh Receipt
+Reconciliation](historic-route-safety-refresh-receipt-reconciliation.md).
 
 ## Verification
 

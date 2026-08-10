@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-08-10T14:39:22.657Z
--- Latest Migration: 20260810_120000_add_active_pending_refresh_inventory_index.sql
+-- Generated: 2026-08-10T15:58:00.179Z
+-- Latest Migration: 20260810_140000_add_historic_route_safety_refresh_receipts.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -5255,6 +5255,38 @@ ALTER SEQUENCE public.policy_profile_refresh_outbox_id_seq OWNED BY public.polic
 
 
 --
+-- Name: policy_runtime_historic_route_safety_refresh_receipt_items; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_runtime_historic_route_safety_refresh_receipt_items (
+    receipt_id uuid CONSTRAINT policy_runtime_historic_route_safety_refre_receipt_id_not_null1 NOT NULL,
+    classification_id bigint CONSTRAINT policy_runtime_historic_route_safety_classification_id_not_null NOT NULL,
+    execution_status character varying(16) DEFAULT 'requested'::character varying CONSTRAINT policy_runtime_historic_route_safety__execution_status_not_null NOT NULL,
+    reason_id character varying(120),
+    retry_task_id bigint,
+    queued_at timestamp with time zone,
+    finalized_at timestamp with time zone,
+    CONSTRAINT policy_runtime_historic_route_safety_refresh_receipt_items_queu CHECK (((((execution_status)::text = 'queued'::text) AND (retry_task_id IS NOT NULL) AND (queued_at IS NOT NULL)) OR (((execution_status)::text <> 'queued'::text) AND (retry_task_id IS NULL) AND (queued_at IS NULL)))),
+    CONSTRAINT policy_runtime_historic_route_safety_refresh_receipt_items_stat CHECK (((execution_status)::text = ANY (ARRAY[('requested'::character varying)::text, ('queued'::character varying)::text, ('skipped'::character varying)::text, ('failed'::character varying)::text])))
+);
+
+
+--
+-- Name: policy_runtime_historic_route_safety_refresh_receipts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_runtime_historic_route_safety_refresh_receipts (
+    receipt_id uuid CONSTRAINT policy_runtime_historic_route_safety_refres_receipt_id_not_null NOT NULL,
+    actor_id character varying(160) CONSTRAINT policy_runtime_historic_route_safety_refresh__actor_id_not_null NOT NULL,
+    requested_record_count smallint CONSTRAINT policy_runtime_historic_route_s_requested_record_count_not_null NOT NULL,
+    receipt_version character varying(120) CONSTRAINT policy_runtime_historic_route_safety_r_receipt_version_not_null NOT NULL,
+    created_at timestamp with time zone DEFAULT now() CONSTRAINT policy_runtime_historic_route_safety_refres_created_at_not_null NOT NULL,
+    execution_finalized_at timestamp with time zone,
+    CONSTRAINT policy_runtime_historic_route_safety_refresh_receipts_requested CHECK (((requested_record_count >= 1) AND (requested_record_count <= 50)))
+);
+
+
+--
 -- Name: policy_runtime_pending_question_cleanup_audits; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -8387,6 +8419,22 @@ ALTER TABLE ONLY public.policy_profile_refresh_outbox
 
 
 --
+-- Name: policy_runtime_historic_route_safety_refresh_receipt_items policy_runtime_historic_route_safety_refresh_receipt_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_runtime_historic_route_safety_refresh_receipt_items
+    ADD CONSTRAINT policy_runtime_historic_route_safety_refresh_receipt_items_pkey PRIMARY KEY (receipt_id, classification_id);
+
+
+--
+-- Name: policy_runtime_historic_route_safety_refresh_receipts policy_runtime_historic_route_safety_refresh_receipts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_runtime_historic_route_safety_refresh_receipts
+    ADD CONSTRAINT policy_runtime_historic_route_safety_refresh_receipts_pkey PRIMARY KEY (receipt_id);
+
+
+--
 -- Name: policy_runtime_pending_question_cleanup_audits policy_runtime_pending_question_cleanup_audits_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11505,6 +11553,14 @@ ALTER TABLE ONLY public.policy_presets
 
 
 --
+-- Name: policy_runtime_historic_route_safety_refresh_receipt_items policy_runtime_historic_route_safety_refresh_re_receipt_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_runtime_historic_route_safety_refresh_receipt_items
+    ADD CONSTRAINT policy_runtime_historic_route_safety_refresh_re_receipt_id_fkey FOREIGN KEY (receipt_id) REFERENCES public.policy_runtime_historic_route_safety_refresh_receipts(receipt_id) ON DELETE CASCADE;
+
+
+--
 -- Name: policy_tuning_suggestions policy_tuning_suggestions_applied_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13628,6 +13684,7 @@ FROM unnest(ARRAY[
     '20260808_170000_policy_confirmation_pending_reason.sql',
     '20260809_010000_add_canonical_history_outcome_index.sql',
     '20260809_020000_add_task_queue_cleanup_origin.sql',
-    '20260810_120000_add_active_pending_refresh_inventory_index.sql'
+    '20260810_120000_add_active_pending_refresh_inventory_index.sql',
+    '20260810_140000_add_historic_route_safety_refresh_receipts.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

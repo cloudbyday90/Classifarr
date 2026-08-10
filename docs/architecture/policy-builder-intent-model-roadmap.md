@@ -12249,6 +12249,38 @@ Completion criteria:
 
 Design and outcome detail: [Historic Route-Safety Refresh Execution](historic-route-safety-refresh-execution.md).
 
+#### 10R.3.6 Historic Route-Safety Refresh Receipt Reconciliation
+
+Status: complete.
+
+Intent: let an administrator verify the current runtime state of every
+selected historic route-safety retry without reopening raw history, treating a
+correlation value as a broad search key, or inferring a route from missing
+evidence.
+
+Completion criteria:
+
+- creates a durable, bounded receipt header and item set before the controlled
+  retry command starts; each queued item is recorded in the same retry
+  transaction as its task insertion,
+- finalizes only after all selected records have a fixed queued, skipped, or
+  failed command outcome; incomplete execution remains visible as incomplete,
+- exposes a GET-only, administrator-authorized, UUID-bound, no-store report
+  under a repeatable-read, read-only transaction without requiring write
+  authorization,
+- uses primary-key receipt reads, retained queue state, and at most eight
+  replacement-classification lineage hops instead of an unbounded history or
+  JSON correlation scan,
+- returns only selected IDs, fixed command and runtime status IDs, aggregate
+  counts, and timestamps; metadata, policy questions, task IDs, provider
+  content, prompts, routes, learning state, and replacement IDs remain
+  excluded,
+- does not retry, route, invoke AI, change policy, or write learning while a
+  receipt is read.
+
+Design and outcome detail: [Historic Route-Safety Refresh Receipt
+Reconciliation](historic-route-safety-refresh-receipt-reconciliation.md).
+
 ### 10R.4 Release Acceptance Assembly
 
 Status: complete as of 2026-08-09.

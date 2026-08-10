@@ -13,6 +13,7 @@ Current development changes will be recorded here.
 
 ### Added
 
+- **Historic retry receipt reconciliation** — Added durable, transaction-bound historic route-safety retry receipts and an administrator-only, read-only status endpoint that reports bounded current-runtime outcomes without exposing history metadata, task IDs, or provider content.
 - **Controlled historic route-safety refresh** — Added an administrator-authorized, 50-item maximum retry command that rechecks the historic condition from the locked current row, preserves duplicate-task protection, and returns a privacy-bounded outcome receipt.
 - **Historic route-safety refresh inventory** — Added an admin-only, GET-only, keyset-paginated report that identifies active decisions missing their historic route gate and produces a 50-item retry plan without executing it.
 - **GHCR manifest retention inventory** — Added a GET-only, graph-aware inventory that protects tagged OCI indexes and every referenced platform or attestation manifest while reporting untagged artifacts for manual review only.
