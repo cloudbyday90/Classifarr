@@ -42,7 +42,7 @@ function createRoutingService() {
 
 function createPromptPolicyResult() {
   return {
-    action: 'prompt',
+    action: 'prompt_confirm',
     confidence: 92,
     ranked: [{
       library_id: 1,

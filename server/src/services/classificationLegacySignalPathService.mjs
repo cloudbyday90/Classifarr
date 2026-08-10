@@ -34,6 +34,10 @@ import { libraryRulesService } from './libraryRulesService.mjs';
 import { libraryLabelsService } from './libraryLabelsService.mjs';
 import { contentTypeAnalyzer } from './contentTypeAnalyzer.mjs';
 import { mediaSyncLibraryStateService as mediaSyncLibraryStateServiceModule } from './mediaSyncLibraryStateService.mjs';
+import {
+	buildDeterministicOutcomeAiAbstentionResult,
+	resolveDeterministicOutcomeAiMode,
+} from './classificationDeterministicAiMode.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const defaultLogger = createLogger('classificationLegacySignalPathService');
@@ -142,7 +146,32 @@ export class ClassificationLegacySignalPathService {
 		};
 
 		try {
-			const aiMatch = await this.aiClassify(metadata, libraries, signalContext);
+			const aiModeDecision = resolveDeterministicOutcomeAiMode({
+				policyResult,
+				libraries,
+			});
+
+			if (!aiModeDecision.shouldInvoke) {
+				return this.classificationRoutingService.ensureDecisionQuestion({
+					metadata,
+					result: buildDeterministicOutcomeAiAbstentionResult({
+						policyResult,
+						libraries,
+						signalContext,
+						aiModeDecision,
+					}),
+					policyResult,
+					libraries,
+					ragContext,
+				});
+			}
+
+			const aiMatch = {
+				...(await this.aiClassify(metadata, libraries, signalContext, {
+					mode: aiModeDecision.mode,
+				})),
+				deterministic_ai_mode: aiModeDecision,
+			};
 			return resolveClassificationPathAiSuccess({
 				metadata,
 				aiMatch,

@@ -12443,12 +12443,28 @@ Implemented design: [AI Repair Authority Integrity](ai-repair-authority-integrit
 
 #### 11R.1.2 Deterministic-Outcome-Aware AI Modes
 
-Status: pending.
+Status: complete on 2026-08-10.
 
 Intent: choose AI mode from the server-owned policy outcome. A unique
 deterministic destination that needs review should request bounded verification;
 ambiguous candidates should receive advisory diagnostics or abstention; generic
 AI classification remains limited to a genuine no-policy fallback.
+
+Completion criteria:
+
+- unique, valid `prompt_confirm` outcomes invoke bounded verification while
+  preserving advisory-only route authority;
+- ambiguous, manually gated, malformed, and policy-evaluation-failure outcomes
+  abstain from provider invocation and produce a server-owned decision question;
+- generic classification is explicit and limited to the successful no-policy
+  fallback path;
+- RAG rechecks resolve the current policy outcome before any rerun and cannot
+  force verification for an ambiguous result;
+- runtime history retains only bounded mode-selection facts; and
+- focused tests cover the resolver, initial policy path, legacy fallback, RAG
+  rerun, and AI-service default.
+
+Implemented design: [Deterministic-Outcome-Aware AI Modes](ai-deterministic-outcome-aware-modes.md).
 
 ## Testing Strategy
 

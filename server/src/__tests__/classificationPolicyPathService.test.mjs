@@ -91,11 +91,19 @@ describe('classificationPolicyPathService.execute', () => {
     expect(out.handled).toBe(false);
   });
 
-  it('returns { handled: false, policyResult: null } when policyEngine throws', async () => {
+  it('requires an operator decision when policyEngine throws', async () => {
     policyEngine.evaluateItem.mockRejectedValue(new Error('DB offline'));
     const out = await execute(baseParams);
-    expect(out.handled).toBe(false);
-    expect(out.policyResult).toBeNull();
+    expect(out.handled).toBe(true);
+    expect(out.result).toMatchObject({
+      method: 'policy_engine',
+      needs_clarification: true,
+      deterministic_ai_mode: {
+        mode: 'abstain',
+        reasonCode: 'policy_evaluation_failed',
+      },
+    });
+    expect(classificationAiService.aiClassify).not.toHaveBeenCalled();
   });
 
   it('returns { handled: false } when policyEngine returns empty ranked list', async () => {
@@ -117,20 +125,33 @@ describe('classificationPolicyPathService.execute', () => {
     expect(classificationAiService.aiClassify).not.toHaveBeenCalled();
   });
 
-  it('returns { handled: false } when auto_classify library is not found in libraries list', async () => {
+  it('requires an operator decision when auto_classify selects an unavailable library', async () => {
     policyEngine.evaluateItem.mockResolvedValue({
       action: 'auto_classify',
       confidence: 99,
       library: { library_id: 999, library_name: 'Unknown', policy_name: 'X' },
     });
     const out = await execute(baseParams);
-    expect(out.handled).toBe(false);
-    expect(out.policyResult).toBeNull();
+    expect(out.handled).toBe(true);
+    expect(out.result).toMatchObject({
+      method: 'policy_engine',
+      needs_clarification: true,
+      deterministic_ai_mode: {
+        reasonCode: 'invalid_policy_destination',
+      },
+    });
+    expect(classificationAiService.aiClassify).not.toHaveBeenCalled();
   });
 
-  it('returns { handled: true, result } with ai_analysis method when AI succeeds', async () => {
+  it('uses verification mode for a unique deterministic review candidate', async () => {
     const ranked = [{ library_id: 1, score: 80 }];
-    policyEngine.evaluateItem.mockResolvedValue({ ranked, confidence: 75, ragCache: null });
+    policyEngine.evaluateItem.mockResolvedValue({
+      action: 'prompt_confirm',
+      ranked,
+      library: { library_id: 1, library_name: 'Movies' },
+      confidence: 75,
+      ragCache: null,
+    });
     policyScoringContextBuilder.buildSignalContext.mockReturnValue({ confidence: 75, suggestedLibrary: libraries[0] });
     classificationAiService.aiClassify.mockResolvedValue({
       library: libraries[0], confidence: 80, verified_by_ai: false,
@@ -141,12 +162,58 @@ describe('classificationPolicyPathService.execute', () => {
 
     const out = await execute(baseParams);
     expect(out.handled).toBe(true);
-    expect(classificationAiService.aiClassify).toHaveBeenCalled();
+    expect(classificationAiService.aiClassify).toHaveBeenCalledWith(
+      baseParams.metadata,
+      libraries,
+      expect.any(Object),
+      { mode: 'verify', ragContext: null },
+    );
+    expect(classificationRagLoopService.evaluateRagLoopSecondPass).toHaveBeenCalledWith(expect.objectContaining({
+      baselineResult: expect.objectContaining({
+        deterministic_ai_mode: expect.objectContaining({
+          mode: 'verify',
+          reasonCode: 'unique_review_candidate',
+        }),
+      }),
+    }));
+  });
+
+  it.each([
+    ['prompt_select', 'ambiguous_policy_candidates'],
+    ['manual', 'insufficient_policy_evidence'],
+  ])('does not call AI for %s policy outcomes', async (action, reasonCode) => {
+    const ranked = [{ library_id: 1, score: 80 }];
+    policyEngine.evaluateItem.mockResolvedValue({
+      action,
+      ranked,
+      library: { library_id: 1, library_name: 'Movies' },
+      confidence: 75,
+      ragCache: null,
+    });
+    policyScoringContextBuilder.buildSignalContext.mockReturnValue({ confidence: 75, suggestedLibrary: libraries[0] });
+
+    const out = await execute(baseParams);
+
+    expect(out.handled).toBe(true);
+    expect(classificationAiService.aiClassify).not.toHaveBeenCalled();
+    expect(out.result).toMatchObject({
+      method: 'policy_engine',
+      needs_clarification: true,
+      deterministic_ai_mode: {
+        mode: 'abstain',
+        reasonCode,
+      },
+    });
   });
 
   it('returns needs_retry result when AI is unavailable and confidence < 50', async () => {
     const ranked = [{ library_id: 1, score: 40 }];
-    policyEngine.evaluateItem.mockResolvedValue({ ranked, confidence: 30 });
+    policyEngine.evaluateItem.mockResolvedValue({
+      action: 'prompt_confirm',
+      ranked,
+      library: { library_id: 1, library_name: 'Movies' },
+      confidence: 30,
+    });
     policyScoringContextBuilder.buildSignalContext.mockReturnValue({ confidence: 30, suggestedLibrary: null });
     classificationAiService.aiClassify.mockRejectedValue(Object.assign(new Error('timeout'), { code: 'ETIMEDOUT' }));
     classificationUtilsService.isAiTransientAvailabilityError.mockReturnValue(true);
@@ -159,7 +226,12 @@ describe('classificationPolicyPathService.execute', () => {
 
   it('returns signal_calculation when AI fails, confidence ≥ 50, suggestedLibrary present', async () => {
     const ranked = [{ library_id: 1, score: 70 }];
-    policyEngine.evaluateItem.mockResolvedValue({ ranked, confidence: 65 });
+    policyEngine.evaluateItem.mockResolvedValue({
+      action: 'prompt_confirm',
+      ranked,
+      library: { library_id: 1, library_name: 'Movies' },
+      confidence: 65,
+    });
     policyScoringContextBuilder.buildSignalContext.mockReturnValue({
       confidence: 65, suggestedLibrary: libraries[0],
     });
@@ -178,7 +250,12 @@ describe('classificationPolicyPathService.execute', () => {
 
   it('returns fallback when AI fails, no suggestedLibrary, confidence >= 50 (not transient)', async () => {
     const ranked = [{ library_id: 1, score: 60 }];
-    policyEngine.evaluateItem.mockResolvedValue({ ranked, confidence: 60 });
+    policyEngine.evaluateItem.mockResolvedValue({
+      action: 'prompt_confirm',
+      ranked,
+      library: { library_id: 1, library_name: 'Movies' },
+      confidence: 60,
+    });
     policyScoringContextBuilder.buildSignalContext.mockReturnValue({ confidence: 60, suggestedLibrary: null });
     classificationAiService.aiClassify.mockRejectedValue(new Error('AI error'));
     classificationUtilsService.isAiTransientAvailabilityError.mockReturnValue(false);

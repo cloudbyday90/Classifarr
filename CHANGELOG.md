@@ -22,6 +22,11 @@ Current development changes will be recorded here.
 
 ### Changed
 
+- **Deterministic AI invocation modes** — Policy and RAG outcomes now select
+  explicit AI verification, generic fallback, or server-owned abstention. AI
+  no longer receives an ambiguous, manually gated, malformed, or failed policy
+  evaluation as a generic destination-selection request; bounded mode facts are
+  retained with classification history.
 - **OSV scanner action pins** — Updated the Dependabot-proposed `google/osv-scanner-action` references to v2.5.0 across pull-request, merge-group, and full-scan workflows.
 - **Client build tooling** — Applied the Dependabot-reviewed `globals` 17.9.0, `postcss` 8.5.26, and `vite` 8.2.1 updates with lockfile integrity preserved.
 

@@ -443,23 +443,41 @@ describe('aiClassify', () => {
     );
   });
 
-  test('uses "verify" mode when signalContext provided', async () => {
+  test('does not infer verification mode from signal context', async () => {
+    db.query.mockResolvedValueOnce({ rows: [defaultProviderRow] });
+    aiRouter.getProvider.mockResolvedValueOnce(ollamaProvider);
+    ollamaService.generateWithProgress.mockResolvedValueOnce('CONFIDENT|1|80|looks right');
+    aiResponseParser.parse.mockReturnValueOnce({ ...goodParseResult, format: 'CONFIDENT' });
+    const signalContext = { confidence: 90, suggestedLibrary: { id: 1, name: 'Movies' } };
+    await classificationAiService.aiClassify(baseMetadata, baseLibraries, signalContext, {});
+    expect(aiPromptBuilder.buildPrompt).toHaveBeenCalledWith(
+      expect.any(Object),
+      { mode: 'classify' }
+    );
+    expect(aiRouter.getProvider).toHaveBeenCalledWith('classification', {
+      authorityMode: 'proposal',
+    });
+  });
+
+  test('uses verification mode only when the caller requests it explicitly', async () => {
     db.query.mockResolvedValueOnce({ rows: [defaultProviderRow] });
     aiRouter.getProvider.mockResolvedValueOnce(ollamaProvider);
     ollamaService.generateWithProgress.mockResolvedValueOnce('CONFIRM|1|looks right');
     aiResponseParser.parse.mockReturnValueOnce({ ...goodParseResult, format: 'CONFIRM' });
     const signalContext = { confidence: 90, suggestedLibrary: { id: 1, name: 'Movies' } };
-    await classificationAiService.aiClassify(baseMetadata, baseLibraries, signalContext, {});
+
+    await classificationAiService.aiClassify(baseMetadata, baseLibraries, signalContext, { mode: 'verify' });
+
     expect(aiPromptBuilder.buildPrompt).toHaveBeenCalledWith(
       expect.any(Object),
-      { mode: 'verify' }
+      { mode: 'verify' },
     );
     expect(aiRouter.getProvider).toHaveBeenCalledWith('classification', {
       authorityMode: 'verification',
     });
   });
 
-  test('options.mode overrides default mode derivation', async () => {
+  test('uses an explicit caller-selected mode', async () => {
     db.query.mockResolvedValueOnce({ rows: [defaultProviderRow] });
     aiRouter.getProvider.mockResolvedValueOnce(ollamaProvider);
     ollamaService.generateWithProgress.mockResolvedValueOnce('CONFIDENT|1|80|match');
@@ -647,7 +665,7 @@ describe('aiClassify', () => {
     aiResponseParser.parse.mockReturnValueOnce({ ...goodParseResult, format: 'CONFIRM' });
     const signalContext = { confidence: 90, suggestedLibrary: { id: 1, name: 'Movies' } };
     libraryProfileService.getProfileStats.mockResolvedValueOnce({ totalItems: 0 });
-    await classificationAiService.aiClassify(baseMetadata, baseLibraries, signalContext);
+    await classificationAiService.aiClassify(baseMetadata, baseLibraries, signalContext, { mode: 'verify' });
     expect(aiRouter.classify).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({ requestType: 'classification_verify' })

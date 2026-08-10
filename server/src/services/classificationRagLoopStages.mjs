@@ -11,6 +11,7 @@
 import { ragLoopResilienceManager } from './ragLoopResilienceManager.mjs';
 import { ragRetriever } from './ragRetriever.mjs';
 import { policyEngine } from './policyEngine.mjs';
+import { resolveDeterministicOutcomeAiMode } from './classificationDeterministicAiMode.mjs';
 import {
     sleep,
     withRetryableDbConflict,
@@ -299,13 +300,34 @@ export async function runAiRerunStage(ctx) {
         return { pass2Candidate: null, aiCallsUsed, hadError: false };
     }
 
+    const aiModeDecision = resolveDeterministicOutcomeAiMode({
+        policyResult: policyAfter,
+        libraries,
+    });
+    if (!aiModeDecision.shouldInvoke) {
+        addEvent({
+            stage: 'ai_rerun',
+            outcome: 'skipped',
+            reason: aiModeDecision.reasonCode,
+            reasonCode: aiModeDecision.reasonCode,
+            fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED,
+        });
+        return { pass2Candidate: null, aiCallsUsed, hadError: false };
+    }
+
     let pass2Candidate = null;
     let hadError = false;
     let updatedAiCallsUsed = aiCallsUsed;
 
     try {
         updatedAiCallsUsed += 1;
-        const aiRerunMatch = await aiClassify(expandedMetadata, libraries, signalContext, { mode: 'verify', ragContext: pass2RagContext });
+        const aiRerunMatch = {
+            ...(await aiClassify(expandedMetadata, libraries, signalContext, {
+                mode: aiModeDecision.mode,
+                ragContext: pass2RagContext,
+            })),
+            deterministic_ai_mode: aiModeDecision,
+        };
         pass2Candidate = buildAiRerunCandidate({ baselineResult, aiRerunMatch, libraries, signalContext, policyResult: policyAfter, ragContext: pass2RagContext });
         ragLoopResilienceManager.recordSuccess('ai_rerun', config);
         addEvent({ stage: 'ai_rerun', outcome: 'applied', reason: 'material_improvement', reasonCode: 'material_improvement' });

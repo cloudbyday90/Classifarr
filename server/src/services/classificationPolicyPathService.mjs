@@ -28,6 +28,10 @@ import {
 } from './classificationPathServiceShared.mjs';
 import { classificationUtilsService } from './classificationUtilsService.mjs';
 import { classificationRoutingService } from './classificationRoutingService.mjs';
+import {
+	buildDeterministicOutcomeAiAbstentionResult,
+	resolveDeterministicOutcomeAiMode,
+} from './classificationDeterministicAiMode.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const defaultLogger = createLogger('classificationPolicyPathService');
@@ -43,6 +47,8 @@ export class ClassificationPolicyPathService {
 		this.resolveClassificationPathAiFailure = deps.resolveClassificationPathAiFailure || resolveClassificationPathAiFailure;
 		this.classificationUtilsService = deps.classificationUtilsService || classificationUtilsService;
 		this.classificationRoutingService = deps.classificationRoutingService || classificationRoutingService;
+		this.resolveDeterministicOutcomeAiMode = deps.resolveDeterministicOutcomeAiMode || resolveDeterministicOutcomeAiMode;
+		this.buildDeterministicOutcomeAiAbstentionResult = deps.buildDeterministicOutcomeAiAbstentionResult || buildDeterministicOutcomeAiAbstentionResult;
 		this.logger = deps.logger || defaultLogger;
 	}
 
@@ -62,7 +68,16 @@ export class ClassificationPolicyPathService {
 			this.logger.info('Evaluating with PolicyEngine', { title: metadata.title });
 			policyResult = await this.policyEngine.evaluateItem(metadata, { relatedEvidence });
 
-			if (policyResult?.action === 'auto_classify' && policyResult.library) {
+			if (policyResult?.action === 'auto_classify') {
+				if (!policyResult.library) {
+					this.logger.error('PolicyEngine auto-classification did not include a destination', {
+						title: metadata.title,
+					});
+					const error = new Error('PolicyEngine auto-classification selected no library');
+					error.code = 'POLICY_INVALID_DESTINATION';
+					throw error;
+				}
+
 				this.logger.info('PolicyEngine auto-classified (AI skipped)', {
 					title: metadata.title,
 					library: policyResult.library.library_name,
@@ -74,7 +89,9 @@ export class ClassificationPolicyPathService {
 					this.logger.error('PolicyEngine returned unknown library', {
 						policyLibraryId: policyResult.library.library_id,
 					});
-					throw new Error('PolicyEngine selected unknown library');
+					const error = new Error('PolicyEngine selected unknown library');
+					error.code = 'POLICY_INVALID_DESTINATION';
+					throw error;
 				}
 
 				return {
@@ -86,6 +103,10 @@ export class ClassificationPolicyPathService {
 						reason: `Policy: ${policyResult.library.policy_name}`,
 						libraries,
 						policyResult,
+						deterministic_ai_mode: this.resolveDeterministicOutcomeAiMode({
+							policyResult,
+							libraries,
+						}),
 					},
 				};
 			}
@@ -100,11 +121,43 @@ export class ClassificationPolicyPathService {
 				);
 			}
 		} catch (policyError) {
-			this.logger.warn('PolicyEngine evaluation failed, falling back to legacy signals', {
+			this.logger.warn('Policy path could not produce a valid deterministic outcome; requiring operator review', {
 				error: policyError.message,
 				title: metadata.title,
 			});
-			return { handled: false, policyResult: null };
+
+			const invalidPolicyDestination = policyError?.code === 'POLICY_INVALID_DESTINATION';
+			const aiModeDecision = this.resolveDeterministicOutcomeAiMode({
+				policyResult: invalidPolicyDestination ? policyResult : null,
+				libraries,
+				policyEvaluationFailed: !invalidPolicyDestination,
+			});
+			const result = this.buildDeterministicOutcomeAiAbstentionResult({
+				policyResult: invalidPolicyDestination ? policyResult : null,
+				libraries,
+				aiModeDecision,
+			});
+
+			if (taskId && !metadata.source_library_id) {
+				await this.classificationProgressStageService.updateStage(taskId, 'decision', {
+					confidence: result.confidence,
+					skippedStages: ['rag_analysis', 'signal_combine', 'ai_analysis'],
+					skippedStageMetadata: {
+						rag_analysis: { reason: aiModeDecision.reasonCode },
+						signal_combine: { reason: aiModeDecision.reasonCode },
+						ai_analysis: { reason: aiModeDecision.reasonCode },
+					},
+				});
+			}
+
+			return {
+				handled: true,
+				result: await this.classificationRoutingService.ensureDecisionQuestion({
+					metadata,
+					result,
+					libraries,
+				}),
+			};
 		}
 
 		if (!policySignalContext) {
@@ -126,6 +179,48 @@ export class ClassificationPolicyPathService {
 			};
 		}
 
+		const aiModeDecision = this.resolveDeterministicOutcomeAiMode({
+			policyResult,
+			libraries,
+		});
+
+		if (!aiModeDecision.shouldInvoke) {
+			const result = this.buildDeterministicOutcomeAiAbstentionResult({
+				policyResult,
+				libraries,
+				signalContext: policySignalContext,
+				aiModeDecision,
+			});
+
+			this.logger.info('AI classification abstained for deterministic policy outcome', {
+				title: metadata.title,
+				policyAction: aiModeDecision.policyAction,
+				reasonCode: aiModeDecision.reasonCode,
+			});
+
+			if (taskId && !metadata.source_library_id) {
+				await this.classificationProgressStageService.updateStage(taskId, 'decision', {
+					confidence: result.confidence,
+					skippedStages: ['signal_combine', 'ai_analysis'],
+					skippedStageMetadata: {
+						signal_combine: { reason: 'policy_signal_path' },
+						ai_analysis: { reason: aiModeDecision.reasonCode },
+					},
+				});
+			}
+
+			return {
+				handled: true,
+				result: await this.classificationRoutingService.ensureDecisionQuestion({
+					metadata,
+					result,
+					policyResult,
+					libraries,
+					ragContext,
+				}),
+			};
+		}
+
 		if (taskId && !metadata.source_library_id) {
 			await this.classificationProgressStageService.updateStage(taskId, 'ai_analysis', {
 				skippedStages: ['signal_combine'],
@@ -134,12 +229,15 @@ export class ClassificationPolicyPathService {
 		}
 
 		try {
-			const aiMatch = await this.aiClassify(
-				metadata,
-				libraries,
-				policySignalContext,
-				{ mode: 'classify', ragContext },
-			);
+			const aiMatch = {
+				...(await this.aiClassify(
+					metadata,
+					libraries,
+					policySignalContext,
+					{ mode: aiModeDecision.mode, ragContext },
+				)),
+				deterministic_ai_mode: aiModeDecision,
+			};
 			return {
 				handled: true,
 				result: await resolveClassificationPathAiSuccess({

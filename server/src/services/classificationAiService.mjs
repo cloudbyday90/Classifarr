@@ -173,7 +173,10 @@ async function aiClassifyImpl(metadata, libraries, signalContext = null, options
     }
   }
 
-  const mode = options.mode || (signalContext ? 'verify' : 'classify');
+  // Every caller must select a deterministic mode. The default remains the
+  // generic proposal path for backwards-compatible direct callers; signal
+  // context alone must never escalate a request into verification.
+  const mode = options.mode || 'classify';
 
   let prompt = `You are a media classification ${mode === 'verify' ? 'VERIFIER' : 'AI'} for a home media server. ${mode === 'verify' ? 'Your role is to VERIFY a pre-calculated classification decision.' : 'Your role is to classify media items into the appropriate library.'}
 

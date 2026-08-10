@@ -195,4 +195,62 @@ describe('deterministic policy decision and route outcome acceptance', () => {
 
     expect(routeToArr).toHaveBeenCalledTimes(2);
   });
+
+  test('does not invoke AI when a deterministic policy result requires destination selection', async () => {
+    const libraries = (await db.query(
+      'SELECT * FROM libraries WHERE id = $1',
+      [fixture.libraryId],
+    )).rows;
+    const aiClassify = jest.fn();
+    const policyResult = {
+      action: 'prompt_select',
+      confidence: 80,
+      library: {
+        library_id: fixture.libraryId,
+        library_name: libraries[0].name,
+      },
+      ranked: [{
+        library_id: fixture.libraryId,
+        library_name: libraries[0].name,
+        score: 80,
+        prompt_threshold: 60,
+        auto_classify_threshold: 85,
+      }],
+    };
+    const policyPath = new ClassificationPolicyPathService({
+      policyEngine: { evaluateItem: jest.fn().mockResolvedValue(policyResult) },
+      classificationAiService: { aiClassify },
+      policyScoringContextBuilder: {
+        buildSignalContext: jest.fn().mockReturnValue({
+          confidence: 80,
+          suggestedLibrary: libraries[0],
+        }),
+      },
+      classificationRoutingService: {
+        ensureDecisionQuestion: jest.fn().mockImplementation(async ({ result }) => result),
+      },
+      logger: {
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+      },
+    });
+
+    const outcome = await policyPath.execute({
+      metadata: metadata('Ambiguous deterministic policy result'),
+      libraries,
+      relatedEvidence: [],
+    });
+
+    expect(aiClassify).not.toHaveBeenCalled();
+    expect(outcome).toEqual(expect.objectContaining({ handled: true }));
+    expect(outcome.result).toEqual(expect.objectContaining({
+      method: 'policy_engine',
+      needs_clarification: true,
+      deterministic_ai_mode: expect.objectContaining({
+        mode: 'abstain',
+        reasonCode: 'ambiguous_policy_candidates',
+      }),
+    }));
+  });
 });

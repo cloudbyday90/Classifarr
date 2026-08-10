@@ -70,6 +70,17 @@ set `requireAuthorityMode` only where a future task truly requires contract
 authority; the router then fails closed rather than silently elevating the
 provider.
 
+### Deterministic Outcome Selection
+
+The classification request's `classify` or `verify` prompt role is selected by
+the current server-owned policy outcome, as documented in
+[Deterministic-Outcome-Aware AI Modes](ai-deterministic-outcome-aware-modes.md).
+That request role does not alter this capability contract: a `verify` prompt
+sent to a provider with proposal-only admission remains advisory and cannot
+authorize a route. Conversely, an ambiguous or manually gated policy outcome
+abstains before provider selection rather than allowing a provider to select a
+destination.
+
 ### August 2026 Re-evaluation Hardening
 
 The original capability profiles and semantic parser boundary were present, but

@@ -698,7 +698,7 @@ describe('PolicyEngine -> AI flow', () => {
     });
   });
 
-  test('should run AI analysis for policy prompt paths', async () => {
+  test('uses verification mode for a unique policy review candidate', async () => {
     policyEngine.evaluateItem.mockResolvedValue({
       action: 'prompt_confirm',
       confidence: 55,
@@ -729,7 +729,7 @@ describe('PolicyEngine -> AI flow', () => {
       expect.any(Object),
       expect.any(Array),
       expect.any(Object),
-      expect.objectContaining({ mode: 'classify' })
+      expect.objectContaining({ mode: 'verify' })
     );
     expect(classificationProgressStageService.updateStage).toHaveBeenCalledWith(
       'task-456',
@@ -978,11 +978,7 @@ describe('Classification Details Storage', () => {
   });
 
   test('should use default scores and weights when policyResult is missing', async () => {
-    policyEngine.evaluateItem.mockResolvedValue({
-      action: 'manual',
-      confidence: 0,
-      ranked: []
-    });
+    policyEngine.evaluateItem.mockResolvedValue(null);
 
     // Enable RAG loop so the gate runs and emits a skipped event with reason_code
     db.query.mockImplementation((text) => {
@@ -2231,7 +2227,7 @@ describe('RAG loop orchestration', () => {
     )).toBe(true);
   });
 
-  test('runs second-pass ai rerun in verify mode instead of classify mode', async () => {
+  test('runs second-pass AI rerun in explicit generic mode when no policy outcome remains', async () => {
     const config = {
       ...buildRagConfig('apply'),
       policy_recheck_max_ai_calls_per_item: 2
@@ -2302,7 +2298,7 @@ describe('RAG loop orchestration', () => {
         suggestedLibrary: { id: 1, name: 'Movies' }
       }),
       expect.objectContaining({
-        mode: 'verify'
+        mode: 'classify'
       })
     );
     expect(result.method).toBe('ai_verified');
@@ -3045,7 +3041,7 @@ describe('AI availability fallback handling', () => {
     expect(result.method).toBe('signal_calculation');
   });
 
-  test('adds a policy question when policy-signal fallback stays in awaiting-decision confidence band', async () => {
+  test('adds a policy question without AI when deterministic policy selection is ambiguous', async () => {
     policyEngine.evaluateItem.mockResolvedValue({
       action: 'prompt_select',
       confidence: 60,
@@ -3072,7 +3068,8 @@ describe('AI availability fallback handling', () => {
     });
 
     expect(result.success).toBe(true);
-    expect(result.method).toBe('signal_calculation');
+    expect(result.method).toBe('policy_engine');
+    expect(classificationService.aiClassify).not.toHaveBeenCalled();
 
     const insertCalls = db.query.mock.calls.filter(call =>
       typeof call[0] === 'string' && call[0].includes('INSERT INTO classification_history')
@@ -3091,10 +3088,10 @@ describe('AI availability fallback handling', () => {
         },
       },
     });
-    expect(insertCalls[0][1][13]).toBe('Provider recovery review required');
+    expect(insertCalls[0][1][13]).toBe('Policy destination selection required');
   });
 
-  test('adds a manual-selection question when legacy signal fallback stays in awaiting-decision confidence band', async () => {
+  test('adds a manual-selection question without AI when policy evidence is insufficient', async () => {
     policyEngine.evaluateItem.mockResolvedValue({
       action: 'manual',
       confidence: 0,
@@ -3120,7 +3117,8 @@ describe('AI availability fallback handling', () => {
     });
 
     expect(result.success).toBe(true);
-    expect(result.method).toBe('signal_calculation');
+    expect(result.method).toBe('policy_engine');
+    expect(classificationService.aiClassify).not.toHaveBeenCalled();
 
     const insertCalls = db.query.mock.calls.filter(call =>
       typeof call[0] === 'string' && call[0].includes('INSERT INTO classification_history')
@@ -3139,7 +3137,7 @@ describe('AI availability fallback handling', () => {
         },
       },
     });
-    expect(insertCalls[0][1][13]).toBe('Provider recovery review required');
+    expect(insertCalls[0][1][13]).toBe('Missing evidence');
   });
 });
 

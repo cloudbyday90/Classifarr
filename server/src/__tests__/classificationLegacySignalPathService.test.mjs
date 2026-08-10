@@ -221,7 +221,43 @@ describe('classificationLegacySignalPathService.execute', () => {
 
     const out = await execute(baseParams);
     expect(classificationRoutingService.ensureDecisionQuestion).toHaveBeenCalled();
+    expect(classificationAiService.aiClassify).toHaveBeenCalledWith(
+      baseParams.metadata,
+      libraries,
+      expect.any(Object),
+      { mode: 'classify' },
+    );
+    expect(classificationRagLoopService.evaluateRagLoopSecondPass).toHaveBeenCalledWith(expect.objectContaining({
+      baselineResult: expect.objectContaining({
+        deterministic_ai_mode: expect.objectContaining({
+          mode: 'classify',
+          reasonCode: 'no_policy_candidate',
+        }),
+      }),
+    }));
     expect(out).toBeDefined();
+  });
+
+  it('does not treat an incomplete deterministic policy outcome as a generic fallback', async () => {
+    const out = await execute({
+      ...baseParams,
+      policyResult: {
+        action: 'manual',
+        confidence: 80,
+        library: { library_id: 1, library_name: 'Movies' },
+        ranked: [{ library_id: 1, score: 80 }],
+      },
+    });
+
+    expect(classificationAiService.aiClassify).not.toHaveBeenCalled();
+    expect(out).toMatchObject({
+      method: 'policy_engine',
+      needs_clarification: true,
+      deterministic_ai_mode: {
+        mode: 'abstain',
+        reasonCode: 'insufficient_policy_evidence',
+      },
+    });
   });
 
   it('returns needs_retry when AI is unavailable and confidence < 50', async () => {
