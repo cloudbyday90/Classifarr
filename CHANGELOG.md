@@ -18,6 +18,10 @@ Current development changes will be recorded here.
   candidate, requires contract-grade structured-provider admission before any
   prompt or generation, and retains only bounded verification status in
   history.
+- **Candidate-bound verification explanations** — Pending-decision review now
+  presents a fixed verification status for confirmation, abstention, rejected
+  output, unavailable capability, and candidate mismatch without exposing
+  provider or model content.
 
 - **Historic route-safety maintenance surface** — Added a bounded administrator maintenance route for explicit historical retry selection, acknowledgement, and privacy-preserving receipt status monitoring without local receipt persistence or background-tab polling.
 - **Historic retry receipt reconciliation** — Added durable, transaction-bound historic route-safety retry receipts and an administrator-only, read-only status endpoint that reports bounded current-runtime outcomes without exposing history metadata, task IDs, or provider content.

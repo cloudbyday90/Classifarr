@@ -85,8 +85,12 @@ Unsupported, fallback, local, reasoning, missing-candidate, and mismatch
 cases retain the deterministic candidate for operator review before a
 verification prompt exists. Malformed output from an admitted provider also
 retains that candidate and cannot invoke local repair. Only a versioned status
-identifier is retained. See [Candidate-Bound Verification Contract And
-Capability Admission](candidate-bound-verification-contract-and-capability-admission.md).
+identifier is retained. The pending-decision read model maps that identifier to
+fixed server-authored operator language, never to provider or model content.
+See [Candidate-Bound Verification Contract And Capability
+Admission](candidate-bound-verification-contract-and-capability-admission.md)
+and [Candidate-Bound Verification Observability And Operator
+Explanation](candidate-bound-verification-observability-and-operator-explanation.md).
 
 ### Deterministic Outcome Selection
 

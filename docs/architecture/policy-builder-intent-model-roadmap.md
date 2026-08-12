@@ -46,6 +46,11 @@ Current execution focus:
   admits only contract-grade structured providers before prompt construction,
   and treats abstention, malformed output, and unsupported providers as bounded
   operator review.
+- **Completed:** **11R.3 Candidate-Bound Verification Observability And
+  Operator Explanation**. Pending-decision review now displays a fixed,
+  server-authored verification status for admitted, confirmed, abstained,
+  rejected, unavailable, and candidate-mismatch outcomes without exposing
+  provider or model content.
 - **Completed:** **10R.4 Release Acceptance Assembly**. Repository acceptance
   now produces a passed or blocked manifest artifact, while a separate
   protected-environment workflow records active-installation evidence without
@@ -85,7 +90,7 @@ completed lifecycle acceptance: 10R.2.1 -> 10R.2.2 -> 10R.2.3
 completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3 -> 10R.3.4 -> 10R.3.5
 completed release hardening: 10R.4 -> 10R.4.1
 active release candidate: v0.48.0-beta -> 10R.4.2 -> 10R.4.3
-completed post-release authority hardening: 11R.1.1 -> 11R.1.2 -> 11R.2
+completed post-release authority hardening: 11R.1.1 -> 11R.1.2 -> 11R.2 -> 11R.3
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
 
@@ -12500,6 +12505,32 @@ Completion criteria:
 Implemented design: [Candidate-Bound Verification Contract And Capability
 Admission](candidate-bound-verification-contract-and-capability-admission.md).
 
+### 11R.3 Candidate-Bound Verification Observability And Operator Explanation
+
+Status: complete on 2026-08-12.
+
+Intent: make the bounded verification state understandable in the existing
+pending-decision review without surfacing model content, provider identity,
+candidate identifiers, prompts, or a new AI decision path.
+
+Completion criteria:
+
+- the server converts the persisted version and status identifier into a fixed,
+  versioned operator presentation that allows only known candidate-bound
+  statuses;
+- the pending-decision answer exposes that presentation beside the existing
+  deterministic explanation without changing route, retry, learning, or
+  destination-selection authority;
+- the client validates the presentation version and status allow-list before
+  rendering a concise, politely announced status panel;
+- candidate-bound records prefer the precise status over the generic legacy AI
+  advisory, while records without one preserve that legacy explanation; and
+- focused server and client tests prove unknown values, raw provider fields,
+  and legacy fallback behavior fail closed or remain unchanged.
+
+Implemented design: [Candidate-Bound Verification Observability And Operator
+Explanation](candidate-bound-verification-observability-and-operator-explanation.md).
+
 ## Testing Strategy
 
 Required coverage should follow the re-imagined phase boundaries:
@@ -12566,6 +12597,12 @@ Required coverage should follow the re-imagined phase boundaries:
   - structured confirmation is bound by the server to that candidate,
   - abstention and invalid output retain only bounded advisory status, and
   - persistence excludes candidate identifiers and model reasons.
+- Phase 11R candidate-bound operator-explanation tests:
+  - each known persisted status maps to fixed server-authored language,
+  - unknown versions and status identifiers fail closed,
+  - raw provider fields cannot reach the decision-summary or client view, and
+  - candidate-bound status takes precedence while legacy AI advisory remains a
+    fallback for historic records.
 
 ## Risks
 
@@ -12677,10 +12714,15 @@ The next sequence is dependency-gated rather than phase-number order:
     complete. Verification is now bound to the server-selected candidate,
     requires a structured contract-grade provider before prompt construction,
     and fails to bounded operator review without local repair.
-    **Next: 11R.3 Candidate-Bound Verification Observability And Operator
-    Explanation**. Surface bounded admission, abstention, and contract-status
-    facts in the existing review explanation without raw provider content or a
-    new decision path.
+22. **11R.3 Candidate-Bound Verification Observability And Operator
+    Explanation**: complete. The existing pending-decision review now displays
+    an allow-listed, server-authored verification status without exposing raw
+    provider content or changing the deterministic decision path.
+    **Next: 11R.4 Candidate-Bound Verification Aggregate Outcome Metrics And
+    Drift Guard**. Add privacy-bounded aggregate status counts and change-rate
+    monitoring so unexpected abstention, rejected-response, and unavailable
+    capability trends are visible without retaining item, candidate, provider,
+    prompt, or model-response content.
 
 The completed 0R through 3R, 6R, and 7R contracts remain guardrails, not
 permission to restore a diagnostic, template-first, or browser-authoritative

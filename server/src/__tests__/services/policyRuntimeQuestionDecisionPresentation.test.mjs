@@ -228,6 +228,35 @@ describe('policyRuntimeQuestionDecisionPresentation', () => {
     });
   });
 
+  test('projects only a fixed candidate-bound verification status for operators', () => {
+    const presentation = buildPolicyRuntimeQuestionDecisionPresentation({
+      classification: {
+        metadata: {
+          classification_details: {
+            candidate_bound_verification: {
+              version: 'classification.candidate_bound_verification.v1',
+              status_id: 'provider_capability_unavailable',
+              candidate_library_id: 5,
+              provider_reason: 'Select another destination instead.',
+              raw_response: '{"decision":"CONFIRM"}',
+            },
+          },
+        },
+      },
+      candidateDestinations: candidates,
+    });
+
+    expect(presentation.candidate_bound_verification).toEqual({
+      version: 'classification.candidate_bound_verification_presentation.v1',
+      status_id: 'provider_capability_unavailable',
+      label: 'Candidate verification unavailable',
+      message: 'No verification request was sent because the configured provider is not admitted for candidate-bound verification. The policy candidate remains available for your review.',
+    });
+    expect(JSON.stringify(presentation)).not.toContain('candidate_library_id');
+    expect(JSON.stringify(presentation)).not.toContain('Select another destination');
+    expect(JSON.stringify(presentation)).not.toContain('raw_response');
+  });
+
   test('describes historic disagreement honestly when its normalized alternative was not retained', () => {
     const presentation = buildPolicyRuntimeQuestionDecisionPresentation({
       classification: {

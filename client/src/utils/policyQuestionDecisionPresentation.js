@@ -6,6 +6,19 @@
 export const POLICY_RUNTIME_QUESTION_DECISION_PRESENTATION_VERSION =
   'policy.runtime_question_decision_presentation.v1'
 
+const CLASSIFICATION_CANDIDATE_BOUND_VERIFICATION_PRESENTATION_VERSION =
+  'classification.candidate_bound_verification_presentation.v1'
+
+const CANDIDATE_BOUND_VERIFICATION_STATUS_IDS = new Set([
+  'admitted',
+  'confirmed',
+  'abstained',
+  'contract_violation',
+  'candidate_unavailable',
+  'candidate_mismatch',
+  'provider_capability_unavailable',
+])
+
 function boundedString(value, maximumLength = 280) {
   if (typeof value !== 'string') return null
 
@@ -40,6 +53,21 @@ function safetyGate(value) {
   const label = boundedString(value?.label, 120)
   const message = boundedString(value?.message)
   return id && label && message ? { id, label, message } : null
+}
+
+function candidateBoundVerification(value) {
+  if (value?.version !== CLASSIFICATION_CANDIDATE_BOUND_VERIFICATION_PRESENTATION_VERSION) {
+    return null
+  }
+
+  const statusId = boundedString(value?.status_id, 80)
+  const label = boundedString(value?.label, 120)
+  const message = boundedString(value?.message)
+  if (!statusId || !CANDIDATE_BOUND_VERIFICATION_STATUS_IDS.has(statusId) || !label || !message) {
+    return null
+  }
+
+  return { status_id: statusId, label, message }
 }
 
 export function policyQuestionDecisionPresentation(answer = {}) {
@@ -82,5 +110,6 @@ export function policyQuestionDecisionPresentation(answer = {}) {
           proposed_destination: destination(advisory?.proposed_destination),
         }
       : null,
+    candidate_bound_verification: candidateBoundVerification(source?.candidate_bound_verification),
   }
 }

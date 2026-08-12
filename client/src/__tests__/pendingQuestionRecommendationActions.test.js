@@ -49,10 +49,37 @@ const answer = {
       message: 'AI verification aligned with Movies. It remains advisory and did not determine the policy outcome.',
       proposed_destination: null,
     },
+    candidate_bound_verification: {
+      version: 'classification.candidate_bound_verification_presentation.v1',
+      status_id: 'confirmed',
+      label: 'Candidate verification confirmed',
+      message: 'An admitted AI provider confirmed the policy-selected destination. It did not select the destination or determine whether this item can route.',
+    },
   },
 }
 
 describe('PendingQuestionRecommendationActions', () => {
+  it('preserves the legacy AI advisory when no candidate-bound status exists', () => {
+    const legacyAnswer = structuredClone(answer)
+    legacyAnswer.decision_summary.candidate_bound_verification = null
+
+    const wrapper = mount(PendingQuestionRecommendationActions, {
+      props: {
+        answer: legacyAnswer,
+        isActionBusy: () => false,
+        itemId: 1,
+      },
+      global: {
+        stubs: {
+          Button: { template: '<button><slot /></button>' },
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('AI verification aligned with Movies.')
+    expect(wrapper.text()).not.toContain('Candidate-bound verification')
+  })
+
   it('states that a verification aligned without giving it policy authority', () => {
     const wrapper = mount(PendingQuestionRecommendationActions, {
       props: {
@@ -67,9 +94,11 @@ describe('PendingQuestionRecommendationActions', () => {
       },
     })
 
-    expect(wrapper.text()).toContain('AI check')
-    expect(wrapper.text()).toContain('AI verification aligned with Movies.')
-    expect(wrapper.text()).toContain('did not determine the policy outcome.')
+    expect(wrapper.text()).toContain('Candidate-bound verification')
+    expect(wrapper.text()).toContain('Candidate verification confirmed')
+    expect(wrapper.text()).toContain('did not select the destination or determine whether this item can route.')
+    expect(wrapper.find('[role="status"]').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('AI verification aligned with Movies.')
     expect(wrapper.text()).toContain('Routing safeguard')
     expect(wrapper.text()).toContain('requires an operator confirmation before this item can route.')
   })

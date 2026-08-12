@@ -81,7 +81,22 @@
           </ul>
         </details>
         <div
-          v-if="decisionPresentation.ai_advisory"
+          v-if="decisionPresentation.candidate_bound_verification"
+          class="candidate-bound-verification"
+          role="status"
+        >
+          <p class="candidate-bound-verification-label">
+            Candidate-bound verification
+          </p>
+          <p class="candidate-bound-verification-title">
+            {{ decisionPresentation.candidate_bound_verification.label }}
+          </p>
+          <p>
+            {{ decisionPresentation.candidate_bound_verification.message }}
+          </p>
+        </div>
+        <div
+          v-else-if="decisionPresentation.ai_advisory"
           class="ai-advisory"
         >
           <p class="ai-advisory-label">
@@ -335,6 +350,35 @@ function emitConfirmDestination(destination) {
   margin-top: 0.5rem;
   font-size: 0.75rem;
   color: #cbd5e1;
+}
+
+.candidate-bound-verification {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  border-radius: 0.375rem;
+  background: rgba(30, 64, 175, 0.12);
+  font-size: 0.75rem;
+  color: #cbd5e1;
+}
+
+.candidate-bound-verification-label,
+.candidate-bound-verification-title {
+  margin: 0;
+}
+
+.candidate-bound-verification-label {
+  font-weight: 600;
+  color: #bfdbfe;
+}
+
+.candidate-bound-verification-title {
+  margin-top: 0.25rem;
+  color: #e2e8f0;
+}
+
+.candidate-bound-verification p:last-child {
+  margin-top: 0.25rem;
 }
 
 .route-safety-gate,
