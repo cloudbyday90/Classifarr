@@ -173,8 +173,9 @@ make strict-verification capability a global configuration prerequisite.
 
 ## Next Task
 
-Proceed with **11R.7 Verification Capability Current-State Summary**. Reuse the
-same privacy-bounded status contract to show the saved strict-verification
-capability state in AI Settings and link operators to aggregate remediation
-readiness, without introducing a provider probe, a browser-owned decision, or
-a second save path.
+**11R.7 Verification Capability Current-State Summary** is complete. It
+reuses this privacy-bounded status contract to show saved strict-verification
+capability in AI Settings, supports bounded freshness after a settings save or
+explicit refresh, and links operators to aggregate Verification monitoring
+without introducing a provider probe, browser-owned decision, or second save
+path.

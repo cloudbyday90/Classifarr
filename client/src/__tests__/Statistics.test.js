@@ -40,6 +40,15 @@ describe('Statistics.vue', () => {
     expect(wrapper.find('[data-testid="rag-stats"]').exists()).toBe(false)
   })
 
+  it('opens the verification tab when linked with the bounded verification query', () => {
+    window.history.replaceState({}, '', '/statistics?tab=verification')
+    const wrapper = mountView()
+
+    expect(wrapper.find('[data-testid="candidate-bound-verification-stats"]').exists()).toBe(true)
+
+    window.history.replaceState({}, '', '/')
+  })
+
   it('switches between verification, RAG, and classification tabs', async () => {
     const wrapper = mountView()
     const buttons = wrapper.findAll('button')

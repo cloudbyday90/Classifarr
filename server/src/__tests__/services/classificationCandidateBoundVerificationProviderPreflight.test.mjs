@@ -1,5 +1,6 @@
 import { describe, expect, test } from '@jest/globals';
 import {
+  CANDIDATE_BOUND_VERIFICATION_PROVIDER_PREFLIGHT_PRESENTATION_CONTEXT_IDS,
   CANDIDATE_BOUND_VERIFICATION_PROVIDER_PREFLIGHT_PATH_STATUS_IDS,
   CANDIDATE_BOUND_VERIFICATION_PROVIDER_PREFLIGHT_STATUS_IDS,
   buildCandidateBoundVerificationProviderPreflight,
@@ -57,6 +58,22 @@ describe('candidate-bound verification provider preflight', () => {
     );
     expect(JSON.stringify(report)).not.toContain('persisted-secret');
     expect(JSON.stringify(report)).not.toContain('private.example.test');
+  });
+
+  test('uses saved-configuration language when projecting the current stored capability', () => {
+    const report = buildCandidateBoundVerificationProviderPreflight({
+      existingConfiguration: {
+        primary_provider: 'gemini',
+        model: 'gemini-3-pro-preview',
+      },
+      presentationContext:
+        CANDIDATE_BOUND_VERIFICATION_PROVIDER_PREFLIGHT_PRESENTATION_CONTEXT_IDS.SAVED_CONFIGURATION,
+    });
+
+    expect(report.message).toBe(
+      'The saved primary AI path can admit strict candidate-bound verification.',
+    );
+    expect(report.message).not.toContain('proposed');
   });
 
   test('requires explicit acknowledgement for a generally usable but strict-ineligible primary path', () => {

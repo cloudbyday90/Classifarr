@@ -29,15 +29,22 @@ export const CANDIDATE_BOUND_VERIFICATION_PROVIDER_PREFLIGHT_PATH_STATUS_IDS = O
   NOT_APPLICABLE: 'not_applicable',
 });
 
+export const CANDIDATE_BOUND_VERIFICATION_PROVIDER_PREFLIGHT_PRESENTATION_CONTEXT_IDS = Object.freeze({
+  PROPOSED_CONFIGURATION: 'proposed_configuration',
+  SAVED_CONFIGURATION: 'saved_configuration',
+});
+
 const PREFLIGHT_PRESENTATIONS = Object.freeze({
   [CANDIDATE_BOUND_VERIFICATION_PROVIDER_PREFLIGHT_STATUS_IDS.VERIFICATION_READY]: Object.freeze({
     label: 'Strict verification is available',
     message: 'The proposed primary AI path can admit strict candidate-bound verification.',
+    savedMessage: 'The saved primary AI path can admit strict candidate-bound verification.',
     guidance: Object.freeze([]),
   }),
   [CANDIDATE_BOUND_VERIFICATION_PROVIDER_PREFLIGHT_STATUS_IDS.PRIMARY_PATH_INELIGIBLE]: Object.freeze({
     label: 'Strict verification needs attention',
     message: 'The proposed primary AI path remains available for general AI use but cannot admit strict candidate-bound verification.',
+    savedMessage: 'The saved primary AI path remains available for general AI use but cannot admit strict candidate-bound verification.',
     guidance: Object.freeze([
       'Select a provider and model with server-enforced structured output before relying on strict verification.',
     ]),
@@ -45,6 +52,7 @@ const PREFLIGHT_PRESENTATIONS = Object.freeze({
   [CANDIDATE_BOUND_VERIFICATION_PROVIDER_PREFLIGHT_STATUS_IDS.BUDGET_FALLBACK_ADVISORY]: Object.freeze({
     label: 'Budget fallback remains advisory',
     message: 'The proposed primary AI path can admit strict verification, but its budget-exhaustion fallback remains advisory for that task.',
+    savedMessage: 'The saved primary AI path can admit strict verification, but its budget-exhaustion fallback remains advisory for that task.',
     guidance: Object.freeze([
       'General AI settings can still be saved. Strict verification will abstain rather than use the advisory fallback when that fallback is selected.',
     ]),
@@ -52,6 +60,7 @@ const PREFLIGHT_PRESENTATIONS = Object.freeze({
   [CANDIDATE_BOUND_VERIFICATION_PROVIDER_PREFLIGHT_STATUS_IDS.PRIMARY_AND_FALLBACK_INELIGIBLE]: Object.freeze({
     label: 'Strict verification needs attention',
     message: 'The proposed primary AI path cannot admit strict candidate-bound verification and the configured fallback remains advisory.',
+    savedMessage: 'The saved primary AI path cannot admit strict candidate-bound verification and the configured fallback remains advisory.',
     guidance: Object.freeze([
       'General AI settings can still be saved. Select a provider and model with server-enforced structured output before relying on strict verification.',
     ]),
@@ -158,6 +167,18 @@ function resolvePreflightStatus({ primaryPath, budgetFallbackPath }) {
     : CANDIDATE_BOUND_VERIFICATION_PROVIDER_PREFLIGHT_STATUS_IDS.PRIMARY_PATH_INELIGIBLE;
 }
 
+function resolvePresentation(statusId, presentationContext) {
+  const presentation = PREFLIGHT_PRESENTATIONS[statusId];
+  const savedConfiguration = presentationContext
+    === CANDIDATE_BOUND_VERIFICATION_PROVIDER_PREFLIGHT_PRESENTATION_CONTEXT_IDS.SAVED_CONFIGURATION;
+
+  return Object.freeze({
+    label: presentation.label,
+    message: savedConfiguration ? presentation.savedMessage : presentation.message,
+    guidance: presentation.guidance,
+  });
+}
+
 /**
  * Evaluates a proposed provider configuration using the same authority and
  * candidate-bound admission contracts used at runtime. The report is a fixed,
@@ -167,6 +188,7 @@ function resolvePreflightStatus({ primaryPath, budgetFallbackPath }) {
 export function buildCandidateBoundVerificationProviderPreflight({
   proposedConfiguration = null,
   existingConfiguration = null,
+  presentationContext = CANDIDATE_BOUND_VERIFICATION_PROVIDER_PREFLIGHT_PRESENTATION_CONTEXT_IDS.PROPOSED_CONFIGURATION,
 } = {}) {
   const configuration = resolveProposedConfiguration({
     proposedConfiguration,
@@ -175,7 +197,7 @@ export function buildCandidateBoundVerificationProviderPreflight({
   const primaryPath = buildPrimaryPath(configuration);
   const budgetFallbackPath = buildBudgetFallbackPath(configuration);
   const statusId = resolvePreflightStatus({ primaryPath, budgetFallbackPath });
-  const presentation = PREFLIGHT_PRESENTATIONS[statusId];
+  const presentation = resolvePresentation(statusId, presentationContext);
 
   return Object.freeze({
     version: CLASSIFICATION_CANDIDATE_BOUND_VERIFICATION_PROVIDER_PREFLIGHT_VERSION,

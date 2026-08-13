@@ -13,6 +13,11 @@ Current development changes will be recorded here.
 
 ### Added
 
+- **Saved verification capability summary** — AI Settings now shows the
+  server-owned current strict-verification capability, refreshes it after an
+  AI-settings save or explicit operator request, ignores stale reads, and
+  links to aggregate Verification monitoring without provider probes or
+  routing changes.
 - **Verification-capability save preflight** — AI Settings now receives a
   server-owned, no-probe strict-verification capability warning before saving
   provider settings and requires explicit continuation for advisory paths.

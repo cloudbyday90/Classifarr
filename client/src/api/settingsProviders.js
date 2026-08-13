@@ -118,6 +118,10 @@ export function preflightAIVerificationConfig(data) {
   return apiClient.post('/settings/ai/verification-preflight', data)
 }
 
+export function getAIVerificationCapability() {
+  return getDataRequest('/settings/ai/verification-capability')
+}
+
 export function getAIModels(data) {
   return apiClient.post('/settings/ai/models', data)
 }
@@ -160,6 +164,7 @@ const settingsProvidersApi = {
   updateAIConfig,
   testAIConnection,
   preflightAIVerificationConfig,
+  getAIVerificationCapability,
   getAIModels,
   getAIUsage,
 }

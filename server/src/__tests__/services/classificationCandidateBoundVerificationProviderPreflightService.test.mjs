@@ -33,4 +33,23 @@ describe('candidate-bound verification provider preflight service', () => {
     });
     expect(database.query).not.toHaveBeenCalled();
   });
+
+  test('forwards the saved-configuration presentation context without a proposal', async () => {
+    const database = { query: jest.fn() };
+    const loadConfiguration = jest.fn().mockResolvedValue({ primary_provider: 'gemini' });
+    const buildPreflight = jest.fn().mockReturnValue({ statusId: 'verification_ready' });
+    const service = createCandidateBoundVerificationProviderPreflightService({
+      database,
+      loadConfiguration,
+      buildPreflight,
+    });
+
+    await service.getPreflight({ presentationContext: 'saved_configuration' });
+
+    expect(buildPreflight).toHaveBeenCalledWith({
+      existingConfiguration: { primary_provider: 'gemini' },
+      proposedConfiguration: undefined,
+      presentationContext: 'saved_configuration',
+    });
+  });
 });

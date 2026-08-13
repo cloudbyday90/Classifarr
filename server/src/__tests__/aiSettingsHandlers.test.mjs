@@ -198,4 +198,37 @@ describe('aiSettingsHandlers', () => {
     });
     expect(res.json).toHaveBeenCalledWith(persistedConfig);
   });
+
+  test('getVerificationCapability reads the saved capability projection without a proposal', async () => {
+    const getPreflight = jest.fn().mockResolvedValue({
+      statusId: 'verification_ready',
+      label: 'Strict verification is available',
+    });
+    const handlers = createAiSettingsHandlers({
+      db: { withTransaction: jest.fn() },
+      logger: { warn: jest.fn(), error: jest.fn(), info: jest.fn() },
+      cloudLLMService: {},
+      aiRouterService: { clearCache: jest.fn() },
+      ollamaService: { resetConfig: jest.fn() },
+      embeddingProvider: { resetConfig: jest.fn() },
+      embeddingRouter: { resetConfig: jest.fn() },
+      getRagLoopDefaultConfig: jest.fn(() => ({})),
+      validateAndNormalizeRagLoopConfig: jest.fn(() => ({ normalizedConfig: {}, warnings: [] })),
+      validateRagLoopConfigPayloadKeys: jest.fn(() => ({ valid: true, unknownKeys: [], disallowedKeys: [] })),
+      resolveRequestApiKey: jest.fn(),
+      candidateBoundVerificationProviderPreflightService: { getPreflight },
+    });
+    const res = createResponse();
+
+    await handlers.getVerificationCapability({}, res);
+
+    expect(getPreflight).toHaveBeenCalledWith({
+      presentationContext: 'saved_configuration',
+    });
+    expect(res.set).toHaveBeenCalledWith('Cache-Control', 'no-store');
+    expect(res.json).toHaveBeenCalledWith({
+      statusId: 'verification_ready',
+      label: 'Strict verification is available',
+    });
+  });
 });

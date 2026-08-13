@@ -70,6 +70,11 @@ Current execution focus:
   guidance for a strict-ineligible primary or budget fallback, and requires an
   explicit administrator continuation while keeping general AI settings
   saveable.
+- **Completed:** **11R.7 Verification Capability Current-State Summary**. AI
+  Settings now shows saved strict-verification capability through the same
+  fixed server-owned contract, refreshes after a successful settings save or
+  explicit operator request, rejects stale reads, and links to aggregate
+  Verification monitoring without probing a provider or changing authority.
 - **Completed:** **10R.4 Release Acceptance Assembly**. Repository acceptance
   now produces a passed or blocked manifest artifact, while a separate
   protected-environment workflow records active-installation evidence without
@@ -109,8 +114,8 @@ completed lifecycle acceptance: 10R.2.1 -> 10R.2.2 -> 10R.2.3
 completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3 -> 10R.3.4 -> 10R.3.5 -> 10R.3.6 -> 10R.3.7 -> 10R.3.8
 completed release hardening: 10R.4 -> 10R.4.1
 active release candidate: v0.48.0-beta -> 10R.4.2 -> 10R.4.3
-completed post-release authority hardening: 11R.1.1 -> 11R.1.2 -> 11R.2 -> 11R.3 -> 11R.4 -> 11R.5 -> 11R.6
-next provider-admission guardrail: 11R.7 verification capability current-state summary
+completed post-release authority hardening: 11R.1.1 -> 11R.1.2 -> 11R.2 -> 11R.3 -> 11R.4 -> 11R.5 -> 11R.6 -> 11R.7
+next provider-admission guardrail: 11R.8 verification capability change receipt
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
 
@@ -12662,7 +12667,7 @@ Preflight](candidate-bound-verification-provider-configuration-preflight.md).
 
 ### 11R.7 Verification Capability Current-State Summary
 
-Status: planned.
+Status: complete on 2026-08-13.
 
 Intent: show administrators the current saved strict candidate-bound
 verification capability state directly in AI Settings, with a bounded link to
@@ -12682,6 +12687,31 @@ Completion criteria:
   and
 - focused tests prove current-state labels, authorization, stale-view refresh,
   and absence of provider or mutation side effects.
+
+Implemented design: [Candidate-Bound Verification Capability Current-State
+Summary](candidate-bound-verification-capability-current-state-summary.md).
+
+### 11R.8 Verification Capability Change Receipt
+
+Status: planned.
+
+Intent: retain a durable, administrator-authorized receipt when a successful
+AI configuration save changes the current strict candidate-bound verification
+capability state, so later operational review can distinguish a current
+admission status from the bounded configuration event that produced it.
+
+Completion criteria:
+
+- the receipt is created transactionally only after the saved configuration is
+  valid, and records only fixed before-and-after capability status IDs,
+  server-derived actor, configuration revision, and timestamp;
+- no provider, model, endpoint, credential, prompt, model output, policy,
+  library, item, budget, routing, or retry data is persisted or returned;
+- receipt reads remain administrator-authorized, actor-scoped where
+  appropriate, keyset-bounded, and read-only; a receipt never authorizes a
+  provider, policy, fallback, route, retry, or configuration mutation; and
+- focused tests prove transaction rollback, idempotent replay, authorization,
+  privacy bounds, no provider probe, and no routing or policy side effects.
 
 ## Testing Strategy
 

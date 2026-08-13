@@ -34,6 +34,9 @@ import { createAiSettingsReadService } from '../../services/aiSettingsReadServic
 import {
   createCandidateBoundVerificationProviderPreflightService,
 } from '../../services/classificationCandidateBoundVerificationProviderPreflightService.mjs';
+import {
+  CANDIDATE_BOUND_VERIFICATION_PROVIDER_PREFLIGHT_PRESENTATION_CONTEXT_IDS,
+} from '../../services/classificationCandidateBoundVerificationProviderPreflight.mjs';
 import { ValidationError } from '../../utils/appError.mjs';
 
 /** @typedef {Record<string, unknown>} AiSettingsRequestBody */
@@ -170,7 +173,7 @@ function validateAiSettingsUpdatePayload({
  *   parseEncryptedValue?: (formatted: string) => { encrypted: string, iv: string, authTag: string },
  *   decryptValue?: (encrypted: string, iv: string, authTag: string) => string,
  *   candidateBoundVerificationProviderPreflightService?: {
- *     getPreflight: ({ proposedConfiguration }: { proposedConfiguration: AiSettingsRequestBody }) => Promise<Record<string, unknown>>,
+ *     getPreflight: (request?: { proposedConfiguration?: AiSettingsRequestBody, presentationContext?: string }) => Promise<Record<string, unknown>>,
  *   },
  * }} options
  */
@@ -292,6 +295,16 @@ export function createAiSettingsHandlers({
       });
       res.set('Cache-Control', 'no-store');
       return res.json(preflight);
+    },
+
+    /** @param {SettingsRequest} _req @param {SettingsResponse} res */
+    async getVerificationCapability(_req, res) {
+      const capability = await candidateBoundVerificationProviderPreflightService.getPreflight({
+        presentationContext:
+          CANDIDATE_BOUND_VERIFICATION_PROVIDER_PREFLIGHT_PRESENTATION_CONTEXT_IDS.SAVED_CONFIGURATION,
+      });
+      res.set('Cache-Control', 'no-store');
+      return res.json(capability);
     },
 
     /** @param {SettingsRequest} req @param {SettingsResponse} res */

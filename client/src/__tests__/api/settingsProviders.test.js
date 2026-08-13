@@ -61,6 +61,7 @@ import {
   updateOMDbConfig,
   testOMDb,
   getAIConfig,
+  getAIVerificationCapability,
   updateAIConfig,
   testAIConnection,
   preflightAIVerificationConfig,
@@ -300,6 +301,14 @@ describe('settingsProvidersApi', () => {
       await preflightAIVerificationConfig(payload)
 
       expect(mockPost).toHaveBeenCalledWith('/settings/ai/verification-preflight', payload)
+    })
+
+    it('getAIVerificationCapability reads the saved bounded capability status', async () => {
+      mockGetDataRequest.mockResolvedValueOnce({})
+
+      await getAIVerificationCapability()
+
+      expect(mockGetDataRequest).toHaveBeenCalledWith('/settings/ai/verification-capability')
     })
 
     it('getAIModels calls POST', async () => {

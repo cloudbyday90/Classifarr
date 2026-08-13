@@ -47,13 +47,16 @@ import CandidateBoundVerificationStats from './statistics/CandidateBoundVerifica
 import ClassificationStats from './statistics/ClassificationStats.vue'
 import RAGStats from './statistics/RAGStats.vue'
 
-const activeTab = ref('classification')
-
 const tabs = [
   { id: 'classification', label: 'Classification', icon: '🎯', component: ClassificationStats },
   { id: 'verification', label: 'Verification', icon: '🛡️', component: CandidateBoundVerificationStats },
   { id: 'rag', label: 'RAG & Embeddings', icon: '🧠', component: RAGStats }
 ]
+
+const requestedTab = typeof window === 'undefined'
+  ? null
+  : new URLSearchParams(window.location.search).get('tab')
+const activeTab = ref(tabs.some((tab) => tab.id === requestedTab) ? requestedTab : 'classification')
 
 const currentTabComponent = computed(() => {
   return tabs.find(t => t.id === activeTab.value)?.component

@@ -595,6 +595,45 @@ describe('Settings AI Routes', () => {
     expect(mockCloudLLM.getModels).not.toHaveBeenCalled();
   });
 
+  it('returns the saved privacy-bounded verification capability without probing or mutating', async () => {
+    db.query.mockResolvedValueOnce({
+      rows: [{
+        primary_provider: 'gemini',
+        model: 'gemini-3-pro-preview',
+        ollama_fallback_enabled: false,
+        ollama_for_budget_exhausted: true,
+        ollama_model: 'llama3.2',
+      }],
+    });
+
+    const res = await request(app).get('/settings/ai/verification-capability');
+
+    expect(res.status).toBe(200);
+    expect(res.headers['cache-control']).toBe('no-store');
+    expect(res.body).toMatchObject({
+      statusId: 'verification_ready',
+      requiresConfirmation: false,
+      primaryPath: {
+        statusId: 'verification_capable',
+        verificationCapable: true,
+      },
+      sideEffects: {
+        providerCalled: false,
+        providerAvailabilityChecked: false,
+        configurationPersisted: false,
+        providerSelectionChanged: false,
+        routingChanged: false,
+      },
+    });
+    expect(JSON.stringify(res.body)).not.toContain('gemini');
+    expect(JSON.stringify(res.body)).not.toContain('llama3.2');
+    expect(res.body.message).toContain('saved primary AI path');
+    expect(res.body.message).not.toContain('proposed');
+    expect(db.pool.connect).not.toHaveBeenCalled();
+    expect(mockCloudLLM.testConnection).not.toHaveBeenCalled();
+    expect(mockCloudLLM.getModels).not.toHaveBeenCalled();
+  });
+
   it('rejects unexpected verification-preflight fields before querying configuration', async () => {
     const res = await request(app)
       .post('/settings/ai/verification-preflight')

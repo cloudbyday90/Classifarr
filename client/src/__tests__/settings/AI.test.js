@@ -21,6 +21,7 @@ vi.mock('@/api', () => ({
     getAIUsage: vi.fn(),
     getPatternConfig: vi.fn(),
     getCostSummary: vi.fn(),
+    getAIVerificationCapability: vi.fn(),
     getAIModels: vi.fn(),
     testAIConnection: vi.fn(),
     preflightAIVerificationConfig: vi.fn(),
@@ -96,6 +97,11 @@ describe('AI Settings', () => {
     api.getAIUsage.mockResolvedValue({ data: null })
     api.getPatternConfig.mockResolvedValue({})
     api.getCostSummary.mockResolvedValue(null)
+    api.getAIVerificationCapability.mockResolvedValue({
+      label: 'Strict verification is available',
+      message: 'The saved primary AI path can admit strict candidate-bound verification.',
+      guidance: []
+    })
     api.getLastOllamaPreflight.mockResolvedValue({ ai: null, embedding: null })
     api.preflightAIVerificationConfig.mockResolvedValue({
       data: { requiresConfirmation: false }
@@ -217,6 +223,90 @@ describe('AI Settings', () => {
 
     expect(api.updateAIConfig).toHaveBeenCalledTimes(1)
     expect(api.updatePatternConfig).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders only the server-owned current verification capability and refreshes it on demand', async () => {
+    api.getAIVerificationCapability
+      .mockResolvedValueOnce({
+        label: 'Strict verification is available',
+        message: 'Saved capability is ready.',
+        guidance: [],
+        primary_provider: 'private-provider',
+        model: 'private-model'
+      })
+      .mockResolvedValueOnce({
+        label: 'Strict verification needs attention',
+        message: 'Saved capability needs review.',
+        guidance: ['Review the saved provider settings.']
+      })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(api.getAIVerificationCapability).toHaveBeenCalledTimes(1)
+    expect(wrapper.text()).toContain('Saved capability is ready.')
+    expect(wrapper.text()).not.toContain('private-provider')
+    expect(wrapper.text()).not.toContain('private-model')
+
+    const refreshButton = wrapper.findAll('button').find((button) => button.text().includes('Refresh Status'))
+    await refreshButton.trigger('click')
+    await flushPromises()
+
+    expect(api.getAIVerificationCapability).toHaveBeenCalledTimes(2)
+    expect(wrapper.text()).toContain('Saved capability needs review.')
+  })
+
+  it('keeps a bounded current-capability fallback when the read fails', async () => {
+    api.getAIVerificationCapability.mockRejectedValueOnce(new Error('https://provider.example.test leaked sk-secret'))
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Current verification status unavailable')
+    expect(wrapper.text()).not.toContain('provider.example.test')
+    expect(wrapper.text()).not.toContain('sk-secret')
+  })
+
+  it('refreshes the saved verification capability after AI settings persist', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().includes('Save Changes'))
+    await saveButton.trigger('click')
+    await flushPromises()
+
+    expect(api.updateAIConfig).toHaveBeenCalledTimes(1)
+    expect(api.getAIVerificationCapability).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps the newer saved capability when an earlier summary read resolves late', async () => {
+    let resolveInitialCapability
+    api.getAIVerificationCapability
+      .mockReturnValueOnce(new Promise((resolve) => {
+        resolveInitialCapability = resolve
+      }))
+      .mockResolvedValueOnce({
+        label: 'Strict verification needs attention',
+        message: 'Saved settings need review.',
+        guidance: []
+      })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().includes('Save Changes'))
+    await saveButton.trigger('click')
+    await flushPromises()
+
+    resolveInitialCapability({
+      label: 'Strict verification is available',
+      message: 'Stale saved capability.',
+      guidance: []
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Saved settings need review.')
+    expect(wrapper.text()).not.toContain('Stale saved capability.')
   })
 
   it('invalidates an advisory after the provider selection changes and requires a new preflight', async () => {

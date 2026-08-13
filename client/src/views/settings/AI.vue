@@ -566,6 +566,17 @@
     </Card>
 
     <Card
+      v-if="!loading"
+      title="Candidate-Bound Verification"
+    >
+      <VerificationCapabilityCurrentStateSummary
+        :capability="verificationCapability"
+        :loading="loadingVerificationCapability"
+        @refresh="refreshVerificationCapability"
+      />
+    </Card>
+
+    <Card
       v-if="showOllamaPreflightPanel"
       title="🩺 Ollama Scheduled Preflight"
     >
@@ -766,6 +777,7 @@ import Button from '@/components/common/Button.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import Spinner from '@/components/common/Spinner.vue'
 import PasswordInput from '@/components/common/PasswordInput.vue'
+import VerificationCapabilityCurrentStateSummary from '@/components/settings/VerificationCapabilityCurrentStateSummary.vue'
 import api from '@/api'
 import { useToast } from '@/stores/toast'
 
@@ -777,6 +789,7 @@ const testingOllama = ref(false)
 const loadingModels = ref(false)
 const loadingOllamaModels = ref(false)
 const loadingOllamaPreflight = ref(false)
+const loadingVerificationCapability = ref(false)
 const showAdvanced = ref(false)
 const testResult = ref(null)
 const ollamaTestResult = ref(null)
@@ -786,6 +799,8 @@ const ollamaPreflightState = ref({ ai: null, embedding: null })
 const usageStats = ref(null)
 const verificationPreflightAdvisory = ref(null)
 const verificationPreflightFingerprint = ref(null)
+const verificationCapability = ref(null)
+let verificationCapabilityRequestId = 0
 
 const config = ref({
   primary_provider: 'none',
@@ -924,14 +939,41 @@ const refreshOllamaPreflight = async () => {
   await loadOllamaPreflightStatus({ notifyOnError: true })
 }
 
+const loadVerificationCapability = async ({ notifyOnError = false } = {}) => {
+  const requestId = ++verificationCapabilityRequestId
+  loadingVerificationCapability.value = true
+  try {
+    const capability = await api.getAIVerificationCapability()
+    if (requestId === verificationCapabilityRequestId) {
+      verificationCapability.value = capability
+    }
+  } catch (_error) {
+    if (requestId === verificationCapabilityRequestId) {
+      verificationCapability.value = null
+    }
+    if (notifyOnError && requestId === verificationCapabilityRequestId) {
+      toast.warning('Current verification capability could not be refreshed.')
+    }
+  } finally {
+    if (requestId === verificationCapabilityRequestId) {
+      loadingVerificationCapability.value = false
+    }
+  }
+}
+
+const refreshVerificationCapability = async () => {
+  await loadVerificationCapability({ notifyOnError: true })
+}
+
 onMounted(async () => {
+  loadVerificationCapability()
   try {
     const [configResponse, usageResponse, patternConfigResponse, costSummaryResponse, ollamaPreflightResponse] = await Promise.all([
       api.getAIConfig(),
       api.getAIUsage().catch(() => null),
       api.getPatternConfig().catch(() => null),
       api.getCostSummary().catch(() => null),
-      api.getLastOllamaPreflight().catch(() => null)
+      api.getLastOllamaPreflight().catch(() => null),
     ])
     
     if (configResponse) {
@@ -1147,6 +1189,7 @@ const persistConfig = async (providerPayload) => {
   try {
     await api.updateAIConfig(providerPayload)
     aiConfigSaved = true
+    await loadVerificationCapability()
     await api.updatePatternConfig(patternConfig.value)
     clearVerificationPreflightAdvisory()
     toast.success('AI configuration saved!')

@@ -128,6 +128,7 @@ describe('Settings Routes', () => {
     expect(countRouteHandlers(settingsRouter, '/web-search/provider-calibration-policies/:purpose', 'put')).toBe(1);
     expect(countRouteHandlers(settingsRouter, '/web-search/providers/:providerKey', 'put')).toBe(1);
     expect(countRouteHandlers(settingsRouter, '/web-search/providers/:providerKey/test', 'post')).toBe(1);
+    expect(countRouteHandlers(settingsRouter, '/ai/verification-capability', 'get')).toBe(1);
   });
 
   it('uses startupService for GET /settings/setup-status', async () => {

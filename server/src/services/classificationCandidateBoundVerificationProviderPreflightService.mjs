@@ -26,6 +26,7 @@ import {
  *   buildPreflight?: (options: {
  *     proposedConfiguration?: CandidateBoundVerificationProviderPreflightConfiguration | null,
  *     existingConfiguration?: CandidateBoundVerificationProviderPreflightConfiguration | null,
+ *     presentationContext?: string,
  *   }) => Record<string, unknown>,
  * }} options
  */
@@ -37,13 +38,17 @@ export function createCandidateBoundVerificationProviderPreflightService(options
   } = options;
 
   return Object.freeze({
-    /** @param {{ proposedConfiguration?: CandidateBoundVerificationProviderPreflightConfiguration }} request */
-    async getPreflight({ proposedConfiguration } = {}) {
+    /** @param {{ proposedConfiguration?: CandidateBoundVerificationProviderPreflightConfiguration, presentationContext?: string }} request */
+    async getPreflight({ proposedConfiguration, presentationContext } = {}) {
       const existingConfiguration = await loadConfiguration(database);
-      return buildPreflight({
+      const options = {
         proposedConfiguration,
         existingConfiguration,
-      });
+      };
+      if (presentationContext) {
+        options.presentationContext = presentationContext;
+      }
+      return buildPreflight(options);
     },
   });
 }
