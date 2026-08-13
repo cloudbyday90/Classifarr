@@ -263,8 +263,3 @@ export class PolicyRuntimeHistoricRouteSafetyRefreshInventoryService {
     });
   }
 }
-
-export {
-  PENDING_STATUS_IDS as HISTORIC_ROUTE_SAFETY_REFRESH_PENDING_STATUS_IDS,
-  validateInventoryReport as validateHistoricRouteSafetyRefreshInventoryReport,
-};

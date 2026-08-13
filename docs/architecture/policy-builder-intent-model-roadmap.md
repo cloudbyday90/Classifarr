@@ -51,6 +51,10 @@ Current execution focus:
   server-authored verification status for admitted, confirmed, abstained,
   rejected, unavailable, and candidate-mismatch outcomes without exposing
   provider or model content.
+- **Completed:** **11R.4 Candidate-Bound Verification Aggregate Outcome Metrics
+  And Drift Guard**. Operators can inspect bounded status counts and a
+  sample-gated change-rate comparison without retaining item, candidate,
+  provider, prompt, or model-response content or changing any route decision.
 - **Completed:** **10R.4 Release Acceptance Assembly**. Repository acceptance
   now produces a passed or blocked manifest artifact, while a separate
   protected-environment workflow records active-installation evidence without
@@ -90,7 +94,7 @@ completed lifecycle acceptance: 10R.2.1 -> 10R.2.2 -> 10R.2.3
 completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3 -> 10R.3.4 -> 10R.3.5
 completed release hardening: 10R.4 -> 10R.4.1
 active release candidate: v0.48.0-beta -> 10R.4.2 -> 10R.4.3
-completed post-release authority hardening: 11R.1.1 -> 11R.1.2 -> 11R.2 -> 11R.3
+completed post-release authority hardening: 11R.1.1 -> 11R.1.2 -> 11R.2 -> 11R.3 -> 11R.4
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
 
@@ -12531,6 +12535,31 @@ Completion criteria:
 Implemented design: [Candidate-Bound Verification Observability And Operator
 Explanation](candidate-bound-verification-observability-and-operator-explanation.md).
 
+### 11R.4 Candidate-Bound Verification Aggregate Outcome Metrics And Drift Guard
+
+Status: complete on 2026-08-12.
+
+Intent: make aggregate verification outcome changes visible without creating a
+new item-level telemetry store, exposing provider-controlled content, or
+turning aggregate observations into route or policy authority.
+
+Completion criteria:
+
+- the aggregate source reads only UTC day, status identifier, and count from
+  the existing versioned candidate-bound verification projection;
+- the query is bounded to adjacent 1-30 day windows and has a
+  projection-specific performance index;
+- the drift guard requires comparable sample sizes before it can report an
+  elevated abstention, rejected-response, or unavailable-capability trend;
+- the report and UI expose only fixed status labels, aggregate counts, rates,
+  and advisory messages, never item, candidate, library, provider, model,
+  prompt, or response content; and
+- no report outcome can queue work, invoke a provider, alter a policy, or
+  change deterministic routing authority.
+
+Implemented design: [Candidate-Bound Verification Aggregate Outcome Metrics
+And Drift Guard](candidate-bound-verification-aggregate-outcome-metrics-and-drift-guard.md).
+
 ## Testing Strategy
 
 Required coverage should follow the re-imagined phase boundaries:
@@ -12718,11 +12747,17 @@ The next sequence is dependency-gated rather than phase-number order:
     Explanation**: complete. The existing pending-decision review now displays
     an allow-listed, server-authored verification status without exposing raw
     provider content or changing the deterministic decision path.
-    **Next: 11R.4 Candidate-Bound Verification Aggregate Outcome Metrics And
-    Drift Guard**. Add privacy-bounded aggregate status counts and change-rate
-    monitoring so unexpected abstention, rejected-response, and unavailable
-    capability trends are visible without retaining item, candidate, provider,
-    prompt, or model-response content.
+23. **11R.4 Candidate-Bound Verification Aggregate Outcome Metrics And Drift
+    Guard**: complete. The Statistics view reads only pre-existing status-only
+    outcome aggregates and compares adjacent bounded UTC windows with
+    sample-gated advisory drift signals; no item, candidate, provider, prompt,
+    model-response, policy, or routing authority is added. See [Candidate-Bound
+    Verification Aggregate Outcome Metrics And Drift Guard](candidate-bound-verification-aggregate-outcome-metrics-and-drift-guard.md).
+    **Next: 11R.5 Candidate-Bound Verification Remediation Readiness**. Add a
+    separate operator-authorized diagnostic read model that correlates a
+    flagged aggregate state with current provider admission and deterministic
+    policy readiness, without exposing historic provider output or treating
+    metrics as routing authority.
 
 The completed 0R through 3R, 6R, and 7R contracts remain guardrails, not
 permission to restore a diagnostic, template-first, or browser-authoritative

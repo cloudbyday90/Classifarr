@@ -203,8 +203,3 @@ export class PolicyRuntimeHistoricRouteSafetyRefreshExecutionService {
     });
   }
 }
-
-export {
-  RESULT_STATUS_IDS as HISTORIC_ROUTE_SAFETY_REFRESH_EXECUTION_RESULT_STATUS_IDS,
-  normalizeClassificationIds as normalizeHistoricRouteSafetyRefreshExecutionClassificationIds,
-};

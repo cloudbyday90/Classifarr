@@ -123,13 +123,15 @@ describe('Stats API Integration Tests', () => {
 
         await db.query(`
             INSERT INTO classification_history (
-                tmdb_id, media_type, title, library_id, confidence, method, status
+                tmdb_id, media_type, title, library_id, confidence, method, status, metadata, created_at
             ) VALUES
-            (11111, 'movie', 'Test Classification 1', $1, 95, 'exact_match', 'completed'),
-            (11112, 'movie', 'Test Classification 2', $1, 85, 'exact_match', 'completed'),
-            (11113, 'movie', 'Test Classification 3', $1, 75, 'learned_pattern', 'completed'),
-            (11114, 'movie', 'Test Classification 4', $1, 90, 'ai_fallback', 'completed'),
-            (11115, 'movie', 'Test Classification 5', $1, 80, 'rule_match', 'completed')
+            (11111, 'movie', 'Test Classification 1', $1, 95, 'exact_match', 'completed', '{}'::jsonb, CURRENT_TIMESTAMP - INTERVAL '1 day'),
+            (11112, 'movie', 'Test Classification 2', $1, 85, 'exact_match', 'completed', '{}'::jsonb, CURRENT_TIMESTAMP - INTERVAL '1 day'),
+            (11113, 'movie', 'Test Classification 3', $1, 75, 'learned_pattern', 'completed', '{}'::jsonb, CURRENT_TIMESTAMP - INTERVAL '1 day'),
+            (11114, 'movie', 'Test Classification 4', $1, 90, 'ai_fallback', 'completed', '{}'::jsonb, CURRENT_TIMESTAMP - INTERVAL '1 day'),
+            (11115, 'movie', 'Test Classification 5', $1, 80, 'rule_match', 'completed', '{}'::jsonb, CURRENT_TIMESTAMP - INTERVAL '1 day'),
+            (11116, 'movie', 'Private Verification Test Item', $1, 90, 'ai_verified', 'completed',
+             '{"classification_details":{"candidate_bound_verification":{"version":"classification.candidate_bound_verification.v1","status_id":"confirmed"}}}'::jsonb, CURRENT_TIMESTAMP - INTERVAL '1 day')
         `, [testLibraryId]);
     });
 
@@ -196,6 +198,27 @@ describe('Stats API Integration Tests', () => {
                 snapshot_reason: 'integration_test',
                 weak_evidence_overlap_count: 1,
             }));
+        });
+    });
+
+    describe('GET /api/stats/candidate-bound-verification', () => {
+        it('should return only the authenticated aggregate verification report', async () => {
+            const res = await request(app)
+                .get('/api/stats/candidate-bound-verification?days=7')
+                .set('Authorization', `Bearer ${testToken}`)
+                .expect(200);
+
+            expect(res.body).toMatchObject({
+                version: 'classification.candidate_bound_verification_metrics.v1',
+                current: {
+                    statusCounts: expect.arrayContaining([
+                        expect.objectContaining({ statusId: 'confirmed', count: expect.any(Number) }),
+                    ]),
+                },
+                driftGuard: expect.objectContaining({ statusId: expect.any(String) }),
+            });
+            expect(JSON.stringify(res.body)).not.toContain('Private Verification Test Item');
+            expect(JSON.stringify(res.body)).not.toContain('Test Stats Library');
         });
     });
 

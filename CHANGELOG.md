@@ -22,6 +22,9 @@ Current development changes will be recorded here.
   presents a fixed verification status for confirmation, abstention, rejected
   output, unavailable capability, and candidate mismatch without exposing
   provider or model content.
+- **Candidate-bound verification monitoring** — Added status-only outcome
+  counts, a sample-gated drift comparison, and a read-only Statistics view
+  without retaining item, provider, model, prompt, or response content.
 
 - **Historic route-safety maintenance surface** — Added a bounded administrator maintenance route for explicit historical retry selection, acknowledgement, and privacy-preserving receipt status monitoring without local receipt persistence or background-tab polling.
 - **Historic retry receipt reconciliation** — Added durable, transaction-bound historic route-safety retry receipts and an administrator-only, read-only status endpoint that reports bounded current-runtime outcomes without exposing history metadata, task IDs, or provider content.
@@ -51,6 +54,9 @@ Current development changes will be recorded here.
 
 - **Image-retirement command** — Accepted npm 12's documented `tag` configuration forwarding so the retirement-assessment command reaches its bounded release-tag contract.
 - **Automatic-route explanations** — Persisted bounded route-safety gates so high-score pending decisions name the actual blocker, including AI advisory authority, weak policy evidence, provider recovery, provenance, and administrative confirmation. Historic decisions that predate this projection now state when their original route-safety details cannot be recovered and require a current retry rather than showing an unnamed safeguard.
+- **Dependency-declaration CI gate** — Removed four unused historic-refresh
+  compatibility exports so Knip no longer blocks the build and its dependent
+  release-acceptance readout.
 
 ## [0.48.0c-beta] - 2026-08-09
 

@@ -32,6 +32,7 @@ import {
   getPolicyStatsDetail,
   getPolicyStatsComparison,
   getDetailedStats,
+  getCandidateBoundVerificationMetrics,
 } from '../../api/policyStatsApi'
 
 describe('policyStatsApi', () => {
@@ -85,5 +86,11 @@ describe('policyStatsApi', () => {
     mockGetDataRequest.mockResolvedValueOnce({})
     await getDetailedStats()
     expect(mockGetDataRequest).toHaveBeenCalledWith('/stats/detailed')
+  })
+
+  it('getCandidateBoundVerificationMetrics uses the bounded metrics endpoint', async () => {
+    mockGetDataRequest.mockResolvedValueOnce({})
+    await getCandidateBoundVerificationMetrics(14)
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/stats/candidate-bound-verification', { params: { days: 14 } })
   })
 })

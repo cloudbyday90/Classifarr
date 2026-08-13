@@ -43,6 +43,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import CandidateBoundVerificationStats from './statistics/CandidateBoundVerificationStats.vue'
 import ClassificationStats from './statistics/ClassificationStats.vue'
 import RAGStats from './statistics/RAGStats.vue'
 
@@ -50,6 +51,7 @@ const activeTab = ref('classification')
 
 const tabs = [
   { id: 'classification', label: 'Classification', icon: '🎯', component: ClassificationStats },
+  { id: 'verification', label: 'Verification', icon: '🛡️', component: CandidateBoundVerificationStats },
   { id: 'rag', label: 'RAG & Embeddings', icon: '🧠', component: RAGStats }
 ]
 

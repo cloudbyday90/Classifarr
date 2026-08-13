@@ -46,6 +46,10 @@ export function getDetailedStats() {
   return getDataRequest('/stats/detailed')
 }
 
+export function getCandidateBoundVerificationMetrics(days = 7) {
+  return getDataRequest('/stats/candidate-bound-verification', { params: { days } })
+}
+
 const policyStatsApi = {
   getPolicyStatsOverview,
   getPolicyStatsList,
@@ -54,6 +58,7 @@ const policyStatsApi = {
   getPolicyStatsDetail,
   getPolicyStatsComparison,
   getDetailedStats,
+  getCandidateBoundVerificationMetrics,
 }
 
 export default policyStatsApi

@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-08-10T15:58:00.179Z
--- Latest Migration: 20260810_140000_add_historic_route_safety_refresh_receipts.sql
+-- Generated: 2026-08-12T23:20:07.686Z
+-- Latest Migration: 20260812_100000_add_candidate_bound_verification_metrics_index.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -8969,6 +8969,13 @@ CREATE INDEX idx_classification_history_active_pending_refresh_inventory ON publ
 
 
 --
+-- Name: idx_classification_history_candidate_bound_verification_observe; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_classification_history_candidate_bound_verification_observe ON public.classification_history USING btree (created_at DESC) WHERE ((metadata #>> '{classification_details,candidate_bound_verification,version}'::text[]) = 'classification.candidate_bound_verification.v1'::text);
+
+
+--
 -- Name: idx_classification_history_canonical_outcome; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -13685,6 +13692,7 @@ FROM unnest(ARRAY[
     '20260809_010000_add_canonical_history_outcome_index.sql',
     '20260809_020000_add_task_queue_cleanup_origin.sql',
     '20260810_120000_add_active_pending_refresh_inventory_index.sql',
-    '20260810_140000_add_historic_route_safety_refresh_receipts.sql'
+    '20260810_140000_add_historic_route_safety_refresh_receipts.sql',
+    '20260812_100000_add_candidate_bound_verification_metrics_index.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

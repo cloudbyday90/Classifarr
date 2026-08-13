@@ -129,9 +129,10 @@ Decision: rejected.
   `client/src/__tests__/policyQuestionDecisionPresentation.test.js`, and
   `client/src/__tests__/pendingQuestionRecommendationActions.test.js`.
 
-## Next Task
+## Follow-Up
 
-Proceed with **11R.4 Candidate-Bound Verification Aggregate Outcome Metrics And
-Drift Guard**: add privacy-bounded aggregate status counts and change-rate
-monitoring for verification outcomes without retaining item, candidate,
-provider, prompt, or model-response content.
+11R.4 is complete. The next candidate-bound verification work is **11R.5
+Candidate-Bound Verification Remediation Readiness**: define a separate,
+operator-authorized troubleshooting read model for current provider admission
+and deterministic-policy readiness without exposing historic provider output or
+treating aggregate metrics as routing authority.

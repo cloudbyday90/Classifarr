@@ -16,6 +16,10 @@ vi.mock('@/views/statistics/ClassificationStats.vue', () => ({
   default: { template: '<div data-testid="classification-stats">classification stats</div>' }
 }))
 
+vi.mock('@/views/statistics/CandidateBoundVerificationStats.vue', () => ({
+  default: { template: '<div data-testid="candidate-bound-verification-stats">verification stats</div>' }
+}))
+
 vi.mock('@/views/statistics/RAGStats.vue', () => ({
   default: { template: '<div data-testid="rag-stats">rag stats</div>' }
 }))
@@ -30,20 +34,26 @@ describe('Statistics.vue', () => {
 
     expect(wrapper.text()).toContain('Statistics & Analytics')
     expect(wrapper.text()).toContain('🎯 Classification')
+    expect(wrapper.text()).toContain('🛡️ Verification')
     expect(wrapper.text()).toContain('🧠 RAG & Embeddings')
     expect(wrapper.find('[data-testid="classification-stats"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="rag-stats"]').exists()).toBe(false)
   })
 
-  it('switches to the RAG tab and back', async () => {
+  it('switches between verification, RAG, and classification tabs', async () => {
     const wrapper = mountView()
     const buttons = wrapper.findAll('button')
 
     await buttons[1].trigger('click')
 
+    expect(wrapper.find('[data-testid="candidate-bound-verification-stats"]').exists()).toBe(true)
+    expect(buttons[1].classes()).toContain('border-blue-500')
+
+    await buttons[2].trigger('click')
+
     expect(wrapper.find('[data-testid="classification-stats"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="rag-stats"]').exists()).toBe(true)
-    expect(buttons[1].classes()).toContain('border-blue-500')
+    expect(buttons[2].classes()).toContain('border-blue-500')
 
     await buttons[0].trigger('click')
 
