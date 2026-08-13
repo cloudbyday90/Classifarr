@@ -68,9 +68,10 @@ Options considered:
    every selected item is accounted for. An interrupted command remains
    explicitly `incomplete`; it is never reported as successful by inference.
 4. `GET /api/classification/pending/route-safety-refresh/receipts/:receiptId`
-   requires an authenticated administrator, validates a canonical UUID, uses
-   `REPEATABLE READ READ ONLY`, and sets `Cache-Control: no-store`. It is a
-   read-only route and does not require write authorization.
+   requires an authenticated administrator and the server-derived actor that
+   created the receipt, validates a canonical UUID, uses `REPEATABLE READ READ
+   ONLY`, and sets `Cache-Control: no-store`. A foreign receipt is reported as
+   not found; it is a read-only route and does not require write authorization.
 5. Reconciliation looks up receipt items by their primary key, checks the
    retained queue row when available, and follows the persisted replacement
    classification ID through at most eight primary-key lineage steps. It does
@@ -98,8 +99,10 @@ deliberately conservative: absent evidence is not presented as a successful
 route.
 
 `classificationRouteHistoricRouteSafetyRefreshReceipt.mjs` is the protected
-read endpoint. `getHistoricRouteSafetyRefreshReceipt` is the named client API
-leaf. Neither file introduces UI automation or a new retry writer.
+actor-bound read endpoint. `getHistoricRouteSafetyRefreshReceipt` is the named
+client API leaf. The later [Recent Receipt Resume](historic-route-safety-refresh-recent-receipt-resume.md)
+follow-up adds a bounded actor-owned discovery reference without expanding this
+report or introducing a retry writer.
 
 ## Verification
 

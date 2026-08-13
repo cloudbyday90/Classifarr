@@ -42,6 +42,7 @@ import {
   getHistoricRouteSafetyRefreshInventory,
   executeHistoricRouteSafetyRefresh,
   getHistoricRouteSafetyRefreshReceipt,
+  getHistoricRouteSafetyRefreshRecentReceipt,
   rememberResolvedExactItem,
   resolvePendingClassification,
   retryClassifications,
@@ -171,6 +172,14 @@ describe('classificationOperations', () => {
     expect(mockGetDataRequest).toHaveBeenCalledWith(
       '/classification/pending/route-safety-refresh/receipts/4b8d027d-8daf-4186-a9f8-89df6f69c95e',
     )
+    expect(result).toEqual(receipt)
+  })
+
+  it('getHistoricRouteSafetyRefreshRecentReceipt discovers only the server-selected recent receipt', async () => {
+    const receipt = { mode: 'read_only', recentReceipt: null }
+    mockGetDataRequest.mockResolvedValueOnce(receipt)
+    const result = await getHistoricRouteSafetyRefreshRecentReceipt()
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/classification/pending/route-safety-refresh/receipts/recent')
     expect(result).toEqual(receipt)
   })
 

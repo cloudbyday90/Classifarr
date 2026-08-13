@@ -35,6 +35,7 @@ Current development changes will be recorded here.
 - **Historic retry receipt reconciliation** — Added durable, transaction-bound historic route-safety retry receipts and an administrator-only, read-only status endpoint that reports bounded current-runtime outcomes without exposing history metadata, task IDs, or provider content.
 - **Controlled historic route-safety refresh** — Added an administrator-authorized, 50-item maximum retry command that rechecks the historic condition from the locked current row, preserves duplicate-task protection, and returns a privacy-bounded outcome receipt.
 - **Historic route-safety refresh inventory** — Added an admin-only, GET-only, keyset-paginated report that identifies active decisions missing their historic route gate and produces a 50-item retry plan without executing it.
+- **Authorized historic-retry resume** — Added a fixed-window, actor-bound recent-receipt discovery read that restores one qualifying maintenance receipt after a reload without browser persistence or receipt-history enumeration.
 - **GHCR manifest retention inventory** — Added a GET-only, graph-aware inventory that protects tagged OCI indexes and every referenced platform or attestation manifest while reporting untagged artifacts for manual review only.
 - **Immutable image-release retirement assessment** — Added a GET-only, evidence-bound plan that connects an incomplete retained GHCR graph to its named GitHub release, rejects republishing the tag, and requires an external advisory plus separate approval before any remote retirement action.
 
@@ -62,6 +63,10 @@ Current development changes will be recorded here.
 - **Dependency-declaration CI gate** — Removed four unused historic-refresh
   compatibility exports so Knip no longer blocks the build and its dependent
   release-acceptance readout.
+
+### Security
+
+- **Historic retry receipt authorization** — Direct receipt reconciliation now requires the same server-derived actor that created the receipt and returns the existing generic 404 for foreign or absent receipt IDs.
 
 ## [0.48.0c-beta] - 2026-08-09
 

@@ -200,7 +200,7 @@ describe('PolicyRuntimeHistoricRouteSafetyRefreshExecutionService', () => {
       createReceipt: () => 'a5c7fdf3-6aad-44d7-911d-9d36e4b9a754',
     });
 
-    const result = await service.run({ classificationIds: [81] });
+    const result = await service.run({ classificationIds: [81], actorId: 'user:17' });
 
     expect(result.records).toEqual([{
       classificationId: 81,
@@ -213,5 +213,25 @@ describe('PolicyRuntimeHistoricRouteSafetyRefreshExecutionService', () => {
       receiptId: 'a5c7fdf3-6aad-44d7-911d-9d36e4b9a754',
       records: result.records,
     });
+  });
+
+  test('fails closed when a caller does not provide a server-derived actor identity', async () => {
+    const classificationRetryService = { retryClassifications: jest.fn() };
+    const receiptRepository = {
+      createReceipt: jest.fn(),
+      markRetryQueued: jest.fn(),
+      finalizeReceipt: jest.fn(),
+    };
+    const service = new PolicyRuntimeHistoricRouteSafetyRefreshExecutionService({
+      classificationRetryService,
+      receiptRepository,
+    });
+
+    await expect(service.run({ classificationIds: [81] })).rejects.toMatchObject({
+      name: 'ValidationError',
+      statusCode: 400,
+    });
+    expect(receiptRepository.createReceipt).not.toHaveBeenCalled();
+    expect(classificationRetryService.retryClassifications).not.toHaveBeenCalled();
   });
 });

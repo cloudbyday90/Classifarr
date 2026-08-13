@@ -61,8 +61,10 @@ Options considered:
    command can run. The UI sends only selected classification IDs and never
    synthesizes route, policy, provider, or task input.
 4. The command response supplies a receipt ID that the client immediately uses
-   for the existing read-only reconciliation endpoint. The client uses neither
-   local storage nor the generic SWR cache for this `no-store` response.
+   for the existing read-only reconciliation endpoint. On entry, it may resume
+   only one server-discovered recent receipt owned by the authenticated actor.
+   The client uses neither local storage nor the generic SWR cache for either
+   `no-store` response.
 5. The receipt view exposes only the existing safe classification ID, command
    outcome, current runtime outcome, timestamps, and aggregate counts. It does
    not display reason payloads, queue IDs, replacement IDs, history metadata,
@@ -77,7 +79,8 @@ Options considered:
 ## Implemented Outcome
 
 `useHistoricRouteSafetyRefreshMaintenance.js` owns inventory paging, in-memory
-selection, controlled execution, receipt reads, and timer cleanup.
+selection, controlled execution, actor-bound recent-receipt discovery, receipt
+reads, and timer cleanup.
 `historicRouteSafetyRefreshPresentation.js` owns fixed status labels, tones,
 and the worker-in-flight decision. The view contains only rendering and the
 explicit acknowledgement control.

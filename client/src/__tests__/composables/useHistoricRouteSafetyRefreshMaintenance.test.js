@@ -15,6 +15,7 @@ const { apiMock } = vi.hoisted(() => ({
     executeHistoricRouteSafetyRefresh: vi.fn(),
     getHistoricRouteSafetyRefreshInventory: vi.fn(),
     getHistoricRouteSafetyRefreshReceipt: vi.fn(),
+    getHistoricRouteSafetyRefreshRecentReceipt: vi.fn(),
   },
 }))
 
@@ -146,6 +147,52 @@ describe('useHistoricRouteSafetyRefreshMaintenance', () => {
     expect(maintenance.receipt.value?.records).toHaveLength(1)
     expect(maintenance.actionMessage.value).toContain('Controlled retry accepted')
 
+    wrapper.unmount()
+  })
+
+  it('resumes only the server-selected recent receipt without browser persistence', async () => {
+    apiMock.getHistoricRouteSafetyRefreshRecentReceipt.mockResolvedValue({
+      mode: 'read_only',
+      recentReceipt: { retryReceipt: RETRY_RECEIPT },
+    })
+    apiMock.getHistoricRouteSafetyRefreshReceipt.mockResolvedValue(receiptReport('queue_processing'))
+    const { maintenance, wrapper } = mountMaintenance()
+
+    await expect(maintenance.discoverRecentReceipt()).resolves.toEqual({
+      mode: 'read_only',
+      recentReceipt: { retryReceipt: RETRY_RECEIPT },
+    })
+
+    expect(apiMock.getHistoricRouteSafetyRefreshRecentReceipt).toHaveBeenCalledWith()
+    expect(apiMock.getHistoricRouteSafetyRefreshReceipt).toHaveBeenCalledWith(RETRY_RECEIPT)
+    expect(maintenance.receipt.value?.receipt?.retryReceipt).toBe(RETRY_RECEIPT)
+    expect(maintenance.actionMessage.value).toBe('Resumed your recent controlled retry status.')
+
+    wrapper.unmount()
+  })
+
+  it('does not replace an explicit retry with a delayed recent-receipt discovery response', async () => {
+    let resolveDiscovery
+    apiMock.getHistoricRouteSafetyRefreshRecentReceipt.mockReturnValue(new Promise(resolve => {
+      resolveDiscovery = resolve
+    }))
+    apiMock.executeHistoricRouteSafetyRefresh.mockResolvedValue({
+      data: { retryReceipt: RETRY_RECEIPT },
+    })
+    apiMock.getHistoricRouteSafetyRefreshReceipt.mockResolvedValue(receiptReport())
+    const { maintenance, wrapper } = mountMaintenance()
+
+    const discovery = maintenance.discoverRecentReceipt()
+    await maintenance.loadInventory({ reset: true })
+    maintenance.toggleSelection(41)
+    await maintenance.executeSelected()
+    resolveDiscovery({
+      mode: 'read_only',
+      recentReceipt: { retryReceipt: 'f2b35b42-15af-4b42-b3c4-18f413b58b13' },
+    })
+    await discovery
+
+    expect(maintenance.receipt.value?.receipt?.retryReceipt).toBe(RETRY_RECEIPT)
     wrapper.unmount()
   })
 

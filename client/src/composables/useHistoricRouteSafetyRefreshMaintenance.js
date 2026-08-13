@@ -44,6 +44,12 @@ function isSafeReceiptReport(report, receiptId) {
     Array.isArray(report.records)
 }
 
+function isSafeRecentReceiptDiscoveryReport(report) {
+  if (report?.mode !== 'read_only') return false
+  if (report.recentReceipt === null) return true
+  return asReceiptId(report?.recentReceipt?.retryReceipt) !== null
+}
+
 function asReceiptId(value) {
   const receiptId = typeof value === 'string' ? value.trim() : ''
   return RECEIPT_ID_PATTERN.test(receiptId) ? receiptId : null
@@ -68,6 +74,7 @@ export function useHistoricRouteSafetyRefreshMaintenance() {
   let receiptPollTimer = null
   let disposed = false
   let receiptRequestSequence = 0
+  let recentReceiptDiscoveryRequestSequence = 0
 
   const records = computed(() => Array.isArray(inventory.value?.records) ? inventory.value.records : [])
   const maximumSelectionCount = computed(() => {
@@ -231,6 +238,36 @@ export function useHistoricRouteSafetyRefreshMaintenance() {
     }
   }
 
+  async function discoverRecentReceipt() {
+    const requestSequence = ++recentReceiptDiscoveryRequestSequence
+    if (receiptId.value || isExecuting.value) return null
+
+    try {
+      const report = await api.getHistoricRouteSafetyRefreshRecentReceipt()
+      if (disposed || requestSequence !== recentReceiptDiscoveryRequestSequence || receiptId.value || isExecuting.value) {
+        return null
+      }
+      if (!isSafeRecentReceiptDiscoveryReport(report)) {
+        throw new TypeError('Historic route-safety recent receipt discovery was not a safe read-only report.')
+      }
+
+      const discoveredReceiptId = asReceiptId(report?.recentReceipt?.retryReceipt)
+      if (!discoveredReceiptId) return report
+
+      receiptId.value = discoveredReceiptId
+      receipt.value = null
+      receiptError.value = ''
+      actionMessage.value = 'Resumed your recent controlled retry status.'
+      await loadReceipt()
+      return report
+    } catch (error) {
+      if (!disposed && requestSequence === recentReceiptDiscoveryRequestSequence && !receiptId.value) {
+        actionError.value = readFailureMessage(error, 'Unable to check for a recent controlled retry.')
+      }
+      return null
+    }
+  }
+
   async function executeSelected() {
     if (!selectedClassificationIds.value.length) {
       selectionMessage.value = 'Select at least one record before starting a controlled retry.'
@@ -238,6 +275,7 @@ export function useHistoricRouteSafetyRefreshMaintenance() {
     }
 
     isExecuting.value = true
+    recentReceiptDiscoveryRequestSequence += 1
     actionMessage.value = ''
     actionError.value = ''
     receiptError.value = ''
@@ -268,6 +306,7 @@ export function useHistoricRouteSafetyRefreshMaintenance() {
   function clearReceipt() {
     stopReceiptPolling()
     receiptRequestSequence += 1
+    recentReceiptDiscoveryRequestSequence += 1
     receipt.value = null
     receiptId.value = null
     receiptError.value = ''
@@ -299,6 +338,7 @@ export function useHistoricRouteSafetyRefreshMaintenance() {
     clearReceipt,
     clearSelection,
     currentPageNumber,
+    discoverRecentReceipt,
     executeSelected,
     inventory,
     inventoryError,

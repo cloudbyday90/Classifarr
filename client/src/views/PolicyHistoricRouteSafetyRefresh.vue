@@ -424,6 +424,7 @@ const {
   clearReceipt,
   clearSelection,
   currentPageNumber,
+  discoverRecentReceipt,
   executeSelected,
   inventory,
   inventoryError,
@@ -494,5 +495,6 @@ function toneClass(tone) {
 
 onMounted(() => {
   loadInventory({ reset: true })
+  discoverRecentReceipt()
 })
 </script>

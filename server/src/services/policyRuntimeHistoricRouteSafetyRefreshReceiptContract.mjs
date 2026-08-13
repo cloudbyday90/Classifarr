@@ -14,6 +14,11 @@ export const POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_RECEIPT_VERSION =
 export const POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_RECONCILIATION_VERSION =
   'policy.runtime_historic_route_safety_refresh_reconciliation.v1';
 
+export const POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_RECENT_RECEIPT_DISCOVERY_VERSION =
+  'policy.runtime_historic_route_safety_refresh_recent_receipt_discovery.v1';
+
+export const POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_RECENT_RECEIPT_MAX_AGE_SECONDS = 3600;
+
 export const HISTORIC_ROUTE_SAFETY_REFRESH_RECEIPT_ITEM_STATUS_IDS = Object.freeze({
   REQUESTED: 'requested',
   QUEUED: 'queued',

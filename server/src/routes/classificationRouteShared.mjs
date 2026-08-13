@@ -39,6 +39,9 @@ import {
 import {
   registerHistoricRouteSafetyRefreshReceiptRoute,
 } from './classificationRouteHistoricRouteSafetyRefreshReceipt.mjs';
+import {
+  registerHistoricRouteSafetyRefreshRecentReceiptRoute,
+} from './classificationRouteHistoricRouteSafetyRefreshRecentReceipt.mjs';
 
 export function createClassificationRouter({
   express,
@@ -55,6 +58,7 @@ export function createClassificationRouter({
   policyRuntimePendingQuestionCleanupApplyService,
   policyRuntimeHistoricRouteSafetyRefreshInventoryService,
   policyRuntimeHistoricRouteSafetyRefreshExecutionService,
+  policyRuntimeHistoricRouteSafetyRefreshRecentReceiptDiscoveryService,
   policyRuntimeHistoricRouteSafetyRefreshReceiptReconciliationService,
 }) {
   const router = express.Router();
@@ -117,6 +121,11 @@ export function createClassificationRouter({
     });
   }
   if (policyRuntimeHistoricRouteSafetyRefreshReceiptReconciliationService) {
+    if (policyRuntimeHistoricRouteSafetyRefreshRecentReceiptDiscoveryService) {
+      registerHistoricRouteSafetyRefreshRecentReceiptRoute(router, {
+        policyRuntimeHistoricRouteSafetyRefreshRecentReceiptDiscoveryService,
+      });
+    }
     registerHistoricRouteSafetyRefreshReceiptRoute(router, {
       policyRuntimeHistoricRouteSafetyRefreshReceiptReconciliationService,
     });

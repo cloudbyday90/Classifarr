@@ -11,11 +11,9 @@
 import { requireAdmin } from '../middleware/auth.mjs';
 import { ValidationError } from '../utils/appError.mjs';
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-
-function getServerActorId(user = {}) {
-  const userId = String(user?.id ?? '').trim();
-  return /^[A-Za-z0-9:_-]{1,150}$/.test(userId) ? `user:${userId}` : 'admin';
-}
+import {
+  requireHistoricRouteSafetyRefreshActorId,
+} from './classificationRouteHistoricRouteSafetyRefreshActor.mjs';
 
 function validateExecutionBody(body) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
@@ -44,7 +42,7 @@ export function registerHistoricRouteSafetyRefreshExecutionRoute(router, {
       validateExecutionBody(req.body);
       const result = await policyRuntimeHistoricRouteSafetyRefreshExecutionService.run({
         classificationIds: req.body.classificationIds,
-        actorId: getServerActorId(req.user),
+        actorId: requireHistoricRouteSafetyRefreshActorId(req.user),
       });
 
       res.set('Cache-Control', 'no-store');
@@ -53,6 +51,5 @@ export function registerHistoricRouteSafetyRefreshExecutionRoute(router, {
 }
 
 export {
-  getServerActorId,
   validateExecutionBody,
 };

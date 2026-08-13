@@ -83,12 +83,30 @@ describe('PolicyRuntimeHistoricRouteSafetyRefreshReceiptRepository', () => {
         .mockResolvedValueOnce({ rows: [{ classification_id: 19, execution_status: 'queued' }] }),
     });
 
-    const result = await repository.loadReceipt(client, { receiptId: RECEIPT_ID });
+    const result = await repository.loadReceipt(client, { receiptId: RECEIPT_ID, actorId: 'user:7' });
 
     expect(result.receipt.receipt_id).toBe(RECEIPT_ID);
     expect(client.query.mock.calls[1][0]).toContain('WITH RECURSIVE retry_lineage');
     expect(client.query.mock.calls[1][0]).toContain('retry_lineage.lineage_depth < 8');
     expect(client.query.mock.calls[1][0]).toContain('WHERE item.receipt_id = $1::uuid');
     expect(client.query.mock.calls[1][0]).not.toContain('SELECT metadata');
+    expect(client.query.mock.calls[0][0]).toContain('AND actor_id = $2');
+    expect(client.query.mock.calls[0][1]).toEqual([RECEIPT_ID, 'user:7']);
+  });
+
+  test('discovers only the latest receipt for one actor within the fixed server window', async () => {
+    const { repository, client } = createRepository({
+      query: jest.fn().mockResolvedValue({ rows: [{ receipt_id: RECEIPT_ID }] }),
+    });
+
+    const result = await repository.findMostRecentReceiptForActor(client, { actorId: 'user:7' });
+
+    expect(result).toEqual({ receipt_id: RECEIPT_ID });
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining("created_at >= NOW() - ($2::integer * INTERVAL '1 second')"),
+      ['user:7', 3600],
+    );
+    expect(client.query.mock.calls[0][0]).toContain('ORDER BY created_at DESC, receipt_id DESC');
+    expect(client.query.mock.calls[0][0]).toContain('LIMIT 1');
   });
 });

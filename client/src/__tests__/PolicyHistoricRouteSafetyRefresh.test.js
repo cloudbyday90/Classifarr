@@ -14,6 +14,7 @@ const { apiMock } = vi.hoisted(() => ({
     executeHistoricRouteSafetyRefresh: vi.fn(),
     getHistoricRouteSafetyRefreshInventory: vi.fn(),
     getHistoricRouteSafetyRefreshReceipt: vi.fn(),
+    getHistoricRouteSafetyRefreshRecentReceipt: vi.fn(),
   },
 }))
 
@@ -71,6 +72,7 @@ describe('PolicyHistoricRouteSafetyRefresh.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     apiMock.getHistoricRouteSafetyRefreshInventory.mockResolvedValue(inventoryReport)
+    apiMock.getHistoricRouteSafetyRefreshRecentReceipt.mockResolvedValue({ mode: 'read_only', recentReceipt: null })
   })
 
   it('requires an explicit selection and acknowledgement before it starts a controlled retry', async () => {

@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-08-12T23:20:07.686Z
--- Latest Migration: 20260812_100000_add_candidate_bound_verification_metrics_index.sql
+-- Generated: 2026-08-13T01:20:59.075Z
+-- Latest Migration: 20260812_110000_add_historic_route_safety_refresh_recent_receipt_index.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -9357,6 +9357,13 @@ CREATE INDEX idx_error_log_unresolved_stage ON public.error_log USING btree (err
 
 
 --
+-- Name: idx_historic_route_safety_refresh_receipts_actor_recent; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_historic_route_safety_refresh_receipts_actor_recent ON public.policy_runtime_historic_route_safety_refresh_receipts USING btree (actor_id, created_at DESC, receipt_id DESC);
+
+
+--
 -- Name: idx_learned_corrections_lookup; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -13693,6 +13700,7 @@ FROM unnest(ARRAY[
     '20260809_020000_add_task_queue_cleanup_origin.sql',
     '20260810_120000_add_active_pending_refresh_inventory_index.sql',
     '20260810_140000_add_historic_route_safety_refresh_receipts.sql',
-    '20260812_100000_add_candidate_bound_verification_metrics_index.sql'
+    '20260812_100000_add_candidate_bound_verification_metrics_index.sql',
+    '20260812_110000_add_historic_route_safety_refresh_recent_receipt_index.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

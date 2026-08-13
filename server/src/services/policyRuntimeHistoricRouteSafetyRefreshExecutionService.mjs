@@ -21,6 +21,9 @@ import {
 import {
   PolicyRuntimeHistoricRouteSafetyRefreshReceiptRepository,
 } from './policyRuntimeHistoricRouteSafetyRefreshReceiptRepository.mjs';
+import {
+  isHistoricRouteSafetyRefreshActorId,
+} from './policyRuntimeHistoricRouteSafetyRefreshActorIdentity.mjs';
 
 export const POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_EXECUTION_VERSION =
   'policy.runtime_historic_route_safety_refresh_execution.v1';
@@ -49,9 +52,9 @@ function positiveInteger(value) {
 }
 
 function normalizeActorId(value) {
-  if (typeof value !== 'string') return 'admin';
+  if (typeof value !== 'string') return null;
   const actorId = value.trim();
-  return /^[A-Za-z0-9:_-]{1,160}$/.test(actorId) ? actorId : 'admin';
+  return isHistoricRouteSafetyRefreshActorId(actorId) ? actorId : null;
 }
 
 function normalizeClassificationIds(value) {
@@ -132,7 +135,7 @@ export class PolicyRuntimeHistoricRouteSafetyRefreshExecutionService {
     this.receiptRepository = receiptRepository || new PolicyRuntimeHistoricRouteSafetyRefreshReceiptRepository({ db });
   }
 
-  async run({ classificationIds, actorId = 'admin' } = {}) {
+  async run({ classificationIds, actorId } = {}) {
     const ids = normalizeClassificationIds(classificationIds);
     if (!ids) {
       throw new ValidationError(
@@ -142,6 +145,9 @@ export class PolicyRuntimeHistoricRouteSafetyRefreshExecutionService {
 
     const retryReceipt = this.createReceipt();
     const normalizedActorId = normalizeActorId(actorId);
+    if (!normalizedActorId) {
+      throw new ValidationError('Historic route-safety refresh requires a server-derived actor identity.');
+    }
     await this.receiptRepository.createReceipt({
       receiptId: retryReceipt,
       actorId: normalizedActorId,

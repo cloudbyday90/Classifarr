@@ -78,10 +78,10 @@ describe('PolicyRuntimeHistoricRouteSafetyRefreshReceiptReconciliationService', 
     };
     const service = new PolicyRuntimeHistoricRouteSafetyRefreshReceiptReconciliationService({ db, receiptRepository });
 
-    const result = await service.run({ receiptId: RECEIPT_ID });
+    const result = await service.run({ receiptId: RECEIPT_ID, actorId: 'user:7' });
 
     expect(client.query).toHaveBeenCalledWith('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
-    expect(receiptRepository.loadReceipt).toHaveBeenCalledWith(client, { receiptId: RECEIPT_ID });
+    expect(receiptRepository.loadReceipt).toHaveBeenCalledWith(client, { receiptId: RECEIPT_ID, actorId: 'user:7' });
     expect(result).toEqual(expect.objectContaining({
       mode: 'read_only',
       receipt: expect.objectContaining({
@@ -115,7 +115,7 @@ describe('PolicyRuntimeHistoricRouteSafetyRefreshReceiptReconciliationService', 
       receiptRepository: { loadReceipt: jest.fn() },
     });
 
-    await expect(service.run({ receiptId: '../receipt' })).rejects.toMatchObject({
+    await expect(service.run({ receiptId: '../receipt', actorId: 'user:7' })).rejects.toMatchObject({
       name: 'ValidationError',
       statusCode: 400,
     });
@@ -129,11 +129,25 @@ describe('PolicyRuntimeHistoricRouteSafetyRefreshReceiptReconciliationService', 
       receiptRepository: { loadReceipt: jest.fn().mockResolvedValue({ receipt: null, items: [] }) },
     });
 
-    await expect(service.run({ receiptId: RECEIPT_ID })).rejects.toMatchObject({
+    await expect(service.run({ receiptId: RECEIPT_ID, actorId: 'user:7' })).rejects.toMatchObject({
       name: 'NotFoundError',
       statusCode: 404,
       code: 'historic_route_safety_refresh_receipt_not_found',
     });
+  });
+
+  test('rejects an invalid receipt owner before opening a transaction', async () => {
+    const { db } = createDb();
+    const service = new PolicyRuntimeHistoricRouteSafetyRefreshReceiptReconciliationService({
+      db,
+      receiptRepository: { loadReceipt: jest.fn() },
+    });
+
+    await expect(service.run({ receiptId: RECEIPT_ID, actorId: 'admin' })).rejects.toMatchObject({
+      name: 'ValidationError',
+      statusCode: 400,
+    });
+    expect(db.withTransaction).not.toHaveBeenCalled();
   });
 
   test('summarizes bounded records without exposing source or queue identifiers', () => {

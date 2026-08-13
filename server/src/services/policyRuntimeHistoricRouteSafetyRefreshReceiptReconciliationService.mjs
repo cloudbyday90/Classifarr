@@ -15,6 +15,9 @@ import {
   POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_RECONCILIATION_VERSION,
   isHistoricRouteSafetyRefreshReceiptId,
 } from './policyRuntimeHistoricRouteSafetyRefreshReceiptContract.mjs';
+import {
+  isHistoricRouteSafetyRefreshActorId,
+} from './policyRuntimeHistoricRouteSafetyRefreshActorIdentity.mjs';
 
 const {
   REQUESTED,
@@ -182,14 +185,17 @@ export class PolicyRuntimeHistoricRouteSafetyRefreshReceiptReconciliationService
     this.receiptRepository = receiptRepository;
   }
 
-  async run({ receiptId } = {}) {
+  async run({ receiptId, actorId } = {}) {
     if (!isHistoricRouteSafetyRefreshReceiptId(receiptId)) {
       throw new ValidationError('retryReceipt must be a canonical UUID.');
+    }
+    if (!isHistoricRouteSafetyRefreshActorId(actorId)) {
+      throw new ValidationError('Historic route-safety refresh receipt actor identity is invalid.');
     }
 
     return this.db.withTransaction(async (client) => {
       await client.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
-      const { receipt, items } = await this.receiptRepository.loadReceipt(client, { receiptId });
+      const { receipt, items } = await this.receiptRepository.loadReceipt(client, { receiptId, actorId });
       if (!receipt) {
         throw new NotFoundError('Historic route-safety refresh receipt was not found.', {
           code: 'historic_route_safety_refresh_receipt_not_found',

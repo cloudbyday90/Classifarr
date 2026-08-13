@@ -14,17 +14,16 @@ import {
   requireHistoricRouteSafetyRefreshActorId,
 } from './classificationRouteHistoricRouteSafetyRefreshActor.mjs';
 
-export function registerHistoricRouteSafetyRefreshReceiptRoute(router, {
-  policyRuntimeHistoricRouteSafetyRefreshReceiptReconciliationService,
+export function registerHistoricRouteSafetyRefreshRecentReceiptRoute(router, {
+  policyRuntimeHistoricRouteSafetyRefreshRecentReceiptDiscoveryService,
 } = {}) {
-  if (typeof policyRuntimeHistoricRouteSafetyRefreshReceiptReconciliationService?.run !== 'function') {
-    throw new TypeError('Historic route-safety refresh receipt route requires a reconciliation service.');
+  if (typeof policyRuntimeHistoricRouteSafetyRefreshRecentReceiptDiscoveryService?.run !== 'function') {
+    throw new TypeError('Historic route-safety recent receipt route requires a discovery service.');
   }
 
-  router.get('/pending/route-safety-refresh/receipts/:receiptId', requireAdmin,
+  router.get('/pending/route-safety-refresh/receipts/recent', requireAdmin,
     asyncHandler(async (req, res) => {
-      const result = await policyRuntimeHistoricRouteSafetyRefreshReceiptReconciliationService.run({
-        receiptId: req.params.receiptId,
+      const result = await policyRuntimeHistoricRouteSafetyRefreshRecentReceiptDiscoveryService.run({
         actorId: requireHistoricRouteSafetyRefreshActorId(req.user),
       });
 

@@ -10,9 +10,13 @@
 
 import {
   HISTORIC_ROUTE_SAFETY_REFRESH_RECEIPT_ITEM_STATUS_IDS,
+  POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_RECENT_RECEIPT_MAX_AGE_SECONDS,
   POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_RECEIPT_VERSION,
   isHistoricRouteSafetyRefreshReceiptId,
 } from './policyRuntimeHistoricRouteSafetyRefreshReceiptContract.mjs';
+import {
+  isHistoricRouteSafetyRefreshActorId,
+} from './policyRuntimeHistoricRouteSafetyRefreshActorIdentity.mjs';
 
 const {
   REQUESTED,
@@ -38,6 +42,12 @@ function assertQueryClient(client, operation) {
 function assertReceiptId(receiptId) {
   if (!isHistoricRouteSafetyRefreshReceiptId(receiptId)) {
     throw new TypeError('Historic route-safety refresh receipt ID must be a canonical UUID.');
+  }
+}
+
+function assertActorId(actorId) {
+  if (!isHistoricRouteSafetyRefreshActorId(actorId)) {
+    throw new TypeError('Historic route-safety refresh receipt actor ID is invalid.');
   }
 }
 
@@ -96,9 +106,7 @@ export class PolicyRuntimeHistoricRouteSafetyRefreshReceiptRepository {
   async createReceipt({ receiptId, actorId, classificationIds } = {}) {
     assertReceiptId(receiptId);
     const ids = normalizeClassificationIds(classificationIds);
-    if (typeof actorId !== 'string' || !/^[A-Za-z0-9:_-]{1,160}$/.test(actorId)) {
-      throw new TypeError('Historic route-safety refresh receipt actor ID is invalid.');
-    }
+    assertActorId(actorId);
 
     return this.db.withTransaction(async (client) => {
       assertQueryClient(client, 'creation');
@@ -221,9 +229,10 @@ export class PolicyRuntimeHistoricRouteSafetyRefreshReceiptRepository {
     });
   }
 
-  async loadReceipt(client, { receiptId } = {}) {
+  async loadReceipt(client, { receiptId, actorId } = {}) {
     assertQueryClient(client, 'reconciliation');
     assertReceiptId(receiptId);
+    assertActorId(actorId);
 
     const receiptResult = await client.query(
       `SELECT
@@ -233,8 +242,9 @@ export class PolicyRuntimeHistoricRouteSafetyRefreshReceiptRepository {
          execution_finalized_at,
          receipt_version
        FROM policy_runtime_historic_route_safety_refresh_receipts
-       WHERE receipt_id = $1::uuid`,
-      [receiptId],
+       WHERE receipt_id = $1::uuid
+         AND actor_id = $2`,
+      [receiptId, actorId],
     );
     const receipt = receiptResult.rows[0] || null;
     if (!receipt) return { receipt: null, items: [] };
@@ -288,5 +298,22 @@ export class PolicyRuntimeHistoricRouteSafetyRefreshReceiptRepository {
     );
 
     return { receipt, items: itemResult.rows };
+  }
+
+  async findMostRecentReceiptForActor(client, { actorId } = {}) {
+    assertQueryClient(client, 'recent receipt discovery');
+    assertActorId(actorId);
+
+    const result = await client.query(
+      `SELECT receipt_id
+       FROM policy_runtime_historic_route_safety_refresh_receipts
+       WHERE actor_id = $1
+         AND created_at >= NOW() - ($2::integer * INTERVAL '1 second')
+       ORDER BY created_at DESC, receipt_id DESC
+       LIMIT 1`,
+      [actorId, POLICY_RUNTIME_HISTORIC_ROUTE_SAFETY_REFRESH_RECENT_RECEIPT_MAX_AGE_SECONDS],
+    );
+
+    return result.rows[0] || null;
   }
 }

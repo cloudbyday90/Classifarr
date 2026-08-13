@@ -62,6 +62,17 @@ describe('classificationRouteHistoricRouteSafetyRefreshReceipt', () => {
     expect(response.status).toBe(200);
     expect(response.headers['cache-control']).toBe('no-store');
     expect(response.body).toEqual({ mode: 'read_only', receipt: { retryReceipt: RECEIPT_ID }, records: [] });
-    expect(reconciliationService.run).toHaveBeenCalledWith({ receiptId: RECEIPT_ID });
+    expect(reconciliationService.run).toHaveBeenCalledWith({ receiptId: RECEIPT_ID, actorId: 'user:1' });
+  });
+
+  test('fails closed when an admin role lacks a stable actor identity', async () => {
+    const { app, reconciliationService } = createApp({ user: { role: 'admin' } });
+
+    const response = await request(app)
+      .get(`/api/classification/pending/route-safety-refresh/receipts/${RECEIPT_ID}`);
+
+    expect(response.status).toBe(403);
+    expect(response.body.code).toBe('historic_route_safety_refresh_actor_identity_required');
+    expect(reconciliationService.run).not.toHaveBeenCalled();
   });
 });

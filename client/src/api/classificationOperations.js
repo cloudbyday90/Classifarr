@@ -78,6 +78,10 @@ export function getHistoricRouteSafetyRefreshReceipt(retryReceipt) {
   )
 }
 
+export function getHistoricRouteSafetyRefreshRecentReceipt() {
+  return getDataRequest('/classification/pending/route-safety-refresh/receipts/recent')
+}
+
 export function resolvePendingClassification(classificationId, payload) {
   return apiClient.post(`/classification/pending/${classificationId}/resolve`, payload)
 }
@@ -105,6 +109,7 @@ const classificationOperationsApi = {
   getHistoricRouteSafetyRefreshInventory,
   executeHistoricRouteSafetyRefresh,
   getHistoricRouteSafetyRefreshReceipt,
+  getHistoricRouteSafetyRefreshRecentReceipt,
   resolvePendingClassification,
   rememberResolvedExactItem,
   retryClassifications,

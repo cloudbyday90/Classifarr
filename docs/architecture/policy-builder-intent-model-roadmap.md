@@ -37,6 +37,10 @@ Current execution focus:
   Execution**. A separate administrator-authorized command accepts a reviewed
   bounded subset, rechecks the historic condition after the current row is
   locked, and reports a privacy-bounded retry receipt.
+- **Completed:** **10R.3.8 Authorized Recent-Receipt Discovery And Resume**.
+  Historic maintenance now resumes at most one recent actor-owned receipt after
+  reload, while direct receipt reads enforce the same server-derived ownership
+  relationship instead of treating a UUID as authorization.
 - **Completed:** **11R.1.1 AI Repair Authority Integrity**. Accepted repair
   output now carries the authority of the actual repair provider and model;
   cross-provider or cross-model local repair is `fallback_advisory`, with
@@ -96,7 +100,7 @@ completed boundary isolation: 8R.37.1 -> 8R.37.2 -> 8R.37.3 -> 8R.37.4
 active-installation prerequisite -> 8R.36.11 regeneration -> 8R.34/8R.35 current audits
 completed platform acceptance: 10R.1.1 -> 10R.1.2 -> 10R.1.3
 completed lifecycle acceptance: 10R.2.1 -> 10R.2.2 -> 10R.2.3
-completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3 -> 10R.3.4 -> 10R.3.5
+completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3 -> 10R.3.4 -> 10R.3.5 -> 10R.3.6 -> 10R.3.7 -> 10R.3.8
 completed release hardening: 10R.4 -> 10R.4.1
 active release candidate: v0.48.0-beta -> 10R.4.2 -> 10R.4.3
 completed post-release authority hardening: 11R.1.1 -> 11R.1.2 -> 11R.2 -> 11R.3 -> 11R.4 -> 11R.5
@@ -12334,6 +12338,35 @@ Completion criteria:
 
 Design and outcome detail: [Historic Route-Safety Refresh Maintenance
 Surface](historic-route-safety-refresh-maintenance.md).
+
+#### 10R.3.8 Authorized Recent-Receipt Discovery And Resume
+
+Status: complete on 2026-08-12.
+
+Intent: recover the active historic route-safety receipt after a maintenance
+view reload without caching receipt data in the browser, enumerating another
+administrator's remediation work, or treating a receipt UUID as authority.
+
+Completion criteria:
+
+- derives a canonical receipt owner exclusively from the authenticated
+  administrator on the server and fails closed when that identity is absent or
+  malformed;
+- discovers at most one receipt created by that actor during a fixed,
+  server-owned recent window, with no caller-controlled actor, cursor, time
+  range, or receipt search input;
+- returns only a no-store, read-only receipt reference or `null`, then uses
+  the existing bounded reconciliation projection for actual status;
+- checks the actor relationship on every direct receipt read and reports a
+  foreign receipt with the same generic not-found response as an absent one;
+- resumes visible-tab-only polling without local or session storage and cannot
+  let a delayed discovery overwrite an explicit new retry; and
+- retains no new task, metadata, provider, policy, route, learning, or
+  selected-record projection, while an actor-and-created-time index keeps the
+  discovery query bounded.
+
+Design and outcome detail: [Historic Route-Safety Refresh Recent Receipt
+Resume](historic-route-safety-refresh-recent-receipt-resume.md).
 
 ### 10R.4 Release Acceptance Assembly
 

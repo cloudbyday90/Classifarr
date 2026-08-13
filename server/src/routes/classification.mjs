@@ -35,6 +35,9 @@ import {
 import {
   PolicyRuntimeHistoricRouteSafetyRefreshReceiptReconciliationService,
 } from '../services/policyRuntimeHistoricRouteSafetyRefreshReceiptReconciliationService.mjs';
+import {
+  PolicyRuntimeHistoricRouteSafetyRefreshRecentReceiptDiscoveryService,
+} from '../services/policyRuntimeHistoricRouteSafetyRefreshRecentReceiptDiscoveryService.mjs';
 import { createClassificationRouter } from './classificationRouteShared.mjs';
 
 const policyRuntimePendingQuestionCleanupInventoryService =
@@ -55,6 +58,11 @@ const policyRuntimeHistoricRouteSafetyRefreshReceiptReconciliationService =
     db,
     receiptRepository: policyRuntimeHistoricRouteSafetyRefreshReceiptRepository,
   });
+const policyRuntimeHistoricRouteSafetyRefreshRecentReceiptDiscoveryService =
+  new PolicyRuntimeHistoricRouteSafetyRefreshRecentReceiptDiscoveryService({
+    db,
+    receiptRepository: policyRuntimeHistoricRouteSafetyRefreshReceiptRepository,
+  });
 
 export const router = createClassificationRouter({
   express,
@@ -70,5 +78,6 @@ export const router = createClassificationRouter({
   policyRuntimePendingQuestionCleanupApplyService,
   policyRuntimeHistoricRouteSafetyRefreshInventoryService,
   policyRuntimeHistoricRouteSafetyRefreshExecutionService,
+  policyRuntimeHistoricRouteSafetyRefreshRecentReceiptDiscoveryService,
   policyRuntimeHistoricRouteSafetyRefreshReceiptReconciliationService,
 });
