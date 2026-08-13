@@ -25,6 +25,11 @@ Current development changes will be recorded here.
 - **Candidate-bound verification monitoring** — Added status-only outcome
   counts, a sample-gated drift comparison, and a read-only Statistics view
   without retaining item, provider, model, prompt, or response content.
+- **Candidate-bound verification remediation readiness** — Added an
+  administrator-authorized, read-only report that correlates aggregate trend
+  status with current provider admission and anonymous active-policy readiness
+  without exposing AI content or mutating provider, policy, routing, or retry
+  state.
 
 - **Historic route-safety maintenance surface** — Added a bounded administrator maintenance route for explicit historical retry selection, acknowledgement, and privacy-preserving receipt status monitoring without local receipt persistence or background-tab polling.
 - **Historic retry receipt reconciliation** — Added durable, transaction-bound historic route-safety retry receipts and an administrator-only, read-only status endpoint that reports bounded current-runtime outcomes without exposing history metadata, task IDs, or provider content.

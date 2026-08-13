@@ -16,6 +16,7 @@ jest.unstable_mockModule('../config/database.mjs', () => createStandardDbMock(qu
 
 jest.unstable_mockModule('../middleware/apiKeyAuth.mjs', () => ({
   authenticateTokenOrApiKey: (req, res, next) => next(),
+  requireAdmin: (req, res, next) => next(),
   requireReadWrite: (req, res, next) => next(),
 }));
 

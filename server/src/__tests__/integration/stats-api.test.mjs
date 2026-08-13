@@ -222,6 +222,39 @@ describe('Stats API Integration Tests', () => {
         });
     });
 
+    describe('GET /api/stats/candidate-bound-verification/remediation-readiness', () => {
+        it('should return an administrator-authorized, identity-free readiness report', async () => {
+            const res = await request(app)
+                .get('/api/stats/candidate-bound-verification/remediation-readiness?days=7')
+                .set('Authorization', `Bearer ${testToken}`)
+                .expect(200);
+
+            expect(res.body).toMatchObject({
+                version: 'classification.candidate_bound_verification_remediation_readiness.v1',
+                aggregateHealth: { driftStatusId: expect.any(String) },
+                providerAdmission: {
+                    statusId: expect.any(String),
+                    providerCalled: false,
+                    providerAvailabilityChecked: false,
+                },
+                policyReadiness: {
+                    evaluatedPolicyCount: expect.any(Number),
+                    statusCounts: expect.any(Array),
+                },
+                readiness: { statusId: expect.any(String) },
+                sideEffects: {
+                    classificationRead: false,
+                    policyMutation: false,
+                    routingMutation: false,
+                    retryQueued: false,
+                },
+            });
+            expect(JSON.stringify(res.body)).not.toContain('Private Verification Test Item');
+            expect(JSON.stringify(res.body)).not.toContain('Test Stats Library');
+            expect(JSON.stringify(res.body)).not.toContain('Test Stats Policy');
+        });
+    });
+
     describe('GET /api/stats/policies/overlap-history', () => {
         it('should return recent persisted overlap snapshots', async () => {
             policyOverlapMetricsCollector.reset();

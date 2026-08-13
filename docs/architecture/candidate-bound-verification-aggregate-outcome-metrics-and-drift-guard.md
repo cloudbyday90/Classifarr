@@ -132,8 +132,8 @@ Decision: rejected.
 
 ## Next Task
 
-Proceed with **11R.5 Candidate-Bound Verification Remediation Readiness**:
-define a separate, operator-authorized troubleshooting read model that can
-correlate a flagged aggregate state with current provider admission and current
-deterministic-policy readiness, without exposing historic provider output or
-allowing aggregate metrics to alter routing.
+Proceed with **11R.6 Verification-Capable Provider Configuration Preflight**.
+The completed 11R.5 remediation-readiness report can identify a current
+configuration prerequisite without exposing operational content or mutating
+state. The next task should prevent that prerequisite from being introduced at
+provider-settings save time while preserving explicit operator control.

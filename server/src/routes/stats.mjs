@@ -11,7 +11,7 @@
 import express from 'express';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import { authenticateTokenOrApiKey } from '../middleware/apiKeyAuth.mjs';
+import { authenticateTokenOrApiKey, requireAdmin } from '../middleware/apiKeyAuth.mjs';
 import { createStatsRouter } from './statsRouteShared.mjs';
 
 const logger = createLogger('StatsRoutes');
@@ -21,4 +21,5 @@ export const router = createStatsRouter({
   db,
   logger,
   authenticateTokenOrApiKey,
+  requireAdmin,
 });

@@ -55,6 +55,11 @@ Current execution focus:
   And Drift Guard**. Operators can inspect bounded status counts and a
   sample-gated change-rate comparison without retaining item, candidate,
   provider, prompt, or model-response content or changing any route decision.
+- **Completed:** **11R.5 Candidate-Bound Verification Remediation Readiness**.
+  An administrator-authorized, read-only report now correlates aggregate drift
+  with configuration-only provider admission and anonymous active-policy
+  native-intent and routing readiness; it cannot call providers, expose
+  operational content, queue retries, or alter policy or routing authority.
 - **Completed:** **10R.4 Release Acceptance Assembly**. Repository acceptance
   now produces a passed or blocked manifest artifact, while a separate
   protected-environment workflow records active-installation evidence without
@@ -94,7 +99,8 @@ completed lifecycle acceptance: 10R.2.1 -> 10R.2.2 -> 10R.2.3
 completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3 -> 10R.3.4 -> 10R.3.5
 completed release hardening: 10R.4 -> 10R.4.1
 active release candidate: v0.48.0-beta -> 10R.4.2 -> 10R.4.3
-completed post-release authority hardening: 11R.1.1 -> 11R.1.2 -> 11R.2 -> 11R.3 -> 11R.4
+completed post-release authority hardening: 11R.1.1 -> 11R.1.2 -> 11R.2 -> 11R.3 -> 11R.4 -> 11R.5
+next provider-admission guardrail: 11R.6 verification-capable configuration preflight
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
 
@@ -12559,6 +12565,58 @@ Completion criteria:
 
 Implemented design: [Candidate-Bound Verification Aggregate Outcome Metrics
 And Drift Guard](candidate-bound-verification-aggregate-outcome-metrics-and-drift-guard.md).
+
+### 11R.5 Candidate-Bound Verification Remediation Readiness
+
+Status: complete on 2026-08-12.
+
+Intent: correlate bounded verification aggregate health with the current
+configuration prerequisites for strict provider admission and deterministic
+policy evaluation without turning metrics into a diagnosis, a route decision,
+or a configuration command.
+
+Completion criteria:
+
+- an administrator-authorized, read-only report obtains only the existing
+  status-only aggregate summary, a minimum current provider-configuration
+  projection, and anonymous active-policy readiness counts;
+- the provider projection uses the existing authority and candidate-bound
+  admission contracts but does not return provider, model, endpoint,
+  credential, budget amount, or usage, and it performs no provider call or
+  availability probe;
+- the policy projection reduces only one-active-native-intent, purpose-rule,
+  and configured-routing prerequisites to fixed aggregate statuses without
+  returning policy, library, destination, profile, or item identity;
+- the report explains that an elevated aggregate state is observational, not a
+  root-cause diagnosis or routing authority, and offers only fixed next steps;
+- administrator JWT roles and administrator API keys are enforced at the
+  server route before the report executes; and
+- unit, route, and integration tests prove identity-free output, provider and
+  policy failure states, bounded parameters, denied non-administrator access,
+  and no mutation or provider-call path.
+
+Implemented design: [Candidate-Bound Verification Remediation
+Readiness](candidate-bound-verification-remediation-readiness.md).
+
+### 11R.6 Verification-Capable Provider Configuration Preflight
+
+Status: planned.
+
+Intent: give administrators a server-authored, configuration-save-time warning
+when a proposed provider or fallback path remains valid for general AI use but
+cannot admit strict candidate-bound verification.
+
+Completion criteria:
+
+- proposed provider settings are evaluated with the same server-owned
+  authority contract as runtime verification;
+- the preflight contains only fixed capability status and guidance, never
+  credentials, endpoint detail, prompts, model output, or provider probes;
+- general AI configuration remains explicitly savable after the warning; no
+  browser or AI path silently selects a provider, model, budget, or fallback;
+  and
+- focused tests prove server enforcement, non-strict provider behavior,
+  configuration-save compatibility, and no provider or routing side effects.
 
 ## Testing Strategy
 
