@@ -107,7 +107,37 @@ const embeddingProvider = mockEmbeddingProvider;
 const embeddingRouter = mockEmbeddingRouter;
 const _ragLoopConfig = mockRagLoopConfig;
 const { createSettingsTestRouter } = await import('./setup/createSettingsTestRouter.mjs');
-const settingsRouter = createSettingsTestRouter(express);
+const TEST_AI_SETTINGS_WRITE_PRECONDITION = '"00000000-0000-4000-8000-000000000201"';
+
+function createTestPreconditionError({ code, httpStatus }) {
+  const error = new Error(code);
+  error.code = code;
+  error.httpStatus = httpStatus;
+  error.reloadRequired = true;
+  return error;
+}
+
+const aiSettingsWritePreconditionService = {
+  issueForConfiguration: jest.fn(() => TEST_AI_SETTINGS_WRITE_PRECONDITION),
+  assertCurrent: jest.fn(({ providedPrecondition }) => {
+    if (!providedPrecondition) {
+      throw createTestPreconditionError({
+        code: 'ai_settings_write_precondition_required',
+        httpStatus: 428,
+      });
+    }
+
+    if (providedPrecondition !== TEST_AI_SETTINGS_WRITE_PRECONDITION) {
+      throw createTestPreconditionError({
+        code: 'ai_settings_stale_write',
+        httpStatus: 412,
+      });
+    }
+
+    return TEST_AI_SETTINGS_WRITE_PRECONDITION;
+  }),
+};
+const settingsRouter = createSettingsTestRouter(express, { aiSettingsWritePreconditionService });
 
 function isConfigurationRevisionWriteLock(sql) {
   return sql === 'SELECT pg_advisory_xact_lock(hashtext($1))';
@@ -124,6 +154,14 @@ describe('Settings AI Routes', () => {
       middleware: [
         (req, _res, next) => {
           req.user = { id: 1, role: 'admin' };
+          if (
+            req.method === 'PUT'
+            && req.path === '/settings/ai'
+            && !req.get('if-match')
+            && req.get('x-test-omit-ai-settings-write-precondition') !== 'true'
+          ) {
+            req.headers['if-match'] = TEST_AI_SETTINGS_WRITE_PRECONDITION;
+          }
           next();
         },
       ],

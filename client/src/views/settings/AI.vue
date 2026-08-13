@@ -791,6 +791,11 @@ import PasswordInput from '@/components/common/PasswordInput.vue'
 import VerificationCapabilityCurrentStateSummary from '@/components/settings/VerificationCapabilityCurrentStateSummary.vue'
 import VerificationCapabilityChangeReceiptList from '@/components/settings/VerificationCapabilityChangeReceiptList.vue'
 import api from '@/api'
+import {
+  AI_SETTINGS_STALE_WRITE_RECOVERY_MESSAGE,
+  getAiSettingsWritePreconditionFromResponse,
+  isAiSettingsStaleWriteError,
+} from '@/api/aiSettingsWritePrecondition'
 import { useToast } from '@/stores/toast'
 
 const toast = useToast()
@@ -814,6 +819,7 @@ const verificationPreflightAdvisory = ref(null)
 const verificationPreflightFingerprint = ref(null)
 const verificationCapability = ref(null)
 const verificationCapabilityChangeReceipts = ref(null)
+const aiSettingsWritePrecondition = ref(null)
 let verificationCapabilityRequestId = 0
 let verificationCapabilityChangeReceiptsRequestId = 0
 
@@ -1006,41 +1012,47 @@ const refreshVerificationCapabilityChangeReceipts = async () => {
   await loadVerificationCapabilityChangeReceipts({ notifyOnError: true })
 }
 
+const applyEditableAiConfig = (response) => {
+  const configResponse = response?.config || {}
+  aiSettingsWritePrecondition.value = response?.writePrecondition || null
+  const loadedConfig = { ...config.value, ...configResponse }
+
+  // Parse ollama_host if it contains a full URL (legacy format)
+  if (loadedConfig.ollama_host && (loadedConfig.ollama_host.includes('://') || loadedConfig.ollama_host.includes(':'))) {
+    const parsed = parseOllamaHost(loadedConfig.ollama_host)
+    loadedConfig.ollama_host = parsed.host
+    loadedConfig.ollama_port = parsed.port
+  }
+
+  config.value = loadedConfig
+
+  if (loadedConfig.ollama_model) {
+    ollamaModels.value = [{ name: loadedConfig.ollama_model }]
+  }
+
+  const cloudProviders = ['openai', 'gemini', 'openrouter', 'litellm', 'custom']
+  if (loadedConfig.model && cloudProviders.includes(loadedConfig.primary_provider)) {
+    availableModels.value = [{ id: loadedConfig.model, name: loadedConfig.model }]
+  }
+}
+
+const reloadEditableAiConfig = async () => {
+  applyEditableAiConfig(await api.getAIConfigForUpdate())
+}
+
 onMounted(async () => {
   loadVerificationCapability()
   loadVerificationCapabilityChangeReceipts()
   try {
     const [configResponse, usageResponse, patternConfigResponse, costSummaryResponse, ollamaPreflightResponse] = await Promise.all([
-      api.getAIConfig(),
+      api.getAIConfigForUpdate(),
       api.getAIUsage().catch(() => null),
       api.getPatternConfig().catch(() => null),
       api.getCostSummary().catch(() => null),
       api.getLastOllamaPreflight().catch(() => null),
     ])
     
-    if (configResponse) {
-      const loadedConfig = { ...config.value, ...configResponse }
-      
-      // Parse ollama_host if it contains a full URL (legacy format)
-      if (loadedConfig.ollama_host && (loadedConfig.ollama_host.includes('://') || loadedConfig.ollama_host.includes(':'))) {
-        const parsed = parseOllamaHost(loadedConfig.ollama_host)
-        loadedConfig.ollama_host = parsed.host
-        loadedConfig.ollama_port = parsed.port
-      }
-      
-      config.value = loadedConfig
-      
-      // Seed Ollama models with current selection so it's visible
-      if (loadedConfig.ollama_model) {
-        ollamaModels.value = [{ name: loadedConfig.ollama_model }]
-      }
-      
-      // Seed cloud provider model if one is saved (so it's visible in dropdown)
-      const cloudProviders = ['openai', 'gemini', 'openrouter', 'litellm', 'custom']
-      if (loadedConfig.model && cloudProviders.includes(loadedConfig.primary_provider)) {
-        availableModels.value = [{ id: loadedConfig.model, name: loadedConfig.model }]
-      }
-    }
+    applyEditableAiConfig(configResponse)
     
     if (usageResponse) {
       usageStats.value = usageResponse
@@ -1229,7 +1241,8 @@ const persistConfig = async (providerPayload) => {
   saving.value = true
   let aiConfigSaved = false
   try {
-    await api.updateAIConfig(providerPayload)
+    const response = await api.updateAIConfig(providerPayload, aiSettingsWritePrecondition.value)
+    aiSettingsWritePrecondition.value = getAiSettingsWritePreconditionFromResponse(response)
     aiConfigSaved = true
     await Promise.all([
       loadVerificationCapability(),
@@ -1240,6 +1253,21 @@ const persistConfig = async (providerPayload) => {
     toast.success('AI configuration saved!')
   } catch (error) {
     const errorMessage = error.response?.data?.error || error.message || 'Failed to save configuration'
+
+    if (isAiSettingsStaleWriteError(error)) {
+      try {
+        await reloadEditableAiConfig()
+        await Promise.all([
+          loadVerificationCapability(),
+          loadVerificationCapabilityChangeReceipts(),
+        ])
+        toast.warning(AI_SETTINGS_STALE_WRITE_RECOVERY_MESSAGE)
+      } catch (reloadError) {
+        console.error('Failed to reload AI configuration after a stale save:', reloadError)
+        toast.error(errorMessage)
+      }
+      return
+    }
 
     if (aiConfigSaved) {
       toast.warning(`AI provider settings were saved, but pattern settings failed: ${errorMessage}`)

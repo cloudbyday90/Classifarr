@@ -18,18 +18,25 @@ function createToast() {
   }
 }
 
+const AI_SETTINGS_WRITE_PRECONDITION = '"00000000-0000-4000-8000-000000000407"'
+const DEFAULT_AI_CONFIG = {
+  primary_provider: 'openai',
+  embedding_provider_mode: 'cloud',
+  embedding_model: 'text-embedding-3-small',
+  embedding_ollama_host: 'localhost',
+  embedding_ollama_port: 11434,
+  embedding_ollama_model: 'nomic-embed-text',
+  embedding_cloud_provider: 'openai',
+  embedding_cloud_api_key: 'cloud-key',
+  embedding_cloud_model: 'text-embedding-3-large',
+}
+
 function createApiClient(overrides = {}) {
   return {
-    getAIConfig: vi.fn().mockResolvedValue({
-      primary_provider: 'openai',
-      embedding_provider_mode: 'cloud',
-      embedding_model: 'text-embedding-3-small',
-      embedding_ollama_host: 'localhost',
-      embedding_ollama_port: 11434,
-      embedding_ollama_model: 'nomic-embed-text',
-      embedding_cloud_provider: 'openai',
-      embedding_cloud_api_key: 'cloud-key',
-      embedding_cloud_model: 'text-embedding-3-large',
+    getAIConfig: vi.fn().mockResolvedValue(DEFAULT_AI_CONFIG),
+    getAIConfigForUpdate: vi.fn().mockResolvedValue({
+      config: DEFAULT_AI_CONFIG,
+      writePrecondition: AI_SETTINGS_WRITE_PRECONDITION,
     }),
     getRagStatus: vi.fn().mockResolvedValue({
       providerOnline: true,
@@ -51,7 +58,10 @@ function createApiClient(overrides = {}) {
         latency: 42,
       },
     }),
-    updateAIConfig: vi.fn().mockResolvedValue({ data: { success: true } }),
+    updateAIConfig: vi.fn().mockResolvedValue({
+      data: { success: true },
+      headers: { etag: AI_SETTINGS_WRITE_PRECONDITION },
+    }),
     ...overrides,
   }
 }
@@ -83,7 +93,7 @@ describe('useTextEmbeddingSettings composable', () => {
     const { settings, wrapper } = mountTextSettings({ apiClient, toast })
     await flushPromises()
 
-    expect(apiClient.getAIConfig).toHaveBeenCalledTimes(1)
+    expect(apiClient.getAIConfigForUpdate).toHaveBeenCalledTimes(1)
     expect(apiClient.getRagStatus).toHaveBeenCalledTimes(1)
     expect(apiClient.getBackfillStatus).toHaveBeenCalledTimes(1)
     expect(settings.config.value.mode).toBe('cloud')
@@ -150,7 +160,48 @@ describe('useTextEmbeddingSettings composable', () => {
       embedding_cloud_provider: '',
       embedding_cloud_api_key: '',
       embedding_cloud_model: '',
-    }))
+    }), AI_SETTINGS_WRITE_PRECONDITION)
+
+    wrapper.unmount()
+  })
+
+  it('reloads only after a bounded stale-write response and does not retry the save', async () => {
+    const refreshedConfig = {
+      ...DEFAULT_AI_CONFIG,
+      embedding_provider_mode: 'same',
+      embedding_cloud_provider: '',
+      embedding_cloud_api_key: '',
+      embedding_cloud_model: '',
+    }
+    const apiClient = createApiClient({
+      getAIConfigForUpdate: vi.fn()
+        .mockResolvedValueOnce({
+          config: DEFAULT_AI_CONFIG,
+          writePrecondition: AI_SETTINGS_WRITE_PRECONDITION,
+        })
+        .mockResolvedValueOnce({
+          config: refreshedConfig,
+          writePrecondition: '"00000000-0000-4000-8000-000000000409"',
+        }),
+      updateAIConfig: vi.fn().mockRejectedValue({
+        response: { data: { code: 'ai_settings_stale_write' } },
+      }),
+    })
+    const toast = createToast()
+
+    const { settings, wrapper } = mountTextSettings({ apiClient, toast })
+    await flushPromises()
+
+    settings.config.value.mode = 'same'
+    await settings.onModeChange()
+
+    expect(apiClient.updateAIConfig).toHaveBeenCalledTimes(1)
+    expect(apiClient.updateAIConfig).toHaveBeenCalledWith(expect.any(Object), AI_SETTINGS_WRITE_PRECONDITION)
+    expect(apiClient.getAIConfigForUpdate).toHaveBeenCalledTimes(2)
+    expect(settings.config.value.mode).toBe('same')
+    expect(toast.warning).toHaveBeenCalledWith(
+      'AI settings changed before this save. Current settings were reloaded; review them and save again.',
+    )
 
     wrapper.unmount()
   })
@@ -249,7 +300,7 @@ describe('useTextEmbeddingSettings composable', () => {
 
     expect(apiClient.updateAIConfig).toHaveBeenCalledWith(expect.objectContaining({
       embedding_provider_mode: 'cloud',
-    }))
+    }), AI_SETTINGS_WRITE_PRECONDITION)
 
     wrapper.unmount()
   })

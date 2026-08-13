@@ -18,25 +18,32 @@ function createToast() {
   }
 }
 
+const AI_SETTINGS_WRITE_PRECONDITION = '"00000000-0000-4000-8000-000000000408"'
+const DEFAULT_AI_CONFIG = {
+  image_embedding_provider_mode: 'separate_local',
+  image_embedding_local_host: 'image-embedder',
+  image_embedding_local_port: 8000,
+  image_embedding_local_model: 'ViT-B-16',
+  image_embedding_local_api_key: 'local-key',
+  image_embedding_local_timeout_ms: 15000,
+  image_embedding_image_size: 512,
+  image_embedding_rps: 2,
+  image_embedding_concurrency: 2,
+  image_embedding_batch_size: 1,
+  image_embedding_cache_ttl_hours: 24,
+  image_embedding_cache_max_mb: 1024,
+  image_embedding_cloud_provider: 'voyage',
+  image_embedding_cloud_api_key: 'cloud-key',
+  image_embedding_cloud_model: 'voyage-multimodal-3',
+  image_embedding_cloud_api_endpoint: 'https://example.test/models',
+}
+
 function createApiClient(overrides = {}) {
   return {
-    getAIConfig: vi.fn().mockResolvedValue({
-      image_embedding_provider_mode: 'separate_local',
-      image_embedding_local_host: 'image-embedder',
-      image_embedding_local_port: 8000,
-      image_embedding_local_model: 'ViT-B-16',
-      image_embedding_local_api_key: 'local-key',
-      image_embedding_local_timeout_ms: 15000,
-      image_embedding_image_size: 512,
-      image_embedding_rps: 2,
-      image_embedding_concurrency: 2,
-      image_embedding_batch_size: 1,
-      image_embedding_cache_ttl_hours: 24,
-      image_embedding_cache_max_mb: 1024,
-      image_embedding_cloud_provider: 'voyage',
-      image_embedding_cloud_api_key: 'cloud-key',
-      image_embedding_cloud_model: 'voyage-multimodal-3',
-      image_embedding_cloud_api_endpoint: 'https://example.test/models',
+    getAIConfig: vi.fn().mockResolvedValue(DEFAULT_AI_CONFIG),
+    getAIConfigForUpdate: vi.fn().mockResolvedValue({
+      config: DEFAULT_AI_CONFIG,
+      writePrecondition: AI_SETTINGS_WRITE_PRECONDITION,
     }),
     getRagStatus: vi.fn().mockResolvedValue({
       image: {
@@ -59,7 +66,10 @@ function createApiClient(overrides = {}) {
         cacheHit: true,
       },
     }),
-    updateAIConfig: vi.fn().mockResolvedValue({ data: { success: true } }),
+    updateAIConfig: vi.fn().mockResolvedValue({
+      data: { success: true },
+      headers: { etag: AI_SETTINGS_WRITE_PRECONDITION },
+    }),
     testImageEmbeddingConnection: vi.fn().mockResolvedValue({
       data: {
         success: true,
@@ -106,7 +116,7 @@ describe('useImageEmbeddingSettings composable', () => {
     const { settings, wrapper } = mountImageSettings({ apiClient, toast })
     await flushPromises()
 
-    expect(apiClient.getAIConfig).toHaveBeenCalledTimes(1)
+    expect(apiClient.getAIConfigForUpdate).toHaveBeenCalledTimes(1)
     expect(apiClient.getRagStatus).toHaveBeenCalledTimes(1)
     expect(apiClient.getBackfillStatus).toHaveBeenCalledTimes(1)
     expect(apiClient.getImageModelMetadata).toHaveBeenCalledWith({
@@ -145,7 +155,7 @@ describe('useImageEmbeddingSettings composable', () => {
       image_embedding_cloud_api_key: '',
       image_embedding_cloud_model: '',
       image_embedding_cloud_api_endpoint: '',
-    }))
+    }), AI_SETTINGS_WRITE_PRECONDITION)
 
     wrapper.unmount()
   })
@@ -175,7 +185,7 @@ describe('useImageEmbeddingSettings composable', () => {
       image_embedding_provider_mode: 'separate_local',
       image_embedding_local_api_key: 'local-key',
       image_embedding_local_timeout_ms: 15000,
-    }))
+    }), AI_SETTINGS_WRITE_PRECONDITION)
     expect(toast.success).toHaveBeenCalledWith('Image embedding configuration looks good')
 
     wrapper.unmount()
@@ -282,7 +292,7 @@ describe('useImageEmbeddingSettings composable', () => {
     expect(settings.config.value.image_cloud_model).toBe('')
     expect(apiClient.updateAIConfig).toHaveBeenCalledWith(expect.objectContaining({
       image_embedding_provider_mode: 'cloud',
-    }))
+    }), AI_SETTINGS_WRITE_PRECONDITION)
 
     wrapper.unmount()
   })
@@ -322,7 +332,7 @@ describe('useImageEmbeddingSettings composable', () => {
     expect(apiClient.updateAIConfig).toHaveBeenCalledWith(expect.objectContaining({
       image_embedding_provider_mode: 'separate_local',
       image_embedding_local_api_key: 'secret-key',
-    }))
+    }), AI_SETTINGS_WRITE_PRECONDITION)
 
     wrapper.unmount()
   })

@@ -144,6 +144,7 @@ broadening the configuration or provider-data boundary. See [Verification
 Capability Configuration Revision
 Integrity](verification-capability-configuration-revision-integrity.md).
 
-Next is **11R.10 AI Settings Stale-Write Conflict Acceptance**, which will add
-an opaque server-issued write precondition for the settings editor rather than
-exposing the private receipt revision.
+**11R.10 AI Settings Stale-Write Conflict Acceptance** is complete. The
+settings editor now uses an opaque server-issued write precondition instead of
+exposing the private receipt revision. See [AI Settings Stale-Write Conflict
+Acceptance](ai-settings-stale-write-conflict-acceptance.md).

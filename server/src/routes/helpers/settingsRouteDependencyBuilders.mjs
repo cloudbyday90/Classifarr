@@ -56,6 +56,9 @@ import { webSearchProviderGuardrailDigestService as webSearchProviderGuardrailDi
 import {
   WebSearchProviderCalibrationPreviewService,
 } from '../../services/webSearchProviderCalibrationPreview.mjs';
+import {
+  createAiSettingsWritePreconditionService,
+} from '../../services/aiSettingsWritePrecondition.mjs';
 
 export const defaultDatabase = { query, withTransaction: databaseModule.withTransaction };
 export const defaultRuntimeSettings = { refreshFromDatabase };
@@ -104,6 +107,7 @@ export function createAiSettingsDependencies({
   webSearchProviderGuardrailDigestService = null,
   webSearchProviderCalibrationPreviewService = null,
   webSearchProviderHealthHistory = webSearchProviderHealthHistoryDefault,
+  aiSettingsWritePreconditionService = createAiSettingsWritePreconditionService(),
 } = {}) {
   const routeQualityCalibrationService = typeof webSearchProviderQualityCalibrationService.withDependencies === 'function'
     ? webSearchProviderQualityCalibrationService.withDependencies({
@@ -161,6 +165,7 @@ export function createAiSettingsDependencies({
     webSearchProviderGuardrailDigestService: guardrailDigestService,
     webSearchProviderCalibrationPreviewService: calibrationPreviewService,
     webSearchProviderHealthHistory,
+    aiSettingsWritePreconditionService,
   };
 }
 

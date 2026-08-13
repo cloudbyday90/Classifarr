@@ -52,6 +52,8 @@ Current development changes will be recorded here.
 
 ### Changed
 
+- **AI Settings stale-write protection** — Reads issue opaque no-store ETags; missing or stale saves fail before side effects and reload current settings for
+  explicit administrator review without automatic merge or retry.
 - **Verification-capability receipt integrity** — AI Settings now serializes
   first-row configuration saves, increments the private receipt revision in
   PostgreSQL without unsafe `BIGINT` conversion, enforces append-only

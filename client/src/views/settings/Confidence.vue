@@ -531,6 +531,11 @@
 import { ref, onMounted, reactive, computed } from 'vue'
 import { useToast } from '@/stores/toast'
 import api from '@/api'
+import {
+  AI_SETTINGS_STALE_WRITE_RECOVERY_MESSAGE,
+  getAiSettingsWritePreconditionFromResponse,
+  isAiSettingsStaleWriteError,
+} from '@/api/aiSettingsWritePrecondition'
 
 // Components
 import Card from '@/components/common/Card.vue'
@@ -565,6 +570,7 @@ const ragLoopSettings = reactive({
   autoFallbackEnabled: true,
   autoRecoverEnabled: false
 })
+const aiSettingsWritePrecondition = ref(null)
 
 const fallbackIncident = ref(null)
 const fallbackState = ref(null)
@@ -663,7 +669,9 @@ async function loadAuditHistory() {
 
 async function loadRagLoopSettings() {
   try {
-    const data = await api.getAIConfig() || {}
+    const response = await api.getAIConfigForUpdate()
+    const data = response?.config || {}
+    aiSettingsWritePrecondition.value = response?.writePrecondition || null
     ragLoopSettings.autoFallbackEnabled = data.rag_loop_auto_fallback_enabled !== false
     ragLoopSettings.autoRecoverEnabled = data.rag_loop_auto_recover_enabled === true
   } catch (error) {
@@ -760,15 +768,21 @@ async function saveAllSettings() {
     }
     
     await api.updateConfidenceSettings(payload)
-    await api.updateAIConfig({
+    const response = await api.updateAIConfig({
       rag_loop_auto_fallback_enabled: ragLoopSettings.autoFallbackEnabled,
       rag_loop_auto_recover_enabled: ragLoopSettings.autoRecoverEnabled
-    })
+    }, aiSettingsWritePrecondition.value)
+    aiSettingsWritePrecondition.value = getAiSettingsWritePreconditionFromResponse(response)
     toast.success('Settings saved successfully')
     await loadAuditHistory()
     await loadFallbackIncident()
   } catch (error) {
     console.error('Failed to save settings:', error)
+    if (isAiSettingsStaleWriteError(error)) {
+      await loadRagLoopSettings()
+      toast.warning(AI_SETTINGS_STALE_WRITE_RECOVERY_MESSAGE)
+      return
+    }
     toast.error('Failed to save settings: ' + (error.response?.data?.error || error.message || 'Unknown error'))
   } finally {
     isSaving.value = false

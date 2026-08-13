@@ -10,6 +10,18 @@ import {
   AI_PROVIDER_CONFIGURATION_REVISION_LOCK_NAME,
 } from '../services/aiProviderConfigurationRevisionIntegrity.mjs';
 
+const TEST_WRITE_PRECONDITION = '"00000000-0000-4000-8000-000000000001"';
+
+function persistForTest(options) {
+  return persistAiSettingsConfig({
+    ...options,
+    aiSettingsWritePreconditionService: {
+      assertCurrent: jest.fn(),
+    },
+    providedWritePrecondition: TEST_WRITE_PRECONDITION,
+  });
+}
+
 describe('persistAiSettingsConfig', () => {
   test('preserves stored masked keys, updates rag config, and invalidates changed image model caches', async () => {
     const existing = {
@@ -72,7 +84,7 @@ describe('persistAiSettingsConfig', () => {
       info: jest.fn(),
     };
 
-    const result = await persistAiSettingsConfig({
+    const result = await persistForTest({
       client,
       body: {
         api_key: maskToken('stored-ai-key'),
@@ -128,7 +140,7 @@ describe('persistAiSettingsConfig', () => {
       }),
     };
 
-    await expect(persistAiSettingsConfig({
+    await expect(persistForTest({
       client,
       body: {
         formula_pattern_weight: 0.5,
@@ -183,7 +195,7 @@ describe('persistAiSettingsConfig', () => {
       info: jest.fn(),
     };
 
-    const result = await persistAiSettingsConfig({
+    const result = await persistForTest({
       client,
       body: {
         embedding_provider_mode: 'cloud',
@@ -247,7 +259,7 @@ describe('persistAiSettingsConfig', () => {
       info: jest.fn(),
     };
 
-    await expect(persistAiSettingsConfig({
+    await expect(persistForTest({
       client,
       body: {
         embedding_provider_mode: 'cloud',
@@ -302,7 +314,7 @@ describe('persistAiSettingsConfig', () => {
       }),
     };
 
-    const result = await persistAiSettingsConfig({
+    const result = await persistForTest({
       client,
       body: {},
       logger: {
@@ -350,7 +362,7 @@ describe('persistAiSettingsConfig', () => {
     };
     const receiptRepository = { record: jest.fn().mockResolvedValue({ id: '15' }) };
 
-    await persistAiSettingsConfig({
+    await persistForTest({
       client,
       body: { primary_provider: 'gemini', model: 'gemini-2.5-pro' },
       logger: { warn: jest.fn(), error: jest.fn(), info: jest.fn() },
@@ -392,7 +404,7 @@ describe('persistAiSettingsConfig', () => {
       }),
     };
 
-    await expect(persistAiSettingsConfig({
+    await expect(persistForTest({
       client,
       body: { primary_provider: 'gemini', model: 'gemini-2.5-pro' },
       logger: { warn: jest.fn(), error: jest.fn(), info: jest.fn() },

@@ -41,6 +41,15 @@ app.use(errorHandler);
 describe('Settings AI RAG loop configuration integration', () => {
     let pool;
 
+    async function getAiSettingsWritePrecondition() {
+        const response = await request(app)
+            .get('/api/settings/ai')
+            .expect(200);
+
+        expect(response.headers.etag).toMatch(/^"[0-9a-f-]{36}"$/i);
+        return response.headers.etag;
+    }
+
     beforeAll(() => {
         pool = getPool();
     });
@@ -83,8 +92,10 @@ describe('Settings AI RAG loop configuration integration', () => {
     });
 
     test('PUT /api/settings/ai normalizes and persists RAG loop config values', async () => {
+        const writePrecondition = await getAiSettingsWritePrecondition();
         const response = await request(app)
             .put('/api/settings/ai')
+            .set('If-Match', writePrecondition)
             .send({
                 rag_retrieval_loop_enabled: true,
                 rag_loop_rollout_mode: 'invalid',
@@ -185,8 +196,10 @@ describe('Settings AI RAG loop configuration integration', () => {
     });
 
     test('partial RAG loop config update preserves unrelated provider and secret fields', async () => {
+        const writePrecondition = await getAiSettingsWritePrecondition();
         const response = await request(app)
             .put('/api/settings/ai')
+            .set('If-Match', writePrecondition)
             .send({
                 rag_retrieval_loop_enabled: true
             })
@@ -252,8 +265,11 @@ describe('Settings AI RAG loop configuration integration', () => {
         const before = await pool.query('SELECT COUNT(*)::int AS count FROM classification_embeddings');
         expect(before.rows[0].count).toBe(1);
 
+        const writePrecondition = await getAiSettingsWritePrecondition();
+
         await request(app)
             .put('/api/settings/ai')
+            .set('If-Match', writePrecondition)
             .send({
                 primary_provider: 'gemini'
             })

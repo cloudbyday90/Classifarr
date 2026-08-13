@@ -38,6 +38,7 @@ export function createAiHandlerDescriptors(aiSettingsDependencies, logger) {
     backfillOrchestratorService,
     cloudLLMService,
     aiRouterService,
+    aiSettingsWritePreconditionService,
     database: db,
     embeddingProvider,
     embeddingRouter,
@@ -85,6 +86,7 @@ export function createAiHandlerDescriptors(aiSettingsDependencies, logger) {
         formatEncryptedValue,
         parseEncryptedValue,
         decryptValue,
+        aiSettingsWritePreconditionService,
       }),
     },
     {

@@ -231,6 +231,7 @@ describe('api/index.js barrel export validation', () => {
       expectFunction('updateOMDbConfig')
       expectFunction('testOMDb')
       expectFunction('getAIConfig')
+      expectFunction('getAIConfigForUpdate')
       expectFunction('updateAIConfig')
       expectFunction('testAIConnection')
       expectFunction('getAIModels')

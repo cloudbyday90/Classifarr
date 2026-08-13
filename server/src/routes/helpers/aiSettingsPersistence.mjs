@@ -30,6 +30,9 @@ import {
 import {
   acquireAiProviderConfigurationRevisionWriteLock,
 } from '../../services/aiProviderConfigurationRevisionIntegrity.mjs';
+import {
+  createAiSettingsWritePreconditionService,
+} from '../../services/aiSettingsWritePrecondition.mjs';
 
 /** @typedef {Record<string, any>} AiSettingsPersistenceConfig */
 
@@ -41,6 +44,10 @@ import {
  *   validateAndNormalizeRagLoopConfig: (body: AiSettingsPersistenceConfig, existing: AiSettingsPersistenceConfig) => { normalizedConfig: Record<string, any>, warnings: string[] },
  *   encryptValue: (value: string) => { encrypted: string, iv: string, authTag: string },
  *   formatEncryptedValue: (encrypted: string, iv: string, authTag: string) => string,
+ *   aiSettingsWritePreconditionService: {
+ *     assertCurrent: (request: { providedPrecondition: string | undefined, configuration: AiSettingsPersistenceConfig }) => string,
+ *   },
+ *   providedWritePrecondition?: string,
  *   verificationCapabilityChangeReceiptRepository?: {
  *     record: (request: { client: { query: Function }, receipt: Record<string, unknown> }) => Promise<unknown>,
  *   },
@@ -54,12 +61,18 @@ export async function persistAiSettingsConfig({
   validateAndNormalizeRagLoopConfig,
   encryptValue,
   formatEncryptedValue,
+  aiSettingsWritePreconditionService = createAiSettingsWritePreconditionService(),
+  providedWritePrecondition,
   verificationCapabilityChangeReceiptRepository = null,
   verificationCapabilityChangeReceiptActorId = null,
 }) {
   await acquireAiProviderConfigurationRevisionWriteLock(client);
   const existingResult = await client.query('SELECT * FROM ai_provider_config WHERE id = 1 FOR UPDATE');
   const existing = /** @type {AiSettingsPersistenceConfig} */ (existingResult.rows[0] || {});
+  aiSettingsWritePreconditionService.assertCurrent({
+    providedPrecondition: providedWritePrecondition,
+    configuration: existingResult.rows[0] || null,
+  });
 
   const { normalizedConfig: normalizedRagLoopConfig, warnings: ragLoopWarnings } =
     validateAndNormalizeRagLoopConfig(body, existing);
@@ -213,6 +226,7 @@ export async function persistAiSettingsConfig({
                 image_embedding_local_api_key = EXCLUDED.image_embedding_local_api_key,
                 image_embedding_local_timeout_ms = EXCLUDED.image_embedding_local_timeout_ms,
                 configuration_revision = ai_provider_config.configuration_revision + 1,
+                configuration_write_tag = gen_random_uuid(),
                 updated_at = NOW()
         `, buildAiProviderConfigUpsertValues({
     body,

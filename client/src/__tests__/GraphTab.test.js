@@ -19,6 +19,7 @@ vi.mock('../api', () => ({
   default: {
     put: vi.fn(),
     getAIConfig: vi.fn(),
+    getAIConfigForUpdate: vi.fn(),
     updateAIConfig: vi.fn(),
     getRagGraphFillRate: vi.fn(),
   },
@@ -35,6 +36,7 @@ const defaultConfig = {
   rag_graph_min_matches_to_apply: 1,
   rag_graph_candidates_limit: 20,
 }
+const AI_SETTINGS_WRITE_PRECONDITION = '"00000000-0000-4000-8000-000000000402"'
 
 const mockApiSuccess = (configOverrides = {}) => {
   api.getAIConfig.mockResolvedValue({ ...defaultConfig, ...configOverrides })
@@ -56,6 +58,10 @@ const mockApiSuccess = (configOverrides = {}) => {
 describe('GraphTab.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    api.getAIConfigForUpdate.mockImplementation(async () => ({
+      config: await api.getAIConfig(),
+      writePrecondition: AI_SETTINGS_WRITE_PRECONDITION,
+    }))
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
   })
 
@@ -132,7 +138,7 @@ describe('GraphTab.vue', () => {
     mockApiSuccess({ rag_graph_weight: 0.35 })
     mount(GraphTab)
     await flushPromises()
-    expect(api.getAIConfig).toHaveBeenCalled()
+    expect(api.getAIConfigForUpdate).toHaveBeenCalled()
   })
 
   it('loads fill-rate on mount', async () => {
@@ -169,7 +175,7 @@ describe('GraphTab.vue', () => {
     expect(api.updateAIConfig).toHaveBeenCalledWith(expect.objectContaining({
       rag_graph_enabled: false,
       rag_graph_weight: 0.20,
-    }))
+    }), AI_SETTINGS_WRITE_PRECONDITION)
   })
 
   it('shows save confirmation message on successful save', async () => {

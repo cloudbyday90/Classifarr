@@ -156,6 +156,7 @@ representation, append-only receipt guard, and replace-restore clearing
 policy. See [Verification Capability Configuration Revision
 Integrity](verification-capability-configuration-revision-integrity.md).
 
-Next is **11R.10 AI Settings Stale-Write Conflict Acceptance**: define an
-opaque server-issued write precondition that prevents one administrator from
-silently overwriting a later AI Settings save.
+**11R.10 AI Settings Stale-Write Conflict Acceptance** is complete. It uses
+an opaque server-issued write precondition to prevent one administrator from
+silently overwriting a later AI Settings save. See [AI Settings Stale-Write
+Conflict Acceptance](ai-settings-stale-write-conflict-acceptance.md).

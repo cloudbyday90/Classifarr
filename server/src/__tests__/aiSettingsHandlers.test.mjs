@@ -9,6 +9,7 @@ const createAiSettingsActionService = jest.fn(() => ({
 }));
 const createAiSettingsReadService = jest.fn(() => ({
   getConfig: jest.fn(),
+  getConfigWithWritePrecondition: jest.fn(),
   getUsageSummary: jest.fn(),
   getUsageFallback: jest.fn(),
   getStatus: jest.fn(),
@@ -53,6 +54,7 @@ function resetAiSettingsHandlerModuleMocks() {
   });
   createAiSettingsReadService.mockReturnValue({
     getConfig: jest.fn(),
+    getConfigWithWritePrecondition: jest.fn(),
     getUsageSummary: jest.fn(),
     getUsageFallback: jest.fn(),
     getStatus: jest.fn(),
@@ -65,7 +67,10 @@ describe('aiSettingsHandlers', () => {
   });
 
   test('updateConfig preserves a successful response when runtime refresh fails after persistence', async () => {
-    const persistedConfig = { model: 'gpt-5.4' };
+    const persistedConfig = {
+      model: 'gpt-5.4',
+      configuration_write_tag: '00000000-0000-4000-8000-000000000101',
+    };
     persistAiSettingsConfig.mockResolvedValue({
       config: persistedConfig,
       effects: { textEmbeddingsCleared: false },
@@ -155,8 +160,67 @@ describe('aiSettingsHandlers', () => {
     });
   });
 
+  test('updateConfig returns a bounded stale-write result without refreshing runtime state', async () => {
+    const staleWriteError = new Error('AI settings changed before this save.');
+    staleWriteError.code = 'ai_settings_stale_write';
+    staleWriteError.httpStatus = 412;
+    staleWriteError.reloadRequired = true;
+    persistAiSettingsConfig.mockRejectedValue(staleWriteError);
+
+    const aiRouterService = { clearCache: jest.fn() };
+    const ollamaService = { resetConfig: jest.fn() };
+    const embeddingProvider = { resetConfig: jest.fn() };
+    const embeddingRouter = { resetConfig: jest.fn() };
+    const backfillOrchestratorService = { maybeStartIdleBackfill: jest.fn() };
+    const handlers = createAiSettingsHandlers({
+      db: {
+        withTransaction: jest.fn(async (callback) => callback({ query: jest.fn() })),
+      },
+      logger: { warn: jest.fn(), error: jest.fn(), info: jest.fn() },
+      cloudLLMService: {},
+      aiRouterService,
+      ollamaService,
+      embeddingProvider,
+      embeddingRouter,
+      backfillOrchestratorService,
+      getRagLoopDefaultConfig: jest.fn(() => ({})),
+      validateAndNormalizeRagLoopConfig: jest.fn(() => ({ normalizedConfig: {}, warnings: [] })),
+      validateRagLoopConfigPayloadKeys: jest.fn(() => ({ valid: true, unknownKeys: [], disallowedKeys: [] })),
+      resolveRequestApiKey: jest.fn(),
+    });
+    const res = createResponse();
+    const req = {
+      body: { model: 'gemini-2.5-pro' },
+      user: { id: 1 },
+      get: jest.fn((headerName) => (
+        headerName === 'If-Match' ? '"00000000-0000-4000-8000-000000000410"' : undefined
+      )),
+    };
+
+    await handlers.updateConfig(req, res);
+
+    expect(persistAiSettingsConfig).toHaveBeenCalledWith(expect.objectContaining({
+      providedWritePrecondition: '"00000000-0000-4000-8000-000000000410"',
+    }));
+    expect(res.status).toHaveBeenCalledWith(412);
+    expect(res.set).toHaveBeenCalledWith('Cache-Control', 'no-store');
+    expect(res.json).toHaveBeenCalledWith({
+      error: 'AI settings changed before this save.',
+      code: 'ai_settings_stale_write',
+      reload_required: true,
+    });
+    expect(aiRouterService.clearCache).not.toHaveBeenCalled();
+    expect(ollamaService.resetConfig).not.toHaveBeenCalled();
+    expect(embeddingProvider.resetConfig).not.toHaveBeenCalled();
+    expect(embeddingRouter.resetConfig).not.toHaveBeenCalled();
+    expect(backfillOrchestratorService.maybeStartIdleBackfill).not.toHaveBeenCalled();
+  });
+
   test('updateConfig triggers non-fatal idle backfill reconcile when text embeddings were cleared', async () => {
-    const persistedConfig = { model: 'mxbai-embed-large' };
+    const persistedConfig = {
+      model: 'mxbai-embed-large',
+      configuration_write_tag: '00000000-0000-4000-8000-000000000102',
+    };
     const backfillOrchestratorService = {
       maybeStartIdleBackfill: jest.fn().mockRejectedValue(new Error('reconcile failed')),
     };
@@ -233,9 +297,12 @@ describe('aiSettingsHandlers', () => {
   });
 
   test('does not construct receipt reads while unrelated settings handlers are used', async () => {
-    const getConfig = jest.fn().mockResolvedValue({ primary_provider: 'none' });
+    const getConfigWithWritePrecondition = jest.fn().mockResolvedValue({
+      config: { primary_provider: 'none' },
+      writePrecondition: '"00000000-0000-4000-8000-000000000103"',
+    });
     createAiSettingsReadService.mockReturnValueOnce({
-      getConfig,
+      getConfigWithWritePrecondition,
       getUsageSummary: jest.fn(),
       getUsageFallback: jest.fn(),
       getStatus: jest.fn(),
@@ -257,7 +324,9 @@ describe('aiSettingsHandlers', () => {
 
     await handlers.getConfig({}, res);
 
-    expect(getConfig).toHaveBeenCalledTimes(1);
+    expect(getConfigWithWritePrecondition).toHaveBeenCalledTimes(1);
+    expect(res.set).toHaveBeenCalledWith('Cache-Control', 'no-store');
+    expect(res.set).toHaveBeenCalledWith('ETag', '"00000000-0000-4000-8000-000000000103"');
     expect(res.json).toHaveBeenCalledWith({ primary_provider: 'none' });
   });
 

@@ -398,6 +398,11 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import api from '@/api'
+import {
+  AI_SETTINGS_STALE_WRITE_RECOVERY_MESSAGE,
+  getAiSettingsWritePreconditionFromResponse,
+  isAiSettingsStaleWriteError,
+} from '@/api/aiSettingsWritePrecondition'
 
 const config = ref({
   rag_graph_enabled: false,
@@ -414,6 +419,7 @@ const config = ref({
 const saving = ref(false)
 const saveMessage = ref('')
 const saveError = ref(false)
+const aiSettingsWritePrecondition = ref(null)
 
 const fillRate = ref(null)
 const fillRateLoading = ref(false)
@@ -467,8 +473,9 @@ const activeDimensionCount = computed(() => {
 
 const loadConfig = async () => {
   try {
-    const res = await api.getAIConfig()
-    const data = res || {}
+    const response = await api.getAIConfigForUpdate()
+    const data = response?.config || {}
+    aiSettingsWritePrecondition.value = response?.writePrecondition || null
     config.value = {
       rag_graph_enabled:              data.rag_graph_enabled              ?? false,
       rag_graph_weight:               Number(data.rag_graph_weight        ?? 0.20),
@@ -490,7 +497,7 @@ const saveConfig = async () => {
   saveMessage.value = ''
   saveError.value = false
   try {
-    await api.updateAIConfig({
+    const response = await api.updateAIConfig({
       rag_graph_enabled:              config.value.rag_graph_enabled,
       rag_graph_weight:               config.value.rag_graph_weight,
       rag_graph_collection_enabled:   config.value.rag_graph_collection_enabled,
@@ -500,11 +507,17 @@ const saveConfig = async () => {
       rag_graph_genre_enabled:        config.value.rag_graph_genre_enabled,
       rag_graph_min_matches_to_apply: config.value.rag_graph_min_matches_to_apply,
       rag_graph_candidates_limit:     config.value.rag_graph_candidates_limit
-    })
+    }, aiSettingsWritePrecondition.value)
+    aiSettingsWritePrecondition.value = getAiSettingsWritePreconditionFromResponse(response)
     saveMessage.value = 'Configuration saved'
   } catch (err) {
     console.error('Failed to save graph retrieval config:', err)
-    saveMessage.value = err.response?.data?.error || 'Failed to save configuration'
+    if (isAiSettingsStaleWriteError(err)) {
+      await loadConfig()
+      saveMessage.value = AI_SETTINGS_STALE_WRITE_RECOVERY_MESSAGE
+    } else {
+      saveMessage.value = err.response?.data?.error || 'Failed to save configuration'
+    }
     saveError.value = true
   } finally {
     saving.value = false

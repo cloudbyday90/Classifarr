@@ -23,6 +23,7 @@
  *   params?: SettingsRouteParams,
  *   user?: SettingsRouteUser,
  *   ip?: string,
+ *   get?: (field: string) => string | undefined,
  * }} SettingsRequest
  */
 

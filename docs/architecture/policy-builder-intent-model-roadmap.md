@@ -126,7 +126,7 @@ completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3 -> 10R.3.
 completed release hardening: 10R.4 -> 10R.4.1
 active release candidate: v0.48.0-beta -> 10R.4.2 -> 10R.4.3
 completed post-release authority hardening: 11R.1.1 -> 11R.1.2 -> 11R.2 -> 11R.3 -> 11R.4 -> 11R.5 -> 11R.6 -> 11R.7 -> 11R.8 -> 11R.9
-next provider-admission guardrail: 11R.10 AI Settings stale-write conflict acceptance
+completed administrator settings concurrency guardrail: 11R.10 AI Settings stale-write conflict acceptance
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
 
@@ -12760,7 +12760,7 @@ Integrity](verification-capability-configuration-revision-integrity.md).
 
 ### 11R.10 AI Settings Stale-Write Conflict Acceptance
 
-Status: planned.
+Status: complete on 2026-08-13.
 
 Intent: prevent one administrator from silently overwriting a later AI
 Settings save while keeping the private receipt revision out of the browser
@@ -12780,6 +12780,9 @@ Completion criteria:
 - the task documents the precondition's expiry, error, privacy, and existing
   installation behavior without adding provider telemetry or generic
   configuration history.
+
+Implemented design: [AI Settings Stale-Write Conflict
+Acceptance](ai-settings-stale-write-conflict-acceptance.md).
 
 ## Testing Strategy
 

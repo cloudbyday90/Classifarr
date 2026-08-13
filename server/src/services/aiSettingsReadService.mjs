@@ -7,45 +7,64 @@
  */
 
 import { getDefaultAiSettingsConfig } from './shared/aiSettingsDefaults.mjs';
+import { createAiSettingsWritePreconditionService } from './aiSettingsWritePrecondition.mjs';
 
 export function createAiSettingsReadService({
   db,
   aiRouterService,
+  aiSettingsWritePreconditionService = createAiSettingsWritePreconditionService(),
   getRagLoopDefaultConfig,
   validateAndNormalizeRagLoopConfig,
   finalizeAiSettingsResponseConfig,
   parseEncryptedValue,
   decryptValue,
 }) {
-  return {
-    async getConfig() {
-      try {
-        const result = await db.query('SELECT * FROM ai_provider_config WHERE id = 1');
+  async function getConfigWithWritePrecondition() {
+    try {
+      const result = await db.query('SELECT * FROM ai_provider_config WHERE id = 1');
 
-        if (result.rows.length === 0) {
-          return getDefaultAiSettingsConfig(getRagLoopDefaultConfig);
-        }
+      if (result.rows.length === 0) {
+        return {
+          config: getDefaultAiSettingsConfig(getRagLoopDefaultConfig),
+          writePrecondition: aiSettingsWritePreconditionService.issueForConfiguration(null),
+        };
+      }
 
-        const config = result.rows[0];
-        const { normalizedConfig } = validateAndNormalizeRagLoopConfig(config, config);
+      const config = result.rows[0];
+      const { normalizedConfig } = validateAndNormalizeRagLoopConfig(config, config);
+      const writePrecondition = aiSettingsWritePreconditionService.issueForConfiguration(config);
 
-        return finalizeAiSettingsResponseConfig({
+      return {
+        config: finalizeAiSettingsResponseConfig({
           config,
           normalizedConfig,
           parseEncryptedValue,
           decryptValue,
           stripInternalState: true,
-        });
-      } catch (error) {
-        if (error.code === '42P01') {
-          return getDefaultAiSettingsConfig(getRagLoopDefaultConfig, {
+        }),
+        writePrecondition,
+      };
+    } catch (error) {
+      if (error.code === '42P01') {
+        return {
+          config: getDefaultAiSettingsConfig(getRagLoopDefaultConfig, {
             table_not_ready: true,
-          });
-        }
-
-        throw error;
+          }),
+          writePrecondition: null,
+        };
       }
+
+      throw error;
+    }
+  }
+
+  return {
+    async getConfig() {
+      const { config } = await getConfigWithWritePrecondition();
+      return config;
     },
+
+    getConfigWithWritePrecondition,
 
     async getUsageSummary() {
       const currentResult = await db.query(`

@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-08-13T12:39:51.045Z
--- Latest Migration: 20260813_110000_enforce_ai_provider_configuration_revision_integrity.sql
+-- Generated: 2026-08-13T13:44:16.259Z
+-- Latest Migration: 20260813_120000_add_ai_settings_write_precondition.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -695,6 +695,7 @@ CREATE TABLE public.ai_provider_config (
     image_embedding_local_api_key text,
     image_embedding_local_timeout_ms integer DEFAULT 15000,
     configuration_revision bigint DEFAULT 0 NOT NULL,
+    configuration_write_tag uuid DEFAULT gen_random_uuid() NOT NULL,
     CONSTRAINT ai_cfg_alias_max_terms_chk CHECK (((rag_alias_max_terms >= 1) AND (rag_alias_max_terms <= 20))),
     CONSTRAINT ai_cfg_alias_min_token_len_chk CHECK (((rag_alias_min_token_length >= 1) AND (rag_alias_min_token_length <= 10))),
     CONSTRAINT ai_cfg_alias_source_policy_chk CHECK (((rag_alias_source_policy)::text = 'authoritative_only'::text)),
@@ -1309,6 +1310,13 @@ COMMENT ON COLUMN public.ai_provider_config.rag_loop_auto_recover_last_attempt_a
 --
 
 COMMENT ON COLUMN public.ai_provider_config.policy_recheck_confidence_gain_multiplier IS 'Multiplier applied to minimum confidence gain threshold during second-pass recheck (1.0-10.0).';
+
+
+--
+-- Name: COLUMN ai_provider_config.configuration_write_tag; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.ai_provider_config.configuration_write_tag IS 'Opaque strong ETag value for conditional AI settings writes; rotated only by the AI settings write boundary.';
 
 
 --
@@ -13790,6 +13798,7 @@ FROM unnest(ARRAY[
     '20260812_100000_add_candidate_bound_verification_metrics_index.sql',
     '20260812_110000_add_historic_route_safety_refresh_recent_receipt_index.sql',
     '20260813_100000_add_verification_capability_change_receipts.sql',
-    '20260813_110000_enforce_ai_provider_configuration_revision_integrity.sql'
+    '20260813_110000_enforce_ai_provider_configuration_revision_integrity.sql',
+    '20260813_120000_add_ai_settings_write_precondition.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

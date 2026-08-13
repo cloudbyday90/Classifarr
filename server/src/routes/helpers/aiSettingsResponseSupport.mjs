@@ -41,6 +41,8 @@ const INTERNAL_STATE_COLUMNS = [
 const ALWAYS_PRIVATE_COLUMNS = [
   // The revision is an internal receipt idempotency boundary, not a setting.
   'configuration_revision',
+  // The write tag is an opaque HTTP precondition, never a JSON setting.
+  'configuration_write_tag',
 ];
 
 export function stripAiSettingsInternalState(config) {

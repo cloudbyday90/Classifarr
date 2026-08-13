@@ -19,12 +19,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mockGetDataRequest = vi.fn()
+const mockGet = vi.fn()
 const mockPost = vi.fn()
 const mockPut = vi.fn()
 
 vi.mock('../../api/core', () => ({
   getDataRequest: (...args) => mockGetDataRequest(...args),
   apiClient: {
+    get: (...args) => mockGet(...args),
     post: (...args) => mockPost(...args),
     put: (...args) => mockPut(...args),
   },
@@ -61,6 +63,7 @@ import {
   updateOMDbConfig,
   testOMDb,
   getAIConfig,
+  getAIConfigForUpdate,
   getAIVerificationCapability,
   getAIVerificationCapabilityChangeReceipts,
   updateAIConfig,
@@ -277,10 +280,36 @@ describe('settingsProvidersApi', () => {
       expect(mockGetDataRequest).toHaveBeenCalledWith('/settings/ai')
     })
 
+    it('getAIConfigForUpdate returns the server-issued opaque write precondition', async () => {
+      mockGet.mockResolvedValueOnce({
+        data: { primary_provider: 'ollama' },
+        headers: { ETag: '"00000000-0000-4000-8000-000000000301"' },
+      })
+
+      await expect(getAIConfigForUpdate()).resolves.toEqual({
+        config: { primary_provider: 'ollama' },
+        writePrecondition: '"00000000-0000-4000-8000-000000000301"',
+      })
+      expect(mockGet).toHaveBeenCalledWith('/settings/ai')
+    })
+
     it('updateAIConfig calls PUT', async () => {
       mockPut.mockResolvedValueOnce({ data: {} })
       await updateAIConfig({ provider: 'ollama' })
-      expect(mockPut).toHaveBeenCalledWith('/settings/ai', { provider: 'ollama' })
+      expect(mockPut).toHaveBeenCalledWith('/settings/ai', { provider: 'ollama' }, undefined)
+    })
+
+    it('updateAIConfig sends the opaque precondition as If-Match', async () => {
+      mockPut.mockResolvedValueOnce({ data: {} })
+
+      await updateAIConfig(
+        { provider: 'ollama' },
+        '"00000000-0000-4000-8000-000000000302"',
+      )
+
+      expect(mockPut).toHaveBeenCalledWith('/settings/ai', { provider: 'ollama' }, {
+        headers: { 'if-match': '"00000000-0000-4000-8000-000000000302"' },
+      })
     })
 
     it('testAIConnection calls POST', async () => {

@@ -16,6 +16,7 @@ vi.mock('../api', () => ({
     post: vi.fn(),
     getRetryConfig: vi.fn(),
     getAIConfig: vi.fn(),
+    getAIConfigForUpdate: vi.fn(),
     updateAIConfig: vi.fn(),
     getRagAdvancedConfig: vi.fn(),
     getRagPromotionReadiness: vi.fn(),
@@ -57,6 +58,7 @@ const issue275Settings = {
   rag_loop_shadow_max_error_rate_delta: 0.01,
   rag_loop_shadow_max_p95_latency_delta_ms: 250
 }
+const AI_SETTINGS_WRITE_PRECONDITION = '"00000000-0000-4000-8000-000000000403"'
 
 const promotionReadiness = {
   ready: false,
@@ -80,6 +82,10 @@ describe('AdvancedTab Issue 275 UI controls', () => {
     api.put.mockResolvedValue({ data: { success: true } })
     api.updateAIConfig.mockResolvedValue({ data: { success: true } })
     api.updateRagAdvancedConfig.mockResolvedValue({ data: { success: true } })
+    api.getAIConfigForUpdate.mockImplementation(async () => ({
+      config: await api.getAIConfig(),
+      writePrecondition: AI_SETTINGS_WRITE_PRECONDITION,
+    }))
   })
 
   function mockSuccessfulGets() {
@@ -137,6 +143,6 @@ describe('AdvancedTab Issue 275 UI controls', () => {
       rag_loop_rollout_mode: 'shadow',
       rag_loop_low_confidence_threshold: 60,
       rag_retry_strategy: 'auto'
-    }))
+    }), AI_SETTINGS_WRITE_PRECONDITION)
   })
 })

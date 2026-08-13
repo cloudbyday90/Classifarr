@@ -60,6 +60,8 @@ const webSearchProviderRouter = {
   withDependencies: jest.fn(() => routedWebSearchProviderRouter),
 };
 const WebSearchProviderCalibrationPreviewService = jest.fn(() => constructedWebSearchProviderCalibrationPreviewService);
+const aiSettingsWritePreconditionService = { kind: 'ai-settings-write-precondition-service' };
+const createAiSettingsWritePreconditionService = jest.fn(() => aiSettingsWritePreconditionService);
 
 jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
   defaultHttpClient,
@@ -129,6 +131,9 @@ jest.unstable_mockModule('../services/webSearchProviderCalibrationPreview.mjs', 
   webSearchProviderCalibrationPreviewService,
 }));
 jest.unstable_mockModule('../services/webSearchProviderHealthHistory.mjs', () => createNamedMockModule('webSearchProviderHealthHistory', webSearchProviderHealthHistory));
+jest.unstable_mockModule('../services/aiSettingsWritePrecondition.mjs', () => ({
+  createAiSettingsWritePreconditionService,
+}));
 
 const {
   defaultDatabase,
@@ -212,11 +217,13 @@ describe('settingsRouteDependencyBuilders', () => {
       webSearchProviderGuardrailDigestService: { kind: 'constructed-web-search-provider-guardrail-digest-service' },
       webSearchProviderCalibrationPreviewService: constructedWebSearchProviderCalibrationPreviewService,
       webSearchProviderHealthHistory,
+      aiSettingsWritePreconditionService,
     });
 
     const database = { kind: 'custom-ai-db' };
     const customEmbeddingProvider = { kind: 'custom-embedding-provider' };
     const customCloudLLMService = { kind: 'custom-cloud-llm-service' };
+    const customAiSettingsWritePreconditionService = { kind: 'custom-ai-settings-write-precondition-service' };
 
     expect(
       createAiSettingsDependencies({
@@ -224,6 +231,7 @@ describe('settingsRouteDependencyBuilders', () => {
         logger,
         embeddingProvider: customEmbeddingProvider,
         cloudLLMService: customCloudLLMService,
+        aiSettingsWritePreconditionService: customAiSettingsWritePreconditionService,
       }),
     ).toEqual({
       database,
@@ -257,6 +265,7 @@ describe('settingsRouteDependencyBuilders', () => {
       webSearchProviderGuardrailDigestService: { kind: 'constructed-web-search-provider-guardrail-digest-service' },
       webSearchProviderCalibrationPreviewService: constructedWebSearchProviderCalibrationPreviewService,
       webSearchProviderHealthHistory,
+      aiSettingsWritePreconditionService: customAiSettingsWritePreconditionService,
     });
     expect(webSearchProviderRouter.withDependencies).toHaveBeenCalledWith({
       storage: webSearchProviderStorage,

@@ -587,6 +587,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import api from '@/api'
+import {
+  AI_SETTINGS_STALE_WRITE_RECOVERY_MESSAGE,
+  getAiSettingsWritePreconditionFromResponse,
+  isAiSettingsStaleWriteError,
+} from '@/api/aiSettingsWritePrecondition'
 
 const SECOND_PASS_DEFAULTS = Object.freeze({
   rag_retrieval_loop_enabled: true,
@@ -638,6 +643,7 @@ const retryConfig = ref({
 })
 const secondPassConfig = ref({ ...SECOND_PASS_DEFAULTS })
 const secondPassConfigAvailable = ref(true)
+const aiSettingsWritePrecondition = ref(null)
 const promotionMetrics = ref(createPromotionMetricsState())
 const promotionMetricsAvailable = ref(false)
 const loadingPromotionMetrics = ref(false)
@@ -757,7 +763,7 @@ const loadConfig = async () => {
   const [advancedRes, retryRes, aiRes] = await Promise.allSettled([
     api.getRagAdvancedConfig(),
     api.getRetryConfig(),
-    api.getAIConfig()
+    api.getAIConfigForUpdate()
   ])
 
   try {
@@ -787,7 +793,8 @@ const loadConfig = async () => {
     }
 
     if (aiRes.status === 'fulfilled') {
-      const aiSettings = aiRes.value || {}
+      const aiSettings = aiRes.value?.config || {}
+      aiSettingsWritePrecondition.value = aiRes.value?.writePrecondition || null
       secondPassConfigAvailable.value = hasIssue275ConfigKeys(aiSettings)
       if (secondPassConfigAvailable.value) {
         applySecondPassConfig(aiSettings)
@@ -832,7 +839,11 @@ const saveAdvancedConfig = async () => {
   try {
     await api.updateRagAdvancedConfig(config.value)
     if (secondPassConfigAvailable.value) {
-      await api.updateAIConfig(normalizeSecondPassConfigForSave(secondPassConfig.value))
+      const response = await api.updateAIConfig(
+        normalizeSecondPassConfigForSave(secondPassConfig.value),
+        aiSettingsWritePrecondition.value,
+      )
+      aiSettingsWritePrecondition.value = getAiSettingsWritePreconditionFromResponse(response)
     }
     await loadPromotionMetrics()
 
@@ -841,6 +852,12 @@ const saveAdvancedConfig = async () => {
       ? 'Advanced and second-pass settings saved successfully'
       : 'Advanced settings saved successfully (second-pass controls unavailable)'
   } catch (error) {
+    if (isAiSettingsStaleWriteError(error)) {
+      await loadConfig()
+      saveSuccess.value = false
+      saveMessage.value = AI_SETTINGS_STALE_WRITE_RECOVERY_MESSAGE
+      return
+    }
     saveSuccess.value = false
     saveMessage.value = error.response?.data?.error || error.message
   } finally {

@@ -35,6 +35,7 @@ describe('aiSettingsReadService', () => {
     const config = {
       id: 1,
       primary_provider: 'openai',
+      configuration_write_tag: 'f6778de1-8322-42c4-a8d6-5072b8c03f83',
     };
     const validateAndNormalizeRagLoopConfig = jest.fn(() => ({
       normalizedConfig: {
@@ -43,6 +44,7 @@ describe('aiSettingsReadService', () => {
     }));
     const finalizeAiSettingsResponseConfig = jest.fn((payload) => {
       Object.assign(payload.config, payload.normalizedConfig, { api_key: '***masked***' });
+      delete payload.config.configuration_write_tag;
       return payload.config;
     });
     const aiSettingsReadService = createAiSettingsReadService({
@@ -71,6 +73,32 @@ describe('aiSettingsReadService', () => {
       parseEncryptedValue: expect.any(Function),
       decryptValue: expect.any(Function),
       stripInternalState: true,
+    });
+  });
+
+  test('getConfigWithWritePrecondition keeps the opaque tag in the response header contract only', async () => {
+    const config = {
+      id: 1,
+      configuration_revision: '8',
+      configuration_write_tag: 'f6778de1-8322-42c4-a8d6-5072b8c03f83',
+    };
+    const finalizeAiSettingsResponseConfig = jest.fn(({ config: responseConfig }) => {
+      delete responseConfig.configuration_revision;
+      delete responseConfig.configuration_write_tag;
+      return responseConfig;
+    });
+    const service = createAiSettingsReadService({
+      db: { query: jest.fn().mockResolvedValue({ rows: [config] }) },
+      aiRouterService: { getStatus: jest.fn() },
+      validateAndNormalizeRagLoopConfig: jest.fn(() => ({ normalizedConfig: {} })),
+      finalizeAiSettingsResponseConfig,
+      parseEncryptedValue: jest.fn(),
+      decryptValue: jest.fn(),
+    });
+
+    await expect(service.getConfigWithWritePrecondition()).resolves.toEqual({
+      config: { id: 1 },
+      writePrecondition: '"f6778de1-8322-42c4-a8d6-5072b8c03f83"',
     });
   });
 

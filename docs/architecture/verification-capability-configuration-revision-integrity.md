@@ -162,11 +162,10 @@ transaction-local database permit.
   proves replace restore obtains the explicit receipt maintenance permit before
   clearing non-portable receipts.
 
-## Next Task
+## Follow-On
 
-Proceed with **11R.10 AI Settings Stale-Write Conflict Acceptance**. Define an
-opaque, server-issued write precondition for the administrator settings page so
-one administrator cannot silently overwrite another administrator's later
-save. A stale save must fail closed with a fixed recovery response, without
-exposing the private revision or changing provider, policy, route, retry, or
-receipt authority.
+**11R.10 AI Settings Stale-Write Conflict Acceptance** is complete. It adds
+an opaque, server-issued write precondition to the administrator settings page
+without exposing the private revision or changing provider, policy, route,
+retry, or receipt authority. See [AI Settings Stale-Write Conflict
+Acceptance](ai-settings-stale-write-conflict-acceptance.md).

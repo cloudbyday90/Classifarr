@@ -23,6 +23,7 @@ const toast = {
 vi.mock('@/api', () => ({
   default: {
     getAIConfig: vi.fn(),
+    getAIConfigForUpdate: vi.fn(),
     getRagStatus: vi.fn(),
     getBackfillStatus: vi.fn(),
     getRagTextModels: vi.fn(),
@@ -46,12 +47,17 @@ const baseConfig = {
   embedding_cloud_api_key: '',
   embedding_cloud_model: ''
 }
+const AI_SETTINGS_WRITE_PRECONDITION = '"00000000-0000-4000-8000-000000000405"'
 
 function mockMountApis(overrides = {}) {
   api.getAIConfig.mockResolvedValue({
     ...baseConfig,
     ...(overrides.config || {})
   })
+  api.getAIConfigForUpdate.mockImplementation(async () => ({
+    config: await api.getAIConfig(),
+    writePrecondition: AI_SETTINGS_WRITE_PRECONDITION,
+  }))
   api.getRagStatus.mockResolvedValue({
     providerOnline: true,
     ...(overrides.status || {})
@@ -75,7 +81,10 @@ function mockMountApis(overrides = {}) {
       latency: 42
     }
   })
-  api.updateAIConfig.mockResolvedValue({ data: { success: true } })
+  api.updateAIConfig.mockResolvedValue({
+    data: { success: true },
+    headers: { etag: AI_SETTINGS_WRITE_PRECONDITION },
+  })
 }
 
 function mountTab() {
@@ -179,7 +188,7 @@ describe('TextEmbeddingsTab.vue', () => {
       embedding_cloud_provider: '',
       embedding_cloud_api_key: '',
       embedding_cloud_model: ''
-    }))
+    }), AI_SETTINGS_WRITE_PRECONDITION)
 
     wrapper.unmount()
   })
@@ -210,7 +219,7 @@ describe('TextEmbeddingsTab.vue', () => {
       embedding_cloud_provider: 'gemini',
       embedding_cloud_api_key: '',
       embedding_cloud_model: ''
-    }))
+    }), AI_SETTINGS_WRITE_PRECONDITION)
 
     wrapper.unmount()
   })
@@ -257,7 +266,7 @@ describe('TextEmbeddingsTab.vue', () => {
       embedding_cloud_provider: '',
       embedding_cloud_api_key: '',
       embedding_cloud_model: ''
-    })
+    }, AI_SETTINGS_WRITE_PRECONDITION)
     expect(toast.success).toHaveBeenCalledWith('Text embedding configuration saved successfully')
 
     wrapper.unmount()

@@ -17,6 +17,10 @@
  */
 
 import { apiClient, getDataRequest } from './core'
+import {
+  buildAiSettingsWritePreconditionRequestOptions,
+  getAiSettingsWritePreconditionFromResponse,
+} from './aiSettingsWritePrecondition'
 
 function createProviderApi(path) {
   const base = `/settings/${path}`
@@ -111,7 +115,22 @@ export const updateOMDbConfig = omdb.updateConfig
 export const testOMDb = omdb.test
 
 export const getAIConfig = ai.getConfig
-export const updateAIConfig = ai.updateConfig
+
+export async function getAIConfigForUpdate() {
+  const response = await apiClient.get('/settings/ai')
+  return {
+    config: response.data,
+    writePrecondition: getAiSettingsWritePreconditionFromResponse(response),
+  }
+}
+
+export function updateAIConfig(data, writePrecondition) {
+  return apiClient.put(
+    '/settings/ai',
+    data,
+    buildAiSettingsWritePreconditionRequestOptions(writePrecondition),
+  )
+}
 export const testAIConnection = ai.test
 
 export function preflightAIVerificationConfig(data) {
@@ -165,6 +184,7 @@ const settingsProvidersApi = {
   updateOMDbConfig,
   testOMDb,
   getAIConfig,
+  getAIConfigForUpdate,
   updateAIConfig,
   testAIConnection,
   preflightAIVerificationConfig,

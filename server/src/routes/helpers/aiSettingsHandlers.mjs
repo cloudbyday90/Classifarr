@@ -32,6 +32,11 @@ import { runSettingsRuntimeRefresh } from './settingsRuntimeRefreshSupport.mjs';
 import { createAiSettingsActionService } from '../../services/aiSettingsActionService.mjs';
 import { createAiSettingsReadService } from '../../services/aiSettingsReadService.mjs';
 import {
+  AI_SETTINGS_WRITE_PRECONDITION_HEADER,
+  createAiSettingsWritePreconditionService,
+  isAiSettingsWritePreconditionError,
+} from '../../services/aiSettingsWritePrecondition.mjs';
+import {
   createCandidateBoundVerificationProviderPreflightService,
 } from '../../services/classificationCandidateBoundVerificationProviderPreflightService.mjs';
 import {
@@ -201,6 +206,10 @@ function requireVerificationCapabilityChangeReceiptActorId(user) {
  *   verificationCapabilityChangeReceiptReadService?: {
  *     list: (request: { actorId: string, query?: Record<string, unknown> }) => Promise<Record<string, unknown>>,
  *   },
+ *   aiSettingsWritePreconditionService?: {
+ *     issueForConfiguration: (configuration: Record<string, unknown> | null) => string,
+ *     assertCurrent: (request: { providedPrecondition?: string, configuration: Record<string, unknown> | null }) => string,
+ *   },
  * }} options
  */
 export function createAiSettingsHandlers({
@@ -225,6 +234,7 @@ export function createAiSettingsHandlers({
   }),
   verificationCapabilityChangeReceiptRepository = new ClassificationCandidateBoundVerificationCapabilityChangeReceiptRepository(),
   verificationCapabilityChangeReceiptReadService = null,
+  aiSettingsWritePreconditionService = createAiSettingsWritePreconditionService(),
 }) {
   let receiptReadService = verificationCapabilityChangeReceiptReadService;
   const getVerificationCapabilityChangeReceiptReadService = () => {
@@ -239,6 +249,7 @@ export function createAiSettingsHandlers({
   const aiSettingsReadService = createAiSettingsReadService({
     db,
     aiRouterService,
+    aiSettingsWritePreconditionService,
     getRagLoopDefaultConfig,
     validateAndNormalizeRagLoopConfig,
     finalizeAiSettingsResponseConfig,
@@ -252,7 +263,12 @@ export function createAiSettingsHandlers({
   return {
     /** @param {SettingsRequest} _req @param {SettingsResponse} res */
     async getConfig(_req, res) {
-      return res.json(await aiSettingsReadService.getConfig());
+      const { config, writePrecondition } = await aiSettingsReadService.getConfigWithWritePrecondition();
+      res.set('Cache-Control', 'no-store');
+      if (writePrecondition) {
+        res.set('ETag', writePrecondition);
+      }
+      return res.json(config);
     },
 
     /** @param {SettingsRequest} req @param {SettingsResponse} res */
@@ -273,6 +289,8 @@ export function createAiSettingsHandlers({
             validateAndNormalizeRagLoopConfig,
             encryptValue,
             formatEncryptedValue,
+            aiSettingsWritePreconditionService,
+            providedWritePrecondition: req.get?.(AI_SETTINGS_WRITE_PRECONDITION_HEADER),
             verificationCapabilityChangeReceiptRepository,
             verificationCapabilityChangeReceiptActorId,
           });
@@ -296,14 +314,25 @@ export function createAiSettingsHandlers({
           }
         }
 
+        const writePrecondition = aiSettingsWritePreconditionService.issueForConfiguration(config);
         finalizeAiSettingsResponseConfig({
           config,
           parseEncryptedValue,
           decryptValue,
         });
 
+        res.set('Cache-Control', 'no-store');
+        res.set('ETag', writePrecondition);
         return res.json(config);
       } catch (error) {
+        if (isAiSettingsWritePreconditionError(error)) {
+          res.set('Cache-Control', 'no-store');
+          return res.status(error.httpStatus).json({
+            error: error.message,
+            code: error.code,
+            reload_required: true,
+          });
+        }
         const response = buildSettingsErrorResponse(error, {
           extras: getCurrentSumExtras(/** @type {AiSettingsHandlerError} */ (error)),
         });

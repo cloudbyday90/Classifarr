@@ -18,6 +18,7 @@ const toast = {
 vi.mock('@/api', () => ({
   default: {
     getAIConfig: vi.fn(),
+    getAIConfigForUpdate: vi.fn(),
     getAIUsage: vi.fn(),
     getPatternConfig: vi.fn(),
     getCostSummary: vi.fn(),
@@ -71,6 +72,7 @@ const baseConfig = {
   api_key: 'sk-masked',
   model: 'gpt-5-mini'
 }
+const AI_SETTINGS_WRITE_PRECONDITION = '"00000000-0000-4000-8000-000000000401"'
 
 function mountView() {
   return mount(AI, {
@@ -94,6 +96,10 @@ function mountView() {
 describe('AI Settings', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    api.getAIConfigForUpdate.mockImplementation(async () => ({
+      config: await api.getAIConfig(),
+      writePrecondition: AI_SETTINGS_WRITE_PRECONDITION,
+    }))
     api.getAIConfig.mockResolvedValue(baseConfig)
     api.getAIUsage.mockResolvedValue({ data: null })
     api.getPatternConfig.mockResolvedValue({})
@@ -182,7 +188,7 @@ describe('AI Settings', () => {
       primary_provider: 'openai',
       api_endpoint: 'https://api.openai.com/v1',
       api_key: 'sk-masked'
-    }))
+    }), AI_SETTINGS_WRITE_PRECONDITION)
     expect(api.updatePatternConfig).toHaveBeenCalledTimes(1)
     expect(toast.warning).toHaveBeenCalledWith(
       'AI provider settings were saved, but pattern settings failed: pattern service unavailable'
@@ -506,7 +512,7 @@ describe('AI Settings', () => {
       api_endpoint: '',
       api_key: '',
       model: ''
-    }))
+    }), AI_SETTINGS_WRITE_PRECONDITION)
     expect(wrapper.text()).not.toContain('Connection ready')
     expect(wrapper.text()).toContain('Select a model...')
   })
@@ -567,7 +573,7 @@ describe('AI Settings', () => {
 
     expect(api.updateAIConfig).toHaveBeenCalledWith(expect.objectContaining({
       model: ''
-    }))
+    }), AI_SETTINGS_WRITE_PRECONDITION)
     expect(wrapper.text()).toContain('Select a model...')
   })
 

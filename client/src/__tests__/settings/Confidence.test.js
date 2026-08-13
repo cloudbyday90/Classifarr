@@ -24,6 +24,7 @@ vi.mock('@/api', () => ({
     revertConfidenceSetting: vi.fn(),
     exportConfidenceSettings: vi.fn(),
     getAIConfig: vi.fn(),
+    getAIConfigForUpdate: vi.fn(),
     updateAIConfig: vi.fn(),
     getLatestRagFallbackIncident: vi.fn()
   }
@@ -52,6 +53,7 @@ const baseConfidenceSettings = {
   learning_max_per_user_day: { value: '50', default: '50' },
   learning_max_per_library_hour: { value: '20', default: '20' }
 }
+const AI_SETTINGS_WRITE_PRECONDITION = '"00000000-0000-4000-8000-000000000404"'
 
 function mockGetRoutes({
   confidence = baseConfidenceSettings,
@@ -64,6 +66,10 @@ function mockGetRoutes({
 } = {}) {
   api.getConfidenceSettings.mockResolvedValue(confidence)
   api.getAIConfig.mockResolvedValue(ai)
+  api.getAIConfigForUpdate.mockImplementation(async () => ({
+    config: await api.getAIConfig(),
+    writePrecondition: AI_SETTINGS_WRITE_PRECONDITION,
+  }))
   api.getLatestRagFallbackIncident.mockResolvedValue(incident)
   api.getConfidenceHistory.mockResolvedValue(history)
 }
@@ -91,7 +97,7 @@ describe('Confidence Settings', () => {
     await flushPromises()
 
     expect(api.getConfidenceSettings).toHaveBeenCalled()
-    expect(api.getAIConfig).toHaveBeenCalled()
+    expect(api.getAIConfigForUpdate).toHaveBeenCalled()
     expect(api.getLatestRagFallbackIncident).toHaveBeenCalled()
 
     expect(wrapper.vm.discordSettings.includeSignalBreakdown).toBe(true)
@@ -122,7 +128,7 @@ describe('Confidence Settings', () => {
     expect(api.updateAIConfig).toHaveBeenCalledWith({
       rag_loop_auto_fallback_enabled: false,
       rag_loop_auto_recover_enabled: true
-    })
+    }, AI_SETTINGS_WRITE_PRECONDITION)
   })
 
   it('renders fallback incident panel when incident exists', async () => {

@@ -29,6 +29,11 @@ import {
   normalizeImageEmbeddingConfig
 } from '@/utils/ragImageEmbeddingsUi'
 import { normalizeRagImageRuntime } from '@/utils/ragStatusUi'
+import {
+  AI_SETTINGS_STALE_WRITE_RECOVERY_MESSAGE,
+  getAiSettingsWritePreconditionFromResponse,
+  isAiSettingsStaleWriteError,
+} from '@/api/aiSettingsWritePrecondition'
 
 export function useImageEmbeddingSettings({ apiClient, toast }) {
   const config = ref({
@@ -51,6 +56,7 @@ export function useImageEmbeddingSettings({ apiClient, toast }) {
   })
 
   const originalConfig = ref({})
+  const aiSettingsWritePrecondition = ref(null)
   const status = ref({
     enabled: false,
     providerOnline: false,
@@ -90,8 +96,10 @@ export function useImageEmbeddingSettings({ apiClient, toast }) {
 
   const loadConfig = async () => {
     try {
-      const configRes = await apiClient.getAIConfig()
-      config.value = normalizeImageEmbeddingConfig(configRes || {})
+      const response = await apiClient.getAIConfigForUpdate()
+      const configRes = response?.config || {}
+      aiSettingsWritePrecondition.value = response?.writePrecondition || null
+      config.value = normalizeImageEmbeddingConfig(configRes)
 
       originalConfig.value = { ...config.value }
 
@@ -150,7 +158,11 @@ export function useImageEmbeddingSettings({ apiClient, toast }) {
     saving.value = true
 
     try {
-      await apiClient.updateAIConfig(buildImageEmbeddingPayload(config.value))
+      const response = await apiClient.updateAIConfig(
+        buildImageEmbeddingPayload(config.value),
+        aiSettingsWritePrecondition.value,
+      )
+      aiSettingsWritePrecondition.value = getAiSettingsWritePreconditionFromResponse(response)
       if (!silent) {
         toast.success('Image embedding configuration saved successfully')
       }
@@ -159,6 +171,13 @@ export function useImageEmbeddingSettings({ apiClient, toast }) {
       return true
     } catch (error) {
       console.error('Failed to save image embedding config:', error)
+      if (isAiSettingsStaleWriteError(error)) {
+        await loadConfig()
+        if (!silent) {
+          toast.warning(AI_SETTINGS_STALE_WRITE_RECOVERY_MESSAGE)
+        }
+        return false
+      }
       if (!silent) {
         toast.error(error.response?.data?.error || 'Failed to save configuration')
       }

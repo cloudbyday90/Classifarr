@@ -23,6 +23,7 @@ const toast = {
 vi.mock('@/api', () => ({
   default: {
     getAIConfig: vi.fn(),
+    getAIConfigForUpdate: vi.fn(),
     getRagStatus: vi.fn(),
     getBackfillStatus: vi.fn(),
     getImageModelMetadata: vi.fn(),
@@ -50,12 +51,17 @@ const baseConfig = {
   image_embedding_cache_ttl_hours: 24,
   image_embedding_cache_max_mb: 1024
 }
+const AI_SETTINGS_WRITE_PRECONDITION = '"00000000-0000-4000-8000-000000000406"'
 
 function mockMountApis(overrides = {}) {
   api.getAIConfig.mockResolvedValue({
     ...baseConfig,
     ...(overrides.config || {})
   })
+  api.getAIConfigForUpdate.mockImplementation(async () => ({
+    config: await api.getAIConfig(),
+    writePrecondition: AI_SETTINGS_WRITE_PRECONDITION,
+  }))
 
   api.getRagStatus.mockResolvedValue({
     image: {
@@ -84,7 +90,10 @@ function mockMountApis(overrides = {}) {
     }
   })
 
-  api.updateAIConfig.mockResolvedValue({ data: { success: true } })
+  api.updateAIConfig.mockResolvedValue({
+    data: { success: true },
+    headers: { etag: AI_SETTINGS_WRITE_PRECONDITION },
+  })
   api.testImageEmbeddingConnection.mockResolvedValue({ data: { success: true, dims: 512 } })
   api.reembedImages.mockResolvedValue({ data: { cleared: 12 } })
 }
@@ -186,7 +195,7 @@ describe('ImageEmbeddingsTab.vue', () => {
       image_embedding_provider_mode: 'separate_local',
       image_embedding_local_api_key: 'local-key',
       image_embedding_local_timeout_ms: 15000
-    }))
+    }), AI_SETTINGS_WRITE_PRECONDITION)
     expect(toast.success).toHaveBeenCalledWith('Image embedding configuration looks good')
 
     wrapper.unmount()
@@ -221,7 +230,7 @@ describe('ImageEmbeddingsTab.vue', () => {
       image_embedding_cloud_api_key: '',
       image_embedding_cloud_model: '',
       image_embedding_cloud_api_endpoint: ''
-    }))
+    }), AI_SETTINGS_WRITE_PRECONDITION)
 
     wrapper.unmount()
   })
@@ -259,7 +268,7 @@ describe('ImageEmbeddingsTab.vue', () => {
       image_embedding_cloud_model: '',
       image_embedding_cloud_api_endpoint: 'https://example.test/models',
       image_embedding_local_api_key: ''
-    }))
+    }), AI_SETTINGS_WRITE_PRECONDITION)
 
     wrapper.unmount()
   })
