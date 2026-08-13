@@ -15,6 +15,9 @@ import {
 import {
   isAiVerificationCapabilityChangeReceiptActorId,
 } from './aiVerificationCapabilityChangeReceiptActorIdentity.mjs';
+import {
+  normalizePositiveAiProviderConfigurationRevision,
+} from './aiProviderConfigurationRevisionIntegrity.mjs';
 
 export const CLASSIFICATION_CANDIDATE_BOUND_VERIFICATION_CAPABILITY_CHANGE_RECEIPT_VERSION =
   'classification.candidate_bound_verification_capability_change_receipt.v1';
@@ -22,10 +25,6 @@ export const CLASSIFICATION_CANDIDATE_BOUND_VERIFICATION_CAPABILITY_CHANGE_RECEI
 const STATUS_IDS = /** @type {Set<string>} */ (new Set(Object.values(
   CANDIDATE_BOUND_VERIFICATION_PROVIDER_PREFLIGHT_STATUS_IDS,
 )));
-
-function isPositiveSafeInteger(value) {
-  return Number.isSafeInteger(value) && value > 0;
-}
 
 export function isCandidateBoundVerificationCapabilityStatusId(value) {
   return typeof value === 'string' && STATUS_IDS.has(value);
@@ -57,13 +56,6 @@ export function buildCandidateBoundVerificationCapabilityChangeReceipt(options =
     actorId,
     configurationRevision,
   } = options;
-  if (!isAiVerificationCapabilityChangeReceiptActorId(actorId)) {
-    throw new TypeError('Verification capability change receipt actor ID is invalid.');
-  }
-  if (!isPositiveSafeInteger(configurationRevision)) {
-    throw new TypeError('Verification capability change receipt configuration revision is invalid.');
-  }
-
   const beforeStatusId = resolveStatusId(beforeConfiguration);
   const afterStatusId = resolveStatusId(afterConfiguration);
 
@@ -71,12 +63,17 @@ export function buildCandidateBoundVerificationCapabilityChangeReceipt(options =
     return null;
   }
 
+  if (!isAiVerificationCapabilityChangeReceiptActorId(actorId)) {
+    throw new TypeError('Verification capability change receipt actor ID is invalid.');
+  }
+  const normalizedConfigurationRevision = normalizePositiveAiProviderConfigurationRevision(configurationRevision);
+
   return Object.freeze({
     version: CLASSIFICATION_CANDIDATE_BOUND_VERIFICATION_CAPABILITY_CHANGE_RECEIPT_VERSION,
     actorId,
     beforeStatusId,
     afterStatusId,
-    configurationRevision,
+    configurationRevision: normalizedConfigurationRevision,
   });
 }
 

@@ -52,6 +52,11 @@ Current development changes will be recorded here.
 
 ### Changed
 
+- **Verification-capability receipt integrity** — AI Settings now serializes
+  first-row configuration saves, increments the private receipt revision in
+  PostgreSQL without unsafe `BIGINT` conversion, enforces append-only
+  capability receipts, and clears non-portable actor-scoped receipts during
+  replace restore.
 - **Verification safety boundary** — Unsupported, fallback, local, reasoning,
   and candidate-mismatch verification paths now fail to operator-confirmation
   review before prompt construction. Malformed verification output cannot

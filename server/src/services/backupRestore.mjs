@@ -48,6 +48,13 @@ export async function clearExistingConfig(client) {
     "SELECT set_config('classifarr.policy_authorized_outcome_receipt_maintenance', 'replace_restore', true)"
   );
   await client.query('DELETE FROM policy_authorized_outcome_source_event_receipts');
+  // Capability receipts are actor-scoped operational history and are not
+  // portable backup configuration. Clear them only through their database
+  // append-only maintenance permit during this replacement transaction.
+  await client.query(
+    "SELECT set_config('classifarr.verification_capability_receipt_maintenance', 'replace_restore', true)"
+  );
+  await client.query('DELETE FROM candidate_bound_verification_capability_receipts');
   await client.query(
     "SELECT set_config('classifarr.policy_migration_verification_run_maintenance', 'replace_restore', true)"
   );

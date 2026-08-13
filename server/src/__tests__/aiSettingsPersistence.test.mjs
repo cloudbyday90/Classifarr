@@ -6,6 +6,9 @@
 import { describe, expect, jest, test } from '@jest/globals';
 import { maskToken } from '../utils/tokenMasking.mjs';
 import { persistAiSettingsConfig } from '../routes/helpers/aiSettingsPersistence.mjs';
+import {
+  AI_PROVIDER_CONFIGURATION_REVISION_LOCK_NAME,
+} from '../services/aiProviderConfigurationRevisionIntegrity.mjs';
 
 describe('persistAiSettingsConfig', () => {
   test('preserves stored masked keys, updates rag config, and invalidates changed image model caches', async () => {
@@ -96,6 +99,16 @@ describe('persistAiSettingsConfig', () => {
     expect(insertParams[36]).toBe('new-host');
     expect(insertParams[37]).toBe(9000);
     expect(insertParams[40]).toBe('stored-image-key');
+    expect(insertParams.at(-1)).toBe(1);
+    expect(client.query).toHaveBeenNthCalledWith(
+      1,
+      'SELECT pg_advisory_xact_lock(hashtext($1))',
+      [AI_PROVIDER_CONFIGURATION_REVISION_LOCK_NAME],
+    );
+    expect(client.query.mock.calls.some(
+      ([sql]) => typeof sql === 'string'
+        && sql.includes('configuration_revision = ai_provider_config.configuration_revision + 1'),
+    )).toBe(true);
     expect(ragUpdateParams).toEqual([true]);
     expect(cacheUpdateParams).toEqual([{}]);
     expect(result.config.image_embedding_models_cache).toEqual({});
@@ -311,6 +324,7 @@ describe('persistAiSettingsConfig', () => {
     expect(insertParams[35]).toBe('disabled');
     expect(insertParams[36]).toBe('');
     expect(insertParams[37]).toBe(8000);
+    expect(insertParams.at(-1)).toBe(1);
     expect(result.config).toEqual(latest);
     expect(result.effects).toEqual({ textEmbeddingsCleared: true });
   });
@@ -353,7 +367,7 @@ describe('persistAiSettingsConfig', () => {
         actorId: 'user:42',
         beforeStatusId: 'primary_path_ineligible',
         afterStatusId: 'verification_ready',
-        configurationRevision: 12,
+        configurationRevision: '12',
       }),
     });
   });

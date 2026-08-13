@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-08-13T11:35:49.291Z
--- Latest Migration: 20260813_100000_add_verification_capability_change_receipts.sql
+-- Generated: 2026-08-13T12:39:51.045Z
+-- Latest Migration: 20260813_110000_enforce_ai_provider_configuration_revision_integrity.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -119,6 +119,29 @@ BEGIN
         ALTER EXTENSION vector UPDATE TO '0.8.6';
     END IF;
 END $$;
+
+
+--
+-- Name: enforce_cbv_capability_receipts_append_only(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.enforce_cbv_capability_receipts_append_only() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF TG_OP = 'DELETE'
+       AND current_setting(
+           'classifarr.verification_capability_receipt_maintenance',
+           true
+       ) = 'replace_restore' THEN
+        RETURN OLD;
+    END IF;
+
+    RAISE EXCEPTION
+        'candidate-bound verification capability receipts are append-only'
+        USING ERRCODE = '55000';
+END;
+$$;
 
 
 --
@@ -723,6 +746,7 @@ CREATE TABLE public.ai_provider_config (
     CONSTRAINT ai_cfg_trace_max_events_chk CHECK (((rag_loop_trace_max_events >= 1) AND (rag_loop_trace_max_events <= 200))),
     CONSTRAINT ai_provider_config_jitter_factor_check CHECK (((jitter_factor >= (0)::numeric) AND (jitter_factor <= (1)::numeric))),
     CONSTRAINT ai_provider_config_retry_backoff_multiplier_check CHECK (((retry_backoff_multiplier >= 1.0) AND (retry_backoff_multiplier <= 5.0))),
+    CONSTRAINT ai_provider_config_revision_ck CHECK ((configuration_revision >= 0)),
     CONSTRAINT formula_weights_sum_check CHECK ((((((formula_pattern_weight + formula_rule_weight) + formula_rag_weight) + formula_history_weight) >= (0.99)::double precision) AND ((((formula_pattern_weight + formula_rule_weight) + formula_rag_weight) + formula_history_weight) <= (1.01)::double precision)))
 );
 
@@ -10652,6 +10676,13 @@ CREATE INDEX idx_webhook_log_type ON public.webhook_log USING btree (webhook_typ
 
 
 --
+-- Name: candidate_bound_verification_capability_receipts cbv_capability_receipts_append_only; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER cbv_capability_receipts_append_only BEFORE DELETE OR UPDATE ON public.candidate_bound_verification_capability_receipts FOR EACH ROW EXECUTE FUNCTION public.enforce_cbv_capability_receipts_append_only();
+
+
+--
 -- Name: classification_history classification_history_totals_sync_trigger; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -13758,6 +13789,7 @@ FROM unnest(ARRAY[
     '20260810_140000_add_historic_route_safety_refresh_receipts.sql',
     '20260812_100000_add_candidate_bound_verification_metrics_index.sql',
     '20260812_110000_add_historic_route_safety_refresh_recent_receipt_index.sql',
-    '20260813_100000_add_verification_capability_change_receipts.sql'
+    '20260813_100000_add_verification_capability_change_receipts.sql',
+    '20260813_110000_enforce_ai_provider_configuration_revision_integrity.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

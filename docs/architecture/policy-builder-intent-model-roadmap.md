@@ -80,6 +80,12 @@ Current execution focus:
   with a server-derived actor and monotonic revision in the same transaction;
   actor-scoped receipt reads are bounded, read-only, and never expose provider
   configuration or change authority.
+- **Completed:** **11R.9 Configuration Revision Integrity And
+  Existing-Installation Migration Acceptance**. The private receipt revision
+  now has a PostgreSQL-enforced non-negative baseline, database-side
+  increment, missing-row transaction advisory lock, exact `BIGINT` boundary,
+  append-only receipt guard, and replace-restore clearing policy with fresh,
+  upgrade, and concurrent-save acceptance coverage.
 - **Completed:** **10R.4 Release Acceptance Assembly**. Repository acceptance
   now produces a passed or blocked manifest artifact, while a separate
   protected-environment workflow records active-installation evidence without
@@ -119,8 +125,8 @@ completed lifecycle acceptance: 10R.2.1 -> 10R.2.2 -> 10R.2.3
 completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3 -> 10R.3.4 -> 10R.3.5 -> 10R.3.6 -> 10R.3.7 -> 10R.3.8
 completed release hardening: 10R.4 -> 10R.4.1
 active release candidate: v0.48.0-beta -> 10R.4.2 -> 10R.4.3
-completed post-release authority hardening: 11R.1.1 -> 11R.1.2 -> 11R.2 -> 11R.3 -> 11R.4 -> 11R.5 -> 11R.6 -> 11R.7 -> 11R.8
-next provider-admission guardrail: 11R.9 configuration revision integrity and existing-installation migration acceptance
+completed post-release authority hardening: 11R.1.1 -> 11R.1.2 -> 11R.2 -> 11R.3 -> 11R.4 -> 11R.5 -> 11R.6 -> 11R.7 -> 11R.8 -> 11R.9
+next provider-admission guardrail: 11R.10 AI Settings stale-write conflict acceptance
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
 
@@ -12723,7 +12729,7 @@ Receipt](candidate-bound-verification-capability-change-receipt.md).
 
 ### 11R.9 Configuration Revision Integrity And Existing-Installation Migration Acceptance
 
-Status: planned.
+Status: complete on 2026-08-13.
 
 Intent: prove the 11R.8 configuration revision and status-only receipt
 boundary remains correct for both fresh and pre-existing PostgreSQL
@@ -12732,18 +12738,48 @@ configuration audit system.
 
 Completion criteria:
 
-- fresh and upgraded schema tests prove the singleton configuration row has a
-  safe baseline revision, each successful save increments it monotonically,
-  and only a capability transition creates one receipt for that revision;
-- concurrent or replayed settings-save acceptance proves the configuration row
-  lock and revision uniqueness preserve one ordered receipt without leaking a
-  provider, model, endpoint, credential, prompt, policy, item, or route;
-- schema dump and restore coverage include the revision column and receipt
-  table, and retained receipt reads remain actor-scoped, bounded, read-only,
-  and free of provider or configuration side effects; and
-- the task records upgrade and recovery evidence without publishing a release
-  or changing candidate-bound verification, policy, routing, retry, learning,
-  or provider authority.
+- fresh and upgraded schema acceptance proves the singleton configuration row
+  has a non-negative zero baseline, each AI Settings save increments it in
+  PostgreSQL, and only a capability transition creates one receipt for that
+  revision;
+- concurrent first-row and replayed settings-save acceptance proves a
+  transaction-scoped advisory lock plus row lock preserves an ordered receipt
+  without leaking a provider, model, endpoint, credential, prompt, policy,
+  item, or route;
+- the fresh schema snapshot includes the revision column and receipt table;
+  exact `BIGINT` values do not pass through unsafe JavaScript number handling;
+  replace restore clears actor-scoped operational receipts through a
+  transaction-local maintenance permit rather than carrying them across an
+  installation; and
+- the task records migration, append-only, and recovery evidence without
+  publishing a release or changing candidate-bound verification, policy,
+  routing, retry, learning, or provider authority.
+
+Implemented design: [Verification Capability Configuration Revision
+Integrity](verification-capability-configuration-revision-integrity.md).
+
+### 11R.10 AI Settings Stale-Write Conflict Acceptance
+
+Status: planned.
+
+Intent: prevent one administrator from silently overwriting a later AI
+Settings save while keeping the private receipt revision out of the browser
+contract and preserving all existing candidate-bound verification authority
+boundaries.
+
+Completion criteria:
+
+- the settings read returns a server-issued opaque write precondition and the
+  write requires it; a stale request fails closed with a fixed recovery result
+  and no partial persistence;
+- the browser refreshes the current settings only after a stale-save result and
+  never derives or edits revision material;
+- concurrency acceptance proves exactly one competing write succeeds, while
+  the rejected stale write creates no receipt, provider call, policy change,
+  route, retry, or runtime refresh; and
+- the task documents the precondition's expiry, error, privacy, and existing
+  installation behavior without adding provider telemetry or generic
+  configuration history.
 
 ## Testing Strategy
 

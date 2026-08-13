@@ -147,10 +147,15 @@ separate operations.
   privacy bounds, and no provider, policy, routing, retry, or configuration
   side effects while reading.
 
-## Next Task
+## Follow-On
 
-Proceed with **11R.9 Configuration Revision Integrity And Existing-Installation
-Migration Acceptance**. Exercise this new column and receipt table against
-fresh and upgraded PostgreSQL installations, prove monotonic revisions and
-same-transaction receipt behavior under concurrent settings saves, and verify
-schema dump and restoration coverage without adding provider or policy work.
+**11R.9 Configuration Revision Integrity And Existing-Installation Migration
+Acceptance** is complete. The revision now has a database-enforced baseline,
+database-side increment, first-row advisory lock, exact `BIGINT` receipt
+representation, append-only receipt guard, and replace-restore clearing
+policy. See [Verification Capability Configuration Revision
+Integrity](verification-capability-configuration-revision-integrity.md).
+
+Next is **11R.10 AI Settings Stale-Write Conflict Acceptance**: define an
+opaque server-issued write precondition that prevents one administrator from
+silently overwriting a later AI Settings save.

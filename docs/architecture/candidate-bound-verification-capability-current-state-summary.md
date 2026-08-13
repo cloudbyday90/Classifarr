@@ -137,8 +137,13 @@ Decision: rejected. The bounded link preserves distinct read models.
 
 ## Follow-On
 
-11R.8 completed the bounded change-receipt boundary described here. Continue
-with **11R.9 Configuration Revision Integrity And Existing-Installation
-Migration Acceptance** to prove fresh and upgraded PostgreSQL installations
-preserve monotonic revisions and transactional receipts without broadening the
-configuration or provider-data boundary.
+11R.8 and 11R.9 completed the bounded change-receipt and revision-integrity
+boundaries described here. Fresh and upgraded PostgreSQL installations now
+preserve database-authoritative revisions and transactional receipts without
+broadening the configuration or provider-data boundary. See [Verification
+Capability Configuration Revision
+Integrity](verification-capability-configuration-revision-integrity.md).
+
+Next is **11R.10 AI Settings Stale-Write Conflict Acceptance**, which will add
+an opaque server-issued write precondition for the settings editor rather than
+exposing the private receipt revision.

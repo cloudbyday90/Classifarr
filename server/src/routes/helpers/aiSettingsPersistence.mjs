@@ -27,31 +27,11 @@ import {
 import {
   buildCandidateBoundVerificationCapabilityChangeReceipt,
 } from '../../services/classificationCandidateBoundVerificationCapabilityChangeReceipt.mjs';
+import {
+  acquireAiProviderConfigurationRevisionWriteLock,
+} from '../../services/aiProviderConfigurationRevisionIntegrity.mjs';
 
 /** @typedef {Record<string, any>} AiSettingsPersistenceConfig */
-
-function getNextConfigurationRevision(existing) {
-  const currentRevision = Number(existing?.configuration_revision);
-  return Number.isSafeInteger(currentRevision) && currentRevision >= 0
-    ? currentRevision + 1
-    : 1;
-}
-
-/**
- * PostgreSQL returns BIGINT values as strings by default. Keep the persisted
- * value opaque to the settings response, but normalize it for the receipt
- * contract. The fallback also keeps a pre-migration in-memory test row safe.
- */
-function resolvePersistedConfigurationRevision({ existing, persistedConfig }) {
-  const persistedRevision = Number(persistedConfig?.configuration_revision);
-  if (Number.isSafeInteger(persistedRevision) && persistedRevision > 0) {
-    return persistedRevision;
-  }
-
-  const nextRevision = getNextConfigurationRevision(existing);
-  persistedConfig.configuration_revision = nextRevision;
-  return nextRevision;
-}
 
 /**
  * @param {{
@@ -77,6 +57,7 @@ export async function persistAiSettingsConfig({
   verificationCapabilityChangeReceiptRepository = null,
   verificationCapabilityChangeReceiptActorId = null,
 }) {
+  await acquireAiProviderConfigurationRevisionWriteLock(client);
   const existingResult = await client.query('SELECT * FROM ai_provider_config WHERE id = 1 FOR UPDATE');
   const existing = /** @type {AiSettingsPersistenceConfig} */ (existingResult.rows[0] || {});
 
@@ -231,7 +212,7 @@ export async function persistAiSettingsConfig({
                 rag_graph_candidates_limit = EXCLUDED.rag_graph_candidates_limit,
                 image_embedding_local_api_key = EXCLUDED.image_embedding_local_api_key,
                 image_embedding_local_timeout_ms = EXCLUDED.image_embedding_local_timeout_ms,
-                configuration_revision = EXCLUDED.configuration_revision,
+                configuration_revision = ai_provider_config.configuration_revision + 1,
                 updated_at = NOW()
         `, buildAiProviderConfigUpsertValues({
     body,
@@ -264,10 +245,9 @@ export async function persistAiSettingsConfig({
       beforeConfiguration: existing,
       afterConfiguration: persistedConfig,
       actorId: verificationCapabilityChangeReceiptActorId,
-      configurationRevision: resolvePersistedConfigurationRevision({
-        existing,
-        persistedConfig,
-      }),
+      // The receipt builder validates this only after it has established a
+      // strict capability transition. Unchanged saves do not create receipts.
+      configurationRevision: persistedConfig?.configuration_revision,
     });
     if (receipt) {
       await verificationCapabilityChangeReceiptRepository.record({ client, receipt });

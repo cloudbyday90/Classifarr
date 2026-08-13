@@ -59,6 +59,14 @@ describe('backup restore authorized outcome receipt lifecycle', () => {
     );
     expect(client.query).toHaveBeenNthCalledWith(
       7,
+      "SELECT set_config('classifarr.verification_capability_receipt_maintenance', 'replace_restore', true)"
+    );
+    expect(client.query).toHaveBeenNthCalledWith(
+      8,
+      'DELETE FROM candidate_bound_verification_capability_receipts'
+    );
+    expect(client.query).toHaveBeenNthCalledWith(
+      9,
       "SELECT set_config('classifarr.policy_migration_verification_run_maintenance', 'replace_restore', true)"
     );
     expect(client.query).toHaveBeenCalledWith(

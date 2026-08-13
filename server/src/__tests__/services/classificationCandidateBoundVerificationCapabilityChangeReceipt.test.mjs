@@ -34,7 +34,7 @@ describe('candidate-bound verification capability change receipt', () => {
         api_endpoint: 'https://after.example.test',
       },
       actorId: 'user:42',
-      configurationRevision: 12,
+      configurationRevision: '12',
     });
 
     expect(receipt).toEqual({
@@ -42,7 +42,7 @@ describe('candidate-bound verification capability change receipt', () => {
       actorId: 'user:42',
       beforeStatusId: 'primary_path_ineligible',
       afterStatusId: 'verification_ready',
-      configurationRevision: 12,
+      configurationRevision: '12',
     });
     expect(JSON.stringify(receipt)).not.toContain('secret');
     expect(JSON.stringify(receipt)).not.toContain('example.test');
@@ -58,8 +58,19 @@ describe('candidate-bound verification capability change receipt', () => {
         api_key: 'different-but-private',
       },
       actorId: 'user:42',
-      configurationRevision: 13,
+      configurationRevision: '13',
     })).toBeNull();
+  });
+
+  test('preserves an exact revision above the JavaScript safe-integer range', () => {
+    const receipt = buildCandidateBoundVerificationCapabilityChangeReceipt({
+      beforeConfiguration: INELIGIBLE_CONFIGURATION,
+      afterConfiguration: VERIFICATION_READY_CONFIGURATION,
+      actorId: 'user:42',
+      configurationRevision: '9007199254740992',
+    });
+
+    expect(receipt.configurationRevision).toBe('9007199254740992');
   });
 
   test('requires a stable actor identity and a positive normalized revision', () => {
@@ -67,7 +78,7 @@ describe('candidate-bound verification capability change receipt', () => {
       beforeConfiguration: INELIGIBLE_CONFIGURATION,
       afterConfiguration: VERIFICATION_READY_CONFIGURATION,
       actorId: 'user:42',
-      configurationRevision: 1,
+      configurationRevision: '1',
     };
 
     expect(() => buildCandidateBoundVerificationCapabilityChangeReceipt({
@@ -76,7 +87,7 @@ describe('candidate-bound verification capability change receipt', () => {
     })).toThrow('actor ID is invalid');
     expect(() => buildCandidateBoundVerificationCapabilityChangeReceipt({
       ...baseRequest,
-      configurationRevision: '1',
+      configurationRevision: '0',
     })).toThrow('configuration revision is invalid');
   });
 

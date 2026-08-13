@@ -109,6 +109,10 @@ const _ragLoopConfig = mockRagLoopConfig;
 const { createSettingsTestRouter } = await import('./setup/createSettingsTestRouter.mjs');
 const settingsRouter = createSettingsTestRouter(express);
 
+function isConfigurationRevisionWriteLock(sql) {
+  return sql === 'SELECT pg_advisory_xact_lock(hashtext($1))';
+}
+
 describe('Settings AI Routes', () => {
   let app;
 
@@ -299,6 +303,9 @@ describe('Settings AI Routes', () => {
       if (sql === 'BEGIN' || sql === 'COMMIT') {
         return { rows: [] };
       }
+      if (isConfigurationRevisionWriteLock(sql)) {
+        return { rows: [] };
+      }
       if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1 FOR UPDATE'
         || sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
         return { rows: [existingConfig] };
@@ -355,6 +362,7 @@ describe('Settings AI Routes', () => {
     let capturedParams;
     client.query.mockImplementation(async (sql, params) => {
       if (sql === 'BEGIN' || sql === 'COMMIT') return { rows: [] };
+      if (isConfigurationRevisionWriteLock(sql)) return { rows: [] };
       if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1 FOR UPDATE'
         || sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
         return { rows: [existingConfig] };
@@ -392,6 +400,7 @@ describe('Settings AI Routes', () => {
     let capturedParams;
     client.query.mockImplementation(async (sql, params) => {
       if (sql === 'BEGIN' || sql === 'COMMIT') return { rows: [] };
+      if (isConfigurationRevisionWriteLock(sql)) return { rows: [] };
       if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1 FOR UPDATE'
         || sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
         return { rows: [existingConfig] };
@@ -434,6 +443,7 @@ describe('Settings AI Routes', () => {
     let capturedParams;
     client.query.mockImplementation(async (sql, params) => {
       if (sql === 'BEGIN' || sql === 'COMMIT') return { rows: [] };
+      if (isConfigurationRevisionWriteLock(sql)) return { rows: [] };
       if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1 FOR UPDATE'
         || sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
         return { rows: [existingConfig] };
@@ -732,6 +742,9 @@ describe('Settings AI Routes', () => {
       if (sql === 'BEGIN' || sql === 'ROLLBACK') {
         return { rows: [] };
       }
+      if (isConfigurationRevisionWriteLock(sql)) {
+        return { rows: [] };
+      }
       if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1 FOR UPDATE'
         || sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
         return {
@@ -800,6 +813,9 @@ describe('Settings AI Routes', () => {
     let selectCount = 0;
     client.query.mockImplementation(async (sql, params) => {
       if (sql === 'BEGIN' || sql === 'COMMIT') {
+        return { rows: [] };
+      }
+      if (isConfigurationRevisionWriteLock(sql)) {
         return { rows: [] };
       }
       if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1 FOR UPDATE'
