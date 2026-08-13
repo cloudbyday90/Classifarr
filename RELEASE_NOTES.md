@@ -2,6 +2,43 @@
 
 > Versioning note: these release notes and the UI use public labels such as `v0.48.0-beta`. Package files use semver-safe versions such as `0.48.0-beta`.
 
+## v0.48.1-beta
+**Title: Build routing policies you can understand, verify, and trust**
+
+### 🎉 What You'll Notice
+- **Policy intent is now the decision foundation** — describe what each library is for, and Classifarr evaluates every destination against that declared intent before routing.
+- **Clearer review decisions** — Needs Attention shows the leading destination, its policy score, the threshold that applies, and why confirmation is still required.
+- **AI verification has a bounded role** — when available, AI can confirm the server-selected candidate; it cannot silently select a different library or override a deterministic policy outcome.
+
+### 📊 Quick Visual
+```text
+Policy Builder decision path
+Declared library intent  -> Deterministic candidate ranking
+Candidate evidence       -> Clear route or review explanation
+AI verification          -> Advisory confirmation only
+Operator decision        -> Explicit, auditable resolution
+```
+
+### ✨ Highlights
+- The Policy Builder Intent Model is the hero implementation for this beta: it turns destination rules into a durable, explainable routing contract for movies and TV.
+- Candidate-bound verification accepts only a small confirmation contract for the candidate selected by policy, keeping provider output from becoming hidden routing authority.
+- Existing installations gain safer policy reconciliation, route-recovery tools, and bounded operational receipts without resetting library configuration.
+
+### 🔧 Reliability Improvements
+- Review and retry paths preserve the policy result that caused the decision, so a generic confidence score cannot accidentally replace the route-authoritative score.
+- Provider capability checks, failure handling, and restart recovery are isolated from deterministic policy routing and expose clear operator status instead of raw AI content.
+- Concurrent AI Settings edits now detect stale browser state before a save can overwrite a newer configuration.
+
+### 👥 Who This Helps
+- **Library operators:** get predictable routing that matches the purpose they declared for each destination.
+- **Reviewers:** see what the proposed route means and can confirm or choose another destination with less guesswork.
+- **Administrators:** can inspect bounded verification and recovery outcomes without exposing provider prompts, responses, or secrets.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
+
 ## v0.48.0c-beta
 **Title: Reliable container updates on every supported architecture**
 

@@ -11,6 +11,8 @@ Archived changelogs: [August 2026 Pre-release Details](docs/changelog/CHANGELOG-
 
 Current development changes will be recorded here.
 
+## [0.48.1-beta] - 2026-08-13
+
 ### Added
 
 - **Verification capability change receipts** — Added actor-scoped,
@@ -84,6 +86,8 @@ Current development changes will be recorded here.
 
 ### Security
 
+- **Client transitive dependency remediation** — Updated the `postcss`-resolved
+  `nanoid` lockfile entry to 3.3.18 for the current upstream security advisory.
 - **Historic retry receipt authorization** — Direct receipt reconciliation now requires the same server-derived actor that created the receipt and returns the existing generic 404 for foreign or absent receipt IDs.
 
 ## [0.48.0c-beta] - 2026-08-09
