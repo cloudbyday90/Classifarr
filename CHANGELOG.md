@@ -13,6 +13,8 @@ Current development changes will be recorded here.
 
 ### Added
 
+- **Verification capability change receipts** — Added actor-scoped,
+  transactional strict-capability history without provider configuration or authority changes.
 - **Saved verification capability summary** — AI Settings now shows the
   server-owned current strict-verification capability, refreshes it after an
   AI-settings save or explicit operator request, ignores stale reads, and

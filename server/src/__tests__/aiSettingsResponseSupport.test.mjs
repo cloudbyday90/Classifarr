@@ -17,6 +17,7 @@ describe('aiSettingsResponseSupport', () => {
       rag_loop_auto_recover_last_attempt_at: '2026-05-12T00:00:00.000Z',
       image_embedding_models_cache: { stale: true },
       image_embedding_models_cache_updated_at: '2026-05-12T00:00:00.000Z',
+      configuration_revision: '12',
       model: 'gpt-5.2',
     };
 
@@ -27,6 +28,7 @@ describe('aiSettingsResponseSupport', () => {
     expect(config.rag_loop_auto_recover_last_attempt_at).toBeUndefined();
     expect(config.image_embedding_models_cache).toBeUndefined();
     expect(config.image_embedding_models_cache_updated_at).toBeUndefined();
+    expect(config.configuration_revision).toBe('12');
     expect(config.model).toBe('gpt-5.2');
   });
 
@@ -40,6 +42,7 @@ describe('aiSettingsResponseSupport', () => {
       image_embedding_local_host: '',
       image_embedding_local_port: 11434,
       image_embedding_models_cache: { stale: true },
+      configuration_revision: '12',
     };
 
     const finalizedConfig = finalizeAiSettingsResponseConfig({
@@ -61,6 +64,7 @@ describe('aiSettingsResponseSupport', () => {
     expect(config.image_embedding_provider_mode).toBe('disabled');
     expect(config.image_embedding_local_port).toBe(8000);
     expect(config.image_embedding_models_cache).toBeUndefined();
+    expect(config.configuration_revision).toBeUndefined();
   });
 
   test('finalizeAiSettingsResponseConfig returns falsy configs unchanged', () => {
@@ -74,6 +78,7 @@ describe('aiSettingsResponseSupport', () => {
       image_embedding_provider_mode: 'same',
       image_embedding_local_host: '',
       image_embedding_local_port: 11434,
+      configuration_revision: '12',
     };
 
     const finalizedConfig = finalizeAiSettingsResponseConfig({
@@ -86,6 +91,6 @@ describe('aiSettingsResponseSupport', () => {
     expect(config.api_key).toBe(maskToken('live-ai-key'));
     expect(config.image_embedding_provider_mode).toBe('disabled');
     expect(config.image_embedding_local_port).toBe(8000);
+    expect(config.configuration_revision).toBeUndefined();
   });
 });
-

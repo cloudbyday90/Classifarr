@@ -37,7 +37,16 @@ import {
 import {
   CANDIDATE_BOUND_VERIFICATION_PROVIDER_PREFLIGHT_PRESENTATION_CONTEXT_IDS,
 } from '../../services/classificationCandidateBoundVerificationProviderPreflight.mjs';
-import { ValidationError } from '../../utils/appError.mjs';
+import {
+  ClassificationCandidateBoundVerificationCapabilityChangeReceiptRepository,
+} from '../../services/classificationCandidateBoundVerificationCapabilityChangeReceiptRepository.mjs';
+import {
+  ClassificationCandidateBoundVerificationCapabilityChangeReceiptReadService,
+} from '../../services/classificationCandidateBoundVerificationCapabilityChangeReceiptReadService.mjs';
+import {
+  getAiVerificationCapabilityChangeReceiptActorId,
+} from '../../services/aiVerificationCapabilityChangeReceiptActorIdentity.mjs';
+import { ForbiddenError, ValidationError } from '../../utils/appError.mjs';
 
 /** @typedef {Record<string, unknown>} AiSettingsRequestBody */
 /** @typedef {import('./settingsRouteContracts.mjs').SettingsBodyRequest<AiSettingsRequestBody>} SettingsRequest */
@@ -145,6 +154,16 @@ function validateAiSettingsUpdatePayload({
   }
 }
 
+function requireVerificationCapabilityChangeReceiptActorId(user) {
+  const actorId = getAiVerificationCapabilityChangeReceiptActorId(user);
+  if (!actorId) {
+    throw new ForbiddenError('A stable authenticated administrator identity is required.', {
+      code: 'verification_capability_receipt_actor_identity_required',
+    });
+  }
+  return actorId;
+}
+
 /**
  * @param {{
  *   db: SettingsDb,
@@ -175,6 +194,13 @@ function validateAiSettingsUpdatePayload({
  *   candidateBoundVerificationProviderPreflightService?: {
  *     getPreflight: (request?: { proposedConfiguration?: AiSettingsRequestBody, presentationContext?: string }) => Promise<Record<string, unknown>>,
  *   },
+ *   verificationCapabilityChangeReceiptRepository?: {
+ *     record: (request: { client: SettingsDbClient, receipt: Record<string, unknown> }) => Promise<unknown>,
+ *     listForActor: (request: Record<string, unknown>) => Promise<Record<string, unknown>[]>,
+ *   },
+ *   verificationCapabilityChangeReceiptReadService?: {
+ *     list: (request: { actorId: string, query?: Record<string, unknown> }) => Promise<Record<string, unknown>>,
+ *   },
  * }} options
  */
 export function createAiSettingsHandlers({
@@ -197,7 +223,19 @@ export function createAiSettingsHandlers({
   candidateBoundVerificationProviderPreflightService = createCandidateBoundVerificationProviderPreflightService({
     database: db,
   }),
+  verificationCapabilityChangeReceiptRepository = new ClassificationCandidateBoundVerificationCapabilityChangeReceiptRepository(),
+  verificationCapabilityChangeReceiptReadService = null,
 }) {
+  let receiptReadService = verificationCapabilityChangeReceiptReadService;
+  const getVerificationCapabilityChangeReceiptReadService = () => {
+    if (!receiptReadService) {
+      receiptReadService = new ClassificationCandidateBoundVerificationCapabilityChangeReceiptReadService({
+        db,
+        receiptRepository: verificationCapabilityChangeReceiptRepository,
+      });
+    }
+    return receiptReadService;
+  };
   const aiSettingsReadService = createAiSettingsReadService({
     db,
     aiRouterService,
@@ -224,6 +262,7 @@ export function createAiSettingsHandlers({
         getRagLoopDefaultConfig,
         validateRagLoopConfigPayloadKeys,
       });
+      const verificationCapabilityChangeReceiptActorId = requireVerificationCapabilityChangeReceiptActorId(req.user);
 
       try {
         const { config, effects } = await db.withTransaction(async (client) => {
@@ -234,6 +273,8 @@ export function createAiSettingsHandlers({
             validateAndNormalizeRagLoopConfig,
             encryptValue,
             formatEncryptedValue,
+            verificationCapabilityChangeReceiptRepository,
+            verificationCapabilityChangeReceiptActorId,
           });
         }); // end withTransaction
 
@@ -305,6 +346,16 @@ export function createAiSettingsHandlers({
       });
       res.set('Cache-Control', 'no-store');
       return res.json(capability);
+    },
+
+    /** @param {SettingsRequest} req @param {SettingsResponse} res */
+    async getVerificationCapabilityChangeReceipts(req, res) {
+      const receipts = await getVerificationCapabilityChangeReceiptReadService().list({
+        actorId: requireVerificationCapabilityChangeReceiptActorId(req.user),
+        query: req.query || {},
+      });
+      res.set('Cache-Control', 'no-store');
+      return res.json(receipts);
     },
 
     /** @param {SettingsRequest} req @param {SettingsResponse} res */

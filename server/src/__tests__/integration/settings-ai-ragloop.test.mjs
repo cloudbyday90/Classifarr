@@ -29,6 +29,12 @@ const { createSettingsTestRouter } = await import('../setup/createSettingsTestRo
 const settingsRouter = createSettingsTestRouter(express);
 const app = express();
 app.use(express.json());
+// The production API mounts settings behind authenticated administrator middleware.
+// This focused integration fixture exercises the inner router directly.
+app.use((_req, _res, next) => {
+    _req.user = { id: 1, role: 'admin' };
+    next();
+});
 app.use('/api/settings', settingsRouter);
 app.use(errorHandler);
 

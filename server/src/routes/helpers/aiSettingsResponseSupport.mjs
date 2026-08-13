@@ -38,6 +38,11 @@ const INTERNAL_STATE_COLUMNS = [
   'image_embedding_models_cache_updated_at',
 ];
 
+const ALWAYS_PRIVATE_COLUMNS = [
+  // The revision is an internal receipt idempotency boundary, not a setting.
+  'configuration_revision',
+];
+
 export function stripAiSettingsInternalState(config) {
   for (const column of INTERNAL_STATE_COLUMNS) {
     delete config[column];
@@ -72,6 +77,9 @@ export function finalizeAiSettingsResponseConfig({
   }
 
   normalizeImageEmbeddingConfigState({ config });
+  for (const column of ALWAYS_PRIVATE_COLUMNS) {
+    delete config[column];
+  }
   maskAiSettingsSecretFields({
     config,
     parseEncryptedValue,

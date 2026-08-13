@@ -167,9 +167,19 @@ function resolvePreflightStatus({ primaryPath, budgetFallbackPath }) {
     : CANDIDATE_BOUND_VERIFICATION_PROVIDER_PREFLIGHT_STATUS_IDS.PRIMARY_PATH_INELIGIBLE;
 }
 
-function resolvePresentation(statusId, presentationContext) {
+/**
+ * @param {string} statusId
+ * @param {string} presentationContext
+ */
+export function getCandidateBoundVerificationProviderPreflightStatusPresentation(
+  statusId,
+  presentationContext = CANDIDATE_BOUND_VERIFICATION_PROVIDER_PREFLIGHT_PRESENTATION_CONTEXT_IDS.PROPOSED_CONFIGURATION,
+) {
   const presentation = PREFLIGHT_PRESENTATIONS[statusId];
-  const savedConfiguration = presentationContext
+  if (!presentation) {
+    throw new TypeError('Candidate-bound verification provider preflight status ID is invalid.');
+  }
+  const savedConfiguration = String(presentationContext)
     === CANDIDATE_BOUND_VERIFICATION_PROVIDER_PREFLIGHT_PRESENTATION_CONTEXT_IDS.SAVED_CONFIGURATION;
 
   return Object.freeze({
@@ -197,7 +207,10 @@ export function buildCandidateBoundVerificationProviderPreflight({
   const primaryPath = buildPrimaryPath(configuration);
   const budgetFallbackPath = buildBudgetFallbackPath(configuration);
   const statusId = resolvePreflightStatus({ primaryPath, budgetFallbackPath });
-  const presentation = resolvePresentation(statusId, presentationContext);
+  const presentation = getCandidateBoundVerificationProviderPreflightStatusPresentation(
+    statusId,
+    presentationContext,
+  );
 
   return Object.freeze({
     version: CLASSIFICATION_CANDIDATE_BOUND_VERIFICATION_PROVIDER_PREFLIGHT_VERSION,

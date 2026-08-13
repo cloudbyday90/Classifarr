@@ -135,11 +135,10 @@ Decision: rejected. The bounded link preserves distinct read models.
   bounds, no provider/model discovery, no mutation, explicit and post-save
   refresh, stale-read rejection, failure redaction, and verification-tab link.
 
-## Next Task
+## Follow-On
 
-Proceed with **11R.8 Verification Capability Change Receipt**. Add a durable,
-administrator-authorized receipt for a successful AI configuration save that
-records only fixed before-and-after strict-verification status IDs,
-server-derived actor, configuration revision, and timestamp. It must not store
-provider, model, endpoint, credential, prompt, model output, policy, item,
-library, or routing data, and it must not create provider or policy authority.
+11R.8 completed the bounded change-receipt boundary described here. Continue
+with **11R.9 Configuration Revision Integrity And Existing-Installation
+Migration Acceptance** to prove fresh and upgraded PostgreSQL installations
+preserve monotonic revisions and transactional receipts without broadening the
+configuration or provider-data boundary.

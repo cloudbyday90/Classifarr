@@ -104,7 +104,7 @@ describe('aiSettingsHandlers', () => {
     });
     const res = createResponse();
 
-    await handlers.updateConfig({ body: { model: 'gpt-5.4' } }, res);
+    await handlers.updateConfig({ body: { model: 'gpt-5.4' }, user: { id: 1 } }, res);
 
     expect(res.json).toHaveBeenCalledWith(persistedConfig);
     expect(finalizeAiSettingsResponseConfig).toHaveBeenCalledWith({
@@ -146,7 +146,7 @@ describe('aiSettingsHandlers', () => {
     });
     const res = createResponse();
 
-    await handlers.updateConfig({ body: { formula_pattern_weight: 0.5 } }, res);
+    await handlers.updateConfig({ body: { formula_pattern_weight: 0.5 }, user: { id: 1 } }, res);
 
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith({
@@ -190,7 +190,7 @@ describe('aiSettingsHandlers', () => {
     });
     const res = createResponse();
 
-    await handlers.updateConfig({ body: { embedding_provider_mode: 'cloud' } }, res);
+    await handlers.updateConfig({ body: { embedding_provider_mode: 'cloud' }, user: { id: 1 } }, res);
 
     expect(backfillOrchestratorService.maybeStartIdleBackfill).toHaveBeenCalledWith('ai_settings_embedding_identity_change');
     expect(logger.warn).toHaveBeenCalledWith('RAG backfill reconcile failed after AI settings update', {
@@ -230,5 +230,86 @@ describe('aiSettingsHandlers', () => {
       statusId: 'verification_ready',
       label: 'Strict verification is available',
     });
+  });
+
+  test('does not construct receipt reads while unrelated settings handlers are used', async () => {
+    const getConfig = jest.fn().mockResolvedValue({ primary_provider: 'none' });
+    createAiSettingsReadService.mockReturnValueOnce({
+      getConfig,
+      getUsageSummary: jest.fn(),
+      getUsageFallback: jest.fn(),
+      getStatus: jest.fn(),
+    });
+    const handlers = createAiSettingsHandlers({
+      db: { query: jest.fn() },
+      logger: { warn: jest.fn(), error: jest.fn(), info: jest.fn() },
+      cloudLLMService: {},
+      aiRouterService: { clearCache: jest.fn() },
+      ollamaService: { resetConfig: jest.fn() },
+      embeddingProvider: { resetConfig: jest.fn() },
+      embeddingRouter: { resetConfig: jest.fn() },
+      getRagLoopDefaultConfig: jest.fn(() => ({})),
+      validateAndNormalizeRagLoopConfig: jest.fn(() => ({ normalizedConfig: {}, warnings: [] })),
+      validateRagLoopConfigPayloadKeys: jest.fn(() => ({ valid: true, unknownKeys: [], disallowedKeys: [] })),
+      resolveRequestApiKey: jest.fn(),
+    });
+    const res = createResponse();
+
+    await handlers.getConfig({}, res);
+
+    expect(getConfig).toHaveBeenCalledTimes(1);
+    expect(res.json).toHaveBeenCalledWith({ primary_provider: 'none' });
+  });
+
+  test('getVerificationCapabilityChangeReceipts derives the actor from the authenticated request', async () => {
+    const list = jest.fn().mockResolvedValue({ receipts: [] });
+    const handlers = createAiSettingsHandlers({
+      db: { withTransaction: jest.fn() },
+      logger: { warn: jest.fn(), error: jest.fn(), info: jest.fn() },
+      cloudLLMService: {},
+      aiRouterService: { clearCache: jest.fn() },
+      ollamaService: { resetConfig: jest.fn() },
+      embeddingProvider: { resetConfig: jest.fn() },
+      embeddingRouter: { resetConfig: jest.fn() },
+      getRagLoopDefaultConfig: jest.fn(() => ({})),
+      validateAndNormalizeRagLoopConfig: jest.fn(() => ({ normalizedConfig: {}, warnings: [] })),
+      validateRagLoopConfigPayloadKeys: jest.fn(() => ({ valid: true, unknownKeys: [], disallowedKeys: [] })),
+      resolveRequestApiKey: jest.fn(),
+      verificationCapabilityChangeReceiptRepository: { record: jest.fn(), listForActor: jest.fn() },
+      verificationCapabilityChangeReceiptReadService: { list },
+    });
+    const res = createResponse();
+
+    await handlers.getVerificationCapabilityChangeReceipts({
+      user: { id: 42 },
+      query: { limit: '5' },
+    }, res);
+
+    expect(list).toHaveBeenCalledWith({ actorId: 'user:42', query: { limit: '5' } });
+    expect(res.set).toHaveBeenCalledWith('Cache-Control', 'no-store');
+    expect(res.json).toHaveBeenCalledWith({ receipts: [] });
+  });
+
+  test('updateConfig rejects a missing stable actor before opening a settings transaction', async () => {
+    const db = { withTransaction: jest.fn() };
+    const handlers = createAiSettingsHandlers({
+      db,
+      logger: { warn: jest.fn(), error: jest.fn(), info: jest.fn() },
+      cloudLLMService: {},
+      aiRouterService: { clearCache: jest.fn() },
+      ollamaService: { resetConfig: jest.fn() },
+      embeddingProvider: { resetConfig: jest.fn() },
+      embeddingRouter: { resetConfig: jest.fn() },
+      getRagLoopDefaultConfig: jest.fn(() => ({})),
+      validateAndNormalizeRagLoopConfig: jest.fn(() => ({ normalizedConfig: {}, warnings: [] })),
+      validateRagLoopConfigPayloadKeys: jest.fn(() => ({ valid: true, unknownKeys: [], disallowedKeys: [] })),
+      resolveRequestApiKey: jest.fn(),
+    });
+    const res = createResponse();
+
+    await expect(handlers.updateConfig({ body: { model: 'gemini-2.5-pro' } }, res)).rejects.toMatchObject({
+      statusCode: 403,
+    });
+    expect(db.withTransaction).not.toHaveBeenCalled();
   });
 });

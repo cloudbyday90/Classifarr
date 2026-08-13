@@ -16,6 +16,7 @@ import { createSettingsTestApp } from './helpers/setupRouteTest.mjs';
 
 const mockDb = {
   query: jest.fn(),
+  withTransaction: jest.fn(async (callback) => callback({ query: jest.fn() })),
   pool: {
     connect: jest.fn()
   }
@@ -129,6 +130,7 @@ describe('Settings Routes', () => {
     expect(countRouteHandlers(settingsRouter, '/web-search/providers/:providerKey', 'put')).toBe(1);
     expect(countRouteHandlers(settingsRouter, '/web-search/providers/:providerKey/test', 'post')).toBe(1);
     expect(countRouteHandlers(settingsRouter, '/ai/verification-capability', 'get')).toBe(1);
+    expect(countRouteHandlers(settingsRouter, '/ai/verification-capability/receipts', 'get')).toBe(1);
   });
 
   it('uses startupService for GET /settings/setup-status', async () => {

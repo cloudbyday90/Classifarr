@@ -22,6 +22,7 @@ vi.mock('@/api', () => ({
     getPatternConfig: vi.fn(),
     getCostSummary: vi.fn(),
     getAIVerificationCapability: vi.fn(),
+    getAIVerificationCapabilityChangeReceipts: vi.fn(),
     getAIModels: vi.fn(),
     testAIConnection: vi.fn(),
     preflightAIVerificationConfig: vi.fn(),
@@ -102,6 +103,7 @@ describe('AI Settings', () => {
       message: 'The saved primary AI path can admit strict candidate-bound verification.',
       guidance: []
     })
+    api.getAIVerificationCapabilityChangeReceipts.mockResolvedValue({ receipts: [] })
     api.getLastOllamaPreflight.mockResolvedValue({ ai: null, embedding: null })
     api.preflightAIVerificationConfig.mockResolvedValue({
       data: { requiresConfirmation: false }
@@ -277,6 +279,38 @@ describe('AI Settings', () => {
 
     expect(api.updateAIConfig).toHaveBeenCalledTimes(1)
     expect(api.getAIVerificationCapability).toHaveBeenCalledTimes(2)
+    expect(api.getAIVerificationCapabilityChangeReceipts).toHaveBeenCalledTimes(2)
+  })
+
+  it('renders only server-projected capability receipts and refreshes them after saving', async () => {
+    api.getAIVerificationCapabilityChangeReceipts
+      .mockResolvedValueOnce({
+        receipts: [{
+          receiptId: '7',
+          before: { label: 'Strict verification needs attention' },
+          after: { label: 'Strict verification is available' },
+          configurationRevision: '12',
+          recordedAt: '2026-08-13T12:00:00.000Z',
+          provider: 'private-provider',
+          model: 'private-model',
+        }],
+      })
+      .mockResolvedValueOnce({ receipts: [] })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Strict verification needs attention to Strict verification is available')
+    expect(wrapper.text()).toContain('Saved revision 12')
+    expect(wrapper.text()).not.toContain('private-provider')
+    expect(wrapper.text()).not.toContain('private-model')
+
+    const refreshButton = wrapper.findAll('button').find((button) => button.text().includes('Refresh Receipts'))
+    await refreshButton.trigger('click')
+    await flushPromises()
+
+    expect(api.getAIVerificationCapabilityChangeReceipts).toHaveBeenCalledWith({ limit: 5 })
+    expect(api.getAIVerificationCapabilityChangeReceipts).toHaveBeenCalledTimes(2)
   })
 
   it('keeps the newer saved capability when an earlier summary read resolves late', async () => {

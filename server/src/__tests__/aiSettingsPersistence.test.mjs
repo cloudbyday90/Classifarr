@@ -39,7 +39,8 @@ describe('persistAiSettingsConfig', () => {
     let cacheUpdateParams;
     const client = {
       query: jest.fn(async (sql, params) => {
-        if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
+        if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1 FOR UPDATE'
+          || sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
           selectCount += 1;
           return { rows: [selectCount === 1 ? existing : latest] };
         }
@@ -105,7 +106,8 @@ describe('persistAiSettingsConfig', () => {
   test('rejects invalid formula weights before attempting the upsert', async () => {
     const client = {
       query: jest.fn(async (sql) => {
-        if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
+        if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1 FOR UPDATE'
+          || sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
           return { rows: [{}] };
         }
 
@@ -154,7 +156,8 @@ describe('persistAiSettingsConfig', () => {
     };
     const client = {
       query: jest.fn(async (sql) => {
-        if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
+        if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1 FOR UPDATE'
+          || sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
           return { rows: [existing] };
         }
 
@@ -214,7 +217,8 @@ describe('persistAiSettingsConfig', () => {
     };
     const client = {
       query: jest.fn(async (sql) => {
-        if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
+        if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1 FOR UPDATE'
+          || sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
           return { rows: [existing] };
         }
         if (sql === 'INSERT INTO rag_logs (level, type, message) VALUES ($1, $2, $3)') {
@@ -271,7 +275,8 @@ describe('persistAiSettingsConfig', () => {
 
     const client = {
       query: jest.fn(async (sql, params) => {
-        if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
+        if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1 FOR UPDATE'
+          || sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
           selectCount += 1;
           return { rows: selectCount === 1 ? [] : [latest] };
         }
@@ -308,5 +313,82 @@ describe('persistAiSettingsConfig', () => {
     expect(insertParams[37]).toBe(8000);
     expect(result.config).toEqual(latest);
     expect(result.effects).toEqual({ textEmbeddingsCleared: true });
+  });
+
+  test('persists an in-transaction receipt only when the saved capability status changes', async () => {
+    const existing = { id: 1, primary_provider: 'none', configuration_revision: '11' };
+    const latest = {
+      ...existing,
+      primary_provider: 'gemini',
+      model: 'gemini-2.5-pro',
+      configuration_revision: '12',
+    };
+    let selectCount = 0;
+    const client = {
+      query: jest.fn(async (sql) => {
+        if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1 FOR UPDATE'
+          || sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
+          selectCount += 1;
+          return { rows: [selectCount === 1 ? existing : latest] };
+        }
+        return { rows: [] };
+      }),
+    };
+    const receiptRepository = { record: jest.fn().mockResolvedValue({ id: '15' }) };
+
+    await persistAiSettingsConfig({
+      client,
+      body: { primary_provider: 'gemini', model: 'gemini-2.5-pro' },
+      logger: { warn: jest.fn(), error: jest.fn(), info: jest.fn() },
+      validateAndNormalizeRagLoopConfig: jest.fn(() => ({ normalizedConfig: {}, warnings: [] })),
+      encryptValue: jest.fn(),
+      formatEncryptedValue: jest.fn(),
+      verificationCapabilityChangeReceiptRepository: receiptRepository,
+      verificationCapabilityChangeReceiptActorId: 'user:42',
+    });
+
+    expect(receiptRepository.record).toHaveBeenCalledWith({
+      client,
+      receipt: expect.objectContaining({
+        actorId: 'user:42',
+        beforeStatusId: 'primary_path_ineligible',
+        afterStatusId: 'verification_ready',
+        configurationRevision: 12,
+      }),
+    });
+  });
+
+  test('propagates receipt persistence failure so the caller-owned configuration transaction can roll back', async () => {
+    const existing = { id: 1, primary_provider: 'none', configuration_revision: 0 };
+    const latest = {
+      ...existing,
+      primary_provider: 'gemini',
+      model: 'gemini-2.5-pro',
+      configuration_revision: '1',
+    };
+    let selectCount = 0;
+    const client = {
+      query: jest.fn(async (sql) => {
+        if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1 FOR UPDATE'
+          || sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
+          selectCount += 1;
+          return { rows: [selectCount === 1 ? existing : latest] };
+        }
+        return { rows: [] };
+      }),
+    };
+
+    await expect(persistAiSettingsConfig({
+      client,
+      body: { primary_provider: 'gemini', model: 'gemini-2.5-pro' },
+      logger: { warn: jest.fn(), error: jest.fn(), info: jest.fn() },
+      validateAndNormalizeRagLoopConfig: jest.fn(() => ({ normalizedConfig: {}, warnings: [] })),
+      encryptValue: jest.fn(),
+      formatEncryptedValue: jest.fn(),
+      verificationCapabilityChangeReceiptRepository: {
+        record: jest.fn().mockRejectedValue(new Error('receipt insert failed')),
+      },
+      verificationCapabilityChangeReceiptActorId: 'user:42',
+    })).rejects.toThrow('receipt insert failed');
   });
 });

@@ -24,8 +24,34 @@ import {
   updateNormalizedRagLoopConfig,
   resetImageEmbeddingModelCache,
 } from './aiSettingsPersistenceEffects.mjs';
+import {
+  buildCandidateBoundVerificationCapabilityChangeReceipt,
+} from '../../services/classificationCandidateBoundVerificationCapabilityChangeReceipt.mjs';
 
 /** @typedef {Record<string, any>} AiSettingsPersistenceConfig */
+
+function getNextConfigurationRevision(existing) {
+  const currentRevision = Number(existing?.configuration_revision);
+  return Number.isSafeInteger(currentRevision) && currentRevision >= 0
+    ? currentRevision + 1
+    : 1;
+}
+
+/**
+ * PostgreSQL returns BIGINT values as strings by default. Keep the persisted
+ * value opaque to the settings response, but normalize it for the receipt
+ * contract. The fallback also keeps a pre-migration in-memory test row safe.
+ */
+function resolvePersistedConfigurationRevision({ existing, persistedConfig }) {
+  const persistedRevision = Number(persistedConfig?.configuration_revision);
+  if (Number.isSafeInteger(persistedRevision) && persistedRevision > 0) {
+    return persistedRevision;
+  }
+
+  const nextRevision = getNextConfigurationRevision(existing);
+  persistedConfig.configuration_revision = nextRevision;
+  return nextRevision;
+}
 
 /**
  * @param {{
@@ -35,6 +61,10 @@ import {
  *   validateAndNormalizeRagLoopConfig: (body: AiSettingsPersistenceConfig, existing: AiSettingsPersistenceConfig) => { normalizedConfig: Record<string, any>, warnings: string[] },
  *   encryptValue: (value: string) => { encrypted: string, iv: string, authTag: string },
  *   formatEncryptedValue: (encrypted: string, iv: string, authTag: string) => string,
+ *   verificationCapabilityChangeReceiptRepository?: {
+ *     record: (request: { client: { query: Function }, receipt: Record<string, unknown> }) => Promise<unknown>,
+ *   },
+ *   verificationCapabilityChangeReceiptActorId?: string | null,
  * }} options
  */
 export async function persistAiSettingsConfig({
@@ -44,8 +74,10 @@ export async function persistAiSettingsConfig({
   validateAndNormalizeRagLoopConfig,
   encryptValue,
   formatEncryptedValue,
+  verificationCapabilityChangeReceiptRepository = null,
+  verificationCapabilityChangeReceiptActorId = null,
 }) {
-  const existingResult = await client.query('SELECT * FROM ai_provider_config WHERE id = 1');
+  const existingResult = await client.query('SELECT * FROM ai_provider_config WHERE id = 1 FOR UPDATE');
   const existing = /** @type {AiSettingsPersistenceConfig} */ (existingResult.rows[0] || {});
 
   const { normalizedConfig: normalizedRagLoopConfig, warnings: ragLoopWarnings } =
@@ -130,12 +162,13 @@ export async function persistAiSettingsConfig({
                 rag_graph_cast_enabled, rag_graph_genre_enabled,
                 rag_graph_min_matches_to_apply, rag_graph_candidates_limit,
                 image_embedding_local_api_key, image_embedding_local_timeout_ms,
+                configuration_revision,
                 updated_at
             ) VALUES (
                 1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
                 $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
                 $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49,
-                $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, NOW()
+                $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, NOW()
             )
             ON CONFLICT (id) DO UPDATE SET
                 primary_provider = EXCLUDED.primary_provider,
@@ -198,6 +231,7 @@ export async function persistAiSettingsConfig({
                 rag_graph_candidates_limit = EXCLUDED.rag_graph_candidates_limit,
                 image_embedding_local_api_key = EXCLUDED.image_embedding_local_api_key,
                 image_embedding_local_timeout_ms = EXCLUDED.image_embedding_local_timeout_ms,
+                configuration_revision = EXCLUDED.configuration_revision,
                 updated_at = NOW()
         `, buildAiProviderConfigUpsertValues({
     body,
@@ -224,6 +258,21 @@ export async function persistAiSettingsConfig({
     existing,
     config,
   });
+
+  if (verificationCapabilityChangeReceiptRepository) {
+    const receipt = buildCandidateBoundVerificationCapabilityChangeReceipt({
+      beforeConfiguration: existing,
+      afterConfiguration: persistedConfig,
+      actorId: verificationCapabilityChangeReceiptActorId,
+      configurationRevision: resolvePersistedConfigurationRevision({
+        existing,
+        persistedConfig,
+      }),
+    });
+    if (receipt) {
+      await verificationCapabilityChangeReceiptRepository.record({ client, receipt });
+    }
+  }
 
   return {
     config: persistedConfig,

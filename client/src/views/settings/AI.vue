@@ -577,6 +577,17 @@
     </Card>
 
     <Card
+      v-if="!loading"
+      title="Verification Capability History"
+    >
+      <VerificationCapabilityChangeReceiptList
+        :report="verificationCapabilityChangeReceipts"
+        :loading="loadingVerificationCapabilityChangeReceipts"
+        @refresh="refreshVerificationCapabilityChangeReceipts"
+      />
+    </Card>
+
+    <Card
       v-if="showOllamaPreflightPanel"
       title="🩺 Ollama Scheduled Preflight"
     >
@@ -778,6 +789,7 @@ import Toggle from '@/components/common/Toggle.vue'
 import Spinner from '@/components/common/Spinner.vue'
 import PasswordInput from '@/components/common/PasswordInput.vue'
 import VerificationCapabilityCurrentStateSummary from '@/components/settings/VerificationCapabilityCurrentStateSummary.vue'
+import VerificationCapabilityChangeReceiptList from '@/components/settings/VerificationCapabilityChangeReceiptList.vue'
 import api from '@/api'
 import { useToast } from '@/stores/toast'
 
@@ -790,6 +802,7 @@ const loadingModels = ref(false)
 const loadingOllamaModels = ref(false)
 const loadingOllamaPreflight = ref(false)
 const loadingVerificationCapability = ref(false)
+const loadingVerificationCapabilityChangeReceipts = ref(false)
 const showAdvanced = ref(false)
 const testResult = ref(null)
 const ollamaTestResult = ref(null)
@@ -800,7 +813,9 @@ const usageStats = ref(null)
 const verificationPreflightAdvisory = ref(null)
 const verificationPreflightFingerprint = ref(null)
 const verificationCapability = ref(null)
+const verificationCapabilityChangeReceipts = ref(null)
 let verificationCapabilityRequestId = 0
+let verificationCapabilityChangeReceiptsRequestId = 0
 
 const config = ref({
   primary_provider: 'none',
@@ -965,8 +980,35 @@ const refreshVerificationCapability = async () => {
   await loadVerificationCapability({ notifyOnError: true })
 }
 
+const loadVerificationCapabilityChangeReceipts = async ({ notifyOnError = false } = {}) => {
+  const requestId = ++verificationCapabilityChangeReceiptsRequestId
+  loadingVerificationCapabilityChangeReceipts.value = true
+  try {
+    const receipts = await api.getAIVerificationCapabilityChangeReceipts({ limit: 5 })
+    if (requestId === verificationCapabilityChangeReceiptsRequestId) {
+      verificationCapabilityChangeReceipts.value = receipts
+    }
+  } catch (_error) {
+    if (requestId === verificationCapabilityChangeReceiptsRequestId) {
+      verificationCapabilityChangeReceipts.value = null
+    }
+    if (notifyOnError && requestId === verificationCapabilityChangeReceiptsRequestId) {
+      toast.warning('Verification capability receipts could not be refreshed.')
+    }
+  } finally {
+    if (requestId === verificationCapabilityChangeReceiptsRequestId) {
+      loadingVerificationCapabilityChangeReceipts.value = false
+    }
+  }
+}
+
+const refreshVerificationCapabilityChangeReceipts = async () => {
+  await loadVerificationCapabilityChangeReceipts({ notifyOnError: true })
+}
+
 onMounted(async () => {
   loadVerificationCapability()
+  loadVerificationCapabilityChangeReceipts()
   try {
     const [configResponse, usageResponse, patternConfigResponse, costSummaryResponse, ollamaPreflightResponse] = await Promise.all([
       api.getAIConfig(),
@@ -1189,7 +1231,10 @@ const persistConfig = async (providerPayload) => {
   try {
     await api.updateAIConfig(providerPayload)
     aiConfigSaved = true
-    await loadVerificationCapability()
+    await Promise.all([
+      loadVerificationCapability(),
+      loadVerificationCapabilityChangeReceipts(),
+    ])
     await api.updatePatternConfig(patternConfig.value)
     clearVerificationPreflightAdvisory()
     toast.success('AI configuration saved!')

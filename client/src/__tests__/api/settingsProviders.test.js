@@ -62,6 +62,7 @@ import {
   testOMDb,
   getAIConfig,
   getAIVerificationCapability,
+  getAIVerificationCapabilityChangeReceipts,
   updateAIConfig,
   testAIConnection,
   preflightAIVerificationConfig,
@@ -309,6 +310,17 @@ describe('settingsProvidersApi', () => {
       await getAIVerificationCapability()
 
       expect(mockGetDataRequest).toHaveBeenCalledWith('/settings/ai/verification-capability')
+    })
+
+    it('getAIVerificationCapabilityChangeReceipts reads bounded actor-scoped receipts', async () => {
+      mockGetDataRequest.mockResolvedValueOnce({ receipts: [] })
+
+      await getAIVerificationCapabilityChangeReceipts({ limit: 5 })
+
+      expect(mockGetDataRequest).toHaveBeenCalledWith(
+        '/settings/ai/verification-capability/receipts',
+        { params: { limit: 5 } }
+      )
     })
 
     it('getAIModels calls POST', async () => {

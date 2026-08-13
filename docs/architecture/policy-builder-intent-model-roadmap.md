@@ -75,6 +75,11 @@ Current execution focus:
   fixed server-owned contract, refreshes after a successful settings save or
   explicit operator request, rejects stale reads, and links to aggregate
   Verification monitoring without probing a provider or changing authority.
+- **Completed:** **11R.8 Verification Capability Change Receipt**. A successful
+  AI-settings save now records an insert-only, status-only transition receipt
+  with a server-derived actor and monotonic revision in the same transaction;
+  actor-scoped receipt reads are bounded, read-only, and never expose provider
+  configuration or change authority.
 - **Completed:** **10R.4 Release Acceptance Assembly**. Repository acceptance
   now produces a passed or blocked manifest artifact, while a separate
   protected-environment workflow records active-installation evidence without
@@ -114,8 +119,8 @@ completed lifecycle acceptance: 10R.2.1 -> 10R.2.2 -> 10R.2.3
 completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3 -> 10R.3.4 -> 10R.3.5 -> 10R.3.6 -> 10R.3.7 -> 10R.3.8
 completed release hardening: 10R.4 -> 10R.4.1
 active release candidate: v0.48.0-beta -> 10R.4.2 -> 10R.4.3
-completed post-release authority hardening: 11R.1.1 -> 11R.1.2 -> 11R.2 -> 11R.3 -> 11R.4 -> 11R.5 -> 11R.6 -> 11R.7
-next provider-admission guardrail: 11R.8 verification capability change receipt
+completed post-release authority hardening: 11R.1.1 -> 11R.1.2 -> 11R.2 -> 11R.3 -> 11R.4 -> 11R.5 -> 11R.6 -> 11R.7 -> 11R.8
+next provider-admission guardrail: 11R.9 configuration revision integrity and existing-installation migration acceptance
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
 
@@ -12693,7 +12698,7 @@ Summary](candidate-bound-verification-capability-current-state-summary.md).
 
 ### 11R.8 Verification Capability Change Receipt
 
-Status: planned.
+Status: complete on 2026-08-13.
 
 Intent: retain a durable, administrator-authorized receipt when a successful
 AI configuration save changes the current strict candidate-bound verification
@@ -12712,6 +12717,33 @@ Completion criteria:
   provider, policy, fallback, route, retry, or configuration mutation; and
 - focused tests prove transaction rollback, idempotent replay, authorization,
   privacy bounds, no provider probe, and no routing or policy side effects.
+
+Implemented design: [Candidate-Bound Verification Capability Change
+Receipt](candidate-bound-verification-capability-change-receipt.md).
+
+### 11R.9 Configuration Revision Integrity And Existing-Installation Migration Acceptance
+
+Status: planned.
+
+Intent: prove the 11R.8 configuration revision and status-only receipt
+boundary remains correct for both fresh and pre-existing PostgreSQL
+installations without converting it into provider telemetry or a generic
+configuration audit system.
+
+Completion criteria:
+
+- fresh and upgraded schema tests prove the singleton configuration row has a
+  safe baseline revision, each successful save increments it monotonically,
+  and only a capability transition creates one receipt for that revision;
+- concurrent or replayed settings-save acceptance proves the configuration row
+  lock and revision uniqueness preserve one ordered receipt without leaking a
+  provider, model, endpoint, credential, prompt, policy, item, or route;
+- schema dump and restore coverage include the revision column and receipt
+  table, and retained receipt reads remain actor-scoped, bounded, read-only,
+  and free of provider or configuration side effects; and
+- the task records upgrade and recovery evidence without publishing a release
+  or changing candidate-bound verification, policy, routing, retry, learning,
+  or provider authority.
 
 ## Testing Strategy
 

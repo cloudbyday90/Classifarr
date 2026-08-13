@@ -10,7 +10,7 @@ import { jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
 import { createEncryptionMock, createMockModule, createNamedMockModule, createTransactionalDbMock, createPassThroughAuthMock, createLoggerModuleMock } from './helpers/mockFactory.mjs';
-import { createSettingsTestApp } from './helpers/setupRouteTest.mjs';
+import { createMountedTestApp } from './helpers/setupRouteTest.mjs';
 
 const mockDb = createTransactionalDbMock();
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
@@ -71,7 +71,13 @@ const mockCloudLLM = {
 };
 jest.unstable_mockModule('../services/cloudLLM.mjs', () => createNamedMockModule('cloudLLMService', mockCloudLLM));
 
-jest.unstable_mockModule('../middleware/auth.mjs', () => createPassThroughAuthMock());
+jest.unstable_mockModule('../middleware/auth.mjs', () => ({
+  ...createPassThroughAuthMock(),
+  authenticateToken: (req, _res, next) => {
+    req.user = { id: 1, role: 'admin' };
+    next();
+  },
+}));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
@@ -108,7 +114,16 @@ describe('Settings AI Routes', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    app = createSettingsTestApp(settingsRouter);
+    app = createMountedTestApp({
+      basePath: '/settings',
+      router: settingsRouter,
+      middleware: [
+        (req, _res, next) => {
+          req.user = { id: 1, role: 'admin' };
+          next();
+        },
+      ],
+    });
   });
 
   it('returns the full default AI config when no row exists', async () => {
@@ -284,7 +299,8 @@ describe('Settings AI Routes', () => {
       if (sql === 'BEGIN' || sql === 'COMMIT') {
         return { rows: [] };
       }
-      if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
+      if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1 FOR UPDATE'
+        || sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
         return { rows: [existingConfig] };
       }
       if (typeof sql === 'string' && sql.includes('INSERT INTO ai_provider_config')) {
@@ -339,7 +355,8 @@ describe('Settings AI Routes', () => {
     let capturedParams;
     client.query.mockImplementation(async (sql, params) => {
       if (sql === 'BEGIN' || sql === 'COMMIT') return { rows: [] };
-      if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
+      if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1 FOR UPDATE'
+        || sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
         return { rows: [existingConfig] };
       }
       if (typeof sql === 'string' && sql.includes('INSERT INTO ai_provider_config')) {
@@ -375,7 +392,8 @@ describe('Settings AI Routes', () => {
     let capturedParams;
     client.query.mockImplementation(async (sql, params) => {
       if (sql === 'BEGIN' || sql === 'COMMIT') return { rows: [] };
-      if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
+      if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1 FOR UPDATE'
+        || sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
         return { rows: [existingConfig] };
       }
       if (typeof sql === 'string' && sql.includes('INSERT INTO ai_provider_config')) {
@@ -416,7 +434,8 @@ describe('Settings AI Routes', () => {
     let capturedParams;
     client.query.mockImplementation(async (sql, params) => {
       if (sql === 'BEGIN' || sql === 'COMMIT') return { rows: [] };
-      if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
+      if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1 FOR UPDATE'
+        || sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
         return { rows: [existingConfig] };
       }
       if (typeof sql === 'string' && sql.includes('INSERT INTO ai_provider_config')) {
@@ -713,7 +732,8 @@ describe('Settings AI Routes', () => {
       if (sql === 'BEGIN' || sql === 'ROLLBACK') {
         return { rows: [] };
       }
-      if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
+      if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1 FOR UPDATE'
+        || sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
         return {
           rows: [{
             id: 1,
@@ -782,7 +802,8 @@ describe('Settings AI Routes', () => {
       if (sql === 'BEGIN' || sql === 'COMMIT') {
         return { rows: [] };
       }
-      if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
+      if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1 FOR UPDATE'
+        || sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
         selectCount += 1;
         return { rows: [selectCount === 1 ? existingConfig : latestConfig] };
       }
@@ -830,7 +851,8 @@ describe('Settings AI Routes', () => {
       if (sql === 'BEGIN' || sql === 'ROLLBACK') {
         return { rows: [] };
       }
-      if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
+      if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1 FOR UPDATE'
+        || sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
         return { rows: [{}] };
       }
       if (typeof sql === 'string' && sql.includes('INSERT INTO ai_provider_config')) {
@@ -863,7 +885,8 @@ describe('Settings AI Routes', () => {
       if (sql === 'ROLLBACK') {
         throw new Error('rollback failed');
       }
-      if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
+      if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1 FOR UPDATE'
+        || sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
         return { rows: [{}] };
       }
       if (typeof sql === 'string' && sql.includes('INSERT INTO ai_provider_config')) {
@@ -1055,7 +1078,8 @@ describe('Settings AI Routes', () => {
       let capturedParams;
       client.query.mockImplementation(async (sql, params) => {
         if (sql === 'BEGIN' || sql === 'COMMIT') return { rows: [] };
-        if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1') return { rows: [{}] };
+        if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1 FOR UPDATE'
+          || sql === 'SELECT * FROM ai_provider_config WHERE id = 1') return { rows: [{}] };
         if (typeof sql === 'string' && sql.includes('INSERT INTO ai_provider_config')) {
           capturedParams = params;
           return { rows: [] };
@@ -1079,7 +1103,8 @@ describe('Settings AI Routes', () => {
       let capturedParams;
       client.query.mockImplementation(async (sql, params) => {
         if (sql === 'BEGIN' || sql === 'COMMIT') return { rows: [] };
-        if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
+        if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1 FOR UPDATE'
+          || sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
           return { rows: [{ image_embedding_local_api_key: 'enc_existing$testiv$testtag' }] };
         }
         if (typeof sql === 'string' && sql.includes('INSERT INTO ai_provider_config')) {
@@ -1102,7 +1127,8 @@ describe('Settings AI Routes', () => {
       let capturedParams;
       client.query.mockImplementation(async (sql, params) => {
         if (sql === 'BEGIN' || sql === 'COMMIT') return { rows: [] };
-        if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
+        if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1 FOR UPDATE'
+          || sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
           return { rows: [{ image_embedding_local_api_key: 'enc_existing$testiv$testtag' }] };
         }
         if (typeof sql === 'string' && sql.includes('INSERT INTO ai_provider_config')) {
@@ -1129,7 +1155,8 @@ describe('Settings AI Routes', () => {
       let capturedParams;
       client.query.mockImplementation(async (sql, params) => {
         if (sql === 'BEGIN' || sql === 'COMMIT') return { rows: [] };
-        if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
+        if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1 FOR UPDATE'
+          || sql === 'SELECT * FROM ai_provider_config WHERE id = 1') {
           return { rows: [{ image_embedding_local_api_key: 'enc_existing$testiv$testtag' }] };
         }
         if (typeof sql === 'string' && sql.includes('INSERT INTO ai_provider_config')) {
@@ -1152,7 +1179,8 @@ describe('Settings AI Routes', () => {
       let capturedParams;
       client.query.mockImplementation(async (sql, params) => {
         if (sql === 'BEGIN' || sql === 'COMMIT') return { rows: [] };
-        if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1') return { rows: [{}] };
+        if (sql === 'SELECT * FROM ai_provider_config WHERE id = 1 FOR UPDATE'
+          || sql === 'SELECT * FROM ai_provider_config WHERE id = 1') return { rows: [{}] };
         if (typeof sql === 'string' && sql.includes('INSERT INTO ai_provider_config')) {
           capturedParams = params;
           return { rows: [] };

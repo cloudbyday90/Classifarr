@@ -61,6 +61,12 @@ export function buildAiProviderConfigUpsertValues({
   finalImageEmbeddingLocalHost,
   finalImageEmbeddingLocalPort,
 }) {
+  const currentConfigurationRevision = Number(existing.configuration_revision);
+  const nextConfigurationRevision = Number.isSafeInteger(currentConfigurationRevision)
+    && currentConfigurationRevision >= 0
+    ? currentConfigurationRevision + 1
+    : 1;
+
   return [
     body.primary_provider ?? existing.primary_provider ?? 'none',
     body.api_endpoint ?? existing.api_endpoint ?? '',
@@ -122,5 +128,6 @@ export function buildAiProviderConfigUpsertValues({
     body.rag_graph_candidates_limit ?? existing.rag_graph_candidates_limit ?? 20,
     finalImageEmbeddingLocalApiKey ?? null,
     body.image_embedding_local_timeout_ms ?? existing.image_embedding_local_timeout_ms ?? 15000,
+    nextConfigurationRevision,
   ];
 }
