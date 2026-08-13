@@ -59,6 +59,7 @@ export function registerProviderRoutes(router, {
 
   router.get('/ai', asyncHandler(aiHandlers.getConfig));
   router.put('/ai', asyncHandler(aiHandlers.updateConfig));
+  router.post('/ai/verification-preflight', asyncHandler(aiHandlers.getVerificationPreflight));
   router.post('/ai/test', aiHandlers.testConnection);
   router.post('/ai/models', aiHandlers.getModels);
   router.get('/ai/usage', aiHandlers.getUsage);

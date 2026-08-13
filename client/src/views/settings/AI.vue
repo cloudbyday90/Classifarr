@@ -699,10 +699,57 @@
       </div>
     </Card>
 
+    <Card
+      v-if="activeVerificationPreflightAdvisory"
+      title="Candidate-Bound Verification"
+    >
+      <div
+        class="space-y-4"
+        role="status"
+        aria-atomic="true"
+      >
+        <div class="space-y-2">
+          <h3 class="font-medium text-amber-200">
+            {{ activeVerificationPreflightAdvisory.label }}
+          </h3>
+          <p class="text-sm text-gray-300">
+            {{ activeVerificationPreflightAdvisory.message }}
+          </p>
+          <ul
+            v-if="activeVerificationPreflightAdvisory.guidance.length > 0"
+            class="list-disc space-y-1 pl-5 text-sm text-gray-400"
+          >
+            <li
+              v-for="guidance in activeVerificationPreflightAdvisory.guidance"
+              :key="guidance"
+            >
+              {{ guidance }}
+            </li>
+          </ul>
+        </div>
+
+        <div class="flex flex-wrap gap-3">
+          <Button
+            variant="secondary"
+            :disabled="saving"
+            @click="clearVerificationPreflightAdvisory"
+          >
+            Review Settings
+          </Button>
+          <Button
+            :disabled="saving"
+            @click="saveAiSettingsAfterVerificationAdvisory"
+          >
+            Save AI Settings Anyway
+          </Button>
+        </div>
+      </div>
+    </Card>
+
     <!-- Save Button -->
     <div class="flex justify-end">
       <Button
-        :disabled="saving"
+        :disabled="saving || Boolean(activeVerificationPreflightAdvisory)"
         @click="saveConfig"
       >
         <span v-if="saving">Saving...</span>
@@ -737,6 +784,8 @@ const availableModels = ref([])
 const ollamaModels = ref([])
 const ollamaPreflightState = ref({ ai: null, embedding: null })
 const usageStats = ref(null)
+const verificationPreflightAdvisory = ref(null)
+const verificationPreflightFingerprint = ref(null)
 
 const config = ref({
   primary_provider: 'none',
@@ -773,6 +822,14 @@ const isApiProvider = computed(() => {
 const showOllamaPreflightPanel = computed(() => {
   return config.value.primary_provider === 'ollama' ||
     (config.value.primary_provider !== 'none' && config.value.ollama_fallback_enabled)
+})
+
+const activeVerificationPreflightAdvisory = computed(() => {
+  if (!verificationPreflightAdvisory.value) return null
+
+  return verificationPreflightFingerprint.value === getVerificationPreflightFingerprint()
+    ? verificationPreflightAdvisory.value
+    : null
 })
 
 const budgetPercentUsed = computed(() => {
@@ -1054,13 +1111,44 @@ const buildAIProviderPayload = () => ({
   ollama_model: config.value.ollama_model
 })
 
-const saveConfig = async () => {
+const buildVerificationPreflightPayload = () => ({
+  primary_provider: config.value.primary_provider,
+  model: config.value.model,
+  ollama_fallback_enabled: config.value.ollama_fallback_enabled,
+  ollama_for_budget_exhausted: config.value.ollama_for_budget_exhausted,
+  ollama_model: config.value.ollama_model
+})
+
+const getVerificationPreflightFingerprint = () => JSON.stringify(buildVerificationPreflightPayload())
+
+const clearVerificationPreflightAdvisory = () => {
+  verificationPreflightAdvisory.value = null
+  verificationPreflightFingerprint.value = null
+}
+
+const setVerificationPreflightAdvisory = (preflight) => {
+  verificationPreflightAdvisory.value = {
+    label: typeof preflight?.label === 'string'
+      ? preflight.label
+      : 'Verification capability could not be evaluated',
+    message: typeof preflight?.message === 'string'
+      ? preflight.message
+      : 'Classifarr could not evaluate strict candidate-bound verification. General AI settings can still be saved.',
+    guidance: Array.isArray(preflight?.guidance)
+      ? preflight.guidance.filter((entry) => typeof entry === 'string').slice(0, 3)
+      : ['Review the provider and fallback settings before relying on strict verification.'],
+  }
+  verificationPreflightFingerprint.value = getVerificationPreflightFingerprint()
+}
+
+const persistConfig = async (providerPayload) => {
   saving.value = true
   let aiConfigSaved = false
   try {
-    await api.updateAIConfig(buildAIProviderPayload())
+    await api.updateAIConfig(providerPayload)
     aiConfigSaved = true
     await api.updatePatternConfig(patternConfig.value)
+    clearVerificationPreflightAdvisory()
     toast.success('AI configuration saved!')
   } catch (error) {
     const errorMessage = error.response?.data?.error || error.message || 'Failed to save configuration'
@@ -1073,6 +1161,33 @@ const saveConfig = async () => {
   } finally {
     saving.value = false
   }
+}
+
+const saveConfig = async () => {
+  const preflightPayload = buildVerificationPreflightPayload()
+  const preflightFingerprint = JSON.stringify(preflightPayload)
+
+  saving.value = true
+  try {
+    const response = await api.preflightAIVerificationConfig(preflightPayload)
+    const preflight = response?.data || response
+
+    if (preflight?.requiresConfirmation === true) {
+      setVerificationPreflightAdvisory(preflight)
+      verificationPreflightFingerprint.value = preflightFingerprint
+      return
+    }
+
+    await persistConfig(buildAIProviderPayload())
+  } catch {
+    setVerificationPreflightAdvisory()
+  } finally {
+    saving.value = false
+  }
+}
+
+const saveAiSettingsAfterVerificationAdvisory = async () => {
+  await persistConfig(buildAIProviderPayload())
 }
 
 </script>

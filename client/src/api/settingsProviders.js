@@ -114,6 +114,10 @@ export const getAIConfig = ai.getConfig
 export const updateAIConfig = ai.updateConfig
 export const testAIConnection = ai.test
 
+export function preflightAIVerificationConfig(data) {
+  return apiClient.post('/settings/ai/verification-preflight', data)
+}
+
 export function getAIModels(data) {
   return apiClient.post('/settings/ai/models', data)
 }
@@ -155,6 +159,7 @@ const settingsProvidersApi = {
   getAIConfig,
   updateAIConfig,
   testAIConnection,
+  preflightAIVerificationConfig,
   getAIModels,
   getAIUsage,
 }

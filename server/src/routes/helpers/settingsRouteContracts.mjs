@@ -49,6 +49,7 @@
  *
  * @typedef {{
  *   status: (code: number) => SettingsResponse,
+ *   set: (field: string, value: string) => SettingsResponse,
  *   json: (body: unknown) => unknown,
  * }} SettingsResponse
  */

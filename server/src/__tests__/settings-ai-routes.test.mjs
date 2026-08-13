@@ -550,6 +550,85 @@ describe('Settings AI Routes', () => {
     expect(res.body).toMatchObject({ error: 'Internal Server Error', message: 'db offline' });
   });
 
+  it('returns a privacy-bounded verification preflight without saving or probing a provider', async () => {
+    db.query.mockResolvedValueOnce({
+      rows: [{
+        primary_provider: 'gemini',
+        model: 'gemini-3-pro-preview',
+        ollama_fallback_enabled: false,
+        ollama_for_budget_exhausted: true,
+        ollama_model: 'llama3.2',
+      }],
+    });
+
+    const res = await request(app)
+      .post('/settings/ai/verification-preflight')
+      .send({
+        primary_provider: 'gemini',
+        model: 'gemini-3-pro-preview',
+        ollama_fallback_enabled: false,
+        ollama_for_budget_exhausted: true,
+        ollama_model: 'llama3.2',
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.headers['cache-control']).toBe('no-store');
+    expect(res.body).toMatchObject({
+      statusId: 'verification_ready',
+      requiresConfirmation: false,
+      primaryPath: {
+        statusId: 'verification_capable',
+        verificationCapable: true,
+      },
+      sideEffects: {
+        providerCalled: false,
+        providerAvailabilityChecked: false,
+        configurationPersisted: false,
+        providerSelectionChanged: false,
+        routingChanged: false,
+      },
+    });
+    expect(JSON.stringify(res.body)).not.toContain('gemini');
+    expect(JSON.stringify(res.body)).not.toContain('llama3.2');
+    expect(db.pool.connect).not.toHaveBeenCalled();
+    expect(mockCloudLLM.testConnection).not.toHaveBeenCalled();
+    expect(mockCloudLLM.getModels).not.toHaveBeenCalled();
+  });
+
+  it('rejects unexpected verification-preflight fields before querying configuration', async () => {
+    const res = await request(app)
+      .post('/settings/ai/verification-preflight')
+      .send({
+        primary_provider: 'gemini',
+        api_key: 'must-not-be-accepted',
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({
+      error: 'Unsupported AI verification preflight keys in payload. Please reload the page and try again.',
+      unknown_ai_verification_preflight_keys: ['api_key'],
+    });
+    expect(db.query).not.toHaveBeenCalled();
+    expect(db.pool.connect).not.toHaveBeenCalled();
+  });
+
+  it('rejects invalid verification-preflight value types before querying configuration', async () => {
+    const res = await request(app)
+      .post('/settings/ai/verification-preflight')
+      .send({
+        primary_provider: 'gemini',
+        ollama_fallback_enabled: 'false',
+      });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({
+      error: 'Invalid AI verification preflight values in payload. Please reload the page and try again.',
+      invalid_ai_verification_preflight_keys: ['ollama_fallback_enabled'],
+    });
+    expect(db.query).not.toHaveBeenCalled();
+    expect(db.pool.connect).not.toHaveBeenCalled();
+  });
+
   it('rejects unsupported RAG loop payload keys before opening a transaction', async () => {
     const res = await request(app)
       .put('/settings/ai')

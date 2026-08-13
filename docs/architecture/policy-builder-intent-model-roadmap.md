@@ -64,6 +64,12 @@ Current execution focus:
   with configuration-only provider admission and anonymous active-policy
   native-intent and routing readiness; it cannot call providers, expose
   operational content, queue retries, or alter policy or routing authority.
+- **Completed:** **11R.6 Verification-Capable Provider Configuration
+  Preflight**. AI Settings now obtains a server-owned, no-probe capability
+  projection before saving provider settings, shows fixed privacy-bounded
+  guidance for a strict-ineligible primary or budget fallback, and requires an
+  explicit administrator continuation while keeping general AI settings
+  saveable.
 - **Completed:** **10R.4 Release Acceptance Assembly**. Repository acceptance
   now produces a passed or blocked manifest artifact, while a separate
   protected-environment workflow records active-installation evidence without
@@ -103,8 +109,8 @@ completed lifecycle acceptance: 10R.2.1 -> 10R.2.2 -> 10R.2.3
 completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3 -> 10R.3.4 -> 10R.3.5 -> 10R.3.6 -> 10R.3.7 -> 10R.3.8
 completed release hardening: 10R.4 -> 10R.4.1
 active release candidate: v0.48.0-beta -> 10R.4.2 -> 10R.4.3
-completed post-release authority hardening: 11R.1.1 -> 11R.1.2 -> 11R.2 -> 11R.3 -> 11R.4 -> 11R.5
-next provider-admission guardrail: 11R.6 verification-capable configuration preflight
+completed post-release authority hardening: 11R.1.1 -> 11R.1.2 -> 11R.2 -> 11R.3 -> 11R.4 -> 11R.5 -> 11R.6
+next provider-admission guardrail: 11R.7 verification capability current-state summary
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
 
@@ -12633,7 +12639,7 @@ Readiness](candidate-bound-verification-remediation-readiness.md).
 
 ### 11R.6 Verification-Capable Provider Configuration Preflight
 
-Status: planned.
+Status: complete on 2026-08-13.
 
 Intent: give administrators a server-authored, configuration-save-time warning
 when a proposed provider or fallback path remains valid for general AI use but
@@ -12650,6 +12656,32 @@ Completion criteria:
   and
 - focused tests prove server enforcement, non-strict provider behavior,
   configuration-save compatibility, and no provider or routing side effects.
+
+Implemented design: [Candidate-Bound Verification Provider Configuration
+Preflight](candidate-bound-verification-provider-configuration-preflight.md).
+
+### 11R.7 Verification Capability Current-State Summary
+
+Status: planned.
+
+Intent: show administrators the current saved strict candidate-bound
+verification capability state directly in AI Settings, with a bounded link to
+aggregate remediation readiness, so a prior acknowledged degraded save does
+not require inferring runtime capability from a later pending decision.
+
+Completion criteria:
+
+- the summary reuses the server-owned, fixed preflight capability contract or
+  an equivalently bounded current-configuration projection; it does not infer
+  authority in the browser;
+- it discloses no provider, model, endpoint, credential, prompt, model output,
+  item, policy, library, or aggregate identity data beyond the existing
+  administrator-authorized surfaces;
+- it is read-only and cannot probe a provider, save settings, select a
+  fallback, change a budget, mutate policy, route an item, or queue a retry;
+  and
+- focused tests prove current-state labels, authorization, stale-view refresh,
+  and absence of provider or mutation side effects.
 
 ## Testing Strategy
 

@@ -164,6 +164,14 @@ export const AI_SETTINGS_ALLOWED_KEYS = Object.freeze([
   'rag_graph_candidates_limit',
 ]);
 
+export const AI_VERIFICATION_PREFLIGHT_ALLOWED_KEYS = Object.freeze([
+  'primary_provider',
+  'model',
+  'ollama_fallback_enabled',
+  'ollama_for_budget_exhausted',
+  'ollama_model',
+]);
+
 export function validateAiSettingsPayloadKeys(rawConfig = {}, ragLoopDefaults = {}) {
   const allowedKeys = new Set([
     ...AI_SETTINGS_ALLOWED_KEYS,
@@ -178,3 +186,38 @@ export function validateAiSettingsPayloadKeys(rawConfig = {}, ragLoopDefaults = 
   };
 }
 
+export function validateAiVerificationPreflightPayloadKeys(rawConfig = {}) {
+  const allowedKeys = new Set(AI_VERIFICATION_PREFLIGHT_ALLOWED_KEYS);
+  const unknownKeys = Object.keys(rawConfig || {}).filter((key) => !allowedKeys.has(key));
+
+  return {
+    unknownKeys,
+    valid: unknownKeys.length === 0,
+  };
+}
+
+export function validateAiVerificationPreflightPayload(rawConfig = {}) {
+  const keyValidation = validateAiVerificationPreflightPayloadKeys(rawConfig);
+  const config = rawConfig && typeof rawConfig === 'object' && !Array.isArray(rawConfig)
+    ? rawConfig
+    : {};
+  const invalidKeys = [];
+
+  for (const key of ['primary_provider', 'model', 'ollama_model']) {
+    if (config[key] !== undefined && typeof config[key] !== 'string') {
+      invalidKeys.push(key);
+    }
+  }
+
+  for (const key of ['ollama_fallback_enabled', 'ollama_for_budget_exhausted']) {
+    if (config[key] !== undefined && typeof config[key] !== 'boolean') {
+      invalidKeys.push(key);
+    }
+  }
+
+  return {
+    ...keyValidation,
+    invalidKeys,
+    valid: keyValidation.valid && invalidKeys.length === 0,
+  };
+}

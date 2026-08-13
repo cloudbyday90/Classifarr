@@ -35,6 +35,7 @@ const { createAiSettingsHandlers } = await import('../routes/helpers/aiSettingsH
 function createResponse() {
   return {
     status: jest.fn().mockReturnThis(),
+    set: jest.fn().mockReturnThis(),
     json: jest.fn().mockReturnThis(),
   };
 }

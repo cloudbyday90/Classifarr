@@ -23,6 +23,7 @@ vi.mock('@/api', () => ({
     getCostSummary: vi.fn(),
     getAIModels: vi.fn(),
     testAIConnection: vi.fn(),
+    preflightAIVerificationConfig: vi.fn(),
     updateAIConfig: vi.fn(),
     updatePatternConfig: vi.fn(),
     testOllama: vi.fn(),
@@ -96,6 +97,9 @@ describe('AI Settings', () => {
     api.getPatternConfig.mockResolvedValue({})
     api.getCostSummary.mockResolvedValue(null)
     api.getLastOllamaPreflight.mockResolvedValue({ ai: null, embedding: null })
+    api.preflightAIVerificationConfig.mockResolvedValue({
+      data: { requiresConfirmation: false }
+    })
     api.updateAIConfig.mockResolvedValue({ data: { success: true } })
     api.updatePatternConfig.mockResolvedValue({ data: { success: true } })
   })
@@ -176,6 +180,102 @@ describe('AI Settings', () => {
       'AI provider settings were saved, but pattern settings failed: pattern service unavailable'
     )
     expect(toast.success).not.toHaveBeenCalled()
+  })
+
+  it('renders an advisory without saving until the administrator explicitly continues', async () => {
+    api.preflightAIVerificationConfig.mockResolvedValueOnce({
+      data: {
+        requiresConfirmation: true,
+        label: 'Budget fallback remains advisory',
+        message: 'The proposed primary AI path can admit strict verification, but its budget-exhaustion fallback remains advisory for that task.',
+        guidance: ['General AI settings can still be saved.']
+      }
+    })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().includes('Save Changes'))
+    await saveButton.trigger('click')
+    await flushPromises()
+
+    expect(api.preflightAIVerificationConfig).toHaveBeenCalledWith({
+      primary_provider: 'openai',
+      model: 'gpt-5-mini',
+      ollama_fallback_enabled: false,
+      ollama_for_budget_exhausted: true,
+      ollama_model: 'llama3.2'
+    })
+    expect(api.updateAIConfig).not.toHaveBeenCalled()
+    expect(api.updatePatternConfig).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('Budget fallback remains advisory')
+    expect(wrapper.text()).toContain('Save AI Settings Anyway')
+
+    const continueButton = wrapper.findAll('button').find((button) => button.text().includes('Save AI Settings Anyway'))
+    await continueButton.trigger('click')
+    await flushPromises()
+
+    expect(api.updateAIConfig).toHaveBeenCalledTimes(1)
+    expect(api.updatePatternConfig).toHaveBeenCalledTimes(1)
+  })
+
+  it('invalidates an advisory after the provider selection changes and requires a new preflight', async () => {
+    api.preflightAIVerificationConfig.mockResolvedValueOnce({
+      data: {
+        requiresConfirmation: true,
+        label: 'Strict verification needs attention',
+        message: 'The proposed primary AI path remains available for general AI use but cannot admit strict candidate-bound verification.',
+        guidance: []
+      }
+    })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().includes('Save Changes'))
+    await saveButton.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Strict verification needs attention')
+
+    const providerSelect = wrapper.find('select')
+    await providerSelect.setValue('gemini')
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('Strict verification needs attention')
+
+    const refreshedSaveButton = wrapper.findAll('button').find((button) => button.text().includes('Save Changes'))
+    await refreshedSaveButton.trigger('click')
+    await flushPromises()
+
+    expect(api.preflightAIVerificationConfig).toHaveBeenCalledTimes(2)
+    expect(api.preflightAIVerificationConfig).toHaveBeenLastCalledWith(expect.objectContaining({
+      primary_provider: 'gemini'
+    }))
+  })
+
+  it('keeps general AI configuration explicitly saveable after a preflight failure without rendering raw error details', async () => {
+    api.preflightAIVerificationConfig.mockRejectedValueOnce(new Error('https://private.example.test rejected sk-secret'))
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const saveButton = wrapper.findAll('button').find((button) => button.text().includes('Save Changes'))
+    await saveButton.trigger('click')
+    await flushPromises()
+
+    expect(api.updateAIConfig).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('Verification capability could not be evaluated')
+    expect(wrapper.text()).toContain('Save AI Settings Anyway')
+    expect(wrapper.text()).not.toContain('private.example.test')
+    expect(wrapper.text()).not.toContain('sk-secret')
+
+    const continueButton = wrapper.findAll('button').find((button) => button.text().includes('Save AI Settings Anyway'))
+    await continueButton.trigger('click')
+    await flushPromises()
+
+    expect(api.updateAIConfig).toHaveBeenCalledTimes(1)
+    expect(api.testAIConnection).not.toHaveBeenCalled()
+    expect(api.getAIModels).not.toHaveBeenCalled()
   })
 
   it('saves only AI provider-owned fields and does not echo stale RAG settings', async () => {

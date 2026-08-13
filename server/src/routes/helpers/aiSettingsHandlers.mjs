@@ -7,7 +7,10 @@
  */
 
 import * as encryptionModule from '../../utils/encryption.mjs';
-import { validateAiSettingsPayloadKeys } from './aiSettingsHelpers.mjs';
+import {
+  validateAiSettingsPayloadKeys,
+  validateAiVerificationPreflightPayload,
+} from './aiSettingsHelpers.mjs';
 import {
   buildAiModelsErrorResponse,
   buildAiModelsSuccessResponse,
@@ -28,6 +31,9 @@ import { buildSettingsErrorResponse, trySettingsAction } from './settingsErrorSu
 import { runSettingsRuntimeRefresh } from './settingsRuntimeRefreshSupport.mjs';
 import { createAiSettingsActionService } from '../../services/aiSettingsActionService.mjs';
 import { createAiSettingsReadService } from '../../services/aiSettingsReadService.mjs';
+import {
+  createCandidateBoundVerificationProviderPreflightService,
+} from '../../services/classificationCandidateBoundVerificationProviderPreflightService.mjs';
 import { ValidationError } from '../../utils/appError.mjs';
 
 /** @typedef {Record<string, unknown>} AiSettingsRequestBody */
@@ -42,6 +48,7 @@ import { ValidationError } from '../../utils/appError.mjs';
 
 /**
  * @typedef {{
+ *   query: (sql: string, params?: any[]) => Promise<{ rows: any[] }>,
  *   withTransaction: (callback: (client: SettingsDbClient) => Promise<any>) => Promise<any>,
  * }} SettingsDb
  */
@@ -108,6 +115,33 @@ function refreshAiSettingsRuntimeState({
   });
 }
 
+function validateAiSettingsUpdatePayload({
+  body,
+  getRagLoopDefaultConfig,
+  validateRagLoopConfigPayloadKeys,
+}) {
+  const ragLoopConfigKeyValidation = validateRagLoopConfigPayloadKeys(body || {});
+  if (!ragLoopConfigKeyValidation.valid) {
+    throw new ValidationError(
+      'Unsupported RAG loop configuration keys in payload. Please reload the page and try again.',
+      {
+        unknown_rag_loop_config_keys: ragLoopConfigKeyValidation.unknownKeys,
+        disallowed_rag_loop_override_keys: ragLoopConfigKeyValidation.disallowedKeys,
+      },
+    );
+  }
+
+  const aiSettingsKeyValidation = validateAiSettingsPayloadKeys(body || {}, getRagLoopDefaultConfig());
+  if (!aiSettingsKeyValidation.valid) {
+    throw new ValidationError(
+      'Unsupported AI settings keys in payload. Please reload the page and try again.',
+      {
+        unknown_ai_settings_keys: aiSettingsKeyValidation.unknownKeys,
+      },
+    );
+  }
+}
+
 /**
  * @param {{
  *   db: SettingsDb,
@@ -135,6 +169,9 @@ function refreshAiSettingsRuntimeState({
  *   formatEncryptedValue?: (encrypted: string, iv: string, authTag: string) => string,
  *   parseEncryptedValue?: (formatted: string) => { encrypted: string, iv: string, authTag: string },
  *   decryptValue?: (encrypted: string, iv: string, authTag: string) => string,
+ *   candidateBoundVerificationProviderPreflightService?: {
+ *     getPreflight: ({ proposedConfiguration }: { proposedConfiguration: AiSettingsRequestBody }) => Promise<Record<string, unknown>>,
+ *   },
  * }} options
  */
 export function createAiSettingsHandlers({
@@ -154,6 +191,9 @@ export function createAiSettingsHandlers({
   formatEncryptedValue = encryptionModule.formatEncryptedValue,
   parseEncryptedValue = encryptionModule.parseEncryptedValue,
   decryptValue = encryptionModule.decryptValue,
+  candidateBoundVerificationProviderPreflightService = createCandidateBoundVerificationProviderPreflightService({
+    database: db,
+  }),
 }) {
   const aiSettingsReadService = createAiSettingsReadService({
     db,
@@ -176,26 +216,11 @@ export function createAiSettingsHandlers({
 
     /** @param {SettingsRequest} req @param {SettingsResponse} res */
     async updateConfig(req, res) {
-      const ragLoopConfigKeyValidation = validateRagLoopConfigPayloadKeys(req.body || {});
-      if (!ragLoopConfigKeyValidation.valid) {
-        throw new ValidationError(
-          'Unsupported RAG loop configuration keys in payload. Please reload the page and try again.',
-          {
-            unknown_rag_loop_config_keys: ragLoopConfigKeyValidation.unknownKeys,
-            disallowed_rag_loop_override_keys: ragLoopConfigKeyValidation.disallowedKeys,
-          },
-        );
-      }
-
-      const aiSettingsKeyValidation = validateAiSettingsPayloadKeys(req.body || {}, getRagLoopDefaultConfig());
-      if (!aiSettingsKeyValidation.valid) {
-        throw new ValidationError(
-          'Unsupported AI settings keys in payload. Please reload the page and try again.',
-          {
-            unknown_ai_settings_keys: aiSettingsKeyValidation.unknownKeys,
-          },
-        );
-      }
+      validateAiSettingsUpdatePayload({
+        body: req.body,
+        getRagLoopDefaultConfig,
+        validateRagLoopConfigPayloadKeys,
+      });
 
       try {
         const { config, effects } = await db.withTransaction(async (client) => {
@@ -240,6 +265,33 @@ export function createAiSettingsHandlers({
         });
         return res.status(response.status).json(response.body);
       }
+    },
+
+    /** @param {SettingsRequest} req @param {SettingsResponse} res */
+    async getVerificationPreflight(req, res) {
+      const payloadValidation = validateAiVerificationPreflightPayload(req.body || {});
+      if (payloadValidation.unknownKeys.length > 0) {
+        throw new ValidationError(
+          'Unsupported AI verification preflight keys in payload. Please reload the page and try again.',
+          {
+            unknown_ai_verification_preflight_keys: payloadValidation.unknownKeys,
+          },
+        );
+      }
+      if (payloadValidation.invalidKeys.length > 0) {
+        throw new ValidationError(
+          'Invalid AI verification preflight values in payload. Please reload the page and try again.',
+          {
+            invalid_ai_verification_preflight_keys: payloadValidation.invalidKeys,
+          },
+        );
+      }
+
+      const preflight = await candidateBoundVerificationProviderPreflightService.getPreflight({
+        proposedConfiguration: req.body || {},
+      });
+      res.set('Cache-Control', 'no-store');
+      return res.json(preflight);
     },
 
     /** @param {SettingsRequest} req @param {SettingsResponse} res */

@@ -13,6 +13,10 @@ Current development changes will be recorded here.
 
 ### Added
 
+- **Verification-capability save preflight** — AI Settings now receives a
+  server-owned, no-probe strict-verification capability warning before saving
+  provider settings and requires explicit continuation for advisory paths.
+
 - **Candidate-bound AI verification** — Added a strict `CONFIRM` or `ABSTAIN`
   response contract that binds verification to the server-selected policy
   candidate, requires contract-grade structured-provider admission before any

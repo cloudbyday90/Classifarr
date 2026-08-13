@@ -63,6 +63,7 @@ import {
   getAIConfig,
   updateAIConfig,
   testAIConnection,
+  preflightAIVerificationConfig,
   getAIModels,
   getAIUsage,
 } from '../../api/settingsProviders'
@@ -284,6 +285,21 @@ describe('settingsProvidersApi', () => {
       mockPost.mockResolvedValueOnce({ data: {} })
       await testAIConnection({ provider: 'ollama' })
       expect(mockPost).toHaveBeenCalledWith('/settings/ai/test', { provider: 'ollama' })
+    })
+
+    it('preflightAIVerificationConfig posts only the supplied capability payload', async () => {
+      mockPost.mockResolvedValueOnce({ data: {} })
+      const payload = {
+        primary_provider: 'gemini',
+        model: 'gemini-3-pro-preview',
+        ollama_fallback_enabled: false,
+        ollama_for_budget_exhausted: true,
+        ollama_model: 'llama3.2'
+      }
+
+      await preflightAIVerificationConfig(payload)
+
+      expect(mockPost).toHaveBeenCalledWith('/settings/ai/verification-preflight', payload)
     })
 
     it('getAIModels calls POST', async () => {

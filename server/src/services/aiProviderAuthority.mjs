@@ -16,6 +16,8 @@ export const AI_PROVIDER_AUTHORITY_MODE_IDS = Object.freeze({
   DISABLED: 'disabled',
 });
 
+/** @typedef {'structured_contract' | 'verification' | 'proposal' | 'explanation' | 'fallback_advisory' | 'disabled'} AiProviderAuthorityModeId */
+
 const ACTIVE_AUTHORITY_MODE_IDS = Object.freeze([
   AI_PROVIDER_AUTHORITY_MODE_IDS.STRUCTURED_CONTRACT,
   AI_PROVIDER_AUTHORITY_MODE_IDS.VERIFICATION,
@@ -42,9 +44,17 @@ function normalizeModelId(value) {
   return modelId.slice(0, 255) || 'unknown';
 }
 
+/**
+ * @param {unknown} value
+ * @param {{ isFallback?: boolean }} options
+ * @returns {AiProviderAuthorityModeId}
+ */
 function normalizeRequestedMode(value, { isFallback = false } = {}) {
-  if (REQUESTABLE_AUTHORITY_MODE_IDS.includes(value)) {
-    return value;
+  if (
+    typeof value === 'string'
+    && REQUESTABLE_AUTHORITY_MODE_IDS.includes(/** @type {AiProviderAuthorityModeId} */ (value))
+  ) {
+    return /** @type {AiProviderAuthorityModeId} */ (value);
   }
 
   return isFallback
@@ -67,11 +77,16 @@ function supportsServerEnforcedStructuredOutput({ providerId, modelId }) {
   });
 }
 
+/**
+ * @param {{ providerId: string, modelId: string }} options
+ * @returns {AiProviderAuthorityModeId[]}
+ */
 function resolveSupportedModeIds({ providerId, modelId }) {
   if (DISABLED_PROVIDER_IDS.has(providerId)) {
     return [AI_PROVIDER_AUTHORITY_MODE_IDS.DISABLED];
   }
 
+  /** @type {AiProviderAuthorityModeId[]} */
   const supportedModeIds = [
     AI_PROVIDER_AUTHORITY_MODE_IDS.PROPOSAL,
     AI_PROVIDER_AUTHORITY_MODE_IDS.EXPLANATION,
@@ -89,6 +104,14 @@ function resolveSupportedModeIds({ providerId, modelId }) {
   return supportedModeIds;
 }
 
+/**
+ * @param {{
+ *   requestedMode: AiProviderAuthorityModeId,
+ *   supportedModeIds: AiProviderAuthorityModeId[],
+ *   isFallback: boolean,
+ * }} options
+ * @returns {AiProviderAuthorityModeId}
+ */
 function resolveEffectiveMode({ requestedMode, supportedModeIds, isFallback }) {
   if (supportedModeIds.length === 1) {
     return AI_PROVIDER_AUTHORITY_MODE_IDS.DISABLED;
@@ -109,6 +132,13 @@ function resolveEffectiveMode({ requestedMode, supportedModeIds, isFallback }) {
  * Derives a conservative, server-owned authority profile. Provider location is
  * not a trust signal: unsupported and local models never receive contract or
  * verification authority merely because they can emit JSON.
+ *
+ * @param {{
+ *   providerId?: unknown,
+ *   model?: unknown,
+ *   requestedMode?: unknown,
+ *   isFallback?: boolean,
+ * }} options
  */
 export function buildAiProviderAuthorityProfile({
   providerId: providerIdInput,
