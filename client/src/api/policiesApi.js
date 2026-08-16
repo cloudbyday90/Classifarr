@@ -122,6 +122,10 @@ export function getNativeIntentReconciliationRemediationInventory() {
   return getDataRequest('/policies/native-intent-reconciliation/remediation')
 }
 
+export function getPolicyPurposeCoverageReview() {
+  return getDataRequest('/policies/native-intent-reconciliation/purpose-coverage')
+}
+
 const policiesApi = {
   getPolicy,
   getPolicies,
@@ -136,6 +140,7 @@ const policiesApi = {
   deletePolicy,
   getNativeIntentReconciliationStatus,
   getNativeIntentReconciliationRemediationInventory,
+  getPolicyPurposeCoverageReview,
 }
 
 export default policiesApi

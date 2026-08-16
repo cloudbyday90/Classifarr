@@ -15,6 +15,7 @@ import { jest } from '@jest/globals';
 const getStatus = jest.fn();
 const getReconciliationStatus = jest.fn();
 const getRemediationInventory = jest.fn();
+const getPurposeCoverageReview = jest.fn();
 const disableAutomation = jest.fn();
 const resumeAutomation = jest.fn();
 const resetCircuit = jest.fn();
@@ -46,6 +47,12 @@ jest.unstable_mockModule('../services/nativeIntentReconciliationRemediationServi
   },
 }));
 
+jest.unstable_mockModule('../services/policyPurposeCoverageReviewService.mjs', () => ({
+  policyPurposeCoverageReviewService: {
+    getReview: getPurposeCoverageReview,
+  },
+}));
+
 const { registerPolicyNativeIntentReconciliationRoutes } =
   await import('../routes/policiesRouteNativeIntentReconciliation.mjs');
 const { errorHandler } = await import('../middleware/errorHandler.mjs');
@@ -72,6 +79,7 @@ describe('Policy native intent reconciliation control routes', () => {
     getStatus.mockReset();
     getReconciliationStatus.mockReset();
     getRemediationInventory.mockReset();
+    getPurposeCoverageReview.mockReset();
     disableAutomation.mockReset();
     resumeAutomation.mockReset();
     resetCircuit.mockReset();
@@ -87,6 +95,11 @@ describe('Policy native intent reconciliation control routes', () => {
     getRemediationInventory.mockResolvedValue({
       entries: [],
       rawPayloadExposed: false,
+    });
+    getPurposeCoverageReview.mockResolvedValue({
+      entries: [],
+      rawConfigurationExposed: false,
+      routingAffected: false,
     });
     disableAutomation.mockResolvedValue({
       changed: true,
@@ -138,6 +151,25 @@ describe('Policy native intent reconciliation control routes', () => {
     });
     await request(createApp({ id: 9, role: 'operator' }))
       .get('/api/policies/native-intent-reconciliation/remediation')
+      .expect(403);
+  });
+
+  test('returns the administrator-only, read-only policy purpose coverage review', async () => {
+    const response = await request(createApp())
+      .get('/api/policies/native-intent-reconciliation/purpose-coverage?limit=25')
+      .expect(200);
+
+    expect(response.body).toEqual({
+      entries: [],
+      rawConfigurationExposed: false,
+      routingAffected: false,
+    });
+    expect(getPurposeCoverageReview).toHaveBeenCalledWith({
+      dbClient: expect.any(Object),
+      limit: '25',
+    });
+    await request(createApp({ id: 9, role: 'operator' }))
+      .get('/api/policies/native-intent-reconciliation/purpose-coverage')
       .expect(403);
   });
 

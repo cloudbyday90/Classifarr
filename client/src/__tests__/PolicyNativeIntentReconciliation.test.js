@@ -15,6 +15,7 @@ const { apiMock } = vi.hoisted(() => ({
   apiMock: {
     getNativeIntentReconciliationStatus: vi.fn(),
     getNativeIntentReconciliationRemediationInventory: vi.fn(),
+    getPolicyPurposeCoverageReview: vi.fn(),
   },
 }))
 
@@ -88,6 +89,16 @@ const remediationInventory = {
   }],
 }
 
+const purposeCoverageReview = {
+  entries: [],
+  summary: {
+    reviewedPolicyCount: 0,
+    declaredCoverageCount: 0,
+    missingCoverageCount: 0,
+    broadOverlapCount: 0,
+  },
+}
+
 function mountView() {
   return mount(PolicyNativeIntentReconciliation, {
     global: {
@@ -104,6 +115,7 @@ describe('PolicyNativeIntentReconciliation.vue', () => {
     vi.clearAllMocks()
     apiMock.getNativeIntentReconciliationStatus.mockResolvedValue(reconciliationStatus)
     apiMock.getNativeIntentReconciliationRemediationInventory.mockResolvedValue(remediationInventory)
+    apiMock.getPolicyPurposeCoverageReview.mockResolvedValue(purposeCoverageReview)
     policyApiMock.getPolicy.mockResolvedValue({
       id: 17,
       name: 'Kids TV Policy',
@@ -122,6 +134,7 @@ describe('PolicyNativeIntentReconciliation.vue', () => {
     expect(wrapper.text()).toContain('Rollback Hold Active')
     expect(wrapper.text()).toContain('Automatic reconciliation remains the only normal conversion path')
     expect(wrapper.text()).toContain('Policy remediation')
+    expect(wrapper.text()).toContain('Policy purpose coverage')
     expect(wrapper.text()).toContain('Declare destination purpose')
     expect(wrapper.text()).toContain('App 0.47.5-c.beta | revision a0b1c2d3e4f5678901234567890abcdef1234567')
     expect(wrapper.findAll('input[type="checkbox"]')).toHaveLength(0)
@@ -138,6 +151,7 @@ describe('PolicyNativeIntentReconciliation.vue', () => {
 
     expect(apiMock.getNativeIntentReconciliationStatus).toHaveBeenCalledTimes(2)
     expect(apiMock.getNativeIntentReconciliationRemediationInventory).toHaveBeenCalledTimes(2)
+    expect(apiMock.getPolicyPurposeCoverageReview).toHaveBeenCalledTimes(2)
   })
 
   it('opens the established policy editor and lets the scheduler re-evaluate after a normal policy save', async () => {
@@ -158,6 +172,7 @@ describe('PolicyNativeIntentReconciliation.vue', () => {
     expect(wrapper.text()).toContain('The protected reconciliation scheduler will independently re-evaluate')
     expect(apiMock.getNativeIntentReconciliationStatus).toHaveBeenCalledTimes(2)
     expect(apiMock.getNativeIntentReconciliationRemediationInventory).toHaveBeenCalledTimes(2)
+    expect(apiMock.getPolicyPurposeCoverageReview).toHaveBeenCalledTimes(2)
   })
 
   it('reports unavailable control state without treating it as a paused scheduler', async () => {

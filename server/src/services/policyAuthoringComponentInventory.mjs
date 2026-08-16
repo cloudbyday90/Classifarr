@@ -29,6 +29,7 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS = Object.freeze({
   LIBRARY_LIFECYCLE_ENTRY: 'library_lifecycle_entry',
   DESTINATION_PROPOSAL: 'destination_proposal',
   RECONCILIATION_REMEDIATION: 'reconciliation_remediation',
+  PURPOSE_COVERAGE_REVIEW: 'purpose_coverage_review',
 });
 
 const POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS = Object.freeze({
@@ -299,6 +300,15 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY = deepFreeze([
     targetComponentIds: [],
     normalAuthoringAllowed: false,
     notes: 'Administrator-only reconciliation remediation inventory; it can open the established compatibility editor but cannot derive intent or invoke conversion.',
+  },
+  {
+    id: 'policy_purpose_coverage_review',
+    path: 'client/src/components/policies/PolicyPurposeCoverageReview.vue',
+    roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.PURPOSE_COVERAGE_REVIEW,
+    decisionId: POLICY_AUTHORING_COMPONENT_DECISION_IDS.DELETE_FROM_NORMAL_PATH,
+    targetComponentIds: [],
+    normalAuthoringAllowed: false,
+    notes: 'Administrator-only read-only coverage review; it renders server-projected aggregate counts and can only open the established editor for an explicit policy.',
   },
   {
     id: 'policy_compatibility_maintenance_surface',

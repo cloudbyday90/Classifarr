@@ -95,9 +95,14 @@ Current execution focus:
   Calibration**. Current matched declared purpose evidence now distinguishes a
   specialized candidate from shared broad overlap, while media type,
   preferences, profiles, history, RAG, and AI remain unable to select a route.
-- **Next:** **12R.2 Policy Purpose Coverage And Overlap Review**. Provide a
-  read-only administrator review of active native-policy coverage and
-  deterministic overlap without altering policies or routing.
+- **Completed:** **12R.2 Policy Purpose Coverage And Overlap Review**. Added a
+  bounded administrator-only read of active native-purpose coverage and
+  same-media-type overlap that returns fixed statuses and counts without
+  exposing rule values or affecting routing.
+- **Next:** **12R.3 Policy Authoring Purpose Coverage Preflight**. Add a
+  server-owned, validation-only preflight to the established policy editor so
+  administrators can see the same bounded coverage status before saving a
+  changed purpose.
 - **Completed:** **10R.4 Release Acceptance Assembly**. Repository acceptance
   now produces a passed or blocked manifest artifact, while a separate
   protected-environment workflow records active-installation evidence without
@@ -138,8 +143,8 @@ completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3 -> 10R.3.
 completed release hardening: 10R.4 -> 10R.4.1
 active release candidate: v0.48.0-beta -> 10R.4.2 -> 10R.4.3
 completed post-release authority hardening: 11R.1.1 -> 11R.1.2 -> 11R.2 -> 11R.3 -> 11R.4 -> 11R.5 -> 11R.6 -> 11R.7 -> 11R.8 -> 11R.9
-completed reconciliation and deterministic calibration: 12R.0 -> 12R.1
-next read-only policy-overlap review: 12R.2
+completed reconciliation and deterministic calibration: 12R.0 -> 12R.1 -> 12R.2
+next policy-authoring coverage preflight: 12R.3
 completed administrator settings concurrency guardrail: 11R.10 AI Settings stale-write conflict acceptance
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
@@ -12861,7 +12866,7 @@ Calibration](specialized-destination-identity-evidence-calibration.md).
 
 ### 12R.2 Policy Purpose Coverage And Overlap Review
 
-Status: planned.
+Status: complete.
 
 Intent: give administrators a bounded, read-only view of active native-policy
 purpose coverage and deterministic overlap so that missing specialized rules
@@ -12881,6 +12886,32 @@ Completion criteria:
   validated policy editor; and
 - add service, route, authorization, client, and real-database coverage without
   changing the classification or conversion paths.
+
+Implemented design: [Policy Purpose Coverage And Overlap
+Review](policy-purpose-coverage-and-overlap-review.md).
+
+### 12R.3 Policy Authoring Purpose Coverage Preflight
+
+Status: planned.
+
+Intent: extend the existing validated policy editor with a server-owned,
+validation-only preflight that projects the same bounded purpose-coverage and
+same-media-type overlap status for the proposed native-purpose configuration
+before an administrator saves it. The preflight must not save the draft,
+create a native intent, invoke AI, select a destination, or change routing.
+
+Completion criteria:
+
+- evaluate only the submitted editor draft plus current active validated native
+  contracts and return fixed status/count summaries without configured terms or
+  item/profile/history/RAG/provider content;
+- preserve the existing server-side validation and authorization boundary, with
+  no client-computable outcome or bypass path;
+- make the result advisory to the explicit administrator save decision and
+  retain no preflight draft or result; and
+- add service, route, authorization, editor, client API, and real-database
+  coverage while preserving the 12R.2 read-only report and classification
+  paths.
 
 ## Testing Strategy
 
@@ -13096,9 +13127,9 @@ The next sequence is dependency-gated rather than phase-number order:
     result without exposing matched terms or allowing non-policy inputs to
     choose a route. See [Specialized-Destination Identity Evidence
     Calibration](specialized-destination-identity-evidence-calibration.md).
-    **Next: 12R.2 Policy Purpose Coverage And Overlap Review**. Provide a
-    read-only administrative review surface for active native-purpose coverage
-    and overlap using the same bounded taxonomy.
+    **Next: 12R.3 Policy Authoring Purpose Coverage Preflight**. Surface the
+    same bounded taxonomy before a policy-purpose save without persisting the
+    draft or changing routing.
 
 The completed 0R through 3R, 6R, and 7R contracts remain guardrails, not
 permission to restore a diagnostic, template-first, or browser-authoritative

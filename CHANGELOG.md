@@ -13,6 +13,9 @@ Current development changes will be recorded here.
 
 ### Added
 
+- **Policy purpose coverage review** — Added a bounded administrator-only
+  native-policy report for missing specialized purpose coverage and shared
+  same-media-type overlap, with fixed editor guidance and no routing changes.
 - **Reconciliation operator remediation** — Added an administrator-only,
   bounded unresolved-policy inventory that opens the existing validated policy
   editor for an explicit destination-purpose review while leaving conversion to

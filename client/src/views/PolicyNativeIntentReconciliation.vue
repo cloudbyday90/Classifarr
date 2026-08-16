@@ -266,6 +266,13 @@
       @edit-policy="openPolicyEditor"
     />
 
+    <PolicyPurposeCoverageReview
+      v-if="status || purposeCoverageReview"
+      :review="purposeCoverageReview"
+      :loading="purposeCoverageLoading"
+      @edit-policy="openPolicyEditor"
+    />
+
     <div
       v-if="policyEditorError"
       class="rounded border border-red-500/50 bg-red-950/30 p-4 text-sm text-red-100"
@@ -305,9 +312,11 @@
 import { computed, onMounted, ref } from 'vue'
 import PolicyBuilderModal from '@/components/policies/PolicyBuilderModal.vue'
 import PolicyNativeIntentReconciliationRemediationInventory from '@/components/policies/PolicyNativeIntentReconciliationRemediationInventory.vue'
+import PolicyPurposeCoverageReview from '@/components/policies/PolicyPurposeCoverageReview.vue'
 import { getPolicy, updatePolicy } from '@/api/policiesApi'
 import { usePolicyNativeIntentReconciliationStatus } from '@/composables/usePolicyNativeIntentReconciliationStatus'
 import { usePolicyNativeIntentReconciliationRemediationInventory } from '@/composables/usePolicyNativeIntentReconciliationRemediationInventory'
+import { usePolicyPurposeCoverageReview } from '@/composables/usePolicyPurposeCoverageReview'
 
 const {
   status,
@@ -321,13 +330,21 @@ const {
   errorMessage: remediationErrorMessage,
   loadInventory: loadRemediationInventory,
 } = usePolicyNativeIntentReconciliationRemediationInventory()
+const {
+  review: purposeCoverageReview,
+  isLoading: purposeCoverageLoading,
+  errorMessage: purposeCoverageErrorMessage,
+  loadReview: loadPurposeCoverageReview,
+} = usePolicyPurposeCoverageReview()
 const editingPolicy = ref(null)
 const policyEditorOpen = ref(false)
 const policyEditorError = ref('')
 const policyEditorFeedback = ref('')
-const isLoading = computed(() => statusLoading.value || remediationLoading.value)
+const isLoading = computed(() => (
+  statusLoading.value || remediationLoading.value || purposeCoverageLoading.value
+))
 const errorMessage = computed(() => (
-  statusErrorMessage.value || remediationErrorMessage.value
+  statusErrorMessage.value || remediationErrorMessage.value || purposeCoverageErrorMessage.value
 ))
 
 const STATUS_DETAILS = {
@@ -365,7 +382,7 @@ const deferredOrBlockedCount = computed(() => (
 ))
 
 const loadReconciliationView = async () => {
-  await Promise.all([loadStatus(), loadRemediationInventory()])
+  await Promise.all([loadStatus(), loadRemediationInventory(), loadPurposeCoverageReview()])
 }
 
 const openPolicyEditor = async entry => {

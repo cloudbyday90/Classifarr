@@ -26,6 +26,9 @@ import {
 import {
   nativeIntentReconciliationRemediationService,
 } from '../services/nativeIntentReconciliationRemediationService.mjs';
+import {
+  policyPurposeCoverageReviewService,
+} from '../services/policyPurposeCoverageReviewService.mjs';
 
 function toPositiveInteger(value) {
   const numericValue = Number(value);
@@ -90,6 +93,17 @@ export function registerPolicyNativeIntentReconciliationRoutes(router, { db, log
     }
 
     return sendData(res, await nativeIntentReconciliationRemediationService.getInventory({
+      dbClient: db,
+      limit: req.query?.limit,
+    }));
+  }));
+
+  router.get('/native-intent-reconciliation/purpose-coverage', asyncHandler(async (req, res) => {
+    if (req.user?.role !== 'admin') {
+      throw new ForbiddenError('Admin access required');
+    }
+
+    return sendData(res, await policyPurposeCoverageReviewService.getReview({
       dbClient: db,
       limit: req.query?.limit,
     }));
