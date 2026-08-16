@@ -12,11 +12,15 @@ not a normal administrator workflow. The former client preview, policy
 selection, exact-phrase confirmation dialog, and manual apply API are removed.
 
 The replacement administrator surface is
-`/policies/native-intent-reconciliation`. It reads the bounded status contract
-from `GET /api/policies/native-intent-reconciliation/status` and exposes no
-conversion mutation controls. Protected server recovery controls, rollback, and
-per-policy re-entry remain lifecycle exceptions; they do not restore manual
-batch conversion.
+`/policies/native-intent-reconciliation`. Its status contract is read-only at
+`GET /api/policies/native-intent-reconciliation/status`, and it exposes no
+conversion mutation controls. Since 12R.0, a separate bounded remediation
+inventory can open the existing guarded policy editor only for a policy that
+cannot establish a declared destination purpose. Saving that existing policy
+write still does not select or convert a policy; the scheduler independently
+re-evaluates it. Protected server recovery controls, rollback, and per-policy
+re-entry remain lifecycle exceptions; they do not restore manual batch
+conversion.
 
 ## Official-Source Research
 
@@ -42,10 +46,12 @@ batch conversion.
    Delete the registered preview/apply routes, client API methods, confirmation
    dialog, candidate-selection composable, mutation limiter, operator action
    service, and its now-unreachable runtime observation helper.
-2. **Keep observability, not manual conversion.**
+2. **Keep observability and bounded policy remediation, not manual conversion.**
    Provide a read-only administrator status view containing scheduler health,
    last-run outcome, unresolved counts, next scheduled attempt, and bounded
-   blocker groups.
+   blocker groups. For the narrow `no_convertible_intent` condition, open the
+   existing protected policy editor so an administrator may explicitly declare
+   purpose; do not offer a conversion action.
 3. **Defend conversion authority in the service layer.**
    Reject `manual_operator` from the conversion workflow and apply-gate audit
    context. Retain only reconciliation, post-upgrade, test-fixture, and
@@ -80,9 +86,10 @@ batch conversion.
 2. Read-only contract and route:
    `nativeIntentReconciliationStatusService.mjs` and
    `policiesRouteNativeIntentReconciliation.mjs`.
-3. Client status surface:
+3. Client status and remediation surface:
    `PolicyNativeIntentReconciliation.vue` and
-   `usePolicyNativeIntentReconciliationStatus.js`.
+   `usePolicyNativeIntentReconciliationStatus.js`, with
+   `PolicyNativeIntentReconciliationRemediationInventory.vue`.
 4. Conversion authority guard:
    `policyIntentConversionWorkflow.mjs` and
    `policyPostUpgradeApplyGate.mjs`.
@@ -96,9 +103,11 @@ batch conversion.
   `POST /api/policies/native-intent-conversions/apply` server endpoints.
 - Deleted the manual conversion service, dialog, client composable, client API
   calls, mutation limiter, and isolated post-conversion observation code.
-- Added `/policies/native-intent-reconciliation`, a read-only administrator
-  status view with safe scheduler, control, inventory, latest-run, and grouped
-  blocker evidence.
+- Added `/policies/native-intent-reconciliation`, an administrator status view
+  with safe scheduler, control, inventory, latest-run, and grouped blocker
+  evidence. Its status and remediation-inventory reads are bounded; the only
+  supported remediation opens the established policy editor and never invokes
+  conversion.
 - Preserved the scheduler, reconciliation status API, circuit controls,
   rollback, and administrator-approved re-entry paths.
 - Added tests proving legacy mutation routes are unregistered, manual actor

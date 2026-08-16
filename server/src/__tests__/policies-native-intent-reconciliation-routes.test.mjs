@@ -14,6 +14,7 @@ import { jest } from '@jest/globals';
 
 const getStatus = jest.fn();
 const getReconciliationStatus = jest.fn();
+const getRemediationInventory = jest.fn();
 const disableAutomation = jest.fn();
 const resumeAutomation = jest.fn();
 const resetCircuit = jest.fn();
@@ -36,6 +37,12 @@ jest.unstable_mockModule('../services/nativeIntentReconciliationControlService.m
 jest.unstable_mockModule('../services/nativeIntentReconciliationStatusService.mjs', () => ({
   nativeIntentReconciliationStatusService: {
     getStatus: getReconciliationStatus,
+  },
+}));
+
+jest.unstable_mockModule('../services/nativeIntentReconciliationRemediationService.mjs', () => ({
+  nativeIntentReconciliationRemediationService: {
+    getInventory: getRemediationInventory,
   },
 }));
 
@@ -64,6 +71,7 @@ describe('Policy native intent reconciliation control routes', () => {
   beforeEach(() => {
     getStatus.mockReset();
     getReconciliationStatus.mockReset();
+    getRemediationInventory.mockReset();
     disableAutomation.mockReset();
     resumeAutomation.mockReset();
     resetCircuit.mockReset();
@@ -74,6 +82,10 @@ describe('Policy native intent reconciliation control routes', () => {
     });
     getReconciliationStatus.mockResolvedValue({
       statusId: 'ready',
+      rawPayloadExposed: false,
+    });
+    getRemediationInventory.mockResolvedValue({
+      entries: [],
       rawPayloadExposed: false,
     });
     disableAutomation.mockResolvedValue({
@@ -111,6 +123,21 @@ describe('Policy native intent reconciliation control routes', () => {
     expect(getReconciliationStatus).toHaveBeenCalledWith({ dbClient: expect.any(Object) });
     await request(createApp({ id: 9, role: 'operator' }))
       .get('/api/policies/native-intent-reconciliation/status')
+      .expect(403);
+  });
+
+  test('returns the administrator-only bounded remediation inventory', async () => {
+    const response = await request(createApp())
+      .get('/api/policies/native-intent-reconciliation/remediation?limit=25')
+      .expect(200);
+
+    expect(response.body).toEqual({ entries: [], rawPayloadExposed: false });
+    expect(getRemediationInventory).toHaveBeenCalledWith({
+      dbClient: expect.any(Object),
+      limit: '25',
+    });
+    await request(createApp({ id: 9, role: 'operator' }))
+      .get('/api/policies/native-intent-reconciliation/remediation')
       .expect(403);
   });
 

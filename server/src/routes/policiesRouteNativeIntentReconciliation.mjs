@@ -23,6 +23,9 @@ import {
 import {
   nativeIntentReconciliationStatusService,
 } from '../services/nativeIntentReconciliationStatusService.mjs';
+import {
+  nativeIntentReconciliationRemediationService,
+} from '../services/nativeIntentReconciliationRemediationService.mjs';
 
 function toPositiveInteger(value) {
   const numericValue = Number(value);
@@ -81,6 +84,17 @@ function requireAdministratorAction(req) {
 }
 
 export function registerPolicyNativeIntentReconciliationRoutes(router, { db, logger }) {
+  router.get('/native-intent-reconciliation/remediation', asyncHandler(async (req, res) => {
+    if (req.user?.role !== 'admin') {
+      throw new ForbiddenError('Admin access required');
+    }
+
+    return sendData(res, await nativeIntentReconciliationRemediationService.getInventory({
+      dbClient: db,
+      limit: req.query?.limit,
+    }));
+  }));
+
   router.get('/native-intent-reconciliation/status', asyncHandler(async (req, res) => {
     if (req.user?.role !== 'admin') {
       throw new ForbiddenError('Admin access required');

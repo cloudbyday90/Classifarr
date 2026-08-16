@@ -8,6 +8,7 @@
 
 import { jest } from '@jest/globals';
 import {
+  insertNativeIntentReconciliationAlertNotification,
   upsertNativeIntentReconciliationAlertState,
 } from '../../services/nativeIntentReconciliationAlertPersistence.mjs';
 
@@ -35,5 +36,26 @@ describe('Native intent reconciliation alert persistence', () => {
       '2026-07-16T01:00:00.000Z',
       null,
     ]);
+  });
+
+  test('routes a reconciliation incident to the reconciliation surface', async () => {
+    const query = jest.fn().mockResolvedValue({ rows: [] });
+
+    await insertNativeIntentReconciliationAlertNotification({
+      client: { query },
+      alert: {
+        notificationType: 'warning',
+        alertTypeId: 'prolonged_unresolved_inventory',
+        reasonId: 'unresolved_inventory_persisted',
+        title: 'Policy reconciliation needs attention',
+        message: 'Review the reconciliation status.',
+      },
+    });
+
+    const [, values] = query.mock.calls[0];
+    expect(JSON.parse(values[3])).toEqual(expect.objectContaining({
+      targetPath: '/policies/native-intent-reconciliation',
+      alertTypeId: 'prolonged_unresolved_inventory',
+    }));
   });
 });

@@ -28,6 +28,7 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS = Object.freeze({
   POLICY_LIST_CARD: 'policy_list_card',
   LIBRARY_LIFECYCLE_ENTRY: 'library_lifecycle_entry',
   DESTINATION_PROPOSAL: 'destination_proposal',
+  RECONCILIATION_REMEDIATION: 'reconciliation_remediation',
 });
 
 const POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS = Object.freeze({
@@ -289,6 +290,15 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY = deepFreeze([
     targetComponentIds: [],
     normalAuthoringAllowed: false,
     notes: 'Read-only recovery notice for invalid persisted native intent.',
+  },
+  {
+    id: 'policy_native_intent_reconciliation_remediation_inventory',
+    path: 'client/src/components/policies/PolicyNativeIntentReconciliationRemediationInventory.vue',
+    roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.RECONCILIATION_REMEDIATION,
+    decisionId: POLICY_AUTHORING_COMPONENT_DECISION_IDS.DELETE_FROM_NORMAL_PATH,
+    targetComponentIds: [],
+    normalAuthoringAllowed: false,
+    notes: 'Administrator-only reconciliation remediation inventory; it can open the established compatibility editor but cannot derive intent or invoke conversion.',
   },
   {
     id: 'policy_compatibility_maintenance_surface',

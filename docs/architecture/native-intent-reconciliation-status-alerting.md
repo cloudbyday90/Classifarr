@@ -33,10 +33,11 @@ The system evaluates exactly three conditions after every reconciliation result:
 3. three or more system-level reconciliation failures occurred in one hour.
 
 Each condition has a durable `firing` or `resolved` record in
-`policy_native_intent_reconciliation_alert_states`. This gives a newly started
-process the same six-hour notification cooldown as the process that detected
-the prior condition. A resolved condition that later fires again is a new
-incident and does not retain its prior notification timestamp.
+`policy_native_intent_reconciliation_alert_states`. A notification is created
+only for the transition into `firing`; repeated scheduled evaluations of the
+same firing incident do not create more notifications, including after a
+restart. A resolved condition that later fires again is a new incident and
+does not retain its prior notification timestamp.
 
 The alert transaction locks existing alert rows, writes any required lifecycle
 state, and inserts the existing global in-app notification together. Repeated
@@ -70,7 +71,7 @@ hidden conversion endpoint or a raw ledger export.
 | --- | --- | --- |
 | Logs only | No API or storage change | Operators must search logs; no safe status overview or restart-safe deduplication |
 | Read-only status with in-memory cooldown | Simple implementation | Restarts re-notify and replicas can duplicate alerts |
-| Read-only status with durable typed alert state | Actionable status, restart-safe cooldown, bounded stored data | Adds one small lifecycle table and endpoint |
+| Read-only status with durable typed incident state | Actionable status, restart-safe incident deduplication, bounded stored data | Adds one small lifecycle table and endpoint |
 
 ### Final Recommendation Stack
 
@@ -80,15 +81,16 @@ hidden conversion endpoint or a raw ledger export.
 3. Retain only typed alert lifecycle state, fixed notification text, and
    bounded stable identifiers.
 4. Notify only for open circuit, prolonged unresolved inventory, and repeated
-   systemic failure, with durable six-hour deduplication.
+   systemic failure, once per durable firing incident.
 5. Treat unresolved `requires_maintenance` records as a future compatibility
    deletion gate, not as an alert acknowledgement workflow.
 
 ## Verification
 
 Automated coverage verifies the status contract, safe route access, alert
-condition/cooldown evaluation, transaction behavior, reopened-incident state
-handling, and that alert failure cannot change a reconciliation result.
+condition/incident-transition evaluation, transaction behavior,
+reopened-incident state handling, and that alert failure cannot change a
+reconciliation result.
 
 ## Sources
 

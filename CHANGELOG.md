@@ -11,6 +11,19 @@ Archived changelogs: [August 2026 Pre-release Details](docs/changelog/CHANGELOG-
 
 Current development changes will be recorded here.
 
+### Added
+
+- **Reconciliation operator remediation** — Added an administrator-only,
+  bounded unresolved-policy inventory that opens the existing validated policy
+  editor for an explicit destination-purpose review while leaving conversion to
+  the protected scheduler.
+
+### Changed
+
+- **Reconciliation attention alerts** — Alert notifications now target the
+  remediation screen and emit once per firing incident instead of repeating
+  every six hours until the durable alert state resolves.
+
 ## [0.48.1-beta] - 2026-08-13
 
 ### Added

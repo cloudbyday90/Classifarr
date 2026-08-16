@@ -86,6 +86,15 @@ Current execution focus:
   increment, missing-row transaction advisory lock, exact `BIGINT` boundary,
   append-only receipt guard, and replace-restore clearing policy with fresh,
   upgrade, and concurrent-save acceptance coverage.
+- **Completed:** **12R.0 Reconciliation Operator Remediation**. Administrators
+  can now see the bounded unresolved policy inventory, open the existing
+  compatible policy editor for an explicit purpose declaration, and rely on the
+  scheduler for independent conversion evaluation. The workflow does not infer
+  purpose from library names, profiles, history, RAG, or AI output.
+- **Next:** **12R.1 Specialized-Destination Identity Evidence Calibration**.
+  Refine deterministic identity evidence and operator explanation for broad
+  destination overlap without weakening policy authority or allowing AI to
+  choose a route.
 - **Completed:** **10R.4 Release Acceptance Assembly**. Repository acceptance
   now produces a passed or blocked manifest artifact, while a separate
   protected-environment workflow records active-installation evidence without
@@ -126,6 +135,8 @@ completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3 -> 10R.3.
 completed release hardening: 10R.4 -> 10R.4.1
 active release candidate: v0.48.0-beta -> 10R.4.2 -> 10R.4.3
 completed post-release authority hardening: 11R.1.1 -> 11R.1.2 -> 11R.2 -> 11R.3 -> 11R.4 -> 11R.5 -> 11R.6 -> 11R.7 -> 11R.8 -> 11R.9
+completed reconciliation operator remediation: 12R.0
+next deterministic calibration: 12R.1
 completed administrator settings concurrency guardrail: 11R.10 AI Settings stale-write conflict acceptance
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
@@ -12784,6 +12795,64 @@ Completion criteria:
 Implemented design: [AI Settings Stale-Write Conflict
 Acceptance](ai-settings-stale-write-conflict-acceptance.md).
 
+## Phase 12R: Reconciliation Remediation And Identity Calibration
+
+Phase 12R addresses operating findings after the native-intent conversion
+workflow reached release acceptance. It improves operator recovery and
+deterministic policy evidence without restoring browser-owned conversion,
+library-name heuristics, or AI route authority.
+
+### 12R.0 Reconciliation Operator Remediation
+
+Status: complete on 2026-08-16.
+
+Intent: make durable `requires_maintenance` reconciliation rows actionable to
+an administrator without turning the status screen into a conversion or native
+intent authoring endpoint.
+
+Completion criteria:
+
+- an administrator-only, bounded current-state inventory identifies the
+  policy, library, status IDs, and one server-authored action without returning
+  raw configuration, profile, history, AI/RAG/provider data, fingerprints, or
+  errors;
+- a `no_convertible_intent` legacy policy can open only the existing validated
+  policy editor, where the operator explicitly declares its own Belongs Here
+  rule;
+- policy updates retain the existing write admission and transaction boundary;
+  the scheduler remains the only normal conversion path;
+- unsupported states remain read-only and cannot be bypassed by a client action;
+- notification delivery emits once for a firing incident and can emit again
+  only after the persisted incident resolves and later re-fires; and
+- unit, route, and client tests prove bounded output, denied non-admin access,
+  no direct conversion control, and correct editor handoff.
+
+Implemented design: [Native Intent Reconciliation Operator
+Remediation](native-intent-reconciliation-operator-remediation.md).
+
+### 12R.1 Specialized-Destination Identity Evidence Calibration
+
+Status: planned.
+
+Intent: resolve deterministic ranking ambiguity when a specialized destination
+and a broad catch-all destination receive equivalent purpose scores from the
+same item. The work must make the deterministic basis explainable and must not
+let library names, historical placement, profiles, or AI decide the route.
+
+Completion criteria:
+
+- establish a bounded deterministic identity-evidence taxonomy that separates
+  positive specialized evidence, broad compatibility overlap, and explicit
+  hard exclusion;
+- revise candidate ranking only where the new evidence is current,
+  explainable, and independently validated; ties remain confirmation-required;
+- preserve policy-declared purpose as the only policy authority, with AI
+  verification still candidate-bound and advisory;
+- provide fixed operator explanations for deterministic winner, genuine tie,
+  and insufficient specialized evidence; and
+- add focused policy-engine, route-outcome, pending-decision, and real-database
+  acceptance coverage for TV and movie scenarios.
+
 ## Testing Strategy
 
 Required coverage should follow the re-imagined phase boundaries:
@@ -12856,6 +12925,11 @@ Required coverage should follow the re-imagined phase boundaries:
   - raw provider fields cannot reach the decision-summary or client view, and
   - candidate-bound status takes precedence while legacy AI advisory remains a
     fallback for historic records.
+- Phase 12R reconciliation-remediation tests:
+  - only administrator-authorized bounded state rows reach the inventory,
+  - no remediation response exposes raw policy or AI/provider payloads,
+  - policy editing remains the existing validated write path, and
+  - the scheduler alone re-evaluates conversion after an edit.
 
 ## Risks
 
@@ -12977,11 +13051,18 @@ The next sequence is dependency-gated rather than phase-number order:
     sample-gated advisory drift signals; no item, candidate, provider, prompt,
     model-response, policy, or routing authority is added. See [Candidate-Bound
     Verification Aggregate Outcome Metrics And Drift Guard](candidate-bound-verification-aggregate-outcome-metrics-and-drift-guard.md).
-    **Next: 11R.5 Candidate-Bound Verification Remediation Readiness**. Add a
-    separate operator-authorized diagnostic read model that correlates a
-    flagged aggregate state with current provider admission and deterministic
-    policy readiness, without exposing historic provider output or treating
-    metrics as routing authority.
+    The completed 11R.5 through 11R.10 tasks now provide bounded provider
+    remediation readiness, configuration preflight, current-state, receipt,
+    revision, and stale-write safeguards without treating metrics as routing
+    authority.
+24. **12R.0 Reconciliation Operator Remediation**: complete. The
+    administrator reconciliation screen now identifies each bounded unresolved
+    policy and offers only the existing explicit legacy-policy editing path;
+    scheduler-owned conversion remains unchanged. See [Native Intent
+    Reconciliation Operator Remediation](native-intent-reconciliation-operator-remediation.md).
+    **Next: 12R.1 Specialized-Destination Identity Evidence Calibration**.
+    Define explainable deterministic differentiation between specialized and
+    broad destinations while preserving manual confirmation for genuine ties.
 
 The completed 0R through 3R, 6R, and 7R contracts remain guardrails, not
 permission to restore a diagnostic, template-first, or browser-authoritative

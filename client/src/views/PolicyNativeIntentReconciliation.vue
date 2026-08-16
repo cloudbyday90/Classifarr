@@ -18,7 +18,7 @@
         </h1>
         <p class="mt-2 max-w-3xl text-sm text-gray-400">
           Classifarr automatically reconciles eligible policies into native intent storage.
-          This page reports the bounded scheduler state and never selects or converts policies manually.
+          This page reports the bounded scheduler state. It never selects or converts policies manually; eligible remediation opens the existing guarded policy editor.
         </p>
       </div>
       <div class="flex gap-3">
@@ -32,7 +32,7 @@
           type="button"
           class="rounded border border-primary px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
           :disabled="isLoading"
-          @click="loadStatus"
+          @click="loadReconciliationView"
         >
           {{ isLoading ? 'Refreshing...' : 'Refresh status' }}
         </button>
@@ -259,20 +259,76 @@
       </div>
     </section>
 
+    <PolicyNativeIntentReconciliationRemediationInventory
+      v-if="status || remediationInventory"
+      :inventory="remediationInventory"
+      :loading="remediationLoading"
+      @edit-policy="openPolicyEditor"
+    />
+
+    <div
+      v-if="policyEditorError"
+      class="rounded border border-red-500/50 bg-red-950/30 p-4 text-sm text-red-100"
+      role="alert"
+    >
+      {{ policyEditorError }}
+    </div>
+
+    <div
+      v-if="policyEditorFeedback"
+      class="rounded border border-green-500/50 bg-green-950/30 p-4 text-sm text-green-100"
+      role="status"
+      aria-live="polite"
+    >
+      {{ policyEditorFeedback }}
+    </div>
+
     <p
-      v-else-if="!isLoading && !errorMessage"
+      v-if="!status && !isLoading && !errorMessage"
       class="rounded border border-gray-700 bg-background-light p-5 text-sm text-gray-400"
     >
       Loading native intent reconciliation status...
     </p>
   </div>
+
+  <PolicyBuilderModal
+    v-if="editingPolicy"
+    v-model="policyEditorOpen"
+    :policy="editingPolicy"
+    :library-id="editingPolicy.library_id"
+    :submit-policy="saveRemediationPolicy"
+    @close="closePolicyEditor"
+  />
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import PolicyBuilderModal from '@/components/policies/PolicyBuilderModal.vue'
+import PolicyNativeIntentReconciliationRemediationInventory from '@/components/policies/PolicyNativeIntentReconciliationRemediationInventory.vue'
+import { getPolicy, updatePolicy } from '@/api/policiesApi'
 import { usePolicyNativeIntentReconciliationStatus } from '@/composables/usePolicyNativeIntentReconciliationStatus'
+import { usePolicyNativeIntentReconciliationRemediationInventory } from '@/composables/usePolicyNativeIntentReconciliationRemediationInventory'
 
-const { status, isLoading, errorMessage, loadStatus } = usePolicyNativeIntentReconciliationStatus()
+const {
+  status,
+  isLoading: statusLoading,
+  errorMessage: statusErrorMessage,
+  loadStatus,
+} = usePolicyNativeIntentReconciliationStatus()
+const {
+  inventory: remediationInventory,
+  isLoading: remediationLoading,
+  errorMessage: remediationErrorMessage,
+  loadInventory: loadRemediationInventory,
+} = usePolicyNativeIntentReconciliationRemediationInventory()
+const editingPolicy = ref(null)
+const policyEditorOpen = ref(false)
+const policyEditorError = ref('')
+const policyEditorFeedback = ref('')
+const isLoading = computed(() => statusLoading.value || remediationLoading.value)
+const errorMessage = computed(() => (
+  statusErrorMessage.value || remediationErrorMessage.value
+))
 
 const STATUS_DETAILS = {
   ready: { label: 'Automation healthy', description: 'Automatic reconciliation is enabled and has no unresolved policy inventory.', tone: 'green' },
@@ -308,6 +364,43 @@ const deferredOrBlockedCount = computed(() => (
   (status.value?.latestRun?.counts?.blockedCount ?? 0)
 ))
 
+const loadReconciliationView = async () => {
+  await Promise.all([loadStatus(), loadRemediationInventory()])
+}
+
+const openPolicyEditor = async entry => {
+  const policyId = Number(entry?.policy?.id)
+  if (!Number.isInteger(policyId) || policyId <= 0) return
+
+  policyEditorError.value = ''
+  policyEditorFeedback.value = ''
+  editingPolicy.value = null
+
+  try {
+    editingPolicy.value = await getPolicy(policyId)
+    policyEditorOpen.value = true
+  } catch {
+    policyEditorError.value = 'Classifarr could not load the current policy for remediation. Refresh the inventory and try again.'
+  }
+}
+
+const closePolicyEditor = () => {
+  policyEditorOpen.value = false
+  editingPolicy.value = null
+}
+
+const saveRemediationPolicy = async payload => {
+  const policyId = Number(editingPolicy.value?.id)
+  if (!Number.isInteger(policyId) || policyId <= 0) {
+    throw new Error('The policy is no longer available for remediation.')
+  }
+
+  await updatePolicy(policyId, payload)
+  closePolicyEditor()
+  policyEditorFeedback.value = 'Policy saved. The protected reconciliation scheduler will independently re-evaluate the current configuration; this page does not convert policies.'
+  await loadReconciliationView()
+}
+
 function formatId(value) {
   if (typeof value !== 'string' || !value.trim()) return 'Unavailable'
   return value.replaceAll('_', ' ').replace(/\b\w/g, character => character.toUpperCase())
@@ -327,5 +420,5 @@ function formatRuntime(runtime) {
   return buildRevision ? `App ${appVersion} | revision ${buildRevision}` : `App ${appVersion}`
 }
 
-onMounted(loadStatus)
+onMounted(loadReconciliationView)
 </script>

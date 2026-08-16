@@ -45,6 +45,7 @@ import {
   updatePolicy,
   deletePolicy,
   getNativeIntentReconciliationStatus,
+  getNativeIntentReconciliationRemediationInventory,
 } from '../../api/policiesApi'
 
 describe('policiesApi', () => {
@@ -206,5 +207,13 @@ describe('policiesApi', () => {
     await getNativeIntentReconciliationStatus()
 
     expect(mockGetDataRequest).toHaveBeenCalledWith('/policies/native-intent-reconciliation/status')
+  })
+
+  it('gets the administrator remediation inventory from its bounded endpoint', async () => {
+    mockGetDataRequest.mockResolvedValueOnce({ entries: [] })
+
+    await getNativeIntentReconciliationRemediationInventory()
+
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/policies/native-intent-reconciliation/remediation')
   })
 })

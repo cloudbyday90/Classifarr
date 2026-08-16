@@ -55,7 +55,7 @@ describe('Native intent reconciliation alert contract', () => {
     ]));
   });
 
-  test('suppresses duplicate firing notifications within the cooldown and resolves cleanly', () => {
+  test('suppresses duplicate firing notifications until the persisted incident resolves', () => {
     const alerts = evaluate({
       status: {
         inventory: { unresolvedCount: 1, oldestUnresolvedAt: '2026-07-15T00:00:00.000Z' },
@@ -74,7 +74,6 @@ describe('Native intent reconciliation alert contract', () => {
     expect(prolonged).toEqual(expect.objectContaining({
       alertState: 'firing',
       notificationDue: false,
-      notificationCooldownUntil: '2026-07-16T06:30:00.000Z',
     }));
     expect(circuit).toEqual(expect.objectContaining({ alertState: 'resolved', notificationDue: false }));
   });

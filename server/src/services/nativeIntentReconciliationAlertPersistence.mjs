@@ -89,7 +89,7 @@ export async function insertNativeIntentReconciliationAlertNotification({ client
         notificationType: 'native_intent_reconciliation_alert',
         alertTypeId: alert.alertTypeId,
         reasonId: alert.reasonId,
-        targetPath: '/policies',
+        targetPath: '/policies/native-intent-reconciliation',
       }),
     ],
   );

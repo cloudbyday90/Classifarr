@@ -143,6 +143,7 @@ const POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS = deepFreeze([
   'client/src/__tests__/PolicyNativeCreateHandoff.test.js',
   'client/src/__tests__/PolicyHistoricRouteSafetyRefresh.test.js',
   'client/src/__tests__/PolicyNativeIntentReconciliation.test.js',
+  'client/src/__tests__/PolicyNativeIntentReconciliationRemediationInventory.test.js',
   'client/src/__tests__/PolicyNativePolicyRecoveryNotice.test.js',
   'client/src/__tests__/PolicyNativeProfileRecoveryStatus.test.js',
   'client/src/__tests__/PolicyList.test.js',
@@ -422,6 +423,14 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
     POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.RUNTIME_VERIFIER,
     [],
     'Reconciliation status is runtime verification feedback and remains outside policy authoring setup.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyNativeIntentReconciliationRemediationInventory.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_WORKFLOW_REGRESSION,
+    false,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.RUNTIME_VERIFIER,
+    [],
+    'Reconciliation remediation displays only server-projected actions and cannot derive destination purpose or invoke conversion.'
   ),
   presentationTestRecord(
     'client/src/__tests__/PolicyNativePolicyRecoveryNotice.test.js',

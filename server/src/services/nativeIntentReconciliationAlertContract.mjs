@@ -17,7 +17,6 @@ export const NATIVE_INTENT_RECONCILIATION_ALERT_STATE_IDS = Object.freeze({
   RESOLVED: 'resolved',
 });
 
-export const NATIVE_INTENT_RECONCILIATION_ALERT_COOLDOWN_MS = 6 * 60 * 60 * 1000;
 export const NATIVE_INTENT_RECONCILIATION_PROLONGED_UNRESOLVED_MS = 24 * 60 * 60 * 1000;
 export const NATIVE_INTENT_RECONCILIATION_REPEATED_FAILURE_WINDOW_MS = 60 * 60 * 1000;
 export const NATIVE_INTENT_RECONCILIATION_REPEATED_FAILURE_THRESHOLD = 3;
@@ -71,28 +70,16 @@ function normalizeAlertState(value = {}) {
   };
 }
 
-function hasElapsedCooldown({ previousAlert, evaluatedAt }) {
-  if (!previousAlert?.lastNotifiedAt) return true;
-  const lastNotifiedAt = new Date(previousAlert.lastNotifiedAt).getTime();
-  const now = new Date(evaluatedAt).getTime();
-  return !Number.isFinite(lastNotifiedAt) || !Number.isFinite(now) ||
-    now - lastNotifiedAt >= NATIVE_INTENT_RECONCILIATION_ALERT_COOLDOWN_MS;
-}
-
-function buildAlertEvaluation({ alertTypeId, firing, previousAlert, evaluatedAt }) {
+function buildAlertEvaluation({ alertTypeId, firing, previousAlert }) {
   const definition = ALERT_DEFINITIONS[alertTypeId];
   const alertState = firing
     ? NATIVE_INTENT_RECONCILIATION_ALERT_STATE_IDS.FIRING
     : NATIVE_INTENT_RECONCILIATION_ALERT_STATE_IDS.RESOLVED;
-  const notificationDue = firing && (
-    previousAlert?.alertState !== NATIVE_INTENT_RECONCILIATION_ALERT_STATE_IDS.FIRING ||
-    hasElapsedCooldown({ previousAlert, evaluatedAt })
-  );
-  const cooldownUntil = previousAlert?.lastNotifiedAt && !notificationDue
-    ? new Date(
-      new Date(previousAlert.lastNotifiedAt).getTime() + NATIVE_INTENT_RECONCILIATION_ALERT_COOLDOWN_MS,
-    ).toISOString()
-    : null;
+  // A reconciliation alert represents one incident, not a periodic reminder.
+  // A later notification is allowed only after the persisted state has resolved
+  // and then transitions to firing again.
+  const notificationDue = firing
+    && previousAlert?.alertState !== NATIVE_INTENT_RECONCILIATION_ALERT_STATE_IDS.FIRING;
 
   return {
     alertTypeId,
@@ -100,7 +87,6 @@ function buildAlertEvaluation({ alertTypeId, firing, previousAlert, evaluatedAt 
     reasonId: definition.reasonId,
     notificationType: definition.notificationType,
     notificationDue,
-    notificationCooldownUntil: cooldownUntil,
     title: definition.title,
     message: definition.message,
     rawPayloadExposed: false,
@@ -141,6 +127,5 @@ export function buildNativeIntentReconciliationAlertEvaluation({
       alertTypeId,
       firing: firingByType[alertTypeId] === true,
       previousAlert: priorByType.get(alertTypeId),
-      evaluatedAt: normalizedEvaluatedAt,
     }));
 }

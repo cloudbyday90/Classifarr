@@ -8,15 +8,34 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
+import { defineComponent } from 'vue'
 import PolicyNativeIntentReconciliation from '@/views/PolicyNativeIntentReconciliation.vue'
 
 const { apiMock } = vi.hoisted(() => ({
   apiMock: {
     getNativeIntentReconciliationStatus: vi.fn(),
+    getNativeIntentReconciliationRemediationInventory: vi.fn(),
+  },
+}))
+
+const { policyApiMock } = vi.hoisted(() => ({
+  policyApiMock: {
+    getPolicy: vi.fn(),
+    updatePolicy: vi.fn(),
   },
 }))
 
 vi.mock('@/api', () => ({ default: apiMock }))
+vi.mock('@/api/policiesApi', () => policyApiMock)
+
+const PolicyBuilderModalStub = defineComponent({
+  name: 'PolicyBuilderModal',
+  props: {
+    policy: { type: Object, required: true },
+    submitPolicy: { type: Function, required: true },
+  },
+  template: '<div data-testid="policy-builder-modal">{{ policy.name }}</div>',
+})
 
 const reconciliationStatus = {
   statusId: 'attention_required',
@@ -50,11 +69,31 @@ const reconciliationStatus = {
   ],
 }
 
+const remediationInventory = {
+  entries: [{
+    policy: { id: 17, name: 'Kids TV Policy' },
+    library: { id: 18, name: 'Kids TV', mediaType: 'tv' },
+    reconciliation: {
+      candidateStatusId: 'no_convertible_intent',
+      outcomeState: 'requires_maintenance',
+      reasonId: 'no_convertible_intent',
+    },
+    action: {
+      available: true,
+      title: 'Declare destination purpose',
+      description: 'Review the policy.',
+      actionLabel: 'Review policy',
+      schedulerFollowUp: 'The scheduler re-evaluates the policy.',
+    },
+  }],
+}
+
 function mountView() {
   return mount(PolicyNativeIntentReconciliation, {
     global: {
       stubs: {
         RouterLink: { template: '<a><slot /></a>' },
+        PolicyBuilderModal: PolicyBuilderModalStub,
       },
     },
   })
@@ -64,6 +103,13 @@ describe('PolicyNativeIntentReconciliation.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     apiMock.getNativeIntentReconciliationStatus.mockResolvedValue(reconciliationStatus)
+    apiMock.getNativeIntentReconciliationRemediationInventory.mockResolvedValue(remediationInventory)
+    policyApiMock.getPolicy.mockResolvedValue({
+      id: 17,
+      name: 'Kids TV Policy',
+      library_id: 18,
+    })
+    policyApiMock.updatePolicy.mockResolvedValue({ data: { success: true } })
   })
 
   it('shows automatic scheduler status and bounded blocker evidence without conversion controls', async () => {
@@ -75,13 +121,15 @@ describe('PolicyNativeIntentReconciliation.vue', () => {
     expect(wrapper.text()).toContain('Current blocker groups')
     expect(wrapper.text()).toContain('Rollback Hold Active')
     expect(wrapper.text()).toContain('Automatic reconciliation remains the only normal conversion path')
+    expect(wrapper.text()).toContain('Policy remediation')
+    expect(wrapper.text()).toContain('Declare destination purpose')
     expect(wrapper.text()).toContain('App 0.47.5-c.beta | revision a0b1c2d3e4f5678901234567890abcdef1234567')
     expect(wrapper.findAll('input[type="checkbox"]')).toHaveLength(0)
     expect(wrapper.text()).not.toContain('Confirm native intent conversion')
     expect(wrapper.text()).not.toContain('Review conversion')
   })
 
-  it('refreshes only the read-only status contract', async () => {
+  it('refreshes the read-only status and remediation contracts', async () => {
     const wrapper = mountView()
     await flushPromises()
 
@@ -89,6 +137,27 @@ describe('PolicyNativeIntentReconciliation.vue', () => {
     await flushPromises()
 
     expect(apiMock.getNativeIntentReconciliationStatus).toHaveBeenCalledTimes(2)
+    expect(apiMock.getNativeIntentReconciliationRemediationInventory).toHaveBeenCalledTimes(2)
+  })
+
+  it('opens the established policy editor and lets the scheduler re-evaluate after a normal policy save', async () => {
+    const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.findAll('button').find(button => button.text() === 'Review policy').trigger('click')
+    await flushPromises()
+
+    expect(policyApiMock.getPolicy).toHaveBeenCalledWith(17)
+    const editor = wrapper.findComponent({ name: 'PolicyBuilderModal' })
+    expect(editor.exists()).toBe(true)
+    expect(editor.props('policy')).toEqual(expect.objectContaining({ id: 17, library_id: 18 }))
+
+    await editor.props('submitPolicy')({ name: 'Kids TV Policy' })
+
+    expect(policyApiMock.updatePolicy).toHaveBeenCalledWith(17, { name: 'Kids TV Policy' })
+    expect(wrapper.text()).toContain('The protected reconciliation scheduler will independently re-evaluate')
+    expect(apiMock.getNativeIntentReconciliationStatus).toHaveBeenCalledTimes(2)
+    expect(apiMock.getNativeIntentReconciliationRemediationInventory).toHaveBeenCalledTimes(2)
   })
 
   it('reports unavailable control state without treating it as a paused scheduler', async () => {
