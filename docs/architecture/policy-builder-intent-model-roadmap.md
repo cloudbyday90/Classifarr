@@ -103,10 +103,16 @@ Current execution focus:
   established compatibility editor can request a server-owned, aggregate-only
   purpose-coverage check before save; it retains no draft, calls no provider,
   and does not authorize or change a policy.
-- **Next:** **12R.4 Native Intent Change-Command Purpose Preflight
-  Integration**. Apply the same bounded advisory comparison to the explicit
-  `update_purpose` native change-command path without allowing a preflight
-  result to replace current revision or server authority checks.
+- **Completed:** **12R.4 Native Intent Change-Command Purpose Preflight
+  Integration**. A distinct administrator-only read validates one typed
+  `update_purpose` command, derives active native scope and revision from
+  PostgreSQL, and returns bounded advisory coverage without authorizing a
+  change or weakening the write transaction's lock and revision check.
+- **Next:** **12R.5 Native Intent Purpose Change Operator Surface**. Expose
+  one explicit native purpose command form that reads the current authority,
+  uses 12R.4 only as advisory input, discards advice when the command or
+  revision changes, and submits the existing revision-checked write command
+  without reopening compatibility authoring.
 - **Completed:** **10R.4 Release Acceptance Assembly**. Repository acceptance
   now produces a passed or blocked manifest artifact, while a separate
   protected-environment workflow records active-installation evidence without
@@ -147,8 +153,8 @@ completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3 -> 10R.3.
 completed release hardening: 10R.4 -> 10R.4.1
 active release candidate: v0.48.0-beta -> 10R.4.2 -> 10R.4.3
 completed post-release authority hardening: 11R.1.1 -> 11R.1.2 -> 11R.2 -> 11R.3 -> 11R.4 -> 11R.5 -> 11R.6 -> 11R.7 -> 11R.8 -> 11R.9
-completed reconciliation and deterministic calibration: 12R.0 -> 12R.1 -> 12R.2 -> 12R.3
-next native change-command purpose preflight: 12R.4
+completed reconciliation and deterministic calibration: 12R.0 -> 12R.1 -> 12R.2 -> 12R.3 -> 12R.4
+next native purpose change operator surface: 12R.5
 completed administrator settings concurrency guardrail: 11R.10 AI Settings stale-write conflict acceptance
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
@@ -12922,7 +12928,7 @@ Preflight](policy-authoring-purpose-coverage-preflight.md).
 
 ### 12R.4 Native Intent Change-Command Purpose Preflight Integration
 
-Status: planned.
+Status: complete.
 
 Intent: apply the same bounded, server-owned advisory purpose-coverage
 comparison to the explicit `update_purpose` native change-command workflow.
@@ -12939,6 +12945,30 @@ Completion criteria:
 - invalidate prior advice when the change command or revision changes; and
 - add concurrency, authorization, no-write, no-term-disclosure, and
   real-database coverage without reopening a compatibility authoring path.
+
+Implemented design: [Native Intent Change-Command Purpose
+Preflight](native-intent-change-command-purpose-preflight.md).
+
+### 12R.5 Native Intent Purpose Change Operator Surface
+
+Status: planned.
+
+Intent: expose a single native-maintenance experience for an explicit
+`update_purpose` command without creating a compatibility authoring path or
+letting browser state establish authority.
+
+Completion criteria:
+
+- load the current server-owned native intent contract and show its revision
+  before allowing an administrator to edit the purpose command;
+- use the 12R.4 preflight as advisory only and invalidate its result whenever
+  the typed command or revision changes;
+- submit only the explicit command and expected revision to the existing native
+  change endpoint, then refresh current authority after success or conflict;
+- keep legacy editor data, browser-supplied authority state, AI output,
+  routing selection, and learning outside the surface; and
+- add presentation, authorization, stale-revision, no-second-authoring-path,
+  and end-to-end mutation-boundary coverage.
 
 ## Testing Strategy
 

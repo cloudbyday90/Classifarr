@@ -26,7 +26,14 @@ vi.mock('@/components/layout/MainLayout.vue', () => ({
 
 async function loadRouter() {
   vi.resetModules()
+  // Router construction immediately starts its initial navigation. Boot at the
+  // setup route, which intentionally bypasses guards, so that navigation
+  // cannot consume a later test's API mock or outlive the test that created it.
+  window.history.replaceState({}, '', '/setup')
   const module = await import('@/router/index.js')
+  await module.default.push('/setup')
+  await flushPromises()
+  vi.clearAllMocks()
   return module.default
 }
 

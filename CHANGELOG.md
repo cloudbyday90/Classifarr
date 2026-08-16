@@ -13,6 +13,10 @@ Current development changes will be recorded here.
 
 ### Added
 
+- **Native purpose-change preflight** — Native maintenance now has an
+  administrator-only, revision-bound aggregate `update_purpose` advisory that
+  derives current authority server-side and cannot retain terms, authorize a
+  change, call AI, write data, or affect routing.
 - **Policy purpose coverage preflight** — Existing policy maintenance can request an
   admin-only aggregate draft check before save without term retention, AI, writes, or routing changes.
 - **Policy purpose coverage review** — Added a bounded administrator-only
@@ -30,6 +34,10 @@ Current development changes will be recorded here.
 
 ### Changed
 
+- **Client test isolation** — Fresh router tests now await their deliberate
+  guard-bypass initial navigation, and Vitest uses a bounded jsdom worker pool
+  to prevent asynchronous setup checks and resource starvation from leaking
+  into later client tests.
 - **Reconciliation attention alerts** — Alert notifications now target the
   remediation screen and emit once per firing incident instead of repeating
   every six hours until the durable alert state resolves.

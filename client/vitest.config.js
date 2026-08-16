@@ -13,6 +13,9 @@ export default defineConfig({
     exclude: ['./browser-tests/**'],
     silent: 'passed-only',
     setupFiles: ['./vitest.setup.js'],
+    // jsdom suites allocate substantial memory. A bounded pool keeps router
+    // guards and other async UI tests responsive on local and CI hosts.
+    maxWorkers: 4,
   },
   resolve: {
     alias: {
