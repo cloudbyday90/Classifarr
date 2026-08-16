@@ -68,12 +68,17 @@ function buildPurposeLine(rule = {}) {
     : signalType
 }
 
-function buildNativePurposeSummary(policy = {}) {
+function buildNativePurposeSummary(policy = {}, purposeChangeCommand = null) {
   if (!hasServerReportedNativePolicyIntent(policy)) return []
 
-  const purpose = Array.isArray(policy?.policy_intent_contract?.purpose)
+  const purposeFromCurrentAuthority = purposeChangeCommand?.command_id === 'update_purpose'
+    && Array.isArray(purposeChangeCommand?.values)
+    ? purposeChangeCommand.values
+    : null
+  const purpose = purposeFromCurrentAuthority || (Array.isArray(policy?.policy_intent_contract?.purpose)
     ? policy.policy_intent_contract.purpose
     : []
+  )
 
   return purpose
     .map(buildPurposeLine)

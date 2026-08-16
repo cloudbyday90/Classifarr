@@ -13,13 +13,21 @@ import {
   applyPolicyNativeIntentChange,
 } from '../../services/policyNativeIntentChangeService.mjs';
 
+const VALID_PURPOSE_CHANGE_VALUES = [{
+  signal_type: 'genres',
+  operator: 'require_any',
+  values: { require_any: ['Animation'] },
+  constraint_mode: 'advisory',
+  semantics: 'identity',
+}];
+
 const VALID_INPUT = {
   policyId: 42,
   expectedRevision: 3,
   actorId: 1,
   actorRole: 'admin',
   idempotencyKey: 'a'.repeat(32),
-  changeCommands: [{ commandId: 'update_purpose', values: ['Animation'] }],
+  changeCommands: [{ commandId: 'update_purpose', values: VALID_PURPOSE_CHANGE_VALUES }],
   authorityState: { stateId: 'single_active_native_intent', currentRevision: 3 },
 };
 
@@ -90,6 +98,9 @@ describe('applyPolicyNativeIntentChange', () => {
     expect(result.sideEffects.policyStorageMutated).toBe(true);
     expect(result.sideEffects.databaseWritten).toBe(true);
     expect(queries.length).toBeGreaterThanOrEqual(5);
+    expect(queries.find(({ sql }) => (
+      sql.includes('INSERT INTO policy_intent_migration_events')
+    ))?.sql).toContain('native_intent_change_applied');
   });
 
   test('returns stale_revision when the revision changed after the lock', async () => {

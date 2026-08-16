@@ -13,6 +13,11 @@ Current development changes will be recorded here.
 
 ### Added
 
+- **Native purpose maintenance** — Added an administrator-only native-purpose
+  form that reads a narrow server-owned command and revision, offers
+  aggregate-only coverage advice, and applies one locked, revision-checked
+  `update_purpose` command without reopening compatibility authoring or using
+  AI, routing, or learning data.
 - **Native purpose-change preflight** — Native maintenance now has an
   administrator-only, revision-bound aggregate `update_purpose` advisory that
   derives current authority server-side and cannot retain terms, authorize a
@@ -41,6 +46,13 @@ Current development changes will be recorded here.
 - **Reconciliation attention alerts** — Alert notifications now target the
   remediation screen and emit once per firing incident instead of repeating
   every six hours until the durable alert state resolves.
+
+### Fixed
+
+- **Native-purpose change audit** — Added the constrained
+  `native_intent_change_applied` event vocabulary so a valid native-purpose
+  revision no longer rolls back because the audit-event database constraint
+  rejected its recorded outcome.
 
 ## [0.48.1-beta] - 2026-08-13
 

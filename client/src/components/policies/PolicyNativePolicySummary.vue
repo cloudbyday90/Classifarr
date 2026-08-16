@@ -97,6 +97,10 @@ const props = defineProps({
     type: Object,
     required: true,
   },
+  purposeChangeCommand: {
+    type: Object,
+    default: null,
+  },
   readinessSummary: {
     type: Object,
     default: null,
@@ -111,7 +115,10 @@ const props = defineProps({
   },
 })
 
-const purposeLines = computed(() => buildNativePurposeSummary(props.policy))
+const purposeLines = computed(() => buildNativePurposeSummary(
+  props.policy,
+  props.purposeChangeCommand,
+))
 const readiness = computed(() => buildNativePolicyReadinessSummary({
   readinessSummary: props.readinessSummary,
   loading: props.loading,

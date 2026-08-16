@@ -250,7 +250,7 @@ async function applyPolicyNativeIntentChange({
         client,
         intentId: newIntent.id,
         policyId: normalizedPolicyId,
-        actorType: 'manual_operator',
+        actorType: 'operator',
         actorId,
         sourceVersion: lockedRevision,
         targetVersion: newVersion,

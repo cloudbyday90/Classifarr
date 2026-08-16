@@ -124,7 +124,7 @@ async function insertNativeIntentChangeEvent({
        summary,
        metadata
      )
-     VALUES ($1, $2, 'change_applied', $3, $4, $5, $6, $7, $8, $9::jsonb)
+       VALUES ($1, $2, 'native_intent_change_applied', $3, $4, $5, $6, $7, $8, $9::jsonb)
      RETURNING id`,
     [
       intentId,

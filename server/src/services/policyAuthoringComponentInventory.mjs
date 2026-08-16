@@ -31,6 +31,7 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS = Object.freeze({
   RECONCILIATION_REMEDIATION: 'reconciliation_remediation',
   PURPOSE_COVERAGE_REVIEW: 'purpose_coverage_review',
   PURPOSE_COVERAGE_PREFLIGHT: 'purpose_coverage_preflight',
+  NATIVE_PURPOSE_MAINTENANCE: 'native_purpose_maintenance',
 });
 
 const POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS = Object.freeze({
@@ -265,6 +266,15 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY = deepFreeze([
     targetComponentIds: [],
     normalAuthoringAllowed: false,
     notes: 'Read-only persisted-policy summary, outside new-policy authoring.',
+  },
+  {
+    id: 'policy_native_intent_purpose_change_surface',
+    path: 'client/src/components/policies/PolicyNativeIntentPurposeChangeSurface.vue',
+    roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.NATIVE_PURPOSE_MAINTENANCE,
+    decisionId: POLICY_AUTHORING_COMPONENT_DECISION_IDS.DELETE_FROM_NORMAL_PATH,
+    targetComponentIds: [],
+    normalAuthoringAllowed: false,
+    notes: 'Administrator-only native-purpose maintenance reads an allow-listed server projection and submits only a revision-bound update_purpose command; it cannot reopen compatibility authoring or invoke AI, routing, or learning behavior.',
   },
   {
     id: 'policy_native_profile_recovery_status',

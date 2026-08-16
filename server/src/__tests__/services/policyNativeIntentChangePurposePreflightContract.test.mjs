@@ -13,6 +13,7 @@ import {
   PolicyNativeIntentChangePurposePreflightValidationError,
   buildPolicyNativeIntentChangePurposePreflight,
   buildPolicyNativeIntentChangePurposePreflightCandidate,
+  normalizePolicyNativeIntentChangePurposeCommand,
 } from '../../services/policyNativeIntentChangePurposePreflightContract.mjs';
 
 function validCommand(term = 'shared-purpose-token') {
@@ -56,9 +57,37 @@ describe('native intent purpose change preflight contract', () => {
     });
   });
 
+  test('canonicalizes a non-empty purpose command once for both preflight and persistence', () => {
+    expect(normalizePolicyNativeIntentChangePurposeCommand({
+      command_id: 'update_purpose',
+      values: [{
+        signal_type: 'genres',
+        operator: 'require_any',
+        values: { require_any: ['Animation', 'Animation'] },
+      }],
+    })).toEqual({
+      command_id: 'update_purpose',
+      values: [{
+        signal_type: 'genres',
+        operator: 'require_any',
+        values: { require_any: ['Animation'] },
+        constraint_mode: 'advisory',
+        semantics: 'identity',
+        source: 'native_intent',
+        inference_state: 'inferred',
+      }],
+    });
+  });
+
   test.each([
     [{ command_id: 'update_hard_limits', values: [] }],
     [{ command_id: POLICY_NATIVE_INTENT_CHANGE_PURPOSE_PREFLIGHT_COMMAND_ID, values: [], authority_state: {} }],
+    [{ command_id: POLICY_NATIVE_INTENT_CHANGE_PURPOSE_PREFLIGHT_COMMAND_ID, values: [{
+      signal_type: 'genres',
+      operator: 'require_any',
+      values: { require_any: [] },
+      semantics: 'identity',
+    }] }],
     [{ command_id: POLICY_NATIVE_INTENT_CHANGE_PURPOSE_PREFLIGHT_COMMAND_ID, values: [{
       signal_type: 'genres',
       operator: 'require_any',

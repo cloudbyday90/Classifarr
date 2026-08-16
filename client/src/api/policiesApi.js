@@ -85,6 +85,24 @@ export function getPolicyNativeReadinessSummary(id) {
   return getDataRequest(`/policies/${id}/native-intent/readiness-summary`)
 }
 
+export function getPolicyNativeIntentPurposeChange(id) {
+  return getDataRequest(`/policies/${id}/native-intent/purpose-change`)
+}
+
+export function preflightPolicyNativeIntentPurposeChange(id, expectedRevision, changeCommand) {
+  return apiClient.post(`/policies/${id}/native-intent/changes/purpose-coverage/preflight`, {
+    expected_revision: expectedRevision,
+    change_command: changeCommand,
+  })
+}
+
+export function applyPolicyNativeIntentPurposeChange(id, expectedRevision, changeCommand) {
+  return apiClient.post(`/policies/${id}/native-intent/changes`, {
+    expected_revision: expectedRevision,
+    change_commands: [changeCommand],
+  })
+}
+
 export function validatePolicyOperatorWorkflowCustomIntentSignal(libraryId, payload) {
   return apiClient.post(`/policies/operator-workflow/libraries/${libraryId}/intent-signals/custom`, payload)
 }
@@ -140,6 +158,9 @@ const policiesApi = {
   preparePolicyAuthoringProposal,
   admitPolicyAuthoringProposal,
   getPolicyNativeReadinessSummary,
+  getPolicyNativeIntentPurposeChange,
+  preflightPolicyNativeIntentPurposeChange,
+  applyPolicyNativeIntentPurposeChange,
   validatePolicyOperatorWorkflowCustomIntentSignal,
   createPolicy,
   updatePolicy,

@@ -37,7 +37,11 @@ function validRequest() {
     expected_revision: 3,
     change_command: {
       command_id: 'update_purpose',
-      values: [],
+      values: [{
+        signal_type: 'genres',
+        operator: 'require_any',
+        values: { require_any: ['Animation'] },
+      }],
     },
   };
 }

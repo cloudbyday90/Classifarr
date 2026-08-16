@@ -44,6 +44,25 @@ describe('policyNativePolicySummary', () => {
     })).toEqual([])
   })
 
+  it('uses a freshly read server-owned purpose command after a native revision changes', () => {
+    const policy = {
+      policy_intent_contract: {
+        source: 'native_intent',
+        validation: { valid: true },
+        purpose: [{ signal_type: 'genres', values: { require_any: ['Old purpose'] } }],
+      },
+      policy_intent_read_trace: {
+        source: 'native_intent',
+        status: 'native_intent_active',
+      },
+    }
+
+    expect(buildNativePurposeSummary(policy, {
+      command_id: 'update_purpose',
+      values: [{ signal_type: 'genres', values: { require_any: ['Current purpose'] } }],
+    })).toEqual(['Genres: Current purpose'])
+  })
+
   it('does not present purpose lines for a non-native contract', () => {
     expect(buildNativePurposeSummary({
       policy_intent_contract: {

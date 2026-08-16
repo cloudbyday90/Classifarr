@@ -17,13 +17,24 @@ import {
   validatePolicyNativeIntentChangeAdmission,
 } from '../../services/policyNativeIntentChangeAdmission.mjs';
 
+const VALID_PURPOSE_CHANGE_VALUES = [{
+  signal_type: 'genres',
+  operator: 'require_any',
+  values: { require_any: ['Animation'] },
+  constraint_mode: 'advisory',
+  semantics: 'identity',
+}];
+
 const VALID_INPUT = {
   policyId: 42,
   expectedRevision: 3,
   actorId: 1,
   actorRole: 'admin',
   idempotencyKey: 'a'.repeat(32),
-  changeCommands: [{ commandId: POLICY_NATIVE_INTENT_CHANGE_COMMAND_IDS.UPDATE_PURPOSE, values: ['Animation'] }],
+  changeCommands: [{
+    commandId: POLICY_NATIVE_INTENT_CHANGE_COMMAND_IDS.UPDATE_PURPOSE,
+    values: VALID_PURPOSE_CHANGE_VALUES,
+  }],
   authorityState: { stateId: 'single_active_native_intent', currentRevision: 3 },
 };
 
@@ -128,7 +139,10 @@ describe('policyNativeIntentChangeAdmission', () => {
       ...VALID_INPUT,
       changeCommands: [
         { commandId: 'bogus_command', values: [] },
-        { commandId: POLICY_NATIVE_INTENT_CHANGE_COMMAND_IDS.UPDATE_PURPOSE, values: ['Animation'] },
+        {
+          commandId: POLICY_NATIVE_INTENT_CHANGE_COMMAND_IDS.UPDATE_PURPOSE,
+          values: VALID_PURPOSE_CHANGE_VALUES,
+        },
       ],
     });
 
@@ -180,6 +194,27 @@ describe('policyNativeIntentChangeAdmission', () => {
     expect(admission.retryable).toBe(true);
   });
 
+  test('rejects an update_purpose command whose entries do not satisfy the shared typed contract', () => {
+    const admission = buildPolicyNativeIntentChangeAdmission({
+      ...VALID_INPUT,
+      changeCommands: [{
+        command_id: POLICY_NATIVE_INTENT_CHANGE_COMMAND_IDS.UPDATE_PURPOSE,
+        values: [{
+          signal_type: 'genres',
+          operator: 'require_any',
+          values: { require_any: [] },
+        }],
+      }],
+    });
+
+    expect(admission.statusId).toBe(POLICY_NATIVE_INTENT_CHANGE_ADMISSION_STATUS_IDS.RETRYABLE);
+    expect(admission.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_NATIVE_INTENT_CHANGE_ADMISSION_RISK_IDS.INVALID_CHANGE_COMMAND,
+      }),
+    ]));
+  });
+
   test('rejects an invalid idempotency key', () => {
     const admission = buildPolicyNativeIntentChangeAdmission({
       ...VALID_INPUT,
@@ -211,7 +246,9 @@ describe('policyNativeIntentChangeAdmission', () => {
   test('admits all six allow-listed change commands', () => {
     const allCommands = Object.values(POLICY_NATIVE_INTENT_CHANGE_COMMAND_IDS).map(commandId => ({
       commandId,
-      values: [],
+      values: commandId === POLICY_NATIVE_INTENT_CHANGE_COMMAND_IDS.UPDATE_PURPOSE
+        ? VALID_PURPOSE_CHANGE_VALUES
+        : [],
     }));
 
     const admission = buildPolicyNativeIntentChangeAdmission({

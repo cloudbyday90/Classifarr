@@ -26,6 +26,35 @@ function toPositiveInteger(value) {
   return Number.isInteger(numericValue) && numericValue > 0 ? numericValue : null;
 }
 
+function requireNativeIntentChangeRequest(body) {
+  const payload = body && typeof body === 'object' && !Array.isArray(body) ? body : {};
+  const allowedFields = new Set(['expected_revision', 'change_commands']);
+  const unexpectedFields = Object.keys(payload).filter(field => !allowedFields.has(field));
+  if (unexpectedFields.length > 0) {
+    throw new ValidationError('Native intent changes accept only expected_revision and change_commands.', {
+      code: 'POLICY_NATIVE_INTENT_CHANGE_REQUEST_INVALID',
+    });
+  }
+
+  const expectedRevision = toPositiveInteger(payload.expected_revision);
+  if (!expectedRevision) {
+    throw new ValidationError('Expected revision is required', {
+      code: 'POLICY_NATIVE_INTENT_CHANGE_REVISION_REQUIRED',
+    });
+  }
+
+  if (!Array.isArray(payload.change_commands)) {
+    throw new ValidationError('Native intent changes require a change_commands array.', {
+      code: 'POLICY_NATIVE_INTENT_CHANGE_COMMANDS_REQUIRED',
+    });
+  }
+
+  return {
+    expectedRevision,
+    changeCommands: payload.change_commands,
+  };
+}
+
 function getChangeHttpError(result) {
   if (
     result?.statusId === POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.FAILED_ROLLED_BACK ||
@@ -77,14 +106,7 @@ export function registerPolicyNativeIntentChangeRoutes(router, { db, logger }) {
       });
     }
 
-    const expectedRevision = toPositiveInteger(req.body?.expected_revision);
-    if (!expectedRevision) {
-      throw new ValidationError('Expected revision is required', {
-        code: 'POLICY_NATIVE_INTENT_CHANGE_REVISION_REQUIRED',
-      });
-    }
-
-    const changeCommands = Array.isArray(req.body?.change_commands) ? req.body.change_commands : [];
+    const { expectedRevision, changeCommands } = requireNativeIntentChangeRequest(req.body);
 
     const result = await applyPolicyNativeIntentChange({
       dbClient: db,
@@ -94,8 +116,6 @@ export function registerPolicyNativeIntentChangeRoutes(router, { db, logger }) {
       actorRole: req.user.role,
       idempotencyKey: req.headers['idempotency-key'],
       changeCommands,
-      authorityState: req.body?.authority_state ?? {},
-      legacyPayload: req.body?.legacy_payload ?? null,
     });
 
     logger.info('Policy native intent change evaluated', {
@@ -112,3 +132,7 @@ export function registerPolicyNativeIntentChangeRoutes(router, { db, logger }) {
     return sendData(res, result);
   }));
 }
+
+export {
+  requireNativeIntentChangeRequest,
+};

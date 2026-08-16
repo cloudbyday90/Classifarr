@@ -40,6 +40,9 @@ import {
   preparePolicyAuthoringProposal,
   admitPolicyAuthoringProposal,
   getPolicyNativeReadinessSummary,
+  getPolicyNativeIntentPurposeChange,
+  preflightPolicyNativeIntentPurposeChange,
+  applyPolicyNativeIntentPurposeChange,
   validatePolicyOperatorWorkflowCustomIntentSignal,
   createPolicy,
   updatePolicy,
@@ -146,6 +149,30 @@ describe('policiesApi', () => {
     await getPolicyNativeReadinessSummary(7)
 
     expect(mockGetDataRequest).toHaveBeenCalledWith('/policies/7/native-intent/readiness-summary')
+  })
+
+  it('uses the bounded native purpose-change endpoints and does not post browser authority', async () => {
+    const command = {
+      command_id: 'update_purpose',
+      values: [{ signal_type: 'genres', operator: 'require_any', values: { require_any: ['Animation'] } }],
+    }
+    mockGetDataRequest.mockResolvedValueOnce({ revision: 3 })
+    mockPost.mockResolvedValueOnce({ data: { advisory: true } })
+    mockPost.mockResolvedValueOnce({ data: { statusId: 'applied' } })
+
+    await getPolicyNativeIntentPurposeChange(7)
+    await preflightPolicyNativeIntentPurposeChange(7, 3, command)
+    await applyPolicyNativeIntentPurposeChange(7, 3, command)
+
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/policies/7/native-intent/purpose-change')
+    expect(mockPost).toHaveBeenNthCalledWith(1,
+      '/policies/7/native-intent/changes/purpose-coverage/preflight',
+      { expected_revision: 3, change_command: command }
+    )
+    expect(mockPost).toHaveBeenNthCalledWith(2,
+      '/policies/7/native-intent/changes',
+      { expected_revision: 3, change_commands: [command] }
+    )
   })
 
   it('validatePolicyOperatorWorkflowCustomIntentSignal posts only the explicit custom-entry payload', async () => {

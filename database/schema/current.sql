@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-08-13T13:44:16.259Z
--- Latest Migration: 20260813_120000_add_ai_settings_write_precondition.sql
+-- Generated: 2026-08-16T21:14:54.040Z
+-- Latest Migration: 20260816_173000_add_native_intent_change_applied_event.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -4310,7 +4310,7 @@ CREATE TABLE public.policy_intent_migration_events (
     metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT policy_intent_migration_events_actor_type_chk CHECK (((actor_type)::text = ANY (ARRAY[('operator'::character varying)::text, ('post_upgrade'::character varying)::text, ('reconciler'::character varying)::text, ('test_fixture'::character varying)::text, ('maintainer'::character varying)::text]))),
-    CONSTRAINT policy_intent_migration_events_event_type_chk CHECK (((event_type)::text = ANY (ARRAY[('dry_run_reported'::character varying)::text, ('conversion_started'::character varying)::text, ('conversion_applied'::character varying)::text, ('conversion_failed'::character varying)::text, ('rollback_snapshot_created'::character varying)::text, ('rollback_applied'::character varying)::text, ('rollback_snapshot_payload_redacted'::character varying)::text, ('native_validated'::character varying)::text, ('legacy_deletion_ready'::character varying)::text, ('library_rebuild_replacement_applied'::character varying)::text, ('active_intent_integrity_repaired'::character varying)::text, ('reconciliation_reentry_approved'::character varying)::text, ('semantic_intent_authority_repaired'::character varying)::text, ('initial_intent_established'::character varying)::text]))),
+    CONSTRAINT policy_intent_migration_events_event_type_chk CHECK (((event_type)::text = ANY (ARRAY[('dry_run_reported'::character varying)::text, ('conversion_started'::character varying)::text, ('conversion_applied'::character varying)::text, ('conversion_failed'::character varying)::text, ('rollback_snapshot_created'::character varying)::text, ('rollback_applied'::character varying)::text, ('rollback_snapshot_payload_redacted'::character varying)::text, ('native_validated'::character varying)::text, ('legacy_deletion_ready'::character varying)::text, ('library_rebuild_replacement_applied'::character varying)::text, ('active_intent_integrity_repaired'::character varying)::text, ('reconciliation_reentry_approved'::character varying)::text, ('semantic_intent_authority_repaired'::character varying)::text, ('initial_intent_established'::character varying)::text, ('native_intent_change_applied'::character varying)::text]))),
     CONSTRAINT policy_intent_migration_events_metadata_shape_chk CHECK ((jsonb_typeof(metadata) = 'object'::text))
 );
 
@@ -13799,6 +13799,7 @@ FROM unnest(ARRAY[
     '20260812_110000_add_historic_route_safety_refresh_recent_receipt_index.sql',
     '20260813_100000_add_verification_capability_change_receipts.sql',
     '20260813_110000_enforce_ai_provider_configuration_revision_integrity.sql',
-    '20260813_120000_add_ai_settings_write_precondition.sql'
+    '20260813_120000_add_ai_settings_write_precondition.sql',
+    '20260816_173000_add_native_intent_change_applied_event.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

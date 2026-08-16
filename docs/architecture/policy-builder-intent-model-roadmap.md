@@ -108,11 +108,15 @@ Current execution focus:
   `update_purpose` command, derives active native scope and revision from
   PostgreSQL, and returns bounded advisory coverage without authorizing a
   change or weakening the write transaction's lock and revision check.
-- **Next:** **12R.5 Native Intent Purpose Change Operator Surface**. Expose
-  one explicit native purpose command form that reads the current authority,
-  uses 12R.4 only as advisory input, discards advice when the command or
-  revision changes, and submits the existing revision-checked write command
-  without reopening compatibility authoring.
+- **Completed:** **12R.5 Native Intent Purpose Change Operator Surface**. An
+  administrator-only native maintenance form reads only the current typed
+  purpose command and revision, treats 12R.4 coverage as advisory, clears
+  advice when the command or revision changes, and submits the existing
+  locked, revision-checked command without reopening compatibility authoring.
+- **Next:** **12R.6 Native Intent Change Idempotency Receipts**. Persist an
+  actor- and policy-bound command fingerprint and bounded result receipt so an
+  operator can safely resume after an ambiguous network failure without
+  creating another intent revision.
 - **Completed:** **10R.4 Release Acceptance Assembly**. Repository acceptance
   now produces a passed or blocked manifest artifact, while a separate
   protected-environment workflow records active-installation evidence without
@@ -153,8 +157,8 @@ completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3 -> 10R.3.
 completed release hardening: 10R.4 -> 10R.4.1
 active release candidate: v0.48.0-beta -> 10R.4.2 -> 10R.4.3
 completed post-release authority hardening: 11R.1.1 -> 11R.1.2 -> 11R.2 -> 11R.3 -> 11R.4 -> 11R.5 -> 11R.6 -> 11R.7 -> 11R.8 -> 11R.9
-completed reconciliation and deterministic calibration: 12R.0 -> 12R.1 -> 12R.2 -> 12R.3 -> 12R.4
-next native purpose change operator surface: 12R.5
+completed reconciliation and deterministic calibration: 12R.0 -> 12R.1 -> 12R.2 -> 12R.3 -> 12R.4 -> 12R.5
+next native purpose-change retry safety: 12R.6
 completed administrator settings concurrency guardrail: 11R.10 AI Settings stale-write conflict acceptance
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
@@ -12951,7 +12955,7 @@ Preflight](native-intent-change-command-purpose-preflight.md).
 
 ### 12R.5 Native Intent Purpose Change Operator Surface
 
-Status: planned.
+Status: complete.
 
 Intent: expose a single native-maintenance experience for an explicit
 `update_purpose` command without creating a compatibility authoring path or
@@ -12969,6 +12973,8 @@ Completion criteria:
   routing selection, and learning outside the surface; and
 - add presentation, authorization, stale-revision, no-second-authoring-path,
   and end-to-end mutation-boundary coverage.
+
+Implemented design: [Native Intent Purpose Change Operator Surface](native-intent-purpose-change-operator-surface.md).
 
 ## Testing Strategy
 
@@ -13190,10 +13196,20 @@ The next sequence is dependency-gated rather than phase-number order:
     It retains no draft, exposes no terms, calls no provider, performs no
     write, and cannot authorize save or change routing. See [Policy Authoring
     Purpose Coverage Preflight](policy-authoring-purpose-coverage-preflight.md).
-    **Next: 12R.4 Native Intent Change-Command Purpose Preflight
-    Integration**. Bring the same advisory boundary to explicit native
-    `update_purpose` commands without weakening their revision or authority
-    checks.
+27. **12R.4 Native Intent Change-Command Purpose Preflight Integration**:
+    complete. An administrator-only, revision-bound advisory validates one
+    typed native `update_purpose` command against current server authority and
+    returns aggregate-only coverage without authorizing a write.
+28. **12R.5 Native Intent Purpose Change Operator Surface**: complete. The
+    native policy view now exposes one administrator-only, server-projected
+    purpose form. It sends only an expected revision and a typed
+    `update_purpose` command, refreshes from the committed projection, and
+    leaves compatibility authoring, AI, routing, and learning outside the
+    workflow. See [Native Intent Purpose Change Operator Surface](native-intent-purpose-change-operator-surface.md).
+    **Next: 12R.6 Native Intent Change Idempotency Receipts**. Add durable,
+    actor- and policy-bound command receipts so a response-loss retry can
+    replay its exact committed result instead of relying on the browser to
+    infer whether a change applied.
 
 The completed 0R through 3R, 6R, and 7R contracts remain guardrails, not
 permission to restore a diagnostic, template-first, or browser-authoritative

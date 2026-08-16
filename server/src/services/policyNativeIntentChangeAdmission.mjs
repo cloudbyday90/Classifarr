@@ -8,6 +8,10 @@
  * (at your option) any later version.
  */
 
+import {
+  normalizePolicyNativeIntentChangePurposeCommand,
+} from './policyNativeIntentChangePurposePreflightContract.mjs';
+
 const POLICY_NATIVE_INTENT_CHANGE_ADMISSION_VERSION =
   'policy.native_intent_change_admission.v1';
 
@@ -43,6 +47,7 @@ const POLICY_NATIVE_INTENT_CHANGE_ADMISSION_RISK_IDS = Object.freeze({
   NON_AUTHORITATIVE_AUTHORITY: 'non_authoritative_authority',
   EMPTY_CHANGE_COMMANDS: 'empty_change_commands',
   UNKNOWN_CHANGE_COMMAND: 'unknown_change_command',
+  INVALID_CHANGE_COMMAND: 'invalid_change_command',
   LEGACY_FIELD_DETECTED: 'legacy_field_detected',
   ESTABLISHMENT_FIELD_DETECTED: 'establishment_field_detected',
   INVALID_IDEMPOTENCY_KEY: 'invalid_idempotency_key',
@@ -139,10 +144,24 @@ function validateChangeCommands(commands) {
   const normalized = asArray(commands).map(cmd => asObject(cmd));
   const validated = [];
   const unknown = [];
+  const invalid = [];
 
   normalized.forEach(cmd => {
     const commandId = normalizeString(cmd.commandId ?? cmd.command_id ?? cmd.id);
-    if (ALLOWED_CHANGE_COMMAND_IDS.includes(commandId)) {
+    if (commandId === POLICY_NATIVE_INTENT_CHANGE_COMMAND_IDS.UPDATE_PURPOSE) {
+      try {
+        const purposeCommand = normalizePolicyNativeIntentChangePurposeCommand({
+          command_id: commandId,
+          values: cmd.values ?? cmd.payload ?? cmd.data,
+        });
+        validated.push({
+          commandId,
+          values: purposeCommand.values,
+        });
+      } catch {
+        invalid.push(commandId);
+      }
+    } else if (ALLOWED_CHANGE_COMMAND_IDS.includes(commandId)) {
       validated.push({
         commandId,
         values: asArray(cmd.values ?? cmd.payload ?? cmd.data),
@@ -152,7 +171,7 @@ function validateChangeCommands(commands) {
     }
   });
 
-  return { validated, unknown };
+  return { validated, unknown, invalid };
 }
 
 function buildPolicyNativeIntentChangeAdmission({
@@ -231,6 +250,12 @@ function buildPolicyNativeIntentChangeAdmission({
     risks.push(buildRisk(
       POLICY_NATIVE_INTENT_CHANGE_ADMISSION_RISK_IDS.UNKNOWN_CHANGE_COMMAND,
       `Change command "${commandId}" is not in the allow-list.`,
+    ));
+  });
+  commandResult.invalid.forEach(commandId => {
+    risks.push(buildRisk(
+      POLICY_NATIVE_INTENT_CHANGE_ADMISSION_RISK_IDS.INVALID_CHANGE_COMMAND,
+      `Change command "${commandId}" does not satisfy its typed contract.`,
     ));
   });
 
@@ -333,6 +358,10 @@ function determineStatusId(risks, validatedCommandCount) {
 
   if (riskIds.has(POLICY_NATIVE_INTENT_CHANGE_ADMISSION_RISK_IDS.UNKNOWN_CHANGE_COMMAND)) {
     return POLICY_NATIVE_INTENT_CHANGE_ADMISSION_STATUS_IDS.UNKNOWN_COMMAND;
+  }
+
+  if (riskIds.has(POLICY_NATIVE_INTENT_CHANGE_ADMISSION_RISK_IDS.INVALID_CHANGE_COMMAND)) {
+    return POLICY_NATIVE_INTENT_CHANGE_ADMISSION_STATUS_IDS.RETRYABLE;
   }
 
   if (riskIds.has(POLICY_NATIVE_INTENT_CHANGE_ADMISSION_RISK_IDS.LEGACY_FIELD_DETECTED) ||

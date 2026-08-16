@@ -36,9 +36,16 @@
         <PolicyNativePolicySummary
           v-if="experienceMode.isNativeView"
           :policy="policy"
+          :purpose-change-command="nativePurposeChangeCommand"
           :readiness-summary="nativeReadinessSummary"
           :loading="nativeReadinessLoading"
           :error="nativeReadinessError"
+        />
+
+        <PolicyNativeIntentPurposeChangeSurface
+          v-if="experienceMode.isNativeView"
+          :policy-id="Number(policy?.id)"
+          @authority-refreshed="refreshNativePurposeAuthority"
         />
 
         <PolicyNativePolicyRecoveryNotice v-else-if="experienceMode.isNativeRecovery" />
@@ -112,6 +119,7 @@ import PolicyBuilderFooterActions from '@/components/policies/PolicyBuilderFoote
 import PolicyBuilderWorkflowShell from '@/components/policies/PolicyBuilderWorkflowShell.vue'
 import PolicyNativeCreateHandoff from '@/components/policies/PolicyNativeCreateHandoff.vue'
 import PolicyNativePolicyRecoveryNotice from '@/components/policies/PolicyNativePolicyRecoveryNotice.vue'
+import PolicyNativeIntentPurposeChangeSurface from '@/components/policies/PolicyNativeIntentPurposeChangeSurface.vue'
 import PolicyNativePolicySummary from '@/components/policies/PolicyNativePolicySummary.vue'
 import PolicyBuilderLibraryContext from '@/components/policies/PolicyBuilderLibraryContext.vue'
 import { usePolicyBuilderReferenceData } from '@/composables/usePolicyBuilderReferenceData'
@@ -171,6 +179,7 @@ const nativeCreateHandoffRef = ref(null)
 const activeEmptyStateActionId = ref('')
 const emptyStateActionFeedback = ref(null)
 const restoreFocusAfterClose = ref(true)
+const nativePurposeChangeCommand = ref(null)
 
 const isOpen = computed({
   get: () => props.modelValue,
@@ -236,6 +245,7 @@ const {
   readinessSummary: nativeReadinessSummary,
   loading: nativeReadinessLoading,
   error: nativeReadinessError,
+  loadSummary: loadNativeReadinessSummary,
   watchSummary: watchNativeReadinessSummary,
 } = usePolicyNativeReadinessSummary()
 
@@ -314,6 +324,11 @@ watchOperatorWorkflow(computed(() => (
 watchNativeReadinessSummary(computed(() => (
   experienceMode.value.isNativeView ? props.policy?.id : null
 )))
+
+watch(() => props.policy?.id, () => {
+  // The authoritative purpose projection belongs to one persisted policy only.
+  nativePurposeChangeCommand.value = null
+})
 
 watch(() => props.modelValue, isOpen => {
   if (isOpen) restoreFocusAfterClose.value = true
@@ -404,6 +419,12 @@ const preflightPurposeCoverage = async () => {
     policyId: Number(props.policy.id),
     draft,
   })
+}
+
+const refreshNativePurposeAuthority = async (purposeChangeRead = null) => {
+  if (!experienceMode.value.isNativeView) return
+  nativePurposeChangeCommand.value = purposeChangeRead?.changeCommand || null
+  await loadNativeReadinessSummary(props.policy?.id)
 }
 
 const defer = () => {

@@ -11,7 +11,6 @@
 import {
   POLICY_INTENT_INFERENCE_STATES,
   POLICY_INTENT_SOURCES,
-  SUPPORTED_POLICY_INTENT_OPERATORS,
   SUPPORTED_POLICY_INTENT_SIGNAL_TYPES,
 } from './policyIntentSchema.mjs';
 import {
@@ -25,9 +24,7 @@ export const POLICY_NATIVE_INTENT_CHANGE_PURPOSE_PREFLIGHT_COMMAND_ID = 'update_
 
 const PURPOSE_SIGNAL_TYPES = new Set(['genres', 'keywords', 'studios']);
 const PURPOSE_CAPABLE_SIGNAL_TYPES = new Set(['genres', 'keywords', 'studios', 'media_type']);
-const SUPPORTED_OPERATORS = new Set(SUPPORTED_POLICY_INTENT_OPERATORS);
 const SUPPORTED_SIGNAL_TYPES = new Set(SUPPORTED_POLICY_INTENT_SIGNAL_TYPES);
-const SUPPORTED_SOURCES = new Set(Object.values(POLICY_INTENT_SOURCES));
 const SUPPORTED_INFERENCE_STATES = new Set(Object.values(POLICY_INTENT_INFERENCE_STATES));
 const COMMAND_KEYS = new Set(['command_id', 'values']);
 const ENTRY_KEYS = new Set([
@@ -39,20 +36,14 @@ const ENTRY_KEYS = new Set([
   'source',
   'inference_state',
 ]);
-const VALUE_KEYS = new Set([
-  'require_all',
-  'require_any',
-  'include',
-  'prefer',
-  'exclude',
-  'mode',
-  'max',
-  'min',
-  'min_minutes',
-  'max_minutes',
-  'when_any',
-]);
-const REQUIRED_VALUE_KEYS = new Set(['require_all', 'require_any', 'include', 'prefer', 'exclude', 'when_any']);
+const PURPOSE_OPERATOR_VALUE_KEYS = Object.freeze({
+  require_all: 'require_all',
+  require_any: 'require_any',
+  include: 'include',
+  prefer: 'prefer',
+  exclude: 'exclude',
+});
+const SUPPORTED_PURPOSE_OPERATORS = new Set(Object.keys(PURPOSE_OPERATOR_VALUE_KEYS));
 const MAX_ENTRIES = 100;
 const MAX_VALUES_PER_ENTRY = 50;
 const MAX_TERM_LENGTH = 120;
@@ -84,9 +75,9 @@ function asNonNegativeInteger(value) {
 }
 
 function asBoundedStringList(value) {
-  if (!Array.isArray(value) || value.length > MAX_VALUES_PER_ENTRY) return null;
+  if (!Array.isArray(value) || value.length === 0 || value.length > MAX_VALUES_PER_ENTRY) return null;
 
-  const normalized = value.map(asNonEmptyString);
+  const normalized = [...new Set(value.map(asNonEmptyString))];
   if (normalized.some(term => !term || term.length > MAX_TERM_LENGTH)) return null;
   return normalized;
 }
@@ -100,7 +91,7 @@ function assertOnlyKeys(record, allowedKeys, label) {
   }
 }
 
-function normalizeValues(value) {
+function normalizeValues(value, operator) {
   const values = asObject(value);
   if (!values) {
     throw new PolicyNativeIntentChangePurposePreflightValidationError(
@@ -108,61 +99,21 @@ function normalizeValues(value) {
     );
   }
 
-  assertOnlyKeys(values, VALUE_KEYS, 'Purpose change entry values');
-  if (Object.keys(values).length === 0) {
+  const valueKey = PURPOSE_OPERATOR_VALUE_KEYS[operator];
+  if (!valueKey || Object.keys(values).length !== 1 || !Object.hasOwn(values, valueKey)) {
     throw new PolicyNativeIntentChangePurposePreflightValidationError(
-      'Purpose change entry values cannot be empty.',
+      'Purpose change values must contain the bounded value list required by its operator.',
     );
   }
 
-  const normalized = {};
-  for (const [key, entryValue] of Object.entries(values)) {
-    if (REQUIRED_VALUE_KEYS.has(key)) {
-      const terms = asBoundedStringList(entryValue);
-      if (!terms) {
-        throw new PolicyNativeIntentChangePurposePreflightValidationError(
-          `Purpose change value "${key}" must be a bounded string list.`,
-        );
-      }
-      normalized[key] = terms;
-      continue;
-    }
-
-    if (key === 'mode') {
-      const mode = asNonEmptyString(entryValue);
-      if (!mode || !['max', 'min', 'range', 'runtime_range', 'exclude', 'include'].includes(mode)) {
-        throw new PolicyNativeIntentChangePurposePreflightValidationError(
-          'Purpose change mode is not supported.',
-        );
-      }
-      normalized[key] = mode;
-      continue;
-    }
-
-    if (key === 'min_minutes' || key === 'max_minutes') {
-      const numericValue = Number(entryValue);
-      if (!Number.isInteger(numericValue) || numericValue < 0 || numericValue > 100000) {
-        throw new PolicyNativeIntentChangePurposePreflightValidationError(
-          `Purpose change value "${key}" must be a bounded non-negative integer.`,
-        );
-      }
-      normalized[key] = numericValue;
-      continue;
-    }
-
-    if (
-      (typeof entryValue !== 'string' || !entryValue.trim() || entryValue.trim().length > MAX_TERM_LENGTH) &&
-      (typeof entryValue !== 'number' || !Number.isFinite(entryValue) || entryValue < -100000 || entryValue > 100000) &&
-      typeof entryValue !== 'boolean'
-    ) {
-      throw new PolicyNativeIntentChangePurposePreflightValidationError(
-        `Purpose change value "${key}" is not supported.`,
-      );
-    }
-    normalized[key] = typeof entryValue === 'string' ? entryValue.trim() : entryValue;
+  const terms = asBoundedStringList(values[valueKey]);
+  if (!terms) {
+    throw new PolicyNativeIntentChangePurposePreflightValidationError(
+      `Purpose change value "${valueKey}" must be a non-empty bounded string list.`,
+    );
   }
 
-  return normalized;
+  return { [valueKey]: terms };
 }
 
 function normalizePurposeEntry(value) {
@@ -177,8 +128,12 @@ function normalizePurposeEntry(value) {
 
   const signalType = asNonEmptyString(entry.signal_type);
   const operator = asNonEmptyString(entry.operator);
-  const constraintMode = entry.constraint_mode === undefined ? null : asNonEmptyString(entry.constraint_mode);
-  const semantics = entry.semantics === undefined ? null : asNonEmptyString(entry.semantics);
+  const constraintMode = entry.constraint_mode === undefined
+    ? 'advisory'
+    : asNonEmptyString(entry.constraint_mode);
+  const semantics = entry.semantics === undefined
+    ? 'identity'
+    : asNonEmptyString(entry.semantics);
   const source = entry.source === undefined
     ? POLICY_INTENT_SOURCES.NATIVE_INTENT
     : asNonEmptyString(entry.source);
@@ -192,38 +147,42 @@ function normalizePurposeEntry(value) {
     );
   }
 
-  if (!operator || !SUPPORTED_OPERATORS.has(operator)) {
+  if (!operator || !SUPPORTED_PURPOSE_OPERATORS.has(operator)) {
     throw new PolicyNativeIntentChangePurposePreflightValidationError(
-      'Purpose change entries must use a supported operator.',
+      'Purpose change entries must use a supported purpose operator.',
     );
   }
 
-  if (constraintMode !== null && !['strict', 'advisory'].includes(constraintMode)) {
+  if (!['strict', 'advisory'].includes(constraintMode)) {
     throw new PolicyNativeIntentChangePurposePreflightValidationError(
       'Purpose change entry constraint mode is not supported.',
     );
   }
 
-  if (semantics !== null && !['identity', 'compatibility'].includes(semantics)) {
+  if (!['identity', 'compatibility'].includes(semantics)) {
     throw new PolicyNativeIntentChangePurposePreflightValidationError(
       'Purpose change entry semantics are not supported.',
     );
   }
 
-  if (!source || !SUPPORTED_SOURCES.has(source) || !inferenceState || !SUPPORTED_INFERENCE_STATES.has(inferenceState)) {
+  if (
+    source !== POLICY_INTENT_SOURCES.NATIVE_INTENT ||
+    !inferenceState ||
+    !SUPPORTED_INFERENCE_STATES.has(inferenceState)
+  ) {
     throw new PolicyNativeIntentChangePurposePreflightValidationError(
       'Purpose change entry provenance is not supported.',
     );
   }
 
   return {
-    signalType,
+    signal_type: signalType,
     operator,
-    values: normalizeValues(entry.values),
-    constraintMode,
+    values: normalizeValues(entry.values, operator),
+    constraint_mode: constraintMode,
     semantics,
-    source,
-    inferenceState,
+    source: POLICY_INTENT_SOURCES.NATIVE_INTENT,
+    inference_state: inferenceState,
   };
 }
 
@@ -237,6 +196,36 @@ function collectRequiredTerms(values = {}) {
  * or return those terms.
  */
 export function buildPolicyNativeIntentChangePurposePreflightCandidate(command) {
+  const normalizedCommand = normalizePolicyNativeIntentChangePurposeCommand(command);
+  const entries = normalizedCommand.values;
+  const candidateTermsByKey = new Map();
+
+  for (const entry of entries) {
+    if (entry.semantics !== 'identity' || !PURPOSE_SIGNAL_TYPES.has(entry.signal_type)) continue;
+
+    for (const term of collectRequiredTerms(entry.values)) {
+      const termKey = term.toLowerCase();
+      candidateTermsByKey.set(`${entry.signal_type}\u0000${termKey}`, {
+        signalType: entry.signal_type,
+        termKey,
+      });
+    }
+  }
+
+  const terms = [...candidateTermsByKey.values()];
+  return {
+    terms,
+    requiredSignalTypeCount: new Set(terms.map(term => term.signalType)).size,
+    requiredTermCount: terms.length,
+  };
+}
+
+/**
+ * Canonicalizes the only command accepted by the native purpose operator
+ * surface. Both preflight and persistence use this function so browser input
+ * can never be validated more weakly by the mutation path than by advice.
+ */
+export function normalizePolicyNativeIntentChangePurposeCommand(command) {
   const normalizedCommand = asObject(command);
   if (!normalizedCommand) {
     throw new PolicyNativeIntentChangePurposePreflightValidationError(
@@ -251,32 +240,19 @@ export function buildPolicyNativeIntentChangePurposePreflightCandidate(command) 
     );
   }
 
-  if (!Array.isArray(normalizedCommand.values) || normalizedCommand.values.length > MAX_ENTRIES) {
+  if (
+    !Array.isArray(normalizedCommand.values) ||
+    normalizedCommand.values.length === 0 ||
+    normalizedCommand.values.length > MAX_ENTRIES
+  ) {
     throw new PolicyNativeIntentChangePurposePreflightValidationError(
-      'Purpose change command values must be a bounded array.',
+      'Purpose change command values must be a non-empty bounded array.',
     );
   }
 
-  const entries = normalizedCommand.values.map(normalizePurposeEntry);
-  const candidateTermsByKey = new Map();
-
-  for (const entry of entries) {
-    if (entry.semantics !== 'identity' || !PURPOSE_SIGNAL_TYPES.has(entry.signalType)) continue;
-
-    for (const term of collectRequiredTerms(entry.values)) {
-      const termKey = term.toLowerCase();
-      candidateTermsByKey.set(`${entry.signalType}\u0000${termKey}`, {
-        signalType: entry.signalType,
-        termKey,
-      });
-    }
-  }
-
-  const terms = [...candidateTermsByKey.values()];
   return {
-    terms,
-    requiredSignalTypeCount: new Set(terms.map(term => term.signalType)).size,
-    requiredTermCount: terms.length,
+    command_id: POLICY_NATIVE_INTENT_CHANGE_PURPOSE_PREFLIGHT_COMMAND_ID,
+    values: normalizedCommand.values.map(normalizePurposeEntry),
   };
 }
 
