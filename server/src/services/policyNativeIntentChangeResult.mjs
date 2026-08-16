@@ -19,6 +19,8 @@ const POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS = Object.freeze({
   AUTHORIZATION_REJECTED: 'authorization_rejected',
   UNAVAILABLE_AUTHORITY: 'unavailable_authority',
   UNKNOWN_COMMAND: 'unknown_command',
+  IDEMPOTENCY_KEY_IN_PROGRESS: 'idempotency_key_in_progress',
+  IDEMPOTENCY_KEY_REUSED: 'idempotency_key_reused',
   RETRYABLE: 'retryable',
   FAILED_ROLLED_BACK: 'failed_rolled_back',
   BLOCKED_BY_TRANSACTION_BOUNDARY: 'blocked_by_transaction_boundary',
@@ -30,6 +32,8 @@ const POLICY_NATIVE_INTENT_CHANGE_RESULT_RISK_IDS = Object.freeze({
   REVISION_MISMATCH_AFTER_LOCK: 'revision_mismatch_after_lock',
   NO_ACTIVE_INTENT_AFTER_LOCK: 'no_active_intent_after_lock',
   POLICY_NOT_FOUND: 'policy_not_found',
+  IDEMPOTENCY_KEY_IN_PROGRESS: 'idempotency_key_in_progress',
+  IDEMPOTENCY_KEY_REUSED: 'idempotency_key_reused',
 });
 
 function buildPolicyNativeIntentChangeResult({
@@ -42,6 +46,8 @@ function buildPolicyNativeIntentChangeResult({
   newIntentVersion = null,
   appliedCommandIds = [],
   migrationEventId = null,
+  replayed = false,
+  receiptVersion = null,
   risks = [],
   evaluatedAt = new Date().toISOString(),
 } = {}) {
@@ -62,15 +68,23 @@ function buildPolicyNativeIntentChangeResult({
       newIntentVersion,
       appliedCommandIds,
       migrationEventId,
+      replayed: applied && replayed === true,
       rawPayloadExposed: false,
     },
     risks,
     sideEffects: {
-      policyStorageMutated: applied,
+      policyStorageMutated: applied && replayed !== true,
       routingWritten: false,
       learningWritten: false,
       providerAccessed: false,
-      databaseWritten: applied,
+      databaseWritten: applied && replayed !== true,
+    },
+    retry: {
+      mode: 'durable_idempotency_receipt',
+      receiptPersisted: applied,
+      replayed: applied && replayed === true,
+      receiptVersion: applied ? receiptVersion : null,
+      idempotencyKeyExposed: false,
     },
     validation: { ok: true, issueCount: 0, issues: [] },
   };

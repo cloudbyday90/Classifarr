@@ -57,6 +57,7 @@ describe('usePolicyNativeIntentPurposeChange', () => {
       loadPurposeChangeRequest,
       preflightPurposeChangeRequest,
       applyPurposeChangeRequest,
+      createIdempotencyKey: () => '6fe3d170-9390-4ec5-95f7-42ad6f8ec777',
     })
 
     await expect(purposeChange.load(17)).resolves.toBe(true)
@@ -68,10 +69,12 @@ describe('usePolicyNativeIntentPurposeChange', () => {
       command_id: 'update_purpose',
       values: expect.any(Array),
     })
-    expect(applyPurposeChangeRequest).toHaveBeenCalledWith(17, 3, {
-      command_id: 'update_purpose',
-      values: expect.any(Array),
-    })
+    expect(applyPurposeChangeRequest).toHaveBeenCalledWith(
+      17,
+      3,
+      { command_id: 'update_purpose', values: expect.any(Array) },
+      { idempotencyKey: '6fe3d170-9390-4ec5-95f7-42ad6f8ec777' },
+    )
     expect(purposeChange.currentRevision.value).toBe(4)
     expect(purposeChange.draftRules.value[0].values).toEqual({ require_any: ['Comedy'] })
   })
@@ -85,6 +88,7 @@ describe('usePolicyNativeIntentPurposeChange', () => {
       applyPurposeChangeRequest: vi.fn().mockRejectedValue({
         response: { data: { code: 'POLICY_NATIVE_INTENT_CHANGE_STALE_REVISION' } },
       }),
+      createIdempotencyKey: () => '6fe3d170-9390-4ec5-95f7-42ad6f8ec777',
     })
 
     await purposeChange.load(17)
@@ -95,5 +99,37 @@ describe('usePolicyNativeIntentPurposeChange', () => {
     expect(purposeChange.currentRevision.value).toBe(4)
     expect(purposeChange.draftRules.value[0].values).toEqual({ require_any: ['Comedy'] })
     expect(purposeChange.applyError.value).toContain('revision changed')
+  })
+
+  it('reuses the same in-memory key after an ambiguous request failure and clears it after a committed replay', async () => {
+    const loadPurposeChangeRequest = vi.fn()
+      .mockResolvedValueOnce(purposeRead(3, 'Animation'))
+      .mockResolvedValueOnce(purposeRead(4, 'Comedy'))
+    const applyPurposeChangeRequest = vi.fn()
+      .mockRejectedValueOnce(new Error('network response lost'))
+      .mockResolvedValueOnce({
+        data: {
+          statusId: 'applied',
+          change: { applied: true, replayed: true, newIntentVersion: 4 },
+        },
+      })
+    const createIdempotencyKey = vi.fn(() => '6fe3d170-9390-4ec5-95f7-42ad6f8ec777')
+    const purposeChange = usePolicyNativeIntentPurposeChange({
+      loadPurposeChangeRequest,
+      applyPurposeChangeRequest,
+      createIdempotencyKey,
+    })
+
+    await purposeChange.load(17)
+    purposeChange.startEditing()
+    await expect(purposeChange.apply(17)).resolves.toBe(false)
+    await expect(purposeChange.apply(17)).resolves.toBe(true)
+
+    expect(createIdempotencyKey).toHaveBeenCalledTimes(1)
+    expect(applyPurposeChangeRequest.mock.calls.map(call => call[3])).toEqual([
+      { idempotencyKey: '6fe3d170-9390-4ec5-95f7-42ad6f8ec777' },
+      { idempotencyKey: '6fe3d170-9390-4ec5-95f7-42ad6f8ec777' },
+    ])
+    expect(purposeChange.feedback.value).toContain('earlier declared-purpose change was confirmed')
   })
 })

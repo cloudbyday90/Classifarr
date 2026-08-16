@@ -30,6 +30,19 @@ import {
   lockPolicyForNativeIntentChange,
   updateReviewBehavior,
 } from './policyNativeIntentChangePersistence.mjs';
+import {
+  buildNativeIntentChangeAdvisoryLockKey,
+} from './policyNativeIntentChangeIdempotency.mjs';
+import {
+  buildPolicyNativeIntentChangeCommandFingerprint,
+  buildPolicyNativeIntentChangeReceiptRecord,
+  receiptMatchesNativeIntentChange,
+} from './policyNativeIntentChangeReceiptContract.mjs';
+import {
+  insertPolicyNativeIntentChangeReceipt,
+  lockPolicyNativeIntentChangeReceipt,
+  tryLockNativeIntentChangeIdempotencyKey,
+} from './policyNativeIntentChangeReceiptPersistence.mjs';
 
 const ADMISSION_TO_RESULT_STATUS = Object.freeze({
   [POLICY_NATIVE_INTENT_CHANGE_ADMISSION_STATUS_IDS.ADMITTED]:
@@ -53,6 +66,48 @@ const ADMISSION_TO_RESULT_STATUS = Object.freeze({
 function normalizePositiveInteger(value) {
   const numeric = Number(value);
   return Number.isInteger(numeric) && numeric > 0 ? numeric : null;
+}
+
+function buildIdempotencyInProgressResult({ policyId, actorId, expectedRevision }) {
+  return buildPolicyNativeIntentChangeResult({
+    statusId: POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.IDEMPOTENCY_KEY_IN_PROGRESS,
+    policyId,
+    actorId,
+    expectedRevision,
+    risks: [{
+      riskId: POLICY_NATIVE_INTENT_CHANGE_RESULT_RISK_IDS.IDEMPOTENCY_KEY_IN_PROGRESS,
+      message: 'A native intent change with this idempotency key is still in progress.',
+    }],
+  });
+}
+
+function buildIdempotencyKeyReusedResult({ policyId, actorId, expectedRevision }) {
+  return buildPolicyNativeIntentChangeResult({
+    statusId: POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.IDEMPOTENCY_KEY_REUSED,
+    policyId,
+    actorId,
+    expectedRevision,
+    risks: [{
+      riskId: POLICY_NATIVE_INTENT_CHANGE_RESULT_RISK_IDS.IDEMPOTENCY_KEY_REUSED,
+      message: 'The idempotency key is already bound to a different native intent change.',
+    }],
+  });
+}
+
+function buildReplayedResult({ receipt, policyId, actorId, expectedRevision }) {
+  return buildPolicyNativeIntentChangeResult({
+    statusId: POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.APPLIED,
+    policyId,
+    actorId,
+    expectedRevision,
+    currentRevision: receipt.sourceIntentVersion,
+    newIntentId: receipt.targetIntentId,
+    newIntentVersion: receipt.targetIntentVersion,
+    appliedCommandIds: receipt.appliedCommandIds,
+    migrationEventId: receipt.migrationEventId,
+    replayed: true,
+    receiptVersion: receipt.receiptVersion,
+  });
 }
 
 async function applyPolicyNativeIntentChange({
@@ -105,9 +160,53 @@ async function applyPolicyNativeIntentChange({
   }
 
   const appliedCommandIds = admission.admittedCommands.map(cmd => cmd.commandId);
+  const commandFingerprint = buildPolicyNativeIntentChangeCommandFingerprint({
+    policyId: normalizedPolicyId,
+    actorId: admission.actorId,
+    expectedRevision: admission.expectedRevision,
+    changeCommands: admission.admittedCommands,
+  });
 
   try {
     return await dbClient.withTransaction(async client => {
+      const lockAcquired = await tryLockNativeIntentChangeIdempotencyKey({
+        client,
+        lockKey: buildNativeIntentChangeAdvisoryLockKey(admission.idempotencyKey),
+      });
+      if (!lockAcquired) {
+        return buildIdempotencyInProgressResult({
+          policyId: normalizedPolicyId,
+          actorId: admission.actorId,
+          expectedRevision: admission.expectedRevision,
+        });
+      }
+
+      const existingReceipt = await lockPolicyNativeIntentChangeReceipt({
+        client,
+        idempotencyKey: admission.idempotencyKey,
+      });
+      if (existingReceipt) {
+        if (receiptMatchesNativeIntentChange({
+          receipt: existingReceipt,
+          policyId: normalizedPolicyId,
+          actorId: admission.actorId,
+          commandFingerprint,
+        })) {
+          return buildReplayedResult({
+            receipt: existingReceipt,
+            policyId: normalizedPolicyId,
+            actorId: admission.actorId,
+            expectedRevision: admission.expectedRevision,
+          });
+        }
+
+        return buildIdempotencyKeyReusedResult({
+          policyId: normalizedPolicyId,
+          actorId: admission.actorId,
+          expectedRevision: admission.expectedRevision,
+        });
+      }
+
       const policy = await lockPolicyForNativeIntentChange(client, normalizedPolicyId);
 
       if (!policy) {
@@ -259,6 +358,25 @@ async function applyPolicyNativeIntentChange({
         metadata: { appliedCommandIds },
       });
 
+      const receipt = await insertPolicyNativeIntentChangeReceipt({
+        client,
+        receipt: buildPolicyNativeIntentChangeReceiptRecord({
+          policyId: normalizedPolicyId,
+          actorId: admission.actorId,
+          idempotencyKey: admission.idempotencyKey,
+          commandFingerprint,
+          sourceIntentVersion: lockedRevision,
+          targetIntentId: newIntent.id,
+          targetIntentVersion: newVersion,
+          migrationEventId: eventId,
+          appliedCommandIds,
+          createdAt: now,
+        }),
+      });
+      if (!receipt) {
+        throw new Error('Native intent change receipt did not return an identifier.');
+      }
+
       return buildPolicyNativeIntentChangeResult({
         statusId: POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.APPLIED,
         policyId: normalizedPolicyId,
@@ -269,6 +387,7 @@ async function applyPolicyNativeIntentChange({
         newIntentVersion: newVersion,
         appliedCommandIds,
         migrationEventId: eventId,
+        receiptVersion: receipt.receiptVersion,
       });
     });
   } catch {

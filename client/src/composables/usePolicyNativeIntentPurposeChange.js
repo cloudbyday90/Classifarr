@@ -18,6 +18,9 @@ import {
   buildNativeIntentPurposeChangeCommand,
   cloneNativeIntentPurposeChangeRules,
 } from '@/utils/policyNativeIntentPurposeChange'
+import {
+  createNativeIntentChangeIdempotencyKey,
+} from '@/utils/policyNativeIntentChangeIdempotency'
 
 const PURPOSE_CHANGE_READ_VERSION = 'policy.native_intent_purpose_change_read.v1'
 const PURPOSE_CHANGE_READ_STATUS = 'native_intent_purpose_change_available'
@@ -25,6 +28,10 @@ const PURPOSE_CHANGE_STALE_CODES = new Set([
   'POLICY_NATIVE_INTENT_CHANGE_STALE_REVISION',
   'POLICY_NATIVE_INTENT_CHANGE_PURPOSE_PREFLIGHT_STALE_REVISION',
 ])
+const PURPOSE_CHANGE_IDEMPOTENCY_IN_PROGRESS_CODE =
+  'POLICY_NATIVE_INTENT_CHANGE_IDEMPOTENCY_KEY_IN_PROGRESS'
+const PURPOSE_CHANGE_IDEMPOTENCY_REUSED_CODE =
+  'POLICY_NATIVE_INTENT_CHANGE_IDEMPOTENCY_KEY_REUSED'
 
 function normalizePositiveInteger(value) {
   const numericValue = Number(value)
@@ -81,6 +88,7 @@ export function usePolicyNativeIntentPurposeChange({
   loadPurposeChangeRequest = getPolicyNativeIntentPurposeChange,
   preflightPurposeChangeRequest = preflightPolicyNativeIntentPurposeChange,
   applyPurposeChangeRequest = applyPolicyNativeIntentPurposeChange,
+  createIdempotencyKey = createNativeIntentChangeIdempotencyKey,
 } = {}) {
   const read = ref(null)
   const draftRules = ref([])
@@ -94,6 +102,7 @@ export function usePolicyNativeIntentPurposeChange({
   const applying = ref(false)
   const applyError = ref('')
   const feedback = ref('')
+  const applyAttempt = ref(null)
   let activeRequestId = 0
 
   const currentCommand = computed(() => buildNativeIntentPurposeChangeCommand(draftRules.value))
@@ -105,7 +114,18 @@ export function usePolicyNativeIntentPurposeChange({
     preflightError.value = ''
   }
 
+  const clearApplyAttempt = () => {
+    applyAttempt.value = null
+  }
+
+  const buildApplyAttemptFingerprint = (policyId, revision, command) => JSON.stringify({
+    policyId,
+    revision,
+    command,
+  })
+
   const resetDraft = () => {
+    clearApplyAttempt()
     draftRules.value = cloneNativeIntentPurposeChangeRules(read.value?.changeCommand) || []
     clearPreflight()
     applyError.value = ''
@@ -124,6 +144,7 @@ export function usePolicyNativeIntentPurposeChange({
     applying.value = false
     applyError.value = ''
     feedback.value = ''
+    clearApplyAttempt()
   }
 
   const load = async (policyIdValue) => {
@@ -245,11 +266,19 @@ export function usePolicyNativeIntentPurposeChange({
     applyError.value = ''
     feedback.value = ''
     try {
-      const response = await applyPurposeChangeRequest(policyId, revision, command)
-      if (!isAppliedPurposeChange(responseData(response))) {
+      const attemptFingerprint = buildApplyAttemptFingerprint(policyId, revision, command)
+      const idempotencyKey = applyAttempt.value?.fingerprint === attemptFingerprint
+        ? applyAttempt.value.idempotencyKey
+        : createIdempotencyKey()
+      applyAttempt.value = { fingerprint: attemptFingerprint, idempotencyKey }
+      const response = await applyPurposeChangeRequest(policyId, revision, command, { idempotencyKey })
+      const result = responseData(response)
+      if (!isAppliedPurposeChange(result)) {
         applyError.value = 'Classifarr could not confirm the native purpose change. Reload the current policy before retrying.'
         return false
       }
+
+      clearApplyAttempt()
 
       const refreshed = await load(policyId)
       if (!refreshed) {
@@ -258,17 +287,31 @@ export function usePolicyNativeIntentPurposeChange({
       }
 
       editing.value = false
-      feedback.value = 'Declared purpose updated. Classifarr loaded the new native revision.'
+      feedback.value = result.change.replayed === true
+        ? 'The earlier declared-purpose change was confirmed. Classifarr loaded the committed native revision.'
+        : 'Declared purpose updated. Classifarr loaded the new native revision.'
       return true
     } catch (error) {
       if (isStaleRevisionError(error)) {
+        clearApplyAttempt()
         await load(policyId)
         editing.value = true
         applyError.value = 'The policy revision changed. Current purpose was reloaded; review it before applying a new change.'
         return false
       }
 
-      applyError.value = 'Classifarr could not apply the native purpose change. No browser authority was used; review the current policy and try again.'
+      if (getErrorCode(error) === PURPOSE_CHANGE_IDEMPOTENCY_REUSED_CODE) {
+        clearApplyAttempt()
+        applyError.value = 'This purpose change request no longer matches its original retry key. Reload the current policy before starting a new change.'
+        return false
+      }
+
+      if (getErrorCode(error) === PURPOSE_CHANGE_IDEMPOTENCY_IN_PROGRESS_CODE) {
+        applyError.value = 'The same purpose change is still being committed. Retry without changing the draft to resume safely.'
+        return false
+      }
+
+      applyError.value = 'Classifarr could not confirm the purpose change outcome. Retry without changing the draft to resume safely.'
       return false
     } finally {
       applying.value = false
@@ -276,6 +319,17 @@ export function usePolicyNativeIntentPurposeChange({
   }
 
   watch(draftRules, () => {
+    const command = currentCommand.value
+    const attemptFingerprint = command
+      ? buildApplyAttemptFingerprint(
+        normalizePositiveInteger(read.value?.policyId),
+        currentRevision.value,
+        command,
+      )
+      : null
+    if (applyAttempt.value?.fingerprint !== attemptFingerprint) {
+      clearApplyAttempt()
+    }
     clearPreflight()
     applyError.value = ''
     feedback.value = ''

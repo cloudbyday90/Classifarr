@@ -21,6 +21,8 @@ jest.unstable_mockModule('../services/policyNativeIntentChangeService.mjs', () =
     BLOCKED_BY_TRANSACTION_BOUNDARY: 'native_intent_change_blocked_by_transaction_boundary',
     AUTHORIZATION_REJECTED: 'native_intent_change_authorization_rejected',
     STALE_REVISION: 'native_intent_change_stale_revision',
+    IDEMPOTENCY_KEY_IN_PROGRESS: 'native_intent_change_idempotency_key_in_progress',
+    IDEMPOTENCY_KEY_REUSED: 'native_intent_change_idempotency_key_reused',
     RETRYABLE: 'native_intent_change_retryable',
   },
   applyPolicyNativeIntentChange,
@@ -75,6 +77,7 @@ describe('native intent change route', () => {
     const body = validRequest();
     await request(createApp())
       .post('/api/policies/17/native-intent/changes')
+      .set('Idempotency-Key', '"6fe3d170-9390-4ec5-95f7-42ad6f8ec777"')
       .send(body)
       .expect(200);
 
@@ -84,14 +87,27 @@ describe('native intent change route', () => {
       actorId: 7,
       actorRole: 'admin',
       changeCommands: body.change_commands,
-      idempotencyKey: undefined,
+      idempotencyKey: '6fe3d170-9390-4ec5-95f7-42ad6f8ec777',
     }));
     expect(applyPolicyNativeIntentChange.mock.calls[0][0]).not.toHaveProperty('authorityState');
     expect(applyPolicyNativeIntentChange.mock.calls[0][0]).not.toHaveProperty('legacyPayload');
 
     await request(createApp())
       .post('/api/policies/17/native-intent/changes')
+      .set('Idempotency-Key', '"6fe3d170-9390-4ec5-95f7-42ad6f8ec777"')
       .send({ ...body, authority_state: { currentRevision: 3 } })
       .expect(400);
+  });
+
+  test('rejects a missing idempotency key before invoking the mutation service', async () => {
+    await request(createApp())
+      .post('/api/policies/17/native-intent/changes')
+      .send(validRequest())
+      .expect(400)
+      .expect(response => {
+        expect(response.body.code).toBe('POLICY_NATIVE_INTENT_CHANGE_IDEMPOTENCY_KEY_REQUIRED');
+      });
+
+    expect(applyPolicyNativeIntentChange).not.toHaveBeenCalled();
   });
 });

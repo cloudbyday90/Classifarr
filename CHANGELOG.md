@@ -13,6 +13,13 @@ Current development changes will be recorded here.
 
 ### Added
 
+- **Native intent change retry safety** — Native-purpose changes now require a
+  volatile browser-generated idempotency key and persist a compact immutable,
+  actor-, policy-, revision-, and canonical-command-bound receipt with the
+  committed native intent revision. Exact response-loss retries replay the
+  bounded original result without creating another revision; no raw rule, AI,
+  compatibility, routing, profile, RAG, or history content is retained.
+
 - **Native purpose maintenance** — Added an administrator-only native-purpose
   form that reads a narrow server-owned command and revision, offers
   aggregate-only coverage advice, and applies one locked, revision-checked

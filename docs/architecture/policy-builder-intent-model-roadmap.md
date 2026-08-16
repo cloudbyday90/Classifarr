@@ -113,10 +113,19 @@ Current execution focus:
   purpose command and revision, treats 12R.4 coverage as advisory, clears
   advice when the command or revision changes, and submits the existing
   locked, revision-checked command without reopening compatibility authoring.
-- **Next:** **12R.6 Native Intent Change Idempotency Receipts**. Persist an
-  actor- and policy-bound command fingerprint and bounded result receipt so an
-  operator can safely resume after an ambiguous network failure without
-  creating another intent revision.
+- **Completed:** **12R.6 Native Intent Change Idempotency Receipts**. Native
+  change requests now require one volatile browser-generated key and bind it
+  to actor, policy, source revision, and server-admitted command fingerprint.
+  PostgreSQL persists a compact immutable receipt in the same transaction as
+  the intent revision and event, allowing an exact response-loss retry without
+  creating another revision or retaining raw rules, AI, compatibility, or
+  routing data. See [Native Intent Change Idempotency
+  Receipts](native-intent-change-idempotency-receipts.md).
+- **Next:** **12R.7 Authorized Recent Native Intent Change Receipt
+  Discovery**. Evaluate one bounded, actor- and policy-scoped post-reload
+  status read that can report a recent committed native change without
+  exposing idempotency keys, fingerprints, rule values, receipt history, or a
+  new mutation path.
 - **Completed:** **10R.4 Release Acceptance Assembly**. Repository acceptance
   now produces a passed or blocked manifest artifact, while a separate
   protected-environment workflow records active-installation evidence without
@@ -157,8 +166,8 @@ completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3 -> 10R.3.
 completed release hardening: 10R.4 -> 10R.4.1
 active release candidate: v0.48.0-beta -> 10R.4.2 -> 10R.4.3
 completed post-release authority hardening: 11R.1.1 -> 11R.1.2 -> 11R.2 -> 11R.3 -> 11R.4 -> 11R.5 -> 11R.6 -> 11R.7 -> 11R.8 -> 11R.9
-completed reconciliation and deterministic calibration: 12R.0 -> 12R.1 -> 12R.2 -> 12R.3 -> 12R.4 -> 12R.5
-next native purpose-change retry safety: 12R.6
+completed reconciliation and deterministic calibration: 12R.0 -> 12R.1 -> 12R.2 -> 12R.3 -> 12R.4 -> 12R.5 -> 12R.6
+next native purpose-change resilience: 12R.7
 completed administrator settings concurrency guardrail: 11R.10 AI Settings stale-write conflict acceptance
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
@@ -12976,6 +12985,46 @@ Completion criteria:
 
 Implemented design: [Native Intent Purpose Change Operator Surface](native-intent-purpose-change-operator-surface.md).
 
+### 12R.6 Native Intent Change Idempotency Receipts
+
+Status: complete.
+
+Intent: let an administrator safely resume an unchanged native intent change
+after an ambiguous response loss without allowing a browser reread, new
+request, AI output, compatibility data, or routing state to infer whether a
+write committed.
+
+Completion criteria:
+
+- require one syntactically valid, browser-generated idempotency key for an
+  admitted native change and retain it only for the unchanged in-memory
+  attempt;
+- canonicalize the server-admitted commands and persist only an actor-,
+  policy-, source-revision-, and command-fingerprint-bound receipt with the
+  committed intent and event references;
+- take a transaction-scoped key lock and replay the bounded committed result
+  before the stale-revision check when every binding matches exactly;
+- reject concurrent and semantic key reuse with bounded outcomes, and create
+  no receipt for malformed, stale, unauthorized, unavailable, or rolled-back
+  attempts;
+- keep the receipt append-only, non-portable across replace restore, and free
+  of raw rule, AI, compatibility, routing, profile, RAG, and history content;
+  and
+- add client, service, route, migration, backup lifecycle, and PostgreSQL
+  integration coverage.
+
+Implemented design: [Native Intent Change Idempotency Receipts](native-intent-change-idempotency-receipts.md).
+
+### 12R.7 Authorized Recent Native Intent Change Receipt Discovery
+
+Status: planned.
+
+Intent: evaluate a bounded, administrator-only post-reload status read for a
+recent native intent change. It must be actor- and policy-scoped, return only
+fixed receipt status and revision facts, and remain unable to expose a key,
+fingerprint, command values, receipt history, raw policy content, AI data, or
+mutation authority.
+
 ## Testing Strategy
 
 Required coverage should follow the re-imagined phase boundaries:
@@ -13206,10 +13255,19 @@ The next sequence is dependency-gated rather than phase-number order:
     `update_purpose` command, refreshes from the committed projection, and
     leaves compatibility authoring, AI, routing, and learning outside the
     workflow. See [Native Intent Purpose Change Operator Surface](native-intent-purpose-change-operator-surface.md).
-    **Next: 12R.6 Native Intent Change Idempotency Receipts**. Add durable,
-    actor- and policy-bound command receipts so a response-loss retry can
-    replay its exact committed result instead of relying on the browser to
-    infer whether a change applied.
+29. **12R.6 Native Intent Change Idempotency Receipts**: complete. An
+    administrator-only native change now uses one volatile browser retry key,
+    a transaction-scoped PostgreSQL lock, and an immutable compact receipt
+    that binds the server-admitted command fingerprint to its actor, policy,
+    source revision, committed intent, and event. Exact response-loss retries
+    replay the bounded committed outcome before stale-revision evaluation;
+    reused or in-progress keys fail closed without raw policy, AI,
+    compatibility, routing, profile, RAG, or history disclosure. See [Native
+    Intent Change Idempotency Receipts](native-intent-change-idempotency-receipts.md).
+    **Next: 12R.7 Authorized Recent Native Intent Change Receipt Discovery**.
+    Evaluate an actor- and policy-scoped bounded post-reload status read; it
+    must not expose keys, fingerprints, command values, receipt history, or a
+    mutation path.
 
 The completed 0R through 3R, 6R, and 7R contracts remain guardrails, not
 permission to restore a diagnostic, template-first, or browser-authoritative

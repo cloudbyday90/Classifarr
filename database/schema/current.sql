@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-08-16T21:14:54.040Z
--- Latest Migration: 20260816_173000_add_native_intent_change_applied_event.sql
+-- Generated: 2026-08-16T23:25:29.624Z
+-- Latest Migration: 20260816_180000_add_native_intent_change_receipts.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -284,6 +284,37 @@ BEGIN
     END IF;
 
     RAISE EXCEPTION 'Policy migration verification runs are append-only';
+END;
+$$;
+
+
+--
+-- Name: guard_policy_native_intent_change_receipt_mutation(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.guard_policy_native_intent_change_receipt_mutation() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    IF TG_OP = 'DELETE' THEN
+        -- Replace restore starts a new runtime boundary. It may clear
+        -- operational retry state only through an explicit transaction-local
+        -- permit. A foreign-key cascade caused by deleting the parent policy
+        -- is also legitimate; the receipt cannot outlive that policy.
+        IF current_setting(
+               'classifarr.policy_native_intent_change_receipt_maintenance',
+               true
+           ) = 'replace_restore'
+           OR NOT EXISTS (
+               SELECT 1
+               FROM library_policies
+               WHERE id = OLD.policy_id
+           ) THEN
+            RETURN OLD;
+        END IF;
+    END IF;
+
+    RAISE EXCEPTION 'Native intent change receipts are append-only';
 END;
 $$;
 
@@ -4770,6 +4801,53 @@ ALTER SEQUENCE public.policy_migration_verification_runs_id_seq OWNED BY public.
 
 
 --
+-- Name: policy_native_intent_change_receipts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_native_intent_change_receipts (
+    id bigint NOT NULL,
+    receipt_version smallint DEFAULT 1 NOT NULL,
+    policy_id integer NOT NULL,
+    actor_id integer NOT NULL,
+    idempotency_key character varying(128) NOT NULL,
+    command_fingerprint character(64) CONSTRAINT policy_native_intent_change_receip_command_fingerprint_not_null NOT NULL,
+    source_intent_version integer CONSTRAINT policy_native_intent_change_rece_source_intent_version_not_null NOT NULL,
+    target_intent_id bigint NOT NULL,
+    target_intent_version integer CONSTRAINT policy_native_intent_change_rece_target_intent_version_not_null NOT NULL,
+    migration_event_id bigint CONSTRAINT policy_native_intent_change_receipt_migration_event_id_not_null NOT NULL,
+    applied_command_ids jsonb CONSTRAINT policy_native_intent_change_receip_applied_command_ids_not_null NOT NULL,
+    result_status_id character varying(32) DEFAULT 'applied'::character varying NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT policy_native_intent_change_receipts_actor_chk CHECK ((actor_id > 0)),
+    CONSTRAINT policy_native_intent_change_receipts_command_shape_chk CHECK (((jsonb_typeof(applied_command_ids) = 'array'::text) AND ((jsonb_array_length(applied_command_ids) >= 1) AND (jsonb_array_length(applied_command_ids) <= 6)))),
+    CONSTRAINT policy_native_intent_change_receipts_fingerprint_shape_chk CHECK ((command_fingerprint ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT policy_native_intent_change_receipts_idempotency_shape_chk CHECK (((idempotency_key)::text ~ '^[A-Za-z0-9][A-Za-z0-9_-]{31,127}$'::text)),
+    CONSTRAINT policy_native_intent_change_receipts_result_status_chk CHECK (((result_status_id)::text = 'applied'::text)),
+    CONSTRAINT policy_native_intent_change_receipts_version_chk CHECK ((receipt_version = 1)),
+    CONSTRAINT policy_native_intent_change_receipts_version_order_chk CHECK (((source_intent_version > 0) AND (target_intent_version > source_intent_version)))
+);
+
+
+--
+-- Name: policy_native_intent_change_receipts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.policy_native_intent_change_receipts_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: policy_native_intent_change_receipts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.policy_native_intent_change_receipts_id_seq OWNED BY public.policy_native_intent_change_receipts.id;
+
+
+--
 -- Name: policy_native_intent_reconciliation_alert_states; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -7196,6 +7274,13 @@ ALTER TABLE ONLY public.policy_migration_verification_runs ALTER COLUMN id SET D
 
 
 --
+-- Name: policy_native_intent_change_receipts id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_native_intent_change_receipts ALTER COLUMN id SET DEFAULT nextval('public.policy_native_intent_change_receipts_id_seq'::regclass);
+
+
+--
 -- Name: policy_native_intent_reconciliation_control_events id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -8329,6 +8414,38 @@ ALTER TABLE ONLY public.policy_library_rebuild_execution_gates
 
 ALTER TABLE ONLY public.policy_migration_verification_runs
     ADD CONSTRAINT policy_migration_verification_runs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_native_intent_change_receipts policy_native_intent_change_receipts_event_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_native_intent_change_receipts
+    ADD CONSTRAINT policy_native_intent_change_receipts_event_unique UNIQUE (migration_event_id);
+
+
+--
+-- Name: policy_native_intent_change_receipts policy_native_intent_change_receipts_idempotency_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_native_intent_change_receipts
+    ADD CONSTRAINT policy_native_intent_change_receipts_idempotency_unique UNIQUE (idempotency_key);
+
+
+--
+-- Name: policy_native_intent_change_receipts policy_native_intent_change_receipts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_native_intent_change_receipts
+    ADD CONSTRAINT policy_native_intent_change_receipts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_native_intent_change_receipts policy_native_intent_change_receipts_target_intent_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_native_intent_change_receipts
+    ADD CONSTRAINT policy_native_intent_change_receipts_target_intent_unique UNIQUE (target_intent_id);
 
 
 --
@@ -10054,6 +10171,13 @@ CREATE INDEX idx_policy_migration_verification_runs_transition ON public.policy_
 
 
 --
+-- Name: idx_policy_native_intent_change_receipts_actor_policy; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_native_intent_change_receipts_actor_policy ON public.policy_native_intent_change_receipts USING btree (actor_id, policy_id, created_at DESC, id DESC);
+
+
+--
 -- Name: idx_policy_native_intent_reconciliation_control_events_occurred; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10744,6 +10868,13 @@ CREATE CONSTRAINT TRIGGER policy_intents_active_purpose_rule_chk AFTER INSERT OR
 --
 
 CREATE TRIGGER policy_migration_verification_run_mutation_guard BEFORE DELETE OR UPDATE ON public.policy_migration_verification_runs FOR EACH ROW EXECUTE FUNCTION public.guard_policy_migration_verification_run_mutation();
+
+
+--
+-- Name: policy_native_intent_change_receipts policy_native_intent_change_receipt_mutation_guard; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER policy_native_intent_change_receipt_mutation_guard BEFORE DELETE OR UPDATE ON public.policy_native_intent_change_receipts FOR EACH ROW EXECUTE FUNCTION public.guard_policy_native_intent_change_receipt_mutation();
 
 
 --
@@ -11555,6 +11686,30 @@ ALTER TABLE ONLY public.policy_migration_verification_runs
 
 ALTER TABLE ONLY public.policy_migration_verification_runs
     ADD CONSTRAINT policy_migration_verification_runs_policy_id_fkey FOREIGN KEY (policy_id) REFERENCES public.library_policies(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_native_intent_change_receipts policy_native_intent_change_receipts_migration_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_native_intent_change_receipts
+    ADD CONSTRAINT policy_native_intent_change_receipts_migration_event_id_fkey FOREIGN KEY (migration_event_id) REFERENCES public.policy_intent_migration_events(id) ON DELETE RESTRICT;
+
+
+--
+-- Name: policy_native_intent_change_receipts policy_native_intent_change_receipts_policy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_native_intent_change_receipts
+    ADD CONSTRAINT policy_native_intent_change_receipts_policy_id_fkey FOREIGN KEY (policy_id) REFERENCES public.library_policies(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_native_intent_change_receipts policy_native_intent_change_receipts_target_intent_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_native_intent_change_receipts
+    ADD CONSTRAINT policy_native_intent_change_receipts_target_intent_id_fkey FOREIGN KEY (target_intent_id) REFERENCES public.policy_intents(id) ON DELETE RESTRICT;
 
 
 --
@@ -13800,6 +13955,7 @@ FROM unnest(ARRAY[
     '20260813_100000_add_verification_capability_change_receipts.sql',
     '20260813_110000_enforce_ai_provider_configuration_revision_integrity.sql',
     '20260813_120000_add_ai_settings_write_precondition.sql',
-    '20260816_173000_add_native_intent_change_applied_event.sql'
+    '20260816_173000_add_native_intent_change_applied_event.sql',
+    '20260816_180000_add_native_intent_change_receipts.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

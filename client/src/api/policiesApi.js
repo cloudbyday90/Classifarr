@@ -23,6 +23,10 @@ import {
   isNativePolicyCreatePayload,
 } from '@/utils/policyNativeCreateIdempotency'
 import {
+  buildNativeIntentChangeRequestOptions,
+  createNativeIntentChangeIdempotencyKey,
+} from '@/utils/policyNativeIntentChangeIdempotency'
+import {
   normalizePolicyAuthoringProposalAdjustmentCommands,
 } from '@/utils/policyAuthoringProposalAdjustment'
 
@@ -96,11 +100,27 @@ export function preflightPolicyNativeIntentPurposeChange(id, expectedRevision, c
   })
 }
 
-export function applyPolicyNativeIntentPurposeChange(id, expectedRevision, changeCommand) {
-  return apiClient.post(`/policies/${id}/native-intent/changes`, {
-    expected_revision: expectedRevision,
-    change_commands: [changeCommand],
-  })
+/**
+ * @param {number} id
+ * @param {number} expectedRevision
+ * @param {Record<string, unknown>} changeCommand
+ * @param {{ idempotencyKey?: string }} [options]
+ */
+export function applyPolicyNativeIntentPurposeChange(
+  id,
+  expectedRevision,
+  changeCommand,
+  { idempotencyKey } = {}
+) {
+  const requestIdempotencyKey = idempotencyKey || createNativeIntentChangeIdempotencyKey()
+  return apiClient.post(
+    `/policies/${id}/native-intent/changes`,
+    {
+      expected_revision: expectedRevision,
+      change_commands: [changeCommand],
+    },
+    buildNativeIntentChangeRequestOptions(requestIdempotencyKey)
+  )
 }
 
 export function validatePolicyOperatorWorkflowCustomIntentSignal(libraryId, payload) {

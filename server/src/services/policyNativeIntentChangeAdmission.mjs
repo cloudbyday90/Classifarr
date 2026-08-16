@@ -48,6 +48,7 @@ const POLICY_NATIVE_INTENT_CHANGE_ADMISSION_RISK_IDS = Object.freeze({
   EMPTY_CHANGE_COMMANDS: 'empty_change_commands',
   UNKNOWN_CHANGE_COMMAND: 'unknown_change_command',
   INVALID_CHANGE_COMMAND: 'invalid_change_command',
+  MISSING_IDEMPOTENCY_KEY: 'missing_idempotency_key',
   LEGACY_FIELD_DETECTED: 'legacy_field_detected',
   ESTABLISHMENT_FIELD_DETECTED: 'establishment_field_detected',
   INVALID_IDEMPOTENCY_KEY: 'invalid_idempotency_key',
@@ -238,7 +239,12 @@ function buildPolicyNativeIntentChangeAdmission({
   }
 
   const keyValidation = validateIdempotencyKey(idempotencyKey);
-  if (idempotencyKey !== undefined && idempotencyKey !== null && keyValidation === false) {
+  if (keyValidation === null) {
+    risks.push(buildRisk(
+      POLICY_NATIVE_INTENT_CHANGE_ADMISSION_RISK_IDS.MISSING_IDEMPOTENCY_KEY,
+      'Native intent changes require an idempotency key for durable replay.',
+    ));
+  } else if (keyValidation === false) {
     risks.push(buildRisk(
       POLICY_NATIVE_INTENT_CHANGE_ADMISSION_RISK_IDS.INVALID_IDEMPOTENCY_KEY,
       'Native intent change idempotency key must match the established format.',
@@ -310,6 +316,7 @@ function buildPolicyNativeIntentChangeAdmission({
     admittedCommands: statusId === POLICY_NATIVE_INTENT_CHANGE_ADMISSION_STATUS_IDS.ADMITTED
       ? commandResult.validated
       : [],
+    idempotencyKey: typeof keyValidation === 'string' ? keyValidation : null,
     idempotencyKeyValid: keyValidation !== false,
     risks,
     riskCount: risks.length,
@@ -366,6 +373,7 @@ function determineStatusId(risks, validatedCommandCount) {
 
   if (riskIds.has(POLICY_NATIVE_INTENT_CHANGE_ADMISSION_RISK_IDS.LEGACY_FIELD_DETECTED) ||
       riskIds.has(POLICY_NATIVE_INTENT_CHANGE_ADMISSION_RISK_IDS.ESTABLISHMENT_FIELD_DETECTED) ||
+      riskIds.has(POLICY_NATIVE_INTENT_CHANGE_ADMISSION_RISK_IDS.MISSING_IDEMPOTENCY_KEY) ||
       riskIds.has(POLICY_NATIVE_INTENT_CHANGE_ADMISSION_RISK_IDS.INVALID_IDEMPOTENCY_KEY)) {
     return POLICY_NATIVE_INTENT_CHANGE_ADMISSION_STATUS_IDS.RETRYABLE;
   }

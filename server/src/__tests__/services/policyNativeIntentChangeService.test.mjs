@@ -12,6 +12,9 @@ import {
   POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS,
   applyPolicyNativeIntentChange,
 } from '../../services/policyNativeIntentChangeService.mjs';
+import {
+  buildPolicyNativeIntentChangeCommandFingerprint,
+} from '../../services/policyNativeIntentChangeReceiptContract.mjs';
 
 const VALID_PURPOSE_CHANGE_VALUES = [{
   signal_type: 'genres',
@@ -19,6 +22,12 @@ const VALID_PURPOSE_CHANGE_VALUES = [{
   values: { require_any: ['Animation'] },
   constraint_mode: 'advisory',
   semantics: 'identity',
+}];
+
+const CANONICAL_PURPOSE_CHANGE_VALUES = [{
+  ...VALID_PURPOSE_CHANGE_VALUES[0],
+  source: 'native_intent',
+  inference_state: 'inferred',
 }];
 
 const VALID_INPUT = {
@@ -31,11 +40,44 @@ const VALID_INPUT = {
   authorityState: { stateId: 'single_active_native_intent', currentRevision: 3 },
 };
 
-function buildMockClient({ policyRow, intentRow, deactivateSucceeds = true }) {
+function buildReceiptRow(overrides = {}) {
+  return {
+    id: 300,
+    receipt_version: 1,
+    policy_id: 42,
+    actor_id: 1,
+    idempotency_key: 'a'.repeat(32),
+    command_fingerprint: 'f'.repeat(64),
+    source_intent_version: 3,
+    target_intent_id: 100,
+    target_intent_version: 4,
+    migration_event_id: 200,
+    applied_command_ids: ['update_purpose'],
+    result_status_id: 'applied',
+    created_at: new Date('2026-08-16T18:00:00.000Z'),
+    ...overrides,
+  };
+}
+
+function buildMockClient({
+  policyRow,
+  intentRow,
+  deactivateSucceeds = true,
+  lockAcquired = true,
+  receiptRow = null,
+}) {
   const queries = [];
   const client = {
     async query(sql, params) {
       queries.push({ sql, params });
+
+      if (sql.includes('pg_try_advisory_xact_lock')) {
+        return { rows: [{ acquired: lockAcquired }] };
+      }
+
+      if (sql.includes('FROM policy_native_intent_change_receipts')) {
+        return { rows: receiptRow ? [receiptRow] : [] };
+      }
 
       if (sql.includes('FROM library_policies') && sql.includes('FOR UPDATE')) {
         return { rows: policyRow ? [policyRow] : [] };
@@ -55,6 +97,10 @@ function buildMockClient({ policyRow, intentRow, deactivateSucceeds = true }) {
 
       if (sql.includes('INSERT INTO policy_intent_migration_events')) {
         return { rows: [{ id: 200 }] };
+      }
+
+      if (sql.includes('INSERT INTO policy_native_intent_change_receipts')) {
+        return { rows: [buildReceiptRow()] };
       }
 
       return { rows: [] };
@@ -95,12 +141,103 @@ describe('applyPolicyNativeIntentChange', () => {
     expect(result.change.newIntentVersion).toBe(4);
     expect(result.change.appliedCommandIds).toEqual(['update_purpose']);
     expect(result.change.migrationEventId).toBe(200);
+    expect(result.retry).toEqual(expect.objectContaining({
+      mode: 'durable_idempotency_receipt',
+      receiptPersisted: true,
+      replayed: false,
+      idempotencyKeyExposed: false,
+    }));
     expect(result.sideEffects.policyStorageMutated).toBe(true);
     expect(result.sideEffects.databaseWritten).toBe(true);
     expect(queries.length).toBeGreaterThanOrEqual(5);
     expect(queries.find(({ sql }) => (
       sql.includes('INSERT INTO policy_intent_migration_events')
     ))?.sql).toContain('native_intent_change_applied');
+    expect(queries.find(({ sql }) => (
+      sql.includes('INSERT INTO policy_native_intent_change_receipts')
+    ))?.params).toEqual(expect.arrayContaining([
+      'a'.repeat(32),
+      expect.any(String),
+      JSON.stringify(['update_purpose']),
+    ]));
+  });
+
+  test('replays an exact committed request before checking the now-stale active revision', async () => {
+    const fingerprint = buildPolicyNativeIntentChangeCommandFingerprint({
+      policyId: 42,
+      actorId: 1,
+      expectedRevision: 3,
+      changeCommands: [{ commandId: 'update_purpose', values: CANONICAL_PURPOSE_CHANGE_VALUES }],
+    });
+    const { client, queries } = buildMockClient({
+      receiptRow: buildReceiptRow({
+        command_fingerprint: fingerprint,
+        idempotency_key: 'a'.repeat(32),
+      }),
+      policyRow: { id: 42, library_id: 7 },
+      intentRow: null,
+    });
+    const dbClient = buildMockDbClient(client);
+
+    const replayed = await applyPolicyNativeIntentChange({ ...VALID_INPUT, dbClient });
+
+    expect(replayed.statusId).toBe(POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.APPLIED);
+    expect(replayed.change).toEqual(expect.objectContaining({
+      applied: true,
+      replayed: true,
+      newIntentId: 100,
+      newIntentVersion: 4,
+      appliedCommandIds: ['update_purpose'],
+    }));
+    expect(replayed.sideEffects).toEqual(expect.objectContaining({
+      policyStorageMutated: false,
+      databaseWritten: false,
+    }));
+    expect(queries.some(({ sql }) => sql.includes('FROM library_policies'))).toBe(false);
+  });
+
+  test('rejects a reused key whose canonical request differs from its committed receipt', async () => {
+    const receiptFingerprint = buildPolicyNativeIntentChangeCommandFingerprint({
+      policyId: 42,
+      actorId: 1,
+      expectedRevision: 3,
+      changeCommands: [{ commandId: 'update_purpose', values: CANONICAL_PURPOSE_CHANGE_VALUES }],
+    });
+    const { client, queries } = buildMockClient({
+      receiptRow: buildReceiptRow({ command_fingerprint: receiptFingerprint }),
+      policyRow: { id: 42, library_id: 7 },
+      intentRow: null,
+    });
+
+    const result = await applyPolicyNativeIntentChange({
+      ...VALID_INPUT,
+      dbClient: buildMockDbClient(client),
+      changeCommands: [{
+        commandId: 'update_purpose',
+        values: [{ ...VALID_PURPOSE_CHANGE_VALUES[0], values: { require_any: ['Comedy'] } }],
+      }],
+    });
+
+    expect(result.statusId).toBe(POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.IDEMPOTENCY_KEY_REUSED);
+    expect(result.change.applied).toBe(false);
+    expect(queries.some(({ sql }) => sql.includes('FROM library_policies'))).toBe(false);
+  });
+
+  test('returns a bounded conflict when the same key is currently held by another transaction', async () => {
+    const { client, queries } = buildMockClient({
+      lockAcquired: false,
+      policyRow: { id: 42, library_id: 7 },
+      intentRow: null,
+    });
+
+    const result = await applyPolicyNativeIntentChange({
+      ...VALID_INPUT,
+      dbClient: buildMockDbClient(client),
+    });
+
+    expect(result.statusId).toBe(POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.IDEMPOTENCY_KEY_IN_PROGRESS);
+    expect(result.change.applied).toBe(false);
+    expect(queries).toHaveLength(1);
   });
 
   test('returns stale_revision when the revision changed after the lock', async () => {
@@ -179,6 +316,26 @@ describe('applyPolicyNativeIntentChange', () => {
     });
 
     expect(result.statusId).toBe(POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.RETRYABLE);
+  });
+
+  test('does not start a transaction when a durable idempotency key is missing', async () => {
+    let transactionCount = 0;
+    const result = await applyPolicyNativeIntentChange({
+      ...VALID_INPUT,
+      idempotencyKey: undefined,
+      dbClient: {
+        async withTransaction() {
+          transactionCount += 1;
+          throw new Error('must not enter transaction');
+        },
+      },
+    });
+
+    expect(result.statusId).toBe(POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.RETRYABLE);
+    expect(result.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({ riskId: 'missing_idempotency_key' }),
+    ]));
+    expect(transactionCount).toBe(0);
   });
 
   test('does not touch the database when admission is rejected', async () => {

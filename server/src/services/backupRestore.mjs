@@ -48,6 +48,13 @@ export async function clearExistingConfig(client) {
     "SELECT set_config('classifarr.policy_authorized_outcome_receipt_maintenance', 'replace_restore', true)"
   );
   await client.query('DELETE FROM policy_authorized_outcome_source_event_receipts');
+  // Native intent change receipts are operational retry state, not portable
+  // configuration. Clear them before their referenced intent/event rows only
+  // through the transaction-local append-only maintenance permit.
+  await client.query(
+    "SELECT set_config('classifarr.policy_native_intent_change_receipt_maintenance', 'replace_restore', true)"
+  );
+  await client.query('DELETE FROM policy_native_intent_change_receipts');
   // Capability receipts are actor-scoped operational history and are not
   // portable backup configuration. Clear them only through their database
   // append-only maintenance permit during this replacement transaction.

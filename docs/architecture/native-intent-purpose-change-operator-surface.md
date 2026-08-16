@@ -111,8 +111,11 @@ transaction.
 
 ## Follow-Up
 
-The current operation has revision safety but not a durable idempotency
-receipt. If a network response is lost after commit, a browser can refresh to
-discover the new state, but it cannot replay an exact committed response.
-12R.6 will add actor- and policy-bound command fingerprints and bounded result
-receipts for safe resume without creating another native intent revision.
+12R.6 is complete. Native intent changes now use durable, actor- and
+policy-bound idempotency receipts to replay an exact committed result after a
+response-loss retry without creating another revision. See [Native Intent
+Change Idempotency Receipts](native-intent-change-idempotency-receipts.md).
+
+The next candidate is 12R.7: an administrator-only, actor- and policy-scoped
+post-reload status read. It must remain bounded and cannot expose retry keys,
+fingerprints, command values, receipt history, or mutation authority.

@@ -86,7 +86,7 @@ describe('native intent purpose change integration', () => {
     }
   });
 
-  test('reads a server-owned revision, applies exactly one canonical purpose command, and rejects a stale retry', async () => {
+  test('reads a server-owned revision, replays the exact committed command, and rejects a stale new attempt', async () => {
     const fixture = await createNativePurposeFixture({
       fixtureKey: 'target',
       term: 'existing-purpose-token',
@@ -111,6 +111,7 @@ describe('native intent purpose change integration', () => {
       expectedRevision: before.revision,
       actorId: 1,
       actorRole: 'admin',
+      idempotencyKey: 'a'.repeat(32),
       changeCommands: [purposeCommand('replacement-purpose-token')],
     });
 
@@ -119,6 +120,24 @@ describe('native intent purpose change integration', () => {
       applied: true,
       newIntentVersion: 4,
       appliedCommandIds: ['update_purpose'],
+    }));
+
+    const replayed = await applyPolicyNativeIntentChange({
+      dbClient: db,
+      policyId: fixture.policyId,
+      expectedRevision: before.revision,
+      actorId: 1,
+      actorRole: 'admin',
+      idempotencyKey: 'a'.repeat(32),
+      changeCommands: [purposeCommand('replacement-purpose-token')],
+    });
+    expect(replayed).toEqual(expect.objectContaining({
+      statusId: POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.APPLIED,
+      change: expect.objectContaining({
+        applied: true,
+        replayed: true,
+        newIntentVersion: 4,
+      }),
     }));
 
     const after = await policyNativeIntentPurposeChangeReadService.getPurposeChange({
@@ -138,6 +157,7 @@ describe('native intent purpose change integration', () => {
       expectedRevision: before.revision,
       actorId: 1,
       actorRole: 'admin',
+      idempotencyKey: 'b'.repeat(32),
       changeCommands: [purposeCommand('second-replacement-token')],
     });
 
@@ -153,5 +173,24 @@ describe('native intent purpose change integration', () => {
       expect.objectContaining({ intent_version: 3, active: false }),
       expect.objectContaining({ intent_version: 4, active: true }),
     ]);
+
+    const receipts = await db.query(`
+      SELECT actor_id, source_intent_version, target_intent_version,
+        applied_command_ids, result_status_id
+      FROM policy_native_intent_change_receipts
+      WHERE policy_id = $1
+    `, [fixture.policyId]);
+    expect(receipts.rows).toEqual([expect.objectContaining({
+      actor_id: 1,
+      source_intent_version: 3,
+      target_intent_version: 4,
+      applied_command_ids: ['update_purpose'],
+      result_status_id: 'applied',
+    })]);
+
+    await expect(db.query(
+      'DELETE FROM policy_native_intent_change_receipts WHERE policy_id = $1',
+      [fixture.policyId],
+    )).rejects.toThrow('Native intent change receipts are append-only');
   });
 });

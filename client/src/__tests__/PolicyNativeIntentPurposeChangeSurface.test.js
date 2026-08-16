@@ -88,10 +88,15 @@ describe('PolicyNativeIntentPurposeChangeSurface', () => {
       command_id: 'update_purpose',
       values: expect.any(Array),
     }))
-    expect(apiMock.applyPolicyNativeIntentPurposeChange).toHaveBeenCalledWith(17, 3, expect.objectContaining({
-      command_id: 'update_purpose',
-      values: expect.any(Array),
-    }))
+    expect(apiMock.applyPolicyNativeIntentPurposeChange).toHaveBeenCalledWith(
+      17,
+      3,
+      expect.objectContaining({
+        command_id: 'update_purpose',
+        values: expect.any(Array),
+      }),
+      expect.objectContaining({ idempotencyKey: expect.any(String) })
+    )
     expect(wrapper.emitted('authority-refreshed')).toEqual([[purposeRead(4, 'Comedy')]])
   })
 

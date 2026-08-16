@@ -13,6 +13,7 @@ import {
   ConflictError,
   ForbiddenError,
   ServiceUnavailableError,
+  UnprocessableContentError,
   ValidationError,
 } from '../utils/appError.mjs';
 import { sendData } from '../utils/responseHelpers.mjs';
@@ -20,6 +21,10 @@ import {
   POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS,
   applyPolicyNativeIntentChange,
 } from '../services/policyNativeIntentChangeService.mjs';
+import {
+  PolicyNativeIntentChangeIdempotencyError,
+  readNativeIntentChangeIdempotencyKey,
+} from '../services/policyNativeIntentChangeIdempotency.mjs';
 
 function toPositiveInteger(value) {
   const numericValue = Number(value);
@@ -77,6 +82,18 @@ function getChangeHttpError(result) {
     });
   }
 
+  if (result?.statusId === POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.IDEMPOTENCY_KEY_IN_PROGRESS) {
+    return new ConflictError('The same native intent change is still in progress. Retry with the same Idempotency-Key.', {
+      code: 'POLICY_NATIVE_INTENT_CHANGE_IDEMPOTENCY_KEY_IN_PROGRESS',
+    });
+  }
+
+  if (result?.statusId === POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.IDEMPOTENCY_KEY_REUSED) {
+    return new UnprocessableContentError('This Idempotency-Key is already bound to a different native intent change.', {
+      code: 'POLICY_NATIVE_INTENT_CHANGE_IDEMPOTENCY_KEY_REUSED',
+    });
+  }
+
   if (result?.statusId === POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.RETRYABLE) {
     return new ValidationError('The native intent change request is invalid or incomplete.', {
       code: 'POLICY_NATIVE_INTENT_CHANGE_RETRYABLE',
@@ -87,6 +104,19 @@ function getChangeHttpError(result) {
     code: 'POLICY_NATIVE_INTENT_CHANGE_BLOCKED',
     change: result,
   });
+}
+
+function getIdempotencyKeyOrThrow(headers) {
+  try {
+    return readNativeIntentChangeIdempotencyKey(headers);
+  } catch (error) {
+    if (error instanceof PolicyNativeIntentChangeIdempotencyError) {
+      throw new ValidationError('Native intent changes require a valid Idempotency-Key header.', {
+        code: error.code,
+      });
+    }
+    throw error;
+  }
 }
 
 function isSuccessfulChange(result) {
@@ -107,6 +137,7 @@ export function registerPolicyNativeIntentChangeRoutes(router, { db, logger }) {
     }
 
     const { expectedRevision, changeCommands } = requireNativeIntentChangeRequest(req.body);
+    const idempotencyKey = getIdempotencyKeyOrThrow(req.headers);
 
     const result = await applyPolicyNativeIntentChange({
       dbClient: db,
@@ -114,7 +145,7 @@ export function registerPolicyNativeIntentChangeRoutes(router, { db, logger }) {
       expectedRevision,
       actorId,
       actorRole: req.user.role,
-      idempotencyKey: req.headers['idempotency-key'],
+      idempotencyKey,
       changeCommands,
     });
 
@@ -123,6 +154,7 @@ export function registerPolicyNativeIntentChangeRoutes(router, { db, logger }) {
       actorId,
       statusId: result.statusId,
       applied: result.change?.applied === true,
+      replayed: result.change?.replayed === true,
     });
 
     if (!isSuccessfulChange(result)) {
@@ -134,5 +166,6 @@ export function registerPolicyNativeIntentChangeRoutes(router, { db, logger }) {
 }
 
 export {
+  getIdempotencyKeyOrThrow,
   requireNativeIntentChangeRequest,
 };

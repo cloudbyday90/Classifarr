@@ -76,6 +76,22 @@ describe('policyNativeIntentChangeAdmission', () => {
     ]));
   });
 
+  test('requires an idempotency key before admitting a change', () => {
+    const admission = buildPolicyNativeIntentChangeAdmission({
+      ...VALID_INPUT,
+      idempotencyKey: undefined,
+    });
+
+    expect(admission.statusId).toBe(POLICY_NATIVE_INTENT_CHANGE_ADMISSION_STATUS_IDS.RETRYABLE);
+    expect(admission.admitted).toBe(false);
+    expect(admission.idempotencyKey).toBeNull();
+    expect(admission.risks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        riskId: POLICY_NATIVE_INTENT_CHANGE_ADMISSION_RISK_IDS.MISSING_IDEMPOTENCY_KEY,
+      }),
+    ]));
+  });
+
   test('produces stale_revision when expected revision does not match', () => {
     const admission = buildPolicyNativeIntentChangeAdmission({
       ...VALID_INPUT,

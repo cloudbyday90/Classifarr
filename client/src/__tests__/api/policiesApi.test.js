@@ -151,7 +151,7 @@ describe('policiesApi', () => {
     expect(mockGetDataRequest).toHaveBeenCalledWith('/policies/7/native-intent/readiness-summary')
   })
 
-  it('uses the bounded native purpose-change endpoints and does not post browser authority', async () => {
+  it('uses the bounded native purpose-change endpoints, a stable idempotency key, and no browser authority', async () => {
     const command = {
       command_id: 'update_purpose',
       values: [{ signal_type: 'genres', operator: 'require_any', values: { require_any: ['Animation'] } }],
@@ -162,7 +162,9 @@ describe('policiesApi', () => {
 
     await getPolicyNativeIntentPurposeChange(7)
     await preflightPolicyNativeIntentPurposeChange(7, 3, command)
-    await applyPolicyNativeIntentPurposeChange(7, 3, command)
+    await applyPolicyNativeIntentPurposeChange(7, 3, command, {
+      idempotencyKey: '6fe3d170-9390-4ec5-95f7-42ad6f8ec777',
+    })
 
     expect(mockGetDataRequest).toHaveBeenCalledWith('/policies/7/native-intent/purpose-change')
     expect(mockPost).toHaveBeenNthCalledWith(1,
@@ -171,7 +173,8 @@ describe('policiesApi', () => {
     )
     expect(mockPost).toHaveBeenNthCalledWith(2,
       '/policies/7/native-intent/changes',
-      { expected_revision: 3, change_commands: [command] }
+      { expected_revision: 3, change_commands: [command] },
+      { headers: { 'Idempotency-Key': '"6fe3d170-9390-4ec5-95f7-42ad6f8ec777"' } }
     )
   })
 
