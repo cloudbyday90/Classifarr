@@ -17,6 +17,11 @@ Current development changes will be recorded here.
   bounded unresolved-policy inventory that opens the existing validated policy
   editor for an explicit destination-purpose review while leaving conversion to
   the protected scheduler.
+- **Specialized destination evidence calibration** — Added current,
+  server-derived native-purpose comparison that distinguishes specialized
+  identity evidence from shared broad overlap and gives pending-decision
+  operators fixed explanations without retaining matched terms or using AI,
+  profile, history, or library names as route authority.
 
 ### Changed
 

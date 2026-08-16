@@ -59,6 +59,23 @@ describe('policyCandidateCalibration', () => {
     }));
   });
 
+  test.each([
+    'broad_compatibility_overlap',
+    'insufficient_specialized_evidence',
+  ])('demotes %s before it can become an automatic route', (evidenceClass) => {
+    const result = calibratePolicyCandidate(candidate(92, {
+      primary_viability: 'compatibility_only',
+      evidence_class: evidenceClass,
+    }));
+
+    expect(result.score).toBe(55);
+    expect(result.candidate_diagnostics.score_calibration).toEqual(expect.objectContaining({
+      applied: true,
+      reason_code: evidenceClass,
+      cap: 55,
+    }));
+  });
+
   test('demotes profile-only and rag-only candidates below strong evidence', () => {
     expect(calibratePolicyCandidate(candidate(90, {
       primary_viability: 'profile_only',

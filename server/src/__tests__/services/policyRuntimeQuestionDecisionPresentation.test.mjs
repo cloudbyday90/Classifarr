@@ -213,6 +213,30 @@ describe('policyRuntimeQuestionDecisionPresentation', () => {
     ]));
   });
 
+  test('explains specialized identity, broad overlap, and insufficient evidence with fixed facts', () => {
+    const buildPresentation = (statusId) => buildPolicyRuntimeQuestionDecisionPresentation({
+      classification: { confidence: 80 },
+      question: {
+        meta: {
+          candidates: [{
+            library_id: 5,
+            candidate_diagnostics: {
+              identity_evidence: { status_id: statusId },
+            },
+          }],
+        },
+      },
+      candidateDestinations: candidates,
+    });
+
+    expect(buildPresentation('positive_specialized_evidence').deterministic.evidence)
+      .toEqual(expect.arrayContaining([expect.objectContaining({ id: 'specialized_declared_intent' })]));
+    expect(buildPresentation('broad_compatibility_overlap').deterministic.evidence)
+      .toEqual(expect.arrayContaining([expect.objectContaining({ id: 'broad_compatibility_overlap' })]));
+    expect(buildPresentation('insufficient_specialized_evidence').deterministic.evidence)
+      .toEqual(expect.arrayContaining([expect.objectContaining({ id: 'insufficient_specialized_evidence' })]));
+  });
+
   test('states when the AI verification aligns with the deterministic destination', () => {
     const presentation = buildPolicyRuntimeQuestionDecisionPresentation({
       classification: {

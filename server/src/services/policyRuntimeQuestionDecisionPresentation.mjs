@@ -81,9 +81,25 @@ function buildEvidenceFacts({ candidate, destinationName }) {
   const positiveSources = asObject(diagnostics.positive_sources || diagnostics.positiveSources);
   const nativeIntent = asObject(diagnostics.native_intent_runtime || diagnostics.nativeIntentRuntime);
   const ragEvidence = asObject(diagnostics.rag_evidence_quality || diagnostics.ragEvidenceQuality);
+  const identityEvidence = asObject(diagnostics.identity_evidence || diagnostics.identityEvidence);
   const facts = [];
 
-  if (nativeIntent.eligible === true && Number(nativeIntent?.rule_counts?.purpose || 0) > 0) {
+  if (identityEvidence.status_id === 'positive_specialized_evidence') {
+    facts.push({
+      id: 'specialized_declared_intent',
+      label: `A current specialized declared policy signal distinguishes ${destinationName} from the other destinations.`,
+    });
+  } else if (identityEvidence.status_id === 'broad_compatibility_overlap') {
+    facts.push({
+      id: 'broad_compatibility_overlap',
+      label: `The declared policy signals for ${destinationName} overlap with another current destination and cannot select it automatically.`,
+    });
+  } else if (identityEvidence.status_id === 'insufficient_specialized_evidence') {
+    facts.push({
+      id: 'insufficient_specialized_evidence',
+      label: `No current specialized declared policy signal distinguishes ${destinationName} from the other destinations.`,
+    });
+  } else if (nativeIntent.eligible === true && Number(nativeIntent?.rule_counts?.purpose || 0) > 0) {
     facts.push({
       id: 'declared_intent',
       label: `Declared policy intent supports ${destinationName}.`,

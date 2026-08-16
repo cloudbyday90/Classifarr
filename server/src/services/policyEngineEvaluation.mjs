@@ -4,6 +4,9 @@ import { policyDecisionBuilder } from './policyDecisionBuilder.mjs';
 import { policyExclusionService } from './policyExclusionService.mjs';
 import { policyCandidateRanker } from './policyCandidateRanker.mjs';
 import { buildCandidateDiagnostics } from './policyCandidateDiagnostics.mjs';
+import {
+    applySpecializedDestinationIdentityEvidence,
+} from './policySpecializedDestinationIdentityEvidence.mjs';
 import { evaluatePolicyConstraints } from './policyConstraintSemantics.mjs';
 import { evaluateNativePolicyIntent } from './policyNativeIntentRuntimeEvaluator.mjs';
 import { isNativePolicyRuntimeAuthority } from './policyEngineRuntimeAuthority.mjs';
@@ -146,7 +149,12 @@ export async function evaluateItem(item, options, deps) {
             });
         }
 
-        const ranked = await policyCandidateRanker.rankResults(evaluations);
+        const identityCalibratedEvaluations = applySpecializedDestinationIdentityEvidence({
+            evaluations,
+            policies: candidatePolicies,
+            item,
+        });
+        const ranked = await policyCandidateRanker.rankResults(identityCalibratedEvaluations);
 
         const result = policyCandidateRanker.determineAction(ranked);
 

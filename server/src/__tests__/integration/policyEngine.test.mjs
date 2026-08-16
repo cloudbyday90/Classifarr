@@ -201,6 +201,147 @@ describe('PolicyEngine Integration Tests', () => {
             }
         });
 
+        test('uses current specialized native purpose evidence to outrank broad overlap for TV and movies', async () => {
+            const fixtures = [];
+            const restoreGetActivePolicies = jest.spyOn(policyEngine, 'getActivePolicies');
+            const restoreAuthoritativeSignals = jest.spyOn(policyEngine, 'checkAuthoritativeSignals');
+
+            const createNativePurposeFixture = async ({ key, mediaType, genres }) => {
+                const fixture = await createPolicyEngineIntegrationFixture(db, {
+                    mediaServerName: `Identity Evidence ${key} Server`,
+                    libraryExternalIdPrefix: `identity-evidence-${key}`,
+                    libraryName: `Identity Evidence ${key} Library`,
+                    libraryMediaType: mediaType,
+                    presetKeyPrefix: `identity_evidence_${key}`,
+                    presetName: `Identity Evidence ${key} Preset`,
+                    presetSignals: { genres: { require_any: ['Unrelated'] } },
+                    policyName: `Identity Evidence ${key} Policy`,
+                    policyValues: {
+                        trust_patterns: false,
+                        trust_rag: false,
+                        trust_history: false,
+                        preset_weight: 1,
+                        profile_weight: 0,
+                        pattern_weight: 0,
+                        rag_weight: 0,
+                        history_weight: 0,
+                    },
+                });
+                fixtures.push(fixture);
+
+                await db.query(`
+                    WITH native_intent AS (
+                        INSERT INTO policy_intents (
+                            policy_id, library_id, schema_version, intent_version,
+                            active, source, inference_state, review_behavior, validation_status
+                        )
+                        VALUES ($1, $2, 1, 1, true, 'native_intent', 'inferred', $3::jsonb, 'valid')
+                        RETURNING id
+                    ),
+                    purpose_rule AS (
+                        INSERT INTO policy_intent_rules (
+                            intent_id, intent_role, collection, signal_type, operator,
+                            values, constraint_mode, semantics, source, inference_state
+                        )
+                        SELECT id, 'purpose', 'purpose', 'genres', 'require_any',
+                            $4::jsonb, 'advisory', 'identity', 'native_intent', 'inferred'
+                        FROM native_intent
+                    )
+                    INSERT INTO policy_intent_validation_status (
+                        intent_id, schema_version, status, validator_version,
+                        error_count, warning_count, errors, warnings
+                    )
+                    SELECT id, 1, 'valid', 'identity-evidence-test', 0, 0,
+                        '[]'::jsonb, '[]'::jsonb
+                    FROM native_intent
+                `, [
+                    fixture.policyId,
+                    fixture.libraryId,
+                    JSON.stringify({
+                        auto_classify_threshold: 85,
+                        prompt_threshold: 60,
+                        trust_patterns: false,
+                        trust_rag: false,
+                        trust_history: false,
+                        combination_mode: 'best_match',
+                    }),
+                    JSON.stringify({ require_any: genres }),
+                ]);
+
+                return fixture;
+            };
+
+            try {
+                for (const scenario of [
+                    {
+                        mediaType: 'tv',
+                        itemGenres: ['Mystery', 'Drama'],
+                        specialized: ['Mystery', 'Drama'],
+                        broad: ['Reality', 'Drama'],
+                    },
+                    {
+                        mediaType: 'movie',
+                        itemGenres: ['Animation', 'Family'],
+                        specialized: ['Animation', 'Family'],
+                        broad: ['Comedy', 'Family'],
+                    },
+                ]) {
+                    const specializedFixture = await createNativePurposeFixture({
+                        key: `${scenario.mediaType}-specialized`,
+                        mediaType: scenario.mediaType,
+                        genres: scenario.specialized,
+                    });
+                    const broadFixture = await createNativePurposeFixture({
+                        key: `${scenario.mediaType}-broad`,
+                        mediaType: scenario.mediaType,
+                        genres: scenario.broad,
+                    });
+                    const policies = (await policyEngine.getActivePolicies())
+                        .filter((policy) => [specializedFixture.policyId, broadFixture.policyId].includes(policy.id));
+
+                    expect(policies).toHaveLength(2);
+                    restoreGetActivePolicies.mockResolvedValueOnce(policies);
+                    restoreAuthoritativeSignals.mockResolvedValueOnce(null);
+
+                    const result = await policyEngine.evaluateItem({
+                        title: `Identity evidence ${scenario.mediaType}`,
+                        media_type: scenario.mediaType,
+                        genres: scenario.itemGenres,
+                    });
+
+                    expect(result).toEqual(expect.objectContaining({
+                        action: 'prompt_confirm',
+                        ranked: expect.any(Array),
+                    }));
+                    expect(result.ranked[0]).toEqual(expect.objectContaining({
+                        policy_id: specializedFixture.policyId,
+                        candidate_diagnostics: expect.objectContaining({
+                            evidence_class: 'specialized_identity',
+                            identity_evidence: expect.objectContaining({
+                                status_id: 'positive_specialized_evidence',
+                            }),
+                        }),
+                    }));
+                    expect(result.ranked.find((candidate) => candidate.policy_id === broadFixture.policyId))
+                        .toEqual(expect.objectContaining({
+                            score: 48,
+                            candidate_diagnostics: expect.objectContaining({
+                                evidence_class: 'broad_compatibility_overlap',
+                                identity_evidence: expect.objectContaining({
+                                    status_id: 'broad_compatibility_overlap',
+                                }),
+                                score_calibration: expect.objectContaining({
+                                    reason_code: 'broad_compatibility_overlap',
+                                }),
+                            }),
+                        }));
+                }
+            } finally {
+                jest.restoreAllMocks();
+                await Promise.all(fixtures.reverse().map((fixture) => fixture.cleanup()));
+            }
+        });
+
         test('should preserve stored combination_mode and use it in DB-backed evaluation', async () => {
             const comboLibraryRes = await db.query(`
                 INSERT INTO libraries (media_server_id, external_id, name, media_type, is_active)

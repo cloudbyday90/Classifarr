@@ -91,10 +91,13 @@ Current execution focus:
   compatible policy editor for an explicit purpose declaration, and rely on the
   scheduler for independent conversion evaluation. The workflow does not infer
   purpose from library names, profiles, history, RAG, or AI output.
-- **Next:** **12R.1 Specialized-Destination Identity Evidence Calibration**.
-  Refine deterministic identity evidence and operator explanation for broad
-  destination overlap without weakening policy authority or allowing AI to
-  choose a route.
+- **Completed:** **12R.1 Specialized-Destination Identity Evidence
+  Calibration**. Current matched declared purpose evidence now distinguishes a
+  specialized candidate from shared broad overlap, while media type,
+  preferences, profiles, history, RAG, and AI remain unable to select a route.
+- **Next:** **12R.2 Policy Purpose Coverage And Overlap Review**. Provide a
+  read-only administrator review of active native-policy coverage and
+  deterministic overlap without altering policies or routing.
 - **Completed:** **10R.4 Release Acceptance Assembly**. Repository acceptance
   now produces a passed or blocked manifest artifact, while a separate
   protected-environment workflow records active-installation evidence without
@@ -135,8 +138,8 @@ completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3 -> 10R.3.
 completed release hardening: 10R.4 -> 10R.4.1
 active release candidate: v0.48.0-beta -> 10R.4.2 -> 10R.4.3
 completed post-release authority hardening: 11R.1.1 -> 11R.1.2 -> 11R.2 -> 11R.3 -> 11R.4 -> 11R.5 -> 11R.6 -> 11R.7 -> 11R.8 -> 11R.9
-completed reconciliation operator remediation: 12R.0
-next deterministic calibration: 12R.1
+completed reconciliation and deterministic calibration: 12R.0 -> 12R.1
+next read-only policy-overlap review: 12R.2
 completed administrator settings concurrency guardrail: 11R.10 AI Settings stale-write conflict acceptance
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
@@ -12832,7 +12835,7 @@ Remediation](native-intent-reconciliation-operator-remediation.md).
 
 ### 12R.1 Specialized-Destination Identity Evidence Calibration
 
-Status: planned.
+Status: complete on 2026-08-16.
 
 Intent: resolve deterministic ranking ambiguity when a specialized destination
 and a broad catch-all destination receive equivalent purpose scores from the
@@ -12852,6 +12855,32 @@ Completion criteria:
   and insufficient specialized evidence; and
 - add focused policy-engine, route-outcome, pending-decision, and real-database
   acceptance coverage for TV and movie scenarios.
+
+Implemented design: [Specialized-Destination Identity Evidence
+Calibration](specialized-destination-identity-evidence-calibration.md).
+
+### 12R.2 Policy Purpose Coverage And Overlap Review
+
+Status: planned.
+
+Intent: give administrators a bounded, read-only view of active native-policy
+purpose coverage and deterministic overlap so that missing specialized rules
+and repeated broad overlap can be corrected through the existing policy editor.
+The report must not infer purpose from library names or observed contents, call
+AI, mutate policies, queue classifications, or alter routing.
+
+Completion criteria:
+
+- expose only current active native contracts and bounded status/count summaries
+  needed to identify a policy that has no specialized-purpose coverage or
+  repeats broad overlap with another active destination;
+- keep the report administrator-only, paginated or capped, privacy-bounded,
+  and free of classification, profile, RAG, provider, and raw configuration
+  content;
+- offer only server-authored explanatory next actions that link to the existing
+  validated policy editor; and
+- add service, route, authorization, client, and real-database coverage without
+  changing the classification or conversion paths.
 
 ## Testing Strategy
 
@@ -13060,9 +13089,16 @@ The next sequence is dependency-gated rather than phase-number order:
     policy and offers only the existing explicit legacy-policy editing path;
     scheduler-owned conversion remains unchanged. See [Native Intent
     Reconciliation Operator Remediation](native-intent-reconciliation-operator-remediation.md).
-    **Next: 12R.1 Specialized-Destination Identity Evidence Calibration**.
-    Define explainable deterministic differentiation between specialized and
-    broad destinations while preserving manual confirmation for genuine ties.
+25. **12R.1 Specialized-Destination Identity Evidence Calibration**: complete.
+    Current native-purpose matching now separates candidate-specific
+    specialized evidence from shared broad overlap and insufficient specialized
+    evidence before score calibration. Fixed pending-decision facts explain the
+    result without exposing matched terms or allowing non-policy inputs to
+    choose a route. See [Specialized-Destination Identity Evidence
+    Calibration](specialized-destination-identity-evidence-calibration.md).
+    **Next: 12R.2 Policy Purpose Coverage And Overlap Review**. Provide a
+    read-only administrative review surface for active native-purpose coverage
+    and overlap using the same bounded taxonomy.
 
 The completed 0R through 3R, 6R, and 7R contracts remain guardrails, not
 permission to restore a diagnostic, template-first, or browser-authoritative

@@ -93,6 +93,35 @@ describe('PolicyCandidateRanker', () => {
       }));
     });
 
+    it('requires destination selection when broad overlap remains after calibration', async () => {
+      const ranked = await ranker.rankResults([
+        makeEval({
+          id: 1,
+          score: 90,
+          candidateDiagnostics: {
+            primary_viability: 'compatibility_only',
+            evidence_class: 'broad_compatibility_overlap',
+          },
+        }),
+        makeEval({
+          id: 2,
+          score: 90,
+          candidateDiagnostics: {
+            primary_viability: 'compatibility_only',
+            evidence_class: 'broad_compatibility_overlap',
+          },
+        }),
+      ]);
+
+      expect(ranked.map((candidate) => candidate.score)).toEqual([54, 54]);
+      expect(ranker.determineAction(ranked)).toEqual(expect.objectContaining({
+        action: 'manual',
+        decisionDiagnostics: expect.objectContaining({
+          reason_code: 'weak_evidence_overlap',
+        }),
+      }));
+    });
+
     it('filters negative conflicts after calibration', async () => {
       const ranked = await ranker.rankResults([
         makeEval({

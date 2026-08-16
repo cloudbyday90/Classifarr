@@ -21,6 +21,16 @@ const CALIBRATION_RULES = Object.freeze({
     cap: 55,
     reason: 'compatibility_only',
   },
+  broad_compatibility_overlap: {
+    multiplier: 0.60,
+    cap: 55,
+    reason: 'broad_compatibility_overlap',
+  },
+  insufficient_specialized_evidence: {
+    multiplier: 0.60,
+    cap: 55,
+    reason: 'insufficient_specialized_evidence',
+  },
   [CANDIDATE_VIABILITY.PROFILE_ONLY]: {
     multiplier: 0.65,
     cap: 60,
@@ -51,6 +61,10 @@ function getCalibrationRule(candidate = {}) {
   const diagnostics = candidate?.candidate_diagnostics || {};
   if (diagnostics.evidence_class === 'negative_conflict') {
     return CALIBRATION_RULES.negative_conflict;
+  }
+
+  if (CALIBRATION_RULES[diagnostics.evidence_class]) {
+    return CALIBRATION_RULES[diagnostics.evidence_class];
   }
 
   return CALIBRATION_RULES[diagnostics.primary_viability] || null;
