@@ -30,6 +30,7 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS = Object.freeze({
   DESTINATION_PROPOSAL: 'destination_proposal',
   RECONCILIATION_REMEDIATION: 'reconciliation_remediation',
   PURPOSE_COVERAGE_REVIEW: 'purpose_coverage_review',
+  PURPOSE_COVERAGE_PREFLIGHT: 'purpose_coverage_preflight',
 });
 
 const POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS = Object.freeze({
@@ -309,6 +310,15 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY = deepFreeze([
     targetComponentIds: [],
     normalAuthoringAllowed: false,
     notes: 'Administrator-only read-only coverage review; it renders server-projected aggregate counts and can only open the established editor for an explicit policy.',
+  },
+  {
+    id: 'policy_purpose_coverage_preflight',
+    path: 'client/src/components/policies/PolicyPurposeCoveragePreflight.vue',
+    roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.PURPOSE_COVERAGE_PREFLIGHT,
+    decisionId: POLICY_AUTHORING_COMPONENT_DECISION_IDS.DELETE_FROM_NORMAL_PATH,
+    targetComponentIds: [],
+    normalAuthoringAllowed: false,
+    notes: 'Compatibility-only pre-save advisory; it renders bounded server-projected aggregate coverage and cannot retain drafts, save policies, derive intent, call AI, or affect routing.',
   },
   {
     id: 'policy_compatibility_maintenance_surface',

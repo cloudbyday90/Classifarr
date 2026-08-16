@@ -149,6 +149,7 @@ vi.mock('../api', () => ({
     getLibraries: vi.fn(),
     getGeneralSettings: vi.fn(),
     getLibraryProfile: vi.fn(),
+    preflightPolicyPurposeCoverage: vi.fn(),
   }
 }));
 
@@ -1245,6 +1246,74 @@ describe('PolicyBuilderModal.vue', () => {
     expect(text).not.toContain('Advanced Settings');
     expect(text).not.toContain('Scoring Weights');
     expect(text).not.toContain('Classification Thresholds');
+  });
+
+  it('runs an explicit aggregate purpose-coverage preflight and clears it after draft changes', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
+      if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
+      if (url === '/settings') return Promise.resolve({ data: {} });
+      return Promise.resolve({ data: { suggestions: [] } });
+    });
+    api.preflightPolicyPurposeCoverage.mockResolvedValue({
+      data: {
+        advisory: true,
+        draftRetained: false,
+        rawConfigurationExposed: false,
+        routingAffected: false,
+        providerAccessed: false,
+        databaseWritten: false,
+        coverage: {
+          statusId: 'declared_specialized_coverage',
+          requiredSignalTypeCount: 1,
+          requiredTermCount: 1,
+          uniqueRequiredTermCount: 1,
+          sharedRequiredTermCount: 0,
+          overlappingDestinationCount: 0,
+        },
+        guidance: {
+          title: 'Proposed purpose coverage is distinct',
+          description: 'At least one proposed required content signal is distinct.',
+        },
+      },
+    });
+
+    const wrapper = mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        libraryId: 1,
+        policy: {
+          id: 1,
+          library_id: 1,
+          name: 'Sci-Fi Movies Policy',
+          presets: [{ id: 1, name: 'Sci-Fi', icon: '🚀', weight: 1.0 }],
+        },
+      },
+      attachTo: document.body,
+    });
+
+    await flushPromises();
+    const preflightButton = document.body.querySelector('#policy-purpose-coverage-preflight button');
+    expect(preflightButton).not.toBeNull();
+    preflightButton.click();
+    await flushPromises();
+
+    expect(api.preflightPolicyPurposeCoverage).toHaveBeenCalledWith(1, expect.objectContaining({
+      schema_version: 1,
+      source: 'legacy_policy_builder',
+    }));
+    expect(document.body.textContent).toContain('Proposed purpose coverage is distinct');
+
+    wrapper.vm.addIntentSignal({
+      presetId: 1,
+      signalType: 'genres',
+      key: 'require_any',
+      value: 'Family',
+      extras: { semantics: 'identity' },
+    });
+    await flushPromises();
+
+    expect(document.body.textContent).not.toContain('Proposed purpose coverage is distinct');
   });
 
   it('preserves unchanged legacy custom signals when saving through the draft bridge', async () => {

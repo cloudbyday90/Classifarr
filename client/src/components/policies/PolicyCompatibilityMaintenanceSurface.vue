@@ -53,12 +53,21 @@
         @draft-clear-signal-config="emit('draft-clear-signal-config', $event)"
       />
     </div>
+
+    <PolicyPurposeCoveragePreflight
+      :preflight="purposeCoveragePreflight"
+      :loading="purposeCoveragePreflightLoading"
+      :error="purposeCoveragePreflightError"
+      :available="purposeCoveragePreflightAvailable"
+      @preflight="emit('preflight-purpose-coverage')"
+    />
   </section>
 </template>
 
 <script setup>
 import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
 import PolicyPresetMigrationNotice from '@/components/policies/PolicyPresetMigrationNotice.vue'
+import PolicyPurposeCoveragePreflight from '@/components/policies/PolicyPurposeCoveragePreflight.vue'
 
 defineProps({
   presetMigrationNotice: {
@@ -89,6 +98,22 @@ defineProps({
     type: Array,
     default: () => [],
   },
+  purposeCoveragePreflight: {
+    type: Object,
+    default: null,
+  },
+  purposeCoveragePreflightLoading: {
+    type: Boolean,
+    default: false,
+  },
+  purposeCoveragePreflightError: {
+    type: String,
+    default: '',
+  },
+  purposeCoveragePreflightAvailable: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits({
@@ -97,5 +122,6 @@ const emit = defineEmits({
   'draft-remove-signal-value': payload => Boolean(payload),
   'draft-set-signal-config': payload => Boolean(payload),
   'draft-clear-signal-config': payload => Boolean(payload),
+  'preflight-purpose-coverage': () => true,
 })
 </script>

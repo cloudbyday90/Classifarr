@@ -13,6 +13,8 @@ Current development changes will be recorded here.
 
 ### Added
 
+- **Policy purpose coverage preflight** — Existing policy maintenance can request an
+  admin-only aggregate draft check before save without term retention, AI, writes, or routing changes.
 - **Policy purpose coverage review** — Added a bounded administrator-only
   native-policy report for missing specialized purpose coverage and shared
   same-media-type overlap, with fixed editor guidance and no routing changes.

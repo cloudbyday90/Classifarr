@@ -126,6 +126,12 @@ export function getPolicyPurposeCoverageReview() {
   return getDataRequest('/policies/native-intent-reconciliation/purpose-coverage')
 }
 
+export function preflightPolicyPurposeCoverage(id, draft) {
+  return apiClient.post(`/policies/${id}/native-intent/purpose-coverage/preflight`, {
+    policy_intent_draft: draft,
+  })
+}
+
 const policiesApi = {
   getPolicy,
   getPolicies,
@@ -141,6 +147,7 @@ const policiesApi = {
   getNativeIntentReconciliationStatus,
   getNativeIntentReconciliationRemediationInventory,
   getPolicyPurposeCoverageReview,
+  preflightPolicyPurposeCoverage,
 }
 
 export default policiesApi

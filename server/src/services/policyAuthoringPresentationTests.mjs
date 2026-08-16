@@ -145,6 +145,7 @@ const POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS = deepFreeze([
   'client/src/__tests__/PolicyNativeIntentReconciliation.test.js',
   'client/src/__tests__/PolicyNativeIntentReconciliationRemediationInventory.test.js',
   'client/src/__tests__/PolicyPurposeCoverageReview.test.js',
+  'client/src/__tests__/PolicyPurposeCoveragePreflight.test.js',
   'client/src/__tests__/PolicyNativePolicyRecoveryNotice.test.js',
   'client/src/__tests__/PolicyNativeProfileRecoveryStatus.test.js',
   'client/src/__tests__/PolicyList.test.js',
@@ -440,6 +441,14 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
     POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.RUNTIME_VERIFIER,
     [],
     'Purpose coverage review renders bounded aggregate evidence and explicit editor links without exposing rules, inspecting items, or changing policy routing.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyPurposeCoveragePreflight.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_WORKFLOW_REGRESSION,
+    false,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.RUNTIME_VERIFIER,
+    [],
+    'Purpose coverage preflight displays only server-projected aggregate counts and fixed guidance, clears when the draft changes, and cannot retain draft terms, save, call AI, or affect routing.'
   ),
   presentationTestRecord(
     'client/src/__tests__/PolicyNativePolicyRecoveryNotice.test.js',

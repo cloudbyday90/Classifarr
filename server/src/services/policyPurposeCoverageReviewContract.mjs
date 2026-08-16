@@ -56,7 +56,7 @@ export function normalizePolicyPurposeCoverageReviewLimit(value) {
   return Math.min(numericValue, MAX_POLICY_PURPOSE_COVERAGE_REVIEW_ROWS);
 }
 
-function buildCoverage(record = {}) {
+export function buildPolicyPurposeCoverage(record = {}) {
   const requiredSignalTypeCount = asNonNegativeInteger(record.required_signal_type_count);
   const requiredTermCount = asNonNegativeInteger(record.required_term_count);
   const sharedRequiredTermCount = Math.min(
@@ -116,7 +116,7 @@ export function buildPolicyPurposeCoverageReviewEntry(record = {}) {
   const libraryId = asPositiveInteger(record.library_id);
   if (!policyId || !libraryId) return null;
 
-  const coverage = buildCoverage(record);
+  const coverage = buildPolicyPurposeCoverage(record);
   return {
     policy: {
       id: policyId,

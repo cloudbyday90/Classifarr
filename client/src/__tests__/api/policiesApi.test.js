@@ -47,6 +47,7 @@ import {
   getNativeIntentReconciliationStatus,
   getNativeIntentReconciliationRemediationInventory,
   getPolicyPurposeCoverageReview,
+  preflightPolicyPurposeCoverage,
 } from '../../api/policiesApi'
 
 describe('policiesApi', () => {
@@ -216,6 +217,18 @@ describe('policiesApi', () => {
     await getNativeIntentReconciliationRemediationInventory()
 
     expect(mockGetDataRequest).toHaveBeenCalledWith('/policies/native-intent-reconciliation/remediation')
+  })
+
+  it('posts only the explicit validated-draft envelope for purpose coverage preflight', async () => {
+    const draft = { schema_version: 1, presets: [] }
+    mockPost.mockResolvedValueOnce({ data: { advisory: true } })
+
+    await preflightPolicyPurposeCoverage(17, draft)
+
+    expect(mockPost).toHaveBeenCalledWith(
+      '/policies/17/native-intent/purpose-coverage/preflight',
+      { policy_intent_draft: draft }
+    )
   })
 
   it('gets the read-only policy purpose coverage review', async () => {

@@ -74,11 +74,16 @@
           :available-genres="availableGenres"
           :available-genre-options="availableGenreOptions"
           :available-ratings="availableRatings"
+          :purpose-coverage-preflight="purposeCoveragePreflight"
+          :purpose-coverage-preflight-loading="purposeCoveragePreflightLoading"
+          :purpose-coverage-preflight-error="purposeCoveragePreflightError"
+          :purpose-coverage-preflight-available="purposeCoveragePreflightAvailable"
           @dismiss-migration-notice="dismissPresetMigrationNotice"
           @draft-add-signal="addIntentSignal"
           @draft-remove-signal-value="removeIntentSignalValue"
           @draft-set-signal-config="setIntentSignalConfig"
           @draft-clear-signal-config="clearIntentSignalConfig"
+          @preflight-purpose-coverage="preflightPurposeCoverage"
         />
       </template>
     </div>
@@ -117,8 +122,10 @@ import { usePolicyIntentSignalDraft } from '@/composables/usePolicyIntentSignalD
 import { usePolicyIntentConstraintDraft } from '@/composables/usePolicyIntentConstraintDraft'
 import { usePolicyNativeCreateAction } from '@/composables/usePolicyNativeCreateAction'
 import { usePolicyNativeCreateHandoff } from '@/composables/usePolicyNativeCreateHandoff'
+import { usePolicyPurposeCoveragePreflight } from '@/composables/usePolicyPurposeCoveragePreflight'
 import { buildPolicyBuilderSaveBoundary } from '@/utils/policyBuilderActionBoundary'
 import { buildPolicyBuilderExperienceMode } from '@/utils/policyBuilderExperienceMode'
+import { clonePolicyIntentDraftForWrite } from '@/utils/policyIntentWritePreflight'
 import { buildNativePolicyCreatePayload } from '@/utils/policyNativeCreatePayload'
 import {
   POLICY_AUTHORING_ACTION_FEEDBACK_STATUS_IDS,
@@ -260,6 +267,14 @@ const {
 
 const nativeCreateAction = usePolicyNativeCreateAction()
 
+const {
+  preflight: purposeCoveragePreflight,
+  isLoading: purposeCoveragePreflightLoading,
+  errorMessage: purposeCoveragePreflightError,
+  reset: resetPurposeCoveragePreflight,
+  runPreflight: runPurposeCoveragePreflight,
+} = usePolicyPurposeCoveragePreflight()
+
 const saving = computed(() => (
   experienceMode.value.isNativeCreate
     ? nativeCreateAction.pending.value
@@ -277,6 +292,12 @@ const saveBoundary = computed(() => buildPolicyBuilderSaveBoundary({
   hasExistingPolicy: experienceMode.value.isLegacyEdit,
   nativeIntentEstablishment: nativeIntentEstablishment.value,
 }))
+
+const purposeCoveragePreflightAvailable = computed(() => (
+  experienceMode.value.isLegacyEdit
+  && Number.isInteger(Number(props.policy?.id))
+  && Number(props.policy.id) > 0
+))
 
 onMounted(() => {
   if (experienceMode.value.isLegacyEdit) {
@@ -297,6 +318,10 @@ watchNativeReadinessSummary(computed(() => (
 watch(() => props.modelValue, isOpen => {
   if (isOpen) restoreFocusAfterClose.value = true
 })
+
+watch(intentDraft, () => {
+  resetPurposeCoveragePreflight()
+}, { deep: true })
 
 const handleEmptyStateAction = async (emptyState) => {
   if (!experienceMode.value.isNativeCreate) return
@@ -364,6 +389,21 @@ const validateActiveCustomIntentSignal = async (payload) => {
   if (!experienceMode.value.isNativeCreate) return false
 
   await validateCustomIntentSignal(form.value.library_id, payload)
+}
+
+const preflightPurposeCoverage = async () => {
+  if (!purposeCoveragePreflightAvailable.value || purposeCoveragePreflightLoading.value) return
+
+  const draft = clonePolicyIntentDraftForWrite(intentDraft.value)
+  if (!draft) {
+    resetPurposeCoveragePreflight()
+    return
+  }
+
+  await runPurposeCoveragePreflight({
+    policyId: Number(props.policy.id),
+    draft,
+  })
 }
 
 const defer = () => {

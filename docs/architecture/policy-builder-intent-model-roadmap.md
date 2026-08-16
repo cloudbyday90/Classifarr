@@ -99,10 +99,14 @@ Current execution focus:
   bounded administrator-only read of active native-purpose coverage and
   same-media-type overlap that returns fixed statuses and counts without
   exposing rule values or affecting routing.
-- **Next:** **12R.3 Policy Authoring Purpose Coverage Preflight**. Add a
-  server-owned, validation-only preflight to the established policy editor so
-  administrators can see the same bounded coverage status before saving a
-  changed purpose.
+- **Completed:** **12R.3 Policy Authoring Purpose Coverage Preflight**. The
+  established compatibility editor can request a server-owned, aggregate-only
+  purpose-coverage check before save; it retains no draft, calls no provider,
+  and does not authorize or change a policy.
+- **Next:** **12R.4 Native Intent Change-Command Purpose Preflight
+  Integration**. Apply the same bounded advisory comparison to the explicit
+  `update_purpose` native change-command path without allowing a preflight
+  result to replace current revision or server authority checks.
 - **Completed:** **10R.4 Release Acceptance Assembly**. Repository acceptance
   now produces a passed or blocked manifest artifact, while a separate
   protected-environment workflow records active-installation evidence without
@@ -143,8 +147,8 @@ completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3 -> 10R.3.
 completed release hardening: 10R.4 -> 10R.4.1
 active release candidate: v0.48.0-beta -> 10R.4.2 -> 10R.4.3
 completed post-release authority hardening: 11R.1.1 -> 11R.1.2 -> 11R.2 -> 11R.3 -> 11R.4 -> 11R.5 -> 11R.6 -> 11R.7 -> 11R.8 -> 11R.9
-completed reconciliation and deterministic calibration: 12R.0 -> 12R.1 -> 12R.2
-next policy-authoring coverage preflight: 12R.3
+completed reconciliation and deterministic calibration: 12R.0 -> 12R.1 -> 12R.2 -> 12R.3
+next native change-command purpose preflight: 12R.4
 completed administrator settings concurrency guardrail: 11R.10 AI Settings stale-write conflict acceptance
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
@@ -12892,7 +12896,7 @@ Review](policy-purpose-coverage-and-overlap-review.md).
 
 ### 12R.3 Policy Authoring Purpose Coverage Preflight
 
-Status: planned.
+Status: complete.
 
 Intent: extend the existing validated policy editor with a server-owned,
 validation-only preflight that projects the same bounded purpose-coverage and
@@ -12912,6 +12916,29 @@ Completion criteria:
 - add service, route, authorization, editor, client API, and real-database
   coverage while preserving the 12R.2 read-only report and classification
   paths.
+
+Implemented design: [Policy Authoring Purpose Coverage
+Preflight](policy-authoring-purpose-coverage-preflight.md).
+
+### 12R.4 Native Intent Change-Command Purpose Preflight Integration
+
+Status: planned.
+
+Intent: apply the same bounded, server-owned advisory purpose-coverage
+comparison to the explicit `update_purpose` native change-command workflow.
+The preflight must derive scope and the authoritative current revision on the
+server, never accept a client-supplied result, and remain unable to save,
+select a destination, call AI, or alter routing.
+
+Completion criteria:
+
+- recompute coverage from the typed proposed change and current persisted
+  native contract under the existing authorization and revision boundary;
+- present only aggregate counts, a fixed status, and fixed guidance in the
+  explicit native maintenance experience when that command is exposed;
+- invalidate prior advice when the change command or revision changes; and
+- add concurrency, authorization, no-write, no-term-disclosure, and
+  real-database coverage without reopening a compatibility authoring path.
 
 ## Testing Strategy
 
@@ -13127,9 +13154,16 @@ The next sequence is dependency-gated rather than phase-number order:
     result without exposing matched terms or allowing non-policy inputs to
     choose a route. See [Specialized-Destination Identity Evidence
     Calibration](specialized-destination-identity-evidence-calibration.md).
-    **Next: 12R.3 Policy Authoring Purpose Coverage Preflight**. Surface the
-    same bounded taxonomy before a policy-purpose save without persisting the
-    draft or changing routing.
+26. **12R.3 Policy Authoring Purpose Coverage Preflight**: complete. The
+    compatibility policy editor can request a server-validated, aggregate-only
+    comparison of its unsaved declared purpose with current native contracts.
+    It retains no draft, exposes no terms, calls no provider, performs no
+    write, and cannot authorize save or change routing. See [Policy Authoring
+    Purpose Coverage Preflight](policy-authoring-purpose-coverage-preflight.md).
+    **Next: 12R.4 Native Intent Change-Command Purpose Preflight
+    Integration**. Bring the same advisory boundary to explicit native
+    `update_purpose` commands without weakening their revision or authority
+    checks.
 
 The completed 0R through 3R, 6R, and 7R contracts remain guardrails, not
 permission to restore a diagnostic, template-first, or browser-authoritative
