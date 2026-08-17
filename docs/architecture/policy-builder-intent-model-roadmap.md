@@ -129,10 +129,13 @@ Current execution focus:
   timestamps, history, raw policy, AI, routing, learning, or mutation authority.
   See [Native Intent Change Recent Receipt
   Discovery](native-intent-change-recent-receipt-discovery.md).
-- **Next:** **12R.8 Native Intent Change Receipt Retention And Capacity
-  Guard**. Define bounded operational retention and capacity maintenance for
-  the append-only receipt table without truncating replay or recent-discovery
-  windows, exposing history, or creating policy authority.
+- **Completed:** **12R.8 Native Intent Change Receipt Retention And Capacity
+  Guard**. Native-intent change receipts now have a fixed 30-day exact-replay
+  lifecycle, database-enforced transaction-local retention permit, bounded
+  daily cleanup, and aggregate-only capacity warnings. Capacity pressure cannot
+  remove protected receipts, expose history, or create policy authority. See
+  [Native Intent Change Receipt Retention And Capacity
+  Guard](native-intent-change-receipt-retention-capacity-guard.md).
 - **Completed:** **10R.4 Release Acceptance Assembly**. Repository acceptance
   now produces a passed or blocked manifest artifact, while a separate
   protected-environment workflow records active-installation evidence without
@@ -173,8 +176,7 @@ completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3 -> 10R.3.
 completed release hardening: 10R.4 -> 10R.4.1
 active release candidate: v0.48.0-beta -> 10R.4.2 -> 10R.4.3
 completed post-release authority hardening: 11R.1.1 -> 11R.1.2 -> 11R.2 -> 11R.3 -> 11R.4 -> 11R.5 -> 11R.6 -> 11R.7 -> 11R.8 -> 11R.9
-completed reconciliation and deterministic calibration: 12R.0 -> 12R.1 -> 12R.2 -> 12R.3 -> 12R.4 -> 12R.5 -> 12R.6 -> 12R.7
-next native purpose-change resilience: 12R.8
+completed reconciliation and deterministic calibration: 12R.0 -> 12R.1 -> 12R.2 -> 12R.3 -> 12R.4 -> 12R.5 -> 12R.6 -> 12R.7 -> 12R.8
 completed administrator settings concurrency guardrail: 11R.10 AI Settings stale-write conflict acceptance
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
@@ -13053,12 +13055,18 @@ Discovery](native-intent-change-recent-receipt-discovery.md).
 
 ### 12R.8 Native Intent Change Receipt Retention And Capacity Guard
 
-Status: planned.
+Status: complete.
 
-Intent: define a bounded operational lifecycle for append-only native intent
-change receipts so an active installation can control storage growth without
-deleting a receipt still required for exact replay or post-reload discovery,
-enumerating receipt history, or expanding any authority boundary.
+Native-intent change receipts now retain exact replay state for a fixed 30-day
+window, comfortably beyond the fixed 60-minute recent-status recovery read.
+One daily, scheduler-owned, advisory-lock-protected transaction can remove at
+most 100 expired rows using chronological `FOR UPDATE SKIP LOCKED` selection.
+The database trigger requires an exact transaction-local permit and independently
+rejects deletion of a receipt inside the replay window. Aggregate capacity states
+warn at 10,000 rows and become critical at 25,000; they never authorize deletion
+of protected receipts, an HTTP/browser control, history enumeration, routing,
+learning, AI, or policy mutation. See [Native Intent Change Receipt Retention
+And Capacity Guard](native-intent-change-receipt-retention-capacity-guard.md).
 
 ## Testing Strategy
 
@@ -13306,9 +13314,10 @@ The next sequence is dependency-gated rather than phase-number order:
     and cannot expose replay data, receipt history, raw policy, AI,
     compatibility, routing, learning, or mutation authority. See [Native Intent
     Change Recent Receipt Discovery](native-intent-change-recent-receipt-discovery.md).
-    **Next: 12R.8 Native Intent Change Receipt Retention And Capacity Guard**.
-    Define retention and capacity safeguards without reducing replay or
-    post-reload recovery safety.
+    **12R.8 Native Intent Change Receipt Retention And Capacity Guard is
+    complete.** A fixed 30-day replay window, database-enforced maintenance
+    permit, bounded daily cleanup, and aggregate-only capacity guard now protect
+    receipt lifecycle without reducing post-reload recovery safety.
 
 The completed 0R through 3R, 6R, and 7R contracts remain guardrails, not
 permission to restore a diagnostic, template-first, or browser-authoritative

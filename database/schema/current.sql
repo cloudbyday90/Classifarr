@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-08-16T23:25:29.624Z
--- Latest Migration: 20260816_180000_add_native_intent_change_receipts.sql
+-- Generated: 2026-08-17T02:27:08.259Z
+-- Latest Migration: 20260817_030000_add_native_intent_change_receipt_retention_guard.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -310,6 +310,17 @@ BEGIN
                FROM library_policies
                WHERE id = OLD.policy_id
            ) THEN
+            RETURN OLD;
+        END IF;
+
+        -- Retention has a separate, transaction-local permit and must never
+        -- delete a receipt in the 30-day exact-replay window. The database
+        -- enforces this invariant independently of the application query.
+        IF current_setting(
+               'classifarr.policy_native_intent_change_receipt_maintenance',
+               true
+           ) = 'retention_cleanup'
+           AND OLD.created_at < NOW() - INTERVAL '30 days' THEN
             RETURN OLD;
         END IF;
     END IF;
@@ -10178,6 +10189,13 @@ CREATE INDEX idx_policy_native_intent_change_receipts_actor_policy ON public.pol
 
 
 --
+-- Name: idx_policy_native_intent_change_receipts_retention; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_native_intent_change_receipts_retention ON public.policy_native_intent_change_receipts USING btree (created_at, id);
+
+
+--
 -- Name: idx_policy_native_intent_reconciliation_control_events_occurred; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -13956,6 +13974,7 @@ FROM unnest(ARRAY[
     '20260813_110000_enforce_ai_provider_configuration_revision_integrity.sql',
     '20260813_120000_add_ai_settings_write_precondition.sql',
     '20260816_173000_add_native_intent_change_applied_event.sql',
-    '20260816_180000_add_native_intent_change_receipts.sql'
+    '20260816_180000_add_native_intent_change_receipts.sql',
+    '20260817_030000_add_native_intent_change_receipt_retention_guard.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

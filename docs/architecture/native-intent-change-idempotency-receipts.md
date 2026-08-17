@@ -90,6 +90,12 @@ included in configuration backups. A foreign-key cascade that follows deletion
 of its parent policy is also allowed, so normal policy deletion does not leave
 an unusable application state.
 
+Exact replay is intentionally bounded to 30 days. The normal browser key is
+volatile and a post-reload status lookup is independently limited to 60
+minutes, so the bounded receipt lifetime contains operational identifiers
+without weakening the active retry or recovery window. See [Native Intent
+Change Receipt Retention And Capacity Guard](native-intent-change-receipt-retention-capacity-guard.md).
+
 ## Options Considered
 
 | Option | Pros | Cons |
@@ -138,7 +144,8 @@ Recent Receipt Discovery](native-intent-change-recent-receipt-discovery.md).
 
 ## Follow-Up
 
-**12R.8 Native Intent Change Receipt Retention And Capacity Guard** must define
-the explicit retention, capacity, and transaction-local maintenance-permit
-rules for this append-only operational table. It must preserve the replay and
-post-reload discovery windows and cannot add a receipt-history browse endpoint.
+**12R.8 Native Intent Change Receipt Retention And Capacity Guard** is
+complete. It defines a fixed 30-day exact-replay lifetime, a separate
+transaction-local maintenance permit, a database-enforced age guard, bounded
+daily cleanup, and aggregate-only capacity warnings. It cannot add a
+receipt-history browse endpoint or reduce the 60-minute discovery window.

@@ -13,6 +13,13 @@ Current development changes will be recorded here.
 
 ### Added
 
+- **Bounded native-change receipt retention** — Immutable native-purpose
+  change receipts now retain exact replay state for 30 days and are pruned only
+  by a scheduler-owned, lock-protected, age-ordered transaction. Database-side
+  enforcement protects current replay and 60-minute recovery receipts; capacity
+  pressure reports aggregate warnings instead of deleting protected receipts or
+  adding a receipt-history surface.
+
 - **Recent native-change status** — Native-purpose maintenance now restores one
   recent current-administrator change status after reload through a fixed-window,
   actor- and policy-bound, read-only `no-store` lookup. The passive revision

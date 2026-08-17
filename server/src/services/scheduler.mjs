@@ -123,6 +123,11 @@ class SchedulerService {
         // Daily pruning of bounded native-intent reconciliation ledger rows (3:16 AM)
         this.schedule('native-intent-reconciliation-ledger-retention-cleanup', '16 3 * * *', () => this.runNativeIntentReconciliationLedgerRetentionCleanup());
 
+        // Daily pruning of expired native-intent change receipts. This is
+        // intentionally scheduled only; receipt recovery does not require a
+        // startup mutation.
+        this.schedule('native-intent-change-receipt-retention-cleanup', '17 3 * * *', () => this.runPolicyNativeIntentChangeReceiptRetentionCleanup());
+
         // Daily cleanup of stale awaiting_decision rows (4 AM)
         this.schedule('stale-awaiting-cleanup', '0 4 * * *', () => this.cleanupStaleAwaitingDecisions(), DB_ADVISORY_LOCKS.STALE_CLEANUP);
 
@@ -208,6 +213,13 @@ class SchedulerService {
      */
     async runNativeIntentReconciliationLedgerRetentionCleanup() {
         return schedulerRetentionService.runNativeIntentReconciliationLedgerRetentionCleanup();
+    }
+
+    /**
+     * Daily pruning of expired, append-only native-intent change receipts.
+     */
+    async runPolicyNativeIntentChangeReceiptRetentionCleanup() {
+        return schedulerRetentionService.runPolicyNativeIntentChangeReceiptRetentionCleanup();
     }
 
     /**

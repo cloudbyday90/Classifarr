@@ -59,6 +59,12 @@ describe('SchedulerRetentionService', () => {
                     statusId: 'completed',
                 }),
             },
+            policyNativeIntentChangeReceiptRetentionService: {
+                cleanup: jest.fn().mockResolvedValue({
+                    deletedReceiptCount: 0,
+                    statusId: 'completed',
+                }),
+            },
         });
     });
 
@@ -242,6 +248,19 @@ describe('SchedulerRetentionService', () => {
                 statusId: 'completed',
             });
             expect(service.nativeIntentReconciliationLedgerRetentionService.cleanup)
+                .toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('runPolicyNativeIntentChangeReceiptRetentionCleanup', () => {
+        it('delegates bounded native-intent change receipt cleanup to its retention service', async () => {
+            const result = await service.runPolicyNativeIntentChangeReceiptRetentionCleanup();
+
+            expect(result).toEqual({
+                deletedReceiptCount: 0,
+                statusId: 'completed',
+            });
+            expect(service.policyNativeIntentChangeReceiptRetentionService.cleanup)
                 .toHaveBeenCalledTimes(1);
         });
     });

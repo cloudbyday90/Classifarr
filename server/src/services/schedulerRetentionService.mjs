@@ -26,6 +26,9 @@ import {
 import {
     nativeIntentReconciliationLedgerRetentionService as defaultNativeIntentReconciliationLedgerRetentionService,
 } from './nativeIntentReconciliationLedgerRetentionService.mjs';
+import {
+    policyNativeIntentChangeReceiptRetentionService as defaultPolicyNativeIntentChangeReceiptRetentionService,
+} from './policyNativeIntentChangeReceiptRetentionService.mjs';
 
 const ERROR_LOG_BATCH_SIZE = 1000;
 
@@ -46,6 +49,9 @@ export class SchedulerRetentionService {
         this.nativeIntentReconciliationLedgerRetentionService =
             deps.nativeIntentReconciliationLedgerRetentionService
             || defaultNativeIntentReconciliationLedgerRetentionService;
+        this.policyNativeIntentChangeReceiptRetentionService =
+            deps.policyNativeIntentChangeReceiptRetentionService
+            || defaultPolicyNativeIntentChangeReceiptRetentionService;
     }
 
     async _runCleanupTask(label, task) {
@@ -150,6 +156,10 @@ export class SchedulerRetentionService {
 
     async runNativeIntentReconciliationLedgerRetentionCleanup() {
         return this.nativeIntentReconciliationLedgerRetentionService.cleanup();
+    }
+
+    async runPolicyNativeIntentChangeReceiptRetentionCleanup() {
+        return this.policyNativeIntentChangeReceiptRetentionService.cleanup();
     }
 }
 

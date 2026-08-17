@@ -100,8 +100,8 @@ actor-and-policy lookup.
 
 ## Follow-Up
 
-**12R.8 Native Intent Change Receipt Retention And Capacity Guard** is the
-next task. It must define an explicit bounded retention and maintenance permit
-for operational receipts without deleting a record still required by replay or
-recent-status discovery, adding receipt history enumeration, or treating
-cleanup as routing, learning, AI, or policy authority.
+**12R.8 Native Intent Change Receipt Retention And Capacity Guard** is
+complete. Its fixed 30-day retention contract exceeds this reader's 60-minute
+window, and the database-side maintenance guard cannot delete a current receipt
+even when capacity pressure exists. See [Native Intent Change Receipt Retention
+And Capacity Guard](native-intent-change-receipt-retention-capacity-guard.md).
