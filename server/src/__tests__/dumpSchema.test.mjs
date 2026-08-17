@@ -160,9 +160,9 @@ describe('dump-schema tooling', () => {
     expect(isPgDumpVersionMismatchError(new Error('some other failure'))).toBe(false);
   });
 
-  test('normalizes generated timestamps and line endings so drift checks stay deterministic', () => {
-    const firstSnapshot = '-- Classifarr Database Schema Snapshot\r\n-- Generated: 2026-05-16T18:00:00.000Z\r\n-- Latest Migration: 20260516_183500_reconcile_pg_stat_statements_state.sql\r\n';
-    const secondSnapshot = '-- Classifarr Database Schema Snapshot\n-- Generated: 2026-05-16T18:15:00.000Z\n-- Latest Migration: 20260516_183500_reconcile_pg_stat_statements_state.sql\n';
+  test('normalizes generated timestamps, pg_dump banner versions, and line endings so drift checks stay deterministic', () => {
+    const firstSnapshot = '-- Classifarr Database Schema Snapshot\r\n-- Generated: 2026-05-16T18:00:00.000Z\r\n-- Latest Migration: 20260516_183500_reconcile_pg_stat_statements_state.sql\r\n-- Dumped from database version 18.4\r\n-- Dumped by pg_dump version 18.4\r\n';
+    const secondSnapshot = '-- Classifarr Database Schema Snapshot\n-- Generated: 2026-05-16T18:15:00.000Z\n-- Latest Migration: 20260516_183500_reconcile_pg_stat_statements_state.sql\n-- Dumped from database version 18.6\n-- Dumped by pg_dump version 18.6\n';
 
     expect(normalizeSnapshotForComparison(firstSnapshot)).toBe(
       normalizeSnapshotForComparison(secondSnapshot)

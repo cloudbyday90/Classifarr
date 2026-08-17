@@ -154,7 +154,11 @@ export function buildPsqlArgs({ host, port, user, dbName, sql }) {
 export function normalizeSnapshotForComparison(snapshotSql) {
   return String(snapshotSql)
     .replace(/\r\n/g, '\n')
-    .replace(/^-- Generated: .*\n/m, '-- Generated: <normalized>\n');
+    .replace(/^-- Generated: .*\n/m, '-- Generated: <normalized>\n')
+    // PostgreSQL patch releases update these informational pg_dump banners
+    // without changing the dumped schema. Keep the drift gate semantic.
+    .replace(/^-- Dumped from database version .*\n/m, '-- Dumped from database version <normalized>\n')
+    .replace(/^-- Dumped by pg_dump version .*\n/m, '-- Dumped by pg_dump version <normalized>\n');
 }
 
 function shouldStripSchemaMigrationsDumpSection(section) {

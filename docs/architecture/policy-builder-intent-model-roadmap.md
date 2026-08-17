@@ -144,19 +144,23 @@ Current execution focus:
   Verification**. Tag releases now attest each pushed release-image digest and
   verify it against the expected repository and signer. It supplements CI
   acceptance and deployment approval; it cannot replace either.
-- **Current release candidate:** **v0.48.0-beta** is the intentional execution
+- **Current release candidate:** **v0.48.1-beta** is the intentional execution
   of **10R.4.2 Published Digest Consumer Smoke Acceptance** and **10R.4.3
   Release Candidate Publication And Evidence Recording**. Both release-specific
   outcomes remain pending until the protected tag workflow publishes the exact
   digest and retains its passed provenance, consumer-smoke, and release evidence.
-- **Current operational finding:** On 2026-08-09, **8R.36.11
-  Compatibility-Removal Evidence Regeneration** produced passed v3 repository
-  validation and bounded blocked diagnostics. The active-installation completion
-  artifact is fingerprinted but not replay-valid or approved, so the current
-  closure and requirement audits remain blocked. Obtain a current approved
-  installation artifact through the deletion workflow, then rerun 8R.36.11 and
-  its generated audits. Do not infer closure from historical JSON, local Docker,
-  or checkout state.
+- **Current operational finding:** On 2026-08-17, **8R.36.11
+  Compatibility-Removal Evidence Regeneration** was re-evaluated against a
+  running immutable `v0.48.1-beta` image. Image provenance identifies the
+  deployment and its source revision, but it does not prove a reviewed
+  compatibility-deletion plan, protected apply result, or replay-valid
+  post-removal completion artifact. The current closure and requirement audits
+  remain blocked until that explicit deletion chain exists for the selected
+  checkout. The final bounded run passed fresh v3 validation and restored
+  current changelog coverage; the remaining audit blocker is only the historic
+  incomplete completion artifact. Do not infer closure from historical JSON,
+  local Docker, image provenance, release-installation evidence, or checkout
+  state.
 - **Continuous guardrail:** 9R naming and product-language gates remain
   required. Do not reintroduce a second policy-builder flow, advanced setting,
   or browser-owned automation decision.
@@ -169,12 +173,12 @@ The execution dependency is intentionally not numeric:
 ```text
 completed foundations: 0R -> 1R -> 2R -> 3R -> 4R -> 5R -> 6R -> 7R
 completed boundary isolation: 8R.37.1 -> 8R.37.2 -> 8R.37.3 -> 8R.37.4
-active-installation prerequisite -> 8R.36.11 regeneration -> 8R.34/8R.35 current audits
+approved deletion-plan/apply/replay prerequisite -> 8R.36.11 regeneration -> 8R.34/8R.35 current audits
 completed platform acceptance: 10R.1.1 -> 10R.1.2 -> 10R.1.3
 completed lifecycle acceptance: 10R.2.1 -> 10R.2.2 -> 10R.2.3
 completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3 -> 10R.3.4 -> 10R.3.5 -> 10R.3.6 -> 10R.3.7 -> 10R.3.8
 completed release hardening: 10R.4 -> 10R.4.1
-active release candidate: v0.48.0-beta -> 10R.4.2 -> 10R.4.3
+published release candidate: v0.48.1-beta -> 10R.4.2 -> 10R.4.3
 completed post-release authority hardening: 11R.1.1 -> 11R.1.2 -> 11R.2 -> 11R.3 -> 11R.4 -> 11R.5 -> 11R.6 -> 11R.7 -> 11R.8 -> 11R.9
 completed reconciliation and deterministic calibration: 12R.0 -> 12R.1 -> 12R.2 -> 12R.3 -> 12R.4 -> 12R.5 -> 12R.6 -> 12R.7 -> 12R.8
 completed administrator settings concurrency guardrail: 11R.10 AI Settings stale-write conflict acceptance
@@ -10650,14 +10654,18 @@ Implementation status:
   read-only and fails closed when the assembled closure chain is incomplete.
   The design and outcome record is [Policy Storage Instance Closure-Evidence
   Assembly](policy-storage-instance-closure-evidence-assembly.md).
-- Task 8R.36.11 is revalidated after 8R.37.4 and again on 2026-08-09. The
-  bounded launcher runs only
+- Task 8R.36.11 is revalidated after 8R.37.4, on 2026-08-09, and again on
+  2026-08-17. The bounded launcher runs only
   the fixed validation-evidence producer and instance assembler using direct
   Node processes with argument arrays and bounded timeouts. Its v3 validation
   catalog now directly covers the closure-map scope service and reconciliation
   design record. The fresh validation artifact passed; the explicitly allowed
   blocked assembly preserved diagnostics and returned nonzero because its
   active-installation completion artifact was not replay-valid or approved.
+  The later immutable-image inspection identified a deployment selector but
+  did not change that result: OCI provenance and release-installation evidence
+  cannot replace the reviewed compatibility-deletion plan, protected apply, and
+  replay-valid post-removal completion artifact.
   Completion-audit provenance remains explicit, generated files must remain
   inside the selected checkout, and a failed command stops the chain without
   relaying raw process output. The design and outcome record is [Policy Storage
@@ -13238,12 +13246,15 @@ The next sequence is dependency-gated rather than phase-number order:
     operator-review workload signal without changing automation authority. See
     [Release Acceptance Assembly](release-acceptance-assembly.md).
 18. **8R.36.11 Compatibility-Removal Evidence Regeneration**: revalidated on
-    2026-08-09. It produced fresh passed v3 repository validation evidence and
-    bounded blocked diagnostics because the active-installation completion
-    artifact is not replay-valid or approved. The next operational prerequisite
-   is a current approved installation artifact; then rerun 8R.36.11 and the
-   generated 8R.34/8R.35 audits. Continue the **9R** zero-debt naming gates
-   on every component.
+    2026-08-09 and 2026-08-17. It produced fresh passed v3 repository
+    validation evidence and bounded blocked diagnostics because the
+    active-installation completion artifact is not replay-valid or approved.
+    Immutable image provenance now identifies the deployment and matching
+    checkout, but cannot establish deletion approval. The next operational
+    prerequisite is a current reviewed deletion-plan wrapper, protected apply
+    record, and replay-valid post-removal completion artifact; then rerun
+    8R.36.11 and the generated 8R.34/8R.35 audits. Continue the **9R**
+    zero-debt naming gates on every component.
 19. **11R.1.1 AI Repair Authority Integrity**: complete. Accepted repair output
     now reflects the actual repair provider and model; cross-provider or
     cross-model repair is fallback advisory, and aggregate metrics retain the
@@ -13345,8 +13356,10 @@ that every deployment has completed its separate installation-evidence gate.
 
 ### Re-Review Boundaries
 
-- **Next:** 8R.36.11 must regenerate current compatibility-removal evidence
-  after a protected active-installation artifact is available.
+- **Next:** obtain the reviewed compatibility-deletion plan, protected apply
+  record, and replay-valid post-removal completion artifact for the deployment-
+  selected checkout; then rerun 8R.36.11 to regenerate current
+  compatibility-removal evidence.
 - **Release:** 10R.4 now distinguishes repository, installation, and
   aggregate-workload evidence. The separately blocked 8R.36.11
   active-installation artifact remains a deployment prerequisite for

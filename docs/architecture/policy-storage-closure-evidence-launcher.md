@@ -141,6 +141,24 @@ only a current, explicitly approved active-installation completion artifact can
 resolve the remaining cutover state. The launcher must continue to reject any
 attempt to synthesize that artifact from checkout contents.
 
+## 2026-08-17 Operational Re-evaluation
+
+A read-only inspection of the running `Classifarr` container identified an
+immutable image and OCI revision label for the published `v0.48.1-beta`
+release. This establishes a deployment selector only. It does not provide the
+reviewed deletion-plan wrapper, approved apply record, or replay-valid
+post-removal completion artifact required by the assembler.
+
+The launcher must therefore remain blocked until those explicit inputs exist
+for the checkout selected by the deployment evidence. Historical JSON, image
+provenance, and release-installation records may be used to locate evidence;
+none is authority to recreate the compatibility-removal chain.
+
+The final launcher run regenerated passed v3 validation evidence and preserved
+only the expected blocked assembly. Its current-closure audit reported the
+retained completion artifact as incomplete and validation-failed; the
+requirement audit retained no separate changelog or component-coverage gap.
+
 Dry-run example:
 
 ```text

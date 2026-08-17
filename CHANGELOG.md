@@ -58,6 +58,18 @@ Current development changes will be recorded here.
 
 ### Changed
 
+- **Native Policy Intent Storage** — Current closure evidence remains bound to
+  the native schema, authority, migration, reconciliation, safety, and audit
+  components. Compatibility source retirement remains separately blocked until
+  its approved deletion evidence chain is replay-valid.
+- **Compatibility-removal closure evidence** — Re-evaluated regeneration
+  against a running immutable release image and documented the non-substitution
+  boundary: image provenance and release-installation records select a
+  deployment but cannot replace the approved, replayable post-removal evidence
+  chain required to retire compatibility code.
+- **Server tooling dependencies** — Updated `@types/node` to 26.2.0, `eslint`
+  to 10.8.1, `eslint-plugin-n` to 18.3.0, `globals` to 17.11.0, and `knip` to
+  6.32.2.
 - **Client test isolation** — Fresh router tests now await their deliberate
   guard-bypass initial navigation, and Vitest uses a bounded jsdom worker pool
   to prevent asynchronous setup checks and resource starvation from leaking
@@ -68,6 +80,10 @@ Current development changes will be recorded here.
 
 ### Fixed
 
+- **Schema snapshot drift gate** — Ignore informational PostgreSQL and
+  `pg_dump` patch-version banners during snapshot comparison, so upstream
+  patch releases cannot cause false schema drift while semantic SQL changes
+  still fail the gate.
 - **Native-purpose change audit** — Added the constrained
   `native_intent_change_applied` event vocabulary so a valid native-purpose
   revision no longer rolls back because the audit-event database constraint
