@@ -13,6 +13,11 @@ Current development changes will be recorded here.
 
 ### Added
 
+- **Recent native-change status** — Native-purpose maintenance now restores one
+  recent current-administrator change status after reload through a fixed-window,
+  actor- and policy-bound, read-only `no-store` lookup. The passive revision
+  notice exposes no retry key, fingerprint, command, receipt identifier,
+  timestamp, history, policy content, AI, routing, learning, or mutation path.
 - **Native intent change retry safety** — Native-purpose changes now require a
   volatile browser-generated idempotency key and persist a compact immutable,
   actor-, policy-, revision-, and canonical-command-bound receipt with the

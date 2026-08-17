@@ -19,6 +19,9 @@ const {
   policyNativeIntentPurposeChangeReadService,
 } = await import('../../services/policyNativeIntentPurposeChangeReadService.mjs');
 const {
+  policyNativeIntentChangeRecentReceiptDiscoveryService,
+} = await import('../../services/policyNativeIntentChangeRecentReceiptDiscoveryService.mjs');
+const {
   applyPolicyNativeIntentChange,
   POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS,
 } = await import('../../services/policyNativeIntentChangeService.mjs');
@@ -138,6 +141,35 @@ describe('native intent purpose change integration', () => {
         replayed: true,
         newIntentVersion: 4,
       }),
+    }));
+
+    const recentReceipt = await policyNativeIntentChangeRecentReceiptDiscoveryService.getRecentReceipt({
+      dbClient: db,
+      policyId: fixture.policyId,
+      actorId: 1,
+    });
+    expect(recentReceipt).toEqual(expect.objectContaining({
+      statusId: 'native_intent_change_recent_receipt_discovery_complete',
+      policyId: fixture.policyId,
+      recentChange: {
+        resultStatusId: 'applied',
+        sourceIntentVersion: 3,
+        targetIntentVersion: 4,
+      },
+      idempotencyKeyExposed: false,
+      commandFingerprintExposed: false,
+      commandValuesExposed: false,
+      receiptHistoryExposed: false,
+    }));
+
+    const otherActorReceipt = await policyNativeIntentChangeRecentReceiptDiscoveryService.getRecentReceipt({
+      dbClient: db,
+      policyId: fixture.policyId,
+      actorId: 2,
+    });
+    expect(otherActorReceipt).toEqual(expect.objectContaining({
+      statusId: 'native_intent_change_recent_receipt_discovery_complete',
+      recentChange: null,
     }));
 
     const after = await policyNativeIntentPurposeChangeReadService.getPurposeChange({

@@ -126,10 +126,19 @@ header serialization, and same-key retry after a lost response. PostgreSQL
 integration coverage verifies one committed revision, one receipt, exact
 replay, stale new attempts, and normal policy deletion cleanup.
 
+## Post-Reload Discovery
+
+**12R.7 Authorized Recent Native Intent Change Receipt Discovery** is complete.
+It adds a separate administrator-, actor-, and policy-bound 60-minute,
+newest-one, read-only status lookup. The projection contains only the fixed
+`applied` status and source/target intent revisions, is `no-store`, and never
+exposes keys, fingerprints, command values, receipt history, identifiers,
+timestamps, raw policy content, or a mutation path. See [Native Intent Change
+Recent Receipt Discovery](native-intent-change-recent-receipt-discovery.md).
+
 ## Follow-Up
 
-The current design is intentionally session-bound. **12R.7 Authorized Recent
-Native Intent Change Receipt Discovery** should evaluate a separate
-administrator-only, actor-scoped, policy-scoped, bounded post-reload read that
-can state whether one recent committed change exists without exposing a key,
-fingerprint, command values, receipt history, or a new mutation path.
+**12R.8 Native Intent Change Receipt Retention And Capacity Guard** must define
+the explicit retention, capacity, and transaction-local maintenance-permit
+rules for this append-only operational table. It must preserve the replay and
+post-reload discovery windows and cannot add a receipt-history browse endpoint.

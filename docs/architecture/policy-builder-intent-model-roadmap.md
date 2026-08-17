@@ -121,11 +121,18 @@ Current execution focus:
   creating another revision or retaining raw rules, AI, compatibility, or
   routing data. See [Native Intent Change Idempotency
   Receipts](native-intent-change-idempotency-receipts.md).
-- **Next:** **12R.7 Authorized Recent Native Intent Change Receipt
-  Discovery**. Evaluate one bounded, actor- and policy-scoped post-reload
-  status read that can report a recent committed native change without
-  exposing idempotency keys, fingerprints, rule values, receipt history, or a
-  new mutation path.
+- **Completed:** **12R.7 Authorized Recent Native Intent Change Receipt
+  Discovery**. A separate administrator-only, actor- and policy-scoped,
+  fixed-window, newest-one read now reports only an `applied` status and source/
+  target intent revisions after reload. It is repeatable-read, read-only,
+  `no-store`, and cannot expose keys, fingerprints, commands, receipt IDs,
+  timestamps, history, raw policy, AI, routing, learning, or mutation authority.
+  See [Native Intent Change Recent Receipt
+  Discovery](native-intent-change-recent-receipt-discovery.md).
+- **Next:** **12R.8 Native Intent Change Receipt Retention And Capacity
+  Guard**. Define bounded operational retention and capacity maintenance for
+  the append-only receipt table without truncating replay or recent-discovery
+  windows, exposing history, or creating policy authority.
 - **Completed:** **10R.4 Release Acceptance Assembly**. Repository acceptance
   now produces a passed or blocked manifest artifact, while a separate
   protected-environment workflow records active-installation evidence without
@@ -166,8 +173,8 @@ completed operational safety acceptance: 10R.3.1 -> 10R.3.2 -> 10R.3.3 -> 10R.3.
 completed release hardening: 10R.4 -> 10R.4.1
 active release candidate: v0.48.0-beta -> 10R.4.2 -> 10R.4.3
 completed post-release authority hardening: 11R.1.1 -> 11R.1.2 -> 11R.2 -> 11R.3 -> 11R.4 -> 11R.5 -> 11R.6 -> 11R.7 -> 11R.8 -> 11R.9
-completed reconciliation and deterministic calibration: 12R.0 -> 12R.1 -> 12R.2 -> 12R.3 -> 12R.4 -> 12R.5 -> 12R.6
-next native purpose-change resilience: 12R.7
+completed reconciliation and deterministic calibration: 12R.0 -> 12R.1 -> 12R.2 -> 12R.3 -> 12R.4 -> 12R.5 -> 12R.6 -> 12R.7
+next native purpose-change resilience: 12R.8
 completed administrator settings concurrency guardrail: 11R.10 AI Settings stale-write conflict acceptance
 continuous guardrail: 9R zero-debt naming and product-language gates
 ```
@@ -13017,13 +13024,41 @@ Implemented design: [Native Intent Change Idempotency Receipts](native-intent-ch
 
 ### 12R.7 Authorized Recent Native Intent Change Receipt Discovery
 
+Status: complete.
+
+Intent: recover one bounded post-reload native change status for the current
+administrator without treating browser state or a receipt identifier as
+authority.
+
+Completion criteria:
+
+- derive administrator actor and route policy scope server-side, reject missing
+  stable actor identity, and accept no caller-controlled actor, receipt, cursor,
+  range, or window input;
+- use a separate newest-one persistence projection for only a fixed `applied`
+  status plus source and target intent versions within a fixed 60-minute
+  window;
+- run the lookup in a repeatable-read, read-only transaction and return a
+  `Cache-Control: no-store` response;
+- keep idempotency keys, command fingerprints and values, receipt IDs and
+  timestamps, receipt history, raw policy, AI, compatibility, routing, and
+  learning data unreachable from the reader;
+- surface only a passive current-account target-revision notice after loading
+  current native authority; and
+- add persistence, service, route, client, presentation, and PostgreSQL
+  integration coverage for scope, projection, no-store, and fail-closed paths.
+
+Implemented design: [Native Intent Change Recent Receipt
+Discovery](native-intent-change-recent-receipt-discovery.md).
+
+### 12R.8 Native Intent Change Receipt Retention And Capacity Guard
+
 Status: planned.
 
-Intent: evaluate a bounded, administrator-only post-reload status read for a
-recent native intent change. It must be actor- and policy-scoped, return only
-fixed receipt status and revision facts, and remain unable to expose a key,
-fingerprint, command values, receipt history, raw policy content, AI data, or
-mutation authority.
+Intent: define a bounded operational lifecycle for append-only native intent
+change receipts so an active installation can control storage growth without
+deleting a receipt still required for exact replay or post-reload discovery,
+enumerating receipt history, or expanding any authority boundary.
 
 ## Testing Strategy
 
@@ -13264,10 +13299,16 @@ The next sequence is dependency-gated rather than phase-number order:
     reused or in-progress keys fail closed without raw policy, AI,
     compatibility, routing, profile, RAG, or history disclosure. See [Native
     Intent Change Idempotency Receipts](native-intent-change-idempotency-receipts.md).
-    **Next: 12R.7 Authorized Recent Native Intent Change Receipt Discovery**.
-    Evaluate an actor- and policy-scoped bounded post-reload status read; it
-    must not expose keys, fingerprints, command values, receipt history, or a
-    mutation path.
+30. **12R.7 Authorized Recent Native Intent Change Receipt Discovery**:
+    complete. A separate fixed-window, newest-one, administrator actor- and
+    policy-scoped reader exposes only an `applied` revision transition or an
+    empty result. It accepts no selection input, is read-only and `no-store`,
+    and cannot expose replay data, receipt history, raw policy, AI,
+    compatibility, routing, learning, or mutation authority. See [Native Intent
+    Change Recent Receipt Discovery](native-intent-change-recent-receipt-discovery.md).
+    **Next: 12R.8 Native Intent Change Receipt Retention And Capacity Guard**.
+    Define retention and capacity safeguards without reducing replay or
+    post-reload recovery safety.
 
 The completed 0R through 3R, 6R, and 7R contracts remain guardrails, not
 permission to restore a diagnostic, template-first, or browser-authoritative

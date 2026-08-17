@@ -116,6 +116,12 @@ policy-bound idempotency receipts to replay an exact committed result after a
 response-loss retry without creating another revision. See [Native Intent
 Change Idempotency Receipts](native-intent-change-idempotency-receipts.md).
 
-The next candidate is 12R.7: an administrator-only, actor- and policy-scoped
-post-reload status read. It must remain bounded and cannot expose retry keys,
-fingerprints, command values, receipt history, or mutation authority.
+12R.7 is complete. The maintenance surface now reads an administrator-, actor-,
+and policy-bound post-reload status through a separate bounded contract. It
+shows a passive current-account revision notice only; it cannot expose retry
+keys, fingerprints, command values, receipt history, or mutation authority.
+See [Native Intent Change Recent Receipt
+Discovery](native-intent-change-recent-receipt-discovery.md).
+
+The next candidate is **12R.8 Native Intent Change Receipt Retention And
+Capacity Guard**.

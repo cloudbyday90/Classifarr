@@ -5,6 +5,7 @@ import { registerPolicyConstraintAdmissionRoutes } from './policiesRoutePolicyCo
 import { registerPolicyAuthoringProposalRoutes } from './policiesRoutePolicyAuthoringProposal.mjs';
 import { registerPolicyNativeIntentReversionRoutes } from './policiesRouteNativeIntentReversion.mjs';
 import { registerPolicyNativeIntentChangeRoutes } from './policiesRouteNativeIntentChange.mjs';
+import { registerPolicyNativeIntentChangeRecentReceiptDiscoveryRoutes } from './policiesRouteNativeIntentChangeRecentReceiptDiscovery.mjs';
 import { registerPolicyNativeIntentPurposeChangeReadRoutes } from './policiesRouteNativeIntentPurposeChangeRead.mjs';
 import { registerPolicyNativeIntentChangePurposePreflightRoutes } from './policiesRouteNativeIntentChangePurposePreflight.mjs';
 import { registerPolicyPurposeCoveragePreflightRoutes } from './policiesRoutePolicyPurposeCoveragePreflight.mjs';
@@ -23,6 +24,7 @@ export function registerPolicyCrudRoutes(router, deps) {
   registerPolicyReadRoutes(router, deps);
   registerPolicyNativeIntentReversionRoutes(router, deps);
   registerPolicyNativeIntentChangeRoutes(router, deps);
+  registerPolicyNativeIntentChangeRecentReceiptDiscoveryRoutes(router, deps);
   registerPolicyNativeIntentPurposeChangeReadRoutes(router, deps);
   registerPolicyNativeIntentChangePurposePreflightRoutes(router, deps);
   registerPolicyPurposeCoveragePreflightRoutes(router, deps);

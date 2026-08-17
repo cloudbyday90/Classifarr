@@ -11,6 +11,7 @@
 import { computed, ref, unref, watch } from 'vue'
 import {
   applyPolicyNativeIntentPurposeChange,
+  getPolicyNativeIntentChangeRecentReceipt,
   getPolicyNativeIntentPurposeChange,
   preflightPolicyNativeIntentPurposeChange,
 } from '@/api/policiesApi'
@@ -32,6 +33,10 @@ const PURPOSE_CHANGE_IDEMPOTENCY_IN_PROGRESS_CODE =
   'POLICY_NATIVE_INTENT_CHANGE_IDEMPOTENCY_KEY_IN_PROGRESS'
 const PURPOSE_CHANGE_IDEMPOTENCY_REUSED_CODE =
   'POLICY_NATIVE_INTENT_CHANGE_IDEMPOTENCY_KEY_REUSED'
+const RECENT_RECEIPT_DISCOVERY_VERSION =
+  'policy.native_intent_change_recent_receipt_discovery.v1'
+const RECENT_RECEIPT_DISCOVERY_COMPLETE =
+  'native_intent_change_recent_receipt_discovery_complete'
 
 function normalizePositiveInteger(value) {
   const numericValue = Number(value)
@@ -84,8 +89,58 @@ function isAppliedPurposeChange(value) {
     normalizePositiveInteger(value?.change?.newIntentVersion)
 }
 
+function isRecentReceiptDiscovery(value, policyId) {
+  const recentChange = value?.recentChange
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    value.version !== RECENT_RECEIPT_DISCOVERY_VERSION ||
+    value.statusId !== RECENT_RECEIPT_DISCOVERY_COMPLETE ||
+    value.mode !== 'read_only' ||
+    normalizePositiveInteger(value.policyId) !== policyId ||
+    value.scope?.actorBound !== true ||
+    value.scope?.policyBound !== true ||
+    value.scope?.browserAuthorityAccepted !== false ||
+    value.scope?.mutationAuthorized !== false ||
+    value.idempotencyKeyExposed !== false ||
+    value.commandFingerprintExposed !== false ||
+    value.commandValuesExposed !== false ||
+    value.receiptHistoryExposed !== false ||
+    value.receiptIdentifierExposed !== false ||
+    value.receiptTimestampExposed !== false ||
+    value.rawPolicyDataExposed !== false ||
+    value.compatibilityDataExposed !== false ||
+    value.aiDataExposed !== false ||
+    value.routingDataExposed !== false ||
+    value.learningDataExposed !== false ||
+    value.sideEffects?.providerAccessed !== false ||
+    value.sideEffects?.policyStorageMutated !== false ||
+    value.sideEffects?.routingAffected !== false ||
+    value.sideEffects?.learningAffected !== false ||
+    value.sideEffects?.databaseWritten !== false
+  ) {
+    return false
+  }
+
+  return recentChange === null || (
+    recentChange &&
+    recentChange.resultStatusId === 'applied' &&
+    normalizePositiveInteger(recentChange.sourceIntentVersion) &&
+    normalizePositiveInteger(recentChange.targetIntentVersion) >
+      normalizePositiveInteger(recentChange.sourceIntentVersion)
+  )
+}
+
+function getRecentReceiptNotice(value) {
+  const targetRevision = normalizePositiveInteger(value?.recentChange?.targetIntentVersion)
+  if (!targetRevision) return ''
+
+  return `A recent native change from this account was confirmed at revision ${targetRevision}. Current authority is shown above.`
+}
+
 export function usePolicyNativeIntentPurposeChange({
   loadPurposeChangeRequest = getPolicyNativeIntentPurposeChange,
+  loadRecentReceiptRequest = getPolicyNativeIntentChangeRecentReceipt,
   preflightPurposeChangeRequest = preflightPolicyNativeIntentPurposeChange,
   applyPurposeChangeRequest = applyPolicyNativeIntentPurposeChange,
   createIdempotencyKey = createNativeIntentChangeIdempotencyKey,
@@ -103,11 +158,13 @@ export function usePolicyNativeIntentPurposeChange({
   const applyError = ref('')
   const feedback = ref('')
   const applyAttempt = ref(null)
+  const recentReceipt = ref(null)
   let activeRequestId = 0
 
   const currentCommand = computed(() => buildNativeIntentPurposeChangeCommand(draftRules.value))
   const currentRevision = computed(() => normalizePositiveInteger(read.value?.revision))
   const available = computed(() => isPurposeChangeRead(read.value, normalizePositiveInteger(read.value?.policyId)))
+  const recentReceiptNotice = computed(() => getRecentReceiptNotice(recentReceipt.value))
 
   const clearPreflight = () => {
     preflight.value = null
@@ -145,9 +202,24 @@ export function usePolicyNativeIntentPurposeChange({
     applyError.value = ''
     feedback.value = ''
     clearApplyAttempt()
+    recentReceipt.value = null
   }
 
-  const load = async (policyIdValue) => {
+  const loadRecentReceipt = async (policyId, requestId) => {
+    recentReceipt.value = null
+    try {
+      const result = await loadRecentReceiptRequest(policyId)
+      if (requestId !== activeRequestId) return false
+      if (isRecentReceiptDiscovery(result, policyId)) {
+        recentReceipt.value = result
+      }
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  const load = async (policyIdValue, { discoverRecentReceipt = true } = {}) => {
     const policyId = normalizePositiveInteger(policyIdValue)
     if (!policyId) {
       clear()
@@ -174,6 +246,11 @@ export function usePolicyNativeIntentPurposeChange({
       read.value = result
       draftRules.value = cloneNativeIntentPurposeChangeRules(result.changeCommand) || []
       clearPreflight()
+      if (discoverRecentReceipt) {
+        await loadRecentReceipt(policyId, requestId)
+      } else {
+        recentReceipt.value = null
+      }
       return true
     } catch (error) {
       if (requestId !== activeRequestId) return false
@@ -280,7 +357,7 @@ export function usePolicyNativeIntentPurposeChange({
 
       clearApplyAttempt()
 
-      const refreshed = await load(policyId)
+      const refreshed = await load(policyId, { discoverRecentReceipt: false })
       if (!refreshed) {
         applyError.value = 'The purpose change was applied, but Classifarr could not reload the current authority.'
         return false
@@ -354,12 +431,15 @@ export function usePolicyNativeIntentPurposeChange({
     applying,
     applyError,
     feedback,
+    recentReceipt,
+    recentReceiptNotice,
     currentCommand,
     currentRevision,
     available,
     clearPreflight,
     resetDraft,
     clear,
+    loadRecentReceipt,
     load,
     startEditing,
     cancelEditing,
@@ -372,4 +452,5 @@ export function usePolicyNativeIntentPurposeChange({
 export {
   isAppliedPurposeChange,
   isPurposeChangeRead,
+  isRecentReceiptDiscovery,
 }

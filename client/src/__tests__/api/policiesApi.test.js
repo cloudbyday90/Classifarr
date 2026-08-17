@@ -41,6 +41,7 @@ import {
   admitPolicyAuthoringProposal,
   getPolicyNativeReadinessSummary,
   getPolicyNativeIntentPurposeChange,
+  getPolicyNativeIntentChangeRecentReceipt,
   preflightPolicyNativeIntentPurposeChange,
   applyPolicyNativeIntentPurposeChange,
   validatePolicyOperatorWorkflowCustomIntentSignal,
@@ -151,22 +152,28 @@ describe('policiesApi', () => {
     expect(mockGetDataRequest).toHaveBeenCalledWith('/policies/7/native-intent/readiness-summary')
   })
 
-  it('uses the bounded native purpose-change endpoints, a stable idempotency key, and no browser authority', async () => {
+  it('uses bounded native purpose-change and recent-status endpoints with a stable idempotency key', async () => {
     const command = {
       command_id: 'update_purpose',
       values: [{ signal_type: 'genres', operator: 'require_any', values: { require_any: ['Animation'] } }],
     }
-    mockGetDataRequest.mockResolvedValueOnce({ revision: 3 })
+    mockGetDataRequest
+      .mockResolvedValueOnce({ revision: 3 })
+      .mockResolvedValueOnce({ recentChange: null })
     mockPost.mockResolvedValueOnce({ data: { advisory: true } })
     mockPost.mockResolvedValueOnce({ data: { statusId: 'applied' } })
 
     await getPolicyNativeIntentPurposeChange(7)
+    await getPolicyNativeIntentChangeRecentReceipt(7)
     await preflightPolicyNativeIntentPurposeChange(7, 3, command)
     await applyPolicyNativeIntentPurposeChange(7, 3, command, {
       idempotencyKey: '6fe3d170-9390-4ec5-95f7-42ad6f8ec777',
     })
 
     expect(mockGetDataRequest).toHaveBeenCalledWith('/policies/7/native-intent/purpose-change')
+    expect(mockGetDataRequest).toHaveBeenCalledWith(
+      '/policies/7/native-intent/change-receipts/recent'
+    )
     expect(mockPost).toHaveBeenNthCalledWith(1,
       '/policies/7/native-intent/changes/purpose-coverage/preflight',
       { expected_revision: 3, change_command: command }

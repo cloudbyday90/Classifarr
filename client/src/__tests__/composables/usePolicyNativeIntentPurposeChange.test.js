@@ -34,6 +34,41 @@ function purposeRead(revision = 3, term = 'Animation') {
   }
 }
 
+function recentReceiptDiscovery(recentChange = null) {
+  return {
+    version: 'policy.native_intent_change_recent_receipt_discovery.v1',
+    statusId: 'native_intent_change_recent_receipt_discovery_complete',
+    mode: 'read_only',
+    policyId: 17,
+    recentChange,
+    scope: {
+      actorBound: true,
+      policyBound: true,
+      browserAuthorityAccepted: false,
+      mutationAuthorized: false,
+    },
+    sideEffects: {
+      storedReceiptRead: true,
+      providerAccessed: false,
+      policyStorageMutated: false,
+      routingAffected: false,
+      learningAffected: false,
+      databaseWritten: false,
+    },
+    idempotencyKeyExposed: false,
+    commandFingerprintExposed: false,
+    commandValuesExposed: false,
+    receiptHistoryExposed: false,
+    receiptIdentifierExposed: false,
+    receiptTimestampExposed: false,
+    rawPolicyDataExposed: false,
+    compatibilityDataExposed: false,
+    aiDataExposed: false,
+    routingDataExposed: false,
+    learningDataExposed: false,
+  }
+}
+
 describe('usePolicyNativeIntentPurposeChange', () => {
   it('loads server-owned authority, preflights the exact command, applies it, and reloads the new revision', async () => {
     const loadPurposeChangeRequest = vi.fn()
@@ -53,8 +88,10 @@ describe('usePolicyNativeIntentPurposeChange', () => {
         change: { applied: true, newIntentVersion: 4 },
       },
     })
+    const loadRecentReceiptRequest = vi.fn().mockResolvedValue(recentReceiptDiscovery())
     const purposeChange = usePolicyNativeIntentPurposeChange({
       loadPurposeChangeRequest,
+      loadRecentReceiptRequest,
       preflightPurposeChangeRequest,
       applyPurposeChangeRequest,
       createIdempotencyKey: () => '6fe3d170-9390-4ec5-95f7-42ad6f8ec777',
@@ -77,6 +114,7 @@ describe('usePolicyNativeIntentPurposeChange', () => {
     )
     expect(purposeChange.currentRevision.value).toBe(4)
     expect(purposeChange.draftRules.value[0].values).toEqual({ require_any: ['Comedy'] })
+    expect(loadRecentReceiptRequest).toHaveBeenCalledWith(17)
   })
 
   it('reloads the server-owned authority on a stale revision instead of retaining the stale draft', async () => {
@@ -85,6 +123,7 @@ describe('usePolicyNativeIntentPurposeChange', () => {
       .mockResolvedValueOnce(purposeRead(4, 'Comedy'))
     const purposeChange = usePolicyNativeIntentPurposeChange({
       loadPurposeChangeRequest,
+      loadRecentReceiptRequest: vi.fn().mockResolvedValue(recentReceiptDiscovery()),
       applyPurposeChangeRequest: vi.fn().mockRejectedValue({
         response: { data: { code: 'POLICY_NATIVE_INTENT_CHANGE_STALE_REVISION' } },
       }),
@@ -116,6 +155,7 @@ describe('usePolicyNativeIntentPurposeChange', () => {
     const createIdempotencyKey = vi.fn(() => '6fe3d170-9390-4ec5-95f7-42ad6f8ec777')
     const purposeChange = usePolicyNativeIntentPurposeChange({
       loadPurposeChangeRequest,
+      loadRecentReceiptRequest: vi.fn().mockResolvedValue(recentReceiptDiscovery()),
       applyPurposeChangeRequest,
       createIdempotencyKey,
     })
@@ -131,5 +171,23 @@ describe('usePolicyNativeIntentPurposeChange', () => {
       { idempotencyKey: '6fe3d170-9390-4ec5-95f7-42ad6f8ec777' },
     ])
     expect(purposeChange.feedback.value).toContain('earlier declared-purpose change was confirmed')
+  })
+
+  it('presents only a validated actor- and policy-bound revision fact after a reload', async () => {
+    const loadRecentReceiptRequest = vi.fn().mockResolvedValue(recentReceiptDiscovery({
+      resultStatusId: 'applied',
+      sourceIntentVersion: 3,
+      targetIntentVersion: 4,
+    }))
+    const purposeChange = usePolicyNativeIntentPurposeChange({
+      loadPurposeChangeRequest: vi.fn().mockResolvedValue(purposeRead()),
+      loadRecentReceiptRequest,
+    })
+
+    await expect(purposeChange.load(17)).resolves.toBe(true)
+
+    expect(loadRecentReceiptRequest).toHaveBeenCalledWith(17)
+    expect(purposeChange.recentReceiptNotice.value).toContain('revision 4')
+    expect(purposeChange.recentReceiptNotice.value).not.toContain('idempotency')
   })
 })

@@ -44,6 +44,15 @@
       <p class="mt-3 text-sm text-indigo-100">
         Current native revision: <span class="font-semibold text-indigo-50">{{ currentRevision }}</span>
       </p>
+      <p
+        v-if="recentReceiptNotice"
+        id="policy-native-purpose-change-recent-receipt"
+        class="mt-3 rounded border border-green-500/50 bg-green-950/20 p-3 text-sm text-green-100"
+        role="status"
+        aria-live="polite"
+      >
+        {{ recentReceiptNotice }}
+      </p>
 
       <div
         v-if="!editing"
@@ -295,6 +304,7 @@ const {
   applying,
   applyError,
   feedback,
+  recentReceiptNotice,
   read,
   currentCommand,
   currentRevision,

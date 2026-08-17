@@ -9,6 +9,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 const { apiMock } = vi.hoisted(() => ({
   apiMock: {
     getPolicyNativeIntentPurposeChange: vi.fn(),
+    getPolicyNativeIntentChangeRecentReceipt: vi.fn(),
     preflightPolicyNativeIntentPurposeChange: vi.fn(),
     applyPolicyNativeIntentPurposeChange: vi.fn(),
   },
@@ -46,9 +47,45 @@ function purposeRead(revision = 3, term = 'Animation') {
   }
 }
 
+function recentReceiptDiscovery(recentChange = null) {
+  return {
+    version: 'policy.native_intent_change_recent_receipt_discovery.v1',
+    statusId: 'native_intent_change_recent_receipt_discovery_complete',
+    mode: 'read_only',
+    policyId: 17,
+    recentChange,
+    scope: {
+      actorBound: true,
+      policyBound: true,
+      browserAuthorityAccepted: false,
+      mutationAuthorized: false,
+    },
+    sideEffects: {
+      storedReceiptRead: true,
+      providerAccessed: false,
+      policyStorageMutated: false,
+      routingAffected: false,
+      learningAffected: false,
+      databaseWritten: false,
+    },
+    idempotencyKeyExposed: false,
+    commandFingerprintExposed: false,
+    commandValuesExposed: false,
+    receiptHistoryExposed: false,
+    receiptIdentifierExposed: false,
+    receiptTimestampExposed: false,
+    rawPolicyDataExposed: false,
+    compatibilityDataExposed: false,
+    aiDataExposed: false,
+    routingDataExposed: false,
+    learningDataExposed: false,
+  }
+}
+
 describe('PolicyNativeIntentPurposeChangeSurface', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    apiMock.getPolicyNativeIntentChangeRecentReceipt.mockResolvedValue(recentReceiptDiscovery())
   })
 
   it('uses the bounded purpose command, then emits the refreshed server-owned read after applying', async () => {
@@ -107,5 +144,22 @@ describe('PolicyNativeIntentPurposeChangeSurface', () => {
     await flushPromises()
 
     expect(wrapper.find('#policy-native-purpose-change').exists()).toBe(false)
+  })
+
+  it('shows a passive recent-change status without replay material or a new action', async () => {
+    apiMock.getPolicyNativeIntentPurposeChange.mockResolvedValue(purposeRead())
+    apiMock.getPolicyNativeIntentChangeRecentReceipt.mockResolvedValue(recentReceiptDiscovery({
+      resultStatusId: 'applied',
+      sourceIntentVersion: 3,
+      targetIntentVersion: 4,
+    }))
+
+    const wrapper = mount(PolicyNativeIntentPurposeChangeSurface, { props: { policyId: 17 } })
+    await flushPromises()
+
+    const receiptNotice = wrapper.get('#policy-native-purpose-change-recent-receipt')
+    expect(receiptNotice.text()).toContain('revision 4')
+    expect(receiptNotice.text()).not.toContain('idempotency')
+    expect(wrapper.findAll('button').map(button => button.text())).not.toContain('Retry receipt')
   })
 })

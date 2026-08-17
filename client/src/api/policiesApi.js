@@ -93,6 +93,10 @@ export function getPolicyNativeIntentPurposeChange(id) {
   return getDataRequest(`/policies/${id}/native-intent/purpose-change`)
 }
 
+export function getPolicyNativeIntentChangeRecentReceipt(id) {
+  return getDataRequest(`/policies/${id}/native-intent/change-receipts/recent`)
+}
+
 export function preflightPolicyNativeIntentPurposeChange(id, expectedRevision, changeCommand) {
   return apiClient.post(`/policies/${id}/native-intent/changes/purpose-coverage/preflight`, {
     expected_revision: expectedRevision,
@@ -179,6 +183,7 @@ const policiesApi = {
   admitPolicyAuthoringProposal,
   getPolicyNativeReadinessSummary,
   getPolicyNativeIntentPurposeChange,
+  getPolicyNativeIntentChangeRecentReceipt,
   preflightPolicyNativeIntentPurposeChange,
   applyPolicyNativeIntentPurposeChange,
   validatePolicyOperatorWorkflowCustomIntentSignal,
