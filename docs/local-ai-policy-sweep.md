@@ -192,6 +192,16 @@ Contains:
 - persisted history status/method
 - summary counters (pass/fail/fallback/pending-retry/awaiting-decision)
 
+## Evaluation-contract foundation
+
+The sweep currently proves local request, queue, AI, response-contract, and
+history persistence health. The versioned fixture contract and pure scorer in
+[Local AI Classification Evaluation Contract](architecture/ai-classification-evaluation-contract.md)
+now define how a later sweep revision will evaluate whether a classification is
+correct for the configured policy. That integration is intentionally separate:
+it will project only bounded response/history fields, add fingerprints, and
+preserve this harness's no-route and cleanup safeguards.
+
 ## Notes for this core round
 
 - This is intentionally focused on the core execution path and contract health checks.

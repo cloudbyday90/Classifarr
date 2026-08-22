@@ -13,6 +13,13 @@ Current development changes will be recorded here.
 
 ### Added
 
+- **AI classification evaluation foundation** — Added a versioned,
+  machine-readable local evaluation-fixture contract and side-effect-free ESM
+  grader. Policy-owner fixtures can define exact classified, clarification, or
+  retry outcomes with method, history-status, library, confidence, and fallback
+  requirements; the grader fails closed on malformed or unbounded inputs and
+  verifies the bounded AI result agrees with persisted history.
+
 - **Compatibility-deletion release review artifacts** — A new local ESM
   generator produces a fresh, fingerprint-bound, non-approving review request
   from bounded execution-plan evidence. It expires with its source evidence,
@@ -63,6 +70,10 @@ Current development changes will be recorded here.
   profile, history, or library names as route authority.
 
 ### Changed
+
+- **Workflow dependency pins** — Applied open Dependabot PR #516 locally
+  without merging it, advancing the pinned Docker Buildx action to v4.3.0 and
+  the OSV Scanner action/reusable workflows to v2.5.1.
 
 - **CodeQL security actions** — Applied Dependabot PR #511 locally (without
   merging it), advancing the pinned CodeQL init, analysis, and SARIF-upload

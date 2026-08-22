@@ -1,0 +1,229 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:classifarr:ai-classification-evaluation-fixture:v1",
+  "title": "Classifarr AI Classification Evaluation Fixture v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "id",
+    "name",
+    "tags",
+    "request",
+    "expected"
+  ],
+  "properties": {
+    "version": {
+      "const": "classifarr.ai_classification_evaluation_fixture.v1"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,79}$"
+    },
+    "name": {
+      "$ref": "#/$defs/boundedText240"
+    },
+    "tags": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9._-]{0,47}$"
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tmdbId",
+        "mediaType",
+        "title"
+      ],
+      "properties": {
+        "tmdbId": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "mediaType": {
+          "enum": [
+            "movie",
+            "tv"
+          ]
+        },
+        "title": {
+          "$ref": "#/$defs/boundedText240"
+        }
+      }
+    },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fallbackAllowed",
+        "outcomes"
+      ],
+      "properties": {
+        "fallbackAllowed": {
+          "type": "boolean"
+        },
+        "outcomes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/expectedOutcome"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "boundedText240": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+    },
+    "boundedText255": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+    },
+    "method": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,79}$"
+    },
+    "library": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "name": {
+          "$ref": "#/$defs/boundedText255"
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "id"
+          ]
+        },
+        {
+          "required": [
+            "name"
+          ]
+        }
+      ]
+    },
+    "confidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minimum",
+        "maximum"
+      ],
+      "properties": {
+        "minimum": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "maximum": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "expectedOutcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decisionKind",
+        "methods",
+        "historyStatuses"
+      ],
+      "properties": {
+        "decisionKind": {
+          "enum": [
+            "classified",
+            "clarification",
+            "retry"
+          ]
+        },
+        "methods": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/method"
+          }
+        },
+        "historyStatuses": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "awaiting_decision",
+              "completed",
+              "pending_retry"
+            ]
+          }
+        },
+        "library": {
+          "$ref": "#/$defs/library"
+        },
+        "confidence": {
+          "$ref": "#/$defs/confidence"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "decisionKind": {
+                "const": "classified"
+              }
+            },
+            "required": [
+              "decisionKind"
+            ]
+          },
+          "then": {
+            "required": [
+              "library",
+              "confidence"
+            ]
+          },
+          "else": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "library"
+                  ]
+                },
+                {
+                  "required": [
+                    "confidence"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}
