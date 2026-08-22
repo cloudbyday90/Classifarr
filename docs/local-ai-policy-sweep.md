@@ -28,6 +28,9 @@ This implementation follows current testing and reliability guidance:
 
 - Authenticates with an existing bearer token, or logs in as admin and extracts access token.
 - Supports admin API key exchange into a short-lived scoped JWT via `/api/auth/token/exchange-local-sweep`.
+  Immediately after a successful exchange, the harness performs one read-only
+  `GET /api/settings/ai` preflight using that JWT. It does not retry the
+  credentialed exchange if this check fails.
 - Validates preconditions:
   - `/api/libraries` has at least one configured library.
   - `/api/settings/ai` is readable and returns its current `ETag` write
@@ -92,6 +95,26 @@ npm run test:local:ai-policy-sweep -- --token "<ACCESS_TOKEN>" --models "qwen3.5
 ```
 
 ### Option 1b: admin API key exchange (recommended for local automation)
+
+Prefer a prompted environment variable so the key is not retained in shell
+history or the process command line:
+
+```powershell
+$secureApiKey = Read-Host -Prompt "Admin API key" -AsSecureString
+$apiKeyPointer = [IntPtr]::Zero
+try {
+  $apiKeyPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureApiKey)
+  $env:CLASSIFARR_API_KEY = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($apiKeyPointer)
+  npm run test:local:ai-policy-sweep -- --models "qwen3.5:4b,llama3.1:8b"
+} finally {
+  Remove-Item Env:CLASSIFARR_API_KEY -ErrorAction SilentlyContinue
+  if ($apiKeyPointer -ne [IntPtr]::Zero) {
+    [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($apiKeyPointer)
+  }
+}
+```
+
+The command-line form remains available for controlled local use:
 
 ```powershell
 npm run test:local:ai-policy-sweep -- --api-key "<CLF_ADMIN_API_KEY>" --models "qwen3.5:4b,llama3.1:8b"
@@ -164,12 +187,26 @@ The exchange endpoint follows current JWT/Bearer guidance:
 - explicit method-and-route scoping enforced by auth middleware for exchanged
   tokens; queue mutations are excluded
 - admin API key required for exchange
+- an immediate read-only scoped-token preflight before any settings change or
+  media submission; a rejected token fails closed and is never logged
+- explicit `HS256` allowlist and issuer validation for access JWTs, plus a
+  second audience check for the scoped local-sweep token
+- no automatic retry of the credentialed `POST` exchange; this avoids minting
+  extra tokens or repeating its audit side effects after an ambiguous failure
 
 Reference standards:
 
+- RFC 9700 (OAuth 2.0 Security BCP): audience-restricted, least-privilege
+  access tokens and secret handling
 - RFC 8725 (JWT BCP): algorithm/claim validation, audience and confusion defenses
 - RFC 7519 (JWT): registered claims and validation semantics
 - RFC 6750 (Bearer): TLS protection, short-lived and scoped bearer tokens
+- RFC 9110 (HTTP semantics): non-idempotent `POST` requests are not retried
+  automatically without a specific idempotency design
+
+The full design, researched options, security boundary, and regression coverage
+are recorded in [Local AI Policy Sweep API-Key Authentication and
+Preflight](architecture/local-ai-policy-sweep-api-key-authentication.md).
 
 ## Fixtures
 

@@ -216,7 +216,11 @@ five aggregate counts, and is registered before `/:id` policy routes.
   legacy fixtures.
 - `scripts/local-ai-policy-sweep.mjs` consumes the adapter, preserves cleanup
   identifiers in a reduced submission summary, polls queued task witnesses,
-  and adds evaluation counters.
+  and adds evaluation counters. Its API-key flow is isolated in
+  `scripts/lib/localAiPolicySweepAuthentication.mjs`; it exchanges the key once
+  and verifies the resulting scoped token with a read-only request before the
+  sweep changes settings or submits media. See [Local AI Policy Sweep API-Key
+  Authentication and Preflight](local-ai-policy-sweep-api-key-authentication.md).
 
 Focused tests cover canonical policy context construction, timestamp stability,
 semantic change detection, digest non-disclosure, the read-only API response,

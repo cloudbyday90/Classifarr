@@ -12,6 +12,9 @@ function route(method, path, match = 'exact') {
   return Object.freeze({ method, path, match });
 }
 
+export const LOCAL_AI_POLICY_SWEEP_TOKEN_AUDIENCE = 'classifarr:local-ai-policy-sweep';
+export const LOCAL_AI_POLICY_SWEEP_TOKEN_USE = 'local_ai_policy_sweep';
+
 // The local sweep uses these routes only. A method-and-route list prevents a
 // short-lived diagnostic token from inheriting the full admin queue surface.
 export const LOCAL_AI_POLICY_SWEEP_ALLOWED_API_ROUTES = Object.freeze([

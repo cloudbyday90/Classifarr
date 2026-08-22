@@ -19,6 +19,9 @@ import {
 import {
   validateAiPolicySweepFixtureDocument,
 } from './lib/aiPolicySweepFixtureDocument.mjs';
+import {
+  createAuthenticatedLocalAiPolicySweepApi,
+} from './lib/localAiPolicySweepAuthentication.mjs';
 
 const DEFAULT_BASE_URL = 'http://localhost:3000';
 const DEFAULT_FIXTURES = path.resolve('scripts/fixtures/ai-policy-sweep.fixtures.json');
@@ -203,27 +206,6 @@ function sleep(ms) {
   });
 }
 
-function parseAccessTokenFromSetCookie(headers) {
-  const setCookies = typeof headers.getSetCookie === 'function'
-    ? headers.getSetCookie()
-    : [];
-
-  const all = [...setCookies];
-  const single = headers.get('set-cookie');
-  if (single) {
-    all.push(single);
-  }
-
-  for (const raw of all) {
-    const match = raw.match(/(?:^|\s|,)access_token=([^;]+)/);
-    if (match && match[1]) {
-      return decodeURIComponent(match[1]);
-    }
-  }
-
-  return null;
-}
-
 async function readJsonFile(filePath) {
   const content = await readFile(filePath, 'utf8');
   return JSON.parse(content);
@@ -242,123 +224,12 @@ function buildDefaultOutputPath() {
   return path.resolve('.tmp/reports', fileName);
 }
 
-function createApiClient(baseUrl, token) {
-  const normalizedBase = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-
-  async function requestJsonWithResponse(route, options = {}) {
-    const method = options.method || 'GET';
-    const headers = {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    };
-
-    const includeAuth = options.includeAuth !== false;
-
-    if (includeAuth && token) {
-      headers.Authorization = `Bearer ${token}`;
-    }
-
-    const response = await fetch(`${normalizedBase}${route}`, {
-      method,
-      headers,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
-    });
-
-    let payload = null;
-    try {
-      payload = await response.json();
-    } catch (_err) {
-      payload = null;
-    }
-
-    if (!response.ok) {
-      const reason = payload?.error || payload?.message || `${response.status} ${response.statusText}`;
-      throw new Error(`${method} ${route} failed: ${reason}`);
-    }
-
-    return { payload, headers: response.headers };
-  }
-
-  async function requestJson(route, options = {}) {
-    const { payload } = await requestJsonWithResponse(route, options);
-    return payload;
-  }
-
-  return {
-    requestJson,
-    requestJsonWithResponse,
-  };
-}
-
 function getAiSettingsWritePrecondition(response) {
   const writePrecondition = response?.headers?.get('etag');
   if (!writePrecondition) {
     throw new Error('AI settings response did not return its required write precondition.');
   }
   return writePrecondition;
-}
-
-async function loginForBearer(baseUrl, username, password) {
-  const response = await fetch(`${baseUrl.replace(/\/$/, '')}/api/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      identifier: username,
-      password,
-      rememberMe: false,
-    }),
-  });
-
-  let body = null;
-  try {
-    body = await response.json();
-  } catch (_err) {
-    body = null;
-  }
-
-  if (!response.ok) {
-    const reason = body?.error || body?.message || `${response.status} ${response.statusText}`;
-    throw new Error(`Login failed: ${reason}`);
-  }
-
-  const token = parseAccessTokenFromSetCookie(response.headers);
-  if (!token) {
-    throw new Error('Login succeeded but no access_token cookie was returned.');
-  }
-
-  return token;
-}
-
-async function exchangeApiKeyForSweepToken(baseUrl, apiKey) {
-  const response = await fetch(`${baseUrl.replace(/\/$/, '')}/api/auth/token/exchange-local-sweep`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-    },
-    body: JSON.stringify({
-      ttl_seconds: 300,
-    }),
-  });
-
-  let body = null;
-  try {
-    body = await response.json();
-  } catch (_err) {
-    body = null;
-  }
-
-  if (!response.ok) {
-    const reason = body?.error || body?.message || `${response.status} ${response.statusText}`;
-    throw new Error(`API key exchange failed: ${reason}`);
-  }
-
-  const token = body?.accessToken || body?.data?.accessToken || null;
-  if (!token || typeof token !== 'string') {
-    throw new Error('API key exchange succeeded but no access token was returned.');
-  }
-
-  return token;
 }
 
 function validateClassifyResponse(response, { failOnFallback }) {
@@ -787,24 +658,27 @@ async function runSweep() {
     token = null;
   }
 
-  if (!token && args.apiKey) {
-    token = await exchangeApiKeyForSweepToken(args.baseUrl, args.apiKey);
-    console.log('Authenticated via admin API key exchange and received scoped access token.');
-  }
+  const authentication = await createAuthenticatedLocalAiPolicySweepApi({
+    baseUrl: args.baseUrl,
+    token,
+    apiKey: args.apiKey,
+    username: args.username,
+    password: args.password,
+  });
 
-  if (!token) {
-    if (!args.username || !args.password) {
-      throw new Error('Authentication required: provide --token, --api-key, or both --username and --password.');
-    }
-    token = await loginForBearer(args.baseUrl, args.username, args.password);
+  if (authentication.authenticationMethod === 'api_key_exchange') {
+    console.log('Authenticated via admin API key exchange and received scoped access token.');
+    console.log('Scoped token read-only preflight succeeded.');
+  } else if (authentication.authenticationMethod === 'password_login') {
     console.log('Authenticated via /api/auth/login and received access token.');
   }
 
-  const api = createApiClient(args.baseUrl, token);
+  const { api } = authentication;
 
-  const [libraries, baselineAiConfigResponse, baselineHistory, baselineSettings, policyContext] = await Promise.all([
+  const baselineAiConfigResponse = authentication.initialAiSettingsResponse ||
+    await api.requestJsonWithResponse('/api/settings/ai');
+  const [libraries, baselineHistory, baselineSettings, policyContext] = await Promise.all([
     api.requestJson('/api/libraries'),
-    api.requestJsonWithResponse('/api/settings/ai'),
     fetchHistoryPage(api),
     api.requestJson('/api/settings'),
     api.requestJson('/api/policies/evaluation-context'),

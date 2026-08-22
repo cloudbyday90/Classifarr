@@ -8,6 +8,10 @@
  * (at your option) any later version.
  */
 import { verifyToken } from '../services/auth.mjs';
+import {
+  LOCAL_AI_POLICY_SWEEP_TOKEN_AUDIENCE,
+  LOCAL_AI_POLICY_SWEEP_TOKEN_USE,
+} from '../services/localAiPolicySweepAccess.mjs';
 
 function requestPath(req) {
   // Router-level middleware sees req.path relative to its mount point. Scope
@@ -76,8 +80,8 @@ export async function authenticateToken(req, res, next) {
 
     const user = await verifyToken(token);
 
-    if (user?.token_use === 'local_ai_policy_sweep') {
-      if (user.aud !== 'classifarr:local-ai-policy-sweep') {
+    if (user?.token_use === LOCAL_AI_POLICY_SWEEP_TOKEN_USE) {
+      if (user.aud !== LOCAL_AI_POLICY_SWEEP_TOKEN_AUDIENCE) {
         return res.status(403).json({ error: 'Invalid or expired token' });
       }
 

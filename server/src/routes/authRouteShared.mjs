@@ -18,7 +18,11 @@ import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData, sendSuccess, sendError } from '../utils/responseHelpers.mjs';
 import { ValidationError, AuthenticationError, NotFoundError } from '../utils/appError.mjs';
 import { requireValidId } from './routeHelpers.mjs';
-import { LOCAL_AI_POLICY_SWEEP_ALLOWED_API_ROUTES } from '../services/localAiPolicySweepAccess.mjs';
+import {
+  LOCAL_AI_POLICY_SWEEP_ALLOWED_API_ROUTES,
+  LOCAL_AI_POLICY_SWEEP_TOKEN_AUDIENCE,
+  LOCAL_AI_POLICY_SWEEP_TOKEN_USE,
+} from '../services/localAiPolicySweepAccess.mjs';
 
 export function createAuthRouter({
   express,
@@ -143,8 +147,8 @@ export function createAuthRouter({
       accessToken,
       tokenType: 'Bearer',
       expiresIn: boundedTtlSeconds,
-      tokenUse: 'local_ai_policy_sweep',
-      audience: 'classifarr:local-ai-policy-sweep',
+      tokenUse: LOCAL_AI_POLICY_SWEEP_TOKEN_USE,
+      audience: LOCAL_AI_POLICY_SWEEP_TOKEN_AUDIENCE,
       allowedApiRoutes: LOCAL_AI_POLICY_SWEEP_ALLOWED_API_ROUTES,
     });
   }));

@@ -153,6 +153,12 @@ Current development changes will be recorded here.
 
 ### Fixed
 
+- **Local-sweep API-key authentication** — The local AI evaluation harness now
+  exchanges an admin key once, validates the resulting scoped token with a
+  read-only preflight, and fails with credential-safe diagnostics instead of
+  retrying the non-idempotent exchange. Access-token verification also pins
+  the issuer and HS256 algorithm and enforces the scoped-token audience.
+
 - **Queued non-final evaluation grading** — Local sweep evaluation now
   preserves the deliberately absent confidence in clarification and retry
   decision witnesses instead of coercing it to zero. The grader records that

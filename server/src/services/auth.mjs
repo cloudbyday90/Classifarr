@@ -35,7 +35,11 @@ import {
   resolveValidatedRefreshTokenRow,
   resolveRefreshTokenExpiry,
 } from './authTokenShared.mjs';
-import { LOCAL_AI_POLICY_SWEEP_ALLOWED_API_ROUTES } from './localAiPolicySweepAccess.mjs';
+import {
+  LOCAL_AI_POLICY_SWEEP_ALLOWED_API_ROUTES,
+  LOCAL_AI_POLICY_SWEEP_TOKEN_AUDIENCE,
+  LOCAL_AI_POLICY_SWEEP_TOKEN_USE,
+} from './localAiPolicySweepAccess.mjs';
 
 export {
   ACCESS_TOKEN_EXPIRY,
@@ -52,6 +56,8 @@ export { hashToken } from './authTokenShared.mjs';
 const logger = createLogger('auth');
 
 const SALT_ROUNDS = 12;
+const ACCESS_TOKEN_JWT_ALGORITHMS = Object.freeze(['HS256']);
+const ACCESS_TOKEN_JWT_ISSUER = 'classifarr';
 let nonPersistentAccessInvalidBeforeMs = Date.now();
 
 const DUMMY_HASH = bcrypt.hashSync('dummy-timing-placeholder', SALT_ROUNDS);
@@ -119,15 +125,16 @@ export async function generateScopedAccessToken(user, options = {}) {
     type: 'access',
     persistent_session: false,
     issued_at_ms: issuedAtMs,
-    token_use: 'local_ai_policy_sweep',
+    token_use: LOCAL_AI_POLICY_SWEEP_TOKEN_USE,
     allowed_api_routes: LOCAL_AI_POLICY_SWEEP_ALLOWED_API_ROUTES,
     jti: crypto.randomUUID(),
   };
 
   return jwt.sign(payload, secret, {
+    algorithm: ACCESS_TOKEN_JWT_ALGORITHMS[0],
     expiresIn: `${boundedTtlSeconds}s`,
-    issuer: 'classifarr',
-    audience: 'classifarr:local-ai-policy-sweep',
+    issuer: ACCESS_TOKEN_JWT_ISSUER,
+    audience: LOCAL_AI_POLICY_SWEEP_TOKEN_AUDIENCE,
   });
 }
 
@@ -200,7 +207,17 @@ export async function cleanupExpiredTokens() {
 
 export async function verifyToken(token) {
   const secret = await getJWTSecret();
-  const decoded = jwt.verify(token, secret);
+  const decoded = jwt.verify(token, secret, {
+    algorithms: ACCESS_TOKEN_JWT_ALGORITHMS,
+    issuer: ACCESS_TOKEN_JWT_ISSUER,
+  });
+
+  if (
+    decoded?.token_use === LOCAL_AI_POLICY_SWEEP_TOKEN_USE &&
+    decoded.aud !== LOCAL_AI_POLICY_SWEEP_TOKEN_AUDIENCE
+  ) {
+    throw new jwt.JsonWebTokenError('Invalid local AI policy sweep token audience');
+  }
 
   if (
     decoded?.type === 'access' &&

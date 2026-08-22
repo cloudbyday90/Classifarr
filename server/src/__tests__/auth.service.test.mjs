@@ -370,7 +370,23 @@ describe('Auth Service - token and persistence flows', () => {
     db.query.mockResolvedValueOnce({ rows: [{ secret: 'jwt-secret' }] });
 
     await expect(authService.verifyToken('token-value')).resolves.toEqual({ id: 1, type: 'access' });
-    expect(verifySpy).toHaveBeenCalledWith('token-value', 'jwt-secret');
+    expect(verifySpy).toHaveBeenCalledWith('token-value', 'jwt-secret', {
+      algorithms: ['HS256'],
+      issuer: 'classifarr',
+    });
+  });
+
+  test('verifyToken rejects a scoped sweep token with the wrong audience after signature validation', async () => {
+    jest.spyOn(jwt, 'verify').mockReturnValue({
+      id: 1,
+      type: 'access',
+      token_use: 'local_ai_policy_sweep',
+      aud: 'untrusted-audience',
+    });
+    db.query.mockResolvedValueOnce({ rows: [{ secret: 'jwt-secret' }] });
+
+    await expect(authService.verifyToken('wrong-audience-token'))
+      .rejects.toHaveProperty('name', 'JsonWebTokenError');
   });
 
   test('verifyToken propagates the original JWT error so callers can inspect error.name', async () => {
