@@ -16,6 +16,9 @@ import {
   buildSweepEvaluationArtifact,
   normalizeSweepFixtures,
 } from './lib/aiClassificationEvaluationSweepAdapter.mjs';
+import {
+  validateAiPolicySweepFixtureDocument,
+} from './lib/aiPolicySweepFixtureDocument.mjs';
 
 const DEFAULT_BASE_URL = 'http://localhost:3000';
 const DEFAULT_FIXTURES = path.resolve('scripts/fixtures/ai-policy-sweep.fixtures.json');
@@ -769,10 +772,14 @@ async function runSweep() {
   assertNotCiUnlessAllowed(args);
 
   const fixtureDocument = await readJsonFile(args.fixturesPath);
-  const fixtures = normalizeSweepFixtures(fixtureDocument);
-  if (fixtures.length === 0) {
-    throw new Error(`Fixture file has no items: ${args.fixturesPath}`);
+  const fixtureDocumentValidation = validateAiPolicySweepFixtureDocument(fixtureDocument);
+  if (!fixtureDocumentValidation.ok) {
+    const detail = fixtureDocumentValidation.issues
+      .map(issue => `${issue.path}: ${issue.message}`)
+      .join('\n');
+    throw new Error(`Fixture document is invalid:\n${detail}`);
   }
+  const fixtures = normalizeSweepFixtures(fixtureDocument);
 
   let token = args.token;
   if (!args.apiKey && typeof token === 'string' && token.startsWith('clf_')) {
@@ -888,6 +895,7 @@ async function runSweep() {
       existingMediaMethodCount: 0,
       sourceLibraryMethodCount: 0,
       evaluationFixtureDefinitionCount: runnableFixtures.filter(fixture => fixture.evaluationFixture).length,
+      evaluationFixtureDocumentCount: fixtureDocumentValidation.evaluationFixtureCount,
       evaluatedCount: 0,
       evaluationPassCount: 0,
       evaluationFailCount: 0,

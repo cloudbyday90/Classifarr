@@ -12,7 +12,6 @@ import {
   evaluateAiClassificationEvaluation,
 } from '../../server/src/services/aiClassificationEvaluationGrader.mjs';
 import {
-  AI_CLASSIFICATION_EVALUATION_FIXTURE_VERSION,
   validateAiClassificationEvaluationFixture,
 } from '../../server/src/services/aiClassificationEvaluationFixtureContract.mjs';
 import {
@@ -21,6 +20,9 @@ import {
 import {
   validateClassificationQueueDecisionWitness,
 } from '../../server/src/services/classificationQueueDecisionWitness.mjs';
+import {
+  isVersionedFixtureCandidate,
+} from './aiPolicySweepFixtureDocument.mjs';
 
 const AI_CLASSIFICATION_EVALUATION_STATUS = Object.freeze({
   EVALUATED: 'evaluated',
@@ -34,6 +36,7 @@ function asPositiveInteger(value) {
 }
 
 function asFiniteNumber(value) {
+  if (value === null || value === undefined) return null;
   const numeric = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(numeric) ? numeric : null;
 }
@@ -98,12 +101,13 @@ function projectQueuedDecisionWitnessObservation({ decisionWitness, historyRow }
 }
 
 function toSweepFixture(fixture) {
-  if (fixture?.version === AI_CLASSIFICATION_EVALUATION_FIXTURE_VERSION) {
+  if (isVersionedFixtureCandidate(fixture)) {
+    const request = fixture.request && typeof fixture.request === 'object' ? fixture.request : {};
     return {
-      ...fixture.request,
+      ...request,
       name: fixture.name,
-      tmdb_id: fixture.request.tmdbId,
-      media_type: fixture.request.mediaType,
+      tmdb_id: request.tmdbId,
+      media_type: request.mediaType,
       evaluationFixture: fixture,
     };
   }

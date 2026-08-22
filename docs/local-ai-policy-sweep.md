@@ -198,6 +198,15 @@ and example in [Local AI Classification Evaluation
 Contract](architecture/ai-classification-evaluation-contract.md), then replace
 the library selector and acceptable outcomes with your reviewed local policy.
 
+The default document includes four reviewed, installation-specific
+clarification fixtures. They require `fallbackAllowed=false`, the reviewed
+method, and `awaiting_decision` persistence, and are therefore a local policy
+cohort rather than universal media truth. Their design and review boundary are
+recorded in [Reviewed Local AI Classification Fixture Cohort v1](architecture/ai-classification-evaluation-fixture-cohort-v1.md).
+The harness validates the complete fixture document before authentication or a
+media request; malformed entries, unknown legacy fields, duplicate versioned
+IDs, and unsupported fixture versions fail closed.
+
 If a queued witness is unavailable or invalid, the report explicitly records a
 `not_evaluated` reason and fails that versioned fixture rather than synthesizing
 a response from history. Queue, history, contamination, and no-route checks
@@ -221,7 +230,8 @@ Contains:
 - evaluation counts and, for evaluated direct or queued rows,
   fixture/policy/runtime/outcome SHA-256 fingerprints plus a deterministic
   quality score; queued rows also retain only task/history IDs and witness
-  fingerprint metadata
+  fingerprint metadata; the report distinguishes total versioned fixtures in
+  the document from the subset runnable on this local library state
 
 The sweep obtains policy context from `GET /api/policies/evaluation-context`.
 That admin-protected endpoint is the only policy path added to the exchanged

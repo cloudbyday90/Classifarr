@@ -12,10 +12,25 @@
     "title": "Inception"
   },
   {
+    "version": "classifarr.ai_classification_evaluation_fixture.v1",
+    "id": "local-ambiguity-deep-water-2006",
     "name": "Movie - ambiguity cluster - Deep Water (2006)",
-    "tmdb_id": 15030,
-    "media_type": "movie",
-    "title": "Deep Water"
+    "tags": ["local-policy-cohort", "ambiguity", "movie", "clarification"],
+    "request": {
+      "tmdbId": 15030,
+      "mediaType": "movie",
+      "title": "Deep Water"
+    },
+    "expected": {
+      "fallbackAllowed": false,
+      "outcomes": [
+        {
+          "decisionKind": "clarification",
+          "methods": ["ai_analysis"],
+          "historyStatuses": ["awaiting_decision"]
+        }
+      ]
+    }
   },
   {
     "name": "Movie - ambiguity cluster - Deep Water (2022)",
@@ -30,16 +45,46 @@
     "title": "Deep Water"
   },
   {
+    "version": "classifarr.ai_classification_evaluation_fixture.v1",
+    "id": "local-remake-crash-1996",
     "name": "Movie - remake collision - Crash (1996)",
-    "tmdb_id": 884,
-    "media_type": "movie",
-    "title": "Crash"
+    "tags": ["local-policy-cohort", "remake-collision", "movie", "clarification"],
+    "request": {
+      "tmdbId": 884,
+      "mediaType": "movie",
+      "title": "Crash"
+    },
+    "expected": {
+      "fallbackAllowed": false,
+      "outcomes": [
+        {
+          "decisionKind": "clarification",
+          "methods": ["ai_analysis"],
+          "historyStatuses": ["awaiting_decision"]
+        }
+      ]
+    }
   },
   {
+    "version": "classifarr.ai_classification_evaluation_fixture.v1",
+    "id": "local-remake-crash-2005",
     "name": "Movie - remake collision - Crash (2005)",
-    "tmdb_id": 1640,
-    "media_type": "movie",
-    "title": "Crash"
+    "tags": ["local-policy-cohort", "remake-collision", "movie", "clarification"],
+    "request": {
+      "tmdbId": 1640,
+      "mediaType": "movie",
+      "title": "Crash"
+    },
+    "expected": {
+      "fallbackAllowed": false,
+      "outcomes": [
+        {
+          "decisionKind": "clarification",
+          "methods": ["policy_engine"],
+          "historyStatuses": ["awaiting_decision"]
+        }
+      ]
+    }
   },
   {
     "name": "Movie - franchise span - Halloween (1978)",
@@ -78,9 +123,24 @@
     "title": "The Office"
   },
   {
+    "version": "classifarr.ai_classification_evaluation_fixture.v1",
+    "id": "local-name-collision-office-uk",
     "name": "TV - name collision - UK original",
-    "tmdb_id": 2996,
-    "media_type": "tv",
-    "title": "The Office"
+    "tags": ["local-policy-cohort", "name-collision", "tv", "clarification"],
+    "request": {
+      "tmdbId": 2996,
+      "mediaType": "tv",
+      "title": "The Office"
+    },
+    "expected": {
+      "fallbackAllowed": false,
+      "outcomes": [
+        {
+          "decisionKind": "clarification",
+          "methods": ["policy_engine"],
+          "historyStatuses": ["awaiting_decision"]
+        }
+      ]
+    }
   }
 ]

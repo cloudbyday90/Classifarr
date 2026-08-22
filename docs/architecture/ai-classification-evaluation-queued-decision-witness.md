@@ -18,8 +18,10 @@ narrow, validated projection and deterministically compares the two sources.
 
 The witness is an evaluation artifact, not a routing command, an AI transcript,
 or a durable audit log. It contains only task and history identifiers, a
-versioned SHA-256 fingerprint, method, status, confidence, library selector,
-and clarification/retry flags. It never contains prompts, provider output,
+versioned SHA-256 fingerprint, method, status, final-decision confidence and
+library selector, and clarification/retry flags. A clarification or retry
+stores `confidence` and `library` as `null`, because neither is a final
+destination decision. It never contains prompts, provider output,
 policy text, tokens, webhook payloads, titles, or routing instructions.
 
 ## Official-Source Research
@@ -144,7 +146,8 @@ into the pre-persistence source projection.
 
 The builder accepts only a positive queue task ID; identifier-like method and
 status values; finite confidence in `0..100`; a library with both a positive ID
-and bounded sanitized name for final outcomes; and strict booleans. It fails
+and bounded sanitized name for final outcomes; and strict booleans. Non-final
+outcomes must instead have `null` confidence and library projections. It fails
 closed and does not create a witness for malformed input.
 
 ### Storage and retention

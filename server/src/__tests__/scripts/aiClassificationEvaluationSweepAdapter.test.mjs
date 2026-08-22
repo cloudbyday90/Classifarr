@@ -48,6 +48,28 @@ const historyRow = {
   library_name: 'Movies',
 };
 
+const clarificationFixture = {
+  ...evaluationFixture,
+  id: 'clarification-movie',
+  expected: {
+    fallbackAllowed: false,
+    outcomes: [{
+      decisionKind: 'clarification',
+      methods: ['ai_analysis'],
+      historyStatuses: ['awaiting_decision'],
+    }],
+  },
+};
+
+const clarificationHistoryRow = {
+  ...historyRow,
+  method: 'ai_analysis',
+  status: 'awaiting_decision',
+  confidence: 62.13,
+  library_id: null,
+  library_name: null,
+};
+
 const policyContext = buildAiClassificationEvaluationPolicyContext({
   policies: [{ policy: { id: 7, enabled: true } }],
 });
@@ -125,6 +147,38 @@ describe('AI classification evaluation sweep adapter', () => {
     expect(artifact.result.passed).toBe(true);
   });
 
+  test('grades a queued clarification without fabricating its omitted confidence', () => {
+    const [fixture] = normalizeSweepFixtures([clarificationFixture]);
+    const decisionWitness = buildClassificationQueueDecisionWitness({
+      queueTaskId: 23,
+      result: {
+        method: 'ai_analysis',
+        confidence: 62.13,
+        needs_clarification: true,
+        needs_retry: false,
+      },
+      persistenceState: { status: 'awaiting_decision' },
+    });
+    const artifact = buildSweepEvaluationArtifact({
+      fixture,
+      queueDecisionWitness: decisionWitness,
+      historyRow: clarificationHistoryRow,
+      policyContext,
+      runtime: { model: 'qwen3.5:4b', ingestMode: 'requests' },
+    });
+
+    expect(decisionWitness.outcome.confidence).toBeNull();
+    expect(artifact.status).toBe(AI_CLASSIFICATION_EVALUATION_STATUS.EVALUATED);
+    expect(artifact.result.passed).toBe(true);
+    expect(artifact.result.checks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'confidence_consistency',
+        expected: 'not_observed_for_non_final_decision',
+        actual: 'not_applicable',
+      }),
+    ]));
+  });
+
   test('refuses a tampered queued witness', () => {
     const [fixture] = normalizeSweepFixtures([evaluationFixture]);
     const witness = buildClassificationQueueDecisionWitness({
@@ -158,6 +212,26 @@ describe('AI classification evaluation sweep adapter', () => {
       policyContext,
     });
 
+    expect(artifact).toEqual({
+      status: AI_CLASSIFICATION_EVALUATION_STATUS.INVALID,
+      fixtureId: 'clear-movie',
+      reasonId: 'invalid_evaluation_fixture',
+    });
+  });
+
+  test('treats an unsupported version as an invalid evaluation candidate, not a legacy fixture', () => {
+    const [fixture] = normalizeSweepFixtures([{
+      ...evaluationFixture,
+      version: 'classifarr.ai_classification_evaluation_fixture.v0',
+    }]);
+    const artifact = buildSweepEvaluationArtifact({
+      fixture,
+      classificationResponse: directResponse,
+      historyRow,
+      policyContext,
+    });
+
+    expect(fixture.evaluationFixture).not.toBeNull();
     expect(artifact).toEqual({
       status: AI_CLASSIFICATION_EVALUATION_STATUS.INVALID,
       fixtureId: 'clear-movie',

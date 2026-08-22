@@ -13,6 +13,14 @@ Current development changes will be recorded here.
 
 ### Added
 
+- **Reviewed local AI-evaluation cohort** — Four runnable ambiguity and
+  collision fixtures now declare versioned, human-reviewed clarification
+  outcomes. The local sweep validates its complete mixed fixture document
+  before authentication or media submission, fails closed on malformed or
+  unsupported versioned entries and duplicate IDs, grades queued decision
+  witnesses against the expected method and history status, and reports the
+  total defined versioned-fixture count.
+
 - **Queued AI-evaluation decision witnesses** — Queued requests and
   Overseerr-style webhooks now produce a bounded, versioned SHA-256 witness of
   the worker's in-memory decision, bind it to the task and persisted history,
@@ -88,6 +96,11 @@ Current development changes will be recorded here.
 
 ### Changed
 
+- **Client tooling dependencies** — Applied open Dependabot PR #517 locally
+  without merging it, advancing the grouped client development tooling patch
+  versions for type checking, test coverage, linting, globals, and Vue type
+  checking.
+
 - **Local-sweep scoped-route matching** — Scoped local-evaluation tokens now
   evaluate the original public API path when authentication executes inside a
   mounted Express router, preserving the explicit least-privilege grants for
@@ -139,6 +152,12 @@ Current development changes will be recorded here.
   every six hours until the durable alert state resolves.
 
 ### Fixed
+
+- **Queued non-final evaluation grading** — Local sweep evaluation now
+  preserves the deliberately absent confidence in clarification and retry
+  decision witnesses instead of coercing it to zero. The grader records that
+  one comparison as not applicable while retaining independent decision-kind,
+  method, history-status, fallback, and applicable library checks.
 
 - **Pending-decision replacement persistence** — Superseding a prior pending
   classification now explicitly types its lifecycle-version JSONB parameter,

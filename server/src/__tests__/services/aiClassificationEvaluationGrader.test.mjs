@@ -143,6 +143,36 @@ describe('aiClassificationEvaluationGrader', () => {
     ]));
   });
 
+  test('does not invent a non-final queued confidence from persisted history', () => {
+    const result = evaluateAiClassificationEvaluation({
+      fixture: buildFixture(),
+      observation: buildClassifiedObservation({
+        classification: {
+          method: 'policy_engine',
+          confidence: null,
+          library: null,
+          needsClarification: true,
+        },
+        history: {
+          method: 'policy_engine',
+          status: 'awaiting_decision',
+          confidence: 48,
+          library: null,
+        },
+      }),
+    });
+
+    expect(result.passed).toBe(true);
+    expect(result.checks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'confidence_consistency',
+        passed: true,
+        expected: 'not_observed_for_non_final_decision',
+        actual: 'not_applicable',
+      }),
+    ]));
+  });
+
   test('does not grade malformed fixture or observation input as an executable result', () => {
     const result = evaluateAiClassificationEvaluation({
       fixture: { id: 'missing-contract' },

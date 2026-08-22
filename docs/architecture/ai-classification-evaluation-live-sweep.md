@@ -1,6 +1,6 @@
 # Local AI Classification Evaluation: Observation and Fingerprint Design
 
-Status: Steps 2 and 3 implemented on 2026-08-22. This document describes the local,
+Status: Steps 2 through 4 implemented on 2026-08-22. This document describes the local,
 opt-in evaluation path that connects the versioned fixture contract to a real
 direct classification run. It does not authorize routing, deployment, or a
 release.
@@ -153,6 +153,13 @@ It admits only the current response fields `method`, `confidence`, `library`,
 the Step 1 validator/grader; unexpected raw output fields never enter the
 evaluation artifact.
 
+A final decision must include a confidence and destination projection. A queued
+clarification or retry witness deliberately stores those values as `null`; the
+adapter preserves the absence instead of deriving confidence from history. The
+grader keeps method, decision kind, history-status, no-fallback, and applicable
+library checks, while explicitly marking confidence consistency as not
+applicable when the non-final source value is not observable.
+
 The adapter supports a mixed fixture file so existing legacy core-sweep
 fixtures continue to run unchanged. A fixture is evaluated only when it uses
 the exact `classifarr.ai_classification_evaluation_fixture.v1` shape. Legacy
@@ -203,6 +210,10 @@ five aggregate counts, and is registered before `/:id` policy routes.
 - `scripts/lib/aiClassificationEvaluationSweepAdapter.mjs` owns compatibility
   with legacy fixtures, bounded live observation, grading, and report-state
   decisions.
+- `scripts/lib/aiPolicySweepFixtureDocument.mjs` validates the complete mixed
+  legacy/versioned fixture document before authentication, rejecting malformed
+  entries and preventing unsupported versions from silently becoming ungraded
+  legacy fixtures.
 - `scripts/local-ai-policy-sweep.mjs` consumes the adapter, preserves cleanup
   identifiers in a reduced submission summary, polls queued task witnesses,
   and adds evaluation counters.
@@ -233,7 +244,7 @@ rejection, and allowlisted observation projection.
 
 ## Next Recommended Item
 
-After the queued decision witness, add a reviewed trend-baseline artifact that
+After the reviewed local fixture cohort, add a trend-baseline artifact that
 compares matching fixture/policy/runtime/witness cohorts across local models.
 It should identify deltas and request human review; it must not create an
 automatic deployment, routing, or policy-change authority.

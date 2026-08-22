@@ -126,6 +126,7 @@ function evaluateExpectedOutcome(expectedOutcome, observation) {
 function buildConsistencyChecks(observation) {
   const classification = observation.classification;
   const history = observation.history;
+  const hasObservedClassificationConfidence = classification.confidence !== null;
 
   return [
     buildCheck(
@@ -136,9 +137,10 @@ function buildConsistencyChecks(observation) {
     ),
     buildCheck(
       'confidence_consistency',
-      Math.abs(classification.confidence - history.confidence) <= CONFIDENCE_COMPARISON_TOLERANCE,
-      classification.confidence,
-      history.confidence
+      !hasObservedClassificationConfidence ||
+        Math.abs(classification.confidence - history.confidence) <= CONFIDENCE_COMPARISON_TOLERANCE,
+      hasObservedClassificationConfidence ? classification.confidence : 'not_observed_for_non_final_decision',
+      hasObservedClassificationConfidence ? history.confidence : 'not_applicable'
     ),
     buildCheck(
       'library_consistency',

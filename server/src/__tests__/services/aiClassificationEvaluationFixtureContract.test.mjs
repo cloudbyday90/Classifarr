@@ -117,4 +117,27 @@ describe('aiClassificationEvaluationFixtureContract', () => {
       }),
     ]));
   });
+
+  test('permits an intentionally unobserved confidence for a non-final queued decision', () => {
+    const observation = {
+      classification: {
+        method: 'ai_analysis',
+        confidence: null,
+        library: null,
+        needsClarification: true,
+        needsRetry: false,
+      },
+      history: {
+        method: 'ai_analysis',
+        status: 'awaiting_decision',
+        confidence: 62.13,
+        library: null,
+      },
+    };
+
+    expect(validateAiClassificationEvaluationObservation(observation)).toEqual({
+      ok: true,
+      issues: [],
+    });
+  });
 });

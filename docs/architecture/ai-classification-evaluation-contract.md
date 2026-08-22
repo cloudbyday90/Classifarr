@@ -1,6 +1,6 @@
 # Local AI Classification Evaluation Contract
 
-Status: Steps 1 through 3 implemented on 2026-08-22. This document defines the
+Status: Steps 1 through 4 implemented on 2026-08-22. This document defines the
 fixture and deterministic-grading foundation. The local, opt-in direct-sweep
 adapter and fingerprint design is documented separately in [Local AI
 Classification Evaluation: Observation and Fingerprint
@@ -208,8 +208,12 @@ It evaluates every declared alternative, selects the closest one for diagnostic
 purposes, and passes only if one alternative and every global check pass. The
 global checks reject an undeclared `fallback` method and verify that method,
 confidence, and library values agree between the classification response and
-the persisted history row. The emitted result exposes only bounded identifiers,
-status values, confidence values, and target-library selectors; it never
+the persisted history row whenever those response values are observable. A
+queued clarification or retry witness intentionally represents its non-final
+confidence as `null`; the grader records that confidence comparison as not
+applicable instead of copying it from persisted history. The emitted result
+exposes only bounded identifiers, status values, confidence values, and
+target-library selectors; it never
 retains the title, prompt, raw response, policy text, credentials, or a routing
 command.
 
@@ -235,6 +239,20 @@ mismatch, an allowed clarification alternative, undeclared fallback rejection,
 and malformed input. The existing `test:local:ai-policy-sweep` remains
 unchanged in this step, so no live media requests or Docker state are needed to
 verify the new core.
+
+Step 4 adds a strict fixture-document preflight before the sweep exchanges a
+token or makes any local HTTP request. It validates all legacy and versioned
+entries, rejects unknown legacy fields, rejects unsupported versioned contract
+versions instead of treating them as legacy health-only fixtures, and rejects
+duplicate versioned IDs. The reviewed default cohort is documented separately
+in [Reviewed Local AI Classification Fixture Cohort v1](ai-classification-evaluation-fixture-cohort-v1.md).
+
+The same step corrected queued non-final evaluation semantics: a valid decision
+witness deliberately omits a clarification or retry confidence and destination.
+The observation contract preserves that `null` rather than coercing it to zero,
+and the deterministic grader marks its confidence-consistency check as not
+applicable. It still validates the independently observed method, decision
+kind, history status, no-fallback rule, and the applicable library projection.
 
 ## Security Properties
 

@@ -49,7 +49,10 @@ function validateClassification(value, issues) {
   const hasClarification = requireOwnField(value, 'needsClarification', path, issues);
   const hasRetry = requireOwnField(value, 'needsRetry', path, issues);
   if (hasMethod) validateIdentifier(value.method, `${path}.method`, issues, METHOD_ID_PATTERN, AI_CLASSIFICATION_EVALUATION_RISK_IDS.INVALID_METHOD);
-  if (hasConfidence) validateObservedConfidence(value.confidence, `${path}.confidence`, issues);
+  const isNonFinalDecision = value.needsClarification === true || value.needsRetry === true;
+  if (hasConfidence && !(isNonFinalDecision && value.confidence === null)) {
+    validateObservedConfidence(value.confidence, `${path}.confidence`, issues);
+  }
   if (hasLibrary && value.library !== null) validateLibrarySelector(value.library, `${path}.library`, issues);
   if (hasClarification && typeof value.needsClarification !== 'boolean') {
     issues.push(buildIssue(AI_CLASSIFICATION_EVALUATION_RISK_IDS.INVALID_OBSERVATION, `${path}.needsClarification`, 'needsClarification must be boolean.'));
