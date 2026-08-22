@@ -416,6 +416,42 @@ describe('logClassification', () => {
     expect(id).toBe(42);
   });
 
+  test('persists a bounded queue decision witness only after history receives an id', async () => {
+    const queueDecisionWitnessRepository = {
+      persist: jest.fn().mockResolvedValue({ persisted: true, reason: null }),
+    };
+    const originalRepository = classificationPersistenceService.queueDecisionWitnessRepository;
+    classificationPersistenceService.queueDecisionWitnessRepository = queueDecisionWitnessRepository;
+
+    try {
+      await classificationPersistenceService.logClassification(baseMetadata, {
+        library: { id: 1, name: 'Movies' },
+        confidence: 80,
+        method: 'ai_analysis',
+        reason: 'Matched movies library',
+        needs_clarification: false,
+        raw_provider_payload: 'must not persist',
+      }, Date.now(), {
+        queueTask: { id: 16 },
+      });
+
+      expect(queueDecisionWitnessRepository.persist).toHaveBeenCalledWith(expect.objectContaining({
+        classificationId: 42,
+        witness: expect.objectContaining({
+          queueTaskId: 16,
+          outcome: expect.objectContaining({
+            method: 'ai_analysis',
+            library: { id: 1, name: 'Movies' },
+          }),
+        }),
+      }));
+      expect(JSON.stringify(queueDecisionWitnessRepository.persist.mock.calls[0][0]))
+        .not.toContain('must not persist');
+    } finally {
+      classificationPersistenceService.queueDecisionWitnessRepository = originalRepository;
+    }
+  });
+
   test('inserts into classification_history with correct fields', async () => {
     const result = {
       library: { id: 1, name: 'Movies' },

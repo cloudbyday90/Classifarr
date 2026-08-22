@@ -2,8 +2,12 @@ import {
   AI_CLASSIFICATION_EVALUATION_STATUS,
   buildSweepEvaluationArtifact,
   normalizeSweepFixtures,
+  projectQueuedDecisionWitnessObservation,
   projectLiveObservation,
 } from '../../../../scripts/lib/aiClassificationEvaluationSweepAdapter.mjs';
+import {
+  buildClassificationQueueDecisionWitness,
+} from '../../services/classificationQueueDecisionWitness.mjs';
 import {
   buildAiClassificationEvaluationPolicyContext,
 } from '../../services/aiClassificationEvaluationPolicyContext.mjs';
@@ -96,6 +100,52 @@ describe('AI classification evaluation sweep adapter', () => {
     });
   });
 
+  test('grades queued execution from its task-bound decision witness', () => {
+    const [fixture] = normalizeSweepFixtures([evaluationFixture]);
+    const decisionWitness = buildClassificationQueueDecisionWitness({
+      queueTaskId: 22,
+      result: {
+        method: 'ai',
+        confidence: 91,
+        needs_clarification: false,
+        needs_retry: false,
+      },
+      persistenceState: { status: 'completed', libraryId: 7, libraryName: 'Movies' },
+    });
+    const artifact = buildSweepEvaluationArtifact({
+      fixture,
+      queueDecisionWitness: decisionWitness,
+      historyRow,
+      policyContext,
+      runtime: { model: 'qwen3.5:4b', ingestMode: 'requests' },
+    });
+
+    expect(artifact.status).toBe(AI_CLASSIFICATION_EVALUATION_STATUS.EVALUATED);
+    expect(artifact.evaluationSource).toBe('queued_decision_witness');
+    expect(artifact.result.passed).toBe(true);
+  });
+
+  test('refuses a tampered queued witness', () => {
+    const [fixture] = normalizeSweepFixtures([evaluationFixture]);
+    const witness = buildClassificationQueueDecisionWitness({
+      queueTaskId: 22,
+      result: { method: 'ai', confidence: 91, needs_clarification: false, needs_retry: false },
+      persistenceState: { status: 'completed', libraryId: 7, libraryName: 'Movies' },
+    });
+    const artifact = buildSweepEvaluationArtifact({
+      fixture,
+      queueDecisionWitness: { ...witness, fingerprint: 'a'.repeat(64) },
+      historyRow,
+      policyContext,
+    });
+
+    expect(artifact).toEqual({
+      status: AI_CLASSIFICATION_EVALUATION_STATUS.NOT_EVALUATED,
+      fixtureId: 'clear-movie',
+      reasonId: 'queue_decision_witness_invalid',
+    });
+  });
+
   test('rejects an invalid versioned fixture before it can produce a fingerprint', () => {
     const [fixture] = normalizeSweepFixtures([{
       ...evaluationFixture,
@@ -132,5 +182,16 @@ describe('AI classification evaluation sweep adapter', () => {
           library: { id: 7, name: 'Movies' },
         },
       });
+  });
+
+  test('projects queued witness fields using the same bounded observation shape', () => {
+    const decisionWitness = buildClassificationQueueDecisionWitness({
+      queueTaskId: 22,
+      result: { method: 'ai', confidence: 91, needs_clarification: false, needs_retry: false },
+      persistenceState: { status: 'completed', libraryId: 7, libraryName: 'Movies' },
+    });
+
+    expect(projectQueuedDecisionWitnessObservation({ decisionWitness, historyRow }))
+      .toEqual(projectLiveObservation({ classificationResponse: directResponse, historyRow }));
   });
 });

@@ -9,15 +9,40 @@
  */
 import { verifyToken } from '../services/auth.mjs';
 
-function isAllowedSweepPath(req, allowedPrefixes) {
-  if (!Array.isArray(allowedPrefixes) || allowedPrefixes.length === 0) {
+function requestPath(req) {
+  const rawPath = typeof req.path === 'string'
+    ? req.path
+    : String(req.originalUrl || req.url || '').split(/[?#]/, 1)[0];
+  return rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
+}
+
+function matchesSweepRoute(path, route) {
+  if (route.match === 'exact') {
+    return path === route.path;
+  }
+
+  if (route.match === 'prefix') {
+    return path === route.path || path.startsWith(`${route.path}/`);
+  }
+
+  if (route.match === 'template' && route.path === '/api/queue/tasks/:id/decision-witness') {
+    return /^\/api\/queue\/tasks\/[1-9]\d*\/decision-witness$/.test(path);
+  }
+
+  return false;
+}
+
+/** @public */
+export function isAllowedSweepRoute(req, allowedRoutes) {
+  if (!Array.isArray(allowedRoutes) || allowedRoutes.length === 0) {
     return false;
   }
 
-  const requestPath = req.originalUrl || req.url || '';
-  return allowedPrefixes.some((prefix) =>
-    typeof prefix === 'string' && requestPath.startsWith(prefix)
-  );
+  const method = typeof req.method === 'string' ? req.method.toUpperCase() : '';
+  const path = requestPath(req);
+  return allowedRoutes.some((route) => route && typeof route === 'object' &&
+    route.method === method && typeof route.path === 'string' &&
+    matchesSweepRoute(path, route));
 }
 
 /** @public */
@@ -49,7 +74,7 @@ export async function authenticateToken(req, res, next) {
         return res.status(403).json({ error: 'Invalid or expired token' });
       }
 
-      if (!isAllowedSweepPath(req, user.allowed_api_prefixes)) {
+      if (!isAllowedSweepRoute(req, user.allowed_api_routes)) {
         return res.status(403).json({ error: 'Scoped token cannot access this endpoint' });
       }
     }
@@ -74,5 +99,4 @@ export function requireAdmin(req, res, next) {
   }
   next();
 }
-
 

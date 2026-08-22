@@ -1,6 +1,6 @@
 # Local AI Classification Evaluation: Observation and Fingerprint Design
 
-Status: Step 2 implemented on 2026-08-22. This document describes the local,
+Status: Steps 2 and 3 implemented on 2026-08-22. This document describes the local,
 opt-in evaluation path that connects the versioned fixture contract to a real
 direct classification run. It does not authorize routing, deployment, or a
 release.
@@ -87,9 +87,10 @@ Cons:
 - queue acknowledgements intentionally do not expose the classification result;
 - it could report an unjustified quality pass.
 
-Decision: rejected. A queued run remains `not_evaluated` with the explicit
-reason `classification_response_not_observable`. Its lifecycle and history
-health checks still run and can still fail the sweep.
+Decision: rejected. Queued runs are now scored only from the dedicated,
+task-bound decision witness described below; they are never reconstructed from
+history. Their lifecycle and history health checks still run and can still fail
+the sweep.
 
 ### Return the full policy document to the local sweep client
 
@@ -178,9 +179,10 @@ five aggregate counts, and is registered before `/:id` policy routes.
   applied and restored exactly as before.
 - In `direct` mode, a versioned fixture with an observed history row is graded.
   A failing grade makes the sweep row fail.
-- In `requests` and `webhook-overseerr` modes, queue/lifecycle/history checks
-  run exactly as before. A versioned fixture reports an explicit
-  `not_evaluated` reason because no independent classify response is available.
+- In `requests` and `webhook-overseerr` modes, queue/lifecycle checks run and
+  the harness polls the submitted task's bounded decision witness. A versioned
+  fixture is graded only when that witness and its bound history projection
+  validate; unavailable or invalid evidence is a failed `not_evaluated` row.
 - A missing history row remains a normal health-check failure and is also
   reported as `persisted_history_not_observable` for direct evaluation.
 
@@ -189,20 +191,22 @@ five aggregate counts, and is registered before `/:id` policy routes.
 - `server/src/services/aiClassificationEvaluationPolicyContext.mjs` owns safe
   policy-state canonicalization and its SHA-256 digest.
 - `server/src/routes/policiesRouteEvaluationContext.mjs` owns the narrow,
-  read-only API projection. `authRouteShared.mjs` adds only that precise path
-  to the exchanged local-sweep token's existing allowlist.
+  read-only API projection. `authRouteShared.mjs` grants that precise `GET`
+  route through the exchanged local-sweep token's explicit method-and-route
+  profile.
 - `server/src/services/aiClassificationEvaluationFingerprint.mjs` owns the
   canonical fixture, runtime, and outcome fingerprint projections.
 - `scripts/lib/aiClassificationEvaluationSweepAdapter.mjs` owns compatibility
   with legacy fixtures, bounded live observation, grading, and report-state
   decisions.
 - `scripts/local-ai-policy-sweep.mjs` consumes the adapter, preserves cleanup
-  identifiers in a reduced submission summary, and adds evaluation counters.
+  identifiers in a reduced submission summary, polls queued task witnesses,
+  and adds evaluation counters.
 
 Focused tests cover canonical policy context construction, timestamp stability,
 semantic change detection, digest non-disclosure, the read-only API response,
-legacy fixture compatibility, direct grading, queued non-evaluation, and
-allowlisted observation projection.
+legacy fixture compatibility, direct and queued grading, witness tamper
+rejection, and allowlisted observation projection.
 
 ## Final Recommendation Stack
 
@@ -212,9 +216,10 @@ allowlisted observation projection.
 2. Compare quality only within a matching fixture, policy, runtime, and
    outcome fingerprint context. Treat a policy or runtime fingerprint change as
    a new evaluation cohort, not an automatic regression.
-3. Keep queued-path lifecycle/history verification enabled. Do not claim the
-   direct-response/history consistency check for queue acknowledgements until a
-   server-authored, bounded decision witness exists.
+3. Keep queued-path lifecycle/history verification enabled. Use the dedicated
+   [queued decision-witness design](ai-classification-evaluation-queued-decision-witness.md)
+   to introduce response/history consistency scoring without returning raw
+   provider output.
 4. Keep reports local and access-controlled. Do not add tokens, prompts, raw
    provider output, or raw policy documents to report artifacts. Apply normal
    retention and cleanup practices to report metadata as well.
@@ -224,9 +229,7 @@ allowlisted observation projection.
 
 ## Next Recommended Item
 
-Add a server-authored, bounded **queued decision witness** that links a queue
-task to the classified outcome before persistence, and expose it through a
-separately scoped read-only endpoint. That would let `requests` and
-`webhook-overseerr` runs receive the same non-tautological consistency score
-as direct mode without returning raw provider output or weakening the routing
-guardrail.
+After the queued decision witness, add a reviewed trend-baseline artifact that
+compares matching fixture/policy/runtime/witness cohorts across local models.
+It should identify deltas and request human review; it must not create an
+automatic deployment, routing, or policy-change authority.

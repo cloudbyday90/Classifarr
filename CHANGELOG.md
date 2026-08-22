@@ -13,6 +13,14 @@ Current development changes will be recorded here.
 
 ### Added
 
+- **Queued AI-evaluation decision witnesses** — Queued requests and
+  Overseerr-style webhooks now produce a bounded, versioned SHA-256 witness of
+  the worker's in-memory decision, bind it to the task and persisted history,
+  and expose it only through a narrow read-only endpoint. Versioned local
+  sweep fixtures can therefore grade queued results without reconstructing a
+  response from history or retaining raw provider, webhook, policy, or queue
+  payload data.
+
 - **Direct AI-evaluation sweep evidence** — The local policy-to-AI sweep can
   now grade versioned direct-classification fixtures against a bounded response
   and independently persisted history record. It emits canonical SHA-256
@@ -79,6 +87,14 @@ Current development changes will be recorded here.
   profile, history, or library names as route authority.
 
 ### Changed
+
+- **Local-sweep token least privilege** — Replaced broad API-prefix grants
+  with explicit method-and-route grants for short-lived exchanged sweep
+  tokens. Queue mutation routes are no longer covered; the new witness route
+  is the only dynamic queue path granted.
+
+- **Pinia runtime dependency** — Applied open Dependabot PR #512 locally
+  without merging it, advancing Pinia from 4.0.2 to 4.0.3.
 
 - **Server declaration validation** — Reduced the policy-compatibility release
   review artifact module to its actual public API, resolving the Knip CI gate

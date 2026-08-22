@@ -18,6 +18,9 @@ import {
 import {
   buildAiClassificationEvaluationFingerprintSet,
 } from '../../server/src/services/aiClassificationEvaluationFingerprint.mjs';
+import {
+  validateClassificationQueueDecisionWitness,
+} from '../../server/src/services/classificationQueueDecisionWitness.mjs';
 
 const AI_CLASSIFICATION_EVALUATION_STATUS = Object.freeze({
   EVALUATED: 'evaluated',
@@ -73,6 +76,27 @@ function projectLiveObservation({ classificationResponse, historyRow } = {}) {
   };
 }
 
+function projectQueuedDecisionWitnessObservation({ decisionWitness, historyRow } = {}) {
+  return {
+    classification: {
+      method: decisionWitness?.outcome?.method ?? null,
+      confidence: asFiniteNumber(decisionWitness?.outcome?.confidence),
+      library: projectLibrary(decisionWitness?.outcome?.library),
+      needsClarification: decisionWitness?.outcome?.needsClarification,
+      needsRetry: decisionWitness?.outcome?.needsRetry,
+    },
+    history: {
+      method: historyRow?.method ?? null,
+      status: historyRow?.status ?? null,
+      confidence: asFiniteNumber(historyRow?.confidence),
+      library: projectLibrary(historyRow, {
+        idKey: 'library_id',
+        nameKey: 'library_name',
+      }),
+    },
+  };
+}
+
 function toSweepFixture(fixture) {
   if (fixture?.version === AI_CLASSIFICATION_EVALUATION_FIXTURE_VERSION) {
     return {
@@ -97,6 +121,7 @@ function normalizeSweepFixtures(fixtures) {
 function buildSweepEvaluationArtifact({
   fixture,
   classificationResponse,
+  queueDecisionWitness,
   historyRow,
   policyContext,
   runtime,
@@ -118,7 +143,26 @@ function buildSweepEvaluationArtifact({
     };
   }
 
-  if (!classificationResponse) {
+  let observation;
+  let evaluationSource;
+  if (classificationResponse) {
+    observation = projectLiveObservation({ classificationResponse, historyRow });
+    evaluationSource = 'direct_response';
+  } else if (queueDecisionWitness) {
+    const witnessValidation = validateClassificationQueueDecisionWitness(queueDecisionWitness);
+    if (!witnessValidation.ok) {
+      return {
+        status: AI_CLASSIFICATION_EVALUATION_STATUS.NOT_EVALUATED,
+        fixtureId: evaluationFixture.id,
+        reasonId: 'queue_decision_witness_invalid',
+      };
+    }
+    observation = projectQueuedDecisionWitnessObservation({
+      decisionWitness: queueDecisionWitness,
+      historyRow,
+    });
+    evaluationSource = 'queued_decision_witness';
+  } else {
     return {
       status: AI_CLASSIFICATION_EVALUATION_STATUS.NOT_EVALUATED,
       fixtureId: evaluationFixture.id,
@@ -134,7 +178,6 @@ function buildSweepEvaluationArtifact({
     };
   }
 
-  const observation = projectLiveObservation({ classificationResponse, historyRow });
   const result = evaluateAiClassificationEvaluation({
     fixture: evaluationFixture,
     observation,
@@ -143,11 +186,21 @@ function buildSweepEvaluationArtifact({
   return {
     status: AI_CLASSIFICATION_EVALUATION_STATUS.EVALUATED,
     fixtureId: evaluationFixture.id,
+    evaluationSource,
     result,
     fingerprints: buildAiClassificationEvaluationFingerprintSet({
       fixture: evaluationFixture,
       policyContext,
-      runtime,
+      runtime: {
+        ...runtime,
+        queueDecisionWitness: queueDecisionWitness
+          ? {
+            version: queueDecisionWitness.version,
+            algorithm: queueDecisionWitness.algorithm,
+            fingerprint: queueDecisionWitness.fingerprint,
+          }
+          : null,
+      },
       evaluation: result,
     }),
   };
@@ -157,5 +210,6 @@ export {
   AI_CLASSIFICATION_EVALUATION_STATUS,
   buildSweepEvaluationArtifact,
   normalizeSweepFixtures,
+  projectQueuedDecisionWitnessObservation,
   projectLiveObservation,
 };

@@ -8,13 +8,25 @@
  * (at your option) any later version.
  */
 
-export const LOCAL_AI_POLICY_SWEEP_ALLOWED_API_PREFIXES = Object.freeze([
-  '/api/libraries',
-  '/api/policies/evaluation-context',
-  '/api/settings',
-  '/api/classification',
-  '/api/requests',
-  '/api/media-sync',
-  '/api/queue',
-  '/api/webhook/overseerr',
+function route(method, path, match = 'exact') {
+  return Object.freeze({ method, path, match });
+}
+
+// The local sweep uses these routes only. A method-and-route list prevents a
+// short-lived diagnostic token from inheriting the full admin queue surface.
+export const LOCAL_AI_POLICY_SWEEP_ALLOWED_API_ROUTES = Object.freeze([
+  route('GET', '/api/libraries'),
+  route('GET', '/api/policies/evaluation-context'),
+  route('GET', '/api/settings'),
+  route('PUT', '/api/settings'),
+  route('GET', '/api/settings/ai'),
+  route('PUT', '/api/settings/ai'),
+  route('POST', '/api/classification/classify'),
+  route('GET', '/api/classification/history'),
+  route('POST', '/api/requests/submit'),
+  route('GET', '/api/media-sync/lookup', 'prefix'),
+  route('GET', '/api/queue/pending'),
+  route('GET', '/api/queue/failed'),
+  route('GET', '/api/queue/tasks/:id/decision-witness', 'template'),
+  route('GET', '/api/settings/webhook/logs'),
 ]);

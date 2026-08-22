@@ -1,6 +1,6 @@
 # Local AI Classification Evaluation Contract
 
-Status: Steps 1 and 2 implemented on 2026-08-22. This document defines the
+Status: Steps 1 through 3 implemented on 2026-08-22. This document defines the
 fixture and deterministic-grading foundation. The local, opt-in direct-sweep
 adapter and fingerprint design is documented separately in [Local AI
 Classification Evaluation: Observation and Fingerprint
@@ -265,9 +265,10 @@ verify the new core.
    validated fixture, server-authored policy context, provider/model identity,
    and bounded outcome. A fingerprint makes comparable runs auditable; it does
    not decide whether a classification is correct.
-4. Add a server-authored bounded decision witness for queued ingestion before
-   assigning the same response/history consistency score to `requests` or
-   `webhook-overseerr` runs.
+4. Use the dedicated [Queued AI Classification Evaluation: Decision Witness
+   Design](ai-classification-evaluation-queued-decision-witness.md) for queued
+   ingestion before assigning the same response/history consistency score to
+   `requests` or `webhook-overseerr` runs.
 5. Run deterministic contract/grader tests in CI. Run real local model sweeps
    only on an intentionally configured Docker/Ollama stack, then compare
    reviewed reports rather than treating a one-off green run as a release

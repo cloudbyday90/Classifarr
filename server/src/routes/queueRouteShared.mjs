@@ -12,6 +12,7 @@ import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData, sendError } from '../utils/responseHelpers.mjs';
 import { ValidationError, NotFoundError, ConflictError } from '../utils/appError.mjs';
 import { requireValidPositiveInt, requireValidLimit } from './routeHelpers.mjs';
+import { registerQueueDecisionWitnessRoute } from './queueRouteDecisionWitness.mjs';
 
 const VALID_RETRY_ENRICHMENT_TYPES = new Set(['tavily', 'web_search', 'omdb']);
 const MAX_QUEUE_LIST_LIMIT = 100;
@@ -56,7 +57,14 @@ function sendBulkMutationResult(res, result) {
   return sendError(res, 'Queue bulk action failed', 500, { code: result?.code || 'queue_action_failed', action: result?.action || null });
 }
 
-export function createQueueRouter({ express, queueService, logger, authenticateTokenOrApiKey, requireReadWrite }) {
+export function createQueueRouter({
+  express,
+  queueService,
+  logger,
+  authenticateTokenOrApiKey,
+  requireReadWrite,
+  decisionWitnessReadService = null,
+}) {
   const router = express.Router();
 
   router.use(authenticateTokenOrApiKey);
@@ -92,6 +100,10 @@ export function createQueueRouter({ express, queueService, logger, authenticateT
     const tasks = await queueService.getFailedTasks(limit);
     return sendData(res, tasks);
   }));
+
+  if (decisionWitnessReadService) {
+    registerQueueDecisionWitnessRoute(router, { decisionWitnessReadService });
+  }
 
   router.post('/task/:id/retry', requireReadWrite, asyncHandler(async (req, res) => {
     const taskId = requireValidPositiveInt(req.params.id, 'task id', 'invalid_task_id');

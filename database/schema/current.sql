@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-08-17T02:27:08.259Z
--- Latest Migration: 20260817_030000_add_native_intent_change_receipt_retention_guard.sql
+-- Generated: 2026-08-22T15:35:38.362Z
+-- Latest Migration: 20260822_140000_add_classification_queue_decision_witnesses.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -2250,6 +2250,28 @@ CREATE TABLE public.classification_history_totals (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT classification_history_totals_singleton_check CHECK ((singleton = true))
 );
+
+
+--
+-- Name: classification_queue_decision_witnesses; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.classification_queue_decision_witnesses (
+    queue_task_id bigint NOT NULL,
+    classification_id bigint CONSTRAINT classification_queue_decision_witnes_classification_id_not_null NOT NULL,
+    witness jsonb NOT NULL,
+    fingerprint character varying(64) NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT classification_queue_decision_witnesses_fingerprint_check CHECK (((fingerprint)::text ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT classification_queue_decision_witnesses_witness_object_check CHECK ((jsonb_typeof(witness) = 'object'::text))
+);
+
+
+--
+-- Name: TABLE classification_queue_decision_witnesses; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.classification_queue_decision_witnesses IS 'Bounded, versioned queued classification outcomes for local evaluation; contains no raw request or provider evidence.';
 
 
 --
@@ -7732,6 +7754,14 @@ ALTER TABLE ONLY public.classification_history_totals
 
 
 --
+-- Name: classification_queue_decision_witnesses classification_queue_decision_witnesses_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.classification_queue_decision_witnesses
+    ADD CONSTRAINT classification_queue_decision_witnesses_pkey PRIMARY KEY (queue_task_id, classification_id);
+
+
+--
 -- Name: confidence_settings_audit confidence_settings_audit_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9325,6 +9355,20 @@ CREATE INDEX idx_classification_history_title_trgm ON public.classification_hist
 --
 
 CREATE INDEX idx_classification_history_tmdb ON public.classification_history USING btree (tmdb_id);
+
+
+--
+-- Name: idx_classification_queue_decision_witnesses_classification; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_classification_queue_decision_witnesses_classification ON public.classification_queue_decision_witnesses USING btree (classification_id);
+
+
+--
+-- Name: idx_classification_queue_decision_witnesses_queue_created; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_classification_queue_decision_witnesses_queue_created ON public.classification_queue_decision_witnesses USING btree (queue_task_id, created_at DESC);
 
 
 --
@@ -11096,6 +11140,22 @@ ALTER TABLE ONLY public.classification_evidence
 
 ALTER TABLE ONLY public.classification_history
     ADD CONSTRAINT classification_history_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE SET NULL;
+
+
+--
+-- Name: classification_queue_decision_witnesses classification_queue_decision_witnesses_classification_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.classification_queue_decision_witnesses
+    ADD CONSTRAINT classification_queue_decision_witnesses_classification_id_fkey FOREIGN KEY (classification_id) REFERENCES public.classification_history(id) ON DELETE CASCADE;
+
+
+--
+-- Name: classification_queue_decision_witnesses classification_queue_decision_witnesses_queue_task_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.classification_queue_decision_witnesses
+    ADD CONSTRAINT classification_queue_decision_witnesses_queue_task_id_fkey FOREIGN KEY (queue_task_id) REFERENCES public.task_queue(id) ON DELETE CASCADE;
 
 
 --
@@ -13975,6 +14035,7 @@ FROM unnest(ARRAY[
     '20260813_120000_add_ai_settings_write_precondition.sql',
     '20260816_173000_add_native_intent_change_applied_event.sql',
     '20260816_180000_add_native_intent_change_receipts.sql',
-    '20260817_030000_add_native_intent_change_receipt_retention_guard.sql'
+    '20260817_030000_add_native_intent_change_receipt_retention_guard.sql',
+    '20260822_140000_add_classification_queue_decision_witnesses.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

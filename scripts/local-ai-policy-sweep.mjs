@@ -528,6 +528,86 @@ async function waitForNewHistoryRow(api, existingIds, timeoutMs, pollMs) {
   return null;
 }
 
+async function waitForQueueDecisionWitness(api, taskId, timeoutMs, pollMs) {
+  if (!Number.isSafeInteger(taskId) || taskId < 1) {
+    return null;
+  }
+
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const result = await api.requestJson(`/api/queue/tasks/${taskId}/decision-witness`);
+    if (result?.available === true) {
+      return result;
+    }
+    await sleep(pollMs);
+  }
+
+  return null;
+}
+
+function summarizeQueueDecisionWitness(result) {
+  if (!result || result.available !== true || !result.decisionWitness) {
+    return null;
+  }
+
+  return {
+    queueTaskId: Number.isSafeInteger(result.queueTaskId) ? result.queueTaskId : null,
+    classificationId: Number.isSafeInteger(result.classificationId) ? result.classificationId : null,
+    version: result.decisionWitness.version || null,
+    algorithm: result.decisionWitness.algorithm || null,
+    fingerprint: result.decisionWitness.fingerprint || null,
+  };
+}
+
+function recordHistoryObservation({ row, historyRow, report, args, existingHistoryIds = null }) {
+  if (!historyRow) {
+    return false;
+  }
+
+  if (existingHistoryIds) {
+    existingHistoryIds.add(historyRow.id);
+  }
+  row.historyRow = {
+    id: historyRow.id,
+    status: historyRow.status,
+    method: historyRow.method,
+    confidence: historyRow.confidence,
+    library_id: historyRow.library_id,
+    library_name: historyRow.library_name,
+  };
+  report.summary.byHistoryStatus[historyRow.status] =
+    (report.summary.byHistoryStatus[historyRow.status] || 0) + 1;
+
+  if (historyRow.status === 'pending_retry') {
+    report.summary.pendingRetryCount += 1;
+  }
+  if (historyRow.status === 'awaiting_decision') {
+    report.summary.clarificationCount += 1;
+  }
+  if (historyRow.status === 'routed') {
+    report.summary.routedCount += 1;
+    if (args.blockArrRouting) {
+      row.validationIssues.push('Persisted history status is routed while no-route guardrail is enabled.');
+    }
+  }
+  if (historyRow.method === 'existing_media') {
+    report.summary.existingMediaMethodCount += 1;
+    row.validationIssues.push('Persisted history method returned existing_media; fixture likely contaminated by known media.');
+  }
+  if (historyRow.method === 'source_library') {
+    report.summary.sourceLibraryMethodCount += 1;
+    row.validationIssues.push('Persisted history method returned source_library; fixture likely contaminated by source-library signal.');
+  }
+  if (historyRow.method === 'fallback') {
+    report.summary.fallbackCount += 1;
+    if (args.failOnFallback) {
+      row.validationIssues.push('Persisted history method returned fallback.');
+    }
+  }
+
+  return true;
+}
+
 async function fetchQueueTaskSnapshot(api, taskId) {
   if (!Number.isInteger(taskId)) {
     return { status: null, source: null, error: null };
@@ -853,6 +933,7 @@ async function runSweep() {
             submissionResponse: null,
             validationIssues: [],
             historyRow: null,
+            queueDecisionWitness: null,
             lifecycle: null,
             evaluation: null,
             status: 'pass',
@@ -867,13 +948,6 @@ async function runSweep() {
             );
             row.validationIssues = [...submission.validationIssues];
 
-            const historyPromise = waitForNewHistoryRow(
-              api,
-              existingHistoryIds,
-              args.historyTimeoutMs,
-              args.historyPollIntervalMs,
-            );
-
             let lifecycleResult = null;
             const submittedTaskId = Number.isInteger(submission?.submissionResponse?.taskId)
               ? submission.submissionResponse.taskId
@@ -881,6 +955,19 @@ async function runSweep() {
             const submittedLogId = Number.isInteger(submission?.submissionResponse?.logId)
               ? submission.submissionResponse.logId
               : null;
+            const persistedPromise = args.ingestMode === 'direct'
+              ? waitForNewHistoryRow(
+                api,
+                existingHistoryIds,
+                args.historyTimeoutMs,
+                args.historyPollIntervalMs,
+              )
+              : waitForQueueDecisionWitness(
+                api,
+                submittedTaskId,
+                args.historyTimeoutMs,
+                args.historyPollIntervalMs,
+              );
 
             if (args.verifyQueueLifecycle && args.ingestMode !== 'direct' && submittedTaskId && submittedLogId) {
               lifecycleResult = await verifyQueueLifecycle({
@@ -893,58 +980,43 @@ async function runSweep() {
               row.lifecycle = lifecycleResult;
             }
 
-            const persisted = await historyPromise;
+            const persisted = await persistedPromise;
 
-            if (!persisted) {
+            if (args.ingestMode === 'direct' && !persisted) {
               row.validationIssues.push('No new classification_history row found within timeout window.');
+            } else if (args.ingestMode !== 'direct' && !persisted) {
+              row.validationIssues.push('No queue decision witness was available within timeout window.');
+            } else if (args.ingestMode === 'direct') {
+              recordHistoryObservation({
+                row,
+                historyRow: persisted,
+                report,
+                args,
+                existingHistoryIds,
+              });
             } else {
-              existingHistoryIds.add(persisted.id);
-              row.historyRow = {
-                id: persisted.id,
-                status: persisted.status,
-                method: persisted.method,
-                confidence: persisted.confidence,
-                library_id: persisted.library_id,
-                library_name: persisted.library_name,
-                pending_reason: persisted.pending_reason,
-                created_at: persisted.created_at,
-              };
-
-              report.summary.byHistoryStatus[persisted.status] =
-                (report.summary.byHistoryStatus[persisted.status] || 0) + 1;
-
-              if (persisted.status === 'pending_retry') {
-                report.summary.pendingRetryCount += 1;
-              }
-              if (persisted.status === 'awaiting_decision') {
-                report.summary.clarificationCount += 1;
-              }
-              if (persisted.status === 'routed') {
-                report.summary.routedCount += 1;
-                if (args.blockArrRouting) {
-                  row.validationIssues.push('Persisted history status is routed while no-route guardrail is enabled.');
-                }
-              }
-              if (persisted.method === 'existing_media') {
-                report.summary.existingMediaMethodCount += 1;
-                row.validationIssues.push('Persisted history method returned existing_media; fixture likely contaminated by known media.');
-              }
-              if (persisted.method === 'source_library') {
-                report.summary.sourceLibraryMethodCount += 1;
-                row.validationIssues.push('Persisted history method returned source_library; fixture likely contaminated by source-library signal.');
-              }
-
-              if (persisted.method === 'fallback') {
-                report.summary.fallbackCount += 1;
-                if (args.failOnFallback) {
-                  row.validationIssues.push('Persisted history method returned fallback.');
-                }
-              }
+              row.queueDecisionWitness = summarizeQueueDecisionWitness(persisted);
+              recordHistoryObservation({
+                row,
+                historyRow: persisted.history
+                  ? {
+                    id: persisted.history.id,
+                    status: persisted.history.status,
+                    method: persisted.history.method,
+                    confidence: persisted.history.confidence,
+                    library_id: persisted.history.libraryId,
+                    library_name: persisted.history.libraryName,
+                  }
+                  : null,
+                report,
+                args,
+              });
             }
 
             row.evaluation = buildSweepEvaluationArtifact({
               fixture,
               classificationResponse: submission.classifyResponse,
+              queueDecisionWitness: persisted?.decisionWitness || null,
               historyRow: row.historyRow,
               policyContext,
               runtime: {
@@ -971,6 +1043,9 @@ async function runSweep() {
               row.validationIssues.push('Evaluation fixture does not satisfy the versioned contract.');
             } else if (row.evaluation.status === AI_CLASSIFICATION_EVALUATION_STATUS.NOT_EVALUATED) {
               report.summary.evaluationNotEvaluatedCount += 1;
+              if (fixture.evaluationFixture && args.ingestMode !== 'direct') {
+                row.validationIssues.push('Versioned queued fixture could not be evaluated from a valid decision witness.');
+              }
             }
 
             if (args.verifyQueueLifecycle && args.ingestMode !== 'direct') {

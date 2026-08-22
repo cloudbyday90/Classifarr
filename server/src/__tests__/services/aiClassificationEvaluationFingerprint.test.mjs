@@ -86,4 +86,35 @@ describe('AI classification evaluation fingerprints', () => {
     expect(modelChanged.runtime.fingerprint).not.toBe(original.runtime.fingerprint);
     expect(outcomeChanged.outcome.fingerprint).not.toBe(original.outcome.fingerprint);
   });
+
+  test('binds queued decision-witness evidence into the runtime fingerprint', () => {
+    const original = buildSet({
+      runtime: {
+        model: 'qwen3.5:4b',
+        ingestMode: 'requests',
+        requireAllConfirmations: true,
+        aiConfig: { primary_provider: 'ollama', ollama_fallback_enabled: false },
+        queueDecisionWitness: {
+          version: 'classifarr.classification_queue_decision_witness.v1',
+          algorithm: 'sha256',
+          fingerprint: 'a'.repeat(64),
+        },
+      },
+    });
+    const changedWitness = buildSet({
+      runtime: {
+        model: 'qwen3.5:4b',
+        ingestMode: 'requests',
+        requireAllConfirmations: true,
+        aiConfig: { primary_provider: 'ollama', ollama_fallback_enabled: false },
+        queueDecisionWitness: {
+          version: 'classifarr.classification_queue_decision_witness.v1',
+          algorithm: 'sha256',
+          fingerprint: 'b'.repeat(64),
+        },
+      },
+    });
+
+    expect(changedWitness.runtime.fingerprint).not.toBe(original.runtime.fingerprint);
+  });
 });

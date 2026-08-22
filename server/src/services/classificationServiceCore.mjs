@@ -429,7 +429,9 @@ export class ClassificationService {
         runtimeQuestionHandoff,
       );
 
-      const classificationId = await this.logClassification(metadata, result, startTime);
+      const classificationId = queueTask
+        ? await this.logClassification(metadata, result, startTime, { queueTask })
+        : await this.logClassification(metadata, result, startTime);
       await this.rebindRetryLineage(classificationId, metadata);
       await this.persistRagLoopStageEvents({ classificationId, metadata, result });
 
@@ -691,8 +693,11 @@ export class ClassificationService {
     return this.classificationAiService.aiClassify(metadata, libraries, signalContext, options);
   }
 
-  async logClassification(metadata, result, startTime = null) {
-    return this.classificationPersistenceService.logClassification(metadata, result, startTime);
+  async logClassification(metadata, result, startTime = null, context = undefined) {
+    if (context === undefined) {
+      return this.classificationPersistenceService.logClassification(metadata, result, startTime);
+    }
+    return this.classificationPersistenceService.logClassification(metadata, result, startTime, context);
   }
 
   async persistRagLoopStageEvents(params) {

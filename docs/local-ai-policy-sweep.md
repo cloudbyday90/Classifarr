@@ -38,12 +38,15 @@ This implementation follows current testing and reliability guidance:
   - For queued ingest modes, verifies queue lifecycle by observing task queue state and webhook log `processing_status` for each submitted `taskId`/`logId`.
 - Runs each fixture through selected ingest mode.
 - Validates classify response contract.
-- Polls `/api/classification/history` for a new persisted row and records `status` + `method`.
+- In `direct` mode, polls `/api/classification/history` for a new persisted row
+  and records `status` + `method`. In queued modes, polls the submitted task's
+  decision-witness endpoint rather than guessing a response from history.
 - Fetches a server-authored, read-only policy-context fingerprint. For
-  versioned evaluation fixtures in `direct` mode, reduces the classification
-  response and history row to the strict evaluation contract, grades it, and
-  writes fixture/policy/runtime/outcome SHA-256 fingerprints. The response and
-  policy source data are not written to the evaluation artifact.
+  versioned evaluation fixtures, reduces either the direct response or the
+  task-bound queued decision witness plus history row to the strict evaluation
+  contract, grades it, and writes fixture/policy/runtime/outcome SHA-256
+  fingerprints. The response and policy source data are not written to the
+  evaluation artifact.
 - Restores baseline AI provider/model settings and `require_all_confirmations` at the end.
 - Emits machine-readable JSON report.
 
@@ -60,9 +63,10 @@ A run is marked failed when any condition is true:
 - Status is `routed` while no-route guardrail is enabled.
 - Queued lifecycle verifier does not observe dispatch evidence (`pending`/`processing`/`queued`/`received`) or does not reach terminal status.
 - Persisted method is `existing_media` or `source_library` for runnable fixtures (contamination guard).
-- No new `classification_history` row appears within timeout window.
-- A versioned evaluation fixture in `direct` mode fails deterministic expected
-  outcome checks or response/history consistency checks.
+- No new `classification_history` row appears within timeout window in direct
+  mode, or no valid queue decision witness appears in queued modes.
+- A versioned evaluation fixture fails deterministic expected-outcome checks or
+  response/history consistency checks.
 
 ## Run it
 
@@ -156,7 +160,8 @@ The exchange endpoint follows current JWT/Bearer guidance:
 - explicit audience: `classifarr:local-ai-policy-sweep`
 - explicit token use claim: `local_ai_policy_sweep`
 - unique `jti` per token
-- API-prefix scoping enforced by auth middleware for exchanged tokens
+- explicit method-and-route scoping enforced by auth middleware for exchanged
+  tokens; queue mutations are excluded
 - admin API key required for exchange
 
 Reference standards:
@@ -185,17 +190,18 @@ classification result):
 ]
 ```
 
-Versioned evaluation fixtures may be mixed into the same JSON array. These are
-scored only in `direct` mode, because queued acknowledgement responses do not
-contain an independently observable classification result. Use the full schema
+Versioned evaluation fixtures may be mixed into the same JSON array. Direct
+execution is scored from its bounded HTTP response; queued execution is scored
+only after its task-bound decision witness is available. Use the full schema
 and example in [Local AI Classification Evaluation
 Contract](architecture/ai-classification-evaluation-contract.md), then replace
 the library selector and acceptable outcomes with your reviewed local policy.
 
-For a versioned fixture in `requests` or `webhook-overseerr` mode, the report
-explicitly records `evaluation.status=not_evaluated` and
-`classification_response_not_observable`; queue, history, contamination, and
-no-route checks continue as normal.
+If a queued witness is unavailable or invalid, the report explicitly records a
+`not_evaluated` reason and fails that versioned fixture rather than synthesizing
+a response from history. Queue, history, contamination, and no-route checks
+continue as normal. See [Queued AI Classification Evaluation: Decision Witness
+Design](architecture/ai-classification-evaluation-queued-decision-witness.md).
 
 ## Report output
 
@@ -211,8 +217,10 @@ Contains:
 - validation issues
 - persisted history status/method
 - summary counters (pass/fail/fallback/pending-retry/awaiting-decision)
-- evaluation counts and, for evaluated direct rows, fixture/policy/runtime/
-  outcome SHA-256 fingerprints plus a deterministic quality score
+- evaluation counts and, for evaluated direct or queued rows,
+  fixture/policy/runtime/outcome SHA-256 fingerprints plus a deterministic
+  quality score; queued rows also retain only task/history IDs and witness
+  fingerprint metadata
 
 The sweep obtains policy context from `GET /api/policies/evaluation-context`.
 That admin-protected endpoint is the only policy path added to the exchanged
@@ -224,17 +232,17 @@ for the evidence and security boundaries.
 ## Evaluation-contract foundation
 
 The sweep proves local request, queue, AI, response-contract, and history
-persistence health. Its direct path can now also grade versioned expected
-outcomes with a bounded response/history projection and fingerprinted evidence.
-Queued paths deliberately do not synthesize a response from history; that work
-requires a future server-authored decision witness.
+persistence health. Direct paths grade versioned expected outcomes with a
+bounded response/history projection and fingerprinted evidence. Queued paths
+grade the submitted task's bounded decision witness against its bound history
+projection; neither mode synthesizes a response from history.
 
 ## Notes for this core round
 
 - This is intentionally focused on the core execution path and contract health checks.
-- The next iteration should add a bounded queued decision witness, then pairwise
-  model comparison and reviewed trend baselines. Live sweeps remain local-only,
-  not a CI release gate.
+- The next iteration after the queued witness is a reviewed trend baseline and
+  pairwise model comparison. Live sweeps remain local-only, not a CI release
+  gate.
 
 ## Cleanup for Re-Tests
 
@@ -264,6 +272,8 @@ What it removes:
 - linked rows in `media_requests`, `webhook_log`, `app_notifications`, `clarification_responses`
 - linked rows in `content_analysis_log`, `classification_corrections`, `classification_embeddings`, `embedding_errors`, `pattern_match_log`
 - explicit queued records by report `taskId` in `task_queue`
+- linked decision witnesses cascade with their task or classification-history
+  parent and require no independent cleanup action
 - explicit webhook records by report `logId` in `webhook_log`
 
 The cleanup is report-driven and designed to avoid broad deletes outside sweep-linked artifacts.

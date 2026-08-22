@@ -13,6 +13,9 @@ import { queueService } from '../services/queueService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { authenticateTokenOrApiKey, requireReadWrite } from '../middleware/apiKeyAuth.mjs';
 import { createQueueRouter } from './queueRouteShared.mjs';
+import {
+  classificationQueueDecisionWitnessReadService,
+} from '../services/classificationQueueDecisionWitnessReadService.mjs';
 
 const logger = createLogger('QueueRoutes');
 
@@ -22,4 +25,5 @@ export const router = createQueueRouter({
   logger,
   authenticateTokenOrApiKey,
   requireReadWrite,
+  decisionWitnessReadService: classificationQueueDecisionWitnessReadService,
 });

@@ -35,6 +35,10 @@ import {
 import { buildClassificationRouteSafetyProjection } from './classificationRouteSafetyGate.mjs';
 import { buildDeterministicOutcomeAiModeProjection } from './classificationDeterministicAiMode.mjs';
 import { buildCandidateBoundVerificationProjection } from './classificationCandidateBoundVerificationContract.mjs';
+import { buildClassificationQueueDecisionWitness } from './classificationQueueDecisionWitness.mjs';
+import {
+  classificationQueueDecisionWitnessRepository,
+} from './classificationQueueDecisionWitnessRepository.mjs';
 
 const logger = createLogger('classificationPersistence');
 
@@ -115,6 +119,8 @@ export class ClassificationPersistenceService {
     this.ragErrorHandler = deps.ragErrorHandler || ragErrorHandler;
     this.pendingDecisionLifecycleService = deps.pendingDecisionLifecycleService ||
       classificationPendingDecisionLifecycleService;
+    this.queueDecisionWitnessRepository = deps.queueDecisionWitnessRepository ||
+      classificationQueueDecisionWitnessRepository;
   }
 
   async getRagErrorHandler() {
@@ -291,7 +297,7 @@ export class ClassificationPersistenceService {
     };
   }
 
-  async logClassification(metadata, result, startTime = null) {
+  async logClassification(metadata, result, startTime = null, { queueTask = null } = {}) {
     const collectionId = metadata.collectionId || null;
     const signalsJson = result.signals ? JSON.stringify(result.signals)
       : result.signalContext?.signals ? JSON.stringify(result.signalContext.signals) : null;
@@ -304,6 +310,11 @@ export class ClassificationPersistenceService {
       policyQuestion,
       profileSnapshot,
     } = await this.deriveClassificationPersistenceState(result);
+    const queueDecisionWitness = buildClassificationQueueDecisionWitness({
+      queueTaskId: queueTask?.id,
+      result,
+      persistenceState: { status, libraryId, libraryName },
+    });
 
     const ragContext = result.ragContext || result.signalContext?.ragContext || null;
     const ragTopMatch = ragContext?.similarItems?.[0] || null;
@@ -430,6 +441,30 @@ export class ClassificationPersistenceService {
       },
     });
     const classificationId = lifecycleResult.classificationId;
+
+    // A witness is diagnostic/evaluation evidence, never a prerequisite for a
+    // user classification. Its failure must not roll back a valid decision.
+    if (queueDecisionWitness) {
+      try {
+        const witnessResult = await this.queueDecisionWitnessRepository.persist({
+          classificationId,
+          witness: queueDecisionWitness,
+        });
+        if (!witnessResult.persisted && witnessResult.reason !== 'already_exists') {
+          logger.warn('Queued decision witness was not persisted', {
+            classificationId,
+            queueTaskId: queueDecisionWitness.queueTaskId,
+            reason: witnessResult.reason,
+          });
+        }
+      } catch (error) {
+        logger.warn('Queued decision witness persistence failed', {
+          classificationId,
+          queueTaskId: queueDecisionWitness.queueTaskId,
+          error: error.message,
+        });
+      }
+    }
 
     if (result.needs_clarification) {
       logger.info('Classification pending - awaiting clarification', {

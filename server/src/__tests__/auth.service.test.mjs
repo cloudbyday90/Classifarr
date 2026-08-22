@@ -181,7 +181,7 @@ describe('Auth Service - token and persistence flows', () => {
     );
   });
 
-  test('generateScopedAccessToken grants only the narrow policy evaluation context path', async () => {
+  test('generateScopedAccessToken grants only explicit sweep methods and routes', async () => {
     const signSpy = jest.spyOn(jwt, 'sign').mockReturnValue('scoped-access-token');
     db.query.mockResolvedValueOnce(createDbSingleRowResult({ secret: 'jwt-secret' }));
 
@@ -195,14 +195,21 @@ describe('Auth Service - token and persistence flows', () => {
     expect(signSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         token_use: 'local_ai_policy_sweep',
-        allowed_api_prefixes: expect.arrayContaining([
-          '/api/policies/evaluation-context',
+        allowed_api_routes: expect.arrayContaining([
+          expect.objectContaining({
+            method: 'GET',
+            path: '/api/policies/evaluation-context',
+            match: 'exact',
+          }),
         ]),
       }),
       'jwt-secret',
       expect.objectContaining({ audience: 'classifarr:local-ai-policy-sweep' })
     );
-    expect(signSpy.mock.calls[0][0].allowed_api_prefixes).not.toContain('/api/policies');
+    expect(signSpy.mock.calls[0][0].allowed_api_routes).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: '/api/policies' }),
+      expect.objectContaining({ path: '/api/queue', match: 'prefix' }),
+    ]));
   });
 
   test('generateRefreshToken stores hashed token, user-agent and device metadata', async () => {

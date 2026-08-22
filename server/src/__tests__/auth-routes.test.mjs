@@ -394,7 +394,7 @@ describe('Auth Routes', () => {
   });
 
   describe('POST /auth/token/exchange-local-sweep', () => {
-    it('returns the narrow policy fingerprint path, not broad policy access', async () => {
+    it('returns explicit sweep routes, not broad policy or queue access', async () => {
       apiKeyService.validateApiKey.mockResolvedValueOnce({ id: 9, permissions: 'admin' });
       db.query.mockResolvedValueOnce(createDbSingleRowResult({
         id: 1,
@@ -411,8 +411,17 @@ describe('Auth Routes', () => {
         .send({ ttl_seconds: 300 });
 
       expect(res.status).toBe(200);
-      expect(res.body.allowedApiPrefixes).toContain('/api/policies/evaluation-context');
-      expect(res.body.allowedApiPrefixes).not.toContain('/api/policies');
+      expect(res.body.allowedApiRoutes).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          method: 'GET',
+          path: '/api/policies/evaluation-context',
+          match: 'exact',
+        }),
+      ]));
+      expect(res.body.allowedApiRoutes).not.toEqual(expect.arrayContaining([
+        expect.objectContaining({ path: '/api/policies' }),
+        expect.objectContaining({ path: '/api/queue', match: 'prefix' }),
+      ]));
       expect(authService.generateScopedAccessToken).toHaveBeenCalledWith(
         expect.objectContaining({ id: 1, role: 'admin' }),
         { ttlSeconds: 300 },

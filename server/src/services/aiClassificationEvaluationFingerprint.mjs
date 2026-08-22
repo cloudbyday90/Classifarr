@@ -120,6 +120,7 @@ function buildRuntimeProjection({
   requireAllConfirmations = null,
   aiConfig = {},
   policyContext = null,
+  queueDecisionWitness = null,
 } = {}) {
   return {
     model: typeof model === 'string' ? model : null,
@@ -133,6 +134,16 @@ function buildRuntimeProjection({
       ? {
         version: policyContext.version,
         fingerprint: policyContext.fingerprint,
+      }
+      : null,
+    queueDecisionWitness: queueDecisionWitness && typeof queueDecisionWitness === 'object' &&
+      typeof queueDecisionWitness.version === 'string' &&
+      typeof queueDecisionWitness.algorithm === 'string' &&
+      typeof queueDecisionWitness.fingerprint === 'string'
+      ? {
+        version: queueDecisionWitness.version,
+        algorithm: queueDecisionWitness.algorithm,
+        fingerprint: queueDecisionWitness.fingerprint,
       }
       : null,
   };
