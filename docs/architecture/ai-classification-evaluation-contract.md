@@ -1,8 +1,11 @@
 # Local AI Classification Evaluation Contract
 
-Status: Step 1 implemented on 2026-08-22. This document defines the fixture
-and deterministic-grading foundation; it does not yet run a live model or
-change routing behaviour.
+Status: Steps 1 and 2 implemented on 2026-08-22. This document defines the
+fixture and deterministic-grading foundation. The local, opt-in direct-sweep
+adapter and fingerprint design is documented separately in [Local AI
+Classification Evaluation: Observation and Fingerprint
+Design](ai-classification-evaluation-live-sweep.md); neither document changes
+routing behaviour.
 
 ## Objective
 
@@ -258,13 +261,13 @@ verify the new core.
    deterministic. Use human policy review to calibrate any future automated or
    model-based judge; never replace explicit destination expectations with a
    second model's opinion.
-3. In the next step, construct fingerprints from the validated fixture,
-   policy-relevant configuration, provider/model identity, and bounded outcome.
-   A fingerprint makes comparable runs auditable; it does not decide whether a
-   classification is correct.
-4. Then adapt `test:local:ai-policy-sweep` to project its live response and
-   history record into this contract, grade it, and emit the fingerprinted
-   report while retaining its current no-route guardrail and cleanup path.
+3. Use the implemented direct-sweep adapter to construct fingerprints from the
+   validated fixture, server-authored policy context, provider/model identity,
+   and bounded outcome. A fingerprint makes comparable runs auditable; it does
+   not decide whether a classification is correct.
+4. Add a server-authored bounded decision witness for queued ingestion before
+   assigning the same response/history consistency score to `requests` or
+   `webhook-overseerr` runs.
 5. Run deterministic contract/grader tests in CI. Run real local model sweeps
    only on an intentionally configured Docker/Ollama stack, then compare
    reviewed reports rather than treating a one-off green run as a release

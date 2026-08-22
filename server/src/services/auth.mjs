@@ -35,6 +35,7 @@ import {
   resolveValidatedRefreshTokenRow,
   resolveRefreshTokenExpiry,
 } from './authTokenShared.mjs';
+import { LOCAL_AI_POLICY_SWEEP_ALLOWED_API_PREFIXES } from './localAiPolicySweepAccess.mjs';
 
 export {
   ACCESS_TOKEN_EXPIRY,
@@ -119,15 +120,7 @@ export async function generateScopedAccessToken(user, options = {}) {
     persistent_session: false,
     issued_at_ms: issuedAtMs,
     token_use: 'local_ai_policy_sweep',
-    allowed_api_prefixes: [
-      '/api/libraries',
-      '/api/settings',
-      '/api/classification',
-      '/api/requests',
-      '/api/media-sync',
-      '/api/queue',
-      '/api/webhook/overseerr',
-    ],
+    allowed_api_prefixes: LOCAL_AI_POLICY_SWEEP_ALLOWED_API_PREFIXES,
     jti: crypto.randomUUID(),
   };
 

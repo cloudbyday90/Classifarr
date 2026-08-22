@@ -13,6 +13,15 @@ Current development changes will be recorded here.
 
 ### Added
 
+- **Direct AI-evaluation sweep evidence** — The local policy-to-AI sweep can
+  now grade versioned direct-classification fixtures against a bounded response
+  and independently persisted history record. It emits canonical SHA-256
+  fixture, policy, runtime, and outcome fingerprints, adds a read-only
+  server-side policy-context digest endpoint for scoped local-sweep tokens, and
+  keeps queued acknowledgements explicitly ungraded until a non-tautological
+  decision witness exists. Raw direct response and queued submission payloads
+  are no longer retained in new report rows.
+
 - **AI classification evaluation foundation** — Added a versioned,
   machine-readable local evaluation-fixture contract and side-effect-free ESM
   grader. Policy-owner fixtures can define exact classified, clarification, or
@@ -70,6 +79,15 @@ Current development changes will be recorded here.
   profile, history, or library names as route authority.
 
 ### Changed
+
+- **Server declaration validation** — Reduced the policy-compatibility release
+  review artifact module to its actual public API, resolving the Knip CI gate
+  failure caused by three unused re-exports.
+
+- **PostgreSQL client dependency** — Applied open Dependabot PR #514 locally
+  without merging it, advancing `pg` from 8.22.0 to 8.23.0 (and
+  `pg-protocol` from 1.15.0 to 1.16.0). Query pipelining remains opt-in and is
+  not enabled by Classifarr.
 
 - **Workflow dependency pins** — Applied open Dependabot PR #516 locally
   without merging it, advancing the pinned Docker Buildx action to v4.3.0 and

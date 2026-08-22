@@ -11,6 +11,11 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
+import {
+  AI_CLASSIFICATION_EVALUATION_STATUS,
+  buildSweepEvaluationArtifact,
+  normalizeSweepFixtures,
+} from './lib/aiClassificationEvaluationSweepAdapter.mjs';
 
 const DEFAULT_BASE_URL = 'http://localhost:3000';
 const DEFAULT_FIXTURES = path.resolve('scripts/fixtures/ai-policy-sweep.fixtures.json');
@@ -405,6 +410,16 @@ function validateQueuedSubmissionResponse(response, mode) {
   return issues;
 }
 
+function summarizeSubmissionResponse(response, mode) {
+  return {
+    mode,
+    success: response?.success === true,
+    queued: response?.queued === true,
+    taskId: Number.isInteger(response?.taskId) ? response.taskId : null,
+    logId: Number.isInteger(response?.logId) ? response.logId : null,
+  };
+}
+
 function buildOverseerrLikeWebhookPayload(fixture, runIndex) {
   const requestId = Number(fixture.tmdb_id) * 10 + (runIndex + 1);
   return {
@@ -659,8 +674,9 @@ async function runSweep() {
   assertValidArgs(args);
   assertNotCiUnlessAllowed(args);
 
-  const fixtures = await readJsonFile(args.fixturesPath);
-  if (!Array.isArray(fixtures) || fixtures.length === 0) {
+  const fixtureDocument = await readJsonFile(args.fixturesPath);
+  const fixtures = normalizeSweepFixtures(fixtureDocument);
+  if (fixtures.length === 0) {
     throw new Error(`Fixture file has no items: ${args.fixturesPath}`);
   }
 
@@ -685,11 +701,12 @@ async function runSweep() {
 
   const api = createApiClient(args.baseUrl, token);
 
-  const [libraries, baselineAiConfig, baselineHistory, baselineSettings] = await Promise.all([
+  const [libraries, baselineAiConfig, baselineHistory, baselineSettings, policyContext] = await Promise.all([
     api.requestJson('/api/libraries'),
     api.requestJson('/api/settings/ai'),
     fetchHistoryPage(api),
     api.requestJson('/api/settings'),
+    api.requestJson('/api/policies/evaluation-context'),
   ]);
 
   if (!Array.isArray(libraries) || libraries.length === 0) {
@@ -753,6 +770,7 @@ async function runSweep() {
       baselineAiModel: baselineAiConfig?.ollama_model || null,
       baselinePrimaryProvider: baselineAiConfig?.primary_provider || null,
       baselineRequireAllConfirmations,
+      policyContext,
       fixturesRequested: fixtures.length,
       fixturesRunnable: runnableFixtures.length,
       fixturesSkippedAsExisting: skippedExistingFixtures.length,
@@ -773,6 +791,12 @@ async function runSweep() {
       lifecycleFailures: 0,
       existingMediaMethodCount: 0,
       sourceLibraryMethodCount: 0,
+      evaluationFixtureDefinitionCount: runnableFixtures.filter(fixture => fixture.evaluationFixture).length,
+      evaluatedCount: 0,
+      evaluationPassCount: 0,
+      evaluationFailCount: 0,
+      evaluationInvalidCount: 0,
+      evaluationNotEvaluatedCount: 0,
     },
   };
 
@@ -827,18 +851,20 @@ async function runSweep() {
             responseLatencyMs: null,
             ingestMode: args.ingestMode,
             submissionResponse: null,
-            classifyResponse: null,
             validationIssues: [],
             historyRow: null,
             lifecycle: null,
+            evaluation: null,
             status: 'pass',
           };
 
           try {
             const submission = await submitFixtureForIngestMode({ api, args, fixture, runIndex });
             row.responseLatencyMs = Date.now() - requestStarted;
-            row.submissionResponse = submission.submissionResponse;
-            row.classifyResponse = submission.classifyResponse;
+            row.submissionResponse = summarizeSubmissionResponse(
+              submission.submissionResponse,
+              submission.mode,
+            );
             row.validationIssues = [...submission.validationIssues];
 
             const historyPromise = waitForNewHistoryRow(
@@ -878,6 +904,8 @@ async function runSweep() {
                 status: persisted.status,
                 method: persisted.method,
                 confidence: persisted.confidence,
+                library_id: persisted.library_id,
+                library_name: persisted.library_name,
                 pending_reason: persisted.pending_reason,
                 created_at: persisted.created_at,
               };
@@ -912,6 +940,37 @@ async function runSweep() {
                   row.validationIssues.push('Persisted history method returned fallback.');
                 }
               }
+            }
+
+            row.evaluation = buildSweepEvaluationArtifact({
+              fixture,
+              classificationResponse: submission.classifyResponse,
+              historyRow: row.historyRow,
+              policyContext,
+              runtime: {
+                model,
+                ingestMode: args.ingestMode,
+                requireAllConfirmations: args.blockArrRouting || baselineRequireAllConfirmations,
+                aiConfig: {
+                  primary_provider: 'ollama',
+                  ollama_fallback_enabled: false,
+                },
+              },
+            });
+
+            if (row.evaluation.status === AI_CLASSIFICATION_EVALUATION_STATUS.EVALUATED) {
+              report.summary.evaluatedCount += 1;
+              if (row.evaluation.result.passed) {
+                report.summary.evaluationPassCount += 1;
+              } else {
+                report.summary.evaluationFailCount += 1;
+                row.validationIssues.push('Evaluation fixture did not meet its expected outcome.');
+              }
+            } else if (row.evaluation.status === AI_CLASSIFICATION_EVALUATION_STATUS.INVALID) {
+              report.summary.evaluationInvalidCount += 1;
+              row.validationIssues.push('Evaluation fixture does not satisfy the versioned contract.');
+            } else if (row.evaluation.status === AI_CLASSIFICATION_EVALUATION_STATUS.NOT_EVALUATED) {
+              report.summary.evaluationNotEvaluatedCount += 1;
             }
 
             if (args.verifyQueueLifecycle && args.ingestMode !== 'direct') {

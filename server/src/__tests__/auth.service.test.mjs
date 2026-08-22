@@ -18,6 +18,7 @@ const {
   authenticate,
   cleanupExpiredTokens,
   generateAccessToken,
+  generateScopedAccessToken,
   generateRefreshToken,
   getCookieOptions,
   getJWTSecret,
@@ -43,6 +44,7 @@ const authService = {
   authenticate,
   cleanupExpiredTokens,
   generateAccessToken,
+  generateScopedAccessToken,
   generateRefreshToken,
   getCookieOptions,
   getJWTSecret,
@@ -177,6 +179,30 @@ describe('Auth Service - token and persistence flows', () => {
     expect(signSpy.mock.calls[0][0]).toEqual(
       expect.objectContaining({ persistent_session: true })
     );
+  });
+
+  test('generateScopedAccessToken grants only the narrow policy evaluation context path', async () => {
+    const signSpy = jest.spyOn(jwt, 'sign').mockReturnValue('scoped-access-token');
+    db.query.mockResolvedValueOnce(createDbSingleRowResult({ secret: 'jwt-secret' }));
+
+    const token = await authService.generateScopedAccessToken({
+      id: 7,
+      username: 'admin',
+      role: 'admin',
+    });
+
+    expect(token).toBe('scoped-access-token');
+    expect(signSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        token_use: 'local_ai_policy_sweep',
+        allowed_api_prefixes: expect.arrayContaining([
+          '/api/policies/evaluation-context',
+        ]),
+      }),
+      'jwt-secret',
+      expect.objectContaining({ audience: 'classifarr:local-ai-policy-sweep' })
+    );
+    expect(signSpy.mock.calls[0][0].allowed_api_prefixes).not.toContain('/api/policies');
   });
 
   test('generateRefreshToken stores hashed token, user-agent and device metadata', async () => {

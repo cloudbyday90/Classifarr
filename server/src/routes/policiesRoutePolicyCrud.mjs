@@ -15,8 +15,10 @@ import { registerPolicyInitialIntentEstablishmentReadinessRoutes } from './polic
 import { registerPolicyNativeIntentReadinessSummaryRoutes } from './policiesRouteNativeIntentReadinessSummary.mjs';
 import { registerPolicyWriteRoutes } from './policiesRoutePolicyWrite.mjs';
 import { registerPolicyPresetRoutes } from './policiesRoutePolicyPresets.mjs';
+import { registerPolicyEvaluationContextRoute } from './policiesRouteEvaluationContext.mjs';
 
 export function registerPolicyCrudRoutes(router, deps) {
+  registerPolicyEvaluationContextRoute(router, deps);
   registerPolicyOperatorWorkflowReadRoutes(router, deps);
   registerPolicyOperatorWorkflowCustomIntentSignalRoutes(router, deps);
   registerPolicyConstraintAdmissionRoutes(router, deps);

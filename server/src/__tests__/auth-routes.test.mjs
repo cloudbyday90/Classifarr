@@ -393,6 +393,33 @@ describe('Auth Routes', () => {
     });
   });
 
+  describe('POST /auth/token/exchange-local-sweep', () => {
+    it('returns the narrow policy fingerprint path, not broad policy access', async () => {
+      apiKeyService.validateApiKey.mockResolvedValueOnce({ id: 9, permissions: 'admin' });
+      db.query.mockResolvedValueOnce(createDbSingleRowResult({
+        id: 1,
+        username: 'admin',
+        role: 'admin',
+      }));
+      authService.generateScopedAccessToken.mockResolvedValueOnce('scoped-token');
+      apiKeyService.updateLastUsed.mockResolvedValueOnce();
+      apiKeyService.logAudit.mockResolvedValueOnce();
+
+      const res = await request(app)
+        .post('/auth/token/exchange-local-sweep')
+        .set('x-api-key', 'clf_local_test')
+        .send({ ttl_seconds: 300 });
+
+      expect(res.status).toBe(200);
+      expect(res.body.allowedApiPrefixes).toContain('/api/policies/evaluation-context');
+      expect(res.body.allowedApiPrefixes).not.toContain('/api/policies');
+      expect(authService.generateScopedAccessToken).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 1, role: 'admin' }),
+        { ttlSeconds: 300 },
+      );
+    });
+  });
+
   describe('POST /auth/logout-all', () => {
     it('should return 401 without authentication', async () => {
       const res = await request(app)

@@ -25,11 +25,8 @@ import {
   buildPolicyCompatibilityDeletionReleasePrerequisiteContextFingerprint,
 } from './policyCompatibilityDeletionReleasePrerequisiteEvidence.mjs';
 import {
-  POLICY_COMPATIBILITY_DELETION_RELEASE_REVIEW_ARTIFACT_FINGERPRINT_VERSION,
   SHA256_FINGERPRINT_PATTERN,
   buildPolicyCompatibilityDeletionReleaseReviewArtifactFingerprint,
-  buildPolicyCompatibilityDeletionReleaseReviewArtifactProjection,
-  buildPolicyCompatibilityDeletionReleaseReviewSourceProjection,
   buildReleasePrerequisiteContextFromEvidenceBundle,
   buildReleasePrerequisiteContextFromSourceProjection,
   buildSourceEvidence,
@@ -405,13 +402,10 @@ function buildPolicyCompatibilityDeletionReleaseReviewArtifact({
 }
 
 export {
-  POLICY_COMPATIBILITY_DELETION_RELEASE_REVIEW_ARTIFACT_FINGERPRINT_VERSION,
   POLICY_COMPATIBILITY_DELETION_RELEASE_REVIEW_ARTIFACT_RISK_IDS,
   POLICY_COMPATIBILITY_DELETION_RELEASE_REVIEW_ARTIFACT_STATUS_IDS,
   POLICY_COMPATIBILITY_DELETION_RELEASE_REVIEW_ARTIFACT_VERSION,
   buildPolicyCompatibilityDeletionReleaseReviewArtifact,
   buildPolicyCompatibilityDeletionReleaseReviewArtifactFingerprint,
-  buildPolicyCompatibilityDeletionReleaseReviewArtifactProjection,
-  buildPolicyCompatibilityDeletionReleaseReviewSourceProjection,
   validatePolicyCompatibilityDeletionReleaseReviewArtifact,
 };

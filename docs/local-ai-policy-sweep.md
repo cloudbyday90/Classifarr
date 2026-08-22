@@ -36,9 +36,14 @@ This implementation follows current testing and reliability guidance:
   - By default, filters out fixtures that already exist in synced library items via `/api/media-sync/lookup/:tmdbId`.
   - By default, temporarily enables `require_all_confirmations=true` via `/api/settings` to block auto-routing to Sonarr/Radarr during the sweep.
   - For queued ingest modes, verifies queue lifecycle by observing task queue state and webhook log `processing_status` for each submitted `taskId`/`logId`.
-  - Runs each fixture through selected ingest mode.
-  - Validates classify response contract.
-  - Polls `/api/classification/history` for a new persisted row and records `status` + `method`.
+- Runs each fixture through selected ingest mode.
+- Validates classify response contract.
+- Polls `/api/classification/history` for a new persisted row and records `status` + `method`.
+- Fetches a server-authored, read-only policy-context fingerprint. For
+  versioned evaluation fixtures in `direct` mode, reduces the classification
+  response and history row to the strict evaluation contract, grades it, and
+  writes fixture/policy/runtime/outcome SHA-256 fingerprints. The response and
+  policy source data are not written to the evaluation artifact.
 - Restores baseline AI provider/model settings and `require_all_confirmations` at the end.
 - Emits machine-readable JSON report.
 
@@ -56,6 +61,8 @@ A run is marked failed when any condition is true:
 - Queued lifecycle verifier does not observe dispatch evidence (`pending`/`processing`/`queued`/`received`) or does not reach terminal status.
 - Persisted method is `existing_media` or `source_library` for runnable fixtures (contamination guard).
 - No new `classification_history` row appears within timeout window.
+- A versioned evaluation fixture in `direct` mode fails deterministic expected
+  outcome checks or response/history consistency checks.
 
 ## Run it
 
@@ -164,7 +171,8 @@ Default fixture file:
 
 - `scripts/fixtures/ai-policy-sweep.fixtures.json`
 
-Shape:
+Legacy core-sweep shape (runs health checks but does not claim an expected
+classification result):
 
 ```json
 [
@@ -176,6 +184,18 @@ Shape:
   }
 ]
 ```
+
+Versioned evaluation fixtures may be mixed into the same JSON array. These are
+scored only in `direct` mode, because queued acknowledgement responses do not
+contain an independently observable classification result. Use the full schema
+and example in [Local AI Classification Evaluation
+Contract](architecture/ai-classification-evaluation-contract.md), then replace
+the library selector and acceptable outcomes with your reviewed local policy.
+
+For a versioned fixture in `requests` or `webhook-overseerr` mode, the report
+explicitly records `evaluation.status=not_evaluated` and
+`classification_response_not_observable`; queue, history, contamination, and
+no-route checks continue as normal.
 
 ## Report output
 
@@ -191,21 +211,30 @@ Contains:
 - validation issues
 - persisted history status/method
 - summary counters (pass/fail/fallback/pending-retry/awaiting-decision)
+- evaluation counts and, for evaluated direct rows, fixture/policy/runtime/
+  outcome SHA-256 fingerprints plus a deterministic quality score
+
+The sweep obtains policy context from `GET /api/policies/evaluation-context`.
+That admin-protected endpoint is the only policy path added to the exchanged
+local-sweep token. It returns only a fingerprint and aggregate counts; it does
+not return policy content. See [Local AI Classification Evaluation: Observation
+and Fingerprint Design](architecture/ai-classification-evaluation-live-sweep.md)
+for the evidence and security boundaries.
 
 ## Evaluation-contract foundation
 
-The sweep currently proves local request, queue, AI, response-contract, and
-history persistence health. The versioned fixture contract and pure scorer in
-[Local AI Classification Evaluation Contract](architecture/ai-classification-evaluation-contract.md)
-now define how a later sweep revision will evaluate whether a classification is
-correct for the configured policy. That integration is intentionally separate:
-it will project only bounded response/history fields, add fingerprints, and
-preserve this harness's no-route and cleanup safeguards.
+The sweep proves local request, queue, AI, response-contract, and history
+persistence health. Its direct path can now also grade versioned expected
+outcomes with a bounded response/history projection and fingerprinted evidence.
+Queued paths deliberately do not synthesize a response from history; that work
+requires a future server-authored decision witness.
 
 ## Notes for this core round
 
 - This is intentionally focused on the core execution path and contract health checks.
-- Next iteration can add richer grading and thresholds (pairwise model comparison, stricter parse diagnostics, trend baselines, and CI export).
+- The next iteration should add a bounded queued decision witness, then pairwise
+  model comparison and reviewed trend baselines. Live sweeps remain local-only,
+  not a CI release gate.
 
 ## Cleanup for Re-Tests
 
