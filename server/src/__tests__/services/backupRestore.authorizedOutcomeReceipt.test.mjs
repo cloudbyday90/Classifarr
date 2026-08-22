@@ -88,5 +88,26 @@ describe('backup restore authorized outcome receipt lifecycle', () => {
     );
 
     expect(verificationRunDelete).toBeGreaterThan(executionGateDelete);
+    expect(client.query).toHaveBeenCalledWith(
+      `DELETE FROM libraries
+     WHERE id > 0
+       AND NOT EXISTS (
+         SELECT 1
+         FROM classification_history
+         WHERE classification_history.library_id = libraries.id
+           AND classification_history.status = 'completed'
+       )`
+    );
+    expect(client.query).toHaveBeenCalledWith(
+      `DELETE FROM media_server
+     WHERE NOT EXISTS (
+       SELECT 1
+       FROM libraries
+       JOIN classification_history
+         ON classification_history.library_id = libraries.id
+       WHERE libraries.media_server_id = media_server.id
+         AND classification_history.status = 'completed'
+     )`
+    );
   });
 });

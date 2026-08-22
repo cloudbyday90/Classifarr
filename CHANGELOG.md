@@ -80,6 +80,11 @@ Current development changes will be recorded here.
 
 ### Fixed
 
+- **Local backup and restore verification** — Removed the obsolete
+  `ai_config` backup/restore path, which referenced a table intentionally
+  absent from the current schema, and preserve libraries required by completed
+  classification history during replace restores. Together, these fixes allow
+  a fresh verification cycle without corrupting history integrity.
 - **Schema snapshot drift gate** — Ignore informational PostgreSQL and
   `pg_dump` patch-version banners during snapshot comparison, so upstream
   patch releases cannot cause false schema drift while semantic SQL changes

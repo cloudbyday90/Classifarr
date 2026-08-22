@@ -139,9 +139,6 @@ const STUB_DDLS = [
         daily_limit INTEGER DEFAULT 1000, created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
     )`,
-    `CREATE TABLE IF NOT EXISTS ai_config (
-        id SERIAL PRIMARY KEY
-    )`,
     `CREATE TABLE IF NOT EXISTS path_mappings (
         id SERIAL PRIMARY KEY, arr_path VARCHAR(1024) NOT NULL,
         local_path VARCHAR(1024) NOT NULL, is_active BOOLEAN DEFAULT true,

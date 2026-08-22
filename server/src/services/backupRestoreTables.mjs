@@ -816,20 +816,6 @@ export async function restoreOmdbConfig(client, config) {
   );
 }
 
-export async function restoreAiConfig(client, config) {
-  if (!config) return;
-  await client.query(
-    `INSERT INTO ai_config (provider, api_key, model, base_url)
-     VALUES ($1, $2, $3, $4)
-     ON CONFLICT (id) DO UPDATE SET
-       provider = EXCLUDED.provider,
-       api_key = EXCLUDED.api_key,
-       model = EXCLUDED.model,
-       base_url = EXCLUDED.base_url`,
-    [config.provider, config.api_key, config.model, config.base_url]
-  );
-}
-
 export async function restoreWebhookConfig(client, config) {
   if (!config) return;
   const secretKey = config.secret_key ?? config.webhook_key ?? null;

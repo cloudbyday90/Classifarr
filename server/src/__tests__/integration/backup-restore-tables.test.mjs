@@ -19,7 +19,6 @@ const {
     restoreOllamaConfig,
     restoreTmdbConfig,
     restoreOmdbConfig,
-    restoreAiConfig,
     restoreWebhookConfig,
     restoreSettings,
     restoreLibraryLabels,
@@ -83,10 +82,6 @@ const STUB_DDLS = [
         daily_limit INTEGER DEFAULT 1000, created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
     )`,
-    `CREATE TABLE IF NOT EXISTS ai_config (
-        id SERIAL PRIMARY KEY, provider VARCHAR(50), api_key VARCHAR(500),
-        model VARCHAR(100), base_url VARCHAR(500)
-    )`,
     `CREATE TABLE IF NOT EXISTS backup_audit (
         id SERIAL PRIMARY KEY, operation VARCHAR(50) NOT NULL,
         backup_type VARCHAR(20) NOT NULL, filename VARCHAR(255) NOT NULL,
@@ -120,7 +115,6 @@ describe('Backup Restore Tables Integration Tests', () => {
         'ollama_config',
         'tmdb_config',
         'omdb_config',
-        'ai_config',
         'webhook_config',
         'settings',
     ];
@@ -436,16 +430,6 @@ describe('Backup Restore Tables Integration Tests', () => {
             expect(result.rows).toHaveLength(1);
             expect(result.rows[0].api_key).toBe('omdb-key');
             expect(result.rows[0].daily_limit).toBe(1000);
-        });
-    });
-
-    describe('restoreAiConfig', () => {
-        it('inserts ai config', async () => {
-            await restoreAiConfig(db, { provider: 'openai', api_key: 'ai-key', model: 'gpt-4', base_url: null });
-
-            const result = await db.query('SELECT * FROM ai_config');
-            expect(result.rows).toHaveLength(1);
-            expect(result.rows[0].provider).toBe('openai');
         });
     });
 

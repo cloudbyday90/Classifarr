@@ -23,7 +23,6 @@ import {
   restoreOllamaConfig,
   restoreTmdbConfig,
   restoreOmdbConfig,
-  restoreAiConfig,
   restoreWebhookConfig,
   restoreSettings,
   restoreLibraryLabels
@@ -89,10 +88,34 @@ export async function clearExistingConfig(client) {
   await client.query('DELETE FROM scheduled_tasks');
   await client.query('DELETE FROM path_mappings');
   await client.query('DELETE FROM label_presets');
-  await client.query('DELETE FROM libraries WHERE id > 0');
+  // Completed classification history is not part of a configuration backup.
+  // Retain its libraries so the foreign key cannot null a completed record and
+  // violate the history integrity constraint during a replace restore.
+  await client.query(
+    `DELETE FROM libraries
+     WHERE id > 0
+       AND NOT EXISTS (
+         SELECT 1
+         FROM classification_history
+         WHERE classification_history.library_id = libraries.id
+           AND classification_history.status = 'completed'
+       )`
+  );
   await client.query('DELETE FROM radarr_config');
   await client.query('DELETE FROM sonarr_config');
-  await client.query('DELETE FROM media_server');
+  // Deleting a media server cascades to its libraries, so apply the same
+  // history-integrity protection to their parent records.
+  await client.query(
+    `DELETE FROM media_server
+     WHERE NOT EXISTS (
+       SELECT 1
+       FROM libraries
+       JOIN classification_history
+         ON classification_history.library_id = libraries.id
+       WHERE libraries.media_server_id = media_server.id
+         AND classification_history.status = 'completed'
+     )`
+  );
   logger.info('Cleared existing configuration');
 }
 
@@ -146,7 +169,6 @@ export async function restoreAllTables(client, backupData, mode) {
   await restoreOllamaConfig(client, backupData.data.ollamaConfig);
   await restoreTmdbConfig(client, backupData.data.tmdbConfig);
   await restoreOmdbConfig(client, backupData.data.omdbConfig);
-  await restoreAiConfig(client, backupData.data.aiConfig);
   await restoreWebhookConfig(client, backupData.data.webhookConfig);
   await restoreSettings(client, backupData.data.settings);
   await restoreLibraryLabels(client, backupData.data.libraryLabels, libraryIdMap);

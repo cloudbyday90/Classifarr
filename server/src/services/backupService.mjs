@@ -114,7 +114,6 @@ export class BackupService {
         ollamaConfig,
         tmdbConfig,
         omdbConfig,
-        aiConfig,
         webhookConfig,
         pathMappings
       ] = await Promise.all([
@@ -147,7 +146,6 @@ export class BackupService {
         db.query('SELECT * FROM ollama_config LIMIT 1'),
         db.query('SELECT * FROM tmdb_config LIMIT 1'),
         db.query('SELECT * FROM omdb_config LIMIT 1'),
-        db.query('SELECT * FROM ai_config LIMIT 1'),
         db.query('SELECT * FROM webhook_config LIMIT 1'),
         db.query('SELECT * FROM path_mappings ORDER BY id')
       ]);
@@ -186,7 +184,6 @@ export class BackupService {
           ollamaConfig: ollamaConfig.rows[0] || null,
           tmdbConfig: tmdbConfig.rows[0] || null,
           omdbConfig: omdbConfig.rows[0] || null,
-          aiConfig: aiConfig.rows[0] || null,
           webhookConfig: webhookConfig.rows[0] || null,
           pathMappings: pathMappings.rows
         },
