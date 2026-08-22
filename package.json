@@ -46,6 +46,7 @@
     "policy:compatibility-deletion-execution-plan-evidence": "node scripts/generate-policy-compatibility-deletion-execution-plan-evidence-bundle.mjs",
     "policy:compatibility-deletion-maintenance-evidence": "node scripts/run-policy-compatibility-deletion-evidence-maintenance.mjs",
     "policy:compatibility-deletion-preflight-evidence": "node scripts/collect-policy-compatibility-deletion-preflight-evidence.mjs",
+    "policy:compatibility-deletion-release-review-artifact": "node scripts/generate-policy-compatibility-deletion-release-review-artifact.mjs",
     "policy:storage-completion-checkpoint": "node scripts/generate-policy-storage-completion-checkpoint.mjs",
     "policy:storage-final-closure-readout": "node scripts/generate-policy-storage-final-closure-readout.mjs",
     "policy:storage-current-closure-audit": "node scripts/run-policy-storage-current-closure-audit.mjs",

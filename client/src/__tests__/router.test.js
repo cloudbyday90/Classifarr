@@ -121,7 +121,7 @@ describe('router auth/setup guard', () => {
 
     expect(router.currentRoute.value.name).toBe('PolicyNativeIntentReconciliation')
     expect(router.resolve('/policies/native-intent-migration').matched).toHaveLength(0)
-  })
+  }, 10_000)
 
   it('allows authenticated administrators to reach historic route-safety maintenance', async () => {
     const router = await loadRouter()

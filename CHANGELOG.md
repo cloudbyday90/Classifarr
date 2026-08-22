@@ -13,6 +13,12 @@ Current development changes will be recorded here.
 
 ### Added
 
+- **Compatibility-deletion release review artifacts** — A new local ESM
+  generator produces a fresh, fingerprint-bound, non-approving review request
+  from bounded execution-plan evidence. It expires with its source evidence,
+  refuses unsafe output paths, and lists the exact named release-review
+  attestations without manufacturing an approval or deletion authority.
+
 - **Bounded native-change receipt retention** — Immutable native-purpose
   change receipts now retain exact replay state for 30 days and are pruned only
   by a scheduler-owned, lock-protected, age-ordered transaction. Database-side
@@ -58,6 +64,10 @@ Current development changes will be recorded here.
 
 ### Changed
 
+- **CodeQL security actions** — Applied Dependabot PR #511 locally (without
+  merging it), advancing the pinned CodeQL init, analysis, and SARIF-upload
+  action revision to v4.37.7.
+
 - **Native Policy Intent Storage** — Current closure evidence remains bound to
   the native schema, authority, migration, reconciliation, safety, and audit
   components. Compatibility source retirement remains separately blocked until
@@ -79,6 +89,11 @@ Current development changes will be recorded here.
   every six hours until the durable alert state resolves.
 
 ### Fixed
+
+- **Router test stability** — The asynchronous native-intent reconciliation
+  route test now has an explicit, narrow 10-second budget for lazy-route
+  loading under constrained host concurrency without weakening the global test
+  timeout.
 
 - **Local backup and restore verification** — Removed the obsolete
   `ai_config` backup/restore path, which referenced a table intentionally

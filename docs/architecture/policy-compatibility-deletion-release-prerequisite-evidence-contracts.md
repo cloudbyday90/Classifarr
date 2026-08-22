@@ -165,3 +165,14 @@ reject legacy booleans, missing or duplicate prerequisites, unrecognized
 subject types, malformed or stale fingerprints, and unexpected fields.
 Existing bundle, CLI, and execution-artifact tests prove the contract carries
 through the later fingerprint chain without exposing raw evidence.
+
+## Review Handoff
+
+The contract is intentionally not a review-interface generator: creating a
+locally valid attestation would conflate evidence preparation with human
+authorization. The separate
+[release review artifact](policy-compatibility-deletion-release-review-artifact.md)
+produces a fresh, bounded, non-approving review request that identifies this
+contract's exact fingerprint and prerequisite statuses. A later authenticated
+release boundary remains responsible for supplying the subject-bound evidence
+accepted here.
