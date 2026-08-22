@@ -30,9 +30,10 @@ This implementation follows current testing and reliability guidance:
 - Supports admin API key exchange into a short-lived scoped JWT via `/api/auth/token/exchange-local-sweep`.
 - Validates preconditions:
   - `/api/libraries` has at least one configured library.
-  - `/api/settings/ai` is readable.
+  - `/api/settings/ai` is readable and returns its current `ETag` write
+    precondition.
 - Iterates model matrix:
-  - Updates `/api/settings/ai` with `primary_provider=ollama` and `ollama_model=<model>`.
+  - Updates `/api/settings/ai` with `primary_provider=ollama` and `ollama_model=<model>`, using `If-Match` with the current `ETag` and refreshing that precondition after every successful write.
   - By default, filters out fixtures that already exist in synced library items via `/api/media-sync/lookup/:tmdbId`.
   - By default, temporarily enables `require_all_confirmations=true` via `/api/settings` to block auto-routing to Sonarr/Radarr during the sweep.
   - For queued ingest modes, verifies queue lifecycle by observing task queue state and webhook log `processing_status` for each submitted `taskId`/`logId`.
@@ -47,7 +48,7 @@ This implementation follows current testing and reliability guidance:
   contract, grades it, and writes fixture/policy/runtime/outcome SHA-256
   fingerprints. The response and policy source data are not written to the
   evaluation artifact.
-- Restores baseline AI provider/model settings and `require_all_confirmations` at the end.
+- Restores baseline AI provider/model settings and `require_all_confirmations` at the end. The restore uses the latest AI-settings write precondition and fails closed rather than overwriting a concurrent settings change.
 - Emits machine-readable JSON report.
 
 ## Core pass/fail checks

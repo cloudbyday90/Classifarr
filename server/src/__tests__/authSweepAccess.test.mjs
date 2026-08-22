@@ -28,6 +28,25 @@ describe('local AI policy sweep route authorization', () => {
     )).toBe(true);
   });
 
+  test('matches public API paths when middleware runs in a mounted router', () => {
+    expect(isAllowedSweepRoute(
+      {
+        method: 'GET',
+        path: '/ai',
+        originalUrl: '/api/settings/ai?include=provider',
+      },
+      LOCAL_AI_POLICY_SWEEP_ALLOWED_API_ROUTES,
+    )).toBe(true);
+    expect(isAllowedSweepRoute(
+      {
+        method: 'PUT',
+        path: '/',
+        originalUrl: '/api/settings',
+      },
+      LOCAL_AI_POLICY_SWEEP_ALLOWED_API_ROUTES,
+    )).toBe(true);
+  });
+
   test('denies queue mutations, sibling paths, and malformed dynamic identifiers', () => {
     expect(isAllowedSweepRoute(
       request('POST', '/api/queue/task/19/cancel'),

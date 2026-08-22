@@ -175,6 +175,10 @@ five aggregate counts, and is registered before `/:id` policy routes.
 ### Execution behaviour
 
 - The harness fetches policy context once at preflight. It is read-only.
+- The harness reads the AI-settings `ETag` before its temporary model change,
+  supplies it as `If-Match`, and carries the returned replacement tag into the
+  next write and final restore. A concurrent configuration change therefore
+  makes the restore fail closed instead of being overwritten.
 - The existing default `require_all_confirmations=true` no-route guardrail is
   applied and restored exactly as before.
 - In `direct` mode, a versioned fixture with an observed history row is graded.

@@ -10,9 +10,16 @@
 import { verifyToken } from '../services/auth.mjs';
 
 function requestPath(req) {
-  const rawPath = typeof req.path === 'string'
-    ? req.path
-    : String(req.originalUrl || req.url || '').split(/[?#]/, 1)[0];
+  // Router-level middleware sees req.path relative to its mount point. Scope
+  // grants are expressed as public API paths, so prefer the original request
+  // URL whenever Express provides it.
+  const rawPath = typeof req.originalUrl === 'string' && req.originalUrl
+    ? req.originalUrl.split(/[?#]/, 1)[0]
+    : typeof req.url === 'string' && req.url
+      ? req.url.split(/[?#]/, 1)[0]
+      : typeof req.path === 'string'
+        ? req.path
+        : '';
   return rawPath.startsWith('/') ? rawPath : `/${rawPath}`;
 }
 
@@ -99,4 +106,3 @@ export function requireAdmin(req, res, next) {
   }
   next();
 }
-

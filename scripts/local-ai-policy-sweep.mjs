@@ -242,7 +242,7 @@ function buildDefaultOutputPath() {
 function createApiClient(baseUrl, token) {
   const normalizedBase = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
 
-  async function requestJson(route, options = {}) {
+  async function requestJsonWithResponse(route, options = {}) {
     const method = options.method || 'GET';
     const headers = {
       'Content-Type': 'application/json',
@@ -273,12 +273,26 @@ function createApiClient(baseUrl, token) {
       throw new Error(`${method} ${route} failed: ${reason}`);
     }
 
+    return { payload, headers: response.headers };
+  }
+
+  async function requestJson(route, options = {}) {
+    const { payload } = await requestJsonWithResponse(route, options);
     return payload;
   }
 
   return {
     requestJson,
+    requestJsonWithResponse,
   };
+}
+
+function getAiSettingsWritePrecondition(response) {
+  const writePrecondition = response?.headers?.get('etag');
+  if (!writePrecondition) {
+    throw new Error('AI settings response did not return its required write precondition.');
+  }
+  return writePrecondition;
 }
 
 async function loginForBearer(baseUrl, username, password) {
@@ -781,13 +795,15 @@ async function runSweep() {
 
   const api = createApiClient(args.baseUrl, token);
 
-  const [libraries, baselineAiConfig, baselineHistory, baselineSettings, policyContext] = await Promise.all([
+  const [libraries, baselineAiConfigResponse, baselineHistory, baselineSettings, policyContext] = await Promise.all([
     api.requestJson('/api/libraries'),
-    api.requestJson('/api/settings/ai'),
+    api.requestJsonWithResponse('/api/settings/ai'),
     fetchHistoryPage(api),
     api.requestJson('/api/settings'),
     api.requestJson('/api/policies/evaluation-context'),
   ]);
+  const baselineAiConfig = baselineAiConfigResponse.payload;
+  let aiSettingsWritePrecondition = getAiSettingsWritePrecondition(baselineAiConfigResponse);
 
   if (!Array.isArray(libraries) || libraries.length === 0) {
     throw new Error('No libraries configured. Configure at least one library before running policy+AI sweep tests.');
@@ -899,14 +915,16 @@ async function runSweep() {
     for (const model of args.models) {
       console.log(`\n=== Model: ${model} ===`);
 
-      await api.requestJson('/api/settings/ai', {
+      const updatedAiConfigResponse = await api.requestJsonWithResponse('/api/settings/ai', {
         method: 'PUT',
+        headers: { 'If-Match': aiSettingsWritePrecondition },
         body: {
           primary_provider: 'ollama',
           ollama_model: model,
           ollama_fallback_enabled: false,
         },
       });
+      aiSettingsWritePrecondition = getAiSettingsWritePrecondition(updatedAiConfigResponse);
 
       report.summary.byModel[model] = report.summary.byModel[model] || {
         total: 0,
@@ -1110,8 +1128,9 @@ async function runSweep() {
     }
   } finally {
     try {
-      await api.requestJson('/api/settings/ai', {
+      const restoredAiConfigResponse = await api.requestJsonWithResponse('/api/settings/ai', {
         method: 'PUT',
+        headers: { 'If-Match': aiSettingsWritePrecondition },
         body: {
           primary_provider: baselineAiConfig?.primary_provider ?? 'none',
           ollama_model: baselineAiConfig?.ollama_model ?? 'llama3.2',
@@ -1119,6 +1138,7 @@ async function runSweep() {
           ollama_fallback_enabled: baselineAiConfig?.ollama_fallback_enabled ?? false,
         },
       });
+      getAiSettingsWritePrecondition(restoredAiConfigResponse);
       console.log('\nRestored baseline AI provider/model settings.');
     } catch (restoreError) {
       console.warn(`\nWARN: failed to restore baseline AI settings: ${restoreError.message}`);

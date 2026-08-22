@@ -80,6 +80,13 @@ describe('ClassificationPendingDecisionLifecycleService', () => {
     expect(query.mock.calls[2][0]).toContain("SET status = 'reclassified'");
     expect(query.mock.calls[3][0]).toContain('UPDATE app_notifications');
     expect(query.mock.calls[4][0]).toContain("'superseded_by_classification_id'");
+    expect(query.mock.calls[4][0]).toContain("'version', $2::text");
+    expect(query.mock.calls[4][0]).toContain("'superseded_by_classification_id', $3::bigint");
+    expect(query.mock.calls[4][1]).toEqual([
+      [41, 40],
+      'classification.pending_decision_identity.v1',
+      42,
+    ]);
   });
 
   test('leaves completed records outside the pending decision invariant', async () => {

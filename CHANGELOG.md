@@ -88,6 +88,11 @@ Current development changes will be recorded here.
 
 ### Changed
 
+- **Local-sweep scoped-route matching** — Scoped local-evaluation tokens now
+  evaluate the original public API path when authentication executes inside a
+  mounted Express router, preserving the explicit least-privilege grants for
+  required settings reads and writes.
+
 - **Local-sweep token least privilege** — Replaced broad API-prefix grants
   with explicit method-and-route grants for short-lived exchanged sweep
   tokens. Queue mutation routes are no longer covered; the new witness route
@@ -134,6 +139,16 @@ Current development changes will be recorded here.
   every six hours until the durable alert state resolves.
 
 ### Fixed
+
+- **Pending-decision replacement persistence** — Superseding a prior pending
+  classification now explicitly types its lifecycle-version JSONB parameter,
+  preventing PostgreSQL from rejecting the replacement and causing needless
+  queue retries.
+
+- **Local-sweep AI-settings concurrency** — Temporary model selection and
+  cleanup now send and refresh the server-issued AI-settings `ETag`, so a
+  sweep satisfies the required write precondition and fails closed if another
+  operator changes the configuration.
 
 - **Router test stability** — The asynchronous native-intent reconciliation
   route test now has an explicit, narrow 10-second budget for lazy-route

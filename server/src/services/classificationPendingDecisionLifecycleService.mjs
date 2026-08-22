@@ -216,9 +216,9 @@ export class ClassificationPendingDecisionLifecycleService {
              COALESCE(metadata, '{}'::jsonb),
              '{pending_decision_lifecycle}',
              jsonb_build_object(
-               'version', $2,
+               'version', $2::text,
                'state', 'superseded',
-               'superseded_by_classification_id', $3,
+               'superseded_by_classification_id', $3::bigint,
                'superseded_at', NOW()
              ),
              true
