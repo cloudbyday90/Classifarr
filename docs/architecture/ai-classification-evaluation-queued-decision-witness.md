@@ -225,7 +225,7 @@ removes the broad `/api/queue` prefix from the temporary credential.
 
 ## Next Recommended Item
 
-After the queued witness is proven in local sweeps, add a reviewed trend-baseline
-artifact that compares approved fixture cohorts across model, policy, and
-witness fingerprints. It should report deltas and required human review without
-creating an automatic deployment or routing authority.
+The reviewed local [trend-baseline comparator](ai-classification-evaluation-trend-baseline.md)
+is now implemented. The next highest-value addition is to grow the reviewed
+fixture cohort with policy-owner-approved routing, retry, and contamination
+examples while keeping model evidence advisory and human-reviewed.

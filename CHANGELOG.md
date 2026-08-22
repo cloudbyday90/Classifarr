@@ -13,6 +13,12 @@ Current development changes will be recorded here.
 
 ### Added
 
+- **Reviewed local AI-evaluation trend baseline** — A local ESM comparator now
+  aggregates only bounded evaluated evidence into exact fixture/model/policy/
+  runtime cohorts, flags regressions and incomparable context changes for human
+  review, writes sanitized temporary artifacts, and has no deployment, routing,
+  policy, or release authority.
+
 - **Reviewed local AI-evaluation cohort** — Four runnable ambiguity and
   collision fixtures now declare versioned, human-reviewed clarification
   outcomes. The local sweep validates its complete mixed fixture document

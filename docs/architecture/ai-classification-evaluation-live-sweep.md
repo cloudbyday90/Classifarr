@@ -233,8 +233,10 @@ rejection, and allowlisted observation projection.
    AI quality score. Start with reviewed happy-path, ambiguity, clarification,
    retry, collision, and contamination cases for every local policy.
 2. Compare quality only within a matching fixture, policy, runtime, and
-   outcome fingerprint context. Treat a policy or runtime fingerprint change as
-   a new evaluation cohort, not an automatic regression.
+   outcome fingerprint context with the local [trend-baseline
+   comparator](ai-classification-evaluation-trend-baseline.md). Treat a policy
+   or runtime fingerprint change as a new evaluation cohort, not an automatic
+   regression.
 3. Keep queued-path lifecycle/history verification enabled. Use the dedicated
    [queued decision-witness design](ai-classification-evaluation-queued-decision-witness.md)
    to introduce response/history consistency scoring without returning raw
@@ -248,7 +250,7 @@ rejection, and allowlisted observation projection.
 
 ## Next Recommended Item
 
-After the reviewed local fixture cohort, add a trend-baseline artifact that
-compares matching fixture/policy/runtime/witness cohorts across local models.
-It should identify deltas and request human review; it must not create an
-automatic deployment, routing, or policy-change authority.
+The reviewed local trend-baseline comparator is now implemented. Before any
+release-process automation is considered, grow the reviewed versioned fixture
+cohort with policy-owner-approved routing, retry, and contamination examples,
+then continue to keep local model evidence advisory and human-reviewed.

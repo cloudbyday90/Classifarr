@@ -277,6 +277,43 @@ not return policy content. See [Local AI Classification Evaluation: Observation
 and Fingerprint Design](architecture/ai-classification-evaluation-live-sweep.md)
 for the evidence and security boundaries.
 
+## Compare a reviewed baseline
+
+Run the same reviewed cohort after an intentional local model, policy, runtime,
+or witness change, then compare the resulting candidate report with the prior
+local baseline. This is a read-only, local review aid; it does not call the
+application, change settings, or authorize a deployment, policy update, route,
+or release.
+
+```powershell
+node scripts/compare-ai-policy-sweep-trend.mjs \
+  --baseline ".tmp/reports/ai-policy-sweep-reviewed-baseline.json" \
+  --candidate ".tmp/reports/ai-policy-sweep-candidate.json"
+```
+
+The package alias `npm run test:local:ai-policy-sweep:compare` is convenient in
+shells that forward arguments normally. On Windows PowerShell with npm 12, use
+the direct `node` form above because npm can consume the comparator's
+`--baseline` and `--candidate` options as its own configuration flags.
+
+The comparator writes a separate, access-controlled JSON artifact under
+`.tmp/reports/`. It projects only fixture IDs, model identifiers, evaluation
+source, the existing fixture/policy/runtime/outcome fingerprints, and aggregate
+pass/fail counts. It never copies request titles, raw provider output, policy
+content, tokens, webhook payloads, or history data from either input report.
+
+It compares only exact fixture, model, evaluation-source, policy, and runtime
+fingerprint cohorts. A policy, model/runtime, witness, source, or fixture change
+is intentionally reported as `context_changed` or a one-sided cohort for human
+review, rather than as a model regression. A matching-cohort pass-rate decline,
+changed outcome distribution, changed sample size, or ungraded row likewise
+requires review. A stable artifact is evidence only; a human must still make
+the release decision. Legacy rows that were explicitly `not_requested` are
+reported as excluded rather than as lost evaluation coverage.
+
+See [AI Classification Evaluation Trend Baseline](architecture/ai-classification-evaluation-trend-baseline.md)
+for the full comparison contract, security boundary, and review procedure.
+
 ## Evaluation-contract foundation
 
 The sweep proves local request, queue, AI, response-contract, and history
@@ -288,9 +325,9 @@ projection; neither mode synthesizes a response from history.
 ## Notes for this core round
 
 - This is intentionally focused on the core execution path and contract health checks.
-- The next iteration after the queued witness is a reviewed trend baseline and
-  pairwise model comparison. Live sweeps remain local-only, not a CI release
-  gate.
+- The reviewed trend-baseline comparator now supports deliberate pairwise
+  local model comparison. Live sweeps and comparison artifacts remain
+  local-only, not a CI release gate.
 
 ## Cleanup for Re-Tests
 

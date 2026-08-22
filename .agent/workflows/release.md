@@ -192,6 +192,44 @@ npm run check-copyright
 npm run test:ci
 ```
 
+### Local AI-evaluation evidence (when relevant)
+
+When a release changes AI classification, evaluation fixtures, policy decision
+state, local-model configuration, or queued decision-witness behavior, collect
+fresh local evidence before tagging. This is deliberately a local operator
+review step, not an automated release gate and not a substitute for the
+mandatory checks above.
+
+1. Use the intentional local Docker/Ollama setup with the sweep's no-route
+   guardrail enabled. Run the reviewed versioned fixture cohort and retain the
+   report only in the ignored, access-controlled `.tmp/reports/` directory.
+2. Compare the fresh candidate report with a reviewed baseline that used the
+   same fixture/model/policy/runtime context:
+
+   ```powershell
+   node scripts/compare-ai-policy-sweep-trend.mjs `
+     --baseline ".tmp/reports/ai-policy-sweep-reviewed-baseline.json" `
+     --candidate ".tmp/reports/ai-policy-sweep-candidate.json"
+   ```
+
+   On Windows PowerShell with npm 12, invoke the script directly as shown;
+   npm can otherwise interpret `--baseline` and `--candidate` as npm options.
+
+3. Manually review the generated trend artifact. A `pass_rate_regressed`,
+   changed outcome distribution, sample-size change, ungraded row,
+   `context_changed`, or one-sided cohort requires an explicit operator
+   decision. A stable comparison is evidence only: it does not approve a
+   release.
+4. Never commit, attach to a public GitHub release, or paste raw sweep reports
+   or trend artifacts into CI logs. They may contain local request metadata;
+   the comparator artifact itself retains only bounded fingerprints and
+   aggregates. Use the normal ignored-artifact cleanup process when the review
+   is complete.
+
+See [`docs/local-ai-policy-sweep.md`](../../docs/local-ai-policy-sweep.md) and
+[`docs/architecture/ai-classification-evaluation-trend-baseline.md`](../../docs/architecture/ai-classification-evaluation-trend-baseline.md)
+for the precise contract and security boundary.
+
 Run the image-bound schema and smoke checks with the syntax for your shell:
 
 ```powershell
