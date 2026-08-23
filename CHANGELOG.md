@@ -133,6 +133,11 @@ Current development changes will be recorded here.
 
 ### Changed
 
+- **Policy-route delivery** — Replaced the deprecated Vite `manualChunks`
+  function with modular Rolldown code-splitting groups. Policy authoring,
+  maintenance, and insights now load independently rather than sharing one
+  oversized route bundle.
+
 - **v0.48.2-beta candidate preparation** — Package and lockfile metadata, UI
   label, README source marker, and release notes now identify the next planned
   tag; a deterministic release guard rejects stale public version surfaces.

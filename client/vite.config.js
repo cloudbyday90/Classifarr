@@ -1,36 +1,14 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import path from 'path'
+import { createClientCodeSplitting } from './build/clientCodeSplitting.mjs'
 
 const clientRoot = import.meta.dirname
-
-const settingsChunkRoots = [
-  '/src/views/Settings.vue',
-  '/src/views/settings/',
-]
-
-const ragSettingsChunkRoots = [
-  '/src/views/RAGSettings.vue',
-  '/src/views/rag/',
-]
-
-const policyChunkRoots = [
-  '/src/views/PolicyList.vue',
-  '/src/views/PolicyNativeIntentReconciliation.vue',
-  '/src/views/PresetsManager.vue',
-  '/src/views/PolicyStatsDashboard.vue',
-  '/src/views/TuningSuggestionsDashboard.vue',
-  '/src/views/Evidence.vue',
-]
 
 const VUEUSE_INVALID_ANNOTATION_LOCATIONS = new Set([
   3362,
   5780,
 ])
-
-function isChunkMatch(id, roots) {
-  return roots.some((root) => id.includes(root))
-}
 
 function isKnownVueUseInvalidAnnotation(log) {
   const normalizedId = log?.id?.replaceAll('\\', '/')
@@ -68,28 +46,7 @@ export default defineConfig({
         defaultHandler(level, log)
       },
       output: {
-        manualChunks(id) {
-          if (id.includes('/node_modules/')) {
-            if (['vue', 'vue-router', 'pinia', '@vueuse/core'].some(pkg => id.includes(`/node_modules/${pkg}/`))) {
-              return 'vue-vendor'
-            }
-            if (id.includes('/node_modules/socket.io-client/') || id.includes('/node_modules/engine.io-client/')) {
-              return 'socket'
-            }
-          }
-
-          if (isChunkMatch(id, ragSettingsChunkRoots)) {
-            return 'rag-settings'
-          }
-
-          if (isChunkMatch(id, settingsChunkRoots)) {
-            return 'settings-route'
-          }
-
-          if (isChunkMatch(id, policyChunkRoots)) {
-            return 'policy-tools'
-          }
-        },
+        codeSplitting: createClientCodeSplitting(),
       },
     },
   },
