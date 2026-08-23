@@ -1,0 +1,32 @@
+# Disposable provider-boundary integration fixture. It is intentionally never
+# merged with docker-compose.yml: no Classifarr service, host media mount,
+# application data volume, secret, or production network is in scope.
+services:
+  ollama-fault-stub:
+    build:
+      context: .
+      dockerfile: docker/ai-provider-fault-stub.Dockerfile
+    init: true
+    user: "1000:1000"
+    restart: "no"
+    read_only: true
+    ports:
+      - "127.0.0.1:${CLASSIFARR_AI_PROVIDER_FAULT_PORT:?A loopback port is required}:11434"
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,uid=1000,gid=1000,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:11434/api/tags').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+      start_period: 2s
+    networks:
+      - ai_provider_fault_internal
+
+networks:
+  ai_provider_fault_internal:
+    driver: bridge

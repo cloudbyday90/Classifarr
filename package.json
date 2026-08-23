@@ -37,6 +37,7 @@
     "test:local:ai-policy-sweep:faults": "node scripts/verify-ai-policy-sweep-fault-scenarios.mjs",
     "test:local:ai-policy-sweep:compare": "node scripts/compare-ai-policy-sweep-trend.mjs",
     "test:local:ai-policy-sweep:cleanup": "node scripts/cleanup-local-ai-policy-sweep.mjs --all-reports",
+    "test:integration:ai-provider-fault-compose": "node scripts/run-ai-provider-fault-compose-integration.mjs",
     "policy:storage-closure-evidence": "node scripts/run-policy-storage-closure-evidence.mjs",
     "policy:compatibility-deletion-execution-plan-artifact": "node scripts/generate-policy-compatibility-deletion-execution-plan-artifact.mjs",
     "policy:controlled-compatibility-removal-batch": "node scripts/generate-policy-controlled-compatibility-removal-batch-artifact.mjs",

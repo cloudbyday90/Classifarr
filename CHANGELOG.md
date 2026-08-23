@@ -13,6 +13,10 @@ Current development changes will be recorded here.
 
 ### Added
 
+- Added a disposable, loopback-only Docker Compose AI-provider fault integration
+  that verifies a real provider 503 is persisted as `queued_for_retry` and is
+  blocked from routing, with unconditional test cleanup.
+
 - **Offline AI-evaluation fault-scenario harness** — Added a strict ESM
   contract and local report tool that injects synthetic retry, fallback,
   existing-media, and source-library observations into the deterministic

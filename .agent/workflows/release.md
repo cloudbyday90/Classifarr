@@ -212,14 +212,27 @@ mandatory checks above.
    fallback and contamination are still detected as failures; it does not make
    them acceptable quality outcomes. On Windows PowerShell with npm 12, use the
    direct ESM command when arguments are present.
-2. Use the intentional local Docker/Ollama setup with the sweep's no-route
+2. When the release changes provider recovery, AI dispatch, queue retry
+   persistence, or route admission, run the disposable live provider-fault
+   boundary check:
+
+   ```powershell
+   npm run test:integration:ai-provider-fault-compose
+   ```
+
+   Require the actual queue task to complete with `queued_for_retry`, a null
+   destination, and a no-route decision. This command uses only its fixed
+   loopback provider stub and an isolated integration database; it always tears
+   down its uniquely named Compose project. It is not a substitute for the
+   normal Docker smoke suite or full server test suite.
+3. Use the intentional local Docker/Ollama setup with the sweep's no-route
    guardrail enabled. Run the reviewed versioned fixture cohort and retain the
    report only in the ignored, access-controlled `.tmp/reports/` directory.
    When a release changes policy-dependent final destinations, use the optional
    local fixture profile only after a policy owner has reviewed it. Its policy
    fingerprint must match the fresh sweep preflight; do not copy the local
    profile into the repository, CI artifacts, or release evidence.
-3. Compare the fresh candidate report with a reviewed baseline that used the
+4. Compare the fresh candidate report with a reviewed baseline that used the
    same fixture/model/policy/runtime context:
 
    ```powershell
@@ -231,12 +244,12 @@ mandatory checks above.
    On Windows PowerShell with npm 12, invoke the script directly as shown;
    npm can otherwise interpret `--baseline` and `--candidate` as npm options.
 
-4. Manually review the generated trend artifact. A `pass_rate_regressed`,
+5. Manually review the generated trend artifact. A `pass_rate_regressed`,
    changed outcome distribution, sample-size change, ungraded row,
    `context_changed`, or one-sided cohort requires an explicit operator
    decision. A stable comparison is evidence only: it does not approve a
    release.
-5. Never commit, attach to a public GitHub release, or paste raw sweep reports
+6. Never commit, attach to a public GitHub release, or paste raw sweep reports
    or trend artifacts into CI logs. They may contain local request metadata;
    the comparator artifact itself retains only bounded fingerprints and
    aggregates. Use the normal ignored-artifact cleanup process when the review

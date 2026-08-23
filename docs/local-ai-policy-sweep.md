@@ -100,6 +100,26 @@ See [AI Classification Evaluation Fault-Scenario Harness](architecture/ai-classi
 for the contract, source research, security boundary, and next integration
 layer.
 
+### Step 0b: verify the disposable live provider-fault boundary
+
+When a change affects provider recovery, queue dispatch, retry persistence, or
+route admission, run the isolated Compose integration in addition to the
+offline harness:
+
+```powershell
+npm run test:integration:ai-provider-fault-compose
+```
+
+This starts only a loopback-bound Ollama-compatible test stub and an isolated
+integration database. It proves a real HTTP 503 becomes a persisted
+`queued_for_retry` result and cannot route media. It never uses the normal
+Classifarr Compose stack, local application data, media mounts, provider
+credentials, or a configured model. Docker state created by the command is
+always removed.
+
+See [Disposable AI Provider-Fault Compose Integration](architecture/ai-provider-fault-compose-integration.md)
+for the fault contract, scope, and security boundaries.
+
 > CI/CD safety: this script exits with an error when CI environment variables are detected. This prevents accidental execution in GitHub Actions or other pipelines where local Ollama/Plex context is not present.
 
 Override only for intentional exceptional use:
