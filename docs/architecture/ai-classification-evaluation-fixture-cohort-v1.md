@@ -162,6 +162,8 @@ add a brittle confidence range.
 
 ## Next Recommended Item
 
-Use a policy-pinned local profile to record one reviewed final destination,
-then add a separately controlled retry/contamination exercise that proves
-failure handling without normalizing fallback into a passing quality outcome.
+Use a policy-pinned local profile to record one reviewed final destination.
+The deterministic [fault-scenario harness](ai-classification-evaluation-fault-scenarios.md)
+now verifies the evaluation contract's retry and contamination semantics; next,
+add a disposable Docker Compose provider-stub exercise that validates one real
+queue retry without normalizing fallback into a passing quality outcome.

@@ -13,6 +13,13 @@ Current development changes will be recorded here.
 
 ### Added
 
+- **Offline AI-evaluation fault-scenario harness** — Added a strict ESM
+  contract and local report tool that injects synthetic retry, fallback,
+  existing-media, and source-library observations into the deterministic
+  evaluation grader with zero network requests, application writes, or media
+  submissions. It confirms fallback and contamination remain detected failures
+  before an optional live local sweep.
+
 - **Policy-pinned local AI-evaluation profiles** — The local sweep can now
   append up to 32 reviewed installation-specific fixtures from an ignored ESM-
   validated profile, then refuses to change settings or submit media unless its

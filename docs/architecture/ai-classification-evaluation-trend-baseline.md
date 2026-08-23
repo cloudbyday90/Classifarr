@@ -223,8 +223,8 @@ retention boundary; no database, server route, or CI credential is added.
 
 ## Next Recommended Item
 
-The local [policy-pinned fixture profile](ai-classification-evaluation-policy-profile.md)
-is now available for policy-owner-approved final destination and controlled
-retry cases. The next item is a separately controlled retry/contamination
-exercise that proves those negative safety paths without normalizing fallback
-into a passing quality outcome.
+The deterministic [fault-scenario harness](ai-classification-evaluation-fault-scenarios.md)
+now proves that retry is an explicit allowed non-final outcome while fallback
+and contamination remain negative signals. The next item is a disposable
+Docker Compose provider-stub integration that validates the corresponding real
+queue behavior with explicit no-route and cleanup safeguards.

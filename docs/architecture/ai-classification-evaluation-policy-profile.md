@@ -206,7 +206,8 @@ terminates the run without execution side effects.
 
 ## Next Recommended Item
 
-Create a controlled local fault-injection harness for the retry and
-contamination safety paths. It should use a disposable test setup, assert the
-expected `pending_retry` or contamination failure evidence, and never make
-fallback a passing release condition.
+The deterministic [fault-scenario harness](ai-classification-evaluation-fault-scenarios.md)
+now verifies retry, fallback, and contamination detection without side effects.
+The next layer is a disposable Docker Compose provider-stub integration that
+proves one real local provider failure becomes `pending_retry`, preserves the
+no-route guardrail, and performs report-driven cleanup.

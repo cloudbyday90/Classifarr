@@ -74,6 +74,32 @@ A run is marked failed when any condition is true:
 
 ## Run it
 
+### Step 0: verify fault-safety contracts (no side effects)
+
+Before an optional live local sweep, run the deterministic fault-scenario
+harness. It injects only checked-in synthetic observations into the same
+evaluation grader; it makes zero HTTP requests, changes no application setting,
+submits no media, and calls no provider or model.
+
+```powershell
+node scripts/verify-ai-policy-sweep-fault-scenarios.mjs `
+  --output ".tmp/reports/ai-policy-sweep-fault-scenarios.json"
+```
+
+All four scenario contracts must pass. The controlled retry scenario confirms
+that `pending_retry` is a supported non-final result; fallback,
+`existing_media`, and `source_library` scenarios pass only when their expected
+negative safety signals are detected. A harness pass never makes those methods
+acceptable live-quality outcomes.
+
+On Windows PowerShell with npm 12, invoke the ESM file directly when using
+`--output` or `--scenarios`; npm can consume these as its own flags. The
+argument-free alias is `npm run test:local:ai-policy-sweep:faults`.
+
+See [AI Classification Evaluation Fault-Scenario Harness](architecture/ai-classification-evaluation-fault-scenarios.md)
+for the contract, source research, security boundary, and next integration
+layer.
+
 > CI/CD safety: this script exits with an error when CI environment variables are detected. This prevents accidental execution in GitHub Actions or other pipelines where local Ollama/Plex context is not present.
 
 Override only for intentional exceptional use:
@@ -364,6 +390,8 @@ projection; neither mode synthesizes a response from history.
 - The reviewed trend-baseline comparator now supports deliberate pairwise
   local model comparison. Live sweeps and comparison artifacts remain
   local-only, not a CI release gate.
+- The deterministic fault-scenario harness validates that fallback and the two
+  known contamination methods remain detectable failures before any live sweep.
 - Installation-specific final-destination, retry, fallback, and contamination
   expectations belong in a policy-pinned local fixture profile, never in the
   portable checked-in default corpus.

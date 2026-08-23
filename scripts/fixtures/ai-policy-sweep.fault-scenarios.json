@@ -1,0 +1,193 @@
+{
+  "version": "classifarr.ai_policy_sweep_fault_scenario.v1",
+  "scenarios": [
+    {
+      "id": "fault-controlled-retry",
+      "fixture": {
+        "version": "classifarr.ai_classification_evaluation_fixture.v1",
+        "id": "fault-controlled-retry",
+        "name": "Synthetic controlled retry",
+        "tags": ["fault-contract", "retry", "synthetic"],
+        "request": {
+          "tmdbId": 2147400001,
+          "mediaType": "movie",
+          "title": "Synthetic controlled retry"
+        },
+        "expected": {
+          "fallbackAllowed": false,
+          "outcomes": [
+            {
+              "decisionKind": "retry",
+              "methods": ["ai_analysis"],
+              "historyStatuses": ["pending_retry"]
+            }
+          ]
+        }
+      },
+      "observation": {
+        "classification": {
+          "method": "ai_analysis",
+          "confidence": null,
+          "library": null,
+          "needsClarification": false,
+          "needsRetry": true
+        },
+        "history": {
+          "method": "ai_analysis",
+          "status": "pending_retry",
+          "confidence": 0,
+          "library": null
+        }
+      },
+      "expected": {
+        "evaluationPassed": true,
+        "failureCheckIds": [],
+        "signalIds": []
+      }
+    },
+    {
+      "id": "fault-fallback",
+      "fixture": {
+        "version": "classifarr.ai_classification_evaluation_fixture.v1",
+        "id": "fault-fallback",
+        "name": "Synthetic fallback safety failure",
+        "tags": ["fallback", "fault-contract", "synthetic"],
+        "request": {
+          "tmdbId": 2147400002,
+          "mediaType": "movie",
+          "title": "Synthetic fallback safety failure"
+        },
+        "expected": {
+          "fallbackAllowed": false,
+          "outcomes": [
+            {
+              "decisionKind": "retry",
+              "methods": ["ai_analysis"],
+              "historyStatuses": ["pending_retry"]
+            }
+          ]
+        }
+      },
+      "observation": {
+        "classification": {
+          "method": "fallback",
+          "confidence": null,
+          "library": null,
+          "needsClarification": false,
+          "needsRetry": true
+        },
+        "history": {
+          "method": "fallback",
+          "status": "pending_retry",
+          "confidence": 0,
+          "library": null
+        }
+      },
+      "expected": {
+        "evaluationPassed": false,
+        "failureCheckIds": ["classification_method", "fallback_not_allowed"],
+        "signalIds": ["fallback_method"]
+      }
+    },
+    {
+      "id": "fault-existing-media-contamination",
+      "fixture": {
+        "version": "classifarr.ai_classification_evaluation_fixture.v1",
+        "id": "fault-existing-media-contamination",
+        "name": "Synthetic existing media contamination",
+        "tags": ["contamination", "existing-media", "fault-contract", "synthetic"],
+        "request": {
+          "tmdbId": 2147400003,
+          "mediaType": "movie",
+          "title": "Synthetic existing media contamination"
+        },
+        "expected": {
+          "fallbackAllowed": false,
+          "outcomes": [
+            {
+              "decisionKind": "clarification",
+              "methods": ["ai_analysis"],
+              "historyStatuses": ["awaiting_decision"]
+            }
+          ]
+        }
+      },
+      "observation": {
+        "classification": {
+          "method": "existing_media",
+          "confidence": 100,
+          "library": {
+            "id": 1,
+            "name": "Synthetic library"
+          },
+          "needsClarification": false,
+          "needsRetry": false
+        },
+        "history": {
+          "method": "existing_media",
+          "status": "completed",
+          "confidence": 100,
+          "library": {
+            "id": 1,
+            "name": "Synthetic library"
+          }
+        }
+      },
+      "expected": {
+        "evaluationPassed": false,
+        "failureCheckIds": ["classification_method", "decision_kind", "history_status"],
+        "signalIds": ["existing_media_method"]
+      }
+    },
+    {
+      "id": "fault-source-library-contamination",
+      "fixture": {
+        "version": "classifarr.ai_classification_evaluation_fixture.v1",
+        "id": "fault-source-library-contamination",
+        "name": "Synthetic source library contamination",
+        "tags": ["contamination", "fault-contract", "source-library", "synthetic"],
+        "request": {
+          "tmdbId": 2147400004,
+          "mediaType": "movie",
+          "title": "Synthetic source library contamination"
+        },
+        "expected": {
+          "fallbackAllowed": false,
+          "outcomes": [
+            {
+              "decisionKind": "clarification",
+              "methods": ["ai_analysis"],
+              "historyStatuses": ["awaiting_decision"]
+            }
+          ]
+        }
+      },
+      "observation": {
+        "classification": {
+          "method": "source_library",
+          "confidence": 100,
+          "library": {
+            "id": 1,
+            "name": "Synthetic library"
+          },
+          "needsClarification": false,
+          "needsRetry": false
+        },
+        "history": {
+          "method": "source_library",
+          "status": "completed",
+          "confidence": 100,
+          "library": {
+            "id": 1,
+            "name": "Synthetic library"
+          }
+        }
+      },
+      "expected": {
+        "evaluationPassed": false,
+        "failureCheckIds": ["classification_method", "decision_kind", "history_status"],
+        "signalIds": ["source_library_method"]
+      }
+    }
+  ]
+}
