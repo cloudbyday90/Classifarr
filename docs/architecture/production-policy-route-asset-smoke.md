@@ -32,7 +32,10 @@ Each navigation must render its visible heading, complete every local script
 asset with HTTP 200, load its expected route-page chunk, avoid every other
 route-page chunk, remain free of unhandled page errors, and stay at or below a
 512 KiB (524,288-byte) uncompressed JavaScript budget. All seven current
-scenarios passed this check.
+scenarios passed this check. The protected `Build and Test` CI job now installs
+only Playwright Chromium with its Linux dependencies and runs the same named
+command. On failure it retains the synthetic Playwright report for 14 days;
+successful runs do not upload it.
 
 The budget counts response-body bytes for local `.js` files under `/assets/`.
 It intentionally does not use elapsed-time thresholds, compression heuristics,
@@ -81,6 +84,12 @@ click mutation controls and has no deployment or release authority.
   recommend isolated tests and web-first assertions. Each scenario receives a
   fresh browser context and verifies a user-visible heading with
   `toBeVisible()`.
+- Playwright's [CI guidance](https://playwright.dev/docs/ci) recommends a
+  single worker for reproducibility and its
+  [browser guidance](https://playwright.dev/docs/browsers) supports installing
+  only Chromium with required Linux dependencies. The protected workflow uses
+  that narrow command rather than caching browser binaries or installing
+  browsers the suite does not use.
 
 ## Options Considered
 
@@ -150,6 +159,7 @@ Decision: selected.
 
 ## Next Recommended Item
 
-Install Chromium and run this named production asset smoke in the protected CI
-client job. That turns the local delivery contract into a mandatory regression
-gate before the later `v0.48.2-beta` release-readiness work.
+Extend the same production-preview smoke methodology to the high-transfer
+Settings route, whose generated JavaScript is now the largest client route
+asset. Establish its own documented budget before the later `v0.48.2-beta`
+release-readiness work.

@@ -125,6 +125,11 @@ jobs:
           cd client
           npm ci
 
+      - name: Install Playwright Chromium for production asset smoke
+        run: |
+          cd client
+          npx playwright install --with-deps chromium
+
       - name: Audit client runtime dependencies
         run: |
           cd client
@@ -234,10 +239,21 @@ jobs:
       - name: Coverage ratchet check
         run: npm run coverage:ratchet:check
 
-      - name: Build client
+      - name: Run production policy-route asset smoke
         run: |
           cd client
-          npm run build
+          npm run test:browser:production-policy
+
+      - name: Upload production policy-route asset smoke report
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: production-policy-route-asset-smoke
+          path: |
+            client/playwright-report
+            client/test-results
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Generate test password for Docker build
         run: |

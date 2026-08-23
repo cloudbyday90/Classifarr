@@ -193,6 +193,12 @@ npm --prefix server test
 # Run client tests
 npm --prefix client test
 
+# When the release changes client delivery, route splitting, or a policy page,
+# build and cold-load the immutable policy-route assets in Chromium. This
+# loopback-only check intercepts all application APIs and enforces the
+# documented script budget; it has no release or deployment authority.
+npm --prefix client run test:browser:production-policy
+
 # Enforce coverage ratchet before release
 npm run coverage:ratchet:check
 

@@ -149,8 +149,16 @@ enforces an uncompressed JavaScript budget. See
 [Production Policy-Route Asset Smoke](production-policy-route-asset-smoke.md)
 for the design, security boundary, and current checks.
 
+## Follow-up CI Outcome
+
+The protected `Build and Test` workflow now installs only the Chromium browser
+required by this smoke and runs it after the ordinary client unit suite. A
+failure retains only the synthetic Playwright report for 14 days. The workflow
+does not reuse an existing preview server, access an application API, create a
+release, or gain release permissions.
+
 ## Next Recommended Item
 
-Add the production policy-route asset smoke to the protected client CI path so
-every pull request verifies the emitted bundle rather than relying on a local
-pre-release check.
+Apply the same production-preview asset-budget method to the high-transfer
+Settings route, then set a documented route-specific budget before the later
+`v0.48.2-beta` release-readiness work.
