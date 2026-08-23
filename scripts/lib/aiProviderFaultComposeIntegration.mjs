@@ -22,14 +22,8 @@ import { createServer } from 'node:net';
 import process from 'node:process';
 import { resolve } from 'node:path';
 
-export const AI_PROVIDER_FAULT_COMPOSE_STATUS_IDS = Object.freeze({
-  COMPOSE_CONFIGURATION_FAILED: 'compose_configuration_failed',
-  COMPOSE_START_FAILED: 'compose_start_failed',
-  INVALID_INPUT: 'invalid_input',
-  LOOPBACK_PORT_FAILED: 'loopback_port_failed',
-  TEARDOWN_FAILED: 'teardown_failed',
-  TEST_FAILED: 'test_failed',
-});
+export { AI_PROVIDER_FAULT_COMPOSE_STATUS_IDS } from './aiProviderFaultComposeContract.mjs';
+import { AI_PROVIDER_FAULT_COMPOSE_STATUS_IDS } from './aiProviderFaultComposeContract.mjs';
 
 export const DEFAULT_AI_PROVIDER_FAULT_COMPOSE_FILE = resolve(
   import.meta.dirname,

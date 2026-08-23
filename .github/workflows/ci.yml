@@ -67,6 +67,11 @@ jobs:
           cd server
           npm run check:release-consumer-smoke
 
+      - name: Check AI provider fault release receipt contract
+        run: |
+          cd server
+          npm run check:ai-provider-fault-receipt
+
       - name: Check release candidate publication workflow contract
         run: |
           cd server
@@ -343,11 +348,77 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  release-candidate-provider-fault-receipt:
+    name: Release Candidate Provider Fault Receipt
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: [release-acceptance]
+    timeout-minutes: 15
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Set up npm and npx
+        run: |
+          set -euo pipefail
+          npm install --global npm@12.0.2
+          npm --version
+          npx --version
+
+      - name: Install server dependencies
+        run: |
+          set -euo pipefail
+          cd server
+          npm ci
+
+      - name: Run isolated AI provider fault integration
+        id: run-provider-fault-compose-integration
+        continue-on-error: true
+        env:
+          CLASSIFARR_AI_PROVIDER_FAULT_RECEIPT_SOURCE_REVISION: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          npm run test:integration:ai-provider-fault-compose
+
+      - name: Verify bounded AI provider fault receipt
+        if: always()
+        env:
+          CLASSIFARR_AI_PROVIDER_FAULT_RECEIPT_SOURCE_REVISION: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          node scripts/check-ai-provider-fault-compose-receipt.mjs
+
+      - name: Upload bounded AI provider fault receipt
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ai-provider-fault-compose-receipt
+          path: .tmp/ci/ai-provider-fault-compose-receipt.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Enforce AI provider fault integration outcome
+        if: always()
+        run: |
+          set -euo pipefail
+          test "${{ steps.run-provider-fault-compose-integration.outcome }}" = "success"
+
   docker-release:
     name: Build and Push Docker Images
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    needs: [build-and-test, database-tests, release-acceptance]
+    needs: [build-and-test, database-tests, release-acceptance, release-candidate-provider-fault-receipt]
     outputs:
       image_digest: ${{ steps.build-and-push-image.outputs.digest }}
 
@@ -526,7 +597,7 @@ jobs:
     name: Release Candidate Publication
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    needs: [release-acceptance, docker-release, published-digest-consumer-smoke]
+    needs: [release-acceptance, release-candidate-provider-fault-receipt, docker-release, published-digest-consumer-smoke]
     environment: release-publication
 
     permissions:

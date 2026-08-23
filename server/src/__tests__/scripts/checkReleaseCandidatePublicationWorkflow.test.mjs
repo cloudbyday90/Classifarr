@@ -23,11 +23,13 @@ import {
   loadWorkflow,
   validateReleaseCandidatePublicationWorkflow,
 } from '../../scripts/checkReleaseCandidatePublicationWorkflow.mjs';
+import { AI_PROVIDER_FAULT_RECEIPT_ARTIFACT_NAME } from '../../scripts/checkAiProviderFaultReceiptWorkflow.mjs';
 
 describe('checkReleaseCandidatePublicationWorkflow', () => {
   test('accepts the checked-in digest-only release publication boundary', () => {
     expect(validateReleaseCandidatePublicationWorkflow(loadWorkflow())).toEqual({
       environment: RELEASE_PUBLICATION_ENVIRONMENT,
+      providerFaultReceiptArtifact: AI_PROVIDER_FAULT_RECEIPT_ARTIFACT_NAME,
       releaseArtifact: RELEASE_CANDIDATE_ARTIFACT_NAME,
       smokeArtifact: PUBLISHED_DIGEST_SMOKE_ARTIFACT_NAME,
     });
@@ -58,6 +60,18 @@ describe('checkReleaseCandidatePublicationWorkflow', () => {
 
     expect(() => validateReleaseCandidatePublicationWorkflow(workflow))
       .toThrow('published-digest-consumer-smoke.permissions.contents');
+  });
+
+  test('rejects a release image publication that bypasses the provider-fault receipt gate', () => {
+    const workflow = structuredClone(loadWorkflow());
+    workflow.jobs['docker-release'].needs = [
+      'build-and-test',
+      'database-tests',
+      'release-acceptance',
+    ];
+
+    expect(() => validateReleaseCandidatePublicationWorkflow(workflow))
+      .toThrow('docker-release.needs');
   });
 
   test('rejects an alias check that omits the clean-pull verification', () => {

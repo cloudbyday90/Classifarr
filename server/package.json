@@ -26,6 +26,7 @@
     "lint:tests": "eslint \"src/__tests__/**/*.{js,mjs}\"",
     "lint:security": "eslint \"src/**/*.{js,mjs}\" --ignore-pattern \"src/__tests__/**\"",
     "check:release-consumer-smoke": "node src/scripts/checkPublishedDigestConsumerSmokeCompose.mjs",
+    "check:ai-provider-fault-receipt": "node src/scripts/checkAiProviderFaultReceiptWorkflow.mjs",
     "check:release-installation-evidence": "node src/scripts/checkReleaseInstallationEvidenceWorkflow.mjs",
     "check:release-candidate-publication": "node src/scripts/checkReleaseCandidatePublicationWorkflow.mjs",
     "check:release-provenance": "node src/scripts/checkContainerImageProvenanceWorkflow.mjs",

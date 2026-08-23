@@ -13,6 +13,11 @@ Current development changes will be recorded here.
 
 ### Added
 
+- Added a clean-host release-candidate AI provider-fault gate. It validates the
+  disposable Compose recovery path before image publication and retains only a
+  fixed-schema, 14-day pass/fail receipt with no provider, fixture, port, or
+  queue payload data.
+
 - Added a disposable, loopback-only Docker Compose AI-provider fault integration
   that verifies a real provider 503 is persisted as `queued_for_retry` and is
   blocked from routing, with unconditional test cleanup.

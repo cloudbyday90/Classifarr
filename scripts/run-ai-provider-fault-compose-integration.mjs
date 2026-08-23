@@ -23,6 +23,12 @@ import {
   AI_PROVIDER_FAULT_COMPOSE_STATUS_IDS,
   runAiProviderFaultComposeIntegration,
 } from './lib/aiProviderFaultComposeIntegration.mjs';
+import {
+  AI_PROVIDER_FAULT_COMPOSE_RECEIPT_OUTCOMES,
+  AI_PROVIDER_FAULT_COMPOSE_RECEIPT_PASSED_STATUS_ID,
+  createAiProviderFaultComposeReceipt,
+  writeAiProviderFaultComposeReceipt,
+} from './lib/aiProviderFaultComposeReceipt.mjs';
 
 function usage() {
   return [
@@ -33,6 +39,25 @@ function usage() {
   ].join('\n');
 }
 
+function receiptSourceRevision(environment = process.env) {
+  const sourceRevision = environment.CLASSIFARR_AI_PROVIDER_FAULT_RECEIPT_SOURCE_REVISION;
+  return typeof sourceRevision === 'string' && sourceRevision.length > 0
+    ? sourceRevision
+    : null;
+}
+
+function writeReceipt({ outcome, sourceRevision, statusId }) {
+  if (!sourceRevision) {
+    return false;
+  }
+  writeAiProviderFaultComposeReceipt(createAiProviderFaultComposeReceipt({
+    outcome,
+    sourceRevision,
+    statusId,
+  }));
+  return true;
+}
+
 async function main() {
   if (process.argv.slice(2).length > 0) {
     process.stderr.write(`${usage()}\n`);
@@ -40,11 +65,28 @@ async function main() {
     return;
   }
 
+  const sourceRevision = receiptSourceRevision();
   try {
     const result = await runAiProviderFaultComposeIntegration({ cwd: resolve(process.cwd()) });
-    process.stdout.write(`AI provider fault Compose integration passed (${result.projectName}).\n`);
+    const wroteReceipt = writeReceipt({
+      outcome: AI_PROVIDER_FAULT_COMPOSE_RECEIPT_OUTCOMES.PASSED,
+      sourceRevision,
+      statusId: AI_PROVIDER_FAULT_COMPOSE_RECEIPT_PASSED_STATUS_ID,
+    });
+    process.stdout.write(wroteReceipt
+      ? 'AI provider fault Compose integration passed; bounded receipt written.\n'
+      : `AI provider fault Compose integration passed (${result.projectName}).\n`);
   } catch (error) {
     const statusId = error?.statusId || AI_PROVIDER_FAULT_COMPOSE_STATUS_IDS.INVALID_INPUT;
+    try {
+      writeReceipt({
+        outcome: AI_PROVIDER_FAULT_COMPOSE_RECEIPT_OUTCOMES.FAILED,
+        sourceRevision,
+        statusId,
+      });
+    } catch (_receiptError) {
+      // The fixed receipt boundary must never leak a nested failure or raw test data.
+    }
     process.stderr.write(`AI provider fault Compose integration failed: ${statusId}\n`);
     process.stderr.write(`${usage()}\n`);
     process.exitCode = 1;

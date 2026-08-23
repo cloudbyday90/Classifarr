@@ -20,6 +20,7 @@ import fs from 'node:fs';
 import { resolve } from 'node:path';
 
 import { load } from 'js-yaml';
+import { AI_PROVIDER_FAULT_RECEIPT_ARTIFACT_NAME } from './checkAiProviderFaultReceiptWorkflow.mjs';
 
 function githubExpression(expression) {
   return '$' + `{{ ${expression} }}`;
@@ -128,6 +129,16 @@ function assertDockerReleaseOutput(dockerRelease) {
   assertExactObject(dockerRelease.outputs, {
     image_digest: BUILD_DIGEST_EXPRESSION,
   }, 'docker-release.outputs');
+  assertJobNeeds(
+    dockerRelease,
+    [
+      'build-and-test',
+      'database-tests',
+      'release-acceptance',
+      'release-candidate-provider-fault-receipt',
+    ],
+    'docker-release'
+  );
 }
 
 function assertSafeContainerRetentionJob(job, name) {
@@ -229,7 +240,12 @@ function assertPublicationJob(job) {
   assertTagOnlyJob(job, 'release-candidate-publication');
   assertJobNeeds(
     job,
-    ['docker-release', 'published-digest-consumer-smoke', 'release-acceptance'],
+    [
+      'docker-release',
+      'published-digest-consumer-smoke',
+      'release-acceptance',
+      'release-candidate-provider-fault-receipt',
+    ],
     'release-candidate-publication'
   );
   if (job.environment !== RELEASE_PUBLICATION_ENVIRONMENT) {
@@ -381,6 +397,7 @@ export function validateReleaseCandidatePublicationWorkflow(workflow) {
 
   return {
     environment: RELEASE_PUBLICATION_ENVIRONMENT,
+    providerFaultReceiptArtifact: AI_PROVIDER_FAULT_RECEIPT_ARTIFACT_NAME,
     releaseArtifact: RELEASE_CANDIDATE_ARTIFACT_NAME,
     smokeArtifact: PUBLISHED_DIGEST_SMOKE_ARTIFACT_NAME,
   };

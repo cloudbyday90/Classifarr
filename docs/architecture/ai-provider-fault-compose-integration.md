@@ -166,10 +166,15 @@ fault-scenario harness.
    remains the only layer that exercises intentional local-model behavior.
 4. Before a broader release, run the normal Docker smoke suite and full server
    tests. Do not substitute this narrowly scoped fault test for either.
+5. Require the clean-host release-candidate receipt gate for every version tag;
+   it confirms this exact boundary without uploading local-model or provider
+   content.
 
 ## Next Recommended Item
 
-Add a release-candidate workflow step that runs this disposable fault check on
-a clean Docker host and publishes only a bounded pass/fail receipt. It should
-remain separate from local model-quality reports and must never attach raw
-provider or fixture data to CI artifacts.
+The clean-host receipt gate is now implemented; see
+[Clean-Host AI Provider-Fault Release-Candidate Receipt](ai-provider-fault-release-candidate-receipt.md).
+
+Next, bind a validated SHA-256 fingerprint of that receipt into the release
+candidate evidence schema. Preserve only the fixed receipt contract or its
+fingerprint, never raw provider, fixture, or test data.

@@ -419,20 +419,25 @@ gh run watch <run-id> --exit-status
 
 The tag workflow performs these operations in order:
 
-1. Builds, publishes, attests, and verifies the GHCR and Docker Hub digest. Each
+1. Runs the fixed disposable AI provider-fault integration on a separate fresh
+   GitHub-hosted Docker job after release acceptance. It validates and uploads
+   only the short-lived `ai-provider-fault-compose-receipt`; a failed or missing
+   receipt blocks image publication. Do not substitute local sweep reports for
+   this receipt.
+2. Builds, publishes, attests, and verifies the GHCR and Docker Hub digest. Each
    validated release tag also publishes the same digest as `:latest` for the
    documented Docker Compose and Unraid update channel; the version tag remains
    the immutable rollback and pinning reference.
-2. Starts the exact GHCR digest from a separate hosted consumer job and uploads
+3. Starts the exact GHCR digest from a separate hosted consumer job and uploads
    bounded `published-digest-consumer-smoke` evidence. It also verifies that
    `latest` resolves to that digest, every referenced OCI manifest is readable,
    and a clean native-platform `docker pull` succeeds before publication.
-3. Validates the tag against all package-lock and package versions plus the
+4. Validates the tag against all package-lock and package versions plus the
    public UI version, then revalidates the CI readout and consumer evidence
    against the tag, source revision, and digest. It uploads
    `release-candidate-evidence` as a workflow artifact and enters the
    tag-restricted `release-publication` environment.
-4. Creates a draft GitHub release with the evidence JSON attached, publishes
+5. Creates a draft GitHub release with the evidence JSON attached, publishes
    that draft, and verifies the GitHub release attestation. Tags containing a
    prerelease suffix are marked prerelease and explicitly not latest.
 

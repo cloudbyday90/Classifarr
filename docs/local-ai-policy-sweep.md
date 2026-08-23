@@ -120,6 +120,11 @@ always removed.
 See [Disposable AI Provider-Fault Compose Integration](architecture/ai-provider-fault-compose-integration.md)
 for the fault contract, scope, and security boundaries.
 
+For version tags, CI independently reruns this same disposable boundary on a
+fresh hosted job and retains only a bounded receipt. It does not execute the
+local sweep, use a configured model, or upload local sweep reports. See
+[Clean-Host AI Provider-Fault Release-Candidate Receipt](architecture/ai-provider-fault-release-candidate-receipt.md).
+
 > CI/CD safety: this script exits with an error when CI environment variables are detected. This prevents accidental execution in GitHub Actions or other pipelines where local Ollama/Plex context is not present.
 
 Override only for intentional exceptional use:
