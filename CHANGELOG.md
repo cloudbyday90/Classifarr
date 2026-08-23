@@ -13,6 +13,11 @@ Current development changes will be recorded here.
 
 ### Added
 
+- Release-candidate evidence now uses a backward-compatible v2 schema that
+  binds the passed provider-fault receipt's canonical SHA-256 fingerprint and
+  fixed metadata to the immutable public release record without retaining CI
+  test data.
+
 - Added a clean-host release-candidate AI provider-fault gate. It validates the
   disposable Compose recovery path before image publication and retains only a
   fixed-schema, 14-day pass/fail receipt with no provider, fixture, port, or

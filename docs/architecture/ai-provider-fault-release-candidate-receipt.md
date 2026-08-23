@@ -156,10 +156,14 @@ remaining substantially below the repository default described by GitHub.
 5. Use reviewed local policy-to-AI sweeps only for installation-specific model
    quality; never upload their reports as release evidence.
 
+## Permanent Release Binding
+
+The receipt is now bound into v2 release-candidate evidence as a canonical
+SHA-256 fingerprint plus its fixed pass metadata. See
+[Provider-Fault Receipt Release-Evidence Binding](provider-fault-receipt-release-evidence-binding.md).
+
 ## Next Recommended Item
 
-Bind a validated SHA-256 fingerprint of this fixed receipt into the existing
-release-candidate evidence schema. That would preserve a permanent,
-candidate-bound record without embedding provider data or extending the
-short-lived artifact's retention. It should be designed as a separate schema
-revision with compatibility tests before it is made a release asset.
+Add a GitHub artifact attestation for the generated public release-candidate
+evidence JSON and verify it before release publication. Keep the receipt
+fingerprint as the only provider-fault information in that asset.

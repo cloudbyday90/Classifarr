@@ -21,6 +21,7 @@ import {
   AI_PROVIDER_FAULT_COMPOSE_RECEIPT_PASSED_STATUS_ID,
   AI_PROVIDER_FAULT_COMPOSE_RECEIPT_SCHEMA_VERSION,
   AI_PROVIDER_FAULT_COMPOSE_RECEIPT_TEST_CONTRACT,
+  createAiProviderFaultComposeReceiptFingerprint,
   createAiProviderFaultComposeReceipt,
   validateAiProviderFaultComposeReceipt,
 } from '../../../../scripts/lib/aiProviderFaultComposeReceipt.mjs';
@@ -78,5 +79,27 @@ describe('aiProviderFaultComposeReceipt', () => {
       ...receipt,
       outcome: AI_PROVIDER_FAULT_COMPOSE_RECEIPT_OUTCOMES.FAILED,
     })).toThrow('AI provider fault Compose receipt is invalid.');
+  });
+
+  test('fingerprints normalized receipt semantics independently of input key order', () => {
+    const receipt = createAiProviderFaultComposeReceipt({
+      completedAt: COMPLETED_AT,
+      outcome: AI_PROVIDER_FAULT_COMPOSE_RECEIPT_OUTCOMES.PASSED,
+      sourceRevision: SOURCE_REVISION,
+      statusId: AI_PROVIDER_FAULT_COMPOSE_RECEIPT_PASSED_STATUS_ID,
+    });
+    const reorderedReceipt = {
+      test_contract: receipt.test_contract,
+      status_id: receipt.status_id,
+      source_revision: receipt.source_revision,
+      schema_version: receipt.schema_version,
+      outcome: receipt.outcome,
+      completed_at: receipt.completed_at,
+    };
+
+    expect(createAiProviderFaultComposeReceiptFingerprint(reorderedReceipt)).toEqual({
+      algorithm: 'sha256',
+      value: createAiProviderFaultComposeReceiptFingerprint(receipt).value,
+    });
   });
 });

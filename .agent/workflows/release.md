@@ -433,8 +433,11 @@ The tag workflow performs these operations in order:
    `latest` resolves to that digest, every referenced OCI manifest is readable,
    and a clean native-platform `docker pull` succeeds before publication.
 4. Validates the tag against all package-lock and package versions plus the
-   public UI version, then revalidates the CI readout and consumer evidence
-   against the tag, source revision, and digest. It uploads
+   public UI version, then revalidates the CI readout, bounded provider-fault
+   receipt, and consumer evidence against the tag, source revision, and digest.
+   The release asset retains only the receipt's canonical SHA-256 fingerprint
+   and fixed pass metadata; it never retains the receipt artifact or test data.
+   It uploads
    `release-candidate-evidence` as a workflow artifact and enters the
    tag-restricted `release-publication` environment.
 5. Creates a draft GitHub release with the evidence JSON attached, publishes

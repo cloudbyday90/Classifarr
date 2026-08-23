@@ -16,6 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
@@ -30,6 +31,7 @@ export const AI_PROVIDER_FAULT_COMPOSE_RECEIPT_OUTCOMES = Object.freeze({
   PASSED: 'passed',
 });
 export const AI_PROVIDER_FAULT_COMPOSE_RECEIPT_PASSED_STATUS_ID = 'passed';
+export const AI_PROVIDER_FAULT_COMPOSE_RECEIPT_FINGERPRINT_ALGORITHM = 'sha256';
 export const DEFAULT_AI_PROVIDER_FAULT_COMPOSE_RECEIPT_PATH = resolve(
   import.meta.dirname,
   '../../.tmp/ci/ai-provider-fault-compose-receipt.json',
@@ -128,6 +130,21 @@ export function validateAiProviderFaultComposeReceipt(receipt) {
     outcome: receipt.outcome,
     sourceRevision: receipt.source_revision,
     statusId: receipt.status_id,
+  });
+}
+
+/**
+ * Fingerprints the validated, canonical six-field receipt object rather than
+ * its serialized artifact bytes. This keeps the binding stable when a trusted
+ * artifact transport changes JSON whitespace or key order.
+ */
+export function createAiProviderFaultComposeReceiptFingerprint(receipt) {
+  const normalizedReceipt = validateAiProviderFaultComposeReceipt(receipt);
+  return Object.freeze({
+    algorithm: AI_PROVIDER_FAULT_COMPOSE_RECEIPT_FINGERPRINT_ALGORITHM,
+    value: `${AI_PROVIDER_FAULT_COMPOSE_RECEIPT_FINGERPRINT_ALGORITHM}:${createHash('sha256')
+      .update(JSON.stringify(normalizedReceipt))
+      .digest('hex')}`,
   });
 }
 

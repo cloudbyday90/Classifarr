@@ -632,6 +632,12 @@ jobs:
           name: published-digest-consumer-smoke
           path: .tmp/release-candidate/consumer-smoke
 
+      - name: Download bounded AI provider fault receipt
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ai-provider-fault-compose-receipt
+          path: .tmp/release-candidate/provider-fault-receipt
+
       - name: Assemble release candidate evidence
         env:
           IMAGE_DIGEST: ${{ needs.docker-release.outputs.image_digest }}
@@ -644,7 +650,8 @@ jobs:
             --source-revision "$SOURCE_REVISION" \
             --digest "$IMAGE_DIGEST" \
             --ci-readout .tmp/release-candidate/ci-readout/policy-release-acceptance-readout.json \
-            --consumer-smoke .tmp/release-candidate/consumer-smoke/${SOURCE_REVISION}-published-digest-consumer-smoke.json
+            --consumer-smoke .tmp/release-candidate/consumer-smoke/${SOURCE_REVISION}-published-digest-consumer-smoke.json \
+            --provider-fault-receipt .tmp/release-candidate/provider-fault-receipt/ai-provider-fault-compose-receipt.json
 
       - name: Upload release candidate evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

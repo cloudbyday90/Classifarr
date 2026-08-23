@@ -32,8 +32,19 @@ import {
   assertSourceRevision,
   parsePublishedImageReference,
 } from './publishedDigestConsumerSmoke.mjs';
+import {
+  AI_PROVIDER_FAULT_COMPOSE_RECEIPT_FINGERPRINT_ALGORITHM,
+  AI_PROVIDER_FAULT_COMPOSE_RECEIPT_OUTCOMES,
+  AI_PROVIDER_FAULT_COMPOSE_RECEIPT_PASSED_STATUS_ID,
+  AI_PROVIDER_FAULT_COMPOSE_RECEIPT_SCHEMA_VERSION,
+  AI_PROVIDER_FAULT_COMPOSE_RECEIPT_TEST_CONTRACT,
+  createAiProviderFaultComposeReceiptFingerprint,
+  validateAiProviderFaultComposeReceipt,
+} from './aiProviderFaultComposeReceipt.mjs';
 
 export const RELEASE_CANDIDATE_EVIDENCE_SCHEMA_VERSION =
+  'classifarr.release.candidate-evidence.v2';
+export const LEGACY_RELEASE_CANDIDATE_EVIDENCE_SCHEMA_VERSION =
   'classifarr.release.candidate-evidence.v1';
 
 export const RELEASE_CANDIDATE_EVIDENCE_STATUS_IDS = Object.freeze({
@@ -41,10 +52,12 @@ export const RELEASE_CANDIDATE_EVIDENCE_STATUS_IDS = Object.freeze({
   CONSUMER_SMOKE_INVALID: 'consumer_smoke_invalid',
   EVIDENCE_INVALID: 'evidence_invalid',
   INVALID_INPUT: 'invalid_input',
+  PROVIDER_FAULT_RECEIPT_INVALID: 'provider_fault_receipt_invalid',
 });
 
 const DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/u;
 const RELEASE_TAG_PATTERN = /^v\d+\.\d+\.\d+(?:[a-z0-9]+)?(?:-[a-z0-9]+(?:[.-][a-z0-9]+)*)?$/u;
+const FINGERPRINT_PATTERN = /^sha256:[a-f0-9]{64}$/u;
 const EXPECTED_CONSUMER_SMOKE_CHECKS = Object.freeze({
   compose_configuration: 'validated',
   compose_startup: 'healthy',
@@ -56,6 +69,42 @@ const EXPECTED_CONSUMER_SMOKE_CHECKS = Object.freeze({
 const REQUIRED_CI_COMPONENT_IDS = Object.freeze([
   POLICY_RELEASE_ACCEPTANCE_COMPONENT_IDS.REPOSITORY_VALIDATION,
   POLICY_RELEASE_ACCEPTANCE_COMPONENT_IDS.ISOLATED_RUNTIME_ACCEPTANCE,
+]);
+const LEGACY_EVIDENCE_KEYS = Object.freeze([
+  'ci_acceptance',
+  'consumer_smoke',
+  'evidence_fingerprint',
+  'generated_at',
+  'images',
+  'schema_version',
+  'source_repository',
+  'source_revision',
+  'tag',
+]);
+const CURRENT_EVIDENCE_KEYS = Object.freeze([
+  ...LEGACY_EVIDENCE_KEYS,
+  'provider_fault_receipt',
+]);
+const CI_ACCEPTANCE_KEYS = Object.freeze([
+  'generatedAt',
+  'requiredComponentIds',
+  'version',
+]);
+const CONSUMER_SMOKE_KEYS = Object.freeze([
+  'checks',
+  'completedAt',
+  'image',
+]);
+const IMAGE_KEYS = Object.freeze(['dockerHub', 'ghcr']);
+const FINGERPRINT_KEYS = Object.freeze(['algorithm', 'value']);
+const PROVIDER_FAULT_RECEIPT_SUMMARY_KEYS = Object.freeze([
+  'completedAt',
+  'outcome',
+  'receiptFingerprint',
+  'schemaVersion',
+  'sourceRevision',
+  'statusId',
+  'testContract',
 ]);
 
 export class ReleaseCandidateEvidenceError extends Error {
@@ -72,6 +121,16 @@ function throwStatus(statusId) {
 
 function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function hasExactKeys(value, expectedKeys) {
+  if (!isRecord(value)) {
+    return false;
+  }
+  const actualKeys = Object.keys(value).sort();
+  const sortedExpectedKeys = [...expectedKeys].sort();
+  return actualKeys.length === sortedExpectedKeys.length &&
+    actualKeys.every((key, index) => key === sortedExpectedKeys[index]);
 }
 
 function isIsoTimestamp(value) {
@@ -174,6 +233,34 @@ function assertConsumerSmokeEvidence({ consumerSmokeEvidence, digest, sourceRevi
   };
 }
 
+function assertProviderFaultReceipt({ providerFaultReceipt, sourceRevision }) {
+  let receipt;
+  try {
+    receipt = validateAiProviderFaultComposeReceipt(providerFaultReceipt);
+  } catch (_error) {
+    throwStatus(RELEASE_CANDIDATE_EVIDENCE_STATUS_IDS.PROVIDER_FAULT_RECEIPT_INVALID);
+  }
+
+  if (
+    receipt.source_revision !== sourceRevision ||
+    receipt.outcome !== AI_PROVIDER_FAULT_COMPOSE_RECEIPT_OUTCOMES.PASSED ||
+    receipt.status_id !== AI_PROVIDER_FAULT_COMPOSE_RECEIPT_PASSED_STATUS_ID
+  ) {
+    throwStatus(RELEASE_CANDIDATE_EVIDENCE_STATUS_IDS.PROVIDER_FAULT_RECEIPT_INVALID);
+  }
+
+  const receiptFingerprint = createAiProviderFaultComposeReceiptFingerprint(receipt);
+  return {
+    completedAt: receipt.completed_at,
+    outcome: receipt.outcome,
+    receiptFingerprint,
+    schemaVersion: receipt.schema_version,
+    sourceRevision: receipt.source_revision,
+    statusId: receipt.status_id,
+    testContract: receipt.test_contract,
+  };
+}
+
 function createFingerprint(payload) {
   return `sha256:${createHash('sha256').update(JSON.stringify(payload)).digest('hex')}`;
 }
@@ -195,6 +282,7 @@ export function buildReleaseCandidateEvidence({
   consumerSmokeEvidence,
   digest,
   generatedAt = new Date().toISOString(),
+  providerFaultReceipt,
   sourceRevision,
   tag,
 } = {}) {
@@ -214,11 +302,16 @@ export function buildReleaseCandidateEvidence({
     digest: verifiedDigest,
     sourceRevision: verifiedSourceRevision,
   });
+  const providerFaultReceiptSummary = assertProviderFaultReceipt({
+    providerFaultReceipt,
+    sourceRevision: verifiedSourceRevision,
+  });
   const evidence = {
     ci_acceptance: ciAcceptance,
     consumer_smoke: consumerSmoke,
     generated_at: generatedAt,
     images: createImages(verifiedDigest),
+    provider_fault_receipt: providerFaultReceiptSummary,
     schema_version: RELEASE_CANDIDATE_EVIDENCE_SCHEMA_VERSION,
     source_repository: EXPECTED_RELEASE_REPOSITORY,
     source_revision: verifiedSourceRevision,
@@ -234,10 +327,54 @@ export function buildReleaseCandidateEvidence({
   };
 }
 
+function isCurrentEvidenceSchema(schemaVersion) {
+  return schemaVersion === RELEASE_CANDIDATE_EVIDENCE_SCHEMA_VERSION;
+}
+
+function isLegacyEvidenceSchema(schemaVersion) {
+  return schemaVersion === LEGACY_RELEASE_CANDIDATE_EVIDENCE_SCHEMA_VERSION;
+}
+
+function createEvidenceFingerprintPayload(evidence) {
+  const payload = {
+    ci_acceptance: evidence?.ci_acceptance,
+    consumer_smoke: evidence?.consumer_smoke,
+    generated_at: evidence?.generated_at,
+    images: evidence?.images,
+  };
+  if (isCurrentEvidenceSchema(evidence?.schema_version)) {
+    payload.provider_fault_receipt = evidence?.provider_fault_receipt;
+  }
+  return {
+    ...payload,
+    schema_version: evidence?.schema_version,
+    source_repository: evidence?.source_repository,
+    source_revision: evidence?.source_revision,
+    tag: evidence?.tag,
+  };
+}
+
+function isValidProviderFaultReceiptSummary(summary, sourceRevision) {
+  return hasExactKeys(summary, PROVIDER_FAULT_RECEIPT_SUMMARY_KEYS) &&
+    isIsoTimestamp(summary.completedAt) &&
+    summary.outcome === AI_PROVIDER_FAULT_COMPOSE_RECEIPT_OUTCOMES.PASSED &&
+    summary.schemaVersion === AI_PROVIDER_FAULT_COMPOSE_RECEIPT_SCHEMA_VERSION &&
+    summary.sourceRevision === sourceRevision &&
+    summary.statusId === AI_PROVIDER_FAULT_COMPOSE_RECEIPT_PASSED_STATUS_ID &&
+    summary.testContract === AI_PROVIDER_FAULT_COMPOSE_RECEIPT_TEST_CONTRACT &&
+    hasExactKeys(summary.receiptFingerprint, FINGERPRINT_KEYS) &&
+    summary.receiptFingerprint.algorithm === AI_PROVIDER_FAULT_COMPOSE_RECEIPT_FINGERPRINT_ALGORITHM &&
+    FINGERPRINT_PATTERN.test(summary.receiptFingerprint.value);
+}
+
 export function validateReleaseCandidateEvidence(evidence) {
   const issues = [];
-  if (!isRecord(evidence) || evidence.schema_version !== RELEASE_CANDIDATE_EVIDENCE_SCHEMA_VERSION) {
+  const isCurrentSchema = isCurrentEvidenceSchema(evidence?.schema_version);
+  const isLegacySchema = isLegacyEvidenceSchema(evidence?.schema_version);
+  if (!isCurrentSchema && !isLegacySchema) {
     issues.push('unknown_release_candidate_evidence_schema');
+  } else if (!hasExactKeys(evidence, isCurrentSchema ? CURRENT_EVIDENCE_KEYS : LEGACY_EVIDENCE_KEYS)) {
+    issues.push('unexpected_release_candidate_evidence_fields');
   }
 
   let tag;
@@ -246,8 +383,11 @@ export function validateReleaseCandidateEvidence(evidence) {
   try {
     tag = assertReleaseTag(evidence?.tag);
     sourceRevision = assertSourceRevision(evidence?.source_revision);
-    const ghcrImage = parsePublishedImageReference(evidence?.images?.ghcr);
-    const dockerHubImage = parsePublishedImageReference(evidence?.images?.dockerHub);
+    if (!hasExactKeys(evidence?.images, IMAGE_KEYS)) {
+      throwStatus(RELEASE_CANDIDATE_EVIDENCE_STATUS_IDS.EVIDENCE_INVALID);
+    }
+    const ghcrImage = parsePublishedImageReference(evidence.images.ghcr);
+    const dockerHubImage = parsePublishedImageReference(evidence.images.dockerHub);
     if (ghcrImage.repository !== 'ghcr.io/cloudbyday90/classifarr' ||
       dockerHubImage.repository !== 'docker.io/cloudbyday90/classifarr' ||
       ghcrImage.digest !== dockerHubImage.digest) {
@@ -264,14 +404,15 @@ export function validateReleaseCandidateEvidence(evidence) {
   if (!isIsoTimestamp(evidence?.generated_at)) {
     issues.push('invalid_generated_at');
   }
-  if (!isRecord(evidence?.ci_acceptance) ||
+  if (!hasExactKeys(evidence?.ci_acceptance, CI_ACCEPTANCE_KEYS) ||
     evidence.ci_acceptance.version === undefined ||
     !isIsoTimestamp(evidence.ci_acceptance.generatedAt) ||
     JSON.stringify(evidence.ci_acceptance.requiredComponentIds) !==
       JSON.stringify(REQUIRED_CI_COMPONENT_IDS)) {
     issues.push('invalid_ci_acceptance_summary');
   }
-  if (!isRecord(evidence?.consumer_smoke) || !isIsoTimestamp(evidence.consumer_smoke.completedAt) ||
+  if (!hasExactKeys(evidence?.consumer_smoke, CONSUMER_SMOKE_KEYS) ||
+    !isIsoTimestamp(evidence.consumer_smoke.completedAt) ||
     !assertExpectedConsumerSmokeChecks(evidence.consumer_smoke.checks)) {
     issues.push('invalid_consumer_smoke_summary');
   } else {
@@ -284,19 +425,21 @@ export function validateReleaseCandidateEvidence(evidence) {
       issues.push('invalid_consumer_smoke_image');
     }
   }
+  if (isCurrentSchema) {
+    if (!hasExactKeys(evidence?.provider_fault_receipt, PROVIDER_FAULT_RECEIPT_SUMMARY_KEYS)) {
+      issues.push('unexpected_provider_fault_receipt_summary_fields');
+    } else if (!isValidProviderFaultReceiptSummary(
+      evidence.provider_fault_receipt,
+      sourceRevision
+    )) {
+      issues.push('invalid_provider_fault_receipt_summary');
+    }
+  }
 
-  const fingerprintPayload = {
-    ci_acceptance: evidence?.ci_acceptance,
-    consumer_smoke: evidence?.consumer_smoke,
-    generated_at: evidence?.generated_at,
-    images: evidence?.images,
-    schema_version: evidence?.schema_version,
-    source_repository: evidence?.source_repository,
-    source_revision: evidence?.source_revision,
-    tag: evidence?.tag,
-  };
-  if (evidence?.evidence_fingerprint?.algorithm !== 'sha256' ||
-    evidence?.evidence_fingerprint?.value !== createFingerprint(fingerprintPayload)) {
+  const fingerprintPayload = createEvidenceFingerprintPayload(evidence);
+  if (!hasExactKeys(evidence?.evidence_fingerprint, FINGERPRINT_KEYS) ||
+    evidence.evidence_fingerprint.algorithm !== 'sha256' ||
+    evidence.evidence_fingerprint.value !== createFingerprint(fingerprintPayload)) {
     issues.push('invalid_evidence_fingerprint');
   }
 
@@ -314,6 +457,8 @@ export function buildReleaseCandidateNotes(evidence) {
     throwStatus(RELEASE_CANDIDATE_EVIDENCE_STATUS_IDS.EVIDENCE_INVALID);
   }
 
+  const isCurrentSchema = isCurrentEvidenceSchema(evidence.schema_version);
+
   return [
     `# Classifarr ${evidence.tag}`,
     '',
@@ -325,8 +470,18 @@ export function buildReleaseCandidateNotes(evidence) {
     `- Docker Hub image: \`${evidence.images.dockerHub}\``,
     `- Consumer smoke image: \`${evidence.consumer_smoke.image}\``,
     `- Consumer smoke completed: \`${evidence.consumer_smoke.completedAt}\``,
+    ...(isCurrentSchema ? [
+      `- Provider-fault receipt: \`${evidence.provider_fault_receipt.receiptFingerprint.value}\``,
+      `- Provider-fault receipt completed: \`${evidence.provider_fault_receipt.completedAt}\``,
+    ] : []),
     '',
-    'The attached release-candidate evidence asset binds this tag to the exact',
-    'CI-accepted source revision and digest-only consumer smoke result.',
+    ...(isCurrentSchema ? [
+      'The attached release-candidate evidence asset binds this tag to the exact',
+      'CI-accepted source revision, passed provider-fault receipt, and digest-only',
+      'consumer smoke result.',
+    ] : [
+      'The attached release-candidate evidence asset binds this tag to the exact',
+      'CI-accepted source revision and digest-only consumer smoke result.',
+    ]),
   ].join('\n');
 }

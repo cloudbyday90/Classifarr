@@ -94,23 +94,30 @@ Decision: selected.
 
 ## Implemented Contract
 
-The `CI/CD Pipeline` tag path now has four ordered boundaries:
+The `CI/CD Pipeline` tag path now has five ordered boundaries:
 
-1. `docker-release` emits the one Buildx multi-architecture digest as a job
+1. `release-candidate-provider-fault-receipt` runs the fixed disposable
+   provider-fault Compose check on its own fresh hosted job. It uploads one
+   14-day bounded pass/fail receipt, with no secrets or raw test data; a missing
+   or failed receipt blocks every later release boundary.
+2. `docker-release` emits the one Buildx multi-architecture digest as a job
    output after provenance has been attached and verified for GHCR and Docker
    Hub.
-2. `published-digest-consumer-smoke` runs in a separate GitHub-hosted job with
+3. `published-digest-consumer-smoke` runs in a separate GitHub-hosted job with
    read-only repository and attestation permissions. It accepts only the GHCR
    digest, verifies expected provenance, starts the isolated no-port Compose
    project, and uploads `published-digest-consumer-smoke` evidence for 90 days.
-3. `release-candidate-publication` downloads the CI readout and smoke artifact.
+4. `release-candidate-publication` downloads the CI readout, smoke artifact,
+   and provider-fault receipt. It validates the receipt's fixed schema, passed
+   outcome, and source revision, then binds its canonical SHA-256 fingerprint
+   and fixed pass metadata into `classifarr.release.candidate-evidence.v2`.
    It first validates the public tag against every package and lockfile version
    and the in-app display label, including the intentional semver-safe mapping
    from `v0.47.5c-beta` to `0.47.5-c.beta`. `releaseCandidateEvidence.mjs`
-   then independently validates both artifacts and their common source revision
-   and digest. It writes a public-safe JSON asset, deterministic release notes,
-   and an evidence SHA-256 fingerprint.
-4. The same tag-restricted publication job creates a GitHub draft with the JSON
+   then independently validates all three artifacts and their common source
+   revision and digest. It writes a public-safe JSON asset, deterministic
+   release notes, and an evidence SHA-256 fingerprint.
+5. The same tag-restricted publication job creates a GitHub draft with the JSON
    asset, publishes it, then calls `gh release verify --format json` with five
    bounded retries while GitHub makes the immutable-release attestation
    available. Its `contents: write` permission is isolated to this final job.
@@ -118,7 +125,7 @@ The `CI/CD Pipeline` tag path now has four ordered boundaries:
 
 `checkReleaseCandidatePublicationWorkflow.mjs` prevents workflow drift that
 would widen smoke permissions, remove the tag-restricted environment, omit exact
-artifact names, synthesize tags, skip draft creation, omit attestation
+artifact names or the provider-fault receipt input, synthesize tags, skip draft creation, omit attestation
 verification, or separate evidence assembly from the tag/digest inputs.
 
 ## Required Repository Configuration

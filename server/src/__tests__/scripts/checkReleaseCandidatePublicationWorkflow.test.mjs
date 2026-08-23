@@ -17,6 +17,7 @@
  */
 
 import {
+  PROVIDER_FAULT_RECEIPT_DOWNLOAD_PATH,
   RELEASE_CANDIDATE_ARTIFACT_NAME,
   RELEASE_PUBLICATION_ENVIRONMENT,
   PUBLISHED_DIGEST_SMOKE_ARTIFACT_NAME,
@@ -72,6 +73,20 @@ describe('checkReleaseCandidatePublicationWorkflow', () => {
 
     expect(() => validateReleaseCandidatePublicationWorkflow(workflow))
       .toThrow('docker-release.needs');
+  });
+
+  test('rejects evidence assembly that omits the downloaded provider-fault receipt', () => {
+    const workflow = structuredClone(loadWorkflow());
+    const step = workflow.jobs['release-candidate-publication'].steps.find(
+      candidate => candidate.name === 'Assemble release candidate evidence'
+    );
+    step.run = step.run.replace(
+      `--provider-fault-receipt ${PROVIDER_FAULT_RECEIPT_DOWNLOAD_PATH}/ai-provider-fault-compose-receipt.json`,
+      ''
+    );
+
+    expect(() => validateReleaseCandidatePublicationWorkflow(workflow))
+      .toThrow('Assemble release candidate evidence must bind the tag, source revision, digest, and all evidence artifacts.');
   });
 
   test('rejects an alias check that omits the clean-pull verification', () => {

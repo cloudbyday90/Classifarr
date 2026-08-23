@@ -16,6 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import { join } from 'node:path';
@@ -25,11 +26,17 @@ import {
   buildPolicyReleaseAcceptanceReadout,
 } from '../../../../server/src/services/policyReleaseAcceptanceManifest.mjs';
 import {
+  LEGACY_RELEASE_CANDIDATE_EVIDENCE_SCHEMA_VERSION,
   RELEASE_CANDIDATE_EVIDENCE_STATUS_IDS,
   buildReleaseCandidateEvidence,
   buildReleaseCandidateNotes,
   validateReleaseCandidateEvidence,
 } from '../../../../scripts/lib/releaseCandidateEvidence.mjs';
+import {
+  AI_PROVIDER_FAULT_COMPOSE_RECEIPT_OUTCOMES,
+  AI_PROVIDER_FAULT_COMPOSE_RECEIPT_PASSED_STATUS_ID,
+  createAiProviderFaultComposeReceipt,
+} from '../../../../scripts/lib/aiProviderFaultComposeReceipt.mjs';
 import {
   assembleReleaseCandidateEvidence,
 } from '../../../../scripts/assemble-release-candidate-evidence.mjs';
@@ -68,12 +75,22 @@ function createConsumerSmokeEvidence() {
   };
 }
 
+function createProviderFaultReceipt() {
+  return createAiProviderFaultComposeReceipt({
+    completedAt: '2026-08-09T04:00:30.000Z',
+    outcome: AI_PROVIDER_FAULT_COMPOSE_RECEIPT_OUTCOMES.PASSED,
+    sourceRevision: SOURCE_REVISION,
+    statusId: AI_PROVIDER_FAULT_COMPOSE_RECEIPT_PASSED_STATUS_ID,
+  });
+}
+
 function buildEvidence(overrides = {}) {
   return buildReleaseCandidateEvidence({
     ciReadout: createCiReadout(),
     consumerSmokeEvidence: createConsumerSmokeEvidence(),
     digest: DIGEST,
     generatedAt: GENERATED_AT,
+    providerFaultReceipt: createProviderFaultReceipt(),
     sourceRevision: SOURCE_REVISION,
     tag: TAG,
     ...overrides,
@@ -81,7 +98,7 @@ function buildEvidence(overrides = {}) {
 }
 
 describe('releaseCandidateEvidence', () => {
-  test('binds a passed CI readout and verified smoke result to both immutable image subjects', () => {
+  test('binds a passed provider-fault receipt, CI readout, and smoke result to immutable images', () => {
     const evidence = buildEvidence();
 
     expect(evidence).toEqual(expect.objectContaining({
@@ -89,7 +106,16 @@ describe('releaseCandidateEvidence', () => {
         dockerHub: `docker.io/cloudbyday90/classifarr@${DIGEST}`,
         ghcr: `ghcr.io/cloudbyday90/classifarr@${DIGEST}`,
       },
-      schema_version: 'classifarr.release.candidate-evidence.v1',
+      provider_fault_receipt: expect.objectContaining({
+        outcome: 'passed',
+        receiptFingerprint: {
+          algorithm: 'sha256',
+          value: expect.stringMatching(/^sha256:[a-f0-9]{64}$/u),
+        },
+        sourceRevision: SOURCE_REVISION,
+        statusId: 'passed',
+      }),
+      schema_version: 'classifarr.release.candidate-evidence.v2',
       source_repository: 'cloudbyday90/Classifarr',
       source_revision: SOURCE_REVISION,
       tag: TAG,
@@ -105,6 +131,7 @@ describe('releaseCandidateEvidence', () => {
       ok: true,
     });
     expect(buildReleaseCandidateNotes(evidence)).toContain(`GHCR image: \`ghcr.io/cloudbyday90/classifarr@${DIGEST}\``);
+    expect(buildReleaseCandidateNotes(evidence)).toContain('Provider-fault receipt:');
   });
 
   test('rejects consumer smoke evidence from another source revision before constructing a release record', () => {
@@ -137,12 +164,61 @@ describe('releaseCandidateEvidence', () => {
     }));
   });
 
+  test('rejects a failed or source-mismatched provider-fault receipt before creating evidence', () => {
+    const failedReceipt = createAiProviderFaultComposeReceipt({
+      completedAt: '2026-08-09T04:00:30.000Z',
+      outcome: AI_PROVIDER_FAULT_COMPOSE_RECEIPT_OUTCOMES.FAILED,
+      sourceRevision: SOURCE_REVISION,
+      statusId: 'test_failed',
+    });
+
+    expect(() => buildEvidence({ providerFaultReceipt: failedReceipt })).toThrow(
+      RELEASE_CANDIDATE_EVIDENCE_STATUS_IDS.PROVIDER_FAULT_RECEIPT_INVALID
+    );
+
+    expect(() => buildEvidence({
+      providerFaultReceipt: createAiProviderFaultComposeReceipt({
+        completedAt: '2026-08-09T04:00:30.000Z',
+        outcome: AI_PROVIDER_FAULT_COMPOSE_RECEIPT_OUTCOMES.PASSED,
+        sourceRevision: 'fedcba9876543210fedcba9876543210fedcba98',
+        statusId: AI_PROVIDER_FAULT_COMPOSE_RECEIPT_PASSED_STATUS_ID,
+      }),
+    })).toThrow(RELEASE_CANDIDATE_EVIDENCE_STATUS_IDS.PROVIDER_FAULT_RECEIPT_INVALID);
+  });
+
+  test('accepts an immutable legacy v1 record but rejects extra public receipt data in v2', () => {
+    const v2Evidence = buildEvidence();
+    const legacyPayload = { ...v2Evidence };
+    delete legacyPayload.provider_fault_receipt;
+    delete legacyPayload.evidence_fingerprint;
+    legacyPayload.schema_version = LEGACY_RELEASE_CANDIDATE_EVIDENCE_SCHEMA_VERSION;
+    const legacyEvidence = {
+      ...legacyPayload,
+      evidence_fingerprint: {
+        algorithm: 'sha256',
+        value: `sha256:${createHash('sha256')
+          .update(JSON.stringify(legacyPayload))
+          .digest('hex')}`,
+      },
+    };
+    expect(validateReleaseCandidateEvidence(legacyEvidence)).toEqual(expect.objectContaining({ ok: true }));
+
+    const expandedEvidence = buildEvidence();
+    expandedEvidence.provider_fault_receipt.provider_response = 'must never become release evidence';
+    expect(validateReleaseCandidateEvidence(expandedEvidence)).toEqual(expect.objectContaining({
+      issues: expect.arrayContaining(['unexpected_provider_fault_receipt_summary_fields']),
+      ok: false,
+    }));
+  });
+
   test('writes evidence and notes only under its fixed temporary release directory', () => {
     const cwd = fs.mkdtempSync(join(os.tmpdir(), 'classifarr-release-candidate-'));
     const ciPath = join(cwd, 'ci-readout.json');
     const smokePath = join(cwd, 'consumer-smoke.json');
+    const providerFaultReceiptPath = join(cwd, 'provider-fault-receipt.json');
     fs.writeFileSync(ciPath, JSON.stringify(createCiReadout()));
     fs.writeFileSync(smokePath, JSON.stringify(createConsumerSmokeEvidence()));
+    fs.writeFileSync(providerFaultReceiptPath, JSON.stringify(createProviderFaultReceipt()));
 
     try {
       const result = assembleReleaseCandidateEvidence([
@@ -151,6 +227,7 @@ describe('releaseCandidateEvidence', () => {
         '--digest', DIGEST,
         '--ci-readout', 'ci-readout.json',
         '--consumer-smoke', 'consumer-smoke.json',
+        '--provider-fault-receipt', 'provider-fault-receipt.json',
       ], {
         cwd,
         now: () => new Date(GENERATED_AT),
@@ -164,5 +241,15 @@ describe('releaseCandidateEvidence', () => {
     } finally {
       fs.rmSync(cwd, { force: true, recursive: true });
     }
+  });
+
+  test('requires the provider-fault receipt argument before reading artifacts', () => {
+    expect(() => assembleReleaseCandidateEvidence([
+      '--tag', TAG,
+      '--source-revision', SOURCE_REVISION,
+      '--digest', DIGEST,
+      '--ci-readout', 'ci-readout.json',
+      '--consumer-smoke', 'consumer-smoke.json',
+    ])).toThrow(RELEASE_CANDIDATE_EVIDENCE_STATUS_IDS.INVALID_INPUT);
   });
 });

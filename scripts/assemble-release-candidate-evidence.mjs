@@ -30,6 +30,7 @@ const REQUIRED_OPTION_NAMES = Object.freeze([
   '--ci-readout',
   '--consumer-smoke',
   '--digest',
+  '--provider-fault-receipt',
   '--source-revision',
   '--tag',
 ]);
@@ -38,7 +39,8 @@ function usage() {
   return [
     'Usage:',
     '  npm run release:assemble-candidate-evidence -- --tag <vX.Y.Z> --source-revision <git-sha> \\',
-    '    --digest <sha256:...> --ci-readout <readout.json> --consumer-smoke <smoke.json>',
+    '    --digest <sha256:...> --ci-readout <readout.json> --consumer-smoke <smoke.json> \\',
+    '    --provider-fault-receipt <receipt.json>',
     '',
     'Writes bounded JSON evidence and deterministic release notes under .tmp/release-candidate.',
   ].join('\n');
@@ -95,6 +97,7 @@ export function assembleReleaseCandidateEvidence(args, { cwd = process.cwd(), no
     consumerSmokeEvidence: readJson(options['--consumer-smoke'], cwd),
     digest: options['--digest'],
     generatedAt: generatedAt instanceof Date ? generatedAt.toISOString() : null,
+    providerFaultReceipt: readJson(options['--provider-fault-receipt'], cwd),
     sourceRevision: options['--source-revision'],
     tag: options['--tag'],
   });

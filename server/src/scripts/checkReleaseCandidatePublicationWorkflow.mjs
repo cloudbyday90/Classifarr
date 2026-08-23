@@ -49,6 +49,8 @@ export const DEFAULT_WORKFLOW_PATH = resolve(
 export const RELEASE_PUBLICATION_ENVIRONMENT = 'release-publication';
 export const RELEASE_CANDIDATE_ARTIFACT_NAME = 'release-candidate-evidence';
 export const PUBLISHED_DIGEST_SMOKE_ARTIFACT_NAME = 'published-digest-consumer-smoke';
+export const PROVIDER_FAULT_RECEIPT_DOWNLOAD_PATH =
+  '.tmp/release-candidate/provider-fault-receipt';
 
 const EXPECTED_SMOKE_PERMISSIONS = Object.freeze({
   attestations: 'read',
@@ -303,6 +305,16 @@ function assertPublicationJob(job) {
       'release-candidate-publication'
     ),
   });
+  assertDownloadStep({
+    artifactName: AI_PROVIDER_FAULT_RECEIPT_ARTIFACT_NAME,
+    label: 'Download bounded AI provider fault receipt',
+    path: PROVIDER_FAULT_RECEIPT_DOWNLOAD_PATH,
+    step: findStep(
+      job.steps,
+      'Download bounded AI provider fault receipt',
+      'release-candidate-publication'
+    ),
+  });
 
   const assembleStep = findStep(
     job.steps,
@@ -323,10 +335,12 @@ function assertPublicationJob(job) {
     '--ci-readout .tmp/release-candidate/ci-readout/policy-release-acceptance-readout.json',
     '--consumer-smoke .tmp/release-candidate/consumer-smoke/' +
       `${SOURCE_REVISION_VARIABLE}-published-digest-consumer-smoke.json`,
+    '--provider-fault-receipt ' +
+      `${PROVIDER_FAULT_RECEIPT_DOWNLOAD_PATH}/ai-provider-fault-compose-receipt.json`,
   ];
   if (typeof assembleStep.run !== 'string' ||
     requiredAssemblyFragments.some(fragment => !assembleStep.run.includes(fragment))) {
-    throw new Error('Assemble release candidate evidence must bind the tag, source revision, digest, and both evidence artifacts.');
+    throw new Error('Assemble release candidate evidence must bind the tag, source revision, digest, and all evidence artifacts.');
   }
 
   assertArtifactStep({
