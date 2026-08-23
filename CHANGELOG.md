@@ -133,6 +133,10 @@ Current development changes will be recorded here.
 
 ### Changed
 
+- **v0.48.2-beta candidate preparation** — Package and lockfile metadata, UI
+  label, README source marker, and release notes now identify the next planned
+  tag; a deterministic release guard rejects stale public version surfaces.
+
 - **Client tooling dependencies** — Applied open Dependabot PR #517 locally
   without merging it, advancing the grouped client development tooling patch
   versions for type checking, test coverage, linting, globals, and Vue type

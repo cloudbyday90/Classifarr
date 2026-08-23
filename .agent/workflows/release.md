@@ -8,9 +8,9 @@ Follow these steps IN ORDER when creating a new release.
 
 ## Planned Next Tag
 
-The next intended tag is `v0.48.2-beta`. This is release planning only: do not
-create the tag, a GitHub release, or a version bump until the coordinated
-release-preparation change and all checks below are complete.
+The prepared source version is `v0.48.2-beta`. This is release preparation
+only: do not create the tag or a GitHub release until the coordinated
+release-readiness checks below are complete.
 
 ## 1. Determine Version Number
 
@@ -65,9 +65,9 @@ Three locations in `README.md` must be updated to the new release label:
 
 After changing package versions, refresh lockfile metadata without changing dependencies:
 ```bash
-npm install --package-lock-only
-npm --prefix client install --package-lock-only
-npm --prefix server install --package-lock-only
+npm install --package-lock-only --ignore-scripts
+npm --prefix client install --package-lock-only --ignore-scripts
+npm --prefix server install --package-lock-only --ignore-scripts
 ```
 
 Then verify every package and lockfile root version agrees:
@@ -87,6 +87,11 @@ node scripts/check-release-candidate-version.mjs --tag vX.X.Xa-beta
 ```
 The CI workflow runs the npm form in Bash, where it forwards the argument as
 expected.
+
+This guard checks the root/client/server package and lockfile versions, the
+in-app display version, the README source-version marker and version badge, and
+the first release-notes heading. It fails before tag publication if a public
+surface still names another candidate.
 
 ## 3. Update Changelog and Release Notes
 

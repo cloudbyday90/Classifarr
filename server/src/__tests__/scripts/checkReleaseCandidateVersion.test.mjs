@@ -16,6 +16,21 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-// Public-facing release label. Keep package.json versions semver-safe even when
-// the UI or Git tag uses a friendlier naming convention.
-export const APP_DISPLAY_VERSION = 'v0.48.2-beta';
+import { resolve } from 'node:path';
+
+import { checkReleaseCandidateVersion } from '../../../../scripts/check-release-candidate-version.mjs';
+
+const REPOSITORY_ROOT = resolve(import.meta.dirname, '../../../..');
+
+describe('checkReleaseCandidateVersion', () => {
+  test('accepts the prepared v0.48.2-beta package, lockfile, display, and public documentation surfaces', () => {
+    expect(checkReleaseCandidateVersion({
+      cwd: REPOSITORY_ROOT,
+      tag: 'v0.48.2-beta',
+    })).toEqual({
+      expectedPackageVersion: '0.48.2-beta',
+      issues: [],
+      ok: true,
+    });
+  });
+});

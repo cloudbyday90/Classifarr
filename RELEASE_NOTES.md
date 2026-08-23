@@ -1,6 +1,51 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.48.0-beta`. Package files use semver-safe versions such as `0.48.0-beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.48.2-beta`. Package files use semver-safe versions such as `0.48.2-beta`.
+
+## v0.48.2-beta
+**Title: Safer AI recovery, policy maintenance, and verifiable releases**
+
+### 🎉 What You'll Notice
+- **More dependable provider recovery** — transient AI-provider failures are tested end to end so requests are retained for retry rather than routed somewhere unsafe.
+- **Clearer local evaluation** — reviewed fixtures and trend checks help operators evaluate classification outcomes without uploading local media or provider data.
+- **A more verifiable release record** — every published release will carry bounded evidence whose provenance is checked before publication.
+- **More controlled policy maintenance** — administrators can review purpose coverage, address unresolved policies, and safely retry an interrupted native-purpose change without reopening broad routing controls.
+- **Safer restore confidence** — local backup and restore verification now protects libraries referenced by completed classification history.
+
+### 📊 Quick Visual
+```text
+Release confidence path
+Provider-fault recovery  [██████████] retry/no-route contract
+Published image consumer [██████████] isolated digest smoke
+Public evidence asset    [██████████] signed provenance check
+Policy maintenance       [██████████] bounded admin controls
+```
+
+### ✨ Highlights
+- Local AI evaluation supports reviewed outcome fixtures, policy context matching, and aggregate trend comparisons while keeping reports local to the operator.
+- Release candidates must pass a clean-host provider-fault check and published-image consumer smoke before their evidence is assembled.
+- The compact public evidence JSON is independently attested and verified before an immutable GitHub release is created.
+- Native policy maintenance adds an explicit purpose-change preflight, fixed coverage advice, persistent status after reload, and idempotent retry receipts for response-loss recovery.
+- Reconciliation alerts now link directly to the remediation view and fire once per incident; operators can review unresolved policy destinations without exposing retained matching terms.
+- The bundled client, server, database, workflow, CodeQL, and OSV tooling updates keep the supported development and security toolchain current.
+
+### 🔧 Reliability Improvements
+- Provider errors, retry persistence, and no-route behavior have a disposable Docker verification path that always cleans up its test environment.
+- Version metadata, lockfiles, the UI label, README source marker, and release-notes heading are checked as one release-candidate contract before a tag can publish.
+- Local evaluation exchanges the administrator key once for an explicit short-lived route scope, validates token issuer, audience, and algorithm, and uses ETag preconditions when temporarily changing AI settings.
+- Pending-decision replacement persistence, non-final witness grading, backup/restore integrity, and schema-snapshot comparison have targeted fixes that remove false retries and false release failures.
+- Client router tests now isolate initial navigation and use bounded workers, making the full UI suite more reliable on constrained hosts.
+
+### 👥 Who This Helps
+- **Operators:** can assess AI classification behavior locally without exposing installation-specific content in release artifacts.
+- **Administrators:** get bounded native-purpose tools, direct reconciliation remediation, and history-safe backup/restore verification.
+- **Maintainers:** receive a deterministic pre-tag check that catches stale public version labels before a candidate is published, alongside current dependency and workflow security pins.
+- **Release consumers:** can verify both the GitHub release and its attached public evidence asset.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
 
 ## v0.48.1-beta
 **Title: Build routing policies you can understand, verify, and trust**

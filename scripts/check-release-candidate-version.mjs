@@ -24,6 +24,7 @@ import {
   derivePackageVersionFromReleaseTag,
   validateReleaseCandidateVersion,
 } from './lib/releaseCandidateVersion.mjs';
+import { validateReleaseCandidateDocumentation } from './lib/releaseCandidateDocumentation.mjs';
 
 const VERSION_PATHS = Object.freeze([
   'package.json',
@@ -36,6 +37,8 @@ const LOCKFILE_PATHS = Object.freeze([
   'server/package-lock.json',
 ]);
 const DISPLAY_VERSION_PATH = 'client/src/constants/appVersion.js';
+const README_PATH = 'README.md';
+const RELEASE_NOTES_PATH = 'RELEASE_NOTES.md';
 
 function usage() {
   return [
@@ -60,6 +63,12 @@ function readDisplayVersion(cwd) {
   return match?.[1] || null;
 }
 
+function readText(cwd, pathname) {
+  // These fixed release surfaces contain public version metadata only.
+  // eslint-disable-next-line security/detect-non-literal-fs-filename
+  return fs.readFileSync(resolve(cwd, pathname), 'utf8');
+}
+
 export function parseReleaseCandidateVersionCliArgs(args) {
   if (args.length === 1 && args[0] === '--help') {
     return { help: true };
@@ -77,12 +86,27 @@ export function checkReleaseCandidateVersion({ cwd = process.cwd(), tag } = {}) 
     return [lockfile.version, lockfile.packages?.['']?.version];
   });
 
-  return validateReleaseCandidateVersion({
+  const versionValidation = validateReleaseCandidateVersion({
     displayVersion: readDisplayVersion(cwd),
     lockfileVersions,
     packageVersions,
     tag,
   });
+  if (!versionValidation.expectedPackageVersion) {
+    return versionValidation;
+  }
+
+  const documentationValidation = validateReleaseCandidateDocumentation({
+    readme: readText(cwd, README_PATH),
+    releaseNotes: readText(cwd, RELEASE_NOTES_PATH),
+    tag,
+  });
+
+  return {
+    ...versionValidation,
+    issues: [...versionValidation.issues, ...documentationValidation.issues],
+    ok: versionValidation.ok && documentationValidation.ok,
+  };
 }
 
 function main() {

@@ -160,9 +160,10 @@ not data stored in a Classifarr installation.
 
 ## Next Task
 
-The next intentional release tag is `v0.48.2-beta`. After release-readiness
-review, make its coordinated version update and run the automated tag path.
-It will create the release-specific 10R.4.2 evidence, evidence attestation,
-and release record. Active-installation evidence and 8R.36.11
-compatibility-removal closure remain separate and must not be substituted into
-this release record.
+The `v0.48.2-beta` source version is prepared and its package, lockfile, UI,
+README, and release-notes surfaces are checked together. Run the full local
+release-readiness suite before creating the intentional tag, then use the
+automated tag path. It will create the release-specific 10R.4.2 evidence,
+evidence attestation, and release record. Active-installation evidence and
+8R.36.11 compatibility-removal closure remain separate and must not be
+substituted into this release record.
