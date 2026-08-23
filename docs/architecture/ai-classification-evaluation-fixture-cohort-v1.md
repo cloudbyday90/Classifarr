@@ -54,7 +54,7 @@ Cons:
 
 Decision: rejected for the four already-reviewed local scenarios.
 
-### Encode exact destination libraries and confidence intervals
+### Encode exact destination libraries and confidence intervals in the portable corpus
 
 Pros:
 
@@ -69,7 +69,10 @@ Cons:
   default cohort misleadingly non-portable;
 - it would test an outcome the current policy explicitly avoids.
 
-Decision: deferred until a reviewed classified local scenario is selected.
+Decision: rejected for the portable corpus. The selected local
+[policy-profile design](ai-classification-evaluation-policy-profile.md) lets a
+policy owner add reviewed classified cases without publishing installation
+library details or allowing a stale expectation to silently run.
 
 ### Versioned clarification cohort with method and history checks
 
@@ -127,6 +130,10 @@ add a brittle confidence range.
   candidates instead of silently degrading to legacy, ungraded fixtures.
 - Added focused tests that protect the default four-fixture cohort and its
   fail-closed document-validation behavior.
+- Added a local profile extension for policy-owner-reviewed destination and
+  controlled retry fixtures. The profile is validated before authentication,
+  then must match the server-authored active policy-context fingerprint before
+  the sweep changes settings or submits media.
 
 ## Security Properties
 
@@ -143,11 +150,18 @@ add a brittle confidence range.
 
 1. Run the reviewed four-fixture cohort after local policy, model, or worker
    changes, and compare only matching policy/runtime fingerprint cohorts.
-2. Add one reviewed positive classified fixture next, with an exact local
-   destination selector and conservative confidence range, after an operator
-   confirms the desired destination.
+2. Add one reviewed positive classified fixture through the local
+   [policy-profile workflow](ai-classification-evaluation-policy-profile.md),
+   with an exact destination selector and conservative confidence range after a
+   policy owner confirms the desired destination.
 3. Keep ambiguous cases as clarification tests; do not weaken them into a
    fallback or route merely to increase a pass rate.
 4. Expand the corpus with representative, edge, and adversarial scenarios,
    but review each expected outcome and never place secrets or raw model input
    in the fixture file or report.
+
+## Next Recommended Item
+
+Use a policy-pinned local profile to record one reviewed final destination,
+then add a separately controlled retry/contamination exercise that proves
+failure handling without normalizing fallback into a passing quality outcome.

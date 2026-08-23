@@ -203,6 +203,10 @@ mandatory checks above.
 1. Use the intentional local Docker/Ollama setup with the sweep's no-route
    guardrail enabled. Run the reviewed versioned fixture cohort and retain the
    report only in the ignored, access-controlled `.tmp/reports/` directory.
+   When a release changes policy-dependent final destinations, use the optional
+   local fixture profile only after a policy owner has reviewed it. Its policy
+   fingerprint must match the fresh sweep preflight; do not copy the local
+   profile into the repository, CI artifacts, or release evidence.
 2. Compare the fresh candidate report with a reviewed baseline that used the
    same fixture/model/policy/runtime context:
 

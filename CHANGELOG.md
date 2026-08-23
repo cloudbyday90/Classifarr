@@ -13,6 +13,11 @@ Current development changes will be recorded here.
 
 ### Added
 
+- **Policy-pinned local AI-evaluation profiles** — The local sweep can now
+  append up to 32 reviewed installation-specific fixtures from an ignored ESM-
+  validated profile, then refuses to change settings or submit media unless its
+  strict policy-context SHA-256 fingerprint matches the active policy state.
+
 - **Reviewed local AI-evaluation trend baseline** — A local ESM comparator now
   aggregates only bounded evaluated evidence into exact fixture/model/policy/
   runtime cohorts, flags regressions and incomparable context changes for human

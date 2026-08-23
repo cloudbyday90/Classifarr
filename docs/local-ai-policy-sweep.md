@@ -153,6 +153,42 @@ npm run test:local:ai-policy-sweep -- \
   --output ".tmp/reports/ai-policy-sweep-core.json"
 ```
 
+### Add reviewed local destination fixtures
+
+The default fixture file stays portable and therefore does not encode an
+installation's library IDs, names, confidence ranges, or policy-specific final
+destinations. Add those only through a local fixture profile, which the sweep
+pins to the active policy-context SHA-256 fingerprint before it changes
+settings or submits media.
+
+1. Run the default cohort once and copy the bounded
+   `preflight.policyContext` value from its local report.
+2. Copy `scripts/fixtures/ai-policy-sweep.policy-profile.example.json` to an
+   ignored path under `.tmp/`, replace its all-zero policy fingerprint and
+   example destination fixture with a policy-owner-reviewed local expectation.
+3. Run the sweep with the profile:
+
+   ```powershell
+   node scripts/local-ai-policy-sweep.mjs `
+     --fixture-profile ".tmp/ai-policy-sweep.policy-profile.json"
+   ```
+
+On Windows PowerShell with npm 12, use the direct ESM invocation shown above.
+Npm can otherwise intercept `--fixture-profile` as one of its own options.
+
+The profile accepts up to 32 versioned fixtures. It contains only a policy
+fingerprint and strict evaluation fixtures; it cannot contain credentials,
+policy terms, prompts, provider output, review notes, or a release approval.
+The generated report exposes only profile version, fixture count, and the
+already-bounded policy fingerprint—not the profile path or its expected
+destination data.
+
+Use a profile for reviewed positive final destinations and controlled retry
+cases. Keep `fallbackAllowed: false` for normal quality cohorts: fallback and
+contamination are negative safety signals, not outcomes to promote into a
+passing release score. If the active policy changes, the profile fails closed;
+review the change and intentionally create a new profile/baseline.
+
 ### Guardrail controls
 
 - Default behavior:
@@ -328,6 +364,9 @@ projection; neither mode synthesizes a response from history.
 - The reviewed trend-baseline comparator now supports deliberate pairwise
   local model comparison. Live sweeps and comparison artifacts remain
   local-only, not a CI release gate.
+- Installation-specific final-destination, retry, fallback, and contamination
+  expectations belong in a policy-pinned local fixture profile, never in the
+  portable checked-in default corpus.
 
 ## Cleanup for Re-Tests
 

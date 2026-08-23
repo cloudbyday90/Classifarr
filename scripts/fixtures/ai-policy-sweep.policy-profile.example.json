@@ -1,0 +1,39 @@
+{
+  "version": "classifarr.ai_policy_sweep_fixture_profile.v1",
+  "policyContext": {
+    "version": "classifarr.ai_classification_evaluation_policy_context.v1",
+    "algorithm": "sha256",
+    "fingerprint": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "fixtures": [
+    {
+      "version": "classifarr.ai_classification_evaluation_fixture.v1",
+      "id": "local-reviewed-final-destination",
+      "name": "Replace with a locally reviewed final-destination fixture",
+      "tags": ["local-policy-profile", "classified", "destination", "movie"],
+      "request": {
+        "tmdbId": 550,
+        "mediaType": "movie",
+        "title": "Fight Club"
+      },
+      "expected": {
+        "fallbackAllowed": false,
+        "outcomes": [
+          {
+            "decisionKind": "classified",
+            "methods": ["policy_engine"],
+            "historyStatuses": ["completed"],
+            "library": {
+              "id": 1,
+              "name": "REPLACE_WITH_LOCAL_LIBRARY"
+            },
+            "confidence": {
+              "minimum": 80,
+              "maximum": 100
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

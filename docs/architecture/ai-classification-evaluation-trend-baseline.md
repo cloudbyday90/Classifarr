@@ -223,7 +223,8 @@ retention boundary; no database, server route, or CI credential is added.
 
 ## Next Recommended Item
 
-Expand the versioned reviewed fixture cohort with policy-owner-approved final
-destination, retry, fallback, and contamination cases. This raises the value of
-future model comparisons while preserving the current local-only, human-reviewed
-authority boundary.
+The local [policy-pinned fixture profile](ai-classification-evaluation-policy-profile.md)
+is now available for policy-owner-approved final destination and controlled
+retry cases. The next item is a separately controlled retry/contamination
+exercise that proves those negative safety paths without normalizing fallback
+into a passing quality outcome.

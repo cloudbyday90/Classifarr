@@ -20,6 +20,10 @@ import {
   validateAiPolicySweepFixtureDocument,
 } from './lib/aiPolicySweepFixtureDocument.mjs';
 import {
+  appendAiPolicySweepFixtureProfile,
+  verifyAiPolicySweepFixtureProfileBinding,
+} from './lib/aiPolicySweepFixtureProfile.mjs';
+import {
   createAuthenticatedLocalAiPolicySweepApi,
 } from './lib/localAiPolicySweepAuthentication.mjs';
 
@@ -39,6 +43,7 @@ function parseArgs(argv) {
     webhookKey: process.env.CLASSIFARR_WEBHOOK_KEY || null,
     models: (process.env.CLASSIFARR_MODELS || 'qwen3.5:4b').split(',').map((v) => v.trim()).filter(Boolean),
     fixturesPath: process.env.CLASSIFARR_FIXTURES || DEFAULT_FIXTURES,
+    fixtureProfilePath: process.env.CLASSIFARR_FIXTURE_PROFILE || null,
     runsPerFixture: Number.parseInt(process.env.CLASSIFARR_RUNS_PER_FIXTURE || '1', 10),
     historyTimeoutMs: Number.parseInt(process.env.CLASSIFARR_HISTORY_TIMEOUT_MS || '60000', 10),
     historyPollIntervalMs: Number.parseInt(process.env.CLASSIFARR_HISTORY_POLL_INTERVAL_MS || '750', 10),
@@ -80,6 +85,9 @@ function parseArgs(argv) {
       i += 1;
     } else if (arg === '--fixtures' && next) {
       args.fixturesPath = path.resolve(next);
+      i += 1;
+    } else if (arg === '--fixture-profile' && next) {
+      args.fixtureProfilePath = path.resolve(next);
       i += 1;
     } else if (arg === '--runs-per-fixture' && next) {
       args.runsPerFixture = Number.parseInt(next, 10);
@@ -125,6 +133,7 @@ function printHelp() {
     '  --webhook-key <secret>          Required when --ingest-mode webhook-overseerr',
     '  --models <a,b,c>                Comma-separated ollama models (default: qwen3.5:4b)',
     '  --fixtures <path>               Fixture JSON path',
+    '  --fixture-profile <path>        Local reviewed fixture profile pinned to policy context',
     '  --runs-per-fixture <n>          Repetitions per fixture per model (default: 1)',
     '  --history-timeout-ms <ms>       Wait time for persisted history entry (default: 60000)',
     '  --history-poll-interval-ms <ms> Poll interval when waiting for history row (default: 750)',
@@ -642,7 +651,24 @@ async function runSweep() {
   assertValidArgs(args);
   assertNotCiUnlessAllowed(args);
 
-  const fixtureDocument = await readJsonFile(args.fixturesPath);
+  const defaultFixtureDocument = await readJsonFile(args.fixturesPath);
+  let fixtureDocument = defaultFixtureDocument;
+  let fixtureProfileMetadata = null;
+  if (args.fixtureProfilePath) {
+    const profile = await readJsonFile(args.fixtureProfilePath);
+    const profileAppend = appendAiPolicySweepFixtureProfile({
+      fixtureDocument: defaultFixtureDocument,
+      profile,
+    });
+    if (!profileAppend.validation.ok) {
+      const detail = profileAppend.validation.issues
+        .map(issue => `${issue.path}: ${issue.message}`)
+        .join('\n');
+      throw new Error(`Fixture profile is invalid:\n${detail}`);
+    }
+    fixtureDocument = profileAppend.fixtureDocument;
+    fixtureProfileMetadata = profileAppend.profileMetadata;
+  }
   const fixtureDocumentValidation = validateAiPolicySweepFixtureDocument(fixtureDocument);
   if (!fixtureDocumentValidation.ok) {
     const detail = fixtureDocumentValidation.issues
@@ -685,6 +711,16 @@ async function runSweep() {
   ]);
   const baselineAiConfig = baselineAiConfigResponse.payload;
   let aiSettingsWritePrecondition = getAiSettingsWritePrecondition(baselineAiConfigResponse);
+
+  const fixtureProfileBinding = verifyAiPolicySweepFixtureProfileBinding({
+    profileMetadata: fixtureProfileMetadata,
+    policyContext,
+  });
+  if (!fixtureProfileBinding.ok) {
+    throw new Error(
+      'Fixture profile does not match the active policy context; refusing before settings changes or media submission.'
+    );
+  }
 
   if (!Array.isArray(libraries) || libraries.length === 0) {
     throw new Error('No libraries configured. Configure at least one library before running policy+AI sweep tests.');
@@ -733,6 +769,7 @@ async function runSweep() {
       baseUrl: args.baseUrl,
       ingestMode: args.ingestMode,
       fixturesPath: args.fixturesPath,
+      fixtureProfileConfigured: fixtureProfileMetadata !== null,
       runsPerFixture: args.runsPerFixture,
       models: args.models,
       failOnFallback: args.failOnFallback,
@@ -748,6 +785,7 @@ async function runSweep() {
       baselinePrimaryProvider: baselineAiConfig?.primary_provider || null,
       baselineRequireAllConfirmations,
       policyContext,
+      fixtureProfile: fixtureProfileMetadata,
       fixturesRequested: fixtures.length,
       fixturesRunnable: runnableFixtures.length,
       fixturesSkippedAsExisting: skippedExistingFixtures.length,
