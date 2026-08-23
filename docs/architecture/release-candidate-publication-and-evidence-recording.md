@@ -94,7 +94,7 @@ Decision: selected.
 
 ## Implemented Contract
 
-The `CI/CD Pipeline` tag path now has five ordered boundaries:
+The `CI/CD Pipeline` tag path now has six ordered boundaries:
 
 1. `release-candidate-provider-fault-receipt` runs the fixed disposable
    provider-fault Compose check on its own fresh hosted job. It uploads one
@@ -117,16 +117,26 @@ The `CI/CD Pipeline` tag path now has five ordered boundaries:
    then independently validates all three artifacts and their common source
    revision and digest. It writes a public-safe JSON asset, deterministic
    release notes, and an evidence SHA-256 fingerprint.
-5. The same tag-restricted publication job creates a GitHub draft with the JSON
-   asset, publishes it, then calls `gh release verify --format json` with five
-   bounded retries while GitHub makes the immutable-release attestation
-   available. Its `contents: write` permission is isolated to this final job.
-   Image cleanup waits for this job to succeed.
+5. The publication job creates a signed SLSA provenance attestation for that
+   exact evidence JSON using a pinned `actions/attest` action. It then verifies
+   the local JSON before release creation, requiring this repository, the
+   `CI/CD Pipeline` workflow, the selected tag source reference and revision,
+   the provenance-v1 predicate, and a GitHub-hosted runner. Five bounded
+   retries allow GitHub's attestation lookup to become available. Its
+   `attestations: write` and `id-token: write` permissions are isolated to this
+   already release-authorized job.
+6. The same tag-restricted publication job creates a GitHub draft with the
+   verified JSON asset, publishes it, then calls `gh release verify --format
+   json` with five bounded retries while GitHub makes the immutable-release
+   attestation available. Its `contents: write` permission is isolated to this
+   final job. Image cleanup waits for this job to succeed.
 
 `checkReleaseCandidatePublicationWorkflow.mjs` prevents workflow drift that
 would widen smoke permissions, remove the tag-restricted environment, omit exact
-artifact names or the provider-fault receipt input, synthesize tags, skip draft creation, omit attestation
-verification, or separate evidence assembly from the tag/digest inputs.
+artifact names or the provider-fault receipt input, synthesize tags, skip the
+evidence attestation or its constrained verification, skip draft creation, omit
+release-attestation verification, or separate evidence assembly from the
+tag/digest inputs.
 
 ## Required Repository Configuration
 
@@ -150,8 +160,9 @@ not data stored in a Classifarr installation.
 
 ## Next Task
 
-Select the next intentional release version and commit after release readiness
-review, then run this automated tag path. It will create the release-specific
-10R.4.2 evidence and release record. Active-installation evidence and 8R.36.11
+The next intentional release tag is `v0.48.2-beta`. After release-readiness
+review, make its coordinated version update and run the automated tag path.
+It will create the release-specific 10R.4.2 evidence, evidence attestation,
+and release record. Active-installation evidence and 8R.36.11
 compatibility-removal closure remain separate and must not be substituted into
 this release record.

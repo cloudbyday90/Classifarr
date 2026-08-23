@@ -89,6 +89,43 @@ describe('checkReleaseCandidatePublicationWorkflow', () => {
       .toThrow('Assemble release candidate evidence must bind the tag, source revision, digest, and all evidence artifacts.');
   });
 
+  test('rejects release publication that does not verify the evidence attestation', () => {
+    const workflow = structuredClone(loadWorkflow());
+    workflow.jobs['release-candidate-publication'].steps = workflow.jobs[
+      'release-candidate-publication'
+    ].steps.filter(candidate => candidate.name !== 'Verify release candidate evidence attestation');
+
+    expect(() => validateReleaseCandidatePublicationWorkflow(workflow))
+      .toThrow('release-candidate-publication must contain the "Verify release candidate evidence attestation" step.');
+  });
+
+  test('rejects evidence-attestation verification after release creation', () => {
+    const workflow = structuredClone(loadWorkflow());
+    const steps = workflow.jobs['release-candidate-publication'].steps;
+    const verifyIndex = steps.findIndex(
+      candidate => candidate.name === 'Verify release candidate evidence attestation'
+    );
+    const publishIndex = steps.findIndex(
+      candidate => candidate.name === 'Create and verify immutable GitHub release'
+    );
+    const [verificationStep] = steps.splice(verifyIndex, 1);
+    steps.splice(publishIndex, 0, verificationStep);
+
+    expect(() => validateReleaseCandidatePublicationWorkflow(workflow))
+      .toThrow('release-candidate-publication must run "Verify release candidate evidence attestation" before "Create and verify immutable GitHub release".');
+  });
+
+  test('rejects evidence-attestation verification without the exact tag source ref', () => {
+    const workflow = structuredClone(loadWorkflow());
+    const step = workflow.jobs['release-candidate-publication'].steps.find(
+      candidate => candidate.name === 'Verify release candidate evidence attestation'
+    );
+    step.run = step.run.replace('--source-ref "refs/tags/$RELEASE_TAG"', '');
+
+    expect(() => validateReleaseCandidatePublicationWorkflow(workflow))
+      .toThrow('Verify release candidate evidence attestation must constrain the exact workflow, tag source, revision, predicate, and runner type.');
+  });
+
   test('rejects an alias check that omits the clean-pull verification', () => {
     const workflow = structuredClone(loadWorkflow());
     const step = workflow.jobs['published-digest-consumer-smoke'].steps.find(

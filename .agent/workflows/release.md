@@ -6,6 +6,12 @@ description: How to create a new Classifarr release
 
 Follow these steps IN ORDER when creating a new release.
 
+## Planned Next Tag
+
+The next intended tag is `v0.48.2-beta`. This is release planning only: do not
+create the tag, a GitHub release, or a version bump until the coordinated
+release-preparation change and all checks below are complete.
+
 ## 1. Determine Version Number
 
 Check the latest tag:
@@ -440,9 +446,16 @@ The tag workflow performs these operations in order:
    It uploads
    `release-candidate-evidence` as a workflow artifact and enters the
    tag-restricted `release-publication` environment.
-5. Creates a draft GitHub release with the evidence JSON attached, publishes
-   that draft, and verifies the GitHub release attestation. Tags containing a
-   prerelease suffix are marked prerelease and explicitly not latest.
+5. Creates a signed SLSA provenance attestation for that exact evidence JSON
+   and verifies it before a release draft can be created. Verification binds
+   the repository, `CI/CD Pipeline` workflow, tag source ref, source revision,
+   provenance-v1 predicate, and GitHub-hosted-runner trust boundary. It uses
+   five bounded retries for attestation availability and adds no raw CI or
+   local-evaluation data to the public asset.
+6. Creates a draft GitHub release with the verified evidence JSON attached,
+   publishes that draft, and verifies the GitHub release attestation. Tags
+   containing a prerelease suffix are marked prerelease and explicitly not
+   latest.
 
 Do **not** run `gh release create` manually. The workflow uses `--verify-tag`
 and `--fail-on-no-commits`, preventing an unreviewed command from creating a
@@ -591,13 +604,29 @@ docker compose down; docker compose up -d --build
 
 1. Check the GitHub release has the attached `Release candidate evidence` JSON
    asset and displays as immutable.
-2. Verify the release attestation independently:
+2. Download and independently verify the evidence-asset provenance:
+   ```bash
+   mkdir -p .tmp/release-evidence-verification
+   gh release download vX.X.Xa-beta --repo cloudbyday90/Classifarr \
+     --pattern 'vX.X.Xa-beta-evidence.json' \
+     --dir .tmp/release-evidence-verification
+   gh attestation verify .tmp/release-evidence-verification/vX.X.Xa-beta-evidence.json \
+     --repo cloudbyday90/Classifarr \
+     --signer-workflow cloudbyday90/Classifarr/.github/workflows/ci.yml \
+     --source-ref refs/tags/vX.X.Xa-beta \
+     --source-digest "$(git rev-list -n 1 vX.X.Xa-beta)" \
+     --predicate-type 'https://slsa.dev/provenance/v1' \
+     --deny-self-hosted-runners
+   ```
+   For a public repository, retain the default trusted roots; do not pass
+   `--no-public-good`.
+3. Verify the release attestation independently:
    ```bash
    gh release verify vX.X.Xa-beta --repo cloudbyday90/Classifarr --format json
    ```
-3. Verify version shows correctly in UI (bottom-left sidebar).
-4. Test any breaking changes documented.
-5. Confirm latest `CI/CD Pipeline` and `OSV Dependency Scan` runs for the tag are `success`.
+4. Verify version shows correctly in UI (bottom-left sidebar).
+5. Test any breaking changes documented.
+6. Confirm latest `CI/CD Pipeline` and `OSV Dependency Scan` runs for the tag are `success`.
 
 ---
 
@@ -637,5 +666,6 @@ Additional file when the release includes database/migration/schema changes:
 - **Docker smoke verification is part of release hygiene** - build `classifarr:test`, run `IMAGE_NAME=classifarr:test npm run docker:smoke:pgss`, and do not tag until the fresh-instance/upgrade smoke run passes and cleans up
 - **Coverage ratchet is a hard gate** - do not tag/release while `npm run coverage:ratchet:check` is failing
 - **Release is blocked on the complete evidence chain** - never communicate
-  availability before tag CI, digest provenance, consumer smoke, tag-restricted
-  publication, and GitHub release-attestation verification succeed
+  availability before tag CI, digest provenance, consumer smoke, evidence-asset
+  provenance verification, tag-restricted publication, and GitHub
+  release-attestation verification succeed

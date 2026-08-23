@@ -601,8 +601,9 @@ jobs:
     environment: release-publication
 
     permissions:
-      attestations: read
+      attestations: write
       contents: write
+      id-token: write
 
     steps:
       - name: Checkout code
@@ -652,6 +653,39 @@ jobs:
             --ci-readout .tmp/release-candidate/ci-readout/policy-release-acceptance-readout.json \
             --consumer-smoke .tmp/release-candidate/consumer-smoke/${SOURCE_REVISION}-published-digest-consumer-smoke.json \
             --provider-fault-receipt .tmp/release-candidate/provider-fault-receipt/ai-provider-fault-compose-receipt.json
+
+      - name: Attest release candidate evidence
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: .tmp/release-candidate/${{ github.ref_name }}-evidence.json
+
+      - name: Verify release candidate evidence attestation
+        env:
+          EVIDENCE_PATH: .tmp/release-candidate/${{ github.ref_name }}-evidence.json
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          SOURCE_REPOSITORY: ${{ github.repository }}
+          SOURCE_REVISION: ${{ github.sha }}
+          EXPECTED_SIGNER_WORKFLOW: ${{ github.repository }}/.github/workflows/ci.yml
+        run: |
+          set -euo pipefail
+
+          for attempt in 1 2 3 4 5; do
+            if gh attestation verify "$EVIDENCE_PATH" \
+              --repo "$SOURCE_REPOSITORY" \
+              --signer-workflow "$EXPECTED_SIGNER_WORKFLOW" \
+              --source-digest "$SOURCE_REVISION" \
+              --source-ref "refs/tags/$RELEASE_TAG" \
+              --predicate-type 'https://slsa.dev/provenance/v1' \
+              --deny-self-hosted-runners > /dev/null; then
+              break
+            fi
+
+            if [ "$attempt" -eq 5 ]; then
+              exit 1
+            fi
+            sleep 5
+          done
 
       - name: Upload release candidate evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

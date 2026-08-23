@@ -13,6 +13,11 @@ Current development changes will be recorded here.
 
 ### Added
 
+- **Release-evidence provenance gate** — Tag publication now attests the
+  bounded evidence JSON and verifies its exact repository, workflow, tag,
+  source revision, predicate, and hosted-runner provenance before a GitHub
+  release draft can be created.
+
 - Release-candidate evidence now uses a backward-compatible v2 schema that
   binds the passed provider-fault receipt's canonical SHA-256 fingerprint and
   fixed metadata to the immutable public release record without retaining CI

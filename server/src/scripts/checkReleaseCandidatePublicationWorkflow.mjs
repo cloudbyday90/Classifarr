@@ -27,6 +27,7 @@ function githubExpression(expression) {
 }
 
 const CHECKOUT_ACTION = 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1';
+const ATTEST_ACTION = 'actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6';
 const DOWNLOAD_ARTIFACT_ACTION = 'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c';
 const SETUP_NODE_ACTION = 'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020';
 const UPLOAD_ARTIFACT_ACTION = 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a';
@@ -57,8 +58,9 @@ const EXPECTED_SMOKE_PERMISSIONS = Object.freeze({
   contents: 'read',
 });
 const EXPECTED_PUBLICATION_PERMISSIONS = Object.freeze({
-  attestations: 'read',
+  attestations: 'write',
   contents: 'write',
+  'id-token': 'write',
 });
 
 function asRecord(value, label) {
@@ -88,6 +90,14 @@ function findStep(steps, name, jobName) {
     throw new Error(`${jobName} must contain the ${JSON.stringify(name)} step.`);
   }
   return step;
+}
+
+function assertStepPrecedes(steps, firstName, secondName, jobName) {
+  const firstIndex = steps.findIndex(candidate => candidate?.name === firstName);
+  const secondIndex = steps.findIndex(candidate => candidate?.name === secondName);
+  if (firstIndex === -1 || secondIndex === -1 || firstIndex >= secondIndex) {
+    throw new Error(`${jobName} must run ${JSON.stringify(firstName)} before ${JSON.stringify(secondName)}.`);
+  }
 }
 
 function assertPinnedAction(step, action, label) {
@@ -343,6 +353,70 @@ function assertPublicationJob(job) {
     throw new Error('Assemble release candidate evidence must bind the tag, source revision, digest, and all evidence artifacts.');
   }
 
+  const attestEvidenceStep = findStep(
+    job.steps,
+    'Attest release candidate evidence',
+    'release-candidate-publication'
+  );
+  assertPinnedAction(
+    attestEvidenceStep,
+    ATTEST_ACTION,
+    'Attest release candidate evidence'
+  );
+  assertExactObject(attestEvidenceStep.with, {
+    'subject-path': `.tmp/release-candidate/${GITHUB_REF_NAME_EXPRESSION}-evidence.json`,
+  }, 'Attest release candidate evidence.with');
+
+  const verifyEvidenceAttestationStep = findStep(
+    job.steps,
+    'Verify release candidate evidence attestation',
+    'release-candidate-publication'
+  );
+  assertExactObject(verifyEvidenceAttestationStep.env, {
+    EVIDENCE_PATH: `.tmp/release-candidate/${GITHUB_REF_NAME_EXPRESSION}-evidence.json`,
+    EXPECTED_SIGNER_WORKFLOW: `${GITHUB_REPOSITORY_EXPRESSION}/.github/workflows/ci.yml`,
+    GH_TOKEN: GITHUB_TOKEN_EXPRESSION,
+    RELEASE_TAG: GITHUB_REF_NAME_EXPRESSION,
+    SOURCE_REPOSITORY: GITHUB_REPOSITORY_EXPRESSION,
+    SOURCE_REVISION: GITHUB_SHA_EXPRESSION,
+  }, 'Verify release candidate evidence attestation.env');
+  const requiredEvidenceAttestationFragments = [
+    'set -euo pipefail',
+    'for attempt in 1 2 3 4 5',
+    'gh attestation verify "$EVIDENCE_PATH"',
+    '--repo "$SOURCE_REPOSITORY"',
+    '--signer-workflow "$EXPECTED_SIGNER_WORKFLOW"',
+    '--source-digest "$SOURCE_REVISION"',
+    '--source-ref "refs/tags/$RELEASE_TAG"',
+    "--predicate-type 'https://slsa.dev/provenance/v1'",
+    '--deny-self-hosted-runners',
+    '> /dev/null',
+  ];
+  const missingEvidenceAttestationFragments = typeof verifyEvidenceAttestationStep.run === 'string'
+    ? requiredEvidenceAttestationFragments.filter(
+      fragment => !verifyEvidenceAttestationStep.run.includes(fragment)
+    )
+    : requiredEvidenceAttestationFragments;
+  if (missingEvidenceAttestationFragments.length > 0) {
+    throw new Error(
+      'Verify release candidate evidence attestation must constrain the exact workflow, tag source, revision, predicate, and runner type. Missing: ' +
+      missingEvidenceAttestationFragments.join(', ')
+    );
+  }
+
+  assertStepPrecedes(
+    job.steps,
+    'Assemble release candidate evidence',
+    'Attest release candidate evidence',
+    'release-candidate-publication'
+  );
+  assertStepPrecedes(
+    job.steps,
+    'Attest release candidate evidence',
+    'Verify release candidate evidence attestation',
+    'release-candidate-publication'
+  );
+
   assertArtifactStep({
     artifactName: RELEASE_CANDIDATE_ARTIFACT_NAME,
     label: 'Upload release candidate evidence',
@@ -356,6 +430,12 @@ function assertPublicationJob(job) {
 
   const publishStep = findStep(
     job.steps,
+    'Create and verify immutable GitHub release',
+    'release-candidate-publication'
+  );
+  assertStepPrecedes(
+    job.steps,
+    'Verify release candidate evidence attestation',
     'Create and verify immutable GitHub release',
     'release-candidate-publication'
   );
