@@ -18,6 +18,7 @@
     "test": "node ./scripts/run-vitest.mjs run",
     "test:browser": "node ./scripts/run-playwright.mjs test",
     "test:browser:headed": "node ./scripts/run-playwright.mjs test --headed",
+    "test:browser:production-policy": "node ./scripts/run-production-policy-route-assets.mjs",
     "test:unit": "node ./scripts/run-vitest.mjs run",
     "test:unit:ci": "node ./scripts/run-vitest.mjs run --coverage --reporter=verbose",
     "test:coverage": "node ./scripts/run-vitest.mjs run --coverage",

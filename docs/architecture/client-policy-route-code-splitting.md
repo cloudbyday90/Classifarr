@@ -141,9 +141,16 @@ Decision: selected.
    of the build configuration; code splitting is a delivery optimization, not
    an authorization boundary.
 
+## Follow-up Outcome
+
+The recommended production-browser verification is now implemented. It builds
+the client, serves `dist/` only on loopback, cold-loads each policy page, and
+enforces an uncompressed JavaScript budget. See
+[Production Policy-Route Asset Smoke](production-policy-route-asset-smoke.md)
+for the design, security boundary, and current checks.
+
 ## Next Recommended Item
 
-Run a targeted browser smoke suite across the lazy policy routes against the
-production build (including a cold navigation) and record the resulting asset
-budget. That validates emitted chunk loading in a browser before the later
-`v0.48.2-beta` release-readiness run.
+Add the production policy-route asset smoke to the protected client CI path so
+every pull request verifies the emitted bundle rather than relying on a local
+pre-release check.

@@ -133,6 +133,11 @@ Current development changes will be recorded here.
 
 ### Changed
 
+- **Production policy-route asset smoke** — Added a loopback-only Playwright
+  check that builds the client, cold-loads every policy route from the
+  production preview, blocks application API access, verifies its expected
+  lazy route-page chunk, and enforces a bounded script-asset budget.
+
 - **Policy-route delivery** — Replaced the deprecated Vite `manualChunks`
   function with modular Rolldown code-splitting groups. Policy authoring,
   maintenance, and insights now load independently rather than sharing one

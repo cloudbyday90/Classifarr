@@ -32,6 +32,7 @@ Policy maintenance       [██████████] bounded admin controls
 
 ### 🔧 Reliability Improvements
 - Provider errors, retry persistence, and no-route behavior have a disposable Docker verification path that always cleans up its test environment.
+- Every policy screen now has an opt-in production-preview smoke that verifies its lazy page chunk and a fixed cold-load asset budget without contacting an application API.
 - Version metadata, lockfiles, the UI label, README source marker, and release-notes heading are checked as one release-candidate contract before a tag can publish.
 - Local evaluation exchanges the administrator key once for an explicit short-lived route scope, validates token issuer, audience, and algorithm, and uses ETag preconditions when temporarily changing AI settings.
 - Pending-decision replacement persistence, non-final witness grading, backup/restore integrity, and schema-snapshot comparison have targeted fixes that remove false retries and false release failures.
