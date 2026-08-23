@@ -9,7 +9,7 @@
 - **More dependable provider recovery** — transient AI-provider failures are tested end to end so requests are retained for retry rather than routed somewhere unsafe.
 - **Clearer local evaluation** — reviewed fixtures and trend checks help operators evaluate classification outcomes without uploading local media or provider data.
 - **Faster policy tools** — authoring, maintenance, and insight screens now load only their own route code instead of one combined policy-tools bundle.
-- **A more verifiable release record** — every published release will carry bounded evidence whose provenance is checked before publication.
+- **A more verifiable release record** — this release carries bounded evidence whose provenance is checked before publication.
 - **More controlled policy maintenance** — administrators can review purpose coverage, address unresolved policies, and safely retry an interrupted native-purpose change without reopening broad routing controls.
 - **Safer restore confidence** — local backup and restore verification now protects libraries referenced by completed classification history.
 
