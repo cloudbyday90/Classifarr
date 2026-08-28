@@ -1544,6 +1544,15 @@ describe('RAG loop orchestration', () => {
       { id: 1, name: 'Movies' },
       { id: 2, name: 'Family' }
     ];
+    const aiClassifySpy = jest.spyOn(classificationRagLoopService, 'aiClassify').mockResolvedValue({
+      library: libraries[1],
+      confidence: 74,
+      verified_by_ai: false,
+      candidate_bound_verification: {
+        version: 'classification.candidate_bound_verification.v1',
+        status_id: 'provider_capability_unavailable',
+      },
+    });
 
     const result = await classificationService.evaluateRagLoopSecondPass({
       metadata: {
@@ -1563,7 +1572,16 @@ describe('RAG loop orchestration', () => {
     });
 
     expect(result.library.id).toBe(2);
-    expect(result.method).toBe('policy_recheck');
+    expect(result.method).toBe('ai_rerun');
+    expect(aiClassifySpy).toHaveBeenCalledWith(
+      expect.any(Object),
+      libraries,
+      expect.objectContaining({ suggestedLibrary: libraries[1] }),
+      expect.objectContaining({ mode: 'verify' }),
+    );
+    expect(result.candidate_bound_verification).toMatchObject({
+      status_id: 'provider_capability_unavailable',
+    });
     expect(result.ragLoopTrace).toBeDefined();
     expect(result.ragLoopTrace.mode).toBe('apply');
   });

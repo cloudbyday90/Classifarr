@@ -62,7 +62,13 @@ const ragLoopMetricsCollector = createServiceStubs([
   })
 });
 
-const mockRagLoopResilienceManager = createServiceStubs();
+const mockRagLoopResilienceManager = createServiceStubs([
+  'canRun',
+  'recordFailure',
+  'recordSuccess',
+], {
+  canRun: jest.fn().mockReturnValue({ allowed: true }),
+});
 
 const enrichWithTMDB = jest.fn();
 const mergeMetadataForRecheck = jest.fn();
@@ -200,6 +206,100 @@ describe('RAG loop stage helper contract', () => {
     expect(ragLoopStages).not.toHaveProperty('runPass2RetrievalPhase');
     expect(ragLoopStages).not.toHaveProperty('runPolicyRecheckPhase');
     expect(ragLoopStages).not.toHaveProperty('runAiRerunPhase');
+  });
+});
+
+describe('RAG loop candidate-bound verification', () => {
+  test('verifies an adopted prompt-confirm policy recheck against its rechecked candidate', async () => {
+    const libraries = [
+      { id: 1, name: 'Movies' },
+      { id: 2, name: 'Family' },
+    ];
+    const policyResult = {
+      action: 'prompt_confirm',
+      confidence: 74,
+      library: { library_id: 2, library_name: 'Family' },
+      ranked: [{ library_id: 2, library_name: 'Family', score: 74 }],
+    };
+    const existingCandidate = {
+      library: libraries[1],
+      confidence: 74,
+      method: 'policy_recheck',
+      needs_clarification: true,
+      policyResult,
+    };
+    const signalContext = {
+      confidence: 58,
+      suggestedLibrary: libraries[0],
+    };
+    const addEvent = jest.fn();
+    const aiClassify = jest.fn().mockResolvedValue({
+      library: libraries[1],
+      confidence: 74,
+      candidate_bound_verification: {
+        version: 'classification.candidate_bound_verification.v1',
+        status_id: 'provider_capability_unavailable',
+      },
+    });
+
+    mockRagLoopResilienceManager.canRun.mockReturnValueOnce({ allowed: true });
+    ragLoopHelpers.isAiRerunEligible.mockReturnValueOnce({ eligible: true });
+
+    const result = await ragLoopStages.runAiRerunStage({
+      config: { policy_recheck_max_ai_calls_per_item: 2 },
+      addEvent,
+      classifyStageError: jest.fn(),
+      trigger: { trigger: 'policy_prompt_select' },
+      aiCallsUsed: 1,
+      pass1Diagnostics: {},
+      pass2Diagnostics: {},
+      policyAfter: policyResult,
+      expandedMetadata: { title: 'Family Movie', media_type: 'movie' },
+      libraries,
+      signalContext,
+      pass2RagContext: null,
+      baselineResult: {
+        library: libraries[0],
+        confidence: 58,
+        method: 'ai_analysis',
+      },
+      buildAiRerunCandidate: ({ baselineResult, aiRerunMatch, policyResult: candidatePolicyResult }) => ({
+        ...baselineResult,
+        ...aiRerunMatch,
+        policyResult: candidatePolicyResult,
+      }),
+      buildAiRerunFailureEvent: jest.fn(),
+      aiClassify,
+      existingCandidate,
+    });
+
+    expect(aiClassify).toHaveBeenCalledWith(
+      { title: 'Family Movie', media_type: 'movie' },
+      libraries,
+      expect.objectContaining({
+        confidence: 74,
+        suggestedLibrary: libraries[1],
+      }),
+      {
+        mode: 'verify',
+        ragContext: null,
+        verificationCandidate: { library_id: 2, library_name: 'Family' },
+      },
+    );
+    expect(result.pass2Candidate).toMatchObject({
+      library: libraries[1],
+      candidate_bound_verification: {
+        status_id: 'provider_capability_unavailable',
+      },
+      deterministic_ai_mode: {
+        mode: 'verify',
+        reasonCode: 'unique_review_candidate',
+      },
+    });
+    expect(addEvent).toHaveBeenCalledWith(expect.objectContaining({
+      stage: 'ai_rerun',
+      outcome: 'applied',
+    }));
   });
 });
 

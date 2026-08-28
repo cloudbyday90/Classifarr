@@ -13,6 +13,10 @@ import { ragRetriever } from './ragRetriever.mjs';
 import { policyEngine } from './policyEngine.mjs';
 import { resolveDeterministicOutcomeAiMode } from './classificationDeterministicAiMode.mjs';
 import {
+    buildPolicyRecheckVerificationSignalContext,
+    shouldVerifyPolicyRecheckCandidate,
+} from './classificationRagLoopVerification.mjs';
+import {
     sleep,
     withRetryableDbConflict,
     withTimeout,
@@ -283,7 +287,11 @@ export async function runPolicyRecheckStage(ctx) {
 export async function runAiRerunStage(ctx) {
     const { config, addEvent, classifyStageError, trigger, aiCallsUsed, pass1Diagnostics, pass2Diagnostics, policyAfter, expandedMetadata, libraries, signalContext, pass2RagContext, baselineResult, buildAiRerunCandidate, buildAiRerunFailureEvent, aiClassify, existingCandidate } = ctx;
 
-    if (existingCandidate) {
+    const verifyPolicyRecheckCandidate = shouldVerifyPolicyRecheckCandidate({
+        existingCandidate,
+        policyResult: policyAfter,
+    });
+    if (existingCandidate && !verifyPolicyRecheckCandidate) {
         addEvent({ stage: 'ai_rerun', outcome: 'skipped', reason: 'policy_candidate_selected', reasonCode: 'policy_candidate_selected', fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED });
         return { pass2Candidate: existingCandidate, aiCallsUsed, hadError: false };
     }
@@ -291,13 +299,21 @@ export async function runAiRerunStage(ctx) {
     const resilienceGate = ragLoopResilienceManager.canRun('ai_rerun', config);
     if (!resilienceGate.allowed) {
         addEvent({ stage: 'ai_rerun', outcome: 'skipped', reason: resilienceGate.reasonCode, reasonCode: resilienceGate.reasonCode, fallbackAction: resilienceGate.fallbackAction || RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED });
-        return { pass2Candidate: null, aiCallsUsed, hadError: false };
+        return { pass2Candidate: existingCandidate || null, aiCallsUsed, hadError: false };
     }
 
-    const aiRerunGate = isAiRerunEligible({ trigger: trigger.trigger, aiCallsUsed, config, pass1Diagnostics, pass2Diagnostics, policyAfter });
+    const aiRerunGate = isAiRerunEligible({
+        trigger: trigger.trigger,
+        aiCallsUsed,
+        config,
+        pass1Diagnostics,
+        pass2Diagnostics,
+        policyAfter,
+        requireCandidateBoundVerification: verifyPolicyRecheckCandidate,
+    });
     if (!aiRerunGate.eligible) {
         addEvent({ stage: 'ai_rerun', outcome: 'skipped', reason: aiRerunGate.reason, reasonCode: aiRerunGate.reason, fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED });
-        return { pass2Candidate: null, aiCallsUsed, hadError: false };
+        return { pass2Candidate: existingCandidate || null, aiCallsUsed, hadError: false };
     }
 
     const aiModeDecision = resolveDeterministicOutcomeAiMode({
@@ -312,24 +328,41 @@ export async function runAiRerunStage(ctx) {
             reasonCode: aiModeDecision.reasonCode,
             fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED,
         });
-        return { pass2Candidate: null, aiCallsUsed, hadError: false };
+        return { pass2Candidate: existingCandidate || null, aiCallsUsed, hadError: false };
     }
 
     let pass2Candidate = null;
     let hadError = false;
     let updatedAiCallsUsed = aiCallsUsed;
+    const verificationSignalContext = verifyPolicyRecheckCandidate
+        ? buildPolicyRecheckVerificationSignalContext({
+            signalContext,
+            policyResult: policyAfter,
+            libraries,
+        })
+        : signalContext;
+    const candidateBaselineResult = verifyPolicyRecheckCandidate
+        ? existingCandidate
+        : baselineResult;
 
     try {
         updatedAiCallsUsed += 1;
         const aiRerunMatch = {
-            ...(await aiClassify(expandedMetadata, libraries, signalContext, {
+            ...(await aiClassify(expandedMetadata, libraries, verificationSignalContext, {
                 mode: aiModeDecision.mode,
                 ragContext: pass2RagContext,
                 verificationCandidate: policyAfter?.library || policyAfter?.ranked?.[0] || null,
             })),
             deterministic_ai_mode: aiModeDecision,
         };
-        pass2Candidate = buildAiRerunCandidate({ baselineResult, aiRerunMatch, libraries, signalContext, policyResult: policyAfter, ragContext: pass2RagContext });
+        pass2Candidate = buildAiRerunCandidate({
+            baselineResult: candidateBaselineResult,
+            aiRerunMatch,
+            libraries,
+            signalContext: verificationSignalContext,
+            policyResult: policyAfter,
+            ragContext: pass2RagContext,
+        });
         ragLoopResilienceManager.recordSuccess('ai_rerun', config);
         addEvent({ stage: 'ai_rerun', outcome: 'applied', reason: 'material_improvement', reasonCode: 'material_improvement' });
     } catch (error) {
@@ -346,6 +379,10 @@ export async function runAiRerunStage(ctx) {
             stageError,
             fallbackAction: RAG_LOOP_FALLBACK_ACTIONS.AI_RERUN_SKIPPED,
         }));
+        // A verification failure may never replace the deterministic
+        // prompt-confirm candidate. Retain it for operator review; successful
+        // admissions still attach their bounded status above.
+        pass2Candidate = existingCandidate || null;
     }
 
     return { pass2Candidate, aiCallsUsed: updatedAiCallsUsed, hadError };

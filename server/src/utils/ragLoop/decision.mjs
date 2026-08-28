@@ -685,6 +685,7 @@ export function isAiRerunEligible({
   pass1Diagnostics = {},
   pass2Diagnostics = {},
   policyAfter = null,
+  requireCandidateBoundVerification = false,
 } = {}) {
   const maxAiCalls = clamp(toNumber(config.policy_recheck_max_ai_calls_per_item, 2), 1, 5);
   if (aiCallsUsed >= maxAiCalls) {
@@ -701,7 +702,7 @@ export function isAiRerunEligible({
   const minMarginDelta = clamp(toNumber(config.policy_recheck_min_margin_delta, 10), 0, 100);
   const materiallyImproved = similarityDelta >= minSimilarityDelta || marginDelta >= minMarginDelta;
 
-  if (!materiallyImproved) {
+  if (!requireCandidateBoundVerification && !materiallyImproved) {
     return {
       eligible: false,
       reason: 'no_material_improvement',
@@ -709,6 +710,7 @@ export function isAiRerunEligible({
   }
 
   if (
+    !requireCandidateBoundVerification &&
     trigger === 'policy_prompt_select' &&
     isPolicyActionUpgrade({ action: 'prompt_select' }, policyAfter)
   ) {
@@ -718,7 +720,11 @@ export function isAiRerunEligible({
     };
   }
 
-  if (trigger === 'policy_prompt_confirm' && policyAfter?.action === 'auto_classify') {
+  if (
+    !requireCandidateBoundVerification &&
+    trigger === 'policy_prompt_confirm' &&
+    policyAfter?.action === 'auto_classify'
+  ) {
     return {
       eligible: false,
       reason: 'policy_recheck_resolved',
