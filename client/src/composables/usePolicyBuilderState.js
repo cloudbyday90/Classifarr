@@ -11,7 +11,6 @@
 import { computed, ref, unref, watch } from 'vue'
 import { usePolicyIntentDraft } from '@/composables/usePolicyIntentDraft'
 import { clonePolicyIntentDraftForWrite } from '@/utils/policyIntentWritePreflight'
-import { buildPolicyCompatibilityProfileSuggestionDraftPlan } from '@/utils/policyCompatibilityProfileSuggestionDraft'
 
 export function createDefaultPolicyForm(libraryId = null) {
   return {
@@ -203,7 +202,10 @@ export function usePolicyBuilderState({ policy, libraryId, libraries }) {
     clearIntentDraftSignalConfig({ presetId, signalType })
   }
 
-  const applyProfilePurposeSuggestion = (rules) => {
+  const applyProfilePurposeSuggestion = async (rules) => {
+    const { buildPolicyCompatibilityProfileSuggestionDraftPlan } = await import(
+      '@/utils/policyCompatibilityProfileSuggestionDraft'
+    )
     const plan = buildPolicyCompatibilityProfileSuggestionDraftPlan({
       selectedPresets: selectedPresets.value,
       rules,

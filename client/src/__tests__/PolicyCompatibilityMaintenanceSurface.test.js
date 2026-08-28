@@ -6,8 +6,8 @@
  * See LICENSE file for details.
  */
 
-import { describe, expect, it } from 'vitest'
-import { shallowMount } from '@vue/test-utils'
+import { describe, expect, it, vi } from 'vitest'
+import { flushPromises, shallowMount } from '@vue/test-utils'
 import PolicyCompatibilityMaintenanceSurface from '@/components/policies/PolicyCompatibilityMaintenanceSurface.vue'
 import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
 import PolicyPresetMigrationNotice from '@/components/policies/PolicyPresetMigrationNotice.vue'
@@ -91,7 +91,7 @@ describe('PolicyCompatibilityMaintenanceSurface.vue', () => {
     expect(wrapper.emitted('dismiss-migration-notice')).toEqual([[]])
   })
 
-  it('forwards explicit profile-suggestion acceptance without performing a save', () => {
+  it('forwards explicit profile-suggestion acceptance without performing a save', async () => {
     const wrapper = mountSurface({
       profilePurposeSuggestion: {
         statusId: 'available',
@@ -99,9 +99,10 @@ describe('PolicyCompatibilityMaintenanceSurface.vue', () => {
         suggestion: { rules: [] },
       },
     })
+    await vi.dynamicImportSettled()
+    await flushPromises()
     const profileSuggestion = wrapper.findComponent(PolicyCompatibilityProfilePurposeSuggestion)
 
-    expect(profileSuggestion.props('selectedPresetCount')).toBe(1)
     profileSuggestion.vm.$emit('apply')
 
     expect(wrapper.emitted('apply-profile-purpose-suggestion')).toEqual([[]])

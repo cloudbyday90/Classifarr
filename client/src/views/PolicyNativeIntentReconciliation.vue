@@ -311,9 +311,8 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import PolicyBuilderModal from '@/components/policies/PolicyBuilderModal.vue'
 import PolicyNativeIntentReconciliationRemediationInventory from '@/components/policies/PolicyNativeIntentReconciliationRemediationInventory.vue'
 import PolicyPurposeCoverageReview from '@/components/policies/PolicyPurposeCoverageReview.vue'
 import {
@@ -324,9 +323,11 @@ import {
 import { usePolicyNativeIntentReconciliationStatus } from '@/composables/usePolicyNativeIntentReconciliationStatus'
 import { usePolicyNativeIntentReconciliationRemediationInventory } from '@/composables/usePolicyNativeIntentReconciliationRemediationInventory'
 import { usePolicyPurposeCoverageReview } from '@/composables/usePolicyPurposeCoverageReview'
-import { adaptPolicyNativeIntentReconciliationPurposeSuggestion } from '@/utils/policyNativeIntentReconciliationPurposeSuggestionPresentation'
 
 const route = useRoute()
+const PolicyBuilderModal = defineAsyncComponent(() =>
+  import('@/components/policies/PolicyBuilderModal.vue')
+)
 const {
   status,
   isLoading: statusLoading,
@@ -420,6 +421,9 @@ const openPolicyEditor = async entry => {
     editingPolicy.value = await getPolicy(policyId)
     try {
       const suggestion = await getPolicyNativeIntentReconciliationPurposeSuggestion(policyId)
+      const {
+        adaptPolicyNativeIntentReconciliationPurposeSuggestion,
+      } = await import('@/utils/policyNativeIntentReconciliationPurposeSuggestionPresentation')
       compatibilityPurposeSuggestion.value = adaptPolicyNativeIntentReconciliationPurposeSuggestion({
         suggestion,
         expectedPolicyId: policyId,

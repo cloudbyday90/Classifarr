@@ -1,6 +1,38 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.48.2-beta`. Package files use semver-safe versions such as `0.48.2-beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.48.3-beta`. Package files use semver-safe versions such as `0.48.3-beta`.
+
+## v0.48.3-beta
+**Title: Clearer policy maintenance with safer review decisions**
+
+### 🎉 What You'll Notice
+- **A direct path to maintenance** — policies that need attention now link you straight to the relevant review screen.
+- **Helpful, controlled suggestions** — a library profile can suggest a genre boundary, but it stays an unsaved draft until an administrator reviews and saves it.
+- **Safer rechecks** — when an item needs confirmation, Classifarr keeps that specific candidate available for review instead of substituting an unrelated result.
+
+### 📊 Quick Visual
+```text
+Policy maintenance path
+Needs attention  →  Review policy  →  Optional draft  →  Administrator saves
+       [clear]          [focused]       [no auto-route]     [explicit]
+```
+
+### ✨ Highlights
+- Maintenance warnings now lead to the exact policy that needs an operator decision.
+- Suggestions are bounded to current library evidence and cannot change routing, learning, or AI behavior on their own.
+- Updated client tooling supports a more dependable development and build experience.
+
+### 🔧 Reliability Improvements
+- Confirmation rechecks retain the original candidate through provider and resilience checks, preserving a consistent review decision.
+
+### 👥 Who This Helps
+- End users: clearer feedback when a policy needs attention.
+- Operators/admins: faster, safer maintenance without automatic changes to their media-library intent.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
 
 ## v0.48.2-beta
 **Title: Safer AI recovery, policy maintenance, and verifiable releases**

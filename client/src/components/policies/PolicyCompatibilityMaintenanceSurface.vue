@@ -38,6 +38,7 @@
     />
 
     <PolicyCompatibilityProfilePurposeSuggestion
+      v-if="profilePurposeSuggestion"
       :suggestion="profilePurposeSuggestion"
       :selected-preset-count="selectedPresets.length"
       :feedback="profilePurposeSuggestionFeedback"
@@ -72,10 +73,15 @@
 </template>
 
 <script setup>
+import { defineAsyncComponent } from 'vue'
+
 import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
 import PolicyPresetMigrationNotice from '@/components/policies/PolicyPresetMigrationNotice.vue'
 import PolicyPurposeCoveragePreflight from '@/components/policies/PolicyPurposeCoveragePreflight.vue'
-import PolicyCompatibilityProfilePurposeSuggestion from '@/components/policies/PolicyCompatibilityProfilePurposeSuggestion.vue'
+
+const PolicyCompatibilityProfilePurposeSuggestion = defineAsyncComponent(() =>
+  import('@/components/policies/PolicyCompatibilityProfilePurposeSuggestion.vue')
+)
 
 defineProps({
   presetMigrationNotice: {

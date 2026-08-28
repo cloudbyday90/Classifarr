@@ -119,4 +119,18 @@ describe('policyProductLanguageAudit', () => {
       }),
     ]));
   });
+
+  test('allows the fresh empty Unreleased section required immediately after a release', () => {
+    const surfaces = buildRequiredSurfaces();
+    const unreleased = surfaces.find(surface =>
+      surface.surfaceId === POLICY_PRODUCT_LANGUAGE_SURFACE_IDS.UNRELEASED_CHANGELOG
+    );
+
+    unreleased.files[0].content = '';
+
+    expect(buildPolicyProductLanguageAudit({ surfaces })).toEqual(expect.objectContaining({
+      complete: true,
+      risks: [],
+    }));
+  });
 });

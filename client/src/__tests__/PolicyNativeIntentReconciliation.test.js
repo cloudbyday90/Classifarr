@@ -199,6 +199,8 @@ describe('PolicyNativeIntentReconciliation.vue', () => {
 
     await wrapper.findAll('button').find(button => button.text() === 'Review policy').trigger('click')
     await flushPromises()
+    await vi.dynamicImportSettled()
+    await flushPromises()
 
     expect(policyApiMock.getPolicy).toHaveBeenCalledWith(17)
     expect(policyApiMock.getPolicyNativeIntentReconciliationPurposeSuggestion).toHaveBeenCalledWith(17)

@@ -303,7 +303,7 @@ describe('usePolicyBuilderState composable', () => {
     })
     await nextTick()
 
-    const applied = state.applyProfilePurposeSuggestion([{
+    const applied = await state.applyProfilePurposeSuggestion([{
       signalType: 'genres',
       operator: 'require_any',
       values: ['Animation', 'Family'],

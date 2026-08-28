@@ -352,9 +352,9 @@ watch(intentDraft, () => {
   resetPurposeCoveragePreflight()
 }, { deep: true })
 
-const applyCompatibilityProfilePurposeSuggestion = () => {
+const applyCompatibilityProfilePurposeSuggestion = async () => {
   const rules = props.compatibilityPurposeSuggestion?.suggestion?.rules
-  const applied = applyProfilePurposeSuggestion(rules)
+  const applied = await applyProfilePurposeSuggestion(rules)
   compatibilityPurposeSuggestionFeedback.value = applied
     ? 'The suggested rule was added to this unsaved draft. Review it below, then save the policy when it reflects the intended destination.'
     : 'Classifarr could not add this suggestion to the current draft. Review the policy context and add the rule manually.'

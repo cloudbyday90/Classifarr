@@ -127,7 +127,10 @@ function buildPolicyProductLanguageAudit({
 
     const hasUsableContent = surface.files.some(file => normalizeString(file.content));
 
-    if (surface.files.length === 0 || !hasUsableContent) {
+    const allowsEmptyPostReleaseSection =
+      surfaceId === POLICY_PRODUCT_LANGUAGE_SURFACE_IDS.UNRELEASED_CHANGELOG;
+
+    if (surface.files.length === 0 || (!hasUsableContent && !allowsEmptyPostReleaseSection)) {
       risks.push({
         riskId: POLICY_PRODUCT_LANGUAGE_RISK_IDS.EMPTY_REQUIRED_SURFACE,
         surfaceId,

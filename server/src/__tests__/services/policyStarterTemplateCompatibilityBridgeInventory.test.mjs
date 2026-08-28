@@ -39,6 +39,7 @@ describe('policyStarterTemplateCompatibilityBridgeInventory', () => {
       'legacy_bridge_usePolicyIntentDraft',
       'legacy_bridge_usePolicyBuilderState',
       'compatibility_component_policy_compatibility_maintenance_surface',
+      'compatibility_component_policy_compatibility_profile_purpose_suggestion',
       'compatibility_component_policy_intent_editor',
       'compatibility_component_policy_preset_migration_notice',
     ]));
@@ -83,7 +84,7 @@ describe('policyStarterTemplateCompatibilityBridgeInventory', () => {
       countsByKind: {
         [POLICY_STARTER_TEMPLATE_COMPATIBILITY_BRIDGE_KIND_IDS.ATTACHMENT_READER]: 2,
         [POLICY_STARTER_TEMPLATE_COMPATIBILITY_BRIDGE_KIND_IDS.ATTACHMENT_ROUND_TRIP]: 6,
-        [POLICY_STARTER_TEMPLATE_COMPATIBILITY_BRIDGE_KIND_IDS.COMPATIBILITY_COMPONENT]: 12,
+        [POLICY_STARTER_TEMPLATE_COMPATIBILITY_BRIDGE_KIND_IDS.COMPATIBILITY_COMPONENT]: 13,
       },
       deletionGateIds: [
         LEGACY_COMPATIBILITY_DELETION_GATE_IDS.NATIVE_INTENT_SCHEMA,
@@ -104,9 +105,9 @@ describe('policyStarterTemplateCompatibilityBridgeInventory', () => {
   test('passes the default exhaustive compatibility audit', () => {
     expect(buildPolicyStarterTemplateCompatibilityBridgeAudit()).toEqual(expect.objectContaining({
       ok: true,
-      checkedArtifactCount: 20,
+      checkedArtifactCount: 21,
       checkedBridgeModuleCount: 3,
-      checkedCompatibilityComponentCount: 12,
+      checkedCompatibilityComponentCount: 13,
       duplicateIds: [],
       duplicatePaths: [],
       missingBridgeModulePaths: [],
