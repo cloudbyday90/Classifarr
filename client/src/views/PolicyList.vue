@@ -218,6 +218,7 @@
           :key="entry.library.id"
           :entry="entry"
           @select="selectLibrary"
+          @review-maintenance="reviewPolicyMaintenance"
         />
       </div>
     </section>
@@ -400,6 +401,18 @@ const selectLibrary = async (libraryId) => {
     query: {
       ...route.query,
       library: String(normalizedLibraryId),
+    },
+  })
+}
+
+const reviewPolicyMaintenance = async (entry) => {
+  const policyId = Number(entry?.policy?.id)
+  if (!Number.isInteger(policyId) || policyId <= 0) return
+
+  await router.push({
+    name: 'PolicyNativeIntentReconciliation',
+    query: {
+      policy: String(policyId),
     },
   })
 }

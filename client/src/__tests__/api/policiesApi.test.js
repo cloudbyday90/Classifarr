@@ -51,6 +51,7 @@ import {
   getNativeIntentReconciliationStatus,
   getNativeIntentReconciliationRemediationInventory,
   getPolicyPurposeCoverageReview,
+  getPolicyNativeIntentReconciliationPurposeSuggestion,
   preflightPolicyPurposeCoverage,
 } from '../../api/policiesApi'
 
@@ -274,5 +275,13 @@ describe('policiesApi', () => {
     await getPolicyPurposeCoverageReview()
 
     expect(mockGetDataRequest).toHaveBeenCalledWith('/policies/native-intent-reconciliation/purpose-coverage')
+  })
+
+  it('gets one policy-scoped, read-only reconciliation purpose suggestion', async () => {
+    mockGetDataRequest.mockResolvedValueOnce({ available: true })
+
+    await getPolicyNativeIntentReconciliationPurposeSuggestion(17)
+
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/policies/17/native-intent-reconciliation/purpose-suggestion')
   })
 })

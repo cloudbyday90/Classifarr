@@ -145,6 +145,7 @@ const POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS = deepFreeze([
   'client/src/__tests__/PolicyHistoricRouteSafetyRefresh.test.js',
   'client/src/__tests__/PolicyNativeIntentReconciliation.test.js',
   'client/src/__tests__/PolicyNativeIntentReconciliationRemediationInventory.test.js',
+  'client/src/__tests__/PolicyCompatibilityProfilePurposeSuggestion.test.js',
   'client/src/__tests__/PolicyPurposeCoverageReview.test.js',
   'client/src/__tests__/PolicyPurposeCoveragePreflight.test.js',
   'client/src/__tests__/PolicyNativePolicyRecoveryNotice.test.js',
@@ -442,6 +443,14 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
     POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.RUNTIME_VERIFIER,
     [],
     'Reconciliation remediation displays only server-projected actions and cannot derive destination purpose or invoke conversion.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyCompatibilityProfilePurposeSuggestion.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_WORKFLOW_REGRESSION,
+    false,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.RUNTIME_VERIFIER,
+    [],
+    'Compatibility purpose suggestion displays only a bounded server projection and emits an explicit local-draft action; it cannot save, infer destination authority, call AI, or affect routing or learning.'
   ),
   presentationTestRecord(
     'client/src/__tests__/PolicyPurposeCoverageReview.test.js',

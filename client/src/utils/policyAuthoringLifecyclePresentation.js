@@ -49,7 +49,7 @@ const STATUS_COPY = Object.freeze({
   },
   [POLICY_AUTHORING_LIFECYCLE_STATUS_IDS.EXISTING_COMPATIBILITY_POLICY]: {
     label: 'Existing policy needs maintenance',
-    message: 'This library already has a compatibility policy. New native policy creation is unavailable for this library.',
+    message: 'This library already has a compatibility policy. Review its maintenance details before deciding whether a destination rule needs to change.',
     tone: 'warning',
     canSelect: false,
   },
@@ -172,6 +172,10 @@ function isExpectedAction(action, statusId) {
     return action.id === 'refresh_profile' && action.available === false
   }
 
+  if (statusId === POLICY_AUTHORING_LIFECYCLE_STATUS_IDS.EXISTING_COMPATIBILITY_POLICY) {
+    return action.id === 'review_reconciliation' && action.available === true
+  }
+
   return action.id === 'inspect_policy' && action.available === false
 }
 
@@ -193,7 +197,7 @@ function isExpectedProposal(proposal, statusId) {
   return proposal.available === false && proposal.reasonId === statusId
 }
 
-function buildPresentation({ statusId, library, policy = null }) {
+function buildPresentation({ statusId, library, policy = null, action = null }) {
   const copy = STATUS_COPY[statusId] || STATUS_COPY[POLICY_AUTHORING_LIFECYCLE_STATUS_IDS.UNAVAILABLE]
 
   return deepFreeze({
@@ -205,6 +209,8 @@ function buildPresentation({ statusId, library, policy = null }) {
     message: copy.message,
     tone: copy.tone,
     canSelect: copy.canSelect,
+    canReviewMaintenance: statusId === POLICY_AUTHORING_LIFECYCLE_STATUS_IDS.EXISTING_COMPATIBILITY_POLICY &&
+      action?.id === 'review_reconciliation' && action.available === true,
   })
 }
 
@@ -259,6 +265,6 @@ export function adaptPolicyAuthoringLifecyclePresentation({ lifecycle, expectedL
 
   return {
     ok: true,
-    presentation: buildPresentation({ statusId, library, policy }),
+    presentation: buildPresentation({ statusId, library, policy, action: source.action }),
   }
 }

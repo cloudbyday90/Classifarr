@@ -19,20 +19,29 @@ const { apiMock } = vi.hoisted(() => ({
   },
 }))
 
+const { routeMock } = vi.hoisted(() => ({
+  routeMock: { query: {} },
+}))
+
 const { policyApiMock } = vi.hoisted(() => ({
   policyApiMock: {
     getPolicy: vi.fn(),
+    getPolicyNativeIntentReconciliationPurposeSuggestion: vi.fn(),
     updatePolicy: vi.fn(),
   },
 }))
 
 vi.mock('@/api', () => ({ default: apiMock }))
 vi.mock('@/api/policiesApi', () => policyApiMock)
+vi.mock('vue-router', () => ({
+  useRoute: () => routeMock,
+}))
 
 const PolicyBuilderModalStub = defineComponent({
   name: 'PolicyBuilderModal',
   props: {
     policy: { type: Object, required: true },
+    compatibilityPurposeSuggestion: { type: Object, default: null },
     submitPolicy: { type: Function, required: true },
   },
   template: '<div data-testid="policy-builder-modal">{{ policy.name }}</div>',
@@ -99,6 +108,34 @@ const purposeCoverageReview = {
   },
 }
 
+const purposeSuggestion = {
+  version: 'native_intent_reconciliation_purpose_suggestion.v1',
+  statusId: 'available',
+  available: true,
+  policy: { id: 17, name: 'Kids TV Policy' },
+  library: { id: 18, name: 'Kids TV', mediaType: 'tv' },
+  profile: {
+    itemCount: 44,
+    generatedAt: '2026-08-28T15:00:00.000Z',
+    genreSignalCount: 2,
+  },
+  suggestion: {
+    sourceId: 'current_library_profile',
+    rules: [{
+      signalType: 'genres',
+      operator: 'require_any',
+      values: ['Animation', 'Family'],
+      semantics: 'identity',
+      constraintMode: 'advisory',
+    }],
+  },
+  rawProfileExposed: false,
+  persisted: false,
+  routingAffected: false,
+  learningAffected: false,
+  aiInvoked: false,
+}
+
 function mountView() {
   return mount(PolicyNativeIntentReconciliation, {
     global: {
@@ -113,6 +150,7 @@ function mountView() {
 describe('PolicyNativeIntentReconciliation.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    routeMock.query = {}
     apiMock.getNativeIntentReconciliationStatus.mockResolvedValue(reconciliationStatus)
     apiMock.getNativeIntentReconciliationRemediationInventory.mockResolvedValue(remediationInventory)
     apiMock.getPolicyPurposeCoverageReview.mockResolvedValue(purposeCoverageReview)
@@ -121,6 +159,7 @@ describe('PolicyNativeIntentReconciliation.vue', () => {
       name: 'Kids TV Policy',
       library_id: 18,
     })
+    policyApiMock.getPolicyNativeIntentReconciliationPurposeSuggestion.mockResolvedValue(purposeSuggestion)
     policyApiMock.updatePolicy.mockResolvedValue({ data: { success: true } })
   })
 
@@ -162,9 +201,14 @@ describe('PolicyNativeIntentReconciliation.vue', () => {
     await flushPromises()
 
     expect(policyApiMock.getPolicy).toHaveBeenCalledWith(17)
+    expect(policyApiMock.getPolicyNativeIntentReconciliationPurposeSuggestion).toHaveBeenCalledWith(17)
     const editor = wrapper.findComponent({ name: 'PolicyBuilderModal' })
     expect(editor.exists()).toBe(true)
     expect(editor.props('policy')).toEqual(expect.objectContaining({ id: 17, library_id: 18 }))
+    expect(editor.props('compatibilityPurposeSuggestion')).toEqual(expect.objectContaining({
+      available: true,
+      suggestion: expect.objectContaining({ sourceId: 'current_library_profile' }),
+    }))
 
     await editor.props('submitPolicy')({ name: 'Kids TV Policy' })
 
@@ -205,5 +249,13 @@ describe('PolicyNativeIntentReconciliation.vue', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('Unknown (historical run)')
+  })
+
+  it('focuses the remediation record selected by the contextual policy action', async () => {
+    routeMock.query = { policy: '17' }
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.find('#policy-reconciliation-remediation-17').attributes('tabindex')).toBe('-1')
   })
 })

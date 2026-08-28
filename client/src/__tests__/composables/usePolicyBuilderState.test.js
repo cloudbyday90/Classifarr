@@ -291,6 +291,36 @@ describe('usePolicyBuilderState composable', () => {
     expect(state.isValid.value).toBe(true)
   })
 
+  it('adds an accepted profile purpose suggestion only to the unsaved compatibility draft', async () => {
+    const state = usePolicyBuilderState({
+      policy: ref({
+        library_id: 20,
+        name: 'Kids TV Policy',
+        presets: [{ id: 8, preset_id: 8, name: 'Kids TV', weight: 1 }],
+      }),
+      libraryId: ref(20),
+      libraries: ref([{ id: 20, name: 'Kids TV' }]),
+    })
+    await nextTick()
+
+    const applied = state.applyProfilePurposeSuggestion([{
+      signalType: 'genres',
+      operator: 'require_any',
+      values: ['Animation', 'Family'],
+      semantics: 'identity',
+      constraintMode: 'advisory',
+    }])
+
+    expect(applied).toBe(true)
+    expect(state.selectedPresets.value[0].customSignals).toEqual({
+      genres: {
+        require_any: ['Animation', 'Family'],
+        semantics: 'identity',
+        constraint_mode: 'advisory',
+      },
+    })
+  })
+
   it('applies intent helper changes as structured custom signals', async () => {
     const state = usePolicyBuilderState({
       policy: ref({

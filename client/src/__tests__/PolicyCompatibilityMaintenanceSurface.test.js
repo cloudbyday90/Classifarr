@@ -11,6 +11,7 @@ import { shallowMount } from '@vue/test-utils'
 import PolicyCompatibilityMaintenanceSurface from '@/components/policies/PolicyCompatibilityMaintenanceSurface.vue'
 import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
 import PolicyPresetMigrationNotice from '@/components/policies/PolicyPresetMigrationNotice.vue'
+import PolicyCompatibilityProfilePurposeSuggestion from '@/components/policies/PolicyCompatibilityProfilePurposeSuggestion.vue'
 
 const baseProps = {
   selectedPresets: [{ id: 7, name: 'Family' }],
@@ -88,5 +89,22 @@ describe('PolicyCompatibilityMaintenanceSurface.vue', () => {
     notice.vm.$emit('dismiss')
 
     expect(wrapper.emitted('dismiss-migration-notice')).toEqual([[]])
+  })
+
+  it('forwards explicit profile-suggestion acceptance without performing a save', () => {
+    const wrapper = mountSurface({
+      profilePurposeSuggestion: {
+        statusId: 'available',
+        available: true,
+        suggestion: { rules: [] },
+      },
+    })
+    const profileSuggestion = wrapper.findComponent(PolicyCompatibilityProfilePurposeSuggestion)
+
+    expect(profileSuggestion.props('selectedPresetCount')).toBe(1)
+    profileSuggestion.vm.$emit('apply')
+
+    expect(wrapper.emitted('apply-profile-purpose-suggestion')).toEqual([[]])
+    expect(wrapper.emitted('save')).toBeUndefined()
   })
 })

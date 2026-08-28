@@ -78,6 +78,8 @@
           :selected-presets="selectedPresets"
           :all-presets="allPresets"
           :intent-draft="intentDraft"
+          :profile-purpose-suggestion="compatibilityPurposeSuggestion"
+          :profile-purpose-suggestion-feedback="compatibilityPurposeSuggestionFeedback"
           :available-genres="availableGenres"
           :available-genre-options="availableGenreOptions"
           :available-ratings="availableRatings"
@@ -90,6 +92,7 @@
           @draft-remove-signal-value="removeIntentSignalValue"
           @draft-set-signal-config="setIntentSignalConfig"
           @draft-clear-signal-config="clearIntentSignalConfig"
+          @apply-profile-purpose-suggestion="applyCompatibilityProfilePurposeSuggestion"
           @preflight-purpose-coverage="preflightPurposeCoverage"
         />
       </template>
@@ -163,6 +166,10 @@ const props = defineProps({
     type: Function,
     default: null,
   },
+  compatibilityPurposeSuggestion: {
+    type: Object,
+    default: null,
+  },
 })
 
 const emit = defineEmits({
@@ -180,6 +187,7 @@ const activeEmptyStateActionId = ref('')
 const emptyStateActionFeedback = ref(null)
 const restoreFocusAfterClose = ref(true)
 const nativePurposeChangeCommand = ref(null)
+const compatibilityPurposeSuggestionFeedback = ref('')
 
 const isOpen = computed({
   get: () => props.modelValue,
@@ -220,6 +228,7 @@ const {
   removeIntentSignalValue,
   setIntentSignalConfig,
   clearIntentSignalConfig,
+  applyProfilePurposeSuggestion,
   buildSavePayload,
 } = usePolicyBuilderState({
   policy: toRef(props, 'policy'),
@@ -328,6 +337,11 @@ watchNativeReadinessSummary(computed(() => (
 watch(() => props.policy?.id, () => {
   // The authoritative purpose projection belongs to one persisted policy only.
   nativePurposeChangeCommand.value = null
+  compatibilityPurposeSuggestionFeedback.value = ''
+})
+
+watch(() => props.compatibilityPurposeSuggestion, () => {
+  compatibilityPurposeSuggestionFeedback.value = ''
 })
 
 watch(() => props.modelValue, isOpen => {
@@ -337,6 +351,14 @@ watch(() => props.modelValue, isOpen => {
 watch(intentDraft, () => {
   resetPurposeCoveragePreflight()
 }, { deep: true })
+
+const applyCompatibilityProfilePurposeSuggestion = () => {
+  const rules = props.compatibilityPurposeSuggestion?.suggestion?.rules
+  const applied = applyProfilePurposeSuggestion(rules)
+  compatibilityPurposeSuggestionFeedback.value = applied
+    ? 'The suggested rule was added to this unsaved draft. Review it below, then save the policy when it reflects the intended destination.'
+    : 'Classifarr could not add this suggestion to the current draft. Review the policy context and add the rule manually.'
+}
 
 const handleEmptyStateAction = async (emptyState) => {
   if (!experienceMode.value.isNativeCreate) return

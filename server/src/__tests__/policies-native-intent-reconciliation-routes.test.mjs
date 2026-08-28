@@ -16,6 +16,7 @@ const getStatus = jest.fn();
 const getReconciliationStatus = jest.fn();
 const getRemediationInventory = jest.fn();
 const getPurposeCoverageReview = jest.fn();
+const getPurposeSuggestion = jest.fn();
 const disableAutomation = jest.fn();
 const resumeAutomation = jest.fn();
 const resetCircuit = jest.fn();
@@ -53,6 +54,12 @@ jest.unstable_mockModule('../services/policyPurposeCoverageReviewService.mjs', (
   },
 }));
 
+jest.unstable_mockModule('../services/nativeIntentReconciliationPurposeSuggestionService.mjs', () => ({
+  nativeIntentReconciliationPurposeSuggestionService: {
+    getSuggestion: getPurposeSuggestion,
+  },
+}));
+
 const { registerPolicyNativeIntentReconciliationRoutes } =
   await import('../routes/policiesRouteNativeIntentReconciliation.mjs');
 const { errorHandler } = await import('../middleware/errorHandler.mjs');
@@ -80,6 +87,7 @@ describe('Policy native intent reconciliation control routes', () => {
     getReconciliationStatus.mockReset();
     getRemediationInventory.mockReset();
     getPurposeCoverageReview.mockReset();
+    getPurposeSuggestion.mockReset();
     disableAutomation.mockReset();
     resumeAutomation.mockReset();
     resetCircuit.mockReset();
@@ -100,6 +108,12 @@ describe('Policy native intent reconciliation control routes', () => {
       entries: [],
       rawConfigurationExposed: false,
       routingAffected: false,
+    });
+    getPurposeSuggestion.mockResolvedValue({
+      statusId: 'available',
+      available: true,
+      persisted: false,
+      rawProfileExposed: false,
     });
     disableAutomation.mockResolvedValue({
       changed: true,
@@ -171,6 +185,30 @@ describe('Policy native intent reconciliation control routes', () => {
     await request(createApp({ id: 9, role: 'operator' }))
       .get('/api/policies/native-intent-reconciliation/purpose-coverage')
       .expect(403);
+  });
+
+  test('returns one administrator-only, no-store profile purpose suggestion without a write action', async () => {
+    const response = await request(createApp())
+      .get('/api/policies/17/native-intent-reconciliation/purpose-suggestion')
+      .expect(200);
+
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.body).toEqual(expect.objectContaining({
+      statusId: 'available',
+      available: true,
+      persisted: false,
+      rawProfileExposed: false,
+    }));
+    expect(getPurposeSuggestion).toHaveBeenCalledWith({
+      dbClient: expect.any(Object),
+      policyId: 17,
+    });
+    await request(createApp({ id: 9, role: 'operator' }))
+      .get('/api/policies/17/native-intent-reconciliation/purpose-suggestion')
+      .expect(403);
+    await request(createApp())
+      .get('/api/policies/not-a-number/native-intent-reconciliation/purpose-suggestion')
+      .expect(400);
   });
 
   test('derives the emergency-stop actor from the authenticated administrator', async () => {

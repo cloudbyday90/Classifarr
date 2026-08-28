@@ -46,7 +46,9 @@
     >
       <li
         v-for="entry in entries"
+        :id="`policy-reconciliation-remediation-${entry.policy.id}`"
         :key="entry.policy.id"
+        :tabindex="entry.policy.id === focusPolicyId ? -1 : null"
         class="p-5"
       >
         <div class="flex flex-wrap items-start justify-between gap-4">
@@ -98,6 +100,10 @@ const props = defineProps({
   loading: {
     type: Boolean,
     default: false,
+  },
+  focusPolicyId: {
+    type: Number,
+    default: null,
   },
 })
 

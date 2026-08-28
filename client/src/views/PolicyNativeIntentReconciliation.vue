@@ -263,6 +263,7 @@
       v-if="status || remediationInventory"
       :inventory="remediationInventory"
       :loading="remediationLoading"
+      :focus-policy-id="focusPolicyId"
       @edit-policy="openPolicyEditor"
     />
 
@@ -303,21 +304,29 @@
     v-model="policyEditorOpen"
     :policy="editingPolicy"
     :library-id="editingPolicy.library_id"
+    :compatibility-purpose-suggestion="compatibilityPurposeSuggestion"
     :submit-policy="saveRemediationPolicy"
     @close="closePolicyEditor"
   />
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import PolicyBuilderModal from '@/components/policies/PolicyBuilderModal.vue'
 import PolicyNativeIntentReconciliationRemediationInventory from '@/components/policies/PolicyNativeIntentReconciliationRemediationInventory.vue'
 import PolicyPurposeCoverageReview from '@/components/policies/PolicyPurposeCoverageReview.vue'
-import { getPolicy, updatePolicy } from '@/api/policiesApi'
+import {
+  getPolicy,
+  getPolicyNativeIntentReconciliationPurposeSuggestion,
+  updatePolicy,
+} from '@/api/policiesApi'
 import { usePolicyNativeIntentReconciliationStatus } from '@/composables/usePolicyNativeIntentReconciliationStatus'
 import { usePolicyNativeIntentReconciliationRemediationInventory } from '@/composables/usePolicyNativeIntentReconciliationRemediationInventory'
 import { usePolicyPurposeCoverageReview } from '@/composables/usePolicyPurposeCoverageReview'
+import { adaptPolicyNativeIntentReconciliationPurposeSuggestion } from '@/utils/policyNativeIntentReconciliationPurposeSuggestionPresentation'
 
+const route = useRoute()
 const {
   status,
   isLoading: statusLoading,
@@ -340,6 +349,7 @@ const editingPolicy = ref(null)
 const policyEditorOpen = ref(false)
 const policyEditorError = ref('')
 const policyEditorFeedback = ref('')
+const compatibilityPurposeSuggestion = ref(null)
 const isLoading = computed(() => (
   statusLoading.value || remediationLoading.value || purposeCoverageLoading.value
 ))
@@ -380,9 +390,21 @@ const deferredOrBlockedCount = computed(() => (
   (status.value?.latestRun?.counts?.deferredCount ?? 0) +
   (status.value?.latestRun?.counts?.blockedCount ?? 0)
 ))
+const focusPolicyId = computed(() => {
+  const policyId = Number(route.query?.policy)
+  return Number.isInteger(policyId) && policyId > 0 ? policyId : null
+})
 
 const loadReconciliationView = async () => {
   await Promise.all([loadStatus(), loadRemediationInventory(), loadPurposeCoverageReview()])
+}
+
+const focusRequestedRemediation = async () => {
+  const policyId = focusPolicyId.value
+  if (!policyId || typeof document === 'undefined') return
+
+  await nextTick()
+  document.getElementById(`policy-reconciliation-remediation-${policyId}`)?.focus()
 }
 
 const openPolicyEditor = async entry => {
@@ -392,9 +414,19 @@ const openPolicyEditor = async entry => {
   policyEditorError.value = ''
   policyEditorFeedback.value = ''
   editingPolicy.value = null
+  compatibilityPurposeSuggestion.value = null
 
   try {
     editingPolicy.value = await getPolicy(policyId)
+    try {
+      const suggestion = await getPolicyNativeIntentReconciliationPurposeSuggestion(policyId)
+      compatibilityPurposeSuggestion.value = adaptPolicyNativeIntentReconciliationPurposeSuggestion({
+        suggestion,
+        expectedPolicyId: policyId,
+      }).presentation
+    } catch {
+      compatibilityPurposeSuggestion.value = null
+    }
     policyEditorOpen.value = true
   } catch {
     policyEditorError.value = 'Classifarr could not load the current policy for remediation. Refresh the inventory and try again.'
@@ -404,6 +436,7 @@ const openPolicyEditor = async entry => {
 const closePolicyEditor = () => {
   policyEditorOpen.value = false
   editingPolicy.value = null
+  compatibilityPurposeSuggestion.value = null
 }
 
 const saveRemediationPolicy = async payload => {
@@ -437,5 +470,10 @@ function formatRuntime(runtime) {
   return buildRevision ? `App ${appVersion} | revision ${buildRevision}` : `App ${appVersion}`
 }
 
-onMounted(loadReconciliationView)
+watch([focusPolicyId, remediationInventory], focusRequestedRemediation)
+
+onMounted(async () => {
+  await loadReconciliationView()
+  await focusRequestedRemediation()
+})
 </script>

@@ -61,4 +61,24 @@ describe('PolicyAuthoringLifecycleEntry.vue', () => {
     expect(recovery.text()).toContain('automatically recovering')
     expect(recovery.findAll('button')).toHaveLength(0)
   })
+
+  it('offers a direct maintenance review only for the confirmed compatibility-policy action', async () => {
+    const wrapper = mount(PolicyAuthoringLifecycleEntry, {
+      props: {
+        entry: buildEntry({
+          statusId: 'existing_compatibility_policy',
+          label: 'Existing policy needs maintenance',
+          policy: { id: 17, name: 'Kids TV Policy' },
+          canSelect: false,
+          canReviewMaintenance: true,
+        }),
+      },
+    })
+
+    expect(wrapper.find('button').text()).toBe('Review policy maintenance')
+    await wrapper.find('button').trigger('click')
+    expect(wrapper.emitted('review-maintenance')).toEqual([[expect.objectContaining({
+      policy: { id: 17, name: 'Kids TV Policy' },
+    })]])
+  })
 })

@@ -340,6 +340,15 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY = deepFreeze([
     notes: 'Compatibility-only maintenance surface; it cannot become an alternate native authoring path.',
   },
   {
+    id: 'policy_compatibility_profile_purpose_suggestion',
+    path: 'client/src/components/policies/PolicyCompatibilityProfilePurposeSuggestion.vue',
+    roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.COMPATIBILITY_MAINTENANCE,
+    decisionId: POLICY_AUTHORING_COMPONENT_DECISION_IDS.DELETE_FROM_NORMAL_PATH,
+    targetComponentIds: [],
+    normalAuthoringAllowed: false,
+    notes: 'Compatibility-only evidence suggestion; it displays a bounded server projection and emits one explicit local-draft action without saving, deriving destination authority, calling AI, or affecting routing or learning.',
+  },
+  {
     id: 'policy_intent_editor',
     path: 'client/src/components/policies/PolicyIntentEditor.vue',
     roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.COMPATIBILITY_MAINTENANCE,

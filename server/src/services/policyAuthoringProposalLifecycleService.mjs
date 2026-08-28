@@ -81,6 +81,13 @@ function buildLifecycleAction(statusId) {
     };
   }
 
+  if (statusId === POLICY_AUTHORING_LIFECYCLE_STATUS_IDS.EXISTING_COMPATIBILITY_POLICY) {
+    return {
+      id: 'review_reconciliation',
+      available: true,
+    };
+  }
+
   return {
     id: 'inspect_policy',
     available: false,

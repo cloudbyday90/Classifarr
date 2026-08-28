@@ -73,6 +73,25 @@ describe('policyAuthoringLifecyclePresentation', () => {
     }))
   })
 
+  it('accepts the server-confirmed reconciliation action for an existing compatibility policy', () => {
+    const result = adaptPolicyAuthoringLifecyclePresentation({
+      lifecycle: buildLifecycle({
+        statusId: 'existing_compatibility_policy',
+        action: { id: 'review_reconciliation', available: true },
+        policy: { id: 4, name: 'Family Movies Policy' },
+        proposal: { available: false, reasonId: 'existing_compatibility_policy' },
+      }),
+      expectedLibrary: library,
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.presentation).toEqual(expect.objectContaining({
+      statusId: 'existing_compatibility_policy',
+      canSelect: false,
+      canReviewMaintenance: true,
+    }))
+  })
+
   it('keeps automatic profile recovery informational', () => {
     const result = adaptPolicyAuthoringLifecyclePresentation({
       lifecycle: buildLifecycle({

@@ -37,6 +37,13 @@
       @dismiss="emit('dismiss-migration-notice')"
     />
 
+    <PolicyCompatibilityProfilePurposeSuggestion
+      :suggestion="profilePurposeSuggestion"
+      :selected-preset-count="selectedPresets.length"
+      :feedback="profilePurposeSuggestionFeedback"
+      @apply="emit('apply-profile-purpose-suggestion')"
+    />
+
     <div
       id="policy-builder-intent-editor"
     >
@@ -68,6 +75,7 @@
 import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
 import PolicyPresetMigrationNotice from '@/components/policies/PolicyPresetMigrationNotice.vue'
 import PolicyPurposeCoveragePreflight from '@/components/policies/PolicyPurposeCoveragePreflight.vue'
+import PolicyCompatibilityProfilePurposeSuggestion from '@/components/policies/PolicyCompatibilityProfilePurposeSuggestion.vue'
 
 defineProps({
   presetMigrationNotice: {
@@ -85,6 +93,14 @@ defineProps({
   intentDraft: {
     type: Object,
     default: null,
+  },
+  profilePurposeSuggestion: {
+    type: Object,
+    default: null,
+  },
+  profilePurposeSuggestionFeedback: {
+    type: String,
+    default: '',
   },
   availableGenres: {
     type: Array,
@@ -122,6 +138,7 @@ const emit = defineEmits({
   'draft-remove-signal-value': payload => Boolean(payload),
   'draft-set-signal-config': payload => Boolean(payload),
   'draft-clear-signal-config': payload => Boolean(payload),
+  'apply-profile-purpose-suggestion': () => true,
   'preflight-purpose-coverage': () => true,
 })
 </script>

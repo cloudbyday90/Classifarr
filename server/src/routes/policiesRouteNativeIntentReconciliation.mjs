@@ -29,6 +29,9 @@ import {
 import {
   policyPurposeCoverageReviewService,
 } from '../services/policyPurposeCoverageReviewService.mjs';
+import {
+  nativeIntentReconciliationPurposeSuggestionService,
+} from '../services/nativeIntentReconciliationPurposeSuggestionService.mjs';
 
 function toPositiveInteger(value) {
   const numericValue = Number(value);
@@ -123,6 +126,28 @@ export function registerPolicyNativeIntentReconciliationRoutes(router, { db, log
     }
 
     return sendData(res, await nativeIntentReconciliationControlService.getStatus({ dbClient: db }));
+  }));
+
+  router.get('/:id/native-intent-reconciliation/purpose-suggestion', asyncHandler(async (req, res) => {
+    if (req.user?.role !== 'admin') {
+      throw new ForbiddenError('Admin access required');
+    }
+
+    const policyId = toPositiveInteger(req.params.id);
+    if (!policyId) {
+      throw new ValidationError('policyId must be a positive integer');
+    }
+
+    const suggestion = await nativeIntentReconciliationPurposeSuggestionService.getSuggestion({
+      dbClient: db,
+      policyId,
+    });
+    if (suggestion.statusId === 'policy_not_found') {
+      throw new NotFoundError('Policy not found');
+    }
+
+    res.set('Cache-Control', 'no-store');
+    return sendData(res, suggestion);
   }));
 
   router.post('/native-intent-reconciliation/control/emergency-stop', asyncHandler(async (req, res) => {

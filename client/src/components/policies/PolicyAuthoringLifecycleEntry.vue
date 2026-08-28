@@ -52,6 +52,20 @@
         Review destination proposal
       </button>
     </div>
+
+    <div
+      v-else-if="entry.canReviewMaintenance"
+      class="mt-5"
+    >
+      <button
+        :id="`policy-authoring-lifecycle-maintenance-action-${entry.library.id}`"
+        type="button"
+        class="rounded border border-amber-500/70 bg-amber-950/20 px-4 py-2 text-sm font-medium text-amber-100 hover:bg-amber-950/40 focus:outline-none focus:ring-2 focus:ring-amber-300 focus:ring-offset-2 focus:ring-offset-gray-950"
+        @click="$emit('review-maintenance', entry)"
+      >
+        Review policy maintenance
+      </button>
+    </div>
   </article>
 </template>
 
@@ -65,7 +79,10 @@ const props = defineProps({
   },
 })
 
-defineEmits(['select'])
+defineEmits({
+  select: libraryId => Number.isInteger(Number(libraryId)) && Number(libraryId) > 0,
+  'review-maintenance': entry => Number.isInteger(Number(entry?.policy?.id)) && Number(entry.policy.id) > 0,
+})
 
 const badgeClass = computed(() => {
   switch (props.entry.tone) {

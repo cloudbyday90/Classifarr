@@ -108,6 +108,21 @@ describe('policyAuthoringProposalLifecycleService', () => {
     });
   });
 
+  test('exposes a contextual reconciliation review action for an existing compatibility policy', async () => {
+    const { service } = createService({
+      policy: { id: 71, library_id: 6, name: 'Compatibility', has_native_intent: false },
+    });
+
+    const result = await service.getLifecycle({ db: {}, libraryId: 6, now: NOW });
+
+    expect(result.statusId).toBe(POLICY_AUTHORING_LIFECYCLE_STATUS_IDS.EXISTING_COMPATIBILITY_POLICY);
+    expect(result.action).toEqual({ id: 'review_reconciliation', available: true });
+    expect(result.proposal).toEqual({
+      available: false,
+      reasonId: POLICY_AUTHORING_LIFECYCLE_STATUS_IDS.EXISTING_COMPATIBILITY_POLICY,
+    });
+  });
+
   test('prepares an opaque proposal only within a transaction and does not expose canonical rules', async () => {
     const candidate = buildCandidate();
     const { service, persistence, db } = createService();
