@@ -25,6 +25,7 @@ describe('OllamaVerificationCompatibilityMatrix', () => {
       report: {
         stateId: 'completed',
         ollamaVersion: '0.12.4',
+        configuredModelIncluded: true,
         omittedModelCount: 2,
         outcomes: [
           {
@@ -56,8 +57,27 @@ describe('OllamaVerificationCompatibilityMatrix', () => {
     expect(wrapper.text()).toContain('Strict output ready')
     expect(wrapper.text()).toContain('Classification only')
     expect(wrapper.text()).toContain('2 installed models not tested in this run.')
+    expect(wrapper.get('[data-testid="compatibility-matrix-configuration-coverage"]').text())
+      .toContain('Saved model included')
     expect(wrapper.text()).not.toContain('private-')
     expect(wrapper.text()).not.toContain('ignored:latest')
+  })
+
+  it('explains when the saved model was not among eligible installed models without exposing configuration', () => {
+    const wrapper = mountMatrix({
+      report: {
+        stateId: 'completed',
+        configuredModelIncluded: false,
+        host: 'private-ollama.internal',
+        model: 'private-model:latest',
+      },
+    })
+
+    const coverage = wrapper.get('[data-testid="compatibility-matrix-configuration-coverage"]')
+    expect(coverage.attributes('role')).toBe('status')
+    expect(coverage.text()).toContain('Saved model was not found among eligible local models')
+    expect(wrapper.text()).not.toContain('private-ollama.internal')
+    expect(wrapper.text()).not.toContain('private-model:latest')
   })
 
   it('renders safe fallback state and emits a parameter-free run request', async () => {

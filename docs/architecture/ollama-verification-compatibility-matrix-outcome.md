@@ -47,11 +47,13 @@ current saved-capability test can enable strict candidate-bound verification.
 
 ## Follow-up
 
-The next useful item is a narrowly scoped operator guide that maps fixed
-matrix outcomes to safe Ollama maintenance steps: checking the local service
-version, replacing a model build, and re-running the saved capability test.
-It should remain documentation-only unless real matrix evidence identifies a
-repeatable product defect.
+The configuration-coverage indicator now makes the existing
+`configuredModelIncluded` report field visible without exposing the saved
+model name or provider target. The next useful item is a narrowly scoped
+operator guide that maps fixed matrix outcomes to safe Ollama maintenance
+steps: checking the local service version, replacing a model build, and
+re-running the saved capability test. It should remain documentation-only
+unless real matrix evidence identifies a repeatable product defect.
 
 ## External PR check
 

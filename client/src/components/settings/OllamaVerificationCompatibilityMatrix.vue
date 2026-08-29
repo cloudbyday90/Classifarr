@@ -6,7 +6,6 @@
 <template>
   <section
     class="space-y-4"
-    aria-live="polite"
     aria-labelledby="ollama-verification-compatibility-matrix-heading"
   >
     <div class="flex items-start justify-between gap-4">
@@ -56,6 +55,18 @@
       </div>
       <p class="text-sm text-gray-300">
         {{ state.message }}
+      </p>
+
+      <p
+        v-if="configurationCoverage"
+        class="rounded border px-3 py-2 text-sm"
+        :class="configurationCoverage.className"
+        role="status"
+        aria-atomic="true"
+        data-testid="compatibility-matrix-configuration-coverage"
+      >
+        <span class="font-medium">{{ configurationCoverage.label }}.</span>
+        {{ configurationCoverage.message }}
       </p>
 
       <ul
@@ -125,6 +136,19 @@ const DEFAULT_STATE = Object.freeze({
   label: 'Compatibility result unavailable',
   message: 'The returned compatibility result was not recognized.',
 })
+const CONFIGURATION_COVERAGE_STATE_IDS = new Set(['completed', 'no_local_models'])
+const CONFIGURATION_COVERAGE_DETAILS = Object.freeze({
+  included: Object.freeze({
+    label: 'Saved model included',
+    message: 'Its probe result appears below. Retest the saved capability before relying on strict verification.',
+    className: 'border-green-800 bg-green-950/20 text-green-200',
+  }),
+  notIncluded: Object.freeze({
+    label: 'Saved model was not found among eligible local models',
+    message: 'Confirm the saved model and tag are installed locally, then run this check and the saved capability test again.',
+    className: 'border-amber-800 bg-amber-950/20 text-amber-100',
+  }),
+})
 
 function normalizeSafeModelName(value) {
   const name = String(value ?? '').trim()
@@ -151,6 +175,17 @@ const ollamaVersion = computed(() => {
   return SAFE_VERSION_PATTERN.test(version) ? version : 'Unavailable'
 })
 const omittedModelCount = computed(() => normalizeCount(props.report?.omittedModelCount))
+const configurationCoverage = computed(() => {
+  const report = props.report
+  if (!CONFIGURATION_COVERAGE_STATE_IDS.has(report?.stateId)
+    || typeof report?.configuredModelIncluded !== 'boolean') {
+    return null
+  }
+
+  return report.configuredModelIncluded
+    ? CONFIGURATION_COVERAGE_DETAILS.included
+    : CONFIGURATION_COVERAGE_DETAILS.notIncluded
+})
 const outcomes = computed(() => {
   const responseOutcomes = Array.isArray(props.report?.outcomes) ? props.report.outcomes : []
   return responseOutcomes.slice(0, MAX_OUTCOMES).flatMap((outcome) => {
