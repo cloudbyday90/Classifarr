@@ -90,6 +90,15 @@ export const ollamaVerificationRuntimeMismatchSummaryLimiterConfig = {
   legacyHeaders: false,
 };
 
+/** Ollama saved-capability aggregate history reads (per IP, per 15 minutes). */
+export const ollamaVerificationCapabilityOutcomeHistoryLimiterConfig = {
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: 'Too many Ollama verification history requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+};
+
 /** Policy custom intent-signal validation (per IP, per 15 minutes). */
 export const policyIntentSignalCustomEntryLimiterConfig = {
   windowMs: 15 * 60 * 1000,

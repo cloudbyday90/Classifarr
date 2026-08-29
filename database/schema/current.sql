@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-08-29T11:27:29.846Z
--- Latest Migration: 20260829_100000_add_ollama_verification_runtime_mismatch_metrics.sql
+-- Generated: 2026-08-29T14:32:52.645Z
+-- Latest Migration: 20260829_110000_add_ollama_verification_capability_outcome_history.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -12,8 +12,8 @@
 --
 
 
--- Dumped from database version 18.4
--- Dumped by pg_dump version 18.4
+-- Dumped from database version 18.6
+-- Dumped by pg_dump version 18.6
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -3888,6 +3888,27 @@ CREATE SEQUENCE public.ollama_config_id_seq
 --
 
 ALTER SEQUENCE public.ollama_config_id_seq OWNED BY public.ollama_config.id;
+
+
+--
+-- Name: ollama_verification_capability_test_outcomes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ollama_verification_capability_test_outcomes (
+    observed_on date CONSTRAINT ollama_verification_capability_test_outcom_observed_on_not_null NOT NULL,
+    status_id character varying(40) NOT NULL,
+    outcome_count bigint DEFAULT 1 CONSTRAINT ollama_verification_capability_test_outc_outcome_count_not_null NOT NULL,
+    last_observed_at timestamp with time zone DEFAULT now() CONSTRAINT ollama_verification_capability_test_o_last_observed_at_not_null NOT NULL,
+    CONSTRAINT ollama_verification_capability_test_outcomes_count_ck CHECK ((outcome_count > 0)),
+    CONSTRAINT ollama_verification_capability_test_outcomes_status_ck CHECK (((status_id)::text = ANY (ARRAY[('verification_ready'::character varying)::text, ('classification_only'::character varying)::text, ('unavailable'::character varying)::text])))
+);
+
+
+--
+-- Name: TABLE ollama_verification_capability_test_outcomes; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.ollama_verification_capability_test_outcomes IS 'Fixed 30-day daily counts of saved Ollama verification-test outcomes; contains no configuration or test content.';
 
 
 --
@@ -8227,6 +8248,14 @@ ALTER TABLE ONLY public.notification_config
 
 ALTER TABLE ONLY public.ollama_config
     ADD CONSTRAINT ollama_config_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: ollama_verification_capability_test_outcomes ollama_verification_capability_test_outcomes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ollama_verification_capability_test_outcomes
+    ADD CONSTRAINT ollama_verification_capability_test_outcomes_pkey PRIMARY KEY (observed_on, status_id);
 
 
 --
@@ -14050,6 +14079,7 @@ FROM unnest(ARRAY[
     '20260817_030000_add_native_intent_change_receipt_retention_guard.sql',
     '20260822_140000_add_classification_queue_decision_witnesses.sql',
     '20260828_100000_add_ollama_verification_capability_state.sql',
-    '20260829_100000_add_ollama_verification_runtime_mismatch_metrics.sql'
+    '20260829_100000_add_ollama_verification_runtime_mismatch_metrics.sql',
+    '20260829_110000_add_ollama_verification_capability_outcome_history.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

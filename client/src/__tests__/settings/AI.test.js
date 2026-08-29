@@ -26,6 +26,7 @@ vi.mock('@/api', () => ({
     testAIVerificationCapability: vi.fn(),
     getAIVerificationCapabilityChangeReceipts: vi.fn(),
     getOllamaVerificationRuntimeMismatchSummary: vi.fn(),
+    getOllamaVerificationCapabilityOutcomeHistory: vi.fn(),
     getAIModels: vi.fn(),
     testAIConnection: vi.fn(),
     preflightAIVerificationConfig: vi.fn(),
@@ -117,6 +118,15 @@ describe('AI Settings', () => {
       modelDigestMismatchCount: '0',
       lastObservedAt: null
     })
+    api.getOllamaVerificationCapabilityOutcomeHistory.mockResolvedValue({
+      totalTests: '0',
+      signal: {
+        id: 'no_tests',
+        label: 'No recent tests',
+        message: 'Run Test Ollama Verification to establish a baseline.'
+      },
+      outcomes: []
+    })
     api.getLastOllamaPreflight.mockResolvedValue({ ai: null, embedding: null })
     api.preflightAIVerificationConfig.mockResolvedValue({
       data: { requiresConfirmation: false }
@@ -143,6 +153,68 @@ describe('AI Settings', () => {
     expect(wrapper.text()).not.toContain('private-model-name')
     expect(wrapper.text()).not.toContain('private-host.local')
     expect(wrapper.text()).not.toContain('private provider failure')
+  })
+
+  it('renders only aggregate saved-test outcomes and refreshes them after a test', async () => {
+    api.getAIConfig.mockResolvedValueOnce({
+      primary_provider: 'ollama',
+      ollama_host: 'private-ollama.internal',
+      ollama_port: 11434,
+      ollama_model: 'gemma4:e4b'
+    })
+    api.getAIVerificationCapability.mockResolvedValueOnce({
+      label: 'Strict verification needs attention',
+      message: 'Saved Ollama needs a test.',
+      guidance: [],
+      ollamaVerificationCapability: {
+        statusId: 'not_checked',
+        label: 'Ollama verification has not been tested',
+        message: 'Strict verification will not call AI until tested.',
+        guidance: [],
+        testable: true
+      }
+    })
+    api.getOllamaVerificationCapabilityOutcomeHistory
+      .mockResolvedValueOnce({
+        totalTests: '1',
+        signal: { id: 'intermittent', label: 'Mixed test outcomes', message: 'History is advisory.' },
+        outcomes: [{
+          statusId: 'verification_ready',
+          count: '1',
+          lastObservedAt: '2026-08-29T12:34:56.000Z',
+          model: 'private-model-name',
+          response: 'private model output'
+        }]
+      })
+      .mockResolvedValueOnce({
+        totalTests: '2',
+        signal: { id: 'consistently_ready', label: 'Consistently ready', message: 'Current saved capability is authoritative.' },
+        outcomes: [{ statusId: 'verification_ready', count: '2', lastObservedAt: null }]
+      })
+    api.testAIVerificationCapability.mockResolvedValueOnce({
+      data: {
+        label: 'Strict verification is available',
+        message: 'Saved Ollama is ready.',
+        guidance: [],
+        ollamaVerificationCapability: { verified: true }
+      }
+    })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Saved test outcome trend')
+    expect(wrapper.text()).toContain('Mixed test outcomes')
+    expect(wrapper.text()).not.toContain('private-model-name')
+    expect(wrapper.text()).not.toContain('private model output')
+
+    const testButton = wrapper.findAll('button').find((button) => button.text().includes('Test Ollama Verification'))
+    expect(testButton).toBeDefined()
+    await testButton.trigger('click')
+    await flushPromises()
+
+    expect(api.getOllamaVerificationCapabilityOutcomeHistory).toHaveBeenCalledTimes(2)
+    expect(wrapper.text()).toContain('Consistently ready')
   })
 
   it('shows the in-band /settings/ai/models error and clears models', async () => {

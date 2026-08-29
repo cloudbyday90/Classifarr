@@ -34,6 +34,7 @@ import {
   getDetailedStats,
   getCandidateBoundVerificationMetrics,
   getOllamaVerificationRuntimeMismatchSummary,
+  getOllamaVerificationCapabilityOutcomeHistory,
 } from '../../api/policyStatsApi'
 
 describe('policyStatsApi', () => {
@@ -99,5 +100,13 @@ describe('policyStatsApi', () => {
     mockGetDataRequest.mockResolvedValueOnce({})
     await getOllamaVerificationRuntimeMismatchSummary()
     expect(mockGetDataRequest).toHaveBeenCalledWith('/stats/ollama-verification-runtime-mismatch-summary')
+  })
+
+  it('getOllamaVerificationCapabilityOutcomeHistory uses the protected fixed-window endpoint without dimensions', async () => {
+    mockGetDataRequest.mockResolvedValueOnce({})
+
+    await getOllamaVerificationCapabilityOutcomeHistory()
+
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/stats/ollama-verification-capability-outcomes')
   })
 })

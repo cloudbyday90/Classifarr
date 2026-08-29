@@ -742,6 +742,10 @@ describe('Settings AI Routes', () => {
     db.pool.connect.mockResolvedValueOnce(client);
     db.query
       .mockResolvedValueOnce({ rows: [savedConfiguration] })
+      // The capability service records its fixed aggregate after persisting
+      // the authoritative result. Keep that bounded telemetry call separate
+      // from the refreshed capability query asserted by this route test.
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [testedConfiguration] });
     mockOllama.preflightConnection.mockResolvedValueOnce({
       success: true,

@@ -10,6 +10,7 @@
 
 import * as db from '../config/database.mjs';
 import { ollamaService } from './ollama.mjs';
+import { createLogger } from '../utils/logger.mjs';
 import {
   resolveOllamaVerificationCapabilityIdentity,
 } from './ollamaVerificationCapabilityIdentity.mjs';
@@ -20,6 +21,9 @@ import {
   loadOllamaVerificationCapabilityConfiguration,
   persistOllamaVerificationCapabilityProbe,
 } from './ollamaVerificationCapabilityRepository.mjs';
+import {
+  recordOllamaVerificationCapabilityOutcomeHistory,
+} from './ollamaVerificationCapabilityOutcomeHistoryRepository.mjs';
 
 /**
  * @typedef {{
@@ -50,6 +54,8 @@ import {
  *     identity: Record<string, unknown>,
  *     outcome: Record<string, unknown>,
  *   }) => Promise<Record<string, unknown> | null>,
+ *   recordOutcomeHistory?: (database: OllamaVerificationCapabilityDatabase, statusId: string) => Promise<void>,
+ *   logger?: { warn: (message: string, payload?: Record<string, unknown>) => void },
  * }} options
  */
 export function createOllamaVerificationCapabilityService({
@@ -58,6 +64,8 @@ export function createOllamaVerificationCapabilityService({
   loadConfiguration = loadOllamaVerificationCapabilityConfiguration,
   runProbe = probeOllamaVerificationCapability,
   persistProbe = persistOllamaVerificationCapabilityProbe,
+  recordOutcomeHistory = recordOllamaVerificationCapabilityOutcomeHistory,
+  logger = createLogger('OllamaVerificationCapability'),
 } = {}) {
   return Object.freeze({
     async testSavedConfiguration() {
@@ -75,6 +83,19 @@ export function createOllamaVerificationCapabilityService({
       await database.withTransaction(async (client) => {
         await persistProbe({ client, identity, outcome });
       });
+
+      // This aggregate is operational context only. A history write must not
+      // change the tested capability, route media, or make local verification
+      // unavailable when its bounded telemetry store is temporarily down.
+      if (typeof outcome.statusId === 'string') {
+        try {
+          await recordOutcomeHistory(database, outcome.statusId);
+        } catch {
+          logger.warn('Ollama verification outcome history recording failed', {
+            failureCode: 'persistence_unavailable',
+          });
+        }
+      }
 
       return outcome;
     },

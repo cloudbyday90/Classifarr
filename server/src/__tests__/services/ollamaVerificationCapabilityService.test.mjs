@@ -37,11 +37,13 @@ describe('ollama verification capability service', () => {
       };
     });
     const persistProbe = jest.fn().mockResolvedValue({});
+    const recordOutcomeHistory = jest.fn().mockResolvedValue();
     const service = createOllamaVerificationCapabilityService({
       database,
       loadConfiguration: jest.fn().mockResolvedValue(configuration),
       runProbe,
       persistProbe,
+      recordOutcomeHistory,
       ollamaClient: {},
     });
 
@@ -52,6 +54,40 @@ describe('ollama verification capability service', () => {
       identity: expect.objectContaining({ configurationRevision: 4 }),
       outcome,
     }));
+    expect(recordOutcomeHistory).toHaveBeenCalledWith(database, 'verification_ready');
+  });
+
+  test('keeps a successful saved test authoritative when aggregate history persistence fails', async () => {
+    const outcome = {
+      statusId: 'classification_only',
+      configurationFingerprint: 'a'.repeat(64),
+      configurationRevision: 9,
+    };
+    const logger = { warn: jest.fn() };
+    const recordOutcomeHistory = jest.fn().mockRejectedValue(new Error('database unavailable'));
+    const service = createOllamaVerificationCapabilityService({
+      database: {
+        withTransaction: async (callback) => callback({}),
+      },
+      loadConfiguration: jest.fn().mockResolvedValue({
+        primary_provider: 'ollama',
+        ollama_host: 'ollama',
+        ollama_port: 11434,
+        ollama_model: 'gemma4:e4b',
+        configuration_revision: 9,
+      }),
+      runProbe: jest.fn().mockResolvedValue(outcome),
+      persistProbe: jest.fn().mockResolvedValue({}),
+      recordOutcomeHistory,
+      logger,
+      ollamaClient: {},
+    });
+
+    await expect(service.testSavedConfiguration()).resolves.toBe(outcome);
+    expect(logger.warn).toHaveBeenCalledWith(
+      'Ollama verification outcome history recording failed',
+      { failureCode: 'persistence_unavailable' },
+    );
   });
 
   test('does not persist a no-op result when Ollama is not the saved primary provider', async () => {

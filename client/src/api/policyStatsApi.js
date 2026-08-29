@@ -54,6 +54,10 @@ export function getOllamaVerificationRuntimeMismatchSummary() {
   return getDataRequest('/stats/ollama-verification-runtime-mismatch-summary')
 }
 
+export function getOllamaVerificationCapabilityOutcomeHistory() {
+  return getDataRequest('/stats/ollama-verification-capability-outcomes')
+}
+
 const policyStatsApi = {
   getPolicyStatsOverview,
   getPolicyStatsList,
@@ -64,6 +68,7 @@ const policyStatsApi = {
   getDetailedStats,
   getCandidateBoundVerificationMetrics,
   getOllamaVerificationRuntimeMismatchSummary,
+  getOllamaVerificationCapabilityOutcomeHistory,
 }
 
 export default policyStatsApi

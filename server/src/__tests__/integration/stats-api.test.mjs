@@ -279,6 +279,33 @@ describe('Stats API Integration Tests', () => {
         });
     });
 
+    describe('GET /api/stats/ollama-verification-capability-outcomes', () => {
+        it('should return only the administrator-authorized saved-test aggregate', async () => {
+            const res = await request(app)
+                .get('/api/stats/ollama-verification-capability-outcomes')
+                .set('Authorization', `Bearer ${testToken}`)
+                .expect(200);
+
+            expect(res.body).toEqual(expect.objectContaining({
+                version: 'ollama.verification_capability_outcome_history.v1',
+                windowDays: 30,
+                totalTests: expect.stringMatching(/^\d+$/),
+                signal: expect.objectContaining({ id: expect.any(String) }),
+                outcomes: expect.any(Array),
+            }));
+            expect(Object.keys(res.body).sort()).toEqual([
+                'outcomes',
+                'signal',
+                'totalTests',
+                'version',
+                'windowDays',
+            ]);
+            expect(JSON.stringify(res.body)).not.toContain('Private Verification Test Item');
+            expect(JSON.stringify(res.body)).not.toContain('Test Stats Library');
+            expect(JSON.stringify(res.body)).not.toContain('Test Stats Policy');
+        });
+    });
+
     describe('GET /api/stats/policies/overlap-history', () => {
         it('should return recent persisted overlap snapshots', async () => {
             policyOverlapMetricsCollector.reset();
