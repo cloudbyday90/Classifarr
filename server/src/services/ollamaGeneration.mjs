@@ -1,6 +1,7 @@
 import { httpPost, httpStream } from '../utils/httpClient.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { OperationController } from '../utils/operationController.mjs';
+import { buildOllamaGenerateRequest } from './ollamaGenerateRequest.mjs';
 
 const logger = createLogger('OllamaGeneration');
 
@@ -48,15 +49,13 @@ function createPreflightError(preflight = {}) {
 export async function generate(getConfig, prompt, model = 'qwen3:14b', temperature = 0.30, options = {}) {
   try {
     const config = await getConfig();
-    const body = {
+    const body = buildOllamaGenerateRequest({
       model,
       prompt,
-      temperature: options.format ? 0 : temperature,
       stream: false,
-    };
-    if (options.format) {
-      body.format = options.format;
-    }
+      temperature,
+      format: options.format,
+    });
     const response = await httpPost(`${config.baseUrl}/api/generate`, body, {
       timeout: 120000,
     });
@@ -219,15 +218,13 @@ export async function streamGenerate(getConfig, preflightConnectionFn, config, p
   };
 
   try {
-    const body = {
+    const body = buildOllamaGenerateRequest({
       model,
       prompt,
-      temperature: options.format ? 0 : temperature,
       stream: true,
-    };
-    if (options.format) {
-      body.format = options.format;
-    }
+      temperature,
+      format: options.format,
+    });
     const streamResponse = await httpStream(`${config.baseUrl}/api/generate`, body, {
       signal: controller.signal,
     });

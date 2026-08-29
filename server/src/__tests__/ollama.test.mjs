@@ -676,11 +676,12 @@ describe('OllamaService', () => {
                 expect.objectContaining({
                     model: 'gemma4:e4b',
                     stream: true,
-                    temperature: 0,
                     format,
+                    options: { temperature: 0 },
                 }),
                 expect.any(Object),
             );
+            expect(mockHttpStream.mock.calls[0][1]).not.toHaveProperty('temperature');
         });
 
         it('should parse done signal when JSON line is split across chunks', async () => {

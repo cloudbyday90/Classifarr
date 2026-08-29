@@ -326,6 +326,7 @@ describe('AI Settings', () => {
         message: 'Saved Ollama is ready.',
         guidance: [],
         ollamaVerificationCapability: {
+          statusId: 'verification_ready',
           label: 'Ollama verification is ready',
           message: 'The saved model passed the bounded test.',
           guidance: [],
@@ -346,7 +347,55 @@ describe('AI Settings', () => {
 
     expect(api.testAIVerificationCapability).toHaveBeenCalledWith()
     expect(wrapper.text()).toContain('Ollama verification is ready')
-    expect(toast.success).toHaveBeenCalledWith('Ollama verification test completed.')
+    expect(toast.success).toHaveBeenCalledWith('Ollama verification passed. Strict candidate verification is ready.')
+  })
+
+  it('reports a completed strict-verification test that is not eligible for AI use', async () => {
+    api.getAIConfig.mockResolvedValueOnce({
+      primary_provider: 'ollama',
+      ollama_host: 'private-ollama.internal',
+      ollama_port: 11434,
+      ollama_model: 'gemma4:e4b'
+    })
+    api.getAIVerificationCapability.mockResolvedValueOnce({
+      label: 'Strict verification needs attention',
+      message: 'Saved Ollama needs a test.',
+      guidance: [],
+      ollamaVerificationCapability: {
+        statusId: 'not_checked',
+        label: 'Ollama verification has not been tested',
+        message: 'Strict verification will not call AI until tested.',
+        guidance: [],
+        testable: true
+      }
+    })
+    api.testAIVerificationCapability.mockResolvedValueOnce({
+      data: {
+        label: 'Strict verification needs attention',
+        message: 'Saved Ollama remains classification-only.',
+        guidance: [],
+        ollamaVerificationCapability: {
+          statusId: 'classification_only',
+          label: 'Ollama is classification-only',
+          message: 'The saved model did not satisfy the bounded test.',
+          guidance: [],
+          testable: true
+        }
+      }
+    })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    const testButton = wrapper.findAll('button').find((button) => button.text().includes('Test Ollama Verification'))
+    await testButton.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Ollama is classification-only')
+    expect(toast.warning).toHaveBeenCalledWith(
+      'Ollama verification completed, but strict candidate verification is not available. General AI classification remains available.'
+    )
+    expect(toast.success).not.toHaveBeenCalled()
   })
 
   it('shows a model-change-only, aggregate-safe shortcut to the existing manual retest', async () => {

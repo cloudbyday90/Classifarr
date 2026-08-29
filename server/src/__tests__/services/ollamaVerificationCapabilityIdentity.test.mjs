@@ -85,4 +85,29 @@ describe('ollama verification capability identity', () => {
       modelDigest: null,
     }));
   });
+
+  test.each([
+    ['classification_only', 'structured_response_invalid'],
+    ['unavailable', 'connectivity_timeout'],
+  ])('retains a current %s result without granting verification authority', (statusId, errorCode) => {
+    const configuration = readyConfiguration({
+      ollama_verification_capability_status: statusId,
+      ollama_verification_capability_model_digest: null,
+      ollama_verification_capability_error_code: errorCode,
+    });
+
+    const state = getOllamaVerificationCapabilityState(configuration);
+
+    expect(state).toMatchObject({
+      statusId,
+      current: true,
+      verificationReady: false,
+      errorCode,
+      modelDigest: null,
+    });
+    expect(buildOllamaVerificationAuthorityEvidence(configuration)).toEqual(expect.objectContaining({
+      verified: false,
+      modelDigest: null,
+    }));
+  });
 });

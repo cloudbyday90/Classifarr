@@ -811,6 +811,7 @@ import {
   getAiSettingsWritePreconditionFromResponse,
   isAiSettingsStaleWriteError,
 } from '@/api/aiSettingsWritePrecondition'
+import { getAiVerificationCapabilityTestFeedback } from '@/utils/aiVerificationCapabilityTestFeedback'
 import { useToast } from '@/stores/toast'
 
 const toast = useToast()
@@ -1010,7 +1011,8 @@ const testVerificationCapability = async () => {
   try {
     const response = await api.testAIVerificationCapability()
     verificationCapability.value = response?.data || response
-    toast.success('Ollama verification test completed.')
+    const feedback = getAiVerificationCapabilityTestFeedback(verificationCapability.value)
+    toast[feedback.level](feedback.message)
   } catch (error) {
     if (error.response?.status === 409) {
       toast.warning('AI settings changed while Ollama was being tested. Reload the saved settings and test again.')
