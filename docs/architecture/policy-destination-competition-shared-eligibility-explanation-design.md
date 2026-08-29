@@ -18,10 +18,10 @@ match.
 
 ## Official Guidance Considered
 
-- [OWASP API3:2023](https://owasp.org/API-Security/editions/2023/en/0x11-t10/)
+- [OWASP API3:2023](https://owasp.org/API-Security/editions/2023/en/0xa3-broken-object-property-level-authorization/)
   treats excessive property exposure as an authorization concern. The response
   omits values, raw rules, identities, item outcomes, and configuration IDs.
-- [OWASP API6:2023](https://owasp.org/API-Security/editions/2023/en/0x11-t10/)
+- [OWASP API6:2023](https://owasp.org/API-Security/editions/2023/en/0xa6-unrestricted-access-to-sensitive-business-flows/)
   highlights unbounded sensitive flows. The explanation reuses the preview's
   fixed 90-day, 100-item, and 25-competitor bounds and adds no query or model
   work.
