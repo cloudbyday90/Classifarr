@@ -31,6 +31,7 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS = Object.freeze({
   RECONCILIATION_REMEDIATION: 'reconciliation_remediation',
   PURPOSE_COVERAGE_REVIEW: 'purpose_coverage_review',
   PURPOSE_COVERAGE_PREFLIGHT: 'purpose_coverage_preflight',
+  COHORT_SIMULATION: 'cohort_simulation',
   NATIVE_PURPOSE_MAINTENANCE: 'native_purpose_maintenance',
 });
 
@@ -329,6 +330,15 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY = deepFreeze([
     targetComponentIds: [],
     normalAuthoringAllowed: false,
     notes: 'Compatibility-only pre-save advisory; it renders bounded server-projected aggregate coverage and cannot retain drafts, save policies, derive intent, call AI, or affect routing.',
+  },
+  {
+    id: 'policy_cohort_simulation',
+    path: 'client/src/components/policies/PolicyCohortSimulation.vue',
+    roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.COHORT_SIMULATION,
+    decisionId: POLICY_AUTHORING_COMPONENT_DECISION_IDS.DELETE_FROM_NORMAL_PATH,
+    targetComponentIds: [],
+    normalAuthoringAllowed: false,
+    notes: 'Administrator-only, explicitly invoked compatibility-maintenance simulation; it renders aggregate eligibility transitions from a bounded server projection and cannot save, route, learn, call AI, or expose cohort records.',
   },
   {
     id: 'policy_compatibility_maintenance_surface',

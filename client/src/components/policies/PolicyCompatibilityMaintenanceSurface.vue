@@ -69,6 +69,14 @@
       :available="purposeCoveragePreflightAvailable"
       @preflight="emit('preflight-purpose-coverage')"
     />
+
+    <PolicyCohortSimulation
+      :simulation="cohortSimulation"
+      :loading="cohortSimulationLoading"
+      :error="cohortSimulationError"
+      :available="cohortSimulationAvailable"
+      @simulate="emit('simulate-policy-cohort')"
+    />
   </section>
 </template>
 
@@ -78,6 +86,7 @@ import { defineAsyncComponent } from 'vue'
 import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
 import PolicyPresetMigrationNotice from '@/components/policies/PolicyPresetMigrationNotice.vue'
 import PolicyPurposeCoveragePreflight from '@/components/policies/PolicyPurposeCoveragePreflight.vue'
+import PolicyCohortSimulation from '@/components/policies/PolicyCohortSimulation.vue'
 
 const PolicyCompatibilityProfilePurposeSuggestion = defineAsyncComponent(() =>
   import('@/components/policies/PolicyCompatibilityProfilePurposeSuggestion.vue')
@@ -136,6 +145,22 @@ defineProps({
     type: Boolean,
     default: false,
   },
+  cohortSimulation: {
+    type: Object,
+    default: null,
+  },
+  cohortSimulationLoading: {
+    type: Boolean,
+    default: false,
+  },
+  cohortSimulationError: {
+    type: String,
+    default: '',
+  },
+  cohortSimulationAvailable: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits({
@@ -146,5 +171,6 @@ const emit = defineEmits({
   'draft-clear-signal-config': payload => Boolean(payload),
   'apply-profile-purpose-suggestion': () => true,
   'preflight-purpose-coverage': () => true,
+  'simulate-policy-cohort': () => true,
 })
 </script>

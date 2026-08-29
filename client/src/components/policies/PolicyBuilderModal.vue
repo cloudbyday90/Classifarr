@@ -87,6 +87,10 @@
           :purpose-coverage-preflight-loading="purposeCoveragePreflightLoading"
           :purpose-coverage-preflight-error="purposeCoveragePreflightError"
           :purpose-coverage-preflight-available="purposeCoveragePreflightAvailable"
+          :cohort-simulation="cohortSimulation"
+          :cohort-simulation-loading="cohortSimulationLoading"
+          :cohort-simulation-error="cohortSimulationError"
+          :cohort-simulation-available="cohortSimulationAvailable"
           @dismiss-migration-notice="dismissPresetMigrationNotice"
           @draft-add-signal="addIntentSignal"
           @draft-remove-signal-value="removeIntentSignalValue"
@@ -94,6 +98,7 @@
           @draft-clear-signal-config="clearIntentSignalConfig"
           @apply-profile-purpose-suggestion="applyCompatibilityProfilePurposeSuggestion"
           @preflight-purpose-coverage="preflightPurposeCoverage"
+          @simulate-policy-cohort="simulatePolicyCohort"
         />
       </template>
     </div>
@@ -134,6 +139,7 @@ import { usePolicyIntentConstraintDraft } from '@/composables/usePolicyIntentCon
 import { usePolicyNativeCreateAction } from '@/composables/usePolicyNativeCreateAction'
 import { usePolicyNativeCreateHandoff } from '@/composables/usePolicyNativeCreateHandoff'
 import { usePolicyPurposeCoveragePreflight } from '@/composables/usePolicyPurposeCoveragePreflight'
+import { usePolicyCohortSimulation } from '@/composables/usePolicyCohortSimulation'
 import { buildPolicyBuilderSaveBoundary } from '@/utils/policyBuilderActionBoundary'
 import { buildPolicyBuilderExperienceMode } from '@/utils/policyBuilderExperienceMode'
 import { clonePolicyIntentDraftForWrite } from '@/utils/policyIntentWritePreflight'
@@ -294,6 +300,14 @@ const {
   runPreflight: runPurposeCoveragePreflight,
 } = usePolicyPurposeCoveragePreflight()
 
+const {
+  simulation: cohortSimulation,
+  isLoading: cohortSimulationLoading,
+  errorMessage: cohortSimulationError,
+  reset: resetCohortSimulation,
+  runSimulation: runPolicyCohortSimulation,
+} = usePolicyCohortSimulation()
+
 const saving = computed(() => (
   experienceMode.value.isNativeCreate
     ? nativeCreateAction.pending.value
@@ -317,6 +331,8 @@ const purposeCoveragePreflightAvailable = computed(() => (
   && Number.isInteger(Number(props.policy?.id))
   && Number(props.policy.id) > 0
 ))
+
+const cohortSimulationAvailable = computed(() => purposeCoveragePreflightAvailable.value)
 
 onMounted(() => {
   if (experienceMode.value.isLegacyEdit) {
@@ -350,6 +366,7 @@ watch(() => props.modelValue, isOpen => {
 
 watch(intentDraft, () => {
   resetPurposeCoveragePreflight()
+  resetCohortSimulation()
 }, { deep: true })
 
 const applyCompatibilityProfilePurposeSuggestion = async () => {
@@ -438,6 +455,21 @@ const preflightPurposeCoverage = async () => {
   }
 
   await runPurposeCoveragePreflight({
+    policyId: Number(props.policy.id),
+    draft,
+  })
+}
+
+const simulatePolicyCohort = async () => {
+  if (!cohortSimulationAvailable.value || cohortSimulationLoading.value) return
+
+  const draft = clonePolicyIntentDraftForWrite(intentDraft.value)
+  if (!draft) {
+    resetCohortSimulation()
+    return
+  }
+
+  await runPolicyCohortSimulation({
     policyId: Number(props.policy.id),
     draft,
   })

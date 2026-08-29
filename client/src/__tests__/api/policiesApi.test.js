@@ -53,6 +53,7 @@ import {
   getPolicyPurposeCoverageReview,
   getPolicyNativeIntentReconciliationPurposeSuggestion,
   preflightPolicyPurposeCoverage,
+  simulatePolicyCohort,
 } from '../../api/policiesApi'
 
 describe('policiesApi', () => {
@@ -265,6 +266,18 @@ describe('policiesApi', () => {
 
     expect(mockPost).toHaveBeenCalledWith(
       '/policies/17/native-intent/purpose-coverage/preflight',
+      { policy_intent_draft: draft }
+    )
+  })
+
+  it('posts only the explicit validated-draft envelope for cohort simulation', async () => {
+    const draft = { schema_version: 1, presets: [] }
+    mockPost.mockResolvedValueOnce({ data: { advisory: true } })
+
+    await simulatePolicyCohort(17, draft)
+
+    expect(mockPost).toHaveBeenCalledWith(
+      '/policies/17/native-intent/cohort-simulation',
       { policy_intent_draft: draft }
     )
   })

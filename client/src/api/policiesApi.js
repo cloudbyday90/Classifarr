@@ -178,6 +178,12 @@ export function preflightPolicyPurposeCoverage(id, draft) {
   })
 }
 
+export function simulatePolicyCohort(id, draft) {
+  return apiClient.post(`/policies/${id}/native-intent/cohort-simulation`, {
+    policy_intent_draft: draft,
+  })
+}
+
 const policiesApi = {
   getPolicy,
   getPolicies,
@@ -199,6 +205,7 @@ const policiesApi = {
   getPolicyPurposeCoverageReview,
   getPolicyNativeIntentReconciliationPurposeSuggestion,
   preflightPolicyPurposeCoverage,
+  simulatePolicyCohort,
 }
 
 export default policiesApi
