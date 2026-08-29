@@ -29,16 +29,18 @@ This design was reviewed on 2026-08-29 against current primary guidance:
 | Test every returned model concurrently | Fast, complete-looking result | Can exhaust CPU, memory, GPU capacity, and request budgets; risks testing cloud-tagged models. |
 | Accept browser-selected host, model list, or prompt | Flexible troubleshooting | Lets client input control provider reachability and compute cost; complicates authorization and audit boundaries. |
 | Persist individual matrix results | Historical comparison | Retains model/build telemetry without being required for the immediate operator decision. |
-| Fixed server-discovered local subset, serial and ephemeral | Bounded work; safe default; directly comparable responses | Does not test every installed model in one run and has no long-term history. |
+| Fixed server-discovered local subset, serial and ephemeral | Bounded work; safe default; directly comparable responses | Needs an explicit artifact-size and embedding eligibility policy to avoid an expensive but irrelevant alternative probe. |
 
 ## Recommendation stack
 
 1. Bind the Ollama transport to the saved AI Settings host and port on the
    server only; do not reuse a separate legacy Ollama-settings target. Ignore
    browser-supplied targets and exclude cloud-tagged model names.
-2. Select at most six local models: the saved model first when it is installed,
-   then remaining local models by stable name order. Report how many models
-   were omitted instead of silently presenting a complete matrix.
+2. Select the saved model first when it is installed. Select at most five
+   remaining alternatives by stable name order only when their server-reported
+   artifact size is known and within the capacity boundary, and they are not
+   clearly embedding-only. Report aggregate omitted/skipped counts instead of
+   silently presenting a complete matrix.
 3. Collect the local Ollama version best-effort, then issue the existing fixed,
    media-free JSON-Schema probe serially with temperature `0`, non-streaming
    handling, a per-model timeout, and `keep_alive: 0`.
@@ -58,8 +60,9 @@ OWASP recommends limiting interaction frequency and server-side resource
 dimensions for operations that can consume substantial resources
 ([API4:2023](https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/)).
 The matrix rejects request bodies and has no client-selected model count or
-target, a fixed six-model ceiling, serial execution, per-model timeout,
-single-flight service gate, and dedicated post-authentication limiter.
+target, a fixed six-model ceiling, server-side capacity eligibility for
+alternatives, serial execution, per-model timeout, single-flight service gate,
+and dedicated post-authentication limiter.
 
 The matrix is a transient diagnostic rather than an audit log. OWASP advises
 collecting only data proportionate to the purpose and excluding secrets,

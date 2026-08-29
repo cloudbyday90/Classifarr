@@ -7,6 +7,9 @@ import {
   normalizeOllamaModelDigest,
   OLLAMA_VERIFICATION_CAPABILITY_STATUS_IDS,
 } from './ollamaVerificationCapabilityIdentity.mjs';
+import {
+  isOllamaVerificationCompatibilityMatrixAlternativeEligible,
+} from './ollamaVerificationCompatibilityMatrixEligibility.mjs';
 
 export const OLLAMA_VERIFICATION_COMPATIBILITY_MATRIX_VERSION =
   'ollama.verification_compatibility_matrix.v1';
@@ -89,6 +92,8 @@ export function selectOllamaVerificationCompatibilityMatrixModels(models, config
       localModelsByName.set(dedupeKey, Object.freeze({
         name,
         buildId: buildModelBuildId(model?.digest),
+        artifactSizeBytes: model?.size,
+        family: model?.details?.family,
       }));
     }
   }
@@ -99,13 +104,16 @@ export function selectOllamaVerificationCompatibilityMatrixModels(models, config
     ? localModels.find((model) => model.name.toLowerCase() === configuredName.toLowerCase())
     : null;
   const remainingModels = localModels.filter((model) => model !== configuredMatch);
-  const selectedModels = [configuredMatch, ...remainingModels]
+  const eligibleAlternativeModels = remainingModels
+    .filter(isOllamaVerificationCompatibilityMatrixAlternativeEligible);
+  const selectedModels = [configuredMatch, ...eligibleAlternativeModels]
     .filter(Boolean)
     .slice(0, OLLAMA_VERIFICATION_COMPATIBILITY_MATRIX_MAX_MODELS);
 
   return Object.freeze({
     models: Object.freeze(selectedModels),
     omittedModelCount: Math.max(0, localModels.length - selectedModels.length),
+    skippedAlternativeModelCount: remainingModels.length - eligibleAlternativeModels.length,
     configuredModelIncluded: Boolean(configuredMatch && selectedModels.includes(configuredMatch)),
   });
 }
@@ -146,6 +154,10 @@ export function buildOllamaVerificationCompatibilityMatrixReport({
     configuredModelIncluded: Boolean(selection.configuredModelIncluded),
     omittedModelCount: Number.isSafeInteger(selection.omittedModelCount) && selection.omittedModelCount >= 0
       ? selection.omittedModelCount
+      : 0,
+    skippedAlternativeModelCount: Number.isSafeInteger(selection.skippedAlternativeModelCount)
+      && selection.skippedAlternativeModelCount >= 0
+      ? selection.skippedAlternativeModelCount
       : 0,
     outcomes: Object.freeze(normalizedOutcomes),
   });

@@ -798,9 +798,9 @@ describe('Settings AI Routes', () => {
     mockOllama.preflightConnection.mockResolvedValueOnce({
       success: true,
       models: [
-        { name: 'gemma4:e4b', digest: 'a'.repeat(64) },
-        { name: 'other:latest', digest: 'b'.repeat(64) },
-        { name: 'cloud:latest:cloud', digest: 'c'.repeat(64) },
+        { name: 'gemma4:e4b', digest: 'a'.repeat(64), size: 2 * 1024 ** 3 },
+        { name: 'other:latest', digest: 'b'.repeat(64), size: 2 * 1024 ** 3 },
+        { name: 'cloud:latest:cloud', digest: 'c'.repeat(64), size: 2 * 1024 ** 3 },
       ],
     });
     mockOllama.getVersion.mockResolvedValueOnce('0.12.4');

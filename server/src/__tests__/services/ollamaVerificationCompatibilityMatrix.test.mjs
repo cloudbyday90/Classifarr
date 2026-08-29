@@ -10,6 +10,9 @@ import {
   selectOllamaVerificationCompatibilityMatrixModels,
 } from '../../services/ollamaVerificationCompatibilityMatrix.mjs';
 import {
+  OLLAMA_VERIFICATION_COMPATIBILITY_MATRIX_MAX_ALTERNATIVE_SIZE_BYTES,
+} from '../../services/ollamaVerificationCompatibilityMatrixEligibility.mjs';
+import {
   probeOllamaVerificationCompatibilityMatrixModel,
 } from '../../services/ollamaVerificationCompatibilityMatrixProbe.mjs';
 import {
@@ -23,16 +26,16 @@ const DIGEST_B = 'b'.repeat(64);
 describe('Ollama verification compatibility matrix', () => {
   test('selects a deterministic local-only subset with the saved model first', () => {
     const selection = selectOllamaVerificationCompatibilityMatrixModels([
-      { name: 'zeta:latest', digest: DIGEST_B },
-      { name: 'gemma4:e4b:cloud', digest: 'c'.repeat(64) },
-      { name: 'Alpha:latest', digest: DIGEST_A },
-      { name: 'alpha:latest', digest: DIGEST_B },
-      { name: 'invalid model name', digest: DIGEST_B },
-      { name: 'beta:latest', digest: DIGEST_B },
-      { name: 'delta:latest', digest: DIGEST_B },
-      { name: 'epsilon:latest', digest: DIGEST_B },
-      { name: 'gamma:latest', digest: DIGEST_B },
-      { name: 'theta:latest', digest: DIGEST_B },
+      { name: 'zeta:latest', digest: DIGEST_B, size: 2 * 1024 ** 3 },
+      { name: 'gemma4:e4b:cloud', digest: 'c'.repeat(64), size: 2 * 1024 ** 3 },
+      { name: 'Alpha:latest', digest: DIGEST_A, size: 2 * 1024 ** 3 },
+      { name: 'alpha:latest', digest: DIGEST_B, size: 2 * 1024 ** 3 },
+      { name: 'invalid model name', digest: DIGEST_B, size: 2 * 1024 ** 3 },
+      { name: 'beta:latest', digest: DIGEST_B, size: 2 * 1024 ** 3 },
+      { name: 'delta:latest', digest: DIGEST_B, size: 2 * 1024 ** 3 },
+      { name: 'epsilon:latest', digest: DIGEST_B, size: 2 * 1024 ** 3 },
+      { name: 'gamma:latest', digest: DIGEST_B, size: 2 * 1024 ** 3 },
+      { name: 'theta:latest', digest: DIGEST_B, size: 2 * 1024 ** 3 },
     ], 'zeta:latest');
 
     expect(selection.models).toHaveLength(OLLAMA_VERIFICATION_COMPATIBILITY_MATRIX_MAX_MODELS);
@@ -46,8 +49,28 @@ describe('Ollama verification compatibility matrix', () => {
     ]);
     expect(selection.configuredModelIncluded).toBe(true);
     expect(selection.omittedModelCount).toBe(1);
+    expect(selection.skippedAlternativeModelCount).toBe(0);
     expect(JSON.stringify(selection)).not.toContain(':cloud');
     expect(selection.models[0].buildId).toBe('b'.repeat(12));
+  });
+
+  test('keeps the configured model but excludes oversized, unknown-size, and clearly embedding-only alternatives', () => {
+    const selection = selectOllamaVerificationCompatibilityMatrixModels([
+      { name: 'saved:large', digest: DIGEST_A, size: 80 * 1024 ** 3 },
+      { name: 'oversized:latest', digest: DIGEST_B, size: OLLAMA_VERIFICATION_COMPATIBILITY_MATRIX_MAX_ALTERNATIVE_SIZE_BYTES + 1 },
+      { name: 'unknown-size:latest', digest: DIGEST_B },
+      { name: 'embedding:latest', digest: DIGEST_B, size: 1024 ** 3, details: { family: 'llama' } },
+      { name: 'family-only:latest', digest: DIGEST_B, size: 1024 ** 3, details: { family: 'bert' } },
+      { name: 'eligible:latest', digest: DIGEST_B, size: 2 * 1024 ** 3 },
+    ], 'saved:large');
+
+    expect(selection.models.map((model) => model.name)).toEqual([
+      'saved:large',
+      'eligible:latest',
+    ]);
+    expect(selection.configuredModelIncluded).toBe(true);
+    expect(selection.skippedAlternativeModelCount).toBe(4);
+    expect(selection.omittedModelCount).toBe(4);
   });
 
   test('projects only the fixed, transient response fields', () => {
@@ -57,6 +80,7 @@ describe('Ollama verification compatibility matrix', () => {
       selection: {
         configuredModelIncluded: true,
         omittedModelCount: 2,
+        skippedAlternativeModelCount: 1,
         models: [{ name: 'gemma4:e4b', buildId: DIGEST_A }],
       },
       outcomes: [{
@@ -76,6 +100,7 @@ describe('Ollama verification compatibility matrix', () => {
       ollamaVersion: '0.12.4',
       configuredModelIncluded: true,
       omittedModelCount: 2,
+      skippedAlternativeModelCount: 1,
       outcomes: [{
         modelName: 'gemma4:e4b',
         modelBuildId: 'a'.repeat(12),
@@ -135,8 +160,8 @@ describe('Ollama verification compatibility matrix', () => {
         success: true,
         models: [
           { name: 'saved:latest', digest: DIGEST_A },
-          { name: 'other:latest', digest: DIGEST_B },
-          { name: 'cloud:latest:cloud', digest: 'c'.repeat(64) },
+          { name: 'other:latest', digest: DIGEST_B, size: 2 * 1024 ** 3 },
+          { name: 'cloud:latest:cloud', digest: 'c'.repeat(64), size: 2 * 1024 ** 3 },
         ],
       }),
       getVersion: jest.fn().mockResolvedValue('0.12.4'),

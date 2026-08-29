@@ -37,6 +37,8 @@ No release was created for this change.
 
 ## Next item
 
-Collect one real, sanitized compatibility-matrix result from the operator
-environment. Use that evidence to decide whether a model-specific issue needs
-an additional product change; do not generalize from documentation alone.
+Sanitized live evidence confirmed that the configured `gemma4:e4b` build can
+satisfy the strict JSON-schema probe. The next product item is a
+capacity-aware eligibility policy for comparison candidates, followed by an
+actual application matrix run to compare capability admission with this direct
+evidence.

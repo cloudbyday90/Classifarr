@@ -11,8 +11,9 @@ JSON-schema probe succeeds across a bounded subset of local model builds.
   Ollama-settings target. The browser sends no provider target, model, or
   prompt.
 - It tests at most six local models serially: the saved model first, then a
-  stable local-name order. Cloud-tagged models are excluded and any omitted
-  count is shown.
+  stable local-name order of resource-eligible alternatives. Cloud-tagged,
+  clearly embedding-only, unknown-size, and oversized alternatives are not
+  probed; aggregate omitted/skipped counts are shown.
 - Each test uses the same media-free strict JSON-schema contract as the saved
   capability test, temperature `0`, a fixed timeout, and immediate unload
   request.
@@ -47,13 +48,12 @@ current saved-capability test can enable strict candidate-bound verification.
 
 ## Follow-up
 
-The configuration-coverage indicator now makes the existing
-`configuredModelIncluded` report field visible without exposing the saved
-model name or provider target. The next useful item is a narrowly scoped
-operator guide that maps fixed matrix outcomes to safe Ollama maintenance
-steps: checking the local service version, replacing a model build, and
-re-running the saved capability test. It should remain documentation-only
-unless real matrix evidence identifies a repeatable product defect.
+Live, sanitized evidence confirmed the saved `gemma4:e4b` model passes the
+fixed strict-output probe, while the prior alphabetical alternative selection
+could have reached a much larger installed model. Capacity-aware alternative
+eligibility now avoids that unnecessary workload. The next useful item is to
+collect an actual application matrix result after deployment and compare its
+strict-admission state with the direct capability evidence.
 
 ## External PR check
 

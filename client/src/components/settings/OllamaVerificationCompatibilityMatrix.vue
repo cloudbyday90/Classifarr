@@ -52,6 +52,12 @@
         >
           {{ omittedModelCount }} installed model{{ omittedModelCount === 1 ? '' : 's' }} not tested in this run.
         </span>
+        <span
+          v-if="skippedAlternativeModelCount > 0"
+          class="text-amber-300"
+        >
+          {{ skippedAlternativeModelCount }} alternative model{{ skippedAlternativeModelCount === 1 ? '' : 's' }} skipped by the resource-boundary check.
+        </span>
       </div>
       <p class="text-sm text-gray-300">
         {{ state.message }}
@@ -175,6 +181,9 @@ const ollamaVersion = computed(() => {
   return SAFE_VERSION_PATTERN.test(version) ? version : 'Unavailable'
 })
 const omittedModelCount = computed(() => normalizeCount(props.report?.omittedModelCount))
+const skippedAlternativeModelCount = computed(() => (
+  normalizeCount(props.report?.skippedAlternativeModelCount)
+))
 const configurationCoverage = computed(() => {
   const report = props.report
   if (!CONFIGURATION_COVERAGE_STATE_IDS.has(report?.stateId)

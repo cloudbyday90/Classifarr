@@ -27,6 +27,7 @@ describe('OllamaVerificationCompatibilityMatrix', () => {
         ollamaVersion: '0.12.4',
         configuredModelIncluded: true,
         omittedModelCount: 2,
+        skippedAlternativeModelCount: 1,
         outcomes: [
           {
             modelName: 'gemma4:e4b',
@@ -57,6 +58,7 @@ describe('OllamaVerificationCompatibilityMatrix', () => {
     expect(wrapper.text()).toContain('Strict output ready')
     expect(wrapper.text()).toContain('Classification only')
     expect(wrapper.text()).toContain('2 installed models not tested in this run.')
+    expect(wrapper.text()).toContain('1 alternative model skipped by the resource-boundary check.')
     expect(wrapper.get('[data-testid="compatibility-matrix-configuration-coverage"]').text())
       .toContain('Saved model included')
     expect(wrapper.text()).not.toContain('private-')
