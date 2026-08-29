@@ -580,6 +580,17 @@
 
     <Card
       v-if="!loading"
+      title="Ollama Verification Runtime Monitoring"
+    >
+      <OllamaVerificationRuntimeMismatchSummary
+        :report="ollamaVerificationRuntimeMismatchSummary"
+        :loading="loadingOllamaVerificationRuntimeMismatchSummary"
+        @refresh="refreshOllamaVerificationRuntimeMismatchSummary"
+      />
+    </Card>
+
+    <Card
+      v-if="!loading"
       title="Verification Capability History"
     >
       <VerificationCapabilityChangeReceiptList
@@ -792,6 +803,7 @@ import Spinner from '@/components/common/Spinner.vue'
 import PasswordInput from '@/components/common/PasswordInput.vue'
 import VerificationCapabilityCurrentStateSummary from '@/components/settings/VerificationCapabilityCurrentStateSummary.vue'
 import VerificationCapabilityChangeReceiptList from '@/components/settings/VerificationCapabilityChangeReceiptList.vue'
+import OllamaVerificationRuntimeMismatchSummary from '@/components/settings/OllamaVerificationRuntimeMismatchSummary.vue'
 import api from '@/api'
 import {
   AI_SETTINGS_STALE_WRITE_RECOVERY_MESSAGE,
@@ -811,6 +823,7 @@ const loadingOllamaPreflight = ref(false)
 const loadingVerificationCapability = ref(false)
 const testingVerificationCapability = ref(false)
 const loadingVerificationCapabilityChangeReceipts = ref(false)
+const loadingOllamaVerificationRuntimeMismatchSummary = ref(false)
 const showAdvanced = ref(false)
 const testResult = ref(null)
 const ollamaTestResult = ref(null)
@@ -822,9 +835,11 @@ const verificationPreflightAdvisory = ref(null)
 const verificationPreflightFingerprint = ref(null)
 const verificationCapability = ref(null)
 const verificationCapabilityChangeReceipts = ref(null)
+const ollamaVerificationRuntimeMismatchSummary = ref(null)
 const aiSettingsWritePrecondition = ref(null)
 let verificationCapabilityRequestId = 0
 let verificationCapabilityChangeReceiptsRequestId = 0
+let ollamaVerificationRuntimeMismatchSummaryRequestId = 0
 
 const config = ref({
   primary_provider: 'none',
@@ -1032,6 +1047,32 @@ const refreshVerificationCapabilityChangeReceipts = async () => {
   await loadVerificationCapabilityChangeReceipts({ notifyOnError: true })
 }
 
+const loadOllamaVerificationRuntimeMismatchSummary = async ({ notifyOnError = false } = {}) => {
+  const requestId = ++ollamaVerificationRuntimeMismatchSummaryRequestId
+  loadingOllamaVerificationRuntimeMismatchSummary.value = true
+  try {
+    const summary = await api.getOllamaVerificationRuntimeMismatchSummary()
+    if (requestId === ollamaVerificationRuntimeMismatchSummaryRequestId) {
+      ollamaVerificationRuntimeMismatchSummary.value = summary
+    }
+  } catch (_error) {
+    if (requestId === ollamaVerificationRuntimeMismatchSummaryRequestId) {
+      ollamaVerificationRuntimeMismatchSummary.value = null
+    }
+    if (notifyOnError && requestId === ollamaVerificationRuntimeMismatchSummaryRequestId) {
+      toast.warning('Ollama runtime observations could not be refreshed.')
+    }
+  } finally {
+    if (requestId === ollamaVerificationRuntimeMismatchSummaryRequestId) {
+      loadingOllamaVerificationRuntimeMismatchSummary.value = false
+    }
+  }
+}
+
+const refreshOllamaVerificationRuntimeMismatchSummary = async () => {
+  await loadOllamaVerificationRuntimeMismatchSummary({ notifyOnError: true })
+}
+
 const applyEditableAiConfig = (response) => {
   const configResponse = response?.config || {}
   aiSettingsWritePrecondition.value = response?.writePrecondition || null
@@ -1063,6 +1104,7 @@ const reloadEditableAiConfig = async () => {
 onMounted(async () => {
   loadVerificationCapability()
   loadVerificationCapabilityChangeReceipts()
+  loadOllamaVerificationRuntimeMismatchSummary()
   try {
     const [configResponse, usageResponse, patternConfigResponse, costSummaryResponse, ollamaPreflightResponse] = await Promise.all([
       api.getAIConfigForUpdate(),

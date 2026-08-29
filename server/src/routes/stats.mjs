@@ -9,6 +9,7 @@
  */
 
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { authenticateTokenOrApiKey, requireAdmin } from '../middleware/apiKeyAuth.mjs';
@@ -22,4 +23,5 @@ export const router = createStatsRouter({
   logger,
   authenticateTokenOrApiKey,
   requireAdmin,
+  rateLimit,
 });

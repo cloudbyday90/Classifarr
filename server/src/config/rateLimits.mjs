@@ -81,6 +81,15 @@ export const logsLimiterConfig = {
   legacyHeaders: false,
 };
 
+/** Ollama strict-verification runtime aggregate reads (per IP, per 15 minutes). */
+export const ollamaVerificationRuntimeMismatchSummaryLimiterConfig = {
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: 'Too many Ollama runtime observation requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+};
+
 /** Policy custom intent-signal validation (per IP, per 15 minutes). */
 export const policyIntentSignalCustomEntryLimiterConfig = {
   windowMs: 15 * 60 * 1000,

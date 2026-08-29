@@ -25,6 +25,7 @@ vi.mock('@/api', () => ({
     getAIVerificationCapability: vi.fn(),
     testAIVerificationCapability: vi.fn(),
     getAIVerificationCapabilityChangeReceipts: vi.fn(),
+    getOllamaVerificationRuntimeMismatchSummary: vi.fn(),
     getAIModels: vi.fn(),
     testAIConnection: vi.fn(),
     preflightAIVerificationConfig: vi.fn(),
@@ -112,12 +113,36 @@ describe('AI Settings', () => {
       guidance: []
     })
     api.getAIVerificationCapabilityChangeReceipts.mockResolvedValue({ receipts: [] })
+    api.getOllamaVerificationRuntimeMismatchSummary.mockResolvedValue({
+      modelDigestMismatchCount: '0',
+      lastObservedAt: null
+    })
     api.getLastOllamaPreflight.mockResolvedValue({ ai: null, embedding: null })
     api.preflightAIVerificationConfig.mockResolvedValue({
       data: { requiresConfirmation: false }
     })
     api.updateAIConfig.mockResolvedValue({ data: { success: true } })
     api.updatePatternConfig.mockResolvedValue({ data: { success: true } })
+  })
+
+  it('renders only the bounded Ollama runtime mismatch summary', async () => {
+    api.getOllamaVerificationRuntimeMismatchSummary.mockResolvedValue({
+      modelDigestMismatchCount: '4',
+      lastObservedAt: '2026-08-29T12:34:56.000Z',
+      model: 'private-model-name',
+      host: 'private-host.local',
+      error: 'private provider failure'
+    })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(api.getOllamaVerificationRuntimeMismatchSummary).toHaveBeenCalledTimes(1)
+    expect(wrapper.text()).toContain('Runtime model integrity')
+    expect(wrapper.text()).toContain('4')
+    expect(wrapper.text()).not.toContain('private-model-name')
+    expect(wrapper.text()).not.toContain('private-host.local')
+    expect(wrapper.text()).not.toContain('private provider failure')
   })
 
   it('shows the in-band /settings/ai/models error and clears models', async () => {

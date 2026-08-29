@@ -255,6 +255,30 @@ describe('Stats API Integration Tests', () => {
         });
     });
 
+    describe('GET /api/stats/ollama-verification-runtime-mismatch-summary', () => {
+        it('should return only the administrator-authorized runtime aggregate', async () => {
+            const res = await request(app)
+                .get('/api/stats/ollama-verification-runtime-mismatch-summary')
+                .set('Authorization', `Bearer ${testToken}`)
+                .expect(200);
+
+            expect(res.body).toEqual(expect.objectContaining({
+                version: 'ollama.verification_runtime_mismatch_summary.v1',
+                modelDigestMismatchCount: expect.stringMatching(/^\d+$/),
+            }));
+            expect(Object.keys(res.body).sort()).toEqual([
+                'lastObservedAt',
+                'modelDigestMismatchCount',
+                'version',
+            ]);
+            expect([null, 'string']).toContain(
+                res.body.lastObservedAt === null ? null : typeof res.body.lastObservedAt,
+            );
+            expect(JSON.stringify(res.body)).not.toContain('Private Verification Test Item');
+            expect(JSON.stringify(res.body)).not.toContain('Test Stats Library');
+        });
+    });
+
     describe('GET /api/stats/policies/overlap-history', () => {
         it('should return recent persisted overlap snapshots', async () => {
             policyOverlapMetricsCollector.reset();

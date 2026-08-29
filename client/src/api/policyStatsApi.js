@@ -50,6 +50,10 @@ export function getCandidateBoundVerificationMetrics(days = 7) {
   return getDataRequest('/stats/candidate-bound-verification', { params: { days } })
 }
 
+export function getOllamaVerificationRuntimeMismatchSummary() {
+  return getDataRequest('/stats/ollama-verification-runtime-mismatch-summary')
+}
+
 const policyStatsApi = {
   getPolicyStatsOverview,
   getPolicyStatsList,
@@ -59,6 +63,7 @@ const policyStatsApi = {
   getPolicyStatsComparison,
   getDetailedStats,
   getCandidateBoundVerificationMetrics,
+  getOllamaVerificationRuntimeMismatchSummary,
 }
 
 export default policyStatsApi

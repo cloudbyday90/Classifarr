@@ -30,6 +30,10 @@ The status is deliberately not auto-approved by seeing a model name again. Ollam
 - Ran the complete client suite: 241 files / 3,552 tests passed.
 - Passed lint, server and client type checks, the production client build, migration and container schema-snapshot checks, documentation lint, static-ESM checks, and coverage ratchets.
 
-## Follow-up recommendation
+## Follow-up status
 
-Add a small, administrator-only aggregate operational panel that reports the bounded mismatch counter and its last-observed timestamp alongside the current AI Settings capability. It should remain status-only, include no model identity or event history, and be rate-limited/cache-bounded. This would make repeated model retags visible without weakening the current privacy boundary.
+The administrator-only aggregate operational panel is now implemented. Its
+design and delivery record are in
+[the operational-panel design](ollama-verification-runtime-mismatch-operational-panel-design.md)
+and
+[the operational-panel outcome](ollama-verification-runtime-mismatch-operational-panel-outcome.md).
