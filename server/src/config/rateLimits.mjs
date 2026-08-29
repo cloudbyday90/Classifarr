@@ -99,6 +99,15 @@ export const ollamaVerificationCapabilityOutcomeHistoryLimiterConfig = {
   legacyHeaders: false,
 };
 
+/** Manual Ollama compatibility matrix diagnostics (per IP, per hour). */
+export const ollamaVerificationCompatibilityMatrixLimiterConfig = {
+  windowMs: 60 * 60 * 1000,
+  max: 2,
+  message: { error: 'Too many Ollama compatibility matrix requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+};
+
 /** Policy custom intent-signal validation (per IP, per 15 minutes). */
 export const policyIntentSignalCustomEntryLimiterConfig = {
   windowMs: 15 * 60 * 1000,

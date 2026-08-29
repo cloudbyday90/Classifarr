@@ -145,6 +145,10 @@ export function testAIVerificationCapability() {
   return apiClient.post('/settings/ai/verification-capability/test')
 }
 
+export function runOllamaVerificationCompatibilityMatrix() {
+  return apiClient.post('/settings/ai/verification-compatibility-matrix/test')
+}
+
 export function getAIVerificationCapabilityChangeReceipts(params = {}) {
   return getDataRequest('/settings/ai/verification-capability/receipts', { params })
 }
@@ -194,6 +198,7 @@ const settingsProvidersApi = {
   preflightAIVerificationConfig,
   getAIVerificationCapability,
   testAIVerificationCapability,
+  runOllamaVerificationCompatibilityMatrix,
   getAIVerificationCapabilityChangeReceipts,
   getAIModels,
   getAIUsage,

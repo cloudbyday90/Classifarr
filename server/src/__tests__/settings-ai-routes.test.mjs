@@ -25,8 +25,14 @@ const mockOllama = {
   resetConfig: jest.fn(),
   preflightConnection: jest.fn(),
   generate: jest.fn(),
+  getVersion: jest.fn(),
 };
 jest.unstable_mockModule('../services/ollama.mjs', () => createNamedMockModule('ollamaService', mockOllama));
+
+const createOllamaVerificationSavedConfigurationClient = jest.fn(() => mockOllama);
+jest.unstable_mockModule('../services/ollamaVerificationSavedConfigurationClient.mjs', () => ({
+  createOllamaVerificationSavedConfigurationClient,
+}));
 
 const mockTmdb = {};
 jest.unstable_mockModule('../services/tmdb.mjs', () => createNamedMockModule('tmdbService', mockTmdb));
@@ -778,6 +784,73 @@ describe('Settings AI Routes', () => {
     expect(JSON.stringify(res.body)).not.toContain('private-ollama.internal');
     expect(JSON.stringify(res.body)).not.toContain('gemma4:e4b');
     expect(JSON.stringify(res.body)).not.toContain('a'.repeat(64));
+  });
+
+  it('runs a bounded no-body local compatibility matrix without changing saved capability authority', async () => {
+    const savedConfiguration = {
+      primary_provider: 'ollama',
+      ollama_host: 'private-ollama.internal',
+      ollama_port: 11434,
+      ollama_model: 'gemma4:e4b',
+      configuration_revision: 4,
+    };
+    db.query.mockResolvedValueOnce({ rows: [savedConfiguration] });
+    mockOllama.preflightConnection.mockResolvedValueOnce({
+      success: true,
+      models: [
+        { name: 'gemma4:e4b', digest: 'a'.repeat(64) },
+        { name: 'other:latest', digest: 'b'.repeat(64) },
+        { name: 'cloud:latest:cloud', digest: 'c'.repeat(64) },
+      ],
+    });
+    mockOllama.getVersion.mockResolvedValueOnce('0.12.4');
+    mockOllama.generate
+      .mockResolvedValueOnce(JSON.stringify({ status: 'ready', contract: 'candidate-bound-verification' }))
+      .mockResolvedValueOnce(JSON.stringify({ status: 'ready', contract: 'candidate-bound-verification' }));
+
+    const res = await request(app)
+      .post('/settings/ai/verification-compatibility-matrix/test');
+
+    expect(res.status).toBe(200);
+    expect(res.headers['cache-control']).toBe('no-store');
+    expect(res.body).toMatchObject({
+      stateId: 'completed',
+      ollamaVersion: '0.12.4',
+      configuredModelIncluded: true,
+      outcomes: [
+        { modelName: 'gemma4:e4b', modelBuildId: 'a'.repeat(12), statusId: 'verification_ready' },
+        { modelName: 'other:latest', modelBuildId: 'b'.repeat(12), statusId: 'verification_ready' },
+      ],
+    });
+    expect(mockOllama.preflightConnection).toHaveBeenCalledWith({
+      force: true,
+      includeModels: true,
+      probeGeneration: false,
+      cacheMs: 0,
+    });
+    expect(mockOllama.generate).toHaveBeenNthCalledWith(
+      1,
+      expect.any(String),
+      'gemma4:e4b',
+      0,
+      expect.objectContaining({ keepAlive: 0, timeoutMs: 60_000 }),
+    );
+    expect(mockAiRouter.clearCache).not.toHaveBeenCalled();
+    expect(JSON.stringify(res.body)).not.toContain('private-ollama.internal');
+    expect(JSON.stringify(res.body)).not.toContain(':cloud');
+  });
+
+  it('rejects compatibility matrix request bodies before provider work begins', async () => {
+    const res = await request(app)
+      .post('/settings/ai/verification-compatibility-matrix/test')
+      .send({ host: 'attacker.invalid', model: 'attacker-model' });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({
+      error: 'This Ollama compatibility check does not accept a request body.',
+      code: 'ollama_verification_compatibility_matrix_request_body_not_allowed',
+    });
+    expect(mockOllama.preflightConnection).not.toHaveBeenCalled();
   });
 
   it('rejects unexpected verification-preflight fields before querying configuration', async () => {

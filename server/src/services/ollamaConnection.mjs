@@ -272,6 +272,13 @@ export async function getModels(getConfig, host = null, port = null) {
   }
 }
 
+export async function getVersion(getConfig, options = {}) {
+  const config = await getConfig();
+  const timeout = getConnectivityTimeoutMs(options?.timeoutMs);
+  const response = await httpGet(`${config.baseUrl}/api/version`, { timeout });
+  return response.data?.version ?? null;
+}
+
 export async function getLoadedModels(getConfig, host = null, port = null) {
   try {
     const config = await getConfig();

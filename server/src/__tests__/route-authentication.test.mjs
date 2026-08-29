@@ -136,6 +136,7 @@ describe('Route Authentication', () => {
       { method: 'get', path: '/api/settings' },
       { method: 'get', path: '/api/settings/ai/verification-capability' },
       { method: 'post', path: '/api/settings/ai/verification-capability/test' },
+      { method: 'post', path: '/api/settings/ai/verification-compatibility-matrix/test' },
       { method: 'get', path: '/api/settings/ai/verification-capability/receipts' },
       { method: 'get', path: '/api/reclassification' },
       { method: 'get', path: '/api/policies' },

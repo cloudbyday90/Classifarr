@@ -29,7 +29,7 @@ export const OLLAMA_VERIFICATION_CAPABILITY_PROBE_RESPONSE_SCHEMA = Object.freez
   required: Object.freeze(['status', 'contract']),
 });
 
-const PROBE_PROMPT = `Return only JSON that matches this schema exactly:\n${JSON.stringify(
+export const OLLAMA_VERIFICATION_CAPABILITY_PROBE_PROMPT = `Return only JSON that matches this schema exactly:\n${JSON.stringify(
   OLLAMA_VERIFICATION_CAPABILITY_PROBE_RESPONSE_SCHEMA,
 )}`;
 
@@ -46,7 +46,7 @@ function buildProbeOutcome({ identity, statusId, modelDigest = null, errorCode =
   });
 }
 
-function isValidProbeResponse(response) {
+export function isValidOllamaVerificationCapabilityProbeResponse(response) {
   if (typeof response !== 'string' || response.length > 4096) {
     return false;
   }
@@ -121,12 +121,12 @@ export async function probeOllamaVerificationCapability({ identity, ollamaClient
 
   try {
     const response = await ollamaClient.generate(
-      PROBE_PROMPT,
+      OLLAMA_VERIFICATION_CAPABILITY_PROBE_PROMPT,
       identity.model,
       0,
       { format: OLLAMA_VERIFICATION_CAPABILITY_PROBE_RESPONSE_SCHEMA },
     );
-    if (!isValidProbeResponse(response)) {
+    if (!isValidOllamaVerificationCapabilityProbeResponse(response)) {
       return buildProbeOutcome({
         identity,
         statusId: OLLAMA_VERIFICATION_CAPABILITY_STATUS_IDS.CLASSIFICATION_ONLY,

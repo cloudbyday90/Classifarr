@@ -41,4 +41,20 @@ describe('Ollama generate request builder', () => {
       options: { temperature: 0 },
     });
   });
+
+  test('forwards an explicit model-unload request without accepting other diagnostics controls', () => {
+    expect(buildOllamaGenerateRequest({
+      model: 'gemma4:e4b',
+      prompt: 'Return JSON.',
+      stream: false,
+      temperature: 0.7,
+      keepAlive: 0,
+    })).toEqual({
+      model: 'gemma4:e4b',
+      prompt: 'Return JSON.',
+      stream: false,
+      options: { temperature: 0.7 },
+      keep_alive: 0,
+    });
+  });
 });

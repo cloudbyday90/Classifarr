@@ -19,6 +19,7 @@
  *   stream: boolean,
  *   temperature: number,
  *   format?: unknown,
+ *   keepAlive?: string | number | null,
  * }} request
  * @returns {{
  *   model: string,
@@ -26,6 +27,7 @@
  *   stream: boolean,
  *   options: { temperature: number },
  *   format?: unknown,
+ *   keep_alive?: string | number,
  * }}
  */
 export function buildOllamaGenerateRequest({
@@ -34,6 +36,7 @@ export function buildOllamaGenerateRequest({
   stream,
   temperature,
   format = null,
+  keepAlive = null,
 }) {
   const body = {
     model,
@@ -45,7 +48,11 @@ export function buildOllamaGenerateRequest({
   };
 
   if (format) {
-    return { ...body, format };
+    body.format = format;
+  }
+
+  if (typeof keepAlive === 'string' || Number.isFinite(keepAlive)) {
+    body.keep_alive = keepAlive;
   }
 
   return body;

@@ -55,9 +55,12 @@ export async function generate(getConfig, prompt, model = 'qwen3:14b', temperatu
       stream: false,
       temperature,
       format: options.format,
+      keepAlive: options.keepAlive,
     });
     const response = await httpPost(`${config.baseUrl}/api/generate`, body, {
-      timeout: 120000,
+      timeout: Number.isSafeInteger(options.timeoutMs) && options.timeoutMs >= 1000
+        ? options.timeoutMs
+        : 120000,
     });
     return response.data.response;
   } catch (error) {

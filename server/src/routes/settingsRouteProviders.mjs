@@ -14,6 +14,7 @@ export function registerProviderRoutes(router, {
   ollamaHandlers,
   metadataProviderHandlers,
   aiHandlers,
+  ollamaVerificationCompatibilityMatrixLimiter,
   webSearchProviderHandlers,
 }) {
   router.get('/ollama', ollamaHandlers.getConfig);
@@ -62,6 +63,11 @@ export function registerProviderRoutes(router, {
   router.post('/ai/verification-preflight', asyncHandler(aiHandlers.getVerificationPreflight));
   router.get('/ai/verification-capability', asyncHandler(aiHandlers.getVerificationCapability));
   router.post('/ai/verification-capability/test', asyncHandler(aiHandlers.testVerificationCapability));
+  router.post(
+    '/ai/verification-compatibility-matrix/test',
+    ollamaVerificationCompatibilityMatrixLimiter,
+    asyncHandler(aiHandlers.runVerificationCompatibilityMatrix),
+  );
   router.get('/ai/verification-capability/receipts', asyncHandler(aiHandlers.getVerificationCapabilityChangeReceipts));
   router.post('/ai/test', aiHandlers.testConnection);
   router.post('/ai/models', aiHandlers.getModels);

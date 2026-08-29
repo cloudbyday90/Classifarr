@@ -34,6 +34,7 @@ export function createSettingsRouter({
   generalSettingsHandlers,
   metadataProviderHandlers,
   ollamaHandlers,
+  ollamaVerificationCompatibilityMatrixLimiter,
   pathTestingHandlers,
   providerLockHandlers,
   radarrHandlers,
@@ -55,7 +56,13 @@ router.get('/category/:name', generalSettingsHandlers.getCategorySettings);
 router.put('/category/:name', generalSettingsHandlers.updateCategorySettings);
 
 registerMediaConfigRoutes(router, { radarrHandlers, sonarrHandlers, arrConfigStatusHandler });
-registerProviderRoutes(router, { ollamaHandlers, metadataProviderHandlers, aiHandlers, webSearchProviderHandlers });
+registerProviderRoutes(router, {
+  ollamaHandlers,
+  metadataProviderHandlers,
+  aiHandlers,
+  ollamaVerificationCompatibilityMatrixLimiter,
+  webSearchProviderHandlers,
+});
 registerNotificationRoutes(router, { discordHandlers });
 registerWebhookRoutes(router, { webhookHandlers });
 registerInfrastructureRoutes(router, { sslHandlers, sslTestLimiter, pathTestingHandlers, providerLockHandlers });

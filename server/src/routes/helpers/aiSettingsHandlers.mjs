@@ -43,6 +43,12 @@ import {
   createOllamaVerificationCapabilityService,
 } from '../../services/ollamaVerificationCapabilityService.mjs';
 import {
+  createOllamaVerificationCompatibilityMatrixService,
+} from '../../services/ollamaVerificationCompatibilityMatrixService.mjs';
+import {
+  createOllamaVerificationCompatibilityMatrixHandler,
+} from './ollamaVerificationCompatibilityMatrixHandler.mjs';
+import {
   OllamaVerificationCapabilityConfigurationChangedError,
 } from '../../services/ollamaVerificationCapabilityRepository.mjs';
 import {
@@ -208,6 +214,12 @@ function requireVerificationCapabilityChangeReceiptActorId(user) {
  *   ollamaVerificationCapabilityService?: {
  *     testSavedConfiguration: () => Promise<Record<string, unknown>>,
  *   },
+ *   ollamaVerificationCompatibilityMatrixService?: {
+ *     run: () => Promise<Record<string, unknown>>,
+ *   },
+ *   ollamaVerificationCompatibilityMatrixHandler?: {
+ *     run: (req: SettingsRequest, res: SettingsResponse) => Promise<unknown>,
+ *   },
  *   verificationCapabilityChangeReceiptRepository?: {
  *     record: (request: { client: SettingsDbClient, receipt: Record<string, unknown> }) => Promise<unknown>,
  *     listForActor: (request: Record<string, unknown>) => Promise<Record<string, unknown>[]>,
@@ -244,6 +256,12 @@ export function createAiSettingsHandlers({
   ollamaVerificationCapabilityService = createOllamaVerificationCapabilityService({
     database: db,
     ollamaClient: ollamaService,
+  }),
+  ollamaVerificationCompatibilityMatrixService = createOllamaVerificationCompatibilityMatrixService({
+    database: db,
+  }),
+  ollamaVerificationCompatibilityMatrixHandler = createOllamaVerificationCompatibilityMatrixHandler({
+    matrixService: ollamaVerificationCompatibilityMatrixService,
   }),
   verificationCapabilityChangeReceiptRepository = new ClassificationCandidateBoundVerificationCapabilityChangeReceiptRepository(),
   verificationCapabilityChangeReceiptReadService = null,
@@ -413,6 +431,8 @@ export function createAiSettingsHandlers({
         throw error;
       }
     },
+
+    runVerificationCompatibilityMatrix: ollamaVerificationCompatibilityMatrixHandler.run,
 
     /** @param {SettingsRequest} req @param {SettingsResponse} res */
     async getVerificationCapabilityChangeReceipts(req, res) {

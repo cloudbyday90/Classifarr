@@ -22,6 +22,7 @@ import {
   preflightConnection as _preflightConnection,
   probeGeneration as _probeGeneration,
   getModels as _getModels,
+  getVersion as _getVersion,
   getLoadedModels as _getLoadedModels,
   isModelLoaded as _isModelLoaded,
 } from './ollamaConnection.mjs';
@@ -285,6 +286,10 @@ class OllamaService {
 
   async getModels(host = null, port = null) {
     return _getModels(() => this.getConfig(), host, port);
+  }
+
+  async getVersion(options = {}) {
+    return _getVersion(() => this.getConfig(), options);
   }
 
   async getLoadedModels(host = null, port = null) {

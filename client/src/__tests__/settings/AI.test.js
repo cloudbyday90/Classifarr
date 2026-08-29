@@ -24,6 +24,7 @@ vi.mock('@/api', () => ({
     getCostSummary: vi.fn(),
     getAIVerificationCapability: vi.fn(),
     testAIVerificationCapability: vi.fn(),
+    runOllamaVerificationCompatibilityMatrix: vi.fn(),
     getAIVerificationCapabilityChangeReceipts: vi.fn(),
     getOllamaVerificationRuntimeMismatchSummary: vi.fn(),
     getOllamaVerificationCapabilityOutcomeHistory: vi.fn(),
@@ -128,6 +129,9 @@ describe('AI Settings', () => {
       outcomes: []
     })
     api.getLastOllamaPreflight.mockResolvedValue({ ai: null, embedding: null })
+    api.runOllamaVerificationCompatibilityMatrix.mockResolvedValue({
+      data: { stateId: 'completed', ollamaVersion: '0.12.4', outcomes: [] }
+    })
     api.preflightAIVerificationConfig.mockResolvedValue({
       data: { requiresConfirmation: false }
     })

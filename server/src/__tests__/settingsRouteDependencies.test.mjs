@@ -15,6 +15,7 @@ const logger = {
 const rateLimit = jest.fn(() => 'ssl-limiter');
 const createLogger = jest.fn(() => logger);
 const resolveRequestApiKey = jest.fn();
+const ollamaVerificationCompatibilityMatrixLimiterConfig = { windowMs: 60_000, max: 2 };
 const sslTestLimiterConfig = { windowMs: 60_000, max: 5 };
 
 const arrDependencies = {
@@ -94,6 +95,7 @@ jest.unstable_mockModule('express-rate-limit', () => ({
 }));
 
 jest.unstable_mockModule('../config/rateLimits.mjs', () => ({
+  ollamaVerificationCompatibilityMatrixLimiterConfig,
   sslTestLimiterConfig,
 }));
 
@@ -305,6 +307,7 @@ describe('settingsRouteDependencies', () => {
       'setupHandlers',
       'sslHandlers',
       'sslTestLimiter',
+      'ollamaVerificationCompatibilityMatrixLimiter',
       'webhookHandlers',
     ]);
 
@@ -331,7 +334,8 @@ describe('settingsRouteDependencies', () => {
     expect(createSslSettingsHandlers).toHaveBeenCalledWith({
       db: operationalDependencies.database,
     });
-    expect(rateLimit).toHaveBeenCalledWith(sslTestLimiterConfig);
+    expect(rateLimit).toHaveBeenNthCalledWith(1, sslTestLimiterConfig);
+    expect(rateLimit).toHaveBeenNthCalledWith(2, ollamaVerificationCompatibilityMatrixLimiterConfig);
     expect(createWebhookSettingsHandlers).toHaveBeenCalledWith({
       webhookService: operationalDependencies.webhookService,
       httpClient: operationalDependencies.httpClient,
@@ -345,6 +349,7 @@ describe('settingsRouteDependencies', () => {
       setupHandlers: 'setup-handlers',
       sslHandlers: 'ssl-handlers',
       sslTestLimiter: 'ssl-limiter',
+      ollamaVerificationCompatibilityMatrixLimiter: 'ssl-limiter',
       webhookHandlers: 'webhook-handlers',
     });
   });
@@ -438,7 +443,8 @@ describe('settingsRouteDependencies', () => {
     expect(createSslSettingsHandlers).toHaveBeenCalledWith({
       db: operationalDependencies.database,
     });
-    expect(rateLimit).toHaveBeenCalledWith(sslTestLimiterConfig);
+    expect(rateLimit).toHaveBeenNthCalledWith(1, sslTestLimiterConfig);
+    expect(rateLimit).toHaveBeenNthCalledWith(2, ollamaVerificationCompatibilityMatrixLimiterConfig);
     expect(createWebhookSettingsHandlers).toHaveBeenCalledWith({
       webhookService: operationalDependencies.webhookService,
       httpClient: operationalDependencies.httpClient,
@@ -460,6 +466,7 @@ describe('settingsRouteDependencies', () => {
       setupHandlers: 'setup-handlers',
       sslHandlers: 'ssl-handlers',
       sslTestLimiter: 'ssl-limiter',
+      ollamaVerificationCompatibilityMatrixLimiter: 'ssl-limiter',
       webhookHandlers: 'webhook-handlers',
     });
   });

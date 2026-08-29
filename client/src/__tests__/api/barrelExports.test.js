@@ -234,6 +234,7 @@ describe('api/index.js barrel export validation', () => {
       expectFunction('getAIConfigForUpdate')
       expectFunction('updateAIConfig')
       expectFunction('testAIConnection')
+      expectFunction('runOllamaVerificationCompatibilityMatrix')
       expectFunction('getAIModels')
       expectFunction('getAIUsage')
     })

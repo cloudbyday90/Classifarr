@@ -66,6 +66,7 @@ import {
   getAIConfigForUpdate,
   getAIVerificationCapability,
   testAIVerificationCapability,
+  runOllamaVerificationCompatibilityMatrix,
   getAIVerificationCapabilityChangeReceipts,
   updateAIConfig,
   testAIConnection,
@@ -348,6 +349,14 @@ describe('settingsProvidersApi', () => {
       await testAIVerificationCapability()
 
       expect(mockPost).toHaveBeenCalledWith('/settings/ai/verification-capability/test')
+    })
+
+    it('runOllamaVerificationCompatibilityMatrix posts no browser-selected provider configuration', async () => {
+      mockPost.mockResolvedValueOnce({ data: {} })
+
+      await runOllamaVerificationCompatibilityMatrix()
+
+      expect(mockPost).toHaveBeenCalledWith('/settings/ai/verification-compatibility-matrix/test')
     })
 
     it('getAIVerificationCapabilityChangeReceipts reads bounded actor-scoped receipts', async () => {

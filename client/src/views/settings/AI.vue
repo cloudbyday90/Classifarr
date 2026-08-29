@@ -602,6 +602,17 @@
     </Card>
 
     <Card
+      v-if="!loading && config.primary_provider === 'ollama'"
+      title="Ollama Compatibility Matrix"
+    >
+      <OllamaVerificationCompatibilityMatrix
+        :report="ollamaVerificationCompatibilityMatrix"
+        :running="runningOllamaVerificationCompatibilityMatrix"
+        @run="runOllamaVerificationCompatibilityMatrix"
+      />
+    </Card>
+
+    <Card
       v-if="!loading"
       title="Verification Capability History"
     >
@@ -816,6 +827,7 @@ import PasswordInput from '@/components/common/PasswordInput.vue'
 import VerificationCapabilityCurrentStateSummary from '@/components/settings/VerificationCapabilityCurrentStateSummary.vue'
 import VerificationCapabilityChangeReceiptList from '@/components/settings/VerificationCapabilityChangeReceiptList.vue'
 import OllamaVerificationCapabilityOutcomeHistory from '@/components/settings/OllamaVerificationCapabilityOutcomeHistory.vue'
+import OllamaVerificationCompatibilityMatrix from '@/components/settings/OllamaVerificationCompatibilityMatrix.vue'
 import OllamaVerificationRuntimeMismatchSummary from '@/components/settings/OllamaVerificationRuntimeMismatchSummary.vue'
 import api from '@/api'
 import {
@@ -839,6 +851,7 @@ const testingVerificationCapability = ref(false)
 const loadingVerificationCapabilityChangeReceipts = ref(false)
 const loadingOllamaVerificationRuntimeMismatchSummary = ref(false)
 const loadingOllamaVerificationCapabilityOutcomeHistory = ref(false)
+const runningOllamaVerificationCompatibilityMatrix = ref(false)
 const showAdvanced = ref(false)
 const testResult = ref(null)
 const ollamaTestResult = ref(null)
@@ -852,6 +865,7 @@ const verificationCapability = ref(null)
 const verificationCapabilityChangeReceipts = ref(null)
 const ollamaVerificationRuntimeMismatchSummary = ref(null)
 const ollamaVerificationCapabilityOutcomeHistory = ref(null)
+const ollamaVerificationCompatibilityMatrix = ref(null)
 const aiSettingsWritePrecondition = ref(null)
 let verificationCapabilityRequestId = 0
 let verificationCapabilityChangeReceiptsRequestId = 0
@@ -1039,6 +1053,25 @@ const testVerificationCapability = async () => {
     }
   } finally {
     testingVerificationCapability.value = false
+  }
+}
+
+const runOllamaVerificationCompatibilityMatrix = async () => {
+  runningOllamaVerificationCompatibilityMatrix.value = true
+  try {
+    const response = await api.runOllamaVerificationCompatibilityMatrix()
+    ollamaVerificationCompatibilityMatrix.value = response?.data || response
+    toast.success('Ollama compatibility check completed.')
+  } catch (error) {
+    if (error.response?.status === 409) {
+      toast.warning('An Ollama compatibility check is already running. Wait for it to finish before trying again.')
+    } else if (error.response?.status === 429) {
+      toast.warning('The Ollama compatibility check is limited to two runs per hour. Try again later.')
+    } else {
+      toast.warning('Ollama compatibility could not be checked. Confirm the saved local service, then try again.')
+    }
+  } finally {
+    runningOllamaVerificationCompatibilityMatrix.value = false
   }
 }
 

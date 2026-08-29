@@ -17,7 +17,10 @@
  */
 
 import rateLimit from 'express-rate-limit';
-import { sslTestLimiterConfig } from '../../config/rateLimits.mjs';
+import {
+  ollamaVerificationCompatibilityMatrixLimiterConfig,
+  sslTestLimiterConfig,
+} from '../../config/rateLimits.mjs';
 import { createAiSettingsHandlers } from './aiSettingsHandlers.mjs';
 import { createConfidenceSettingsHandlers } from './confidenceSettingsHandlers.mjs';
 import { createDiscordSettingsHandlers } from './discordSettingsHandlers.mjs';
@@ -192,6 +195,10 @@ export function createOperationalHandlerDescriptors(operationalSettingsDependenc
     {
       key: 'sslTestLimiter',
       create: () => rateLimit(sslTestLimiterConfig),
+    },
+    {
+      key: 'ollamaVerificationCompatibilityMatrixLimiter',
+      create: () => rateLimit(ollamaVerificationCompatibilityMatrixLimiterConfig),
     },
     {
       key: 'webhookHandlers',

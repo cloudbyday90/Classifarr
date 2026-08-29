@@ -131,6 +131,7 @@ describe('Settings Routes', () => {
     expect(countRouteHandlers(settingsRouter, '/web-search/providers/:providerKey/test', 'post')).toBe(1);
     expect(countRouteHandlers(settingsRouter, '/ai/verification-capability', 'get')).toBe(1);
     expect(countRouteHandlers(settingsRouter, '/ai/verification-capability/test', 'post')).toBe(1);
+    expect(countRouteHandlers(settingsRouter, '/ai/verification-compatibility-matrix/test', 'post')).toBe(1);
     expect(countRouteHandlers(settingsRouter, '/ai/verification-capability/receipts', 'get')).toBe(1);
   });
 
