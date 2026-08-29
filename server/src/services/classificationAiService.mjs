@@ -30,6 +30,9 @@ import {
   sanitizeAiProviderOutputForDiagnostics,
 } from './aiProviderOutputNormalization.mjs';
 import { aiProviderCapabilityMetricsService } from './aiProviderCapabilityMetricsService.mjs';
+import {
+  ollamaVerificationCapabilityRuntimeInvalidationService,
+} from './ollamaVerificationCapabilityRuntimeInvalidationService.mjs';
 import { libraryProfileService } from './libraryProfileService.mjs';
 import { enrichWithWebSearch } from './classificationMetadataService.mjs';
 import { formatNormalizedWebSearchForAI } from './webSearchResultNormalizer.mjs';
@@ -380,6 +383,14 @@ Respond with ONLY one of the formats above.`;
         throw lastStreamError;
       }
     } catch (generationError) {
+      const capabilityRevoked = await ollamaVerificationCapabilityRuntimeInvalidationService.invalidateFromGenerationError({
+        provider,
+        authority: providerAuthority,
+        generationError,
+      });
+      if (capabilityRevoked) {
+        aiRouter.clearCache?.();
+      }
       await attachAiProviderAuthority({
         authority: providerAuthority,
         generationError,

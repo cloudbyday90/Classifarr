@@ -324,6 +324,35 @@ describe('AI Settings', () => {
     expect(toast.success).toHaveBeenCalledWith('Ollama verification test completed.')
   })
 
+  it('shows the bounded runtime model-change notice and provides the existing retest action', async () => {
+    api.getAIConfig.mockResolvedValueOnce({
+      primary_provider: 'ollama',
+      ollama_host: 'private-ollama.internal',
+      ollama_port: 11434,
+      ollama_model: 'gemma4:e4b'
+    })
+    api.getAIVerificationCapability.mockResolvedValueOnce({
+      label: 'Strict verification needs attention',
+      message: 'The saved primary AI path cannot admit strict candidate-bound verification.',
+      guidance: [],
+      ollamaVerificationCapability: {
+        statusId: 'model_changed',
+        label: 'Ollama model changed since verification',
+        message: 'The configured Ollama model no longer matches the version that passed the strict verification test. Candidate verification will not call AI until this saved configuration is tested again.',
+        guidance: ['Test the saved Ollama configuration again before relying on strict candidate verification.'],
+        testable: true
+      }
+    })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Ollama model changed since verification')
+    expect(wrapper.text()).toContain('will not call AI until this saved configuration is tested again')
+    expect(wrapper.findAll('button').some((button) => button.text().includes('Test Ollama Verification'))).toBe(true)
+    expect(wrapper.text()).not.toContain('private-ollama.internal')
+  })
+
   it('refreshes the saved verification capability after AI settings persist', async () => {
     const wrapper = mountView()
     await flushPromises()

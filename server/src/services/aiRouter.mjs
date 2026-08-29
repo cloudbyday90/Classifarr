@@ -23,6 +23,7 @@ import {
 } from './aiProviderAuthority.mjs';
 import {
     buildOllamaVerificationAuthorityEvidence,
+    getOllamaVerificationCapabilityState,
 } from './ollamaVerificationCapabilityIdentity.mjs';
 import { ollamaService } from './ollama.mjs';
 
@@ -183,6 +184,9 @@ export class AIRouterService {
         isFallback = false,
     } = {}) {
         const model = config.ollama_model || 'llama3.2';
+        const ollamaVerificationCapabilityState = isFallback
+            ? null
+            : getOllamaVerificationCapabilityState(config);
         const ollamaVerificationCapability = isFallback
             ? null
             : buildOllamaVerificationAuthorityEvidence(config);
@@ -201,6 +205,10 @@ export class AIRouterService {
                 port: config.ollama_port || 11434,
                 model,
                 verificationModelDigest: ollamaVerificationCapability?.modelDigest || null,
+                verificationConfigurationRevision:
+                    ollamaVerificationCapabilityState?.configurationRevision ?? null,
+                verificationConfigurationFingerprint:
+                    ollamaVerificationCapabilityState?.fingerprint ?? null,
             }
         };
     }

@@ -35,6 +35,12 @@ function isTimeoutOrIncomplete(error = null) {
     || message.includes('completion signal');
 }
 
+function isOllamaVerificationModelDigestMismatch({ profile, error } = {}) {
+  return profile?.providerId === 'ollama'
+    && profile?.effectiveMode === 'verification'
+    && String(error?.code || '').trim().toUpperCase() === 'MODEL_DIGEST_MISMATCH';
+}
+
 /**
  * Builds fixed counters from parser and transport facts. It never stores raw
  * model text, model-selected commands, provider credentials, or item metadata.
@@ -71,6 +77,10 @@ export function buildAiProviderCapabilityMetricDelta({
     repairAttemptCount: repairAttempted ? 1 : 0,
     repairSuccessCount: repairSucceeded ? 1 : 0,
     timeoutOrIncompleteStreamCount: isTimeoutOrIncomplete(generationError) ? 1 : 0,
+    modelDigestMismatchCount: isOllamaVerificationModelDigestMismatch({
+      profile,
+      error: generationError,
+    }) ? 1 : 0,
     hallucinatedLibraryReferenceCount: (
       hasText(violationReason, /option|library/i)
       || hasText(validationText, /library|option/i)

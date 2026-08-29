@@ -932,5 +932,32 @@ describe('OllamaService', () => {
                 )
             ).rejects.toThrow('Connection refused');
         });
+
+        it('preserves a bounded preflight failure code for the runtime safeguard', async () => {
+            jest.spyOn(ollamaService, 'preflightConnection').mockResolvedValue({
+                success: false,
+                error: 'The configured Ollama model changed after its verification test.',
+                errorCode: 'MODEL_DIGEST_MISMATCH',
+            });
+
+            const controller = {
+                signal: undefined,
+                recordActivity: jest.fn(),
+                partialResult: null,
+            };
+
+            await expect(
+                ollamaService.generateWithProgress(
+                    'test prompt',
+                    'gemma3:12b',
+                    0.3,
+                    null,
+                    controller,
+                    {}
+                )
+            ).rejects.toMatchObject({
+                code: 'MODEL_DIGEST_MISMATCH',
+            });
+        });
     });
 });

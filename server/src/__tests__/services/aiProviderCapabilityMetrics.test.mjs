@@ -39,6 +39,7 @@ describe('aiProviderCapabilityMetrics', () => {
       repairAttemptCount: 1,
       repairSuccessCount: 0,
       timeoutOrIncompleteStreamCount: 1,
+      modelDigestMismatchCount: 0,
       hallucinatedLibraryReferenceCount: 1,
       hallucinatedActionCount: 1,
       thinkingTraceLeakageCount: 1,
@@ -57,6 +58,29 @@ describe('aiProviderCapabilityMetrics', () => {
       requestCount: 1,
       timeoutOrIncompleteStreamCount: 0,
     }));
+  });
+
+  test('counts only the bounded strict-Ollama model digest mismatch code', () => {
+    const authority = buildAiProviderAuthorityProfile({
+      providerId: 'ollama',
+      model: 'gemma4:e4b',
+      requestedMode: 'verification',
+      ollamaVerificationCapability: {
+        providerId: 'ollama',
+        model: 'gemma4:e4b',
+        verified: true,
+        modelDigest: 'a'.repeat(64),
+      },
+    });
+    const delta = buildAiProviderCapabilityMetricDelta({
+      authority,
+      generationError: Object.assign(new Error('do not retain this provider text'), {
+        code: 'MODEL_DIGEST_MISMATCH',
+      }),
+    });
+
+    expect(delta.modelDigestMismatchCount).toBe(1);
+    expect(JSON.stringify(delta)).not.toContain('do not retain this provider text');
   });
 
   test('uses parameterized upserts and fails open when telemetry is unavailable', async () => {

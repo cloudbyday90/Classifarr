@@ -10,6 +10,9 @@ import {
   buildCandidateBoundVerificationRemediationReadiness,
   resolveConfiguredCandidateBoundVerificationAdmission,
 } from '../services/classificationCandidateBoundVerificationRemediationReadiness.mjs';
+import {
+  resolveOllamaVerificationCapabilityIdentity,
+} from '../services/ollamaVerificationCapabilityIdentity.mjs';
 
 describe('classificationCandidateBoundVerificationRemediationReadiness', () => {
   test('admits only the current configured strict provider path without exposing provider identity', () => {
@@ -43,6 +46,29 @@ describe('classificationCandidateBoundVerificationRemediationReadiness', () => {
       primary_provider: 'none',
       ollama_fallback_enabled: true,
     })).toMatchObject({ statusId: 'fallback_advisory_only', admitted: false });
+  });
+
+  test('recognizes a current tested primary Ollama path without exposing its configuration', () => {
+    const configuration = {
+      primary_provider: 'ollama',
+      ollama_host: 'private-ollama.internal',
+      ollama_port: 11434,
+      ollama_model: 'gemma4:e4b',
+      configuration_revision: 4,
+    };
+    const { fingerprint } = resolveOllamaVerificationCapabilityIdentity(configuration);
+    const admission = resolveConfiguredCandidateBoundVerificationAdmission({
+      ...configuration,
+      ollama_verification_capability_status: 'verification_ready',
+      ollama_verification_capability_fingerprint: fingerprint,
+      ollama_verification_capability_configuration_revision: 4,
+      ollama_verification_capability_model_digest: 'a'.repeat(64),
+      ollama_verification_capability_checked_at: new Date().toISOString(),
+    });
+
+    expect(admission).toMatchObject({ statusId: 'admitted', admitted: true });
+    expect(JSON.stringify(admission)).not.toContain('private-ollama.internal');
+    expect(JSON.stringify(admission)).not.toContain('gemma4:e4b');
   });
 
   test('reduces anonymous policy readiness counts and rejects malformed status rows', () => {

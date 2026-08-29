@@ -5,6 +5,13 @@ function isAiTransientAvailabilityErrorImpl(error) {
   const code = typeof error?.code === 'string' ? error.code.toUpperCase() : '';
   const status = error?.response?.status;
 
+  // This is a deterministic local integrity guard, not a transient provider
+  // availability failure. Retrying cannot make a changed model match the
+  // tested digest and would delay its fail-closed capability revocation.
+  if (code === 'MODEL_DIGEST_MISMATCH') {
+    return false;
+  }
+
   if (status === 404 || status === 429 || status === 500 || status === 502 || status === 503 || status === 504) {
     return true;
   }

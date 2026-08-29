@@ -64,4 +64,25 @@ describe('ollama verification capability identity', () => {
     expect(changedModel.statusId).toBe('not_checked');
     expect(changedModel.verificationReady).toBe(false);
   });
+
+  test('retains a current model-change status without granting verification authority', () => {
+    const configuration = readyConfiguration({
+      ollama_verification_capability_status: 'model_changed',
+      ollama_verification_capability_model_digest: null,
+      ollama_verification_capability_error_code: 'MODEL_DIGEST_MISMATCH',
+    });
+    const state = getOllamaVerificationCapabilityState(configuration);
+
+    expect(state).toMatchObject({
+      statusId: 'model_changed',
+      current: true,
+      verificationReady: false,
+      errorCode: 'MODEL_DIGEST_MISMATCH',
+      modelDigest: null,
+    });
+    expect(buildOllamaVerificationAuthorityEvidence(configuration)).toEqual(expect.objectContaining({
+      verified: false,
+      modelDigest: null,
+    }));
+  });
 });

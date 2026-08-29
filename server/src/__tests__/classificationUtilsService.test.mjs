@@ -360,6 +360,14 @@ describe('isAiTransientAvailabilityError', () => {
     expect(classificationUtilsService.isAiTransientAvailabilityError(new Error('invalid policy id'))).toBe(false);
   });
 
+  test('does not retry a bounded model digest integrity mismatch', () => {
+    const error = Object.assign(new Error('The configured Ollama model changed after its verification test.'), {
+      code: 'MODEL_DIGEST_MISMATCH',
+    });
+
+    expect(classificationUtilsService.isAiTransientAvailabilityError(error)).toBe(false);
+  });
+
   test('returns false for null', () => {
     expect(classificationUtilsService.isAiTransientAvailabilityError(null)).toBe(false);
   });

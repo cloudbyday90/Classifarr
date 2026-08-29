@@ -201,4 +201,36 @@ describe('candidate-bound verification provider preflight', () => {
     expect(JSON.stringify(readyReport)).not.toContain('gemma4:e4b');
     expect(JSON.stringify(readyReport)).not.toContain('a'.repeat(64));
   });
+
+  test('shows a bounded retest notice after a runtime model change and keeps strict verification blocked', () => {
+    const configuration = {
+      primary_provider: 'ollama',
+      ollama_host: 'private-ollama.internal',
+      ollama_port: 11434,
+      ollama_model: 'gemma4:e4b',
+      configuration_revision: 7,
+    };
+    const report = buildCandidateBoundVerificationProviderPreflight({
+      existingConfiguration: {
+        ...configuration,
+        ollama_verification_capability_status: 'model_changed',
+        ollama_verification_capability_fingerprint:
+          resolveOllamaVerificationCapabilityIdentity(configuration).fingerprint,
+        ollama_verification_capability_configuration_revision: 7,
+        ollama_verification_capability_checked_at: new Date().toISOString(),
+        ollama_verification_capability_error_code: 'MODEL_DIGEST_MISMATCH',
+      },
+      presentationContext:
+        CANDIDATE_BOUND_VERIFICATION_PROVIDER_PREFLIGHT_PRESENTATION_CONTEXT_IDS.SAVED_CONFIGURATION,
+    });
+
+    expect(report.primaryPath.verificationCapable).toBe(false);
+    expect(report.ollamaVerificationCapability).toMatchObject({
+      statusId: 'model_changed',
+      label: 'Ollama model changed since verification',
+      message: expect.stringContaining('will not call AI'),
+    });
+    expect(JSON.stringify(report)).not.toContain('private-ollama.internal');
+    expect(JSON.stringify(report)).not.toContain('gemma4:e4b');
+  });
 });

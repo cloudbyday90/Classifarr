@@ -16,6 +16,9 @@ import {
   CANDIDATE_BOUND_VERIFICATION_STATUS_IDS,
   resolveCandidateBoundVerificationAdmission,
 } from './classificationCandidateBoundVerificationContract.mjs';
+import {
+  buildOllamaVerificationAuthorityEvidence,
+} from './ollamaVerificationCapabilityIdentity.mjs';
 
 export const CLASSIFICATION_CANDIDATE_BOUND_VERIFICATION_REMEDIATION_READINESS_VERSION =
   'classification.candidate_bound_verification_remediation_readiness.v1';
@@ -157,8 +160,21 @@ export function resolveConfiguredCandidateBoundVerificationAdmission(configurati
   }
 
   if (primaryProvider === 'ollama') {
+    const authority = buildAiProviderAuthorityProfile({
+      providerId: primaryProvider,
+      model: config.ollama_model,
+      requestedMode: AI_PROVIDER_AUTHORITY_MODE_IDS.VERIFICATION,
+      ollamaVerificationCapability: buildOllamaVerificationAuthorityEvidence(config),
+    });
+    const admission = resolveCandidateBoundVerificationAdmission({
+      contract: { valid: true },
+      authority,
+    });
+
     return buildProviderAdmission(
-      CANDIDATE_BOUND_VERIFICATION_PROVIDER_ADMISSION_STATUS_IDS.CAPABILITY_UNAVAILABLE,
+      admission.admitted
+        ? CANDIDATE_BOUND_VERIFICATION_PROVIDER_ADMISSION_STATUS_IDS.ADMITTED
+        : CANDIDATE_BOUND_VERIFICATION_PROVIDER_ADMISSION_STATUS_IDS.CAPABILITY_UNAVAILABLE,
     );
   }
 

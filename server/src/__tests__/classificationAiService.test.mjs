@@ -18,6 +18,7 @@
 
 import { jest } from '@jest/globals';
 import { createMockModule, createNamedMockModule, createNamedStubModule, createLoggerModuleMock, createServiceStubs } from './helpers/mockFactory.mjs';
+import { buildAiProviderAuthorityProfile } from '../services/aiProviderAuthority.mjs';
 
 const mockDb = { query: jest.fn() };
 
@@ -28,9 +29,14 @@ const mockOllamaService = createServiceStubs([
   'updateTokenCount',
 ]);
 
-const mockAiRouter = createServiceStubs(['getProvider', 'classify']);
+const mockAiRouter = createServiceStubs(['getProvider', 'classify', 'clearCache']);
 const mockAiProviderCapabilityMetricsService = createServiceStubs(['record']);
 mockAiProviderCapabilityMetricsService.record.mockResolvedValue(undefined);
+const mockOllamaVerificationCapabilityRuntimeInvalidationService = createServiceStubs([
+  'invalidateFromGenerationError',
+]);
+mockOllamaVerificationCapabilityRuntimeInvalidationService.invalidateFromGenerationError
+  .mockResolvedValue(false);
 
 const mockProviderLock = createServiceStubs(['acquireLock', 'releaseLock', 'heartbeat'], {
   config: { heartbeatInterval: 5000 },
@@ -68,6 +74,11 @@ jest.unstable_mockModule('../services/aiProviderCapabilityMetricsService.mjs', (
   mockAiProviderCapabilityMetricsService,
 ));
 
+jest.unstable_mockModule('../services/ollamaVerificationCapabilityRuntimeInvalidationService.mjs', () => createNamedMockModule(
+  'ollamaVerificationCapabilityRuntimeInvalidationService',
+  mockOllamaVerificationCapabilityRuntimeInvalidationService,
+));
+
 jest.unstable_mockModule('../services/providerLock.mjs', () => createNamedMockModule('providerLock', mockProviderLock));
 
 jest.unstable_mockModule('../services/aiPromptBuilder.mjs', () => createNamedStubModule('aiPromptBuilder', mockAiPromptBuilder));
@@ -86,6 +97,8 @@ const db = mockDb;
 const ollamaService = mockOllamaService;
 const aiRouter = mockAiRouter;
 const aiProviderCapabilityMetricsService = mockAiProviderCapabilityMetricsService;
+const ollamaVerificationCapabilityRuntimeInvalidationService =
+  mockOllamaVerificationCapabilityRuntimeInvalidationService;
 const providerLock = mockProviderLock;
 const aiPromptBuilder = mockAiPromptBuilder;
 const aiResponseParser = mockAiResponseParser;
@@ -397,7 +410,10 @@ describe('aiClassify', () => {
     ollamaService.updateTokenCount.mockReset();
     aiRouter.getProvider.mockReset();
     aiRouter.classify.mockReset();
+    aiRouter.clearCache.mockReset();
     aiProviderCapabilityMetricsService.record.mockReset().mockResolvedValue(undefined);
+    ollamaVerificationCapabilityRuntimeInvalidationService.invalidateFromGenerationError
+      .mockReset().mockResolvedValue(false);
     providerLock.acquireLock.mockReset().mockResolvedValue(undefined);
     providerLock.releaseLock.mockReset();
     providerLock.heartbeat.mockReset();
@@ -654,6 +670,57 @@ describe('aiClassify', () => {
     ollamaService.setGenerationStatus.mockImplementation(() => {});
     await expect(classificationAiService.aiClassify(baseMetadata, baseLibraries)).rejects.toThrow('GPU OOM');
     expect(providerLock.releaseLock).toHaveBeenCalledWith('classification');
+  });
+
+  test('invalidates only the matching tested Ollama capability after a digest mismatch', async () => {
+    const verificationProvider = {
+      type: 'ollama',
+      config: {
+        model: 'gemma4:e4b',
+        verificationModelDigest: 'a'.repeat(64),
+        verificationConfigurationRevision: 4,
+        verificationConfigurationFingerprint: 'b'.repeat(64),
+      },
+      authority: buildAiProviderAuthorityProfile({
+        providerId: 'ollama',
+        model: 'gemma4:e4b',
+        requestedMode: 'verification',
+        ollamaVerificationCapability: {
+          providerId: 'ollama',
+          model: 'gemma4:e4b',
+          verified: true,
+          modelDigest: 'a'.repeat(64),
+        },
+      }),
+    };
+    const mismatch = Object.assign(new Error('The configured Ollama model changed after its verification test.'), {
+      code: 'MODEL_DIGEST_MISMATCH',
+    });
+
+    db.query.mockResolvedValueOnce({ rows: [defaultProviderRow] });
+    aiRouter.getProvider.mockResolvedValueOnce(verificationProvider);
+    ollamaService.generateWithProgress.mockRejectedValueOnce(mismatch);
+    ollamaVerificationCapabilityRuntimeInvalidationService.invalidateFromGenerationError
+      .mockResolvedValueOnce(true);
+
+    await expect(classificationAiService.aiClassify(
+      baseMetadata,
+      baseLibraries,
+      verificationSignalContext,
+      candidateBoundVerificationOptions(),
+    )).rejects.toThrow('changed after its verification test');
+
+    expect(ollamaVerificationCapabilityRuntimeInvalidationService.invalidateFromGenerationError)
+      .toHaveBeenCalledWith({
+        provider: verificationProvider,
+        authority: verificationProvider.authority,
+        generationError: mismatch,
+      });
+    expect(aiRouter.clearCache).toHaveBeenCalledTimes(1);
+    expect(aiProviderCapabilityMetricsService.record).toHaveBeenCalledWith(expect.objectContaining({
+      authority: verificationProvider.authority,
+      generationError: mismatch,
+    }));
   });
 
   test('uses generateWithProgress for ollama provider', async () => {

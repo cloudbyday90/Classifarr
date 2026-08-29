@@ -41,6 +41,13 @@ const PRESENTATIONS = Object.freeze({
       'Confirm that Ollama is reachable and the configured model is installed, then test again.',
     ]),
   }),
+  [OLLAMA_VERIFICATION_CAPABILITY_STATUS_IDS.MODEL_CHANGED]: Object.freeze({
+    label: 'Ollama model changed since verification',
+    message: 'The configured Ollama model no longer matches the version that passed the strict verification test. Candidate verification will not call AI until this saved configuration is tested again.',
+    guidance: Object.freeze([
+      'Test the saved Ollama configuration again before relying on strict candidate verification.',
+    ]),
+  }),
 });
 
 export function buildOllamaVerificationCapabilityPresentation(state) {

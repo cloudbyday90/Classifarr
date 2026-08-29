@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-08-28T23:58:32.253Z
--- Latest Migration: 20260828_100000_add_ollama_verification_capability_state.sql
+-- Generated: 2026-08-29T08:53:53.526Z
+-- Latest Migration: 20260829_100000_add_ollama_verification_runtime_mismatch_metrics.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -547,7 +547,10 @@ CREATE TABLE public.ai_provider_capability_metrics (
     hallucinated_action_count bigint DEFAULT 0 CONSTRAINT ai_provider_capability_metri_hallucinated_action_count_not_null NOT NULL,
     thinking_trace_leakage_count bigint DEFAULT 0 CONSTRAINT ai_provider_capability_metr_thinking_trace_leakage_cou_not_null NOT NULL,
     last_observed_at timestamp with time zone DEFAULT now() NOT NULL,
+    model_digest_mismatch_count bigint DEFAULT 0 CONSTRAINT ai_provider_capability_metr_model_digest_mismatch_coun_not_null NOT NULL,
+    last_model_digest_mismatch_at timestamp with time zone,
     CONSTRAINT ai_provider_capability_metrics_authority_mode_chk CHECK (((authority_mode)::text = ANY (ARRAY[('structured_contract'::character varying)::text, ('verification'::character varying)::text, ('proposal'::character varying)::text, ('explanation'::character varying)::text, ('fallback_advisory'::character varying)::text, ('disabled'::character varying)::text]))),
+    CONSTRAINT ai_provider_capability_metrics_model_digest_mismatch_nonnegativ CHECK ((model_digest_mismatch_count >= 0)),
     CONSTRAINT ai_provider_capability_metrics_model_shape_chk CHECK (((length(btrim((model)::text)) >= 1) AND (length(btrim((model)::text)) <= 255))),
     CONSTRAINT ai_provider_capability_metrics_nonnegative_counts_chk CHECK (((request_count >= 0) AND (structured_parse_success_count >= 0) AND (semantic_contract_violation_count >= 0) AND (repair_attempt_count >= 0) AND (repair_success_count >= 0) AND (timeout_or_incomplete_stream_count >= 0) AND (hallucinated_library_reference_count >= 0) AND (hallucinated_action_count >= 0) AND (thinking_trace_leakage_count >= 0))),
     CONSTRAINT ai_provider_capability_metrics_provider_shape_chk CHECK (((provider_id)::text ~ '^[a-z0-9_-]{1,32}$'::text))
@@ -558,7 +561,7 @@ CREATE TABLE public.ai_provider_capability_metrics (
 -- Name: TABLE ai_provider_capability_metrics; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON TABLE public.ai_provider_capability_metrics IS 'Aggregate AI provider capability counters; no prompts, model output, media data, or actions.';
+COMMENT ON TABLE public.ai_provider_capability_metrics IS 'Aggregate AI provider capability counters and bounded runtime failure timestamps; no prompts, model output, media data, or actions.';
 
 
 --
@@ -796,7 +799,7 @@ CREATE TABLE public.ai_provider_config (
     CONSTRAINT ai_cfg_trace_max_events_chk CHECK (((rag_loop_trace_max_events >= 1) AND (rag_loop_trace_max_events <= 200))),
     CONSTRAINT ai_provider_config_jitter_factor_check CHECK (((jitter_factor >= (0)::numeric) AND (jitter_factor <= (1)::numeric))),
     CONSTRAINT ai_provider_config_ollama_verification_capability_latency_ck CHECK (((ollama_verification_capability_latency_ms IS NULL) OR (ollama_verification_capability_latency_ms >= 0))),
-    CONSTRAINT ai_provider_config_ollama_verification_capability_status_ck CHECK (((ollama_verification_capability_status)::text = ANY (ARRAY[('not_checked'::character varying)::text, ('verification_ready'::character varying)::text, ('classification_only'::character varying)::text, ('unavailable'::character varying)::text]))),
+    CONSTRAINT ai_provider_config_ollama_verification_capability_status_ck CHECK (((ollama_verification_capability_status)::text = ANY ((ARRAY['not_checked'::character varying, 'verification_ready'::character varying, 'classification_only'::character varying, 'unavailable'::character varying, 'model_changed'::character varying])::text[]))),
     CONSTRAINT ai_provider_config_retry_backoff_multiplier_check CHECK (((retry_backoff_multiplier >= 1.0) AND (retry_backoff_multiplier <= 5.0))),
     CONSTRAINT ai_provider_config_revision_ck CHECK ((configuration_revision >= 0)),
     CONSTRAINT formula_weights_sum_check CHECK ((((((formula_pattern_weight + formula_rule_weight) + formula_rag_weight) + formula_history_weight) >= (0.99)::double precision) AND ((((formula_pattern_weight + formula_rule_weight) + formula_rag_weight) + formula_history_weight) <= (1.01)::double precision)))
@@ -14046,6 +14049,7 @@ FROM unnest(ARRAY[
     '20260816_180000_add_native_intent_change_receipts.sql',
     '20260817_030000_add_native_intent_change_receipt_retention_guard.sql',
     '20260822_140000_add_classification_queue_decision_witnesses.sql',
-    '20260828_100000_add_ollama_verification_capability_state.sql'
+    '20260828_100000_add_ollama_verification_capability_state.sql',
+    '20260829_100000_add_ollama_verification_runtime_mismatch_metrics.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

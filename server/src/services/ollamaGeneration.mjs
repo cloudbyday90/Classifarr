@@ -35,6 +35,16 @@ function wrapGenerationError(prefix, error) {
   return wrapped;
 }
 
+function createPreflightError(preflight = {}) {
+  const error = /** @type {OllamaGenerationError} */ (
+    new Error(preflight.error || 'Ollama connection failed')
+  );
+  error.code = typeof preflight.errorCode === 'string'
+    ? preflight.errorCode
+    : 'EOLLAMA_PREFLIGHT';
+  return error;
+}
+
 export async function generate(getConfig, prompt, model = 'qwen3:14b', temperature = 0.30, options = {}) {
   try {
     const config = await getConfig();
@@ -162,7 +172,7 @@ export async function streamGenerate(getConfig, preflightConnectionFn, config, p
   });
 
   if (!preflight.success) {
-    throw new Error(preflight.error || 'Ollama connection failed');
+    throw createPreflightError(preflight);
   }
 
   let fullResponse = '';

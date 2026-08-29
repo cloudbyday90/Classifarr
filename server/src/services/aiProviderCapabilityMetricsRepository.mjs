@@ -10,6 +10,7 @@ const METRIC_COLUMNS = Object.freeze([
   'repair_attempt_count',
   'repair_success_count',
   'timeout_or_incomplete_stream_count',
+  'model_digest_mismatch_count',
   'hallucinated_library_reference_count',
   'hallucinated_action_count',
   'thinking_trace_leakage_count',
@@ -31,6 +32,7 @@ export async function incrementAiProviderCapabilityMetrics(db, delta = {}) {
     toSafeCount(delta.repairAttemptCount),
     toSafeCount(delta.repairSuccessCount),
     toSafeCount(delta.timeoutOrIncompleteStreamCount),
+    toSafeCount(delta.modelDigestMismatchCount),
     toSafeCount(delta.hallucinatedLibraryReferenceCount),
     toSafeCount(delta.hallucinatedActionCount),
     toSafeCount(delta.thinkingTraceLeakageCount),
@@ -46,14 +48,21 @@ export async function incrementAiProviderCapabilityMetrics(db, delta = {}) {
       model,
       authority_mode,
       ${METRIC_COLUMNS.join(',\n      ')},
+      last_model_digest_mismatch_at,
       last_observed_at
     )
     VALUES (
-      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW()
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+      CASE WHEN $10 > 0 THEN NOW() ELSE NULL END,
+      NOW()
     )
     ON CONFLICT (provider_id, model, authority_mode)
     DO UPDATE SET
       ${updates},
+      last_model_digest_mismatch_at = CASE
+        WHEN EXCLUDED.model_digest_mismatch_count > 0 THEN NOW()
+        ELSE ai_provider_capability_metrics.last_model_digest_mismatch_at
+      END,
       last_observed_at = NOW()
   `, values);
 }

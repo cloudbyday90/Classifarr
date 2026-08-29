@@ -19,6 +19,7 @@ export const OLLAMA_VERIFICATION_CAPABILITY_STATUS_IDS = Object.freeze({
   VERIFICATION_READY: 'verification_ready',
   CLASSIFICATION_ONLY: 'classification_only',
   UNAVAILABLE: 'unavailable',
+  MODEL_CHANGED: 'model_changed',
 });
 
 export const OLLAMA_VERIFICATION_CAPABILITY_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -139,16 +140,20 @@ export function getOllamaVerificationCapabilityState(configuration = {}, { now =
   const verificationReady = statusId
     === OLLAMA_VERIFICATION_CAPABILITY_STATUS_IDS.VERIFICATION_READY
     && Boolean(modelDigest);
+  const modelChanged = statusId
+    === OLLAMA_VERIFICATION_CAPABILITY_STATUS_IDS.MODEL_CHANGED;
 
   return Object.freeze({
     ...identity,
-    statusId: verificationReady ? statusId : OLLAMA_VERIFICATION_CAPABILITY_STATUS_IDS.NOT_CHECKED,
+    statusId: verificationReady || modelChanged
+      ? statusId
+      : OLLAMA_VERIFICATION_CAPABILITY_STATUS_IDS.NOT_CHECKED,
     checkedAt: configuration.ollama_verification_capability_checked_at || null,
     errorCode: verificationReady
       ? null
       : String(configuration.ollama_verification_capability_error_code || '').trim() || null,
     modelDigest: verificationReady ? modelDigest : null,
-    current: verificationReady || [
+    current: verificationReady || modelChanged || [
       OLLAMA_VERIFICATION_CAPABILITY_STATUS_IDS.CLASSIFICATION_ONLY,
       OLLAMA_VERIFICATION_CAPABILITY_STATUS_IDS.UNAVAILABLE,
     ].includes(statusId),
