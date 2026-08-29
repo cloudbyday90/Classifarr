@@ -38,7 +38,11 @@ describe('policyPurposeCoveragePreflightPersistence', () => {
 
     await expect(loadPolicyPurposeCoveragePreflightOverlap({
       db: { query },
-      candidateTerms: [{ signalType: 'genres', termKey: 'Family' }],
+      candidateTerms: [{
+        signalType: 'genres',
+        operator: 'require_any',
+        termKey: 'Family',
+      }],
       libraryId: 18,
       mediaType: 'movie',
     })).resolves.toEqual(expect.objectContaining({
@@ -48,6 +52,8 @@ describe('policyPurposeCoveragePreflightPersistence', () => {
 
     const [sql, values] = query.mock.calls[0];
     expect(sql).toContain('jsonb_to_recordset($1::jsonb)');
+    expect(sql).toContain('operator TEXT')
+    expect(sql).toContain("candidate.operator IN ('require_all', 'require_any')")
     expect(sql).toContain("policy.library_id <> $2");
     expect(sql).toContain("LOWER(library.media_type) = LOWER($3)");
     expect(sql).toContain("rule.intent_role = 'purpose'");
@@ -60,7 +66,11 @@ describe('policyPurposeCoveragePreflightPersistence', () => {
     expect(sql).not.toContain('rag_');
     expect(JSON.stringify(values)).toContain('family');
     expect(values).toEqual([
-      JSON.stringify([{ signal_type: 'genres', term_key: 'family' }]),
+      JSON.stringify([{
+        signal_type: 'genres',
+        operator: 'require_any',
+        term_key: 'family',
+      }]),
       18,
       'movie',
     ]);

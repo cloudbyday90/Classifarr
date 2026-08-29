@@ -1,6 +1,6 @@
 # Policy Purpose Coverage And Overlap Review
 
-Status: implemented for 12R.2 on 2026-08-16.
+Status: implemented for 12R.2 on 2026-08-16; semantic overlap coverage amended on 2026-08-29.
 
 ## Decision
 
@@ -17,6 +17,16 @@ The review is not a route decision and does not claim that a unique configured
 term is semantically correct. It only reports the current declarative coverage
 shape, so the operator can use the existing validated policy editor to make an
 explicit correction.
+
+### 2026-08-29 semantic-overlap amendment
+
+The v2 report and draft preflight separately count shared `require_any`
+alternatives. A policy is now marked for broad-overlap review when a shared
+alternative can satisfy an `any` rule, even if that rule also contains an
+unshared term. The earlier one-unshared-term heuristic could otherwise imply
+that a disjunctive rule was safely specific. This remains a static, advisory
+configuration review; it neither changes route scoring nor proves that an item
+belongs in the policy.
 
 ## Research
 
@@ -68,7 +78,8 @@ requires an authenticated administrator. The response contains:
 
 - `policy` and `library` identities required to find the existing policy;
 - bounded counts of required content signal types, required terms, unshared
-  terms, shared terms, and overlapping active destinations;
+  terms, shared terms, overlapping active destinations, shared `require_any`
+  alternatives, and destinations participating in that `require_any` overlap;
 - one of `declared_specialized_coverage`,
   `missing_specialized_coverage`, or `broad_overlap_review_required`; and
 - a server-authored editor action when review is required.
@@ -81,6 +92,10 @@ report payload.
 The shared-term calculation is deliberately limited to different active
 libraries of the same media type. Multiple policies attached to the same
 destination do not create a cross-destination overlap finding.
+
+`require_any` overlap is deliberately conservative: any shared alternative can
+be sufficient for that rule and therefore requires maintenance review. The
+report still does not disclose the term, policy JSON, or draft contents.
 
 ## Verification
 

@@ -153,6 +153,8 @@ describe('Policy purpose coverage preflight integration', () => {
         requiredTermCount: 1,
         sharedRequiredTermCount: 1,
         overlappingDestinationCount: 1,
+        sharedRequireAnyTermCount: 1,
+        sharedRequireAnyDestinationCount: 1,
       }),
     }));
     expect(after.rows).toEqual(before.rows);

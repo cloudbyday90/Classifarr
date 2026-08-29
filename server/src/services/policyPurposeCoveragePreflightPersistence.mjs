@@ -20,9 +20,14 @@ function normalizeCandidateTerms(candidateTerms = []) {
   const termsByKey = new Map();
   for (const candidate of Array.isArray(candidateTerms) ? candidateTerms : []) {
     const signalType = typeof candidate?.signalType === 'string' ? candidate.signalType.trim() : '';
+    const operator = typeof candidate?.operator === 'string' ? candidate.operator.trim() : '';
     const termKey = typeof candidate?.termKey === 'string' ? candidate.termKey.trim().toLowerCase() : '';
-    if (!['genres', 'keywords', 'studios'].includes(signalType) || !termKey) continue;
-    termsByKey.set(`${signalType}\u0000${termKey}`, { signal_type: signalType, term_key: termKey });
+    if (!['genres', 'keywords', 'studios'].includes(signalType) ||
+        !['require_all', 'require_any'].includes(operator) || !termKey) continue;
+    termsByKey.set(
+      `${signalType}\u0000${operator}\u0000${termKey}`,
+      { signal_type: signalType, operator, term_key: termKey },
+    );
   }
   return [...termsByKey.values()];
 }
@@ -63,10 +68,16 @@ export async function loadPolicyPurposeCoveragePreflightOverlap({
     `WITH candidate_terms AS (
        SELECT DISTINCT
          candidate.signal_type,
+         candidate.operator,
          LOWER(BTRIM(candidate.term_key)) AS term_key
-       FROM jsonb_to_recordset($1::jsonb) AS candidate(signal_type TEXT, term_key TEXT)
+       FROM jsonb_to_recordset($1::jsonb) AS candidate(
+         signal_type TEXT,
+         operator TEXT,
+         term_key TEXT
+       )
        WHERE candidate.signal_type IN ('genres', 'keywords', 'studios')
          AND BTRIM(candidate.term_key) <> ''
+         AND candidate.operator IN ('require_all', 'require_any')
      ),
      active_native_terms AS (
        SELECT DISTINCT
@@ -110,12 +121,17 @@ export async function loadPolicyPurposeCoveragePreflightOverlap({
          AND BTRIM(configured_term.term_value #>> '{}') <> ''
      ),
      shared_terms AS (
-       SELECT candidate.signal_type, candidate.term_key
+       SELECT candidate.signal_type, candidate.operator, candidate.term_key
        FROM candidate_terms candidate
        JOIN active_native_terms active
          ON active.signal_type = candidate.signal_type
         AND active.term_key = candidate.term_key
-       GROUP BY candidate.signal_type, candidate.term_key
+       GROUP BY candidate.signal_type, candidate.operator, candidate.term_key
+     ),
+     shared_require_any_terms AS (
+       SELECT signal_type, term_key
+       FROM shared_terms
+       WHERE operator = 'require_any'
      )
      SELECT
        (SELECT COUNT(DISTINCT signal_type)::INTEGER FROM candidate_terms)
@@ -128,7 +144,16 @@ export async function loadPolicyPurposeCoveragePreflightOverlap({
          JOIN shared_terms shared
            ON shared.signal_type = active.signal_type
           AND shared.term_key = active.term_key
-       ) AS overlapping_destination_count`,
+       ) AS overlapping_destination_count,
+       (SELECT COUNT(*)::INTEGER FROM shared_require_any_terms)
+         AS shared_require_any_term_count,
+       (
+         SELECT COUNT(DISTINCT active.library_id)::INTEGER
+         FROM active_native_terms active
+         JOIN shared_require_any_terms shared
+           ON shared.signal_type = active.signal_type
+          AND shared.term_key = active.term_key
+       ) AS shared_require_any_destination_count`,
     [JSON.stringify(normalizedTerms), libraryId, mediaType],
   );
 
@@ -137,5 +162,7 @@ export async function loadPolicyPurposeCoveragePreflightOverlap({
     required_term_count: 0,
     shared_required_term_count: 0,
     overlapping_destination_count: 0,
+    shared_require_any_term_count: 0,
+    shared_require_any_destination_count: 0,
   };
 }

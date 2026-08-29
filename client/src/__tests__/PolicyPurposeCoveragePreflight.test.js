@@ -23,6 +23,8 @@ describe('PolicyPurposeCoveragePreflight', () => {
             unsharedRequiredTermCount: 0,
             sharedRequiredTermCount: 2,
             overlappingDestinationCount: 1,
+            sharedRequireAnyTermCount: 1,
+            sharedRequireAnyDestinationCount: 1,
           },
           guidance: {
             title: 'Review shared purpose coverage before saving',
@@ -42,6 +44,7 @@ describe('PolicyPurposeCoveragePreflight', () => {
     expect(wrapper.text()).toContain('Broad Overlap Review Required')
     expect(wrapper.text()).toContain('Required terms')
     expect(wrapper.text()).toContain('Unshared terms')
+    expect(wrapper.text()).toContain('Shared “any” alternatives')
     expect(wrapper.text()).toContain('does not retain the draft')
     expect(wrapper.text()).not.toContain('shared-purpose-token')
 

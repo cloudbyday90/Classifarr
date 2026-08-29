@@ -74,7 +74,7 @@ describe('Policy purpose coverage review integration', () => {
     }
   });
 
-  test('reports missing purpose coverage and complete same-media-type overlap without returning configured terms', async () => {
+  test('reports missing purpose coverage, shared “any” alternatives, and complete same-media-type overlap without returning configured terms', async () => {
     const maintained = await createNativePurposeFixture({
       libraryName: 'Coverage Maintained Library',
       policyName: 'Coverage Maintained Policy',
@@ -102,6 +102,15 @@ describe('Policy purpose coverage review integration', () => {
         values: { require_any: ['shared-review-token'] },
       }],
     });
+    const mixedAny = await createNativePurposeFixture({
+      libraryName: 'Coverage Mixed Any Library',
+      policyName: 'Coverage Mixed Any Policy',
+      purposeRules: [{
+        signal_type: 'genres',
+        operator: 'require_any',
+        values: { require_any: ['shared-review-token', 'unique-mixed-review-token'] },
+      }],
+    });
     const missing = await createNativePurposeFixture({
       libraryName: 'Coverage Missing Library',
       policyName: 'Coverage Missing Policy',
@@ -111,7 +120,7 @@ describe('Policy purpose coverage review integration', () => {
         values: { require_any: ['movie'] },
       }],
     });
-    fixtures.push(maintained, broadOne, broadTwo, missing);
+    fixtures.push(maintained, broadOne, broadTwo, mixedAny, missing);
 
     const review = await new PolicyPurposeCoverageReviewService({
       db,
@@ -124,20 +133,33 @@ describe('Policy purpose coverage review integration', () => {
       requiredTermCount: 1,
       uniqueRequiredTermCount: 1,
       sharedRequiredTermCount: 0,
+      sharedRequireAnyTermCount: 0,
     }));
     expect(entryByPolicyId.get(broadOne.policyId).coverage).toEqual(expect.objectContaining({
       statusId: 'broad_overlap_review_required',
       requiredTermCount: 1,
       uniqueRequiredTermCount: 0,
       sharedRequiredTermCount: 1,
-      overlappingDestinationCount: 1,
+      overlappingDestinationCount: 2,
+      sharedRequireAnyTermCount: 1,
+      sharedRequireAnyDestinationCount: 2,
     }));
     expect(entryByPolicyId.get(broadTwo.policyId).coverage).toEqual(expect.objectContaining({
       statusId: 'broad_overlap_review_required',
       requiredTermCount: 1,
       uniqueRequiredTermCount: 0,
       sharedRequiredTermCount: 1,
-      overlappingDestinationCount: 1,
+      overlappingDestinationCount: 2,
+      sharedRequireAnyTermCount: 1,
+      sharedRequireAnyDestinationCount: 2,
+    }));
+    expect(entryByPolicyId.get(mixedAny.policyId).coverage).toEqual(expect.objectContaining({
+      statusId: 'broad_overlap_review_required',
+      requiredTermCount: 2,
+      uniqueRequiredTermCount: 1,
+      sharedRequiredTermCount: 1,
+      sharedRequireAnyTermCount: 1,
+      sharedRequireAnyDestinationCount: 2,
     }));
     expect(entryByPolicyId.get(missing.policyId).coverage).toEqual(expect.objectContaining({
       statusId: 'missing_specialized_coverage',
@@ -148,5 +170,6 @@ describe('Policy purpose coverage review integration', () => {
     expect(review.routingAffected).toBe(false);
     expect(JSON.stringify(review)).not.toContain('unique-review-token');
     expect(JSON.stringify(review)).not.toContain('shared-review-token');
+    expect(JSON.stringify(review)).not.toContain('unique-mixed-review-token');
   });
 });

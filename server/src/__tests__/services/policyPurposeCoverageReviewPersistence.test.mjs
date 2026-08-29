@@ -14,7 +14,7 @@ import {
 } from '../../services/policyPurposeCoverageReviewPersistence.mjs';
 
 describe('policyPurposeCoverageReviewPersistence', () => {
-  test('compares active native required content terms inside PostgreSQL without selecting rule values', async () => {
+  test('compares active native required content terms and shared “any” alternatives inside PostgreSQL without selecting rule values', async () => {
     const query = jest.fn().mockResolvedValue({ rows: [] });
 
     await loadPolicyPurposeCoverageReviewRecords({
@@ -29,7 +29,10 @@ describe('policyPurposeCoverageReviewPersistence', () => {
     expect(sql).toContain("rule.signal_type IN ('genres', 'keywords', 'studios')")
     expect(sql).toContain("rule.values -> 'require_all'")
     expect(sql).toContain("rule.values -> 'require_any'")
+    expect(sql).toContain("'require_any'::TEXT AS operator")
     expect(sql).toContain('other_terms.library_id <> candidate_terms.library_id')
+    expect(sql).toContain('shared_require_any_counts AS')
+    expect(sql).toContain("candidate_terms.term_operator = 'require_any'")
     expect(sql).not.toMatch(/SELECT\s+[^;]*rule\.values\s+AS/isu)
     expect(sql).not.toContain('classification_history')
     expect(sql).not.toContain('rag_')

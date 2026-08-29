@@ -19,7 +19,7 @@
         Policy purpose coverage
       </h2>
       <p class="mt-1 max-w-3xl text-sm text-gray-400">
-        This read-only review compares current declared native-purpose coverage for active destinations of the same media type. It does not expose rule values, inspect classified items, call AI, or change routing.
+        This read-only review compares current declared native-purpose coverage for active destinations of the same media type, including shared “any” alternatives that can make a broad match possible. It does not expose rule values, inspect classified items, call AI, or change routing.
       </p>
     </div>
 
@@ -108,7 +108,7 @@
             </button>
           </div>
 
-          <dl class="mt-4 grid gap-3 rounded border border-gray-700 bg-background/50 p-4 text-sm sm:grid-cols-2 lg:grid-cols-5">
+          <dl class="mt-4 grid gap-3 rounded border border-gray-700 bg-background/50 p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <dt class="text-xs uppercase tracking-wide text-gray-400">
                 Required content signals
@@ -147,6 +147,20 @@
               </dt>
               <dd class="mt-1 text-white">
                 {{ entry.coverage.overlappingDestinationCount }}
+              </dd>
+            </div>
+            <div>
+              <dt class="text-xs uppercase tracking-wide text-gray-400">
+                Shared “any” alternatives
+              </dt>
+              <dd class="mt-1 text-white">
+                {{ sharedRequireAnyTermCount(entry) }}
+                <span
+                  v-if="sharedRequireAnyDestinationCount(entry) > 0"
+                  class="text-gray-400"
+                >
+                  across {{ sharedRequireAnyDestinationCount(entry) }} destination{{ sharedRequireAnyDestinationCount(entry) === 1 ? '' : 's' }}
+                </span>
               </dd>
             </div>
           </dl>
@@ -203,5 +217,18 @@ function statusClass(statusId) {
   return statusId === 'declared_specialized_coverage'
     ? 'text-green-200'
     : 'text-amber-200'
+}
+
+function nonNegativeCount(value) {
+  const count = Number(value)
+  return Number.isInteger(count) && count >= 0 ? count : 0
+}
+
+function sharedRequireAnyTermCount(entry) {
+  return nonNegativeCount(entry?.coverage?.sharedRequireAnyTermCount)
+}
+
+function sharedRequireAnyDestinationCount(entry) {
+  return nonNegativeCount(entry?.coverage?.sharedRequireAnyDestinationCount)
 }
 </script>

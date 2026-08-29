@@ -50,11 +50,12 @@ export async function loadPolicyPurposeCoverageReviewRecords({ db, limit }) {
          active.library_id,
          active.normalized_media_type,
          rule.signal_type,
+         configured_term.operator AS term_operator,
          LOWER(BTRIM(configured_term.term_value #>> '{}')) AS term_key
        FROM active_native_policies active
        JOIN policy_intent_rules rule ON rule.intent_id = active.intent_id
        CROSS JOIN LATERAL (
-         SELECT require_all.value AS term_value
+         SELECT require_all.value AS term_value, 'require_all'::TEXT AS operator
          FROM jsonb_array_elements(
            CASE
              WHEN jsonb_typeof(rule.values -> 'require_all') = 'array'
@@ -63,7 +64,7 @@ export async function loadPolicyPurposeCoverageReviewRecords({ db, limit }) {
            END
          ) AS require_all(value)
          UNION
-         SELECT require_any.value AS term_value
+         SELECT require_any.value AS term_value, 'require_any'::TEXT AS operator
          FROM jsonb_array_elements(
            CASE
              WHEN jsonb_typeof(rule.values -> 'require_any') = 'array'
@@ -99,6 +100,22 @@ export async function loadPolicyPurposeCoverageReviewRecords({ db, limit }) {
         AND other_terms.signal_type = candidate_terms.signal_type
         AND other_terms.term_key = candidate_terms.term_key
        GROUP BY candidate_terms.policy_id
+     ),
+     shared_require_any_counts AS (
+       SELECT
+         candidate_terms.policy_id,
+         COUNT(DISTINCT (candidate_terms.signal_type, candidate_terms.term_key))::INTEGER
+           AS shared_require_any_term_count,
+         COUNT(DISTINCT other_terms.library_id)::INTEGER
+           AS shared_require_any_destination_count
+       FROM required_content_terms candidate_terms
+       JOIN required_content_terms other_terms
+         ON other_terms.normalized_media_type = candidate_terms.normalized_media_type
+        AND other_terms.library_id <> candidate_terms.library_id
+        AND other_terms.signal_type = candidate_terms.signal_type
+        AND other_terms.term_key = candidate_terms.term_key
+       WHERE candidate_terms.term_operator = 'require_any'
+       GROUP BY candidate_terms.policy_id
      )
      SELECT
        active.policy_id,
@@ -112,10 +129,16 @@ export async function loadPolicyPurposeCoverageReviewRecords({ db, limit }) {
        COALESCE(overlap.shared_required_term_count, 0)::INTEGER
          AS shared_required_term_count,
        COALESCE(overlap.overlapping_destination_count, 0)::INTEGER
-         AS overlapping_destination_count
+         AS overlapping_destination_count,
+       COALESCE(shared_require_any.shared_require_any_term_count, 0)::INTEGER
+         AS shared_require_any_term_count,
+       COALESCE(shared_require_any.shared_require_any_destination_count, 0)::INTEGER
+         AS shared_require_any_destination_count
      FROM active_native_policies active
      LEFT JOIN policy_term_counts term_counts ON term_counts.policy_id = active.policy_id
      LEFT JOIN overlap_counts overlap ON overlap.policy_id = active.policy_id
+     LEFT JOIN shared_require_any_counts shared_require_any
+       ON shared_require_any.policy_id = active.policy_id
      ORDER BY active.policy_id ASC
      LIMIT $1`,
     [limit],

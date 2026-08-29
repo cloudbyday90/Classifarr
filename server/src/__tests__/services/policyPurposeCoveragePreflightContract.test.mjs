@@ -69,8 +69,16 @@ describe('policyPurposeCoveragePreflightContract', () => {
       requiredSignalTypeCount: 2,
       requiredTermCount: 2,
       terms: expect.arrayContaining([
-        { signalType: 'genres', termKey: 'family-preflight-token' },
-        { signalType: 'keywords', termKey: 'coming of age' },
+        {
+          signalType: 'genres',
+          operator: 'require_any',
+          termKey: 'family-preflight-token',
+        },
+        {
+          signalType: 'keywords',
+          operator: 'require_all',
+          termKey: 'coming of age',
+        },
       ]),
     });
     expect(candidate.terms).not.toContainEqual(
@@ -91,12 +99,14 @@ describe('policyPurposeCoveragePreflightContract', () => {
       overlap: {
         shared_required_term_count: 2,
         overlapping_destination_count: 1,
+        shared_require_any_term_count: 1,
+        shared_require_any_destination_count: 1,
       },
       evaluatedAt: '2026-08-16T12:00:00.000Z',
     });
 
     expect(preflight).toEqual(expect.objectContaining({
-      version: 'policy_purpose_coverage_preflight.v1',
+      version: 'policy_purpose_coverage_preflight.v2',
       advisory: true,
       draftRetained: false,
       rawConfigurationExposed: false,
@@ -108,6 +118,8 @@ describe('policyPurposeCoveragePreflightContract', () => {
         requiredSignalTypeCount: 2,
         requiredTermCount: 2,
         uniqueRequiredTermCount: 0,
+        sharedRequireAnyTermCount: 1,
+        sharedRequireAnyDestinationCount: 1,
       }),
     }));
     expect(JSON.stringify(preflight)).not.toContain('Coming Of Age');

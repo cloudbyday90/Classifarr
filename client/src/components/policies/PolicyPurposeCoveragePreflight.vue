@@ -106,6 +106,20 @@
         </div>
         <div>
           <dt class="text-gray-400">
+            Shared “any” alternatives
+          </dt>
+          <dd class="font-medium text-white">
+            {{ coverage.sharedRequireAnyTermCount }}
+            <span
+              v-if="coverage.sharedRequireAnyDestinationCount > 0"
+              class="font-normal text-gray-400"
+            >
+              across {{ coverage.sharedRequireAnyDestinationCount }} destination{{ coverage.sharedRequireAnyDestinationCount === 1 ? '' : 's' }}
+            </span>
+          </dd>
+        </div>
+        <div>
+          <dt class="text-gray-400">
             Review status
           </dt>
           <dd class="font-medium text-white">
@@ -153,6 +167,10 @@ const coverage = computed(() => ({
   unsharedRequiredTermCount: Number(props.preflight?.coverage?.unsharedRequiredTermCount) || 0,
   sharedRequiredTermCount: Number(props.preflight?.coverage?.sharedRequiredTermCount) || 0,
   overlappingDestinationCount: Number(props.preflight?.coverage?.overlappingDestinationCount) || 0,
+  sharedRequireAnyTermCount: Number(props.preflight?.coverage?.sharedRequireAnyTermCount) || 0,
+  sharedRequireAnyDestinationCount: Number(
+    props.preflight?.coverage?.sharedRequireAnyDestinationCount,
+  ) || 0,
   statusId: props.preflight?.coverage?.statusId || 'not_available',
 }))
 

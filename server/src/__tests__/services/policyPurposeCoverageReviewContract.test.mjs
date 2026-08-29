@@ -34,7 +34,7 @@ describe('policyPurposeCoverageReviewContract', () => {
     });
 
     expect(review).toEqual(expect.objectContaining({
-      version: 'policy_purpose_coverage_review.v1',
+      version: 'policy_purpose_coverage_review.v2',
       rawConfigurationExposed: false,
       routingAffected: false,
       summary: expect.objectContaining({
@@ -57,7 +57,7 @@ describe('policyPurposeCoverageReviewContract', () => {
     expect(JSON.stringify(review)).not.toContain('must-not-leak');
   });
 
-  test('requires review only when every declared required content term is shared', () => {
+  test('requires review when a shared “any” alternative can satisfy an otherwise distinct policy', () => {
     const review = buildPolicyPurposeCoverageReview({
       records: [{
         policy_id: 17,
@@ -71,8 +71,20 @@ describe('policyPurposeCoverageReviewContract', () => {
         overlapping_destination_count: 2,
       }, {
         policy_id: 19,
-        policy_name: 'Specific Policy',
+        policy_name: 'Mixed Any Policy',
         library_id: 20,
+        library_name: 'Mixed Any Library',
+        library_media_type: 'tv',
+        required_signal_type_count: 1,
+        required_term_count: 3,
+        shared_required_term_count: 2,
+        overlapping_destination_count: 2,
+        shared_require_any_term_count: 1,
+        shared_require_any_destination_count: 1,
+      }, {
+        policy_id: 21,
+        policy_name: 'Specific Policy',
+        library_id: 22,
         library_name: 'Specific Library',
         library_media_type: 'tv',
         required_signal_type_count: 1,
@@ -90,6 +102,8 @@ describe('policyPurposeCoverageReviewContract', () => {
         uniqueRequiredTermCount: 0,
         sharedRequiredTermCount: 3,
         overlappingDestinationCount: 2,
+        sharedRequireAnyTermCount: 0,
+        sharedRequireAnyDestinationCount: 0,
       },
       action: expect.objectContaining({
         actionId: POLICY_PURPOSE_COVERAGE_ACTION_IDS.REVIEW_BROAD_OVERLAP,
@@ -98,8 +112,21 @@ describe('policyPurposeCoverageReviewContract', () => {
     }));
     expect(review.entries[1]).toEqual(expect.objectContaining({
       coverage: expect.objectContaining({
+        statusId: POLICY_PURPOSE_COVERAGE_STATUS_IDS.BROAD_OVERLAP_REVIEW_REQUIRED,
+        uniqueRequiredTermCount: 1,
+        sharedRequireAnyTermCount: 1,
+        sharedRequireAnyDestinationCount: 1,
+      }),
+      action: expect.objectContaining({
+        actionId: POLICY_PURPOSE_COVERAGE_ACTION_IDS.REVIEW_BROAD_OVERLAP,
+        available: true,
+      }),
+    }));
+    expect(review.entries[2]).toEqual(expect.objectContaining({
+      coverage: expect.objectContaining({
         statusId: POLICY_PURPOSE_COVERAGE_STATUS_IDS.DECLARED_SPECIALIZED_COVERAGE,
         uniqueRequiredTermCount: 1,
+        sharedRequireAnyTermCount: 0,
       }),
       action: expect.objectContaining({
         actionId: POLICY_PURPOSE_COVERAGE_ACTION_IDS.NO_ACTION_REQUIRED,

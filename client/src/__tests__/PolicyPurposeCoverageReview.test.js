@@ -20,6 +20,8 @@ const entry = {
     uniqueRequiredTermCount: 0,
     sharedRequiredTermCount: 2,
     overlappingDestinationCount: 1,
+    sharedRequireAnyTermCount: 1,
+    sharedRequireAnyDestinationCount: 1,
   },
   action: {
     available: true,
@@ -50,6 +52,7 @@ describe('PolicyPurposeCoverageReview', () => {
     expect(wrapper.text()).toContain('Unshared terms')
     expect(wrapper.text()).toContain('Shared terms')
     expect(wrapper.text()).toContain('Overlapping destinations')
+    expect(wrapper.text()).toContain('Shared “any” alternatives')
     expect(wrapper.text()).toContain('does not expose rule values')
     expect(wrapper.text()).not.toContain('shared-review-token')
 

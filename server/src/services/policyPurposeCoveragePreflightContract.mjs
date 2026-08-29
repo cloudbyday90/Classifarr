@@ -17,9 +17,10 @@ import {
   buildPolicyPurposeCoverage,
 } from './policyPurposeCoverageReviewContract.mjs';
 
-export const POLICY_PURPOSE_COVERAGE_PREFLIGHT_VERSION = 1;
+export const POLICY_PURPOSE_COVERAGE_PREFLIGHT_VERSION = 2;
 
 const PURPOSE_SIGNAL_TYPES = Object.freeze(['genres', 'keywords', 'studios']);
+const REQUIRED_TERM_OPERATORS = Object.freeze(['require_all', 'require_any']);
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -49,9 +50,10 @@ function toIsoTimestamp(value) {
 }
 
 function collectRequiredTerms(values = {}) {
-  return ['require_all', 'require_any'].flatMap(key => asArray(values[key]))
+  return REQUIRED_TERM_OPERATORS.flatMap(operator => asArray(values[operator])
     .map(asNonEmptyString)
-    .filter(Boolean);
+    .filter(Boolean)
+    .map(term => ({ operator, term })));
 }
 
 /**
@@ -72,9 +74,12 @@ export function buildPolicyPurposeCoveragePreflightCandidate(draft) {
       const metadata = asObject(entry?.metadata);
       if (metadata.semantics === 'compatibility') continue;
 
-      for (const term of collectRequiredTerms(asObject(entry?.values))) {
+      for (const { operator, term } of collectRequiredTerms(asObject(entry?.values))) {
         const termKey = term.toLowerCase();
-        candidateTermsByKey.set(`${signalType}\u0000${termKey}`, { signalType, termKey });
+        candidateTermsByKey.set(
+          `${signalType}\u0000${operator}\u0000${termKey}`,
+          { signalType, operator, termKey },
+        );
       }
     }
   }
@@ -83,7 +88,7 @@ export function buildPolicyPurposeCoveragePreflightCandidate(draft) {
   return {
     terms,
     requiredSignalTypeCount: new Set(terms.map(term => term.signalType)).size,
-    requiredTermCount: terms.length,
+    requiredTermCount: new Set(terms.map(term => `${term.signalType}\u0000${term.termKey}`)).size,
   };
 }
 
@@ -97,7 +102,9 @@ function buildGuidance(coverage = {}) {
     case POLICY_PURPOSE_COVERAGE_STATUS_IDS.BROAD_OVERLAP_REVIEW_REQUIRED:
       return {
         title: 'Review shared purpose coverage before saving',
-        description: 'Every proposed required content signal is shared with another active destination of the same media type. Consider a more specific declared purpose, then run this advisory check again. This check does not select a destination.',
+        description: coverage.sharedRequireAnyTermCount > 0
+          ? 'A proposed required “any” alternative is shared with another active destination of the same media type. Consider replacing or narrowing that broad alternative, then run this advisory check again. This check does not select a destination.'
+          : 'Every proposed required content signal is shared with another active destination of the same media type. Consider a more specific declared purpose, then run this advisory check again. This check does not select a destination.',
       };
     default:
       return {
@@ -122,6 +129,10 @@ export function buildPolicyPurposeCoveragePreflight({
     required_term_count: candidate.requiredTermCount,
     shared_required_term_count: asNonNegativeInteger(overlap.shared_required_term_count),
     overlapping_destination_count: asNonNegativeInteger(overlap.overlapping_destination_count),
+    shared_require_any_term_count: asNonNegativeInteger(overlap.shared_require_any_term_count),
+    shared_require_any_destination_count: asNonNegativeInteger(
+      overlap.shared_require_any_destination_count,
+    ),
   });
 
   return {

@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-export const POLICY_PURPOSE_COVERAGE_REVIEW_VERSION = 1;
+export const POLICY_PURPOSE_COVERAGE_REVIEW_VERSION = 2;
 export const DEFAULT_POLICY_PURPOSE_COVERAGE_REVIEW_ROWS = 50;
 export const MAX_POLICY_PURPOSE_COVERAGE_REVIEW_ROWS = 100;
 
@@ -65,10 +65,18 @@ export function buildPolicyPurposeCoverage(record = {}) {
   );
   const uniqueRequiredTermCount = requiredTermCount - sharedRequiredTermCount;
   const overlappingDestinationCount = asNonNegativeInteger(record.overlapping_destination_count);
+  const sharedRequireAnyTermCount = Math.min(
+    requiredTermCount,
+    asNonNegativeInteger(record.shared_require_any_term_count),
+  );
+  const sharedRequireAnyDestinationCount = asNonNegativeInteger(
+    record.shared_require_any_destination_count,
+  );
 
   const statusId = requiredTermCount === 0
     ? POLICY_PURPOSE_COVERAGE_STATUS_IDS.MISSING_SPECIALIZED_COVERAGE
-    : uniqueRequiredTermCount === 0 && overlappingDestinationCount > 0
+    : sharedRequireAnyTermCount > 0 ||
+        (uniqueRequiredTermCount === 0 && overlappingDestinationCount > 0)
       ? POLICY_PURPOSE_COVERAGE_STATUS_IDS.BROAD_OVERLAP_REVIEW_REQUIRED
       : POLICY_PURPOSE_COVERAGE_STATUS_IDS.DECLARED_SPECIALIZED_COVERAGE;
 
@@ -79,6 +87,8 @@ export function buildPolicyPurposeCoverage(record = {}) {
     uniqueRequiredTermCount,
     sharedRequiredTermCount,
     overlappingDestinationCount,
+    sharedRequireAnyTermCount,
+    sharedRequireAnyDestinationCount,
   };
 }
 
@@ -97,7 +107,9 @@ function buildAction(coverage = {}) {
         actionId: POLICY_PURPOSE_COVERAGE_ACTION_IDS.REVIEW_BROAD_OVERLAP,
         available: true,
         title: 'Review shared purpose coverage',
-        description: 'Every current required content signal is also declared by another active destination of the same media type. Review the policy purpose for specificity in the existing editor; this report does not choose or alter a destination.',
+        description: coverage.sharedRequireAnyTermCount > 0
+          ? 'A current required “any” alternative is also declared by another active destination of the same media type. Review that broad alternative for specificity in the existing editor; this report does not choose or alter a destination.'
+          : 'Every current required content signal is also declared by another active destination of the same media type. Review the policy purpose for specificity in the existing editor; this report does not choose or alter a destination.',
         actionLabel: 'Review policy',
       };
     default:
