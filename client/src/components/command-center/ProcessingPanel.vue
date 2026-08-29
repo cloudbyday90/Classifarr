@@ -117,6 +117,10 @@
           @open-ai-settings="$emit('open-ai-settings')"
         />
 
+        <DecisionPathTelemetry
+          :telemetry="classificationDecisionPathTelemetry"
+        />
+
         <div
           v-if="upNextTasks.length"
           class="up-next"
@@ -169,11 +173,13 @@
 </template>
 
 <script setup>
+import DecisionPathTelemetry from './DecisionPathTelemetry.vue'
 import QueueAdmissionDiagnostics from './QueueAdmissionDiagnostics.vue'
 
 const props = defineProps({
   aiGenerationTelemetryLine: { type: String, default: '' },
   classificationAdmissionDiagnostics: { type: Object, default: null },
+  classificationDecisionPathTelemetry: { type: Object, default: null },
   completedStageCount: { type: Function, default: null },
   formatMediaType: { type: Function, default: null },
   formatNumber: { type: Function, required: true },

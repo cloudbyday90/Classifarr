@@ -1,5 +1,5 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-08-29T08:53:53.526Z
+-- Generated: 2026-08-29T11:27:29.846Z
 -- Latest Migration: 20260829_100000_add_ollama_verification_runtime_mismatch_metrics.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
@@ -799,7 +799,7 @@ CREATE TABLE public.ai_provider_config (
     CONSTRAINT ai_cfg_trace_max_events_chk CHECK (((rag_loop_trace_max_events >= 1) AND (rag_loop_trace_max_events <= 200))),
     CONSTRAINT ai_provider_config_jitter_factor_check CHECK (((jitter_factor >= (0)::numeric) AND (jitter_factor <= (1)::numeric))),
     CONSTRAINT ai_provider_config_ollama_verification_capability_latency_ck CHECK (((ollama_verification_capability_latency_ms IS NULL) OR (ollama_verification_capability_latency_ms >= 0))),
-    CONSTRAINT ai_provider_config_ollama_verification_capability_status_ck CHECK (((ollama_verification_capability_status)::text = ANY ((ARRAY['not_checked'::character varying, 'verification_ready'::character varying, 'classification_only'::character varying, 'unavailable'::character varying, 'model_changed'::character varying])::text[]))),
+    CONSTRAINT ai_provider_config_ollama_verification_capability_status_ck CHECK (((ollama_verification_capability_status)::text = ANY (ARRAY[('not_checked'::character varying)::text, ('verification_ready'::character varying)::text, ('classification_only'::character varying)::text, ('unavailable'::character varying)::text, ('model_changed'::character varying)::text]))),
     CONSTRAINT ai_provider_config_retry_backoff_multiplier_check CHECK (((retry_backoff_multiplier >= 1.0) AND (retry_backoff_multiplier <= 5.0))),
     CONSTRAINT ai_provider_config_revision_ck CHECK ((configuration_revision >= 0)),
     CONSTRAINT formula_weights_sum_check CHECK ((((((formula_pattern_weight + formula_rule_weight) + formula_rag_weight) + formula_history_weight) >= (0.99)::double precision) AND ((((formula_pattern_weight + formula_rule_weight) + formula_rag_weight) + formula_history_weight) <= (1.01)::double precision)))

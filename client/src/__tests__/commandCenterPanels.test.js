@@ -151,6 +151,31 @@ describe('CommandCenter extracted panels', () => {
     expect(wrapper.emitted('open-ai-settings')).toHaveLength(1)
   })
 
+  it('renders bounded decision-path telemetry only in the queued processing state', () => {
+    const wrapper = mount(ProcessingPanel, {
+      props: {
+        ...processingHelpers,
+        classificationDecisionPathTelemetry: {
+          version: 'classification.decision_path_telemetry.v1',
+          window: { hours: 24 },
+          counts: {
+            deterministicPolicy: 4,
+            aiClassificationAttempt: 2,
+            aiUnavailableRetry: 1,
+            strictVerificationAbstention: 1,
+          },
+        },
+        librarySyncIsRunning: false,
+        primaryActiveTask: null,
+        queuePendingCount: 1,
+      },
+    })
+
+    expect(wrapper.text()).toContain('Recent decision paths')
+    expect(wrapper.text()).toContain('AI was not needed')
+    expect(wrapper.text()).toContain('AI unavailable — retry queued')
+  })
+
   it('renders overview sections and emits section-level actions', async () => {
     const wrapper = mount(CommandCenterOverviewSections, {
       props: {

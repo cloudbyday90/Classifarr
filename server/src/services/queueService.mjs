@@ -62,6 +62,9 @@ import { EnrichmentItemStateService } from './enrichmentItemStateService.mjs';
 import {
   createClassificationQueueAdmissionDiagnosticsService,
 } from './classificationQueueAdmissionDiagnosticsService.mjs';
+import {
+  createClassificationDecisionPathTelemetryService,
+} from './classificationDecisionPathTelemetryService.mjs';
 
 
 const POLL_INTERVAL_MS = 1000;
@@ -101,6 +104,11 @@ export class QueueService {
         database: this.db,
         logger: this.logger,
       });
+    this.classificationDecisionPathTelemetryService = deps.classificationDecisionPathTelemetryService
+      || createClassificationDecisionPathTelemetryService({
+        database: this.db,
+        logger: this.logger,
+      });
 
 
     this.running = false;
@@ -123,6 +131,9 @@ export class QueueService {
       }),
       getClassificationAdmissionDiagnostics: (input) => (
         this.classificationQueueAdmissionDiagnosticsService.getDiagnostics(input)
+      ),
+      getClassificationDecisionPathTelemetry: (input) => (
+        this.classificationDecisionPathTelemetryService.getTelemetry(input)
       ),
       getSyncStatus: () => this.syncStatus.getStatus(),
       enrichmentRetryService: this.enrichmentRetryService,

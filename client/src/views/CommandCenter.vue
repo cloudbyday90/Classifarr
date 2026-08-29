@@ -131,6 +131,7 @@
             :ai-generation-telemetry-line="aiGenerationTelemetryLine"
             :ai-online="aiOnline"
             :classification-admission-diagnostics="classificationAdmissionDiagnostics"
+            :classification-decision-path-telemetry="classificationDecisionPathTelemetry"
             :completed-stage-count="completedStageCount"
             :format-duration-ms="formatDurationMs"
             :format-media-type="formatMediaType"
@@ -298,6 +299,7 @@ const {
   aiOnline,
   alerts,
   classificationAdmissionDiagnostics,
+  classificationDecisionPathTelemetry,
   configureMediaServerMessage,
   enrichmentCompletedItems,
   enrichmentNotNeededItems,

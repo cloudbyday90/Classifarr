@@ -25,6 +25,8 @@ export class QueueReadModel {
         }));
         this.getClassificationAdmissionDiagnostics = deps.getClassificationAdmissionDiagnostics
             || (async () => null);
+        this.getClassificationDecisionPathTelemetry = deps.getClassificationDecisionPathTelemetry
+            || (async () => null);
         this.getRuntimeState = deps.getRuntimeState || (() => ({
             aiAvailable: false,
             workerRunning: false,
@@ -68,6 +70,9 @@ export class QueueReadModel {
                 queueStats: stats,
                 dispatchBlockers: blockers,
                 runtimeState,
+            });
+            stats.classificationDecisionPathTelemetry = await this.getClassificationDecisionPathTelemetry({
+                queueStats: stats,
             });
 
             return stats;

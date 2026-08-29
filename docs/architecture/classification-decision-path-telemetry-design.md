@@ -1,0 +1,112 @@
+# Classification decision-path telemetry design
+
+## Decision
+
+Project a short-lived, aggregate-only decision-path snapshot through the
+existing queue live-stats response only while classification work is waiting.
+The snapshot uses retained `classification_history` records; it creates no
+item-level event store and does not change a classification, policy, worker,
+provider, or retry.
+
+It answers four operational questions for the rolling prior 24 hours:
+
+1. How often did a deterministic policy route mean AI was not needed?
+2. How often did the recorded decision path attempt AI classification?
+3. How often did an AI-unavailable result remain safely queued for retry?
+4. How often did strict candidate-bound verification abstain?
+
+The counters are dimensions, not a mutually exclusive funnel. For example, a
+strict-verification abstention is also an AI classification attempt.
+
+## Architecture
+
+```text
+classification_history (existing retained outcomes)
+                │
+                ▼
+classificationDecisionPathTelemetryRepository
+  fixed aggregate query / no selected identities or content
+                │
+                ▼
+classificationDecisionPathTelemetryService
+  five-second cache / skipped when queue is empty / fail-open read
+                │
+                ▼
+QueueReadModel → GET /api/queue/live-stats
+                │
+                ▼
+useCommandCenterData → ProcessingPanel → DecisionPathTelemetry
+```
+
+The server reports only a version, a fixed window size, and four non-negative
+integer counters. The browser validates that version and every value before it
+renders fixed local copy. Unknown or malformed data is not displayed.
+
+## Data contract
+
+| Counter | Existing recorded fact | Meaning |
+| --- | --- | --- |
+| `deterministicPolicy` | Deterministic-AI-mode contract says `skip`, `invoked=false`, `policy_auto` | A valid policy auto-route did not need AI. |
+| `aiClassificationAttempt` | Deterministic-AI-mode contract says `invoked=true` | The current path tried AI, including strict verification where applicable. |
+| `aiUnavailableRetry` | `pending_retry` record using the AI-only `queued_for_retry` method | AI was temporarily unavailable and routing stayed safely deferred. |
+| `strictVerificationAbstention` | Candidate-bound-verification contract records `abstained` | Strict verification did not confirm a candidate. |
+
+Older records that predate these persisted contracts are intentionally not
+backfilled or inferred. This avoids reinterpreting historical media data and
+makes the displayed counts precise for the current contracts.
+
+## Research and principles
+
+Reviewed on 2026-08-29:
+
+- [OpenTelemetry Metrics Data Model](https://opentelemetry.io/docs/specs/otel/metrics/data-model/)
+  describes pre-aggregated time-series data and spatial reaggregation for
+  removing unwanted attributes. The design reads pre-existing outcomes and
+  emits four fixed aggregates rather than raw event records.
+- [OpenTelemetry Metrics SDK](https://opentelemetry.io/docs/specs/otel/metrics/sdk/)
+  specifies aggregation cardinality limits. The response has no selectable
+  labels or identity-bearing dimensions, so it cannot multiply time series by
+  library, title, provider, model, or request.
+- [OWASP API4:2023](https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/)
+  identifies unbounded API work as a risk. The projection uses the existing
+  `created_at` history index, a fixed 24-hour range, no client-selected range,
+  only one aggregate row, and a five-second cache.
+- [Vue Security](https://vuejs.org/guide/best-practices/security) recommends
+  treating external data as untrusted and not rendering it as templates. The
+  component uses normal interpolation for fixed local labels and no `v-html`,
+  dynamic URL, or server-provided action.
+
+## Options
+
+| Option | Pros | Cons |
+| --- | --- | --- |
+| Client derives counts from live-feed rows | No server query | Incomplete, exposes item data to presentation code, and is not an aggregate source of truth. |
+| New per-item telemetry table | Can record more detail | Duplicates retained history and increases privacy, retention, schema, and operational burden. |
+| Export provider/model-labelled telemetry | Familiar dashboards | Creates high-cardinality operational disclosure and does not answer whether AI was required. |
+| **Fixed aggregate projection from existing history** | Minimal data, clear semantics, bounded query, no migration, and no side effects | Older records without the current contracts are excluded; dimensions may overlap. |
+
+## Recommended stack
+
+1. Reuse existing persisted decision and verification contracts as the sole
+   source of truth.
+2. Query only four fixed `COUNT` filters within the last 24 hours.
+3. Serve the result only through the existing queue live-stats payload, and
+   only while classification work is pending.
+4. Cache the read briefly and fail open if telemetry cannot be read, so queue
+   status remains available.
+5. Validate the narrow versioned contract again in the Vue component and
+   render fixed text only.
+6. Keep it advisory and read-only: use existing AI Settings and queue controls
+   for any remediation; do not add an automatic retry or provider probe.
+
+## Security properties and non-goals
+
+- No model, provider, endpoint, secret, digest, title, library, policy name,
+  prompt, response, raw error, classification ID, task ID, or event record is
+  selected or returned.
+- The range and dimensions are server-owned; callers cannot turn this endpoint
+  into a history browser.
+- The telemetry read neither calls AI nor changes routing, retries, policies,
+  configuration, or worker state.
+- This does not imply that an AI outage is the reason a currently queued item
+  is waiting. Queue admission diagnostics remain the source for current state.

@@ -164,6 +164,12 @@ export function useCommandCenterData({ router }) {
       ? queueStats.value.classificationAdmissionDiagnostics
       : null
   ))
+  const classificationDecisionPathTelemetry = computed(() => (
+    queueStats.value.classificationDecisionPathTelemetry
+      && typeof queueStats.value.classificationDecisionPathTelemetry === 'object'
+      ? queueStats.value.classificationDecisionPathTelemetry
+      : null
+  ))
   const isClassificationPaused = computed(() => Boolean(queueStats.value.classificationPaused))
   const classificationPauseReason = computed(() => String(queueStats.value.classificationPauseReason || ''))
   const workerStatusLabel = computed(() => {
@@ -302,6 +308,7 @@ export function useCommandCenterData({ router }) {
     aiOnline,
     alerts,
     classificationAdmissionDiagnostics,
+    classificationDecisionPathTelemetry,
     classificationPauseReason,
     configureMediaServerMessage,
     enrichmentCompletedItems,

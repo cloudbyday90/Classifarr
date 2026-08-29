@@ -16,6 +16,7 @@ describe('QueueReadModel', () => {
     let readModel;
     let getDispatchBlockers;
     let getClassificationAdmissionDiagnostics;
+    let getClassificationDecisionPathTelemetry;
     let getRuntimeState;
     let getSyncStatus;
 
@@ -35,6 +36,7 @@ describe('QueueReadModel', () => {
             queue: { statusId: 'available' },
             strictVerification: { statusId: 'not_blocked' },
         });
+        getClassificationDecisionPathTelemetry = jest.fn().mockResolvedValue(null);
         getRuntimeState = jest.fn().mockReturnValue({
             aiAvailable: true,
             workerRunning: true,
@@ -53,6 +55,7 @@ describe('QueueReadModel', () => {
             logger,
             getDispatchBlockers,
             getClassificationAdmissionDiagnostics,
+            getClassificationDecisionPathTelemetry,
             getRuntimeState,
             getSyncStatus,
             enrichmentRetryService: {
@@ -165,6 +168,31 @@ describe('QueueReadModel', () => {
             dispatchBlockers: expect.objectContaining({ lookupFailed: false }),
             runtimeState: expect.objectContaining({ workerRunning: true }),
         }));
+    });
+
+    it('projects aggregate decision-path telemetry without changing queue totals', async () => {
+        db.query.mockResolvedValueOnce({
+            rows: [{ pending: '2', processing: '0' }],
+        }).mockResolvedValueOnce({
+            rows: [{ successful_count: '4', failed_count: '1' }],
+        });
+        getClassificationDecisionPathTelemetry.mockResolvedValueOnce({
+            version: 'classification.decision_path_telemetry.v1',
+            window: { hours: 24 },
+            counts: { deterministicPolicy: 1 },
+        });
+
+        const stats = await readModel.getStats();
+
+        expect(stats.pending).toBe(2);
+        expect(stats.classificationDecisionPathTelemetry).toEqual({
+            version: 'classification.decision_path_telemetry.v1',
+            window: { hours: 24 },
+            counts: { deterministicPolicy: 1 },
+        });
+        expect(getClassificationDecisionPathTelemetry).toHaveBeenCalledWith({
+            queueStats: expect.objectContaining({ pending: 2 }),
+        });
     });
 
     it('calculates gap analysis progress and ETA', async () => {
