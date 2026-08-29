@@ -66,6 +66,3 @@ export function createOllamaVerificationRuntimeMismatchSummaryService({
     },
   });
 }
-
-export const ollamaVerificationRuntimeMismatchSummaryService =
-  createOllamaVerificationRuntimeMismatchSummaryService();

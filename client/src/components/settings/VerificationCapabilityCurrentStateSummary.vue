@@ -72,6 +72,39 @@
       >
         Last tested: {{ formatCheckedAt(ollamaCapability.checkedAt) }}
       </p>
+
+      <div
+        v-if="requiresModelChangeRemediation"
+        class="space-y-3 rounded-md border border-amber-700/70 bg-amber-950/20 p-3"
+        aria-labelledby="ollama-model-change-remediation-heading"
+      >
+        <div class="space-y-1">
+          <p
+            id="ollama-model-change-remediation-heading"
+            class="text-xs font-medium uppercase tracking-wide text-amber-200"
+          >
+            Recommended next step
+          </p>
+          <p class="text-sm text-amber-100">
+            Run one test against the saved Ollama configuration to restore strict verification. This never retries automatically, routes media, or changes routing.
+          </p>
+          <p
+            v-if="runtimeMismatchContext.hasObservations"
+            class="text-xs text-amber-200/80"
+          >
+            Aggregate context: {{ runtimeMismatchContext.message }}
+          </p>
+        </div>
+        <Button
+          v-if="ollamaCapability.testable"
+          variant="primary"
+          :disabled="loading || testing"
+          @click="emit('test')"
+        >
+          <span v-if="testing">Re-testing saved Ollama...</span>
+          <span v-else>Re-test saved Ollama verification</span>
+        </Button>
+      </div>
     </div>
 
     <p class="text-xs text-gray-500">
@@ -86,7 +119,7 @@
         Review Aggregate Readiness
       </RouterLink>
       <Button
-        v-if="ollamaCapability?.testable"
+        v-if="ollamaCapability?.testable && !requiresModelChangeRemediation"
         variant="primary"
         :disabled="loading || testing"
         @click="emit('test')"
@@ -123,6 +156,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  runtimeMismatchSummary: {
+    type: Object,
+    default: () => null,
+  },
 })
 
 const emit = defineEmits(['refresh', 'test'])
@@ -154,7 +191,32 @@ const ollamaCapability = computed(() => {
       ? capability.guidance.filter((entry) => typeof entry === 'string').slice(0, 3)
       : [],
     checkedAt: typeof capability.checkedAt === 'string' ? capability.checkedAt : null,
+    statusId: capability.statusId === 'model_changed' ? 'model_changed' : null,
     testable: capability.testable === true,
+  }
+})
+
+const requiresModelChangeRemediation = computed(() => (
+  ollamaCapability.value?.statusId === 'model_changed'
+))
+
+const runtimeMismatchContext = computed(() => {
+  const countValue = String(props.runtimeMismatchSummary?.modelDigestMismatchCount ?? '').trim()
+  const mismatchCount = /^\d+$/.test(countValue)
+    ? countValue.replace(/^0+(?=\d)/, '')
+    : '0'
+  const observedAtValue = props.runtimeMismatchSummary?.lastObservedAt
+  const observedAt = typeof observedAtValue === 'string' && Number.isFinite(Date.parse(observedAtValue))
+    ? formatCheckedAt(observedAtValue)
+    : null
+  const hasObservations = mismatchCount !== '0' || observedAt !== null
+  const observationLabel = mismatchCount === '1' ? 'mismatch' : 'mismatches'
+
+  return {
+    hasObservations,
+    message: observedAt
+      ? `${mismatchCount} runtime ${observationLabel}; last observed ${observedAt}.`
+      : `${mismatchCount} runtime ${observationLabel} observed.`,
   }
 })
 

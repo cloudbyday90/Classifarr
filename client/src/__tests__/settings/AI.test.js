@@ -349,7 +349,7 @@ describe('AI Settings', () => {
     expect(toast.success).toHaveBeenCalledWith('Ollama verification test completed.')
   })
 
-  it('shows the bounded runtime model-change notice and provides the existing retest action', async () => {
+  it('shows a model-change-only, aggregate-safe shortcut to the existing manual retest', async () => {
     api.getAIConfig.mockResolvedValueOnce({
       primary_provider: 'ollama',
       ollama_host: 'private-ollama.internal',
@@ -368,14 +368,32 @@ describe('AI Settings', () => {
         testable: true
       }
     })
+    api.getOllamaVerificationRuntimeMismatchSummary.mockResolvedValueOnce({
+      modelDigestMismatchCount: '0004',
+      lastObservedAt: '2026-08-29T12:34:56.000Z',
+      model: 'private-model-name',
+      digest: 'private-digest',
+      endpoint: 'private-ollama.internal',
+    })
 
     const wrapper = mountView()
     await flushPromises()
 
     expect(wrapper.text()).toContain('Ollama model changed since verification')
     expect(wrapper.text()).toContain('will not call AI until this saved configuration is tested again')
-    expect(wrapper.findAll('button').some((button) => button.text().includes('Test Ollama Verification'))).toBe(true)
+    expect(wrapper.text()).toContain('Recommended next step')
+    expect(wrapper.text()).toContain('4 runtime mismatches')
+    expect(wrapper.findAll('button').some((button) => button.text().includes('Re-test saved Ollama verification'))).toBe(true)
+    expect(wrapper.findAll('button').some((button) => button.text().includes('Test Ollama Verification'))).toBe(false)
     expect(wrapper.text()).not.toContain('private-ollama.internal')
+    expect(wrapper.text()).not.toContain('private-model-name')
+    expect(wrapper.text()).not.toContain('private-digest')
+
+    const retestButton = wrapper.findAll('button').find((button) => button.text().includes('Re-test saved Ollama verification'))
+    await retestButton.trigger('click')
+    await flushPromises()
+
+    expect(api.testAIVerificationCapability).toHaveBeenCalledWith()
   })
 
   it('refreshes the saved verification capability after AI settings persist', async () => {

@@ -572,6 +572,7 @@
       <VerificationCapabilityCurrentStateSummary
         :capability="verificationCapability"
         :loading="loadingVerificationCapability"
+        :runtime-mismatch-summary="ollamaVerificationRuntimeMismatchSummary"
         :testing="testingVerificationCapability"
         @refresh="refreshVerificationCapability"
         @test="testVerificationCapability"
