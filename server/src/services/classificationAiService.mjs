@@ -329,6 +329,9 @@ Respond with ONLY one of the formats above.`;
                 format: reasoningModel ? undefined : (mode === 'verify'
                   ? candidateBoundVerificationResponseSchema
                   : classificationResponseSchema),
+                expectedModelDigest: mode === 'verify'
+                  ? provider.config?.verificationModelDigest || undefined
+                  : undefined,
                 ...(reasoningModel
                   ? {
                       initialTimeout: REASONING_INITIAL_TIMEOUT_MS,

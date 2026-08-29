@@ -10,6 +10,13 @@ import {
 import {
   resolveCandidateBoundVerificationAdmission,
 } from './classificationCandidateBoundVerificationContract.mjs';
+import {
+  buildOllamaVerificationAuthorityEvidence,
+  getOllamaVerificationCapabilityState,
+} from './ollamaVerificationCapabilityIdentity.mjs';
+import {
+  buildOllamaVerificationCapabilityPresentation,
+} from './ollamaVerificationCapabilityPresentation.mjs';
 
 export const CLASSIFICATION_CANDIDATE_BOUND_VERIFICATION_PROVIDER_PREFLIGHT_VERSION =
   'classification.candidate_bound_verification_provider_preflight.v1';
@@ -93,6 +100,16 @@ function resolveProposedConfiguration({ proposedConfiguration, existingConfigura
       ?? existing.ollama_for_budget_exhausted
       ?? true,
     ollama_model: proposed.ollama_model ?? existing.ollama_model ?? 'llama3.2',
+    ollama_host: proposed.ollama_host ?? existing.ollama_host ?? 'ollama',
+    ollama_port: proposed.ollama_port ?? existing.ollama_port ?? 11434,
+    configuration_revision: existing.configuration_revision ?? 0,
+    ollama_verification_capability_status: existing.ollama_verification_capability_status,
+    ollama_verification_capability_fingerprint: existing.ollama_verification_capability_fingerprint,
+    ollama_verification_capability_configuration_revision:
+      existing.ollama_verification_capability_configuration_revision,
+    ollama_verification_capability_model_digest: existing.ollama_verification_capability_model_digest,
+    ollama_verification_capability_checked_at: existing.ollama_verification_capability_checked_at,
+    ollama_verification_capability_error_code: existing.ollama_verification_capability_error_code,
   });
 }
 
@@ -104,10 +121,15 @@ function buildPrimaryPath(configuration) {
     });
   }
 
+  const primaryProviderId = normalizeProviderId(configuration.primary_provider);
+  const ollamaVerificationCapability = primaryProviderId === 'ollama'
+    ? buildOllamaVerificationAuthorityEvidence(configuration)
+    : null;
   const authority = buildAiProviderAuthorityProfile({
     providerId: configuration.primary_provider,
-    model: configuration.model,
+    model: primaryProviderId === 'ollama' ? configuration.ollama_model : configuration.model,
     requestedMode: AI_PROVIDER_AUTHORITY_MODE_IDS.VERIFICATION,
+    ollamaVerificationCapability,
   });
   const admission = resolveCandidateBoundVerificationAdmission({
     contract: { valid: true },
@@ -206,6 +228,9 @@ export function buildCandidateBoundVerificationProviderPreflight({
   });
   const primaryPath = buildPrimaryPath(configuration);
   const budgetFallbackPath = buildBudgetFallbackPath(configuration);
+  const ollamaVerificationCapability = buildOllamaVerificationCapabilityPresentation(
+    getOllamaVerificationCapabilityState(configuration),
+  );
   const statusId = resolvePreflightStatus({ primaryPath, budgetFallbackPath });
   const presentation = getCandidateBoundVerificationProviderPreflightStatusPresentation(
     statusId,
@@ -222,6 +247,7 @@ export function buildCandidateBoundVerificationProviderPreflight({
     guidance: presentation.guidance,
     primaryPath,
     budgetFallbackPath,
+    ollamaVerificationCapability,
     sideEffects: Object.freeze({
       providerCalled: false,
       providerAvailabilityChecked: false,

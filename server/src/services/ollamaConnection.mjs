@@ -15,6 +15,7 @@ import {
   buildPreflightCacheKey,
   parseCacheMs,
 } from './ollamaPreflightUtils.mjs';
+import { normalizeOllamaModelDigest } from './ollamaVerificationCapabilityIdentity.mjs';
 
 const logger = createLogger('OllamaConnection');
 
@@ -93,6 +94,7 @@ export async function preflightConnection(getConfig, preflightCache, options = {
     port = null,
     model = null,
     probeGeneration: shouldProbe = false,
+    expectedModelDigest = null,
     force = false,
     includeModels = true,
     cacheMs = process.env.OLLAMA_PREFLIGHT_CACHE_MS,
@@ -109,11 +111,13 @@ export async function preflightConnection(getConfig, preflightCache, options = {
   const resolvedConnectivityTimeoutMs = getConnectivityTimeoutMs(connectivityTimeoutMs);
   const resolvedProbeTimeoutMs = getProbeTimeoutMs(probeTimeoutMs);
   const resolvedProbeContextLength = getProbeContextLength(probeContextLength);
+  const normalizedExpectedModelDigest = normalizeOllamaModelDigest(expectedModelDigest);
   const cacheKey = buildPreflightCacheKey({
     host: testHost,
     port: testPort,
     model: modelName,
     probeGeneration: shouldProbe,
+    expectedModelDigest: normalizedExpectedModelDigest,
   });
 
   if (!force && resolvedCacheMs > 0) {
@@ -190,6 +194,23 @@ export async function preflightConnection(getConfig, preflightCache, options = {
     ok: true,
     value: true,
   };
+
+  if (normalizedExpectedModelDigest && normalizeOllamaModelDigest(modelMatch?.digest) !== normalizedExpectedModelDigest) {
+    result.error = 'The configured Ollama model changed after its verification test.';
+    result.errorCode = 'MODEL_DIGEST_MISMATCH';
+    result.failureType = 'model_changed';
+    result.message = result.error;
+    result.checks.model_available = {
+      ok: false,
+      value: false,
+      errorCode: result.errorCode,
+    };
+    if (includeModels) {
+      result.models = models;
+    }
+    preflightCache.set(cacheKey, { result, checkedAt: Date.now() });
+    return result;
+  }
 
   if (shouldProbe && modelName) {
     try {

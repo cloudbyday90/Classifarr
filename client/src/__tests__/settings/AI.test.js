@@ -23,6 +23,7 @@ vi.mock('@/api', () => ({
     getPatternConfig: vi.fn(),
     getCostSummary: vi.fn(),
     getAIVerificationCapability: vi.fn(),
+    testAIVerificationCapability: vi.fn(),
     getAIVerificationCapabilityChangeReceipts: vi.fn(),
     getAIModels: vi.fn(),
     testAIConnection: vi.fn(),
@@ -87,7 +88,8 @@ function mountView() {
         Button: ButtonStub,
         Toggle: ToggleStub,
         Spinner: SpinnerStub,
-        PasswordInput: PasswordInputStub
+        PasswordInput: PasswordInputStub,
+        RouterLink: { template: '<a><slot /></a>' }
       }
     }
   })
@@ -273,6 +275,53 @@ describe('AI Settings', () => {
     expect(wrapper.text()).toContain('Current verification status unavailable')
     expect(wrapper.text()).not.toContain('provider.example.test')
     expect(wrapper.text()).not.toContain('sk-secret')
+  })
+
+  it('tests only the saved Ollama configuration and renders the server-projected result', async () => {
+    api.getAIConfig.mockResolvedValueOnce({
+      primary_provider: 'ollama',
+      ollama_host: 'private-ollama.internal',
+      ollama_port: 11434,
+      ollama_model: 'gemma4:e4b'
+    })
+    api.getAIVerificationCapability.mockResolvedValueOnce({
+      label: 'Strict verification needs attention',
+      message: 'Saved Ollama needs a test.',
+      guidance: [],
+      ollamaVerificationCapability: {
+        label: 'Ollama verification has not been tested',
+        message: 'Strict verification will not call AI until tested.',
+        guidance: [],
+        testable: true
+      }
+    })
+    api.testAIVerificationCapability.mockResolvedValueOnce({
+      data: {
+        label: 'Strict verification is available',
+        message: 'Saved Ollama is ready.',
+        guidance: [],
+        ollamaVerificationCapability: {
+          label: 'Ollama verification is ready',
+          message: 'The saved model passed the bounded test.',
+          guidance: [],
+          testable: true
+        }
+      }
+    })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Ollama verification has not been tested')
+    expect(wrapper.text()).not.toContain('private-ollama.internal')
+
+    const testButton = wrapper.findAll('button').find((button) => button.text().includes('Test Ollama Verification'))
+    await testButton.trigger('click')
+    await flushPromises()
+
+    expect(api.testAIVerificationCapability).toHaveBeenCalledWith()
+    expect(wrapper.text()).toContain('Ollama verification is ready')
+    expect(toast.success).toHaveBeenCalledWith('Ollama verification test completed.')
   })
 
   it('refreshes the saved verification capability after AI settings persist', async () => {

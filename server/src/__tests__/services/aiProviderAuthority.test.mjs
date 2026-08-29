@@ -44,6 +44,37 @@ describe('aiProviderAuthority', () => {
     expect(reasoningProfile.supportedModeIds).not.toContain(AI_PROVIDER_AUTHORITY_MODE_IDS.VERIFICATION);
   });
 
+  test('admits only a current, non-fallback Ollama structured-output evidence record', () => {
+    const verificationProfile = buildAiProviderAuthorityProfile({
+      providerId: 'ollama',
+      model: 'gemma4:e4b',
+      requestedMode: AI_PROVIDER_AUTHORITY_MODE_IDS.VERIFICATION,
+      ollamaVerificationCapability: {
+        providerId: 'ollama',
+        model: 'gemma4:e4b',
+        verified: true,
+        modelDigest: 'a'.repeat(64),
+      },
+    });
+    const fallbackProfile = buildAiProviderAuthorityProfile({
+      providerId: 'ollama',
+      model: 'gemma4:e4b',
+      requestedMode: AI_PROVIDER_AUTHORITY_MODE_IDS.VERIFICATION,
+      isFallback: true,
+      ollamaVerificationCapability: {
+        providerId: 'ollama',
+        model: 'gemma4:e4b',
+        verified: true,
+        modelDigest: 'a'.repeat(64),
+      },
+    });
+
+    expect(verificationProfile.effectiveMode).toBe(AI_PROVIDER_AUTHORITY_MODE_IDS.VERIFICATION);
+    expect(verificationProfile.capabilities.providerEnforcedStructuredOutput).toBe(true);
+    expect(fallbackProfile.effectiveMode).toBe(AI_PROVIDER_AUTHORITY_MODE_IDS.FALLBACK_ADVISORY);
+    expect(fallbackProfile.capabilities.providerEnforcedStructuredOutput).toBe(false);
+  });
+
   test('honors a disabled request without treating the provider as unavailable', () => {
     const profile = buildAiProviderAuthorityProfile({
       providerId: 'openai',

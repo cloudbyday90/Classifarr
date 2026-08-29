@@ -4,6 +4,7 @@
  */
 
 import { isOpenAIReasoningModel } from './cloudLLMRequestBuilder.mjs';
+import { normalizeOllamaModelDigest } from './ollamaVerificationCapabilityIdentity.mjs';
 
 export const AI_PROVIDER_AUTHORITY_CONTRACT_VERSION = 'ai.provider_authority.v1';
 
@@ -62,7 +63,28 @@ function normalizeRequestedMode(value, { isFallback = false } = {}) {
     : AI_PROVIDER_AUTHORITY_MODE_IDS.PROPOSAL;
 }
 
-function supportsServerEnforcedStructuredOutput({ providerId, modelId }) {
+function hasVerifiedOllamaStructuredOutput({ modelId, isFallback, ollamaVerificationCapability }) {
+  return !isFallback
+    && ollamaVerificationCapability?.verified === true
+    && ollamaVerificationCapability?.providerId === 'ollama'
+    && ollamaVerificationCapability?.model === modelId
+    && Boolean(normalizeOllamaModelDigest(ollamaVerificationCapability?.modelDigest));
+}
+
+function supportsServerEnforcedStructuredOutput({
+  providerId,
+  modelId,
+  isFallback = false,
+  ollamaVerificationCapability = null,
+}) {
+  if (providerId === 'ollama') {
+    return hasVerifiedOllamaStructuredOutput({
+      modelId,
+      isFallback,
+      ollamaVerificationCapability,
+    });
+  }
+
   if (!PROVIDER_IDS_WITH_SERVER_ENFORCED_SCHEMA.has(providerId)) {
     return false;
   }
@@ -78,10 +100,20 @@ function supportsServerEnforcedStructuredOutput({ providerId, modelId }) {
 }
 
 /**
- * @param {{ providerId: string, modelId: string }} options
+ * @param {{
+ *   providerId: string,
+ *   modelId: string,
+ *   isFallback?: boolean,
+ *   ollamaVerificationCapability?: {
+ *     providerId?: string,
+ *     model?: string,
+ *     verified?: boolean,
+ *     modelDigest?: string,
+ *   } | null,
+ * }} options
  * @returns {AiProviderAuthorityModeId[]}
  */
-function resolveSupportedModeIds({ providerId, modelId }) {
+function resolveSupportedModeIds({ providerId, modelId, isFallback, ollamaVerificationCapability }) {
   if (DISABLED_PROVIDER_IDS.has(providerId)) {
     return [AI_PROVIDER_AUTHORITY_MODE_IDS.DISABLED];
   }
@@ -94,7 +126,12 @@ function resolveSupportedModeIds({ providerId, modelId }) {
     AI_PROVIDER_AUTHORITY_MODE_IDS.DISABLED,
   ];
 
-  if (supportsServerEnforcedStructuredOutput({ providerId, modelId })) {
+  if (supportsServerEnforcedStructuredOutput({
+    providerId,
+    modelId,
+    isFallback,
+    ollamaVerificationCapability,
+  })) {
     supportedModeIds.unshift(
       AI_PROVIDER_AUTHORITY_MODE_IDS.STRUCTURED_CONTRACT,
       AI_PROVIDER_AUTHORITY_MODE_IDS.VERIFICATION,
@@ -130,14 +167,20 @@ function resolveEffectiveMode({ requestedMode, supportedModeIds, isFallback }) {
 
 /**
  * Derives a conservative, server-owned authority profile. Provider location is
- * not a trust signal: unsupported and local models never receive contract or
- * verification authority merely because they can emit JSON.
+ * not a trust signal: a local model receives contract authority only after the
+ * saved endpoint/model has passed the bounded structured-output probe.
  *
  * @param {{
  *   providerId?: unknown,
  *   model?: unknown,
  *   requestedMode?: unknown,
  *   isFallback?: boolean,
+ *   ollamaVerificationCapability?: {
+ *     providerId?: string,
+ *     model?: string,
+ *     verified?: boolean,
+ *     modelDigest?: string,
+ *   } | null,
  * }} options
  */
 export function buildAiProviderAuthorityProfile({
@@ -145,10 +188,16 @@ export function buildAiProviderAuthorityProfile({
   model: modelInput,
   requestedMode,
   isFallback = false,
+  ollamaVerificationCapability = null,
 } = {}) {
   const providerId = normalizeProviderId(providerIdInput);
   const model = normalizeModelId(modelInput);
-  const supportedModeIds = resolveSupportedModeIds({ providerId, modelId: model });
+  const supportedModeIds = resolveSupportedModeIds({
+    providerId,
+    modelId: model,
+    isFallback,
+    ollamaVerificationCapability,
+  });
   const normalizedRequestedMode = normalizeRequestedMode(requestedMode, { isFallback });
   const effectiveMode = resolveEffectiveMode({
     requestedMode: normalizedRequestedMode,
@@ -158,6 +207,8 @@ export function buildAiProviderAuthorityProfile({
   const supportsStructuredOutput = supportsServerEnforcedStructuredOutput({
     providerId,
     modelId: model,
+    isFallback,
+    ollamaVerificationCapability,
   });
 
   return Object.freeze({

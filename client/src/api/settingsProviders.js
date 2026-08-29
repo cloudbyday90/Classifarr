@@ -141,6 +141,10 @@ export function getAIVerificationCapability() {
   return getDataRequest('/settings/ai/verification-capability')
 }
 
+export function testAIVerificationCapability() {
+  return apiClient.post('/settings/ai/verification-capability/test')
+}
+
 export function getAIVerificationCapabilityChangeReceipts(params = {}) {
   return getDataRequest('/settings/ai/verification-capability/receipts', { params })
 }
@@ -189,6 +193,7 @@ const settingsProvidersApi = {
   testAIConnection,
   preflightAIVerificationConfig,
   getAIVerificationCapability,
+  testAIVerificationCapability,
   getAIVerificationCapabilityChangeReceipts,
   getAIModels,
   getAIUsage,

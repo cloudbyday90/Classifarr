@@ -40,6 +40,12 @@ import {
   createCandidateBoundVerificationProviderPreflightService,
 } from '../../services/classificationCandidateBoundVerificationProviderPreflightService.mjs';
 import {
+  createOllamaVerificationCapabilityService,
+} from '../../services/ollamaVerificationCapabilityService.mjs';
+import {
+  OllamaVerificationCapabilityConfigurationChangedError,
+} from '../../services/ollamaVerificationCapabilityRepository.mjs';
+import {
   CANDIDATE_BOUND_VERIFICATION_PROVIDER_PREFLIGHT_PRESENTATION_CONTEXT_IDS,
 } from '../../services/classificationCandidateBoundVerificationProviderPreflight.mjs';
 import {
@@ -108,7 +114,7 @@ function getCurrentSumExtras(error) {
  * @param {{
  *   logger: SettingsLogger,
  *   aiRouterService: AiRouterService,
- *   ollamaService: ResettableConfigService,
+ *   ollamaService: ResettableConfigService & import('../../services/ollamaVerificationCapabilityService.mjs').OllamaVerificationCapabilityClient,
  *   embeddingProvider: ResettableConfigService,
  *   embeddingRouter: ResettableConfigService,
  * }} options
@@ -175,7 +181,7 @@ function requireVerificationCapabilityChangeReceiptActorId(user) {
  *   logger: SettingsLogger,
  *   cloudLLMService: unknown,
  *   aiRouterService: AiRouterService,
- *   ollamaService: ResettableConfigService,
+ *   ollamaService: ResettableConfigService & import('../../services/ollamaVerificationCapabilityService.mjs').OllamaVerificationCapabilityClient,
  *   embeddingProvider: ResettableConfigService,
  *   embeddingRouter: ResettableConfigService,
  *   backfillOrchestratorService?: {
@@ -198,6 +204,9 @@ function requireVerificationCapabilityChangeReceiptActorId(user) {
  *   decryptValue?: (encrypted: string, iv: string, authTag: string) => string,
  *   candidateBoundVerificationProviderPreflightService?: {
  *     getPreflight: (request?: { proposedConfiguration?: AiSettingsRequestBody, presentationContext?: string }) => Promise<Record<string, unknown>>,
+ *   },
+ *   ollamaVerificationCapabilityService?: {
+ *     testSavedConfiguration: () => Promise<Record<string, unknown>>,
  *   },
  *   verificationCapabilityChangeReceiptRepository?: {
  *     record: (request: { client: SettingsDbClient, receipt: Record<string, unknown> }) => Promise<unknown>,
@@ -231,6 +240,10 @@ export function createAiSettingsHandlers({
   decryptValue = encryptionModule.decryptValue,
   candidateBoundVerificationProviderPreflightService = createCandidateBoundVerificationProviderPreflightService({
     database: db,
+  }),
+  ollamaVerificationCapabilityService = createOllamaVerificationCapabilityService({
+    database: db,
+    ollamaClient: ollamaService,
   }),
   verificationCapabilityChangeReceiptRepository = new ClassificationCandidateBoundVerificationCapabilityChangeReceiptRepository(),
   verificationCapabilityChangeReceiptReadService = null,
@@ -375,6 +388,30 @@ export function createAiSettingsHandlers({
       });
       res.set('Cache-Control', 'no-store');
       return res.json(capability);
+    },
+
+    /** @param {SettingsRequest} _req @param {SettingsResponse} res */
+    async testVerificationCapability(_req, res) {
+      try {
+        await ollamaVerificationCapabilityService.testSavedConfiguration();
+        aiRouterService.clearCache();
+        const capability = await candidateBoundVerificationProviderPreflightService.getPreflight({
+          presentationContext:
+            CANDIDATE_BOUND_VERIFICATION_PROVIDER_PREFLIGHT_PRESENTATION_CONTEXT_IDS.SAVED_CONFIGURATION,
+        });
+        res.set('Cache-Control', 'no-store');
+        return res.json(capability);
+      } catch (error) {
+        if (error instanceof OllamaVerificationCapabilityConfigurationChangedError) {
+          res.set('Cache-Control', 'no-store');
+          return res.status(409).json({
+            error: error.message,
+            code: error.code,
+            reload_required: true,
+          });
+        }
+        throw error;
+      }
     },
 
     /** @param {SettingsRequest} req @param {SettingsResponse} res */

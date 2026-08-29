@@ -6,6 +6,11 @@
 strict candidate-bound verification capability in AI Settings, refresh that
 read-only status, and open the existing aggregate Verification monitoring tab.
 
+An explicit, separately authorized Ollama structured-output test is now
+available for a saved primary Ollama configuration. It is intentionally not
+part of this read-only GET path; see [Ollama Verification Capability Probe
+Design](ollama-verification-capability-probe-design.md) and [Outcome](ollama-verification-capability-probe-outcome.md).
+
 The summary is not a provider health check, connection test, model-discovery
 request, settings mutation, fallback selection, budget operation, policy
 change, route decision, classification action, or retry command. It never

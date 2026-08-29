@@ -65,6 +65,7 @@ import {
   getAIConfig,
   getAIConfigForUpdate,
   getAIVerificationCapability,
+  testAIVerificationCapability,
   getAIVerificationCapabilityChangeReceipts,
   updateAIConfig,
   testAIConnection,
@@ -339,6 +340,14 @@ describe('settingsProvidersApi', () => {
       await getAIVerificationCapability()
 
       expect(mockGetDataRequest).toHaveBeenCalledWith('/settings/ai/verification-capability')
+    })
+
+    it('testAIVerificationCapability posts no editable provider configuration', async () => {
+      mockPost.mockResolvedValueOnce({ data: {} })
+
+      await testAIVerificationCapability()
+
+      expect(mockPost).toHaveBeenCalledWith('/settings/ai/verification-capability/test')
     })
 
     it('getAIVerificationCapabilityChangeReceipts reads bounded actor-scoped receipts', async () => {

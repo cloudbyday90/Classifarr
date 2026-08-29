@@ -42,8 +42,40 @@
       </ul>
     </div>
 
+    <div
+      v-if="ollamaCapability"
+      class="space-y-2 rounded-lg border border-blue-900/70 bg-blue-950/20 p-4"
+    >
+      <p class="text-xs font-medium uppercase tracking-wide text-blue-200">
+        Saved Ollama verification
+      </p>
+      <h4 class="font-medium text-gray-100">
+        {{ ollamaCapability.label }}
+      </h4>
+      <p class="text-sm text-gray-300">
+        {{ ollamaCapability.message }}
+      </p>
+      <ul
+        v-if="ollamaCapability.guidance.length > 0"
+        class="list-disc space-y-1 pl-5 text-sm text-gray-400"
+      >
+        <li
+          v-for="guidance in ollamaCapability.guidance"
+          :key="guidance"
+        >
+          {{ guidance }}
+        </li>
+      </ul>
+      <p
+        v-if="ollamaCapability.checkedAt"
+        class="text-xs text-gray-500"
+      >
+        Last tested: {{ formatCheckedAt(ollamaCapability.checkedAt) }}
+      </p>
+    </div>
+
     <p class="text-xs text-gray-500">
-      This read-only summary does not test a provider, change settings, or alter classification routing.
+      Refresh reads the saved state only. Testing sends one fixed, media-free JSON-schema request to the saved Ollama model and never routes media.
     </p>
 
     <div class="flex flex-wrap gap-3">
@@ -53,6 +85,15 @@
       >
         Review Aggregate Readiness
       </RouterLink>
+      <Button
+        v-if="ollamaCapability?.testable"
+        variant="primary"
+        :disabled="loading || testing"
+        @click="emit('test')"
+      >
+        <span v-if="testing">Testing Ollama...</span>
+        <span v-else>Test Ollama Verification</span>
+      </Button>
       <Button
         variant="secondary"
         :disabled="loading"
@@ -78,9 +119,13 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  testing: {
+    type: Boolean,
+    default: false,
+  },
 })
 
-const emit = defineEmits(['refresh'])
+const emit = defineEmits(['refresh', 'test'])
 
 const capability = computed(() => ({
   label: typeof props.capability?.label === 'string'
@@ -93,4 +138,30 @@ const capability = computed(() => ({
     ? props.capability.guidance.filter((entry) => typeof entry === 'string').slice(0, 3)
     : ['Refresh the status after confirming the saved AI settings.'],
 }))
+
+const ollamaCapability = computed(() => {
+  const capability = props.capability?.ollamaVerificationCapability
+  if (!capability || typeof capability !== 'object') return null
+
+  return {
+    label: typeof capability.label === 'string'
+      ? capability.label
+      : 'Ollama verification status unavailable',
+    message: typeof capability.message === 'string'
+      ? capability.message
+      : 'Classifarr could not read the saved Ollama verification state.',
+    guidance: Array.isArray(capability.guidance)
+      ? capability.guidance.filter((entry) => typeof entry === 'string').slice(0, 3)
+      : [],
+    checkedAt: typeof capability.checkedAt === 'string' ? capability.checkedAt : null,
+    testable: capability.testable === true,
+  }
+})
+
+function formatCheckedAt(value) {
+  const timestamp = Date.parse(value)
+  return Number.isFinite(timestamp)
+    ? new Date(timestamp).toLocaleString()
+    : 'Unknown'
+}
 </script>

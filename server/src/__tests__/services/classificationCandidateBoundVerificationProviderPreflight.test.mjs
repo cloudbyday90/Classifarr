@@ -5,6 +5,9 @@ import {
   CANDIDATE_BOUND_VERIFICATION_PROVIDER_PREFLIGHT_STATUS_IDS,
   buildCandidateBoundVerificationProviderPreflight,
 } from '../../services/classificationCandidateBoundVerificationProviderPreflight.mjs';
+import {
+  resolveOllamaVerificationCapabilityIdentity,
+} from '../../services/ollamaVerificationCapabilityIdentity.mjs';
 
 describe('candidate-bound verification provider preflight', () => {
   test('admits a verification-capable proposed primary path without exposing its identity', () => {
@@ -148,5 +151,54 @@ describe('candidate-bound verification provider preflight', () => {
     expect(report.budgetFallbackPath.statusId).toBe(
       CANDIDATE_BOUND_VERIFICATION_PROVIDER_PREFLIGHT_PATH_STATUS_IDS.NOT_APPLICABLE,
     );
+  });
+
+  test('admits a tested saved Ollama primary model without exposing its identity or digest', () => {
+    const report = buildCandidateBoundVerificationProviderPreflight({
+      existingConfiguration: {
+        primary_provider: 'ollama',
+        ollama_host: 'private-ollama.internal',
+        ollama_port: 11434,
+        ollama_model: 'gemma4:e4b',
+        configuration_revision: 7,
+      },
+    });
+    const identity = report.ollamaVerificationCapability
+    expect(identity.statusId).toBe('not_checked');
+    expect(report.primaryPath.verificationCapable).toBe(false);
+
+    const readyConfiguration = {
+      primary_provider: 'ollama',
+      ollama_host: 'private-ollama.internal',
+      ollama_port: 11434,
+      ollama_model: 'gemma4:e4b',
+      configuration_revision: 7,
+    };
+    const fingerprintReport = buildCandidateBoundVerificationProviderPreflight({
+      existingConfiguration: readyConfiguration,
+    });
+    const readyReport = buildCandidateBoundVerificationProviderPreflight({
+      existingConfiguration: {
+        ...readyConfiguration,
+        ollama_verification_capability_status: 'verification_ready',
+        // The opaque fingerprint is intentionally copied only inside this test.
+        // It is not present in the public report.
+        ollama_verification_capability_fingerprint:
+          resolveOllamaVerificationCapabilityIdentity(readyConfiguration).fingerprint,
+        ollama_verification_capability_configuration_revision: 7,
+        ollama_verification_capability_model_digest: 'a'.repeat(64),
+        ollama_verification_capability_checked_at: new Date().toISOString(),
+      },
+    });
+
+    expect(fingerprintReport.ollamaVerificationCapability.statusId).toBe('not_checked');
+    expect(readyReport.statusId).toBe(
+      CANDIDATE_BOUND_VERIFICATION_PROVIDER_PREFLIGHT_STATUS_IDS.VERIFICATION_READY,
+    );
+    expect(readyReport.primaryPath.verificationCapable).toBe(true);
+    expect(readyReport.ollamaVerificationCapability.statusId).toBe('verification_ready');
+    expect(JSON.stringify(readyReport)).not.toContain('private-ollama.internal');
+    expect(JSON.stringify(readyReport)).not.toContain('gemma4:e4b');
+    expect(JSON.stringify(readyReport)).not.toContain('a'.repeat(64));
   });
 });

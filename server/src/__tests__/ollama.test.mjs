@@ -635,6 +635,54 @@ describe('OllamaService', () => {
     });
 
     describe('generateWithProgress stream chunk handling', () => {
+        it('preserves JSON-schema format and model digest through streamed generation', async () => {
+            jest.spyOn(ollamaService, 'preflightConnection').mockResolvedValue({ success: true });
+
+            async function* makeStream() {
+                yield Buffer.from('{"response":"{\\"decision\\":\\"CONFIRM\\"}"}\n{"done":true}\n');
+            }
+            mockHttpStream.mockResolvedValueOnce({ body: makeStream() });
+            const controller = {
+                signal: undefined,
+                recordActivity: jest.fn(),
+                partialResult: null,
+            };
+            const format = {
+                type: 'object',
+                additionalProperties: false,
+                properties: { decision: { type: 'string' } },
+                required: ['decision'],
+            };
+
+            await ollamaService.generateWithProgress(
+                'test prompt',
+                'gemma4:e4b',
+                0.3,
+                null,
+                controller,
+                {
+                    format,
+                    expectedModelDigest: 'a'.repeat(64),
+                    requireDoneSignal: true,
+                },
+            );
+
+            expect(ollamaService.preflightConnection).toHaveBeenCalledWith(expect.objectContaining({
+                model: 'gemma4:e4b',
+                expectedModelDigest: 'a'.repeat(64),
+            }));
+            expect(mockHttpStream).toHaveBeenCalledWith(
+                'http://localhost:11434/api/generate',
+                expect.objectContaining({
+                    model: 'gemma4:e4b',
+                    stream: true,
+                    temperature: 0,
+                    format,
+                }),
+                expect.any(Object),
+            );
+        });
+
         it('should parse done signal when JSON line is split across chunks', async () => {
             jest.spyOn(ollamaService, 'preflightConnection').mockResolvedValue({ success: true });
 

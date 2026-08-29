@@ -14,6 +14,15 @@ const DEFAULT_INITIAL_TIMEOUT_MS = 120000;
 const DEFAULT_HEARTBEAT_TIMEOUT_MS = 60000;
 const DEFAULT_HARD_TIMEOUT_MS = 300000;
 
+/** @typedef {Error & { code?: string, hasPartialResult?: boolean }} OperationControllerError */
+
+function createOperationControllerError(message, name, code) {
+    const error = /** @type {OperationControllerError} */ (new Error(message));
+    error.name = name;
+    error.code = code;
+    return error;
+}
+
 function calculateHeartbeatCheckInterval(heartbeatTimeout, initialTimeout) {
     const minTimeout = Math.min(heartbeatTimeout, initialTimeout);
     return Math.max(100, Math.floor(minTimeout / 10));
@@ -96,9 +105,7 @@ class OperationController {
         this.status = OperationController.Status.ABORTED;
         this._cleanup();
 
-        const error = new Error(reason);
-        error.name = 'AbortError';
-        error.code = 'ABORT_ERR';
+        const error = createOperationControllerError(reason, 'AbortError', 'ABORT_ERR');
 
         this.abortController.abort(reason);
 
@@ -192,9 +199,11 @@ class OperationController {
 
             this.status = OperationController.Status.TIMEOUT;
 
-            const error = new Error(`${this._operationName} timed out after ${this.timeout}ms`);
-            error.name = 'TimeoutError';
-            error.code = 'ETIMEDOUT';
+            const error = createOperationControllerError(
+                `${this._operationName} timed out after ${this.timeout}ms`,
+                'TimeoutError',
+                'ETIMEDOUT',
+            );
 
             this.abortController.abort(error.message);
             this._cleanup();
@@ -217,9 +226,11 @@ class OperationController {
 
             this.status = OperationController.Status.TIMEOUT;
 
-            const error = new Error(`${this._operationName} hard timeout - no completion after ${this.hardTimeout}ms`);
-            error.name = 'TimeoutError';
-            error.code = 'ETIMEDOUT';
+            const error = createOperationControllerError(
+                `${this._operationName} hard timeout - no completion after ${this.hardTimeout}ms`,
+                'TimeoutError',
+                'ETIMEDOUT',
+            );
 
             this.abortController.abort(error.message);
             this._cleanup();
@@ -264,13 +275,13 @@ class OperationController {
                 } else {
                     this.status = OperationController.Status.TIMEOUT;
 
-                    const error = new Error(
+                    const error = createOperationControllerError(
                         this.partialResult !== null && !this.allowPartialOnStall
                             ? `${this._operationName} stalled with partial response blocked after ${waitedSeconds} seconds`
-                            : `${this._operationName} stalled - no activity for ${waitedSeconds} seconds`
+                            : `${this._operationName} stalled - no activity for ${waitedSeconds} seconds`,
+                        'TimeoutError',
+                        'ESTALL',
                     );
-                    error.name = 'TimeoutError';
-                    error.code = 'ESTALL';
                     if (this.partialResult !== null) {
                         error.hasPartialResult = true;
                     }

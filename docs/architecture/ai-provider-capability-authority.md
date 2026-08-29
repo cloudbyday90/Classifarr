@@ -50,14 +50,14 @@ prompt, raw response, media metadata, or executable action.
 
 | Mode | Meaning | Current admission |
 | --- | --- | --- |
-| `structured_contract` | Provider response is sent through a strict structured-output adapter. | Direct non-reasoning OpenAI and Gemini adapters only. |
-| `verification` | Provider response is requested for a bounded verification role. | Direct non-reasoning OpenAI and Gemini adapters only. |
+| `structured_contract` | Provider response is sent through a strict structured-output adapter. | Direct non-reasoning OpenAI and Gemini adapters, plus a current tested primary Ollama adapter. |
+| `verification` | Provider response is requested for a bounded verification role. | Direct non-reasoning OpenAI and Gemini adapters, plus a current tested primary Ollama adapter. |
 | `proposal` | Model output may support a deterministic candidate or explanation. | All configured providers. |
 | `explanation` | Non-authoritative explanation-only role. | All configured providers. |
 | `fallback_advisory` | Provider was chosen by fallback and cannot be elevated. | Fallback providers only. |
 | `disabled` | No model output is allowed. | Any provider configuration can explicitly select it; no provider selects it by default. |
 
-`openrouter`, `litellm`, custom proxies, local/Ollama, and direct OpenAI
+`openrouter`, `litellm`, custom proxies, untested local/Ollama, and direct OpenAI
 reasoning-model paths do not receive contract or verification authority. The
 current direct OpenAI reasoning path does not use the strict schema adapter, so
 it is intentionally a proposal rather than contract-grade output. This is a
@@ -81,7 +81,7 @@ server-enforced structured output. The request then uses a two-field JSON
 Schema: `CONFIRM` or `ABSTAIN` plus a bounded reason. The response cannot name
 or select a library; the server binds a confirmation to the candidate.
 
-Unsupported, fallback, local, reasoning, missing-candidate, and mismatch
+Unsupported, fallback, untested local, reasoning, missing-candidate, and mismatch
 cases retain the deterministic candidate for operator review before a
 verification prompt exists. Malformed output from an admitted provider also
 retains that candidate and cannot invoke local repair. Only a versioned status
@@ -145,6 +145,18 @@ learning, policy updates, notifications, provider calls, and domain-data writes
 remain owned by separately authorized deterministic services. The only new write
 is server-derived aggregate telemetry; model text cannot choose a table, query,
 action, target, or payload.
+
+### Tested Primary Ollama Capability
+
+An Ollama provider is not elevated solely because it can output JSON. An
+administrator must explicitly run the fixed, media-free structured-output test
+against the saved primary endpoint/model. Success is bound to the configuration
+revision and opaque fingerprint and records the model digest reported by
+Ollama. The current request preflight verifies that digest again before strict
+generation. A changed configuration, expiry, missing digest, failed test,
+unavailable model, or any fallback selection remains advisory and fails closed.
+See [Ollama Verification Capability Probe
+Design](ollama-verification-capability-probe-design.md).
 
 ## Capability Telemetry
 

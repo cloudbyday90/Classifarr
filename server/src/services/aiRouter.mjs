@@ -21,6 +21,9 @@ import {
     buildAiProviderAuthorityView,
     isAiProviderAuthorityModeGranted,
 } from './aiProviderAuthority.mjs';
+import {
+    buildOllamaVerificationAuthorityEvidence,
+} from './ollamaVerificationCapabilityIdentity.mjs';
 import { ollamaService } from './ollama.mjs';
 
 const logger = createLogger('AIRouter');
@@ -180,6 +183,9 @@ export class AIRouterService {
         isFallback = false,
     } = {}) {
         const model = config.ollama_model || 'llama3.2';
+        const ollamaVerificationCapability = isFallback
+            ? null
+            : buildOllamaVerificationAuthorityEvidence(config);
         return {
             type: 'ollama',
             isCloud: false,
@@ -188,11 +194,13 @@ export class AIRouterService {
                 model,
                 requestedMode: requestedAuthorityMode,
                 isFallback,
+                ollamaVerificationCapability,
             }),
             config: {
                 host: config.ollama_host || 'http://ollama:11434',
                 port: config.ollama_port || 11434,
-                model
+                model,
+                verificationModelDigest: ollamaVerificationCapability?.modelDigest || null,
             }
         };
     }

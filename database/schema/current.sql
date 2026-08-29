@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-08-22T15:35:38.362Z
--- Latest Migration: 20260822_140000_add_classification_queue_decision_witnesses.sql
+-- Generated: 2026-08-28T23:58:32.253Z
+-- Latest Migration: 20260828_100000_add_ollama_verification_capability_state.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -738,6 +738,13 @@ CREATE TABLE public.ai_provider_config (
     image_embedding_local_timeout_ms integer DEFAULT 15000,
     configuration_revision bigint DEFAULT 0 NOT NULL,
     configuration_write_tag uuid DEFAULT gen_random_uuid() NOT NULL,
+    ollama_verification_capability_status character varying(40) DEFAULT 'not_checked'::character varying CONSTRAINT ai_provider_config_ollama_verification_capability_stat_not_null NOT NULL,
+    ollama_verification_capability_fingerprint character(64),
+    ollama_verification_capability_configuration_revision bigint,
+    ollama_verification_capability_model_digest character(64),
+    ollama_verification_capability_checked_at timestamp with time zone,
+    ollama_verification_capability_error_code character varying(64),
+    ollama_verification_capability_latency_ms integer,
     CONSTRAINT ai_cfg_alias_max_terms_chk CHECK (((rag_alias_max_terms >= 1) AND (rag_alias_max_terms <= 20))),
     CONSTRAINT ai_cfg_alias_min_token_len_chk CHECK (((rag_alias_min_token_length >= 1) AND (rag_alias_min_token_length <= 10))),
     CONSTRAINT ai_cfg_alias_source_policy_chk CHECK (((rag_alias_source_policy)::text = 'authoritative_only'::text)),
@@ -788,6 +795,8 @@ CREATE TABLE public.ai_provider_config (
     CONSTRAINT ai_cfg_trace_max_bytes_chk CHECK (((rag_loop_trace_max_bytes >= 256) AND (rag_loop_trace_max_bytes <= 131072))),
     CONSTRAINT ai_cfg_trace_max_events_chk CHECK (((rag_loop_trace_max_events >= 1) AND (rag_loop_trace_max_events <= 200))),
     CONSTRAINT ai_provider_config_jitter_factor_check CHECK (((jitter_factor >= (0)::numeric) AND (jitter_factor <= (1)::numeric))),
+    CONSTRAINT ai_provider_config_ollama_verification_capability_latency_ck CHECK (((ollama_verification_capability_latency_ms IS NULL) OR (ollama_verification_capability_latency_ms >= 0))),
+    CONSTRAINT ai_provider_config_ollama_verification_capability_status_ck CHECK (((ollama_verification_capability_status)::text = ANY (ARRAY[('not_checked'::character varying)::text, ('verification_ready'::character varying)::text, ('classification_only'::character varying)::text, ('unavailable'::character varying)::text]))),
     CONSTRAINT ai_provider_config_retry_backoff_multiplier_check CHECK (((retry_backoff_multiplier >= 1.0) AND (retry_backoff_multiplier <= 5.0))),
     CONSTRAINT ai_provider_config_revision_ck CHECK ((configuration_revision >= 0)),
     CONSTRAINT formula_weights_sum_check CHECK ((((((formula_pattern_weight + formula_rule_weight) + formula_rag_weight) + formula_history_weight) >= (0.99)::double precision) AND ((((formula_pattern_weight + formula_rule_weight) + formula_rag_weight) + formula_history_weight) <= (1.01)::double precision)))
@@ -14036,6 +14045,7 @@ FROM unnest(ARRAY[
     '20260816_173000_add_native_intent_change_applied_event.sql',
     '20260816_180000_add_native_intent_change_receipts.sql',
     '20260817_030000_add_native_intent_change_receipt_retention_guard.sql',
-    '20260822_140000_add_classification_queue_decision_witnesses.sql'
+    '20260822_140000_add_classification_queue_decision_witnesses.sql',
+    '20260828_100000_add_ollama_verification_capability_state.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

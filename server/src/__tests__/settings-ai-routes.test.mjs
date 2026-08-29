@@ -22,7 +22,9 @@ const mockSonarr = {};
 jest.unstable_mockModule('../services/sonarr.mjs', () => createNamedMockModule('sonarrService', mockSonarr));
 
 const mockOllama = {
-  resetConfig: jest.fn()
+  resetConfig: jest.fn(),
+  preflightConnection: jest.fn(),
+  generate: jest.fn(),
 };
 jest.unstable_mockModule('../services/ollama.mjs', () => createNamedMockModule('ollamaService', mockOllama));
 
@@ -699,6 +701,79 @@ describe('Settings AI Routes', () => {
     expect(db.pool.connect).not.toHaveBeenCalled();
     expect(mockCloudLLM.testConnection).not.toHaveBeenCalled();
     expect(mockCloudLLM.getModels).not.toHaveBeenCalled();
+  });
+
+  it('tests only the saved Ollama configuration and returns a bounded refreshed capability', async () => {
+    const savedConfiguration = {
+      primary_provider: 'ollama',
+      ollama_host: 'private-ollama.internal',
+      ollama_port: 11434,
+      ollama_model: 'gemma4:e4b',
+      configuration_revision: 4,
+    };
+    const { resolveOllamaVerificationCapabilityIdentity } = await import(
+      '../services/ollamaVerificationCapabilityIdentity.mjs'
+    );
+    const identity = resolveOllamaVerificationCapabilityIdentity(savedConfiguration);
+    const testedConfiguration = {
+      ...savedConfiguration,
+      ollama_verification_capability_status: 'verification_ready',
+      ollama_verification_capability_fingerprint: identity.fingerprint,
+      ollama_verification_capability_configuration_revision: 4,
+      ollama_verification_capability_model_digest: 'a'.repeat(64),
+      ollama_verification_capability_checked_at: new Date().toISOString(),
+      ollama_verification_capability_error_code: null,
+    };
+    const client = {
+      release: jest.fn(),
+      query: jest.fn((sql) => {
+        if (sql === 'BEGIN' || sql === 'COMMIT' || sql === 'ROLLBACK') {
+          return Promise.resolve({ rows: [] });
+        }
+        if (sql.includes('FOR UPDATE')) {
+          return Promise.resolve({ rows: [savedConfiguration] });
+        }
+        if (sql.includes('UPDATE ai_provider_config')) {
+          return Promise.resolve({ rows: [testedConfiguration] });
+        }
+        return Promise.resolve({ rows: [] });
+      }),
+    };
+    db.pool.connect.mockResolvedValueOnce(client);
+    db.query
+      .mockResolvedValueOnce({ rows: [savedConfiguration] })
+      .mockResolvedValueOnce({ rows: [testedConfiguration] });
+    mockOllama.preflightConnection.mockResolvedValueOnce({
+      success: true,
+      models: [{ name: 'gemma4:e4b', digest: 'a'.repeat(64) }],
+    });
+    mockOllama.generate.mockResolvedValueOnce(JSON.stringify({
+      status: 'ready',
+      contract: 'candidate-bound-verification',
+    }));
+
+    const res = await request(app).post('/settings/ai/verification-capability/test');
+
+    expect(res.status).toBe(200);
+    expect(res.headers['cache-control']).toBe('no-store');
+    expect(res.body).toMatchObject({
+      statusId: 'verification_ready',
+      primaryPath: { verificationCapable: true },
+      ollamaVerificationCapability: {
+        statusId: 'verification_ready',
+        testable: true,
+      },
+    });
+    expect(mockOllama.generate).toHaveBeenCalledWith(
+      expect.any(String),
+      'gemma4:e4b',
+      0,
+      expect.objectContaining({ format: expect.any(Object) }),
+    );
+    expect(mockAiRouter.clearCache).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(res.body)).not.toContain('private-ollama.internal');
+    expect(JSON.stringify(res.body)).not.toContain('gemma4:e4b');
+    expect(JSON.stringify(res.body)).not.toContain('a'.repeat(64));
   });
 
   it('rejects unexpected verification-preflight fields before querying configuration', async () => {

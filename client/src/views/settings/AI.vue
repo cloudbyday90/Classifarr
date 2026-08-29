@@ -572,7 +572,9 @@
       <VerificationCapabilityCurrentStateSummary
         :capability="verificationCapability"
         :loading="loadingVerificationCapability"
+        :testing="testingVerificationCapability"
         @refresh="refreshVerificationCapability"
+        @test="testVerificationCapability"
       />
     </Card>
 
@@ -807,6 +809,7 @@ const loadingModels = ref(false)
 const loadingOllamaModels = ref(false)
 const loadingOllamaPreflight = ref(false)
 const loadingVerificationCapability = ref(false)
+const testingVerificationCapability = ref(false)
 const loadingVerificationCapabilityChangeReceipts = ref(false)
 const showAdvanced = ref(false)
 const testResult = ref(null)
@@ -984,6 +987,23 @@ const loadVerificationCapability = async ({ notifyOnError = false } = {}) => {
 
 const refreshVerificationCapability = async () => {
   await loadVerificationCapability({ notifyOnError: true })
+}
+
+const testVerificationCapability = async () => {
+  testingVerificationCapability.value = true
+  try {
+    const response = await api.testAIVerificationCapability()
+    verificationCapability.value = response?.data || response
+    toast.success('Ollama verification test completed.')
+  } catch (error) {
+    if (error.response?.status === 409) {
+      toast.warning('AI settings changed while Ollama was being tested. Reload the saved settings and test again.')
+    } else {
+      toast.warning('Ollama verification could not be tested. Confirm the saved endpoint and model, then try again.')
+    }
+  } finally {
+    testingVerificationCapability.value = false
+  }
 }
 
 const loadVerificationCapabilityChangeReceipts = async ({ notifyOnError = false } = {}) => {

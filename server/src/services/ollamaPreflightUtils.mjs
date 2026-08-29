@@ -126,6 +126,6 @@ export function findModelMatch(models, modelName) {
   }) || null;
 }
 
-export function buildPreflightCacheKey({ host, port, model, probeGeneration }) {
-  return `${host}:${port}:${normalizeModelName(model).toLowerCase()}:${probeGeneration ? 'probe' : 'noprobe'}`;
+export function buildPreflightCacheKey({ host, port, model, probeGeneration, expectedModelDigest = null }) {
+  return `${host}:${port}:${normalizeModelName(model).toLowerCase()}:${probeGeneration ? 'probe' : 'noprobe'}:${String(expectedModelDigest || '').toLowerCase()}`;
 }

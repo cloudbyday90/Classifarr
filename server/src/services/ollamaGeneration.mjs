@@ -11,14 +11,27 @@ const DEFAULT_GENERATION_INITIAL_TIMEOUT_MS = 120000; // wait for first token
 const DEFAULT_GENERATION_HEARTBEAT_TIMEOUT_MS = 60000; // gap between tokens
 const DEFAULT_GENERATION_HARD_TIMEOUT_MS = 300000; // absolute completion cap
 
+/**
+ * @typedef {Error & {
+ *   code?: string,
+ *   response?: unknown,
+ *   status?: unknown,
+ *   statusCode?: unknown,
+ *   partialResponse?: string,
+ * }} OllamaGenerationError
+ */
+
 function wrapGenerationError(prefix, error) {
-  const wrapped = new Error(`${prefix}: ${error.message}`);
-  wrapped.name = error.name || 'Error';
-  wrapped.code = error.code;
-  wrapped.response = error.response;
-  wrapped.status = error.status;
-  wrapped.statusCode = error.statusCode;
-  wrapped.cause = error;
+  const source = /** @type {OllamaGenerationError} */ (error);
+  const wrapped = /** @type {OllamaGenerationError} */ (
+    new Error(`${prefix}: ${source.message}`)
+  );
+  wrapped.name = source.name || 'Error';
+  wrapped.code = source.code;
+  wrapped.response = source.response;
+  wrapped.status = source.status;
+  wrapped.statusCode = source.statusCode;
+  wrapped.cause = source;
   return wrapped;
 }
 
@@ -116,6 +129,8 @@ export async function generateWithProgress(
     allowPartialOnStall: options.allowPartialOnStall !== false,
     allowPartialOnAbort: options.allowPartialOnAbort !== false,
     requireDoneSignal: options.requireDoneSignal === true,
+    format: options.format,
+    expectedModelDigest: options.expectedModelDigest,
   };
 
   if (externalController) {
@@ -143,6 +158,7 @@ export async function streamGenerate(getConfig, preflightConnectionFn, config, p
     model: model,
     probeGeneration: false,
     cacheMs: 60000,
+    expectedModelDigest: options.expectedModelDigest,
   });
 
   if (!preflight.success) {
@@ -223,7 +239,9 @@ export async function streamGenerate(getConfig, preflightConnectionFn, config, p
       }
       return fullResponse;
     } else if (fullResponse && options.requireDoneSignal && !sawDoneSignal) {
-      const incompleteError = new Error('Generation ended before completion signal');
+      const incompleteError = /** @type {OllamaGenerationError} */ (
+        new Error('Generation ended before completion signal')
+      );
       incompleteError.name = 'IncompleteStreamError';
       incompleteError.code = 'EINCOMPLETE';
       incompleteError.partialResponse = fullResponse;
@@ -236,10 +254,12 @@ export async function streamGenerate(getConfig, preflightConnectionFn, config, p
       if (controller.partialResult && options.allowPartialOnAbort) {
         return controller.partialResult;
       } else {
-        const abortError = new Error(
-          controller.partialResult
-            ? 'Generation aborted with partial response blocked'
-            : 'Generation aborted',
+        const abortError = /** @type {OllamaGenerationError} */ (
+          new Error(
+            controller.partialResult
+              ? 'Generation aborted with partial response blocked'
+              : 'Generation aborted',
+          )
         );
         abortError.name = 'AbortError';
         abortError.code = 'ABORT_ERR';
