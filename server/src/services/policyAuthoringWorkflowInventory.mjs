@@ -318,6 +318,19 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
     ]),
   },
   {
+    id: 'destination_competition_maintenance_preview',
+    decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
+    roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.ADVANCED_SUPPORT_ONLY,
+    normalAuthoringAllowed: false,
+    migrationSupportOnly: false,
+    riskIds: [],
+    notes: 'Destination-competition preview is administrator-only existing-policy maintenance. Its component and transport binding return only bounded aggregate server results and cannot derive a destination, persist a draft, call a provider, or decide routing.',
+    matches: filePath => hasAnySegment(filePath, [
+      '/PolicyDestinationCompetitionPreview.vue',
+      '/usePolicyDestinationCompetitionPreview.js',
+    ]),
+  },
+  {
     id: 'draft_and_bridge_utilities',
     decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
     roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.COMPATIBILITY_BRIDGE,

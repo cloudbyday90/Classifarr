@@ -236,7 +236,11 @@ export function buildPolicyCohortSimulationDraftContract({ policy = {}, draft } 
  * from runtime authority and cannot modify the persisted policy.
  */
 export function buildPolicyCohortSimulationCurrentContract(policy = {}) {
-  const sourceContract = asObject(policy.policy_intent_contract);
+  const sourceContract = asObject(
+    policy.native_intent?.contract ||
+    policy.nativeIntent?.contract ||
+    policy.policy_intent_contract,
+  );
   const contract = Object.keys(sourceContract).length > 0
     ? sourceContract
     : buildPolicyIntentContract(policy);

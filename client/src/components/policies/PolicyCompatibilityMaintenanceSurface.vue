@@ -77,6 +77,14 @@
       :available="cohortSimulationAvailable"
       @simulate="emit('simulate-policy-cohort')"
     />
+
+    <PolicyDestinationCompetitionPreview
+      :preview="destinationCompetitionPreview"
+      :loading="destinationCompetitionPreviewLoading"
+      :error="destinationCompetitionPreviewError"
+      :available="destinationCompetitionPreviewAvailable"
+      @preview="emit('preview-destination-competition')"
+    />
   </section>
 </template>
 
@@ -87,6 +95,7 @@ import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
 import PolicyPresetMigrationNotice from '@/components/policies/PolicyPresetMigrationNotice.vue'
 import PolicyPurposeCoveragePreflight from '@/components/policies/PolicyPurposeCoveragePreflight.vue'
 import PolicyCohortSimulation from '@/components/policies/PolicyCohortSimulation.vue'
+import PolicyDestinationCompetitionPreview from '@/components/policies/PolicyDestinationCompetitionPreview.vue'
 
 const PolicyCompatibilityProfilePurposeSuggestion = defineAsyncComponent(() =>
   import('@/components/policies/PolicyCompatibilityProfilePurposeSuggestion.vue')
@@ -161,6 +170,22 @@ defineProps({
     type: Boolean,
     default: false,
   },
+  destinationCompetitionPreview: {
+    type: Object,
+    default: null,
+  },
+  destinationCompetitionPreviewLoading: {
+    type: Boolean,
+    default: false,
+  },
+  destinationCompetitionPreviewError: {
+    type: String,
+    default: '',
+  },
+  destinationCompetitionPreviewAvailable: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits({
@@ -172,5 +197,6 @@ const emit = defineEmits({
   'apply-profile-purpose-suggestion': () => true,
   'preflight-purpose-coverage': () => true,
   'simulate-policy-cohort': () => true,
+  'preview-destination-competition': () => true,
 })
 </script>

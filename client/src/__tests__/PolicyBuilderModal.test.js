@@ -150,6 +150,7 @@ vi.mock('../api', () => ({
     getGeneralSettings: vi.fn(),
     getLibraryProfile: vi.fn(),
     preflightPolicyPurposeCoverage: vi.fn(),
+    previewPolicyDestinationCompetition: vi.fn(),
   }
 }));
 
@@ -202,6 +203,45 @@ describe('PolicyBuilderModal.vue', () => {
       signals: {}
     }
   ];
+
+  it('submits the current legacy draft to the explicit destination-competition preview endpoint', async () => {
+    api.get.mockImplementation((url) => {
+      if (url === '/libraries') return Promise.resolve({ data: mockLibraries });
+      if (url === '/policies/presets/all') return Promise.resolve({ data: mockPresets });
+      if (url === '/settings') return Promise.resolve({ data: {} });
+      return Promise.resolve({ data: { suggestions: [] } });
+    });
+    api.previewPolicyDestinationCompetition.mockResolvedValue({
+      data: { advisory: true, competition: {} },
+    });
+
+    const wrapper = mount(PolicyBuilderModal, {
+      props: {
+        modelValue: true,
+        libraryId: 1,
+        policy: {
+          id: 17,
+          library_id: 1,
+          name: 'Sci-Fi Movies Policy',
+          presets: [],
+        },
+      },
+      attachTo: document.body,
+    });
+    await flushPromises();
+
+    await wrapper.vm.previewDestinationCompetition();
+
+    expect(api.previewPolicyDestinationCompetition).toHaveBeenCalledWith(
+      17,
+      expect.objectContaining({ schema_version: 1 }),
+    );
+
+    wrapper.vm.intentDraft.summary = { preset_count: 0 };
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.vm.destinationCompetitionPreview).toBeNull();
+  });
 
   const buildOperatorWorkflowRead = () => ({
     version: 'policy.operator_workflow_read.v4',

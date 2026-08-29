@@ -10,6 +10,7 @@ import { registerPolicyNativeIntentPurposeChangeReadRoutes } from './policiesRou
 import { registerPolicyNativeIntentChangePurposePreflightRoutes } from './policiesRouteNativeIntentChangePurposePreflight.mjs';
 import { registerPolicyPurposeCoveragePreflightRoutes } from './policiesRoutePolicyPurposeCoveragePreflight.mjs';
 import { registerPolicyCohortSimulationRoutes } from './policiesRoutePolicyCohortSimulation.mjs';
+import { registerPolicyDestinationCompetitionPreviewRoutes } from './policiesRoutePolicyDestinationCompetitionPreview.mjs';
 import { registerPolicyNativeIntentReconciliationRoutes } from './policiesRouteNativeIntentReconciliation.mjs';
 import { registerPolicyInitialIntentEstablishmentRoutes } from './policiesRouteInitialIntentEstablishment.mjs';
 import { registerPolicyInitialIntentEstablishmentReadinessRoutes } from './policiesRouteInitialIntentEstablishmentReadiness.mjs';
@@ -32,6 +33,7 @@ export function registerPolicyCrudRoutes(router, deps) {
   registerPolicyNativeIntentChangePurposePreflightRoutes(router, deps);
   registerPolicyPurposeCoveragePreflightRoutes(router, deps);
   registerPolicyCohortSimulationRoutes(router, deps);
+  registerPolicyDestinationCompetitionPreviewRoutes(router, deps);
   registerPolicyNativeIntentReconciliationRoutes(router, deps);
   registerPolicyInitialIntentEstablishmentRoutes(router, deps);
   registerPolicyInitialIntentEstablishmentReadinessRoutes(router, deps);

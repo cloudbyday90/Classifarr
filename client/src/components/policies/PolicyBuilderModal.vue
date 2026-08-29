@@ -91,6 +91,10 @@
           :cohort-simulation-loading="cohortSimulationLoading"
           :cohort-simulation-error="cohortSimulationError"
           :cohort-simulation-available="cohortSimulationAvailable"
+          :destination-competition-preview="destinationCompetitionPreview"
+          :destination-competition-preview-loading="destinationCompetitionPreviewLoading"
+          :destination-competition-preview-error="destinationCompetitionPreviewError"
+          :destination-competition-preview-available="destinationCompetitionPreviewAvailable"
           @dismiss-migration-notice="dismissPresetMigrationNotice"
           @draft-add-signal="addIntentSignal"
           @draft-remove-signal-value="removeIntentSignalValue"
@@ -99,6 +103,7 @@
           @apply-profile-purpose-suggestion="applyCompatibilityProfilePurposeSuggestion"
           @preflight-purpose-coverage="preflightPurposeCoverage"
           @simulate-policy-cohort="simulatePolicyCohort"
+          @preview-destination-competition="previewDestinationCompetition"
         />
       </template>
     </div>
@@ -140,6 +145,7 @@ import { usePolicyNativeCreateAction } from '@/composables/usePolicyNativeCreate
 import { usePolicyNativeCreateHandoff } from '@/composables/usePolicyNativeCreateHandoff'
 import { usePolicyPurposeCoveragePreflight } from '@/composables/usePolicyPurposeCoveragePreflight'
 import { usePolicyCohortSimulation } from '@/composables/usePolicyCohortSimulation'
+import { usePolicyDestinationCompetitionPreview } from '@/composables/usePolicyDestinationCompetitionPreview'
 import { buildPolicyBuilderSaveBoundary } from '@/utils/policyBuilderActionBoundary'
 import { buildPolicyBuilderExperienceMode } from '@/utils/policyBuilderExperienceMode'
 import { clonePolicyIntentDraftForWrite } from '@/utils/policyIntentWritePreflight'
@@ -308,6 +314,14 @@ const {
   runSimulation: runPolicyCohortSimulation,
 } = usePolicyCohortSimulation()
 
+const {
+  preview: destinationCompetitionPreview,
+  isLoading: destinationCompetitionPreviewLoading,
+  errorMessage: destinationCompetitionPreviewError,
+  reset: resetDestinationCompetitionPreview,
+  runPreview: runDestinationCompetitionPreview,
+} = usePolicyDestinationCompetitionPreview()
+
 const saving = computed(() => (
   experienceMode.value.isNativeCreate
     ? nativeCreateAction.pending.value
@@ -333,6 +347,7 @@ const purposeCoveragePreflightAvailable = computed(() => (
 ))
 
 const cohortSimulationAvailable = computed(() => purposeCoveragePreflightAvailable.value)
+const destinationCompetitionPreviewAvailable = computed(() => cohortSimulationAvailable.value)
 
 onMounted(() => {
   if (experienceMode.value.isLegacyEdit) {
@@ -367,6 +382,7 @@ watch(() => props.modelValue, isOpen => {
 watch(intentDraft, () => {
   resetPurposeCoveragePreflight()
   resetCohortSimulation()
+  resetDestinationCompetitionPreview()
 }, { deep: true })
 
 const applyCompatibilityProfilePurposeSuggestion = async () => {
@@ -470,6 +486,21 @@ const simulatePolicyCohort = async () => {
   }
 
   await runPolicyCohortSimulation({
+    policyId: Number(props.policy.id),
+    draft,
+  })
+}
+
+const previewDestinationCompetition = async () => {
+  if (!destinationCompetitionPreviewAvailable.value || destinationCompetitionPreviewLoading.value) return
+
+  const draft = clonePolicyIntentDraftForWrite(intentDraft.value)
+  if (!draft) {
+    resetDestinationCompetitionPreview()
+    return
+  }
+
+  await runDestinationCompetitionPreview({
     policyId: Number(props.policy.id),
     draft,
   })

@@ -11,11 +11,13 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- **Destination competition preview** — Existing-policy maintenance can now compare a proposed draft against bounded, anonymous active same-media-type competitors and report aggregate deterministic eligibility overlap before saving.
 - **Policy cohort preview** — Existing-policy maintenance can now compare a saved policy and unsaved draft against a bounded recent deterministic cohort, returning aggregate native-eligibility deltas before the draft is saved.
 - **Policy overlap precision** — Current-policy coverage and draft preflight now flag a shared `require_any` purpose alternative even when a sibling term is unique, preventing broad fallback matches from being presented as safely distinct.
 
 ### Security
 
+- **Competition-preview privacy and resource boundary** — The administrator-only competition preview derives competitors and fixed caps server-side, uses batched native-intent reads and parameterized SQL, returns no competitor or media identity, and cannot call AI, persist, learn, or route media.
 - **Cohort-preview privacy and authority boundary** — The administrator-only simulation accepts only a validated draft, derives scope and fixed bounds server-side, uses a parameterized read-only query, returns aggregate counts only, and cannot call AI, persist a draft, learn, or route media.
 - **Policy-review data boundary** — Disjunctive-overlap guidance remains administrator-only and aggregate-only: it returns counts and fixed guidance without exposing policy terms, draft contents, media data, AI output, or routing controls.
 

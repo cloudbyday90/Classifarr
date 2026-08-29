@@ -54,6 +54,7 @@ import {
   getPolicyNativeIntentReconciliationPurposeSuggestion,
   preflightPolicyPurposeCoverage,
   simulatePolicyCohort,
+  previewPolicyDestinationCompetition,
 } from '../../api/policiesApi'
 
 describe('policiesApi', () => {
@@ -278,6 +279,18 @@ describe('policiesApi', () => {
 
     expect(mockPost).toHaveBeenCalledWith(
       '/policies/17/native-intent/cohort-simulation',
+      { policy_intent_draft: draft }
+    )
+  })
+
+  it('posts only the explicit validated-draft envelope for destination competition preview', async () => {
+    const draft = { schema_version: 1, presets: [] }
+    mockPost.mockResolvedValueOnce({ data: { advisory: true } })
+
+    await previewPolicyDestinationCompetition(17, draft)
+
+    expect(mockPost).toHaveBeenCalledWith(
+      '/policies/17/native-intent/destination-competition-preview',
       { policy_intent_draft: draft }
     )
   })

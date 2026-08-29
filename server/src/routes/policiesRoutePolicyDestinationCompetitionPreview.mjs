@@ -9,50 +9,47 @@
  */
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import {
-  NotFoundError,
-  ValidationError,
-} from '../utils/appError.mjs';
+import { NotFoundError, ValidationError } from '../utils/appError.mjs';
 import { sendData } from '../utils/responseHelpers.mjs';
 import {
   PolicyIntentRequestValidationError,
   summarizePolicyIntentRequestValidationError,
 } from '../services/policyIntentRequestValidator.mjs';
 import {
-  PolicyCohortSimulationNotFoundError,
-  policyCohortSimulationService,
-} from '../services/policyCohortSimulationService.mjs';
+  PolicyDestinationCompetitionPreviewNotFoundError,
+  policyDestinationCompetitionPreviewService,
+} from '../services/policyDestinationCompetitionPreviewService.mjs';
 import {
   requirePolicySimulationAdministrator,
   requirePolicySimulationDraft,
   requirePolicySimulationId,
 } from './policySimulationRouteRequest.mjs';
 
-export function registerPolicyCohortSimulationRoutes(router, { db }) {
-  router.post('/:id/native-intent/cohort-simulation', asyncHandler(async (req, res) => {
+export function registerPolicyDestinationCompetitionPreviewRoutes(router, { db }) {
+  router.post('/:id/native-intent/destination-competition-preview', asyncHandler(async (req, res) => {
     requirePolicySimulationAdministrator(req);
     const policyId = requirePolicySimulationId(req.params.id, {
-      codePrefix: 'POLICY_COHORT_SIMULATION',
+      codePrefix: 'POLICY_DESTINATION_COMPETITION_PREVIEW',
     });
 
     try {
-      return sendData(res, await policyCohortSimulationService.simulate({
+      return sendData(res, await policyDestinationCompetitionPreviewService.preview({
         dbClient: db,
         policyId,
         draft: requirePolicySimulationDraft(req.body, {
-          codePrefix: 'POLICY_COHORT_SIMULATION',
-          label: 'Policy cohort simulation',
+          codePrefix: 'POLICY_DESTINATION_COMPETITION_PREVIEW',
+          label: 'Policy destination competition preview',
         }),
       }));
     } catch (error) {
-      if (error instanceof PolicyCohortSimulationNotFoundError) {
+      if (error instanceof PolicyDestinationCompetitionPreviewNotFoundError) {
         throw new NotFoundError('Policy not found');
       }
 
       if (error instanceof PolicyIntentRequestValidationError) {
         throw new ValidationError(
           `Invalid policy intent draft: ${summarizePolicyIntentRequestValidationError(error)}`,
-          { code: 'POLICY_COHORT_SIMULATION_DRAFT_INVALID' },
+          { code: 'POLICY_DESTINATION_COMPETITION_PREVIEW_DRAFT_INVALID' },
         );
       }
 

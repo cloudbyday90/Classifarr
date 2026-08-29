@@ -286,6 +286,19 @@ describe('policyAuthoringWorkflowInventory', () => {
     });
   });
 
+  test('keeps destination competition outside normal authoring as advanced maintenance', () => {
+    [
+      'client/src/components/policies/PolicyDestinationCompetitionPreview.vue',
+      'client/src/composables/usePolicyDestinationCompetitionPreview.js',
+    ].forEach((filePath) => {
+      expect(classifyPolicyAuthoringWorkflowSurface(filePath)).toEqual(expect.objectContaining({
+        decisionId: POLICY_AUTHORING_WORKFLOW_DECISION_IDS.KEEP,
+        roleId: POLICY_AUTHORING_WORKFLOW_ROLE_IDS.ADVANCED_SUPPORT_ONLY,
+        normalAuthoringAllowed: false,
+      }));
+    });
+  });
+
   test('returns a failed requirement for unknown requirement ids', () => {
     expect(validatePolicyAuthoringWorkflowRequirement('unknown', [])).toEqual({
       valid: false,

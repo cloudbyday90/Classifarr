@@ -10,6 +10,7 @@
 
 import {
   buildPolicyCohortSimulation,
+  buildPolicyCohortSimulationCurrentContract,
   buildPolicyCohortSimulationDraftContract,
   buildPolicyCohortSimulationPolicy,
 } from '../../services/policyCohortSimulationContract.mjs';
@@ -82,6 +83,20 @@ describe('policyCohortSimulationContract', () => {
       simulationOnly: true,
       validationOk: true,
     }));
+  });
+
+  test('prefers the attached active native contract over the legacy compatibility contract', () => {
+    const activeNativeContract = buildPolicyCohortSimulationDraftContract({
+      policy,
+      draft: draft(),
+    });
+    const currentContract = buildPolicyCohortSimulationCurrentContract({
+      ...policy,
+      policy_intent_contract: { source: 'legacy_policy_builder' },
+      native_intent: { contract: activeNativeContract },
+    });
+
+    expect(currentContract).toEqual(activeNativeContract);
   });
 
   test('returns aggregate transitions without raw draft terms or historic records', () => {

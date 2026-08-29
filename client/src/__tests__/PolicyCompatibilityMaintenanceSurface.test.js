@@ -12,6 +12,7 @@ import PolicyCompatibilityMaintenanceSurface from '@/components/policies/PolicyC
 import PolicyIntentEditor from '@/components/policies/PolicyIntentEditor.vue'
 import PolicyPresetMigrationNotice from '@/components/policies/PolicyPresetMigrationNotice.vue'
 import PolicyCompatibilityProfilePurposeSuggestion from '@/components/policies/PolicyCompatibilityProfilePurposeSuggestion.vue'
+import PolicyDestinationCompetitionPreview from '@/components/policies/PolicyDestinationCompetitionPreview.vue'
 
 const baseProps = {
   selectedPresets: [{ id: 7, name: 'Family' }],
@@ -106,6 +107,18 @@ describe('PolicyCompatibilityMaintenanceSurface.vue', () => {
     profileSuggestion.vm.$emit('apply')
 
     expect(wrapper.emitted('apply-profile-purpose-suggestion')).toEqual([[]])
+    expect(wrapper.emitted('save')).toBeUndefined()
+  })
+
+  it('forwards an explicit destination-competition preview request without saving', () => {
+    const wrapper = mountSurface({
+      destinationCompetitionPreviewAvailable: true,
+    })
+    const destinationCompetitionPreview = wrapper.findComponent(PolicyDestinationCompetitionPreview)
+
+    destinationCompetitionPreview.vm.$emit('preview')
+
+    expect(wrapper.emitted('preview-destination-competition')).toEqual([[]])
     expect(wrapper.emitted('save')).toBeUndefined()
   })
 })
