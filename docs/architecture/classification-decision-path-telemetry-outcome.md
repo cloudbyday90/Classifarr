@@ -32,9 +32,9 @@ remediation control.
 
 ## Local PR check
 
-GitHub MCP search on 2026-08-29 returned no open pull requests for
+GitHub MCP searches on 2026-08-29 returned no open pull requests for
 `cloudbyday90/Classifarr`. Therefore no unrelated pull-request change was
-applied locally, merged, or released in this work.
+available to apply locally, and none was merged or released in this work.
 
 ## Verification outcome
 
@@ -42,6 +42,16 @@ Targeted service, repository, queue read-model, component, and Command Center
 integration tests cover the new projection. The normal client and server test
 suites plus lint, type, documentation, migration, ESM, build, coverage, and
 security-diff gates are run before this work is committed.
+
+## Transactional operational-test outcome
+
+The integration suite now uses a single transaction-scoped PostgreSQL client
+to exercise the real aggregate repository, telemetry service, and queue read
+model together. It seeds synthetic policy-auto, verification-required, and
+AI-unavailable retry records, measures only the four aggregate deltas, and
+asserts that fixture metadata and titles do not enter the public telemetry
+object. The test explicitly rolls the transaction back and verifies from a
+separate connection that no fixture row persisted.
 
 ## CI schema-snapshot remediation
 
@@ -76,8 +86,8 @@ this work.
 
 ## Next recommendation
 
-Add a bounded operational test that exercises the full queue path against a
-locally configured AI provider: enqueue one known policy-auto item and one
-known verification-required item, then assert the live telemetry changes only
-by aggregate counters. Keep the fixture metadata synthetic and delete it in a
-transaction so it never becomes a persistent media record.
+Add an authenticated route-boundary acceptance test for
+`GET /api/queue/live-stats` using `createQueueRouter` and a transaction-scoped
+queue-service adapter. It should assert the same fixed telemetry contract at
+the HTTP response boundary and reject an unauthenticated request, without
+using committed fixture records or invoking an AI provider.

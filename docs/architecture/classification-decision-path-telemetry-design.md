@@ -110,3 +110,45 @@ Reviewed on 2026-08-29:
   configuration, or worker state.
 - This does not imply that an AI outage is the reason a currently queued item
   is waiting. Queue admission diagnostics remain the source for current state.
+
+## Transactional operational acceptance
+
+The integration test runs the repository, telemetry service, and queue read
+model on one isolated PostgreSQL transaction client. It first reads a baseline
+for the fixed window, inserts one synthetic policy-auto outcome, one synthetic
+verification-required abstention, one synthetic AI-unavailable retry, and one
+pending classification task, then reads the public queue projection through
+the real service chain.
+
+The assertion is delta-based, rather than assuming the integration database is
+empty. It verifies an increment of one for each fixed counter, the narrow
+versioned response shape, and the absence of fixture identity/content in the
+serialized telemetry. The transaction is always rolled back; a separate pool
+query proves no fixture record remained after the test.
+
+This follows PostgreSQL's all-or-nothing transaction model and
+[`ROLLBACK TO SAVEPOINT` semantics](https://www.postgresql.org/docs/current/sql-rollback-to.html),
+while retaining the fixed-dimensional aggregate and bounded-read properties
+recommended by the [OpenTelemetry Metrics SDK](https://opentelemetry.io/docs/specs/otel/metrics/sdk/)
+and [OWASP API4:2023](https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/).
+
+### Operational-test options
+
+| Option | Pros | Cons |
+| --- | --- | --- |
+| Mock only the repository/service boundary | Fast and isolated | Does not prove PostgreSQL JSON extraction, queue summary wiring, or public projection behavior. |
+| Insert committed fixtures and clean them in test hooks | Can drive a full HTTP route | Cleanup can be skipped on interruption and leave synthetic records visible to later tests. |
+| **Transaction-scoped real read path with rollback** | Exercises PostgreSQL, repository, service, and queue read model without persistent fixture state | Does not by itself prove HTTP serialization or middleware behavior. |
+
+### Resulting test stack
+
+1. Use the isolated integration database and one explicit transaction client.
+2. Read the fixed-window aggregate baseline through the real service.
+3. Seed only synthetic contract-shaped metadata and a pending classification
+   task through that same client.
+4. Read the projection through `QueueReadModel` and assert aggregate deltas,
+   fixed keys, and the absence of fixture content.
+5. Roll back unconditionally and verify cleanup from a separate connection.
+6. Cover HTTP serialization and authentication separately with a route-boundary
+   acceptance test; do not require a live AI provider for deterministic
+   decision-path contract coverage.
