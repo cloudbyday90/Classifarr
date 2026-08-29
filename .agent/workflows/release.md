@@ -8,7 +8,7 @@ Follow these steps IN ORDER when creating a new release.
 
 ## Planned Next Tag
 
-The prepared source version is `v0.48.2-beta`. This is release preparation
+The prepared source version is `v0.48.4-beta`. This is release preparation
 only: do not create the tag or a GitHub release until the coordinated
 release-readiness checks below are complete.
 
@@ -72,7 +72,7 @@ npm --prefix server install --package-lock-only --ignore-scripts
 
 Then verify every package and lockfile root version agrees:
 ```bash
-npm --prefix client test -- --run src/__tests__/codeHealth.test.js
+node client/scripts/run-vitest.mjs run src/__tests__/codeHealth.test.js
 ```
 
 Verify the public tag contract before tagging:

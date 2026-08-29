@@ -42,6 +42,22 @@ describe('Ollama generate request builder', () => {
     });
   });
 
+  test('forwards an allowlisted thinking control at the documented top level', () => {
+    expect(buildOllamaGenerateRequest({
+      model: 'qwen3.5:4b',
+      prompt: 'Return JSON.',
+      stream: false,
+      temperature: 0.7,
+      think: false,
+    })).toEqual({
+      model: 'qwen3.5:4b',
+      prompt: 'Return JSON.',
+      stream: false,
+      options: { temperature: 0.7 },
+      think: false,
+    });
+  });
+
   test('forwards an explicit model-unload request without accepting other diagnostics controls', () => {
     expect(buildOllamaGenerateRequest({
       model: 'gemma4:e4b',

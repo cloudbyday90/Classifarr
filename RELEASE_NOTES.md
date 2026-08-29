@@ -1,6 +1,41 @@
 # Classifarr Release Notes
 
-> Versioning note: these release notes and the UI use public labels such as `v0.48.3-beta`. Package files use semver-safe versions such as `0.48.3-beta`.
+> Versioning note: these release notes and the UI use public labels such as `v0.48.4-beta`. Package files use semver-safe versions such as `0.48.4-beta`.
+
+## v0.48.4-beta
+**Title: Safer local AI verification with clearer Ollama guidance**
+
+### 🎉 What You'll Notice
+- **A clearer compatibility check** — administrators can see whether their saved Ollama model is covered before relying on strict candidate verification.
+- **One save, one check** — changing the primary Ollama model now saves and immediately tests strict verification; there is no separate “save anyway” approval.
+- **Less resource pressure** — large or embedding-only alternative local models are left out of the advisory compatibility check, while the saved model remains testable.
+- **Safer waiting work** — the Command Center distinguishes a missing worker from an Ollama verification condition, so the next action is clearer.
+
+### 📊 Quick Visual
+```text
+Local AI verification path
+Saved Ollama model  →  Strict-output test  →  Candidate verification
+      [included]          [explicit]             [fail closed]
+```
+
+### ✨ Highlights
+- The compatibility matrix uses bounded, media-free checks and reports only safe, aggregate guidance.
+- Verification state and recent outcome trends are visible without exposing provider settings, prompts, or media data.
+- Model changes have a focused manual recovery path: test the saved configuration again before strict verification resumes.
+- Qwen reasoning models are tested with their reasoning channel disabled only for the fixed strict JSON check, so the result can be validated safely.
+
+### 🔧 Reliability Improvements
+- Alternative probes are serialized, rate-limited, and capped so a manual check does not compete unnecessarily with everyday local inference.
+- The saved primary model is always retained in its verification path, even if it exceeds the advisory size limit for alternatives.
+
+### 👥 Who This Helps
+- End users: clearer explanations for items waiting on AI-related verification.
+- Operators/admins: controlled local-model checks and explicit re-test guidance without automatic configuration changes.
+
+### 📚 Want Technical Details?
+See `CHANGELOG.md` for full technical details.
+
+---
 
 ## v0.48.3-beta
 **Title: Clearer policy maintenance with safer review decisions**

@@ -299,7 +299,7 @@ describe('AI Settings', () => {
     expect(toast.success).not.toHaveBeenCalled()
   })
 
-  it('renders an advisory without saving until the administrator explicitly continues', async () => {
+  it('saves directly when a preflight would have produced an advisory', async () => {
     api.preflightAIVerificationConfig.mockResolvedValueOnce({
       data: {
         requiresConfirmation: true,
@@ -316,24 +316,10 @@ describe('AI Settings', () => {
     await saveButton.trigger('click')
     await flushPromises()
 
-    expect(api.preflightAIVerificationConfig).toHaveBeenCalledWith({
-      primary_provider: 'openai',
-      model: 'gpt-5-mini',
-      ollama_fallback_enabled: false,
-      ollama_for_budget_exhausted: true,
-      ollama_model: 'llama3.2'
-    })
-    expect(api.updateAIConfig).not.toHaveBeenCalled()
-    expect(api.updatePatternConfig).not.toHaveBeenCalled()
-    expect(wrapper.text()).toContain('Budget fallback remains advisory')
-    expect(wrapper.text()).toContain('Save AI Settings Anyway')
-
-    const continueButton = wrapper.findAll('button').find((button) => button.text().includes('Save AI Settings Anyway'))
-    await continueButton.trigger('click')
-    await flushPromises()
-
+    expect(api.preflightAIVerificationConfig).not.toHaveBeenCalled()
     expect(api.updateAIConfig).toHaveBeenCalledTimes(1)
     expect(api.updatePatternConfig).toHaveBeenCalledTimes(1)
+    expect(wrapper.text()).not.toContain('Save AI Settings Anyway')
   })
 
   it('renders only the server-owned current verification capability and refreshes it on demand', async () => {
@@ -534,6 +520,54 @@ describe('AI Settings', () => {
     expect(api.getAIVerificationCapabilityChangeReceipts).toHaveBeenCalledTimes(2)
   })
 
+  it('saves an unsaved Ollama target once and automatically runs its strict-verification test', async () => {
+    api.getAIConfig.mockResolvedValueOnce({
+      primary_provider: 'ollama',
+      ollama_host: 'private-ollama.internal',
+      ollama_port: 11434,
+      ollama_model: 'qwen3.5:4b'
+    })
+    api.testAIVerificationCapability.mockResolvedValueOnce({
+      data: {
+        label: 'Strict verification is available',
+        message: 'Saved Ollama is ready.',
+        guidance: [],
+        ollamaVerificationCapability: {
+          statusId: 'verification_ready',
+          label: 'Ollama verification is ready',
+          message: 'The saved model passed the bounded test.',
+          guidance: [],
+          testable: true
+        }
+      }
+    })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    wrapper.vm.config.ollama_model = 'gemma4:e4b'
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Unsaved Ollama change')
+    expect(wrapper.text()).toContain('Save Changes will save the selected Ollama configuration and immediately test')
+
+    const saveButton = wrapper.findAll('button').find((button) => (
+      button.text().includes('Save Changes and Test Strict Verification')
+    ))
+    await saveButton.trigger('click')
+    await flushPromises()
+
+    expect(api.preflightAIVerificationConfig).not.toHaveBeenCalled()
+    expect(api.updateAIConfig).toHaveBeenCalledWith(expect.objectContaining({
+      primary_provider: 'ollama',
+      ollama_model: 'gemma4:e4b'
+    }), AI_SETTINGS_WRITE_PRECONDITION)
+    expect(api.testAIVerificationCapability).toHaveBeenCalledTimes(1)
+    expect(wrapper.text()).toContain('Strict-verification test completed')
+    expect(wrapper.text()).toContain('Ollama verification passed. Strict candidate verification is ready.')
+    expect(wrapper.text()).not.toContain('private-ollama.internal')
+  })
+
   it('renders only server-projected capability receipts and refreshes them after saving', async () => {
     api.getAIVerificationCapabilityChangeReceipts
       .mockResolvedValueOnce({
@@ -595,7 +629,7 @@ describe('AI Settings', () => {
     expect(wrapper.text()).not.toContain('Stale saved capability.')
   })
 
-  it('invalidates an advisory after the provider selection changes and requires a new preflight', async () => {
+  it('does not use a draft preflight as a second save confirmation', async () => {
     api.preflightAIVerificationConfig.mockResolvedValueOnce({
       data: {
         requiresConfirmation: true,
@@ -611,25 +645,12 @@ describe('AI Settings', () => {
     const saveButton = wrapper.findAll('button').find((button) => button.text().includes('Save Changes'))
     await saveButton.trigger('click')
     await flushPromises()
-    expect(wrapper.text()).toContain('Strict verification needs attention')
-
-    const providerSelect = wrapper.find('select')
-    await providerSelect.setValue('gemini')
-    await flushPromises()
-
-    expect(wrapper.text()).not.toContain('Strict verification needs attention')
-
-    const refreshedSaveButton = wrapper.findAll('button').find((button) => button.text().includes('Save Changes'))
-    await refreshedSaveButton.trigger('click')
-    await flushPromises()
-
-    expect(api.preflightAIVerificationConfig).toHaveBeenCalledTimes(2)
-    expect(api.preflightAIVerificationConfig).toHaveBeenLastCalledWith(expect.objectContaining({
-      primary_provider: 'gemini'
-    }))
+    expect(api.updateAIConfig).toHaveBeenCalledTimes(1)
+    expect(api.preflightAIVerificationConfig).not.toHaveBeenCalled()
+    expect(wrapper.text()).not.toContain('Save AI Settings Anyway')
   })
 
-  it('keeps general AI configuration explicitly saveable after a preflight failure without rendering raw error details', async () => {
+  it('saves general AI configuration without depending on a draft preflight', async () => {
     api.preflightAIVerificationConfig.mockRejectedValueOnce(new Error('https://private.example.test rejected sk-secret'))
 
     const wrapper = mountView()
@@ -639,19 +660,12 @@ describe('AI Settings', () => {
     await saveButton.trigger('click')
     await flushPromises()
 
-    expect(api.updateAIConfig).not.toHaveBeenCalled()
-    expect(wrapper.text()).toContain('Verification capability could not be evaluated')
-    expect(wrapper.text()).toContain('Save AI Settings Anyway')
-    expect(wrapper.text()).not.toContain('private.example.test')
-    expect(wrapper.text()).not.toContain('sk-secret')
-
-    const continueButton = wrapper.findAll('button').find((button) => button.text().includes('Save AI Settings Anyway'))
-    await continueButton.trigger('click')
-    await flushPromises()
-
     expect(api.updateAIConfig).toHaveBeenCalledTimes(1)
+    expect(api.preflightAIVerificationConfig).not.toHaveBeenCalled()
     expect(api.testAIConnection).not.toHaveBeenCalled()
     expect(api.getAIModels).not.toHaveBeenCalled()
+    expect(wrapper.text()).not.toContain('private.example.test')
+    expect(wrapper.text()).not.toContain('sk-secret')
   })
 
   it('saves only AI provider-owned fields and does not echo stale RAG settings', async () => {

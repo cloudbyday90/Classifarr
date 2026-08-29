@@ -39,8 +39,25 @@ async function loadSafeOllamaVersion(getVersion) {
 }
 
 /**
+ * @typedef {{
+ *   query: (sql: string, params?: unknown[]) => Promise<unknown>,
+ * }} OllamaVerificationCompatibilityMatrixDatabase
+ */
+
+/**
  * Executes a bounded diagnostic entirely from saved server configuration.
  * Results are ephemeral and do not persist or modify capability authority.
+ */
+/**
+ * @param {{
+ *   database?: OllamaVerificationCompatibilityMatrixDatabase,
+ *   ollamaClient?: any,
+ *   createSavedOllamaClient?: any,
+ *   loadConfiguration?: any,
+ *   selectModels?: any,
+ *   buildReport?: any,
+ *   probeModel?: any,
+ * }} options
  */
 export function createOllamaVerificationCompatibilityMatrixService({
   database = db,

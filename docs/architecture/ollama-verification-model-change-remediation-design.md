@@ -13,6 +13,12 @@ The same card may show the existing identity-free aggregate mismatch count and
 last-observed time. It rejects malformed aggregate values locally and never
 renders extra response properties.
 
+This manual remediation applies to runtime drift detected after a model has
+already been saved. It is distinct from an administrator intentionally saving
+a changed primary Ollama target: that one-step save flow now runs one automatic
+saved-target test, as documented in
+[Ollama verification save-and-auto-test design](ollama-verification-save-and-auto-test-design.md).
+
 ## Research and principles
 
 Reviewed on 2026-08-29:

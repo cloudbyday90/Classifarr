@@ -64,6 +64,26 @@ describe('local AI policy sweep API-key authentication', () => {
     expect(fetchImpl.mock.calls[1][1].headers).not.toHaveProperty('x-api-key');
   });
 
+  test('prefers an API-key exchange over an ambient access token', async () => {
+    const fetchImpl = jest.fn()
+      .mockResolvedValueOnce(jsonResponse({ data: { accessToken: 'scoped-token' } }))
+      .mockResolvedValueOnce(jsonResponse({ provider: 'ollama' }));
+
+    const authenticated = await createAuthenticatedLocalAiPolicySweepApi({
+      baseUrl: 'http://localhost:21324',
+      token: 'ambient-access-token',
+      apiKey: 'clf_test_api_key',
+      fetchImpl,
+    });
+
+    expect(authenticated.authenticationMethod).toBe('api_key_exchange');
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(fetchImpl.mock.calls[0][0]).toBe(
+      'http://localhost:21324/api/auth/token/exchange-local-sweep'
+    );
+    expect(fetchImpl.mock.calls[1][1].headers.Authorization).toBe('Bearer scoped-token');
+  });
+
   test('does not retry a credentialed exchange when the resulting scoped token is rejected', async () => {
     const fetchImpl = jest.fn()
       .mockResolvedValueOnce(jsonResponse({ data: { accessToken: 'scoped-token' } }))

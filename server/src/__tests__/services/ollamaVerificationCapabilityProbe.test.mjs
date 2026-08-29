@@ -44,7 +44,10 @@ describe('ollama verification capability probe', () => {
       expect.stringContaining('candidate-bound-verification'),
       'gemma4:e4b',
       0,
-      { format: OLLAMA_VERIFICATION_CAPABILITY_PROBE_RESPONSE_SCHEMA },
+      {
+        format: OLLAMA_VERIFICATION_CAPABILITY_PROBE_RESPONSE_SCHEMA,
+        think: false,
+      },
     );
   });
 

@@ -19,7 +19,8 @@ function hasKnownBoundedArtifactSize(value) {
     && value <= OLLAMA_VERIFICATION_COMPATIBILITY_MATRIX_MAX_ALTERNATIVE_SIZE_BYTES;
 }
 
-function isClearlyEmbeddingOnly({ name, family }) {
+/** @param {{ name?: unknown, family?: unknown }} model */
+function isClearlyEmbeddingOnly({ name, family } = {}) {
   return EMBEDDING_FAMILY_MARKER.test(String(family ?? ''))
     || EMBEDDING_MODEL_NAME_MARKER.test(String(name ?? ''));
 }
@@ -29,6 +30,7 @@ function isClearlyEmbeddingOnly({ name, family }) {
  * The configured model is not passed here because its explicit single-model
  * capability check remains the operator's intended diagnostic.
  */
+/** @param {{ artifactSizeBytes?: unknown, name?: unknown, family?: unknown }} model */
 export function isOllamaVerificationCompatibilityMatrixAlternativeEligible(model = {}) {
   return hasKnownBoundedArtifactSize(model.artifactSizeBytes)
     && !isClearlyEmbeddingOnly(model);

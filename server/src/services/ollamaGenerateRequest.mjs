@@ -20,6 +20,7 @@
  *   temperature: number,
  *   format?: unknown,
  *   keepAlive?: string | number | null,
+ *   think?: boolean | 'low' | 'medium' | 'high' | 'max',
  * }} request
  * @returns {{
  *   model: string,
@@ -28,6 +29,7 @@
  *   options: { temperature: number },
  *   format?: unknown,
  *   keep_alive?: string | number,
+ *   think?: boolean | 'low' | 'medium' | 'high' | 'max',
  * }}
  */
 export function buildOllamaGenerateRequest({
@@ -37,6 +39,7 @@ export function buildOllamaGenerateRequest({
   temperature,
   format = null,
   keepAlive = null,
+  think = undefined,
 }) {
   const body = {
     model,
@@ -53,6 +56,13 @@ export function buildOllamaGenerateRequest({
 
   if (typeof keepAlive === 'string' || Number.isFinite(keepAlive)) {
     body.keep_alive = keepAlive;
+  }
+
+  // Ollama's `think` control is a top-level Generate API field, not a
+  // decoding option. Keep it narrowly allowlisted so Classifarr-only or
+  // arbitrary provider controls cannot cross the provider boundary.
+  if (typeof think === 'boolean' || ['low', 'medium', 'high', 'max'].includes(think)) {
+    body.think = think;
   }
 
   return body;

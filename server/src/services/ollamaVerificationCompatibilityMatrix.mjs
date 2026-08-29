@@ -32,6 +32,42 @@ const ALLOWED_OUTCOME_STATUS_IDS = new Set([
   OLLAMA_VERIFICATION_CAPABILITY_STATUS_IDS.UNAVAILABLE,
 ]);
 
+/**
+ * @typedef {{
+ *   name?: unknown,
+ *   buildId?: unknown,
+ *   artifactSizeBytes?: unknown,
+ *   family?: unknown,
+ * }} OllamaVerificationCompatibilityMatrixModel
+ */
+
+/**
+ * @typedef {{
+ *   models?: readonly OllamaVerificationCompatibilityMatrixModel[],
+ *   omittedModelCount?: unknown,
+ *   skippedAlternativeModelCount?: unknown,
+ *   configuredModelIncluded?: unknown,
+ * }} OllamaVerificationCompatibilityMatrixSelection
+ */
+
+/**
+ * @typedef {{
+ *   modelName?: unknown,
+ *   statusId?: unknown,
+ *   checkedAt?: unknown,
+ *   latencyMs?: unknown,
+ * }} OllamaVerificationCompatibilityMatrixOutcome
+ */
+
+/**
+ * @typedef {{
+ *   stateId?: string,
+ *   ollamaVersion?: unknown,
+ *   selection?: OllamaVerificationCompatibilityMatrixSelection,
+ *   outcomes?: OllamaVerificationCompatibilityMatrixOutcome[],
+ * }} OllamaVerificationCompatibilityMatrixReportInput
+ */
+
 function normalizeSafeModelName(value) {
   const name = String(value ?? '').trim();
   return SAFE_MODEL_NAME_PATTERN.test(name) ? name : null;
@@ -48,6 +84,12 @@ function normalizeVersion(value) {
 
 function normalizeLatencyMs(value) {
   return Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
+function normalizeNonnegativeSafeInteger(value) {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+    ? value
+    : 0;
 }
 
 function normalizeTimestamp(value) {
@@ -122,12 +164,14 @@ export function selectOllamaVerificationCompatibilityMatrixModels(models, config
  * Produces the complete allow-listed report. The matrix is transient and never
  * includes provider settings, full digests, prompts, output, or raw errors.
  */
+/** @param {OllamaVerificationCompatibilityMatrixReportInput} input */
 export function buildOllamaVerificationCompatibilityMatrixReport({
   stateId,
   ollamaVersion = null,
-  selection = {},
+  selection = /** @type {OllamaVerificationCompatibilityMatrixSelection} */ ({}),
   outcomes = [],
-} = {}) {
+} = /** @type {OllamaVerificationCompatibilityMatrixReportInput} */ ({})) {
+  /** @type {Set<string>} */
   const allowedStateIds = new Set(Object.values(OLLAMA_VERIFICATION_COMPATIBILITY_MATRIX_STATE_IDS));
   const normalizedStateId = allowedStateIds.has(stateId)
     ? stateId
@@ -152,13 +196,10 @@ export function buildOllamaVerificationCompatibilityMatrixReport({
     stateId: normalizedStateId,
     ollamaVersion: normalizeVersion(ollamaVersion),
     configuredModelIncluded: Boolean(selection.configuredModelIncluded),
-    omittedModelCount: Number.isSafeInteger(selection.omittedModelCount) && selection.omittedModelCount >= 0
-      ? selection.omittedModelCount
-      : 0,
-    skippedAlternativeModelCount: Number.isSafeInteger(selection.skippedAlternativeModelCount)
-      && selection.skippedAlternativeModelCount >= 0
-      ? selection.skippedAlternativeModelCount
-      : 0,
+    omittedModelCount: normalizeNonnegativeSafeInteger(selection.omittedModelCount),
+    skippedAlternativeModelCount: normalizeNonnegativeSafeInteger(
+      selection.skippedAlternativeModelCount,
+    ),
     outcomes: Object.freeze(normalizedOutcomes),
   });
 }

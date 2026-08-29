@@ -2,10 +2,11 @@
 
 ## Status
 
-11R.6 is complete on 2026-08-13. It adds an administrator-only, save-time
-preflight for the proposed AI provider configuration. The preflight warns when
-general AI remains usable but strict candidate-bound verification cannot be
-admitted.
+11R.6 was completed on 2026-08-13 as an administrator-only, save-time
+preflight for a proposed AI provider configuration. Its server-side,
+privacy-bounded capability projection remains available for diagnostics, but
+its former client-side confirmation gate was superseded on 2026-08-29 by the
+[one-step save-and-auto-test design](ollama-verification-save-and-auto-test-design.md).
 
 It is not a provider health check, model-discovery request, policy action,
 configuration command, or routing decision. It never calls an AI provider,
@@ -77,14 +78,12 @@ The public response contains only:
 Responses use `Cache-Control: no-store`. They contain neither the submitted
 values nor the persisted values.
 
-The AI Settings view uses the response as an advisory gate. A ready result
-continues to the existing AI-then-pattern save sequence. A warning presents an
-inline accessible status panel; `Review Settings` cancels the save, while
-`Save AI Settings Anyway` explicitly saves the unchanged full settings payload.
-Editing any preflight-relevant setting invalidates the displayed advisory and
-requires a new preflight. If the preflight read itself fails, a fixed local
-message still offers the explicit save action; raw transport errors are never
-rendered.
+The former AI Settings advisory gate is no longer used. A valid configuration
+save is one administrator action; when its primary Ollama target changes, the
+existing saved-configuration test follows automatically and its server-owned
+result remains fail-closed for strict verification. This removes an
+unnecessary second confirmation while retaining the preflight's bounded,
+diagnostic-only server behavior for callers that need it.
 
 ## Status Model
 
@@ -147,10 +146,9 @@ make strict-verification capability a global configuration prerequisite.
 2. Accept and query only the minimum non-secret configuration fields.
 3. Return fixed, no-store capability facts and guidance without provider probes
    or provider/model identity.
-4. Require an explicit UI continuation for degraded strict-verification paths
-   while preserving general AI configuration authority.
-5. Invalidate advisories after relevant edits and never render raw transport
-   errors.
+4. Preserve general AI configuration authority and use a single save action;
+   auto-test only the resulting saved primary Ollama target.
+5. Never render raw transport errors.
 6. Keep provider testing, model discovery, budget handling, policy mutation,
    and routing as separate explicit operations.
 
@@ -165,11 +163,13 @@ make strict-verification capability a global configuration prerequisite.
 - Administrator-protected settings endpoint and strict key allowlist:
   `server/src/routes/helpers/aiSettingsHandlers.mjs` and
   `server/src/routes/helpers/aiSettingsHelpers.mjs`.
-- Explicit client advisory and continuation path:
-  `client/src/views/settings/AI.vue` and `client/src/api/settingsProviders.js`.
+- Server diagnostic endpoint and strict key allowlist:
+  `server/src/routes/helpers/aiSettingsHandlers.mjs` and
+  `server/src/routes/helpers/aiSettingsHelpers.mjs`.
+- One-step client save and authoritative saved-target test:
+  `client/src/views/settings/AI.vue`.
 - Focused service, settings-route, API-layer, and UI tests prove privacy
-  bounds, no provider call, no persistence before explicit continuation, and
-  advisory invalidation after a relevant edit.
+  bounds, one-step persistence, and authoritative post-save test behavior.
 
 ## Next Task
 

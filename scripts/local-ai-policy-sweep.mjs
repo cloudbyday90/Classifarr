@@ -125,7 +125,7 @@ function printHelp() {
     '',
     'Core options:',
     '  --base-url <url>                Classifarr base URL (default: http://localhost:3000)',
-    '  --token <jwt>                   Access token (preferred if available)',
+    '  --token <jwt>                   Access token (used when no API key is supplied)',
     '  --api-key <clf_...>             Admin API key; exchanged for short-lived scoped JWT',
     '  --username <username>           Admin username for /api/auth/login fallback',
     '  --password <password>           Admin password for /api/auth/login fallback',

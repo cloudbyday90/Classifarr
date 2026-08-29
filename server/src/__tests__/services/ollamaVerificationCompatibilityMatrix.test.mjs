@@ -142,6 +142,7 @@ describe('Ollama verification compatibility matrix', () => {
       0,
       expect.objectContaining({
         format: expect.any(Object),
+        think: false,
         keepAlive: 0,
         timeoutMs: 60_000,
       }),

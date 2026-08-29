@@ -295,6 +295,45 @@
       </div>
     </Card>
 
+    <section
+      v-if="hasUnsavedOllamaVerificationTargetChange"
+      class="space-y-2 rounded-lg border border-blue-700/70 bg-blue-950/20 p-4"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      aria-labelledby="unsaved-ollama-verification-change-heading"
+    >
+      <h2
+        id="unsaved-ollama-verification-change-heading"
+        class="font-medium text-blue-100"
+      >
+        Unsaved Ollama change
+      </h2>
+      <p class="text-sm text-blue-100/90">
+        Save Changes will save the selected Ollama configuration and immediately test its strict-verification contract. The test is media-free and never routes an item.
+      </p>
+    </section>
+
+    <section
+      v-if="verificationSaveStatus"
+      class="space-y-2 rounded-lg border p-4"
+      :class="verificationSaveStatus.className"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      aria-labelledby="verification-save-status-heading"
+    >
+      <h2
+        id="verification-save-status-heading"
+        class="font-medium"
+      >
+        {{ verificationSaveStatus.heading }}
+      </h2>
+      <p class="text-sm">
+        {{ verificationSaveStatus.message }}
+      </p>
+    </section>
+
     <!-- Pattern-Based Classification Settings -->
     <!-- Pattern-Based Classification Section -->
     <Card
@@ -757,60 +796,15 @@
       </div>
     </Card>
 
-    <Card
-      v-if="activeVerificationPreflightAdvisory"
-      title="Candidate-Bound Verification"
-    >
-      <div
-        class="space-y-4"
-        role="status"
-        aria-atomic="true"
-      >
-        <div class="space-y-2">
-          <h3 class="font-medium text-amber-200">
-            {{ activeVerificationPreflightAdvisory.label }}
-          </h3>
-          <p class="text-sm text-gray-300">
-            {{ activeVerificationPreflightAdvisory.message }}
-          </p>
-          <ul
-            v-if="activeVerificationPreflightAdvisory.guidance.length > 0"
-            class="list-disc space-y-1 pl-5 text-sm text-gray-400"
-          >
-            <li
-              v-for="guidance in activeVerificationPreflightAdvisory.guidance"
-              :key="guidance"
-            >
-              {{ guidance }}
-            </li>
-          </ul>
-        </div>
-
-        <div class="flex flex-wrap gap-3">
-          <Button
-            variant="secondary"
-            :disabled="saving"
-            @click="clearVerificationPreflightAdvisory"
-          >
-            Review Settings
-          </Button>
-          <Button
-            :disabled="saving"
-            @click="saveAiSettingsAfterVerificationAdvisory"
-          >
-            Save AI Settings Anyway
-          </Button>
-        </div>
-      </div>
-    </Card>
-
     <!-- Save Button -->
     <div class="flex justify-end">
       <Button
-        :disabled="saving || Boolean(activeVerificationPreflightAdvisory)"
+        :disabled="saving"
         @click="saveConfig"
       >
-        <span v-if="saving">Saving...</span>
+        <span v-if="saving && verificationSaveStatus?.state === 'testing'">Saving and testing strict verification...</span>
+        <span v-else-if="saving">Saving...</span>
+        <span v-else-if="hasUnsavedOllamaVerificationTargetChange">💾 Save Changes and Test Strict Verification</span>
         <span v-else>💾 Save Changes</span>
       </Button>
     </div>
@@ -859,14 +853,14 @@ const availableModels = ref([])
 const ollamaModels = ref([])
 const ollamaPreflightState = ref({ ai: null, embedding: null })
 const usageStats = ref(null)
-const verificationPreflightAdvisory = ref(null)
-const verificationPreflightFingerprint = ref(null)
 const verificationCapability = ref(null)
 const verificationCapabilityChangeReceipts = ref(null)
 const ollamaVerificationRuntimeMismatchSummary = ref(null)
 const ollamaVerificationCapabilityOutcomeHistory = ref(null)
 const ollamaVerificationCompatibilityMatrix = ref(null)
 const aiSettingsWritePrecondition = ref(null)
+const savedOllamaVerificationTargetFingerprint = ref(null)
+const verificationSaveStatus = ref(null)
 let verificationCapabilityRequestId = 0
 let verificationCapabilityChangeReceiptsRequestId = 0
 let ollamaVerificationRuntimeMismatchSummaryRequestId = 0
@@ -909,12 +903,13 @@ const showOllamaPreflightPanel = computed(() => {
     (config.value.primary_provider !== 'none' && config.value.ollama_fallback_enabled)
 })
 
-const activeVerificationPreflightAdvisory = computed(() => {
-  if (!verificationPreflightAdvisory.value) return null
-
-  return verificationPreflightFingerprint.value === getVerificationPreflightFingerprint()
-    ? verificationPreflightAdvisory.value
-    : null
+const hasUnsavedOllamaVerificationTargetChange = computed(() => {
+  const selectedFingerprint = getOllamaVerificationTargetFingerprint()
+  return Boolean(
+    selectedFingerprint &&
+    savedOllamaVerificationTargetFingerprint.value &&
+    selectedFingerprint !== savedOllamaVerificationTargetFingerprint.value
+  )
 })
 
 const budgetPercentUsed = computed(() => {
@@ -1035,8 +1030,17 @@ const refreshVerificationCapability = async () => {
   await loadVerificationCapability({ notifyOnError: true })
 }
 
-const testVerificationCapability = async () => {
+const testVerificationCapability = async ({ automatic = false } = {}) => {
   testingVerificationCapability.value = true
+  if (automatic) {
+    verificationSaveStatus.value = {
+      state: 'testing',
+      className: 'border-blue-700/70 bg-blue-950/20 text-blue-100',
+      heading: 'Saved Ollama configuration — testing strict verification',
+      message: 'Classifarr is running one fixed, media-free structured-output test. No media will be routed.',
+    }
+  }
+
   try {
     const response = await api.testAIVerificationCapability()
     verificationCapability.value = response?.data || response
@@ -1044,12 +1048,34 @@ const testVerificationCapability = async () => {
     // capability result or its operator feedback.
     void loadOllamaVerificationCapabilityOutcomeHistory()
     const feedback = getAiVerificationCapabilityTestFeedback(verificationCapability.value)
+    if (automatic) {
+      verificationSaveStatus.value = {
+        state: 'completed',
+        className: feedback.level === 'success'
+          ? 'border-green-700/70 bg-green-950/20 text-green-100'
+          : 'border-amber-700/70 bg-amber-950/20 text-amber-100',
+        heading: 'Strict-verification test completed',
+        message: feedback.message,
+      }
+    }
     toast[feedback.level](feedback.message)
   } catch (error) {
+    const message = error.response?.status === 409
+      ? 'AI settings changed while Ollama was being tested. Reload the saved settings and test again.'
+      : 'Ollama verification could not be tested. Confirm the saved endpoint and model, then try again.'
+
+    if (automatic) {
+      verificationSaveStatus.value = {
+        state: 'failed',
+        className: 'border-amber-700/70 bg-amber-950/20 text-amber-100',
+        heading: 'Ollama configuration saved — strict verification was not completed',
+        message,
+      }
+    }
     if (error.response?.status === 409) {
-      toast.warning('AI settings changed while Ollama was being tested. Reload the saved settings and test again.')
+      toast.warning(message)
     } else {
-      toast.warning('Ollama verification could not be tested. Confirm the saved endpoint and model, then try again.')
+      toast.warning(message)
     }
   } finally {
     testingVerificationCapability.value = false
@@ -1166,6 +1192,7 @@ const applyEditableAiConfig = (response) => {
   }
 
   config.value = loadedConfig
+  savedOllamaVerificationTargetFingerprint.value = getOllamaVerificationTargetFingerprint(loadedConfig)
 
   if (loadedConfig.ollama_model) {
     ollamaModels.value = [{ name: loadedConfig.ollama_model }]
@@ -1350,50 +1377,48 @@ const buildAIProviderPayload = () => ({
   ollama_model: config.value.ollama_model
 })
 
-const buildVerificationPreflightPayload = () => ({
-  primary_provider: config.value.primary_provider,
-  model: config.value.model,
-  ollama_fallback_enabled: config.value.ollama_fallback_enabled,
-  ollama_for_budget_exhausted: config.value.ollama_for_budget_exhausted,
-  ollama_model: config.value.ollama_model
-})
+const getOllamaVerificationTargetFingerprint = (candidateConfig = config.value) => {
+  if (candidateConfig?.primary_provider !== 'ollama') return null
 
-const getVerificationPreflightFingerprint = () => JSON.stringify(buildVerificationPreflightPayload())
+  const model = typeof candidateConfig.ollama_model === 'string'
+    ? candidateConfig.ollama_model.trim()
+    : ''
+  if (!model) return null
 
-const clearVerificationPreflightAdvisory = () => {
-  verificationPreflightAdvisory.value = null
-  verificationPreflightFingerprint.value = null
-}
-
-const setVerificationPreflightAdvisory = (preflight) => {
-  verificationPreflightAdvisory.value = {
-    label: typeof preflight?.label === 'string'
-      ? preflight.label
-      : 'Verification capability could not be evaluated',
-    message: typeof preflight?.message === 'string'
-      ? preflight.message
-      : 'Classifarr could not evaluate strict candidate-bound verification. General AI settings can still be saved.',
-    guidance: Array.isArray(preflight?.guidance)
-      ? preflight.guidance.filter((entry) => typeof entry === 'string').slice(0, 3)
-      : ['Review the provider and fallback settings before relying on strict verification.'],
-  }
-  verificationPreflightFingerprint.value = getVerificationPreflightFingerprint()
+  return JSON.stringify({
+    primaryProvider: 'ollama',
+    host: typeof candidateConfig.ollama_host === 'string'
+      ? candidateConfig.ollama_host.trim()
+      : '',
+    port: Number(candidateConfig.ollama_port) || 11434,
+    model,
+  })
 }
 
 const persistConfig = async (providerPayload) => {
   saving.value = true
   let aiConfigSaved = false
+  const selectedOllamaTargetFingerprint = getOllamaVerificationTargetFingerprint()
+  const shouldAutoTestOllama = Boolean(
+    selectedOllamaTargetFingerprint &&
+    selectedOllamaTargetFingerprint !== savedOllamaVerificationTargetFingerprint.value
+  )
   try {
     const response = await api.updateAIConfig(providerPayload, aiSettingsWritePrecondition.value)
     aiSettingsWritePrecondition.value = getAiSettingsWritePreconditionFromResponse(response)
     aiConfigSaved = true
+    savedOllamaVerificationTargetFingerprint.value = selectedOllamaTargetFingerprint
     await Promise.all([
       loadVerificationCapability(),
       loadVerificationCapabilityChangeReceipts(),
     ])
+    if (shouldAutoTestOllama) {
+      await testVerificationCapability({ automatic: true })
+    }
     await api.updatePatternConfig(patternConfig.value)
-    clearVerificationPreflightAdvisory()
-    toast.success('AI configuration saved!')
+    if (!shouldAutoTestOllama) {
+      toast.success('AI configuration saved!')
+    }
   } catch (error) {
     const errorMessage = error.response?.data?.error || error.message || 'Failed to save configuration'
 
@@ -1423,29 +1448,6 @@ const persistConfig = async (providerPayload) => {
 }
 
 const saveConfig = async () => {
-  const preflightPayload = buildVerificationPreflightPayload()
-  const preflightFingerprint = JSON.stringify(preflightPayload)
-
-  saving.value = true
-  try {
-    const response = await api.preflightAIVerificationConfig(preflightPayload)
-    const preflight = response?.data || response
-
-    if (preflight?.requiresConfirmation === true) {
-      setVerificationPreflightAdvisory(preflight)
-      verificationPreflightFingerprint.value = preflightFingerprint
-      return
-    }
-
-    await persistConfig(buildAIProviderPayload())
-  } catch {
-    setVerificationPreflightAdvisory()
-  } finally {
-    saving.value = false
-  }
-}
-
-const saveAiSettingsAfterVerificationAdvisory = async () => {
   await persistConfig(buildAIProviderPayload())
 }
 

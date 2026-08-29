@@ -23,12 +23,12 @@ import { checkReleaseCandidateVersion } from '../../../../scripts/check-release-
 const REPOSITORY_ROOT = resolve(import.meta.dirname, '../../../..');
 
 describe('checkReleaseCandidateVersion', () => {
-  test('accepts the prepared v0.48.3-beta package, lockfile, display, and public documentation surfaces', () => {
+  test('accepts the prepared v0.48.4-beta package, lockfile, display, and public documentation surfaces', () => {
     expect(checkReleaseCandidateVersion({
       cwd: REPOSITORY_ROOT,
-      tag: 'v0.48.3-beta',
+      tag: 'v0.48.4-beta',
     })).toEqual({
-      expectedPackageVersion: '0.48.3-beta',
+      expectedPackageVersion: '0.48.4-beta',
       issues: [],
       ok: true,
     });

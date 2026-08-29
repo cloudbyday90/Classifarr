@@ -270,13 +270,19 @@ export async function createAuthenticatedLocalAiPolicySweepApi({
   password = null,
   fetchImpl = globalThis.fetch,
 }) {
-  let accessToken = token;
-  let authenticationMethod = 'access_token';
+  // An API key is exchanged for a narrowly scoped, short-lived token. Prefer
+  // that path over an ambient access token so local sweep execution cannot
+  // accidentally inherit the broader permissions of a developer shell.
+  let accessToken = null;
+  let authenticationMethod = null;
   let initialAiSettingsResponse = null;
 
-  if (!accessToken && apiKey) {
+  if (apiKey) {
     accessToken = await exchangeApiKeyForLocalAiPolicySweepToken({ baseUrl, apiKey, fetchImpl });
     authenticationMethod = 'api_key_exchange';
+  } else if (token) {
+    accessToken = token;
+    authenticationMethod = 'access_token';
   }
 
   if (!accessToken) {

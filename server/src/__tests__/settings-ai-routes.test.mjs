@@ -833,7 +833,7 @@ describe('Settings AI Routes', () => {
       expect.any(String),
       'gemma4:e4b',
       0,
-      expect.objectContaining({ keepAlive: 0, timeoutMs: 60_000 }),
+      expect.objectContaining({ think: false, keepAlive: 0, timeoutMs: 60_000 }),
     );
     expect(mockAiRouter.clearCache).not.toHaveBeenCalled();
     expect(JSON.stringify(res.body)).not.toContain('private-ollama.internal');

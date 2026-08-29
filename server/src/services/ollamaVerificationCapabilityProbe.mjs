@@ -124,7 +124,14 @@ export async function probeOllamaVerificationCapability({ identity, ollamaClient
       OLLAMA_VERIFICATION_CAPABILITY_PROBE_PROMPT,
       identity.model,
       0,
-      { format: OLLAMA_VERIFICATION_CAPABILITY_PROBE_RESPONSE_SCHEMA },
+      {
+        format: OLLAMA_VERIFICATION_CAPABILITY_PROBE_RESPONSE_SCHEMA,
+        // Qwen reasoning models can place all generated tokens in the
+        // separate thinking field. Strict verification validates the response
+        // field, so this bounded, media-free contract explicitly disables
+        // reasoning for the probe only.
+        think: false,
+      },
     );
     if (!isValidOllamaVerificationCapabilityProbeResponse(response)) {
       return buildProbeOutcome({

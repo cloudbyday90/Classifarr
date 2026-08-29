@@ -9,6 +9,14 @@ import {
 } from './ollamaConnection.mjs';
 import { generate } from './ollamaGeneration.mjs';
 
+/**
+ * @typedef {{
+ *   ollama_host?: unknown,
+ *   ollama_port?: unknown,
+ *   ollama_model?: unknown,
+ * }} SavedOllamaVerificationConfiguration
+ */
+
 function isAsciiLetterOrDigit(character) {
   return (character >= '0' && character <= '9')
     || (character >= 'a' && character <= 'z')
@@ -74,6 +82,7 @@ function normalizeSavedPort(value) {
   return Number.isSafeInteger(port) && port > 0 && port <= 65_535 ? port : 11_434;
 }
 
+/** @param {SavedOllamaVerificationConfiguration} configuration */
 function buildSavedConfiguration(configuration = {}) {
   const savedHost = normalizeSavedHost(configuration.ollama_host);
   if (!savedHost) {
@@ -93,6 +102,7 @@ function buildSavedConfiguration(configuration = {}) {
  * Binds transport only to the existing saved AI configuration. It deliberately
  * has no browser-controlled target parameters and exposes no endpoint fields.
  */
+/** @param {{ configuration?: SavedOllamaVerificationConfiguration }} options */
 export function createOllamaVerificationSavedConfigurationClient({ configuration } = {}) {
   const savedConfiguration = buildSavedConfiguration(configuration);
   const preflightCache = new Map();

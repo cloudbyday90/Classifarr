@@ -56,6 +56,7 @@ export async function generate(getConfig, prompt, model = 'qwen3:14b', temperatu
       temperature,
       format: options.format,
       keepAlive: options.keepAlive,
+      think: options.think,
     });
     const response = await httpPost(`${config.baseUrl}/api/generate`, body, {
       timeout: Number.isSafeInteger(options.timeoutMs) && options.timeoutMs >= 1000
@@ -142,6 +143,7 @@ export async function generateWithProgress(
     allowPartialOnAbort: options.allowPartialOnAbort !== false,
     requireDoneSignal: options.requireDoneSignal === true,
     format: options.format,
+    think: options.think,
     expectedModelDigest: options.expectedModelDigest,
   };
 
@@ -227,6 +229,7 @@ export async function streamGenerate(getConfig, preflightConnectionFn, config, p
       stream: true,
       temperature,
       format: options.format,
+      think: options.think,
     });
     const streamResponse = await httpStream(`${config.baseUrl}/api/generate`, body, {
       signal: controller.signal,

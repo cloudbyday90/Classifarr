@@ -13,23 +13,38 @@ import { OLLAMA_VERIFICATION_CAPABILITY_STATUS_IDS } from './ollamaVerificationC
 export const OLLAMA_VERIFICATION_COMPATIBILITY_MATRIX_PROBE_TIMEOUT_MS = 60_000;
 
 /**
+ * @typedef {{
+ *   generate: (prompt: string, model: string, temperature: number, options: Record<string, unknown>) => Promise<unknown>,
+ * }} OllamaVerificationCompatibilityMatrixProbeClient
+ */
+
+/**
  * Runs the shared fixed JSON-schema contract without retaining provider text.
  * `keepAlive: 0` asks Ollama to release each model after the short probe.
  */
+/**
+ * @param {{
+ *   modelName?: string,
+ *   ollamaClient?: OllamaVerificationCompatibilityMatrixProbeClient | null,
+ *   now?: () => string,
+ *   clock?: () => number,
+ * }} options
+ */
 export async function probeOllamaVerificationCompatibilityMatrixModel({
-  modelName,
-  ollamaClient,
+  modelName = '',
+  ollamaClient = null,
   now = () => new Date().toISOString(),
   clock = () => Date.now(),
 } = {}) {
   const startedAt = clock();
   try {
-    const response = await ollamaClient.generate(
+    const response = await ollamaClient?.generate(
       OLLAMA_VERIFICATION_CAPABILITY_PROBE_PROMPT,
       modelName,
       0,
       {
         format: OLLAMA_VERIFICATION_CAPABILITY_PROBE_RESPONSE_SCHEMA,
+        think: false,
         keepAlive: 0,
         timeoutMs: OLLAMA_VERIFICATION_COMPATIBILITY_MATRIX_PROBE_TIMEOUT_MS,
       },
