@@ -112,6 +112,11 @@
           {{ formatNumber(queuePendingCount) }} queued classification task{{ queuePendingCount === 1 ? '' : 's' }} waiting for a worker.
         </p>
 
+        <QueueAdmissionDiagnostics
+          :diagnostics="classificationAdmissionDiagnostics"
+          @open-ai-settings="$emit('open-ai-settings')"
+        />
+
         <div
           v-if="upNextTasks.length"
           class="up-next"
@@ -164,8 +169,11 @@
 </template>
 
 <script setup>
+import QueueAdmissionDiagnostics from './QueueAdmissionDiagnostics.vue'
+
 const props = defineProps({
   aiGenerationTelemetryLine: { type: String, default: '' },
+  classificationAdmissionDiagnostics: { type: Object, default: null },
   completedStageCount: { type: Function, default: null },
   formatMediaType: { type: Function, default: null },
   formatNumber: { type: Function, required: true },
@@ -184,6 +192,8 @@ const props = defineProps({
   upNextCount: { type: Number, default: 0 },
   upNextTasks: { type: Array, default: () => [] },
 })
+
+defineEmits(['open-ai-settings'])
 
 const TOTAL_CLASSIFICATION_STAGES = 8
 

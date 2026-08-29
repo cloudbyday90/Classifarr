@@ -130,6 +130,27 @@ describe('CommandCenter extracted panels', () => {
     expect(wrapper.text()).not.toContain('No active processing')
   })
 
+  it('routes queue-admission remediation through the processing panel', async () => {
+    const wrapper = mount(ProcessingPanel, {
+      props: {
+        ...processingHelpers,
+        classificationAdmissionDiagnostics: {
+          queue: { statusId: 'worker_not_running' },
+          strictVerification: { statusId: 'model_changed' },
+        },
+        librarySyncIsRunning: false,
+        primaryActiveTask: null,
+        queuePendingCount: 1,
+      },
+    })
+
+    expect(wrapper.text()).toContain('The classification worker is not running')
+    expect(wrapper.text()).toContain('saved Ollama model changed after strict verification')
+
+    await wrapper.get('.queue-admission-diagnostics-action').trigger('click')
+    expect(wrapper.emitted('open-ai-settings')).toHaveLength(1)
+  })
+
   it('renders overview sections and emits section-level actions', async () => {
     const wrapper = mount(CommandCenterOverviewSections, {
       props: {

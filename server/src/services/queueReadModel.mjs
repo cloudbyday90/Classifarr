@@ -23,6 +23,8 @@ export class QueueReadModel {
             hasProcessingClassification: false,
             lookupFailed: false,
         }));
+        this.getClassificationAdmissionDiagnostics = deps.getClassificationAdmissionDiagnostics
+            || (async () => null);
         this.getRuntimeState = deps.getRuntimeState || (() => ({
             aiAvailable: false,
             workerRunning: false,
@@ -62,6 +64,11 @@ export class QueueReadModel {
             stats.classificationPauseReason = blockers.lookupFailed
                 ? 'dispatch_check_failed'
                 : (classificationPausedForAi ? 'ai_unavailable' : null);
+            stats.classificationAdmissionDiagnostics = await this.getClassificationAdmissionDiagnostics({
+                queueStats: stats,
+                dispatchBlockers: blockers,
+                runtimeState,
+            });
 
             return stats;
         });

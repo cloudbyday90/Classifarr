@@ -15,6 +15,7 @@ describe('QueueReadModel', () => {
     let logger;
     let readModel;
     let getDispatchBlockers;
+    let getClassificationAdmissionDiagnostics;
     let getRuntimeState;
     let getSyncStatus;
 
@@ -29,6 +30,10 @@ describe('QueueReadModel', () => {
         getDispatchBlockers = jest.fn().mockResolvedValue({
             hasProcessingClassification: false,
             lookupFailed: false,
+        });
+        getClassificationAdmissionDiagnostics = jest.fn().mockResolvedValue({
+            queue: { statusId: 'available' },
+            strictVerification: { statusId: 'not_blocked' },
         });
         getRuntimeState = jest.fn().mockReturnValue({
             aiAvailable: true,
@@ -47,6 +52,7 @@ describe('QueueReadModel', () => {
             db,
             logger,
             getDispatchBlockers,
+            getClassificationAdmissionDiagnostics,
             getRuntimeState,
             getSyncStatus,
             enrichmentRetryService: {
@@ -134,6 +140,31 @@ describe('QueueReadModel', () => {
         expect(stats.workerRunning).toBe(true);
         expect(stats.classificationPaused).toBe(true);
         expect(stats.classificationPauseReason).toBe('ai_unavailable');
+    });
+
+    it('projects a server-owned admission diagnostic without changing queue totals', async () => {
+        db.query.mockResolvedValueOnce({
+            rows: [{ pending: '2', processing: '0' }],
+        }).mockResolvedValueOnce({
+            rows: [{ successful_count: '4', failed_count: '1' }],
+        });
+        getClassificationAdmissionDiagnostics.mockResolvedValueOnce({
+            queue: { statusId: 'no_eligible_worker' },
+            strictVerification: { statusId: 'model_changed' },
+        });
+
+        const stats = await readModel.getStats();
+
+        expect(stats.pending).toBe(2);
+        expect(stats.classificationAdmissionDiagnostics).toEqual({
+            queue: { statusId: 'no_eligible_worker' },
+            strictVerification: { statusId: 'model_changed' },
+        });
+        expect(getClassificationAdmissionDiagnostics).toHaveBeenCalledWith(expect.objectContaining({
+            queueStats: expect.objectContaining({ pending: 2 }),
+            dispatchBlockers: expect.objectContaining({ lookupFailed: false }),
+            runtimeState: expect.objectContaining({ workerRunning: true }),
+        }));
     });
 
     it('calculates gap analysis progress and ETA', async () => {

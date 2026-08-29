@@ -59,6 +59,9 @@ import {
 } from './queueTaskFailureReason.mjs';
 import { QueueConcurrencySettingsService } from './queueConcurrencySettingsService.mjs';
 import { EnrichmentItemStateService } from './enrichmentItemStateService.mjs';
+import {
+  createClassificationQueueAdmissionDiagnosticsService,
+} from './classificationQueueAdmissionDiagnosticsService.mjs';
 
 
 const POLL_INTERVAL_MS = 1000;
@@ -93,6 +96,11 @@ export class QueueService {
       db: this.db,
       logger: this.logger,
     });
+    this.classificationQueueAdmissionDiagnosticsService = deps.classificationQueueAdmissionDiagnosticsService
+      || createClassificationQueueAdmissionDiagnosticsService({
+        database: this.db,
+        logger: this.logger,
+      });
 
 
     this.running = false;
@@ -109,8 +117,13 @@ export class QueueService {
       getRuntimeState: () => ({
         aiAvailable: this.aiAvailable,
         workerRunning: this.running,
+        processing: this.processing,
+        processingByType: { ...this.processingByType },
         queueConcurrency: this.queueConcurrencySettingsService.cachedConfig || this.queueConcurrencySettingsService.buildDefaultConfig(),
       }),
+      getClassificationAdmissionDiagnostics: (input) => (
+        this.classificationQueueAdmissionDiagnosticsService.getDiagnostics(input)
+      ),
       getSyncStatus: () => this.syncStatus.getStatus(),
       enrichmentRetryService: this.enrichmentRetryService,
     });

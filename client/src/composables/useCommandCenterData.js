@@ -158,6 +158,12 @@ export function useCommandCenterData({ router }) {
   })
   const workerOnline = computed(() => Boolean(healthStats.value.worker))
   const aiOnline = computed(() => Boolean(healthStats.value.ai))
+  const classificationAdmissionDiagnostics = computed(() => (
+    queueStats.value.classificationAdmissionDiagnostics
+      && typeof queueStats.value.classificationAdmissionDiagnostics === 'object'
+      ? queueStats.value.classificationAdmissionDiagnostics
+      : null
+  ))
   const isClassificationPaused = computed(() => Boolean(queueStats.value.classificationPaused))
   const classificationPauseReason = computed(() => String(queueStats.value.classificationPauseReason || ''))
   const workerStatusLabel = computed(() => {
@@ -295,6 +301,7 @@ export function useCommandCenterData({ router }) {
     aiBudget,
     aiOnline,
     alerts,
+    classificationAdmissionDiagnostics,
     classificationPauseReason,
     configureMediaServerMessage,
     enrichmentCompletedItems,

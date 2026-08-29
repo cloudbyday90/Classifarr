@@ -130,6 +130,7 @@
           <ProcessingPanel
             :ai-generation-telemetry-line="aiGenerationTelemetryLine"
             :ai-online="aiOnline"
+            :classification-admission-diagnostics="classificationAdmissionDiagnostics"
             :completed-stage-count="completedStageCount"
             :format-duration-ms="formatDurationMs"
             :format-media-type="formatMediaType"
@@ -157,6 +158,7 @@
             :up-next-tasks="upNextTasks"
             @cancel-all-pending="cancelAllPendingTasks"
             @cancel-pending-task="cancelPendingTask"
+            @open-ai-settings="router.push({ path: '/settings', query: { tab: 'ai' } })"
             @open-media-server-settings="router.push({ path: '/settings', query: { tab: 'ai' } })"
             @open-processing-details="openProcessingDetails"
           />
@@ -295,6 +297,7 @@ const {
   activeProcessingTasks,
   aiOnline,
   alerts,
+  classificationAdmissionDiagnostics,
   configureMediaServerMessage,
   enrichmentCompletedItems,
   enrichmentNotNeededItems,
