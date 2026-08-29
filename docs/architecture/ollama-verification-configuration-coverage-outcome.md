@@ -35,7 +35,7 @@ No release was created for this change.
 
 ## Next item
 
-The next recommended item is a documentation-only operator remediation guide:
-match each fixed matrix outcome to safe local Ollama maintenance steps and end
-every branch by re-running the saved capability test. It should not automate
-model pulling, deleting, or changing the saved configuration.
+The operator-remediation guide now maps each fixed matrix result to bounded,
+manual local-Ollama maintenance and ends every branch with the saved capability
+test. The next item is to gather a real, sanitized matrix result from the
+operator environment before proposing any model-specific product change.
