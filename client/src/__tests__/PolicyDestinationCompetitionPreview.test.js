@@ -31,6 +31,16 @@ describe('PolicyDestinationCompetitionPreview', () => {
             proposedSharedEligibleItemCount: 2,
             competitorOnlyEligibleItemCount: 1,
           },
+          sharedEligibilityExplanation: {
+            categories: [{
+              categoryId: 'genre_purpose',
+              label: 'Genre-based declared purpose',
+              configuredCompetitorPolicyCount: 2,
+            }],
+            guidance: {
+              description: 'This category may contribute to shared eligibility.',
+            },
+          },
           guidance: {
             title: 'The proposed policy shares deterministic eligibility',
             description: 'Review the declared purpose and constraints before saving.',
@@ -51,6 +61,7 @@ describe('PolicyDestinationCompetitionPreview', () => {
     )
     expect(wrapper.text()).toContain('Active destinations considered')
     expect(wrapper.text()).toContain('Shared eligible')
+    expect(wrapper.text()).toContain('Why shared eligibility may occur')
     expect(wrapper.text()).toContain('no destination names, AI calls, saving, or routing')
     expect(wrapper.text()).not.toContain('Range of Stars')
 

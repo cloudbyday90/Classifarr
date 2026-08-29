@@ -327,6 +327,7 @@ const POLICY_AUTHORING_WORKFLOW_RULES = deepFreeze([
     notes: 'Destination-competition preview is administrator-only existing-policy maintenance. Its component and transport binding return only bounded aggregate server results and cannot derive a destination, persist a draft, call a provider, or decide routing.',
     matches: filePath => hasAnySegment(filePath, [
       '/PolicyDestinationCompetitionPreview.vue',
+      '/PolicyDestinationCompetitionSharedEligibilityExplanation.vue',
       '/usePolicyDestinationCompetitionPreview.js',
     ]),
   },

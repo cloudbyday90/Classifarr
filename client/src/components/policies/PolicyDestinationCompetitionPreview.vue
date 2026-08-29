@@ -127,6 +127,10 @@
         The active-destination cap was reached, so additional destinations may not be represented.
       </p>
 
+      <PolicyDestinationCompetitionSharedEligibilityExplanation
+        :explanation="preview.sharedEligibilityExplanation"
+      />
+
       <p class="text-xs text-gray-400">
         Shared eligibility is not a policy ranking, AI result, or final routing decision.
         Historic records and destination identities remain on the server.
@@ -137,6 +141,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import PolicyDestinationCompetitionSharedEligibilityExplanation from '@/components/policies/PolicyDestinationCompetitionSharedEligibilityExplanation.vue'
 
 const props = defineProps({
   preview: {

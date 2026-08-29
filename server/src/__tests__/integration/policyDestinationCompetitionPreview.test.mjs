@@ -138,6 +138,19 @@ describe('policy destination competition preview integration', () => {
         competitorOnlyEligibleItemCount: 0,
         noEligibleCandidateItemCount: 2,
       },
+      sharedEligibilityExplanation: {
+        statusId: 'destination_competition_shared_eligibility_explanation_available',
+        categories: [{
+          categoryId: 'genre_purpose',
+          label: 'Genre-based declared purpose',
+          configuredCompetitorPolicyCount: 1,
+        }],
+        proposedTermsExposed: false,
+        competitorTermsExposed: false,
+        competitorIdentitiesExposed: false,
+        rawRulesExposed: false,
+        itemOutcomesExposed: false,
+      },
     });
     expect(after.rows).toEqual(before.rows);
     expect(JSON.stringify(preview)).not.toContain('Competition Action Record');

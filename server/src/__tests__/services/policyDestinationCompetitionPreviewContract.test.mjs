@@ -19,6 +19,10 @@ describe('policyDestinationCompetitionPreviewContract', () => {
       sample: { windowDays: 90, maximumItems: 100, evaluatedItemCount: 4 },
       proposedEligibility: [true, true, false, false],
       competitorEligibility: [false, true, true, false],
+      sharedEligibilityExplanation: {
+        statusId: 'destination_competition_shared_eligibility_explanation_available',
+        categories: [{ categoryId: 'genre_purpose' }],
+      },
       activeCompetitorPolicyCount: 3,
       maximumCompetitorPolicies: 25,
       evaluatedAt: '2026-08-29T12:00:00.000Z',
@@ -39,6 +43,9 @@ describe('policyDestinationCompetitionPreviewContract', () => {
         proposedSharedEligibleItemCount: 1,
         competitorOnlyEligibleItemCount: 1,
         noEligibleCandidateItemCount: 1,
+      },
+      sharedEligibilityExplanation: {
+        statusId: 'destination_competition_shared_eligibility_explanation_available',
       },
       draftRetained: false,
       rawConfigurationExposed: false,

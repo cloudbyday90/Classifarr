@@ -127,6 +127,7 @@ const POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS = deepFreeze([
   'client/src/__tests__/PolicyBuilderWorkflowShell.test.js',
   'client/src/__tests__/PolicyCohortSimulation.test.js',
   'client/src/__tests__/PolicyDestinationCompetitionPreview.test.js',
+  'client/src/__tests__/PolicyDestinationCompetitionSharedEligibilityExplanation.test.js',
   'client/src/__tests__/PolicyAuthoringLifecycleEntry.test.js',
   'client/src/__tests__/PolicyDestinationProposalAdjustmentDisclosure.test.js',
   'client/src/__tests__/PolicyDestinationProposalCard.test.js',
@@ -469,6 +470,14 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
     POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.RUNTIME_VERIFIER,
     [],
     'The administrator-only destination-competition preview displays bounded aggregate eligibility counts, returns no destination or historic-item identities, and cannot save, route, learn, call AI, or retain draft terms.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyDestinationCompetitionSharedEligibilityExplanation.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_WORKFLOW_REGRESSION,
+    false,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.RUNTIME_VERIFIER,
+    [],
+    'The shared-eligibility explanation renders only allow-listed aggregate purpose categories and anonymous configuration counts, and cannot expose policy terms, identities, media records, individual outcomes, routing, or AI activity.'
   ),
   presentationTestRecord(
     'client/src/__tests__/PolicyPurposeCoverageReview.test.js',

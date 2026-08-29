@@ -33,6 +33,7 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS = Object.freeze({
   PURPOSE_COVERAGE_PREFLIGHT: 'purpose_coverage_preflight',
   COHORT_SIMULATION: 'cohort_simulation',
   DESTINATION_COMPETITION_PREVIEW: 'destination_competition_preview',
+  DESTINATION_COMPETITION_EXPLANATION: 'destination_competition_explanation',
   NATIVE_PURPOSE_MAINTENANCE: 'native_purpose_maintenance',
 });
 
@@ -349,6 +350,15 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY = deepFreeze([
     targetComponentIds: [],
     normalAuthoringAllowed: false,
     notes: 'Administrator-only, explicitly invoked compatibility-maintenance preview; it renders bounded aggregate eligibility competition and cannot save, route, learn, call AI, or expose competitor identities, configuration, or cohort records.',
+  },
+  {
+    id: 'policy_destination_competition_shared_eligibility_explanation',
+    path: 'client/src/components/policies/PolicyDestinationCompetitionSharedEligibilityExplanation.vue',
+    roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.DESTINATION_COMPETITION_EXPLANATION,
+    decisionId: POLICY_AUTHORING_COMPONENT_DECISION_IDS.DELETE_FROM_NORMAL_PATH,
+    targetComponentIds: [],
+    normalAuthoringAllowed: false,
+    notes: 'Administrator-only compatibility-maintenance explanation card; it renders allow-listed aggregate purpose categories and anonymous counts only, and cannot expose rule values, policy identities, media records, AI output, or routing authority.',
   },
   {
     id: 'policy_compatibility_maintenance_surface',

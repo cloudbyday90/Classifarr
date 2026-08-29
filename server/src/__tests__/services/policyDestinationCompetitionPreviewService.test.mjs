@@ -39,6 +39,10 @@ describe('PolicyDestinationCompetitionPreviewService', () => {
         (policy.kind === 'competitor' && ['shared', 'competitor only'].includes(item.title)),
     }));
     const buildPreview = jest.fn(input => input);
+    const buildSharedEligibilityExplanation = jest.fn(input => ({
+      statusId: 'destination_competition_shared_eligibility_explanation_available',
+      ...input,
+    }));
     const service = new PolicyDestinationCompetitionPreviewService({
       db: { query: jest.fn() },
       now: () => new Date('2026-08-29T12:00:00.000Z'),
@@ -52,6 +56,7 @@ describe('PolicyDestinationCompetitionPreviewService', () => {
       evaluate,
       projectItem,
       buildPreview,
+      buildSharedEligibilityExplanation,
     });
 
     await service.preview({ policyId: 17, draft: { schema_version: 1 } });
@@ -72,6 +77,11 @@ describe('PolicyDestinationCompetitionPreviewService', () => {
       activeCompetitorPolicyCount: 1,
       maximumCompetitorPolicies: 25,
     }));
+    expect(buildSharedEligibilityExplanation).toHaveBeenCalledWith({
+      sharedEligibleItemCount: 1,
+      proposedContract: { kind: 'proposed' },
+      competitorContracts: [{ kind: 'competitor' }],
+    });
     expect(evaluate).toHaveBeenCalledTimes(6);
   });
 

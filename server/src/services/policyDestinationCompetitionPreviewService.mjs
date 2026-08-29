@@ -28,6 +28,9 @@ import {
   buildPolicyDestinationCompetitionPreview,
 } from './policyDestinationCompetitionPreviewContract.mjs';
 import {
+  buildPolicyDestinationCompetitionSharedEligibilityExplanation,
+} from './policyDestinationCompetitionSharedEligibilityExplanation.mjs';
+import {
   POLICY_DESTINATION_COMPETITION_MAXIMUM_COMPETITORS,
   loadPolicyDestinationCompetitionCompetitors,
 } from './policyDestinationCompetitionPreviewPersistence.mjs';
@@ -70,6 +73,7 @@ export class PolicyDestinationCompetitionPreviewService {
     evaluate = evaluateNativePolicyIntent,
     projectItem = projectPolicyCohortSimulationItem,
     buildPreview = buildPolicyDestinationCompetitionPreview,
+    buildSharedEligibilityExplanation = buildPolicyDestinationCompetitionSharedEligibilityExplanation,
   } = {}) {
     this.db = db;
     this.now = now;
@@ -86,15 +90,17 @@ export class PolicyDestinationCompetitionPreviewService {
     this.evaluate = evaluate;
     this.projectItem = projectItem;
     this.buildPreview = buildPreview;
+    this.buildSharedEligibilityExplanation = buildSharedEligibilityExplanation;
   }
 
   async preview({ dbClient = this.db, policyId, draft, now = this.now() } = {}) {
     const persistedPolicy = await this.loadContext({ db: dbClient, policyId });
     if (!persistedPolicy) throw new PolicyDestinationCompetitionPreviewNotFoundError();
 
+    const proposedContract = this.buildDraftContract({ policy: persistedPolicy, draft });
     const proposedPolicy = this.buildPolicy({
       policy: persistedPolicy,
-      contract: this.buildDraftContract({ policy: persistedPolicy, draft }),
+      contract: proposedContract,
     });
     const [persistedCompetitors, historicItems] = await Promise.all([
       this.loadCompetitors({
@@ -114,9 +120,10 @@ export class PolicyDestinationCompetitionPreviewService {
       dbClient,
       policies: persistedCompetitors,
     });
-    const competitorPolicies = attachedCompetitors.map(policy => this.buildPolicy({
+    const competitorContracts = attachedCompetitors.map(policy => this.buildCurrentContract(policy));
+    const competitorPolicies = attachedCompetitors.map((policy, index) => this.buildPolicy({
       policy,
-      contract: this.buildCurrentContract(policy),
+      contract: competitorContracts[index],
     }));
     const proposedEligibility = [];
     const competitorEligibility = [];
@@ -137,6 +144,13 @@ export class PolicyDestinationCompetitionPreviewService {
       },
       proposedEligibility,
       competitorEligibility,
+      sharedEligibilityExplanation: this.buildSharedEligibilityExplanation({
+        sharedEligibleItemCount: proposedEligibility.reduce((count, proposedEligible, index) => (
+          proposedEligible && competitorEligibility[index] ? count + 1 : count
+        ), 0),
+        proposedContract,
+        competitorContracts,
+      }),
       activeCompetitorPolicyCount: competitorPolicies.length,
       maximumCompetitorPolicies: this.maximumCompetitors,
       evaluatedAt: now,

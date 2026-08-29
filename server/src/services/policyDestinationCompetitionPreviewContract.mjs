@@ -106,6 +106,7 @@ export function buildPolicyDestinationCompetitionPreview({
   competitorEligibility = [],
   activeCompetitorPolicyCount = 0,
   maximumCompetitorPolicies = 0,
+  sharedEligibilityExplanation = null,
   evaluatedAt = new Date(),
 } = {}) {
   const evaluatedItemCount = asNonNegativeInteger(
@@ -145,6 +146,7 @@ export function buildPolicyDestinationCompetitionPreview({
       eligibleItemCount: proposedEligibleItemCount,
     },
     competition,
+    sharedEligibilityExplanation,
     statusId,
     guidance: buildGuidance({
       evaluatedItemCount,
