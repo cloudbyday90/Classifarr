@@ -43,6 +43,11 @@ integration tests cover the new projection. The normal client and server test
 suites plus lint, type, documentation, migration, ESM, build, coverage, and
 security-diff gates are run before this work is committed.
 
+The local Compose image was also rebuilt with `--no-cache` and the stack was
+recreated with Docker health waiting. The provenance-specific rebuild correctly
+refused the dirty checkout because it can only attest a clean revision; the
+successful local rebuild makes no provenance claim.
+
 ## Transactional operational-test outcome
 
 The integration suite now uses a single transaction-scoped PostgreSQL client
@@ -52,6 +57,20 @@ AI-unavailable retry records, measures only the four aggregate deltas, and
 asserts that fixture metadata and titles do not enter the public telemetry
 object. The test explicitly rolls the transaction back and verifies from a
 separate connection that no fixture row persisted.
+
+## Authenticated route-boundary outcome
+
+The live-stats acceptance test mounts the production `createQueueRouter` and
+uses a transaction-scoped queue-service adapter backed by `QueueReadModel` and
+the real telemetry service. It proves that the router rejects an unauthenticated
+request before invoking the adapter, accepts a test-authenticated principal,
+returns the versioned aggregate telemetry inside the public live-stats payload,
+and never exposes the synthetic fixture tag, private value, or titles.
+
+The route is intentionally read-only: the test also asserts that the write
+permission middleware is not invoked. Focused middleware tests remain the
+owner of real JWT/API-key verification, while this test owns router ordering,
+response serialization, and transaction cleanup.
 
 ## CI schema-snapshot remediation
 
@@ -86,8 +105,8 @@ this work.
 
 ## Next recommendation
 
-Add an authenticated route-boundary acceptance test for
-`GET /api/queue/live-stats` using `createQueueRouter` and a transaction-scoped
-queue-service adapter. It should assert the same fixed telemetry contract at
-the HTTP response boundary and reject an unauthenticated request, without
-using committed fixture records or invoking an AI provider.
+Promote the local Compose provider-fault suite to a visible required CI job if
+provider failure behavior is release-critical. The job should run
+`npm run test:integration:ai-provider-fault-compose` against its loopback-only
+stub and publish a clear pass/fail result, rather than relying on the default
+suite's intentional skip.

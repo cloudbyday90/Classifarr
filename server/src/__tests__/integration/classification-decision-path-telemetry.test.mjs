@@ -11,22 +11,20 @@
 import { beforeAll, describe, expect, jest, test } from '@jest/globals';
 
 import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
+import {
+  buildFixtureMetadata,
+  FIXTURE_TAG,
+  PRIVATE_FIXTURE_VALUE,
+  subtractCounts,
+  withRollbackTransaction,
+} from './classificationDecisionPathTelemetryTestSupport.mjs';
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
 const { QueueReadModel } = await import('../../services/queueReadModel.mjs');
 const {
-  CLASSIFICATION_DETERMINISTIC_AI_MODE_VERSION,
-} = await import('../../services/classificationDeterministicAiMode.mjs');
-const {
-  CLASSIFICATION_CANDIDATE_BOUND_VERIFICATION_VERSION,
-} = await import('../../services/classificationCandidateBoundVerificationContract.mjs');
-const {
   createClassificationDecisionPathTelemetryService,
 } = await import('../../services/classificationDecisionPathTelemetryService.mjs');
-
-const FIXTURE_TAG = 'classification-decision-path-telemetry-transaction-fixture';
-const PRIVATE_FIXTURE_VALUE = 'synthetic-private-fixture-value';
 
 function createLogger() {
   return {
@@ -35,55 +33,6 @@ function createLogger() {
     info: jest.fn(),
     warn: jest.fn(),
   };
-}
-
-function buildFixtureMetadata({ mode, invoked, reasonCode, verificationStatusId = null }) {
-  const classificationDetails = {
-    deterministic_ai_mode: {
-      version: CLASSIFICATION_DETERMINISTIC_AI_MODE_VERSION,
-      mode,
-      invoked,
-      reason_code: reasonCode,
-      policy_action: invoked ? 'prompt_confirm' : 'auto_classify',
-      candidate_count: invoked ? 1 : 0,
-    },
-  };
-
-  if (verificationStatusId) {
-    classificationDetails.candidate_bound_verification = {
-      version: CLASSIFICATION_CANDIDATE_BOUND_VERIFICATION_VERSION,
-      status_id: verificationStatusId,
-    };
-  }
-
-  return {
-    classification_details: classificationDetails,
-    fixture_tag: FIXTURE_TAG,
-    fixture_private_value: PRIVATE_FIXTURE_VALUE,
-  };
-}
-
-function subtractCounts(after, before) {
-  return Object.fromEntries(Object.keys(after).map((key) => [
-    key,
-    after[key] - before[key],
-  ]));
-}
-
-async function withRollbackTransaction(pool, operation) {
-  const client = await pool.connect();
-  let transactionStarted = false;
-
-  try {
-    await client.query('BEGIN');
-    transactionStarted = true;
-    return await operation(client);
-  } finally {
-    if (transactionStarted) {
-      await client.query('ROLLBACK');
-    }
-    client.release();
-  }
 }
 
 describe('classification decision-path telemetry integration', () => {

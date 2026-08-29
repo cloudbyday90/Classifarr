@@ -152,3 +152,48 @@ and [OWASP API4:2023](https://owasp.org/API-Security/editions/2023/en/0xa4-unres
 6. Cover HTTP serialization and authentication separately with a route-boundary
    acceptance test; do not require a live AI provider for deterministic
    decision-path contract coverage.
+
+## Authenticated route-boundary acceptance
+
+`GET /api/queue/live-stats` is a read-only endpoint. The shared queue router
+first applies `authenticateTokenOrApiKey` to every route, then invokes the live
+stats reader; it deliberately does not apply the write-only permission guard to
+this `GET`. The acceptance test mounts that same `createQueueRouter` factory,
+proves an unauthenticated request receives `401` before the service adapter can
+run, then makes an authenticated request against a transaction-scoped real
+queue read model.
+
+The test retains the earlier four-counter fixture so it validates both the
+HTTP boundary and the aggregate-only response. It supplies a narrowly scoped
+test authentication adapter, rather than a production credential or external
+provider. This composes the router's middleware ordering with the production
+read-model contract without turning integration tests into a network or secret
+management dependency.
+
+This reflects OWASP guidance to deny access by default and test predictable
+function-level access controls
+([API5:2023](https://owasp.org/API-Security/editions/2023/en/0xa5-broken-function-level-authorization/)),
+and to treat authentication mechanisms as protected boundaries
+([API2:2023](https://owasp.org/API-Security/editions/2023/en/0xa2-broken-authentication/)).
+It also follows Express 5's router and middleware composition model
+([routing](https://expressjs.com/en/5x/starter/basic-routing/),
+[middleware](https://expressjs.com/en/5x/guide/writing-middleware/)).
+
+### Route-test options
+
+| Option | Pros | Cons |
+| --- | --- | --- |
+| Mock `queueService.getLiveStats` and bypass middleware | Very fast | Cannot prove route authentication ordering or aggregate serialization. |
+| Use an actual production JWT/API key | Exercises credential validation | Couples the test to secrets, token configuration, and unrelated authentication internals. |
+| **Mount the real router with a test authentication adapter and transaction-scoped read-model adapter** | Proves the security boundary, response path, PostgreSQL aggregate behavior, and cleanup without secrets or persistent records | Credential-verifier mechanics remain covered by their focused middleware tests. |
+
+### Resulting route-test stack
+
+1. Mount `createQueueRouter` with its normal router-level authentication slot.
+2. Request the endpoint without a principal and assert `401` before the queue
+   service adapter is called.
+3. Seed synthetic aggregate outcomes inside one PostgreSQL transaction.
+4. Request the same endpoint with a test-only authenticated principal and
+   assert the fixed telemetry contract and aggregate deltas.
+5. Assert the write authorization middleware is not used for this read-only
+   route, then roll back and independently verify fixture removal.
