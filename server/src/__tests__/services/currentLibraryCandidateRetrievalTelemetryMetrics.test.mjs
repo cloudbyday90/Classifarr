@@ -52,6 +52,14 @@ describe('currentLibraryCandidateRetrievalTelemetryMetrics', () => {
         changedToCandidateOutcomeCount: 1,
         changedOutsideCandidateOutcomeCount: 2,
         routedNotApplicableOutcomeCount: 1,
+        confirmationEvidenceObservationCount: 20,
+        specializedDeclaredEvidenceCount: 11,
+        compatibilityOnlyEvidenceCount: 5,
+        profileEvidenceCount: 8,
+        patternEvidenceCount: 3,
+        ragEvidenceCount: 7,
+        historyEvidenceCount: 2,
+        calibrationAppliedCount: 9,
       },
     });
 
@@ -88,6 +96,18 @@ describe('currentLibraryCandidateRetrievalTelemetryMetrics', () => {
         outsideCandidateOutcomeCount: 2,
         outsideCandidateRatePercent: 40,
       },
+      policyConfirmationEvidence: {
+        version: 'current_library.policy_confirmation_evidence_readiness.v1',
+        statusId: 'declared_scope_review_recommended',
+        confirmationObservationCount: 20,
+        declaredScope: {
+          specializedEvidenceCount: 11,
+          specializedEvidenceRatePercent: 55,
+          compatibilityOnlyEvidenceCount: 5,
+          noDeclaredEvidenceCount: 4,
+        },
+        calibration: { appliedCount: 9, appliedRatePercent: 45 },
+      },
       readiness: { statusId: 'observing' },
     });
     expect(report.retrieval.latencyBands).toEqual(expect.arrayContaining([
@@ -95,5 +115,6 @@ describe('currentLibraryCandidateRetrievalTelemetryMetrics', () => {
     ]));
     expect(JSON.stringify(report)).not.toContain('library_id');
     expect(JSON.stringify(report)).not.toContain('title');
+    expect(JSON.stringify(report)).not.toContain('policy_id');
   });
 });

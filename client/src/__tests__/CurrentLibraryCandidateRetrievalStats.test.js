@@ -55,6 +55,30 @@ const report = {
     outsideCandidateRatePercent: 15,
     minimumOutsideCandidateRatePercent: 15,
   },
+  policyConfirmationEvidence: {
+    statusId: 'declared_scope_review_recommended',
+    confirmationObservationCount: 20,
+    minimumObservationCount: 20,
+    declaredScope: {
+      specializedEvidenceCount: 11,
+      specializedEvidenceRatePercent: 55,
+      compatibilityOnlyEvidenceCount: 5,
+      compatibilityOnlyEvidenceRatePercent: 25,
+      noDeclaredEvidenceCount: 4,
+      noDeclaredEvidenceRatePercent: 20,
+      minimumSpecializedEvidenceRatePercent: 60,
+    },
+    calibration: {
+      appliedCount: 9,
+      appliedRatePercent: 45,
+    },
+    supportingEvidenceSources: [
+      { id: 'observed_profile', count: 8, ratePercent: 40 },
+      { id: 'confirmed_pattern', count: 3, ratePercent: 15 },
+      { id: 'similar_items', count: 7, ratePercent: 35 },
+      { id: 'prior_outcomes', count: 2, ratePercent: 10 },
+    ],
+  },
   readiness: {
     statusId: 'observing',
     message: 'Private prompt text must not render.',
@@ -70,7 +94,7 @@ describe('CurrentLibraryCandidateRetrievalStats.vue', () => {
 
     expect(api.getCurrentLibraryCandidateRetrievalMetrics).toHaveBeenCalledOnce()
     expect(wrapper.text()).toContain('Candidate Retrieval Monitoring')
-    expect(wrapper.text()).toContain('Aggregate latency, catalog-match, candidate-set, and AI/operator-agreement telemetry')
+    expect(wrapper.text()).toContain('Aggregate latency, catalog-match, candidate-set, policy-confirmation evidence, and AI/operator-agreement telemetry')
     expect(wrapper.text()).toContain('Same destination')
     expect(wrapper.text()).toContain('3 (75%)')
     expect(wrapper.text()).toContain('Under 25 ms')
@@ -86,6 +110,16 @@ describe('CurrentLibraryCandidateRetrievalStats.vue', () => {
     expect(wrapper.text()).toContain('20 / 20')
     expect(wrapper.text()).toContain('3 (15%)')
     expect(wrapper.text()).toContain('This does not prove an AI or retrieval error')
+    expect(wrapper.text()).toContain('Policy confirmation evidence')
+    expect(wrapper.text()).toContain('Review declared policy scope')
+    expect(wrapper.text()).toContain('11 (55%)')
+    expect(wrapper.text()).toContain('Compatibility-only declared evidence')
+    expect(wrapper.text()).toContain('5 (25%)')
+    expect(wrapper.text()).toContain('No declared policy evidence')
+    expect(wrapper.text()).toContain('4 (20%)')
+    expect(wrapper.text()).toContain('Observed library profile')
+    expect(wrapper.text()).toContain('8 (40%)')
+    expect(wrapper.text()).toContain('does not prove an error or authorize more AI use')
     expect(wrapper.find('[role="status"]').attributes('aria-atomic')).toBe('true')
     expect(wrapper.findAll('button')).toHaveLength(0)
     expect(wrapper.text()).not.toContain('Private prompt text')
@@ -118,5 +152,26 @@ describe('CurrentLibraryCandidateRetrievalStats.vue', () => {
 
     expect(wrapper.text()).toContain('Candidate-set review is unavailable')
     expect(wrapper.text()).not.toContain('Private provider response')
+  })
+
+  it('filters unknown policy-confirmation evidence sources and statuses', async () => {
+    api.getCurrentLibraryCandidateRetrievalMetrics.mockResolvedValue({
+      ...report,
+      policyConfirmationEvidence: {
+        ...report.policyConfirmationEvidence,
+        statusId: 'provider_supplied_status',
+        supportingEvidenceSources: [
+          ...report.policyConfirmationEvidence.supportingEvidenceSources,
+          { id: 'provider_supplied_source', count: 99, ratePercent: 99 },
+        ],
+      },
+    })
+
+    const wrapper = mount(CurrentLibraryCandidateRetrievalStats)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Policy confirmation evidence is unavailable')
+    expect(wrapper.text()).not.toContain('provider_supplied_source')
+    expect(wrapper.text()).not.toContain('99 (99%)')
   })
 })

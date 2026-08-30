@@ -16,7 +16,7 @@
         Candidate Retrieval Monitoring
       </h2>
       <p class="mt-1 text-sm text-gray-400">
-        Aggregate latency, catalog-match, candidate-set, and AI/operator-agreement telemetry for bounded current-library retrieval. It never changes AI, policy, or routing decisions.
+        Aggregate latency, catalog-match, candidate-set, policy-confirmation evidence, and AI/operator-agreement telemetry for bounded current-library retrieval. It never changes AI, policy, or routing decisions.
       </p>
     </div>
 
@@ -198,6 +198,78 @@
         </dl>
       </article>
 
+      <article
+        class="rounded-lg border p-5"
+        :class="policyConfirmationEvidenceClass"
+      >
+        <h3 class="text-base font-medium">
+          Policy confirmation evidence
+        </h3>
+        <p class="mt-2 text-sm font-medium">
+          {{ policyConfirmationEvidenceLabel }}
+        </p>
+        <p class="mt-1 text-sm text-gray-300">
+          {{ policyConfirmationEvidenceMessage }}
+        </p>
+        <dl class="mt-4 space-y-3 text-sm">
+          <MetricRow
+            label="Confirmation outcomes with evidence"
+            :value="formatProgress(
+              policyConfirmationEvidence?.confirmationObservationCount,
+              policyConfirmationEvidence?.minimumObservationCount,
+            )"
+          />
+          <MetricRow
+            label="Specialized declared policy evidence"
+            :value="formatRate(
+              policyConfirmationEvidence?.declaredScope?.specializedEvidenceCount,
+              policyConfirmationEvidence?.declaredScope?.specializedEvidenceRatePercent,
+            )"
+          />
+          <MetricRow
+            label="Compatibility-only declared evidence"
+            :value="formatRate(
+              policyConfirmationEvidence?.declaredScope?.compatibilityOnlyEvidenceCount,
+              policyConfirmationEvidence?.declaredScope?.compatibilityOnlyEvidenceRatePercent,
+            )"
+          />
+          <MetricRow
+            label="No declared policy evidence"
+            :value="formatRate(
+              policyConfirmationEvidence?.declaredScope?.noDeclaredEvidenceCount,
+              policyConfirmationEvidence?.declaredScope?.noDeclaredEvidenceRatePercent,
+            )"
+          />
+          <MetricRow
+            label="Specialized-evidence threshold"
+            :value="`${policyConfirmationEvidence?.declaredScope?.minimumSpecializedEvidenceRatePercent || 0}%`"
+          />
+          <MetricRow
+            label="Evidence-safety calibration applied"
+            :value="formatRate(
+              policyConfirmationEvidence?.calibration?.appliedCount,
+              policyConfirmationEvidence?.calibration?.appliedRatePercent,
+            )"
+          />
+        </dl>
+        <h4 class="mt-5 text-sm font-medium text-white">
+          Supporting evidence observed
+        </h4>
+        <p class="mt-1 text-sm text-gray-400">
+          These rates add context only. Their absence does not prove an error or authorize more AI use.
+        </p>
+        <ul class="mt-3 space-y-2 text-sm">
+          <li
+            v-for="source in policyConfirmationSupportingEvidenceSources"
+            :key="source.id"
+            class="flex justify-between gap-3 rounded border border-gray-700 bg-gray-900/50 px-3 py-2"
+          >
+            <span class="text-gray-300">{{ supportingEvidenceLabel(source.id) }}</span>
+            <span class="font-medium text-white">{{ formatRate(source.count, source.ratePercent) }}</span>
+          </li>
+        </ul>
+      </article>
+
       <article class="rounded-lg border border-gray-700 bg-gray-800 p-5">
         <h3 class="text-base font-medium">
           Lookup latency distribution
@@ -241,6 +313,12 @@ const MetricRow = defineComponent({
 const loading = ref(true)
 const errorMessage = ref('')
 const report = ref(null)
+const SUPPORTING_EVIDENCE_LABELS = Object.freeze({
+  observed_profile: 'Observed library profile',
+  confirmed_pattern: 'Confirmed classification pattern',
+  similar_items: 'Similar items (RAG)',
+  prior_outcomes: 'Prior confirmed outcomes',
+})
 
 const readinessStatus = computed(() => report.value?.readiness?.statusId || 'insufficient_data')
 const readinessLabel = computed(() => ({
@@ -273,12 +351,49 @@ const candidateSetPolicyReviewClass = computed(() => ({
   candidate_set_supported: 'border-blue-700/60 bg-blue-950/20',
   candidate_set_review_recommended: 'border-amber-600/70 bg-amber-950/20',
 }[candidateSetPolicyReviewStatus.value] || 'border-gray-700 bg-gray-800'))
+const policyConfirmationEvidence = computed(() => report.value?.policyConfirmationEvidence || null)
+const policyConfirmationEvidenceStatus = computed(() =>
+  policyConfirmationEvidence.value?.statusId || 'unavailable')
+const policyConfirmationEvidenceLabel = computed(() => ({
+  insufficient_data: 'Policy confirmation evidence needs more observations',
+  declared_scope_review_recommended: 'Review declared policy scope',
+  evidence_mix_observed: 'Specialized declared policy evidence is sufficiently represented',
+  unavailable: 'Policy confirmation evidence is unavailable',
+}[policyConfirmationEvidenceStatus.value] || 'Policy confirmation evidence is unavailable'))
+const policyConfirmationEvidenceMessage = computed(() => ({
+  insufficient_data: 'Continue reviewing individual score explanations until the confirmation cohort reaches the displayed threshold. Do not infer a policy-scope gap yet.',
+  declared_scope_review_recommended: 'The representative confirmation cohort has too little specialized declared evidence. Review individual score explanations, then refine deterministic purpose, scope, or eligibility if the evidence supports it. This does not change AI or routing.',
+  evidence_mix_observed: 'The representative confirmation cohort has sufficient specialized declared evidence. This is not a correctness guarantee and does not change routing.',
+  unavailable: 'Policy confirmation evidence monitoring is currently unavailable.',
+}[policyConfirmationEvidenceStatus.value] || 'Policy confirmation evidence monitoring is currently unavailable.'))
+const policyConfirmationEvidenceClass = computed(() => ({
+  insufficient_data: 'border-gray-700 bg-gray-800',
+  declared_scope_review_recommended: 'border-amber-600/70 bg-amber-950/20',
+  evidence_mix_observed: 'border-blue-700/60 bg-blue-950/20',
+  unavailable: 'border-gray-700 bg-gray-800',
+}[policyConfirmationEvidenceStatus.value] || 'border-gray-700 bg-gray-800'))
+const policyConfirmationSupportingEvidenceSources = computed(() => {
+  const sources = policyConfirmationEvidence.value?.supportingEvidenceSources
+  if (!Array.isArray(sources)) return []
+
+  return sources
+    .filter((source) => Object.hasOwn(SUPPORTING_EVIDENCE_LABELS, source?.id))
+    .map((source) => ({
+      id: source.id,
+      count: Number.isSafeInteger(Number(source.count)) && Number(source.count) >= 0
+        ? Number(source.count)
+        : 0,
+      ratePercent: Number.isFinite(Number(source.ratePercent)) && Number(source.ratePercent) >= 0
+        ? Number(source.ratePercent)
+        : 0,
+    }))
+})
 const monitoringStatusAnnouncement = computed(() => {
   if (loading.value) return 'Loading candidate retrieval metrics.'
   if (errorMessage.value) return 'Candidate retrieval metrics are currently unavailable.'
   if (!report.value) return 'Candidate retrieval metrics are currently unavailable.'
 
-  return `${readinessLabel.value}. ${candidateSetPolicyReviewLabel.value}.`
+  return `${readinessLabel.value}. ${candidateSetPolicyReviewLabel.value}. ${policyConfirmationEvidenceLabel.value}.`
 })
 const candidateSetSelectionCount = computed(() => {
   const attribution = report.value?.operatorCandidateSetAttribution
@@ -292,6 +407,10 @@ function formatRate(count, percentage) {
 
 function formatProgress(count, minimum) {
   return `${Number(count) || 0} / ${Number(minimum) || 0}`
+}
+
+function supportingEvidenceLabel(id) {
+  return SUPPORTING_EVIDENCE_LABELS[id] || 'Unavailable evidence source'
 }
 
 async function loadMetrics() {

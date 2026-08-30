@@ -13,6 +13,9 @@ import {
 import {
   CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_OUTCOME_ATTRIBUTION_VERSION,
 } from './currentLibraryCandidateRetrievalOutcomeAttribution.mjs';
+import {
+  CLASSIFICATION_ROUTE_SAFETY_GATE_IDS,
+} from './classificationRouteSafetyGate.mjs';
 
 export const LOAD_CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_METRICS_SQL = `
   WITH observed AS (
@@ -42,7 +45,15 @@ export const LOAD_CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_METRICS_SQL = `
         ELSE NULL
       END AS final_library_id,
       metadata #>> '{classification_details,current_library_candidate_retrieval_outcome_attribution,version}' AS outcome_attribution_version,
-      metadata #>> '{classification_details,current_library_candidate_retrieval_outcome_attribution,status_id}' AS outcome_attribution_status_id
+      metadata #>> '{classification_details,current_library_candidate_retrieval_outcome_attribution,status_id}' AS outcome_attribution_status_id,
+      metadata #>> '{classification_details,route_safety,primary_gate,id}' AS route_safety_primary_gate_id,
+      metadata #>> '{classification_details,ranked_candidates,0,candidate_diagnostics,primary_viability}' AS leading_candidate_primary_viability,
+      metadata #>> '{classification_details,ranked_candidates,0,candidate_diagnostics,positive_sources,preset}' AS leading_declared_evidence_mode,
+      metadata #>> '{classification_details,ranked_candidates,0,candidate_diagnostics,positive_sources,profile}' AS leading_profile_evidence,
+      metadata #>> '{classification_details,ranked_candidates,0,candidate_diagnostics,positive_sources,pattern}' AS leading_pattern_evidence,
+      metadata #>> '{classification_details,ranked_candidates,0,candidate_diagnostics,positive_sources,rag}' AS leading_rag_evidence,
+      metadata #>> '{classification_details,ranked_candidates,0,candidate_diagnostics,positive_sources,history}' AS leading_history_evidence,
+      metadata #>> '{classification_details,ranked_candidates,0,candidate_diagnostics,score_calibration,applied}' AS leading_calibration_applied
     FROM classification_history
     WHERE created_at >= $1
       AND created_at < $2
@@ -99,7 +110,46 @@ export const LOAD_CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_METRICS_SQL = `
     COUNT(*) FILTER (
       WHERE outcome_attribution_version = $6
         AND outcome_attribution_status_id = 'routed_not_applicable'
-    )::bigint AS "routedNotApplicableOutcomeCount"
+    )::bigint AS "routedNotApplicableOutcomeCount",
+    COUNT(*) FILTER (
+      WHERE route_safety_primary_gate_id = $7
+        AND leading_candidate_primary_viability IS NOT NULL
+    )::bigint AS "confirmationEvidenceObservationCount",
+    COUNT(*) FILTER (
+      WHERE route_safety_primary_gate_id = $7
+        AND leading_candidate_primary_viability IS NOT NULL
+        AND leading_declared_evidence_mode = 'identity'
+    )::bigint AS "specializedDeclaredEvidenceCount",
+    COUNT(*) FILTER (
+      WHERE route_safety_primary_gate_id = $7
+        AND leading_candidate_primary_viability IS NOT NULL
+        AND leading_declared_evidence_mode = 'compatibility'
+    )::bigint AS "compatibilityOnlyEvidenceCount",
+    COUNT(*) FILTER (
+      WHERE route_safety_primary_gate_id = $7
+        AND leading_candidate_primary_viability IS NOT NULL
+        AND leading_profile_evidence = 'true'
+    )::bigint AS "profileEvidenceCount",
+    COUNT(*) FILTER (
+      WHERE route_safety_primary_gate_id = $7
+        AND leading_candidate_primary_viability IS NOT NULL
+        AND leading_pattern_evidence = 'true'
+    )::bigint AS "patternEvidenceCount",
+    COUNT(*) FILTER (
+      WHERE route_safety_primary_gate_id = $7
+        AND leading_candidate_primary_viability IS NOT NULL
+        AND leading_rag_evidence = 'true'
+    )::bigint AS "ragEvidenceCount",
+    COUNT(*) FILTER (
+      WHERE route_safety_primary_gate_id = $7
+        AND leading_candidate_primary_viability IS NOT NULL
+        AND leading_history_evidence = 'true'
+    )::bigint AS "historyEvidenceCount",
+    COUNT(*) FILTER (
+      WHERE route_safety_primary_gate_id = $7
+        AND leading_candidate_primary_viability IS NOT NULL
+        AND leading_calibration_applied = 'true'
+    )::bigint AS "calibrationAppliedCount"
   FROM observed
 `;
 
@@ -123,6 +173,7 @@ export async function loadCurrentLibraryCandidateRetrievalMetrics(
     POLICY_CANDIDATE_ADJUDICATION_VERSION,
     POLICY_CANDIDATE_ADJUDICATION_STATUS_IDS.PROPOSED,
     CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_OUTCOME_ATTRIBUTION_VERSION,
+    CLASSIFICATION_ROUTE_SAFETY_GATE_IDS.POLICY_CONFIRMATION_REQUIRED,
   ]);
 
   return result?.rows?.[0] || {};

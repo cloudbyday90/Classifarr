@@ -10,6 +10,9 @@ import {
 import {
   buildCurrentLibraryCandidateRetrievalPolicyReviewReadiness,
 } from './currentLibraryCandidateRetrievalPolicyReviewReadiness.mjs';
+import {
+  buildPolicyConfirmationEvidenceReadiness,
+} from './policyConfirmationEvidenceReadiness.mjs';
 
 export const CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_METRICS_VERSION =
   'current_library.candidate_retrieval_metrics.v1';
@@ -180,6 +183,7 @@ export function buildCurrentLibraryCandidateRetrievalMetricsReport({
       candidateSetSelectionOutcomeCount,
       changedOutsideCandidateOutcomeCount,
     }),
+    policyConfirmationEvidence: buildPolicyConfirmationEvidenceReadiness(row),
     readiness: Object.freeze({
       statusId: observationCount > 0 ? 'observing' : 'insufficient_data',
       message: observationCount > 0
