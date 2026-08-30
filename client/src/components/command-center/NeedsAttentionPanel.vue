@@ -91,6 +91,22 @@
           @confirm-destination="emitResolveOption(item, $event.actionId, $event.destinationLibraryId)"
           @retry="$emit('retry-item', item)"
         />
+
+        <fieldset
+          v-if="isComparableScoreExplanation(item)"
+          class="score-explanation-selection"
+        >
+          <input
+            :id="scoreExplanationSelectionId(item)"
+            type="checkbox"
+            :checked="isScoreExplanationSelected(item)"
+            :disabled="isScoreExplanationSelectionDisabled(item)"
+            @change="setScoreExplanationSelected(item, $event.target.checked)"
+          >
+          <label :for="scoreExplanationSelectionId(item)">
+            Include this score explanation in comparison
+          </label>
+        </fieldset>
       </div>
 
       <div
@@ -169,6 +185,41 @@
       </div>
     </article>
 
+    <section
+      v-if="comparableScoreExplanationCount >= 2"
+      class="score-explanation-comparison-controls"
+      aria-labelledby="score-explanation-comparison-controls-heading"
+    >
+      <h3 id="score-explanation-comparison-controls-heading">
+        Compare score explanations
+      </h3>
+      <p>
+        Select two or three pending score explanations to compare their deterministic evidence mechanics. The comparison stays in this browser and cannot route media.
+      </p>
+      <p
+        v-if="scoreExplanationSelectionStatus"
+        class="score-explanation-selection-status"
+        role="status"
+        aria-atomic="true"
+      >
+        {{ scoreExplanationSelectionStatus }}
+      </p>
+      <Button
+        variant="secondary"
+        size="sm"
+        :disabled="!scoreExplanationComparison"
+        @click="showScoreExplanationComparison"
+      >
+        Compare selected score explanations
+      </Button>
+    </section>
+
+    <PolicyScoreExplanationComparison
+      v-if="isScoreExplanationComparisonVisible && scoreExplanationComparison"
+      ref="scoreExplanationComparisonRef"
+      :comparison="scoreExplanationComparison"
+    />
+
     <div
       v-if="items.length > 1"
       class="action-queue-footer"
@@ -225,7 +276,8 @@
 <script setup>
 import { Button } from '@/components/common'
 import PendingQuestionRecommendationActions from './PendingQuestionRecommendationActions.vue'
-import { computed } from 'vue'
+import PolicyScoreExplanationComparison from './PolicyScoreExplanationComparison.vue'
+import { computed, nextTick, ref } from 'vue'
 import {
   isQueuedForRetry,
   policyQuestion,
@@ -244,6 +296,11 @@ import {
 import {
   policyQuestionDecisionPresentation,
 } from '@/utils/policyQuestionDecisionPresentation'
+import {
+  POLICY_SCORE_EXPLANATION_COMPARISON_MAXIMUM_ENTRIES,
+  buildPolicyScoreExplanationComparison,
+  policyScoreExplanationComparisonEntry,
+} from '@/utils/policyScoreExplanationComparison'
 
 const props = defineProps({
   changeMode: {
@@ -287,6 +344,9 @@ const emit = defineEmits([
 
 const changeDestinationActionId = POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.CHANGE_DESTINATION
 const routeNotApplicableActionId = POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.ROUTE_NOT_APPLICABLE
+const selectedScoreExplanationItemIds = ref([])
+const isScoreExplanationComparisonVisible = ref(false)
+const scoreExplanationComparisonRef = ref(null)
 
 function answerContract(item) {
   return policyQuestionAnswer(item)
@@ -294,6 +354,71 @@ function answerContract(item) {
 
 function decisionPresentation(item) {
   return policyQuestionDecisionPresentation(answerContract(item))
+}
+
+function scoreExplanationComparisonDecisionPresentation(item) {
+  if (item?.policy_question_stale) return null
+
+  const presentation = decisionPresentation(item)
+  return policyScoreExplanationComparisonEntry(presentation) ? presentation : null
+}
+
+function scoreExplanationSelectionId(item) {
+  return `score-explanation-comparison-${String(item?.id ?? 'unknown')}`
+}
+
+function isComparableScoreExplanation(item) {
+  return Boolean(scoreExplanationComparisonDecisionPresentation(item))
+}
+
+function isScoreExplanationSelected(item) {
+  return selectedScoreExplanationItemIds.value.includes(String(item?.id))
+}
+
+const selectedScoreExplanationDecisionPresentations = computed(() => props.items
+  .filter(item => isScoreExplanationSelected(item))
+  .map(scoreExplanationComparisonDecisionPresentation)
+  .filter(Boolean))
+
+const selectedScoreExplanationCount = computed(() => selectedScoreExplanationDecisionPresentations.value.length)
+const comparableScoreExplanationCount = computed(() => props.items.filter(
+  isComparableScoreExplanation,
+).length)
+const scoreExplanationComparison = computed(() => buildPolicyScoreExplanationComparison(
+  selectedScoreExplanationDecisionPresentations.value,
+))
+const scoreExplanationSelectionStatus = computed(() => {
+  const count = selectedScoreExplanationCount.value
+  if (!count) return ''
+  if (count >= POLICY_SCORE_EXPLANATION_COMPARISON_MAXIMUM_ENTRIES) {
+    return `${count} score explanations selected. Maximum reached.`
+  }
+  if (count === 1) return '1 score explanation selected. Select 1 more to compare.'
+  return `${count} score explanations selected and ready to compare.`
+})
+
+function isScoreExplanationSelectionDisabled(item) {
+  return !isScoreExplanationSelected(item) &&
+    selectedScoreExplanationCount.value >= POLICY_SCORE_EXPLANATION_COMPARISON_MAXIMUM_ENTRIES
+}
+
+function setScoreExplanationSelected(item, selected) {
+  const itemId = String(item?.id)
+  const currentlySelected = isScoreExplanationSelected(item)
+  if (selected === currentlySelected || (selected && isScoreExplanationSelectionDisabled(item))) return
+
+  selectedScoreExplanationItemIds.value = selected
+    ? [...selectedScoreExplanationItemIds.value, itemId]
+    : selectedScoreExplanationItemIds.value.filter(selectedItemId => selectedItemId !== itemId)
+  isScoreExplanationComparisonVisible.value = false
+}
+
+async function showScoreExplanationComparison() {
+  if (!scoreExplanationComparison.value) return
+
+  isScoreExplanationComparisonVisible.value = true
+  await nextTick()
+  scoreExplanationComparisonRef.value?.focus()
 }
 
 function confidenceLabel(item) {
@@ -458,6 +583,59 @@ const hasBulkConfirmableItems = computed(() => props.items.some(
 
 .native-pending-question-invalid p {
   margin-bottom: 0.75rem;
+}
+
+.score-explanation-selection {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  border: 0;
+  font-size: 0.75rem;
+  color: #cbd5e1;
+}
+
+.score-explanation-selection input {
+  width: 1rem;
+  height: 1rem;
+  accent-color: #6366f1;
+}
+
+.score-explanation-selection label {
+  cursor: pointer;
+}
+
+.score-explanation-selection input:disabled + label {
+  cursor: not-allowed;
+  color: #6b7280;
+}
+
+.score-explanation-comparison-controls {
+  padding: 1rem;
+  border: 1px solid #374151;
+  border-radius: 0.5rem;
+  background: #1f2937;
+}
+
+.score-explanation-comparison-controls h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #f3f4f6;
+}
+
+.score-explanation-comparison-controls > p {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #cbd5e1;
+}
+
+.score-explanation-selection-status {
+  color: #bfdbfe !important;
+}
+
+.score-explanation-comparison-controls :deep(button) {
+  margin-top: 0.75rem;
 }
 
 .action-item-fallback {
