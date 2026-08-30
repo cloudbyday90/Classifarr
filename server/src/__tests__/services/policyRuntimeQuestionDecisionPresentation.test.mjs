@@ -99,6 +99,52 @@ describe('policyRuntimeQuestionDecisionPresentation', () => {
     expect(presentation.deterministic.message).not.toContain('automatic policy threshold');
   });
 
+  test('projects an allow-listed library evidence profile for the policy-ranked candidates', () => {
+    const presentation = buildPolicyRuntimeQuestionDecisionPresentation({
+      classification: {
+        tmdb_id: 42,
+        media_type: 'movie',
+        metadata: {
+          policyResult: {
+            action: 'prompt_select',
+            ranked: [
+              {
+                library_id: 5,
+                score: 80,
+                candidate_diagnostics: {
+                  identity_evidence: { status_id: 'positive_specialized_evidence' },
+                },
+              },
+              {
+                library_id: 6,
+                score: 64,
+                candidate_diagnostics: {
+                  identity_evidence: { status_id: 'broad_compatibility_overlap' },
+                  rag_evidence_quality: { matches: [{ title: 'Do not expose this catalog title.' }] },
+                },
+              },
+            ],
+          },
+        },
+      },
+      question: { meta: { candidates: [{ library_id: 5 }, { library_id: 6 }] } },
+      candidateDestinations: [
+        { library_id: 5, library_name: 'Movies' },
+        { library_id: 6, library_name: 'Documentaries' },
+      ],
+    });
+
+    expect(presentation.deterministic.library_evidence_profile).toEqual({
+      version: 'policy.library_evidence_profile.v1',
+      candidates: expect.arrayContaining([
+        expect.objectContaining({ library_name: 'Movies', policy_score: 80, score_margin: 0 }),
+        expect.objectContaining({ library_name: 'Documentaries', policy_score: 64, score_margin: 16 }),
+      ]),
+    });
+    expect(JSON.stringify(presentation.deterministic.library_evidence_profile))
+      .not.toContain('Do not expose this catalog title.');
+  });
+
   test('adds only a bounded formula explanation for the persisted policy candidate', () => {
     const presentation = buildPolicyRuntimeQuestionDecisionPresentation({
       classification: {

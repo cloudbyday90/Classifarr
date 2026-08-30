@@ -120,6 +120,10 @@
             {{ candidateContrastiveEvidence.message }}
           </p>
         </section>
+        <LibraryEvidenceProfile
+          :item-id="itemId"
+          :value="libraryEvidenceProfile"
+        />
         <details
           v-if="scoreExplanation"
           class="score-explanation"
@@ -313,6 +317,7 @@ import {
 import {
   getPolicyCandidateContrastiveEvidencePresentation,
 } from '@/utils/policyCandidateContrastiveEvidencePresentation'
+import LibraryEvidenceProfile from './LibraryEvidenceProfile.vue'
 
 const props = defineProps({
   answer: {
@@ -345,6 +350,9 @@ const candidateEvidenceCard = computed(() => getPolicyCandidateEvidenceCardPrese
 ))
 const candidateContrastiveEvidence = computed(() => getPolicyCandidateContrastiveEvidencePresentation(
   decisionPresentation.value?.deterministic?.candidate_contrastive_evidence,
+))
+const libraryEvidenceProfile = computed(() => (
+  decisionPresentation.value?.deterministic?.library_evidence_profile || null
 ))
 const leadingDestination = computed(() => recommendation.value?.leading_destination || null)
 const candidateDestinations = computed(() => policyQuestionCandidateDestinations(props.answer))

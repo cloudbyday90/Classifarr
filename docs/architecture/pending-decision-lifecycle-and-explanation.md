@@ -25,6 +25,12 @@ has a leading destination but requires confirmation; it does not mean that
 evidence is absent. The UI uses `Policy confirmation required` rather than the
 legacy generic `Missing evidence` label in that case.
 
+When two or three current policy-eligible destinations exist, the Command
+Center can additionally render the read-only [Library Evidence Profile](library-evidence-profile-design.md).
+It compares the same bounded evidence states and score margin without exposing
+raw catalog or retrieval content, changing policy, invoking AI, or granting
+contextual evidence any routing authority.
+
 The persisted `pending_reason` follows the same distinction for deterministic
 `prompt_confirm` outcomes. Existing active records are updated by a
 forward-only migration; their stored question payloads and audit history remain

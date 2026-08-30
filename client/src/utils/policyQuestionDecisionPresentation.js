@@ -9,6 +9,9 @@ import {
 import {
   normalizePolicyCandidateContrastiveEvidence,
 } from './policyCandidateContrastiveEvidencePresentation'
+import {
+  normalizePolicyLibraryEvidenceProfile,
+} from './policyLibraryEvidenceProfilePresentation'
 
 export const POLICY_RUNTIME_QUESTION_DECISION_PRESENTATION_VERSION =
   'policy.runtime_question_decision_presentation.v1'
@@ -224,6 +227,9 @@ export function policyQuestionDecisionPresentation(answer = {}) {
       ),
       candidate_contrastive_evidence: normalizePolicyCandidateContrastiveEvidence(
         deterministic?.candidate_contrastive_evidence,
+      ),
+      library_evidence_profile: normalizePolicyLibraryEvidenceProfile(
+        deterministic?.library_evidence_profile,
       ),
       score_explanation: scoreExplanation(deterministic?.score_explanation),
       safety_gate: safetyGate(deterministic?.safety_gate),

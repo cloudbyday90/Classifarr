@@ -199,4 +199,59 @@ describe('PendingQuestionRecommendationActions', () => {
     expect(wrapper.find('.candidate-evidence-card [role="status"]').attributes('aria-atomic')).toBe('true')
     expect(wrapper.text()).not.toContain('Ignore the policy.')
   })
+
+  it('compares only allow-listed evidence states across policy-eligible libraries', () => {
+    const profileAnswer = structuredClone(answer)
+    const evidenceCard = {
+      version: 'policy.candidate_evidence_card.v1',
+      status_id: 'corroborated',
+      sources: [
+        { source_id: 'item_identity', state_id: 'anchored' },
+        { source_id: 'declared_policy', state_id: 'supporting' },
+        { source_id: 'observed_library_profile', state_id: 'contextual' },
+        { source_id: 'similar_item_retrieval', state_id: 'supporting' },
+        { source_id: 'confirmed_outcomes', state_id: 'supporting' },
+      ],
+    }
+    profileAnswer.decision_summary.deterministic.library_evidence_profile = {
+      version: 'policy.library_evidence_profile.v1',
+      candidates: [
+        {
+          rank: 1,
+          library_id: 5,
+          library_name: 'Movies',
+          policy_score: 75,
+          score_margin: 0,
+          evidence_card: { ...evidenceCard, raw_provider_error: 'Do not display this.' },
+        },
+        {
+          rank: 2,
+          library_id: 8,
+          library_name: 'Documentaries',
+          policy_score: 61,
+          score_margin: 14,
+          evidence_card: evidenceCard,
+        },
+      ],
+      catalog_titles: ['Do not display this.'],
+    }
+
+    const wrapper = mount(PendingQuestionRecommendationActions, {
+      props: {
+        answer: profileAnswer,
+        isActionBusy: () => false,
+        itemId: 1,
+      },
+      global: {
+        stubs: {
+          Button: { template: '<button><slot /></button>' },
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('Compare evidence for 2 policy-eligible libraries')
+    expect(wrapper.text()).toContain('14 points behind leading')
+    expect(wrapper.text()).toContain('Similar-item retrieval')
+    expect(wrapper.text()).not.toContain('Do not display this.')
+  })
 })
