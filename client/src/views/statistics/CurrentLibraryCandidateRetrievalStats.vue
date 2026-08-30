@@ -211,6 +211,13 @@
         <p class="mt-1 text-sm text-gray-300">
           {{ policyConfirmationEvidenceMessage }}
         </p>
+        <RouterLink
+          v-if="policyConfirmationEvidenceReviewHandoff"
+          :to="policyConfirmationEvidenceReviewHandoff.to"
+          class="mt-4 inline-flex rounded border border-primary px-3 py-2 text-sm font-medium text-primary hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-gray-800"
+        >
+          {{ policyConfirmationEvidenceReviewHandoff.label }}
+        </RouterLink>
         <dl class="mt-4 space-y-3 text-sm">
           <MetricRow
             label="Confirmation outcomes with evidence"
@@ -295,6 +302,9 @@
 <script setup>
 import { computed, defineComponent, h, onMounted, ref } from 'vue'
 import api from '../../api'
+import {
+  getPolicyConfirmationEvidenceReviewHandoff,
+} from '@/utils/policyConfirmationEvidenceReviewHandoff'
 
 const MetricRow = defineComponent({
   name: 'CurrentLibraryCandidateRetrievalMetricRow',
@@ -372,6 +382,9 @@ const policyConfirmationEvidenceClass = computed(() => ({
   evidence_mix_observed: 'border-blue-700/60 bg-blue-950/20',
   unavailable: 'border-gray-700 bg-gray-800',
 }[policyConfirmationEvidenceStatus.value] || 'border-gray-700 bg-gray-800'))
+const policyConfirmationEvidenceReviewHandoff = computed(() => (
+  getPolicyConfirmationEvidenceReviewHandoff(policyConfirmationEvidenceStatus.value)
+))
 const policyConfirmationSupportingEvidenceSources = computed(() => {
   const sources = policyConfirmationEvidence.value?.supportingEvidenceSources
   if (!Array.isArray(sources)) return []

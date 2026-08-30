@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 
 import CurrentLibraryCandidateRetrievalStats from '@/views/statistics/CurrentLibraryCandidateRetrievalStats.vue'
 import api from '@/api'
@@ -89,7 +89,9 @@ describe('CurrentLibraryCandidateRetrievalStats.vue', () => {
   it('renders aggregate telemetry and agreement limits without control affordances', async () => {
     api.getCurrentLibraryCandidateRetrievalMetrics.mockResolvedValue(report)
 
-    const wrapper = mount(CurrentLibraryCandidateRetrievalStats)
+    const wrapper = mount(CurrentLibraryCandidateRetrievalStats, {
+      global: { stubs: { RouterLink: RouterLinkStub } },
+    })
     await flushPromises()
 
     expect(api.getCurrentLibraryCandidateRetrievalMetrics).toHaveBeenCalledOnce()
@@ -112,6 +114,12 @@ describe('CurrentLibraryCandidateRetrievalStats.vue', () => {
     expect(wrapper.text()).toContain('This does not prove an AI or retrieval error')
     expect(wrapper.text()).toContain('Policy confirmation evidence')
     expect(wrapper.text()).toContain('Review declared policy scope')
+    const reviewLink = wrapper.findComponent(RouterLinkStub)
+    expect(reviewLink.text()).toBe('Review existing policy purpose coverage')
+    expect(reviewLink.props('to')).toEqual({
+      name: 'PolicyNativeIntentReconciliation',
+      query: { focus: 'purpose-coverage' },
+    })
     expect(wrapper.text()).toContain('11 (55%)')
     expect(wrapper.text()).toContain('Compatibility-only declared evidence')
     expect(wrapper.text()).toContain('5 (25%)')
@@ -173,5 +181,6 @@ describe('CurrentLibraryCandidateRetrievalStats.vue', () => {
     expect(wrapper.text()).toContain('Policy confirmation evidence is unavailable')
     expect(wrapper.text()).not.toContain('provider_supplied_source')
     expect(wrapper.text()).not.toContain('99 (99%)')
+    expect(wrapper.findComponent(RouterLinkStub).exists()).toBe(false)
   })
 })

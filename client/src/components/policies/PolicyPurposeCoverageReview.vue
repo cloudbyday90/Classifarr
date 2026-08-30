@@ -8,6 +8,9 @@
 
 <template>
   <section
+    id="policy-purpose-coverage-review"
+    ref="rootElement"
+    tabindex="-1"
     class="overflow-hidden rounded-lg border border-gray-700 bg-background-light"
     aria-labelledby="policy-purpose-coverage-heading"
   >
@@ -180,7 +183,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 const props = defineProps({
   review: {
@@ -196,6 +199,8 @@ const props = defineProps({
 const emit = defineEmits({
   'edit-policy': entry => Boolean(entry?.policy?.id),
 })
+
+const rootElement = ref(null)
 
 const entries = computed(() => (
   Array.isArray(props.review?.entries) ? props.review.entries : []
@@ -231,4 +236,10 @@ function sharedRequireAnyTermCount(entry) {
 function sharedRequireAnyDestinationCount(entry) {
   return nonNegativeCount(entry?.coverage?.sharedRequireAnyDestinationCount)
 }
+
+function focus() {
+  rootElement.value?.focus()
+}
+
+defineExpose({ focus })
 </script>

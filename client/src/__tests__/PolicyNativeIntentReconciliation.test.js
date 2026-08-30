@@ -136,12 +136,15 @@ const purposeSuggestion = {
   aiInvoked: false,
 }
 
-function mountView() {
+function mountView(options = {}) {
   return mount(PolicyNativeIntentReconciliation, {
+    ...options,
     global: {
+      ...options.global,
       stubs: {
         RouterLink: { template: '<a><slot /></a>' },
         PolicyBuilderModal: PolicyBuilderModalStub,
+        ...options.global?.stubs,
       },
     },
   })
@@ -259,5 +262,15 @@ describe('PolicyNativeIntentReconciliation.vue', () => {
     await flushPromises()
 
     expect(wrapper.find('#policy-reconciliation-remediation-17').attributes('tabindex')).toBe('-1')
+  })
+
+  it('focuses existing policy purpose coverage from the aggregate evidence handoff', async () => {
+    routeMock.query = { focus: 'purpose-coverage' }
+    const wrapper = mountView({ attachTo: document.body })
+    await flushPromises()
+
+    expect(wrapper.find('#policy-purpose-coverage-review').attributes('tabindex')).toBe('-1')
+    expect(document.activeElement?.id).toBe('policy-purpose-coverage-review')
+    wrapper.unmount()
   })
 })

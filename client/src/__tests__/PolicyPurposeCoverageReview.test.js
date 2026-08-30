@@ -32,6 +32,14 @@ const entry = {
 }
 
 describe('PolicyPurposeCoverageReview', () => {
+  it('exposes a labeled programmatic focus target for contextual maintenance handoffs', () => {
+    const wrapper = mount(PolicyPurposeCoverageReview)
+
+    expect(wrapper.find('#policy-purpose-coverage-review').attributes('tabindex')).toBe('-1')
+    expect(wrapper.find('#policy-purpose-coverage-review').attributes('aria-labelledby'))
+      .toBe('policy-purpose-coverage-heading')
+  })
+
   it('shows fixed bounded coverage counts and opens only the selected policy editor', async () => {
     const wrapper = mount(PolicyPurposeCoverageReview, {
       props: {

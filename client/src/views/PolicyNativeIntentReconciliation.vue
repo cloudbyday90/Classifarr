@@ -269,6 +269,7 @@
 
     <PolicyPurposeCoverageReview
       v-if="status || purposeCoverageReview"
+      ref="purposeCoverageReviewElement"
       :review="purposeCoverageReview"
       :loading="purposeCoverageLoading"
       @edit-policy="openPolicyEditor"
@@ -323,6 +324,9 @@ import {
 import { usePolicyNativeIntentReconciliationStatus } from '@/composables/usePolicyNativeIntentReconciliationStatus'
 import { usePolicyNativeIntentReconciliationRemediationInventory } from '@/composables/usePolicyNativeIntentReconciliationRemediationInventory'
 import { usePolicyPurposeCoverageReview } from '@/composables/usePolicyPurposeCoverageReview'
+import {
+  isPolicyConfirmationEvidenceReviewFocus,
+} from '@/utils/policyConfirmationEvidenceReviewHandoff'
 
 const route = useRoute()
 const PolicyBuilderModal = defineAsyncComponent(() =>
@@ -351,6 +355,7 @@ const policyEditorOpen = ref(false)
 const policyEditorError = ref('')
 const policyEditorFeedback = ref('')
 const compatibilityPurposeSuggestion = ref(null)
+const purposeCoverageReviewElement = ref(null)
 const isLoading = computed(() => (
   statusLoading.value || remediationLoading.value || purposeCoverageLoading.value
 ))
@@ -395,6 +400,9 @@ const focusPolicyId = computed(() => {
   const policyId = Number(route.query?.policy)
   return Number.isInteger(policyId) && policyId > 0 ? policyId : null
 })
+const focusPurposeCoverageReview = computed(() => (
+  isPolicyConfirmationEvidenceReviewFocus(route.query?.focus)
+))
 
 const loadReconciliationView = async () => {
   await Promise.all([loadStatus(), loadRemediationInventory(), loadPurposeCoverageReview()])
@@ -406,6 +414,13 @@ const focusRequestedRemediation = async () => {
 
   await nextTick()
   document.getElementById(`policy-reconciliation-remediation-${policyId}`)?.focus()
+}
+
+const focusRequestedPurposeCoverageReview = async () => {
+  if (!focusPurposeCoverageReview.value || !purposeCoverageReview.value) return
+
+  await nextTick()
+  purposeCoverageReviewElement.value?.focus?.()
 }
 
 const openPolicyEditor = async entry => {
@@ -475,9 +490,11 @@ function formatRuntime(runtime) {
 }
 
 watch([focusPolicyId, remediationInventory], focusRequestedRemediation)
+watch([focusPurposeCoverageReview, purposeCoverageReview], focusRequestedPurposeCoverageReview)
 
 onMounted(async () => {
   await loadReconciliationView()
   await focusRequestedRemediation()
+  await focusRequestedPurposeCoverageReview()
 })
 </script>
