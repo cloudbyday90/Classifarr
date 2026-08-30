@@ -133,7 +133,9 @@ Cons:
 
 1. Keep the existing count floor and Wilson-interval readiness gate.
 2. Add adjacent fixed-window persistence status before any maintenance review.
-3. Require a representative human cohort review before changing declared
+3. Use the delivered aggregate cohort-composition screen before interpreting a
+   persistent signal as a policy-behavior pattern.
+4. Require a representative human cohort review before changing declared
    policy scope, score mechanics, RAG behavior, or AI configuration.
-4. Add a longer-horizon composition and process-stability evaluation only when
+5. Add a longer-horizon process-stability evaluation only when
    enough comparable aggregate windows exist.

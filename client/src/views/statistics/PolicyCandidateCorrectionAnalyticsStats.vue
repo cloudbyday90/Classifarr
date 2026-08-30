@@ -285,6 +285,167 @@
 
       <article class="overflow-x-auto rounded-lg border border-gray-700 bg-gray-800 p-5">
         <h3 class="text-base font-medium">
+          Cohort-composition context
+        </h3>
+        <p class="mt-1 text-sm text-gray-400">
+          This checks whether the current and previous windows contain a similar mix of fixed score margins and original evidence states. A material mix shift is a reason to interpret a review signal cautiously; it never changes policy, AI, RAG, learning, or routing.
+        </p>
+        <p
+          class="mt-4 text-sm font-medium"
+          :class="overallCohortCompositionPresentation.className"
+        >
+          {{ overallCohortCompositionPresentation.label }}
+        </p>
+        <p class="mt-1 text-sm text-gray-300">
+          {{ overallCohortCompositionPresentation.message }}
+        </p>
+        <dl class="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+          <MetricRow
+            label="Fixed cohort floor"
+            :value="`${report.cohortComposition.marginBands.minimumObservationCount} per window`"
+          />
+          <MetricRow
+            label="Material-shift screen"
+            :value="`${report.cohortComposition.marginBands.materialShiftThresholdPercent}% total variation`"
+          />
+          <MetricRow
+            label="Compared dimensions"
+            :value="report.cohortComposition.comparableDimensionCount + report.cohortComposition.materialShiftDimensionCount"
+          />
+        </dl>
+        <table class="mt-5 min-w-full text-left text-sm">
+          <caption class="sr-only">
+            Fixed policy-score margin mix in the current and previous completed windows.
+          </caption>
+          <thead class="border-b border-gray-700 text-xs uppercase tracking-wide text-gray-400">
+            <tr>
+              <th
+                scope="col"
+                class="px-3 py-3 font-medium"
+              >
+                Score-margin band
+              </th>
+              <th
+                scope="col"
+                class="px-3 py-3 font-medium"
+              >
+                Current mix
+              </th>
+              <th
+                scope="col"
+                class="px-3 py-3 font-medium"
+              >
+                Previous mix
+              </th>
+              <th
+                scope="col"
+                class="px-3 py-3 font-medium"
+              >
+                Change
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="bucket in report.cohortComposition.marginBands.buckets"
+              :key="bucket.bucketId"
+              class="border-b border-gray-700/70 last:border-b-0"
+            >
+              <th
+                scope="row"
+                class="px-3 py-3 font-medium text-white"
+              >
+                {{ report.marginBuckets.find((marginBucket) => marginBucket.marginBandId === bucket.bucketId)?.label || 'Score margin' }}
+              </th>
+              <td class="px-3 py-3 text-gray-300">
+                {{ formatRate(bucket.currentObservationCount, bucket.currentSharePercent) }}
+              </td>
+              <td class="px-3 py-3 text-gray-300">
+                {{ formatRate(bucket.previousObservationCount, bucket.previousSharePercent) }}
+              </td>
+              <td class="px-3 py-3 text-gray-300">
+                {{ formatSignedPercentage(bucket.sharePointChangePercent) }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <table
+          v-if="evidenceCohortCompositionSources.length"
+          class="mt-5 min-w-full text-left text-sm"
+        >
+          <caption class="sr-only">
+            Fixed original evidence-source state mix comparison for the current and previous completed windows.
+          </caption>
+          <thead class="border-b border-gray-700 text-xs uppercase tracking-wide text-gray-400">
+            <tr>
+              <th
+                scope="col"
+                class="px-3 py-3 font-medium"
+              >
+                Evidence source
+              </th>
+              <th
+                scope="col"
+                class="px-3 py-3 font-medium"
+              >
+                Current observations
+              </th>
+              <th
+                scope="col"
+                class="px-3 py-3 font-medium"
+              >
+                Previous observations
+              </th>
+              <th
+                scope="col"
+                class="px-3 py-3 font-medium"
+              >
+                Variation distance
+              </th>
+              <th
+                scope="col"
+                class="px-3 py-3 font-medium"
+              >
+                Cohort status
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="source in evidenceCohortCompositionSources"
+              :key="source.evidenceSourceId"
+              class="border-b border-gray-700/70 last:border-b-0"
+            >
+              <th
+                scope="row"
+                class="px-3 py-3 font-medium text-white"
+              >
+                {{ source.sourceLabel }}
+              </th>
+              <td class="px-3 py-3 text-gray-300">
+                {{ source.comparison.currentObservationCount }}
+              </td>
+              <td class="px-3 py-3 text-gray-300">
+                {{ source.comparison.previousObservationCount }}
+              </td>
+              <td class="px-3 py-3 text-gray-300">
+                {{ formatVariationDistance(source.comparison.totalVariationDistancePercent) }}
+              </td>
+              <td class="px-3 py-3">
+                <span :class="cohortCompositionPresentation(source.comparison).className">
+                  {{ cohortCompositionPresentation(source.comparison).label }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="mt-4 text-xs text-gray-400">
+          Score-margin variation distance: {{ formatVariationDistance(report.cohortComposition.marginBands.totalVariationDistancePercent) }}.
+        </p>
+      </article>
+
+      <article class="overflow-x-auto rounded-lg border border-gray-700 bg-gray-800 p-5">
+        <h3 class="text-base font-medium">
           Score-margin outcome association
         </h3>
         <p class="mt-1 text-sm text-gray-400">
@@ -511,6 +672,9 @@ import {
 import {
   getPolicyCandidateCorrectionTemporalStabilityPresentation,
 } from '@/utils/policyCandidateCorrectionTemporalStabilityPresentation'
+import {
+  getPolicyCandidateCorrectionCohortCompositionPresentation,
+} from '@/utils/policyCandidateCorrectionCohortCompositionPresentation'
 
 const MetricRow = defineComponent({
   name: 'PolicyCandidateCorrectionAnalyticsMetricRow',
@@ -538,7 +702,7 @@ const monitoringStatusAnnouncement = computed(() => {
   if (loading.value) return 'Loading policy correction analytics.'
   if (errorMessage.value || !report.value) return 'Policy correction analytics are currently unavailable.'
 
-  return `${report.value.readiness.label}. ${overallCalibrationReadinessPresentation.value.label}.`
+  return `${report.value.readiness.label}. ${overallCalibrationReadinessPresentation.value.label}. ${overallCohortCompositionPresentation.value.label}.`
 })
 
 const overallCalibrationReadinessPresentation = computed(() => (
@@ -548,6 +712,9 @@ const overallCalibrationReadinessPresentation = computed(() => (
 ))
 const overallTemporalStabilityPresentation = computed(() => (
   temporalStabilityPresentation(report.value?.temporalStability?.summary)
+))
+const overallCohortCompositionPresentation = computed(() => (
+  cohortCompositionPresentation(report.value?.cohortComposition)
 ))
 const marginTemporalBuckets = computed(() => report.value?.temporalStability?.marginBuckets
   .map((entry) => ({
@@ -576,6 +743,19 @@ const evidenceTemporalBuckets = computed(() => report.value?.temporalStability?.
       stability: entry.stability,
     }
   }) || [])
+const evidenceCohortCompositionSources = computed(() => report.value?.cohortComposition?.evidenceSources
+  .map((entry) => {
+    const displayed = report.value.evidenceSourceStateBuckets.find((bucket) => (
+      bucket.evidenceSourceId === entry.evidenceSourceId
+    )) || report.value.previousEvidenceSourceStateBuckets.find((bucket) => (
+      bucket.evidenceSourceId === entry.evidenceSourceId
+    ))
+
+    return {
+      ...entry,
+      sourceLabel: displayed?.sourceLabel || 'Evidence source',
+    }
+  }) || [])
 
 function formatRate(count, percentage) {
   return `${Number(count) || 0} (${Number(percentage) || 0}%)`
@@ -592,6 +772,11 @@ function temporalStabilityPresentation(stability) {
     getPolicyCandidateCorrectionTemporalStabilityPresentation('insufficient_comparison_data')
 }
 
+function cohortCompositionPresentation(composition) {
+  return getPolicyCandidateCorrectionCohortCompositionPresentation(composition?.statusId) ||
+    getPolicyCandidateCorrectionCohortCompositionPresentation('insufficient_data')
+}
+
 function windowLabel(window) {
   if (!window?.startDate || !window?.endDate) return 'Unavailable'
   return `${window.startDate} to ${window.endDate}`
@@ -599,6 +784,15 @@ function windowLabel(window) {
 
 function formatConfidenceInterval(interval) {
   return formatPolicyCandidateCorrectionConfidenceInterval(interval)
+}
+
+function formatSignedPercentage(value) {
+  const percentage = Number(value) || 0
+  return `${percentage > 0 ? '+' : ''}${percentage}%`
+}
+
+function formatVariationDistance(value) {
+  return value === null || value === undefined ? 'Not calculated' : `${Number(value) || 0}%`
 }
 
 async function loadMetrics() {

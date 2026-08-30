@@ -18,9 +18,12 @@ import {
   POLICY_CANDIDATE_CORRECTION_TEMPORAL_STABILITY_VERSION,
   buildPolicyCandidateCorrectionTemporalStability,
 } from './policyCandidateCorrectionTemporalStability.mjs';
+import {
+  buildPolicyCandidateCorrectionCohortCompositionReport,
+} from './policyCandidateCorrectionCohortCompositionReport.mjs';
 
 export const POLICY_CANDIDATE_CORRECTION_TEMPORAL_STABILITY_REPORT_VERSION =
-  'policy.candidate_correction_analytics_metrics.v3';
+  'policy.candidate_correction_analytics_metrics.v4';
 
 const EMPTY_CALIBRATION_READINESS = Object.freeze(
   buildPolicyCandidateCorrectionCalibrationReadiness({
@@ -123,6 +126,10 @@ export function buildPolicyCandidateCorrectionTemporalStabilityReport({
       }),
       marginBuckets: buildMarginTemporalBuckets(currentReport, previousReport),
       evidenceSourceStateBuckets: buildEvidenceSourceStateTemporalBuckets(currentReport, previousReport),
+    }),
+    cohortComposition: buildPolicyCandidateCorrectionCohortCompositionReport({
+      currentReport,
+      previousReport,
     }),
   });
 }

@@ -79,8 +79,52 @@ function report(overrides = {}) {
     currentApplicableDecisionCount: currentReadiness.applicableDecisionCount,
     previousApplicableDecisionCount: previousReadiness.applicableDecisionCount,
   })
+  const compositionComparison = (bucketIds, currentCounts, previousCounts) => {
+    const currentObservationCount = bucketIds.reduce((total, bucketId) => (
+      total + (currentCounts[bucketId] || 0)
+    ), 0)
+    const previousObservationCount = bucketIds.reduce((total, bucketId) => (
+      total + (previousCounts[bucketId] || 0)
+    ), 0)
+    const hasSufficientData = currentObservationCount >= 20 && previousObservationCount >= 20
+    const buckets = bucketIds.map((bucketId) => {
+      const currentSharePercent = currentObservationCount
+        ? Math.round(currentCounts[bucketId] / currentObservationCount * 1000) / 10
+        : 0
+      const previousSharePercent = previousObservationCount
+        ? Math.round(previousCounts[bucketId] / previousObservationCount * 1000) / 10
+        : 0
+
+      return {
+        bucketId,
+        currentObservationCount: currentCounts[bucketId] || 0,
+        previousObservationCount: previousCounts[bucketId] || 0,
+        currentSharePercent,
+        previousSharePercent,
+        sharePointChangePercent: Math.round((currentSharePercent - previousSharePercent) * 10) / 10,
+      }
+    })
+    const totalVariationDistancePercent = hasSufficientData
+      ? Math.round(buckets.reduce((total, bucket) => (
+        total + Math.abs(bucket.currentSharePercent - bucket.previousSharePercent)
+      ), 0) / 2 * 10) / 10
+      : null
+
+    return {
+      version: 'policy.candidate_correction_cohort_composition.v1',
+      statusId: !hasSufficientData
+        ? 'insufficient_data'
+        : (totalVariationDistancePercent >= 20 ? 'material_shift_detected' : 'composition_comparable'),
+      currentObservationCount,
+      previousObservationCount,
+      minimumObservationCount: 20,
+      materialShiftThresholdPercent: 20,
+      totalVariationDistancePercent,
+      buckets,
+    }
+  }
   const base = {
-    version: 'policy.candidate_correction_analytics_metrics.v3',
+    version: 'policy.candidate_correction_analytics_metrics.v4',
     window: { days: 7, startDate: '2026-08-23', endDate: '2026-08-30' },
     marginBuckets,
     evidenceSourceStateBuckets,
@@ -133,6 +177,46 @@ function report(overrides = {}) {
         },
       ],
     },
+    cohortComposition: overrides.cohortComposition || (() => {
+      const marginBands = compositionComparison(
+        ['0_to_4', '5_to_14', '15_to_29', '30_or_more'],
+        { '0_to_4': 0, '5_to_14': 20, '15_to_29': 0, '30_or_more': 0 },
+        { '0_to_4': 0, '5_to_14': 20, '15_to_29': 0, '30_or_more': 0 },
+      )
+      const declaredPolicy = compositionComparison(
+        [
+          'declared_policy:anchored',
+          'declared_policy:supporting',
+          'declared_policy:contextual',
+          'declared_policy:conflicting',
+          'declared_policy:unavailable',
+        ],
+        {
+          'declared_policy:anchored': 0,
+          'declared_policy:supporting': 20,
+          'declared_policy:contextual': 0,
+          'declared_policy:conflicting': 0,
+          'declared_policy:unavailable': 0,
+        },
+        {
+          'declared_policy:anchored': 0,
+          'declared_policy:supporting': 20,
+          'declared_policy:contextual': 0,
+          'declared_policy:conflicting': 0,
+          'declared_policy:unavailable': 0,
+        },
+      )
+
+      return {
+        version: 'policy.candidate_correction_cohort_composition.v1',
+        statusId: 'composition_comparable',
+        materialShiftDimensionCount: 0,
+        comparableDimensionCount: 2,
+        insufficientDataDimensionCount: 0,
+        marginBands,
+        evidenceSources: [{ evidenceSourceId: 'declared_policy', comparison: declaredPolicy }],
+      }
+    })(),
   }
 }
 
@@ -176,6 +260,13 @@ describe('policyCandidateCorrectionAnalyticsPresentation', () => {
   it('fails closed when the server temporal status does not match both validated periods', () => {
     const invalid = report()
     invalid.temporalStability.summary.statusId = 'emerging_review_signal'
+
+    expect(normalizePolicyCandidateCorrectionAnalyticsMetricsReport(invalid)).toBeNull()
+  })
+
+  it('fails closed when the server cohort-composition comparison does not match the fixed aggregates', () => {
+    const invalid = report()
+    invalid.cohortComposition.marginBands.totalVariationDistancePercent = 21
 
     expect(normalizePolicyCandidateCorrectionAnalyticsMetricsReport(invalid)).toBeNull()
   })

@@ -12,10 +12,11 @@ created by this work.
 - Added a pure ESM temporal-stability service that recognizes persistent,
   emerging, diminishing, low-signal, insufficient-data, and inconclusive
   outcomes from two existing count-only readiness snapshots.
-- Advanced Correction Analytics to response contract v3. It now includes the
+- Introduced Correction Analytics response contract v3, which included the
   current and previous aggregate periods plus derived stability for the overall
   aggregate, every score-margin band, and the union of observed fixed
-  evidence-source/state buckets.
+  evidence-source/state buckets. The current response contract is v4 after the
+  delivered cohort-composition guard.
 - Added a separate strict client presentation module. It re-derives the
   expected status from both validated periods, discarding inconsistent or
   unknown server content before rendering.
@@ -55,10 +56,9 @@ service behavior, and absence of new AI, RAG, policy, retry, persistence, or
 routing authority. Scan `7b522640-018c-4584-8ecc-7e8281293efd` completed with
 2,680,214 measured tokens and complete coverage.
 
-## Next Item
+## Follow-on Outcome
 
-Evaluate **aggregate cohort-composition stability** before acting on a
-persistent signal. Compare the count-only distribution of fixed score-margin
-and evidence-source/state observations across the same adjacent windows, so a
-change in what was reviewed is not mistaken for a change in policy behavior.
-Keep the result advisory, bounded, and free of item or destination identity.
+Aggregate cohort-composition stability is now delivered in
+[the separate outcome document](policy-candidate-correction-cohort-composition-outcome.md).
+It provides a fixed count-only TVD guard before a repeated correction signal is
+interpreted as a policy-behavior pattern.

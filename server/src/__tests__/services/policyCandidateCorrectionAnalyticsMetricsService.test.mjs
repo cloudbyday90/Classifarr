@@ -20,7 +20,7 @@ describe('policyCandidateCorrectionAnalyticsMetricsService', () => {
 
     const report = await service.getSummary({ windowDays: 7 });
 
-    expect(report.version).toBe('policy.candidate_correction_analytics_metrics.v3');
+    expect(report.version).toBe('policy.candidate_correction_analytics_metrics.v4');
     expect(loadMetrics).toHaveBeenCalledTimes(2);
     expect(loadMetrics.mock.calls.map(([, window]) => window)).toEqual(expect.arrayContaining([
       expect.objectContaining({

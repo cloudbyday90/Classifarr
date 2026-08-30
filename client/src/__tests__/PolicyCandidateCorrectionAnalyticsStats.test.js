@@ -43,7 +43,7 @@ const reviewReadiness = {
 }
 
 const report = {
-  version: 'policy.candidate_correction_analytics_metrics.v3',
+  version: 'policy.candidate_correction_analytics_metrics.v4',
   window: { days: 7, startDate: '2026-08-23', endDate: '2026-08-30' },
   marginBuckets: [
     {
@@ -177,6 +177,63 @@ const report = {
       },
     ],
   },
+  cohortComposition: {
+    version: 'policy.candidate_correction_cohort_composition.v1',
+    statusId: 'composition_comparable',
+    materialShiftDimensionCount: 0,
+    comparableDimensionCount: 2,
+    insufficientDataDimensionCount: 0,
+    marginBands: {
+      version: 'policy.candidate_correction_cohort_composition.v1',
+      statusId: 'composition_comparable',
+      currentObservationCount: 20,
+      previousObservationCount: 20,
+      minimumObservationCount: 20,
+      materialShiftThresholdPercent: 20,
+      totalVariationDistancePercent: 0,
+      buckets: [
+        ['0_to_4', 0],
+        ['5_to_14', 20],
+        ['15_to_29', 0],
+        ['30_or_more', 0],
+      ].map(([bucketId, observationCount]) => ({
+        bucketId,
+        currentObservationCount: observationCount,
+        previousObservationCount: observationCount,
+        currentSharePercent: observationCount ? 100 : 0,
+        previousSharePercent: observationCount ? 100 : 0,
+        sharePointChangePercent: 0,
+      })),
+    },
+    evidenceSources: [
+      {
+        evidenceSourceId: 'declared_policy',
+        comparison: {
+          version: 'policy.candidate_correction_cohort_composition.v1',
+          statusId: 'composition_comparable',
+          currentObservationCount: 20,
+          previousObservationCount: 20,
+          minimumObservationCount: 20,
+          materialShiftThresholdPercent: 20,
+          totalVariationDistancePercent: 0,
+          buckets: [
+            ['anchored', 0],
+            ['supporting', 20],
+            ['contextual', 0],
+            ['conflicting', 0],
+            ['unavailable', 0],
+          ].map(([stateId, observationCount]) => ({
+            bucketId: `declared_policy:${stateId}`,
+            currentObservationCount: observationCount,
+            previousObservationCount: observationCount,
+            currentSharePercent: observationCount ? 100 : 0,
+            previousSharePercent: observationCount ? 100 : 0,
+            sharePointChangePercent: 0,
+          })),
+        },
+      },
+    ],
+  },
 }
 
 describe('PolicyCandidateCorrectionAnalyticsStats.vue', () => {
@@ -193,12 +250,14 @@ describe('PolicyCandidateCorrectionAnalyticsStats.vue', () => {
     expect(wrapper.text()).toContain('10 (50%)')
     expect(wrapper.text()).toContain('Review outcome pattern')
     expect(wrapper.text()).toContain('Persistent review signal')
+    expect(wrapper.text()).toContain('Cohort-composition context')
+    expect(wrapper.text()).toContain('Cohort mix is comparable')
     expect(wrapper.text()).toContain('95% Wilson interval: 29.9%–70.1%')
     expect(wrapper.text()).toContain('do not establish correctness or change policy, AI, RAG, learning, or routing')
-    expect(wrapper.findAll('table')).toHaveLength(4)
-    expect(wrapper.findAll('caption')).toHaveLength(4)
-    expect(wrapper.findAll('th[scope="col"]')).toHaveLength(24)
-    expect(wrapper.findAll('th[scope="row"]')).toHaveLength(10)
+    expect(wrapper.findAll('table')).toHaveLength(6)
+    expect(wrapper.findAll('caption')).toHaveLength(6)
+    expect(wrapper.findAll('th[scope="col"]')).toHaveLength(33)
+    expect(wrapper.findAll('th[scope="row"]')).toHaveLength(15)
     expect(wrapper.find('[role="status"]').attributes('aria-atomic')).toBe('true')
     expect(wrapper.findAll('button')).toHaveLength(0)
     expect(wrapper.text()).not.toContain('Do not display')
