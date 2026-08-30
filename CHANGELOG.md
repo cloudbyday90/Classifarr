@@ -28,6 +28,7 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - **Offline candidate-evidence evaluation** — A bounded, versioned fixture corpus now compares deterministic candidate scope, exact contrastive evidence, and a proposed semantic-retrieval signal using review precision, recall, abstention, coverage, and agreement metrics before any semantic evidence can reach an operator workflow.
 - **Pinned semantic snapshot evaluation** — A fixed-path, offline-only adapter now evaluates a redacted synthetic embedding snapshot across an expanded eight-case reviewed corpus and reports status-only semantic precision, recall, abstention, agreement, and provenance.
 - **Policy correction analytics** — Statistics now associates fixed original policy-score margin bands and evidence states with later server-validated operator outcomes, so administrators can identify a policy-evidence area for review without changing routing.
+- **Correction-analytics uncertainty readiness** — Statistics now applies a fixed minimum cohort and 95% Wilson intervals to aggregate changed-selection rates, distinguishing insufficient, inconclusive, review-worthy, and low-signal score/evidence buckets without auto-tuning policy, AI, RAG, or routing.
 
 ### Changed
 
@@ -63,6 +64,7 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - **Offline semantic-evaluation boundary** — The fixed local corpus accepts only allow-listed status identifiers, rejects raw runtime/provider fields, exposes no fixture names in reports, accepts no arguments or network input, and has no authority to invoke AI, learn, edit policy, retry, route, or affect an operator workflow.
 - **Pinned snapshot boundary** — Semantic evaluation validates versioned local artifacts, SHA-256 manifest pins, and one-to-one fixture/snapshot IDs before scoring; it returns only allow-listed status IDs and never exposes vectors, similarities, retrieval text, or a live RAG path.
 - **Correction-analytics boundary** — Versioned server snapshots, validated operator-outcome attribution, a static aggregate query, and strict client projections retain and expose only fixed score-margin, evidence-state, and selection-status dimensions; no media, policy, library, candidate, destination, actor, provider, prompt, response, raw RAG text, or routing control is added.
+- **Correction-readiness uncertainty boundary** — Fixed 95% Wilson review signals accept only bounded aggregate counts, preserve the static read-only query and existing authentication boundary, and return no identity, configuration, AI, policy, RAG, learning, retry, or routing authority.
 
 - **Comparison-cap privacy boundary** — Coverage detection uses one server-only sentinel to identify omitted competitors; the sentinel, total active-policy count, configurations, identities, and routing authority remain unavailable to clients.
 - **Explanation privacy boundary** — Shared-eligibility explanations expose only allow-listed category labels and anonymous configuration counts after a bounded shared result; they never return rule values, competitor identities, item outcomes, AI state, or routing control.

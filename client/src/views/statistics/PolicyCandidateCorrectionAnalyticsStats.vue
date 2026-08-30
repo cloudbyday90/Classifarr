@@ -74,6 +74,43 @@
         <p class="mt-3 text-xs text-gray-400">
           {{ report.window.days }} complete UTC days ending {{ report.window.endDate || '—' }}.
         </p>
+
+        <div class="mt-5 border-t border-gray-700 pt-4">
+          <h4 class="text-sm font-medium text-white">
+            Overall selection-change review readiness
+          </h4>
+          <p
+            class="mt-1 text-sm"
+            :class="overallCalibrationReadinessPresentation.className"
+          >
+            {{ overallCalibrationReadinessPresentation.label }}
+          </p>
+          <p class="mt-1 text-sm text-gray-300">
+            {{ overallCalibrationReadinessPresentation.message }}
+          </p>
+          <dl class="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+            <MetricRow
+              label="Applicable decisions"
+              :value="report.calibrationReadiness.applicableDecisionCount"
+            />
+            <MetricRow
+              label="Changed selection"
+              :value="formatRate(
+                report.calibrationReadiness.changedSelectionOutcomeCount,
+                report.calibrationReadiness.changedSelectionRatePercent,
+              )"
+            />
+            <MetricRow
+              label="Uncertainty"
+              :value="formatConfidenceInterval(
+                report.calibrationReadiness.changedSelectionConfidenceInterval,
+              )"
+            />
+          </dl>
+          <p class="mt-3 text-xs text-gray-400">
+            Scores are not probabilities. This fixed 20% review floor evaluates later operator selection changes, not score correctness.
+          </p>
+        </div>
       </article>
 
       <article class="overflow-x-auto rounded-lg border border-gray-700 bg-gray-800 p-5">
@@ -125,6 +162,18 @@
               >
                 Changed destination
               </th>
+              <th
+                scope="col"
+                class="px-3 py-3 font-medium"
+              >
+                Review readiness
+              </th>
+              <th
+                scope="col"
+                class="px-3 py-3 font-medium"
+              >
+                Uncertainty
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -154,6 +203,14 @@
               </td>
               <td class="px-3 py-3 text-gray-300">
                 {{ formatRate(bucket.changedSelectionOutcomeCount, bucket.changedSelectionRatePercent) }}
+              </td>
+              <td class="px-3 py-3">
+                <span :class="calibrationReadinessPresentation(bucket).className">
+                  {{ calibrationReadinessPresentation(bucket).label }}
+                </span>
+              </td>
+              <td class="px-3 py-3 text-gray-300">
+                {{ formatConfidenceInterval(bucket.calibrationReadiness.changedSelectionConfidenceInterval) }}
               </td>
             </tr>
           </tbody>
@@ -206,6 +263,18 @@
               >
                 Changed destination
               </th>
+              <th
+                scope="col"
+                class="px-3 py-3 font-medium"
+              >
+                Review readiness
+              </th>
+              <th
+                scope="col"
+                class="px-3 py-3 font-medium"
+              >
+                Uncertainty
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -232,6 +301,14 @@
               <td class="px-3 py-3 text-gray-300">
                 {{ formatRate(bucket.changedSelectionOutcomeCount, bucket.changedSelectionRatePercent) }}
               </td>
+              <td class="px-3 py-3">
+                <span :class="calibrationReadinessPresentation(bucket).className">
+                  {{ calibrationReadinessPresentation(bucket).label }}
+                </span>
+              </td>
+              <td class="px-3 py-3 text-gray-300">
+                {{ formatConfidenceInterval(bucket.calibrationReadiness.changedSelectionConfidenceInterval) }}
+              </td>
             </tr>
           </tbody>
         </table>
@@ -257,6 +334,10 @@ import api from '@/api'
 import {
   normalizePolicyCandidateCorrectionAnalyticsMetricsReport,
 } from '@/utils/policyCandidateCorrectionAnalyticsPresentation'
+import {
+  formatPolicyCandidateCorrectionConfidenceInterval,
+  getPolicyCandidateCorrectionCalibrationReadinessPresentation,
+} from '@/utils/policyCandidateCorrectionCalibrationReadinessPresentation'
 
 const MetricRow = defineComponent({
   name: 'PolicyCandidateCorrectionAnalyticsMetricRow',
@@ -284,11 +365,27 @@ const monitoringStatusAnnouncement = computed(() => {
   if (loading.value) return 'Loading policy correction analytics.'
   if (errorMessage.value || !report.value) return 'Policy correction analytics are currently unavailable.'
 
-  return report.value.readiness.label
+  return `${report.value.readiness.label}. ${overallCalibrationReadinessPresentation.value.label}.`
 })
+
+const overallCalibrationReadinessPresentation = computed(() => (
+  getPolicyCandidateCorrectionCalibrationReadinessPresentation(
+    report.value?.calibrationReadiness?.statusId,
+  ) || getPolicyCandidateCorrectionCalibrationReadinessPresentation('insufficient_data')
+))
 
 function formatRate(count, percentage) {
   return `${Number(count) || 0} (${Number(percentage) || 0}%)`
+}
+
+function calibrationReadinessPresentation(bucket) {
+  return getPolicyCandidateCorrectionCalibrationReadinessPresentation(
+    bucket?.calibrationReadiness?.statusId,
+  ) || getPolicyCandidateCorrectionCalibrationReadinessPresentation('insufficient_data')
+}
+
+function formatConfidenceInterval(interval) {
+  return formatPolicyCandidateCorrectionConfidenceInterval(interval)
 }
 
 async function loadMetrics() {

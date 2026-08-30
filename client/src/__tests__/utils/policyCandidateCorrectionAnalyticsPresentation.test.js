@@ -10,37 +10,75 @@ import {
 } from '@/utils/policyCandidateCorrectionAnalyticsPresentation'
 
 function report(overrides = {}) {
+  const emptyReadiness = {
+    version: 'policy.candidate_correction_calibration_readiness.v1',
+    statusId: 'insufficient_data',
+    applicableDecisionCount: 0,
+    changedSelectionOutcomeCount: 0,
+    changedSelectionRatePercent: 0,
+    minimumApplicableDecisionCount: 20,
+    reviewThresholdPercent: 20,
+    changedSelectionConfidenceInterval: null,
+  }
+  const reviewReadiness = {
+    version: 'policy.candidate_correction_calibration_readiness.v1',
+    statusId: 'review_recommended',
+    applicableDecisionCount: 20,
+    changedSelectionOutcomeCount: 10,
+    changedSelectionRatePercent: 50,
+    minimumApplicableDecisionCount: 20,
+    reviewThresholdPercent: 20,
+    changedSelectionConfidenceInterval: {
+      methodId: 'wilson_score',
+      confidenceLevelPercent: 95,
+      lowerRatePercent: 29.9,
+      upperRatePercent: 70.1,
+    },
+  }
+
   return {
-    version: 'policy.candidate_correction_analytics_metrics.v1',
+    version: 'policy.candidate_correction_analytics_metrics.v2',
     window: { days: 7, startDate: '2026-08-23', endDate: '2026-08-30' },
     marginBuckets: [
       {
         marginBandId: '5_to_14',
-        outcomeCount: 10,
-        confirmedLeaderOutcomeCount: 4,
-        changedToCandidateOutcomeCount: 3,
-        changedOutsideCandidatesOutcomeCount: 2,
-        routedNotApplicableOutcomeCount: 1,
+        outcomeCount: 20,
+        confirmedLeaderOutcomeCount: 10,
+        changedToCandidateOutcomeCount: 6,
+        changedOutsideCandidatesOutcomeCount: 4,
+        routedNotApplicableOutcomeCount: 0,
+        calibrationReadiness: reviewReadiness,
       },
+      ...['0_to_4', '15_to_29', '30_or_more'].map((marginBandId) => ({
+        marginBandId,
+        outcomeCount: 0,
+        confirmedLeaderOutcomeCount: 0,
+        changedToCandidateOutcomeCount: 0,
+        changedOutsideCandidatesOutcomeCount: 0,
+        routedNotApplicableOutcomeCount: 0,
+        calibrationReadiness: emptyReadiness,
+      })),
     ],
     evidenceSourceStateBuckets: [
       {
         evidenceSourceId: 'declared_policy',
         evidenceStateId: 'supporting',
-        outcomeCount: 10,
-        confirmedLeaderOutcomeCount: 4,
-        changedToCandidateOutcomeCount: 3,
-        changedOutsideCandidatesOutcomeCount: 2,
-        routedNotApplicableOutcomeCount: 1,
+        outcomeCount: 20,
+        confirmedLeaderOutcomeCount: 10,
+        changedToCandidateOutcomeCount: 6,
+        changedOutsideCandidatesOutcomeCount: 4,
+        routedNotApplicableOutcomeCount: 0,
+        calibrationReadiness: reviewReadiness,
       },
     ],
     summary: {
-      outcomeCount: 10,
-      confirmedLeaderOutcomeCount: 4,
-      changedToCandidateOutcomeCount: 3,
-      changedOutsideCandidatesOutcomeCount: 2,
-      routedNotApplicableOutcomeCount: 1,
+      outcomeCount: 20,
+      confirmedLeaderOutcomeCount: 10,
+      changedToCandidateOutcomeCount: 6,
+      changedOutsideCandidatesOutcomeCount: 4,
+      routedNotApplicableOutcomeCount: 0,
     },
+    calibrationReadiness: reviewReadiness,
     ...overrides,
   }
 }
@@ -60,8 +98,9 @@ describe('policyCandidateCorrectionAnalyticsPresentation', () => {
     }))
 
     expect(normalized).toMatchObject({
-      summary: { outcomeCount: 10, changedSelectionRatePercent: 55.6 },
+      summary: { outcomeCount: 20, changedSelectionRatePercent: 50 },
       readiness: { statusId: 'observing' },
+      calibrationReadiness: { statusId: 'review_recommended' },
     })
     expect(normalized.marginBuckets).toHaveLength(4)
     expect(normalized.evidenceSourceStateBuckets).toEqual([

@@ -3,7 +3,11 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
-const METRICS_VERSION = 'policy.candidate_correction_analytics_metrics.v1'
+import {
+  normalizePolicyCandidateCorrectionCalibrationReadiness,
+} from './policyCandidateCorrectionCalibrationReadinessPresentation'
+
+const METRICS_VERSION = 'policy.candidate_correction_analytics_metrics.v2'
 
 const MARGIN_BAND_PRESENTATIONS = Object.freeze({
   '0_to_4': Object.freeze({ label: '0–4 points', description: 'Very close' }),
@@ -84,11 +88,19 @@ function marginBucket(value) {
   const presentation = MARGIN_BAND_PRESENTATIONS[marginBandId]
   if (!presentation) return null
 
+  const outcomeCounts = normalizeOutcomeCounts(value)
+  const calibrationReadiness = normalizePolicyCandidateCorrectionCalibrationReadiness(
+    value?.calibrationReadiness,
+    outcomeCounts,
+  )
+  if (!calibrationReadiness) return null
+
   return Object.freeze({
     marginBandId,
     label: presentation.label,
     description: presentation.description,
-    ...normalizeOutcomeCounts(value),
+    ...outcomeCounts,
+    calibrationReadiness,
   })
 }
 
@@ -104,12 +116,20 @@ function evidenceSourceStateBucket(value) {
     return null
   }
 
+  const outcomeCounts = normalizeOutcomeCounts(value)
+  const calibrationReadiness = normalizePolicyCandidateCorrectionCalibrationReadiness(
+    value?.calibrationReadiness,
+    outcomeCounts,
+  )
+  if (!calibrationReadiness) return null
+
   return Object.freeze({
     evidenceSourceId,
     evidenceStateId,
     sourceLabel: EVIDENCE_SOURCE_PRESENTATIONS[evidenceSourceId],
     stateLabel: EVIDENCE_STATE_PRESENTATIONS[evidenceStateId],
-    ...normalizeOutcomeCounts(value),
+    ...outcomeCounts,
+    calibrationReadiness,
   })
 }
 
@@ -117,18 +137,12 @@ function normalizedMarginBuckets(value) {
   const bucketsById = new Map()
   for (const entry of Array.isArray(value) ? value : []) {
     const bucket = marginBucket(entry)
-    if (!bucket || bucketsById.has(bucket.marginBandId)) continue
+    if (!bucket || bucketsById.has(bucket.marginBandId)) return null
     bucketsById.set(bucket.marginBandId, bucket)
   }
 
-  return Object.freeze(MARGIN_BAND_IDS.map((marginBandId) => (
-    bucketsById.get(marginBandId) || Object.freeze({
-      marginBandId,
-      label: MARGIN_BAND_PRESENTATIONS[marginBandId].label,
-      description: MARGIN_BAND_PRESENTATIONS[marginBandId].description,
-      ...normalizeOutcomeCounts(),
-    })
-  )))
+  if (bucketsById.size !== MARGIN_BAND_IDS.length) return null
+  return Object.freeze(MARGIN_BAND_IDS.map((marginBandId) => bucketsById.get(marginBandId)))
 }
 
 function normalizedEvidenceSourceStateBuckets(value) {
@@ -159,6 +173,11 @@ export function normalizePolicyCandidateCorrectionAnalyticsMetricsReport(value) 
   const marginBuckets = normalizedMarginBuckets(value?.marginBuckets)
   const evidenceSourceStateBuckets = normalizedEvidenceSourceStateBuckets(value?.evidenceSourceStateBuckets)
   const summary = normalizeOutcomeCounts(value?.summary)
+  const calibrationReadiness = normalizePolicyCandidateCorrectionCalibrationReadiness(
+    value?.calibrationReadiness,
+    summary,
+  )
+  if (!marginBuckets || !calibrationReadiness) return null
   const recomputedSummary = marginBuckets.reduce((total, bucket) => ({
     outcomeCount: total.outcomeCount + bucket.outcomeCount,
     confirmedLeaderOutcomeCount: total.confirmedLeaderOutcomeCount + bucket.confirmedLeaderOutcomeCount,
@@ -186,6 +205,7 @@ export function normalizePolicyCandidateCorrectionAnalyticsMetricsReport(value) 
     marginBuckets,
     evidenceSourceStateBuckets,
     summary: Object.freeze(normalizedSummary),
+    calibrationReadiness,
     readiness: normalizedSummary.outcomeCount > 0
       ? Object.freeze({
         statusId: 'observing',

@@ -14,7 +14,7 @@ import {
 describe('statsRoutePolicyCandidateCorrectionAnalytics', () => {
   test('returns the authenticated aggregate without identity dimensions', async () => {
     const getSummary = jest.fn().mockResolvedValue({
-      version: 'policy.candidate_correction_analytics_metrics.v1',
+      version: 'policy.candidate_correction_analytics_metrics.v2',
       summary: { outcomeCount: 4 },
     });
     const app = express();

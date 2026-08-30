@@ -38,14 +38,11 @@ GitHub was queried for open pull requests in `cloudbyday90/Classifarr` before
 implementation. There were no open pull requests, so no random PR could be
 implemented locally. No closed, merged, or inferred PR was substituted.
 
-## Next Recommended Item
+## Follow-on Outcome
 
-Build **uncertainty-aware calibration readiness**. It should remain a
-read-only companion to Correction Analytics that applies a fixed minimum
-cohort and a confidence interval to correction rates by margin band and
-evidence state. The UI can then say “not enough evidence,” “review this
-policy-evidence area,” or “no material signal,” without proposing a specific
-automatic threshold, RAG, AI, or routing change.
-
-That is the right next step because the new analytics create an observation
-loop but intentionally do not infer action from small or biased samples.
+Uncertainty-aware calibration readiness is now implemented as a separate
+aggregate-only companion. It applies a fixed minimum cohort and a 95% Wilson
+interval to changed-selection rates by score-margin band and evidence state,
+without proposing an automatic policy, RAG, AI, or routing change. See
+[Policy Candidate Correction Calibration-Readiness Design](policy-candidate-correction-calibration-readiness-design.md)
+and its [outcome](policy-candidate-correction-calibration-readiness-outcome.md).

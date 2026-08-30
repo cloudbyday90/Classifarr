@@ -14,9 +14,12 @@ import {
   POLICY_CANDIDATE_CORRECTION_EVIDENCE_STATE_IDS,
   POLICY_CANDIDATE_CORRECTION_MARGIN_BAND_ORDER,
 } from './policyCandidateCorrectionSignalSnapshot.mjs';
+import {
+  buildPolicyCandidateCorrectionCalibrationReadiness,
+} from './policyCandidateCorrectionCalibrationReadiness.mjs';
 
 export const POLICY_CANDIDATE_CORRECTION_ANALYTICS_METRICS_VERSION =
-  'policy.candidate_correction_analytics_metrics.v1';
+  'policy.candidate_correction_analytics_metrics.v2';
 export const POLICY_CANDIDATE_CORRECTION_ANALYTICS_METRICS_DEFAULT_WINDOW_DAYS =
   COMPLETED_UTC_DAY_METRICS_DEFAULT_WINDOW_DAYS;
 export const POLICY_CANDIDATE_CORRECTION_ANALYTICS_METRICS_MAX_WINDOW_DAYS =
@@ -78,6 +81,22 @@ function normalizedOutcomeCounts(value = {}) {
   };
 }
 
+function buildCalibrationReadiness(outcomeCounts) {
+  return buildPolicyCandidateCorrectionCalibrationReadiness({
+    applicableDecisionCount: outcomeCounts.applicableDecisionCount,
+    changedSelectionOutcomeCount: outcomeCounts.changedSelectionOutcomeCount,
+  });
+}
+
+function buildOutcomeBucket(identity, value) {
+  const outcomeCounts = normalizedOutcomeCounts(value);
+  return Object.freeze({
+    ...identity,
+    ...outcomeCounts,
+    calibrationReadiness: buildCalibrationReadiness(outcomeCounts),
+  });
+}
+
 function addOutcomeCounts(left = {}, right = {}) {
   return {
     outcomeCount: nonnegativeCount(left.outcomeCount) + nonnegativeCount(right.outcomeCount),
@@ -111,10 +130,10 @@ function buildMarginBuckets(rows) {
   );
 
   return Object.freeze(POLICY_CANDIDATE_CORRECTION_MARGIN_BAND_ORDER.map((marginBandId) => (
-    Object.freeze({
-      marginBandId,
-      ...normalizedOutcomeCounts(valuesByMarginBand.get(marginBandId)),
-    })
+    buildOutcomeBucket(
+      { marginBandId },
+      valuesByMarginBand.get(marginBandId),
+    )
   )));
 }
 
@@ -131,11 +150,10 @@ function buildEvidenceSourceStateBuckets(rows) {
     Array.from(valuesBySourceState.entries())
       .map(([key, value]) => {
         const [evidenceSourceId, evidenceStateId] = key.split(':');
-        return Object.freeze({
+        return buildOutcomeBucket({
           evidenceSourceId,
           evidenceStateId,
-          ...normalizedOutcomeCounts(value),
-        });
+        }, value);
       })
       .filter((bucket) => bucket.outcomeCount > 0)
       .sort((left, right) => (
@@ -182,6 +200,7 @@ export function buildPolicyCandidateCorrectionAnalyticsMetricsReport({
     marginBuckets,
     evidenceSourceStateBuckets,
     summary: Object.freeze(summary),
+    calibrationReadiness: buildCalibrationReadiness(summary),
     readiness: Object.freeze({
       statusId: summary.outcomeCount > 0 ? 'observing' : 'insufficient_data',
       message: summary.outcomeCount > 0

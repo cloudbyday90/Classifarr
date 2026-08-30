@@ -36,21 +36,19 @@ describe('policyCandidateCorrectionAnalyticsMetrics', () => {
         {
           rowKind: 'margin_band',
           scoreMarginBandId: '5_to_14',
-          outcomeCount: 10,
-          confirmedLeaderOutcomeCount: 4,
-          changedToCandidateOutcomeCount: 3,
-          changedOutsideCandidatesOutcomeCount: 2,
-          routedNotApplicableOutcomeCount: 1,
+          outcomeCount: 20,
+          confirmedLeaderOutcomeCount: 10,
+          changedToCandidateOutcomeCount: 6,
+          changedOutsideCandidatesOutcomeCount: 4,
         },
         {
           rowKind: 'evidence_source_state',
           evidenceSourceId: 'declared_policy',
           evidenceStateId: 'supporting',
-          outcomeCount: 10,
-          confirmedLeaderOutcomeCount: 4,
-          changedToCandidateOutcomeCount: 3,
-          changedOutsideCandidatesOutcomeCount: 2,
-          routedNotApplicableOutcomeCount: 1,
+          outcomeCount: 20,
+          confirmedLeaderOutcomeCount: 10,
+          changedToCandidateOutcomeCount: 6,
+          changedOutsideCandidatesOutcomeCount: 4,
         },
         {
           rowKind: 'evidence_source_state',
@@ -71,21 +69,27 @@ describe('policyCandidateCorrectionAnalyticsMetrics', () => {
 
     const closeBucket = report.marginBuckets.find((bucket) => bucket.marginBandId === '5_to_14');
     expect(report).toMatchObject({
-      version: 'policy.candidate_correction_analytics_metrics.v1',
+      version: 'policy.candidate_correction_analytics_metrics.v2',
       summary: {
-        outcomeCount: 10,
-        confirmedLeaderOutcomeCount: 4,
-        changedToCandidateOutcomeCount: 3,
-        changedOutsideCandidatesOutcomeCount: 2,
-        changedSelectionOutcomeCount: 5,
-        changedSelectionRatePercent: 55.6,
+        outcomeCount: 20,
+        confirmedLeaderOutcomeCount: 10,
+        changedToCandidateOutcomeCount: 6,
+        changedOutsideCandidatesOutcomeCount: 4,
+        changedSelectionOutcomeCount: 10,
+        changedSelectionRatePercent: 50,
       },
       readiness: { statusId: 'observing' },
+      calibrationReadiness: {
+        statusId: 'review_recommended',
+        applicableDecisionCount: 20,
+        changedSelectionOutcomeCount: 10,
+      },
     });
     expect(closeBucket).toEqual(expect.objectContaining({
-      outcomeCount: 10,
-      applicableDecisionCount: 9,
-      changedSelectionRatePercent: 55.6,
+      outcomeCount: 20,
+      applicableDecisionCount: 20,
+      changedSelectionRatePercent: 50,
+      calibrationReadiness: expect.objectContaining({ statusId: 'review_recommended' }),
     }));
     expect(report.marginBuckets).toHaveLength(4);
     expect(report.evidenceSourceStateBuckets).toHaveLength(2);
