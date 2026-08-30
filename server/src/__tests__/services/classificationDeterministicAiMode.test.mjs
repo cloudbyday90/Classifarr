@@ -79,6 +79,23 @@ describe('classificationDeterministicAiMode', () => {
       CLASSIFICATION_DETERMINISTIC_AI_MODE_REASON_IDS.AMBIGUOUS_POLICY_CANDIDATES,
     ],
     [
+      'adjudicates only when a bounded prompt-select contract is valid',
+      {
+        policyResult: policyResult({
+          action: 'prompt_select',
+          ranked: [{ library_id: 1, score: 71 }, { library_id: 2, score: 69 }],
+        }),
+        libraries,
+        candidateAdjudication: {
+          valid: true,
+          candidates: [{ libraryId: 1 }, { libraryId: 2 }],
+        },
+      },
+      CLASSIFICATION_DETERMINISTIC_AI_MODE_IDS.ADJUDICATE,
+      true,
+      CLASSIFICATION_DETERMINISTIC_AI_MODE_REASON_IDS.CANDIDATE_ADJUDICATION_READY,
+    ],
+    [
       'abstains for insufficient policy evidence',
       { policyResult: policyResult({ action: 'manual' }), libraries },
       CLASSIFICATION_DETERMINISTIC_AI_MODE_IDS.ABSTAIN,

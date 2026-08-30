@@ -699,6 +699,37 @@ describe('logClassification', () => {
     expect(JSON.stringify(persistedMetadata)).not.toContain('detailed model explanation');
   });
 
+  test('persists only the bounded candidate-adjudication projection', async () => {
+    const result = {
+      library: { id: 1, name: 'Movies' },
+      confidence: 71,
+      method: 'policy_candidate_adjudication',
+      reason: 'Operator review required',
+      needs_clarification: true,
+      candidate_adjudication: {
+        version: 'policy.candidate_adjudication.v1',
+        status_id: 'proposed',
+        candidate_count: 2,
+        proposed_destination: { library_id: 2, library_name: 'Family' },
+        raw_reasoning: 'Do not retain this model thinking.',
+        profile_evidence: { title: 'Also do not retain this.' },
+      },
+    };
+
+    await classificationPersistenceService.logClassification(baseMetadata, result);
+
+    const insertCall = db.query.mock.calls.find(c => c[0].includes('INSERT INTO classification_history'));
+    const persistedMetadata = JSON.parse(insertCall[1][9]);
+    expect(persistedMetadata.classification_details.candidate_adjudication).toEqual({
+      version: 'policy.candidate_adjudication.v1',
+      status_id: 'proposed',
+      candidate_count: 2,
+      proposed_destination: { library_id: 2, library_name: 'Family' },
+    });
+    expect(JSON.stringify(persistedMetadata)).not.toContain('model thinking');
+    expect(JSON.stringify(persistedMetadata)).not.toContain('Also do not retain this');
+  });
+
   test('sends Discord pending notification when bot is initialized and status is awaiting_decision', async () => {
     mockDiscordBotService.isInitialized = true;
     const result = {

@@ -3,6 +3,7 @@ import * as db from '../config/database.mjs';
 import { ollamaService } from './ollama.mjs';
 import {
   candidateBoundVerificationResponseSchema,
+  candidateAdjudicationResponseSchema,
   classificationResponseSchema,
 } from './aiResponseSchema.mjs';
 import { aiRouterService as aiRouter } from './aiRouter.mjs';
@@ -19,6 +20,9 @@ import {
   buildCandidateBoundVerificationContract,
   resolveCandidateBoundVerificationAdmission,
 } from './classificationCandidateBoundVerificationContract.mjs';
+import {
+  projectPolicyCandidateAdjudicationEvidenceForProvider,
+} from './policyCandidateAdjudicationEvidence.mjs';
 import {
   createCandidateBoundVerificationAdmissionResult,
 } from './aiResponseParserResults.mjs';
@@ -217,12 +221,22 @@ async function aiClassifyImpl(metadata, libraries, signalContext = null, options
     libraries,
     signalContext,
     policySignals: options.policySignals || signalContext,
-    // Similar-item candidate names are not needed for a bound confirmation.
-    ragContext: mode === 'verify' ? null : (options.ragContext || null),
+    // Similar-item names are supplied only by the bounded adjudication
+    // evidence projection, where remote providers receive aggregates only.
+    ragContext: mode === 'classify' ? (options.ragContext || null) : null,
     verificationContract,
+    candidateAdjudicationEvidence: mode === 'adjudicate'
+      ? projectPolicyCandidateAdjudicationEvidenceForProvider(
+           options.candidateAdjudicationEvidence,
+           {
+             providerType: provider.type,
+             providerHost: provider.config?.host,
+           },
+         )
+      : null,
   };
 
-  if (signalContext?.suggestedLibrary) {
+  if (mode !== 'adjudicate' && signalContext?.suggestedLibrary) {
     try {
       const profileStats = await libraryProfileService.getProfileStats(signalContext.suggestedLibrary.id);
       if (profileStats.totalItems > 0) {
@@ -236,7 +250,13 @@ async function aiClassifyImpl(metadata, libraries, signalContext = null, options
     }
   }
 
-  let prompt = `You are a media classification ${mode === 'verify' ? 'VERIFIER' : 'AI'} for a home media server. ${mode === 'verify' ? 'Your role is to VERIFY a pre-calculated classification decision.' : 'Your role is to classify media items into the appropriate library.'}
+  const role = mode === 'verify' ? 'VERIFIER' : (mode === 'adjudicate' ? 'ADJUDICATOR' : 'AI');
+  const roleDescription = mode === 'verify'
+    ? 'Your role is to VERIFY a pre-calculated classification decision.'
+    : (mode === 'adjudicate'
+      ? 'Your role is to compare only the server-selected, policy-eligible destinations. You cannot route media or expand that set.'
+      : 'Your role is to classify media items into the appropriate library.');
+  let prompt = `You are a media classification ${role} for a home media server. ${roleDescription}
 
 ${mode === 'verify' ? `CRITICAL RULES:
 1. You CANNOT override the calculated confidence score.
@@ -327,11 +347,13 @@ Respond with ONLY one of the formats above.`;
               null,
               {
                 allowPartialOnAbort: !disallowPartialStreamResponse,
-                allowPartialOnStall: !disallowPartialStreamResponse,
-                requireDoneSignal: disallowPartialStreamResponse,
-                format: reasoningModel ? undefined : (mode === 'verify'
-                  ? candidateBoundVerificationResponseSchema
-                  : classificationResponseSchema),
+              allowPartialOnStall: !disallowPartialStreamResponse,
+              requireDoneSignal: disallowPartialStreamResponse,
+              format: reasoningModel ? undefined : (mode === 'verify'
+                ? candidateBoundVerificationResponseSchema
+                : (mode === 'adjudicate'
+                  ? candidateAdjudicationResponseSchema
+                  : classificationResponseSchema)),
                 expectedModelDigest: mode === 'verify'
                   ? provider.config?.verificationModelDigest || undefined
                   : undefined,
@@ -349,12 +371,16 @@ Respond with ONLY one of the formats above.`;
               taskType: 'classification',
               provider,
               authorityMode: requestedAuthorityMode,
-              requestType: mode === 'verify' ? 'classification_verify' : 'classification',
+              requestType: mode === 'verify'
+                ? 'classification_verify'
+                : (mode === 'adjudicate' ? 'classification_adjudication' : 'classification'),
               itemTitle,
               requireAuthorityMode: mode === 'verify',
               format: reasoningModel ? undefined : (mode === 'verify'
                 ? candidateBoundVerificationResponseSchema
-                : classificationResponseSchema)
+                : (mode === 'adjudicate'
+                  ? candidateAdjudicationResponseSchema
+                  : classificationResponseSchema))
             });
           }
           lastStreamError = null;

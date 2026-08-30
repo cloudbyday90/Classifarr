@@ -96,6 +96,24 @@
           </p>
         </div>
         <div
+          v-else-if="decisionPresentation.candidate_adjudication"
+          class="candidate-bound-verification"
+          role="status"
+        >
+          <p class="candidate-bound-verification-label">
+            Candidate comparison
+          </p>
+          <p class="candidate-bound-verification-title">
+            {{ decisionPresentation.candidate_adjudication.label }}
+          </p>
+          <p>
+            {{ decisionPresentation.candidate_adjudication.message }}
+          </p>
+          <p v-if="decisionPresentation.candidate_adjudication.proposed_destination">
+            Advisory destination: {{ decisionPresentation.candidate_adjudication.proposed_destination.library_name }}.
+          </p>
+        </div>
+        <div
           v-else-if="decisionPresentation.ai_advisory"
           class="ai-advisory"
         >

@@ -14,6 +14,9 @@ import {
 import {
   buildCandidateBoundVerificationPresentation,
 } from './classificationCandidateBoundVerificationPresentation.mjs';
+import {
+  buildPolicyCandidateAdjudicationPresentation,
+} from './policyCandidateAdjudicationPresentation.mjs';
 
 export const POLICY_RUNTIME_QUESTION_DECISION_PRESENTATION_VERSION =
   'policy.runtime_question_decision_presentation.v1';
@@ -278,6 +281,15 @@ function buildCandidateBoundVerification({ classification }) {
   );
 }
 
+function buildCandidateAdjudication({ classification }) {
+  const sourceMetadata = metadata(classification?.metadata);
+  const details = asObject(sourceMetadata.classification_details);
+
+  return buildPolicyCandidateAdjudicationPresentation(
+    details.candidate_adjudication,
+  );
+}
+
 /**
  * Safe, server-derived explanation for an operator decision. It deliberately
  * excludes prompts, raw model output, provider credentials, and free-form
@@ -309,6 +321,9 @@ export function buildPolicyRuntimeQuestionDecisionPresentation({
       destinationName: deterministic.destination?.library_name || 'the deterministic destination',
     }),
     candidate_bound_verification: buildCandidateBoundVerification({
+      classification,
+    }),
+    candidate_adjudication: buildCandidateAdjudication({
       classification,
     }),
   };

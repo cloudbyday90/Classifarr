@@ -13,6 +13,7 @@ import {
     formatMediaItem as _formatMediaItem,
     formatLibraryProfile as _formatLibraryProfile,
     formatPolicySignals as _formatPolicySignals,
+    formatCandidateAdjudication as _formatCandidateAdjudication,
     formatRAGContext as _formatRAGContext,
     formatPatternSignals as _formatPatternSignals,
     formatInstructions as _formatInstructions,
@@ -46,6 +47,7 @@ export class AIPromptBuilder {
         this.register('media_item', (data) => this.formatMediaItem(data));
         this.register('library_profile', (data) => this.formatLibraryProfile(data));
         this.register('policy_engine', (data) => this.formatPolicySignals(data));
+        this.register('candidate_adjudication', (data) => this.formatCandidateAdjudication(data));
         this.register('rag', (data) => this.formatRAGContext(data));
         this.register('patterns', (data) => this.formatPatternSignals(data));
         this.register('instructions', (data) => this.formatInstructions(data));
@@ -64,6 +66,7 @@ export class AIPromptBuilder {
             'media_item',
             'library_profile',
             'policy_engine',
+            'candidate_adjudication',
             'rag',
             'patterns',
             'instructions'
@@ -105,6 +108,10 @@ export class AIPromptBuilder {
 
     formatPolicySignals(data) {
         return _formatPolicySignals(data);
+    }
+
+    formatCandidateAdjudication(data) {
+        return _formatCandidateAdjudication(data);
     }
 
     formatRAGContext(data) {

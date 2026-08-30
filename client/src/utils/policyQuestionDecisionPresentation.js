@@ -8,6 +8,8 @@ export const POLICY_RUNTIME_QUESTION_DECISION_PRESENTATION_VERSION =
 
 const CLASSIFICATION_CANDIDATE_BOUND_VERIFICATION_PRESENTATION_VERSION =
   'classification.candidate_bound_verification_presentation.v1'
+const POLICY_CANDIDATE_ADJUDICATION_PRESENTATION_VERSION =
+  'policy.candidate_adjudication_presentation.v1'
 
 const CANDIDATE_BOUND_VERIFICATION_STATUS_IDS = new Set([
   'admitted',
@@ -17,6 +19,11 @@ const CANDIDATE_BOUND_VERIFICATION_STATUS_IDS = new Set([
   'candidate_unavailable',
   'candidate_mismatch',
   'provider_capability_unavailable',
+])
+const CANDIDATE_ADJUDICATION_STATUS_IDS = new Set([
+  'proposed',
+  'abstained',
+  'response_rejected',
 ])
 
 function boundedString(value, maximumLength = 280) {
@@ -70,6 +77,24 @@ function candidateBoundVerification(value) {
   return { status_id: statusId, label, message }
 }
 
+function candidateAdjudication(value) {
+  if (value?.version !== POLICY_CANDIDATE_ADJUDICATION_PRESENTATION_VERSION) return null
+
+  const statusId = boundedString(value?.status_id, 80)
+  const label = boundedString(value?.label, 120)
+  const message = boundedString(value?.message)
+  if (!statusId || !CANDIDATE_ADJUDICATION_STATUS_IDS.has(statusId) || !label || !message) {
+    return null
+  }
+
+  return {
+    status_id: statusId,
+    label,
+    message,
+    proposed_destination: destination(value?.proposed_destination),
+  }
+}
+
 export function policyQuestionDecisionPresentation(answer = {}) {
   const source = answer?.decision_summary
   if (source?.version !== POLICY_RUNTIME_QUESTION_DECISION_PRESENTATION_VERSION) return null
@@ -111,5 +136,6 @@ export function policyQuestionDecisionPresentation(answer = {}) {
         }
       : null,
     candidate_bound_verification: candidateBoundVerification(source?.candidate_bound_verification),
+    candidate_adjudication: candidateAdjudication(source?.candidate_adjudication),
   }
 }

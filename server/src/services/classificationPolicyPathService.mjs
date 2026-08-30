@@ -32,6 +32,15 @@ import {
 	buildDeterministicOutcomeAiAbstentionResult,
 	resolveDeterministicOutcomeAiMode,
 } from './classificationDeterministicAiMode.mjs';
+import {
+	buildPolicyCandidateAdjudicationContract,
+} from './policyCandidateAdjudicationContract.mjs';
+import {
+	policyCandidateAdjudicationEvidenceService,
+} from './policyCandidateAdjudicationEvidence.mjs';
+import {
+	finalizePolicyCandidateAdjudication,
+} from './policyCandidateAdjudicationResult.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const defaultLogger = createLogger('classificationPolicyPathService');
@@ -49,6 +58,9 @@ export class ClassificationPolicyPathService {
 		this.classificationRoutingService = deps.classificationRoutingService || classificationRoutingService;
 		this.resolveDeterministicOutcomeAiMode = deps.resolveDeterministicOutcomeAiMode || resolveDeterministicOutcomeAiMode;
 		this.buildDeterministicOutcomeAiAbstentionResult = deps.buildDeterministicOutcomeAiAbstentionResult || buildDeterministicOutcomeAiAbstentionResult;
+		this.buildPolicyCandidateAdjudicationContract = deps.buildPolicyCandidateAdjudicationContract || buildPolicyCandidateAdjudicationContract;
+		this.policyCandidateAdjudicationEvidenceService = deps.policyCandidateAdjudicationEvidenceService || policyCandidateAdjudicationEvidenceService;
+		this.finalizePolicyCandidateAdjudication = deps.finalizePolicyCandidateAdjudication || finalizePolicyCandidateAdjudication;
 		this.logger = deps.logger || defaultLogger;
 	}
 
@@ -179,9 +191,22 @@ export class ClassificationPolicyPathService {
 			};
 		}
 
+		const candidateAdjudication = this.buildPolicyCandidateAdjudicationContract({
+			policyResult,
+			libraries,
+			mediaType: metadata.media_type,
+		});
+		const candidateAdjudicationEvidence = candidateAdjudication.valid
+			? await this.policyCandidateAdjudicationEvidenceService.build({
+				contract: candidateAdjudication,
+				ragContext,
+			})
+			: null;
+
 		const aiModeDecision = this.resolveDeterministicOutcomeAiMode({
 			policyResult,
 			libraries,
+			candidateAdjudication,
 		});
 
 		if (!aiModeDecision.shouldInvoke) {
@@ -229,19 +254,63 @@ export class ClassificationPolicyPathService {
 		}
 
 		try {
+			const aiLibraries = aiModeDecision.mode === 'adjudicate'
+				? candidateAdjudication.candidates.map((candidate) => candidate.library)
+				: libraries;
+			const aiOptions = {
+				mode: aiModeDecision.mode,
+				ragContext,
+				verificationCandidate: policyResult.library || policyResult.ranked?.[0] || null,
+				...(aiModeDecision.mode === 'adjudicate'
+					? { candidateAdjudicationEvidence }
+					: {}),
+			};
+			const providerMatch = await this.aiClassify(
+				metadata,
+				aiLibraries,
+				policySignalContext,
+				aiOptions,
+			);
 			const aiMatch = {
-				...(await this.aiClassify(
-					metadata,
-					libraries,
-					policySignalContext,
-					{
-						mode: aiModeDecision.mode,
-						ragContext,
-						verificationCandidate: policyResult.library || policyResult.ranked?.[0] || null,
-					},
-				)),
+				...providerMatch,
 				deterministic_ai_mode: aiModeDecision,
 			};
+
+			if (aiModeDecision.mode === 'adjudicate') {
+				const result = {
+					...this.finalizePolicyCandidateAdjudication({
+						contract: candidateAdjudication,
+						aiMatch: providerMatch,
+						policyResult,
+						libraries,
+					}),
+					libraries,
+					signalContext: policySignalContext,
+					policyResult,
+					ragContext,
+					deterministic_ai_mode: aiModeDecision,
+				};
+
+				if (taskId && !metadata.source_library_id) {
+					await this.classificationProgressStageService.updateStage(taskId, 'decision', {
+						confidence: result.confidence,
+						skippedStages: ['signal_combine'],
+						skippedStageMetadata: { signal_combine: { reason: 'policy_signal_path' } },
+					});
+				}
+
+				return {
+					handled: true,
+					result: await this.classificationRoutingService.ensureDecisionQuestion({
+						metadata,
+						result,
+						policyResult,
+						libraries,
+						ragContext,
+					}),
+				};
+			}
+
 			return {
 				handled: true,
 				result: await resolveClassificationPathAiSuccess({

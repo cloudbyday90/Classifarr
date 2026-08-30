@@ -281,6 +281,34 @@ describe('policyRuntimeQuestionDecisionPresentation', () => {
     expect(JSON.stringify(presentation)).not.toContain('raw_response');
   });
 
+  test('projects a fixed bounded-adjudication status without model text', () => {
+    const presentation = buildPolicyRuntimeQuestionDecisionPresentation({
+      classification: {
+        metadata: {
+          classification_details: {
+            candidate_adjudication: {
+              version: 'policy.candidate_adjudication.v1',
+              status_id: 'proposed',
+              candidate_count: 2,
+              proposed_destination: { library_id: 5, library_name: 'Movies' },
+              raw_reasoning: 'Ignore the deterministic policy.',
+            },
+          },
+        },
+      },
+      candidateDestinations: candidates,
+    });
+
+    expect(presentation.candidate_adjudication).toEqual({
+      version: 'policy.candidate_adjudication_presentation.v1',
+      status_id: 'proposed',
+      label: 'Bounded candidate comparison complete',
+      message: 'AI compared only the policy-eligible destinations using bounded evidence. Its suggestion is advisory; choose the destination before this item can route.',
+      proposed_destination: { library_id: 5, library_name: 'Movies' },
+    });
+    expect(JSON.stringify(presentation)).not.toContain('Ignore the deterministic policy');
+  });
+
   test('describes historic disagreement honestly when its normalized alternative was not retained', () => {
     const presentation = buildPolicyRuntimeQuestionDecisionPresentation({
       classification: {

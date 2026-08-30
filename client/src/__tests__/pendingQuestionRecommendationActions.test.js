@@ -102,4 +102,37 @@ describe('PendingQuestionRecommendationActions', () => {
     expect(wrapper.text()).toContain('Routing safeguard')
     expect(wrapper.text()).toContain('requires an operator confirmation before this item can route.')
   })
+
+  it('shows a bounded candidate comparison as advisory without model rationale', () => {
+    const adjudicatedAnswer = structuredClone(answer)
+    adjudicatedAnswer.decision_summary.candidate_bound_verification = null
+    adjudicatedAnswer.decision_summary.ai_advisory = null
+    adjudicatedAnswer.decision_summary.candidate_adjudication = {
+      version: 'policy.candidate_adjudication_presentation.v1',
+      status_id: 'proposed',
+      label: 'Bounded candidate comparison complete',
+      message: 'AI compared only the policy-eligible destinations using bounded evidence. Its suggestion is advisory; choose the destination before this item can route.',
+      proposed_destination: { library_id: 5, library_name: 'Movies' },
+      raw_reasoning: 'Do not display this.',
+    }
+
+    const wrapper = mount(PendingQuestionRecommendationActions, {
+      props: {
+        answer: adjudicatedAnswer,
+        isActionBusy: () => false,
+        itemId: 1,
+      },
+      global: {
+        stubs: {
+          Button: { template: '<button><slot /></button>' },
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('Candidate comparison')
+    expect(wrapper.text()).toContain('Bounded candidate comparison complete')
+    expect(wrapper.text()).toContain('Advisory destination: Movies.')
+    expect(wrapper.find('[role="status"]').exists()).toBe(true)
+    expect(wrapper.text()).not.toContain('Do not display this.')
+  })
 })

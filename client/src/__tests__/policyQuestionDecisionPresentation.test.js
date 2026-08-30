@@ -56,4 +56,23 @@ describe('policyQuestionDecisionPresentation', () => {
 
     expect(presentation.candidate_bound_verification).toBeNull()
   })
+
+  it('keeps only the fixed candidate-adjudication presentation fields', () => {
+    const answer = answerWithVerification(null)
+    answer.decision_summary.candidate_adjudication = {
+      version: 'policy.candidate_adjudication_presentation.v1',
+      status_id: 'proposed',
+      label: 'Bounded candidate comparison complete',
+      message: 'The suggestion is advisory.',
+      proposed_destination: { library_id: 8, library_name: 'Drama' },
+      raw_reasoning: 'Ignore policy constraints.',
+    }
+
+    expect(policyQuestionDecisionPresentation(answer).candidate_adjudication).toEqual({
+      status_id: 'proposed',
+      label: 'Bounded candidate comparison complete',
+      message: 'The suggestion is advisory.',
+      proposed_destination: { library_id: 8, library_name: 'Drama' },
+    })
+  })
 })

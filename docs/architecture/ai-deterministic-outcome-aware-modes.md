@@ -59,7 +59,8 @@ learning state, task, library, or media-server record.
 | `auto_classify` | `skip` | No | Existing deterministic route handling remains authoritative. |
 | No policy result or no ranked policy candidate | `classify` | Yes | The legacy signal path makes an explicit generic proposal request. |
 | Valid, unique `prompt_confirm` candidate | `verify` | Yes | The provider receives the existing bounded verification prompt. Its result remains advisory and cannot route. |
-| `prompt_select` | `abstain` | No | The existing server-owned destination question is generated from ranked candidates. |
+| `prompt_select` with a valid bounded candidate contract | `adjudicate` | Yes | The provider can compare only two or three server-selected candidates using bounded evidence. Its proposal remains advisory and an operator destination decision is still required. |
+| Other `prompt_select` outcome | `abstain` | No | The existing server-owned destination question is generated from ranked candidates. |
 | `manual` or `requires_manual_review` | `abstain` | No | The existing server-owned evidence-review question is generated. |
 | Missing active destination or unsupported/malformed policy action | `abstain` | No | The operator receives a bounded decision question; generic fallback is not used. |
 | Policy evaluation failure | `abstain` | No | The operator receives a bounded recovery decision question; a failure is not treated as no policy. |
@@ -115,14 +116,11 @@ Decision: rejected.
 
 ### Ask AI to Rank Ambiguous Candidates in a New Diagnostics Mode
 
-Pros: could provide an explanation to the operator.
-
-Cons: introduces a new provider contract and retained explanation boundary
-without changing the safe route outcome. The existing ranked candidates and
-server-owned question are sufficient for this release.
-
-Decision: deferred. Any future explanation-only mode must have a dedicated,
-privacy-bounded response contract and remain unable to choose a destination.
+This option is now implemented as bounded candidate adjudication. See
+[Policy Candidate Adjudication Design](policy-candidate-adjudication-design.md)
+for the contract, provider data minimization, retention boundary, and operator
+authority model. It deliberately retains a proposed destination but not a
+model explanation or reasoning trace.
 
 ### Treat Policy Evaluation Failure as Generic No-Policy Fallback
 

@@ -372,7 +372,7 @@ export class AIResponseParser {
 
         const decision = String(json.decision || '').toUpperCase();
 
-        if (decision === 'CONFIDENT' && mode === 'classify') {
+        if (decision === 'CONFIDENT' && (mode === 'classify' || mode === 'adjudicate')) {
             const rawLibraryIndex = json.library_number;
             const rawConfidence = json.confidence;
             const reason = String(json.reason || '').trim();

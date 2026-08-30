@@ -73,6 +73,23 @@ export const classificationResponseSchema = {
 };
 
 /**
+ * Advisory candidate adjudication may choose only from the server-supplied
+ * closed list. It has no confirmation form because it cannot authorize a
+ * route or verify a server-selected singleton.
+ */
+export const candidateAdjudicationResponseSchema = {
+    ...classificationResponseSchema,
+    properties: {
+        ...classificationResponseSchema.properties,
+        decision: {
+            type: 'string',
+            enum: ['CONFIDENT', 'CLARIFY'],
+            description: 'An advisory proposal for a bounded candidate, or a request for clarification.'
+        },
+    },
+};
+
+/**
  * Strict contract for a server-selected, candidate-bound verification. The
  * candidate is deliberately absent from model output: only the server may
  * bind a confirmation to a library.

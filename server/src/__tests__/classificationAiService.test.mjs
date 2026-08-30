@@ -146,7 +146,7 @@ const contractViolationParseResult = {
 
 const ollamaProvider = {
   type: 'ollama',
-  config: { model: 'llama3.2' },
+  config: { host: '192.168.50.95', model: 'llama3.2' },
 };
 
 const cloudProvider = {
@@ -522,6 +522,94 @@ describe('aiClassify', () => {
       expect.any(Object),
       { mode: 'classify' }
     );
+  });
+
+  test('uses aggregate-only evidence and a proposal-only schema for remote adjudication', async () => {
+    db.query.mockResolvedValueOnce({ rows: [defaultProviderRow] });
+    aiRouter.getProvider.mockResolvedValueOnce(cloudProvider);
+    aiRouter.classify.mockResolvedValueOnce('CONFIDENT|1|80|match');
+    aiResponseParser.parse.mockReturnValueOnce({ ...goodParseResult });
+
+    await classificationAiService.aiClassify(
+      baseMetadata,
+      baseLibraries,
+      { confidence: 71, suggestedLibrary: baseLibraries[0] },
+      {
+        mode: 'adjudicate',
+        ragContext: { similarItems: [{ title: 'Existing Movie', library_id: 1, similarity: 0.91 }] },
+        candidateAdjudicationEvidence: {
+          version: 'policy.candidate_adjudication.v1',
+          candidates: [
+            {
+              libraryNumber: 1,
+              libraryName: 'Movies',
+              mediaType: 'movie',
+              policyScore: 71,
+              profile: { available: true, itemCountBand: '100-499', topGenres: [{ label: 'Drama', percentage: 55 }] },
+              rag: { matchCount: 1, topSimilarity: 91, titles: ['Existing Movie'] },
+            },
+            {
+              libraryNumber: 2,
+              libraryName: 'TV Shows',
+              mediaType: 'tv',
+              policyScore: 69,
+              profile: { available: false, itemCountBand: 'empty_or_unavailable' },
+              rag: { matchCount: 0, titles: [] },
+            },
+          ],
+        },
+      },
+    );
+
+    const [promptContext, modeOptions] = aiPromptBuilder.buildPrompt.mock.calls[0];
+    expect(modeOptions).toEqual({ mode: 'adjudicate' });
+    expect(promptContext.ragContext).toBeNull();
+    expect(JSON.stringify(promptContext.candidateAdjudicationEvidence)).not.toContain('Existing Movie');
+    expect(JSON.stringify(promptContext.candidateAdjudicationEvidence)).not.toContain('Drama');
+    expect(libraryProfileService.getProfileStats).not.toHaveBeenCalled();
+    expect(aiRouter.classify).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({
+      requestType: 'classification_adjudication',
+      format: expect.objectContaining({
+        properties: expect.objectContaining({
+          decision: expect.objectContaining({ enum: ['CONFIDENT', 'CLARIFY'] }),
+        }),
+      }),
+    }));
+  });
+
+  test('keeps bounded detail for adjudication at the configured private Ollama endpoint', async () => {
+    db.query.mockResolvedValueOnce({ rows: [defaultProviderRow] });
+    aiRouter.getProvider.mockResolvedValueOnce(ollamaProvider);
+    ollamaService.generateWithProgress.mockResolvedValueOnce('CONFIDENT|1|80|match');
+    aiResponseParser.parse.mockReturnValueOnce({ ...goodParseResult });
+
+    await classificationAiService.aiClassify(
+      baseMetadata,
+      baseLibraries,
+      { confidence: 71, suggestedLibrary: baseLibraries[0] },
+      {
+        mode: 'adjudicate',
+        candidateAdjudicationEvidence: {
+          version: 'policy.candidate_adjudication.v1',
+          candidates: [{
+            libraryNumber: 1,
+            libraryName: 'Movies',
+            mediaType: 'movie',
+            policyScore: 71,
+            profile: {
+              available: true,
+              itemCountBand: '100-499',
+              topGenres: [{ label: 'Drama', percentage: 55 }],
+            },
+            rag: { matchCount: 1, topSimilarity: 91, titles: ['Existing Movie'] },
+          }],
+        },
+      },
+    );
+
+    const [promptContext] = aiPromptBuilder.buildPrompt.mock.calls[0];
+    expect(JSON.stringify(promptContext.candidateAdjudicationEvidence)).toContain('Existing Movie');
+    expect(JSON.stringify(promptContext.candidateAdjudicationEvidence)).toContain('Drama');
   });
 
   test('uses default model+temperature when ai_provider_config has no row', async () => {

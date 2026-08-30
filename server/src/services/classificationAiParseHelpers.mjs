@@ -24,7 +24,7 @@ export function isRepairEligibleParseResult(parseResult, mode) {
     return true;
   }
 
-  if (mode !== 'classify' || parseResult.format !== 'contract_violation') {
+  if (!['classify', 'adjudicate'].includes(mode) || parseResult.format !== 'contract_violation') {
     return false;
   }
 

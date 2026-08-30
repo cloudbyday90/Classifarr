@@ -7,7 +7,10 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
-import { classificationResponseSchema } from '../services/aiResponseSchema.mjs';
+import {
+    candidateAdjudicationResponseSchema,
+    classificationResponseSchema,
+} from '../services/aiResponseSchema.mjs';
 
 describe('AI Response Schema Validation (OpenAI Strict Mode & Ollama Grammar Compatibility)', () => {
     it('should be a valid JSON schema object', () => {
@@ -83,5 +86,13 @@ describe('AI Response Schema Validation (OpenAI Strict Mode & Ollama Grammar Com
         expect(classificationResponseSchema.oneOf).toBeUndefined();
         expect(classificationResponseSchema.anyOf).toBeUndefined();
         expect(classificationResponseSchema.allOf).toBeUndefined();
+    });
+
+    it('restricts bounded adjudication to proposal or clarification decisions', () => {
+        expect(candidateAdjudicationResponseSchema.additionalProperties).toBe(false);
+        expect(candidateAdjudicationResponseSchema.required)
+            .toEqual(classificationResponseSchema.required);
+        expect(candidateAdjudicationResponseSchema.properties.decision.enum)
+            .toEqual(['CONFIDENT', 'CLARIFY']);
     });
 });
