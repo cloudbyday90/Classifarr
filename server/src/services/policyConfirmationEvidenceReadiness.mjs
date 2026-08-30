@@ -3,12 +3,17 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
+import {
+  buildPolicyConfirmationEvidenceConfidenceInterval,
+} from './policyConfirmationEvidenceConfidence.mjs';
+
 export const POLICY_CONFIRMATION_EVIDENCE_READINESS_VERSION =
-  'current_library.policy_confirmation_evidence_readiness.v1';
+  'current_library.policy_confirmation_evidence_readiness.v2';
 
 export const POLICY_CONFIRMATION_EVIDENCE_READINESS_STATUS_IDS = Object.freeze({
   INSUFFICIENT_DATA: 'insufficient_data',
   DECLARED_SCOPE_REVIEW_RECOMMENDED: 'declared_scope_review_recommended',
+  EVIDENCE_MIX_INCONCLUSIVE: 'evidence_mix_inconclusive',
   EVIDENCE_MIX_OBSERVED: 'evidence_mix_observed',
 });
 
@@ -38,8 +43,10 @@ function ratePercent(numerator, denominator) {
 
 /**
  * Converts a fixed, content-free confirmation-band aggregate into advisory
- * policy-maintenance readiness. It deliberately has no policy, library, item,
- * provider, model, prompt, response, actor, or routing input.
+ * policy-maintenance readiness. The fixed threshold is interpreted through a
+ * 95% Wilson interval so a borderline cohort remains inconclusive. It
+ * deliberately has no policy, library, item, provider, model, prompt,
+ * response, actor, or routing input.
  */
 export function buildPolicyConfirmationEvidenceReadiness(row = {}) {
   const confirmationObservationCount = nonnegativeCount(
@@ -61,19 +68,26 @@ export function buildPolicyConfirmationEvidenceReadiness(row = {}) {
   );
   const hasSufficientData =
     confirmationObservationCount >= POLICY_CONFIRMATION_EVIDENCE_READINESS_MINIMUM_OBSERVATIONS;
-  const specializedDeclaredEvidenceRate =
-    confirmationObservationCount > 0
-      ? specializedDeclaredEvidenceCount / confirmationObservationCount
-      : 0;
+  const specializedEvidenceConfidenceInterval =
+    buildPolicyConfirmationEvidenceConfidenceInterval({
+      successCount: specializedDeclaredEvidenceCount,
+      observationCount: confirmationObservationCount,
+    });
   const declaredScopeReviewRecommended =
     hasSufficientData &&
-    specializedDeclaredEvidenceRate <
-      POLICY_CONFIRMATION_EVIDENCE_READINESS_MINIMUM_SPECIALIZED_DECLARED_RATE;
+    specializedEvidenceConfidenceInterval?.upperRatePercent <
+      POLICY_CONFIRMATION_EVIDENCE_READINESS_MINIMUM_SPECIALIZED_DECLARED_RATE * 100;
+  const specializedEvidenceSufficientlyRepresented =
+    hasSufficientData &&
+    specializedEvidenceConfidenceInterval?.lowerRatePercent >=
+      POLICY_CONFIRMATION_EVIDENCE_READINESS_MINIMUM_SPECIALIZED_DECLARED_RATE * 100;
   const statusId = !hasSufficientData
     ? POLICY_CONFIRMATION_EVIDENCE_READINESS_STATUS_IDS.INSUFFICIENT_DATA
     : (declaredScopeReviewRecommended
       ? POLICY_CONFIRMATION_EVIDENCE_READINESS_STATUS_IDS.DECLARED_SCOPE_REVIEW_RECOMMENDED
-      : POLICY_CONFIRMATION_EVIDENCE_READINESS_STATUS_IDS.EVIDENCE_MIX_OBSERVED);
+      : (specializedEvidenceSufficientlyRepresented
+        ? POLICY_CONFIRMATION_EVIDENCE_READINESS_STATUS_IDS.EVIDENCE_MIX_OBSERVED
+        : POLICY_CONFIRMATION_EVIDENCE_READINESS_STATUS_IDS.EVIDENCE_MIX_INCONCLUSIVE));
 
   return Object.freeze({
     version: POLICY_CONFIRMATION_EVIDENCE_READINESS_VERSION,
@@ -98,6 +112,7 @@ export function buildPolicyConfirmationEvidenceReadiness(row = {}) {
       ),
       minimumSpecializedEvidenceRatePercent:
         POLICY_CONFIRMATION_EVIDENCE_READINESS_MINIMUM_SPECIALIZED_DECLARED_RATE * 100,
+      specializedEvidenceConfidenceInterval,
     }),
     supportingEvidenceSources: Object.freeze(SUPPORTING_EVIDENCE_SOURCES.map((source) => {
       const count = boundedCount(row[source.countField], confirmationObservationCount);

@@ -211,6 +211,10 @@
         <p class="mt-1 text-sm text-gray-300">
           {{ policyConfirmationEvidenceMessage }}
         </p>
+        <p class="mt-2 text-sm text-gray-400">
+          The maintenance signal uses a fixed 95% Wilson confidence interval, so a
+          small or borderline cohort cannot by itself prompt a policy-scope review.
+        </p>
         <RouterLink
           v-if="policyConfirmationEvidenceReviewHandoff"
           :to="policyConfirmationEvidenceReviewHandoff.to"
@@ -250,6 +254,10 @@
           <MetricRow
             label="Specialized-evidence threshold"
             :value="`${policyConfirmationEvidence?.declaredScope?.minimumSpecializedEvidenceRatePercent || 0}%`"
+          />
+          <MetricRow
+            label="95% specialized-evidence interval"
+            :value="policyConfirmationEvidenceConfidenceInterval"
           />
           <MetricRow
             label="Evidence-safety calibration applied"
@@ -305,6 +313,10 @@ import api from '../../api'
 import {
   getPolicyConfirmationEvidenceReviewHandoff,
 } from '@/utils/policyConfirmationEvidenceReviewHandoff'
+import {
+  formatPolicyConfirmationEvidenceConfidenceInterval,
+  getPolicyConfirmationEvidenceStatusPresentation,
+} from '@/utils/policyConfirmationEvidencePresentation'
 
 const MetricRow = defineComponent({
   name: 'CurrentLibraryCandidateRetrievalMetricRow',
@@ -364,24 +376,15 @@ const candidateSetPolicyReviewClass = computed(() => ({
 const policyConfirmationEvidence = computed(() => report.value?.policyConfirmationEvidence || null)
 const policyConfirmationEvidenceStatus = computed(() =>
   policyConfirmationEvidence.value?.statusId || 'unavailable')
-const policyConfirmationEvidenceLabel = computed(() => ({
-  insufficient_data: 'Policy confirmation evidence needs more observations',
-  declared_scope_review_recommended: 'Review declared policy scope',
-  evidence_mix_observed: 'Specialized declared policy evidence is sufficiently represented',
-  unavailable: 'Policy confirmation evidence is unavailable',
-}[policyConfirmationEvidenceStatus.value] || 'Policy confirmation evidence is unavailable'))
-const policyConfirmationEvidenceMessage = computed(() => ({
-  insufficient_data: 'Continue reviewing individual score explanations until the confirmation cohort reaches the displayed threshold. Do not infer a policy-scope gap yet.',
-  declared_scope_review_recommended: 'The representative confirmation cohort has too little specialized declared evidence. Review individual score explanations, then refine deterministic purpose, scope, or eligibility if the evidence supports it. This does not change AI or routing.',
-  evidence_mix_observed: 'The representative confirmation cohort has sufficient specialized declared evidence. This is not a correctness guarantee and does not change routing.',
-  unavailable: 'Policy confirmation evidence monitoring is currently unavailable.',
-}[policyConfirmationEvidenceStatus.value] || 'Policy confirmation evidence monitoring is currently unavailable.'))
-const policyConfirmationEvidenceClass = computed(() => ({
-  insufficient_data: 'border-gray-700 bg-gray-800',
-  declared_scope_review_recommended: 'border-amber-600/70 bg-amber-950/20',
-  evidence_mix_observed: 'border-blue-700/60 bg-blue-950/20',
-  unavailable: 'border-gray-700 bg-gray-800',
-}[policyConfirmationEvidenceStatus.value] || 'border-gray-700 bg-gray-800'))
+const policyConfirmationEvidencePresentation = computed(() =>
+  getPolicyConfirmationEvidenceStatusPresentation(policyConfirmationEvidenceStatus.value))
+const policyConfirmationEvidenceLabel = computed(() => policyConfirmationEvidencePresentation.value.label)
+const policyConfirmationEvidenceMessage = computed(() => policyConfirmationEvidencePresentation.value.message)
+const policyConfirmationEvidenceClass = computed(() => policyConfirmationEvidencePresentation.value.className)
+const policyConfirmationEvidenceConfidenceInterval = computed(() =>
+  formatPolicyConfirmationEvidenceConfidenceInterval(
+    policyConfirmationEvidence.value?.declaredScope?.specializedEvidenceConfidenceInterval,
+  ))
 const policyConfirmationEvidenceReviewHandoff = computed(() => (
   getPolicyConfirmationEvidenceReviewHandoff(policyConfirmationEvidenceStatus.value)
 ))

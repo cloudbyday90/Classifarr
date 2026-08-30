@@ -56,7 +56,7 @@ const report = {
     minimumOutsideCandidateRatePercent: 15,
   },
   policyConfirmationEvidence: {
-    statusId: 'declared_scope_review_recommended',
+    statusId: 'evidence_mix_inconclusive',
     confirmationObservationCount: 20,
     minimumObservationCount: 20,
     declaredScope: {
@@ -67,6 +67,12 @@ const report = {
       noDeclaredEvidenceCount: 4,
       noDeclaredEvidenceRatePercent: 20,
       minimumSpecializedEvidenceRatePercent: 60,
+      specializedEvidenceConfidenceInterval: {
+        methodId: 'wilson_score',
+        confidenceLevelPercent: 95,
+        lowerRatePercent: 34.2,
+        upperRatePercent: 74.2,
+      },
     },
     calibration: {
       appliedCount: 9,
@@ -113,13 +119,10 @@ describe('CurrentLibraryCandidateRetrievalStats.vue', () => {
     expect(wrapper.text()).toContain('3 (15%)')
     expect(wrapper.text()).toContain('This does not prove an AI or retrieval error')
     expect(wrapper.text()).toContain('Policy confirmation evidence')
-    expect(wrapper.text()).toContain('Review declared policy scope')
-    const reviewLink = wrapper.findComponent(RouterLinkStub)
-    expect(reviewLink.text()).toBe('Review existing policy purpose coverage')
-    expect(reviewLink.props('to')).toEqual({
-      name: 'PolicyNativeIntentReconciliation',
-      query: { focus: 'purpose-coverage' },
-    })
+    expect(wrapper.text()).toContain('Policy confirmation evidence is not yet conclusive')
+    expect(wrapper.text()).toContain('95% Wilson interval: 34.2%–74.2%')
+    expect(wrapper.text()).toContain('cannot by itself prompt a policy-scope review')
+    expect(wrapper.findComponent(RouterLinkStub).exists()).toBe(false)
     expect(wrapper.text()).toContain('11 (55%)')
     expect(wrapper.text()).toContain('Compatibility-only declared evidence')
     expect(wrapper.text()).toContain('5 (25%)')
@@ -131,6 +134,40 @@ describe('CurrentLibraryCandidateRetrievalStats.vue', () => {
     expect(wrapper.find('[role="status"]').attributes('aria-atomic')).toBe('true')
     expect(wrapper.findAll('button')).toHaveLength(0)
     expect(wrapper.text()).not.toContain('Private prompt text')
+  })
+
+  it('exposes the existing maintenance handoff only after a confidently weak cohort', async () => {
+    api.getCurrentLibraryCandidateRetrievalMetrics.mockResolvedValue({
+      ...report,
+      policyConfirmationEvidence: {
+        ...report.policyConfirmationEvidence,
+        statusId: 'declared_scope_review_recommended',
+        declaredScope: {
+          ...report.policyConfirmationEvidence.declaredScope,
+          specializedEvidenceCount: 2,
+          specializedEvidenceRatePercent: 10,
+          specializedEvidenceConfidenceInterval: {
+            methodId: 'wilson_score',
+            confidenceLevelPercent: 95,
+            lowerRatePercent: 2.8,
+            upperRatePercent: 30.1,
+          },
+        },
+      },
+    })
+
+    const wrapper = mount(CurrentLibraryCandidateRetrievalStats, {
+      global: { stubs: { RouterLink: RouterLinkStub } },
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Review declared policy scope')
+    const reviewLink = wrapper.findComponent(RouterLinkStub)
+    expect(reviewLink.text()).toBe('Review existing policy purpose coverage')
+    expect(reviewLink.props('to')).toEqual({
+      name: 'PolicyNativeIntentReconciliation',
+      query: { focus: 'purpose-coverage' },
+    })
   })
 
   it('renders a bounded error instead of request error content', async () => {

@@ -20,7 +20,7 @@ describe('policyConfirmationEvidenceReadiness', () => {
     });
 
     expect(report).toEqual(expect.objectContaining({
-      version: 'current_library.policy_confirmation_evidence_readiness.v1',
+      version: 'current_library.policy_confirmation_evidence_readiness.v2',
       statusId: 'insufficient_data',
       confirmationObservationCount: 19,
       minimumObservationCount: 20,
@@ -36,7 +36,7 @@ describe('policyConfirmationEvidenceReadiness', () => {
     ]));
   });
 
-  test('recommends declared-scope review only for a sufficient weak-scope cohort', () => {
+  test('keeps a borderline weak-scope cohort inconclusive when its interval overlaps the threshold', () => {
     const report = buildPolicyConfirmationEvidenceReadiness({
       confirmationEvidenceObservationCount: 20,
       specializedDeclaredEvidenceCount: 11,
@@ -49,13 +49,19 @@ describe('policyConfirmationEvidenceReadiness', () => {
     });
 
     expect(report).toMatchObject({
-      statusId: 'declared_scope_review_recommended',
+      statusId: 'evidence_mix_inconclusive',
       declaredScope: {
         specializedEvidenceCount: 11,
         specializedEvidenceRatePercent: 55,
         compatibilityOnlyEvidenceCount: 5,
         noDeclaredEvidenceCount: 4,
         minimumSpecializedEvidenceRatePercent: 60,
+        specializedEvidenceConfidenceInterval: {
+          methodId: 'wilson_score',
+          confidenceLevelPercent: 95,
+          lowerRatePercent: 34.2,
+          upperRatePercent: 74.2,
+        },
       },
       calibration: { appliedCount: 9, appliedRatePercent: 45 },
     });
@@ -67,17 +73,34 @@ describe('policyConfirmationEvidenceReadiness', () => {
     ]);
   });
 
-  test('does not recommend scope maintenance at the specialized-evidence threshold', () => {
+  test('recommends scope maintenance only when the confidence interval is entirely below the threshold', () => {
     const report = buildPolicyConfirmationEvidenceReadiness({
       confirmationEvidenceObservationCount: 20,
-      specializedDeclaredEvidenceCount: 12,
-      compatibilityOnlyEvidenceCount: 4,
+      specializedDeclaredEvidenceCount: 2,
+      compatibilityOnlyEvidenceCount: 12,
+    });
+
+    expect(report.statusId).toBe('declared_scope_review_recommended');
+    expect(report.declaredScope).toMatchObject({
+      specializedEvidenceRatePercent: 10,
+      noDeclaredEvidenceCount: 6,
+      specializedEvidenceConfidenceInterval: {
+        lowerRatePercent: 2.8,
+        upperRatePercent: 30.1,
+      },
+    });
+  });
+
+  test('reports sufficiently represented evidence only when the interval reaches the threshold', () => {
+    const report = buildPolicyConfirmationEvidenceReadiness({
+      confirmationEvidenceObservationCount: 20,
+      specializedDeclaredEvidenceCount: 20,
     });
 
     expect(report.statusId).toBe('evidence_mix_observed');
-    expect(report.declaredScope).toMatchObject({
-      specializedEvidenceRatePercent: 60,
-      noDeclaredEvidenceCount: 4,
+    expect(report.declaredScope.specializedEvidenceConfidenceInterval).toMatchObject({
+      lowerRatePercent: 83.9,
+      upperRatePercent: 100,
     });
   });
 });

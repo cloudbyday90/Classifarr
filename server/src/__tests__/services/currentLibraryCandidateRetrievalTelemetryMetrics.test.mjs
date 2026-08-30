@@ -97,14 +97,20 @@ describe('currentLibraryCandidateRetrievalTelemetryMetrics', () => {
         outsideCandidateRatePercent: 40,
       },
       policyConfirmationEvidence: {
-        version: 'current_library.policy_confirmation_evidence_readiness.v1',
-        statusId: 'declared_scope_review_recommended',
+        version: 'current_library.policy_confirmation_evidence_readiness.v2',
+        statusId: 'evidence_mix_inconclusive',
         confirmationObservationCount: 20,
         declaredScope: {
           specializedEvidenceCount: 11,
           specializedEvidenceRatePercent: 55,
           compatibilityOnlyEvidenceCount: 5,
           noDeclaredEvidenceCount: 4,
+          specializedEvidenceConfidenceInterval: {
+            methodId: 'wilson_score',
+            confidenceLevelPercent: 95,
+            lowerRatePercent: 34.2,
+            upperRatePercent: 74.2,
+          },
         },
         calibration: { appliedCount: 9, appliedRatePercent: 45 },
       },
