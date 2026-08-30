@@ -15,6 +15,7 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - **Current-library candidate retrieval** — Candidate adjudication now uses a bounded read-only lookup over the synchronized current library inventory, recognizing exact identifiers, title/year, and plain-text catalog matches without changing routing authority.
 - **Current-library retrieval telemetry** — Statistics now reports aggregate lookup availability, fixed latency bands, catalog-match presence, and bounded AI-proposal/operator agreement without collecting media, provider, prompt, response, or destination detail.
 - **Candidate-set outcome attribution** — Candidate Retrieval Statistics now distinguishes bounded candidate selections from an operator's validated outside-candidate choice, making policy candidate-set gaps measurable without retaining destination identity.
+- **Candidate-set policy-review readiness** — Candidate Retrieval Statistics now marks when a representative attributed-decision cohort supports reviewing deterministic candidate eligibility, scope, and ranking evidence; it remains advisory and cannot alter policy or routing.
 
 ### Changed
 
@@ -34,6 +35,7 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - **Retrieved-text containment** — Catalog title evidence is normalized to a bounded single line and retrieval labels are allow-listed before prompt construction, limiting prompt-shaped media metadata.
 - **Retrieval telemetry boundary** — Candidate lookup observations use a server-built, allow-listed projection; the authenticated aggregate report omits media, library, provider, prompt, response, actor, and exact-duration data and cannot alter AI, policy, learning, or routing.
 - **Candidate-set attribution boundary** — The server computes membership only from the validated runtime-question contract and persists a fixed status with no candidate, destination, operator, media, or provider identity.
+- **Candidate-set readiness boundary** — Policy-review readiness uses only existing content-free aggregate counters and fixed thresholds; it returns no identities, introduces no new retention path, and has no AI, policy, learning, retry, or routing authority.
 
 - **Comparison-cap privacy boundary** — Coverage detection uses one server-only sentinel to identify omitted competitors; the sentinel, total active-policy count, configurations, identities, and routing authority remain unavailable to clients.
 - **Explanation privacy boundary** — Shared-eligibility explanations expose only allow-listed category labels and anonymous configuration counts after a bounded shared result; they never return rule values, competitor identities, item outcomes, AI state, or routing control.

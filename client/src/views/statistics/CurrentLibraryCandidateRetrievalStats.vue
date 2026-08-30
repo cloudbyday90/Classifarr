@@ -20,10 +20,17 @@
       </p>
     </div>
 
+    <p
+      class="sr-only"
+      role="status"
+      aria-atomic="true"
+    >
+      {{ monitoringStatusAnnouncement }}
+    </p>
+
     <div
       v-if="loading"
       class="rounded-lg border border-gray-700 bg-gray-800 p-6 text-sm text-gray-400"
-      role="status"
     >
       Loading candidate retrieval metrics...
     </div>
@@ -40,7 +47,6 @@
       <div
         class="rounded-lg border p-4"
         :class="readinessClass"
-        role="status"
       >
         <p class="text-sm font-medium">
           {{ readinessLabel }}
@@ -157,6 +163,41 @@
         </article>
       </div>
 
+      <article
+        class="rounded-lg border p-5"
+        :class="candidateSetPolicyReviewClass"
+      >
+        <h3 class="text-base font-medium">
+          Candidate-set policy review
+        </h3>
+        <p class="mt-2 text-sm font-medium">
+          {{ candidateSetPolicyReviewLabel }}
+        </p>
+        <p class="mt-1 text-sm text-gray-300">
+          {{ candidateSetPolicyReviewMessage }}
+        </p>
+        <dl class="mt-4 space-y-3 text-sm">
+          <MetricRow
+            label="Applicable attributed decisions"
+            :value="formatProgress(
+              candidateSetPolicyReview?.applicableDecisionCount,
+              candidateSetPolicyReview?.minimumApplicableDecisionCount,
+            )"
+          />
+          <MetricRow
+            label="Outside-candidate selections"
+            :value="formatRate(
+              candidateSetPolicyReview?.outsideCandidateOutcomeCount,
+              candidateSetPolicyReview?.outsideCandidateRatePercent,
+            )"
+          />
+          <MetricRow
+            label="Review threshold"
+            :value="`${candidateSetPolicyReview?.minimumOutsideCandidateOutcomeCount || 0} selections at ${candidateSetPolicyReview?.minimumOutsideCandidateRatePercent || 0}%`"
+          />
+        </dl>
+      </article>
+
       <article class="rounded-lg border border-gray-700 bg-gray-800 p-5">
         <h3 class="text-base font-medium">
           Lookup latency distribution
@@ -214,6 +255,31 @@ const readinessClass = computed(() => ({
   observing: 'border-blue-700/60 bg-blue-950/20',
   insufficient_data: 'border-gray-700 bg-gray-800',
 }[readinessStatus.value] || 'border-gray-700 bg-gray-800'))
+const candidateSetPolicyReview = computed(() => report.value?.candidateSetPolicyReview || null)
+const candidateSetPolicyReviewStatus = computed(() =>
+  candidateSetPolicyReview.value?.statusId || 'insufficient_data')
+const candidateSetPolicyReviewLabel = computed(() => ({
+  insufficient_data: 'Candidate-set review needs more applicable decisions',
+  candidate_set_supported: 'No material candidate-set gap observed',
+  candidate_set_review_recommended: 'Review deterministic candidate-set evidence',
+}[candidateSetPolicyReviewStatus.value] || 'Candidate-set review is unavailable'))
+const candidateSetPolicyReviewMessage = computed(() => ({
+  insufficient_data: 'Continue normal operator review until the applicable attributed-decision cohort reaches the displayed threshold. Do not infer a candidate-set issue yet.',
+  candidate_set_supported: 'The current aggregate evidence does not support a material candidate-set gap. This is not a correctness guarantee.',
+  candidate_set_review_recommended: 'Review deterministic candidate eligibility, declared library scope, and ranking evidence. This does not prove an AI or retrieval error and does not change routing.',
+}[candidateSetPolicyReviewStatus.value] || 'Candidate-set review is currently unavailable.'))
+const candidateSetPolicyReviewClass = computed(() => ({
+  insufficient_data: 'border-gray-700 bg-gray-800',
+  candidate_set_supported: 'border-blue-700/60 bg-blue-950/20',
+  candidate_set_review_recommended: 'border-amber-600/70 bg-amber-950/20',
+}[candidateSetPolicyReviewStatus.value] || 'border-gray-700 bg-gray-800'))
+const monitoringStatusAnnouncement = computed(() => {
+  if (loading.value) return 'Loading candidate retrieval metrics.'
+  if (errorMessage.value) return 'Candidate retrieval metrics are currently unavailable.'
+  if (!report.value) return 'Candidate retrieval metrics are currently unavailable.'
+
+  return `${readinessLabel.value}. ${candidateSetPolicyReviewLabel.value}.`
+})
 const candidateSetSelectionCount = computed(() => {
   const attribution = report.value?.operatorCandidateSetAttribution
   return (Number(attribution?.confirmedCandidateOutcomeCount) || 0) +
@@ -222,6 +288,10 @@ const candidateSetSelectionCount = computed(() => {
 
 function formatRate(count, percentage) {
   return `${Number(count) || 0} (${Number(percentage) || 0}%)`
+}
+
+function formatProgress(count, minimum) {
+  return `${Number(count) || 0} / ${Number(minimum) || 0}`
 }
 
 async function loadMetrics() {

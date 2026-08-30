@@ -81,6 +81,13 @@ describe('currentLibraryCandidateRetrievalTelemetryMetrics', () => {
         unattributedResolvedOutcomeCount: 0,
         candidateSetSelectionRatePercent: 60,
       },
+      candidateSetPolicyReview: {
+        version: 'current_library.candidate_retrieval_policy_review_readiness.v1',
+        statusId: 'insufficient_data',
+        applicableDecisionCount: 5,
+        outsideCandidateOutcomeCount: 2,
+        outsideCandidateRatePercent: 40,
+      },
       readiness: { statusId: 'observing' },
     });
     expect(report.retrieval.latencyBands).toEqual(expect.arrayContaining([

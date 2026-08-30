@@ -7,6 +7,9 @@ import {
   CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_LATENCY_BANDS,
   CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_TELEMETRY_VERSION,
 } from './currentLibraryCandidateRetrievalTelemetry.mjs';
+import {
+  buildCurrentLibraryCandidateRetrievalPolicyReviewReadiness,
+} from './currentLibraryCandidateRetrievalPolicyReviewReadiness.mjs';
 
 export const CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_METRICS_VERSION =
   'current_library.candidate_retrieval_metrics.v1';
@@ -172,6 +175,10 @@ export function buildCurrentLibraryCandidateRetrievalMetricsReport({
         candidateSetSelectionOutcomeCount,
         candidateSetDecisionOutcomeCount,
       ),
+    }),
+    candidateSetPolicyReview: buildCurrentLibraryCandidateRetrievalPolicyReviewReadiness({
+      candidateSetSelectionOutcomeCount,
+      changedOutsideCandidateOutcomeCount,
     }),
     readiness: Object.freeze({
       statusId: observationCount > 0 ? 'observing' : 'insufficient_data',

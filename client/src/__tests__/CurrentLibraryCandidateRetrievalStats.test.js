@@ -46,6 +46,15 @@ const report = {
     unattributedResolvedOutcomeCount: 2,
     candidateSetSelectionRatePercent: 75,
   },
+  candidateSetPolicyReview: {
+    statusId: 'candidate_set_review_recommended',
+    applicableDecisionCount: 20,
+    minimumApplicableDecisionCount: 20,
+    outsideCandidateOutcomeCount: 3,
+    minimumOutsideCandidateOutcomeCount: 3,
+    outsideCandidateRatePercent: 15,
+    minimumOutsideCandidateRatePercent: 15,
+  },
   readiness: {
     statusId: 'observing',
     message: 'Private prompt text must not render.',
@@ -72,7 +81,12 @@ describe('CurrentLibraryCandidateRetrievalStats.vue', () => {
     expect(wrapper.text()).toContain('Routed not applicable')
     expect(wrapper.text()).toContain('3 (75%)')
     expect(wrapper.text()).toContain('does not prove a retrieval or AI error')
-    expect(wrapper.find('[role="status"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('Candidate-set policy review')
+    expect(wrapper.text()).toContain('Review deterministic candidate-set evidence')
+    expect(wrapper.text()).toContain('20 / 20')
+    expect(wrapper.text()).toContain('3 (15%)')
+    expect(wrapper.text()).toContain('This does not prove an AI or retrieval error')
+    expect(wrapper.find('[role="status"]').attributes('aria-atomic')).toBe('true')
     expect(wrapper.findAll('button')).toHaveLength(0)
     expect(wrapper.text()).not.toContain('Private prompt text')
   })
@@ -87,5 +101,22 @@ describe('CurrentLibraryCandidateRetrievalStats.vue', () => {
 
     expect(wrapper.find('[role="alert"]').text()).toContain('Candidate retrieval metrics are currently unavailable.')
     expect(wrapper.text()).not.toContain('Private provider')
+  })
+
+  it('fails closed to fixed copy for an unknown policy-review status', async () => {
+    api.getCurrentLibraryCandidateRetrievalMetrics.mockResolvedValue({
+      ...report,
+      candidateSetPolicyReview: {
+        ...report.candidateSetPolicyReview,
+        statusId: 'provider_supplied_status',
+        message: 'Private provider response must not render.',
+      },
+    })
+
+    const wrapper = mount(CurrentLibraryCandidateRetrievalStats)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Candidate-set review is unavailable')
+    expect(wrapper.text()).not.toContain('Private provider response')
   })
 })

@@ -283,6 +283,11 @@ describe('Stats API Integration Tests', () => {
                 operatorCandidateSetAttribution: {
                     changedOutsideCandidateOutcomeCount: expect.any(Number),
                 },
+                candidateSetPolicyReview: {
+                    statusId: expect.any(String),
+                    applicableDecisionCount: expect.any(Number),
+                    outsideCandidateOutcomeCount: expect.any(Number),
+                },
                 readiness: { statusId: expect.any(String) },
             });
             expect(res.body.retrieval.observationCount).toBeGreaterThanOrEqual(1);
