@@ -218,6 +218,54 @@ describe('ClassificationOutcomeService', () => {
     expect(JSON.stringify(updatedMetadata)).not.toContain('Private catalog title');
   });
 
+  test('stores only fixed correction-analytics dimensions outside the mutable outcome path', async () => {
+    db.query
+      .mockResolvedValueOnce({
+        rows: [{ metadata: { classification_details: {} } }],
+      })
+      .mockResolvedValueOnce({ rows: [] });
+
+    await service.recordOutcome(456, {
+      type: 'resolved',
+      source: 'policy_question',
+      final_library_id: 8,
+      policy_candidate_correction_outcome_attribution: {
+        version: 'policy.candidate_correction_outcome_attribution.v1',
+        scoreMarginBandId: '5_to_14',
+        selectionStatusId: 'changed_outside_candidates',
+        evidenceSourceStates: [
+          { source_id: 'item_identity', state_id: 'anchored' },
+          { source_id: 'declared_policy', state_id: 'supporting' },
+          { source_id: 'observed_library_profile', state_id: 'contextual' },
+          { source_id: 'similar_item_retrieval', state_id: 'supporting' },
+          { source_id: 'confirmed_outcomes', state_id: 'supporting' },
+        ],
+        destinationLibraryId: 8,
+        providerResponse: 'Private provider response',
+        ragText: 'Private RAG passage',
+      },
+    });
+
+    const updatedMetadata = JSON.parse(db.query.mock.calls[1][1][1]);
+    expect(updatedMetadata.classification_details.policy_candidate_correction_outcome_attribution)
+      .toEqual({
+        version: 'policy.candidate_correction_outcome_attribution.v1',
+        score_margin_band_id: '5_to_14',
+        selection_status_id: 'changed_outside_candidates',
+        evidence_source_states: [
+          { source_id: 'item_identity', state_id: 'anchored' },
+          { source_id: 'declared_policy', state_id: 'supporting' },
+          { source_id: 'observed_library_profile', state_id: 'contextual' },
+          { source_id: 'similar_item_retrieval', state_id: 'supporting' },
+          { source_id: 'confirmed_outcomes', state_id: 'supporting' },
+        ],
+      });
+    expect(JSON.stringify(updatedMetadata.classification_details.outcome_path))
+      .not.toContain('policy_candidate_correction_outcome_attribution');
+    expect(JSON.stringify(updatedMetadata)).not.toContain('Private provider response');
+    expect(JSON.stringify(updatedMetadata)).not.toContain('Private RAG passage');
+  });
+
   test('appends a new transition when the outcome type changes', async () => {
     db.query
       .mockResolvedValueOnce({

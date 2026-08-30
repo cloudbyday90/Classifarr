@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-08-30T10:05:13.985Z
--- Latest Migration: 20260830_100000_add_current_library_candidate_retrieval_metrics_index.sql
+-- Generated: 2026-08-30T20:47:59.032Z
+-- Latest Migration: 20260830_110000_add_policy_candidate_correction_analytics_metrics_index.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -9357,6 +9357,13 @@ CREATE INDEX idx_classification_history_pending ON public.classification_history
 
 
 --
+-- Name: idx_classification_history_policy_candidate_correction_analytic; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_classification_history_policy_candidate_correction_analytic ON public.classification_history USING btree (created_at DESC) WHERE ((metadata #>> '{classification_details,policy_candidate_correction_outcome_attribution,version}'::text[]) = 'policy.candidate_correction_outcome_attribution.v1'::text);
+
+
+--
 -- Name: idx_classification_history_primary_studio_name; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -14088,6 +14095,7 @@ FROM unnest(ARRAY[
     '20260828_100000_add_ollama_verification_capability_state.sql',
     '20260829_100000_add_ollama_verification_runtime_mismatch_metrics.sql',
     '20260829_110000_add_ollama_verification_capability_outcome_history.sql',
-    '20260830_100000_add_current_library_candidate_retrieval_metrics_index.sql'
+    '20260830_100000_add_current_library_candidate_retrieval_metrics_index.sql',
+    '20260830_110000_add_policy_candidate_correction_analytics_metrics_index.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

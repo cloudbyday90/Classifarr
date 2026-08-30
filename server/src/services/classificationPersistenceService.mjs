@@ -42,6 +42,9 @@ import {
 import {
   buildPolicyCandidateContrastiveEvidenceProjection,
 } from './policyCandidateContrastiveEvidence.mjs';
+import {
+  buildPolicyCandidateCorrectionSignalSnapshot,
+} from './policyCandidateCorrectionSignalSnapshot.mjs';
 import { buildClassificationQueueDecisionWitness } from './classificationQueueDecisionWitness.mjs';
 import {
   classificationQueueDecisionWitnessRepository,
@@ -370,6 +373,19 @@ export class ClassificationPersistenceService {
       candidate_contrastive_evidence: buildPolicyCandidateContrastiveEvidenceProjection(
         result.candidate_contrastive_evidence,
       ),
+      policy_candidate_correction_signal_snapshot:
+        buildPolicyCandidateCorrectionSignalSnapshot({
+          classification: {
+            tmdb_id: metadata.tmdb_id,
+            media_type: metadata.media_type,
+          },
+          rankedCandidates: result.policyResult?.ranked,
+          sourceMetadata: {
+            tvdb_id: metadata.tvdb_id,
+            imdb_id: metadata.imdb_id,
+            media_type: metadata.media_type,
+          },
+        }),
       route_safety: buildClassificationRouteSafetyProjection(result.route_safety),
       processing_time_ms: processingTimeMs,
     };

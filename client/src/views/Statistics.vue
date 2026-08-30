@@ -47,6 +47,7 @@ import CandidateBoundVerificationStats from './statistics/CandidateBoundVerifica
 import ClassificationStats from './statistics/ClassificationStats.vue'
 import CurrentLibraryCandidateRetrievalStats from './statistics/CurrentLibraryCandidateRetrievalStats.vue'
 import PolicyCandidateContrastiveOutcomeStats from './statistics/PolicyCandidateContrastiveOutcomeStats.vue'
+import PolicyCandidateCorrectionAnalyticsStats from './statistics/PolicyCandidateCorrectionAnalyticsStats.vue'
 import RAGStats from './statistics/RAGStats.vue'
 
 const tabs = [
@@ -54,6 +55,7 @@ const tabs = [
   { id: 'verification', label: 'Verification', icon: '🛡️', component: CandidateBoundVerificationStats },
   { id: 'retrieval', label: 'Candidate Retrieval', icon: '🔎', component: CurrentLibraryCandidateRetrievalStats },
   { id: 'inventory-contrast', label: 'Inventory Contrast', icon: '↔️', component: PolicyCandidateContrastiveOutcomeStats },
+  { id: 'correction-analytics', label: 'Correction Analytics', icon: '📊', component: PolicyCandidateCorrectionAnalyticsStats },
   { id: 'rag', label: 'RAG & Embeddings', icon: '🧠', component: RAGStats }
 ]
 

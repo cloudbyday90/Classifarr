@@ -58,6 +58,10 @@ export function getPolicyCandidateContrastiveOutcomeMetrics(days = 7) {
   return getDataRequest('/stats/policy-candidate-contrastive-outcomes', { params: { days } })
 }
 
+export function getPolicyCandidateCorrectionAnalyticsMetrics(days = 7) {
+  return getDataRequest('/stats/policy-candidate-correction-analytics', { params: { days } })
+}
+
 export function getOllamaVerificationRuntimeMismatchSummary() {
   return getDataRequest('/stats/ollama-verification-runtime-mismatch-summary')
 }
@@ -77,6 +81,7 @@ const policyStatsApi = {
   getCandidateBoundVerificationMetrics,
   getCurrentLibraryCandidateRetrievalMetrics,
   getPolicyCandidateContrastiveOutcomeMetrics,
+  getPolicyCandidateCorrectionAnalyticsMetrics,
   getOllamaVerificationRuntimeMismatchSummary,
   getOllamaVerificationCapabilityOutcomeHistory,
 }

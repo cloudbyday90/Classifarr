@@ -825,6 +825,17 @@ describe('resolvePolicyQuestion', () => {
                         provenance_id: 'exact_tmdb_current_library_inventory',
                         status_id: 'alternative_identity_match',
                     },
+                    policy_candidate_correction_signal_snapshot: {
+                        version: 'policy.candidate_correction_signal_snapshot.v1',
+                        score_margin_band_id: '5_to_14',
+                        evidence_source_states: [
+                            { source_id: 'item_identity', state_id: 'anchored' },
+                            { source_id: 'declared_policy', state_id: 'supporting' },
+                            { source_id: 'observed_library_profile', state_id: 'contextual' },
+                            { source_id: 'similar_item_retrieval', state_id: 'supporting' },
+                            { source_id: 'confirmed_outcomes', state_id: 'supporting' },
+                        ],
+                    },
                 },
             },
         };
@@ -867,6 +878,18 @@ describe('resolvePolicyQuestion', () => {
                     contrastiveStatusId: 'alternative_identity_match',
                     selectionStatusId: 'changed_outside_candidates',
                 },
+                policy_candidate_correction_outcome_attribution: {
+                    version: 'policy.candidate_correction_outcome_attribution.v1',
+                    scoreMarginBandId: '5_to_14',
+                    selectionStatusId: 'changed_outside_candidates',
+                    evidenceSourceStates: [
+                        { source_id: 'item_identity', state_id: 'anchored' },
+                        { source_id: 'declared_policy', state_id: 'supporting' },
+                        { source_id: 'observed_library_profile', state_id: 'contextual' },
+                        { source_id: 'similar_item_retrieval', state_id: 'supporting' },
+                        { source_id: 'confirmed_outcomes', state_id: 'supporting' },
+                    ],
+                },
             }),
             { client },
         );
@@ -884,6 +907,21 @@ describe('resolvePolicyQuestion', () => {
             version: 'policy.candidate_contrastive_outcome_attribution.v1',
             contrastiveStatusId: 'alternative_identity_match',
             selectionStatusId: 'changed_outside_candidates',
+        });
+        expect(
+            classificationOutcomeService.recordOutcome.mock.calls[0][1]
+                .policy_candidate_correction_outcome_attribution,
+        ).toEqual({
+            version: 'policy.candidate_correction_outcome_attribution.v1',
+            scoreMarginBandId: '5_to_14',
+            selectionStatusId: 'changed_outside_candidates',
+            evidenceSourceStates: [
+                { source_id: 'item_identity', state_id: 'anchored' },
+                { source_id: 'declared_policy', state_id: 'supporting' },
+                { source_id: 'observed_library_profile', state_id: 'contextual' },
+                { source_id: 'similar_item_retrieval', state_id: 'supporting' },
+                { source_id: 'confirmed_outcomes', state_id: 'supporting' },
+            ],
         });
     });
 

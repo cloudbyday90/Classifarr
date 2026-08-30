@@ -779,6 +779,52 @@ describe('logClassification', () => {
     expect(JSON.stringify(persistedMetadata)).not.toContain('exactElapsedMs');
   });
 
+  test('persists only a fixed leading-candidate correction signal snapshot', async () => {
+    const result = {
+      library: { id: 1, name: 'Movies' },
+      confidence: 71,
+      method: 'policy_candidate_adjudication',
+      reason: 'Operator review required',
+      needs_clarification: true,
+      policyResult: {
+        ranked: [
+          {
+            library_id: 1,
+            library_name: 'Movies',
+            score: 80,
+            policy_terms: ['Private policy term'],
+            candidate_diagnostics: {
+              identity_evidence: { status_id: 'positive_specialized_evidence' },
+              positive_sources: { profile: true, rag: true, pattern: true },
+              rag_evidence_quality: { matches: [{ title: 'Private catalog title' }] },
+            },
+          },
+          { library_id: 2, library_name: 'Documentaries', score: 68 },
+        ],
+      },
+    };
+
+    await classificationPersistenceService.logClassification(baseMetadata, result, Date.now());
+
+    const insertCall = db.query.mock.calls.find(c => c[0].includes('INSERT INTO classification_history'));
+    const persistedMetadata = JSON.parse(insertCall[1][9]);
+    expect(persistedMetadata.classification_details.policy_candidate_correction_signal_snapshot)
+      .toEqual({
+        version: 'policy.candidate_correction_signal_snapshot.v1',
+        score_margin_band_id: '5_to_14',
+        evidence_source_states: [
+          { source_id: 'item_identity', state_id: 'anchored' },
+          { source_id: 'declared_policy', state_id: 'supporting' },
+          { source_id: 'observed_library_profile', state_id: 'contextual' },
+          { source_id: 'similar_item_retrieval', state_id: 'supporting' },
+          { source_id: 'confirmed_outcomes', state_id: 'supporting' },
+        ],
+      });
+    const snapshot = persistedMetadata.classification_details.policy_candidate_correction_signal_snapshot;
+    expect(JSON.stringify(snapshot)).not.toContain('Private policy term');
+    expect(JSON.stringify(snapshot)).not.toContain('Private catalog title');
+  });
+
   test('sends Discord pending notification when bot is initialized and status is awaiting_decision', async () => {
     mockDiscordBotService.isInitialized = true;
     const result = {

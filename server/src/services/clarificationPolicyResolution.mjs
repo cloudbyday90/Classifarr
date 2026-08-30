@@ -19,6 +19,9 @@ import {
 import {
     buildPolicyCandidateContrastiveOutcomeAttribution,
 } from './policyCandidateContrastiveOutcomeAttribution.mjs';
+import {
+    buildPolicyCandidateCorrectionOutcomeAttribution,
+} from './policyCandidateCorrectionOutcomeAttribution.mjs';
 
 const logger = createLogger('PolicyResolution');
 
@@ -257,6 +260,14 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
                 selectedDestinationLibraryId: selectedLibraryId,
             })
             : null;
+        const policyCandidateCorrectionOutcomeAttribution = answerContract
+            ? buildPolicyCandidateCorrectionOutcomeAttribution({
+                classificationDetails: classificationMetadata.classification_details,
+                answer: answerContract,
+                candidateDestinations: runtimeQuestionAnswerContract?.candidate_destinations,
+                selectedDestinationLibraryId: selectedLibraryId,
+            })
+            : null;
         let nativeResolutionProvenance = null;
         const serverSelectedOption = answerContract
             ? getPolicyRuntimeQuestionAnswerSelectedOption({
@@ -368,6 +379,12 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
                 ? {
                     policy_candidate_contrastive_outcome_attribution:
                         policyCandidateContrastiveOutcomeAttribution,
+                }
+                : {}),
+            ...(policyCandidateCorrectionOutcomeAttribution
+                ? {
+                    policy_candidate_correction_outcome_attribution:
+                        policyCandidateCorrectionOutcomeAttribution,
                 }
                 : {}),
             ...(runtimeResolutionLearning

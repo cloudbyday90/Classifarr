@@ -50,8 +50,9 @@ substituted.
 
 ## Next Recommended Item
 
-Build **source-level correction analytics** next. Aggregate the fixed evidence
-states and score-margin bands by whether an operator confirms or changes the
-candidate. That gives Classifarr a measurable answer to which evidence source
-is helping or hurting precision before changing routing thresholds, adding
-weight to RAG, or granting AI any greater role.
+Delivered as [Policy Candidate Correction Analytics](policy-candidate-correction-analytics-design.md).
+The next recommended item is **uncertainty-aware calibration readiness**: a
+read-only minimum-cohort and confidence-interval gate for the aggregate
+correction signals. It must identify an area for human policy-evidence review,
+not automatically change a threshold, RAG behavior, AI configuration, or
+routing.
