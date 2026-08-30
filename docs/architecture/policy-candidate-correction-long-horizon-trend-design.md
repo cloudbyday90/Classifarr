@@ -150,6 +150,7 @@ Cons:
 3. Keep the fixed cohort-composition guard before interpreting repeated
    patterns.
 4. Add this fixed two-period 28-day trend as a descriptive, advisory cue.
-5. Require representative human review before considering policy maintenance.
+5. Use the bounded representative-review handoff only after a sustained review
+   signal, then require human review before considering policy maintenance.
 6. Evaluate a learned change model only after a documented, representative
    aggregate evaluation corpus and an explicit operator-review design exist.

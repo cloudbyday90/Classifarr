@@ -540,6 +540,35 @@
         </p>
       </article>
 
+      <article
+        v-if="representativeReviewHandoff"
+        class="rounded-lg border border-amber-700/60 bg-amber-950/20 p-5"
+        aria-labelledby="policy-candidate-correction-representative-review-heading"
+      >
+        <h3
+          id="policy-candidate-correction-representative-review-heading"
+          class="text-base font-medium text-amber-100"
+        >
+          {{ representativeReviewHandoff.heading }}
+        </h3>
+        <p class="mt-1 text-sm text-gray-300">
+          {{ representativeReviewHandoff.message }}
+        </p>
+        <RouterLink
+          :to="representativeReviewHandoff.to"
+          class="mt-4 inline-flex rounded bg-amber-500 px-3 py-2 text-sm font-medium text-gray-950 transition hover:bg-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-300 focus:ring-offset-2 focus:ring-offset-gray-800"
+          aria-describedby="policy-candidate-correction-representative-review-description"
+        >
+          {{ representativeReviewHandoff.linkLabel }}
+        </RouterLink>
+        <p
+          id="policy-candidate-correction-representative-review-description"
+          class="mt-3 text-xs text-gray-400"
+        >
+          {{ representativeReviewHandoff.description }}
+        </p>
+      </article>
+
       <article class="overflow-x-auto rounded-lg border border-gray-700 bg-gray-800 p-5">
         <h3 class="text-base font-medium">
           Score-margin outcome association
@@ -774,6 +803,9 @@ import {
 import {
   getPolicyCandidateCorrectionLongHorizonTrendPresentation,
 } from '@/utils/policyCandidateCorrectionLongHorizonTrendPresentation'
+import {
+  getPolicyCandidateCorrectionRepresentativeReviewHandoff,
+} from '@/utils/policyCandidateCorrectionRepresentativeReviewHandoffPresentation'
 
 const MetricRow = defineComponent({
   name: 'PolicyCandidateCorrectionAnalyticsMetricRow',
@@ -797,11 +829,16 @@ const readinessClass = computed(() => ({
   observing: 'border-blue-700/60 bg-blue-950/20',
   insufficient_data: 'border-gray-700 bg-gray-800',
 }[report.value?.readiness?.statusId] || 'border-gray-700 bg-gray-800'))
+const representativeReviewHandoff = computed(() => (
+  getPolicyCandidateCorrectionRepresentativeReviewHandoff(
+    report.value?.longHorizonTrend?.trend?.statusId,
+  )
+))
 const monitoringStatusAnnouncement = computed(() => {
   if (loading.value) return 'Loading policy correction analytics.'
   if (errorMessage.value || !report.value) return 'Policy correction analytics are currently unavailable.'
 
-  return `${report.value.readiness.label}. ${overallCalibrationReadinessPresentation.value.label}. ${overallCohortCompositionPresentation.value.label}. ${overallLongHorizonTrendPresentation.value.label}.`
+  return `${report.value.readiness.label}. ${overallCalibrationReadinessPresentation.value.label}. ${overallCohortCompositionPresentation.value.label}. ${overallLongHorizonTrendPresentation.value.label}.${representativeReviewHandoff.value ? ` ${representativeReviewHandoff.value.announcement}` : ''}`
 })
 
 const overallCalibrationReadinessPresentation = computed(() => (

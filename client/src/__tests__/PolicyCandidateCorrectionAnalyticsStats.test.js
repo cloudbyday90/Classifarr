@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { flushPromises, mount, RouterLinkStub } from '@vue/test-utils'
 
 import PolicyCandidateCorrectionAnalyticsStats from '@/views/statistics/PolicyCandidateCorrectionAnalyticsStats.vue'
 import api from '@/api'
@@ -281,7 +281,9 @@ describe('PolicyCandidateCorrectionAnalyticsStats.vue', () => {
   it('renders fixed aggregate-only content with semantic tables and no controls', async () => {
     api.getPolicyCandidateCorrectionAnalyticsMetrics.mockResolvedValue(report)
 
-    const wrapper = mount(PolicyCandidateCorrectionAnalyticsStats)
+    const wrapper = mount(PolicyCandidateCorrectionAnalyticsStats, {
+      global: { stubs: { RouterLink: RouterLinkStub } },
+    })
     await flushPromises()
 
     expect(api.getPolicyCandidateCorrectionAnalyticsMetrics).toHaveBeenCalledOnce()
@@ -295,6 +297,8 @@ describe('PolicyCandidateCorrectionAnalyticsStats.vue', () => {
     expect(wrapper.text()).toContain('Cohort mix is comparable')
     expect(wrapper.text()).toContain('Longer-horizon trend context')
     expect(wrapper.text()).toContain('Sustained 28-day review signal')
+    expect(wrapper.text()).toContain('Representative decision review is ready')
+    expect(wrapper.text()).toContain('No analytics filters, media identifiers, policy details, or automated changes')
     expect(wrapper.text()).toContain('95% Wilson interval: 29.9%–70.1%')
     expect(wrapper.text()).toContain('do not establish correctness or change policy, AI, RAG, learning, or routing')
     expect(wrapper.findAll('table')).toHaveLength(7)
@@ -302,6 +306,10 @@ describe('PolicyCandidateCorrectionAnalyticsStats.vue', () => {
     expect(wrapper.findAll('th[scope="col"]')).toHaveLength(37)
     expect(wrapper.findAll('th[scope="row"]')).toHaveLength(17)
     expect(wrapper.find('[role="status"]').attributes('aria-atomic')).toBe('true')
+    expect(wrapper.find('[role="status"]').text()).toContain('Representative decision review is available in Needs Attention.')
+    const reviewLink = wrapper.findComponent(RouterLinkStub)
+    expect(reviewLink.text()).toBe('Open Needs Attention decisions')
+    expect(reviewLink.props('to')).toEqual({ name: 'CommandCenter', hash: '#needs-attention' })
     expect(wrapper.findAll('button')).toHaveLength(0)
     expect(wrapper.text()).not.toContain('Do not display')
   })
@@ -311,7 +319,9 @@ describe('PolicyCandidateCorrectionAnalyticsStats.vue', () => {
       new Error('Private provider and RAG text must not render'),
     )
 
-    const wrapper = mount(PolicyCandidateCorrectionAnalyticsStats)
+    const wrapper = mount(PolicyCandidateCorrectionAnalyticsStats, {
+      global: { stubs: { RouterLink: RouterLinkStub } },
+    })
     await flushPromises()
 
     expect(wrapper.find('[role="alert"]').text()).toContain('Policy correction analytics are currently unavailable.')

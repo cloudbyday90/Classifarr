@@ -50,9 +50,9 @@ coverage-ratchet checks passed. Security diff scan
 `b415611b-093b-4318-9081-63a38454fd84` reviewed the 14 changed executable and
 test surfaces with zero reportable findings.
 
-## Next Item
+## Follow-up
 
-Build a bounded, read-only **representative review handoff** only when the
-long-horizon screen shows a sustained review signal. It should link an
-administrator to existing pending-review workflows without carrying analytics
-identities or automatically changing policy, AI, RAG, learning, or routing.
+The bounded representative-review handoff has been implemented separately in
+[its design](policy-candidate-correction-representative-review-handoff-design.md)
+and
+[outcome](policy-candidate-correction-representative-review-handoff-outcome.md).
