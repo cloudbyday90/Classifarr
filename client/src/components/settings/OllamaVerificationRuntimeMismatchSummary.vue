@@ -22,6 +22,7 @@
         </p>
       </div>
       <Button
+        v-if="showRefresh"
         variant="secondary"
         size="sm"
         :disabled="loading"
@@ -95,6 +96,10 @@ const props = defineProps({
   loading: {
     type: Boolean,
     default: false,
+  },
+  showRefresh: {
+    type: Boolean,
+    default: true,
   },
 })
 

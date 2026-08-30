@@ -98,9 +98,16 @@ function mountView() {
   })
 }
 
+async function openAiReadinessDiagnostics(wrapper) {
+  const diagnostics = wrapper.get('[data-testid="ai-readiness-diagnostics"]')
+  diagnostics.element.open = true
+  await diagnostics.trigger('toggle')
+  await flushPromises()
+}
+
 describe('AI Settings', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     api.getAIConfigForUpdate.mockImplementation(async () => ({
       config: await api.getAIConfig(),
       writePrecondition: AI_SETTINGS_WRITE_PRECONDITION,
@@ -110,6 +117,7 @@ describe('AI Settings', () => {
     api.getPatternConfig.mockResolvedValue({})
     api.getCostSummary.mockResolvedValue(null)
     api.getAIVerificationCapability.mockResolvedValue({
+      statusId: 'verification_ready',
       label: 'Strict verification is available',
       message: 'The saved primary AI path can admit strict candidate-bound verification.',
       guidance: []
@@ -150,6 +158,9 @@ describe('AI Settings', () => {
 
     const wrapper = mountView()
     await flushPromises()
+
+    expect(api.getOllamaVerificationRuntimeMismatchSummary).not.toHaveBeenCalled()
+    await openAiReadinessDiagnostics(wrapper)
 
     expect(api.getOllamaVerificationRuntimeMismatchSummary).toHaveBeenCalledTimes(1)
     expect(wrapper.text()).toContain('Runtime model integrity')
@@ -200,19 +211,27 @@ describe('AI Settings', () => {
         label: 'Strict verification is available',
         message: 'Saved Ollama is ready.',
         guidance: [],
-        ollamaVerificationCapability: { verified: true }
+        ollamaVerificationCapability: {
+          statusId: 'verification_ready',
+          label: 'Ollama verification is ready',
+          message: 'The saved model passed the bounded test.',
+          guidance: [],
+          testable: true,
+        }
       }
     })
 
     const wrapper = mountView()
     await flushPromises()
 
+    await openAiReadinessDiagnostics(wrapper)
+
     expect(wrapper.text()).toContain('Saved test outcome trend')
     expect(wrapper.text()).toContain('Mixed test outcomes')
     expect(wrapper.text()).not.toContain('private-model-name')
     expect(wrapper.text()).not.toContain('private model output')
 
-    const testButton = wrapper.findAll('button').find((button) => button.text().includes('Test Ollama Verification'))
+    const testButton = wrapper.findAll('button').find((button) => button.text().includes('Test saved Ollama verification'))
     expect(testButton).toBeDefined()
     await testButton.trigger('click')
     await flushPromises()
@@ -345,7 +364,7 @@ describe('AI Settings', () => {
     expect(wrapper.text()).not.toContain('private-provider')
     expect(wrapper.text()).not.toContain('private-model')
 
-    const refreshButton = wrapper.findAll('button').find((button) => button.text().includes('Refresh Status'))
+    const refreshButton = wrapper.findAll('button').find((button) => button.text().includes('Refresh now'))
     await refreshButton.trigger('click')
     await flushPromises()
 
@@ -359,7 +378,7 @@ describe('AI Settings', () => {
     const wrapper = mountView()
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Current verification status unavailable')
+    expect(wrapper.text()).toContain('AI readiness is unavailable')
     expect(wrapper.text()).not.toContain('provider.example.test')
     expect(wrapper.text()).not.toContain('sk-secret')
   })
@@ -403,7 +422,7 @@ describe('AI Settings', () => {
     expect(wrapper.text()).toContain('Ollama verification has not been tested')
     expect(wrapper.text()).not.toContain('private-ollama.internal')
 
-    const testButton = wrapper.findAll('button').find((button) => button.text().includes('Test Ollama Verification'))
+    const testButton = wrapper.findAll('button').find((button) => button.text().includes('Test saved Ollama verification'))
     await testButton.trigger('click')
     await flushPromises()
 
@@ -449,7 +468,7 @@ describe('AI Settings', () => {
     const wrapper = mountView()
     await flushPromises()
 
-    const testButton = wrapper.findAll('button').find((button) => button.text().includes('Test Ollama Verification'))
+    const testButton = wrapper.findAll('button').find((button) => button.text().includes('Test saved Ollama verification'))
     await testButton.trigger('click')
     await flushPromises()
 
@@ -492,13 +511,15 @@ describe('AI Settings', () => {
 
     expect(wrapper.text()).toContain('Ollama model changed since verification')
     expect(wrapper.text()).toContain('will not call AI until this saved configuration is tested again')
-    expect(wrapper.text()).toContain('Recommended next step')
-    expect(wrapper.text()).toContain('4 runtime mismatches')
+    expect(wrapper.text()).toContain('Needs verification')
     expect(wrapper.findAll('button').some((button) => button.text().includes('Re-test saved Ollama verification'))).toBe(true)
-    expect(wrapper.findAll('button').some((button) => button.text().includes('Test Ollama Verification'))).toBe(false)
+    expect(wrapper.findAll('button').some((button) => button.text().includes('Test saved Ollama verification'))).toBe(false)
     expect(wrapper.text()).not.toContain('private-ollama.internal')
     expect(wrapper.text()).not.toContain('private-model-name')
     expect(wrapper.text()).not.toContain('private-digest')
+
+    await openAiReadinessDiagnostics(wrapper)
+    expect(wrapper.text()).toContain('4')
 
     const retestButton = wrapper.findAll('button').find((button) => button.text().includes('Re-test saved Ollama verification'))
     await retestButton.trigger('click')
@@ -517,7 +538,7 @@ describe('AI Settings', () => {
 
     expect(api.updateAIConfig).toHaveBeenCalledTimes(1)
     expect(api.getAIVerificationCapability).toHaveBeenCalledTimes(2)
-    expect(api.getAIVerificationCapabilityChangeReceipts).toHaveBeenCalledTimes(2)
+    expect(api.getAIVerificationCapabilityChangeReceipts).not.toHaveBeenCalled()
   })
 
   it('saves an unsaved Ollama target once and automatically runs its strict-verification test', async () => {
@@ -585,18 +606,19 @@ describe('AI Settings', () => {
 
     const wrapper = mountView()
     await flushPromises()
+    await openAiReadinessDiagnostics(wrapper)
 
     expect(wrapper.text()).toContain('Strict verification needs attention to Strict verification is available')
     expect(wrapper.text()).toContain('Saved revision 12')
     expect(wrapper.text()).not.toContain('private-provider')
     expect(wrapper.text()).not.toContain('private-model')
 
-    const refreshButton = wrapper.findAll('button').find((button) => button.text().includes('Refresh Receipts'))
+    const refreshButton = wrapper.findAll('button').find((button) => button.text().includes('Refresh now'))
     await refreshButton.trigger('click')
     await flushPromises()
 
     expect(api.getAIVerificationCapabilityChangeReceipts).toHaveBeenCalledWith({ limit: 5 })
-    expect(api.getAIVerificationCapabilityChangeReceipts).toHaveBeenCalledTimes(2)
+    expect(api.getAIVerificationCapabilityChangeReceipts).toHaveBeenCalledTimes(1)
   })
 
   it('keeps the newer saved capability when an earlier summary read resolves late', async () => {
@@ -916,11 +938,12 @@ describe('AI Settings', () => {
 
     const wrapper = mountView()
     await flushPromises()
+    await openAiReadinessDiagnostics(wrapper)
 
-    expect(wrapper.text()).toContain('This shows the last background preflight run using the saved Ollama configuration')
+    expect(wrapper.text()).toContain('Scheduled local preflight')
     expect(wrapper.text()).toContain('Failure type')
     expect(wrapper.text()).toContain('generation_timeout')
     expect(wrapper.text()).toContain('Next scheduled attempt')
-    expect(wrapper.text()).toContain('Connected, but generation probe failed: timeout of 15000ms exceeded')
+    expect(wrapper.text()).not.toContain('Connected, but generation probe failed: timeout of 15000ms exceeded')
   })
 })

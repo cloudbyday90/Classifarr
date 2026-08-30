@@ -6,6 +6,16 @@
 strict candidate-bound verification capability in AI Settings, refresh that
 read-only status, and open the existing aggregate Verification monitoring tab.
 
+### UI Evolution
+
+On 2026-08-30, the original current-state card was replaced by the
+[AI Readiness Controller](ai-readiness-controller-design.md). The underlying
+server-owned read-only capability contract remains unchanged. The UI now
+performs a bounded, visible-page-only automatic read with a pause control and
+places supplementary monitoring behind an operator-controlled disclosure. The
+earlier background-polling alternative below records the original UI decision;
+it is superseded for this narrowly scoped, read-only refresh behavior.
+
 An explicit, separately authorized Ollama structured-output test is now
 available for a saved primary Ollama configuration. It is intentionally not
 part of this read-only GET path; see [Ollama Verification Capability Probe
@@ -134,7 +144,8 @@ Decision: rejected. The bounded link preserves distinct read models.
   `classificationCandidateBoundVerificationProviderPreflightService.mjs`.
 - Client API and presentation:
   `client/src/api/settingsProviders.js`,
-  `client/src/components/settings/VerificationCapabilityCurrentStateSummary.vue`,
+  `client/src/components/settings/AiReadinessController.vue`,
+  `client/src/composables/useAiReadinessAutoRefresh.js`,
   `client/src/views/settings/AI.vue`, and `client/src/views/Statistics.vue`.
 - Focused tests prove the cache directive, authorization inheritance, privacy
   bounds, no provider/model discovery, no mutation, explicit and post-save

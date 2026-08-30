@@ -58,6 +58,7 @@
     </ol>
 
     <Button
+      v-if="showRefresh"
       variant="secondary"
       :disabled="loading"
       @click="emit('refresh')"
@@ -80,6 +81,10 @@ const props = defineProps({
   loading: {
     type: Boolean,
     default: false,
+  },
+  showRefresh: {
+    type: Boolean,
+    default: true,
   },
 })
 

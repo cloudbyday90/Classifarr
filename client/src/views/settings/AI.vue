@@ -606,194 +606,58 @@
 
     <Card
       v-if="!loading"
-      title="Candidate-Bound Verification"
+      title="AI Readiness"
     >
-      <VerificationCapabilityCurrentStateSummary
+      <AiReadinessController
         :capability="verificationCapability"
         :loading="loadingVerificationCapability"
-        :runtime-mismatch-summary="ollamaVerificationRuntimeMismatchSummary"
         :testing="testingVerificationCapability"
+        :refreshing="isRefreshingAiReadiness"
+        :last-updated-at="aiReadinessLastUpdatedAt"
+        :auto-refresh-enabled="aiReadinessAutoRefreshEnabled"
+        @diagnostics-toggle="handleAiReadinessDiagnosticsToggle"
         @refresh="refreshVerificationCapability"
         @test="testVerificationCapability"
-      />
-    </Card>
-
-    <Card
-      v-if="!loading"
-      title="Ollama Verification Runtime Monitoring"
-    >
-      <OllamaVerificationRuntimeMismatchSummary
-        :report="ollamaVerificationRuntimeMismatchSummary"
-        :loading="loadingOllamaVerificationRuntimeMismatchSummary"
-        @refresh="refreshOllamaVerificationRuntimeMismatchSummary"
-      />
-    </Card>
-
-    <Card
-      v-if="!loading"
-      title="Ollama Verification Test History"
-    >
-      <OllamaVerificationCapabilityOutcomeHistory
-        :report="ollamaVerificationCapabilityOutcomeHistory"
-        :loading="loadingOllamaVerificationCapabilityOutcomeHistory"
-        @refresh="refreshOllamaVerificationCapabilityOutcomeHistory"
-      />
-    </Card>
-
-    <Card
-      v-if="!loading && config.primary_provider === 'ollama'"
-      title="Ollama Compatibility Matrix"
-    >
-      <OllamaVerificationCompatibilityMatrix
-        :report="ollamaVerificationCompatibilityMatrix"
-        :running="runningOllamaVerificationCompatibilityMatrix"
-        @run="runOllamaVerificationCompatibilityMatrix"
-      />
-    </Card>
-
-    <Card
-      v-if="!loading"
-      title="Verification Capability History"
-    >
-      <VerificationCapabilityChangeReceiptList
-        :report="verificationCapabilityChangeReceipts"
-        :loading="loadingVerificationCapabilityChangeReceipts"
-        @refresh="refreshVerificationCapabilityChangeReceipts"
-      />
-    </Card>
-
-    <Card
-      v-if="showOllamaPreflightPanel"
-      title="🩺 Ollama Scheduled Preflight"
-    >
-      <div class="space-y-4">
-        <div class="flex items-start justify-between gap-4">
-          <p class="text-sm text-gray-400">
-            This shows the last background preflight run using the saved Ollama configuration. It is separate from the manual Test Connection button above.
-          </p>
-          <Button
-            variant="secondary"
-            size="sm"
-            :disabled="loadingOllamaPreflight"
-            @click="refreshOllamaPreflight"
-          >
-            <span v-if="loadingOllamaPreflight">Refreshing...</span>
-            <span v-else>Refresh Status</span>
-          </Button>
-        </div>
-
-        <p
-          v-if="!ollamaPreflightState.ai && !ollamaPreflightState.embedding"
-          class="text-sm text-gray-500"
-        >
-          No scheduled preflight has run yet.
-        </p>
-
-        <div
-          v-else
-          class="grid grid-cols-1 xl:grid-cols-2 gap-4"
-        >
+        @toggle-auto-refresh="toggleAiReadinessAutoRefresh"
+      >
+        <template #diagnostics>
           <div
-            v-if="ollamaPreflightState.ai"
-            class="space-y-3 p-4 bg-gray-800/50 rounded-lg border border-gray-700"
+            v-if="aiReadinessDiagnosticsExpanded"
+            class="space-y-6"
           >
-            <div class="flex items-center justify-between gap-3">
-              <h3 class="font-medium text-gray-200">
-                AI Model
-              </h3>
-              <span :class="getPreflightStatusClass(ollamaPreflightState.ai)">
-                {{ getPreflightStatusLabel(ollamaPreflightState.ai) }}
-              </span>
-            </div>
+            <OllamaVerificationRuntimeMismatchSummary
+              :report="ollamaVerificationRuntimeMismatchSummary"
+              :loading="loadingOllamaVerificationRuntimeMismatchSummary"
+              :show-refresh="false"
+            />
 
-            <div class="space-y-2 text-sm">
-              <div class="flex items-start justify-between gap-3">
-                <span class="text-gray-400">Model</span>
-                <span class="text-right text-gray-200">{{ ollamaPreflightState.ai.model || config.ollama_model || 'Unknown' }}</span>
-              </div>
-              <div class="flex items-start justify-between gap-3">
-                <span class="text-gray-400">Last checked</span>
-                <span class="text-right text-gray-200">{{ formatPreflightTimestamp(ollamaPreflightState.ai.checkedAt || ollamaPreflightState.ai.checked_at) }}</span>
-              </div>
-              <div
-                v-if="ollamaPreflightState.ai.failureType"
-                class="flex items-start justify-between gap-3"
-              >
-                <span class="text-gray-400">Failure type</span>
-                <span class="text-right text-amber-300">{{ ollamaPreflightState.ai.failureType }}</span>
-              </div>
-              <div
-                v-if="ollamaPreflightState.ai.nextScheduledAt"
-                class="flex items-start justify-between gap-3"
-              >
-                <span class="text-gray-400">Next scheduled attempt</span>
-                <span class="text-right text-gray-200">{{ formatPreflightTimestamp(ollamaPreflightState.ai.nextScheduledAt) }}</span>
-              </div>
-              <div
-                v-if="ollamaPreflightState.ai.error"
-                class="space-y-1"
-              >
-                <div class="text-gray-400">
-                  Error
-                </div>
-                <div class="text-red-300 break-words">
-                  {{ ollamaPreflightState.ai.error }}
-                </div>
-              </div>
-            </div>
+            <OllamaVerificationCapabilityOutcomeHistory
+              :report="ollamaVerificationCapabilityOutcomeHistory"
+              :loading="loadingOllamaVerificationCapabilityOutcomeHistory"
+              :show-refresh="false"
+            />
+
+            <OllamaVerificationCompatibilityMatrix
+              v-if="config.primary_provider === 'ollama'"
+              :report="ollamaVerificationCompatibilityMatrix"
+              :running="runningOllamaVerificationCompatibilityMatrix"
+              @run="runOllamaVerificationCompatibilityMatrix"
+            />
+
+            <VerificationCapabilityChangeReceiptList
+              :report="verificationCapabilityChangeReceipts"
+              :loading="loadingVerificationCapabilityChangeReceipts"
+              :show-refresh="false"
+            />
+
+            <OllamaScheduledPreflightSummary
+              v-if="showOllamaPreflightPanel"
+              :report="ollamaPreflightState"
+              :loading="loadingOllamaPreflight"
+            />
           </div>
-
-          <div
-            v-if="ollamaPreflightState.embedding"
-            class="space-y-3 p-4 bg-gray-800/50 rounded-lg border border-gray-700"
-          >
-            <div class="flex items-center justify-between gap-3">
-              <h3 class="font-medium text-gray-200">
-                Embedding Model
-              </h3>
-              <span :class="getPreflightStatusClass(ollamaPreflightState.embedding)">
-                {{ getPreflightStatusLabel(ollamaPreflightState.embedding) }}
-              </span>
-            </div>
-
-            <div class="space-y-2 text-sm">
-              <div class="flex items-start justify-between gap-3">
-                <span class="text-gray-400">Model</span>
-                <span class="text-right text-gray-200">{{ ollamaPreflightState.embedding.model || 'Unknown' }}</span>
-              </div>
-              <div class="flex items-start justify-between gap-3">
-                <span class="text-gray-400">Last checked</span>
-                <span class="text-right text-gray-200">{{ formatPreflightTimestamp(ollamaPreflightState.embedding.checkedAt || ollamaPreflightState.embedding.checked_at) }}</span>
-              </div>
-              <div
-                v-if="ollamaPreflightState.embedding.failureType"
-                class="flex items-start justify-between gap-3"
-              >
-                <span class="text-gray-400">Failure type</span>
-                <span class="text-right text-amber-300">{{ ollamaPreflightState.embedding.failureType }}</span>
-              </div>
-              <div
-                v-if="ollamaPreflightState.embedding.nextScheduledAt"
-                class="flex items-start justify-between gap-3"
-              >
-                <span class="text-gray-400">Next scheduled attempt</span>
-                <span class="text-right text-gray-200">{{ formatPreflightTimestamp(ollamaPreflightState.embedding.nextScheduledAt) }}</span>
-              </div>
-              <div
-                v-if="ollamaPreflightState.embedding.error"
-                class="space-y-1"
-              >
-                <div class="text-gray-400">
-                  Error
-                </div>
-                <div class="text-red-300 break-words">
-                  {{ ollamaPreflightState.embedding.error }}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+        </template>
+      </AiReadinessController>
     </Card>
 
     <!-- Save Button -->
@@ -818,11 +682,12 @@ import Button from '@/components/common/Button.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import Spinner from '@/components/common/Spinner.vue'
 import PasswordInput from '@/components/common/PasswordInput.vue'
-import VerificationCapabilityCurrentStateSummary from '@/components/settings/VerificationCapabilityCurrentStateSummary.vue'
+import AiReadinessController from '@/components/settings/AiReadinessController.vue'
 import VerificationCapabilityChangeReceiptList from '@/components/settings/VerificationCapabilityChangeReceiptList.vue'
 import OllamaVerificationCapabilityOutcomeHistory from '@/components/settings/OllamaVerificationCapabilityOutcomeHistory.vue'
 import OllamaVerificationCompatibilityMatrix from '@/components/settings/OllamaVerificationCompatibilityMatrix.vue'
 import OllamaVerificationRuntimeMismatchSummary from '@/components/settings/OllamaVerificationRuntimeMismatchSummary.vue'
+import OllamaScheduledPreflightSummary from '@/components/settings/OllamaScheduledPreflightSummary.vue'
 import api from '@/api'
 import {
   AI_SETTINGS_STALE_WRITE_RECOVERY_MESSAGE,
@@ -831,6 +696,7 @@ import {
 } from '@/api/aiSettingsWritePrecondition'
 import { getAiVerificationCapabilityTestFeedback } from '@/utils/aiVerificationCapabilityTestFeedback'
 import { useToast } from '@/stores/toast'
+import { useAiReadinessAutoRefresh } from '@/composables/useAiReadinessAutoRefresh'
 
 const toast = useToast()
 const loading = ref(true)
@@ -861,10 +727,13 @@ const ollamaVerificationCompatibilityMatrix = ref(null)
 const aiSettingsWritePrecondition = ref(null)
 const savedOllamaVerificationTargetFingerprint = ref(null)
 const verificationSaveStatus = ref(null)
+const aiReadinessAutoRefreshEnabled = ref(true)
+const aiReadinessDiagnosticsExpanded = ref(false)
 let verificationCapabilityRequestId = 0
 let verificationCapabilityChangeReceiptsRequestId = 0
 let ollamaVerificationRuntimeMismatchSummaryRequestId = 0
 let ollamaVerificationCapabilityOutcomeHistoryRequestId = 0
+let ollamaPreflightRequestId = 0
 
 const config = ref({
   primary_provider: 'none',
@@ -959,52 +828,29 @@ const parseOllamaHost = (hostValue) => {
   }
 }
 
-const formatPreflightTimestamp = (timestamp) => {
-  if (!timestamp) return 'Not available'
-
-  const parsed = new Date(timestamp)
-  if (Number.isNaN(parsed.getTime())) {
-    return String(timestamp)
-  }
-
-  return parsed.toLocaleString()
-}
-
-const getPreflightStatusLabel = (result) => {
-  if (!result) return 'Not run'
-  if (result.skipped) return 'Skipped'
-  return result.success ? 'Healthy' : 'Degraded'
-}
-
-const getPreflightStatusClass = (result) => {
-  if (!result) return 'text-xs font-medium text-gray-400'
-  if (result.skipped) return 'text-xs font-medium text-amber-300'
-  return result.success
-    ? 'text-xs font-medium text-green-400'
-    : 'text-xs font-medium text-red-300'
-}
-
-const loadOllamaPreflightStatus = async ({ notifyOnError = false } = {}) => {
+const loadOllamaPreflightStatus = async () => {
+  const requestId = ++ollamaPreflightRequestId
   loadingOllamaPreflight.value = true
 
   try {
     const response = await api.getLastOllamaPreflight()
-    ollamaPreflightState.value = response || { ai: null, embedding: null }
-  } catch (error) {
-    ollamaPreflightState.value = { ai: null, embedding: null }
-    if (notifyOnError) {
-      toast.error(error.response?.data?.error || 'Failed to load Ollama scheduled preflight status')
+    if (requestId === ollamaPreflightRequestId) {
+      ollamaPreflightState.value = response || { ai: null, embedding: null }
     }
+    return response || null
+  } catch {
+    if (requestId === ollamaPreflightRequestId) {
+      ollamaPreflightState.value = { ai: null, embedding: null }
+    }
+    return null
   } finally {
-    loadingOllamaPreflight.value = false
+    if (requestId === ollamaPreflightRequestId) {
+      loadingOllamaPreflight.value = false
+    }
   }
 }
 
-const refreshOllamaPreflight = async () => {
-  await loadOllamaPreflightStatus({ notifyOnError: true })
-}
-
-const loadVerificationCapability = async ({ notifyOnError = false } = {}) => {
+const loadVerificationCapability = async () => {
   const requestId = ++verificationCapabilityRequestId
   loadingVerificationCapability.value = true
   try {
@@ -1012,13 +858,12 @@ const loadVerificationCapability = async ({ notifyOnError = false } = {}) => {
     if (requestId === verificationCapabilityRequestId) {
       verificationCapability.value = capability
     }
+    return capability
   } catch (_error) {
     if (requestId === verificationCapabilityRequestId) {
       verificationCapability.value = null
     }
-    if (notifyOnError && requestId === verificationCapabilityRequestId) {
-      toast.warning('Current verification capability could not be refreshed.')
-    }
+    return null
   } finally {
     if (requestId === verificationCapabilityRequestId) {
       loadingVerificationCapability.value = false
@@ -1026,8 +871,21 @@ const loadVerificationCapability = async ({ notifyOnError = false } = {}) => {
   }
 }
 
+const {
+  isRefreshing: isRefreshingAiReadiness,
+  lastUpdatedAt: aiReadinessLastUpdatedAt,
+  markReadinessUpdated,
+  refreshReadiness: refreshAiReadiness,
+} = useAiReadinessAutoRefresh({
+  autoRefreshEnabled: aiReadinessAutoRefreshEnabled,
+  refresh: loadVerificationCapability,
+})
+
 const refreshVerificationCapability = async () => {
-  await loadVerificationCapability({ notifyOnError: true })
+  const refreshed = await refreshAiReadiness()
+  if (!refreshed) {
+    toast.warning('Current verification capability could not be refreshed.')
+  }
 }
 
 const testVerificationCapability = async ({ automatic = false } = {}) => {
@@ -1044,9 +902,12 @@ const testVerificationCapability = async ({ automatic = false } = {}) => {
   try {
     const response = await api.testAIVerificationCapability()
     verificationCapability.value = response?.data || response
+    markReadinessUpdated()
     // Trend refresh is advisory and must not delay the authoritative saved
     // capability result or its operator feedback.
-    void loadOllamaVerificationCapabilityOutcomeHistory()
+    if (aiReadinessDiagnosticsExpanded.value) {
+      void loadOllamaVerificationCapabilityOutcomeHistory()
+    }
     const feedback = getAiVerificationCapabilityTestFeedback(verificationCapability.value)
     if (automatic) {
       verificationSaveStatus.value = {
@@ -1101,7 +962,7 @@ const runOllamaVerificationCompatibilityMatrix = async () => {
   }
 }
 
-const loadVerificationCapabilityChangeReceipts = async ({ notifyOnError = false } = {}) => {
+const loadVerificationCapabilityChangeReceipts = async () => {
   const requestId = ++verificationCapabilityChangeReceiptsRequestId
   loadingVerificationCapabilityChangeReceipts.value = true
   try {
@@ -1109,13 +970,12 @@ const loadVerificationCapabilityChangeReceipts = async ({ notifyOnError = false 
     if (requestId === verificationCapabilityChangeReceiptsRequestId) {
       verificationCapabilityChangeReceipts.value = receipts
     }
+    return receipts
   } catch (_error) {
     if (requestId === verificationCapabilityChangeReceiptsRequestId) {
       verificationCapabilityChangeReceipts.value = null
     }
-    if (notifyOnError && requestId === verificationCapabilityChangeReceiptsRequestId) {
-      toast.warning('Verification capability receipts could not be refreshed.')
-    }
+    return null
   } finally {
     if (requestId === verificationCapabilityChangeReceiptsRequestId) {
       loadingVerificationCapabilityChangeReceipts.value = false
@@ -1123,11 +983,7 @@ const loadVerificationCapabilityChangeReceipts = async ({ notifyOnError = false 
   }
 }
 
-const refreshVerificationCapabilityChangeReceipts = async () => {
-  await loadVerificationCapabilityChangeReceipts({ notifyOnError: true })
-}
-
-const loadOllamaVerificationRuntimeMismatchSummary = async ({ notifyOnError = false } = {}) => {
+const loadOllamaVerificationRuntimeMismatchSummary = async () => {
   const requestId = ++ollamaVerificationRuntimeMismatchSummaryRequestId
   loadingOllamaVerificationRuntimeMismatchSummary.value = true
   try {
@@ -1135,13 +991,12 @@ const loadOllamaVerificationRuntimeMismatchSummary = async ({ notifyOnError = fa
     if (requestId === ollamaVerificationRuntimeMismatchSummaryRequestId) {
       ollamaVerificationRuntimeMismatchSummary.value = summary
     }
+    return summary
   } catch (_error) {
     if (requestId === ollamaVerificationRuntimeMismatchSummaryRequestId) {
       ollamaVerificationRuntimeMismatchSummary.value = null
     }
-    if (notifyOnError && requestId === ollamaVerificationRuntimeMismatchSummaryRequestId) {
-      toast.warning('Ollama runtime observations could not be refreshed.')
-    }
+    return null
   } finally {
     if (requestId === ollamaVerificationRuntimeMismatchSummaryRequestId) {
       loadingOllamaVerificationRuntimeMismatchSummary.value = false
@@ -1149,11 +1004,7 @@ const loadOllamaVerificationRuntimeMismatchSummary = async ({ notifyOnError = fa
   }
 }
 
-const refreshOllamaVerificationRuntimeMismatchSummary = async () => {
-  await loadOllamaVerificationRuntimeMismatchSummary({ notifyOnError: true })
-}
-
-const loadOllamaVerificationCapabilityOutcomeHistory = async ({ notifyOnError = false } = {}) => {
+const loadOllamaVerificationCapabilityOutcomeHistory = async () => {
   const requestId = ++ollamaVerificationCapabilityOutcomeHistoryRequestId
   loadingOllamaVerificationCapabilityOutcomeHistory.value = true
   try {
@@ -1161,13 +1012,12 @@ const loadOllamaVerificationCapabilityOutcomeHistory = async ({ notifyOnError = 
     if (requestId === ollamaVerificationCapabilityOutcomeHistoryRequestId) {
       ollamaVerificationCapabilityOutcomeHistory.value = history
     }
+    return history
   } catch (_error) {
     if (requestId === ollamaVerificationCapabilityOutcomeHistoryRequestId) {
       ollamaVerificationCapabilityOutcomeHistory.value = null
     }
-    if (notifyOnError && requestId === ollamaVerificationCapabilityOutcomeHistoryRequestId) {
-      toast.warning('Ollama verification test history could not be refreshed.')
-    }
+    return null
   } finally {
     if (requestId === ollamaVerificationCapabilityOutcomeHistoryRequestId) {
       loadingOllamaVerificationCapabilityOutcomeHistory.value = false
@@ -1175,8 +1025,32 @@ const loadOllamaVerificationCapabilityOutcomeHistory = async ({ notifyOnError = 
   }
 }
 
-const refreshOllamaVerificationCapabilityOutcomeHistory = async () => {
-  await loadOllamaVerificationCapabilityOutcomeHistory({ notifyOnError: true })
+const loadAiReadinessDiagnostics = async () => {
+  const diagnostics = [
+    loadVerificationCapabilityChangeReceipts(),
+    loadOllamaVerificationRuntimeMismatchSummary(),
+    loadOllamaVerificationCapabilityOutcomeHistory(),
+  ]
+
+  if (showOllamaPreflightPanel.value) {
+    diagnostics.push(loadOllamaPreflightStatus())
+  }
+
+  await Promise.all(diagnostics)
+}
+
+const handleAiReadinessDiagnosticsToggle = (expanded) => {
+  const nextExpandedState = expanded === true
+  if (aiReadinessDiagnosticsExpanded.value === nextExpandedState) return
+
+  aiReadinessDiagnosticsExpanded.value = nextExpandedState
+  if (nextExpandedState) {
+    void loadAiReadinessDiagnostics()
+  }
+}
+
+const toggleAiReadinessAutoRefresh = () => {
+  aiReadinessAutoRefreshEnabled.value = !aiReadinessAutoRefreshEnabled.value
 }
 
 const applyEditableAiConfig = (response) => {
@@ -1209,17 +1083,12 @@ const reloadEditableAiConfig = async () => {
 }
 
 onMounted(async () => {
-  loadVerificationCapability()
-  loadVerificationCapabilityChangeReceipts()
-  loadOllamaVerificationRuntimeMismatchSummary()
-  loadOllamaVerificationCapabilityOutcomeHistory()
   try {
-    const [configResponse, usageResponse, patternConfigResponse, costSummaryResponse, ollamaPreflightResponse] = await Promise.all([
+    const [configResponse, usageResponse, patternConfigResponse, costSummaryResponse] = await Promise.all([
       api.getAIConfigForUpdate(),
       api.getAIUsage().catch(() => null),
       api.getPatternConfig().catch(() => null),
       api.getCostSummary().catch(() => null),
-      api.getLastOllamaPreflight().catch(() => null),
     ])
     
     applyEditableAiConfig(configResponse)
@@ -1232,9 +1101,6 @@ onMounted(async () => {
     }
     if (costSummaryResponse) {
       costSummary.value = costSummaryResponse
-    }
-    if (ollamaPreflightResponse) {
-      ollamaPreflightState.value = ollamaPreflightResponse
     }
   } catch (error) {
     console.error('Failed to load AI config:', error)
@@ -1408,10 +1274,10 @@ const persistConfig = async (providerPayload) => {
     aiSettingsWritePrecondition.value = getAiSettingsWritePreconditionFromResponse(response)
     aiConfigSaved = true
     savedOllamaVerificationTargetFingerprint.value = selectedOllamaTargetFingerprint
-    await Promise.all([
-      loadVerificationCapability(),
-      loadVerificationCapabilityChangeReceipts(),
-    ])
+    await refreshAiReadiness()
+    if (aiReadinessDiagnosticsExpanded.value) {
+      void loadVerificationCapabilityChangeReceipts()
+    }
     if (shouldAutoTestOllama) {
       await testVerificationCapability({ automatic: true })
     }
@@ -1425,10 +1291,10 @@ const persistConfig = async (providerPayload) => {
     if (isAiSettingsStaleWriteError(error)) {
       try {
         await reloadEditableAiConfig()
-        await Promise.all([
-          loadVerificationCapability(),
-          loadVerificationCapabilityChangeReceipts(),
-        ])
+        await refreshAiReadiness()
+        if (aiReadinessDiagnosticsExpanded.value) {
+          void loadVerificationCapabilityChangeReceipts()
+        }
         toast.warning(AI_SETTINGS_STALE_WRITE_RECOVERY_MESSAGE)
       } catch (reloadError) {
         console.error('Failed to reload AI configuration after a stale save:', reloadError)
