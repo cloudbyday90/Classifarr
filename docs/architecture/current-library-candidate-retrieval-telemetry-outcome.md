@@ -71,10 +71,13 @@ an embedding.
 
 ## Next Item
 
-After a representative cohort exists, evaluate the telemetry with a written
-decision rule: keep lexical retrieval if its availability and latency bands are
-healthy and operator alternatives do not indicate a material recall problem.
-If evidence supports a semantic upgrade, create a separate design for a
-versioned current-library embedding lifecycle with explicit retention,
-deletion, partitioning, poisoning, cost, provider, and offline evaluation
-controls. Do not infer that need from an empty or immature telemetry window.
+Implement the separate
+[candidate-set outcome attribution](current-library-candidate-retrieval-outcome-attribution-design.md)
+before interpreting an operator alternative as a lexical-retrieval miss. After
+a representative attributed cohort exists, keep lexical retrieval if
+availability and latency are healthy, outside-candidate selections are low,
+and policy-ranking review explains the remaining alternatives. Consider a
+versioned current-library embedding lifecycle only after an explicit recall
+decision with retention, deletion, partitioning, poisoning, cost, provider,
+and offline-evaluation controls. Do not infer that need from an empty or
+immature telemetry window.

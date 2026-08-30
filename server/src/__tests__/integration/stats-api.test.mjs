@@ -158,6 +158,10 @@ describe('Stats API Integration Tests', () => {
                             'library_name', 'Test Stats Library'
                         )
                     ),
+                    'current_library_candidate_retrieval_outcome_attribution', jsonb_build_object(
+                        'version', 'current_library.candidate_retrieval_outcome_attribution.v1',
+                        'status_id', 'changed_outside_candidates'
+                    ),
                     'outcome_path', jsonb_build_object(
                         'latest_outcome', jsonb_build_object(
                             'final_library_id', $1::integer,
@@ -276,10 +280,15 @@ describe('Stats API Integration Tests', () => {
                     proposalCount: expect.any(Number),
                     agreedProposalCount: expect.any(Number),
                 },
+                operatorCandidateSetAttribution: {
+                    changedOutsideCandidateOutcomeCount: expect.any(Number),
+                },
                 readiness: { statusId: expect.any(String) },
             });
             expect(res.body.retrieval.observationCount).toBeGreaterThanOrEqual(1);
             expect(res.body.operatorAgreement.agreedProposalCount).toBeGreaterThanOrEqual(1);
+            expect(res.body.operatorCandidateSetAttribution.changedOutsideCandidateOutcomeCount)
+                .toBeGreaterThanOrEqual(1);
             expect(JSON.stringify(res.body)).not.toContain('Private Retrieval Test Item');
             expect(JSON.stringify(res.body)).not.toContain('Test Stats Library');
             expect(JSON.stringify(res.body)).not.toContain('final_library_id');

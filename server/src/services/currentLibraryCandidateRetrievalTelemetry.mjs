@@ -100,23 +100,31 @@ export function buildCurrentLibraryCandidateRetrievalTelemetry({
  * state cannot create new metric dimensions or store content-bearing fields.
  */
 export function buildCurrentLibraryCandidateRetrievalTelemetryProjection(value = {}) {
+  const statusId = value?.statusId ?? value?.status_id;
+  const latencyBand = value?.latencyBand ?? value?.latency_band;
   if (value?.version !== CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_TELEMETRY_VERSION ||
-      !OBSERVED_STATUS_IDS.has(value?.statusId) || !LATENCY_BAND_IDS.has(value?.latencyBand)) {
+      !OBSERVED_STATUS_IDS.has(statusId) || !LATENCY_BAND_IDS.has(latencyBand)) {
     return null;
   }
 
   const candidateCount = boundedInteger(
-    value.candidateCount,
+    value.candidateCount ?? value.candidate_count,
     CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_MAXIMUM_CANDIDATES,
   );
-  const matchingCandidateCount = boundedInteger(value.matchingCandidateCount, candidateCount ?? 0);
-  const directMatchCandidateCount = boundedInteger(value.directMatchCandidateCount, matchingCandidateCount ?? 0);
+  const matchingCandidateCount = boundedInteger(
+    value.matchingCandidateCount ?? value.matched_candidate_count,
+    candidateCount ?? 0,
+  );
+  const directMatchCandidateCount = boundedInteger(
+    value.directMatchCandidateCount ?? value.direct_match_candidate_count,
+    matchingCandidateCount ?? 0,
+  );
   if (!candidateCount || matchingCandidateCount === null || directMatchCandidateCount === null) return null;
 
   return Object.freeze({
     version: CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_TELEMETRY_VERSION,
-    status_id: value.statusId,
-    latency_band: value.latencyBand,
+    status_id: statusId,
+    latency_band: latencyBand,
     candidate_count: candidateCount,
     matched_candidate_count: matchingCandidateCount,
     direct_match_candidate_count: directMatchCandidateCount,

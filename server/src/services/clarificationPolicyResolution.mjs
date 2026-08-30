@@ -13,6 +13,9 @@ import {
     getPolicyRuntimeQuestionAnswerSelectedOption,
     validatePolicyRuntimeQuestionAnswer,
 } from './policyRuntimeQuestionAnswerContract.mjs';
+import {
+    buildCurrentLibraryCandidateRetrievalOutcomeAttribution,
+} from './currentLibraryCandidateRetrievalOutcomeAttribution.mjs';
 
 const logger = createLogger('PolicyResolution');
 
@@ -165,6 +168,7 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
         }
 
         const policyQuestion = parsePolicyQuestion(classification.policy_question);
+        let runtimeQuestionAnswerContract = null;
         const normalizationStatus = getRuntimeQuestionNormalizationStatus(policyQuestion);
         if (policyQuestion && !normalizationStatus.actionable) {
             throw createStatusError(
@@ -209,6 +213,7 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
                     throw createAnswerContractError(answerValidation);
                 }
                 answerContract = answerValidation.answer;
+                runtimeQuestionAnswerContract = answerValidation.contract;
             }
 
             const optionLibraryIds = getQuestionOptionLibraryIds(policyQuestion);
@@ -230,6 +235,17 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
         }
 
         const selectedLibraryName = selectedLibrary.name || classification.library_name;
+        const classificationMetadata = typeof classification.metadata === 'string'
+            ? (safeParseJson(classification.metadata) || {})
+            : (classification.metadata || {});
+        const currentLibraryCandidateRetrievalOutcomeAttribution = answerContract
+            ? buildCurrentLibraryCandidateRetrievalOutcomeAttribution({
+                classificationDetails: classificationMetadata.classification_details,
+                answer: answerContract,
+                candidateDestinations: runtimeQuestionAnswerContract?.candidate_destinations,
+                selectedDestinationLibraryId: selectedLibraryId,
+            })
+            : null;
         let nativeResolutionProvenance = null;
         const serverSelectedOption = answerContract
             ? getPolicyRuntimeQuestionAnswerSelectedOption({
@@ -331,6 +347,12 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
             runtime_question_answer: answerContract
                 ? buildPolicyRuntimeQuestionAnswerOutcome(answerContract)
                 : undefined,
+            ...(currentLibraryCandidateRetrievalOutcomeAttribution
+                ? {
+                    current_library_candidate_retrieval_outcome_attribution:
+                        currentLibraryCandidateRetrievalOutcomeAttribution,
+                }
+                : {}),
             ...(runtimeResolutionLearning
                 ? policyRuntimeResolutionLearningService.toOutcomePatch(runtimeResolutionLearning)
                 : {}),

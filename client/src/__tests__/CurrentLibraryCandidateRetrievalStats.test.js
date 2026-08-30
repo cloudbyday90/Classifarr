@@ -37,6 +37,15 @@ const report = {
     pendingProposalCount: 1,
     agreementRatePercent: 75,
   },
+  operatorCandidateSetAttribution: {
+    attributedOperatorOutcomeCount: 4,
+    confirmedCandidateOutcomeCount: 2,
+    changedToCandidateOutcomeCount: 1,
+    changedOutsideCandidateOutcomeCount: 1,
+    routedNotApplicableOutcomeCount: 0,
+    unattributedResolvedOutcomeCount: 2,
+    candidateSetSelectionRatePercent: 75,
+  },
   readiness: {
     statusId: 'observing',
     message: 'Private prompt text must not render.',
@@ -52,12 +61,17 @@ describe('CurrentLibraryCandidateRetrievalStats.vue', () => {
 
     expect(api.getCurrentLibraryCandidateRetrievalMetrics).toHaveBeenCalledOnce()
     expect(wrapper.text()).toContain('Candidate Retrieval Monitoring')
-    expect(wrapper.text()).toContain('Aggregate latency, catalog-match, and AI/operator-agreement telemetry')
+    expect(wrapper.text()).toContain('Aggregate latency, catalog-match, candidate-set, and AI/operator-agreement telemetry')
     expect(wrapper.text()).toContain('Same destination')
     expect(wrapper.text()).toContain('3 (75%)')
     expect(wrapper.text()).toContain('Under 25 ms')
     expect(wrapper.text()).toContain('5 (50%)')
     expect(wrapper.text()).toContain('not a correctness rate')
+    expect(wrapper.text()).toContain('Operator candidate-set coverage')
+    expect(wrapper.text()).toContain('Broader chooser, outside candidates')
+    expect(wrapper.text()).toContain('Routed not applicable')
+    expect(wrapper.text()).toContain('3 (75%)')
+    expect(wrapper.text()).toContain('does not prove a retrieval or AI error')
     expect(wrapper.find('[role="status"]').exists()).toBe(true)
     expect(wrapper.findAll('button')).toHaveLength(0)
     expect(wrapper.text()).not.toContain('Private prompt text')

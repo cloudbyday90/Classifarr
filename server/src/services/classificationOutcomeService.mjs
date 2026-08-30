@@ -12,6 +12,9 @@ import { createLogger } from '../utils/logger.mjs';
 import { resolveExecutor } from '../utils/dbUtils.mjs';
 import { safeParseJsonObject } from '../utils/classificationRetryPayloads.mjs';
 import { isPlainObject } from '../utils/stringUtils.mjs';
+import {
+  buildCurrentLibraryCandidateRetrievalOutcomeAttributionProjection,
+} from './currentLibraryCandidateRetrievalOutcomeAttribution.mjs';
 
 const logger = createLogger('classificationOutcomeService');
 
@@ -145,6 +148,14 @@ export class ClassificationOutcomeService {
       return { updated: false, reason: 'empty_outcome_patch' };
     }
 
+    const {
+      current_library_candidate_retrieval_outcome_attribution: rawCurrentLibraryCandidateRetrievalOutcomeAttribution,
+      ...safeOutcomePatch
+    } = outcomePatch;
+    const currentLibraryCandidateRetrievalOutcomeAttribution =
+      buildCurrentLibraryCandidateRetrievalOutcomeAttributionProjection(
+        rawCurrentLibraryCandidateRetrievalOutcomeAttribution,
+      );
     const executor = resolveExecutor(client, this.db);
     const selectSql = client
       ? 'SELECT metadata FROM classification_history WHERE id = $1 FOR UPDATE'
@@ -167,11 +178,20 @@ export class ClassificationOutcomeService {
         ? classificationDetails.outcome_path
         : {};
       const nowIso = new Date().toISOString();
-      const mergedOutcome = mergeOutcome(existingOutcome, outcomePatch, nowIso);
-      const mergedOutcomePath = buildOutcomePath(existingOutcomePath, existingOutcome, outcomePatch, nowIso);
+      const mergedOutcome = mergeOutcome(existingOutcome, safeOutcomePatch, nowIso);
+      const mergedOutcomePath = buildOutcomePath(
+        existingOutcomePath,
+        existingOutcome,
+        safeOutcomePatch,
+        nowIso,
+      );
 
       classificationDetails.outcome_link = mergedOutcome;
       classificationDetails.outcome_path = mergedOutcomePath;
+      if (currentLibraryCandidateRetrievalOutcomeAttribution) {
+        classificationDetails.current_library_candidate_retrieval_outcome_attribution =
+          currentLibraryCandidateRetrievalOutcomeAttribution;
+      }
       if (isPlainObject(classificationDetails.rag_loop_summary)) {
         classificationDetails.rag_loop_summary = {
           ...classificationDetails.rag_loop_summary,

@@ -16,7 +16,7 @@
         Candidate Retrieval Monitoring
       </h2>
       <p class="mt-1 text-sm text-gray-400">
-        Aggregate latency, catalog-match, and AI/operator-agreement telemetry for bounded current-library retrieval. It never changes AI, policy, or routing decisions.
+        Aggregate latency, catalog-match, candidate-set, and AI/operator-agreement telemetry for bounded current-library retrieval. It never changes AI, policy, or routing decisions.
       </p>
     </div>
 
@@ -53,7 +53,7 @@
         </p>
       </div>
 
-      <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <article class="rounded-lg border border-gray-700 bg-gray-800 p-5">
           <h3 class="text-base font-medium">
             Retrieval health
@@ -78,6 +78,49 @@
             <MetricRow
               label="Unavailable"
               :value="report.retrieval?.unavailableCount || 0"
+            />
+          </dl>
+        </article>
+
+        <article class="rounded-lg border border-gray-700 bg-gray-800 p-5">
+          <h3 class="text-base font-medium">
+            Operator candidate-set coverage
+          </h3>
+          <p class="mt-1 text-sm text-gray-400">
+            An outside-candidate selection means the bounded candidate set should be reviewed.
+            It does not prove a retrieval or AI error.
+          </p>
+          <dl class="mt-4 space-y-3 text-sm">
+            <MetricRow
+              label="Attributed operator outcomes"
+              :value="report.operatorCandidateSetAttribution?.attributedOperatorOutcomeCount || 0"
+            />
+            <MetricRow
+              label="Confirmed bounded candidate"
+              :value="report.operatorCandidateSetAttribution?.confirmedCandidateOutcomeCount || 0"
+            />
+            <MetricRow
+              label="Broader chooser, candidate selected"
+              :value="report.operatorCandidateSetAttribution?.changedToCandidateOutcomeCount || 0"
+            />
+            <MetricRow
+              label="Broader chooser, outside candidates"
+              :value="report.operatorCandidateSetAttribution?.changedOutsideCandidateOutcomeCount || 0"
+            />
+            <MetricRow
+              label="Routed not applicable"
+              :value="report.operatorCandidateSetAttribution?.routedNotApplicableOutcomeCount || 0"
+            />
+            <MetricRow
+              label="Candidate-set selection rate (applicable decisions)"
+              :value="formatRate(
+                candidateSetSelectionCount,
+                report.operatorCandidateSetAttribution?.candidateSetSelectionRatePercent,
+              )"
+            />
+            <MetricRow
+              label="Without attribution"
+              :value="report.operatorCandidateSetAttribution?.unattributedResolvedOutcomeCount || 0"
             />
           </dl>
         </article>
@@ -171,6 +214,11 @@ const readinessClass = computed(() => ({
   observing: 'border-blue-700/60 bg-blue-950/20',
   insufficient_data: 'border-gray-700 bg-gray-800',
 }[readinessStatus.value] || 'border-gray-700 bg-gray-800'))
+const candidateSetSelectionCount = computed(() => {
+  const attribution = report.value?.operatorCandidateSetAttribution
+  return (Number(attribution?.confirmedCandidateOutcomeCount) || 0) +
+    (Number(attribution?.changedToCandidateOutcomeCount) || 0)
+})
 
 function formatRate(count, percentage) {
   return `${Number(count) || 0} (${Number(percentage) || 0}%)`

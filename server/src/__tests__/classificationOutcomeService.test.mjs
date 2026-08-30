@@ -155,6 +155,36 @@ describe('ClassificationOutcomeService', () => {
     );
   });
 
+  test('stores a validated candidate-set attribution outside the mutable outcome path', async () => {
+    db.query
+      .mockResolvedValueOnce({
+        rows: [{ metadata: { classification_details: {} } }],
+      })
+      .mockResolvedValueOnce({ rows: [] });
+
+    await service.recordOutcome(456, {
+      type: 'resolved',
+      source: 'policy_question',
+      final_library_id: 8,
+      current_library_candidate_retrieval_outcome_attribution: {
+        version: 'current_library.candidate_retrieval_outcome_attribution.v1',
+        statusId: 'changed_outside_candidates',
+        destinationLibraryId: 8,
+        destinationLibraryName: 'Private Library',
+      },
+    });
+
+    const updatedMetadata = JSON.parse(db.query.mock.calls[1][1][1]);
+    expect(updatedMetadata.classification_details.current_library_candidate_retrieval_outcome_attribution)
+      .toEqual({
+        version: 'current_library.candidate_retrieval_outcome_attribution.v1',
+        status_id: 'changed_outside_candidates',
+      });
+    expect(JSON.stringify(updatedMetadata.classification_details.outcome_path))
+      .not.toContain('current_library_candidate_retrieval_outcome_attribution');
+    expect(JSON.stringify(updatedMetadata)).not.toContain('Private Library');
+  });
+
   test('appends a new transition when the outcome type changes', async () => {
     db.query
       .mockResolvedValueOnce({

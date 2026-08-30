@@ -120,10 +120,13 @@ policy score, policy learning, or routing.
 
 1. Deploy this aggregate telemetry and collect a realistic operator-reviewed
    cohort.
-2. Compare latency bands, retrieval availability, catalog-match presence, and
-   agreement before changing retrieval architecture.
-3. Add a separately approved index only if the observed latency distribution
-   warrants it; preserve current candidate and provider boundaries.
+2. Add the separate
+   [outcome-attribution design](current-library-candidate-retrieval-outcome-attribution-design.md)
+   so an alternative selection can be distinguished from a true
+   outside-candidate choice before assigning a cause to retrieval.
+3. Compare latency bands, retrieval availability, catalog-match presence,
+   agreement, and candidate-set attribution before changing retrieval
+   architecture.
 4. Consider a versioned, partitioned embedding lifecycle only after explicit
    provider, cost, retention, deletion, poisoning, and offline-evaluation
    decisions.

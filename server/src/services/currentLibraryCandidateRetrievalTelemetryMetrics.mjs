@@ -97,6 +97,36 @@ export function buildCurrentLibraryCandidateRetrievalMetricsReport({
     resolvedProposalCount - agreedProposalCount,
     nonnegativeCount(row.alternativeProposalCount),
   );
+  const resolvedOperatorOutcomeCount = Math.min(
+    observationCount,
+    nonnegativeCount(row.resolvedOperatorOutcomeCount),
+  );
+  const confirmedCandidateOutcomeCount = Math.min(
+    resolvedOperatorOutcomeCount,
+    nonnegativeCount(row.confirmedCandidateOutcomeCount),
+  );
+  const changedToCandidateOutcomeCount = Math.min(
+    resolvedOperatorOutcomeCount - confirmedCandidateOutcomeCount,
+    nonnegativeCount(row.changedToCandidateOutcomeCount),
+  );
+  const changedOutsideCandidateOutcomeCount = Math.min(
+    resolvedOperatorOutcomeCount - confirmedCandidateOutcomeCount - changedToCandidateOutcomeCount,
+    nonnegativeCount(row.changedOutsideCandidateOutcomeCount),
+  );
+  const routedNotApplicableOutcomeCount = Math.min(
+    resolvedOperatorOutcomeCount - confirmedCandidateOutcomeCount - changedToCandidateOutcomeCount -
+      changedOutsideCandidateOutcomeCount,
+    nonnegativeCount(row.routedNotApplicableOutcomeCount),
+  );
+  const attributedOperatorOutcomeCount =
+    confirmedCandidateOutcomeCount +
+    changedToCandidateOutcomeCount +
+    changedOutsideCandidateOutcomeCount +
+    routedNotApplicableOutcomeCount;
+  const candidateSetSelectionOutcomeCount =
+    confirmedCandidateOutcomeCount + changedToCandidateOutcomeCount;
+  const candidateSetDecisionOutcomeCount =
+    candidateSetSelectionOutcomeCount + changedOutsideCandidateOutcomeCount;
 
   return Object.freeze({
     version: CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_METRICS_VERSION,
@@ -126,6 +156,22 @@ export function buildCurrentLibraryCandidateRetrievalMetricsReport({
       alternativeProposalCount,
       pendingProposalCount: Math.max(0, proposalCount - resolvedProposalCount),
       agreementRatePercent: ratePercent(agreedProposalCount, resolvedProposalCount),
+    }),
+    operatorCandidateSetAttribution: Object.freeze({
+      resolvedOperatorOutcomeCount,
+      attributedOperatorOutcomeCount,
+      confirmedCandidateOutcomeCount,
+      changedToCandidateOutcomeCount,
+      changedOutsideCandidateOutcomeCount,
+      routedNotApplicableOutcomeCount,
+      unattributedResolvedOutcomeCount: Math.max(
+        0,
+        resolvedOperatorOutcomeCount - attributedOperatorOutcomeCount,
+      ),
+      candidateSetSelectionRatePercent: ratePercent(
+        candidateSetSelectionOutcomeCount,
+        candidateSetDecisionOutcomeCount,
+      ),
     }),
     readiness: Object.freeze({
       statusId: observationCount > 0 ? 'observing' : 'insufficient_data',

@@ -64,6 +64,22 @@ describe('currentLibraryCandidateRetrievalTelemetry', () => {
       matched_candidate_count: 2,
       direct_match_candidate_count: 1,
     });
+
+    expect(buildCurrentLibraryCandidateRetrievalTelemetryProjection({
+      version: 'current_library.candidate_retrieval_telemetry.v1',
+      status_id: 'available',
+      latency_band: '25_to_99ms',
+      candidate_count: 2,
+      matched_candidate_count: 2,
+      direct_match_candidate_count: 1,
+    })).toEqual({
+      version: 'current_library.candidate_retrieval_telemetry.v1',
+      status_id: 'available',
+      latency_band: '25_to_99ms',
+      candidate_count: 2,
+      matched_candidate_count: 2,
+      direct_match_candidate_count: 1,
+    });
   });
 
   test('drops invalid or incoherent telemetry at the persistence boundary', () => {

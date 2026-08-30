@@ -10,6 +10,9 @@ import {
 import {
   CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_TELEMETRY_VERSION,
 } from './currentLibraryCandidateRetrievalTelemetry.mjs';
+import {
+  CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_OUTCOME_ATTRIBUTION_VERSION,
+} from './currentLibraryCandidateRetrievalOutcomeAttribution.mjs';
 
 export const LOAD_CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_METRICS_SQL = `
   WITH observed AS (
@@ -37,7 +40,9 @@ export const LOAD_CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_METRICS_SQL = `
         WHEN metadata #>> '{classification_details,outcome_path,latest_outcome,final_library_id}' ~ '^[1-9]\\d*$'
           THEN (metadata #>> '{classification_details,outcome_path,latest_outcome,final_library_id}')::bigint
         ELSE NULL
-      END AS final_library_id
+      END AS final_library_id,
+      metadata #>> '{classification_details,current_library_candidate_retrieval_outcome_attribution,version}' AS outcome_attribution_version,
+      metadata #>> '{classification_details,current_library_candidate_retrieval_outcome_attribution,status_id}' AS outcome_attribution_status_id
     FROM classification_history
     WHERE created_at >= $1
       AND created_at < $2
@@ -77,7 +82,24 @@ export const LOAD_CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_METRICS_SQL = `
         AND proposed_library_id IS NOT NULL
         AND final_library_id IS NOT NULL
         AND final_library_id <> proposed_library_id
-    )::bigint AS "alternativeProposalCount"
+    )::bigint AS "alternativeProposalCount",
+    COUNT(*) FILTER (WHERE final_library_id IS NOT NULL)::bigint AS "resolvedOperatorOutcomeCount",
+    COUNT(*) FILTER (
+      WHERE outcome_attribution_version = $6
+        AND outcome_attribution_status_id = 'confirmed_candidate'
+    )::bigint AS "confirmedCandidateOutcomeCount",
+    COUNT(*) FILTER (
+      WHERE outcome_attribution_version = $6
+        AND outcome_attribution_status_id = 'changed_to_candidate'
+    )::bigint AS "changedToCandidateOutcomeCount",
+    COUNT(*) FILTER (
+      WHERE outcome_attribution_version = $6
+        AND outcome_attribution_status_id = 'changed_outside_candidates'
+    )::bigint AS "changedOutsideCandidateOutcomeCount",
+    COUNT(*) FILTER (
+      WHERE outcome_attribution_version = $6
+        AND outcome_attribution_status_id = 'routed_not_applicable'
+    )::bigint AS "routedNotApplicableOutcomeCount"
   FROM observed
 `;
 
@@ -100,6 +122,7 @@ export async function loadCurrentLibraryCandidateRetrievalMetrics(
     CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_TELEMETRY_VERSION,
     POLICY_CANDIDATE_ADJUDICATION_VERSION,
     POLICY_CANDIDATE_ADJUDICATION_STATUS_IDS.PROPOSED,
+    CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_OUTCOME_ATTRIBUTION_VERSION,
   ]);
 
   return result?.rows?.[0] || {};

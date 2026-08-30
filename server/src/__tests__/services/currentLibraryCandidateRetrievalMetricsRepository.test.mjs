@@ -25,10 +25,12 @@ describe('currentLibraryCandidateRetrievalMetricsRepository', () => {
       'current_library.candidate_retrieval_telemetry.v1',
       'policy.candidate_adjudication.v1',
       'proposed',
+      'current_library.candidate_retrieval_outcome_attribution.v1',
     ]);
     expect(LOAD_CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_METRICS_SQL).toContain('COUNT(*)');
     expect(LOAD_CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_METRICS_SQL).not.toContain('SELECT title');
     expect(LOAD_CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_METRICS_SQL).not.toContain('provider_id');
+    expect(LOAD_CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_METRICS_SQL).not.toContain('library_name');
   });
 
   test('rejects invalid aggregate ranges before querying', async () => {

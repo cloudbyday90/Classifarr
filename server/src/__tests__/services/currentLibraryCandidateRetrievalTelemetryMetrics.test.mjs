@@ -47,6 +47,11 @@ describe('currentLibraryCandidateRetrievalTelemetryMetrics', () => {
         resolvedProposalCount: 4,
         agreedProposalCount: 3,
         alternativeProposalCount: 1,
+        resolvedOperatorOutcomeCount: 6,
+        confirmedCandidateOutcomeCount: 2,
+        changedToCandidateOutcomeCount: 1,
+        changedOutsideCandidateOutcomeCount: 2,
+        routedNotApplicableOutcomeCount: 1,
       },
     });
 
@@ -65,6 +70,16 @@ describe('currentLibraryCandidateRetrievalTelemetryMetrics', () => {
         alternativeProposalCount: 1,
         pendingProposalCount: 1,
         agreementRatePercent: 75,
+      },
+      operatorCandidateSetAttribution: {
+        resolvedOperatorOutcomeCount: 6,
+        attributedOperatorOutcomeCount: 6,
+        confirmedCandidateOutcomeCount: 2,
+        changedToCandidateOutcomeCount: 1,
+        changedOutsideCandidateOutcomeCount: 2,
+        routedNotApplicableOutcomeCount: 1,
+        unattributedResolvedOutcomeCount: 0,
+        candidateSetSelectionRatePercent: 60,
       },
       readiness: { statusId: 'observing' },
     });

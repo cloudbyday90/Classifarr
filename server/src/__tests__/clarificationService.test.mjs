@@ -18,6 +18,12 @@
 
 import { jest } from '@jest/globals';
 import { createDbRowsResult, createLoggerModuleMock, createMockModule, createNamedMockModule, createServiceStubs, createTransactionalDbMock } from './helpers/mockFactory.mjs';
+import {
+    buildPolicyRuntimeQuestionAnswerContract,
+} from '../services/policyRuntimeQuestionAnswerContract.mjs';
+import {
+    normalizePolicyRuntimeQuestion,
+} from '../services/policyRuntimeQuestionNormalizer.mjs';
 
 const mockDb = createTransactionalDbMock();
 
@@ -780,6 +786,87 @@ describe('resolvePolicyQuestion', () => {
             code: 'runtime_question_answer_action_unavailable',
         });
         expect(db.pool.connect).not.toHaveBeenCalled();
+    });
+
+    test('records only a fixed outside-candidate attribution for a validated broad destination choice', async () => {
+        const client = makeMockClient();
+        db.pool.connect.mockResolvedValueOnce(client);
+        const policyQuestion = normalizePolicyRuntimeQuestion({
+            metadata: { media_type: 'movie' },
+            libraries: [
+                { id: 5, name: 'Movies', media_type: 'movie', is_active: true },
+                { id: 8, name: 'Documentaries', media_type: 'movie', is_active: true },
+            ],
+            policyResult: {
+                ranked: [
+                    { library_id: 5, score: 76 },
+                    { library_id: 8, score: 72 },
+                ],
+            },
+        });
+        const classification = {
+            id: 1,
+            status: 'awaiting_decision',
+            library_name: 'Movies',
+            media_type: 'movie',
+            policy_question: JSON.stringify(policyQuestion),
+            metadata: {
+                classification_details: {
+                    current_library_candidate_retrieval_telemetry: {
+                        version: 'current_library.candidate_retrieval_telemetry.v1',
+                        status_id: 'available',
+                        latency_band: '25_to_99ms',
+                        candidate_count: 2,
+                        matched_candidate_count: 1,
+                        direct_match_candidate_count: 1,
+                    },
+                },
+            },
+        };
+        const contract = buildPolicyRuntimeQuestionAnswerContract({
+            classification,
+            question: policyQuestion,
+            currentContextVersion: 1,
+        });
+        expect(contract).not.toBeNull();
+        const answer = {
+            contract_version: contract.version,
+            contract_fingerprint: contract.fingerprint,
+            action_id: 'change_destination',
+            destination_library_id: 12,
+        };
+
+        client.query
+            .mockResolvedValueOnce({})
+            .mockResolvedValueOnce({ rows: [classification] })
+            .mockResolvedValueOnce({ rows: [{ id: 12, name: 'Special Features', media_type: 'movie', is_active: true }] })
+            .mockResolvedValueOnce({})
+            .mockResolvedValueOnce({});
+        policyQuestionContext.extractQuestionContext.mockReturnValueOnce({ version: 1 });
+        policyQuestionContext.getPolicyQuestionContextVersion.mockResolvedValueOnce(1);
+        policyQuestionContext.isPolicyQuestionStale.mockReturnValueOnce(false);
+        classificationOutcomeService.recordOutcome.mockResolvedValueOnce({ updated: true });
+
+        const result = await svc.resolveRuntimeQuestionAnswer(1, answer, 'admin');
+
+        expect(result.success).toBe(true);
+        expect(classificationOutcomeService.recordOutcome).toHaveBeenCalledWith(
+            1,
+            expect.objectContaining({
+                current_library_candidate_retrieval_outcome_attribution: {
+                    version: 'current_library.candidate_retrieval_outcome_attribution.v1',
+                    statusId: 'changed_outside_candidates',
+                },
+            }),
+            { client },
+        );
+        expect(
+            classificationOutcomeService.recordOutcome.mock.calls[0][1]
+                .current_library_candidate_retrieval_outcome_attribution,
+        ).toEqual({
+            version: 'current_library.candidate_retrieval_outcome_attribution.v1',
+            statusId: 'changed_outside_candidates',
+        });
     });
 
     test('throws 409 when classification is no longer awaiting_decision (different state)', async () => {
