@@ -52,7 +52,7 @@ describe('policyCandidateCorrectionTemporalStabilityReport', () => {
     });
 
     expect(report).toMatchObject({
-      version: 'policy.candidate_correction_analytics_metrics.v4',
+      version: 'policy.candidate_correction_analytics_metrics.v5',
       window: { startDate: '2026-08-23', endDate: '2026-08-30' },
       previousWindow: { startDate: '2026-08-16', endDate: '2026-08-23' },
       temporalStability: {
@@ -63,6 +63,7 @@ describe('policyCandidateCorrectionTemporalStabilityReport', () => {
         version: 'policy.candidate_correction_cohort_composition.v1',
         statusId: 'insufficient_data',
       },
+      longHorizonTrend: null,
     });
     expect(report.temporalStability.marginBuckets).toContainEqual(expect.objectContaining({
       marginBandId: '5_to_14',

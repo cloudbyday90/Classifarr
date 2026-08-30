@@ -23,7 +23,7 @@ import {
 } from './policyCandidateCorrectionCohortCompositionReport.mjs';
 
 export const POLICY_CANDIDATE_CORRECTION_TEMPORAL_STABILITY_REPORT_VERSION =
-  'policy.candidate_correction_analytics_metrics.v4';
+  'policy.candidate_correction_analytics_metrics.v5';
 
 const EMPTY_CALIBRATION_READINESS = Object.freeze(
   buildPolicyCandidateCorrectionCalibrationReadiness({
@@ -95,6 +95,7 @@ export function buildPolicyCandidateCorrectionTemporalStabilityReport({
   previousRows = [],
   currentWindow = null,
   previousWindow = null,
+  longHorizonTrend = null,
 } = {}) {
   const currentReport = buildPolicyCandidateCorrectionAnalyticsMetricsReport({
     rows: currentRows,
@@ -131,5 +132,6 @@ export function buildPolicyCandidateCorrectionTemporalStabilityReport({
       currentReport,
       previousReport,
     }),
+    longHorizonTrend,
   });
 }

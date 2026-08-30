@@ -124,7 +124,7 @@ function report(overrides = {}) {
     }
   }
   const base = {
-    version: 'policy.candidate_correction_analytics_metrics.v4',
+    version: 'policy.candidate_correction_analytics_metrics.v5',
     window: { days: 7, startDate: '2026-08-23', endDate: '2026-08-30' },
     marginBuckets,
     evidenceSourceStateBuckets,
@@ -217,6 +217,47 @@ function report(overrides = {}) {
         evidenceSources: [{ evidenceSourceId: 'declared_policy', comparison: declaredPolicy }],
       }
     })(),
+    longHorizonTrend: overrides.longHorizonTrend || {
+      version: 'policy.candidate_correction_long_horizon_trend.v1',
+      current: {
+        window: { days: 28, startDate: '2026-08-02', endDate: '2026-08-30' },
+        summary: {
+          outcomeCount: 20,
+          confirmedLeaderOutcomeCount: 10,
+          changedToCandidateOutcomeCount: 6,
+          changedOutsideCandidatesOutcomeCount: 4,
+          routedNotApplicableOutcomeCount: 0,
+        },
+        calibrationReadiness: reviewReadiness,
+      },
+      previous: {
+        window: { days: 28, startDate: '2026-07-05', endDate: '2026-08-02' },
+        summary: {
+          outcomeCount: 20,
+          confirmedLeaderOutcomeCount: 10,
+          changedToCandidateOutcomeCount: 6,
+          changedOutsideCandidatesOutcomeCount: 4,
+          routedNotApplicableOutcomeCount: 0,
+        },
+        calibrationReadiness: reviewReadiness,
+      },
+      cohortComposition: {
+        version: 'policy.candidate_correction_cohort_composition.v1',
+        statusId: 'composition_comparable',
+        materialShiftDimensionCount: 0,
+        comparableDimensionCount: 2,
+        insufficientDataDimensionCount: 0,
+      },
+      trend: {
+        version: 'policy.candidate_correction_long_horizon_trend.v1',
+        statusId: 'sustained_review_signal',
+        currentStatusId: 'review_recommended',
+        previousStatusId: 'review_recommended',
+        currentApplicableDecisionCount: 20,
+        previousApplicableDecisionCount: 20,
+        cohortCompositionStatusId: 'composition_comparable',
+      },
+    },
   }
 }
 
@@ -267,6 +308,13 @@ describe('policyCandidateCorrectionAnalyticsPresentation', () => {
   it('fails closed when the server cohort-composition comparison does not match the fixed aggregates', () => {
     const invalid = report()
     invalid.cohortComposition.marginBands.totalVariationDistancePercent = 21
+
+    expect(normalizePolicyCandidateCorrectionAnalyticsMetricsReport(invalid)).toBeNull()
+  })
+
+  it('fails closed when the long-horizon trend disagrees with its verified periods', () => {
+    const invalid = report()
+    invalid.longHorizonTrend.trend.statusId = 'mixed_signal'
 
     expect(normalizePolicyCandidateCorrectionAnalyticsMetricsReport(invalid)).toBeNull()
   })

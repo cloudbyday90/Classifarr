@@ -43,7 +43,7 @@ const reviewReadiness = {
 }
 
 const report = {
-  version: 'policy.candidate_correction_analytics_metrics.v4',
+  version: 'policy.candidate_correction_analytics_metrics.v5',
   window: { days: 7, startDate: '2026-08-23', endDate: '2026-08-30' },
   marginBuckets: [
     {
@@ -234,6 +234,47 @@ const report = {
       },
     ],
   },
+  longHorizonTrend: {
+    version: 'policy.candidate_correction_long_horizon_trend.v1',
+    current: {
+      window: { days: 28, startDate: '2026-08-02', endDate: '2026-08-30' },
+      summary: {
+        outcomeCount: 20,
+        confirmedLeaderOutcomeCount: 10,
+        changedToCandidateOutcomeCount: 6,
+        changedOutsideCandidatesOutcomeCount: 4,
+        routedNotApplicableOutcomeCount: 0,
+      },
+      calibrationReadiness: reviewReadiness,
+    },
+    previous: {
+      window: { days: 28, startDate: '2026-07-05', endDate: '2026-08-02' },
+      summary: {
+        outcomeCount: 20,
+        confirmedLeaderOutcomeCount: 10,
+        changedToCandidateOutcomeCount: 6,
+        changedOutsideCandidatesOutcomeCount: 4,
+        routedNotApplicableOutcomeCount: 0,
+      },
+      calibrationReadiness: reviewReadiness,
+    },
+    cohortComposition: {
+      version: 'policy.candidate_correction_cohort_composition.v1',
+      statusId: 'composition_comparable',
+      materialShiftDimensionCount: 0,
+      comparableDimensionCount: 2,
+      insufficientDataDimensionCount: 0,
+    },
+    trend: {
+      version: 'policy.candidate_correction_long_horizon_trend.v1',
+      statusId: 'sustained_review_signal',
+      currentStatusId: 'review_recommended',
+      previousStatusId: 'review_recommended',
+      currentApplicableDecisionCount: 20,
+      previousApplicableDecisionCount: 20,
+      cohortCompositionStatusId: 'composition_comparable',
+    },
+  },
 }
 
 describe('PolicyCandidateCorrectionAnalyticsStats.vue', () => {
@@ -252,12 +293,14 @@ describe('PolicyCandidateCorrectionAnalyticsStats.vue', () => {
     expect(wrapper.text()).toContain('Persistent review signal')
     expect(wrapper.text()).toContain('Cohort-composition context')
     expect(wrapper.text()).toContain('Cohort mix is comparable')
+    expect(wrapper.text()).toContain('Longer-horizon trend context')
+    expect(wrapper.text()).toContain('Sustained 28-day review signal')
     expect(wrapper.text()).toContain('95% Wilson interval: 29.9%–70.1%')
     expect(wrapper.text()).toContain('do not establish correctness or change policy, AI, RAG, learning, or routing')
-    expect(wrapper.findAll('table')).toHaveLength(6)
-    expect(wrapper.findAll('caption')).toHaveLength(6)
-    expect(wrapper.findAll('th[scope="col"]')).toHaveLength(33)
-    expect(wrapper.findAll('th[scope="row"]')).toHaveLength(15)
+    expect(wrapper.findAll('table')).toHaveLength(7)
+    expect(wrapper.findAll('caption')).toHaveLength(7)
+    expect(wrapper.findAll('th[scope="col"]')).toHaveLength(37)
+    expect(wrapper.findAll('th[scope="row"]')).toHaveLength(17)
     expect(wrapper.find('[role="status"]').attributes('aria-atomic')).toBe('true')
     expect(wrapper.findAll('button')).toHaveLength(0)
     expect(wrapper.text()).not.toContain('Do not display')

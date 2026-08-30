@@ -12,8 +12,11 @@ import {
 import {
   normalizePolicyCandidateCorrectionCohortComposition,
 } from './policyCandidateCorrectionCohortCompositionPresentation'
+import {
+  normalizePolicyCandidateCorrectionLongHorizonTrend,
+} from './policyCandidateCorrectionLongHorizonTrendPresentation'
 
-const METRICS_VERSION = 'policy.candidate_correction_analytics_metrics.v4'
+const METRICS_VERSION = 'policy.candidate_correction_analytics_metrics.v5'
 
 const MARGIN_BAND_PRESENTATIONS = Object.freeze({
   '0_to_4': Object.freeze({ label: '0–4 points', description: 'Very close' }),
@@ -267,7 +270,8 @@ export function normalizePolicyCandidateCorrectionAnalyticsMetricsReport(value) 
       previousEvidenceSourceStateBuckets: previous.evidenceSourceStateBuckets,
     },
   )
-  if (!temporalStability || !cohortComposition) return null
+  const longHorizonTrend = normalizePolicyCandidateCorrectionLongHorizonTrend(value.longHorizonTrend)
+  if (!temporalStability || !cohortComposition || !longHorizonTrend) return null
 
   return Object.freeze({
     version: METRICS_VERSION,
@@ -279,5 +283,6 @@ export function normalizePolicyCandidateCorrectionAnalyticsMetricsReport(value) 
     previousCalibrationReadiness: previous.calibrationReadiness,
     temporalStability,
     cohortComposition,
+    longHorizonTrend,
   })
 }

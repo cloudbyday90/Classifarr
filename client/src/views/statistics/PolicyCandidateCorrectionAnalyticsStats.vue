@@ -446,6 +446,102 @@
 
       <article class="overflow-x-auto rounded-lg border border-gray-700 bg-gray-800 p-5">
         <h3 class="text-base font-medium">
+          Longer-horizon trend context
+        </h3>
+        <p class="mt-1 text-sm text-gray-400">
+          Two fixed adjacent 28-day completed UTC periods are compared. This advisory screen is available only when both periods are representative and their aggregate cohort mix is comparable; it never changes policy, AI, RAG, learning, or routing.
+        </p>
+        <p
+          class="mt-4 text-sm font-medium"
+          :class="overallLongHorizonTrendPresentation.className"
+        >
+          {{ overallLongHorizonTrendPresentation.label }}
+        </p>
+        <p class="mt-1 text-sm text-gray-300">
+          {{ overallLongHorizonTrendPresentation.message }}
+        </p>
+        <dl class="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+          <MetricRow
+            label="Current 28-day period"
+            :value="windowLabel(report.longHorizonTrend.current.window)"
+          />
+          <MetricRow
+            label="Previous 28-day period"
+            :value="windowLabel(report.longHorizonTrend.previous.window)"
+          />
+          <MetricRow
+            label="Cohort guard"
+            :value="longHorizonCohortCompositionPresentation.label"
+          />
+        </dl>
+        <table class="mt-5 min-w-full text-left text-sm">
+          <caption class="sr-only">
+            Fixed 28-day aggregate selection-change readiness for current and previous completed periods.
+          </caption>
+          <thead class="border-b border-gray-700 text-xs uppercase tracking-wide text-gray-400">
+            <tr>
+              <th
+                scope="col"
+                class="px-3 py-3 font-medium"
+              >
+                Period
+              </th>
+              <th
+                scope="col"
+                class="px-3 py-3 font-medium"
+              >
+                Applicable decisions
+              </th>
+              <th
+                scope="col"
+                class="px-3 py-3 font-medium"
+              >
+                Changed selection
+              </th>
+              <th
+                scope="col"
+                class="px-3 py-3 font-medium"
+              >
+                Review readiness
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="period in longHorizonPeriods"
+              :key="period.id"
+              class="border-b border-gray-700/70 last:border-b-0"
+            >
+              <th
+                scope="row"
+                class="px-3 py-3 font-medium text-white"
+              >
+                {{ period.label }}
+              </th>
+              <td class="px-3 py-3 text-gray-300">
+                {{ period.summary.applicableDecisionCount }}
+              </td>
+              <td class="px-3 py-3 text-gray-300">
+                {{ formatRate(
+                  period.summary.changedSelectionOutcomeCount,
+                  period.summary.changedSelectionRatePercent,
+                ) }}
+              </td>
+              <td class="px-3 py-3">
+                <span :class="calibrationReadinessPresentation(period).className">
+                  {{ calibrationReadinessPresentation(period).label }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="mt-4 text-xs text-gray-400">
+          The long-horizon cohort guard is based on aggregate counts only. Interpret any sustained signal by reviewing a representative cohort; do not infer correctness or causality from it.
+        </p>
+      </article>
+
+      <article class="overflow-x-auto rounded-lg border border-gray-700 bg-gray-800 p-5">
+        <h3 class="text-base font-medium">
           Score-margin outcome association
         </h3>
         <p class="mt-1 text-sm text-gray-400">
@@ -675,6 +771,9 @@ import {
 import {
   getPolicyCandidateCorrectionCohortCompositionPresentation,
 } from '@/utils/policyCandidateCorrectionCohortCompositionPresentation'
+import {
+  getPolicyCandidateCorrectionLongHorizonTrendPresentation,
+} from '@/utils/policyCandidateCorrectionLongHorizonTrendPresentation'
 
 const MetricRow = defineComponent({
   name: 'PolicyCandidateCorrectionAnalyticsMetricRow',
@@ -702,7 +801,7 @@ const monitoringStatusAnnouncement = computed(() => {
   if (loading.value) return 'Loading policy correction analytics.'
   if (errorMessage.value || !report.value) return 'Policy correction analytics are currently unavailable.'
 
-  return `${report.value.readiness.label}. ${overallCalibrationReadinessPresentation.value.label}. ${overallCohortCompositionPresentation.value.label}.`
+  return `${report.value.readiness.label}. ${overallCalibrationReadinessPresentation.value.label}. ${overallCohortCompositionPresentation.value.label}. ${overallLongHorizonTrendPresentation.value.label}.`
 })
 
 const overallCalibrationReadinessPresentation = computed(() => (
@@ -716,6 +815,21 @@ const overallTemporalStabilityPresentation = computed(() => (
 const overallCohortCompositionPresentation = computed(() => (
   cohortCompositionPresentation(report.value?.cohortComposition)
 ))
+const overallLongHorizonTrendPresentation = computed(() => (
+  longHorizonTrendPresentation(report.value?.longHorizonTrend?.trend)
+))
+const longHorizonCohortCompositionPresentation = computed(() => (
+  cohortCompositionPresentation(report.value?.longHorizonTrend?.cohortComposition)
+))
+const longHorizonPeriods = computed(() => {
+  const longHorizonTrend = report.value?.longHorizonTrend
+  if (!longHorizonTrend) return []
+
+  return [
+    { id: 'current', label: 'Current 28-day period', ...longHorizonTrend.current },
+    { id: 'previous', label: 'Previous 28-day period', ...longHorizonTrend.previous },
+  ]
+})
 const marginTemporalBuckets = computed(() => report.value?.temporalStability?.marginBuckets
   .map((entry) => ({
     ...report.value.marginBuckets.find((bucket) => bucket.marginBandId === entry.key),
@@ -775,6 +889,11 @@ function temporalStabilityPresentation(stability) {
 function cohortCompositionPresentation(composition) {
   return getPolicyCandidateCorrectionCohortCompositionPresentation(composition?.statusId) ||
     getPolicyCandidateCorrectionCohortCompositionPresentation('insufficient_data')
+}
+
+function longHorizonTrendPresentation(trend) {
+  return getPolicyCandidateCorrectionLongHorizonTrendPresentation(trend?.statusId) ||
+    getPolicyCandidateCorrectionLongHorizonTrendPresentation('needs_representative_periods')
 }
 
 function windowLabel(window) {
