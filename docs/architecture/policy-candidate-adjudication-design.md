@@ -86,7 +86,10 @@ Library profiles represent observed content in the configured libraries and
 are used as bounded aggregate facts. RAG today retrieves previous confirmed
 Classifarr classifications, not a vector index of every media-server item. The
 adjudication packet therefore labels its retrieval facts as *similar confirmed
-classifications* and never claims complete-library semantic recall.
+classifications* and never claims complete-library semantic recall. A separate
+current-library candidate lookup now supplies high-precision exact identifier,
+title/year, and bounded lexical catalog facts for the same closed candidate
+set; it is still not a whole-library semantic index.
 
 Remote providers do not receive RAG titles or profile distributions. They
 receive only each candidate's availability, item-count band, matching-history
@@ -114,10 +117,12 @@ untrusted evidence, never as instructions.
 
 1. Use deterministic policy ranking to bound AI comparison to two or three
    eligible destinations.
-2. Use library-profile aggregates and candidate-scoped historical retrieval as
-   advisory evidence, with stricter minimization for remote providers.
+2. Use library-profile aggregates, candidate-scoped history, and bounded
+   current-library catalog facts as advisory evidence, with stricter
+   minimization for remote providers.
 3. Treat model output as validated proposal data, not explanation, confidence,
    or authority.
 4. Require the existing operator destination decision for every adjudication.
-5. Next, build a separately governed index of current media-server library
-   items if whole-library semantic retrieval is desired.
+5. Next, measure the candidate-scoped catalog lookup and only then build a
+   separately governed semantic index of current media-server library items if
+   its recall warrants the operational and privacy cost.

@@ -12,10 +12,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 ### Added
 
 - **Bounded candidate adjudication** — Ambiguous policy selections can now receive an AI advisory comparison of two or three server-selected eligible destinations, using observed library-profile and relevant historical evidence while retaining operator confirmation.
+- **Current-library candidate retrieval** — Candidate adjudication now uses a bounded read-only lookup over the synchronized current library inventory, recognizing exact identifiers, title/year, and plain-text catalog matches without changing routing authority.
 
 ### Changed
 
 - **AI evidence minimization** — Candidate adjudication sends bounded profile distributions and limited historical titles only to a syntactically trusted local Ollama endpoint; all other providers and hosts receive aggregate availability, size-band, and match facts.
+- **Catalog evidence minimization** — Current-library lookup sends at most three title/year matches per candidate only to a syntactically trusted local Ollama endpoint; other providers receive aggregate retrieval facts only.
 - **Comparison coverage precision** — Destination competition now distinguishes complete active-competitor coverage from a genuinely capped comparison, including the exact-cap case, without exposing an active-policy total or identity.
 - **Shared-eligibility explanation** — Destination competition now explains possible overlap through allow-listed, anonymous declared-purpose category aggregates without exposing policy terms or changing routing authority.
 - **Destination competition preview** — Existing-policy maintenance can now compare a proposed draft against bounded, anonymous active same-media-type competitors and report aggregate deterministic eligibility overlap before saving.
@@ -26,6 +28,8 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 - **Adjudication authority boundary** — The server validates every proposal against the original policy-owned candidate set, discards model reasoning and confidence, persists only allow-listed status facts, and always keeps routing behind the operator decision.
 - **Ollama endpoint trust boundary** — Detailed candidate profiles and historical titles now require a syntax-validated trusted-local endpoint; an arbitrary DNS name or public address receives aggregate-only evidence.
+- **Current-library retrieval boundary** — Candidate-owned library IDs, media type, and result caps are fixed server-side; descriptions are never returned from the read-only query, unexpected library rows are discarded, and retrieval failure remains advisory and unavailable.
+- **Retrieved-text containment** — Catalog title evidence is normalized to a bounded single line and retrieval labels are allow-listed before prompt construction, limiting prompt-shaped media metadata.
 
 - **Comparison-cap privacy boundary** — Coverage detection uses one server-only sentinel to identify omitted competitors; the sentinel, total active-policy count, configurations, identities, and routing authority remain unavailable to clients.
 - **Explanation privacy boundary** — Shared-eligibility explanations expose only allow-listed category labels and anonymous configuration counts after a bounded shared result; they never return rule values, competitor identities, item outcomes, AI state, or routing control.

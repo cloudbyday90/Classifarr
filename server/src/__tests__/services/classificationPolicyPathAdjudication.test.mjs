@@ -73,6 +73,11 @@ describe('ClassificationPolicyPathService candidate adjudication', () => {
       expect.any(Object),
       expect.objectContaining({ mode: 'adjudicate' }),
     );
+    expect(service.policyCandidateAdjudicationEvidenceService.build).toHaveBeenCalledWith(expect.objectContaining({
+      contract: expect.any(Object),
+      ragContext: null,
+      metadata: expect.objectContaining({ title: 'Range of Stars', media_type: 'movie' }),
+    }));
     expect(ensureDecisionQuestion).toHaveBeenCalledWith(expect.objectContaining({
       policyResult,
       libraries,

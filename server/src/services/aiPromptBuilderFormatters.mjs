@@ -226,6 +226,20 @@ export function formatCandidateAdjudication(data) {
                 lines.push(`   Bounded similar titles: ${candidate.rag.titles.join(', ')}`);
             }
         }
+        if (candidate.currentLibrary?.statusId === 'available') {
+            const matchDescription = candidate.currentLibrary.directMatch
+                ? 'direct catalog match'
+                : `${candidate.currentLibrary.matchCount || 0} bounded catalog match(es)`;
+            lines.push(`   Current library catalog: ${matchDescription}${candidate.currentLibrary.topMatchKind ? ` (${candidate.currentLibrary.topMatchKind})` : ''}`);
+            if (Array.isArray(candidate.currentLibrary.items) && candidate.currentLibrary.items.length > 0) {
+                const items = candidate.currentLibrary.items
+                    .map((item) => item.year ? `${item.title} (${item.year})` : item.title)
+                    .filter(Boolean);
+                if (items.length > 0) lines.push(`   Bounded catalog titles: ${items.join(', ')}`);
+            }
+        } else if (candidate.currentLibrary?.statusId === 'unavailable') {
+            lines.push('   Current library catalog: unavailable');
+        }
     }
 
     lines.push('====================================');

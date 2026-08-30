@@ -547,6 +547,14 @@ describe('aiClassify', () => {
               policyScore: 71,
               profile: { available: true, itemCountBand: '100-499', topGenres: [{ label: 'Drama', percentage: 55 }] },
               rag: { matchCount: 1, topSimilarity: 91, titles: ['Existing Movie'] },
+              currentLibrary: {
+                statusId: 'available',
+                matchCount: 1,
+                directMatch: true,
+                topMatchKind: 'identifier',
+                topRelevance: 100,
+                items: [{ title: 'Current Catalog Movie', year: 2026, matchKind: 'identifier', relevance: 100 }],
+              },
             },
             {
               libraryNumber: 2,
@@ -565,6 +573,7 @@ describe('aiClassify', () => {
     expect(modeOptions).toEqual({ mode: 'adjudicate' });
     expect(promptContext.ragContext).toBeNull();
     expect(JSON.stringify(promptContext.candidateAdjudicationEvidence)).not.toContain('Existing Movie');
+    expect(JSON.stringify(promptContext.candidateAdjudicationEvidence)).not.toContain('Current Catalog Movie');
     expect(JSON.stringify(promptContext.candidateAdjudicationEvidence)).not.toContain('Drama');
     expect(libraryProfileService.getProfileStats).not.toHaveBeenCalled();
     expect(aiRouter.classify).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({
@@ -602,6 +611,14 @@ describe('aiClassify', () => {
               topGenres: [{ label: 'Drama', percentage: 55 }],
             },
             rag: { matchCount: 1, topSimilarity: 91, titles: ['Existing Movie'] },
+            currentLibrary: {
+              statusId: 'available',
+              matchCount: 1,
+              directMatch: true,
+              topMatchKind: 'identifier',
+              topRelevance: 100,
+              items: [{ title: 'Current Catalog Movie', year: 2026, matchKind: 'identifier', relevance: 100 }],
+            },
           }],
         },
       },
@@ -609,6 +626,7 @@ describe('aiClassify', () => {
 
     const [promptContext] = aiPromptBuilder.buildPrompt.mock.calls[0];
     expect(JSON.stringify(promptContext.candidateAdjudicationEvidence)).toContain('Existing Movie');
+    expect(JSON.stringify(promptContext.candidateAdjudicationEvidence)).toContain('Current Catalog Movie');
     expect(JSON.stringify(promptContext.candidateAdjudicationEvidence)).toContain('Drama');
   });
 

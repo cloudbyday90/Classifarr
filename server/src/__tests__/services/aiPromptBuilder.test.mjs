@@ -277,6 +277,14 @@ describe('AIPromptBuilder', () => {
                             topGenres: [{ label: 'Drama', percentage: 55 }],
                         },
                         rag: { matchCount: 1, topSimilarity: 91, titles: ['Existing Movie'] },
+                        currentLibrary: {
+                            statusId: 'available',
+                            matchCount: 1,
+                            directMatch: true,
+                            topMatchKind: 'identifier',
+                            topRelevance: 100,
+                            items: [{ title: 'Current Catalog Movie', year: 2026 }],
+                        },
                     },
                     {
                         libraryNumber: 2,
@@ -295,6 +303,8 @@ describe('AIPromptBuilder', () => {
             expect(result).toContain('1. "Movies" (movie)');
             expect(result).toContain('Top genres: Drama (55%)');
             expect(result).toContain('Bounded similar titles: Existing Movie');
+            expect(result).toContain('Current library catalog: direct catalog match (identifier)');
+            expect(result).toContain('Bounded catalog titles: Current Catalog Movie (2026)');
             expect(result).toContain('2. "Family" (movie)');
         });
     });

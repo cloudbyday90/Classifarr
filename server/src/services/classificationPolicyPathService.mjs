@@ -200,6 +200,7 @@ export class ClassificationPolicyPathService {
 			? await this.policyCandidateAdjudicationEvidenceService.build({
 				contract: candidateAdjudication,
 				ragContext,
+				metadata,
 			})
 			: null;
 
