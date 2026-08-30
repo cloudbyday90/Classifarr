@@ -748,6 +748,13 @@ describe('logClassification', () => {
         provider: 'Private provider',
         exactElapsedMs: 67,
       },
+      candidate_contrastive_evidence: {
+        version: 'policy.candidate_contrastive_evidence.v1',
+        provenance_id: 'exact_tmdb_current_library_inventory',
+        status_id: 'alternative_identity_match',
+        library_ids: [2],
+        catalog_title: 'Private catalog title',
+      },
     };
 
     await classificationPersistenceService.logClassification(baseMetadata, result);
@@ -761,6 +768,11 @@ describe('logClassification', () => {
       candidate_count: 2,
       matched_candidate_count: 1,
       direct_match_candidate_count: 1,
+    });
+    expect(persistedMetadata.classification_details.candidate_contrastive_evidence).toEqual({
+      version: 'policy.candidate_contrastive_evidence.v1',
+      provenance_id: 'exact_tmdb_current_library_inventory',
+      status_id: 'alternative_identity_match',
     });
     expect(JSON.stringify(persistedMetadata)).not.toContain('Private catalog title');
     expect(JSON.stringify(persistedMetadata)).not.toContain('Private provider');

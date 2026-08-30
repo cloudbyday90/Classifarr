@@ -23,6 +23,9 @@ import {
 import {
   buildPolicyCandidateEvidenceCard,
 } from './policyCandidateEvidenceCard.mjs';
+import {
+  buildPolicyCandidateContrastiveEvidenceProjection,
+} from './policyCandidateContrastiveEvidence.mjs';
 
 export const POLICY_RUNTIME_QUESTION_DECISION_PRESENTATION_VERSION =
   'policy.runtime_question_decision_presentation.v1';
@@ -237,6 +240,9 @@ function buildDeterministicDecision({ classification, question, candidateDestina
       candidate,
       sourceMetadata,
     }),
+    candidate_contrastive_evidence: buildPolicyCandidateContrastiveEvidenceProjection(
+      details.candidate_contrastive_evidence,
+    ),
     score_explanation: buildPolicyRuntimeQuestionScoreExplanation({
       candidate,
       displayedScore: decisionScore,

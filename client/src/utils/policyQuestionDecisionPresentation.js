@@ -6,6 +6,9 @@
 import {
   normalizePolicyCandidateEvidenceCard,
 } from './policyCandidateEvidenceCardPresentation'
+import {
+  normalizePolicyCandidateContrastiveEvidence,
+} from './policyCandidateContrastiveEvidencePresentation'
 
 export const POLICY_RUNTIME_QUESTION_DECISION_PRESENTATION_VERSION =
   'policy.runtime_question_decision_presentation.v1'
@@ -218,6 +221,9 @@ export function policyQuestionDecisionPresentation(answer = {}) {
         .slice(0, 4),
       candidate_evidence_card: normalizePolicyCandidateEvidenceCard(
         deterministic?.candidate_evidence_card,
+      ),
+      candidate_contrastive_evidence: normalizePolicyCandidateContrastiveEvidence(
+        deterministic?.candidate_contrastive_evidence,
       ),
       score_explanation: scoreExplanation(deterministic?.score_explanation),
       safety_gate: safetyGate(deterministic?.safety_gate),

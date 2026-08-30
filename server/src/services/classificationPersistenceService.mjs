@@ -39,6 +39,9 @@ import { buildPolicyCandidateAdjudicationProjection } from './policyCandidateAdj
 import {
   buildCurrentLibraryCandidateRetrievalTelemetryProjection,
 } from './currentLibraryCandidateRetrievalTelemetry.mjs';
+import {
+  buildPolicyCandidateContrastiveEvidenceProjection,
+} from './policyCandidateContrastiveEvidence.mjs';
 import { buildClassificationQueueDecisionWitness } from './classificationQueueDecisionWitness.mjs';
 import {
   classificationQueueDecisionWitnessRepository,
@@ -364,6 +367,9 @@ export class ClassificationPersistenceService {
         buildCurrentLibraryCandidateRetrievalTelemetryProjection(
           result.current_library_candidate_retrieval_telemetry,
         ),
+      candidate_contrastive_evidence: buildPolicyCandidateContrastiveEvidenceProjection(
+        result.candidate_contrastive_evidence,
+      ),
       route_safety: buildClassificationRouteSafetyProjection(result.route_safety),
       processing_time_ms: processingTimeMs,
     };

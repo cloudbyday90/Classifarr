@@ -97,6 +97,29 @@
             </li>
           </ul>
         </section>
+        <section
+          v-if="candidateContrastiveEvidence"
+          class="candidate-evidence-card"
+          :class="`candidate-evidence-card--${candidateContrastiveEvidence.tone}`"
+          aria-labelledby="candidate-contrastive-evidence-heading"
+        >
+          <h4
+            id="candidate-contrastive-evidence-heading"
+            class="candidate-evidence-card-label"
+          >
+            Cross-library identity check
+          </h4>
+          <p
+            class="candidate-evidence-card-title"
+            role="status"
+            aria-atomic="true"
+          >
+            {{ candidateContrastiveEvidence.label }}
+          </p>
+          <p>
+            {{ candidateContrastiveEvidence.message }}
+          </p>
+        </section>
         <details
           v-if="scoreExplanation"
           class="score-explanation"
@@ -287,6 +310,9 @@ import {
 import {
   getPolicyCandidateEvidenceCardPresentation,
 } from '@/utils/policyCandidateEvidenceCardPresentation'
+import {
+  getPolicyCandidateContrastiveEvidencePresentation,
+} from '@/utils/policyCandidateContrastiveEvidencePresentation'
 
 const props = defineProps({
   answer: {
@@ -316,6 +342,9 @@ const scoreExplanation = computed(() => (
 ))
 const candidateEvidenceCard = computed(() => getPolicyCandidateEvidenceCardPresentation(
   decisionPresentation.value?.deterministic?.candidate_evidence_card,
+))
+const candidateContrastiveEvidence = computed(() => getPolicyCandidateContrastiveEvidencePresentation(
+  decisionPresentation.value?.deterministic?.candidate_contrastive_evidence,
 ))
 const leadingDestination = computed(() => recommendation.value?.leading_destination || null)
 const candidateDestinations = computed(() => policyQuestionCandidateDestinations(props.answer))

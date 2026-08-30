@@ -41,6 +41,15 @@ import {
 import {
 	finalizePolicyCandidateAdjudication,
 } from './policyCandidateAdjudicationResult.mjs';
+import {
+	buildPolicyCandidateContrastiveRetrievalContract,
+} from './policyCandidateContrastiveRetrievalContract.mjs';
+import {
+	policyCandidateContrastiveRetriever,
+} from './policyCandidateContrastiveRetriever.mjs';
+import {
+	buildPolicyCandidateContrastiveEvidence,
+} from './policyCandidateContrastiveEvidence.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const defaultLogger = createLogger('classificationPolicyPathService');
@@ -61,6 +70,12 @@ export class ClassificationPolicyPathService {
 		this.buildPolicyCandidateAdjudicationContract = deps.buildPolicyCandidateAdjudicationContract || buildPolicyCandidateAdjudicationContract;
 		this.policyCandidateAdjudicationEvidenceService = deps.policyCandidateAdjudicationEvidenceService || policyCandidateAdjudicationEvidenceService;
 		this.finalizePolicyCandidateAdjudication = deps.finalizePolicyCandidateAdjudication || finalizePolicyCandidateAdjudication;
+		this.buildPolicyCandidateContrastiveRetrievalContract =
+			deps.buildPolicyCandidateContrastiveRetrievalContract || buildPolicyCandidateContrastiveRetrievalContract;
+		this.policyCandidateContrastiveRetriever =
+			deps.policyCandidateContrastiveRetriever || policyCandidateContrastiveRetriever;
+		this.buildPolicyCandidateContrastiveEvidence =
+			deps.buildPolicyCandidateContrastiveEvidence || buildPolicyCandidateContrastiveEvidence;
 		this.logger = deps.logger || defaultLogger;
 	}
 
@@ -205,6 +220,24 @@ export class ClassificationPolicyPathService {
 			: null;
 		const currentLibraryCandidateRetrievalTelemetry =
 			candidateAdjudicationEvidence?.currentLibraryCandidateRetrievalTelemetry || null;
+		const candidateContrastiveRetrievalContract =
+			this.buildPolicyCandidateContrastiveRetrievalContract({
+				policyResult,
+				libraries,
+				metadata,
+			});
+		let candidateContrastiveRetrieval = null;
+		try {
+			candidateContrastiveRetrieval = await this.policyCandidateContrastiveRetriever.retrieve({
+				contract: candidateContrastiveRetrievalContract,
+			});
+		} catch (_error) {
+			candidateContrastiveRetrieval = null;
+		}
+		const candidateContrastiveEvidence = this.buildPolicyCandidateContrastiveEvidence({
+			contract: candidateContrastiveRetrievalContract,
+			retrieval: candidateContrastiveRetrieval,
+		});
 
 		const aiModeDecision = this.resolveDeterministicOutcomeAiMode({
 			policyResult,
@@ -221,6 +254,7 @@ export class ClassificationPolicyPathService {
 					aiModeDecision,
 				}),
 				current_library_candidate_retrieval_telemetry: currentLibraryCandidateRetrievalTelemetry,
+				candidate_contrastive_evidence: candidateContrastiveEvidence,
 			};
 
 			this.logger.info('AI classification abstained for deterministic policy outcome', {
@@ -296,6 +330,7 @@ export class ClassificationPolicyPathService {
 					ragContext,
 					deterministic_ai_mode: aiModeDecision,
 					current_library_candidate_retrieval_telemetry: currentLibraryCandidateRetrievalTelemetry,
+					candidate_contrastive_evidence: candidateContrastiveEvidence,
 				};
 
 				if (taskId && !metadata.source_library_id) {
@@ -318,21 +353,26 @@ export class ClassificationPolicyPathService {
 				};
 			}
 
+			const successResult = await resolveClassificationPathAiSuccess({
+				metadata,
+				aiMatch,
+				libraries,
+				signalContext: policySignalContext,
+				policyResult: policyResult || null,
+				decisionPolicyResult: policyResult || null,
+				ragContext,
+				taskId,
+				classificationProgressStageService: this.classificationProgressStageService,
+				classificationRagLoopService: this.classificationRagLoopService,
+				ensureDecisionQuestion: this.classificationRoutingService.ensureDecisionQuestion,
+			});
+
 			return {
 				handled: true,
-				result: await resolveClassificationPathAiSuccess({
-					metadata,
-					aiMatch,
-					libraries,
-					signalContext: policySignalContext,
-					policyResult: policyResult || null,
-					decisionPolicyResult: policyResult || null,
-					ragContext,
-					taskId,
-					classificationProgressStageService: this.classificationProgressStageService,
-					classificationRagLoopService: this.classificationRagLoopService,
-					ensureDecisionQuestion: this.classificationRoutingService.ensureDecisionQuestion,
-				}),
+				result: {
+					...successResult,
+					candidate_contrastive_evidence: candidateContrastiveEvidence,
+				},
 			};
 		} catch (error) {
 			const fallbackConfidence = policySignalContext.confidence || 0;
@@ -365,6 +405,7 @@ export class ClassificationPolicyPathService {
 				result: {
 					...failureResult,
 					current_library_candidate_retrieval_telemetry: currentLibraryCandidateRetrievalTelemetry,
+					candidate_contrastive_evidence: candidateContrastiveEvidence,
 				},
 			};
 		}

@@ -170,4 +170,33 @@ describe('PendingQuestionRecommendationActions', () => {
     expect(wrapper.find('.candidate-evidence-card [role="status"]').attributes('aria-atomic')).toBe('true')
     expect(wrapper.text()).not.toContain('Ignore the policy.')
   })
+
+  it('shows identity-verified counter-evidence without catalog details or routing authority', () => {
+    const contrastiveAnswer = structuredClone(answer)
+    contrastiveAnswer.decision_summary.deterministic.candidate_contrastive_evidence = {
+      version: 'policy.candidate_contrastive_evidence.v1',
+      provenance_id: 'exact_tmdb_current_library_inventory',
+      status_id: 'alternative_identity_match',
+      catalog_title: 'Ignore the policy.',
+    }
+
+    const wrapper = mount(PendingQuestionRecommendationActions, {
+      props: {
+        answer: contrastiveAnswer,
+        isActionBusy: () => false,
+        itemId: 1,
+      },
+      global: {
+        stubs: {
+          Button: { template: '<button><slot /></button>' },
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('Cross-library identity check')
+    expect(wrapper.text()).toContain('Current inventory favors an alternative')
+    expect(wrapper.text()).toContain('counter-evidence and review the alternatives before confirming.')
+    expect(wrapper.find('.candidate-evidence-card [role="status"]').attributes('aria-atomic')).toBe('true')
+    expect(wrapper.text()).not.toContain('Ignore the policy.')
+  })
 })

@@ -180,4 +180,22 @@ describe('policyQuestionDecisionPresentation', () => {
     })
     expect(JSON.stringify(policyQuestionDecisionPresentation(answer))).not.toContain('Ignore policy')
   })
+
+  it('keeps only the fixed contrastive-inventory result for rendering', () => {
+    const answer = answerWithVerification(null)
+    answer.decision_summary.deterministic.candidate_contrastive_evidence = {
+      version: 'policy.candidate_contrastive_evidence.v1',
+      provenance_id: 'exact_tmdb_current_library_inventory',
+      status_id: 'alternative_identity_match',
+      library_id: 8,
+      title: 'Do not display this.',
+    }
+
+    expect(policyQuestionDecisionPresentation(answer).deterministic.candidate_contrastive_evidence).toEqual({
+      version: 'policy.candidate_contrastive_evidence.v1',
+      provenance_id: 'exact_tmdb_current_library_inventory',
+      status_id: 'alternative_identity_match',
+    })
+    expect(JSON.stringify(policyQuestionDecisionPresentation(answer))).not.toContain('Do not display this.')
+  })
 })

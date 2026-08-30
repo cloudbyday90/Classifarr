@@ -69,6 +69,22 @@ describe('ClassificationPolicyPathService candidate adjudication', () => {
         method: 'policy_candidate_adjudication',
         candidate_adjudication: { statusId: 'proposed', candidateCount: 2 },
       }),
+      buildPolicyCandidateContrastiveRetrievalContract: jest.fn().mockReturnValue({
+        valid: true,
+        candidates: [{ libraryId: 1 }, { libraryId: 2 }],
+      }),
+      policyCandidateContrastiveRetriever: {
+        retrieve: jest.fn().mockResolvedValue({
+          version: 'policy.candidate_contrastive_retrieval.v1',
+          statusId: 'available',
+          matchedLibraryIds: [2],
+        }),
+      },
+      buildPolicyCandidateContrastiveEvidence: jest.fn().mockReturnValue({
+        version: 'policy.candidate_contrastive_evidence.v1',
+        provenance_id: 'exact_tmdb_current_library_inventory',
+        status_id: 'alternative_identity_match',
+      }),
       classificationProgressStageService: { updateStage: jest.fn() },
       logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
     });
@@ -89,6 +105,9 @@ describe('ClassificationPolicyPathService candidate adjudication', () => {
       ragContext: null,
       metadata: expect.objectContaining({ title: 'Range of Stars', media_type: 'movie' }),
     }));
+    expect(service.policyCandidateContrastiveRetriever.retrieve).toHaveBeenCalledWith({
+      contract: expect.any(Object),
+    });
     expect(ensureDecisionQuestion).toHaveBeenCalledWith(expect.objectContaining({
       policyResult,
       libraries,
@@ -101,6 +120,9 @@ describe('ClassificationPolicyPathService candidate adjudication', () => {
       current_library_candidate_retrieval_telemetry: {
         latency_band: 'under_25ms',
         direct_match_candidate_count: 1,
+      },
+      candidate_contrastive_evidence: {
+        status_id: 'alternative_identity_match',
       },
     });
   });
