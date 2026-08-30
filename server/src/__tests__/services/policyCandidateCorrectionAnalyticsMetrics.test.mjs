@@ -7,6 +7,7 @@ import { describe, expect, test } from '@jest/globals';
 
 import {
   buildPolicyCandidateCorrectionAnalyticsMetricsReport,
+  buildPolicyCandidateCorrectionAnalyticsMetricsWindows,
   buildPolicyCandidateCorrectionAnalyticsMetricsWindow,
   normalizePolicyCandidateCorrectionAnalyticsMetricsWindowDays,
 } from '../../services/policyCandidateCorrectionAnalyticsMetrics.mjs';
@@ -24,6 +25,16 @@ describe('policyCandidateCorrectionAnalyticsMetrics', () => {
       start: new Date('2026-08-16T00:00:00.000Z'),
       end: new Date('2026-08-30T00:00:00.000Z'),
     }));
+  });
+
+  test('uses adjacent windows with the same bounded day count for temporal monitoring', () => {
+    expect(buildPolicyCandidateCorrectionAnalyticsMetricsWindows({
+      windowDays: 14,
+      now: new Date('2026-08-30T18:30:00.000Z'),
+    })).toMatchObject({
+      current: { days: 14, start: new Date('2026-08-16T00:00:00.000Z') },
+      previous: { days: 14, end: new Date('2026-08-16T00:00:00.000Z') },
+    });
   });
 
   test('reports fixed margin and source-state buckets while dropping unknown dimensions', () => {

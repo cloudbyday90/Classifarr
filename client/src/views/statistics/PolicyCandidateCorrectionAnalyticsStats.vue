@@ -115,6 +115,176 @@
 
       <article class="overflow-x-auto rounded-lg border border-gray-700 bg-gray-800 p-5">
         <h3 class="text-base font-medium">
+          Stability across adjacent completed windows
+        </h3>
+        <p class="mt-1 text-sm text-gray-400">
+          The same fixed aggregate is compared in the current and immediately preceding complete UTC-day windows. A repeated signal is an advisory reason to review representative decisions, never an automatic maintenance or routing change.
+        </p>
+        <p
+          class="mt-4 text-sm font-medium"
+          :class="overallTemporalStabilityPresentation.className"
+        >
+          {{ overallTemporalStabilityPresentation.label }}
+        </p>
+        <p class="mt-1 text-sm text-gray-300">
+          {{ overallTemporalStabilityPresentation.message }}
+        </p>
+        <dl class="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+          <MetricRow
+            label="Current window"
+            :value="windowLabel(report.window)"
+          />
+          <MetricRow
+            label="Previous window"
+            :value="windowLabel(report.previousWindow)"
+          />
+          <MetricRow
+            label="Applicable decisions"
+            :value="`${report.temporalStability.summary.currentApplicableDecisionCount} current / ${report.temporalStability.summary.previousApplicableDecisionCount} previous`"
+          />
+        </dl>
+
+        <table class="mt-5 min-w-full text-left text-sm">
+          <caption class="sr-only">
+            Adjacent completed-window stability for fixed policy-score margin bands.
+          </caption>
+          <thead class="border-b border-gray-700 text-xs uppercase tracking-wide text-gray-400">
+            <tr>
+              <th
+                scope="col"
+                class="px-3 py-3 font-medium"
+              >
+                Margin band
+              </th>
+              <th
+                scope="col"
+                class="px-3 py-3 font-medium"
+              >
+                Current readiness
+              </th>
+              <th
+                scope="col"
+                class="px-3 py-3 font-medium"
+              >
+                Previous readiness
+              </th>
+              <th
+                scope="col"
+                class="px-3 py-3 font-medium"
+              >
+                Adjacent-window status
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="bucket in marginTemporalBuckets"
+              :key="bucket.marginBandId"
+              class="border-b border-gray-700/70 last:border-b-0"
+            >
+              <th
+                scope="row"
+                class="px-3 py-3 font-medium text-white"
+              >
+                {{ bucket.label }}
+              </th>
+              <td class="px-3 py-3">
+                <span :class="calibrationReadinessPresentation(bucket.current).className">
+                  {{ calibrationReadinessPresentation(bucket.current).label }}
+                </span>
+              </td>
+              <td class="px-3 py-3">
+                <span :class="calibrationReadinessPresentation(bucket.previous).className">
+                  {{ calibrationReadinessPresentation(bucket.previous).label }}
+                </span>
+              </td>
+              <td class="px-3 py-3">
+                <span :class="temporalStabilityPresentation(bucket.stability).className">
+                  {{ temporalStabilityPresentation(bucket.stability).label }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <table
+          v-if="evidenceTemporalBuckets.length"
+          class="mt-5 min-w-full text-left text-sm"
+        >
+          <caption class="sr-only">
+            Adjacent completed-window stability for fixed original evidence-source states.
+          </caption>
+          <thead class="border-b border-gray-700 text-xs uppercase tracking-wide text-gray-400">
+            <tr>
+              <th
+                scope="col"
+                class="px-3 py-3 font-medium"
+              >
+                Evidence source
+              </th>
+              <th
+                scope="col"
+                class="px-3 py-3 font-medium"
+              >
+                Original state
+              </th>
+              <th
+                scope="col"
+                class="px-3 py-3 font-medium"
+              >
+                Current readiness
+              </th>
+              <th
+                scope="col"
+                class="px-3 py-3 font-medium"
+              >
+                Previous readiness
+              </th>
+              <th
+                scope="col"
+                class="px-3 py-3 font-medium"
+              >
+                Adjacent-window status
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="bucket in evidenceTemporalBuckets"
+              :key="`${bucket.evidenceSourceId}:${bucket.evidenceStateId}`"
+              class="border-b border-gray-700/70 last:border-b-0"
+            >
+              <th
+                scope="row"
+                class="px-3 py-3 font-medium text-white"
+              >
+                {{ bucket.sourceLabel }}
+              </th>
+              <td class="px-3 py-3 text-gray-300">
+                {{ bucket.stateLabel }}
+              </td>
+              <td class="px-3 py-3">
+                <span :class="calibrationReadinessPresentation(bucket.current).className">
+                  {{ calibrationReadinessPresentation(bucket.current).label }}
+                </span>
+              </td>
+              <td class="px-3 py-3">
+                <span :class="calibrationReadinessPresentation(bucket.previous).className">
+                  {{ calibrationReadinessPresentation(bucket.previous).label }}
+                </span>
+              </td>
+              <td class="px-3 py-3">
+                <span :class="temporalStabilityPresentation(bucket.stability).className">
+                  {{ temporalStabilityPresentation(bucket.stability).label }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </article>
+
+      <article class="overflow-x-auto rounded-lg border border-gray-700 bg-gray-800 p-5">
+        <h3 class="text-base font-medium">
           Score-margin outcome association
         </h3>
         <p class="mt-1 text-sm text-gray-400">
@@ -338,6 +508,9 @@ import {
   formatPolicyCandidateCorrectionConfidenceInterval,
   getPolicyCandidateCorrectionCalibrationReadinessPresentation,
 } from '@/utils/policyCandidateCorrectionCalibrationReadinessPresentation'
+import {
+  getPolicyCandidateCorrectionTemporalStabilityPresentation,
+} from '@/utils/policyCandidateCorrectionTemporalStabilityPresentation'
 
 const MetricRow = defineComponent({
   name: 'PolicyCandidateCorrectionAnalyticsMetricRow',
@@ -373,6 +546,36 @@ const overallCalibrationReadinessPresentation = computed(() => (
     report.value?.calibrationReadiness?.statusId,
   ) || getPolicyCandidateCorrectionCalibrationReadinessPresentation('insufficient_data')
 ))
+const overallTemporalStabilityPresentation = computed(() => (
+  temporalStabilityPresentation(report.value?.temporalStability?.summary)
+))
+const marginTemporalBuckets = computed(() => report.value?.temporalStability?.marginBuckets
+  .map((entry) => ({
+    ...report.value.marginBuckets.find((bucket) => bucket.marginBandId === entry.key),
+    current: report.value.marginBuckets.find((bucket) => bucket.marginBandId === entry.key)
+      ?.calibrationReadiness,
+    previous: report.value.previousMarginBuckets.find((bucket) => bucket.marginBandId === entry.key)
+      ?.calibrationReadiness,
+    stability: entry.stability,
+  })) || [])
+const evidenceTemporalBuckets = computed(() => report.value?.temporalStability?.evidenceSourceStateBuckets
+  .map((entry) => {
+    const [evidenceSourceId, evidenceStateId] = entry.key.split(':')
+    const current = report.value.evidenceSourceStateBuckets.find((bucket) => (
+      bucket.evidenceSourceId === evidenceSourceId && bucket.evidenceStateId === evidenceStateId
+    ))
+    const previous = report.value.previousEvidenceSourceStateBuckets.find((bucket) => (
+      bucket.evidenceSourceId === evidenceSourceId && bucket.evidenceStateId === evidenceStateId
+    ))
+    const displayed = current || previous
+
+    return {
+      ...displayed,
+      current: current?.calibrationReadiness,
+      previous: previous?.calibrationReadiness,
+      stability: entry.stability,
+    }
+  }) || [])
 
 function formatRate(count, percentage) {
   return `${Number(count) || 0} (${Number(percentage) || 0}%)`
@@ -382,6 +585,16 @@ function calibrationReadinessPresentation(bucket) {
   return getPolicyCandidateCorrectionCalibrationReadinessPresentation(
     bucket?.calibrationReadiness?.statusId,
   ) || getPolicyCandidateCorrectionCalibrationReadinessPresentation('insufficient_data')
+}
+
+function temporalStabilityPresentation(stability) {
+  return getPolicyCandidateCorrectionTemporalStabilityPresentation(stability?.statusId) ||
+    getPolicyCandidateCorrectionTemporalStabilityPresentation('insufficient_comparison_data')
+}
+
+function windowLabel(window) {
+  if (!window?.startDate || !window?.endDate) return 'Unavailable'
+  return `${window.startDate} to ${window.endDate}`
 }
 
 function formatConfidenceInterval(interval) {

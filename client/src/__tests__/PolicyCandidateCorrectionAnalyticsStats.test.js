@@ -43,7 +43,7 @@ const reviewReadiness = {
 }
 
 const report = {
-  version: 'policy.candidate_correction_analytics_metrics.v2',
+  version: 'policy.candidate_correction_analytics_metrics.v3',
   window: { days: 7, startDate: '2026-08-23', endDate: '2026-08-30' },
   marginBuckets: [
     {
@@ -87,6 +87,96 @@ const report = {
     routedNotApplicableOutcomeCount: 0,
   },
   calibrationReadiness: reviewReadiness,
+  previousWindow: { days: 7, startDate: '2026-08-16', endDate: '2026-08-23' },
+  previousMarginBuckets: [
+    {
+      marginBandId: '5_to_14',
+      outcomeCount: 20,
+      confirmedLeaderOutcomeCount: 10,
+      changedToCandidateOutcomeCount: 6,
+      changedOutsideCandidatesOutcomeCount: 4,
+      routedNotApplicableOutcomeCount: 0,
+      calibrationReadiness: reviewReadiness,
+    },
+    ...['0_to_4', '15_to_29', '30_or_more'].map((marginBandId) => ({
+      marginBandId,
+      outcomeCount: 0,
+      confirmedLeaderOutcomeCount: 0,
+      changedToCandidateOutcomeCount: 0,
+      changedOutsideCandidatesOutcomeCount: 0,
+      routedNotApplicableOutcomeCount: 0,
+      calibrationReadiness: emptyReadiness,
+    })),
+  ],
+  previousEvidenceSourceStateBuckets: [
+    {
+      evidenceSourceId: 'declared_policy',
+      evidenceStateId: 'supporting',
+      outcomeCount: 20,
+      confirmedLeaderOutcomeCount: 10,
+      changedToCandidateOutcomeCount: 6,
+      changedOutsideCandidatesOutcomeCount: 4,
+      routedNotApplicableOutcomeCount: 0,
+      calibrationReadiness: reviewReadiness,
+    },
+  ],
+  previousSummary: {
+    outcomeCount: 20,
+    confirmedLeaderOutcomeCount: 10,
+    changedToCandidateOutcomeCount: 6,
+    changedOutsideCandidatesOutcomeCount: 4,
+    routedNotApplicableOutcomeCount: 0,
+  },
+  previousCalibrationReadiness: reviewReadiness,
+  temporalStability: {
+    version: 'policy.candidate_correction_temporal_stability.v1',
+    summary: {
+      version: 'policy.candidate_correction_temporal_stability.v1',
+      statusId: 'persistent_review_signal',
+      currentStatusId: 'review_recommended',
+      previousStatusId: 'review_recommended',
+      currentApplicableDecisionCount: 20,
+      previousApplicableDecisionCount: 20,
+    },
+    marginBuckets: [
+      {
+        marginBandId: '5_to_14',
+        stability: {
+          version: 'policy.candidate_correction_temporal_stability.v1',
+          statusId: 'persistent_review_signal',
+          currentStatusId: 'review_recommended',
+          previousStatusId: 'review_recommended',
+          currentApplicableDecisionCount: 20,
+          previousApplicableDecisionCount: 20,
+        },
+      },
+      ...['0_to_4', '15_to_29', '30_or_more'].map((marginBandId) => ({
+        marginBandId,
+        stability: {
+          version: 'policy.candidate_correction_temporal_stability.v1',
+          statusId: 'insufficient_comparison_data',
+          currentStatusId: 'insufficient_data',
+          previousStatusId: 'insufficient_data',
+          currentApplicableDecisionCount: 0,
+          previousApplicableDecisionCount: 0,
+        },
+      })),
+    ],
+    evidenceSourceStateBuckets: [
+      {
+        evidenceSourceId: 'declared_policy',
+        evidenceStateId: 'supporting',
+        stability: {
+          version: 'policy.candidate_correction_temporal_stability.v1',
+          statusId: 'persistent_review_signal',
+          currentStatusId: 'review_recommended',
+          previousStatusId: 'review_recommended',
+          currentApplicableDecisionCount: 20,
+          previousApplicableDecisionCount: 20,
+        },
+      },
+    ],
+  },
 }
 
 describe('PolicyCandidateCorrectionAnalyticsStats.vue', () => {
@@ -102,12 +192,13 @@ describe('PolicyCandidateCorrectionAnalyticsStats.vue', () => {
     expect(wrapper.text()).toContain('Declared policy')
     expect(wrapper.text()).toContain('10 (50%)')
     expect(wrapper.text()).toContain('Review outcome pattern')
+    expect(wrapper.text()).toContain('Persistent review signal')
     expect(wrapper.text()).toContain('95% Wilson interval: 29.9%–70.1%')
     expect(wrapper.text()).toContain('do not establish correctness or change policy, AI, RAG, learning, or routing')
-    expect(wrapper.findAll('table')).toHaveLength(2)
-    expect(wrapper.findAll('caption')).toHaveLength(2)
-    expect(wrapper.findAll('th[scope="col"]')).toHaveLength(15)
-    expect(wrapper.findAll('th[scope="row"]')).toHaveLength(5)
+    expect(wrapper.findAll('table')).toHaveLength(4)
+    expect(wrapper.findAll('caption')).toHaveLength(4)
+    expect(wrapper.findAll('th[scope="col"]')).toHaveLength(24)
+    expect(wrapper.findAll('th[scope="row"]')).toHaveLength(10)
     expect(wrapper.find('[role="status"]').attributes('aria-atomic')).toBe('true')
     expect(wrapper.findAll('button')).toHaveLength(0)
     expect(wrapper.text()).not.toContain('Do not display')

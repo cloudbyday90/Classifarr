@@ -6,6 +6,7 @@
 import {
   COMPLETED_UTC_DAY_METRICS_DEFAULT_WINDOW_DAYS,
   COMPLETED_UTC_DAY_METRICS_MAX_WINDOW_DAYS,
+  buildAdjacentCompletedUtcDayMetricsWindows,
   buildCompletedUtcDayMetricsWindow,
   normalizeCompletedUtcDayMetricsWindowDays,
 } from './completedUtcDayMetricsWindow.mjs';
@@ -174,6 +175,13 @@ export function buildPolicyCandidateCorrectionAnalyticsMetricsWindow({
   now = new Date(),
 } = {}) {
   return buildCompletedUtcDayMetricsWindow({ windowDays, now });
+}
+
+export function buildPolicyCandidateCorrectionAnalyticsMetricsWindows({
+  windowDays,
+  now = new Date(),
+} = {}) {
+  return buildAdjacentCompletedUtcDayMetricsWindows({ windowDays, now });
 }
 
 /**

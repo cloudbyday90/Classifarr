@@ -58,8 +58,7 @@ authority. Scan `fe16a084-6165-440b-8a2c-f00938516224` completed with
 
 ## Next Item
 
-After enough complete UTC-day windows exist, evaluate **temporal stability of
-aggregate correction signals**. Compare fixed current and prior windows at
-the same score-margin and evidence-state levels, still without returning
-identity or adding a tuning control. That will distinguish a persistent review
-pattern from a short-lived fluctuation before any maintenance decision.
+Temporal stability of aggregate correction signals is now delivered in
+[the separate outcome document](policy-candidate-correction-temporal-stability-outcome.md).
+The next increment is aggregate cohort-composition stability, so an operator
+can distinguish a changed review mix from a changed policy-behavior pattern.

@@ -6,8 +6,11 @@
 import {
   normalizePolicyCandidateCorrectionCalibrationReadiness,
 } from './policyCandidateCorrectionCalibrationReadinessPresentation'
+import {
+  normalizePolicyCandidateCorrectionTemporalStability,
+} from './policyCandidateCorrectionTemporalStabilityPresentation'
 
-const METRICS_VERSION = 'policy.candidate_correction_analytics_metrics.v2'
+const METRICS_VERSION = 'policy.candidate_correction_analytics_metrics.v3'
 
 const MARGIN_BAND_PRESENTATIONS = Object.freeze({
   '0_to_4': Object.freeze({ label: '0–4 points', description: 'Very close' }),
@@ -43,6 +46,15 @@ function nonnegativeCount(value) {
 
 function dateOnly(value) {
   return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null
+}
+
+function normalizedWindow(value) {
+  const days = nonnegativeCount(value?.days)
+  const startDate = dateOnly(value?.startDate)
+  const endDate = dateOnly(value?.endDate)
+  if (!days || !startDate || !endDate || startDate >= endDate) return null
+
+  return Object.freeze({ days, startDate, endDate })
 }
 
 function normalizeOutcomeCounts(value) {
@@ -162,22 +174,22 @@ function normalizedEvidenceSourceStateBuckets(value) {
   )));
 }
 
-/**
- * Accepts only the fixed, aggregate report. Labels and explanatory language
- * are client-owned; row-level identities and unknown server fields are never
- * retained for rendering.
- */
-export function normalizePolicyCandidateCorrectionAnalyticsMetricsReport(value) {
-  if (value?.version !== METRICS_VERSION) return null
-
-  const marginBuckets = normalizedMarginBuckets(value?.marginBuckets)
-  const evidenceSourceStateBuckets = normalizedEvidenceSourceStateBuckets(value?.evidenceSourceStateBuckets)
-  const summary = normalizeOutcomeCounts(value?.summary)
+function normalizedPeriod({
+  window,
+  marginBuckets: rawMarginBuckets,
+  evidenceSourceStateBuckets: rawEvidenceSourceStateBuckets,
+  summary: rawSummary,
+  calibrationReadiness: rawCalibrationReadiness,
+} = {}) {
+  const normalizedPeriodWindow = normalizedWindow(window)
+  const marginBuckets = normalizedMarginBuckets(rawMarginBuckets)
+  const evidenceSourceStateBuckets = normalizedEvidenceSourceStateBuckets(rawEvidenceSourceStateBuckets)
+  const summary = normalizeOutcomeCounts(rawSummary)
   const calibrationReadiness = normalizePolicyCandidateCorrectionCalibrationReadiness(
-    value?.calibrationReadiness,
+    rawCalibrationReadiness,
     summary,
   )
-  if (!marginBuckets || !calibrationReadiness) return null
+  if (!normalizedPeriodWindow || !marginBuckets || !calibrationReadiness) return null
   const recomputedSummary = marginBuckets.reduce((total, bucket) => ({
     outcomeCount: total.outcomeCount + bucket.outcomeCount,
     confirmedLeaderOutcomeCount: total.confirmedLeaderOutcomeCount + bucket.confirmedLeaderOutcomeCount,
@@ -196,12 +208,7 @@ export function normalizePolicyCandidateCorrectionAnalyticsMetricsReport(value) 
   }
 
   return Object.freeze({
-    version: METRICS_VERSION,
-    window: Object.freeze({
-      days: nonnegativeCount(value?.window?.days),
-      startDate: dateOnly(value?.window?.startDate),
-      endDate: dateOnly(value?.window?.endDate),
-    }),
+    window: normalizedPeriodWindow,
     marginBuckets,
     evidenceSourceStateBuckets,
     summary: Object.freeze(normalizedSummary),
@@ -217,5 +224,47 @@ export function normalizePolicyCandidateCorrectionAnalyticsMetricsReport(value) 
         label: 'Correction analytics needs observations',
         message: 'No eligible operator confirmation or destination-change observations have been recorded in this completed UTC-day window yet.',
       }),
+  })
+}
+
+/**
+ * Accepts only the fixed, aggregate report. Labels and explanatory language
+ * are client-owned; row-level identities and unknown server fields are never
+ * retained for rendering.
+ */
+export function normalizePolicyCandidateCorrectionAnalyticsMetricsReport(value) {
+  if (value?.version !== METRICS_VERSION) return null
+
+  const current = normalizedPeriod(value)
+  const previous = normalizedPeriod({
+    window: value?.previousWindow,
+    marginBuckets: value?.previousMarginBuckets,
+    evidenceSourceStateBuckets: value?.previousEvidenceSourceStateBuckets,
+    summary: value?.previousSummary,
+    calibrationReadiness: value?.previousCalibrationReadiness,
+  })
+  if (!current || !previous) return null
+  const temporalStability = normalizePolicyCandidateCorrectionTemporalStability(
+    value.temporalStability,
+    {
+      currentSummary: current,
+      previousSummary: previous,
+      currentMarginBuckets: current.marginBuckets,
+      previousMarginBuckets: previous.marginBuckets,
+      currentEvidenceSourceStateBuckets: current.evidenceSourceStateBuckets,
+      previousEvidenceSourceStateBuckets: previous.evidenceSourceStateBuckets,
+    },
+  )
+  if (!temporalStability) return null
+
+  return Object.freeze({
+    version: METRICS_VERSION,
+    ...current,
+    previousWindow: previous.window,
+    previousMarginBuckets: previous.marginBuckets,
+    previousEvidenceSourceStateBuckets: previous.evidenceSourceStateBuckets,
+    previousSummary: previous.summary,
+    previousCalibrationReadiness: previous.calibrationReadiness,
+    temporalStability,
   })
 }

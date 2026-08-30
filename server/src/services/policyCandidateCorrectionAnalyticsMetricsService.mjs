@@ -5,9 +5,11 @@
 
 import * as db from '../config/database.mjs';
 import {
-  buildPolicyCandidateCorrectionAnalyticsMetricsReport,
-  buildPolicyCandidateCorrectionAnalyticsMetricsWindow,
+  buildPolicyCandidateCorrectionAnalyticsMetricsWindows,
 } from './policyCandidateCorrectionAnalyticsMetrics.mjs';
+import {
+  buildPolicyCandidateCorrectionTemporalStabilityReport,
+} from './policyCandidateCorrectionTemporalStabilityReport.mjs';
 import {
   loadPolicyCandidateCorrectionAnalyticsMetrics,
 } from './policyCandidateCorrectionAnalyticsMetricsRepository.mjs';
@@ -19,12 +21,20 @@ export function createPolicyCandidateCorrectionAnalyticsMetricsService({
 } = {}) {
   return Object.freeze({
     async getSummary({ windowDays } = {}) {
-      const window = buildPolicyCandidateCorrectionAnalyticsMetricsWindow({
+      const windows = buildPolicyCandidateCorrectionAnalyticsMetricsWindows({
         windowDays,
         now: now(),
       });
-      const rows = await loadMetrics(database, window);
-      return buildPolicyCandidateCorrectionAnalyticsMetricsReport({ rows, window });
+      const [currentRows, previousRows] = await Promise.all([
+        loadMetrics(database, windows.current),
+        loadMetrics(database, windows.previous),
+      ]);
+      return buildPolicyCandidateCorrectionTemporalStabilityReport({
+        currentRows,
+        previousRows,
+        currentWindow: windows.current,
+        previousWindow: windows.previous,
+      });
     },
   });
 }

@@ -42,3 +42,27 @@ export function buildCompletedUtcDayMetricsWindow({
   start.setUTCDate(start.getUTCDate() - days);
   return Object.freeze({ days, start, end });
 }
+
+/**
+ * Builds two adjacent, equal-length completed UTC-day windows. Keeping the
+ * boundary at the start of the current completed window prevents overlap and
+ * makes a repeated aggregate signal comparable without retaining events.
+ */
+export function buildAdjacentCompletedUtcDayMetricsWindows({
+  windowDays,
+  now = new Date(),
+} = {}) {
+  const current = buildCompletedUtcDayMetricsWindow({ windowDays, now });
+  const previousEnd = new Date(current.start);
+  const previousStart = new Date(previousEnd);
+  previousStart.setUTCDate(previousStart.getUTCDate() - current.days);
+
+  return Object.freeze({
+    current,
+    previous: Object.freeze({
+      days: current.days,
+      start: previousStart,
+      end: previousEnd,
+    }),
+  });
+}

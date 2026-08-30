@@ -6,6 +6,7 @@
 import { describe, expect, test } from '@jest/globals';
 
 import {
+  buildAdjacentCompletedUtcDayMetricsWindows,
   buildCompletedUtcDayMetricsWindow,
   normalizeCompletedUtcDayMetricsWindowDays,
 } from '../../services/completedUtcDayMetricsWindow.mjs';
@@ -22,6 +23,24 @@ describe('completedUtcDayMetricsWindow', () => {
       days: 14,
       start: new Date('2026-08-16T00:00:00.000Z'),
       end: new Date('2026-08-30T00:00:00.000Z'),
+    });
+  });
+
+  test('creates adjacent fixed completed UTC-day windows without overlap', () => {
+    expect(buildAdjacentCompletedUtcDayMetricsWindows({
+      windowDays: 7,
+      now: new Date('2026-08-30T18:30:00.000Z'),
+    })).toEqual({
+      current: {
+        days: 7,
+        start: new Date('2026-08-23T00:00:00.000Z'),
+        end: new Date('2026-08-30T00:00:00.000Z'),
+      },
+      previous: {
+        days: 7,
+        start: new Date('2026-08-16T00:00:00.000Z'),
+        end: new Date('2026-08-23T00:00:00.000Z'),
+      },
     });
   });
 });
