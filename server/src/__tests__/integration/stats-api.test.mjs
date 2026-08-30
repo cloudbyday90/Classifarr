@@ -162,6 +162,16 @@ describe('Stats API Integration Tests', () => {
                         'version', 'current_library.candidate_retrieval_outcome_attribution.v1',
                         'status_id', 'changed_outside_candidates'
                     ),
+                    'candidate_contrastive_evidence', jsonb_build_object(
+                        'version', 'policy.candidate_contrastive_evidence.v1',
+                        'provenance_id', 'exact_tmdb_current_library_inventory',
+                        'status_id', 'alternative_identity_match'
+                    ),
+                    'policy_candidate_contrastive_outcome_attribution', jsonb_build_object(
+                        'version', 'policy.candidate_contrastive_outcome_attribution.v1',
+                        'contrastive_status_id', 'alternative_identity_match',
+                        'selection_status_id', 'changed_outside_candidates'
+                    ),
                     'outcome_path', jsonb_build_object(
                         'latest_outcome', jsonb_build_object(
                             'final_library_id', $1::integer,
@@ -297,6 +307,36 @@ describe('Stats API Integration Tests', () => {
             expect(JSON.stringify(res.body)).not.toContain('Private Retrieval Test Item');
             expect(JSON.stringify(res.body)).not.toContain('Test Stats Library');
             expect(JSON.stringify(res.body)).not.toContain('final_library_id');
+        });
+    });
+
+    describe('GET /api/stats/policy-candidate-contrastive-outcomes', () => {
+        it('should return only fixed aggregate contrastive outcomes', async () => {
+            const res = await request(app)
+                .get('/api/stats/policy-candidate-contrastive-outcomes?days=7')
+                .set('Authorization', `Bearer ${testToken}`)
+                .expect(200);
+
+            expect(res.body).toMatchObject({
+                version: 'policy.candidate_contrastive_outcome_metrics.v1',
+                buckets: expect.arrayContaining([
+                    expect.objectContaining({
+                        statusId: 'alternative_identity_match',
+                        observationCount: expect.any(Number),
+                        changedOutsideCandidateOutcomeCount: expect.any(Number),
+                    }),
+                ]),
+                summary: {
+                    observationCount: expect.any(Number),
+                    attributedOutcomeCount: expect.any(Number),
+                },
+                readiness: { statusId: expect.any(String) },
+            });
+            expect(res.body.summary.observationCount).toBeGreaterThanOrEqual(1);
+            expect(JSON.stringify(res.body)).not.toContain('Private Retrieval Test Item');
+            expect(JSON.stringify(res.body)).not.toContain('Test Stats Library');
+            expect(JSON.stringify(res.body)).not.toContain('final_library_id');
+            expect(JSON.stringify(res.body)).not.toContain('provenance_id');
         });
     });
 

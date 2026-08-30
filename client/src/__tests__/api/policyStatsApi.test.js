@@ -34,6 +34,7 @@ import {
   getDetailedStats,
   getCandidateBoundVerificationMetrics,
   getCurrentLibraryCandidateRetrievalMetrics,
+  getPolicyCandidateContrastiveOutcomeMetrics,
   getOllamaVerificationRuntimeMismatchSummary,
   getOllamaVerificationCapabilityOutcomeHistory,
 } from '../../api/policyStatsApi'
@@ -101,6 +102,12 @@ describe('policyStatsApi', () => {
     mockGetDataRequest.mockResolvedValueOnce({})
     await getCurrentLibraryCandidateRetrievalMetrics(14)
     expect(mockGetDataRequest).toHaveBeenCalledWith('/stats/current-library-candidate-retrieval', { params: { days: 14 } })
+  })
+
+  it('getPolicyCandidateContrastiveOutcomeMetrics uses the bounded aggregate endpoint', async () => {
+    mockGetDataRequest.mockResolvedValueOnce({})
+    await getPolicyCandidateContrastiveOutcomeMetrics(14)
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/stats/policy-candidate-contrastive-outcomes', { params: { days: 14 } })
   })
 
   it('getOllamaVerificationRuntimeMismatchSummary uses the protected aggregate endpoint without dimensions', async () => {

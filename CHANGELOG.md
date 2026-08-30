@@ -23,6 +23,7 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - **Policy confirmation-evidence uncertainty** — Aggregate policy-maintenance readiness now distinguishes a conclusively weak declared scope from a borderline sample using a fixed 95% Wilson interval.
 - **Candidate evidence cards** — Pending policy confirmation now separates item identity, declared policy, contextual library-profile evidence, similar-item retrieval, and confirmed outcomes, flagging contextual-only support and deterministic conflicts without changing routing.
 - **Contrastive inventory evidence** — Pending policy confirmation and selection now compare a retained exact TMDb identity across up to three policy-ranked current libraries, showing fixed supporting, counter, shared, or neutral evidence without changing routing.
+- **Contrastive outcome monitoring** — Statistics now aggregates the fixed cross-library identity-check status with later server-validated operator candidate-set outcomes, making counter-evidence observations measurable without retaining media or destination identity.
 
 ### Changed
 
@@ -50,6 +51,7 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - **Score-comparison data boundary** — Pending-score comparisons are capped in browser memory, revalidate only allow-listed numeric mechanics, and expose no new identity, API, telemetry, AI, policy, retry, learning, or routing path.
 - **Candidate-evidence card boundary** — Pending-review evidence cards use only fixed source/state identifiers, reject unknown client input, expose no raw metadata or retrieval text, and cannot invoke AI, alter scores, learn, or route media.
 - **Contrastive inventory boundary** — Cross-library identity checks use a server-owned same-media candidate set and one parameterized exact-ID read; rows, identities, catalog text, and provider data are discarded before a fixed advisory status is persisted or displayed.
+- **Contrastive outcome telemetry boundary** — The server derives both attribution axes from persisted fixed evidence and the validated runtime-question contract; static aggregate queries and an allow-listed client view retain no item, library, candidate, destination, actor, provider, prompt, response, or routing control.
 
 - **Comparison-cap privacy boundary** — Coverage detection uses one server-only sentinel to identify omitted competitors; the sentinel, total active-policy count, configurations, identities, and routing authority remain unavailable to clients.
 - **Explanation privacy boundary** — Shared-eligibility explanations expose only allow-listed category labels and anonymous configuration counts after a bounded shared result; they never return rule values, competitor identities, item outcomes, AI state, or routing control.

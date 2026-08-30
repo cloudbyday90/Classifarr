@@ -13,28 +13,24 @@ import {
 import {
   buildPolicyConfirmationEvidenceReadiness,
 } from './policyConfirmationEvidenceReadiness.mjs';
+import {
+  COMPLETED_UTC_DAY_METRICS_DEFAULT_WINDOW_DAYS,
+  COMPLETED_UTC_DAY_METRICS_MAX_WINDOW_DAYS,
+  buildCompletedUtcDayMetricsWindow,
+  normalizeCompletedUtcDayMetricsWindowDays,
+} from './completedUtcDayMetricsWindow.mjs';
 
 export const CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_METRICS_VERSION =
   'current_library.candidate_retrieval_metrics.v1';
-export const CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_METRICS_DEFAULT_WINDOW_DAYS = 7;
-export const CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_METRICS_MAX_WINDOW_DAYS = 30;
-
-function startOfUtcDay(value) {
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-}
+export const CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_METRICS_DEFAULT_WINDOW_DAYS =
+  COMPLETED_UTC_DAY_METRICS_DEFAULT_WINDOW_DAYS;
+export const CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_METRICS_MAX_WINDOW_DAYS =
+  COMPLETED_UTC_DAY_METRICS_MAX_WINDOW_DAYS;
 
 function dateOnly(value) {
   return value instanceof Date && !Number.isNaN(value.getTime())
     ? value.toISOString().slice(0, 10)
     : null;
-}
-
-function positiveInteger(value) {
-  const numericValue = Number(value);
-  return Number.isSafeInteger(numericValue) && numericValue > 0 ? numericValue : null;
 }
 
 function nonnegativeCount(value) {
@@ -48,10 +44,7 @@ function ratePercent(numerator, denominator) {
 }
 
 export function normalizeCurrentLibraryCandidateRetrievalMetricsWindowDays(value) {
-  return Math.min(
-    positiveInteger(value) || CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_METRICS_DEFAULT_WINDOW_DAYS,
-    CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_METRICS_MAX_WINDOW_DAYS,
-  );
+  return normalizeCompletedUtcDayMetricsWindowDays(value);
 }
 
 /**
@@ -62,13 +55,7 @@ export function buildCurrentLibraryCandidateRetrievalMetricsWindow({
   windowDays,
   now = new Date(),
 } = {}) {
-  const days = normalizeCurrentLibraryCandidateRetrievalMetricsWindowDays(windowDays);
-  const end = startOfUtcDay(now);
-  if (!end) throw new TypeError('A valid observation time is required.');
-
-  const start = new Date(end);
-  start.setUTCDate(start.getUTCDate() - days);
-  return Object.freeze({ days, start, end });
+  return buildCompletedUtcDayMetricsWindow({ windowDays, now });
 }
 
 function latencyBandCount(row, id) {

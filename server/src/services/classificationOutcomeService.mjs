@@ -15,6 +15,9 @@ import { isPlainObject } from '../utils/stringUtils.mjs';
 import {
   buildCurrentLibraryCandidateRetrievalOutcomeAttributionProjection,
 } from './currentLibraryCandidateRetrievalOutcomeAttribution.mjs';
+import {
+  buildPolicyCandidateContrastiveOutcomeAttributionProjection,
+} from './policyCandidateContrastiveOutcomeAttribution.mjs';
 
 const logger = createLogger('classificationOutcomeService');
 
@@ -150,11 +153,16 @@ export class ClassificationOutcomeService {
 
     const {
       current_library_candidate_retrieval_outcome_attribution: rawCurrentLibraryCandidateRetrievalOutcomeAttribution,
+      policy_candidate_contrastive_outcome_attribution: rawPolicyCandidateContrastiveOutcomeAttribution,
       ...safeOutcomePatch
     } = outcomePatch;
     const currentLibraryCandidateRetrievalOutcomeAttribution =
       buildCurrentLibraryCandidateRetrievalOutcomeAttributionProjection(
         rawCurrentLibraryCandidateRetrievalOutcomeAttribution,
+      );
+    const policyCandidateContrastiveOutcomeAttribution =
+      buildPolicyCandidateContrastiveOutcomeAttributionProjection(
+        rawPolicyCandidateContrastiveOutcomeAttribution,
       );
     const executor = resolveExecutor(client, this.db);
     const selectSql = client
@@ -191,6 +199,10 @@ export class ClassificationOutcomeService {
       if (currentLibraryCandidateRetrievalOutcomeAttribution) {
         classificationDetails.current_library_candidate_retrieval_outcome_attribution =
           currentLibraryCandidateRetrievalOutcomeAttribution;
+      }
+      if (policyCandidateContrastiveOutcomeAttribution) {
+        classificationDetails.policy_candidate_contrastive_outcome_attribution =
+          policyCandidateContrastiveOutcomeAttribution;
       }
       if (isPlainObject(classificationDetails.rag_loop_summary)) {
         classificationDetails.rag_loop_summary = {

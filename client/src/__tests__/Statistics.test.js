@@ -24,6 +24,10 @@ vi.mock('@/views/statistics/CurrentLibraryCandidateRetrievalStats.vue', () => ({
   default: { template: '<div data-testid="current-library-candidate-retrieval-stats">retrieval stats</div>' }
 }))
 
+vi.mock('@/views/statistics/PolicyCandidateContrastiveOutcomeStats.vue', () => ({
+  default: { template: '<div data-testid="policy-candidate-contrastive-outcome-stats">inventory contrast stats</div>' }
+}))
+
 vi.mock('@/views/statistics/RAGStats.vue', () => ({
   default: { template: '<div data-testid="rag-stats">rag stats</div>' }
 }))
@@ -40,6 +44,7 @@ describe('Statistics.vue', () => {
     expect(wrapper.text()).toContain('🎯 Classification')
     expect(wrapper.text()).toContain('🛡️ Verification')
     expect(wrapper.text()).toContain('🔎 Candidate Retrieval')
+    expect(wrapper.text()).toContain('↔️ Inventory Contrast')
     expect(wrapper.text()).toContain('🧠 RAG & Embeddings')
     expect(wrapper.find('[data-testid="classification-stats"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="rag-stats"]').exists()).toBe(false)
@@ -63,7 +68,16 @@ describe('Statistics.vue', () => {
     window.history.replaceState({}, '', '/')
   })
 
-  it('switches between verification, retrieval, RAG, and classification tabs', async () => {
+  it('opens the inventory contrast tab when linked with its aggregate outcome query', () => {
+    window.history.replaceState({}, '', '/statistics?tab=inventory-contrast')
+    const wrapper = mountView()
+
+    expect(wrapper.find('[data-testid="policy-candidate-contrastive-outcome-stats"]').exists()).toBe(true)
+
+    window.history.replaceState({}, '', '/')
+  })
+
+  it('switches between verification, retrieval, inventory contrast, RAG, and classification tabs', async () => {
     const wrapper = mountView()
     const buttons = wrapper.findAll('button')
 
@@ -79,9 +93,14 @@ describe('Statistics.vue', () => {
 
     await buttons[3].trigger('click')
 
+    expect(wrapper.find('[data-testid="policy-candidate-contrastive-outcome-stats"]').exists()).toBe(true)
+    expect(buttons[3].classes()).toContain('border-blue-500')
+
+    await buttons[4].trigger('click')
+
     expect(wrapper.find('[data-testid="classification-stats"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="rag-stats"]').exists()).toBe(true)
-    expect(buttons[3].classes()).toContain('border-blue-500')
+    expect(buttons[4].classes()).toContain('border-blue-500')
 
     await buttons[0].trigger('click')
 

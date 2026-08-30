@@ -176,6 +176,10 @@ const POLICY_AUTHORING_PRESENTATION_TEST_EXCLUSION_RECORDS = deepFreeze([
     filePath: 'client/src/__tests__/PolicyCard.test.js',
     rationale: 'The policy list card is a policy-management surface, not policy authoring or an adjacent authoring recovery flow.',
   },
+  {
+    filePath: 'client/src/__tests__/PolicyCandidateContrastiveOutcomeStats.test.js',
+    rationale: 'The aggregate cross-library outcome monitor is a read-only Statistics surface, not policy authoring or an adjacent authoring recovery flow.',
+  },
 ]);
 
 function presentationTestRecord(

@@ -820,6 +820,11 @@ describe('resolvePolicyQuestion', () => {
                         matched_candidate_count: 1,
                         direct_match_candidate_count: 1,
                     },
+                    candidate_contrastive_evidence: {
+                        version: 'policy.candidate_contrastive_evidence.v1',
+                        provenance_id: 'exact_tmdb_current_library_inventory',
+                        status_id: 'alternative_identity_match',
+                    },
                 },
             },
         };
@@ -857,6 +862,11 @@ describe('resolvePolicyQuestion', () => {
                     version: 'current_library.candidate_retrieval_outcome_attribution.v1',
                     statusId: 'changed_outside_candidates',
                 },
+                policy_candidate_contrastive_outcome_attribution: {
+                    version: 'policy.candidate_contrastive_outcome_attribution.v1',
+                    contrastiveStatusId: 'alternative_identity_match',
+                    selectionStatusId: 'changed_outside_candidates',
+                },
             }),
             { client },
         );
@@ -866,6 +876,14 @@ describe('resolvePolicyQuestion', () => {
         ).toEqual({
             version: 'current_library.candidate_retrieval_outcome_attribution.v1',
             statusId: 'changed_outside_candidates',
+        });
+        expect(
+            classificationOutcomeService.recordOutcome.mock.calls[0][1]
+                .policy_candidate_contrastive_outcome_attribution,
+        ).toEqual({
+            version: 'policy.candidate_contrastive_outcome_attribution.v1',
+            contrastiveStatusId: 'alternative_identity_match',
+            selectionStatusId: 'changed_outside_candidates',
         });
     });
 
