@@ -99,6 +99,51 @@ describe('policyRuntimeQuestionDecisionPresentation', () => {
     expect(presentation.deterministic.message).not.toContain('automatic policy threshold');
   });
 
+  test('adds only a bounded formula explanation for the persisted policy candidate', () => {
+    const presentation = buildPolicyRuntimeQuestionDecisionPresentation({
+      classification: {
+        metadata: {
+          policyResult: {
+            thresholds: { prompt: 60, auto_classify: 85 },
+            ranked: [{
+              library_id: 5,
+              score: 71,
+              prompt_threshold: 60,
+              auto_classify_threshold: 85,
+              breakdown: [
+                { type: 'native_intent', score: 75, activeWeight: 0.4 },
+                { type: 'profile', score: 65, activeWeight: 0.25 },
+                { type: 'rag', score: 80, activeWeight: 0.15 },
+              ],
+              candidate_diagnostics: {
+                score_calibration: { applied: false },
+              },
+              policy_terms: ['do not expose'],
+            }],
+          },
+        },
+      },
+      question: {
+        meta: {
+          candidates: [{ library_id: 5, score: 99 }],
+        },
+      },
+      candidateDestinations: candidates,
+    });
+
+    expect(presentation.deterministic.score_explanation).toMatchObject({
+      version: 'policy.runtime_question_score_explanation.v1',
+      score: 71,
+      agreement_multiplier_percent: 112,
+      components: expect.arrayContaining([
+        expect.objectContaining({ source_id: 'declared_policy_intent' }),
+        expect.objectContaining({ source_id: 'observed_library_contents' }),
+        expect.objectContaining({ source_id: 'similar_items' }),
+      ]),
+    });
+    expect(JSON.stringify(presentation.deterministic.score_explanation)).not.toContain('do not expose');
+  });
+
   test('explains the AI authority gate when a high policy score is advisory', () => {
     const presentation = buildPolicyRuntimeQuestionDecisionPresentation({
       classification: {

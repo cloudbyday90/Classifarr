@@ -596,6 +596,30 @@ describe('CommandCenter action modules', () => {
                 { id: 'declared_intent', label: 'Declared policy intent supports Movies.' },
                 { id: 'similar_items', label: 'Similar items already associated with Movies support this match.' },
               ],
+              score_explanation: {
+                version: 'policy.runtime_question_score_explanation.v1',
+                score: 75,
+                base_score: 67.3,
+                agreement_multiplier_percent: 112,
+                components: [
+                  {
+                    source_id: 'declared_policy_intent',
+                    evidence_score: 75,
+                    normalized_weight_percent: 60,
+                    weighted_contribution: 45,
+                  },
+                  {
+                    source_id: 'similar_items',
+                    evidence_score: 56,
+                    normalized_weight_percent: 40,
+                    weighted_contribution: 22.3,
+                  },
+                ],
+                calibration: {
+                  status_id: 'not_adjusted',
+                  pre_safety_score: null,
+                },
+              },
               safety_gate: {
                 id: 'policy_confirmation_required',
                 label: 'Policy confirmation required',
@@ -627,6 +651,11 @@ describe('CommandCenter action modules', () => {
     expect(wrapper.text()).toContain('requires an operator confirmation before this item can route.')
     expect(wrapper.text()).toContain('Declared policy intent supports Movies.')
     expect(wrapper.text()).toContain('Similar items already associated with Movies support this match.')
+    expect(wrapper.text()).toContain('How this policy score was calculated')
+    expect(wrapper.text()).toContain('The score is 15 points above confirmation and 10 points below automatic routing.')
+    expect(wrapper.text()).toContain('Declared policy intent:')
+    expect(wrapper.text()).toContain('Similar items (RAG):')
+    expect(wrapper.text()).toContain('No evidence-safety calibration changed this score.')
     expect(wrapper.findAll('button').some(node => node.text() === 'Confirm Movies')).toBe(true)
     expect(wrapper.text()).toContain('Review 1 alternative candidate')
     expect(wrapper.find('details').element.open).toBe(false)

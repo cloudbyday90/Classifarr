@@ -67,6 +67,42 @@
           </li>
         </ul>
         <details
+          v-if="scoreExplanation"
+          class="score-explanation"
+        >
+          <summary>How this policy score was calculated</summary>
+          <p>
+            {{ scoreExplanationThresholdMessage }}
+          </p>
+          <p>
+            This is a deterministic policy-evidence score, not a probability or AI decision. It cannot bypass the routing safeguards above.
+          </p>
+          <p class="score-explanation-label">
+            Evidence contribution
+          </p>
+          <ul>
+            <li
+              v-for="component in scoreExplanation.components"
+              :key="component.source_id"
+            >
+              <strong>{{ scoreExplanationSourceLabel(component.source_id) }}:</strong>
+              {{ component.evidence_score }}/100 evidence score; contributes {{ formatScoreValue(component.weighted_contribution) }} points ({{ formatScoreValue(component.normalized_weight_percent) }}% of active evidence).
+            </li>
+          </ul>
+          <p>
+            Weighted base score: {{ formatScoreValue(scoreExplanation.base_score) }}/100.
+          </p>
+          <p v-if="scoreExplanation.agreement_multiplier_percent > 100">
+            {{ scoreExplanation.components.length }} corroborating sources applied a {{ scoreExplanation.agreement_multiplier_percent - 100 }}% agreement adjustment before evidence-safety calibration.
+          </p>
+          <p>
+            {{ scoreExplanationCalibrationMessage }}
+            <template v-if="scoreExplanation.calibration.pre_safety_score !== null">
+              It changed the pre-safety score from {{ scoreExplanation.calibration.pre_safety_score }} to {{ scoreExplanation.score }}.
+            </template>
+          </p>
+        </details>
+        <details
           v-if="decisionPresentation.deterministic.additional_safety_gates.length"
           class="additional-safety-gates"
         >
@@ -241,6 +277,9 @@ const emit = defineEmits([
 
 const recommendation = computed(() => policyQuestionRecommendation(props.answer))
 const decisionPresentation = computed(() => policyQuestionDecisionPresentation(props.answer))
+const scoreExplanation = computed(() => (
+  decisionPresentation.value?.deterministic?.score_explanation || null
+))
 const leadingDestination = computed(() => recommendation.value?.leading_destination || null)
 const candidateDestinations = computed(() => policyQuestionCandidateDestinations(props.answer))
 const isNativeQuestion = computed(() => props.answer?.question?.type === 'native_runtime_question')
@@ -289,6 +328,57 @@ const deterministicScoreLabel = computed(() => {
     ? `Policy score: ${deterministic.score}/100 (${thresholds.join(', ')})`
     : `Policy score: ${deterministic.score}/100`
 })
+const scoreExplanationThresholdMessage = computed(() => {
+  const explanation = scoreExplanation.value
+  const deterministic = decisionPresentation.value?.deterministic
+  if (!explanation) return ''
+
+  const score = explanation.score
+  const reviewThreshold = deterministic?.review_threshold
+  const automaticThreshold = deterministic?.automatic_threshold
+  if (automaticThreshold !== null && automaticThreshold !== undefined && score >= automaticThreshold) {
+    return `The score meets the automatic threshold of ${automaticThreshold}, but another routing safeguard still requires review.`
+  }
+  if (reviewThreshold !== null && reviewThreshold !== undefined && score >= reviewThreshold &&
+      automaticThreshold !== null && automaticThreshold !== undefined) {
+    return `The score is ${score - reviewThreshold} points above confirmation and ${automaticThreshold - score} points below automatic routing.`
+  }
+  if (reviewThreshold !== null && reviewThreshold !== undefined) {
+    return `The score is ${reviewThreshold - score} points below the confirmation threshold of ${reviewThreshold}.`
+  }
+  return `The displayed policy score is ${score}/100.`
+})
+const scoreExplanationCalibrationMessage = computed(() => {
+  const statusId = scoreExplanation.value?.calibration?.status_id
+  const messages = {
+    not_adjusted: 'No evidence-safety calibration changed this score.',
+    negative_conflict: 'An evidence-safety calibration was applied because deterministic evidence conflicted.',
+    compatibility_only: 'An evidence-safety calibration was applied because only compatibility evidence was available.',
+    broad_compatibility_overlap: 'An evidence-safety calibration was applied because declared compatibility evidence overlapped another destination.',
+    insufficient_specialized_evidence: 'An evidence-safety calibration was applied because no specialized declared evidence was available.',
+    profile_only: 'An evidence-safety calibration was applied because only observed library contents supported the candidate.',
+    rag_only: 'An evidence-safety calibration was applied because only similar-item retrieval supported the candidate.',
+    no_positive_evidence: 'An evidence-safety calibration was applied because no positive policy evidence was available.',
+    evidence_safety_adjusted: 'An evidence-safety calibration was applied before this score was displayed.',
+  }
+  return messages[statusId] || 'No additional calibration information is available.'
+})
+
+function scoreExplanationSourceLabel(sourceId) {
+  const labels = {
+    declared_policy_signal: 'Declared policy signal',
+    declared_policy_intent: 'Declared policy intent',
+    observed_library_contents: 'Observed library contents',
+    confirmed_pattern: 'Confirmed classification pattern',
+    similar_items: 'Similar items (RAG)',
+    prior_outcomes: 'Prior confirmed outcomes',
+  }
+  return labels[sourceId] || 'Deterministic policy evidence'
+}
+
+function formatScoreValue(value) {
+  return Number.isInteger(value) ? String(value) : Number(value).toFixed(1)
+}
 
 function emitConfirmDestination(destination) {
   emit('confirm-destination', {
@@ -400,14 +490,17 @@ function emitConfirmDestination(destination) {
 }
 
 .route-safety-gate,
-.additional-safety-gates {
+.additional-safety-gates,
+.score-explanation {
   margin-top: 0.5rem;
   font-size: 0.75rem;
   color: #cbd5e1;
 }
 
 .route-safety-gate p,
-.additional-safety-gates ul {
+.additional-safety-gates ul,
+.score-explanation p,
+.score-explanation ul {
   margin-top: 0.25rem;
 }
 
@@ -417,16 +510,23 @@ function emitConfirmDestination(destination) {
   color: #bfdbfe;
 }
 
-.additional-safety-gates summary {
+.additional-safety-gates summary,
+.score-explanation summary {
   width: fit-content;
   cursor: pointer;
   color: #bfdbfe;
 }
 
-.additional-safety-gates ul {
+.additional-safety-gates ul,
+.score-explanation ul {
   display: grid;
   gap: 0.25rem;
   padding-left: 1rem;
+}
+
+.score-explanation-label {
+  font-weight: 600;
+  color: #bfdbfe;
 }
 
 .ai-advisory p {

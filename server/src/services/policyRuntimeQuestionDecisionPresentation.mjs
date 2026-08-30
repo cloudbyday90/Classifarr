@@ -17,6 +17,9 @@ import {
 import {
   buildPolicyCandidateAdjudicationPresentation,
 } from './policyCandidateAdjudicationPresentation.mjs';
+import {
+  buildPolicyRuntimeQuestionScoreExplanation,
+} from './policyRuntimeQuestionScoreExplanation.mjs';
 
 export const POLICY_RUNTIME_QUESTION_DECISION_PRESENTATION_VERSION =
   'policy.runtime_question_decision_presentation.v1';
@@ -226,6 +229,10 @@ function buildDeterministicDecision({ classification, question, candidateDestina
     automatic_threshold: automaticThreshold,
     message,
     evidence: buildEvidenceFacts({ candidate, destinationName }),
+    score_explanation: buildPolicyRuntimeQuestionScoreExplanation({
+      candidate,
+      displayedScore: decisionScore,
+    }),
     safety_gate: displaySafetyGate,
     additional_safety_gates: displaySafetyGate ? routeSafety?.blocking_gates?.slice(1) || [] : [],
   };

@@ -10,6 +10,8 @@ const CLASSIFICATION_CANDIDATE_BOUND_VERIFICATION_PRESENTATION_VERSION =
   'classification.candidate_bound_verification_presentation.v1'
 const POLICY_CANDIDATE_ADJUDICATION_PRESENTATION_VERSION =
   'policy.candidate_adjudication_presentation.v1'
+const POLICY_RUNTIME_QUESTION_SCORE_EXPLANATION_VERSION =
+  'policy.runtime_question_score_explanation.v1'
 
 const CANDIDATE_BOUND_VERIFICATION_STATUS_IDS = new Set([
   'admitted',
@@ -24,6 +26,25 @@ const CANDIDATE_ADJUDICATION_STATUS_IDS = new Set([
   'proposed',
   'abstained',
   'response_rejected',
+])
+const SCORE_EXPLANATION_SOURCE_IDS = new Set([
+  'declared_policy_signal',
+  'declared_policy_intent',
+  'observed_library_contents',
+  'confirmed_pattern',
+  'similar_items',
+  'prior_outcomes',
+])
+const SCORE_EXPLANATION_CALIBRATION_STATUS_IDS = new Set([
+  'not_adjusted',
+  'negative_conflict',
+  'compatibility_only',
+  'broad_compatibility_overlap',
+  'insufficient_specialized_evidence',
+  'profile_only',
+  'rag_only',
+  'no_positive_evidence',
+  'evidence_safety_adjusted',
 ])
 
 function boundedString(value, maximumLength = 280) {
@@ -41,6 +62,20 @@ function positiveInteger(value) {
 function score(value) {
   const number = Number(value)
   return Number.isInteger(number) && number >= 0 && number <= 100 ? number : null
+}
+
+function decimalScore(value) {
+  const number = Number(value)
+  return Number.isFinite(number) && number >= 0 && number <= 100
+    ? Math.round(number * 10) / 10
+    : null
+}
+
+function percentage(value, minimum = 0, maximum = 100) {
+  const number = Number(value)
+  return Number.isFinite(number) && number >= minimum && number <= maximum
+    ? Math.round(number * 10) / 10
+    : null
 }
 
 function destination(value) {
@@ -95,6 +130,63 @@ function candidateAdjudication(value) {
   }
 }
 
+function scoreExplanationComponent(value) {
+  const sourceId = boundedString(value?.source_id, 80)
+  const evidenceScore = score(value?.evidence_score)
+  const normalizedWeightPercent = percentage(value?.normalized_weight_percent)
+  const weightedContribution = decimalScore(value?.weighted_contribution)
+  if (!sourceId || !SCORE_EXPLANATION_SOURCE_IDS.has(sourceId) || evidenceScore === null ||
+      normalizedWeightPercent === null || weightedContribution === null) {
+    return null
+  }
+
+  return {
+    source_id: sourceId,
+    evidence_score: evidenceScore,
+    normalized_weight_percent: normalizedWeightPercent,
+    weighted_contribution: weightedContribution,
+  }
+}
+
+function scoreExplanation(value) {
+  if (value?.version !== POLICY_RUNTIME_QUESTION_SCORE_EXPLANATION_VERSION) return null
+
+  const displayScore = score(value?.score)
+  const baseScore = decimalScore(value?.base_score)
+  const agreementMultiplierPercent = percentage(value?.agreement_multiplier_percent, 100, 130)
+  const calibrationStatusId = boundedString(value?.calibration?.status_id, 80)
+  const preSafetyScore = value?.calibration?.pre_safety_score === null ||
+    value?.calibration?.pre_safety_score === undefined
+    ? null
+    : score(value.calibration.pre_safety_score)
+  const seenSourceIds = new Set()
+  const components = (Array.isArray(value?.components) ? value.components : [])
+    .map(scoreExplanationComponent)
+    .filter((component) => {
+      if (!component || seenSourceIds.has(component.source_id)) return false
+      seenSourceIds.add(component.source_id)
+      return true
+    })
+    .slice(0, 6)
+
+  if (displayScore === null || baseScore === null || agreementMultiplierPercent === null ||
+      !calibrationStatusId || !SCORE_EXPLANATION_CALIBRATION_STATUS_IDS.has(calibrationStatusId) ||
+      components.length === 0) {
+    return null
+  }
+
+  return {
+    score: displayScore,
+    base_score: baseScore,
+    agreement_multiplier_percent: agreementMultiplierPercent,
+    components,
+    calibration: {
+      status_id: calibrationStatusId,
+      pre_safety_score: preSafetyScore,
+    },
+  }
+}
+
 export function policyQuestionDecisionPresentation(answer = {}) {
   const source = answer?.decision_summary
   if (source?.version !== POLICY_RUNTIME_QUESTION_DECISION_PRESENTATION_VERSION) return null
@@ -120,6 +212,7 @@ export function policyQuestionDecisionPresentation(answer = {}) {
         .map(evidence)
         .filter(Boolean)
         .slice(0, 4),
+      score_explanation: scoreExplanation(deterministic?.score_explanation),
       safety_gate: safetyGate(deterministic?.safety_gate),
       additional_safety_gates: (Array.isArray(deterministic?.additional_safety_gates)
         ? deterministic.additional_safety_gates

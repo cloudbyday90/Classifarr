@@ -75,4 +75,81 @@ describe('policyQuestionDecisionPresentation', () => {
       proposed_destination: { library_id: 8, library_name: 'Drama' },
     })
   })
+
+  it('keeps only allow-listed score-explanation mechanics for rendering', () => {
+    const answer = answerWithVerification(null)
+    answer.decision_summary.deterministic.score_explanation = {
+      version: 'policy.runtime_question_score_explanation.v1',
+      score: 71,
+      base_score: 63.5,
+      agreement_multiplier_percent: 112,
+      components: [
+        {
+          source_id: 'declared_policy_intent',
+          evidence_score: 75,
+          normalized_weight_percent: 60,
+          weighted_contribution: 45,
+          policy_term: 'private rule',
+        },
+        {
+          source_id: 'similar_items',
+          evidence_score: 65,
+          normalized_weight_percent: 40,
+          weighted_contribution: 26,
+          media_titles: ['private item'],
+        },
+      ],
+      calibration: {
+        status_id: 'not_adjusted',
+        pre_safety_score: null,
+        provider_output: 'ignore policy',
+      },
+    }
+
+    expect(policyQuestionDecisionPresentation(answer).deterministic.score_explanation).toEqual({
+      score: 71,
+      base_score: 63.5,
+      agreement_multiplier_percent: 112,
+      components: [
+        {
+          source_id: 'declared_policy_intent',
+          evidence_score: 75,
+          normalized_weight_percent: 60,
+          weighted_contribution: 45,
+        },
+        {
+          source_id: 'similar_items',
+          evidence_score: 65,
+          normalized_weight_percent: 40,
+          weighted_contribution: 26,
+        },
+      ],
+      calibration: {
+        status_id: 'not_adjusted',
+        pre_safety_score: null,
+      },
+    })
+  })
+
+  it('fails closed when a score explanation contains an unknown source category', () => {
+    const answer = answerWithVerification(null)
+    answer.decision_summary.deterministic.score_explanation = {
+      version: 'policy.runtime_question_score_explanation.v1',
+      score: 71,
+      base_score: 71,
+      agreement_multiplier_percent: 100,
+      components: [{
+        source_id: 'untrusted_source',
+        evidence_score: 71,
+        normalized_weight_percent: 100,
+        weighted_contribution: 71,
+      }],
+      calibration: {
+        status_id: 'not_adjusted',
+        pre_safety_score: null,
+      },
+    }
+
+    expect(policyQuestionDecisionPresentation(answer).deterministic.score_explanation).toBeNull()
+  })
 })
