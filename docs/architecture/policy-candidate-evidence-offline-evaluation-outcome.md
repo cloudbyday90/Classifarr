@@ -18,19 +18,20 @@ It performs no AI call and cannot change an item, policy, route, retry,
 learning state, database, or operator workflow.
 
 The report compares three signals with explicit `admit`, `review`, and
-`abstain` reference decisions. The initial corpus correctly demonstrates why
-the result is not ready for runtime use: candidate scope and exact contrastive
-evidence each have 50% review recall in the small cohort, while the manually
-specified semantic proposal has 100% agreement only because it is a design
-fixture, not a measured retriever.
+`abstain` reference decisions. The eight-case corpus correctly demonstrates
+why the result is not ready for runtime use: candidate scope and exact
+contrastive evidence each have 50% review recall, while the snapshot semantic
+signal reaches 66.7% review precision, 50% recall, 25% abstention, and 62.5%
+three-way agreement.
 
 ## Delivered Implementation
 
 - Added modular ESM contract, mapping, metrics, and evaluator services.
 - Added a strict, versioned JSON fixture contract and a mirrored Draft 2020-12
   schema.
-- Added the four-case documentary/comedy/Katrina-like offline corpus and its
-  fixed-path runner.
+- Expanded the corpus to eight documentary/comedy/series and uncertainty cases
+  with reviewed admit, review, and abstain references.
+- Added the independently documented snapshot adapter and fixed-path runner.
 - Added focused tests for valid input, unknown-field rejection, enum rejection,
   duplicate IDs, fail-closed reports, signal mappings, metrics, and corpus
   validity, including inherited JavaScript property-name rejection.
@@ -45,28 +46,23 @@ selected and applied locally; no closed or merged change was substituted.
 
 ## Validation
 
-The focused validation pass completed on 2026-08-30:
+The semantic-snapshot validation pass completed on 2026-08-30:
 
 - `npm run test:offline:policy-candidate-evidence-evaluation` passed and
-  produced a valid four-fixture report.
-- Focused server tests: 5 suites and 26 tests passed.
-- Server unit tests: 917 suites and 26,239 tests passed. Server integration
-  tests: 75 of 76 suites and 868 of 869 tests passed; the one existing skip is
-  intentional.
-- The full client suite completed before the server-only hardening change: 262
-  files and 3,766 tests passed.
-- Lint, server/client type checks, documentation lint, production client build,
-  static ESM import checks, test mock-shape checks, copyright checks, and the
-  coverage ratchet passed without regression.
-- The final security diff scan reviewed all 12 changed executable/package files,
-  including the own-property lookup hardening, and found no reportable issue.
+  produced a valid eight-fixture report.
+- `npm run test:offline:policy-candidate-semantic-snapshot-evaluation` passed
+  with valid content-address, fixture/snapshot-binding, and status-only output.
+- Focused server tests: 9 suites and 32 tests passed.
+- Root lint, server/client type checks, documentation lint, production client
+  build, static ESM import checks, test mock-shape checks, and copyright checks
+  passed without regression.
+- The final security diff scan reviewed all 16 changed executable/package/test
+  files and found no reportable issue.
 
 ## Next Item
 
-Build a **read-only, snapshot-pinned semantic retrieval adapter** for this
-offline evaluator. It should consume a redacted, versioned local embedding
-snapshot and emit only `supports_leading_candidate`,
-`supports_alternative_candidate`, or `abstain`. First enlarge the corpus with
-human-reviewed examples and publish precision, recall, abstention, and
-provenance results; do not connect the adapter to routing or the pending-review
-UI.
+Build a deterministic **snapshot-artifact generator and review workflow** for
+a larger, independently human-reviewed corpus. It must redact source content
+before embedding, record corpus/snapshot provenance and content addresses, and
+evaluate precision, recall, abstention, and confidence intervals by cohort.
+Keep it offline and do not connect it to routing or the pending-review UI.

@@ -15,23 +15,28 @@ fixed signals against an explicit reference decision:
 2. exact cross-library identity/contrastive status; and
 3. a proposed semantic-retrieval status.
 
-The third signal is intentionally static data in this release. No embedding,
+The third signal now comes from a read-only, manifest-pinned synthetic and
+redacted embedding snapshot. It is still strictly offline: no live embedding,
 RAG, LLM, HTTP, database, current-library lookup, policy evaluation, queue,
 or operator-facing route is called. That lets Classifarr measure the proposal
 shape before a real semantic adapter gains any operational influence.
 
 ## Corpus and Contract
 
-The committed corpus has four intentionally bounded, non-runtime examples:
+The committed corpus has eight intentionally bounded, non-runtime examples:
 
 - a Katrina-like documentary ambiguity;
 - a comedy-and-standup overlap;
 - a clear documentary destination; and
-- an inventory-unavailable documentary case.
+- an inventory-unavailable documentary case;
+- a declared-scope/semantic conflict;
+- an alternative semantic overreach;
+- a clear series destination; and
+- a low-margin semantic uncertainty case.
 
 Every fixture has a version, bounded ID/name/tags, one human-reviewed
-reference decision (`admit`, `review`, or `abstain`), and exactly three
-allow-listed observations. The application validator and the machine-readable
+reference decision (`admit`, `review`, or `abstain`), three allow-listed
+observations, and a snapshot ID. The application validator and the machine-readable
 [fixture schema](../schemas/policy-candidate-evidence-offline-evaluation-fixture-v1.schema.json)
 reject unknown fields, duplicate IDs, invalid enum values, control characters,
 and oversized documents. Raw provider output, prompts, titles, catalog rows,
@@ -63,19 +68,21 @@ abstention rate, non-abstaining coverage, and exact three-way agreement.
 Undefined precision/recall is `null`, never presented as a manufactured zero
 or success.
 
-The initial four-fixture output is a feasibility check, not a quality claim:
+The eight-fixture output is a feasibility check, not a quality claim:
 
 | Signal | Review precision | Review recall | Abstention | Interpretation |
 | --- | ---: | ---: | ---: | --- |
-| Deterministic candidate scope | 100% | 50% | 25% | One overlap case would be admitted when review was the reference. |
-| Exact contrastive status | 100% | 50% | 50% | Shared identity correctly abstains but still misses a review. |
-| Proposed semantic retrieval | 100% | 100% | 25% | A hand-authored proposal fits this tiny corpus only; it is not evidence of production performance. |
+| Deterministic candidate scope | 100% | 50% | 25% | It misses two human-reviewed cases that need review. |
+| Exact contrastive status | 100% | 50% | 37.5% | It correctly abstains under uncertainty but does not settle every review. |
+| Snapshot semantic retrieval | 66.7% | 50% | 25% | It creates one unneeded review and misses two required reviews. |
 
 ## Architecture
 
 ```text
-versioned JSON fixtures
-  -> strict pure contract validator
+versioned JSON fixtures + redacted snapshot + SHA-256 manifest
+  -> strict pure contract and manifest validators
+  -> one-to-one fixture/snapshot binding + content-address verification
+  -> status-only cosine scorer
   -> pure signal-to-decision mappings
   -> pure metrics reducer
   -> static JSON report
@@ -87,6 +94,7 @@ The public local command is deliberately fixed-path and argument-free:
 
 ```text
 npm run test:offline:policy-candidate-evidence-evaluation
+npm run test:offline:policy-candidate-semantic-snapshot-evaluation
 ```
 
 It reads only the committed fixture document and returns a nonzero exit code
@@ -116,6 +124,9 @@ August 2026.
 - OWASP recommends validation at each business-logic handoff. The strict
   fixture boundary validates all inputs before mapping or metric calculation.
   [OWASP WSTG business-logic data validation](https://owasp.org/www-project-web-security-testing-guide/v42/4-Web_Application_Security_Testing/10-Business_Logic_Testing/01-Test_Business_Logic_Data_Validation)
+- OWASP identifies vector and embedding data as a RAG attack surface, including
+  leakage, poisoning, and context conflict. The adapter has no live vector-store
+  access and never reports raw vectors. [OWASP LLM08: Vector and Embedding Weaknesses](https://genai.owasp.org/llmrisk/llm082025-vector-and-embedding-weaknesses/)
 
 ## Options Considered
 
@@ -123,8 +134,9 @@ August 2026.
 | --- | --- | --- | --- |
 | Send RAG/LLM evidence directly to pending-review UI | Fast feedback | Couples unmeasured probabilistic evidence to an operator decision; expands privacy and prompt-injection surface | Reject |
 | Use live media/history records as the initial corpus | More realistic | Retains identities and current-system dependencies; results are hard to reproduce | Reject for foundation |
-| Static fixtures with a semantic decision prefilled | Reproducible, no model/data access, clear metrics, tests the evaluation contract | Does not evaluate a real retriever; very small sample | Adopt now |
-| Build a read-only local semantic adapter immediately | Tests real retrieval | Requires snapshot/provenance/redaction design and a representative reference corpus first | Defer |
+| Static fixtures with a semantic decision prefilled | Reproducible, no model/data access, clear metrics, tests the evaluation contract | Does not exercise a scorer | Retain as reviewed expectation |
+| Read-only snapshot-pinned semantic adapter | Exercises deterministic semantic scoring with provenance and no live data access | Synthetic sample remains small and cannot model production retrieval | Adopt offline only |
+| Connect the adapter to live RAG or review UI | More operational feedback | Treats unproven evidence as advice and expands the vector-data boundary | Reject |
 
 ## Security and Accessibility
 
@@ -134,6 +146,10 @@ August 2026.
   JavaScript property names also fail closed.
 - The static runner has no CLI parameters or external input path, so it cannot
   be redirected to an untrusted document by normal use.
+- The snapshot runner has the same fixed-path behavior and fails closed when
+  either content address or the one-to-one fixture/snapshot binding is wrong.
+- Raw vectors remain confined to the committed synthetic fixture; reports
+  contain only status IDs, aggregate metrics, versions, counts, and SHA-256 addresses.
 - Invalid input produces only count/risk-ID metadata, never raw fixture data.
 - No browser surface is added. W3C browser semantics such as status messages
   and accessible tables do not apply to this CLI/JSON artifact. If a future
@@ -143,11 +159,11 @@ August 2026.
 ## Final Recommendation Stack
 
 1. Keep this evaluation offline and non-authoritative.
-2. Expand to a human-reviewed, representative corpus before comparing real RAG
-   retrieval. Preserve the same fixed decision/status interface.
-3. Build a read-only, redacted semantic adapter that emits only one of the
-   three semantic signal IDs into this evaluator; do not expose raw retrieval
-   text or connect it to routing.
-4. Require a measured threshold, documented corpus provenance, security review,
+2. Expand the eight reviewed examples with independently reviewed edge,
+   conflict, and abstention cases before considering a non-synthetic snapshot.
+3. Keep any future snapshot redacted, versioned, content-addressed, and capable
+   of emitting only the three status IDs; do not expose raw retrieval text or
+   connect it to routing.
+4. Require measured thresholds, documented corpus provenance, security review,
    and W3C-accessible operator design before any future UI or policy workflow
    can present semantic evidence.

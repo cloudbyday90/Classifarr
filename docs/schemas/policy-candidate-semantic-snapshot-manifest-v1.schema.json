@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:classifarr:policy-candidate-semantic-snapshot-manifest:v1",
+  "title": "Classifarr Policy Candidate Semantic Snapshot Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "fixtureDocumentFingerprint",
+    "snapshotDocumentFingerprint"
+  ],
+  "properties": {
+    "version": {
+      "const": "policy.candidate_semantic_snapshot_manifest.v1"
+    },
+    "fixtureDocumentFingerprint": {
+      "$ref": "#/$defs/fingerprint"
+    },
+    "snapshotDocumentFingerprint": {
+      "$ref": "#/$defs/fingerprint"
+    }
+  },
+  "$defs": {
+    "fingerprint": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    }
+  }
+}

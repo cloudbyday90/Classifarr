@@ -55,7 +55,8 @@
       "required": [
         "candidateSetSelectionStatusId",
         "contrastiveStatusId",
-        "semanticRetrievalSignalId"
+        "semanticRetrievalSignalId",
+        "semanticSnapshotId"
       ],
       "properties": {
         "candidateSetSelectionStatusId": {
@@ -82,6 +83,10 @@
             "supports_alternative_candidate",
             "abstain"
           ]
+        },
+        "semanticSnapshotId": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,79}$"
         }
       }
     }

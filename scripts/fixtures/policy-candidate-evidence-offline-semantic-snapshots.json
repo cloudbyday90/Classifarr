@@ -1,0 +1,87 @@
+{
+  "version": "policy.candidate_semantic_snapshot_document.v1",
+  "snapshotSetId": "offline-semantic-evaluation-v1",
+  "embeddingSpaceId": "synthetic-redacted-v1",
+  "snapshots": [
+    {
+      "version": "policy.candidate_semantic_snapshot.v1",
+      "id": "snapshot-documentary-ambiguity",
+      "fixtureId": "katrina-like-documentary-ambiguity",
+      "queryEmbedding": [1, 0, 0, 0],
+      "candidateEmbeddings": [
+        { "roleId": "leading", "embedding": [0.2, 0.9, 0, 0] },
+        { "roleId": "alternative", "embedding": [0.95, 0.05, 0, 0] }
+      ]
+    },
+    {
+      "version": "policy.candidate_semantic_snapshot.v1",
+      "id": "snapshot-comedy-overlap",
+      "fixtureId": "comedy-and-standup-overlap",
+      "queryEmbedding": [0, 1, 0, 0],
+      "candidateEmbeddings": [
+        { "roleId": "leading", "embedding": [0.55, 0.55, 0, 0] },
+        { "roleId": "alternative", "embedding": [0.1, 0.99, 0, 0] }
+      ]
+    },
+    {
+      "version": "policy.candidate_semantic_snapshot.v1",
+      "id": "snapshot-clear-documentary",
+      "fixtureId": "clear-documentary-destination",
+      "queryEmbedding": [0, 0, 1, 0],
+      "candidateEmbeddings": [
+        { "roleId": "leading", "embedding": [0.1, 0, 1, 0] },
+        { "roleId": "alternative", "embedding": [0.6, 0.1, 0.3, 0] }
+      ]
+    },
+    {
+      "version": "policy.candidate_semantic_snapshot.v1",
+      "id": "snapshot-inventory-unavailable",
+      "fixtureId": "inventory-unavailable-documentary",
+      "queryEmbedding": [0, 0, 0, 1],
+      "candidateEmbeddings": [
+        { "roleId": "leading", "embedding": [0.6, 0, 0.1, 0.3] },
+        { "roleId": "alternative", "embedding": [0, 0.6, 0.2, 0.45] }
+      ]
+    },
+    {
+      "version": "policy.candidate_semantic_snapshot.v1",
+      "id": "snapshot-declared-scope-conflict",
+      "fixtureId": "declared-scope-semantic-conflict",
+      "queryEmbedding": [1, 1, 0, 0],
+      "candidateEmbeddings": [
+        { "roleId": "leading", "embedding": [1, 0.9, 0.1, 0] },
+        { "roleId": "alternative", "embedding": [0.1, 0.5, 0.8, 0] }
+      ]
+    },
+    {
+      "version": "policy.candidate_semantic_snapshot.v1",
+      "id": "snapshot-alternative-overreach",
+      "fixtureId": "alternative-semantic-overreach",
+      "queryEmbedding": [0, 1, 1, 0],
+      "candidateEmbeddings": [
+        { "roleId": "leading", "embedding": [0, 0.8, 0.3, 0.2] },
+        { "roleId": "alternative", "embedding": [0, 0.8, 1, 0] }
+      ]
+    },
+    {
+      "version": "policy.candidate_semantic_snapshot.v1",
+      "id": "snapshot-clear-series",
+      "fixtureId": "clear-series-destination",
+      "queryEmbedding": [1, 0, 1, 0],
+      "candidateEmbeddings": [
+        { "roleId": "leading", "embedding": [0.9, 0.1, 1, 0] },
+        { "roleId": "alternative", "embedding": [0.3, 0.9, 0.2, 0] }
+      ]
+    },
+    {
+      "version": "policy.candidate_semantic_snapshot.v1",
+      "id": "snapshot-low-margin-uncertainty",
+      "fixtureId": "low-margin-semantic-uncertainty",
+      "queryEmbedding": [0, 1, 0, 1],
+      "candidateEmbeddings": [
+        { "roleId": "leading", "embedding": [0.2, 0.45, 0.1, 0.4] },
+        { "roleId": "alternative", "embedding": [0.1, 0.4, 0.3, 0.45] }
+      ]
+    }
+  ]
+}

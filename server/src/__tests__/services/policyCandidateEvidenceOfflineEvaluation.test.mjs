@@ -20,6 +20,7 @@ function buildFixture({ id, referenceDecisionId, candidateSetSelectionStatusId, 
       candidateSetSelectionStatusId,
       contrastiveStatusId,
       semanticRetrievalSignalId,
+      semanticSnapshotId: `snapshot-${id}`,
     },
   };
 }
@@ -47,6 +48,7 @@ describe('policyCandidateEvidenceOfflineEvaluation', () => {
         candidateSetSelectionStatusId: 'confirmed_candidate',
         contrastiveStatusId: 'leading_identity_match',
         semanticRetrievalSignalId: 'supports_leading_candidate',
+        semanticSnapshotId: 'snapshot-bad-fixture',
       }),
       buildFixture({
         id: 'inventory-unavailable',

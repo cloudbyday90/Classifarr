@@ -34,6 +34,7 @@ export const POLICY_CANDIDATE_EVIDENCE_OFFLINE_EVALUATION_RISK_IDS = Object.free
   INVALID_REFERENCE_DECISION: 'invalid_reference_decision',
   INVALID_SELECTION_STATUS: 'invalid_selection_status',
   INVALID_SEMANTIC_SIGNAL: 'invalid_semantic_signal',
+  INVALID_SEMANTIC_SNAPSHOT_ID: 'invalid_semantic_snapshot_id',
   INVALID_STRING: 'invalid_string',
   MISSING_REQUIRED_FIELD: 'missing_required_field',
   UNKNOWN_FIELD: 'unknown_field',
@@ -172,6 +173,7 @@ function validateObservations(value, issues) {
     'candidateSetSelectionStatusId',
     'contrastiveStatusId',
     'semanticRetrievalSignalId',
+    'semanticSnapshotId',
   ], path, issues)) return;
 
   if (requireOwnField(value, 'candidateSetSelectionStatusId', path, issues) &&
@@ -197,6 +199,15 @@ function validateObservations(value, issues) {
       `${path}.semanticRetrievalSignalId`,
       'Semantic retrieval signal must be a fixed offline proposal or abstention.',
     ));
+  }
+  if (requireOwnField(value, 'semanticSnapshotId', path, issues)) {
+    validateIdentifier(
+      value.semanticSnapshotId,
+      `${path}.semanticSnapshotId`,
+      issues,
+      FIXTURE_ID_PATTERN,
+      POLICY_CANDIDATE_EVIDENCE_OFFLINE_EVALUATION_RISK_IDS.INVALID_SEMANTIC_SNAPSHOT_ID,
+    );
   }
 }
 

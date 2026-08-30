@@ -22,7 +22,7 @@ describe('policyCandidateEvidenceOfflineEvaluationFixtureDocument', () => {
 
     expect(validatePolicyCandidateEvidenceOfflineEvaluationFixtureDocumentForScript(document)).toEqual({
       ok: true,
-      fixtureCount: 4,
+      fixtureCount: 8,
       issues: [],
     });
     expect(document.map((fixture) => fixture.id)).toEqual([
@@ -30,6 +30,10 @@ describe('policyCandidateEvidenceOfflineEvaluationFixtureDocument', () => {
       'comedy-and-standup-overlap',
       'clear-documentary-destination',
       'inventory-unavailable-documentary',
+      'declared-scope-semantic-conflict',
+      'alternative-semantic-overreach',
+      'clear-series-destination',
+      'low-margin-semantic-uncertainty',
     ]);
   });
 });

@@ -10,7 +10,8 @@
     "observations": {
       "candidateSetSelectionStatusId": "changed_outside_candidates",
       "contrastiveStatusId": "alternative_identity_match",
-      "semanticRetrievalSignalId": "supports_alternative_candidate"
+      "semanticRetrievalSignalId": "supports_alternative_candidate",
+      "semanticSnapshotId": "snapshot-documentary-ambiguity"
     }
   },
   {
@@ -24,7 +25,8 @@
     "observations": {
       "candidateSetSelectionStatusId": "changed_to_candidate",
       "contrastiveStatusId": "shared_identity_match",
-      "semanticRetrievalSignalId": "supports_alternative_candidate"
+      "semanticRetrievalSignalId": "supports_alternative_candidate",
+      "semanticSnapshotId": "snapshot-comedy-overlap"
     }
   },
   {
@@ -38,7 +40,8 @@
     "observations": {
       "candidateSetSelectionStatusId": "confirmed_candidate",
       "contrastiveStatusId": "leading_identity_match",
-      "semanticRetrievalSignalId": "supports_leading_candidate"
+      "semanticRetrievalSignalId": "supports_leading_candidate",
+      "semanticSnapshotId": "snapshot-clear-documentary"
     }
   },
   {
@@ -52,7 +55,68 @@
     "observations": {
       "candidateSetSelectionStatusId": "routed_not_applicable",
       "contrastiveStatusId": "retrieval_unavailable",
-      "semanticRetrievalSignalId": "abstain"
+      "semanticRetrievalSignalId": "abstain",
+      "semanticSnapshotId": "snapshot-inventory-unavailable"
+    }
+  },
+  {
+    "version": "policy.candidate_evidence_offline_evaluation_fixture.v1",
+    "id": "declared-scope-semantic-conflict",
+    "name": "Declared scope and semantic signal conflict",
+    "tags": ["declared-scope", "semantic-conflict", "review"],
+    "reference": {
+      "decisionId": "review"
+    },
+    "observations": {
+      "candidateSetSelectionStatusId": "changed_to_candidate",
+      "contrastiveStatusId": "leading_identity_match",
+      "semanticRetrievalSignalId": "supports_leading_candidate",
+      "semanticSnapshotId": "snapshot-declared-scope-conflict"
+    }
+  },
+  {
+    "version": "policy.candidate_evidence_offline_evaluation_fixture.v1",
+    "id": "alternative-semantic-overreach",
+    "name": "Alternative semantic overreach",
+    "tags": ["semantic-overreach", "abstention", "retrieval"],
+    "reference": {
+      "decisionId": "abstain"
+    },
+    "observations": {
+      "candidateSetSelectionStatusId": "routed_not_applicable",
+      "contrastiveStatusId": "retrieval_unavailable",
+      "semanticRetrievalSignalId": "supports_alternative_candidate",
+      "semanticSnapshotId": "snapshot-alternative-overreach"
+    }
+  },
+  {
+    "version": "policy.candidate_evidence_offline_evaluation_fixture.v1",
+    "id": "clear-series-destination",
+    "name": "Clear series destination",
+    "tags": ["series", "clear", "candidate-confirmation"],
+    "reference": {
+      "decisionId": "admit"
+    },
+    "observations": {
+      "candidateSetSelectionStatusId": "confirmed_candidate",
+      "contrastiveStatusId": "leading_identity_match",
+      "semanticRetrievalSignalId": "supports_leading_candidate",
+      "semanticSnapshotId": "snapshot-clear-series"
+    }
+  },
+  {
+    "version": "policy.candidate_evidence_offline_evaluation_fixture.v1",
+    "id": "low-margin-semantic-uncertainty",
+    "name": "Low margin semantic uncertainty",
+    "tags": ["low-margin", "uncertainty", "review"],
+    "reference": {
+      "decisionId": "review"
+    },
+    "observations": {
+      "candidateSetSelectionStatusId": "changed_outside_candidates",
+      "contrastiveStatusId": "no_candidate_identity_match",
+      "semanticRetrievalSignalId": "abstain",
+      "semanticSnapshotId": "snapshot-low-margin-uncertainty"
     }
   }
 ]

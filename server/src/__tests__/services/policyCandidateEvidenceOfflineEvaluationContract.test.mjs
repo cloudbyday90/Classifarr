@@ -23,6 +23,7 @@ function buildFixture() {
       candidateSetSelectionStatusId: 'changed_outside_candidates',
       contrastiveStatusId: 'alternative_identity_match',
       semanticRetrievalSignalId: 'supports_alternative_candidate',
+      semanticSnapshotId: 'snapshot-reviewed-documentary-ambiguity',
     },
   };
 }
