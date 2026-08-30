@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:classifarr:policy-candidate-evidence-offline-evaluation-fixture:v1",
+  "title": "Classifarr Policy Candidate Evidence Offline Evaluation Fixture v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "id",
+    "name",
+    "tags",
+    "reference",
+    "observations"
+  ],
+  "properties": {
+    "version": {
+      "const": "policy.candidate_evidence_offline_evaluation_fixture.v1"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,79}$"
+    },
+    "name": {
+      "$ref": "#/$defs/boundedText240"
+    },
+    "tags": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9._-]{0,47}$"
+      }
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decisionId"
+      ],
+      "properties": {
+        "decisionId": {
+          "enum": [
+            "admit",
+            "review",
+            "abstain"
+          ]
+        }
+      }
+    },
+    "observations": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidateSetSelectionStatusId",
+        "contrastiveStatusId",
+        "semanticRetrievalSignalId"
+      ],
+      "properties": {
+        "candidateSetSelectionStatusId": {
+          "enum": [
+            "confirmed_candidate",
+            "changed_to_candidate",
+            "changed_outside_candidates",
+            "routed_not_applicable"
+          ]
+        },
+        "contrastiveStatusId": {
+          "enum": [
+            "leading_identity_match",
+            "alternative_identity_match",
+            "shared_identity_match",
+            "no_candidate_identity_match",
+            "identity_unverified",
+            "retrieval_unavailable"
+          ]
+        },
+        "semanticRetrievalSignalId": {
+          "enum": [
+            "supports_leading_candidate",
+            "supports_alternative_candidate",
+            "abstain"
+          ]
+        }
+      }
+    }
+  },
+  "$defs": {
+    "boundedText240": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "pattern": "^[^\\u0000-\\u001F\\u007F]+$"
+    }
+  }
+}

@@ -1,0 +1,58 @@
+[
+  {
+    "version": "policy.candidate_evidence_offline_evaluation_fixture.v1",
+    "id": "katrina-like-documentary-ambiguity",
+    "name": "Katrina-like documentary ambiguity",
+    "tags": ["documentary", "ambiguous", "policy-scope"],
+    "reference": {
+      "decisionId": "review"
+    },
+    "observations": {
+      "candidateSetSelectionStatusId": "changed_outside_candidates",
+      "contrastiveStatusId": "alternative_identity_match",
+      "semanticRetrievalSignalId": "supports_alternative_candidate"
+    }
+  },
+  {
+    "version": "policy.candidate_evidence_offline_evaluation_fixture.v1",
+    "id": "comedy-and-standup-overlap",
+    "name": "Comedy and standup policy overlap",
+    "tags": ["comedy", "overlap", "candidate-ranking"],
+    "reference": {
+      "decisionId": "review"
+    },
+    "observations": {
+      "candidateSetSelectionStatusId": "changed_to_candidate",
+      "contrastiveStatusId": "shared_identity_match",
+      "semanticRetrievalSignalId": "supports_alternative_candidate"
+    }
+  },
+  {
+    "version": "policy.candidate_evidence_offline_evaluation_fixture.v1",
+    "id": "clear-documentary-destination",
+    "name": "Clear documentary destination",
+    "tags": ["documentary", "clear", "candidate-confirmation"],
+    "reference": {
+      "decisionId": "admit"
+    },
+    "observations": {
+      "candidateSetSelectionStatusId": "confirmed_candidate",
+      "contrastiveStatusId": "leading_identity_match",
+      "semanticRetrievalSignalId": "supports_leading_candidate"
+    }
+  },
+  {
+    "version": "policy.candidate_evidence_offline_evaluation_fixture.v1",
+    "id": "inventory-unavailable-documentary",
+    "name": "Inventory unavailable documentary",
+    "tags": ["documentary", "inventory-unavailable", "abstention"],
+    "reference": {
+      "decisionId": "abstain"
+    },
+    "observations": {
+      "candidateSetSelectionStatusId": "routed_not_applicable",
+      "contrastiveStatusId": "retrieval_unavailable",
+      "semanticRetrievalSignalId": "abstain"
+    }
+  }
+]
