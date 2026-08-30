@@ -31,6 +31,15 @@ describe('policyCandidateAdjudicationEvidence', () => {
       }),
       retrieveCurrentLibraryEvidence: async () => ({
         statusId: 'available',
+        telemetry: {
+          version: 'current_library.candidate_retrieval_telemetry.v1',
+          statusId: 'available',
+          latencyBand: '25_to_99ms',
+          candidateCount: 2,
+          matchingCandidateCount: 1,
+          directMatchCandidateCount: 1,
+          title: 'Telemetry must not persist',
+        },
         candidates: [{
           libraryId: 1,
           matchCount: 1,
@@ -61,6 +70,17 @@ describe('policyCandidateAdjudicationEvidence', () => {
     });
     expect(remote.candidates[0].profile).toEqual({ available: true, itemCountBand: '100-499' });
     expect(remote.candidates[0].rag).toEqual({ matchCount: 1, topSimilarity: 91 });
+    expect(evidence.currentLibraryCandidateRetrievalTelemetry).toEqual({
+      version: 'current_library.candidate_retrieval_telemetry.v1',
+      status_id: 'available',
+      latency_band: '25_to_99ms',
+      candidate_count: 2,
+      matched_candidate_count: 1,
+      direct_match_candidate_count: 1,
+    });
+    expect(local).not.toHaveProperty('currentLibraryCandidateRetrievalTelemetry');
+    expect(remote).not.toHaveProperty('currentLibraryCandidateRetrievalTelemetry');
+    expect(JSON.stringify(evidence.currentLibraryCandidateRetrievalTelemetry)).not.toContain('Telemetry must not persist');
     expect(JSON.stringify(remote)).not.toContain('Existing Movie');
     expect(JSON.stringify(remote)).not.toContain('Current Catalog Movie');
     expect(JSON.stringify(remote)).not.toContain('Studio A');

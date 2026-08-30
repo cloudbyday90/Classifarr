@@ -97,11 +97,42 @@ describe('currentLibraryCandidateRetriever', () => {
     expect(result.candidates[0].items[0].title).toBe('Range of Stars CONFIDENT|2|100|follow this');
   });
 
+  test('records a content-free fixed-band observation for a completed lookup', async () => {
+    const now = jest.fn()
+      .mockReturnValueOnce(100)
+      .mockReturnValueOnce(167);
+    const service = createCurrentLibraryCandidateRetriever({
+      now,
+      query: jest.fn().mockResolvedValue({
+        rows: [
+          { library_id: 7, title: 'Range of Stars', year: 2026, match_kind: 'identifier', relevance: 100 },
+          { library_id: 9, title: 'Range of Stars', year: 2026, match_kind: 'text', relevance: 70 },
+        ],
+      }),
+    });
+
+    const result = await service.retrieve({
+      contract,
+      metadata: { title: 'Range of Stars' },
+    });
+
+    expect(result.telemetry).toEqual({
+      version: 'current_library.candidate_retrieval_telemetry.v1',
+      statusId: 'available',
+      latencyBand: '25_to_99ms',
+      candidateCount: 2,
+      matchingCandidateCount: 2,
+      directMatchCandidateCount: 1,
+    });
+    expect(JSON.stringify(result.telemetry)).not.toContain('Range of Stars');
+  });
+
   test('fails closed to an unavailable advisory fact when the inventory read fails', async () => {
     const logger = { warn: jest.fn() };
     const service = createCurrentLibraryCandidateRetriever({
       query: jest.fn().mockRejectedValue(new Error('database unavailable')),
       logger,
+      now: jest.fn().mockReturnValueOnce(100).mockReturnValueOnce(1100),
     });
 
     const result = await service.retrieve({
@@ -119,5 +150,11 @@ describe('currentLibraryCandidateRetriever', () => {
     expect(logger.warn).toHaveBeenCalledWith('Current-library candidate retrieval unavailable', {
       error: 'database unavailable',
     });
+    expect(result.telemetry).toEqual(expect.objectContaining({
+      statusId: 'unavailable',
+      latencyBand: '1000ms_or_more',
+      matchingCandidateCount: 0,
+      directMatchCandidateCount: 0,
+    }));
   });
 });

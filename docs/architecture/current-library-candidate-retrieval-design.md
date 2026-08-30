@@ -106,7 +106,8 @@ retrieved content as untrusted evidence, never instructions.
 2. Keep lookup candidate-scoped, bounded, provider-minimized, and advisory.
 3. Retain policy and operator authority; do not infer a route from catalog
    retrieval alone.
-4. Instrument lookup latency and operator agreement before introducing a
-   maintained full-text or embedding index.
+4. Use the implemented aggregate latency and AI/operator-agreement telemetry
+   before introducing a maintained full-text or embedding index. See
+   [telemetry design](current-library-candidate-retrieval-telemetry-design.md).
 5. Only then evaluate versioned current-library embeddings, including explicit
    provider, cost, retention, access-partition, poisoning, and recall controls.

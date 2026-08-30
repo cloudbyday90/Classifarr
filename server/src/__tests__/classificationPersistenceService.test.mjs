@@ -730,6 +730,43 @@ describe('logClassification', () => {
     expect(JSON.stringify(persistedMetadata)).not.toContain('Also do not retain this');
   });
 
+  test('persists only the allow-listed current-library retrieval telemetry projection', async () => {
+    const result = {
+      library: { id: 1, name: 'Movies' },
+      confidence: 71,
+      method: 'policy_candidate_adjudication',
+      reason: 'Operator review required',
+      needs_clarification: true,
+      current_library_candidate_retrieval_telemetry: {
+        version: 'current_library.candidate_retrieval_telemetry.v1',
+        statusId: 'available',
+        latencyBand: '25_to_99ms',
+        candidateCount: 2,
+        matchingCandidateCount: 1,
+        directMatchCandidateCount: 1,
+        title: 'Private catalog title',
+        provider: 'Private provider',
+        exactElapsedMs: 67,
+      },
+    };
+
+    await classificationPersistenceService.logClassification(baseMetadata, result);
+
+    const insertCall = db.query.mock.calls.find(c => c[0].includes('INSERT INTO classification_history'));
+    const persistedMetadata = JSON.parse(insertCall[1][9]);
+    expect(persistedMetadata.classification_details.current_library_candidate_retrieval_telemetry).toEqual({
+      version: 'current_library.candidate_retrieval_telemetry.v1',
+      status_id: 'available',
+      latency_band: '25_to_99ms',
+      candidate_count: 2,
+      matched_candidate_count: 1,
+      direct_match_candidate_count: 1,
+    });
+    expect(JSON.stringify(persistedMetadata)).not.toContain('Private catalog title');
+    expect(JSON.stringify(persistedMetadata)).not.toContain('Private provider');
+    expect(JSON.stringify(persistedMetadata)).not.toContain('exactElapsedMs');
+  });
+
   test('sends Discord pending notification when bot is initialized and status is awaiting_decision', async () => {
     mockDiscordBotService.isInitialized = true;
     const result = {

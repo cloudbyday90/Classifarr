@@ -263,6 +263,7 @@ describe('api/index.js barrel export validation', () => {
       expectFunction('getPolicyStatsDetail')
       expectFunction('getPolicyStatsComparison')
       expectFunction('getDetailedStats')
+      expectFunction('getCurrentLibraryCandidateRetrievalMetrics')
     })
 
     it('exposes patternStatsApi functions', () => {

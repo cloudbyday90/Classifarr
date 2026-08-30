@@ -45,11 +45,13 @@
 import { ref, computed } from 'vue'
 import CandidateBoundVerificationStats from './statistics/CandidateBoundVerificationStats.vue'
 import ClassificationStats from './statistics/ClassificationStats.vue'
+import CurrentLibraryCandidateRetrievalStats from './statistics/CurrentLibraryCandidateRetrievalStats.vue'
 import RAGStats from './statistics/RAGStats.vue'
 
 const tabs = [
   { id: 'classification', label: 'Classification', icon: '🎯', component: ClassificationStats },
   { id: 'verification', label: 'Verification', icon: '🛡️', component: CandidateBoundVerificationStats },
+  { id: 'retrieval', label: 'Candidate Retrieval', icon: '🔎', component: CurrentLibraryCandidateRetrievalStats },
   { id: 'rag', label: 'RAG & Embeddings', icon: '🧠', component: RAGStats }
 ]
 

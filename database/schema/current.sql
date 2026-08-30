@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-08-29T14:32:52.645Z
--- Latest Migration: 20260829_110000_add_ollama_verification_capability_outcome_history.sql
+-- Generated: 2026-08-30T10:05:13.985Z
+-- Latest Migration: 20260830_100000_add_current_library_candidate_retrieval_metrics_index.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -9308,6 +9308,13 @@ CREATE INDEX idx_classification_history_created_at_desc ON public.classification
 
 
 --
+-- Name: idx_classification_history_current_library_retrieval_observe; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_classification_history_current_library_retrieval_observe ON public.classification_history USING btree (created_at DESC) WHERE ((metadata #>> '{classification_details,current_library_candidate_retrieval_telemetry,version}'::text[]) = 'current_library.candidate_retrieval_telemetry.v1'::text);
+
+
+--
 -- Name: idx_classification_history_director_name; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -14080,6 +14087,7 @@ FROM unnest(ARRAY[
     '20260822_140000_add_classification_queue_decision_witnesses.sql',
     '20260828_100000_add_ollama_verification_capability_state.sql',
     '20260829_100000_add_ollama_verification_runtime_mismatch_metrics.sql',
-    '20260829_110000_add_ollama_verification_capability_outcome_history.sql'
+    '20260829_110000_add_ollama_verification_capability_outcome_history.sql',
+    '20260830_100000_add_current_library_candidate_retrieval_metrics_index.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

@@ -133,6 +133,41 @@ describe('Stats API Integration Tests', () => {
             (11116, 'movie', 'Private Verification Test Item', $1, 90, 'ai_verified', 'completed',
              '{"classification_details":{"candidate_bound_verification":{"version":"classification.candidate_bound_verification.v1","status_id":"confirmed"}}}'::jsonb, CURRENT_TIMESTAMP - INTERVAL '1 day')
         `, [testLibraryId]);
+
+        await db.query(`
+            INSERT INTO classification_history (
+                tmdb_id, media_type, title, library_id, confidence, method, status, metadata, created_at
+            ) VALUES (
+                11117, 'movie', 'Private Retrieval Test Item', $1, 71,
+                'manual_classification', 'completed',
+                jsonb_build_object('classification_details', jsonb_build_object(
+                    'current_library_candidate_retrieval_telemetry', jsonb_build_object(
+                        'version', 'current_library.candidate_retrieval_telemetry.v1',
+                        'status_id', 'available',
+                        'latency_band', '25_to_99ms',
+                        'candidate_count', 2,
+                        'matched_candidate_count', 1,
+                        'direct_match_candidate_count', 1
+                    ),
+                    'candidate_adjudication', jsonb_build_object(
+                        'version', 'policy.candidate_adjudication.v1',
+                        'status_id', 'proposed',
+                        'candidate_count', 2,
+                        'proposed_destination', jsonb_build_object(
+                            'library_id', $1::integer,
+                            'library_name', 'Test Stats Library'
+                        )
+                    ),
+                    'outcome_path', jsonb_build_object(
+                        'latest_outcome', jsonb_build_object(
+                            'final_library_id', $1::integer,
+                            'final_library_name', 'Test Stats Library'
+                        )
+                    )
+                )),
+                CURRENT_TIMESTAMP - INTERVAL '1 day'
+            )
+        `, [testLibraryId]);
     });
 
     afterAll(async () => {
@@ -219,6 +254,35 @@ describe('Stats API Integration Tests', () => {
             });
             expect(JSON.stringify(res.body)).not.toContain('Private Verification Test Item');
             expect(JSON.stringify(res.body)).not.toContain('Test Stats Library');
+        });
+    });
+
+    describe('GET /api/stats/current-library-candidate-retrieval', () => {
+        it('should return only the authenticated aggregate retrieval report', async () => {
+            const res = await request(app)
+                .get('/api/stats/current-library-candidate-retrieval?days=7')
+                .set('Authorization', `Bearer ${testToken}`)
+                .expect(200);
+
+            expect(res.body).toMatchObject({
+                version: 'current_library.candidate_retrieval_metrics.v1',
+                retrieval: {
+                    observationCount: expect.any(Number),
+                    latencyBands: expect.arrayContaining([
+                        expect.objectContaining({ id: '25_to_99ms', count: expect.any(Number) }),
+                    ]),
+                },
+                operatorAgreement: {
+                    proposalCount: expect.any(Number),
+                    agreedProposalCount: expect.any(Number),
+                },
+                readiness: { statusId: expect.any(String) },
+            });
+            expect(res.body.retrieval.observationCount).toBeGreaterThanOrEqual(1);
+            expect(res.body.operatorAgreement.agreedProposalCount).toBeGreaterThanOrEqual(1);
+            expect(JSON.stringify(res.body)).not.toContain('Private Retrieval Test Item');
+            expect(JSON.stringify(res.body)).not.toContain('Test Stats Library');
+            expect(JSON.stringify(res.body)).not.toContain('final_library_id');
         });
     });
 

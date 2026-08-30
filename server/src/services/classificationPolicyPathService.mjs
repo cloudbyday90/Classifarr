@@ -203,6 +203,8 @@ export class ClassificationPolicyPathService {
 				metadata,
 			})
 			: null;
+		const currentLibraryCandidateRetrievalTelemetry =
+			candidateAdjudicationEvidence?.currentLibraryCandidateRetrievalTelemetry || null;
 
 		const aiModeDecision = this.resolveDeterministicOutcomeAiMode({
 			policyResult,
@@ -211,12 +213,15 @@ export class ClassificationPolicyPathService {
 		});
 
 		if (!aiModeDecision.shouldInvoke) {
-			const result = this.buildDeterministicOutcomeAiAbstentionResult({
-				policyResult,
-				libraries,
-				signalContext: policySignalContext,
-				aiModeDecision,
-			});
+			const result = {
+				...this.buildDeterministicOutcomeAiAbstentionResult({
+					policyResult,
+					libraries,
+					signalContext: policySignalContext,
+					aiModeDecision,
+				}),
+				current_library_candidate_retrieval_telemetry: currentLibraryCandidateRetrievalTelemetry,
+			};
 
 			this.logger.info('AI classification abstained for deterministic policy outcome', {
 				title: metadata.title,
@@ -290,6 +295,7 @@ export class ClassificationPolicyPathService {
 					policyResult,
 					ragContext,
 					deterministic_ai_mode: aiModeDecision,
+					current_library_candidate_retrieval_telemetry: currentLibraryCandidateRetrievalTelemetry,
 				};
 
 				if (taskId && !metadata.source_library_id) {
@@ -332,29 +338,34 @@ export class ClassificationPolicyPathService {
 			const fallbackConfidence = policySignalContext.confidence || 0;
 			const suggestedLibrary = policySignalContext.suggestedLibrary;
 
+			const failureResult = await this.resolveClassificationPathAiFailure({
+				logger: this.logger,
+				error,
+				metadata,
+				ensureDecisionQuestion: this.classificationRoutingService.ensureDecisionQuestion,
+				isAiTransientAvailabilityError: this.classificationUtilsService.isAiTransientAvailabilityError,
+				policyResult: policyResult || null,
+				ragContext,
+				confidence: fallbackConfidence,
+				suggestedLibrary,
+				libraries,
+				signalContext: policySignalContext,
+				transientError: error,
+				previousRetryCount: metadata.retry_count,
+				maxRetries: metadata.max_retries,
+				buildPendingRetryResult: this.classificationUtilsService.buildPendingRetryResult,
+				signalCalculationReason: 'Calculated from policy signals (AI unavailable)',
+				signalCalculationResultFields: {
+					policyResult,
+				},
+			});
+
 			return {
 				handled: true,
-				result: await this.resolveClassificationPathAiFailure({
-					logger: this.logger,
-					error,
-					metadata,
-					ensureDecisionQuestion: this.classificationRoutingService.ensureDecisionQuestion,
-					isAiTransientAvailabilityError: this.classificationUtilsService.isAiTransientAvailabilityError,
-					policyResult: policyResult || null,
-					ragContext,
-					confidence: fallbackConfidence,
-					suggestedLibrary,
-					libraries,
-					signalContext: policySignalContext,
-					transientError: error,
-					previousRetryCount: metadata.retry_count,
-					maxRetries: metadata.max_retries,
-					buildPendingRetryResult: this.classificationUtilsService.buildPendingRetryResult,
-					signalCalculationReason: 'Calculated from policy signals (AI unavailable)',
-					signalCalculationResultFields: {
-						policyResult,
-					},
-				}),
+				result: {
+					...failureResult,
+					current_library_candidate_retrieval_telemetry: currentLibraryCandidateRetrievalTelemetry,
+				},
 			};
 		}
 	}

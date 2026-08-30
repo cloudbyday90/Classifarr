@@ -11,6 +11,7 @@ import {
   CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_VERSION,
 } from './currentLibraryCandidateRetrievalContract.mjs';
 import { buildCurrentLibraryCandidateRetrieverQuery } from './currentLibraryCandidateRetrieverQuery.mjs';
+import { buildCurrentLibraryCandidateRetrievalTelemetry } from './currentLibraryCandidateRetrievalTelemetry.mjs';
 
 function boundedTitle(value) {
   if (typeof value !== 'string') return null;
@@ -92,6 +93,7 @@ function availableEvidence(request, rows) {
 export function createCurrentLibraryCandidateRetriever({
   query = db.query,
   logger = createLogger('currentLibraryCandidateRetriever'),
+  now = () => Date.now(),
 } = {}) {
   return Object.freeze({
     async retrieve({ contract = null, metadata = null } = {}) {
@@ -104,15 +106,32 @@ export function createCurrentLibraryCandidateRetriever({
         });
       }
 
+      const startedAt = now();
       try {
         const statement = buildCurrentLibraryCandidateRetrieverQuery(request);
         const result = await query(statement.text, statement.values);
-        return availableEvidence(request, result?.rows);
+        const retrieval = availableEvidence(request, result?.rows);
+        return Object.freeze({
+          ...retrieval,
+          telemetry: buildCurrentLibraryCandidateRetrievalTelemetry({
+            request,
+            retrieval,
+            elapsedMs: now() - startedAt,
+          }),
+        });
       } catch (error) {
         logger.warn('Current-library candidate retrieval unavailable', {
           error: error instanceof Error ? error.message : 'unknown_error',
         });
-        return unavailableEvidence(request);
+        const retrieval = unavailableEvidence(request);
+        return Object.freeze({
+          ...retrieval,
+          telemetry: buildCurrentLibraryCandidateRetrievalTelemetry({
+            request,
+            retrieval,
+            elapsedMs: now() - startedAt,
+          }),
+        });
       }
     },
   });

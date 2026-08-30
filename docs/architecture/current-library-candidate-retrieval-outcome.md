@@ -65,12 +65,10 @@ The repository Pull Requests API was checked on 2026-08-30 and returned zero
 open pull requests. No arbitrary closed or merged pull request was copied into
 this change, so there is no local-only PR implementation in this outcome.
 
-## Next Item
+## Follow-on Telemetry
 
-Measure this lexical lookup under a realistic library-sync cohort. If its
-latency or recall warrants it, design a separately authorized **current-library
-embedding lifecycle**: versioned item text projection, queue/backfill,
-incremental refresh, candidate-only vector filtering, permission-aware
-partitioning, deletion propagation, fixed retrieval caps, and an operator
-agreement/false-route evaluation cohort. Do not start embedding every item
-until the provider, resource, retention, and evaluation policy is approved.
+The latency and AI/operator-agreement telemetry follow-up is implemented in
+[its own design](current-library-candidate-retrieval-telemetry-design.md) and
+[outcome](current-library-candidate-retrieval-telemetry-outcome.md). The next
+decision is to collect a representative cohort, then decide whether any index
+or embedding lifecycle is warranted.

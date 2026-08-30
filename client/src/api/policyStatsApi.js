@@ -50,6 +50,10 @@ export function getCandidateBoundVerificationMetrics(days = 7) {
   return getDataRequest('/stats/candidate-bound-verification', { params: { days } })
 }
 
+export function getCurrentLibraryCandidateRetrievalMetrics(days = 7) {
+  return getDataRequest('/stats/current-library-candidate-retrieval', { params: { days } })
+}
+
 export function getOllamaVerificationRuntimeMismatchSummary() {
   return getDataRequest('/stats/ollama-verification-runtime-mismatch-summary')
 }
@@ -67,6 +71,7 @@ const policyStatsApi = {
   getPolicyStatsComparison,
   getDetailedStats,
   getCandidateBoundVerificationMetrics,
+  getCurrentLibraryCandidateRetrievalMetrics,
   getOllamaVerificationRuntimeMismatchSummary,
   getOllamaVerificationCapabilityOutcomeHistory,
 }

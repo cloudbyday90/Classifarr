@@ -49,7 +49,18 @@ describe('ClassificationPolicyPathService candidate adjudication', () => {
         candidates: selectedCandidates,
       }),
       policyCandidateAdjudicationEvidenceService: {
-        build: jest.fn().mockResolvedValue({ version: 'policy.candidate_adjudication.v1', candidates: [] }),
+        build: jest.fn().mockResolvedValue({
+          version: 'policy.candidate_adjudication.v1',
+          candidates: [],
+          currentLibraryCandidateRetrievalTelemetry: {
+            version: 'current_library.candidate_retrieval_telemetry.v1',
+            status_id: 'available',
+            latency_band: 'under_25ms',
+            candidate_count: 2,
+            matched_candidate_count: 1,
+            direct_match_candidate_count: 1,
+          },
+        }),
       },
       finalizePolicyCandidateAdjudication: jest.fn().mockReturnValue({
         library: libraries[1],
@@ -84,6 +95,13 @@ describe('ClassificationPolicyPathService candidate adjudication', () => {
       result: expect.objectContaining({ needs_clarification: true }),
     }));
     expect(ragLoop).not.toHaveBeenCalled();
-    expect(outcome.result).toMatchObject({ normalized: true, needs_clarification: true });
+    expect(outcome.result).toMatchObject({
+      normalized: true,
+      needs_clarification: true,
+      current_library_candidate_retrieval_telemetry: {
+        latency_band: 'under_25ms',
+        direct_match_candidate_count: 1,
+      },
+    });
   });
 });

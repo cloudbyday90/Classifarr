@@ -10,6 +10,9 @@ import {
   CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_MAXIMUM_ITEMS_PER_CANDIDATE,
   CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_STATUS_IDS,
 } from './currentLibraryCandidateRetrievalContract.mjs';
+import {
+  buildCurrentLibraryCandidateRetrievalTelemetryProjection,
+} from './currentLibraryCandidateRetrievalTelemetry.mjs';
 
 const LOCAL_PROVIDER_ID = 'ollama';
 const MAX_PROFILE_VALUES = 5;
@@ -191,6 +194,8 @@ export function createPolicyCandidateAdjudicationEvidenceService({
       return Object.freeze({
         version: contract.version,
         candidates: Object.freeze(candidates),
+        currentLibraryCandidateRetrievalTelemetry:
+          buildCurrentLibraryCandidateRetrievalTelemetryProjection(currentLibraryRetrieval?.telemetry),
       });
     },
   });

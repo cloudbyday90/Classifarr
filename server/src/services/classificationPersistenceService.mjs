@@ -36,6 +36,9 @@ import { buildClassificationRouteSafetyProjection } from './classificationRouteS
 import { buildDeterministicOutcomeAiModeProjection } from './classificationDeterministicAiMode.mjs';
 import { buildCandidateBoundVerificationProjection } from './classificationCandidateBoundVerificationContract.mjs';
 import { buildPolicyCandidateAdjudicationProjection } from './policyCandidateAdjudicationContract.mjs';
+import {
+  buildCurrentLibraryCandidateRetrievalTelemetryProjection,
+} from './currentLibraryCandidateRetrievalTelemetry.mjs';
 import { buildClassificationQueueDecisionWitness } from './classificationQueueDecisionWitness.mjs';
 import {
   classificationQueueDecisionWitnessRepository,
@@ -357,6 +360,10 @@ export class ClassificationPersistenceService {
       deterministic_ai_mode: buildDeterministicOutcomeAiModeProjection(result.deterministic_ai_mode),
       candidate_bound_verification: buildCandidateBoundVerificationProjection(result.candidate_bound_verification),
       candidate_adjudication: buildPolicyCandidateAdjudicationProjection(result.candidate_adjudication),
+      current_library_candidate_retrieval_telemetry:
+        buildCurrentLibraryCandidateRetrievalTelemetryProjection(
+          result.current_library_candidate_retrieval_telemetry,
+        ),
       route_safety: buildClassificationRouteSafetyProjection(result.route_safety),
       processing_time_ms: processingTimeMs,
     };
