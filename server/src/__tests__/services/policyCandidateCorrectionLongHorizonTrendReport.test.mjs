@@ -57,9 +57,21 @@ describe('policyCandidateCorrectionLongHorizonTrendReport', () => {
       previous: { window: { days: 28, startDate: '2026-07-05', endDate: '2026-08-02' } },
       cohortComposition: { statusId: 'composition_comparable' },
       trend: { statusId: 'sustained_review_signal' },
+      representativeReviewCorpus: {
+        version: 'policy.candidate_correction_representative_review_corpus.v1',
+        statusId: 'historical_corpus_design_required',
+        historicalRecordAccess: false,
+        reviewFrame: {
+          periodCount: 2,
+          completedUtcDaysPerPeriod: 28,
+          strata: ['score_margin_band', 'operator_selection_outcome'],
+        },
+        requiredSafeguardIds: ['authorization', 'redaction', 'retention', 'operator_audit'],
+      },
     });
     expect(JSON.stringify(report)).not.toContain('library_id');
     expect(JSON.stringify(report)).not.toContain('title');
     expect(JSON.stringify(report)).not.toContain('destination');
+    expect(JSON.stringify(report)).not.toContain('operator_id');
   });
 });

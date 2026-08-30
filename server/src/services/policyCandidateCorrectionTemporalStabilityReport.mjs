@@ -23,7 +23,7 @@ import {
 } from './policyCandidateCorrectionCohortCompositionReport.mjs';
 
 export const POLICY_CANDIDATE_CORRECTION_TEMPORAL_STABILITY_REPORT_VERSION =
-  'policy.candidate_correction_analytics_metrics.v5';
+  'policy.candidate_correction_analytics_metrics.v6';
 
 const EMPTY_CALIBRATION_READINESS = Object.freeze(
   buildPolicyCandidateCorrectionCalibrationReadiness({

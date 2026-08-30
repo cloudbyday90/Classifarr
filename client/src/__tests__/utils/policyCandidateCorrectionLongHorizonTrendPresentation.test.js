@@ -63,6 +63,17 @@ function report(overrides = {}) {
       previousApplicableDecisionCount: 20,
       cohortCompositionStatusId: 'composition_comparable',
     },
+    representativeReviewCorpus: {
+      version: 'policy.candidate_correction_representative_review_corpus.v1',
+      statusId: 'historical_corpus_design_required',
+      historicalRecordAccess: false,
+      reviewFrame: {
+        periodCount: 2,
+        completedUtcDaysPerPeriod: 28,
+        strata: ['score_margin_band', 'operator_selection_outcome'],
+      },
+      requiredSafeguardIds: ['authorization', 'redaction', 'retention', 'operator_audit'],
+    },
     ...overrides,
   }
 }
@@ -103,5 +114,9 @@ describe('policyCandidateCorrectionLongHorizonTrendPresentation', () => {
     const invalidTrend = report()
     invalidTrend.trend.statusId = 'sustained_low_signal'
     expect(normalizePolicyCandidateCorrectionLongHorizonTrend(invalidTrend)).toBeNull()
+
+    const invalidCorpus = report()
+    invalidCorpus.representativeReviewCorpus.historicalRecordAccess = true
+    expect(normalizePolicyCandidateCorrectionLongHorizonTrend(invalidCorpus)).toBeNull()
   })
 })

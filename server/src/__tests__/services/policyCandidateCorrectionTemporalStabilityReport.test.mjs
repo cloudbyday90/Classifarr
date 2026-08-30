@@ -52,7 +52,7 @@ describe('policyCandidateCorrectionTemporalStabilityReport', () => {
     });
 
     expect(report).toMatchObject({
-      version: 'policy.candidate_correction_analytics_metrics.v5',
+      version: 'policy.candidate_correction_analytics_metrics.v6',
       window: { startDate: '2026-08-23', endDate: '2026-08-30' },
       previousWindow: { startDate: '2026-08-16', endDate: '2026-08-23' },
       temporalStability: {

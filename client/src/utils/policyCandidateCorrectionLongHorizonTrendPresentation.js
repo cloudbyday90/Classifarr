@@ -6,6 +6,9 @@
 import {
   normalizePolicyCandidateCorrectionCalibrationReadiness,
 } from './policyCandidateCorrectionCalibrationReadinessPresentation'
+import {
+  normalizePolicyCandidateCorrectionRepresentativeReviewCorpusReadiness,
+} from './policyCandidateCorrectionRepresentativeReviewCorpusReadinessPresentation'
 
 const LONG_HORIZON_TREND_VERSION = 'policy.candidate_correction_long_horizon_trend.v1'
 const COHORT_COMPOSITION_VERSION = 'policy.candidate_correction_cohort_composition.v1'
@@ -228,9 +231,14 @@ export function normalizePolicyCandidateCorrectionLongHorizonTrend(value) {
   }
 
   const trend = normalizedTrend(value.trend, current, previous, cohortComposition)
-  if (!trend) return null
+  const representativeReviewCorpus =
+    normalizePolicyCandidateCorrectionRepresentativeReviewCorpusReadiness(
+      value.representativeReviewCorpus,
+      trend,
+    )
+  if (!trend || !representativeReviewCorpus) return null
 
-  return Object.freeze({ current, previous, cohortComposition, trend })
+  return Object.freeze({ current, previous, cohortComposition, trend, representativeReviewCorpus })
 }
 
 export function getPolicyCandidateCorrectionLongHorizonTrendPresentation(statusId) {

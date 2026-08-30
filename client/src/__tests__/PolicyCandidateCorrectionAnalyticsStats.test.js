@@ -43,7 +43,7 @@ const reviewReadiness = {
 }
 
 const report = {
-  version: 'policy.candidate_correction_analytics_metrics.v5',
+  version: 'policy.candidate_correction_analytics_metrics.v6',
   window: { days: 7, startDate: '2026-08-23', endDate: '2026-08-30' },
   marginBuckets: [
     {
@@ -274,6 +274,17 @@ const report = {
       previousApplicableDecisionCount: 20,
       cohortCompositionStatusId: 'composition_comparable',
     },
+    representativeReviewCorpus: {
+      version: 'policy.candidate_correction_representative_review_corpus.v1',
+      statusId: 'historical_corpus_design_required',
+      historicalRecordAccess: false,
+      reviewFrame: {
+        periodCount: 2,
+        completedUtcDaysPerPeriod: 28,
+        strata: ['score_margin_band', 'operator_selection_outcome'],
+      },
+      requiredSafeguardIds: ['authorization', 'redaction', 'retention', 'operator_audit'],
+    },
   },
 }
 
@@ -298,6 +309,9 @@ describe('PolicyCandidateCorrectionAnalyticsStats.vue', () => {
     expect(wrapper.text()).toContain('Longer-horizon trend context')
     expect(wrapper.text()).toContain('Sustained 28-day review signal')
     expect(wrapper.text()).toContain('Representative decision review is ready')
+    expect(wrapper.text()).toContain('Historical review corpus is not enabled')
+    expect(wrapper.text()).toContain('View required safeguards for a future historical corpus')
+    expect(wrapper.find('details').exists()).toBe(true)
     expect(wrapper.text()).toContain('No analytics filters, media identifiers, policy details, or automated changes')
     expect(wrapper.text()).toContain('95% Wilson interval: 29.9%–70.1%')
     expect(wrapper.text()).toContain('do not establish correctness or change policy, AI, RAG, learning, or routing')
@@ -307,6 +321,7 @@ describe('PolicyCandidateCorrectionAnalyticsStats.vue', () => {
     expect(wrapper.findAll('th[scope="row"]')).toHaveLength(17)
     expect(wrapper.find('[role="status"]').attributes('aria-atomic')).toBe('true')
     expect(wrapper.find('[role="status"]').text()).toContain('Representative decision review is available in Needs Attention.')
+    expect(wrapper.find('[role="status"]').text()).toContain('Historical review records remain unavailable pending required safeguards.')
     const reviewLink = wrapper.findComponent(RouterLinkStub)
     expect(reviewLink.text()).toBe('Open Needs Attention decisions')
     expect(reviewLink.props('to')).toEqual({ name: 'CommandCenter', hash: '#needs-attention' })

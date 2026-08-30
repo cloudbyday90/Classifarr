@@ -16,7 +16,7 @@ import {
   normalizePolicyCandidateCorrectionLongHorizonTrend,
 } from './policyCandidateCorrectionLongHorizonTrendPresentation'
 
-const METRICS_VERSION = 'policy.candidate_correction_analytics_metrics.v5'
+const METRICS_VERSION = 'policy.candidate_correction_analytics_metrics.v6'
 
 const MARGIN_BAND_PRESENTATIONS = Object.freeze({
   '0_to_4': Object.freeze({ label: '0–4 points', description: 'Very close' }),

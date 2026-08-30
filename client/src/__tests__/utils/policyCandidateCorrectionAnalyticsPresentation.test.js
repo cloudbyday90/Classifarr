@@ -124,7 +124,7 @@ function report(overrides = {}) {
     }
   }
   const base = {
-    version: 'policy.candidate_correction_analytics_metrics.v5',
+    version: 'policy.candidate_correction_analytics_metrics.v6',
     window: { days: 7, startDate: '2026-08-23', endDate: '2026-08-30' },
     marginBuckets,
     evidenceSourceStateBuckets,
@@ -256,6 +256,17 @@ function report(overrides = {}) {
         currentApplicableDecisionCount: 20,
         previousApplicableDecisionCount: 20,
         cohortCompositionStatusId: 'composition_comparable',
+      },
+      representativeReviewCorpus: {
+        version: 'policy.candidate_correction_representative_review_corpus.v1',
+        statusId: 'historical_corpus_design_required',
+        historicalRecordAccess: false,
+        reviewFrame: {
+          periodCount: 2,
+          completedUtcDaysPerPeriod: 28,
+          strata: ['score_margin_band', 'operator_selection_outcome'],
+        },
+        requiredSafeguardIds: ['authorization', 'redaction', 'retention', 'operator_audit'],
       },
     },
   }

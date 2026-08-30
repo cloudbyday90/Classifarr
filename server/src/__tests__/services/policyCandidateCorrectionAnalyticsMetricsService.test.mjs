@@ -20,7 +20,7 @@ describe('policyCandidateCorrectionAnalyticsMetricsService', () => {
 
     const report = await service.getSummary({ windowDays: 7 });
 
-    expect(report.version).toBe('policy.candidate_correction_analytics_metrics.v5');
+    expect(report.version).toBe('policy.candidate_correction_analytics_metrics.v6');
     expect(report.longHorizonTrend).toMatchObject({
       current: { window: { days: 28 } },
       previous: { window: { days: 28 } },

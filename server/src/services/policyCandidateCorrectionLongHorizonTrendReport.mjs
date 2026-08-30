@@ -13,6 +13,9 @@ import {
   POLICY_CANDIDATE_CORRECTION_LONG_HORIZON_TREND_VERSION,
   buildPolicyCandidateCorrectionLongHorizonTrend,
 } from './policyCandidateCorrectionLongHorizonTrend.mjs';
+import {
+  buildPolicyCandidateCorrectionRepresentativeReviewCorpusReadiness,
+} from './policyCandidateCorrectionRepresentativeReviewCorpusReadiness.mjs';
 
 function publicPeriod(report) {
   return Object.freeze({
@@ -57,16 +60,20 @@ export function buildPolicyCandidateCorrectionLongHorizonTrendReport({
     currentReport,
     previousReport,
   });
+  const trend = buildPolicyCandidateCorrectionLongHorizonTrend({
+    currentCalibrationReadiness: currentReport.calibrationReadiness,
+    previousCalibrationReadiness: previousReport.calibrationReadiness,
+    cohortComposition: derivedCohortComposition,
+  });
 
   return Object.freeze({
     version: POLICY_CANDIDATE_CORRECTION_LONG_HORIZON_TREND_VERSION,
     current: publicPeriod(currentReport),
     previous: publicPeriod(previousReport),
     cohortComposition: publicCohortComposition(derivedCohortComposition),
-    trend: buildPolicyCandidateCorrectionLongHorizonTrend({
-      currentCalibrationReadiness: currentReport.calibrationReadiness,
-      previousCalibrationReadiness: previousReport.calibrationReadiness,
-      cohortComposition: derivedCohortComposition,
+    trend,
+    representativeReviewCorpus: buildPolicyCandidateCorrectionRepresentativeReviewCorpusReadiness({
+      trendStatusId: trend.statusId,
     }),
   });
 }

@@ -33,6 +33,7 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - **Correction cohort-composition context** — Statistics now compares fixed score-margin and evidence-state mixes across adjacent completed windows, flagging material aggregate cohort shifts before a recurring correction signal is interpreted as policy behavior; it remains advisory and cannot tune or route media.
 - **Long-horizon correction trend** — Statistics now compares two server-defined adjacent 28-day aggregate periods, requiring representative readiness and comparable cohort composition before showing a sustained correction-review or low-signal pattern; it remains advisory and cannot tune or route media.
 - **Representative correction-review handoff** — A sustained, comparable 28-day correction signal now exposes one clear navigation link to the existing Needs Attention workflow, without selecting a record or triggering a policy, AI, RAG, learning, retry, or routing action.
+- **Historical review-corpus preflight** — Sustained correction signals now clearly distinguish current decision review from a future historical corpus, with a fixed sample-frame proposal and explicit authorization, redaction, retention, and operator-audit safeguards.
 
 ### Changed
 
@@ -73,6 +74,7 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - **Correction cohort-composition boundary** — The fixed TVD screen reuses existing count-only aggregates, validates every derived client value, and returns no item, destination, policy, library, provider, prompt, response, RAG text, configuration, or routing control; it cannot invoke AI, tune policy, learn, retry, or route media.
 - **Long-horizon correction boundary** — The 28-day trend uses only server-built completed periods and existing aggregate reads, exposes a compact allow-listed cohort result, and is re-derived by the client; it adds no identity, configuration, AI, RAG, policy, learning, retry, or routing authority.
 - **Representative review-handoff boundary** — The conditional handoff recognizes only the strict sustained-review status and navigates to one fixed existing Command Center anchor; it sends no request or filter and carries no media, policy, library, candidate, destination, actor, provider, prompt, RAG, configuration, or analytics identity.
+- **Historical review-corpus boundary** — The new v6 preflight derives only fixed content-free readiness from the sustained aggregate state, rejects historical-record access in both server and client contracts, and adds no query, storage, export, selection, AI, RAG, policy, learning, retry, or routing authority.
 
 - **Comparison-cap privacy boundary** — Coverage detection uses one server-only sentinel to identify omitted competitors; the sentinel, total active-policy count, configurations, identities, and routing authority remain unavailable to clients.
 - **Explanation privacy boundary** — Shared-eligibility explanations expose only allow-listed category labels and anonymous configuration counts after a bounded shared result; they never return rule values, competitor identities, item outcomes, AI state, or routing control.

@@ -39,10 +39,11 @@ skips. Project lint, typecheck, production build, Markdown lint, copyright,
 ESM-import, test-mock-shape, and coverage-ratchet checks passed. The final
 security diff scan is recorded in the commit handoff for this change.
 
-## Next Item
+## Follow-up
 
-Before adding any historical sampling, evaluate a separate representative
-review-corpus design: define a deterministic sample frame, authorization
-boundary, retention policy, redaction rules, and operator audit outcome. Do
-not derive or reveal individual historical records from aggregate analytics
-until that design has been evaluated and approved.
+The first safe historical-review-corpus preflight has now been implemented in
+[its design](policy-candidate-correction-representative-review-corpus-design.md)
+and
+[outcome](policy-candidate-correction-representative-review-corpus-outcome.md).
+It keeps historical records unavailable while making the required authorization,
+redaction, retention, and operator-audit safeguards explicit.
