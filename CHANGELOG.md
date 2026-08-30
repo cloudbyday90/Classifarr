@@ -21,6 +21,7 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - **Policy-scope review handoff** — A declared-scope evidence review can now lead administrators to the existing read-only purpose-coverage review, with no policy, library, item, provider, or routing identity carried in the navigation.
 - **Pending score explanation comparison** — Operators can compare two or three already-visible deterministic policy-score explanations locally, including bounded evidence contributions and calibration mechanics.
 - **Policy confirmation-evidence uncertainty** — Aggregate policy-maintenance readiness now distinguishes a conclusively weak declared scope from a borderline sample using a fixed 95% Wilson interval.
+- **Candidate evidence cards** — Pending policy confirmation now separates item identity, declared policy, contextual library-profile evidence, similar-item retrieval, and confirmed outcomes, flagging contextual-only support and deterministic conflicts without changing routing.
 
 ### Changed
 
@@ -46,6 +47,7 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - **Policy confirmation-evidence uncertainty boundary** — The confidence gate accepts only bounded aggregate counts and emits fixed method metadata and percentage bounds; it cannot expose identity, create retention, invoke AI, edit policy, retry work, or route media.
 - **Policy-scope handoff boundary** — The evidence-review link accepts and recognizes one fixed focus token only; it cannot select a policy, expose telemetry identity, invoke AI, or alter policy, learning, or routing.
 - **Score-comparison data boundary** — Pending-score comparisons are capped in browser memory, revalidate only allow-listed numeric mechanics, and expose no new identity, API, telemetry, AI, policy, retry, learning, or routing path.
+- **Candidate-evidence card boundary** — Pending-review evidence cards use only fixed source/state identifiers, reject unknown client input, expose no raw metadata or retrieval text, and cannot invoke AI, alter scores, learn, or route media.
 
 - **Comparison-cap privacy boundary** — Coverage detection uses one server-only sentinel to identify omitted competitors; the sentinel, total active-policy count, configurations, identities, and routing authority remain unavailable to clients.
 - **Explanation privacy boundary** — Shared-eligibility explanations expose only allow-listed category labels and anonymous configuration counts after a bounded shared result; they never return rule values, competitor identities, item outcomes, AI state, or routing control.

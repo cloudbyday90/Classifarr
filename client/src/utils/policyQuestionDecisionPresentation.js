@@ -3,6 +3,10 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
+import {
+  normalizePolicyCandidateEvidenceCard,
+} from './policyCandidateEvidenceCardPresentation'
+
 export const POLICY_RUNTIME_QUESTION_DECISION_PRESENTATION_VERSION =
   'policy.runtime_question_decision_presentation.v1'
 
@@ -212,6 +216,9 @@ export function policyQuestionDecisionPresentation(answer = {}) {
         .map(evidence)
         .filter(Boolean)
         .slice(0, 4),
+      candidate_evidence_card: normalizePolicyCandidateEvidenceCard(
+        deterministic?.candidate_evidence_card,
+      ),
       score_explanation: scoreExplanation(deterministic?.score_explanation),
       safety_gate: safetyGate(deterministic?.safety_gate),
       additional_safety_gates: (Array.isArray(deterministic?.additional_safety_gates)

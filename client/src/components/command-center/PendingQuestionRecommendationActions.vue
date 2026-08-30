@@ -66,6 +66,37 @@
             {{ fact.label }}
           </li>
         </ul>
+        <section
+          v-if="candidateEvidenceCard"
+          class="candidate-evidence-card"
+          :class="`candidate-evidence-card--${candidateEvidenceCard.tone}`"
+          aria-labelledby="candidate-evidence-card-heading"
+        >
+          <h4
+            id="candidate-evidence-card-heading"
+            class="candidate-evidence-card-label"
+          >
+            Candidate evidence
+          </h4>
+          <p
+            class="candidate-evidence-card-title"
+            role="status"
+            aria-atomic="true"
+          >
+            {{ candidateEvidenceCard.label }}
+          </p>
+          <p>
+            {{ candidateEvidenceCard.message }}
+          </p>
+          <ul>
+            <li
+              v-for="source in candidateEvidenceCard.sources"
+              :key="source.id"
+            >
+              <strong>{{ source.label }}:</strong> {{ source.message }}
+            </li>
+          </ul>
+        </section>
         <details
           v-if="scoreExplanation"
           class="score-explanation"
@@ -253,6 +284,9 @@ import {
 import {
   policyQuestionDecisionPresentation,
 } from '@/utils/policyQuestionDecisionPresentation'
+import {
+  getPolicyCandidateEvidenceCardPresentation,
+} from '@/utils/policyCandidateEvidenceCardPresentation'
 
 const props = defineProps({
   answer: {
@@ -279,6 +313,9 @@ const recommendation = computed(() => policyQuestionRecommendation(props.answer)
 const decisionPresentation = computed(() => policyQuestionDecisionPresentation(props.answer))
 const scoreExplanation = computed(() => (
   decisionPresentation.value?.deterministic?.score_explanation || null
+))
+const candidateEvidenceCard = computed(() => getPolicyCandidateEvidenceCardPresentation(
+  decisionPresentation.value?.deterministic?.candidate_evidence_card,
 ))
 const leadingDestination = computed(() => recommendation.value?.leading_destination || null)
 const candidateDestinations = computed(() => policyQuestionCandidateDestinations(props.answer))
@@ -468,6 +505,57 @@ function emitConfirmDestination(destination) {
   background: rgba(30, 64, 175, 0.12);
   font-size: 0.75rem;
   color: #cbd5e1;
+}
+
+.candidate-evidence-card {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  border-radius: 0.375rem;
+  background: rgba(30, 64, 175, 0.12);
+  font-size: 0.75rem;
+  color: #cbd5e1;
+}
+
+.candidate-evidence-card--attention {
+  border-color: rgba(251, 191, 36, 0.65);
+  background: rgba(146, 64, 14, 0.12);
+}
+
+.candidate-evidence-card--conflict {
+  border-color: rgba(248, 113, 113, 0.72);
+  background: rgba(127, 29, 29, 0.16);
+}
+
+.candidate-evidence-card-label,
+.candidate-evidence-card-title {
+  margin: 0;
+}
+
+.candidate-evidence-card-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #bfdbfe;
+}
+
+.candidate-evidence-card-title {
+  color: #e2e8f0;
+  font-weight: 600;
+}
+
+.candidate-evidence-card p,
+.candidate-evidence-card ul {
+  margin: 0;
+}
+
+.candidate-evidence-card ul {
+  display: grid;
+  gap: 0.25rem;
+  padding-left: 1rem;
 }
 
 .candidate-bound-verification-label,

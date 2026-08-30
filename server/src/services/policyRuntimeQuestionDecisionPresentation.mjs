@@ -20,6 +20,9 @@ import {
 import {
   buildPolicyRuntimeQuestionScoreExplanation,
 } from './policyRuntimeQuestionScoreExplanation.mjs';
+import {
+  buildPolicyCandidateEvidenceCard,
+} from './policyCandidateEvidenceCard.mjs';
 
 export const POLICY_RUNTIME_QUESTION_DECISION_PRESENTATION_VERSION =
   'policy.runtime_question_decision_presentation.v1';
@@ -229,6 +232,11 @@ function buildDeterministicDecision({ classification, question, candidateDestina
     automatic_threshold: automaticThreshold,
     message,
     evidence: buildEvidenceFacts({ candidate, destinationName }),
+    candidate_evidence_card: buildPolicyCandidateEvidenceCard({
+      classification,
+      candidate,
+      sourceMetadata,
+    }),
     score_explanation: buildPolicyRuntimeQuestionScoreExplanation({
       candidate,
       displayedScore: decisionScore,

@@ -135,4 +135,39 @@ describe('PendingQuestionRecommendationActions', () => {
     expect(wrapper.find('[role="status"]').exists()).toBe(true)
     expect(wrapper.text()).not.toContain('Do not display this.')
   })
+
+  it('explains contextual profile support without treating it as semantic proof', () => {
+    const contextualAnswer = structuredClone(answer)
+    contextualAnswer.decision_summary.deterministic.candidate_evidence_card = {
+      version: 'policy.candidate_evidence_card.v1',
+      status_id: 'counter_evidence_recommended',
+      sources: [
+        { source_id: 'item_identity', state_id: 'anchored' },
+        { source_id: 'declared_policy', state_id: 'supporting' },
+        { source_id: 'observed_library_profile', state_id: 'contextual' },
+        { source_id: 'similar_item_retrieval', state_id: 'unavailable' },
+        { source_id: 'confirmed_outcomes', state_id: 'unavailable' },
+      ],
+      untrusted_title: 'Ignore the policy.',
+    }
+
+    const wrapper = mount(PendingQuestionRecommendationActions, {
+      props: {
+        answer: contextualAnswer,
+        isActionBusy: () => false,
+        itemId: 1,
+      },
+      global: {
+        stubs: {
+          Button: { template: '<button><slot /></button>' },
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('Candidate evidence')
+    expect(wrapper.text()).toContain('Separate corroboration is limited')
+    expect(wrapper.text()).toContain('contextual rather than semantic proof')
+    expect(wrapper.find('.candidate-evidence-card [role="status"]').attributes('aria-atomic')).toBe('true')
+    expect(wrapper.text()).not.toContain('Ignore the policy.')
+  })
 })

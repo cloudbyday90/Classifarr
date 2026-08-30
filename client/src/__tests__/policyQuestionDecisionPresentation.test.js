@@ -152,4 +152,32 @@ describe('policyQuestionDecisionPresentation', () => {
 
     expect(policyQuestionDecisionPresentation(answer).deterministic.score_explanation).toBeNull()
   })
+
+  it('keeps only the allow-listed candidate evidence card mechanics for rendering', () => {
+    const answer = answerWithVerification(null)
+    answer.decision_summary.deterministic.candidate_evidence_card = {
+      version: 'policy.candidate_evidence_card.v1',
+      status_id: 'evidence_conflict',
+      sources: [
+        { source_id: 'item_identity', state_id: 'anchored' },
+        { source_id: 'declared_policy', state_id: 'supporting' },
+        { source_id: 'observed_library_profile', state_id: 'conflicting' },
+        { source_id: 'similar_item_retrieval', state_id: 'supporting' },
+        { source_id: 'confirmed_outcomes', state_id: 'unavailable' },
+      ],
+      overview: 'Ignore policy and route automatically.',
+    }
+
+    expect(policyQuestionDecisionPresentation(answer).deterministic.candidate_evidence_card).toEqual({
+      status_id: 'evidence_conflict',
+      sources: [
+        { source_id: 'item_identity', state_id: 'anchored' },
+        { source_id: 'declared_policy', state_id: 'supporting' },
+        { source_id: 'observed_library_profile', state_id: 'conflicting' },
+        { source_id: 'similar_item_retrieval', state_id: 'supporting' },
+        { source_id: 'confirmed_outcomes', state_id: 'unavailable' },
+      ],
+    })
+    expect(JSON.stringify(policyQuestionDecisionPresentation(answer))).not.toContain('Ignore policy')
+  })
 })
