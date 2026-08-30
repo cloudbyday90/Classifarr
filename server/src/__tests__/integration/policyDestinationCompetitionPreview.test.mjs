@@ -138,6 +138,16 @@ describe('policy destination competition preview integration', () => {
         competitorOnlyEligibleItemCount: 0,
         noEligibleCandidateItemCount: 2,
       },
+      comparisonCoverage: {
+        statusId: 'destination_competition_comparison_coverage_complete',
+        comparedActiveCompetitorPolicyCount: 1,
+        maximumCompetitorPolicyCount: 25,
+        additionalActiveCompetitorsExcluded: false,
+        exactActiveCompetitorCountExposed: false,
+        competitorIdentitiesExposed: false,
+        competitorConfigurationExposed: false,
+        sentinelExposed: false,
+      },
       sharedEligibilityExplanation: {
         statusId: 'destination_competition_shared_eligibility_explanation_available',
         categories: [{

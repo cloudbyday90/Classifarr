@@ -11,9 +11,10 @@
 export const POLICY_DESTINATION_COMPETITION_MAXIMUM_COMPETITORS = 25;
 
 /**
- * Returns only server-selected competitor configurations. The caller's draft,
- * destination choices, and policy limit never influence the SQL structure or
- * scope. Competitor identities remain inside the service boundary.
+ * Returns at most the fixed comparison cap plus one server-only sentinel.
+ * The caller's draft and destination choices never influence SQL structure or
+ * scope. The service discards the sentinel before intent attachment, policy
+ * evaluation, logging, or response projection.
  */
 export async function loadPolicyDestinationCompetitionCompetitors({
   db,
@@ -49,7 +50,7 @@ export async function loadPolicyDestinationCompetitionCompetitors({
       AND l.media_type = $2
     GROUP BY lp.id, l.id
     ORDER BY COALESCE(lp.priority, 0) DESC, COALESCE(lp.sort_order, 0) ASC, lp.id ASC
-    LIMIT $3
+    LIMIT $3 + 1
   `, [policyId, mediaType, maximumCompetitors]);
 
   return result.rows || [];

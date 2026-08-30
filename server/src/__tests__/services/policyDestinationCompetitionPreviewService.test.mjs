@@ -39,6 +39,10 @@ describe('PolicyDestinationCompetitionPreviewService', () => {
         (policy.kind === 'competitor' && ['shared', 'competitor only'].includes(item.title)),
     }));
     const buildPreview = jest.fn(input => input);
+    const buildComparisonCoverage = jest.fn(input => ({
+      statusId: 'destination_competition_comparison_coverage_complete',
+      ...input,
+    }));
     const buildSharedEligibilityExplanation = jest.fn(input => ({
       statusId: 'destination_competition_shared_eligibility_explanation_available',
       ...input,
@@ -56,6 +60,7 @@ describe('PolicyDestinationCompetitionPreviewService', () => {
       evaluate,
       projectItem,
       buildPreview,
+      buildComparisonCoverage,
       buildSharedEligibilityExplanation,
     });
 
@@ -76,13 +81,62 @@ describe('PolicyDestinationCompetitionPreviewService', () => {
       competitorEligibility: [false, true, true],
       activeCompetitorPolicyCount: 1,
       maximumCompetitorPolicies: 25,
+      additionalActiveCompetitorsExcluded: false,
     }));
     expect(buildSharedEligibilityExplanation).toHaveBeenCalledWith({
       sharedEligibleItemCount: 1,
       proposedContract: { kind: 'proposed' },
       competitorContracts: [{ kind: 'competitor' }],
     });
+    expect(buildComparisonCoverage).toHaveBeenCalledWith({
+      comparedActiveCompetitorPolicyCount: 1,
+      maximumCompetitorPolicyCount: 25,
+      additionalActiveCompetitorsExcluded: false,
+    });
     expect(evaluate).toHaveBeenCalledTimes(6);
+  });
+
+  test('uses one extra loaded competitor only as a private coverage sentinel', async () => {
+    const loadCompetitors = jest.fn().mockResolvedValue([
+      { id: 24, library_id: 31 },
+      { id: 25, library_id: 32 },
+    ]);
+    const attachNativeIntents = jest.fn().mockResolvedValue([{ id: 24, library_id: 31 }]);
+    const buildComparisonCoverage = jest.fn(input => input);
+    const buildPreview = jest.fn(input => input);
+    const service = new PolicyDestinationCompetitionPreviewService({
+      db: { query: jest.fn() },
+      maximumCompetitors: 1,
+      loadContext: jest.fn().mockResolvedValue(persistedPolicy),
+      loadCompetitors,
+      loadItems: jest.fn().mockResolvedValue([{ title: 'shared' }]),
+      attachNativeIntents,
+      buildDraftContract: jest.fn().mockReturnValue({ kind: 'proposed' }),
+      buildCurrentContract: jest.fn().mockReturnValue({ kind: 'competitor' }),
+      buildPolicy: jest.fn(({ contract }) => ({ kind: contract.kind })),
+      projectItem: jest.fn(row => row),
+      evaluate: jest.fn(() => ({ eligible: false })),
+      buildComparisonCoverage,
+      buildSharedEligibilityExplanation: jest.fn(() => ({})),
+      buildPreview,
+    });
+
+    await service.preview({ policyId: 17, draft: {} });
+
+    expect(attachNativeIntents).toHaveBeenCalledWith({
+      dbClient: expect.any(Object),
+      policies: [{ id: 24, library_id: 31 }],
+    });
+    expect(buildComparisonCoverage).toHaveBeenCalledWith({
+      comparedActiveCompetitorPolicyCount: 1,
+      maximumCompetitorPolicyCount: 1,
+      additionalActiveCompetitorsExcluded: true,
+    });
+    expect(buildPreview).toHaveBeenCalledWith(expect.objectContaining({
+      activeCompetitorPolicyCount: 1,
+      maximumCompetitorPolicies: 1,
+      additionalActiveCompetitorsExcluded: true,
+    }));
   });
 
   test('does not load historic records or competitors when the policy is absent', async () => {

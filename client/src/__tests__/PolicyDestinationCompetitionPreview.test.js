@@ -25,6 +25,11 @@ describe('PolicyDestinationCompetitionPreview', () => {
             maximumPolicyCount: 25,
             policyLimitReached: false,
           },
+          comparisonCoverage: {
+            comparedActiveCompetitorPolicyCount: 3,
+            maximumCompetitorPolicyCount: 25,
+            additionalActiveCompetitorsExcluded: false,
+          },
           proposed: { eligibleItemCount: 4 },
           competition: {
             proposedUncontestedEligibleItemCount: 2,
@@ -61,6 +66,7 @@ describe('PolicyDestinationCompetitionPreview', () => {
     )
     expect(wrapper.text()).toContain('Active destinations considered')
     expect(wrapper.text()).toContain('Shared eligible')
+    expect(wrapper.text()).toContain('Comparison coverage is complete')
     expect(wrapper.text()).toContain('Why shared eligibility may occur')
     expect(wrapper.text()).toContain('no destination names, AI calls, saving, or routing')
     expect(wrapper.text()).not.toContain('Range of Stars')

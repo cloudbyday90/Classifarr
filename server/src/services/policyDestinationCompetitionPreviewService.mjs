@@ -28,6 +28,9 @@ import {
   buildPolicyDestinationCompetitionPreview,
 } from './policyDestinationCompetitionPreviewContract.mjs';
 import {
+  buildPolicyDestinationCompetitionComparisonCoverage,
+} from './policyDestinationCompetitionComparisonCoverage.mjs';
+import {
   buildPolicyDestinationCompetitionSharedEligibilityExplanation,
 } from './policyDestinationCompetitionSharedEligibilityExplanation.mjs';
 import {
@@ -56,6 +59,11 @@ function isEligible(evaluation) {
   return evaluation?.eligible === true;
 }
 
+function asNonNegativeInteger(value) {
+  const numericValue = Number(value);
+  return Number.isInteger(numericValue) && numericValue >= 0 ? numericValue : 0;
+}
+
 export class PolicyDestinationCompetitionPreviewService {
   constructor({
     db = defaultDb,
@@ -73,13 +81,14 @@ export class PolicyDestinationCompetitionPreviewService {
     evaluate = evaluateNativePolicyIntent,
     projectItem = projectPolicyCohortSimulationItem,
     buildPreview = buildPolicyDestinationCompetitionPreview,
+    buildComparisonCoverage = buildPolicyDestinationCompetitionComparisonCoverage,
     buildSharedEligibilityExplanation = buildPolicyDestinationCompetitionSharedEligibilityExplanation,
   } = {}) {
     this.db = db;
     this.now = now;
     this.windowDays = windowDays;
     this.maximumItems = maximumItems;
-    this.maximumCompetitors = maximumCompetitors;
+    this.maximumCompetitors = asNonNegativeInteger(maximumCompetitors);
     this.loadContext = loadContext;
     this.loadItems = loadItems;
     this.loadCompetitors = loadCompetitors;
@@ -90,6 +99,7 @@ export class PolicyDestinationCompetitionPreviewService {
     this.evaluate = evaluate;
     this.projectItem = projectItem;
     this.buildPreview = buildPreview;
+    this.buildComparisonCoverage = buildComparisonCoverage;
     this.buildSharedEligibilityExplanation = buildSharedEligibilityExplanation;
   }
 
@@ -102,7 +112,7 @@ export class PolicyDestinationCompetitionPreviewService {
       policy: persistedPolicy,
       contract: proposedContract,
     });
-    const [persistedCompetitors, historicItems] = await Promise.all([
+    const [loadedCompetitors, historicItems] = await Promise.all([
       this.loadCompetitors({
         db: dbClient,
         policyId: persistedPolicy.id,
@@ -116,6 +126,8 @@ export class PolicyDestinationCompetitionPreviewService {
         maximumItems: this.maximumItems,
       }),
     ]);
+    const additionalActiveCompetitorsExcluded = loadedCompetitors.length > this.maximumCompetitors;
+    const persistedCompetitors = loadedCompetitors.slice(0, this.maximumCompetitors);
     const attachedCompetitors = await this.attachNativeIntents({
       dbClient,
       policies: persistedCompetitors,
@@ -144,6 +156,11 @@ export class PolicyDestinationCompetitionPreviewService {
       },
       proposedEligibility,
       competitorEligibility,
+      comparisonCoverage: this.buildComparisonCoverage({
+        comparedActiveCompetitorPolicyCount: competitorPolicies.length,
+        maximumCompetitorPolicyCount: this.maximumCompetitors,
+        additionalActiveCompetitorsExcluded,
+      }),
       sharedEligibilityExplanation: this.buildSharedEligibilityExplanation({
         sharedEligibleItemCount: proposedEligibility.reduce((count, proposedEligible, index) => (
           proposedEligible && competitorEligibility[index] ? count + 1 : count
@@ -153,6 +170,7 @@ export class PolicyDestinationCompetitionPreviewService {
       }),
       activeCompetitorPolicyCount: competitorPolicies.length,
       maximumCompetitorPolicies: this.maximumCompetitors,
+      additionalActiveCompetitorsExcluded,
       evaluatedAt: now,
     });
   }

@@ -127,6 +127,7 @@ const POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS = deepFreeze([
   'client/src/__tests__/PolicyBuilderWorkflowShell.test.js',
   'client/src/__tests__/PolicyCohortSimulation.test.js',
   'client/src/__tests__/PolicyDestinationCompetitionPreview.test.js',
+  'client/src/__tests__/PolicyDestinationCompetitionComparisonCoverage.test.js',
   'client/src/__tests__/PolicyDestinationCompetitionSharedEligibilityExplanation.test.js',
   'client/src/__tests__/PolicyAuthoringLifecycleEntry.test.js',
   'client/src/__tests__/PolicyDestinationProposalAdjustmentDisclosure.test.js',
@@ -470,6 +471,14 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
     POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.RUNTIME_VERIFIER,
     [],
     'The administrator-only destination-competition preview displays bounded aggregate eligibility counts, returns no destination or historic-item identities, and cannot save, route, learn, call AI, or retain draft terms.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyDestinationCompetitionComparisonCoverage.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_WORKFLOW_REGRESSION,
+    false,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.RUNTIME_VERIFIER,
+    [],
+    'The comparison-coverage card explains only whether the bounded active-competitor comparison is complete or capped, and cannot expose a total, identity, configuration, AI result, or routing authority.'
   ),
   presentationTestRecord(
     'client/src/__tests__/PolicyDestinationCompetitionSharedEligibilityExplanation.test.js',

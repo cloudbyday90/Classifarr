@@ -38,10 +38,10 @@ function buildGuidance({
   evaluatedItemCount,
   activeCompetitorPolicyCount,
   proposedSharedEligibleItemCount,
-  competitorPolicyLimitReached,
+  additionalActiveCompetitorsExcluded,
 }) {
-  const limitNotice = competitorPolicyLimitReached
-    ? ' The configured comparison cap was reached, so additional active destinations may not be represented.'
+  const limitNotice = additionalActiveCompetitorsExcluded
+    ? ' One or more additional active destinations were excluded by the configured comparison cap.'
     : '';
 
   if (evaluatedItemCount === 0) {
@@ -106,6 +106,8 @@ export function buildPolicyDestinationCompetitionPreview({
   competitorEligibility = [],
   activeCompetitorPolicyCount = 0,
   maximumCompetitorPolicies = 0,
+  additionalActiveCompetitorsExcluded = false,
+  comparisonCoverage = null,
   sharedEligibilityExplanation = null,
   evaluatedAt = new Date(),
 } = {}) {
@@ -117,8 +119,7 @@ export function buildPolicyDestinationCompetitionPreview({
   const competition = buildCompetitionCounts({ proposedEligibility, competitorEligibility });
   const proposedEligibleItemCount = competition.proposedSharedEligibleItemCount +
     competition.proposedUncontestedEligibleItemCount;
-  const competitorPolicyLimitReached = maximumCompetitors > 0 &&
-    competitorCount >= maximumCompetitors;
+  const competitorPolicyLimitReached = asBoolean(additionalActiveCompetitorsExcluded);
   const statusId = evaluatedItemCount === 0
     ? POLICY_DESTINATION_COMPETITION_PREVIEW_STATUS_IDS.NO_ELIGIBLE_HISTORIC_ITEMS
     : competitorCount === 0
@@ -146,13 +147,14 @@ export function buildPolicyDestinationCompetitionPreview({
       eligibleItemCount: proposedEligibleItemCount,
     },
     competition,
+    comparisonCoverage,
     sharedEligibilityExplanation,
     statusId,
     guidance: buildGuidance({
       evaluatedItemCount,
       activeCompetitorPolicyCount: competitorCount,
       proposedSharedEligibleItemCount: competition.proposedSharedEligibleItemCount,
-      competitorPolicyLimitReached,
+      additionalActiveCompetitorsExcluded: competitorPolicyLimitReached,
     }),
     advisory: true,
     draftRetained: false,

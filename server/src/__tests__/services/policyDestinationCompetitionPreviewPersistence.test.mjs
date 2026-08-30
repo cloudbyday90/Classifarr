@@ -29,7 +29,7 @@ describe('policyDestinationCompetitionPreviewPersistence', () => {
     expect(sql).toContain('lp.enabled = TRUE');
     expect(sql).toContain('l.is_active = TRUE');
     expect(sql).toContain('l.media_type = $2');
-    expect(sql).toContain('LIMIT $3');
+    expect(sql).toContain('LIMIT $3 + 1');
     expect(sql).not.toContain('INSERT');
     expect(sql).not.toContain('UPDATE');
     expect(sql).not.toContain('DELETE');

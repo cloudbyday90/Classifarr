@@ -25,6 +25,10 @@ describe('policyDestinationCompetitionPreviewContract', () => {
       },
       activeCompetitorPolicyCount: 3,
       maximumCompetitorPolicies: 25,
+      additionalActiveCompetitorsExcluded: false,
+      comparisonCoverage: {
+        statusId: 'destination_competition_comparison_coverage_complete',
+      },
       evaluatedAt: '2026-08-29T12:00:00.000Z',
     });
 
@@ -34,8 +38,12 @@ describe('policyDestinationCompetitionPreviewContract', () => {
       competitors: {
         activePolicyCount: 3,
         maximumPolicyCount: 25,
+        policyLimitReached: false,
         identitiesExposed: false,
         configurationExposed: false,
+      },
+      comparisonCoverage: {
+        statusId: 'destination_competition_comparison_coverage_complete',
       },
       proposed: { eligibleItemCount: 2 },
       competition: {
@@ -70,5 +78,19 @@ describe('policyDestinationCompetitionPreviewContract', () => {
       POLICY_DESTINATION_COMPETITION_PREVIEW_STATUS_IDS.NO_ACTIVE_COMPETITORS,
     );
     expect(preview.guidance.description).toContain('not a routing recommendation');
+  });
+
+  test('reports a cap only when an additional active competitor was excluded', () => {
+    const preview = buildPolicyDestinationCompetitionPreview({
+      sample: { evaluatedItemCount: 1 },
+      proposedEligibility: [false],
+      competitorEligibility: [false],
+      activeCompetitorPolicyCount: 25,
+      maximumCompetitorPolicies: 25,
+      additionalActiveCompetitorsExcluded: true,
+    });
+
+    expect(preview.competitors.policyLimitReached).toBe(true);
+    expect(preview.guidance.description).toContain('additional active destinations were excluded');
   });
 });

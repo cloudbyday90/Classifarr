@@ -204,6 +204,7 @@ const POLICY_BUILDER_BOUNDARY_RULES = deepFreeze([
     notes: 'Destination-competition preview displays only server-projected aggregate counts and fixed boundary copy. It cannot expose a destination, configuration, or historic item, persist a draft, or decide routing.',
     matches: (filePath) => hasAnySegment(filePath, [
       '/PolicyDestinationCompetitionPreview.vue',
+      '/PolicyDestinationCompetitionComparisonCoverage.vue',
       '/PolicyDestinationCompetitionSharedEligibilityExplanation.vue',
     ]),
   },

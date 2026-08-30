@@ -127,6 +127,10 @@
         The active-destination cap was reached, so additional destinations may not be represented.
       </p>
 
+      <PolicyDestinationCompetitionComparisonCoverage
+        :coverage="preview.comparisonCoverage"
+      />
+
       <PolicyDestinationCompetitionSharedEligibilityExplanation
         :explanation="preview.sharedEligibilityExplanation"
       />
@@ -141,6 +145,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import PolicyDestinationCompetitionComparisonCoverage from '@/components/policies/PolicyDestinationCompetitionComparisonCoverage.vue'
 import PolicyDestinationCompetitionSharedEligibilityExplanation from '@/components/policies/PolicyDestinationCompetitionSharedEligibilityExplanation.vue'
 
 const props = defineProps({

@@ -289,6 +289,7 @@ describe('policyAuthoringWorkflowInventory', () => {
   test('keeps destination competition outside normal authoring as advanced maintenance', () => {
     [
       'client/src/components/policies/PolicyDestinationCompetitionPreview.vue',
+      'client/src/components/policies/PolicyDestinationCompetitionComparisonCoverage.vue',
       'client/src/components/policies/PolicyDestinationCompetitionSharedEligibilityExplanation.vue',
       'client/src/composables/usePolicyDestinationCompetitionPreview.js',
     ].forEach((filePath) => {
