@@ -269,11 +269,10 @@ describe('ClassificationService auto-routing thresholds', () => {
       await classificationService.routeClassificationResult(42, metadata, result, false);
 
       expect(mockDb.query).toHaveBeenCalledWith(
-        'UPDATE classification_history SET status = $1, metadata = $2::jsonb WHERE id = $3',
-        ['routed', expect.any(String), 42]
+        expect.stringContaining('UPDATE classification_history'),
+        ['routed', null, 'routed', 42]
       );
-      const parsedMetadata = JSON.parse(mockDb.query.mock.calls[0][1][1]);
-      expect(parsedMetadata.classification_details.routing).toBe('routed');
+      expect(mockDb.query.mock.calls[0][0]).toContain("'{classification_details}'");
     });
 
     test('updates metadata with skip reason when skipped', async () => {
@@ -285,11 +284,9 @@ describe('ClassificationService auto-routing thresholds', () => {
       await classificationService.routeClassificationResult(42, metadata, result, false);
 
       expect(mockDb.query).toHaveBeenCalledWith(
-        'UPDATE classification_history SET metadata = $1::jsonb WHERE id = $2',
-        [expect.any(String), 42]
+        expect.stringContaining('UPDATE classification_history'),
+        ['threshold_not_met', null, null, 42]
       );
-      const parsedMetadata = JSON.parse(mockDb.query.mock.calls[0][1][0]);
-      expect(parsedMetadata.classification_details.routing).toBe('threshold_not_met');
     });
 
     test('updates metadata with failure reason when routing fails', async () => {
@@ -310,12 +307,9 @@ describe('ClassificationService auto-routing thresholds', () => {
       await classificationService.routeClassificationResult(42, metadata, result, false);
 
       expect(mockDb.query).toHaveBeenCalledWith(
-        'UPDATE classification_history SET metadata = $1::jsonb WHERE id = $2',
-        [expect.any(String), 42]
+        expect.stringContaining('UPDATE classification_history'),
+        ['missing_arr_id', 'API Error', null, 42]
       );
-      const parsedMetadata = JSON.parse(mockDb.query.mock.calls[0][1][0]);
-      expect(parsedMetadata.classification_details.routing).toBe('missing_arr_id');
-      expect(parsedMetadata.classification_details.routing_error).toBe('API Error');
     });
   });
 });

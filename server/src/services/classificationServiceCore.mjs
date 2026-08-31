@@ -26,6 +26,9 @@ import {
 import {
   buildPolicyRuntimeQueueQuestionReductionAudit,
 } from './policyRuntimeQueueQuestionReduction.mjs';
+import {
+  ClassificationRoutingMetadataPersistenceService,
+} from './classificationRoutingMetadataPersistence.mjs';
 
 function buildQueueTaskContext(task = {}) {
   const source = task && typeof task === 'object' && !Array.isArray(task) ? task : {};
@@ -84,6 +87,7 @@ export class ClassificationService {
     classificationLegacySignalPathService,
     policyNativeClassificationQuestionHandoffService,
     policyRuntimeQuestionPersistenceAdmissionService,
+    classificationRoutingMetadataPersistenceService,
   }) {
     this.db = db;
     this.tmdbService = tmdbService;
@@ -112,6 +116,9 @@ export class ClassificationService {
     this.policyNativeClassificationQuestionHandoffService = policyNativeClassificationQuestionHandoffService;
     this.policyRuntimeQuestionPersistenceAdmissionService =
       policyRuntimeQuestionPersistenceAdmissionService;
+    this.classificationRoutingMetadataPersistenceService =
+      classificationRoutingMetadataPersistenceService ||
+      new ClassificationRoutingMetadataPersistenceService({ db });
   }
 
   async _withCatch(label, fn) {
@@ -180,8 +187,6 @@ export class ClassificationService {
       policyAutoThreshold,
     });
 
-    metadata.classification_details = metadata.classification_details || {};
-
     if (!decision.shouldRoute) {
       this.logger.debug('Auto-route skipped for classification result', {
         title: metadata?.title || null,
@@ -192,12 +197,11 @@ export class ClassificationService {
         policyAutoThreshold,
         reason: decision.reason,
       });
-      metadata.classification_details.routing = decision.reason;
       if (classificationId) {
-        await this.db.query(
-          'UPDATE classification_history SET metadata = $1::jsonb WHERE id = $2',
-          [JSON.stringify(metadata), classificationId]
-        );
+        await this.classificationRoutingMetadataPersistenceService.persist({
+          classificationId,
+          routing: decision.reason,
+        });
       }
       return { ...decision, policyAutoThreshold };
     }
@@ -218,23 +222,20 @@ export class ClassificationService {
     });
 
     if (routeResult?.routed === true) {
-      metadata.classification_details.routing = 'routed';
       if (classificationId) {
-        await this.db.query(
-          'UPDATE classification_history SET status = $1, metadata = $2::jsonb WHERE id = $3',
-          ['routed', JSON.stringify(metadata), classificationId]
-        );
+        await this.classificationRoutingMetadataPersistenceService.persist({
+          classificationId,
+          routing: 'routed',
+          status: 'routed',
+        });
       }
     } else {
-      metadata.classification_details.routing = routeResult?.reason || 'unexpected_error';
-      if (routeResult?.error) {
-        metadata.classification_details.routing_error = routeResult.error;
-      }
       if (classificationId) {
-        await this.db.query(
-          'UPDATE classification_history SET metadata = $1::jsonb WHERE id = $2',
-          [JSON.stringify(metadata), classificationId]
-        );
+        await this.classificationRoutingMetadataPersistenceService.persist({
+          classificationId,
+          routing: routeResult?.reason || 'unexpected_error',
+          routingError: routeResult?.error || null,
+        });
       }
     }
 

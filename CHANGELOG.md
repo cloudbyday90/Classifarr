@@ -77,6 +77,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Classification evidence retention** — Post-classification routing now
+  patches only its owned metadata fields, preserving the policy, RAG,
+  cross-library, and AI-advisory evidence persisted by the current decision.
+- **Policy precision** — Broad genres inferred from a library profile no
+  longer qualify as specialized destination identity evidence.
 - **Migration constraint safety** — Migration preflight now rejects effective PostgreSQL constraint-name collisions before startup; the new review-history tables use concise identifiers and repair earlier local pre-release names.
 
 ### Security

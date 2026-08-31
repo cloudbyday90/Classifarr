@@ -97,6 +97,42 @@ describe('policySpecializedDestinationIdentityEvidence', () => {
     ]);
   });
 
+  test('does not treat inferred profile genres as specialized identity evidence', () => {
+    const inferredProfilePurpose = [{
+      signal_type: 'genres',
+      values: {
+        require_any: ['Comedy', 'Documentary', 'TV Movie', 'Biography', 'Drama'],
+      },
+      source: 'media_server_library_profile',
+      inference_state: 'inferred',
+    }];
+
+    const [result] = applySpecializedDestinationIdentityEvidence({
+      item: {
+        media_type: 'movie',
+        genres: ['Adventure', 'Action', 'Documentary', 'Drama'],
+      },
+      policies: [nativePolicy(1, inferredProfilePurpose)],
+      evaluations: [candidate(1, 62.13)],
+    });
+
+    expect(result.candidate_diagnostics).toEqual(expect.objectContaining({
+      primary_viability: 'compatibility_only',
+      evidence_class: 'insufficient_specialized_evidence',
+      primary_anchor_eligible: false,
+      suppression_reasons: expect.arrayContaining([
+        'insufficient_specialized_evidence',
+        'weak_primary_evidence',
+      ]),
+      identity_evidence: expect.objectContaining({
+        status_id: SPECIALIZED_DESTINATION_IDENTITY_STATUS_IDS
+          .INSUFFICIENT_SPECIALIZED_EVIDENCE,
+        matched_signal_count: 0,
+        unique_signal_count: 0,
+      }),
+    }));
+  });
+
   test('does not allow media type or preferences to establish specialized identity', () => {
     const result = applySpecializedDestinationIdentityEvidence({
       item: { media_type: 'tv', genres: ['Drama'] },
