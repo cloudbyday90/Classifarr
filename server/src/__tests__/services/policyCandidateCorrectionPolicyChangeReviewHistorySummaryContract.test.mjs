@@ -52,7 +52,7 @@ describe('policy-change review history summary contract', () => {
     });
 
     expect(model).toEqual(expect.objectContaining({
-      version: 'policy.candidate_correction_policy_change_review_history_summary.v3',
+      version: 'policy.candidate_correction_policy_change_review_history_summary.v4',
       statusId: 'available',
       historyAvailable: true,
       consistency: expect.objectContaining({
@@ -62,6 +62,10 @@ describe('policy-change review history summary contract', () => {
       calibrationReadiness: expect.objectContaining({
         statusId: 'insufficient_activity',
         reviewEligible: false,
+      }),
+      calibrationProtocol: expect.objectContaining({
+        statusId: 'awaiting_aggregate_evidence',
+        protocolAvailable: false,
       }),
     }));
     expect(model.periods).toHaveLength(3);

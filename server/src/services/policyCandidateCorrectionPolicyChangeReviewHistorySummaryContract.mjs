@@ -12,9 +12,12 @@ import {
 import {
   buildPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationReadinessReadModel,
 } from './policyCandidateCorrectionPolicyChangeReviewHistoryCalibrationReadinessContract.mjs';
+import {
+  buildPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationProtocolReadModel,
+} from './policyCandidateCorrectionPolicyChangeReviewHistoryCalibrationProtocolContract.mjs';
 
 export const POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_SUMMARY_VERSION =
-  'policy.candidate_correction_policy_change_review_history_summary.v3';
+  'policy.candidate_correction_policy_change_review_history_summary.v4';
 export const POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_SUMMARY_CONTROL_KEY =
   'policy_change_review_history_summary';
 export const POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_PERIOD_DAYS = 30;
@@ -169,6 +172,10 @@ function createConclusionSummary({ decisionId, aggregateRow } = {}) {
 }
 
 function buildBaseReadModel({ statusId, historyAvailable, periods, calibrationPeriods } = {}) {
+  const consistency = buildPolicyCandidateCorrectionPolicyChangeReviewHistoryConsistencyReadModel({ periods });
+  const calibrationReadiness = buildPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationReadinessReadModel({
+    periods: calibrationPeriods,
+  });
   return Object.freeze({
     version: POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_SUMMARY_VERSION,
     statusId,
@@ -176,9 +183,11 @@ function buildBaseReadModel({ statusId, historyAvailable, periods, calibrationPe
     automaticPolicyChange: false,
     automaticAiRagTuning: false,
     routingChanged: false,
-    consistency: buildPolicyCandidateCorrectionPolicyChangeReviewHistoryConsistencyReadModel({ periods }),
-    calibrationReadiness: buildPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationReadinessReadModel({
-      periods: calibrationPeriods,
+    consistency,
+    calibrationReadiness,
+    calibrationProtocol: buildPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationProtocolReadModel({
+      consistency,
+      calibrationReadiness,
     }),
     periods,
   });

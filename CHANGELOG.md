@@ -42,6 +42,7 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - **Policy-change review activity** — Security Settings now automatically summarizes recorded and materially revised reviewed conclusions across up to three completed fixed 30-day periods, retaining only coarse conclusion counts with no individual decision, policy, media, actor, outcome, provider, prompt, response, or RAG history.
 - **Policy-change review-process consistency** — Security Settings now derives a fixed, aggregate-only consistency state from three completed review-activity periods, requiring a minimum cohort and remaining descriptive with no policy, AI/RAG, learning, or routing authority.
 - **Policy-change calibration readiness** — Security Settings now retains only the bounded aggregate window needed to identify six complete, sufficiently active review periods and automatically states when a human threshold review may begin; it cannot calculate or apply a threshold, policy, AI/RAG, or routing change.
+- **Offline policy-change calibration protocol** — Security Settings now automatically describes the fixed aggregate-and-synthetic human-review procedure only when bounded aggregate readiness and review-process consistency are both satisfied; it cannot export a snapshot, generate a proposal, change a threshold or policy, invoke AI/RAG, or route media.
 
 ### Changed
 
@@ -57,6 +58,7 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - **Dependency maintenance** — Applied and locally tested the Axios 1.20.0 update from open PR #521 without merging the pull request or creating a release.
 - **Dependency maintenance** — Applied the server-tooling updates from open PR #525 locally for validation without merging the pull request or creating a release.
 - **Dependency maintenance** — Applied and locally tested the Morgan 1.12.0 runtime update from open PR #524 without merging the pull request or creating a release.
+- **Dependency maintenance** — Applied the client-tooling updates from open PR #523 locally for validation without merging the pull request or creating a release.
 
 ### Fixed
 
@@ -94,6 +96,7 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - **Redacted review-projection boundary** — The administrator-only snapshot uses a parameterized server-side allow-list, persists no history identity or content, exposes no-store fixed categories only, audits creation/view/expiry minimally, and deletes expired snapshots through a locked scheduled transaction; it cannot invoke AI/RAG, alter policy, or route media.
 - **Policy-change outcome boundary** — The administrator-only outcome protocol accepts no policy, receipt, range, or hypothesis selector; it binds one short-lived server-generated aggregate baseline to a recent native receipt, uses fixed windows and no-store reads, rate-limits the explicit start flow, automatically deletes expired observations, and exposes no policy, media, library, provider, prompt, response, RAG, or routing authority.
 - **Review-history data boundary** — The administrator-only summary uses fixed completed UTC periods, static aggregate reads, response allow-lists, no-store, rate limits, and bounded retention. It stores no individual activity, outcome, policy, media, library, actor, rationale, provider, prompt, response, or RAG data, and cannot trigger policy, AI, routing, learning, retry, or classification work.
+- **Offline calibration-protocol boundary** — The existing administrator-only, no-store summary now exposes only a fail-closed fixed human procedure from already-redacted aggregate status; it creates no threshold, proposal, export, write, provider call, AI/RAG access, policy change, or routing authority.
 - **Axios runtime hardening** — Updated Axios to 1.20.0, incorporating upstream hardened handling of runtime option objects relevant to prototype-pollution-style configuration reads.
 
 - **Comparison-cap privacy boundary** — Coverage detection uses one server-only sentinel to identify omitted competitors; the sentinel, total active-policy count, configurations, identities, and routing authority remain unavailable to clients.

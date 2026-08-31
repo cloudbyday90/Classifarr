@@ -104,6 +104,42 @@
       </p>
     </section>
 
+    <section
+      v-if="calibrationProtocolPresentation"
+      class="rounded-md border border-gray-700 bg-gray-900/40 p-4"
+      aria-labelledby="policy-change-review-history-calibration-protocol-heading"
+    >
+      <h4
+        id="policy-change-review-history-calibration-protocol-heading"
+        class="text-sm font-medium text-gray-200"
+      >
+        Offline calibration protocol
+      </h4>
+      <p
+        class="mt-2 font-medium"
+        :class="calibrationProtocolPresentation.statusClass"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {{ calibrationProtocolPresentation.heading }}
+      </p>
+      <p class="mt-1 text-sm text-gray-300">
+        {{ calibrationProtocolPresentation.message }}
+      </p>
+      <ol
+        v-if="calibrationProtocolProcedureLabels.length"
+        class="mt-3 list-decimal space-y-1 pl-5 text-sm text-gray-300"
+      >
+        <li
+          v-for="procedureLabel in calibrationProtocolProcedureLabels"
+          :key="procedureLabel"
+        >
+          {{ procedureLabel }}
+        </li>
+      </ol>
+    </section>
+
     <div
       v-if="summary?.historyAvailable"
       class="space-y-4"
@@ -188,6 +224,10 @@ import {
 import {
   getPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationReadinessPresentation,
 } from '@/utils/policyCandidateCorrectionPolicyChangeReviewHistoryCalibrationReadinessPresentation'
+import {
+  getPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationProtocolPresentation,
+  presentPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationProtocolProcedure,
+} from '@/utils/policyCandidateCorrectionPolicyChangeReviewHistoryCalibrationProtocolPresentation'
 
 const summary = ref(null)
 const loading = ref(false)
@@ -204,6 +244,16 @@ const calibrationReadinessPresentation = computed(() => (
   getPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationReadinessPresentation(
     summary.value?.calibrationReadiness?.statusId,
   )
+))
+const calibrationProtocolPresentation = computed(() => (
+  getPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationProtocolPresentation(
+    summary.value?.calibrationProtocol?.statusId,
+  )
+))
+const calibrationProtocolProcedureLabels = computed(() => (
+  summary.value?.calibrationProtocol?.procedureIds
+    ?.map(presentPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationProtocolProcedure)
+    .filter(Boolean) || []
 ))
 const presentedPeriods = computed(() => (
   summary.value?.periods

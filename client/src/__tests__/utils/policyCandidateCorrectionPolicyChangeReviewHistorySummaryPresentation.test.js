@@ -11,7 +11,7 @@ import {
 
 function response(overrides = {}) {
   return {
-    version: 'policy.candidate_correction_policy_change_review_history_summary.v3',
+    version: 'policy.candidate_correction_policy_change_review_history_summary.v4',
     statusId: 'available',
     historyAvailable: true,
     automaticPolicyChange: false,
@@ -27,6 +27,23 @@ function response(overrides = {}) {
     calibrationReadiness: {
       statusId: 'insufficient_activity',
       reviewEligible: false,
+      automaticPolicyChange: false,
+      automaticAiRagTuning: false,
+      routingChanged: false,
+    },
+    calibrationProtocol: {
+      statusId: 'ready_for_offline_protocol',
+      protocolAvailable: true,
+      protocolId: 'aggregate_synthetic_fixed_bands_v1',
+      proposalPacketVersion: 'policy.candidate_correction_policy_change_human_review_packet.v1',
+      procedureIds: [
+        'freeze_aggregate_snapshot',
+        'run_checked_in_synthetic_fixture_suite',
+        'compare_fixed_policy_bands',
+        'prepare_human_approval_packet',
+      ],
+      humanApprovalRequired: true,
+      proposalGenerated: false,
       automaticPolicyChange: false,
       automaticAiRagTuning: false,
       routingChanged: false,

@@ -10,8 +10,11 @@ import {
 import {
   normalizePolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationReadiness,
 } from './policyCandidateCorrectionPolicyChangeReviewHistoryCalibrationReadinessPresentation'
+import {
+  normalizePolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationProtocol,
+} from './policyCandidateCorrectionPolicyChangeReviewHistoryCalibrationProtocolPresentation'
 
-const VERSION = 'policy.candidate_correction_policy_change_review_history_summary.v3'
+const VERSION = 'policy.candidate_correction_policy_change_review_history_summary.v4'
 const STATUS_IDS = Object.freeze({
   COLLECTING: 'collecting',
   AVAILABLE: 'available',
@@ -72,7 +75,10 @@ export function normalizePolicyCandidateCorrectionPolicyChangeReviewHistorySumma
   const calibrationReadiness = normalizePolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationReadiness(
     source.calibrationReadiness,
   )
-  if (!consistency || !calibrationReadiness) return null
+  const calibrationProtocol = normalizePolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationProtocol(
+    source.calibrationProtocol,
+  )
+  if (!consistency || !calibrationReadiness || !calibrationProtocol) return null
 
   if (source.statusId === STATUS_IDS.COLLECTING) {
     return source.historyAvailable === false && source.periods.length === 0
@@ -81,6 +87,7 @@ export function normalizePolicyCandidateCorrectionPolicyChangeReviewHistorySumma
         historyAvailable: false,
         consistency,
         calibrationReadiness,
+        calibrationProtocol,
         periods: Object.freeze([]),
       })
       : null
@@ -96,6 +103,7 @@ export function normalizePolicyCandidateCorrectionPolicyChangeReviewHistorySumma
       historyAvailable: true,
       consistency,
       calibrationReadiness,
+      calibrationProtocol,
       periods: Object.freeze(periods),
     })
 }

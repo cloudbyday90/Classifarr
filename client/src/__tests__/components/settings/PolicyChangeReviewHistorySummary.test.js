@@ -17,7 +17,7 @@ const { default: PolicyChangeReviewHistorySummary } =
 
 function response() {
   return {
-    version: 'policy.candidate_correction_policy_change_review_history_summary.v3',
+    version: 'policy.candidate_correction_policy_change_review_history_summary.v4',
     statusId: 'available',
     historyAvailable: true,
     automaticPolicyChange: false,
@@ -33,6 +33,23 @@ function response() {
     calibrationReadiness: {
       statusId: 'ready_for_human_review',
       reviewEligible: true,
+      automaticPolicyChange: false,
+      automaticAiRagTuning: false,
+      routingChanged: false,
+    },
+    calibrationProtocol: {
+      statusId: 'ready_for_offline_protocol',
+      protocolAvailable: true,
+      protocolId: 'aggregate_synthetic_fixed_bands_v1',
+      proposalPacketVersion: 'policy.candidate_correction_policy_change_human_review_packet.v1',
+      procedureIds: [
+        'freeze_aggregate_snapshot',
+        'run_checked_in_synthetic_fixture_suite',
+        'compare_fixed_policy_bands',
+        'prepare_human_approval_packet',
+      ],
+      humanApprovalRequired: true,
+      proposalGenerated: false,
       automaticPolicyChange: false,
       automaticAiRagTuning: false,
       routingChanged: false,
@@ -64,6 +81,8 @@ describe('PolicyChangeReviewHistorySummary', () => {
     expect(wrapper.text()).toContain('Completed review activity is available')
     expect(wrapper.text()).toContain('Review process is consistent across completed periods')
     expect(wrapper.text()).toContain('Calibration review is ready for human evaluation')
+    expect(wrapper.text()).toContain('Offline calibration protocol is ready for human evaluation')
+    expect(wrapper.findAll('ol li')).toHaveLength(4)
     expect(wrapper.get('table caption').text()).toBe('Most recent completed 30-day period')
     expect(wrapper.findAll('th[scope="col"]')).toHaveLength(4)
     expect(wrapper.findAll('th[scope="row"]')).toHaveLength(3)
