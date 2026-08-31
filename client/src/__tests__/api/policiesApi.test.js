@@ -52,6 +52,7 @@ import {
   getNativeIntentReconciliationRemediationInventory,
   getPolicyPurposeCoverageReview,
   getPolicyNativeIntentReconciliationPurposeSuggestion,
+  getPolicyScopedEvidenceDigest,
   preflightPolicyPurposeCoverage,
   simulatePolicyCohort,
   previewPolicyDestinationCompetition,
@@ -309,5 +310,13 @@ describe('policiesApi', () => {
     await getPolicyNativeIntentReconciliationPurposeSuggestion(17)
 
     expect(mockGetDataRequest).toHaveBeenCalledWith('/policies/17/native-intent-reconciliation/purpose-suggestion')
+  })
+
+  it('gets a selected-policy read-only evidence digest', async () => {
+    mockGetDataRequest.mockResolvedValueOnce({ statusId: 'available' })
+
+    await getPolicyScopedEvidenceDigest(17)
+
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/policies/17/evidence-digest')
   })
 })

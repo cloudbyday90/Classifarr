@@ -27,6 +27,7 @@ const { policyApiMock } = vi.hoisted(() => ({
   policyApiMock: {
     getPolicy: vi.fn(),
     getPolicyNativeIntentReconciliationPurposeSuggestion: vi.fn(),
+    getPolicyScopedEvidenceDigest: vi.fn(),
     updatePolicy: vi.fn(),
   },
 }))
@@ -35,6 +36,7 @@ vi.mock('@/api', () => ({ default: apiMock }))
 vi.mock('@/api/policiesApi', () => policyApiMock)
 vi.mock('vue-router', () => ({
   useRoute: () => routeMock,
+  useRouter: () => ({ push: vi.fn() }),
 }))
 
 const PolicyBuilderModalStub = defineComponent({
@@ -163,6 +165,23 @@ describe('PolicyNativeIntentReconciliation.vue', () => {
       library_id: 18,
     })
     policyApiMock.getPolicyNativeIntentReconciliationPurposeSuggestion.mockResolvedValue(purposeSuggestion)
+    policyApiMock.getPolicyScopedEvidenceDigest.mockResolvedValue({
+      statusId: 'available',
+      policy: { id: 17, name: 'Kids TV Policy', library: { id: 18, name: 'Kids TV', mediaType: 'tv' } },
+      declaredIntent: {
+        authority: { stateId: 'single_active_native_intent' },
+        purposeRuleCount: 1,
+        purposeSignalTypes: ['genres'],
+      },
+      observedLibraryProfile: {
+        statusId: 'captured',
+        sourceId: 'stored_library_profile',
+        freshnessState: 'current',
+        payloadRedacted: true,
+      },
+      admittedHistory: { windowDays: 90, admissionCount: 0, signalTypes: [] },
+      uncertaintyReasonIds: ['no_policy_authorized_history_in_window'],
+    })
     policyApiMock.updatePolicy.mockResolvedValue({ data: { success: true } })
   })
 
@@ -262,6 +281,19 @@ describe('PolicyNativeIntentReconciliation.vue', () => {
     await flushPromises()
 
     expect(wrapper.find('#policy-reconciliation-remediation-17').attributes('tabindex')).toBe('-1')
+  })
+
+  it('loads selected-policy evidence automatically without letting it alter reconciliation status', async () => {
+    routeMock.query = { policy: '17', focus: 'evidence-digest' }
+    const wrapper = mountView({ attachTo: document.body })
+    await flushPromises()
+
+    expect(policyApiMock.getPolicyScopedEvidenceDigest).toHaveBeenCalledWith(17)
+    expect(wrapper.text()).toContain('Policy evidence digest')
+    expect(wrapper.text()).toContain('This does not inspect media now, call AI, modify learning, alter a score, or route an item.')
+    expect(wrapper.find('#policy-scoped-evidence-digest').attributes('tabindex')).toBe('-1')
+    expect(document.activeElement?.id).toBe('policy-scoped-evidence-digest')
+    wrapper.unmount()
   })
 
   it('focuses existing policy purpose coverage from the aggregate evidence handoff', async () => {

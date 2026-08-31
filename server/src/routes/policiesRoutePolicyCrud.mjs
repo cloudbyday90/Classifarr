@@ -15,6 +15,7 @@ import { registerPolicyNativeIntentReconciliationRoutes } from './policiesRouteN
 import { registerPolicyInitialIntentEstablishmentRoutes } from './policiesRouteInitialIntentEstablishment.mjs';
 import { registerPolicyInitialIntentEstablishmentReadinessRoutes } from './policiesRouteInitialIntentEstablishmentReadiness.mjs';
 import { registerPolicyNativeIntentReadinessSummaryRoutes } from './policiesRouteNativeIntentReadinessSummary.mjs';
+import { registerPolicyScopedEvidenceDigestRoutes } from './policiesRoutePolicyScopedEvidenceDigest.mjs';
 import { registerPolicyWriteRoutes } from './policiesRoutePolicyWrite.mjs';
 import { registerPolicyPresetRoutes } from './policiesRoutePolicyPresets.mjs';
 import { registerPolicyEvaluationContextRoute } from './policiesRouteEvaluationContext.mjs';
@@ -59,6 +60,7 @@ export function registerPolicyCrudRoutes(router, deps) {
   registerPolicyCohortSimulationRoutes(router, deps);
   registerPolicyDestinationCompetitionPreviewRoutes(router, deps);
   registerPolicyNativeIntentReconciliationRoutes(router, deps);
+  registerPolicyScopedEvidenceDigestRoutes(router, deps);
   registerPolicyInitialIntentEstablishmentRoutes(router, deps);
   registerPolicyInitialIntentEstablishmentReadinessRoutes(router, deps);
   registerPolicyNativeIntentReadinessSummaryRoutes(router, deps);

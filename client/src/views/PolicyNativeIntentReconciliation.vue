@@ -273,6 +273,14 @@
       :review="purposeCoverageReview"
       :loading="purposeCoverageLoading"
       @edit-policy="openPolicyEditor"
+      @review-evidence="reviewPolicyEvidence"
+    />
+
+    <PolicyScopedEvidenceDigest
+      v-if="focusPolicyId"
+      ref="policyScopedEvidenceDigestElement"
+      :digest="policyScopedEvidenceDigest"
+      :loading="policyScopedEvidenceDigestLoading"
     />
 
     <div
@@ -313,9 +321,10 @@
 
 <script setup>
 import { computed, defineAsyncComponent, nextTick, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import PolicyNativeIntentReconciliationRemediationInventory from '@/components/policies/PolicyNativeIntentReconciliationRemediationInventory.vue'
 import PolicyPurposeCoverageReview from '@/components/policies/PolicyPurposeCoverageReview.vue'
+import PolicyScopedEvidenceDigest from '@/components/policies/PolicyScopedEvidenceDigest.vue'
 import {
   getPolicy,
   getPolicyNativeIntentReconciliationPurposeSuggestion,
@@ -324,11 +333,13 @@ import {
 import { usePolicyNativeIntentReconciliationStatus } from '@/composables/usePolicyNativeIntentReconciliationStatus'
 import { usePolicyNativeIntentReconciliationRemediationInventory } from '@/composables/usePolicyNativeIntentReconciliationRemediationInventory'
 import { usePolicyPurposeCoverageReview } from '@/composables/usePolicyPurposeCoverageReview'
+import { usePolicyScopedEvidenceDigest } from '@/composables/usePolicyScopedEvidenceDigest'
 import {
   isPolicyConfirmationEvidenceReviewFocus,
 } from '@/utils/policyConfirmationEvidenceReviewHandoff'
 
 const route = useRoute()
+const router = useRouter()
 const PolicyBuilderModal = defineAsyncComponent(() =>
   import('@/components/policies/PolicyBuilderModal.vue')
 )
@@ -350,17 +361,26 @@ const {
   errorMessage: purposeCoverageErrorMessage,
   loadReview: loadPurposeCoverageReview,
 } = usePolicyPurposeCoverageReview()
+const {
+  digest: policyScopedEvidenceDigest,
+  isLoading: policyScopedEvidenceDigestLoading,
+  errorMessage: policyScopedEvidenceDigestErrorMessage,
+  loadDigest: loadPolicyScopedEvidenceDigest,
+} = usePolicyScopedEvidenceDigest()
 const editingPolicy = ref(null)
 const policyEditorOpen = ref(false)
 const policyEditorError = ref('')
 const policyEditorFeedback = ref('')
 const compatibilityPurposeSuggestion = ref(null)
 const purposeCoverageReviewElement = ref(null)
+const policyScopedEvidenceDigestElement = ref(null)
 const isLoading = computed(() => (
-  statusLoading.value || remediationLoading.value || purposeCoverageLoading.value
+  statusLoading.value || remediationLoading.value || purposeCoverageLoading.value ||
+  policyScopedEvidenceDigestLoading.value
 ))
 const errorMessage = computed(() => (
-  statusErrorMessage.value || remediationErrorMessage.value || purposeCoverageErrorMessage.value
+  statusErrorMessage.value || remediationErrorMessage.value || purposeCoverageErrorMessage.value ||
+  policyScopedEvidenceDigestErrorMessage.value
 ))
 
 const STATUS_DETAILS = {
@@ -403,9 +423,15 @@ const focusPolicyId = computed(() => {
 const focusPurposeCoverageReview = computed(() => (
   isPolicyConfirmationEvidenceReviewFocus(route.query?.focus)
 ))
+const focusPolicyScopedEvidenceDigest = computed(() => route.query?.focus === 'evidence-digest')
 
 const loadReconciliationView = async () => {
-  await Promise.all([loadStatus(), loadRemediationInventory(), loadPurposeCoverageReview()])
+  await Promise.all([
+    loadStatus(),
+    loadRemediationInventory(),
+    loadPurposeCoverageReview(),
+    loadPolicyScopedEvidenceDigest(focusPolicyId.value),
+  ])
 }
 
 const focusRequestedRemediation = async () => {
@@ -421,6 +447,26 @@ const focusRequestedPurposeCoverageReview = async () => {
 
   await nextTick()
   purposeCoverageReviewElement.value?.focus?.()
+}
+
+const focusRequestedPolicyScopedEvidenceDigest = async () => {
+  if (!focusPolicyScopedEvidenceDigest.value || !policyScopedEvidenceDigest.value) return
+
+  await nextTick()
+  policyScopedEvidenceDigestElement.value?.focus?.()
+}
+
+const reviewPolicyEvidence = async entry => {
+  const policyId = Number(entry?.policy?.id)
+  if (!Number.isInteger(policyId) || policyId <= 0) return
+
+  await router.push({
+    name: 'PolicyNativeIntentReconciliation',
+    query: {
+      policy: String(policyId),
+      focus: 'evidence-digest',
+    },
+  })
 }
 
 const openPolicyEditor = async entry => {
@@ -489,12 +535,18 @@ function formatRuntime(runtime) {
   return buildRevision ? `App ${appVersion} | revision ${buildRevision}` : `App ${appVersion}`
 }
 
+watch(focusPolicyId, loadPolicyScopedEvidenceDigest)
 watch([focusPolicyId, remediationInventory], focusRequestedRemediation)
 watch([focusPurposeCoverageReview, purposeCoverageReview], focusRequestedPurposeCoverageReview)
+watch(
+  [focusPolicyScopedEvidenceDigest, policyScopedEvidenceDigest],
+  focusRequestedPolicyScopedEvidenceDigest
+)
 
 onMounted(async () => {
   await loadReconciliationView()
   await focusRequestedRemediation()
   await focusRequestedPurposeCoverageReview()
+  await focusRequestedPolicyScopedEvidenceDigest()
 })
 </script>

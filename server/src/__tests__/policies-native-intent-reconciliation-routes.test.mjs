@@ -17,6 +17,7 @@ const getReconciliationStatus = jest.fn();
 const getRemediationInventory = jest.fn();
 const getPurposeCoverageReview = jest.fn();
 const getPurposeSuggestion = jest.fn();
+const getScopedEvidenceDigest = jest.fn();
 const disableAutomation = jest.fn();
 const resumeAutomation = jest.fn();
 const resetCircuit = jest.fn();
@@ -60,11 +61,19 @@ jest.unstable_mockModule('../services/nativeIntentReconciliationPurposeSuggestio
   },
 }));
 
+jest.unstable_mockModule('../services/policyScopedEvidenceDigestService.mjs', () => ({
+  policyScopedEvidenceDigestService: {
+    getDigest: getScopedEvidenceDigest,
+  },
+}));
+
 const { registerPolicyNativeIntentReconciliationRoutes } =
   await import('../routes/policiesRouteNativeIntentReconciliation.mjs');
+const { registerPolicyScopedEvidenceDigestRoutes } =
+  await import('../routes/policiesRoutePolicyScopedEvidenceDigest.mjs');
 const { errorHandler } = await import('../middleware/errorHandler.mjs');
 
-function createApp(user = { id: 7, role: 'admin' }) {
+function createApp(user = { id: 7, role: 'admin' }, rateLimit = null) {
   const app = express();
   const router = express.Router();
   app.use(express.json());
@@ -75,6 +84,10 @@ function createApp(user = { id: 7, role: 'admin' }) {
   registerPolicyNativeIntentReconciliationRoutes(router, {
     db: { query: jest.fn(), withTransaction: jest.fn() },
     logger: { info: jest.fn(), warn: jest.fn() },
+  });
+  registerPolicyScopedEvidenceDigestRoutes(router, {
+    db: { query: jest.fn(), withTransaction: jest.fn() },
+    rateLimit,
   });
   app.use('/api/policies', router);
   app.use(errorHandler);
@@ -88,6 +101,7 @@ describe('Policy native intent reconciliation control routes', () => {
     getRemediationInventory.mockReset();
     getPurposeCoverageReview.mockReset();
     getPurposeSuggestion.mockReset();
+    getScopedEvidenceDigest.mockReset();
     disableAutomation.mockReset();
     resumeAutomation.mockReset();
     resetCircuit.mockReset();
@@ -114,6 +128,10 @@ describe('Policy native intent reconciliation control routes', () => {
       available: true,
       persisted: false,
       rawProfileExposed: false,
+    });
+    getScopedEvidenceDigest.mockResolvedValue({
+      statusId: 'available',
+      scope: { rawMediaExposed: false, routingAffected: false },
     });
     disableAutomation.mockResolvedValue({
       changed: true,
@@ -209,6 +227,43 @@ describe('Policy native intent reconciliation control routes', () => {
     await request(createApp())
       .get('/api/policies/not-a-number/native-intent-reconciliation/purpose-suggestion')
       .expect(400);
+  });
+
+  test('returns one administrator-only, no-store, selected-policy evidence digest', async () => {
+    const response = await request(createApp())
+      .get('/api/policies/17/evidence-digest')
+      .expect(200);
+
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.body).toEqual(expect.objectContaining({
+      statusId: 'available',
+      scope: expect.objectContaining({ rawMediaExposed: false, routingAffected: false }),
+    }));
+    expect(getScopedEvidenceDigest).toHaveBeenCalledWith({
+      dbClient: expect.any(Object),
+      policyId: 17,
+    });
+    await request(createApp({ id: 9, role: 'operator' }))
+      .get('/api/policies/17/evidence-digest')
+      .expect(403);
+    await request(createApp())
+      .get('/api/policies/not-a-number/evidence-digest')
+      .expect(400);
+  });
+
+  test('applies the dedicated bounded evidence-digest limiter when the router provides one', async () => {
+    const limiter = (_req, _res, next) => next();
+    const rateLimit = jest.fn().mockReturnValue(limiter);
+
+    await request(createApp({ id: 7, role: 'admin' }, rateLimit))
+      .get('/api/policies/17/evidence-digest')
+      .expect(200);
+
+    expect(rateLimit).toHaveBeenCalledWith(expect.objectContaining({
+      max: 30,
+      standardHeaders: true,
+      legacyHeaders: false,
+    }));
   });
 
   test('derives the emergency-stop actor from the authenticated administrator', async () => {

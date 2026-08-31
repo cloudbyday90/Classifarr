@@ -413,6 +413,7 @@ const reviewPolicyMaintenance = async (entry) => {
     name: 'PolicyNativeIntentReconciliation',
     query: {
       policy: String(policyId),
+      focus: 'evidence-digest',
     },
   })
 }

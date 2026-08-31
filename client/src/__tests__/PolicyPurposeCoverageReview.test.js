@@ -64,8 +64,18 @@ describe('PolicyPurposeCoverageReview', () => {
     expect(wrapper.text()).toContain('does not expose rule values')
     expect(wrapper.text()).not.toContain('shared-review-token')
 
-    await wrapper.get('button').trigger('click')
+    await wrapper.findAll('button').find(button => button.text() === 'Review policy').trigger('click')
 
     expect(wrapper.emitted('edit-policy')).toEqual([[entry]])
+  })
+
+  it('opens a bounded evidence digest only for the policy represented by the selected row', async () => {
+    const wrapper = mount(PolicyPurposeCoverageReview, {
+      props: { review: { entries: [entry], summary: {} } },
+    })
+
+    await wrapper.findAll('button').find(button => button.text() === 'Review evidence').trigger('click')
+
+    expect(wrapper.emitted('review-evidence')).toEqual([[entry]])
   })
 })

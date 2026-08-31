@@ -178,6 +178,10 @@ export function getPolicyNativeIntentReconciliationPurposeSuggestion(id) {
   return getDataRequest(`/policies/${id}/native-intent-reconciliation/purpose-suggestion`)
 }
 
+export function getPolicyScopedEvidenceDigest(id) {
+  return getDataRequest(`/policies/${id}/evidence-digest`)
+}
+
 export function preflightPolicyPurposeCoverage(id, draft) {
   return apiClient.post(`/policies/${id}/native-intent/purpose-coverage/preflight`, {
     policy_intent_draft: draft,
@@ -216,6 +220,7 @@ const policiesApi = {
   getNativeIntentReconciliationRemediationInventory,
   getPolicyPurposeCoverageReview,
   getPolicyNativeIntentReconciliationPurposeSuggestion,
+  getPolicyScopedEvidenceDigest,
   preflightPolicyPurposeCoverage,
   simulatePolicyCohort,
   previewPolicyDestinationCompetition,

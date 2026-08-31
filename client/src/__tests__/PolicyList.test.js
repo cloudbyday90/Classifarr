@@ -210,7 +210,7 @@ describe('PolicyList.vue', () => {
 
     expect(state.router.push).toHaveBeenCalledWith({
       name: 'PolicyNativeIntentReconciliation',
-      query: { policy: '3' },
+      query: { policy: '3', focus: 'evidence-digest' },
     })
   })
 

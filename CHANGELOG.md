@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Policy-scoped evidence digest** — Policy maintenance now opens a
+  read-only, administrator-only digest of declared intent, stored-profile
+  provenance, and fixed-window authorized evidence without exposing raw media,
+  rule values, profile payloads, or model output.
+
 - **Route-safety policy-maintenance handoff** — AI Settings now offers a
   read-only link to policy review only when a policy-owned route-safety gate is
   stable and representative across two completed aggregate windows.

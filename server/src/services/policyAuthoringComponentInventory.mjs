@@ -36,6 +36,7 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS = Object.freeze({
   DESTINATION_COMPETITION_COVERAGE: 'destination_competition_coverage',
   DESTINATION_COMPETITION_EXPLANATION: 'destination_competition_explanation',
   NATIVE_PURPOSE_MAINTENANCE: 'native_purpose_maintenance',
+  POLICY_SCOPED_EVIDENCE_DIGEST: 'policy_scoped_evidence_digest',
 });
 
 const POLICY_AUTHORING_TARGET_IMPLEMENTATION_STATUS_IDS = Object.freeze({
@@ -324,6 +325,15 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY = deepFreeze([
     targetComponentIds: [],
     normalAuthoringAllowed: false,
     notes: 'Administrator-only read-only coverage review; it renders server-projected aggregate counts and can only open the established editor for an explicit policy.',
+  },
+  {
+    id: 'policy_scoped_evidence_digest',
+    path: 'client/src/components/policies/PolicyScopedEvidenceDigest.vue',
+    roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.POLICY_SCOPED_EVIDENCE_DIGEST,
+    decisionId: POLICY_AUTHORING_COMPONENT_DECISION_IDS.DELETE_FROM_NORMAL_PATH,
+    targetComponentIds: [],
+    normalAuthoringAllowed: false,
+    notes: 'Administrator-only selected-policy maintenance evidence; it renders a bounded read-only server projection and cannot expose raw media, rule values, profile payloads, or change policy, routing, learning, or AI behavior.',
   },
   {
     id: 'policy_purpose_coverage_preflight',

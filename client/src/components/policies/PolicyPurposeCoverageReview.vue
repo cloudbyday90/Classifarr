@@ -101,14 +101,23 @@
                 {{ entry.library.name }}<span v-if="entry.library.mediaType"> · {{ entry.library.mediaType }}</span>
               </p>
             </div>
-            <button
-              v-if="entry.action.available"
-              type="button"
-              class="rounded border border-primary px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background-light"
-              @click="emit('edit-policy', entry)"
-            >
-              {{ entry.action.actionLabel }}
-            </button>
+            <div class="flex flex-wrap gap-2">
+              <button
+                type="button"
+                class="rounded border border-gray-500 px-4 py-2 text-sm font-medium text-gray-200 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background-light"
+                @click="emit('review-evidence', entry)"
+              >
+                Review evidence
+              </button>
+              <button
+                v-if="entry.action.available"
+                type="button"
+                class="rounded border border-primary px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background-light"
+                @click="emit('edit-policy', entry)"
+              >
+                {{ entry.action.actionLabel }}
+              </button>
+            </div>
           </div>
 
           <dl class="mt-4 grid gap-3 rounded border border-gray-700 bg-background/50 p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
@@ -198,6 +207,7 @@ const props = defineProps({
 
 const emit = defineEmits({
   'edit-policy': entry => Boolean(entry?.policy?.id),
+  'review-evidence': entry => Boolean(entry?.policy?.id),
 })
 
 const rootElement = ref(null)

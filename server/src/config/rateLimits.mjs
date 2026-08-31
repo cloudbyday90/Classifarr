@@ -246,6 +246,16 @@ export const policyCandidateCorrectionPolicyChangeReviewHistorySummaryReadLimite
   skip: (_req) => process.env.NODE_ENV === 'test',
 };
 
+/** Selected-policy evidence-digest reads (per IP, per 15 minutes). */
+export const policyScopedEvidenceDigestReadLimiterConfig = {
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: 'Too many policy evidence digest requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (_req) => process.env.NODE_ENV === 'test',
+};
+
 /** Settings — SSL connectivity test (per IP, per hour). */
 export const sslTestLimiterConfig = {
   windowMs: 60 * 60 * 1000,
