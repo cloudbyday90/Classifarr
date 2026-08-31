@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://classifarr.example/schemas/policy-candidate-correction-policy-change-review-history-calibration-fixture-corpus-v1.schema.json",
+  "title": "Policy-change calibration synthetic fixture corpus v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "fixtures"],
+  "properties": {
+    "version": {
+      "const": "policy.candidate_correction_policy_change_calibration_fixture_corpus.v1"
+    },
+    "fixtures": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 16,
+      "items": { "$ref": "#/$defs/fixture" }
+    }
+  },
+  "$defs": {
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["automaticPolicyChange", "automaticAiRagTuning", "routingChanged"],
+      "properties": {
+        "automaticPolicyChange": { "const": false },
+        "automaticAiRagTuning": { "const": false },
+        "routingChanged": { "const": false }
+      }
+    },
+    "readiness": {
+      "allOf": [
+        { "$ref": "#/$defs/authority" },
+        {
+          "type": "object",
+          "required": ["statusId", "reviewEligible"],
+          "properties": {
+            "statusId": {
+              "enum": ["collecting_periods", "insufficient_activity", "ready_for_human_review"]
+            },
+            "reviewEligible": { "type": "boolean" }
+          }
+        }
+      ]
+    },
+    "consistency": {
+      "allOf": [
+        { "$ref": "#/$defs/authority" },
+        {
+          "type": "object",
+          "required": ["statusId", "comparisonAvailable"],
+          "properties": {
+            "statusId": {
+              "enum": ["collecting", "insufficient_activity", "consistent", "shifted"]
+            },
+            "comparisonAvailable": { "type": "boolean" }
+          }
+        }
+      ]
+    },
+    "fixture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "protocolInput", "expected"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,79}$"
+        },
+        "protocolInput": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["calibrationReadiness", "consistency"],
+          "properties": {
+            "calibrationReadiness": { "$ref": "#/$defs/readiness" },
+            "consistency": { "$ref": "#/$defs/consistency" }
+          }
+        },
+        "expected": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["statusId", "protocolAvailable", "procedureIds"],
+          "properties": {
+            "statusId": {
+              "enum": [
+                "awaiting_aggregate_evidence",
+                "review_process_follow_up_required",
+                "ready_for_offline_protocol"
+              ]
+            },
+            "protocolAvailable": { "type": "boolean" },
+            "procedureIds": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "freeze_aggregate_snapshot",
+                  "run_checked_in_synthetic_fixture_suite",
+                  "compare_fixed_policy_bands",
+                  "prepare_human_approval_packet"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

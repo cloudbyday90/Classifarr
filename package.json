@@ -36,6 +36,7 @@
     "test:local:ai-policy-sweep": "node scripts/local-ai-policy-sweep.mjs",
     "test:offline:policy-candidate-evidence-evaluation": "node scripts/run-policy-candidate-evidence-offline-evaluation.mjs",
     "test:offline:policy-candidate-semantic-snapshot-evaluation": "node scripts/run-policy-candidate-semantic-snapshot-offline-evaluation.mjs",
+    "test:offline:policy-change-calibration-evaluation": "node scripts/run-policy-candidate-correction-policy-change-review-history-calibration-offline-evaluation.mjs",
     "test:local:ai-policy-sweep:faults": "node scripts/verify-ai-policy-sweep-fault-scenarios.mjs",
     "test:local:ai-policy-sweep:compare": "node scripts/compare-ai-policy-sweep-trend.mjs",
     "test:local:ai-policy-sweep:cleanup": "node scripts/cleanup-local-ai-policy-sweep.mjs --all-reports",

@@ -43,6 +43,7 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - **Policy-change review-process consistency** — Security Settings now derives a fixed, aggregate-only consistency state from three completed review-activity periods, requiring a minimum cohort and remaining descriptive with no policy, AI/RAG, learning, or routing authority.
 - **Policy-change calibration readiness** — Security Settings now retains only the bounded aggregate window needed to identify six complete, sufficiently active review periods and automatically states when a human threshold review may begin; it cannot calculate or apply a threshold, policy, AI/RAG, or routing change.
 - **Offline policy-change calibration protocol** — Security Settings now automatically describes the fixed aggregate-and-synthetic human-review procedure only when bounded aggregate readiness and review-process consistency are both satisfied; it cannot export a snapshot, generate a proposal, change a threshold or policy, invoke AI/RAG, or route media.
+- **Offline calibration evidence pack** — A checked-in synthetic status corpus now guards the fixed policy-change calibration protocol and produces a versioned, content-free human approval-packet format only after the suite passes; it remains offline and cannot approve or change policy, invoke AI/RAG, or route media.
 
 ### Changed
 
@@ -59,6 +60,7 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - **Dependency maintenance** — Applied the server-tooling updates from open PR #525 locally for validation without merging the pull request or creating a release.
 - **Dependency maintenance** — Applied and locally tested the Morgan 1.12.0 runtime update from open PR #524 without merging the pull request or creating a release.
 - **Dependency maintenance** — Applied the client-tooling updates from open PR #523 locally for validation without merging the pull request or creating a release.
+- **Dependency maintenance** — Applied the client runtime updates from open PR #522 locally for validation without merging the pull request or creating a release.
 
 ### Fixed
 
@@ -67,6 +69,7 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 ### Security
 
 - **AI readiness refresh boundary** — Automatic AI Settings refreshes call only the existing administrator-authorized saved-capability read at a visible-page bound; they cannot probe providers, discover models, write settings, route media, or expose raw scheduled-preflight errors.
+- **Offline calibration evidence boundary** — The fixed-path synthetic corpus accepts only allow-listed aggregate status combinations and fixed procedures, returns aggregate pass/fail data only, rejects authority-bearing or live fields, and has no API, storage, provider, AI/RAG, policy, approval, or routing authority.
 - **Adjudication authority boundary** — The server validates every proposal against the original policy-owned candidate set, discards model reasoning and confidence, persists only allow-listed status facts, and always keeps routing behind the operator decision.
 - **Ollama endpoint trust boundary** — Detailed candidate profiles and historical titles now require a syntax-validated trusted-local endpoint; an arbitrary DNS name or public address receives aggregate-only evidence.
 - **Current-library retrieval boundary** — Candidate-owned library IDs, media type, and result caps are fixed server-side; descriptions are never returned from the read-only query, unexpected library rows are discarded, and retrieval failure remains advisory and unavailable.
