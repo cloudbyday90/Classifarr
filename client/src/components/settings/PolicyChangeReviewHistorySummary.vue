@@ -54,6 +54,31 @@
       {{ error }}
     </p>
 
+    <section
+      v-if="consistencyPresentation"
+      class="rounded-md border border-gray-700 bg-gray-900/40 p-4"
+      aria-labelledby="policy-change-review-history-consistency-heading"
+    >
+      <h4
+        id="policy-change-review-history-consistency-heading"
+        class="text-sm font-medium text-gray-200"
+      >
+        Review-process consistency
+      </h4>
+      <p
+        class="mt-2 font-medium"
+        :class="consistencyPresentation.statusClass"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {{ consistencyPresentation.heading }}
+      </p>
+      <p class="mt-1 text-sm text-gray-300">
+        {{ consistencyPresentation.message }}
+      </p>
+    </section>
+
     <div
       v-if="summary?.historyAvailable"
       class="space-y-4"
@@ -132,6 +157,9 @@ import {
   normalizePolicyCandidateCorrectionPolicyChangeReviewHistorySummary,
   presentPolicyCandidateCorrectionPolicyChangeReviewHistoryPeriod,
 } from '@/utils/policyCandidateCorrectionPolicyChangeReviewHistorySummaryPresentation'
+import {
+  getPolicyCandidateCorrectionPolicyChangeReviewHistoryConsistencyPresentation,
+} from '@/utils/policyCandidateCorrectionPolicyChangeReviewHistoryConsistencyPresentation'
 
 const summary = ref(null)
 const loading = ref(false)
@@ -140,6 +168,9 @@ let refreshTimer = null
 
 const presentation = computed(() => (
   getPolicyCandidateCorrectionPolicyChangeReviewHistorySummaryPresentation(summary.value?.statusId)
+))
+const consistencyPresentation = computed(() => (
+  getPolicyCandidateCorrectionPolicyChangeReviewHistoryConsistencyPresentation(summary.value?.consistency?.statusId)
 ))
 const presentedPeriods = computed(() => (
   summary.value?.periods

@@ -11,12 +11,19 @@ import {
 
 function response(overrides = {}) {
   return {
-    version: 'policy.candidate_correction_policy_change_review_history_summary.v1',
+    version: 'policy.candidate_correction_policy_change_review_history_summary.v2',
     statusId: 'available',
     historyAvailable: true,
     automaticPolicyChange: false,
     automaticAiRagTuning: false,
     routingChanged: false,
+    consistency: {
+      statusId: 'insufficient_activity',
+      comparisonAvailable: false,
+      automaticPolicyChange: false,
+      automaticAiRagTuning: false,
+      routingChanged: false,
+    },
     periods: [{
       periodId: 'most_recent_completed',
       periodStart: '2026-07-29',

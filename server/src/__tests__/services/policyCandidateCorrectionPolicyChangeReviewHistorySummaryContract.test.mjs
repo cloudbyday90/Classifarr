@@ -46,7 +46,15 @@ describe('policy-change review history summary contract', () => {
       now,
     });
 
-    expect(model).toEqual(expect.objectContaining({ statusId: 'available', historyAvailable: true }));
+    expect(model).toEqual(expect.objectContaining({
+      version: 'policy.candidate_correction_policy_change_review_history_summary.v2',
+      statusId: 'available',
+      historyAvailable: true,
+      consistency: expect.objectContaining({
+        statusId: 'insufficient_activity',
+        comparisonAvailable: false,
+      }),
+    }));
     expect(model.periods).toHaveLength(3);
     expect(model.periods[0].conclusionSummaries[0]).toEqual({
       decisionId: 'retain_current_policy',

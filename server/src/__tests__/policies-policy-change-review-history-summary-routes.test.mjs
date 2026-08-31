@@ -13,12 +13,19 @@ import {
 
 function response() {
   return {
-    version: 'policy.candidate_correction_policy_change_review_history_summary.v1',
+    version: 'policy.candidate_correction_policy_change_review_history_summary.v2',
     statusId: 'collecting',
     historyAvailable: false,
     automaticPolicyChange: false,
     automaticAiRagTuning: false,
     routingChanged: false,
+    consistency: {
+      statusId: 'collecting',
+      comparisonAvailable: false,
+      automaticPolicyChange: false,
+      automaticAiRagTuning: false,
+      routingChanged: false,
+    },
     periods: [],
   };
 }

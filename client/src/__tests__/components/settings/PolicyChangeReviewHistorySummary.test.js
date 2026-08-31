@@ -17,12 +17,19 @@ const { default: PolicyChangeReviewHistorySummary } =
 
 function response() {
   return {
-    version: 'policy.candidate_correction_policy_change_review_history_summary.v1',
+    version: 'policy.candidate_correction_policy_change_review_history_summary.v2',
     statusId: 'available',
     historyAvailable: true,
     automaticPolicyChange: false,
     automaticAiRagTuning: false,
     routingChanged: false,
+    consistency: {
+      statusId: 'consistent',
+      comparisonAvailable: true,
+      automaticPolicyChange: false,
+      automaticAiRagTuning: false,
+      routingChanged: false,
+    },
     periods: [{
       periodId: 'most_recent_completed',
       conclusionSummaries: [
@@ -48,6 +55,7 @@ describe('PolicyChangeReviewHistorySummary', () => {
 
     expect(getPolicyCandidateCorrectionPolicyChangeReviewHistorySummary).toHaveBeenCalledTimes(1)
     expect(wrapper.text()).toContain('Completed review activity is available')
+    expect(wrapper.text()).toContain('Review process is consistent across completed periods')
     expect(wrapper.get('table caption').text()).toBe('Most recent completed 30-day period')
     expect(wrapper.findAll('th[scope="col"]')).toHaveLength(4)
     expect(wrapper.findAll('th[scope="row"]')).toHaveLength(3)

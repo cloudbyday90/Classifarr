@@ -6,9 +6,12 @@
 import {
   POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_DECISION_IDS,
 } from './policyCandidateCorrectionPolicyChangeDecisionRecordContract.mjs';
+import {
+  buildPolicyCandidateCorrectionPolicyChangeReviewHistoryConsistencyReadModel,
+} from './policyCandidateCorrectionPolicyChangeReviewHistoryConsistencyContract.mjs';
 
 export const POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_SUMMARY_VERSION =
-  'policy.candidate_correction_policy_change_review_history_summary.v1';
+  'policy.candidate_correction_policy_change_review_history_summary.v2';
 export const POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_SUMMARY_CONTROL_KEY =
   'policy_change_review_history_summary';
 export const POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_PERIOD_DAYS = 30;
@@ -145,6 +148,7 @@ function buildBaseReadModel({ statusId, historyAvailable, periods } = {}) {
     automaticPolicyChange: false,
     automaticAiRagTuning: false,
     routingChanged: false,
+    consistency: buildPolicyCandidateCorrectionPolicyChangeReviewHistoryConsistencyReadModel({ periods }),
     periods,
   });
 }
