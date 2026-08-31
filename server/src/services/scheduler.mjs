@@ -131,6 +131,9 @@ class SchedulerService {
         // Daily deletion of expired, redacted representative-review projections.
         this.schedule('policy-candidate-correction-review-projection-retention-cleanup', '18 3 * * *', () => this.runPolicyCandidateCorrectionRepresentativeReviewProjectionRetentionCleanup());
 
+        // Daily deletion of expired, aggregate-only policy-change observations.
+        this.schedule('policy-change-outcome-observation-retention-cleanup', '19 3 * * *', () => this.runPolicyCandidateCorrectionPolicyChangeOutcomeObservationRetentionCleanup());
+
         // Daily cleanup of stale awaiting_decision rows (4 AM)
         this.schedule('stale-awaiting-cleanup', '0 4 * * *', () => this.cleanupStaleAwaitingDecisions(), DB_ADVISORY_LOCKS.STALE_CLEANUP);
 
@@ -230,6 +233,13 @@ class SchedulerService {
      */
     async runPolicyCandidateCorrectionRepresentativeReviewProjectionRetentionCleanup() {
         return schedulerRetentionService.runPolicyCandidateCorrectionRepresentativeReviewProjectionRetentionCleanup();
+    }
+
+    /**
+     * Daily deletion of expired aggregate policy-change observations.
+     */
+    async runPolicyCandidateCorrectionPolicyChangeOutcomeObservationRetentionCleanup() {
+        return schedulerRetentionService.runPolicyCandidateCorrectionPolicyChangeOutcomeObservationRetentionCleanup();
     }
 
     /**

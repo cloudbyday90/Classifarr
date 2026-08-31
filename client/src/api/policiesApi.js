@@ -32,6 +32,7 @@ import {
 import policyReviewCorpusControlApi from './policyReviewCorpusControlApi'
 import policyReviewCorpusEvaluationReportApi from './policyReviewCorpusEvaluationReportApi'
 import policyReviewCorpusProjectionApi from './policyReviewCorpusProjectionApi'
+import policyChangeOutcomeObservationApi from './policyChangeOutcomeObservationApi'
 
 export function getPolicy(id) {
   return getDataRequest(`/policies/${id}`)
@@ -219,6 +220,7 @@ const policiesApi = {
   ...policyReviewCorpusControlApi,
   ...policyReviewCorpusEvaluationReportApi,
   ...policyReviewCorpusProjectionApi,
+  ...policyChangeOutcomeObservationApi,
 }
 
 export default policiesApi

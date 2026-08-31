@@ -20,7 +20,10 @@ jest.unstable_mockModule('../../services/classificationEvidenceRepository.mjs', 
   classificationEvidenceRepository: { purgeAll },
 }));
 
-const { clearExistingConfig } = await import('../../services/backupRestore.mjs');
+const {
+  clearExistingConfig,
+  clearPolicyChangeOutcomeObservationForRestore,
+} = await import('../../services/backupRestore.mjs');
 
 describe('backup restore authorized outcome receipt lifecycle', () => {
   beforeEach(() => {
@@ -63,18 +66,22 @@ describe('backup restore authorized outcome receipt lifecycle', () => {
     );
     expect(client.query).toHaveBeenNthCalledWith(
       8,
-      'DELETE FROM policy_native_intent_change_receipts'
+      'DELETE FROM policy_candidate_correction_policy_change_outcome_observations'
     );
     expect(client.query).toHaveBeenNthCalledWith(
       9,
-      "SELECT set_config('classifarr.verification_capability_receipt_maintenance', 'replace_restore', true)"
+      'DELETE FROM policy_native_intent_change_receipts'
     );
     expect(client.query).toHaveBeenNthCalledWith(
       10,
-      'DELETE FROM candidate_bound_verification_capability_receipts'
+      "SELECT set_config('classifarr.verification_capability_receipt_maintenance', 'replace_restore', true)"
     );
     expect(client.query).toHaveBeenNthCalledWith(
       11,
+      'DELETE FROM candidate_bound_verification_capability_receipts'
+    );
+    expect(client.query).toHaveBeenNthCalledWith(
+      12,
       "SELECT set_config('classifarr.policy_migration_verification_run_maintenance', 'replace_restore', true)"
     );
     expect(client.query).toHaveBeenCalledWith(
@@ -108,6 +115,16 @@ describe('backup restore authorized outcome receipt lifecycle', () => {
        WHERE libraries.media_server_id = media_server.id
          AND classification_history.status = 'completed'
      )`
+    );
+  });
+
+  test('clears the operational outcome baseline for every restore mode', async () => {
+    const client = { query: jest.fn().mockResolvedValue({ rows: [] }) };
+
+    await clearPolicyChangeOutcomeObservationForRestore(client);
+
+    expect(client.query).toHaveBeenCalledWith(
+      'DELETE FROM policy_candidate_correction_policy_change_outcome_observations'
     );
   });
 });

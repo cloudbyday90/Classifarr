@@ -30,6 +30,11 @@ import {
 
 const logger = createLogger('BackupRestore');
 
+/** An operational outcome baseline cannot survive any configuration restore. */
+export async function clearPolicyChangeOutcomeObservationForRestore(client) {
+  await client.query('DELETE FROM policy_candidate_correction_policy_change_outcome_observations');
+}
+
 export async function clearExistingConfig(client) {
   // Refresh outbox rows describe runtime work rather than portable policy
   // configuration. Replace restore starts from a clean operational queue.
@@ -53,6 +58,10 @@ export async function clearExistingConfig(client) {
   await client.query(
     "SELECT set_config('classifarr.policy_native_intent_change_receipt_maintenance', 'replace_restore', true)"
   );
+  // A policy-change outcome observation is a short-lived operational baseline.
+  // It is neither portable configuration nor valid after replacing policy
+  // state, so clear it before its internal receipt reference is discarded.
+  await clearPolicyChangeOutcomeObservationForRestore(client);
   await client.query('DELETE FROM policy_native_intent_change_receipts');
   // Capability receipts are actor-scoped operational history and are not
   // portable backup configuration. Clear them only through their database
@@ -122,6 +131,10 @@ export async function clearExistingConfig(client) {
 export async function restoreAllTables(client, backupData, mode) {
   if (mode === 'replace') {
     await clearExistingConfig(client);
+  } else {
+    // Any restore may change the configuration being observed. The aggregate
+    // baseline is therefore invalid even when a merge retains existing rows.
+    await clearPolicyChangeOutcomeObservationForRestore(client);
   }
 
   await restoreConfidenceSettings(client, backupData.data.confidenceSettings);

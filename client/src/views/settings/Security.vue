@@ -571,6 +571,213 @@
       </template>
     </section>
 
+    <section
+      class="bg-gray-800 rounded-lg border border-gray-700 p-5 space-y-4"
+      aria-labelledby="policy-change-outcome-observation-heading"
+    >
+      <div>
+        <h3
+          id="policy-change-outcome-observation-heading"
+          class="text-lg font-medium"
+        >
+          Policy-change follow-up
+        </h3>
+        <p class="mt-1 text-sm text-gray-400">
+          A bounded aggregate comparison after an approved native policy change. It does not retain media, library, AI, RAG, prompt, response, or policy content.
+        </p>
+      </div>
+
+      <div
+        class="rounded-md border border-gray-700 bg-gray-900/40 p-4"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        <template v-if="policyChangeOutcomeObservationPresentation">
+          <p
+            class="font-medium"
+            :class="policyChangeOutcomeObservationPresentation.statusClass"
+          >
+            {{ policyChangeOutcomeObservationPresentation.heading }}
+          </p>
+          <p class="mt-1 text-sm text-gray-300">
+            {{ policyChangeOutcomeObservationPresentation.message }}
+          </p>
+          <p
+            v-if="policyChangeOutcomeObservationActionStatus"
+            class="mt-2 text-sm text-green-400"
+          >
+            {{ policyChangeOutcomeObservationActionStatus }}
+          </p>
+        </template>
+        <p
+          v-else-if="policyChangeOutcomeObservationLoading"
+          class="text-sm text-gray-400"
+        >
+          Checking policy-change follow-up status…
+        </p>
+        <p
+          v-else
+          class="text-sm text-amber-300"
+        >
+          Policy-change follow-up status is temporarily unavailable.
+        </p>
+      </div>
+
+      <p
+        v-if="policyChangeOutcomeObservationError"
+        class="rounded-md bg-red-900/30 p-3 text-sm text-red-300"
+        role="alert"
+      >
+        {{ policyChangeOutcomeObservationError }}
+      </p>
+
+      <button
+        v-if="policyChangeOutcomeObservation?.startAvailable"
+        type="button"
+        :disabled="policyChangeOutcomeObservationStarting"
+        class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-600"
+        @click="startPolicyChangeOutcomeObservation"
+      >
+        {{ policyChangeOutcomeObservationStarting ? 'Starting follow-up…' : 'Start policy-change follow-up' }}
+      </button>
+
+      <p
+        v-else-if="policyChangeOutcomeObservation?.statusId === 'not_started'"
+        class="rounded-md border border-gray-700 p-3 text-sm text-gray-300"
+      >
+        Apply an approved native policy change first. The same administrator can start its aggregate follow-up here for one hour after that change.
+      </p>
+
+      <template v-if="policyChangeOutcomeObservation?.observation">
+        <dl class="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <div class="rounded-md border border-gray-700 p-3">
+            <dt class="text-xs font-medium uppercase tracking-wide text-gray-400">
+              Baseline
+            </dt>
+            <dd class="mt-1 text-gray-200">
+              {{ formatDate(policyChangeOutcomeObservation.observation.baselineWindow.startAt) }} to {{ formatDate(policyChangeOutcomeObservation.observation.baselineWindow.endAt) }}
+            </dd>
+          </div>
+          <div class="rounded-md border border-gray-700 p-3">
+            <dt class="text-xs font-medium uppercase tracking-wide text-gray-400">
+              Follow-up
+            </dt>
+            <dd class="mt-1 text-gray-200">
+              {{ formatDate(policyChangeOutcomeObservation.observation.followupWindow.startAt) }} to {{ formatDate(policyChangeOutcomeObservation.observation.followupWindow.endAt) }}
+            </dd>
+          </div>
+          <div class="rounded-md border border-gray-700 p-3">
+            <dt class="text-xs font-medium uppercase tracking-wide text-gray-400">
+              Outcome available
+            </dt>
+            <dd class="mt-1 text-gray-200">
+              {{ formatDate(policyChangeOutcomeObservation.observation.outcomeAvailableAt) }}
+            </dd>
+          </div>
+          <div class="rounded-md border border-gray-700 p-3">
+            <dt class="text-xs font-medium uppercase tracking-wide text-gray-400">
+              Expires
+            </dt>
+            <dd class="mt-1 text-gray-200">
+              {{ formatDate(policyChangeOutcomeObservation.observation.expiresAt) }}
+            </dd>
+          </div>
+        </dl>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <caption class="mb-3 text-left text-sm text-gray-400">
+              Aggregate applicable-decision outcomes. This comparison is descriptive only and updates automatically while the follow-up period is active.
+            </caption>
+            <thead class="border-b border-gray-700 text-xs uppercase tracking-wide text-gray-400">
+              <tr>
+                <th
+                  scope="col"
+                  class="px-3 py-2 font-medium"
+                >
+                  Period
+                </th>
+                <th
+                  scope="col"
+                  class="px-3 py-2 font-medium"
+                >
+                  Applicable decisions
+                </th>
+                <th
+                  scope="col"
+                  class="px-3 py-2 font-medium"
+                >
+                  Changed selections
+                </th>
+                <th
+                  scope="col"
+                  class="px-3 py-2 font-medium"
+                >
+                  Changed-selection rate
+                </th>
+                <th
+                  scope="col"
+                  class="px-3 py-2 font-medium"
+                >
+                  95% interval
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-700">
+              <tr>
+                <th
+                  scope="row"
+                  class="px-3 py-3 font-medium text-gray-200"
+                >
+                  Baseline
+                </th>
+                <td class="px-3 py-3 text-gray-200">
+                  {{ policyChangeOutcomeBaselineSummary?.applicableDecisionLabel }}
+                </td>
+                <td class="px-3 py-3 text-gray-200">
+                  {{ policyChangeOutcomeBaselineSummary?.changedSelectionLabel }}
+                </td>
+                <td class="px-3 py-3 text-gray-200">
+                  {{ policyChangeOutcomeBaselineSummary?.changedSelectionRateLabel }}
+                </td>
+                <td class="px-3 py-3 text-gray-200">
+                  {{ policyChangeOutcomeBaselineSummary?.changedSelectionRateIntervalLabel }}
+                </td>
+              </tr>
+              <tr v-if="policyChangeOutcomeFollowupSummary">
+                <th
+                  scope="row"
+                  class="px-3 py-3 font-medium text-gray-200"
+                >
+                  Follow-up
+                </th>
+                <td class="px-3 py-3 text-gray-200">
+                  {{ policyChangeOutcomeFollowupSummary.applicableDecisionLabel }}
+                </td>
+                <td class="px-3 py-3 text-gray-200">
+                  {{ policyChangeOutcomeFollowupSummary.changedSelectionLabel }}
+                </td>
+                <td class="px-3 py-3 text-gray-200">
+                  {{ policyChangeOutcomeFollowupSummary.changedSelectionRateLabel }}
+                </td>
+                <td class="px-3 py-3 text-gray-200">
+                  {{ policyChangeOutcomeFollowupSummary.changedSelectionRateIntervalLabel }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p
+          v-if="policyChangeOutcomeObservation?.outcome"
+          class="rounded-md border border-gray-700 p-3 text-sm text-gray-300"
+        >
+          {{ policyChangeOutcomeObservation.outcome.message }} Rate difference: {{ policyChangeOutcomeRateDifferenceLabel }} percentage points.
+        </p>
+      </template>
+    </section>
+
     <!-- Create New API Key Button -->
     <div class="flex justify-between items-center">
       <h3 class="text-lg font-medium">
@@ -956,7 +1163,7 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import api from '@/api'
 import {
   getPolicyCandidateCorrectionRepresentativeReviewCorpusControlPresentation,
@@ -973,6 +1180,11 @@ import {
   normalizePolicyCandidateCorrectionRepresentativeReviewEvaluationReport,
   presentPolicyCandidateCorrectionRepresentativeReviewEvaluationSummary,
 } from '@/utils/policyCandidateCorrectionRepresentativeReviewEvaluationReportPresentation'
+import {
+  getPolicyCandidateCorrectionPolicyChangeOutcomeObservationPresentation,
+  normalizePolicyCandidateCorrectionPolicyChangeOutcomeObservation,
+  presentPolicyCandidateCorrectionPolicyChangeOutcomeSummary,
+} from '@/utils/policyCandidateCorrectionPolicyChangeOutcomeObservationPresentation'
 
 const apiKeys = ref([])
 const loading = ref(false)
@@ -1005,6 +1217,12 @@ const reviewEvaluationReport = ref(null)
 const reviewEvaluationReportLoading = ref(false)
 const reviewEvaluationReportError = ref(null)
 const reviewEvaluationHypothesis = ref('')
+const policyChangeOutcomeObservation = ref(null)
+const policyChangeOutcomeObservationLoading = ref(false)
+const policyChangeOutcomeObservationStarting = ref(false)
+const policyChangeOutcomeObservationError = ref(null)
+const policyChangeOutcomeObservationActionStatus = ref(null)
+let policyChangeOutcomeObservationRefreshTimer = null
 
 const reviewCorpusControlPresentation = computed(() => (
   getPolicyCandidateCorrectionRepresentativeReviewCorpusControlPresentation(
@@ -1041,6 +1259,25 @@ const reviewEvaluationReportEvidenceRows = computed(() => (
     ?.map(presentPolicyCandidateCorrectionRepresentativeReviewEvaluationSummary)
     .filter(Boolean) || []
 ))
+const policyChangeOutcomeObservationPresentation = computed(() => (
+  getPolicyCandidateCorrectionPolicyChangeOutcomeObservationPresentation(
+    policyChangeOutcomeObservation.value?.statusId
+  )
+))
+const policyChangeOutcomeBaselineSummary = computed(() => (
+  presentPolicyCandidateCorrectionPolicyChangeOutcomeSummary(
+    policyChangeOutcomeObservation.value?.observation?.baselineSummary
+  )
+))
+const policyChangeOutcomeFollowupSummary = computed(() => (
+  presentPolicyCandidateCorrectionPolicyChangeOutcomeSummary(
+    policyChangeOutcomeObservation.value?.outcome?.followupSummary
+  )
+))
+const policyChangeOutcomeRateDifferenceLabel = computed(() => {
+  const difference = policyChangeOutcomeObservation.value?.outcome?.changedSelectionRatePointDifference
+  return Number.isFinite(difference) ? `${difference >= 0 ? '+' : ''}${difference.toFixed(1)}` : 'Not available'
+})
 
 const newKey = ref({
   name: '',
@@ -1052,7 +1289,78 @@ onMounted(() => {
   loadReviewCorpusControl()
   loadReviewProjection()
   loadReviewEvaluationReport()
+  loadPolicyChangeOutcomeObservation()
 })
+
+onUnmounted(() => {
+  if (policyChangeOutcomeObservationRefreshTimer) {
+    clearInterval(policyChangeOutcomeObservationRefreshTimer)
+  }
+})
+
+const schedulePolicyChangeOutcomeObservationRefresh = () => {
+  if (policyChangeOutcomeObservationRefreshTimer ||
+      policyChangeOutcomeObservation.value?.statusId !== 'observing') return
+  policyChangeOutcomeObservationRefreshTimer = setInterval(() => {
+    loadPolicyChangeOutcomeObservation({ background: true })
+  }, 5 * 60 * 1000)
+}
+
+const stopPolicyChangeOutcomeObservationRefresh = () => {
+  if (!policyChangeOutcomeObservationRefreshTimer) return
+  clearInterval(policyChangeOutcomeObservationRefreshTimer)
+  policyChangeOutcomeObservationRefreshTimer = null
+}
+
+const loadPolicyChangeOutcomeObservation = async ({ background = false } = {}) => {
+  if (!background) policyChangeOutcomeObservationLoading.value = true
+  policyChangeOutcomeObservationError.value = null
+  try {
+    const response = await api.getPolicyCandidateCorrectionPolicyChangeOutcomeObservation()
+    const observation = normalizePolicyCandidateCorrectionPolicyChangeOutcomeObservation(response)
+    if (!observation) {
+      throw new Error('Policy-change outcome observation returned an unexpected response.')
+    }
+    policyChangeOutcomeObservation.value = observation
+    if (observation.statusId === 'observing') {
+      schedulePolicyChangeOutcomeObservationRefresh()
+    } else {
+      stopPolicyChangeOutcomeObservationRefresh()
+    }
+  } catch (err) {
+    console.error('Failed to load policy-change outcome observation:', err)
+    if (!background) {
+      policyChangeOutcomeObservation.value = null
+      policyChangeOutcomeObservationError.value = 'Unable to load the policy-change follow-up. No policy, AI, RAG, or routing change was made.'
+    }
+  } finally {
+    if (!background) policyChangeOutcomeObservationLoading.value = false
+  }
+}
+
+const startPolicyChangeOutcomeObservation = async () => {
+  policyChangeOutcomeObservationStarting.value = true
+  policyChangeOutcomeObservationError.value = null
+  policyChangeOutcomeObservationActionStatus.value = null
+  try {
+    const response = await api.startPolicyCandidateCorrectionPolicyChangeOutcomeObservation()
+    const observation = normalizePolicyCandidateCorrectionPolicyChangeOutcomeObservation(response.data)
+    if (!observation) {
+      throw new Error('Policy-change outcome observation returned an unexpected response.')
+    }
+    policyChangeOutcomeObservation.value = observation
+    policyChangeOutcomeObservationActionStatus.value = response.data.operationId === 'existing_observation'
+      ? 'The existing aggregate policy-change follow-up remains active.'
+      : 'The aggregate policy-change follow-up started. Its outcome will appear automatically after the completed follow-up period.'
+    schedulePolicyChangeOutcomeObservationRefresh()
+  } catch (err) {
+    console.error('Failed to start policy-change outcome observation:', err)
+    policyChangeOutcomeObservationError.value = err.response?.data?.error ||
+      'Unable to start the policy-change follow-up. No policy, AI, RAG, or routing change was made.'
+  } finally {
+    policyChangeOutcomeObservationStarting.value = false
+  }
+}
 
 const loadReviewCorpusControl = async () => {
   reviewCorpusLoading.value = true

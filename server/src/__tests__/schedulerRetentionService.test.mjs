@@ -65,6 +65,12 @@ describe('SchedulerRetentionService', () => {
                     statusId: 'completed',
                 }),
             },
+            policyCandidateCorrectionPolicyChangeOutcomeObservationRetentionService: {
+                cleanup: jest.fn().mockResolvedValue({
+                    deletedObservationCount: 0,
+                    statusId: 'completed',
+                }),
+            },
         });
     });
 
@@ -261,6 +267,19 @@ describe('SchedulerRetentionService', () => {
                 statusId: 'completed',
             });
             expect(service.policyNativeIntentChangeReceiptRetentionService.cleanup)
+                .toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('runPolicyCandidateCorrectionPolicyChangeOutcomeObservationRetentionCleanup', () => {
+        it('delegates expired aggregate observation deletion to the retention service', async () => {
+            const result = await service.runPolicyCandidateCorrectionPolicyChangeOutcomeObservationRetentionCleanup();
+
+            expect(result).toEqual({
+                deletedObservationCount: 0,
+                statusId: 'completed',
+            });
+            expect(service.policyCandidateCorrectionPolicyChangeOutcomeObservationRetentionService.cleanup)
                 .toHaveBeenCalledTimes(1);
         });
     });

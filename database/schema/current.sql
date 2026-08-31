@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-08-31T01:01:36.916Z
--- Latest Migration: 20260830_130000_add_policy_candidate_correction_review_projection.sql
+-- Generated: 2026-08-31T10:00:25.133Z
+-- Latest Migration: 20260831_120000_add_policy_change_outcome_observation.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -575,7 +575,7 @@ CREATE TABLE public.ai_provider_capability_metrics (
     last_observed_at timestamp with time zone DEFAULT now() NOT NULL,
     model_digest_mismatch_count bigint DEFAULT 0 CONSTRAINT ai_provider_capability_metr_model_digest_mismatch_coun_not_null NOT NULL,
     last_model_digest_mismatch_at timestamp with time zone,
-    CONSTRAINT ai_provider_capability_metrics_authority_mode_chk CHECK (((authority_mode)::text = ANY (ARRAY[('structured_contract'::character varying)::text, ('verification'::character varying)::text, ('proposal'::character varying)::text, ('explanation'::character varying)::text, ('fallback_advisory'::character varying)::text, ('disabled'::character varying)::text]))),
+    CONSTRAINT ai_provider_capability_metrics_authority_mode_chk CHECK (((authority_mode)::text = ANY ((ARRAY['structured_contract'::character varying, 'verification'::character varying, 'proposal'::character varying, 'explanation'::character varying, 'fallback_advisory'::character varying, 'disabled'::character varying])::text[]))),
     CONSTRAINT ai_provider_capability_metrics_model_digest_mismatch_nonnegativ CHECK ((model_digest_mismatch_count >= 0)),
     CONSTRAINT ai_provider_capability_metrics_model_shape_chk CHECK (((length(btrim((model)::text)) >= 1) AND (length(btrim((model)::text)) <= 255))),
     CONSTRAINT ai_provider_capability_metrics_nonnegative_counts_chk CHECK (((request_count >= 0) AND (structured_parse_success_count >= 0) AND (semantic_contract_violation_count >= 0) AND (repair_attempt_count >= 0) AND (repair_success_count >= 0) AND (timeout_or_incomplete_stream_count >= 0) AND (hallucinated_library_reference_count >= 0) AND (hallucinated_action_count >= 0) AND (thinking_trace_leakage_count >= 0))),
@@ -825,7 +825,7 @@ CREATE TABLE public.ai_provider_config (
     CONSTRAINT ai_cfg_trace_max_events_chk CHECK (((rag_loop_trace_max_events >= 1) AND (rag_loop_trace_max_events <= 200))),
     CONSTRAINT ai_provider_config_jitter_factor_check CHECK (((jitter_factor >= (0)::numeric) AND (jitter_factor <= (1)::numeric))),
     CONSTRAINT ai_provider_config_ollama_verification_capability_latency_ck CHECK (((ollama_verification_capability_latency_ms IS NULL) OR (ollama_verification_capability_latency_ms >= 0))),
-    CONSTRAINT ai_provider_config_ollama_verification_capability_status_ck CHECK (((ollama_verification_capability_status)::text = ANY (ARRAY[('not_checked'::character varying)::text, ('verification_ready'::character varying)::text, ('classification_only'::character varying)::text, ('unavailable'::character varying)::text, ('model_changed'::character varying)::text]))),
+    CONSTRAINT ai_provider_config_ollama_verification_capability_status_ck CHECK (((ollama_verification_capability_status)::text = ANY ((ARRAY['not_checked'::character varying, 'verification_ready'::character varying, 'classification_only'::character varying, 'unavailable'::character varying, 'model_changed'::character varying])::text[]))),
     CONSTRAINT ai_provider_config_retry_backoff_multiplier_check CHECK (((retry_backoff_multiplier >= 1.0) AND (retry_backoff_multiplier <= 5.0))),
     CONSTRAINT ai_provider_config_revision_ck CHECK ((configuration_revision >= 0)),
     CONSTRAINT formula_weights_sum_check CHECK ((((((formula_pattern_weight + formula_rule_weight) + formula_rag_weight) + formula_history_weight) >= (0.99)::double precision) AND ((((formula_pattern_weight + formula_rule_weight) + formula_rag_weight) + formula_history_weight) <= (1.01)::double precision)))
@@ -1959,7 +1959,7 @@ CREATE TABLE public.candidate_bound_verification_capability_receipts (
     created_at timestamp with time zone DEFAULT now() CONSTRAINT candidate_bound_verification_capability_rec_created_at_not_null NOT NULL,
     CONSTRAINT cbv_capability_receipts_actor_ck CHECK (((actor_id)::text ~ '^user:[A-Za-z0-9:_-]{1,150}$'::text)),
     CONSTRAINT cbv_capability_receipts_revision_ck CHECK ((configuration_revision > 0)),
-    CONSTRAINT cbv_capability_receipts_status_ck CHECK ((((before_status_id)::text = ANY (ARRAY[('verification_ready'::character varying)::text, ('primary_path_ineligible'::character varying)::text, ('budget_fallback_advisory'::character varying)::text, ('primary_and_fallback_ineligible'::character varying)::text])) AND ((after_status_id)::text = ANY (ARRAY[('verification_ready'::character varying)::text, ('primary_path_ineligible'::character varying)::text, ('budget_fallback_advisory'::character varying)::text, ('primary_and_fallback_ineligible'::character varying)::text])) AND ((before_status_id)::text <> (after_status_id)::text)))
+    CONSTRAINT cbv_capability_receipts_status_ck CHECK ((((before_status_id)::text = ANY ((ARRAY['verification_ready'::character varying, 'primary_path_ineligible'::character varying, 'budget_fallback_advisory'::character varying, 'primary_and_fallback_ineligible'::character varying])::text[])) AND ((after_status_id)::text = ANY ((ARRAY['verification_ready'::character varying, 'primary_path_ineligible'::character varying, 'budget_fallback_advisory'::character varying, 'primary_and_fallback_ineligible'::character varying])::text[])) AND ((before_status_id)::text <> (after_status_id)::text)))
 );
 
 
@@ -3727,7 +3727,7 @@ CREATE TABLE public.media_server_items (
     original_rating character varying(10),
     enrichment_provider_state character varying(20) DEFAULT 'none'::character varying NOT NULL,
     enrichment_deferred_reason text,
-    CONSTRAINT media_server_items_enrichment_provider_state_check CHECK (((enrichment_provider_state)::text = ANY (ARRAY[('none'::character varying)::text, ('omdb'::character varying)::text, ('tavily'::character varying)::text, ('omdb+tavily'::character varying)::text, ('web_search'::character varying)::text, ('omdb+web_search'::character varying)::text]))),
+    CONSTRAINT media_server_items_enrichment_provider_state_check CHECK (((enrichment_provider_state)::text = ANY ((ARRAY['none'::character varying, 'omdb'::character varying, 'tavily'::character varying, 'omdb+tavily'::character varying, 'web_search'::character varying, 'omdb+web_search'::character varying])::text[]))),
     CONSTRAINT media_server_items_enrichment_status_check CHECK (((enrichment_status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text, ('completed'::character varying)::text, ('deferred'::character varying)::text, ('failed'::character varying)::text, ('not_needed'::character varying)::text])))
 );
 
@@ -3849,7 +3849,7 @@ CREATE TABLE public.notification_config (
     pending_mention_type character varying(20) DEFAULT 'none'::character varying NOT NULL,
     pending_mention_target_id character varying(100),
     pending_mention_target_label character varying(150),
-    CONSTRAINT notification_config_pending_mention_type_check CHECK (((pending_mention_type)::text = ANY (ARRAY[('none'::character varying)::text, ('user'::character varying)::text, ('role'::character varying)::text])))
+    CONSTRAINT notification_config_pending_mention_type_check CHECK (((pending_mention_type)::text = ANY ((ARRAY['none'::character varying, 'user'::character varying, 'role'::character varying])::text[])))
 );
 
 
@@ -3926,7 +3926,7 @@ CREATE TABLE public.ollama_verification_capability_test_outcomes (
     outcome_count bigint DEFAULT 1 CONSTRAINT ollama_verification_capability_test_outc_outcome_count_not_null NOT NULL,
     last_observed_at timestamp with time zone DEFAULT now() CONSTRAINT ollama_verification_capability_test_o_last_observed_at_not_null NOT NULL,
     CONSTRAINT ollama_verification_capability_test_outcomes_count_ck CHECK ((outcome_count > 0)),
-    CONSTRAINT ollama_verification_capability_test_outcomes_status_ck CHECK (((status_id)::text = ANY (ARRAY[('verification_ready'::character varying)::text, ('classification_only'::character varying)::text, ('unavailable'::character varying)::text])))
+    CONSTRAINT ollama_verification_capability_test_outcomes_status_ck CHECK (((status_id)::text = ANY ((ARRAY['verification_ready'::character varying, 'classification_only'::character varying, 'unavailable'::character varying])::text[])))
 );
 
 
@@ -4097,7 +4097,7 @@ CREATE TABLE public.policy_authoring_proposals (
     CONSTRAINT policy_authoring_proposals_payload_shape_chk CHECK (((jsonb_typeof(canonical_declared_intent) = 'object'::text) AND (jsonb_typeof(display_summary) = 'object'::text))),
     CONSTRAINT policy_authoring_proposals_reference_shape_chk CHECK (((proposal_reference)::text ~ '^[A-Za-z0-9_-]{32,96}$'::text)),
     CONSTRAINT policy_authoring_proposals_revision_shape_chk CHECK (((proposal_revision ~ '^[a-f0-9]{64}$'::text) AND (profile_fingerprint ~ '^[a-f0-9]{64}$'::text))),
-    CONSTRAINT policy_authoring_proposals_state_chk CHECK (((state)::text = ANY (ARRAY[('prepared'::character varying)::text, ('consumed'::character varying)::text])))
+    CONSTRAINT policy_authoring_proposals_state_chk CHECK (((state)::text = ANY ((ARRAY['prepared'::character varying, 'consumed'::character varying])::text[])))
 );
 
 
@@ -4139,10 +4139,10 @@ CREATE TABLE public.policy_authorized_outcome_source_event_receipts (
     CONSTRAINT policy_authorized_outcome_receipts_classification_chk CHECK ((classification_id > 0)),
     CONSTRAINT policy_authorized_outcome_receipts_destination_chk CHECK (((destination_library_id IS NULL) OR (destination_library_id > 0))),
     CONSTRAINT policy_authorized_outcome_receipts_fingerprint_chk CHECK ((command_fingerprint ~ '^[a-f0-9]{64}$'::text)),
-    CONSTRAINT policy_authorized_outcome_receipts_learning_shape_chk CHECK (((((persistence_status_id)::text = 'outcome_only'::text) AND (learning_tier_id IS NULL)) OR (((persistence_status_id)::text = 'ready'::text) AND ((learning_tier_id)::text = ANY (ARRAY[('exact_item_memory'::character varying)::text, ('compatibility_evidence'::character varying)::text, ('identity_evidence'::character varying)::text]))))),
-    CONSTRAINT policy_authorized_outcome_receipts_outcome_status_chk CHECK (((final_outcome_status_id)::text = ANY (ARRAY[('resolved'::character varying)::text, ('routed'::character varying)::text, ('route_failed_missing_mapping'::character varying)::text]))),
-    CONSTRAINT policy_authorized_outcome_receipts_persistence_status_chk CHECK (((persistence_status_id)::text = ANY (ARRAY[('ready'::character varying)::text, ('outcome_only'::character varying)::text]))),
-    CONSTRAINT policy_authorized_outcome_receipts_source_chk CHECK (((source_id)::text = ANY (ARRAY[('manual_classification_change'::character varying)::text, ('operator_confirmation'::character varying)::text, ('discord_pending_answer'::character varying)::text, ('request_destination_choice'::character varying)::text, ('arr_routing_outcome'::character varying)::text]))),
+    CONSTRAINT policy_authorized_outcome_receipts_learning_shape_chk CHECK (((((persistence_status_id)::text = 'outcome_only'::text) AND (learning_tier_id IS NULL)) OR (((persistence_status_id)::text = 'ready'::text) AND ((learning_tier_id)::text = ANY ((ARRAY['exact_item_memory'::character varying, 'compatibility_evidence'::character varying, 'identity_evidence'::character varying])::text[]))))),
+    CONSTRAINT policy_authorized_outcome_receipts_outcome_status_chk CHECK (((final_outcome_status_id)::text = ANY ((ARRAY['resolved'::character varying, 'routed'::character varying, 'route_failed_missing_mapping'::character varying])::text[]))),
+    CONSTRAINT policy_authorized_outcome_receipts_persistence_status_chk CHECK (((persistence_status_id)::text = ANY ((ARRAY['ready'::character varying, 'outcome_only'::character varying])::text[]))),
+    CONSTRAINT policy_authorized_outcome_receipts_source_chk CHECK (((source_id)::text = ANY ((ARRAY['manual_classification_change'::character varying, 'operator_confirmation'::character varying, 'discord_pending_answer'::character varying, 'request_destination_choice'::character varying, 'arr_routing_outcome'::character varying])::text[]))),
     CONSTRAINT policy_authorized_outcome_receipts_source_event_chk CHECK (((char_length(btrim((source_event_id)::text)) >= 1) AND (char_length(btrim((source_event_id)::text)) <= 160))),
     CONSTRAINT policy_authorized_outcome_receipts_version_chk CHECK ((receipt_version = 1))
 );
@@ -4184,7 +4184,7 @@ CREATE TABLE public.policy_backup_restore_verifications (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT policy_backup_restore_verifications_backup_version_chk CHECK (((char_length(btrim((backup_version)::text)) >= 1) AND (char_length(btrim((backup_version)::text)) <= 64))),
     CONSTRAINT policy_backup_restore_verifications_mismatch_count_chk CHECK ((policy_library_mismatch_count = 0)),
-    CONSTRAINT policy_backup_restore_verifications_mode_chk CHECK (((restore_mode)::text = ANY (ARRAY[('replace'::character varying)::text, ('merge'::character varying)::text]))),
+    CONSTRAINT policy_backup_restore_verifications_mode_chk CHECK (((restore_mode)::text = ANY ((ARRAY['replace'::character varying, 'merge'::character varying])::text[]))),
     CONSTRAINT policy_backup_restore_verifications_status_chk CHECK (((verification_status)::text = 'verified'::text)),
     CONSTRAINT policy_backup_restore_verifications_verified_shape_chk CHECK (((schema_parity_verified = true) AND (native_authority_verified = true) AND (policy_library_mismatch_count = 0))),
     CONSTRAINT policy_backup_restore_verifications_version_chk CHECK ((verification_version = 1))
@@ -4208,6 +4208,41 @@ CREATE SEQUENCE public.policy_backup_restore_verifications_id_seq
 --
 
 ALTER SEQUENCE public.policy_backup_restore_verifications_id_seq OWNED BY public.policy_backup_restore_verifications.id;
+
+
+--
+-- Name: policy_candidate_correction_policy_change_outcome_observations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_candidate_correction_policy_change_outcome_observations (
+    control_key character varying(64) CONSTRAINT policy_candidate_correction_policy_change__control_key_not_null NOT NULL,
+    observation_version smallint DEFAULT 1 CONSTRAINT policy_candidate_correction_policy_observation_version_not_null NOT NULL,
+    hypothesis_id character varying(64) CONSTRAINT policy_candidate_correction_policy_chang_hypothesis_id_not_null NOT NULL,
+    source_receipt_id bigint CONSTRAINT policy_candidate_correction_policy_c_source_receipt_id_not_null NOT NULL,
+    source_intent_version integer CONSTRAINT policy_candidate_correction_poli_source_intent_version_not_null NOT NULL,
+    target_intent_version integer CONSTRAINT policy_candidate_correction_poli_target_intent_version_not_null NOT NULL,
+    baseline_window_start_at timestamp with time zone CONSTRAINT policy_candidate_correction_p_baseline_window_start_at_not_null NOT NULL,
+    baseline_window_end_at timestamp with time zone CONSTRAINT policy_candidate_correction_pol_baseline_window_end_at_not_null NOT NULL,
+    followup_window_start_at timestamp with time zone CONSTRAINT policy_candidate_correction_p_followup_window_start_at_not_null NOT NULL,
+    followup_window_end_at timestamp with time zone CONSTRAINT policy_candidate_correction_pol_followup_window_end_at_not_null NOT NULL,
+    outcome_count bigint CONSTRAINT policy_candidate_correction_policy_chang_outcome_count_not_null NOT NULL,
+    confirmed_leader_outcome_count bigint CONSTRAINT policy_candidate_correction_confirmed_leader_outcome_c_not_null NOT NULL,
+    changed_to_candidate_outcome_count bigint CONSTRAINT policy_candidate_correction_changed_to_candidate_outco_not_null NOT NULL,
+    changed_outside_candidates_outcome_count bigint CONSTRAINT policy_candidate_correction_changed_outside_candidates_not_null NOT NULL,
+    routed_not_applicable_outcome_count bigint CONSTRAINT policy_candidate_correction_routed_not_applicable_outc_not_null NOT NULL,
+    created_by_actor_id integer CONSTRAINT policy_candidate_correction_policy_created_by_actor_id_not_null NOT NULL,
+    created_at timestamp with time zone DEFAULT now() CONSTRAINT policy_candidate_correction_policy_change_o_created_at_not_null NOT NULL,
+    expires_at timestamp with time zone CONSTRAINT policy_candidate_correction_policy_change_o_expires_at_not_null NOT NULL,
+    CONSTRAINT policy_candidate_correction_policy_change_outcomes_actor_chk CHECK ((created_by_actor_id > 0)),
+    CONSTRAINT policy_candidate_correction_policy_change_outcomes_counts_chk CHECK (((outcome_count >= 0) AND (confirmed_leader_outcome_count >= 0) AND (changed_to_candidate_outcome_count >= 0) AND (changed_outside_candidates_outcome_count >= 0) AND (routed_not_applicable_outcome_count >= 0) AND (outcome_count = (((confirmed_leader_outcome_count + changed_to_candidate_outcome_count) + changed_outside_candidates_outcome_count) + routed_not_applicable_outcome_count)))),
+    CONSTRAINT policy_candidate_correction_policy_change_outcomes_expiry_chk CHECK (((created_at < expires_at) AND (followup_window_end_at <= expires_at))),
+    CONSTRAINT policy_candidate_correction_policy_change_outcomes_hypothesis_c CHECK (((hypothesis_id)::text ~ '^pco_[A-Za-z0-9_-]{32}$'::text)),
+    CONSTRAINT policy_candidate_correction_policy_change_outcomes_key_chk CHECK (((control_key)::text = 'policy_change_outcome_observation'::text)),
+    CONSTRAINT policy_candidate_correction_policy_change_outcomes_receipt_chk CHECK ((source_receipt_id > 0)),
+    CONSTRAINT policy_candidate_correction_policy_change_outcomes_revision_chk CHECK (((source_intent_version > 0) AND (target_intent_version > source_intent_version))),
+    CONSTRAINT policy_candidate_correction_policy_change_outcomes_version_chk CHECK ((observation_version = 1)),
+    CONSTRAINT policy_candidate_correction_policy_change_outcomes_windows_chk CHECK (((baseline_window_start_at < baseline_window_end_at) AND (baseline_window_end_at <= followup_window_start_at) AND (followup_window_start_at < followup_window_end_at)))
+);
 
 
 --
@@ -4290,7 +4325,7 @@ CREATE TABLE public.policy_candidate_correction_review_projection_audit_events (
     configuration_revision character(64) CONSTRAINT policy_candidate_correction_re_configuration_revision_not_null3 NOT NULL,
     item_count smallint CONSTRAINT policy_candidate_correction_review_project_item_count_not_null1 NOT NULL,
     occurred_at timestamp with time zone DEFAULT now() CONSTRAINT policy_candidate_correction_review_project_occurred_at_not_null NOT NULL,
-    CONSTRAINT policy_candidate_correction_review_projection_audit_events_acti CHECK (((action_id)::text = ANY (ARRAY[('projection_created'::character varying)::text, ('projection_viewed'::character varying)::text, ('projection_expired'::character varying)::text]))),
+    CONSTRAINT policy_candidate_correction_review_projection_audit_events_acti CHECK (((action_id)::text = ANY ((ARRAY['projection_created'::character varying, 'projection_viewed'::character varying, 'projection_expired'::character varying])::text[]))),
     CONSTRAINT policy_candidate_correction_review_projection_audit_events_acto CHECK (((actor_id IS NULL) OR (actor_id > 0))),
     CONSTRAINT policy_candidate_correction_review_projection_audit_events_expi CHECK (((((action_id)::text = 'projection_expired'::text) AND (actor_id IS NULL)) OR (((action_id)::text <> 'projection_expired'::text) AND (actor_id IS NOT NULL)))),
     CONSTRAINT policy_candidate_correction_review_projection_audit_events_item CHECK (((item_count >= 0) AND (item_count <= 160))),
@@ -4330,10 +4365,10 @@ CREATE TABLE public.policy_candidate_correction_review_projection_items (
     selection_status_id character varying(40) CONSTRAINT policy_candidate_correction_review_selection_status_id_not_null NOT NULL,
     evidence_source_states jsonb CONSTRAINT policy_candidate_correction_rev_evidence_source_states_not_null NOT NULL,
     CONSTRAINT policy_candidate_correction_review_projection_items_evidence_ch CHECK (((jsonb_typeof(evidence_source_states) = 'array'::text) AND (jsonb_array_length(evidence_source_states) = 5))),
-    CONSTRAINT policy_candidate_correction_review_projection_items_margin_chk CHECK (((score_margin_band_id)::text = ANY (ARRAY[('0_to_4'::character varying)::text, ('5_to_14'::character varying)::text, ('15_to_29'::character varying)::text, ('30_or_more'::character varying)::text]))),
+    CONSTRAINT policy_candidate_correction_review_projection_items_margin_chk CHECK (((score_margin_band_id)::text = ANY ((ARRAY['0_to_4'::character varying, '5_to_14'::character varying, '15_to_29'::character varying, '30_or_more'::character varying])::text[]))),
     CONSTRAINT policy_candidate_correction_review_projection_items_ordinal_chk CHECK (((ordinal >= 1) AND (ordinal <= 160))),
-    CONSTRAINT policy_candidate_correction_review_projection_items_period_chk CHECK (((period_id)::text = ANY (ARRAY[('previous'::character varying)::text, ('current'::character varying)::text]))),
-    CONSTRAINT policy_candidate_correction_review_projection_items_selection_c CHECK (((selection_status_id)::text = ANY (ARRAY[('confirmed_candidate'::character varying)::text, ('changed_to_candidate'::character varying)::text, ('changed_outside_candidates'::character varying)::text, ('routed_not_applicable'::character varying)::text])))
+    CONSTRAINT policy_candidate_correction_review_projection_items_period_chk CHECK (((period_id)::text = ANY ((ARRAY['previous'::character varying, 'current'::character varying])::text[]))),
+    CONSTRAINT policy_candidate_correction_review_projection_items_selection_c CHECK (((selection_status_id)::text = ANY ((ARRAY['confirmed_candidate'::character varying, 'changed_to_candidate'::character varying, 'changed_outside_candidates'::character varying, 'routed_not_applicable'::character varying])::text[])))
 );
 
 
@@ -4496,12 +4531,12 @@ CREATE TABLE public.policy_identity_evidence_admissions (
     source_system character varying(80) NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT policy_identity_evidence_admissions_authority_shape_chk CHECK (((((authority_source_id)::text = 'operator_declared_intent'::text) AND (authority_policy_id IS NOT NULL) AND (authority_intent_id IS NOT NULL) AND (authority_intent_version IS NOT NULL) AND (authority_intent_version > 0) AND (authority_fingerprint IS NULL)) OR (((authority_source_id)::text = 'media_server_contents'::text) AND (authority_policy_id IS NULL) AND (authority_intent_id IS NULL) AND (authority_intent_version IS NULL) AND (authority_fingerprint ~ '^[a-f0-9]{64}$'::text)))),
-    CONSTRAINT policy_identity_evidence_admissions_authority_source_chk CHECK (((authority_source_id)::text = ANY (ARRAY[('media_server_contents'::character varying)::text, ('operator_declared_intent'::character varying)::text]))),
+    CONSTRAINT policy_identity_evidence_admissions_authority_source_chk CHECK (((authority_source_id)::text = ANY ((ARRAY['media_server_contents'::character varying, 'operator_declared_intent'::character varying])::text[]))),
     CONSTRAINT policy_identity_evidence_admissions_evidence_key_chk CHECK (((char_length(btrim((evidence_key)::text)) >= 3) AND (char_length(btrim((evidence_key)::text)) <= 160))),
     CONSTRAINT policy_identity_evidence_admissions_identifiers_chk CHECK (((classification_id > 0) AND (library_id > 0))),
-    CONSTRAINT policy_identity_evidence_admissions_media_type_chk CHECK (((media_type)::text = ANY (ARRAY[('movie'::character varying)::text, ('tv'::character varying)::text]))),
-    CONSTRAINT policy_identity_evidence_admissions_signal_type_chk CHECK (((signal_type)::text = ANY (ARRAY[('genres'::character varying)::text, ('keywords'::character varying)::text, ('studios'::character varying)::text, ('media_type'::character varying)::text]))),
-    CONSTRAINT policy_identity_evidence_admissions_source_event_chk CHECK (((char_length(btrim((source_id)::text)) >= 1) AND (char_length(btrim((source_id)::text)) <= 80) AND ((char_length(btrim((source_event_id)::text)) >= 1) AND (char_length(btrim((source_event_id)::text)) <= 160)))),
+    CONSTRAINT policy_identity_evidence_admissions_media_type_chk CHECK (((media_type)::text = ANY ((ARRAY['movie'::character varying, 'tv'::character varying])::text[]))),
+    CONSTRAINT policy_identity_evidence_admissions_signal_type_chk CHECK (((signal_type)::text = ANY ((ARRAY['genres'::character varying, 'keywords'::character varying, 'studios'::character varying, 'media_type'::character varying])::text[]))),
+    CONSTRAINT policy_identity_evidence_admissions_source_event_chk CHECK ((((char_length(btrim((source_id)::text)) >= 1) AND (char_length(btrim((source_id)::text)) <= 80)) AND ((char_length(btrim((source_event_id)::text)) >= 1) AND (char_length(btrim((source_event_id)::text)) <= 160)))),
     CONSTRAINT policy_identity_evidence_admissions_source_system_chk CHECK (((source_system)::text = 'policy_authorized_identity_admission'::text)),
     CONSTRAINT policy_identity_evidence_admissions_version_chk CHECK ((admission_version = 1))
 );
@@ -4548,7 +4583,7 @@ CREATE TABLE public.policy_initial_intent_establishments (
     CONSTRAINT policy_initial_intent_establishments_authority_source_chk CHECK (((authority_source_id)::text = 'operator_declared_intent'::text)),
     CONSTRAINT policy_initial_intent_establishments_fingerprint_shape_chk CHECK ((request_fingerprint ~ '^[a-f0-9]{64}$'::text)),
     CONSTRAINT policy_initial_intent_establishments_idempotency_shape_chk CHECK (((idempotency_key)::text ~ '^[A-Za-z0-9][A-Za-z0-9_-]{31,127}$'::text)),
-    CONSTRAINT policy_initial_intent_establishments_state_chk CHECK (((state)::text = ANY (ARRAY[('pending'::character varying)::text, ('established'::character varying)::text]))),
+    CONSTRAINT policy_initial_intent_establishments_state_chk CHECK (((state)::text = ANY ((ARRAY['pending'::character varying, 'established'::character varying])::text[]))),
     CONSTRAINT policy_initial_intent_establishments_state_reference_chk CHECK (((((state)::text = 'pending'::text) AND (intent_id IS NULL) AND (migration_event_id IS NULL) AND (rollback_snapshot_id IS NULL) AND (established_at IS NULL)) OR (((state)::text = 'established'::text) AND (intent_id IS NOT NULL) AND (migration_event_id IS NOT NULL) AND (rollback_snapshot_id IS NOT NULL) AND (established_at IS NOT NULL))))
 );
 
@@ -4589,8 +4624,8 @@ CREATE TABLE public.policy_intent_migration_events (
     summary text,
     metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT policy_intent_migration_events_actor_type_chk CHECK (((actor_type)::text = ANY (ARRAY[('operator'::character varying)::text, ('post_upgrade'::character varying)::text, ('reconciler'::character varying)::text, ('test_fixture'::character varying)::text, ('maintainer'::character varying)::text]))),
-    CONSTRAINT policy_intent_migration_events_event_type_chk CHECK (((event_type)::text = ANY (ARRAY[('dry_run_reported'::character varying)::text, ('conversion_started'::character varying)::text, ('conversion_applied'::character varying)::text, ('conversion_failed'::character varying)::text, ('rollback_snapshot_created'::character varying)::text, ('rollback_applied'::character varying)::text, ('rollback_snapshot_payload_redacted'::character varying)::text, ('native_validated'::character varying)::text, ('legacy_deletion_ready'::character varying)::text, ('library_rebuild_replacement_applied'::character varying)::text, ('active_intent_integrity_repaired'::character varying)::text, ('reconciliation_reentry_approved'::character varying)::text, ('semantic_intent_authority_repaired'::character varying)::text, ('initial_intent_established'::character varying)::text, ('native_intent_change_applied'::character varying)::text]))),
+    CONSTRAINT policy_intent_migration_events_actor_type_chk CHECK (((actor_type)::text = ANY ((ARRAY['operator'::character varying, 'post_upgrade'::character varying, 'reconciler'::character varying, 'test_fixture'::character varying, 'maintainer'::character varying])::text[]))),
+    CONSTRAINT policy_intent_migration_events_event_type_chk CHECK (((event_type)::text = ANY ((ARRAY['dry_run_reported'::character varying, 'conversion_started'::character varying, 'conversion_applied'::character varying, 'conversion_failed'::character varying, 'rollback_snapshot_created'::character varying, 'rollback_applied'::character varying, 'rollback_snapshot_payload_redacted'::character varying, 'native_validated'::character varying, 'legacy_deletion_ready'::character varying, 'library_rebuild_replacement_applied'::character varying, 'active_intent_integrity_repaired'::character varying, 'reconciliation_reentry_approved'::character varying, 'semantic_intent_authority_repaired'::character varying, 'initial_intent_established'::character varying, 'native_intent_change_applied'::character varying])::text[]))),
     CONSTRAINT policy_intent_migration_events_metadata_shape_chk CHECK ((jsonb_typeof(metadata) = 'object'::text))
 );
 
@@ -4670,8 +4705,8 @@ CREATE TABLE public.policy_intent_routing_targets (
     target_status character varying(40) DEFAULT 'configured'::character varying NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT policy_intent_routing_targets_arr_type_chk CHECK (((arr_type IS NULL) OR ((arr_type)::text = ANY (ARRAY[('radarr'::character varying)::text, ('sonarr'::character varying)::text])))),
-    CONSTRAINT policy_intent_routing_targets_status_chk CHECK (((target_status)::text = ANY (ARRAY[('configured'::character varying)::text, ('missing'::character varying)::text, ('disabled'::character varying)::text, ('review_required'::character varying)::text])))
+    CONSTRAINT policy_intent_routing_targets_arr_type_chk CHECK (((arr_type IS NULL) OR ((arr_type)::text = ANY ((ARRAY['radarr'::character varying, 'sonarr'::character varying])::text[])))),
+    CONSTRAINT policy_intent_routing_targets_status_chk CHECK (((target_status)::text = ANY ((ARRAY['configured'::character varying, 'missing'::character varying, 'disabled'::character varying, 'review_required'::character varying])::text[])))
 );
 
 
@@ -4712,14 +4747,14 @@ CREATE TABLE public.policy_intent_rules (
     inference_state character varying(40) NOT NULL,
     sort_order integer DEFAULT 0 NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT policy_intent_rules_collection_chk CHECK (((collection)::text = ANY (ARRAY[('purpose'::character varying)::text, ('hard_limits'::character varying)::text, ('helpful_hints'::character varying)::text, ('avoid'::character varying)::text]))),
+    CONSTRAINT policy_intent_rules_collection_chk CHECK (((collection)::text = ANY ((ARRAY['purpose'::character varying, 'hard_limits'::character varying, 'helpful_hints'::character varying, 'avoid'::character varying])::text[]))),
     CONSTRAINT policy_intent_rules_collection_role_chk CHECK (((((collection)::text = 'purpose'::text) AND ((intent_role)::text = 'purpose'::text)) OR (((collection)::text = 'hard_limits'::text) AND ((intent_role)::text = 'hard_limit'::text)) OR (((collection)::text = 'helpful_hints'::text) AND ((intent_role)::text = 'helpful_hint'::text)) OR (((collection)::text = 'avoid'::text) AND ((intent_role)::text = 'avoid'::text)))),
-    CONSTRAINT policy_intent_rules_constraint_mode_chk CHECK (((constraint_mode IS NULL) OR ((constraint_mode)::text = ANY (ARRAY[('strict'::character varying)::text, ('advisory'::character varying)::text])))),
-    CONSTRAINT policy_intent_rules_inference_state_chk CHECK (((inference_state)::text = ANY (ARRAY[('empty'::character varying)::text, ('inferred'::character varying)::text, ('partial'::character varying)::text]))),
-    CONSTRAINT policy_intent_rules_operator_chk CHECK (((operator)::text = ANY (ARRAY[('require_all'::character varying)::text, ('require_any'::character varying)::text, ('prefer'::character varying)::text, ('include'::character varying)::text, ('exclude'::character varying)::text, ('max'::character varying)::text, ('range'::character varying)::text, ('runtime_range'::character varying)::text, ('configured'::character varying)::text]))),
-    CONSTRAINT policy_intent_rules_role_chk CHECK (((intent_role)::text = ANY (ARRAY[('purpose'::character varying)::text, ('hard_limit'::character varying)::text, ('helpful_hint'::character varying)::text, ('avoid'::character varying)::text]))),
-    CONSTRAINT policy_intent_rules_semantics_chk CHECK (((semantics IS NULL) OR ((semantics)::text = ANY (ARRAY[('identity'::character varying)::text, ('compatibility'::character varying)::text])))),
-    CONSTRAINT policy_intent_rules_signal_type_chk CHECK (((signal_type)::text = ANY (ARRAY[('genres'::character varying)::text, ('keywords'::character varying)::text, ('studios'::character varying)::text, ('language'::character varying)::text, ('media_type'::character varying)::text, ('certifications'::character varying)::text, ('release_year'::character varying)::text, ('vote_average'::character varying)::text, ('runtime'::character varying)::text]))),
+    CONSTRAINT policy_intent_rules_constraint_mode_chk CHECK (((constraint_mode IS NULL) OR ((constraint_mode)::text = ANY ((ARRAY['strict'::character varying, 'advisory'::character varying])::text[])))),
+    CONSTRAINT policy_intent_rules_inference_state_chk CHECK (((inference_state)::text = ANY ((ARRAY['empty'::character varying, 'inferred'::character varying, 'partial'::character varying])::text[]))),
+    CONSTRAINT policy_intent_rules_operator_chk CHECK (((operator)::text = ANY ((ARRAY['require_all'::character varying, 'require_any'::character varying, 'prefer'::character varying, 'include'::character varying, 'exclude'::character varying, 'max'::character varying, 'range'::character varying, 'runtime_range'::character varying, 'configured'::character varying])::text[]))),
+    CONSTRAINT policy_intent_rules_role_chk CHECK (((intent_role)::text = ANY ((ARRAY['purpose'::character varying, 'hard_limit'::character varying, 'helpful_hint'::character varying, 'avoid'::character varying])::text[]))),
+    CONSTRAINT policy_intent_rules_semantics_chk CHECK (((semantics IS NULL) OR ((semantics)::text = ANY ((ARRAY['identity'::character varying, 'compatibility'::character varying])::text[])))),
+    CONSTRAINT policy_intent_rules_signal_type_chk CHECK (((signal_type)::text = ANY ((ARRAY['genres'::character varying, 'keywords'::character varying, 'studios'::character varying, 'language'::character varying, 'media_type'::character varying, 'certifications'::character varying, 'release_year'::character varying, 'vote_average'::character varying, 'runtime'::character varying])::text[]))),
     CONSTRAINT policy_intent_rules_values_shape_chk CHECK ((jsonb_typeof("values") = 'object'::text))
 );
 
@@ -4757,7 +4792,7 @@ CREATE TABLE public.policy_intent_template_applications (
     signal_count integer DEFAULT 0 NOT NULL,
     link_state character varying(40) DEFAULT 'applied'::character varying NOT NULL,
     applied_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT policy_intent_template_applications_link_state_chk CHECK (((link_state)::text = ANY (ARRAY[('applied'::character varying)::text, ('removed'::character varying)::text, ('replaced'::character varying)::text, ('ignored'::character varying)::text]))),
+    CONSTRAINT policy_intent_template_applications_link_state_chk CHECK (((link_state)::text = ANY ((ARRAY['applied'::character varying, 'removed'::character varying, 'replaced'::character varying, 'ignored'::character varying])::text[]))),
     CONSTRAINT policy_intent_template_applications_signal_count_chk CHECK ((signal_count >= 0))
 );
 
@@ -4799,7 +4834,7 @@ CREATE TABLE public.policy_intent_validation_status (
     CONSTRAINT policy_intent_validation_status_error_count_chk CHECK ((error_count >= 0)),
     CONSTRAINT policy_intent_validation_status_errors_shape_chk CHECK ((jsonb_typeof(errors) = 'array'::text)),
     CONSTRAINT policy_intent_validation_status_schema_version_chk CHECK ((schema_version = 1)),
-    CONSTRAINT policy_intent_validation_status_status_chk CHECK (((status)::text = ANY (ARRAY[('valid'::character varying)::text, ('invalid'::character varying)::text, ('warning'::character varying)::text]))),
+    CONSTRAINT policy_intent_validation_status_status_chk CHECK (((status)::text = ANY ((ARRAY['valid'::character varying, 'invalid'::character varying, 'warning'::character varying])::text[]))),
     CONSTRAINT policy_intent_validation_status_warning_count_chk CHECK ((warning_count >= 0)),
     CONSTRAINT policy_intent_validation_status_warnings_shape_chk CHECK ((jsonb_typeof(warnings) = 'array'::text))
 );
@@ -4845,13 +4880,13 @@ CREATE TABLE public.policy_intents (
     accepted_at timestamp with time zone,
     accepted_by integer,
     replaced_by_intent_id bigint,
-    CONSTRAINT policy_intents_active_native_authority_header_chk CHECK (((active = false) OR (((source)::text = 'native_intent'::text) AND ((inference_state)::text = 'inferred'::text) AND ((validation_status)::text = ANY (ARRAY[('valid'::character varying)::text, ('warning'::character varying)::text]))))),
-    CONSTRAINT policy_intents_inference_state_chk CHECK (((inference_state)::text = ANY (ARRAY[('empty'::character varying)::text, ('inferred'::character varying)::text, ('partial'::character varying)::text]))),
+    CONSTRAINT policy_intents_active_native_authority_header_chk CHECK (((active = false) OR (((source)::text = 'native_intent'::text) AND ((inference_state)::text = 'inferred'::text) AND ((validation_status)::text = ANY ((ARRAY['valid'::character varying, 'warning'::character varying])::text[]))))),
+    CONSTRAINT policy_intents_inference_state_chk CHECK (((inference_state)::text = ANY ((ARRAY['empty'::character varying, 'inferred'::character varying, 'partial'::character varying])::text[]))),
     CONSTRAINT policy_intents_intent_version_chk CHECK ((intent_version > 0)),
     CONSTRAINT policy_intents_review_behavior_shape_chk CHECK ((jsonb_typeof(review_behavior) = 'object'::text)),
     CONSTRAINT policy_intents_schema_version_chk CHECK ((schema_version = 1)),
-    CONSTRAINT policy_intents_source_chk CHECK (((source)::text = ANY (ARRAY[('empty'::character varying)::text, ('legacy_presets'::character varying)::text, ('native_intent'::character varying)::text]))),
-    CONSTRAINT policy_intents_validation_status_chk CHECK (((validation_status)::text = ANY (ARRAY[('pending_validation'::character varying)::text, ('valid'::character varying)::text, ('invalid'::character varying)::text, ('warning'::character varying)::text])))
+    CONSTRAINT policy_intents_source_chk CHECK (((source)::text = ANY ((ARRAY['empty'::character varying, 'legacy_presets'::character varying, 'native_intent'::character varying])::text[]))),
+    CONSTRAINT policy_intents_validation_status_chk CHECK (((validation_status)::text = ANY ((ARRAY['pending_validation'::character varying, 'valid'::character varying, 'invalid'::character varying, 'warning'::character varying])::text[])))
 );
 
 
@@ -4953,15 +4988,15 @@ CREATE TABLE public.policy_library_rebuild_execution_gates (
     CONSTRAINT policy_library_rebuild_execution_gates_acceptance_window_chk CHECK ((acceptance_expires_at > created_at)),
     CONSTRAINT policy_library_rebuild_execution_gates_actor_reference_chk CHECK (((actor_reference)::text ~ '^[a-f0-9]{64}$'::text)),
     CONSTRAINT policy_library_rebuild_execution_gates_idempotency_key_chk CHECK (((idempotency_key)::text ~ '^policy:library_rebuild_acceptance:[a-f0-9]{64}$'::text)),
-    CONSTRAINT policy_library_rebuild_execution_gates_persisted_snapshot_chk CHECK ((((state)::text <> ALL (ARRAY[('snapshot_persisted'::character varying)::text, ('replacement_applied'::character varying)::text, ('rollback_applied'::character varying)::text])) OR ((rollback_snapshot_id IS NOT NULL) AND (migration_event_id IS NOT NULL)))),
+    CONSTRAINT policy_library_rebuild_execution_gates_persisted_snapshot_chk CHECK ((((state)::text <> ALL ((ARRAY['snapshot_persisted'::character varying, 'replacement_applied'::character varying, 'rollback_applied'::character varying])::text[])) OR ((rollback_snapshot_id IS NOT NULL) AND (migration_event_id IS NOT NULL)))),
     CONSTRAINT policy_library_rebuild_execution_gates_proposal_fingerprint_chk CHECK (((proposal_fingerprint)::text ~ '^[a-f0-9]{64}$'::text)),
     CONSTRAINT policy_library_rebuild_execution_gates_replacement_applied_chk CHECK ((((state)::text <> 'replacement_applied'::text) OR ((replacement_intent_id IS NOT NULL) AND (replacement_event_id IS NOT NULL) AND (replacement_applied_at IS NOT NULL)))),
     CONSTRAINT policy_library_rebuild_execution_gates_replacement_intent_chk CHECK (((replacement_intent_id IS NULL) OR (replacement_intent_id <> intent_id))),
     CONSTRAINT policy_library_rebuild_execution_gates_rollback_plan_fingerprin CHECK (((rollback_plan_fingerprint)::text ~ '^[a-f0-9]{64}$'::text)),
-    CONSTRAINT policy_library_rebuild_execution_gates_state_chk CHECK (((state)::text = ANY (ARRAY[('snapshot_persisting'::character varying)::text, ('snapshot_persisted'::character varying)::text, ('acceptance_expired'::character varying)::text, ('replacement_applied'::character varying)::text, ('rollback_applied'::character varying)::text, ('invalidated'::character varying)::text]))),
+    CONSTRAINT policy_library_rebuild_execution_gates_state_chk CHECK (((state)::text = ANY ((ARRAY['snapshot_persisting'::character varying, 'snapshot_persisted'::character varying, 'acceptance_expired'::character varying, 'replacement_applied'::character varying, 'rollback_applied'::character varying, 'invalidated'::character varying])::text[]))),
     CONSTRAINT policy_library_rebuild_execution_gates_transition_fingerprint_c CHECK (((transition_fingerprint)::text ~ '^[a-f0-9]{64}$'::text)),
     CONSTRAINT policy_library_rebuild_execution_gates_verification_run_pair_ch CHECK ((((verification_run_id IS NULL) AND (verification_run_fingerprint IS NULL)) OR ((verification_run_id IS NOT NULL) AND (verification_run_fingerprint ~ '^[a-f0-9]{64}$'::text)))),
-    CONSTRAINT policy_library_rebuild_execution_gates_verified_snapshot_chk CHECK ((((state)::text <> ALL (ARRAY[('snapshot_persisting'::character varying)::text, ('snapshot_persisted'::character varying)::text])) OR ((verification_run_id IS NOT NULL) AND (verification_run_fingerprint ~ '^[a-f0-9]{64}$'::text))))
+    CONSTRAINT policy_library_rebuild_execution_gates_verified_snapshot_chk CHECK ((((state)::text <> ALL ((ARRAY['snapshot_persisting'::character varying, 'snapshot_persisted'::character varying])::text[])) OR ((verification_run_id IS NOT NULL) AND (verification_run_fingerprint ~ '^[a-f0-9]{64}$'::text))))
 );
 
 
@@ -5022,10 +5057,10 @@ CREATE TABLE public.policy_migration_verification_runs (
     CONSTRAINT policy_migration_verification_runs_coordinator_audit_chk CHECK (((coordinator_audit_ok = true) AND (coordinator_audit_issue_count = 0))),
     CONSTRAINT policy_migration_verification_runs_idempotency_chk CHECK (((idempotency_key)::text ~ '^policy:migration_verification:[a-f0-9]{64}$'::text)),
     CONSTRAINT policy_migration_verification_runs_policy_context_chk CHECK (((policy_id > 0) AND (intent_id > 0) AND (library_id > 0))),
-    CONSTRAINT policy_migration_verification_runs_source_chk CHECK ((((source_id)::text = 'persisted_destination_library_final_outcomes'::text) AND ((source_media_type)::text = ANY (ARRAY[('movie'::character varying)::text, ('tv'::character varying)::text])) AND ((source_deterministic_order_id)::text = 'created_at_desc_id_desc'::text))),
-    CONSTRAINT policy_migration_verification_runs_source_summary_chk CHECK (((source_maximum_classifications >= 1) AND (source_maximum_classifications <= 100) AND (source_rows_read >= 0) AND (source_rows_considered >= source_representative_classification_count) AND ((source_representative_classification_count >= 1) AND (source_representative_classification_count <= source_maximum_classifications)) AND (source_unusable_source_row_count >= 0) AND (source_coverage_sufficient = true) AND (source_audit_ok = true) AND (source_audit_issue_count = 0))),
+    CONSTRAINT policy_migration_verification_runs_source_chk CHECK ((((source_id)::text = 'persisted_destination_library_final_outcomes'::text) AND ((source_media_type)::text = ANY ((ARRAY['movie'::character varying, 'tv'::character varying])::text[])) AND ((source_deterministic_order_id)::text = 'created_at_desc_id_desc'::text))),
+    CONSTRAINT policy_migration_verification_runs_source_summary_chk CHECK ((((source_maximum_classifications >= 1) AND (source_maximum_classifications <= 100)) AND (source_rows_read >= 0) AND (source_rows_considered >= source_representative_classification_count) AND ((source_representative_classification_count >= 1) AND (source_representative_classification_count <= source_maximum_classifications)) AND (source_unusable_source_row_count >= 0) AND (source_coverage_sufficient = true) AND (source_audit_ok = true) AND (source_audit_issue_count = 0))),
     CONSTRAINT policy_migration_verification_runs_transition_fingerprint_chk CHECK ((acceptance_transition_fingerprint ~ '^[a-f0-9]{64}$'::text)),
-    CONSTRAINT policy_migration_verification_runs_verifier_chk CHECK ((((verifier_status_id)::text = ANY (ARRAY[('no_migration_differences'::character varying)::text, ('review_required'::character varying)::text, ('blocked_by_migration_risk'::character varying)::text])) AND (verifier_fingerprint ~ '^[a-f0-9]{64}$'::text) AND (verifier_difference_count >= 0) AND ((verifier_emitted_difference_count >= 0) AND (verifier_emitted_difference_count <= verifier_difference_count)) AND (verifier_audit_ok = true) AND (verifier_audit_issue_count = 0))),
+    CONSTRAINT policy_migration_verification_runs_verifier_chk CHECK ((((verifier_status_id)::text = ANY ((ARRAY['no_migration_differences'::character varying, 'review_required'::character varying, 'blocked_by_migration_risk'::character varying])::text[])) AND (verifier_fingerprint ~ '^[a-f0-9]{64}$'::text) AND (verifier_difference_count >= 0) AND ((verifier_emitted_difference_count >= 0) AND (verifier_emitted_difference_count <= verifier_difference_count)) AND (verifier_audit_ok = true) AND (verifier_audit_issue_count = 0))),
     CONSTRAINT policy_migration_verification_runs_version_chk CHECK ((run_version = 1))
 );
 
@@ -5112,7 +5147,7 @@ CREATE TABLE public.policy_native_intent_reconciliation_alert_states (
     updated_at timestamp with time zone DEFAULT now() CONSTRAINT policy_native_intent_reconciliation_alert_s_updated_at_not_null NOT NULL,
     CONSTRAINT policy_native_intent_reconciliation_alert_occurrence_count_chk CHECK ((occurrence_count >= 0)),
     CONSTRAINT policy_native_intent_reconciliation_alert_resolution_shape_chk CHECK (((((alert_state)::text = 'firing'::text) AND (last_resolved_at IS NULL)) OR (((alert_state)::text = 'resolved'::text) AND (last_resolved_at IS NOT NULL)))),
-    CONSTRAINT policy_native_intent_reconciliation_alert_state_chk CHECK (((alert_state)::text = ANY (ARRAY[('firing'::character varying)::text, ('resolved'::character varying)::text]))),
+    CONSTRAINT policy_native_intent_reconciliation_alert_state_chk CHECK (((alert_state)::text = ANY ((ARRAY['firing'::character varying, 'resolved'::character varying])::text[]))),
     CONSTRAINT policy_native_intent_reconciliation_alert_time_order_chk CHECK (((last_detected_at >= first_detected_at) AND ((last_notified_at IS NULL) OR (last_notified_at >= first_detected_at)) AND ((last_resolved_at IS NULL) OR (last_resolved_at >= first_detected_at)))),
     CONSTRAINT policy_native_intent_reconciliation_alert_type_chk CHECK (((alert_type_id)::text ~ '^[a-z0-9][a-z0-9_:-]{0,79}$'::text))
 );
@@ -5132,10 +5167,10 @@ CREATE TABLE public.policy_native_intent_reconciliation_control_events (
     occurred_at timestamp with time zone DEFAULT now() CONSTRAINT policy_native_intent_reconciliation_contro_occurred_at_not_null NOT NULL,
     created_at timestamp with time zone DEFAULT now() CONSTRAINT policy_native_intent_reconciliation_control_created_at_not_null NOT NULL,
     CONSTRAINT policy_native_intent_reconciliation_control_events_actor_shape_ CHECK (((((actor_type)::text = 'system'::text) AND (actor_id IS NULL)) OR (((actor_type)::text = 'operator'::text) AND (actor_id IS NOT NULL) AND (actor_id > 0)))),
-    CONSTRAINT policy_native_intent_reconciliation_control_events_actor_type_c CHECK (((actor_type)::text = ANY (ARRAY[('system'::character varying)::text, ('operator'::character varying)::text]))),
+    CONSTRAINT policy_native_intent_reconciliation_control_events_actor_type_c CHECK (((actor_type)::text = ANY ((ARRAY['system'::character varying, 'operator'::character varying])::text[]))),
     CONSTRAINT policy_native_intent_reconciliation_control_events_failure_cate CHECK (((failure_category IS NULL) OR ((failure_category)::text ~ '^[a-z0-9][a-z0-9_:-]{0,79}$'::text))),
     CONSTRAINT policy_native_intent_reconciliation_control_events_reason_chk CHECK (((reason_id)::text ~ '^[a-z0-9][a-z0-9_:-]{0,79}$'::text)),
-    CONSTRAINT policy_native_intent_reconciliation_control_events_type_chk CHECK (((event_type)::text = ANY (ARRAY[('automation_disabled'::character varying)::text, ('automation_enabled'::character varying)::text, ('circuit_opened'::character varying)::text, ('circuit_recovered'::character varying)::text, ('circuit_reset'::character varying)::text])))
+    CONSTRAINT policy_native_intent_reconciliation_control_events_type_chk CHECK (((event_type)::text = ANY ((ARRAY['automation_disabled'::character varying, 'automation_enabled'::character varying, 'circuit_opened'::character varying, 'circuit_recovered'::character varying, 'circuit_reset'::character varying])::text[])))
 );
 
 
@@ -5176,14 +5211,14 @@ CREATE TABLE public.policy_native_intent_reconciliation_controls (
     manual_disabled_at timestamp with time zone,
     manual_disabled_reason_id character varying(80),
     updated_at timestamp with time zone DEFAULT now() CONSTRAINT policy_native_intent_reconciliation_control_updated_at_not_null NOT NULL,
-    CONSTRAINT policy_native_intent_reconciliation_controls_circuit_shape_chk CHECK (((((circuit_state)::text = 'closed'::text) AND ((recovery_requirement)::text = 'none'::text) AND (opened_at IS NULL) AND (recovery_probe_started_at IS NULL)) OR (((circuit_state)::text = 'open'::text) AND ((recovery_requirement)::text = ANY (ARRAY[('healthy_evaluation'::character varying)::text, ('admin_reset'::character varying)::text])) AND (opened_at IS NOT NULL) AND (recovery_probe_started_at IS NULL)) OR (((circuit_state)::text = 'half_open'::text) AND ((recovery_requirement)::text = 'healthy_evaluation'::text) AND (opened_at IS NOT NULL) AND (recovery_probe_started_at IS NOT NULL)))),
+    CONSTRAINT policy_native_intent_reconciliation_controls_circuit_shape_chk CHECK (((((circuit_state)::text = 'closed'::text) AND ((recovery_requirement)::text = 'none'::text) AND (opened_at IS NULL) AND (recovery_probe_started_at IS NULL)) OR (((circuit_state)::text = 'open'::text) AND ((recovery_requirement)::text = ANY ((ARRAY['healthy_evaluation'::character varying, 'admin_reset'::character varying])::text[])) AND (opened_at IS NOT NULL) AND (recovery_probe_started_at IS NULL)) OR (((circuit_state)::text = 'half_open'::text) AND ((recovery_requirement)::text = 'healthy_evaluation'::text) AND (opened_at IS NOT NULL) AND (recovery_probe_started_at IS NOT NULL)))),
     CONSTRAINT policy_native_intent_reconciliation_controls_disabled_reason_ch CHECK (((manual_disabled_reason_id IS NULL) OR ((manual_disabled_reason_id)::text ~ '^[a-z0-9][a-z0-9_:-]{0,79}$'::text))),
     CONSTRAINT policy_native_intent_reconciliation_controls_disabled_shape_chk CHECK ((((automation_enabled = true) AND (manual_disabled_at IS NULL) AND (manual_disabled_reason_id IS NULL)) OR ((automation_enabled = false) AND (manual_disabled_at IS NOT NULL) AND (manual_disabled_reason_id IS NOT NULL)))),
     CONSTRAINT policy_native_intent_reconciliation_controls_failure_category_c CHECK (((last_failure_category IS NULL) OR ((last_failure_category)::text ~ '^[a-z0-9][a-z0-9_:-]{0,79}$'::text))),
     CONSTRAINT policy_native_intent_reconciliation_controls_failure_count_chk CHECK (((failure_count >= 0) AND (failure_count <= 3))),
     CONSTRAINT policy_native_intent_reconciliation_controls_id_chk CHECK ((control_id = 1)),
-    CONSTRAINT policy_native_intent_reconciliation_controls_recovery_chk CHECK (((recovery_requirement)::text = ANY (ARRAY[('none'::character varying)::text, ('healthy_evaluation'::character varying)::text, ('admin_reset'::character varying)::text]))),
-    CONSTRAINT policy_native_intent_reconciliation_controls_state_chk CHECK (((circuit_state)::text = ANY (ARRAY[('closed'::character varying)::text, ('open'::character varying)::text, ('half_open'::character varying)::text])))
+    CONSTRAINT policy_native_intent_reconciliation_controls_recovery_chk CHECK (((recovery_requirement)::text = ANY ((ARRAY['none'::character varying, 'healthy_evaluation'::character varying, 'admin_reset'::character varying])::text[]))),
+    CONSTRAINT policy_native_intent_reconciliation_controls_state_chk CHECK (((circuit_state)::text = ANY ((ARRAY['closed'::character varying, 'open'::character varying, 'half_open'::character varying])::text[])))
 );
 
 
@@ -5205,7 +5240,7 @@ CREATE TABLE public.policy_native_intent_reconciliation_holds (
     CONSTRAINT policy_native_intent_reconciliation_holds_release_after_hold_ch CHECK (((released_at IS NULL) OR (released_at >= held_at))),
     CONSTRAINT policy_native_intent_reconciliation_holds_release_reason_chk CHECK (((release_reason_id IS NULL) OR ((release_reason_id)::text ~ '^[a-z0-9][a-z0-9_:-]{0,79}$'::text))),
     CONSTRAINT policy_native_intent_reconciliation_holds_release_shape_chk CHECK (((((hold_state)::text = 'active'::text) AND (released_at IS NULL) AND (release_reason_id IS NULL) AND (released_event_id IS NULL)) OR (((hold_state)::text = 'released'::text) AND (released_at IS NOT NULL) AND (release_reason_id IS NOT NULL) AND (released_event_id IS NOT NULL)))),
-    CONSTRAINT policy_native_intent_reconciliation_holds_state_chk CHECK (((hold_state)::text = ANY (ARRAY[('active'::character varying)::text, ('released'::character varying)::text])))
+    CONSTRAINT policy_native_intent_reconciliation_holds_state_chk CHECK (((hold_state)::text = ANY ((ARRAY['active'::character varying, 'released'::character varying])::text[])))
 );
 
 
@@ -5228,7 +5263,7 @@ CREATE TABLE public.policy_native_intent_reconciliation_outcomes (
     CONSTRAINT policy_native_intent_reconciliation_outcomes_fingerprint_chk CHECK (((candidate_fingerprint)::text ~ '^sha256:[a-f0-9]{64}$'::text)),
     CONSTRAINT policy_native_intent_reconciliation_outcomes_reason_id_chk CHECK (((reason_id)::text ~ '^[a-z0-9][a-z0-9_:-]{0,79}$'::text)),
     CONSTRAINT policy_native_intent_reconciliation_outcomes_retry_after_evalua CHECK (((retry_not_before IS NULL) OR (retry_not_before >= evaluated_at))),
-    CONSTRAINT policy_native_intent_reconciliation_outcomes_state_chk CHECK (((outcome_state)::text = ANY (ARRAY[('applied'::character varying)::text, ('already_native'::character varying)::text, ('deferred_retry'::character varying)::text, ('blocked_current_state'::character varying)::text, ('requires_maintenance'::character varying)::text, ('system_failure'::character varying)::text])))
+    CONSTRAINT policy_native_intent_reconciliation_outcomes_state_chk CHECK (((outcome_state)::text = ANY ((ARRAY['applied'::character varying, 'already_native'::character varying, 'deferred_retry'::character varying, 'blocked_current_state'::character varying, 'requires_maintenance'::character varying, 'system_failure'::character varying])::text[])))
 );
 
 
@@ -5268,7 +5303,7 @@ CREATE TABLE public.policy_native_intent_reconciliation_restore_gates (
     CONSTRAINT policy_native_intent_reconciliation_restore_gates_id_chk CHECK ((gate_id = 1)),
     CONSTRAINT policy_native_intent_reconciliation_restore_gates_in_progress_s CHECK (((((gate_state)::text = 'restore_in_progress'::text) AND (restore_token IS NOT NULL) AND (restore_started_at IS NOT NULL) AND (restore_finished_at IS NULL) AND (verified_at IS NULL)) OR ((gate_state)::text <> 'restore_in_progress'::text))),
     CONSTRAINT policy_native_intent_reconciliation_restore_gates_reason_chk CHECK (((reason_id)::text ~ '^[a-z0-9][a-z0-9_:-]{0,79}$'::text)),
-    CONSTRAINT policy_native_intent_reconciliation_restore_gates_state_chk CHECK (((gate_state)::text = ANY (ARRAY[('ready'::character varying)::text, ('restore_in_progress'::character varying)::text, ('requires_maintenance'::character varying)::text]))),
+    CONSTRAINT policy_native_intent_reconciliation_restore_gates_state_chk CHECK (((gate_state)::text = ANY ((ARRAY['ready'::character varying, 'restore_in_progress'::character varying, 'requires_maintenance'::character varying])::text[]))),
     CONSTRAINT policy_native_intent_reconciliation_restore_gates_verified_shap CHECK ((((gate_state)::text <> 'ready'::text) OR (restore_token IS NULL) OR ((restore_started_at IS NOT NULL) AND (restore_finished_at IS NOT NULL) AND (verified_at IS NOT NULL))))
 );
 
@@ -5301,7 +5336,7 @@ CREATE TABLE public.policy_native_intent_reconciliation_runs (
     CONSTRAINT policy_native_intent_reconciliation_runs_counts_chk CHECK (((candidate_count >= 0) AND (converted_count >= 0) AND (already_native_count >= 0) AND (deferred_count >= 0) AND (blocked_count >= 0) AND (failed_count >= 0))),
     CONSTRAINT policy_native_intent_reconciliation_runs_finished_after_started CHECK ((finished_at >= started_at)),
     CONSTRAINT policy_native_intent_reconciliation_runs_reason_id_chk CHECK (((reason_id)::text ~ '^[a-z0-9][a-z0-9_:-]{0,79}$'::text)),
-    CONSTRAINT policy_native_intent_reconciliation_runs_state_chk CHECK (((run_state)::text = ANY (ARRAY[('applied'::character varying)::text, ('evaluated'::character varying)::text, ('deferred'::character varying)::text, ('failed'::character varying)::text]))),
+    CONSTRAINT policy_native_intent_reconciliation_runs_state_chk CHECK (((run_state)::text = ANY ((ARRAY['applied'::character varying, 'evaluated'::character varying, 'deferred'::character varying, 'failed'::character varying])::text[]))),
     CONSTRAINT policy_native_intent_reconciliation_runs_status_id_chk CHECK (((source_status_id)::text ~ '^[a-z0-9][a-z0-9_:-]{0,79}$'::text))
 );
 
@@ -5343,10 +5378,10 @@ CREATE TABLE public.policy_native_intent_reconciliation_states (
     CONSTRAINT policy_native_intent_reconciliation_states_candidate_status_chk CHECK (((candidate_status_id)::text ~ '^[a-z0-9][a-z0-9_:-]{0,79}$'::text)),
     CONSTRAINT policy_native_intent_reconciliation_states_failure_count_chk CHECK (((failure_count >= 0) AND (failure_count <= 3))),
     CONSTRAINT policy_native_intent_reconciliation_states_fingerprint_chk CHECK (((candidate_fingerprint)::text ~ '^sha256:[a-f0-9]{64}$'::text)),
-    CONSTRAINT policy_native_intent_reconciliation_states_outcome_chk CHECK (((outcome_state)::text = ANY (ARRAY[('deferred_retry'::character varying)::text, ('blocked_current_state'::character varying)::text, ('requires_maintenance'::character varying)::text, ('system_failure'::character varying)::text]))),
+    CONSTRAINT policy_native_intent_reconciliation_states_outcome_chk CHECK (((outcome_state)::text = ANY ((ARRAY['deferred_retry'::character varying, 'blocked_current_state'::character varying, 'requires_maintenance'::character varying, 'system_failure'::character varying])::text[]))),
     CONSTRAINT policy_native_intent_reconciliation_states_reason_chk CHECK (((reason_id)::text ~ '^[a-z0-9][a-z0-9_:-]{0,79}$'::text)),
     CONSTRAINT policy_native_intent_reconciliation_states_retry_after_eval_chk CHECK (((retry_not_before IS NULL) OR (retry_not_before >= evaluated_at))),
-    CONSTRAINT policy_native_intent_reconciliation_states_retry_state_chk CHECK (((((outcome_state)::text = ANY (ARRAY[('deferred_retry'::character varying)::text, ('system_failure'::character varying)::text])) AND (retry_not_before IS NOT NULL)) OR (((outcome_state)::text = ANY (ARRAY[('blocked_current_state'::character varying)::text, ('requires_maintenance'::character varying)::text])) AND (retry_not_before IS NULL))))
+    CONSTRAINT policy_native_intent_reconciliation_states_retry_state_chk CHECK (((((outcome_state)::text = ANY ((ARRAY['deferred_retry'::character varying, 'system_failure'::character varying])::text[])) AND (retry_not_before IS NOT NULL)) OR (((outcome_state)::text = ANY ((ARRAY['blocked_current_state'::character varying, 'requires_maintenance'::character varying])::text[])) AND (retry_not_before IS NULL))))
 );
 
 
@@ -5367,12 +5402,12 @@ CREATE TABLE public.policy_native_profile_refresh_circuits (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT policy_native_profile_refresh_circuits_empty_state_chk CHECK ((((consecutive_failure_count = 0) AND (last_terminal_outbox_id IS NULL) AND (last_failure_code IS NULL)) OR ((consecutive_failure_count > 0) AND (last_terminal_outbox_id IS NOT NULL) AND (last_failure_code IS NOT NULL)))),
-    CONSTRAINT policy_native_profile_refresh_circuits_failure_code_chk CHECK (((last_failure_code IS NULL) OR ((last_failure_code)::text = ANY (ARRAY[('profile_refresh_configuration_invalid'::character varying)::text, ('profile_refresh_execution_failed'::character varying)::text, ('profile_refresh_lease_expired'::character varying)::text, ('profile_refresh_transient_dependency_failed'::character varying)::text, ('profile_refresh_unknown_failed'::character varying)::text])))),
+    CONSTRAINT policy_native_profile_refresh_circuits_failure_code_chk CHECK (((last_failure_code IS NULL) OR ((last_failure_code)::text = ANY ((ARRAY['profile_refresh_configuration_invalid'::character varying, 'profile_refresh_execution_failed'::character varying, 'profile_refresh_lease_expired'::character varying, 'profile_refresh_transient_dependency_failed'::character varying, 'profile_refresh_unknown_failed'::character varying])::text[])))),
     CONSTRAINT policy_native_profile_refresh_circuits_failure_count_chk CHECK (((consecutive_failure_count >= 0) AND (consecutive_failure_count <= 3))),
     CONSTRAINT policy_native_profile_refresh_circuits_library_chk CHECK ((library_id > 0)),
     CONSTRAINT policy_native_profile_refresh_circuits_lifecycle_chk CHECK (((((circuit_state)::text = 'closed'::text) AND (opened_at IS NULL) AND (next_probe_at IS NULL) AND (probe_outbox_id IS NULL)) OR (((circuit_state)::text = 'open'::text) AND (opened_at IS NOT NULL) AND (next_probe_at IS NOT NULL) AND (probe_outbox_id IS NULL)) OR (((circuit_state)::text = 'half_open'::text) AND (opened_at IS NOT NULL) AND (next_probe_at IS NULL) AND (probe_outbox_id IS NOT NULL)))),
-    CONSTRAINT policy_native_profile_refresh_circuits_source_event_chk CHECK (((char_length(btrim((source_event_id)::text)) >= 1) AND (char_length(btrim((source_event_id)::text)) <= 160) AND (POSITION((':retry:'::text) IN (source_event_id)) = 0))),
-    CONSTRAINT policy_native_profile_refresh_circuits_state_chk CHECK (((circuit_state)::text = ANY (ARRAY[('closed'::character varying)::text, ('open'::character varying)::text, ('half_open'::character varying)::text])))
+    CONSTRAINT policy_native_profile_refresh_circuits_source_event_chk CHECK ((((char_length(btrim((source_event_id)::text)) >= 1) AND (char_length(btrim((source_event_id)::text)) <= 160)) AND (POSITION((':retry:'::text) IN (source_event_id)) = 0))),
+    CONSTRAINT policy_native_profile_refresh_circuits_state_chk CHECK (((circuit_state)::text = ANY ((ARRAY['closed'::character varying, 'open'::character varying, 'half_open'::character varying])::text[])))
 );
 
 
@@ -5400,10 +5435,10 @@ CREATE TABLE public.policy_observed_evidence_provenance_snapshots (
     expires_at timestamp with time zone CONSTRAINT policy_observed_evidence_provenance_snapsho_expires_at_not_null NOT NULL,
     created_at timestamp with time zone DEFAULT now() CONSTRAINT policy_observed_evidence_provenance_snapsho_created_at_not_null NOT NULL,
     CONSTRAINT policy_observed_evidence_provenance_capture_pair_chk CHECK (((((capture_state)::text = 'captured'::text) AND ((capture_reason_id)::text = 'stored_profile_captured'::text)) OR (((capture_state)::text = 'profile_unavailable'::text) AND ((capture_reason_id)::text = 'stored_profile_missing'::text)) OR (((capture_state)::text = 'profile_rejected'::text) AND ((capture_reason_id)::text = 'stored_profile_rejected'::text)))),
-    CONSTRAINT policy_observed_evidence_provenance_capture_reason_chk CHECK (((capture_reason_id)::text = ANY (ARRAY[('stored_profile_captured'::character varying)::text, ('stored_profile_missing'::character varying)::text, ('stored_profile_rejected'::character varying)::text]))),
-    CONSTRAINT policy_observed_evidence_provenance_capture_state_chk CHECK (((capture_state)::text = ANY (ARRAY[('captured'::character varying)::text, ('profile_unavailable'::character varying)::text, ('profile_rejected'::character varying)::text]))),
+    CONSTRAINT policy_observed_evidence_provenance_capture_reason_chk CHECK (((capture_reason_id)::text = ANY ((ARRAY['stored_profile_captured'::character varying, 'stored_profile_missing'::character varying, 'stored_profile_rejected'::character varying])::text[]))),
+    CONSTRAINT policy_observed_evidence_provenance_capture_state_chk CHECK (((capture_state)::text = ANY ((ARRAY['captured'::character varying, 'profile_unavailable'::character varying, 'profile_rejected'::character varying])::text[]))),
     CONSTRAINT policy_observed_evidence_provenance_fingerprint_shape_chk CHECK ((evidence_fingerprint ~ '^[a-f0-9]{64}$'::text)),
-    CONSTRAINT policy_observed_evidence_provenance_freshness_chk CHECK (((profile_freshness_state)::text = ANY (ARRAY[('current'::character varying)::text, ('stale'::character varying)::text, ('unavailable'::character varying)::text]))),
+    CONSTRAINT policy_observed_evidence_provenance_freshness_chk CHECK (((profile_freshness_state)::text = ANY ((ARRAY['current'::character varying, 'stale'::character varying, 'unavailable'::character varying])::text[]))),
     CONSTRAINT policy_observed_evidence_provenance_payload_shape_chk CHECK (((jsonb_typeof(snapshot_payload) = 'object'::text) AND (octet_length((snapshot_payload)::text) <= 16384))),
     CONSTRAINT policy_observed_evidence_provenance_redaction_shape_chk CHECK ((((payload_redacted = false) AND (redacted_at IS NULL)) OR ((payload_redacted = true) AND (redacted_at IS NOT NULL)))),
     CONSTRAINT policy_observed_evidence_provenance_snapshot_version_chk CHECK ((snapshot_version = 1)),
@@ -5618,10 +5653,10 @@ CREATE TABLE public.policy_profile_refresh_outbox (
     CONSTRAINT policy_profile_refresh_outbox_attempt_count_chk CHECK (((attempt_count >= 0) AND (attempt_count <= 3))),
     CONSTRAINT policy_profile_refresh_outbox_failure_code_chk CHECK (((failure_code IS NULL) OR ((char_length(btrim((failure_code)::text)) >= 1) AND (char_length(btrim((failure_code)::text)) <= 80)))),
     CONSTRAINT policy_profile_refresh_outbox_identifiers_chk CHECK (((library_id > 0) AND ((classification_id IS NULL) OR (classification_id > 0)))),
-    CONSTRAINT policy_profile_refresh_outbox_processing_state_chk CHECK (((processing_state)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text, ('completed'::character varying)::text, ('failed'::character varying)::text]))),
-    CONSTRAINT policy_profile_refresh_outbox_request_shape_chk CHECK (((((request_type)::text = 'learning_evidence'::text) AND (classification_id IS NOT NULL) AND ((learning_operation_id)::text = ANY (ARRAY[('write_compatibility_evidence'::character varying)::text, ('write_identity_evidence'::character varying)::text])) AND ((learning_tier_id)::text = ANY (ARRAY[('compatibility_evidence'::character varying)::text, ('identity_evidence'::character varying)::text])) AND ((((learning_operation_id)::text = 'write_compatibility_evidence'::text) AND ((learning_tier_id)::text = 'compatibility_evidence'::text)) OR (((learning_operation_id)::text = 'write_identity_evidence'::text) AND ((learning_tier_id)::text = 'identity_evidence'::text))) AND ((char_length(btrim((candidate_key)::text)) >= 3) AND (char_length(btrim((candidate_key)::text)) <= 160)) AND ((refresh_reason_id)::text = 'profile_refresh_required'::text) AND ((source_system)::text = 'policy_authorized_profile_refresh'::text)) OR (((request_type)::text = 'native_readiness'::text) AND (classification_id IS NULL) AND (learning_operation_id IS NULL) AND (learning_tier_id IS NULL) AND (candidate_key IS NULL) AND ((source_id)::text = 'native_policy_profile_readiness'::text) AND ((refresh_reason_id)::text = 'stale_library_profile'::text) AND ((source_system)::text = 'policy_native_readiness_profile_refresh'::text)))),
-    CONSTRAINT policy_profile_refresh_outbox_request_type_chk CHECK (((request_type)::text = ANY (ARRAY[('learning_evidence'::character varying)::text, ('native_readiness'::character varying)::text]))),
-    CONSTRAINT policy_profile_refresh_outbox_source_event_chk CHECK (((char_length(btrim((source_id)::text)) >= 1) AND (char_length(btrim((source_id)::text)) <= 80) AND ((char_length(btrim((source_event_id)::text)) >= 1) AND (char_length(btrim((source_event_id)::text)) <= 160)))),
+    CONSTRAINT policy_profile_refresh_outbox_processing_state_chk CHECK (((processing_state)::text = ANY ((ARRAY['pending'::character varying, 'processing'::character varying, 'completed'::character varying, 'failed'::character varying])::text[]))),
+    CONSTRAINT policy_profile_refresh_outbox_request_shape_chk CHECK (((((request_type)::text = 'learning_evidence'::text) AND (classification_id IS NOT NULL) AND ((learning_operation_id)::text = ANY ((ARRAY['write_compatibility_evidence'::character varying, 'write_identity_evidence'::character varying])::text[])) AND ((learning_tier_id)::text = ANY ((ARRAY['compatibility_evidence'::character varying, 'identity_evidence'::character varying])::text[])) AND ((((learning_operation_id)::text = 'write_compatibility_evidence'::text) AND ((learning_tier_id)::text = 'compatibility_evidence'::text)) OR (((learning_operation_id)::text = 'write_identity_evidence'::text) AND ((learning_tier_id)::text = 'identity_evidence'::text))) AND ((char_length(btrim((candidate_key)::text)) >= 3) AND (char_length(btrim((candidate_key)::text)) <= 160)) AND ((refresh_reason_id)::text = 'profile_refresh_required'::text) AND ((source_system)::text = 'policy_authorized_profile_refresh'::text)) OR (((request_type)::text = 'native_readiness'::text) AND (classification_id IS NULL) AND (learning_operation_id IS NULL) AND (learning_tier_id IS NULL) AND (candidate_key IS NULL) AND ((source_id)::text = 'native_policy_profile_readiness'::text) AND ((refresh_reason_id)::text = 'stale_library_profile'::text) AND ((source_system)::text = 'policy_native_readiness_profile_refresh'::text)))),
+    CONSTRAINT policy_profile_refresh_outbox_request_type_chk CHECK (((request_type)::text = ANY ((ARRAY['learning_evidence'::character varying, 'native_readiness'::character varying])::text[]))),
+    CONSTRAINT policy_profile_refresh_outbox_source_event_chk CHECK ((((char_length(btrim((source_id)::text)) >= 1) AND (char_length(btrim((source_id)::text)) <= 80)) AND ((char_length(btrim((source_event_id)::text)) >= 1) AND (char_length(btrim((source_event_id)::text)) <= 160)))),
     CONSTRAINT policy_profile_refresh_outbox_version_chk CHECK ((outbox_version = 1)),
     CONSTRAINT policy_profile_refresh_outbox_worker_lifecycle_chk CHECK (((((processing_state)::text = 'pending'::text) AND (claim_token IS NULL) AND (claimed_at IS NULL) AND (lease_expires_at IS NULL) AND (completed_at IS NULL)) OR (((processing_state)::text = 'processing'::text) AND (claim_token IS NOT NULL) AND (claimed_at IS NOT NULL) AND (lease_expires_at IS NOT NULL) AND (completed_at IS NULL)) OR (((processing_state)::text = 'completed'::text) AND (claim_token IS NULL) AND (claimed_at IS NULL) AND (lease_expires_at IS NULL) AND (completed_at IS NOT NULL)) OR (((processing_state)::text = 'failed'::text) AND (claim_token IS NULL) AND (claimed_at IS NULL) AND (lease_expires_at IS NULL) AND (completed_at IS NULL))))
 );
@@ -5659,7 +5694,7 @@ CREATE TABLE public.policy_runtime_historic_route_safety_refresh_receipt_items (
     queued_at timestamp with time zone,
     finalized_at timestamp with time zone,
     CONSTRAINT policy_runtime_historic_route_safety_refresh_receipt_items_queu CHECK (((((execution_status)::text = 'queued'::text) AND (retry_task_id IS NOT NULL) AND (queued_at IS NOT NULL)) OR (((execution_status)::text <> 'queued'::text) AND (retry_task_id IS NULL) AND (queued_at IS NULL)))),
-    CONSTRAINT policy_runtime_historic_route_safety_refresh_receipt_items_stat CHECK (((execution_status)::text = ANY (ARRAY[('requested'::character varying)::text, ('queued'::character varying)::text, ('skipped'::character varying)::text, ('failed'::character varying)::text])))
+    CONSTRAINT policy_runtime_historic_route_safety_refresh_receipt_items_stat CHECK (((execution_status)::text = ANY ((ARRAY['requested'::character varying, 'queued'::character varying, 'skipped'::character varying, 'failed'::character varying])::text[])))
 );
 
 
@@ -5693,12 +5728,12 @@ CREATE TABLE public.policy_runtime_pending_question_cleanup_audits (
     result_status_id character varying(80) CONSTRAINT policy_runtime_pending_question_clean_result_status_id_not_null NOT NULL,
     replay_receipt uuid CONSTRAINT policy_runtime_pending_question_cleanup_replay_receipt_not_null NOT NULL,
     created_at timestamp with time zone DEFAULT now() CONSTRAINT policy_runtime_pending_question_cleanup_aud_created_at_not_null NOT NULL,
-    CONSTRAINT policy_runtime_pending_question_cleanup_audits_action_chk CHECK (((action_id)::text = ANY (ARRAY[('none'::character varying)::text, ('regenerate_under_current_contract'::character varying)::text, ('mark_stale_require_retry'::character varying)::text, ('resolve_outcome_only'::character varying)::text, ('block_learning_permanently'::character varying)::text]))),
+    CONSTRAINT policy_runtime_pending_question_cleanup_audits_action_chk CHECK (((action_id)::text = ANY ((ARRAY['none'::character varying, 'regenerate_under_current_contract'::character varying, 'mark_stale_require_retry'::character varying, 'resolve_outcome_only'::character varying, 'block_learning_permanently'::character varying])::text[]))),
     CONSTRAINT policy_runtime_pending_question_cleanup_audits_actor_chk CHECK (((actor_id)::text ~ '^[A-Za-z0-9:_-]{1,160}$'::text)),
     CONSTRAINT policy_runtime_pending_question_cleanup_audits_classification_c CHECK ((classification_id > 0)),
     CONSTRAINT policy_runtime_pending_question_cleanup_audits_reason_ids_chk CHECK (public.is_policy_runtime_pending_question_cleanup_reason_ids(reason_ids)),
     CONSTRAINT policy_runtime_pending_question_cleanup_audits_source_chk CHECK (((source_version)::text = 'policy.runtime_pending_question_cleanup.v1'::text)),
-    CONSTRAINT policy_runtime_pending_question_cleanup_audits_status_chk CHECK (((result_status_id)::text = ANY (ARRAY[('unchanged'::character varying)::text, ('queued_fresh_runtime_evaluation'::character varying)::text, ('resolved_outcome_only'::character varying)::text]))),
+    CONSTRAINT policy_runtime_pending_question_cleanup_audits_status_chk CHECK (((result_status_id)::text = ANY ((ARRAY['unchanged'::character varying, 'queued_fresh_runtime_evaluation'::character varying, 'resolved_outcome_only'::character varying])::text[]))),
     CONSTRAINT policy_runtime_pending_question_cleanup_audits_version_chk CHECK ((audit_version = 1))
 );
 
@@ -6364,7 +6399,7 @@ CREATE TABLE public.task_queue_cleanup_history (
     cleanup_origin character varying(32) DEFAULT 'legacy'::character varying NOT NULL,
     CONSTRAINT task_queue_cleanup_history_age_deleted_check CHECK ((age_deleted >= 0)),
     CONSTRAINT task_queue_cleanup_history_cap_excess_before_check CHECK ((cap_excess_before >= 0)),
-    CONSTRAINT task_queue_cleanup_history_cleanup_origin_check CHECK (((cleanup_origin)::text = ANY (ARRAY[('legacy'::character varying)::text, ('worker_startup'::character varying)::text, ('startup_delayed'::character varying)::text, ('cron'::character varying)::text]))),
+    CONSTRAINT task_queue_cleanup_history_cleanup_origin_check CHECK (((cleanup_origin)::text = ANY ((ARRAY['legacy'::character varying, 'worker_startup'::character varying, 'startup_delayed'::character varying, 'cron'::character varying])::text[]))),
     CONSTRAINT task_queue_cleanup_history_cleanup_type_check CHECK (((cleanup_type)::text = ANY (ARRAY[('startup'::character varying)::text, ('scheduled'::character varying)::text]))),
     CONSTRAINT task_queue_cleanup_history_count_cap_deleted_check CHECK ((count_cap_deleted >= 0)),
     CONSTRAINT task_queue_cleanup_history_max_total_rows_check CHECK ((max_total_rows > 0)),
@@ -6716,7 +6751,7 @@ CREATE TABLE public.web_search_provider_guardrail_events (
     CONSTRAINT web_search_provider_guardrail_events_code_check CHECK (((guardrail_code)::text ~ '^[a-z0-9_]{1,80}$'::text)),
     CONSTRAINT web_search_provider_guardrail_events_provider_key_check CHECK (((provider_key IS NULL) OR ((provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text))),
     CONSTRAINT web_search_provider_guardrail_events_purpose_check CHECK (((purpose)::text ~ '^[a-z0-9_-]{1,60}$'::text)),
-    CONSTRAINT web_search_provider_guardrail_events_severity_check CHECK (((severity)::text = ANY (ARRAY[('info'::character varying)::text, ('warning'::character varying)::text, ('critical'::character varying)::text])))
+    CONSTRAINT web_search_provider_guardrail_events_severity_check CHECK (((severity)::text = ANY ((ARRAY['info'::character varying, 'warning'::character varying, 'critical'::character varying])::text[])))
 );
 
 
@@ -6766,8 +6801,8 @@ CREATE TABLE public.web_search_provider_health_events (
     metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT web_search_provider_health_events_error_http_status_check CHECK (((error_http_status IS NULL) OR ((error_http_status >= 100) AND (error_http_status <= 599)))),
-    CONSTRAINT web_search_provider_health_events_event_type_check CHECK (((event_type)::text = ANY (ARRAY[('success'::character varying)::text, ('error'::character varying)::text, ('cooldown_started'::character varying)::text]))),
-    CONSTRAINT web_search_provider_health_events_health_status_check CHECK (((health_status)::text = ANY (ARRAY[('available'::character varying)::text, ('degraded'::character varying)::text, ('cooldown'::character varying)::text]))),
+    CONSTRAINT web_search_provider_health_events_event_type_check CHECK (((event_type)::text = ANY ((ARRAY['success'::character varying, 'error'::character varying, 'cooldown_started'::character varying])::text[]))),
+    CONSTRAINT web_search_provider_health_events_health_status_check CHECK (((health_status)::text = ANY ((ARRAY['available'::character varying, 'degraded'::character varying, 'cooldown'::character varying])::text[]))),
     CONSTRAINT web_search_provider_health_events_provider_key_check CHECK (((provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text)),
     CONSTRAINT web_search_provider_health_events_retry_after_check CHECK (((retry_after_seconds IS NULL) OR (retry_after_seconds >= 0)))
 );
@@ -6828,7 +6863,7 @@ CREATE TABLE public.web_search_provider_route_decisions (
     CONSTRAINT web_search_provider_route_decisions_duration_ms_check CHECK (((duration_ms IS NULL) OR (duration_ms >= 0))),
     CONSTRAINT web_search_provider_route_decisions_error_http_status_check CHECK (((error_http_status IS NULL) OR ((error_http_status >= 100) AND (error_http_status <= 599)))),
     CONSTRAINT web_search_provider_route_decisions_final_provider_key_check CHECK (((final_provider_key IS NULL) OR ((final_provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text))),
-    CONSTRAINT web_search_provider_route_decisions_outcome_check CHECK (((outcome)::text = ANY (ARRAY[('success'::character varying)::text, ('no_provider'::character varying)::text, ('failed'::character varying)::text, ('error'::character varying)::text]))),
+    CONSTRAINT web_search_provider_route_decisions_outcome_check CHECK (((outcome)::text = ANY ((ARRAY['success'::character varying, 'no_provider'::character varying, 'failed'::character varying, 'error'::character varying])::text[]))),
     CONSTRAINT web_search_provider_route_decisions_selected_provider_key_check CHECK (((selected_provider_key IS NULL) OR ((selected_provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text)))
 );
 
@@ -6887,7 +6922,7 @@ CREATE TABLE public.web_search_provider_usage (
     CONSTRAINT web_search_provider_usage_provider_key_check CHECK (((provider_key)::text ~ '^[a-z0-9_-]{1,40}$'::text)),
     CONSTRAINT web_search_provider_usage_result_count_check CHECK (((result_count >= 0) AND (result_count <= 20))),
     CONSTRAINT web_search_provider_usage_retry_after_seconds_check CHECK (((retry_after_seconds IS NULL) OR (retry_after_seconds >= 0))),
-    CONSTRAINT web_search_provider_usage_status_check CHECK (((status)::text = ANY (ARRAY[('success'::character varying)::text, ('failed'::character varying)::text, ('skipped'::character varying)::text, ('rate_limited'::character varying)::text, ('quota_exhausted'::character varying)::text])))
+    CONSTRAINT web_search_provider_usage_status_check CHECK (((status)::text = ANY ((ARRAY['success'::character varying, 'failed'::character varying, 'skipped'::character varying, 'rate_limited'::character varying, 'quota_exhausted'::character varying])::text[])))
 );
 
 
@@ -8528,6 +8563,22 @@ ALTER TABLE ONLY public.policy_backup_restore_verifications
 
 
 --
+-- Name: policy_candidate_correction_policy_change_outcome_observations policy_candidate_correction_policy_change_out_hypothesis_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_candidate_correction_policy_change_outcome_observations
+    ADD CONSTRAINT policy_candidate_correction_policy_change_out_hypothesis_id_key UNIQUE (hypothesis_id);
+
+
+--
+-- Name: policy_candidate_correction_policy_change_outcome_observations policy_candidate_correction_policy_change_outcome_observat_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_candidate_correction_policy_change_outcome_observations
+    ADD CONSTRAINT policy_candidate_correction_policy_change_outcome_observat_pkey PRIMARY KEY (control_key);
+
+
+--
 -- Name: policy_candidate_correction_review_corpus_audit_events policy_candidate_correction_review_corpus_audit_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9482,14 +9533,14 @@ CREATE INDEX idx_classification_evidence_tmdb ON public.classification_evidence 
 -- Name: idx_classification_history_active_pending_identity; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX idx_classification_history_active_pending_identity ON public.classification_history USING btree (pending_identity_key) WHERE (((status)::text = ANY (ARRAY[('awaiting_decision'::character varying)::text, ('pending_retry'::character varying)::text])) AND (pending_identity_key IS NOT NULL));
+CREATE UNIQUE INDEX idx_classification_history_active_pending_identity ON public.classification_history USING btree (pending_identity_key) WHERE (((status)::text = ANY ((ARRAY['awaiting_decision'::character varying, 'pending_retry'::character varying])::text[])) AND (pending_identity_key IS NOT NULL));
 
 
 --
 -- Name: idx_classification_history_active_pending_refresh_inventory; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_classification_history_active_pending_refresh_inventory ON public.classification_history USING btree (id) WHERE ((status)::text = ANY (ARRAY[('awaiting_decision'::character varying)::text, ('pending_retry'::character varying)::text]));
+CREATE INDEX idx_classification_history_active_pending_refresh_inventory ON public.classification_history USING btree (id) WHERE ((status)::text = ANY ((ARRAY['awaiting_decision'::character varying, 'pending_retry'::character varying])::text[]));
 
 
 --
@@ -9509,8 +9560,8 @@ CASE
     ELSE ((((('title:'::text || (media_type)::text) || ':'::text) || lower(TRIM(BOTH FROM title))) || ':'::text) || COALESCE((year)::text, ''::text))
 END), (
 CASE
-    WHEN (((method)::text <> 'source_library'::text) AND ((status)::text = ANY (ARRAY[('completed'::character varying)::text, ('corrected'::character varying)::text, ('verified'::character varying)::text, ('routed'::character varying)::text]))) THEN 0
-    WHEN (((method)::text <> 'source_library'::text) AND ((status)::text = ANY (ARRAY[('awaiting_decision'::character varying)::text, ('pending'::character varying)::text, ('pending_retry'::character varying)::text]))) THEN 1
+    WHEN (((method)::text <> 'source_library'::text) AND ((status)::text = ANY ((ARRAY['completed'::character varying, 'corrected'::character varying, 'verified'::character varying, 'routed'::character varying])::text[]))) THEN 0
+    WHEN (((method)::text <> 'source_library'::text) AND ((status)::text = ANY ((ARRAY['awaiting_decision'::character varying, 'pending'::character varying, 'pending_retry'::character varying])::text[]))) THEN 1
     WHEN ((method)::text <> 'source_library'::text) THEN 2
     ELSE 3
 END), created_at DESC, id DESC);
@@ -10479,7 +10530,7 @@ CREATE INDEX idx_policy_learning_stats_policy ON public.policy_learning_stats US
 -- Name: idx_policy_library_rebuild_execution_gates_active_policy; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX idx_policy_library_rebuild_execution_gates_active_policy ON public.policy_library_rebuild_execution_gates USING btree (policy_id) WHERE ((state)::text = ANY (ARRAY[('snapshot_persisting'::character varying)::text, ('snapshot_persisted'::character varying)::text]));
+CREATE UNIQUE INDEX idx_policy_library_rebuild_execution_gates_active_policy ON public.policy_library_rebuild_execution_gates USING btree (policy_id) WHERE ((state)::text = ANY ((ARRAY['snapshot_persisting'::character varying, 'snapshot_persisted'::character varying])::text[]));
 
 
 --
@@ -10598,7 +10649,7 @@ CREATE INDEX idx_policy_native_intent_reconciliation_states_outcome ON public.po
 -- Name: idx_policy_native_intent_reconciliation_states_retry; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_policy_native_intent_reconciliation_states_retry ON public.policy_native_intent_reconciliation_states USING btree (retry_not_before, policy_id) WHERE ((outcome_state)::text = ANY (ARRAY[('deferred_retry'::character varying)::text, ('system_failure'::character varying)::text]));
+CREATE INDEX idx_policy_native_intent_reconciliation_states_retry ON public.policy_native_intent_reconciliation_states USING btree (retry_not_before, policy_id) WHERE ((outcome_state)::text = ANY ((ARRAY['deferred_retry'::character varying, 'system_failure'::character varying])::text[]));
 
 
 --
@@ -10612,7 +10663,7 @@ CREATE INDEX idx_policy_native_profile_refresh_circuits_probe_due ON public.poli
 -- Name: idx_policy_native_profile_refresh_circuits_retention; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_policy_native_profile_refresh_circuits_retention ON public.policy_native_profile_refresh_circuits USING btree (updated_at, library_id) WHERE ((circuit_state)::text = ANY (ARRAY[('closed'::character varying)::text, ('open'::character varying)::text, ('half_open'::character varying)::text]));
+CREATE INDEX idx_policy_native_profile_refresh_circuits_retention ON public.policy_native_profile_refresh_circuits USING btree (updated_at, library_id) WHERE ((circuit_state)::text = ANY ((ARRAY['closed'::character varying, 'open'::character varying, 'half_open'::character varying])::text[]));
 
 
 --
@@ -10682,7 +10733,7 @@ CREATE INDEX idx_policy_presets_preset_id ON public.policy_presets USING btree (
 -- Name: idx_policy_profile_refresh_outbox_active_library; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX idx_policy_profile_refresh_outbox_active_library ON public.policy_profile_refresh_outbox USING btree (library_id) WHERE ((processing_state)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text]));
+CREATE UNIQUE INDEX idx_policy_profile_refresh_outbox_active_library ON public.policy_profile_refresh_outbox USING btree (library_id) WHERE ((processing_state)::text = ANY ((ARRAY['pending'::character varying, 'processing'::character varying])::text[]));
 
 
 --
@@ -14378,6 +14429,7 @@ FROM unnest(ARRAY[
     '20260830_100000_add_current_library_candidate_retrieval_metrics_index.sql',
     '20260830_110000_add_policy_candidate_correction_analytics_metrics_index.sql',
     '20260830_120000_add_policy_candidate_correction_review_corpus_control_plane.sql',
-    '20260830_130000_add_policy_candidate_correction_review_projection.sql'
+    '20260830_130000_add_policy_candidate_correction_review_projection.sql',
+    '20260831_120000_add_policy_change_outcome_observation.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

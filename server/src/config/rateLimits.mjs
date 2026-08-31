@@ -178,6 +178,26 @@ export const policyCandidateCorrectionReviewProjectionCreateLimiterConfig = {
   skip: (_req) => process.env.NODE_ENV === 'test',
 };
 
+/** Aggregate policy-change outcome-observation reads (per IP, per 15 minutes). */
+export const policyCandidateCorrectionPolicyChangeOutcomeObservationReadLimiterConfig = {
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: 'Too many policy-change outcome observation requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (_req) => process.env.NODE_ENV === 'test',
+};
+
+/** Explicit policy-change outcome-observation starts (per IP, per 15 minutes). */
+export const policyCandidateCorrectionPolicyChangeOutcomeObservationCreateLimiterConfig = {
+  windowMs: 15 * 60 * 1000,
+  max: 6,
+  message: { error: 'Too many policy-change outcome observation starts, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (_req) => process.env.NODE_ENV === 'test',
+};
+
 /** Settings — SSL connectivity test (per IP, per hour). */
 export const sslTestLimiterConfig = {
   windowMs: 60 * 60 * 1000,

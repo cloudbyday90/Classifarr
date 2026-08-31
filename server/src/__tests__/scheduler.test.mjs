@@ -55,6 +55,7 @@ const mockSchedulerRetentionService = {
     runPolicyObservedEvidenceProvenanceRetentionCleanup: jest.fn(),
     runNativeIntentReconciliationLedgerRetentionCleanup: jest.fn(),
     runPolicyNativeIntentChangeReceiptRetentionCleanup: jest.fn(),
+    runPolicyCandidateCorrectionPolicyChangeOutcomeObservationRetentionCleanup: jest.fn(),
 };
 
 const mockClassificationMaintenanceService = {
@@ -146,6 +147,7 @@ describe('SchedulerService', () => {
         mockSchedulerRetentionService.runPolicyObservedEvidenceProvenanceRetentionCleanup.mockReset();
         mockSchedulerRetentionService.runNativeIntentReconciliationLedgerRetentionCleanup.mockReset();
         mockSchedulerRetentionService.runPolicyNativeIntentChangeReceiptRetentionCleanup.mockReset();
+        mockSchedulerRetentionService.runPolicyCandidateCorrectionPolicyChangeOutcomeObservationRetentionCleanup.mockReset();
         mockClassificationMaintenanceService.cleanupStaleAwaitingDecisions.mockReset();
         mockRatingNormalizationQueueService.queueDailyBackfill.mockReset();
         mockNativeIntentReconciliationService.run.mockReset();
@@ -228,6 +230,17 @@ describe('SchedulerService', () => {
                 .resolves.toBeUndefined();
 
             expect(mockSchedulerRetentionService.runPolicyNativeIntentChangeReceiptRetentionCleanup)
+                .toHaveBeenCalledTimes(1);
+        });
+
+        it('runPolicyCandidateCorrectionPolicyChangeOutcomeObservationRetentionCleanup delegates to SchedulerRetentionService', async () => {
+            mockSchedulerRetentionService.runPolicyCandidateCorrectionPolicyChangeOutcomeObservationRetentionCleanup
+                .mockResolvedValueOnce(undefined);
+
+            await expect(scheduler.runPolicyCandidateCorrectionPolicyChangeOutcomeObservationRetentionCleanup())
+                .resolves.toBeUndefined();
+
+            expect(mockSchedulerRetentionService.runPolicyCandidateCorrectionPolicyChangeOutcomeObservationRetentionCleanup)
                 .toHaveBeenCalledTimes(1);
         });
     });
