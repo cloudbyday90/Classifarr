@@ -5,6 +5,7 @@
 
 import {
   buildPolicyCandidateCorrectionPolicyChangeReviewHistorySummaryReadModel,
+  getPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationCompletedPeriods,
   getPolicyCandidateCorrectionPolicyChangeReviewHistoryCompletedPeriods,
   normalizePolicyCandidateCorrectionPolicyChangeReviewHistoryControlRow,
 } from './policyCandidateCorrectionPolicyChangeReviewHistorySummaryContract.mjs';
@@ -66,9 +67,16 @@ export function createPolicyCandidateCorrectionPolicyChangeReviewHistorySummaryS
       startedAt: control.startedAt,
       now: observedAt,
     });
+    const calibrationPeriods = getPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationCompletedPeriods({
+      startedAt: control.startedAt,
+      now: observedAt,
+    });
     const aggregateRows = await persistence.readAggregates({
       dbClient: db,
-      periodStarts: periods.map(period => period.periodStart),
+      periodStarts: [...new Set([
+        ...periods.map(period => period.periodStart),
+        ...calibrationPeriods.map(period => period.periodStart),
+      ])],
     });
     return buildPolicyCandidateCorrectionPolicyChangeReviewHistorySummaryReadModel({
       control,

@@ -13,7 +13,7 @@ import {
 
 function response() {
   return {
-    version: 'policy.candidate_correction_policy_change_review_history_summary.v2',
+    version: 'policy.candidate_correction_policy_change_review_history_summary.v3',
     statusId: 'collecting',
     historyAvailable: false,
     automaticPolicyChange: false,
@@ -22,6 +22,13 @@ function response() {
     consistency: {
       statusId: 'collecting',
       comparisonAvailable: false,
+      automaticPolicyChange: false,
+      automaticAiRagTuning: false,
+      routingChanged: false,
+    },
+    calibrationReadiness: {
+      statusId: 'collecting_periods',
+      reviewEligible: false,
       automaticPolicyChange: false,
       automaticAiRagTuning: false,
       routingChanged: false,

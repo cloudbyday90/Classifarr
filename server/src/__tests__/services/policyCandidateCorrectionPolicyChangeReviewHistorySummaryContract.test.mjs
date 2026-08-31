@@ -6,13 +6,14 @@
 import { describe, expect, test } from '@jest/globals';
 import {
   buildPolicyCandidateCorrectionPolicyChangeReviewHistorySummaryReadModel,
+  getPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationCompletedPeriods,
   getPolicyCandidateCorrectionPolicyChangeReviewHistoryCompletedPeriods,
   getPolicyCandidateCorrectionPolicyChangeReviewHistoryPeriodStart,
   getPolicyCandidateCorrectionPolicyChangeReviewHistoryRetentionCutoff,
 } from '../../services/policyCandidateCorrectionPolicyChangeReviewHistorySummaryContract.mjs';
 
 describe('policy-change review history summary contract', () => {
-  test('uses fixed server-owned UTC periods and retains only four bounded buckets', () => {
+  test('uses fixed server-owned UTC periods and retains only seven bounded buckets', () => {
     const periodStart = getPolicyCandidateCorrectionPolicyChangeReviewHistoryPeriodStart('2026-08-31T12:00:00.000Z');
     const laterPeriodStart = getPolicyCandidateCorrectionPolicyChangeReviewHistoryPeriodStart('2026-09-01T12:00:00.000Z');
 
@@ -20,6 +21,10 @@ describe('policy-change review history summary contract', () => {
     expect(laterPeriodStart).toMatch(/^2026-\d{2}-\d{2}$/u);
     expect(getPolicyCandidateCorrectionPolicyChangeReviewHistoryRetentionCutoff('2026-08-31T12:00:00.000Z'))
       .toMatch(/^2026-\d{2}-\d{2}$/u);
+    expect(getPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationCompletedPeriods({
+      startedAt: '2026-01-01T00:00:00.000Z',
+      now: '2026-08-31T12:00:00.000Z',
+    })).toHaveLength(6);
   });
 
   test('withholds incomplete collection periods and returns only fixed aggregate dimensions', () => {
@@ -47,12 +52,16 @@ describe('policy-change review history summary contract', () => {
     });
 
     expect(model).toEqual(expect.objectContaining({
-      version: 'policy.candidate_correction_policy_change_review_history_summary.v2',
+      version: 'policy.candidate_correction_policy_change_review_history_summary.v3',
       statusId: 'available',
       historyAvailable: true,
       consistency: expect.objectContaining({
         statusId: 'insufficient_activity',
         comparisonAvailable: false,
+      }),
+      calibrationReadiness: expect.objectContaining({
+        statusId: 'insufficient_activity',
+        reviewEligible: false,
       }),
     }));
     expect(model.periods).toHaveLength(3);
@@ -65,5 +74,6 @@ describe('policy-change review history summary contract', () => {
     expect(JSON.stringify(model)).not.toContain('periodStart');
     expect(JSON.stringify(model)).not.toContain('actor');
     expect(JSON.stringify(model)).not.toContain('policyId');
+    expect(JSON.stringify(model)).not.toContain('calibrationPeriods');
   });
 });

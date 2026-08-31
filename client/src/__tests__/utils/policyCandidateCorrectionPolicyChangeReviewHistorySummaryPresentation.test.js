@@ -11,7 +11,7 @@ import {
 
 function response(overrides = {}) {
   return {
-    version: 'policy.candidate_correction_policy_change_review_history_summary.v2',
+    version: 'policy.candidate_correction_policy_change_review_history_summary.v3',
     statusId: 'available',
     historyAvailable: true,
     automaticPolicyChange: false,
@@ -20,6 +20,13 @@ function response(overrides = {}) {
     consistency: {
       statusId: 'insufficient_activity',
       comparisonAvailable: false,
+      automaticPolicyChange: false,
+      automaticAiRagTuning: false,
+      routingChanged: false,
+    },
+    calibrationReadiness: {
+      statusId: 'insufficient_activity',
+      reviewEligible: false,
       automaticPolicyChange: false,
       automaticAiRagTuning: false,
       routingChanged: false,

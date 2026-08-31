@@ -17,7 +17,7 @@ const { default: PolicyChangeReviewHistorySummary } =
 
 function response() {
   return {
-    version: 'policy.candidate_correction_policy_change_review_history_summary.v2',
+    version: 'policy.candidate_correction_policy_change_review_history_summary.v3',
     statusId: 'available',
     historyAvailable: true,
     automaticPolicyChange: false,
@@ -26,6 +26,13 @@ function response() {
     consistency: {
       statusId: 'consistent',
       comparisonAvailable: true,
+      automaticPolicyChange: false,
+      automaticAiRagTuning: false,
+      routingChanged: false,
+    },
+    calibrationReadiness: {
+      statusId: 'ready_for_human_review',
+      reviewEligible: true,
       automaticPolicyChange: false,
       automaticAiRagTuning: false,
       routingChanged: false,
@@ -56,6 +63,7 @@ describe('PolicyChangeReviewHistorySummary', () => {
     expect(getPolicyCandidateCorrectionPolicyChangeReviewHistorySummary).toHaveBeenCalledTimes(1)
     expect(wrapper.text()).toContain('Completed review activity is available')
     expect(wrapper.text()).toContain('Review process is consistent across completed periods')
+    expect(wrapper.text()).toContain('Calibration review is ready for human evaluation')
     expect(wrapper.get('table caption').text()).toBe('Most recent completed 30-day period')
     expect(wrapper.findAll('th[scope="col"]')).toHaveLength(4)
     expect(wrapper.findAll('th[scope="row"]')).toHaveLength(3)

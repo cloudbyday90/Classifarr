@@ -41,6 +41,7 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - **Reviewed policy-change decision record** — After a bounded follow-up completes, administrators can automatically load, explicitly confirm, and record or revise one expiry-bound aggregate conclusion with a fixed rationale. It has no policy, routing, AI, RAG, learning, retry, or classification authority.
 - **Policy-change review activity** — Security Settings now automatically summarizes recorded and materially revised reviewed conclusions across up to three completed fixed 30-day periods, retaining only coarse conclusion counts with no individual decision, policy, media, actor, outcome, provider, prompt, response, or RAG history.
 - **Policy-change review-process consistency** — Security Settings now derives a fixed, aggregate-only consistency state from three completed review-activity periods, requiring a minimum cohort and remaining descriptive with no policy, AI/RAG, learning, or routing authority.
+- **Policy-change calibration readiness** — Security Settings now retains only the bounded aggregate window needed to identify six complete, sufficiently active review periods and automatically states when a human threshold review may begin; it cannot calculate or apply a threshold, policy, AI/RAG, or routing change.
 
 ### Changed
 
@@ -55,6 +56,7 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - **Offline evaluation coverage** — The semantic evidence corpus now covers declared-scope conflict, semantic overreach, clear series, and low-margin uncertainty cases rather than only the original four examples.
 - **Dependency maintenance** — Applied and locally tested the Axios 1.20.0 update from open PR #521 without merging the pull request or creating a release.
 - **Dependency maintenance** — Applied the server-tooling updates from open PR #525 locally for validation without merging the pull request or creating a release.
+- **Dependency maintenance** — Applied and locally tested the Morgan 1.12.0 runtime update from open PR #524 without merging the pull request or creating a release.
 
 ### Fixed
 

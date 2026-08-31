@@ -7,8 +7,11 @@ import { POLICY_CHANGE_DECISION_OPTIONS } from './policyCandidateCorrectionPolic
 import {
   normalizePolicyCandidateCorrectionPolicyChangeReviewHistoryConsistency,
 } from './policyCandidateCorrectionPolicyChangeReviewHistoryConsistencyPresentation'
+import {
+  normalizePolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationReadiness,
+} from './policyCandidateCorrectionPolicyChangeReviewHistoryCalibrationReadinessPresentation'
 
-const VERSION = 'policy.candidate_correction_policy_change_review_history_summary.v2'
+const VERSION = 'policy.candidate_correction_policy_change_review_history_summary.v3'
 const STATUS_IDS = Object.freeze({
   COLLECTING: 'collecting',
   AVAILABLE: 'available',
@@ -66,11 +69,20 @@ export function normalizePolicyCandidateCorrectionPolicyChangeReviewHistorySumma
     return null
   }
   const consistency = normalizePolicyCandidateCorrectionPolicyChangeReviewHistoryConsistency(source.consistency)
-  if (!consistency) return null
+  const calibrationReadiness = normalizePolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationReadiness(
+    source.calibrationReadiness,
+  )
+  if (!consistency || !calibrationReadiness) return null
 
   if (source.statusId === STATUS_IDS.COLLECTING) {
     return source.historyAvailable === false && source.periods.length === 0
-      ? Object.freeze({ statusId: source.statusId, historyAvailable: false, consistency, periods: Object.freeze([]) })
+      ? Object.freeze({
+        statusId: source.statusId,
+        historyAvailable: false,
+        consistency,
+        calibrationReadiness,
+        periods: Object.freeze([]),
+      })
       : null
   }
 
@@ -79,7 +91,13 @@ export function normalizePolicyCandidateCorrectionPolicyChangeReviewHistorySumma
   const periods = source.periods.map((period, index) => normalizePeriod(period, PERIOD_IDS[index]))
   return periods.some(period => !period)
     ? null
-    : Object.freeze({ statusId: source.statusId, historyAvailable: true, consistency, periods: Object.freeze(periods) })
+    : Object.freeze({
+      statusId: source.statusId,
+      historyAvailable: true,
+      consistency,
+      calibrationReadiness,
+      periods: Object.freeze(periods),
+    })
 }
 
 export function getPolicyCandidateCorrectionPolicyChangeReviewHistorySummaryPresentation(statusId) {

@@ -79,6 +79,31 @@
       </p>
     </section>
 
+    <section
+      v-if="calibrationReadinessPresentation"
+      class="rounded-md border border-gray-700 bg-gray-900/40 p-4"
+      aria-labelledby="policy-change-review-history-calibration-readiness-heading"
+    >
+      <h4
+        id="policy-change-review-history-calibration-readiness-heading"
+        class="text-sm font-medium text-gray-200"
+      >
+        Calibration review readiness
+      </h4>
+      <p
+        class="mt-2 font-medium"
+        :class="calibrationReadinessPresentation.statusClass"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {{ calibrationReadinessPresentation.heading }}
+      </p>
+      <p class="mt-1 text-sm text-gray-300">
+        {{ calibrationReadinessPresentation.message }}
+      </p>
+    </section>
+
     <div
       v-if="summary?.historyAvailable"
       class="space-y-4"
@@ -160,6 +185,9 @@ import {
 import {
   getPolicyCandidateCorrectionPolicyChangeReviewHistoryConsistencyPresentation,
 } from '@/utils/policyCandidateCorrectionPolicyChangeReviewHistoryConsistencyPresentation'
+import {
+  getPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationReadinessPresentation,
+} from '@/utils/policyCandidateCorrectionPolicyChangeReviewHistoryCalibrationReadinessPresentation'
 
 const summary = ref(null)
 const loading = ref(false)
@@ -171,6 +199,11 @@ const presentation = computed(() => (
 ))
 const consistencyPresentation = computed(() => (
   getPolicyCandidateCorrectionPolicyChangeReviewHistoryConsistencyPresentation(summary.value?.consistency?.statusId)
+))
+const calibrationReadinessPresentation = computed(() => (
+  getPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationReadinessPresentation(
+    summary.value?.calibrationReadiness?.statusId,
+  )
 ))
 const presentedPeriods = computed(() => (
   summary.value?.periods

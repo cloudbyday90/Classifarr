@@ -36,6 +36,7 @@ describe('policy-change review history summary service', () => {
       dbClient: expect.any(Object),
       periodStarts: expect.arrayContaining([expect.stringMatching(/^2026-\d{2}-\d{2}$/u)]),
     }));
+    expect(persistence.readAggregates.mock.calls[0][0].periodStarts).toHaveLength(6);
     expect(JSON.stringify(result)).not.toContain('actorId');
     expect(JSON.stringify(result)).not.toContain('startedAt');
   });

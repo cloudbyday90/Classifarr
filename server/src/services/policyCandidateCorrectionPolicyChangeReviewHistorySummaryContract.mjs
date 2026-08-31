@@ -9,14 +9,19 @@ import {
 import {
   buildPolicyCandidateCorrectionPolicyChangeReviewHistoryConsistencyReadModel,
 } from './policyCandidateCorrectionPolicyChangeReviewHistoryConsistencyContract.mjs';
+import {
+  buildPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationReadinessReadModel,
+} from './policyCandidateCorrectionPolicyChangeReviewHistoryCalibrationReadinessContract.mjs';
 
 export const POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_SUMMARY_VERSION =
-  'policy.candidate_correction_policy_change_review_history_summary.v2';
+  'policy.candidate_correction_policy_change_review_history_summary.v3';
 export const POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_SUMMARY_CONTROL_KEY =
   'policy_change_review_history_summary';
 export const POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_PERIOD_DAYS = 30;
 export const POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_MAX_COMPLETED_PERIODS = 3;
-export const POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_RETENTION_PERIODS = 4;
+export const POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_CALIBRATION_COMPLETED_PERIODS = 6;
+export const POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_RETENTION_PERIODS =
+  POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_CALIBRATION_COMPLETED_PERIODS + 1;
 
 export const POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_STATUS_IDS = Object.freeze({
   COLLECTING: 'collecting',
@@ -73,19 +78,36 @@ function addPeriods(periodStart, count) {
   return new Date(periodStart.getTime() + (count * PERIOD_DURATION_MS));
 }
 
+function getCompletedPeriods({ startedAt, now, maximumCompletedPeriods } = {}) {
+  const collectionStartedAt = normalizeTimestamp(startedAt);
+  const currentStart = periodStartDate(now);
+  if (!collectionStartedAt || !currentStart || !Number.isSafeInteger(maximumCompletedPeriods) ||
+      maximumCompletedPeriods < 1) {
+    return Object.freeze([]);
+  }
+
+  const periods = [];
+  for (let offset = 1; offset <= maximumCompletedPeriods; offset += 1) {
+    const start = addPeriods(currentStart, -offset);
+    if (start.getTime() < collectionStartedAt.getTime()) continue;
+    periods.push(Object.freeze({ periodStart: toUtcDate(start) }));
+  }
+  return Object.freeze(periods);
+}
+
 /** Returns the server-owned fixed UTC period for an activity timestamp. */
 export function getPolicyCandidateCorrectionPolicyChangeReviewHistoryPeriodStart(value) {
   const start = periodStartDate(value);
   return start ? toUtcDate(start) : null;
 }
 
-/** Retains the current fixed period plus the three latest completed periods. */
+/** Retains the current fixed period plus the six latest completed periods. */
 export function getPolicyCandidateCorrectionPolicyChangeReviewHistoryRetentionCutoff(value) {
   const currentStart = periodStartDate(value);
   if (!currentStart) return null;
   return toUtcDate(addPeriods(
     currentStart,
-    -POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_MAX_COMPLETED_PERIODS,
+    -POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_CALIBRATION_COMPLETED_PERIODS,
   ));
 }
 
@@ -113,20 +135,26 @@ export function getPolicyCandidateCorrectionPolicyChangeReviewHistoryCompletedPe
   startedAt,
   now = new Date(),
 } = {}) {
-  const collectionStartedAt = normalizeTimestamp(startedAt);
-  const currentStart = periodStartDate(now);
-  if (!collectionStartedAt || !currentStart) return Object.freeze([]);
+  return Object.freeze(getCompletedPeriods({
+    startedAt,
+    now,
+    maximumCompletedPeriods: POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_MAX_COMPLETED_PERIODS,
+  }).map((period, index) => Object.freeze({
+    periodId: PERIOD_IDS[index],
+    periodStart: period.periodStart,
+  })));
+}
 
-  const periods = [];
-  for (let offset = 1; offset <= POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_MAX_COMPLETED_PERIODS; offset += 1) {
-    const start = addPeriods(currentStart, -offset);
-    if (start.getTime() < collectionStartedAt.getTime()) continue;
-    periods.push(Object.freeze({
-      periodId: PERIOD_IDS[offset - 1],
-      periodStart: toUtcDate(start),
-    }));
-  }
-  return Object.freeze(periods);
+/** Selects six fixed completed periods for the internal calibration-readiness check. */
+export function getPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationCompletedPeriods({
+  startedAt,
+  now = new Date(),
+} = {}) {
+  return getCompletedPeriods({
+    startedAt,
+    now,
+    maximumCompletedPeriods: POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_CALIBRATION_COMPLETED_PERIODS,
+  });
 }
 
 function createConclusionSummary({ decisionId, aggregateRow } = {}) {
@@ -140,7 +168,7 @@ function createConclusionSummary({ decisionId, aggregateRow } = {}) {
   });
 }
 
-function buildBaseReadModel({ statusId, historyAvailable, periods } = {}) {
+function buildBaseReadModel({ statusId, historyAvailable, periods, calibrationPeriods } = {}) {
   return Object.freeze({
     version: POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_SUMMARY_VERSION,
     statusId,
@@ -149,6 +177,9 @@ function buildBaseReadModel({ statusId, historyAvailable, periods } = {}) {
     automaticAiRagTuning: false,
     routingChanged: false,
     consistency: buildPolicyCandidateCorrectionPolicyChangeReviewHistoryConsistencyReadModel({ periods }),
+    calibrationReadiness: buildPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationReadinessReadModel({
+      periods: calibrationPeriods,
+    }),
     periods,
   });
 }
@@ -168,10 +199,15 @@ export function buildPolicyCandidateCorrectionPolicyChangeReviewHistorySummaryRe
       statusId: POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_STATUS_IDS.COLLECTING,
       historyAvailable: false,
       periods: Object.freeze([]),
+      calibrationPeriods: Object.freeze([]),
     });
   }
 
   const completedPeriods = getPolicyCandidateCorrectionPolicyChangeReviewHistoryCompletedPeriods({
+    startedAt: normalizedControl.startedAt,
+    now,
+  });
+  const calibrationCompletedPeriods = getPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationCompletedPeriods({
     startedAt: normalizedControl.startedAt,
     now,
   });
@@ -180,6 +216,7 @@ export function buildPolicyCandidateCorrectionPolicyChangeReviewHistorySummaryRe
       statusId: POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_STATUS_IDS.COLLECTING,
       historyAvailable: false,
       periods: Object.freeze([]),
+      calibrationPeriods: Object.freeze([]),
     });
   }
 
@@ -198,10 +235,19 @@ export function buildPolicyCandidateCorrectionPolicyChangeReviewHistorySummaryRe
       }),
     )),
   })));
+  const calibrationPeriods = Object.freeze(calibrationCompletedPeriods.map(period => Object.freeze({
+    conclusionSummaries: Object.freeze(POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_DECISION_IDS.map(decisionId =>
+      createConclusionSummary({
+        decisionId,
+        aggregateRow: rowsByKey.get(`${period.periodStart}:${decisionId}`),
+      }),
+    )),
+  })));
 
   return buildBaseReadModel({
     statusId: POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_STATUS_IDS.AVAILABLE,
     historyAvailable: true,
     periods,
+    calibrationPeriods,
   });
 }
