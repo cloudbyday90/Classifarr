@@ -17,6 +17,145 @@
       </p>
     </div>
 
+    <section
+      class="bg-gray-800 rounded-lg border border-gray-700 p-5 space-y-4"
+      aria-labelledby="review-corpus-control-heading"
+    >
+      <div>
+        <h3
+          id="review-corpus-control-heading"
+          class="text-lg font-medium"
+        >
+          Historic Review Corpus Safeguards
+        </h3>
+        <p class="mt-1 text-sm text-gray-400">
+          This configures only the future review contract. It never exposes historic records or gives AI, RAG, or routing authority.
+        </p>
+      </div>
+
+      <div
+        class="rounded-md border border-gray-700 bg-gray-900/40 p-4"
+        role="status"
+        aria-live="polite"
+      >
+        <template v-if="reviewCorpusControlPresentation">
+          <p
+            class="font-medium"
+            :class="reviewCorpusControlPresentation.statusClass"
+          >
+            {{ reviewCorpusControlPresentation.heading }}
+          </p>
+          <p class="mt-1 text-sm text-gray-300">
+            {{ reviewCorpusControlPresentation.message }}
+          </p>
+          <p
+            v-if="reviewCorpusActionStatus"
+            class="mt-2 text-sm text-green-400"
+          >
+            {{ reviewCorpusActionStatus }}
+          </p>
+        </template>
+        <p
+          v-else-if="reviewCorpusLoading"
+          class="text-sm text-gray-400"
+        >
+          Checking historic review-corpus safeguards…
+        </p>
+        <p
+          v-else
+          class="text-sm text-amber-300"
+        >
+          Historic review-corpus safeguards are temporarily unavailable.
+        </p>
+      </div>
+
+      <p
+        v-if="reviewCorpusError"
+        class="rounded-md bg-red-900/30 p-3 text-sm text-red-300"
+        role="alert"
+      >
+        {{ reviewCorpusError }}
+      </p>
+
+      <form
+        v-if="reviewCorpusControl"
+        class="space-y-4"
+        @submit.prevent="acknowledgeReviewCorpusSafeguards"
+      >
+        <fieldset
+          class="space-y-4"
+          :disabled="reviewCorpusSaving"
+        >
+          <div>
+            <label
+              for="review-record-retention-days"
+              class="block text-sm font-medium text-gray-200"
+            >
+              Future review-record retention limit (days)
+            </label>
+            <input
+              id="review-record-retention-days"
+              v-model.number="reviewRecordRetentionDays"
+              type="number"
+              min="7"
+              max="90"
+              step="1"
+              class="mt-2 w-32 rounded-md border border-gray-600 bg-gray-900 px-3 py-2 text-sm focus:border-blue-500 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+            >
+            <p class="mt-1 text-xs text-gray-400">
+              This is a retained future projection limit. No historic review record exists today.
+            </p>
+          </div>
+
+          <div class="rounded-md border border-gray-700 p-4">
+            <p class="text-sm font-medium text-gray-200">
+              Required safeguards
+            </p>
+            <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-gray-300">
+              <li>Administrator authorization is required at the record boundary.</li>
+              <li>Any future projection must be redacted server-side.</li>
+              <li>Future review data must obey the selected retention limit.</li>
+              <li>Configuration acknowledgements are recorded in an append-only audit trail.</li>
+            </ul>
+          </div>
+
+          <label class="flex items-start gap-3 text-sm text-gray-200">
+            <input
+              v-model="reviewCorpusAcknowledged"
+              type="checkbox"
+              class="mt-0.5 h-4 w-4 rounded border-gray-600 bg-gray-900 text-blue-600 focus:ring-blue-500"
+            >
+            <span>I acknowledge these safeguards for representative historic correction review.</span>
+          </label>
+
+          <button
+            type="submit"
+            :disabled="!reviewCorpusAcknowledged || reviewCorpusSaving"
+            class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-600"
+          >
+            {{ reviewCorpusSaving ? 'Saving safeguards…' : 'Acknowledge safeguards' }}
+          </button>
+        </fieldset>
+      </form>
+
+      <details
+        v-if="reviewCorpusAuditEvents.length > 0"
+        class="rounded-md border border-gray-700 p-4"
+      >
+        <summary class="cursor-pointer text-sm font-medium text-blue-300">
+          Review recent safeguard acknowledgements
+        </summary>
+        <ul class="mt-3 space-y-2 text-sm text-gray-300">
+          <li
+            v-for="event in reviewCorpusAuditEvents"
+            :key="event.eventId"
+          >
+            Administrator #{{ event.actorId }} acknowledged a {{ event.reviewRecordRetentionDays }}-day future review-record limit on {{ formatDate(event.occurredAt) }}.
+          </li>
+        </ul>
+      </details>
+    </section>
+
     <!-- Create New API Key Button -->
     <div class="flex justify-between items-center">
       <h3 class="text-lg font-medium">
@@ -402,8 +541,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import api from '@/api'
+import {
+  getPolicyCandidateCorrectionRepresentativeReviewCorpusControlPresentation,
+  normalizePolicyCandidateCorrectionRepresentativeReviewCorpusAuditEvents,
+  normalizePolicyCandidateCorrectionRepresentativeReviewCorpusControl,
+} from '@/utils/policyCandidateCorrectionRepresentativeReviewCorpusControlPresentation'
 
 const apiKeys = ref([])
 const loading = ref(false)
@@ -419,6 +563,20 @@ const error = ref(null)
 const status = ref(null)
 const editingKey = ref(null)
 const editingName = ref('')
+const reviewCorpusControl = ref(null)
+const reviewCorpusAuditEvents = ref([])
+const reviewCorpusLoading = ref(false)
+const reviewCorpusSaving = ref(false)
+const reviewCorpusError = ref(null)
+const reviewCorpusActionStatus = ref(null)
+const reviewCorpusAcknowledged = ref(false)
+const reviewRecordRetentionDays = ref(30)
+
+const reviewCorpusControlPresentation = computed(() => (
+  getPolicyCandidateCorrectionRepresentativeReviewCorpusControlPresentation(
+    reviewCorpusControl.value?.statusId
+  )
+))
 
 const newKey = ref({
   name: '',
@@ -427,7 +585,75 @@ const newKey = ref({
 
 onMounted(() => {
   loadApiKeys()
+  loadReviewCorpusControl()
 })
+
+const loadReviewCorpusControl = async () => {
+  reviewCorpusLoading.value = true
+  reviewCorpusError.value = null
+  try {
+    const [controlResponse, auditResponse] = await Promise.all([
+      api.getPolicyCandidateCorrectionReviewCorpusControlConfiguration(),
+      api.getPolicyCandidateCorrectionReviewCorpusAuditEvents(),
+    ])
+    const control = normalizePolicyCandidateCorrectionRepresentativeReviewCorpusControl(controlResponse)
+    const auditEvents = normalizePolicyCandidateCorrectionRepresentativeReviewCorpusAuditEvents(auditResponse)
+    if (!control || !auditEvents) {
+      throw new Error('Historic review-corpus safeguards returned an unexpected response.')
+    }
+
+    reviewCorpusControl.value = control
+    reviewCorpusAuditEvents.value = auditEvents
+    reviewRecordRetentionDays.value = control.configuration?.reviewRecordRetentionDays || 30
+  } catch (err) {
+    console.error('Failed to load historic review-corpus safeguards:', err)
+    reviewCorpusControl.value = null
+    reviewCorpusAuditEvents.value = []
+    reviewCorpusError.value = 'Unable to load historic review-corpus safeguards. No historic records are available.'
+  } finally {
+    reviewCorpusLoading.value = false
+  }
+}
+
+const acknowledgeReviewCorpusSafeguards = async () => {
+  if (!reviewCorpusControl.value || !reviewCorpusAcknowledged.value) return
+
+  reviewCorpusSaving.value = true
+  reviewCorpusError.value = null
+  reviewCorpusActionStatus.value = null
+  try {
+    const response = await api.acknowledgePolicyCandidateCorrectionReviewCorpusControl({
+      expected_revision: reviewCorpusControl.value.configuration?.revision || null,
+      acknowledged_safeguard_ids: [
+        'authorization',
+        'redaction',
+        'retention',
+        'operator_audit',
+      ],
+      review_record_retention_days: reviewRecordRetentionDays.value,
+    })
+    const control = normalizePolicyCandidateCorrectionRepresentativeReviewCorpusControl(response.data)
+    if (!control) {
+      throw new Error('Historic review-corpus safeguards returned an unexpected response.')
+    }
+
+    reviewCorpusControl.value = control
+    reviewCorpusAcknowledged.value = false
+    reviewCorpusActionStatus.value = 'Safeguards acknowledged. Historic record access remains disabled.'
+    const auditResponse = await api.getPolicyCandidateCorrectionReviewCorpusAuditEvents()
+    const auditEvents = normalizePolicyCandidateCorrectionRepresentativeReviewCorpusAuditEvents(auditResponse)
+    if (!auditEvents) {
+      throw new Error('Historic review-corpus audit events returned an unexpected response.')
+    }
+    reviewCorpusAuditEvents.value = auditEvents
+  } catch (err) {
+    console.error('Failed to acknowledge historic review-corpus safeguards:', err)
+    reviewCorpusError.value = err.response?.data?.error ||
+      'Unable to save safeguards. Refresh the page and try again.'
+  } finally {
+    reviewCorpusSaving.value = false
+  }
+}
 
 const loadApiKeys = async () => {
   loading.value = true

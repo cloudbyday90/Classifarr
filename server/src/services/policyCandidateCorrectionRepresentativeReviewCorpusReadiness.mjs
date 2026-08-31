@@ -6,6 +6,10 @@
 import {
   POLICY_CANDIDATE_CORRECTION_LONG_HORIZON_TREND_STATUS_IDS,
 } from './policyCandidateCorrectionLongHorizonTrend.mjs';
+import {
+  POLICY_CANDIDATE_CORRECTION_REPRESENTATIVE_REVIEW_FRAME,
+  POLICY_CANDIDATE_CORRECTION_REPRESENTATIVE_REVIEW_REQUIRED_SAFEGUARD_IDS,
+} from './policyCandidateCorrectionRepresentativeReviewCorpusVocabulary.mjs';
 
 export const POLICY_CANDIDATE_CORRECTION_REPRESENTATIVE_REVIEW_CORPUS_VERSION =
   'policy.candidate_correction_representative_review_corpus.v1';
@@ -15,20 +19,6 @@ export const POLICY_CANDIDATE_CORRECTION_REPRESENTATIVE_REVIEW_CORPUS_STATUS_IDS
   HISTORICAL_CORPUS_DESIGN_REQUIRED: 'historical_corpus_design_required',
 });
 
-const HISTORICAL_REVIEW_FRAME = Object.freeze({
-  periodCount: 2,
-  completedUtcDaysPerPeriod: 28,
-  strata: Object.freeze([
-    'score_margin_band',
-    'operator_selection_outcome',
-  ]),
-});
-const REQUIRED_SAFEGUARD_IDS = Object.freeze([
-  'authorization',
-  'redaction',
-  'retention',
-  'operator_audit',
-]);
 const TREND_STATUS_IDS = new Set(
   Object.values(POLICY_CANDIDATE_CORRECTION_LONG_HORIZON_TREND_STATUS_IDS),
 );
@@ -54,7 +44,11 @@ export function buildPolicyCandidateCorrectionRepresentativeReviewCorpusReadines
       ? POLICY_CANDIDATE_CORRECTION_REPRESENTATIVE_REVIEW_CORPUS_STATUS_IDS.HISTORICAL_CORPUS_DESIGN_REQUIRED
       : POLICY_CANDIDATE_CORRECTION_REPRESENTATIVE_REVIEW_CORPUS_STATUS_IDS.REVIEW_NOT_INDICATED,
     historicalRecordAccess: false,
-    reviewFrame: historicalReviewIsIndicated ? HISTORICAL_REVIEW_FRAME : null,
-    requiredSafeguardIds: historicalReviewIsIndicated ? REQUIRED_SAFEGUARD_IDS : Object.freeze([]),
+    reviewFrame: historicalReviewIsIndicated
+      ? POLICY_CANDIDATE_CORRECTION_REPRESENTATIVE_REVIEW_FRAME
+      : null,
+    requiredSafeguardIds: historicalReviewIsIndicated
+      ? POLICY_CANDIDATE_CORRECTION_REPRESENTATIVE_REVIEW_REQUIRED_SAFEGUARD_IDS
+      : Object.freeze([]),
   });
 }

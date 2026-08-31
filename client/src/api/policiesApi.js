@@ -29,6 +29,7 @@ import {
 import {
   normalizePolicyAuthoringProposalAdjustmentCommands,
 } from '@/utils/policyAuthoringProposalAdjustment'
+import policyReviewCorpusControlApi from './policyReviewCorpusControlApi'
 
 export function getPolicy(id) {
   return getDataRequest(`/policies/${id}`)
@@ -213,6 +214,7 @@ const policiesApi = {
   preflightPolicyPurposeCoverage,
   simulatePolicyCohort,
   previewPolicyDestinationCompetition,
+  ...policyReviewCorpusControlApi,
 }
 
 export default policiesApi

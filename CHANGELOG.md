@@ -34,6 +34,7 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - **Long-horizon correction trend** — Statistics now compares two server-defined adjacent 28-day aggregate periods, requiring representative readiness and comparable cohort composition before showing a sustained correction-review or low-signal pattern; it remains advisory and cannot tune or route media.
 - **Representative correction-review handoff** — A sustained, comparable 28-day correction signal now exposes one clear navigation link to the existing Needs Attention workflow, without selecting a record or triggering a policy, AI, RAG, learning, retry, or routing action.
 - **Historical review-corpus preflight** — Sustained correction signals now clearly distinguish current decision review from a future historical corpus, with a fixed sample-frame proposal and explicit authorization, redaction, retention, and operator-audit safeguards.
+- **Historic review-corpus control plane** — Administrators can now acknowledge the fixed future corpus purpose, safeguards, and retention limit through an automatically loaded Security Settings card, with revision protection and bounded recent audit history; historic records remain unavailable.
 
 ### Changed
 
@@ -75,6 +76,7 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - **Long-horizon correction boundary** — The 28-day trend uses only server-built completed periods and existing aggregate reads, exposes a compact allow-listed cohort result, and is re-derived by the client; it adds no identity, configuration, AI, RAG, policy, learning, retry, or routing authority.
 - **Representative review-handoff boundary** — The conditional handoff recognizes only the strict sustained-review status and navigates to one fixed existing Command Center anchor; it sends no request or filter and carries no media, policy, library, candidate, destination, actor, provider, prompt, RAG, configuration, or analytics identity.
 - **Historical review-corpus boundary** — The new v6 preflight derives only fixed content-free readiness from the sustained aggregate state, rejects historical-record access in both server and client contracts, and adds no query, storage, export, selection, AI, RAG, policy, learning, retry, or routing authority.
+- **Historic review-corpus control boundary** — The administrator-only control plane accepts only an exact acknowledgement contract, keeps response DTOs content-free and no-store, serializes writes with a transaction lock, and records only minimal append-only audit metadata; it cannot select, expose, or authorize historic records.
 
 - **Comparison-cap privacy boundary** — Coverage detection uses one server-only sentinel to identify omitted competitors; the sentinel, total active-policy count, configurations, identities, and routing authority remain unavailable to clients.
 - **Explanation privacy boundary** — Shared-eligibility explanations expose only allow-listed category labels and anonymous configuration counts after a bounded shared result; they never return rule values, competitor identities, item outcomes, AI state, or routing control.

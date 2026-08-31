@@ -38,10 +38,10 @@ tests, 75 server integration suites / 868 tests with one intentional skip, and
 271 client files / 3,860 tests. Lint, typecheck, production build, and Markdown
 lint also passed. The final security diff review is recorded with the commit.
 
-## Next Item
+## Follow-up
 
-The next high-value component is an **administrator-only corpus configuration
-and audit design**. It should define the sample manifest, authorization policy,
-purpose-limited review projection, retention/deletion enforcement, and the
-immutable operator decision/audit event. Only after those contracts exist
-should Classifarr add a historical record query or offline corpus evaluation.
+The administrator-only configuration and append-only audit control plane is
+now implemented. Its design and outcome are documented in
+[Review-Corpus Control Plane Design](policy-candidate-correction-review-corpus-control-plane-design.md)
+and
+[Review-Corpus Control Plane Outcome](policy-candidate-correction-review-corpus-control-plane-outcome.md).

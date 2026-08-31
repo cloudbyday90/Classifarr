@@ -18,8 +18,12 @@ import { registerPolicyNativeIntentReadinessSummaryRoutes } from './policiesRout
 import { registerPolicyWriteRoutes } from './policiesRoutePolicyWrite.mjs';
 import { registerPolicyPresetRoutes } from './policiesRoutePolicyPresets.mjs';
 import { registerPolicyEvaluationContextRoute } from './policiesRouteEvaluationContext.mjs';
+import {
+  registerPolicyCandidateCorrectionRepresentativeReviewCorpusControlRoutes,
+} from './policiesRouteRepresentativeReviewCorpusControl.mjs';
 
 export function registerPolicyCrudRoutes(router, deps) {
+  registerPolicyCandidateCorrectionRepresentativeReviewCorpusControlRoutes(router, deps);
   registerPolicyEvaluationContextRoute(router, deps);
   registerPolicyOperatorWorkflowReadRoutes(router, deps);
   registerPolicyOperatorWorkflowCustomIntentSignalRoutes(router, deps);

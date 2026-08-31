@@ -138,6 +138,16 @@ export const policyAuthoringProposalLimiterConfig = {
   skip: (_req) => process.env.NODE_ENV === 'test',
 };
 
+/** Representative historical-review corpus control acknowledgements (per IP, per 15 minutes). */
+export const policyCandidateCorrectionReviewCorpusControlLimiterConfig = {
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Too many review-corpus safeguard acknowledgements, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (_req) => process.env.NODE_ENV === 'test',
+};
+
 /** Settings — SSL connectivity test (per IP, per hour). */
 export const sslTestLimiterConfig = {
   windowMs: 60 * 60 * 1000,
