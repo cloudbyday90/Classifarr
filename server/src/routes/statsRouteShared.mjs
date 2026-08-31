@@ -7,6 +7,7 @@ import { registerCandidateBoundVerificationRemediationReadinessRoutes } from './
 import { registerOllamaVerificationRuntimeMismatchSummaryRoutes } from './statsRouteOllamaVerificationRuntimeMismatchSummary.mjs';
 import { registerOllamaVerificationCapabilityOutcomeHistoryRoutes } from './statsRouteOllamaVerificationCapabilityOutcomeHistory.mjs';
 import { registerRouteSafetyReadinessRoutes } from './statsRouteRouteSafetyReadiness.mjs';
+import { registerRouteSafetyMaintenanceHandoffRoutes } from './statsRouteRouteSafetyMaintenanceHandoff.mjs';
 import { registerPolicyStatsRoutes } from './statsRoutePolicies.mjs';
 import { registerMonitoringRoutes } from './statsRouteMonitoring.mjs';
 
@@ -22,6 +23,7 @@ export function createStatsRouter({ express, db, authenticateTokenOrApiKey, requ
   registerOllamaVerificationRuntimeMismatchSummaryRoutes(router, { db, requireAdmin, rateLimit });
   registerOllamaVerificationCapabilityOutcomeHistoryRoutes(router, { db, requireAdmin, rateLimit });
   registerRouteSafetyReadinessRoutes(router, { db, requireAdmin, rateLimit });
+  registerRouteSafetyMaintenanceHandoffRoutes(router, { db, requireAdmin, rateLimit });
   registerPolicyStatsRoutes(router, { db });
   registerMonitoringRoutes(router, { db });
   return router;

@@ -108,6 +108,15 @@ export const routeSafetyReadinessLimiterConfig = {
   legacyHeaders: false,
 };
 
+/** Route-safety aggregate policy-maintenance handoff reads (per IP, per 15 minutes). */
+export const routeSafetyMaintenanceHandoffLimiterConfig = {
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: 'Too many route-safety maintenance handoff requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+};
+
 /** Manual Ollama compatibility matrix diagnostics (per IP, per hour). */
 export const ollamaVerificationCompatibilityMatrixLimiterConfig = {
   windowMs: 60 * 60 * 1000,

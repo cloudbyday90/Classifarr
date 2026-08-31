@@ -666,6 +666,9 @@
         :last-updated-at="aiReadinessLastUpdatedAt"
         :auto-refresh-enabled="aiReadinessAutoRefreshEnabled"
       />
+      <RouteSafetyMaintenanceHandoff
+        :report="routeSafetyMaintenanceHandoff"
+      />
     </Card>
 
     <!-- Save Button -->
@@ -691,6 +694,7 @@ import Toggle from '@/components/common/Toggle.vue'
 import Spinner from '@/components/common/Spinner.vue'
 import PasswordInput from '@/components/common/PasswordInput.vue'
 import AiReadinessController from '@/components/settings/AiReadinessController.vue'
+import RouteSafetyMaintenanceHandoff from '@/components/settings/RouteSafetyMaintenanceHandoff.vue'
 import RouteSafetyReadinessSummary from '@/components/settings/RouteSafetyReadinessSummary.vue'
 import VerificationCapabilityChangeReceiptList from '@/components/settings/VerificationCapabilityChangeReceiptList.vue'
 import OllamaVerificationCapabilityOutcomeHistory from '@/components/settings/OllamaVerificationCapabilityOutcomeHistory.vue'
@@ -717,6 +721,7 @@ const loadingOllamaModels = ref(false)
 const loadingOllamaPreflight = ref(false)
 const loadingVerificationCapability = ref(false)
 const loadingRouteSafetyReadiness = ref(false)
+const loadingRouteSafetyMaintenanceHandoff = ref(false)
 const testingVerificationCapability = ref(false)
 const loadingVerificationCapabilityChangeReceipts = ref(false)
 const loadingOllamaVerificationRuntimeMismatchSummary = ref(false)
@@ -731,6 +736,7 @@ const ollamaPreflightState = ref({ ai: null, embedding: null })
 const usageStats = ref(null)
 const verificationCapability = ref(null)
 const routeSafetyReadiness = ref(null)
+const routeSafetyMaintenanceHandoff = ref(null)
 const verificationCapabilityChangeReceipts = ref(null)
 const ollamaVerificationRuntimeMismatchSummary = ref(null)
 const ollamaVerificationCapabilityOutcomeHistory = ref(null)
@@ -742,6 +748,7 @@ const aiReadinessAutoRefreshEnabled = ref(true)
 const aiReadinessDiagnosticsExpanded = ref(false)
 let verificationCapabilityRequestId = 0
 let routeSafetyReadinessRequestId = 0
+let routeSafetyMaintenanceHandoffRequestId = 0
 let verificationCapabilityChangeReceiptsRequestId = 0
 let ollamaVerificationRuntimeMismatchSummaryRequestId = 0
 let ollamaVerificationCapabilityOutcomeHistoryRequestId = 0
@@ -907,13 +914,41 @@ const loadRouteSafetyReadiness = async () => {
   }
 }
 
+// The maintenance handoff is a separate aggregate-only read. It deliberately
+// becomes eligible only after route-safety observations exist, and it cannot
+// select a policy, test a provider, mutate configuration, retry, or route.
+const loadRouteSafetyMaintenanceHandoff = async () => {
+  const requestId = ++routeSafetyMaintenanceHandoffRequestId
+  loadingRouteSafetyMaintenanceHandoff.value = true
+  try {
+    const report = await api.getRouteSafetyMaintenanceHandoff()
+    if (requestId === routeSafetyMaintenanceHandoffRequestId) {
+      routeSafetyMaintenanceHandoff.value = report
+    }
+    return report
+  } catch (_error) {
+    if (requestId === routeSafetyMaintenanceHandoffRequestId) {
+      routeSafetyMaintenanceHandoff.value = null
+    }
+    return null
+  } finally {
+    if (requestId === routeSafetyMaintenanceHandoffRequestId) {
+      loadingRouteSafetyMaintenanceHandoff.value = false
+    }
+  }
+}
+
 const loadAiReadiness = async () => {
   const [capability, routeSafety] = await Promise.all([
     loadVerificationCapability(),
     loadRouteSafetyReadiness(),
   ])
+  const routeSafetyObservationCount = Number(routeSafety?.observationCount)
+  const maintenanceHandoff = Number.isSafeInteger(routeSafetyObservationCount) && routeSafetyObservationCount > 0
+    ? await loadRouteSafetyMaintenanceHandoff()
+    : (routeSafetyMaintenanceHandoff.value = null)
 
-  return capability || routeSafety
+  return capability || routeSafety || maintenanceHandoff
 }
 
 const {

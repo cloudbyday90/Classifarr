@@ -29,6 +29,7 @@ vi.mock('@/api', () => ({
     getOllamaVerificationRuntimeMismatchSummary: vi.fn(),
     getOllamaVerificationCapabilityOutcomeHistory: vi.fn(),
     getRouteSafetyReadiness: vi.fn(),
+    getRouteSafetyMaintenanceHandoff: vi.fn(),
     getAIModels: vi.fn(),
     testAIConnection: vi.fn(),
     preflightAIVerificationConfig: vi.fn(),
@@ -144,6 +145,11 @@ describe('AI Settings', () => {
       primaryGates: [{ id: 'policy_confirmation_required', count: 2 }],
       status: { id: 'safeguards_observed' },
     })
+    api.getRouteSafetyMaintenanceHandoff.mockResolvedValue({
+      version: 'classification.route_safety_maintenance_handoff.v1',
+      status: { id: 'not_recommended' },
+      handoff: null,
+    })
     api.getLastOllamaPreflight.mockResolvedValue({ ai: null, embedding: null })
     api.runOllamaVerificationCompatibilityMatrix.mockResolvedValue({
       data: { stateId: 'completed', ollamaVersion: '0.12.4', outcomes: [] }
@@ -197,6 +203,7 @@ describe('AI Settings', () => {
     await flushPromises()
 
     expect(api.getRouteSafetyReadiness).toHaveBeenCalledTimes(1)
+    expect(api.getRouteSafetyMaintenanceHandoff).toHaveBeenCalledTimes(1)
     expect(wrapper.text()).toContain('Route safeguards observed')
     expect(wrapper.text()).toContain('Policy confirmation')
     expect(wrapper.text()).toContain('Destination selection')

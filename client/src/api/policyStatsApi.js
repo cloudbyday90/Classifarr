@@ -74,6 +74,10 @@ export function getRouteSafetyReadiness() {
   return getDataRequest('/stats/route-safety-readiness')
 }
 
+export function getRouteSafetyMaintenanceHandoff() {
+  return getDataRequest('/stats/route-safety-maintenance-handoff')
+}
+
 const policyStatsApi = {
   getPolicyStatsOverview,
   getPolicyStatsList,
@@ -89,6 +93,7 @@ const policyStatsApi = {
   getOllamaVerificationRuntimeMismatchSummary,
   getOllamaVerificationCapabilityOutcomeHistory,
   getRouteSafetyReadiness,
+  getRouteSafetyMaintenanceHandoff,
 }
 
 export default policyStatsApi
