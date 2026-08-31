@@ -65,11 +65,7 @@ Completed on 2026-08-31:
   `--no-cache`; the recreated Classifarr container became healthy and the
   local HTTP probe at `http://localhost:21324/` returned `200`.
 
-## Next Item
+## Follow-Up
 
-Build a synthetic route-safety matrix that combines a deterministic policy
-action with provider recovery, evidence quality, AI advisory, route provenance,
-and installation-wide confirmation gates. It is the highest-value follow-up:
-the new corpus can prove that an `automatic_candidate` score never bypasses a
-stronger safety gate, while still avoiding live media, libraries, AI/RAG, and
-policy writes.
+The route-safety matrix was completed in the follow-up [route-safety evidence
+outcome](policy-candidate-correction-policy-change-review-history-calibration-route-safety-evidence-outcome.md).

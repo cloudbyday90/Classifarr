@@ -1,0 +1,189 @@
+{
+  "version": "policy.candidate_correction_policy_change_calibration_route_safety_fixture_corpus.v1",
+  "fixtures": [
+    {
+      "id": "baseline-current-policy-auto",
+      "scenario": {
+        "providerRecoveryReviewRequired": false,
+        "manualEvidenceReviewRequired": false,
+        "aiAdvisory": false,
+        "policyAutoProvenance": "current",
+        "requireAllConfirmations": false,
+        "fallbackResult": false,
+        "lowConfidence": false,
+        "clarificationRequested": false
+      },
+      "expected": {
+        "automaticRouteAllowed": true,
+        "primaryGateId": null,
+        "blockingGateIds": []
+      }
+    },
+    {
+      "id": "provider-recovery-blocks-high-score",
+      "scenario": {
+        "providerRecoveryReviewRequired": true,
+        "manualEvidenceReviewRequired": false,
+        "aiAdvisory": false,
+        "policyAutoProvenance": "current",
+        "requireAllConfirmations": false,
+        "fallbackResult": false,
+        "lowConfidence": false,
+        "clarificationRequested": false
+      },
+      "expected": {
+        "automaticRouteAllowed": false,
+        "primaryGateId": "provider_recovery_review_required",
+        "blockingGateIds": ["provider_recovery_review_required"]
+      }
+    },
+    {
+      "id": "weak-evidence-blocks-high-score",
+      "scenario": {
+        "providerRecoveryReviewRequired": false,
+        "manualEvidenceReviewRequired": true,
+        "aiAdvisory": false,
+        "policyAutoProvenance": "current",
+        "requireAllConfirmations": false,
+        "fallbackResult": false,
+        "lowConfidence": false,
+        "clarificationRequested": false
+      },
+      "expected": {
+        "automaticRouteAllowed": false,
+        "primaryGateId": "manual_policy_evidence_review_required",
+        "blockingGateIds": ["manual_policy_evidence_review_required"]
+      }
+    },
+    {
+      "id": "ai-advisory-blocks-high-score",
+      "scenario": {
+        "providerRecoveryReviewRequired": false,
+        "manualEvidenceReviewRequired": false,
+        "aiAdvisory": true,
+        "policyAutoProvenance": "current",
+        "requireAllConfirmations": false,
+        "fallbackResult": false,
+        "lowConfidence": false,
+        "clarificationRequested": false
+      },
+      "expected": {
+        "automaticRouteAllowed": false,
+        "primaryGateId": "ai_advisory_cannot_route",
+        "blockingGateIds": ["ai_advisory_cannot_route"]
+      }
+    },
+    {
+      "id": "mismatched-provenance-blocks-high-score",
+      "scenario": {
+        "providerRecoveryReviewRequired": false,
+        "manualEvidenceReviewRequired": false,
+        "aiAdvisory": false,
+        "policyAutoProvenance": "mismatched_library",
+        "requireAllConfirmations": false,
+        "fallbackResult": false,
+        "lowConfidence": false,
+        "clarificationRequested": false
+      },
+      "expected": {
+        "automaticRouteAllowed": false,
+        "primaryGateId": "policy_auto_provenance_required",
+        "blockingGateIds": ["policy_auto_provenance_required"]
+      }
+    },
+    {
+      "id": "installation-confirmation-blocks-high-score",
+      "scenario": {
+        "providerRecoveryReviewRequired": false,
+        "manualEvidenceReviewRequired": false,
+        "aiAdvisory": false,
+        "policyAutoProvenance": "current",
+        "requireAllConfirmations": true,
+        "fallbackResult": false,
+        "lowConfidence": false,
+        "clarificationRequested": false
+      },
+      "expected": {
+        "automaticRouteAllowed": false,
+        "primaryGateId": "administrative_confirmation_required",
+        "blockingGateIds": ["administrative_confirmation_required"]
+      }
+    },
+    {
+      "id": "fallback-blocks-high-score",
+      "scenario": {
+        "providerRecoveryReviewRequired": false,
+        "manualEvidenceReviewRequired": false,
+        "aiAdvisory": false,
+        "policyAutoProvenance": "current",
+        "requireAllConfirmations": false,
+        "fallbackResult": true,
+        "lowConfidence": false,
+        "clarificationRequested": false
+      },
+      "expected": {
+        "automaticRouteAllowed": false,
+        "primaryGateId": "fallback_result_review_required",
+        "blockingGateIds": ["fallback_result_review_required"]
+      }
+    },
+    {
+      "id": "low-confidence-blocks-high-policy-score",
+      "scenario": {
+        "providerRecoveryReviewRequired": false,
+        "manualEvidenceReviewRequired": false,
+        "aiAdvisory": false,
+        "policyAutoProvenance": "current",
+        "requireAllConfirmations": false,
+        "fallbackResult": false,
+        "lowConfidence": true,
+        "clarificationRequested": false
+      },
+      "expected": {
+        "automaticRouteAllowed": false,
+        "primaryGateId": "low_confidence_review_required",
+        "blockingGateIds": ["low_confidence_review_required"]
+      }
+    },
+    {
+      "id": "clarification-blocks-high-score",
+      "scenario": {
+        "providerRecoveryReviewRequired": false,
+        "manualEvidenceReviewRequired": false,
+        "aiAdvisory": false,
+        "policyAutoProvenance": "current",
+        "requireAllConfirmations": false,
+        "fallbackResult": false,
+        "lowConfidence": false,
+        "clarificationRequested": true
+      },
+      "expected": {
+        "automaticRouteAllowed": false,
+        "primaryGateId": "clarification_requested",
+        "blockingGateIds": ["clarification_requested"]
+      }
+    },
+    {
+      "id": "provider-precedes-ai-and-installation-confirmation",
+      "scenario": {
+        "providerRecoveryReviewRequired": true,
+        "manualEvidenceReviewRequired": false,
+        "aiAdvisory": true,
+        "policyAutoProvenance": "current",
+        "requireAllConfirmations": true,
+        "fallbackResult": false,
+        "lowConfidence": false,
+        "clarificationRequested": false
+      },
+      "expected": {
+        "automaticRouteAllowed": false,
+        "primaryGateId": "provider_recovery_review_required",
+        "blockingGateIds": [
+          "provider_recovery_review_required",
+          "ai_advisory_cannot_route",
+          "administrative_confirmation_required"
+        ]
+      }
+    }
+  ]
+}

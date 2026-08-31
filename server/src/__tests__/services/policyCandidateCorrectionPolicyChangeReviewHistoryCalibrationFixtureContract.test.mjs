@@ -37,6 +37,7 @@ function buildFixture(overrides = {}) {
         'freeze_aggregate_snapshot',
         'run_checked_in_synthetic_fixture_suite',
         'compare_fixed_policy_bands',
+        'verify_route_safety_gates',
         'prepare_human_approval_packet',
       ],
     },

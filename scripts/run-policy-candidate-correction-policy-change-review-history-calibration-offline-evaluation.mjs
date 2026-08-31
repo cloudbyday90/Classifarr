@@ -16,6 +16,10 @@ import {
   evaluatePolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationBandFixtureCorpus,
   POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_CALIBRATION_BAND_OFFLINE_EVALUATION_STATUS_IDS,
 } from '../server/src/services/policyCandidateCorrectionPolicyChangeReviewHistoryCalibrationBandOfflineEvaluation.mjs';
+import {
+  evaluatePolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationRouteSafetyFixtureCorpus,
+  POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_CALIBRATION_ROUTE_SAFETY_OFFLINE_EVALUATION_STATUS_IDS,
+} from '../server/src/services/policyCandidateCorrectionPolicyChangeReviewHistoryCalibrationRouteSafetyOfflineEvaluation.mjs';
 
 const FIXTURE_CORPUS_URL = new URL(
   './fixtures/policy-candidate-correction-policy-change-review-history-calibration.fixtures.json',
@@ -25,15 +29,23 @@ const BAND_FIXTURE_CORPUS_URL = new URL(
   './fixtures/policy-candidate-correction-policy-change-review-history-calibration-bands.fixtures.json',
   import.meta.url,
 );
+const ROUTE_SAFETY_FIXTURE_CORPUS_URL = new URL(
+  './fixtures/policy-candidate-correction-policy-change-review-history-calibration-route-safety.fixtures.json',
+  import.meta.url,
+);
 
 async function main() {
   const corpus = JSON.parse(await readFile(FIXTURE_CORPUS_URL, 'utf8'));
   const bandCorpus = JSON.parse(await readFile(BAND_FIXTURE_CORPUS_URL, 'utf8'));
+  const routeSafetyCorpus = JSON.parse(await readFile(ROUTE_SAFETY_FIXTURE_CORPUS_URL, 'utf8'));
   const evaluation = evaluatePolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationFixtureCorpus(corpus);
   const bandEvaluation = evaluatePolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationBandFixtureCorpus(bandCorpus);
+  const routeSafetyEvaluation =
+    evaluatePolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationRouteSafetyFixtureCorpus(routeSafetyCorpus);
   const approvalPacket = buildPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationApprovalPacketReadModel({
     evaluation,
     bandEvaluation,
+    routeSafetyEvaluation,
   });
   const report = Object.freeze({
     version: 'policy.candidate_correction_policy_change_calibration_offline_evaluation_run.v1',
@@ -53,6 +65,14 @@ async function main() {
       validation: bandEvaluation.validation,
       summary: bandEvaluation.summary,
     }),
+    routeSafetyEvaluation: Object.freeze({
+      version: routeSafetyEvaluation.version,
+      statusId: routeSafetyEvaluation.statusId,
+      fixtureCorpusVersion: routeSafetyEvaluation.fixtureCorpusVersion,
+      routeSafetyVersion: routeSafetyEvaluation.routeSafetyVersion,
+      validation: routeSafetyEvaluation.validation,
+      summary: routeSafetyEvaluation.summary,
+    }),
     approvalPacket,
   });
 
@@ -61,6 +81,8 @@ async function main() {
       POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_CALIBRATION_OFFLINE_EVALUATION_STATUS_IDS.PASSED ||
       bandEvaluation.statusId !==
       POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_CALIBRATION_BAND_OFFLINE_EVALUATION_STATUS_IDS.PASSED ||
+      routeSafetyEvaluation.statusId !==
+      POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_CALIBRATION_ROUTE_SAFETY_OFFLINE_EVALUATION_STATUS_IDS.PASSED ||
       !approvalPacket.packetAvailable) {
     process.exitCode = 1;
   }

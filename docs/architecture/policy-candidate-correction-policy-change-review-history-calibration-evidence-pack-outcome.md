@@ -60,10 +60,9 @@ Completed on 2026-08-31:
   up -d --force-recreate --wait` left Classifarr healthy, and a local HTTP
   check returned `200`.
 
-## Next Item
+## Follow-Up
 
-The fixed-band specification and corpus were implemented in the follow-up
-[fixed-band calibration evidence outcome](policy-candidate-correction-policy-change-review-history-calibration-band-evidence-outcome.md).
-The next item is a synthetic route-safety matrix that proves an automatic score
-candidate still cannot bypass provider recovery, evidence, AI-advisory,
-provenance, or installation-wide confirmation gates.
+The fixed-band specification and corpus were implemented in the [fixed-band
+calibration evidence outcome](policy-candidate-correction-policy-change-review-history-calibration-band-evidence-outcome.md),
+and the route-safety matrix was completed in the [route-safety evidence
+outcome](policy-candidate-correction-policy-change-review-history-calibration-route-safety-evidence-outcome.md).

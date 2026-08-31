@@ -14,6 +14,9 @@ import {
 import {
   evaluatePolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationBandFixtureCorpus,
 } from '../../services/policyCandidateCorrectionPolicyChangeReviewHistoryCalibrationBandOfflineEvaluation.mjs';
+import {
+  evaluatePolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationRouteSafetyFixtureCorpus,
+} from '../../services/policyCandidateCorrectionPolicyChangeReviewHistoryCalibrationRouteSafetyOfflineEvaluation.mjs';
 
 function buildPassingEvaluation() {
   return evaluatePolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationFixtureCorpus({
@@ -48,6 +51,7 @@ function buildPassingEvaluation() {
                   'freeze_aggregate_snapshot',
                   'run_checked_in_synthetic_fixture_suite',
                   'compare_fixed_policy_bands',
+                  'verify_route_safety_gates',
                   'prepare_human_approval_packet',
                 ],
               },
@@ -77,11 +81,47 @@ function buildPassingBandEvaluation() {
   });
 }
 
+function buildRouteSafetyScenario(overrides = {}) {
+  return {
+    providerRecoveryReviewRequired: false,
+    manualEvidenceReviewRequired: false,
+    aiAdvisory: false,
+    policyAutoProvenance: 'current',
+    requireAllConfirmations: false,
+    fallbackResult: false,
+    lowConfidence: false,
+    clarificationRequested: false,
+    ...overrides,
+  };
+}
+
+function buildPassingRouteSafetyEvaluation() {
+  return evaluatePolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationRouteSafetyFixtureCorpus({
+    version: 'policy.candidate_correction_policy_change_calibration_route_safety_fixture_corpus.v1',
+    fixtures: [
+      ['route-safety-baseline', {}, true, null, []],
+      ['route-safety-provider', { providerRecoveryReviewRequired: true }, false, 'provider_recovery_review_required', ['provider_recovery_review_required']],
+      ['route-safety-evidence', { manualEvidenceReviewRequired: true }, false, 'manual_policy_evidence_review_required', ['manual_policy_evidence_review_required']],
+      ['route-safety-ai', { aiAdvisory: true }, false, 'ai_advisory_cannot_route', ['ai_advisory_cannot_route']],
+      ['route-safety-provenance', { policyAutoProvenance: 'mismatched_library' }, false, 'policy_auto_provenance_required', ['policy_auto_provenance_required']],
+      ['route-safety-confirmation', { requireAllConfirmations: true }, false, 'administrative_confirmation_required', ['administrative_confirmation_required']],
+      ['route-safety-fallback', { fallbackResult: true }, false, 'fallback_result_review_required', ['fallback_result_review_required']],
+      ['route-safety-confidence', { lowConfidence: true }, false, 'low_confidence_review_required', ['low_confidence_review_required']],
+      ['route-safety-clarification', { clarificationRequested: true }, false, 'clarification_requested', ['clarification_requested']],
+    ].map(([id, scenario, automaticRouteAllowed, primaryGateId, blockingGateIds]) => ({
+      id,
+      scenario: buildRouteSafetyScenario(scenario),
+      expected: { automaticRouteAllowed, primaryGateId, blockingGateIds },
+    })),
+  });
+}
+
 describe('policy-change calibration approval packet contract', () => {
   test('creates only a versioned, content-free human approval packet after a passed evaluation', () => {
     const result = buildPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationApprovalPacketReadModel({
       evaluation: buildPassingEvaluation(),
       bandEvaluation: buildPassingBandEvaluation(),
+      routeSafetyEvaluation: buildPassingRouteSafetyEvaluation(),
     });
 
     expect(result).toEqual(expect.objectContaining({
@@ -97,6 +137,8 @@ describe('policy-change calibration approval packet contract', () => {
         fixtureCount: 3,
         bandFixtureCount: 8,
         bandEvidenceRequired: true,
+        routeSafetyFixtureCount: 9,
+        routeSafetyEvidenceRequired: true,
         approvalRecorded: false,
       }),
     }));
@@ -106,6 +148,7 @@ describe('policy-change calibration approval packet contract', () => {
   test('does not produce a packet from a mismatched or authority-bearing evaluation', () => {
     const passingEvaluation = buildPassingEvaluation();
     const passingBandEvaluation = buildPassingBandEvaluation();
+    const passingRouteSafetyEvaluation = buildPassingRouteSafetyEvaluation();
     const mismatch = { ...passingEvaluation, statusId: 'expectation_mismatch' };
     const authorityBearing = {
       ...passingEvaluation,
@@ -122,6 +165,7 @@ describe('policy-change calibration approval packet contract', () => {
       expect(buildPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationApprovalPacketReadModel({
         evaluation,
         bandEvaluation: passingBandEvaluation,
+        routeSafetyEvaluation: passingRouteSafetyEvaluation,
       }))
         .toEqual(expect.objectContaining({
           statusId: 'offline_evaluation_not_ready',
@@ -133,6 +177,25 @@ describe('policy-change calibration approval packet contract', () => {
 
     expect(buildPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationApprovalPacketReadModel({
       evaluation: passingEvaluation,
+      bandEvaluation: passingBandEvaluation,
+    })).toEqual(expect.objectContaining({
+      statusId: 'offline_evaluation_not_ready',
+      packetAvailable: false,
+    }));
+
+    expect(buildPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationApprovalPacketReadModel({
+      evaluation: passingEvaluation,
+      bandEvaluation: passingBandEvaluation,
+      routeSafetyEvaluation: {
+        ...passingRouteSafetyEvaluation,
+        authority: {
+          ...passingRouteSafetyEvaluation.authority,
+          automaticActions: {
+            ...passingRouteSafetyEvaluation.authority.automaticActions,
+            routing: true,
+          },
+        },
+      },
     })).toEqual(expect.objectContaining({
       statusId: 'offline_evaluation_not_ready',
       packetAvailable: false,
