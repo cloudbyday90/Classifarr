@@ -9,6 +9,9 @@ import {
   acquirePolicyCandidateCorrectionPolicyChangeOutcomeObservationLock,
   deleteExpiredPolicyCandidateCorrectionPolicyChangeOutcomeObservation,
 } from './policyCandidateCorrectionPolicyChangeOutcomeObservationPersistence.mjs';
+import {
+  deleteExpiredPolicyCandidateCorrectionPolicyChangeDecisionRecord,
+} from './policyCandidateCorrectionPolicyChangeDecisionRecordPersistence.mjs';
 
 function normalizeNow(value) {
   const now = value instanceof Date ? new Date(value) : new Date(value);
@@ -22,6 +25,7 @@ export class PolicyCandidateCorrectionPolicyChangeOutcomeObservationRetentionSer
     logger = createLogger('PolicyChangeOutcomeObservationRetentionService'),
     persistence = {
       acquireLock: acquirePolicyCandidateCorrectionPolicyChangeOutcomeObservationLock,
+      deleteExpiredDecisionRecord: deleteExpiredPolicyCandidateCorrectionPolicyChangeDecisionRecord,
       deleteExpired: deleteExpiredPolicyCandidateCorrectionPolicyChangeOutcomeObservation,
     },
   } = {}) {
@@ -33,23 +37,35 @@ export class PolicyCandidateCorrectionPolicyChangeOutcomeObservationRetentionSer
   async cleanup({ now = new Date() } = {}) {
     const evaluatedAt = normalizeNow(now);
     if (typeof this.db?.withTransaction !== 'function') {
-      return Object.freeze({ statusId: 'transaction_boundary_required', deletedObservationCount: 0 });
+      return Object.freeze({
+        statusId: 'transaction_boundary_required',
+        deletedDecisionRecordCount: 0,
+        deletedObservationCount: 0,
+      });
     }
 
     try {
       const result = await this.db.withTransaction(async client => {
         await this.persistence.acquireLock({ client });
+        const deletedDecisionRecordCount = await this.persistence.deleteExpiredDecisionRecord({
+          dbClient: client,
+          now: evaluatedAt.toISOString(),
+        });
         const deletedObservationCount = await this.persistence.deleteExpired({
           dbClient: client,
           now: evaluatedAt.toISOString(),
         });
-        return Object.freeze({ statusId: 'completed', deletedObservationCount });
+        return Object.freeze({ statusId: 'completed', deletedDecisionRecordCount, deletedObservationCount });
       });
       this.logger.info('Policy-change outcome observation retention cleanup completed', result);
       return result;
     } catch (error) {
       this.logger.error('Policy-change outcome observation retention cleanup failed', { error: error.message });
-      return Object.freeze({ statusId: 'failed_rolled_back', deletedObservationCount: 0 });
+      return Object.freeze({
+        statusId: 'failed_rolled_back',
+        deletedDecisionRecordCount: 0,
+        deletedObservationCount: 0,
+      });
     }
   }
 }

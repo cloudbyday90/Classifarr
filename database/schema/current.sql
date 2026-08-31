@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-08-31T10:00:25.133Z
--- Latest Migration: 20260831_120000_add_policy_change_outcome_observation.sql
+-- Generated: 2026-08-31T10:52:27.317Z
+-- Latest Migration: 20260831_140000_add_policy_change_decision_record.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -4208,6 +4208,33 @@ CREATE SEQUENCE public.policy_backup_restore_verifications_id_seq
 --
 
 ALTER SEQUENCE public.policy_backup_restore_verifications_id_seq OWNED BY public.policy_backup_restore_verifications.id;
+
+
+--
+-- Name: policy_candidate_correction_policy_change_decision_records; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_candidate_correction_policy_change_decision_records (
+    control_key character varying(64) CONSTRAINT policy_candidate_correction_policy_change_control_key_not_null1 NOT NULL,
+    record_version smallint DEFAULT 1 CONSTRAINT policy_candidate_correction_policy_chan_record_version_not_null NOT NULL,
+    observation_hypothesis_id character varying(64) CONSTRAINT policy_candidate_correction__observation_hypothesis_id_not_null NOT NULL,
+    decision_id character varying(64) CONSTRAINT policy_candidate_correction_policy_change__decision_id_not_null NOT NULL,
+    rationale_id character varying(64) CONSTRAINT policy_candidate_correction_policy_change_rationale_id_not_null NOT NULL,
+    revision integer DEFAULT 1 CONSTRAINT policy_candidate_correction_policy_change_dec_revision_not_null NOT NULL,
+    created_by_actor_id integer CONSTRAINT policy_candidate_correction_polic_created_by_actor_id_not_null1 NOT NULL,
+    updated_by_actor_id integer CONSTRAINT policy_candidate_correction_policy_updated_by_actor_id_not_null NOT NULL,
+    created_at timestamp with time zone DEFAULT now() CONSTRAINT policy_candidate_correction_policy_change_d_created_at_not_null NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() CONSTRAINT policy_candidate_correction_policy_change_d_updated_at_not_null NOT NULL,
+    expires_at timestamp with time zone CONSTRAINT policy_candidate_correction_policy_change_d_expires_at_not_null NOT NULL,
+    CONSTRAINT policy_candidate_correction_policy_change_decision_actor_chk CHECK (((created_by_actor_id > 0) AND (updated_by_actor_id > 0))),
+    CONSTRAINT policy_candidate_correction_policy_change_decision_choice_chk CHECK (((decision_id)::text = ANY ((ARRAY['retain_current_policy'::character varying, 'investigate_policy_evidence'::character varying, 'prepare_manual_policy_change'::character varying])::text[]))),
+    CONSTRAINT policy_candidate_correction_policy_change_decision_hypothesis_c CHECK (((observation_hypothesis_id)::text ~ '^pco_[A-Za-z0-9_-]{32}$'::text)),
+    CONSTRAINT policy_candidate_correction_policy_change_decision_key_chk CHECK (((control_key)::text = 'policy_change_decision_record'::text)),
+    CONSTRAINT policy_candidate_correction_policy_change_decision_rationale_ch CHECK (((rationale_id)::text = ANY ((ARRAY['outcome_improved'::character varying, 'outcome_unchanged_or_inconclusive'::character varying, 'outcome_degraded'::character varying, 'requires_contextual_review'::character varying])::text[]))),
+    CONSTRAINT policy_candidate_correction_policy_change_decision_revision_chk CHECK ((revision > 0)),
+    CONSTRAINT policy_candidate_correction_policy_change_decision_timestamps_c CHECK (((created_at <= updated_at) AND (updated_at < expires_at))),
+    CONSTRAINT policy_candidate_correction_policy_change_decision_version_chk CHECK ((record_version = 1))
+);
 
 
 --
@@ -8560,6 +8587,22 @@ ALTER TABLE ONLY public.policy_authorized_outcome_source_event_receipts
 
 ALTER TABLE ONLY public.policy_backup_restore_verifications
     ADD CONSTRAINT policy_backup_restore_verifications_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_candidate_correction_policy_change_decision_records policy_candidate_correction_polic_observation_hypothesis_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_candidate_correction_policy_change_decision_records
+    ADD CONSTRAINT policy_candidate_correction_polic_observation_hypothesis_id_key UNIQUE (observation_hypothesis_id);
+
+
+--
+-- Name: policy_candidate_correction_policy_change_decision_records policy_candidate_correction_policy_change_decision_records_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_candidate_correction_policy_change_decision_records
+    ADD CONSTRAINT policy_candidate_correction_policy_change_decision_records_pkey PRIMARY KEY (control_key);
 
 
 --
@@ -14430,6 +14473,7 @@ FROM unnest(ARRAY[
     '20260830_110000_add_policy_candidate_correction_analytics_metrics_index.sql',
     '20260830_120000_add_policy_candidate_correction_review_corpus_control_plane.sql',
     '20260830_130000_add_policy_candidate_correction_review_projection.sql',
-    '20260831_120000_add_policy_change_outcome_observation.sql'
+    '20260831_120000_add_policy_change_outcome_observation.sql',
+    '20260831_140000_add_policy_change_decision_record.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

@@ -198,6 +198,26 @@ export const policyCandidateCorrectionPolicyChangeOutcomeObservationCreateLimite
   skip: (_req) => process.env.NODE_ENV === 'test',
 };
 
+/** Aggregate policy-change decision-record reads (per IP, per 15 minutes). */
+export const policyCandidateCorrectionPolicyChangeDecisionRecordReadLimiterConfig = {
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: 'Too many policy-change decision record requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (_req) => process.env.NODE_ENV === 'test',
+};
+
+/** Explicit reviewed policy-change decision writes (per IP, per 15 minutes). */
+export const policyCandidateCorrectionPolicyChangeDecisionRecordMutationLimiterConfig = {
+  windowMs: 15 * 60 * 1000,
+  max: 6,
+  message: { error: 'Too many policy-change decision record updates, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (_req) => process.env.NODE_ENV === 'test',
+};
+
 /** Settings — SSL connectivity test (per IP, per hour). */
 export const sslTestLimiterConfig = {
   windowMs: 60 * 60 * 1000,

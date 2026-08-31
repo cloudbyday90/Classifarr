@@ -17,6 +17,9 @@ import {
   upsertPolicyCandidateCorrectionPolicyChangeOutcomeObservation,
 } from './policyCandidateCorrectionPolicyChangeOutcomeObservationPersistence.mjs';
 import {
+  deleteExpiredPolicyCandidateCorrectionPolicyChangeDecisionRecord,
+} from './policyCandidateCorrectionPolicyChangeDecisionRecordPersistence.mjs';
+import {
   buildPolicyCandidateCorrectionAnalyticsMetricsReport,
 } from './policyCandidateCorrectionAnalyticsMetrics.mjs';
 import {
@@ -90,6 +93,7 @@ function createPersistence() {
     acquireLock: acquirePolicyCandidateCorrectionPolicyChangeOutcomeObservationLock,
     findRecentReceipt: findRecentPolicyCandidateCorrectionPolicyChangeReceipt,
     readObservation: readPolicyCandidateCorrectionPolicyChangeOutcomeObservation,
+    deleteExpiredDecisionRecord: deleteExpiredPolicyCandidateCorrectionPolicyChangeDecisionRecord,
     upsertObservation: upsertPolicyCandidateCorrectionPolicyChangeOutcomeObservation,
   });
 }
@@ -205,6 +209,15 @@ export function createPolicyCandidateCorrectionPolicyChangeOutcomeObservationSer
 
       const receipt = await findRecentReceipt({ dbClient: client, actorId: normalizedActorId, now: startedAt });
       if (!receipt) throw new PolicyCandidateCorrectionPolicyChangeOutcomeObservationReceiptRequiredError();
+
+      // A prior decision has the same expiry as the old observation. Remove it
+      // inside the replacement transaction so a new observation cannot inherit
+      // or be blocked by that prior bounded conclusion before daily retention
+      // has run.
+      await persistence.deleteExpiredDecisionRecord({
+        dbClient: client,
+        now: startedAt.toISOString(),
+      });
 
       const windows = buildPolicyCandidateCorrectionPolicyChangeOutcomeObservationWindows({ now: startedAt });
       const baselineSummary = await loadSummary({ dbClient: client, window: windows.baselineWindow });

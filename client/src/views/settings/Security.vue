@@ -778,6 +778,10 @@
       </template>
     </section>
 
+    <PolicyChangeDecisionReview
+      :outcome-observation="policyChangeOutcomeObservation"
+    />
+
     <!-- Create New API Key Button -->
     <div class="flex justify-between items-center">
       <h3 class="text-lg font-medium">
@@ -1165,6 +1169,7 @@
 <script setup>
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import api from '@/api'
+import PolicyChangeDecisionReview from '@/components/settings/PolicyChangeDecisionReview.vue'
 import {
   getPolicyCandidateCorrectionRepresentativeReviewCorpusControlPresentation,
   normalizePolicyCandidateCorrectionRepresentativeReviewCorpusAuditEvents,

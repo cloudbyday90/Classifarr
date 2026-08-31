@@ -43,6 +43,7 @@ function createHarness({ existingObservation = null, receipt = {
   const persistence = {
     acquireLock: jest.fn().mockResolvedValue(undefined),
     readObservation: jest.fn().mockResolvedValue(existingObservation),
+    deleteExpiredDecisionRecord: jest.fn().mockResolvedValue(0),
     findRecentReceipt: jest.fn().mockResolvedValue(receipt),
     upsertObservation: jest.fn().mockResolvedValue(observationRow()),
   };
@@ -83,6 +84,9 @@ describe('policy-change outcome observation service', () => {
     expect(result).toEqual(expect.objectContaining({ operationId: 'observation_started', statusId: 'observing' }));
     expect(JSON.stringify(result)).not.toContain('sourceReceiptId');
     expect(JSON.stringify(result)).not.toContain('policyId');
+    expect(persistence.deleteExpiredDecisionRecord).toHaveBeenCalledWith(expect.objectContaining({
+      now: '2026-08-01T12:00:00.000Z',
+    }));
   });
 
   test('requires a recent approved native receipt instead of accepting a caller-selected policy', async () => {

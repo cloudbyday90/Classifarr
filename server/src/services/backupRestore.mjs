@@ -30,8 +30,14 @@ import {
 
 const logger = createLogger('BackupRestore');
 
+/** An outcome-linked decision cannot remain after its operational observation. */
+export async function clearPolicyChangeDecisionRecordForRestore(client) {
+  await client.query('DELETE FROM policy_candidate_correction_policy_change_decision_records');
+}
+
 /** An operational outcome baseline cannot survive any configuration restore. */
 export async function clearPolicyChangeOutcomeObservationForRestore(client) {
+  await clearPolicyChangeDecisionRecordForRestore(client);
   await client.query('DELETE FROM policy_candidate_correction_policy_change_outcome_observations');
 }
 

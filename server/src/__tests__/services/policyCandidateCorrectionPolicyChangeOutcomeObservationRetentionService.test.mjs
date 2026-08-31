@@ -12,6 +12,9 @@ function createHarness({ fail = false } = {}) {
   const client = { query: jest.fn() };
   const persistence = {
     acquireLock: jest.fn().mockResolvedValue(undefined),
+    deleteExpiredDecisionRecord: fail
+      ? jest.fn().mockRejectedValue(new Error('database unavailable'))
+      : jest.fn().mockResolvedValue(1),
     deleteExpired: fail
       ? jest.fn().mockRejectedValue(new Error('database unavailable'))
       : jest.fn().mockResolvedValue(1),
@@ -35,9 +38,14 @@ describe('policy-change outcome observation retention service', () => {
 
     await expect(service.cleanup({ now: '2026-10-01T03:19:00.000Z' })).resolves.toEqual({
       statusId: 'completed',
+      deletedDecisionRecordCount: 1,
       deletedObservationCount: 1,
     });
     expect(persistence.acquireLock).toHaveBeenCalledWith({ client: expect.any(Object) });
+    expect(persistence.deleteExpiredDecisionRecord).toHaveBeenCalledWith({
+      dbClient: expect.any(Object),
+      now: '2026-10-01T03:19:00.000Z',
+    });
     expect(persistence.deleteExpired).toHaveBeenCalledWith({
       dbClient: expect.any(Object),
       now: '2026-10-01T03:19:00.000Z',
@@ -49,6 +57,7 @@ describe('policy-change outcome observation retention service', () => {
 
     await expect(service.cleanup()).resolves.toEqual({
       statusId: 'failed_rolled_back',
+      deletedDecisionRecordCount: 0,
       deletedObservationCount: 0,
     });
     expect(logger.error).toHaveBeenCalledWith(

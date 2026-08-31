@@ -30,12 +30,16 @@ import {
 import {
   registerPolicyCandidateCorrectionPolicyChangeOutcomeObservationRoutes,
 } from './policiesRoutePolicyChangeOutcomeObservation.mjs';
+import {
+  registerPolicyCandidateCorrectionPolicyChangeDecisionRecordRoutes,
+} from './policiesRoutePolicyChangeDecisionRecord.mjs';
 
 export function registerPolicyCrudRoutes(router, deps) {
   registerPolicyCandidateCorrectionRepresentativeReviewCorpusControlRoutes(router, deps);
   registerPolicyCandidateCorrectionRepresentativeReviewProjectionRoutes(router, deps);
   registerPolicyCandidateCorrectionRepresentativeReviewEvaluationReportRoutes(router, deps);
   registerPolicyCandidateCorrectionPolicyChangeOutcomeObservationRoutes(router, deps);
+  registerPolicyCandidateCorrectionPolicyChangeDecisionRecordRoutes(router, deps);
   registerPolicyEvaluationContextRoute(router, deps);
   registerPolicyOperatorWorkflowReadRoutes(router, deps);
   registerPolicyOperatorWorkflowCustomIntentSignalRoutes(router, deps);
