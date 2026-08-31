@@ -21,9 +21,13 @@ import { registerPolicyEvaluationContextRoute } from './policiesRouteEvaluationC
 import {
   registerPolicyCandidateCorrectionRepresentativeReviewCorpusControlRoutes,
 } from './policiesRouteRepresentativeReviewCorpusControl.mjs';
+import {
+  registerPolicyCandidateCorrectionRepresentativeReviewProjectionRoutes,
+} from './policiesRouteRepresentativeReviewProjection.mjs';
 
 export function registerPolicyCrudRoutes(router, deps) {
   registerPolicyCandidateCorrectionRepresentativeReviewCorpusControlRoutes(router, deps);
+  registerPolicyCandidateCorrectionRepresentativeReviewProjectionRoutes(router, deps);
   registerPolicyEvaluationContextRoute(router, deps);
   registerPolicyOperatorWorkflowReadRoutes(router, deps);
   registerPolicyOperatorWorkflowCustomIntentSignalRoutes(router, deps);

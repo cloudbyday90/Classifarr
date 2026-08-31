@@ -128,6 +128,9 @@ class SchedulerService {
         // startup mutation.
         this.schedule('native-intent-change-receipt-retention-cleanup', '17 3 * * *', () => this.runPolicyNativeIntentChangeReceiptRetentionCleanup());
 
+        // Daily deletion of expired, redacted representative-review projections.
+        this.schedule('policy-candidate-correction-review-projection-retention-cleanup', '18 3 * * *', () => this.runPolicyCandidateCorrectionRepresentativeReviewProjectionRetentionCleanup());
+
         // Daily cleanup of stale awaiting_decision rows (4 AM)
         this.schedule('stale-awaiting-cleanup', '0 4 * * *', () => this.cleanupStaleAwaitingDecisions(), DB_ADVISORY_LOCKS.STALE_CLEANUP);
 
@@ -220,6 +223,13 @@ class SchedulerService {
      */
     async runPolicyNativeIntentChangeReceiptRetentionCleanup() {
         return schedulerRetentionService.runPolicyNativeIntentChangeReceiptRetentionCleanup();
+    }
+
+    /**
+     * Daily deletion of expired redacted representative-review projections.
+     */
+    async runPolicyCandidateCorrectionRepresentativeReviewProjectionRetentionCleanup() {
+        return schedulerRetentionService.runPolicyCandidateCorrectionRepresentativeReviewProjectionRetentionCleanup();
     }
 
     /**

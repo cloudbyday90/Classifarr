@@ -84,7 +84,7 @@ describe('representative review-corpus control contract', () => {
     expect(required).toEqual(expect.objectContaining({
       statusId: POLICY_CANDIDATE_CORRECTION_REPRESENTATIVE_REVIEW_CORPUS_CONTROL_STATUS_IDS.CONFIGURATION_REQUIRED,
       historicalRecordAccess: false,
-      reviewProjectionStatusId: 'not_implemented',
+      reviewProjectionStatusId: 'redacted_snapshot_available',
     }));
 
     const acknowledged = buildPolicyCandidateCorrectionRepresentativeReviewCorpusControlReadModel({

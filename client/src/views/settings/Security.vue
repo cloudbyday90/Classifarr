@@ -156,6 +156,177 @@
       </details>
     </section>
 
+    <section
+      class="bg-gray-800 rounded-lg border border-gray-700 p-5 space-y-4"
+      aria-labelledby="review-projection-heading"
+    >
+      <div>
+        <h3
+          id="review-projection-heading"
+          class="text-lg font-medium"
+        >
+          Redacted Policy Evaluation Snapshot
+        </h3>
+        <p class="mt-1 text-sm text-gray-400">
+          A fixed representative sample for offline policy evaluation. It is read-only and never supplies AI, RAG, policy, or routing authority.
+        </p>
+      </div>
+
+      <div
+        class="rounded-md border border-gray-700 bg-gray-900/40 p-4"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        <template v-if="reviewProjectionPresentation">
+          <p
+            class="font-medium"
+            :class="reviewProjectionPresentation.statusClass"
+          >
+            {{ reviewProjectionPresentation.heading }}
+          </p>
+          <p class="mt-1 text-sm text-gray-300">
+            {{ reviewProjectionPresentation.message }}
+          </p>
+          <p
+            v-if="reviewProjectionActionStatus"
+            class="mt-2 text-sm text-green-400"
+          >
+            {{ reviewProjectionActionStatus }}
+          </p>
+        </template>
+        <p
+          v-else-if="reviewProjectionLoading"
+          class="text-sm text-gray-400"
+        >
+          Checking for a redacted evaluation snapshot…
+        </p>
+        <p
+          v-else
+          class="text-sm text-amber-300"
+        >
+          The redacted evaluation snapshot is temporarily unavailable.
+        </p>
+      </div>
+
+      <p
+        v-if="reviewProjectionError"
+        class="rounded-md bg-red-900/30 p-3 text-sm text-red-300"
+        role="alert"
+      >
+        {{ reviewProjectionError }}
+      </p>
+
+      <button
+        v-if="reviewProjection?.statusId === 'projection_not_created'"
+        type="button"
+        :disabled="reviewProjectionCreating"
+        class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-600"
+        @click="createReviewProjection"
+      >
+        {{ reviewProjectionCreating ? 'Creating redacted snapshot…' : 'Create redacted snapshot' }}
+      </button>
+
+      <template v-if="reviewProjection?.projection">
+        <dl class="grid gap-3 text-sm sm:grid-cols-3">
+          <div class="rounded-md border border-gray-700 p-3">
+            <dt class="text-xs font-medium uppercase tracking-wide text-gray-400">
+              Snapshot created
+            </dt>
+            <dd class="mt-1 text-gray-200">
+              {{ formatDate(reviewProjection.projection.createdAt) }}
+            </dd>
+          </div>
+          <div class="rounded-md border border-gray-700 p-3">
+            <dt class="text-xs font-medium uppercase tracking-wide text-gray-400">
+              Expires
+            </dt>
+            <dd class="mt-1 text-gray-200">
+              {{ formatDate(reviewProjection.projection.expiresAt) }}
+            </dd>
+          </div>
+          <div class="rounded-md border border-gray-700 p-3">
+            <dt class="text-xs font-medium uppercase tracking-wide text-gray-400">
+              Sample size
+            </dt>
+            <dd class="mt-1 text-gray-200">
+              {{ reviewProjection.projection.itemCount }} signal {{ reviewProjection.projection.itemCount === 1 ? 'row' : 'rows' }}
+            </dd>
+          </div>
+        </dl>
+
+        <p
+          v-if="reviewProjection.projection.itemCount === 0"
+          class="rounded-md border border-gray-700 p-4 text-sm text-gray-300"
+        >
+          No eligible attributed corrections were available in the fixed two-period evaluation frame. The snapshot will expire automatically.
+        </p>
+
+        <details
+          v-else
+          class="rounded-md border border-gray-700 p-4"
+        >
+          <summary class="cursor-pointer text-sm font-medium text-blue-300">
+            Review {{ reviewProjection.projection.itemCount }} redacted signal rows
+          </summary>
+          <div class="mt-4 overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <caption class="mb-3 text-left text-sm text-gray-400">
+                Server-selected, redacted policy-signal categories. This table has no media, library, destination, AI, provider, prompt, response, or RAG fields.
+              </caption>
+              <thead class="border-b border-gray-700 text-xs uppercase tracking-wide text-gray-400">
+                <tr>
+                  <th
+                    scope="col"
+                    class="px-3 py-2 font-medium"
+                  >
+                    Period
+                  </th>
+                  <th
+                    scope="col"
+                    class="px-3 py-2 font-medium"
+                  >
+                    Score margin
+                  </th>
+                  <th
+                    scope="col"
+                    class="px-3 py-2 font-medium"
+                  >
+                    Operator outcome
+                  </th>
+                  <th
+                    scope="col"
+                    class="px-3 py-2 font-medium"
+                  >
+                    Evidence states
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-700">
+                <tr
+                  v-for="row in reviewProjectionRows"
+                  :key="row.ordinal"
+                >
+                  <td class="px-3 py-3 text-gray-200">
+                    {{ row.periodLabel }}
+                  </td>
+                  <td class="px-3 py-3 text-gray-200">
+                    {{ row.marginLabel }}
+                  </td>
+                  <td class="px-3 py-3 text-gray-200">
+                    {{ row.selectionLabel }}
+                  </td>
+                  <td class="px-3 py-3 text-gray-300">
+                    {{ row.evidenceLabel }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+      </template>
+    </section>
+
     <!-- Create New API Key Button -->
     <div class="flex justify-between items-center">
       <h3 class="text-lg font-medium">
@@ -548,6 +719,11 @@ import {
   normalizePolicyCandidateCorrectionRepresentativeReviewCorpusAuditEvents,
   normalizePolicyCandidateCorrectionRepresentativeReviewCorpusControl,
 } from '@/utils/policyCandidateCorrectionRepresentativeReviewCorpusControlPresentation'
+import {
+  getPolicyCandidateCorrectionRepresentativeReviewProjectionPresentation,
+  normalizePolicyCandidateCorrectionRepresentativeReviewProjection,
+  presentPolicyCandidateCorrectionRepresentativeReviewProjectionItem,
+} from '@/utils/policyCandidateCorrectionRepresentativeReviewProjectionPresentation'
 
 const apiKeys = ref([])
 const loading = ref(false)
@@ -571,11 +747,26 @@ const reviewCorpusError = ref(null)
 const reviewCorpusActionStatus = ref(null)
 const reviewCorpusAcknowledged = ref(false)
 const reviewRecordRetentionDays = ref(30)
+const reviewProjection = ref(null)
+const reviewProjectionLoading = ref(false)
+const reviewProjectionCreating = ref(false)
+const reviewProjectionError = ref(null)
+const reviewProjectionActionStatus = ref(null)
 
 const reviewCorpusControlPresentation = computed(() => (
   getPolicyCandidateCorrectionRepresentativeReviewCorpusControlPresentation(
     reviewCorpusControl.value?.statusId
   )
+))
+const reviewProjectionPresentation = computed(() => (
+  getPolicyCandidateCorrectionRepresentativeReviewProjectionPresentation(
+    reviewProjection.value?.statusId
+  )
+))
+const reviewProjectionRows = computed(() => (
+  reviewProjection.value?.projection?.items
+    ?.map(presentPolicyCandidateCorrectionRepresentativeReviewProjectionItem)
+    .filter(Boolean) || []
 ))
 
 const newKey = ref({
@@ -586,6 +777,7 @@ const newKey = ref({
 onMounted(() => {
   loadApiKeys()
   loadReviewCorpusControl()
+  loadReviewProjection()
 })
 
 const loadReviewCorpusControl = async () => {
@@ -646,12 +838,55 @@ const acknowledgeReviewCorpusSafeguards = async () => {
       throw new Error('Historic review-corpus audit events returned an unexpected response.')
     }
     reviewCorpusAuditEvents.value = auditEvents
+    await loadReviewProjection()
   } catch (err) {
     console.error('Failed to acknowledge historic review-corpus safeguards:', err)
     reviewCorpusError.value = err.response?.data?.error ||
       'Unable to save safeguards. Refresh the page and try again.'
   } finally {
     reviewCorpusSaving.value = false
+  }
+}
+
+const loadReviewProjection = async () => {
+  reviewProjectionLoading.value = true
+  reviewProjectionError.value = null
+  try {
+    const response = await api.getPolicyCandidateCorrectionReviewCorpusProjection()
+    const projection = normalizePolicyCandidateCorrectionRepresentativeReviewProjection(response)
+    if (!projection) {
+      throw new Error('Redacted evaluation snapshot returned an unexpected response.')
+    }
+    reviewProjection.value = projection
+  } catch (err) {
+    console.error('Failed to load redacted evaluation snapshot:', err)
+    reviewProjection.value = null
+    reviewProjectionError.value = 'Unable to load the redacted evaluation snapshot. No source historic records were exposed.'
+  } finally {
+    reviewProjectionLoading.value = false
+  }
+}
+
+const createReviewProjection = async () => {
+  reviewProjectionCreating.value = true
+  reviewProjectionError.value = null
+  reviewProjectionActionStatus.value = null
+  try {
+    const response = await api.createPolicyCandidateCorrectionReviewCorpusProjection()
+    const projection = normalizePolicyCandidateCorrectionRepresentativeReviewProjection(response.data)
+    if (!projection) {
+      throw new Error('Redacted evaluation snapshot returned an unexpected response.')
+    }
+    reviewProjection.value = projection
+    reviewProjectionActionStatus.value = projection.projection?.itemCount === 0
+      ? 'The redacted snapshot was created, but no eligible correction rows were found.'
+      : 'The redacted snapshot was created. It will expire automatically.'
+  } catch (err) {
+    console.error('Failed to create redacted evaluation snapshot:', err)
+    reviewProjectionError.value = err.response?.data?.error ||
+      'Unable to create the redacted evaluation snapshot. No policy or routing change was made.'
+  } finally {
+    reviewProjectionCreating.value = false
   }
 }
 

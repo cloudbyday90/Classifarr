@@ -189,7 +189,7 @@ export function buildPolicyCandidateCorrectionRepresentativeReviewCorpusControlR
     purposeId: POLICY_CANDIDATE_CORRECTION_REPRESENTATIVE_REVIEW_PURPOSE_ID,
     reviewFrame: POLICY_CANDIDATE_CORRECTION_REPRESENTATIVE_REVIEW_FRAME,
     requiredSafeguardIds: POLICY_CANDIDATE_CORRECTION_REPRESENTATIVE_REVIEW_REQUIRED_SAFEGUARD_IDS,
-    reviewProjectionStatusId: 'not_implemented',
+    reviewProjectionStatusId: 'redacted_snapshot_available',
     auditTrail: Object.freeze({ appendOnly: true, recentEventsAvailable: true }),
     configuration: acknowledged
       ? Object.freeze({

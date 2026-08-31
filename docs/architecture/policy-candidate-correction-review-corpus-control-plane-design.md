@@ -77,10 +77,11 @@ The control plane must always preserve these invariants:
 5. A configuration acknowledgement is not a corpus, selection permit, or
    record-level authorization decision.
 
-The future implementation still needs a separate record-level route with
-per-record authorization, a redacted projection, retention/deletion jobs, and
-audit access policies. This change deliberately cannot be reused as that
-route.
+The separate redacted evaluation projection, retention/deletion job, and
+minimal access-audit policy are implemented by the successor design:
+[Redacted Review Projection Design](policy-candidate-correction-redacted-review-projection-design.md).
+The control plane remains distinct from that projection and cannot grant raw
+source-record access.
 
 ## Accessibility and Hands-Off Behavior
 

@@ -30,7 +30,7 @@ function control(overrides = {}) {
       strata: ['score_margin_band', 'operator_selection_outcome'],
     },
     requiredSafeguardIds: SAFEGUARDS,
-    reviewProjectionStatusId: 'not_implemented',
+    reviewProjectionStatusId: 'redacted_snapshot_available',
     auditTrail: { appendOnly: true, recentEventsAvailable: true },
     configuration: {
       revision: REVISION,

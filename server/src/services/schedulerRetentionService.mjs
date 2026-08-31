@@ -29,6 +29,9 @@ import {
 import {
     policyNativeIntentChangeReceiptRetentionService as defaultPolicyNativeIntentChangeReceiptRetentionService,
 } from './policyNativeIntentChangeReceiptRetentionService.mjs';
+import {
+    policyCandidateCorrectionRepresentativeReviewProjectionRetentionService as defaultPolicyCandidateCorrectionRepresentativeReviewProjectionRetentionService,
+} from './policyCandidateCorrectionRepresentativeReviewProjectionRetentionService.mjs';
 
 const ERROR_LOG_BATCH_SIZE = 1000;
 
@@ -52,6 +55,9 @@ export class SchedulerRetentionService {
         this.policyNativeIntentChangeReceiptRetentionService =
             deps.policyNativeIntentChangeReceiptRetentionService
             || defaultPolicyNativeIntentChangeReceiptRetentionService;
+        this.policyCandidateCorrectionRepresentativeReviewProjectionRetentionService =
+            deps.policyCandidateCorrectionRepresentativeReviewProjectionRetentionService
+            || defaultPolicyCandidateCorrectionRepresentativeReviewProjectionRetentionService;
     }
 
     async _runCleanupTask(label, task) {
@@ -160,6 +166,10 @@ export class SchedulerRetentionService {
 
     async runPolicyNativeIntentChangeReceiptRetentionCleanup() {
         return this.policyNativeIntentChangeReceiptRetentionService.cleanup();
+    }
+
+    async runPolicyCandidateCorrectionRepresentativeReviewProjectionRetentionCleanup() {
+        return this.policyCandidateCorrectionRepresentativeReviewProjectionRetentionService.cleanup();
     }
 }
 

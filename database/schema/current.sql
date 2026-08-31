@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-08-31T00:09:47.751Z
--- Latest Migration: 20260830_120000_add_policy_candidate_correction_review_corpus_control_plane.sql
+-- Generated: 2026-08-31T01:01:36.916Z
+-- Latest Migration: 20260830_130000_add_policy_candidate_correction_review_projection.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -253,6 +253,19 @@ CREATE FUNCTION public.guard_policy_candidate_correction_review_corpus_audit_eve
     AS $$
 BEGIN
     RAISE EXCEPTION 'Representative review-corpus audit events are append-only';
+END;
+$$;
+
+
+--
+-- Name: guard_policy_candidate_correction_review_projection_audit_event(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.guard_policy_candidate_correction_review_projection_audit_event() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    RAISE EXCEPTION 'Representative review-projection audit events are append-only';
 END;
 $$;
 
@@ -4265,6 +4278,96 @@ CREATE TABLE public.policy_candidate_correction_review_corpus_controls (
 
 
 --
+-- Name: policy_candidate_correction_review_projection_audit_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_candidate_correction_review_projection_audit_events (
+    id bigint CONSTRAINT policy_candidate_correction_review_projection_audit_id_not_null NOT NULL,
+    event_version smallint DEFAULT 1 CONSTRAINT policy_candidate_correction_review_proje_event_version_not_null NOT NULL,
+    action_id character varying(32) CONSTRAINT policy_candidate_correction_review_projectio_action_id_not_null NOT NULL,
+    actor_id integer,
+    projection_created_at timestamp with time zone CONSTRAINT policy_candidate_correction_revi_projection_created_at_not_null NOT NULL,
+    configuration_revision character(64) CONSTRAINT policy_candidate_correction_re_configuration_revision_not_null3 NOT NULL,
+    item_count smallint CONSTRAINT policy_candidate_correction_review_project_item_count_not_null1 NOT NULL,
+    occurred_at timestamp with time zone DEFAULT now() CONSTRAINT policy_candidate_correction_review_project_occurred_at_not_null NOT NULL,
+    CONSTRAINT policy_candidate_correction_review_projection_audit_events_acti CHECK (((action_id)::text = ANY (ARRAY[('projection_created'::character varying)::text, ('projection_viewed'::character varying)::text, ('projection_expired'::character varying)::text]))),
+    CONSTRAINT policy_candidate_correction_review_projection_audit_events_acto CHECK (((actor_id IS NULL) OR (actor_id > 0))),
+    CONSTRAINT policy_candidate_correction_review_projection_audit_events_expi CHECK (((((action_id)::text = 'projection_expired'::text) AND (actor_id IS NULL)) OR (((action_id)::text <> 'projection_expired'::text) AND (actor_id IS NOT NULL)))),
+    CONSTRAINT policy_candidate_correction_review_projection_audit_events_item CHECK (((item_count >= 0) AND (item_count <= 160))),
+    CONSTRAINT policy_candidate_correction_review_projection_audit_events_revi CHECK ((configuration_revision ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT policy_candidate_correction_review_projection_audit_events_vers CHECK ((event_version = 1))
+);
+
+
+--
+-- Name: policy_candidate_correction_review_projection_audit_even_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.policy_candidate_correction_review_projection_audit_even_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: policy_candidate_correction_review_projection_audit_even_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.policy_candidate_correction_review_projection_audit_even_id_seq OWNED BY public.policy_candidate_correction_review_projection_audit_events.id;
+
+
+--
+-- Name: policy_candidate_correction_review_projection_items; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_candidate_correction_review_projection_items (
+    snapshot_id character(64) CONSTRAINT policy_candidate_correction_review_projec_snapshot_id_not_null1 NOT NULL,
+    ordinal smallint CONSTRAINT policy_candidate_correction_review_projection__ordinal_not_null NOT NULL,
+    period_id character varying(16) CONSTRAINT policy_candidate_correction_review_projectio_period_id_not_null NOT NULL,
+    score_margin_band_id character varying(16) CONSTRAINT policy_candidate_correction_revie_score_margin_band_id_not_null NOT NULL,
+    selection_status_id character varying(40) CONSTRAINT policy_candidate_correction_review_selection_status_id_not_null NOT NULL,
+    evidence_source_states jsonb CONSTRAINT policy_candidate_correction_rev_evidence_source_states_not_null NOT NULL,
+    CONSTRAINT policy_candidate_correction_review_projection_items_evidence_ch CHECK (((jsonb_typeof(evidence_source_states) = 'array'::text) AND (jsonb_array_length(evidence_source_states) = 5))),
+    CONSTRAINT policy_candidate_correction_review_projection_items_margin_chk CHECK (((score_margin_band_id)::text = ANY (ARRAY[('0_to_4'::character varying)::text, ('5_to_14'::character varying)::text, ('15_to_29'::character varying)::text, ('30_or_more'::character varying)::text]))),
+    CONSTRAINT policy_candidate_correction_review_projection_items_ordinal_chk CHECK (((ordinal >= 1) AND (ordinal <= 160))),
+    CONSTRAINT policy_candidate_correction_review_projection_items_period_chk CHECK (((period_id)::text = ANY (ARRAY[('previous'::character varying)::text, ('current'::character varying)::text]))),
+    CONSTRAINT policy_candidate_correction_review_projection_items_selection_c CHECK (((selection_status_id)::text = ANY (ARRAY[('confirmed_candidate'::character varying)::text, ('changed_to_candidate'::character varying)::text, ('changed_outside_candidates'::character varying)::text, ('routed_not_applicable'::character varying)::text])))
+);
+
+
+--
+-- Name: policy_candidate_correction_review_projections; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_candidate_correction_review_projections (
+    snapshot_id character(64) CONSTRAINT policy_candidate_correction_review_project_snapshot_id_not_null NOT NULL,
+    projection_version smallint DEFAULT 1 CONSTRAINT policy_candidate_correction_review__projection_version_not_null NOT NULL,
+    purpose_id character varying(96) CONSTRAINT policy_candidate_correction_review_projecti_purpose_id_not_null NOT NULL,
+    configuration_revision character(64) CONSTRAINT policy_candidate_correction_re_configuration_revision_not_null2 NOT NULL,
+    previous_window_start_at timestamp with time zone CONSTRAINT policy_candidate_correction_r_previous_window_start_at_not_null NOT NULL,
+    previous_window_end_at timestamp with time zone CONSTRAINT policy_candidate_correction_rev_previous_window_end_at_not_null NOT NULL,
+    current_window_start_at timestamp with time zone CONSTRAINT policy_candidate_correction_re_current_window_start_at_not_null NOT NULL,
+    current_window_end_at timestamp with time zone CONSTRAINT policy_candidate_correction_revi_current_window_end_at_not_null NOT NULL,
+    sample_per_stratum smallint DEFAULT 5 CONSTRAINT policy_candidate_correction_review__sample_per_stratum_not_null NOT NULL,
+    item_count smallint DEFAULT 0 CONSTRAINT policy_candidate_correction_review_projecti_item_count_not_null NOT NULL,
+    created_by_actor_id integer CONSTRAINT policy_candidate_correction_review_created_by_actor_id_not_null NOT NULL,
+    created_at timestamp with time zone DEFAULT now() CONSTRAINT policy_candidate_correction_review_projecti_created_at_not_null NOT NULL,
+    expires_at timestamp with time zone CONSTRAINT policy_candidate_correction_review_projecti_expires_at_not_null NOT NULL,
+    CONSTRAINT policy_candidate_correction_review_projections_actor_chk CHECK ((created_by_actor_id > 0)),
+    CONSTRAINT policy_candidate_correction_review_projections_expiry_chk CHECK ((created_at < expires_at)),
+    CONSTRAINT policy_candidate_correction_review_projections_item_count_chk CHECK (((item_count >= 0) AND (item_count <= 160))),
+    CONSTRAINT policy_candidate_correction_review_projections_purpose_chk CHECK (((purpose_id)::text = 'representative_historical_correction_review'::text)),
+    CONSTRAINT policy_candidate_correction_review_projections_revision_chk CHECK ((configuration_revision ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT policy_candidate_correction_review_projections_sample_chk CHECK (((sample_per_stratum >= 1) AND (sample_per_stratum <= 5))),
+    CONSTRAINT policy_candidate_correction_review_projections_snapshot_id_chk CHECK ((snapshot_id ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT policy_candidate_correction_review_projections_version_chk CHECK ((projection_version = 1)),
+    CONSTRAINT policy_candidate_correction_review_projections_windows_chk CHECK (((previous_window_start_at < previous_window_end_at) AND (previous_window_end_at = current_window_start_at) AND (current_window_start_at < current_window_end_at)))
+);
+
+
+--
 -- Name: policy_change_log; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -7329,6 +7432,13 @@ ALTER TABLE ONLY public.policy_candidate_correction_review_corpus_audit_events A
 
 
 --
+-- Name: policy_candidate_correction_review_projection_audit_events id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_candidate_correction_review_projection_audit_events ALTER COLUMN id SET DEFAULT nextval('public.policy_candidate_correction_review_projection_audit_even_id_seq'::regclass);
+
+
+--
 -- Name: policy_change_log id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -8431,6 +8541,30 @@ ALTER TABLE ONLY public.policy_candidate_correction_review_corpus_audit_events
 
 ALTER TABLE ONLY public.policy_candidate_correction_review_corpus_controls
     ADD CONSTRAINT policy_candidate_correction_review_corpus_controls_pkey PRIMARY KEY (control_key);
+
+
+--
+-- Name: policy_candidate_correction_review_projection_audit_events policy_candidate_correction_review_projection_audit_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_candidate_correction_review_projection_audit_events
+    ADD CONSTRAINT policy_candidate_correction_review_projection_audit_events_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_candidate_correction_review_projection_items policy_candidate_correction_review_projection_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_candidate_correction_review_projection_items
+    ADD CONSTRAINT policy_candidate_correction_review_projection_items_pkey PRIMARY KEY (snapshot_id, ordinal);
+
+
+--
+-- Name: policy_candidate_correction_review_projections policy_candidate_correction_review_projections_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_candidate_correction_review_projections
+    ADD CONSTRAINT policy_candidate_correction_review_projections_pkey PRIMARY KEY (snapshot_id);
 
 
 --
@@ -10160,6 +10294,20 @@ CREATE INDEX idx_policy_candidate_correction_review_corpus_audit_events_rece ON 
 
 
 --
+-- Name: idx_policy_candidate_correction_review_projection_audit_events_; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_candidate_correction_review_projection_audit_events_ ON public.policy_candidate_correction_review_projection_audit_events USING btree (occurred_at DESC, id DESC);
+
+
+--
+-- Name: idx_policy_candidate_correction_review_projections_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_candidate_correction_review_projections_active ON public.policy_candidate_correction_review_projections USING btree (configuration_revision, expires_at DESC, created_at DESC);
+
+
+--
 -- Name: idx_policy_change_log_date; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -11077,6 +11225,13 @@ CREATE TRIGGER policy_candidate_correction_review_corpus_audit_event_mutation_ B
 
 
 --
+-- Name: policy_candidate_correction_review_projection_audit_events policy_candidate_correction_review_projection_audit_event_mutat; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER policy_candidate_correction_review_projection_audit_event_mutat BEFORE DELETE OR UPDATE ON public.policy_candidate_correction_review_projection_audit_events FOR EACH ROW EXECUTE FUNCTION public.guard_policy_candidate_correction_review_projection_audit_event();
+
+
+--
 -- Name: policy_identity_evidence_admissions policy_identity_evidence_admission_mutation_guard; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -11648,6 +11803,14 @@ ALTER TABLE ONLY public.policy_authoring_proposals
 
 ALTER TABLE ONLY public.policy_authoring_proposals
     ADD CONSTRAINT policy_authoring_proposals_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
+
+
+--
+-- Name: policy_candidate_correction_review_projection_items policy_candidate_correction_review_projection__snapshot_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_candidate_correction_review_projection_items
+    ADD CONSTRAINT policy_candidate_correction_review_projection__snapshot_id_fkey FOREIGN KEY (snapshot_id) REFERENCES public.policy_candidate_correction_review_projections(snapshot_id) ON DELETE CASCADE;
 
 
 --
@@ -14214,6 +14377,7 @@ FROM unnest(ARRAY[
     '20260829_110000_add_ollama_verification_capability_outcome_history.sql',
     '20260830_100000_add_current_library_candidate_retrieval_metrics_index.sql',
     '20260830_110000_add_policy_candidate_correction_analytics_metrics_index.sql',
-    '20260830_120000_add_policy_candidate_correction_review_corpus_control_plane.sql'
+    '20260830_120000_add_policy_candidate_correction_review_corpus_control_plane.sql',
+    '20260830_130000_add_policy_candidate_correction_review_projection.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

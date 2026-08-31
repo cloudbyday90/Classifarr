@@ -72,7 +72,7 @@ export function normalizePolicyCandidateCorrectionRepresentativeReviewCorpusCont
   if (!source || source.version !== CONTROL_VERSION || source.historicalRecordAccess !== false ||
       source.purposeId !== PURPOSE_ID || !hasExpectedReviewFrame(source.reviewFrame) ||
       !hasExactArray(source.requiredSafeguardIds, REQUIRED_SAFEGUARD_IDS) ||
-      source.reviewProjectionStatusId !== 'not_implemented' ||
+      source.reviewProjectionStatusId !== 'redacted_snapshot_available' ||
       source.auditTrail?.appendOnly !== true || source.auditTrail?.recentEventsAvailable !== true) {
     return null
   }
@@ -134,7 +134,7 @@ export function getPolicyCandidateCorrectionRepresentativeReviewCorpusControlPre
   if (statusId === STATUS_IDS.CONFIGURATION_ACKNOWLEDGED) {
     return Object.freeze({
       heading: 'Historic review corpus safeguards acknowledged',
-      message: 'The future review contract is documented. Historic records remain unavailable until a separate redacted projection is implemented and authorized.',
+      message: 'The safeguards are active. Administrators can create and inspect a separate server-redacted evaluation snapshot; source historic records remain unavailable.',
       statusClass: 'text-green-400',
     })
   }

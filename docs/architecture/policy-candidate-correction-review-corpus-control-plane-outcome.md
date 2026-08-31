@@ -58,9 +58,7 @@ component introduces durable control-plane state.
 
 ## Next Item
 
-The next high-value component is a **redacted historical review projection
-design and offline evaluation harness**. It should first specify the exact
-per-record authorization check, fixed redacted fields, deletion workflow,
-sampling manifest, and audit-read policy. Only after those contracts are
-implemented and evaluated offline should any historical record reach a human
-review surface.
+The successor redacted snapshot is documented in
+[Redacted Review Projection Outcome](policy-candidate-correction-redacted-review-projection-outcome.md).
+Its next item is an aggregate-only offline evaluation report; source historic
+records still do not reach a human review surface.

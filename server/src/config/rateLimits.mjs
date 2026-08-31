@@ -148,6 +148,26 @@ export const policyCandidateCorrectionReviewCorpusControlLimiterConfig = {
   skip: (_req) => process.env.NODE_ENV === 'test',
 };
 
+/** Redacted representative review-projection reads (per IP, per 15 minutes). */
+export const policyCandidateCorrectionReviewProjectionReadLimiterConfig = {
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: 'Too many review-projection requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (_req) => process.env.NODE_ENV === 'test',
+};
+
+/** Redacted representative review-projection creation (per IP, per 15 minutes). */
+export const policyCandidateCorrectionReviewProjectionCreateLimiterConfig = {
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Too many review-projection creation requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (_req) => process.env.NODE_ENV === 'test',
+};
+
 /** Settings — SSL connectivity test (per IP, per hour). */
 export const sslTestLimiterConfig = {
   windowMs: 60 * 60 * 1000,
