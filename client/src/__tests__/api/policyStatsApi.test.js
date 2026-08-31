@@ -38,6 +38,7 @@ import {
   getPolicyCandidateCorrectionAnalyticsMetrics,
   getOllamaVerificationRuntimeMismatchSummary,
   getOllamaVerificationCapabilityOutcomeHistory,
+  getRouteSafetyReadiness,
 } from '../../api/policyStatsApi'
 
 describe('policyStatsApi', () => {
@@ -129,5 +130,13 @@ describe('policyStatsApi', () => {
     await getOllamaVerificationCapabilityOutcomeHistory()
 
     expect(mockGetDataRequest).toHaveBeenCalledWith('/stats/ollama-verification-capability-outcomes')
+  })
+
+  it('getRouteSafetyReadiness uses the protected fixed aggregate endpoint without caller dimensions', async () => {
+    mockGetDataRequest.mockResolvedValueOnce({})
+
+    await getRouteSafetyReadiness()
+
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/stats/route-safety-readiness')
   })
 })

@@ -70,6 +70,10 @@ export function getOllamaVerificationCapabilityOutcomeHistory() {
   return getDataRequest('/stats/ollama-verification-capability-outcomes')
 }
 
+export function getRouteSafetyReadiness() {
+  return getDataRequest('/stats/route-safety-readiness')
+}
+
 const policyStatsApi = {
   getPolicyStatsOverview,
   getPolicyStatsList,
@@ -84,6 +88,7 @@ const policyStatsApi = {
   getPolicyCandidateCorrectionAnalyticsMetrics,
   getOllamaVerificationRuntimeMismatchSummary,
   getOllamaVerificationCapabilityOutcomeHistory,
+  getRouteSafetyReadiness,
 }
 
 export default policyStatsApi

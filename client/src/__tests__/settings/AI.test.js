@@ -28,6 +28,7 @@ vi.mock('@/api', () => ({
     getAIVerificationCapabilityChangeReceipts: vi.fn(),
     getOllamaVerificationRuntimeMismatchSummary: vi.fn(),
     getOllamaVerificationCapabilityOutcomeHistory: vi.fn(),
+    getRouteSafetyReadiness: vi.fn(),
     getAIModels: vi.fn(),
     testAIConnection: vi.fn(),
     preflightAIVerificationConfig: vi.fn(),
@@ -136,6 +137,13 @@ describe('AI Settings', () => {
       },
       outcomes: []
     })
+    api.getRouteSafetyReadiness.mockResolvedValue({
+      version: 'classification.route_safety_readiness.v1',
+      window: { days: 7 },
+      observationCount: 2,
+      primaryGates: [{ id: 'policy_confirmation_required', count: 2 }],
+      status: { id: 'safeguards_observed' },
+    })
     api.getLastOllamaPreflight.mockResolvedValue({ ai: null, embedding: null })
     api.runOllamaVerificationCompatibilityMatrix.mockResolvedValue({
       data: { stateId: 'completed', ollamaVersion: '0.12.4', outcomes: [] }
@@ -168,6 +176,34 @@ describe('AI Settings', () => {
     expect(wrapper.text()).not.toContain('private-model-name')
     expect(wrapper.text()).not.toContain('private-host.local')
     expect(wrapper.text()).not.toContain('private provider failure')
+  })
+
+  it('automatically refreshes a content-free route-safety summary with saved AI readiness', async () => {
+    api.getRouteSafetyReadiness.mockResolvedValue({
+      version: 'classification.route_safety_readiness.v1',
+      window: { days: 7 },
+      observationCount: 5,
+      primaryGates: [
+        { id: 'policy_confirmation_required', count: 3 },
+        { id: 'policy_destination_selection_required', count: 2 },
+        { id: 'unknown_gate', count: 99, label: 'Untrusted label' },
+      ],
+      status: { id: 'safeguards_observed', message: 'Untrusted server message' },
+      title: 'Private media title',
+      provider: 'Private provider',
+    })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(api.getRouteSafetyReadiness).toHaveBeenCalledTimes(1)
+    expect(wrapper.text()).toContain('Route safeguards observed')
+    expect(wrapper.text()).toContain('Policy confirmation')
+    expect(wrapper.text()).toContain('Destination selection')
+    expect(wrapper.text()).not.toContain('Untrusted label')
+    expect(wrapper.text()).not.toContain('Untrusted server message')
+    expect(wrapper.text()).not.toContain('Private media title')
+    expect(wrapper.text()).not.toContain('Private provider')
   })
 
   it('renders only aggregate saved-test outcomes and refreshes them after a test', async () => {

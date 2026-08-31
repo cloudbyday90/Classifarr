@@ -658,6 +658,14 @@
           </div>
         </template>
       </AiReadinessController>
+
+      <RouteSafetyReadinessSummary
+        class="mt-4"
+        :report="routeSafetyReadiness"
+        :loading="loadingRouteSafetyReadiness"
+        :last-updated-at="aiReadinessLastUpdatedAt"
+        :auto-refresh-enabled="aiReadinessAutoRefreshEnabled"
+      />
     </Card>
 
     <!-- Save Button -->
@@ -683,6 +691,7 @@ import Toggle from '@/components/common/Toggle.vue'
 import Spinner from '@/components/common/Spinner.vue'
 import PasswordInput from '@/components/common/PasswordInput.vue'
 import AiReadinessController from '@/components/settings/AiReadinessController.vue'
+import RouteSafetyReadinessSummary from '@/components/settings/RouteSafetyReadinessSummary.vue'
 import VerificationCapabilityChangeReceiptList from '@/components/settings/VerificationCapabilityChangeReceiptList.vue'
 import OllamaVerificationCapabilityOutcomeHistory from '@/components/settings/OllamaVerificationCapabilityOutcomeHistory.vue'
 import OllamaVerificationCompatibilityMatrix from '@/components/settings/OllamaVerificationCompatibilityMatrix.vue'
@@ -707,6 +716,7 @@ const loadingModels = ref(false)
 const loadingOllamaModels = ref(false)
 const loadingOllamaPreflight = ref(false)
 const loadingVerificationCapability = ref(false)
+const loadingRouteSafetyReadiness = ref(false)
 const testingVerificationCapability = ref(false)
 const loadingVerificationCapabilityChangeReceipts = ref(false)
 const loadingOllamaVerificationRuntimeMismatchSummary = ref(false)
@@ -720,6 +730,7 @@ const ollamaModels = ref([])
 const ollamaPreflightState = ref({ ai: null, embedding: null })
 const usageStats = ref(null)
 const verificationCapability = ref(null)
+const routeSafetyReadiness = ref(null)
 const verificationCapabilityChangeReceipts = ref(null)
 const ollamaVerificationRuntimeMismatchSummary = ref(null)
 const ollamaVerificationCapabilityOutcomeHistory = ref(null)
@@ -730,6 +741,7 @@ const verificationSaveStatus = ref(null)
 const aiReadinessAutoRefreshEnabled = ref(true)
 const aiReadinessDiagnosticsExpanded = ref(false)
 let verificationCapabilityRequestId = 0
+let routeSafetyReadinessRequestId = 0
 let verificationCapabilityChangeReceiptsRequestId = 0
 let ollamaVerificationRuntimeMismatchSummaryRequestId = 0
 let ollamaVerificationCapabilityOutcomeHistoryRequestId = 0
@@ -871,6 +883,39 @@ const loadVerificationCapability = async () => {
   }
 }
 
+// This read is intentionally paired with saved-capability refreshes: both are
+// bounded, read-only, and server-owned. It does not test a provider or change
+// a policy, retry, route, or media record.
+const loadRouteSafetyReadiness = async () => {
+  const requestId = ++routeSafetyReadinessRequestId
+  loadingRouteSafetyReadiness.value = true
+  try {
+    const report = await api.getRouteSafetyReadiness()
+    if (requestId === routeSafetyReadinessRequestId) {
+      routeSafetyReadiness.value = report
+    }
+    return report
+  } catch (_error) {
+    if (requestId === routeSafetyReadinessRequestId) {
+      routeSafetyReadiness.value = null
+    }
+    return null
+  } finally {
+    if (requestId === routeSafetyReadinessRequestId) {
+      loadingRouteSafetyReadiness.value = false
+    }
+  }
+}
+
+const loadAiReadiness = async () => {
+  const [capability, routeSafety] = await Promise.all([
+    loadVerificationCapability(),
+    loadRouteSafetyReadiness(),
+  ])
+
+  return capability || routeSafety
+}
+
 const {
   isRefreshing: isRefreshingAiReadiness,
   lastUpdatedAt: aiReadinessLastUpdatedAt,
@@ -878,13 +923,13 @@ const {
   refreshReadiness: refreshAiReadiness,
 } = useAiReadinessAutoRefresh({
   autoRefreshEnabled: aiReadinessAutoRefreshEnabled,
-  refresh: loadVerificationCapability,
+  refresh: loadAiReadiness,
 })
 
 const refreshVerificationCapability = async () => {
   const refreshed = await refreshAiReadiness()
   if (!refreshed) {
-    toast.warning('Current verification capability could not be refreshed.')
+    toast.warning('Current AI and route-safety readiness could not be refreshed.')
   }
 }
 

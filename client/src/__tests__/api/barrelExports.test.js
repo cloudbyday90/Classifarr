@@ -266,6 +266,7 @@ describe('api/index.js barrel export validation', () => {
       expectFunction('getCurrentLibraryCandidateRetrievalMetrics')
       expectFunction('getPolicyCandidateContrastiveOutcomeMetrics')
       expectFunction('getPolicyCandidateCorrectionAnalyticsMetrics')
+      expectFunction('getRouteSafetyReadiness')
     })
 
     it('exposes patternStatsApi functions', () => {

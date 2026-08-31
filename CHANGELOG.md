@@ -11,6 +11,7 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Route-safety readiness** — AI Settings now automatically summarizes the three most frequent deterministic primary route safeguards from a fixed completed UTC-day aggregate, keeping provider capability separate from policy/routing follow-up.
 - **Offline fixed-band calibration** — A versioned synthetic default-band corpus now verifies manual, selection, confirmation, and automatic-candidate boundaries before the calibration review packet can be prepared; it remains offline and human-gated.
 - **Bounded candidate adjudication** — Ambiguous policy selections can now receive an AI advisory comparison of two or three server-selected eligible destinations, using observed library-profile and relevant historical evidence while retaining operator confirmation.
 - **Current-library candidate retrieval** — Candidate adjudication now uses a bounded read-only lookup over the synchronized current library inventory, recognizing exact identifiers, title/year, and plain-text catalog matches without changing routing authority.
@@ -71,6 +72,7 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Security
 
+- **Route-safety readiness boundary** — The administrator-only, no-store, rate-limited aggregate uses a fixed completed window and gate allow-list, exposes no media, library, policy, provider, prompt, response, or actor data, and cannot call AI/RAG or change policy, learning, retry, or routing behavior.
 - **Offline fixed-band evidence boundary** — The fixed-path corpus pins the versioned default baseline, rejects unknown or authority-bearing data, reports only aggregate results, and cannot read live configuration, invoke AI/RAG, alter policy, or route media.
 - **Offline route-safety evidence boundary** — The fixed matrix permits only bounded synthetic gate controls, exercises the existing server-owned safety resolver, returns aggregate-only results, and has no API, storage, provider, AI/RAG, policy, retry, approval, or routing authority.
 - **AI readiness refresh boundary** — Automatic AI Settings refreshes call only the existing administrator-authorized saved-capability read at a visible-page bound; they cannot probe providers, discover models, write settings, route media, or expose raw scheduled-preflight errors.

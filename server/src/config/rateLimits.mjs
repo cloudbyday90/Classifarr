@@ -99,6 +99,15 @@ export const ollamaVerificationCapabilityOutcomeHistoryLimiterConfig = {
   legacyHeaders: false,
 };
 
+/** Route-safety aggregate readiness reads (per IP, per 15 minutes). */
+export const routeSafetyReadinessLimiterConfig = {
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: 'Too many route-safety readiness requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+};
+
 /** Manual Ollama compatibility matrix diagnostics (per IP, per hour). */
 export const ollamaVerificationCompatibilityMatrixLimiterConfig = {
   windowMs: 60 * 60 * 1000,
