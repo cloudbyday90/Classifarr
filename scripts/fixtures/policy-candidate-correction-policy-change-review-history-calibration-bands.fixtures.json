@@ -1,0 +1,56 @@
+{
+  "version": "policy.candidate_correction_policy_change_calibration_band_fixture_corpus.v1",
+  "specification": {
+    "version": "policy.candidate_decision_band_specification.v1",
+    "selectionMinimum": 40,
+    "confirmationMinimum": 60,
+    "automaticMinimum": 85
+  },
+  "fixtures": [
+    {
+      "id": "manual-floor",
+      "score": 0,
+      "expected": { "bandId": "manual_review", "action": "manual" }
+    },
+    {
+      "id": "manual-before-selection",
+      "score": 39,
+      "expected": { "bandId": "manual_review", "action": "manual" }
+    },
+    {
+      "id": "selection-boundary",
+      "score": 40,
+      "expected": { "bandId": "operator_selection", "action": "prompt_select" }
+    },
+    {
+      "id": "selection-before-confirmation",
+      "score": 59,
+      "expected": { "bandId": "operator_selection", "action": "prompt_select" }
+    },
+    {
+      "id": "confirmation-boundary",
+      "score": 60,
+      "expected": { "bandId": "operator_confirmation", "action": "prompt_confirm" }
+    },
+    {
+      "id": "confirmation-before-automatic",
+      "score": 84,
+      "expected": { "bandId": "operator_confirmation", "action": "prompt_confirm" }
+    },
+    {
+      "id": "automatic-boundary",
+      "score": 85,
+      "expected": { "bandId": "automatic_candidate", "action": "auto_classify" }
+    },
+    {
+      "id": "automatic-policy-ceiling",
+      "score": 95,
+      "expected": { "bandId": "automatic_candidate", "action": "auto_classify" }
+    },
+    {
+      "id": "automatic-score-ceiling",
+      "score": 100,
+      "expected": { "bandId": "automatic_candidate", "action": "auto_classify" }
+    }
+  ]
+}

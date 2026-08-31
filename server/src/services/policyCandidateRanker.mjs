@@ -5,6 +5,7 @@ import { isWeakCandidateViability } from './policyCandidateDiagnostics.mjs';
 import { calibratePolicyCandidate } from './policyCandidateCalibration.mjs';
 import { policyOverlapMetricsCollector } from './policyOverlapMetricsCollector.mjs';
 import { policyOverlapMetricsSnapshotService } from './policyOverlapMetricsSnapshotService.mjs';
+import { resolvePolicyCandidateDecisionBand } from './policyCandidateDecisionBand.mjs';
 import {
   normalizePolicyDecisionThresholds,
   POLICY_CLOSE_SCORE_MARGIN,
@@ -180,34 +181,15 @@ export class PolicyCandidateRanker {
         });
       }
 
-      if (top.score >= top.auto_classify_threshold) {
-        return this.finalizeDecision({
-          action: 'auto_classify',
-          top,
-          ranked: normalizedRanked
-        });
-      }
-
-      if (top.score >= top.prompt_threshold) {
-        return this.finalizeDecision({
-          action: 'prompt_confirm',
-          top,
-          ranked: normalizedRanked
-        });
-      }
-
-      if (top.score >= POLICY_PROMPT_SELECT_MIN_CONFIDENCE) {
-        return this.finalizeDecision({
-          action: 'prompt_select',
-          top,
-          ranked: normalizedRanked
-        });
-      }
-
+      const decisionBand = resolvePolicyCandidateDecisionBand({
+        score: top.score,
+        promptThreshold: top.prompt_threshold,
+        autoClassifyThreshold: top.auto_classify_threshold,
+      });
       return this.finalizeDecision({
-        action: 'manual',
+        action: decisionBand.action,
         top,
-        ranked: normalizedRanked
+        ranked: normalizedRanked,
       });
 
     } catch (error) {

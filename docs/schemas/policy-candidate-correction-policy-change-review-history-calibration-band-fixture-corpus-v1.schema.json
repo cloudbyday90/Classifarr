@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://classifarr.example/schemas/policy-candidate-correction-policy-change-review-history-calibration-band-fixture-corpus-v1.schema.json",
+  "title": "Policy-change calibration fixed-band fixture corpus v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "specification", "fixtures"],
+  "properties": {
+    "version": {
+      "const": "policy.candidate_correction_policy_change_calibration_band_fixture_corpus.v1"
+    },
+    "specification": { "$ref": "#/$defs/specification" },
+    "fixtures": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 16,
+      "items": { "$ref": "#/$defs/fixture" }
+    }
+  },
+  "$defs": {
+    "specification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "selectionMinimum",
+        "confirmationMinimum",
+        "automaticMinimum"
+      ],
+      "properties": {
+        "version": { "const": "policy.candidate_decision_band_specification.v1" },
+        "selectionMinimum": { "const": 40 },
+        "confirmationMinimum": { "const": 60 },
+        "automaticMinimum": { "const": 85 }
+      }
+    },
+    "fixture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "score", "expected"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,79}$"
+        },
+        "score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "expected": { "$ref": "#/$defs/expectation" }
+      }
+    },
+    "expectation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bandId", "action"],
+      "oneOf": [
+        {
+          "properties": {
+            "bandId": { "const": "manual_review" },
+            "action": { "const": "manual" }
+          }
+        },
+        {
+          "properties": {
+            "bandId": { "const": "operator_selection" },
+            "action": { "const": "prompt_select" }
+          }
+        },
+        {
+          "properties": {
+            "bandId": { "const": "operator_confirmation" },
+            "action": { "const": "prompt_confirm" }
+          }
+        },
+        {
+          "properties": {
+            "bandId": { "const": "automatic_candidate" },
+            "action": { "const": "auto_classify" }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -62,9 +62,8 @@ Completed on 2026-08-31:
 
 ## Next Item
 
-Define the ownership-approved numeric policy-band specification before adding a
-new synthetic band-comparison corpus. The specification should name the bands,
-expected deterministic evidence semantics, and false-positive/false-negative
-costs; it must still remain offline and human-approved. This is higher value
-than adding more AI or RAG calls because it makes the deterministic policy
-decision measurable before widening its authority.
+The fixed-band specification and corpus were implemented in the follow-up
+[fixed-band calibration evidence outcome](policy-candidate-correction-policy-change-review-history-calibration-band-evidence-outcome.md).
+The next item is a synthetic route-safety matrix that proves an automatic score
+candidate still cannot bypass provider recovery, evidence, AI-advisory,
+provenance, or installation-wide confirmation gates.

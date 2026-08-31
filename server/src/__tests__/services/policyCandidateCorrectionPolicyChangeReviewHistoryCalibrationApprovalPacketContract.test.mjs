@@ -11,6 +11,9 @@ import {
 import {
   evaluatePolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationFixtureCorpus,
 } from '../../services/policyCandidateCorrectionPolicyChangeReviewHistoryCalibrationOfflineEvaluation.mjs';
+import {
+  evaluatePolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationBandFixtureCorpus,
+} from '../../services/policyCandidateCorrectionPolicyChangeReviewHistoryCalibrationBandOfflineEvaluation.mjs';
 
 function buildPassingEvaluation() {
   return evaluatePolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationFixtureCorpus({
@@ -52,10 +55,33 @@ function buildPassingEvaluation() {
   });
 }
 
+function buildPassingBandEvaluation() {
+  return evaluatePolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationBandFixtureCorpus({
+    version: 'policy.candidate_correction_policy_change_calibration_band_fixture_corpus.v1',
+    specification: {
+      version: 'policy.candidate_decision_band_specification.v1',
+      selectionMinimum: 40,
+      confirmationMinimum: 60,
+      automaticMinimum: 85,
+    },
+    fixtures: [
+      ['manual-floor', 0, 'manual_review', 'manual'],
+      ['manual-before-selection', 39, 'manual_review', 'manual'],
+      ['selection-boundary', 40, 'operator_selection', 'prompt_select'],
+      ['selection-before-confirmation', 59, 'operator_selection', 'prompt_select'],
+      ['confirmation-boundary', 60, 'operator_confirmation', 'prompt_confirm'],
+      ['confirmation-before-automatic', 84, 'operator_confirmation', 'prompt_confirm'],
+      ['automatic-boundary', 85, 'automatic_candidate', 'auto_classify'],
+      ['automatic-policy-ceiling', 95, 'automatic_candidate', 'auto_classify'],
+    ].map(([id, score, bandId, action]) => ({ id, score, expected: { bandId, action } })),
+  });
+}
+
 describe('policy-change calibration approval packet contract', () => {
   test('creates only a versioned, content-free human approval packet after a passed evaluation', () => {
     const result = buildPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationApprovalPacketReadModel({
       evaluation: buildPassingEvaluation(),
+      bandEvaluation: buildPassingBandEvaluation(),
     });
 
     expect(result).toEqual(expect.objectContaining({
@@ -69,6 +95,8 @@ describe('policy-change calibration approval packet contract', () => {
       packet: expect.objectContaining({
         version: 'policy.candidate_correction_policy_change_human_review_packet.v1',
         fixtureCount: 3,
+        bandFixtureCount: 8,
+        bandEvidenceRequired: true,
         approvalRecorded: false,
       }),
     }));
@@ -77,6 +105,7 @@ describe('policy-change calibration approval packet contract', () => {
 
   test('does not produce a packet from a mismatched or authority-bearing evaluation', () => {
     const passingEvaluation = buildPassingEvaluation();
+    const passingBandEvaluation = buildPassingBandEvaluation();
     const mismatch = { ...passingEvaluation, statusId: 'expectation_mismatch' };
     const authorityBearing = {
       ...passingEvaluation,
@@ -90,7 +119,10 @@ describe('policy-change calibration approval packet contract', () => {
     };
 
     [mismatch, authorityBearing].forEach((evaluation) => {
-      expect(buildPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationApprovalPacketReadModel({ evaluation }))
+      expect(buildPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationApprovalPacketReadModel({
+        evaluation,
+        bandEvaluation: passingBandEvaluation,
+      }))
         .toEqual(expect.objectContaining({
           statusId: 'offline_evaluation_not_ready',
           packetAvailable: false,
@@ -98,5 +130,12 @@ describe('policy-change calibration approval packet contract', () => {
           approvalRecorded: false,
         }));
     });
+
+    expect(buildPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationApprovalPacketReadModel({
+      evaluation: passingEvaluation,
+    })).toEqual(expect.objectContaining({
+      statusId: 'offline_evaluation_not_ready',
+      packetAvailable: false,
+    }));
   });
 });

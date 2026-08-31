@@ -11,6 +11,16 @@ import {
   POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_CALIBRATION_OFFLINE_EVALUATION_STATUS_IDS,
 } from './policyCandidateCorrectionPolicyChangeReviewHistoryCalibrationOfflineEvaluation.mjs';
 import {
+  POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_CALIBRATION_BAND_FIXTURE_CORPUS_VERSION,
+} from './policyCandidateCorrectionPolicyChangeReviewHistoryCalibrationBandFixtureContract.mjs';
+import {
+  POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_CALIBRATION_BAND_OFFLINE_EVALUATION_REPORT_VERSION,
+  POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_CALIBRATION_BAND_OFFLINE_EVALUATION_STATUS_IDS,
+} from './policyCandidateCorrectionPolicyChangeReviewHistoryCalibrationBandOfflineEvaluation.mjs';
+import {
+  POLICY_CANDIDATE_DECISION_BAND_SPECIFICATION_VERSION,
+} from './policyCandidateDecisionBandSpecification.mjs';
+import {
   POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_CALIBRATION_PROTOCOL_ID,
   POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_CALIBRATION_PROTOCOL_PROCEDURE_IDS,
   POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_CALIBRATION_PROPOSAL_PACKET_VERSION,
@@ -59,6 +69,38 @@ function normalizeSuccessfulEvaluation(value) {
   return Object.freeze({ fixtureCount });
 }
 
+function normalizeSuccessfulBandEvaluation(value) {
+  const source = isPlainRecord(value) ? value : null;
+  const validation = isPlainRecord(source?.validation) ? source.validation : null;
+  const summary = isPlainRecord(source?.summary) ? source.summary : null;
+  const fixtureCount = Number(summary?.fixtureCount);
+  const matchedExpectationCount = Number(summary?.matchedExpectationCount);
+  const mismatchCount = Number(summary?.mismatchCount);
+  const validFixtureCount = Number.isSafeInteger(fixtureCount) && fixtureCount >= 8 && fixtureCount <= 16;
+
+  if (!source || source.version !==
+      POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_CALIBRATION_BAND_OFFLINE_EVALUATION_REPORT_VERSION ||
+      source.fixtureCorpusVersion !==
+      POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_CALIBRATION_BAND_FIXTURE_CORPUS_VERSION ||
+      source.specificationVersion !== POLICY_CANDIDATE_DECISION_BAND_SPECIFICATION_VERSION ||
+      source.statusId !==
+      POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_CALIBRATION_BAND_OFFLINE_EVALUATION_STATUS_IDS.PASSED ||
+      source.authority?.scope !== 'offline_synthetic_fixed_band_comparison_only' ||
+      source.authority?.operatorWorkflowAdmission !== false ||
+      source.authority?.automaticActions?.aiInvocation !== false ||
+      source.authority?.automaticActions?.learning !== false ||
+      source.authority?.automaticActions?.policyChange !== false ||
+      source.authority?.automaticActions?.retry !== false ||
+      source.authority?.automaticActions?.routing !== false ||
+      !validation || validation.ok !== true || validation.fixtureCount !== fixtureCount ||
+      validation.issueCount !== 0 || !Array.isArray(validation.riskIds) || validation.riskIds.length !== 0 ||
+      !validFixtureCount || matchedExpectationCount !== fixtureCount || mismatchCount !== 0) {
+    return null;
+  }
+
+  return Object.freeze({ fixtureCount });
+}
+
 function buildReadModel({ statusId, packet = null } = {}) {
   return Object.freeze({
     statusId,
@@ -68,6 +110,7 @@ function buildReadModel({ statusId, packet = null } = {}) {
     approvalRecorded: false,
     automaticPolicyChange: false,
     automaticAiRagTuning: false,
+    bandEvidenceRequired: true,
     routingChanged: false,
   });
 }
@@ -79,9 +122,11 @@ function buildReadModel({ statusId, packet = null } = {}) {
  */
 export function buildPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrationApprovalPacketReadModel({
   evaluation = null,
+  bandEvaluation = null,
 } = {}) {
   const normalizedEvaluation = normalizeSuccessfulEvaluation(evaluation);
-  if (!normalizedEvaluation) {
+  const normalizedBandEvaluation = normalizeSuccessfulBandEvaluation(bandEvaluation);
+  if (!normalizedEvaluation || !normalizedBandEvaluation) {
     return buildReadModel({
       statusId: POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_CALIBRATION_APPROVAL_PACKET_STATUS_IDS.OFFLINE_EVALUATION_NOT_READY,
     });
@@ -95,11 +140,15 @@ export function buildPolicyCandidateCorrectionPolicyChangeReviewHistoryCalibrati
       fixtureCorpusVersion: POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_CALIBRATION_FIXTURE_CORPUS_VERSION,
       evaluationReportVersion: POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_CALIBRATION_OFFLINE_EVALUATION_REPORT_VERSION,
       fixtureCount: normalizedEvaluation.fixtureCount,
+      bandFixtureCorpusVersion: POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_CALIBRATION_BAND_FIXTURE_CORPUS_VERSION,
+      bandEvaluationReportVersion: POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_CALIBRATION_BAND_OFFLINE_EVALUATION_REPORT_VERSION,
+      bandFixtureCount: normalizedBandEvaluation.fixtureCount,
       procedureIds: POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_CALIBRATION_PROTOCOL_PROCEDURE_IDS,
       humanApprovalRequired: true,
       approvalRecorded: false,
       automaticPolicyChange: false,
       automaticAiRagTuning: false,
+      bandEvidenceRequired: true,
       routingChanged: false,
     }),
   });
