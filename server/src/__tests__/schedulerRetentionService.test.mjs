@@ -67,6 +67,7 @@ describe('SchedulerRetentionService', () => {
             },
             policyCandidateCorrectionPolicyChangeOutcomeObservationRetentionService: {
                 cleanup: jest.fn().mockResolvedValue({
+                    deletedReviewHistoryCount: 0,
                     deletedDecisionRecordCount: 0,
                     deletedObservationCount: 0,
                     statusId: 'completed',
@@ -277,6 +278,7 @@ describe('SchedulerRetentionService', () => {
             const result = await service.runPolicyCandidateCorrectionPolicyChangeOutcomeObservationRetentionCleanup();
 
             expect(result).toEqual({
+                deletedReviewHistoryCount: 0,
                 deletedDecisionRecordCount: 0,
                 deletedObservationCount: 0,
                 statusId: 'completed',

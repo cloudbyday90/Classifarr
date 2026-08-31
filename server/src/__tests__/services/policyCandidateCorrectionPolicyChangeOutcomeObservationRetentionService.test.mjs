@@ -12,6 +12,9 @@ function createHarness({ fail = false } = {}) {
   const client = { query: jest.fn() };
   const persistence = {
     acquireLock: jest.fn().mockResolvedValue(undefined),
+    deleteExpiredReviewHistory: fail
+      ? jest.fn().mockRejectedValue(new Error('database unavailable'))
+      : jest.fn().mockResolvedValue(2),
     deleteExpiredDecisionRecord: fail
       ? jest.fn().mockRejectedValue(new Error('database unavailable'))
       : jest.fn().mockResolvedValue(1),
@@ -38,10 +41,15 @@ describe('policy-change outcome observation retention service', () => {
 
     await expect(service.cleanup({ now: '2026-10-01T03:19:00.000Z' })).resolves.toEqual({
       statusId: 'completed',
+      deletedReviewHistoryCount: 2,
       deletedDecisionRecordCount: 1,
       deletedObservationCount: 1,
     });
     expect(persistence.acquireLock).toHaveBeenCalledWith({ client: expect.any(Object) });
+    expect(persistence.deleteExpiredReviewHistory).toHaveBeenCalledWith({
+      dbClient: expect.any(Object),
+      beforePeriodStart: expect.stringMatching(/^2026-\d{2}-\d{2}$/u),
+    });
     expect(persistence.deleteExpiredDecisionRecord).toHaveBeenCalledWith({
       dbClient: expect.any(Object),
       now: '2026-10-01T03:19:00.000Z',
@@ -57,6 +65,7 @@ describe('policy-change outcome observation retention service', () => {
 
     await expect(service.cleanup()).resolves.toEqual({
       statusId: 'failed_rolled_back',
+      deletedReviewHistoryCount: 0,
       deletedDecisionRecordCount: 0,
       deletedObservationCount: 0,
     });

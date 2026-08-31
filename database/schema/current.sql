@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-08-31T10:52:27.317Z
--- Latest Migration: 20260831_140000_add_policy_change_decision_record.sql
+-- Generated: 2026-08-31T11:33:32.553Z
+-- Latest Migration: 20260831_170100_rename_policy_change_review_history_tables.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -4473,6 +4473,33 @@ ALTER SEQUENCE public.policy_change_log_id_seq OWNED BY public.policy_change_log
 
 
 --
+-- Name: policy_change_review_history_aggregates; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_change_review_history_aggregates (
+    period_start date CONSTRAINT policy_candidate_correction_policy_change_period_start_not_null NOT NULL,
+    decision_id character varying(64) CONSTRAINT policy_candidate_correction_policy_change_decision_id_not_null1 NOT NULL,
+    recorded_count integer DEFAULT 0 CONSTRAINT policy_candidate_correction_policy_chan_recorded_count_not_null NOT NULL,
+    revised_count integer DEFAULT 0 CONSTRAINT policy_candidate_correction_policy_chang_revised_count_not_null NOT NULL,
+    CONSTRAINT pcc_pcrh_counts_chk CHECK (((recorded_count >= 0) AND (revised_count >= 0) AND ((recorded_count + revised_count) > 0))),
+    CONSTRAINT pcc_pcrh_decision_chk CHECK (((decision_id)::text = ANY ((ARRAY['retain_current_policy'::character varying, 'investigate_policy_evidence'::character varying, 'prepare_manual_policy_change'::character varying])::text[])))
+);
+
+
+--
+-- Name: policy_change_review_history_controls; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_change_review_history_controls (
+    control_key character varying(64) CONSTRAINT policy_candidate_correction_policy_change_control_key_not_null2 NOT NULL,
+    record_version smallint DEFAULT 1 CONSTRAINT policy_candidate_correction_policy_cha_record_version_not_null1 NOT NULL,
+    started_at timestamp with time zone DEFAULT now() CONSTRAINT policy_candidate_correction_policy_change_r_started_at_not_null NOT NULL,
+    CONSTRAINT pcc_pcrh_control_key_chk CHECK (((control_key)::text = 'policy_change_review_history_summary'::text)),
+    CONSTRAINT pcc_pcrh_control_version_chk CHECK ((record_version = 1))
+);
+
+
+--
 -- Name: policy_feedback_log; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -8619,6 +8646,22 @@ ALTER TABLE ONLY public.policy_candidate_correction_policy_change_outcome_observ
 
 ALTER TABLE ONLY public.policy_candidate_correction_policy_change_outcome_observations
     ADD CONSTRAINT policy_candidate_correction_policy_change_outcome_observat_pkey PRIMARY KEY (control_key);
+
+
+--
+-- Name: policy_change_review_history_aggregates policy_candidate_correction_policy_change_review_history_a_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_change_review_history_aggregates
+    ADD CONSTRAINT policy_candidate_correction_policy_change_review_history_a_pkey PRIMARY KEY (period_start, decision_id);
+
+
+--
+-- Name: policy_change_review_history_controls policy_candidate_correction_policy_change_review_history_c_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_change_review_history_controls
+    ADD CONSTRAINT policy_candidate_correction_policy_change_review_history_c_pkey PRIMARY KEY (control_key);
 
 
 --
@@ -14474,6 +14517,8 @@ FROM unnest(ARRAY[
     '20260830_120000_add_policy_candidate_correction_review_corpus_control_plane.sql',
     '20260830_130000_add_policy_candidate_correction_review_projection.sql',
     '20260831_120000_add_policy_change_outcome_observation.sql',
-    '20260831_140000_add_policy_change_decision_record.sql'
+    '20260831_140000_add_policy_change_decision_record.sql',
+    '20260831_170000_add_policy_change_review_history_summary.sql',
+    '20260831_170100_rename_policy_change_review_history_tables.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

@@ -218,6 +218,16 @@ export const policyCandidateCorrectionPolicyChangeDecisionRecordMutationLimiterC
   skip: (_req) => process.env.NODE_ENV === 'test',
 };
 
+/** Aggregate completed policy-change review-history reads (per IP, per 15 minutes). */
+export const policyCandidateCorrectionPolicyChangeReviewHistorySummaryReadLimiterConfig = {
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: 'Too many policy-change review history summary requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (_req) => process.env.NODE_ENV === 'test',
+};
+
 /** Settings — SSL connectivity test (per IP, per hour). */
 export const sslTestLimiterConfig = {
   windowMs: 60 * 60 * 1000,

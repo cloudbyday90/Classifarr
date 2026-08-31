@@ -23,6 +23,7 @@ jest.unstable_mockModule('../../services/classificationEvidenceRepository.mjs', 
 const {
   clearExistingConfig,
   clearPolicyChangeDecisionRecordForRestore,
+  clearPolicyChangeReviewHistorySummaryForRestore,
   clearPolicyChangeOutcomeObservationForRestore,
 } = await import('../../services/backupRestore.mjs');
 
@@ -67,26 +68,35 @@ describe('backup restore authorized outcome receipt lifecycle', () => {
     );
     expect(client.query).toHaveBeenNthCalledWith(
       8,
-      'DELETE FROM policy_candidate_correction_policy_change_decision_records'
+      'DELETE FROM policy_change_review_history_aggregates'
     );
     expect(client.query).toHaveBeenNthCalledWith(
       9,
-      'DELETE FROM policy_candidate_correction_policy_change_outcome_observations'
+      expect.stringContaining('UPDATE policy_change_review_history_controls'),
+      expect.any(Array)
     );
     expect(client.query).toHaveBeenNthCalledWith(
       10,
-      'DELETE FROM policy_native_intent_change_receipts'
+      'DELETE FROM policy_candidate_correction_policy_change_decision_records'
     );
     expect(client.query).toHaveBeenNthCalledWith(
       11,
-      "SELECT set_config('classifarr.verification_capability_receipt_maintenance', 'replace_restore', true)"
+      'DELETE FROM policy_candidate_correction_policy_change_outcome_observations'
     );
     expect(client.query).toHaveBeenNthCalledWith(
       12,
-      'DELETE FROM candidate_bound_verification_capability_receipts'
+      'DELETE FROM policy_native_intent_change_receipts'
     );
     expect(client.query).toHaveBeenNthCalledWith(
       13,
+      "SELECT set_config('classifarr.verification_capability_receipt_maintenance', 'replace_restore', true)"
+    );
+    expect(client.query).toHaveBeenNthCalledWith(
+      14,
+      'DELETE FROM candidate_bound_verification_capability_receipts'
+    );
+    expect(client.query).toHaveBeenNthCalledWith(
+      15,
       "SELECT set_config('classifarr.policy_migration_verification_run_maintenance', 'replace_restore', true)"
     );
     expect(client.query).toHaveBeenCalledWith(
@@ -130,6 +140,15 @@ describe('backup restore authorized outcome receipt lifecycle', () => {
 
     expect(client.query).toHaveBeenNthCalledWith(
       1,
+      'DELETE FROM policy_change_review_history_aggregates'
+    );
+    expect(client.query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('UPDATE policy_change_review_history_controls'),
+      expect.any(Array)
+    );
+    expect(client.query).toHaveBeenNthCalledWith(
+      3,
       'DELETE FROM policy_candidate_correction_policy_change_decision_records'
     );
     expect(client.query).toHaveBeenCalledWith(
@@ -144,6 +163,22 @@ describe('backup restore authorized outcome receipt lifecycle', () => {
 
     expect(client.query).toHaveBeenCalledWith(
       'DELETE FROM policy_candidate_correction_policy_change_decision_records'
+    );
+  });
+
+  test('clears and restarts the bounded aggregate review history without retaining event data', async () => {
+    const client = { query: jest.fn().mockResolvedValue({ rows: [] }) };
+
+    await clearPolicyChangeReviewHistorySummaryForRestore(client);
+
+    expect(client.query).toHaveBeenNthCalledWith(
+      1,
+      'DELETE FROM policy_change_review_history_aggregates'
+    );
+    expect(client.query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('UPDATE policy_change_review_history_controls'),
+      expect.any(Array)
     );
   });
 });

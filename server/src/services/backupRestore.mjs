@@ -6,6 +6,9 @@ import {
   resetNativeIntentReconciliationSchedulingState,
 } from './nativeIntentReconciliationLifecyclePersistence.mjs';
 import {
+  resetPolicyCandidateCorrectionPolicyChangeReviewHistorySummaryForRestore,
+} from './policyCandidateCorrectionPolicyChangeReviewHistorySummaryPersistence.mjs';
+import {
   restoreConfidenceSettings,
   restoreMediaServers,
   restoreRadarrConfigs,
@@ -35,8 +38,14 @@ export async function clearPolicyChangeDecisionRecordForRestore(client) {
   await client.query('DELETE FROM policy_candidate_correction_policy_change_decision_records');
 }
 
+/** The aggregate review signal is operational and must restart after restore. */
+export async function clearPolicyChangeReviewHistorySummaryForRestore(client) {
+  await resetPolicyCandidateCorrectionPolicyChangeReviewHistorySummaryForRestore({ client });
+}
+
 /** An operational outcome baseline cannot survive any configuration restore. */
 export async function clearPolicyChangeOutcomeObservationForRestore(client) {
+  await clearPolicyChangeReviewHistorySummaryForRestore(client);
   await clearPolicyChangeDecisionRecordForRestore(client);
   await client.query('DELETE FROM policy_candidate_correction_policy_change_outcome_observations');
 }

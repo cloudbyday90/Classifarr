@@ -131,7 +131,7 @@ class SchedulerService {
         // Daily deletion of expired, redacted representative-review projections.
         this.schedule('policy-candidate-correction-review-projection-retention-cleanup', '18 3 * * *', () => this.runPolicyCandidateCorrectionRepresentativeReviewProjectionRetentionCleanup());
 
-        // Daily deletion of expired, aggregate-only policy-change observations.
+        // Daily deletion of bounded policy-change observations and review aggregates.
         this.schedule('policy-change-outcome-observation-retention-cleanup', '19 3 * * *', () => this.runPolicyCandidateCorrectionPolicyChangeOutcomeObservationRetentionCleanup());
 
         // Daily cleanup of stale awaiting_decision rows (4 AM)

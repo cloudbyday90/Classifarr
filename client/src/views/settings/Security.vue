@@ -782,6 +782,8 @@
       :outcome-observation="policyChangeOutcomeObservation"
     />
 
+    <PolicyChangeReviewHistorySummary />
+
     <!-- Create New API Key Button -->
     <div class="flex justify-between items-center">
       <h3 class="text-lg font-medium">
@@ -1170,6 +1172,7 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import api from '@/api'
 import PolicyChangeDecisionReview from '@/components/settings/PolicyChangeDecisionReview.vue'
+import PolicyChangeReviewHistorySummary from '@/components/settings/PolicyChangeReviewHistorySummary.vue'
 import {
   getPolicyCandidateCorrectionRepresentativeReviewCorpusControlPresentation,
   normalizePolicyCandidateCorrectionRepresentativeReviewCorpusAuditEvents,

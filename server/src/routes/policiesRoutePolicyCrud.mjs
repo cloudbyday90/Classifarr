@@ -33,6 +33,9 @@ import {
 import {
   registerPolicyCandidateCorrectionPolicyChangeDecisionRecordRoutes,
 } from './policiesRoutePolicyChangeDecisionRecord.mjs';
+import {
+  registerPolicyCandidateCorrectionPolicyChangeReviewHistorySummaryRoutes,
+} from './policiesRoutePolicyChangeReviewHistorySummary.mjs';
 
 export function registerPolicyCrudRoutes(router, deps) {
   registerPolicyCandidateCorrectionRepresentativeReviewCorpusControlRoutes(router, deps);
@@ -40,6 +43,7 @@ export function registerPolicyCrudRoutes(router, deps) {
   registerPolicyCandidateCorrectionRepresentativeReviewEvaluationReportRoutes(router, deps);
   registerPolicyCandidateCorrectionPolicyChangeOutcomeObservationRoutes(router, deps);
   registerPolicyCandidateCorrectionPolicyChangeDecisionRecordRoutes(router, deps);
+  registerPolicyCandidateCorrectionPolicyChangeReviewHistorySummaryRoutes(router, deps);
   registerPolicyEvaluationContextRoute(router, deps);
   registerPolicyOperatorWorkflowReadRoutes(router, deps);
   registerPolicyOperatorWorkflowCustomIntentSignalRoutes(router, deps);

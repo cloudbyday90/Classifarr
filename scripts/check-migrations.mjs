@@ -86,6 +86,37 @@ if (missingLegacy.length) {
   missingLegacy.forEach(file => console.warn(`  - ${file}`));
 }
 
+// PostgreSQL silently truncates unquoted identifiers at 63 bytes. Two long
+// constraints in a single migration can therefore collide only at runtime,
+// after a container has started. Existing migrations may deliberately use a
+// long, but unique, name; reject only the unsafe collision after truncation.
+const POSTGRES_IDENTIFIER_MAX_BYTES = 63;
+const effectiveConstraintNames = new Map();
+for (const file of files) {
+  const contents = fs.readFileSync(join(migrationsDir, file), 'utf8');
+  const constraintPattern = /\bCONSTRAINT\s+([A-Za-z_][A-Za-z0-9_$]*)/giu;
+  for (const match of contents.matchAll(constraintPattern)) {
+    const constraintName = match[1];
+    const precedingSql = contents.slice(Math.max(0, (match.index || 0) - 16), match.index || 0);
+    if (/\b(?:DROP|VALIDATE)\s+$/iu.test(precedingSql)) {
+      continue;
+    }
+
+    const effectiveName = constraintName.slice(0, POSTGRES_IDENTIFIER_MAX_BYTES);
+    const key = `${file}\u0000${effectiveName}`;
+    const existing = effectiveConstraintNames.get(key);
+    if (existing && existing !== constraintName) {
+      console.error(
+        `Migration constraint-name collision after PostgreSQL's ${POSTGRES_IDENTIFIER_MAX_BYTES}-byte truncation:\n` +
+        `  - ${file}: ${existing}\n` +
+        `  - ${file}: ${constraintName}`
+      );
+      process.exit(1);
+    }
+    effectiveConstraintNames.set(key, constraintName);
+  }
+}
+
 console.log('Migration naming check passed.');
 
 // ---------------------------------------------------------------------------

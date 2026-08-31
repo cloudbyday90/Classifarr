@@ -60,6 +60,7 @@ function createHarness({
     readDecisionRecord: jest.fn().mockResolvedValue(existingDecision),
     insertDecisionRecord: jest.fn().mockResolvedValue(insertedDecision),
     updateDecisionRecord: jest.fn().mockResolvedValue(updatedDecision),
+    recordReviewHistoryActivity: jest.fn().mockResolvedValue(undefined),
   };
   return {
     db,
@@ -89,6 +90,12 @@ describe('policy-change decision record service', () => {
       }),
     }));
     expect(result).toEqual(expect.objectContaining({ statusId: 'decision_recorded' }));
+    expect(persistence.recordReviewHistoryActivity).toHaveBeenCalledWith({
+      client: expect.any(Object),
+      decisionId: 'retain_current_policy',
+      activityId: 'recorded',
+      now: expect.any(Date),
+    });
     expect(JSON.stringify(result)).not.toContain('actorId');
     expect(JSON.stringify(result)).not.toContain('policyId');
   });
@@ -136,5 +143,27 @@ describe('policy-change decision record service', () => {
       decisionId: 'investigate_policy_evidence',
       revision: 2,
     }));
+    expect(persistence.recordReviewHistoryActivity).toHaveBeenCalledWith({
+      client: expect.any(Object),
+      decisionId: 'investigate_policy_evidence',
+      activityId: 'revised',
+      now: expect.any(Date),
+    });
+  });
+
+  test('does not revise or inflate aggregate activity when the saved conclusion is unchanged', async () => {
+    const { persistence, service } = createHarness({ existingDecision: decisionRow({ revision: 1 }) });
+
+    const result = await service.reviseDecisionRecord({
+      actorId: 7,
+      decisionId: 'retain_current_policy',
+      rationaleId: 'outcome_improved',
+      expectedRevision: 1,
+      now: '2026-08-31T12:00:00.000Z',
+    });
+
+    expect(result.decision.revision).toBe(1);
+    expect(persistence.updateDecisionRecord).not.toHaveBeenCalled();
+    expect(persistence.recordReviewHistoryActivity).not.toHaveBeenCalled();
   });
 });

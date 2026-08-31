@@ -39,6 +39,7 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - **Offline correction evaluation report** — Security Settings now automatically summarizes the active redacted snapshot by completed period, score margin, and evidence state with fixed outcome counts and 95% Wilson intervals; refreshes are non-auditing and it remains descriptive without policy, AI, RAG, or routing authority.
 - **Policy-change outcome follow-up** — Administrators can now start one receipt-bound, content-free before/after observation after an approved native policy change; Security Settings refreshes its fixed aggregate 28-day follow-up automatically and presents descriptive rates with 95% Wilson intervals.
 - **Reviewed policy-change decision record** — After a bounded follow-up completes, administrators can automatically load, explicitly confirm, and record or revise one expiry-bound aggregate conclusion with a fixed rationale. It has no policy, routing, AI, RAG, learning, retry, or classification authority.
+- **Policy-change review activity** — Security Settings now automatically summarizes recorded and materially revised reviewed conclusions across up to three completed fixed 30-day periods, retaining only coarse conclusion counts with no individual decision, policy, media, actor, outcome, provider, prompt, response, or RAG history.
 
 ### Changed
 
@@ -51,6 +52,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - **Policy cohort preview** — Existing-policy maintenance can now compare a saved policy and unsaved draft against a bounded recent deterministic cohort, returning aggregate native-eligibility deltas before the draft is saved.
 - **Policy overlap precision** — Current-policy coverage and draft preflight now flag a shared `require_any` purpose alternative even when a sibling term is unique, preventing broad fallback matches from being presented as safely distinct.
 - **Offline evaluation coverage** — The semantic evidence corpus now covers declared-scope conflict, semantic overreach, clear series, and low-margin uncertainty cases rather than only the original four examples.
+- **Dependency maintenance** — Applied and locally tested the Axios 1.20.0 update from open PR #521 without merging the pull request or creating a release.
+
+### Fixed
+
+- **Migration constraint safety** — Migration preflight now rejects effective PostgreSQL constraint-name collisions before startup; the new review-history tables use concise identifiers and repair earlier local pre-release names.
 
 ### Security
 
@@ -83,6 +89,8 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - **Historic review-corpus control boundary** — The administrator-only control plane accepts only an exact acknowledgement contract, keeps response DTOs content-free and no-store, serializes writes with a transaction lock, and records only minimal append-only audit metadata; it cannot select, expose, or authorize historic records.
 - **Redacted review-projection boundary** — The administrator-only snapshot uses a parameterized server-side allow-list, persists no history identity or content, exposes no-store fixed categories only, audits creation/view/expiry minimally, and deletes expired snapshots through a locked scheduled transaction; it cannot invoke AI/RAG, alter policy, or route media.
 - **Policy-change outcome boundary** — The administrator-only outcome protocol accepts no policy, receipt, range, or hypothesis selector; it binds one short-lived server-generated aggregate baseline to a recent native receipt, uses fixed windows and no-store reads, rate-limits the explicit start flow, automatically deletes expired observations, and exposes no policy, media, library, provider, prompt, response, RAG, or routing authority.
+- **Review-history data boundary** — The administrator-only summary uses fixed completed UTC periods, static aggregate reads, response allow-lists, no-store, rate limits, and bounded retention. It stores no individual activity, outcome, policy, media, library, actor, rationale, provider, prompt, response, or RAG data, and cannot trigger policy, AI, routing, learning, retry, or classification work.
+- **Axios runtime hardening** — Updated Axios to 1.20.0, incorporating upstream hardened handling of runtime option objects relevant to prototype-pollution-style configuration reads.
 
 - **Comparison-cap privacy boundary** — Coverage detection uses one server-only sentinel to identify omitted competitors; the sentinel, total active-policy count, configurations, identities, and routing authority remain unavailable to clients.
 - **Explanation privacy boundary** — Shared-eligibility explanations expose only allow-listed category labels and anonymous configuration counts after a bounded shared result; they never return rule values, competitor identities, item outcomes, AI state, or routing control.

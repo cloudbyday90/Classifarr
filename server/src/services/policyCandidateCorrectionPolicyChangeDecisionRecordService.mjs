@@ -15,6 +15,12 @@ import {
   updatePolicyCandidateCorrectionPolicyChangeDecisionRecord,
 } from './policyCandidateCorrectionPolicyChangeDecisionRecordPersistence.mjs';
 import {
+  recordPolicyCandidateCorrectionPolicyChangeReviewHistoryActivity,
+} from './policyCandidateCorrectionPolicyChangeReviewHistorySummaryPersistence.mjs';
+import {
+  POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_ACTIVITY_IDS,
+} from './policyCandidateCorrectionPolicyChangeReviewHistorySummaryContract.mjs';
+import {
   acquirePolicyCandidateCorrectionPolicyChangeOutcomeObservationLock,
   readPolicyCandidateCorrectionPolicyChangeOutcomeObservation,
 } from './policyCandidateCorrectionPolicyChangeOutcomeObservationPersistence.mjs';
@@ -71,6 +77,7 @@ function createPersistence() {
     readDecisionRecord: readPolicyCandidateCorrectionPolicyChangeDecisionRecord,
     insertDecisionRecord: insertPolicyCandidateCorrectionPolicyChangeDecisionRecord,
     updateDecisionRecord: updatePolicyCandidateCorrectionPolicyChangeDecisionRecord,
+    recordReviewHistoryActivity: recordPolicyCandidateCorrectionPolicyChangeReviewHistoryActivity,
   });
 }
 
@@ -146,6 +153,12 @@ export function createPolicyCandidateCorrectionPolicyChangeDecisionRecordService
         }),
       );
       if (!inserted) throw new Error('Policy-change decision record persistence returned an invalid row.');
+      await persistence.recordReviewHistoryActivity({
+        client,
+        decisionId: inserted.decisionId,
+        activityId: POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_ACTIVITY_IDS.RECORDED,
+        now: recordedAt,
+      });
       return buildReadModel({ observation, decisionRecord: inserted, now: recordedAt });
     });
   }
@@ -180,6 +193,9 @@ export function createPolicyCandidateCorrectionPolicyChangeDecisionRecordService
           existingDecision.expiresAt !== observation.expiresAt || existingDecision.revision !== revision) {
         throw new PolicyCandidateCorrectionPolicyChangeDecisionRecordRevisionConflictError();
       }
+      if (existingDecision.decisionId === input.decisionId && existingDecision.rationaleId === input.rationaleId) {
+        return buildReadModel({ observation, decisionRecord: existingDecision, now: revisedAt });
+      }
 
       const updated = normalizePolicyCandidateCorrectionPolicyChangeDecisionRecordRow(
         await persistence.updateDecisionRecord({
@@ -195,6 +211,12 @@ export function createPolicyCandidateCorrectionPolicyChangeDecisionRecordService
         }),
       );
       if (!updated) throw new PolicyCandidateCorrectionPolicyChangeDecisionRecordRevisionConflictError();
+      await persistence.recordReviewHistoryActivity({
+        client,
+        decisionId: updated.decisionId,
+        activityId: POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_REVIEW_HISTORY_ACTIVITY_IDS.REVISED,
+        now: revisedAt,
+      });
       return buildReadModel({ observation, decisionRecord: updated, now: revisedAt });
     });
   }
