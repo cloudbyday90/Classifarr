@@ -324,6 +324,250 @@
             </table>
           </div>
         </details>
+
+        <section
+          class="space-y-4 rounded-md border border-gray-700 bg-gray-900/20 p-4"
+          aria-labelledby="review-evaluation-report-heading"
+        >
+          <div>
+            <h4
+              id="review-evaluation-report-heading"
+              class="text-base font-medium text-gray-100"
+            >
+              Offline correction evaluation
+            </h4>
+            <p class="mt-1 text-sm text-gray-400">
+              This refreshes automatically from the redacted snapshot. It compares only the two completed periods already in that snapshot.
+            </p>
+          </div>
+
+          <div
+            class="rounded-md border border-gray-700 bg-gray-900/40 p-3"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            <template v-if="reviewEvaluationReportPresentation">
+              <p
+                class="font-medium"
+                :class="reviewEvaluationReportPresentation.statusClass"
+              >
+                {{ reviewEvaluationReportPresentation.heading }}
+              </p>
+              <p class="mt-1 text-sm text-gray-300">
+                {{ reviewEvaluationReportPresentation.message }}
+              </p>
+            </template>
+            <p
+              v-else-if="reviewEvaluationReportLoading"
+              class="text-sm text-gray-400"
+            >
+              Preparing the offline evaluation report…
+            </p>
+            <p
+              v-else
+              class="text-sm text-amber-300"
+            >
+              The offline evaluation report is temporarily unavailable.
+            </p>
+          </div>
+
+          <p
+            v-if="reviewEvaluationReportError"
+            class="rounded-md bg-red-900/30 p-3 text-sm text-red-300"
+            role="alert"
+          >
+            {{ reviewEvaluationReportError }}
+          </p>
+
+          <template v-if="reviewEvaluationReport?.report">
+            <dl class="grid gap-3 text-sm sm:grid-cols-2">
+              <div
+                v-for="summary in reviewEvaluationReportPeriodRows"
+                :key="summary.periodLabel"
+                class="rounded-md border border-gray-700 p-3"
+              >
+                <dt class="text-xs font-medium uppercase tracking-wide text-gray-400">
+                  {{ summary.periodLabel }} confirmed-leading-candidate rate
+                </dt>
+                <dd class="mt-1 text-lg text-gray-100">
+                  {{ summary.confirmationRateLabel }}
+                </dd>
+                <dd class="mt-1 text-xs text-gray-400">
+                  {{ summary.itemCountLabel }} · 95% Wilson interval: {{ summary.intervalLabel }}
+                </dd>
+              </div>
+            </dl>
+
+            <p class="rounded-md border border-gray-700 p-3 text-sm text-gray-300">
+              {{ reviewEvaluationReport.report.comparison.message }}
+            </p>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm">
+                <caption class="mb-3 text-left text-sm text-gray-400">
+                  Confirmed-leading-candidate rates by period and score-margin band. Each interval is a two-sided 95% Wilson interval for the fixed redacted sample.
+                </caption>
+                <thead class="border-b border-gray-700 text-xs uppercase tracking-wide text-gray-400">
+                  <tr>
+                    <th
+                      scope="col"
+                      class="px-3 py-2 font-medium"
+                    >
+                      Period
+                    </th>
+                    <th
+                      scope="col"
+                      class="px-3 py-2 font-medium"
+                    >
+                      Score margin
+                    </th>
+                    <th
+                      scope="col"
+                      class="px-3 py-2 font-medium"
+                    >
+                      Sample
+                    </th>
+                    <th
+                      scope="col"
+                      class="px-3 py-2 font-medium"
+                    >
+                      Confirmed rate
+                    </th>
+                    <th
+                      scope="col"
+                      class="px-3 py-2 font-medium"
+                    >
+                      95% interval
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-700">
+                  <tr
+                    v-for="row in reviewEvaluationReportMarginRows"
+                    :key="`${row.periodLabel}-${row.marginLabel}`"
+                  >
+                    <td class="px-3 py-3 text-gray-200">
+                      {{ row.periodLabel }}
+                    </td>
+                    <td class="px-3 py-3 text-gray-200">
+                      {{ row.marginLabel }}
+                    </td>
+                    <td class="px-3 py-3 text-gray-200">
+                      {{ row.itemCountLabel }}
+                    </td>
+                    <td class="px-3 py-3 text-gray-200">
+                      {{ row.confirmationRateLabel }}
+                    </td>
+                    <td class="px-3 py-3 text-gray-300">
+                      {{ row.intervalLabel }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <details class="rounded-md border border-gray-700 p-4">
+              <summary class="cursor-pointer text-sm font-medium text-blue-300">
+                Review evidence-state breakdown
+              </summary>
+              <div class="mt-4 overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                  <caption class="mb-3 text-left text-sm text-gray-400">
+                    Fixed evidence-state categories by period. These are aggregate counts only; no evidence content or media identity is available.
+                  </caption>
+                  <thead class="border-b border-gray-700 text-xs uppercase tracking-wide text-gray-400">
+                    <tr>
+                      <th
+                        scope="col"
+                        class="px-3 py-2 font-medium"
+                      >
+                        Period
+                      </th>
+                      <th
+                        scope="col"
+                        class="px-3 py-2 font-medium"
+                      >
+                        Evidence state
+                      </th>
+                      <th
+                        scope="col"
+                        class="px-3 py-2 font-medium"
+                      >
+                        Sample
+                      </th>
+                      <th
+                        scope="col"
+                        class="px-3 py-2 font-medium"
+                      >
+                        Confirmed rate
+                      </th>
+                      <th
+                        scope="col"
+                        class="px-3 py-2 font-medium"
+                      >
+                        95% interval
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-700">
+                    <tr
+                      v-for="row in reviewEvaluationReportEvidenceRows"
+                      :key="`${row.periodLabel}-${row.evidenceLabel}`"
+                    >
+                      <td class="px-3 py-3 text-gray-200">
+                        {{ row.periodLabel }}
+                      </td>
+                      <td class="px-3 py-3 text-gray-200">
+                        {{ row.evidenceLabel }}
+                      </td>
+                      <td class="px-3 py-3 text-gray-200">
+                        {{ row.itemCountLabel }}
+                      </td>
+                      <td class="px-3 py-3 text-gray-200">
+                        {{ row.confirmationRateLabel }}
+                      </td>
+                      <td class="px-3 py-3 text-gray-300">
+                        {{ row.intervalLabel }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </details>
+
+            <div class="space-y-2 rounded-md border border-gray-700 p-4">
+              <label
+                for="review-evaluation-hypothesis"
+                class="block text-sm font-medium text-gray-200"
+              >
+                Operator hypothesis (browser-only, not saved)
+              </label>
+              <textarea
+                id="review-evaluation-hypothesis"
+                v-model="reviewEvaluationHypothesis"
+                rows="3"
+                maxlength="1000"
+                class="w-full rounded-md border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-gray-100 focus:border-blue-500 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                aria-describedby="review-evaluation-hypothesis-description"
+              />
+              <p
+                id="review-evaluation-hypothesis-description"
+                class="text-xs text-gray-400"
+              >
+                Use this to frame a manual policy-review question. It stays only in this open browser view, is not sent to Classifarr, and cannot change policy or routing.
+              </p>
+              <button
+                v-if="reviewEvaluationHypothesis"
+                type="button"
+                class="rounded-md border border-gray-600 px-3 py-2 text-sm font-medium text-gray-200 transition-colors hover:bg-gray-700"
+                @click="reviewEvaluationHypothesis = ''"
+              >
+                Clear browser-only hypothesis
+              </button>
+            </div>
+          </template>
+        </section>
       </template>
     </section>
 
@@ -724,6 +968,11 @@ import {
   normalizePolicyCandidateCorrectionRepresentativeReviewProjection,
   presentPolicyCandidateCorrectionRepresentativeReviewProjectionItem,
 } from '@/utils/policyCandidateCorrectionRepresentativeReviewProjectionPresentation'
+import {
+  getPolicyCandidateCorrectionRepresentativeReviewEvaluationReportPresentation,
+  normalizePolicyCandidateCorrectionRepresentativeReviewEvaluationReport,
+  presentPolicyCandidateCorrectionRepresentativeReviewEvaluationSummary,
+} from '@/utils/policyCandidateCorrectionRepresentativeReviewEvaluationReportPresentation'
 
 const apiKeys = ref([])
 const loading = ref(false)
@@ -752,6 +1001,10 @@ const reviewProjectionLoading = ref(false)
 const reviewProjectionCreating = ref(false)
 const reviewProjectionError = ref(null)
 const reviewProjectionActionStatus = ref(null)
+const reviewEvaluationReport = ref(null)
+const reviewEvaluationReportLoading = ref(false)
+const reviewEvaluationReportError = ref(null)
+const reviewEvaluationHypothesis = ref('')
 
 const reviewCorpusControlPresentation = computed(() => (
   getPolicyCandidateCorrectionRepresentativeReviewCorpusControlPresentation(
@@ -768,6 +1021,26 @@ const reviewProjectionRows = computed(() => (
     ?.map(presentPolicyCandidateCorrectionRepresentativeReviewProjectionItem)
     .filter(Boolean) || []
 ))
+const reviewEvaluationReportPresentation = computed(() => (
+  getPolicyCandidateCorrectionRepresentativeReviewEvaluationReportPresentation(
+    reviewEvaluationReport.value?.statusId
+  )
+))
+const reviewEvaluationReportPeriodRows = computed(() => (
+  reviewEvaluationReport.value?.report?.periodSummaries
+    ?.map(presentPolicyCandidateCorrectionRepresentativeReviewEvaluationSummary)
+    .filter(Boolean) || []
+))
+const reviewEvaluationReportMarginRows = computed(() => (
+  reviewEvaluationReport.value?.report?.marginSummaries
+    ?.map(presentPolicyCandidateCorrectionRepresentativeReviewEvaluationSummary)
+    .filter(Boolean) || []
+))
+const reviewEvaluationReportEvidenceRows = computed(() => (
+  reviewEvaluationReport.value?.report?.evidenceStateSummaries
+    ?.map(presentPolicyCandidateCorrectionRepresentativeReviewEvaluationSummary)
+    .filter(Boolean) || []
+))
 
 const newKey = ref({
   name: '',
@@ -778,6 +1051,7 @@ onMounted(() => {
   loadApiKeys()
   loadReviewCorpusControl()
   loadReviewProjection()
+  loadReviewEvaluationReport()
 })
 
 const loadReviewCorpusControl = async () => {
@@ -838,7 +1112,10 @@ const acknowledgeReviewCorpusSafeguards = async () => {
       throw new Error('Historic review-corpus audit events returned an unexpected response.')
     }
     reviewCorpusAuditEvents.value = auditEvents
-    await loadReviewProjection()
+    await Promise.all([
+      loadReviewProjection(),
+      loadReviewEvaluationReport(),
+    ])
   } catch (err) {
     console.error('Failed to acknowledge historic review-corpus safeguards:', err)
     reviewCorpusError.value = err.response?.data?.error ||
@@ -881,12 +1158,32 @@ const createReviewProjection = async () => {
     reviewProjectionActionStatus.value = projection.projection?.itemCount === 0
       ? 'The redacted snapshot was created, but no eligible correction rows were found.'
       : 'The redacted snapshot was created. It will expire automatically.'
+    await loadReviewEvaluationReport()
   } catch (err) {
     console.error('Failed to create redacted evaluation snapshot:', err)
     reviewProjectionError.value = err.response?.data?.error ||
       'Unable to create the redacted evaluation snapshot. No policy or routing change was made.'
   } finally {
     reviewProjectionCreating.value = false
+  }
+}
+
+const loadReviewEvaluationReport = async () => {
+  reviewEvaluationReportLoading.value = true
+  reviewEvaluationReportError.value = null
+  try {
+    const response = await api.getPolicyCandidateCorrectionReviewCorpusEvaluationReport()
+    const report = normalizePolicyCandidateCorrectionRepresentativeReviewEvaluationReport(response)
+    if (!report) {
+      throw new Error('Offline evaluation report returned an unexpected response.')
+    }
+    reviewEvaluationReport.value = report
+  } catch (err) {
+    console.error('Failed to load offline evaluation report:', err)
+    reviewEvaluationReport.value = null
+    reviewEvaluationReportError.value = 'Unable to load the offline evaluation report. No source historic records were exposed.'
+  } finally {
+    reviewEvaluationReportLoading.value = false
   }
 }
 

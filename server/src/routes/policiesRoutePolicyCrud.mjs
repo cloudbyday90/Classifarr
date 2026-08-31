@@ -24,10 +24,14 @@ import {
 import {
   registerPolicyCandidateCorrectionRepresentativeReviewProjectionRoutes,
 } from './policiesRouteRepresentativeReviewProjection.mjs';
+import {
+  registerPolicyCandidateCorrectionRepresentativeReviewEvaluationReportRoutes,
+} from './policiesRouteRepresentativeReviewEvaluationReport.mjs';
 
 export function registerPolicyCrudRoutes(router, deps) {
   registerPolicyCandidateCorrectionRepresentativeReviewCorpusControlRoutes(router, deps);
   registerPolicyCandidateCorrectionRepresentativeReviewProjectionRoutes(router, deps);
+  registerPolicyCandidateCorrectionRepresentativeReviewEvaluationReportRoutes(router, deps);
   registerPolicyEvaluationContextRoute(router, deps);
   registerPolicyOperatorWorkflowReadRoutes(router, deps);
   registerPolicyOperatorWorkflowCustomIntentSignalRoutes(router, deps);

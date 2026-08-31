@@ -158,6 +158,16 @@ export const policyCandidateCorrectionReviewProjectionReadLimiterConfig = {
   skip: (_req) => process.env.NODE_ENV === 'test',
 };
 
+/** Redacted representative evaluation-report reads (per IP, per 15 minutes). */
+export const policyCandidateCorrectionReviewEvaluationReportReadLimiterConfig = {
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: 'Too many review evaluation-report requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (_req) => process.env.NODE_ENV === 'test',
+};
+
 /** Redacted representative review-projection creation (per IP, per 15 minutes). */
 export const policyCandidateCorrectionReviewProjectionCreateLimiterConfig = {
   windowMs: 15 * 60 * 1000,

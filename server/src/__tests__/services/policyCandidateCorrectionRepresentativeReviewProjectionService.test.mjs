@@ -101,6 +101,32 @@ describe('representative review projection service', () => {
     expect(persistence.insertAuditEvent).not.toHaveBeenCalled();
   });
 
+  test('supports a non-auditing projection read for automatic derived reports', async () => {
+    const { service, persistence } = createHarness({ activeSnapshot: snapshot() });
+
+    await expect(service.getProjection({
+      actorId: 7,
+      auditProjectionView: false,
+    })).resolves.toEqual(expect.objectContaining({
+      statusId: 'projection_available',
+      projection: expect.objectContaining({ itemCount: 1 }),
+    }));
+
+    expect(persistence.insertAuditEvent).not.toHaveBeenCalled();
+  });
+
+  test('continues to audit the explicit operator projection view by default', async () => {
+    const { service, persistence } = createHarness({ activeSnapshot: snapshot() });
+
+    await expect(service.getProjection({ actorId: 7 })).resolves.toEqual(expect.objectContaining({
+      statusId: 'projection_available',
+    }));
+
+    expect(persistence.insertAuditEvent).toHaveBeenCalledWith(expect.objectContaining({
+      event: expect.objectContaining({ actionId: 'projection_viewed', actorId: 7 }),
+    }));
+  });
+
   test('creates one server-selected redacted snapshot and records only a minimal audit event', async () => {
     const { service, persistence, db } = createHarness();
 

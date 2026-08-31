@@ -36,6 +36,7 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - **Historical review-corpus preflight** — Sustained correction signals now clearly distinguish current decision review from a future historical corpus, with a fixed sample-frame proposal and explicit authorization, redaction, retention, and operator-audit safeguards.
 - **Historic review-corpus control plane** — Administrators can now acknowledge the fixed future corpus purpose, safeguards, and retention limit through an automatically loaded Security Settings card, with revision protection and bounded recent audit history; historic records remain unavailable.
 - **Redacted policy evaluation snapshot** — Administrators can now create a server-selected, expiry-bound representative correction sample that exposes only fixed margin, operator-outcome, and evidence-state categories for offline policy evaluation.
+- **Offline correction evaluation report** — Security Settings now automatically summarizes the active redacted snapshot by completed period, score margin, and evidence state with fixed outcome counts and 95% Wilson intervals; refreshes are non-auditing and it remains descriptive without policy, AI, RAG, or routing authority.
 
 ### Changed
 

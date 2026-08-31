@@ -129,7 +129,11 @@ export function createPolicyCandidateCorrectionRepresentativeReviewProjectionSer
     insertAuditEvent: insertPolicyCandidateCorrectionRepresentativeReviewProjectionAuditEvent,
   },
 } = {}) {
-  async function getProjection({ actorId, now = new Date() } = {}) {
+  async function getProjection({
+    actorId,
+    now = new Date(),
+    auditProjectionView = true,
+  } = {}) {
     const normalizedActorId = normalizeActorId(actorId);
     if (!normalizedActorId || typeof db?.withTransaction !== 'function') {
       throw new PolicyCandidateCorrectionRepresentativeReviewProjectionValidationError();
@@ -146,7 +150,7 @@ export function createPolicyCandidateCorrectionRepresentativeReviewProjectionSer
         dbClient: client,
         configuration,
         now: observedAt,
-        auditActorId: normalizedActorId,
+        auditActorId: auditProjectionView === false ? null : normalizedActorId,
       });
     });
   }

@@ -13,29 +13,18 @@ import {
   policyCandidateCorrectionReviewProjectionReadLimiterConfig,
 } from '../config/rateLimits.mjs';
 import { asyncHandler } from '../utils/asyncHandler.mjs';
-import { ConflictError, ForbiddenError, ValidationError } from '../utils/appError.mjs';
+import { ConflictError, ValidationError } from '../utils/appError.mjs';
 import { sendData } from '../utils/responseHelpers.mjs';
 import {
   PolicyCandidateCorrectionRepresentativeReviewProjectionConfigurationRequiredError,
   PolicyCandidateCorrectionRepresentativeReviewProjectionValidationError,
   createPolicyCandidateCorrectionRepresentativeReviewProjectionService,
 } from '../services/policyCandidateCorrectionRepresentativeReviewProjectionService.mjs';
-
-function requireReviewProjectionAdministrator(req) {
-  const actorId = Number(req.user?.id);
-  if (req.user?.role !== 'admin' || !Number.isInteger(actorId) || actorId <= 0) {
-    throw new ForbiddenError('Admin access required');
-  }
-  return actorId;
-}
-
-function createReviewProjectionLimiter(rateLimit, config) {
-  return typeof rateLimit === 'function' ? rateLimit(config) : (_req, _res, next) => next();
-}
-
-function preventReviewProjectionResponseCaching(res) {
-  res.set('Cache-Control', 'no-store');
-}
+import {
+  createReviewProjectionLimiter,
+  preventReviewProjectionResponseCaching,
+  requireReviewProjectionAdministrator,
+} from './policiesRouteRepresentativeReviewProjectionGuards.mjs';
 
 function mapReviewProjectionError(error) {
   if (error instanceof PolicyCandidateCorrectionRepresentativeReviewProjectionValidationError) {
