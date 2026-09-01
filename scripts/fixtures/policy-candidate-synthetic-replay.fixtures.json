@@ -1,0 +1,147 @@
+{
+  "version": "policy.candidate_synthetic_replay_fixture_corpus.v1",
+  "fixtures": [
+    {
+      "id": "broad-evidence-yields-to-specialized-evidence",
+      "baselineCandidates": [
+        { "candidateId": 1, "rawScore": 92, "evidenceClass": "broad_compatibility_overlap", "primaryViability": "compatibility_only", "primaryAnchorEligible": true },
+        { "candidateId": 2, "rawScore": 53, "evidenceClass": "identity", "primaryViability": "identity_evidence", "primaryAnchorEligible": true }
+      ],
+      "proposedCandidates": [
+        { "candidateId": 1, "rawScore": 92, "evidenceClass": "broad_compatibility_overlap", "primaryViability": "compatibility_only", "primaryAnchorEligible": true },
+        { "candidateId": 2, "rawScore": 72, "evidenceClass": "identity", "primaryViability": "identity_evidence", "primaryAnchorEligible": true }
+      ],
+      "expected": {
+        "baselineActionId": "prompt_select",
+        "baselineLeadingCandidateId": 1,
+        "proposedActionId": "prompt_confirm",
+        "proposedLeadingCandidateId": 2,
+        "proposedLeadingCalibrationReasonCode": "strong_evidence"
+      }
+    },
+    {
+      "id": "negative-conflict-removes-invalid-leader",
+      "baselineCandidates": [
+        { "candidateId": 1, "rawScore": 94, "evidenceClass": "compatibility", "primaryViability": "compatibility_only", "primaryAnchorEligible": true },
+        { "candidateId": 2, "rawScore": 54, "evidenceClass": "identity", "primaryViability": "identity_evidence", "primaryAnchorEligible": true }
+      ],
+      "proposedCandidates": [
+        { "candidateId": 1, "rawScore": 94, "evidenceClass": "negative_conflict", "primaryViability": "rag_improved", "primaryAnchorEligible": true },
+        { "candidateId": 2, "rawScore": 54, "evidenceClass": "identity", "primaryViability": "identity_evidence", "primaryAnchorEligible": true }
+      ],
+      "expected": {
+        "baselineActionId": "prompt_select",
+        "baselineLeadingCandidateId": 1,
+        "proposedActionId": "prompt_select",
+        "proposedLeadingCandidateId": 2,
+        "proposedLeadingCalibrationReasonCode": "strong_evidence"
+      }
+    },
+    {
+      "id": "profile-only-cannot-confirm-alone",
+      "baselineCandidates": [
+        { "candidateId": 1, "rawScore": 90, "evidenceClass": "profile_only", "primaryViability": "profile_only", "primaryAnchorEligible": true },
+        { "candidateId": 2, "rawScore": 58, "evidenceClass": "identity", "primaryViability": "identity_evidence", "primaryAnchorEligible": true }
+      ],
+      "proposedCandidates": [
+        { "candidateId": 1, "rawScore": 90, "evidenceClass": "profile_only", "primaryViability": "profile_only", "primaryAnchorEligible": true },
+        { "candidateId": 2, "rawScore": 70, "evidenceClass": "identity", "primaryViability": "identity_evidence", "primaryAnchorEligible": true }
+      ],
+      "expected": {
+        "baselineActionId": "prompt_select",
+        "baselineLeadingCandidateId": 1,
+        "proposedActionId": "prompt_confirm",
+        "proposedLeadingCandidateId": 2,
+        "proposedLeadingCalibrationReasonCode": "strong_evidence"
+      }
+    },
+    {
+      "id": "rag-only-cannot-confirm-alone",
+      "baselineCandidates": [
+        { "candidateId": 1, "rawScore": 90, "evidenceClass": "rag_only", "primaryViability": "rag_improved", "primaryAnchorEligible": true },
+        { "candidateId": 2, "rawScore": 59, "evidenceClass": "identity", "primaryViability": "identity_evidence", "primaryAnchorEligible": true }
+      ],
+      "proposedCandidates": [
+        { "candidateId": 1, "rawScore": 90, "evidenceClass": "rag_only", "primaryViability": "rag_improved", "primaryAnchorEligible": true },
+        { "candidateId": 2, "rawScore": 72, "evidenceClass": "identity", "primaryViability": "identity_evidence", "primaryAnchorEligible": true }
+      ],
+      "expected": {
+        "baselineActionId": "prompt_select",
+        "baselineLeadingCandidateId": 1,
+        "proposedActionId": "prompt_confirm",
+        "proposedLeadingCandidateId": 2,
+        "proposedLeadingCalibrationReasonCode": "strong_evidence"
+      }
+    },
+    {
+      "id": "identity-tie-stays-selection-only",
+      "baselineCandidates": [
+        { "candidateId": 1, "rawScore": 81, "evidenceClass": "identity", "primaryViability": "identity_evidence", "primaryAnchorEligible": true },
+        { "candidateId": 2, "rawScore": 81, "evidenceClass": "identity", "primaryViability": "identity_evidence", "primaryAnchorEligible": true }
+      ],
+      "proposedCandidates": [
+        { "candidateId": 1, "rawScore": 83, "evidenceClass": "identity", "primaryViability": "identity_evidence", "primaryAnchorEligible": true },
+        { "candidateId": 2, "rawScore": 81, "evidenceClass": "identity", "primaryViability": "identity_evidence", "primaryAnchorEligible": true }
+      ],
+      "expected": {
+        "baselineActionId": "prompt_select",
+        "baselineLeadingCandidateId": 1,
+        "proposedActionId": "prompt_confirm",
+        "proposedLeadingCandidateId": 1,
+        "proposedLeadingCalibrationReasonCode": "strong_evidence"
+      }
+    },
+    {
+      "id": "strong-identity-keeps-score-band-projection",
+      "baselineCandidates": [
+        { "candidateId": 1, "rawScore": 90, "evidenceClass": "identity", "primaryViability": "identity_evidence", "primaryAnchorEligible": true },
+        { "candidateId": 2, "rawScore": 40, "evidenceClass": "compatibility", "primaryViability": "compatibility_only", "primaryAnchorEligible": true }
+      ],
+      "proposedCandidates": [
+        { "candidateId": 1, "rawScore": 90, "evidenceClass": "identity", "primaryViability": "identity_evidence", "primaryAnchorEligible": true },
+        { "candidateId": 2, "rawScore": 40, "evidenceClass": "compatibility", "primaryViability": "compatibility_only", "primaryAnchorEligible": true }
+      ],
+      "expected": {
+        "baselineActionId": "auto_classify",
+        "baselineLeadingCandidateId": 1,
+        "proposedActionId": "auto_classify",
+        "proposedLeadingCandidateId": 1,
+        "proposedLeadingCalibrationReasonCode": "strong_evidence"
+      }
+    },
+    {
+      "id": "negative-conflict-never-leads",
+      "baselineCandidates": [
+        { "candidateId": 1, "rawScore": 95, "evidenceClass": "negative_conflict", "primaryViability": "rag_improved", "primaryAnchorEligible": true }
+      ],
+      "proposedCandidates": [
+        { "candidateId": 1, "rawScore": 95, "evidenceClass": "negative_conflict", "primaryViability": "rag_improved", "primaryAnchorEligible": true }
+      ],
+      "expected": {
+        "baselineActionId": "manual",
+        "baselineLeadingCandidateId": null,
+        "proposedActionId": "manual",
+        "proposedLeadingCandidateId": null,
+        "proposedLeadingCalibrationReasonCode": null
+      }
+    },
+    {
+      "id": "weak-overlap-remains-manual",
+      "baselineCandidates": [
+        { "candidateId": 1, "rawScore": 90, "evidenceClass": "compatibility", "primaryViability": "compatibility_only", "primaryAnchorEligible": true },
+        { "candidateId": 2, "rawScore": 90, "evidenceClass": "broad_compatibility_overlap", "primaryViability": "compatibility_only", "primaryAnchorEligible": true }
+      ],
+      "proposedCandidates": [
+        { "candidateId": 1, "rawScore": 90, "evidenceClass": "compatibility", "primaryViability": "compatibility_only", "primaryAnchorEligible": true },
+        { "candidateId": 2, "rawScore": 75, "evidenceClass": "identity", "primaryViability": "identity_evidence", "primaryAnchorEligible": true }
+      ],
+      "expected": {
+        "baselineActionId": "manual",
+        "baselineLeadingCandidateId": 1,
+        "proposedActionId": "prompt_confirm",
+        "proposedLeadingCandidateId": 2,
+        "proposedLeadingCalibrationReasonCode": "strong_evidence"
+      }
+    }
+  ]
+}

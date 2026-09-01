@@ -89,6 +89,15 @@ const ACTIVE_VERIFIER_ARTIFACTS = Object.freeze([
     exitCriterionIds: MIGRATION_EXIT_CRITERIA,
   },
   {
+    path: 'server/src/services/policyCandidateSyntheticReplayEvaluation.mjs',
+    dispositionId: POLICY_PREVIEW_REPLAY_VERIFIER_DISPOSITION_IDS.EVIDENCE_REDUCER_CANDIDATE,
+    purpose: 'Exercise fixed synthetic scope and calibration states through the shared pure candidate projection without reading live data or authoring runtime evidence.',
+    sideEffectProfileId: POLICY_PREVIEW_REPLAY_VERIFIER_SIDE_EFFECT_PROFILE_IDS.NONE,
+    exitCriterionIds: [
+      POLICY_PREVIEW_REPLAY_VERIFIER_EXIT_CRITERION_IDS.NO_ACTIVE_REBUILD_BINDING,
+    ],
+  },
+  {
     path: 'server/src/services/policyMigrationRepresentativeClassificationSource.mjs',
     dispositionId: POLICY_PREVIEW_REPLAY_VERIFIER_DISPOSITION_IDS.MIGRATION_PARITY_VERIFIER,
     purpose: 'Collect a deterministic, policy-scoped, bounded representative source from persisted outcomes.',

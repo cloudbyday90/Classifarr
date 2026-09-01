@@ -11,6 +11,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Offline synthetic policy-candidate replay** — A fixed, opaque fixture
+  corpus now exercises the shared deterministic calibration, ranking,
+  weak-evidence, ambiguity, and score-band projection before a proposed scope
+  or calibration code change is accepted; it is CLI-only, aggregate-only, and
+  cannot read live data, invoke AI/RAG, mutate policy, persist evidence, or
+  route media.
 - **Broad declared-policy review recommendation** — Correction Analytics now
   turns two comparable, review-ready 28-day aggregate correction periods for
   contextual declared-policy evidence into one human-only policy-scope review

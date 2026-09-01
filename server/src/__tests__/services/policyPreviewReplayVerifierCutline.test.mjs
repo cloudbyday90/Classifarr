@@ -24,7 +24,7 @@ describe('policyPreviewReplayVerifierCutline', () => {
     expect(audit).toEqual(expect.objectContaining({
       version: 'policy.preview_replay_verifier_cutline.v1',
       ok: true,
-      activeArtifactCount: 10,
+      activeArtifactCount: 11,
       retiredArtifactCount: 9,
       nextStep: expect.objectContaining({
         stepId: 'retained_migration_boundary_and_receipt_handoff',
@@ -33,7 +33,7 @@ describe('policyPreviewReplayVerifierCutline', () => {
     expect(audit.byDisposition).toEqual(expect.objectContaining({
       [POLICY_PREVIEW_REPLAY_VERIFIER_DISPOSITION_IDS.SERVER_CONTRACT_VERIFIER]: 1,
       [POLICY_PREVIEW_REPLAY_VERIFIER_DISPOSITION_IDS.MIGRATION_PARITY_VERIFIER]: 8,
-      [POLICY_PREVIEW_REPLAY_VERIFIER_DISPOSITION_IDS.EVIDENCE_REDUCER_CANDIDATE]: 1,
+      [POLICY_PREVIEW_REPLAY_VERIFIER_DISPOSITION_IDS.EVIDENCE_REDUCER_CANDIDATE]: 2,
       [POLICY_PREVIEW_REPLAY_VERIFIER_DISPOSITION_IDS.DELETE_WITH_OLD_UI_SURFACE]: 9,
     }));
     expect(audit.artifacts.every(artifact =>
@@ -52,7 +52,7 @@ describe('policyPreviewReplayVerifierCutline', () => {
       POLICY_PREVIEW_REPLAY_VERIFIER_DISPOSITION_IDS.EVIDENCE_REDUCER_CANDIDATE,
     ].includes(artifact.dispositionId));
 
-    expect(internalArtifacts).toHaveLength(2);
+    expect(internalArtifacts).toHaveLength(3);
     expect(internalArtifacts.every(artifact =>
       artifact.sideEffectProfileId === POLICY_PREVIEW_REPLAY_VERIFIER_SIDE_EFFECT_PROFILE_IDS.NONE
     )).toBe(true);

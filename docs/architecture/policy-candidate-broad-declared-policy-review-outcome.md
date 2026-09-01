@@ -45,9 +45,9 @@ advisory from being based on ambiguous data.
 
 ## Follow-up
 
-After enough representative review decisions have been assessed, the next
-high-value item is an offline, synthetic policy-replay harness. It should test
-proposed deterministic scope/calibration changes against reviewed fixtures
-without sending media to AI/RAG or modifying live policies. That would validate
-whether a human-approved policy change improves the known broad-scope pattern
-before it reaches production.
+The offline, synthetic policy-replay harness described as the next item is now
+delivered in
+[Synthetic Policy-Candidate Replay Outcome](policy-candidate-synthetic-replay-outcome.md).
+The next high-value item is a progressive, plain-language pending-review
+summary that keeps detailed evidence mechanics optional without reducing
+operator control.
