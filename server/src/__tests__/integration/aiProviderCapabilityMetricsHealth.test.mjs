@@ -25,6 +25,14 @@ afterEach(async () => {
     'DELETE FROM ai_provider_capability_metrics WHERE provider_id = $1 AND model = $2 AND authority_mode = $3',
     [providerId, model, authorityMode],
   );
+  await database.query(
+    "DELETE FROM error_log WHERE module = $1 AND (metadata->>'reasonCode' = $2 OR message = $3)",
+    [
+      AI_PROVIDER_CAPABILITY_METRICS_LOG_MODULE,
+      AI_PROVIDER_CAPABILITY_METRICS_WRITE_FAILURE_REASON_CODE,
+      AI_PROVIDER_CAPABILITY_METRICS_WRITE_FAILURE_MESSAGE,
+    ],
+  );
 });
 
 describe('AI provider capability metrics health persistence', () => {

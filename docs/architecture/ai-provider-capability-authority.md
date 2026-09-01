@@ -188,6 +188,13 @@ no-store status signal that returns no provider/model dimension or raw log
 data and cannot influence provider authority; see [AI Provider Capability
 Metrics Health Signal Design](ai-provider-capability-metrics-health-signal-design.md).
 
+The same AI Settings panel also presents a separate three-window completed
+UTC-day aggregate trend. It distinguishes persistent, newly observed, cleared,
+recurring, and no-data telemetry observations without exposing a provider or
+raw log detail, and has no AI, policy, RAG, classification, or routing
+authority; see [AI Provider Capability Metrics Health Trend
+Design](ai-provider-capability-metrics-health-trend-design.md).
+
 When repair runs, the initial provider response and the local repair execution
 are recorded separately. A primary parse failure cannot be relabeled as a
 successful strict response merely because a later local repair parsed.

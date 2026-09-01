@@ -55,7 +55,7 @@ describe('AiProviderCapabilityMetricsHealthSummary', () => {
       lastUpdatedAt: '2026-08-31T12:02:00.000Z',
     })
 
-    expect(wrapper.get('[role="status"]').text())
+    expect(wrapper.get('[data-testid="capability-metrics-health-status"]').text())
       .toContain('Capability telemetry status changed: Capability telemetry is recording.')
   })
 })

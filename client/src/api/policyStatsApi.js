@@ -78,6 +78,10 @@ export function getAiProviderCapabilityMetricsHealth() {
   return getDataRequest('/stats/ai-provider-capability-metrics-health')
 }
 
+export function getAiProviderCapabilityMetricsHealthTrend() {
+  return getDataRequest('/stats/ai-provider-capability-metrics-health-trend')
+}
+
 export function getRouteSafetyMaintenanceHandoff() {
   return getDataRequest('/stats/route-safety-maintenance-handoff')
 }
@@ -98,6 +102,7 @@ const policyStatsApi = {
   getOllamaVerificationCapabilityOutcomeHistory,
   getRouteSafetyReadiness,
   getAiProviderCapabilityMetricsHealth,
+  getAiProviderCapabilityMetricsHealthTrend,
   getRouteSafetyMaintenanceHandoff,
 }
 

@@ -8,7 +8,7 @@
     class="rounded-lg border p-4"
     :class="presentation.className"
     aria-labelledby="capability-metrics-health-heading"
-    :aria-busy="loading"
+    :aria-busy="loading || trendLoading"
   >
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div class="space-y-1">
@@ -68,6 +68,11 @@
       </li>
     </ul>
 
+    <AiProviderCapabilityMetricsHealthTrend
+      :report="trendReport"
+      :loading="trendLoading"
+    />
+
     <p class="mt-3 text-xs text-gray-400">
       <span v-if="loading">Refreshing aggregate capability-telemetry status…</span>
       <span v-else-if="lastUpdatedAt">Last refreshed {{ formattedLastUpdatedAt }}. {{ automaticUpdateMessage }}</span>
@@ -75,6 +80,7 @@
     </p>
 
     <p
+      data-testid="capability-metrics-health-status"
       class="sr-only"
       role="status"
       aria-live="polite"
@@ -87,6 +93,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import AiProviderCapabilityMetricsHealthTrend from '@/components/settings/AiProviderCapabilityMetricsHealthTrend.vue'
 import { buildAiProviderCapabilityMetricsHealthPresentation } from '@/utils/aiProviderCapabilityMetricsHealthPresentation'
 
 const props = defineProps({
@@ -95,6 +102,14 @@ const props = defineProps({
     default: () => null,
   },
   loading: {
+    type: Boolean,
+    default: false,
+  },
+  trendReport: {
+    type: Object,
+    default: () => null,
+  },
+  trendLoading: {
     type: Boolean,
     default: false,
   },

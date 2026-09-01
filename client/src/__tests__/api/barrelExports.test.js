@@ -268,6 +268,7 @@ describe('api/index.js barrel export validation', () => {
       expectFunction('getPolicyCandidateCorrectionAnalyticsMetrics')
       expectFunction('getRouteSafetyReadiness')
       expectFunction('getAiProviderCapabilityMetricsHealth')
+      expectFunction('getAiProviderCapabilityMetricsHealthTrend')
       expectFunction('getRouteSafetyMaintenanceHandoff')
     })
 

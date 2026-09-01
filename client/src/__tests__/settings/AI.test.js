@@ -29,6 +29,8 @@ vi.mock('@/api', () => ({
     getOllamaVerificationRuntimeMismatchSummary: vi.fn(),
     getOllamaVerificationCapabilityOutcomeHistory: vi.fn(),
     getRouteSafetyReadiness: vi.fn(),
+    getAiProviderCapabilityMetricsHealth: vi.fn(),
+    getAiProviderCapabilityMetricsHealthTrend: vi.fn(),
     getRouteSafetyMaintenanceHandoff: vi.fn(),
     getAIModels: vi.fn(),
     testAIConnection: vi.fn(),
@@ -149,6 +151,22 @@ describe('AI Settings', () => {
       version: 'classification.route_safety_maintenance_handoff.v1',
       status: { id: 'not_recommended' },
       handoff: null,
+    })
+    api.getAiProviderCapabilityMetricsHealth.mockResolvedValue({
+      version: 'ai.provider_capability_metrics_health.v1',
+      activeMetricStreamCount: '1',
+      persistenceFailureCount: '0',
+      status: { id: 'operational' },
+    })
+    api.getAiProviderCapabilityMetricsHealthTrend.mockResolvedValue({
+      version: 'ai.provider_capability_metrics_health_trend.v1',
+      window: { days: 1, periodCount: 3 },
+      periods: [
+        { id: 'baseline', activeMetricStreamCount: '1', persistenceFailureCount: '0' },
+        { id: 'previous', activeMetricStreamCount: '1', persistenceFailureCount: '0' },
+        { id: 'current', activeMetricStreamCount: '1', persistenceFailureCount: '0' },
+      ],
+      status: { id: 'no_active_persistence_failure_trend' },
     })
     api.getLastOllamaPreflight.mockResolvedValue({ ai: null, embedding: null })
     api.runOllamaVerificationCompatibilityMatrix.mockResolvedValue({

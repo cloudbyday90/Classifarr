@@ -51,9 +51,9 @@ GitHub reported zero open Classifarr pull requests during this work. There was
 no open PR to implement locally, so this change contains no substituted closed
 or unrelated pull-request code.
 
-## Next High-Value Item
+## Follow-On Outcome
 
-After production observations accumulate, add a fixed three-window trend to
-this same aggregate: persistent, newly observed, cleared, or no-data. Keep it
-administrator-only and descriptive, retain no raw logs or provider dimensions,
-and do not grant it any AI, policy, RAG, classification, or routing authority.
+The fixed three-window trend is now delivered. See [AI Provider Capability
+Metrics Health Trend Outcome](ai-provider-capability-metrics-health-trend-outcome.md)
+for the completed UTC-day states, authority boundary, and next high-value
+follow-up.

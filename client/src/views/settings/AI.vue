@@ -670,6 +670,8 @@
         class="mt-4"
         :report="capabilityMetricsHealth"
         :loading="loadingCapabilityMetricsHealth"
+        :trend-report="capabilityMetricsHealthTrend"
+        :trend-loading="loadingCapabilityMetricsHealthTrend"
         :last-updated-at="capabilityMetricsHealthLastUpdatedAt"
         :auto-refresh-enabled="aiReadinessAutoRefreshEnabled"
       />
@@ -730,6 +732,7 @@ const loadingOllamaPreflight = ref(false)
 const loadingVerificationCapability = ref(false)
 const loadingRouteSafetyReadiness = ref(false)
 const loadingCapabilityMetricsHealth = ref(false)
+const loadingCapabilityMetricsHealthTrend = ref(false)
 const loadingRouteSafetyMaintenanceHandoff = ref(false)
 const testingVerificationCapability = ref(false)
 const loadingVerificationCapabilityChangeReceipts = ref(false)
@@ -746,6 +749,7 @@ const usageStats = ref(null)
 const verificationCapability = ref(null)
 const routeSafetyReadiness = ref(null)
 const capabilityMetricsHealth = ref(null)
+const capabilityMetricsHealthTrend = ref(null)
 const capabilityMetricsHealthLastUpdatedAt = ref(null)
 const routeSafetyMaintenanceHandoff = ref(null)
 const verificationCapabilityChangeReceipts = ref(null)
@@ -760,6 +764,7 @@ const aiReadinessDiagnosticsExpanded = ref(false)
 let verificationCapabilityRequestId = 0
 let routeSafetyReadinessRequestId = 0
 let capabilityMetricsHealthRequestId = 0
+let capabilityMetricsHealthTrendRequestId = 0
 let routeSafetyMaintenanceHandoffRequestId = 0
 let verificationCapabilityChangeReceiptsRequestId = 0
 let ollamaVerificationRuntimeMismatchSummaryRequestId = 0
@@ -951,6 +956,30 @@ const loadCapabilityMetricsHealth = async () => {
   }
 }
 
+// This companion read uses three completed UTC-day windows. It remains
+// aggregate-only and advisory, and shares the same visible-page lifecycle as
+// the timely health status without creating another polling mechanism.
+const loadCapabilityMetricsHealthTrend = async () => {
+  const requestId = ++capabilityMetricsHealthTrendRequestId
+  loadingCapabilityMetricsHealthTrend.value = true
+  try {
+    const report = await api.getAiProviderCapabilityMetricsHealthTrend()
+    if (requestId === capabilityMetricsHealthTrendRequestId) {
+      capabilityMetricsHealthTrend.value = report
+    }
+    return report
+  } catch (_error) {
+    if (requestId === capabilityMetricsHealthTrendRequestId) {
+      capabilityMetricsHealthTrend.value = null
+    }
+    return null
+  } finally {
+    if (requestId === capabilityMetricsHealthTrendRequestId) {
+      loadingCapabilityMetricsHealthTrend.value = false
+    }
+  }
+}
+
 // The maintenance handoff is a separate aggregate-only read. It deliberately
 // becomes eligible only after route-safety observations exist, and it cannot
 // select a policy, test a provider, mutate configuration, retry, or route.
@@ -976,17 +1005,18 @@ const loadRouteSafetyMaintenanceHandoff = async () => {
 }
 
 const loadAiReadiness = async () => {
-  const [capability, routeSafety, capabilityMetrics] = await Promise.all([
+  const [capability, routeSafety, capabilityMetrics, capabilityMetricsTrend] = await Promise.all([
     loadVerificationCapability(),
     loadRouteSafetyReadiness(),
     loadCapabilityMetricsHealth(),
+    loadCapabilityMetricsHealthTrend(),
   ])
   const routeSafetyObservationCount = Number(routeSafety?.observationCount)
   const maintenanceHandoff = Number.isSafeInteger(routeSafetyObservationCount) && routeSafetyObservationCount > 0
     ? await loadRouteSafetyMaintenanceHandoff()
     : (routeSafetyMaintenanceHandoff.value = null)
 
-  return capability || routeSafety || capabilityMetrics || maintenanceHandoff
+  return capability || routeSafety || capabilityMetrics || capabilityMetricsTrend || maintenanceHandoff
 }
 
 const {

@@ -39,6 +39,7 @@ import {
   getOllamaVerificationRuntimeMismatchSummary,
   getOllamaVerificationCapabilityOutcomeHistory,
   getAiProviderCapabilityMetricsHealth,
+  getAiProviderCapabilityMetricsHealthTrend,
   getRouteSafetyMaintenanceHandoff,
   getRouteSafetyReadiness,
 } from '../../api/policyStatsApi'
@@ -148,6 +149,14 @@ describe('policyStatsApi', () => {
     await getAiProviderCapabilityMetricsHealth()
 
     expect(mockGetDataRequest).toHaveBeenCalledWith('/stats/ai-provider-capability-metrics-health')
+  })
+
+  it('getAiProviderCapabilityMetricsHealthTrend uses the protected fixed aggregate endpoint without caller dimensions', async () => {
+    mockGetDataRequest.mockResolvedValueOnce({})
+
+    await getAiProviderCapabilityMetricsHealthTrend()
+
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/stats/ai-provider-capability-metrics-health-trend')
   })
 
   it('getRouteSafetyMaintenanceHandoff uses the protected fixed aggregate endpoint without caller dimensions', async () => {

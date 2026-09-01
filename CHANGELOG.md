@@ -25,6 +25,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
   the administrator-only 24-hour aggregate of successful capability-metric
   streams and bounded persistence warnings, without exposing raw logs or
   affecting AI, policy, RAG, classification, or routing.
+- **Capability telemetry health trend** — AI Settings now automatically
+  compares three fixed completed UTC-day capability-telemetry aggregates,
+  distinguishing persistent, newly observed, cleared, recurring, and no-data
+  warning states without exposing raw diagnostics or affecting AI, policy,
+  RAG, classification, or routing.
 - **Offline fixed-band calibration** — A versioned synthetic default-band corpus now verifies manual, selection, confirmation, and automatic-candidate boundaries before the calibration review packet can be prepared; it remains offline and human-gated.
 - **Bounded candidate adjudication** — Ambiguous policy selections can now receive an AI advisory comparison of two or three server-selected eligible destinations, using observed library-profile and relevant historical evidence while retaining operator confirmation.
 - **Current-library candidate retrieval** — Candidate adjudication now uses a bounded read-only lookup over the synchronized current library inventory, recognizing exact identifiers, title/year, and plain-text catalog matches without changing routing authority.
@@ -107,6 +112,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
   fixed counts/timestamps and a server-owned status vocabulary, excludes raw
   logs/provider/model/media data, and cannot write telemetry or influence AI,
   policy, RAG, classification, or routing.
+- **Capability telemetry trend boundary** — The completed-window trend is
+  administrator-only, no-store, rate-limited, parameter-free, and
+  aggregate-only. It exposes no provider/model/media/log dimension or raw
+  diagnostic data, rejects incoherent contracts in the browser, and cannot
+  call AI, write telemetry, retry, or influence policy, RAG, classification,
+  or routing.
 - **Offline fixed-band evidence boundary** — The fixed-path corpus pins the versioned default baseline, rejects unknown or authority-bearing data, reports only aggregate results, and cannot read live configuration, invoke AI/RAG, alter policy, or route media.
 - **Offline route-safety evidence boundary** — The fixed matrix permits only bounded synthetic gate controls, exercises the existing server-owned safety resolver, returns aggregate-only results, and has no API, storage, provider, AI/RAG, policy, retry, approval, or routing authority.
 - **AI readiness refresh boundary** — Automatic AI Settings refreshes call only the existing administrator-authorized saved-capability read at a visible-page bound; they cannot probe providers, discover models, write settings, route media, or expose raw scheduled-preflight errors.
