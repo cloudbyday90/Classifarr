@@ -50,10 +50,10 @@ The public [Classifarr pull-request listing](https://github.com/cloudbyday90/Cla
 reported zero open pull requests when checked. No unrelated or invented pull
 request was transplanted locally.
 
-## Next High-Value Item
+## Follow-Up Outcome
 
-Add a similarly bounded completed-window **warning recency** signal that
-distinguishes current, newly cleared, and stale retained telemetry evidence
-using fixed age bands. It should remain administrator-only and observational;
-it must not infer incident severity from raw logs or influence AI, policies,
-RAG, classification, or routing.
+The bounded completed-window warning-recency follow-up is now delivered; see
+[AI Provider Capability Metrics Failure Recency
+Design](ai-provider-capability-metrics-failure-recency-design.md) and [AI
+Provider Capability Metrics Failure Recency
+Outcome](ai-provider-capability-metrics-failure-recency-outcome.md).

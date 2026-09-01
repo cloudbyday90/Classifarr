@@ -220,6 +220,14 @@ changing provider authority. It is telemetry-quality context only; see [AI
 Provider Capability Metrics Failure Category Coverage
 Design](ai-provider-capability-metrics-failure-category-coverage-design.md).
 
+The same active-warning state also loads a separate completed UTC-day warning
+recency aggregate. It derives only fixed latest-day, newly-cleared, and
+older-only bands from three count-only periods, keeping the rolling health
+summary authoritative for current status. It exposes no timestamps or raw
+diagnostics and has no AI, policy, RAG, classification, or routing authority;
+see [AI Provider Capability Metrics Failure Recency
+Design](ai-provider-capability-metrics-failure-recency-design.md).
+
 When repair runs, the initial provider response and the local repair execution
 are recorded separately. A primary parse failure cannot be relabeled as a
 successful strict response merely because a later local repair parsed.

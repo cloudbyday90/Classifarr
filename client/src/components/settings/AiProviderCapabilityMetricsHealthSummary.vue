@@ -83,6 +83,11 @@
       :loading="failureCategoryCoverageLoading"
     />
 
+    <AiProviderCapabilityMetricsFailureRecency
+      :report="failureRecency"
+      :loading="failureRecencyLoading"
+    />
+
     <AiProviderCapabilityMetricsErrorLogHandoff :report="trendReport" />
 
     <p class="mt-3 text-xs text-gray-400">
@@ -108,6 +113,7 @@ import { computed, ref, watch } from 'vue'
 import AiProviderCapabilityMetricsErrorLogHandoff from '@/components/settings/AiProviderCapabilityMetricsErrorLogHandoff.vue'
 import AiProviderCapabilityMetricsFailureBreakdown from '@/components/settings/AiProviderCapabilityMetricsFailureBreakdown.vue'
 import AiProviderCapabilityMetricsFailureCategoryCoverage from '@/components/settings/AiProviderCapabilityMetricsFailureCategoryCoverage.vue'
+import AiProviderCapabilityMetricsFailureRecency from '@/components/settings/AiProviderCapabilityMetricsFailureRecency.vue'
 import AiProviderCapabilityMetricsHealthTrend from '@/components/settings/AiProviderCapabilityMetricsHealthTrend.vue'
 import { buildAiProviderCapabilityMetricsHealthPresentation } from '@/utils/aiProviderCapabilityMetricsHealthPresentation'
 
@@ -141,6 +147,14 @@ const props = defineProps({
     default: () => null,
   },
   failureCategoryCoverageLoading: {
+    type: Boolean,
+    default: false,
+  },
+  failureRecency: {
+    type: Object,
+    default: () => null,
+  },
+  failureRecencyLoading: {
     type: Boolean,
     default: false,
   },

@@ -44,6 +44,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
   persistence warnings carry the fixed safe category contract, without
   exposing raw diagnostics or affecting AI, policy, RAG, classification, or
   routing.
+- **Capability telemetry warning recency** — AI Settings now automatically
+  distinguishes retained warnings in the latest completed UTC day, a newly
+  cleared completed day, and older-only context through fixed aggregate bands,
+  without exposing raw timestamps or affecting AI, policy, RAG,
+  classification, retries, or routing.
 - **Offline fixed-band calibration** — A versioned synthetic default-band corpus now verifies manual, selection, confirmation, and automatic-candidate boundaries before the calibration review packet can be prepared; it remains offline and human-gated.
 - **Bounded candidate adjudication** — Ambiguous policy selections can now receive an AI advisory comparison of two or three server-selected eligible destinations, using observed library-profile and relevant historical evidence while retaining operator confirmation.
 - **Current-library candidate retrieval** — Candidate adjudication now uses a bounded read-only lookup over the synchronized current library inventory, recognizing exact identifiers, title/year, and plain-text catalog matches without changing routing authority.

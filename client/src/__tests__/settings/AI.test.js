@@ -33,6 +33,7 @@ vi.mock('@/api', () => ({
     getAiProviderCapabilityMetricsHealthTrend: vi.fn(),
     getAiProviderCapabilityMetricsFailureBreakdown: vi.fn(),
     getAiProviderCapabilityMetricsFailureCategoryCoverage: vi.fn(),
+    getAiProviderCapabilityMetricsFailureRecency: vi.fn(),
     getRouteSafetyMaintenanceHandoff: vi.fn(),
     getAIModels: vi.fn(),
     testAIConnection: vi.fn(),
@@ -186,6 +187,13 @@ describe('AI Settings', () => {
       periods: [],
       status: { id: 'no_completed_persistence_warnings' },
     })
+    api.getAiProviderCapabilityMetricsFailureRecency.mockResolvedValue({
+      version: 'ai.provider_capability_metrics_failure_recency.v1',
+      window: { days: 1, periodCount: 3 },
+      periods: [],
+      recency: { id: 'no_completed_persistence_warnings', completedDaysSinceLastWarning: null },
+      status: { id: 'no_completed_persistence_warnings' },
+    })
     api.getLastOllamaPreflight.mockResolvedValue({ ai: null, embedding: null })
     api.runOllamaVerificationCompatibilityMatrix.mockResolvedValue({
       data: { stateId: 'completed', ollamaVersion: '0.12.4', outcomes: [] }
@@ -287,16 +295,31 @@ describe('AI Settings', () => {
       provider: 'private-provider',
       error: 'postgres://private-endpoint',
     })
+    api.getAiProviderCapabilityMetricsFailureRecency.mockResolvedValueOnce({
+      version: 'ai.provider_capability_metrics_failure_recency.v1',
+      window: { days: 1, periodCount: 3 },
+      periods: [
+        { id: 'baseline', persistenceFailureCount: '1' },
+        { id: 'previous', persistenceFailureCount: '1' },
+        { id: 'current', persistenceFailureCount: '0' },
+      ],
+      recency: { id: 'cleared_for_one_completed_day', completedDaysSinceLastWarning: 1 },
+      status: { id: 'cleared_for_one_completed_day' },
+      provider: 'private-provider',
+      error: 'postgres://private-endpoint',
+    })
 
     const wrapper = mountView()
     await flushPromises()
 
     expect(api.getAiProviderCapabilityMetricsFailureBreakdown).toHaveBeenCalledTimes(1)
     expect(api.getAiProviderCapabilityMetricsFailureCategoryCoverage).toHaveBeenCalledTimes(1)
+    expect(api.getAiProviderCapabilityMetricsFailureRecency).toHaveBeenCalledTimes(1)
     expect(wrapper.text()).toContain('Safe persistence-failure categories')
     expect(wrapper.text()).toContain('Connection exception')
     expect(wrapper.text()).toContain('Completed-window safe category coverage is partial')
     expect(wrapper.text()).toContain('50% safely categorized')
+    expect(wrapper.text()).toContain('Warning cleared in the latest completed day')
     expect(wrapper.text()).not.toContain('private-provider')
     expect(wrapper.text()).not.toContain('private-model')
     expect(wrapper.text()).not.toContain('private-endpoint')

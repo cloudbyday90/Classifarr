@@ -144,6 +144,15 @@ export const aiProviderCapabilityMetricsFailureCategoryCoverageLimiterConfig = {
   legacyHeaders: false,
 };
 
+/** AI capability-metrics completed warning-recency reads (per IP, per 15 minutes). */
+export const aiProviderCapabilityMetricsFailureRecencyLimiterConfig = {
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: 'Too many capability-metrics failure-recency requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+};
+
 /** Route-safety aggregate policy-maintenance handoff reads (per IP, per 15 minutes). */
 export const routeSafetyMaintenanceHandoffLimiterConfig = {
   windowMs: 15 * 60 * 1000,
