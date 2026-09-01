@@ -195,6 +195,14 @@ raw log detail, and has no AI, policy, RAG, classification, or routing
 authority; see [AI Provider Capability Metrics Health Trend
 Design](ai-provider-capability-metrics-health-trend-design.md).
 
+When that trend has an active persistence-warning state, AI Settings offers a
+single user-initiated handoff to the administrator-only Error Logs view. The
+handoff applies only the stable capability-metric persistence reason code and
+does not carry a provider, model, media, policy, raw error, or server-provided
+URL. It remains diagnostic and has no AI, RAG, policy, classification, or
+routing authority; see [AI Provider Capability Metrics Error Log Handoff
+Design](ai-provider-capability-metrics-error-log-handoff-design.md).
+
 When repair runs, the initial provider response and the local repair execution
 are recorded separately. A primary parse failure cannot be relabeled as a
 successful strict response merely because a later local repair parsed.

@@ -26,12 +26,18 @@ export function createLogsRouter({
   rateLimit,
   db,
   authenticateToken,
+  requireAdmin,
   logger,
 }) {
+  if (typeof requireAdmin !== 'function') {
+    throw new TypeError('Logs routes require administrator authorization.');
+  }
+
   const router = express.Router();
   const logsLimiter = createLogsLimiter(rateLimit);
 
   router.use(authenticateToken);
+  router.use(requireAdmin);
   router.use(logsLimiter);
 
   router.get('/', asyncHandler(async (req, res) => {

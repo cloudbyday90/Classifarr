@@ -69,7 +69,6 @@ The public Classifarr pull-request listing had no open pull requests on
 
 ## Next High-Value Item
 
-Add one protected, pre-filtered Error Logs handoff for an active capability
-telemetry warning trend. The handoff should carry only the fixed stable reason
-code, preserve administrator authorization, avoid raw data in AI Settings,
-and never trigger a retry, provider test, policy change, or route.
+The protected, pre-filtered Error Logs handoff for active capability telemetry
+warning trends is delivered. See [AI Provider Capability Metrics Error Log
+Handoff Outcome](ai-provider-capability-metrics-error-log-handoff-outcome.md).

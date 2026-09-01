@@ -57,6 +57,32 @@
     </div>
 
     <!-- Filters and Actions -->
+    <section
+      v-if="filters.reasonCode"
+      class="rounded-lg border border-amber-700/70 bg-amber-950/10 p-3"
+      aria-labelledby="capability-metrics-log-filter-heading"
+    >
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3
+            id="capability-metrics-log-filter-heading"
+            class="font-medium text-amber-100"
+          >
+            Capability telemetry persistence warnings
+          </h3>
+          <p class="mt-1 text-sm text-gray-300">
+            This protected view is pre-filtered from AI Settings. Clear the filter to return to all Error Logs.
+          </p>
+        </div>
+        <button
+          class="rounded border border-gray-600 px-3 py-2 text-sm font-medium text-gray-200 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 focus:ring-offset-gray-950"
+          @click="clearCapabilityMetricsHandoff"
+        >
+          Clear handoff filter
+        </button>
+      </div>
+    </section>
+
     <div class="flex flex-wrap gap-4 items-center">
       <div class="flex-1 min-w-[200px]">
         <select
@@ -448,8 +474,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import api from '../../api'
+import {
+  removeCapabilityMetricsErrorLogHandoffQuery,
+  resolveCapabilityMetricsErrorLogHandoffReasonCode,
+} from '@/utils/capabilityMetricsErrorLogHandoff'
 
 const LOG_TIMESTAMP_FORMAT = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
@@ -468,12 +499,16 @@ const error = ref(null)
 const showModal = ref(false)
 const selectedLog = ref(null)
 const copySuccess = ref(false)
+const route = useRoute()
+const router = useRouter()
+let isMounted = false
 
 const filters = ref({
   level: '',
   module: '',
   resolved: '',
-  retryAudit: false
+  retryAudit: false,
+  reasonCode: '',
 })
 
 const pagination = ref({
@@ -484,9 +519,23 @@ const pagination = ref({
 })
 
 onMounted(() => {
+  isMounted = true
   loadStats()
   loadLogs()
 })
+
+watch(
+  () => [route.query.handoff, route.query.reasonCode],
+  () => {
+    const handoffReasonCode = resolveCapabilityMetricsErrorLogHandoffReasonCode(route.query)
+    if (filters.value.reasonCode === handoffReasonCode) return
+
+    filters.value.reasonCode = handoffReasonCode || ''
+    pagination.value.page = 1
+    if (isMounted) loadLogs()
+  },
+  { immediate: true },
+)
 
 async function loadStats() {
   try {
@@ -510,6 +559,7 @@ async function loadLogs() {
     if (filters.value.module) params.append('module', filters.value.module)
     if (filters.value.resolved) params.append('resolved', filters.value.resolved)
     if (filters.value.retryAudit) params.append('audit', 'classification_retry')
+    if (filters.value.reasonCode) params.append('reasonCode', filters.value.reasonCode)
     
     const response = await api.getLogs(params)
     
@@ -545,6 +595,12 @@ function toggleRetryAuditFilter() {
     filters.value.module = ''
   }
   resetAndLoadLogs()
+}
+
+async function clearCapabilityMetricsHandoff() {
+  await router.replace({
+    query: removeCapabilityMetricsErrorLogHandoffQuery(route.query),
+  })
 }
 
 function changePage(page) {
@@ -624,6 +680,7 @@ async function exportLogs() {
     if (filters.value.level) params.append('level', filters.value.level)
     if (filters.value.module) params.append('module', filters.value.module)
     if (filters.value.retryAudit) params.append('audit', 'classification_retry')
+    if (filters.value.reasonCode) params.append('reasonCode', filters.value.reasonCode)
     
     const response = await api.exportLogs(params)
     

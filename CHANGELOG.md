@@ -30,6 +30,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
   distinguishing persistent, newly observed, cleared, recurring, and no-data
   warning states without exposing raw diagnostics or affecting AI, policy,
   RAG, classification, or routing.
+- **Capability telemetry Error Logs handoff** — Active, validated telemetry
+  persistence-warning trends now offer one user-initiated route to a
+  reason-code-filtered Error Logs view, without carrying provider, model,
+  media, policy, raw diagnostic, or routing detail.
 - **Offline fixed-band calibration** — A versioned synthetic default-band corpus now verifies manual, selection, confirmation, and automatic-candidate boundaries before the calibration review packet can be prepared; it remains offline and human-gated.
 - **Bounded candidate adjudication** — Ambiguous policy selections can now receive an AI advisory comparison of two or three server-selected eligible destinations, using observed library-profile and relevant historical evidence while retaining operator confirmation.
 - **Current-library candidate retrieval** — Candidate adjudication now uses a bounded read-only lookup over the synchronized current library inventory, recognizing exact identifiers, title/year, and plain-text catalog matches without changing routing authority.
@@ -85,6 +89,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - **Dependency maintenance** — Applied the client runtime updates from open PR #522 locally for validation without merging the pull request or creating a release.
 
 ### Fixed
+
+- **Error Logs authorization** — Detailed Error Logs, exports, and log
+  mutations now require administrator authorization in addition to
+  authentication and rate limiting.
 
 - **AI capability metric persistence** — Successful AI work no longer emits a
   misleading telemetry warning when recording a model-digest mismatch counter;

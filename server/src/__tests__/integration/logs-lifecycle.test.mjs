@@ -6,7 +6,7 @@ jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDat
 
 const { default: db } = await import('../../config/database.mjs');
 const authService = await import('../../services/auth.mjs');
-const { authenticateToken } = await import('../../middleware/auth.mjs');
+const { authenticateToken, requireAdmin } = await import('../../middleware/auth.mjs');
 const { createLogger } = await import('../../utils/logger.mjs');
 const { createLogsRouter } = await import('../../routes/logsRouteShared.mjs');
 
@@ -35,6 +35,7 @@ const app = createIntegrationTestApp({
         rateLimit: mockRateLimit,
         db,
         authenticateToken,
+        requireAdmin,
         logger,
     }),
 });

@@ -19,7 +19,7 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import * as db from '../config/database.mjs';
-import { authenticateToken } from '../middleware/auth.mjs';
+import { authenticateToken, requireAdmin } from '../middleware/auth.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { createLogsRouter } from './logsRouteShared.mjs';
 
@@ -30,5 +30,6 @@ export const router = createLogsRouter({
   rateLimit,
   db,
   authenticateToken,
+  requireAdmin,
   logger,
 });

@@ -28,6 +28,7 @@ const db = mockDb;
 
 const createRateLimit = jest.fn(() => (_req, _res, next) => next());
 const authenticateToken = (_req, _res, next) => next();
+const allowAdministrator = (_req, _res, next) => next();
 const logger = {
     info: jest.fn(),
     warn: jest.fn(),
@@ -48,6 +49,7 @@ describe('logs routes', () => {
             rateLimit: createRateLimit,
             db,
             authenticateToken,
+            requireAdmin: allowAdministrator,
             logger,
             }),
         });
@@ -91,6 +93,33 @@ describe('logs routes', () => {
         expect(response.body.logs).toHaveLength(1);
         expect(response.body.logs[0].error_stage).toBe('policy_recheck');
         expect(response.body.logs[0].reason_code).toBe('db_retryable_conflict');
+    });
+
+    test('GET /api/logs does not expose diagnostic rows when administrator authorization rejects the request', async () => {
+        const getNext = jest.fn();
+        const denyAdministrator = (_req, res) => res.status(403).json({ error: 'Admin access required' });
+        const passThroughAuthentication = (_req, _res, next) => {
+            getNext();
+            next();
+        };
+        const protectedApp = createMountedTestApp({
+            basePath: '/api/logs',
+            router: createLogsRouter({
+                express,
+                rateLimit: createRateLimit,
+                db,
+                authenticateToken: passThroughAuthentication,
+                requireAdmin: denyAdministrator,
+                logger,
+            }),
+        });
+
+        await request(protectedApp)
+            .get('/api/logs')
+            .expect(403, { error: 'Admin access required' });
+
+        expect(getNext).toHaveBeenCalledTimes(1);
+        expect(db.query).not.toHaveBeenCalled();
     });
 
     test('GET /api/logs supports retry audit filter in existing logs surface', async () => {

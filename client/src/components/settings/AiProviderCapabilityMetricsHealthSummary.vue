@@ -73,6 +73,8 @@
       :loading="trendLoading"
     />
 
+    <AiProviderCapabilityMetricsErrorLogHandoff :report="trendReport" />
+
     <p class="mt-3 text-xs text-gray-400">
       <span v-if="loading">Refreshing aggregate capability-telemetry status…</span>
       <span v-else-if="lastUpdatedAt">Last refreshed {{ formattedLastUpdatedAt }}. {{ automaticUpdateMessage }}</span>
@@ -93,6 +95,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import AiProviderCapabilityMetricsErrorLogHandoff from '@/components/settings/AiProviderCapabilityMetricsErrorLogHandoff.vue'
 import AiProviderCapabilityMetricsHealthTrend from '@/components/settings/AiProviderCapabilityMetricsHealthTrend.vue'
 import { buildAiProviderCapabilityMetricsHealthPresentation } from '@/utils/aiProviderCapabilityMetricsHealthPresentation'
 

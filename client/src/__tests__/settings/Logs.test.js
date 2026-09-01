@@ -11,6 +11,11 @@ import { flushPromises, mount } from '@vue/test-utils'
 import Logs from '@/views/settings/Logs.vue'
 import api from '@/api'
 
+const { mockRoute, mockRouter } = vi.hoisted(() => ({
+  mockRoute: { query: {} },
+  mockRouter: { replace: vi.fn() },
+}))
+
 vi.mock('@/api', () => ({
   default: {
     getLogStats: vi.fn(),
@@ -23,6 +28,17 @@ vi.mock('@/api', () => ({
     getBugReport: vi.fn(),
   }
 }))
+
+vi.mock('vue-router', () => ({
+  useRoute: () => mockRoute,
+  useRouter: () => mockRouter,
+}))
+
+beforeEach(() => {
+  mockRoute.query = {}
+  mockRouter.replace.mockReset()
+  mockRouter.replace.mockResolvedValue(undefined)
+})
 
 const baseStats = {
   totals: {
@@ -139,6 +155,55 @@ describe('Settings Logs - retry audit trail filter', () => {
 
     const moduleInput = wrapper.find('input[placeholder="Filter by module..."]')
     expect(moduleInput.element.value).toBe('')
+  })
+})
+
+describe('Settings Logs - capability telemetry handoff', () => {
+  beforeEach(() => {
+    mockRoute.query = {
+      tab: 'logs',
+      handoff: 'capability-metrics-persistence',
+      reasonCode: 'ai_provider_capability_metrics_persistence_failed',
+    }
+    api.getLogStats.mockResolvedValue(baseStats)
+    api.getLogs.mockResolvedValue({ logs: [], pagination: defaultPagination })
+  })
+
+  it('applies only the fixed reason-code filter from the AI Settings handoff', async () => {
+    const wrapper = mount(Logs)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Capability telemetry persistence warnings')
+    expect(api.getLogs).toHaveBeenCalledWith(expect.any(URLSearchParams))
+    const [params] = api.getLogs.mock.calls.at(-1)
+    expect(params.get('reasonCode')).toBe('ai_provider_capability_metrics_persistence_failed')
+    expect(params.get('handoff')).toBeNull()
+    expect(params.get('provider')).toBeNull()
+  })
+
+  it('does not pre-filter from incomplete or altered URL state', async () => {
+    mockRoute.query = {
+      tab: 'logs',
+      handoff: 'capability-metrics-persistence',
+      reasonCode: 'untrusted_reason_code',
+    }
+
+    const wrapper = mount(Logs)
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('Capability telemetry persistence warnings')
+    const [params] = api.getLogs.mock.calls.at(-1)
+    expect(params.get('reasonCode')).toBeNull()
+  })
+
+  it('removes the handoff query with the visible clear action', async () => {
+    const wrapper = mount(Logs)
+    await flushPromises()
+
+    const clearButton = wrapper.findAll('button').find((button) => button.text() === 'Clear handoff filter')
+    await clearButton.trigger('click')
+
+    expect(mockRouter.replace).toHaveBeenCalledWith({ query: { tab: 'logs' } })
   })
 })
 

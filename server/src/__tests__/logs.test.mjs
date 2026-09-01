@@ -298,6 +298,7 @@ describe('Logs API', () => {
 describe('GET /api/logs/stats — merged 24h/7d trend query', () => {
   const createRateLimit = jest.fn(() => (_req, _res, next) => next());
   const authenticateToken = (_req, _res, next) => next();
+  const requireAdmin = (_req, _res, next) => next();
   const routeLogger = {
     info: jest.fn(),
     warn: jest.fn(),
@@ -317,6 +318,7 @@ describe('GET /api/logs/stats — merged 24h/7d trend query', () => {
       rateLimit: createRateLimit,
       db,
       authenticateToken,
+      requireAdmin,
       logger: routeLogger,
     }));
     app.use(errorHandler);
