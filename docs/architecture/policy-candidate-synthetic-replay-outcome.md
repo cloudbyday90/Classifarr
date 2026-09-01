@@ -53,9 +53,9 @@ behaves as intended before that change ships.
 
 ## Next high-value item
 
-Simplify the pending-review explanation into a progressive, plain-language
-summary: “recommended destination,” “why it is not automatic,” and “what you
-need to do.” Keep raw evidence categories and score mechanics behind a single
-optional disclosure. The screenshots show the current card repeats similar
-technical messages; this is now the clearest usability risk after deterministic
-replay coverage is in place.
+The pending-review summary has now been delivered in
+[its dedicated outcome document](pending-question-review-summary-outcome.md).
+The next high-value follow-up is to run this offline replay as a distinct
+aggregate-only pull-request CI job, making deterministic calibration and
+ranking regressions visible before review without evaluating live media or
+calling AI/RAG.

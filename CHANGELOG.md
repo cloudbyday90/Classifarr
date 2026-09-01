@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Progressive pending-review summary** — Pending classification review now
+  puts the recommended destination, review reason, and required operator action
+  first, with deterministic evidence, score mechanics, inventory comparison,
+  and advisory AI verification behind one accessible disclosure; it does not
+  change policy, AI, RAG, or routing authority.
 - **Offline synthetic policy-candidate replay** — A fixed, opaque fixture
   corpus now exercises the shared deterministic calibration, ranking,
   weak-evidence, ambiguity, and score-band projection before a proposed scope

@@ -12,11 +12,11 @@
       v-if="primaryDestination"
       class="leading-recommendation"
     >
-      <p class="recommendation-label">
+      <p
+        v-if="!decisionPresentation"
+        class="recommendation-label"
+      >
         {{ leadingDestination ? 'Leading candidate' : 'Current destination' }}
-      </p>
-      <p class="recommendation-destination">
-        {{ primaryDestination.library_name }}
       </p>
       <p class="recommendation-score">
         <template v-if="leadingDestination">
@@ -34,130 +34,147 @@
           ? recommendation.why_not_automatic.message
           : 'This resolves this item only and does not change future policy learning.' }}
       </p>
-      <div
+      <PendingQuestionReviewSummary
         v-if="decisionPresentation"
-        class="decision-explanation"
+        :item-id="itemId"
+        :presentation="reviewSummaryPresentation"
+      />
+      <details
+        v-if="decisionPresentation"
+        class="review-evidence-and-safeguards"
       >
-        <p class="decision-explanation-label">
-          Why review is needed
-        </p>
-        <p class="recommendation-explanation">
-          {{ decisionPresentation.deterministic.message }}
-        </p>
-        <div
-          v-if="showSafetyGate"
-          class="route-safety-gate"
-        >
-          <p class="route-safety-gate-label">
-            Routing safeguard
-          </p>
-          <p>
-            {{ decisionPresentation.deterministic.safety_gate.message }}
-          </p>
-        </div>
-        <ul
-          v-if="!candidateReviewEvidenceSummary && decisionPresentation.deterministic.evidence.length"
-          class="decision-evidence-list"
-        >
-          <li
-            v-for="fact in decisionPresentation.deterministic.evidence"
-            :key="fact.id"
+        <summary>Review policy evidence and safeguards</summary>
+        <div class="review-evidence-and-safeguards-content">
+          <section :aria-labelledby="`policy-decision-details-${itemId}`">
+            <h4 :id="`policy-decision-details-${itemId}`">
+              Policy decision details
+            </h4>
+            <p>{{ decisionPresentation.deterministic.message }}</p>
+            <div
+              v-if="showSafetyGate"
+              class="route-safety-gate"
+            >
+              <p class="route-safety-gate-label">
+                Routing safeguard
+              </p>
+              <p>
+                {{ decisionPresentation.deterministic.safety_gate.message }}
+              </p>
+            </div>
+            <ul
+              v-if="!candidateReviewEvidenceSummary && decisionPresentation.deterministic.evidence.length"
+              class="decision-evidence-list"
+            >
+              <li
+                v-for="fact in decisionPresentation.deterministic.evidence"
+                :key="fact.id"
+              >
+                {{ fact.label }}
+              </li>
+            </ul>
+          </section>
+          <CandidateReviewEvidenceSummary
+            :candidate-evidence="candidateEvidenceCard"
+            :contrastive-evidence="candidateContrastiveEvidence"
+            :candidate-adjudication="decisionPresentation.candidate_adjudication"
+            details-mode="inline"
+            :item-id="itemId"
+          />
+          <LibraryEvidenceProfile
+            details-mode="inline"
+            :item-id="itemId"
+            :value="libraryEvidenceProfile"
+          />
+          <section
+            v-if="scoreExplanation"
+            class="score-explanation"
+            :aria-labelledby="`policy-score-explanation-${itemId}`"
           >
-            {{ fact.label }}
-          </li>
-        </ul>
-        <CandidateReviewEvidenceSummary
-          :candidate-evidence="candidateEvidenceCard"
-          :contrastive-evidence="candidateContrastiveEvidence"
-          :candidate-adjudication="decisionPresentation.candidate_adjudication"
-          :item-id="itemId"
-        />
-        <LibraryEvidenceProfile
-          :item-id="itemId"
-          :value="libraryEvidenceProfile"
-        />
-        <details
-          v-if="scoreExplanation"
-          class="score-explanation"
-        >
-          <summary>How this policy score was calculated</summary>
-          <p>
-            {{ scoreExplanationThresholdMessage }}
-          </p>
-          <p>
-            This is a deterministic policy-evidence score, not a probability or AI decision. It cannot bypass the routing safeguards above.
-          </p>
-          <p class="score-explanation-label">
-            Evidence contribution
-          </p>
-          <ul>
-            <li
-              v-for="component in scoreExplanation.components"
-              :key="component.source_id"
-            >
-              <strong>{{ scoreExplanationSourceLabel(component.source_id) }}:</strong>
-              {{ component.evidence_score }}/100 evidence score; contributes {{ formatScoreValue(component.weighted_contribution) }} points ({{ formatScoreValue(component.normalized_weight_percent) }}% of active evidence).
-            </li>
-          </ul>
-          <p>
-            Weighted base score: {{ formatScoreValue(scoreExplanation.base_score) }}/100.
-          </p>
-          <p v-if="scoreExplanation.agreement_multiplier_percent > 100">
-            {{ scoreExplanation.components.length }} corroborating sources applied a {{ scoreExplanation.agreement_multiplier_percent - 100 }}% agreement adjustment before evidence-safety calibration.
-          </p>
-          <p>
-            {{ scoreExplanationCalibrationMessage }}
-            <template v-if="scoreExplanation.calibration.pre_safety_score !== null">
-              It changed the pre-safety score from {{ scoreExplanation.calibration.pre_safety_score }} to {{ scoreExplanation.score }}.
-            </template>
-          </p>
-        </details>
-        <details
-          v-if="decisionPresentation.deterministic.additional_safety_gates.length"
-          class="additional-safety-gates"
-        >
-          <summary>Review additional routing safeguards</summary>
-          <ul>
-            <li
-              v-for="gate in decisionPresentation.deterministic.additional_safety_gates"
-              :key="gate.id"
-            >
-              <strong>{{ gate.label }}:</strong> {{ gate.message }}
-            </li>
-          </ul>
-        </details>
-        <div
-          v-if="decisionPresentation.candidate_bound_verification"
-          class="candidate-bound-verification"
-          role="status"
-        >
-          <p class="candidate-bound-verification-label">
-            Candidate-bound verification
-          </p>
-          <p class="candidate-bound-verification-title">
-            {{ decisionPresentation.candidate_bound_verification.label }}
-          </p>
-          <p>
-            {{ decisionPresentation.candidate_bound_verification.message }}
-          </p>
+            <h4 :id="`policy-score-explanation-${itemId}`">
+              How this policy score was calculated
+            </h4>
+            <p>
+              {{ scoreExplanationThresholdMessage }}
+            </p>
+            <p>
+              This is a deterministic policy-evidence score, not a probability or AI decision. It cannot bypass the routing safeguards above.
+            </p>
+            <p class="score-explanation-label">
+              Evidence contribution
+            </p>
+            <ul>
+              <li
+                v-for="component in scoreExplanation.components"
+                :key="component.source_id"
+              >
+                <strong>{{ scoreExplanationSourceLabel(component.source_id) }}:</strong>
+                {{ component.evidence_score }}/100 evidence score; contributes {{ formatScoreValue(component.weighted_contribution) }} points ({{ formatScoreValue(component.normalized_weight_percent) }}% of active evidence).
+              </li>
+            </ul>
+            <p>
+              Weighted base score: {{ formatScoreValue(scoreExplanation.base_score) }}/100.
+            </p>
+            <p v-if="scoreExplanation.agreement_multiplier_percent > 100">
+              {{ scoreExplanation.components.length }} corroborating sources applied a {{ scoreExplanation.agreement_multiplier_percent - 100 }}% agreement adjustment before evidence-safety calibration.
+            </p>
+            <p>
+              {{ scoreExplanationCalibrationMessage }}
+              <template v-if="scoreExplanation.calibration.pre_safety_score !== null">
+                It changed the pre-safety score from {{ scoreExplanation.calibration.pre_safety_score }} to {{ scoreExplanation.score }}.
+              </template>
+            </p>
+          </section>
+          <section
+            v-if="decisionPresentation.deterministic.additional_safety_gates.length"
+            class="additional-safety-gates"
+            :aria-labelledby="`additional-routing-safeguards-${itemId}`"
+          >
+            <h4 :id="`additional-routing-safeguards-${itemId}`">
+              Additional routing safeguards
+            </h4>
+            <ul>
+              <li
+                v-for="gate in decisionPresentation.deterministic.additional_safety_gates"
+                :key="gate.id"
+              >
+                <strong>{{ gate.label }}:</strong> {{ gate.message }}
+              </li>
+            </ul>
+          </section>
+          <section
+            v-if="decisionPresentation.candidate_bound_verification"
+            class="candidate-bound-verification"
+            :aria-labelledby="`candidate-bound-verification-${itemId}`"
+          >
+            <h4 :id="`candidate-bound-verification-${itemId}`">
+              Candidate-bound verification
+            </h4>
+            <p class="candidate-bound-verification-title">
+              {{ decisionPresentation.candidate_bound_verification.label }}
+            </p>
+            <p>
+              {{ decisionPresentation.candidate_bound_verification.message }}
+            </p>
+          </section>
+          <section
+            v-else-if="decisionPresentation.ai_advisory && !decisionPresentation.candidate_adjudication"
+            class="ai-advisory"
+            :aria-labelledby="`ai-advisory-${itemId}`"
+          >
+            <h4 :id="`ai-advisory-${itemId}`">
+              {{ decisionPresentation.ai_advisory.status_id === 'aligned_with_deterministic'
+                ? 'AI check'
+                : 'AI advisory' }}
+            </h4>
+            <p>
+              {{ decisionPresentation.ai_advisory.message }}
+            </p>
+            <p v-if="decisionPresentation.ai_advisory.proposed_destination">
+              Proposed destination: {{ decisionPresentation.ai_advisory.proposed_destination.library_name }}.
+            </p>
+          </section>
         </div>
-        <div
-          v-else-if="decisionPresentation.ai_advisory && !decisionPresentation.candidate_adjudication"
-          class="ai-advisory"
-        >
-          <p class="ai-advisory-label">
-            {{ decisionPresentation.ai_advisory.status_id === 'aligned_with_deterministic'
-              ? 'AI check'
-              : 'AI advisory' }}
-          </p>
-          <p>
-            {{ decisionPresentation.ai_advisory.message }}
-          </p>
-          <p v-if="decisionPresentation.ai_advisory.proposed_destination">
-            Proposed destination: {{ decisionPresentation.ai_advisory.proposed_destination.library_name }}.
-          </p>
-        </div>
-      </div>
+      </details>
       <Button
         v-if="canConfirmDestination"
         variant="success"
@@ -254,8 +271,12 @@ import {
 import {
   getPolicyCandidateReviewEvidenceSummaryPresentation,
 } from '@/utils/policyCandidateReviewEvidenceSummaryPresentation'
+import {
+  getPendingQuestionReviewSummaryPresentation,
+} from '@/utils/pendingQuestionReviewSummaryPresentation'
 import CandidateReviewEvidenceSummary from './CandidateReviewEvidenceSummary.vue'
 import LibraryEvidenceProfile from './LibraryEvidenceProfile.vue'
+import PendingQuestionReviewSummary from './PendingQuestionReviewSummary.vue'
 
 const props = defineProps({
   answer: {
@@ -314,6 +335,11 @@ const canChangeDestination = computed(() => Boolean(availablePolicyQuestionAnswe
   props.answer,
   POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.CHANGE_DESTINATION,
 )))
+const reviewSummaryPresentation = computed(() => getPendingQuestionReviewSummaryPresentation({
+  destination: primaryDestination.value,
+  canConfirmDestination: canConfirmDestination.value,
+  canChangeDestination: canChangeDestination.value,
+}))
 const isResolving = computed(() => props.isActionBusy(`resolve-${props.itemId}`))
 const isRetrying = computed(() => props.isActionBusy(`retry-classification-${props.itemId}`))
 const alternativeDestinations = computed(() => {
@@ -436,13 +462,6 @@ function emitConfirmDestination(destination) {
   color: #bfdbfe;
 }
 
-.recommendation-destination {
-  margin-top: 0.25rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #f3f4f6;
-}
-
 .recommendation-score,
 .recommendation-explanation,
 .resolution-scope {
@@ -451,19 +470,33 @@ function emitConfirmDestination(destination) {
   color: #cbd5e1;
 }
 
-.decision-explanation {
-  display: grid;
-  gap: 0.25rem;
+.review-evidence-and-safeguards {
   margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid rgba(148, 163, 184, 0.35);
+  font-size: 0.75rem;
+  color: #cbd5e1;
 }
 
-.decision-explanation-label {
+.review-evidence-and-safeguards > summary {
+  width: fit-content;
+  cursor: pointer;
+  color: #bfdbfe;
+}
+
+.review-evidence-and-safeguards-content {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.review-evidence-and-safeguards-content > section > h4 {
   margin: 0;
   font-size: 0.75rem;
   font-weight: 600;
-  color: #e2e8f0;
+  color: #bfdbfe;
+}
+
+.review-evidence-and-safeguards-content > section > p {
+  margin-top: 0.25rem;
 }
 
 .decision-evidence-list {
@@ -491,19 +524,10 @@ function emitConfirmDestination(destination) {
   color: #cbd5e1;
 }
 
-.candidate-bound-verification-label,
 .candidate-bound-verification-title {
   margin: 0;
-}
-
-.candidate-bound-verification-label {
-  font-weight: 600;
-  color: #bfdbfe;
-}
-
-.candidate-bound-verification-title {
-  margin-top: 0.25rem;
   color: #e2e8f0;
+  font-weight: 600;
 }
 
 .candidate-bound-verification p:last-child {
@@ -531,13 +555,6 @@ function emitConfirmDestination(destination) {
   color: #bfdbfe;
 }
 
-.additional-safety-gates summary,
-.score-explanation summary {
-  width: fit-content;
-  cursor: pointer;
-  color: #bfdbfe;
-}
-
 .additional-safety-gates ul,
 .score-explanation ul {
   display: grid;
@@ -552,12 +569,6 @@ function emitConfirmDestination(destination) {
 
 .ai-advisory p {
   margin-top: 0.5rem;
-}
-
-.ai-advisory-label {
-  margin: 0;
-  font-weight: 600;
-  color: #bfdbfe;
 }
 
 .leading-recommendation :deep(.btn) {

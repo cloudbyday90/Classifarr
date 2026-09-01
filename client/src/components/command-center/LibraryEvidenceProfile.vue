@@ -7,11 +7,12 @@
 -->
 
 <template>
-  <details
+  <component
+    :is="detailsContainer"
     v-if="profile"
     class="library-evidence-profile"
   >
-    <summary>
+    <summary v-if="detailsMode === 'disclosure'">
       Compare evidence for {{ profile.candidates.length }} policy-eligible libraries
     </summary>
     <section
@@ -27,7 +28,7 @@
       <div class="library-evidence-profile-table-scroll">
         <table>
           <caption>
-            Candidate-by-candidate evidence states. Existing library contents and similar-item retrieval can support a choice, but neither proves it by itself.
+            Candidate-by-candidate evidence states. Current library contents describe what is already stored; they can make a destination plausible, but cannot decide where this new item belongs by themselves.
           </caption>
           <thead>
             <tr>
@@ -80,7 +81,7 @@
         </table>
       </div>
     </section>
-  </details>
+  </component>
 </template>
 
 <script setup>
@@ -102,6 +103,11 @@ const props = defineProps({
     type: Object,
     default: () => null,
   },
+  detailsMode: {
+    type: String,
+    default: 'disclosure',
+    validator: value => ['disclosure', 'inline'].includes(value),
+  },
 })
 
 const profile = computed(() => normalizePolicyLibraryEvidenceProfile(props.value))
@@ -110,6 +116,7 @@ const candidates = computed(() => (profile.value?.candidates || []).map((candida
   evidence: getPolicyCandidateEvidenceCardPresentation(candidate.evidence_card),
 })))
 const sources = computed(() => candidates.value[0]?.evidence?.sources || [])
+const detailsContainer = computed(() => props.detailsMode === 'inline' ? 'div' : 'details')
 const headingId = computed(() => {
   const safeId = String(props.itemId).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64)
   return `library-evidence-profile-${safeId || 'item'}`

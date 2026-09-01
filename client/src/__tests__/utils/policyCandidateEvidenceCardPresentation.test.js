@@ -39,7 +39,7 @@ describe('policyCandidateEvidenceCardPresentation', () => {
       sources: expect.arrayContaining([
         expect.objectContaining({
           id: 'observed_library_profile',
-          message: 'Titles already in this library make it a plausible fit, but they do not prove this item belongs here.',
+          message: 'Items already in this library make it a plausible fit, but the library contents alone cannot decide where this new item belongs.',
         }),
       ]),
     })

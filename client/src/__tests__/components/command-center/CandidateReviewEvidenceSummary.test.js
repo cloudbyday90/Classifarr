@@ -41,4 +41,24 @@ describe('CandidateReviewEvidenceSummary', () => {
     expect(wrapper.text()).toContain('AI comparison')
     expect(wrapper.text()).toContain('Advisory destination: Movies.')
   })
+
+  it('renders details inline when an enclosing review disclosure already controls visibility', () => {
+    const wrapper = mount(CandidateReviewEvidenceSummary, {
+      props: {
+        itemId: 42,
+        detailsMode: 'inline',
+        candidateEvidence: {
+          status_id: 'counter_evidence_recommended',
+          sources: [{
+            id: 'observed_library_profile',
+            label: 'Existing library fit',
+            message: 'Earlier placements make this a plausible fit, but do not prove it.',
+          }],
+        },
+      },
+    })
+
+    expect(wrapper.find('details').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Checks used for this suggestion')
+  })
 })

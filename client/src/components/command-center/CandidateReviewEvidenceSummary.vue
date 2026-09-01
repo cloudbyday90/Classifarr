@@ -27,11 +27,14 @@
       {{ presentation.message }}
     </p>
 
-    <details
+    <component
+      :is="detailsContainer"
       v-if="hasDetails"
       class="candidate-review-evidence-details"
     >
-      <summary>Review evidence details</summary>
+      <summary v-if="detailsMode === 'disclosure'">
+        Review evidence details
+      </summary>
       <div class="candidate-review-evidence-details-content">
         <section v-if="presentation.sources.length">
           <h5>Checks used for this suggestion</h5>
@@ -64,7 +67,7 @@
           </p>
         </section>
       </div>
-    </details>
+    </component>
   </section>
 </template>
 
@@ -92,6 +95,11 @@ const props = defineProps({
     type: [Number, String],
     required: true,
   },
+  detailsMode: {
+    type: String,
+    default: 'disclosure',
+    validator: value => ['disclosure', 'inline'].includes(value),
+  },
 })
 
 const presentation = computed(() => getPolicyCandidateReviewEvidenceSummaryPresentation(
@@ -104,6 +112,7 @@ const hasDetails = computed(() => Boolean(
   || presentation.value?.contrastive
   || presentation.value?.adjudication,
 ))
+const detailsContainer = computed(() => props.detailsMode === 'inline' ? 'div' : 'details')
 const headingId = computed(() => {
   const safeId = String(props.itemId).replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64)
   return `candidate-review-evidence-summary-${safeId || 'item'}`
