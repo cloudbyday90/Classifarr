@@ -32,6 +32,7 @@ vi.mock('@/api', () => ({
     getAiProviderCapabilityMetricsHealth: vi.fn(),
     getAiProviderCapabilityMetricsHealthTrend: vi.fn(),
     getAiProviderCapabilityMetricsFailureBreakdown: vi.fn(),
+    getAiProviderCapabilityMetricsFailureCategoryCoverage: vi.fn(),
     getRouteSafetyMaintenanceHandoff: vi.fn(),
     getAIModels: vi.fn(),
     testAIConnection: vi.fn(),
@@ -179,6 +180,12 @@ describe('AI Settings', () => {
       sqlstateCategories: [],
       status: { id: 'not_applicable' },
     })
+    api.getAiProviderCapabilityMetricsFailureCategoryCoverage.mockResolvedValue({
+      version: 'ai.provider_capability_metrics_failure_category_coverage.v1',
+      window: { days: 1, periodCount: 3 },
+      periods: [],
+      status: { id: 'no_completed_persistence_warnings' },
+    })
     api.getLastOllamaPreflight.mockResolvedValue({ ai: null, embedding: null })
     api.runOllamaVerificationCompatibilityMatrix.mockResolvedValue({
       data: { stateId: 'completed', ollamaVersion: '0.12.4', outcomes: [] }
@@ -242,7 +249,7 @@ describe('AI Settings', () => {
     expect(wrapper.text()).not.toContain('Private provider')
   })
 
-  it('automatically loads only the safe failure breakdown when telemetry warnings are active', async () => {
+  it('automatically loads safe failure diagnostics only when telemetry warnings are active', async () => {
     api.getAiProviderCapabilityMetricsHealth.mockResolvedValueOnce({
       version: 'ai.provider_capability_metrics_health.v1',
       activeMetricStreamCount: '1',
@@ -262,13 +269,34 @@ describe('AI Settings', () => {
       model: 'private-model',
       error: 'postgres://private-endpoint',
     })
+    api.getAiProviderCapabilityMetricsFailureCategoryCoverage.mockResolvedValueOnce({
+      version: 'ai.provider_capability_metrics_failure_category_coverage.v1',
+      window: { days: 1, periodCount: 3 },
+      periods: [
+        { id: 'baseline', totalFailureCount: '1', safeCategoryFailureCount: '0', safeCategoryCoveragePercent: '0' },
+        { id: 'previous', totalFailureCount: '1', safeCategoryFailureCount: '1', safeCategoryCoveragePercent: '100' },
+        {
+          id: 'current',
+          totalFailureCount: '2',
+          safeCategoryFailureCount: '1',
+          safeCategoryCoveragePercent: '50',
+          provider: 'private-provider',
+        },
+      ],
+      status: { id: 'partial' },
+      provider: 'private-provider',
+      error: 'postgres://private-endpoint',
+    })
 
     const wrapper = mountView()
     await flushPromises()
 
     expect(api.getAiProviderCapabilityMetricsFailureBreakdown).toHaveBeenCalledTimes(1)
+    expect(api.getAiProviderCapabilityMetricsFailureCategoryCoverage).toHaveBeenCalledTimes(1)
     expect(wrapper.text()).toContain('Safe persistence-failure categories')
     expect(wrapper.text()).toContain('Connection exception')
+    expect(wrapper.text()).toContain('Completed-window safe category coverage is partial')
+    expect(wrapper.text()).toContain('50% safely categorized')
     expect(wrapper.text()).not.toContain('private-provider')
     expect(wrapper.text()).not.toContain('private-model')
     expect(wrapper.text()).not.toContain('private-endpoint')

@@ -39,6 +39,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
   metric-write and database-condition categories while persistence warnings are
   active, without exposing raw SQLSTATEs, diagnostics, provider, model, media,
   policy, or routing detail.
+- **Capability telemetry category coverage** — AI Settings now automatically
+  compares three completed UTC-day aggregates to show whether retained
+  persistence warnings carry the fixed safe category contract, without
+  exposing raw diagnostics or affecting AI, policy, RAG, classification, or
+  routing.
 - **Offline fixed-band calibration** — A versioned synthetic default-band corpus now verifies manual, selection, confirmation, and automatic-candidate boundaries before the calibration review packet can be prepared; it remains offline and human-gated.
 - **Bounded candidate adjudication** — Ambiguous policy selections can now receive an AI advisory comparison of two or three server-selected eligible destinations, using observed library-profile and relevant historical evidence while retaining operator confirmation.
 - **Current-library candidate retrieval** — Candidate adjudication now uses a bounded read-only lookup over the synchronized current library inventory, recognizing exact identifiers, title/year, and plain-text catalog matches without changing routing authority.

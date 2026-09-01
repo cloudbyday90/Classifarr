@@ -86,6 +86,10 @@ export function getAiProviderCapabilityMetricsFailureBreakdown() {
   return getDataRequest('/stats/ai-provider-capability-metrics-failure-breakdown')
 }
 
+export function getAiProviderCapabilityMetricsFailureCategoryCoverage() {
+  return getDataRequest('/stats/ai-provider-capability-metrics-failure-category-coverage')
+}
+
 export function getRouteSafetyMaintenanceHandoff() {
   return getDataRequest('/stats/route-safety-maintenance-handoff')
 }
@@ -108,6 +112,7 @@ const policyStatsApi = {
   getAiProviderCapabilityMetricsHealth,
   getAiProviderCapabilityMetricsHealthTrend,
   getAiProviderCapabilityMetricsFailureBreakdown,
+  getAiProviderCapabilityMetricsFailureCategoryCoverage,
   getRouteSafetyMaintenanceHandoff,
 }
 

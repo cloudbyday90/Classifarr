@@ -49,9 +49,9 @@ The public [Classifarr pull-request listing](https://github.com/cloudbyday90/Cla
 reported zero open pull requests when checked, so no open PR could be applied
 locally without inventing one.
 
-## Next High-Value Item
+## Follow-Up Outcome
 
-Add an administrator-only retention/coverage signal for this fixed category
-contract: report the proportion of active warnings that have safe categories
-over a completed window, without exposing diagnostics or automatically changing
-the existing aggregate, logs, AI, policy, RAG, classification, or routing.
+The recommended completed-window safe-category coverage signal has now been
+implemented. See [AI Provider Capability Metrics Failure Category Coverage
+Design](ai-provider-capability-metrics-failure-category-coverage-design.md) and
+[Outcome](ai-provider-capability-metrics-failure-category-coverage-outcome.md).

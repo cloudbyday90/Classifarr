@@ -41,6 +41,7 @@ import {
   getAiProviderCapabilityMetricsHealth,
   getAiProviderCapabilityMetricsHealthTrend,
   getAiProviderCapabilityMetricsFailureBreakdown,
+  getAiProviderCapabilityMetricsFailureCategoryCoverage,
   getRouteSafetyMaintenanceHandoff,
   getRouteSafetyReadiness,
 } from '../../api/policyStatsApi'
@@ -166,6 +167,14 @@ describe('policyStatsApi', () => {
     await getAiProviderCapabilityMetricsFailureBreakdown()
 
     expect(mockGetDataRequest).toHaveBeenCalledWith('/stats/ai-provider-capability-metrics-failure-breakdown')
+  })
+
+  it('getAiProviderCapabilityMetricsFailureCategoryCoverage uses the protected completed-window endpoint without caller dimensions', async () => {
+    mockGetDataRequest.mockResolvedValueOnce({})
+
+    await getAiProviderCapabilityMetricsFailureCategoryCoverage()
+
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/stats/ai-provider-capability-metrics-failure-category-coverage')
   })
 
   it('getRouteSafetyMaintenanceHandoff uses the protected fixed aggregate endpoint without caller dimensions', async () => {

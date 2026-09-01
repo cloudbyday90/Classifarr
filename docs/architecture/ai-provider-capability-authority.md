@@ -213,6 +213,13 @@ aggregate is display-only and has no provider, policy, RAG, classification, or
 routing authority; see [AI Provider Capability Metrics Failure Breakdown
 Design](ai-provider-capability-metrics-failure-breakdown-design.md).
 
+The same active-warning state now loads a separate completed UTC-day coverage
+aggregate. It identifies whether retained warning counts carry the fixed safe
+category contract over three adjacent days, without exposing diagnostics or
+changing provider authority. It is telemetry-quality context only; see [AI
+Provider Capability Metrics Failure Category Coverage
+Design](ai-provider-capability-metrics-failure-category-coverage-design.md).
+
 When repair runs, the initial provider response and the local repair execution
 are recorded separately. A primary parse failure cannot be relabeled as a
 successful strict response merely because a later local repair parsed.

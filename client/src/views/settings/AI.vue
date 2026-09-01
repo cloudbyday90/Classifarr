@@ -674,6 +674,8 @@
         :trend-loading="loadingCapabilityMetricsHealthTrend"
         :failure-breakdown="capabilityMetricsFailureBreakdown"
         :failure-breakdown-loading="loadingCapabilityMetricsFailureBreakdown"
+        :failure-category-coverage="capabilityMetricsFailureCategoryCoverage"
+        :failure-category-coverage-loading="loadingCapabilityMetricsFailureCategoryCoverage"
         :last-updated-at="capabilityMetricsHealthLastUpdatedAt"
         :auto-refresh-enabled="aiReadinessAutoRefreshEnabled"
       />
@@ -736,6 +738,7 @@ const loadingRouteSafetyReadiness = ref(false)
 const loadingCapabilityMetricsHealth = ref(false)
 const loadingCapabilityMetricsHealthTrend = ref(false)
 const loadingCapabilityMetricsFailureBreakdown = ref(false)
+const loadingCapabilityMetricsFailureCategoryCoverage = ref(false)
 const loadingRouteSafetyMaintenanceHandoff = ref(false)
 const testingVerificationCapability = ref(false)
 const loadingVerificationCapabilityChangeReceipts = ref(false)
@@ -754,6 +757,7 @@ const routeSafetyReadiness = ref(null)
 const capabilityMetricsHealth = ref(null)
 const capabilityMetricsHealthTrend = ref(null)
 const capabilityMetricsFailureBreakdown = ref(null)
+const capabilityMetricsFailureCategoryCoverage = ref(null)
 const capabilityMetricsHealthLastUpdatedAt = ref(null)
 const routeSafetyMaintenanceHandoff = ref(null)
 const verificationCapabilityChangeReceipts = ref(null)
@@ -770,6 +774,7 @@ let routeSafetyReadinessRequestId = 0
 let capabilityMetricsHealthRequestId = 0
 let capabilityMetricsHealthTrendRequestId = 0
 let capabilityMetricsFailureBreakdownRequestId = 0
+let capabilityMetricsFailureCategoryCoverageRequestId = 0
 let routeSafetyMaintenanceHandoffRequestId = 0
 let verificationCapabilityChangeReceiptsRequestId = 0
 let ollamaVerificationRuntimeMismatchSummaryRequestId = 0
@@ -1021,6 +1026,37 @@ function clearCapabilityMetricsFailureBreakdown() {
   loadingCapabilityMetricsFailureBreakdown.value = false
 }
 
+// This adoption report uses three completed UTC days rather than the rolling
+// health window. It is loaded only after an active warning is already known,
+// returns fixed aggregates, and cannot change provider, policy, or routing
+// behavior.
+const loadCapabilityMetricsFailureCategoryCoverage = async () => {
+  const requestId = ++capabilityMetricsFailureCategoryCoverageRequestId
+  loadingCapabilityMetricsFailureCategoryCoverage.value = true
+  try {
+    const report = await api.getAiProviderCapabilityMetricsFailureCategoryCoverage()
+    if (requestId === capabilityMetricsFailureCategoryCoverageRequestId) {
+      capabilityMetricsFailureCategoryCoverage.value = report
+    }
+    return report
+  } catch (_error) {
+    if (requestId === capabilityMetricsFailureCategoryCoverageRequestId) {
+      capabilityMetricsFailureCategoryCoverage.value = null
+    }
+    return null
+  } finally {
+    if (requestId === capabilityMetricsFailureCategoryCoverageRequestId) {
+      loadingCapabilityMetricsFailureCategoryCoverage.value = false
+    }
+  }
+}
+
+function clearCapabilityMetricsFailureCategoryCoverage() {
+  capabilityMetricsFailureCategoryCoverageRequestId += 1
+  capabilityMetricsFailureCategoryCoverage.value = null
+  loadingCapabilityMetricsFailureCategoryCoverage.value = false
+}
+
 // The maintenance handoff is a separate aggregate-only read. It deliberately
 // becomes eligible only after route-safety observations exist, and it cannot
 // select a policy, test a provider, mutate configuration, retry, or route.
@@ -1056,11 +1092,15 @@ const loadAiReadiness = async () => {
   const maintenanceHandoff = Number.isSafeInteger(routeSafetyObservationCount) && routeSafetyObservationCount > 0
     ? await loadRouteSafetyMaintenanceHandoff()
     : (routeSafetyMaintenanceHandoff.value = null)
-  const failureBreakdown = hasCapabilityMetricsPersistenceFailures(capabilityMetrics)
-    ? await loadCapabilityMetricsFailureBreakdown()
-    : (clearCapabilityMetricsFailureBreakdown(), null)
+  const hasPersistenceFailures = hasCapabilityMetricsPersistenceFailures(capabilityMetrics)
+  const [failureBreakdown, failureCategoryCoverage] = hasPersistenceFailures
+    ? await Promise.all([
+      loadCapabilityMetricsFailureBreakdown(),
+      loadCapabilityMetricsFailureCategoryCoverage(),
+    ])
+    : (clearCapabilityMetricsFailureBreakdown(), clearCapabilityMetricsFailureCategoryCoverage(), [null, null])
 
-  return capability || routeSafety || capabilityMetrics || capabilityMetricsTrend || maintenanceHandoff || failureBreakdown
+  return capability || routeSafety || capabilityMetrics || capabilityMetricsTrend || maintenanceHandoff || failureBreakdown || failureCategoryCoverage
 }
 
 const {
