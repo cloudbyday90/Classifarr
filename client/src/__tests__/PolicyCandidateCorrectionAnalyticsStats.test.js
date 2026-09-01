@@ -238,6 +238,18 @@ const report = {
     version: 'policy.candidate_correction_long_horizon_trend.v1',
     current: {
       window: { days: 28, startDate: '2026-08-02', endDate: '2026-08-30' },
+      evidenceSourceStateBuckets: [
+        {
+          evidenceSourceId: 'declared_policy',
+          evidenceStateId: 'contextual',
+          outcomeCount: 20,
+          confirmedLeaderOutcomeCount: 10,
+          changedToCandidateOutcomeCount: 6,
+          changedOutsideCandidatesOutcomeCount: 4,
+          routedNotApplicableOutcomeCount: 0,
+          calibrationReadiness: reviewReadiness,
+        },
+      ],
       summary: {
         outcomeCount: 20,
         confirmedLeaderOutcomeCount: 10,
@@ -249,6 +261,18 @@ const report = {
     },
     previous: {
       window: { days: 28, startDate: '2026-07-05', endDate: '2026-08-02' },
+      evidenceSourceStateBuckets: [
+        {
+          evidenceSourceId: 'declared_policy',
+          evidenceStateId: 'contextual',
+          outcomeCount: 20,
+          confirmedLeaderOutcomeCount: 10,
+          changedToCandidateOutcomeCount: 6,
+          changedOutsideCandidatesOutcomeCount: 4,
+          routedNotApplicableOutcomeCount: 0,
+          calibrationReadiness: reviewReadiness,
+        },
+      ],
       summary: {
         outcomeCount: 20,
         confirmedLeaderOutcomeCount: 10,
@@ -308,10 +332,12 @@ describe('PolicyCandidateCorrectionAnalyticsStats.vue', () => {
     expect(wrapper.text()).toContain('Cohort mix is comparable')
     expect(wrapper.text()).toContain('Longer-horizon trend context')
     expect(wrapper.text()).toContain('Sustained 28-day review signal')
+    expect(wrapper.text()).toContain('Review a policy that may be too broad')
+    expect(wrapper.text()).toContain('Why this recommendation is shown')
     expect(wrapper.text()).toContain('Representative decision review is ready')
     expect(wrapper.text()).toContain('Historical review corpus is not enabled')
     expect(wrapper.text()).toContain('View required safeguards for a future historical corpus')
-    expect(wrapper.find('details').exists()).toBe(true)
+    expect(wrapper.findAll('details')).toHaveLength(2)
     expect(wrapper.text()).toContain('No analytics filters, media identifiers, policy details, or automated changes')
     expect(wrapper.text()).toContain('95% Wilson interval: 29.9%–70.1%')
     expect(wrapper.text()).toContain('do not establish correctness or change policy, AI, RAG, learning, or routing')

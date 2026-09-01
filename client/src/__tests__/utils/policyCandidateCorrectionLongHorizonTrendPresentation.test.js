@@ -39,6 +39,18 @@ function period(startDate, endDate) {
       routedNotApplicableOutcomeCount: 0,
     },
     calibrationReadiness: readiness(),
+    evidenceSourceStateBuckets: [
+      {
+        evidenceSourceId: 'declared_policy',
+        evidenceStateId: 'contextual',
+        outcomeCount: 20,
+        confirmedLeaderOutcomeCount: 10,
+        changedToCandidateOutcomeCount: 6,
+        changedOutsideCandidatesOutcomeCount: 4,
+        routedNotApplicableOutcomeCount: 0,
+        calibrationReadiness: readiness(),
+      },
+    ],
   }
 }
 
@@ -86,7 +98,10 @@ describe('policyCandidateCorrectionLongHorizonTrendPresentation', () => {
 
     expect(normalized).toMatchObject({
       trend: { statusId: 'sustained_review_signal' },
-      current: { summary: { changedSelectionRatePercent: 50 } },
+      current: {
+        summary: { changedSelectionRatePercent: 50 },
+        contextualDeclaredPolicyEvidence: { changedSelectionRatePercent: 50 },
+      },
     })
     expect(JSON.stringify(normalized)).not.toContain('Do not display')
     expect(getPolicyCandidateCorrectionLongHorizonTrendPresentation(
@@ -118,5 +133,21 @@ describe('policyCandidateCorrectionLongHorizonTrendPresentation', () => {
     const invalidCorpus = report()
     invalidCorpus.representativeReviewCorpus.historicalRecordAccess = true
     expect(normalizePolicyCandidateCorrectionLongHorizonTrend(invalidCorpus)).toBeNull()
+  })
+
+  it('keeps the contextual declared-policy bucket optional and rejects malformed duplicates', () => {
+    const withoutContextualEvidence = report()
+    withoutContextualEvidence.current.evidenceSourceStateBuckets = []
+    const normalizedWithoutContextualEvidence =
+      normalizePolicyCandidateCorrectionLongHorizonTrend(withoutContextualEvidence)
+    expect(normalizedWithoutContextualEvidence.current.contextualDeclaredPolicyEvidence).toBeNull()
+
+    const duplicateContextualEvidence = report()
+    duplicateContextualEvidence.current.evidenceSourceStateBuckets.push({
+      ...duplicateContextualEvidence.current.evidenceSourceStateBuckets[0],
+    })
+    const normalizedDuplicateContextualEvidence =
+      normalizePolicyCandidateCorrectionLongHorizonTrend(duplicateContextualEvidence)
+    expect(normalizedDuplicateContextualEvidence.current.contextualDeclaredPolicyEvidence).toBeNull()
   })
 })

@@ -14,6 +14,8 @@ const LONG_HORIZON_TREND_VERSION = 'policy.candidate_correction_long_horizon_tre
 const COHORT_COMPOSITION_VERSION = 'policy.candidate_correction_cohort_composition.v1'
 const LONG_HORIZON_WINDOW_DAYS = 28
 const MILLISECONDS_PER_UTC_DAY = 24 * 60 * 60 * 1000
+const DECLARED_POLICY_SOURCE_ID = 'declared_policy'
+const CONTEXTUAL_EVIDENCE_STATE_ID = 'contextual'
 
 const TREND_PRESENTATIONS = Object.freeze({
   needs_representative_periods: Object.freeze({
@@ -129,6 +131,31 @@ function normalizedSummary(value) {
   })
 }
 
+/**
+ * Retains one fixed aggregate bucket that represents a declared policy with
+ * broad, overlapping, or otherwise insufficiently specialized support. This
+ * is deliberately optional: an older or sparse aggregate can still render its
+ * longer-horizon context, but it cannot produce the narrower recommendation.
+ */
+function normalizedContextualDeclaredPolicyEvidence(value) {
+  const matches = (Array.isArray(value) ? value : []).filter((entry) => (
+    entry?.evidenceSourceId === DECLARED_POLICY_SOURCE_ID &&
+    entry?.evidenceStateId === CONTEXTUAL_EVIDENCE_STATE_ID
+  ))
+  if (matches.length !== 1) return null
+
+  const summary = normalizedSummary(matches[0])
+  if (!summary) return null
+
+  const calibrationReadiness = normalizePolicyCandidateCorrectionCalibrationReadiness(
+    matches[0]?.calibrationReadiness,
+    summary,
+  )
+  if (!calibrationReadiness) return null
+
+  return Object.freeze({ ...summary, calibrationReadiness })
+}
+
 function normalizedPeriod(value) {
   const window = normalizedWindow(value?.window)
   const summary = normalizedSummary(value?.summary)
@@ -140,7 +167,16 @@ function normalizedPeriod(value) {
   )
   if (!calibrationReadiness) return null
 
-  return Object.freeze({ window, summary, calibrationReadiness })
+  const contextualDeclaredPolicyEvidence = normalizedContextualDeclaredPolicyEvidence(
+    value?.evidenceSourceStateBuckets,
+  )
+
+  return Object.freeze({
+    window,
+    summary,
+    calibrationReadiness,
+    contextualDeclaredPolicyEvidence,
+  })
 }
 
 function expectedCohortStatusId(counts) {

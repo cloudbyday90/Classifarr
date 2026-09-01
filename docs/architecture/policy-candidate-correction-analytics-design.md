@@ -100,5 +100,6 @@ supports the explicit response projection and rejection of unknown fields.
    rule or threshold.
 3. Review a representative anonymized cohort outside the aggregate report,
    including declared-purpose scope, library contents, and RAG availability.
-4. Only after sufficient observations, surface a read-only uncertainty-aware
-   calibration recommendation. Do not auto-edit policies or weights.
+4. Use the implemented [broad declared-policy review recommendation](policy-candidate-broad-declared-policy-review-design.md)
+   only after two comparable 28-day periods meet the fixed review criterion.
+   Do not auto-edit policies or weights.

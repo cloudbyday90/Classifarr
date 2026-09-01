@@ -540,6 +540,10 @@
         </p>
       </article>
 
+      <PolicyCandidateBroadDeclaredPolicyRecommendation
+        :long-horizon-trend="report.longHorizonTrend"
+      />
+
       <article
         v-if="representativeReviewHandoff"
         class="rounded-lg border border-amber-700/60 bg-amber-950/20 p-5"
@@ -843,6 +847,7 @@ import {
 import {
   getPolicyCandidateCorrectionRepresentativeReviewCorpusPresentation,
 } from '@/utils/policyCandidateCorrectionRepresentativeReviewCorpusReadinessPresentation'
+import PolicyCandidateBroadDeclaredPolicyRecommendation from '@/components/statistics/PolicyCandidateBroadDeclaredPolicyRecommendation.vue'
 
 const MetricRow = defineComponent({
   name: 'PolicyCandidateCorrectionAnalyticsMetricRow',

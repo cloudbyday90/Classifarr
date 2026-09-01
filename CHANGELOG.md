@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Broad declared-policy review recommendation** — Correction Analytics now
+  turns two comparable, review-ready 28-day aggregate correction periods for
+  contextual declared-policy evidence into one human-only policy-scope review
+  recommendation, with progressive disclosure of aggregate uncertainty and no
+  policy, AI, RAG, learning, or routing authority.
 - **Operator-first evidence review** — Pending classification review now leads
   with a plain-language decision summary and keeps bounded source evidence,
   exact-library cross-checks, and advisory AI candidate comparisons inside one
