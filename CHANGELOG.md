@@ -20,6 +20,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
   first, with deterministic evidence, score mechanics, inventory comparison,
   and advisory AI verification behind one accessible disclosure; it does not
   change policy, AI, RAG, or routing authority.
+
+### Fixed
+
+- **Server CI dependency-declaration gate** — Removed three stale, unconsumed
+  ESM exports from correction-review contracts so the Knip CI gate can run to
+  completion without changing runtime behavior, policy, AI/RAG, or routing.
 - **Offline synthetic policy-candidate replay** — A fixed, opaque fixture
   corpus now exercises the shared deterministic calibration, ranking,
   weak-evidence, ambiguity, and score-band projection before a proposed scope
