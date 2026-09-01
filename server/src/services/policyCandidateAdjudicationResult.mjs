@@ -13,7 +13,7 @@ function policyConfidence(policyResult, fallback = 0) {
   return Number.isFinite(value) && value >= 0 && value <= 100 ? Math.round(value) : 0;
 }
 
-function projection(contract, statusId, library = null) {
+function projection(contract, statusId, library = null, semanticRetrievalStatusId = null) {
   return {
     version: POLICY_CANDIDATE_ADJUDICATION_VERSION,
     statusId,
@@ -21,6 +21,7 @@ function projection(contract, statusId, library = null) {
     proposedDestination: library
       ? { library_id: library.id, library_name: library.name }
       : null,
+    ...(semanticRetrievalStatusId ? { semanticRetrievalStatusId } : {}),
   };
 }
 
@@ -33,6 +34,7 @@ export function finalizePolicyCandidateAdjudication({
   aiMatch = null,
   policyResult = null,
   libraries = [],
+  semanticRetrievalStatusId = null,
 } = {}) {
   if (contract?.valid !== true) return null;
 
@@ -56,6 +58,11 @@ export function finalizePolicyCandidateAdjudication({
     reason: 'AI compared only the policy-eligible destinations. An operator decision is still required.',
     needs_clarification: true,
     format: 'candidate_adjudication',
-    candidate_adjudication: projection(contract, statusId, validProposal ? selectedCandidate.library : null),
+    candidate_adjudication: projection(
+      contract,
+      statusId,
+      validProposal ? selectedCandidate.library : null,
+      semanticRetrievalStatusId,
+    ),
   };
 }

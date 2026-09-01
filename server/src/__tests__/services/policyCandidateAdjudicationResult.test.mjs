@@ -23,6 +23,7 @@ describe('policyCandidateAdjudicationResult', () => {
       contract,
       aiMatch: { library: family, confidence: 99, reason: 'Raw private reasoning', format: 'confident' },
       policyResult: { confidence: 71 },
+      semanticRetrievalStatusId: 'available',
     });
 
     expect(result).toMatchObject({
@@ -32,6 +33,7 @@ describe('policyCandidateAdjudicationResult', () => {
       candidate_adjudication: {
         statusId: 'proposed',
         proposedDestination: { library_id: 2, library_name: 'Family' },
+        semanticRetrievalStatusId: 'available',
       },
     });
     expect(JSON.stringify(result)).not.toContain('Raw private reasoning');

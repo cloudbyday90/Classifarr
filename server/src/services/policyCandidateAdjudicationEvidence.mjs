@@ -7,9 +7,16 @@ import { libraryProfileService } from './libraryProfileService.mjs';
 import { isTrustedLocalOllamaEndpoint } from './ollamaLocalEndpointTrust.mjs';
 import { currentLibraryCandidateRetriever } from './currentLibraryCandidateRetriever.mjs';
 import {
+  currentLibraryCandidateSemanticRetriever,
+} from './currentLibraryCandidateSemanticRetriever.mjs';
+import {
   CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_MAXIMUM_ITEMS_PER_CANDIDATE,
   CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_STATUS_IDS,
 } from './currentLibraryCandidateRetrievalContract.mjs';
+import {
+  CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_MAXIMUM_ITEMS_PER_CANDIDATE,
+  CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_STATUS_IDS,
+} from './currentLibraryCandidateSemanticRetrievalContract.mjs';
 import {
   buildCurrentLibraryCandidateRetrievalTelemetryProjection,
 } from './currentLibraryCandidateRetrievalTelemetry.mjs';
@@ -82,6 +89,12 @@ function emptyCurrentLibraryEvidence() {
     topMatchKind: null,
     topRelevance: null,
     items: [],
+    semantic: {
+      statusId: CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_STATUS_IDS.NOT_APPLICABLE,
+      matchCount: 0,
+      topRelevance: null,
+      items: [],
+    },
   };
 }
 
@@ -102,6 +115,12 @@ function currentLibraryMatchKind(value) {
   return ['identifier', 'title_year', 'text'].includes(value) ? value : null;
 }
 
+function currentLibrarySemanticStatusId(value) {
+  return Object.values(CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_STATUS_IDS).includes(value)
+    ? value
+    : CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_STATUS_IDS.NOT_APPLICABLE;
+}
+
 function boundedMatchCount(value) {
   const numericValue = Number(value);
   return Number.isInteger(numericValue)
@@ -109,10 +128,49 @@ function boundedMatchCount(value) {
     : 0;
 }
 
-function candidateCurrentLibraryEvidence(retrieval, libraryId) {
+function boundedSemanticMatchCount(value) {
+  const numericValue = Number(value);
+  return Number.isInteger(numericValue)
+    ? Math.max(0, Math.min(CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_MAXIMUM_ITEMS_PER_CANDIDATE, numericValue))
+    : 0;
+}
+
+function boundedSemanticRelevance(value) {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? Math.max(0, Math.min(100, Math.round(numericValue))) : null;
+}
+
+function candidateCurrentLibrarySemanticEvidence(retrieval, libraryId) {
   const candidate = (Array.isArray(retrieval?.candidates) ? retrieval.candidates : [])
     .find((item) => Number(item?.libraryId) === libraryId);
-  if (!candidate) return emptyCurrentLibraryEvidence();
+  if (!candidate) {
+    return emptyCurrentLibraryEvidence().semantic;
+  }
+
+  return {
+    statusId: currentLibrarySemanticStatusId(retrieval?.statusId),
+    matchCount: boundedSemanticMatchCount(candidate.matchCount),
+    topRelevance: boundedSemanticRelevance(candidate.topRelevance),
+    items: Array.isArray(candidate.items)
+      ? candidate.items.map((item) => ({
+        title: boundedCurrentLibraryTitle(item?.title),
+        year: Number.isInteger(item?.year) ? item.year : null,
+        relevance: boundedSemanticRelevance(item?.relevance) ?? 0,
+      })).filter((item) => item.title)
+        .slice(0, CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_MAXIMUM_ITEMS_PER_CANDIDATE)
+      : [],
+  };
+}
+
+function candidateCurrentLibraryEvidence(retrieval, semanticRetrieval, libraryId) {
+  const candidate = (Array.isArray(retrieval?.candidates) ? retrieval.candidates : [])
+    .find((item) => Number(item?.libraryId) === libraryId);
+  if (!candidate) {
+    return {
+      ...emptyCurrentLibraryEvidence(),
+      semantic: candidateCurrentLibrarySemanticEvidence(semanticRetrieval, libraryId),
+    };
+  }
 
   return {
     statusId: currentLibraryStatusId(retrieval?.statusId),
@@ -128,6 +186,7 @@ function candidateCurrentLibraryEvidence(retrieval, libraryId) {
         relevance: Number.isFinite(Number(item?.relevance)) ? Number(item.relevance) : 0,
       })).filter((item) => item.title).slice(0, CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_MAXIMUM_ITEMS_PER_CANDIDATE)
       : [],
+    semantic: candidateCurrentLibrarySemanticEvidence(semanticRetrieval, libraryId),
   };
 }
 
@@ -138,6 +197,11 @@ function remoteCurrentLibraryEvidence(currentLibrary) {
     directMatch: currentLibrary?.directMatch === true,
     topMatchKind: currentLibraryMatchKind(currentLibrary?.topMatchKind),
     topRelevance: currentLibrary?.topRelevance ?? null,
+    semantic: {
+      statusId: currentLibrarySemanticStatusId(currentLibrary?.semantic?.statusId),
+      matchCount: boundedSemanticMatchCount(currentLibrary?.semantic?.matchCount),
+      topRelevance: boundedSemanticRelevance(currentLibrary?.semantic?.topRelevance),
+    },
   };
 }
 
@@ -148,6 +212,7 @@ function remoteCurrentLibraryEvidence(currentLibrary) {
 export function createPolicyCandidateAdjudicationEvidenceService({
   getProfileStats = null,
   retrieveCurrentLibraryEvidence = null,
+  retrieveCurrentLibrarySemanticEvidence = null,
 } = {}) {
   const readProfileStats = typeof getProfileStats === 'function'
     ? getProfileStats
@@ -159,17 +224,20 @@ export function createPolicyCandidateAdjudicationEvidenceService({
     : typeof currentLibraryCandidateRetriever.retrieve === 'function'
       ? currentLibraryCandidateRetriever.retrieve.bind(currentLibraryCandidateRetriever)
       : async () => null;
+  const retrieveCurrentLibrarySemantic = typeof retrieveCurrentLibrarySemanticEvidence === 'function'
+    ? retrieveCurrentLibrarySemanticEvidence
+    : typeof currentLibraryCandidateSemanticRetriever.retrieve === 'function'
+      ? currentLibraryCandidateSemanticRetriever.retrieve.bind(currentLibraryCandidateSemanticRetriever)
+      : async () => null;
 
   return Object.freeze({
     async build({ contract = null, ragContext = null, metadata = null } = {}) {
       if (contract?.valid !== true) return null;
 
-      let currentLibraryRetrieval = null;
-      try {
-        currentLibraryRetrieval = await retrieveCurrentLibrary({ contract, metadata });
-      } catch (_error) {
-        currentLibraryRetrieval = null;
-      }
+      const [currentLibraryRetrieval, currentLibrarySemanticRetrieval] = await Promise.all([
+        Promise.resolve().then(() => retrieveCurrentLibrary({ contract, metadata })).catch(() => null),
+        Promise.resolve().then(() => retrieveCurrentLibrarySemantic({ contract, metadata })).catch(() => null),
+      ]);
 
       const candidates = await Promise.all(contract.candidates.map(async (candidate) => {
         let profile = null;
@@ -187,7 +255,11 @@ export function createPolicyCandidateAdjudicationEvidenceService({
           policyScore: candidate.policyScore,
           profile: localProfile(profile),
           rag: candidateRagFacts(ragContext, candidate.libraryId, true),
-          currentLibrary: candidateCurrentLibraryEvidence(currentLibraryRetrieval, candidate.libraryId),
+          currentLibrary: candidateCurrentLibraryEvidence(
+            currentLibraryRetrieval,
+            currentLibrarySemanticRetrieval,
+            candidate.libraryId,
+          ),
         });
       }));
 
@@ -196,6 +268,8 @@ export function createPolicyCandidateAdjudicationEvidenceService({
         candidates: Object.freeze(candidates),
         currentLibraryCandidateRetrievalTelemetry:
           buildCurrentLibraryCandidateRetrievalTelemetryProjection(currentLibraryRetrieval?.telemetry),
+        currentLibraryCandidateSemanticRetrievalStatusId:
+          currentLibrarySemanticStatusId(currentLibrarySemanticRetrieval?.statusId),
       });
     },
   });

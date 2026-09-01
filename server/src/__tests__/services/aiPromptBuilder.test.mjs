@@ -284,6 +284,12 @@ describe('AIPromptBuilder', () => {
                             topMatchKind: 'identifier',
                             topRelevance: 100,
                             items: [{ title: 'Current Catalog Movie', year: 2026 }],
+                            semantic: {
+                                statusId: 'available',
+                                matchCount: 1,
+                                topRelevance: 88,
+                                items: [{ title: 'A Semantically Related Movie', year: 2024 }],
+                            },
                         },
                     },
                     {
@@ -305,6 +311,8 @@ describe('AIPromptBuilder', () => {
             expect(result).toContain('Bounded similar titles: Existing Movie');
             expect(result).toContain('Current library catalog: direct catalog match (identifier)');
             expect(result).toContain('Bounded catalog titles: Current Catalog Movie (2026)');
+            expect(result).toContain('Current-library semantic matches: 1 (strongest similarity 88%)');
+            expect(result).toContain('Bounded semantic titles: A Semantically Related Movie (2024)');
             expect(result).toContain('2. "Family" (movie)');
         });
     });

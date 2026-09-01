@@ -240,6 +240,18 @@ export function formatCandidateAdjudication(data) {
         } else if (candidate.currentLibrary?.statusId === 'unavailable') {
             lines.push('   Current library catalog: unavailable');
         }
+        if (candidate.currentLibrary?.semantic?.statusId === 'available') {
+            const semantic = candidate.currentLibrary.semantic;
+            lines.push(`   Current-library semantic matches: ${semantic.matchCount || 0}${semantic.topRelevance !== null && semantic.topRelevance !== undefined ? ` (strongest similarity ${semantic.topRelevance}%)` : ''}`);
+            if (Array.isArray(semantic.items) && semantic.items.length > 0) {
+                const items = semantic.items
+                    .map((item) => item.year ? `${item.title} (${item.year})` : item.title)
+                    .filter(Boolean);
+                if (items.length > 0) lines.push(`   Bounded semantic titles: ${items.join(', ')}`);
+            }
+        } else if (candidate.currentLibrary?.semantic?.statusId === 'unavailable') {
+            lines.push('   Current-library semantic matches: unavailable');
+        }
     }
 
     lines.push('====================================');

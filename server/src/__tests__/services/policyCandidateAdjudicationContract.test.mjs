@@ -70,4 +70,18 @@ describe('policyCandidateAdjudicationContract', () => {
     });
     expect(JSON.stringify(projection)).not.toContain('thinking');
   });
+
+  test('retains only an allow-listed current-library semantic retrieval status', () => {
+    const projection = buildPolicyCandidateAdjudicationProjection({
+      version: POLICY_CANDIDATE_ADJUDICATION_VERSION,
+      statusId: 'proposed',
+      candidateCount: 2,
+      proposedDestination: { library_id: 1, library_name: 'Movies' },
+      semanticRetrievalStatusId: 'available',
+      semanticTitles: ['Do not persist this title'],
+    });
+
+    expect(projection).toMatchObject({ semantic_retrieval_status_id: 'available' });
+    expect(JSON.stringify(projection)).not.toContain('Do not persist this title');
+  });
 });

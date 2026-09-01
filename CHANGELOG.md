@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Candidate-scoped current-library semantic retrieval** — Advisory AI
+  comparison can now use bounded similarity to descriptions of current items
+  in only the policy-eligible libraries, reusing stable current-inventory
+  embeddings without changing policy scoring or operator routing authority.
 - **Pull-request synthetic policy-candidate replay** — A separate
   least-privilege CI job now runs the fixed, aggregate-only candidate replay
   against each pull request without installing dependencies, reading live

@@ -26,6 +26,17 @@ const STATUS_PRESENTATIONS = Object.freeze({
   }),
 });
 
+const SEMANTIC_RETRIEVAL_PRESENTATIONS = Object.freeze({
+  available: Object.freeze({
+    label: 'Current-library semantic check used',
+    message: 'The advisory comparison included bounded similarity to descriptions of current items in each eligible library.',
+  }),
+  unavailable: Object.freeze({
+    label: 'Current-library semantic check unavailable',
+    message: 'The advisory comparison used its remaining bounded evidence; semantic similarity did not complete and did not change routing.',
+  }),
+});
+
 export function buildPolicyCandidateAdjudicationPresentation(value = {}) {
   const projection = buildPolicyCandidateAdjudicationProjection(value);
   const definition = projection ? STATUS_PRESENTATIONS[projection.status_id] : null;
@@ -37,5 +48,11 @@ export function buildPolicyCandidateAdjudicationPresentation(value = {}) {
     label: definition.label,
     message: definition.message,
     proposed_destination: projection.proposed_destination,
+    semantic_retrieval: SEMANTIC_RETRIEVAL_PRESENTATIONS[projection.semantic_retrieval_status_id]
+      ? Object.freeze({
+        status_id: projection.semantic_retrieval_status_id,
+        ...SEMANTIC_RETRIEVAL_PRESENTATIONS[projection.semantic_retrieval_status_id],
+      })
+      : null,
   });
 }

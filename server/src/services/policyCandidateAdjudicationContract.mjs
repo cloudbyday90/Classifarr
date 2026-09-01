@@ -15,6 +15,11 @@ export const POLICY_CANDIDATE_ADJUDICATION_STATUS_IDS = Object.freeze({
   RESPONSE_REJECTED: 'response_rejected',
 });
 
+export const POLICY_CANDIDATE_ADJUDICATION_SEMANTIC_RETRIEVAL_STATUS_IDS = new Set([
+  'available',
+  'unavailable',
+]);
+
 const PERSISTED_STATUS_IDS = new Set([
   POLICY_CANDIDATE_ADJUDICATION_STATUS_IDS.PROPOSED,
   POLICY_CANDIDATE_ADJUDICATION_STATUS_IDS.ABSTAINED,
@@ -126,6 +131,10 @@ export function buildPolicyCandidateAdjudicationProjection(value = {}) {
   const statusId = boundedString(value.statusId ?? value.status_id, 80);
   const candidateCount = Number(value.candidateCount ?? value.candidate_count);
   const proposedDestination = value.proposedDestination ?? value.proposed_destination;
+  const semanticRetrievalStatusId = boundedString(
+    value.semanticRetrievalStatusId ?? value.semantic_retrieval_status_id,
+    80,
+  );
   const proposedLibraryId = positiveInteger(proposedDestination?.library_id);
   const proposedLibraryName = boundedString(proposedDestination?.library_name, 160);
 
@@ -146,5 +155,8 @@ export function buildPolicyCandidateAdjudicationProjection(value = {}) {
     proposed_destination: proposedLibraryId && proposedLibraryName
       ? { library_id: proposedLibraryId, library_name: proposedLibraryName }
       : null,
+    ...(POLICY_CANDIDATE_ADJUDICATION_SEMANTIC_RETRIEVAL_STATUS_IDS.has(semanticRetrievalStatusId)
+      ? { semantic_retrieval_status_id: semanticRetrievalStatusId }
+      : {}),
   });
 }

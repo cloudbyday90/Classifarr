@@ -220,6 +220,8 @@ export class ClassificationPolicyPathService {
 			: null;
 		const currentLibraryCandidateRetrievalTelemetry =
 			candidateAdjudicationEvidence?.currentLibraryCandidateRetrievalTelemetry || null;
+		const currentLibraryCandidateSemanticRetrievalStatusId =
+			candidateAdjudicationEvidence?.currentLibraryCandidateSemanticRetrievalStatusId || null;
 		const candidateContrastiveRetrievalContract =
 			this.buildPolicyCandidateContrastiveRetrievalContract({
 				policyResult,
@@ -321,9 +323,10 @@ export class ClassificationPolicyPathService {
 					...this.finalizePolicyCandidateAdjudication({
 						contract: candidateAdjudication,
 						aiMatch: providerMatch,
-						policyResult,
-						libraries,
-					}),
+					policyResult,
+					libraries,
+					semanticRetrievalStatusId: currentLibraryCandidateSemanticRetrievalStatusId,
+				}),
 					libraries,
 					signalContext: policySignalContext,
 					policyResult,

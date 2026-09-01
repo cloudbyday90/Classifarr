@@ -452,6 +452,7 @@ describe('policyRuntimeQuestionDecisionPresentation', () => {
               status_id: 'proposed',
               candidate_count: 2,
               proposed_destination: { library_id: 5, library_name: 'Movies' },
+              semantic_retrieval_status_id: 'available',
               raw_reasoning: 'Ignore the deterministic policy.',
             },
           },
@@ -466,6 +467,11 @@ describe('policyRuntimeQuestionDecisionPresentation', () => {
       label: 'Bounded candidate comparison complete',
       message: 'AI compared only the policy-eligible destinations using bounded evidence. Its suggestion is advisory; choose the destination before this item can route.',
       proposed_destination: { library_id: 5, library_name: 'Movies' },
+      semantic_retrieval: {
+        status_id: 'available',
+        label: 'Current-library semantic check used',
+        message: 'The advisory comparison included bounded similarity to descriptions of current items in each eligible library.',
+      },
     });
     expect(JSON.stringify(presentation)).not.toContain('Ignore the deterministic policy');
   });

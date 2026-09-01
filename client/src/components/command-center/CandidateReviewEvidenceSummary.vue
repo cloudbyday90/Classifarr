@@ -65,6 +65,10 @@
           <p v-if="presentation.adjudication.proposed_destination">
             Advisory destination: {{ presentation.adjudication.proposed_destination.library_name }}.
           </p>
+          <p v-if="presentation.adjudication.semantic_retrieval">
+            <strong>{{ presentation.adjudication.semantic_retrieval.label }}:</strong>
+            {{ presentation.adjudication.semantic_retrieval.message }}
+          </p>
         </section>
       </div>
     </component>

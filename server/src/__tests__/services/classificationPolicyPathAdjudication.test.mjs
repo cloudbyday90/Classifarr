@@ -60,6 +60,7 @@ describe('ClassificationPolicyPathService candidate adjudication', () => {
             matched_candidate_count: 1,
             direct_match_candidate_count: 1,
           },
+          currentLibraryCandidateSemanticRetrievalStatusId: 'available',
         }),
       },
       finalizePolicyCandidateAdjudication: jest.fn().mockReturnValue({
@@ -104,6 +105,9 @@ describe('ClassificationPolicyPathService candidate adjudication', () => {
       contract: expect.any(Object),
       ragContext: null,
       metadata: expect.objectContaining({ title: 'Range of Stars', media_type: 'movie' }),
+    }));
+    expect(service.finalizePolicyCandidateAdjudication).toHaveBeenCalledWith(expect.objectContaining({
+      semanticRetrievalStatusId: 'available',
     }));
     expect(service.policyCandidateContrastiveRetriever.retrieve).toHaveBeenCalledWith({
       contract: expect.any(Object),

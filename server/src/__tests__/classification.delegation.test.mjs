@@ -216,7 +216,7 @@ jest.unstable_mockModule('../services/policyQuestionBuilder.mjs', () => createNa
 
 jest.unstable_mockModule('../services/classificationEvidenceService.mjs', () => createNamedStubModule('classificationEvidenceService'));
 
-jest.unstable_mockModule('../services/providerLock.mjs', () => createDefaultStubModule());
+jest.unstable_mockModule('../services/providerLock.mjs', () => createNamedStubModule('providerLock'));
 
 jest.unstable_mockModule('../services/libraryProfileService.mjs', () => createNamedStubModule('libraryProfileService'));
 

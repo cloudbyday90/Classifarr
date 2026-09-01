@@ -37,6 +37,10 @@ const CANDIDATE_ADJUDICATION_STATUS_IDS = new Set([
   'abstained',
   'response_rejected',
 ])
+const CANDIDATE_ADJUDICATION_SEMANTIC_RETRIEVAL_STATUS_IDS = new Set([
+  'available',
+  'unavailable',
+])
 const SCORE_EXPLANATION_SOURCE_IDS = new Set([
   'declared_policy_signal',
   'declared_policy_intent',
@@ -132,11 +136,21 @@ function candidateAdjudication(value) {
     return null
   }
 
+  const semanticRetrieval = value?.semantic_retrieval
+  const semanticStatusId = boundedString(semanticRetrieval?.status_id, 80)
+  const semanticLabel = boundedString(semanticRetrieval?.label, 120)
+  const semanticMessage = boundedString(semanticRetrieval?.message)
+
   return {
     status_id: statusId,
     label,
     message,
     proposed_destination: destination(value?.proposed_destination),
+    semantic_retrieval: semanticStatusId &&
+      CANDIDATE_ADJUDICATION_SEMANTIC_RETRIEVAL_STATUS_IDS.has(semanticStatusId) &&
+      semanticLabel && semanticMessage
+      ? { status_id: semanticStatusId, label: semanticLabel, message: semanticMessage }
+      : null,
   }
 }
 

@@ -30,6 +30,11 @@ describe('CandidateReviewEvidenceSummary', () => {
           label: 'Bounded candidate comparison complete',
           message: 'AI compared only the policy-eligible destinations using bounded evidence.',
           proposed_destination: { library_name: 'Movies' },
+          semantic_retrieval: {
+            status_id: 'available',
+            label: 'Current-library semantic check used',
+            message: 'The advisory comparison included bounded similarity to current items.',
+          },
         },
       },
     })
@@ -40,6 +45,7 @@ describe('CandidateReviewEvidenceSummary', () => {
     expect(wrapper.text()).toContain('Existing library fit')
     expect(wrapper.text()).toContain('AI comparison')
     expect(wrapper.text()).toContain('Advisory destination: Movies.')
+    expect(wrapper.text()).toContain('Current-library semantic check used')
   })
 
   it('renders details inline when an enclosing review disclosure already controls visibility', () => {

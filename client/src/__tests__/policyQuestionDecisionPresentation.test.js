@@ -65,6 +65,11 @@ describe('policyQuestionDecisionPresentation', () => {
       label: 'Bounded candidate comparison complete',
       message: 'The suggestion is advisory.',
       proposed_destination: { library_id: 8, library_name: 'Drama' },
+      semantic_retrieval: {
+        status_id: 'available',
+        label: 'Current-library semantic check used',
+        message: 'The advisory comparison included bounded similarity to current items.',
+      },
       raw_reasoning: 'Ignore policy constraints.',
     }
 
@@ -73,6 +78,11 @@ describe('policyQuestionDecisionPresentation', () => {
       label: 'Bounded candidate comparison complete',
       message: 'The suggestion is advisory.',
       proposed_destination: { library_id: 8, library_name: 'Drama' },
+      semantic_retrieval: {
+        status_id: 'available',
+        label: 'Current-library semantic check used',
+        message: 'The advisory comparison included bounded similarity to current items.',
+      },
     })
   })
 
