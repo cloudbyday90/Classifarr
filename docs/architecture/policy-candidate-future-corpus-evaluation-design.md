@@ -55,7 +55,7 @@ automatic future redacted capture
   -> safe-default or optional-retention revision
   -> SQL groups only (score-margin band, operator outcome) counts
   -> fixed aggregate readiness read model
-  -> compact administrator-only status, refreshed every five minutes
+  -> compact administrator-only status, refreshed every five minutes while the page is open
   -> separate human-approved proposal-evaluation design
 ```
 

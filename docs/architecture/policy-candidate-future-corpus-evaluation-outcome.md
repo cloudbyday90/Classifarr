@@ -17,7 +17,7 @@ decision.
 - It does not query historical classification rows, the historical projection,
   inventory, RAG, model configuration, prompts, responses, or embeddings.
 - Security Settings now shows one compact automatic status and refreshes it
-  every five minutes only while collection is incomplete. Optional retention
+  every five minutes while the page is open. Optional retention
   and historical-snapshot settings are behind a disclosure; they are not a
   prerequisite for capture, Classifarr, AI, RAG, policy, or routing.
 

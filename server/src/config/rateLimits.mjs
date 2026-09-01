@@ -241,6 +241,16 @@ export const policyCandidateCorrectionReviewCorpusCaptureEvaluationReadLimiterCo
   skip: (_req) => process.env.NODE_ENV === 'test',
 };
 
+/** Automatic future review-corpus calibration aggregate reads (per IP, per 15 minutes). */
+export const policyCandidateCorrectionReviewCorpusCaptureCalibrationReportReadLimiterConfig = {
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: 'Too many review-corpus calibration report requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (_req) => process.env.NODE_ENV === 'test',
+};
+
 /** Redacted representative review-projection creation (per IP, per 15 minutes). */
 export const policyCandidateCorrectionReviewProjectionCreateLimiterConfig = {
   windowMs: 15 * 60 * 1000,

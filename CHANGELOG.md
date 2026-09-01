@@ -11,6 +11,13 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Automatic score-band calibration review** — Security Settings now turns
+  the redacted future-corpus aggregates into a compact, continuously refreshed
+  calibration report. It uses fixed 95% Wilson bounds to identify only
+  human-review prompts for close-candidate boundaries or higher-margin
+  evidence; it cannot alter policy thresholds, AI, RAG, learning, retries, or
+  routing.
+
 - **Automatic future-corpus evaluation** — Security Settings now shows one
   compact, auto-refreshing aggregate status for the redacted future operator
   corpus. It measures per-score-band baseline coverage for a later

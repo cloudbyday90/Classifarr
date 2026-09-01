@@ -31,6 +31,7 @@ import {
 } from '@/utils/policyAuthoringProposalAdjustment'
 import policyReviewCorpusControlApi from './policyReviewCorpusControlApi'
 import policyReviewCorpusCaptureEvaluationApi from './policyReviewCorpusCaptureEvaluationApi'
+import policyReviewCorpusCaptureCalibrationReportApi from './policyReviewCorpusCaptureCalibrationReportApi'
 import policyReviewCorpusEvaluationReportApi from './policyReviewCorpusEvaluationReportApi'
 import policyReviewCorpusProjectionApi from './policyReviewCorpusProjectionApi'
 import policyChangeOutcomeObservationApi from './policyChangeOutcomeObservationApi'
@@ -227,6 +228,7 @@ const policiesApi = {
   previewPolicyDestinationCompetition,
   ...policyReviewCorpusControlApi,
   ...policyReviewCorpusCaptureEvaluationApi,
+  ...policyReviewCorpusCaptureCalibrationReportApi,
   ...policyReviewCorpusEvaluationReportApi,
   ...policyReviewCorpusProjectionApi,
   ...policyChangeOutcomeObservationApi,

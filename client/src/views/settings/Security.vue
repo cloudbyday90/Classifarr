@@ -64,6 +64,122 @@
         </p>
       </div>
 
+      <template v-if="reviewCorpusCaptureCalibrationPresentation">
+        <div
+          class="border-l-2 border-blue-500/70 pl-3"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          <p
+            class="text-sm font-medium"
+            :class="reviewCorpusCaptureCalibrationPresentation.statusClass"
+          >
+            {{ reviewCorpusCaptureCalibrationPresentation.heading }}
+          </p>
+          <p class="mt-1 text-sm text-gray-300">
+            {{ reviewCorpusCaptureCalibrationPresentation.message }}
+          </p>
+        </div>
+
+        <details
+          v-if="reviewCorpusCaptureCalibrationRows.length > 0"
+          class="rounded-md border border-gray-700 p-4"
+        >
+          <summary class="cursor-pointer text-sm font-medium text-blue-300">
+            View aggregate score-band calibration
+          </summary>
+          <p
+            id="review-corpus-capture-calibration-summary"
+            class="mt-3 text-sm text-gray-400"
+          >
+            Each row compares the policy-selected candidate with the later operator outcome. The table is aggregate-only; it contains no media, library, provider, prompt, response, or RAG content.
+          </p>
+          <div class="mt-3 overflow-x-auto">
+            <table
+              class="min-w-full text-left text-sm"
+              aria-describedby="review-corpus-capture-calibration-summary"
+            >
+              <caption class="mb-2 text-left text-sm font-medium text-gray-200">
+                Automatic score-band calibration summary
+              </caption>
+              <thead class="border-b border-gray-700 text-xs uppercase tracking-wide text-gray-400">
+                <tr>
+                  <th
+                    scope="col"
+                    class="px-3 py-2"
+                  >
+                    Score margin
+                  </th>
+                  <th
+                    scope="col"
+                    class="px-3 py-2"
+                  >
+                    Outcomes
+                  </th>
+                  <th
+                    scope="col"
+                    class="px-3 py-2"
+                  >
+                    Confirmed
+                  </th>
+                  <th
+                    scope="col"
+                    class="px-3 py-2"
+                  >
+                    Changed
+                  </th>
+                  <th
+                    scope="col"
+                    class="px-3 py-2"
+                  >
+                    Review signal
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-700 text-gray-300">
+                <tr
+                  v-for="row in reviewCorpusCaptureCalibrationRows"
+                  :key="row.scoreMarginBandId"
+                >
+                  <th
+                    scope="row"
+                    class="whitespace-nowrap px-3 py-2 font-medium text-gray-100"
+                  >
+                    {{ row.scoreMarginBandLabel }}
+                  </th>
+                  <td class="whitespace-nowrap px-3 py-2">
+                    {{ row.capturedOutcomeCount }}
+                  </td>
+                  <td class="whitespace-nowrap px-3 py-2">
+                    {{ row.confirmedCandidateCount }} ({{ row.confirmationRateLabel }})
+                  </td>
+                  <td class="whitespace-nowrap px-3 py-2">
+                    {{ row.changedSelectionCount }}
+                  </td>
+                  <td class="px-3 py-2">
+                    <p :class="row.calibrationClass">
+                      {{ row.calibrationLabel }}
+                    </p>
+                    <p class="mt-1 text-xs text-gray-400">
+                      {{ row.intervalLabel }}
+                    </p>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+      </template>
+      <p
+        v-else-if="reviewCorpusCaptureCalibrationError && reviewCorpusCaptureEvaluation?.statusId === 'ready_for_human_evaluation'"
+        class="text-sm text-amber-300"
+        role="status"
+        aria-live="polite"
+      >
+        Calibration review status is temporarily unavailable. Automatic capture and routing are unchanged.
+      </p>
+
       <details class="rounded-md border border-gray-700 p-4">
         <summary class="cursor-pointer text-sm font-medium text-blue-300">
           Retention and historical snapshot options
@@ -1214,6 +1330,11 @@ import {
   normalizePolicyCandidateCorrectionRepresentativeReviewCorpusCaptureEvaluation,
 } from '@/utils/policyCandidateCorrectionRepresentativeReviewCorpusCaptureEvaluationPresentation'
 import {
+  getPolicyCandidateCorrectionRepresentativeReviewCorpusCaptureCalibrationReportPresentation,
+  normalizePolicyCandidateCorrectionRepresentativeReviewCorpusCaptureCalibrationReport,
+  presentPolicyCandidateCorrectionRepresentativeReviewCorpusCaptureCalibrationBand,
+} from '@/utils/policyCandidateCorrectionRepresentativeReviewCorpusCaptureCalibrationReportPresentation'
+import {
   getPolicyCandidateCorrectionRepresentativeReviewProjectionPresentation,
   normalizePolicyCandidateCorrectionRepresentativeReviewProjection,
   presentPolicyCandidateCorrectionRepresentativeReviewProjectionItem,
@@ -1254,6 +1375,8 @@ const reviewRecordRetentionDays = ref(30)
 const reviewCorpusCaptureEvaluation = ref(null)
 const reviewCorpusCaptureEvaluationLoading = ref(false)
 const reviewCorpusCaptureEvaluationError = ref(null)
+const reviewCorpusCaptureCalibrationReport = ref(null)
+const reviewCorpusCaptureCalibrationError = ref(null)
 const reviewProjection = ref(null)
 const reviewProjectionLoading = ref(false)
 const reviewProjectionCreating = ref(false)
@@ -1280,6 +1403,16 @@ const reviewCorpusCaptureEvaluationPresentation = computed(() => (
   getPolicyCandidateCorrectionRepresentativeReviewCorpusCaptureEvaluationPresentation(
     reviewCorpusCaptureEvaluation.value
   )
+))
+const reviewCorpusCaptureCalibrationPresentation = computed(() => (
+  getPolicyCandidateCorrectionRepresentativeReviewCorpusCaptureCalibrationReportPresentation(
+    reviewCorpusCaptureCalibrationReport.value
+  )
+))
+const reviewCorpusCaptureCalibrationRows = computed(() => (
+  reviewCorpusCaptureCalibrationReport.value?.report?.scoreMarginBands
+    ?.map(presentPolicyCandidateCorrectionRepresentativeReviewCorpusCaptureCalibrationBand)
+    .filter(Boolean) || []
 ))
 const reviewProjectionPresentation = computed(() => (
   getPolicyCandidateCorrectionRepresentativeReviewProjectionPresentation(
@@ -1340,6 +1473,7 @@ onMounted(() => {
   loadApiKeys()
   loadReviewCorpusControl()
   loadReviewCorpusCaptureEvaluation()
+  loadReviewCorpusCaptureCalibrationReport()
   loadReviewProjection()
   loadReviewEvaluationReport()
   loadPolicyChangeOutcomeObservation()
@@ -1369,17 +1503,13 @@ const stopPolicyChangeOutcomeObservationRefresh = () => {
 }
 
 const scheduleReviewCorpusCaptureEvaluationRefresh = () => {
-  if (reviewCorpusCaptureEvaluationRefreshTimer ||
-      reviewCorpusCaptureEvaluation.value?.statusId !== 'collecting') return
+  if (reviewCorpusCaptureEvaluationRefreshTimer) return
   reviewCorpusCaptureEvaluationRefreshTimer = setInterval(() => {
-    loadReviewCorpusCaptureEvaluation({ background: true })
+    void Promise.all([
+      loadReviewCorpusCaptureEvaluation({ background: true }),
+      loadReviewCorpusCaptureCalibrationReport({ background: true }),
+    ])
   }, 5 * 60 * 1000)
-}
-
-const stopReviewCorpusCaptureEvaluationRefresh = () => {
-  if (!reviewCorpusCaptureEvaluationRefreshTimer) return
-  clearInterval(reviewCorpusCaptureEvaluationRefreshTimer)
-  reviewCorpusCaptureEvaluationRefreshTimer = null
 }
 
 const loadPolicyChangeOutcomeObservation = async ({ background = false } = {}) => {
@@ -1469,11 +1599,7 @@ const loadReviewCorpusCaptureEvaluation = async ({ background = false } = {}) =>
       throw new Error('Future capture evaluation returned an unexpected response.')
     }
     reviewCorpusCaptureEvaluation.value = evaluation
-    if (evaluation.statusId === 'collecting') {
-      scheduleReviewCorpusCaptureEvaluationRefresh()
-    } else {
-      stopReviewCorpusCaptureEvaluationRefresh()
-    }
+    scheduleReviewCorpusCaptureEvaluationRefresh()
   } catch (err) {
     console.error('Failed to load automatic review-corpus evaluation:', err)
     if (!background) {
@@ -1482,6 +1608,26 @@ const loadReviewCorpusCaptureEvaluation = async ({ background = false } = {}) =>
     }
   } finally {
     if (!background) reviewCorpusCaptureEvaluationLoading.value = false
+  }
+}
+
+const loadReviewCorpusCaptureCalibrationReport = async ({ background = false } = {}) => {
+  reviewCorpusCaptureCalibrationError.value = null
+  try {
+    const response = await api.getPolicyCandidateCorrectionReviewCorpusCaptureCalibrationReport()
+    const calibrationReport =
+      normalizePolicyCandidateCorrectionRepresentativeReviewCorpusCaptureCalibrationReport(response)
+    if (!calibrationReport) {
+      throw new Error('Future capture calibration report returned an unexpected response.')
+    }
+    reviewCorpusCaptureCalibrationReport.value = calibrationReport
+    scheduleReviewCorpusCaptureEvaluationRefresh()
+  } catch (err) {
+    console.error('Failed to load automatic review-corpus calibration report:', err)
+    if (!background) {
+      reviewCorpusCaptureCalibrationReport.value = null
+      reviewCorpusCaptureCalibrationError.value = 'Unable to load automatic calibration review status.'
+    }
   }
 }
 
@@ -1518,6 +1664,7 @@ const acknowledgeReviewCorpusSafeguards = async () => {
     reviewCorpusAuditEvents.value = auditEvents
     await Promise.all([
       loadReviewCorpusCaptureEvaluation(),
+      loadReviewCorpusCaptureCalibrationReport(),
       loadReviewProjection(),
       loadReviewEvaluationReport(),
     ])
