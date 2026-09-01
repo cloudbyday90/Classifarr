@@ -77,6 +77,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Candidate-adjudication retry persistence** — The classification-history
+  method contract now admits completed bounded candidate-adjudication results,
+  preventing valid local retry work from repeatedly failing while it is saved.
+
 - **Classification evidence retention** — Post-classification routing now
   patches only its owned metadata fields, preserving the policy, RAG,
   cross-library, and AI-advisory evidence persisted by the current decision.

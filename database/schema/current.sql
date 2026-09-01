@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-08-31T17:41:00.180Z
--- Latest Migration: 20260831_170100_rename_policy_change_review_history_tables.sql
+-- Generated: 2026-08-31T23:59:40.750Z
+-- Latest Migration: 20260831_235000_add_policy_candidate_adjudication_method.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -2217,7 +2217,7 @@ CREATE TABLE public.classification_history (
     CONSTRAINT chk_classification_completed_has_library CHECK ((((status)::text IS DISTINCT FROM 'completed'::text) OR (library_id IS NOT NULL))),
     CONSTRAINT chk_classification_confidence_range CHECK (((confidence IS NULL) OR ((confidence >= (0)::numeric) AND (confidence <= (100)::numeric)))),
     CONSTRAINT classification_history_media_type_check CHECK (((media_type)::text = ANY (ARRAY[('movie'::character varying)::text, ('tv'::character varying)::text]))),
-    CONSTRAINT classification_history_method_check CHECK (((method)::text = ANY (ARRAY[('existing_media'::character varying)::text, ('manual_correction'::character varying)::text, ('manual_classification'::character varying)::text, ('exact_match'::character varying)::text, ('learned_pattern'::character varying)::text, ('source_library'::character varying)::text, ('policy_auto'::character varying)::text, ('policy_prompt'::character varying)::text, ('policy_recheck'::character varying)::text, ('ai_verified'::character varying)::text, ('ai_analysis'::character varying)::text, ('ai_rerun'::character varying)::text, ('signal_calculation'::character varying)::text, ('fallback'::character varying)::text, ('queued_for_retry'::character varying)::text, ('custom_rule'::character varying)::text, ('rule_match'::character varying)::text, ('ai_fallback'::character varying)::text, ('holiday_detection'::character varying)::text, ('library_rule'::character varying)::text, ('rag_improved'::character varying)::text, ('authoritative_source_library'::character varying)::text, ('policy_engine'::character varying)::text]))),
+    CONSTRAINT classification_history_method_check CHECK (((method)::text = ANY ((ARRAY['existing_media'::character varying, 'manual_correction'::character varying, 'manual_classification'::character varying, 'exact_match'::character varying, 'learned_pattern'::character varying, 'source_library'::character varying, 'policy_auto'::character varying, 'policy_prompt'::character varying, 'policy_recheck'::character varying, 'ai_verified'::character varying, 'ai_analysis'::character varying, 'ai_rerun'::character varying, 'signal_calculation'::character varying, 'fallback'::character varying, 'queued_for_retry'::character varying, 'custom_rule'::character varying, 'rule_match'::character varying, 'ai_fallback'::character varying, 'holiday_detection'::character varying, 'library_rule'::character varying, 'rag_improved'::character varying, 'authoritative_source_library'::character varying, 'policy_engine'::character varying, 'policy_candidate_adjudication'::character varying])::text[]))),
     CONSTRAINT classification_history_status_check CHECK (((status)::text = ANY (ARRAY[('completed'::character varying)::text, ('failed'::character varying)::text, ('corrected'::character varying)::text, ('awaiting_decision'::character varying)::text, ('pending'::character varying)::text, ('pending_retry'::character varying)::text, ('verified'::character varying)::text, ('reclassified'::character varying)::text, ('routed'::character varying)::text])))
 )
 WITH (fillfactor='80', autovacuum_vacuum_scale_factor='0.05', autovacuum_analyze_scale_factor='0.05');
@@ -14527,6 +14527,7 @@ FROM unnest(ARRAY[
     '20260831_120000_add_policy_change_outcome_observation.sql',
     '20260831_140000_add_policy_change_decision_record.sql',
     '20260831_170000_add_policy_change_review_history_summary.sql',
-    '20260831_170100_rename_policy_change_review_history_tables.sql'
+    '20260831_170100_rename_policy_change_review_history_tables.sql',
+    '20260831_235000_add_policy_candidate_adjudication_method.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

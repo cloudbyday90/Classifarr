@@ -34,18 +34,29 @@ const VALID_METHODS = [
   'library_rule',
   'rag_improved',
   'authoritative_source_library',
-  'policy_engine'
+  'policy_engine',
+  'policy_candidate_adjudication'
 ];
 
-function getAllJsFiles(dir) {
+// This service describes PostgreSQL index methods (for example, `gin`), not
+// classification-history methods. It intentionally shares the generic
+// `method` property name and is therefore outside this persistence contract.
+const NON_CLASSIFICATION_METHOD_SERVICE_FILES = new Set([
+  'policyNativeSchemaContract.mjs',
+]);
+
+function getAllJavaScriptFiles(dir) {
   const files = [];
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   
   for (const entry of entries) {
     const fullPath = path.join(dir, entry.name);
     if (entry.isDirectory()) {
-      files.push(...getAllJsFiles(fullPath));
-    } else if (entry.name.endsWith('.js')) {
+      files.push(...getAllJavaScriptFiles(fullPath));
+    } else if (
+      (entry.name.endsWith('.js') || entry.name.endsWith('.mjs'))
+      && !NON_CLASSIFICATION_METHOD_SERVICE_FILES.has(entry.name)
+    ) {
       files.push(fullPath);
     }
   }
@@ -55,7 +66,7 @@ function getAllJsFiles(dir) {
 describe('Classification Methods Constraint', () => {
   test('all method values in service code are in VALID_METHODS list', () => {
     const servicesDir = path.join(import.meta.dirname, '..', 'services');
-    const files = getAllJsFiles(servicesDir);
+    const files = getAllJavaScriptFiles(servicesDir);
     
     const foundMethods = new Set();
     const methodPattern = /method:\s*['"]([^'"]+)['"]/g;

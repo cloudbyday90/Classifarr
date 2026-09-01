@@ -33,7 +33,8 @@ const VALID_METHODS = [
   'library_rule',
   'rag_improved',
   'authoritative_source_library',
-  'policy_engine'
+  'policy_engine',
+  'policy_candidate_adjudication'
 ];
 
 describe('Classification Methods Database Constraint', () => {
