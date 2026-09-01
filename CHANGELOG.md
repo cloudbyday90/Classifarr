@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- Added an offline-only semantic counter-evidence readiness gate that measures
+  corpus coverage, precision, recall, abstention, and false positives before
+  RAG could be considered for a future broad-policy review path. The gate is
+  pinned to committed redacted artifacts and cannot change policy or routing.
+
 - **Candidate-scoped current-library semantic retrieval** — Advisory AI
   comparison can now use bounded similarity to descriptions of current items
   in only the policy-eligible libraries, reusing stable current-inventory

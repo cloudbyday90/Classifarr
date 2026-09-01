@@ -3,7 +3,7 @@
     "version": "policy.candidate_evidence_offline_evaluation_fixture.v1",
     "id": "katrina-like-documentary-ambiguity",
     "name": "Katrina-like documentary ambiguity",
-    "tags": ["documentary", "ambiguous", "policy-scope"],
+    "tags": ["documentary", "ambiguous", "policy-scope", "broad-policy"],
     "reference": {
       "decisionId": "review"
     },
@@ -18,7 +18,7 @@
     "version": "policy.candidate_evidence_offline_evaluation_fixture.v1",
     "id": "comedy-and-standup-overlap",
     "name": "Comedy and standup policy overlap",
-    "tags": ["comedy", "overlap", "candidate-ranking"],
+    "tags": ["comedy", "genre-overlap", "candidate-ranking"],
     "reference": {
       "decisionId": "review"
     },

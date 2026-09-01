@@ -67,8 +67,8 @@ implemented locally; doing so would require inventing a source change.
 
 ## Follow-up
 
-Build an offline, labelled evaluation set for ambiguous documentary, reality,
-and genre-overlap cases. Measure whether candidate-scoped semantic
-counter-evidence safely identifies broad-policy false positives before any
-proposal to change deterministic policy scores, candidate ranking, or routing
-thresholds.
+The first offline readiness gate is now implemented in the
+[semantic counter-evidence readiness design](policy-candidate-semantic-counter-evidence-readiness-design.md).
+Its current redacted snapshot is correctly `not_ready`; expand the
+independently reviewed documentary, reality, and genre-overlap corpus before
+proposing any deterministic policy-path change.
