@@ -11,6 +11,15 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Semantic-context outcome evaluation** — Candidate Retrieval Monitoring now
+  automatically distinguishes bounded AI comparisons where current-library
+  semantic context was available, unavailable, or not retained by legacy
+  records. It shows aggregate proposal, abstention, rejection, and subsequent
+  operator-alignment outcomes behind progressive disclosure, without retaining
+  titles, descriptions, prompts, responses, embeddings, libraries, models, or
+  providers and without affecting AI, policy, RAG, learning, retries, or
+  routing.
+
 - **Automatic score-band calibration review** — Security Settings now turns
   the redacted future-corpus aggregates into a compact, continuously refreshed
   calibration report. It uses fixed 95% Wilson bounds to identify only

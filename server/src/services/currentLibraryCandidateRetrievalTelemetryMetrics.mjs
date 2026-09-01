@@ -14,6 +14,9 @@ import {
   buildPolicyConfirmationEvidenceReadiness,
 } from './policyConfirmationEvidenceReadiness.mjs';
 import {
+  buildCurrentLibraryCandidateSemanticAdjudicationMetrics,
+} from './currentLibraryCandidateSemanticAdjudicationMetrics.mjs';
+import {
   COMPLETED_UTC_DAY_METRICS_DEFAULT_WINDOW_DAYS,
   COMPLETED_UTC_DAY_METRICS_MAX_WINDOW_DAYS,
   buildCompletedUtcDayMetricsWindow,
@@ -83,7 +86,11 @@ export function buildCurrentLibraryCandidateRetrievalMetricsReport({
   const unavailableCount = Math.min(observationCount, nonnegativeCount(row.unavailableCount));
   const matchingObservationCount = Math.min(availableCount, nonnegativeCount(row.matchingObservationCount));
   const directMatchObservationCount = Math.min(availableCount, nonnegativeCount(row.directMatchObservationCount));
-  const proposalCount = nonnegativeCount(row.proposalCount);
+  const candidateAdjudication = buildCurrentLibraryCandidateSemanticAdjudicationMetrics({
+    row,
+    observationCount,
+  });
+  const proposalCount = candidateAdjudication.proposalCount;
   const resolvedProposalCount = Math.min(proposalCount, nonnegativeCount(row.resolvedProposalCount));
   const agreedProposalCount = Math.min(resolvedProposalCount, nonnegativeCount(row.agreedProposalCount));
   const alternativeProposalCount = Math.min(
@@ -150,6 +157,7 @@ export function buildCurrentLibraryCandidateRetrievalMetricsReport({
       pendingProposalCount: Math.max(0, proposalCount - resolvedProposalCount),
       agreementRatePercent: ratePercent(agreedProposalCount, resolvedProposalCount),
     }),
+    candidateAdjudication,
     operatorCandidateSetAttribution: Object.freeze({
       resolvedOperatorOutcomeCount,
       attributedOperatorOutcomeCount,

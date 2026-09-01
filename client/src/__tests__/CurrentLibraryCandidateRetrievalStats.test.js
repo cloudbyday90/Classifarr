@@ -37,6 +37,38 @@ const report = {
     pendingProposalCount: 1,
     agreementRatePercent: 75,
   },
+  candidateAdjudication: {
+    comparisonCount: 8,
+    proposalCount: 5,
+    abstainedCount: 2,
+    responseRejectedCount: 1,
+    semanticContext: [
+      {
+        statusId: 'available',
+        comparisonCount: 5,
+        proposalCount: 4,
+        resolvedProposalCount: 3,
+        agreedProposalCount: 2,
+        agreementRatePercent: 66.7,
+      },
+      {
+        statusId: 'unavailable',
+        comparisonCount: 2,
+        proposalCount: 1,
+        resolvedProposalCount: 1,
+        agreedProposalCount: 1,
+        agreementRatePercent: 100,
+      },
+      {
+        statusId: 'not_recorded',
+        comparisonCount: 1,
+        proposalCount: 0,
+        resolvedProposalCount: 0,
+        agreedProposalCount: 0,
+        agreementRatePercent: 0,
+      },
+    ],
+  },
   operatorCandidateSetAttribution: {
     attributedOperatorOutcomeCount: 4,
     confirmedCandidateOutcomeCount: 2,
@@ -103,11 +135,18 @@ describe('CurrentLibraryCandidateRetrievalStats.vue', () => {
     expect(api.getCurrentLibraryCandidateRetrievalMetrics).toHaveBeenCalledOnce()
     expect(wrapper.text()).toContain('Candidate Retrieval Monitoring')
     expect(wrapper.text()).toContain('Aggregate latency, catalog-match, candidate-set, policy-confirmation evidence, and AI/operator-agreement telemetry')
+    expect(wrapper.text()).toContain('AI comparison and operator agreement')
+    expect(wrapper.text()).toContain('Candidate comparisons')
+    expect(wrapper.text()).toContain('AI abstained')
+    expect(wrapper.text()).toContain('Response rejected')
     expect(wrapper.text()).toContain('Same destination')
     expect(wrapper.text()).toContain('3 (75%)')
     expect(wrapper.text()).toContain('Under 25 ms')
     expect(wrapper.text()).toContain('5 (50%)')
     expect(wrapper.text()).toContain('not a correctness rate')
+    expect(wrapper.text()).toContain('Compare semantic context')
+    expect(wrapper.text()).toContain('Semantic context available')
+    expect(wrapper.text()).toContain('2 of 3 resolved proposals matched the operator (66.7%)')
     expect(wrapper.text()).toContain('Operator candidate-set coverage')
     expect(wrapper.text()).toContain('Broader chooser, outside candidates')
     expect(wrapper.text()).toContain('Routed not applicable')
@@ -219,5 +258,32 @@ describe('CurrentLibraryCandidateRetrievalStats.vue', () => {
     expect(wrapper.text()).not.toContain('provider_supplied_source')
     expect(wrapper.text()).not.toContain('99 (99%)')
     expect(wrapper.findComponent(RouterLinkStub).exists()).toBe(false)
+  })
+
+  it('filters unknown semantic-context statuses and their aggregate values', async () => {
+    api.getCurrentLibraryCandidateRetrievalMetrics.mockResolvedValue({
+      ...report,
+      candidateAdjudication: {
+        ...report.candidateAdjudication,
+        semanticContext: [
+          ...report.candidateAdjudication.semanticContext,
+          {
+            statusId: 'provider_supplied_status',
+            comparisonCount: 99,
+            proposalCount: 99,
+            resolvedProposalCount: 99,
+            agreedProposalCount: 99,
+            agreementRatePercent: 99,
+          },
+        ],
+      },
+    })
+
+    const wrapper = mount(CurrentLibraryCandidateRetrievalStats)
+    await flushPromises()
+
+    expect(wrapper.text()).not.toContain('provider_supplied_status')
+    expect(wrapper.text()).not.toContain('99 comparisons')
+    expect(wrapper.text()).not.toContain('(99%)')
   })
 })

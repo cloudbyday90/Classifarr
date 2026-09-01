@@ -34,6 +34,10 @@ export const LOAD_CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_METRICS_SQL = `
       END AS direct_match_candidate_count,
       metadata #>> '{classification_details,candidate_adjudication,version}' AS adjudication_version,
       metadata #>> '{classification_details,candidate_adjudication,status_id}' AS adjudication_status_id,
+      COALESCE(
+        metadata #>> '{classification_details,candidate_adjudication,semantic_retrieval_status_id}',
+        'not_recorded'
+      ) AS semantic_retrieval_status_id,
       CASE
         WHEN metadata #>> '{classification_details,candidate_adjudication,proposed_destination,library_id}' ~ '^[1-9]\\d*$'
           THEN (metadata #>> '{classification_details,candidate_adjudication,proposed_destination,library_id}')::bigint
@@ -77,6 +81,18 @@ export const LOAD_CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_METRICS_SQL = `
     )::bigint AS "proposalCount",
     COUNT(*) FILTER (
       WHERE adjudication_version = $4
+        AND adjudication_status_id IN ($5, $6, $7)
+    )::bigint AS "candidateAdjudicationComparisonCount",
+    COUNT(*) FILTER (
+      WHERE adjudication_version = $4
+        AND adjudication_status_id = $6
+    )::bigint AS "candidateAdjudicationAbstainedCount",
+    COUNT(*) FILTER (
+      WHERE adjudication_version = $4
+        AND adjudication_status_id = $7
+    )::bigint AS "candidateAdjudicationResponseRejectedCount",
+    COUNT(*) FILTER (
+      WHERE adjudication_version = $4
         AND adjudication_status_id = $5
         AND proposed_library_id IS NOT NULL
         AND final_library_id IS NOT NULL
@@ -94,59 +110,134 @@ export const LOAD_CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_METRICS_SQL = `
         AND final_library_id IS NOT NULL
         AND final_library_id <> proposed_library_id
     )::bigint AS "alternativeProposalCount",
+    COUNT(*) FILTER (
+      WHERE adjudication_version = $4
+        AND adjudication_status_id IN ($5, $6, $7)
+        AND semantic_retrieval_status_id = 'available'
+    )::bigint AS "semanticAvailableComparisonCount",
+    COUNT(*) FILTER (
+      WHERE adjudication_version = $4
+        AND adjudication_status_id = $5
+        AND proposed_library_id IS NOT NULL
+        AND semantic_retrieval_status_id = 'available'
+    )::bigint AS "semanticAvailableProposalCount",
+    COUNT(*) FILTER (
+      WHERE adjudication_version = $4
+        AND adjudication_status_id = $5
+        AND proposed_library_id IS NOT NULL
+        AND final_library_id IS NOT NULL
+        AND semantic_retrieval_status_id = 'available'
+    )::bigint AS "semanticAvailableResolvedProposalCount",
+    COUNT(*) FILTER (
+      WHERE adjudication_version = $4
+        AND adjudication_status_id = $5
+        AND proposed_library_id IS NOT NULL
+        AND final_library_id = proposed_library_id
+        AND semantic_retrieval_status_id = 'available'
+    )::bigint AS "semanticAvailableAgreedProposalCount",
+    COUNT(*) FILTER (
+      WHERE adjudication_version = $4
+        AND adjudication_status_id IN ($5, $6, $7)
+        AND semantic_retrieval_status_id = 'unavailable'
+    )::bigint AS "semanticUnavailableComparisonCount",
+    COUNT(*) FILTER (
+      WHERE adjudication_version = $4
+        AND adjudication_status_id = $5
+        AND proposed_library_id IS NOT NULL
+        AND semantic_retrieval_status_id = 'unavailable'
+    )::bigint AS "semanticUnavailableProposalCount",
+    COUNT(*) FILTER (
+      WHERE adjudication_version = $4
+        AND adjudication_status_id = $5
+        AND proposed_library_id IS NOT NULL
+        AND final_library_id IS NOT NULL
+        AND semantic_retrieval_status_id = 'unavailable'
+    )::bigint AS "semanticUnavailableResolvedProposalCount",
+    COUNT(*) FILTER (
+      WHERE adjudication_version = $4
+        AND adjudication_status_id = $5
+        AND proposed_library_id IS NOT NULL
+        AND final_library_id = proposed_library_id
+        AND semantic_retrieval_status_id = 'unavailable'
+    )::bigint AS "semanticUnavailableAgreedProposalCount",
+    COUNT(*) FILTER (
+      WHERE adjudication_version = $4
+        AND adjudication_status_id IN ($5, $6, $7)
+        AND semantic_retrieval_status_id = 'not_recorded'
+    )::bigint AS "semanticNotRecordedComparisonCount",
+    COUNT(*) FILTER (
+      WHERE adjudication_version = $4
+        AND adjudication_status_id = $5
+        AND proposed_library_id IS NOT NULL
+        AND semantic_retrieval_status_id = 'not_recorded'
+    )::bigint AS "semanticNotRecordedProposalCount",
+    COUNT(*) FILTER (
+      WHERE adjudication_version = $4
+        AND adjudication_status_id = $5
+        AND proposed_library_id IS NOT NULL
+        AND final_library_id IS NOT NULL
+        AND semantic_retrieval_status_id = 'not_recorded'
+    )::bigint AS "semanticNotRecordedResolvedProposalCount",
+    COUNT(*) FILTER (
+      WHERE adjudication_version = $4
+        AND adjudication_status_id = $5
+        AND proposed_library_id IS NOT NULL
+        AND final_library_id = proposed_library_id
+        AND semantic_retrieval_status_id = 'not_recorded'
+    )::bigint AS "semanticNotRecordedAgreedProposalCount",
     COUNT(*) FILTER (WHERE final_library_id IS NOT NULL)::bigint AS "resolvedOperatorOutcomeCount",
     COUNT(*) FILTER (
-      WHERE outcome_attribution_version = $6
+      WHERE outcome_attribution_version = $8
         AND outcome_attribution_status_id = 'confirmed_candidate'
     )::bigint AS "confirmedCandidateOutcomeCount",
     COUNT(*) FILTER (
-      WHERE outcome_attribution_version = $6
+      WHERE outcome_attribution_version = $8
         AND outcome_attribution_status_id = 'changed_to_candidate'
     )::bigint AS "changedToCandidateOutcomeCount",
     COUNT(*) FILTER (
-      WHERE outcome_attribution_version = $6
+      WHERE outcome_attribution_version = $8
         AND outcome_attribution_status_id = 'changed_outside_candidates'
     )::bigint AS "changedOutsideCandidateOutcomeCount",
     COUNT(*) FILTER (
-      WHERE outcome_attribution_version = $6
+      WHERE outcome_attribution_version = $8
         AND outcome_attribution_status_id = 'routed_not_applicable'
     )::bigint AS "routedNotApplicableOutcomeCount",
     COUNT(*) FILTER (
-      WHERE route_safety_primary_gate_id = $7
+      WHERE route_safety_primary_gate_id = $9
         AND leading_candidate_primary_viability IS NOT NULL
     )::bigint AS "confirmationEvidenceObservationCount",
     COUNT(*) FILTER (
-      WHERE route_safety_primary_gate_id = $7
+      WHERE route_safety_primary_gate_id = $9
         AND leading_candidate_primary_viability IS NOT NULL
         AND leading_declared_evidence_mode = 'identity'
     )::bigint AS "specializedDeclaredEvidenceCount",
     COUNT(*) FILTER (
-      WHERE route_safety_primary_gate_id = $7
+      WHERE route_safety_primary_gate_id = $9
         AND leading_candidate_primary_viability IS NOT NULL
         AND leading_declared_evidence_mode = 'compatibility'
     )::bigint AS "compatibilityOnlyEvidenceCount",
     COUNT(*) FILTER (
-      WHERE route_safety_primary_gate_id = $7
+      WHERE route_safety_primary_gate_id = $9
         AND leading_candidate_primary_viability IS NOT NULL
         AND leading_profile_evidence = 'true'
     )::bigint AS "profileEvidenceCount",
     COUNT(*) FILTER (
-      WHERE route_safety_primary_gate_id = $7
+      WHERE route_safety_primary_gate_id = $9
         AND leading_candidate_primary_viability IS NOT NULL
         AND leading_pattern_evidence = 'true'
     )::bigint AS "patternEvidenceCount",
     COUNT(*) FILTER (
-      WHERE route_safety_primary_gate_id = $7
+      WHERE route_safety_primary_gate_id = $9
         AND leading_candidate_primary_viability IS NOT NULL
         AND leading_rag_evidence = 'true'
     )::bigint AS "ragEvidenceCount",
     COUNT(*) FILTER (
-      WHERE route_safety_primary_gate_id = $7
+      WHERE route_safety_primary_gate_id = $9
         AND leading_candidate_primary_viability IS NOT NULL
         AND leading_history_evidence = 'true'
     )::bigint AS "historyEvidenceCount",
     COUNT(*) FILTER (
-      WHERE route_safety_primary_gate_id = $7
+      WHERE route_safety_primary_gate_id = $9
         AND leading_candidate_primary_viability IS NOT NULL
         AND leading_calibration_applied = 'true'
     )::bigint AS "calibrationAppliedCount"
@@ -172,6 +263,8 @@ export async function loadCurrentLibraryCandidateRetrievalMetrics(
     CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_TELEMETRY_VERSION,
     POLICY_CANDIDATE_ADJUDICATION_VERSION,
     POLICY_CANDIDATE_ADJUDICATION_STATUS_IDS.PROPOSED,
+    POLICY_CANDIDATE_ADJUDICATION_STATUS_IDS.ABSTAINED,
+    POLICY_CANDIDATE_ADJUDICATION_STATUS_IDS.RESPONSE_REJECTED,
     CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_OUTCOME_ATTRIBUTION_VERSION,
     CLASSIFICATION_ROUTE_SAFETY_GATE_IDS.POLICY_CONFIRMATION_REQUIRED,
   ]);

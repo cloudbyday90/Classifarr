@@ -62,9 +62,12 @@ merged into this local implementation.
 
 ## Next recommendation
 
-Once a score-band prompt identifies a stable concern, the next high-value
-component is a **human-approved semantic adjudication evaluation**: a small,
-time-bounded offline set that joins metadata description and
-policy-eligible-library retrieval only under explicit approval. It should
-compare a frozen RAG/model proposal with a human reference decision and return
-aggregate error categories, never act on live routing.
+The first lower-exposure slice is now delivered: Candidate Retrieval Monitoring
+separates existing bounded AI comparisons by semantic-context availability and
+operator alignment without retaining a new content corpus. Once that aggregate
+signal identifies a stable concern, the next high-value component remains a
+**human-approved semantic adjudication evaluation**: a small, time-bounded
+offline set that joins metadata description and policy-eligible-library
+retrieval only under explicit approval. It should compare a frozen RAG/model
+proposal with a human reference decision and return aggregate error categories,
+never act on live routing.

@@ -25,11 +25,14 @@ describe('currentLibraryCandidateRetrievalMetricsRepository', () => {
       'current_library.candidate_retrieval_telemetry.v1',
       'policy.candidate_adjudication.v1',
       'proposed',
+      'abstained',
+      'response_rejected',
       'current_library.candidate_retrieval_outcome_attribution.v1',
       'policy_confirmation_required',
     ]);
     expect(LOAD_CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_METRICS_SQL).toContain('COUNT(*)');
     expect(LOAD_CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_METRICS_SQL).toContain('leading_declared_evidence_mode');
+    expect(LOAD_CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_METRICS_SQL).toContain('semantic_retrieval_status_id');
     expect(LOAD_CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_METRICS_SQL).not.toContain('SELECT title');
     expect(LOAD_CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_METRICS_SQL).not.toContain('provider_id');
     expect(LOAD_CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_METRICS_SQL).not.toContain('library_name');

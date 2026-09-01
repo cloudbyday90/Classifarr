@@ -133,15 +133,27 @@
 
         <article class="rounded-lg border border-gray-700 bg-gray-800 p-5">
           <h3 class="text-base font-medium">
-            AI proposal and operator agreement
+            AI comparison and operator agreement
           </h3>
           <p class="mt-1 text-sm text-gray-400">
-            Agreement means the operator later selected the same destination as the bounded AI proposal. It is not a correctness rate.
+            This shows whether the bounded AI comparison made a proposal and whether the operator later selected the same destination. It is not a correctness rate or routing authority.
           </p>
           <dl class="mt-4 space-y-3 text-sm">
             <MetricRow
+              label="Candidate comparisons"
+              :value="candidateAdjudication.comparisonCount"
+            />
+            <MetricRow
               label="AI proposals"
               :value="report.operatorAgreement?.proposalCount || 0"
+            />
+            <MetricRow
+              label="AI abstained"
+              :value="candidateAdjudication.abstainedCount"
+            />
+            <MetricRow
+              label="Response rejected"
+              :value="candidateAdjudication.responseRejectedCount"
             />
             <MetricRow
               label="Resolved proposals"
@@ -160,6 +172,28 @@
               :value="report.operatorAgreement?.pendingProposalCount || 0"
             />
           </dl>
+          <details class="mt-5 rounded border border-gray-700 bg-gray-900/50 p-3">
+            <summary class="cursor-pointer text-sm font-medium text-white">
+              Compare semantic context
+            </summary>
+            <p class="mt-3 text-sm text-gray-400">
+              These aggregate rows separate comparisons where bounded similarity to current-library descriptions was available, unavailable, or not retained by an older record. They do not expose titles, descriptions, prompts, responses, embeddings, libraries, models, or providers.
+            </p>
+            <dl class="mt-3 space-y-3 text-sm">
+              <div
+                v-for="bucket in semanticContextBuckets"
+                :key="bucket.statusId"
+                class="rounded border border-gray-700 px-3 py-2"
+              >
+                <dt class="font-medium text-gray-200">
+                  {{ bucket.label }}
+                </dt>
+                <dd class="mt-1 text-gray-400">
+                  {{ bucket.comparisonCount }} comparisons; {{ bucket.proposalCount }} proposals; {{ bucket.agreedProposalCount }} of {{ bucket.resolvedProposalCount }} resolved proposals matched the operator ({{ bucket.agreementRatePercent }}%).
+                </dd>
+              </div>
+            </dl>
+          </details>
         </article>
       </div>
 
@@ -308,7 +342,7 @@
 </template>
 
 <script setup>
-import { computed, defineComponent, h, onMounted, ref } from 'vue'
+import { computed, defineComponent, h, onBeforeUnmount, onMounted, ref } from 'vue'
 import api from '../../api'
 import {
   getPolicyConfirmationEvidenceReviewHandoff,
@@ -335,12 +369,24 @@ const MetricRow = defineComponent({
 const loading = ref(true)
 const errorMessage = ref('')
 const report = ref(null)
+const refreshStatus = ref('')
+let refreshTimer = null
 const SUPPORTING_EVIDENCE_LABELS = Object.freeze({
   observed_profile: 'Observed library profile',
   confirmed_pattern: 'Confirmed classification pattern',
   similar_items: 'Similar items (RAG)',
   prior_outcomes: 'Prior confirmed outcomes',
 })
+const SEMANTIC_CONTEXT_LABELS = Object.freeze({
+  available: 'Semantic context available',
+  unavailable: 'Semantic context unavailable',
+  not_recorded: 'Semantic context not recorded',
+})
+
+function nonnegativeAggregate(value) {
+  const numericValue = Number(value)
+  return Number.isFinite(numericValue) && numericValue >= 0 ? numericValue : 0
+}
 
 const readinessStatus = computed(() => report.value?.readiness?.statusId || 'insufficient_data')
 const readinessLabel = computed(() => ({
@@ -356,6 +402,27 @@ const readinessClass = computed(() => ({
   insufficient_data: 'border-gray-700 bg-gray-800',
 }[readinessStatus.value] || 'border-gray-700 bg-gray-800'))
 const candidateSetPolicyReview = computed(() => report.value?.candidateSetPolicyReview || null)
+const candidateAdjudication = computed(() => ({
+  comparisonCount: nonnegativeAggregate(report.value?.candidateAdjudication?.comparisonCount),
+  abstainedCount: nonnegativeAggregate(report.value?.candidateAdjudication?.abstainedCount),
+  responseRejectedCount: nonnegativeAggregate(report.value?.candidateAdjudication?.responseRejectedCount),
+}))
+const semanticContextBuckets = computed(() => {
+  const buckets = report.value?.candidateAdjudication?.semanticContext
+  if (!Array.isArray(buckets)) return []
+
+  return buckets
+    .filter((bucket) => Object.hasOwn(SEMANTIC_CONTEXT_LABELS, bucket?.statusId))
+    .map((bucket) => ({
+      statusId: bucket.statusId,
+      label: SEMANTIC_CONTEXT_LABELS[bucket.statusId],
+      comparisonCount: nonnegativeAggregate(bucket.comparisonCount),
+      proposalCount: nonnegativeAggregate(bucket.proposalCount),
+      resolvedProposalCount: nonnegativeAggregate(bucket.resolvedProposalCount),
+      agreedProposalCount: nonnegativeAggregate(bucket.agreedProposalCount),
+      agreementRatePercent: nonnegativeAggregate(bucket.agreementRatePercent),
+    }))
+})
 const candidateSetPolicyReviewStatus = computed(() =>
   candidateSetPolicyReview.value?.statusId || 'insufficient_data')
 const candidateSetPolicyReviewLabel = computed(() => ({
@@ -408,8 +475,9 @@ const monitoringStatusAnnouncement = computed(() => {
   if (loading.value) return 'Loading candidate retrieval metrics.'
   if (errorMessage.value) return 'Candidate retrieval metrics are currently unavailable.'
   if (!report.value) return 'Candidate retrieval metrics are currently unavailable.'
+  if (refreshStatus.value) return refreshStatus.value
 
-  return `${readinessLabel.value}. ${candidateSetPolicyReviewLabel.value}. ${policyConfirmationEvidenceLabel.value}.`
+  return `${readinessLabel.value}. ${candidateSetPolicyReviewLabel.value}. ${policyConfirmationEvidenceLabel.value}. ${candidateAdjudication.value.comparisonCount} candidate AI comparisons observed.`
 })
 const candidateSetSelectionCount = computed(() => {
   const attribution = report.value?.operatorCandidateSetAttribution
@@ -429,18 +497,33 @@ function supportingEvidenceLabel(id) {
   return SUPPORTING_EVIDENCE_LABELS[id] || 'Unavailable evidence source'
 }
 
-async function loadMetrics() {
-  loading.value = true
-  errorMessage.value = ''
+async function loadMetrics({ showLoading = true } = {}) {
+  if (showLoading) loading.value = true
+  if (showLoading || !report.value) errorMessage.value = ''
+  refreshStatus.value = ''
 
   try {
     report.value = await api.getCurrentLibraryCandidateRetrievalMetrics()
   } catch (_error) {
-    errorMessage.value = 'Candidate retrieval metrics are currently unavailable.'
+    if (report.value && !showLoading) {
+      refreshStatus.value = 'Candidate retrieval metrics could not refresh; the last aggregate report remains visible.'
+    } else {
+      errorMessage.value = 'Candidate retrieval metrics are currently unavailable.'
+    }
   } finally {
-    loading.value = false
+    if (showLoading) loading.value = false
   }
 }
 
-onMounted(loadMetrics)
+onMounted(() => {
+  loadMetrics()
+  refreshTimer = window.setInterval(() => loadMetrics({ showLoading: false }), 5 * 60 * 1000)
+})
+
+onBeforeUnmount(() => {
+  if (refreshTimer !== null) {
+    window.clearInterval(refreshTimer)
+    refreshTimer = null
+  }
+})
 </script>
