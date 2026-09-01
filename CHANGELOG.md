@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Pull-request synthetic policy-candidate replay** — A separate
+  least-privilege CI job now runs the fixed, aggregate-only candidate replay
+  against each pull request without installing dependencies, reading live
+  data, invoking AI/RAG, using secrets, retaining artifacts, or routing media.
 - **Progressive pending-review summary** — Pending classification review now
   puts the recommended destination, review reason, and required operator action
   first, with deterministic evidence, score mechanics, inventory comparison,

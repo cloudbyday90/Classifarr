@@ -53,9 +53,8 @@ behaves as intended before that change ships.
 
 ## Next high-value item
 
-The pending-review summary has now been delivered in
-[its dedicated outcome document](pending-question-review-summary-outcome.md).
-The next high-value follow-up is to run this offline replay as a distinct
-aggregate-only pull-request CI job, making deterministic calibration and
-ranking regressions visible before review without evaluating live media or
-calling AI/RAG.
+The dedicated CI contract is now delivered in
+[the replay CI outcome document](policy-candidate-synthetic-replay-ci-outcome.md).
+The next high-value follow-up is for a repository administrator to make the
+new check required for `main` after its first successful pull-request run. That
+repository setting is intentionally outside the code change.
