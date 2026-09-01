@@ -45,7 +45,7 @@
           {{ decisionPresentation.deterministic.message }}
         </p>
         <div
-          v-if="decisionPresentation.deterministic.safety_gate"
+          v-if="showSafetyGate"
           class="route-safety-gate"
         >
           <p class="route-safety-gate-label">
@@ -56,7 +56,7 @@
           </p>
         </div>
         <ul
-          v-if="decisionPresentation.deterministic.evidence.length"
+          v-if="!candidateReviewEvidenceSummary && decisionPresentation.deterministic.evidence.length"
           class="decision-evidence-list"
         >
           <li
@@ -66,60 +66,12 @@
             {{ fact.label }}
           </li>
         </ul>
-        <section
-          v-if="candidateEvidenceCard"
-          class="candidate-evidence-card"
-          :class="`candidate-evidence-card--${candidateEvidenceCard.tone}`"
-          aria-labelledby="candidate-evidence-card-heading"
-        >
-          <h4
-            id="candidate-evidence-card-heading"
-            class="candidate-evidence-card-label"
-          >
-            Candidate evidence
-          </h4>
-          <p
-            class="candidate-evidence-card-title"
-            role="status"
-            aria-atomic="true"
-          >
-            {{ candidateEvidenceCard.label }}
-          </p>
-          <p>
-            {{ candidateEvidenceCard.message }}
-          </p>
-          <ul>
-            <li
-              v-for="source in candidateEvidenceCard.sources"
-              :key="source.id"
-            >
-              <strong>{{ source.label }}:</strong> {{ source.message }}
-            </li>
-          </ul>
-        </section>
-        <section
-          v-if="candidateContrastiveEvidence"
-          class="candidate-evidence-card"
-          :class="`candidate-evidence-card--${candidateContrastiveEvidence.tone}`"
-          aria-labelledby="candidate-contrastive-evidence-heading"
-        >
-          <h4
-            id="candidate-contrastive-evidence-heading"
-            class="candidate-evidence-card-label"
-          >
-            Cross-library identity check
-          </h4>
-          <p
-            class="candidate-evidence-card-title"
-            role="status"
-            aria-atomic="true"
-          >
-            {{ candidateContrastiveEvidence.label }}
-          </p>
-          <p>
-            {{ candidateContrastiveEvidence.message }}
-          </p>
-        </section>
+        <CandidateReviewEvidenceSummary
+          :candidate-evidence="candidateEvidenceCard"
+          :contrastive-evidence="candidateContrastiveEvidence"
+          :candidate-adjudication="decisionPresentation.candidate_adjudication"
+          :item-id="itemId"
+        />
         <LibraryEvidenceProfile
           :item-id="itemId"
           :value="libraryEvidenceProfile"
@@ -190,25 +142,7 @@
           </p>
         </div>
         <div
-          v-else-if="decisionPresentation.candidate_adjudication"
-          class="candidate-bound-verification"
-          role="status"
-        >
-          <p class="candidate-bound-verification-label">
-            Candidate comparison
-          </p>
-          <p class="candidate-bound-verification-title">
-            {{ decisionPresentation.candidate_adjudication.label }}
-          </p>
-          <p>
-            {{ decisionPresentation.candidate_adjudication.message }}
-          </p>
-          <p v-if="decisionPresentation.candidate_adjudication.proposed_destination">
-            Advisory destination: {{ decisionPresentation.candidate_adjudication.proposed_destination.library_name }}.
-          </p>
-        </div>
-        <div
-          v-else-if="decisionPresentation.ai_advisory"
+          v-else-if="decisionPresentation.ai_advisory && !decisionPresentation.candidate_adjudication"
           class="ai-advisory"
         >
           <p class="ai-advisory-label">
@@ -317,6 +251,10 @@ import {
 import {
   getPolicyCandidateContrastiveEvidencePresentation,
 } from '@/utils/policyCandidateContrastiveEvidencePresentation'
+import {
+  getPolicyCandidateReviewEvidenceSummaryPresentation,
+} from '@/utils/policyCandidateReviewEvidenceSummaryPresentation'
+import CandidateReviewEvidenceSummary from './CandidateReviewEvidenceSummary.vue'
 import LibraryEvidenceProfile from './LibraryEvidenceProfile.vue'
 
 const props = defineProps({
@@ -350,6 +288,11 @@ const candidateEvidenceCard = computed(() => getPolicyCandidateEvidenceCardPrese
 ))
 const candidateContrastiveEvidence = computed(() => getPolicyCandidateContrastiveEvidencePresentation(
   decisionPresentation.value?.deterministic?.candidate_contrastive_evidence,
+))
+const candidateReviewEvidenceSummary = computed(() => getPolicyCandidateReviewEvidenceSummaryPresentation(
+  candidateEvidenceCard.value,
+  candidateContrastiveEvidence.value,
+  decisionPresentation.value?.candidate_adjudication,
 ))
 const libraryEvidenceProfile = computed(() => (
   decisionPresentation.value?.deterministic?.library_evidence_profile || null
@@ -401,6 +344,10 @@ const deterministicScoreLabel = computed(() => {
   return thresholds.length
     ? `Policy score: ${deterministic.score}/100 (${thresholds.join(', ')})`
     : `Policy score: ${deterministic.score}/100`
+})
+const showSafetyGate = computed(() => {
+  const safetyGate = decisionPresentation.value?.deterministic?.safety_gate
+  return Boolean(safetyGate?.message && safetyGate.message !== decisionPresentation.value?.deterministic?.message)
 })
 const scoreExplanationThresholdMessage = computed(() => {
   const explanation = scoreExplanation.value
@@ -542,57 +489,6 @@ function emitConfirmDestination(destination) {
   background: rgba(30, 64, 175, 0.12);
   font-size: 0.75rem;
   color: #cbd5e1;
-}
-
-.candidate-evidence-card {
-  display: grid;
-  gap: 0.25rem;
-  margin-top: 0.5rem;
-  padding: 0.5rem;
-  border: 1px solid rgba(96, 165, 250, 0.45);
-  border-radius: 0.375rem;
-  background: rgba(30, 64, 175, 0.12);
-  font-size: 0.75rem;
-  color: #cbd5e1;
-}
-
-.candidate-evidence-card--attention {
-  border-color: rgba(251, 191, 36, 0.65);
-  background: rgba(146, 64, 14, 0.12);
-}
-
-.candidate-evidence-card--conflict {
-  border-color: rgba(248, 113, 113, 0.72);
-  background: rgba(127, 29, 29, 0.16);
-}
-
-.candidate-evidence-card-label,
-.candidate-evidence-card-title {
-  margin: 0;
-}
-
-.candidate-evidence-card-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #bfdbfe;
-}
-
-.candidate-evidence-card-title {
-  color: #e2e8f0;
-  font-weight: 600;
-}
-
-.candidate-evidence-card p,
-.candidate-evidence-card ul {
-  margin: 0;
-}
-
-.candidate-evidence-card ul {
-  display: grid;
-  gap: 0.25rem;
-  padding-left: 1rem;
 }
 
 .candidate-bound-verification-label,

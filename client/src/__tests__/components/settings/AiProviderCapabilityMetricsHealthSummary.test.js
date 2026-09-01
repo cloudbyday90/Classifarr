@@ -58,4 +58,29 @@ describe('AiProviderCapabilityMetricsHealthSummary', () => {
     expect(wrapper.get('[data-testid="capability-metrics-health-status"]').text())
       .toContain('Capability telemetry status changed: Capability telemetry is recording.')
   })
+
+  it('keeps detailed telemetry behind the one user-controlled disclosure', () => {
+    const wrapper = mountSummary({
+      report: {
+        version: 'ai.provider_capability_metrics_health.v1',
+        activeMetricStreamCount: '1',
+        persistenceFailureCount: '1',
+        status: { id: 'persistence_failures_detected' },
+      },
+      failureRecency: {
+        version: 'ai.provider_capability_metrics_failure_recency.v1',
+        window: { days: 1, periodCount: 3 },
+        periods: [
+          { id: 'baseline', persistenceFailureCount: '0' },
+          { id: 'previous', persistenceFailureCount: '0' },
+          { id: 'current', persistenceFailureCount: '1' },
+        ],
+        recency: { id: 'warning_in_latest_completed_day', completedDaysSinceLastWarning: 0 },
+        status: { id: 'warning_in_latest_completed_day' },
+      },
+    })
+
+    expect(wrapper.get('[data-testid="capability-metrics-telemetry-details"] summary').text())
+      .toBe('Review safe telemetry warning details')
+  })
 })

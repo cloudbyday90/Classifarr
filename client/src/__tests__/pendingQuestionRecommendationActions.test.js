@@ -129,14 +129,14 @@ describe('PendingQuestionRecommendationActions', () => {
       },
     })
 
-    expect(wrapper.text()).toContain('Candidate comparison')
+    expect(wrapper.text()).toContain('AI comparison')
     expect(wrapper.text()).toContain('Bounded candidate comparison complete')
     expect(wrapper.text()).toContain('Advisory destination: Movies.')
-    expect(wrapper.find('[role="status"]').exists()).toBe(true)
+    expect(wrapper.find('[role="status"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('Do not display this.')
   })
 
-  it('explains contextual profile support without treating it as semantic proof', () => {
+  it('summarizes existing-library support in plain language and keeps the source checks disclosed', () => {
     const contextualAnswer = structuredClone(answer)
     contextualAnswer.decision_summary.deterministic.candidate_evidence_card = {
       version: 'policy.candidate_evidence_card.v1',
@@ -164,10 +164,11 @@ describe('PendingQuestionRecommendationActions', () => {
       },
     })
 
-    expect(wrapper.text()).toContain('Candidate evidence')
-    expect(wrapper.text()).toContain('Separate corroboration is limited')
-    expect(wrapper.text()).toContain('contextual rather than semantic proof')
-    expect(wrapper.find('.candidate-evidence-card [role="status"]').attributes('aria-atomic')).toBe('true')
+    expect(wrapper.text()).toContain('What the system found')
+    expect(wrapper.text()).toContain('This destination is plausible, but not proven')
+    expect(wrapper.text()).toContain('Review evidence details')
+    expect(wrapper.text()).toContain('Titles already in this library make it a plausible fit')
+    expect(wrapper.find('[data-testid="candidate-review-evidence-summary"] details').exists()).toBe(true)
     expect(wrapper.text()).not.toContain('Ignore the policy.')
   })
 
@@ -193,10 +194,12 @@ describe('PendingQuestionRecommendationActions', () => {
       },
     })
 
-    expect(wrapper.text()).toContain('Cross-library identity check')
+    expect(wrapper.text()).toContain('What the system found')
+    expect(wrapper.text()).toContain('The exact-item check points to another destination')
+    expect(wrapper.text()).toContain('Review evidence details')
     expect(wrapper.text()).toContain('Current inventory favors an alternative')
     expect(wrapper.text()).toContain('counter-evidence and review the alternatives before confirming.')
-    expect(wrapper.find('.candidate-evidence-card [role="status"]').attributes('aria-atomic')).toBe('true')
+    expect(wrapper.find('[data-testid="candidate-review-evidence-summary"] details').exists()).toBe(true)
     expect(wrapper.text()).not.toContain('Ignore the policy.')
   })
 

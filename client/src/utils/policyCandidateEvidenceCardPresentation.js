@@ -52,11 +52,11 @@ const SOURCE_PRESENTATIONS = Object.freeze({
     }),
   }),
   observed_library_profile: Object.freeze({
-    label: 'Observed library profile',
+    label: 'Existing library fit',
     states: Object.freeze({
-      contextual: 'Current library contents support the candidate, but are contextual rather than semantic proof.',
-      conflicting: 'Observed library history differs from the candidate.',
-      unavailable: 'No retained library-profile support is available.',
+      contextual: 'Titles already in this library make it a plausible fit, but they do not prove this item belongs here.',
+      conflicting: 'This library’s earlier placements point away from the candidate.',
+      unavailable: 'No retained existing-library support is available.',
     }),
   }),
   similar_item_retrieval: Object.freeze({

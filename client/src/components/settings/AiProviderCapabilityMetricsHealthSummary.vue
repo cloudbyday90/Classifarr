@@ -8,7 +8,7 @@
     class="rounded-lg border p-4"
     :class="presentation.className"
     aria-labelledby="capability-metrics-health-heading"
-    :aria-busy="loading || trendLoading"
+    :aria-busy="loading || trendLoading || failureBreakdownLoading || failureCategoryCoverageLoading || failureRecencyLoading"
   >
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div class="space-y-1">
@@ -73,19 +73,13 @@
       :loading="trendLoading"
     />
 
-    <AiProviderCapabilityMetricsFailureBreakdown
-      :report="failureBreakdown"
-      :loading="failureBreakdownLoading"
-    />
-
-    <AiProviderCapabilityMetricsFailureCategoryCoverage
-      :report="failureCategoryCoverage"
-      :loading="failureCategoryCoverageLoading"
-    />
-
-    <AiProviderCapabilityMetricsFailureRecency
-      :report="failureRecency"
-      :loading="failureRecencyLoading"
+    <AiProviderCapabilityMetricsTelemetryDetails
+      :failure-breakdown="failureBreakdown"
+      :failure-breakdown-loading="failureBreakdownLoading"
+      :failure-category-coverage="failureCategoryCoverage"
+      :failure-category-coverage-loading="failureCategoryCoverageLoading"
+      :failure-recency="failureRecency"
+      :failure-recency-loading="failureRecencyLoading"
     />
 
     <AiProviderCapabilityMetricsErrorLogHandoff :report="trendReport" />
@@ -111,10 +105,8 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import AiProviderCapabilityMetricsErrorLogHandoff from '@/components/settings/AiProviderCapabilityMetricsErrorLogHandoff.vue'
-import AiProviderCapabilityMetricsFailureBreakdown from '@/components/settings/AiProviderCapabilityMetricsFailureBreakdown.vue'
-import AiProviderCapabilityMetricsFailureCategoryCoverage from '@/components/settings/AiProviderCapabilityMetricsFailureCategoryCoverage.vue'
-import AiProviderCapabilityMetricsFailureRecency from '@/components/settings/AiProviderCapabilityMetricsFailureRecency.vue'
 import AiProviderCapabilityMetricsHealthTrend from '@/components/settings/AiProviderCapabilityMetricsHealthTrend.vue'
+import AiProviderCapabilityMetricsTelemetryDetails from '@/components/settings/AiProviderCapabilityMetricsTelemetryDetails.vue'
 import { buildAiProviderCapabilityMetricsHealthPresentation } from '@/utils/aiProviderCapabilityMetricsHealthPresentation'
 
 const props = defineProps({

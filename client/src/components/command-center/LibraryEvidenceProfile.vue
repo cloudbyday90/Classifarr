@@ -27,7 +27,7 @@
       <div class="library-evidence-profile-table-scroll">
         <table>
           <caption>
-            Candidate-by-candidate evidence states. Observed library contents and RAG are supporting context, not proof by themselves.
+            Candidate-by-candidate evidence states. Existing library contents and similar-item retrieval can support a choice, but neither proves it by itself.
           </caption>
           <thead>
             <tr>

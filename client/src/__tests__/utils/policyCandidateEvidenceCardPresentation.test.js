@@ -39,7 +39,7 @@ describe('policyCandidateEvidenceCardPresentation', () => {
       sources: expect.arrayContaining([
         expect.objectContaining({
           id: 'observed_library_profile',
-          message: 'Current library contents support the candidate, but are contextual rather than semantic proof.',
+          message: 'Titles already in this library make it a plausible fit, but they do not prove this item belongs here.',
         }),
       ]),
     })

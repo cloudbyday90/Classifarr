@@ -11,6 +11,16 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Operator-first evidence review** — Pending classification review now leads
+  with a plain-language decision summary and keeps bounded source evidence,
+  exact-library cross-checks, and advisory AI candidate comparisons inside one
+  labelled disclosure; it does not change AI, RAG, policy, or routing
+  authority.
+- **Progressive capability-telemetry details** — AI Settings now groups safe
+  failure categories, completed-window coverage, and warning recency behind
+  one automatically refreshed disclosure while keeping the current health
+  state and protected Error Logs handoff visible.
+
 - **Policy-scoped evidence digest** — Policy maintenance now opens a
   read-only, administrator-only digest of declared intent, stored-profile
   provenance, and fixed-window authorized evidence without exposing raw media,
