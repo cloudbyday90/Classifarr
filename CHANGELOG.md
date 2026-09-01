@@ -23,6 +23,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Schema snapshot CI parity** — Refreshed the authoritative PostgreSQL 18
+  schema snapshot so the containerized drift gate recognizes the current
+  `classification_history.method` constraint.
 - **Server CI dependency-declaration gate** — Removed three stale, unconsumed
   ESM exports from correction-review contracts so the Knip CI gate can run to
   completion without changing runtime behavior, policy, AI/RAG, or routing.
