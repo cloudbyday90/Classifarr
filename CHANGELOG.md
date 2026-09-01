@@ -34,6 +34,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
   persistence-warning trends now offer one user-initiated route to a
   reason-code-filtered Error Logs view, without carrying provider, model,
   media, policy, raw diagnostic, or routing detail.
+- **Capability telemetry safe failure categories** — AI Settings now
+  automatically shows a compact administrator-only 24-hour aggregate of fixed
+  metric-write and database-condition categories while persistence warnings are
+  active, without exposing raw SQLSTATEs, diagnostics, provider, model, media,
+  policy, or routing detail.
 - **Offline fixed-band calibration** — A versioned synthetic default-band corpus now verifies manual, selection, confirmation, and automatic-candidate boundaries before the calibration review packet can be prepared; it remains offline and human-gated.
 - **Bounded candidate adjudication** — Ambiguous policy selections can now receive an AI advisory comparison of two or three server-selected eligible destinations, using observed library-profile and relevant historical evidence while retaining operator confirmation.
 - **Current-library candidate retrieval** — Candidate adjudication now uses a bounded read-only lookup over the synchronized current library inventory, recognizing exact identifiers, title/year, and plain-text catalog matches without changing routing authority.
@@ -97,6 +102,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - **AI capability metric persistence** — Successful AI work no longer emits a
   misleading telemetry warning when recording a model-digest mismatch counter;
   the PostgreSQL upsert now preserves its `BIGINT` parameter type.
+- **Capability telemetry failure-log minimization** — Metric-write persistence
+  warnings now retain only a fixed stage and SQLSTATE-class category, rather
+  than provider/model values, raw database exceptions, or stack traces.
 
 - **Candidate-adjudication retry persistence** — The classification-history
   method contract now admits completed bounded candidate-adjudication results,

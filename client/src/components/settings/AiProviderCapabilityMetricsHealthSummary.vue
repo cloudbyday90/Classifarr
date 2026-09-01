@@ -73,6 +73,11 @@
       :loading="trendLoading"
     />
 
+    <AiProviderCapabilityMetricsFailureBreakdown
+      :report="failureBreakdown"
+      :loading="failureBreakdownLoading"
+    />
+
     <AiProviderCapabilityMetricsErrorLogHandoff :report="trendReport" />
 
     <p class="mt-3 text-xs text-gray-400">
@@ -96,6 +101,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import AiProviderCapabilityMetricsErrorLogHandoff from '@/components/settings/AiProviderCapabilityMetricsErrorLogHandoff.vue'
+import AiProviderCapabilityMetricsFailureBreakdown from '@/components/settings/AiProviderCapabilityMetricsFailureBreakdown.vue'
 import AiProviderCapabilityMetricsHealthTrend from '@/components/settings/AiProviderCapabilityMetricsHealthTrend.vue'
 import { buildAiProviderCapabilityMetricsHealthPresentation } from '@/utils/aiProviderCapabilityMetricsHealthPresentation'
 
@@ -113,6 +119,14 @@ const props = defineProps({
     default: () => null,
   },
   trendLoading: {
+    type: Boolean,
+    default: false,
+  },
+  failureBreakdown: {
+    type: Object,
+    default: () => null,
+  },
+  failureBreakdownLoading: {
     type: Boolean,
     default: false,
   },

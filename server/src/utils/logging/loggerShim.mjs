@@ -127,7 +127,7 @@ export class LoggerShim {
    *
    * @param {string} message
    * @param {object | null} [data]
-   * @param {{ req?: object, error?: Error, dedupeKey?: string, dedupeWindowMs?: number, skipDbPersist?: boolean }} [options]
+   * @param {{ req?: object, error?: Error, dedupeKey?: string, dedupeWindowMs?: number, skipDbPersist?: boolean, persistStack?: boolean }} [options]
    * @returns {Promise<string | null>} errorId from DB, or null
    */
   async warn(message, data, options = {}) {

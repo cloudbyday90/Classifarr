@@ -47,10 +47,7 @@ Classifarr had no open pull requests when this work began, so there was no PR
 to apply locally. The [public pull-request listing](https://github.com/cloudbyday90/Classifarr/pulls)
 reported zero open pull requests.
 
-## Next High-Value Item
+## Follow-Up Outcome
 
-Add a bounded, administrator-only aggregate breakdown of capability-metric
-persistence failures by retained error stage or database SQLSTATE category,
-only after confirming that those categories are consistently present and do
-not expose provider, model, endpoint, media, or raw diagnostic data. This
-would speed diagnosis without moving raw Error Logs back into AI Settings.
+The bounded safe failure-category aggregate is now delivered. See [AI Provider
+Capability Metrics Failure Breakdown Outcome](ai-provider-capability-metrics-failure-breakdown-outcome.md).

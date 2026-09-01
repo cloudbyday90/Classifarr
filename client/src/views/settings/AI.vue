@@ -672,6 +672,8 @@
         :loading="loadingCapabilityMetricsHealth"
         :trend-report="capabilityMetricsHealthTrend"
         :trend-loading="loadingCapabilityMetricsHealthTrend"
+        :failure-breakdown="capabilityMetricsFailureBreakdown"
+        :failure-breakdown-loading="loadingCapabilityMetricsFailureBreakdown"
         :last-updated-at="capabilityMetricsHealthLastUpdatedAt"
         :auto-refresh-enabled="aiReadinessAutoRefreshEnabled"
       />
@@ -733,6 +735,7 @@ const loadingVerificationCapability = ref(false)
 const loadingRouteSafetyReadiness = ref(false)
 const loadingCapabilityMetricsHealth = ref(false)
 const loadingCapabilityMetricsHealthTrend = ref(false)
+const loadingCapabilityMetricsFailureBreakdown = ref(false)
 const loadingRouteSafetyMaintenanceHandoff = ref(false)
 const testingVerificationCapability = ref(false)
 const loadingVerificationCapabilityChangeReceipts = ref(false)
@@ -750,6 +753,7 @@ const verificationCapability = ref(null)
 const routeSafetyReadiness = ref(null)
 const capabilityMetricsHealth = ref(null)
 const capabilityMetricsHealthTrend = ref(null)
+const capabilityMetricsFailureBreakdown = ref(null)
 const capabilityMetricsHealthLastUpdatedAt = ref(null)
 const routeSafetyMaintenanceHandoff = ref(null)
 const verificationCapabilityChangeReceipts = ref(null)
@@ -765,6 +769,7 @@ let verificationCapabilityRequestId = 0
 let routeSafetyReadinessRequestId = 0
 let capabilityMetricsHealthRequestId = 0
 let capabilityMetricsHealthTrendRequestId = 0
+let capabilityMetricsFailureBreakdownRequestId = 0
 let routeSafetyMaintenanceHandoffRequestId = 0
 let verificationCapabilityChangeReceiptsRequestId = 0
 let ollamaVerificationRuntimeMismatchSummaryRequestId = 0
@@ -980,6 +985,42 @@ const loadCapabilityMetricsHealthTrend = async () => {
   }
 }
 
+function hasCapabilityMetricsPersistenceFailures(report) {
+  return report?.version === 'ai.provider_capability_metrics_health.v1'
+    && report?.status?.id === 'persistence_failures_detected'
+    && /^0*[1-9]\d*$/.test(String(report?.persistenceFailureCount ?? ''))
+}
+
+// This diagnostic is requested only after the already-loaded, read-only
+// health aggregate confirms an active warning. It is fixed-window, aggregate
+// only, and cannot call a provider, retry a write, or affect routing.
+const loadCapabilityMetricsFailureBreakdown = async () => {
+  const requestId = ++capabilityMetricsFailureBreakdownRequestId
+  loadingCapabilityMetricsFailureBreakdown.value = true
+  try {
+    const report = await api.getAiProviderCapabilityMetricsFailureBreakdown()
+    if (requestId === capabilityMetricsFailureBreakdownRequestId) {
+      capabilityMetricsFailureBreakdown.value = report
+    }
+    return report
+  } catch (_error) {
+    if (requestId === capabilityMetricsFailureBreakdownRequestId) {
+      capabilityMetricsFailureBreakdown.value = null
+    }
+    return null
+  } finally {
+    if (requestId === capabilityMetricsFailureBreakdownRequestId) {
+      loadingCapabilityMetricsFailureBreakdown.value = false
+    }
+  }
+}
+
+function clearCapabilityMetricsFailureBreakdown() {
+  capabilityMetricsFailureBreakdownRequestId += 1
+  capabilityMetricsFailureBreakdown.value = null
+  loadingCapabilityMetricsFailureBreakdown.value = false
+}
+
 // The maintenance handoff is a separate aggregate-only read. It deliberately
 // becomes eligible only after route-safety observations exist, and it cannot
 // select a policy, test a provider, mutate configuration, retry, or route.
@@ -1015,8 +1056,11 @@ const loadAiReadiness = async () => {
   const maintenanceHandoff = Number.isSafeInteger(routeSafetyObservationCount) && routeSafetyObservationCount > 0
     ? await loadRouteSafetyMaintenanceHandoff()
     : (routeSafetyMaintenanceHandoff.value = null)
+  const failureBreakdown = hasCapabilityMetricsPersistenceFailures(capabilityMetrics)
+    ? await loadCapabilityMetricsFailureBreakdown()
+    : (clearCapabilityMetricsFailureBreakdown(), null)
 
-  return capability || routeSafety || capabilityMetrics || capabilityMetricsTrend || maintenanceHandoff
+  return capability || routeSafety || capabilityMetrics || capabilityMetricsTrend || maintenanceHandoff || failureBreakdown
 }
 
 const {

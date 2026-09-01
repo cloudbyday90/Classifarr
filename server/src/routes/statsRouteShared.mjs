@@ -10,6 +10,7 @@ import { registerRouteSafetyReadinessRoutes } from './statsRouteRouteSafetyReadi
 import { registerRouteSafetyMaintenanceHandoffRoutes } from './statsRouteRouteSafetyMaintenanceHandoff.mjs';
 import { registerAiProviderCapabilityMetricsHealthRoutes } from './statsRouteAiProviderCapabilityMetricsHealth.mjs';
 import { registerAiProviderCapabilityMetricsHealthTrendRoutes } from './statsRouteAiProviderCapabilityMetricsHealthTrend.mjs';
+import { registerAiProviderCapabilityMetricsFailureBreakdownRoutes } from './statsRouteAiProviderCapabilityMetricsFailureBreakdown.mjs';
 import { registerPolicyStatsRoutes } from './statsRoutePolicies.mjs';
 import { registerMonitoringRoutes } from './statsRouteMonitoring.mjs';
 
@@ -27,6 +28,7 @@ export function createStatsRouter({ express, db, authenticateTokenOrApiKey, requ
   registerRouteSafetyReadinessRoutes(router, { db, requireAdmin, rateLimit });
   registerAiProviderCapabilityMetricsHealthRoutes(router, { db, requireAdmin, rateLimit });
   registerAiProviderCapabilityMetricsHealthTrendRoutes(router, { db, requireAdmin, rateLimit });
+  registerAiProviderCapabilityMetricsFailureBreakdownRoutes(router, { db, requireAdmin, rateLimit });
   registerRouteSafetyMaintenanceHandoffRoutes(router, { db, requireAdmin, rateLimit });
   registerPolicyStatsRoutes(router, { db });
   registerMonitoringRoutes(router, { db });

@@ -9,8 +9,10 @@ import { buildAiProviderCapabilityMetricDelta } from './aiProviderCapabilityMetr
 import {
   AI_PROVIDER_CAPABILITY_METRICS_LOG_MODULE,
   AI_PROVIDER_CAPABILITY_METRICS_WRITE_FAILURE_MESSAGE,
-  AI_PROVIDER_CAPABILITY_METRICS_WRITE_FAILURE_REASON_CODE,
 } from './aiProviderCapabilityMetricsLogging.mjs';
+import {
+  buildAiProviderCapabilityMetricsFailureMetadata,
+} from './aiProviderCapabilityMetricsFailureCategories.mjs';
 import { incrementAiProviderCapabilityMetrics } from './aiProviderCapabilityMetricsRepository.mjs';
 
 export function createAiProviderCapabilityMetricsService({
@@ -26,13 +28,11 @@ export function createAiProviderCapabilityMetricsService({
       try {
         await incrementMetrics(database, delta);
       } catch (error) {
-        logger.warn(AI_PROVIDER_CAPABILITY_METRICS_WRITE_FAILURE_MESSAGE, {
-          providerId: delta.providerId,
-          model: delta.model,
-          authorityMode: delta.authorityMode,
-          reasonCode: AI_PROVIDER_CAPABILITY_METRICS_WRITE_FAILURE_REASON_CODE,
-          error: error.message,
-        });
+        logger.warn(
+          AI_PROVIDER_CAPABILITY_METRICS_WRITE_FAILURE_MESSAGE,
+          buildAiProviderCapabilityMetricsFailureMetadata(error),
+          { persistStack: false },
+        );
       }
 
       return delta;

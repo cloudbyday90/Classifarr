@@ -203,6 +203,16 @@ URL. It remains diagnostic and has no AI, RAG, policy, classification, or
 routing authority; see [AI Provider Capability Metrics Error Log Handoff
 Design](ai-provider-capability-metrics-error-log-handoff-design.md).
 
+When the rolling health aggregate reports an active persistence warning, AI
+Settings also retrieves a separate administrator-only 24-hour diagnostic
+breakdown. New warning records retain one fixed metric-write stage and a
+bounded SQLSTATE-class category; they do not retain a provider, model, raw
+SQLSTATE, exception text, or stack through this telemetry-warning path. Older
+records remain uncategorized rather than being parsed from error text. The
+aggregate is display-only and has no provider, policy, RAG, classification, or
+routing authority; see [AI Provider Capability Metrics Failure Breakdown
+Design](ai-provider-capability-metrics-failure-breakdown-design.md).
+
 When repair runs, the initial provider response and the local repair execution
 are recorded separately. A primary parse failure cannot be relabeled as a
 successful strict response merely because a later local repair parsed.

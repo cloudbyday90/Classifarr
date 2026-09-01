@@ -97,10 +97,14 @@ describe('aiProviderCapabilityMetrics', () => {
     expect(logger.warn).toHaveBeenCalledWith(
       'AI provider capability metric write failed',
       expect.objectContaining({
-        providerId: 'gemini',
         reasonCode: 'ai_provider_capability_metrics_persistence_failed',
+        capabilityMetricsFailureStage: 'metric_persistence_write',
+        capabilityMetricsSqlstateCategory: 'not_available',
       }),
+      { persistStack: false },
     );
+    expect(JSON.stringify(logger.warn.mock.calls[0][1])).not.toContain('gemini');
+    expect(JSON.stringify(logger.warn.mock.calls[0][1])).not.toContain('metrics table unavailable');
 
     const writableDatabase = { query: jest.fn().mockResolvedValue({}) };
     await incrementAiProviderCapabilityMetrics(writableDatabase, delta);

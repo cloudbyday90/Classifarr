@@ -31,6 +31,7 @@ vi.mock('@/api', () => ({
     getRouteSafetyReadiness: vi.fn(),
     getAiProviderCapabilityMetricsHealth: vi.fn(),
     getAiProviderCapabilityMetricsHealthTrend: vi.fn(),
+    getAiProviderCapabilityMetricsFailureBreakdown: vi.fn(),
     getRouteSafetyMaintenanceHandoff: vi.fn(),
     getAIModels: vi.fn(),
     testAIConnection: vi.fn(),
@@ -168,6 +169,16 @@ describe('AI Settings', () => {
       ],
       status: { id: 'no_active_persistence_failure_trend' },
     })
+    api.getAiProviderCapabilityMetricsFailureBreakdown.mockResolvedValue({
+      version: 'ai.provider_capability_metrics_failure_breakdown.v1',
+      window: { hours: 24 },
+      totalFailureCount: '0',
+      safeCategoryFailureCount: '0',
+      uncategorizedFailureCount: '0',
+      stages: [],
+      sqlstateCategories: [],
+      status: { id: 'not_applicable' },
+    })
     api.getLastOllamaPreflight.mockResolvedValue({ ai: null, embedding: null })
     api.runOllamaVerificationCompatibilityMatrix.mockResolvedValue({
       data: { stateId: 'completed', ollamaVersion: '0.12.4', outcomes: [] }
@@ -229,6 +240,38 @@ describe('AI Settings', () => {
     expect(wrapper.text()).not.toContain('Untrusted server message')
     expect(wrapper.text()).not.toContain('Private media title')
     expect(wrapper.text()).not.toContain('Private provider')
+  })
+
+  it('automatically loads only the safe failure breakdown when telemetry warnings are active', async () => {
+    api.getAiProviderCapabilityMetricsHealth.mockResolvedValueOnce({
+      version: 'ai.provider_capability_metrics_health.v1',
+      activeMetricStreamCount: '1',
+      persistenceFailureCount: '1',
+      status: { id: 'persistence_failures_detected' },
+    })
+    api.getAiProviderCapabilityMetricsFailureBreakdown.mockResolvedValueOnce({
+      version: 'ai.provider_capability_metrics_failure_breakdown.v1',
+      window: { hours: 24 },
+      totalFailureCount: '1',
+      safeCategoryFailureCount: '1',
+      uncategorizedFailureCount: '0',
+      stages: [{ id: 'metric_persistence_write', count: '1' }],
+      sqlstateCategories: [{ id: 'connection_exception', count: '1' }],
+      status: { id: 'complete' },
+      provider: 'private-provider',
+      model: 'private-model',
+      error: 'postgres://private-endpoint',
+    })
+
+    const wrapper = mountView()
+    await flushPromises()
+
+    expect(api.getAiProviderCapabilityMetricsFailureBreakdown).toHaveBeenCalledTimes(1)
+    expect(wrapper.text()).toContain('Safe persistence-failure categories')
+    expect(wrapper.text()).toContain('Connection exception')
+    expect(wrapper.text()).not.toContain('private-provider')
+    expect(wrapper.text()).not.toContain('private-model')
+    expect(wrapper.text()).not.toContain('private-endpoint')
   })
 
   it('renders only aggregate saved-test outcomes and refreshes them after a test', async () => {
