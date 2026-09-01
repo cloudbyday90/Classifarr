@@ -26,10 +26,10 @@
           id="review-corpus-control-heading"
           class="text-lg font-medium"
         >
-          Historic Review Corpus Safeguards
+          Reviewed Corpus Safeguards
         </h3>
         <p class="mt-1 text-sm text-gray-400">
-          This configures only the future review contract. It never exposes historic records or gives AI, RAG, or routing authority.
+          After acknowledgement, eligible future operator decisions are captured automatically as redacted evaluation rows. Historic records remain unavailable, and capture gives AI, RAG, policy, and routing no authority.
         </p>
       </div>
 
@@ -37,6 +37,7 @@
         class="rounded-md border border-gray-700 bg-gray-900/40 p-4"
         role="status"
         aria-live="polite"
+        aria-atomic="true"
       >
         <template v-if="reviewCorpusControlPresentation">
           <p
@@ -59,13 +60,13 @@
           v-else-if="reviewCorpusLoading"
           class="text-sm text-gray-400"
         >
-          Checking historic review-corpus safeguards…
+          Checking reviewed-corpus safeguards…
         </p>
         <p
           v-else
           class="text-sm text-amber-300"
         >
-          Historic review-corpus safeguards are temporarily unavailable.
+          Reviewed-corpus safeguards are temporarily unavailable.
         </p>
       </div>
 
@@ -91,7 +92,7 @@
               for="review-record-retention-days"
               class="block text-sm font-medium text-gray-200"
             >
-              Future review-record retention limit (days)
+              Future reviewed-record retention limit (days)
             </label>
             <input
               id="review-record-retention-days"
@@ -103,7 +104,7 @@
               class="mt-2 w-32 rounded-md border border-gray-600 bg-gray-900 px-3 py-2 text-sm focus:border-blue-500 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
             >
             <p class="mt-1 text-xs text-gray-400">
-              This is a retained future projection limit. No historic review record exists today.
+              This is the automatic future capture limit. No historic record access is provided.
             </p>
           </div>
 
@@ -112,10 +113,10 @@
               Required safeguards
             </p>
             <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-gray-300">
-              <li>Administrator authorization is required at the record boundary.</li>
-              <li>Any future projection must be redacted server-side.</li>
-              <li>Future review data must obey the selected retention limit.</li>
-              <li>Configuration acknowledgements are recorded in an append-only audit trail.</li>
+              <li>An administrator must acknowledge the capture boundary before automatic capture starts.</li>
+              <li>Classifarr stores only server-redacted outcome categories, never media, library, AI, or RAG content.</li>
+              <li>Captured review rows are deleted after the selected retention limit.</li>
+              <li>Capture and expiry events are recorded in an append-only operator audit trail.</li>
             </ul>
           </div>
 
@@ -125,7 +126,7 @@
               type="checkbox"
               class="mt-0.5 h-4 w-4 rounded border-gray-600 bg-gray-900 text-blue-600 focus:ring-blue-500"
             >
-            <span>I acknowledge these safeguards for representative historic correction review.</span>
+            <span>I acknowledge these safeguards for automatic future reviewed-corpus capture.</span>
           </label>
 
           <button
@@ -133,7 +134,7 @@
             :disabled="!reviewCorpusAcknowledged || reviewCorpusSaving"
             class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-600"
           >
-            {{ reviewCorpusSaving ? 'Saving safeguards…' : 'Acknowledge safeguards' }}
+            {{ reviewCorpusSaving ? 'Saving safeguards…' : 'Enable automatic capture' }}
           </button>
         </fieldset>
       </form>
@@ -150,7 +151,7 @@
             v-for="event in reviewCorpusAuditEvents"
             :key="event.eventId"
           >
-            Administrator #{{ event.actorId }} acknowledged a {{ event.reviewRecordRetentionDays }}-day future review-record limit on {{ formatDate(event.occurredAt) }}.
+            Administrator #{{ event.actorId }} enabled a {{ event.reviewRecordRetentionDays }}-day automatic capture limit on {{ formatDate(event.occurredAt) }}.
           </li>
         </ul>
       </details>
@@ -1391,7 +1392,7 @@ const loadReviewCorpusControl = async () => {
     console.error('Failed to load historic review-corpus safeguards:', err)
     reviewCorpusControl.value = null
     reviewCorpusAuditEvents.value = []
-    reviewCorpusError.value = 'Unable to load historic review-corpus safeguards. No historic records are available.'
+    reviewCorpusError.value = 'Unable to load reviewed-corpus safeguards. No historic records are available.'
   } finally {
     reviewCorpusLoading.value = false
   }
@@ -1421,7 +1422,7 @@ const acknowledgeReviewCorpusSafeguards = async () => {
 
     reviewCorpusControl.value = control
     reviewCorpusAcknowledged.value = false
-    reviewCorpusActionStatus.value = 'Safeguards acknowledged. Historic record access remains disabled.'
+    reviewCorpusActionStatus.value = 'Automatic future capture is enabled. Historic record access remains disabled.'
     const auditResponse = await api.getPolicyCandidateCorrectionReviewCorpusAuditEvents()
     const auditEvents = normalizePolicyCandidateCorrectionRepresentativeReviewCorpusAuditEvents(auditResponse)
     if (!auditEvents) {

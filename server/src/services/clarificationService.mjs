@@ -15,6 +15,9 @@ import {
 import {
   buildPolicyRuntimeDestinationEvidenceAuthorizationContext,
 } from './policyRuntimeDestinationEvidenceExecutionAuthorization.mjs';
+import {
+  policyCandidateCorrectionRepresentativeReviewCorpusCaptureService,
+} from './policyCandidateCorrectionRepresentativeReviewCorpusCaptureService.mjs';
 
 class ClarificationService {
   constructor(deps = {}) {
@@ -22,6 +25,8 @@ class ClarificationService {
     this.runtimeDestinationEvidenceCommandService =
       deps.runtimeDestinationEvidenceCommandService ||
       policyRuntimeDestinationEvidenceCommandService;
+    this.reviewCorpusCaptureService = deps.reviewCorpusCaptureService ||
+      policyCandidateCorrectionRepresentativeReviewCorpusCaptureService;
     this._seedState = createSeedIntegrityState(deps.seedIntegrityCacheTtlMs);
   }
 
@@ -97,7 +102,7 @@ class ClarificationService {
     classificationId,
     payload,
     resolvedBy,
-    { authenticated = false } = {},
+    { authenticated = false, operatorAuditActorId = null } = {},
   ) {
     const parsed = parsePolicyRuntimeQuestionAnswer(payload);
     if (!parsed.ok) {
@@ -126,6 +131,8 @@ class ClarificationService {
             actorId: resolvedBy,
             authenticated,
           }),
+        reviewCorpusCaptureService: this.reviewCorpusCaptureService,
+        reviewCorpusActorId: operatorAuditActorId,
       },
     );
   }

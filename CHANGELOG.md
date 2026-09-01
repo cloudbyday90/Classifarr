@@ -11,6 +11,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Automatic redacted reviewed-corpus capture** — After an administrator
+  enables the existing safeguards, eligible authenticated operator confirmations
+  and corrections now create a future-only, time-limited evaluation row with
+  only fixed outcome/evidence categories. The data is automatically expired,
+  audited, and has no policy, AI, RAG, learning, or routing authority.
+
 - Added an offline-only semantic counter-evidence readiness gate that measures
   corpus coverage, precision, recall, abstention, and false positives before
   RAG could be considered for a future broad-policy review path. The gate is
@@ -32,6 +38,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Container heap-cap detection** — Ignore unbounded cgroup memory sentinels
+  rather than passing an invalid, impractically large heap cap to Node.js at
+  startup.
 - **Schema snapshot CI parity** — Refreshed the authoritative PostgreSQL 18
   schema snapshot so the containerized drift gate recognizes the current
   `classification_history.method` constraint.

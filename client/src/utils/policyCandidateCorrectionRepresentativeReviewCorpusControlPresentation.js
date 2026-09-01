@@ -133,16 +133,16 @@ export function normalizePolicyCandidateCorrectionRepresentativeReviewCorpusAudi
 export function getPolicyCandidateCorrectionRepresentativeReviewCorpusControlPresentation(statusId) {
   if (statusId === STATUS_IDS.CONFIGURATION_ACKNOWLEDGED) {
     return Object.freeze({
-      heading: 'Historic review corpus safeguards acknowledged',
-      message: 'The safeguards are active. Administrators can create and inspect a separate server-redacted evaluation snapshot; source historic records remain unavailable.',
+      heading: 'Automatic reviewed-corpus capture is enabled',
+      message: 'Eligible future operator decisions are automatically retained as redacted evaluation rows. Source historic records remain unavailable, and the rows cannot affect AI, RAG, policy, or routing.',
       statusClass: 'text-green-400',
     })
   }
 
   if (statusId === STATUS_IDS.CONFIGURATION_REQUIRED) {
     return Object.freeze({
-      heading: 'Historic review corpus safeguards need acknowledgement',
-      message: 'No historic records are available. An administrator must acknowledge the fixed purpose, safeguards, and future retention limit before a later corpus implementation can proceed.',
+      heading: 'Automatic reviewed-corpus capture is off',
+      message: 'No historic records are available. An administrator must acknowledge the fixed safeguards and future retention limit before Classifarr can capture eligible future operator decisions.',
       statusClass: 'text-amber-300',
     })
   }

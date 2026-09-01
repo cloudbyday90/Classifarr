@@ -65,6 +65,12 @@ describe('SchedulerRetentionService', () => {
                     statusId: 'completed',
                 }),
             },
+            policyCandidateCorrectionRepresentativeReviewCorpusCaptureRetentionService: {
+                cleanup: jest.fn().mockResolvedValue({
+                    deletedCaptureCount: 0,
+                    statusId: 'completed',
+                }),
+            },
             policyCandidateCorrectionPolicyChangeOutcomeObservationRetentionService: {
                 cleanup: jest.fn().mockResolvedValue({
                     deletedReviewHistoryCount: 0,
@@ -269,6 +275,19 @@ describe('SchedulerRetentionService', () => {
                 statusId: 'completed',
             });
             expect(service.policyNativeIntentChangeReceiptRetentionService.cleanup)
+                .toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('runPolicyCandidateCorrectionRepresentativeReviewCorpusCaptureRetentionCleanup', () => {
+        it('delegates expired reviewed-corpus capture cleanup to its retention service', async () => {
+            const result = await service.runPolicyCandidateCorrectionRepresentativeReviewCorpusCaptureRetentionCleanup();
+
+            expect(result).toEqual({
+                deletedCaptureCount: 0,
+                statusId: 'completed',
+            });
+            expect(service.policyCandidateCorrectionRepresentativeReviewCorpusCaptureRetentionService.cleanup)
                 .toHaveBeenCalledTimes(1);
         });
     });

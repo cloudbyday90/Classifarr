@@ -707,7 +707,7 @@ describe('Classification Routes - Pending Resolution', () => {
           destination_library_id: 60,
         },
         'admin',
-        { authenticated: true },
+        { authenticated: true, operatorAuditActorId: 1 },
       );
     });
 

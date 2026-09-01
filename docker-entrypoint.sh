@@ -665,42 +665,26 @@ echo "$APP_VERSION" > "$VERSION_FILE" 2>/dev/null || true
 #
 # Supports cgroup v2  (/sys/fs/cgroup/memory.max)
 #     and cgroup v1  (/sys/fs/cgroup/memory/memory.limit_in_bytes).
+# The ESM helper uses BigInt and rejects host-unlimited sentinels before
+# constructing NODE_OPTIONS. Some container runtimes expose a large numeric
+# sentinel instead of cgroup v2's literal "max".
 # -----------------------------------------------------------------------
 if ! echo "${NODE_OPTIONS:-}" | grep -q 'max-old-space-size'; then
-    CGROUP_LIMIT_BYTES=""
-
-    # cgroup v2 – "max" means no limit; only use a numeric value
-    if [ -r /sys/fs/cgroup/memory.max ]; then
-        _RAW=$(cat /sys/fs/cgroup/memory.max 2>/dev/null || true)
-        case "$_RAW" in
-            ''|max|unlimited) ;;
-            *) CGROUP_LIMIT_BYTES="$_RAW" ;;
-        esac
-    fi
-
-    # cgroup v1 – kernel reports INT64_MAX (~9.2e18) when unconstrained;
-    # reject any value at or above that sentinel.
-    if [ -z "$CGROUP_LIMIT_BYTES" ] && [ -r /sys/fs/cgroup/memory/memory.limit_in_bytes ]; then
-        _RAW=$(cat /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null || true)
-        if [ -n "$_RAW" ] && awk -v val="$_RAW" 'BEGIN { exit !(val < 9223372036854775807) }' 2>/dev/null; then
-            CGROUP_LIMIT_BYTES="$_RAW"
-        fi
-    fi
-
-    if [ -n "$CGROUP_LIMIT_BYTES" ]; then
-        # Use awk to avoid sh integer overflow on large cgroup byte counts.
-        HEAP_MB=$(awk "BEGIN { v = int($CGROUP_LIMIT_BYTES / 1048576 * 0.75); print (v < 256 ? 0 : v) }" 2>/dev/null || echo 0)
-        LIMIT_MB=$(awk "BEGIN { print int($CGROUP_LIMIT_BYTES / 1048576) }" 2>/dev/null || echo 0)
-        if [ "$HEAP_MB" -gt 0 ] 2>/dev/null; then
+    NODE_HEAP_CAP=$(node /app/scripts/lib/container-node-heap-cap.mjs 2>/dev/null || true)
+    case "$NODE_HEAP_CAP" in
+        *' '*)
+            HEAP_MB=${NODE_HEAP_CAP%% *}
+            LIMIT_MB=${NODE_HEAP_CAP#* }
             echo "Auto-configuring Node.js heap cap: ${HEAP_MB}MB (75% of ${LIMIT_MB}MB container memory limit)"
             export NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--max-old-space-size=${HEAP_MB}"
-        fi
-    else
+            ;;
+        *)
         echo "WARN: No container memory limit detected and --max-old-space-size is not set."
         echo "WARN: Node.js will auto-size its heap (typically up to ~4 GB), which may exhaust host RAM on"
         echo "WARN: systems with limited memory. Set 'deploy.resources.limits.memory' in docker-compose"
         echo "WARN: or pass NODE_OPTIONS=--max-old-space-size=<MB> to cap the heap explicitly."
-    fi
+            ;;
+    esac
 fi
 echo "Node.js heap options: ${NODE_OPTIONS:-(none set)}"
 

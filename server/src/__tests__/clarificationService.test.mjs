@@ -70,6 +70,7 @@ beforeEach(() => {
     policyQuestionContext.getPolicyQuestionContextVersion.mockReset();
     policyQuestionContext.isPolicyQuestionStale.mockReset();
     svc.policyQuestionContext = policyQuestionContext;
+    svc.reviewCorpusCaptureService = null;
     svc.invalidateSeedIntegrityCache();
     svc.seedIntegrityWarnings.clear();
     jest.restoreAllMocks();
@@ -790,6 +791,10 @@ describe('resolvePolicyQuestion', () => {
 
     test('records only a fixed outside-candidate attribution for a validated broad destination choice', async () => {
         const client = makeMockClient();
+        const reviewCorpusCaptureService = {
+            capture: jest.fn().mockResolvedValue({ statusId: 'captured' }),
+        };
+        svc.reviewCorpusCaptureService = reviewCorpusCaptureService;
         db.pool.connect.mockResolvedValueOnce(client);
         const policyQuestion = normalizePolicyRuntimeQuestion({
             metadata: { media_type: 'movie' },
@@ -863,7 +868,10 @@ describe('resolvePolicyQuestion', () => {
         policyQuestionContext.isPolicyQuestionStale.mockReturnValueOnce(false);
         classificationOutcomeService.recordOutcome.mockResolvedValueOnce({ updated: true });
 
-        const result = await svc.resolveRuntimeQuestionAnswer(1, answer, 'admin');
+        const result = await svc.resolveRuntimeQuestionAnswer(1, answer, 'admin', {
+            authenticated: true,
+            operatorAuditActorId: 9,
+        });
 
         expect(result.success).toBe(true);
         expect(classificationOutcomeService.recordOutcome).toHaveBeenCalledWith(
@@ -922,6 +930,22 @@ describe('resolvePolicyQuestion', () => {
                 { source_id: 'similar_item_retrieval', state_id: 'supporting' },
                 { source_id: 'confirmed_outcomes', state_id: 'supporting' },
             ],
+        });
+        expect(reviewCorpusCaptureService.capture).toHaveBeenCalledWith({
+            client,
+            actorId: 9,
+            outcomeAttribution: {
+                version: 'policy.candidate_correction_outcome_attribution.v1',
+                scoreMarginBandId: '5_to_14',
+                selectionStatusId: 'changed_outside_candidates',
+                evidenceSourceStates: [
+                    { source_id: 'item_identity', state_id: 'anchored' },
+                    { source_id: 'declared_policy', state_id: 'supporting' },
+                    { source_id: 'observed_library_profile', state_id: 'contextual' },
+                    { source_id: 'similar_item_retrieval', state_id: 'supporting' },
+                    { source_id: 'confirmed_outcomes', state_id: 'supporting' },
+                ],
+            },
         });
     });
 

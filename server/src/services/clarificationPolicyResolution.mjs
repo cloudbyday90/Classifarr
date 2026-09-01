@@ -71,6 +71,8 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
     answerContract = null,
     runtimeDestinationEvidenceCommandService = null,
     runtimeDestinationEvidenceAuthorizationContext = null,
+    reviewCorpusCaptureService = null,
+    reviewCorpusActorId = null,
 } = {}) {
     try {
         const result = await db.withTransaction(async (client) => {
@@ -399,6 +401,15 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
             );
         }
 
+        const reviewCorpusCapture = policyCandidateCorrectionOutcomeAttribution &&
+            typeof reviewCorpusCaptureService?.capture === 'function'
+            ? await reviewCorpusCaptureService.capture({
+                client,
+                actorId: reviewCorpusActorId,
+                outcomeAttribution: policyCandidateCorrectionOutcomeAttribution,
+            })
+            : null;
+
         const runtimeDestinationEvidence = isNativeRuntimeQuestion &&
             answerContract?.actionId !== POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.ROUTE_NOT_APPLICABLE &&
             runtimeDestinationEvidenceAuthorizationContext?.authenticated === true &&
@@ -418,6 +429,7 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
             learningDecision: runtimeResolutionLearning?.decisionSummary?.decisionId ||
                 nativeResolutionProvenance?.learningGuard?.decisionId || null,
             runtimeDestinationEvidence: runtimeDestinationEvidence?.statusId || null,
+            reviewCorpusCapture: reviewCorpusCapture?.statusId || null,
         });
 
         return {

@@ -33,6 +33,9 @@ import {
     policyCandidateCorrectionRepresentativeReviewProjectionRetentionService as defaultPolicyCandidateCorrectionRepresentativeReviewProjectionRetentionService,
 } from './policyCandidateCorrectionRepresentativeReviewProjectionRetentionService.mjs';
 import {
+    policyCandidateCorrectionRepresentativeReviewCorpusCaptureRetentionService as defaultPolicyCandidateCorrectionRepresentativeReviewCorpusCaptureRetentionService,
+} from './policyCandidateCorrectionRepresentativeReviewCorpusCaptureRetentionService.mjs';
+import {
     policyCandidateCorrectionPolicyChangeOutcomeObservationRetentionService as defaultPolicyCandidateCorrectionPolicyChangeOutcomeObservationRetentionService,
 } from './policyCandidateCorrectionPolicyChangeOutcomeObservationRetentionService.mjs';
 
@@ -61,6 +64,9 @@ export class SchedulerRetentionService {
         this.policyCandidateCorrectionRepresentativeReviewProjectionRetentionService =
             deps.policyCandidateCorrectionRepresentativeReviewProjectionRetentionService
             || defaultPolicyCandidateCorrectionRepresentativeReviewProjectionRetentionService;
+        this.policyCandidateCorrectionRepresentativeReviewCorpusCaptureRetentionService =
+            deps.policyCandidateCorrectionRepresentativeReviewCorpusCaptureRetentionService
+            || defaultPolicyCandidateCorrectionRepresentativeReviewCorpusCaptureRetentionService;
         this.policyCandidateCorrectionPolicyChangeOutcomeObservationRetentionService =
             deps.policyCandidateCorrectionPolicyChangeOutcomeObservationRetentionService
             || defaultPolicyCandidateCorrectionPolicyChangeOutcomeObservationRetentionService;
@@ -176,6 +182,10 @@ export class SchedulerRetentionService {
 
     async runPolicyCandidateCorrectionRepresentativeReviewProjectionRetentionCleanup() {
         return this.policyCandidateCorrectionRepresentativeReviewProjectionRetentionService.cleanup();
+    }
+
+    async runPolicyCandidateCorrectionRepresentativeReviewCorpusCaptureRetentionCleanup() {
+        return this.policyCandidateCorrectionRepresentativeReviewCorpusCaptureRetentionService.cleanup();
     }
 
     async runPolicyCandidateCorrectionPolicyChangeOutcomeObservationRetentionCleanup() {

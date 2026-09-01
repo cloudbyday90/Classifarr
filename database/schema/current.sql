@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-01T15:40:13.715Z
--- Latest Migration: 20260831_235000_add_policy_candidate_adjudication_method.sql
+-- Generated: 2026-09-01T19:35:40.652Z
+-- Latest Migration: 20260901_090000_add_policy_candidate_correction_review_corpus_capture.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -253,6 +253,19 @@ CREATE FUNCTION public.guard_policy_candidate_correction_review_corpus_audit_eve
     AS $$
 BEGIN
     RAISE EXCEPTION 'Representative review-corpus audit events are append-only';
+END;
+$$;
+
+
+--
+-- Name: guard_policy_candidate_correction_review_corpus_capture_audit_e(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.guard_policy_candidate_correction_review_corpus_capture_audit_e() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    RAISE EXCEPTION 'Representative review-corpus capture audit events are append-only';
 END;
 $$;
 
@@ -4317,6 +4330,74 @@ ALTER SEQUENCE public.policy_candidate_correction_review_corpus_audit_events_id_
 
 
 --
+-- Name: policy_candidate_correction_review_corpus_capture_audit_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_candidate_correction_review_corpus_capture_audit_events (
+    id bigint CONSTRAINT policy_candidate_correction_review_corpus_capture_a_id_not_null NOT NULL,
+    event_version smallint DEFAULT 1 CONSTRAINT policy_candidate_correction_review_corp_event_version_not_null1 NOT NULL,
+    action_id character varying(32) CONSTRAINT policy_candidate_correction_review_corpus_ca_action_id_not_null NOT NULL,
+    actor_id integer,
+    capture_id character(64) CONSTRAINT policy_candidate_correction_review_corpus__capture_id_not_null1 NOT NULL,
+    capture_recorded_at timestamp with time zone CONSTRAINT policy_candidate_correction_review_capture_recorded_at_not_null NOT NULL,
+    configuration_revision character(64) CONSTRAINT policy_candidate_correction_re_configuration_revision_not_null5 NOT NULL,
+    occurred_at timestamp with time zone DEFAULT now() CONSTRAINT policy_candidate_correction_review_corpus_occurred_at_not_null1 NOT NULL,
+    CONSTRAINT pccrc_audit_action_ck CHECK (((action_id)::text = ANY ((ARRAY['capture_recorded'::character varying, 'capture_expired'::character varying])::text[]))),
+    CONSTRAINT pccrc_audit_actor_ck CHECK (((actor_id IS NULL) OR (actor_id > 0))),
+    CONSTRAINT pccrc_audit_capture_ck CHECK ((capture_id ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT pccrc_audit_expiry_actor_ck CHECK (((((action_id)::text = 'capture_expired'::text) AND (actor_id IS NULL)) OR (((action_id)::text = 'capture_recorded'::text) AND (actor_id IS NOT NULL)))),
+    CONSTRAINT pccrc_audit_rev_ck CHECK ((configuration_revision ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT pccrc_audit_ver_ck CHECK ((event_version = 1))
+);
+
+
+--
+-- Name: policy_candidate_correction_review_corpus_capture_audit__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.policy_candidate_correction_review_corpus_capture_audit__id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: policy_candidate_correction_review_corpus_capture_audit__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.policy_candidate_correction_review_corpus_capture_audit__id_seq OWNED BY public.policy_candidate_correction_review_corpus_capture_audit_events.id;
+
+
+--
+-- Name: policy_candidate_correction_review_corpus_captures; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_candidate_correction_review_corpus_captures (
+    capture_id character(64) CONSTRAINT policy_candidate_correction_review_corpus_c_capture_id_not_null NOT NULL,
+    capture_version smallint DEFAULT 1 CONSTRAINT policy_candidate_correction_review_cor_capture_version_not_null NOT NULL,
+    purpose_id character varying(96) CONSTRAINT policy_candidate_correction_review_corpus__purpose_id_not_null1 NOT NULL,
+    configuration_revision character(64) CONSTRAINT policy_candidate_correction_re_configuration_revision_not_null4 NOT NULL,
+    score_margin_band_id character varying(16) CONSTRAINT policy_candidate_correction_revi_score_margin_band_id_not_null1 NOT NULL,
+    selection_status_id character varying(40) CONSTRAINT policy_candidate_correction_revie_selection_status_id_not_null1 NOT NULL,
+    evidence_source_states jsonb CONSTRAINT policy_candidate_correction_re_evidence_source_states_not_null1 NOT NULL,
+    captured_by_actor_id integer CONSTRAINT policy_candidate_correction_revie_captured_by_actor_id_not_null NOT NULL,
+    captured_at timestamp with time zone DEFAULT now() CONSTRAINT policy_candidate_correction_review_corpus__captured_at_not_null NOT NULL,
+    expires_at timestamp with time zone CONSTRAINT policy_candidate_correction_review_corpus_c_expires_at_not_null NOT NULL,
+    CONSTRAINT pccrc_cap_actor_ck CHECK ((captured_by_actor_id > 0)),
+    CONSTRAINT pccrc_cap_evidence_ck CHECK (((jsonb_typeof(evidence_source_states) = 'array'::text) AND (jsonb_array_length(evidence_source_states) = 5))),
+    CONSTRAINT pccrc_cap_expiry_ck CHECK ((captured_at < expires_at)),
+    CONSTRAINT pccrc_cap_id_ck CHECK ((capture_id ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT pccrc_cap_margin_ck CHECK (((score_margin_band_id)::text = ANY ((ARRAY['0_to_4'::character varying, '5_to_14'::character varying, '15_to_29'::character varying, '30_or_more'::character varying])::text[]))),
+    CONSTRAINT pccrc_cap_purpose_ck CHECK (((purpose_id)::text = 'representative_historical_correction_review'::text)),
+    CONSTRAINT pccrc_cap_rev_ck CHECK ((configuration_revision ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT pccrc_cap_selection_ck CHECK (((selection_status_id)::text = ANY ((ARRAY['confirmed_candidate'::character varying, 'changed_to_candidate'::character varying, 'changed_outside_candidates'::character varying, 'routed_not_applicable'::character varying])::text[]))),
+    CONSTRAINT pccrc_cap_ver_ck CHECK ((capture_version = 1))
+);
+
+
+--
 -- Name: policy_candidate_correction_review_corpus_controls; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -7521,6 +7602,13 @@ ALTER TABLE ONLY public.policy_candidate_correction_review_corpus_audit_events A
 
 
 --
+-- Name: policy_candidate_correction_review_corpus_capture_audit_events id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_candidate_correction_review_corpus_capture_audit_events ALTER COLUMN id SET DEFAULT nextval('public.policy_candidate_correction_review_corpus_capture_audit__id_seq'::regclass);
+
+
+--
 -- Name: policy_candidate_correction_review_projection_audit_events id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -8670,6 +8758,22 @@ ALTER TABLE ONLY public.policy_change_review_history_controls
 
 ALTER TABLE ONLY public.policy_candidate_correction_review_corpus_audit_events
     ADD CONSTRAINT policy_candidate_correction_review_corpus_audit_events_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_candidate_correction_review_corpus_capture_audit_events policy_candidate_correction_review_corpus_capture_audit_ev_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_candidate_correction_review_corpus_capture_audit_events
+    ADD CONSTRAINT policy_candidate_correction_review_corpus_capture_audit_ev_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_candidate_correction_review_corpus_captures policy_candidate_correction_review_corpus_captures_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_candidate_correction_review_corpus_captures
+    ADD CONSTRAINT policy_candidate_correction_review_corpus_captures_pkey PRIMARY KEY (capture_id);
 
 
 --
@@ -10438,6 +10542,20 @@ CREATE INDEX idx_policy_candidate_correction_review_corpus_audit_events_rece ON 
 
 
 --
+-- Name: idx_policy_candidate_correction_review_corpus_capture_audit_eve; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_candidate_correction_review_corpus_capture_audit_eve ON public.policy_candidate_correction_review_corpus_capture_audit_events USING btree (occurred_at DESC, id DESC);
+
+
+--
+-- Name: idx_policy_candidate_correction_review_corpus_captures_expiry; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_candidate_correction_review_corpus_captures_expiry ON public.policy_candidate_correction_review_corpus_captures USING btree (expires_at, capture_id);
+
+
+--
 -- Name: idx_policy_candidate_correction_review_projection_audit_events_; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -11366,6 +11484,13 @@ CREATE TRIGGER policy_backup_restore_verification_mutation_guard BEFORE DELETE O
 --
 
 CREATE TRIGGER policy_candidate_correction_review_corpus_audit_event_mutation_ BEFORE DELETE OR UPDATE ON public.policy_candidate_correction_review_corpus_audit_events FOR EACH ROW EXECUTE FUNCTION public.guard_policy_candidate_correction_review_corpus_audit_event_mut();
+
+
+--
+-- Name: policy_candidate_correction_review_corpus_capture_audit_events policy_candidate_correction_review_corpus_capture_audit_event_m; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER policy_candidate_correction_review_corpus_capture_audit_event_m BEFORE DELETE OR UPDATE ON public.policy_candidate_correction_review_corpus_capture_audit_events FOR EACH ROW EXECUTE FUNCTION public.guard_policy_candidate_correction_review_corpus_capture_audit_e();
 
 
 --
@@ -14528,6 +14653,7 @@ FROM unnest(ARRAY[
     '20260831_140000_add_policy_change_decision_record.sql',
     '20260831_170000_add_policy_change_review_history_summary.sql',
     '20260831_170100_rename_policy_change_review_history_tables.sql',
-    '20260831_235000_add_policy_candidate_adjudication_method.sql'
+    '20260831_235000_add_policy_candidate_adjudication_method.sql',
+    '20260901_090000_add_policy_candidate_correction_review_corpus_capture.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

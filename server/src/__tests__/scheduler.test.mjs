@@ -55,6 +55,7 @@ const mockSchedulerRetentionService = {
     runPolicyObservedEvidenceProvenanceRetentionCleanup: jest.fn(),
     runNativeIntentReconciliationLedgerRetentionCleanup: jest.fn(),
     runPolicyNativeIntentChangeReceiptRetentionCleanup: jest.fn(),
+    runPolicyCandidateCorrectionRepresentativeReviewCorpusCaptureRetentionCleanup: jest.fn(),
     runPolicyCandidateCorrectionPolicyChangeOutcomeObservationRetentionCleanup: jest.fn(),
 };
 
@@ -147,6 +148,7 @@ describe('SchedulerService', () => {
         mockSchedulerRetentionService.runPolicyObservedEvidenceProvenanceRetentionCleanup.mockReset();
         mockSchedulerRetentionService.runNativeIntentReconciliationLedgerRetentionCleanup.mockReset();
         mockSchedulerRetentionService.runPolicyNativeIntentChangeReceiptRetentionCleanup.mockReset();
+        mockSchedulerRetentionService.runPolicyCandidateCorrectionRepresentativeReviewCorpusCaptureRetentionCleanup.mockReset();
         mockSchedulerRetentionService.runPolicyCandidateCorrectionPolicyChangeOutcomeObservationRetentionCleanup.mockReset();
         mockClassificationMaintenanceService.cleanupStaleAwaitingDecisions.mockReset();
         mockRatingNormalizationQueueService.queueDailyBackfill.mockReset();
@@ -230,6 +232,17 @@ describe('SchedulerService', () => {
                 .resolves.toBeUndefined();
 
             expect(mockSchedulerRetentionService.runPolicyNativeIntentChangeReceiptRetentionCleanup)
+                .toHaveBeenCalledTimes(1);
+        });
+
+        it('runPolicyCandidateCorrectionRepresentativeReviewCorpusCaptureRetentionCleanup delegates to SchedulerRetentionService', async () => {
+            mockSchedulerRetentionService.runPolicyCandidateCorrectionRepresentativeReviewCorpusCaptureRetentionCleanup
+                .mockResolvedValueOnce(undefined);
+
+            await expect(scheduler.runPolicyCandidateCorrectionRepresentativeReviewCorpusCaptureRetentionCleanup())
+                .resolves.toBeUndefined();
+
+            expect(mockSchedulerRetentionService.runPolicyCandidateCorrectionRepresentativeReviewCorpusCaptureRetentionCleanup)
                 .toHaveBeenCalledTimes(1);
         });
 
