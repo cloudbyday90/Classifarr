@@ -53,7 +53,7 @@ export async function incrementAiProviderCapabilityMetrics(db, delta = {}) {
     )
     VALUES (
       $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-      CASE WHEN $10 > 0 THEN NOW() ELSE NULL END,
+      CASE WHEN $10::bigint > 0 THEN NOW() ELSE NULL END,
       NOW()
     )
     ON CONFLICT (provider_id, model, authority_mode)

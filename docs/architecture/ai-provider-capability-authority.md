@@ -177,6 +177,11 @@ parameterized, idempotent by `(provider_id, model, authority_mode)`, and
 fail-open for telemetry availability so classification cannot fail because an
 observability counter is unavailable.
 
+The repository gives reused aggregate-counter parameters their explicit
+PostgreSQL types when they also appear in control expressions. This prevents a
+telemetry-only type-inference failure from being logged as an AI failure; see
+[AI Provider Capability Metrics Persistence Design](ai-provider-capability-metrics-persistence-design.md).
+
 When repair runs, the initial provider response and the local repair execution
 are recorded separately. A primary parse failure cannot be relabeled as a
 successful strict response merely because a later local repair parsed.

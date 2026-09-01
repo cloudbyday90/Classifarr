@@ -77,6 +77,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **AI capability metric persistence** — Successful AI work no longer emits a
+  misleading telemetry warning when recording a model-digest mismatch counter;
+  the PostgreSQL upsert now preserves its `BIGINT` parameter type.
+
 - **Candidate-adjudication retry persistence** — The classification-history
   method contract now admits completed bounded candidate-adjudication results,
   preventing valid local retry work from repeatedly failing while it is saved.

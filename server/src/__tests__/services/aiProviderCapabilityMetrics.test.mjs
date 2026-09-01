@@ -102,8 +102,12 @@ describe('aiProviderCapabilityMetrics', () => {
     const writableDatabase = { query: jest.fn().mockResolvedValue({}) };
     await incrementAiProviderCapabilityMetrics(writableDatabase, delta);
     expect(writableDatabase.query).toHaveBeenCalledWith(
-      expect.stringContaining('ON CONFLICT (provider_id, model, authority_mode)'),
+      expect.stringContaining('CASE WHEN $10::bigint > 0 THEN NOW() ELSE NULL END'),
       expect.arrayContaining(['gemini', 'gemini-2.5-pro', 'proposal']),
+    );
+    expect(writableDatabase.query).toHaveBeenCalledWith(
+      expect.stringContaining('ON CONFLICT (provider_id, model, authority_mode)'),
+      expect.any(Array),
     );
   });
 });
