@@ -97,7 +97,7 @@ describe('representative review-corpus control presentation', () => {
     expect(getPolicyCandidateCorrectionRepresentativeReviewCorpusControlPresentation(
       'configuration_acknowledged',
     )).toEqual(expect.objectContaining({
-      heading: 'Automatic reviewed-corpus capture is enabled',
+      heading: 'Custom retention is active',
     }))
   })
 })

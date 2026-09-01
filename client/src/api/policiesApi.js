@@ -30,6 +30,7 @@ import {
   normalizePolicyAuthoringProposalAdjustmentCommands,
 } from '@/utils/policyAuthoringProposalAdjustment'
 import policyReviewCorpusControlApi from './policyReviewCorpusControlApi'
+import policyReviewCorpusCaptureEvaluationApi from './policyReviewCorpusCaptureEvaluationApi'
 import policyReviewCorpusEvaluationReportApi from './policyReviewCorpusEvaluationReportApi'
 import policyReviewCorpusProjectionApi from './policyReviewCorpusProjectionApi'
 import policyChangeOutcomeObservationApi from './policyChangeOutcomeObservationApi'
@@ -225,6 +226,7 @@ const policiesApi = {
   simulatePolicyCohort,
   previewPolicyDestinationCompetition,
   ...policyReviewCorpusControlApi,
+  ...policyReviewCorpusCaptureEvaluationApi,
   ...policyReviewCorpusEvaluationReportApi,
   ...policyReviewCorpusProjectionApi,
   ...policyChangeOutcomeObservationApi,

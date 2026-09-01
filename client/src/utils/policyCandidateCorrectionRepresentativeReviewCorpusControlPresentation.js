@@ -133,16 +133,16 @@ export function normalizePolicyCandidateCorrectionRepresentativeReviewCorpusAudi
 export function getPolicyCandidateCorrectionRepresentativeReviewCorpusControlPresentation(statusId) {
   if (statusId === STATUS_IDS.CONFIGURATION_ACKNOWLEDGED) {
     return Object.freeze({
-      heading: 'Automatic reviewed-corpus capture is enabled',
-      message: 'Eligible future operator decisions are automatically retained as redacted evaluation rows. Source historic records remain unavailable, and the rows cannot affect AI, RAG, policy, or routing.',
+      heading: 'Custom retention is active',
+      message: 'Future redacted outcomes use the saved retention limit. The optional historical snapshot workflow is available; source historic records remain unavailable.',
       statusClass: 'text-green-400',
     })
   }
 
   if (statusId === STATUS_IDS.CONFIGURATION_REQUIRED) {
     return Object.freeze({
-      heading: 'Automatic reviewed-corpus capture is off',
-      message: 'No historic records are available. An administrator must acknowledge the fixed safeguards and future retention limit before Classifarr can capture eligible future operator decisions.',
+      heading: 'Using the 30-day automatic default',
+      message: 'Future redacted outcomes are already captured automatically. Save an optional retention choice only if you need a different limit or the historical snapshot workflow.',
       statusClass: 'text-amber-300',
     })
   }

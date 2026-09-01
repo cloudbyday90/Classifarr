@@ -29,6 +29,9 @@ import {
   registerPolicyCandidateCorrectionRepresentativeReviewEvaluationReportRoutes,
 } from './policiesRouteRepresentativeReviewEvaluationReport.mjs';
 import {
+  registerPolicyCandidateCorrectionRepresentativeReviewCorpusCaptureEvaluationRoutes,
+} from './policiesRouteRepresentativeReviewCorpusCaptureEvaluation.mjs';
+import {
   registerPolicyCandidateCorrectionPolicyChangeOutcomeObservationRoutes,
 } from './policiesRoutePolicyChangeOutcomeObservation.mjs';
 import {
@@ -42,6 +45,7 @@ export function registerPolicyCrudRoutes(router, deps) {
   registerPolicyCandidateCorrectionRepresentativeReviewCorpusControlRoutes(router, deps);
   registerPolicyCandidateCorrectionRepresentativeReviewProjectionRoutes(router, deps);
   registerPolicyCandidateCorrectionRepresentativeReviewEvaluationReportRoutes(router, deps);
+  registerPolicyCandidateCorrectionRepresentativeReviewCorpusCaptureEvaluationRoutes(router, deps);
   registerPolicyCandidateCorrectionPolicyChangeOutcomeObservationRoutes(router, deps);
   registerPolicyCandidateCorrectionPolicyChangeDecisionRecordRoutes(router, deps);
   registerPolicyCandidateCorrectionPolicyChangeReviewHistorySummaryRoutes(router, deps);

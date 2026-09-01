@@ -19,141 +19,171 @@
 
     <section
       class="bg-gray-800 rounded-lg border border-gray-700 p-5 space-y-4"
-      aria-labelledby="review-corpus-control-heading"
+      aria-labelledby="review-corpus-capture-heading"
     >
       <div>
         <h3
-          id="review-corpus-control-heading"
+          id="review-corpus-capture-heading"
           class="text-lg font-medium"
         >
-          Reviewed Corpus Safeguards
+          Automatic evaluation sample
         </h3>
         <p class="mt-1 text-sm text-gray-400">
-          After acknowledgement, eligible future operator decisions are captured automatically as redacted evaluation rows. Historic records remain unavailable, and capture gives AI, RAG, policy, and routing no authority.
+          Classifarr automatically captures eligible future operator outcomes as redacted, time-limited evaluation rows. This background sample never changes a route, policy, AI, or RAG decision.
         </p>
       </div>
 
       <div
-        class="rounded-md border border-gray-700 bg-gray-900/40 p-4"
+        class="border-l-2 border-blue-500/70 pl-3"
         role="status"
         aria-live="polite"
         aria-atomic="true"
       >
-        <template v-if="reviewCorpusControlPresentation">
+        <template v-if="reviewCorpusCaptureEvaluationPresentation">
           <p
-            class="font-medium"
-            :class="reviewCorpusControlPresentation.statusClass"
+            class="text-sm font-medium"
+            :class="reviewCorpusCaptureEvaluationPresentation.statusClass"
           >
-            {{ reviewCorpusControlPresentation.heading }}
+            {{ reviewCorpusCaptureEvaluationPresentation.heading }}
           </p>
           <p class="mt-1 text-sm text-gray-300">
-            {{ reviewCorpusControlPresentation.message }}
-          </p>
-          <p
-            v-if="reviewCorpusActionStatus"
-            class="mt-2 text-sm text-green-400"
-          >
-            {{ reviewCorpusActionStatus }}
+            {{ reviewCorpusCaptureEvaluationPresentation.message }}
           </p>
         </template>
         <p
-          v-else-if="reviewCorpusLoading"
+          v-else-if="reviewCorpusCaptureEvaluationLoading"
           class="text-sm text-gray-400"
         >
-          Checking reviewed-corpus safeguards…
+          Checking automatic evaluation status…
         </p>
         <p
-          v-else
+          v-else-if="reviewCorpusCaptureEvaluationError"
           class="text-sm text-amber-300"
         >
-          Reviewed-corpus safeguards are temporarily unavailable.
+          Automatic evaluation status is temporarily unavailable. Capture and routing are unchanged.
         </p>
       </div>
 
-      <p
-        v-if="reviewCorpusError"
-        class="rounded-md bg-red-900/30 p-3 text-sm text-red-300"
-        role="alert"
-      >
-        {{ reviewCorpusError }}
-      </p>
-
-      <form
-        v-if="reviewCorpusControl"
-        class="space-y-4"
-        @submit.prevent="acknowledgeReviewCorpusSafeguards"
-      >
-        <fieldset
-          class="space-y-4"
-          :disabled="reviewCorpusSaving"
-        >
-          <div>
-            <label
-              for="review-record-retention-days"
-              class="block text-sm font-medium text-gray-200"
-            >
-              Future reviewed-record retention limit (days)
-            </label>
-            <input
-              id="review-record-retention-days"
-              v-model.number="reviewRecordRetentionDays"
-              type="number"
-              min="7"
-              max="90"
-              step="1"
-              class="mt-2 w-32 rounded-md border border-gray-600 bg-gray-900 px-3 py-2 text-sm focus:border-blue-500 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-            >
-            <p class="mt-1 text-xs text-gray-400">
-              This is the automatic future capture limit. No historic record access is provided.
-            </p>
-          </div>
-
-          <div class="rounded-md border border-gray-700 p-4">
-            <p class="text-sm font-medium text-gray-200">
-              Required safeguards
-            </p>
-            <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-gray-300">
-              <li>An administrator must acknowledge the capture boundary before automatic capture starts.</li>
-              <li>Classifarr stores only server-redacted outcome categories, never media, library, AI, or RAG content.</li>
-              <li>Captured review rows are deleted after the selected retention limit.</li>
-              <li>Capture and expiry events are recorded in an append-only operator audit trail.</li>
-            </ul>
-          </div>
-
-          <label class="flex items-start gap-3 text-sm text-gray-200">
-            <input
-              v-model="reviewCorpusAcknowledged"
-              type="checkbox"
-              class="mt-0.5 h-4 w-4 rounded border-gray-600 bg-gray-900 text-blue-600 focus:ring-blue-500"
-            >
-            <span>I acknowledge these safeguards for automatic future reviewed-corpus capture.</span>
-          </label>
-
-          <button
-            type="submit"
-            :disabled="!reviewCorpusAcknowledged || reviewCorpusSaving"
-            class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-600"
-          >
-            {{ reviewCorpusSaving ? 'Saving safeguards…' : 'Enable automatic capture' }}
-          </button>
-        </fieldset>
-      </form>
-
-      <details
-        v-if="reviewCorpusAuditEvents.length > 0"
-        class="rounded-md border border-gray-700 p-4"
-      >
+      <details class="rounded-md border border-gray-700 p-4">
         <summary class="cursor-pointer text-sm font-medium text-blue-300">
-          Review recent safeguard acknowledgements
+          Retention and historical snapshot options
         </summary>
-        <ul class="mt-3 space-y-2 text-sm text-gray-300">
-          <li
-            v-for="event in reviewCorpusAuditEvents"
-            :key="event.eventId"
+        <div class="mt-3 space-y-4">
+          <p class="text-sm text-gray-400">
+            Optional administrator controls. The default sample keeps redacted outcomes for 30 days. Changing this setting records an audit event and also enables the separate historical snapshot workflow; it does not enable Classifarr or change routing.
+          </p>
+
+          <div
+            class="rounded-md border border-gray-700 bg-gray-900/40 p-4"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
           >
-            Administrator #{{ event.actorId }} enabled a {{ event.reviewRecordRetentionDays }}-day automatic capture limit on {{ formatDate(event.occurredAt) }}.
-          </li>
-        </ul>
+            <template v-if="reviewCorpusControlPresentation">
+              <p
+                class="font-medium"
+                :class="reviewCorpusControlPresentation.statusClass"
+              >
+                {{ reviewCorpusControlPresentation.heading }}
+              </p>
+              <p class="mt-1 text-sm text-gray-300">
+                {{ reviewCorpusControlPresentation.message }}
+              </p>
+              <p
+                v-if="reviewCorpusActionStatus"
+                class="mt-2 text-sm text-green-400"
+              >
+                {{ reviewCorpusActionStatus }}
+              </p>
+            </template>
+            <p
+              v-else-if="reviewCorpusLoading"
+              class="text-sm text-gray-400"
+            >
+              Checking optional retention settings…
+            </p>
+            <p
+              v-else
+              class="text-sm text-amber-300"
+            >
+              Optional retention settings are temporarily unavailable.
+            </p>
+          </div>
+
+          <p
+            v-if="reviewCorpusError"
+            class="rounded-md bg-red-900/30 p-3 text-sm text-red-300"
+            role="alert"
+          >
+            {{ reviewCorpusError }}
+          </p>
+
+          <form
+            v-if="reviewCorpusControl"
+            class="space-y-4"
+            @submit.prevent="acknowledgeReviewCorpusSafeguards"
+          >
+            <fieldset
+              class="space-y-4"
+              :disabled="reviewCorpusSaving"
+            >
+              <div>
+                <label
+                  for="review-record-retention-days"
+                  class="block text-sm font-medium text-gray-200"
+                >
+                  Retention limit for redacted review outcomes (days)
+                </label>
+                <input
+                  id="review-record-retention-days"
+                  v-model.number="reviewRecordRetentionDays"
+                  type="number"
+                  min="7"
+                  max="90"
+                  step="1"
+                  class="mt-2 w-32 rounded-md border border-gray-600 bg-gray-900 px-3 py-2 text-sm focus:border-blue-500 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                >
+                <p class="mt-1 text-xs text-gray-400">
+                  This replaces the 30-day default for future redacted outcomes. No historic record access is provided.
+                </p>
+              </div>
+
+              <label class="flex items-start gap-3 text-sm text-gray-200">
+                <input
+                  v-model="reviewCorpusAcknowledged"
+                  type="checkbox"
+                  class="mt-0.5 h-4 w-4 rounded border-gray-600 bg-gray-900 text-blue-600 focus:ring-blue-500"
+                >
+                <span>I acknowledge the retention boundary and optional historical snapshot safeguards.</span>
+              </label>
+
+              <button
+                type="submit"
+                :disabled="!reviewCorpusAcknowledged || reviewCorpusSaving"
+                class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-600"
+              >
+                {{ reviewCorpusSaving ? 'Saving retention settings…' : 'Save retention settings' }}
+              </button>
+            </fieldset>
+          </form>
+
+          <details
+            v-if="reviewCorpusAuditEvents.length > 0"
+            class="rounded-md border border-gray-700 p-4"
+          >
+            <summary class="cursor-pointer text-sm font-medium text-blue-300">
+              Review recent retention changes
+            </summary>
+            <ul class="mt-3 space-y-2 text-sm text-gray-300">
+              <li
+                v-for="event in reviewCorpusAuditEvents"
+                :key="event.eventId"
+              >
+                Administrator #{{ event.actorId }} set a {{ event.reviewRecordRetentionDays }}-day retention limit on {{ formatDate(event.occurredAt) }}.
+              </li>
+            </ul>
+          </details>
+        </div>
       </details>
     </section>
 
@@ -1180,6 +1210,10 @@ import {
   normalizePolicyCandidateCorrectionRepresentativeReviewCorpusControl,
 } from '@/utils/policyCandidateCorrectionRepresentativeReviewCorpusControlPresentation'
 import {
+  getPolicyCandidateCorrectionRepresentativeReviewCorpusCaptureEvaluationPresentation,
+  normalizePolicyCandidateCorrectionRepresentativeReviewCorpusCaptureEvaluation,
+} from '@/utils/policyCandidateCorrectionRepresentativeReviewCorpusCaptureEvaluationPresentation'
+import {
   getPolicyCandidateCorrectionRepresentativeReviewProjectionPresentation,
   normalizePolicyCandidateCorrectionRepresentativeReviewProjection,
   presentPolicyCandidateCorrectionRepresentativeReviewProjectionItem,
@@ -1217,6 +1251,9 @@ const reviewCorpusError = ref(null)
 const reviewCorpusActionStatus = ref(null)
 const reviewCorpusAcknowledged = ref(false)
 const reviewRecordRetentionDays = ref(30)
+const reviewCorpusCaptureEvaluation = ref(null)
+const reviewCorpusCaptureEvaluationLoading = ref(false)
+const reviewCorpusCaptureEvaluationError = ref(null)
 const reviewProjection = ref(null)
 const reviewProjectionLoading = ref(false)
 const reviewProjectionCreating = ref(false)
@@ -1232,10 +1269,16 @@ const policyChangeOutcomeObservationStarting = ref(false)
 const policyChangeOutcomeObservationError = ref(null)
 const policyChangeOutcomeObservationActionStatus = ref(null)
 let policyChangeOutcomeObservationRefreshTimer = null
+let reviewCorpusCaptureEvaluationRefreshTimer = null
 
 const reviewCorpusControlPresentation = computed(() => (
   getPolicyCandidateCorrectionRepresentativeReviewCorpusControlPresentation(
     reviewCorpusControl.value?.statusId
+  )
+))
+const reviewCorpusCaptureEvaluationPresentation = computed(() => (
+  getPolicyCandidateCorrectionRepresentativeReviewCorpusCaptureEvaluationPresentation(
+    reviewCorpusCaptureEvaluation.value
   )
 ))
 const reviewProjectionPresentation = computed(() => (
@@ -1296,6 +1339,7 @@ const newKey = ref({
 onMounted(() => {
   loadApiKeys()
   loadReviewCorpusControl()
+  loadReviewCorpusCaptureEvaluation()
   loadReviewProjection()
   loadReviewEvaluationReport()
   loadPolicyChangeOutcomeObservation()
@@ -1304,6 +1348,9 @@ onMounted(() => {
 onUnmounted(() => {
   if (policyChangeOutcomeObservationRefreshTimer) {
     clearInterval(policyChangeOutcomeObservationRefreshTimer)
+  }
+  if (reviewCorpusCaptureEvaluationRefreshTimer) {
+    clearInterval(reviewCorpusCaptureEvaluationRefreshTimer)
   }
 })
 
@@ -1319,6 +1366,20 @@ const stopPolicyChangeOutcomeObservationRefresh = () => {
   if (!policyChangeOutcomeObservationRefreshTimer) return
   clearInterval(policyChangeOutcomeObservationRefreshTimer)
   policyChangeOutcomeObservationRefreshTimer = null
+}
+
+const scheduleReviewCorpusCaptureEvaluationRefresh = () => {
+  if (reviewCorpusCaptureEvaluationRefreshTimer ||
+      reviewCorpusCaptureEvaluation.value?.statusId !== 'collecting') return
+  reviewCorpusCaptureEvaluationRefreshTimer = setInterval(() => {
+    loadReviewCorpusCaptureEvaluation({ background: true })
+  }, 5 * 60 * 1000)
+}
+
+const stopReviewCorpusCaptureEvaluationRefresh = () => {
+  if (!reviewCorpusCaptureEvaluationRefreshTimer) return
+  clearInterval(reviewCorpusCaptureEvaluationRefreshTimer)
+  reviewCorpusCaptureEvaluationRefreshTimer = null
 }
 
 const loadPolicyChangeOutcomeObservation = async ({ background = false } = {}) => {
@@ -1398,6 +1459,32 @@ const loadReviewCorpusControl = async () => {
   }
 }
 
+const loadReviewCorpusCaptureEvaluation = async ({ background = false } = {}) => {
+  if (!background) reviewCorpusCaptureEvaluationLoading.value = true
+  reviewCorpusCaptureEvaluationError.value = null
+  try {
+    const response = await api.getPolicyCandidateCorrectionReviewCorpusCaptureEvaluation()
+    const evaluation = normalizePolicyCandidateCorrectionRepresentativeReviewCorpusCaptureEvaluation(response)
+    if (!evaluation) {
+      throw new Error('Future capture evaluation returned an unexpected response.')
+    }
+    reviewCorpusCaptureEvaluation.value = evaluation
+    if (evaluation.statusId === 'collecting') {
+      scheduleReviewCorpusCaptureEvaluationRefresh()
+    } else {
+      stopReviewCorpusCaptureEvaluationRefresh()
+    }
+  } catch (err) {
+    console.error('Failed to load automatic review-corpus evaluation:', err)
+    if (!background) {
+      reviewCorpusCaptureEvaluation.value = null
+      reviewCorpusCaptureEvaluationError.value = 'Unable to load automatic evaluation status.'
+    }
+  } finally {
+    if (!background) reviewCorpusCaptureEvaluationLoading.value = false
+  }
+}
+
 const acknowledgeReviewCorpusSafeguards = async () => {
   if (!reviewCorpusControl.value || !reviewCorpusAcknowledged.value) return
 
@@ -1422,7 +1509,7 @@ const acknowledgeReviewCorpusSafeguards = async () => {
 
     reviewCorpusControl.value = control
     reviewCorpusAcknowledged.value = false
-    reviewCorpusActionStatus.value = 'Automatic future capture is enabled. Historic record access remains disabled.'
+    reviewCorpusActionStatus.value = 'The custom retention limit was saved. Historic record access remains disabled.'
     const auditResponse = await api.getPolicyCandidateCorrectionReviewCorpusAuditEvents()
     const auditEvents = normalizePolicyCandidateCorrectionRepresentativeReviewCorpusAuditEvents(auditResponse)
     if (!auditEvents) {
@@ -1430,6 +1517,7 @@ const acknowledgeReviewCorpusSafeguards = async () => {
     }
     reviewCorpusAuditEvents.value = auditEvents
     await Promise.all([
+      loadReviewCorpusCaptureEvaluation(),
       loadReviewProjection(),
       loadReviewEvaluationReport(),
     ])

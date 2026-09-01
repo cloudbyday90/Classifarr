@@ -10,8 +10,8 @@
 
 import { randomBytes } from 'node:crypto';
 import {
-  normalizePolicyCandidateCorrectionRepresentativeReviewCorpusControlConfiguration,
-} from './policyCandidateCorrectionRepresentativeReviewCorpusControlContract.mjs';
+  getPolicyCandidateCorrectionRepresentativeReviewCorpusAutomaticCaptureConfiguration,
+} from './policyCandidateCorrectionRepresentativeReviewCorpusAutomaticCaptureConfiguration.mjs';
 import {
   lockPolicyCandidateCorrectionRepresentativeReviewCorpusControl,
 } from './policyCandidateCorrectionRepresentativeReviewCorpusControlPersistence.mjs';
@@ -76,14 +76,8 @@ export function createPolicyCandidateCorrectionRepresentativeReviewCorpusCapture
     }
 
     const controlRow = await persistence.lockControl({ client });
-    const configuration = controlRow
-      ? normalizePolicyCandidateCorrectionRepresentativeReviewCorpusControlConfiguration(controlRow)
-      : null;
-    if (!configuration) {
-      return Object.freeze({
-        statusId: POLICY_CANDIDATE_CORRECTION_REPRESENTATIVE_REVIEW_CORPUS_CAPTURE_STATUS_IDS.CONTROL_NOT_ACKNOWLEDGED,
-      });
-    }
+    const configuration =
+      getPolicyCandidateCorrectionRepresentativeReviewCorpusAutomaticCaptureConfiguration(controlRow);
 
     const capturedAt = normalizeNow(now);
     const capture = {

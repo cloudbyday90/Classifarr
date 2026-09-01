@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-01T19:35:40.652Z
--- Latest Migration: 20260901_090000_add_policy_candidate_correction_review_corpus_capture.sql
+-- Generated: 2026-09-01T20:08:40.039Z
+-- Latest Migration: 20260901_100000_add_policy_candidate_correction_review_corpus_capture_evaluation_index.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -4342,7 +4342,7 @@ CREATE TABLE public.policy_candidate_correction_review_corpus_capture_audit_even
     capture_recorded_at timestamp with time zone CONSTRAINT policy_candidate_correction_review_capture_recorded_at_not_null NOT NULL,
     configuration_revision character(64) CONSTRAINT policy_candidate_correction_re_configuration_revision_not_null5 NOT NULL,
     occurred_at timestamp with time zone DEFAULT now() CONSTRAINT policy_candidate_correction_review_corpus_occurred_at_not_null1 NOT NULL,
-    CONSTRAINT pccrc_audit_action_ck CHECK (((action_id)::text = ANY ((ARRAY['capture_recorded'::character varying, 'capture_expired'::character varying])::text[]))),
+    CONSTRAINT pccrc_audit_action_ck CHECK (((action_id)::text = ANY (ARRAY[('capture_recorded'::character varying)::text, ('capture_expired'::character varying)::text]))),
     CONSTRAINT pccrc_audit_actor_ck CHECK (((actor_id IS NULL) OR (actor_id > 0))),
     CONSTRAINT pccrc_audit_capture_ck CHECK ((capture_id ~ '^[a-f0-9]{64}$'::text)),
     CONSTRAINT pccrc_audit_expiry_actor_ck CHECK (((((action_id)::text = 'capture_expired'::text) AND (actor_id IS NULL)) OR (((action_id)::text = 'capture_recorded'::text) AND (actor_id IS NOT NULL)))),
@@ -4389,10 +4389,10 @@ CREATE TABLE public.policy_candidate_correction_review_corpus_captures (
     CONSTRAINT pccrc_cap_evidence_ck CHECK (((jsonb_typeof(evidence_source_states) = 'array'::text) AND (jsonb_array_length(evidence_source_states) = 5))),
     CONSTRAINT pccrc_cap_expiry_ck CHECK ((captured_at < expires_at)),
     CONSTRAINT pccrc_cap_id_ck CHECK ((capture_id ~ '^[a-f0-9]{64}$'::text)),
-    CONSTRAINT pccrc_cap_margin_ck CHECK (((score_margin_band_id)::text = ANY ((ARRAY['0_to_4'::character varying, '5_to_14'::character varying, '15_to_29'::character varying, '30_or_more'::character varying])::text[]))),
+    CONSTRAINT pccrc_cap_margin_ck CHECK (((score_margin_band_id)::text = ANY (ARRAY[('0_to_4'::character varying)::text, ('5_to_14'::character varying)::text, ('15_to_29'::character varying)::text, ('30_or_more'::character varying)::text]))),
     CONSTRAINT pccrc_cap_purpose_ck CHECK (((purpose_id)::text = 'representative_historical_correction_review'::text)),
     CONSTRAINT pccrc_cap_rev_ck CHECK ((configuration_revision ~ '^[a-f0-9]{64}$'::text)),
-    CONSTRAINT pccrc_cap_selection_ck CHECK (((selection_status_id)::text = ANY ((ARRAY['confirmed_candidate'::character varying, 'changed_to_candidate'::character varying, 'changed_outside_candidates'::character varying, 'routed_not_applicable'::character varying])::text[]))),
+    CONSTRAINT pccrc_cap_selection_ck CHECK (((selection_status_id)::text = ANY (ARRAY[('confirmed_candidate'::character varying)::text, ('changed_to_candidate'::character varying)::text, ('changed_outside_candidates'::character varying)::text, ('routed_not_applicable'::character varying)::text]))),
     CONSTRAINT pccrc_cap_ver_ck CHECK ((capture_version = 1))
 );
 
@@ -10507,6 +10507,13 @@ CREATE INDEX idx_patterns_type_status ON public.discovered_patterns USING btree 
 
 
 --
+-- Name: idx_pccrc_capture_evaluation_active_revision; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_pccrc_capture_evaluation_active_revision ON public.policy_candidate_correction_review_corpus_captures USING btree (configuration_revision, expires_at, score_margin_band_id, selection_status_id);
+
+
+--
 -- Name: idx_policy_authoring_proposals_actor_created; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -14654,6 +14661,7 @@ FROM unnest(ARRAY[
     '20260831_170000_add_policy_change_review_history_summary.sql',
     '20260831_170100_rename_policy_change_review_history_tables.sql',
     '20260831_235000_add_policy_candidate_adjudication_method.sql',
-    '20260901_090000_add_policy_candidate_correction_review_corpus_capture.sql'
+    '20260901_090000_add_policy_candidate_correction_review_corpus_capture.sql',
+    '20260901_100000_add_policy_candidate_correction_review_corpus_capture_evaluation_index.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

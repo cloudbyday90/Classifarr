@@ -123,16 +123,22 @@ describe('representative review-corpus capture service', () => {
     expect(persistence.insertCapture).not.toHaveBeenCalled();
   });
 
-  test('does not persist future rows until safeguards are acknowledged', async () => {
+  test('captures future rows with the safe default before an optional retention choice is acknowledged', async () => {
     const { service, persistence } = createHarness({ control: null });
 
     await expect(service.capture({
       client: { query: jest.fn() },
       actorId: 9,
       outcomeAttribution: attribution(),
-    })).resolves.toEqual({ statusId: 'control_not_acknowledged' });
+      now: '2026-09-01T12:00:00.000Z',
+    })).resolves.toEqual({ statusId: 'captured' });
 
-    expect(persistence.insertCapture).not.toHaveBeenCalled();
-    expect(persistence.insertAuditEvent).not.toHaveBeenCalled();
+    expect(persistence.insertCapture).toHaveBeenCalledWith(expect.objectContaining({
+      capture: expect.objectContaining({
+        configurationRevision: REVISION,
+        expiresAt: '2026-10-01T12:00:00.000Z',
+      }),
+    }));
+    expect(persistence.insertAuditEvent).toHaveBeenCalled();
   });
 });

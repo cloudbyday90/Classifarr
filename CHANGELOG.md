@@ -11,11 +11,20 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
-- **Automatic redacted reviewed-corpus capture** — After an administrator
-  enables the existing safeguards, eligible authenticated operator confirmations
-  and corrections now create a future-only, time-limited evaluation row with
-  only fixed outcome/evidence categories. The data is automatically expired,
-  audited, and has no policy, AI, RAG, learning, or routing authority.
+- **Automatic future-corpus evaluation** — Security Settings now shows one
+  compact, auto-refreshing aggregate status for the redacted future operator
+  corpus. It measures per-score-band baseline coverage for a later
+  human-approved AI/RAG evaluation without exposing rows or affecting policy,
+  AI, RAG, learning, retries, or routing.
+
+- **Automatic redacted reviewed-corpus capture** — Eligible authenticated
+  operator confirmations and corrections now create a future-only,
+  time-limited evaluation row with only fixed outcome/evidence categories from
+  a safe 30-day default. The optional acknowledgement selects a different
+  bounded retention period and enables the separate historical-snapshot
+  workflow; it is not required for capture or normal Classifarr operation.
+  The data is automatically expired, audited, and has no policy, AI, RAG,
+  learning, or routing authority.
 
 - Added an offline-only semantic counter-evidence readiness gate that measures
   corpus coverage, precision, recall, abstention, and false positives before
