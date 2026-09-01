@@ -182,6 +182,12 @@ PostgreSQL types when they also appear in control expressions. This prevents a
 telemetry-only type-inference failure from being logged as an AI failure; see
 [AI Provider Capability Metrics Persistence Design](ai-provider-capability-metrics-persistence-design.md).
 
+Administrators can also inspect a fixed 24-hour aggregate of capability-metric
+persistence health inside AI Settings. It is a read-only, rate-limited,
+no-store status signal that returns no provider/model dimension or raw log
+data and cannot influence provider authority; see [AI Provider Capability
+Metrics Health Signal Design](ai-provider-capability-metrics-health-signal-design.md).
+
 When repair runs, the initial provider response and the local repair execution
 are recorded separately. A primary parse failure cannot be relabeled as a
 successful strict response merely because a later local repair parsed.

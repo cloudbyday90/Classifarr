@@ -666,6 +666,13 @@
         :last-updated-at="aiReadinessLastUpdatedAt"
         :auto-refresh-enabled="aiReadinessAutoRefreshEnabled"
       />
+      <AiProviderCapabilityMetricsHealthSummary
+        class="mt-4"
+        :report="capabilityMetricsHealth"
+        :loading="loadingCapabilityMetricsHealth"
+        :last-updated-at="capabilityMetricsHealthLastUpdatedAt"
+        :auto-refresh-enabled="aiReadinessAutoRefreshEnabled"
+      />
       <RouteSafetyMaintenanceHandoff
         :report="routeSafetyMaintenanceHandoff"
       />
@@ -694,6 +701,7 @@ import Toggle from '@/components/common/Toggle.vue'
 import Spinner from '@/components/common/Spinner.vue'
 import PasswordInput from '@/components/common/PasswordInput.vue'
 import AiReadinessController from '@/components/settings/AiReadinessController.vue'
+import AiProviderCapabilityMetricsHealthSummary from '@/components/settings/AiProviderCapabilityMetricsHealthSummary.vue'
 import RouteSafetyMaintenanceHandoff from '@/components/settings/RouteSafetyMaintenanceHandoff.vue'
 import RouteSafetyReadinessSummary from '@/components/settings/RouteSafetyReadinessSummary.vue'
 import VerificationCapabilityChangeReceiptList from '@/components/settings/VerificationCapabilityChangeReceiptList.vue'
@@ -721,6 +729,7 @@ const loadingOllamaModels = ref(false)
 const loadingOllamaPreflight = ref(false)
 const loadingVerificationCapability = ref(false)
 const loadingRouteSafetyReadiness = ref(false)
+const loadingCapabilityMetricsHealth = ref(false)
 const loadingRouteSafetyMaintenanceHandoff = ref(false)
 const testingVerificationCapability = ref(false)
 const loadingVerificationCapabilityChangeReceipts = ref(false)
@@ -736,6 +745,8 @@ const ollamaPreflightState = ref({ ai: null, embedding: null })
 const usageStats = ref(null)
 const verificationCapability = ref(null)
 const routeSafetyReadiness = ref(null)
+const capabilityMetricsHealth = ref(null)
+const capabilityMetricsHealthLastUpdatedAt = ref(null)
 const routeSafetyMaintenanceHandoff = ref(null)
 const verificationCapabilityChangeReceipts = ref(null)
 const ollamaVerificationRuntimeMismatchSummary = ref(null)
@@ -748,6 +759,7 @@ const aiReadinessAutoRefreshEnabled = ref(true)
 const aiReadinessDiagnosticsExpanded = ref(false)
 let verificationCapabilityRequestId = 0
 let routeSafetyReadinessRequestId = 0
+let capabilityMetricsHealthRequestId = 0
 let routeSafetyMaintenanceHandoffRequestId = 0
 let verificationCapabilityChangeReceiptsRequestId = 0
 let ollamaVerificationRuntimeMismatchSummaryRequestId = 0
@@ -914,6 +926,31 @@ const loadRouteSafetyReadiness = async () => {
   }
 }
 
+// This server-owned aggregate is deliberately paired with AI readiness
+// refreshes. It reads only fixed counts and timestamps and cannot test a
+// provider, mutate telemetry, or influence provider/policy/routing authority.
+const loadCapabilityMetricsHealth = async () => {
+  const requestId = ++capabilityMetricsHealthRequestId
+  loadingCapabilityMetricsHealth.value = true
+  try {
+    const report = await api.getAiProviderCapabilityMetricsHealth()
+    if (requestId === capabilityMetricsHealthRequestId) {
+      capabilityMetricsHealth.value = report
+      capabilityMetricsHealthLastUpdatedAt.value = new Date().toISOString()
+    }
+    return report
+  } catch (_error) {
+    if (requestId === capabilityMetricsHealthRequestId) {
+      capabilityMetricsHealth.value = null
+    }
+    return null
+  } finally {
+    if (requestId === capabilityMetricsHealthRequestId) {
+      loadingCapabilityMetricsHealth.value = false
+    }
+  }
+}
+
 // The maintenance handoff is a separate aggregate-only read. It deliberately
 // becomes eligible only after route-safety observations exist, and it cannot
 // select a policy, test a provider, mutate configuration, retry, or route.
@@ -939,16 +976,17 @@ const loadRouteSafetyMaintenanceHandoff = async () => {
 }
 
 const loadAiReadiness = async () => {
-  const [capability, routeSafety] = await Promise.all([
+  const [capability, routeSafety, capabilityMetrics] = await Promise.all([
     loadVerificationCapability(),
     loadRouteSafetyReadiness(),
+    loadCapabilityMetricsHealth(),
   ])
   const routeSafetyObservationCount = Number(routeSafety?.observationCount)
   const maintenanceHandoff = Number.isSafeInteger(routeSafetyObservationCount) && routeSafetyObservationCount > 0
     ? await loadRouteSafetyMaintenanceHandoff()
     : (routeSafetyMaintenanceHandoff.value = null)
 
-  return capability || routeSafety || maintenanceHandoff
+  return capability || routeSafety || capabilityMetrics || maintenanceHandoff
 }
 
 const {

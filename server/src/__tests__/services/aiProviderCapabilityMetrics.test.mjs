@@ -96,7 +96,10 @@ describe('aiProviderCapabilityMetrics', () => {
     expect(delta.structuredParseSuccessCount).toBe(1);
     expect(logger.warn).toHaveBeenCalledWith(
       'AI provider capability metric write failed',
-      expect.objectContaining({ providerId: 'gemini' }),
+      expect.objectContaining({
+        providerId: 'gemini',
+        reasonCode: 'ai_provider_capability_metrics_persistence_failed',
+      }),
     );
 
     const writableDatabase = { query: jest.fn().mockResolvedValue({}) };

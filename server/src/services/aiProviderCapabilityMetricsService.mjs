@@ -6,11 +6,16 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { buildAiProviderCapabilityMetricDelta } from './aiProviderCapabilityMetrics.mjs';
+import {
+  AI_PROVIDER_CAPABILITY_METRICS_LOG_MODULE,
+  AI_PROVIDER_CAPABILITY_METRICS_WRITE_FAILURE_MESSAGE,
+  AI_PROVIDER_CAPABILITY_METRICS_WRITE_FAILURE_REASON_CODE,
+} from './aiProviderCapabilityMetricsLogging.mjs';
 import { incrementAiProviderCapabilityMetrics } from './aiProviderCapabilityMetricsRepository.mjs';
 
 export function createAiProviderCapabilityMetricsService({
   database = db,
-  logger = createLogger('AIProviderCapabilityMetrics'),
+  logger = createLogger(AI_PROVIDER_CAPABILITY_METRICS_LOG_MODULE),
   buildMetricDelta = buildAiProviderCapabilityMetricDelta,
   incrementMetrics = incrementAiProviderCapabilityMetrics,
 } = {}) {
@@ -21,10 +26,11 @@ export function createAiProviderCapabilityMetricsService({
       try {
         await incrementMetrics(database, delta);
       } catch (error) {
-        logger.warn('AI provider capability metric write failed', {
+        logger.warn(AI_PROVIDER_CAPABILITY_METRICS_WRITE_FAILURE_MESSAGE, {
           providerId: delta.providerId,
           model: delta.model,
           authorityMode: delta.authorityMode,
+          reasonCode: AI_PROVIDER_CAPABILITY_METRICS_WRITE_FAILURE_REASON_CODE,
           error: error.message,
         });
       }

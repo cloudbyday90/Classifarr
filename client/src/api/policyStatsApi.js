@@ -74,6 +74,10 @@ export function getRouteSafetyReadiness() {
   return getDataRequest('/stats/route-safety-readiness')
 }
 
+export function getAiProviderCapabilityMetricsHealth() {
+  return getDataRequest('/stats/ai-provider-capability-metrics-health')
+}
+
 export function getRouteSafetyMaintenanceHandoff() {
   return getDataRequest('/stats/route-safety-maintenance-handoff')
 }
@@ -93,6 +97,7 @@ const policyStatsApi = {
   getOllamaVerificationRuntimeMismatchSummary,
   getOllamaVerificationCapabilityOutcomeHistory,
   getRouteSafetyReadiness,
+  getAiProviderCapabilityMetricsHealth,
   getRouteSafetyMaintenanceHandoff,
 }
 

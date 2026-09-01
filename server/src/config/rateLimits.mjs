@@ -108,6 +108,15 @@ export const routeSafetyReadinessLimiterConfig = {
   legacyHeaders: false,
 };
 
+/** AI capability-metrics health aggregate reads (per IP, per 15 minutes). */
+export const aiProviderCapabilityMetricsHealthLimiterConfig = {
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: 'Too many capability-metrics health requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+};
+
 /** Route-safety aggregate policy-maintenance handoff reads (per IP, per 15 minutes). */
 export const routeSafetyMaintenanceHandoffLimiterConfig = {
   windowMs: 15 * 60 * 1000,
