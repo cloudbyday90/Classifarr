@@ -6,14 +6,11 @@
 import { readFile } from 'node:fs/promises';
 
 import {
-  evaluatePolicyCandidateSemanticCounterEvidenceReadiness,
-} from '../server/src/services/policyCandidateSemanticCounterEvidenceReadiness.mjs';
+  evaluatePolicyCandidateSemanticCounterEvidenceStudy,
+} from '../server/src/services/policyCandidateSemanticCounterEvidenceStudy.mjs';
 import {
-  evaluatePolicyCandidateSemanticSnapshotOfflineFixtureDocument,
-} from '../server/src/services/policyCandidateSemanticSnapshotOfflineEvaluation.mjs';
-import {
-  loadProjectJsonFile,
-} from './generate-policy-candidate-semantic-reference-set-artifact.mjs';
+  loadPolicyCandidateSemanticCounterEvidenceStudyInputs,
+} from './lib/policy-candidate-semantic-counter-evidence-study-inputs.mjs';
 
 const FIXTURE_DOCUMENT_URL = new URL(
   './fixtures/policy-candidate-evidence-offline-evaluation.fixtures.json',
@@ -32,31 +29,21 @@ async function loadJsonDocument(url) {
   return JSON.parse(await readFile(url, 'utf8'));
 }
 
-async function loadReferenceSetDocument(argv) {
-  if (argv.length === 0) return undefined;
-  if (argv.length !== 2 || argv[0] !== '--reference-set-file') {
-    throw new Error('Unsupported reference-set input.');
-  }
-  return loadProjectJsonFile(argv[1]);
-}
-
-async function main() {
-  const [fixtureDocument, snapshotDocument, manifest, referenceSetDocument] = await Promise.all([
+async function loadCheckedInStudyDocuments() {
+  const [fixtureDocument, snapshotDocument, manifest] = await Promise.all([
     loadJsonDocument(FIXTURE_DOCUMENT_URL),
     loadJsonDocument(SNAPSHOT_DOCUMENT_URL),
     loadJsonDocument(MANIFEST_URL),
-    loadReferenceSetDocument(process.argv.slice(2)),
   ]);
-  const snapshotReport = evaluatePolicyCandidateSemanticSnapshotOfflineFixtureDocument({
-    fixtureDocument,
-    manifest,
-    snapshotDocument,
+  return Object.freeze({ fixtureDocument, manifest, snapshotDocument });
+}
+
+async function main() {
+  const studyInputs = await loadPolicyCandidateSemanticCounterEvidenceStudyInputs({
+    argv: process.argv.slice(2),
+    loadCheckedInStudyDocuments,
   });
-  const report = evaluatePolicyCandidateSemanticCounterEvidenceReadiness({
-    fixtureDocument,
-    referenceSetDocument,
-    snapshotReport,
-  });
+  const report = evaluatePolicyCandidateSemanticCounterEvidenceStudy(studyInputs);
 
   process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
   if (report.status.id === 'invalid_evaluation') process.exitCode = 1;

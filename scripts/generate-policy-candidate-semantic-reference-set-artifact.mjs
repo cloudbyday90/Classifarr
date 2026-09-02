@@ -3,15 +3,17 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
-import { readFile, realpath } from 'node:fs/promises';
-import { extname, isAbsolute, relative, resolve } from 'node:path';
+import { resolve } from 'node:path';
 
 import {
   buildPolicyCandidateSemanticReferenceSetArtifact,
   POLICY_CANDIDATE_SEMANTIC_REFERENCE_SET_ARTIFACT_STATUS_IDS,
 } from '../server/src/services/policyCandidateSemanticReferenceSetArtifact.mjs';
+import {
+  loadProjectJsonFile as loadProjectJsonFileInternal,
+} from './lib/project-json-input.mjs';
 
-const PROJECT_ROOT = resolve(import.meta.dirname, '..');
+export { loadProjectJsonFile } from './lib/project-json-input.mjs';
 
 function parseArguments(argv) {
   const values = {};
@@ -38,39 +40,11 @@ function parseArguments(argv) {
   });
 }
 
-async function resolveProjectJsonFile(value) {
-  if (typeof value !== 'string' || isAbsolute(value) || extname(value).toLowerCase() !== '.json') {
-    throw new Error('Input must be a project-relative JSON file.');
-  }
-  const requestedPath = resolve(PROJECT_ROOT, value);
-  const requestedProjectRelativePath = relative(PROJECT_ROOT, requestedPath);
-  if (!requestedProjectRelativePath || requestedProjectRelativePath.startsWith('..') ||
-      isAbsolute(requestedProjectRelativePath)) {
-    throw new Error('Input must remain inside the project.');
-  }
-
-  const [realProjectRoot, realInputPath] = await Promise.all([
-    realpath(PROJECT_ROOT),
-    realpath(requestedPath),
-  ]);
-  const resolvedProjectRelativePath = relative(realProjectRoot, realInputPath);
-  if (!resolvedProjectRelativePath || resolvedProjectRelativePath.startsWith('..') ||
-      isAbsolute(resolvedProjectRelativePath)) {
-    throw new Error('Input must resolve inside the project.');
-  }
-  return realInputPath;
-}
-
-export async function loadProjectJsonFile(value) {
-  const path = await resolveProjectJsonFile(value);
-  return JSON.parse(await readFile(path, 'utf8'));
-}
-
 export async function generatePolicyCandidateSemanticReferenceSetArtifact(argv = process.argv.slice(2)) {
   const { fixtureFile, referenceSetFile } = parseArguments(argv);
   const [fixtureDocument, referenceSetDocument] = await Promise.all([
-    loadProjectJsonFile(fixtureFile),
-    loadProjectJsonFile(referenceSetFile),
+    loadProjectJsonFileInternal(fixtureFile),
+    loadProjectJsonFileInternal(referenceSetFile),
   ]);
   return buildPolicyCandidateSemanticReferenceSetArtifact({ fixtureDocument, referenceSetDocument });
 }

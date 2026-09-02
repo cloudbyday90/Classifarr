@@ -11,6 +11,13 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Complete redacted semantic-study bundles** — The offline semantic readiness
+  command can now safely evaluate a complete 24–32 case, fingerprint-bound
+  fixture/snapshot/manifest/independent-label bundle from project-contained
+  JSON files. It rejects partial or escaping inputs, emits aggregate-only
+  evidence, and remains unable to call AI/RAG, retain study data, learn, edit
+  policy, retry, or route media.
+
 - **Independent-label evaluation oracle** — Offline semantic readiness now
   measures the separately bound, independently reviewed reference decisions
   rather than requiring them to repeat a synthetic fixture baseline. Exact

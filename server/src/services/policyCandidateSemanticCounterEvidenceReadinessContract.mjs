@@ -50,5 +50,5 @@ export const POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_AUTHORITY = Ob
   }),
   operatorWorkflowAdmission: false,
   scope: 'offline_evaluation_only',
-  snapshotAccess: 'committed_read_only',
+  snapshotAccess: 'validated_fixed_input_read_only',
 });

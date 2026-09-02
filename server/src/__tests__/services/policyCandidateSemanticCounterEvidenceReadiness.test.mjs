@@ -75,7 +75,7 @@ function buildTrustedSnapshotReport(fixtureDocument) {
       },
       operatorWorkflowAdmission: false,
       scope: 'offline_evaluation_only',
-      snapshotAccess: 'committed_read_only',
+      snapshotAccess: 'validated_fixed_input_read_only',
     },
     evaluation: {
       results: fixtureDocument.map((fixture) => ({

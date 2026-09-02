@@ -40,7 +40,7 @@ describe('policyCandidateSemanticSnapshotOfflineEvaluation', () => {
     expect(report.authority).toEqual(expect.objectContaining({
       scope: 'offline_evaluation_only',
       operatorWorkflowAdmission: false,
-      snapshotAccess: 'committed_read_only',
+      snapshotAccess: 'validated_fixed_input_read_only',
     }));
     expect(report.evaluation.metrics).toEqual(expect.arrayContaining([
       expect.objectContaining({

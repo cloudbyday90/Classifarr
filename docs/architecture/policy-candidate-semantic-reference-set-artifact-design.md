@@ -91,13 +91,17 @@ provider call, and emits the content-free artifact to standard output. Raw
 study material must stay out of version control and should be handled under a
 separate retention and access procedure.
 
-To bind a real label document into the existing readiness report, invoke its
-fixed-path CLI directly with the same project-relative label file:
+To evaluate the checked-in baseline with a separately prepared label document,
+invoke the readiness command with that project-relative label file:
 
 ```text
 node scripts/run-policy-candidate-semantic-counter-evidence-readiness-evaluation.mjs \
   --reference-set-file path/to/independent-reference-labels.json
 ```
+
+For a real 24–32 case study, do **not** combine external fixtures with the
+checked-in snapshot. Supply the complete fingerprint-bound bundle described in
+[Independent Reference Study Bundle CLI Design](independent-reference-study-bundle-cli-design.md).
 
 ## Security and Privacy Boundaries
 
@@ -114,7 +118,8 @@ node scripts/run-policy-candidate-semantic-counter-evidence-readiness-evaluation
   or RAG, learn from an item, retry a classification, or route media.
 - The CLI accepts only relative JSON files below the checkout, resolves both
   the project root and selected file before reading, rejects a link whose real
-  target leaves the checkout, and suppresses supplied paths in error output.
+  target leaves the checkout, accepts regular files of at most 128 KiB, and
+  suppresses supplied paths in error output.
 - The output intentionally omits input paths, title, description, library,
   media ID, policy, prompt, provider, model, response, vectors, reviewer
   identity, fixture ID, and per-case labels.

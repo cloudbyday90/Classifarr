@@ -24,7 +24,7 @@ function buildAuthority() {
       retry: false,
       routing: false,
     }),
-    snapshotAccess: 'committed_read_only',
+    snapshotAccess: 'validated_fixed_input_read_only',
   });
 }
 
