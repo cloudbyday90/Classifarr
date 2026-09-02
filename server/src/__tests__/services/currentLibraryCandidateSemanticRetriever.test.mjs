@@ -97,6 +97,40 @@ describe('currentLibraryCandidateSemanticRetriever', () => {
     expect(withTransaction).not.toHaveBeenCalled();
   });
 
+  test('uses an authenticated outcome only to calibrate an already-relevant advisory match', async () => {
+    const transaction = createTransaction([
+      { library_id: 7, title: 'Unconfirmed close item', year: 2025, relevance: 83 },
+      { library_id: 7, title: 'Confirmed close item', year: 2024, relevance: 80, has_authorized_outcome: true },
+      { library_id: 9, title: 'Confirmed weak item', year: 2023, relevance: 49, has_authorized_outcome: true },
+    ]);
+    const service = createCurrentLibraryCandidateSemanticRetriever({
+      embed: async () => ({ embedding: [0.25, -0.5] }),
+      formatForEmbedding: () => 'Title: Incoming item',
+      isEnabled: async () => true,
+      withTransaction: transaction.withTransaction,
+    });
+
+    const result = await service.retrieve({ contract, metadata: { title: 'Incoming item' } });
+
+    expect(result.candidates).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        libraryId: 7,
+        topRelevance: 86,
+        outcomeCalibratedMatchCount: 1,
+        items: [
+          expect.objectContaining({ title: 'Confirmed close item', relevance: 86, outcomeCalibrated: true }),
+          expect.objectContaining({ title: 'Unconfirmed close item', relevance: 83, outcomeCalibrated: false }),
+        ],
+      }),
+      expect.objectContaining({
+        libraryId: 9,
+        topRelevance: 49,
+        outcomeCalibratedMatchCount: 0,
+        items: [expect.objectContaining({ title: 'Confirmed weak item', relevance: 49, outcomeCalibrated: false })],
+      }),
+    ]));
+  });
+
   test('fails closed when embedding or vector retrieval is unavailable', async () => {
     const logger = { warn: jest.fn() };
     const service = createCurrentLibraryCandidateSemanticRetriever({

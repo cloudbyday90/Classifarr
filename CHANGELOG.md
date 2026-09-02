@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Authenticated outcome-weighted semantic retrieval** — Candidate-scoped RAG
+  now gives a small, capped advisory boost only to already-relevant current
+  library matches backed by an append-only authenticated final-outcome receipt.
+  It does not change policy scores, thresholds, policy editing, or routing.
+
 - **Automatic exact-item outcome learning** — An authenticated operator's
   successful runtime confirmation or destination change now records eligible
   stable item-to-library memory automatically through the existing locked,

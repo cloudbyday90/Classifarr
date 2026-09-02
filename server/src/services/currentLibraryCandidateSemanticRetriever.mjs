@@ -17,6 +17,9 @@ import {
   buildCurrentLibraryCandidateSemanticRetrieverQuery,
 } from './currentLibraryCandidateSemanticRetrieverQuery.mjs';
 import {
+  calibrateCurrentLibraryCandidateSemanticOutcome,
+} from './currentLibraryCandidateSemanticOutcomeCalibration.mjs';
+import {
   applyPgvectorRecallSettings,
   resolvePgvectorRecallTuning,
 } from './pgvectorRecallTuning.mjs';
@@ -62,11 +65,15 @@ function boundedYear(value) {
 }
 
 function semanticItem(row) {
-  const relevance = Number(row?.relevance);
+  const calibration = calibrateCurrentLibraryCandidateSemanticOutcome({
+    relevance: row?.relevance,
+    hasAuthorizedOutcome: row?.has_authorized_outcome,
+  });
   return Object.freeze({
     title: boundedTitle(row?.title),
     year: boundedYear(row?.year),
-    relevance: Number.isFinite(relevance) ? Math.max(0, Math.min(100, Math.round(relevance))) : 0,
+    relevance: calibration.relevance,
+    outcomeCalibrated: calibration.outcomeCalibrated,
   });
 }
 
@@ -89,11 +96,17 @@ function evidenceForRequest(request, statusId, rows = []) {
     version: CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_VERSION,
     statusId,
     candidates: Object.freeze(request.candidates.map((candidate) => {
-      const items = Object.freeze(itemsByLibraryId.get(candidate.libraryId));
+      const items = Object.freeze([...itemsByLibraryId.get(candidate.libraryId)]
+        .sort((left, right) => (
+          right.relevance - left.relevance ||
+          Number(right.outcomeCalibrated) - Number(left.outcomeCalibrated) ||
+          String(left.title).localeCompare(String(right.title))
+        )));
       return Object.freeze({
         libraryId: candidate.libraryId,
         matchCount: items.length,
         topRelevance: items[0]?.relevance ?? null,
+        outcomeCalibratedMatchCount: items.filter((item) => item.outcomeCalibrated).length,
         items,
       });
     })),

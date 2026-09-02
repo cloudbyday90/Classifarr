@@ -6,8 +6,9 @@
 /**
  * The stable TMDb join proves that every returned embedding still represents a
  * synchronized current-library item. The query returns titles and bounded
- * distances only; descriptions, raw metadata, embeddings, and identifiers do
- * not cross the retrieval boundary.
+ * distances only. A receipt can mark an already-close result as eligible for
+ * a bounded advisory calibration, but descriptions, raw metadata, embeddings,
+ * receipt fields, and identifiers do not cross the retrieval boundary.
  */
 export const CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_SQL = `
   WITH nearest_embeddings AS MATERIALIZED (
@@ -16,7 +17,15 @@ export const CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_SQL = `
       item.id AS media_item_id,
       item.title,
       item.year,
-      embedding.embedding <=> $3::vector AS distance
+      embedding.embedding <=> $3::vector AS distance,
+      EXISTS (
+        SELECT 1
+        FROM policy_authorized_outcome_source_event_receipts AS receipt
+        WHERE receipt.classification_id = history.id
+          AND receipt.destination_library_id = item.library_id
+          AND receipt.final_outcome_status_id IN ('resolved', 'routed')
+          AND receipt.persistence_status_id = 'ready'
+      ) AS has_authorized_outcome
     FROM classification_embeddings AS embedding
     JOIN classification_history AS history
       ON history.id = embedding.classification_id
@@ -36,7 +45,8 @@ export const CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_SQL = `
       media_item_id,
       title,
       year,
-      distance
+      distance,
+      has_authorized_outcome
     FROM nearest_embeddings
     ORDER BY library_id ASC, media_item_id ASC, distance ASC
   ), ranked_items AS (
@@ -45,6 +55,7 @@ export const CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_SQL = `
       title,
       year,
       distance,
+      has_authorized_outcome,
       row_number() OVER (
         PARTITION BY library_id
         ORDER BY distance ASC, media_item_id ASC
@@ -55,7 +66,8 @@ export const CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_SQL = `
     library_id,
     title,
     year,
-    LEAST(100, GREATEST(0, ROUND((1 - distance) * 100)::integer)) AS relevance
+    LEAST(100, GREATEST(0, ROUND((1 - distance) * 100)::integer)) AS relevance,
+    has_authorized_outcome
   FROM ranked_items
   WHERE item_rank <= $5::integer
   ORDER BY library_id ASC, item_rank ASC

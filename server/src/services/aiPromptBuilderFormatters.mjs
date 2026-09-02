@@ -243,6 +243,9 @@ export function formatCandidateAdjudication(data) {
         if (candidate.currentLibrary?.semantic?.statusId === 'available') {
             const semantic = candidate.currentLibrary.semantic;
             lines.push(`   Current-library semantic matches: ${semantic.matchCount || 0}${semantic.topRelevance !== null && semantic.topRelevance !== undefined ? ` (strongest similarity ${semantic.topRelevance}%)` : ''}`);
+            if (Number(semantic.outcomeCalibratedMatchCount) > 0) {
+                lines.push(`   Outcome-backed semantic matches: ${semantic.outcomeCalibratedMatchCount} (small advisory calibration only; policy and routing remain unchanged)`);
+            }
             if (Array.isArray(semantic.items) && semantic.items.length > 0) {
                 const items = semantic.items
                     .map((item) => item.year ? `${item.title} (${item.year})` : item.title)

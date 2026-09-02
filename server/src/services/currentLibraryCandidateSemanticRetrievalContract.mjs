@@ -9,7 +9,7 @@ import {
 } from './currentLibraryCandidateRetrievalContract.mjs';
 
 export const CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_VERSION =
-  'current_library.candidate_semantic_retrieval.v1';
+  'current_library.candidate_semantic_retrieval.v2';
 export const CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_MAXIMUM_ITEMS_PER_CANDIDATE =
   CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_MAXIMUM_ITEMS_PER_CANDIDATE;
 export const CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_SCAN_PER_CANDIDATE = 64;

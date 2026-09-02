@@ -93,6 +93,7 @@ function emptyCurrentLibraryEvidence() {
       statusId: CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_STATUS_IDS.NOT_APPLICABLE,
       matchCount: 0,
       topRelevance: null,
+      outcomeCalibratedMatchCount: 0,
       items: [],
     },
   };
@@ -140,6 +141,16 @@ function boundedSemanticRelevance(value) {
   return Number.isFinite(numericValue) ? Math.max(0, Math.min(100, Math.round(numericValue))) : null;
 }
 
+function boundedOutcomeCalibratedMatchCount(value) {
+  const numericValue = Number(value);
+  return Number.isInteger(numericValue)
+    ? Math.max(0, Math.min(
+      CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_MAXIMUM_ITEMS_PER_CANDIDATE,
+      numericValue,
+    ))
+    : 0;
+}
+
 function candidateCurrentLibrarySemanticEvidence(retrieval, libraryId) {
   const candidate = (Array.isArray(retrieval?.candidates) ? retrieval.candidates : [])
     .find((item) => Number(item?.libraryId) === libraryId);
@@ -151,11 +162,15 @@ function candidateCurrentLibrarySemanticEvidence(retrieval, libraryId) {
     statusId: currentLibrarySemanticStatusId(retrieval?.statusId),
     matchCount: boundedSemanticMatchCount(candidate.matchCount),
     topRelevance: boundedSemanticRelevance(candidate.topRelevance),
+    outcomeCalibratedMatchCount: boundedOutcomeCalibratedMatchCount(
+      candidate.outcomeCalibratedMatchCount,
+    ),
     items: Array.isArray(candidate.items)
       ? candidate.items.map((item) => ({
         title: boundedCurrentLibraryTitle(item?.title),
         year: Number.isInteger(item?.year) ? item.year : null,
         relevance: boundedSemanticRelevance(item?.relevance) ?? 0,
+        outcomeCalibrated: item?.outcomeCalibrated === true,
       })).filter((item) => item.title)
         .slice(0, CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_MAXIMUM_ITEMS_PER_CANDIDATE)
       : [],
@@ -201,6 +216,9 @@ function remoteCurrentLibraryEvidence(currentLibrary) {
       statusId: currentLibrarySemanticStatusId(currentLibrary?.semantic?.statusId),
       matchCount: boundedSemanticMatchCount(currentLibrary?.semantic?.matchCount),
       topRelevance: boundedSemanticRelevance(currentLibrary?.semantic?.topRelevance),
+      outcomeCalibratedMatchCount: boundedOutcomeCalibratedMatchCount(
+        currentLibrary?.semantic?.outcomeCalibratedMatchCount,
+      ),
     },
   };
 }
