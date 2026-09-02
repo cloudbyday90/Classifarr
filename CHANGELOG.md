@@ -11,6 +11,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Independent-label evaluation oracle** — Offline semantic readiness now
+  measures the separately bound, independently reviewed reference decisions
+  rather than requiring them to repeat a synthetic fixture baseline. Exact
+  fixture binding, content minimization, aggregate-only results, and the
+  existing no-routing/no-learning authority boundary remain in force.
+
 - **Outcome-calibrated semantic evaluation** — Candidate Retrieval Monitoring
   now automatically compares later operator alignment for outcome-calibrated
   versus otherwise comparable semantic current-library matches within the
@@ -96,6 +102,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
   change policy, AI, RAG, or routing authority.
 
 ### Fixed
+
+- **Production query-string parser advisory** — Raised the server's ESM
+  dependency override and lockfile resolution for `qs` to 6.16.0, eliminating
+  the published moderate denial-of-service advisories in the previous 6.15.2
+  resolution.
 
 - **Container heap-cap detection** — Ignore unbounded cgroup memory sentinels
   rather than passing an invalid, impractically large heap cap to Node.js at

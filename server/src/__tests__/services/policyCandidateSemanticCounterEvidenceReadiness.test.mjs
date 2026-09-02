@@ -189,6 +189,32 @@ describe('policyCandidateSemanticCounterEvidenceReadiness', () => {
     }));
   });
 
+  test('uses independent labels as the evaluation oracle instead of copied fixture labels', () => {
+    const fixtureDocument = [
+      ...Array.from({ length: 12 }, (_, index) => buildFixture(index, 'review')),
+      ...Array.from({ length: 12 }, (_, index) => buildFixture(index + 12, 'admit')),
+    ];
+    const referenceSetDocument = buildIndependentReferenceSetDocument(fixtureDocument);
+    for (const label of referenceSetDocument.labels) label.referenceDecisionId = 'admit';
+
+    const report = evaluatePolicyCandidateSemanticCounterEvidenceReadiness({
+      fixtureDocument,
+      referenceSetDocument,
+      snapshotReport: buildTrustedSnapshotReport(fixtureDocument),
+    });
+
+    expect(report.status.id).toBe(POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_STATUS_IDS.NOT_READY);
+    expect(report.baseline).toEqual(expect.objectContaining({
+      falsePositiveCount: 12,
+      referenceReviewCount: 0,
+    }));
+    expect(report.blockers).toEqual(expect.arrayContaining([
+      POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_BLOCKER_IDS.FALSE_POSITIVE_PRESENT,
+      POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_BLOCKER_IDS
+        .INSUFFICIENT_REFERENCE_REVIEW_COUNT,
+    ]));
+  });
+
   test('fails closed when the snapshot report is not bound to the reviewed fixture document', () => {
     const fixtureDocument = [buildFixture(1, 'review')];
     const snapshotReport = buildTrustedSnapshotReport(fixtureDocument);

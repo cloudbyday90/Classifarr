@@ -91,6 +91,23 @@ describe('policyCandidateSemanticReferenceSetArtifact', () => {
     });
   });
 
+  test('accepts an independently reviewed decision that differs from the synthetic fixture label', async () => {
+    const fixtureDocument = await loadFixtureDocument();
+    const referenceSetDocument = buildReferenceSetDocument(fixtureDocument);
+    referenceSetDocument.labels[0].referenceDecisionId = 'abstain';
+
+    const artifact = buildPolicyCandidateSemanticReferenceSetArtifact({
+      fixtureDocument,
+      referenceSetDocument,
+    });
+
+    expect(artifact.status).toEqual({
+      id: POLICY_CANDIDATE_SEMANTIC_REFERENCE_SET_ARTIFACT_STATUS_IDS.INDEPENDENTLY_LABELLED,
+      independentLabelsAvailable: true,
+    });
+    expect(JSON.stringify(artifact)).not.toContain('katrina-like-documentary-ambiguity');
+  });
+
   test('rejects extra raw-content fields and does not echo them in the artifact', async () => {
     const fixtureDocument = await loadFixtureDocument();
     const referenceSetDocument = buildReferenceSetDocument(fixtureDocument);

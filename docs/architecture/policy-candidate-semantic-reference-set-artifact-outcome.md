@@ -10,7 +10,9 @@ created by this change.
 - Added modular ESM contracts for a content-free semantic reference-set
   document and its derived artifact.
 - Bound a label document to the exact redacted fixture document with stable
-  SHA-256 content addresses and one-to-one decision matching.
+  SHA-256 content addresses and one-to-one fixture coverage. Independent
+  reviewer decisions may differ from the synthetic baseline and are the
+  reference values used by the offline readiness metrics.
 - Required an explicit fixed independent double-blind protocol before the
   existing semantic readiness evaluator can reach `ready_for_human_review`.
 - Made an absent or synthetic label source a valid `not_ready` result with an

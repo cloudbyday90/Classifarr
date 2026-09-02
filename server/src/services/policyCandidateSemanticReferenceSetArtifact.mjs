@@ -53,17 +53,14 @@ function buildBindingValidation({ fixtureDocument, fixtureDocumentFingerprint, r
 
   const fixtureById = new Map(fixtureDocument.map((fixture) => [fixture.id, fixture]));
   const labelsByFixtureId = new Map(referenceSetDocument.labels.map((label) => [label.fixtureId, label]));
-  const labelsMatchFixtures = referenceSetDocument.labels.length === fixtureDocument.length &&
-    fixtureDocument.every((fixture) => {
-      const label = labelsByFixtureId.get(fixture.id);
-      return label?.referenceDecisionId === fixture.reference.decisionId;
-    });
+  const labelsCoverFixtures = referenceSetDocument.labels.length === fixtureDocument.length &&
+    fixtureDocument.every((fixture) => labelsByFixtureId.has(fixture.id));
   const fingerprintMatches = referenceSetDocument.fixtureDocumentFingerprint === fixtureDocumentFingerprint;
   const fixtureIdsAreKnown = referenceSetDocument.labels.every((label) => fixtureById.has(label.fixtureId));
 
   return Object.freeze({
-    issueCount: Number(!fingerprintMatches) + Number(!fixtureIdsAreKnown) + Number(!labelsMatchFixtures),
-    ok: fingerprintMatches && fixtureIdsAreKnown && labelsMatchFixtures,
+    issueCount: Number(!fingerprintMatches) + Number(!fixtureIdsAreKnown) + Number(!labelsCoverFixtures),
+    ok: fingerprintMatches && fixtureIdsAreKnown && labelsCoverFixtures,
   });
 }
 

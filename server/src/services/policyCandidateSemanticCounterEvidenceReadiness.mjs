@@ -71,25 +71,43 @@ function hasValidSnapshotValidation(validation) {
   ));
 }
 
-function buildRows(fixtureDocument, snapshotReport) {
+function buildReferenceDecisions(fixtureDocument, referenceSetDocument, referenceSetArtifact) {
+  if (referenceSetArtifact.status.id ===
+      POLICY_CANDIDATE_SEMANTIC_REFERENCE_SET_ARTIFACT_STATUS_IDS.INDEPENDENTLY_LABELLED) {
+    const labelsByFixtureId = new Map(referenceSetDocument.labels.map((label) => [
+      label.fixtureId,
+      label.referenceDecisionId,
+    ]));
+    if (labelsByFixtureId.size !== fixtureDocument.length ||
+        !fixtureDocument.every((fixture) => VALID_DECISION_IDS.has(labelsByFixtureId.get(fixture.id)))) {
+      return null;
+    }
+    return labelsByFixtureId;
+  }
+
+  return new Map(fixtureDocument.map((fixture) => [fixture.id, fixture.reference.decisionId]));
+}
+
+function buildRows(fixtureDocument, snapshotReport, referenceDecisions) {
   const resultsByFixtureId = new Map(snapshotReport.evaluation.results.map((result) => [
     result?.fixtureId,
     result,
   ]));
-  if (resultsByFixtureId.size !== fixtureDocument.length) return null;
+  if (resultsByFixtureId.size !== fixtureDocument.length || !referenceDecisions) return null;
 
   const rows = [];
   for (const fixture of fixtureDocument) {
     const result = resultsByFixtureId.get(fixture.id);
+    const referenceDecisionId = referenceDecisions.get(fixture.id);
     const signalDecisionId = result?.signalDecisions?.[
       POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_PROFILE.semanticSignalId
     ];
-    if (!result || result.referenceDecisionId !== fixture.reference.decisionId ||
+    if (!result || !VALID_DECISION_IDS.has(referenceDecisionId) ||
         !VALID_DECISION_IDS.has(signalDecisionId)) {
       return null;
     }
     rows.push(Object.freeze({
-      referenceDecisionId: result.referenceDecisionId,
+      referenceDecisionId,
       signalDecisionId,
     }));
   }
@@ -203,7 +221,12 @@ export function evaluatePolicyCandidateSemanticCounterEvidenceReadiness({
     return buildInvalidReport({ referenceSetArtifact, sourceValidation });
   }
 
-  const rows = buildRows(fixtureDocument, snapshotReport);
+  const referenceDecisions = buildReferenceDecisions(
+    fixtureDocument,
+    referenceSetDocument,
+    referenceSetArtifact,
+  );
+  const rows = buildRows(fixtureDocument, snapshotReport, referenceDecisions);
   if (!rows) return buildInvalidReport({ referenceSetArtifact, sourceValidation });
 
   const metrics = buildPolicyCandidateEvidenceOfflineSignalMetrics({

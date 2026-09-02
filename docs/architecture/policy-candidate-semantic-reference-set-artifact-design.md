@@ -40,10 +40,12 @@ embedding, reviewer identity, or raw RAG context.
 
 `policyCandidateSemanticReferenceSetArtifact.mjs` validates the fixture and
 reference documents separately, checks the SHA-256 binding, and confirms a
-one-to-one matching final decision for every fixture. Its returned artifact
-contains only fixed status, validation counts, opaque content addresses, and
-aggregate decision/consensus counts. It never echoes fixture IDs or input
-content.
+one-to-one label coverage for every fixture. The binding establishes that the
+labels apply to this exact fixture set; it deliberately does **not** require a
+reviewer decision to repeat the fixture's synthetic baseline. Its returned
+artifact contains only fixed status, validation counts, opaque content
+addresses, and aggregate decision/consensus counts. It never echoes fixture
+IDs or input content.
 
 The independent double-blind protocol identifier is a required operational
 attestation, not cryptographic proof of reviewer independence. The system can
@@ -58,7 +60,7 @@ It now behaves as follows:
 | --- | --- |
 | Absent | Valid `not_ready` result with `independent_reference_set_unavailable`. |
 | Bound synthetic example | Valid `not_ready` result with the same blocker. |
-| Bound independent double-blind document | May reach `ready_for_human_review` only if all existing coverage and error thresholds also pass. |
+| Bound independent double-blind document | Uses the independent decisions as the offline metric oracle and may reach `ready_for_human_review` only if all existing coverage and error thresholds also pass. |
 | Malformed or mismatched document | `invalid_evaluation`; no readiness result is trusted. |
 
 The checked-in example is deliberately marked `synthetic_example.v1`. It
@@ -107,6 +109,9 @@ node scripts/run-policy-candidate-semantic-counter-evidence-readiness-evaluation
   different fixture document.
 - A single final label is required for each fixture. `unanimous` labels require
   at least two reviewers; `adjudicated` labels require at least three.
+- Independent decisions are used only for offline measurement after the
+  bounded artifact validates. They cannot change a policy score, initiate AI
+  or RAG, learn from an item, retry a classification, or route media.
 - The CLI accepts only relative JSON files below the checkout, resolves both
   the project root and selected file before reading, rejects a link whose real
   target leaves the checkout, and suppresses supplied paths in error output.
