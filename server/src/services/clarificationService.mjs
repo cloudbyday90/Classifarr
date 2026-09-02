@@ -18,6 +18,9 @@ import {
 import {
   policyCandidateCorrectionRepresentativeReviewCorpusCaptureService,
 } from './policyCandidateCorrectionRepresentativeReviewCorpusCaptureService.mjs';
+import {
+  policyRuntimeExactItemMemoryAutoLearningService,
+} from './policyRuntimeExactItemMemoryAutoLearningService.mjs';
 
 class ClarificationService {
   constructor(deps = {}) {
@@ -27,6 +30,9 @@ class ClarificationService {
       policyRuntimeDestinationEvidenceCommandService;
     this.reviewCorpusCaptureService = deps.reviewCorpusCaptureService ||
       policyCandidateCorrectionRepresentativeReviewCorpusCaptureService;
+    this.runtimeExactItemMemoryAutoLearningService =
+      deps.runtimeExactItemMemoryAutoLearningService ||
+      policyRuntimeExactItemMemoryAutoLearningService;
     this._seedState = createSeedIntegrityState(deps.seedIntegrityCacheTtlMs);
   }
 
@@ -116,7 +122,7 @@ class ClarificationService {
       );
     }
 
-    return _resolvePolicyQuestion(
+    const resolution = await _resolvePolicyQuestion(
       classificationId,
       parsed.answer.destinationLibraryId,
       null,
@@ -135,6 +141,19 @@ class ClarificationService {
         reviewCorpusActorId: operatorAuditActorId,
       },
     );
+
+    const automaticExactItemMemory = await this.runtimeExactItemMemoryAutoLearningService.record({
+      classificationId,
+      actorId: resolvedBy,
+      authenticated,
+      answerActionId: parsed.answer.actionId,
+      resolutionSucceeded: resolution?.success === true,
+    });
+
+    return {
+      ...resolution,
+      automaticExactItemMemory,
+    };
   }
 
   async getPendingClassifications() {

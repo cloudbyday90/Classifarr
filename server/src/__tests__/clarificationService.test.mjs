@@ -56,6 +56,10 @@ const policyQuestionContext = {
     isPolicyQuestionStale: jest.fn()
 };
 
+const runtimeExactItemMemoryAutoLearningService = {
+    record: jest.fn(),
+};
+
 function makeMockClient() {
     return { query: jest.fn(), release: jest.fn() };
 }
@@ -71,6 +75,13 @@ beforeEach(() => {
     policyQuestionContext.isPolicyQuestionStale.mockReset();
     svc.policyQuestionContext = policyQuestionContext;
     svc.reviewCorpusCaptureService = null;
+    runtimeExactItemMemoryAutoLearningService.record.mockReset();
+    runtimeExactItemMemoryAutoLearningService.record.mockResolvedValue({
+        statusId: 'not_applicable',
+        exactItemMemoryRecorded: false,
+        reasonCodes: [],
+    });
+    svc.runtimeExactItemMemoryAutoLearningService = runtimeExactItemMemoryAutoLearningService;
     svc.invalidateSeedIntegrityCache();
     svc.seedIntegrityWarnings.clear();
     jest.restoreAllMocks();
@@ -946,6 +957,18 @@ describe('resolvePolicyQuestion', () => {
                     { source_id: 'confirmed_outcomes', state_id: 'supporting' },
                 ],
             },
+        });
+        expect(runtimeExactItemMemoryAutoLearningService.record).toHaveBeenCalledWith({
+            classificationId: 1,
+            actorId: 'admin',
+            authenticated: true,
+            answerActionId: 'change_destination',
+            resolutionSucceeded: true,
+        });
+        expect(result.automaticExactItemMemory).toEqual({
+            statusId: 'not_applicable',
+            exactItemMemoryRecorded: false,
+            reasonCodes: [],
         });
     });
 

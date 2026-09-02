@@ -11,6 +11,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Automatic exact-item outcome learning** — An authenticated operator's
+  successful runtime confirmation or destination change now records eligible
+  stable item-to-library memory automatically through the existing locked,
+  audited, idempotent learning command. Learning never rewrites a policy and a
+  rejected or unavailable learning attempt cannot reverse routing.
+
 - **Bound semantic reference-set artifacts** — Offline semantic readiness now
   requires a separate, SHA-256-bound, content-free reference-label artifact
   declaring independent double-blind review before it can reach human-review
