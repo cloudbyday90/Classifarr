@@ -84,4 +84,24 @@ describe('policyCandidateAdjudicationContract', () => {
     expect(projection).toMatchObject({ semantic_retrieval_status_id: 'available' });
     expect(JSON.stringify(projection)).not.toContain('Do not persist this title');
   });
+
+  test('retains only the opaque frozen semantic-proposal cohort marker', () => {
+    const projection = buildPolicyCandidateAdjudicationProjection({
+      version: POLICY_CANDIDATE_ADJUDICATION_VERSION,
+      statusId: 'proposed',
+      candidateCount: 2,
+      proposedDestination: { library_id: 1, library_name: 'Movies' },
+      semanticProposal: {
+        version: 'policy.candidate_semantic_adjudication_proposal.v1',
+        fingerprint: 'b'.repeat(64),
+        model: 'must-not-persist',
+      },
+    });
+
+    expect(projection.semantic_proposal).toEqual({
+      version: 'policy.candidate_semantic_adjudication_proposal.v1',
+      fingerprint: 'b'.repeat(64),
+    });
+    expect(JSON.stringify(projection)).not.toContain('must-not-persist');
+  });
 });

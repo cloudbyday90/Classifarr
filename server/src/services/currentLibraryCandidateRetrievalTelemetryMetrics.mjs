@@ -17,6 +17,9 @@ import {
   buildCurrentLibraryCandidateSemanticAdjudicationMetrics,
 } from './currentLibraryCandidateSemanticAdjudicationMetrics.mjs';
 import {
+  buildCurrentLibraryCandidateSemanticAdjudicationWorkbenchMetrics,
+} from './currentLibraryCandidateSemanticAdjudicationWorkbenchMetrics.mjs';
+import {
   COMPLETED_UTC_DAY_METRICS_DEFAULT_WINDOW_DAYS,
   COMPLETED_UTC_DAY_METRICS_MAX_WINDOW_DAYS,
   buildCompletedUtcDayMetricsWindow,
@@ -79,6 +82,7 @@ function latencyBandCount(row, id) {
  */
 export function buildCurrentLibraryCandidateRetrievalMetricsReport({
   row = {},
+  semanticAdjudicationWorkbenchRow = {},
   window = null,
 } = {}) {
   const observationCount = nonnegativeCount(row.observationCount);
@@ -158,6 +162,9 @@ export function buildCurrentLibraryCandidateRetrievalMetricsReport({
       agreementRatePercent: ratePercent(agreedProposalCount, resolvedProposalCount),
     }),
     candidateAdjudication,
+    semanticAdjudicationWorkbench: buildCurrentLibraryCandidateSemanticAdjudicationWorkbenchMetrics({
+      row: semanticAdjudicationWorkbenchRow,
+    }),
     operatorCandidateSetAttribution: Object.freeze({
       resolvedOperatorOutcomeCount,
       attributedOperatorOutcomeCount,

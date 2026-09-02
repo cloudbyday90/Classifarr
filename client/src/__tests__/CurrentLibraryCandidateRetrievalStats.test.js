@@ -69,6 +69,20 @@ const report = {
       },
     ],
   },
+  semanticAdjudicationWorkbench: {
+    proposalGroupCount: 1,
+    cohort: {
+      comparisonCount: 15,
+      resolvedProposalCount: 12,
+      alignedProposalCount: 9,
+      agreementRatePercent: 75,
+      semanticContextAvailableCount: 10,
+    },
+    status: {
+      id: 'ready_for_human_review',
+      minimumResolvedProposalCount: 12,
+    },
+  },
   operatorCandidateSetAttribution: {
     attributedOperatorOutcomeCount: 4,
     confirmedCandidateOutcomeCount: 2,
@@ -147,6 +161,10 @@ describe('CurrentLibraryCandidateRetrievalStats.vue', () => {
     expect(wrapper.text()).toContain('Compare semantic context')
     expect(wrapper.text()).toContain('Semantic context available')
     expect(wrapper.text()).toContain('2 of 3 resolved proposals matched the operator (66.7%)')
+    expect(wrapper.text()).toContain('Evaluate the latest frozen AI and semantic-retrieval cohort')
+    expect(wrapper.text()).toContain('Cohort is ready for human evaluation')
+    expect(wrapper.text()).toContain('12 / 12')
+    expect(wrapper.text()).toContain('9 (75%)')
     expect(wrapper.text()).toContain('Operator candidate-set coverage')
     expect(wrapper.text()).toContain('Broader chooser, outside candidates')
     expect(wrapper.text()).toContain('Routed not applicable')

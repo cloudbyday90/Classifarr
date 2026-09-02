@@ -17,11 +17,25 @@ const contract = {
   ],
 };
 
+const aiAuthority = {
+  version: 'ai.provider_authority.v1',
+  providerId: 'ollama',
+  model: 'qwen3:8b',
+  effectiveMode: 'proposal',
+  capabilities: { providerEnforcedStructuredOutput: false },
+};
+
 describe('policyCandidateAdjudicationResult', () => {
   test('accepts only a bounded confident proposal and discards model rationale', () => {
     const result = finalizePolicyCandidateAdjudication({
       contract,
-      aiMatch: { library: family, confidence: 99, reason: 'Raw private reasoning', format: 'confident' },
+      aiMatch: {
+        library: family,
+        confidence: 99,
+        reason: 'Raw private reasoning',
+        format: 'confident',
+        ai_authority: aiAuthority,
+      },
       policyResult: { confidence: 71 },
       semanticRetrievalStatusId: 'available',
     });
@@ -34,9 +48,14 @@ describe('policyCandidateAdjudicationResult', () => {
         statusId: 'proposed',
         proposedDestination: { library_id: 2, library_name: 'Family' },
         semanticRetrievalStatusId: 'available',
+        semanticProposal: {
+          version: 'policy.candidate_semantic_adjudication_proposal.v1',
+          fingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),
+        },
       },
     });
     expect(JSON.stringify(result)).not.toContain('Raw private reasoning');
+    expect(JSON.stringify(result)).not.toContain('qwen3:8b');
     expect(result.reason).toContain('operator decision');
   });
 

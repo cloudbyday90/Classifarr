@@ -11,6 +11,14 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Frozen semantic-adjudication cohorts** — Candidate Retrieval Monitoring now
+  automatically separates bounded AI and current-library semantic-retrieval
+  comparisons by an opaque server-generated proposal fingerprint, then
+  evaluates only the latest unchanged cohort against later validated operator
+  destinations. The compact auto-refreshing disclosure retains no item text,
+  library, model, prompt, response, embedding, or cohort identifier and cannot
+  change AI, policy, RAG, learning, retries, or routing.
+
 - **Semantic-context outcome evaluation** — Candidate Retrieval Monitoring now
   automatically distinguishes bounded AI comparisons where current-library
   semantic context was available, unavailable, or not retained by legacy

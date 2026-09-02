@@ -73,6 +73,16 @@ describe('currentLibraryCandidateRetrievalTelemetryMetrics', () => {
         historyEvidenceCount: 2,
         calibrationAppliedCount: 9,
       },
+      semanticAdjudicationWorkbenchRow: {
+        proposalGroupCount: 1,
+        comparisonCount: 15,
+        proposalCount: 13,
+        abstainedCount: 1,
+        responseRejectedCount: 1,
+        resolvedProposalCount: 12,
+        alignedProposalCount: 9,
+        semanticContextAvailableCount: 10,
+      },
     });
 
     expect(report).toMatchObject({
@@ -115,6 +125,16 @@ describe('currentLibraryCandidateRetrievalTelemetryMetrics', () => {
             agreementRatePercent: 100,
           }),
         ]),
+      },
+      semanticAdjudicationWorkbench: {
+        status: { id: 'ready_for_human_review' },
+        proposalGroupCount: 1,
+        cohort: {
+          comparisonCount: 15,
+          resolvedProposalCount: 12,
+          alignedProposalCount: 9,
+          agreementRatePercent: 75,
+        },
       },
       operatorCandidateSetAttribution: {
         resolvedOperatorOutcomeCount: 6,

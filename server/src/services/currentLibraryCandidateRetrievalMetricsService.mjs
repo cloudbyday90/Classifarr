@@ -11,10 +11,15 @@ import {
 import {
   loadCurrentLibraryCandidateRetrievalMetrics,
 } from './currentLibraryCandidateRetrievalMetricsRepository.mjs';
+import {
+  loadCurrentLibraryCandidateSemanticAdjudicationWorkbenchMetrics,
+} from './currentLibraryCandidateSemanticAdjudicationWorkbenchMetricsRepository.mjs';
 
 export function createCurrentLibraryCandidateRetrievalMetricsService({
   database = db,
   loadMetrics = loadCurrentLibraryCandidateRetrievalMetrics,
+  loadSemanticAdjudicationWorkbenchMetrics =
+    loadCurrentLibraryCandidateSemanticAdjudicationWorkbenchMetrics,
   now = () => new Date(),
 } = {}) {
   return Object.freeze({
@@ -23,8 +28,15 @@ export function createCurrentLibraryCandidateRetrievalMetricsService({
         windowDays,
         now: now(),
       });
-      const row = await loadMetrics(database, window);
-      return buildCurrentLibraryCandidateRetrievalMetricsReport({ row, window });
+      const [row, semanticAdjudicationWorkbenchRow] = await Promise.all([
+        loadMetrics(database, window),
+        loadSemanticAdjudicationWorkbenchMetrics(database, window),
+      ]);
+      return buildCurrentLibraryCandidateRetrievalMetricsReport({
+        row,
+        semanticAdjudicationWorkbenchRow,
+        window,
+      });
     },
   });
 }

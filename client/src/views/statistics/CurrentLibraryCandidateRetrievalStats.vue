@@ -194,6 +194,48 @@
               </div>
             </dl>
           </details>
+          <details class="mt-3 rounded border border-gray-700 bg-gray-900/50 p-3">
+            <summary class="cursor-pointer text-sm font-medium text-white">
+              Evaluate the latest frozen AI and semantic-retrieval cohort
+            </summary>
+            <p class="mt-3 text-sm font-medium text-gray-200">
+              {{ semanticAdjudicationWorkbenchPresentation.label }}
+            </p>
+            <p class="mt-1 text-sm text-gray-400">
+              {{ semanticAdjudicationWorkbenchPresentation.message }}
+            </p>
+            <p class="mt-2 text-sm text-gray-400">
+              Classifarr automatically groups new bounded comparisons by the exact AI authority and semantic-retrieval protocol used. It retains no item text, library name, model name, prompt, response, or embedding in this report.
+            </p>
+            <dl class="mt-3 space-y-3 text-sm">
+              <MetricRow
+                label="Frozen proposal cohorts in this window"
+                :value="semanticAdjudicationWorkbench.proposalGroupCount"
+              />
+              <MetricRow
+                label="Latest-cohort comparisons"
+                :value="semanticAdjudicationWorkbench.cohort.comparisonCount"
+              />
+              <MetricRow
+                label="Resolved proposals"
+                :value="formatProgress(
+                  semanticAdjudicationWorkbench.cohort.resolvedProposalCount,
+                  semanticAdjudicationWorkbench.minimumResolvedProposalCount,
+                )"
+              />
+              <MetricRow
+                label="Same operator destination"
+                :value="formatRate(
+                  semanticAdjudicationWorkbench.cohort.alignedProposalCount,
+                  semanticAdjudicationWorkbench.cohort.agreementRatePercent,
+                )"
+              />
+              <MetricRow
+                label="Semantic context available"
+                :value="semanticAdjudicationWorkbench.cohort.semanticContextAvailableCount"
+              />
+            </dl>
+          </details>
         </article>
       </div>
 
@@ -382,6 +424,20 @@ const SEMANTIC_CONTEXT_LABELS = Object.freeze({
   unavailable: 'Semantic context unavailable',
   not_recorded: 'Semantic context not recorded',
 })
+const SEMANTIC_ADJUDICATION_WORKBENCH_PRESENTATIONS = Object.freeze({
+  no_frozen_proposal: Object.freeze({
+    label: 'Waiting for a frozen proposal cohort',
+    message: 'New bounded AI comparisons will join an evaluation cohort automatically. No setup, acknowledgement, or routing change is needed.',
+  }),
+  collecting: Object.freeze({
+    label: 'Collecting later operator decisions',
+    message: 'This cohort is keeping only aggregate outcomes until it has enough resolved proposals for a human evaluation. Operator agreement is observational, not a correctness score.',
+  }),
+  ready_for_human_review: Object.freeze({
+    label: 'Cohort is ready for human evaluation',
+    message: 'The latest unchanged cohort has enough later operator decisions to inspect as a proposal-evaluation hypothesis. It does not authorize policy, RAG, or routing changes.',
+  }),
+})
 
 function nonnegativeAggregate(value) {
   const numericValue = Number(value)
@@ -423,6 +479,29 @@ const semanticContextBuckets = computed(() => {
       agreementRatePercent: nonnegativeAggregate(bucket.agreementRatePercent),
     }))
 })
+const semanticAdjudicationWorkbench = computed(() => {
+  const value = report.value?.semanticAdjudicationWorkbench
+  const cohort = value?.cohort || {}
+  return {
+    proposalGroupCount: nonnegativeAggregate(value?.proposalGroupCount),
+    minimumResolvedProposalCount: nonnegativeAggregate(value?.status?.minimumResolvedProposalCount),
+    statusId: Object.hasOwn(SEMANTIC_ADJUDICATION_WORKBENCH_PRESENTATIONS, value?.status?.id)
+      ? value.status.id
+      : 'no_frozen_proposal',
+    cohort: {
+      alignedProposalCount: nonnegativeAggregate(cohort.alignedProposalCount),
+      agreementRatePercent: nonnegativeAggregate(cohort.agreementRatePercent),
+      comparisonCount: nonnegativeAggregate(cohort.comparisonCount),
+      resolvedProposalCount: nonnegativeAggregate(cohort.resolvedProposalCount),
+      semanticContextAvailableCount: nonnegativeAggregate(cohort.semanticContextAvailableCount),
+    },
+  }
+})
+const semanticAdjudicationWorkbenchPresentation = computed(() => (
+  SEMANTIC_ADJUDICATION_WORKBENCH_PRESENTATIONS[
+    semanticAdjudicationWorkbench.value.statusId
+  ] || SEMANTIC_ADJUDICATION_WORKBENCH_PRESENTATIONS.no_frozen_proposal
+))
 const candidateSetPolicyReviewStatus = computed(() =>
   candidateSetPolicyReview.value?.statusId || 'insufficient_data')
 const candidateSetPolicyReviewLabel = computed(() => ({

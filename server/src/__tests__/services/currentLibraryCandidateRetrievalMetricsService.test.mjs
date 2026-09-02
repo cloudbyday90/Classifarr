@@ -16,9 +16,14 @@ describe('currentLibraryCandidateRetrievalMetricsService', () => {
       availableCount: 2,
       matchingObservationCount: 1,
     });
+    const loadSemanticAdjudicationWorkbenchMetrics = jest.fn().mockResolvedValue({
+      proposalGroupCount: 1,
+      comparisonCount: 2,
+    });
     const service = createCurrentLibraryCandidateRetrievalMetricsService({
       database: { query: jest.fn() },
       loadMetrics,
+      loadSemanticAdjudicationWorkbenchMetrics,
       now: () => new Date('2026-08-30T15:00:00.000Z'),
     });
 
@@ -30,5 +35,9 @@ describe('currentLibraryCandidateRetrievalMetricsService', () => {
       end: new Date('2026-08-30T00:00:00.000Z'),
     }));
     expect(report.retrieval).toMatchObject({ observationCount: 2, availabilityRatePercent: 100 });
+    expect(loadSemanticAdjudicationWorkbenchMetrics).toHaveBeenCalledWith(expect.any(Object), expect.objectContaining({
+      days: 30,
+    }));
+    expect(report.semanticAdjudicationWorkbench.status.id).toBe('collecting');
   });
 });

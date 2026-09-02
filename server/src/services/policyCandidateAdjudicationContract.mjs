@@ -3,6 +3,10 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
+import {
+  buildPolicyCandidateSemanticAdjudicationProposalProjection,
+} from './policyCandidateSemanticAdjudicationProposalFingerprint.mjs';
+
 export const POLICY_CANDIDATE_ADJUDICATION_VERSION = 'policy.candidate_adjudication.v1';
 export const POLICY_CANDIDATE_ADJUDICATION_MAXIMUM_CANDIDATES = 3;
 
@@ -135,6 +139,9 @@ export function buildPolicyCandidateAdjudicationProjection(value = {}) {
     value.semanticRetrievalStatusId ?? value.semantic_retrieval_status_id,
     80,
   );
+  const semanticProposal = buildPolicyCandidateSemanticAdjudicationProposalProjection(
+    value.semanticProposal ?? value.semantic_proposal,
+  );
   const proposedLibraryId = positiveInteger(proposedDestination?.library_id);
   const proposedLibraryName = boundedString(proposedDestination?.library_name, 160);
 
@@ -158,5 +165,6 @@ export function buildPolicyCandidateAdjudicationProjection(value = {}) {
     ...(POLICY_CANDIDATE_ADJUDICATION_SEMANTIC_RETRIEVAL_STATUS_IDS.has(semanticRetrievalStatusId)
       ? { semantic_retrieval_status_id: semanticRetrievalStatusId }
       : {}),
+    ...(semanticProposal ? { semantic_proposal: semanticProposal } : {}),
   });
 }

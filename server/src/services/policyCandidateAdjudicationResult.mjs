@@ -7,13 +7,16 @@ import {
   POLICY_CANDIDATE_ADJUDICATION_STATUS_IDS,
   POLICY_CANDIDATE_ADJUDICATION_VERSION,
 } from './policyCandidateAdjudicationContract.mjs';
+import {
+  createPolicyCandidateSemanticAdjudicationProposalFingerprint,
+} from './policyCandidateSemanticAdjudicationProposalFingerprint.mjs';
 
 function policyConfidence(policyResult, fallback = 0) {
   const value = Number(policyResult?.confidence ?? fallback);
   return Number.isFinite(value) && value >= 0 && value <= 100 ? Math.round(value) : 0;
 }
 
-function projection(contract, statusId, library = null, semanticRetrievalStatusId = null) {
+function projection(contract, statusId, library = null, semanticRetrievalStatusId = null, semanticProposal = null) {
   return {
     version: POLICY_CANDIDATE_ADJUDICATION_VERSION,
     statusId,
@@ -22,6 +25,7 @@ function projection(contract, statusId, library = null, semanticRetrievalStatusI
       ? { library_id: library.id, library_name: library.name }
       : null,
     ...(semanticRetrievalStatusId ? { semanticRetrievalStatusId } : {}),
+    ...(semanticProposal ? { semanticProposal } : {}),
   };
 }
 
@@ -50,6 +54,11 @@ export function finalizePolicyCandidateAdjudication({
       ? POLICY_CANDIDATE_ADJUDICATION_STATUS_IDS.RESPONSE_REJECTED
       : POLICY_CANDIDATE_ADJUDICATION_STATUS_IDS.ABSTAINED);
   const selectedLibrary = selectedCandidate?.library || fallback || libraries[0] || null;
+  const semanticProposal = createPolicyCandidateSemanticAdjudicationProposalFingerprint({
+    authority: aiMatch?.ai_authority,
+    candidateCount: contract.candidates.length,
+    semanticRetrievalStatusId,
+  });
 
   return {
     library: selectedLibrary,
@@ -63,6 +72,7 @@ export function finalizePolicyCandidateAdjudication({
       statusId,
       validProposal ? selectedCandidate.library : null,
       semanticRetrievalStatusId,
+      semanticProposal,
     ),
   };
 }
