@@ -18,6 +18,10 @@ import {
   POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_STATUS_IDS,
 } from '../../services/policyCandidateSemanticCounterEvidenceReadinessContract.mjs';
 import {
+  POLICY_CANDIDATE_SEMANTIC_REFERENCE_SET_DOCUMENT_VERSION,
+  POLICY_CANDIDATE_SEMANTIC_REFERENCE_SET_LABELING_PROTOCOL_IDS,
+} from '../../services/policyCandidateSemanticReferenceSetContract.mjs';
+import {
   createPolicyCandidateSemanticSnapshotFingerprint,
 } from '../../services/policyCandidateSemanticSnapshotFingerprint.mjs';
 import {
@@ -99,6 +103,22 @@ function buildTrustedSnapshotReport(fixtureDocument) {
   };
 }
 
+function buildIndependentReferenceSetDocument(fixtureDocument) {
+  return {
+    fixtureDocumentFingerprint: createPolicyCandidateSemanticSnapshotFingerprint(fixtureDocument),
+    labelingProtocolId: POLICY_CANDIDATE_SEMANTIC_REFERENCE_SET_LABELING_PROTOCOL_IDS
+      .INDEPENDENT_DOUBLE_BLIND_HUMAN,
+    labels: fixtureDocument.map((fixture) => ({
+      consensusStatusId: 'unanimous',
+      fixtureId: fixture.id,
+      referenceDecisionId: fixture.reference.decisionId,
+      reviewerCount: 2,
+    })),
+    referenceSetId: 'independent-reference-set',
+    version: POLICY_CANDIDATE_SEMANTIC_REFERENCE_SET_DOCUMENT_VERSION,
+  };
+}
+
 async function loadPinnedSnapshotReport() {
   const [fixtureSource, snapshotSource, manifestSource] = await Promise.all([
     readFile(FIXTURE_DOCUMENT_URL, 'utf8'),
@@ -133,6 +153,8 @@ describe('policyCandidateSemanticCounterEvidenceReadiness', () => {
     }));
     expect(report.blockers).toEqual(expect.arrayContaining([
       POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_BLOCKER_IDS.FALSE_POSITIVE_PRESENT,
+      POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_BLOCKER_IDS
+        .INDEPENDENT_REFERENCE_SET_UNAVAILABLE,
       POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_BLOCKER_IDS.INSUFFICIENT_FIXTURE_COUNT,
       POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_BLOCKER_IDS.INSUFFICIENT_STRATUM_COVERAGE,
       POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_BLOCKER_IDS.RECALL_BELOW_MINIMUM,
@@ -149,6 +171,7 @@ describe('policyCandidateSemanticCounterEvidenceReadiness', () => {
 
     const report = evaluatePolicyCandidateSemanticCounterEvidenceReadiness({
       fixtureDocument,
+      referenceSetDocument: buildIndependentReferenceSetDocument(fixtureDocument),
       snapshotReport: buildTrustedSnapshotReport(fixtureDocument),
     });
 
@@ -173,6 +196,7 @@ describe('policyCandidateSemanticCounterEvidenceReadiness', () => {
 
     const report = evaluatePolicyCandidateSemanticCounterEvidenceReadiness({
       fixtureDocument,
+      referenceSetDocument: buildIndependentReferenceSetDocument(fixtureDocument),
       snapshotReport,
     });
 
@@ -182,5 +206,23 @@ describe('policyCandidateSemanticCounterEvidenceReadiness', () => {
     expect(report.blockers).toEqual([
       POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_BLOCKER_IDS.EVALUATION_SOURCE_INVALID,
     ]);
+  });
+
+  test('does not treat a malformed independently-labelled reference set as valid evaluation evidence', () => {
+    const fixtureDocument = [buildFixture(1, 'review')];
+    const referenceSetDocument = buildIndependentReferenceSetDocument(fixtureDocument);
+    referenceSetDocument.labels[0].description = 'Do not retain this';
+
+    const report = evaluatePolicyCandidateSemanticCounterEvidenceReadiness({
+      fixtureDocument,
+      referenceSetDocument,
+      snapshotReport: buildTrustedSnapshotReport(fixtureDocument),
+    });
+
+    expect(report.status.id).toBe(
+      POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_STATUS_IDS.INVALID_EVALUATION,
+    );
+    expect(report.referenceSet.status.id).toBe('invalid');
+    expect(JSON.stringify(report)).not.toContain('Do not retain this');
   });
 });

@@ -11,6 +11,14 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Bound semantic reference-set artifacts** — Offline semantic readiness now
+  requires a separate, SHA-256-bound, content-free reference-label artifact
+  declaring independent double-blind review before it can reach human-review
+  readiness. Synthetic or absent labels remain an explicit non-ready state;
+  malformed or content-bearing input fails closed. The local read-only CLI and
+  artifact cannot call AI/RAG, persist study data, change policy, learn, retry,
+  or route media.
+
 - **Frozen semantic-adjudication cohorts** — Candidate Retrieval Monitoring now
   automatically separates bounded AI and current-library semantic-retrieval
   comparisons by an opaque server-generated proposal fingerprint, then

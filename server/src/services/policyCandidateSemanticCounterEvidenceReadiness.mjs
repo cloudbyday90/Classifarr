@@ -14,6 +14,10 @@ import {
   createPolicyCandidateSemanticSnapshotFingerprint,
 } from './policyCandidateSemanticSnapshotFingerprint.mjs';
 import {
+  buildPolicyCandidateSemanticReferenceSetArtifact,
+  POLICY_CANDIDATE_SEMANTIC_REFERENCE_SET_ARTIFACT_STATUS_IDS,
+} from './policyCandidateSemanticReferenceSetArtifact.mjs';
+import {
   POLICY_CANDIDATE_SEMANTIC_SNAPSHOT_OFFLINE_EVALUATION_REPORT_VERSION,
 } from './policyCandidateSemanticSnapshotOfflineEvaluation.mjs';
 import {
@@ -112,7 +116,7 @@ function buildSourceValidation(fixtureDocument, snapshotReport) {
   });
 }
 
-function buildInvalidReport(sourceValidation) {
+function buildInvalidReport({ referenceSetArtifact, sourceValidation }) {
   return Object.freeze({
     authority: cloneAuthority(),
     baseline: null,
@@ -121,6 +125,7 @@ function buildInvalidReport(sourceValidation) {
     ]),
     coverage: Object.freeze([]),
     profile: POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_PROFILE,
+    referenceSet: referenceSetArtifact,
     sourceValidation,
     status: Object.freeze({
       automaticRoutingEligibility: false,
@@ -131,9 +136,16 @@ function buildInvalidReport(sourceValidation) {
   });
 }
 
-function buildBlockers({ coverage, metrics }) {
+function buildBlockers({ coverage, metrics, referenceSetArtifact }) {
   const blockers = [];
   const profile = POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_PROFILE;
+  if (referenceSetArtifact.status.id !==
+      POLICY_CANDIDATE_SEMANTIC_REFERENCE_SET_ARTIFACT_STATUS_IDS.INDEPENDENTLY_LABELLED) {
+    blockers.push(
+      POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_BLOCKER_IDS
+        .INDEPENDENT_REFERENCE_SET_UNAVAILABLE,
+    );
+  }
   if (metrics.evaluatedFixtureCount < profile.minimumFixtureCount) {
     blockers.push(POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_BLOCKER_IDS.INSUFFICIENT_FIXTURE_COUNT);
   }
@@ -178,20 +190,28 @@ function projectBaseline(metrics) {
  */
 export function evaluatePolicyCandidateSemanticCounterEvidenceReadiness({
   fixtureDocument,
+  referenceSetDocument,
   snapshotReport,
 } = {}) {
+  const referenceSetArtifact = buildPolicyCandidateSemanticReferenceSetArtifact({
+    fixtureDocument,
+    referenceSetDocument,
+  });
   const sourceValidation = buildSourceValidation(fixtureDocument, snapshotReport);
-  if (!sourceValidation.ok) return buildInvalidReport(sourceValidation);
+  if (!sourceValidation.ok || referenceSetArtifact.status.id ===
+      POLICY_CANDIDATE_SEMANTIC_REFERENCE_SET_ARTIFACT_STATUS_IDS.INVALID) {
+    return buildInvalidReport({ referenceSetArtifact, sourceValidation });
+  }
 
   const rows = buildRows(fixtureDocument, snapshotReport);
-  if (!rows) return buildInvalidReport(sourceValidation);
+  if (!rows) return buildInvalidReport({ referenceSetArtifact, sourceValidation });
 
   const metrics = buildPolicyCandidateEvidenceOfflineSignalMetrics({
     rows,
     signalId: POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_PROFILE.semanticSignalId,
   });
   const coverage = buildCoverage(fixtureDocument);
-  const blockers = buildBlockers({ coverage, metrics });
+  const blockers = buildBlockers({ coverage, metrics, referenceSetArtifact });
   const ready = blockers.length === 0;
 
   return Object.freeze({
@@ -200,6 +220,7 @@ export function evaluatePolicyCandidateSemanticCounterEvidenceReadiness({
     blockers,
     coverage,
     profile: POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_PROFILE,
+    referenceSet: referenceSetArtifact,
     sourceValidation,
     status: Object.freeze({
       automaticRoutingEligibility: false,

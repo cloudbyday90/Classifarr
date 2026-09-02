@@ -37,6 +37,7 @@
     "test:offline:policy-candidate-evidence-evaluation": "node scripts/run-policy-candidate-evidence-offline-evaluation.mjs",
     "test:offline:policy-candidate-semantic-snapshot-evaluation": "node scripts/run-policy-candidate-semantic-snapshot-offline-evaluation.mjs",
     "test:offline:policy-candidate-semantic-counter-evidence-readiness-evaluation": "node scripts/run-policy-candidate-semantic-counter-evidence-readiness-evaluation.mjs",
+    "test:offline:policy-candidate-semantic-reference-set-artifact": "node scripts/generate-policy-candidate-semantic-reference-set-artifact.mjs --fixture-file scripts/fixtures/policy-candidate-evidence-offline-evaluation.fixtures.json --reference-set-file scripts/fixtures/policy-candidate-semantic-reference-set.synthetic-example.json",
     "test:offline:policy-change-calibration-evaluation": "node scripts/run-policy-candidate-correction-policy-change-review-history-calibration-offline-evaluation.mjs",
     "test:offline:policy-candidate-synthetic-replay": "node scripts/run-policy-candidate-synthetic-replay-evaluation.mjs",
     "test:local:ai-policy-sweep:faults": "node scripts/verify-ai-policy-sweep-fault-scenarios.mjs",

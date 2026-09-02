@@ -11,6 +11,9 @@ import {
 import {
   evaluatePolicyCandidateSemanticSnapshotOfflineFixtureDocument,
 } from '../server/src/services/policyCandidateSemanticSnapshotOfflineEvaluation.mjs';
+import {
+  loadProjectJsonFile,
+} from './generate-policy-candidate-semantic-reference-set-artifact.mjs';
 
 const FIXTURE_DOCUMENT_URL = new URL(
   './fixtures/policy-candidate-evidence-offline-evaluation.fixtures.json',
@@ -29,11 +32,20 @@ async function loadJsonDocument(url) {
   return JSON.parse(await readFile(url, 'utf8'));
 }
 
+async function loadReferenceSetDocument(argv) {
+  if (argv.length === 0) return undefined;
+  if (argv.length !== 2 || argv[0] !== '--reference-set-file') {
+    throw new Error('Unsupported reference-set input.');
+  }
+  return loadProjectJsonFile(argv[1]);
+}
+
 async function main() {
-  const [fixtureDocument, snapshotDocument, manifest] = await Promise.all([
+  const [fixtureDocument, snapshotDocument, manifest, referenceSetDocument] = await Promise.all([
     loadJsonDocument(FIXTURE_DOCUMENT_URL),
     loadJsonDocument(SNAPSHOT_DOCUMENT_URL),
     loadJsonDocument(MANIFEST_URL),
+    loadReferenceSetDocument(process.argv.slice(2)),
   ]);
   const snapshotReport = evaluatePolicyCandidateSemanticSnapshotOfflineFixtureDocument({
     fixtureDocument,
@@ -42,6 +54,7 @@ async function main() {
   });
   const report = evaluatePolicyCandidateSemanticCounterEvidenceReadiness({
     fixtureDocument,
+    referenceSetDocument,
     snapshotReport,
   });
 

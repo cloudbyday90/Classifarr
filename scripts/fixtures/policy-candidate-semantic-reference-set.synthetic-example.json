@@ -1,0 +1,16 @@
+{
+  "version": "policy.candidate_semantic_reference_set_document.v1",
+  "referenceSetId": "synthetic-reference-set-example",
+  "labelingProtocolId": "synthetic_example.v1",
+  "fixtureDocumentFingerprint": "sha256:bfe34266d5873f67d08901595bbd97641f787515a5231a3a519b5967daae216c",
+  "labels": [
+    { "fixtureId": "katrina-like-documentary-ambiguity", "referenceDecisionId": "review", "consensusStatusId": "unanimous", "reviewerCount": 2 },
+    { "fixtureId": "comedy-and-standup-overlap", "referenceDecisionId": "review", "consensusStatusId": "unanimous", "reviewerCount": 2 },
+    { "fixtureId": "clear-documentary-destination", "referenceDecisionId": "admit", "consensusStatusId": "unanimous", "reviewerCount": 2 },
+    { "fixtureId": "inventory-unavailable-documentary", "referenceDecisionId": "abstain", "consensusStatusId": "unanimous", "reviewerCount": 2 },
+    { "fixtureId": "declared-scope-semantic-conflict", "referenceDecisionId": "review", "consensusStatusId": "adjudicated", "reviewerCount": 3 },
+    { "fixtureId": "alternative-semantic-overreach", "referenceDecisionId": "abstain", "consensusStatusId": "unanimous", "reviewerCount": 2 },
+    { "fixtureId": "clear-series-destination", "referenceDecisionId": "admit", "consensusStatusId": "unanimous", "reviewerCount": 2 },
+    { "fixtureId": "low-margin-semantic-uncertainty", "referenceDecisionId": "review", "consensusStatusId": "unanimous", "reviewerCount": 2 }
+  ]
+}
