@@ -82,6 +82,26 @@ const report = {
       id: 'ready_for_human_review',
       minimumResolvedProposalCount: 12,
     },
+    semanticOutcomeCalibrationEvaluation: {
+      status: {
+        id: 'ready_for_human_review',
+        minimumResolvedProposalCount: 12,
+      },
+      arms: {
+        outcomeCalibrated: {
+          alignedProposalCount: 9,
+          agreementRatePercent: 75,
+          resolvedProposalCount: 12,
+        },
+        notOutcomeCalibrated: {
+          alignedProposalCount: 8,
+          agreementRatePercent: 66.7,
+          resolvedProposalCount: 12,
+        },
+      },
+      noSemanticMatchCount: 2,
+      notRecordedComparisonCount: 1,
+    },
   },
   operatorCandidateSetAttribution: {
     attributedOperatorOutcomeCount: 4,
@@ -165,6 +185,11 @@ describe('CurrentLibraryCandidateRetrievalStats.vue', () => {
     expect(wrapper.text()).toContain('Cohort is ready for human evaluation')
     expect(wrapper.text()).toContain('12 / 12')
     expect(wrapper.text()).toContain('9 (75%)')
+    expect(wrapper.text()).toContain('Evaluate outcome-calibrated semantic matches')
+    expect(wrapper.text()).toContain('Comparable semantic groups are ready for human evaluation')
+    expect(wrapper.text()).toContain('Outcome-calibrated resolved proposals')
+    expect(wrapper.text()).toContain('Not outcome-calibrated same operator destination')
+    expect(wrapper.text()).toContain('8 (66.7%)')
     expect(wrapper.text()).toContain('Operator candidate-set coverage')
     expect(wrapper.text()).toContain('Broader chooser, outside candidates')
     expect(wrapper.text()).toContain('Routed not applicable')

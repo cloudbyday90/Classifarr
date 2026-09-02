@@ -3,6 +3,10 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
+import {
+  buildCurrentLibraryCandidateSemanticOutcomeCalibrationEvaluation,
+} from './currentLibraryCandidateSemanticOutcomeCalibrationEvaluation.mjs';
+
 export const CURRENT_LIBRARY_CANDIDATE_SEMANTIC_ADJUDICATION_WORKBENCH_METRICS_VERSION =
   'current_library.candidate_semantic_adjudication_workbench_metrics.v1';
 
@@ -85,6 +89,12 @@ export function buildCurrentLibraryCandidateSemanticAdjudicationWorkbenchMetrics
       agreementRatePercent: ratePercent(alignedProposalCount, resolvedProposalCount),
       pendingProposalCount: Math.max(0, proposalCount - resolvedProposalCount),
     }),
+    semanticOutcomeCalibrationEvaluation:
+      buildCurrentLibraryCandidateSemanticOutcomeCalibrationEvaluation({
+        row,
+        hasFrozenProposal,
+        semanticContextAvailableCount,
+      }),
     proposalGroupCount,
     referenceDecision: 'later_validated_operator_destination',
     status: Object.freeze({

@@ -20,6 +20,9 @@ import {
 import {
   buildCurrentLibraryCandidateRetrievalTelemetryProjection,
 } from './currentLibraryCandidateRetrievalTelemetry.mjs';
+import {
+  buildCurrentLibraryCandidateSemanticOutcomeCalibrationObservation,
+} from './currentLibraryCandidateSemanticOutcomeCalibrationObservation.mjs';
 
 const LOCAL_PROVIDER_ID = 'ollama';
 const MAX_PROFILE_VALUES = 5;
@@ -288,6 +291,10 @@ export function createPolicyCandidateAdjudicationEvidenceService({
           buildCurrentLibraryCandidateRetrievalTelemetryProjection(currentLibraryRetrieval?.telemetry),
         currentLibraryCandidateSemanticRetrievalStatusId:
           currentLibrarySemanticStatusId(currentLibrarySemanticRetrieval?.statusId),
+        currentLibraryCandidateSemanticOutcomeCalibrationStatusId:
+          buildCurrentLibraryCandidateSemanticOutcomeCalibrationObservation(
+            currentLibrarySemanticRetrieval,
+          ),
       });
     },
   });

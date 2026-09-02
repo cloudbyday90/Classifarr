@@ -16,7 +16,14 @@ function policyConfidence(policyResult, fallback = 0) {
   return Number.isFinite(value) && value >= 0 && value <= 100 ? Math.round(value) : 0;
 }
 
-function projection(contract, statusId, library = null, semanticRetrievalStatusId = null, semanticProposal = null) {
+function projection(
+  contract,
+  statusId,
+  library = null,
+  semanticRetrievalStatusId = null,
+  semanticOutcomeCalibrationStatusId = null,
+  semanticProposal = null,
+) {
   return {
     version: POLICY_CANDIDATE_ADJUDICATION_VERSION,
     statusId,
@@ -25,6 +32,7 @@ function projection(contract, statusId, library = null, semanticRetrievalStatusI
       ? { library_id: library.id, library_name: library.name }
       : null,
     ...(semanticRetrievalStatusId ? { semanticRetrievalStatusId } : {}),
+    ...(semanticOutcomeCalibrationStatusId ? { semanticOutcomeCalibrationStatusId } : {}),
     ...(semanticProposal ? { semanticProposal } : {}),
   };
 }
@@ -39,6 +47,7 @@ export function finalizePolicyCandidateAdjudication({
   policyResult = null,
   libraries = [],
   semanticRetrievalStatusId = null,
+  semanticOutcomeCalibrationStatusId = null,
 } = {}) {
   if (contract?.valid !== true) return null;
 
@@ -72,6 +81,7 @@ export function finalizePolicyCandidateAdjudication({
       statusId,
       validProposal ? selectedCandidate.library : null,
       semanticRetrievalStatusId,
+      semanticOutcomeCalibrationStatusId,
       semanticProposal,
     ),
   };

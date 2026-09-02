@@ -82,6 +82,16 @@ describe('currentLibraryCandidateRetrievalTelemetryMetrics', () => {
         resolvedProposalCount: 12,
         alignedProposalCount: 9,
         semanticContextAvailableCount: 10,
+        outcomeCalibratedComparisonCount: 5,
+        outcomeCalibratedProposalCount: 4,
+        outcomeCalibratedResolvedProposalCount: 3,
+        outcomeCalibratedAlignedProposalCount: 2,
+        notOutcomeCalibratedComparisonCount: 3,
+        notOutcomeCalibratedProposalCount: 3,
+        notOutcomeCalibratedResolvedProposalCount: 2,
+        notOutcomeCalibratedAlignedProposalCount: 1,
+        noSemanticMatchComparisonCount: 1,
+        notRecordedCalibrationComparisonCount: 1,
       },
     });
 
@@ -134,6 +144,15 @@ describe('currentLibraryCandidateRetrievalTelemetryMetrics', () => {
           resolvedProposalCount: 12,
           alignedProposalCount: 9,
           agreementRatePercent: 75,
+        },
+        semanticOutcomeCalibrationEvaluation: {
+          status: { id: 'collecting', ragTuningEligibility: false },
+          arms: {
+            outcomeCalibrated: { resolvedProposalCount: 3, alignedProposalCount: 2 },
+            notOutcomeCalibrated: { resolvedProposalCount: 2, alignedProposalCount: 1 },
+          },
+          noSemanticMatchCount: 1,
+          notRecordedComparisonCount: 1,
         },
       },
       operatorCandidateSetAttribution: {

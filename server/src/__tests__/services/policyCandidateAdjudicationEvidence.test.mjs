@@ -194,6 +194,8 @@ describe('policyCandidateAdjudicationEvidence', () => {
     });
 
     expect(evidence.currentLibraryCandidateSemanticRetrievalStatusId).toBe('available');
+    expect(evidence.currentLibraryCandidateSemanticOutcomeCalibrationStatusId)
+      .toBe('outcome_calibrated');
     expect(local.candidates[0].currentLibrary.semantic).toEqual({
       statusId: 'available',
       matchCount: 1,

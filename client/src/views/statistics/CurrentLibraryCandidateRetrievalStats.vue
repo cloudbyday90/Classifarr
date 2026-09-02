@@ -235,6 +235,53 @@
                 :value="semanticAdjudicationWorkbench.cohort.semanticContextAvailableCount"
               />
             </dl>
+            <details class="mt-4 rounded border border-gray-700 bg-gray-950/40 p-3">
+              <summary class="cursor-pointer text-sm font-medium text-white">
+                Evaluate outcome-calibrated semantic matches
+              </summary>
+              <p class="mt-3 text-sm font-medium text-gray-200">
+                {{ semanticOutcomeCalibrationEvaluationPresentation.label }}
+              </p>
+              <p class="mt-1 text-sm text-gray-400">
+                {{ semanticOutcomeCalibrationEvaluationPresentation.message }}
+              </p>
+              <p class="mt-2 text-sm text-gray-400">
+                This compares only semantic comparisons that returned at least one current-library match. Later operator selections are observational and never authorize policy, RAG, or routing changes.
+              </p>
+              <dl class="mt-3 space-y-3 text-sm">
+                <MetricRow
+                  label="Outcome-calibrated resolved proposals"
+                  :value="formatProgress(
+                    semanticOutcomeCalibrationEvaluation.arms.outcomeCalibrated.resolvedProposalCount,
+                    semanticOutcomeCalibrationEvaluation.minimumResolvedProposalCount,
+                  )"
+                />
+                <MetricRow
+                  label="Outcome-calibrated same operator destination"
+                  :value="formatRate(
+                    semanticOutcomeCalibrationEvaluation.arms.outcomeCalibrated.alignedProposalCount,
+                    semanticOutcomeCalibrationEvaluation.arms.outcomeCalibrated.agreementRatePercent,
+                  )"
+                />
+                <MetricRow
+                  label="Not outcome-calibrated resolved proposals"
+                  :value="formatProgress(
+                    semanticOutcomeCalibrationEvaluation.arms.notOutcomeCalibrated.resolvedProposalCount,
+                    semanticOutcomeCalibrationEvaluation.minimumResolvedProposalCount,
+                  )"
+                />
+                <MetricRow
+                  label="Not outcome-calibrated same operator destination"
+                  :value="formatRate(
+                    semanticOutcomeCalibrationEvaluation.arms.notOutcomeCalibrated.alignedProposalCount,
+                    semanticOutcomeCalibrationEvaluation.arms.notOutcomeCalibrated.agreementRatePercent,
+                  )"
+                />
+              </dl>
+              <p class="mt-3 text-sm text-gray-400">
+                {{ semanticOutcomeCalibrationEvaluation.noSemanticMatchCount }} available comparisons had no semantic match; {{ semanticOutcomeCalibrationEvaluation.notRecordedComparisonCount }} older available comparisons did not retain this state. Neither group enters the comparison.
+              </p>
+            </details>
           </details>
         </article>
       </div>
@@ -438,6 +485,20 @@ const SEMANTIC_ADJUDICATION_WORKBENCH_PRESENTATIONS = Object.freeze({
     message: 'The latest unchanged cohort has enough later operator decisions to inspect as a proposal-evaluation hypothesis. It does not authorize policy, RAG, or routing changes.',
   }),
 })
+const SEMANTIC_OUTCOME_CALIBRATION_EVALUATION_PRESENTATIONS = Object.freeze({
+  no_frozen_proposal: Object.freeze({
+    label: 'Waiting for a frozen proposal cohort',
+    message: 'New bounded comparisons record this aggregate state automatically. No setup or routing change is needed.',
+  }),
+  collecting: Object.freeze({
+    label: 'Collecting comparable operator outcomes',
+    message: 'Each semantic-match group needs enough later operator decisions before it can be reviewed. This is not a correctness score.',
+  }),
+  ready_for_human_review: Object.freeze({
+    label: 'Comparable semantic groups are ready for human evaluation',
+    message: 'Both groups have enough later operator decisions to investigate as an evaluation hypothesis. It does not authorize policy, RAG, or routing changes.',
+  }),
+})
 
 function nonnegativeAggregate(value) {
   const numericValue = Number(value)
@@ -502,6 +563,33 @@ const semanticAdjudicationWorkbenchPresentation = computed(() => (
     semanticAdjudicationWorkbench.value.statusId
   ] || SEMANTIC_ADJUDICATION_WORKBENCH_PRESENTATIONS.no_frozen_proposal
 ))
+const semanticOutcomeCalibrationEvaluation = computed(() => {
+  const value = report.value?.semanticAdjudicationWorkbench?.semanticOutcomeCalibrationEvaluation
+  const arms = value?.arms || {}
+  const normalizeArm = (arm) => ({
+    alignedProposalCount: nonnegativeAggregate(arm?.alignedProposalCount),
+    agreementRatePercent: nonnegativeAggregate(arm?.agreementRatePercent),
+    resolvedProposalCount: nonnegativeAggregate(arm?.resolvedProposalCount),
+  })
+
+  return {
+    minimumResolvedProposalCount: nonnegativeAggregate(value?.status?.minimumResolvedProposalCount),
+    statusId: Object.hasOwn(SEMANTIC_OUTCOME_CALIBRATION_EVALUATION_PRESENTATIONS, value?.status?.id)
+      ? value.status.id
+      : 'no_frozen_proposal',
+    arms: {
+      outcomeCalibrated: normalizeArm(arms.outcomeCalibrated),
+      notOutcomeCalibrated: normalizeArm(arms.notOutcomeCalibrated),
+    },
+    noSemanticMatchCount: nonnegativeAggregate(value?.noSemanticMatchCount),
+    notRecordedComparisonCount: nonnegativeAggregate(value?.notRecordedComparisonCount),
+  }
+})
+const semanticOutcomeCalibrationEvaluationPresentation = computed(() => (
+  SEMANTIC_OUTCOME_CALIBRATION_EVALUATION_PRESENTATIONS[
+    semanticOutcomeCalibrationEvaluation.value.statusId
+  ] || SEMANTIC_OUTCOME_CALIBRATION_EVALUATION_PRESENTATIONS.no_frozen_proposal
+))
 const candidateSetPolicyReviewStatus = computed(() =>
   candidateSetPolicyReview.value?.statusId || 'insufficient_data')
 const candidateSetPolicyReviewLabel = computed(() => ({
@@ -556,7 +644,7 @@ const monitoringStatusAnnouncement = computed(() => {
   if (!report.value) return 'Candidate retrieval metrics are currently unavailable.'
   if (refreshStatus.value) return refreshStatus.value
 
-  return `${readinessLabel.value}. ${candidateSetPolicyReviewLabel.value}. ${policyConfirmationEvidenceLabel.value}. ${candidateAdjudication.value.comparisonCount} candidate AI comparisons observed.`
+  return `${readinessLabel.value}. ${candidateSetPolicyReviewLabel.value}. ${policyConfirmationEvidenceLabel.value}. ${semanticOutcomeCalibrationEvaluationPresentation.value.label}. ${candidateAdjudication.value.comparisonCount} candidate AI comparisons observed.`
 })
 const candidateSetSelectionCount = computed(() => {
   const attribution = report.value?.operatorCandidateSetAttribution

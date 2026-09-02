@@ -11,6 +11,13 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Outcome-calibrated semantic evaluation** — Candidate Retrieval Monitoring
+  now automatically compares later operator alignment for outcome-calibrated
+  versus otherwise comparable semantic current-library matches within the
+  latest opaque AI/RAG cohort. It keeps no-match and legacy records separate,
+  retains only fixed aggregate state, and cannot tune RAG, change policy, learn,
+  retry, or route media.
+
 - **Authenticated outcome-weighted semantic retrieval** — Candidate-scoped RAG
   now gives a small, capped advisory boost only to already-relevant current
   library matches backed by an append-only authenticated final-outcome receipt.

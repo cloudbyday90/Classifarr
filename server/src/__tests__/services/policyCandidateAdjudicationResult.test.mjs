@@ -38,6 +38,7 @@ describe('policyCandidateAdjudicationResult', () => {
       },
       policyResult: { confidence: 71 },
       semanticRetrievalStatusId: 'available',
+      semanticOutcomeCalibrationStatusId: 'outcome_calibrated',
     });
 
     expect(result).toMatchObject({
@@ -48,6 +49,7 @@ describe('policyCandidateAdjudicationResult', () => {
         statusId: 'proposed',
         proposedDestination: { library_id: 2, library_name: 'Family' },
         semanticRetrievalStatusId: 'available',
+        semanticOutcomeCalibrationStatusId: 'outcome_calibrated',
         semanticProposal: {
           version: 'policy.candidate_semantic_adjudication_proposal.v1',
           fingerprint: expect.stringMatching(/^[a-f0-9]{64}$/),

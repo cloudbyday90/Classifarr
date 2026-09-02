@@ -33,6 +33,15 @@ describe('currentLibraryCandidateSemanticAdjudicationWorkbenchMetrics', () => {
         resolvedProposalCount: 12,
         alignedProposalCount: 9,
         semanticContextAvailableCount: 11,
+        outcomeCalibratedComparisonCount: 6,
+        outcomeCalibratedProposalCount: 5,
+        outcomeCalibratedResolvedProposalCount: 4,
+        outcomeCalibratedAlignedProposalCount: 3,
+        notOutcomeCalibratedComparisonCount: 4,
+        notOutcomeCalibratedProposalCount: 3,
+        notOutcomeCalibratedResolvedProposalCount: 2,
+        notOutcomeCalibratedAlignedProposalCount: 1,
+        noSemanticMatchComparisonCount: 1,
         title: 'must never reach a report',
       },
     });
@@ -45,6 +54,14 @@ describe('currentLibraryCandidateSemanticAdjudicationWorkbenchMetrics', () => {
       alignedProposalCount: 9,
       alternativeProposalCount: 3,
       agreementRatePercent: 75,
+    });
+    expect(report.semanticOutcomeCalibrationEvaluation).toMatchObject({
+      status: { id: 'collecting', ragTuningEligibility: false },
+      arms: {
+        outcomeCalibrated: { comparisonCount: 6, resolvedProposalCount: 4 },
+        notOutcomeCalibrated: { comparisonCount: 4, resolvedProposalCount: 2 },
+      },
+      noSemanticMatchCount: 1,
     });
     expect(JSON.stringify(report)).not.toContain('must never');
   });
@@ -60,6 +77,10 @@ describe('currentLibraryCandidateSemanticAdjudicationWorkbenchMetrics', () => {
         resolvedProposalCount: 99,
         alignedProposalCount: 99,
         semanticContextAvailableCount: 99,
+        outcomeCalibratedComparisonCount: 99,
+        outcomeCalibratedProposalCount: 99,
+        outcomeCalibratedResolvedProposalCount: 99,
+        outcomeCalibratedAlignedProposalCount: 99,
       },
     });
 
@@ -71,6 +92,12 @@ describe('currentLibraryCandidateSemanticAdjudicationWorkbenchMetrics', () => {
       resolvedProposalCount: 2,
       alignedProposalCount: 2,
       semanticContextAvailableCount: 2,
+    });
+    expect(report.semanticOutcomeCalibrationEvaluation.arms.outcomeCalibrated).toMatchObject({
+      comparisonCount: 2,
+      proposalCount: 2,
+      resolvedProposalCount: 2,
+      alignedProposalCount: 2,
     });
   });
 });

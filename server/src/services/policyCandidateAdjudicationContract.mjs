@@ -24,6 +24,12 @@ export const POLICY_CANDIDATE_ADJUDICATION_SEMANTIC_RETRIEVAL_STATUS_IDS = new S
   'unavailable',
 ]);
 
+export const POLICY_CANDIDATE_ADJUDICATION_SEMANTIC_OUTCOME_CALIBRATION_STATUS_IDS = new Set([
+  'outcome_calibrated',
+  'not_outcome_calibrated',
+  'no_semantic_match',
+]);
+
 const PERSISTED_STATUS_IDS = new Set([
   POLICY_CANDIDATE_ADJUDICATION_STATUS_IDS.PROPOSED,
   POLICY_CANDIDATE_ADJUDICATION_STATUS_IDS.ABSTAINED,
@@ -139,6 +145,10 @@ export function buildPolicyCandidateAdjudicationProjection(value = {}) {
     value.semanticRetrievalStatusId ?? value.semantic_retrieval_status_id,
     80,
   );
+  const semanticOutcomeCalibrationStatusId = boundedString(
+    value.semanticOutcomeCalibrationStatusId ?? value.semantic_outcome_calibration_status_id,
+    80,
+  );
   const semanticProposal = buildPolicyCandidateSemanticAdjudicationProposalProjection(
     value.semanticProposal ?? value.semantic_proposal,
   );
@@ -164,6 +174,12 @@ export function buildPolicyCandidateAdjudicationProjection(value = {}) {
       : null,
     ...(POLICY_CANDIDATE_ADJUDICATION_SEMANTIC_RETRIEVAL_STATUS_IDS.has(semanticRetrievalStatusId)
       ? { semantic_retrieval_status_id: semanticRetrievalStatusId }
+      : {}),
+    ...(semanticRetrievalStatusId === 'available' &&
+      POLICY_CANDIDATE_ADJUDICATION_SEMANTIC_OUTCOME_CALIBRATION_STATUS_IDS.has(
+        semanticOutcomeCalibrationStatusId,
+      )
+      ? { semantic_outcome_calibration_status_id: semanticOutcomeCalibrationStatusId }
       : {}),
     ...(semanticProposal ? { semantic_proposal: semanticProposal } : {}),
   });

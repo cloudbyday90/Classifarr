@@ -85,6 +85,30 @@ describe('policyCandidateAdjudicationContract', () => {
     expect(JSON.stringify(projection)).not.toContain('Do not persist this title');
   });
 
+  test('retains a content-free calibration state only with available semantic retrieval', () => {
+    const projection = buildPolicyCandidateAdjudicationProjection({
+      version: POLICY_CANDIDATE_ADJUDICATION_VERSION,
+      statusId: 'proposed',
+      candidateCount: 2,
+      proposedDestination: { library_id: 1, library_name: 'Movies' },
+      semanticRetrievalStatusId: 'available',
+      semanticOutcomeCalibrationStatusId: 'outcome_calibrated',
+      semanticTitles: ['Do not persist this title'],
+    });
+
+    expect(projection.semantic_outcome_calibration_status_id).toBe('outcome_calibrated');
+    expect(JSON.stringify(projection)).not.toContain('Do not persist this title');
+
+    expect(buildPolicyCandidateAdjudicationProjection({
+      version: POLICY_CANDIDATE_ADJUDICATION_VERSION,
+      statusId: 'proposed',
+      candidateCount: 2,
+      proposedDestination: { library_id: 1, library_name: 'Movies' },
+      semanticRetrievalStatusId: 'unavailable',
+      semanticOutcomeCalibrationStatusId: 'outcome_calibrated',
+    })).not.toHaveProperty('semantic_outcome_calibration_status_id');
+  });
+
   test('retains only the opaque frozen semantic-proposal cohort marker', () => {
     const projection = buildPolicyCandidateAdjudicationProjection({
       version: POLICY_CANDIDATE_ADJUDICATION_VERSION,

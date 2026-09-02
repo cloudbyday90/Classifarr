@@ -34,6 +34,10 @@ describe('currentLibraryCandidateSemanticAdjudicationWorkbenchMetricsRepository'
     expect(LOAD_CURRENT_LIBRARY_CANDIDATE_SEMANTIC_ADJUDICATION_WORKBENCH_METRICS_SQL)
       .toContain('GROUP BY proposal_fingerprint');
     expect(LOAD_CURRENT_LIBRARY_CANDIDATE_SEMANTIC_ADJUDICATION_WORKBENCH_METRICS_SQL)
+      .toContain('semantic_outcome_calibration_status_id');
+    expect(LOAD_CURRENT_LIBRARY_CANDIDATE_SEMANTIC_ADJUDICATION_WORKBENCH_METRICS_SQL)
+      .toContain('outcomeCalibratedResolvedProposalCount');
+    expect(LOAD_CURRENT_LIBRARY_CANDIDATE_SEMANTIC_ADJUDICATION_WORKBENCH_METRICS_SQL)
       .not.toContain('SELECT title');
     expect(LOAD_CURRENT_LIBRARY_CANDIDATE_SEMANTIC_ADJUDICATION_WORKBENCH_METRICS_SQL)
       .not.toContain('library_name');

@@ -61,6 +61,7 @@ describe('ClassificationPolicyPathService candidate adjudication', () => {
             direct_match_candidate_count: 1,
           },
           currentLibraryCandidateSemanticRetrievalStatusId: 'available',
+          currentLibraryCandidateSemanticOutcomeCalibrationStatusId: 'outcome_calibrated',
         }),
       },
       finalizePolicyCandidateAdjudication: jest.fn().mockReturnValue({
@@ -108,6 +109,7 @@ describe('ClassificationPolicyPathService candidate adjudication', () => {
     }));
     expect(service.finalizePolicyCandidateAdjudication).toHaveBeenCalledWith(expect.objectContaining({
       semanticRetrievalStatusId: 'available',
+      semanticOutcomeCalibrationStatusId: 'outcome_calibrated',
     }));
     expect(service.policyCandidateContrastiveRetriever.retrieve).toHaveBeenCalledWith({
       contract: expect.any(Object),

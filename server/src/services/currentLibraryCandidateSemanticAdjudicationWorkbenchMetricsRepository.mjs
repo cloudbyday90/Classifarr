@@ -23,6 +23,18 @@ export const LOAD_CURRENT_LIBRARY_CANDIDATE_SEMANTIC_ADJUDICATION_WORKBENCH_METR
         'not_recorded'
       ) AS semantic_retrieval_status_id,
       CASE
+        WHEN metadata #>> '{classification_details,candidate_adjudication,semantic_retrieval_status_id}' = 'available'
+          AND metadata #>> '{classification_details,candidate_adjudication,semantic_outcome_calibration_status_id}' IN (
+            'outcome_calibrated',
+            'not_outcome_calibrated',
+            'no_semantic_match'
+          )
+          THEN metadata #>> '{classification_details,candidate_adjudication,semantic_outcome_calibration_status_id}'
+        WHEN metadata #>> '{classification_details,candidate_adjudication,semantic_retrieval_status_id}' = 'available'
+          THEN 'not_recorded'
+        ELSE 'not_applicable'
+      END AS semantic_outcome_calibration_status_id,
+      CASE
         WHEN metadata #>> '{classification_details,candidate_adjudication,proposed_destination,library_id}' ~ '^[1-9]\\d*$'
           THEN (metadata #>> '{classification_details,candidate_adjudication,proposed_destination,library_id}')::bigint
         ELSE NULL
@@ -42,6 +54,7 @@ export const LOAD_CURRENT_LIBRARY_CANDIDATE_SEMANTIC_ADJUDICATION_WORKBENCH_METR
       proposal_fingerprint,
       adjudication_status_id,
       semantic_retrieval_status_id,
+      semantic_outcome_calibration_status_id,
       proposed_library_id,
       final_library_id
     FROM observed
@@ -75,7 +88,53 @@ export const LOAD_CURRENT_LIBRARY_CANDIDATE_SEMANTIC_ADJUDICATION_WORKBENCH_METR
       )::bigint AS "alignedProposalCount",
       COUNT(*) FILTER (
         WHERE semantic_retrieval_status_id = 'available'
-      )::bigint AS "semanticContextAvailableCount"
+      )::bigint AS "semanticContextAvailableCount",
+      COUNT(*) FILTER (
+        WHERE semantic_outcome_calibration_status_id = 'outcome_calibrated'
+      )::bigint AS "outcomeCalibratedComparisonCount",
+      COUNT(*) FILTER (
+        WHERE semantic_outcome_calibration_status_id = 'outcome_calibrated'
+          AND adjudication_status_id = $5
+          AND proposed_library_id IS NOT NULL
+      )::bigint AS "outcomeCalibratedProposalCount",
+      COUNT(*) FILTER (
+        WHERE semantic_outcome_calibration_status_id = 'outcome_calibrated'
+          AND adjudication_status_id = $5
+          AND proposed_library_id IS NOT NULL
+          AND final_library_id IS NOT NULL
+      )::bigint AS "outcomeCalibratedResolvedProposalCount",
+      COUNT(*) FILTER (
+        WHERE semantic_outcome_calibration_status_id = 'outcome_calibrated'
+          AND adjudication_status_id = $5
+          AND proposed_library_id IS NOT NULL
+          AND final_library_id = proposed_library_id
+      )::bigint AS "outcomeCalibratedAlignedProposalCount",
+      COUNT(*) FILTER (
+        WHERE semantic_outcome_calibration_status_id = 'not_outcome_calibrated'
+      )::bigint AS "notOutcomeCalibratedComparisonCount",
+      COUNT(*) FILTER (
+        WHERE semantic_outcome_calibration_status_id = 'not_outcome_calibrated'
+          AND adjudication_status_id = $5
+          AND proposed_library_id IS NOT NULL
+      )::bigint AS "notOutcomeCalibratedProposalCount",
+      COUNT(*) FILTER (
+        WHERE semantic_outcome_calibration_status_id = 'not_outcome_calibrated'
+          AND adjudication_status_id = $5
+          AND proposed_library_id IS NOT NULL
+          AND final_library_id IS NOT NULL
+      )::bigint AS "notOutcomeCalibratedResolvedProposalCount",
+      COUNT(*) FILTER (
+        WHERE semantic_outcome_calibration_status_id = 'not_outcome_calibrated'
+          AND adjudication_status_id = $5
+          AND proposed_library_id IS NOT NULL
+          AND final_library_id = proposed_library_id
+      )::bigint AS "notOutcomeCalibratedAlignedProposalCount",
+      COUNT(*) FILTER (
+        WHERE semantic_outcome_calibration_status_id = 'no_semantic_match'
+      )::bigint AS "noSemanticMatchComparisonCount",
+      COUNT(*) FILTER (
+        WHERE semantic_outcome_calibration_status_id = 'not_recorded'
+      )::bigint AS "notRecordedCalibrationComparisonCount"
     FROM valid_frozen_proposals
     GROUP BY proposal_fingerprint
   ), selected_cohort AS (
@@ -92,7 +151,17 @@ export const LOAD_CURRENT_LIBRARY_CANDIDATE_SEMANTIC_ADJUDICATION_WORKBENCH_METR
     COALESCE("responseRejectedCount", 0)::bigint AS "responseRejectedCount",
     COALESCE("resolvedProposalCount", 0)::bigint AS "resolvedProposalCount",
     COALESCE("alignedProposalCount", 0)::bigint AS "alignedProposalCount",
-    COALESCE("semanticContextAvailableCount", 0)::bigint AS "semanticContextAvailableCount"
+    COALESCE("semanticContextAvailableCount", 0)::bigint AS "semanticContextAvailableCount",
+    COALESCE("outcomeCalibratedComparisonCount", 0)::bigint AS "outcomeCalibratedComparisonCount",
+    COALESCE("outcomeCalibratedProposalCount", 0)::bigint AS "outcomeCalibratedProposalCount",
+    COALESCE("outcomeCalibratedResolvedProposalCount", 0)::bigint AS "outcomeCalibratedResolvedProposalCount",
+    COALESCE("outcomeCalibratedAlignedProposalCount", 0)::bigint AS "outcomeCalibratedAlignedProposalCount",
+    COALESCE("notOutcomeCalibratedComparisonCount", 0)::bigint AS "notOutcomeCalibratedComparisonCount",
+    COALESCE("notOutcomeCalibratedProposalCount", 0)::bigint AS "notOutcomeCalibratedProposalCount",
+    COALESCE("notOutcomeCalibratedResolvedProposalCount", 0)::bigint AS "notOutcomeCalibratedResolvedProposalCount",
+    COALESCE("notOutcomeCalibratedAlignedProposalCount", 0)::bigint AS "notOutcomeCalibratedAlignedProposalCount",
+    COALESCE("noSemanticMatchComparisonCount", 0)::bigint AS "noSemanticMatchComparisonCount",
+    COALESCE("notRecordedCalibrationComparisonCount", 0)::bigint AS "notRecordedCalibrationComparisonCount"
   FROM (SELECT 1) AS fallback
   LEFT JOIN selected_cohort ON TRUE
 `;
