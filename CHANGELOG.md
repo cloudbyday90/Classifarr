@@ -11,6 +11,14 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Real current-inventory semantic-study snapshots** — The offline AI/RAG
+  study path can now evaluate a redacted leading-versus-strongest-alternative
+  snapshot from Classifarr's real, candidate-scoped current-library retrieval,
+  rather than synthetic vectors alone. The snapshot has strict bindings and
+  excludes titles, descriptions, library/media IDs, prompts, vectors, provider
+  data, and model output; it cannot change a policy, invoke AI/RAG, learn,
+  retry, or route media.
+
 - **Calmer pending-review evidence** — The review card now leads with a
   plain-language recommendation and reveals source checks, current-library
   comparison, and score/safeguard mechanics in separate, accessible

@@ -7,9 +7,17 @@ import {
   validatePolicyCandidateEvidenceOfflineEvaluationFixtureDocument,
 } from './policyCandidateEvidenceOfflineEvaluationContract.mjs';
 import {
+  POLICY_CANDIDATE_CURRENT_INVENTORY_SEMANTIC_STUDY_SNAPSHOT_DOCUMENT_VERSION,
+  validatePolicyCandidateCurrentInventorySemanticStudySnapshotDocument,
+} from './policyCandidateCurrentInventorySemanticStudySnapshotContract.mjs';
+import {
+  scorePolicyCandidateCurrentInventorySemanticStudySnapshot,
+} from './policyCandidateCurrentInventorySemanticStudySnapshotScoring.mjs';
+import {
   createPolicyCandidateSemanticSnapshotFingerprint,
 } from './policyCandidateSemanticSnapshotFingerprint.mjs';
 import {
+  POLICY_CANDIDATE_SEMANTIC_SNAPSHOT_DOCUMENT_VERSION,
   validatePolicyCandidateSemanticSnapshotDocument,
 } from './policyCandidateSemanticSnapshotContract.mjs';
 import {
@@ -43,15 +51,34 @@ function projectValidation(validation) {
   });
 }
 
-function buildProvenance({ fixtureDocument, snapshotDocument, fixtureFingerprint, snapshotFingerprint }) {
+function snapshotSource(snapshotDocument) {
+  if (snapshotDocument?.version === POLICY_CANDIDATE_CURRENT_INVENTORY_SEMANTIC_STUDY_SNAPSHOT_DOCUMENT_VERSION) {
+    return Object.freeze({
+      id: 'current_inventory_relevance',
+      scoreSnapshot: scorePolicyCandidateCurrentInventorySemanticStudySnapshot,
+      validate: validatePolicyCandidateCurrentInventorySemanticStudySnapshotDocument,
+    });
+  }
+
   return Object.freeze({
-    embeddingSpaceId: snapshotDocument.embeddingSpaceId,
+    id: 'synthetic_embedding',
+    scoreSnapshot: scorePolicyCandidateSemanticSnapshot,
+    validate: validatePolicyCandidateSemanticSnapshotDocument,
+  });
+}
+
+function buildProvenance({ fixtureDocument, snapshotDocument, fixtureFingerprint, snapshotFingerprint, sourceId }) {
+  return Object.freeze({
     fixtureCount: fixtureDocument.length,
     fixtureDocumentFingerprint: fixtureFingerprint,
     snapshotCount: snapshotDocument.snapshots.length,
     snapshotDocumentFingerprint: snapshotFingerprint,
     snapshotDocumentVersion: snapshotDocument.version,
     snapshotSetId: snapshotDocument.snapshotSetId,
+    sourceId,
+    ...(snapshotDocument.version === POLICY_CANDIDATE_SEMANTIC_SNAPSHOT_DOCUMENT_VERSION
+      ? { embeddingSpaceId: snapshotDocument.embeddingSpaceId }
+      : { retrievalProtocolVersion: snapshotDocument.retrievalProtocolVersion }),
   });
 }
 
@@ -116,9 +143,10 @@ function validateDocumentBinding({ fixtureDocument, snapshotDocument, manifest }
 }
 
 /**
- * Adapts a fixed local snapshot into only the three semantic signal IDs used
- * by the offline evaluator. It does not call a model or database and does not
- * expose raw embeddings, fixture names, candidates, media, or retrieval text.
+ * Adapts one fixed, fingerprint-bound study snapshot format into only the
+ * three semantic signal IDs used by the offline evaluator. It does not call a
+ * model or database and does not expose raw embeddings, relevance values,
+ * fixture names, candidates, media, or retrieval text.
  */
 export function buildPolicyCandidateSemanticSnapshotSignals({
   fixtureDocument,
@@ -126,7 +154,8 @@ export function buildPolicyCandidateSemanticSnapshotSignals({
   snapshotDocument,
 } = {}) {
   const fixtureValidation = validatePolicyCandidateEvidenceOfflineEvaluationFixtureDocument(fixtureDocument);
-  const snapshotValidation = validatePolicyCandidateSemanticSnapshotDocument(snapshotDocument);
+  const source = snapshotSource(snapshotDocument);
+  const snapshotValidation = source.validate(snapshotDocument);
   const manifestValidation = validatePolicyCandidateSemanticSnapshotManifest(manifest);
   const validationIssues = [
     ...fixtureValidation.issues,
@@ -169,10 +198,11 @@ export function buildPolicyCandidateSemanticSnapshotSignals({
       fixtureFingerprint: binding.fixtureFingerprint,
       snapshotDocument,
       snapshotFingerprint: binding.snapshotFingerprint,
+      sourceId: source.id,
     }),
     signals: Object.freeze(fixtureDocument.map((fixture) => Object.freeze({
       fixtureId: fixture.id,
-      semanticRetrievalSignalId: scorePolicyCandidateSemanticSnapshot(
+      semanticRetrievalSignalId: source.scoreSnapshot(
         binding.snapshotsByFixtureId.get(fixture.id),
       ),
     }))),

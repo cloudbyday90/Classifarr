@@ -102,6 +102,45 @@ function buildProposal(bundle, overrides = {}) {
   };
 }
 
+function buildCurrentInventoryBundle() {
+  const bundle = buildBundle();
+  bundle.fixtureDocument = bundle.fixtureDocument.map((fixture, index) => ({
+    ...fixture,
+    id: `fixture_${String(index + 1).padStart(16, '0')}`,
+    observations: {
+      ...fixture.observations,
+      semanticSnapshotId: `snapshot_${String(index + 1).padStart(16, '0')}`,
+    },
+  }));
+  bundle.snapshotDocument = {
+    retrievalProtocolVersion: 'current_library.candidate_semantic_retrieval.v2',
+    snapshotSetId: 'snapshot_set_0000000000000001',
+    snapshots: bundle.fixtureDocument.map((fixture) => ({
+      alternativeRelevance: 94,
+      candidateCount: 2,
+      fixtureId: fixture.id,
+      id: fixture.observations.semanticSnapshotId,
+      leadingRelevance: 44,
+      retrievalStatusId: 'available',
+      version: 'policy.candidate_current_inventory_semantic_study_snapshot.v1',
+    })),
+    version: 'policy.candidate_current_inventory_semantic_study_snapshot_document.v1',
+  };
+  bundle.manifest = {
+    fixtureDocumentFingerprint: createPolicyCandidateSemanticSnapshotFingerprint(bundle.fixtureDocument),
+    snapshotDocumentFingerprint: createPolicyCandidateSemanticSnapshotFingerprint(bundle.snapshotDocument),
+    version: POLICY_CANDIDATE_SEMANTIC_SNAPSHOT_MANIFEST_VERSION,
+  };
+  bundle.referenceSetDocument.fixtureDocumentFingerprint = bundle.manifest.fixtureDocumentFingerprint;
+  bundle.referenceSetDocument.labels = bundle.fixtureDocument.map((fixture) => ({
+    consensusStatusId: 'unanimous',
+    fixtureId: fixture.id,
+    referenceDecisionId: 'review',
+    reviewerCount: 2,
+  }));
+  return bundle;
+}
+
 describe('policyCandidateFrozenSemanticStudy', () => {
   test('admits a matching, independently labelled bundle only for human study review', () => {
     const bundle = buildBundle();
@@ -130,6 +169,28 @@ describe('policyCandidateFrozenSemanticStudy', () => {
     });
     expect(JSON.stringify(report)).not.toContain('Private fixture title 1');
     expect(JSON.stringify(report)).not.toContain('frozen-candidate-study');
+  });
+
+  test('admits an equivalently bound current-inventory relevance study only for human review', () => {
+    const bundle = buildCurrentInventoryBundle();
+    const report = preflightPolicyCandidateFrozenSemanticStudy({
+      ...bundle,
+      now: new Date('2026-09-02T12:00:00.000Z'),
+      proposal: buildProposal(bundle),
+    });
+
+    expect(report.status).toEqual({
+      automaticRoutingEligibility: false,
+      id: 'ready_for_human_study_review',
+      policyChangeEligibility: false,
+    });
+    expect(report.semanticReadiness.baseline).toEqual(expect.objectContaining({
+      falsePositiveCount: 0,
+      precisionPercent: 100,
+      recallPercent: 100,
+    }));
+    expect(JSON.stringify(report)).not.toContain('leadingRelevance');
+    expect(JSON.stringify(report)).not.toContain('alternativeRelevance');
   });
 
   test('blocks a proposal that binds any different study document', () => {
