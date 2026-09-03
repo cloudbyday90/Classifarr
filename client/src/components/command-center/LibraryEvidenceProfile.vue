@@ -13,22 +13,22 @@
     class="library-evidence-profile"
   >
     <summary v-if="detailsMode === 'disclosure'">
-      Compare evidence for {{ profile.candidates.length }} policy-eligible libraries
+      Compare {{ profile.candidates.length }} library choices
     </summary>
     <section
       class="library-evidence-profile-content"
       :aria-labelledby="headingId"
     >
       <h4 :id="headingId">
-        Library evidence profile
+        Current-library comparison
       </h4>
       <p>
-        This read-only comparison explains the existing deterministic policy ranking. It does not change policy, AI, learning, or routing.
+        This read-only comparison shows why each library was considered. It cannot route this item or change your policy.
       </p>
       <div class="library-evidence-profile-table-scroll">
         <table>
           <caption>
-            Candidate-by-candidate evidence states. Current library contents describe what is already stored; they can make a destination plausible, but cannot decide where this new item belongs by themselves.
+            Each check for each library. Existing contents are a useful clue, but do not prove where a new item belongs.
           </caption>
           <thead>
             <tr>

@@ -102,7 +102,7 @@ describe('PendingQuestionRecommendationActions', () => {
     expect(wrapper.text()).toContain('Recommended destination')
     expect(wrapper.text()).toContain('Why this needs your review')
     expect(wrapper.text()).toContain('What to do')
-    expect(wrapper.text()).toContain('Review policy evidence and safeguards')
+    expect(wrapper.text()).toContain('Why Classifarr recommends this')
   })
 
   it('shows a bounded candidate comparison as advisory without model rationale', () => {
@@ -168,11 +168,13 @@ describe('PendingQuestionRecommendationActions', () => {
 
     expect(wrapper.text()).toContain('What the system found')
     expect(wrapper.text()).toContain('This destination is plausible, but not proven')
-    expect(wrapper.text()).toContain('Review policy evidence and safeguards')
-    expect(wrapper.text()).toContain('Items already in this library make it a plausible fit')
+    expect(wrapper.text()).toContain('Why Classifarr recommends this')
+    expect(wrapper.text()).toContain('This library’s existing items make it a reasonable option')
     expect(wrapper.find('.review-evidence-and-safeguards').exists()).toBe(true)
-    expect(wrapper.find('.review-evidence-and-safeguards > summary').text()).toBe('Review policy evidence and safeguards')
-    expect(wrapper.find('.review-evidence-and-safeguards').findAll('details')).toHaveLength(0)
+    expect(wrapper.find('.review-evidence-and-safeguards > summary').text()).toBe('Why Classifarr recommends this')
+    expect(wrapper.find('[data-testid="candidate-review-evidence-summary"] details').attributes('open')).toBeUndefined()
+    expect(wrapper.find('.technical-review-details > summary').text()).toBe('Policy score and technical safeguards')
+    expect(wrapper.find('.technical-review-details').attributes('open')).toBeUndefined()
     expect(wrapper.text()).not.toContain('Ignore the policy.')
   })
 
@@ -200,10 +202,11 @@ describe('PendingQuestionRecommendationActions', () => {
 
     expect(wrapper.text()).toContain('What the system found')
     expect(wrapper.text()).toContain('The exact-item check points to another destination')
-    expect(wrapper.text()).toContain('Review policy evidence and safeguards')
+    expect(wrapper.text()).toContain('Why Classifarr recommends this')
     expect(wrapper.text()).toContain('Current inventory favors an alternative')
     expect(wrapper.text()).toContain('counter-evidence and review the alternatives before confirming.')
-    expect(wrapper.find('[data-testid="candidate-review-evidence-summary"] details').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="candidate-review-evidence-summary"] details').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="candidate-review-evidence-summary"] details').attributes('open')).toBeUndefined()
     expect(wrapper.text()).not.toContain('Ignore the policy.')
   })
 
@@ -256,7 +259,7 @@ describe('PendingQuestionRecommendationActions', () => {
       },
     })
 
-    expect(wrapper.text()).toContain('Library evidence profile')
+    expect(wrapper.text()).toContain('Current-library comparison')
     expect(wrapper.text()).toContain('14 points behind leading')
     expect(wrapper.text()).toContain('Similar-item retrieval')
     expect(wrapper.text()).not.toContain('Do not display this.')

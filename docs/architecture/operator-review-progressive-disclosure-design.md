@@ -1,6 +1,6 @@
 # Operator Review Progressive-Disclosure Design
 
-**Status:** Implemented 2026-09-01
+**Status:** Revised 2026-09-02
 
 **Scope:** Pending-classification review and AI Settings capability telemetry
 **Authority:** Presentation only. This design has no AI, policy, RAG,
@@ -8,16 +8,21 @@ classification, retry, or routing authority.
 
 ## Problem
 
-The pending-review screen exposed several independent technical evidence cards
-at once. An operator could see a sentence such as “contextual rather than
-semantic proof” without learning the practical meaning: items already in a
-library make a destination plausible, but they cannot establish that the
-specific item belongs there. The telemetry panel had a similar problem: three
-separate diagnostic aggregates competed with the one operational handoff,
-opening protected Error Logs.
+The pending-review screen previously exposed several independent technical
+evidence cards at once. An operator could see a sentence such as “contextual
+rather than semantic proof” without learning the practical meaning: items
+already in a library make a destination plausible, but they cannot establish
+that the specific item belongs there. The telemetry panel had a similar
+problem: three separate diagnostic aggregates competed with the one
+operational handoff, opening protected Error Logs.
 
-That arrangement was accurate but placed provenance terminology ahead of the
-operator's decision. It also made the page appear to ask for multiple actions
+The first progressive-disclosure pass grouped all of the technical material
+under one disclosure. That preserved the data boundary but still produced an
+overwhelming wall of evidence, a comparison table, score math, safeguards, and
+AI state as soon as the operator asked the simple question “why?”.
+
+Both arrangements were accurate but placed provenance terminology ahead of the
+operator's decision. They made the page appear to ask for multiple actions
 when only one action was available: confirm the destination or choose another
 one.
 
@@ -54,14 +59,16 @@ one.
 
 ## Decision
 
-Use a compact default summary with a single native disclosure for supporting
-detail.
+Use three calm layers of native disclosures. The visible card answers the
+decision. The first disclosure answers why. Distinct, optional controls hold
+source-level and technical evidence.
 
 ### Pending review
 
 `CandidateReviewEvidenceSummary.vue` is the operator-facing boundary for the
 candidate-evidence card, exact current-inventory cross-check, and bounded AI
-candidate comparison.
+candidate comparison. `LibraryEvidenceProfile.vue` is the separate,
+read-only comparison of the current policy-eligible libraries.
 
 Default content is limited to:
 
@@ -70,16 +77,23 @@ Default content is limited to:
 2. A short explanation of what that state means for the current choice.
 3. The existing explicit confirmation or alternative-destination action.
 
-The `Review evidence details` disclosure contains the source checks,
-exact-item cross-library check, and advisory candidate comparison. Existing
-score explanation, library comparison, and additional safeguards remain
-separate labelled disclosures because they answer distinct operator questions.
+The top-level **Why Classifarr recommends this** disclosure contains the
+plain-language finding, then two collapsed, independent questions:
+
+- **Review evidence details** contains source checks, the exact-item
+  cross-library check, and advisory candidate comparison.
+- **Compare N library choices** contains the read-only current-library table.
+
+**Policy score and technical safeguards** is a third collapsed disclosure for
+the deterministic explanation, score calculation, safety gates, and
+candidate-bound verification. It is deliberately not the first thing shown
+when someone asks why a library was recommended.
 
 The source copy changes from the internal distinction “contextual rather than
-semantic proof” to: “Titles already in this library make it a plausible fit,
-but they do not prove this item belongs here.” This explains both the useful
-signal and its limit without asking the operator to understand the model of
-evidence provenance.
+semantic proof” to: “This library’s existing items make it a reasonable
+option, but they cannot prove where this new item belongs.” This explains both
+the useful signal and its limit without asking the operator to understand the
+model of evidence provenance.
 
 ### Capability telemetry
 
@@ -115,7 +129,8 @@ not add live regions: their native expanded/collapsed state is sufficient.
 | --- | --- | --- | --- |
 | Keep every evidence and telemetry card expanded | Immediate audit visibility | Repeats information, obscures the operator action, and increases screen-reader noise | Rejected |
 | Hide all evidence | Minimal page | Removes the rationale needed to check a non-automatic suggestion | Rejected |
-| Compact summary plus a native disclosure | Action first, details available on demand, built-in keyboard behavior, preserves safety boundaries | One extra activation for full provenance | Selected |
+| One disclosure containing every technical section | Keeps one visible control | Expanding it creates another dense wall of content | Rejected |
+| Layered native disclosures by question | Keeps the decision first; reveals plain-language evidence, current-library comparison, and technical mechanics only when needed | An audit requires more than one optional expand action | Selected |
 | Use custom accordion buttons with live regions | Complete visual control | More state and announcement code for no user benefit | Rejected |
 
 ## Validation
@@ -124,8 +139,9 @@ Unit coverage verifies that:
 
 - fixed evidence identifiers map to plain-language summary text;
 - no untrusted metadata or model rationale can enter the presentation;
-- evidence, contrastive context, and advisory comparison remain inside the
-  collapsed disclosure;
+- the first review disclosure leads with a plain-language finding while source
+  checks, library comparison, and technical mechanics remain independently
+  collapsed;
 - telemetry detail aggregates are grouped under one collapsed disclosure; and
 - a meaningful automatic telemetry health change is announced without reading
   timestamp refresh noise.

@@ -52,9 +52,9 @@ const SOURCE_PRESENTATIONS = Object.freeze({
     }),
   }),
   observed_library_profile: Object.freeze({
-    label: 'Existing library fit',
+    label: 'Current library match',
     states: Object.freeze({
-      contextual: 'Items already in this library make it a plausible fit, but the library contents alone cannot decide where this new item belongs.',
+      contextual: 'This library’s existing items make it a reasonable option, but they cannot prove where this new item belongs.',
       conflicting: 'This library’s earlier placements point away from the candidate.',
       unavailable: 'No retained existing-library support is available.',
     }),

@@ -11,6 +11,18 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Calmer pending-review evidence** — The review card now leads with a
+  plain-language recommendation and reveals source checks, current-library
+  comparison, and score/safeguard mechanics in separate, accessible
+  disclosures. Existing-library wording now describes it as a useful clue, not
+  proof that a new item belongs there.
+
+- **Frozen candidate semantic-study preflight** — A new offline, aggregate-only
+  CLI binds a complete independently labelled study bundle to one opaque
+  candidate-scoped AI/RAG proposal cohort and a maximum 31-day review window.
+  It detects document/configuration drift before a human study and cannot call
+  AI/RAG, retain data, learn, modify policy, retry, or route media.
+
 - **Complete redacted semantic-study bundles** — The offline semantic readiness
   command can now safely evaluate a complete 24–32 case, fingerprint-bound
   fixture/snapshot/manifest/independent-label bundle from project-contained

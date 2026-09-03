@@ -11,7 +11,7 @@ const CANDIDATE_EVIDENCE_SUMMARIES = Object.freeze({
   }),
   counter_evidence_recommended: Object.freeze({
     label: 'This destination is plausible, but not proven',
-    message: 'The policy or existing collection supports this choice, but there is not enough independent evidence to route it automatically.',
+    message: 'The policy or this library’s current contents support this choice, but there is not enough independent evidence to route it automatically.',
     tone: 'attention',
   }),
   evidence_conflict: Object.freeze({

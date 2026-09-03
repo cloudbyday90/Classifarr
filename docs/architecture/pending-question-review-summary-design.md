@@ -13,17 +13,18 @@ it is deliberately not authoritative.
 
 ## Design
 
-The card now has two layers.
+The card now has three progressive layers.
 
 1. A visible decision summary uses a semantic definition list with three
    descriptive fields:
    - Recommended destination
    - Why this needs your review
    - What to do
-2. One closed, user-controlled **Review policy evidence and safeguards**
-   disclosure contains the technical explanation: deterministic decision and
-   safety gate, source evidence, cross-library comparison, score mechanics,
-   additional safeguards, and candidate-bound AI verification.
+2. One closed, user-controlled **Why Classifarr recommends this** disclosure
+   contains a compact plain-language finding.
+3. Inside that review layer, independent closed disclosures answer distinct
+   follow-up questions: source checks and advisory AI comparison, a
+   current-library comparison, and the policy score plus technical safeguards.
 
 The confirm action remains visible after the summary. Alternative-destination
 selection remains a separate, explicit control because it is an action, not
@@ -35,10 +36,9 @@ created by the pure ESM
 normalized destination name and action availability. It cannot interpret
 server prose, policy terms, retrieval text, provider output, or model output.
 
-The pre-existing evidence modules accept a `detailsMode` prop. Their default
-is still an independent native disclosure for reuse elsewhere; the pending
-review passes `inline` so the card has a single evidence disclosure rather
-than nested disclosure controls.
+The pre-existing evidence modules use their native disclosure mode in the
+pending review. This preserves a compact first layer rather than turning a
+single expand action into a dense technical panel.
 
 ## Accessibility and interaction research
 
@@ -73,13 +73,13 @@ The design follows W3C guidance current through August 2026:
 | --- | --- | --- |
 | Keep every section expanded | Maximum immediate detail | Repetitive, difficult to scan, and makes safeguards look like multiple independent decisions. |
 | Hide all evidence | Fastest operator view | Removes the review trail needed for accountable confirmation. |
-| Several nested disclosures | Preserves every grouping | Requires operators to discover several controls and recreates the busy layout. |
-| One decision summary plus one evidence disclosure | Clear action path while preserving an auditable explanation | Detailed review requires one intentional expand action. |
+| One disclosure containing all technical detail | Keeps a small control count | Expanding the panel recreates the busy layout. |
+| Decision summary plus question-based disclosures | Clear action path; evidence depth is chosen by the operator | Detailed review can require more than one intentional expand action. |
 
 ## Recommendation stack
 
-Use the one-summary/one-disclosure design first. Retain deterministic evidence
-as the route authority, preserve AI as advisory evidence only, and keep the
-confirmation action explicit. Evaluate comprehension with representative
-ambiguous media examples before changing policy thresholds or routing
-behaviour.
+Use the decision-summary and question-based disclosure design. Retain
+deterministic evidence as the route authority, preserve AI as advisory evidence
+only, and keep the confirmation action explicit. Evaluate comprehension with
+representative ambiguous media examples before changing policy thresholds or
+routing behaviour.

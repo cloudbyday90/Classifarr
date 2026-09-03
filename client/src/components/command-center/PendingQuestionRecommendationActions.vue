@@ -43,136 +43,139 @@
         v-if="decisionPresentation"
         class="review-evidence-and-safeguards"
       >
-        <summary>Review policy evidence and safeguards</summary>
+        <summary>Why Classifarr recommends this</summary>
         <div class="review-evidence-and-safeguards-content">
-          <section :aria-labelledby="`policy-decision-details-${itemId}`">
-            <h4 :id="`policy-decision-details-${itemId}`">
-              Policy decision details
-            </h4>
-            <p>{{ decisionPresentation.deterministic.message }}</p>
-            <div
-              v-if="showSafetyGate"
-              class="route-safety-gate"
-            >
-              <p class="route-safety-gate-label">
-                Routing safeguard
-              </p>
-              <p>
-                {{ decisionPresentation.deterministic.safety_gate.message }}
-              </p>
-            </div>
-            <ul
-              v-if="!candidateReviewEvidenceSummary && decisionPresentation.deterministic.evidence.length"
-              class="decision-evidence-list"
-            >
-              <li
-                v-for="fact in decisionPresentation.deterministic.evidence"
-                :key="fact.id"
-              >
-                {{ fact.label }}
-              </li>
-            </ul>
-          </section>
           <CandidateReviewEvidenceSummary
             :candidate-evidence="candidateEvidenceCard"
             :contrastive-evidence="candidateContrastiveEvidence"
             :candidate-adjudication="decisionPresentation.candidate_adjudication"
-            details-mode="inline"
             :item-id="itemId"
           />
           <LibraryEvidenceProfile
-            details-mode="inline"
             :item-id="itemId"
             :value="libraryEvidenceProfile"
           />
-          <section
-            v-if="scoreExplanation"
-            class="score-explanation"
-            :aria-labelledby="`policy-score-explanation-${itemId}`"
-          >
-            <h4 :id="`policy-score-explanation-${itemId}`">
-              How this policy score was calculated
-            </h4>
-            <p>
-              {{ scoreExplanationThresholdMessage }}
-            </p>
-            <p>
-              This is a deterministic policy-evidence score, not a probability or AI decision. It cannot bypass the routing safeguards above.
-            </p>
-            <p class="score-explanation-label">
-              Evidence contribution
-            </p>
-            <ul>
-              <li
-                v-for="component in scoreExplanation.components"
-                :key="component.source_id"
+          <details class="technical-review-details">
+            <summary>Policy score and technical safeguards</summary>
+            <div class="technical-review-details-content">
+              <section :aria-labelledby="`policy-decision-details-${itemId}`">
+                <h4 :id="`policy-decision-details-${itemId}`">
+                  Policy decision details
+                </h4>
+                <p>{{ decisionPresentation.deterministic.message }}</p>
+                <div
+                  v-if="showSafetyGate"
+                  class="route-safety-gate"
+                >
+                  <p class="route-safety-gate-label">
+                    Routing safeguard
+                  </p>
+                  <p>
+                    {{ decisionPresentation.deterministic.safety_gate.message }}
+                  </p>
+                </div>
+                <ul
+                  v-if="!candidateReviewEvidenceSummary && decisionPresentation.deterministic.evidence.length"
+                  class="decision-evidence-list"
+                >
+                  <li
+                    v-for="fact in decisionPresentation.deterministic.evidence"
+                    :key="fact.id"
+                  >
+                    {{ fact.label }}
+                  </li>
+                </ul>
+              </section>
+              <section
+                v-if="scoreExplanation"
+                class="score-explanation"
+                :aria-labelledby="`policy-score-explanation-${itemId}`"
               >
-                <strong>{{ scoreExplanationSourceLabel(component.source_id) }}:</strong>
-                {{ component.evidence_score }}/100 evidence score; contributes {{ formatScoreValue(component.weighted_contribution) }} points ({{ formatScoreValue(component.normalized_weight_percent) }}% of active evidence).
-              </li>
-            </ul>
-            <p>
-              Weighted base score: {{ formatScoreValue(scoreExplanation.base_score) }}/100.
-            </p>
-            <p v-if="scoreExplanation.agreement_multiplier_percent > 100">
-              {{ scoreExplanation.components.length }} corroborating sources applied a {{ scoreExplanation.agreement_multiplier_percent - 100 }}% agreement adjustment before evidence-safety calibration.
-            </p>
-            <p>
-              {{ scoreExplanationCalibrationMessage }}
-              <template v-if="scoreExplanation.calibration.pre_safety_score !== null">
-                It changed the pre-safety score from {{ scoreExplanation.calibration.pre_safety_score }} to {{ scoreExplanation.score }}.
-              </template>
-            </p>
-          </section>
-          <section
-            v-if="decisionPresentation.deterministic.additional_safety_gates.length"
-            class="additional-safety-gates"
-            :aria-labelledby="`additional-routing-safeguards-${itemId}`"
-          >
-            <h4 :id="`additional-routing-safeguards-${itemId}`">
-              Additional routing safeguards
-            </h4>
-            <ul>
-              <li
-                v-for="gate in decisionPresentation.deterministic.additional_safety_gates"
-                :key="gate.id"
+                <h4 :id="`policy-score-explanation-${itemId}`">
+                  How this policy score was calculated
+                </h4>
+                <p>
+                  {{ scoreExplanationThresholdMessage }}
+                </p>
+                <p>
+                  This is a deterministic policy-evidence score, not a probability or AI decision. It cannot bypass the routing safeguards above.
+                </p>
+                <p class="score-explanation-label">
+                  Evidence contribution
+                </p>
+                <ul>
+                  <li
+                    v-for="component in scoreExplanation.components"
+                    :key="component.source_id"
+                  >
+                    <strong>{{ scoreExplanationSourceLabel(component.source_id) }}:</strong>
+                    {{ component.evidence_score }}/100 evidence score; contributes {{ formatScoreValue(component.weighted_contribution) }} points ({{ formatScoreValue(component.normalized_weight_percent) }}% of active evidence).
+                  </li>
+                </ul>
+                <p>
+                  Weighted base score: {{ formatScoreValue(scoreExplanation.base_score) }}/100.
+                </p>
+                <p v-if="scoreExplanation.agreement_multiplier_percent > 100">
+                  {{ scoreExplanation.components.length }} corroborating sources applied a {{ scoreExplanation.agreement_multiplier_percent - 100 }}% agreement adjustment before evidence-safety calibration.
+                </p>
+                <p>
+                  {{ scoreExplanationCalibrationMessage }}
+                  <template v-if="scoreExplanation.calibration.pre_safety_score !== null">
+                    It changed the pre-safety score from {{ scoreExplanation.calibration.pre_safety_score }} to {{ scoreExplanation.score }}.
+                  </template>
+                </p>
+              </section>
+              <section
+                v-if="decisionPresentation.deterministic.additional_safety_gates.length"
+                class="additional-safety-gates"
+                :aria-labelledby="`additional-routing-safeguards-${itemId}`"
               >
-                <strong>{{ gate.label }}:</strong> {{ gate.message }}
-              </li>
-            </ul>
-          </section>
-          <section
-            v-if="decisionPresentation.candidate_bound_verification"
-            class="candidate-bound-verification"
-            :aria-labelledby="`candidate-bound-verification-${itemId}`"
-          >
-            <h4 :id="`candidate-bound-verification-${itemId}`">
-              Candidate-bound verification
-            </h4>
-            <p class="candidate-bound-verification-title">
-              {{ decisionPresentation.candidate_bound_verification.label }}
-            </p>
-            <p>
-              {{ decisionPresentation.candidate_bound_verification.message }}
-            </p>
-          </section>
-          <section
-            v-else-if="decisionPresentation.ai_advisory && !decisionPresentation.candidate_adjudication"
-            class="ai-advisory"
-            :aria-labelledby="`ai-advisory-${itemId}`"
-          >
-            <h4 :id="`ai-advisory-${itemId}`">
-              {{ decisionPresentation.ai_advisory.status_id === 'aligned_with_deterministic'
-                ? 'AI check'
-                : 'AI advisory' }}
-            </h4>
-            <p>
-              {{ decisionPresentation.ai_advisory.message }}
-            </p>
-            <p v-if="decisionPresentation.ai_advisory.proposed_destination">
-              Proposed destination: {{ decisionPresentation.ai_advisory.proposed_destination.library_name }}.
-            </p>
-          </section>
+                <h4 :id="`additional-routing-safeguards-${itemId}`">
+                  Additional routing safeguards
+                </h4>
+                <ul>
+                  <li
+                    v-for="gate in decisionPresentation.deterministic.additional_safety_gates"
+                    :key="gate.id"
+                  >
+                    <strong>{{ gate.label }}:</strong> {{ gate.message }}
+                  </li>
+                </ul>
+              </section>
+              <section
+                v-if="decisionPresentation.candidate_bound_verification"
+                class="candidate-bound-verification"
+                :aria-labelledby="`candidate-bound-verification-${itemId}`"
+              >
+                <h4 :id="`candidate-bound-verification-${itemId}`">
+                  Candidate-bound verification
+                </h4>
+                <p class="candidate-bound-verification-title">
+                  {{ decisionPresentation.candidate_bound_verification.label }}
+                </p>
+                <p>
+                  {{ decisionPresentation.candidate_bound_verification.message }}
+                </p>
+              </section>
+              <section
+                v-else-if="decisionPresentation.ai_advisory && !decisionPresentation.candidate_adjudication"
+                class="ai-advisory"
+                :aria-labelledby="`ai-advisory-${itemId}`"
+              >
+                <h4 :id="`ai-advisory-${itemId}`">
+                  {{ decisionPresentation.ai_advisory.status_id === 'aligned_with_deterministic'
+                    ? 'AI check'
+                    : 'AI advisory' }}
+                </h4>
+                <p>
+                  {{ decisionPresentation.ai_advisory.message }}
+                </p>
+                <p v-if="decisionPresentation.ai_advisory.proposed_destination">
+                  Proposed destination: {{ decisionPresentation.ai_advisory.proposed_destination.library_name }}.
+                </p>
+              </section>
+            </div>
+          </details>
         </div>
       </details>
       <Button
@@ -488,14 +491,32 @@ function emitConfirmDestination(destination) {
   margin-top: 0.75rem;
 }
 
-.review-evidence-and-safeguards-content > section > h4 {
+.technical-review-details {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: #cbd5e1;
+}
+
+.technical-review-details > summary {
+  width: fit-content;
+  cursor: pointer;
+  color: #bfdbfe;
+}
+
+.technical-review-details-content {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.technical-review-details-content > section > h4 {
   margin: 0;
   font-size: 0.75rem;
   font-weight: 600;
   color: #bfdbfe;
 }
 
-.review-evidence-and-safeguards-content > section > p {
+.technical-review-details-content > section > p {
   margin-top: 0.25rem;
 }
 

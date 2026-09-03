@@ -9,10 +9,11 @@ Pending policy questions now put the operator’s decision first:
    route.
 3. **What to do** describes the exact confirmation or selection action.
 
-One closed **Review policy evidence and safeguards** disclosure now contains
-the deterministic decision detail, score explanation, evidence cards,
-cross-library evidence profile, additional safeguards, and AI verification.
-There are no nested evidence disclosures in this card.
+The closed **Why Classifarr recommends this** disclosure now leads with a
+plain-language finding. It keeps source checks and advisory AI comparison,
+the current-library comparison, and the policy score plus technical safeguards
+in separate collapsed disclosures. This prevents one expand action from
+revealing every implementation detail at once.
 
 The old static candidate-verification `role="status"` has been removed. That
 content is not a newly created action result, so treating it as a live status
@@ -27,11 +28,10 @@ their existing server-owned contract validation.
 
 ## Validation
 
-Focused Vue tests cover the concise summary, bounded fallback text, one
-enclosing technical disclosure, inline evidence composition, and retained
-confirmation behaviour. The complete client suite passed **311 files / 4,192
-tests**. Client lint, Vue type-checking, the production build, and Markdown
-linting also passed.
+Focused Vue tests cover the concise summary, bounded fallback text,
+question-based collapsed disclosures, and retained confirmation behaviour.
+The full client suite passed **315 files / 4,216 tests**. Client lint, Vue
+type-check, production build, and Markdown lint also passed.
 
 `docker compose build --no-cache` completed successfully, followed by
 `docker compose up -d --force-recreate --wait`. The local container reached

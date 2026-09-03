@@ -48,7 +48,8 @@ describe('LibraryEvidenceProfile', () => {
       props: { itemId: 42, value },
     })
 
-    expect(wrapper.get('summary').text()).toContain('Compare evidence for 2 policy-eligible libraries')
+    expect(wrapper.get('summary').text()).toContain('Compare 2 library choices')
+    expect(wrapper.get('details').attributes('open')).toBeUndefined()
     expect(wrapper.get('table').attributes('aria-labelledby')).toBeUndefined()
     expect(wrapper.get('section').attributes('aria-labelledby')).toBe('library-evidence-profile-42')
     expect(wrapper.text()).toContain('Movies')
@@ -56,7 +57,7 @@ describe('LibraryEvidenceProfile', () => {
     expect(wrapper.text()).toContain('16 points behind leading')
     expect(wrapper.text()).toContain('Declared policy')
     expect(wrapper.text()).toContain('Similar-item retrieval')
-    expect(wrapper.text()).toContain('does not change policy, AI, learning, or routing')
+    expect(wrapper.text()).toContain('cannot route this item or change your policy')
     expect(wrapper.text()).not.toContain('Do not display')
 
     const headers = wrapper.findAll('th')

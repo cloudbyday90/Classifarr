@@ -649,7 +649,8 @@ describe('CommandCenter action modules', () => {
     expect(wrapper.text()).toContain('Policy confirmation required')
     expect(wrapper.text()).toContain('Confirm Movies or choose a different destination.')
     expect(wrapper.text()).not.toContain('A score alone does not establish destination identity automatically.')
-    expect(wrapper.text()).toContain('Review policy evidence and safeguards')
+    expect(wrapper.text()).toContain('Why Classifarr recommends this')
+    expect(wrapper.text()).toContain('Policy score and technical safeguards')
     expect(wrapper.text()).toContain('Routing safeguard')
     expect(wrapper.text()).toContain('requires an operator confirmation before this item can route.')
     expect(wrapper.text()).toContain('Declared policy intent supports Movies.')
@@ -662,6 +663,7 @@ describe('CommandCenter action modules', () => {
     expect(wrapper.findAll('button').some(node => node.text() === 'Confirm Movies')).toBe(true)
     expect(wrapper.text()).toContain('Review 1 alternative candidate')
     expect(wrapper.find('details').element.open).toBe(false)
+    expect(wrapper.find('.technical-review-details').element.open).toBe(false)
 
     const confirmButton = wrapper.findAll('button').find(node => node.text() === 'Confirm Movies')
     await confirmButton.trigger('click')
