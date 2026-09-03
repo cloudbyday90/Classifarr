@@ -32,9 +32,18 @@ export const POLICY_CANDIDATE_CURRENT_INVENTORY_SEMANTIC_STUDY_SNAPSHOT_RISK_IDS
   UNKNOWN_FIELD: 'unknown_field',
 });
 
-const FIXTURE_ID_PATTERN = /^fixture_[a-f0-9]{16,64}$/u;
-const SNAPSHOT_ID_PATTERN = /^snapshot_[a-f0-9]{16,64}$/u;
-const SNAPSHOT_SET_ID_PATTERN = /^snapshot_set_[a-f0-9]{16,64}$/u;
+/**
+ * Shared opaque identifiers for the real-inventory study path. Keeping them
+ * here lets the capture boundary reject content-bearing caller IDs before it
+ * invokes retrieval, while the serialized snapshot contract remains the
+ * single authority for document validation.
+ */
+export const POLICY_CANDIDATE_CURRENT_INVENTORY_SEMANTIC_STUDY_IDENTIFIER_PATTERNS = Object.freeze({
+  FIXTURE_ID: /^fixture_[a-f0-9]{16,64}$/u,
+  SNAPSHOT_ID: /^snapshot_[a-f0-9]{16,64}$/u,
+  SNAPSHOT_SET_ID: /^snapshot_set_[a-f0-9]{16,64}$/u,
+});
+
 const MAX_SNAPSHOTS = 32;
 const RETRIEVAL_STATUS_IDS = new Set(
   Object.values(POLICY_CANDIDATE_CURRENT_INVENTORY_SEMANTIC_STUDY_SNAPSHOT_STATUS_IDS),
@@ -150,14 +159,14 @@ export function validatePolicyCandidateCurrentInventorySemanticStudySnapshot(sna
   if (hasId) validateIdentifier(
     snapshot.id,
     'snapshot.id',
-    SNAPSHOT_ID_PATTERN,
+    POLICY_CANDIDATE_CURRENT_INVENTORY_SEMANTIC_STUDY_IDENTIFIER_PATTERNS.SNAPSHOT_ID,
     POLICY_CANDIDATE_CURRENT_INVENTORY_SEMANTIC_STUDY_SNAPSHOT_RISK_IDS.INVALID_SNAPSHOT_ID,
     issues,
   );
   if (hasFixtureId) validateIdentifier(
     snapshot.fixtureId,
     'snapshot.fixtureId',
-    FIXTURE_ID_PATTERN,
+    POLICY_CANDIDATE_CURRENT_INVENTORY_SEMANTIC_STUDY_IDENTIFIER_PATTERNS.FIXTURE_ID,
     POLICY_CANDIDATE_CURRENT_INVENTORY_SEMANTIC_STUDY_SNAPSHOT_RISK_IDS.INVALID_FIXTURE_ID,
     issues,
   );
@@ -227,7 +236,7 @@ export function validatePolicyCandidateCurrentInventorySemanticStudySnapshotDocu
   if (hasSnapshotSetId) validateIdentifier(
     document.snapshotSetId,
     'document.snapshotSetId',
-    SNAPSHOT_SET_ID_PATTERN,
+    POLICY_CANDIDATE_CURRENT_INVENTORY_SEMANTIC_STUDY_IDENTIFIER_PATTERNS.SNAPSHOT_SET_ID,
     POLICY_CANDIDATE_CURRENT_INVENTORY_SEMANTIC_STUDY_SNAPSHOT_RISK_IDS.INVALID_SNAPSHOT_ID,
     issues,
   );

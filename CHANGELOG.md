@@ -11,6 +11,14 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Bounded real-inventory semantic-study capture** — Classifarr can now
+  prepare one 24–32-case, candidate-scoped RAG study cohort sequentially in
+  memory and immediately reduce it to the existing redacted snapshot format.
+  Invalid requests make no retrieval call, per-case failures become study
+  abstentions, and the output excludes media/library content, provider/model
+  data, prompts, vectors, normal persistence, browser exposure, learning, and
+  routing authority.
+
 - **Real current-inventory semantic-study snapshots** — The offline AI/RAG
   study path can now evaluate a redacted leading-versus-strongest-alternative
   snapshot from Classifarr's real, candidate-scoped current-library retrieval,
