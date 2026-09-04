@@ -7,12 +7,16 @@
 - Added a modular ESM, sequential in-memory runner that calls only the
   existing candidate-scoped semantic retriever and immediately reduces each
   result to a redacted snapshot.
+- Added a private, stdin-only ESM command that can run the bounded capture
+  locally without putting raw titles, descriptions, or library context into a
+  repository file. It writes only the redacted snapshot document.
 - Reused the existing strict snapshot document validator and published its
   opaque identifier patterns for pre-retrieval validation rather than copying
   a second identifier protocol.
 - Added focused tests for redaction, sequential execution, retriever failure
-  abstention, no-call validation failure, duplicate IDs, and unknown-field
-  rejection.
+  abstention, no-call validation failure, duplicate IDs, unknown-field
+  rejection, stdin-size enforcement, fixed-error behavior, and the
+  media-type/metadata requirements that the live retriever needs.
 
 ## Observed Result
 
@@ -29,26 +33,32 @@ the only next consumers, and both retain no automatic routing eligibility.
 
 ## Local Validation
 
-- Focused server tests: 3 suites / 9 tests passed.
+- Focused server tests: 2 suites / 8 tests passed.
 - The 24-case test proves the retriever never has more than one in-flight call
   and proves serialized output excludes test media metadata, retrieved titles,
   library IDs, and retrieved-item arrays.
 - A forced retriever failure produced one unavailable snapshot while retaining
   the other 23 cases; it did not surface the provider error.
 - A 23-case request was rejected before any retriever call.
+- A private stdin request reached the injected capture boundary once and
+  returned only the redacted document; its private title, overview, and
+  library identifiers were absent from serialized output.
+- An oversized private input and unsupported command-line option both failed
+  closed without exposing the supplied value.
 
 ## Pull Request Check
 
 The repository had no open pull requests when checked against GitHub's
-official pull-request API on 2026-09-03. No unrelated or closed PR was copied
+official pull-request API on 2026-09-04. No unrelated or closed PR was copied
 into this change. GitHub documents this endpoint's open-state listing
 behavior in its [Pull Requests REST
 API](https://docs.github.com/en/rest/pulls/pulls).
 
 ## Next Item
 
-Create and independently label the first real 24–32-case study packet, then
-run its existing readiness gate and frozen-study preflight. If its error
-profile supports the use case, the next engineering component is a narrowly
-scoped semantic counter-evidence experiment that can move only a broad-policy
-conflict to candidate comparison or operator review; it must not auto-route.
+Run one real 24–32-case packet using this private capture boundary, create its
+independent labels, then run the existing readiness gate and frozen-study
+preflight. If its error profile supports the use case, the next engineering
+component is a narrowly scoped semantic counter-evidence experiment that can
+move only a broad-policy conflict to candidate comparison or operator review;
+it must not auto-route.

@@ -14,9 +14,9 @@ import {
 
 const contract = Object.freeze({
   candidates: Object.freeze([
-    Object.freeze({ libraryId: 10 }),
-    Object.freeze({ libraryId: 20 }),
-    Object.freeze({ libraryId: 30 }),
+    Object.freeze({ libraryId: 10, mediaType: 'movie' }),
+    Object.freeze({ libraryId: 20, mediaType: 'movie' }),
+    Object.freeze({ libraryId: 30, mediaType: 'movie' }),
   ]),
   valid: true,
 });
@@ -161,6 +161,30 @@ describe('policyCandidateCurrentInventorySemanticStudyCapture', () => {
     expect(validation.issues).toEqual(expect.arrayContaining([
       expect.objectContaining({ riskId: 'duplicate_fixture_id' }),
       expect.objectContaining({ riskId: 'unknown_field' }),
+    ]));
+  });
+
+  test('rejects a capture case that the live current-library retriever cannot use', () => {
+    const cases = Array.from({ length: 24 }, (_value, index) => caseAt(index + 1));
+    cases[0] = caseAt(1, {
+      contract: {
+        ...contract,
+        candidates: contract.candidates.map((candidate) => ({ libraryId: candidate.libraryId })),
+      },
+    });
+    cases[1] = caseAt(2, {
+      metadata: { overview: 'Metadata without a title cannot make a retrieval request.' },
+    });
+
+    const validation = validatePolicyCandidateCurrentInventorySemanticStudyCaptureRequest({
+      cases,
+      snapshotSetId: opaqueId('snapshot_set', 1),
+    });
+
+    expect(validation.ok).toBe(false);
+    expect(validation.issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ riskId: 'invalid_candidate_contract' }),
+      expect.objectContaining({ riskId: 'invalid_metadata' }),
     ]));
   });
 });

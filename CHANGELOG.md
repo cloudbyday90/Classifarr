@@ -11,6 +11,13 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Private real-inventory study runner** — A local stdin-only ESM command can
+  now execute one 24–32-case candidate-scoped semantic study without writing
+  raw media metadata to the checkout. It verifies the same media-type and
+  metadata prerequisites as the live retriever, accepts no file arguments,
+  emits only the existing redacted snapshot document, and cannot change AI,
+  policy, learning, retries, or routing.
+
 - **Bounded real-inventory semantic-study capture** — Classifarr can now
   prepare one 24–32-case, candidate-scoped RAG study cohort sequentially in
   memory and immediately reduce it to the existing redacted snapshot format.

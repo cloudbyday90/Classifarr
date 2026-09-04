@@ -6,6 +6,10 @@
 import {
   POLICY_CANDIDATE_CURRENT_INVENTORY_SEMANTIC_STUDY_IDENTIFIER_PATTERNS,
 } from './policyCandidateCurrentInventorySemanticStudySnapshotContract.mjs';
+import {
+  buildCurrentLibraryCandidateRetrievalRequest,
+  CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_STATUS_IDS,
+} from './currentLibraryCandidateRetrievalContract.mjs';
 
 export const POLICY_CANDIDATE_CURRENT_INVENTORY_SEMANTIC_STUDY_CAPTURE_VERSION =
   'policy.candidate_current_inventory_semantic_study_capture.v1';
@@ -81,6 +85,8 @@ function isPositiveInteger(value) {
   return Number.isSafeInteger(value) && value > 0;
 }
 
+const SUPPORTED_MEDIA_TYPES = new Set(['movie', 'tv']);
+
 function validateCandidateContract(value, path, issues) {
   if (!isPlainRecord(value) || value.valid !== true || !Array.isArray(value.candidates) ||
       value.candidates.length < 2 ||
@@ -90,10 +96,11 @@ function validateCandidateContract(value, path, issues) {
       path,
       'A capture case requires a valid server-owned contract with two or three candidates.',
     ));
-    return;
+    return false;
   }
 
   const libraryIds = new Set();
+  let mediaType = null;
   for (const candidate of value.candidates) {
     const libraryId = candidate?.libraryId;
     if (!isPositiveInteger(libraryId) || libraryIds.has(libraryId)) {
@@ -102,9 +109,47 @@ function validateCandidateContract(value, path, issues) {
         path,
         'Each candidate contract must contain unique positive library identifiers.',
       ));
-      return;
+      return false;
     }
+
+    const candidateMediaType = candidate?.mediaType;
+    if (!SUPPORTED_MEDIA_TYPES.has(candidateMediaType) ||
+        (mediaType && candidateMediaType !== mediaType)) {
+      issues.push(issue(
+        POLICY_CANDIDATE_CURRENT_INVENTORY_SEMANTIC_STUDY_CAPTURE_RISK_IDS.INVALID_CANDIDATE_CONTRACT,
+        path,
+        'Each candidate contract must declare the same supported media type.',
+      ));
+      return false;
+    }
+
     libraryIds.add(libraryId);
+    mediaType = candidateMediaType;
+  }
+
+  return true;
+}
+
+function validateMetadata(value, contract, path, issues) {
+  if (!isPlainRecord(value)) {
+    issues.push(issue(
+      POLICY_CANDIDATE_CURRENT_INVENTORY_SEMANTIC_STUDY_CAPTURE_RISK_IDS.INVALID_METADATA,
+      path,
+      'Metadata must be a plain in-memory object and is never serialized by capture.',
+    ));
+    return;
+  }
+
+  const retrievalRequest = buildCurrentLibraryCandidateRetrievalRequest({
+    contract,
+    metadata: value,
+  });
+  if (retrievalRequest.statusId !== CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_STATUS_IDS.READY) {
+    issues.push(issue(
+      POLICY_CANDIDATE_CURRENT_INVENTORY_SEMANTIC_STUDY_CAPTURE_RISK_IDS.INVALID_METADATA,
+      path,
+      'Metadata must be usable by the bounded current-library retrieval contract.',
+    ));
   }
 }
 
@@ -119,7 +164,11 @@ function validateCase(value, index, issues) {
   const hasMetadata = requireOwnField(value, 'metadata', path, issues);
   const hasSnapshotId = requireOwnField(value, 'snapshotId', path, issues);
 
-  if (hasContract) validateCandidateContract(value.contract, `${path}.contract`, issues);
+  const validContract = hasContract && validateCandidateContract(
+    value.contract,
+    `${path}.contract`,
+    issues,
+  );
   if (hasFixtureId) validateIdentifier(
     value.fixtureId,
     `${path}.fixtureId`,
@@ -127,13 +176,7 @@ function validateCase(value, index, issues) {
     POLICY_CANDIDATE_CURRENT_INVENTORY_SEMANTIC_STUDY_CAPTURE_RISK_IDS.INVALID_FIXTURE_ID,
     issues,
   );
-  if (hasMetadata && !isPlainRecord(value.metadata)) {
-    issues.push(issue(
-      POLICY_CANDIDATE_CURRENT_INVENTORY_SEMANTIC_STUDY_CAPTURE_RISK_IDS.INVALID_METADATA,
-      `${path}.metadata`,
-      'Metadata must be a plain in-memory object and is never serialized by capture.',
-    ));
-  }
+  if (hasMetadata && validContract) validateMetadata(value.metadata, value.contract, `${path}.metadata`, issues);
   if (hasSnapshotId) validateIdentifier(
     value.snapshotId,
     `${path}.snapshotId`,

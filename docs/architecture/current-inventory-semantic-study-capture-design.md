@@ -2,9 +2,9 @@
 
 ## Status
 
-Implemented on 2026-09-03 as an internal, in-memory study-preparation
-component. It does not add an API route, database table, Settings control,
-classification hook, policy-score change, or routing authority.
+Implemented on 2026-09-03 and made locally runnable on 2026-09-04. It does
+not add an API route, database table, Settings control, classification hook,
+policy-score change, or routing authority.
 
 ## Problem
 
@@ -45,6 +45,29 @@ scope. A case-level retriever failure becomes an unavailable snapshot, i.e. a
 study abstention. It does not log the failure body or produce a partial,
 content-bearing document.
 
+`runPolicyCandidateCurrentInventorySemanticStudyCapture.mjs` is the
+deliberately thin local process boundary. It accepts no path, no command-line
+options, and no output destination. A trusted local coordinator supplies the
+complete request through standard input; it is limited to 128 KiB, decoded as
+UTF-8 JSON in process memory, passed once to capture, and discarded. On
+success the command writes only the redacted snapshot document to standard
+output. Invalid input, argument misuse, and capture failure print a fixed
+message without echoing input, paths, identifiers, titles, descriptions, or
+retrieval details.
+
+Before any provider/database call, capture now requires every candidate to
+have one shared supported media type and checks that the supplied metadata can
+form the same bounded current-library retrieval request used at runtime. This
+prevents a seemingly complete study whose semantic results are actually all
+`not_applicable` because it omitted a field the real retriever requires.
+
+The runner validates the *shape* needed by the server-owned policy contract;
+it cannot prove how an offline coordinator selected a case. The study owner
+must construct each candidate set from the normal policy decision and keep
+reviewer separation, raw case material, and its deletion/access controls
+outside the command. The redacted result remains subject to the existing
+independent-label and fingerprint-binding gates.
+
 The only successful output is the existing snapshot document plus three
 aggregate counts: total cases, available retrievals, and unavailable
 retrievals. The document contains no title, synopsis, library ID/name, item
@@ -58,7 +81,10 @@ or routing state.
 - It is intentionally sequential. A study run cannot multiply concurrent
   embedding/database load beyond normal individual retrieval behavior.
 - The input stays in memory. The component writes neither a study database
-  record nor an audit/log record and does not expose a browser endpoint.
+  record nor an audit/log record and does not expose a browser endpoint. The
+  CLI similarly reads raw data only from standard input and has no file-write
+  capability; the caller decides whether and where to retain its redacted
+  output.
 - Unavailable/malformed retrieval results fail closed to an abstention. They
   cannot reuse a prior case's relevance values.
 - Invalid requests are rejected before the retriever is invoked, including
@@ -98,6 +124,7 @@ for the requested August 2026 baseline.
 | Let semantic similarity immediately alter routing confidence | Quickly changes visibly poor suggestions. | No measured error profile; probabilistic evidence gains production authority and can hide failures. | Reject. |
 | Persist full RAG packets from normal classifications | Rich debugging context. | Retains library/media data, prompt-like text, and provider output; creates substantial access, deletion, and injection surface. | Reject. |
 | Keep only passive snapshot reduction | Minimal code and no run-time work. | Cannot produce a reproducible real 24–32-case cohort without custom caller behavior. | Reject. |
+| Accept a raw request from a project file | Familiar command-line workflow. | Places media metadata in a checkout and creates accidental commit, backup, and retention risk. | Reject. |
 | Capture one bounded cohort in memory, redact immediately, and evaluate it independently | Exercises actual current-library retrieval; preserves candidate scope; supports repeatable TEVV; no normal retention. | Requires authorised case selection, independent labels, and a separate offline packet workflow. | Adopt. |
 
 ## Final Recommendation Stack
@@ -115,3 +142,24 @@ for the requested August 2026 baseline.
    trigger for broad policies. Keep automatic routing out of scope.
 5. Build a calm library-understanding summary only after this measurement
    proves which semantic evidence is trustworthy enough to surface.
+
+## Local Run
+
+An authorized local coordinator pipes one complete 24–32-case request to the
+command. The request must use opaque fixture and snapshot identifiers, the
+policy's two or three same-media-type candidates, and the transient metadata
+that the existing semantic retriever already understands. Do not put that raw
+request in the checkout or redirect it to a log.
+
+```text
+<trusted-local-coordinator> | \
+  node server/src/scripts/runPolicyCandidateCurrentInventorySemanticStudyCapture.mjs \
+  > .tmp/current-inventory-semantic-snapshots.json
+```
+
+Only the redirect target is retained, and it contains the redacted snapshot
+document. Use restrictive operating-system permissions for that output and
+then pass it, alongside the separately prepared redacted fixture, manifest,
+labels, and frozen proposal, to the existing offline readiness and preflight
+commands. A successful capture is still evidence collection—not learning,
+policy tuning, AI verification, or routing permission.
