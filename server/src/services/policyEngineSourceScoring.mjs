@@ -7,7 +7,6 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
-import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { mergePresetSignals, normalizeSignalConfig } from '../utils/policySignals.mjs';
 import { patternSignalCollector } from './patternSignalCollector.mjs';
@@ -19,6 +18,8 @@ import {
     normalizeCombinationMode
 } from './policyEngineUtils.mjs';
 import { scoreRagEvidenceForLibrary } from './ragEvidenceQualityGate.mjs';
+
+export { scoreHistory } from './policyHistoryScoring.mjs';
 
 const logger = createLogger('PolicyEngine');
 
@@ -182,46 +183,6 @@ export async function scoreRAGWithDiagnostics(libraryId, item, ragCache = { matc
 export async function scoreRAG(libraryId, item, ragCache = { matches: [], timestamp: Date.now() }) {
     const result = await scoreRAGWithDiagnostics(libraryId, item, ragCache);
     return result.score;
-}
-
-export async function scoreHistory(libraryId, item) {
-    try {
-        const result = await db.query(`
-            SELECT 
-                library_id,
-                MAX(confidence) AS confidence,
-                COUNT(*) as match_count
-            FROM classification_history
-            WHERE tmdb_id = $1
-            AND status = 'completed'
-            AND library_id IS NOT NULL
-            GROUP BY library_id
-            ORDER BY match_count DESC, confidence DESC
-            LIMIT 5
-        `, [item.tmdb_id]);
-
-        if (result.rows.length === 0) {
-            return 0;
-        }
-
-        const libraryMatch = result.rows.find(r => r.library_id === libraryId);
-        
-        if (!libraryMatch) {
-            return 0;
-        }
-
-        const matchCount = parseInt(libraryMatch.match_count);
-        const historicalConfidence = parseFloat(libraryMatch.confidence);
-        
-        const countBoost = Math.min(matchCount * 10, 40);
-        const baseScore = Math.min(historicalConfidence, 60);
-        
-        return Math.min(baseScore + countBoost, FORMULA_CONFIDENCE_CAP);
-
-    } catch (error) {
-        logger.debug('Failed to score history', { error: error.message });
-        return 0;
-    }
 }
 
 export async function scoreProfile(libraryId, item) {

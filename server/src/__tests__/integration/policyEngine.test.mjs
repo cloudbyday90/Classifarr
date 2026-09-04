@@ -1151,7 +1151,7 @@ describe('PolicyEngine Integration Tests', () => {
             }
 
             try {
-                const score = await policyEngine.scoreHistory(testLibraryId, { tmdb_id: tmdbId });
+                const score = await policyEngine.scoreHistory(testLibraryId, { tmdb_id: tmdbId, media_type: 'movie' });
                 expect(score).toBe(95);
             } finally {
                 await db.query('DELETE FROM classification_history WHERE id = ANY($1::int[])', [insertedIds]);

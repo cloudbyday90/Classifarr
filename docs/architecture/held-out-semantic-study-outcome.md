@@ -109,8 +109,9 @@ labels; local Docker and assistant-generated labels cannot satisfy that contract
 Only a qualifying measured profile justifies a separate change that sends
 ambiguous cases to operator review.
 
-A concrete follow-up bug also surfaced in `policyEngineSourceScoring.mjs`:
-`scoreHistory` filters by `tmdb_id` but omits `media_type`. Movie and TV IDs
-are separate namespaces. Add canonical media-type validation and the paired
-filter, with a collision regression, in the next production scoring fix.
-The held-out study bypasses this scorer, so that separate fix remains necessary.
+A separate source-scoring bug also surfaced: `scoreHistory` filtered by
+`tmdb_id` without `media_type`. The paired-identity fix and its collision
+regressions are now documented in the separate
+[history-scoring outcome](history-scoring-media-identity-outcome.md). The
+held-out study bypasses this scorer, and its independent-label and
+cohort-eligibility requirements remain.

@@ -152,6 +152,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **History scoring respects media identity** — Movie and TV records sharing
+  a TMDb ID no longer contribute to each other's history scores or consume
+  each other's result limit. Missing or invalid identities contribute no
+  history evidence, and valid matches retain the existing confidence cap.
+
 - **Production query-string parser advisory** — Raised the server's ESM
   dependency override and lockfile resolution for `qs` to 6.16.0, eliminating
   the published moderate denial-of-service advisories in the previous 6.15.2
