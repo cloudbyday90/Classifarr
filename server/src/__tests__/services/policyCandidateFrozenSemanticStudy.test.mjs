@@ -124,7 +124,13 @@ function buildCurrentInventoryBundle() {
       retrievalStatusId: 'available',
       version: 'policy.candidate_current_inventory_semantic_study_snapshot.v1',
     })),
-    version: 'policy.candidate_current_inventory_semantic_study_snapshot_document.v1',
+    version: 'policy.candidate_current_inventory_semantic_study_snapshot_document.v2',
+    studyProvenance: {
+      protocolVersion: 'policy.held_out_semantic_study.v1',
+      excludedIdentityCount: 24,
+      exclusionSetFingerprint: `sha256:${'a'.repeat(64)}`,
+      configurationFingerprint: `sha256:${'b'.repeat(64)}`,
+    },
   };
   bundle.manifest = {
     fixtureDocumentFingerprint: createPolicyCandidateSemanticSnapshotFingerprint(bundle.fixtureDocument),
@@ -191,6 +197,30 @@ describe('policyCandidateFrozenSemanticStudy', () => {
     }));
     expect(JSON.stringify(report)).not.toContain('leadingRelevance');
     expect(JSON.stringify(report)).not.toContain('alternativeRelevance');
+  });
+
+  test('keeps legacy inventory evidence readable but blocks readiness even with labels', () => {
+    const bundle = buildCurrentInventoryBundle();
+    bundle.snapshotDocument.version = 'policy.candidate_current_inventory_semantic_study_snapshot_document.v1';
+    delete bundle.snapshotDocument.studyProvenance;
+    bundle.manifest.snapshotDocumentFingerprint = createPolicyCandidateSemanticSnapshotFingerprint(bundle.snapshotDocument);
+    const report = preflightPolicyCandidateFrozenSemanticStudy({
+      ...bundle, now: new Date('2026-09-02T12:00:00.000Z'), proposal: buildProposal(bundle),
+    });
+    expect(report.status.id).toBe('not_ready');
+    expect(report.semanticReadiness.blockers).toContain('held_out_provenance_unavailable');
+  });
+
+  test.each(['configurationFingerprint', 'exclusionSetFingerprint'])('binds %s through the frozen proposal', (key) => {
+    const bundle = buildCurrentInventoryBundle();
+    const proposal = buildProposal(bundle);
+    bundle.snapshotDocument.studyProvenance[key] = `sha256:${'c'.repeat(64)}`;
+    bundle.manifest.snapshotDocumentFingerprint = createPolicyCandidateSemanticSnapshotFingerprint(bundle.snapshotDocument);
+    const report = preflightPolicyCandidateFrozenSemanticStudy({
+      ...bundle, now: new Date('2026-09-02T12:00:00.000Z'), proposal,
+    });
+    expect(report.status.id).toBe('not_ready');
+    expect(report.blockers).toContain('proposal_bundle_mismatch');
   });
 
   test('blocks a proposal that binds any different study document', () => {

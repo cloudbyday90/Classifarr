@@ -11,6 +11,13 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Held-out semantic study capture** — A private offline runner freezes the
+  complete cohort before preparing policy candidates and excludes every cohort
+  identity from RAG comparisons. Versioned provenance binds the cohort and
+  configuration to existing study gates; legacy inventory captures cannot pass
+  held-out readiness. Study execution remains advisory with no routing or
+  learning authority.
+
 - **Private real-inventory study runner** — A local stdin-only ESM command can
   now execute one 24–32-case candidate-scoped semantic study without writing
   raw media metadata to the checkout. It verifies the same media-type and

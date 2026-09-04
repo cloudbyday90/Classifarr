@@ -3,6 +3,8 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
+import { heldOutSemanticStudyParameters } from './heldOutSemanticStudyScope.mjs';
+
 /**
  * The stable TMDb join proves that every returned embedding still represents a
  * synchronized current-library item. The query returns titles and bounded
@@ -10,7 +12,8 @@
  * a bounded advisory calibration, but descriptions, raw metadata, embeddings,
  * receipt fields, and identifiers do not cross the retrieval boundary.
  */
-export const CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_SQL = `
+function retrievalSql(heldOut = false) {
+  return `
   WITH nearest_embeddings AS MATERIALIZED (
     SELECT
       item.library_id,
@@ -37,7 +40,12 @@ export const CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_SQL = `
       AND embedding.embedding IS NOT NULL
       AND history.library_id = ANY($1::integer[])
       AND history.media_type = $2::text
-    ORDER BY embedding.embedding <=> $3::vector ASC
+      ${heldOut ? `AND history.tmdb_id > 0
+      AND NOT EXISTS (
+        SELECT 1 FROM unnest($6::text[], $7::integer[]) AS held(media_type, tmdb_id)
+        WHERE held.media_type = history.media_type AND held.tmdb_id = history.tmdb_id
+      )` : ''}
+    ORDER BY embedding.embedding <=> $3::vector ASC${heldOut ? ', embedding.id ASC' : ''}
     LIMIT $4::integer
   ), distinct_items AS (
     SELECT DISTINCT ON (library_id, media_item_id)
@@ -72,16 +80,21 @@ export const CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_SQL = `
   WHERE item_rank <= $5::integer
   ORDER BY library_id ASC, item_rank ASC
 `;
+}
 
-export function buildCurrentLibraryCandidateSemanticRetrieverQuery(request, vectorString) {
+export const CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_SQL = retrievalSql();
+const HELD_OUT_SQL = retrievalSql(true);
+
+export function buildCurrentLibraryCandidateSemanticRetrieverQuery(request, vectorString, heldOutScope) {
   return Object.freeze({
-    text: CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_SQL,
+    text: heldOutScope === undefined ? CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_SQL : HELD_OUT_SQL,
     values: [
       request.candidates.map((candidate) => candidate.libraryId),
       request.mediaType,
       vectorString,
       request.scanLimit,
       request.maximumItemsPerCandidate,
+      ...(heldOutScope === undefined ? [] : heldOutSemanticStudyParameters(heldOutScope)),
     ],
   });
 }

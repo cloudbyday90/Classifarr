@@ -1,4 +1,5 @@
 import * as db from '../config/database.mjs';
+import { assertHeldOutSemanticStudyMember } from './heldOutSemanticStudyScope.mjs';
 import { embeddingRouter } from './embeddingRouter.mjs';
 import { embeddingService } from './embeddingService.mjs';
 import { imageEmbeddingProvider } from './imageEmbeddingProvider.mjs';
@@ -12,6 +13,7 @@ import { resolvePgvectorCandidateLimit, resolvePgvectorRecallTuning } from './pg
 const logger = createLogger('RAGRetriever');
 
 export async function semanticSearch(metadata, limit, options, { buildRetrievalText, getEmbeddingCount, hasMinimumCached }) {
+  if (options.heldOutScope !== undefined) assertHeldOutSemanticStudyMember(options.heldOutScope, metadata);
   const signal = options.signal || null;
 
   try {
@@ -45,7 +47,7 @@ export async function semanticSearch(metadata, limit, options, { buildRetrievalT
     const imageConfig = await imageEmbeddingProvider.getConfig();
     const imageMode = imageConfig?.image_embedding_provider_mode || 'disabled';
     const imageConfigured = imageEmbeddingProvider.isConfigured(imageConfig);
-    if (imageMode === 'disabled' || !imageConfigured) {
+    if (imageMode === 'disabled' || !imageConfigured || options.heldOutScope !== undefined) {
       imageWeight = 0;
     }
     const weightSum = textWeight + imageWeight;
@@ -93,6 +95,9 @@ export async function semanticSearch(metadata, limit, options, { buildRetrievalT
       aliasMinTokenLength: expansionOptions.aliasMinTokenLength,
     });
     const queryResult = await embeddingRouter.embed(text, { signal });
+    if (options.heldOutScope !== undefined && queryResult?.fallback === true) {
+      throw new Error('held_out_embedding_fallback_rejected');
+    }
 
     checkAbort(signal, 'semantic search');
 
@@ -123,6 +128,7 @@ export async function semanticSearch(metadata, limit, options, { buildRetrievalT
       candidateLimit,
       limit,
       recallTuning,
+      heldOutScope: options.heldOutScope,
     });
 
     const { matches, allBelowThreshold } = mapSearchResults(result.rows, {

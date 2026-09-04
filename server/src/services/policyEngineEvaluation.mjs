@@ -17,7 +17,10 @@ import { calculateAgreementMultiplier, scoreRelatedEvidence } from './policyEngi
 const logger = createLogger('PolicyEngine');
 
 export async function evaluateItem(item, options, deps) {
-    const { checkAuthoritativeSignals, getActivePolicies, evaluatePolicy } = deps;
+    const {
+        checkAuthoritativeSignals, getActivePolicies, evaluatePolicy,
+        determineAction = (ranked) => policyCandidateRanker.determineAction(ranked),
+    } = deps;
 
     try {
         logger.info('Evaluating item against policies', { title: item.title });
@@ -156,7 +159,7 @@ export async function evaluateItem(item, options, deps) {
         });
         const ranked = await policyCandidateRanker.rankResults(identityCalibratedEvaluations);
 
-        const result = policyCandidateRanker.determineAction(ranked);
+        const result = determineAction(ranked);
 
         logger.info('Policy evaluation complete', {
             title: item.title,

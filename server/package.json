@@ -12,6 +12,7 @@
   "scripts": {
     "start": "node src/index.mjs",
     "dev": "nodemon src/index.mjs",
+    "study:capture:held-out": "node src/scripts/runHeldOutSemanticStudyCapture.mjs",
     "typecheck": "tsc --project tsconfig.json --pretty false",
     "test": "node ./scripts/run-jest.mjs --runInBand && node ./scripts/run-jest.mjs -c jest.integration.config.mjs --runInBand",
     "test:unit": "node ./scripts/run-jest.mjs --runInBand",

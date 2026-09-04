@@ -4,6 +4,10 @@
  */
 
 import * as db from '../config/database.mjs';
+import {
+  assertHeldOutSemanticStudyMember,
+  applyHeldOutSemanticStudyQuerySettings,
+} from './heldOutSemanticStudyScope.mjs';
 import { formatVectorString } from '../utils/embeddingUtils.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { embeddingRouter } from './embeddingRouter.mjs';
@@ -126,7 +130,8 @@ export function createCurrentLibraryCandidateSemanticRetriever({
   withTransaction = defaultWithTransaction,
 } = {}) {
   return Object.freeze({
-    async retrieve({ contract = null, metadata = null } = {}) {
+    async retrieve({ contract = null, metadata = null, heldOutScope } = {}) {
+      if (heldOutScope !== undefined) assertHeldOutSemanticStudyMember(heldOutScope, metadata);
       const request = buildCurrentLibraryCandidateSemanticRetrievalRequest({
         contract,
         metadata,
@@ -145,6 +150,9 @@ export function createCurrentLibraryCandidateSemanticRetriever({
         }
 
         const embeddingResult = await embed(request.embeddingText);
+        if (heldOutScope !== undefined && embeddingResult?.fallback === true) {
+          throw new Error('held_out_embedding_fallback_rejected');
+        }
         if (!Array.isArray(embeddingResult?.embedding) || embeddingResult.embedding.length === 0) {
           throw new Error('semantic_embedding_unavailable');
         }
@@ -152,8 +160,10 @@ export function createCurrentLibraryCandidateSemanticRetriever({
         const statement = buildCurrentLibraryCandidateSemanticRetrieverQuery(
           request,
           formatVectorString(embeddingResult.embedding),
+          heldOutScope,
         );
         const result = await withTransaction(async (client) => {
+          if (heldOutScope !== undefined) await applyHeldOutSemanticStudyQuerySettings(client, heldOutScope);
           await applyPgvectorRecallSettings(
             client,
             resolvePgvectorRecallTuning({ candidateSearch: true }),

@@ -17,6 +17,7 @@ export const POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_BLOCKER_IDS = 
   EVALUATION_SOURCE_INVALID: 'evaluation_source_invalid',
   FALSE_POSITIVE_PRESENT: 'false_positive_present',
   INDEPENDENT_REFERENCE_SET_UNAVAILABLE: 'independent_reference_set_unavailable',
+  HELD_OUT_PROVENANCE_UNAVAILABLE: 'held_out_provenance_unavailable',
   INSUFFICIENT_FIXTURE_COUNT: 'insufficient_fixture_count',
   INSUFFICIENT_REFERENCE_REVIEW_COUNT: 'insufficient_reference_review_count',
   INSUFFICIENT_STRATUM_COVERAGE: 'insufficient_stratum_coverage',

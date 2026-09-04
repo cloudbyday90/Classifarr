@@ -17,9 +17,12 @@
  */
 
 import { applyPgvectorRecallSettings, resolvePgvectorRecallTuning } from './pgvectorRecallTuning.mjs';
+import { heldOutSemanticStudyParameters, applyHeldOutSemanticStudyQuerySettings } from './heldOutSemanticStudyScope.mjs';
 
-export async function executeSemanticVectorSearch(db, { vectorString, imageVectorString, textWeight, imageWeight, candidateLimit, limit, recallTuning }) {
+export async function executeSemanticVectorSearch(db, { vectorString, imageVectorString, textWeight, imageWeight, candidateLimit, limit, recallTuning, heldOutScope }) {
+  const exclusions = heldOutScope === undefined ? [] : heldOutSemanticStudyParameters(heldOutScope);
   return db.withTransaction(async (client) => {
+    if (heldOutScope !== undefined) await applyHeldOutSemanticStudyQuerySettings(client, heldOutScope);
     await applyPgvectorRecallSettings(client, recallTuning ?? resolvePgvectorRecallTuning());
     return client.query(`
             WITH candidates AS (
@@ -41,7 +44,13 @@ export async function executeSemanticVectorSearch(db, { vectorString, imageVecto
                 LEFT JOIN libraries l ON l.id = ch.library_id
                 WHERE ce.is_stale = false
                 AND ch.library_id IS NOT NULL
-                ORDER BY ce.embedding <=> $1::vector
+                ${heldOutScope === undefined ? '' : `AND ch.tmdb_id > 0
+                AND ch.media_type IN ('movie', 'tv')
+                AND NOT EXISTS (
+                  SELECT 1 FROM unnest($7::text[], $8::integer[]) AS held(media_type, tmdb_id)
+                  WHERE held.media_type = ch.media_type AND held.tmdb_id = ch.tmdb_id
+                )`}
+                ORDER BY ce.embedding <=> $1::vector${heldOutScope === undefined ? '' : ', ce.id ASC'}
                 LIMIT $5
             )
             SELECT
@@ -67,9 +76,9 @@ export async function executeSemanticVectorSearch(db, { vectorString, imageVecto
                         ($4 * (1 - (c.image_embedding <=> $2::vector)))
                 END as combined_similarity
             FROM candidates c
-            ORDER BY combined_similarity DESC
+            ORDER BY combined_similarity DESC${heldOutScope === undefined ? '' : ', c.id ASC'}
             LIMIT $6
-        `, [vectorString, imageVectorString, textWeight, imageWeight, candidateLimit, limit]);
+        `, [vectorString, imageVectorString, textWeight, imageWeight, candidateLimit, limit, ...exclusions]);
   });
 }
 

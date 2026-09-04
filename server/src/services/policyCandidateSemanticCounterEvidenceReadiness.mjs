@@ -7,6 +7,7 @@ import {
   POLICY_CANDIDATE_EVIDENCE_OFFLINE_EVALUATION_DECISION_IDS,
   validatePolicyCandidateEvidenceOfflineEvaluationFixtureDocument,
 } from './policyCandidateEvidenceOfflineEvaluationContract.mjs';
+import { isHeldOutSemanticStudyProvenance } from './heldOutSemanticStudyProvenance.mjs';
 import {
   buildPolicyCandidateEvidenceOfflineSignalMetrics,
 } from './policyCandidateEvidenceOfflineEvaluationMetrics.mjs';
@@ -154,8 +155,12 @@ function buildInvalidReport({ referenceSetArtifact, sourceValidation }) {
   });
 }
 
-function buildBlockers({ coverage, metrics, referenceSetArtifact }) {
+function buildBlockers({ coverage, metrics, referenceSetArtifact, provenance }) {
   const blockers = [];
+  if (provenance?.sourceId === 'current_inventory_relevance' &&
+      !isHeldOutSemanticStudyProvenance(provenance.studyProvenance, provenance.snapshotCount)) {
+    blockers.push(POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_BLOCKER_IDS.HELD_OUT_PROVENANCE_UNAVAILABLE);
+  }
   const profile = POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_PROFILE;
   if (referenceSetArtifact.status.id !==
       POLICY_CANDIDATE_SEMANTIC_REFERENCE_SET_ARTIFACT_STATUS_IDS.INDEPENDENTLY_LABELLED) {
@@ -234,7 +239,10 @@ export function evaluatePolicyCandidateSemanticCounterEvidenceReadiness({
     signalId: POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_PROFILE.semanticSignalId,
   });
   const coverage = buildCoverage(fixtureDocument);
-  const blockers = buildBlockers({ coverage, metrics, referenceSetArtifact });
+  const blockers = buildBlockers({
+    coverage, metrics, referenceSetArtifact,
+    provenance: snapshotReport.semanticSnapshot.provenance,
+  });
   const ready = blockers.length === 0;
 
   return Object.freeze({

@@ -6,6 +6,10 @@
 import {
   CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_VERSION,
 } from './currentLibraryCandidateSemanticRetrievalContract.mjs';
+import {
+  HELD_OUT_SEMANTIC_STUDY_DOCUMENT_VERSION,
+  isHeldOutSemanticStudyProvenance,
+} from './heldOutSemanticStudyProvenance.mjs';
 
 export const POLICY_CANDIDATE_CURRENT_INVENTORY_SEMANTIC_STUDY_SNAPSHOT_DOCUMENT_VERSION =
   'policy.candidate_current_inventory_semantic_study_snapshot_document.v1';
@@ -220,18 +224,25 @@ export function validatePolicyCandidateCurrentInventorySemanticStudySnapshotDocu
     'snapshotSetId',
     'snapshots',
     'version',
+    ...(document.version === HELD_OUT_SEMANTIC_STUDY_DOCUMENT_VERSION ? ['studyProvenance'] : []),
   ], 'document', issues);
   const hasVersion = requireOwnField(document, 'version', 'document', issues);
   const hasSnapshotSetId = requireOwnField(document, 'snapshotSetId', 'document', issues);
   const hasProtocol = requireOwnField(document, 'retrievalProtocolVersion', 'document', issues);
   const hasSnapshots = requireOwnField(document, 'snapshots', 'document', issues);
 
-  if (hasVersion && document.version !== POLICY_CANDIDATE_CURRENT_INVENTORY_SEMANTIC_STUDY_SNAPSHOT_DOCUMENT_VERSION) {
+  if (hasVersion && ![POLICY_CANDIDATE_CURRENT_INVENTORY_SEMANTIC_STUDY_SNAPSHOT_DOCUMENT_VERSION,
+    HELD_OUT_SEMANTIC_STUDY_DOCUMENT_VERSION].includes(document.version)) {
     issues.push(buildIssue(
       POLICY_CANDIDATE_CURRENT_INVENTORY_SEMANTIC_STUDY_SNAPSHOT_RISK_IDS.INVALID_VERSION,
       'document.version',
-      'Document must declare the current current-inventory study snapshot document version.',
+      'Document must declare a supported current-inventory study snapshot document version.',
     ));
+  }
+  if (document.version === HELD_OUT_SEMANTIC_STUDY_DOCUMENT_VERSION &&
+      !isHeldOutSemanticStudyProvenance(document.studyProvenance, document.snapshots?.length)) {
+    issues.push(buildIssue('invalid_held_out_provenance', 'document.studyProvenance',
+      'Held-out studies require complete cohort and configuration commitments.'));
   }
   if (hasSnapshotSetId) validateIdentifier(
     document.snapshotSetId,

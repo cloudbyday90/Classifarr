@@ -26,6 +26,7 @@ import {
 import {
   scorePolicyCandidateSemanticSnapshot,
 } from './policyCandidateSemanticSnapshotScoring.mjs';
+import { HELD_OUT_SEMANTIC_STUDY_DOCUMENT_VERSION } from './heldOutSemanticStudyProvenance.mjs';
 
 export const POLICY_CANDIDATE_SEMANTIC_SNAPSHOT_ADAPTER_RISK_IDS = Object.freeze({
   FIXTURE_DOCUMENT_FINGERPRINT_MISMATCH: 'fixture_document_fingerprint_mismatch',
@@ -52,7 +53,8 @@ function projectValidation(validation) {
 }
 
 function snapshotSource(snapshotDocument) {
-  if (snapshotDocument?.version === POLICY_CANDIDATE_CURRENT_INVENTORY_SEMANTIC_STUDY_SNAPSHOT_DOCUMENT_VERSION) {
+  if ([POLICY_CANDIDATE_CURRENT_INVENTORY_SEMANTIC_STUDY_SNAPSHOT_DOCUMENT_VERSION,
+    HELD_OUT_SEMANTIC_STUDY_DOCUMENT_VERSION].includes(snapshotDocument?.version)) {
     return Object.freeze({
       id: 'current_inventory_relevance',
       scoreSnapshot: scorePolicyCandidateCurrentInventorySemanticStudySnapshot,
@@ -76,6 +78,7 @@ function buildProvenance({ fixtureDocument, snapshotDocument, fixtureFingerprint
     snapshotDocumentVersion: snapshotDocument.version,
     snapshotSetId: snapshotDocument.snapshotSetId,
     sourceId,
+    ...(snapshotDocument.studyProvenance ? { studyProvenance: snapshotDocument.studyProvenance } : {}),
     ...(snapshotDocument.version === POLICY_CANDIDATE_SEMANTIC_SNAPSHOT_DOCUMENT_VERSION
       ? { embeddingSpaceId: snapshotDocument.embeddingSpaceId }
       : { retrievalProtocolVersion: snapshotDocument.retrievalProtocolVersion }),

@@ -56,9 +56,16 @@ API](https://docs.github.com/en/rest/pulls/pulls).
 
 ## Next Item
 
-Run one real 24–32-case packet using this private capture boundary, create its
-independent labels, then run the existing readiness gate and frozen-study
-preflight. If its error profile supports the use case, the next engineering
+The first real local Compose capture and both existing gates were exercised
+on 2026-09-04. The 28-case inventory replay returned `not_ready`; independent
+human labels remain incomplete and existing indexed identities make this
+unsuitable as generalization evidence. See the
+[study outcome](current-inventory-semantic-study-2026-09-04-outcome.md).
+
+Complete a held-out, independently labelled 24–32-case packet using this
+private capture boundary's [held-out successor](held-out-semantic-study-outcome.md),
+then rerun the existing readiness gate and
+frozen-study preflight. If its error profile supports the use case, the next engineering
 component is a narrowly scoped semantic counter-evidence experiment that can
 move only a broad-policy conflict to candidate comparison or operator review;
 it must not auto-route.
