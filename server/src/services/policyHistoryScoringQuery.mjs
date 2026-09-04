@@ -3,6 +3,8 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
+import { canonicalMediaType, positiveDatabaseInteger } from './mediaIdentityValues.mjs';
+
 const HISTORY_SCORING_SQL = `
   SELECT
     library_id,
@@ -18,21 +20,12 @@ const HISTORY_SCORING_SQL = `
   LIMIT 5
 `;
 
-function positiveDatabaseInteger(value) {
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    if (!/^[0-9]{1,10}$/u.test(trimmed)) return null;
-    value = Number(trimmed);
-  }
-  return Number.isInteger(value) && value > 0 && value <= 2_147_483_647 ? value : null;
-}
-
 /** Media type belongs to the incoming identity, never the destination library. */
 export function buildPolicyHistoryScoringQuery(libraryId, item) {
   const normalizedLibraryId = positiveDatabaseInteger(libraryId);
   const tmdbId = positiveDatabaseInteger(item?.tmdb_id);
-  const mediaType = typeof item?.media_type === 'string' ? item.media_type.trim().toLowerCase() : null;
-  if (!normalizedLibraryId || !tmdbId || !['movie', 'tv'].includes(mediaType)) return null;
+  const mediaType = canonicalMediaType(item?.media_type);
+  if (!normalizedLibraryId || !tmdbId || !mediaType) return null;
 
   return Object.freeze({
     libraryId: normalizedLibraryId,

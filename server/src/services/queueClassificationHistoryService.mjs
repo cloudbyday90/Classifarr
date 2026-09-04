@@ -7,6 +7,13 @@
  */
 
 import * as ragGraphExtractor from './ragGraphExtractor.mjs';
+import { positiveDatabaseInteger } from './mediaIdentityValues.mjs';
+import { buildQueueClassificationHistoryIdentity } from './queueClassificationHistoryContract.mjs';
+import {
+    buildQueueClassificationHistoryExistsQuery,
+    buildQueueClassificationHistoryInsertQuery,
+    buildQueueClassificationHistoryReason,
+} from './queueClassificationHistoryQueries.mjs';
 
 export class QueueClassificationHistoryService {
     constructor(deps = {}) {
@@ -15,86 +22,58 @@ export class QueueClassificationHistoryService {
     }
 
     async libraryExists(libraryId) {
-        const result = await this.db.query(
-            `SELECT 1 FROM libraries WHERE id = $1 LIMIT 1`,
-            [libraryId]
-        );
+        const id = positiveDatabaseInteger(libraryId);
+        if (!id) return false;
+        const result = await this.db.query('SELECT 1 FROM libraries WHERE id = $1 LIMIT 1', [id]);
         return result.rows.length > 0;
     }
 
-    async historyEntryExists(tmdbId, title, libraryId) {
-        if (tmdbId) {
-            const result = await this.db.query(
-                `SELECT 1 FROM classification_history 
-                 WHERE tmdb_id = $1 AND library_id = $2 AND method = 'source_library' LIMIT 1`,
-                [tmdbId, libraryId]
-            );
-            return result.rows.length > 0;
-        }
-
-        const result = await this.db.query(
-            `SELECT 1 FROM classification_history 
-             WHERE title = $1 AND library_id = $2 AND method = 'source_library' AND tmdb_id IS NULL LIMIT 1`,
-            [title, libraryId]
-        );
+    async #identityExists(identity) {
+        const statement = buildQueueClassificationHistoryExistsQuery(identity);
+        const result = await this.db.query(statement.text, statement.values);
         return result.rows.length > 0;
+    }
+
+    async historyEntryExists(tmdbId, title, libraryId, mediaType) {
+        const identity = buildQueueClassificationHistoryIdentity({ title, media_type: mediaType }, tmdbId, libraryId);
+        return identity ? this.#identityExists(identity) : false;
     }
 
     buildReason(tmdbId, sourceLibraryName) {
-        return tmdbId
-            ? `Already in library: ${sourceLibraryName}`
-            : `Already in library: ${sourceLibraryName} (no TMDB match)`;
+        return buildQueueClassificationHistoryReason(tmdbId, sourceLibraryName);
+    }
+
+    #prepare(payload, tmdbId, libraryId, sourceLibraryName) {
+        const identity = buildQueueClassificationHistoryIdentity(payload, tmdbId, libraryId);
+        if (!identity) {
+            this.logger?.warn('Source-library history skipped', { reason: 'invalid_media_identity' });
+            return null;
+        }
+        // Own all data before the first await, including graph arrays and metadata.
+        const snapshot = JSON.parse(JSON.stringify(payload));
+        return {
+            identity,
+            statement: buildQueueClassificationHistoryInsertQuery(
+                identity, snapshot, sourceLibraryName, ragGraphExtractor.extract(snapshot),
+            ),
+        };
     }
 
     async insertHistoryEntry(payload, tmdbId, sourceLibraryId, sourceLibraryName) {
-        const graphRel = ragGraphExtractor.extract(payload);
-
-        await this.db.query(
-            `INSERT INTO classification_history (
-                tmdb_id, media_type, title, year, library_id, status, 
-                confidence, method, reason, metadata,
-                director_name, primary_studio_name, genre_names, cast_ids, cast_names
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
-            [
-                tmdbId || null,
-                payload.media?.media_type || 'movie',
-                payload.title,
-                payload.year,
-                sourceLibraryId,
-                'completed',
-                100,
-                'source_library',
-                this.buildReason(tmdbId, sourceLibraryName),
-                JSON.stringify(payload),
-                graphRel.director_name,
-                graphRel.primary_studio_name,
-                graphRel.genre_names,
-                graphRel.cast_ids,
-                graphRel.cast_names
-            ]
-        );
+        const prepared = this.#prepare(payload, tmdbId, sourceLibraryId, sourceLibraryName);
+        if (prepared) await this.db.query(prepared.statement.text, prepared.statement.values);
     }
 
-    async persist(payload, tmdbId, sourceLibraryId, sourceLibraryName, taskId) {
-        if (!sourceLibraryId) {
+    async persist(payload, tmdbId, sourceLibraryId, sourceLibraryName, _taskId) {
+        if (sourceLibraryId === null || sourceLibraryId === undefined) return;
+        const prepared = this.#prepare(payload, tmdbId, sourceLibraryId, sourceLibraryName);
+        if (!prepared) return;
+
+        if (!await this.libraryExists(prepared.identity.libraryId)) {
+            this.logger?.warn('Source-library history skipped', { reason: 'library_unavailable' });
             return;
         }
-
-        const exists = await this.libraryExists(sourceLibraryId);
-        if (!exists) {
-            this.logger.warn('Library deleted during task processing, skipping classification_history insert', {
-                libraryId: sourceLibraryId,
-                taskId,
-                title: payload.title
-            });
-            return;
-        }
-
-        const duplicateExists = await this.historyEntryExists(tmdbId, payload.title, sourceLibraryId);
-        if (duplicateExists) {
-            return;
-        }
-
-        await this.insertHistoryEntry(payload, tmdbId, sourceLibraryId, sourceLibraryName);
+        if (await this.#identityExists(prepared.identity)) return;
+        await this.db.query(prepared.statement.text, prepared.statement.values);
     }
 }

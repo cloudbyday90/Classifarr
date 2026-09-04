@@ -84,14 +84,13 @@ callers; they must provide a type rather than rely on a guess. Broader identity
 normalization would improve consistency but should be handled per consumer
 with explicit compatibility tests.
 
-The next production item is source-library history persistence in
-`queueClassificationHistoryService.mjs`. Its duplicate check still uses TMDb
-ID plus library without media type, and its insert path defaults missing
-media type to `movie`. Apply a consistent typed-identity contract across
-duplicate checking and insertion, including the no-TMDb title fallback, and
-test missing-type handling. This is a code finding, not a claim that the local
-inventory contains that corruption. Do not rewrite historical rows without
-independent evidence of their correct type.
+The recommended source-library history persistence follow-up is implemented
+in the separate [source-history outcome](source-history-media-identity-outcome.md).
+Duplicate checks and insertion now share an explicit typed identity, including
+the no-TMDb title fallback, and missing type no longer defaults to `movie`.
+Existing history is preserved. The follow-up review found upstream queue and
+enrichment type defaults to address next, before concurrent duplicate creation
+by separate workers. See the source-history outcome for both boundaries.
 
 The separate semantic-study task still needs a prospectively selected eligible
 cohort and independent human labels. This history fix does not change the

@@ -152,6 +152,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Typed source-library history** — Duplicate checks and inserts now share an
+  explicit movie/TV identity, including the no-TMDb title fallback. Missing or
+  conflicting media types and malformed IDs skip history creation instead of
+  producing guessed movie records. Captured inputs keep lookup and insertion
+  consistent across asynchronous checks.
+
 - **History scoring respects media identity** — Movie and TV records sharing
   a TMDb ID no longer contribute to each other's history scores or consume
   each other's result limit. Missing or invalid identities contribute no
