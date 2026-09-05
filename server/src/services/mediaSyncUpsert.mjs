@@ -2,6 +2,7 @@ import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { contentTypeAnalyzer } from './contentTypeAnalyzer.mjs';
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
+import { readInventoryTmdbObservation } from './inventoryTmdbObservation.mjs';
 
 const logger = createLogger('mediaSync');
 
@@ -18,14 +19,16 @@ export async function upsertMediaItem(mediaServerId, libraryId, item) {
         const normalizedGenres = normalizeMetadataList(item.genres);
         const normalizedTags = normalizeMetadataList(item.tags);
         const normalizedCollections = normalizeMetadataList(item.collections);
+        const observation = readInventoryTmdbObservation(item);
 
         const analysis = await contentTypeAnalyzer.analyze({
             title: item.title,
             overview: item.metadata?.summary || '',
             genres: normalizedGenres,
-            keywords: normalizedTags,
+            keywords: observation?.keywords || [],
+            tags: normalizedTags,
             content_rating: item.content_rating,
-            original_language: 'en',
+            original_language: observation?.original_language ?? null,
             tmdb_id: item.tmdb_id,
         }, null, true);
 

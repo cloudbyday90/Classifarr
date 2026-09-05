@@ -19,7 +19,8 @@ export async function verifyTmdbExternalIdSql(client) {
       CREATE TEMP TABLE libraries (id integer PRIMARY KEY, name text) ON COMMIT DROP;
       CREATE TEMP TABLE media_server_items (
         id integer PRIMARY KEY, media_type text, tmdb_id integer, library_id integer,
-        title text, year integer, metadata jsonb DEFAULT '{}'
+        title text, year integer, metadata jsonb DEFAULT '{}', tags text[],
+        inventory_tmdb_attempted_at timestamptz, inventory_tmdb_fetched_at timestamptz
       ) ON COMMIT DROP;
       CREATE TEMP TABLE classification_history (
         tmdb_id integer, media_type text, title text, year integer, library_id integer,
@@ -73,6 +74,7 @@ export async function verifyTmdbExternalIdSql(client) {
         queueOmdbEnrichmentService: { enrich: async (_payload, data) => { if (item.omdb) data.omdb = { data: item.omdb }; } },
         queueWebSearchEnrichmentService: { enrich: async () => {} },
         queueTmdbResolutionService: tmdb,
+        queueInventoryTmdbEnrichmentService: { enrich: async () => false },
         queueClassificationHistoryService: new QueueClassificationHistoryService({ db: { query }, logger }),
         completeTask: async (_id, result) => completions.push(result),
       };

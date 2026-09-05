@@ -100,7 +100,9 @@ describe('buildMetadataEnrichmentPayload', () => {
     expect(payload.year).toBe(2024);
     expect(payload.overview).toBe('A test movie');
     expect(payload.genres).toEqual(['Action', 'Comedy']);
-    expect(payload.keywords).toEqual(['tag1']);
+    expect(payload.keywords).toEqual([]);
+    expect(payload.tags).toEqual(['tag1']);
+    expect(payload.original_language).toBeNull();
     expect(payload.content_rating).toBe('PG-13');
     expect(payload.tmdb_id).toBe(999);
     expect(payload.imdb_id).toBe('tt123');

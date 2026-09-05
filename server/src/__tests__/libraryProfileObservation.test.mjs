@@ -23,8 +23,8 @@ describe('library inventory observations', () => {
     });
     test('normalizes typed ratings, provider shapes, source precedence, and metadata fallbacks', () => {
         const observation = buildLibraryProfileObservation([
-            { media_type: 'tv', content_rating: '16', genres: ['Drama'], studio: 'Source studio', metadata: { original_language: 'EN', tmdb: { genres: [{ name: 'Action' }], production_companies: [{ name: 'Other studio' }] } } },
-            { media_type: 'movie', content_rating: 'N/A', metadata: { omdb: { data: { rated: null }, rated: 'PG' }, tmdb: { genres: '[{"name":"Action"}]', production_companies: [{ name: 'Provider studio' }], keywords: { results: [{ name: 'space' }, { name: 'space' }] }, original_language: 'FR' } } },
+            { tmdb_id: 7, media_type: 'tv', content_rating: '16', genres: ['Drama'], studio: 'Source studio', metadata: { inventory_tmdb: { version: 1, tmdb_id: 7, media_type: 'tv', keywords: [], original_language: 'en' }, tmdb: { genres: [{ name: 'Action' }], production_companies: [{ name: 'Other studio' }] } } },
+            { tmdb_id: 7, media_type: 'movie', content_rating: 'N/A', metadata: { inventory_tmdb: { version: 1, tmdb_id: 7, media_type: 'movie', keywords: ['space', 'space'], original_language: 'fr' }, omdb: { data: { rated: null }, rated: 'PG' }, tmdb: { genres: '[{"name":"Action"}]', production_companies: [{ name: 'Provider studio' }] } } },
         ]);
         expect(observationDistribution(observation, 'rating')).toEqual({ PG: 50, 'TV-MA': 50 });
         expect(observationDistribution(observation, 'genres')).toEqual({ Action: 50, Drama: 50 });

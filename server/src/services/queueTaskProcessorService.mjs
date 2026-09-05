@@ -1,6 +1,7 @@
 import { QueueOmdbEnrichmentService } from './queueOmdbEnrichmentService.mjs';
 import { QueueWebSearchEnrichmentService } from './queueWebSearchEnrichmentService.mjs';
 import { QueueTmdbResolutionService } from './queueTmdbResolutionService.mjs';
+import { QueueInventoryTmdbEnrichmentService } from './queueInventoryTmdbEnrichmentService.mjs';
 import { QueueClassificationHistoryService } from './queueClassificationHistoryService.mjs';
 import { EnrichmentItemStateService } from './enrichmentItemStateService.mjs';
 import * as metadataEnrichment from '../utils/metadataEnrichment.mjs';
@@ -90,6 +91,9 @@ export class QueueTaskProcessorService {
             tmdbService: this.tmdbService,
             queryWithTimeout: (...args) => this.queryWithTimeout(...args),
         });
+        this.queueInventoryTmdbEnrichmentService = deps.queueInventoryTmdbEnrichmentService || new QueueInventoryTmdbEnrichmentService({
+            tmdbService: this.tmdbService, logger: this.logger,
+        });
         this.queueClassificationHistoryService = deps.queueClassificationHistoryService || new QueueClassificationHistoryService({
             db: this.db,
             logger: this.logger,
@@ -167,6 +171,7 @@ export class QueueTaskProcessorService {
             queueOmdbEnrichmentService: this.queueOmdbEnrichmentService,
             queueWebSearchEnrichmentService: this.queueWebSearchEnrichmentService,
             queueTmdbResolutionService: this.queueTmdbResolutionService,
+            queueInventoryTmdbEnrichmentService: this.queueInventoryTmdbEnrichmentService,
             queueClassificationHistoryService: this.queueClassificationHistoryService,
             queryWithTimeout: (...args) => this.queryWithTimeout(...args),
             completeTask: (...args) => this.completeTask(...args)

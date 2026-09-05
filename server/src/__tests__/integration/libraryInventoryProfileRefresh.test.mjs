@@ -72,8 +72,8 @@ describe('inventory-driven profile refresh in PostgreSQL', () => {
     });
     test.each([
         ['content_rating', 'PG'], ['genres', ['Drama']], ['studio', 'Example'], ['tmdb_id', 7], ['media_type', 'tv'],
-        ['metadata', { original_language: 'fr' }], ['metadata', { omdb: { data: { rated: 'PG' } } }],
-        ['metadata', { tmdb: { keywords: { results: [{ name: 'space' }] } } }],
+        ['metadata', { inventory_tmdb: { version: 1, tmdb_id: 7, media_type: 'movie', keywords: [], original_language: 'fr' } }], ['metadata', { omdb: { data: { rated: 'PG' } } }],
+        ['metadata', { inventory_tmdb: { version: 1, tmdb_id: 7, media_type: 'movie', keywords: ['space'], original_language: null } }],
     ])('captures changes to observed input %s (%j)', async (field, value) => {
         await add();
         // Field names come only from this fixed fixture matrix, never external input.

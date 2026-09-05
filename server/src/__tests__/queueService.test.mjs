@@ -236,7 +236,7 @@ describe('QueueService', () => {
                 if (query.includes('SELECT * FROM tavily_config')) {
                     return Promise.resolve({ rows: [] });
                 }
-                if (query.includes('UPDATE media_server_items') && query.includes('SET metadata = metadata ||') && params && params[0]) {
+                if (query.includes('UPDATE media_server_items') && query.includes('SET metadata = COALESCE(metadata,') && params && params[0]) {
                     capturedMetadata = typeof params[0] === 'string' ? JSON.parse(params[0]) : params[0];
                 }
                 return Promise.resolve({ rows: [], rowCount: 1 });
@@ -385,7 +385,7 @@ describe('QueueService', () => {
                 if (query.includes('SELECT * FROM tavily_config')) {
                     return Promise.resolve({ rows: [] });
                 }
-                if (query.includes('UPDATE media_server_items') && query.includes('SET metadata = metadata ||') && params?.[0]) {
+                if (query.includes('UPDATE media_server_items') && query.includes('SET metadata = COALESCE(metadata,') && params?.[0]) {
                     capturedMetadata = typeof params[0] === 'string' ? JSON.parse(params[0]) : params[0];
                     return Promise.resolve({ rows: [], rowCount: 1 });
                 }
@@ -611,7 +611,7 @@ describe('QueueService', () => {
                 'metadata_enrichment',
                 expect.objectContaining({
                     genres: ['Documentary', 'Family'],
-                    keywords: ['nature', 'wildlife'],
+                    keywords: [], tags: ['nature', 'wildlife'], original_language: null,
                 }),
                 expect.objectContaining({
                     source: 'gap_analysis',

@@ -15,20 +15,22 @@ export async function verifyQueueEnrichmentIdentitySql(client) {
   await client.query('BEGIN');
   try {
     await client.query(`
-      CREATE TEMP TABLE libraries (id integer PRIMARY KEY, name text, media_type text) ON COMMIT DROP;
+      CREATE TEMP TABLE libraries (id integer PRIMARY KEY, name text, media_type text, is_active boolean DEFAULT true) ON COMMIT DROP;
       CREATE TEMP TABLE media_server_items (
         id integer PRIMARY KEY, media_type text, tmdb_id integer, tvdb_id integer, imdb_id text,
         library_id integer, title text, year integer, metadata jsonb DEFAULT '{}',
-        genres jsonb, tags jsonb, content_rating text, original_rating text
+        genres jsonb, tags jsonb, content_rating text, original_rating text,
+        inventory_tmdb_attempted_at timestamptz, inventory_tmdb_fetched_at timestamptz
       ) ON COMMIT DROP;
       CREATE TEMP TABLE task_queue (task_type text, status text, payload jsonb) ON COMMIT DROP;
       CREATE TEMP TABLE omdb_config (is_active boolean, api_key text) ON COMMIT DROP;
+      CREATE TEMP TABLE tmdb_config (is_active boolean, api_key text) ON COMMIT DROP;
       CREATE TEMP TABLE classification_history (
         tmdb_id integer, media_type text, title text, year integer, library_id integer,
         status text, confidence integer, method text, reason text, metadata jsonb,
         director_name text, primary_studio_name text, genre_names text[], cast_ids integer[], cast_names text[]
       ) ON COMMIT DROP;
-      INSERT INTO libraries VALUES (1, 'Source', 'movie');
+      INSERT INTO libraries (id, name, media_type) VALUES (1, 'Source', 'movie');
       INSERT INTO omdb_config VALUES (true, 'fixture-only');
       INSERT INTO media_server_items (id, media_type, library_id, title, year) VALUES
         (1, 'movie', 1, 'Shared title', 2001), (2, 'tv', 1, 'Shared title', 2001),
@@ -69,6 +71,7 @@ export async function verifyQueueEnrichmentIdentitySql(client) {
       queueOmdbEnrichmentService: omdb,
       queueWebSearchEnrichmentService: { enrich: async () => {} },
       queueTmdbResolutionService: tmdb,
+      queueInventoryTmdbEnrichmentService: { enrich: async () => false },
       queueClassificationHistoryService: new QueueClassificationHistoryService({ db: { query }, logger }),
       queryWithTimeout: query,
       completeTask: async (_id, result) => completions.push(result),

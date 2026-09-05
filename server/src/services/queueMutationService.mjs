@@ -267,7 +267,7 @@ export class QueueMutationService {
                     genres: normalizeMetadataList(metadata.genres),
                     keywords: normalizeMetadataList(metadata.keywords),
                     content_rating: metadata.certification,
-                    original_language: metadata.original_language || 'en',
+                    original_language: metadata.original_language || null,
                     tmdb_id: item.tmdb_id,
                     media: { media_type: item.media_type || 'movie' }
                 }, {

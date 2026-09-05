@@ -173,6 +173,18 @@ function createService({ handoff, admission } = {}) {
 }
 
 describe('classificationServiceCore native question-reduction handoff', () => {
+  test.each([true, false])('does not invent English in the metadata path (existing=%s)', async existing => {
+    const service = createService();
+    if (!existing) {
+      service.classificationMetadataService.parseOverseerrPayload.mockReturnValue({
+        media_type: 'movie', tmdbId: null, title: 'Fixture', year: 2001, existingMetadata: {}, taskId: null,
+      });
+      service.tmdbService.search = jest.fn().mockResolvedValue([]);
+    }
+    await service.classify({});
+    expect(service.runDecisionTree).toHaveBeenCalledWith(expect.objectContaining({ original_language: null }), 'movie', null);
+  });
+
   test('returns a validated runtime plan without changing the routing decision path', async () => {
     const runtimeQuestionReductionPlan = buildValidRuntimeQuestionReductionPlan();
     const handoff = {

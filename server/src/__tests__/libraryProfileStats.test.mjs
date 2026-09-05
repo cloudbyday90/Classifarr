@@ -24,7 +24,7 @@ describe('LibraryProfileService - Profile Statistics', () => {
 
     it('projects every live distribution from one observation snapshot', async () => {
         db.query.mockResolvedValueOnce({ rows: [
-            { genres: ['Action', 'Drama', 'Action'], content_rating: 'PG', studio: 'A', metadata: { original_language: 'en' } },
+            { tmdb_id: 7, media_type: 'movie', genres: ['Action', 'Drama', 'Action'], content_rating: 'PG', studio: 'A', metadata: { inventory_tmdb: { version: 1, tmdb_id: 7, media_type: 'movie', keywords: [], original_language: 'en' } } },
             { genres: ['Action'], content_rating: 'G', metadata: {} },
         ] });
         const stats = await libraryProfileService.getProfileStats(1);
@@ -36,7 +36,7 @@ describe('LibraryProfileService - Profile Statistics', () => {
         expect(stats.totalItems).toBe(2);
     });
     it.each(['getCertificationDistribution', 'getGenreDistribution', 'getStudioDistribution', 'getLanguageDistribution'])('uses the shared population for %s', async method => {
-        db.query.mockResolvedValueOnce({ rows: [{ genres: ['Action'], content_rating: 'PG', studio: 'A', metadata: { original_language: 'en' } }, {}] });
+        db.query.mockResolvedValueOnce({ rows: [{ tmdb_id: 7, media_type: 'movie', genres: ['Action'], content_rating: 'PG', studio: 'A', metadata: { inventory_tmdb: { version: 1, tmdb_id: 7, media_type: 'movie', keywords: [], original_language: 'en' } } }, {}] });
         const values = await libraryProfileService[method](1);
         expect(values).toHaveLength(1);
         expect(values[0]).toMatchObject({ count: 1, percentage: 50 });

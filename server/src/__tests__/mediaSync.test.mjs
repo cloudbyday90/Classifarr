@@ -539,7 +539,7 @@ describe('MediaSyncService', () => {
 
             expect(mockContentTypeAnalyzer.analyze).toHaveBeenCalledWith(expect.objectContaining({
                 genres: ['Action', 'Comedy'],
-                keywords: ['hero']
+                keywords: [], tags: ['hero'], original_language: null
             }), null, true);
 
             const upsertCall = mockDb.query.mock.calls[1];

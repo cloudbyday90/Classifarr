@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-05T13:30:03.342Z
--- Latest Migration: 20260905_150000_add_inventory_profile_refresh.sql
+-- Generated: 2026-09-05T16:34:47.601Z
+-- Latest Migration: 20260905_160000_add_inventory_tmdb_observations.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -496,13 +496,15 @@ CREATE FUNCTION public.library_profile_observed_metadata(payload jsonb) RETURNS 
     SET search_path TO 'pg_catalog', 'public'
     AS $$
     SELECT jsonb_build_object(
-        'original_language', payload -> 'original_language',
         'omdb', CASE WHEN jsonb_typeof(payload -> 'omdb') = 'object' THEN
             jsonb_build_object('rated', payload #> '{omdb,rated}', 'data', jsonb_build_object('rated', payload #> '{omdb,data,rated}')) END,
         'tmdb', CASE WHEN jsonb_typeof(payload -> 'tmdb') = 'object' THEN
             jsonb_build_object('genres', payload #> '{tmdb,genres}', 'certification', payload #> '{tmdb,certification}',
-                'production_companies', payload #> '{tmdb,production_companies}',
-                'keywords', payload #> '{tmdb,keywords}', 'original_language', payload #> '{tmdb,original_language}') END
+                'production_companies', payload #> '{tmdb,production_companies}') END,
+        'inventory_tmdb', CASE WHEN jsonb_typeof(payload -> 'inventory_tmdb') = 'object' THEN
+            jsonb_build_object('version', payload #> '{inventory_tmdb,version}',
+                'tmdb_id', payload #> '{inventory_tmdb,tmdb_id}', 'media_type', payload #> '{inventory_tmdb,media_type}',
+                'keywords', payload #> '{inventory_tmdb,keywords}', 'original_language', payload #> '{inventory_tmdb,original_language}') END
     );
 $$;
 
@@ -520,6 +522,22 @@ CREATE FUNCTION public.mark_library_profile_inventory_changed(library_ids bigint
     ON CONFLICT (library_id) DO UPDATE
     SET revision = public.library_profile_inventory_state.revision + 1,
         changed_at = clock_timestamp();
+$$;
+
+
+--
+-- Name: reset_inventory_tmdb_observation_clocks(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.reset_inventory_tmdb_observation_clocks() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+BEGIN
+    NEW.inventory_tmdb_attempted_at := NULL;
+    NEW.inventory_tmdb_fetched_at := NULL;
+    RETURN NEW;
+END;
 $$;
 
 
@@ -3861,6 +3879,8 @@ CREATE TABLE public.media_server_items (
     original_rating character varying(10),
     enrichment_provider_state character varying(20) DEFAULT 'none'::character varying NOT NULL,
     enrichment_deferred_reason text,
+    inventory_tmdb_attempted_at timestamp with time zone,
+    inventory_tmdb_fetched_at timestamp with time zone,
     CONSTRAINT media_server_items_enrichment_provider_state_check CHECK (((enrichment_provider_state)::text = ANY (ARRAY[('none'::character varying)::text, ('omdb'::character varying)::text, ('tavily'::character varying)::text, ('omdb+tavily'::character varying)::text, ('web_search'::character varying)::text, ('omdb+web_search'::character varying)::text]))),
     CONSTRAINT media_server_items_enrichment_status_check CHECK (((enrichment_status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text, ('completed'::character varying)::text, ('deferred'::character varying)::text, ('failed'::character varying)::text, ('not_needed'::character varying)::text])))
 );
@@ -5911,8 +5931,8 @@ CREATE TABLE public.policy_profile_refresh_outbox (
     CONSTRAINT policy_profile_refresh_outbox_failure_code_chk CHECK (((failure_code IS NULL) OR ((char_length(btrim((failure_code)::text)) >= 1) AND (char_length(btrim((failure_code)::text)) <= 80)))),
     CONSTRAINT policy_profile_refresh_outbox_identifiers_chk CHECK (((library_id > 0) AND ((classification_id IS NULL) OR (classification_id > 0)))),
     CONSTRAINT policy_profile_refresh_outbox_processing_state_chk CHECK (((processing_state)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text, ('completed'::character varying)::text, ('failed'::character varying)::text]))),
-    CONSTRAINT policy_profile_refresh_outbox_request_shape_chk CHECK (((((request_type)::text = 'learning_evidence'::text) AND (inventory_revision IS NULL) AND (classification_id IS NOT NULL) AND ((learning_operation_id)::text = ANY ((ARRAY['write_compatibility_evidence'::character varying, 'write_identity_evidence'::character varying])::text[])) AND ((learning_tier_id)::text = ANY ((ARRAY['compatibility_evidence'::character varying, 'identity_evidence'::character varying])::text[])) AND ((((learning_operation_id)::text = 'write_compatibility_evidence'::text) AND ((learning_tier_id)::text = 'compatibility_evidence'::text)) OR (((learning_operation_id)::text = 'write_identity_evidence'::text) AND ((learning_tier_id)::text = 'identity_evidence'::text))) AND ((char_length(btrim((candidate_key)::text)) >= 3) AND (char_length(btrim((candidate_key)::text)) <= 160)) AND ((refresh_reason_id)::text = 'profile_refresh_required'::text) AND ((source_system)::text = 'policy_authorized_profile_refresh'::text)) OR (((request_type)::text = 'native_readiness'::text) AND (inventory_revision IS NULL) AND (classification_id IS NULL) AND (learning_operation_id IS NULL) AND (learning_tier_id IS NULL) AND (candidate_key IS NULL) AND ((source_id)::text = 'native_policy_profile_readiness'::text) AND ((refresh_reason_id)::text = 'stale_library_profile'::text) AND ((source_system)::text = 'policy_native_readiness_profile_refresh'::text)) OR (((request_type)::text = 'inventory_change'::text) AND (inventory_revision IS NOT NULL) AND (inventory_revision > 0) AND (classification_id IS NULL) AND (learning_operation_id IS NULL) AND (learning_tier_id IS NULL) AND (candidate_key IS NULL) AND ((source_id)::text = 'library_inventory_observation'::text) AND ((refresh_reason_id)::text = 'library_inventory_changed'::text) AND ((source_system)::text = 'library_inventory_profile_refresh'::text)))),
-    CONSTRAINT policy_profile_refresh_outbox_request_type_chk CHECK (((request_type)::text = ANY ((ARRAY['learning_evidence'::character varying, 'native_readiness'::character varying, 'inventory_change'::character varying])::text[]))),
+    CONSTRAINT policy_profile_refresh_outbox_request_shape_chk CHECK (((((request_type)::text = 'learning_evidence'::text) AND (inventory_revision IS NULL) AND (classification_id IS NOT NULL) AND ((learning_operation_id)::text = ANY (ARRAY[('write_compatibility_evidence'::character varying)::text, ('write_identity_evidence'::character varying)::text])) AND ((learning_tier_id)::text = ANY (ARRAY[('compatibility_evidence'::character varying)::text, ('identity_evidence'::character varying)::text])) AND ((((learning_operation_id)::text = 'write_compatibility_evidence'::text) AND ((learning_tier_id)::text = 'compatibility_evidence'::text)) OR (((learning_operation_id)::text = 'write_identity_evidence'::text) AND ((learning_tier_id)::text = 'identity_evidence'::text))) AND ((char_length(btrim((candidate_key)::text)) >= 3) AND (char_length(btrim((candidate_key)::text)) <= 160)) AND ((refresh_reason_id)::text = 'profile_refresh_required'::text) AND ((source_system)::text = 'policy_authorized_profile_refresh'::text)) OR (((request_type)::text = 'native_readiness'::text) AND (inventory_revision IS NULL) AND (classification_id IS NULL) AND (learning_operation_id IS NULL) AND (learning_tier_id IS NULL) AND (candidate_key IS NULL) AND ((source_id)::text = 'native_policy_profile_readiness'::text) AND ((refresh_reason_id)::text = 'stale_library_profile'::text) AND ((source_system)::text = 'policy_native_readiness_profile_refresh'::text)) OR (((request_type)::text = 'inventory_change'::text) AND (inventory_revision IS NOT NULL) AND (inventory_revision > 0) AND (classification_id IS NULL) AND (learning_operation_id IS NULL) AND (learning_tier_id IS NULL) AND (candidate_key IS NULL) AND ((source_id)::text = 'library_inventory_observation'::text) AND ((refresh_reason_id)::text = 'library_inventory_changed'::text) AND ((source_system)::text = 'library_inventory_profile_refresh'::text)))),
+    CONSTRAINT policy_profile_refresh_outbox_request_type_chk CHECK (((request_type)::text = ANY (ARRAY[('learning_evidence'::character varying)::text, ('native_readiness'::character varying)::text, ('inventory_change'::character varying)::text]))),
     CONSTRAINT policy_profile_refresh_outbox_source_event_chk CHECK (((char_length(btrim((source_id)::text)) >= 1) AND (char_length(btrim((source_id)::text)) <= 80) AND ((char_length(btrim((source_event_id)::text)) >= 1) AND (char_length(btrim((source_event_id)::text)) <= 160)))),
     CONSTRAINT policy_profile_refresh_outbox_version_chk CHECK ((outbox_version = 1)),
     CONSTRAINT policy_profile_refresh_outbox_worker_lifecycle_chk CHECK (((((processing_state)::text = 'pending'::text) AND (claim_token IS NULL) AND (claimed_at IS NULL) AND (lease_expires_at IS NULL) AND (completed_at IS NULL)) OR (((processing_state)::text = 'processing'::text) AND (claim_token IS NOT NULL) AND (claimed_at IS NOT NULL) AND (lease_expires_at IS NOT NULL) AND (completed_at IS NULL)) OR (((processing_state)::text = 'completed'::text) AND (claim_token IS NULL) AND (claimed_at IS NULL) AND (lease_expires_at IS NULL) AND (completed_at IS NOT NULL)) OR (((processing_state)::text = 'failed'::text) AND (claim_token IS NULL) AND (claimed_at IS NULL) AND (lease_expires_at IS NULL) AND (completed_at IS NULL))))
@@ -11759,6 +11779,13 @@ CREATE TRIGGER policy_runtime_pending_question_cleanup_audit_mutation_guard BEFO
 
 
 --
+-- Name: media_server_items reset_inventory_tmdb_observation_clocks; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER reset_inventory_tmdb_observation_clocks BEFORE UPDATE OF tmdb_id, media_type ON public.media_server_items FOR EACH ROW WHEN (((old.tmdb_id IS DISTINCT FROM new.tmdb_id) OR ((old.media_type)::text IS DISTINCT FROM (new.media_type)::text))) EXECUTE FUNCTION public.reset_inventory_tmdb_observation_clocks();
+
+
+--
 -- Name: classification_evidence trg_classification_evidence_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -14892,6 +14919,7 @@ FROM unnest(ARRAY[
     '20260905_100000_add_media_identity_review_previews.sql',
     '20260905_120000_add_media_identity_receipt_lookup_index.sql',
     '20260905_140000_add_library_profile_observation_summary.sql',
-    '20260905_150000_add_inventory_profile_refresh.sql'
+    '20260905_150000_add_inventory_profile_refresh.sql',
+    '20260905_160000_add_inventory_tmdb_observations.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

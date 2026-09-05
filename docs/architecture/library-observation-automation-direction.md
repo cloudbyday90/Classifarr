@@ -88,7 +88,11 @@ task was inventory-change-driven refresh and invalidation through the existing
 planner/outbox, including libraries without an enabled native policy. That work
 is now recorded in the [refresh design](inventory-profile-refresh-design.md)
 and [refresh outcome](inventory-profile-refresh-outcome.md). Keyword and
-original-language provenance is the next implementation item.
+original-language provenance is implemented in the
+[metadata design](inventory-metadata-provenance-design.md) and
+[32-item assessment](inventory-metadata-provenance-outcome.md).
+The next fix is safe retention of resolved typed identities when source resync
+omits an identifier, followed by coverage-aware cross-library overlap summaries.
 The separate shared HTTP mutation-retry audit remains a correctness follow-up;
 the receipt-recovery change already disables replay for identity confirmation.
 
@@ -97,7 +101,7 @@ the receipt-recovery change already disables replay for identity confirmation.
 | Approach | Benefit | Cost or limit | Decision |
 | --- | --- | --- | --- |
 | Reuse synchronized inventory and automatically refreshed profiles | Low operational burden; uses real library organization | Inherits source mistakes and missing metadata | Primary foundation |
-| Explicit prevalence, coverage, freshness, and provenance | Makes common traits interpretable and comparable | Coverage and inventory-change refresh are implemented; provider provenance remains | Continue metadata quality work |
+| Explicit prevalence, coverage, freshness, and provenance | Makes common traits interpretable and comparable | Provider outages and incorrect source identities still limit evidence | Coverage, change-driven refresh, and [TMDb trait provenance](inventory-metadata-provenance-outcome.md) implemented |
 | Bounded item and semantic comparisons across candidate libraries | Explains similarities, overlaps, and outliers | Semantic evidence needs independent evaluation | Build on existing retrieval |
 | Manual per-item identity and policy setup | Resolves exceptional ambiguity | Does not scale as the main workflow | Exception path |
 | Treat all existing placements or model labels as verified truth | Removes apparent review effort | Conceals errors and creates circular evaluation | Reject |

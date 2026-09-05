@@ -5,6 +5,8 @@
 
 import { canonicalMediaType, payloadMediaType, positiveDatabaseInteger } from './mediaIdentityValues.mjs';
 import { parsePayload } from '../utils/queueHelpers.mjs';
+import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
+import { readInventoryTmdbObservation } from './inventoryTmdbObservation.mjs';
 
 export function captureQueueEnrichmentPayload(payload) {
   const mediaType = payloadMediaType(payload);
@@ -27,7 +29,8 @@ export async function prepareQueueEnrichmentPayload(payload, query) {
   if (captured.itemId === null || captured.itemId === undefined) return captured;
   const itemId = positiveDatabaseInteger(captured.itemId);
   if (!itemId) return null;
-  const result = await query(`SELECT msi.tmdb_id, msi.media_type, msi.library_id, msi.metadata,
+  const result = await query(`SELECT msi.tmdb_id, msi.media_type, msi.library_id, msi.metadata, msi.tags,
+    msi.inventory_tmdb_attempted_at, msi.inventory_tmdb_fetched_at,
     l.name AS library_name FROM media_server_items msi
     LEFT JOIN libraries l ON msi.library_id = l.id WHERE msi.id = $1`, [itemId]);
   const row = result.rows[0];
@@ -44,5 +47,13 @@ export async function prepareQueueEnrichmentPayload(payload, query) {
   captured.source_library_name = row.library_name || captured.source_library_name;
   captured.posterPath ||= metadata?.posterPath;
   captured.poster_path ||= metadata?.poster_path;
+  captured.inventory_tmdb = metadata?.inventory_tmdb;
+  captured.inventory_tmdb_attempted_at = row.inventory_tmdb_attempted_at;
+  captured.inventory_tmdb_fetched_at = row.inventory_tmdb_fetched_at;
+  // Older queued payloads may contain source tags as keywords or a fabricated English default.
+  const observation = readInventoryTmdbObservation({ ...row, metadata });
+  captured.keywords = observation?.keywords || [];
+  captured.original_language = observation?.original_language ?? null;
+  captured.tags = normalizeMetadataList(row.tags);
   return captured;
 }

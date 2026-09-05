@@ -17,7 +17,7 @@ export async function runTaskWithMatchingEnrichmentSource(queueService, db, task
         metadata: {}, ...result.rows[0],
       }] };
     }
-    if (text.includes('SET metadata = metadata ||')) return { ...result, rowCount: result.rowCount ?? 1 };
+    if (text.includes('SET metadata = COALESCE(metadata,')) return { ...result, rowCount: result.rowCount ?? 1 };
     return result;
   });
   try {

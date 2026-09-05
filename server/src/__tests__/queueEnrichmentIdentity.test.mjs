@@ -48,6 +48,14 @@ test('database errors propagate instead of becoming identity guesses', async () 
   await expect(prepareQueueEnrichmentPayload(taskPayload(), jest.fn().mockRejectedValue(new Error('offline')))).rejects.toThrow('offline');
 });
 
+test('replaces legacy queued tags and guessed language with current attributable observations', async () => {
+  const query = jest.fn().mockResolvedValue({ rows: [{ ...source, tags: ['source tag'], metadata: {
+    inventory_tmdb: { version: 1, tmdb_id: 42, media_type: 'tv', keywords: ['provider keyword'], original_language: 'ja' },
+  } }] });
+  const prepared = await prepareQueueEnrichmentPayload({ ...taskPayload(), keywords: ['source tag'], original_language: 'en' }, query);
+  expect(prepared).toMatchObject({ keywords: ['provider keyword'], tags: ['source tag'], original_language: 'ja' });
+});
+
 test.each([null, undefined, '', 'person'])('refill cannot manufacture a movie from %j', (mediaType) => {
   expect(new QueueRefillService().buildMetadataEnrichmentPayload({ title: 'Example', media_type: mediaType })).toBeNull();
 });
@@ -70,6 +78,7 @@ function flowDeps(row = source) {
     queueOmdbEnrichmentService: { enrich: jest.fn() },
     queueWebSearchEnrichmentService: { enrich: jest.fn() },
     queueTmdbResolutionService: { resolveAndBackfill: jest.fn().mockResolvedValue(42) },
+    queueInventoryTmdbEnrichmentService: { enrich: jest.fn().mockResolvedValue(false) },
     queueClassificationHistoryService: { persist: jest.fn() },
     queryWithTimeout: jest.fn().mockResolvedValue({ rowCount: 1 }),
     completeTask: jest.fn(),
@@ -92,7 +101,7 @@ test('source drift at metadata update prevents history and a successful enrichme
   const deps = flowDeps();
   deps.queryWithTimeout.mockResolvedValue({ rowCount: 0 });
   await processMetadataEnrichmentTask({ id: 7, payload: taskPayload() }, deps);
-  expect(deps.queryWithTimeout.mock.calls[0][1].slice(1)).toEqual([1, 'tv', 2, 42]);
+  expect(deps.queryWithTimeout.mock.calls[0][1].slice(1)).toEqual([1, 'tv', 2, 42, false, false]);
   expect(deps.queueClassificationHistoryService.persist).not.toHaveBeenCalled();
   expect(deps.completeTask).toHaveBeenCalledWith(7, { enriched: false, skipped: true, reason: 'source_identity_changed' });
   expect(deps.enrichmentItemStateService.syncItemState).toHaveBeenCalledWith(1);

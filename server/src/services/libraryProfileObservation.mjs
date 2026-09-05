@@ -2,6 +2,7 @@
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 import { ratingNormalizer } from '../utils/ratingNormalizer.mjs';
 import { profileObservationCoverage } from './libraryProfileObservationPresentation.mjs';
+import { readInventoryTmdbObservation } from './inventoryTmdbObservation.mjs';
 
 export const LIBRARY_PROFILE_OBSERVATION_VERSION = 'library.profile_observation.v1';
 const fields = ['rating', 'genres', 'studio', 'keywords', 'language'];
@@ -30,8 +31,9 @@ function traits(item) {
     const rating = observedRating([item.content_rating, omdb.data?.rated, omdb.rated, tmdb.certification], item.media_type);
     const genres = list(item.genres);
     const studio = firstLabel([item.studio, list(tmdb.production_companies)[0]]);
-    const keywords = list(tmdb.keywords?.keywords ?? tmdb.keywords?.results ?? tmdb.keywords);
-    const language = firstLabel([metadata.original_language, tmdb.original_language]);
+    const providerObservation = readInventoryTmdbObservation(item);
+    const keywords = providerObservation?.keywords || [];
+    const language = providerObservation?.original_language;
     return {
         rating: rating ? [rating] : [],
         genres: genres.length ? genres : list(tmdb.genres),
@@ -48,7 +50,7 @@ export function buildLibraryProfileObservation(items) {
     let identifiedRowCount = 0;
     let enrichedCount = 0;
     for (const item of items) {
-        if ([item.metadata?.omdb, item.metadata?.tmdb].some(value => value && typeof value === 'object' && !Array.isArray(value))) enrichedCount++;
+        if (readInventoryTmdbObservation(item) || [item.metadata?.omdb, item.metadata?.tmdb].some(value => value && typeof value === 'object' && !Array.isArray(value))) enrichedCount++;
         if (Number.isInteger(item.tmdb_id) && item.tmdb_id > 0 && ['movie', 'tv'].includes(item.media_type)) {
             identifiedRowCount++;
             identities.add(`${item.media_type}:${item.tmdb_id}`);

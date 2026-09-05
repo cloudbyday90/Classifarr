@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Automatic inventory metadata observations** — Identified items now gain
+  attributable TMDb keywords and original language through background enrichment,
+  with cached reuse and bounded retries. Source tags stay separate, missing
+  language stays unknown, and changed identities invalidate previous traits.
+
 - **Library metadata coverage** — Library profiles and new history snapshots
   show known and missing trait counts with clear percentage denominators.
   Existing profiles refresh automatically after upgrading.

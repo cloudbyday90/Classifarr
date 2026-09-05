@@ -37,7 +37,7 @@ describe('shared library observations in PostgreSQL', () => {
         expect(stored.rating_distribution).toEqual({ PG: 33.3, 'TV-MA': 33.3 });
     });
     test('uses provider fallbacks without copying titles, plots or credentials', async () => {
-        await add({ rating: 'Unknown', metadata: { password: 'omit', title: 'omit', omdb: { data: { rated: null }, rated: 'PG' }, tmdb: {
+        await add({ tmdbId: 7, rating: 'Unknown', metadata: { inventory_tmdb: { version: 1, tmdb_id: 7, media_type: 'movie', keywords: ['space'], original_language: 'en' }, password: 'omit', title: 'omit', omdb: { data: { rated: null }, rated: 'PG' }, tmdb: {
             genres: [{ name: 'Drama' }], original_language: 'EN', overview: 'omit', keywords: { keywords: [{ name: 'space' }] },
             production_companies: [{ name: 'Example' }],
         } } });

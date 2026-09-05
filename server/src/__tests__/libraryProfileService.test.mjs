@@ -323,15 +323,15 @@ describe('LibraryProfileService', () => {
             expect(dist.Drama).toBe(50);
         });
 
-        it('should normalize object-shaped genres and keywords when counting distributions', () => {
+        it('normalizes source genres and counts attributable provider keywords', () => {
             const genreDist = libraryProfileService.countDistribution([
                 { genres: [{ id: 1, name: 'Action' }, { id: 2, name: 'Comedy' }], metadata: {} },
                 { genres: [{ id: 1, name: 'Action' }, { id: 3, name: 'Drama' }], metadata: {} },
             ], 'genres');
 
             const keywordDist = libraryProfileService.countDistribution([
-                { metadata: { tmdb: { keywords: [{ id: 10, name: 'hero' }, { id: 11, name: 'villain' }] } } },
-                { metadata: { tmdb: { keywords: [{ id: 10, name: 'hero' }] } } },
+                { tmdb_id: 7, media_type: 'movie', metadata: { inventory_tmdb: { version: 1, tmdb_id: 7, media_type: 'movie', keywords: ['hero', 'villain'], original_language: null } } },
+                { tmdb_id: 8, media_type: 'tv', metadata: { inventory_tmdb: { version: 1, tmdb_id: 8, media_type: 'tv', keywords: ['hero'], original_language: null } } },
             ], 'keywords');
 
             expect(genreDist.Action).toBe(100);

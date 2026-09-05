@@ -95,7 +95,7 @@ preflight remain separate requirements.
 | --- | --- | --- | --- |
 | Transactional observed-input revisions | Covers sync, enrichment, and correction with low operator effort | Trigger work on relevant writes; raw changes can conservatively over-refresh | Keep |
 | Existing scheduled outbox and worker | Durable coalescing, leases, retries, and automatic probes | Eventual freshness; batches and recovery cooldown can delay completion | Keep |
-| Authoritative keyword/language provenance | Supplies currently missing common-trait evidence | Must reconcile provider shapes, caching, defaults, and typed identity confidence | Next |
+| Authoritative keyword/language provenance | Supplies currently missing common-trait evidence | Provider quality and typed identity confidence remain limits | [Implemented and assessed](inventory-metadata-provenance-outcome.md) |
 | Bounded overlap and outlier measurement | Supports interpretable future automation | Requires coverage-aware thresholds and independent evaluation | Follow-on |
 
 The final stack is synchronized inventory → typed observations and revisions →
@@ -104,8 +104,9 @@ evidence → measured classification and AI automation. Routine maintenance runs
 in the background; human input is concentrated on exceptional ambiguity and
 independent evaluation samples.
 
-**Next item: preserve keyword and original-language provenance during inventory
-enrichment.** Trace existing media-server and provider fields into the canonical
+**Follow-up completed:** [keyword and original-language provenance](inventory-metadata-provenance-outcome.md).
+The original recommendation was to preserve these fields during inventory
+enrichment. Trace existing media-server and provider fields into the canonical
 observation fields. Avoid assigning English to unknown language, distinguish
 source tags from provider keywords, and reuse existing typed identity resolution
 and provider caches. Test source precedence, missing values, ambiguous IDs, and

@@ -36,7 +36,7 @@ export async function processMetadataEnrichmentTask(task, {
     db, logger, metadataEnrichment, enrichmentItemStateService,
     resolveSourceLibraryName: resolveName,
     queueOmdbEnrichmentService, queueWebSearchEnrichmentService,
-    queueTmdbResolutionService, queueClassificationHistoryService,
+    queueTmdbResolutionService, queueInventoryTmdbEnrichmentService, queueClassificationHistoryService,
     queryWithTimeout, completeTask
 }) {
     const { hasWebSearchEnrichmentMetadata } = metadataEnrichment;
@@ -63,7 +63,9 @@ export async function processMetadataEnrichmentTask(task, {
         }
     );
 
-    const enrichmentData = {
+    const observationOnly = enrichPayload.inventory_tmdb_only === true;
+    let observationStatus = 'unchanged';
+    const enrichmentData = observationOnly ? {} : {
         source_library_id: enrichSourceLibraryId,
         source_library_name: enrichSourceLibraryName,
         content_analysis: {
@@ -76,9 +78,10 @@ export async function processMetadataEnrichmentTask(task, {
         }
     };
 
-    await queueOmdbEnrichmentService.enrich(enrichPayload, enrichmentData);
-
-    await queueWebSearchEnrichmentService.enrich(enrichPayload, enrichmentData);
+    if (!observationOnly) {
+        await queueOmdbEnrichmentService.enrich(enrichPayload, enrichmentData);
+        await queueWebSearchEnrichmentService.enrich(enrichPayload, enrichmentData);
+    }
 
     if (enrichPayload.itemId) {
         const historyPayload = {
@@ -87,28 +90,34 @@ export async function processMetadataEnrichmentTask(task, {
             source_library_name: enrichSourceLibraryName
         };
 
-        enrichmentData.content_analysis = {
-            ...enrichmentData.content_analysis,
-            type: enrichPayload.media.media_type,
-            confidence: 100,
-            method: 'source_library',
-            source: 'metadata_enrichment',
-            detected_at: new Date().toISOString()
-        };
+        if (!observationOnly) {
+            enrichmentData.content_analysis = {
+                ...enrichmentData.content_analysis,
+                type: enrichPayload.media.media_type,
+                confidence: 100,
+                method: 'source_library',
+                source: 'metadata_enrichment',
+                detected_at: new Date().toISOString()
+            };
 
-        enrichTmdbId = await queueTmdbResolutionService.resolveAndBackfill(
-            enrichPayload,
-            enrichmentData,
-            enrichTmdbId
-        );
+            enrichTmdbId = await queueTmdbResolutionService.resolveAndBackfill(
+                enrichPayload,
+                enrichmentData,
+                enrichTmdbId
+            );
+        }
+        const attempted = await queueInventoryTmdbEnrichmentService.enrich(enrichPayload, enrichmentData, enrichTmdbId);
 
         const updated = await queryWithTimeout(
             `UPDATE media_server_items 
-             SET metadata = metadata || $1::jsonb
+             SET metadata = COALESCE(metadata, '{}'::jsonb) || $1::jsonb,
+                 inventory_tmdb_attempted_at = CASE WHEN $6 THEN NOW() ELSE inventory_tmdb_attempted_at END,
+                 inventory_tmdb_fetched_at = CASE WHEN $7 THEN NOW() ELSE inventory_tmdb_fetched_at END
              WHERE id = $2 AND media_type = $3 AND library_id = $4
                AND tmdb_id IS NOT DISTINCT FROM $5::integer`,
             [JSON.stringify(enrichmentData), enrichPayload.itemId,
-                enrichPayload.media.media_type, enrichSourceLibraryId, enrichTmdbId]
+                enrichPayload.media.media_type, enrichSourceLibraryId, enrichTmdbId,
+                attempted, Boolean(enrichmentData.inventory_tmdb)]
         );
         if (updated.rowCount !== 1) {
             logger.warn('Metadata enrichment skipped', { reason: 'source_identity_changed' });
@@ -116,8 +125,9 @@ export async function processMetadataEnrichmentTask(task, {
             await enrichmentItemStateService.syncItemState(enrichPayload.itemId);
             return;
         }
+        observationStatus = enrichmentData.inventory_tmdb ? 'captured' : attempted ? 'unavailable' : 'unchanged';
 
-        await queueClassificationHistoryService.persist(
+        if (!observationOnly) await queueClassificationHistoryService.persist(
             historyPayload,
             enrichTmdbId,
             enrichSourceLibraryId,
@@ -135,7 +145,8 @@ export async function processMetadataEnrichmentTask(task, {
     }
 
     await completeTask(task.id, {
-        enriched: true,
+        enriched: !observationOnly || observationStatus === 'captured',
+        ...(observationOnly ? { inventoryObservationStatus: observationStatus } : {}),
         sourceLibrary: enrichSourceLibraryName,
         webSearchEnriched: hasWebSearchEnrichmentMetadata(enrichmentData)
     });

@@ -97,7 +97,7 @@ Provider and persisted metadata for list-like fields such as `genres`, `keywords
 - `[{ tag: 'Documentary' }]`
 - JSON-stringified arrays
 
-When working in `server/src`, do not parse or lowercase these fields ad hoc. Route them through [`server/src/utils/metadataNormalization.js`](server/src/utils/metadataNormalization.js):
+When working in `server/src`, do not parse or lowercase these fields ad hoc. Route them through [`server/src/utils/metadataNormalization.mjs`](server/src/utils/metadataNormalization.mjs):
 
 - `normalizeMetadataList(...)`
 - `normalizeMetadataListLower(...)`
@@ -610,6 +610,12 @@ Unchanged syncs need no regeneration, and empty libraries lose obsolete profiles
 Inactive libraries retain pending changes until reactivated. See the
 [automatic refresh design](docs/architecture/inventory-profile-refresh-design.md)
 and [refresh validation](docs/architecture/inventory-profile-refresh-outcome.md).
+Configured TMDb enrichment now automatically fills provider keywords and original
+language for identified inventory items. Source tags remain separate, and missing
+language stays unknown. Successful observations are reused for 30 days; failed
+requests retry after six hours. Identity changes invalidate prior traits. See the
+[metadata provenance design](docs/architecture/inventory-metadata-provenance-design.md)
+and [32-item local assessment](docs/architecture/inventory-metadata-provenance-outcome.md).
 Manual identity review handles unresolved exceptions.
 
 For unresolved inventory identities, open **Libraries → Review media IDs** with

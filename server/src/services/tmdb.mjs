@@ -160,6 +160,7 @@ class TMDBService {
             api_key: apiKey,
             append_to_response: 'keywords,releases,credits',
           },
+          timeout: 10000,
         })
       );
       return response.data;
@@ -177,6 +178,7 @@ class TMDBService {
             api_key: apiKey,
             append_to_response: 'keywords,content_ratings,credits',
           },
+          timeout: 10000,
         })
       );
       return response.data;

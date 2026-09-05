@@ -396,6 +396,25 @@ docker exec -it classifarr psql -U classifarr_user -d classifarr_db -c "SELECT 1
 
 ## Maintenance Tasks
 
+### Verify an edited, unpublished migration
+
+A fresh container can load `database/schema/current.sql` and mark its listed
+migrations as already applied. If an unpublished migration changes after its
+first snapshot dump, another snapshot round trip can retain the earlier schema
+without executing the edited SQL.
+
+Validate the final migration against the previously committed snapshot in a
+disposable container, then dump that migrated database using the existing
+`dumpSchemaWithContainer` helper in `scripts/check-schema-snapshot-container.mjs`.
+Use a local derived image that replaces only `/app/database/schema/current.sql`
+with the prior snapshot while retaining the final migration files. Inspect the
+new functions, triggers, and columns in the generated snapshot. Rebuild the
+normal local test image and run `npm run db:check-schema:container` to verify
+the fresh-install path as well. Keep temporary inputs under `.tmp/`.
+
+Do not use an older live Compose database as the source for a new snapshot, or
+modify an already published migration. Published changes require a new migration.
+
 ### Regular Tasks
 
 **After merging any migration:**
