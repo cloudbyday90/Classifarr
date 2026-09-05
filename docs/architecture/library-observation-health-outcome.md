@@ -107,7 +107,11 @@ Health reports one invalid observation due for capture. However,
 `INVENTORY_TMDB_REFILL_SQL` checks identity fields and age without validating the
 keyword/language record, so it excludes that row from observation-only refill.
 
-**Next item:** align automatic refill eligibility with full attributable observation
+**Follow-up implemented:** the [repair design](inventory-observation-repair-design.md)
+and [outcome](inventory-observation-repair-outcome.md) resolve the mismatch below
+using shared validation and bounded traversal. They record the next item.
+
+**Original next item:** align automatic refill eligibility with full attributable observation
 validity. Preserve bounded selection, cooldown, active-library/provider conditions
 and task deduplication; malformed or mismatched observations should become eligible
 for automatic repair after cooldown. Validate agreement across SQL selection and

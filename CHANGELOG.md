@@ -176,6 +176,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Automatic observation repair** — Background enrichment now repairs malformed
+  or mismatched metadata observations after cooldown, including records with
+  recent fetch timestamps. Bounded inventory passes reach later repairs, preserve
+  valid empty captures and prevent overlapping refill work in the same process.
+
 - **Stale enrichment cannot overwrite changed source items** — OMDb ratings,
   metadata observations, and source-library history now verify captured source
   fields when writing. Concurrent source changes produce a skipped result,

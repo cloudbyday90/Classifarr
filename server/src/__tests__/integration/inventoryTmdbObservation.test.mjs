@@ -6,6 +6,7 @@ import { QueueRefillService } from '../../services/queueRefillService.mjs';
 import { QueueInventoryTmdbEnrichmentService } from '../../services/queueInventoryTmdbEnrichmentService.mjs';
 import { processMetadataEnrichmentTask } from '../../services/queueTaskProcessorEnrichment.mjs';
 import { readLibraryProfileObservation } from '../../services/libraryProfileQueries.mjs';
+import { inventoryObservationValidityCases } from '../helpers/inventoryObservationValidityCases.mjs';
 
 let db, libraryId, refill, provider, deps;
 const response = type => ({ id: 7, original_language: type === 'movie' ? 'ja' : 'fr',
@@ -126,6 +127,22 @@ test('valid empty records stop automatic retries until expiry', async () => {
     await run((await pending())[0]);
     expect((await stored(item.id)).metadata.inventory_tmdb).toMatchObject({ keywords: [], original_language: null });
     expect(await pending()).toEqual([]);
+});
+
+test('refill repairs 26 malformed fresh captures through guarded observation-only workers', async () => {
+    for (const fixture of inventoryObservationValidityCases) {
+        const item = await add();
+        await db.query(`UPDATE media_server_items SET metadata = metadata || $2::jsonb,
+            inventory_tmdb_fetched_at = NOW(), inventory_tmdb_attempted_at = NOW() - INTERVAL '7 hours' WHERE id = $1`,
+        [item.id, JSON.stringify({ inventory_tmdb: fixture.record })]);
+    }
+    const candidates = await pending();
+    expect(candidates).toHaveLength(26);
+    for (const item of candidates) await run(item);
+    expect(provider.getMovieDetails).toHaveBeenCalledTimes(26);
+    expect(await pending()).toEqual([]);
+    expect(deps.queueOmdbEnrichmentService.enrich).not.toHaveBeenCalled();
+    expect(deps.queueClassificationHistoryService.persist).not.toHaveBeenCalled();
 });
 test('background observations respect active libraries, configured providers, supported types, and pending work', async () => {
     const item = await add(); await add('movie', null); await add('person');

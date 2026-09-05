@@ -637,6 +637,11 @@ captures and unavailable metadata remain explicit. Queue activity does not imply
 capture success. See the
 [health design](docs/architecture/library-observation-health-design.md) and
 [local validation](docs/architecture/library-observation-health-outcome.md).
+Malformed observations repair automatically after cooldown using the full
+attributable observation validator. Bounded background passes advance past fresh
+records, while valid empty captures remain cached. See the
+[repair design](docs/architecture/inventory-observation-repair-design.md) and
+[validation outcome](docs/architecture/inventory-observation-repair-outcome.md).
 Manual identity review handles unresolved exceptions.
 
 For unresolved inventory identities, open **Libraries → Review media IDs** with

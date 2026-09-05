@@ -185,7 +185,7 @@ describe('refillQueue', () => {
 
     expect(result).toEqual({ queued: 0 });
     expect(enqueueTask).not.toHaveBeenCalled();
-    expect(logger.debug).toHaveBeenCalledWith('Refill queue: No unanalyzed items found');
+    expect(logger.debug).toHaveBeenCalledWith('Refill queue: No enrichment due in this inventory page');
   });
 
   test('logs and rethrows enqueue failures', async () => {

@@ -103,9 +103,12 @@ The bounded, coverage-aware cross-library overlap summary is implemented in the
 Automatic per-library observation coverage, freshness and acquisition-state
 explanations are implemented in the
 [health design](library-observation-health-design.md) and
-[measured outcome](library-observation-health-outcome.md). The next correctness
-fix aligns refill eligibility with the full observation validator so malformed
-records can repair automatically after cooldown.
+[measured outcome](library-observation-health-outcome.md). Refill now shares the
+full observation validator and traverses bounded pages so malformed records repair
+automatically after cooldown; see the
+[repair design](inventory-observation-repair-design.md) and
+[outcome](inventory-observation-repair-outcome.md). The next item is automatically
+recorded, bounded acquisition outcomes and convergence history.
 The separate shared HTTP mutation-retry audit remains a correctness follow-up;
 the receipt-recovery change already disables replay for identity confirmation.
 

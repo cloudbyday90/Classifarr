@@ -8,20 +8,18 @@
 
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 import { canonicalMediaType } from './mediaIdentityValues.mjs';
-import { readInventoryTmdbObservation, INVENTORY_TMDB_CACHE_DAYS, INVENTORY_TMDB_RETRY_HOURS } from './inventoryTmdbObservation.mjs';
-import { INVENTORY_TMDB_REFILL_SQL } from './queueInventoryTmdbRefill.mjs';
+import { readInventoryTmdbObservation } from './inventoryTmdbObservation.mjs';
+import { readRefillCandidatePage } from './queueRefillCandidates.mjs';
 
-export const REFILL_QUEUE_BATCH_LIMIT = 5000;
-const STANDARD_ENRICHMENT_SQL = `msi.metadata->'content_analysis' IS NULL
-    OR (msi.metadata->'omdb' IS NULL AND (
-        msi.metadata->'content_analysis'->>'source' IS DISTINCT FROM 'metadata_enrichment'
-        OR EXISTS (SELECT 1 FROM omdb_config WHERE is_active = true)))`;
+export { REFILL_QUEUE_BATCH_LIMIT } from './queueRefillCandidates.mjs';
 
 export class QueueRefillService {
     constructor(deps = {}) {
         this.db = deps.db;
         this.logger = deps.logger;
         this.enqueueTask = deps.enqueueTask || (async () => {});
+        this.refillCursor = null;
+        this.refillInFlight = null;
     }
 
     async _withCatch(label, fn) {
@@ -34,27 +32,9 @@ export class QueueRefillService {
     }
 
     async selectRefillCandidates() {
-        const result = await this.db.query(
-            `SELECT msi.id, msi.title, msi.metadata, msi.genres, msi.tags, msi.content_rating, 
-                    msi.tmdb_id, msi.tvdb_id, msi.imdb_id, msi.year,
-                    msi.library_id, l.name as library_name, msi.media_type,
-                    (${STANDARD_ENRICHMENT_SQL}) AS needs_standard_enrichment
-             FROM media_server_items msi
-             LEFT JOIN libraries l ON msi.library_id = l.id
-             WHERE ((${STANDARD_ENRICHMENT_SQL}) OR (${INVENTORY_TMDB_REFILL_SQL}))
-             AND msi.media_type IN ('movie', 'tv')
-             AND NOT EXISTS (
-                 SELECT 1 FROM task_queue tq 
-                 WHERE tq.task_type = 'metadata_enrichment' 
-                 AND tq.status IN ('pending', 'processing')
-                 AND tq.payload->>'itemId' = msi.id::text
-             )
-             ORDER BY msi.inventory_tmdb_attempted_at NULLS FIRST, msi.id
-             LIMIT ${REFILL_QUEUE_BATCH_LIMIT}`,
-            [INVENTORY_TMDB_CACHE_DAYS, INVENTORY_TMDB_RETRY_HOURS]
-        );
-
-        return result.rows;
+        const page = await readRefillCandidatePage(this.db, this.refillCursor);
+        this.refillCursor = page.cursor;
+        return page.rows;
     }
 
     buildMetadataEnrichmentPayload(item) {
@@ -85,11 +65,13 @@ export class QueueRefillService {
     }
 
     async refillQueue() {
-        return this._withCatch('Error refilling queue', async () => {
+        if (this.refillInFlight) return this.refillInFlight;
+        const checkpoint = this.refillCursor;
+        this.refillInFlight = this._withCatch('Error refilling queue', async () => {
             const candidates = await this.selectRefillCandidates();
 
             if (candidates.length === 0) {
-                this.logger.debug('Refill queue: No unanalyzed items found');
+                this.logger.debug('Refill queue: No enrichment due in this inventory page');
                 return { queued: 0 };
             }
 
@@ -108,5 +90,13 @@ export class QueueRefillService {
 
             return { queued: queuedCount };
         });
+        try {
+            return await this.refillInFlight;
+        } catch (error) {
+            this.refillCursor = checkpoint;
+            throw error;
+        } finally {
+            this.refillInFlight = null;
+        }
     }
 }
