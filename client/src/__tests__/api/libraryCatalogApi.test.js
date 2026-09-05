@@ -33,6 +33,7 @@ vi.mock('../../api/core', () => ({
 import {
   getLibraries,
   getLibraryOverlap,
+  getLibraryObservationHealth,
   getLibrary,
   updateLibrary,
   syncLibrary,
@@ -49,6 +50,13 @@ describe('libraryCatalogApi', () => {
     mockGetDataRequest.mockResolvedValueOnce(report)
     expect(await getLibraryOverlap()).toEqual(report)
     expect(mockGetDataRequest).toHaveBeenCalledWith('/libraries/overlap')
+  })
+
+  it('loads the unwrapped read-only observation health summary', async () => {
+    const report = { status: 'available', libraries: [] }
+    mockGetDataRequest.mockResolvedValueOnce(report)
+    expect(await getLibraryObservationHealth()).toEqual(report)
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/libraries/observation-health')
   })
 
   it('getLibraries calls getDataRequest with /libraries', async () => {

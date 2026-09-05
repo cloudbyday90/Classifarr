@@ -90,6 +90,15 @@ export const libraryOverlapLimiterConfig = {
   legacyHeaders: false,
 };
 
+/** Read-only library observation health (per IP, per 15 minutes). */
+export const libraryObservationHealthLimiterConfig = {
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: 'Too many observation health requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+};
+
 /** Ollama strict-verification runtime aggregate reads (per IP, per 15 minutes). */
 export const ollamaVerificationRuntimeMismatchSummaryLimiterConfig = {
   windowMs: 15 * 60 * 1000,

@@ -631,6 +631,12 @@ remain unknown. Bounded reads disclose excluded libraries and withhold compariso
 when the inventory limit is exceeded. See the
 [overlap design](docs/architecture/library-overlap-design.md) and
 [measured outcome](docs/architecture/library-overlap-outcome.md).
+An automatic observation-health summary also shows known keywords and original
+language, fresh captures, missing identities and retry backoff. Valid empty
+captures and unavailable metadata remain explicit. Queue activity does not imply
+capture success. See the
+[health design](docs/architecture/library-observation-health-design.md) and
+[local validation](docs/architecture/library-observation-health-outcome.md).
 Manual identity review handles unresolved exceptions.
 
 For unresolved inventory identities, open **Libraries → Review media IDs** with

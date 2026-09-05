@@ -143,6 +143,10 @@ vi.mock('@/components/library/LibraryOverlapSummary.vue', () => ({
   default: { template: '<section data-testid="library-overlap-summary" />' },
 }))
 
+vi.mock('@/components/library/LibraryObservationHealth.vue', () => ({
+  default: { template: '<section data-testid="library-observation-health" />' },
+}))
+
 function resetState() {
   state.libraries = [
     { id: 1, name: 'Movies', media_type: 'movie', arr_type: 'radarr', priority: 1, is_active: true },

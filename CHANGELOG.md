@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Automatic library observation health** — Libraries now explains metadata
+  coverage, freshness, missing identities and retry backoff using attributable
+  observations and existing clocks. Queue activity stays separate from capture
+  success, with bounded, authenticated reads and no per-item setup.
+
 - **Cross-library inventory comparison** — Libraries automatically shows shared
   movie and TV identities and common traits, with explicit coverage and overlap
   denominators. Duplicate placements count once, conflicting traits stay unknown,

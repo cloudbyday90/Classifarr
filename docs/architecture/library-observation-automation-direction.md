@@ -100,6 +100,12 @@ see the [write-guard design](enrichment-source-write-guards-design.md) and
 The bounded, coverage-aware cross-library overlap summary is implemented in the
 [overlap design](library-overlap-design.md) and
 [measured outcome](library-overlap-outcome.md).
+Automatic per-library observation coverage, freshness and acquisition-state
+explanations are implemented in the
+[health design](library-observation-health-design.md) and
+[measured outcome](library-observation-health-outcome.md). The next correctness
+fix aligns refill eligibility with the full observation validator so malformed
+records can repair automatically after cooldown.
 The separate shared HTTP mutation-retry audit remains a correctness follow-up;
 the receipt-recovery change already disables replay for identity confirmation.
 

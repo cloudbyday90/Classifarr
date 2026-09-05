@@ -101,7 +101,11 @@ Recommended stack: source sync → guarded typed identity and attributable metad
 → automatic profiles → bounded overlap → automatic coverage/freshness health →
 evaluated classification assistance.
 
-**Next item:** expose bounded, read-only observation health by library: identity
+Implemented subsequently in the
+[observation-health design](library-observation-health-design.md) and
+[measured outcome](library-observation-health-outcome.md).
+
+**Next item at this assessment:** expose bounded, read-only observation health by library: identity
 gaps, never-observed/due/backoff states, attributable keyword/language coverage,
 and last successful observation time using existing inventory clocks and queue
 state. Verify automatic acquisition convergence after the current build is deployed;

@@ -26,6 +26,10 @@ export function getLibraryOverlap() {
   return getDataRequest('/libraries/overlap')
 }
 
+export function getLibraryObservationHealth() {
+  return getDataRequest('/libraries/observation-health')
+}
+
 export function getLibrary(id) {
   return getDataRequest(`/libraries/${id}`)
 }
@@ -45,6 +49,7 @@ export function getSyncStatus() {
 const libraryCatalogApi = {
   getLibraries,
   getLibraryOverlap,
+  getLibraryObservationHealth,
   getLibrary,
   updateLibrary,
   syncLibrary,
