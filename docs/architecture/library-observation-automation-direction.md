@@ -94,8 +94,10 @@ original-language provenance is implemented in the
 Safe retention of resolved typed identities when source resync omits an identifier
 is implemented in the [retention design](resolved-identity-sync-retention-design.md)
 and [retention outcome](resolved-identity-sync-retention-outcome.md).
-Before adding coverage-aware cross-library overlap summaries, extend source
-snapshot guards to late OMDb rating and unresolved-enrichment metadata writes.
+Source snapshot guards now cover late OMDb rating, metadata and history writes;
+see the [write-guard design](enrichment-source-write-guards-design.md) and
+[validation outcome](enrichment-source-write-guards-outcome.md).
+The next product item is a bounded, coverage-aware cross-library overlap summary.
 The separate shared HTTP mutation-retry audit remains a correctness follow-up;
 the receipt-recovery change already disables replay for identity confirmation.
 

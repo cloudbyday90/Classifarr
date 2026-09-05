@@ -166,6 +166,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Stale enrichment cannot overwrite changed source items** — OMDb ratings,
+  metadata observations, and source-library history now verify captured source
+  fields when writing. Concurrent source changes produce a skipped result,
+  while unrelated bookkeeping and valid enrichment continue normally.
+
 - **Resolved inventory IDs survive source omissions** — Background and confirmed
   media identities now retain their provenance across matching source syncs.
   Changed or conflicting source identities invalidate stale enrichment, and

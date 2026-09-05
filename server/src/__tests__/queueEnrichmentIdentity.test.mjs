@@ -117,8 +117,17 @@ test('source drift at metadata update prevents history and a successful enrichme
   const deps = flowDeps();
   deps.queryWithTimeout.mockResolvedValue({ rowCount: 0 });
   await processMetadataEnrichmentTask({ id: 7, payload: taskPayload() }, deps);
-  expect(deps.queryWithTimeout.mock.calls[0][1].slice(1)).toEqual([1, 'tv', 2, 42, false, false]);
+  expect(deps.queryWithTimeout.mock.calls[0][1].slice(1, 7)).toEqual([1, 'tv', 2, 42, false, false]);
+  expect(JSON.parse(deps.queryWithTimeout.mock.calls[0][1][7])).toMatchObject({ library_id: 2, media_type: 'tv' });
   expect(deps.queueClassificationHistoryService.persist).not.toHaveBeenCalled();
+  expect(deps.completeTask).toHaveBeenCalledWith(7, { enriched: false, skipped: true, reason: 'source_identity_changed' });
+  expect(deps.enrichmentItemStateService.syncItemState).toHaveBeenCalledWith(1);
+});
+
+test('source drift at history insertion prevents reporting complete enrichment', async () => {
+  const deps = flowDeps();
+  deps.queueClassificationHistoryService.persist.mockResolvedValue(false);
+  await processMetadataEnrichmentTask({ id: 7, payload: taskPayload() }, deps);
   expect(deps.completeTask).toHaveBeenCalledWith(7, { enriched: false, skipped: true, reason: 'source_identity_changed' });
   expect(deps.enrichmentItemStateService.syncItemState).toHaveBeenCalledWith(1);
 });

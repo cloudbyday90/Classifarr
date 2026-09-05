@@ -11,6 +11,7 @@ import { metadataProviderIntegrityService } from './metadataProviderIntegritySer
 import { captureQueueEnrichmentPayload } from './queueEnrichmentPayload.mjs';
 import { omdbResultMatchesType } from './queueEnrichmentResults.mjs';
 import { canonicalMediaType, positiveDatabaseInteger } from './mediaIdentityValues.mjs';
+import { persistOmdbRating } from './queueEnrichmentPersistence.mjs';
 
 export class QueueOmdbEnrichmentService {
     constructor(deps = {}) {
@@ -56,37 +57,24 @@ export class QueueOmdbEnrichmentService {
         };
     }
 
-    async maybeBackfillRating(itemId, omdbResult, mediaType) {
+    async maybeBackfillRating(itemId, omdbResult, mediaType, source = null, tmdbId = undefined) {
         itemId = positiveDatabaseInteger(itemId);
         mediaType = canonicalMediaType(mediaType);
         const rated = omdbResult?.rated;
-        if (!itemId || !mediaType || !omdbResultMatchesType(omdbResult, mediaType) || !rated || rated === 'N/A') {
+        if (!itemId || !mediaType || !omdbResultMatchesType(omdbResult, mediaType) ||
+            typeof rated !== 'string' || !rated.trim() || rated.length > 20 || rated === 'N/A' ||
+            tmdbId === undefined || (tmdbId !== null && !positiveDatabaseInteger(tmdbId))) {
             return;
         }
 
         try {
-            const currentItem = await this.db.query(
-                `SELECT content_rating FROM media_server_items WHERE id = $1 AND media_type = $2`,
-                [itemId, mediaType]
-            );
-
-            if (currentItem.rows.length === 0) {
-                return;
-            }
-
-            const currentRating = currentItem.rows[0].content_rating;
-
-            const updated = await this.queryWithTimeout(
-                `UPDATE media_server_items
-                 SET original_rating = COALESCE(original_rating, $2), content_rating = $3
-                 WHERE id = $1 AND media_type = $4`,
-                [itemId, currentRating, rated, mediaType]
-            );
+            const updated = await persistOmdbRating(
+                this.queryWithTimeout, itemId, rated, mediaType, source, tmdbId);
             if (updated?.rowCount !== 1) return;
 
             this.logger.info('Rating updated from OMDb', {
                 itemId,
-                original: currentRating,
+                original: updated.rows?.[0]?.original_rating ?? null,
                 omdb: rated
             });
         } catch (ratingError) {
@@ -274,7 +262,8 @@ export class QueueOmdbEnrichmentService {
                 genre: omdbResult.genre
             });
 
-            await this.maybeBackfillRating(payload.itemId, omdbResult, mediaType);
+            await this.maybeBackfillRating(payload.itemId, omdbResult, mediaType,
+                payload.source_identity_snapshot, payload.tmdb_id);
 
             return enrichmentData;
         } catch (error) {

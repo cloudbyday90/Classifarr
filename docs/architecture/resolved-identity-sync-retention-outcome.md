@@ -96,10 +96,13 @@ versions remain unchanged, and the changelog entry is under Unreleased.
 | Complete source guards on remaining enrichment writes | Prevents late data from contaminating library observations | Requires regression coverage across rating and metadata paths |
 | Add bounded cross-library overlap after those guards | Answers what exists, where, and what is shared using existing inventory | Sparse coverage needs explicit limits; semantic interpretation still requires evaluation |
 
-**Next fix:** extend the captured-source checks to OMDb rating backfills and the
-final unresolved-enrichment metadata write. Inspection found that
-`queueOmdbEnrichmentService.mjs` currently guards ratings by item ID and media type,
-while `queueTaskProcessorEnrichment.mjs` guards final metadata by ID, type,
+**Follow-up delivered:** captured-source checks now cover OMDb rating backfills,
+final metadata, and history insertion. See the separate
+[write-guard design](enrichment-source-write-guards-design.md) and
+[write-guard outcome](enrichment-source-write-guards-outcome.md).
+The original inspection found that
+`queueOmdbEnrichmentService.mjs` guarded ratings by item ID and media type,
+while `queueTaskProcessorEnrichment.mjs` guarded final metadata by ID, type,
 library, and TMDb ID. A changed title or external identifier can leave those
 fields equal, especially while TMDb remains null. Reuse the captured snapshot to
 reject late writes after such source changes, allow unrelated bookkeeping, and
@@ -108,7 +111,8 @@ reproduction confirmed both late writes after a title change with unchanged type
 library and null TMDb identity. The normal task also reached its history-persistence
 callback and reported enrichment success. It made zero provider requests or live
 source writes. This establishes the failure path, not its incidence in live
-inventory. Follow with coverage-aware cross-library overlap.
+inventory. The linked follow-up records the fix and validation. Follow with
+coverage-aware cross-library overlap.
 
 The final recommendation stack is validated synchronized inventory → attributable
 typed identities → source-guarded provider observations → automatically refreshed

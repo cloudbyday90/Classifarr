@@ -7,6 +7,7 @@ import { canonicalMediaType, payloadMediaType, positiveDatabaseInteger } from '.
 import { parsePayload } from '../utils/queueHelpers.mjs';
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 import { readInventoryTmdbObservation } from './inventoryTmdbObservation.mjs';
+import { captureEnrichmentSource } from './queueEnrichmentSourceGuard.mjs';
 
 export function captureQueueEnrichmentPayload(payload) {
   const mediaType = payloadMediaType(payload);
@@ -44,9 +45,7 @@ export async function prepareQueueEnrichmentPayload(payload, query) {
       (storedTmdbId && captured.tmdb_id && storedTmdbId !== captured.tmdb_id)) return null;
   const metadata = parsePayload(row.metadata);
   captured.itemId = itemId;
-  captured.source_identity_snapshot = Object.fromEntries([
-    'media_server_id', 'external_id', 'library_id', 'media_type', 'title', 'year', 'imdb_id', 'tvdb_id',
-  ].map(field => [field, row[field] ?? null]));
+  captured.source_identity_snapshot = captureEnrichmentSource(row);
   for (const field of ['title', 'year', 'imdb_id', 'tvdb_id']) captured[field] = row[field] ?? null;
   // A queued ID can outlive source replacement; only the current row owns it.
   captured.tmdb_id = storedTmdbId;

@@ -51,12 +51,13 @@ export class QueueClassificationHistoryService {
         }
         // Own all data before the first await, including graph arrays and metadata.
         const snapshot = JSON.parse(JSON.stringify(payload));
-        return {
-            identity,
-            statement: buildQueueClassificationHistoryInsertQuery(
-                identity, snapshot, sourceLibraryName, ragGraphExtractor.extract(snapshot),
-            ),
-        };
+        const statement = buildQueueClassificationHistoryInsertQuery(
+            identity, snapshot, sourceLibraryName, ragGraphExtractor.extract(snapshot));
+        if (!statement) {
+            this.logger?.warn('Source-library history skipped', { reason: 'invalid_source_snapshot' });
+            return null;
+        }
+        return { identity, statement };
     }
 
     async insertHistoryEntry(payload, tmdbId, sourceLibraryId, sourceLibraryName) {
@@ -67,13 +68,14 @@ export class QueueClassificationHistoryService {
     async persist(payload, tmdbId, sourceLibraryId, sourceLibraryName, _taskId) {
         if (sourceLibraryId === null || sourceLibraryId === undefined) return;
         const prepared = this.#prepare(payload, tmdbId, sourceLibraryId, sourceLibraryName);
-        if (!prepared) return;
+        if (!prepared) return false;
 
         if (!await this.libraryExists(prepared.identity.libraryId)) {
             this.logger?.warn('Source-library history skipped', { reason: 'library_unavailable' });
-            return;
+            return false;
         }
         if (await this.#identityExists(prepared.identity)) return;
-        await this.db.query(prepared.statement.text, prepared.statement.values);
+        const inserted = await this.db.query(prepared.statement.text, prepared.statement.values);
+        return inserted.rowCount !== 0;
     }
 }

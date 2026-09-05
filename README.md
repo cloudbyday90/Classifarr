@@ -620,6 +620,10 @@ Resolved IDs now survive source omissions when recorded provenance and source
 continuity agree. Changed identities discard stale enrichment and recover through
 the existing queue. See the [retention design](docs/architecture/resolved-identity-sync-retention-design.md)
 and [validation outcome](docs/architecture/resolved-identity-sync-retention-outcome.md).
+Rating, metadata and history writes also verify the captured source before
+accepting a provider result, including changes during network waits. See the
+[write-guard design](docs/architecture/enrichment-source-write-guards-design.md)
+and [local validation](docs/architecture/enrichment-source-write-guards-outcome.md).
 Manual identity review handles unresolved exceptions.
 
 For unresolved inventory identities, open **Libraries → Review media IDs** with
