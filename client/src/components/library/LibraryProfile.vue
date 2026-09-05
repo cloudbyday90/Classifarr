@@ -41,7 +41,7 @@
       id="library-profile-regeneration-help"
       class="profile-maintenance-help"
     >
-      Normal profile generation is server-managed. Regenerate only after an intentional library sync or metadata correction.
+      Profiles refresh automatically when synced inventory or observed metadata changes. Regenerate only for troubleshooting.
     </p>
 
     <p

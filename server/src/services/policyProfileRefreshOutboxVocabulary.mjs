@@ -11,6 +11,7 @@
 const POLICY_PROFILE_REFRESH_OUTBOX_REQUEST_TYPE_IDS = Object.freeze({
   LEARNING_EVIDENCE: 'learning_evidence',
   NATIVE_READINESS: 'native_readiness',
+  INVENTORY_CHANGE: 'inventory_change',
 });
 
 const POLICY_PROFILE_REFRESH_OUTBOX_SOURCE_SYSTEM_IDS = Object.freeze({

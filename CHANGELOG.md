@@ -161,6 +161,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Automatic inventory profile refresh** — Synced inventory and observed
+  metadata changes now refresh active-library profiles through the existing
+  background worker, including libraries without policies. Unchanged syncs
+  avoid extra refreshes, empty libraries lose stale profiles, and failed work
+  can recover automatically without another inventory change.
+
 - **Consistent library observations** — Stored profiles and AI statistics now
   use the same item-based prevalence calculation. Duplicate traits count once
   per item, missing data stays unknown, and observed absence no longer produces

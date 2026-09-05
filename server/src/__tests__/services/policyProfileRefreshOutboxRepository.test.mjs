@@ -48,6 +48,12 @@ function row(overrides = {}) {
 }
 
 describe('policyProfileRefreshOutboxRepository', () => {
+  test('generic refresh callers cannot fabricate transactional inventory work', async () => {
+    const client = { query: jest.fn() };
+    await expect(enqueuePolicyProfileRefresh({ client, record: { requestType: 'inventory_change' } }))
+      .rejects.toThrow('transactional revision planner');
+    expect(client.query).not.toHaveBeenCalled();
+  });
   test('uses a parameterized source-event upsert for a new row', async () => {
     const client = { query: jest.fn().mockResolvedValue({ rows: [row()] }) };
 

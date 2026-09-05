@@ -119,17 +119,15 @@ changelog entry; package versions remain unchanged and no release is created.
 | Recommendation | Benefit | Cost or limitation | Priority |
 | --- | --- | --- | --- |
 | Keep one normalized observation contract | Comparable stored, UI, and AI evidence with explicit uncertainty | Exact aggregation uses memory proportional to one library's projected inventory | Implemented |
-| Refresh from inventory changes through the existing outbox | Low operational input and reliable empty-library invalidation | Needs a revision/change signal and broader eligibility than native-policy-only planning | Next |
+| Refresh from inventory changes through the existing outbox | Low operational input and reliable empty-library invalidation | Requires durable revision/change tracking | Implemented in the subsequent refresh change |
 | Preserve authoritative keyword and language provenance during enrichment | Makes missing traits useful for later comparisons | Provider cost, caching, typed identity confidence, and source precedence need verification | After freshness |
 | Add bounded overlap/outlier measurements using existing retrieval | Explains similarities and ambiguous membership | Requires coverage-aware thresholds and held-out evaluation | Follow-on |
 
-**Next fix: inventory-change-driven profile refresh and empty-library
-invalidation.** Inspect synchronization and enrichment completion events, reuse
-the existing refresh outbox, and schedule only active libraries whose observed
-inputs changed. Include libraries without an enabled native policy and clear
-profiles when inventory becomes empty. Test membership changes, metadata-only
-changes, unchanged syncs, retries, and deletion without adding routine operator
-work or another scheduler.
+The subsequent [inventory refresh design](inventory-profile-refresh-design.md)
+and [refresh outcome](inventory-profile-refresh-outcome.md) implement this
+follow-up through transactional input revisions and the existing planner/outbox.
+The next item is keyword and original-language provenance in synchronized
+inventory, using the automatic refresh mechanism when those observations change.
 
 The subsequent metadata task should trace provider fields into synchronized
 inventory. `mediaSyncUpsert.mjs` currently supplies `original_language: 'en'`

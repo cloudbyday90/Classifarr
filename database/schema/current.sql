@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-05T12:50:47.327Z
--- Latest Migration: 20260905_140000_add_library_profile_observation_summary.sql
+-- Generated: 2026-09-05T13:30:03.342Z
+-- Latest Migration: 20260905_150000_add_inventory_profile_refresh.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -119,6 +119,44 @@ BEGIN
         ALTER EXTENSION vector UPDATE TO '0.8.6';
     END IF;
 END $$;
+
+
+--
+-- Name: capture_library_profile_inventory_change(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.capture_library_profile_inventory_change() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+DECLARE affected BIGINT[];
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        SELECT array_agg(DISTINCT library_id) INTO affected FROM new_items;
+    ELSIF TG_OP = 'DELETE' THEN
+        SELECT array_agg(DISTINCT library_id) INTO affected FROM old_items;
+    ELSIF TG_OP = 'UPDATE' THEN
+        WITH changed AS (
+            SELECT old_row.library_id AS old_library_id, new_row.library_id AS new_library_id
+            FROM old_items old_row FULL JOIN new_items new_row USING (id)
+            WHERE ROW(old_row.library_id, old_row.tmdb_id, old_row.media_type, old_row.content_rating,
+                old_row.genres, old_row.studio, public.library_profile_observed_metadata(old_row.metadata))
+                IS DISTINCT FROM ROW(new_row.library_id, new_row.tmdb_id, new_row.media_type, new_row.content_rating,
+                new_row.genres, new_row.studio, public.library_profile_observed_metadata(new_row.metadata))
+        ), libraries_changed AS (
+            SELECT old_library_id AS library_id FROM changed UNION SELECT new_library_id FROM changed
+        )
+        SELECT array_agg(library_id) INTO affected FROM libraries_changed;
+    ELSE
+        SELECT array_agg(library_id) INTO affected FROM (
+            SELECT library_id FROM public.library_profile_inventory_state
+            UNION SELECT library_id FROM public.library_profiles
+        ) previously_observed;
+    END IF;
+    PERFORM public.mark_library_profile_inventory_changed(affected);
+    RETURN NULL;
+END;
+$$;
 
 
 --
@@ -447,6 +485,42 @@ BEGIN
     RETURN TRUE;
 END;
 $_$;
+
+
+--
+-- Name: library_profile_observed_metadata(jsonb); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.library_profile_observed_metadata(payload jsonb) RETURNS jsonb
+    LANGUAGE sql IMMUTABLE PARALLEL SAFE
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+    SELECT jsonb_build_object(
+        'original_language', payload -> 'original_language',
+        'omdb', CASE WHEN jsonb_typeof(payload -> 'omdb') = 'object' THEN
+            jsonb_build_object('rated', payload #> '{omdb,rated}', 'data', jsonb_build_object('rated', payload #> '{omdb,data,rated}')) END,
+        'tmdb', CASE WHEN jsonb_typeof(payload -> 'tmdb') = 'object' THEN
+            jsonb_build_object('genres', payload #> '{tmdb,genres}', 'certification', payload #> '{tmdb,certification}',
+                'production_companies', payload #> '{tmdb,production_companies}',
+                'keywords', payload #> '{tmdb,keywords}', 'original_language', payload #> '{tmdb,original_language}') END
+    );
+$$;
+
+
+--
+-- Name: mark_library_profile_inventory_changed(bigint[]); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.mark_library_profile_inventory_changed(library_ids bigint[]) RETURNS void
+    LANGUAGE sql
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+    INSERT INTO public.library_profile_inventory_state (library_id)
+    SELECT id FROM public.libraries WHERE id = ANY(library_ids) ORDER BY id
+    ON CONFLICT (library_id) DO UPDATE
+    SET revision = public.library_profile_inventory_state.revision + 1,
+        changed_at = clock_timestamp();
+$$;
 
 
 --
@@ -3453,6 +3527,28 @@ ALTER SEQUENCE public.library_policies_id_seq OWNED BY public.library_policies.i
 
 
 --
+-- Name: library_profile_inventory_state; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.library_profile_inventory_state (
+    library_id bigint NOT NULL,
+    revision bigint DEFAULT 1 NOT NULL,
+    refreshed_revision bigint DEFAULT 0 NOT NULL,
+    changed_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    CONSTRAINT library_profile_inventory_state_check CHECK ((refreshed_revision <= revision)),
+    CONSTRAINT library_profile_inventory_state_refreshed_revision_check CHECK ((refreshed_revision >= 0)),
+    CONSTRAINT library_profile_inventory_state_revision_check CHECK ((revision > 0))
+);
+
+
+--
+-- Name: TABLE library_profile_inventory_state; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.library_profile_inventory_state IS 'Transactional observation-input revisions and claim-bound acknowledgement; runtime state, not verified labels or portable configuration.';
+
+
+--
 -- Name: library_profiles; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5810,12 +5906,13 @@ CREATE TABLE public.policy_profile_refresh_outbox (
     failure_code character varying(80),
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     request_type character varying(40) DEFAULT 'learning_evidence'::character varying NOT NULL,
+    inventory_revision bigint,
     CONSTRAINT policy_profile_refresh_outbox_attempt_count_chk CHECK (((attempt_count >= 0) AND (attempt_count <= 3))),
     CONSTRAINT policy_profile_refresh_outbox_failure_code_chk CHECK (((failure_code IS NULL) OR ((char_length(btrim((failure_code)::text)) >= 1) AND (char_length(btrim((failure_code)::text)) <= 80)))),
     CONSTRAINT policy_profile_refresh_outbox_identifiers_chk CHECK (((library_id > 0) AND ((classification_id IS NULL) OR (classification_id > 0)))),
     CONSTRAINT policy_profile_refresh_outbox_processing_state_chk CHECK (((processing_state)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text, ('completed'::character varying)::text, ('failed'::character varying)::text]))),
-    CONSTRAINT policy_profile_refresh_outbox_request_shape_chk CHECK (((((request_type)::text = 'learning_evidence'::text) AND (classification_id IS NOT NULL) AND ((learning_operation_id)::text = ANY (ARRAY[('write_compatibility_evidence'::character varying)::text, ('write_identity_evidence'::character varying)::text])) AND ((learning_tier_id)::text = ANY (ARRAY[('compatibility_evidence'::character varying)::text, ('identity_evidence'::character varying)::text])) AND ((((learning_operation_id)::text = 'write_compatibility_evidence'::text) AND ((learning_tier_id)::text = 'compatibility_evidence'::text)) OR (((learning_operation_id)::text = 'write_identity_evidence'::text) AND ((learning_tier_id)::text = 'identity_evidence'::text))) AND ((char_length(btrim((candidate_key)::text)) >= 3) AND (char_length(btrim((candidate_key)::text)) <= 160)) AND ((refresh_reason_id)::text = 'profile_refresh_required'::text) AND ((source_system)::text = 'policy_authorized_profile_refresh'::text)) OR (((request_type)::text = 'native_readiness'::text) AND (classification_id IS NULL) AND (learning_operation_id IS NULL) AND (learning_tier_id IS NULL) AND (candidate_key IS NULL) AND ((source_id)::text = 'native_policy_profile_readiness'::text) AND ((refresh_reason_id)::text = 'stale_library_profile'::text) AND ((source_system)::text = 'policy_native_readiness_profile_refresh'::text)))),
-    CONSTRAINT policy_profile_refresh_outbox_request_type_chk CHECK (((request_type)::text = ANY (ARRAY[('learning_evidence'::character varying)::text, ('native_readiness'::character varying)::text]))),
+    CONSTRAINT policy_profile_refresh_outbox_request_shape_chk CHECK (((((request_type)::text = 'learning_evidence'::text) AND (inventory_revision IS NULL) AND (classification_id IS NOT NULL) AND ((learning_operation_id)::text = ANY ((ARRAY['write_compatibility_evidence'::character varying, 'write_identity_evidence'::character varying])::text[])) AND ((learning_tier_id)::text = ANY ((ARRAY['compatibility_evidence'::character varying, 'identity_evidence'::character varying])::text[])) AND ((((learning_operation_id)::text = 'write_compatibility_evidence'::text) AND ((learning_tier_id)::text = 'compatibility_evidence'::text)) OR (((learning_operation_id)::text = 'write_identity_evidence'::text) AND ((learning_tier_id)::text = 'identity_evidence'::text))) AND ((char_length(btrim((candidate_key)::text)) >= 3) AND (char_length(btrim((candidate_key)::text)) <= 160)) AND ((refresh_reason_id)::text = 'profile_refresh_required'::text) AND ((source_system)::text = 'policy_authorized_profile_refresh'::text)) OR (((request_type)::text = 'native_readiness'::text) AND (inventory_revision IS NULL) AND (classification_id IS NULL) AND (learning_operation_id IS NULL) AND (learning_tier_id IS NULL) AND (candidate_key IS NULL) AND ((source_id)::text = 'native_policy_profile_readiness'::text) AND ((refresh_reason_id)::text = 'stale_library_profile'::text) AND ((source_system)::text = 'policy_native_readiness_profile_refresh'::text)) OR (((request_type)::text = 'inventory_change'::text) AND (inventory_revision IS NOT NULL) AND (inventory_revision > 0) AND (classification_id IS NULL) AND (learning_operation_id IS NULL) AND (learning_tier_id IS NULL) AND (candidate_key IS NULL) AND ((source_id)::text = 'library_inventory_observation'::text) AND ((refresh_reason_id)::text = 'library_inventory_changed'::text) AND ((source_system)::text = 'library_inventory_profile_refresh'::text)))),
+    CONSTRAINT policy_profile_refresh_outbox_request_type_chk CHECK (((request_type)::text = ANY ((ARRAY['learning_evidence'::character varying, 'native_readiness'::character varying, 'inventory_change'::character varying])::text[]))),
     CONSTRAINT policy_profile_refresh_outbox_source_event_chk CHECK (((char_length(btrim((source_id)::text)) >= 1) AND (char_length(btrim((source_id)::text)) <= 80) AND ((char_length(btrim((source_event_id)::text)) >= 1) AND (char_length(btrim((source_event_id)::text)) <= 160)))),
     CONSTRAINT policy_profile_refresh_outbox_version_chk CHECK ((outbox_version = 1)),
     CONSTRAINT policy_profile_refresh_outbox_worker_lifecycle_chk CHECK (((((processing_state)::text = 'pending'::text) AND (claim_token IS NULL) AND (claimed_at IS NULL) AND (lease_expires_at IS NULL) AND (completed_at IS NULL)) OR (((processing_state)::text = 'processing'::text) AND (claim_token IS NOT NULL) AND (claimed_at IS NOT NULL) AND (lease_expires_at IS NOT NULL) AND (completed_at IS NULL)) OR (((processing_state)::text = 'completed'::text) AND (claim_token IS NULL) AND (claimed_at IS NULL) AND (lease_expires_at IS NULL) AND (completed_at IS NOT NULL)) OR (((processing_state)::text = 'failed'::text) AND (claim_token IS NULL) AND (claimed_at IS NULL) AND (lease_expires_at IS NULL) AND (completed_at IS NULL))))
@@ -8522,6 +8619,14 @@ ALTER TABLE ONLY public.library_policies
 
 
 --
+-- Name: library_profile_inventory_state library_profile_inventory_state_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.library_profile_inventory_state
+    ADD CONSTRAINT library_profile_inventory_state_pkey PRIMARY KEY (library_id);
+
+
+--
 -- Name: library_profiles library_profiles_library_id_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10366,6 +10471,13 @@ CREATE INDEX idx_library_policies_source ON public.library_policies USING gin (s
 
 
 --
+-- Name: idx_library_profile_inventory_dirty; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_library_profile_inventory_dirty ON public.library_profile_inventory_state USING btree (changed_at, library_id) WHERE (revision > refreshed_revision);
+
+
+--
 -- Name: idx_library_profiles_library; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -11052,6 +11164,13 @@ CREATE INDEX idx_post_upgrade_tasks_version ON public.post_upgrade_tasks USING b
 
 
 --
+-- Name: idx_profile_refresh_inventory_latest; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_profile_refresh_inventory_latest ON public.policy_profile_refresh_outbox USING btree (library_id, id DESC) WHERE ((request_type)::text = 'inventory_change'::text);
+
+
+--
 -- Name: idx_rag_logs_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -11525,6 +11644,34 @@ CREATE TRIGGER classification_history_totals_sync_trigger AFTER INSERT OR DELETE
 --
 
 CREATE TRIGGER classification_search_text_trigger BEFORE INSERT OR UPDATE ON public.classification_history FOR EACH ROW EXECUTE FUNCTION public.update_classification_search_text();
+
+
+--
+-- Name: media_server_items library_profile_inventory_delete; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER library_profile_inventory_delete AFTER DELETE ON public.media_server_items REFERENCING OLD TABLE AS old_items FOR EACH STATEMENT EXECUTE FUNCTION public.capture_library_profile_inventory_change();
+
+
+--
+-- Name: media_server_items library_profile_inventory_insert; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER library_profile_inventory_insert AFTER INSERT ON public.media_server_items REFERENCING NEW TABLE AS new_items FOR EACH STATEMENT EXECUTE FUNCTION public.capture_library_profile_inventory_change();
+
+
+--
+-- Name: media_server_items library_profile_inventory_truncate; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER library_profile_inventory_truncate AFTER TRUNCATE ON public.media_server_items FOR EACH STATEMENT EXECUTE FUNCTION public.capture_library_profile_inventory_change();
+
+
+--
+-- Name: media_server_items library_profile_inventory_update; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER library_profile_inventory_update AFTER UPDATE ON public.media_server_items REFERENCING OLD TABLE AS old_items NEW TABLE AS new_items FOR EACH STATEMENT EXECUTE FUNCTION public.capture_library_profile_inventory_change();
 
 
 --
@@ -12014,6 +12161,14 @@ ALTER TABLE ONLY public.library_policies
 
 ALTER TABLE ONLY public.library_policies
     ADD CONSTRAINT library_policies_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
+
+
+--
+-- Name: library_profile_inventory_state library_profile_inventory_state_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.library_profile_inventory_state
+    ADD CONSTRAINT library_profile_inventory_state_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
 
 
 --
@@ -14736,6 +14891,7 @@ FROM unnest(ARRAY[
     '20260901_100000_add_policy_candidate_correction_review_corpus_capture_evaluation_index.sql',
     '20260905_100000_add_media_identity_review_previews.sql',
     '20260905_120000_add_media_identity_receipt_lookup_index.sql',
-    '20260905_140000_add_library_profile_observation_summary.sql'
+    '20260905_140000_add_library_profile_observation_summary.sql',
+    '20260905_150000_add_inventory_profile_refresh.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

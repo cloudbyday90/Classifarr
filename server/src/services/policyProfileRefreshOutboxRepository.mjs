@@ -73,6 +73,9 @@ function normalizeOutboxRecord(record = {}) {
   if (!isPolicyProfileRefreshOutboxRequestType(requestType)) {
     throw new TypeError('Profile refresh outbox persistence requires a known request type.');
   }
+  if (requestType === POLICY_PROFILE_REFRESH_OUTBOX_REQUEST_TYPE_IDS.INVENTORY_CHANGE) {
+    throw new TypeError('Inventory profile refreshes require the transactional revision planner.');
+  }
   if (availableAt && !isServerOwnedNativeProfileRefresh(source, requestType)) {
     throw new TypeError('Only server-owned native profile recovery may schedule a profile refresh.');
   }

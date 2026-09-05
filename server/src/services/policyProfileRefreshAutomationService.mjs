@@ -9,6 +9,7 @@
  */
 
 import { createLogger } from '../utils/logger.mjs';
+import { libraryInventoryProfileRefreshPlanner } from './libraryInventoryProfileRefreshPlanner.mjs';
 import {
   policyNativeProfileRefreshPlanner,
 } from './policyNativeProfileRefreshPlanner.mjs';
@@ -24,15 +25,24 @@ const logger = createLogger('PolicyProfileRefreshAutomationService');
 class PolicyProfileRefreshAutomationService {
   constructor({
     nativeProfileRefreshPlanner = policyNativeProfileRefreshPlanner,
+    inventoryProfileRefreshPlanner = libraryInventoryProfileRefreshPlanner,
     outboxWorker = policyProfileRefreshOutboxWorker,
     loggerInstance = logger,
   } = {}) {
     this.nativeProfileRefreshPlanner = nativeProfileRefreshPlanner;
+    this.inventoryProfileRefreshPlanner = inventoryProfileRefreshPlanner;
     this.outboxWorker = outboxWorker;
     this.logger = loggerInstance;
   }
 
   async run() {
+    let inventoryPlanning;
+    try {
+      inventoryPlanning = await this.inventoryProfileRefreshPlanner.run();
+    } catch {
+      inventoryPlanning = { statusId: 'failed', reasonId: 'inventory_profile_refresh_planning_failed' };
+      this.logger.warn('Inventory profile refresh planning failed', inventoryPlanning);
+    }
     let planning;
     try {
       planning = await this.nativeProfileRefreshPlanner.run();
@@ -48,6 +58,7 @@ class PolicyProfileRefreshAutomationService {
     return {
       version: POLICY_PROFILE_REFRESH_AUTOMATION_VERSION,
       planning,
+      inventoryPlanning,
       delivery,
     };
   }

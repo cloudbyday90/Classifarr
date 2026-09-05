@@ -604,6 +604,12 @@ absent trait does not establish a library restriction. Existing profiles receive
 an automatic refresh after upgrading. See the
 [profile observation design](docs/architecture/library-profile-observation-design.md)
 and [measured outcome](docs/architecture/library-profile-observation-outcome.md).
+The existing background worker also refreshes active libraries when inventory
+membership or observed metadata changes, including libraries without policies.
+Unchanged syncs need no regeneration, and empty libraries lose obsolete profiles.
+Inactive libraries retain pending changes until reactivated. See the
+[automatic refresh design](docs/architecture/inventory-profile-refresh-design.md)
+and [refresh validation](docs/architecture/inventory-profile-refresh-outcome.md).
 Manual identity review handles unresolved exceptions.
 
 For unresolved inventory identities, open **Libraries → Review media IDs** with

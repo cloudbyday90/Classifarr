@@ -84,8 +84,11 @@ profile cleanup are implemented in the subsequent
 [observation design](library-profile-observation-design.md) and
 [validation outcome](library-profile-observation-outcome.md). An automatic
 post-upgrade refresh rebuilds existing active-library profiles. The next product
-task is inventory-change-driven refresh and invalidation through the existing
-planner/outbox, including libraries without an enabled native policy.
+task was inventory-change-driven refresh and invalidation through the existing
+planner/outbox, including libraries without an enabled native policy. That work
+is now recorded in the [refresh design](inventory-profile-refresh-design.md)
+and [refresh outcome](inventory-profile-refresh-outcome.md). Keyword and
+original-language provenance is the next implementation item.
 The separate shared HTTP mutation-retry audit remains a correctness follow-up;
 the receipt-recovery change already disables replay for identity confirmation.
 
@@ -94,7 +97,7 @@ the receipt-recovery change already disables replay for identity confirmation.
 | Approach | Benefit | Cost or limit | Decision |
 | --- | --- | --- | --- |
 | Reuse synchronized inventory and automatically refreshed profiles | Low operational burden; uses real library organization | Inherits source mistakes and missing metadata | Primary foundation |
-| Explicit prevalence, coverage, freshness, and provenance | Makes common traits interpretable and comparable | Coverage is implemented; inventory-change freshness remains | Continue automatic maintenance |
+| Explicit prevalence, coverage, freshness, and provenance | Makes common traits interpretable and comparable | Coverage and inventory-change refresh are implemented; provider provenance remains | Continue metadata quality work |
 | Bounded item and semantic comparisons across candidate libraries | Explains similarities, overlaps, and outliers | Semantic evidence needs independent evaluation | Build on existing retrieval |
 | Manual per-item identity and policy setup | Resolves exceptional ambiguity | Does not scale as the main workflow | Exception path |
 | Treat all existing placements or model labels as verified truth | Removes apparent review effort | Conceals errors and creates circular evaluation | Reject |

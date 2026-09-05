@@ -108,6 +108,10 @@ async function claimPolicyProfileRefreshOutboxBatch({
        SELECT id
        FROM ${POLICY_PROFILE_REFRESH_OUTBOX_TABLE}
        WHERE request_type = ANY($1::text[])
+         AND (request_type <> 'inventory_change' OR EXISTS (
+           SELECT 1 FROM libraries library WHERE library.id = ${POLICY_PROFILE_REFRESH_OUTBOX_TABLE}.library_id
+             AND library.is_active = TRUE
+         ))
          AND attempt_count < $2
          AND (
            (processing_state = $3 AND available_at <= NOW())
@@ -151,7 +155,7 @@ async function completePolicyProfileRefreshOutboxClaim({
 } = {}) {
   requireTransactionClient(client);
   const result = await client.query(
-    `UPDATE ${POLICY_PROFILE_REFRESH_OUTBOX_TABLE}
+    `WITH completed AS (UPDATE ${POLICY_PROFILE_REFRESH_OUTBOX_TABLE}
      SET processing_state = $1,
          claim_token = NULL,
          claimed_at = NULL,
@@ -162,7 +166,13 @@ async function completePolicyProfileRefreshOutboxClaim({
      WHERE id = $2
        AND processing_state = $3
        AND claim_token = $4::uuid
-     RETURNING id`,
+     RETURNING id, library_id, inventory_revision),
+     acknowledged AS (
+       UPDATE library_profile_inventory_state state
+       SET refreshed_revision = GREATEST(state.refreshed_revision, completed.inventory_revision)
+       FROM completed WHERE state.library_id = completed.library_id AND completed.inventory_revision IS NOT NULL
+       RETURNING state.library_id
+     ) SELECT id FROM completed`,
     [
       POLICY_PROFILE_REFRESH_OUTBOX_WORKER_STATE_IDS.COMPLETED,
       normalizeIdentifier(outboxId),

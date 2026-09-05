@@ -49,7 +49,7 @@ describe('policyProfileRefreshOutboxWorkerRepository', () => {
     expect(client.query.mock.calls[0][0]).toContain('ORDER BY created_at ASC, id ASC');
     expect(client.query.mock.calls[0][0]).toContain('request_type = ANY($1::text[])');
     expect(client.query.mock.calls[0][1]).toEqual([
-      ['learning_evidence', 'native_readiness'],
+      ['learning_evidence', 'native_readiness', 'inventory_change'],
       3,
       'pending',
       'processing',
