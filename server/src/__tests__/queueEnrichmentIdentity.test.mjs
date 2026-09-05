@@ -48,6 +48,22 @@ test('database errors propagate instead of becoming identity guesses', async () 
   await expect(prepareQueueEnrichmentPayload(taskPayload(), jest.fn().mockRejectedValue(new Error('offline')))).rejects.toThrow('offline');
 });
 
+test('does not resurrect a queued TMDb ID after the current source lost it', async () => {
+  const prepared = await prepareQueueEnrichmentPayload(taskPayload(),
+    jest.fn().mockResolvedValue({ rows: [{ ...source, tmdb_id: null }] }));
+  expect(prepared.tmdb_id).toBeNull();
+});
+
+test('replaces stale queued identifiers and caller-supplied provenance with current source fields', async () => {
+  const current = { ...source, title: 'Current', year: 2001, imdb_id: 'tt123', tvdb_id: 7,
+    media_server_id: 1, external_id: 'current-key' };
+  const prepared = await prepareQueueEnrichmentPayload({ ...taskPayload(), title: 'Stale', year: 2002,
+    imdb_id: 'tt999', tvdb_id: 8, source_identity_snapshot: { title: 'Forged' } },
+  jest.fn().mockResolvedValue({ rows: [current] }));
+  expect(prepared).toMatchObject({ title: 'Current', year: 2001, imdb_id: 'tt123', tvdb_id: 7,
+    source_identity_snapshot: { media_server_id: 1, external_id: 'current-key', title: 'Current', year: 2001 } });
+});
+
 test('replaces legacy queued tags and guessed language with current attributable observations', async () => {
   const query = jest.fn().mockResolvedValue({ rows: [{ ...source, tags: ['source tag'], metadata: {
     inventory_tmdb: { version: 1, tmdb_id: 42, media_type: 'tv', keywords: ['provider keyword'], original_language: 'ja' },

@@ -275,7 +275,9 @@ describe('Enrichment Pipeline Integration', () => {
 
             expect(tmdbService.searchIdentityCandidates).toHaveBeenCalledWith('Home Alone', 'movie', 1990);
             expect(tmdbService.search).not.toHaveBeenCalled();
-            expect(db.query).toHaveBeenCalledWith(expect.stringContaining('SET tmdb_id'), [771, 300, 'movie']);
+            const backfill = db.query.mock.calls.find(([sql]) => sql.includes('SET tmdb_id'));
+            expect(backfill[1].slice(0, 3)).toEqual([771, 300, 'movie']);
+            expect(JSON.parse(backfill[1][3]).tmdb_identity_origin).toMatchObject({ tmdb_id: 771, media_type: 'movie' });
         });
 
         it('should accept the unique exact title and year among multiple results', async () => {
@@ -307,7 +309,9 @@ describe('Enrichment Pipeline Integration', () => {
             await runTaskWithMatchingEnrichmentSource(queueService, db, task);
 
             expect(tmdbService.searchIdentityCandidates).toHaveBeenCalledTimes(1);
-            expect(db.query).toHaveBeenCalledWith(expect.stringContaining('SET tmdb_id'), [771, 301, 'movie']);
+            const backfill = db.query.mock.calls.find(([sql]) => sql.includes('SET tmdb_id'));
+            expect(backfill[1].slice(0, 3)).toEqual([771, 301, 'movie']);
+            expect(JSON.parse(backfill[1][3]).tmdb_identity_origin).toMatchObject({ tmdb_id: 771, media_type: 'movie' });
         });
     });
 

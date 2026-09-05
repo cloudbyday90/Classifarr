@@ -284,7 +284,7 @@ describe('resolveAndBackfill', () => {
     expect(result).toBe(777);
     expect(metadata.tmdb_resolution).toEqual({ version: 1, status: 'resolved', method: 'existing_id', reason: 'identifier_available' });
     expect(svc.resolveFromTvdb).not.toHaveBeenCalled();
-    expect(spy).toHaveBeenCalledWith(1, 777, 'movie');
+    expect(spy).toHaveBeenCalledWith(1, 777, 'movie', undefined);
   });
 
   test('allows title search after both valid external lookups find no match', async () => {

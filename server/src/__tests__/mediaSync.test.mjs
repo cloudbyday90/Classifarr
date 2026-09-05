@@ -519,7 +519,8 @@ describe('MediaSyncService', () => {
         it('should normalize object-shaped genres, tags, and collections before analysis and upsert', async () => {
             mockDb.query
                 .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // library exists
-                .mockResolvedValueOnce({ rows: [] }); // upsert
+                .mockResolvedValueOnce({ rows: [] }) // current source
+                .mockResolvedValueOnce({ rows: [], rowCount: 1 }); // upsert
 
             mockContentTypeAnalyzer.analyze.mockResolvedValue({
                 analyzed: false
@@ -542,7 +543,7 @@ describe('MediaSyncService', () => {
                 keywords: [], tags: ['hero'], original_language: null
             }), null, true);
 
-            const upsertCall = mockDb.query.mock.calls[1];
+            const upsertCall = mockDb.query.mock.calls.find(([sql]) => sql.includes('INSERT INTO media_server_items'));
             expect(upsertCall[1][10]).toEqual(['Action', 'Comedy']);
             expect(upsertCall[1][11]).toEqual(['hero']);
             expect(upsertCall[1][12]).toEqual(['Saga']);
@@ -551,7 +552,8 @@ describe('MediaSyncService', () => {
         it('should use conditional CASE statements for content_rating and original_rating in the upsert query', async () => {
             mockDb.query
                 .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // library exists
-                .mockResolvedValueOnce({ rows: [] }); // upsert
+                .mockResolvedValueOnce({ rows: [] }) // current source
+                .mockResolvedValueOnce({ rows: [], rowCount: 1 }); // upsert
 
             mockContentTypeAnalyzer.analyze.mockResolvedValue({
                 analyzed: false
@@ -567,7 +569,7 @@ describe('MediaSyncService', () => {
 
             await service.upsertMediaItem(1, 10, item);
 
-            const upsertCall = mockDb.query.mock.calls[1];
+            const upsertCall = mockDb.query.mock.calls.find(([sql]) => sql.includes('INSERT INTO media_server_items'));
             const sqlQuery = upsertCall[0];
             expect(sqlQuery).toContain('content_rating = CASE');
             expect(sqlQuery).toContain('original_rating = CASE');

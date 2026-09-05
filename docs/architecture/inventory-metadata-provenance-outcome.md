@@ -104,7 +104,7 @@ filename is already marked applied; the lesson is recorded in
 | Typed, attributable provider observations | Clear origin and reliable separation from local organization | Existing IDs and upstream descriptions may still be wrong | Keep as the metadata foundation |
 | Existing queue, limiter, persisted observation cache | Low operator effort; no new scheduler or dependency | Cached per inventory row; duplicate placements can make separate requests | Keep; measure duplication before adding a shared cache |
 | Coverage-aware profile aggregation | Common traits become measurable without assuming missing values | Coverage does not establish precision; stale successful metadata survives outages | Keep denominators and provenance explicit |
-| Identity retention across source resync | Keeps resolved items and their observations useful without repeated review | Retention must verify source continuity; blindly retaining IDs is unsafe | Next fix |
+| Identity retention across source resync | Keeps resolved items and their observations useful without repeated review | Retention must verify source continuity; blindly retaining IDs is unsafe | [Implemented](resolved-identity-sync-retention-outcome.md) |
 | Cross-library overlap summaries | Answers what exists, where, and what is common | Needs bounded comparisons and visible sparse-data limits | Follow identity retention |
 | Semantic counter-evidence | May help identify ambiguous items for review | Requires independently measured errors and the existing study gates | Remain gated |
 
@@ -112,20 +112,14 @@ The recommendation stack is synchronized inventory → typed provider observatio
 → automatically refreshed profiles with known/missing counts → bounded,
 read-only library comparisons → independently evaluated classification support.
 
-**Next item:** preserve resolved typed identities across a source resync when
-the source merely omits its TMDb ID. Static inspection of
-[mediaSyncUpsert.mjs](../../server/src/services/mediaSyncUpsert.mjs) shows that
-`tmdb_id = EXCLUDED.tmdb_id` currently replaces a resolved ID with null in that
-case. This can discard the identity needed to reuse observations and can create
-repeated exception work. This is a code-path finding, not a measured incidence
-rate in the live inventory.
-
-Record resolution ownership and verify source continuity before retaining an
-ID. Test omission separately from a changed type, conflicting provider IDs, or
-a reused source item. Avoid a blanket `COALESCE` that could retain the wrong
-identity. After that fix, add a bounded, coverage-aware cross-library overlap
-summary using shared typed identities and common traits. Reuse stored
-observations and expose insufficient evidence when coverage is sparse.
+**Follow-up delivered:** resolved identities now survive omissions only with
+recorded resolution ownership and source-continuity checks. The separate
+[retention outcome](resolved-identity-sync-retention-outcome.md) records the
+32-item rollback assessment, concurrency validation, and next correctness fix.
+After completing source guards for remaining enrichment writes, add a bounded,
+coverage-aware cross-library overlap summary using shared typed identities and
+common traits. Reuse stored observations and expose insufficient evidence when
+coverage is sparse.
 
 ## Scope and delivery
 

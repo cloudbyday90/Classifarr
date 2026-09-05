@@ -10,6 +10,7 @@ import { canonicalMediaType, positiveDatabaseInteger } from './mediaIdentityValu
 import { captureQueueEnrichmentPayload } from './queueEnrichmentPayload.mjs';
 import { resolveQueueTmdbExternalIdentity } from './queueTmdbExternalResolution.mjs';
 import { buildTmdbTitleRequest, decideTmdbTitleMatch } from './tmdbTitleMatch.mjs';
+import { persistResolvedIdentity } from './mediaResolvedIdentityPersistence.mjs';
 
 function recordResolution(data, method, reason, tmdbId) {
     if (data) data.tmdb_resolution = {
@@ -60,7 +61,7 @@ export class QueueTmdbResolutionService {
         return null;
     }
 
-    async backfillTmdbId(itemId, tmdbId, mediaType) {
+    async backfillTmdbId(itemId, tmdbId, mediaType, source = null) {
         itemId = positiveDatabaseInteger(itemId);
         tmdbId = positiveDatabaseInteger(tmdbId);
         mediaType = canonicalMediaType(mediaType);
@@ -68,7 +69,9 @@ export class QueueTmdbResolutionService {
             return;
         }
 
-        const updated = await this.queryWithTimeout(
+        const updated = source ? await persistResolvedIdentity(
+            this.queryWithTimeout, itemId, tmdbId, mediaType, source
+        ) : await this.queryWithTimeout(
             'UPDATE media_server_items SET tmdb_id = $1 WHERE id = $2 AND media_type = $3 AND tmdb_id IS NULL',
             [tmdbId, itemId, mediaType]
         );
@@ -100,7 +103,7 @@ export class QueueTmdbResolutionService {
         }
 
         if (tmdbId) {
-            await this.backfillTmdbId(payload.itemId, tmdbId, payload.media.media_type);
+            await this.backfillTmdbId(payload.itemId, tmdbId, payload.media.media_type, payload.source_identity_snapshot);
         }
 
         return tmdbId;

@@ -18,8 +18,9 @@ export async function verifyTmdbExternalIdSql(client) {
     await client.query(`
       CREATE TEMP TABLE libraries (id integer PRIMARY KEY, name text) ON COMMIT DROP;
       CREATE TEMP TABLE media_server_items (
+        media_server_id integer, external_id text,
         id integer PRIMARY KEY, media_type text, tmdb_id integer, library_id integer,
-        title text, year integer, metadata jsonb DEFAULT '{}', tags text[],
+        title text, year integer, imdb_id text, tvdb_id integer, metadata jsonb DEFAULT '{}', tags text[],
         inventory_tmdb_attempted_at timestamptz, inventory_tmdb_fetched_at timestamptz
       ) ON COMMIT DROP;
       CREATE TEMP TABLE classification_history (
@@ -51,7 +52,7 @@ export async function verifyTmdbExternalIdSql(client) {
       const type = item.type || 'tv';
       const title = `External fixture ${id}`;
       await query('INSERT INTO libraries VALUES ($1, $2)', [id, 'Fixture source']);
-      await query('INSERT INTO media_server_items (id, media_type, library_id, title, year) VALUES ($1, $2, $1, $3, 2001)', [id, type, title]);
+      await query('INSERT INTO media_server_items (id, media_type, library_id, title, year, imdb_id, tvdb_id) VALUES ($1, $2, $1, $3, 2001, $4, $5)', [id, type, title, item.ids.imdb_id ?? null, item.ids.tvdb_id ?? null]);
       let externalCalls = 0;
       let titleCalls = 0;
       const tmdb = new QueueTmdbResolutionService({ logger, queryWithTimeout: query, tmdbService: {

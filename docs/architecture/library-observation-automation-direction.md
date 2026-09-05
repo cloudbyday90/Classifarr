@@ -91,8 +91,11 @@ and [refresh outcome](inventory-profile-refresh-outcome.md). Keyword and
 original-language provenance is implemented in the
 [metadata design](inventory-metadata-provenance-design.md) and
 [32-item assessment](inventory-metadata-provenance-outcome.md).
-The next fix is safe retention of resolved typed identities when source resync
-omits an identifier, followed by coverage-aware cross-library overlap summaries.
+Safe retention of resolved typed identities when source resync omits an identifier
+is implemented in the [retention design](resolved-identity-sync-retention-design.md)
+and [retention outcome](resolved-identity-sync-retention-outcome.md).
+Before adding coverage-aware cross-library overlap summaries, extend source
+snapshot guards to late OMDb rating and unresolved-enrichment metadata writes.
 The separate shared HTTP mutation-retry audit remains a correctness follow-up;
 the receipt-recovery change already disables replay for identity confirmation.
 

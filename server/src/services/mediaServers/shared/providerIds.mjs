@@ -8,48 +8,35 @@
  * (at your option) any later version.
  */
 
-function parseNumericId(value) {
-  if (value === null || value === undefined || value === '') {
-    return null;
-  }
+import { normalizeSourceProviderIds } from '../../mediaSourceIdentity.mjs';
 
-  const parsed = Number.parseInt(String(value), 10);
-  return Number.isNaN(parsed) ? null : parsed;
+const emptyIds = () => ({ tmdb_id: null, imdb_id: null, tvdb_id: null });
+
+function validatedIds(ids) {
+  return normalizeSourceProviderIds(ids) || { ...emptyIds(), provider_identity_invalid: true };
 }
 
+/** @param {Record<string, unknown>} providerIds */
 export function parseProviderIds(providerIds = {}) {
-  return {
-    tmdb_id: parseNumericId(providerIds.Tmdb),
-    imdb_id: providerIds.Imdb || null,
-    tvdb_id: parseNumericId(providerIds.Tvdb),
-  };
+  if (!providerIds || typeof providerIds !== 'object' || Array.isArray(providerIds)) {
+    return { ...emptyIds(), provider_identity_invalid: true };
+  }
+  return validatedIds({ tmdb_id: providerIds.Tmdb, imdb_id: providerIds.Imdb, tvdb_id: providerIds.Tvdb });
 }
 
 export function parsePlexGuids(guids = []) {
-  const result = {
-    tmdb_id: null,
-    imdb_id: null,
-    tvdb_id: null,
-  };
-
+  const result = emptyIds();
+  if (!Array.isArray(guids)) return { ...result, provider_identity_invalid: true };
   for (const guid of guids) {
     const id = typeof guid?.id === 'string' ? guid.id : '';
-    if (id.startsWith('tmdb://')) {
-      result.tmdb_id = parseNumericId(id.replace('tmdb://', ''));
-      continue;
-    }
-
-    if (id.startsWith('imdb://')) {
-      result.imdb_id = id.replace('imdb://', '');
-      continue;
-    }
-
-    if (id.startsWith('tvdb://')) {
-      result.tvdb_id = parseNumericId(id.replace('tvdb://', ''));
-    }
+    const provider = /^(tmdb|imdb|tvdb):\/\//.exec(id)?.[1];
+    if (!provider) continue;
+    const field = `${provider}_id`;
+    const parsed = validatedIds({ [field]: id.slice(provider.length + 3) });
+    if (parsed.provider_identity_invalid || parsed[field] == null ||
+        (result[field] != null && result[field] !== parsed[field])) return { ...emptyIds(), provider_identity_invalid: true };
+    result[field] = parsed[field];
   }
 
   return result;
 }
-
-

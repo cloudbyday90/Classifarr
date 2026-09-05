@@ -13,7 +13,9 @@ export async function runTaskWithMatchingEnrichmentSource(queueService, db, task
     if (text.startsWith('SELECT msi.tmdb_id, msi.media_type')) {
       return { rows: [{
         media_type: payload.media.media_type, tmdb_id: payload.tmdb_id ?? null,
+        media_server_id: 1, external_id: `fixture-${payload.itemId}`,
         library_id: payload.source_library_id, library_name: payload.source_library_name,
+        title: payload.title, year: payload.year, imdb_id: payload.imdb_id ?? null, tvdb_id: payload.tvdb_id ?? null,
         metadata: {}, ...result.rows[0],
       }] };
     }

@@ -616,6 +616,10 @@ language stays unknown. Successful observations are reused for 30 days; failed
 requests retry after six hours. Identity changes invalidate prior traits. See the
 [metadata provenance design](docs/architecture/inventory-metadata-provenance-design.md)
 and [32-item local assessment](docs/architecture/inventory-metadata-provenance-outcome.md).
+Resolved IDs now survive source omissions when recorded provenance and source
+continuity agree. Changed identities discard stale enrichment and recover through
+the existing queue. See the [retention design](docs/architecture/resolved-identity-sync-retention-design.md)
+and [validation outcome](docs/architecture/resolved-identity-sync-retention-outcome.md).
 Manual identity review handles unresolved exceptions.
 
 For unresolved inventory identities, open **Libraries → Review media IDs** with

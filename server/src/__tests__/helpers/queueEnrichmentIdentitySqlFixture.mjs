@@ -17,6 +17,7 @@ export async function verifyQueueEnrichmentIdentitySql(client) {
     await client.query(`
       CREATE TEMP TABLE libraries (id integer PRIMARY KEY, name text, media_type text, is_active boolean DEFAULT true) ON COMMIT DROP;
       CREATE TEMP TABLE media_server_items (
+        media_server_id integer, external_id text,
         id integer PRIMARY KEY, media_type text, tmdb_id integer, tvdb_id integer, imdb_id text,
         library_id integer, title text, year integer, metadata jsonb DEFAULT '{}',
         genres jsonb, tags jsonb, content_rating text, original_rating text,

@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { ConflictError, ForbiddenError } from '../utils/appError.mjs';
 import { projectReviewSource } from './mediaIdentityReviewContract.mjs';
+import { createTmdbIdentityOrigin } from './mediaSourceIdentity.mjs';
 
 const SOURCE_COLUMNS = `msi.id, msi.xmin::text AS revision, msi.media_server_id,
   msi.external_id, msi.library_id, msi.tmdb_id, msi.tvdb_id, msi.imdb_id,
@@ -48,10 +49,12 @@ export async function applyReviewedIdentity(db, { actorId, preview, source }) {
   const receipt = {
     version: 1, status: 'resolved', method: 'operator', reason: 'operator_confirmed', review_id: preview.id,
   };
+  const origin = createTmdbIdentityOrigin(source, preview.candidate.tmdbId, 'operator');
   const updated = await db.query(`UPDATE media_server_items SET tmdb_id = $2,
-    metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object('tmdb_resolution', $3::jsonb)
+    metadata = (COALESCE(metadata, '{}'::jsonb) - 'tmdb_identity_origin') || $3::jsonb
     WHERE id = $1 AND tmdb_id IS NULL AND media_type = $4 RETURNING id`,
-  [source.id, preview.candidate.tmdbId, JSON.stringify(receipt), preview.candidate.mediaType]);
+  [source.id, preview.candidate.tmdbId, JSON.stringify({ tmdb_resolution: receipt,
+    ...(origin ? { tmdb_identity_origin: origin } : {}) }), preview.candidate.mediaType]);
   if (updated.rowCount !== 1) throw new ConflictError('The source item changed. Review it again.', { code: 'review_source_changed' });
   // Deliberately use the same transaction: the general audit helper swallows failures.
   const { rows } = await db.query(`INSERT INTO audit_log (user_id, action, metadata)

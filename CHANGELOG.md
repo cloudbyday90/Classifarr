@@ -166,6 +166,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Resolved inventory IDs survive source omissions** — Background and confirmed
+  media identities now retain their provenance across matching source syncs.
+  Changed or conflicting source identities invalidate stale enrichment, and
+  concurrent updates or malformed provider IDs cannot silently replace them.
+
 - **Automatic inventory profile refresh** — Synced inventory and observed
   metadata changes now refresh active-library profiles through the existing
   background worker, including libraries without policies. Unchanged syncs
