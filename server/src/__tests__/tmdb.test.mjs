@@ -224,6 +224,41 @@ describe('TMDBService', () => {
         });
     });
 
+    describe('findIdentityByExternalId', () => {
+        it.each([[123, 'tvdb_id'], ['tt1234', 'imdb_id']])('preserves the raw result for %j with bounded provider access', async (id, source) => {
+            tmdbService.apiKey = 'fixture-only';
+            const data = { tv_results: [{ id: 11 }, { id: 12 }], movie_results: [] };
+            mockHttpGet.mockResolvedValueOnce({ data });
+            expect(await tmdbService.findIdentityByExternalId(id, source)).toBe(data);
+            expect(mockHttpGet).toHaveBeenCalledWith(`https://api.themoviedb.org/3/find/${id}`, {
+                params: { api_key: 'fixture-only', external_source: source }, timeout: 10000,
+            });
+            expect(rateLimiters.tmdb.execute).toHaveBeenCalledTimes(1);
+        });
+
+        it.each([['../123', 'tvdb_id'], ['tt1/../../config', 'imdb_id'], ['tt1', 'untrusted'], [0, 'tvdb_id']])(
+            'rejects invalid identifiers %j before credentials or network access', async (id, source) => {
+                expect(await tmdbService.findIdentityByExternalId(id, source)).toBeNull();
+                expect(db.query).not.toHaveBeenCalled();
+                expect(mockHttpGet).not.toHaveBeenCalled();
+                expect(rateLimiters.tmdb.execute).not.toHaveBeenCalled();
+            });
+
+        it('preserves outages instead of manufacturing an empty result', async () => {
+            tmdbService.apiKey = 'fixture-only';
+            const failure = new Error('private upstream diagnostic');
+            mockHttpGet.mockRejectedValueOnce(failure);
+            await expect(tmdbService.findIdentityByExternalId('tt1234', 'imdb_id')).rejects.toBe(failure);
+            expect(metadataProviderIntegrityService.warnProviderRuntimeFailure).not.toHaveBeenCalled();
+        });
+
+        it('does not present missing credentials as a successful no-match lookup', async () => {
+            jest.spyOn(tmdbService, 'getApiKey').mockResolvedValueOnce(null);
+            await expect(tmdbService.findIdentityByExternalId('tt1234', 'imdb_id')).rejects.toThrow('TMDB API key not configured');
+            expect(mockHttpGet).not.toHaveBeenCalled();
+        });
+    });
+
     describe('getExternalIds', () => {
         it('should return empty object and emit a deduped warning on API error', async () => {
             db.query.mockResolvedValueOnce({

@@ -19,7 +19,7 @@ import { httpGet } from '../utils/httpClient.mjs';
 import { ServiceUnavailableError } from '../utils/appError.mjs';
 import * as db from '../config/database.mjs';
 import { rateLimiters } from '../utils/rateLimiter.mjs';
-import { searchTmdbIdentityCandidates } from './tmdbIdentitySearch.mjs';
+import { findTmdbIdentityByExternalId, searchTmdbIdentityCandidates } from './tmdbIdentitySearch.mjs';
 import {
     classifyHealthError,
     mapSearchResults,
@@ -141,6 +141,14 @@ class TMDBService {
       });
       return { movie_results: [], tv_results: [] };
     }
+  }
+
+  async findIdentityByExternalId(externalId, source) {
+    return findTmdbIdentityByExternalId(externalId, source, {
+      baseUrl: this.baseUrl, httpGet,
+      getApiKey: () => this.getApiKey(),
+      executeRateLimited: (fn) => this.executeRateLimited(fn),
+    });
   }
 
   async getMovieDetails(tmdbId) {

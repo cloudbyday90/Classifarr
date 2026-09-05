@@ -22,7 +22,7 @@ import { QueueTmdbResolutionService } from '../services/queueTmdbResolutionServi
 
 import { createMockLogger } from './helpers/mockFactory.mjs';
 const makeTmdbService = () => ({
-  findByExternalId: jest.fn(),
+  findIdentityByExternalId: jest.fn(),
   searchIdentityCandidates: jest.fn(),
   search: jest.fn()
 });
@@ -40,7 +40,7 @@ describe('typed provider boundary', () => {
       expect(await svc.resolveFromImdb(payload, {})).toBeNull();
       expect(await svc.resolveFromTitle(payload)).toBeNull();
       expect(await svc.resolveAndBackfill(payload, {}, 42)).toBeNull();
-      expect(tmdbService.findByExternalId).not.toHaveBeenCalled();
+      expect(tmdbService.findIdentityByExternalId).not.toHaveBeenCalled();
       expect(tmdbService.search).not.toHaveBeenCalled();
       expect(tmdbService.searchIdentityCandidates).not.toHaveBeenCalled();
       expect(queryWithTimeout).not.toHaveBeenCalled();
@@ -48,18 +48,18 @@ describe('typed provider boundary', () => {
 
   test.each([['tv', 222], ['movie', 111]])('IMDb selects only the %s bucket even when both exist', async (mediaType, expected) => {
     const tmdbService = makeTmdbService();
-    tmdbService.findByExternalId.mockResolvedValue({ movie_results: [{ id: 111 }], tv_results: [{ id: 222 }] });
+    tmdbService.findIdentityByExternalId.mockResolvedValue({ movie_results: [{ id: 111 }], tv_results: [{ id: 222 }] });
     const svc = new QueueTmdbResolutionService({ logger: createMockLogger(), tmdbService });
     expect(await svc.resolveFromImdb({ imdb_id: 'tt1234', media_type: mediaType }, {})).toBe(expected);
   });
 
   test('a movie never consumes TVDB TV results or falls back to an IMDb TV bucket', async () => {
     const tmdbService = makeTmdbService();
-    tmdbService.findByExternalId.mockResolvedValue({ tv_results: [{ id: 222 }] });
+    tmdbService.findIdentityByExternalId.mockResolvedValue({ tv_results: [{ id: 222 }] });
     const svc = new QueueTmdbResolutionService({ logger: createMockLogger(), tmdbService });
     const payload = { media_type: 'movie', tvdb_id: 123, imdb_id: 'tt1234' };
     expect(await svc.resolveFromTvdb(payload)).toBeNull();
-    expect(tmdbService.findByExternalId).not.toHaveBeenCalled();
+    expect(tmdbService.findIdentityByExternalId).not.toHaveBeenCalled();
     expect(await svc.resolveFromImdb(payload, {})).toBeNull();
   });
 
@@ -117,21 +117,21 @@ describe('resolveFromTvdb', () => {
 
   test('returns tmdb_id from tv_results', async () => {
     const tmdbService = makeTmdbService();
-    tmdbService.findByExternalId.mockResolvedValueOnce({ tv_results: [{ id: 5555 }] });
+    tmdbService.findIdentityByExternalId.mockResolvedValueOnce({ tv_results: [{ id: 5555 }] });
     const svc = new QueueTmdbResolutionService({ logger: createMockLogger(), tmdbService });
     expect(await svc.resolveFromTvdb({ tvdb_id: 123, title: 'Show', media_type: 'tv' })).toBe(5555);
   });
 
   test('returns null when tv_results empty', async () => {
     const tmdbService = makeTmdbService();
-    tmdbService.findByExternalId.mockResolvedValueOnce({ tv_results: [] });
+    tmdbService.findIdentityByExternalId.mockResolvedValueOnce({ tv_results: [] });
     const svc = new QueueTmdbResolutionService({ logger: createMockLogger(), tmdbService });
     expect(await svc.resolveFromTvdb({ tvdb_id: 99, media_type: 'tv' })).toBeNull();
   });
 
   test('returns null on lookup error', async () => {
     const tmdbService = makeTmdbService();
-    tmdbService.findByExternalId.mockRejectedValueOnce(new Error('API down'));
+    tmdbService.findIdentityByExternalId.mockRejectedValueOnce(new Error('API down'));
     const svc = new QueueTmdbResolutionService({ logger: createMockLogger(), tmdbService });
     expect(await svc.resolveFromTvdb({ tvdb_id: 99, media_type: 'tv' })).toBeNull();
   });
@@ -147,28 +147,28 @@ describe('resolveFromImdb', () => {
     expect(await svc.resolveFromImdb({ title: 'X', media_type: 'movie' }, {})).toBeNull();
   });
 
-  test('prefers imdb_id from enrichmentData.omdb.data', async () => {
+  test('uses a matching-type IMDb ID from OMDb when no payload IMDb ID exists', async () => {
     const tmdbService = makeTmdbService();
-    tmdbService.findByExternalId.mockResolvedValueOnce({ movie_results: [{ id: 1234 }] });
+    tmdbService.findIdentityByExternalId.mockResolvedValueOnce({ movie_results: [{ id: 1234 }] });
     const svc = new QueueTmdbResolutionService({ logger: createMockLogger(), tmdbService });
     const result = await svc.resolveFromImdb(
       { title: 'X', media_type: 'movie' },
       { omdb: { data: { imdbId: 'tt9999', type: 'movie' } } }
     );
     expect(result).toBe(1234);
-    expect(tmdbService.findByExternalId).toHaveBeenCalledWith('tt9999', 'imdb_id');
+    expect(tmdbService.findIdentityByExternalId).toHaveBeenCalledWith('tt9999', 'imdb_id');
   });
 
   test('selects tv_results for a TV identity', async () => {
     const tmdbService = makeTmdbService();
-    tmdbService.findByExternalId.mockResolvedValueOnce({ movie_results: [], tv_results: [{ id: 7777 }] });
+    tmdbService.findIdentityByExternalId.mockResolvedValueOnce({ movie_results: [], tv_results: [{ id: 7777 }] });
     const svc = new QueueTmdbResolutionService({ logger: createMockLogger(), tmdbService });
     expect(await svc.resolveFromImdb({ imdb_id: 'tt1234', media_type: 'tv' }, {})).toBe(7777);
   });
 
   test('returns null on lookup error', async () => {
     const tmdbService = makeTmdbService();
-    tmdbService.findByExternalId.mockRejectedValueOnce(new Error('fail'));
+    tmdbService.findIdentityByExternalId.mockRejectedValueOnce(new Error('fail'));
     const svc = new QueueTmdbResolutionService({ logger: createMockLogger(), tmdbService });
     expect(await svc.resolveFromImdb({ imdb_id: 'tt1234', media_type: 'tv' }, {})).toBeNull();
   });
@@ -287,24 +287,21 @@ describe('resolveAndBackfill', () => {
     expect(spy).toHaveBeenCalledWith(1, 777, 'movie');
   });
 
-  test('tries tvdb then imdb then title in cascade', async () => {
-    const svc = new QueueTmdbResolutionService({ logger: createMockLogger(), tmdbService: makeTmdbService() });
-    jest.spyOn(svc, 'resolveFromTvdb').mockResolvedValueOnce(null);
-    jest.spyOn(svc, 'resolveFromImdb').mockResolvedValueOnce(null);
+  test('allows title search after both valid external lookups find no match', async () => {
+    const tmdbService = makeTmdbService();
+    tmdbService.findIdentityByExternalId.mockResolvedValue({ tv_results: [] });
+    const svc = new QueueTmdbResolutionService({ logger: createMockLogger(), tmdbService });
     jest.spyOn(svc, 'resolveFromTitle').mockResolvedValueOnce(555);
     jest.spyOn(svc, 'backfillTmdbId').mockResolvedValueOnce();
 
-    const result = await svc.resolveAndBackfill({ itemId: 5, title: 'Movie', media_type: 'movie' }, {});
+    const result = await svc.resolveAndBackfill({ itemId: 5, title: 'Show', media_type: 'tv', tvdb_id: 123, imdb_id: 'tt456' }, {});
     expect(result).toBe(555);
-    expect(svc.resolveFromTvdb).toHaveBeenCalled();
-    expect(svc.resolveFromImdb).toHaveBeenCalled();
+    expect(tmdbService.findIdentityByExternalId.mock.calls).toEqual([[123, 'tvdb_id'], ['tt456', 'imdb_id']]);
     expect(svc.resolveFromTitle).toHaveBeenCalled();
   });
 
   test('returns null without backfill when no tmdbId resolved', async () => {
     const svc = new QueueTmdbResolutionService({ logger: createMockLogger(), tmdbService: makeTmdbService() });
-    jest.spyOn(svc, 'resolveFromTvdb').mockResolvedValueOnce(null);
-    jest.spyOn(svc, 'resolveFromImdb').mockResolvedValueOnce(null);
     jest.spyOn(svc, 'resolveFromTitle').mockResolvedValueOnce(null);
     const backfill = jest.spyOn(svc, 'backfillTmdbId');
 

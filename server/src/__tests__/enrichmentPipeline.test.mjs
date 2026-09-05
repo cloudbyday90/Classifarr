@@ -39,7 +39,7 @@ const mockTavilyService = {
 };
 
 const mockTmdbService = {
-    findByExternalId: jest.fn(),
+    findIdentityByExternalId: jest.fn(),
     searchIdentityCandidates: jest.fn(),
     search: jest.fn()
 };
@@ -118,7 +118,7 @@ describe('Enrichment Pipeline Integration', () => {
         omdbService.getByTitle.mockImplementation(() => Promise.resolve(null));
         tavilyService.getContentAdvisory.mockImplementation(() => Promise.resolve(null));
         tavilyService.search.mockImplementation(() => Promise.resolve(null));
-        tmdbService.findByExternalId.mockImplementation(() => Promise.resolve({ movie_results: [], tv_results: [] }));
+        tmdbService.findIdentityByExternalId.mockImplementation(() => Promise.resolve({ movie_results: [], tv_results: [] }));
         tmdbService.search.mockImplementation(() => Promise.resolve([]));
         tmdbService.searchIdentityCandidates.mockResolvedValue(titlePage([]));
     });
@@ -151,7 +151,7 @@ describe('Enrichment Pipeline Integration', () => {
                 max_attempts: 3
             };
 
-            tmdbService.findByExternalId.mockResolvedValue({
+            tmdbService.findIdentityByExternalId.mockResolvedValue({
                 tv_results: [{ id: 1396, name: 'Breaking Bad' }],
                 movie_results: []
             });
@@ -180,7 +180,7 @@ describe('Enrichment Pipeline Integration', () => {
 
             await runTaskWithMatchingEnrichmentSource(queueService, db, task);
 
-            expect(tmdbService.findByExternalId).toHaveBeenCalledWith(81189, 'tvdb_id');
+            expect(tmdbService.findIdentityByExternalId).toHaveBeenCalledWith(81189, 'tvdb_id');
         });
     });
 
@@ -188,7 +188,7 @@ describe('Enrichment Pipeline Integration', () => {
         it('should convert IMDB ID to TMDB ID from OMDb response', async () => {
             db.query.mockReset();
             omdbService.getByTitle.mockReset();
-            tmdbService.findByExternalId.mockReset();
+            tmdbService.findIdentityByExternalId.mockReset();
 
             const taskPayload = {
                 title: 'The Shawshank Redemption',
@@ -227,14 +227,14 @@ describe('Enrichment Pipeline Integration', () => {
                 genre: 'Drama'
             });
 
-            tmdbService.findByExternalId.mockResolvedValue({
+            tmdbService.findIdentityByExternalId.mockResolvedValue({
                 movie_results: [{ id: 278, title: 'The Shawshank Redemption' }],
                 tv_results: []
             });
 
             await runTaskWithMatchingEnrichmentSource(queueService, db, task);
 
-            expect(tmdbService.findByExternalId).toHaveBeenCalledWith('tt0111161', 'imdb_id');
+            expect(tmdbService.findIdentityByExternalId).toHaveBeenCalledWith('tt0111161', 'imdb_id');
         });
     });
 
@@ -618,7 +618,7 @@ describe('Enrichment Pipeline Integration', () => {
                 max_attempts: 3
             };
 
-            tmdbService.findByExternalId.mockResolvedValue({
+            tmdbService.findIdentityByExternalId.mockResolvedValue({
                 tv_results: [{ id: 1399, name: 'Game of Thrones' }],
                 movie_results: []
             });

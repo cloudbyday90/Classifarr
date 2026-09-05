@@ -38,11 +38,13 @@ const VALID_METHODS = [
   'policy_candidate_adjudication'
 ];
 
-// This service describes PostgreSQL index methods (for example, `gin`), not
-// classification-history methods. It intentionally shares the generic
-// `method` property name and is therefore outside this persistence contract.
+// These services describe index methods or identity-resolution receipts, not
+// classification-history methods. Their generic `method` property is outside
+// this persistence contract. The external-ID SQL fixture independently verifies
+// that resolution still writes only `source_library` to classification history.
 const NON_CLASSIFICATION_METHOD_SERVICE_FILES = new Set([
   'policyNativeSchemaContract.mjs',
+  'queueTmdbExternalResolution.mjs',
 ]);
 
 function getAllJavaScriptFiles(dir) {

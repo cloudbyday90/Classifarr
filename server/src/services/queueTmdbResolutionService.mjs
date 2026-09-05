@@ -8,7 +8,7 @@
 
 import { canonicalMediaType, positiveDatabaseInteger } from './mediaIdentityValues.mjs';
 import { captureQueueEnrichmentPayload } from './queueEnrichmentPayload.mjs';
-import { omdbImdbId, typedTmdbResults } from './queueEnrichmentResults.mjs';
+import { resolveQueueTmdbExternalIdentity } from './queueTmdbExternalResolution.mjs';
 import { buildTmdbTitleRequest, decideTmdbTitleMatch } from './tmdbTitleMatch.mjs';
 
 function recordResolution(data, method, reason, tmdbId) {
@@ -26,56 +26,16 @@ export class QueueTmdbResolutionService {
 
     async resolveFromTvdb(payload) {
         payload = captureQueueEnrichmentPayload(payload);
-        if (!payload || payload.media.media_type !== 'tv' || !positiveDatabaseInteger(payload.tvdb_id)) {
-            return null;
-        }
-
-        try {
-            const tvdbLookup = await this.tmdbService.findByExternalId(payload.tvdb_id, 'tvdb_id');
-            const tvResults = typedTmdbResults(tvdbLookup?.tv_results, 'tv');
-            if (tvResults.length > 0) {
-                const tmdbId = positiveDatabaseInteger(tvResults[0].id);
-                this.logger.info('TVDB→TMDB conversion successful', {
-                    tvdbId: payload.tvdb_id,
-                    tmdbId,
-                    title: payload.title
-                });
-                return tmdbId;
-            }
-        } catch (error) {
-            this.logger.debug('TVDB→TMDB lookup failed', { error: error.message });
-        }
-
-        return null;
+        if (!payload || payload.media.media_type !== 'tv') return null;
+        const result = await resolveQueueTmdbExternalIdentity({ ...payload, imdb_id: null }, {}, this.tmdbService);
+        return result.tmdbId;
     }
 
     async resolveFromImdb(payload, enrichmentData) {
         payload = captureQueueEnrichmentPayload(payload);
         if (!payload) return null;
-        const mediaType = payload.media.media_type;
-        const imdbId = omdbImdbId(enrichmentData?.omdb?.data, mediaType) || payload.imdb_id;
-        if (typeof imdbId !== 'string' || !/^tt[0-9]{1,12}$/u.test(imdbId)) {
-            return null;
-        }
-
-        try {
-            const imdbLookup = await this.tmdbService.findByExternalId(imdbId, 'imdb_id');
-            const results = typedTmdbResults(mediaType === 'movie'
-                ? imdbLookup?.movie_results : imdbLookup?.tv_results, mediaType);
-            if (results.length > 0) {
-                const tmdbId = positiveDatabaseInteger(results[0].id);
-                this.logger.info('IMDB→TMDB conversion successful', {
-                    imdbId,
-                    tmdbId,
-                    title: payload.title
-                });
-                return tmdbId;
-            }
-        } catch (error) {
-            this.logger.debug('IMDB→TMDB lookup failed', { error: error.message });
-        }
-
-        return null;
+        const result = await resolveQueueTmdbExternalIdentity({ ...payload, tvdb_id: null }, enrichmentData, this.tmdbService);
+        return result.tmdbId;
     }
 
     async resolveFromTitle(payload, enrichmentData) {
@@ -126,13 +86,13 @@ export class QueueTmdbResolutionService {
         if (tmdbId) recordResolution(enrichmentData, 'existing_id', 'identifier_available', tmdbId);
 
         if (!tmdbId) {
-            tmdbId = await this.resolveFromTvdb(payload);
-            if (tmdbId) recordResolution(enrichmentData, 'tvdb', 'external_id_match', tmdbId);
-        }
-
-        if (!tmdbId) {
-            tmdbId = await this.resolveFromImdb(payload, enrichmentData);
-            if (tmdbId) recordResolution(enrichmentData, 'imdb', 'external_id_match', tmdbId);
+            const decision = await resolveQueueTmdbExternalIdentity(payload, enrichmentData, this.tmdbService);
+            if (decision.status !== 'not_found') {
+                recordResolution(enrichmentData, decision.method, decision.reason, decision.tmdbId);
+                this.logger.debug('TMDB external identity evaluated', { reason: decision.reason });
+            }
+            if (decision.status === 'review_required') return null;
+            tmdbId = decision.tmdbId;
         }
 
         if (!tmdbId) {

@@ -152,6 +152,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **External-ID ambiguity requires review** — Queue enrichment now requires
+  unique typed TVDB/IMDb results and agreement between supplied identifiers.
+  Conflicting, malformed, duplicate, or unavailable evidence retains an unknown
+  TMDb ID and a review reason; title search cannot override that uncertainty.
+
 - **Conservative TMDb title resolution** — Queue enrichment now requires a
   unique exact title/year match from a complete bounded response before
   assigning an ID. Weak, ambiguous, incomplete, or unavailable matches retain

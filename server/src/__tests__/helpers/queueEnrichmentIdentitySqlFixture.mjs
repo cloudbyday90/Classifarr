@@ -52,7 +52,7 @@ export async function verifyQueueEnrichmentIdentitySql(client) {
     let drift = false;
     let findCalls = 0;
     const tmdb = new QueueTmdbResolutionService({ logger, queryWithTimeout: query, tmdbService: {
-      findByExternalId: async (id, source) => {
+      findIdentityByExternalId: async (id, source) => {
         assert.equal(id, 'tt1234'); assert.equal(source, 'imdb_id');
         findCalls++;
         if (drift) await query("UPDATE media_server_items SET media_type = 'movie' WHERE id = 4");

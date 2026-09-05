@@ -119,6 +119,11 @@ security certification or a measured claim about historical error rates.
 
 ## Next recommended item
 
+The external-ID follow-up below is now implemented. See its separate
+[design](tmdb-external-id-abstention-design.md) and
+[outcome](tmdb-external-id-abstention-outcome.md) for acceptance rules,
+fallback boundaries, validation, and the next product task.
+
 Harden external-ID resolution against ambiguous same-type results. The TVDB and
 IMDb paths still take the first valid result in the chosen type bucket. Apply
 a separate explicit uniqueness contract with tests for distinct IDs, duplicates,
