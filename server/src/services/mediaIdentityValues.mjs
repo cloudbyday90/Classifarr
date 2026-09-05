@@ -16,3 +16,10 @@ export function canonicalMediaType(value) {
   const normalized = typeof value === 'string' ? value.trim().toLowerCase() : null;
   return ['movie', 'tv'].includes(normalized) ? normalized : null;
 }
+
+/** All explicit declarations must agree; missing or invalid type is not a movie. */
+export function payloadMediaType(payload) {
+  const types = [payload?.media?.media_type, payload?.media_type]
+    .filter((value) => value !== undefined).map(canonicalMediaType);
+  return types.length > 0 && types.every((type) => type && type === types[0]) ? types[0] : null;
+}

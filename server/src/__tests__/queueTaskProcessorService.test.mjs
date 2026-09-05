@@ -82,7 +82,7 @@ function makeSvc(overrides = {}) {
     tmdbService: {},
     completeTask: jest.fn().mockResolvedValue(),
     failTask: jest.fn().mockResolvedValue(),
-    queryWithTimeout: jest.fn().mockResolvedValue({}),
+    queryWithTimeout: jest.fn().mockResolvedValue({ rowCount: 1 }),
     queueOmdbEnrichmentService,
     queueWebSearchEnrichmentService,
     queueTmdbResolutionService,
@@ -300,6 +300,7 @@ describe('processMetadataEnrichmentTask', () => {
       id: 'task1',
       payload: {
         title: 'Movie',
+        media_type: 'movie',
         itemId: null,
         source_library_id: 1,
         source_library_name: 'Movies',
@@ -316,12 +317,12 @@ describe('processMetadataEnrichmentTask', () => {
     metadataEnrichment.hasWebSearchEnrichmentMetadata.mockReturnValue(false);
     const svc = makeSvc();
     svc.db.query
-      .mockResolvedValueOnce({ rows: [{ tmdb_id: 999, library_id: 2, library_name: 'Movies', metadata: null }] })
+      .mockResolvedValueOnce({ rows: [{ tmdb_id: 999, media_type: 'movie', library_id: 2, library_name: 'Movies', metadata: null }] })
       .mockResolvedValue({ rows: [] });
 
     await svc.processMetadataEnrichmentTask({
       id: 't1',
-      payload: { title: 'X', itemId: 42, source_library_id: null, source_library_name: null }
+      payload: { title: 'X', media_type: 'movie', itemId: 42, source_library_id: null, source_library_name: null }
     });
     expect(svc.queueTmdbResolutionService.resolveAndBackfill).toHaveBeenCalled();
   });
@@ -329,9 +330,10 @@ describe('processMetadataEnrichmentTask', () => {
   test('persists classification history when itemId provided', async () => {
     metadataEnrichment.hasWebSearchEnrichmentMetadata.mockReturnValue(false);
     const svc = makeSvc();
+    svc.db.query.mockResolvedValueOnce({ rows: [{ tmdb_id: 10, media_type: 'movie', library_id: 1, library_name: 'Movies' }] });
     await svc.processMetadataEnrichmentTask({
       id: 't1',
-      payload: { title: 'X', itemId: 5, source_library_id: 1, source_library_name: 'Movies', tmdb_id: 10 }
+      payload: { title: 'X', media_type: 'movie', itemId: 5, source_library_id: 1, source_library_name: 'Movies', tmdb_id: 10 }
     });
     expect(svc.queueClassificationHistoryService.persist).toHaveBeenCalled();
   });

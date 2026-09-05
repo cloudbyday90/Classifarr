@@ -7,6 +7,7 @@
  */
 
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
+import { canonicalMediaType } from './mediaIdentityValues.mjs';
 
 export const REFILL_QUEUE_BATCH_LIMIT = 5000;
 
@@ -30,7 +31,7 @@ export class QueueRefillService {
         const result = await this.db.query(
             `SELECT msi.id, msi.title, msi.metadata, msi.genres, msi.tags, msi.content_rating, 
                     msi.tmdb_id, msi.tvdb_id, msi.imdb_id, msi.year,
-                    msi.library_id, l.name as library_name, l.media_type
+                    msi.library_id, l.name as library_name, msi.media_type
              FROM media_server_items msi
              LEFT JOIN libraries l ON msi.library_id = l.id
              WHERE (
@@ -43,6 +44,7 @@ export class QueueRefillService {
                      )
                  )
              )
+             AND msi.media_type IN ('movie', 'tv')
              AND NOT EXISTS (
                  SELECT 1 FROM task_queue tq 
                  WHERE tq.task_type = 'metadata_enrichment' 
@@ -56,6 +58,8 @@ export class QueueRefillService {
     }
 
     buildMetadataEnrichmentPayload(item) {
+        const mediaType = canonicalMediaType(item.media_type);
+        if (!mediaType) return null;
         const metadata = item.metadata && typeof item.metadata === 'object' ? item.metadata : {};
 
         return {
@@ -73,7 +77,7 @@ export class QueueRefillService {
             itemId: item.id,
             source_library_id: item.library_id,
             source_library_name: item.library_name,
-            media: { media_type: item.media_type || 'movie' }
+            media: { media_type: mediaType }
         };
     }
 
@@ -90,7 +94,9 @@ export class QueueRefillService {
             let queuedCount = 0;
 
             for (const item of candidates) {
-                await this.enqueueTask('metadata_enrichment', this.buildMetadataEnrichmentPayload(item), {
+                const payload = this.buildMetadataEnrichmentPayload(item);
+                if (!payload) continue;
+                await this.enqueueTask('metadata_enrichment', payload, {
                     priority: 5,
                     source: 'gap_analysis',
                 });

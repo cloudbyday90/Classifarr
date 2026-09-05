@@ -102,21 +102,29 @@ describe('buildContentAnalysisPatch', () => {
 // ---------------------------------------------------------------------------
 
 describe('maybeBackfillRating', () => {
+  test('does not report success when source type changed before the rating update', async () => {
+    const svc = makeSvc();
+    svc.db.query.mockResolvedValue({ rows: [{ content_rating: 'PG' }] });
+    svc.queryWithTimeout.mockResolvedValue({ rowCount: 0 });
+    await svc.maybeBackfillRating(1, { type: 'series', rated: 'TV-MA' }, 'tv');
+    expect(svc.queryWithTimeout).toHaveBeenCalledWith(expect.stringContaining('media_type = $4'), [1, 'PG', 'TV-MA', 'tv']);
+    expect(svc.logger.info).not.toHaveBeenCalled();
+  });
   test('skips when no itemId', async () => {
     const svc = makeSvc();
-    await svc.maybeBackfillRating(null, { rated: 'PG' });
+    await svc.maybeBackfillRating(null, { rated: 'PG', type: 'movie' }, 'movie');
     expect(svc.db.query).not.toHaveBeenCalled();
   });
 
   test('skips when rated is N/A', async () => {
     const svc = makeSvc();
-    await svc.maybeBackfillRating(1, { rated: 'N/A' });
+    await svc.maybeBackfillRating(1, { rated: 'N/A', type: 'movie' }, 'movie');
     expect(svc.db.query).not.toHaveBeenCalled();
   });
 
   test('skips when rated is undefined', async () => {
     const svc = makeSvc();
-    await svc.maybeBackfillRating(1, {});
+    await svc.maybeBackfillRating(1, { type: 'movie' }, 'movie');
     expect(svc.db.query).not.toHaveBeenCalled();
   });
 
@@ -133,10 +141,10 @@ describe('maybeBackfillRating', () => {
       getRuntimeState: jest.fn().mockReturnValue({}),
       setRuntimeState: jest.fn()
     });
-    await svc.maybeBackfillRating(42, { rated: 'R' });
+    await svc.maybeBackfillRating(42, { rated: 'R', type: 'movie' }, 'movie');
     expect(queryWithTimeout).toHaveBeenCalledWith(
       expect.stringContaining('media_server_items'),
-      [42, 'PG', 'R']
+      [42, 'PG', 'R', 'movie']
     );
   });
 
@@ -144,7 +152,7 @@ describe('maybeBackfillRating', () => {
     const db = createMockDb();
     db.query.mockRejectedValueOnce(new Error('DB error'));
     const svc = makeSvc({ db });
-    await expect(svc.maybeBackfillRating(1, { rated: 'PG' })).resolves.toBeUndefined();
+    await expect(svc.maybeBackfillRating(1, { rated: 'PG', type: 'movie' }, 'movie')).resolves.toBeUndefined();
   });
 });
 
@@ -158,7 +166,7 @@ describe('enrich — guards', () => {
       getRuntimeState: jest.fn().mockReturnValue({ omdbLimitHit: true })
     });
     const data = { existing: true };
-    expect(await svc.enrich({ title: 'X' }, data)).toBe(data);
+    expect(await svc.enrich({ title: 'X', media_type: 'movie' }, data)).toBe(data);
   });
 
   test('returns enrichmentData unchanged when no active omdb config', async () => {
@@ -166,14 +174,14 @@ describe('enrich — guards', () => {
     db.query.mockResolvedValueOnce({ rows: [] });
     const svc = makeSvc({ db });
     const data = {};
-    expect(await svc.enrich({ title: 'X' }, data)).toBe(data);
+    expect(await svc.enrich({ title: 'X', media_type: 'movie' }, data)).toBe(data);
   });
 
   test('returns enrichmentData unchanged when config has no api_key', async () => {
     const db = createMockDb();
     db.query.mockResolvedValueOnce({ rows: [{ api_key: null }] });
     const svc = makeSvc({ db });
-    expect(await svc.enrich({ title: 'X' }, {})).toBeDefined();
+    expect(await svc.enrich({ title: 'X', media_type: 'movie' }, {})).toBeDefined();
   });
 
   test('returns enrichmentData unchanged when SSL blocked', async () => {
@@ -182,7 +190,7 @@ describe('enrich — guards', () => {
     const isOmdbSslBlocked = jest.fn().mockResolvedValueOnce(true);
     const svc = makeSvc({ db, isOmdbSslBlocked });
     const data = {};
-    expect(await svc.enrich({ title: 'X', itemId: 1 }, data)).toBe(data);
+    expect(await svc.enrich({ title: 'X', itemId: 1, media_type: 'movie' }, data)).toBe(data);
     expect(queueForRetry).toHaveBeenCalled();
   });
 });
@@ -192,13 +200,49 @@ describe('enrich — guards', () => {
 // ---------------------------------------------------------------------------
 
 describe('enrich — success', () => {
+  test.each([{}, { media_type: 'person' }, { media_type: 'tv', media: { media_type: 'movie' } }])(
+    'rejects invalid declaration before config, provider, or retry access: %j', async (declaration) => {
+      const svc = makeSvc();
+      const data = {};
+      expect(await svc.enrich({ title: 'Private', ...declaration }, data)).toBe(data);
+      expect(svc.db.query).not.toHaveBeenCalled();
+      expect(svc.omdbService.getByTitle).not.toHaveBeenCalled();
+      expect(queueForRetry).not.toHaveBeenCalled();
+      expect(svc.logger.warn).toHaveBeenCalledWith('OMDb enrichment skipped', { reason: 'invalid_media_identity' });
+    });
+
+  test.each([{}, { type: 'movie' }, { type: 'episode' }, { type: 'series', Type: 'movie' }])(
+    'rejects absent/conflicting provider type without accepting metadata or rating: %j', async (declaration) => {
+      const svc = makeSvc();
+      svc.db.query.mockResolvedValue({ rows: [{ api_key: 'fixture' }] });
+      svc.omdbService.getByTitle.mockResolvedValue({ rated: 'R', ...declaration });
+      const data = {};
+      expect(await svc.enrich({ title: 'Example', itemId: 1, media_type: 'tv' }, data)).toEqual({});
+      expect(svc.queryWithTimeout).not.toHaveBeenCalled();
+      expect(queueForRetry).not.toHaveBeenCalled();
+    });
+
+  test('captures top-level TV identity and item ID before provider waits', async () => {
+    const svc = makeSvc();
+    const payload = { title: 'Example', itemId: 1, media_type: ' TV ' };
+    svc.db.query.mockResolvedValue({ rows: [{ api_key: 'fixture' }] });
+    svc.omdbService.getByTitle.mockImplementation(async () => {
+      payload.itemId = 2; payload.media_type = 'movie';
+      return { type: 'series', rated: 'TV-PG', imdbId: 'tt1234' };
+    });
+    const rating = jest.spyOn(svc, 'maybeBackfillRating').mockResolvedValue();
+    const result = await svc.enrich(payload, {});
+    expect(svc.omdbService.getByTitle).toHaveBeenCalledWith('Example', undefined, 'tv', 'fixture');
+    expect(rating).toHaveBeenCalledWith(1, result.omdb.data, 'tv');
+  });
+
   test('populates enrichmentData.omdb and content_analysis on success', async () => {
     const db = createMockDb();
     db.query
       .mockResolvedValueOnce({ rows: [{ api_key: 'key123' }] })     // omdb_config
       .mockResolvedValueOnce({ rows: [{ content_rating: null }] }); // maybeBackfillRating SELECT
     const omdbService = makeOmdbService();
-    omdbService.getByTitle.mockResolvedValueOnce({ rated: 'G', genre: 'Family, Animation', imdbRating: '6.0' });
+    omdbService.getByTitle.mockResolvedValueOnce({ type: 'movie', rated: 'G', genre: 'Family, Animation', imdbRating: '6.0' });
     const queryWithTimeout = makeQueryWithTimeout();
     const svc = new QueueOmdbEnrichmentService({
       db,
@@ -227,7 +271,7 @@ describe('enrich — success', () => {
     const svc = makeSvc({ db, omdbService });
 
     const data = {};
-    const result = await svc.enrich({ title: 'Unknown', year: 2000, itemId: 10 }, data);
+    const result = await svc.enrich({ title: 'Unknown', year: 2000, itemId: 10, media_type: 'movie' }, data);
     expect(result).toBe(data);
     expect(queueForRetry).toHaveBeenCalledWith(10, 'web_search', expect.any(String), expect.any(Number));
   });

@@ -152,6 +152,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Source identity through queue enrichment** — Refill now uses the item's
+  movie/TV type, and provider lookups reject missing or conflicting types.
+  IMDb resolution selects the matching media category and supports normalized
+  OMDb IDs. Conditional ID/rating/metadata writes prevent stale enrichment from
+  crossing types; skipped work no longer reports successful enrichment.
+
 - **Typed source-library history** — Duplicate checks and inserts now share an
   explicit movie/TV identity, including the no-TMDb title fallback. Missing or
   conflicting media types and malformed IDs skip history creation instead of

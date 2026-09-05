@@ -7,6 +7,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { runTaskWithMatchingEnrichmentSource } from './helpers/queueEnrichmentSourceFixture.mjs';
 import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const DB_ADVISORY_LOCKS = {
@@ -184,6 +185,7 @@ describe('QueueService', () => {
                 task_type: 'metadata_enrichment',
                 payload: JSON.stringify({
                     title: 'Test Movie',
+                    media: { media_type: 'movie' },
                     year: 2024,
                     itemId: 55,
                     source_library_id: 1,
@@ -201,7 +203,7 @@ describe('QueueService', () => {
                 return Promise.resolve({ rows: [] });
             });
 
-            await queueService.processTask(task);
+            await runTaskWithMatchingEnrichmentSource(queueService, db, task);
 
             expect(db.query).toHaveBeenCalledWith(
                 expect.stringMatching(/UPDATE media_server_items/),
@@ -240,7 +242,7 @@ describe('QueueService', () => {
                 return Promise.resolve({ rows: [], rowCount: 1 });
             });
 
-            await queueService.processTask(task);
+            await runTaskWithMatchingEnrichmentSource(queueService, db, task);
 
             expect(capturedMetadata).not.toBeNull();
             expect(capturedMetadata.source_library_id).toBe(3);
@@ -291,7 +293,7 @@ describe('QueueService', () => {
                 return Promise.resolve({ rows: [], rowCount: 1 });
             });
 
-            await queueService.processTask(task);
+            await runTaskWithMatchingEnrichmentSource(queueService, db, task);
 
             expect(completedResult).toBeTruthy();
             expect(completedResult.result.webSearchEnriched).toBe(true);
@@ -340,7 +342,7 @@ describe('QueueService', () => {
                 return Promise.resolve({ rows: [], rowCount: 1 });
             });
 
-            await queueService.processTask(task);
+            await runTaskWithMatchingEnrichmentSource(queueService, db, task);
 
             expect(completedResult).toBeTruthy();
             expect(completedResult.result.sourceLibrary).toBe('Recovered Movies');
@@ -399,7 +401,7 @@ describe('QueueService', () => {
                 return Promise.resolve({ rows: [], rowCount: 1 });
             });
 
-            await queueService.processTask(task);
+            await runTaskWithMatchingEnrichmentSource(queueService, db, task);
 
             expect(capturedMetadata).toBeTruthy();
             expect(capturedMetadata.source_library_name).toBe('Recovered Queue Library');
@@ -414,6 +416,7 @@ describe('QueueService', () => {
                 task_type: 'metadata_enrichment',
                 payload: JSON.stringify({
                     title: 'The Office (AU)',
+                    media: { media_type: 'tv' },
                     year: 2023,
                     itemId: 77,
                     source_library_id: 1,
@@ -441,7 +444,7 @@ describe('QueueService', () => {
                 return Promise.resolve({ rows: [], rowCount: 0 });
             });
 
-            await queueService.processTask(task);
+            await runTaskWithMatchingEnrichmentSource(queueService, db, task);
 
             expect(enrichmentRetryService.queueForRetry).toHaveBeenCalledWith(
                 77,
@@ -468,6 +471,7 @@ describe('QueueService', () => {
                 task_type: 'metadata_enrichment',
                 payload: JSON.stringify({
                     title: 'Kill Bill the Whole Bloody Affair',
+                    media: { media_type: 'movie' },
                     year: 2006,
                     itemId: 88,
                     source_library_id: 1,
@@ -498,8 +502,8 @@ describe('QueueService', () => {
                 return Promise.resolve({ rows: [], rowCount: 1 });
             });
 
-            await queueService.processTask(task);
-            await queueService.processTask(task);
+            await runTaskWithMatchingEnrichmentSource(queueService, db, task);
+            await runTaskWithMatchingEnrichmentSource(queueService, db, task);
 
             const sslWarnCalls = queueService.logger.warn.mock.calls.filter(
                 ([message]) => message === 'OMDb SSL certificate issue; queuing OMDb retry and pausing OMDb enrichment until recovery probe succeeds',
@@ -531,6 +535,7 @@ describe('QueueService', () => {
                 task_type: 'metadata_enrichment',
                 payload: JSON.stringify({
                     title: 'Recovered Movie',
+                    media: { media_type: 'movie' },
                     year: 2025,
                     itemId: 99,
                     source_library_id: 1,
@@ -565,7 +570,7 @@ describe('QueueService', () => {
                 return Promise.resolve({ rows: [], rowCount: 1 });
             });
 
-            await queueService.processTask(task);
+            await runTaskWithMatchingEnrichmentSource(queueService, db, task);
 
             expect(omdbService.checkHealth).toHaveBeenCalled();
             expect(omdbService.getByTitle).toHaveBeenCalledTimes(1);
@@ -670,7 +675,7 @@ describe('QueueService', () => {
             expect(sql).toMatch(/msi\.metadata->'content_analysis'->>'source' IS DISTINCT FROM 'metadata_enrichment'/);
         });
 
-        it('should tolerate orphaned library rows by defaulting media_type and preserving null library name', async () => {
+        it('should skip refill items without an authoritative media type', async () => {
             db.query.mockResolvedValueOnce({
                 rows: [{
                     id: 44,
@@ -693,18 +698,8 @@ describe('QueueService', () => {
 
             const result = await queueService.refillQueue();
 
-            expect(result).toEqual({ queued: 1 });
-            expect(queueService.enqueue).toHaveBeenCalledWith(
-                'metadata_enrichment',
-                expect.objectContaining({
-                    source_library_id: 999,
-                    source_library_name: null,
-                    media: { media_type: 'movie' },
-                }),
-                expect.objectContaining({
-                    source: 'gap_analysis',
-                }),
-            );
+            expect(result).toEqual({ queued: 0 });
+            expect(queueService.enqueue).not.toHaveBeenCalled();
         });
     });
 

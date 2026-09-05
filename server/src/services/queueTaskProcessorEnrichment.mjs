@@ -1,4 +1,5 @@
 import { parsePayload } from '../utils/queueHelpers.mjs';
+import { prepareQueueEnrichmentPayload } from './queueEnrichmentPayload.mjs';
 
 export async function resolveSourceLibraryName(sourceLibraryId, sourceLibraryName, taskContext, { db, logger }) {
     if (sourceLibraryName || !sourceLibraryId) {
@@ -31,51 +32,6 @@ export async function resolveSourceLibraryName(sourceLibraryId, sourceLibraryNam
     }
 }
 
-async function selfHealMissingMetadata(enrichPayload, enrichTmdbId, enrichSourceLibraryId, enrichSourceLibraryName, { db, logger }) {
-    if (enrichPayload.itemId && (!enrichTmdbId || !enrichSourceLibraryId)) {
-        try {
-            const itemResult = await db.query(
-                `SELECT msi.tmdb_id, msi.library_id, msi.metadata, l.name as library_name 
-                 FROM media_server_items msi 
-                 LEFT JOIN libraries l ON msi.library_id = l.id 
-                 WHERE msi.id = $1`,
-                [enrichPayload.itemId]
-            );
-            if (itemResult.rows.length > 0) {
-                const row = itemResult.rows[0];
-                if (!enrichTmdbId && row.tmdb_id) {
-                    enrichTmdbId = row.tmdb_id;
-                }
-                if (!enrichSourceLibraryId && row.library_id) {
-                    enrichSourceLibraryId = row.library_id;
-                }
-                if (!enrichSourceLibraryName && row.library_name) {
-                    enrichSourceLibraryName = row.library_name;
-                }
-                if (!enrichPayload.posterPath && row.metadata) {
-                    const itemMetadata = parsePayload(row.metadata);
-                    if (itemMetadata?.posterPath) {
-                        enrichPayload.posterPath = itemMetadata.posterPath;
-                    }
-                    if (!enrichPayload.poster_path && itemMetadata?.poster_path) {
-                        enrichPayload.poster_path = itemMetadata.poster_path;
-                    }
-                }
-                logger.info('Self-heal: Retrieved missing metadata from database', {
-                    itemId: enrichPayload.itemId,
-                    tmdbId: enrichTmdbId,
-                    libraryId: enrichSourceLibraryId,
-                    libraryName: enrichSourceLibraryName
-                });
-            }
-        } catch (lookupError) {
-            logger.debug('Self-heal lookup failed', { error: lookupError.message });
-        }
-    }
-
-    return { enrichTmdbId, enrichSourceLibraryId, enrichSourceLibraryName };
-}
-
 export async function processMetadataEnrichmentTask(task, {
     db, logger, metadataEnrichment, enrichmentItemStateService,
     resolveSourceLibraryName: resolveName,
@@ -84,16 +40,19 @@ export async function processMetadataEnrichmentTask(task, {
     queryWithTimeout, completeTask
 }) {
     const { hasWebSearchEnrichmentMetadata } = metadataEnrichment;
-    const enrichPayload = parsePayload(task.payload);
+    const enrichPayload = await prepareQueueEnrichmentPayload(parsePayload(task.payload),
+        (text, values) => db.query(text, values));
+    if (!enrichPayload) {
+        logger.warn('Metadata enrichment skipped', { reason: 'invalid_media_identity' });
+        await completeTask(task.id, { enriched: false, skipped: true, reason: 'invalid_media_identity' });
+        return;
+    }
     if (enrichPayload.itemId) {
         await enrichmentItemStateService.markProcessing(enrichPayload.itemId);
     }
-    let enrichTmdbId = enrichPayload.tmdbId || enrichPayload.tmdb_id;
-    let enrichSourceLibraryId = enrichPayload.source_library_id;
+    let enrichTmdbId = enrichPayload.tmdb_id;
+    const enrichSourceLibraryId = enrichPayload.source_library_id;
     let enrichSourceLibraryName = enrichPayload.source_library_name;
-
-    ({ enrichTmdbId, enrichSourceLibraryId, enrichSourceLibraryName } =
-        await selfHealMissingMetadata(enrichPayload, enrichTmdbId, enrichSourceLibraryId, enrichSourceLibraryName, { db, logger }));
 
     enrichSourceLibraryName = await resolveName(
         enrichSourceLibraryId,
@@ -130,7 +89,7 @@ export async function processMetadataEnrichmentTask(task, {
 
         enrichmentData.content_analysis = {
             ...enrichmentData.content_analysis,
-            type: enrichPayload.media?.media_type || 'unknown',
+            type: enrichPayload.media.media_type,
             confidence: 100,
             method: 'source_library',
             source: 'metadata_enrichment',
@@ -143,12 +102,20 @@ export async function processMetadataEnrichmentTask(task, {
             enrichTmdbId
         );
 
-        await queryWithTimeout(
+        const updated = await queryWithTimeout(
             `UPDATE media_server_items 
              SET metadata = metadata || $1::jsonb
-             WHERE id = $2`,
-            [JSON.stringify(enrichmentData), enrichPayload.itemId]
+             WHERE id = $2 AND media_type = $3 AND library_id = $4
+               AND tmdb_id IS NOT DISTINCT FROM $5::integer`,
+            [JSON.stringify(enrichmentData), enrichPayload.itemId,
+                enrichPayload.media.media_type, enrichSourceLibraryId, enrichTmdbId]
         );
+        if (updated.rowCount !== 1) {
+            logger.warn('Metadata enrichment skipped', { reason: 'source_identity_changed' });
+            await completeTask(task.id, { enriched: false, skipped: true, reason: 'source_identity_changed' });
+            await enrichmentItemStateService.syncItemState(enrichPayload.itemId);
+            return;
+        }
 
         await queueClassificationHistoryService.persist(
             historyPayload,

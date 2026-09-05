@@ -26,6 +26,7 @@
  */
 
 import { jest } from '@jest/globals';
+import { runTaskWithMatchingEnrichmentSource } from './helpers/queueEnrichmentSourceFixture.mjs';
 import { createLoggerModuleMock, createNamedMockModule, resetLoggerModuleMock } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn() };
@@ -174,7 +175,7 @@ describe('Enrichment Pipeline Integration', () => {
                 return Promise.resolve({ rows: [] });
             });
 
-            await queueService.processTask(task);
+            await runTaskWithMatchingEnrichmentSource(queueService, db, task);
 
             expect(tmdbService.findByExternalId).toHaveBeenCalledWith(81189, 'tvdb_id');
         });
@@ -217,6 +218,7 @@ describe('Enrichment Pipeline Integration', () => {
 
             omdbService.getByTitle.mockResolvedValue({
                 imdbID: 'tt0111161',
+                type: 'movie',
                 Title: 'The Shawshank Redemption',
                 rated: 'R',
                 genre: 'Drama'
@@ -227,7 +229,7 @@ describe('Enrichment Pipeline Integration', () => {
                 tv_results: []
             });
 
-            await queueService.processTask(task);
+            await runTaskWithMatchingEnrichmentSource(queueService, db, task);
 
             expect(tmdbService.findByExternalId).toHaveBeenCalledWith('tt0111161', 'imdb_id');
         });
@@ -266,7 +268,7 @@ describe('Enrichment Pipeline Integration', () => {
                 { id: 771, title: 'Home Alone', year: '1990' }
             ]);
 
-            await queueService.processTask(task);
+            await runTaskWithMatchingEnrichmentSource(queueService, db, task);
 
             expect(tmdbService.search).toHaveBeenCalledWith(
                 expect.stringContaining('Home Alone'),
@@ -300,7 +302,7 @@ describe('Enrichment Pipeline Integration', () => {
                 { id: 888, title: 'Home Alone 3', year: '1997' }
             ]);
 
-            await queueService.processTask(task);
+            await runTaskWithMatchingEnrichmentSource(queueService, db, task);
 
             expect(tmdbService.search).toHaveBeenCalled();
         });
@@ -344,7 +346,7 @@ describe('Enrichment Pipeline Integration', () => {
                 return Promise.resolve({ rows: [], rowCount: 1 });
             });
 
-            await queueService.processTask(task);
+            await runTaskWithMatchingEnrichmentSource(queueService, db, task);
 
             expect(capturedMetadata).toBeTruthy();
             expect(capturedMetadata.source_library_id).toBe(12);
@@ -391,7 +393,7 @@ describe('Enrichment Pipeline Integration', () => {
                 return Promise.resolve({ rows: [] });
             });
 
-            await queueService.processTask(task);
+            await runTaskWithMatchingEnrichmentSource(queueService, db, task);
 
             expect(classificationInsertCalled).toHaveBeenCalled();
         });
@@ -437,7 +439,7 @@ describe('Enrichment Pipeline Integration', () => {
                 return Promise.resolve({ rows: [] });
             });
 
-            await queueService.processTask(task);
+            await runTaskWithMatchingEnrichmentSource(queueService, db, task);
 
             expect(classificationInsertCalled).toHaveBeenCalled();
 
@@ -486,7 +488,7 @@ describe('Enrichment Pipeline Integration', () => {
                 return Promise.resolve({ rows: [] });
             });
 
-            await queueService.processTask(task);
+            await runTaskWithMatchingEnrichmentSource(queueService, db, task);
 
             expect(classificationInsertCalled).not.toHaveBeenCalled();
         });
@@ -529,7 +531,7 @@ describe('Enrichment Pipeline Integration', () => {
                 return Promise.resolve({ rows: [] });
             });
 
-            await queueService.processTask(task);
+            await runTaskWithMatchingEnrichmentSource(queueService, db, task);
 
             expect(classificationInsertCalled).not.toHaveBeenCalled();
         });
@@ -585,7 +587,7 @@ describe('Enrichment Pipeline Integration', () => {
                 return Promise.resolve({ rows: [], rowCount: 1 });
             });
 
-            await queueService.processTask(task);
+            await runTaskWithMatchingEnrichmentSource(queueService, db, task);
 
             expect(capturedInsertParams).toBeDefined();
             expect(capturedInsertParams[8]).toBe('Already in library: Recovered History Library');
@@ -631,7 +633,7 @@ describe('Enrichment Pipeline Integration', () => {
                 return Promise.resolve({ rows: [] });
             });
 
-            await queueService.processTask(task);
+            await runTaskWithMatchingEnrichmentSource(queueService, db, task);
 
             expect(backfillCalled).toHaveBeenCalled();
         });

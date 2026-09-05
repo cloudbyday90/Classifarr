@@ -79,16 +79,14 @@ quality, and provenance principles support the design; they do not prescribe
 this database schema. Official sources and the alternatives table are in the
 [design document](source-history-media-identity-design.md#official-guidance).
 
-The next recommended fix is the producer-to-enrichment identity contract.
-Review found that `queueRefillService.mjs` selects library media type and defaults
-missing type to `movie`, while `queueTmdbResolutionService.mjs` and
-`queueOmdbEnrichmentService.mjs` also default provider lookups to movies.
-Persistence cannot detect an upstream guess already encoded as an explicit
-type. Carry authoritative item type from the source record, validate it before
-provider lookup or ID backfill, and add end-to-end tests for missing, conflicting,
-and top-level/nested declarations. Preserve existing queued/history data unless
-there is independent evidence to correct it. This issue should precede further
-semantic study work because it affects the reliability of reference evidence.
+The producer-to-enrichment identity follow-up is implemented in the separate
+[queue-enrichment outcome](queue-enrichment-media-identity-outcome.md). Refill
+now uses source item type; provider selection validates explicit declarations,
+and conditional backfills preserve type. The follow-up also checks item-backed
+tasks against the current source record before provider calls, so an old
+guessed type that disagrees with that record is skipped. Existing queued/history
+data is not rewritten. The next identity concern is ambiguous title-based ID
+resolution, described in that outcome.
 
 After that, address atomic source-history deduplication. The existence check
 and insert remain separate operations: two workers can both observe no match

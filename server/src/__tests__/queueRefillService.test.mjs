@@ -117,12 +117,12 @@ describe('buildMetadataEnrichmentPayload', () => {
       id: 1, title: 'X', year: 2000,
       metadata: null, genres: [], tags: [],
       content_rating: null, tmdb_id: null, tvdb_id: null, imdb_id: null,
-      library_id: 2, library_name: 'Lib', media_type: null
+      library_id: 2, library_name: 'Lib', media_type: 'tv'
     };
     const payload = svc.buildMetadataEnrichmentPayload(item);
     expect(payload.overview).toBe('');
     expect(payload.posterPath).toBeNull();
-    expect(payload.media.media_type).toBe('movie'); // default
+    expect(payload.media.media_type).toBe('tv');
   });
 });
 
