@@ -24,7 +24,7 @@ function observedRating(values, mediaType) {
     return null;
 }
 
-function traits(item) {
+export function readLibraryObservationTraits(item) {
     const metadata = item.metadata || {};
     const tmdb = metadata.tmdb || {};
     const omdb = metadata.omdb || {};
@@ -55,7 +55,7 @@ export function buildLibraryProfileObservation(items) {
             identifiedRowCount++;
             identities.add(`${item.media_type}:${item.tmdb_id}`);
         }
-        for (const [field, values] of Object.entries(traits(item))) {
+        for (const [field, values] of Object.entries(readLibraryObservationTraits(item))) {
             if (values.length) observed.set(field, observed.get(field) + 1);
             const fieldCounts = counts.get(field);
             for (const value of values) fieldCounts.set(value, (fieldCounts.get(value) || 0) + 1);

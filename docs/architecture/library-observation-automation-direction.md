@@ -97,7 +97,9 @@ and [retention outcome](resolved-identity-sync-retention-outcome.md).
 Source snapshot guards now cover late OMDb rating, metadata and history writes;
 see the [write-guard design](enrichment-source-write-guards-design.md) and
 [validation outcome](enrichment-source-write-guards-outcome.md).
-The next product item is a bounded, coverage-aware cross-library overlap summary.
+The bounded, coverage-aware cross-library overlap summary is implemented in the
+[overlap design](library-overlap-design.md) and
+[measured outcome](library-overlap-outcome.md).
 The separate shared HTTP mutation-retry audit remains a correctness follow-up;
 the receipt-recovery change already disables replay for identity confirmation.
 

@@ -22,6 +22,10 @@ export function getLibraries() {
   return getDataRequest('/libraries')
 }
 
+export function getLibraryOverlap() {
+  return getDataRequest('/libraries/overlap')
+}
+
 export function getLibrary(id) {
   return getDataRequest(`/libraries/${id}`)
 }
@@ -40,6 +44,7 @@ export function getSyncStatus() {
 
 const libraryCatalogApi = {
   getLibraries,
+  getLibraryOverlap,
   getLibrary,
   updateLibrary,
   syncLibrary,

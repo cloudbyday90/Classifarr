@@ -100,7 +100,11 @@ typed identities → source-guarded provider observations → automatically refr
 profiles with known/missing counts → bounded library comparisons → independently
 evaluated classification support.
 
-**Next item:** add a read-only, bounded cross-library overlap summary using shared
+This recommendation was subsequently implemented in the
+[overlap design](library-overlap-design.md) and
+[measured outcome](library-overlap-outcome.md).
+
+**Next item at this assessment:** add a read-only, bounded cross-library overlap summary using shared
 movie/TV identities and existing common-trait observations. Keep media types
 separate, deduplicate repeated placements within each library, expose both
 directions of overlap with explicit denominators, and report insufficient coverage

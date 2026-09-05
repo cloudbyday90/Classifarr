@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Cross-library inventory comparison** — Libraries automatically shows shared
+  movie and TV identities and common traits, with explicit coverage and overlap
+  denominators. Duplicate placements count once, conflicting traits stay unknown,
+  and bounded reads disclose limits without adding provider calls or routing.
+
 - **Automatic inventory metadata observations** — Identified items now gain
   attributable TMDb keywords and original language through background enrichment,
   with cached reuse and bounded retries. Source tags stay separate, missing

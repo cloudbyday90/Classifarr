@@ -81,6 +81,15 @@ export const logsLimiterConfig = {
   legacyHeaders: false,
 };
 
+/** Bounded library inventory comparisons (per IP, per 15 minutes). */
+export const libraryOverlapLimiterConfig = {
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: 'Too many library comparison requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+};
+
 /** Ollama strict-verification runtime aggregate reads (per IP, per 15 minutes). */
 export const ollamaVerificationRuntimeMismatchSummaryLimiterConfig = {
   windowMs: 15 * 60 * 1000,

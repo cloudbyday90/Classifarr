@@ -117,6 +117,7 @@
         </div>
       </Card>
     </div>
+    <LibraryOverlapSummary />
   </div>
 </template>
 
@@ -133,6 +134,7 @@ import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import Badge from '@/components/common/Badge.vue'
 import MappingWarningBanner from '@/components/MappingWarningBanner.vue'
+import LibraryOverlapSummary from '@/components/library/LibraryOverlapSummary.vue'
 
 // HTTP status codes
 const HTTP_CONFLICT = 409

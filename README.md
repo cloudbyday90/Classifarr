@@ -624,6 +624,13 @@ Rating, metadata and history writes also verify the captured source before
 accepting a provider result, including changes during network waits. See the
 [write-guard design](docs/architecture/enrichment-source-write-guards-design.md)
 and [local validation](docs/architecture/enrichment-source-write-guards-outcome.md).
+The Libraries page automatically compares shared movie and TV identities and
+common traits across active libraries. Both overlap directions show their
+denominators; duplicate placements count once, and missing or conflicting traits
+remain unknown. Bounded reads disclose excluded libraries and withhold comparisons
+when the inventory limit is exceeded. See the
+[overlap design](docs/architecture/library-overlap-design.md) and
+[measured outcome](docs/architecture/library-overlap-outcome.md).
 Manual identity review handles unresolved exceptions.
 
 For unresolved inventory identities, open **Libraries → Review media IDs** with

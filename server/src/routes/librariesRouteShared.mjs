@@ -21,6 +21,7 @@ import { registerArrConfigRoutes } from './librariesRouteArrConfig.mjs';
 import { registerRuleSuggestionRoutes } from './librariesRouteRuleSuggestions.mjs';
 import { registerPatternRoutes } from './librariesRoutePatterns.mjs';
 import { registerCrudRoutes } from './librariesRouteCrud.mjs';
+import { registerOverlapRoutes } from './librariesRouteOverlap.mjs';
 import { registerLabelRoutes } from './librariesRouteLabels.mjs';
 import { registerRulesRoutes } from './librariesRouteRules.mjs';
 import { NotFoundError, ValidationError } from '../utils/appError.mjs';
@@ -61,6 +62,8 @@ export function createLibrariesRouter({
   const logger = createLogger('libraries');
 
   router.use(authenticateTokenOrApiKey);
+
+  registerOverlapRoutes(router, { db });
 
   registerCrudRoutes(router, { db });
 
