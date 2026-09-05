@@ -86,6 +86,13 @@ const POST_UPGRADE_TASKS = {
             description: 'Reset stale rating normalizations so items are re-processed with metadata-aware normalization'
         }
     ],
+    '0.48.4-beta': [
+        {
+            id: 'regenerate_library_profile_observations_v1',
+            action: 'regenerate_library_profile_observations',
+            description: 'Rebuild library prevalence and metadata coverage from synchronized inventory'
+        }
+    ],
     '0.47.5a-beta': [
         {
             id: 'clear_logs_0475a',
@@ -236,6 +243,12 @@ class PostUpgradeService {
 
             case 'regenerate_library_profiles':
                 return await this.regenerateLibraryProfiles();
+
+            case 'regenerate_library_profile_observations': {
+                const results = await libraryProfileService.generateAllProfiles();
+                if (results.some(result => !result.success)) throw new Error('Library observation refresh incomplete; retry on next startup');
+                return { refreshed: results.length };
+            }
 
             case 'reset_stale_normalizations':
                 return await this.resetStaleNormalizations();

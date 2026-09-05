@@ -19,7 +19,7 @@ const db = mockDb;
 
 describe('LibraryProfileService', () => {
     beforeEach(() => {
-        jest.clearAllMocks();
+        db.query.mockReset();
     });
 
     describe('generateProfile', () => {
@@ -75,7 +75,7 @@ describe('LibraryProfileService', () => {
             expect(profile.genres.Comedy).toBe(50);
         });
 
-        it('should identify exclusion ratings (0% in library)', async () => {
+        it('does not turn absent ratings into exclusions', async () => {
             db.query.mockResolvedValueOnce({
                 rows: [
                     { content_rating: 'PG', genres: [], studio: null, metadata: {} },
@@ -86,9 +86,7 @@ describe('LibraryProfileService', () => {
 
             const profile = await libraryProfileService.generateProfile(1);
 
-            expect(profile.exclusionRatings).toContain('R');
-            expect(profile.exclusionRatings).toContain('NC-17');
-            expect(profile.exclusionRatings).toContain('TV-MA');
+            expect(profile.exclusionRatings).toEqual([]);
             expect(profile.exclusionRatings).not.toContain('PG');
             expect(profile.exclusionRatings).not.toContain('G');
         });
@@ -143,13 +141,13 @@ describe('LibraryProfileService', () => {
             expect(score).toBeGreaterThan(70);
         });
 
-        it('should score low for items in exclusion list', async () => {
+        it('keeps absent profile values neutral even when historical exclusions exist', async () => {
             const score = await libraryProfileService.getProfileScore(1, {
                 certification: 'R',
                 genres: ['Horror']
             });
 
-            expect(score).toBeLessThan(30);
+            expect(score).toBe(50);
         });
 
         it('should return neutral score for items with unknown attributes', async () => {
@@ -203,7 +201,7 @@ describe('LibraryProfileService', () => {
             expect(score).toBeGreaterThan(70);
         });
 
-        it('should normalize item ratings before applying exclusion ratings', async () => {
+        it('does not penalize a normalized rating absent from the historical profile', async () => {
             db.query.mockResolvedValueOnce({
                 rows: [{
                     library_id: 20,
@@ -221,7 +219,7 @@ describe('LibraryProfileService', () => {
                 genres: []
             });
 
-            expect(score).toBeLessThan(50);
+            expect(score).toBe(50);
         });
 
         it('should expose bounded diagnostics for profile score contributors', async () => {

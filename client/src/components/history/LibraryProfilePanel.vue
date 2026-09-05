@@ -31,6 +31,11 @@
       </div>
     </div>
     
+    <LibraryProfileCoverage
+      :observation="profileStats.observation"
+      historical
+    />
+
     <!-- Content Rating Distribution -->
     <div
       v-if="profileStats.certificationDistribution?.length"
@@ -145,6 +150,7 @@
 </template>
 
 <script setup>
+import LibraryProfileCoverage from '@/components/library/LibraryProfileCoverage.vue'
 import { ref, onMounted } from 'vue';
 import api from '@/api';
 

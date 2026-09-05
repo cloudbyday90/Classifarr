@@ -87,7 +87,7 @@ describe('libraryRulesApi', () => {
   })
 
   it('getLibraryProfile calls getDataRequest with library id in URL', async () => {
-    const profile = { mediaCount: 200, classified: 180 }
+    const profile = { item_count: 200, observation_summary: { version: 'library.profile_observation.v1', itemCount: 200 } }
     mockGetDataRequest.mockResolvedValueOnce(profile)
     const result = await getLibraryProfile(10)
     expect(mockGetDataRequest).toHaveBeenCalledWith('/libraries/10/profile')

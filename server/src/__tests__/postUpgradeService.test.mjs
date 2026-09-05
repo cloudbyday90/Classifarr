@@ -96,7 +96,7 @@ describe('PostUpgradeService', () => {
 
             expect(result.executed).toBe(10);
             expect(result.skipped).toBe(0);
-            expect(mockLibraryProfileService.generateAllProfiles).toHaveBeenCalledTimes(1);
+            expect(mockLibraryProfileService.generateAllProfiles).toHaveBeenCalledTimes(2);
         });
 
         it('should pre-seed all tasks as complete on a fresh install without executing them', async () => {
@@ -128,14 +128,15 @@ describe('PostUpgradeService', () => {
                         { task_id: 'clear_logs_0439' },
                         { task_id: 'regenerate_library_profiles_rating_normalization_0472' },
                         { task_id: 'reset_stale_rating_normalization_0475' },
-                        { task_id: 'clear_logs_0475a' }
+                        { task_id: 'clear_logs_0475a' },
+                        { task_id: 'regenerate_library_profile_observations_v1' }
                     ]
                 });
 
             const result = await postUpgradeService.runPendingTasks();
 
             expect(result.executed).toBe(0);
-            expect(result.skipped).toBe(10);
+            expect(result.skipped).toBe(11);
             expect(mockLibraryProfileService.generateAllProfiles).not.toHaveBeenCalled();
         });
 
@@ -183,7 +184,8 @@ describe('PostUpgradeService', () => {
                         { task_id: 'clear_logs_0413' },
                         { task_id: 'clear_logs_0427' },
                         { task_id: 'clear_logs_0431b' },
-                        { task_id: 'clear_logs_0439' }
+                        { task_id: 'clear_logs_0439' },
+                        { task_id: 'regenerate_library_profile_observations_v1' }
                     ]
                 })
                 .mockResolvedValueOnce({ rows: [{ count: '1' }] })
@@ -195,7 +197,7 @@ describe('PostUpgradeService', () => {
             const result = await postUpgradeService.runPendingTasks();
 
             expect(result.executed).toBe(2);
-            expect(result.skipped).toBe(8);
+            expect(result.skipped).toBe(9);
             expect(mockLibraryProfileService.generateAllProfiles).not.toHaveBeenCalled();
             expect(mockDb.query).toHaveBeenCalledWith(
                 expect.stringContaining('INSERT INTO post_upgrade_tasks'),
@@ -206,6 +208,24 @@ describe('PostUpgradeService', () => {
                 ]
             );
         });
+    });
+
+    it('retries incomplete observation refreshes and records completion only after success', async () => {
+        const taskId = 'regenerate_library_profile_observations_v1';
+        const completed = postUpgradeService.getAllTasks().map(task => task.id).filter(id => id !== taskId);
+        mockDb.query.mockImplementation(async (sql, values) => {
+            if (sql.includes('SELECT task_id')) return { rows: completed.map(task_id => ({ task_id })) };
+            if (sql.includes('FROM users')) return { rows: [{ count: '1' }] };
+            if (sql.includes('INSERT INTO post_upgrade_tasks')) completed.push(values[0]);
+            return { rows: [], rowCount: 1 };
+        });
+        expect((await postUpgradeService.runPendingTasks()).executed).toBe(0);
+        expect(completed).not.toContain(taskId);
+        mockLibraryProfileService.generateAllProfiles.mockResolvedValue([{ id: 1, success: true }]);
+        expect((await postUpgradeService.runPendingTasks()).executed).toBe(1);
+        expect(completed.filter(id => id === taskId)).toHaveLength(1);
+        expect((await postUpgradeService.runPendingTasks()).executed).toBe(0);
+        expect(mockLibraryProfileService.generateAllProfiles).toHaveBeenCalledTimes(2);
     });
 
     describe('executeTask', () => {

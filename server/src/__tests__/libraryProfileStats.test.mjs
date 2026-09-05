@@ -19,133 +19,35 @@ const { libraryProfileService } = await import('../services/libraryProfileServic
 
 describe('LibraryProfileService - Profile Statistics', () => {
     beforeEach(() => {
-        jest.clearAllMocks();
+        db.query.mockReset();
     });
 
-    describe('getCertificationDistribution', () => {
-        it('should return certification distribution with percentages', async () => {
-            db.query.mockResolvedValueOnce({
-                rows: [
-                    { certification: 'PG', count: '75', percentage: '75.0' },
-                    { certification: 'G', count: '25', percentage: '25.0' }
-                ]
-            });
-
-            const result = await libraryProfileService.getCertificationDistribution(1);
-
-            expect(result).toHaveLength(2);
-            expect(result[0].certification).toBe('PG');
-            expect(result[0].percentage).toBe('75.0');
-        });
-
-        it('should handle errors gracefully', async () => {
-            db.query.mockRejectedValueOnce(new Error('Database error'));
-
-            const result = await libraryProfileService.getCertificationDistribution(1);
-
-            expect(result).toEqual([]);
-        });
+    it('projects every live distribution from one observation snapshot', async () => {
+        db.query.mockResolvedValueOnce({ rows: [
+            { genres: ['Action', 'Drama', 'Action'], content_rating: 'PG', studio: 'A', metadata: { original_language: 'en' } },
+            { genres: ['Action'], content_rating: 'G', metadata: {} },
+        ] });
+        const stats = await libraryProfileService.getProfileStats(1);
+        expect(db.query).toHaveBeenCalledTimes(1);
+        expect(stats.genreDistribution).toEqual([{ genre: 'Action', count: 2, percentage: 100 }, { genre: 'Drama', count: 1, percentage: 50 }]);
+        expect(stats.studioDistribution).toEqual([{ studio: 'A', count: 1, percentage: 50 }]);
+        expect(stats.languageDistribution).toEqual([{ language: 'en', count: 1, percentage: 50 }]);
+        expect(stats.observation.traits.rating).toEqual({ observedCount: 2, unknownCount: 0 });
+        expect(stats.totalItems).toBe(2);
     });
-
-    describe('getGenreDistribution', () => {
-        it('should return genre distribution with percentages', async () => {
-            db.query.mockResolvedValueOnce({
-                rows: [
-                    { genre: 'Animation', count: '10', percentage: '50.0' },
-                    { genre: 'Comedy', count: '5', percentage: '25.0' },
-                    { genre: 'Drama', count: '5', percentage: '25.0' }
-                ]
-            });
-
-            const result = await libraryProfileService.getGenreDistribution(1);
-
-            expect(result).toHaveLength(3);
-            expect(result[0].genre).toBe('Animation');
-        });
+    it.each(['getCertificationDistribution', 'getGenreDistribution', 'getStudioDistribution', 'getLanguageDistribution'])('uses the shared population for %s', async method => {
+        db.query.mockResolvedValueOnce({ rows: [{ genres: ['Action'], content_rating: 'PG', studio: 'A', metadata: { original_language: 'en' } }, {}] });
+        const values = await libraryProfileService[method](1);
+        expect(values).toHaveLength(1);
+        expect(values[0]).toMatchObject({ count: 1, percentage: 50 });
     });
-
-    describe('getStudioDistribution', () => {
-        it('should return top studios with percentages', async () => {
-            db.query.mockResolvedValueOnce({
-                rows: [
-                    { studio: 'Disney', count: '15', percentage: '60.0' },
-                    { studio: 'Pixar', count: '10', percentage: '40.0' }
-                ]
-            });
-
-            const result = await libraryProfileService.getStudioDistribution(1);
-
-            expect(result).toHaveLength(2);
-            expect(result[0].studio).toBe('Disney');
-        });
+    it.each(['getProfileStats', 'getGenreDistribution', 'getTotalItems'])('propagates an unavailable read rather than claiming empty data: %s', async method => {
+        db.query.mockRejectedValueOnce(new Error('database unavailable'));
+        await expect(libraryProfileService[method](1)).rejects.toThrow('database unavailable');
     });
-
-    describe('getLanguageDistribution', () => {
-        it('should return language distribution', async () => {
-            db.query.mockResolvedValueOnce({
-                rows: [
-                    { language: 'en', count: '80', percentage: '80.0' },
-                    { language: 'fr', count: '20', percentage: '20.0' }
-                ]
-            });
-
-            const result = await libraryProfileService.getLanguageDistribution(1);
-
-            expect(result).toHaveLength(2);
-            expect(result[0].language).toBe('en');
-        });
-    });
-
-    describe('getTotalItems', () => {
-        it('should return total item count', async () => {
-            db.query.mockResolvedValueOnce({
-                rows: [{ total: 100 }]
-            });
-
-            const result = await libraryProfileService.getTotalItems(1);
-
-            expect(result).toBe(100);
-        });
-
-        it('should return 0 if no items', async () => {
-            db.query.mockResolvedValueOnce({
-                rows: [{ total: 0 }]
-            });
-
-            const result = await libraryProfileService.getTotalItems(1);
-
-            expect(result).toBe(0);
-        });
-    });
-
-    describe('getProfileStats', () => {
-        it('should aggregate all statistics', async () => {
-            db.query
-                .mockResolvedValueOnce({
-                    rows: [{ certification: 'PG', count: '75', percentage: '75.0' }]
-                })
-                .mockResolvedValueOnce({
-                    rows: [{ genre: 'Animation', count: '10', percentage: '50.0' }]
-                })
-                .mockResolvedValueOnce({
-                    rows: [{ studio: 'Disney', count: '15', percentage: '60.0' }]
-                })
-                .mockResolvedValueOnce({
-                    rows: [{ language: 'en', count: '80', percentage: '80.0' }]
-                })
-                .mockResolvedValueOnce({
-                    rows: [{ total: 100 }]
-                });
-
-            const stats = await libraryProfileService.getProfileStats(1);
-
-            expect(stats.certificationDistribution).toHaveLength(1);
-            expect(stats.genreDistribution).toHaveLength(1);
-            expect(stats.studioDistribution).toHaveLength(1);
-            expect(stats.languageDistribution).toHaveLength(1);
-            expect(stats.totalItems).toBe(100);
-            expect(stats.lastUpdated).toBeDefined();
-        });
+    it('reads exact inventory count', async () => {
+        db.query.mockResolvedValueOnce({ rows: [{ total: 100 }] });
+        expect(await libraryProfileService.getTotalItems(1)).toBe(100);
     });
 
     describe('formatForPrompt', () => {

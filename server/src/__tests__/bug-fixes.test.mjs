@@ -32,6 +32,7 @@ const { mediaSyncService: mediaSync } = await import('../services/mediaSync.mjs'
 describe('Bug Fixes - Comprehensive PR', () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        db.query.mockReset();
     });
 
     describe('Bug 1: AI Model Selection from ai_provider_config', () => {
@@ -232,28 +233,12 @@ describe('Bug Fixes - Comprehensive PR', () => {
     });
 
     describe('Bug 3: Genre Distribution TEXT[] Handling', () => {
-        it('should use unnest() for TEXT[] genres column', async () => {
-            const mockGenres = [
-                { genre: 'Action', count: '50', percentage: 45.5 },
-                { genre: 'Drama', count: '30', percentage: 27.3 },
-                { genre: 'Comedy', count: '30', percentage: 27.3 }
-            ];
-
-            db.query.mockResolvedValueOnce({
-                rows: mockGenres
-            });
-
-            await libraryProfileService.getGenreDistribution(1);
-
-            // Verify the query uses unnest instead of jsonb functions
-            expect(db.query).toHaveBeenCalledWith(
-                expect.stringContaining('unnest(genres)'),
-                [1]
-            );
-            expect(db.query).toHaveBeenCalledWith(
-                expect.not.stringContaining('jsonb_typeof'),
-                [1]
-            );
+        it('handles TEXT[] genres with the shared per-item measurement', async () => {
+            db.query.mockResolvedValueOnce({ rows: [{ genres: ['Action', 'Drama'] }, { genres: ['Action'] }] });
+            expect(await libraryProfileService.getGenreDistribution(1)).toEqual([
+                { genre: 'Action', count: 2, percentage: 100 }, { genre: 'Drama', count: 1, percentage: 50 },
+            ]);
+            expect(db.query).toHaveBeenCalledWith(expect.stringContaining('msi.genres'), [1]);
         });
     });
 

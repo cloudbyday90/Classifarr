@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Library metadata coverage** — Library profiles and new history snapshots
+  show known and missing trait counts with clear percentage denominators.
+  Existing profiles refresh automatically after upgrading.
+
 - **Administrator media-ID review** — Libraries now offers a filtered review
   queue for unresolved identities, with TMDb previews and explicit confirmation.
   Expiring previews, current account and source checks, and atomic audit receipts
@@ -156,6 +160,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
   change policy, AI, RAG, or routing authority.
 
 ### Fixed
+
+- **Consistent library observations** — Stored profiles and AI statistics now
+  use the same item-based prevalence calculation. Duplicate traits count once
+  per item, missing data stays unknown, and observed absence no longer produces
+  profile exclusion penalties. Refreshes clear empty profiles and protect
+  newer observations from delayed writes.
 
 - **Media-ID confirmation recovery** — A lost save response now recovers the
   original administrator's audit receipt without repeating confirmation.

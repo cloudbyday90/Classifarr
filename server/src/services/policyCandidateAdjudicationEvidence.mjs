@@ -1,3 +1,4 @@
+import { profileObservationCoverage } from './libraryProfileObservationPresentation.mjs';
 /*
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
@@ -70,6 +71,7 @@ function localProfile(profile) {
   return {
     available: true,
     itemCountBand: itemCountBand(profile.totalItems),
+    ...(profileObservationCoverage(profile.observation) ? { observation: profileObservationCoverage(profile.observation) } : {}),
     contentRatings: distribution(profile.certificationDistribution, 'certification'),
     topGenres: distribution(profile.genreDistribution, 'genre'),
     topStudios: distribution(profile.studioDistribution, 'studio'),

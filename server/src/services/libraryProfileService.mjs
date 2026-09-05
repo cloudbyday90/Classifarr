@@ -1,3 +1,4 @@
+import { generateLibraryProfileObservation } from './libraryProfileObservationPersistence.mjs';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
@@ -8,6 +9,7 @@ import {
     formatProfileForPrompt as _formatProfileForPrompt,
 } from './libraryProfileComputations.mjs';
 import {
+    readLibraryProfileObservation,
     getCertificationDistribution as _getCertificationDistribution,
     getGenreDistribution as _getGenreDistribution,
     getStudioDistribution as _getStudioDistribution,
@@ -17,108 +19,15 @@ import {
 
 const logger = createLogger('LibraryProfileService');
 
-export const ALL_RATINGS = [
-    'G', 'PG', 'PG-13', 'R', 'NC-17', 'NR', 'Unrated',
-    'TV-Y', 'TV-Y7', 'TV-Y7-FV', 'TV-G', 'TV-PG', 'TV-14', 'TV-MA'
-];
-
 export class LibraryProfileService {
     constructor({ dbClient = db } = {}) {
         this.db = dbClient;
     }
 
     async generateProfile(libraryId) {
-        logger.info('Generating library profile', { libraryId });
-
-        try {
-            const itemsResult = await this.db.query(`
-                SELECT 
-                    msi.content_rating,
-                    msi.genres,
-                    msi.studio,
-                    msi.metadata,
-                    l.media_type
-                FROM media_server_items msi
-                JOIN libraries l ON msi.library_id = l.id
-                WHERE msi.library_id = $1
-            `, [libraryId]);
-
-            const items = itemsResult.rows;
-            if (items.length === 0) {
-                logger.warn('No items found for library', { libraryId });
-                return null;
-            }
-
-            const ratings = this.countDistribution(items, 'rating');
-            const genres = this.countDistribution(items, 'genres');
-            const studios = this.countDistribution(items, 'studio');
-            const keywords = this.countDistribution(items, 'keywords');
-
-            const exclusionRatings = this.findExclusions(ratings, ALL_RATINGS);
-            const exclusionGenres = this.findExclusions(genres);
-            const exclusionKeywords = this.findExclusions(keywords);
-
-            const enrichedCount = items.filter(i =>
-                i.metadata?.omdb || i.metadata?.tmdb
-            ).length;
-
-            await this.db.query(`
-                INSERT INTO library_profiles (
-                    library_id, rating_distribution, genre_distribution, 
-                    studio_distribution, keyword_distribution,
-                    exclusion_ratings, exclusion_genres, exclusion_keywords,
-                    item_count, enriched_count, last_generated_at, updated_at
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
-                ON CONFLICT (library_id) DO UPDATE SET
-                    rating_distribution = EXCLUDED.rating_distribution,
-                    genre_distribution = EXCLUDED.genre_distribution,
-                    studio_distribution = EXCLUDED.studio_distribution,
-                    keyword_distribution = EXCLUDED.keyword_distribution,
-                    exclusion_ratings = EXCLUDED.exclusion_ratings,
-                    exclusion_genres = EXCLUDED.exclusion_genres,
-                    exclusion_keywords = EXCLUDED.exclusion_keywords,
-                    item_count = EXCLUDED.item_count,
-                    enriched_count = EXCLUDED.enriched_count,
-                    last_generated_at = NOW(),
-                    updated_at = NOW()
-            `, [
-                libraryId,
-                JSON.stringify(ratings),
-                JSON.stringify(genres),
-                JSON.stringify(studios),
-                JSON.stringify(keywords),
-                exclusionRatings,
-                exclusionGenres,
-                exclusionKeywords,
-                items.length,
-                enrichedCount
-            ]);
-
-            logger.info('Library profile generated', {
-                libraryId,
-                itemCount: items.length,
-                enrichedCount,
-                topRating: Object.keys(ratings)[0],
-                topGenre: Object.keys(genres)[0]
-            });
-
-            return {
-                ratings,
-                genres,
-                studios,
-                keywords,
-                exclusionRatings,
-                exclusionGenres,
-                itemCount: items.length,
-                enrichedCount
-            };
-        } catch (error) {
-            logger.error('Failed to generate library profile', {
-                libraryId,
-                error: error.message
-            });
-            throw error;
-        }
+        const profile = await generateLibraryProfileObservation(this.db, libraryId);
+        logger.info('Library profile observation generated', { libraryId, itemCount: profile?.itemCount || 0 });
+        return profile;
     }
 
     async generateAllProfiles() {
@@ -128,7 +37,7 @@ export class LibraryProfileService {
             LEFT JOIN media_server_items msi ON l.id = msi.library_id
             WHERE l.is_active = true
             GROUP BY l.id, l.name
-            HAVING COUNT(msi.id) > 0
+            HAVING COUNT(msi.id) > 0 OR EXISTS (SELECT 1 FROM library_profiles lp WHERE lp.library_id = l.id)
             ORDER BY COUNT(msi.id) DESC
         `);
 
@@ -243,16 +152,7 @@ export class LibraryProfileService {
     }
 
     async getProfileStats(libraryId) {
-        const stats = {
-            certificationDistribution: await this.getCertificationDistribution(libraryId),
-            genreDistribution: await this.getGenreDistribution(libraryId),
-            studioDistribution: await this.getStudioDistribution(libraryId),
-            languageDistribution: await this.getLanguageDistribution(libraryId),
-            totalItems: await this.getTotalItems(libraryId),
-            lastUpdated: new Date().toISOString()
-        };
-
-        return stats;
+        return (await readLibraryProfileObservation(this.db, libraryId)).stats;
     }
 
     async getCertificationDistribution(libraryId) {

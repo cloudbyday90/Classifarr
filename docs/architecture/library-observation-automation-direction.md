@@ -59,7 +59,7 @@ consumers before changing behavior; do not promote missing metadata or observed
 absence into an automatic restriction. `generateProfile` returns null for an
 empty inventory, so also verify how existing stored profiles are invalidated.
 
-## Recommended next implementation
+## Implementation sequence
 
 **Unify observed-library prevalence and metadata coverage.** Reuse the existing
 profile services and refresh pipeline:
@@ -79,7 +79,13 @@ profile services and refresh pipeline:
    Use them to decide which evidence can support future classification and
    which exceptional cases need attention.
 
-This is the next product task, ahead of expanding manual candidate discovery.
+The shared prevalence and coverage contract, coordinated consumers, and empty
+profile cleanup are implemented in the subsequent
+[observation design](library-profile-observation-design.md) and
+[validation outcome](library-profile-observation-outcome.md). An automatic
+post-upgrade refresh rebuilds existing active-library profiles. The next product
+task is inventory-change-driven refresh and invalidation through the existing
+planner/outbox, including libraries without an enabled native policy.
 The separate shared HTTP mutation-retry audit remains a correctness follow-up;
 the receipt-recovery change already disables replay for identity confirmation.
 
@@ -88,7 +94,7 @@ the receipt-recovery change already disables replay for identity confirmation.
 | Approach | Benefit | Cost or limit | Decision |
 | --- | --- | --- | --- |
 | Reuse synchronized inventory and automatically refreshed profiles | Low operational burden; uses real library organization | Inherits source mistakes and missing metadata | Primary foundation |
-| Explicit prevalence, coverage, freshness, and provenance | Makes common traits interpretable and comparable | Requires a coordinated profile/consumer contract change | Next fix |
+| Explicit prevalence, coverage, freshness, and provenance | Makes common traits interpretable and comparable | Coverage is implemented; inventory-change freshness remains | Continue automatic maintenance |
 | Bounded item and semantic comparisons across candidate libraries | Explains similarities, overlaps, and outliers | Semantic evidence needs independent evaluation | Build on existing retrieval |
 | Manual per-item identity and policy setup | Resolves exceptional ambiguity | Does not scale as the main workflow | Exception path |
 | Treat all existing placements or model labels as verified truth | Removes apparent review effort | Conceals errors and creates circular evaluation | Reject |
@@ -114,5 +120,6 @@ metrics with the evidence that produced them. The URL was discovered through
 web search on 2026-09-05; this established guidance predates the requested
 August 2026 baseline.
 
-This document records the assessment and next implementation scope. The profile
-contract changes described above are not part of the receipt-recovery patch.
+This document preserves the original assessment and implementation sequence.
+The linked design and outcome record the subsequent profile contract fix and
+the measured remaining gaps. The receipt-recovery patch remains a separate change.

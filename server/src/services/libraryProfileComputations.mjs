@@ -1,3 +1,5 @@
+import { buildLibraryProfileObservation, observationDistribution } from './libraryProfileObservation.mjs';
+import { formatObservationContext } from './libraryProfileObservationPresentation.mjs';
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 import { ratingNormalizer } from '../utils/ratingNormalizer.mjs';
 
@@ -14,52 +16,17 @@ function getRatingContribution(percentage) {
     return 0;
 }
 
+function ownPercentage(distribution, key) {
+    const value = Object.hasOwn(distribution, key) ? distribution[key] : 0;
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 100 ? value : 0;
+}
+
 function limitList(values) {
     return values.slice(0, PROFILE_DETAIL_LIMIT);
 }
 
 export function countDistribution(items, field) {
-    const counts = {};
-
-    for (const item of items) {
-        let values = [];
-
-        if (field === 'rating') {
-            const rating = item.content_rating || item.metadata?.omdb?.rated;
-            if (rating) {
-                values = [ratingNormalizer.normalizeRating(rating, item.media_type || 'movie')];
-            }
-        } else if (field === 'genres') {
-            const genres = normalizeMetadataList(item.genres);
-            values = genres.length > 0
-                ? genres
-                : normalizeMetadataList(item.metadata?.tmdb?.genres);
-        } else if (field === 'studio') {
-            const studio = item.studio ||
-                item.metadata?.tmdb?.production_companies?.[0]?.name;
-            if (studio) values = [studio];
-        } else if (field === 'keywords') {
-            values = normalizeMetadataList(item.metadata?.tmdb?.keywords);
-        }
-
-        for (const val of values.filter(Boolean)) {
-            const normalized = String(val).trim();
-            if (normalized) {
-                counts[normalized] = (counts[normalized] || 0) + 1;
-            }
-        }
-    }
-
-    const total = items.length;
-    const percentages = {};
-    const sorted = Object.entries(counts)
-        .sort((a, b) => b[1] - a[1]);
-
-    for (const [key, count] of sorted) {
-        percentages[key] = Math.round((count / total) * 100);
-    }
-
-    return percentages;
+    return observationDistribution(buildLibraryProfileObservation(items), field);
 }
 
 export function findExclusions(distribution, knownValues = null) {
@@ -120,7 +87,7 @@ export function computeProfileScoreDetails(profile, itemMetadata) {
     const genreMatches = [];
     const genreUnmatched = [];
     for (const genre of itemGenres) {
-        const genrePct = genreDist[genre] || 0;
+        const genrePct = ownPercentage(genreDist, genre);
         const scoreDelta = Math.min(genrePct * 0.3, 15);
         score += scoreDelta;
         if (genrePct > 0 || scoreDelta > 0) {
@@ -138,7 +105,7 @@ export function computeProfileScoreDetails(profile, itemMetadata) {
     const keywordMatches = [];
     const keywordUnmatched = [];
     for (const keyword of itemKeywords) {
-        const keywordPct = keywordDist[keyword] || 0;
+        const keywordPct = ownPercentage(keywordDist, keyword);
         const scoreDelta = keywordPct > 10 ? 5 : 0;
         score += scoreDelta;
         if (keywordPct > 0 || scoreDelta > 0) {
@@ -152,39 +119,8 @@ export function computeProfileScoreDetails(profile, itemMetadata) {
         }
     }
 
-    const exclusionRatings = Array.from(new Set((profile.exclusion_ratings || [])
-        .map(exclusionRating => ratingNormalizer.normalizeRating(exclusionRating, mediaType))
-        .filter(Boolean)));
-    const exclusionHits = {
-        ratings: [],
-        genres: [],
-        keywords: [],
-    };
-    if (exclusionRatings?.includes(normalizedRating)) {
-        score -= 50;
-        exclusionHits.ratings.push({
-            value: normalizedRating,
-            score_delta: -50,
-        });
-    }
-    for (const genre of itemGenres) {
-        if (profile.exclusion_genres?.includes(genre)) {
-            score -= 30;
-            exclusionHits.genres.push({
-                value: genre,
-                score_delta: -30,
-            });
-        }
-    }
-    for (const keyword of itemKeywords) {
-        if (profile.exclusion_keywords?.includes(keyword)) {
-            score -= 20;
-            exclusionHits.keywords.push({
-                value: keyword,
-                score_delta: -20,
-            });
-        }
-    }
+    // Observed absence is not declared intent and cannot penalize a candidate.
+    const exclusionHits = { ratings: [], genres: [], keywords: [] };
 
     const rawScore = score;
     const finalScore = Math.max(0, Math.min(100, 50 + score));
@@ -228,6 +164,7 @@ export function formatProfileForPrompt(stats) {
 
     lines.push('=== LIBRARY PROFILE STATISTICS ===');
     lines.push(`Total items in library: ${stats.totalItems}`);
+    lines.push(...formatObservationContext(stats.observation));
     lines.push('');
 
     if (stats.certificationDistribution.length > 0) {

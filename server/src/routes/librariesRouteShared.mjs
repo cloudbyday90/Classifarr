@@ -84,6 +84,7 @@ export function createLibrariesRouter({
         });
       }
 
+      // Keep the additive observation_summary with the stored distributions; reads never regenerate it.
       res.json(profile);
   }));
 

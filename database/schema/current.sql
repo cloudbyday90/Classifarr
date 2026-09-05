@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-05T11:59:43.308Z
--- Latest Migration: 20260905_120000_add_media_identity_receipt_lookup_index.sql
+-- Generated: 2026-09-05T12:50:47.327Z
+-- Latest Migration: 20260905_140000_add_library_profile_observation_summary.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3470,8 +3470,16 @@ CREATE TABLE public.library_profiles (
     enriched_count integer DEFAULT 0,
     last_generated_at timestamp without time zone,
     created_at timestamp without time zone DEFAULT now(),
-    updated_at timestamp without time zone DEFAULT now()
+    updated_at timestamp without time zone DEFAULT now(),
+    observation_summary jsonb
 );
+
+
+--
+-- Name: COLUMN library_profiles.observation_summary; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.library_profiles.observation_summary IS 'Versioned inventory-row prevalence, metadata coverage, and typed identity counts; observed evidence, not policy exclusions.';
 
 
 --
@@ -14727,6 +14735,7 @@ FROM unnest(ARRAY[
     '20260901_090000_add_policy_candidate_correction_review_corpus_capture.sql',
     '20260901_100000_add_policy_candidate_correction_review_corpus_capture_evaluation_index.sql',
     '20260905_100000_add_media_identity_review_previews.sql',
-    '20260905_120000_add_media_identity_receipt_lookup_index.sql'
+    '20260905_120000_add_media_identity_receipt_lookup_index.sql',
+    '20260905_140000_add_library_profile_observation_summary.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

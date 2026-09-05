@@ -38,6 +38,7 @@ export function updateLibraryArrSettings(id, settings) {
   return apiClient.put(`/libraries/${id}/arr-settings`, { settings })
 }
 
+/** Stored distributions plus additive observation_summary prevalence and metadata coverage. */
 export function getLibraryProfile(libraryId) {
   return getDataRequest(`/libraries/${libraryId}/profile`)
 }

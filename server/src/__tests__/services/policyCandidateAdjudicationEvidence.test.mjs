@@ -4,6 +4,7 @@
  */
 
 import { describe, expect, test } from '@jest/globals';
+import { buildLibraryProfileObservation, observationStats } from '../../services/libraryProfileObservation.mjs';
 
 import {
   createPolicyCandidateAdjudicationEvidenceService,
@@ -20,6 +21,16 @@ const contract = {
 };
 
 describe('policyCandidateAdjudicationEvidence', () => {
+  test('carries measured coverage into local evidence without widening remote disclosure', async () => {
+    const stats = observationStats(buildLibraryProfileObservation([{ genres: ['Drama'] }, {}]), 'time');
+    const service = createPolicyCandidateAdjudicationEvidenceService({ getProfileStats: async () => stats, retrieveCurrentLibraryEvidence: async () => ({ statusId: 'not_applicable', candidates: [] }) });
+    const evidence = await service.build({ contract });
+    const local = projectPolicyCandidateAdjudicationEvidenceForProvider(evidence, { providerType: 'ollama', providerHost: '192.168.50.95' });
+    const remote = projectPolicyCandidateAdjudicationEvidenceForProvider(evidence, { providerType: 'openai' });
+    expect(local.candidates[0].profile.observation.traits.genres).toEqual({ observedCount: 1, unknownCount: 1 });
+    expect(remote.candidates[0].profile).not.toHaveProperty('observation');
+  });
+
   test('keeps local evidence bounded and removes titles for a remote provider', async () => {
     const service = createPolicyCandidateAdjudicationEvidenceService({
       getProfileStats: async () => ({

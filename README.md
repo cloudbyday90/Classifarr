@@ -598,6 +598,12 @@ Production behavior:
 
 Synchronized inventory and observed library profiles provide evidence for library
 understanding and future automation. See the [inventory-driven direction](docs/architecture/library-observation-automation-direction.md).
+Stored profiles and live AI statistics now share item-based percentages and
+explicit metadata coverage. Profile pages show known and missing counts; an
+absent trait does not establish a library restriction. Existing profiles receive
+an automatic refresh after upgrading. See the
+[profile observation design](docs/architecture/library-profile-observation-design.md)
+and [measured outcome](docs/architecture/library-profile-observation-outcome.md).
 Manual identity review handles unresolved exceptions.
 
 For unresolved inventory identities, open **Libraries → Review media IDs** with

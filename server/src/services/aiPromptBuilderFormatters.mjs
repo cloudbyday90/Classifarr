@@ -1,3 +1,5 @@
+import { formatObservationContext } from './libraryProfileObservationPresentation.mjs';
+
 export function parseArray(value, normalizeMetadataList) {
     if (!value) return null;
     if (Array.isArray(value)) return normalizeMetadataList(value);
@@ -100,6 +102,7 @@ export function formatLibraryProfile(data) {
     const lines = [];
     lines.push('=== LIBRARY PROFILE ===');
     lines.push(`Items: ${data.totalItems}`);
+    lines.push(...formatObservationContext(data.observation));
 
     if (data.certificationDistribution && data.certificationDistribution.length > 0) {
         const topRatings = data.certificationDistribution
@@ -210,6 +213,7 @@ export function formatCandidateAdjudication(data) {
         }
         if (candidate.profile?.available === true) {
             lines.push(`   Observed library size: ${candidate.profile.itemCountBand}`);
+            if (candidate.profile.observation) lines.push(...formatObservationContext(candidate.profile.observation).map(line => `   ${line}`));
             const profileLines = [
                 formatDistribution('Content ratings', candidate.profile.contentRatings),
                 formatDistribution('Top genres', candidate.profile.topGenres),

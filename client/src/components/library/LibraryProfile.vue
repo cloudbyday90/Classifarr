@@ -72,7 +72,7 @@
       class="empty-state"
     >
       <p>No profile yet.</p>
-      <p class="text-sm text-gray-500">
+      <p class="text-sm text-gray-300">
         The server-managed lifecycle will generate a profile when it has usable synced library data.
       </p>
     </div>
@@ -92,10 +92,12 @@
             ({{ profile.enriched_count }} enriched)
           </span>
         </p>
-        <p class="text-xs text-gray-500 mt-1">
+        <p class="text-xs text-gray-300 mt-1">
           Last updated: {{ formatDate(profile.last_generated_at) }}
         </p>
       </div>
+
+      <LibraryProfileCoverage :observation="profile.observation_summary" />
 
       <!-- Rating Distribution -->
       <div
@@ -160,38 +162,13 @@
           </span>
         </div>
       </div>
-
-      <!-- Exclusions -->
-      <div
-        v-if="hasExclusions"
-        class="section exclusions"
-      >
-        <h4 class="section-title text-red-400">
-          Never in this library
-        </h4>
-        <div class="tag-list">
-          <span 
-            v-for="rating in profile.exclusion_ratings" 
-            :key="'r-' + rating" 
-            class="tag tag-exclusion"
-          >
-            {{ rating }}
-          </span>
-          <span 
-            v-for="genre in profile.exclusion_genres" 
-            :key="'g-' + genre" 
-            class="tag tag-exclusion"
-          >
-            {{ genre }}
-          </span>
-        </div>
-      </div>
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, toRef } from 'vue'
+import LibraryProfileCoverage from './LibraryProfileCoverage.vue'
 import { useLibraryProfileMaintenance } from '@/composables/useLibraryProfileMaintenance'
 
 const props = defineProps({
@@ -236,11 +213,6 @@ const topStudios = computed(() => {
   )
 })
 
-const hasExclusions = computed(() => {
-  return profile.value?.exclusion_ratings?.length > 0 || 
-         profile.value?.exclusion_genres?.length > 0
-})
-
 const hasData = (obj) => obj && Object.keys(obj).length > 0
 
 const formatDate = (date) => {
@@ -276,7 +248,7 @@ onMounted(loadProfile)
 
 .profile-maintenance-help {
   margin: 0 0 0.75rem;
-  color: var(--text-muted, #6c7086);
+  color: var(--text-secondary, #a6adc8);
   font-size: 0.75rem;
 }
 
@@ -378,17 +350,6 @@ onMounted(loadProfile)
 .tag-studio {
   background: rgba(166, 227, 161, 0.2);
   color: #a6e3a1;
-}
-
-.tag-exclusion {
-  background: rgba(243, 139, 168, 0.2);
-  color: #f38ba8;
-}
-
-.exclusions {
-  border-top: 1px solid var(--border-color, #313244);
-  padding-top: 0.75rem;
-  margin-top: 0.5rem;
 }
 
 .btn-ghost {
