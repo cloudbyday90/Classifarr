@@ -23,10 +23,10 @@ describe('automatic acquisition history', () => {
     expect(wrapper.text()).toContain('language 2 / 8 (25%)')
     expect(wrapper.text()).toContain('across all inventory')
     expect(wrapper.text()).toContain('Libraries: 1, 2. Excluded: 1.')
-    expect(wrapper.findAll('details')).toHaveLength(2)
-    expect(wrapper.findAll('caption')).toHaveLength(2)
-    expect(wrapper.findAll('th[scope="col"]')).toHaveLength(11)
-    expect(wrapper.findAll('[role="region"][tabindex="0"]')).toHaveLength(2)
+    expect(wrapper.findAll('details')).toHaveLength(4)
+    expect(wrapper.findAll('caption')).toHaveLength(4)
+    expect(wrapper.findAll('th[scope="col"]')).toHaveLength(25)
+    expect(wrapper.findAll('[role="region"][tabindex="0"]')).toHaveLength(4)
     expect(wrapper.find('button').exists()).toBe(false)
   })
   it('does not invent samples or outcomes during gaps', async () => {
@@ -38,7 +38,7 @@ describe('automatic acquisition history', () => {
   it('withholds capacity-exceeded values and discloses configuration absence', async () => {
     const report = libraryObservationHistoryFixture()
     Object.assign(report.samples[0], { status: 'capacity_exceeded', acquisitionConfigured: false,
-      inventoryRows: null, identifiedRows: null, capturedRows: null })
+      inventoryRows: null, identifiedRows: null, capturedRows: null, libraryCoverage: null })
     const wrapper = await render(report)
     expect(wrapper.text()).toContain('Coverage counts are withheld')
     expect(wrapper.text()).toContain('Acquisition was not configured')

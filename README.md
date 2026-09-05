@@ -647,6 +647,12 @@ Libraries shows captured and unavailable attempts alongside bounded coverage
 samples, with explicit populations and a seven-day window. See the
 [history design](docs/architecture/observation-acquisition-history-design.md) and
 [measured outcome](docs/architecture/observation-acquisition-history-outcome.md).
+Per-library trends show captured, fresh, keyword and language coverage changes
+only between comparable hourly samples. Inventory replacements, selection changes,
+missing samples and unchanged coverage stay explicit. Current library names are
+display labels; history retains aggregate counts and private population fingerprints.
+See the [trend design](docs/architecture/library-coverage-trends-design.md) and
+[validation outcome](docs/architecture/library-coverage-trends-outcome.md).
 Manual identity review handles unresolved exceptions.
 
 For unresolved inventory identities, open **Libraries → Review media IDs** with

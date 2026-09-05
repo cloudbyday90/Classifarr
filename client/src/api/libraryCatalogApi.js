@@ -30,6 +30,7 @@ export function getLibraryObservationHealth() {
   return getDataRequest('/libraries/observation-health')
 }
 
+/** Reads aggregate and per-library coverage history without starting acquisition. */
 export function getLibraryObservationHistory() {
   return getDataRequest('/libraries/observation-history')
 }

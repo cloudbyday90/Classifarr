@@ -9,7 +9,7 @@ import { createLibrariesRouter } from '../routes/librariesRouteShared.mjs';
 import { createLibrariesRouteTestDeps } from './setup/createLibrariesRouteTestDeps.mjs';
 
 const snapshot = { observed_at: '2026-09-05T12:00:00Z', acquisition_configured: true,
-    active_library_count: 1, row_count: 0, libraries: [{ id: 7, name: 'PRIVATE' }], items: [] };
+    active_library_count: 1, row_count: 0, libraries: [{ id: 7, name: 'PRIVATE' }], items: [], population_fingerprints: { 7: 'a'.repeat(64) } };
 const history = { observed_at: snapshot.observed_at, activity: [], samples: [] };
 
 test('automatically captures only aggregate fields and skips an already sampled hour', async () => {
@@ -17,7 +17,9 @@ test('automatically captures only aggregate fields and skips an already sampled 
         .mockResolvedValueOnce({ rows: [snapshot] }).mockResolvedValueOnce({ rowCount: 1 })
         .mockResolvedValueOnce({ rows: [{ sampled: true }] });
     expect(await captureLibraryObservationSample({ query })).toEqual({ captured: true });
-    expect(query.mock.calls[2][1]).toEqual(['2026-09-05T12:00:00.000Z', 'available', [7], 0, true, 0, 0, 0, 0, 0, 0, 0]);
+    expect(query.mock.calls[2][1].slice(0, 12)).toEqual(['2026-09-05T12:00:00.000Z', 'available', [7], 0, true, 0, 0, 0, 0, 0, 0, 0]);
+    expect(JSON.parse(query.mock.calls[2][1][12])).toEqual([{ libraryId: 7, populationFingerprint: 'a'.repeat(64),
+        inventoryRows: 0, supportedRows: 0, identifiedRows: 0, capturedRows: 0, freshRows: 0, keywordRows: 0, languageRows: 0 }]);
     expect(JSON.stringify(query.mock.calls[2][1])).not.toContain('PRIVATE');
     expect(await captureLibraryObservationSample({ query })).toEqual({ captured: false });
     expect(query).toHaveBeenCalledTimes(4);
@@ -28,7 +30,7 @@ test('capacity-exceeded samples preserve unknown counts and excluded-library sco
         .mockResolvedValueOnce({ rows: [{ ...snapshot, row_count: 20001, active_library_count: 3 }] })
         .mockResolvedValueOnce({ rowCount: 0 });
     expect(await captureLibraryObservationSample({ query })).toEqual({ captured: false });
-    expect(query.mock.calls[2][1]).toEqual(['2026-09-05T12:00:00.000Z', 'capacity_exceeded', [7], 2, true, null, null, null, null, null, null, null]);
+    expect(query.mock.calls[2][1]).toEqual(['2026-09-05T12:00:00.000Z', 'capacity_exceeded', [7], 2, true, null, null, null, null, null, null, null, null]);
 });
 
 test('history exposes distinct populations and performs one read', async () => {

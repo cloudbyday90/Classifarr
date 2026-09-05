@@ -43,7 +43,9 @@ import {
 
 describe('libraryCatalogApi', () => {
   it('loads unwrapped observation history through the central GET helper', async () => {
-    const report = { activity: [], samples: [] }
+    const report = { activity: [], samples: [{ libraryCoverage: [
+      { libraryId: 7, comparison: 'population_changed', delta: null },
+    ] }] }
     mockGetDataRequest.mockResolvedValueOnce(report)
     expect(await getLibraryObservationHistory()).toBe(report)
     expect(mockGetDataRequest).toHaveBeenCalledWith('/libraries/observation-history')

@@ -30,6 +30,13 @@ export async function readLibraryObservationHealthSnapshot(db) {
             (SELECT COUNT(*)::int FROM libraries WHERE is_active = true) AS active_library_count,
             (SELECT row_count FROM size) AS row_count,
             COALESCE((SELECT jsonb_agg(l ORDER BY l.id) FROM selected_libraries l), '[]'::jsonb) AS libraries,
+            COALESCE((SELECT jsonb_object_agg(p.id, p.fingerprint) FROM (
+                SELECT l.id, encode(sha256(convert_to(COALESCE(jsonb_agg(
+                    jsonb_build_array(i.id, i.media_type, i.tmdb_id) ORDER BY i.id)
+                    FILTER (WHERE i.id IS NOT NULL), '[]'::jsonb)::text, 'UTF8')), 'hex') AS fingerprint
+                FROM selected_libraries l LEFT JOIN inventory i ON i.library_id = l.id
+                WHERE (SELECT row_count FROM size) <= $3 GROUP BY l.id
+            ) p), '{}'::jsonb) AS population_fingerprints,
             COALESCE((SELECT jsonb_agg(jsonb_build_object(
                 'library_id', i.library_id, 'media_type', i.media_type, 'tmdb_id', i.tmdb_id,
                 'inventory_tmdb_attempted_at', i.inventory_tmdb_attempted_at, 'inventory_tmdb_fetched_at', i.inventory_tmdb_fetched_at,

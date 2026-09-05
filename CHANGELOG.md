@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Per-library coverage trends** — Automatic hourly history now shows metadata
+  progress by library, with explicit inventory changes, gaps and unchanged
+  coverage intervals. Bounded samples avoid misleading comparisons when the
+  population changes, including replacements with the same row count.
+
 - **Automatic acquisition history** — Libraries now shows captured and unavailable
   metadata attempts alongside hourly coverage samples, with bounded seven-day
   history, explicit populations and no manual capture steps.

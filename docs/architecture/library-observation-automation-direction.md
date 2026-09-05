@@ -110,8 +110,12 @@ automatically after cooldown; see the
 [outcome](inventory-observation-repair-outcome.md). Automatic bounded acquisition
 outcomes and coverage history are implemented in the
 [history design](observation-acquisition-history-design.md) and
-[outcome](observation-acquisition-history-outcome.md). The next item is bounded
-per-library trends with explicit population-change markers.
+[outcome](observation-acquisition-history-outcome.md). Bounded per-library trends
+with explicit population-change markers are implemented in the
+[trend design](library-coverage-trends-design.md) and
+[outcome](library-coverage-trends-outcome.md). The next item is fair, bounded
+sampling across active libraries, with separate per-library capacity status so
+one large population does not withhold every smaller library's coverage.
 The separate shared HTTP mutation-retry audit remains a correctness follow-up;
 the receipt-recovery change already disables replay for identity confirmation.
 

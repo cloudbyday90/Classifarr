@@ -38,6 +38,10 @@ function summarize(library, items, now) {
 
 export async function readLibraryObservationHealth(db) {
     const snapshot = await readLibraryObservationHealthSnapshot(db);
+    return buildLibraryObservationHealth(snapshot);
+}
+
+export function buildLibraryObservationHealth(snapshot) {
     const now = Date.parse(snapshot.observed_at);
     if (!Number.isFinite(now)) throw new Error('Invalid observation snapshot time');
     const exceeded = snapshot.row_count > OBSERVATION_HEALTH_LIMITS.rowLimit;

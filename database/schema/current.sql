@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-05T22:44:19.315Z
--- Latest Migration: 20260905_180000_preserve_observation_language_presence.sql
+-- Generated: 2026-09-05T23:04:23.034Z
+-- Latest Migration: 20260905_190000_add_library_coverage_trends.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3459,6 +3459,12 @@ CREATE TABLE public.library_observation_samples (
     fresh_rows integer,
     keyword_rows integer,
     language_rows integer,
+    library_coverage_v1 jsonb,
+    CONSTRAINT library_coverage_v1_bounded CHECK (((library_coverage_v1 IS NULL) OR ((status = 'available'::text) AND (octet_length((library_coverage_v1)::text) <= 16384) AND
+CASE
+    WHEN (jsonb_typeof(library_coverage_v1) = 'array'::text) THEN ((jsonb_array_length(library_coverage_v1) = cardinality(library_ids)) AND (jsonb_array_length(library_coverage_v1) <= 12))
+    ELSE false
+END))),
     CONSTRAINT library_observation_samples_check CHECK ((hour_slot = mod((floor((EXTRACT(epoch FROM observed_at) / (3600)::numeric)))::bigint, (168)::bigint))),
     CONSTRAINT library_observation_samples_check1 CHECK ((((status = 'available'::text) AND (num_nonnulls(inventory_rows, supported_rows, identified_rows, captured_rows, fresh_rows, keyword_rows, language_rows) = 7) AND ((inventory_rows >= 0) AND (inventory_rows <= 20000)) AND ((supported_rows >= 0) AND (supported_rows <= inventory_rows)) AND ((identified_rows >= 0) AND (identified_rows <= supported_rows)) AND ((captured_rows >= 0) AND (captured_rows <= identified_rows)) AND ((fresh_rows >= 0) AND (fresh_rows <= captured_rows)) AND ((keyword_rows >= 0) AND (keyword_rows <= captured_rows)) AND ((language_rows >= 0) AND (language_rows <= captured_rows))) OR ((status = 'capacity_exceeded'::text) AND (num_nonnulls(inventory_rows, supported_rows, identified_rows, captured_rows, fresh_rows, keyword_rows, language_rows) = 0)))),
     CONSTRAINT library_observation_samples_excluded_library_count_check CHECK ((excluded_library_count >= 0)),
@@ -14987,6 +14993,7 @@ FROM unnest(ARRAY[
     '20260905_150000_add_inventory_profile_refresh.sql',
     '20260905_160000_add_inventory_tmdb_observations.sql',
     '20260905_170000_add_observation_acquisition_history.sql',
-    '20260905_180000_preserve_observation_language_presence.sql'
+    '20260905_180000_preserve_observation_language_presence.sql',
+    '20260905_190000_add_library_coverage_trends.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

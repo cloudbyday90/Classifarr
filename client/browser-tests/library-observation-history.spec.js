@@ -4,6 +4,19 @@ import { libraryObservationHistoryFixture } from '../src/__tests__/fixtures/libr
 import { libraryObservationHealthFixture } from '../src/__tests__/fixtures/libraryObservationHealthFixture.js'
 import { libraryOverlapFixture } from '../src/__tests__/fixtures/libraryOverlapFixture.js'
 
+async function checkKeyboardScroll(page, region) {
+  await region.focus()
+  await region.evaluate(element => {
+    element.dataset.scrollFinished = 'false'
+    element.addEventListener('scrollend', () => { element.dataset.scrollFinished = 'true' }, { once: true })
+  })
+  await page.keyboard.press('ArrowRight')
+  await expect(region).toHaveAttribute('data-scroll-finished', 'true')
+  expect(await region.evaluate(element => element.scrollLeft)).toBeGreaterThan(0)
+  await region.evaluate(element => { element.scrollTo({ left: 0, behavior: 'instant' }) })
+  await expect.poll(() => region.evaluate(element => element.scrollLeft)).toBe(0)
+}
+
 test('automatically shows acquisition history with keyboard tables and mobile containment', async ({ page }, testInfo) => {
   let reads = 0
   let writes = 0
@@ -32,19 +45,21 @@ test('automatically shows acquisition history with keyboard tables and mobile co
   }
   await expect(section.getByRole('table', { name: 'Acquisition outcomes by UTC hour, newest first' })).toBeVisible()
   await expect(section.getByRole('table', { name: 'Hourly coverage samples, newest first' })).toBeVisible()
+  await expect(section.getByRole('table', { name: 'Hourly coverage for Movies (library 1), newest first', exact: true })).toBeVisible()
+  await expect(section.getByText('Inventory population changed; comparison withheld.', { exact: true }).first()).toBeVisible()
   await page.setViewportSize({ width: 390, height: 844 })
   await section.scrollIntoViewIfNeeded()
   expect(await page.evaluate(() => globalThis.document.documentElement.scrollWidth <= globalThis.innerWidth)).toBe(true)
   const region = section.getByRole('region', { name: 'Coverage history table', exact: true })
-  await region.focus()
-  await page.keyboard.press('ArrowRight')
-  await expect.poll(() => region.evaluate(element => element.scrollLeft)).toBeGreaterThan(0)
-  await region.evaluate(element => { element.scrollTo({ left: 0, behavior: 'instant' }) })
-  await expect.poll(() => region.evaluate(element => element.scrollLeft)).toBe(0)
+  await checkKeyboardScroll(page, region)
   await section.locator('h2').scrollIntoViewIfNeeded()
   await page.screenshot({ path: testInfo.outputPath('observation-history-mobile.png') })
   await region.scrollIntoViewIfNeeded()
   await page.screenshot({ path: testInfo.outputPath('observation-history-tables-mobile.png') })
+  const trendRegion = section.getByRole('region', { name: 'Coverage trend table for Movies (library 1)', exact: true })
+  await checkKeyboardScroll(page, trendRegion)
+  await trendRegion.scrollIntoViewIfNeeded()
+  await page.screenshot({ path: testInfo.outputPath('library-trends-mobile.png') })
   expect(reads).toBe(1)
   expect(writes).toBe(0)
 })

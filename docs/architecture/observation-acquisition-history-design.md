@@ -2,6 +2,10 @@
 
 ## Decision and measurement boundaries
 
+This document records the aggregate history design. The subsequent
+[per-library extension](library-coverage-trends-design.md) adds bounded detail and
+private population fingerprints while preserving the original activity counters.
+
 Build on the [repair outcome](inventory-observation-repair-outcome.md) with two
 automatic seven-day histories. Acquisition outcomes count attempts whose result
 was committed through the existing source guard, separated into captured and

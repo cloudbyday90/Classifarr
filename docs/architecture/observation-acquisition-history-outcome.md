@@ -107,8 +107,7 @@ Final recommendation stack: guarded inventory identity → attributable validato
 → bounded repair → automatic profiles/overlap → current health and acquisition
 history → separately evaluated classification assistance.
 
-**Next item:** add bounded per-library coverage trends with explicit population
-change markers. Show which libraries are improving or stalled automatically;
-distinguish missing evidence from unavailable acquisition and keep source placement
-separate from verified classification labels. Semantic readiness and human-review
-gates remain unchanged.
+**Follow-up delivered:** [per-library coverage trends](library-coverage-trends-outcome.md)
+now expose explicit population changes and unchanged comparable intervals. They
+do not infer an outage from unchanged coverage. That outcome records the next
+sampling-scope improvement. Semantic readiness and human-review gates remain unchanged.

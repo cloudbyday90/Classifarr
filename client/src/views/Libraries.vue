@@ -118,7 +118,7 @@
       </Card>
     </div>
     <LibraryObservationHealth />
-    <LibraryObservationHistory />
+    <LibraryObservationHistory :libraries="libraries" />
     <LibraryOverlapSummary />
   </div>
 </template>

@@ -48,6 +48,10 @@
         Gaps are unrecorded periods, and task completion alone does not establish capture.
       </p>
       <LibraryObservationActivityTable :activity="report.activity" />
+      <LibraryObservationTrends
+        :samples="report.samples"
+        :libraries="libraries"
+      />
       <LibraryObservationCoverageTable :samples="report.samples" />
     </template>
   </section>
@@ -59,6 +63,9 @@ import { getLibraryObservationHistory } from '@/api/libraryCatalogApi'
 import { observationHistoryTime as time, observationHistoryRatio as ratio } from '@/utils/observationHistoryDisplay'
 import LibraryObservationActivityTable from './LibraryObservationActivityTable.vue'
 import LibraryObservationCoverageTable from './LibraryObservationCoverageTable.vue'
+import LibraryObservationTrends from './LibraryObservationTrends.vue'
+
+defineProps({ libraries: { type: Array, default: () => [] } })
 
 const report = ref(null)
 const loading = ref(true)
