@@ -19,6 +19,7 @@ import { httpGet } from '../utils/httpClient.mjs';
 import { ServiceUnavailableError } from '../utils/appError.mjs';
 import * as db from '../config/database.mjs';
 import { rateLimiters } from '../utils/rateLimiter.mjs';
+import { searchTmdbIdentityCandidates } from './tmdbIdentitySearch.mjs';
 import {
     classifyHealthError,
     mapSearchResults,
@@ -246,6 +247,14 @@ class TMDBService {
       });
       return 'NR';
     }
+  }
+
+  async searchIdentityCandidates(title, mediaType, year) {
+    return searchTmdbIdentityCandidates(title, mediaType, year, {
+      baseUrl: this.baseUrl, httpGet,
+      getApiKey: () => this.getApiKey(),
+      executeRateLimited: (fn) => this.executeRateLimited(fn),
+    });
   }
 
   async search(query, mediaType = 'multi') {

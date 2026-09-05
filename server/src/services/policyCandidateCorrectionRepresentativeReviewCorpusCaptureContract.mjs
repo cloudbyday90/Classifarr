@@ -12,9 +12,6 @@ import {
   buildPolicyCandidateCorrectionOutcomeAttributionProjection,
 } from './policyCandidateCorrectionOutcomeAttribution.mjs';
 
-export const POLICY_CANDIDATE_CORRECTION_REPRESENTATIVE_REVIEW_CORPUS_CAPTURE_VERSION =
-  'policy.candidate_correction_representative_review_corpus_capture.v1';
-
 export const POLICY_CANDIDATE_CORRECTION_REPRESENTATIVE_REVIEW_CORPUS_CAPTURE_STATUS_IDS = Object.freeze({
   CAPTURED: 'captured',
   NOT_ELIGIBLE: 'not_eligible',

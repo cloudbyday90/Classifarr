@@ -100,6 +100,39 @@ describe('TMDBService', () => {
         });
     });
 
+    describe('searchIdentityCandidates', () => {
+        it.each([
+            ['movie', { primary_release_year: '2001' }],
+            ['tv', { first_air_date_year: 2001 }],
+        ])('preserves pagination and every candidate for %s with separate title/year parameters', async (type, yearParams) => {
+            tmdbService.apiKey = 'fixture-only';
+            const data = { page: 1, total_pages: 2, total_results: 21,
+                results: Array.from({ length: 20 }, (_, i) => ({ id: i + 1 })) };
+            mockHttpGet.mockResolvedValueOnce({ data });
+            expect(await tmdbService.searchIdentityCandidates('  Example  ', type, '2001')).toBe(data);
+            expect(mockHttpGet).toHaveBeenCalledWith(`https://api.themoviedb.org/3/search/${type}`, {
+                params: { api_key: 'fixture-only', query: 'Example', page: 1, include_adult: false, ...yearParams },
+                timeout: 10000,
+            });
+            expect(rateLimiters.tmdb.execute).toHaveBeenCalledTimes(1);
+        });
+
+        it.each([
+            ['Example', 'movie', undefined], ['Example', 'person', 2001], ['', 'movie', 2001],
+        ])('rejects invalid request %j before credentials or network access', async (title, type, year) => {
+            expect(await tmdbService.searchIdentityCandidates(title, type, year)).toBeNull();
+            expect(db.query).not.toHaveBeenCalled();
+            expect(mockHttpGet).not.toHaveBeenCalled();
+            expect(rateLimiters.tmdb.execute).not.toHaveBeenCalled();
+        });
+
+        it('rejects missing credentials without making a request', async () => {
+            jest.spyOn(tmdbService, 'getApiKey').mockResolvedValueOnce(null);
+            await expect(tmdbService.searchIdentityCandidates('Example', 'movie', 2001)).rejects.toThrow('TMDB API key not configured');
+            expect(mockHttpGet).not.toHaveBeenCalled();
+        });
+    });
+
     describe('testConnection', () => {
         it('should return success on valid connection', async () => {
             db.query.mockResolvedValueOnce({

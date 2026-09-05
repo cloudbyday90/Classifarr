@@ -58,7 +58,7 @@ export async function verifyQueueEnrichmentIdentitySql(client) {
         if (drift) await query("UPDATE media_server_items SET media_type = 'movie' WHERE id = 4");
         return { movie_results: [{ id: 111 }], tv_results: [{ id: 222 }] };
       },
-      search: async () => { throw new Error('Normalized OMDb IMDb ID should avoid title search'); },
+      searchIdentityCandidates: async () => { throw new Error('Normalized OMDb IMDb ID should avoid title search'); },
     } });
     const completions = [];
     const deps = {

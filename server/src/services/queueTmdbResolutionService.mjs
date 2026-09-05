@@ -9,6 +9,13 @@
 import { canonicalMediaType, positiveDatabaseInteger } from './mediaIdentityValues.mjs';
 import { captureQueueEnrichmentPayload } from './queueEnrichmentPayload.mjs';
 import { omdbImdbId, typedTmdbResults } from './queueEnrichmentResults.mjs';
+import { buildTmdbTitleRequest, decideTmdbTitleMatch } from './tmdbTitleMatch.mjs';
+
+function recordResolution(data, method, reason, tmdbId) {
+    if (data) data.tmdb_resolution = {
+        version: 1, status: tmdbId ? 'resolved' : 'review_required', method, reason,
+    };
+}
 
 export class QueueTmdbResolutionService {
     constructor(deps = {}) {
@@ -71,37 +78,23 @@ export class QueueTmdbResolutionService {
         return null;
     }
 
-    async resolveFromTitle(payload) {
+    async resolveFromTitle(payload, enrichmentData) {
         payload = captureQueueEnrichmentPayload(payload);
-        if (!payload || typeof payload.title !== 'string' || !payload.title.trim() || payload.title.length > 500) {
+        const request = buildTmdbTitleRequest(payload?.title, payload?.media?.media_type, payload?.year);
+        if (!request) {
+            recordResolution(enrichmentData, 'title', payload?.year == null || payload.year === '' ? 'missing_year' : 'invalid_request', null);
             return null;
         }
 
         try {
-            const mediaType = payload.media.media_type;
-            const searchQuery = payload.year
-                ? `${payload.title} ${payload.year}`
-                : payload.title;
-
-            const searchResults = typedTmdbResults(await this.tmdbService.search(searchQuery, mediaType), mediaType);
-
-            if (searchResults && searchResults.length > 0) {
-                const bestMatch = searchResults.find(r =>
-                    r.title?.toLowerCase() === payload.title?.toLowerCase() &&
-                    (!payload.year || r.year === String(payload.year))
-                ) || searchResults[0];
-
-                const tmdbId = positiveDatabaseInteger(bestMatch.id);
-                this.logger.info('TMDB title search successful', {
-                    query: searchQuery,
-                    tmdbId,
-                    matchedTitle: bestMatch.title,
-                    title: payload.title
-                });
-                return tmdbId;
-            }
-        } catch (error) {
-            this.logger.debug('TMDB title search failed', { error: error.message });
+            const response = await this.tmdbService.searchIdentityCandidates(request.title, request.mediaType, request.year);
+            const decision = decideTmdbTitleMatch(request, response);
+            recordResolution(enrichmentData, 'title', decision.reason, decision.tmdbId);
+            this.logger.debug('TMDB title resolution evaluated', { reason: decision.reason });
+            return decision.tmdbId;
+        } catch {
+            recordResolution(enrichmentData, 'title', 'provider_unavailable', null);
+            this.logger.debug('TMDB title resolution unavailable', { reason: 'provider_unavailable' });
         }
 
         return null;
@@ -130,17 +123,20 @@ export class QueueTmdbResolutionService {
         payload = captureQueueEnrichmentPayload(payload);
         if (!payload || (currentTmdbId != null && !positiveDatabaseInteger(currentTmdbId))) return null;
         let tmdbId = positiveDatabaseInteger(currentTmdbId);
+        if (tmdbId) recordResolution(enrichmentData, 'existing_id', 'identifier_available', tmdbId);
 
         if (!tmdbId) {
             tmdbId = await this.resolveFromTvdb(payload);
+            if (tmdbId) recordResolution(enrichmentData, 'tvdb', 'external_id_match', tmdbId);
         }
 
         if (!tmdbId) {
             tmdbId = await this.resolveFromImdb(payload, enrichmentData);
+            if (tmdbId) recordResolution(enrichmentData, 'imdb', 'external_id_match', tmdbId);
         }
 
         if (!tmdbId) {
-            tmdbId = await this.resolveFromTitle(payload);
+            tmdbId = await this.resolveFromTitle(payload, enrichmentData);
         }
 
         if (tmdbId) {

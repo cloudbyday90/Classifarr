@@ -40,8 +40,10 @@ const mockTavilyService = {
 
 const mockTmdbService = {
     findByExternalId: jest.fn(),
+    searchIdentityCandidates: jest.fn(),
     search: jest.fn()
 };
+const titlePage = (results) => ({ page: 1, total_pages: results.length ? 1 : 0, total_results: results.length, results });
 
 const mockContentTypeAnalyzer = { analyze: jest.fn() };
 
@@ -118,6 +120,7 @@ describe('Enrichment Pipeline Integration', () => {
         tavilyService.search.mockImplementation(() => Promise.resolve(null));
         tmdbService.findByExternalId.mockImplementation(() => Promise.resolve({ movie_results: [], tv_results: [] }));
         tmdbService.search.mockImplementation(() => Promise.resolve([]));
+        tmdbService.searchIdentityCandidates.mockResolvedValue(titlePage([]));
     });
 
     afterEach(() => {
@@ -264,19 +267,18 @@ describe('Enrichment Pipeline Integration', () => {
                 return Promise.resolve({ rows: [] });
             });
 
-            tmdbService.search.mockResolvedValue([
-                { id: 771, title: 'Home Alone', year: '1990' }
-            ]);
+            tmdbService.searchIdentityCandidates.mockResolvedValue(titlePage([
+                { id: 771, title: 'Home Alone', release_date: '1990-11-16' }
+            ]));
 
             await runTaskWithMatchingEnrichmentSource(queueService, db, task);
 
-            expect(tmdbService.search).toHaveBeenCalledWith(
-                expect.stringContaining('Home Alone'),
-                'movie'
-            );
+            expect(tmdbService.searchIdentityCandidates).toHaveBeenCalledWith('Home Alone', 'movie', 1990);
+            expect(tmdbService.search).not.toHaveBeenCalled();
+            expect(db.query).toHaveBeenCalledWith(expect.stringContaining('SET tmdb_id'), [771, 300, 'movie']);
         });
 
-        it('should match best result when multiple search results', async () => {
+        it('should accept the unique exact title and year among multiple results', async () => {
             const taskPayload = {
                 title: 'Home Alone',
                 year: 1990,
@@ -296,15 +298,16 @@ describe('Enrichment Pipeline Integration', () => {
 
             db.query.mockImplementation(() => Promise.resolve({ rows: [] }));
 
-            tmdbService.search.mockResolvedValue([
-                { id: 999, title: 'Home Alone 2', year: '1992' },
-                { id: 771, title: 'Home Alone', year: '1990' },
-                { id: 888, title: 'Home Alone 3', year: '1997' }
-            ]);
+            tmdbService.searchIdentityCandidates.mockResolvedValue(titlePage([
+                { id: 999, title: 'Home Alone 2', release_date: '1992-01-01' },
+                { id: 771, title: 'Home Alone', release_date: '1990-11-16' },
+                { id: 888, title: 'Home Alone 3', release_date: '1997-01-01' }
+            ]));
 
             await runTaskWithMatchingEnrichmentSource(queueService, db, task);
 
-            expect(tmdbService.search).toHaveBeenCalled();
+            expect(tmdbService.searchIdentityCandidates).toHaveBeenCalledTimes(1);
+            expect(db.query).toHaveBeenCalledWith(expect.stringContaining('SET tmdb_id'), [771, 301, 'movie']);
         });
     });
 
@@ -416,7 +419,7 @@ describe('Enrichment Pipeline Integration', () => {
                 max_attempts: 3
             };
 
-            tmdbService.search.mockResolvedValue([]);
+            tmdbService.searchIdentityCandidates.mockResolvedValue(titlePage([]));
 
             const classificationInsertCalled = jest.fn();
             let capturedInsertParams = null;

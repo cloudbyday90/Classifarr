@@ -91,6 +91,11 @@ race with the separate history operation.
 
 ## Next recommended item
 
+The title-resolution follow-up below is now implemented; see the separate
+[TMDb abstention design](tmdb-title-match-abstention-design.md) and
+[outcome](tmdb-title-match-abstention-outcome.md) for its acceptance contract,
+review boundary, validation, and subsequent work.
+
 Make title-based TMDb resolution abstain on weak or ambiguous matches. The
 remaining `find(exact title/year) || searchResults[0]` fallback can still backfill
 an unrelated same-type item. Define unambiguous acceptance rules and test

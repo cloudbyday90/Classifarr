@@ -23,9 +23,11 @@ import { QueueTmdbResolutionService } from '../services/queueTmdbResolutionServi
 import { createMockLogger } from './helpers/mockFactory.mjs';
 const makeTmdbService = () => ({
   findByExternalId: jest.fn(),
+  searchIdentityCandidates: jest.fn(),
   search: jest.fn()
 });
 const makeQueryWithTimeout = () => jest.fn();
+const page = (results) => ({ page: 1, total_pages: results.length ? 1 : 0, total_results: results.length, results });
 
 describe('typed provider boundary', () => {
   test.each([{}, { media_type: 'person' }, { media_type: 'tv', media: { media_type: 'movie' } }])(
@@ -40,6 +42,7 @@ describe('typed provider boundary', () => {
       expect(await svc.resolveAndBackfill(payload, {}, 42)).toBeNull();
       expect(tmdbService.findByExternalId).not.toHaveBeenCalled();
       expect(tmdbService.search).not.toHaveBeenCalled();
+      expect(tmdbService.searchIdentityCandidates).not.toHaveBeenCalled();
       expect(queryWithTimeout).not.toHaveBeenCalled();
     });
 
@@ -60,25 +63,28 @@ describe('typed provider boundary', () => {
     expect(await svc.resolveFromImdb(payload, {})).toBeNull();
   });
 
-  test('filters wrong-type and malformed title results before ranking', async () => {
+  test('rejects a malformed batch without selecting the remaining valid candidate', async () => {
     const tmdbService = makeTmdbService();
-    tmdbService.search.mockResolvedValue([
-      { id: 99, title: 'Example', media_type: 'movie' },
-      { id: 'bad', title: 'Example', media_type: 'tv' },
-      { id: 0, title: 'Example', media_type: 'tv' },
-      { id: 42, title: 'Example', media_type: 'tv' },
-    ]);
+    tmdbService.searchIdentityCandidates.mockResolvedValue(page([
+      { id: 99, name: 'Example', first_air_date: '2001-01-01', media_type: 'movie' },
+      { id: 'bad', name: 'Example', first_air_date: '2001-01-01', media_type: 'tv' },
+      { id: 0, name: 'Example', first_air_date: '2001-01-01', media_type: 'tv' },
+      { id: 42, name: 'Example', first_air_date: '2001-01-01', media_type: 'tv' },
+    ]));
     const svc = new QueueTmdbResolutionService({ logger: createMockLogger(), tmdbService });
-    expect(await svc.resolveFromTitle({ title: 'Example', media_type: ' TV ' })).toBe(42);
-    expect(tmdbService.search).toHaveBeenCalledWith('Example', 'tv');
+    const metadata = {};
+    expect(await svc.resolveFromTitle({ title: 'Example', year: 2001, media_type: ' TV ' }, metadata)).toBeNull();
+    expect(metadata.tmdb_resolution.reason).toBe('invalid_response');
+    expect(tmdbService.searchIdentityCandidates).toHaveBeenCalledWith('Example', 'tv', 2001);
+    expect(tmdbService.search).not.toHaveBeenCalled();
   });
 
   test('captured type and item ID survive caller mutation during resolution', async () => {
-    const payload = { title: 'Example', itemId: 1, media_type: 'tv' };
+    const payload = { title: 'Example', year: 2001, itemId: 1, media_type: 'tv' };
     const tmdbService = makeTmdbService();
-    tmdbService.search.mockImplementation(async () => {
+    tmdbService.searchIdentityCandidates.mockImplementation(async () => {
       payload.itemId = 2; payload.media_type = 'movie';
-      return [{ id: 42, title: 'Example', media_type: 'tv' }];
+      return page([{ id: 42, name: 'Example', first_air_date: '2001-01-01' }]);
     });
     const queryWithTimeout = makeQueryWithTimeout();
     const svc = new QueueTmdbResolutionService({ logger: createMockLogger(), tmdbService, queryWithTimeout });
@@ -91,6 +97,7 @@ describe('typed provider boundary', () => {
     const svc = new QueueTmdbResolutionService({ logger: createMockLogger(), tmdbService });
     expect(await svc.resolveAndBackfill({ title: 'Example', media_type: 'tv' }, {}, id)).toBeNull();
     expect(tmdbService.search).not.toHaveBeenCalled();
+    expect(tmdbService.searchIdentityCandidates).not.toHaveBeenCalled();
   });
 });
 
@@ -177,39 +184,59 @@ describe('resolveFromTitle', () => {
     expect(await svc.resolveFromTitle({ media_type: 'movie' })).toBeNull();
   });
 
-  test('returns best exact match by title and year', async () => {
+  test('returns the unique exact match by title and year', async () => {
     const tmdbService = makeTmdbService();
-    tmdbService.search.mockResolvedValueOnce([
-      { id: 100, title: 'The Matrix', year: '1998' },
-      { id: 101, title: 'The Matrix', year: '1999' }
-    ]);
+    tmdbService.searchIdentityCandidates.mockResolvedValueOnce(page([
+      { id: 100, title: 'The Matrix', release_date: '1998-01-01' },
+      { id: 101, title: 'The Matrix', release_date: '1999-01-01' }
+    ]));
     const svc = new QueueTmdbResolutionService({ logger: createMockLogger(), tmdbService });
     const result = await svc.resolveFromTitle({ title: 'The Matrix', year: 1999, media: { media_type: 'movie' } });
     expect(result).toBe(101);
   });
 
-  test('falls back to first result when no exact match', async () => {
+  test('leaves a non-exact first result unresolved with a review reason', async () => {
     const tmdbService = makeTmdbService();
-    tmdbService.search.mockResolvedValueOnce([
-      { id: 200, title: 'Matrix Reloaded', year: '2003' }
-    ]);
+    tmdbService.searchIdentityCandidates.mockResolvedValueOnce(page([
+      { id: 200, title: 'Matrix Reloaded', release_date: '2003-01-01' }
+    ]));
     const svc = new QueueTmdbResolutionService({ logger: createMockLogger(), tmdbService });
-    const result = await svc.resolveFromTitle({ title: 'The Matrix', year: 1999, media_type: 'movie' });
-    expect(result).toBe(200);
+    const metadata = {};
+    const result = await svc.resolveFromTitle({ title: 'The Matrix', year: 1999, media_type: 'movie' }, metadata);
+    expect(result).toBeNull();
+    expect(metadata).toEqual({ tmdb_resolution: {
+      version: 1, status: 'review_required', method: 'title', reason: 'no_exact_title_year_match',
+    } });
   });
 
   test('returns null when search returns empty', async () => {
     const tmdbService = makeTmdbService();
-    tmdbService.search.mockResolvedValueOnce([]);
+    tmdbService.searchIdentityCandidates.mockResolvedValueOnce(page([]));
     const svc = new QueueTmdbResolutionService({ logger: createMockLogger(), tmdbService });
-    expect(await svc.resolveFromTitle({ title: 'Unknown', media_type: 'movie' })).toBeNull();
+    expect(await svc.resolveFromTitle({ title: 'Unknown', year: 2001, media_type: 'movie' })).toBeNull();
+    expect(tmdbService.searchIdentityCandidates).toHaveBeenCalledTimes(1);
   });
 
-  test('returns null on search error', async () => {
+  test('records only a fixed reason on provider failure', async () => {
     const tmdbService = makeTmdbService();
-    tmdbService.search.mockRejectedValueOnce(new Error('API down'));
+    tmdbService.searchIdentityCandidates.mockRejectedValueOnce(new Error('secret provider body api_key=private'));
+    const logger = createMockLogger();
+    const metadata = {};
+    const svc = new QueueTmdbResolutionService({ logger, tmdbService });
+    expect(await svc.resolveFromTitle({ title: 'X', year: 2001, media_type: 'movie' }, metadata)).toBeNull();
+    expect(metadata).toEqual({ tmdb_resolution: {
+      version: 1, status: 'review_required', method: 'title', reason: 'provider_unavailable',
+    } });
+    expect(logger.debug).toHaveBeenCalledWith('TMDB title resolution unavailable', { reason: 'provider_unavailable' });
+  });
+
+  test('missing year requires review without accessing the provider', async () => {
+    const tmdbService = makeTmdbService();
+    const metadata = {};
     const svc = new QueueTmdbResolutionService({ logger: createMockLogger(), tmdbService });
-    expect(await svc.resolveFromTitle({ title: 'X', media_type: 'movie' })).toBeNull();
+    expect(await svc.resolveFromTitle({ title: 'X', media_type: 'movie' }, metadata)).toBeNull();
+    expect(metadata.tmdb_resolution.reason).toBe('missing_year');
+    expect(tmdbService.searchIdentityCandidates).not.toHaveBeenCalled();
   });
 });
 
@@ -252,8 +279,10 @@ describe('resolveAndBackfill', () => {
     const svc = new QueueTmdbResolutionService({ logger: createMockLogger(), tmdbService: makeTmdbService() });
     const spy = jest.spyOn(svc, 'backfillTmdbId').mockResolvedValueOnce();
     jest.spyOn(svc, 'resolveFromTvdb');
-    const result = await svc.resolveAndBackfill({ itemId: 1, title: 'X', media_type: 'movie' }, {}, 777);
+    const metadata = { tmdb_resolution: { status: 'review_required', reason: 'missing_year' } };
+    const result = await svc.resolveAndBackfill({ itemId: 1, title: 'X', media_type: 'movie' }, metadata, 777);
     expect(result).toBe(777);
+    expect(metadata.tmdb_resolution).toEqual({ version: 1, status: 'resolved', method: 'existing_id', reason: 'identifier_available' });
     expect(svc.resolveFromTvdb).not.toHaveBeenCalled();
     expect(spy).toHaveBeenCalledWith(1, 777, 'movie');
   });

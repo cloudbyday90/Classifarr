@@ -152,6 +152,14 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Conservative TMDb title resolution** — Queue enrichment now requires a
+  unique exact title/year match from a complete bounded response before
+  assigning an ID. Weak, ambiguous, incomplete, or unavailable matches retain
+  an unknown ID and a review reason in item metadata. This adds no media routing.
+
+- **Server quality gate** — Removed an unused corpus-capture version export
+  reported by the dependency and export check, with no runtime behavior change.
+
 - **Source identity through queue enrichment** — Refill now uses the item's
   movie/TV type, and provider lookups reject missing or conflicting types.
   IMDb resolution selects the matching media category and supports normalized
