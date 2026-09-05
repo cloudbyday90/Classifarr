@@ -157,6 +157,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Media-ID confirmation recovery** — A lost save response now recovers the
+  original administrator's audit receipt without repeating confirmation.
+  Recovery survives a page reload in the same tab, explains unknown outcomes,
+  and offers an explicit receipt check. Confirmation retries are disabled and
+  historical receipt reads remain bounded and read-only.
+
 - **External-ID ambiguity requires review** — Queue enrichment now requires
   unique typed TVDB/IMDb results and agreement between supplied identifiers.
   Conflicting, malformed, duplicate, or unavailable evidence retains an unknown

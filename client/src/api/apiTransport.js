@@ -98,6 +98,10 @@ apiClient.interceptors.response.use(
   async error => {
     const originalRequest = error.config
 
+    // Explicit confirmations recover their receipt instead of replaying a write,
+    // including during authentication refresh. Keep their outcome with the caller.
+    if (originalRequest?.skipAutomaticRetry === true) return Promise.reject(error)
+
     // Retry on network errors and retryable HTTP status codes (5xx, 429).
     // Use exponential backoff: 1 s, 2 s, 4 s.
     const retryCount = originalRequest._retryCount ?? 0

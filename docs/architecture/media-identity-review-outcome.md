@@ -82,13 +82,14 @@ The costs are manual ID discovery, a ten-minute review window, and a fresh revie
 after any source-row change. One preview per administrator also means that
 creating another preview in a second tab invalidates the first.
 
-Prioritize authenticated receipt recovery for a lost confirmation response.
-The existing transaction already prevents partial writes and duplicate receipt
-creation, but a connection failure can leave the operator unsure whether the
-save completed. A follow-up should retrieve the committed receipt by actor and
-preview ID, preserve authorization/source provenance, and test lost responses
-without performing another write. Add bounded candidate search after that if
-operators find manual ID discovery too slow.
+The recommended authenticated receipt recovery follow-up is now implemented;
+see its separate [design](media-identity-receipt-recovery-design.md) and
+[outcome](media-identity-receipt-recovery-outcome.md). It retrieves the committed
+receipt by actor, item, and preview reference without another confirmation write.
+The subsequent [inventory-driven direction](library-observation-automation-direction.md)
+prioritizes automatically maintained profiles and reliable common-trait measures;
+identity review remains an exception path. Shared automatic mutation retries
+also remain a correctness follow-up.
 
 The original semantic study remains gated: an eligible held-out 24–32-case cohort,
 independent human labels, acceptable measured errors, readiness, and frozen-study

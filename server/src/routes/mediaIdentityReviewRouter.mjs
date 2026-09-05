@@ -14,6 +14,7 @@ export function createMediaIdentityReviewRouter({ authenticateToken, requireAdmi
     next();
   });
   router.get('/', async (req, res) => res.json(await service.list(req.reviewActorId, req.query)));
+  router.get('/:itemId/receipts/:previewId', async (req, res) => res.json(await service.getReceipt(req.reviewActorId, req.params.itemId, req.params.previewId)));
   router.post('/:itemId/preview', async (req, res) => res.json(await service.preview(req.reviewActorId, req.params.itemId, req.body)));
   router.post('/:itemId/confirm', async (req, res) => res.json(await service.confirm(req.reviewActorId, req.params.itemId, req.body)));
   return router;

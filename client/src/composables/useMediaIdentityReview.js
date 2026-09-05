@@ -1,6 +1,8 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { onScopeDispose, ref } from 'vue'
 import api from '@/api'
+import { useMediaIdentityReceiptRecovery } from './useMediaIdentityReceiptRecovery'
+import { validReviewInteger } from '@/utils/mediaIdentityRecoveryStorage'
 
 export function useMediaIdentityReview() {
   const items = ref([])
@@ -11,6 +13,7 @@ export function useMediaIdentityReview() {
   const busy = ref(false)
   const error = ref('')
   const status = ref('')
+  const recovery = useMediaIdentityReceiptRecovery()
   let generation = 0
   onScopeDispose(() => { generation++ })
 
@@ -84,22 +87,50 @@ export function useMediaIdentityReview() {
     if (!preview.value || !selected.value || busy.value) return
     const request = ++generation
     const source = selected.value
+    const previewId = preview.value.previewId
     busy.value = true
     error.value = ''
     status.value = 'Saving the verified identity…'
     try {
-      const { data } = await api.confirmMediaIdentity(source.id, { previewId: preview.value.previewId, confirmed: true })
+      recovery.remember(source.id, previewId)
+      const { data } = await api.confirmMediaIdentity(source.id, { previewId, confirmed: true })
       if (request !== generation) return
+      if (!validReviewInteger(data?.auditId) || data.itemId !== source.id) throw new Error('Unverified confirmation response')
+      recovery.clear()
       await load(false, `Identity saved for ${source.title}. Audit receipt ${data.auditId}.`)
     } catch (failure) {
       if (request !== generation) return
       preview.value = null
       error.value = message(failure)
       status.value = ''
+      await recover()
     } finally {
       if (request === generation) busy.value = false
     }
   }
 
-  return { items, mediaType, nextCursor, selected, preview, busy, error, status, select, load, prepare, confirm }
+  async function recover() {
+    if (recovery.phase.value === 'checking') return
+    const request = ++generation
+    selected.value = null
+    preview.value = null
+    busy.value = true
+    status.value = ''
+    await recovery.check()
+    if (request !== generation) return
+    if (recovery.receipt.value) await load(false, `Recovered audit receipt ${recovery.receipt.value.auditId}.`)
+    else busy.value = false
+  }
+
+  async function dismissRecovery() {
+    recovery.clear()
+    await load()
+  }
+
+  async function initialize() {
+    if (recovery.restore()) await recover()
+    else await load()
+  }
+
+  return { items, mediaType, nextCursor, selected, preview, busy, error, status, recovery, select, load, prepare, confirm, recover, dismissRecovery, initialize }
 }

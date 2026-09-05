@@ -166,6 +166,16 @@ describe('apiTransport interceptors', () => {
     expect(apiClient).not.toHaveBeenCalled()
   })
 
+  it.each([undefined, 429, 500, 502, 503, 504, 401])('never replays an explicit confirmation after status %s', async status => {
+    vi.useFakeTimers()
+    const error = { config: { method: 'post', skipAutomaticRetry: true }, response: status ? { status } : undefined }
+    await expect(onResponseError(error)).rejects.toBe(error)
+    await vi.runAllTimersAsync()
+    expect(apiClient).not.toHaveBeenCalled()
+    expect(axios.post).not.toHaveBeenCalled()
+    expect(navigationSpy).not.toHaveBeenCalled()
+  })
+
   it('refreshes token and replays request on 401', async () => {
     axios.post.mockResolvedValueOnce({ data: { success: true } })
     apiClient.mockResolvedValueOnce({ data: { replayed: true } })

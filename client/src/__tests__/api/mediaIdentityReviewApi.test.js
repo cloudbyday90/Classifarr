@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mockGet = vi.fn()
 const mockPost = vi.fn()
 vi.mock('../../api/core', () => ({ getDataRequest: (...args) => mockGet(...args), apiClient: { post: (...args) => mockPost(...args) } }))
-import { confirmMediaIdentity, getMediaIdentityReviewItems, previewMediaIdentity } from '../../api/mediaIdentityReviewApi'
+import { confirmMediaIdentity, getMediaIdentityReviewItems, previewMediaIdentity, getMediaIdentityReceipt } from '../../api/mediaIdentityReviewApi'
 import mediaServerApi from '../../api/mediaServer'
 
 beforeEach(() => vi.clearAllMocks())
@@ -23,9 +23,15 @@ describe('media identity API leaf', () => {
     expect(mockPost).toHaveBeenLastCalledWith('/media-identity-review/7/preview', body)
     const confirmation = { previewId: 'preview', confirmed: true }
     expect(await confirmMediaIdentity(7, confirmation)).toBe(response)
-    expect(mockPost).toHaveBeenLastCalledWith('/media-identity-review/7/confirm', confirmation)
+    expect(mockPost).toHaveBeenLastCalledWith('/media-identity-review/7/confirm', confirmation, { skipAutomaticRetry: true })
+  })
+  it('reads receipts through the GET helper with encoded path segments', async () => {
+    mockGet.mockResolvedValue({ status: 'not_observed', receipt: null })
+    expect(await getMediaIdentityReceipt('7/8', 'preview?x')).toEqual({ status: 'not_observed', receipt: null })
+    expect(mockGet).toHaveBeenCalledWith('/media-identity-review/7%2F8/receipts/preview%3Fx', { skipAutomaticRetry: true })
+    expect(mockPost).not.toHaveBeenCalled()
   })
   it('wires all named functions through the domain aggregator', () => {
-    expect(mediaServerApi).toMatchObject({ getMediaIdentityReviewItems, previewMediaIdentity, confirmMediaIdentity })
+    expect(mediaServerApi).toMatchObject({ getMediaIdentityReviewItems, previewMediaIdentity, confirmMediaIdentity, getMediaIdentityReceipt })
   })
 })

@@ -20,7 +20,7 @@ test('keyboard review requires explicit confirmation and announces the audit rec
     if (path.endsWith('/1/confirm')) {
       expect(route.request().postDataJSON()).toEqual({ previewId: '2e851bf4-9497-4b99-8b7c-e8117a05c762', confirmed: true })
       saved = true
-      data = { auditId: 42 }
+      data = { auditId: 42, itemId: 1 }
     }
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) })
   })

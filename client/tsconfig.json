@@ -19,6 +19,6 @@
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true
   },
-  "include": ["src/api/**/*.js", "src/utils/csrf.js", "src/env.d.ts", "vite.config.js", "vitest.config.js", "vitest.setup.js"],
+  "include": ["src/api/**/*.js", "src/api/**/*.d.ts", "src/utils/csrf.js", "src/env.d.ts", "vite.config.js", "vitest.config.js", "vitest.setup.js"],
   "exclude": ["src/__tests__/**", "coverage/**", "dist/**"]
 }

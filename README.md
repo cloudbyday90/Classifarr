@@ -596,13 +596,23 @@ Production behavior:
 5. Verify enrichment progress and retry queue state.
 6. Use `/history` for audit and reclassification checks.
 
+Synchronized inventory and observed library profiles provide evidence for library
+understanding and future automation. See the [inventory-driven direction](docs/architecture/library-observation-automation-direction.md).
+Manual identity review handles unresolved exceptions.
+
 For unresolved inventory identities, open **Libraries → Review media IDs** with
 an administrator session. Enter a TMDb ID, compare the typed provider preview
 with the source, and explicitly confirm the match. The preview expires after ten
 minutes; changed source items require a fresh review. Confirmation records an
 audit receipt and fills the missing ID without starting classification.
+If the save response is lost, the page checks for the original administrator's
+receipt without resending confirmation. It retains a minimal recovery reference
+in the current tab for reloads. An unknown outcome offers **Check receipt again**;
+it does not establish that the save failed. Use the same administrator account.
 See the [design and tradeoffs](docs/architecture/media-identity-review-design.md)
-and [validation outcome](docs/architecture/media-identity-review-outcome.md).
+and [validation outcome](docs/architecture/media-identity-review-outcome.md), plus
+the [receipt recovery design](docs/architecture/media-identity-receipt-recovery-design.md)
+and [recovery outcome](docs/architecture/media-identity-receipt-recovery-outcome.md).
 
 ## API, Auth, and Integrations
 

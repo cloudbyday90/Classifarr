@@ -10,7 +10,8 @@ jest.unstable_mockModule('../services/auth.mjs', () => ({ verifyToken }));
 jest.unstable_mockModule('../config/runtimeSettings.mjs', () => ({ getValue: () => true }));
 const { authenticateToken, requireAdmin } = await import('../middleware/auth.mjs');
 const { csrfProtection } = await import('../middleware/csrf.mjs');
-const service = { list: jest.fn(), preview: jest.fn(), confirm: jest.fn() };
+const service = { list: jest.fn(), preview: jest.fn(), confirm: jest.fn(), getReceipt: jest.fn() };
+const receiptPath = '/api/media-identity-review/1/receipts/2e851bf4-9497-4b99-8b7c-e8117a05c762';
 const app = express();
 app.use(express.json(), cookieParser());
 app.use('/api', csrfProtection);
@@ -23,6 +24,7 @@ beforeEach(() => {
   service.list.mockResolvedValue({ items: [], nextCursor: null });
   service.preview.mockResolvedValue({ previewId: 'preview' });
   service.confirm.mockResolvedValue({ auditId: 9 });
+  service.getReceipt.mockResolvedValue({ version: 1, status: 'not_observed', receipt: null });
 });
 
 describe('identity review HTTP authorization', () => {
@@ -32,17 +34,23 @@ describe('identity review HTTP authorization', () => {
       expect((await call).status).toBe(401);
     }
     expect(service.list).not.toHaveBeenCalled();
+    await request(app).get(receiptPath).expect(401);
+    expect(service.getReceipt).not.toHaveBeenCalled();
   });
   test.each([{ id: 7, type: 'access', role: 'user' }, { id: 7, type: 'refresh', role: 'admin' },
     { id: 7, type: 'access', role: 'admin', token_use: 'automation' }])('rejects non-human-admin session %j', async user => {
     verifyToken.mockResolvedValue(user);
     expect((await request(app).get('/api/media-identity-review').set('Authorization', 'Bearer test')).status).toBe(403);
     expect(service.list).not.toHaveBeenCalled();
+    await request(app).get(receiptPath).set('Authorization', 'Bearer test').expect(403);
+    expect(service.getReceipt).not.toHaveBeenCalled();
   });
   test('rejects API-key bypass even alongside a valid cookie', async () => {
     const response = await request(app).post('/api/media-identity-review/1/confirm').set('Cookie', 'access_token=test').set('x-api-key', 'test');
     expect(response.status).toBe(403);
     expect(service.confirm).not.toHaveBeenCalled();
+    await request(app).get(receiptPath).set('Cookie', 'access_token=test').set('x-api-key', 'test').expect(403);
+    expect(service.getReceipt).not.toHaveBeenCalled();
   });
   test('requires matching CSRF tokens for cookie mutations', async () => {
     expect((await request(app).post('/api/media-identity-review/1/confirm').set('Cookie', 'access_token=test')).status).toBe(403);
@@ -58,5 +66,12 @@ describe('identity review HTTP authorization', () => {
     await request(app).post('/api/media-identity-review/3/preview').set('Authorization', 'Bearer test').send({ tmdbId: 4, sourceVersion: 'v' }).expect(200);
     expect(service.list).toHaveBeenCalledWith(7, { mediaType: 'tv' });
     expect(service.preview).toHaveBeenCalledWith(7, '3', { tmdbId: 4, sourceVersion: 'v' });
+  });
+  test('recovers with an uncached cookie GET and binds the actor from the session', async () => {
+    const response = await request(app).get(`${receiptPath}?actorId=8`).set('Cookie', 'access_token=test').expect(200);
+    expect(response.body).toEqual({ version: 1, status: 'not_observed', receipt: null });
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(service.getReceipt).toHaveBeenCalledWith(7, '1', '2e851bf4-9497-4b99-8b7c-e8117a05c762');
+    expect(service.confirm).not.toHaveBeenCalled();
   });
 });

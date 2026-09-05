@@ -31,8 +31,23 @@
     >
       {{ error }}
     </p>
+    <p
+      v-if="storageWarning"
+      role="status"
+      class="text-amber-200"
+    >
+      {{ storageWarning }}
+    </p>
+    <MediaIdentityReceiptRecovery
+      v-if="['checking', 'unknown', 'confirmed'].includes(recoveryPhase)"
+      :phase="recoveryPhase"
+      :receipt="receipt"
+      :notice="recoveryNotice"
+      @check="checkReceipt"
+      @dismiss="returnToQueue"
+    />
     <MediaIdentityReviewForm
-      v-if="selected"
+      v-else-if="selected"
       :key="selected.id"
       :source="selected"
       :preview="preview"
@@ -125,12 +140,24 @@
 <script setup>
 import { nextTick, onMounted, ref } from 'vue'
 import MediaIdentityReviewForm from '@/components/library/MediaIdentityReviewForm.vue'
+import MediaIdentityReceiptRecovery from '@/components/library/MediaIdentityReceiptRecovery.vue'
 import { useMediaIdentityReview } from '@/composables/useMediaIdentityReview'
 import { mediaIdentityReviewReason } from '@/utils/mediaIdentityReviewReasons'
 
-const { items, mediaType, nextCursor, selected, preview, busy, error, status, select, load, prepare, confirm } = useMediaIdentityReview()
+const { items, mediaType, nextCursor, selected, preview, busy, error, status, recovery, select, load, prepare, confirm, initialize, recover, dismissRecovery } = useMediaIdentityReview()
+const { phase: recoveryPhase, receipt, notice: recoveryNotice, storageWarning } = recovery
 const heading = ref(null)
-onMounted(() => load())
+onMounted(() => initialize())
+async function checkReceipt() {
+  await recover()
+  await nextTick()
+  heading.value?.focus()
+}
+async function returnToQueue() {
+  await dismissRecovery()
+  await nextTick()
+  heading.value?.focus()
+}
 async function cancel() {
   select(null)
   await nextTick()

@@ -1,11 +1,13 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { randomUUID } from 'node:crypto';
 import { ConflictError, NotFoundError, ServiceUnavailableError, ValidationError } from '../utils/appError.mjs';
-import { assertReviewSource, projectReviewCandidate, projectReviewSource, reviewBody, reviewInteger } from './mediaIdentityReviewContract.mjs';
+import { assertReviewSource, projectReviewCandidate, projectReviewSource, reviewBody, reviewInteger, reviewPreviewId } from './mediaIdentityReviewContract.mjs';
+import { getMediaIdentityReceipt } from './mediaIdentityReceiptReadService.mjs';
 import { applyReviewedIdentity, listReviewSources, readReviewSource, requireReviewActor, storeReviewPreview } from './mediaIdentityReviewRepository.mjs';
 
 export function createMediaIdentityReviewService({ db, getIdentityDetails }) {
   return {
+    getReceipt: (actorId, itemId, previewId) => getMediaIdentityReceipt(db, actorId, itemId, previewId),
     async list(actorId, query = {}) {
       await requireReviewActor(db, actorId);
       if (Object.keys(query).some(key => !['afterId', 'limit', 'mediaType'].includes(key))) {
@@ -50,8 +52,8 @@ export function createMediaIdentityReviewService({ db, getIdentityDetails }) {
     async confirm(actorId, rawItemId, body) {
       reviewBody(body, ['previewId', 'confirmed']);
       const itemId = reviewInteger(rawItemId);
-      if (body.confirmed !== true || typeof body.previewId !== 'string' ||
-          !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(body.previewId)) {
+      const previewId = reviewPreviewId(body.previewId);
+      if (body.confirmed !== true) {
         throw new ValidationError('Explicit confirmation of a valid preview is required');
       }
       return db.withTransaction(async tx => {
@@ -60,7 +62,7 @@ export function createMediaIdentityReviewService({ db, getIdentityDetails }) {
         // Keep source-before-preview order consistent with creation and source FK cascades.
         const source = await readReviewSource(tx, itemId, true);
         const { rows } = await tx.query(`SELECT * FROM media_identity_review_previews
-          WHERE actor_id = $1 AND id = $2 AND item_id = $3 FOR UPDATE`, [actorId, body.previewId, itemId]);
+          WHERE actor_id = $1 AND id = $2 AND item_id = $3 FOR UPDATE`, [actorId, previewId, itemId]);
         const preview = rows[0];
         if (!preview) throw new ConflictError('Preview is no longer available. Preview the item again.', { code: 'review_preview_unavailable' });
         assertReviewSource(source, preview.source_version);

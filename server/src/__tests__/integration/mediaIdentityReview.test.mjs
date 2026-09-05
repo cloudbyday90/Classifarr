@@ -37,6 +37,9 @@ describe('identity review PostgreSQL transactions', () => {
     const preview = await prepare();
     expect((await stored()).tmdb_id).toBeNull();
     const receipt = await confirm(preview);
+    const recovered = await service.getReceipt(actors[0], item, preview.previewId);
+    expect(recovered).toMatchObject({ status: 'confirmed', receipt: { auditId: receipt.auditId, itemId: item, tmdbId: 12, mediaType: 'movie' } });
+    expect(details).toHaveBeenCalledTimes(1);
     const row = await stored();
     expect(row.tmdb_id).toBe(12);
     expect(row.metadata.retained).toBe('source metadata');
@@ -54,6 +57,16 @@ describe('identity review PostgreSQL transactions', () => {
     for (const query of [{ limit: 51 }, { mediaType: 'person' }, { afterId: '-1' }, { unexpected: 'x' }]) {
       await expect(service.list(actors[0], query)).rejects.toMatchObject({ statusCode: 400 });
     }
+  });
+  test('recovers the historical identity after the source changes and is deleted', async () => {
+    const preview = await prepare();
+    await confirm(preview);
+    await db.query('UPDATE media_server_items SET tmdb_id = 999 WHERE id = $1', [item]);
+    const recovered = await service.getReceipt(actors[0], item, preview.previewId);
+    expect(recovered).toMatchObject({ status: 'confirmed', receipt: { tmdbId: 12 } });
+    await db.query('DELETE FROM media_server_items WHERE id = $1', [item]);
+    expect(await service.getReceipt(actors[0], item, preview.previewId)).toEqual(recovered);
+    expect(details).toHaveBeenCalledTimes(1);
   });
   test('uses the TV namespace even when the numeric movie ID also exists', async () => {
     await db.query("UPDATE media_server_items SET media_type = 'tv' WHERE id = $1", [item]);
@@ -151,6 +164,7 @@ describe('identity review PostgreSQL transactions', () => {
     try {
       await expect(confirm(preview)).rejects.toThrow('identity_review_test_failure');
       expect((await stored()).tmdb_id).toBeNull();
+      expect((await service.getReceipt(actors[0], item, preview.previewId)).status).toBe('not_observed');
       expect((await db.query('SELECT * FROM media_identity_review_previews WHERE id = $1', [preview.previewId])).rows).toHaveLength(1);
     } finally {
       await db.query('ALTER TABLE audit_log DROP CONSTRAINT identity_review_test_failure');

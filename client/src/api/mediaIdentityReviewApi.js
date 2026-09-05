@@ -10,7 +10,11 @@ export function previewMediaIdentity(itemId, body) {
 }
 
 export function confirmMediaIdentity(itemId, body) {
-  return apiClient.post(`/media-identity-review/${encodeURIComponent(itemId)}/confirm`, body)
+  return apiClient.post(`/media-identity-review/${encodeURIComponent(itemId)}/confirm`, body, { skipAutomaticRetry: true })
 }
 
-export default { getMediaIdentityReviewItems, previewMediaIdentity, confirmMediaIdentity }
+export function getMediaIdentityReceipt(itemId, previewId) {
+  return getDataRequest(`/media-identity-review/${encodeURIComponent(itemId)}/receipts/${encodeURIComponent(previewId)}`, { skipAutomaticRetry: true })
+}
+
+export default { getMediaIdentityReviewItems, previewMediaIdentity, confirmMediaIdentity, getMediaIdentityReceipt }

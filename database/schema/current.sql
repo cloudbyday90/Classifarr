@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-05T10:58:49.343Z
--- Latest Migration: 20260905_100000_add_media_identity_review_previews.sql
+-- Generated: 2026-09-05T11:59:43.308Z
+-- Latest Migration: 20260905_120000_add_media_identity_receipt_lookup_index.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -9606,6 +9606,13 @@ CREATE INDEX idx_audit_log_created_at_brin ON public.audit_log USING brin (creat
 
 
 --
+-- Name: idx_audit_log_media_identity_receipt; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_audit_log_media_identity_receipt ON public.audit_log USING btree (user_id, ((metadata ->> 'reviewId'::text))) WHERE ((action)::text = 'media_identity_confirmed'::text);
+
+
+--
 -- Name: idx_audit_log_user; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10480,7 +10487,7 @@ CREATE INDEX idx_media_server_items_enrichment_status ON public.media_server_ite
 -- Name: idx_media_server_items_identity_review; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_media_server_items_identity_review ON public.media_server_items USING btree (id) WHERE ((tmdb_id IS NULL) AND ((media_type)::text = ANY ((ARRAY['movie'::character varying, 'tv'::character varying])::text[])) AND (metadata @> '{"tmdb_resolution": {"status": "review_required", "version": 1}}'::jsonb));
+CREATE INDEX idx_media_server_items_identity_review ON public.media_server_items USING btree (id) WHERE ((tmdb_id IS NULL) AND ((media_type)::text = ANY (ARRAY[('movie'::character varying)::text, ('tv'::character varying)::text])) AND (metadata @> '{"tmdb_resolution": {"status": "review_required", "version": 1}}'::jsonb));
 
 
 --
@@ -14719,6 +14726,7 @@ FROM unnest(ARRAY[
     '20260831_235000_add_policy_candidate_adjudication_method.sql',
     '20260901_090000_add_policy_candidate_correction_review_corpus_capture.sql',
     '20260901_100000_add_policy_candidate_correction_review_corpus_capture_evaluation_index.sql',
-    '20260905_100000_add_media_identity_review_previews.sql'
+    '20260905_100000_add_media_identity_review_previews.sql',
+    '20260905_120000_add_media_identity_receipt_lookup_index.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;
