@@ -17,6 +17,7 @@ import { router as classificationRouter } from './classification.mjs';
 import { router as settingsRouter } from './settings.mjs';
 import { router as logsRouter } from './logs.mjs';
 import { router as mediaSyncRouter } from './mediaSync.mjs';
+import { router as mediaIdentityReviewRouter } from './mediaIdentityReview.mjs';
 import { router as clarificationRouter } from './clarification.mjs';
 import { router as plexOAuthRouter } from './plexOAuth.mjs';
 import { router as jellyfinAuthRouter } from './jellyfinAuth.mjs';
@@ -55,6 +56,7 @@ router.use('/emby', embyAuthRouter);
 router.use('/libraries', librariesRouter);
 router.use('/logs', logsRouter);
 router.use('/media-sync', mediaSyncRouter);
+router.use('/media-identity-review', mediaIdentityReviewRouter);
 router.use('/queue', queueRouter);
 router.use('/stats', statsRouter);
 

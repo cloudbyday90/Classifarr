@@ -19,7 +19,7 @@ import { httpGet } from '../utils/httpClient.mjs';
 import { ServiceUnavailableError } from '../utils/appError.mjs';
 import * as db from '../config/database.mjs';
 import { rateLimiters } from '../utils/rateLimiter.mjs';
-import { findTmdbIdentityByExternalId, searchTmdbIdentityCandidates } from './tmdbIdentitySearch.mjs';
+import { findTmdbIdentityByExternalId, getTmdbIdentityDetails, searchTmdbIdentityCandidates } from './tmdbIdentitySearch.mjs';
 import {
     classifyHealthError,
     mapSearchResults,
@@ -259,6 +259,14 @@ class TMDBService {
 
   async searchIdentityCandidates(title, mediaType, year) {
     return searchTmdbIdentityCandidates(title, mediaType, year, {
+      baseUrl: this.baseUrl, httpGet,
+      getApiKey: () => this.getApiKey(),
+      executeRateLimited: (fn) => this.executeRateLimited(fn),
+    });
+  }
+
+  async getIdentityDetails(id, mediaType) {
+    return getTmdbIdentityDetails(id, mediaType, {
       baseUrl: this.baseUrl, httpGet,
       getApiKey: () => this.getApiKey(),
       executeRateLimited: (fn) => this.executeRateLimited(fn),

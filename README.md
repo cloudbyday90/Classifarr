@@ -596,6 +596,14 @@ Production behavior:
 5. Verify enrichment progress and retry queue state.
 6. Use `/history` for audit and reclassification checks.
 
+For unresolved inventory identities, open **Libraries → Review media IDs** with
+an administrator session. Enter a TMDb ID, compare the typed provider preview
+with the source, and explicitly confirm the match. The preview expires after ten
+minutes; changed source items require a fresh review. Confirmation records an
+audit receipt and fills the missing ID without starting classification.
+See the [design and tradeoffs](docs/architecture/media-identity-review-design.md)
+and [validation outcome](docs/architecture/media-identity-review-outcome.md).
+
 ## API, Auth, and Integrations
 
 Swagger UI:

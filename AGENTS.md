@@ -50,7 +50,7 @@ index.js (barrel)           — 4 inline auth/setup methods + domain spreads
 1. Add the function to the appropriate leaf module (or create a new one)
 2. If new leaf module: wire it into its domain aggregator (or directly into `index.js` if standalone)
 3. Add a test in `client/src/__tests__/api/` following the existing mock pattern (`vi.mock('./core')`)
-4. Run `cd client && node scripts/run-vitest.mjs run` then `node scripts/check-coverage-ratchet.mjs`
+4. Run `cd client && node scripts/run-vitest.mjs run --coverage`, then run `node scripts/check-coverage-ratchet.mjs` from the repository root. The ratchet also requires a current backend coverage report.
 
 ## The 3-Layer Architecture (Best Practice)
 

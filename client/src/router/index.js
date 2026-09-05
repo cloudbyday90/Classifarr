@@ -25,6 +25,7 @@ import SetupAccount from '@/views/SetupAccount.vue'
 import SetupWizard from '@/views/SetupWizard.vue'
 
 const Libraries = () => import('@/views/Libraries.vue')
+const MediaIdentityReview = () => import('@/views/MediaIdentityReview.vue')
 const LibraryDetail = () => import('@/views/LibraryDetail.vue')
 const History = () => import('@/views/History.vue')
 const Notifications = () => import('@/views/Notifications.vue')
@@ -86,6 +87,12 @@ const router = createRouter({
           name: 'Libraries',
           meta: { routeMode: 'primary' },
           component: Libraries,
+        },
+        {
+          path: '/libraries/identity-review',
+          name: 'MediaIdentityReview',
+          meta: { routeMode: 'admin-maintenance' },
+          component: MediaIdentityReview,
         },
         {
           path: '/libraries/:id',

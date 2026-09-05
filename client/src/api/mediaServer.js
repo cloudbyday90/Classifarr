@@ -20,12 +20,14 @@ import embyApi from './embyApi'
 import jellyfinApi from './jellyfinApi'
 import mediaServerSetupApi from './mediaServerSetupApi'
 import plexApi from './plexApi'
+import mediaIdentityReviewApi from './mediaIdentityReviewApi'
 
 const mediaServerApi = {
   ...mediaServerSetupApi,
   ...plexApi,
   ...jellyfinApi,
   ...embyApi,
+  ...mediaIdentityReviewApi,
 }
 
 export default mediaServerApi

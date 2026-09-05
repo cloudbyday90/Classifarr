@@ -15,7 +15,13 @@
       <h1 class="text-2xl font-bold">
         Libraries
       </h1>
-      <div class="relative">
+      <div class="relative flex flex-wrap items-center gap-3">
+        <RouterLink
+          to="/libraries/identity-review"
+          class="rounded border border-gray-500 px-3 py-2 text-sm"
+        >
+          Review media IDs
+        </RouterLink>
         <Button 
           :disabled="!syncStore.canStartSync || !canSyncLibraries" 
           :loading="syncStore.isRunning && syncStore.type === SYNC_TYPE.LIBRARY_SYNC"

@@ -131,7 +131,8 @@ provider failure distinguishable from no match. It costs up to two sequential
 requests and more operator review. Filtering/deduplicating suspect results or
 falling back to title after uncertainty would weaken that guarantee.
 
-Next, build the authenticated media-ID review workflow that consumes unresolved
+Implemented next in [the media-ID review design](media-identity-review-design.md)
+and [outcome](media-identity-review-outcome.md): the authenticated workflow consumes unresolved
 receipts. The inspected `mediaSyncRouteShared` inventory route already requires
 authentication, but its `getLibraryItems` query has no resolution-status filter
 and the client does not consume `tmdb_resolution`. Start with a read-only

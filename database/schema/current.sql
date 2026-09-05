@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-01T20:08:40.039Z
--- Latest Migration: 20260901_100000_add_policy_candidate_correction_review_corpus_capture_evaluation_index.sql
+-- Generated: 2026-09-05T10:58:49.343Z
+-- Latest Migration: 20260905_100000_add_media_identity_review_previews.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3582,6 +3582,23 @@ CREATE SEQUENCE public.library_rules_v2_id_seq
 --
 
 ALTER SEQUENCE public.library_rules_v2_id_seq OWNED BY public.library_rules_v2.id;
+
+
+--
+-- Name: media_identity_review_previews; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.media_identity_review_previews (
+    actor_id integer NOT NULL,
+    id uuid NOT NULL,
+    item_id integer NOT NULL,
+    source_version character varying(64) NOT NULL,
+    candidate jsonb NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT media_identity_review_previews_candidate_check CHECK ((jsonb_typeof(candidate) = 'object'::text)),
+    CONSTRAINT media_identity_review_previews_source_version_check CHECK (((source_version)::text ~ '^[a-f0-9]{64}$'::text))
+);
 
 
 --
@@ -8537,6 +8554,22 @@ ALTER TABLE ONLY public.library_rules_v2
 
 
 --
+-- Name: media_identity_review_previews media_identity_review_previews_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.media_identity_review_previews
+    ADD CONSTRAINT media_identity_review_previews_id_key UNIQUE (id);
+
+
+--
+-- Name: media_identity_review_previews media_identity_review_previews_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.media_identity_review_previews
+    ADD CONSTRAINT media_identity_review_previews_pkey PRIMARY KEY (actor_id);
+
+
+--
 -- Name: media_requests media_requests_overseerr_request_id_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10444,6 +10477,13 @@ CREATE INDEX idx_media_server_items_enrichment_status ON public.media_server_ite
 
 
 --
+-- Name: idx_media_server_items_identity_review; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_media_server_items_identity_review ON public.media_server_items USING btree (id) WHERE ((tmdb_id IS NULL) AND ((media_type)::text = ANY ((ARRAY['movie'::character varying, 'tv'::character varying])::text[])) AND (metadata @> '{"tmdb_resolution": {"status": "review_required", "version": 1}}'::jsonb));
+
+
+--
 -- Name: idx_media_server_type_url_legacy; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -11983,6 +12023,22 @@ ALTER TABLE ONLY public.library_rules
 
 ALTER TABLE ONLY public.library_rules_v2
     ADD CONSTRAINT library_rules_v2_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
+
+
+--
+-- Name: media_identity_review_previews media_identity_review_previews_actor_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.media_identity_review_previews
+    ADD CONSTRAINT media_identity_review_previews_actor_id_fkey FOREIGN KEY (actor_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: media_identity_review_previews media_identity_review_previews_item_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.media_identity_review_previews
+    ADD CONSTRAINT media_identity_review_previews_item_id_fkey FOREIGN KEY (item_id) REFERENCES public.media_server_items(id) ON DELETE CASCADE;
 
 
 --
@@ -14662,6 +14718,7 @@ FROM unnest(ARRAY[
     '20260831_170100_rename_policy_change_review_history_tables.sql',
     '20260831_235000_add_policy_candidate_adjudication_method.sql',
     '20260901_090000_add_policy_candidate_correction_review_corpus_capture.sql',
-    '20260901_100000_add_policy_candidate_correction_review_corpus_capture_evaluation_index.sql'
+    '20260901_100000_add_policy_candidate_correction_review_corpus_capture_evaluation_index.sql',
+    '20260905_100000_add_media_identity_review_previews.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

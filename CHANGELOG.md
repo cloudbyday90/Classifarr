@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Administrator media-ID review** — Libraries now offers a filtered review
+  queue for unresolved identities, with TMDb previews and explicit confirmation.
+  Expiring previews, current account and source checks, and atomic audit receipts
+  protect ID updates. This workflow does not trigger classification or routing.
+
 - **Held-out semantic study capture** — A private offline runner freezes the
   complete cohort before preparing policy candidates and excludes every cohort
   identity from RAG comparisons. Versioned provenance binds the cohort and

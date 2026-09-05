@@ -32,7 +32,6 @@ const mockClarificationThresholdManager = {
 };
 jest.unstable_mockModule('../services/clarificationThresholdManager.mjs', () => ({
     isRequireAllConfirmationsEnabled: mockClarificationThresholdManager.isRequireAllConfirmationsEnabled,
-    default: mockClarificationThresholdManager,
 }));
 
 const { ensureDecisionQuestion } = await import('../services/classificationRoutingService.mjs');

@@ -6,6 +6,19 @@
 import { buildTmdbTitleRequest } from './tmdbTitleMatch.mjs';
 import { buildTmdbExternalIdRequest } from './tmdbExternalIdMatch.mjs';
 import { ServiceUnavailableError } from '../utils/appError.mjs';
+import { reviewInteger } from './mediaIdentityReviewContract.mjs';
+
+/** Fetch only the details needed for an explicit operator identity review. */
+export async function getTmdbIdentityDetails(id, mediaType, deps) {
+  const tmdbId = reviewInteger(id);
+  if (!['movie', 'tv'].includes(mediaType)) return null;
+  const apiKey = await deps.getApiKey();
+  if (!apiKey) throw new ServiceUnavailableError('TMDB API key not configured');
+  const response = await deps.executeRateLimited(() => deps.httpGet(`${deps.baseUrl}/${mediaType}/${tmdbId}`, {
+    params: { api_key: apiKey }, timeout: 10000,
+  }));
+  return response.data;
+}
 
 /** Preserve pagination and all first-page candidates; never use the display search mapper. */
 export async function searchTmdbIdentityCandidates(title, mediaType, year, deps) {
