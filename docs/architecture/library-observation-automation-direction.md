@@ -107,8 +107,11 @@ explanations are implemented in the
 full observation validator and traverses bounded pages so malformed records repair
 automatically after cooldown; see the
 [repair design](inventory-observation-repair-design.md) and
-[outcome](inventory-observation-repair-outcome.md). The next item is automatically
-recorded, bounded acquisition outcomes and convergence history.
+[outcome](inventory-observation-repair-outcome.md). Automatic bounded acquisition
+outcomes and coverage history are implemented in the
+[history design](observation-acquisition-history-design.md) and
+[outcome](observation-acquisition-history-outcome.md). The next item is bounded
+per-library trends with explicit population-change markers.
 The separate shared HTTP mutation-retry audit remains a correctness follow-up;
 the receipt-recovery change already disables replay for identity confirmation.
 

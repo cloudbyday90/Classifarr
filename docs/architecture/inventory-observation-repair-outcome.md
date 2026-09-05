@@ -98,7 +98,11 @@ Final recommendation stack: guarded inventory identity → attributable observat
 validation → bounded automatic repair → automatic profiles and typed overlap →
 coverage/freshness and acquisition progress → independently evaluated AI assistance.
 
-**Next item:** add bounded, automatically recorded aggregate acquisition outcomes
+**Follow-up implemented:** [acquisition history design](observation-acquisition-history-design.md)
+and [outcome](observation-acquisition-history-outcome.md) record automatic aggregate
+outcomes and coverage, the projection correction, and the next item.
+
+**Original next item:** add bounded, automatically recorded aggregate acquisition outcomes
 and convergence history. Distinguish attempted, captured and unavailable results,
 retain explicit unknown coverage, and avoid raw provider payloads or per-item
 operator steps. Validate actual background progress on a current migrated local

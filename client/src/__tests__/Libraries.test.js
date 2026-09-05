@@ -143,6 +143,7 @@ vi.mock('@/components/library/LibraryOverlapSummary.vue', () => ({
   default: { template: '<section data-testid="library-overlap-summary" />' },
 }))
 
+vi.mock('@/components/library/LibraryObservationHistory.vue', () => ({ default: { template: '<div />' } }))
 vi.mock('@/components/library/LibraryObservationHealth.vue', () => ({
   default: { template: '<section data-testid="library-observation-health" />' },
 }))

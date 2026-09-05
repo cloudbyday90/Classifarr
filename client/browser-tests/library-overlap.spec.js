@@ -2,6 +2,7 @@
 import { expect, test } from '@playwright/test'
 import { libraryOverlapFixture } from '../src/__tests__/fixtures/libraryOverlapFixture.js'
 import { libraryObservationHealthFixture } from '../src/__tests__/fixtures/libraryObservationHealthFixture.js'
+import { libraryObservationHistoryFixture } from '../src/__tests__/fixtures/libraryObservationHistoryFixture.js'
 
 test('library overlap loads without operational input and supports keyboard disclosures on desktop and mobile', async ({ page }, testInfo) => {
   let writes = 0
@@ -19,6 +20,7 @@ test('library overlap loads without operational input and supports keyboard disc
     if (path === '/api/libraries') data = report.libraries.map(library => ({ ...library, is_active: true, media_type: 'movie' }))
     if (path === '/api/libraries/overlap') { overlapReads++; data = report }
     if (path === '/api/libraries/observation-health') data = libraryObservationHealthFixture()
+    if (path === '/api/libraries/observation-history') data = libraryObservationHistoryFixture()
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) })
   })
   await page.goto('/libraries')

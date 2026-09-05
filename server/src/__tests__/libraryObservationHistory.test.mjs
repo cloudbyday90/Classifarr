@@ -1,0 +1,83 @@
+/* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { jest, test, expect } from '@jest/globals';
+import express from 'express';
+import request from 'supertest';
+import { captureLibraryObservationSample } from '../services/libraryObservationSample.mjs';
+import { readLibraryObservationHistory } from '../services/libraryObservationHistory.mjs';
+import { registerLibraryObservationHistorySchedule } from '../services/libraryObservationHistorySchedule.mjs';
+import { createLibrariesRouter } from '../routes/librariesRouteShared.mjs';
+import { createLibrariesRouteTestDeps } from './setup/createLibrariesRouteTestDeps.mjs';
+
+const snapshot = { observed_at: '2026-09-05T12:00:00Z', acquisition_configured: true,
+    active_library_count: 1, row_count: 0, libraries: [{ id: 7, name: 'PRIVATE' }], items: [] };
+const history = { observed_at: snapshot.observed_at, activity: [], samples: [] };
+
+test('automatically captures only aggregate fields and skips an already sampled hour', async () => {
+    const query = jest.fn().mockResolvedValueOnce({ rows: [{ sampled: false }] })
+        .mockResolvedValueOnce({ rows: [snapshot] }).mockResolvedValueOnce({ rowCount: 1 })
+        .mockResolvedValueOnce({ rows: [{ sampled: true }] });
+    expect(await captureLibraryObservationSample({ query })).toEqual({ captured: true });
+    expect(query.mock.calls[2][1]).toEqual(['2026-09-05T12:00:00.000Z', 'available', [7], 0, true, 0, 0, 0, 0, 0, 0, 0]);
+    expect(JSON.stringify(query.mock.calls[2][1])).not.toContain('PRIVATE');
+    expect(await captureLibraryObservationSample({ query })).toEqual({ captured: false });
+    expect(query).toHaveBeenCalledTimes(4);
+});
+
+test('capacity-exceeded samples preserve unknown counts and excluded-library scope', async () => {
+    const query = jest.fn().mockResolvedValueOnce({ rows: [{ sampled: false }] })
+        .mockResolvedValueOnce({ rows: [{ ...snapshot, row_count: 20001, active_library_count: 3 }] })
+        .mockResolvedValueOnce({ rowCount: 0 });
+    expect(await captureLibraryObservationSample({ query })).toEqual({ captured: false });
+    expect(query.mock.calls[2][1]).toEqual(['2026-09-05T12:00:00.000Z', 'capacity_exceeded', [7], 2, true, null, null, null, null, null, null, null]);
+});
+
+test('history exposes distinct populations and performs one read', async () => {
+    const query = jest.fn().mockResolvedValue({ rows: [history] });
+    expect(await readLibraryObservationHistory({ query })).toMatchObject({ retentionHours: 168,
+        activityPopulation: 'all_guarded_inventory_acquisition_attempts', samples: [], activity: [] });
+    expect(query).toHaveBeenCalledTimes(1);
+});
+
+test('schedules automatic startup/hourly sampling and hides internal errors', async () => {
+    const scheduler = { schedule: jest.fn(), scheduleInitial: jest.fn() };
+    const capture = jest.fn().mockResolvedValueOnce({ captured: true }).mockRejectedValueOnce(new Error('PRIVATE'));
+    const log = { warn: jest.fn() };
+    registerLibraryObservationHistorySchedule(scheduler, { capture, log });
+    expect(scheduler.schedule).toHaveBeenCalledWith('library-observation-history', '0 * * * *', expect.any(Function));
+    expect(scheduler.scheduleInitial).toHaveBeenCalledWith('library-observation-history', 150000, expect.any(Function));
+    expect(await scheduler.schedule.mock.calls[0][2]()).toEqual({ captured: true });
+    await scheduler.scheduleInitial.mock.calls[0][2]();
+    expect(log.warn).toHaveBeenCalledWith('Automatic observation history sample unavailable');
+});
+
+function appFor(db, authenticated = true) {
+    const app = express();
+    app.use('/api/libraries', createLibrariesRouter({ express, db, ...createLibrariesRouteTestDeps({
+        authenticateTokenOrApiKey: (req, res, next) => authenticated ? next() : res.sendStatus(401),
+    }) }));
+    app.use((err, req, res, _next) => res.status(err.statusCode || 500).json({ error: 'Unavailable' }));
+    return app;
+}
+test('history route authenticates before reading and is read-only/no-store', async () => {
+    const db = { query: jest.fn().mockResolvedValue({ rows: [history] }) };
+    await request(appFor(db, false)).get('/api/libraries/observation-history').expect(401);
+    expect(db.query).not.toHaveBeenCalled();
+    const response = await request(appFor(db)).get('/api/libraries/observation-history').expect(200);
+    expect(response.body.version).toBe('library.observation_history.v1');
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(db.query).toHaveBeenCalledTimes(1);
+});
+test.each(['limit=999999', 'libraryId=1', 'limit[]=2'])('rejects unbounded query input: %s', async query => {
+    const db = { query: jest.fn() };
+    await request(appFor(db)).get(`/api/libraries/observation-history?${query}`).expect(400);
+    expect(db.query).not.toHaveBeenCalled();
+});
+test('limits repeated requests and does not manufacture zero activity on database failure', async () => {
+    const db = { query: jest.fn().mockResolvedValue({ rows: [history] }) };
+    const app = appFor(db);
+    for (let i = 0; i < 30; i++) await request(app).get('/api/libraries/observation-history').expect(200);
+    await request(app).get('/api/libraries/observation-history').expect(429);
+    expect(db.query).toHaveBeenCalledTimes(30);
+    await request(appFor({ query: jest.fn().mockRejectedValue(new Error('PRIVATE')) }))
+        .get('/api/libraries/observation-history').expect(500, { error: 'Unavailable' });
+});

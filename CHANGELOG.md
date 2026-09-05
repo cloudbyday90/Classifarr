@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Automatic acquisition history** — Libraries now shows captured and unavailable
+  metadata attempts alongside hourly coverage samples, with bounded seven-day
+  history, explicit populations and no manual capture steps.
+
 - **Automatic library observation health** — Libraries now explains metadata
   coverage, freshness, missing identities and retry backoff using attributable
   observations and existing clocks. Queue activity stays separate from capture
@@ -175,6 +179,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
   change policy, AI, RAG, or routing authority.
 
 ### Fixed
+
+- **Observation validity in summaries** — Missing language fields remain distinct
+  from explicitly unknown language, preventing malformed captures from inflating
+  health, profile and overlap coverage. Affected profiles refresh automatically.
 
 - **Automatic observation repair** — Background enrichment now repairs malformed
   or mismatched metadata observations after cooldown, including records with

@@ -34,6 +34,7 @@ import {
   getLibraries,
   getLibraryOverlap,
   getLibraryObservationHealth,
+  getLibraryObservationHistory,
   getLibrary,
   updateLibrary,
   syncLibrary,
@@ -41,6 +42,12 @@ import {
 } from '../../api/libraryCatalogApi'
 
 describe('libraryCatalogApi', () => {
+  it('loads unwrapped observation history through the central GET helper', async () => {
+    const report = { activity: [], samples: [] }
+    mockGetDataRequest.mockResolvedValueOnce(report)
+    expect(await getLibraryObservationHistory()).toBe(report)
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/libraries/observation-history')
+  })
   beforeEach(() => {
     vi.clearAllMocks()
   })

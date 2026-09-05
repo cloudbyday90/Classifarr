@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-05T16:34:47.601Z
--- Latest Migration: 20260905_160000_add_inventory_tmdb_observations.sql
+-- Generated: 2026-09-05T22:44:19.315Z
+-- Latest Migration: 20260905_180000_preserve_observation_language_presence.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -504,7 +504,9 @@ CREATE FUNCTION public.library_profile_observed_metadata(payload jsonb) RETURNS 
         'inventory_tmdb', CASE WHEN jsonb_typeof(payload -> 'inventory_tmdb') = 'object' THEN
             jsonb_build_object('version', payload #> '{inventory_tmdb,version}',
                 'tmdb_id', payload #> '{inventory_tmdb,tmdb_id}', 'media_type', payload #> '{inventory_tmdb,media_type}',
-                'keywords', payload #> '{inventory_tmdb,keywords}', 'original_language', payload #> '{inventory_tmdb,original_language}') END
+                'keywords', payload #> '{inventory_tmdb,keywords}') ||
+            CASE WHEN (payload -> 'inventory_tmdb') ? 'original_language' THEN
+                jsonb_build_object('original_language', payload #> '{inventory_tmdb,original_language}') ELSE '{}'::jsonb END END
     );
 $$;
 
@@ -2991,6 +2993,25 @@ ALTER SEQUENCE public.error_log_id_seq OWNED BY public.error_log.id;
 
 
 --
+-- Name: inventory_observation_activity; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.inventory_observation_activity (
+    hour_slot smallint NOT NULL,
+    bucket_at timestamp with time zone NOT NULL,
+    captured bigint NOT NULL,
+    unavailable bigint NOT NULL,
+    CONSTRAINT inventory_observation_activity_bucket_at_check CHECK (isfinite(bucket_at)),
+    CONSTRAINT inventory_observation_activity_bucket_at_check1 CHECK ((bucket_at = date_trunc('hour'::text, bucket_at, 'UTC'::text))),
+    CONSTRAINT inventory_observation_activity_captured_check CHECK ((captured >= 0)),
+    CONSTRAINT inventory_observation_activity_check CHECK (((captured + unavailable) <= '9007199254740991'::bigint)),
+    CONSTRAINT inventory_observation_activity_check1 CHECK ((hour_slot = mod((floor((EXTRACT(epoch FROM bucket_at) / (3600)::numeric)))::bigint, (168)::bigint))),
+    CONSTRAINT inventory_observation_activity_hour_slot_check CHECK (((hour_slot >= 0) AND (hour_slot <= 167))),
+    CONSTRAINT inventory_observation_activity_unavailable_check CHECK ((unavailable >= 0))
+);
+
+
+--
 -- Name: jwt_secrets; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3418,6 +3439,34 @@ CREATE SEQUENCE public.library_labels_id_seq
 --
 
 ALTER SEQUENCE public.library_labels_id_seq OWNED BY public.library_labels.id;
+
+
+--
+-- Name: library_observation_samples; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.library_observation_samples (
+    hour_slot smallint NOT NULL,
+    observed_at timestamp with time zone NOT NULL,
+    status text NOT NULL,
+    library_ids integer[] NOT NULL,
+    excluded_library_count integer NOT NULL,
+    acquisition_configured boolean NOT NULL,
+    inventory_rows integer,
+    supported_rows integer,
+    identified_rows integer,
+    captured_rows integer,
+    fresh_rows integer,
+    keyword_rows integer,
+    language_rows integer,
+    CONSTRAINT library_observation_samples_check CHECK ((hour_slot = mod((floor((EXTRACT(epoch FROM observed_at) / (3600)::numeric)))::bigint, (168)::bigint))),
+    CONSTRAINT library_observation_samples_check1 CHECK ((((status = 'available'::text) AND (num_nonnulls(inventory_rows, supported_rows, identified_rows, captured_rows, fresh_rows, keyword_rows, language_rows) = 7) AND ((inventory_rows >= 0) AND (inventory_rows <= 20000)) AND ((supported_rows >= 0) AND (supported_rows <= inventory_rows)) AND ((identified_rows >= 0) AND (identified_rows <= supported_rows)) AND ((captured_rows >= 0) AND (captured_rows <= identified_rows)) AND ((fresh_rows >= 0) AND (fresh_rows <= captured_rows)) AND ((keyword_rows >= 0) AND (keyword_rows <= captured_rows)) AND ((language_rows >= 0) AND (language_rows <= captured_rows))) OR ((status = 'capacity_exceeded'::text) AND (num_nonnulls(inventory_rows, supported_rows, identified_rows, captured_rows, fresh_rows, keyword_rows, language_rows) = 0)))),
+    CONSTRAINT library_observation_samples_excluded_library_count_check CHECK ((excluded_library_count >= 0)),
+    CONSTRAINT library_observation_samples_hour_slot_check CHECK (((hour_slot >= 0) AND (hour_slot <= 167))),
+    CONSTRAINT library_observation_samples_library_ids_check CHECK ((cardinality(library_ids) <= 12)),
+    CONSTRAINT library_observation_samples_observed_at_check CHECK (isfinite(observed_at)),
+    CONSTRAINT library_observation_samples_status_check CHECK ((status = ANY (ARRAY['available'::text, 'capacity_exceeded'::text])))
+);
 
 
 --
@@ -8463,6 +8512,14 @@ ALTER TABLE ONLY public.error_log
 
 
 --
+-- Name: inventory_observation_activity inventory_observation_activity_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.inventory_observation_activity
+    ADD CONSTRAINT inventory_observation_activity_pkey PRIMARY KEY (hour_slot);
+
+
+--
 -- Name: jwt_secrets jwt_secrets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8604,6 +8661,14 @@ ALTER TABLE ONLY public.library_labels
 
 ALTER TABLE ONLY public.library_labels
     ADD CONSTRAINT library_labels_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: library_observation_samples library_observation_samples_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.library_observation_samples
+    ADD CONSTRAINT library_observation_samples_pkey PRIMARY KEY (hour_slot);
 
 
 --
@@ -14920,6 +14985,8 @@ FROM unnest(ARRAY[
     '20260905_120000_add_media_identity_receipt_lookup_index.sql',
     '20260905_140000_add_library_profile_observation_summary.sql',
     '20260905_150000_add_inventory_profile_refresh.sql',
-    '20260905_160000_add_inventory_tmdb_observations.sql'
+    '20260905_160000_add_inventory_tmdb_observations.sql',
+    '20260905_170000_add_observation_acquisition_history.sql',
+    '20260905_180000_preserve_observation_language_presence.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

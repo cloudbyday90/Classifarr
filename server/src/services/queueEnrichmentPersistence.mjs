@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { ENRICHMENT_SOURCE_SQL, encodeEnrichmentSource } from './queueEnrichmentSourceGuard.mjs';
+import { INVENTORY_OBSERVATION_ACTIVITY_CTE } from './inventoryObservationActivitySql.mjs';
 
 export async function persistOmdbRating(query, itemId, rated, mediaType, source, tmdbId) {
   const snapshot = encodeEnrichmentSource(source, mediaType);
@@ -17,12 +18,15 @@ export async function persistEnrichmentMetadata(query, payload, tmdbId, metadata
   const snapshot = encodeEnrichmentSource(payload.source_identity_snapshot, type, payload.source_library_id);
   if (!snapshot || tmdbId === undefined) return { rowCount: 0 };
   return query( // sql-interpolation: fixed source projection; all source and provider values are bound
-    `UPDATE media_server_items
+    `WITH updated AS (UPDATE media_server_items
       SET metadata = COALESCE(metadata, '{}'::jsonb) || $1::jsonb,
         inventory_tmdb_attempted_at = CASE WHEN $6 THEN NOW() ELSE inventory_tmdb_attempted_at END,
         inventory_tmdb_fetched_at = CASE WHEN $7 THEN NOW() ELSE inventory_tmdb_fetched_at END
       WHERE id = $2 AND media_type = $3 AND library_id = $4
-        AND tmdb_id IS NOT DISTINCT FROM $5::integer AND ${ENRICHMENT_SOURCE_SQL} = $8::jsonb`,
+        AND tmdb_id IS NOT DISTINCT FROM $5::integer AND ${ENRICHMENT_SOURCE_SQL} = $8::jsonb
+      RETURNING 1)
+      ${INVENTORY_OBSERVATION_ACTIVITY_CTE}
+      SELECT * FROM updated`,
     [JSON.stringify(metadata), payload.itemId, type, payload.source_library_id, tmdbId,
       attempted, Boolean(metadata.inventory_tmdb), snapshot]);
 }

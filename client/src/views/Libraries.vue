@@ -118,6 +118,7 @@
       </Card>
     </div>
     <LibraryObservationHealth />
+    <LibraryObservationHistory />
     <LibraryOverlapSummary />
   </div>
 </template>
@@ -137,6 +138,7 @@ import Badge from '@/components/common/Badge.vue'
 import MappingWarningBanner from '@/components/MappingWarningBanner.vue'
 import LibraryOverlapSummary from '@/components/library/LibraryOverlapSummary.vue'
 import LibraryObservationHealth from '@/components/library/LibraryObservationHealth.vue'
+import LibraryObservationHistory from '@/components/library/LibraryObservationHistory.vue'
 
 // HTTP status codes
 const HTTP_CONFLICT = 409

@@ -642,6 +642,11 @@ attributable observation validator. Bounded background passes advance past fresh
 records, while valid empty captures remain cached. See the
 [repair design](docs/architecture/inventory-observation-repair-design.md) and
 [validation outcome](docs/architecture/inventory-observation-repair-outcome.md).
+Acquisition outcomes and hourly coverage history are also recorded automatically.
+Libraries shows captured and unavailable attempts alongside bounded coverage
+samples, with explicit populations and a seven-day window. See the
+[history design](docs/architecture/observation-acquisition-history-design.md) and
+[measured outcome](docs/architecture/observation-acquisition-history-outcome.md).
 Manual identity review handles unresolved exceptions.
 
 For unresolved inventory identities, open **Libraries → Review media IDs** with

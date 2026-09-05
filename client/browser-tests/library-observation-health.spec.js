@@ -2,6 +2,7 @@
 import { expect, test } from '@playwright/test'
 import { libraryObservationHealthFixture } from '../src/__tests__/fixtures/libraryObservationHealthFixture.js'
 import { libraryOverlapFixture } from '../src/__tests__/fixtures/libraryOverlapFixture.js'
+import { libraryObservationHistoryFixture } from '../src/__tests__/fixtures/libraryObservationHistoryFixture.js'
 
 test('automatically explains observation health with keyboard access, contrast and mobile scrolling', async ({ page }, testInfo) => {
   let writes = 0
@@ -18,6 +19,7 @@ test('automatically explains observation health with keyboard access, contrast a
     if (path === '/api/notifications/unread-count') data = { unread: 0 }
     if (path === '/api/libraries') data = report.libraries.map(library => ({ ...library, is_active: true, media_type: 'movie' }))
     if (path === '/api/libraries/overlap') data = libraryOverlapFixture()
+    if (path === '/api/libraries/observation-history') data = libraryObservationHistoryFixture()
     if (path === '/api/libraries/observation-health') { healthReads++; data = report }
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) })
   })
