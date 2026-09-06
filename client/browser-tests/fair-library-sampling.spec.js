@@ -5,9 +5,11 @@ import { libraryObservationHealthFixture } from '../src/__tests__/fixtures/libra
 import { libraryOverlapFixture } from '../src/__tests__/fixtures/libraryOverlapFixture'
 import { checkKeyboardScroll } from './support/observationTableKeyboard'
 import { incrementalLibraryCoverageFixture } from '../src/__tests__/fixtures/incrementalLibraryCoverageFixture'
+import { libraryScanDiagnosticsFixture } from '../src/__tests__/fixtures/libraryScanDiagnosticsFixture'
 
-for (const incremental of [false, true]) {
-test(`${incremental ? 'incremental' : 'fair'} sampling shows bounded coverage, keyboard pagination and visit tables without operational requests`, async ({ page }, testInfo) => {
+for (const mode of ['fair', 'incremental', 'diagnostics']) {
+const incremental = mode !== 'fair'
+test(`${mode} sampling shows bounded coverage, keyboard pagination and visit tables without operational requests`, async ({ page }, testInfo) => {
   let reads = 0
   let writes = 0
   await page.route(url => url.pathname.startsWith('/api/'), async route => {
@@ -23,7 +25,8 @@ test(`${incremental ? 'incremental' : 'fair'} sampling shows bounded coverage, k
       name: index === 0 ? 'Large archive' : `Collection ${index + 1}`, is_active: true, media_type: 'movie' }))
     if (path === '/api/libraries/observation-health') data = libraryObservationHealthFixture()
     if (path === '/api/libraries/overlap') data = libraryOverlapFixture()
-    if (path === '/api/libraries/observation-history') { reads++; data = incremental ? incrementalLibraryCoverageFixture() : libraryObservationSamplingFixture() }
+    if (path === '/api/libraries/observation-history') { reads++; data = mode === 'diagnostics' ? libraryScanDiagnosticsFixture()
+      : incremental ? incrementalLibraryCoverageFixture() : libraryObservationSamplingFixture() }
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) })
   })
   await page.goto('/libraries')
@@ -31,16 +34,26 @@ test(`${incremental ? 'incremental' : 'fair'} sampling shows bounded coverage, k
   await expect(section.getByRole('status').filter({ hasText: 'Acquisition history loaded.' })).toBeVisible()
   await expect(section.locator('h4')).toHaveCount(12)
   if (incremental) {
-    await expect(section.getByText('20000 rows scanned; more remain. Complete coverage is not available yet.')).toBeVisible()
+    await expect(section.getByText('20000 rows scanned; more remain. Complete coverage is not available yet.').first()).toBeVisible()
     await expect(section.getByText('Inputs changed before this visit could be saved. The scan will restart automatically.')).toBeVisible()
   } else {
     await expect(section.getByText("Inventory exceeds 20,000 rows; this library's coverage is unknown.")).toBeVisible()
   }
   await section.getByRole('button', { name: 'Next libraries' }).focus()
   await page.keyboard.press('Enter')
-  await expect(section.getByRole('heading', { name: 'Collection 13 (library 13)', exact: true })).toBeVisible()
+  const lastLibrary = mode === 'diagnostics' ? 11 : 13
+  await expect(section.getByRole('heading', { name: `Collection ${lastLibrary} (library ${lastLibrary})`, exact: true })).toBeVisible()
   await section.getByRole('button', { name: 'Previous libraries' }).focus()
   await page.keyboard.press('Enter')
+  if (mode === 'diagnostics') {
+    await expect(section.locator('h4').first()).toHaveText('Collection 13 (library 13)')
+    const reasons = section.getByText('Recorded restart reasons for Collection 13 (library 13)', { exact: true })
+    await reasons.focus()
+    await page.keyboard.press('Enter')
+    await expect(reasons.locator('..').getByRole('listitem')).toHaveCount(2)
+    await expect(section.getByText('Repeated resets recorded:', { exact: false })).toBeVisible()
+    await expect(section.getByRole('alert')).toHaveCount(0)
+  }
   for (const label of ['Large archive (library 1)', 'Collection 2 (library 2)']) {
     await section.getByText(`Recorded visits for ${label}`, { exact: true }).focus()
     await page.keyboard.press('Enter')

@@ -660,6 +660,12 @@ coverage separately identified. Revisit time grows with the active library count
 Immediate health and overlap summaries retain their existing scope. See the
 [incremental design](docs/architecture/incremental-library-coverage-design.md) and
 [validation outcome](docs/architecture/incremental-library-coverage-outcome.md).
+Automatic diagnostics summarize retained completions, restarts, discarded visits
+and active libraries without incremental visits. Unresolved libraries appear first,
+with explicit observation windows and measurement ages. No extra collection or
+provider requests are needed; missing retained completion does not establish failure.
+See the [diagnostics design](docs/architecture/library-scan-diagnostics-design.md)
+and [measured outcome](docs/architecture/library-scan-diagnostics-outcome.md).
 Manual identity review handles unresolved exceptions.
 
 For unresolved inventory identities, open **Libraries → Review media IDs** with

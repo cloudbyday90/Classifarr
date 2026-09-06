@@ -118,5 +118,9 @@ measurement, with explicit observed windows and no automatic policy or routing
 changes. Use those measurements before choosing a recovery strategy for
 continuously changing libraries.
 
+Follow-up completed: the [scan diagnostics design](library-scan-diagnostics-design.md)
+and [measured outcome](library-scan-diagnostics-outcome.md) record the automatic
+history projection, current catalog scope and controlled restart/recovery checks.
+
 Readiness and frozen-study gates remain unchanged. Controlled fixtures and source
 placement do not count as independent human labels. No release is created.

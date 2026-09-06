@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Automatic scan diagnostics** — Libraries now explains retained complete
+  measurements, repeated scan resets and active libraries without recorded
+  visits. Prioritized summaries distinguish missing evidence from failure and
+  require no additional collection steps.
+
 - **Incremental large-library coverage** — Automatic sampling now resumes bounded
   pages across visits and publishes complete coverage for stable large libraries.
   Changed inventory or observation timestamps restart scans automatically, with

@@ -40,6 +40,7 @@
         :sampling="report.librarySampling"
         :points="report.librarySamples"
         :libraries="libraries"
+        :diagnostics="report.scanDiagnostics"
       />
       <LibraryObservationActivityTable :activity="report.activity" />
       <details
@@ -86,6 +87,8 @@ async function load() {
     if (!Array.isArray(result?.activity) || !Array.isArray(result?.samples)) throw new Error('Invalid history response')
     if (result.librarySampling && (!['library.observation_sampling.v2', 'library.observation_sampling.v3'].includes(result.librarySampling.version)
       || !Array.isArray(result.librarySamples))) throw new Error('Invalid sampling response')
+    if (result.scanDiagnostics && (result.scanDiagnostics.version !== 'library.scan_diagnostics.v1'
+      || !Array.isArray(result.scanDiagnostics.libraries))) throw new Error('Invalid diagnostics response')
     if (active) report.value = result
   } catch {
     if (active) error.value = true

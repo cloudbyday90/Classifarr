@@ -119,9 +119,12 @@ libraries, with independent per-library capacity status, are implemented in the
 [outcome](fair-library-sampling-outcome.md). Revision-checked incremental coverage
 for libraries above 20,000 rows is implemented in the
 [incremental design](incremental-library-coverage-design.md) and
-[outcome](incremental-library-coverage-outcome.md). Next, derive automatic scan
-completion and restart diagnostics from existing history before selecting a
-recovery strategy for continuously changing libraries.
+[outcome](incremental-library-coverage-outcome.md). Automatic scan completion and
+restart diagnostics are implemented in the
+[diagnostics design](library-scan-diagnostics-design.md) and
+[outcome](library-scan-diagnostics-outcome.md). Next, benchmark bounded recovery
+under continuous enrichment before choosing a strategy that preserves consistent
+measurements and fair turns for other libraries.
 The separate shared HTTP mutation-retry audit remains a correctness follow-up;
 the receipt-recovery change already disables replay for identity confirmation.
 

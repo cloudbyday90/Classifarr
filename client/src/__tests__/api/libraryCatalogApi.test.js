@@ -46,7 +46,8 @@ describe('libraryCatalogApi', () => {
     const report = { activity: [], samples: [{ libraryCoverage: [
       { libraryId: 7, comparison: 'population_changed', delta: null },
     ] }], librarySampling: { version: 'library.observation_sampling.v3', rowLimitPerVisit: 20000 },
-    librarySamples: [{ libraryId: 19, status: 'in_progress', scannedRows: 20000, delta: null }] }
+    librarySamples: [{ libraryId: 19, status: 'in_progress', scannedRows: 20000, delta: null }],
+    scanDiagnostics: { version: 'library.scan_diagnostics.v1', libraries: [{ libraryId: 19, repeatedResets: true }] } }
     mockGetDataRequest.mockResolvedValueOnce(report)
     expect(await getLibraryObservationHistory()).toBe(report)
     expect(mockGetDataRequest).toHaveBeenCalledWith('/libraries/observation-history')

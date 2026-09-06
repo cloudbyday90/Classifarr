@@ -21,6 +21,11 @@
     <p v-if="sampling.status === 'clock_anomaly'">
       The sampling clock is ahead of the current time; new visits are paused until it catches up.
     </p>
+    <LibraryObservationDiagnosticSummary
+      v-if="diagnostics"
+      :diagnostics="diagnostics"
+      :libraries="libraries"
+    />
     <p class="text-sm text-gray-300">
       {{ grouped.length }} libraries appear in the retained seven-day history. Current names are labels;
       inactive or deleted libraries may still have retained measurements. Unchanged coverage does not establish a failure.
@@ -95,6 +100,11 @@
       <p v-if="!library.latest.acquisitionConfigured">
         Acquisition was not configured for this visit.
       </p>
+      <LibraryObservationDiagnosticDetail
+        v-if="library.diagnostic"
+        :diagnostic="library.diagnostic"
+        :label="library.label"
+      />
       <details @toggle="toggle($event, library.id)">
         <summary class="cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
           Recorded visits for {{ library.label }}
@@ -117,22 +127,33 @@ import { observationHistoryTime as time, observationHistoryRatio as ratio } from
 import { observationTrendChange as change, observationTrendUnchanged as unchanged } from '@/utils/observationTrendDisplay'
 import { observationScanRestart as restart } from '@/utils/observationScanDisplay'
 import LibraryObservationTrendTable from './LibraryObservationTrendTable.vue'
-const props = defineProps({ sampling: { type: Object, required: true }, points: { type: Array, required: true }, libraries: { type: Array, default: () => [] } })
+import LibraryObservationDiagnosticSummary from './LibraryObservationDiagnosticSummary.vue'
+import LibraryObservationDiagnosticDetail from './LibraryObservationDiagnosticDetail.vue'
+const props = defineProps({ sampling: { type: Object, required: true }, points: { type: Array, required: true },
+  libraries: { type: Array, default: () => [] }, diagnostics: { type: Object, default: null } })
 const page = ref(0)
 const expanded = ref(new Set())
 const buttonClass = 'rounded border border-gray-500 px-3 py-2 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary'
 const grouped = computed(() => {
   const names = new Map(props.libraries.map(library => [library.id, library.name]))
+  const diagnostics = new Map((props.diagnostics?.libraries ?? []).map(item => [item.libraryId, item]))
   const groups = new Map()
   for (const point of props.points) {
     if (!groups.has(point.libraryId)) {
       const name = names.get(point.libraryId)
-      groups.set(point.libraryId, { id: point.libraryId, label: name ? `${name} (library ${point.libraryId})` : `Library ${point.libraryId}`, latest: point, points: [] })
+      groups.set(point.libraryId, { id: point.libraryId, label: name ? `${name} (library ${point.libraryId})` : `Library ${point.libraryId}`,
+        latest: point, points: [], diagnostic: diagnostics.get(point.libraryId) })
     }
     groups.get(point.libraryId).points.push(point)
   }
-  return [...groups.values()].sort((a, b) => a.id - b.id)
+  return [...groups.values()].sort((a, b) => priority(a.diagnostic) - priority(b.diagnostic) || a.id - b.id)
 })
+function priority(diagnostic) {
+  if (!diagnostic?.isActive) return 3
+  if (diagnostic.repeatedResets) return 0
+  if (diagnostic.expirationsSinceCompletion) return 1
+  return diagnostic.completionEvidence !== 'retained_completion' ? 2 : 3
+}
 const pages = computed(() => Math.max(1, Math.ceil(grouped.value.length / 12)))
 const visible = computed(() => grouped.value.slice(page.value * 12, (page.value + 1) * 12))
 watch(pages, value => { page.value = Math.min(page.value, value - 1) })

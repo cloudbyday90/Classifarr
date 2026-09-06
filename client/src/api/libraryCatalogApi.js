@@ -30,7 +30,7 @@ export function getLibraryObservationHealth() {
   return getDataRequest('/libraries/observation-health')
 }
 
-/** Reads complete/partial library scans and legacy coverage without starting acquisition. */
+/** Reads complete/partial scans, retained diagnostics and legacy coverage without starting acquisition. */
 export function getLibraryObservationHistory() {
   return getDataRequest('/libraries/observation-history')
 }

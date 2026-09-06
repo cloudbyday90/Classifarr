@@ -1,6 +1,8 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { projectLibraryCoverageHistory } from './libraryObservationCoverageTrends.mjs';
 import { projectLibraryObservationPoints } from './libraryObservationPointHistory.mjs';
+import { projectLibraryScanDiagnostics } from './libraryObservationDiagnostics.mjs';
+import { libraryObservationDiagnosticsCtes, libraryObservationDiagnosticsCatalog } from './libraryObservationDiagnosticsSql.mjs';
 
 /** One read snapshot: at most 168 activity/legacy frames and 2,016 library points. */
 export async function readLibraryObservationHistory(db) {
@@ -26,11 +28,15 @@ export async function readLibraryObservationHistory(db) {
             captured_rows AS "capturedRows", fresh_rows AS "freshRows", keyword_rows AS "keywordRows", language_rows AS "languageRows"
             FROM library_observation_points, clock
             WHERE observed_at >= date_bin('5 minutes',clock.now,'2000-01-01T00:00:00Z'::timestamptz) - INTERVAL '10075 minutes'
-                AND observed_at <= clock.now ORDER BY observed_at DESC LIMIT 2016)
+                AND observed_at <= clock.now ORDER BY observed_at DESC LIMIT 2016),
+        ${libraryObservationDiagnosticsCtes}
         SELECT clock.now::text AS observed_at,
+            (date_bin('5 minutes',clock.now,'2000-01-01T00:00:00Z'::timestamptz) - INTERVAL '10075 minutes')::text AS window_start_at,
             COALESCE((SELECT jsonb_agg(activity ORDER BY "bucketAt" DESC) FROM activity), '[]'::jsonb) AS activity,
             COALESCE((SELECT jsonb_agg(samples ORDER BY "observedAt" DESC) FROM samples), '[]'::jsonb) AS samples,
-            COALESCE((SELECT jsonb_agg(points ORDER BY "observedAt" DESC) FROM points), '[]'::jsonb) AS library_points,
+            COALESCE((SELECT jsonb_agg(to_jsonb(points) || jsonb_build_object('isActive', COALESCE(l.is_active, false))
+                ORDER BY "observedAt" DESC) FROM points LEFT JOIN libraries l ON l.id = points."libraryId"), '[]'::jsonb) AS library_points,
+            ${libraryObservationDiagnosticsCatalog} AS scan_catalog,
             (SELECT jsonb_build_object('version','library.observation_sampling.v3',
                 'intervalMinutes',5,'libraryLimitPerVisit',1,'rowLimitPerVisit',20000,'maximumScanHours',168,'retainedPointLimit',2016,
                 'status',CASE WHEN last_sample_at IS NULL THEN 'awaiting_samples'
@@ -46,5 +52,7 @@ export async function readLibraryObservationHistory(db) {
         coveragePopulation: 'bounded_active_library_inventory_rows',
         activity: row.activity, samples: projectLibraryCoverageHistory(row.samples),
         librarySampling: row.library_sampling ?? null,
+        scanDiagnostics: projectLibraryScanDiagnostics({ points: row.library_points ?? [],
+            observedAt: row.observed_at, windowStartAt: row.window_start_at, catalog: row.scan_catalog }),
         librarySamples: projectLibraryObservationPoints(row.library_points ?? []) };
 }
