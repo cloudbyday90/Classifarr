@@ -217,6 +217,7 @@ import { ref, computed, onMounted } from 'vue';
 import api from '@/api';
 import SuggestionCard from '@/components/suggestions/SuggestionCard.vue';
 import RejectModal from '@/components/suggestions/RejectModal.vue';
+import { isSuggestionReviewConflict } from '@/utils/suggestionReviewErrors';
 
 const suggestions = ref([]);
 const policies = ref([]);
@@ -260,6 +261,15 @@ async function loadPolicies() {
   }
 }
 
+async function recoverReviewConflict(error) {
+  if (!isSuggestionReviewConflict(error)) return false;
+  selectedSuggestion.value = null;
+  rejectingSuggestion.value = null;
+  await loadSuggestions();
+  alert('This suggestion has changed and was not updated by this request.');
+  return true;
+}
+
 async function applySuggestion(suggestion) {
   if (!confirm('Are you sure you want to apply this suggestion?')) {
     return;
@@ -271,6 +281,7 @@ async function applySuggestion(suggestion) {
     selectedSuggestion.value = null;
     await loadSuggestions();
   } catch (error) {
+    if (await recoverReviewConflict(error)) return;
     console.error('Failed to apply suggestion:', error);
     alert('Failed to apply suggestion: ' + error.message);
   }
@@ -288,6 +299,7 @@ async function confirmReject(reason) {
     rejectingSuggestion.value = null;
     await loadSuggestions();
   } catch (error) {
+    if (await recoverReviewConflict(error)) return;
     console.error('Failed to reject suggestion:', error);
     alert('Failed to reject suggestion: ' + error.message);
   }

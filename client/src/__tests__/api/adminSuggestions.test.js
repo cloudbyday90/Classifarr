@@ -87,4 +87,11 @@ describe('adminSuggestions', () => {
     expect(mockPost).toHaveBeenCalledWith('/suggestions/7/reject', { reason: 'Not applicable' })
     expect(result).toEqual({ data: { rejected: true } })
   })
+
+  it.each([applySuggestion, rejectSuggestion])('propagates lifecycle conflicts without retrying', async review => {
+    const error = { response: { status: 409, data: { code: 'SUGGESTION_NOT_PENDING' } } }
+    mockPost.mockRejectedValueOnce(error)
+    await expect(review(3, 'Reason')).rejects.toBe(error)
+    expect(mockPost).toHaveBeenCalledTimes(1)
+  })
 })

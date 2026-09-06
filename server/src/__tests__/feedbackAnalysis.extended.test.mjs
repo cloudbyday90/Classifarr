@@ -348,20 +348,21 @@ describe('FeedbackAnalysis.rejectSuggestion', () => {
   beforeEach(() => jest.clearAllMocks());
 
   test('updates suggestion status to rejected and returns success object', async () => {
-    db.query.mockResolvedValueOnce({ rows: [] });
+    const connection = { query: jest.fn().mockResolvedValue({ rows: [{ id: 5, policy_id: 1, status: 'pending' }] }), release: jest.fn() };
+    db.pool.connect.mockResolvedValueOnce(connection);
 
     const result = await feedbackAnalysis.rejectSuggestion(5, 2, 'Not relevant');
 
     expect(result.success).toBe(true);
     expect(result.status).toBe('rejected');
     expect(result.suggestionId).toBe(5);
-    const sql = db.query.mock.calls[0][0];
+    const sql = connection.query.mock.calls.find(([query]) => /UPDATE policy_tuning_suggestions/i.test(query))[0];
     expect(sql).toMatch(/UPDATE policy_tuning_suggestions/i);
     expect(sql).toMatch(/rejected/i);
   });
 
   test('throws on db error', async () => {
-    db.query.mockRejectedValueOnce(new Error('DB update failed'));
+    db.pool.connect.mockResolvedValueOnce({ query: jest.fn().mockRejectedValue(new Error('DB update failed')), release: jest.fn() });
     await expect(feedbackAnalysis.rejectSuggestion(1, 1, 'reason')).rejects.toThrow('DB update failed');
   });
 });

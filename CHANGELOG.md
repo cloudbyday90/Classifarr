@@ -241,6 +241,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Suggestion review lifecycle** — Apply and reject now allow one terminal transition
+  from pending, preserving review history during retries and concurrent requests.
+  Application metadata and policy changes commit together; stale dashboard actions
+  refresh the list after a conflict.
+
 - **Duplicate policy suggestions** — Equivalent pending suggestions now share a
   structural configuration comparison and serialized storage per policy. Concurrent
   analysis runs avoid duplicate inserts, and failed batches roll back together.

@@ -1,5 +1,5 @@
 import * as db from '../config/database.mjs';
-import { ValidationError, NotFoundError } from '../utils/appError.mjs';
+import { ValidationError } from '../utils/appError.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { withServiceCatch } from '../utils/serviceCatch.mjs';
 import {
@@ -7,8 +7,8 @@ import {
 } from './policyLegacyWriteBoundary.mjs';
 import {
     assertLegacyPolicyWriteAllowed,
-    lockPolicyAuthorityForWrite,
 } from './policyLegacyWriteGuard.mjs';
+import { lockPendingSuggestion, completeSuggestionReview } from './feedbackAnalysisSuggestionLifecycle.mjs';
 
 const logger = createLogger('FeedbackAnalysis');
 
@@ -16,22 +16,9 @@ export async function applySuggestion(suggestionId, userId) {
     return withServiceCatch(logger, 'Failed to apply suggestion', { suggestionId }, async () => {
       const result = await db.withTransaction(async (client) => {
 
-        const suggestionResult = await client.query(`
-            SELECT * FROM policy_tuning_suggestions
-            WHERE id = $1
-        `, [suggestionId]);
-
-        if (suggestionResult.rows.length === 0) {
-            throw new NotFoundError('Suggestion not found');
-        }
-
-        const suggestion = suggestionResult.rows[0];
+        const { suggestion, policy } = await lockPendingSuggestion(client, suggestionId);
         const config = suggestion.suggestion_config;
 
-        const policy = await lockPolicyAuthorityForWrite({
-            client,
-            policyId: suggestion.policy_id,
-        });
         assertLegacyPolicyWriteAllowed({
             policy,
             payload: {
@@ -53,6 +40,8 @@ export async function applySuggestion(suggestionId, userId) {
         `, [suggestion.policy_id]);
 
         const before_metrics = beforeResult.rows[0];
+        const stats = await client.query('SELECT accuracy_rate FROM policy_learning_stats WHERE policy_id = $1', [suggestion.policy_id]);
+        const beforeAccuracy = stats.rows.length > 0 ? stats.rows[0].accuracy_rate : suggestion.before_accuracy;
 
         let applied = false;
         const change_type = suggestion.suggestion_type;
@@ -122,13 +111,7 @@ export async function applySuggestion(suggestionId, userId) {
             throw new Error(`Unable to apply suggestion type: ${suggestion.suggestion_type}`);
         }
 
-        await client.query(`
-            UPDATE policy_tuning_suggestions
-            SET status = 'applied',
-                reviewed_at = NOW(),
-                reviewed_by = $1
-            WHERE id = $2
-        `, [userId, suggestionId]);
+        await completeSuggestionReview(client, { suggestionId, userId, status: 'applied', beforeAccuracy });
 
         const afterResult = await client.query(`
             SELECT 
@@ -184,14 +167,10 @@ export async function applySuggestion(suggestionId, userId) {
 
 export async function rejectSuggestion(suggestionId, userId, reason) {
     return withServiceCatch(logger, 'Failed to reject suggestion', async () => {
-        await db.query(`
-            UPDATE policy_tuning_suggestions
-            SET status = 'rejected',
-                reviewed_at = NOW(),
-                reviewed_by = $1,
-                rejection_reason = $2
-            WHERE id = $3
-        `, [userId, reason, suggestionId]);
+        await db.withTransaction(async client => {
+            await lockPendingSuggestion(client, suggestionId);
+            await completeSuggestionReview(client, { suggestionId, userId, status: 'rejected', reason });
+        });
 
         logger.info('Suggestion rejected', { suggestionId, userId, reason });
 

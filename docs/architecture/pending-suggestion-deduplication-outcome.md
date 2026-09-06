@@ -93,6 +93,9 @@ in the separate [design](pending-suggestion-deduplication-design.md).
 
 ## Next item
 
+The lifecycle follow-up below is now implemented; see the separate
+[lifecycle outcome](suggestion-lifecycle-outcome.md).
+
 **Guard suggestion lifecycle transitions before applying or rejecting.** Static review
 of `feedbackAnalysisSuggestionApply.mjs` found no pending-status check before apply,
 and rejection updates any matching ID. Deduplicating creation does not prevent repeat

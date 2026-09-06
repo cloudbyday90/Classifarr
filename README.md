@@ -124,6 +124,12 @@ serializes concurrent writes per policy. Equivalent pending submissions create n
 additional record; existing history is preserved. See the [deduplication design](docs/architecture/pending-suggestion-deduplication-design.md)
 and [validation outcome](docs/architecture/pending-suggestion-deduplication-outcome.md).
 
+Each pending tuning suggestion can be applied or rejected once. Concurrent or repeated
+reviews return a conflict and preserve the first completed review. Application changes,
+accuracy baseline and audit metadata commit together. The dashboard refreshes after a
+lifecycle conflict. See the [lifecycle design](docs/architecture/suggestion-lifecycle-design.md)
+and [outcome](docs/architecture/suggestion-lifecycle-outcome.md).
+
 <p align="center">
   <img src="./docs/assets/issue-262-classification-flow-v042.svg" alt="Classifarr classification flow diagram" width="1100" />
 </p>

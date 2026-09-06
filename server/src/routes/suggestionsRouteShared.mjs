@@ -91,26 +91,6 @@ export function createSuggestionsRouter({ express, db, feedbackAnalysis }) {
     const { id } = req.params;
     const userId = req.user?.id || 1;
 
-    const beforeStats = await db.query(
-      `
-          SELECT accuracy_rate, auto_accuracy_rate
-          FROM policy_learning_stats
-          WHERE policy_id = (SELECT policy_id FROM policy_tuning_suggestions WHERE id = $1)
-        `,
-      [id],
-    );
-
-    if (beforeStats.rows.length > 0) {
-      await db.query(
-        `
-            UPDATE policy_tuning_suggestions
-            SET before_accuracy = $2
-            WHERE id = $1
-          `,
-        [id, beforeStats.rows[0].accuracy_rate],
-      );
-    }
-
     const result = await feedbackAnalysis.applySuggestion(id, userId);
 
     return sendSuccess(res, { result });
