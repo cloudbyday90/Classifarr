@@ -107,6 +107,12 @@ This avoids silent false negatives in classification, prompt building, learning,
 
 ## Classification Flow
 
+Automatic learning uses feedback only when its destination and the candidate resolve
+to active libraries. Detached records remain available as history and do not count
+as rejections or recover their destination from stored names or snapshots. See the
+[eligibility design](docs/architecture/feedback-confidence-eligibility-design.md) and
+[validation outcome](docs/architecture/feedback-confidence-eligibility-outcome.md).
+
 <p align="center">
   <img src="./docs/assets/issue-262-classification-flow-v042.svg" alt="Classifarr classification flow diagram" width="1100" />
 </p>

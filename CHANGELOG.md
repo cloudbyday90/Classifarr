@@ -241,6 +241,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Feedback confidence eligibility** — Detached, unresolved and inactive library
+  destinations no longer count as automatic-learning rejections. Confidence reads
+  preserve historical feedback, validate candidate IDs and require positive evidence
+  before learning can apply.
+
 - **Bounded coverage reads** — Sampling uses indexed library ranges and item
   lookups to avoid reading unrelated inventory while measuring a page.
 

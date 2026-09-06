@@ -121,8 +121,11 @@ against a database owner.
 
 **Next fix: exclude detached or unresolved feedback destinations from automatic
 confidence calculations.** `autoLearningConfidence.mjs` compares every selected
-library ID with the candidate; a matching signal with `selected_library_id = NULL`
-currently increments the rejection count. Existing clear-and-resync can create that
+library ID with the candidate. This follow-up is now implemented; see the separate
+[design](feedback-confidence-eligibility-design.md) and
+[outcome](feedback-confidence-eligibility-outcome.md). Before the fix, a matching
+signal with `selected_library_id = NULL` incremented the rejection count.
+Existing clear-and-resync can create that
 null state already. Add explicit destination eligibility, preserve archived records
 for historical inspection, and regression-test null/missing and reused identities
 before adapting wider feedback readers. Do not turn archived provenance into an

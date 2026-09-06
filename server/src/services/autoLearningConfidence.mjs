@@ -1,26 +1,21 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
+import { isLearningLibraryId, readEligibleLearningFeedback } from './autoLearningFeedbackEvidence.mjs';
 
 const logger = createLogger('AutoLearningConfidence');
 
-const DEFAULT_LOOKBACK_DAYS = 30;
+const emptyConfidence = () => ({ confirmCount: 0, rejectCount: 0, netConfidence: 0, confidenceRate: 0, shouldApply: false });
 
 export async function calculateNetConfidence(libraryId, value, type, getLearningSettings) {
+    if (!isLearningLibraryId(libraryId)) return emptyConfidence();
     try {
-        const result = await db.query(`
-            SELECT 
-                selected_library_id,
-                was_correction,
-                item_metadata
-            FROM policy_feedback_log
-            WHERE prompted_at >= NOW() - $1::interval
-        `, [`${DEFAULT_LOOKBACK_DAYS} days`]);
+        const feedback = await readEligibleLearningFeedback(db, libraryId);
 
         let confirmCount = 0;
         let rejectCount = 0;
 
-        result.rows.forEach(row => {
+        feedback.forEach(row => {
             const metadata = row.item_metadata || {};
             let hasSignal = false;
 
@@ -55,7 +50,7 @@ export async function calculateNetConfidence(libraryId, value, type, getLearning
         if (type === 'keyword') threshold = settings.keywordLearnThreshold;
         if (type === 'studio') threshold = settings.studioLearnThreshold;
 
-        const shouldApply = confirmCount >= threshold &&
+        const shouldApply = confirmCount > 0 && confirmCount >= threshold &&
             confidenceRate >= settings.minConfidenceRate;
 
         return {
@@ -72,13 +67,7 @@ export async function calculateNetConfidence(libraryId, value, type, getLearning
             value,
             type
         });
-        return {
-            confirmCount: 0,
-            rejectCount: 0,
-            netConfidence: 0,
-            confidenceRate: 0,
-            shouldApply: false
-        };
+        return emptyConfidence();
     }
 }
 
