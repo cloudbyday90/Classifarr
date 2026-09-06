@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Bounded inventory cleanup prototype** — Added resumable pruning and parent
+  removal assessments with complete-manifest checks, bounded transactions and
+  database admission guards. Local tests verify concurrent writes, moves and
+  interruption recovery; broader dependency validation still gates production use.
+
 - **Inventory writer compatibility** — Added automatic source and cascade-writer
   discovery, read-only deployed catalog checks, and an isolated sync assessment
   that preserves identity and metadata retention through ordered transactions.

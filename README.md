@@ -870,6 +870,18 @@ See the [design](docs/architecture/inventory-writer-compatibility-design.md) and
 [outcome](docs/architecture/inventory-writer-compatibility-outcome.md) for discoveries,
 deployed-schema differences, transaction evidence and remaining adoption gates.
 
+The bounded cleanup follow-up tests resumable full-sync pruning and parent removal:
+
+```bash
+npm run benchmark:inventory-cleanup
+```
+
+This no-argument assessment creates a disposable PostgreSQL container, checks exact
+completion under bounded mutations and removes its fixture schema. Its
+[design](docs/architecture/bounded-inventory-cleanup-design.md) and
+[outcome](docs/architecture/bounded-inventory-cleanup-outcome.md) describe admission
+checks, recovery, measured limits and the production dependencies still to validate.
+
 Security and docs checks:
 
 ```bash

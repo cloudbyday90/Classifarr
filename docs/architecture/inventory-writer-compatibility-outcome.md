@@ -161,6 +161,11 @@ masquerade as completed cleanup. Test large libraries, concurrent sync inserts,
 parent cascades, rollback/reconnect and exact final counts in the disposable lab.
 Do not add an operator queue or manual collection process.
 
+This follow-up is now implemented in the isolated
+[bounded cleanup design](bounded-inventory-cleanup-design.md) and
+[measured outcome](bounded-inventory-cleanup-outcome.md). Its inventory-only scope
+does not complete production dependent-table compatibility.
+
 Define how new child writes are admitted while a parent is being removed before
 chunking cascades. Adding a row limit to one delete cannot by itself prevent late
 inserts or establish that parent cleanup is complete. Preserve atomic failure
