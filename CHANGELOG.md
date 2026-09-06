@@ -241,6 +241,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Duplicate policy suggestions** — Equivalent pending suggestions now share a
+  structural configuration comparison and serialized storage per policy. Concurrent
+  analysis runs avoid duplicate inserts, and failed batches roll back together.
+
 - **Feedback suggestion eligibility** — Excluded detached, inactive and mismatched
   library references from policy suggestion evidence. Pattern, weight and threshold
   analysis now share the requested feedback window and count only eligible samples.

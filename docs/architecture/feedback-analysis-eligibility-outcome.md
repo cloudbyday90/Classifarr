@@ -87,6 +87,9 @@ are recorded in the separate [design](feedback-analysis-eligibility-design.md).
 
 ## Next fix and remaining limits
 
+The deduplication follow-up below is now implemented; see its separate
+[design and outcome](pending-suggestion-deduplication-outcome.md).
+
 **Make pending suggestion deduplication structural and safe under concurrent writes.**
 `feedbackAnalysisSuggestionStore.mjs` compares `suggestion_config::text` with supplied
 JSON text. JSONB rendering changes whitespace and key ordering, so equivalent objects

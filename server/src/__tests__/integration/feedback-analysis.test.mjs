@@ -493,8 +493,7 @@ describe('FeedbackAnalysis Integration Tests', () => {
 
             const stored2 = await feedbackAnalysis.storeSuggestions(testPolicyId, [suggestion]);
 
-            expect(stored2.length).toBeGreaterThanOrEqual(0);
-            expect(stored2.length).toBeLessThanOrEqual(1);
+            expect(stored2).toEqual([]);
         });
     });
 

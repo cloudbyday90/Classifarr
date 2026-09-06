@@ -1,14 +1,16 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import { TUNING_CONSTANTS } from './feedbackAnalysisUtils.mjs';
+import { resolveSuggestionConfig } from './feedbackAnalysisSuggestionConfig.mjs';
 import { NotFoundError } from '../utils/appError.mjs';
 import { withServiceCatch } from '../utils/serviceCatch.mjs';
 
 const logger = createLogger('FeedbackAnalysis');
 
 export async function storeSuggestions(policyId, suggestions) {
-    return withServiceCatch(logger, 'Failed to store suggestions', async () => {
-        const policyResult = await db.query(`
+    return withServiceCatch(logger, 'Failed to store suggestions', () => db.withTransaction(async client => {
+        // A fresh statement snapshot after the policy lock must see the previous writer's inserts.
+        await client.query('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
+        const policyResult = await client.query(`
             SELECT 
                 auto_classify_threshold,
                 prompt_threshold,
@@ -18,6 +20,7 @@ export async function storeSuggestions(policyId, suggestions) {
                 history_weight
             FROM library_policies
             WHERE id = $1
+            FOR NO KEY UPDATE
         `, [policyId]);
 
         if (policyResult.rows.length === 0) {
@@ -28,58 +31,16 @@ export async function storeSuggestions(policyId, suggestions) {
         const storedSuggestions = [];
 
         for (const suggestion of suggestions) {
-            if (suggestion.type === 'adjust_threshold') {
-                const thresholdType = suggestion.config.threshold_type;
-                if (thresholdType === 'auto_classify') {
-                    suggestion.config.current = policy.auto_classify_threshold;
-                    if (suggestion.config.reason.includes('High false positive')) {
-                        suggestion.config.recommended = Math.min(
-                            policy.auto_classify_threshold + TUNING_CONSTANTS.THRESHOLD_ADJUSTMENT,
-                            TUNING_CONSTANTS.MAX_AUTO_CLASSIFY_THRESHOLD
-                        );
-                    } else {
-                        suggestion.config.recommended = Math.max(
-                            policy.auto_classify_threshold - TUNING_CONSTANTS.THRESHOLD_ADJUSTMENT,
-                            TUNING_CONSTANTS.MIN_AUTO_CLASSIFY_THRESHOLD
-                        );
-                    }
-                } else if (thresholdType === 'prompt') {
-                    suggestion.config.current = policy.prompt_threshold;
-                    suggestion.config.recommended = Math.max(
-                        policy.prompt_threshold - TUNING_CONSTANTS.THRESHOLD_ADJUSTMENT,
-                        TUNING_CONSTANTS.MIN_PROMPT_THRESHOLD
-                    );
-                }
-            } else if (suggestion.type === 'adjust_weight') {
-                const signal = suggestion.config.signal;
-                const weightMap = {
-                    preset: policy.preset_weight || 0.40,
-                    pattern: policy.pattern_weight || 0.30,
-                    rag: policy.rag_weight || 0.20,
-                    history: policy.history_weight || 0.10
-                };
-                suggestion.config.current = weightMap[signal];
+            const configJson = JSON.stringify(resolveSuggestionConfig(policy, suggestion));
 
-                if (suggestion.config.reason.includes('Low accuracy')) {
-                    suggestion.config.recommended = Math.max(
-                        suggestion.config.current - TUNING_CONSTANTS.WEIGHT_ADJUSTMENT,
-                        TUNING_CONSTANTS.MIN_WEIGHT
-                    );
-                } else {
-                    suggestion.config.recommended = Math.min(
-                        suggestion.config.current + TUNING_CONSTANTS.WEIGHT_ADJUSTMENT,
-                        TUNING_CONSTANTS.MAX_WEIGHT
-                    );
-                }
-            }
-
-            const existingResult = await db.query(`
+            const existingResult = await client.query(`
                 SELECT id FROM policy_tuning_suggestions
                 WHERE policy_id = $1
                 AND suggestion_type = $2
-                AND suggestion_config::text = $3::text
+                AND suggestion_config = $3::jsonb
                 AND status = 'pending'
-            `, [policyId, suggestion.type, JSON.stringify(suggestion.config)]);
+                LIMIT 1
+            `, [policyId, suggestion.type, configJson]);
 
             if (existingResult.rows.length > 0) {
                 logger.debug('Similar suggestion already exists', {
@@ -88,7 +49,7 @@ export async function storeSuggestions(policyId, suggestions) {
                 continue;
             }
 
-            const result = await db.query(`
+            const result = await client.query(`
                 INSERT INTO policy_tuning_suggestions (
                     policy_id,
                     suggestion_type,
@@ -103,7 +64,7 @@ export async function storeSuggestions(policyId, suggestions) {
             `, [
                 policyId,
                 suggestion.type,
-                JSON.stringify(suggestion.config),
+                configJson,
                 suggestion.supporting_feedback || [],
                 suggestion.confidence,
                 suggestion.impact_estimate
@@ -118,7 +79,7 @@ export async function storeSuggestions(policyId, suggestions) {
         });
 
         return storedSuggestions;
-    });
+    }));
 }
 
 export async function getPendingSuggestions(policyId) {

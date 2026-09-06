@@ -119,6 +119,11 @@ cohort and the requested lookback; the returned feedback count reflects that coh
 Historical reports remain available. See the [analysis design](docs/architecture/feedback-analysis-eligibility-design.md)
 and [outcome](docs/architecture/feedback-analysis-eligibility-outcome.md).
 
+Pending suggestion storage compares complete JSON configurations structurally and
+serializes concurrent writes per policy. Equivalent pending submissions create no
+additional record; existing history is preserved. See the [deduplication design](docs/architecture/pending-suggestion-deduplication-design.md)
+and [validation outcome](docs/architecture/pending-suggestion-deduplication-outcome.md).
+
 <p align="center">
   <img src="./docs/assets/issue-262-classification-flow-v042.svg" alt="Classifarr classification flow diagram" width="1100" />
 </p>

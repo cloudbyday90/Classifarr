@@ -59,8 +59,9 @@ test('genuine corrections still store supported patterns and threshold suggestio
     ]);
     expect(result.analysis.signalEffectiveness.preset.accuracy).toBe(0.5);
     const stored = (await db.query('SELECT * FROM policy_tuning_suggestions WHERE policy_id=$1', [policyId])).rows;
+    expect(stored).toHaveLength(2);
     const patternSuggestions = stored.filter(row => row.suggestion_type === 'create_pattern');
-    expect(patternSuggestions.length).toBeGreaterThan(0);
+    expect(patternSuggestions).toHaveLength(1);
     for (const pattern of patternSuggestions) {
         expect(pattern).toMatchObject({
             suggestion_config: { pattern_type: 'genre', pattern_value: 'Action' },
