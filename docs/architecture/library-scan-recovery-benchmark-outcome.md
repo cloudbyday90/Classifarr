@@ -142,7 +142,8 @@ both server unused-code checks, migration/schema integrity, Markdown validation
 | Full bounded frozen projection | Consistent historical baseline after source changes | Up-front read, capacity refusal and unproven durable lifecycle | Keep as a prototype |
 | Bounded change journal with per-page aggregates | Could repair changed pages instead of restarting entire libraries | Requires exact commit ordering, overflow handling and consistency proof | Next implementation to evaluate |
 
-Next: implement a bounded journal of scan-relevant changes and a page-repair
+Follow-up implemented as an isolated [page-repair prototype](library-page-repair-outcome.md).
+The original next-step specification was: implement a bounded journal of scan-relevant changes and a page-repair
 prototype. Cover observation updates, clock changes, identity correction, deletion
 and library reassignment. Repair must preserve a coherent measurement revision;
 journal overflow, missing continuity or unsupported changes must fall back to

@@ -823,6 +823,17 @@ consistency and cost evidence without connecting to the application database.
 See the [benchmark design](docs/architecture/library-scan-recovery-benchmark-design.md)
 and [measured recommendations](docs/architecture/library-scan-recovery-benchmark-outcome.md).
 
+The follow-up change-journal prototype uses the same disposable runtime:
+
+```bash
+npm run benchmark:library-page-repair
+```
+
+It measures bounded repairs under continuous changes, with conservative restart
+and freshness checks. It does not enable production recovery or require an
+operator collection step. See its [design](docs/architecture/library-page-repair-design.md)
+and [outcome](docs/architecture/library-page-repair-outcome.md).
+
 Security and docs checks:
 
 ```bash

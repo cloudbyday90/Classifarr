@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Bounded page-repair prototype** — Added a local change-journal evaluation
+  that reuses unaffected coverage summaries, repairs changed or expired ranges,
+  and withholds complete counts when continuity or capacity cannot be established.
+  Production adoption remains gated on contention and lifecycle evidence.
+
 - **Scan recovery benchmark** — Added a reproducible local comparison of capped
   extra visits and frozen coverage projections, with explicit completion,
   consistency, storage and work-limit results. Production recovery remains gated
