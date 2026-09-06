@@ -15,6 +15,7 @@ import { normalizeGroupingValues, groupByMetadataField, extractSignificantPatter
 import { detectFailurePatterns, analyzeSignalEffectiveness, detectNewPatterns, analyzeThresholds } from './feedbackAnalysisPatternDetection.mjs';
 import { generateSuggestions, storeSuggestions, getPendingSuggestions, applySuggestion, rejectSuggestion, getImpactMetrics } from './feedbackAnalysisSuggestions.mjs';
 import { updateLearningStats } from './feedbackAnalysisLearning.mjs';
+import { readEligiblePolicyFeedback } from './feedbackAnalysisEvidence.mjs';
 
 export { normalizeGroupingValues, groupByMetadataField, extractSignificantPatterns };
 export { detectFailurePatterns, analyzeSignalEffectiveness, detectNewPatterns, analyzeThresholds };
@@ -145,16 +146,9 @@ export class FeedbackAnalysis {
         return withServiceCatch(logger, 'Failed to analyze policy', { policyId }, async () => {
             logger.info('Analyzing policy', { policyId, days, minFeedback });
 
-            const feedbackResult = await db.query(`
-                SELECT * FROM policy_feedback_log
-                WHERE selected_policy_id = $1
-                AND prompted_at >= NOW() - INTERVAL '1 day' * $2
-                ORDER BY prompted_at DESC
-            `, [policyId, days]);
+            const feedback = await readEligiblePolicyFeedback(db, policyId, days);
 
-            const feedback = feedbackResult.rows;
-
-            if (feedback.length < minFeedback) {
+            if (feedback.length === 0 || feedback.length < minFeedback) {
                 logger.info('Insufficient feedback for analysis', {
                     policyId,
                     feedbackCount: feedback.length,

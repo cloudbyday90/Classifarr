@@ -13,6 +13,8 @@ import { groupByMetadataField, extractSignificantPatterns } from './feedbackAnal
 
 const logger = createLogger('FeedbackAnalysis');
 
+// Analysis helpers consume the eligible cohort selected by analyzePolicy.
+// Do not fetch additional feedback here: that would bypass its eligibility/window.
 export async function detectFailurePatterns(policyId, feedback) {
     try {
         const patterns = {
@@ -37,25 +39,14 @@ export async function detectFailurePatterns(policyId, feedback) {
             ];
         }
 
-        const policyLibraryResult = await db.query(
-            `SELECT library_id FROM library_policies WHERE id = $1`,
-            [policyId]
+        const correctionsTowardPolicy = falsePositiveCorrections.filter(f =>
+            f.selected_policy_id === policyId
         );
-        const policyLibraryId = policyLibraryResult.rows[0]?.library_id || null;
 
-        const correctionsTowardPolicy = await db.query(`
-            SELECT * FROM policy_feedback_log
-            WHERE selected_policy_id = $1
-            AND was_correction = true
-            AND (top_suggestion_library_id IS NULL 
-                OR top_suggestion_library_id != $2)
-            AND prompted_at >= NOW() - INTERVAL '30 days'
-        `, [policyId, policyLibraryId]);
-
-        if (correctionsTowardPolicy.rows.length > 0) {
-            const byGenre = groupByMetadataField(correctionsTowardPolicy.rows, 'genres');
-            const byStudio = groupByMetadataField(correctionsTowardPolicy.rows, 'production_companies');
-            const byKeyword = groupByMetadataField(correctionsTowardPolicy.rows, 'keywords');
+        if (correctionsTowardPolicy.length > 0) {
+            const byGenre = groupByMetadataField(correctionsTowardPolicy, 'genres');
+            const byStudio = groupByMetadataField(correctionsTowardPolicy, 'production_companies');
+            const byKeyword = groupByMetadataField(correctionsTowardPolicy, 'keywords');
 
             patterns.missedPositives = [
                 ...extractSignificantPatterns(byGenre, 'genre', 3),

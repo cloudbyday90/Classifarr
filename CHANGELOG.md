@@ -241,6 +241,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Feedback suggestion eligibility** — Excluded detached, inactive and mismatched
+  library references from policy suggestion evidence. Pattern, weight and threshold
+  analysis now share the requested feedback window and count only eligible samples.
+
 - **Feedback confidence eligibility** — Detached, unresolved and inactive library
   destinations no longer count as automatic-learning rejections. Confidence reads
   preserve historical feedback, validate candidate IDs and require positive evidence

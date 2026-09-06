@@ -82,6 +82,9 @@ was introduced.
 
 ## Next fix and remaining limits
 
+The follow-up below is now implemented; see the separate
+[feedback analysis outcome](feedback-analysis-eligibility-outcome.md).
+
 **Apply destination eligibility to feedback failure-pattern analysis**, starting
 with `feedbackAnalysisPatternDetection.mjs`. Its false-positive filter compares
 selected and suggested IDs directly, and its corrections-toward-policy query does

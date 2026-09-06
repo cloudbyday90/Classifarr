@@ -113,6 +113,12 @@ as rejections or recover their destination from stored names or snapshots. See t
 [eligibility design](docs/architecture/feedback-confidence-eligibility-design.md) and
 [validation outcome](docs/architecture/feedback-confidence-eligibility-outcome.md).
 
+Policy suggestion analysis also requires the selected destination to match the
+policy's current active library. Patterns, weights and thresholds use one eligible
+cohort and the requested lookback; the returned feedback count reflects that cohort.
+Historical reports remain available. See the [analysis design](docs/architecture/feedback-analysis-eligibility-design.md)
+and [outcome](docs/architecture/feedback-analysis-eligibility-outcome.md).
+
 <p align="center">
   <img src="./docs/assets/issue-262-classification-flow-v042.svg" alt="Classifarr classification flow diagram" width="1100" />
 </p>

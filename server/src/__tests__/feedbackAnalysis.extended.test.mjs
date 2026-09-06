@@ -175,8 +175,6 @@ describe('FeedbackAnalysis.analyzePolicy', () => {
 
     db.query
       .mockResolvedValueOnce({ rows })
-      .mockResolvedValueOnce({ rows: [{ library_id: 5 }] })
-      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [{ auto_classify_threshold: 80, prompt_threshold: 65 }] })
     ;
 
@@ -190,10 +188,6 @@ describe('FeedbackAnalysis.detectFailurePatterns', () => {
   beforeEach(() => jest.clearAllMocks());
 
   test('returns empty patterns when no corrections present', async () => {
-    db.query
-      .mockResolvedValueOnce({ rows: [{ library_id: 5 }] })
-      .mockResolvedValueOnce({ rows: [] });
-
     const feedback = [makeFeedback({ was_correction: false, prompt_type: 'auto_classify' })];
     const result = await feedbackAnalysis.detectFailurePatterns(1, feedback);
 
@@ -203,10 +197,6 @@ describe('FeedbackAnalysis.detectFailurePatterns', () => {
   });
 
   test('detects high_false_positive_rate threshold issue', async () => {
-    db.query
-      .mockResolvedValueOnce({ rows: [{ library_id: 5 }] })
-      .mockResolvedValueOnce({ rows: [] });
-
     const feedback = Array.from({ length: 10 }, (_, i) =>
       makeFeedback({ was_correction: i < 8, top_suggestion_score: 80 })
     );
@@ -217,10 +207,6 @@ describe('FeedbackAnalysis.detectFailurePatterns', () => {
   });
 
   test('detects low_auto_classification_rate threshold issue', async () => {
-    db.query
-      .mockResolvedValueOnce({ rows: [{ library_id: 5 }] })
-      .mockResolvedValueOnce({ rows: [] });
-
     const feedback = Array.from({ length: 10 }, (_, i) =>
       makeFeedback({ id: i + 1, was_correction: false, prompt_type: 'prompt_select', top_suggestion_score: 60 })
     );
@@ -230,10 +216,10 @@ describe('FeedbackAnalysis.detectFailurePatterns', () => {
     expect(lowAuto).toBeDefined();
   });
 
-  test('returns default empty patterns on db error', async () => {
-    db.query.mockRejectedValueOnce(new Error('DB error'));
-    const result = await feedbackAnalysis.detectFailurePatterns(1, [makeFeedback()]);
-    expect(result.falsePositives).toHaveLength(0);
+  test('returns default empty patterns on malformed cohort', async () => {
+    const result = await feedbackAnalysis.detectFailurePatterns(1, null);
+    expect(result).toEqual({ falsePositives: [], missedPositives: [], thresholdIssues: [] });
+    expect(db.query).not.toHaveBeenCalled();
   });
 });
 
