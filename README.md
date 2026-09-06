@@ -857,6 +857,19 @@ Its [design](docs/architecture/library-scoped-repair-design.md) and
 efficiency, concurrent moves and failure behavior. The command uses a disposable
 database; production adoption requires the documented writer-compatibility checks.
 
+The writer-compatibility follow-up discovers source candidates automatically and
+tests the existing sync upsert with ordered identity/library transactions:
+
+```bash
+npm run inventory:writer-compatibility
+npm run benchmark:inventory-sync-compatibility
+```
+
+The inventory reads repository code only. The benchmark uses a disposable database.
+See the [design](docs/architecture/inventory-writer-compatibility-design.md) and
+[outcome](docs/architecture/inventory-writer-compatibility-outcome.md) for discoveries,
+deployed-schema differences, transaction evidence and remaining adoption gates.
+
 Security and docs checks:
 
 ```bash

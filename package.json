@@ -38,6 +38,8 @@
     "benchmark:library-page-repair": "node server/src/scripts/runLibraryPageRepairPrototype.mjs",
     "benchmark:library-repair-lifecycle": "node server/src/scripts/runLibraryRepairLifecycleAssessment.mjs",
     "benchmark:library-scoped-repair": "node server/src/scripts/runLibraryScopedRepairPrototype.mjs",
+    "inventory:writer-compatibility": "node server/src/scripts/runInventoryWriterCompatibility.mjs",
+    "benchmark:inventory-sync-compatibility": "node server/src/scripts/runInventorySyncCompatibility.mjs",
     "test:offline:policy-candidate-evidence-evaluation": "node scripts/run-policy-candidate-evidence-offline-evaluation.mjs",
     "test:offline:policy-candidate-semantic-snapshot-evaluation": "node scripts/run-policy-candidate-semantic-snapshot-offline-evaluation.mjs",
     "test:offline:policy-candidate-semantic-counter-evidence-readiness-evaluation": "node scripts/run-policy-candidate-semantic-counter-evidence-readiness-evaluation.mjs",

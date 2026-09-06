@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Inventory writer compatibility** — Added automatic source and cascade-writer
+  discovery, read-only deployed catalog checks, and an isolated sync assessment
+  that preserves identity and metadata retention through ordered transactions.
+  Production adoption remains gated on bulk, cascade and restore compatibility.
+
 - **Per-library repair prototype** — Added bounded row-count pages and ordered
   library locks to preserve single-visit coverage for sparse small libraries.
   Local assessments verify concurrent writes, automatic invalidation and recovery;

@@ -172,6 +172,10 @@ production triggers. An owner able to disable triggers remains outside the guard
 security boundary. Sustained storage churn and database-crash recovery remain
 separate promotion gates; add no operator collection workflow.
 
+Follow-up: the [writer compatibility design](inventory-writer-compatibility-design.md)
+and [outcome](inventory-writer-compatibility-outcome.md) now provide automatic source
+discovery, deployed catalog evidence and an isolated sync adapter assessment.
+
 Recommended stack: synchronized inventory → bounded per-library pages → declared
 transactional writes → automatic invalidation and reclamation → coherent coverage
 and existing diagnostics → independently evaluated review-only semantic evidence.
