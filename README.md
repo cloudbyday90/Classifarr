@@ -845,6 +845,18 @@ ordinary vacuum behavior. The [lifecycle design](docs/architecture/library-repai
 and [outcome](docs/architecture/library-repair-lifecycle-outcome.md) also record the
 read-only Compose occupancy assessment and production adoption criteria.
 
+The next isolated prototype preserves small-library completion with row-count
+pages and orders source writes using per-library transaction locks:
+
+```bash
+npm run benchmark:library-scoped-repair
+```
+
+Its [design](docs/architecture/library-scoped-repair-design.md) and
+[outcome](docs/architecture/library-scoped-repair-outcome.md) record sparse-inventory
+efficiency, concurrent moves and failure behavior. The command uses a disposable
+database; production adoption requires the documented writer-compatibility checks.
+
 Security and docs checks:
 
 ```bash

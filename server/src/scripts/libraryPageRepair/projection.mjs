@@ -4,14 +4,16 @@ import { measureLibraryObservationRow } from '../../services/libraryObservationH
 import { INVENTORY_TMDB_CACHE_DAYS } from '../../services/inventoryTmdbObservation.mjs';
 import { pageRepairNamespace, PAGE_REPAIR_FIELDS, PAGE_REPAIR_LIMITS } from './contract.mjs';
 
-export function pageRepairSourceSql(scope) {
-    const ns = pageRepairNamespace(scope);
-    return `SELECT id,library_id,media_type,tmdb_id,
+export const PAGE_REPAIR_SOURCE_COLUMNS = `id,library_id,media_type,tmdb_id,
         inventory_tmdb_attempted_at::text,inventory_tmdb_fetched_at::text,
         COALESCE(metadata ? 'inventory_tmdb',false) AS has_observation,
         COALESCE(octet_length((metadata->'inventory_tmdb')::text)>4096,false) AS observation_withheld,
         jsonb_build_object('inventory_tmdb',CASE WHEN octet_length((metadata->'inventory_tmdb')::text)<=4096
-            THEN metadata->'inventory_tmdb' END) AS metadata
+            THEN metadata->'inventory_tmdb' END) AS metadata`;
+
+export function pageRepairSourceSql(scope) {
+    const ns = pageRepairNamespace(scope);
+    return `SELECT ${PAGE_REPAIR_SOURCE_COLUMNS}
         FROM ${ns}.page_repair_source WHERE library_id=$1 AND id BETWEEN $2 AND $3 ORDER BY id LIMIT ${PAGE_REPAIR_LIMITS.pageWidth}`;
 }
 

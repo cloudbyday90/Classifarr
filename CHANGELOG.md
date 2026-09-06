@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Per-library repair prototype** — Added bounded row-count pages and ordered
+  library locks to preserve single-visit coverage for sparse small libraries.
+  Local assessments verify concurrent writes, automatic invalidation and recovery;
+  production adoption remains gated on writer compatibility.
+
 - **Repair lifecycle assessment** — Added read-only inventory range measurements
   and reproducible contention, reconnect and storage checks. The isolated repair
   prototype now reclaims idle and empty cache entries automatically and avoids

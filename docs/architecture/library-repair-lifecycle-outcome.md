@@ -166,6 +166,10 @@ Require the existing continuity, expiry, global-capacity and recovery guarantees
 before any production integration. Longer storage runs and database-crash recovery
 remain additional promotion gates.
 
+Follow-up: the [per-library design](library-scoped-repair-design.md) and
+[measured outcome](library-scoped-repair-outcome.md) now implement and assess this
+prototype recommendation. Production writer compatibility remains a separate gate.
+
 Recommended stack: synchronized inventory → bounded read-only occupancy evidence
 → efficient per-library scans → automatic cache reclamation → consistent and
 measured transaction ordering → coherent coverage and retained diagnostics →
