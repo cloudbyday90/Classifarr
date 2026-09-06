@@ -7,6 +7,8 @@ const rules = Object.freeze([
     ['libraries', 'media_server_sync_status', 'library_id', 'NO_ACTION', 'delete_parent_dependent'],
     ['media_server', 'media_server_sync_status', 'media_server_id', 'CASCADE', 'delete_parent_dependent'],
     ['libraries', 'classification_history', 'library_id', 'SET_NULL', 'preserve_history_detach'],
+    ['libraries', 'media_requests', 'routed_to_library_id', 'NO_ACTION', 'preserve_reference_snapshot'],
+    ['libraries', 'policy_feedback_log', 'selected_library_id', 'NO_ACTION', 'preserve_reference_snapshot'],
     ['libraries', 'media_server_items', 'library_id', 'CASCADE', 'drain_inventory'],
     ['media_server', 'media_server_items', 'media_server_id', 'CASCADE', 'drain_inventory'],
     ['media_server', 'libraries', 'media_server_id', 'CASCADE', 'drain_library'],

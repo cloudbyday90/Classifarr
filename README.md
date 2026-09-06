@@ -896,6 +896,13 @@ report with explicit gaps. The second uses a disposable database. The separate
 [outcome](docs/architecture/inventory-dependent-cleanup-outcome.md) document item
 reservations, audit preservation, catalog findings and remaining adoption work.
 
+The same benchmark now preserves request and feedback references with immutable
+library snapshots and a shared batch budget. Its separate
+[retention design](docs/architecture/inventory-retained-references-design.md) and
+[measured outcome](docs/architecture/inventory-retained-references-outcome.md)
+cover names/statuses, concurrent admission, reconnect recovery, index evidence and
+the feedback-consumer compatibility needed before production adoption.
+
 Security and docs checks:
 
 ```bash

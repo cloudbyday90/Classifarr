@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Retained request and feedback references** — Extended the bounded cleanup
+  assessment to preserve request and feedback records with immutable library
+  snapshots, transactional checkpoints and guards against late writes or
+  reattachment. Added populated index measurements and recovery tests.
+
 - **Inventory dependency planning and cleanup** — Added automatic foreign-key
   discovery and a disposable cleanup assessment that shares one mutation budget
   across items, dependents and retained history updates. Item reservations and

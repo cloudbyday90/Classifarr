@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 const TABLES = Object.freeze(['scoped_repair_source', 'scoped_repair_heads', 'scoped_repair_pages', 'sync_servers', 'sync_libraries',
-    'cleanup_jobs', 'cleanup_seen', 'cleanup_item_claims', 'cleanup_retries', 'cleanup_previews', 'cleanup_collections', 'cleanup_status', 'cleanup_history']);
+    'cleanup_jobs', 'cleanup_seen', 'cleanup_item_claims', 'cleanup_retries', 'cleanup_previews', 'cleanup_collections', 'cleanup_status', 'cleanup_history',
+    'cleanup_requests', 'cleanup_feedback']);
 
 async function fingerprint(db) {
     const row = (await db.query(`WITH watched AS (SELECT c.oid,c.relname,c.relkind,c.relrowsecurity,c.relforcerowsecurity

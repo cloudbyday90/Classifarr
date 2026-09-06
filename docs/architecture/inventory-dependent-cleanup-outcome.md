@@ -153,6 +153,9 @@ functions and 87.86% lines. These figures are not a fresh frontend test result.
 
 Next: **prototype bounded preservation of restrictive library references**, starting
 with `media_requests.routed_to_library_id` and `policy_feedback_log.selected_library_id`.
+This follow-up is now implemented in the isolated assessment; see its separate
+[design](inventory-retained-references-design.md) and
+[outcome](inventory-retained-references-outcome.md).
 Their no-action constraints can block library removal; silently deleting request or
 feedback history is not an acceptable resolution. Derive the retention/name-snapshot
 contract from existing services and add bounded detach or retained-parent behavior

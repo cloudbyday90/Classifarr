@@ -5,6 +5,7 @@ import { finishCleanup, lockCleanupJob } from '../inventoryCleanup/step.mjs';
 import { stepItemDependents } from './items.mjs';
 import { stepParentDependents } from './parents.mjs';
 import { assertDependentContract } from './contract.mjs';
+import { stepRetainedReferences } from '../inventoryRetainedReferences/batch.mjs';
 
 export async function stepDependentCleanup(db, id, { budget = 128 } = {}) {
     cleanupId(id); cleanupBudget(budget);
@@ -15,6 +16,7 @@ export async function stepDependentCleanup(db, id, { budget = 128 } = {}) {
         const item = await stepItemDependents(db, job, budget);
         if (item) return item;
         const parent = await stepParentDependents(db, job, budget);
-        return parent.used === budget ? parent.job : finishCleanup(db, parent.job);
+        const retained = await stepRetainedReferences(db, parent.job, budget - parent.used);
+        return parent.used + retained.used === budget ? retained.job : finishCleanup(db, retained.job);
     });
 }

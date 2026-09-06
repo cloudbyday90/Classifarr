@@ -5,8 +5,10 @@ import { stepDependentCleanup } from './step.mjs';
 import { beginInventoryCleanup, appendCleanupManifest, sealCleanupManifest } from '../inventoryCleanup/jobs.mjs';
 import { seedCleanupItems, syncCleanupItem } from '../inventoryCleanup/fixtures.mjs';
 import { readInventoryDeletionPlan } from '../inventoryDeletionPlan/catalog.mjs';
+import { measureRetainedReferences } from '../inventoryRetainedReferences/assessment.mjs';
 
-const mutations = job => ['deleted', 'dependents_deleted', 'history_detached', 'parents_deleted'].reduce((total, key) => total + Number(job[key]), 0);
+const mutations = job => ['deleted', 'dependents_deleted', 'history_detached', 'parents_deleted', 'requests_detached', 'feedback_detached']
+    .reduce((total, key) => total + Number(job[key]), 0);
 async function drain(db, job, budget = 17) {
     let steps = 0, maxMutations = 0;
     while (job.state !== 'completed') {
@@ -61,7 +63,8 @@ export async function runDependentCleanupMeasurements(db, { withClient }) {
     try {
         await installDependentCleanupPrototype(db); await db.query('COMMIT'); installed = true;
         const plan = await readInventoryDeletionPlan(db, ['scoped_repair_lab.sync_servers']);
-        report = { contract: 'inventory.dependent-cleanup.benchmark.v1', measurements: await measure(db, withClient),
+        report = { contract: 'inventory.dependent-cleanup.benchmark.v2', measurements: await measure(db, withClient),
+            retainedReferences: await measureRetainedReferences(db, withClient),
             catalog: { tables: plan.tables.length, edges: plan.edges.length, fingerprint: plan.fingerprint, executable: plan.executable },
             providerRequests: 0, productionWrites: 0, productionPromotion: false };
     } finally { await db.query('ROLLBACK'); if (installed) await db.query('DROP SCHEMA scoped_repair_lab CASCADE'); }

@@ -3,6 +3,7 @@ import { installInventoryCleanupPrototype } from '../inventoryCleanup/schema.mjs
 import { installDependentAdmission } from './admission.mjs';
 import { installDependentGuards } from './guards.mjs';
 import { recordDependentContract } from './contract.mjs';
+import { installRetainedReferences } from '../inventoryRetainedReferences/schema.mjs';
 
 export async function installDependentCleanupPrototype(db) {
     await installInventoryCleanupPrototype(db);
@@ -34,5 +35,6 @@ export async function installDependentCleanupPrototype(db) {
         CREATE INDEX ON scoped_repair_lab.cleanup_history(library_id,id);`);
     await installDependentAdmission(db);
     await installDependentGuards(db);
+    await installRetainedReferences(db);
     await recordDependentContract(db);
 }

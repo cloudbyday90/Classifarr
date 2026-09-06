@@ -45,6 +45,15 @@ test('depth, missing roots, triggers and row-level security remain explicit gaps
     expect(result.dependencyOrder).toBeNull(); expect(result.blockers).toContainEqual({ reason: 'trigger_semantics_require_validation' });
     expect(result.blockers).toContainEqual({ reason: 'rewrite_semantics_require_validation' });
 });
+
+test.each([['media_requests', 'routed_to_library_id'], ['policy_feedback_log', 'selected_library_id']])(
+    '%s retention is a proposal only for its exact restrictive library reference', (table, column) => {
+        const reference = edge('1', 'public.libraries', `public.${table}`, { childColumns: [column], onDelete: 'NO_ACTION' });
+        expect(proposedDisposition(reference)).toBe('preserve_reference_snapshot');
+        expect(proposedDisposition({ ...reference, onDelete: 'CASCADE' })).toBe('unresolved');
+        expect(proposedDisposition({ ...reference, childColumns: ['selected_policy_id'] })).toBe('unresolved');
+        expect(buildInventoryDeletionPlan(evidence([reference]), ['public.libraries']).executable).toBe(false);
+    });
 test('edge overflow and duplicate identities fail before emitting a partial plan', () => {
     expect(() => buildInventoryDeletionPlan({ edges: Array(10001).fill(edge('1', 'root', 'child')) }, ['root'])).toThrow('budget');
     expect(() => buildInventoryDeletionPlan(evidence([edge('1', 'root', 'child'), edge('1', 'root', 'other')]), ['root'])).toThrow('identity');
