@@ -150,7 +150,8 @@ both server unused-code checks, migration/schema integrity, Markdown validation
 | Global publication head | Simple commit-order and coherent-read proof | Serializes all tracked writers and visits; truncate can conflict with source locks | Do not promote without contention work |
 | Sequence allocation alone | Cheap identifiers | Allocation and commit order differ; rollback gaps are ambiguous | Reject as a continuity proof |
 
-Next: measure real range occupancy, concurrent ingestion and publication-lock contention, including
+Follow-up delivered in the [lifecycle assessment](library-repair-lifecycle-outcome.md).
+The original next-step specification was to measure real range occupancy, concurrent ingestion and publication-lock contention, including
 large transition sets, lock timeout and truncate conflicts. Evaluate per-library
 ordering with deterministic old/new-library lock order, and define idle-cursor
 eviction, reconnect/crash recovery and sustained vacuum/storage behavior. Require

@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Repair lifecycle assessment** — Added read-only inventory range measurements
+  and reproducible contention, reconnect and storage checks. The isolated repair
+  prototype now reclaims idle and empty cache entries automatically and avoids
+  the reader/truncate lock cycle.
+
 - **Bounded page-repair prototype** — Added a local change-journal evaluation
   that reuses unaffected coverage summaries, repairs changed or expired ranges,
   and withholds complete counts when continuity or capacity cannot be established.

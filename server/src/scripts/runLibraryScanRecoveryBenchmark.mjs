@@ -16,12 +16,19 @@ export async function runLibraryScanRecoveryBenchmark({ argv = process.argv.slic
     const container = await start(randomBytes(24).toString('hex'));
     let client;
     try {
-        client = connect({ host: container.getHost(), port: container.getPort(), database: container.getDatabase(),
+        const config = { host: container.getHost(), port: container.getPort(), database: container.getDatabase(),
             user: container.getUsername(), password: container.getPassword(), connectionTimeoutMillis: 10000,
-            statement_timeout: 15000, application_name: 'library_scan_recovery_benchmark' });
+            statement_timeout: 15000, application_name: 'library_scan_recovery_benchmark' };
+        client = connect(config);
         await client.connect();
         const version = (await client.query('SHOW server_version')).rows[0].server_version;
-        return { ...await measure(client), postgresVersion: version, postgresImage: POSTGRES_IMAGE };
+        // The callback must be awaited; credentials never leave this scoped connection factory.
+        const withClient = async work => {
+            const peer = connect(config);
+            try { await peer.connect(); return await work(peer); }
+            finally { await peer.end(); }
+        };
+        return { ...await measure(client, { withClient }), postgresVersion: version, postgresImage: POSTGRES_IMAGE };
     } finally {
         try { if (client) await client.end(); } finally { await container.stop(); }
     }

@@ -7,6 +7,10 @@ as an isolated ESM prototype. Keep production sampling unchanged while proving
 bounded change capture, repair and coherent publication. Reuse the disposable
 PostgreSQL benchmark runtime; add no operator workflow or application endpoint.
 
+The subsequent [lifecycle design](library-repair-lifecycle-design.md) adds
+automatic idle/empty reclamation and source-table-before-head locking. Refer to
+that follow-up for the current prototype lifecycle and contention assessment.
+
 ## Page and journal contract
 
 Partition positive integer item IDs into fixed ranges of 20,000. Each range

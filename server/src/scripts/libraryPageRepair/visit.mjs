@@ -2,6 +2,7 @@
 import { pageRepairNamespace, pageRepairRange, journalContinuity, PAGE_REPAIR_FIELDS, PAGE_REPAIR_LIMITS as limits } from './contract.mjs';
 import { pageRepairSourceSql, reducePageRepairRows } from './projection.mjs';
 import { restartPageRepair, applyPageRepairEvents, nextPageRepairRange } from './cache.mjs';
+import { reclaimIdlePageRepair, persistPageRepairProjection } from './lifecycle.mjs';
 
 /** Dedicated idle client required; each call commits/releases the publication lock. */
 export async function visitPageRepair(db, options) {
@@ -24,9 +25,12 @@ export async function visitPageRepairInTransaction(db, { scope, libraryId }) {
         throw new Error('Page repair requires read committed isolation');
     }
     await db.query("SET LOCAL statement_timeout='15s'; SET LOCAL lock_timeout='2s'; SET LOCAL idle_in_transaction_session_timeout='30s'");
+    // Writers acquire their source-table lock before the trigger's head lock. Match that order for truncate safety.
+    await db.query(`LOCK TABLE ${ns}.page_repair_source IN ACCESS SHARE MODE`);
     const head = (await db.query(`SELECT generation::text,sequence::text,reason FROM ${ns}.page_repair_head WHERE singleton FOR UPDATE`)).rows[0];
     if (!head) throw new Error('Page repair head missing');
     const now = (await db.query('SELECT clock_timestamp()::text AS now')).rows[0].now;
+    await reclaimIdlePageRepair(db, ns, libraryId, now);
     let state = (await db.query(`SELECT *,generation::text,acknowledged_sequence::text FROM ${ns}.page_repair_state WHERE library_id=$1`, [libraryId])).rows[0];
     if (!state) {
         const total = (await db.query(`SELECT count(*)::integer n FROM ${ns}.page_repair_state`)).rows[0].n;
@@ -52,10 +56,7 @@ export async function visitPageRepairInTransaction(db, { scope, libraryId }) {
         const items = (await db.query(pageRepairSourceSql(scope), [libraryId, ...pageRepairRange(selected.page)])).rows;
         metadataRowsRead = items.length;
         const projection = reducePageRepairRows(items, Date.parse(now));
-        await db.query(`INSERT INTO ${ns}.page_repair_pages(library_id,page_id,counts,digest,measured_at,expires_at)
-            VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(library_id,page_id) DO UPDATE
-            SET counts=EXCLUDED.counts,digest=EXCLUDED.digest,measured_at=EXCLUDED.measured_at,expires_at=EXCLUDED.expires_at,dirty_since=NULL`,
-        [libraryId, selected.page, projection.counts, projection.digest, now, projection.expiresAt]);
+        await persistPageRepairProjection(db, ns, libraryId, selected.page, projection, now);
         if (selected.forward) state.cursor_page = selected.page;
     }
     const evaluatedAt = (await db.query('SELECT clock_timestamp()::text AS now')).rows[0].now;

@@ -834,6 +834,17 @@ and freshness checks. It does not enable production recovery or require an
 operator collection step. See its [design](docs/architecture/library-page-repair-design.md)
 and [outcome](docs/architecture/library-page-repair-outcome.md).
 
+For the follow-up concurrency and cache-lifecycle assessment:
+
+```bash
+npm run benchmark:library-repair-lifecycle
+```
+
+This uses disposable database sessions to test lock ordering, reconnects and
+ordinary vacuum behavior. The [lifecycle design](docs/architecture/library-repair-lifecycle-design.md)
+and [outcome](docs/architecture/library-repair-lifecycle-outcome.md) also record the
+read-only Compose occupancy assessment and production adoption criteria.
+
 Security and docs checks:
 
 ```bash

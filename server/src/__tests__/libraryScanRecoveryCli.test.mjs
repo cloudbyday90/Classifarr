@@ -34,3 +34,18 @@ test('also removes the container if client construction fails', async () => {
     await expect(runLibraryScanRecoveryBenchmark(deps)).rejects.toThrow('constructor failed');
     expect(deps.container.stop).toHaveBeenCalledTimes(1);
 });
+
+test.each([false, true])('scoped peer connections close before container cleanup, callback failure: %s', async fail => {
+    const deps = runtime();
+    const peer = { connect: jest.fn(), end: jest.fn() };
+    deps.connect.mockReturnValueOnce(deps.client).mockReturnValueOnce(peer);
+    deps.measure.mockImplementation(async (_db, { withClient }) => withClient(async client => {
+        expect(client).toBe(peer);
+        if (fail) throw new Error('peer failed');
+        return { peerUsed: true };
+    }));
+    if (fail) await expect(runLibraryScanRecoveryBenchmark(deps)).rejects.toThrow('peer failed');
+    else expect(await runLibraryScanRecoveryBenchmark(deps)).toMatchObject({ peerUsed: true });
+    expect(peer.end).toHaveBeenCalledTimes(1);
+    expect(peer.end.mock.invocationCallOrder[0]).toBeLessThan(deps.container.stop.mock.invocationCallOrder[0]);
+});
