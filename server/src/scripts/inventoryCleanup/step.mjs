@@ -5,7 +5,7 @@ import { readCleanupJob } from './jobs.mjs';
 import { cleanupPredicate, deleteCleanupSourceBatch } from './sourceBatch.mjs';
 import { lockScopedRepairLibraries } from '../libraryScopedRepair/locking.mjs';
 
-async function finishCleanup(db, job) {
+export async function finishCleanup(db, job) {
     const remaining = (await db.query(`SELECT EXISTS(SELECT 1 FROM scoped_repair_lab.scoped_repair_source s
         WHERE ${cleanupPredicate(job.kind)}) remaining`, [job.target_id, job.id])).rows[0].remaining;
     if (remaining) {
@@ -36,13 +36,20 @@ async function finishCleanup(db, job) {
 export async function stepInventoryCleanup(db, id, { budget = 128 } = {}) {
     cleanupId(id); cleanupBudget(budget);
     return cleanupTransaction(db, async () => {
-        const owner = await readCleanupJob(db, id);
-        await db.query('SELECT pg_advisory_xact_lock($1::integer,$2::integer)', [CLEANUP_LOCK_NAMESPACE, owner.server_id]);
-        const job = await readCleanupJob(db, id, true);
+        const job = await lockCleanupJob(db, id);
         if (job.state === 'completed') return job;
-        if (job.state !== 'running') throw new Error('Cleanup is not ready for deletion');
-        const gate = (await db.query(`SELECT cleanup_job FROM ${parentTable(job.kind)} WHERE id=$1`, [job.target_id])).rows[0];
-        if (gate?.cleanup_job !== job.id) throw new Error('Cleanup admission fence is missing');
         return await deleteCleanupSourceBatch(db, job, budget) ?? finishCleanup(db, job);
     });
+}
+
+/** Caller owns the source-table transaction; shared by the isolated cleanup variants. */
+export async function lockCleanupJob(db, id) {
+    const owner = await readCleanupJob(db, id);
+    await db.query('SELECT pg_advisory_xact_lock($1::integer,$2::integer)', [CLEANUP_LOCK_NAMESPACE, owner.server_id]);
+    const job = await readCleanupJob(db, id, true);
+    if (job.state === 'completed') return job;
+    if (job.state !== 'running') throw new Error('Cleanup is not ready for deletion');
+    const gate = (await db.query(`SELECT cleanup_job FROM ${parentTable(job.kind)} WHERE id=$1`, [job.target_id])).rows[0];
+    if (gate?.cleanup_job !== job.id) throw new Error('Cleanup admission fence is missing');
+    return job;
 }

@@ -882,6 +882,20 @@ completion under bounded mutations and removes its fixture schema. Its
 [outcome](docs/architecture/bounded-inventory-cleanup-outcome.md) describe admission
 checks, recovery, measured limits and the production dependencies still to validate.
 
+The dependent-record follow-up discovers the declared deletion graph and tests a
+shared mutation budget while preserving classification history:
+
+```bash
+npm run inventory:deletion-plan
+npm run benchmark:inventory-dependent-cleanup
+```
+
+The first command reads the repository schema only; its output is an evidence
+report with explicit gaps. The second uses a disposable database. The separate
+[design](docs/architecture/inventory-dependent-cleanup-design.md) and
+[outcome](docs/architecture/inventory-dependent-cleanup-outcome.md) document item
+reservations, audit preservation, catalog findings and remaining adoption work.
+
 Security and docs checks:
 
 ```bash

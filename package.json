@@ -41,6 +41,8 @@
     "inventory:writer-compatibility": "node server/src/scripts/runInventoryWriterCompatibility.mjs",
     "benchmark:inventory-sync-compatibility": "node server/src/scripts/runInventorySyncCompatibility.mjs",
     "benchmark:inventory-cleanup": "node server/src/scripts/runInventoryCleanupPrototype.mjs",
+    "inventory:deletion-plan": "node server/src/scripts/runInventoryDeletionPlan.mjs",
+    "benchmark:inventory-dependent-cleanup": "node server/src/scripts/runInventoryDependentCleanup.mjs",
     "test:offline:policy-candidate-evidence-evaluation": "node scripts/run-policy-candidate-evidence-offline-evaluation.mjs",
     "test:offline:policy-candidate-semantic-snapshot-evaluation": "node scripts/run-policy-candidate-semantic-snapshot-offline-evaluation.mjs",
     "test:offline:policy-candidate-semantic-counter-evidence-readiness-evaluation": "node scripts/run-policy-candidate-semantic-counter-evidence-readiness-evaluation.mjs",

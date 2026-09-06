@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Inventory dependency planning and cleanup** — Added automatic foreign-key
+  discovery and a disposable cleanup assessment that shares one mutation budget
+  across items, dependents and retained history updates. Item reservations and
+  schema checks protect interrupted cleanup from moves and uncounted cascades.
+
 - **Bounded inventory cleanup prototype** — Added resumable pruning and parent
   removal assessments with complete-manifest checks, bounded transactions and
   database admission guards. Local tests verify concurrent writes, moves and

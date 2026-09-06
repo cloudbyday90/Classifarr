@@ -138,6 +138,11 @@ counts, concurrent dependent inserts, retained audit data and rollback/resume te
 Treat unknown tables, cycles and unvalidated actions as unresolved evidence rather
 than choosing a destructive default. Keep the plan reproducible from schema/catalogs.
 
+That follow-up is implemented in the isolated
+[dependent cleanup design](inventory-dependent-cleanup-design.md) and
+[measured outcome](inventory-dependent-cleanup-outcome.md). Remaining graph
+dispositions and production adoption requirements are recorded there.
+
 Before production adoption, also establish manifest/job retention and automatic
 recovery of abandoned collecting jobs, admission retry orchestration, least-privilege
 runtime roles, dynamic-writer coverage and sustained storage/crash evidence. Broader
