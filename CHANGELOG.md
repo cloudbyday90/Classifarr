@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Scan recovery benchmark** — Added a reproducible local comparison of capped
+  extra visits and frozen coverage projections, with explicit completion,
+  consistency, storage and work-limit results. Production recovery remains gated
+  on measured evidence.
+
 - **Automatic scan diagnostics** — Libraries now explains retained complete
   measurements, repeated scan resets and active libraries without recorded
   visits. Prioritized summaries distinguish missing evidence from failure and

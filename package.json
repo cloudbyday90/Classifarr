@@ -34,6 +34,7 @@
     "test:server": "cd server && npm test",
     "test:client": "cd client && npm test",
     "test:local:ai-policy-sweep": "node scripts/local-ai-policy-sweep.mjs",
+    "benchmark:library-scan-recovery": "node server/src/scripts/runLibraryScanRecoveryBenchmark.mjs",
     "test:offline:policy-candidate-evidence-evaluation": "node scripts/run-policy-candidate-evidence-offline-evaluation.mjs",
     "test:offline:policy-candidate-semantic-snapshot-evaluation": "node scripts/run-policy-candidate-semantic-snapshot-offline-evaluation.mjs",
     "test:offline:policy-candidate-semantic-counter-evidence-readiness-evaluation": "node scripts/run-policy-candidate-semantic-counter-evidence-readiness-evaluation.mjs",

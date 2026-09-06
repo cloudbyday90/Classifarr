@@ -812,6 +812,17 @@ Server integration tests:
 npm --prefix server run test:integration
 ```
 
+Developer scan-recovery comparison (requires Docker and server development dependencies):
+
+```bash
+npm run benchmark:library-scan-recovery
+```
+
+This creates a disposable PostgreSQL container and emits aggregate scheduling,
+consistency and cost evidence without connecting to the application database.
+See the [benchmark design](docs/architecture/library-scan-recovery-benchmark-design.md)
+and [measured recommendations](docs/architecture/library-scan-recovery-benchmark-outcome.md).
+
 Security and docs checks:
 
 ```bash

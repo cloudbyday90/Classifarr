@@ -122,6 +122,11 @@ storage cost and delays imposed on other libraries. Select an implementation onl
 when it preserves consistent scan inputs, strict work bounds and fair turns.
 Do not bypass revision checks or introduce semantic routing to hide missing evidence.
 
+Follow-up completed: the [recovery benchmark design](library-scan-recovery-benchmark-design.md)
+and [measured outcome](library-scan-recovery-benchmark-outcome.md) compare both
+candidates. Neither satisfies the existing work/completion gates across tested
+populations; bounded change repair is the next implementation to evaluate.
+
 The GitHub MCP open-PR query returned no open pull requests on 6 September 2026,
 so there was no PR available for random selection or local implementation. No
 external PR was merged and no release was created.

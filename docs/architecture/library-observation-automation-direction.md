@@ -122,9 +122,11 @@ for libraries above 20,000 rows is implemented in the
 [outcome](incremental-library-coverage-outcome.md). Automatic scan completion and
 restart diagnostics are implemented in the
 [diagnostics design](library-scan-diagnostics-design.md) and
-[outcome](library-scan-diagnostics-outcome.md). Next, benchmark bounded recovery
-under continuous enrichment before choosing a strategy that preserves consistent
-measurements and fair turns for other libraries.
+[outcome](library-scan-diagnostics-outcome.md). The
+[recovery benchmark](library-scan-recovery-benchmark-outcome.md) finds that capped
+extra visits and frozen projections do not satisfy the existing work/completion
+gates across tested populations. Next, evaluate bounded change journals and page
+repair while preserving consistent measurements and fair turns.
 The separate shared HTTP mutation-retry audit remains a correctness follow-up;
 the receipt-recovery change already disables replay for identity confirmation.
 
