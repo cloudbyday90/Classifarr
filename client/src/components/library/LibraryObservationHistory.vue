@@ -12,7 +12,7 @@
       Metadata acquisition progress
     </h2>
     <p class="text-sm text-gray-300">
-      Acquisition outcomes and hourly coverage are recorded automatically for up to seven days.
+      Acquisition outcomes and coverage are recorded automatically for up to seven days.
       Empty captures can still have unknown keywords or language.
     </p>
     <p role="status">
@@ -31,46 +31,51 @@
       </button>
     </div>
     <template v-if="report">
-      <p v-if="latestCoverage?.status === 'available'">
-        Most recent coverage: keywords {{ ratio(latestCoverage.keywordRows, latestCoverage.identifiedRows) }};
-        language {{ ratio(latestCoverage.languageRows, latestCoverage.identifiedRows) }}.
-        Sampled {{ time(latestCoverage.observedAt) }}.
-      </p>
-      <p v-else-if="latestCoverage">
-        The latest coverage sample exceeds the inventory limit. Coverage counts are withheld.
-      </p>
-      <p v-else>
-        No coverage samples have been recorded yet. Sampling starts automatically after startup.
-      </p>
       <p class="text-sm text-gray-300">
-        Outcomes cover committed acquisition attempts across all inventory. Coverage samples cover up to 12 active
-        libraries and 20,000 rows. Library selection and inventory can change between samples.
-        Gaps are unrecorded periods, and task completion alone does not establish capture.
+        Outcomes cover committed acquisition attempts across all inventory.
+        Task completion alone does not establish capture.
       </p>
+      <LibraryObservationSampling
+        v-if="report.librarySampling"
+        :sampling="report.librarySampling"
+        :points="report.librarySamples"
+        :libraries="libraries"
+      />
       <LibraryObservationActivityTable :activity="report.activity" />
-      <LibraryObservationTrends
+      <details
+        v-if="report.librarySampling && report.samples.length"
+        class="rounded border border-gray-600 p-3"
+      >
+        <summary class="cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
+          Earlier hourly coverage from legacy sampling
+        </summary>
+        <LibraryObservationLegacyCoverage
+          :samples="report.samples"
+          :libraries="libraries"
+          class="mt-3"
+        />
+      </details>
+      <LibraryObservationLegacyCoverage
+        v-else-if="!report.librarySampling"
         :samples="report.samples"
         :libraries="libraries"
       />
-      <LibraryObservationCoverageTable :samples="report.samples" />
     </template>
   </section>
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { getLibraryObservationHistory } from '@/api/libraryCatalogApi'
-import { observationHistoryTime as time, observationHistoryRatio as ratio } from '@/utils/observationHistoryDisplay'
 import LibraryObservationActivityTable from './LibraryObservationActivityTable.vue'
-import LibraryObservationCoverageTable from './LibraryObservationCoverageTable.vue'
-import LibraryObservationTrends from './LibraryObservationTrends.vue'
+import LibraryObservationLegacyCoverage from './LibraryObservationLegacyCoverage.vue'
+import LibraryObservationSampling from './LibraryObservationSampling.vue'
 
 defineProps({ libraries: { type: Array, default: () => [] } })
 
 const report = ref(null)
 const loading = ref(true)
 const error = ref(false)
-const latestCoverage = computed(() => report.value?.samples[0])
 let active = true
 async function load() {
   loading.value = true
@@ -79,6 +84,8 @@ async function load() {
   try {
     const result = await getLibraryObservationHistory()
     if (!Array.isArray(result?.activity) || !Array.isArray(result?.samples)) throw new Error('Invalid history response')
+    if (result.librarySampling && (result.librarySampling.version !== 'library.observation_sampling.v2'
+      || !Array.isArray(result.librarySamples))) throw new Error('Invalid sampling response')
     if (active) report.value = result
   } catch {
     if (active) error.value = true

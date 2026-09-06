@@ -8,7 +8,7 @@
   >
     <table class="w-full min-w-[64rem] text-left text-sm">
       <caption class="pb-2 text-left font-medium">
-        Hourly coverage for {{ label }}, newest first
+        {{ observations.length ? 'Recorded coverage' : 'Hourly coverage' }} for {{ label }}, newest first
       </caption>
       <thead>
         <tr>
@@ -43,7 +43,7 @@
           <th scope="row">
             {{ time(point.sample.observedAt) }}
           </th>
-          <template v-if="point.row">
+          <template v-if="point.row && point.row.status !== 'capacity_exceeded'">
             <td>{{ point.row.inventoryRows }} / {{ point.row.identifiedRows }}</td>
             <td>{{ ratio(point.row.capturedRows, point.row.identifiedRows) }}</td>
             <td>{{ ratio(point.row.freshRows, point.row.identifiedRows) }}</td>
@@ -73,8 +73,11 @@
 import { computed } from 'vue'
 import { observationHistoryTime as time, observationHistoryRatio as ratio } from '@/utils/observationHistoryDisplay'
 import { observationTrendChange as change } from '@/utils/observationTrendDisplay'
-const props = defineProps({ samples: { type: Array, required: true }, libraryId: { type: Number, required: true }, label: { type: String, required: true } })
-const points = computed(() => props.samples.map(sample => ({ sample, row: sample.libraryCoverage?.find(row => row.libraryId === props.libraryId) })))
+const props = defineProps({ samples: { type: Array, default: () => [] }, observations: { type: Array, default: () => [] },
+  libraryId: { type: Number, required: true }, label: { type: String, required: true } })
+const points = computed(() => props.observations.length
+  ? props.observations.map(row => ({ sample: { ...row, libraryIds: [row.libraryId] }, row }))
+  : props.samples.map(sample => ({ sample, row: sample.libraryCoverage?.find(row => row.libraryId === props.libraryId) })))
 </script>
 
 <style scoped>

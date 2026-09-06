@@ -11,6 +11,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Fair automatic library coverage** — Background sampling now visits active
+  libraries in turn, including those beyond the first 12. Each library has its
+  own capacity limit, so oversized inventories no longer hide smaller libraries'
+  history. Accessible, paginated summaries show actual visit times and preserve
+  earlier hourly history separately.
+
 - **Per-library coverage trends** — Automatic hourly history now shows metadata
   progress by library, with explicit inventory changes, gaps and unchanged
   coverage intervals. Bounded samples avoid misleading comparisons when the
@@ -184,6 +190,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
   change policy, AI, RAG, or routing authority.
 
 ### Fixed
+
+- **Sampling initialization** — Fresh installations and upgrades initialize the
+  automatic library sampling cursor without resetting existing progress.
 
 - **Observation validity in summaries** — Missing language fields remain distinct
   from explicitly unknown language, preventing malformed captures from inflating

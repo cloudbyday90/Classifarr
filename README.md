@@ -642,17 +642,22 @@ attributable observation validator. Bounded background passes advance past fresh
 records, while valid empty captures remain cached. See the
 [repair design](docs/architecture/inventory-observation-repair-design.md) and
 [validation outcome](docs/architecture/inventory-observation-repair-outcome.md).
-Acquisition outcomes and hourly coverage history are also recorded automatically.
+Acquisition outcomes and library coverage history are also recorded automatically.
 Libraries shows captured and unavailable attempts alongside bounded coverage
 samples, with explicit populations and a seven-day window. See the
 [history design](docs/architecture/observation-acquisition-history-design.md) and
 [measured outcome](docs/architecture/observation-acquisition-history-outcome.md).
-Per-library trends show captured, fresh, keyword and language coverage changes
-only between comparable hourly samples. Inventory replacements, selection changes,
-missing samples and unchanged coverage stay explicit. Current library names are
-display labels; history retains aggregate counts and private population fingerprints.
-See the [trend design](docs/architecture/library-coverage-trends-design.md) and
-[validation outcome](docs/architecture/library-coverage-trends-outcome.md).
+Automatic coverage visits one active library every five minutes, progressing
+through the catalog without manual schedules. Each library has its own 20,000-row
+limit; an oversized library stays unknown while smaller libraries remain
+measurable. Trends compare successive visits to the same library using actual
+times, with deltas withheld after population changes or sampling gaps. Current
+library names label bounded counts; private fingerprints never reach the browser.
+Local pagination and expandable tables show retained visits, with earlier hourly
+coverage separately identified. Revisit time grows with the active library count.
+Immediate health and overlap summaries retain their existing scope. See the
+[sampling design](docs/architecture/fair-library-sampling-design.md) and
+[validation outcome](docs/architecture/fair-library-sampling-outcome.md).
 Manual identity review handles unresolved exceptions.
 
 For unresolved inventory identities, open **Libraries → Review media IDs** with

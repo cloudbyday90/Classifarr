@@ -11,6 +11,6 @@ export function registerLibraryObservationHistorySchedule(scheduler, {
         try { return await capture(); }
         catch { log.warn('Automatic observation history sample unavailable'); }
     };
-    scheduler.schedule('library-observation-history', '0 * * * *', run);
+    scheduler.schedule('library-observation-history', '*/5 * * * *', run);
     scheduler.scheduleInitial('library-observation-history', 150000, run);
 }

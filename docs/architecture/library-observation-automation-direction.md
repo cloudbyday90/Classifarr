@@ -113,9 +113,12 @@ outcomes and coverage history are implemented in the
 [outcome](observation-acquisition-history-outcome.md). Bounded per-library trends
 with explicit population-change markers are implemented in the
 [trend design](library-coverage-trends-design.md) and
-[outcome](library-coverage-trends-outcome.md). The next item is fair, bounded
-sampling across active libraries, with separate per-library capacity status so
-one large population does not withhold every smaller library's coverage.
+[outcome](library-coverage-trends-outcome.md). Fair automatic visits across active
+libraries, with independent per-library capacity status, are implemented in the
+[sampling design](fair-library-sampling-design.md) and
+[outcome](fair-library-sampling-outcome.md). Next, add revision-checked incremental
+coverage for individual libraries above 20,000 rows, keeping each pass bounded
+and publishing complete counts only for an unchanged population.
 The separate shared HTTP mutation-retry audit remains a correctness follow-up;
 the receipt-recovery change already disables replay for identity confirmation.
 

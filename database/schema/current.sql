@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-05T23:04:23.034Z
--- Latest Migration: 20260905_190000_add_library_coverage_trends.sql
+-- Generated: 2026-09-05T23:57:40.100Z
+-- Latest Migration: 20260905_210000_seed_library_sampling_state.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3442,6 +3442,37 @@ ALTER SEQUENCE public.library_labels_id_seq OWNED BY public.library_labels.id;
 
 
 --
+-- Name: library_observation_points; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.library_observation_points (
+    sample_slot smallint NOT NULL,
+    observed_at timestamp with time zone NOT NULL,
+    library_id integer NOT NULL,
+    status text NOT NULL,
+    acquisition_configured boolean NOT NULL,
+    continuity_since timestamp with time zone NOT NULL,
+    inventory_lower_bound integer NOT NULL,
+    population_fingerprint text,
+    inventory_rows integer,
+    supported_rows integer,
+    identified_rows integer,
+    captured_rows integer,
+    fresh_rows integer,
+    keyword_rows integer,
+    language_rows integer,
+    CONSTRAINT library_observation_points_check CHECK ((isfinite(continuity_since) AND (continuity_since <= observed_at))),
+    CONSTRAINT library_observation_points_check1 CHECK ((sample_slot = mod((floor((EXTRACT(epoch FROM observed_at) / (300)::numeric)))::bigint, (2016)::bigint))),
+    CONSTRAINT library_observation_points_check2 CHECK ((((status = 'available'::text) AND (population_fingerprint IS NOT NULL) AND (population_fingerprint ~ '^[a-f0-9]{64}$'::text) AND (num_nonnulls(inventory_rows, supported_rows, identified_rows, captured_rows, fresh_rows, keyword_rows, language_rows) = 7) AND ((inventory_rows >= 0) AND (inventory_rows <= 20000)) AND (inventory_lower_bound = inventory_rows) AND ((supported_rows >= 0) AND (supported_rows <= inventory_rows)) AND ((identified_rows >= 0) AND (identified_rows <= supported_rows)) AND ((captured_rows >= 0) AND (captured_rows <= identified_rows)) AND ((fresh_rows >= 0) AND (fresh_rows <= captured_rows)) AND ((keyword_rows >= 0) AND (keyword_rows <= captured_rows)) AND ((language_rows >= 0) AND (language_rows <= captured_rows))) OR ((status = 'capacity_exceeded'::text) AND (inventory_lower_bound = 20001) AND (population_fingerprint IS NULL) AND (num_nonnulls(inventory_rows, supported_rows, identified_rows, captured_rows, fresh_rows, keyword_rows, language_rows) = 0)))),
+    CONSTRAINT library_observation_points_inventory_lower_bound_check CHECK (((inventory_lower_bound >= 0) AND (inventory_lower_bound <= 20001))),
+    CONSTRAINT library_observation_points_library_id_check CHECK ((library_id > 0)),
+    CONSTRAINT library_observation_points_observed_at_check CHECK (isfinite(observed_at)),
+    CONSTRAINT library_observation_points_sample_slot_check CHECK (((sample_slot >= 0) AND (sample_slot <= 2015))),
+    CONSTRAINT library_observation_points_status_check CHECK ((status = ANY (ARRAY['available'::text, 'capacity_exceeded'::text])))
+);
+
+
+--
 -- Name: library_observation_samples; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3472,6 +3503,27 @@ END))),
     CONSTRAINT library_observation_samples_library_ids_check CHECK ((cardinality(library_ids) <= 12)),
     CONSTRAINT library_observation_samples_observed_at_check CHECK (isfinite(observed_at)),
     CONSTRAINT library_observation_samples_status_check CHECK ((status = ANY (ARRAY['available'::text, 'capacity_exceeded'::text])))
+);
+
+
+--
+-- Name: library_observation_sampling_state; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.library_observation_sampling_state (
+    singleton boolean DEFAULT true NOT NULL,
+    last_library_id integer DEFAULT 0 NOT NULL,
+    ceiling_library_id integer DEFAULT 0 NOT NULL,
+    active_library_count integer DEFAULT 0 CONSTRAINT library_observation_sampling_stat_active_library_count_not_null NOT NULL,
+    last_sample_at timestamp with time zone,
+    continuity_since timestamp with time zone,
+    CONSTRAINT library_observation_sampling_state_active_library_count_check CHECK ((active_library_count >= 0)),
+    CONSTRAINT library_observation_sampling_state_check CHECK ((ceiling_library_id >= last_library_id)),
+    CONSTRAINT library_observation_sampling_state_check1 CHECK ((((last_sample_at IS NULL) AND (continuity_since IS NULL)) OR ((last_sample_at IS NOT NULL) AND (continuity_since IS NOT NULL) AND (continuity_since <= last_sample_at)))),
+    CONSTRAINT library_observation_sampling_state_continuity_since_check CHECK (isfinite(continuity_since)),
+    CONSTRAINT library_observation_sampling_state_last_library_id_check CHECK ((last_library_id >= 0)),
+    CONSTRAINT library_observation_sampling_state_last_sample_at_check CHECK (isfinite(last_sample_at)),
+    CONSTRAINT library_observation_sampling_state_singleton_check CHECK (singleton)
 );
 
 
@@ -8670,11 +8722,27 @@ ALTER TABLE ONLY public.library_labels
 
 
 --
+-- Name: library_observation_points library_observation_points_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.library_observation_points
+    ADD CONSTRAINT library_observation_points_pkey PRIMARY KEY (sample_slot);
+
+
+--
 -- Name: library_observation_samples library_observation_samples_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.library_observation_samples
     ADD CONSTRAINT library_observation_samples_pkey PRIMARY KEY (hour_slot);
+
+
+--
+-- Name: library_observation_sampling_state library_observation_sampling_state_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.library_observation_sampling_state
+    ADD CONSTRAINT library_observation_sampling_state_pkey PRIMARY KEY (singleton);
 
 
 --
@@ -10478,6 +10546,13 @@ CREATE INDEX idx_legacy_rules_migration_type ON public.library_custom_rules USIN
 
 
 --
+-- Name: idx_libraries_active_order; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_libraries_active_order ON public.libraries USING btree (id) WHERE (is_active = true);
+
+
+--
 -- Name: idx_libraries_media_server; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10629,6 +10704,13 @@ CREATE INDEX idx_media_items_content_rating ON public.media_server_items USING b
 --
 
 CREATE INDEX idx_media_items_library ON public.media_server_items USING btree (library_id);
+
+
+--
+-- Name: idx_media_items_library_order; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_media_items_library_order ON public.media_server_items USING btree (library_id, id);
 
 
 --
@@ -14746,6 +14828,13 @@ VALUES (
 )
 ON CONFLICT (key) DO NOTHING;
 
+-- === Seed: 20260905_210000_seed_library_sampling_state.sql ===
+-- Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0
+-- @seed-reconciliation snapshot-required
+-- Fresh schema snapshots omit runtime rows; never reset an existing cursor.
+INSERT INTO public.library_observation_sampling_state (singleton) VALUES (true)
+ON CONFLICT (singleton) DO NOTHING;
+
 -- Mark all migrations as applied (prevents re-running)
 SELECT pg_catalog.set_config('search_path', 'public', false);
 INSERT INTO public.schema_migrations (filename, applied_at)
@@ -14994,6 +15083,8 @@ FROM unnest(ARRAY[
     '20260905_160000_add_inventory_tmdb_observations.sql',
     '20260905_170000_add_observation_acquisition_history.sql',
     '20260905_180000_preserve_observation_language_presence.sql',
-    '20260905_190000_add_library_coverage_trends.sql'
+    '20260905_190000_add_library_coverage_trends.sql',
+    '20260905_200000_add_fair_library_sampling.sql',
+    '20260905_210000_seed_library_sampling_state.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

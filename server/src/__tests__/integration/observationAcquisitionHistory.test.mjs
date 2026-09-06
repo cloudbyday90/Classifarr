@@ -3,7 +3,7 @@ import { beforeEach, afterEach, test, expect } from '@jest/globals';
 import { readFile } from 'node:fs/promises';
 import { getPool } from './setup.mjs';
 import { persistEnrichmentMetadata } from '../../services/queueEnrichmentPersistence.mjs';
-import { captureLibraryObservationSample } from '../../services/libraryObservationSample.mjs';
+import { captureLegacyObservationFixture as captureLibraryObservationSample } from '../helpers/captureLegacyObservationFixture.mjs';
 import { readLibraryObservationHistory } from '../../services/libraryObservationHistory.mjs';
 import { readInventoryTmdbObservation } from '../../services/inventoryTmdbObservation.mjs';
 import { inventoryObservationValidityCases } from '../helpers/inventoryObservationValidityCases.mjs';

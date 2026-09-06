@@ -1,7 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { beforeEach, afterEach, test, expect } from '@jest/globals';
 import { getPool } from './setup.mjs';
-import { captureLibraryObservationSample } from '../../services/libraryObservationSample.mjs';
+import { captureLegacyObservationFixture as captureLibraryObservationSample } from '../helpers/captureLegacyObservationFixture.mjs';
 import { readLibraryObservationHistory } from '../../services/libraryObservationHistory.mjs';
 import { readLibraryObservationHealthSnapshot } from '../../services/libraryObservationHealthQuery.mjs';
 

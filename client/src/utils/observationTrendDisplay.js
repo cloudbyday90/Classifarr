@@ -4,6 +4,8 @@ const reasons = Object.freeze({
   previous_unavailable: 'Previous per-library coverage unavailable.',
   newly_selected: 'Newly selected library; no previous comparison.',
   sample_gap: 'Gap between hourly samples; comparison withheld.',
+  sampling_gap: 'Sampling slots were missed; comparison withheld.',
+  capacity_exceeded: 'Library inventory limit exceeded; comparison withheld.',
   population_changed: 'Inventory population changed; comparison withheld.',
   configuration_changed: 'Acquisition configuration changed; comparison withheld.',
 })
@@ -16,6 +18,7 @@ export function observationTrendChange(row) {
 }
 
 export function observationTrendUnchanged(row) {
+  if (row?.unchangedComparisons > 0) return `Capture and known traits unchanged across ${row.unchangedComparisons} sampled comparison${row.unchangedComparisons === 1 ? '' : 's'}.`
   const count = row?.unchangedIntervals
   return count > 0 ? `Capture and known traits unchanged across ${count} hourly interval${count === 1 ? '' : 's'}.` : ''
 }

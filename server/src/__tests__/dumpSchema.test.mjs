@@ -271,6 +271,7 @@ describe('dump-schema tooling', () => {
       '20260625_041500_add_web_search_provider_health_retention.sql',
       '20260625_051500_reconcile_web_search_provider_calibration_policy_seed_data.sql',
       '20260625_060000_reconcile_web_search_provider_guardrail_threshold_seed_data.sql',
+      '20260905_210000_seed_library_sampling_state.sql',
     ]);
     expect(getMissingDeclaredSeedMigrations({
       declaredSeedMigrations,

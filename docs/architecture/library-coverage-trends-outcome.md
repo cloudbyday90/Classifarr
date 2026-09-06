@@ -102,12 +102,12 @@ advantages are low operational input, bounded storage and honest comparison
 boundaries. Limits are short retention, excluded libraries, no item-level change
 attribution and no causal explanation of unchanged coverage.
 
-Next: implement fair, bounded coverage sampling across active libraries, with
-per-library capacity boundaries. Today, exceeding the shared 20,000-row limit
-withholds the whole selected sample, and libraries after the first 12 are never
-selected. A large library should not hide all smaller libraries' measurements.
-Preserve explicit sampling times and population markers while expanding coverage;
-do not introduce unbounded scans or manual per-library schedules.
+The subsequent [fair sampling outcome](fair-library-sampling-outcome.md) delivers
+the recommended active-library traversal and separate capacity boundaries.
+Automatic history now visits libraries beyond the first 12 and measures smaller
+libraries even when another exceeds 20,000 rows. This document's hourly behavior
+describes the retained legacy contract. The next item is revision-checked,
+incremental coverage for an individual library above the per-visit capacity.
 
 The readiness and frozen-study gates remain unchanged. Controlled fixtures and
 existing placements provide no independent human review or semantic correctness
