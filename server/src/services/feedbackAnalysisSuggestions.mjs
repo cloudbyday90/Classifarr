@@ -4,7 +4,7 @@ import { applySuggestion as _applySuggestion, rejectSuggestion as _rejectSuggest
 
 const logger = createLogger('FeedbackAnalysis');
 
-export async function generateSuggestions(_policyId, analysis) {
+export async function generateSuggestions(_policyId, analysis, feedback = []) {
     try {
         const suggestions = [];
 
@@ -35,7 +35,7 @@ export async function generateSuggestions(_policyId, analysis) {
                             recommended: null,
                             reason: `High false positive rate (${(issue.correctionRate * 100).toFixed(1)}%)`
                         },
-                        supporting_feedback: [],
+                        supporting_feedback: feedback.map(row => row.id),
                         confidence: 70,
                         impact_estimate: `May reduce false positives by ${(issue.correctionRate * 50).toFixed(0)}%`
                     });
@@ -48,7 +48,7 @@ export async function generateSuggestions(_policyId, analysis) {
                             recommended: null,
                             reason: `Low auto-classification rate (${(issue.autoRate * 100).toFixed(1)}%)`
                         },
-                        supporting_feedback: [],
+                        supporting_feedback: feedback.map(row => row.id),
                         confidence: 65,
                         impact_estimate: `May increase auto-classification by ${((1 - issue.autoRate) * 30).toFixed(0)}%`
                     });
@@ -67,7 +67,7 @@ export async function generateSuggestions(_policyId, analysis) {
                             recommended: null,
                             reason: `Low accuracy (${(stats.accuracy * 100).toFixed(1)}%)`
                         },
-                        supporting_feedback: [],
+                        supporting_feedback: feedback.filter(row => row.original_scores?.[signal] !== undefined).map(row => row.id),
                         confidence: 60,
                         impact_estimate: `Signal has ${(stats.accuracy * 100).toFixed(1)}% accuracy`
                     });
@@ -80,7 +80,7 @@ export async function generateSuggestions(_policyId, analysis) {
                             recommended: null,
                             reason: `High accuracy (${(stats.accuracy * 100).toFixed(1)}%)`
                         },
-                        supporting_feedback: [],
+                        supporting_feedback: feedback.filter(row => row.original_scores?.[signal] !== undefined).map(row => row.id),
                         confidence: 75,
                         impact_estimate: `Signal has ${(stats.accuracy * 100).toFixed(1)}% accuracy`
                     });
@@ -112,8 +112,8 @@ export async function generateSuggestions(_policyId, analysis) {
     }
 }
 
-export async function storeSuggestions(policyId, suggestions) {
-    return _storeSuggestions(policyId, suggestions);
+export async function storeSuggestions(policyId, suggestions, cohort) {
+    return _storeSuggestions(policyId, suggestions, cohort);
 }
 
 export async function getPendingSuggestions(policyId) {

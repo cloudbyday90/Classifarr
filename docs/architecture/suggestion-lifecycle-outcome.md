@@ -101,6 +101,9 @@ W3C sources, alternatives and the August-baseline research limitation.
 
 ## Next item
 
+Completed by the [cohort provenance follow-up](suggestion-cohort-outcome.md).
+The original recommendation below records the handoff from this lifecycle change.
+
 **Persist complete cohort provenance and revalidate pending suggestion evidence when
 applying it.** Lifecycle validity does not establish evidence freshness. A pending
 suggestion can outlive a library detachment or policy change, and threshold/weight

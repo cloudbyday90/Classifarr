@@ -162,9 +162,12 @@ export async function detectNewPatterns(policyId, feedback) {
     }
 }
 
-export async function analyzeThresholds(policyId, feedback) {
+export async function analyzeThresholds(policyId, feedback, capturedPolicy = null) {
     try {
-        const policyResult = await db.query(`
+        const policyResult = capturedPolicy ? { rows: [{
+            auto_classify_threshold: capturedPolicy.auto_classify_threshold,
+            prompt_threshold: capturedPolicy.prompt_threshold,
+        }] } : await db.query(`
             SELECT auto_classify_threshold, prompt_threshold
             FROM library_policies
             WHERE id = $1

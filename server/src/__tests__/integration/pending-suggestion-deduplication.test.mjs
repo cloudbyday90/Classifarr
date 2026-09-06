@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { jest, beforeEach, afterEach, test, expect } from '@jest/globals';
+import { seedSuggestionFeedback, attachSuggestionCohort } from '../helpers/suggestionCohortFixture.mjs';
 import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
 
 let beginRepeatableRead = false;
@@ -10,8 +11,12 @@ jest.unstable_mockModule('../../config/database.mjs', () => {
         return fn(client);
     }) };
 });
-const { storeSuggestions } = await import('../../services/feedbackAnalysisSuggestionStore.mjs');
-let db, libraryId, otherLibraryId, policyId, otherPolicyId;
+const { captureSuggestionCohort } = await import('../../services/feedbackAnalysisCohort.mjs');
+const { storeSuggestions: persistSuggestions } = await import('../../services/feedbackAnalysisSuggestionStore.mjs');
+let db, libraryId, otherLibraryId, policyId, otherPolicyId, feedbackIds, cohorts;
+const storeSuggestions = (id, entries) => persistSuggestions(id, entries.map(entry => ({ ...entry,
+    supporting_feedback: id === otherPolicyId ? cohorts.get(id).feedback.slice(0, 3).map(row => row.id) : entry.supporting_feedback,
+})), cohorts.get(id));
 
 beforeEach(async () => {
     db = getPool();
@@ -20,15 +25,19 @@ beforeEach(async () => {
         VALUES('Deduplication','deduplication-fixture','movie'),('Other','deduplication-other','movie') RETURNING id`)).rows.map(row => row.id);
     [policyId, otherPolicyId] = (await db.query(`INSERT INTO library_policies(library_id,name,auto_classify_threshold,prompt_threshold)
         VALUES($1,'Primary policy',85,60),($2,'Other policy',80,55) RETURNING id`, [libraryId, otherLibraryId])).rows.map(row => row.id);
+    feedbackIds = await seedSuggestionFeedback(db, policyId, libraryId);
+    await seedSuggestionFeedback(db, otherPolicyId, otherLibraryId);
+    cohorts = new Map([[policyId, await captureSuggestionCohort(policyId)], [otherPolicyId, await captureSuggestionCohort(otherPolicyId)]]);
 });
 
 afterEach(async () => {
+    await db.query('DELETE FROM policy_feedback_log WHERE selected_policy_id=ANY($1::integer[])', [[policyId, otherPolicyId]]);
     await db.query('DELETE FROM library_policies WHERE id=ANY($1::integer[])', [[policyId, otherPolicyId]]);
     await db.query('DELETE FROM libraries WHERE id=ANY($1::integer[])', [[libraryId, otherLibraryId]]);
 });
 
 function suggestion(config = { pattern_type: 'genre', pattern_value: 'Action', confidence: 60 }, extra = {}) {
-    return { type: 'create_pattern', config, supporting_feedback: [1, 2, 3], confidence: 45, impact_estimate: 'Fixture', ...extra };
+    return { type: 'create_pattern', config, supporting_feedback: feedbackIds.slice(0, 3), confidence: 45, impact_estimate: 'Fixture', ...extra };
 }
 async function storedRows() {
     return (await db.query('SELECT * FROM policy_tuning_suggestions WHERE policy_id=$1 ORDER BY id', [policyId])).rows;
@@ -37,17 +46,18 @@ async function storedRows() {
 test('nested object key order and repeat submissions produce one pending record without overwriting support', async () => {
     const first = suggestion({ pattern_type: 'genre', pattern_value: 'Action', nested: { a: 1, b: 2 } });
     const duplicate = suggestion({ nested: { b: 2, a: 1 }, pattern_value: 'Action', pattern_type: 'genre' },
-        { supporting_feedback: [9], confidence: 90, impact_estimate: 'Later input' });
+        { supporting_feedback: [feedbackIds[8]], confidence: 90, impact_estimate: 'Later input' });
     expect(await storeSuggestions(policyId, [first, duplicate])).toHaveLength(1);
     const before = await storedRows();
     expect(await storeSuggestions(policyId, [duplicate])).toEqual([]);
     expect(await storedRows()).toEqual(before);
-    expect(before[0].supporting_feedback_ids).toEqual([1, 2, 3]);
+    expect(before[0].supporting_feedback_ids).toEqual(feedbackIds.slice(0, 3));
 });
 
 test('JSON numeric scale is compared structurally even when JSONB text differs', async () => {
     await db.query(`INSERT INTO policy_tuning_suggestions(policy_id,suggestion_type,suggestion_config,status)
         VALUES($1,'create_pattern','{"confidence":60.00,"pattern_value":"Action"}','pending')`, [policyId]);
+    await attachSuggestionCohort(db, (await storedRows())[0].id, cohorts.get(policyId));
     expect(await storeSuggestions(policyId, [suggestion({ pattern_value: 'Action', confidence: 60 })])).toEqual([]);
     expect(await storedRows()).toHaveLength(1);
 });
@@ -73,6 +83,10 @@ test('existing duplicate records remain intact and block further duplicates', as
     const config = suggestion().config;
     await db.query(`INSERT INTO policy_tuning_suggestions(policy_id,suggestion_type,suggestion_config,supporting_feedback_ids)
         SELECT $1,'create_pattern',$2,ARRAY[n] FROM generate_series(1,2) n`, [policyId, config]);
+    for (const row of await storedRows()) {
+        await db.query('UPDATE policy_tuning_suggestions SET supporting_feedback_ids=$1 WHERE id=$2', [feedbackIds.slice(0, 3), row.id]);
+        await attachSuggestionCohort(db, row.id, cohorts.get(policyId));
+    }
     const before = await storedRows();
     expect(await storeSuggestions(policyId, [suggestion()])).toEqual([]);
     expect(await storedRows()).toEqual(before);
@@ -127,7 +141,7 @@ test('concurrent stores serialize and read committed inserts after the lock wait
     }
 });
 
-test('a policy change committed during the wait supplies the resolved values', async () => {
+test('a policy change committed during the wait rejects the previously captured input', async () => {
     const blocker = await db.connect();
     let pending;
     try {
@@ -137,8 +151,9 @@ test('a policy change committed during the wait supplies the resolved values', a
         pending = Promise.allSettled([storeSuggestions(policyId, [entry])]);
         await blocker.query('COMMIT');
         const [result] = await pending;
-        expect(result.status).toBe('fulfilled');
-        expect(result.value[0].suggestion_config).toMatchObject({ current: 90, recommended: 95 });
+        expect(result.status).toBe('rejected');
+        expect(result.reason).toMatchObject({ code: 'SUGGESTION_EVIDENCE_STALE' });
+        expect(await storedRows()).toEqual([]);
         expect(entry.config).toEqual({ threshold_type: 'auto_classify', reason: 'High false positive rate' });
     } finally {
         await blocker.query('ROLLBACK');

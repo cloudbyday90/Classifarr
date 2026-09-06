@@ -31,12 +31,12 @@ export function getSuggestion(id) {
   return getDataRequest(`/suggestions/${id}`)
 }
 
-/** Propagates missing-target and lifecycle conflicts without retrying those responses. */
+/** Propagates missing-target, lifecycle, and evidence conflicts without retrying those responses. */
 export function applySuggestion(id) {
   return apiClient.post(`/suggestions/${id}/apply`)
 }
 
-/** Propagates missing-target and lifecycle conflicts without retrying those responses. */
+/** Propagates missing-target, lifecycle, and evidence conflicts without retrying those responses. */
 export function rejectSuggestion(id, reason) {
   return apiClient.post(`/suggestions/${id}/reject`, { reason })
 }

@@ -20,6 +20,7 @@
       <div class="filters">
         <select
           v-model="statusFilter"
+          aria-label="Suggestion status"
           class="filter-select"
         >
           <option value="pending">
@@ -31,12 +32,16 @@
           <option value="rejected">
             Rejected
           </option>
+          <option value="superseded">
+            Superseded
+          </option>
           <option value="">
             All
           </option>
         </select>
         <select
           v-model="policyFilter"
+          aria-label="Policy"
           class="filter-select"
         >
           <option value="">
@@ -266,7 +271,12 @@ async function recoverReviewConflict(error) {
   selectedSuggestion.value = null;
   rejectingSuggestion.value = null;
   await loadSuggestions();
-  alert('This suggestion has changed and was not updated by this request.');
+  const code = error.response?.data?.code;
+  alert(code === 'SUGGESTION_EVIDENCE_BUSY'
+    ? 'Suggestion evidence is being updated. Please try again later.'
+    : code === 'SUGGESTION_EVIDENCE_STALE' || code === 'SUGGESTION_EVIDENCE_REQUIRED'
+      ? 'Suggestion evidence needs refreshing. Run analysis before applying a new suggestion.'
+      : 'This suggestion has changed and was not updated by this request.');
   return true;
 }
 

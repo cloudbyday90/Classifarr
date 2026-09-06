@@ -130,6 +130,13 @@ accuracy baseline and audit metadata commit together. The dashboard refreshes af
 lifecycle conflict. See the [lifecycle design](docs/architecture/suggestion-lifecycle-design.md)
 and [outcome](docs/architecture/suggestion-lifecycle-outcome.md).
 
+Suggestion analysis automatically freezes its complete evidence cohort. Application
+requires the policy, active destination and original feedback to remain current.
+Normal analysis supersedes outdated pending suggestions and creates fresh ones;
+legacy suggestions can still be dismissed. No automatic routing is introduced.
+See the [cohort design](docs/architecture/suggestion-cohort-design.md) and
+[validation outcome](docs/architecture/suggestion-cohort-outcome.md).
+
 <p align="center">
   <img src="./docs/assets/issue-262-classification-flow-v042.svg" alt="Classifarr classification flow diagram" width="1100" />
 </p>

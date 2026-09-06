@@ -36,7 +36,12 @@ const mockMetadataNormalization = {
   )
 };
 
-await jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
+await jest.unstable_mockModule('../services/feedbackAnalysisCohort.mjs', () => ({
+    captureSuggestionCohort: jest.fn(async () => ({ feedback: (await mockDb.query()).rows,
+        policy: { auto_classify_threshold: 80, prompt_threshold: 65 } })),
+    assertSuggestionCohortCurrent: jest.fn(), assertSuggestionEvidenceCurrent: jest.fn(), persistSuggestionCohort: jest.fn(),
+}));
+jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 await jest.unstable_mockModule('../utils/logger.mjs', () => mockLogger.module);
 await jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => createMockModule(mockMetadataNormalization));
 
@@ -175,7 +180,6 @@ describe('FeedbackAnalysis.analyzePolicy', () => {
 
     db.query
       .mockResolvedValueOnce({ rows })
-      .mockResolvedValueOnce({ rows: [{ auto_classify_threshold: 80, prompt_threshold: 65 }] })
     ;
 
     const result = await feedbackAnalysis.analyzePolicy(1, { minFeedback: 2 });

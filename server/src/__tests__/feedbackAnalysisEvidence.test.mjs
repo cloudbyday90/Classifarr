@@ -3,6 +3,11 @@ import { jest, beforeEach, afterEach, test, expect } from '@jest/globals';
 import { createNamedMockModule, createLoggerModuleMock } from './helpers/mockFactory.mjs';
 
 const db = { query: jest.fn() };
+jest.unstable_mockModule('../services/feedbackAnalysisCohort.mjs', () => ({
+    captureSuggestionCohort: jest.fn(async () => ({ feedback: (await db.query()).rows,
+        policy: { auto_classify_threshold: 80, prompt_threshold: 65 } })),
+    assertSuggestionCohortCurrent: jest.fn(), assertSuggestionEvidenceCurrent: jest.fn(), persistSuggestionCohort: jest.fn(),
+}));
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', db));
 jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 const { readEligiblePolicyFeedback } = await import('../services/feedbackAnalysisEvidence.mjs');

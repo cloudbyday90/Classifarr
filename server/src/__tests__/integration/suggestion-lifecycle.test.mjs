@@ -1,11 +1,16 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { jest, beforeEach, afterEach, test, expect } from '@jest/globals';
+import { readFileSync } from 'node:fs';
 import express from 'express';
 import request from 'supertest';
 import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
+import { seedSuggestionFeedback, attachSuggestionCohort } from '../helpers/suggestionCohortFixture.mjs';
 import { createMountedTestApp } from '../helpers/setupRouteTest.mjs';
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
+const { storeSuggestions } = await import('../../services/feedbackAnalysisSuggestionStore.mjs');
+const { feedbackAnalysis } = await import('../../services/feedbackAnalysis.mjs');
+const { captureSuggestionCohort, assertSuggestionCohortCurrent } = await import('../../services/feedbackAnalysisCohort.mjs');
 const { applySuggestion, rejectSuggestion } = await import('../../services/feedbackAnalysisSuggestionApply.mjs');
 const { router: suggestionsRouter } = await import('../../routes/suggestions.mjs');
 const { router: feedbackRouter } = await import('../../routes/feedback.mjs');
@@ -24,8 +29,11 @@ beforeEach(async () => {
     await db.query('INSERT INTO policy_learning_stats(policy_id,accuracy_rate) VALUES($1,0.8)', [policyId]);
     suggestionId = (await db.query(`INSERT INTO policy_tuning_suggestions(policy_id,suggestion_type,suggestion_config,before_accuracy)
         VALUES($1,'adjust_threshold','{"threshold_type":"auto_classify","recommended":90}',0.5) RETURNING id`, [policyId])).rows[0].id;
+    await seedSuggestionFeedback(db, policyId, libraryId);
+    await attachSuggestionCohort(db, suggestionId, await captureSuggestionCohort(policyId));
 });
 afterEach(async () => {
+    await db.query('DELETE FROM policy_feedback_log WHERE selected_policy_id=ANY($1::integer[])', [[policyId, otherPolicyId]]);
     await db.query('DELETE FROM library_policies WHERE id=ANY($1::integer[])', [[policyId, otherPolicyId]]);
     await db.query('DELETE FROM libraries WHERE id=ANY($1::integer[])', [[libraryId, otherLibraryId]]);
     await db.query('DELETE FROM users WHERE id=$1', [userId]);
@@ -163,4 +171,121 @@ test.each(['/api/suggestions', '/api/feedback/suggestions'])('%s protects baseli
     for (const action of ['apply', 'reject']) {
         expect((await request(app).post(`${base}/2147483647/${action}`).send({ reason: 'Missing' })).status).toBe(404);
     }
+});
+
+
+test.each([
+    ['policy destination', 'UPDATE library_policies SET library_id=$2 WHERE id=$1'],
+    ['policy threshold', 'UPDATE library_policies SET auto_classify_threshold=91 WHERE id=$1'],
+    ['inactive library', 'UPDATE libraries SET is_active=false WHERE id=$1'],
+    ['changed library identity', "UPDATE libraries SET external_id='changed' WHERE id=$1"],
+    ['deleted evidence', 'DELETE FROM policy_feedback_log WHERE selected_policy_id=$1'],
+    ['detached evidence', 'UPDATE policy_feedback_log SET selected_library_id=NULL WHERE selected_policy_id=$1'],
+    ['changed scores', `UPDATE policy_feedback_log SET original_scores='{"preset":0}' WHERE selected_policy_id=$1`],
+    ['changed metadata', `UPDATE policy_feedback_log SET item_metadata='{"genres":["Different"]}' WHERE selected_policy_id=$1`],
+    ['changed configuration', `UPDATE policy_tuning_suggestions SET suggestion_config='{"threshold_type":"auto_classify","recommended":95}' WHERE id=$1`],
+    ['changed support', 'UPDATE policy_tuning_suggestions SET supporting_feedback_ids=ARRAY[2147483647] WHERE id=$1'],
+])('%s invalidates application without effects', async (kind, sql) => {
+    if (kind === 'policy destination') await db.query('DELETE FROM library_policies WHERE id=$1', [otherPolicyId]);
+    const id = sql.includes('UPDATE libraries') ? libraryId : sql.includes('UPDATE policy_tuning_suggestions') ? suggestionId : policyId;
+    await db.query(sql, sql.includes('$2') ? [id, otherLibraryId] : [id]);
+    const before = await snapshot();
+    await expect(applySuggestion(suggestionId, userId)).rejects.toMatchObject({ statusCode: 409, code: 'SUGGESTION_EVIDENCE_STALE' });
+    expect(await snapshot()).toEqual(before);
+});
+
+test.each(['/api/suggestions', '/api/feedback/suggestions'])('%s rejects legacy evidence but permits rejection', async route => {
+    await db.query('UPDATE policy_tuning_suggestions SET cohort_fingerprint=NULL,evidence_fingerprint=NULL WHERE id=$1', [suggestionId]);
+    const before = await snapshot();
+    const response = await request(app).post(`${route}/${suggestionId}/apply`);
+    expect(response.status).toBe(409);
+    expect(response.body.code).toBe('SUGGESTION_EVIDENCE_REQUIRED');
+    expect(await snapshot()).toEqual(before);
+    expect((await request(app).post(`${route}/${suggestionId}/reject`).send({ reason: 'Dismiss' })).status).toBe(200);
+});
+
+test('new feedback and cosmetic edits do not invalidate a frozen cohort', async () => {
+    await seedSuggestionFeedback(db, policyId, libraryId, 1);
+    await db.query("UPDATE library_policies SET name='Renamed',updated_at=NOW() WHERE id=$1", [policyId]);
+    await db.query("UPDATE policy_feedback_log SET title='New title',user_reason_text='New reason' WHERE selected_policy_id=$1", [policyId]);
+    await expect(applySuggestion(suggestionId, userId)).resolves.toMatchObject({ success: true });
+});
+
+test('unchanged evidence outside the requested rolling window is stale', async () => {
+    const manifest = await captureSuggestionCohort(policyId);
+    const oldDate = new Date(Date.now() - 31 * 86400000).toISOString();
+    await db.query('UPDATE policy_feedback_log SET prompted_at=$1 WHERE selected_policy_id=$2', [oldDate, policyId]);
+    manifest.feedback.forEach(row => { row.prompted_at = oldDate; });
+    await attachSuggestionCohort(db, suggestionId, manifest);
+    await expect(applySuggestion(suggestionId, userId)).rejects.toMatchObject({ code: 'SUGGESTION_EVIDENCE_STALE' });
+});
+
+test.each(['libraries', 'policy_feedback_log'])('busy %s returns a conflict without effects or supersession', async table => {
+    const blocker = await db.connect();
+    const before = await snapshot();
+    const cohort = await captureSuggestionCohort(policyId);
+    try {
+        await blocker.query('BEGIN');
+        await blocker.query(table === 'libraries' ? 'SELECT id FROM libraries WHERE id=$1 FOR UPDATE'
+            : 'SELECT id FROM policy_feedback_log WHERE selected_policy_id=$1 FOR UPDATE', [table === 'libraries' ? libraryId : policyId]);
+        await expect(applySuggestion(suggestionId, userId)).rejects.toMatchObject({ code: 'SUGGESTION_EVIDENCE_BUSY' });
+        await expect(storeSuggestions(policyId, [], cohort)).rejects.toMatchObject({ code: 'SUGGESTION_EVIDENCE_BUSY' });
+        expect(await snapshot()).toEqual(before);
+    } finally { await blocker.query('ROLLBACK'); blocker.release(); }
+});
+
+test('normal analysis captures all input and automatically supersedes missing or stale provenance', async () => {
+    const first = await feedbackAnalysis.analyzePolicy(policyId);
+    expect(first.suggestions.length).toBeGreaterThan(1);
+    expect((await snapshot()).suggestion.status).toBe('pending'); // Its original cohort remains current.
+    await db.query('UPDATE policy_tuning_suggestions SET cohort_fingerprint=NULL,evidence_fingerprint=NULL WHERE id=$1', [suggestionId]);
+    await db.query("UPDATE policy_feedback_log SET original_scores=$2 WHERE selected_policy_id=$1", [policyId, { preset: 60 }]);
+    const second = await feedbackAnalysis.analyzePolicy(policyId);
+    expect(second.suggestions.length).toBeGreaterThan(0);
+    const original = (await snapshot()).suggestion;
+    expect(original.status).toBe('superseded');
+    expect(original.superseded_at).toBeInstanceOf(Date);
+    expect(original.reviewed_at).toBeNull();
+    expect(original.applied_at).toBeNull();
+    const rows = (await db.query(`SELECT pts.*,c.manifest FROM policy_tuning_suggestions pts
+        JOIN policy_tuning_cohorts c ON c.fingerprint=pts.cohort_fingerprint WHERE pts.policy_id=$1 AND pts.status='pending'`, [policyId])).rows;
+    expect(new Set(rows.map(row => row.cohort_fingerprint)).size).toBe(1);
+    for (const row of rows) {
+        expect(row.manifest.feedback).toHaveLength(10);
+        if (row.suggestion_type === 'adjust_threshold' || row.suggestion_type === 'adjust_weight') expect(row.supporting_feedback_ids).toHaveLength(10);
+    }
+    expect(await feedbackAnalysis.analyzePolicy(policyId)).toMatchObject({ suggestions: [] });
+});
+
+test('cohorts reject updates and oversized capture fails explicitly', async () => {
+    await expect(db.query('UPDATE policy_tuning_cohorts SET manifest=manifest WHERE policy_id=$1', [policyId])).rejects.toMatchObject({ code: '23514' });
+    await seedSuggestionFeedback(db, policyId, libraryId, 4991);
+    await expect(captureSuggestionCohort(policyId)).rejects.toMatchObject({ code: 'SUGGESTION_COHORT_TOO_LARGE' });
+});
+
+test('the cohort migration can be repeated without rewriting existing evidence', async () => {
+    const migration = readFileSync(new URL('../../../../database/migrations/20260906_230000_add_suggestion_cohort_provenance.sql', import.meta.url), 'utf8');
+    const before = await snapshot();
+    const cohorts = (await db.query('SELECT * FROM policy_tuning_cohorts WHERE policy_id=$1', [policyId])).rows;
+    await db.query(migration);
+    await db.query(migration);
+    expect(await snapshot()).toEqual(before);
+    expect((await db.query('SELECT * FROM policy_tuning_cohorts WHERE policy_id=$1', [policyId])).rows).toEqual(cohorts);
+});
+
+test('evidence share locks protect the validation-to-commit interval', async () => {
+    const cohort = await captureSuggestionCohort(policyId);
+    const client = await db.connect();
+    const writer = await db.connect();
+    try {
+        await client.query('BEGIN');
+        const policy = (await client.query('SELECT * FROM library_policies WHERE id=$1 FOR UPDATE', [policyId])).rows[0];
+        await assertSuggestionCohortCurrent(client, cohort, policy);
+        await writer.query('BEGIN');
+        await writer.query("SET LOCAL lock_timeout='100ms'");
+        await expect(writer.query('UPDATE policy_feedback_log SET was_correction=false WHERE selected_policy_id=$1', [policyId])).rejects.toMatchObject({ code: '55P03' });
+        await writer.query('ROLLBACK');
+        await client.query('COMMIT');
+        await expect(writer.query('UPDATE policy_feedback_log SET was_correction=false WHERE selected_policy_id=$1', [policyId])).resolves.toMatchObject({ rowCount: 10 });
+    } finally { await client.query('ROLLBACK'); await writer.query('ROLLBACK'); client.release(); writer.release(); }
 });

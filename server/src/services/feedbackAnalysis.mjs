@@ -15,7 +15,7 @@ import { normalizeGroupingValues, groupByMetadataField, extractSignificantPatter
 import { detectFailurePatterns, analyzeSignalEffectiveness, detectNewPatterns, analyzeThresholds } from './feedbackAnalysisPatternDetection.mjs';
 import { generateSuggestions, storeSuggestions, getPendingSuggestions, applySuggestion, rejectSuggestion, getImpactMetrics } from './feedbackAnalysisSuggestions.mjs';
 import { updateLearningStats } from './feedbackAnalysisLearning.mjs';
-import { readEligiblePolicyFeedback } from './feedbackAnalysisEvidence.mjs';
+import { captureSuggestionCohort } from './feedbackAnalysisCohort.mjs';
 
 export { normalizeGroupingValues, groupByMetadataField, extractSignificantPatterns };
 export { detectFailurePatterns, analyzeSignalEffectiveness, detectNewPatterns, analyzeThresholds };
@@ -146,7 +146,8 @@ export class FeedbackAnalysis {
         return withServiceCatch(logger, 'Failed to analyze policy', { policyId }, async () => {
             logger.info('Analyzing policy', { policyId, days, minFeedback });
 
-            const feedback = await readEligiblePolicyFeedback(db, policyId, days);
+            const cohort = await captureSuggestionCohort(policyId, days);
+            const feedback = cohort.feedback;
 
             if (feedback.length === 0 || feedback.length < minFeedback) {
                 logger.info('Insufficient feedback for analysis', {
@@ -165,7 +166,7 @@ export class FeedbackAnalysis {
             const failurePatterns = await this.detectFailurePatterns(policyId, feedback);
             const signalEffectiveness = await this.analyzeSignalEffectiveness(policyId, feedback);
             const newPatterns = await this.detectNewPatterns(policyId, feedback);
-            const thresholdAnalysis = await this.analyzeThresholds(policyId, feedback);
+            const thresholdAnalysis = await this.analyzeThresholds(policyId, feedback, cohort.policy);
 
             const analysis = {
                 failurePatterns,
@@ -174,8 +175,8 @@ export class FeedbackAnalysis {
                 thresholdAnalysis
             };
 
-            const suggestions = await this.generateSuggestions(policyId, analysis);
-            const storedSuggestions = await this.storeSuggestions(policyId, suggestions);
+            const suggestions = await this.generateSuggestions(policyId, analysis, feedback);
+            const storedSuggestions = await this.storeSuggestions(policyId, suggestions, cohort);
 
             logger.info('Policy analysis complete', {
                 policyId,

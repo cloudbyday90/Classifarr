@@ -68,7 +68,7 @@ export function normalizeGroupingValues(field, values) {
 }
 
 export function groupByMetadataField(feedback, field) {
-    const groups = {};
+    const groups = Object.create(null);
 
     for (const f of feedback) {
         try {

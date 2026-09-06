@@ -75,7 +75,7 @@
       </button>
     </div>
     
-    <!-- Applied/Rejected status -->
+    <!-- Historical status -->
     <div
       v-else
       class="suggestion-result"
@@ -87,11 +87,21 @@
         ✓ Applied {{ formatDate(suggestion.applied_at) }}
       </span>
       <span
-        v-else
+        v-else-if="suggestion.status === 'superseded'"
+        class="status"
+      >
+        Superseded after evidence changed {{ formatDate(suggestion.superseded_at) }}
+      </span>
+      <span
+        v-else-if="suggestion.status === 'rejected'"
         class="status rejected"
       >
         ✗ Rejected: {{ suggestion.rejection_reason }}
       </span>
+      <span
+        v-else
+        class="status"
+      >Review unavailable</span>
     </div>
   </div>
 </template>

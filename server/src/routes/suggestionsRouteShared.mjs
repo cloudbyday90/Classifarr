@@ -87,6 +87,7 @@ export function createSuggestionsRouter({ express, db, feedbackAnalysis }) {
     });
   }));
 
+  // Evidence/lifecycle conflicts propagate as 409; review is never retried here.
   router.post('/:id/apply', asyncHandler(async (req, res) => {
     const { id } = req.params;
     const userId = req.user?.id || 1;

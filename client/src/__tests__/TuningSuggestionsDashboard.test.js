@@ -74,3 +74,23 @@ test.each([undefined, {}, { response: { status: 500 } }, { response: { status: 4
   { response: { status: 409, data: { code: 'UNRELATED' } } }])('does not classify an unrelated error as a lifecycle conflict', error => {
   expect(isSuggestionReviewConflict(error)).toBe(false)
 })
+
+
+test.each(['SUGGESTION_EVIDENCE_REQUIRED', 'SUGGESTION_EVIDENCE_STALE', 'SUGGESTION_EVIDENCE_BUSY'])('evidence conflict %s refreshes without reapplying', async code => {
+  await mountDashboard()
+  api.applySuggestion.mockRejectedValueOnce({ response: { status: 409, data: { code } } })
+  await wrapper.vm.applySuggestion(suggestion)
+  expect(api.applySuggestion).toHaveBeenCalledTimes(1)
+  expect(api.getSuggestions).toHaveBeenCalledTimes(2)
+  expect(alert).toHaveBeenCalledWith(code === 'SUGGESTION_EVIDENCE_BUSY'
+    ? 'Suggestion evidence is being updated. Please try again later.'
+    : 'Suggestion evidence needs refreshing. Run analysis before applying a new suggestion.')
+})
+
+test('named filters allow viewing superseded history', async () => {
+  await mountDashboard()
+  await wrapper.find('select[aria-label="Suggestion status"]').setValue('superseded')
+  await flushPromises()
+  expect(api.getSuggestions).toHaveBeenLastCalledWith('superseded', '')
+  expect(wrapper.find('select[aria-label="Policy"]').exists()).toBe(true)
+})

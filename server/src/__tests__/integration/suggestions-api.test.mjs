@@ -16,6 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import { seedSuggestionFeedback, attachSuggestionCohort } from '../helpers/suggestionCohortFixture.mjs';
 import { jest } from '@jest/globals';
 import request from 'supertest';
 import { createMountedTestApp } from '../helpers/setupRouteTest.mjs';
@@ -29,6 +30,8 @@ const app = createMountedTestApp({
     basePath: '/api/suggestions',
     router: suggestionsRouter,
 });
+
+const { captureSuggestionCohort } = await import('../../services/feedbackAnalysisCohort.mjs');
 
 describe('Suggestions API Integration Tests', () => {
     let testLibraryId;
@@ -119,6 +122,7 @@ describe('Suggestions API Integration Tests', () => {
         // Cleanup
         await db.query('DELETE FROM policy_tuning_suggestions WHERE policy_id = $1', [testPolicyId]);
         await db.query('DELETE FROM policy_learning_stats WHERE policy_id = $1', [testPolicyId]);
+        await db.query('DELETE FROM policy_feedback_log WHERE selected_policy_id = $1', [testPolicyId]);
         await db.query('DELETE FROM library_policies WHERE id = $1', [testPolicyId]);
         await db.query('DELETE FROM libraries WHERE id = $1', [testLibraryId]);
         await db.query('DELETE FROM users WHERE id = $1', [testUserId]);
@@ -208,6 +212,9 @@ describe('Suggestions API Integration Tests', () => {
                 reason: 'Test reason'
             })]);
             applySuggestionId = res.rows[0].id;
+            const policy = (await db.query('SELECT library_id FROM library_policies WHERE id=$1', [testPolicyId])).rows[0];
+            await seedSuggestionFeedback(db, testPolicyId, policy.library_id);
+            await attachSuggestionCohort(db, applySuggestionId, await captureSuggestionCohort(testPolicyId));
         });
 
         afterEach(async () => {

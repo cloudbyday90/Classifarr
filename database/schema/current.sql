@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-06T01:44:57.650Z
--- Latest Migration: 20260906_090000_add_incremental_library_coverage.sql
+-- Generated: 2026-09-06T23:41:00.970Z
+-- Latest Migration: 20260906_230000_add_suggestion_cohort_provenance.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -546,6 +546,19 @@ CREATE FUNCTION public.mark_library_profile_inventory_changed(library_ids bigint
     ON CONFLICT (library_id) DO UPDATE
     SET revision = public.library_profile_inventory_state.revision + 1,
         changed_at = clock_timestamp();
+$$;
+
+
+--
+-- Name: reject_policy_tuning_cohort_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.reject_policy_tuning_cohort_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    RAISE EXCEPTION 'Suggestion cohorts are immutable' USING ERRCODE = '23514';
+END;
 $$;
 
 
@@ -6213,6 +6226,20 @@ ALTER SEQUENCE public.policy_runtime_pending_question_cleanup_audits_id_seq OWNE
 
 
 --
+-- Name: policy_tuning_cohorts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_tuning_cohorts (
+    fingerprint text NOT NULL,
+    policy_id integer NOT NULL,
+    manifest jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT policy_tuning_cohorts_fingerprint_check CHECK ((fingerprint ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT policy_tuning_cohorts_manifest_check CHECK (((jsonb_typeof(manifest) = 'object'::text) AND (octet_length((manifest)::text) <= 4194304)))
+);
+
+
+--
 -- Name: policy_tuning_suggestions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -6231,7 +6258,10 @@ CREATE TABLE public.policy_tuning_suggestions (
     created_at timestamp with time zone DEFAULT now(),
     applied_at timestamp with time zone,
     applied_by integer,
-    before_accuracy real
+    before_accuracy real,
+    cohort_fingerprint text,
+    evidence_fingerprint text,
+    superseded_at timestamp with time zone
 );
 
 
@@ -9593,6 +9623,14 @@ ALTER TABLE ONLY public.policy_runtime_pending_question_cleanup_audits
 
 
 --
+-- Name: policy_tuning_cohorts policy_tuning_cohorts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_tuning_cohorts
+    ADD CONSTRAINT policy_tuning_cohorts_pkey PRIMARY KEY (fingerprint);
+
+
+--
 -- Name: policy_tuning_suggestions policy_tuning_suggestions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11402,6 +11440,20 @@ CREATE INDEX idx_policy_runtime_pending_question_cleanup_audits_classificati ON 
 
 
 --
+-- Name: idx_policy_tuning_cohorts_policy; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_tuning_cohorts_policy ON public.policy_tuning_cohorts USING btree (policy_id);
+
+
+--
+-- Name: idx_policy_tuning_suggestions_cohort; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_tuning_suggestions_cohort ON public.policy_tuning_suggestions USING btree (cohort_fingerprint);
+
+
+--
 -- Name: idx_post_upgrade_tasks_task_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -12015,6 +12067,13 @@ CREATE TRIGGER policy_observed_evidence_provenance_snapshot_update_guard BEFORE 
 --
 
 CREATE TRIGGER policy_runtime_pending_question_cleanup_audit_mutation_guard BEFORE DELETE OR UPDATE ON public.policy_runtime_pending_question_cleanup_audits FOR EACH ROW EXECUTE FUNCTION public.guard_policy_runtime_pending_question_cleanup_audit_mutation();
+
+
+--
+-- Name: policy_tuning_cohorts policy_tuning_cohorts_immutable; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER policy_tuning_cohorts_immutable BEFORE UPDATE ON public.policy_tuning_cohorts FOR EACH ROW EXECUTE FUNCTION public.reject_policy_tuning_cohort_update();
 
 
 --
@@ -13014,11 +13073,27 @@ ALTER TABLE ONLY public.policy_runtime_historic_route_safety_refresh_receipt_ite
 
 
 --
+-- Name: policy_tuning_cohorts policy_tuning_cohorts_policy_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_tuning_cohorts
+    ADD CONSTRAINT policy_tuning_cohorts_policy_id_fkey FOREIGN KEY (policy_id) REFERENCES public.library_policies(id) ON DELETE CASCADE;
+
+
+--
 -- Name: policy_tuning_suggestions policy_tuning_suggestions_applied_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.policy_tuning_suggestions
     ADD CONSTRAINT policy_tuning_suggestions_applied_by_fkey FOREIGN KEY (applied_by) REFERENCES public.users(id);
+
+
+--
+-- Name: policy_tuning_suggestions policy_tuning_suggestions_cohort_fingerprint_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_tuning_suggestions
+    ADD CONSTRAINT policy_tuning_suggestions_cohort_fingerprint_fkey FOREIGN KEY (cohort_fingerprint) REFERENCES public.policy_tuning_cohorts(fingerprint);
 
 
 --
@@ -15180,6 +15255,7 @@ FROM unnest(ARRAY[
     '20260905_190000_add_library_coverage_trends.sql',
     '20260905_200000_add_fair_library_sampling.sql',
     '20260905_210000_seed_library_sampling_state.sql',
-    '20260906_090000_add_incremental_library_coverage.sql'
+    '20260906_090000_add_incremental_library_coverage.sql',
+    '20260906_230000_add_suggestion_cohort_provenance.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

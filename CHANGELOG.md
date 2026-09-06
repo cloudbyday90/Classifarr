@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Suggestion evidence provenance** — Automatically capture complete analysis
+  cohorts and revalidate policy, destination and feedback before application.
+  Stale suggestions are preserved as superseded history during normal analysis;
+  threshold and weight suggestions now retain their supporting feedback.
+
 - **Retained request and feedback references** — Extended the bounded cleanup
   assessment to preserve request and feedback records with immutable library
   snapshots, transactional checkpoints and guards against late writes or

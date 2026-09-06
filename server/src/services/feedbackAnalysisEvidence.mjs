@@ -2,7 +2,7 @@
 import { isLearningLibraryId } from './autoLearningFeedbackEvidence.mjs';
 
 /** Read current evidence for suggestion analysis; never reconstruct historical destinations. */
-export async function readEligiblePolicyFeedback(client, policyId, days = 30) {
+export async function readEligiblePolicyFeedback(client, policyId, days = 30, capture = null) {
     if (!isLearningLibraryId(policyId) || !Number.isInteger(days) || days < 1 || days > 365) {
         return [];
     }
@@ -10,7 +10,7 @@ export async function readEligiblePolicyFeedback(client, policyId, days = 30) {
     const result = await client.query(`
         SELECT feedback.id, feedback.selected_policy_id, feedback.selected_library_id,
             feedback.was_correction, feedback.item_metadata, feedback.original_scores,
-            feedback.top_suggestion_library_id, feedback.top_suggestion_score, feedback.prompt_type
+            feedback.top_suggestion_library_id, feedback.top_suggestion_score, feedback.prompt_type, feedback.prompted_at
         FROM policy_feedback_log feedback
         JOIN library_policies policy ON policy.id = feedback.selected_policy_id
             AND policy.library_id = feedback.selected_library_id
@@ -19,8 +19,10 @@ export async function readEligiblePolicyFeedback(client, policyId, days = 30) {
         WHERE feedback.selected_policy_id = $1
             AND feedback.selected_library_id > 0
             AND feedback.prompted_at >= NOW() - INTERVAL '1 day' * $2
+            ${capture ? 'AND feedback.prompted_at <= $3::timestamptz' : ''}
         ORDER BY feedback.prompted_at DESC, feedback.id DESC
-    `, [policyId, days]);
+        ${capture ? 'LIMIT $4' : ''}
+    `, capture ? [policyId, days, capture.capturedAt, capture.limit] : [policyId, days]);
 
     return result.rows.filter(row => isLearningLibraryId(row?.selected_library_id)
         && row.selected_policy_id === policyId);

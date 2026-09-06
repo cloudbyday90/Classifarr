@@ -9,6 +9,7 @@ import {
     assertLegacyPolicyWriteAllowed,
 } from './policyLegacyWriteGuard.mjs';
 import { lockPendingSuggestion, completeSuggestionReview } from './feedbackAnalysisSuggestionLifecycle.mjs';
+import { assertSuggestionEvidenceCurrent } from './feedbackAnalysisCohort.mjs';
 
 const logger = createLogger('FeedbackAnalysis');
 
@@ -27,6 +28,8 @@ export async function applySuggestion(suggestionId, userId) {
             },
             operationId: POLICY_LEGACY_WRITE_OPERATION_IDS.APPLY_LEGACY_TUNING_SUGGESTION,
         });
+
+        await assertSuggestionEvidenceCurrent(client, suggestion, policy);
 
         const beforeResult = await client.query(`
             SELECT 

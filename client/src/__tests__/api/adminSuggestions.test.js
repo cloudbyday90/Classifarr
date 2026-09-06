@@ -88,8 +88,14 @@ describe('adminSuggestions', () => {
     expect(result).toEqual({ data: { rejected: true } })
   })
 
-  it.each([applySuggestion, rejectSuggestion])('propagates lifecycle conflicts without retrying', async review => {
-    const error = { response: { status: 409, data: { code: 'SUGGESTION_NOT_PENDING' } } }
+  it.each([
+    [applySuggestion, 'SUGGESTION_EVIDENCE_REQUIRED'],
+    [applySuggestion, 'SUGGESTION_EVIDENCE_STALE'],
+    [applySuggestion, 'SUGGESTION_EVIDENCE_BUSY'],
+    [applySuggestion, 'SUGGESTION_NOT_PENDING'],
+    [rejectSuggestion, 'SUGGESTION_NOT_PENDING'],
+  ])('propagates review conflicts without retrying', async (review, code) => {
+    const error = { response: { status: 409, data: { code } } }
     mockPost.mockRejectedValueOnce(error)
     await expect(review(3, 'Reason')).rejects.toBe(error)
     expect(mockPost).toHaveBeenCalledTimes(1)
