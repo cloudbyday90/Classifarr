@@ -121,11 +121,13 @@ Recommended stack: synchronized inventory → attributable observations → auto
 profiles → fair bounded coverage visits → population-aware comparisons →
 independently evaluated review-only semantic evidence.
 
-Next: implement revision-checked incremental coverage snapshots for individual
-libraries above 20,000 rows. Reuse existing inventory revision tracking, bound each
-pass, and publish complete counts only if the population stayed unchanged across
-the scan. Partial work must remain explicit and must not block other libraries.
-Immediate health and overlap endpoints still have their original bounded scope.
+The subsequent [incremental coverage outcome](incremental-library-coverage-outcome.md)
+implements the recommended revision-checked pages for libraries above 20,000 rows.
+Partial work remains explicit and other libraries retain their turns. This
+document describes the preceding v2 capacity contract. Next, measure repeated
+scan restarts and completion delays automatically to identify libraries that
+remain unmeasured under continuous changes. Immediate health and overlap
+endpoints still have their original bounded scope.
 
 Readiness and frozen-study gates remain unchanged. Source placement, controlled
 fixtures and model labels do not satisfy independent human review. This work

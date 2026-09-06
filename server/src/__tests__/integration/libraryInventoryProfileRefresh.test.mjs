@@ -37,6 +37,29 @@ function worker(profileService = profiles, extra = {}) {
 }
 
 describe('inventory-driven profile refresh in PostgreSQL', () => {
+    test('clock revisions change once per statement without dirtying an acknowledged profile', async () => {
+        await add(); await add();
+        await db.query('UPDATE library_profile_inventory_state SET refreshed_revision=revision WHERE library_id=$1', [libraryIds[0]]);
+        const baseline=await state();
+        const clocks=async client => (await client.query('SELECT observation_clock_revision::text AS clock FROM library_profile_inventory_state WHERE library_id=$1', [libraryIds[0]])).rows[0].clock;
+        expect(await clocks(db)).toBe('0');
+        await db.query('UPDATE media_server_items SET inventory_tmdb_attempted_at=statement_timestamp() WHERE library_id=$1', [libraryIds[0]]);
+        expect(await clocks(db)).toBe('1'); expect(await state()).toEqual(baseline);
+        await db.query('UPDATE media_server_items SET inventory_tmdb_attempted_at=inventory_tmdb_attempted_at WHERE library_id=$1', [libraryIds[0]]);
+        expect(await clocks(db)).toBe('1');
+        await expect(db.withTransaction(async client => {
+            await client.query('UPDATE media_server_items SET inventory_tmdb_fetched_at=statement_timestamp() WHERE library_id=$1', [libraryIds[0]]);
+            expect(await clocks(client)).toBe('2'); throw new Error('rollback clocks');
+        })).rejects.toThrow('rollback clocks');
+        expect(await clocks(db)).toBe('1'); expect(await state()).toEqual(baseline);
+    });
+    test('clock updates on inventory without library membership remain valid', async () => {
+        await expect(db.withTransaction(async client => {
+            const {rows:[item]}=await client.query("INSERT INTO media_server_items(external_id,title,media_type) VALUES($1,'Unassigned fixture','movie') RETURNING id", [randomUUID()]);
+            await client.query('UPDATE media_server_items SET inventory_tmdb_fetched_at=statement_timestamp() WHERE id=$1', [item.id]);
+            throw new Error('rollback unassigned fixture');
+        })).rejects.toThrow('rollback unassigned fixture');
+    });
     test('bumps once per bulk statement and ignores unchanged syncs and unrelated metadata', async () => {
         await db.query(`INSERT INTO media_server_items (external_id, title, library_id, media_type, genres, metadata)
             SELECT gen_random_uuid()::text, 'Fixture only', $1, 'movie', ARRAY['Action'], '{"tmdb":{"genres":[]}}'::jsonb

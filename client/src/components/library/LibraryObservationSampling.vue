@@ -5,9 +5,9 @@
       Coverage across libraries
     </h3>
     <p class="text-sm text-gray-300">
-      One active library is sampled every five minutes, with a separate 20,000-row limit for each visit.
-      Larger libraries do not withhold smaller libraries' coverage. Actual visit times are shown below.
-      Comparisons use consecutive visits to the same library; missed sampling slots remain gaps.
+      One active library is sampled every five minutes, measuring at most 20,000 rows per visit.
+      Larger libraries continue on later turns while other libraries keep their turns.
+      Complete scans are compared only when their populations are comparable; missed sampling slots remain gaps.
     </p>
     <p v-if="sampling.lastSampleAt">
       Last sampling pass: {{ time(sampling.lastSampleAt) }}. Active libraries at that pass: {{ sampling.activeLibraryCount }}.
@@ -60,17 +60,31 @@
         {{ library.label }}
       </h4>
       <p>Sampled {{ time(library.latest.observedAt) }}.</p>
+      <p v-if="library.latest.scanStartedAt">
+        {{ library.latest.status === 'available' ? 'Complete coverage measured as of' : 'Scan started' }}
+        {{ time(library.latest.scanStartedAt) }}.
+        <span v-if="library.latest.status === 'available'">Freshness uses that time.</span>
+      </p>
       <p v-if="library.latest.status === 'available'">
         Keywords {{ ratio(library.latest.keywordRows, library.latest.identifiedRows) }};
         language {{ ratio(library.latest.languageRows, library.latest.identifiedRows) }};
         captured {{ ratio(library.latest.capturedRows, library.latest.identifiedRows) }}.
       </p>
+      <p v-else-if="library.latest.status === 'in_progress'">
+        {{ library.latest.scannedRows }} rows scanned; more remain. Complete coverage is not available yet.
+      </p>
+      <p v-else-if="library.latest.status === 'invalidated'">
+        Inputs changed before this visit could be saved. The scan will restart automatically.
+      </p>
       <p v-else>
         Inventory exceeds 20,000 rows; this library's coverage is unknown.
       </p>
+      <p v-if="library.latest.restartReason">
+        {{ restart(library.latest.restartReason) }}
+      </p>
       <p>{{ change(library.latest) }}</p>
       <p v-if="library.latest.elapsedMinutes !== null">
-        {{ library.latest.elapsedMinutes }} minutes since the previous recorded visit.
+        {{ library.latest.elapsedMinutes }} minutes since the previous {{ library.latest.measurementVersion === 3 ? 'complete scan' : 'recorded visit' }}.
       </p>
       <p v-if="library.latest.populationChanged && library.latest.comparison !== 'population_changed'">
         Inventory population also changed.
@@ -101,6 +115,7 @@
 import { computed, ref, watch } from 'vue'
 import { observationHistoryTime as time, observationHistoryRatio as ratio } from '@/utils/observationHistoryDisplay'
 import { observationTrendChange as change, observationTrendUnchanged as unchanged } from '@/utils/observationTrendDisplay'
+import { observationScanRestart as restart } from '@/utils/observationScanDisplay'
 import LibraryObservationTrendTable from './LibraryObservationTrendTable.vue'
 const props = defineProps({ sampling: { type: Object, required: true }, points: { type: Array, required: true }, libraries: { type: Array, default: () => [] } })
 const page = ref(0)

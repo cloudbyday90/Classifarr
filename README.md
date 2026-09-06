@@ -648,16 +648,18 @@ samples, with explicit populations and a seven-day window. See the
 [history design](docs/architecture/observation-acquisition-history-design.md) and
 [measured outcome](docs/architecture/observation-acquisition-history-outcome.md).
 Automatic coverage visits one active library every five minutes, progressing
-through the catalog without manual schedules. Each library has its own 20,000-row
-limit; an oversized library stays unknown while smaller libraries remain
-measurable. Trends compare successive visits to the same library using actual
-times, with deltas withheld after population changes or sampling gaps. Current
+through the catalog without manual schedules. Each visit measures up to 20,000
+rows; larger libraries resume on subsequent turns while smaller libraries remain
+measurable. Inventory and observation-clock revisions guard every page. Changed
+inputs restart the scan automatically, and partial counts remain distinct from
+complete coverage. Freshness uses the scan's stated start time. Trends compare
+complete scans, with deltas withheld after population changes or sampling gaps. Current
 library names label bounded counts; private fingerprints never reach the browser.
 Local pagination and expandable tables show retained visits, with earlier hourly
 coverage separately identified. Revisit time grows with the active library count.
 Immediate health and overlap summaries retain their existing scope. See the
-[sampling design](docs/architecture/fair-library-sampling-design.md) and
-[validation outcome](docs/architecture/fair-library-sampling-outcome.md).
+[incremental design](docs/architecture/incremental-library-coverage-design.md) and
+[validation outcome](docs/architecture/incremental-library-coverage-outcome.md).
 Manual identity review handles unresolved exceptions.
 
 For unresolved inventory identities, open **Libraries → Review media IDs** with

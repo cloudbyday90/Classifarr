@@ -116,9 +116,12 @@ with explicit population-change markers are implemented in the
 [outcome](library-coverage-trends-outcome.md). Fair automatic visits across active
 libraries, with independent per-library capacity status, are implemented in the
 [sampling design](fair-library-sampling-design.md) and
-[outcome](fair-library-sampling-outcome.md). Next, add revision-checked incremental
-coverage for individual libraries above 20,000 rows, keeping each pass bounded
-and publishing complete counts only for an unchanged population.
+[outcome](fair-library-sampling-outcome.md). Revision-checked incremental coverage
+for libraries above 20,000 rows is implemented in the
+[incremental design](incremental-library-coverage-design.md) and
+[outcome](incremental-library-coverage-outcome.md). Next, derive automatic scan
+completion and restart diagnostics from existing history before selecting a
+recovery strategy for continuously changing libraries.
 The separate shared HTTP mutation-retry audit remains a correctness follow-up;
 the receipt-recovery change already disables replay for identity confirmation.
 

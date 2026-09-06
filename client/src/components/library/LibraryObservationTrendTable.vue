@@ -42,8 +42,14 @@
         >
           <th scope="row">
             {{ time(point.sample.observedAt) }}
+            <span
+              v-if="point.row?.scanStartedAt"
+              class="block font-normal"
+            >
+              {{ point.row.status === 'available' ? 'Coverage as of' : 'Scan started' }} {{ time(point.row.scanStartedAt) }}
+            </span>
           </th>
-          <template v-if="point.row && point.row.status !== 'capacity_exceeded'">
+          <template v-if="point.row && (!point.row.status || point.row.status === 'available')">
             <td>{{ point.row.inventoryRows }} / {{ point.row.identifiedRows }}</td>
             <td>{{ ratio(point.row.capturedRows, point.row.identifiedRows) }}</td>
             <td>{{ ratio(point.row.freshRows, point.row.identifiedRows) }}</td>
@@ -54,14 +60,17 @@
             v-else
             colspan="5"
           >
-            {{ point.sample.status === 'capacity_exceeded' ? 'Inventory limit exceeded; counts withheld.'
-              : !point.sample.libraryIds.includes(libraryId) ? 'Library outside this sample selection.' : 'Per-library detail unavailable.' }}
+            {{ point.sample.status === 'in_progress' ? `${point.row.scannedRows} rows scanned; complete counts unavailable.`
+              : point.sample.status === 'invalidated' ? 'Page discarded after inputs changed; counts unavailable.'
+                : point.sample.status === 'capacity_exceeded' ? 'Inventory limit exceeded; counts withheld.'
+                  : !point.sample.libraryIds.includes(libraryId) ? 'Library outside this sample selection.' : 'Per-library detail unavailable.' }}
           </td>
           <td>
             {{ change(point.row) }}
             <span v-if="point.row?.populationChanged && point.row.comparison !== 'population_changed'"> Inventory population also changed.</span>
             <span v-if="point.sample.selectionChanged"> Selected libraries changed.</span>
             <span v-if="!point.sample.acquisitionConfigured"> Acquisition was not configured.</span>
+            <span v-if="point.row?.restartReason"> {{ restart(point.row.restartReason) }}</span>
           </td>
         </tr>
       </tbody>
@@ -73,6 +82,7 @@
 import { computed } from 'vue'
 import { observationHistoryTime as time, observationHistoryRatio as ratio } from '@/utils/observationHistoryDisplay'
 import { observationTrendChange as change } from '@/utils/observationTrendDisplay'
+import { observationScanRestart as restart } from '@/utils/observationScanDisplay'
 const props = defineProps({ samples: { type: Array, default: () => [] }, observations: { type: Array, default: () => [] },
   libraryId: { type: Number, required: true }, label: { type: String, required: true } })
 const points = computed(() => props.observations.length

@@ -10,26 +10,27 @@ import { createLibrariesRouteTestDeps } from './setup/createLibrariesRouteTestDe
 
 const snapshot = { observed_at: '2026-09-05T12:00:00Z', acquisition_configured: true,
     active_library_count: 1, row_count: 0, libraries: [{ id: 7, name: 'PRIVATE' }], items: [], population_fingerprints: { 7: 'a'.repeat(64) },
-    due: true, next_ceiling: 7, expected_last_sample_at: null, continuity_since: '2026-09-05T12:00:00Z' };
+    due: true, next_ceiling: 7, expected_last_sample_at: null, continuity_since: '2026-09-05T12:00:00Z',
+    has_more: false, next_after_id: 0, scan_context: { scan_started_at: '2026-09-05T12:00:00Z', inventory_revision: '1', clock_revision: '0' } };
 const history = { observed_at: snapshot.observed_at, activity: [], samples: [] };
 
 test('automatically captures one library and skips an already sampled five-minute slot', async () => {
     const query = jest.fn().mockResolvedValueOnce({ rows: [snapshot] }).mockResolvedValueOnce({ rows: [{ captured: true }] })
         .mockResolvedValueOnce({ rows: [{ ...snapshot, due: false }] });
     expect(await captureLibraryObservationSample({ query })).toEqual({ captured: true });
-    expect(query.mock.calls[1][1]).toEqual([snapshot.observed_at, null, 7, 7, 1, snapshot.continuity_since,
-        'available', true, 0, 'a'.repeat(64), 0, 0, 0, 0, 0, 0, 0]);
+    expect(JSON.parse(query.mock.calls[1][1][0])).toMatchObject({ library_id: 7, status: 'available',
+        inventory_rows: 0, scanned_rows: 0, inventory_revision: '1' });
     expect(JSON.stringify(query.mock.calls[1][1])).not.toContain('PRIVATE');
     expect(await captureLibraryObservationSample({ query })).toEqual({ captured: false });
     expect(query).toHaveBeenCalledTimes(3);
 });
 
-test('capacity-exceeded samples preserve unknown counts for that library', async () => {
-    const query = jest.fn().mockResolvedValueOnce({ rows: [{ ...snapshot, row_count: 20001, active_library_count: 3 }] })
+test('incomplete scans persist partial state without returning it as complete coverage', async () => {
+    const query = jest.fn().mockResolvedValueOnce({ rows: [{ ...snapshot, has_more: true, active_library_count: 3 }] })
         .mockResolvedValueOnce({ rows: [{ captured: false }] });
     expect(await captureLibraryObservationSample({ query })).toEqual({ captured: false });
-    expect(query.mock.calls[1][1]).toEqual([snapshot.observed_at, null, 7, 7, 3, snapshot.continuity_since,
-        'capacity_exceeded', true, 20001, null, null, null, null, null, null, null, null]);
+    expect(JSON.parse(query.mock.calls[1][1][0])).toMatchObject({ library_id: 7, status: 'in_progress',
+        active_count: 3, inventory_lower_bound: 1 });
 });
 
 test('history exposes distinct populations and performs one read', async () => {

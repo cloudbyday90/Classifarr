@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { OBSERVATION_HEALTH_LIMITS } from './libraryObservationHealthQuery.mjs';
 import { OBSERVATION_INVENTORY_CTES, OBSERVATION_SNAPSHOT_FIELDS } from './libraryObservationSnapshotSql.mjs';
+import { OBSERVATION_SCAN_CTES } from './libraryObservationScanSql.mjs';
 
 /** One consistent snapshot; one indexed library visit; a fixed ceiling prevents append starvation. */
 export async function readLibraryObservationSamplingSnapshot(db) {
@@ -25,14 +26,12 @@ export async function readLibraryObservationSamplingSnapshot(db) {
     ), selected_libraries AS MATERIALIZED (
         SELECT l.id, l.name FROM libraries l JOIN selection s ON s.next_id = l.id
         WHERE s.due AND l.is_active = true ORDER BY l.id LIMIT $1
-    ), bounded_ids AS MATERIALIZED (
-        SELECT b.id FROM selected_libraries l CROSS JOIN LATERAL (
-            SELECT id FROM media_server_items WHERE library_id = l.id ORDER BY id LIMIT $2
-        ) b
-    ), ${OBSERVATION_INVENTORY_CTES}
+    ), ${OBSERVATION_SCAN_CTES}, ${OBSERVATION_INVENTORY_CTES}
     SELECT ${OBSERVATION_SNAPSHOT_FIELDS}, s.due, s.last_sample_at::text AS expected_last_sample_at,
-        s.next_ceiling, s.next_continuity::text AS continuity_since
-    FROM selection s`, [1, rowLimit + 1, rowLimit, observationByteLimit]);
+        s.next_ceiling, s.next_continuity::text AS continuity_since,
+        to_jsonb(c) AS scan_context, (SELECT COUNT(*) > $3 FROM lookahead_ids) AS has_more,
+        COALESCE((SELECT MAX(id) FROM bounded_ids), c.after_id) AS next_after_id
+    FROM selection s LEFT JOIN scan_context c ON true`, [1, rowLimit + 1, rowLimit, observationByteLimit]);
     if (!rows[0]) throw new Error('Observation sampling state unavailable');
     return rows[0];
 }

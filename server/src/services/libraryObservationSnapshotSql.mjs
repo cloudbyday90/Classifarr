@@ -6,7 +6,10 @@ export const OBSERVATION_INVENTORY_CTES = `size AS (SELECT COUNT(*)::int AS row_
                 msi.inventory_tmdb_attempted_at::text, msi.inventory_tmdb_fetched_at::text,
                 COALESCE(msi.metadata ? 'inventory_tmdb', false) AS has_observation,
                 public.library_profile_observed_metadata(msi.metadata) -> 'inventory_tmdb' AS observation
-            FROM bounded_ids b JOIN media_server_items msi ON msi.id = b.id
+            FROM bounded_ids b CROSS JOIN LATERAL (
+                SELECT id,library_id,media_type,tmdb_id,metadata,inventory_tmdb_attempted_at,inventory_tmdb_fetched_at
+                FROM media_server_items WHERE id=b.id LIMIT 1
+            ) msi
             WHERE (SELECT row_count FROM size) <= $3
         ), active_tasks AS (
             SELECT i.id, BOOL_OR(tq.status = 'processing') AS has_processing_task,

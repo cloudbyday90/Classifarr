@@ -45,8 +45,8 @@ describe('libraryCatalogApi', () => {
   it('loads unwrapped observation history through the central GET helper', async () => {
     const report = { activity: [], samples: [{ libraryCoverage: [
       { libraryId: 7, comparison: 'population_changed', delta: null },
-    ] }], librarySampling: { version: 'library.observation_sampling.v2', intervalMinutes: 5 },
-    librarySamples: [{ libraryId: 19, comparison: 'sampling_gap', delta: null }] }
+    ] }], librarySampling: { version: 'library.observation_sampling.v3', rowLimitPerVisit: 20000 },
+    librarySamples: [{ libraryId: 19, status: 'in_progress', scannedRows: 20000, delta: null }] }
     mockGetDataRequest.mockResolvedValueOnce(report)
     expect(await getLibraryObservationHistory()).toBe(report)
     expect(mockGetDataRequest).toHaveBeenCalledWith('/libraries/observation-history')

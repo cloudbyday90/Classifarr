@@ -1,5 +1,8 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 const reasons = Object.freeze({
+  in_progress: 'Scan in progress; complete comparison unavailable.',
+  invalidated: 'Scan inputs changed; comparison withheld.',
+  measurement_changed: 'Measurement version changed; a new comparison baseline is required.',
   first_sample: 'First retained sample; no comparison yet.',
   previous_unavailable: 'Previous per-library coverage unavailable.',
   newly_selected: 'Newly selected library; no previous comparison.',

@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-05T23:57:40.100Z
--- Latest Migration: 20260905_210000_seed_library_sampling_state.sql
+-- Generated: 2026-09-06T01:44:57.650Z
+-- Latest Migration: 20260906_090000_add_incremental_library_coverage.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -119,6 +119,28 @@ BEGIN
         ALTER EXTENSION vector UPDATE TO '0.8.6';
     END IF;
 END $$;
+
+
+--
+-- Name: capture_library_observation_clock_change(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.capture_library_observation_clock_change() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog', 'public'
+    AS $$
+BEGIN
+    INSERT INTO public.library_profile_inventory_state (library_id, observation_clock_revision)
+    SELECT DISTINCT new_row.library_id, 1 FROM old_items old_row JOIN new_items new_row USING (id)
+    JOIN public.libraries library ON library.id = new_row.library_id
+    WHERE ROW(old_row.inventory_tmdb_attempted_at, old_row.inventory_tmdb_fetched_at)
+        IS DISTINCT FROM ROW(new_row.inventory_tmdb_attempted_at, new_row.inventory_tmdb_fetched_at)
+    ORDER BY new_row.library_id
+    ON CONFLICT (library_id) DO UPDATE SET observation_clock_revision =
+        public.library_profile_inventory_state.observation_clock_revision + 1;
+    RETURN NULL;
+END;
+$$;
 
 
 --
@@ -3461,14 +3483,23 @@ CREATE TABLE public.library_observation_points (
     fresh_rows integer,
     keyword_rows integer,
     language_rows integer,
+    measurement_version smallint DEFAULT 2 NOT NULL,
+    scan_started_at timestamp with time zone,
+    scanned_rows integer,
+    restart_reason text,
     CONSTRAINT library_observation_points_check CHECK ((isfinite(continuity_since) AND (continuity_since <= observed_at))),
     CONSTRAINT library_observation_points_check1 CHECK ((sample_slot = mod((floor((EXTRACT(epoch FROM observed_at) / (300)::numeric)))::bigint, (2016)::bigint))),
-    CONSTRAINT library_observation_points_check2 CHECK ((((status = 'available'::text) AND (population_fingerprint IS NOT NULL) AND (population_fingerprint ~ '^[a-f0-9]{64}$'::text) AND (num_nonnulls(inventory_rows, supported_rows, identified_rows, captured_rows, fresh_rows, keyword_rows, language_rows) = 7) AND ((inventory_rows >= 0) AND (inventory_rows <= 20000)) AND (inventory_lower_bound = inventory_rows) AND ((supported_rows >= 0) AND (supported_rows <= inventory_rows)) AND ((identified_rows >= 0) AND (identified_rows <= supported_rows)) AND ((captured_rows >= 0) AND (captured_rows <= identified_rows)) AND ((fresh_rows >= 0) AND (fresh_rows <= captured_rows)) AND ((keyword_rows >= 0) AND (keyword_rows <= captured_rows)) AND ((language_rows >= 0) AND (language_rows <= captured_rows))) OR ((status = 'capacity_exceeded'::text) AND (inventory_lower_bound = 20001) AND (population_fingerprint IS NULL) AND (num_nonnulls(inventory_rows, supported_rows, identified_rows, captured_rows, fresh_rows, keyword_rows, language_rows) = 0)))),
-    CONSTRAINT library_observation_points_inventory_lower_bound_check CHECK (((inventory_lower_bound >= 0) AND (inventory_lower_bound <= 20001))),
+    CONSTRAINT library_observation_points_check2 CHECK ((isfinite(scan_started_at) AND (scan_started_at <= observed_at))),
+    CONSTRAINT library_observation_points_check3 CHECK ((((measurement_version = 2) AND (scan_started_at IS NULL) AND (scanned_rows IS NULL) AND (restart_reason IS NULL) AND (status = ANY (ARRAY['available'::text, 'capacity_exceeded'::text])) AND (inventory_lower_bound <= 20001)) OR ((measurement_version = 3) AND (scan_started_at IS NOT NULL) AND (scanned_rows IS NOT NULL) AND (scan_started_at >= (observed_at - '7 days'::interval)) AND (status = ANY (ARRAY['available'::text, 'in_progress'::text, 'invalidated'::text]))))),
+    CONSTRAINT library_observation_points_check4 CHECK ((((status = 'available'::text) AND (population_fingerprint IS NOT NULL) AND (population_fingerprint ~ '^[a-f0-9]{64}$'::text) AND (num_nonnulls(inventory_rows, supported_rows, identified_rows, captured_rows, fresh_rows, keyword_rows, language_rows) = 7) AND (inventory_rows >= 0) AND (inventory_lower_bound = inventory_rows) AND ((measurement_version = 3) OR (inventory_rows <= 20000)) AND ((measurement_version = 2) OR (scanned_rows = inventory_rows)) AND ((supported_rows >= 0) AND (supported_rows <= inventory_rows)) AND ((identified_rows >= 0) AND (identified_rows <= supported_rows)) AND ((captured_rows >= 0) AND (captured_rows <= identified_rows)) AND ((fresh_rows >= 0) AND (fresh_rows <= captured_rows)) AND ((keyword_rows >= 0) AND (keyword_rows <= captured_rows)) AND ((language_rows >= 0) AND (language_rows <= captured_rows))) OR ((status <> 'available'::text) AND (population_fingerprint IS NULL) AND (num_nonnulls(inventory_rows, supported_rows, identified_rows, captured_rows, fresh_rows, keyword_rows, language_rows) = 0) AND (((status = 'capacity_exceeded'::text) AND (inventory_lower_bound = 20001)) OR ((status = 'in_progress'::text) AND (scanned_rows > 0) AND (inventory_lower_bound = (scanned_rows + 1))) OR ((status = 'invalidated'::text) AND (scanned_rows = 0) AND (inventory_lower_bound = 0)))))),
+    CONSTRAINT library_observation_points_inventory_lower_bound_check CHECK ((inventory_lower_bound >= 0)),
     CONSTRAINT library_observation_points_library_id_check CHECK ((library_id > 0)),
+    CONSTRAINT library_observation_points_measurement_version_check CHECK ((measurement_version = ANY (ARRAY[2, 3]))),
     CONSTRAINT library_observation_points_observed_at_check CHECK (isfinite(observed_at)),
+    CONSTRAINT library_observation_points_restart_reason_check CHECK ((restart_reason = ANY (ARRAY['inventory_changed'::text, 'observation_clocks_changed'::text, 'sampling_gap'::text, 'configuration_changed'::text, 'expired'::text, 'clock_anomaly'::text, 'changed_before_write'::text]))),
     CONSTRAINT library_observation_points_sample_slot_check CHECK (((sample_slot >= 0) AND (sample_slot <= 2015))),
-    CONSTRAINT library_observation_points_status_check CHECK ((status = ANY (ARRAY['available'::text, 'capacity_exceeded'::text])))
+    CONSTRAINT library_observation_points_scanned_rows_check CHECK ((scanned_rows >= 0)),
+    CONSTRAINT library_observation_points_status_check CHECK ((status = ANY (ARRAY['available'::text, 'capacity_exceeded'::text, 'in_progress'::text, 'invalidated'::text])))
 );
 
 
@@ -3524,6 +3555,44 @@ CREATE TABLE public.library_observation_sampling_state (
     CONSTRAINT library_observation_sampling_state_last_library_id_check CHECK ((last_library_id >= 0)),
     CONSTRAINT library_observation_sampling_state_last_sample_at_check CHECK (isfinite(last_sample_at)),
     CONSTRAINT library_observation_sampling_state_singleton_check CHECK (singleton)
+);
+
+
+--
+-- Name: library_observation_scan_progress; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.library_observation_scan_progress (
+    library_id integer NOT NULL,
+    inventory_revision bigint NOT NULL,
+    clock_revision bigint NOT NULL,
+    after_id integer NOT NULL,
+    scan_started_at timestamp with time zone NOT NULL,
+    last_visit_at timestamp with time zone NOT NULL,
+    continuity_since timestamp with time zone NOT NULL,
+    acquisition_configured boolean CONSTRAINT library_observation_scan_progre_acquisition_configured_not_null NOT NULL,
+    population_fingerprint text CONSTRAINT library_observation_scan_progre_population_fingerprint_not_null NOT NULL,
+    inventory_rows integer NOT NULL,
+    supported_rows integer NOT NULL,
+    identified_rows integer NOT NULL,
+    captured_rows integer NOT NULL,
+    fresh_rows integer NOT NULL,
+    keyword_rows integer NOT NULL,
+    language_rows integer NOT NULL,
+    CONSTRAINT library_observation_scan_progress_after_id_check CHECK ((after_id > 0)),
+    CONSTRAINT library_observation_scan_progress_check CHECK ((isfinite(last_visit_at) AND (last_visit_at >= scan_started_at) AND (last_visit_at <= (scan_started_at + '7 days'::interval)))),
+    CONSTRAINT library_observation_scan_progress_check1 CHECK (((supported_rows >= 0) AND (supported_rows <= inventory_rows))),
+    CONSTRAINT library_observation_scan_progress_check2 CHECK (((identified_rows >= 0) AND (identified_rows <= supported_rows))),
+    CONSTRAINT library_observation_scan_progress_check3 CHECK (((captured_rows >= 0) AND (captured_rows <= identified_rows))),
+    CONSTRAINT library_observation_scan_progress_check4 CHECK (((fresh_rows >= 0) AND (fresh_rows <= captured_rows))),
+    CONSTRAINT library_observation_scan_progress_check5 CHECK (((keyword_rows >= 0) AND (keyword_rows <= captured_rows))),
+    CONSTRAINT library_observation_scan_progress_check6 CHECK (((language_rows >= 0) AND (language_rows <= captured_rows))),
+    CONSTRAINT library_observation_scan_progress_clock_revision_check CHECK ((clock_revision >= 0)),
+    CONSTRAINT library_observation_scan_progress_continuity_since_check CHECK (isfinite(continuity_since)),
+    CONSTRAINT library_observation_scan_progress_inventory_revision_check CHECK ((inventory_revision >= 0)),
+    CONSTRAINT library_observation_scan_progress_inventory_rows_check CHECK ((inventory_rows > 0)),
+    CONSTRAINT library_observation_scan_progress_population_fingerprint_check CHECK ((population_fingerprint ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT library_observation_scan_progress_scan_started_at_check CHECK (isfinite(scan_started_at))
 );
 
 
@@ -3660,6 +3729,8 @@ CREATE TABLE public.library_profile_inventory_state (
     revision bigint DEFAULT 1 NOT NULL,
     refreshed_revision bigint DEFAULT 0 NOT NULL,
     changed_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    observation_clock_revision bigint DEFAULT 0 CONSTRAINT library_profile_inventory_s_observation_clock_revision_not_null NOT NULL,
+    CONSTRAINT library_profile_inventory_stat_observation_clock_revision_check CHECK ((observation_clock_revision >= 0)),
     CONSTRAINT library_profile_inventory_state_check CHECK ((refreshed_revision <= revision)),
     CONSTRAINT library_profile_inventory_state_refreshed_revision_check CHECK ((refreshed_revision >= 0)),
     CONSTRAINT library_profile_inventory_state_revision_check CHECK ((revision > 0))
@@ -8746,6 +8817,14 @@ ALTER TABLE ONLY public.library_observation_sampling_state
 
 
 --
+-- Name: library_observation_scan_progress library_observation_scan_progress_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.library_observation_scan_progress
+    ADD CONSTRAINT library_observation_scan_progress_pkey PRIMARY KEY (library_id);
+
+
+--
 -- Name: library_pattern_suggestions library_pattern_suggestions_library_id_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11820,6 +11899,13 @@ CREATE TRIGGER classification_search_text_trigger BEFORE INSERT OR UPDATE ON pub
 
 
 --
+-- Name: media_server_items library_observation_clock_update; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER library_observation_clock_update AFTER UPDATE ON public.media_server_items REFERENCING OLD TABLE AS old_items NEW TABLE AS new_items FOR EACH STATEMENT EXECUTE FUNCTION public.capture_library_observation_clock_change();
+
+
+--
 -- Name: media_server_items library_profile_inventory_delete; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -12317,6 +12403,14 @@ ALTER TABLE ONLY public.library_labels
 
 ALTER TABLE ONLY public.library_labels
     ADD CONSTRAINT library_labels_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
+
+
+--
+-- Name: library_observation_scan_progress library_observation_scan_progress_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.library_observation_scan_progress
+    ADD CONSTRAINT library_observation_scan_progress_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
 
 
 --
@@ -15085,6 +15179,7 @@ FROM unnest(ARRAY[
     '20260905_180000_preserve_observation_language_presence.sql',
     '20260905_190000_add_library_coverage_trends.sql',
     '20260905_200000_add_fair_library_sampling.sql',
-    '20260905_210000_seed_library_sampling_state.sql'
+    '20260905_210000_seed_library_sampling_state.sql',
+    '20260906_090000_add_incremental_library_coverage.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

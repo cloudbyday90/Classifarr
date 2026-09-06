@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Incremental large-library coverage** — Automatic sampling now resumes bounded
+  pages across visits and publishes complete coverage for stable large libraries.
+  Changed inventory or observation timestamps restart scans automatically, with
+  partial progress and measurement times clearly shown.
+
 - **Fair automatic library coverage** — Background sampling now visits active
   libraries in turn, including those beyond the first 12. Each library has its
   own capacity limit, so oversized inventories no longer hide smaller libraries'
@@ -190,6 +195,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
   change policy, AI, RAG, or routing authority.
 
 ### Fixed
+
+- **Bounded coverage reads** — Sampling uses indexed library ranges and item
+  lookups to avoid reading unrelated inventory while measuring a page.
 
 - **Sampling initialization** — Fresh installations and upgrades initialize the
   automatic library sampling cursor without resetting existing progress.

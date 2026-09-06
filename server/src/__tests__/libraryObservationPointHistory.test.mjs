@@ -47,5 +47,5 @@ test('missing durable state is an error, while an empty catalog advances only th
         expected_last_sample_at: null, continuity_since: '2026-09-05T12:00:00Z', acquisition_configured: false }] })
         .mockResolvedValueOnce({ rows: [{ captured: false }] });
     expect(await captureLibraryObservationSample({ query })).toEqual({ captured: false });
-    expect(query.mock.calls[1][1][2]).toBeNull();
+    expect(JSON.parse(query.mock.calls[1][1][0]).library_id).toBeNull();
 });

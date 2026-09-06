@@ -18,6 +18,8 @@ export async function readLibraryObservationHistory(db) {
             WHERE observed_at >= date_trunc('hour', clock.now, 'UTC') - INTERVAL '167 hours'
                 AND observed_at <= clock.now ORDER BY observed_at DESC LIMIT 168),
         points AS (SELECT observed_at AS "observedAt", library_id AS "libraryId", status,
+            measurement_version AS "measurementVersion", scan_started_at AS "scanStartedAt",
+            scanned_rows AS "scannedRows", restart_reason AS "restartReason",
             acquisition_configured AS "acquisitionConfigured", continuity_since AS "continuitySince",
             inventory_lower_bound AS "inventoryLowerBound", population_fingerprint AS "populationFingerprint",
             inventory_rows AS "inventoryRows", supported_rows AS "supportedRows", identified_rows AS "identifiedRows",
@@ -29,8 +31,8 @@ export async function readLibraryObservationHistory(db) {
             COALESCE((SELECT jsonb_agg(activity ORDER BY "bucketAt" DESC) FROM activity), '[]'::jsonb) AS activity,
             COALESCE((SELECT jsonb_agg(samples ORDER BY "observedAt" DESC) FROM samples), '[]'::jsonb) AS samples,
             COALESCE((SELECT jsonb_agg(points ORDER BY "observedAt" DESC) FROM points), '[]'::jsonb) AS library_points,
-            (SELECT jsonb_build_object('version','library.observation_sampling.v2',
-                'intervalMinutes',5,'libraryLimitPerVisit',1,'rowLimitPerLibrary',20000,'retainedPointLimit',2016,
+            (SELECT jsonb_build_object('version','library.observation_sampling.v3',
+                'intervalMinutes',5,'libraryLimitPerVisit',1,'rowLimitPerVisit',20000,'maximumScanHours',168,'retainedPointLimit',2016,
                 'status',CASE WHEN last_sample_at IS NULL THEN 'awaiting_samples'
                     WHEN last_sample_at > clock.now THEN 'clock_anomaly'
                     WHEN last_sample_at < date_bin('5 minutes',clock.now,'2000-01-01T00:00:00Z'::timestamptz) - INTERVAL '5 minutes'

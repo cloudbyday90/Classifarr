@@ -4,8 +4,10 @@ import { libraryObservationSamplingFixture } from '../src/__tests__/fixtures/lib
 import { libraryObservationHealthFixture } from '../src/__tests__/fixtures/libraryObservationHealthFixture'
 import { libraryOverlapFixture } from '../src/__tests__/fixtures/libraryOverlapFixture'
 import { checkKeyboardScroll } from './support/observationTableKeyboard'
+import { incrementalLibraryCoverageFixture } from '../src/__tests__/fixtures/incrementalLibraryCoverageFixture'
 
-test('fair sampling shows isolated capacity, keyboard pagination and visit tables without operational requests', async ({ page }, testInfo) => {
+for (const incremental of [false, true]) {
+test(`${incremental ? 'incremental' : 'fair'} sampling shows bounded coverage, keyboard pagination and visit tables without operational requests`, async ({ page }, testInfo) => {
   let reads = 0
   let writes = 0
   await page.route(url => url.pathname.startsWith('/api/'), async route => {
@@ -21,14 +23,19 @@ test('fair sampling shows isolated capacity, keyboard pagination and visit table
       name: index === 0 ? 'Large archive' : `Collection ${index + 1}`, is_active: true, media_type: 'movie' }))
     if (path === '/api/libraries/observation-health') data = libraryObservationHealthFixture()
     if (path === '/api/libraries/overlap') data = libraryOverlapFixture()
-    if (path === '/api/libraries/observation-history') { reads++; data = libraryObservationSamplingFixture() }
+    if (path === '/api/libraries/observation-history') { reads++; data = incremental ? incrementalLibraryCoverageFixture() : libraryObservationSamplingFixture() }
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) })
   })
   await page.goto('/libraries')
   const section = page.getByRole('region', { name: 'Metadata acquisition progress', exact: true })
   await expect(section.getByRole('status').filter({ hasText: 'Acquisition history loaded.' })).toBeVisible()
   await expect(section.locator('h4')).toHaveCount(12)
-  await expect(section.getByText("Inventory exceeds 20,000 rows; this library's coverage is unknown.")).toBeVisible()
+  if (incremental) {
+    await expect(section.getByText('20000 rows scanned; more remain. Complete coverage is not available yet.')).toBeVisible()
+    await expect(section.getByText('Inputs changed before this visit could be saved. The scan will restart automatically.')).toBeVisible()
+  } else {
+    await expect(section.getByText("Inventory exceeds 20,000 rows; this library's coverage is unknown.")).toBeVisible()
+  }
   await section.getByRole('button', { name: 'Next libraries' }).focus()
   await page.keyboard.press('Enter')
   await expect(section.getByRole('heading', { name: 'Collection 13 (library 13)', exact: true })).toBeVisible()
@@ -50,3 +57,4 @@ test('fair sampling shows isolated capacity, keyboard pagination and visit table
   expect(reads).toBe(1)
   expect(writes).toBe(0)
 })
+}

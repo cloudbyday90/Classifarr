@@ -5,6 +5,7 @@ import { ValidationError } from '../utils/appError.mjs';
 import { libraryObservationHealthLimiterConfig } from '../config/rateLimits.mjs';
 import { readLibraryObservationHistory } from '../services/libraryObservationHistory.mjs';
 
+/** Legacy history plus v3 complete/partial visits; this GET never advances a scan. */
 export function registerObservationHistoryRoutes(router, { db }) {
     router.get('/observation-history', (req, res, next) => {
         res.set('Cache-Control', 'no-store');
