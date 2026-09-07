@@ -1,11 +1,8 @@
 import { OMDB_FALLBACK_REASON } from './enrichmentRetryService.mjs';
+import { isOmdbNotFoundMessage } from './omdbResponseClassifier.mjs';
 
 export function isExpectedOmdbMiss(errorMessage) {
-    const normalized = String(errorMessage || '').toLowerCase();
-    return normalized.includes('omdb not found') ||
-        normalized.includes('movie not found') ||
-        normalized.includes('series not found') ||
-        normalized.includes('error getting data');
+    return isOmdbNotFoundMessage(errorMessage);
 }
 
 export function isTransientOmdbTransportError(error) {

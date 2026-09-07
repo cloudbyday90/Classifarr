@@ -31,6 +31,8 @@ jest.unstable_mockModule('../services/enrichmentRetryService.mjs', () => createN
 const _enrichmentRetryService = mockEnrichmentRetryService;
 
 const { QueueOmdbEnrichmentService } = await import('../services/queueOmdbEnrichmentService.mjs');
+const { classifyOmdbResponse } = await import('../services/omdbResponseClassifier.mjs');
+const { createOmdbProviderError } = await import('../services/omdbProviderError.mjs');
 
 const makeOmdbService = () => ({ getByTitle: jest.fn() });
 const makeQueryWithTimeout = () => jest.fn().mockResolvedValue({});
@@ -309,6 +311,27 @@ describe('enrich — success', () => {
 // ---------------------------------------------------------------------------
 
 describe('handleError', () => {
+  test.each(['Invalid API key!', 'Error getting data.', 'private-fixture-key Movie not found!'])(
+    'keeps operational failure on OMDb retry without accepting evidence: %s', async Error => {
+      const svc = makeSvc();
+      svc.db.query.mockResolvedValue({ rows: [{ api_key: 'fixture' }] });
+      svc.omdbService.getByTitle.mockRejectedValue(createOmdbProviderError(
+        classifyOmdbResponse({ Response: 'False', Error })));
+      expect(await svc.enrich({ title: 'Fixture', itemId: 1, media_type: 'movie' }, {})).toEqual({});
+      expect(queueForRetry).toHaveBeenCalledWith(1, 'omdb', expect.any(String), 7);
+      expect(svc.setRuntimeState).not.toHaveBeenCalled();
+      expect(svc.queryWithTimeout).not.toHaveBeenCalled();
+      expect(JSON.stringify(queueForRetry.mock.calls)).not.toContain('private-fixture-key');
+    });
+
+  test('explicit provider exhaustion retains quota pause and web-search fallback', async () => {
+    const svc = makeSvc();
+    const error = createOmdbProviderError(classifyOmdbResponse({ Response: 'False', Error: 'Request limit reached!' }));
+    await svc.handleError({ itemId: 1 }, error);
+    expect(svc.setRuntimeState).toHaveBeenCalledWith({ omdbLimitHit: true });
+    expect(queueForRetry).toHaveBeenCalledWith(1, 'web_search', 'OMDb limit reached', 3);
+  });
+
   test('routes OMDbLimitReachedError to handleLimitReached', async () => {
     const svc = makeSvc();
     jest.spyOn(svc, 'handleLimitReached').mockResolvedValueOnce();

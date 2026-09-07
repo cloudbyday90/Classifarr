@@ -13,7 +13,7 @@ beforeEach(() => {
     omdbService._resetRateLimiter();
     db.query.mockResolvedValue({ rows: [{ id: 1, api_key: 'private-fixture-key', daily_limit: 10,
         requests_today: 0, last_reset_date: '2026-09-07', quota_day: '2026-09-07' }] });
-    httpGet.mockResolvedValue({ data: { Response: 'False' } });
+    httpGet.mockResolvedValue({ data: { Response: 'False', Error: 'Movie not found!' } });
 });
 
 test('does not dispatch until the transaction helper has committed', async () => {

@@ -8,6 +8,13 @@
  * (at your option) any later version.
  */
 
+function optionalNumber(value, { grouped = false } = {}) {
+    if (typeof value !== 'string' || !value.trim() || value === 'N/A') return null;
+    const normalized = grouped ? value.replace(/,/g, '') : value;
+    const number = Number(normalized);
+    return Number.isFinite(number) ? number : null;
+}
+
 export function formatResponse(data) {
 	return {
 		title: data.Title,
@@ -23,19 +30,19 @@ export function formatResponse(data) {
 		language: data.Language,
 		country: data.Country,
 		awards: data.Awards,
-		poster: data.Poster !== 'N/A' ? data.Poster : null,
+		poster: data.Poster !== 'N/A' ? data.Poster ?? null : null,
 		ratings: data.Ratings?.map(r => ({
 			source: r.Source,
 			value: r.Value
 		})) || [],
-		metascore: data.Metascore !== 'N/A' ? parseInt(data.Metascore) : null,
-		imdbRating: data.imdbRating !== 'N/A' ? parseFloat(data.imdbRating) : null,
-		imdbVotes: data.imdbVotes !== 'N/A' ? parseInt(data.imdbVotes.replace(/,/g, '')) : null,
+		metascore: optionalNumber(data.Metascore),
+		imdbRating: optionalNumber(data.imdbRating),
+		imdbVotes: optionalNumber(data.imdbVotes, { grouped: true }),
 		imdbId: data.imdbID,
 		type: data.Type,
-		boxOffice: data.BoxOffice !== 'N/A' ? data.BoxOffice : null,
-		production: data.Production !== 'N/A' ? data.Production : null,
-		totalSeasons: data.totalSeasons ? parseInt(data.totalSeasons) : null
+		boxOffice: data.BoxOffice !== 'N/A' ? data.BoxOffice ?? null : null,
+		production: data.Production !== 'N/A' ? data.Production ?? null : null,
+		totalSeasons: optionalNumber(data.totalSeasons)
 	};
 }
 

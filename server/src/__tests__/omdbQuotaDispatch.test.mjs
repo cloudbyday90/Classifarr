@@ -32,7 +32,7 @@ test.each(lookups)('%s reserves once before successful dispatch and uses the res
     httpGet.mockImplementation(async (_url, options) => {
         expect(deps.checkAndIncrementUsage).toHaveBeenCalledTimes(1);
         expect(options.params.apikey).toBe('reserved-fixture');
-        return { data: { Response: 'True', Title: 'Fixture', Type: 'movie', imdbVotes: 'N/A', Ratings: [], Search: [] } };
+        return { data: { Response: 'True', Title: 'Fixture', imdbID: 'tt0000001', Type: 'movie', imdbVotes: 'N/A', Ratings: [], Search: [] } };
     });
     await run();
     expect(httpGet).toHaveBeenCalledTimes(1);
@@ -46,10 +46,9 @@ test.each(lookups)('%s keeps its reservation for a not-found response', async (_
     expect(deps.checkAndIncrementUsage).toHaveBeenCalledTimes(1);
 });
 
-test.each(lookups)('%s fails closed on a quota database error without HTTP or provider retry', async (name, run) => {
+test.each(lookups)('%s fails closed on a quota database error without HTTP or provider retry', async (_name, run) => {
     deps.checkAndIncrementUsage.mockRejectedValue(Object.assign(new Error('quota unavailable'), { code: 'ECONNRESET' }));
-    if (name === 'search') expect(await run()).toEqual([]);
-    else await expect(run()).rejects.toThrow('quota unavailable');
+    await expect(run()).rejects.toThrow('quota unavailable');
     expect(httpGet).not.toHaveBeenCalled();
     expect(deps.checkAndIncrementUsage).toHaveBeenCalledTimes(1);
     expect(deps.calculateRetryBackoff).not.toHaveBeenCalled();
@@ -72,7 +71,7 @@ test.each(lookups.slice(0, 2))('%s stops retries when the next reservation is de
 });
 
 test('pacing completes before quota reservation', async () => {
-    httpGet.mockResolvedValue({ data: { Response: 'False' } });
+    httpGet.mockResolvedValue({ data: { Response: 'False', Error: 'Movie not found!' } });
     await getByIMDBId('tt0000001', null, deps);
     const firstReservations = deps.checkAndIncrementUsage.mock.calls.length;
     sleep.mockImplementation(async () => {

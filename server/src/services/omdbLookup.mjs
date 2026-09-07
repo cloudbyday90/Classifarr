@@ -15,6 +15,8 @@ import { createLogger } from '../utils/logger.mjs';
 import { isCertificateError } from './omdbHealth.mjs';
 import { formatResponse } from './omdbResponse.mjs';
 import { OMDbLimitReachedError } from './omdbQuota.mjs';
+import { classifyOmdbResponse } from './omdbResponseClassifier.mjs';
+import { OMDbProviderError, createOmdbProviderError } from './omdbProviderError.mjs';
 
 const logger = createLogger('OMDbService');
 
@@ -82,14 +84,32 @@ async function executeLookupWithRetry({ buildParams, logLabel, sourceLabel, look
 				timeout: requestTimeoutMs,
 			});
 
-			if (response.data.Response === 'True') {
+			const outcome = classifyOmdbResponse(response.data, response.status);
+			if (outcome.kind === 'success') {
 				return formatResponse(response.data);
 			}
-
-			logger.debug('OMDb not found', { [logLabel]: lookupValue, error: response.data.Error });
+			if (outcome.kind !== 'not_found') throw createOmdbProviderError(outcome);
+			logger.debug('OMDb not found', { [logLabel]: lookupValue });
 			return null;
 		} catch (error) {
 			const status = error.response?.status;
+			if (error.response) {
+				const outcome = classifyOmdbResponse(error.response.data, status);
+				if (['authentication', 'quota_exhausted'].includes(outcome.kind) ||
+					(status >= 400 && status < 500 && status !== 429)) {
+					error = createOmdbProviderError(outcome);
+				} else {
+					// Retry diagnostics need the status, never an upstream body or request credential.
+					error = new Error('OMDb HTTP request failed');
+					error.response = { status };
+				}
+			}
+			if (error instanceof OMDbProviderError || error instanceof OMDbLimitReachedError) {
+				logger.warn(error.message, { source: logLabel, status, code: error.code }, {
+					dedupeKey: `omdb_response_${error.code || error.name}`, dedupeWindowMs: 30 * 60 * 1000,
+				});
+				throw error;
+			}
 			const msg = (error.message || '').toLowerCase();
 			const isTimeout = error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT';
 			const isTransientNetworkError = isTimeout ||
@@ -122,19 +142,6 @@ async function executeLookupWithRetry({ buildParams, logLabel, sourceLabel, look
 
 				await sleepFor(delay);
 				continue;
-			}
-
-			if (status === 401) {
-				// A 401 means an invalid API key or an exhausted daily quota — a
-				// recoverable configuration/quota condition, not a system fault. The
-				// caller (QueueService) pauses OMDb enrichment on the thrown
-				// OMDbLimitReachedError, so log at WARN without a stack trace and
-				// dedupe to avoid flooding the error log with one entry per item.
-				logger.warn('OMDb API Unauthorized (401) - check API key or daily limit', {
-					[logLabel]: lookupValue,
-					status,
-				}, { dedupeKey: 'omdb_unauthorized_401', dedupeWindowMs: 30 * 60 * 1000 });
-				throw new OMDbLimitReachedError('OMDb API Unauthorized: Check API Key or Limits');
 			}
 
 			if (isTransientNetworkError || isCloudflareError) {
@@ -219,11 +226,9 @@ export async function getByIMDBId(imdbId, _apiKey, deps) {
 
 export async function search(query, type, _apiKey, deps) {
 	const { checkAndIncrementUsage, baseUrl } = deps;
+	await enforceRateLimit();
+	const { apiKey: validApiKey } = await checkAndIncrementUsage();
 	try {
-		await enforceRateLimit();
-
-		const { apiKey: validApiKey } = await checkAndIncrementUsage();
-
 		const response = await httpGet(baseUrl, {
 			params: {
 				apikey: validApiKey,
@@ -232,7 +237,8 @@ export async function search(query, type, _apiKey, deps) {
 			},
 		});
 
-		if (response.data.Response === 'True') {
+		const outcome = classifyOmdbResponse(response.data, response.status, 'search');
+		if (outcome.kind === 'success') {
 			return response.data.Search.map(item => ({
 				title: item.Title,
 				year: item.Year,
@@ -242,10 +248,12 @@ export async function search(query, type, _apiKey, deps) {
 			}));
 		}
 
-		return [];
+		if (outcome.kind === 'not_found') return [];
+		throw createOmdbProviderError(outcome);
 	} catch (error) {
-		if (error instanceof OMDbLimitReachedError) return [];
-		logger.error('OMDb search error', { query, error: error.message });
-		return [];
+		if (error.response) {
+			throw createOmdbProviderError(classifyOmdbResponse(error.response.data, error.response.status, 'search'));
+		}
+		throw error;
 	}
 }

@@ -307,6 +307,22 @@ describe('healthCheckService - all service checks', () => {
   // checkOMDb
   // -------------------------------------------------------------------------
   describe('checkOMDb', () => {
+    test.each([
+      { success: false, error: 'OMDb authentication failed; check the API key' },
+      { success: false, error: 'OMDb provider request limit reached' },
+      null, undefined, {},
+    ])('preserves last success when the probe resolves a failure %#', async probeResult => {
+      db.query.mockResolvedValue({ rows: [{ api_key: 'omdb-key' }] });
+      omdbService.testConnection.mockResolvedValueOnce({ success: true });
+      const healthy = await svc.checkOMDb();
+      omdbService.testConnection.mockResolvedValueOnce(probeResult);
+      const failed = await svc.checkOMDb();
+      expect(failed.status).toBe('disconnected');
+      expect(failed.lastSuccessfulCheck).toBe(healthy.lastSuccessfulCheck);
+      expect(failed.previousStatus).toBe('connected');
+      expect(failed.error).toBe(probeResult?.error || 'OMDb connection test failed');
+    });
+
     test('returns not configured when no api key', async () => {
       db.query.mockResolvedValueOnce({ rows: [] });
       const result = await svc.checkOMDb();
@@ -315,7 +331,7 @@ describe('healthCheckService - all service checks', () => {
 
     test('returns connected on successful testConnection', async () => {
       db.query.mockResolvedValueOnce({ rows: [{ api_key: 'omdb-key' }] });
-      omdbService.testConnection.mockResolvedValueOnce(true);
+      omdbService.testConnection.mockResolvedValueOnce({ success: true });
 
       const result = await svc.checkOMDb();
       expect(result.status).toBe('connected');

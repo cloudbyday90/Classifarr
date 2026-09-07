@@ -9,6 +9,7 @@
  */
 
 import { httpGet } from '../utils/httpClient.mjs';
+import { classifyOmdbResponse } from './omdbResponseClassifier.mjs';
 
 export function isCertificateError(error) {
 	if (!error) {
@@ -28,85 +29,37 @@ export function getCertificateErrorSignature(error) {
 	return `${code}:${message}`;
 }
 
+// Probes test explicit (including unsaved) credentials outside the local lookup budget.
+async function probe(baseUrl, params) {
+    try {
+        const response = await httpGet(baseUrl, { params, timeout: 10000 });
+        return { ...classifyOmdbResponse(response.data, response.status),
+            reachable: true, sslError: false, data: response.data };
+    } catch (error) {
+        if (error.response) {
+            return { ...classifyOmdbResponse(error.response.data, error.response.status),
+                reachable: true, sslError: false };
+        }
+        const sslError = isCertificateError(error);
+        return { kind: 'transport_error', reachable: false, sslError,
+            message: sslError ? 'OMDb SSL certificate validation failed' : 'OMDb connection failed' };
+    }
+}
+
 export async function testConnection(baseUrl, apiKey) {
-	try {
-		const response = await httpGet(baseUrl, {
-			params: {
-				apikey: apiKey,
-				t: 'The Matrix',
-				y: 1999,
-			},
-		});
-
-		if (response.data.Response === 'True') {
-			return { success: true, message: 'OMDb connection successful', data: response.data };
-		}
-
-		return { success: false, error: response.data.Error || 'Unknown error' };
-	} catch (error) {
-		return { success: false, error: error.message };
-	}
+    const outcome = await probe(baseUrl, { apikey: apiKey, t: 'The Matrix', y: 1999 });
+    return outcome.kind === 'success'
+        ? { success: true, message: 'OMDb connection successful', data: outcome.data }
+        : { success: false, error: outcome.message };
 }
 
 export async function checkHealth(baseUrl, apiKey) {
-	try {
-		const response = await httpGet(baseUrl, {
-			params: {
-				apikey: apiKey,
-				t: 'Test',
-			},
-			timeout: 10000,
-		});
-
-		if (response.data.Response === 'True' || response.data.Response === 'False') {
-			return {
-				healthy: true,
-				ssl_error: false,
-				api_reachable: true,
-				message: 'OMDb API is healthy'
-			};
-		}
-
-		return {
-			healthy: false,
-			ssl_error: false,
-			api_reachable: true,
-			message: 'Unexpected API response format'
-		};
-	} catch (error) {
-		const isCertError = isCertificateError(error);
-
-		if (isCertError) {
-			return {
-				healthy: false,
-				ssl_error: true,
-				api_reachable: false,
-				message: `SSL certificate issue: ${error.message}. OMDb enrichment will be skipped until the certificate is renewed.`
-			};
-		}
-
-		const msg = (error.message || '').toLowerCase();
-		const isNetworkError = error.code === 'ECONNREFUSED' ||
-			error.code === 'ENOTFOUND' ||
-			error.code === 'ETIMEDOUT' ||
-			error.code === 'ECONNRESET' ||
-			error.code === 'EAI_AGAIN' ||
-			msg.includes('socket hang up');
-
-		if (isNetworkError) {
-			return {
-				healthy: false,
-				ssl_error: false,
-				api_reachable: false,
-				message: `Network error: ${error.message}`
-			};
-		}
-
-		return {
-			healthy: false,
-			ssl_error: false,
-			api_reachable: false,
-			message: error.message
-		};
-	}
+    const outcome = await probe(baseUrl, { apikey: apiKey, t: 'Test' });
+    const healthy = outcome.kind === 'success' || outcome.kind === 'not_found';
+    return {
+        healthy,
+        ssl_error: outcome.sslError,
+        api_reachable: outcome.reachable,
+        message: healthy ? 'OMDb API is healthy' : outcome.message,
+    };
 }

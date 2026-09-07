@@ -46,7 +46,10 @@ export async function checkOMDb(previous) {
         }
 
         const result = await measureTime(async () => {
-            await omdbService.testConnection(config.api_key);
+            const connection = await omdbService.testConnection(config.api_key);
+            if (connection?.success !== true) {
+                throw new Error(connection?.error || 'OMDb connection test failed');
+            }
         });
 
         return buildTimedResultHealthState(previous, result);

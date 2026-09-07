@@ -167,3 +167,12 @@ a read-only transaction, with no provider probes. The new startup/smoke sample
 contained seven slow-query warnings and zero error/fatal records. The next issue
 is distinguishing OMDb error responses from missing metadata and healthy service
 availability.
+
+## OMDb response follow-up
+
+The [response classification outcome](omdb-response-classification-outcome.md)
+records the repair for false misses and false health. Shared ESM classification
+keeps credential, quota and provider failures separate from absent evidence;
+dashboard health now respects the actual connection result. No additional
+operator workflow or classification authority is introduced. Transport response
+byte limits are the next recommended hardening step.

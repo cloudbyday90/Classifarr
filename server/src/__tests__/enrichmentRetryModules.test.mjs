@@ -170,7 +170,7 @@ describe('OMDb fallback bridge', () => {
   test.each([
     ['OMDb not found', true],
     ['Movie not found!', true],
-    ['Error getting data from OMDb', true],
+    ['Error getting data from OMDb', false],
     ['Invalid API key', false],
   ])('classifies OMDb miss messages safely: %s', (message, expected) => {
     expect(isExpectedOmdbMiss(message)).toBe(expected);

@@ -210,7 +210,7 @@ describe('OMDb Integration Tests', () => {
             expect(mockHttpGet).toHaveBeenCalledTimes(2);
         }, 10000);
 
-        it('should NOT throw on 401 errors (throws OMDbLimitReachedError)', async () => {
+        it('throws an authentication failure on HTTP 401', async () => {
             mockHttpGet.mockRejectedValueOnce({
                 response: { status: 401 },
                 message: 'Unauthorized'
@@ -218,7 +218,7 @@ describe('OMDb Integration Tests', () => {
 
             await expect(
                 omdbService.getByTitle('Test 401', 2020, 'movie')
-            ).rejects.toThrow('Unauthorized');
+            ).rejects.toThrow('OMDb authentication failed');
         }, 10000);
 
         it('should return null on not-found responses', async () => {

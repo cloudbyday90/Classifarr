@@ -797,6 +797,11 @@ attempts. Concurrent workers share one budget with a UTC day boundary; connectio
 tests and usage by other applications are separate. See the
 [quota design](docs/architecture/omdb-quota-reservation-design.md) and
 [validation outcome](docs/architecture/omdb-quota-reservation-outcome.md).
+OMDb responses now distinguish confirmed misses from credential, quota and provider
+failures. Health checks honor failed connection tests, and optional metadata no
+longer causes formatting errors. See the
+[response design](docs/architecture/omdb-response-classification-design.md) and
+[validation outcome](docs/architecture/omdb-response-classification-outcome.md).
 Malformed observations repair automatically after cooldown using the full
 attributable observation validator. Bounded background passes advance past fresh
 records, while valid empty captures remain cached. See the

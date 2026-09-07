@@ -282,6 +282,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- OMDb lookups and health checks now distinguish missing titles from credential,
+  quota and malformed-response failures, preserving reliable enrichment evidence
+  and accurate service health without additional operator steps.
+
 - **Atomic OMDb quota admission** — Reserve local quota before each lookup attempt,
   including retries and failures, so concurrent requests cannot overrun the limit.
   Reset accounting together at the UTC day boundary and preserve usage during
