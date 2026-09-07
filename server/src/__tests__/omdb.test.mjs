@@ -23,7 +23,7 @@ jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
   httpStream: jest.fn(),
   createHttpClient: jest.fn(),
   defaultHttpClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() },
-}));const mockDb = { query: jest.fn() };
+}));const mockDb = { query: jest.fn(), withTransaction: async work => work(mockDb) };
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 const mockLogger = {
@@ -100,6 +100,7 @@ describe('OMDbService', () => {
                 rows: [{
                     id: 1,
                     api_key: 'test-key',
+                    quota_day: today,
                     last_reset_date: today,
                     requests_today: 0,
                     daily_limit: 1000
@@ -112,14 +113,14 @@ describe('OMDbService', () => {
                 code: undefined  // Explicitly no error code
             });
 
-            const incrementSpy = jest.spyOn(omdbService, 'incrementUsageCounter');
+            const reservationSpy = jest.spyOn(omdbService, 'checkAndIncrementUsage');
 
             // Should now throw instead of returning null to trigger Tavily fallback
             await expect(omdbService.getByTitle('The Goldbergs', 2013, 'series')).rejects.toBeDefined();
 
             // Should retry once before throwing
             expect(mockHttpGet).toHaveBeenCalledTimes(2);
-            expect(incrementSpy).not.toHaveBeenCalled();
+            expect(reservationSpy).toHaveBeenCalledTimes(2);
         });
 
         it('should retry and throw on other Cloudflare errors (520, 521, 522)', async () => {
@@ -133,6 +134,7 @@ describe('OMDbService', () => {
                     rows: [{
                         id: 1,
                         api_key: 'test-key',
+                        quota_day: today,
                         last_reset_date: today,
                         requests_today: 0,
                         daily_limit: 1000
@@ -145,14 +147,14 @@ describe('OMDbService', () => {
                     code: undefined  // Explicitly no error code
                 });
 
-                const incrementSpy = jest.spyOn(omdbService, 'incrementUsageCounter');
+                const reservationSpy = jest.spyOn(omdbService, 'checkAndIncrementUsage');
 
                 // Should now throw instead of returning null to trigger Tavily fallback
                 await expect(omdbService.getByTitle('Test Movie', 2020, 'movie')).rejects.toBeDefined();
 
                 // Should retry once before throwing
                 expect(mockHttpGet).toHaveBeenCalledTimes(2);
-                expect(incrementSpy).not.toHaveBeenCalled();
+                expect(reservationSpy).toHaveBeenCalledTimes(2);
             }
         });
 
@@ -162,6 +164,7 @@ describe('OMDbService', () => {
                 rows: [{
                     id: 1,
                     api_key: 'test-key',
+                    quota_day: today,
                     last_reset_date: today,
                     requests_today: 0,
                     daily_limit: 1000
@@ -190,6 +193,7 @@ describe('OMDbService', () => {
                     rows: [{
                         id: 1,
                         api_key: 'test-key',
+                        quota_day: today,
                         last_reset_date: today,
                         requests_today: 0,
                         daily_limit: 1000
@@ -217,6 +221,7 @@ describe('OMDbService', () => {
                 rows: [{
                     id: 1,
                     api_key: 'test-key',
+                    quota_day: today,
                     last_reset_date: today,
                     requests_today: 0,
                     daily_limit: 1000
@@ -270,6 +275,7 @@ describe('OMDbService', () => {
                 rows: [{
                     id: 1,
                     api_key: 'test-key',
+                    quota_day: today,
                     last_reset_date: today,
                     requests_today: 0,
                     daily_limit: 1000
@@ -301,6 +307,7 @@ describe('OMDbService', () => {
                 rows: [{
                     id: 1,
                     api_key: 'test-key',
+                    quota_day: today,
                     last_reset_date: today,
                     requests_today: 0,
                     daily_limit: 1000
@@ -332,6 +339,7 @@ describe('OMDbService', () => {
                 rows: [{
                     id: 1,
                     api_key: 'test-key',
+                    quota_day: today,
                     last_reset_date: today,
                     requests_today: 0,
                     daily_limit: 1000
@@ -360,6 +368,7 @@ describe('OMDbService', () => {
                 rows: [{
                     id: 1,
                     api_key: 'test-key',
+                    quota_day: today,
                     last_reset_date: today,
                     requests_today: 0,
                     daily_limit: 1000
@@ -385,6 +394,7 @@ describe('OMDbService', () => {
                 rows: [{
                     id: 1,
                     api_key: 'test-key',
+                    quota_day: today,
                     last_reset_date: today,
                     requests_today: 0,
                     daily_limit: 1000
@@ -413,6 +423,7 @@ describe('OMDbService', () => {
                 rows: [{
                     id: 1,
                     api_key: 'test-key',
+                    quota_day: today,
                     last_reset_date: today,
                     requests_today: 0,
                     daily_limit: 1000
@@ -439,6 +450,7 @@ describe('OMDbService', () => {
                 rows: [{
                     id: 1,
                     api_key: 'test-key',
+                    quota_day: today,
                     last_reset_date: today,
                     requests_today: 0,
                     daily_limit: 1000
@@ -480,6 +492,7 @@ describe('OMDbService', () => {
                 rows: [{
                     id: 1,
                     api_key: 'test-key',
+                    quota_day: today,
                     last_reset_date: today,
                     requests_today: 0,
                     daily_limit: 1000
@@ -508,6 +521,7 @@ describe('OMDbService', () => {
                 rows: [{
                     id: 1,
                     api_key: 'test-key',
+                    quota_day: today,
                     last_reset_date: today,
                     requests_today: 0,
                     daily_limit: 1000
@@ -529,11 +543,12 @@ describe('OMDbService', () => {
 
     describe('hasRemainingQuota', () => {
         it('should return available when under limit', async () => {
-            const today = new Date().toLocaleDateString('en-CA');
+            const today = new Date().toISOString().split('T')[0];
             db.query.mockResolvedValue({
                 rows: [{
                     id: 1,
                     api_key: 'test-key',
+                    quota_day: today,
                     last_reset_date: today,
                     requests_today: 50,
                     daily_limit: 1000
@@ -548,11 +563,12 @@ describe('OMDbService', () => {
         });
 
         it('should return unavailable when at limit', async () => {
-            const today = new Date().toLocaleDateString('en-CA');
+            const today = new Date().toISOString().split('T')[0];
             db.query.mockResolvedValue({
                 rows: [{
                     id: 1,
                     api_key: 'test-key',
+                    quota_day: today,
                     last_reset_date: today,
                     requests_today: 1000,
                     daily_limit: 1000
@@ -567,11 +583,12 @@ describe('OMDbService', () => {
         });
 
         it('should return unavailable when over limit', async () => {
-            const today = new Date().toLocaleDateString('en-CA');
+            const today = new Date().toISOString().split('T')[0];
             db.query.mockResolvedValue({
                 rows: [{
                     id: 1,
                     api_key: 'test-key',
+                    quota_day: today,
                     last_reset_date: today,
                     requests_today: 1005,
                     daily_limit: 1000
@@ -585,11 +602,12 @@ describe('OMDbService', () => {
         });
 
         it('should reset counter if new day', async () => {
-            const yesterday = new Date(Date.now() - 86400000).toLocaleDateString('en-CA');
+            const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
             db.query.mockResolvedValue({
                 rows: [{
                     id: 1,
                     api_key: 'test-key',
+                    quota_day: new Date().toISOString().split('T')[0],
                     last_reset_date: yesterday,
                     requests_today: 1000,
                     daily_limit: 1000
@@ -617,15 +635,16 @@ describe('OMDbService', () => {
             const result = await omdbService.hasRemainingQuota();
 
             expect(result.available).toBe(false);
-            expect(result.reason).toBe('Database error');
+            expect(result.reason).toBe('OMDb quota is unavailable');
         });
 
         it('dedupes daily limit warnings through metadata provider integrity service', async () => {
-            const today = new Date().toLocaleDateString('en-CA');
+            const today = new Date().toISOString().split('T')[0];
             db.query.mockResolvedValue({
                 rows: [{
                     id: 1,
                     api_key: 'test-key',
+                    quota_day: today,
                     last_reset_date: today,
                     requests_today: 1000,
                     daily_limit: 1000
@@ -651,6 +670,7 @@ describe('OMDbService', () => {
                 rows: [{
                     id: 1,
                     api_key: 'test-key',
+                    quota_day: today,
                     last_reset_date: today,
                     requests_today: 0,
                     daily_limit: 1000

@@ -98,7 +98,8 @@ blocking, retained inactive credentials, and conservative OMDb usage aggregation
 Do not introduce cache invalidation or a unique active-row index without evidence
 that their additional state or upgrade constraints are needed.
 
-Next, make **OMDb quota admission atomic**. `omdbQuota.mjs` currently checks usage
+The subsequent [atomic OMDb quota outcome](omdb-quota-reservation-outcome.md)
+addresses the next finding below. At this revision, `omdbQuota.mjs` checks usage
 and returns a key/row ID; `incrementUsageCounter` runs later. Concurrent requests
 can all pass the same remaining-quota check. Day-reset writes can also race with
 increments. Use a database-side reservation tied to the selected row, define the

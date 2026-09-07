@@ -282,6 +282,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Atomic OMDb quota admission** — Reserve local quota before each lookup attempt,
+  including retries and failures, so concurrent requests cannot overrun the limit.
+  Reset accounting together at the UTC day boundary and preserve usage during
+  configuration changes without adding operator steps.
+
 - **Reliable metadata provider configuration** — Use consistent provider selection,
   prevent duplicate active settings on concurrent saves and repeated restores,
   preserve OMDb usage, and apply TMDb credential rotations immediately. Equivalent

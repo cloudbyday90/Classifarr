@@ -23,7 +23,7 @@ jest.unstable_mockModule('../utils/httpClient.mjs', () => ({
   httpStream: jest.fn(),
   createHttpClient: jest.fn(),
   defaultHttpClient: { get: jest.fn(), post: jest.fn(), put: jest.fn(), delete: jest.fn() },
-}));const mockDb = { query: jest.fn() };
+}));const mockDb = { query: jest.fn(), withTransaction: async work => work(mockDb) };
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 const mockLogger = {
@@ -108,6 +108,7 @@ function setupDbMock() {
         rows: [{
             id: 1,
             api_key: 'test-api-key',
+            quota_day: today,
             last_reset_date: today,
             requests_today: 0,
             daily_limit: 1000

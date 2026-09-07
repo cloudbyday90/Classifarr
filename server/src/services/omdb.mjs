@@ -12,7 +12,7 @@ import * as runtimeSettings from '../config/runtimeSettings.mjs';
 import { metadataProviderIntegrityService } from './metadataProviderIntegrityService.mjs';
 import * as retryUtils from '../utils/retryUtils.mjs';
 import { getCertificateErrorSignature } from './omdbHealth.mjs';
-import { OMDbLimitReachedError, hasRemainingQuota, checkAndIncrementUsage, incrementUsageCounter } from './omdbQuota.mjs';
+import { OMDbLimitReachedError, hasRemainingQuota, checkAndIncrementUsage } from './omdbQuota.mjs';
 import { testConnection, checkHealth } from './omdbHealth.mjs';
 import { formatResponse, extractClassificationData } from './omdbResponse.mjs';
 import { getByTitle, getByIMDBId, search, resetRateLimiterState } from './omdbLookup.mjs';
@@ -58,10 +58,6 @@ class OMDbService {
 		});
 	}
 
-	async incrementUsageCounter(configId) {
-		return incrementUsageCounter(configId);
-	}
-
 	async testConnection(apiKey) {
 		return testConnection(this.baseUrl, apiKey);
 	}
@@ -73,7 +69,6 @@ class OMDbService {
 	async getByTitle(title, year, type, apiKey) {
 		return getByTitle(title, year, type, apiKey, {
 			checkAndIncrementUsage: () => this.checkAndIncrementUsage(),
-			incrementUsageCounter: (id) => this.incrementUsageCounter(id),
 			calculateRetryBackoff: (attempt, opts) => this.calculateRetryBackoff(attempt, opts),
 			shouldLogSslWarning: (err) => this.shouldLogSslWarning(err),
 			warnProviderRuntimeFailure: (opts) => this.metadataProviderIntegrityService.warnProviderRuntimeFailure(opts),
@@ -84,7 +79,6 @@ class OMDbService {
 	async getByIMDBId(imdbId, apiKey) {
 		return getByIMDBId(imdbId, apiKey, {
 			checkAndIncrementUsage: () => this.checkAndIncrementUsage(),
-			incrementUsageCounter: (id) => this.incrementUsageCounter(id),
 			calculateRetryBackoff: (attempt, opts) => this.calculateRetryBackoff(attempt, opts),
 			shouldLogSslWarning: (err) => this.shouldLogSslWarning(err),
 			warnProviderRuntimeFailure: (opts) => this.metadataProviderIntegrityService.warnProviderRuntimeFailure(opts),
@@ -95,7 +89,6 @@ class OMDbService {
 	async search(query, type, apiKey) {
 		return search(query, type, apiKey, {
 			checkAndIncrementUsage: () => this.checkAndIncrementUsage(),
-			incrementUsageCounter: (id) => this.incrementUsageCounter(id),
 			baseUrl: this.baseUrl,
 		});
 	}

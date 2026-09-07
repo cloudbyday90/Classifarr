@@ -58,28 +58,24 @@ export function resetRateLimiterState() {
 async function executeLookupWithRetry({ buildParams, logLabel, sourceLabel, lookupValue }, deps) {
 	const {
 		checkAndIncrementUsage,
-		incrementUsageCounter,
 		calculateRetryBackoff,
 		shouldLogSslWarning,
 		warnProviderRuntimeFailure,
 		baseUrl,
 	} = deps;
 
-	let configId = null;
 	const omdbRuntime = runtimeSettings.getOmdbRuntimeConfig();
 	const maxRetries = omdbRuntime.maxRetries;
 
 	for (let attempt = 0; attempt < maxRetries; attempt++) {
 		const requestTimeoutMs = getAttemptTimeoutMs(attempt, omdbRuntime);
+		await enforceRateLimit();
+		// Admission failures never enter provider retry handling. No DB lock spans HTTP.
+		const { apiKey: validApiKey } = await checkAndIncrementUsage();
 		try {
-			const { apiKey: validApiKey, configId: id } = await checkAndIncrementUsage();
-			configId = id;
-
 			const params = buildParams(validApiKey);
 
 			logger.debug(`OMDb lookup by ${logLabel}`, { [logLabel]: lookupValue, attempt: attempt + 1 });
-
-			await enforceRateLimit();
 
 			const response = await httpGet(baseUrl, {
 				params,
@@ -87,7 +83,6 @@ async function executeLookupWithRetry({ buildParams, logLabel, sourceLabel, look
 			});
 
 			if (response.data.Response === 'True') {
-				await incrementUsageCounter(configId);
 				return formatResponse(response.data);
 			}
 
@@ -223,13 +218,11 @@ export async function getByIMDBId(imdbId, _apiKey, deps) {
 }
 
 export async function search(query, type, _apiKey, deps) {
-	const { checkAndIncrementUsage, incrementUsageCounter, baseUrl } = deps;
-	let configId = null;
+	const { checkAndIncrementUsage, baseUrl } = deps;
 	try {
 		await enforceRateLimit();
 
-		const { apiKey: validApiKey, configId: id } = await checkAndIncrementUsage();
-		configId = id;
+		const { apiKey: validApiKey } = await checkAndIncrementUsage();
 
 		const response = await httpGet(baseUrl, {
 			params: {
@@ -240,7 +233,6 @@ export async function search(query, type, _apiKey, deps) {
 		});
 
 		if (response.data.Response === 'True') {
-			await incrementUsageCounter(configId);
 			return response.data.Search.map(item => ({
 				title: item.Title,
 				year: item.Year,
@@ -252,6 +244,7 @@ export async function search(query, type, _apiKey, deps) {
 
 		return [];
 	} catch (error) {
+		if (error instanceof OMDbLimitReachedError) return [];
 		logger.error('OMDb search error', { query, error: error.message });
 		return [];
 	}

@@ -63,7 +63,7 @@
           class="bg-gray-800 p-4 rounded-lg border border-gray-700"
         >
           <div class="flex justify-between items-center mb-2">
-            <span class="text-sm font-medium text-gray-300">Daily Usage</span>
+            <span class="text-sm font-medium text-gray-300">Recorded Local Lookup Attempts</span>
             <span
               class="text-sm"
               :class="usagePercentage >= 90 ? 'text-red-400' : 'text-gray-400'"
@@ -79,7 +79,7 @@
             />
           </div>
           <p class="text-xs text-gray-500 mt-2 flex justify-between">
-            <span>Resets strictly at implementation logic reset time (UTC/Local)</span>
+            <span>New UTC days reset on the next lookup. Retries and failed attempts count; connection tests are separate.</span>
             <span v-if="usage.last_reset_date">Last reset: {{ new Date(usage.last_reset_date).toLocaleDateString() }}</span>
           </p>
         </div>

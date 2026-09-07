@@ -792,6 +792,11 @@ configuration identity across saves and restores. Equivalent legacy duplicates
 consolidate automatically; distinct configurations remain visible in diagnostics.
 See the [provider design](docs/architecture/metadata-provider-selection-design.md)
 and [validation outcome](docs/architecture/metadata-provider-selection-outcome.md).
+OMDb lookups now reserve local quota before dispatch, including retries and failed
+attempts. Concurrent workers share one budget with a UTC day boundary; connection
+tests and usage by other applications are separate. See the
+[quota design](docs/architecture/omdb-quota-reservation-design.md) and
+[validation outcome](docs/architecture/omdb-quota-reservation-outcome.md).
 Malformed observations repair automatically after cooldown using the full
 attributable observation validator. Bounded background passes advance past fresh
 records, while valid empty captures remain cached. See the
