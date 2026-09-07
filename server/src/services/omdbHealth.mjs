@@ -10,6 +10,7 @@
 
 import { httpGet } from '../utils/httpClient.mjs';
 import { classifyOmdbResponse } from './omdbResponseClassifier.mjs';
+import { OMDB_MAX_RESPONSE_BYTES } from './omdbRequestPolicy.mjs';
 
 export function isCertificateError(error) {
 	if (!error) {
@@ -32,10 +33,15 @@ export function getCertificateErrorSignature(error) {
 // Probes test explicit (including unsaved) credentials outside the local lookup budget.
 async function probe(baseUrl, params) {
     try {
-        const response = await httpGet(baseUrl, { params, timeout: 10000 });
+        const response = await httpGet(baseUrl, { params, timeout: 10000,
+            maxResponseBytes: OMDB_MAX_RESPONSE_BYTES });
         return { ...classifyOmdbResponse(response.data, response.status),
             reachable: true, sslError: false, data: response.data };
     } catch (error) {
+        if (error.code === 'HTTP_RESPONSE_TOO_LARGE') {
+            return { kind: 'response_too_large', reachable: true, sslError: false,
+                message: 'OMDb response exceeds the allowed size' };
+        }
         if (error.response) {
             return { ...classifyOmdbResponse(error.response.data, error.response.status),
                 reachable: true, sslError: false };

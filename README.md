@@ -802,6 +802,11 @@ failures. Health checks honor failed connection tests, and optional metadata no
 longer causes formatting errors. See the
 [response design](docs/architecture/omdb-response-classification-design.md) and
 [validation outcome](docs/architecture/omdb-response-classification-outcome.md).
+OMDb requests now enforce a 1 MiB decoded-response budget while reading the body;
+image downloads enforce their existing 10 MiB limit during transfer. Other
+buffered HTTP callers can opt into a suitable budget. See the
+[HTTP limits design](docs/architecture/http-response-limits-design.md) and
+[validation outcome](docs/architecture/http-response-limits-outcome.md).
 Malformed observations repair automatically after cooldown using the full
 attributable observation validator. Bounded background passes advance past fresh
 records, while valid empty captures remain cached. See the

@@ -17,6 +17,7 @@ import { formatResponse } from './omdbResponse.mjs';
 import { OMDbLimitReachedError } from './omdbQuota.mjs';
 import { classifyOmdbResponse } from './omdbResponseClassifier.mjs';
 import { OMDbProviderError, createOmdbProviderError } from './omdbProviderError.mjs';
+import { OMDB_MAX_RESPONSE_BYTES } from './omdbRequestPolicy.mjs';
 
 const logger = createLogger('OMDbService');
 
@@ -82,6 +83,7 @@ async function executeLookupWithRetry({ buildParams, logLabel, sourceLabel, look
 			const response = await httpGet(baseUrl, {
 				params,
 				timeout: requestTimeoutMs,
+				maxResponseBytes: OMDB_MAX_RESPONSE_BYTES,
 			});
 
 			const outcome = classifyOmdbResponse(response.data, response.status);
@@ -104,7 +106,8 @@ async function executeLookupWithRetry({ buildParams, logLabel, sourceLabel, look
 					error.response = { status };
 				}
 			}
-			if (error instanceof OMDbProviderError || error instanceof OMDbLimitReachedError) {
+			if (error instanceof OMDbProviderError || error instanceof OMDbLimitReachedError ||
+				error.code === 'HTTP_RESPONSE_TOO_LARGE') {
 				logger.warn(error.message, { source: logLabel, status, code: error.code }, {
 					dedupeKey: `omdb_response_${error.code || error.name}`, dedupeWindowMs: 30 * 60 * 1000,
 				});
@@ -230,6 +233,7 @@ export async function search(query, type, _apiKey, deps) {
 	const { apiKey: validApiKey } = await checkAndIncrementUsage();
 	try {
 		const response = await httpGet(baseUrl, {
+			maxResponseBytes: OMDB_MAX_RESPONSE_BYTES,
 			params: {
 				apikey: validApiKey,
 				s: query,

@@ -179,3 +179,11 @@ byte limits are the next recommended hardening step.
 The no-cache rebuilt image passed eight local HTTP fault cases and the authenticated
 inventory/settings smoke checks. Its startup/smoke sample contained five slow-query
 warnings and zero error/fatal or provider-drift records.
+
+## HTTP response limits follow-up
+
+The [HTTP response limits outcome](http-response-limits-outcome.md) records the
+streaming byte reader, explicit OMDb budget and enforcement of existing image
+limits during transfer. Interrupted JSON transfers remain operational failures.
+Unbudgeted library/embedding responses retain their size contracts. Caller-provided
+cancellation signals in buffered HTTP requests are the next concrete gap identified.

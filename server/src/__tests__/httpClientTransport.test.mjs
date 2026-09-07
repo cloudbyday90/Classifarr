@@ -6,6 +6,7 @@ const undiciFetch = jest.fn();
 const Agent = jest.fn(function (options) { this.options = options; this.destroy = destroy; });
 jest.unstable_mockModule('undici', () => ({ Agent, fetch: undiciFetch }));
 const { withBufferedHttpTransport } = await import('../utils/httpClientTransport.mjs');
+const { httpGet } = await import('../utils/httpClient.mjs');
 
 beforeEach(() => {
   destroy.mockReset().mockResolvedValue(undefined);
@@ -34,5 +35,18 @@ test('pairs package fetch with its Agent and disposes only after the response is
 test('disposes the custom Agent when reading the response fails', async () => {
   const error = new Error('body failed');
   await expect(withBufferedHttpTransport(false, async () => { throw error; })).rejects.toBe(error);
+  expect(destroy).toHaveBeenCalledTimes(1);
+});
+
+test('cancels an oversized custom-transport body before disposing its Agent', async () => {
+  const cancel = jest.fn(() => { expect(destroy).not.toHaveBeenCalled(); });
+  const response = new Response(new ReadableStream({
+    pull(controller) { controller.enqueue(Buffer.from('too big')); }, cancel,
+  }, { highWaterMark: 0 }), { headers: { 'Content-Type': 'application/json' } });
+  undiciFetch.mockResolvedValue(response);
+  await expect(httpGet('https://fixture.invalid', { rejectUnauthorized: false, maxResponseBytes: 4 }))
+    .rejects.toMatchObject({ code: 'HTTP_RESPONSE_TOO_LARGE' });
+  expect(cancel).toHaveBeenCalledTimes(1);
+  expect(response.body.locked).toBe(false);
   expect(destroy).toHaveBeenCalledTimes(1);
 });

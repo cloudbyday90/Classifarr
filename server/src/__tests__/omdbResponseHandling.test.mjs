@@ -8,6 +8,7 @@ jest.unstable_mockModule('node:timers/promises', () => ({ setTimeout: jest.fn() 
 jest.unstable_mockModule('../utils/logger.mjs', () => ({ createLogger: () => logger }));
 const { getByTitle, getByIMDBId, search, resetRateLimiterState } = await import('../services/omdbLookup.mjs');
 const { checkHealth, testConnection } = await import('../services/omdbHealth.mjs');
+const { OMDB_MAX_RESPONSE_BYTES } = await import('../services/omdbRequestPolicy.mjs');
 const valid = { Response: 'True', Title: 'Fixture', imdbID: 'tt0000001', Type: 'movie' };
 let deps;
 beforeEach(() => {
@@ -73,6 +74,24 @@ test('transient HTTP retry diagnostics retain status without upstream bodies or 
 test.each(lookups)('%s returns absent evidence only for a confirmed miss', async (name, run) => {
     httpGet.mockResolvedValue({ status: 200, data: { Response: 'False', Error: 'Movie not found!' } });
     expect(await run()).toEqual(name === 'search' ? [] : null);
+    expect(httpGet).toHaveBeenCalledWith(deps.baseUrl, expect.objectContaining({ maxResponseBytes: OMDB_MAX_RESPONSE_BYTES }));
+});
+
+test.each(lookups)('%s retains one quota reservation and does not immediately retry an oversized body', async (_name, run) => {
+    httpGet.mockRejectedValue(Object.assign(new Error('HTTP response exceeds the configured byte limit'), { code: 'HTTP_RESPONSE_TOO_LARGE' }));
+    await expect(run()).rejects.toMatchObject({ code: 'HTTP_RESPONSE_TOO_LARGE' });
+    expect(deps.checkAndIncrementUsage).toHaveBeenCalledTimes(1);
+    expect(httpGet).toHaveBeenCalledTimes(1);
+    expect(deps.calculateRetryBackoff).not.toHaveBeenCalled();
+    expect(logger.error).not.toHaveBeenCalled();
+});
+
+test('oversized probes report unavailable metadata on reachable transport', async () => {
+    httpGet.mockRejectedValue(Object.assign(new Error('HTTP response exceeds the configured byte limit'), { code: 'HTTP_RESPONSE_TOO_LARGE' }));
+    expect(await checkHealth(deps.baseUrl, 'fixture-key')).toEqual({ healthy: false, ssl_error: false,
+        api_reachable: true, message: 'OMDb response exceeds the allowed size' });
+    expect(await testConnection(deps.baseUrl, 'fixture-key')).toEqual({ success: false, error: 'OMDb response exceeds the allowed size' });
+    expect(httpGet.mock.calls.every(([, options]) => options.maxResponseBytes === OMDB_MAX_RESPONSE_BYTES)).toBe(true);
 });
 
 test.each([

@@ -28,8 +28,7 @@
  *    errors; `error.code` (ECONNREFUSED, ETIMEDOUT, …) for network errors.
  *  • AbortSignal.timeout() for timeouts — no need for a separate abort
  *    controller just to enforce deadlines.
- *  • `createHttpClient` factory mirrors `axios.create()` for services that need
- *    a base URL and default headers (radarr, sonarr, emby/jellyfin).
+ *  • Optional per-request decoded response byte limits for buffered calls.
  *  • `httpGetBinary` for arraybuffer downloads (image embeddings).
  *  • `httpStream` for NDJSON/SSE streaming (ollama generate).
  *
@@ -38,6 +37,8 @@
  */
 
 import { withBufferedHttpTransport } from './httpClientTransport.mjs';
+import { HttpResponseTooLargeError, parseHttpResponseBody, readBoundedResponseBody,
+  validateResponseByteLimit } from './httpResponseBody.mjs';
 
 /**
  * @typedef {{
@@ -63,6 +64,7 @@ import { withBufferedHttpTransport } from './httpClientTransport.mjs';
  *   body?: unknown,
  *   timeout?: number,
  *   rejectUnauthorized?: boolean,
+ *   maxResponseBytes?: number,
  * }} HttpRequestOptions
  */
 
@@ -111,15 +113,6 @@ function buildSearchParams(params) {
   return `?${new URLSearchParams(entries.map(([k, v]) => [k, String(v)])).toString()}`;
 }
 
-/** Parse a fetch Response body as JSON or plain text based on Content-Type. */
-async function parseBody(response) {
-  const ct = response.headers.get('content-type') ?? '';
-  if (ct.includes('application/json')) {
-    return response.json().catch(() => null);
-  }
-  return response.text();
-}
-
 /**
  * Create an HTTP error whose shape matches what axios throws for 4xx/5xx,
  * so all existing `error.response?.status` / `error.response?.data` code
@@ -147,7 +140,9 @@ async function request(method, url, {
   body,
   timeout = 30_000,
   rejectUnauthorized = true,
+  maxResponseBytes,
 } = /** @type {HttpRequestOptions} */ ({})) {
+  if (maxResponseBytes !== undefined) validateResponseByteLimit(maxResponseBytes);
   const fullUrl = `${url}${buildSearchParams(params)}`;
 
   const init = {
@@ -172,7 +167,13 @@ async function request(method, url, {
       throw normalizeNetworkError(cause);
     }
 
-    const data = await parseBody(response);
+    let data;
+    try {
+      data = await parseHttpResponseBody(response, maxResponseBytes);
+    } catch (cause) {
+      if (cause instanceof HttpResponseTooLargeError) throw cause;
+      throw normalizeNetworkError(init.signal.aborted ? init.signal.reason : cause);
+    }
 
     if (!response.ok) {
       throw createHttpError(response, data);
@@ -215,29 +216,32 @@ export async function httpDelete(url, options = {}) {
  * @returns {Promise<Buffer>}
  */
 export async function httpGetBinary(url, { timeout = 30_000, headers = {}, maxBytes } = {}) {
+  if (maxBytes !== undefined) validateResponseByteLimit(maxBytes);
+  const signal = AbortSignal.timeout(timeout);
   let response;
   try {
     response = await fetch(url, {
       method: 'GET',
       headers,
-      signal: AbortSignal.timeout(timeout),
+      signal,
     });
   } catch (cause) {
     throw normalizeNetworkError(cause);
   }
 
   if (!response.ok) {
+    if (response.body) await Promise.allSettled([response.body.cancel()]);
     throw createHttpError(response, null);
   }
 
-  const arrayBuffer = await response.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-
-  if (maxBytes !== undefined && buffer.length > maxBytes) {
-    throw new Error(`Response size ${buffer.length} bytes exceeds maximum allowed ${maxBytes} bytes`);
+  try {
+    return maxBytes === undefined
+      ? Buffer.from(await response.arrayBuffer())
+      : await readBoundedResponseBody(response, maxBytes);
+  } catch (cause) {
+    if (cause instanceof HttpResponseTooLargeError) throw cause;
+    throw normalizeNetworkError(signal.aborted ? signal.reason : cause);
   }
-
-  return buffer;
 }
 
 /**
@@ -272,7 +276,7 @@ export async function httpStream(url, body, { headers = {}, timeout = 120_000, s
   }
 
   if (!response.ok) {
-    const data = await parseBody(response);
+    const data = await parseHttpResponseBody(response);
     throw createHttpError(response, data);
   }
 

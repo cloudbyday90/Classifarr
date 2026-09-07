@@ -282,6 +282,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- Stop oversized OMDb responses and image downloads while reading them, before
+  buffering or parsing the complete body. Preserve interrupted JSON transfers as
+  errors so unavailable evidence cannot appear as an empty response.
+
 - OMDb lookups and health checks now distinguish missing titles from credential,
   quota and malformed-response failures, preserving reliable enrichment evidence
   and accurate service health without additional operator steps.
