@@ -8,29 +8,6 @@
   <div class="stats-dashboard">
     <div class="header">
       <h1>Policy Statistics</h1>
-      <div class="time-filter">
-        <button
-          :class="{ active: timeRange === '7d' }"
-          :aria-pressed="timeRange === '7d'"
-          @click="timeRange = '7d'"
-        >
-          7 Days
-        </button>
-        <button
-          :class="{ active: timeRange === '30d' }"
-          :aria-pressed="timeRange === '30d'"
-          @click="timeRange = '30d'"
-        >
-          30 Days
-        </button>
-        <button
-          :class="{ active: timeRange === 'all' }"
-          :aria-pressed="timeRange === 'all'"
-          @click="timeRange = 'all'"
-        >
-          All Time
-        </button>
-      </div>
     </div>
 
     <!-- Alerts banner -->
@@ -39,47 +16,76 @@
       @dismiss="dismissAlert"
     />
 
-    <FeedbackEvaluationCoverage :stats="overview" />
+    <section
+      class="overview-section"
+      aria-labelledby="policy-feedback-heading"
+      aria-describedby="policy-feedback-scope"
+    >
+      <h2 id="policy-feedback-heading">
+        Policy Feedback Overview
+      </h2>
+      <p
+        id="policy-feedback-scope"
+        class="scope-description"
+      >
+        Totals and rates use all retained feedback for current policies, including disabled policies.
+        Average accuracy weights each policy with evaluated evidence equally.
+        Trends compare the last 7 days with the last 30 days.
+      </p>
+      <FeedbackEvaluationCoverage :stats="overview" />
 
-    <!-- Overview cards -->
-    <div class="overview-cards">
-      <StatCard 
-        title="Total Decisions" 
-        :value="overview.total_decisions || 0" 
-        icon="📊"
-      />
-      <StatCard 
-        title="Average Evaluated Accuracy"
-        :value="formatPercent(overview.avg_accuracy)" 
-        icon="🎯"
-        :trend="accuracyTrend"
-      />
-      <StatCard
-        title="Evaluated Coverage"
-        :value="formatPercent(overview.evaluation_coverage)"
-        icon="%"
-      />
-      <StatCard 
-        title="Auto-Classified" 
-        :value="formatPercent(overview.auto_rate)" 
-        icon="⚡"
-      />
-      <StatCard 
-        title="Policies Improving" 
-        :value="overview.improving_count || 0" 
-        icon="📈"
-        variant="success"
-      />
-    </div>
+      <!-- Overview cards -->
+      <div class="overview-cards">
+        <StatCard
+          title="Total Decisions"
+          :value="overview.total_decisions || 0"
+          icon="📊"
+        />
+        <StatCard
+          title="Average Evaluated Accuracy"
+          :value="formatPercent(overview.avg_accuracy)"
+          icon="🎯"
+          :trend="accuracyTrend"
+        />
+        <StatCard
+          title="Evaluated Coverage"
+          :value="formatPercent(overview.evaluation_coverage)"
+          icon="%"
+        />
+        <StatCard
+          title="Auto-Classified"
+          :value="formatPercent(overview.auto_rate)"
+          icon="⚡"
+        />
+        <StatCard
+          title="Policies Improving"
+          :value="overview.improving_count || 0"
+          icon="📈"
+          variant="success"
+        />
+      </div>
+    </section>
 
     <EvidenceCoverageBreakdown :coverage="overview.evidence_coverage" />
 
     <!-- Policy cards grid -->
-    <div class="policies-section">
-      <h2>Policy Performance</h2>
+    <section
+      class="policies-section"
+      aria-labelledby="policy-performance-heading"
+      aria-describedby="policy-performance-scope"
+    >
+      <h2 id="policy-performance-heading">
+        Policy Performance
+      </h2>
+      <p
+        id="policy-performance-scope"
+        class="scope-description"
+      >
+        Enabled policies. Totals cover all retained feedback; 7-day accuracy is shown separately.
+      </p>
       <div class="policies-grid">
-        <PolicyStatsCard 
-          v-for="policy in policiesWithStats" 
+        <PolicyStatsCard
+          v-for="policy in policiesWithStats"
           :key="policy.id"
           :policy="policy"
           @view-details="showPolicyDetails"
@@ -91,13 +97,26 @@
       >
         <p>No policies with statistics found. Policies will appear here after they process classifications.</p>
       </div>
-    </div>
+    </section>
 
     <!-- Live feed -->
-    <div class="live-feed-section">
-      <h2>Live Activity</h2>
+    <section
+      class="live-feed-section"
+      aria-labelledby="live-activity-heading"
+      aria-describedby="live-activity-scope"
+    >
+      <h2 id="live-activity-heading">
+        Live Activity
+      </h2>
+      <p
+        id="live-activity-scope"
+        class="scope-description"
+      >
+        Up to 20 latest events: retained feedback decisions, plus patterns and suggestions
+        created in the last 7 days.
+      </p>
       <LiveFeed :items="liveFeed" />
-    </div>
+    </section>
 
     <!-- Policy detail modal -->
     <PolicyStatsModal
@@ -131,7 +150,6 @@ export default {
     PolicyStatsModal
   },
   setup() {
-    const timeRange = ref('7d');
     const overview = ref({});
     const policiesWithStats = ref({});
     const liveFeed = ref([]);
@@ -221,7 +239,7 @@ export default {
 
     onMounted(() => {
       loadAllData();
-      
+
       // Auto-refresh every 30 seconds
       refreshInterval = setInterval(loadAllData, 30000);
       document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -236,7 +254,6 @@ export default {
     });
 
     return {
-      timeRange,
       overview,
       policiesWithStats,
       liveFeed,
@@ -259,9 +276,6 @@ export default {
 }
 
 .header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   margin-bottom: 24px;
 }
 
@@ -272,36 +286,16 @@ export default {
   font-weight: 700;
 }
 
-.time-filter {
-  display: flex;
-  gap: 8px;
-}
-
-.time-filter button {
-  padding: 8px 16px;
-  border: 1px solid #374151;
-  background: #1f2937;
+.scope-description {
   color: #d1d5db;
-  border-radius: 6px;
-  cursor: pointer;
   font-size: 14px;
-  transition: all 0.2s;
-}
-
-.time-filter button:hover {
-  background: #374151;
-  border-color: #4b5563;
-}
-
-.time-filter button.active {
-  background: #3b82f6;
-  color: white;
-  border-color: #3b82f6;
+  line-height: 1.6;
+  margin: 8px 0 16px;
 }
 
 .overview-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(250px, 100%), 1fr));
   gap: 16px;
   margin-bottom: 32px;
 }
@@ -310,16 +304,18 @@ export default {
   margin-bottom: 32px;
 }
 
-.policies-section h2 {
+.overview-section h2,
+.policies-section h2,
+.live-feed-section h2 {
   font-size: 20px;
   color: #f9fafb;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
   font-weight: 600;
 }
 
 .policies-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(350px, 100%), 1fr));
   gap: 16px;
 }
 
@@ -336,10 +332,4 @@ export default {
   margin-bottom: 32px;
 }
 
-.live-feed-section h2 {
-  font-size: 20px;
-  color: #f9fafb;
-  margin-bottom: 16px;
-  font-weight: 600;
-}
 </style>

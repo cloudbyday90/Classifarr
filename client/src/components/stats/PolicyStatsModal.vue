@@ -22,6 +22,9 @@
       </div>
 
       <div class="modal-body">
+        <p class="scope-description">
+          Totals and accuracy use all retained feedback for this policy.
+        </p>
         <FeedbackEvaluationCoverage :stats="stats" />
         <!-- Key metrics -->
         <div class="metrics-row">
@@ -61,7 +64,7 @@
           v-if="stats.prompt_breakdown && stats.prompt_breakdown.length > 0"
           class="breakdown-section"
         >
-          <h3>Decision Breakdown</h3>
+          <h3>Decision Breakdown (Last 30 Days)</h3>
           <div class="breakdown-bars">
             <div
               v-for="item in stats.prompt_breakdown"
@@ -90,8 +93,8 @@
           <div class="comparison-table">
             <div class="comparison-row header">
               <span>Metric</span>
-              <span>This Week</span>
-              <span>Last Week</span>
+              <span>Last 7 Days</span>
+              <span>Previous 7 Days</span>
               <span>Change</span>
             </div>
             <div class="comparison-row">
@@ -288,6 +291,18 @@ export default {
 .modal-body {
   padding: 24px;
   overflow-y: auto;
+  color: #1f2937;
+}
+
+.modal-body :deep(.evaluation-coverage),
+.scope-description {
+  color: #4b5563;
+}
+
+.scope-description {
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 16px;
 }
 
 .metrics-row {
@@ -396,12 +411,12 @@ export default {
 }
 
 .positive {
-  color: #10b981;
+  color: #047857;
   font-weight: 500;
 }
 
 .negative {
-  color: #ef4444;
+  color: #b91c1c;
   font-weight: 500;
 }
 </style>

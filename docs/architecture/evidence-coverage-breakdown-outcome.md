@@ -112,5 +112,10 @@ loading without asking operators to choose a reporting period. This new evidence
 section already states its all-retained scope. Then add lifecycle counts to separate
 completed events from pending/retry history before expanding AI automation.
 
+Update: the scope correction is implemented in the
+[policy statistics scope outcome](policy-statistics-scope-outcome.md), including
+rolling-period labels in policy details. That document records the next measured
+presentation bug to fix before the lifecycle breakdown.
+
 README and the Unreleased changelog describe the change. No release or version bump
 is included.

@@ -171,6 +171,13 @@ profiles explain common observed traits. See the
 [coverage design](docs/architecture/evidence-coverage-breakdown-design.md)
 and [outcome](docs/architecture/evidence-coverage-breakdown-outcome.md).
 
+Statistics describe their scope beside each section: retained policy feedback,
+recent accuracy windows and the latest activity feed. Policy details label their
+30-day breakdown and rolling seven-day comparison. These descriptions replace
+the inactive date buttons and require no reporting-period selection. See the
+[scope design](docs/architecture/policy-statistics-scope-design.md)
+and [outcome](docs/architecture/policy-statistics-scope-outcome.md).
+
 <p align="center">
   <img src="./docs/assets/issue-262-classification-flow-v042.svg" alt="Classifarr classification flow diagram" width="1100" />
 </p>

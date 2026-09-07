@@ -246,6 +246,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Statistics reporting scope** — Replaced inactive date buttons with clear
+  descriptions of retained feedback and recent activity windows. Policy details
+  now label the 30-day breakdown and rolling seven-day periods accurately, and
+  dashboard cards fit narrow screens while retaining automatic loading. Detail
+  comparison text and evidence descriptions remain readable on the light modal.
+
 - **Evidence coverage visibility** — Policy Statistics now separates imported
   library observations, recorded candidates, linked feedback and evaluated outcomes.
   The read-only breakdown loads automatically, preserves unknown states and reports
