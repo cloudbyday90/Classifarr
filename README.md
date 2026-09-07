@@ -171,6 +171,12 @@ profiles explain common observed traits. See the
 [coverage design](docs/architecture/evidence-coverage-breakdown-design.md)
 and [outcome](docs/architecture/evidence-coverage-breakdown-outcome.md).
 
+History totals and library/method groups also show completed, pending-decision,
+retry-pending and other states automatically. The categories reconcile to retained
+events; completed imported membership still does not establish accuracy. See the
+[lifecycle design](docs/architecture/evidence-lifecycle-design.md)
+and [outcome](docs/architecture/evidence-lifecycle-outcome.md).
+
 Statistics describe their scope beside each section: retained policy feedback,
 recent accuracy windows and the latest activity feed. Policy details label their
 30-day breakdown and rolling seven-day comparison. These descriptions replace

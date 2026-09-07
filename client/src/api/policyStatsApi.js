@@ -23,6 +23,7 @@ import { getDataRequest } from './core'
 // unavailable accuracy to zero. The API also retains unevaluated observations.
 export function getPolicyStatsOverview() {
   // evidence_coverage contains separate all-retained history/feedback populations;
+  // history lifecycle counts partition events (completed, pending, retry, other).
   // unavailable data stays null, and capped groups do not replace global totals.
   return getDataRequest('/stats/overview')
 }

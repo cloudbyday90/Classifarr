@@ -4,7 +4,8 @@ import { EVIDENCE_COVERAGE_GROUP_LIMIT, readEvidenceCoverageSnapshot } from './e
 
 const logger = createLogger('EvidenceCoverage');
 const version = 'evidence.coverage.v1';
-const historyFields = ['events', 'imported_observations', 'original_candidates', 'linked_feedback'];
+const lifecycleFields = ['completed_events', 'pending_events', 'retry_events', 'other_events'];
+const historyFields = ['events', ...lifecycleFields, 'imported_observations', 'original_candidates', 'linked_feedback'];
 const feedbackFields = ['observations', 'source_bound', 'evaluated', 'unevaluated'];
 
 function count(value) {
@@ -22,6 +23,9 @@ function population(totals, groups, groupCount, fields) {
         const result = counts(row, fields);
         const denominator = result.events ?? result.observations;
         if (Object.values(result).some(value => value > denominator)) throw new Error('Inconsistent evidence counts');
+        if ('events' in result && lifecycleFields.reduce((sum, field) => sum + result[field], 0) !== denominator) {
+            throw new Error('Inconsistent history lifecycle counts');
+        }
         if ('observations' in result) {
             if (result.evaluated + result.unevaluated !== denominator) throw new Error('Inconsistent evaluation counts');
             result.evaluation_coverage = denominator === 0 ? null : result.evaluated / denominator;
@@ -32,9 +36,16 @@ function population(totals, groups, groupCount, fields) {
     if (!Array.isArray(groups) || groups.length !== Math.min(totalGroups, EVIDENCE_COVERAGE_GROUP_LIMIT)) {
         throw new Error('Incomplete evidence groups');
     }
-    return { totals: project(totals), group_count: totalGroups, truncated: totalGroups > groups.length,
+    const result = { totals: project(totals), group_count: totalGroups, truncated: totalGroups > groups.length,
         groups: groups.map(row => ({ library_id: row.library_id, library_name: row.library_name,
             library_active: row.library_active, method: row.method, ...project(row) })) };
+    for (const field of fields) {
+        const shown = result.groups.reduce((sum, row) => sum + row[field], 0);
+        if (shown > result.totals[field] || (!result.truncated && shown !== result.totals[field])) {
+            throw new Error('Inconsistent evidence group totals');
+        }
+    }
+    return result;
 }
 
 export function buildEvidenceCoverage(snapshot) {

@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Passive history lifecycle coverage** — Show completed, pending-decision,
+  retry-pending and other observations by library and method, with reconciled
+  totals and accessible labels. No operator input is required.
+
 - **Suggestion evidence provenance** — Automatically capture complete analysis
   cohorts and revalidate policy, destination and feedback before application.
   Stale suggestions are preserved as superseded history during normal analysis;
@@ -489,6 +493,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - **Offline route-safety calibration** — A checked-in synthetic matrix now verifies that a high policy candidate remains behind provider recovery, evidence, AI-advisory, provenance, confirmation, fallback, low-confidence, and clarification safeguards before the human-only calibration packet is available.
 
 ### Changed
+
+- **Pinned QEMU action maintenance** — Adopt the verified v4.3.0 action revision
+  locally from PR #526, retaining the existing release trigger and full SHA pin.
 
 - **Server runtime dependencies** — Locally applied and tested the
   express-rate-limit, Undici and Zod updates from PR #529, including a transport

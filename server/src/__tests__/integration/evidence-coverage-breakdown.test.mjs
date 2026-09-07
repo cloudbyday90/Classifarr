@@ -66,7 +66,8 @@ test('reconciles separate populations without moving feedback into its original 
     expect(response.headers['cache-control']).toBe('no-store');
     const result = response.body.evidence_coverage;
     expect(result.status).toBe('available');
-    expect(result.history.totals).toEqual({ events: 4, imported_observations: 2, original_candidates: 1, linked_feedback: 1 });
+    expect(result.history.totals).toEqual({ events: 4, completed_events: 3, pending_events: 1, retry_events: 0, other_events: 0,
+        imported_observations: 2, original_candidates: 1, linked_feedback: 1 });
     expect(result.feedback.totals).toEqual({ observations: 3, source_bound: 2, evaluated: 2, unevaluated: 1, evaluation_coverage: 2 / 3 });
     expect(result.history.groups.find(row => row.method === 'policy_auto')).toMatchObject({ library_id: original, events: 1, linked_feedback: 1 });
     expect(result.feedback.groups.find(row => row.method === 'policy_auto')).toMatchObject({ library_id: destination, observations: 1 });
@@ -90,9 +91,62 @@ test('inactive libraries stay visible while canonical evaluation becomes unavail
 test('empty history and feedback remain known zero with null coverage', async () => {
     const result = await readEvidenceCoverage(database);
     expect(result.history.totals.events).toBe(0);
+    expect(result.history.totals).toMatchObject({ completed_events: 0, pending_events: 0, retry_events: 0, other_events: 0 });
     expect(result.history.groups).toEqual([]);
     expect(result.feedback.groups).toEqual([]);
     expect(result.feedback.totals.evaluation_coverage).toBeNull();
+});
+
+test('partitions every retained state within each library/method without assuming completion or accuracy', async () => {
+    const buckets = {
+        completed_events: ['completed', 'corrected', 'verified', 'routed'],
+        pending_events: ['pending', 'awaiting_decision'],
+        retry_events: ['pending_retry'],
+        other_events: [null, 'failed', 'reclassified'],
+    };
+    const methods = { completed_events: 'source_library', pending_events: 'policy_auto',
+        retry_events: 'queued_for_retry', other_events: null };
+    for (const [field, statuses] of Object.entries(buckets)) {
+        for (const status of statuses) {
+            await history({ method: methods[field], status, library: field === 'pending_events' ? null : original });
+        }
+    }
+    const before = (await db.query('SELECT id,status FROM classification_history ORDER BY id')).rows;
+    const result = await readEvidenceCoverage(database);
+    expect(result.status).toBe('available');
+    expect(result.history.totals).toMatchObject({ events: 10, completed_events: 4, pending_events: 2, retry_events: 1, other_events: 3 });
+    for (const [field, statuses] of Object.entries(buckets)) {
+        const row = result.history.groups.find(group => group.method === (methods[field] ?? 'unknown_method'));
+        expect(row.events).toBe(statuses.length);
+        for (const bucket of Object.keys(buckets)) expect(row[bucket]).toBe(bucket === field ? statuses.length : 0);
+    }
+    expect(result.feedback.totals).toMatchObject({ observations: 0, evaluated: 0 });
+    expect((await db.query('SELECT id,status FROM classification_history ORDER BY id')).rows).toEqual(before);
+});
+
+test('an expanded status vocabulary cannot silently inflate completion', async () => {
+    // Simulate a future schema in this disposable suite database only.
+    const definition = (await db.query(`SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint
+        WHERE conrelid='classification_history'::regclass AND conname='classification_history_status_check'`)).rows[0].definition;
+    await db.query('ALTER TABLE classification_history DROP CONSTRAINT classification_history_status_check');
+    try {
+        for (const status of ['', 'resolved', 'future_state', 'COMPLETED']) await history({ status });
+        const result = await readEvidenceCoverage(database);
+        expect(result.history.totals).toMatchObject({ events: 4, completed_events: 0, pending_events: 0, retry_events: 0, other_events: 4 });
+        expect(result.history.groups[0]).toMatchObject({ events: 4, other_events: 4 });
+    } finally {
+        await db.query("DELETE FROM classification_history WHERE title='PRIVATE coverage fixture'");
+        await db.query(`ALTER TABLE classification_history ADD CONSTRAINT classification_history_status_check ${definition}`);
+    }
+});
+
+test('a superseded retry row and its completed replacement remain separate observations', async () => {
+    const superseded = await history({ method: 'queued_for_retry', status: 'pending_retry' });
+    await db.query("UPDATE classification_history SET status='reclassified' WHERE id=$1", [superseded]);
+    await history({ method: 'policy_auto', status: 'completed' });
+    expect((await readEvidenceCoverage(database)).history.totals).toMatchObject({
+        events: 2, completed_events: 1, pending_events: 0, retry_events: 0, other_events: 1,
+    });
 });
 
 test.each([null, {}, [], [null], [true], [{ library_id: true }], [{ library_id: 0 }], [{ library_id: -1 }],
@@ -122,8 +176,9 @@ test('fixed group caps disclose omissions while preserving global totals', async
         SELECT 'Coverage '||n,'coverage-cap-'||n,'movie' FROM generate_series(1,201) n RETURNING id`)).rows.map(row => row.id);
     libraryIds.push(...ids);
     await db.query(`INSERT INTO library_policies(library_id,name) SELECT id,name FROM libraries WHERE id=ANY($1::integer[])`, [ids]);
-    await db.query(`INSERT INTO classification_history(tmdb_id,media_type,title,method,library_id)
-        SELECT 603,'movie','PRIVATE coverage fixture','source_library',id FROM libraries WHERE id=ANY($1::integer[])`, [ids]);
+    await db.query(`INSERT INTO classification_history(tmdb_id,media_type,title,method,library_id,status)
+        SELECT 603,'movie','PRIVATE coverage fixture','source_library',id,
+        CASE WHEN id=$2 THEN 'pending_retry' ELSE 'completed' END FROM libraries WHERE id=ANY($1::integer[])`, [ids, ids[200]]);
     await db.query(`INSERT INTO policy_feedback_log(tmdb_id,selected_library_id,selected_policy_id)
         SELECT 603,library_id,id FROM library_policies WHERE library_id=ANY($1::integer[])`, [ids]);
     const result = await readEvidenceCoverage(database);
@@ -132,6 +187,8 @@ test('fixed group caps disclose omissions while preserving global totals', async
     expect(result.history.groups).toHaveLength(200);
     expect(result.feedback.groups).toHaveLength(200);
     expect(result.history.groups.map(row => row.library_id)).toEqual(ids.slice(0, 200));
+    expect(result.history.totals).toMatchObject({ completed_events: 200, pending_events: 0, retry_events: 1, other_events: 0 });
+    expect(result.history.groups.every(row => row.completed_events === 1 && row.retry_events === 0)).toBe(true);
     expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThan(150000);
 });
 

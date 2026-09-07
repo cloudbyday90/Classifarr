@@ -4,7 +4,8 @@ import { buildEvidenceCoverage, readEvidenceCoverage } from '../services/evidenc
 import { readEvidenceCoverageSnapshot, EVIDENCE_COVERAGE_SQL } from '../services/evidenceCoverageQuery.mjs';
 
 const empty = () => ({ captured_at: new Date('2026-09-07T00:00:00Z'),
-    history_totals: { events: 0, imported_observations: 0, original_candidates: 0, linked_feedback: 0 },
+    history_totals: { events: 0, completed_events: 0, pending_events: 0, retry_events: 0, other_events: 0,
+        imported_observations: 0, original_candidates: 0, linked_feedback: 0 },
     history_group_count: '0', history_groups: [],
     feedback_totals: { observations: 0, source_bound: 0, evaluated: 0, unevaluated: 0 },
     feedback_group_count: '0', feedback_groups: [], deleted_feedback_receipts: '0' });
@@ -39,6 +40,55 @@ test('uses one bounded read in a read-only transaction', async () => {
         ['SET TRANSACTION READ ONLY'], ["SET LOCAL statement_timeout = '5s'"], [EVIDENCE_COVERAGE_SQL, [200]],
     ]);
     expect((await readEvidenceCoverage(db)).status).toBe('available');
+});
+
+test('projects integer lifecycle counts for totals and individual groups', () => {
+    const snapshot = empty();
+    Object.assign(snapshot.history_totals, { events: '10', completed_events: '4', pending_events: '3', retry_events: '2', other_events: '1' });
+    snapshot.history_group_count = 1;
+    snapshot.history_groups = [{ ...snapshot.history_totals, library_id: null, method: 'unknown_method' }];
+    const result = buildEvidenceCoverage(snapshot);
+    expect(result.history.totals).toMatchObject({ events: 10, completed_events: 4, pending_events: 3, retry_events: 2, other_events: 1 });
+    expect(result.history.groups[0]).toMatchObject(result.history.totals);
+});
+
+test.each(['totals', 'group'])('rejects missing, invalid or unreconciled lifecycle counts in %s', target => {
+    for (const invalid of [undefined, null, -1, 0.5, 'bad', false, 1]) {
+        const snapshot = empty();
+        snapshot.history_group_count = 1;
+        snapshot.history_totals.events = 2;
+        snapshot.history_totals.completed_events = 2;
+        snapshot.history_groups = [{ ...snapshot.history_totals, method: 'policy_auto' }];
+        const row = target === 'totals' ? snapshot.history_totals : snapshot.history_groups[0];
+        row.retry_events = invalid;
+        expect(() => buildEvidenceCoverage(snapshot)).toThrow();
+    }
+});
+
+test('invalid lifecycle snapshot fails closed through the public service', async () => {
+    const snapshot = empty();
+    delete snapshot.history_totals.other_events;
+    const db = { withTransaction: callback => callback({ query: jest.fn().mockResolvedValue({ rows: [snapshot] }) }) };
+    expect(await readEvidenceCoverage(db)).toMatchObject({ status: 'unavailable', history: null, feedback: null });
+});
+
+test('complete groups must reconcile to their retained totals', () => {
+    const snapshot = empty();
+    Object.assign(snapshot.history_totals, { events: 2, completed_events: 2 });
+    snapshot.history_group_count = 1;
+    snapshot.history_groups = [{ ...snapshot.history_totals, events: 1, completed_events: 1 }];
+    expect(() => buildEvidenceCoverage(snapshot)).toThrow('Inconsistent evidence group totals');
+});
+
+test('capped groups may omit counts but cannot exceed a global lifecycle total', () => {
+    const snapshot = empty();
+    snapshot.history_groups = Array.from({ length: 200 }, (_, id) => ({ ...snapshot.history_totals,
+        library_id: id + 1, method: 'source_library', events: 1, completed_events: 1 }));
+    snapshot.history_group_count = 201;
+    Object.assign(snapshot.history_totals, { events: 201, completed_events: 200, retry_events: 1 });
+    expect(buildEvidenceCoverage(snapshot).history.truncated).toBe(true);
+    Object.assign(snapshot.history_totals, { completed_events: 199, pending_events: 1 });
+    expect(() => buildEvidenceCoverage(snapshot)).toThrow('Inconsistent evidence group totals');
 });
 
 test('read failure is explicitly unavailable and never leaks database details', async () => {

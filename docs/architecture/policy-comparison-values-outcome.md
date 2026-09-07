@@ -51,7 +51,8 @@ unified API scale should be versioned rather than silently changing these fields
 The design document records official ONS, W3C and ECMAScript sources and the
 alternatives matrix.
 
-**Next: add passive lifecycle counts to the evidence breakdown.** Separate
+**Follow-up implemented:** [passive lifecycle counts](evidence-lifecycle-outcome.md).
+The original recommendation was to separate
 completed history from pending/retry observations within each library/method
 group. Keep imported membership distinct from evaluated feedback, reconcile
 groups with retained totals, and continue loading automatically. This will show

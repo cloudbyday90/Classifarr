@@ -30,11 +30,13 @@ test('automatically presents scoped statistics and evidence with keyboard and mo
     { period: 'previous_7_days', decisions: '4', accuracy: '0.5', auto_rate: '0' },
   ]
   const coverage = { status: 'available', captured_at: '2026-09-07T00:00:00Z', deleted_feedback_receipts: 1,
-    history: { totals: { events: 70 }, group_count: 2, truncated: false, groups: [
+    history: { totals: { events: 70, completed_events: 64, pending_events: 3, retry_events: 2, other_events: 1 }, group_count: 2, truncated: false, groups: [
       { library_id: 1, library_name: 'Observed movies', library_active: true, method: 'source_library',
-        events: 60, imported_observations: 60, original_candidates: 0, linked_feedback: 0 },
+        events: 60, completed_events: 60, pending_events: 0, retry_events: 0, other_events: 0,
+        imported_observations: 60, original_candidates: 0, linked_feedback: 0 },
       { library_id: 1, library_name: 'Observed movies', library_active: true, method: 'policy_auto',
-        events: 10, imported_observations: 0, original_candidates: 7, linked_feedback: 5 },
+        events: 10, completed_events: 4, pending_events: 3, retry_events: 2, other_events: 1,
+        imported_observations: 0, original_candidates: 7, linked_feedback: 5 },
     ] },
     feedback: { totals: { observations: 8, evaluated: 4, evaluation_coverage: 0.5 }, group_count: 2, truncated: false, groups: [
       { library_id: 2, library_name: 'Selected movies', library_active: true, method: 'policy_auto',
@@ -77,6 +79,10 @@ test('automatically presents scoped statistics and evidence with keyboard and mo
   await expect(section.getByRole('columnheader', { name: 'Imported membership', exact: true })).toBeVisible()
   await expect(section.getByText('Source history removed', { exact: true })).toBeVisible()
   await expect(section.getByText(/50.0% of feedback/)).toBeVisible()
+  await expect(section.locator('dl').first().locator('dt')).toHaveText(['Completed', 'Pending decision', 'Retry pending', 'Other'])
+  await expect(section.locator('dl').first().locator('dd')).toHaveText(['64', '3', '2', '1'])
+  await expect(section.getByRole('row').filter({ hasText: 'policy auto' }).first().locator('dd')).toHaveText(['4', '3', '2', '1'])
+  expect(await section.locator('dt').first().evaluate(textContrast)).toBeGreaterThanOrEqual(4.5)
   await section.screenshot({ path: testInfo.outputPath('evidence-coverage-desktop.png') })
   await page.setViewportSize({ width: 390, height: 844 })
   await section.scrollIntoViewIfNeeded()

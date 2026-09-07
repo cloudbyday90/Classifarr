@@ -4,8 +4,9 @@ import { expect, test } from 'vitest'
 import EvidenceCoverageBreakdown from '../components/stats/EvidenceCoverageBreakdown.vue'
 
 const snapshot = () => ({ status: 'available', captured_at: '2026-09-07T00:00:00Z',
-  history: { totals: { events: 3 }, groups: [{ library_id: 1, library_name: '<img src=x onerror=alert(1)>', library_active: false,
-    method: 'source_library', events: 3, imported_observations: 3, original_candidates: 0, linked_feedback: 0 }], group_count: 1, truncated: false },
+  history: { totals: { events: 3, completed_events: 2, pending_events: 1, retry_events: 0, other_events: 0 }, groups: [{ library_id: 1, library_name: '<img src=x onerror=alert(1)>', library_active: false,
+    method: 'source_library', events: 3, completed_events: 2, pending_events: 1, retry_events: 0, other_events: 0,
+    imported_observations: 3, original_candidates: 0, linked_feedback: 0 }], group_count: 1, truncated: false },
   feedback: { totals: { observations: 0, evaluated: 0, evaluation_coverage: null }, groups: [], group_count: 0, truncated: false },
   deleted_feedback_receipts: 0 })
 const render = coverage => mount(EvidenceCoverageBreakdown, { props: { coverage }, global: { stubs: { RouterLink: true } } })
@@ -22,6 +23,30 @@ test('uses separately captioned tables with native column/row headers and keyboa
   expect(wrapper.find('time').attributes('datetime')).toBe('2026-09-07T00:00:00Z')
   expect(wrapper.findComponent({ name: 'RouterLink' }).attributes('to')).toBe('/libraries')
   expect(wrapper.text()).toContain('These populations cannot be added together')
+});
+
+test('automatically displays labelled lifecycle totals and group counts without controls', () => {
+  const wrapper = render(snapshot())
+  expect(wrapper.findAll('dl')).toHaveLength(2)
+  for (const list of wrapper.findAll('dl')) {
+    expect(list.findAll('dt').map(term => term.text())).toEqual(['Completed', 'Pending decision', 'Retry pending', 'Other'])
+    expect(list.findAll('dd').map(count => count.text())).toEqual(['2', '1', '0', '0'])
+  }
+  expect(wrapper.findAll('button, input, select')).toHaveLength(0)
+  expect(wrapper.text()).toContain('does not mean correct or reviewed')
+  expect(wrapper.text()).toContain('not live queue depth')
+});
+
+test.each([undefined, null, -1, 1.5, '2', 4])('missing or inconsistent lifecycle %s does not appear as zero', invalid => {
+  const data = snapshot()
+  data.history.totals.completed_events = invalid
+  data.history.groups[0].completed_events = invalid
+  const wrapper = render(data)
+  expect(wrapper.findAll('dl')).toHaveLength(0)
+  expect(wrapper.findAll('.unavailable')).toHaveLength(2)
+  expect(wrapper.text()).toContain('History lifecycle is unavailable')
+  expect(wrapper.text()).toContain('3 history events')
+  expect(wrapper.text()).not.toContain('NaN')
 });
 
 test('escapes library names and preserves inactive and empty-population labels', () => {

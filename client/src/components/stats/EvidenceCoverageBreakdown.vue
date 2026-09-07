@@ -28,6 +28,12 @@
         {{ number(coverage.feedback.totals.evaluated) }} evaluated
         ({{ percent(coverage.feedback.totals.evaluation_coverage) }} of feedback).
       </p>
+      <HistoryLifecycleCounts :counts="coverage.history.totals" />
+      <p>
+        History states add up to history events. Completed includes imported membership and does not mean correct or reviewed.
+        Pending decision and retry pending describe retained history, not live queue depth.
+        Other includes failed, superseded and unknown states.
+      </p>
       <p>History follows its recorded library; feedback follows its selected library. These populations cannot be added together.</p>
       <div
         class="table-scroll"
@@ -64,7 +70,10 @@
               <th scope="row">
                 {{ libraryLabel(row) }}<span class="method">{{ methodLabel(row.method) }}</span>
               </th>
-              <td>{{ number(row.events) }}</td>
+              <td>
+                {{ number(row.events) }} total
+                <HistoryLifecycleCounts :counts="row" />
+              </td>
               <td>{{ number(row.imported_observations) }}</td>
               <td>{{ number(row.original_candidates) }}</td>
               <td>{{ number(row.linked_feedback) }}</td>
@@ -151,6 +160,7 @@
 <script setup>
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
+import HistoryLifecycleCounts from './HistoryLifecycleCounts.vue'
 
 const props = defineProps({ coverage: { type: Object, default: null } })
 const available = computed(() => props.coverage?.status === 'available')

@@ -6,6 +6,10 @@ export const EVIDENCE_COVERAGE_SQL = `WITH history_groups AS MATERIALIZED (
     SELECT history.library_id, library.name AS library_name, library.is_active AS library_active,
         COALESCE(history.method, 'unknown_method') AS method,
         count(*) AS events,
+        count(*) FILTER (WHERE history.evidence_lifecycle = 'completed') AS completed_events,
+        count(*) FILTER (WHERE history.evidence_lifecycle = 'pending') AS pending_events,
+        count(*) FILTER (WHERE history.evidence_lifecycle = 'retry') AS retry_events,
+        count(*) FILTER (WHERE history.evidence_lifecycle = 'other') AS other_events,
         count(*) FILTER (WHERE history.method = 'source_library') AS imported_observations,
         count(*) FILTER (WHERE CASE
             WHEN jsonb_typeof(history.metadata #> '{classification_details,ranked_candidates}') = 'array'
@@ -15,7 +19,14 @@ export const EVIDENCE_COVERAGE_SQL = `WITH history_groups AS MATERIALIZED (
                 ELSE FALSE END
             ELSE FALSE END) AS original_candidates,
         count(source.feedback_id) AS linked_feedback
-    FROM classification_history history
+    FROM (
+        SELECT classification_history.*, CASE
+            WHEN status IN ('completed', 'corrected', 'verified', 'routed') THEN 'completed'
+            WHEN status IN ('pending', 'awaiting_decision') THEN 'pending'
+            WHEN status = 'pending_retry' THEN 'retry'
+            ELSE 'other' END AS evidence_lifecycle
+        FROM classification_history
+    ) history
     LEFT JOIN libraries library ON library.id = history.library_id
     LEFT JOIN policy_feedback_sources source ON source.classification_id = history.id
     GROUP BY history.library_id, library.name, library.is_active, history.method
@@ -39,6 +50,10 @@ export const EVIDENCE_COVERAGE_SQL = `WITH history_groups AS MATERIALIZED (
 )
 SELECT statement_timestamp() AS captured_at,
     (SELECT jsonb_build_object('events', COALESCE(sum(events), 0),
+        'completed_events', COALESCE(sum(completed_events), 0),
+        'pending_events', COALESCE(sum(pending_events), 0),
+        'retry_events', COALESCE(sum(retry_events), 0),
+        'other_events', COALESCE(sum(other_events), 0),
         'imported_observations', COALESCE(sum(imported_observations), 0),
         'original_candidates', COALESCE(sum(original_candidates), 0),
         'linked_feedback', COALESCE(sum(linked_feedback), 0)) FROM history_groups) AS history_totals,
