@@ -87,6 +87,9 @@ still gate review-only semantic counter-evidence. Routing behavior is unchanged.
 
 ## Next recommended item
 
+Completed by the [inventory read optimization](inventory-read-performance-outcome.md).
+The original recommendation and its scope are retained below.
+
 Profile and optimize the slow inventory observation-health and overlap reads
 identified in the [local Compose review](local-compose-september-review.md),
 before extending the statistics surface again. Capture bounded read-only

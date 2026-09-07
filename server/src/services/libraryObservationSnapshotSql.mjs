@@ -5,7 +5,9 @@ export const OBSERVATION_INVENTORY_CTES = `size AS (SELECT COUNT(*)::int AS row_
             SELECT msi.id, msi.library_id, msi.media_type, msi.tmdb_id,
                 msi.inventory_tmdb_attempted_at::text, msi.inventory_tmdb_fetched_at::text,
                 COALESCE(msi.metadata ? 'inventory_tmdb', false) AS has_observation,
-                public.library_profile_observed_metadata(msi.metadata) -> 'inventory_tmdb' AS observation
+                -- Narrow the input before the canonical function repeatedly reads nested fields.
+                public.library_profile_observed_metadata(jsonb_build_object(
+                    'inventory_tmdb', msi.metadata -> 'inventory_tmdb')) -> 'inventory_tmdb' AS observation
             FROM bounded_ids b CROSS JOIN LATERAL (
                 SELECT id,library_id,media_type,tmdb_id,metadata,inventory_tmdb_attempted_at,inventory_tmdb_fetched_at
                 FROM media_server_items WHERE id=b.id LIMIT 1

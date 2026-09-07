@@ -15,7 +15,8 @@ export async function readLibraryOverlapSnapshot(db) {
         ), size AS (SELECT COUNT(*)::int AS row_count FROM bounded_ids),
         projected AS MATERIALIZED (
             SELECT msi.library_id, msi.media_type, msi.tmdb_id, msi.content_rating, msi.studio,
-                msi.genres, public.library_profile_observed_metadata(msi.metadata) AS metadata
+                -- Materialize JSONB once, avoiding repeated TOAST reads inside the SQL function.
+                msi.genres, public.library_profile_observed_metadata(to_jsonb(msi.metadata)) AS metadata
             FROM bounded_ids b JOIN media_server_items msi ON msi.id = b.id
             WHERE (SELECT row_count FROM size) <= $3
         )

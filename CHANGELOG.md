@@ -282,6 +282,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Faster inventory summaries** — Reduce repeated metadata processing in library
+  health, overlap and automatic sampling reads while preserving freshness,
+  source validation, unknown states and existing capacity limits.
+
 - **Local runtime reliability** — Restore Pino log delivery to multiple targets,
   exclude private runtime data from Docker build contexts, and isolate transport
   and router tests from queued mocks and unrelated page compilation.

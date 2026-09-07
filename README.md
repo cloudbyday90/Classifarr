@@ -783,6 +783,10 @@ captures and unavailable metadata remain explicit. Queue activity does not imply
 capture success. See the
 [health design](docs/architecture/library-observation-health-design.md) and
 [local validation](docs/architecture/library-observation-health-outcome.md).
+Health, overlap and automatic sampling reads now reduce repeated processing of
+large metadata while retaining the same observations and limits. See the
+[performance design](docs/architecture/inventory-read-performance-design.md) and
+[measured outcome](docs/architecture/inventory-read-performance-outcome.md).
 Malformed observations repair automatically after cooldown using the full
 attributable observation validator. Bounded background passes advance past fresh
 records, while valid empty captures remain cached. See the
