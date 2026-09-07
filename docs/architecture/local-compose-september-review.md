@@ -95,13 +95,39 @@ exposed the writer gap above; normal background processing was not disabled.
 
 The first image was intentionally marked `VCS_REF=unknown` because its source
 tree was still being edited. Maintenance evidence correctly refuses that image.
-Final delivery rebuilds from the committed clean source with verified provenance
-and recreates Compose again so the writer and logging fixes are active.
+The final no-cache build used clean revision
+`793038e28c9cf5e7b8d9150ee75c1d47bda2d9d7`. The recreated container reports that
+same OCI revision and is healthy with the writer and logging fixes active. This
+outcome update is a subsequent documentation-only commit; application code is
+identical to the running image.
+
+The final HTTP recheck again passed all seven authenticated requests and the
+anonymous 401 assertion. The live browser again found seven tables and 11 groups,
+with no page errors, failed responses or requested writes. The database retained
+6,774 history records, 10 libraries, zero feedback records and 249 migrations.
+The two additional source observations predate the final restart and correctly
+remain unknown origin; the fix does not fabricate provenance for existing rows.
+Overview latency was 362 ms; observation health and overlap took approximately
+1.7 and 2.1 seconds during the concurrent smoke checks.
+
+Actual stdout now contains numeric Pino levels, and both rolling files receive
+records. The final startup/smoke log sample had 1,268 informational records,
+seven warnings and no error/fatal records. Six warnings were slow database
+queries; the other was existing multiple-active-row configuration drift for
+OMDb and TMDb. Earlier runtime warnings reported 19 rejected source identities
+and one unavailable provider observation. These are observations from the local
+installation, not proof that external providers or source data are healthy.
+Do not silently select or disable provider credentials to clear a warning.
+
+Follow up by checking provider selection semantics before repairing duplicate
+active configurations, and profiling the inventory queries responsible for the
+slow-query warnings. Preserve source-identity rejection and explicit unknowns;
+relaxing those guards would weaken future classification evidence.
 
 Focused runtime-fix/code-health validation passed 21,122 tests, and the writer
 and identity integration recheck passed 14 tests. Broader integration validation
-passed 300 tests across 17 suites. The full client run passed 4,760 of 4,761 tests;
-the corrected router file subsequently passed all 12 tests. The initial full
+passed 300 tests across 17 suites. After the router fix, the complete client
+rerun passed all **4,761 tests across 341 files** in 286.51 seconds. The initial full
 backend run was incomplete because of the heap exhaustion above. The recycled
 worker run and final delivery checks are summarized in the
 [feature outcome](original-observation-types-outcome.md).

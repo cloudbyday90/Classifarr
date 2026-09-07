@@ -39,7 +39,8 @@ review labels; imported placements are not independently verified truth.
   writers, focused runtime-fix/code-health validation passed 21,122 tests.
 - The full client run passed 4,760 tests with one router timeout; stubbing eager
   page trees in the guard test preserved real navigation and all 12 router tests
-  then passed. The full backend serial run exceeded its default heap; see the
+  then passed. The complete client rerun passed **4,761 tests across 341 files**
+  in 286.51 seconds. The full backend serial run exceeded its default heap; see the
   release review for the bounded worker alternative and final run outcome.
 - The complete backend rerun passed **31,097 tests across 1,090 suites** in
   205.567 seconds with `--maxWorkers=2 --workerIdleMemoryLimit=512MB`. This uses
@@ -52,6 +53,11 @@ review labels; imported placements are not independently verified truth.
   source-writer provenance and suppressed Pino transport logs, both corrected
   with real regression tests. Numeric log levels retain severity filtering and
   redaction. Details and limitations are in the separate release review.
+- The final clean-source no-cache image at `793038e2` is running and healthy.
+  Seven authenticated HTTP checks, anonymous rejection and the live browser
+  recheck passed. Stdout and rolling-file log delivery were confirmed, with no
+  error/fatal records in the sampled startup/smoke logs. Existing provider
+  configuration drift and slow inventory queries remain documented follow-ups.
 - Both typechecks, scoped ESLint, production dependency checks, ESM static-import
   and mock-shape checks, migration integrity, Markdown lint and whitespace checks
   passed.
