@@ -33,3 +33,8 @@ Focused tests cover HTTP status categories, network/TLS/timeout/cancellation/siz
 codes, private-data removal, existing-observation preservation, and both actual
 detail-service wrapper entry points. Full-suite and rebuilt-runtime results are
 recorded with the [source observation outcome](unresolved-source-observations-outcome.md).
+The rebuilt runtime repeated the one candidate read through the actual detail
+wrapper and inventory enrichment service. It returned HTTP 404, emitted
+`reason: identity_not_found` and `category: not_found`, preserved validated
+correlation fields, and left the prior in-memory observation unchanged. The
+fixture made one provider read and requested no database writes.

@@ -61,14 +61,57 @@ GitHub MCP returned zero open pull requests on two checks. No random open PR
 could be selected, and no unrelated or closed PR was substituted. No PR was
 merged and no release or tag was created.
 
-The rebuilt runtime and real capture are the remaining validation steps; their
-results will be recorded before integration into main.
+## Rebuilt runtime and real capture
+
+Compose was rebuilt with `--no-cache --require-provenance` from clean source
+`70ebb38ac480246d71dfc9f20a620833be3edebb`, then recreated without another build.
+The container is healthy; migrations advanced from 250 to 251. The image revision
+label matches the tested source. The following completion commit changes only
+documentation, with no release or tag.
+
+A real capture scanned **6,692 source items across ten libraries**, retaining
+**19 unresolved memberships: 14 TVDB conflicts and five TMDb conflicts**. All ten
+capture states completed, with no unusable keys, omissions or excluded libraries.
+No IDs were selected or reassigned. A normal background sync also completed all
+ten libraries and automatically retained the same observations, exercising the
+production integration without an extra operator workflow.
+
+The first observation-only capture's before/after assertion detected concurrent
+inventory updates by the normal background sync; it was not counted as an
+unchanged-inventory pass. After that sync completed, a repeat capture passed full
+row-digest comparisons for trusted inventory, classification history and feedback.
+Counts remained **6,692 inventory rows, 6,775 history rows and zero feedback rows**.
+The capture helper wrote only source observation and capture-state tables.
+
+The authenticated endpoint returned 200 with `Cache-Control: no-store` in 31 ms
+in the local sample; anonymous access returned 401 and unsupported parameters
+returned 400. Existing inventory, statistics, history and masked provider-setting
+reads passed. The real TMDb candidate again returned 404 through the rebuilt
+detail wrapper and inventory service, producing `identity_not_found` with verified
+correlation while preserving the prior in-memory observation.
+
+Desktop and 390-pixel mobile browser checks rendered nine example tables and all
+19 examples, with no page errors, failed responses or requested writes. Native
+headers, captions and keyboard-scroll regions were verified; the panel and page
+fit the mobile viewport. The startup/sync/smoke log sample contained zero
+error/fatal records, 19 expected identity-conflict warnings and eight slow-query
+warnings. These are local observations, not performance or accessibility
+certification. Private captures, screenshots and backups remain ignored.
 
 ## Recommended next item
 
-Assess whether pre-existing trusted inventory rows whose source now reports an
-identity conflict can still supply stale identity authority to enrichment or
-classification. Add a bounded, automatic consumer guard if this path is present,
-while retaining historical evidence and descriptive library membership. Do not
-guess replacement IDs or require routine manual labeling. A read-only coverage
-audit should establish the affected paths and counts before changing consumers.
+Add an automatic guard against stale identity authority from pre-existing
+inventory rows with current source conflicts. The read-only audit found that
+**all 19 unresolved memberships match retained inventory rows with TMDb IDs**.
+`mediaSyncLibraryStateService.findExistingMedia` currently reads those rows
+without consulting conflict observations; `classificationAuthoritativeSignalShared`
+can treat a match as authoritative existing media. The awaiting-decision
+reconciliation query also reads existing inventory directly.
+
+Guard these consumers, and inventory enrichment, while preserving historical
+evidence and descriptive membership. Specify how incomplete, expired and omitted
+captures affect eligibility before implementation; an absent preview is not
+proof that an identity is valid. Test conflict arrival, duplicate placements,
+concurrent capture and later resolution. Do not guess replacement IDs or require
+routine manual labeling. This follow-up addresses a pre-existing consumer path;
+the new observation store itself supplies no classification authority.

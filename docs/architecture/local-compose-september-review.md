@@ -237,3 +237,32 @@ the temporary-table PostgreSQL preservation fixture. Authenticated reads,
 anonymous rejection and bcrypt hash/compare passed. The startup/smoke sample had
 five slow-query warnings and zero error/fatal or provider-drift records. A repeat
 source scan confirmed 14 TVDB and five TMDb conflicts with useful diagnostics.
+
+## Unresolved source capture and TMDb failure follow-up
+
+The [source observation outcome](unresolved-source-observations-outcome.md)
+records automatic retention of all 19 source conflicts across a real 6,692-item
+capture. The separate [TMDb failure outcome](inventory-tmdb-failure-outcome.md)
+records a current 404 reproducer and the new safe diagnostic categories. Existing
+observations, provider cooldowns and routing contracts are preserved.
+
+A no-cache build from clean source `70ebb38ac480246d71dfc9f20a620833be3edebb`
+was recreated successfully and is healthy with 251 migrations. Complete backend
+and frontend coverage suites passed 31,874 and 4,803 tests respectively, and the
+coverage ratchet passed. PostgreSQL lifecycle tests and a fresh-schema comparison
+passed. Authenticated reads, anonymous rejection, input rejection and desktop/
+mobile browser checks passed. The log sample contained zero error/fatal records,
+19 expected source-conflict warnings and eight slow-query warnings.
+
+The initial digest check overlapped the application's background sync. After all
+ten libraries completed normally, a repeated observation-only capture verified
+unchanged trusted inventory, history and feedback. The normal sync independently
+exercised automatic capture and retained the same 19 observations.
+
+GitHub MCP still lists no open PRs. The latest published prerelease remains
+`v0.48.4-beta` (August 29); this review extends the existing release comparison
+with the new storage, capture and diagnostic paths. No release was created.
+The next item is guarding retained inventory identity authority when a current
+source observation reports a conflict: all 19 observations overlap older rows
+with TMDb IDs, and existing-media/reconciliation consumers currently read those
+rows without this guard.
