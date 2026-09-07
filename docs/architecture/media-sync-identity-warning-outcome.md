@@ -33,7 +33,19 @@ are observed. An absent row does not become inventory merely because a warning
 was emitted. No automated routing, ID reassignment or manual cleanup requirement
 was added. Raw observations and logs remain outside committed artifacts.
 
-## Next item
+## Runtime validation
+
+The no-cache rebuilt container reproduced the same 19 rejected items from the
+same 6,692-item read-only source scan. Its new diagnostics reported **14 TVDB
+conflicts and five TMDb conflicts**, with a valid source fingerprint for each.
+The warning integration test confirms these details reach the existing mediaSync
+logger and that rejected items do not enter analysis or persistence. The final
+focused run passed 368 tests across nine suites; PostgreSQL identity-retention and
+embedding preservation tests passed 25 tests across two suites. See the
+[shared runtime outcome](embedding-vector-validation-outcome.md) for build,
+authentication, inventory and log checks. No source identities were reassigned.
+
+## Recommended next change
 
 Add bounded unresolved source-observation capture keyed by media server and source
 item, retaining library membership and conflict provenance independently of a

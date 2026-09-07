@@ -232,3 +232,8 @@ The [media-sync warning outcome](media-sync-identity-warning-outcome.md) records
 19 source identity conflicts in a read-only scan of 6,692 items. Fixed diagnostics
 now explain these rejections without leaking source payloads or choosing an
 arbitrary ID. Separate unresolved-observation capture is the next inventory task.
+The no-cache image passed 167 embedding checks across 89 local HTTP requests plus
+the temporary-table PostgreSQL preservation fixture. Authenticated reads,
+anonymous rejection and bcrypt hash/compare passed. The startup/smoke sample had
+five slow-query warnings and zero error/fatal or provider-drift records. A repeat
+source scan confirmed 14 TVDB and five TMDb conflicts with useful diagnostics.
