@@ -20,8 +20,8 @@
  * Thin native-fetch HTTP client.
  *
  * Design goals:
- *  • Zero npm dependencies — uses Node.js 24+ built-in `fetch` (via undici) and
- *    `undici.Agent` for custom TLS (self-signed / verify_ssl=false scenarios).
+ *  • Uses Node.js 24+ built-in `fetch` by default and a matching npm Undici
+ *    fetch/Agent pair for custom TLS (self-signed / verify_ssl=false scenarios).
  *  • axios-compatible response shape: `{ data, status, headers }` so callers
  *    need minimal changes.
  *  • axios-compatible error shape: `error.response?.{ status, data }` for HTTP
@@ -37,7 +37,7 @@
  * `undici` is bundled with Node.js ≥18 and accessible as an npm package.
  */
 
-import { Agent } from 'undici';
+import { withBufferedHttpTransport } from './httpClientTransport.mjs';
 
 /**
  * @typedef {{
@@ -163,24 +163,23 @@ async function request(method, url, {
     init.body = JSON.stringify(body);
   }
 
-  if (!rejectUnauthorized) {
-    init.dispatcher = new Agent({ connect: { rejectUnauthorized: false } });
-  }
+  return withBufferedHttpTransport(rejectUnauthorized, async (fetchRequest, dispatcher) => {
+    if (dispatcher) init.dispatcher = dispatcher;
+    let response;
+    try {
+      response = await fetchRequest(fullUrl, init);
+    } catch (cause) {
+      throw normalizeNetworkError(cause);
+    }
 
-  let response;
-  try {
-    response = await fetch(fullUrl, init);
-  } catch (cause) {
-    throw normalizeNetworkError(cause);
-  }
+    const data = await parseBody(response);
 
-  const data = await parseBody(response);
+    if (!response.ok) {
+      throw createHttpError(response, data);
+    }
 
-  if (!response.ok) {
-    throw createHttpError(response, data);
-  }
-
-  return { data, status: response.status, headers: Object.fromEntries(response.headers.entries()) };
+    return { data, status: response.status, headers: Object.fromEntries(response.headers.entries()) };
+  });
 }
 
 // ---------------------------------------------------------------------------

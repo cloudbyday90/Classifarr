@@ -246,6 +246,15 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Policy comparison accuracy** — Rate changes now use percentage points, and
+  missing or invalid values remain N/A instead of becoming zero. Comparisons use
+  a dedicated accessible table with explicit units and keyboard scrolling.
+
+- **Custom TLS transport** — Fixed self-signed-server requests failing because
+  the custom HTTP dispatcher used an incompatible fetch interface. Per-request
+  connections are now disposed after use, with certificate verification enabled
+  unless explicitly disabled.
+
 - **Statistics reporting scope** — Replaced inactive date buttons with clear
   descriptions of retained feedback and recent activity windows. Policy details
   now label the 30-day breakdown and rolling seven-day periods accurately, and
@@ -480,6 +489,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - **Offline route-safety calibration** — A checked-in synthetic matrix now verifies that a high policy candidate remains behind provider recovery, evidence, AI-advisory, provenance, confirmation, fallback, low-confidence, and clarification safeguards before the human-only calibration packet is available.
 
 ### Changed
+
+- **Server runtime dependencies** — Locally applied and tested the
+  express-rate-limit, Undici and Zod updates from PR #529, including a transport
+  compatibility fix identified during validation.
 
 - **Policy score-band resolution** — The ranker now uses a pure shared resolver for its existing ordered score actions, making the default 40/60/85 boundaries directly testable without changing route-safety authority.
 - **AI readiness controller** — AI Settings now leads with one server-owned, self-updating readiness state; visible-page refreshes are pausable, while runtime evidence, history, compatibility checks, receipts, and preflight observations are lazy diagnostics.

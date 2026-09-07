@@ -23,8 +23,12 @@ test('automatically presents scoped statistics and evidence with keyboard and mo
   let writes = 0
   const statsReads = []
   const policy = { id: 3, name: 'Observed movies', library_name: 'Movie library', total_decisions: 8,
-    evaluated_decisions: 4, evaluation_coverage: 0.5, accuracy_rate: 0.75, last_7_days_accuracy: 0.5,
-    auto_classified: 2, trend: 'declining' }
+    evaluated_decisions: 4, evaluation_coverage: 0.5, accuracy_rate: 0.75, last_7_days_accuracy: 1,
+    auto_classified: 2, trend: 'improving' }
+  let comparisonPeriods = [
+    { period: 'last_7_days', decisions: '4', accuracy: '1.0', auto_rate: '50' },
+    { period: 'previous_7_days', decisions: '4', accuracy: '0.5', auto_rate: '0' },
+  ]
   const coverage = { status: 'available', captured_at: '2026-09-07T00:00:00Z', deleted_feedback_receipts: 1,
     history: { totals: { events: 70 }, group_count: 2, truncated: false, groups: [
       { library_id: 1, library_name: 'Observed movies', library_active: true, method: 'source_library',
@@ -49,15 +53,12 @@ test('automatically presents scoped statistics and evidence with keyboard and mo
     if (path === '/api/notifications') data = { data: [] }
     if (path === '/api/notifications/unread-count') data = { unread: 0 }
     if (path === '/api/stats/overview') data = { evidence_coverage: coverage, total_decisions: 8, evaluated_decisions: 4,
-      avg_accuracy: 0.75, evaluation_coverage: 0.5, auto_rate: 0.25, improving_count: 0, declining_count: 1 }
+      avg_accuracy: 0.75, evaluation_coverage: 0.5, auto_rate: 0.25, improving_count: 1, declining_count: 0 }
     if (path === '/api/stats/policies') data = [policy]
     if (['/api/stats/live-feed', '/api/stats/alerts'].includes(path)) data = []
     if (path === '/api/stats/policies/3') data = { ...policy,
       prompt_breakdown: [{ prompt_type: 'auto_classify', count: 2, accuracy: 0.5 }] }
-    if (path === '/api/stats/policies/3/compare') data = [
-      { period: 'last_7_days', decisions: 2, accuracy: 0.5, auto_rate: 100 },
-      { period: 'previous_7_days', decisions: 4, accuracy: 0.5, auto_rate: 0 },
-    ]
+    if (path === '/api/stats/policies/3/compare') data = comparisonPeriods
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(data) })
   })
   await page.setViewportSize({ width: 1280, height: 1600 })
@@ -105,12 +106,37 @@ test('automatically presents scoped statistics and evidence with keyboard and mo
   await expect(page.getByText('Last 7 Days', { exact: true })).toBeVisible()
   await expect(page.getByText('Previous 7 Days', { exact: true })).toBeVisible()
   await expect(page.getByText('This Week', { exact: true })).toHaveCount(0)
-  for (const selector of ['.comparison-row span', '.stats-modal .evaluation-coverage', '.scope-description']) {
+  const comparisonTable = page.getByRole('table', { name: 'Policy metrics for the last 7 days and previous 7 days' })
+  await expect(comparisonTable.getByRole('columnheader')).toHaveCount(4)
+  await expect(comparisonTable.getByRole('rowheader')).toHaveCount(3)
+  await expect(comparisonTable.getByRole('row', { name: /^Accuracy / }).getByRole('cell')).toHaveText([
+    '100.0%', '50.0%', '+50.0 percentage points',
+  ])
+  await expect(comparisonTable.getByRole('row', { name: /^Auto Rate / }).getByRole('cell')).toHaveText([
+    '50.0%', '0.0%', '+50.0 percentage points',
+  ])
+  for (const selector of ['.comparison-section th', '.comparison-section td', '.comparison-help', '.stats-modal .evaluation-coverage', '.scope-description']) {
     for (const description of await page.locator(selector).all()) {
       expect(await description.evaluate(textContrast)).toBeGreaterThanOrEqual(4.5)
     }
   }
   await page.screenshot({ path: testInfo.outputPath('statistics-scopes-detail.png') })
   await page.getByRole('button', { name: 'Close modal', exact: true }).click()
+  comparisonPeriods = [
+    { period: 'last_7_days', decisions: 0, accuracy: null, auto_rate: null },
+    comparisonPeriods[1],
+  ]
+  await performance.getByRole('button').click()
+  await expect(comparisonTable.getByRole('row', { name: /^Auto Rate / }).getByRole('cell')).toHaveText(['N/A', '0.0%', 'N/A'])
+  await expect(comparisonTable.getByRole('row', { name: /^Decisions / }).getByRole('cell')).toHaveText(['0', '4', '-4'])
+  await page.setViewportSize({ width: 320, height: 844 })
+  const comparisonScroll = page.getByRole('region', { name: '7-day comparison table', exact: true })
+  await comparisonScroll.focus()
+  await page.keyboard.press('ArrowRight')
+  await expect.poll(() => comparisonScroll.evaluate(element => element.scrollLeft)).toBeGreaterThan(0)
+  const comparisonBounds = await comparisonScroll.boundingBox()
+  expect(comparisonBounds.x).toBeGreaterThanOrEqual(0)
+  expect(comparisonBounds.x + comparisonBounds.width).toBeLessThanOrEqual(320)
+  await page.screenshot({ path: testInfo.outputPath('statistics-comparison-mobile.png') })
   expect(writes).toBe(0)
 })

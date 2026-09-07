@@ -85,60 +85,29 @@
         </div>
 
         <!-- Period comparison -->
-        <div
+        <PolicyStatsComparison
           v-if="comparison.length > 0"
-          class="comparison-section"
-        >
-          <h3>7-Day Comparison</h3>
-          <div class="comparison-table">
-            <div class="comparison-row header">
-              <span>Metric</span>
-              <span>Last 7 Days</span>
-              <span>Previous 7 Days</span>
-              <span>Change</span>
-            </div>
-            <div class="comparison-row">
-              <span>Decisions</span>
-              <span>{{ current.decisions || 0 }}</span>
-              <span>{{ previous.decisions || 0 }}</span>
-              <span :class="getChangeClass(current.decisions, previous.decisions)">
-                {{ formatChange(current.decisions, previous.decisions) }}
-              </span>
-            </div>
-            <div class="comparison-row">
-              <span>Accuracy</span>
-              <span>{{ formatPercent(current.accuracy) }}</span>
-              <span>{{ formatPercent(previous.accuracy) }}</span>
-              <span :class="getChangeClass(current.accuracy, previous.accuracy)">
-                {{ formatChange(current.accuracy, previous.accuracy, true) }}
-              </span>
-            </div>
-            <div class="comparison-row">
-              <span>Auto Rate</span>
-              <span>{{ formatPercent(current.auto_rate / 100) }}</span>
-              <span>{{ formatPercent(previous.auto_rate / 100) }}</span>
-              <span :class="getChangeClass(current.auto_rate, previous.auto_rate)">
-                {{ formatChange(current.auto_rate, previous.auto_rate, true) }}
-              </span>
-            </div>
-          </div>
-        </div>
+          :periods="comparison"
+        />
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import api from '@/api';
 import AccuracyChart from './AccuracyChart.vue';
 import FeedbackEvaluationCoverage from './FeedbackEvaluationCoverage.vue';
+import PolicyStatsComparison from './PolicyStatsComparison.vue';
+import { formatFractionPercent } from '@/utils/policyStatsComparison';
 
 export default {
   name: 'PolicyStatsModal',
   components: {
     AccuracyChart,
-    FeedbackEvaluationCoverage
+    FeedbackEvaluationCoverage,
+    PolicyStatsComparison
   },
   props: {
     policy: {
@@ -150,14 +119,6 @@ export default {
   setup(props) {
     const stats = ref({});
     const comparison = ref([]);
-
-    const lastWeek = computed(() => comparison.value.find(c => c.period === 'last_7_days') || {});
-    const previousWeek = computed(() => comparison.value.find(c => c.period === 'previous_7_days') || {});
-
-    const formatPercent = (value) => {
-      if (value === null || value === undefined) return 'N/A';
-      return `${(value * 100).toFixed(1)}%`;
-    };
 
     const formatPromptType = (type) => {
       const labels = {
@@ -172,23 +133,6 @@ export default {
     const getBarWidth = (count) => {
       const maxCount = Math.max(...(stats.value.prompt_breakdown || []).map(b => b.count));
       return `${(count / maxCount) * 100}%`;
-    };
-
-    const getChangeClass = (currentVal, previousVal) => {
-      if (currentVal == null || previousVal == null) return '';
-      if (currentVal > previousVal) return 'positive';
-      if (currentVal < previousVal) return 'negative';
-      return '';
-    };
-
-    const formatChange = (currentVal, previousVal, isPercent = false) => {
-      if (currentVal == null || previousVal == null) return '-';
-      const diff = currentVal - previousVal;
-      const sign = diff > 0 ? '+' : '';
-      if (isPercent) {
-        return `${sign}${diff.toFixed(1)}%`;
-      }
-      return `${sign}${diff}`;
     };
 
     const loadStats = async () => {
@@ -217,13 +161,9 @@ export default {
     return {
       stats,
       comparison,
-      current: lastWeek,
-      previous: previousWeek,
-      formatPercent,
+      formatPercent: formatFractionPercent,
       formatPromptType,
-      getBarWidth,
-      getChangeClass,
-      formatChange
+      getBarWidth
     };
   }
 };
@@ -333,14 +273,12 @@ export default {
 }
 
 .chart-section,
-.breakdown-section,
-.comparison-section {
+.breakdown-section {
   margin-bottom: 32px;
 }
 
 .chart-section h3,
-.breakdown-section h3,
-.comparison-section h3 {
+.breakdown-section h3 {
   font-size: 18px;
   color: #1f2937;
   margin-bottom: 16px;
@@ -385,38 +323,4 @@ export default {
   text-align: right;
 }
 
-.comparison-table {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.comparison-row {
-  display: grid;
-  grid-template-columns: 150px 1fr 1fr 1fr;
-  gap: 16px;
-  padding: 12px;
-  border-radius: 6px;
-}
-
-.comparison-row.header {
-  background: #f9fafb;
-  font-weight: 600;
-  color: #374151;
-}
-
-.comparison-row:not(.header) {
-  background: white;
-  border: 1px solid #e5e7eb;
-}
-
-.positive {
-  color: #047857;
-  font-weight: 500;
-}
-
-.negative {
-  color: #b91c1c;
-  font-weight: 500;
-}
 </style>

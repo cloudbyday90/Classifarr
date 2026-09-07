@@ -75,6 +75,10 @@ negative, zero and missing periods before presenting these values as evidence.
 After that, add passive lifecycle counts separating completed history from
 pending/retry observations before expanding classification automation.
 
+Update: the comparison calculation fix is delivered in the
+[comparison values outcome](policy-comparison-values-outcome.md). It also
+extracts a native table component so rates and their periods remain associated.
+
 GitHub MCP returned an empty open-PR list during this task. There was no open PR
 to select randomly or implement locally; no external PR was merged.
 

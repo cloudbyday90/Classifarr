@@ -178,6 +178,18 @@ the inactive date buttons and require no reporting-period selection. See the
 [scope design](docs/architecture/policy-statistics-scope-design.md)
 and [outcome](docs/architecture/policy-statistics-scope-outcome.md).
 
+Policy comparisons show rate changes in percentage points and keep unavailable
+values as N/A, including missing auto rates. A dedicated table provides row and
+column headers and keyboard scrolling on small screens. See the
+[comparison design](docs/architecture/policy-comparison-values-design.md)
+and [outcome](docs/architecture/policy-comparison-values-outcome.md).
+
+Custom TLS requests now use compatible HTTP transport components and dispose
+their connections after use. Certificate verification remains the default; only
+an explicit disabled-verification setting uses the custom path. See the
+[transport design](docs/architecture/runtime-dependency-transport-design.md)
+and [outcome](docs/architecture/runtime-dependency-transport-outcome.md).
+
 <p align="center">
   <img src="./docs/assets/issue-262-classification-flow-v042.svg" alt="Classifarr classification flow diagram" width="1100" />
 </p>
