@@ -215,3 +215,8 @@ plain and compressed errors preserve the fixed size error and avoid immediate
 retries. The next task is validating returned vectors and dimension consistency
 before success accounting or persistence, especially before dimension-based
 schema repair.
+The no-cache rebuilt container passed 34 embedding-budget assertions plus 59
+cancellation assertions across 32 local HTTP requests, without real provider calls
+or database writes from the fixtures. Authenticated inventory/settings reads and
+anonymous rejection checks passed. The startup/smoke sample contained four
+slow-query warnings and zero error/fatal or provider-drift records.
