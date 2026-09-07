@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **UTC provenance coverage** — Show a bounded daily view of known recording
+  times, with unknown legacy times explicitly excluded and today marked partial.
+  Shared accessible tables keep UTC and stored-calendar views distinct.
+
 - **Reliable history recording times** — Automatically preserve an immutable
   recording instant for new history and show known/unknown coverage. Legacy
   timestamps stay unknown, with existing calendar reports preserved.

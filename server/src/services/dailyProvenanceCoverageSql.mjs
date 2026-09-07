@@ -1,6 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { PROVENANCE_STATUSES, PROVENANCE_COUNT_FIELDS } from './evidenceProvenanceProjection.mjs';
-export const PROVENANCE_TREND_DAYS = 14;
+import { PROVENANCE_STATUSES, PROVENANCE_COUNT_FIELDS, PROVENANCE_TREND_DAYS } from './evidenceProvenanceProjection.mjs';
 
 // History timestamps have no offsets. Use their stored calendar, with an explicit session-zone label.
 export const DAILY_PROVENANCE_CTES_SQL = `trend_clock AS (

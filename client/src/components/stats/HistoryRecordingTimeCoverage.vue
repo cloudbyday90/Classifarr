@@ -11,7 +11,7 @@
       </p>
       <p>
         Recording times are kept across time zones. Unknown times have not been estimated from older dates.
-        The daily view below still uses stored calendar dates.
+        The UTC view uses known recording times; the calendar view keeps older stored dates.
         Recording-time coverage does not measure classification accuracy.
       </p>
     </template>

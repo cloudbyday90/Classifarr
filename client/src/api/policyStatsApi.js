@@ -33,6 +33,8 @@ export function getPolicyStatsOverview() {
   // unavailable data stays null, and capped groups do not replace global totals.
   // recording_time_coverage partitions retained events into recorded and unknown
   // insert instants; it does not reinterpret the existing calendar-based trend.
+  // utc_provenance_trend separately groups known instants into UTC dates and
+  // excludes unknown times. Neither temporal view is an additional population.
   return getDataRequest('/stats/overview')
 }
 

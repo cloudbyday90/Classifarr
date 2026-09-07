@@ -1,7 +1,9 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { expect, test } from '@playwright/test'
 import { URL } from 'node:url'
-import { dailyProvenanceFixture } from '../src/__tests__/helpers/dailyProvenanceFixture'
+import { dailyProvenanceFixture, utcProvenanceFixture } from '../src/__tests__/helpers/dailyProvenanceFixture'
+
+test.use({ timezoneId: 'Pacific/Honolulu' })
 
 function textContrast(element) {
   const luminance = color => {
@@ -32,6 +34,7 @@ test('automatically presents scoped statistics and evidence with keyboard and mo
   ]
   const coverage = { status: 'available', captured_at: '2026-09-07T00:00:00Z', deleted_feedback_receipts: 1,
     recording_time_coverage: { events: 70, recorded_events: 10, unknown_events: 60 },
+    utc_provenance_trend: utcProvenanceFixture({ events: 10, captured_events: 9, unrecorded_events: 1, invalid_events: 0, unsupported_events: 0 }, 60),
     provenance_trend: dailyProvenanceFixture({ events: 10, captured_events: 9, unrecorded_events: 1, invalid_events: 0, unsupported_events: 0 }, 60),
     history: { totals: { events: 70, completed_events: 64, pending_events: 3, retry_events: 2, other_events: 1,
       original_candidates: 7, candidate_no_proposal: 1, candidate_invalid: 1, candidate_not_applicable: 60, candidate_unrecorded: 1 }, group_count: 2, truncated: false, groups: [
@@ -90,7 +93,14 @@ test('automatically presents scoped statistics and evidence with keyboard and mo
   expect(statsReads.sort()).toEqual(['/api/stats/alerts', '/api/stats/live-feed?limit=20', '/api/stats/overview', '/api/stats/policies'])
   await page.screenshot({ path: testInfo.outputPath('statistics-scopes-desktop.png') })
   const section = page.getByRole('region', { name: 'Available evidence', exact: true })
-  await expect(section.getByRole('table')).toHaveCount(4)
+  await expect(section.getByRole('table')).toHaveCount(5)
+  const utcTrend = section.getByRole('region', { name: 'UTC provenance coverage table', exact: true })
+  await expect(utcTrend.getByRole('table')).toHaveAccessibleName('Original method capture by UTC recording date')
+  await expect(utcTrend.getByRole('columnheader')).toHaveCount(7)
+  await expect(utcTrend.getByRole('rowheader')).toHaveCount(14)
+  await expect(utcTrend.getByRole('row').last()).toContainText('Sep 7, 2026')
+  await expect(utcTrend.getByRole('row').last()).toContainText('Today (partial)')
+  await expect(section.locator('.utc-provenance')).toContainText('60 with an unknown recording time')
   const recordingTimes = section.getByRole('region', { name: 'History recording times', exact: true })
   await expect(recordingTimes).toContainText('10 of 70 retained history events have a known recording time. 60 have an unknown recording time.')
   expect(await recordingTimes.locator('p').first().evaluate(textContrast)).toBeGreaterThanOrEqual(4.5)
@@ -120,6 +130,7 @@ test('automatically presents scoped statistics and evidence with keyboard and mo
   await section.screenshot({ path: testInfo.outputPath('evidence-coverage-desktop.png') })
   await section.locator('.daily-provenance').scrollIntoViewIfNeeded()
   await section.locator('.daily-provenance').screenshot({ path: testInfo.outputPath('evidence-coverage-desktop-trend.png') })
+  await section.locator('.utc-provenance').screenshot({ path: testInfo.outputPath('utc-provenance-desktop.png'), animations: 'disabled' })
   await page.setViewportSize({ width: 390, height: 844 })
   await recordingTimes.scrollIntoViewIfNeeded()
   await recordingTimes.screenshot({ path: testInfo.outputPath('history-recording-times-mobile.png'), animations: 'disabled' })
@@ -147,6 +158,16 @@ test('automatically presents scoped statistics and evidence with keyboard and mo
   await expect.poll(() => trend.evaluate(element => element.scrollLeft)).toBeGreaterThan(0)
   expect(await trend.getByRole('columnheader').first().evaluate(textContrast)).toBeGreaterThanOrEqual(4.5)
   await page.screenshot({ path: testInfo.outputPath('evidence-coverage-mobile-trend.png') })
+  await page.setViewportSize({ width: 320, height: 844 })
+  await utcTrend.scrollIntoViewIfNeeded()
+  await utcTrend.focus()
+  await page.keyboard.press('ArrowRight')
+  await expect.poll(() => utcTrend.evaluate(element => element.scrollLeft)).toBeGreaterThan(0)
+  expect(await utcTrend.getByRole('columnheader').first().evaluate(textContrast)).toBeGreaterThanOrEqual(4.5)
+  // The app scrolls inside <main>; give the full section room for the visual artifact.
+  // Interaction and reflow assertions above use the actual 320x844 viewport.
+  await page.setViewportSize({ width: 320, height: 2200 })
+  await section.locator('.utc-provenance').screenshot({ path: testInfo.outputPath('utc-provenance-mobile.png'), animations: 'disabled' })
   await page.setViewportSize({ width: 320, height: 844 })
   await performance.scrollIntoViewIfNeeded()
   expect(await page.evaluate(() => globalThis.document.documentElement.scrollWidth <= globalThis.innerWidth)).toBe(true)

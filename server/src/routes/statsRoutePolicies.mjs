@@ -36,7 +36,7 @@ export function registerPolicyStatsRoutes(router, { db }) {
       : 0;
     overview.policy_overlap_metrics = policyOverlapMetricsCollector.getSnapshot();
     overview.policy_overlap_metrics_latest_snapshot = await policyOverlapMetricsSnapshotService.getLatestSnapshot();
-    // Includes method attribution, a dated provenance window and recording-time coverage of the same retained history.
+    // Includes attribution, separate stored-calendar/UTC trends and recording-time coverage of the same history.
     overview.evidence_coverage = await readEvidenceCoverage(db);
 
     return sendData(res, overview);

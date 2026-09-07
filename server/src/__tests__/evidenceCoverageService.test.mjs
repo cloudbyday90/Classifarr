@@ -2,7 +2,7 @@
 import { jest, test, expect } from '@jest/globals';
 import { buildEvidenceCoverage, readEvidenceCoverage } from '../services/evidenceCoverageService.mjs';
 import { readEvidenceCoverageSnapshot, EVIDENCE_COVERAGE_SQL } from '../services/evidenceCoverageQuery.mjs';
-import { emptyProvenanceTrend } from './helpers/evidenceTrendFixture.mjs';
+import { emptyProvenanceTrend, emptyUtcProvenanceTrend } from './helpers/evidenceTrendFixture.mjs';
 
 const empty = () => ({ captured_at: new Date('2026-09-07T00:00:00Z'),
     history_totals: { events: 0, completed_events: 0, pending_events: 0, retry_events: 0, other_events: 0,
@@ -12,6 +12,7 @@ const empty = () => ({ captured_at: new Date('2026-09-07T00:00:00Z'),
     attribution_totals: { events: 0, captured_events: 0, unrecorded_events: 0, invalid_events: 0, unsupported_events: 0 },
     attribution_group_count: 0, attribution_groups: [],
     provenance_trend: emptyProvenanceTrend(),
+    utc_provenance_trend: emptyUtcProvenanceTrend(),
     recording_time_coverage: { events: 0, recorded_events: 0, unknown_events: 0 },
     feedback_totals: { observations: 0, source_bound: 0, evaluated: 0, unevaluated: 0 },
     feedback_group_count: '0', feedback_groups: [], deleted_feedback_receipts: '0' });
@@ -124,6 +125,7 @@ test('read failure is explicitly unavailable and never leaks database details', 
 });
 
 function addUnrecordedAttribution(snapshot, events) {
+    snapshot.utc_provenance_trend.excluded.unknown_events = events;
     snapshot.recording_time_coverage = { events, recorded_events: 0, unknown_events: events };
     snapshot.provenance_trend.excluded.older_events = events;
     Object.assign(snapshot.attribution_totals, { events, unrecorded_events: events });
@@ -143,4 +145,10 @@ test.each([null, { events: 0, recorded_events: 1, unknown_events: 0 }])('invalid
     const snapshot = { ...empty(), recording_time_coverage: value };
     const db = { withTransaction: callback => callback({ query: jest.fn().mockResolvedValue({ rows: [snapshot] }) }) };
     expect(await readEvidenceCoverage(db)).toMatchObject({ status: 'unavailable', recording_time_coverage: null });
+});
+
+test('missing UTC coverage makes the snapshot unavailable rather than borrowing legacy dates', async () => {
+    const snapshot = { ...empty(), utc_provenance_trend: undefined };
+    const db = { withTransaction: callback => callback({ query: jest.fn().mockResolvedValue({ rows: [snapshot] }) }) };
+    expect(await readEvidenceCoverage(db)).toMatchObject({ status: 'unavailable', utc_provenance_trend: null });
 });

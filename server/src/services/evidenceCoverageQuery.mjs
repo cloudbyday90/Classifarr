@@ -3,6 +3,7 @@ import { EVIDENCE_CANDIDATE_STATUS_SQL, EVIDENCE_EXPLICIT_CAPTURE_STATUS_SQL } f
 import { EVIDENCE_PROVENANCE_STATUS_SQL, EVIDENCE_ORIGINAL_METHOD_SQL, EVIDENCE_CANDIDATE_SOURCE_SQL,
     EVIDENCE_ATTRIBUTION_GROUPS_SQL, EVIDENCE_ATTRIBUTION_SELECT_SQL } from './evidenceMethodAttributionSql.mjs';
 import { DAILY_PROVENANCE_CTES_SQL, DAILY_PROVENANCE_SELECT_SQL } from './dailyProvenanceCoverageSql.mjs';
+import { UTC_PROVENANCE_CTES_SQL, UTC_PROVENANCE_SELECT_SQL } from './utcProvenanceCoverageSql.mjs';
 export const EVIDENCE_COVERAGE_GROUP_LIMIT = 200;
 
 // Separate populations prevent a corrected destination from changing history attribution.
@@ -38,7 +39,7 @@ export const EVIDENCE_COVERAGE_SQL = `WITH history_evidence AS MATERIALIZED (
     LEFT JOIN libraries library ON library.id = history.library_id
     LEFT JOIN policy_feedback_sources source ON source.classification_id = history.id
     GROUP BY history.library_id, library.name, library.is_active, history.method
-), ${EVIDENCE_ATTRIBUTION_GROUPS_SQL}, ${DAILY_PROVENANCE_CTES_SQL}, feedback_groups AS MATERIALIZED (
+), ${EVIDENCE_ATTRIBUTION_GROUPS_SQL}, ${DAILY_PROVENANCE_CTES_SQL}, ${UTC_PROVENANCE_CTES_SQL}, feedback_groups AS MATERIALIZED (
     SELECT feedback.selected_library_id AS library_id, library.name AS library_name, library.is_active AS library_active,
         CASE WHEN source.classification_id IS NULL THEN 'unlinked_feedback'
             WHEN history.id IS NULL THEN 'source_history_removed'
@@ -63,6 +64,7 @@ SELECT statement_timestamp() AS captured_at,
         FROM history_evidence) AS recording_time_coverage,
     ${EVIDENCE_ATTRIBUTION_SELECT_SQL}
     ${DAILY_PROVENANCE_SELECT_SQL}
+    ${UTC_PROVENANCE_SELECT_SQL}
     (SELECT jsonb_build_object('events', COALESCE(sum(events), 0),
         'completed_events', COALESCE(sum(completed_events), 0),
         'pending_events', COALESCE(sum(pending_events), 0),

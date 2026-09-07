@@ -9,3 +9,8 @@ export function emptyProvenanceTrend() {
             is_partial: index === 13, ...zero(),
         })) };
 }
+
+export function emptyUtcProvenanceTrend() {
+    return { ...emptyProvenanceTrend(), timestamp_basis: 'recorded_instant_utc', time_zone: 'UTC',
+        excluded: { older_events: 0, future_events: 0, unknown_events: 0 } };
+}

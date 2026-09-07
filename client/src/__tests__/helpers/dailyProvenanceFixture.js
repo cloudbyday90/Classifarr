@@ -10,3 +10,8 @@ export function dailyProvenanceFixture(counts = { events: 4, captured_events: 1,
       ...(index === 13 ? totals : zero),
     })) }
 }
+
+export function utcProvenanceFixture(counts, unknown = 0) {
+  return { ...dailyProvenanceFixture(counts), timestamp_basis: 'recorded_instant_utc', time_zone: 'UTC',
+    excluded: { older_events: 0, future_events: 0, unknown_events: unknown } }
+}

@@ -205,6 +205,12 @@ instant; older times are never estimated or backfilled. The daily view continues
 to use stored calendar dates. See the [recording-time design](docs/architecture/history-recording-instant-design.md)
 and [outcome](docs/architecture/history-recording-instant-outcome.md).
 
+UTC provenance coverage now groups known recording times into 14 UTC dates,
+including partial today. Unknown recording times, older events and future events
+are explicitly excluded. Its counts and the stored-calendar view describe the
+same retained history and must not be added together. See the [UTC design](docs/architecture/utc-provenance-trend-design.md)
+and [outcome](docs/architecture/utc-provenance-trend-outcome.md).
+
 Statistics describe their scope beside each section: retained policy feedback,
 recent accuracy windows and the latest activity feed. Policy details label their
 30-day breakdown and rolling seven-day comparison. These descriptions replace

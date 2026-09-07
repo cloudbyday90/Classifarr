@@ -96,8 +96,9 @@ the costs are a migration lock, update checks and permanently unknown legacy
 instants. The design compares alternatives and cites official PostgreSQL, W3C
 and OWASP guidance checked in September 2026.
 
-**Next: add a separately labelled UTC provenance trend for known recording
-instants, with explicit unknown exclusions.** Reuse the fixed bounded window and
+**Follow-up completed: a separately labelled UTC provenance trend for known
+recording instants, with explicit unknown exclusions.** See the [UTC outcome](utc-provenance-trend-outcome.md).
+Reuse the fixed bounded window and
 strict partitions. Keep the current stored-calendar view distinguishable and never
 combine inferred legacy instants with known ones. This will show whether new
 capture improves over time without asking anyone to annotate history.

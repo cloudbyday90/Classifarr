@@ -2,6 +2,7 @@
 import { evidenceCounts } from './evidenceCoverageProjection.mjs';
 
 export const PROVENANCE_STATUSES = Object.freeze(['captured', 'unrecorded', 'invalid', 'unsupported']);
+export const PROVENANCE_TREND_DAYS = 14;
 export const PROVENANCE_COUNT_FIELDS = Object.freeze(['events', ...PROVENANCE_STATUSES.map(status => `${status}_events`)]);
 
 export function projectProvenanceCounts(row) {
