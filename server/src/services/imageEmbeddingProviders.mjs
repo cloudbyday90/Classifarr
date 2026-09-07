@@ -1,3 +1,4 @@
+import { readEmbeddingResponse } from '../utils/embeddingValidation.mjs';
 import { ServiceUnavailableError, ValidationError } from '../utils/appError.mjs';
 import { httpGet, httpGetBinary } from '../utils/httpClient.mjs';
 import { postEmbeddingRequest } from './embeddingHttpClient.mjs';
@@ -37,11 +38,11 @@ export async function embedLocal(imageUrl, config, { model, imageSize }, localAp
         { timeout, headers }
     );
 
-    const embedding = response.data?.embedding || [];
+    const embedding = readEmbeddingResponse(response.data, 'sidecar');
 
     return {
         embedding,
-        dims: response.data?.dims || embedding.length,
+        dims: embedding.length,
         provider: 'local',
         model,
         size: imageSize
@@ -66,7 +67,7 @@ export async function embedVertex(imageUrl, { apiKey, apiEndpoint, model, imageS
         timeout: 20000,
     });
 
-    const embedding = response.data?.predictions?.[0]?.imageEmbedding || [];
+    const embedding = readEmbeddingResponse(response.data, 'vertex');
 
     return {
         embedding,
@@ -91,7 +92,7 @@ export async function embedVoyage(imageUrl, { apiKey, model, imageSize }) {
         }
     );
 
-    const embedding = response.data?.data?.[0]?.embedding || [];
+    const embedding = readEmbeddingResponse(response.data, 'openai');
 
     return {
         embedding,
@@ -119,7 +120,7 @@ export async function embedCohere(imageUrl, { apiKey, model, imageSize }) {
         }
     );
 
-    const embedding = response.data?.embeddings?.[0] || [];
+    const embedding = readEmbeddingResponse(response.data, 'cohere');
 
     return {
         embedding,

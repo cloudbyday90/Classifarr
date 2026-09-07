@@ -7,6 +7,7 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
+import { readEmbeddingResponse } from '../utils/embeddingValidation.mjs';
 import { httpPost } from '../utils/httpClient.mjs';
 import { postEmbeddingRequest } from './embeddingHttpClient.mjs';
 import { ServiceUnavailableError } from '../utils/appError.mjs';
@@ -76,7 +77,7 @@ export async function warmEmbeddingModel(getConfig, model, keepAlive = '24h', ho
 
   const startedAt = Date.now();
   try {
-    await postEmbeddingRequest(
+    const response = await postEmbeddingRequest(
       `${warmUrl}/api/embed`,
       {
         model,
@@ -85,6 +86,8 @@ export async function warmEmbeddingModel(getConfig, model, keepAlive = '24h', ho
       },
       { timeout: 60000 },
     );
+
+    readEmbeddingResponse(response.data, 'ollama');
 
     return {
       success: true,

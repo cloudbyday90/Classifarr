@@ -1,3 +1,4 @@
+import { readEmbeddingResponse } from '../utils/embeddingValidation.mjs';
 import { httpPost, httpStream } from '../utils/httpClient.mjs';
 import { postEmbeddingRequest } from './embeddingHttpClient.mjs';
 import { createLogger } from '../utils/logger.mjs';
@@ -91,14 +92,14 @@ export async function embed(getConfig, getModelsFn, pullModelFn, text, model = '
       signal: signal,
     });
 
-    const embedding = response.data.embeddings?.[0] || response.data.embedding;
+    const embedding = readEmbeddingResponse(response.data, 'ollama');
     return {
       embedding: embedding,
       dims: embedding.length,
     };
   } catch (error) {
     if (error.name === 'AbortError' || error.code === 'ERR_CANCELED'
-        || error.code === 'HTTP_RESPONSE_TOO_LARGE') {
+        || error.code === 'HTTP_RESPONSE_TOO_LARGE' || error.code === 'INVALID_EMBEDDING') {
       throw error;
     }
     throw new Error(`Failed to generate embedding: ${error.message}`);

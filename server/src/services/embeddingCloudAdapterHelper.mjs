@@ -37,7 +37,7 @@ export async function executeCloudEmbedding({ text, model, config, signal, url, 
         return await embeddingWithRetry();
     } catch (error) {
         if (error.name === 'AbortError' || error.code === 'ERR_CANCELED' || error.code === 'ABORT_ERR'
-            || error.code === 'HTTP_RESPONSE_TOO_LARGE') {
+            || error.code === 'HTTP_RESPONSE_TOO_LARGE' || error.code === 'INVALID_EMBEDDING') {
             throw error;
         }
         throw new Error(`${providerName} embedding failed: ${errorExtractor(error)}`);

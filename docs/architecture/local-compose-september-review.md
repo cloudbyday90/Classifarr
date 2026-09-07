@@ -220,3 +220,15 @@ cancellation assertions across 32 local HTTP requests, without real provider cal
 or database writes from the fixtures. Authenticated inventory/settings reads and
 anonymous rejection checks passed. The startup/smoke sample contained four
 slow-query warnings and zero error/fatal or provider-drift records.
+
+## Vector integrity and media-sync warning follow-up
+
+The [vector validation outcome](embedding-vector-validation-outcome.md) records
+semantic validation across embedding adapters and removal of destructive storage
+repair. Real PostgreSQL tests verify that dimension errors preserve existing rows,
+columns and indexes. This closes the next gap found after response budgets.
+
+The [media-sync warning outcome](media-sync-identity-warning-outcome.md) records
+19 source identity conflicts in a read-only scan of 6,692 items. Fixed diagnostics
+now explain these rejections without leaking source payloads or choosing an
+arbitrary ID. Separate unresolved-observation capture is the next inventory task.

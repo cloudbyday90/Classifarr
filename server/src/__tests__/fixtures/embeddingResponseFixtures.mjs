@@ -22,7 +22,7 @@ export function embeddingResponse(shape, vector) {
 export const embeddingShapes = ['openai', 'gemini', 'cohere', 'ollama', 'vertex', 'sidecar'];
 
 export function expandedEmbeddingResponse(shape) {
-  return JSON.stringify({ ...embeddingResponse(shape, embeddingVector(16384)),
+  return JSON.stringify({ ...embeddingResponse(shape, embeddingVector(16000)),
     texts: ['雪'.repeat(349525) + 'x'], metadata: { description: 'Large compatibility fixture' },
   }, null, 2);
 }

@@ -816,6 +816,12 @@ Text and image embedding requests now share a 4 MiB decoded-response budget,
 including Ollama warmup and fallback paths. See the
 [embedding budget design](docs/architecture/embedding-response-budgets-design.md)
 and [measured outcome](docs/architecture/embedding-response-budgets-outcome.md).
+Embedding vector validation and fixed-schema storage are documented in the
+[design](docs/architecture/embedding-vector-validation-design.md) and
+[outcome](docs/architecture/embedding-vector-validation-outcome.md).
+The media-sync identity warning investigation has separate
+[design](docs/architecture/media-sync-identity-warning-design.md) and
+[outcome](docs/architecture/media-sync-identity-warning-outcome.md) documents.
 Malformed observations repair automatically after cooldown using the full
 attributable observation validator. Bounded background passes advance past fresh
 records, while valid empty captures remain cached. See the

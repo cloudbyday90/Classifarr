@@ -79,8 +79,35 @@ test.each(cases)('%s accepts the expanded single-vector compatibility envelope',
   expect(Buffer.byteLength(body)).toBeGreaterThan(1024 * 1024);
   expect(Buffer.byteLength(body)).toBeLessThan(EMBEDDING_MAX_RESPONSE_BYTES / 2);
   const result = await run();
-  expect(result.embedding).toEqual(embeddingVector(16384));
-  expect(result.dims).toBe(16384);
+  expect(result.embedding).toEqual(embeddingVector(16000));
+  expect(result.dims).toBe(16000);
+  expect(calls).toBe(1);
+});
+
+describe.each([['empty', []], ['null component', [null]], ['numeric string', ['0.1']],
+  ['float32 overflow', [1e39]], ['zero norm', [0, 0]], ['too many dimensions', new Array(16001).fill(1)]])
+('%s vector responses', (_label, vector) => {
+  test.each(cases)('%s rejects before cost accounting or immediate retry', async (_provider, shape, run) => {
+    body = JSON.stringify(embeddingResponse(shape, vector));
+    await expect(run()).rejects.toMatchObject({ code: 'INVALID_EMBEDDING' });
+    expect(logCost).not.toHaveBeenCalled();
+    expect(recordRetry).not.toHaveBeenCalled();
+    expect(calls).toBe(1);
+  });
+});
+
+test.each(cases)('%s rejects a missing response vector', async (_provider, _shape, run) => {
+  body = '{}';
+  await expect(run()).rejects.toMatchObject({ code: 'INVALID_EMBEDDING' });
+  expect(logCost).not.toHaveBeenCalled();
+  expect(recordRetry).not.toHaveBeenCalled();
+  expect(calls).toBe(1);
+});
+
+test('warmup does not report a malformed embedding as healthy', async () => {
+  body = JSON.stringify({ embeddings: [[]] });
+  await expect(warmEmbeddingModel(async () => ({ host: '127.0.0.1', port: server.address().port }), 'fixture'))
+    .resolves.toMatchObject({ success: false, errorCode: 'INVALID_EMBEDDING' });
   expect(calls).toBe(1);
 });
 

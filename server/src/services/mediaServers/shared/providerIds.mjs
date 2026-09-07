@@ -33,8 +33,13 @@ export function parsePlexGuids(guids = []) {
     if (!provider) continue;
     const field = `${provider}_id`;
     const parsed = validatedIds({ [field]: id.slice(provider.length + 3) });
-    if (parsed.provider_identity_invalid || parsed[field] == null ||
-        (result[field] != null && result[field] !== parsed[field])) return { ...emptyIds(), provider_identity_invalid: true };
+    if (parsed.provider_identity_invalid || parsed[field] == null) {
+      return { ...emptyIds(), provider_identity_invalid: true, provider_identity_field: field };
+    }
+    if (result[field] != null && result[field] !== parsed[field]) {
+      return { ...emptyIds(), provider_identity_invalid: true,
+        provider_identity_issue: 'conflicting_provider_ids', provider_identity_field: field };
+    }
     result[field] = parsed[field];
   }
 

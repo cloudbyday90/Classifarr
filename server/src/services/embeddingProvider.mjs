@@ -15,6 +15,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
+import { validateEmbeddingResult } from '../utils/embeddingValidation.mjs';
 
 import * as db from '../config/database.mjs';
 import { ValidationError } from '../utils/appError.mjs';
@@ -269,6 +270,7 @@ class EmbeddingProvider {
                 throw preemptedError;
             }
 
+            validateEmbeddingResult(result);
             const latency = Date.now() - startTime;
             this.metrics.totalRequests++;
             this.metrics.successfulRequests++;

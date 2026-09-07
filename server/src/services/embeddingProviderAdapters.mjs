@@ -15,6 +15,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
+import { readEmbeddingResponse, validateEmbeddingResult } from '../utils/embeddingValidation.mjs';
 
 import { postEmbeddingRequest } from './embeddingHttpClient.mjs';
 import { ollamaService } from './ollama.mjs';
@@ -29,7 +30,7 @@ export function createAdapterMethods({ getAdaptiveTimeout, createRetriedOperatio
 
     async function getOllamaEmbedding(text, host, port, model, config, signal = null) {
         if (!host || !port) {
-            const result = await ollamaService.embed(text, model, '15m', signal);
+            const result = validateEmbeddingResult(await ollamaService.embed(text, model, '15m', signal));
             return {
                 embedding: result.embedding,
                 dims: result.dims,
@@ -52,7 +53,7 @@ export function createAdapterMethods({ getAdaptiveTimeout, createRetriedOperatio
                 { model, input: text },
                 { timeout, signal }
             );
-            return response.data.embeddings?.[0] || response.data.embedding;
+            return readEmbeddingResponse(response.data, 'ollama');
         };
 
         const embeddingWithRetry = await createRetriedOperation(makeRequest, {
@@ -83,7 +84,7 @@ export function createAdapterMethods({ getAdaptiveTimeout, createRetriedOperatio
             };
         } catch (error) {
             if (error.name === 'AbortError' || error.code === 'ERR_CANCELED' || error.code === 'ABORT_ERR'
-                || error.code === 'HTTP_RESPONSE_TOO_LARGE') {
+                || error.code === 'HTTP_RESPONSE_TOO_LARGE' || error.code === 'INVALID_EMBEDDING') {
                 throw error;
             }
             throw new Error(`Failed to generate Ollama embedding: ${error.message}`);
@@ -100,7 +101,7 @@ export function createAdapterMethods({ getAdaptiveTimeout, createRetriedOperatio
                 headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' }
             }),
             responseParser: (data) => {
-                const embedding = data.data[0].embedding;
+                const embedding = readEmbeddingResponse(data, 'openai');
                 const costPerMillion = PROVIDER_DEFAULTS.openai.pricing[model] || 0.02;
                 const cost = (data.usage?.total_tokens || 0) / 1000000 * costPerMillion;
                 return { embedding, dims: embedding.length, provider: 'openai', model, cost };
@@ -119,7 +120,7 @@ export function createAdapterMethods({ getAdaptiveTimeout, createRetriedOperatio
                 headers: { 'Content-Type': 'application/json' }
             }),
             responseParser: (data) => {
-                const embedding = data.embedding.values;
+                const embedding = readEmbeddingResponse(data, 'gemini');
                 const costPerMillion = PROVIDER_DEFAULTS.gemini.pricing[model] || 0.025;
                 const cost = (text.length / 1000000) * costPerMillion;
                 return { embedding, dims: embedding.length, provider: 'gemini', model, cost };
@@ -138,7 +139,7 @@ export function createAdapterMethods({ getAdaptiveTimeout, createRetriedOperatio
                 headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' }
             }),
             responseParser: (data) => {
-                const embedding = data.data[0].embedding;
+                const embedding = readEmbeddingResponse(data, 'openai');
                 const costPerMillion = PROVIDER_DEFAULTS.voyage.pricing[model] || 0.012;
                 const cost = (data.usage?.total_tokens || 0) / 1000000 * costPerMillion;
                 return { embedding, dims: embedding.length, provider: 'voyage', model, cost };
@@ -157,7 +158,7 @@ export function createAdapterMethods({ getAdaptiveTimeout, createRetriedOperatio
                 headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' }
             }),
             responseParser: (data) => {
-                const embedding = data.data[0].embedding;
+                const embedding = readEmbeddingResponse(data, 'openai');
                 const costPerMillion = PROVIDER_DEFAULTS.openrouter.pricing[model] || 0.02;
                 const cost = (data.usage?.total_tokens || 0) / 1000000 * costPerMillion;
                 return { embedding, dims: embedding.length, provider: 'openrouter', model, cost };
@@ -176,7 +177,7 @@ export function createAdapterMethods({ getAdaptiveTimeout, createRetriedOperatio
                 headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' }
             }),
             responseParser: (data) => {
-                const embedding = data.embeddings[0];
+                const embedding = readEmbeddingResponse(data, 'cohere');
                 const costPerMillion = PROVIDER_DEFAULTS.cohere.pricing[model] || 0.10;
                 const cost = (text.length / 1000000) * costPerMillion;
                 return { embedding, dims: embedding.length, provider: 'cohere', model, cost };

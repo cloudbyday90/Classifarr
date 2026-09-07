@@ -282,6 +282,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Embedding integrity** — Reject malformed vectors before success accounting or
+  storage, and preserve stored embeddings when provider dimensions do not match.
+- **Media sync diagnostics** — Explain rejected source identities with bounded,
+  privacy-limited conflict details while retaining protection against ambiguous IDs.
+
 - Bound text and image embedding responses during transfer, including compressed
   failures and warmup requests, while preserving cancellation and rejecting
   oversized responses before parsing or immediate retry.

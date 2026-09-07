@@ -505,6 +505,21 @@ describe('MediaSyncService', () => {
     });
 
     describe('upsertMediaItem', () => {
+        it('logs bounded identity diagnostics without analyzing or storing a conflicted item', async () => {
+            mockDb.query.mockResolvedValueOnce({ rows: [{ id: 10 }] });
+            await service.upsertMediaItem(1, 10, {
+                external_id: 'private-source', title: 'Private title', media_type: 'movie',
+                provider_identity_invalid: true, provider_identity_issue: 'conflicting_provider_ids',
+                provider_identity_field: 'tvdb_id'
+            });
+            expect(mockLogger.warn).toHaveBeenCalledWith('Skipping media item', {
+                reason: 'invalid_source_identity', identityIssue: 'conflicting_provider_ids',
+                providerFields: ['tvdb_id'], mediaServerId: 1, libraryId: 10,
+                sourceFingerprint: expect.stringMatching(/^[a-f0-9]{64}$/)
+            });
+            expect(mockDb.query).toHaveBeenCalledTimes(1);
+            expect(mockContentTypeAnalyzer.analyze).not.toHaveBeenCalled();
+        });
         it('should skip if library no longer exists', async () => {
             mockDb.query.mockResolvedValue({ rows: [] });
 

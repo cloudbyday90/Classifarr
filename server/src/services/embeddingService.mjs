@@ -11,7 +11,6 @@ import { ValidationError } from '../utils/appError.mjs';
 import { embeddingRouter } from './embeddingRouter.mjs';
 import { imageEmbeddingProvider } from './imageEmbeddingProvider.mjs';
 import { embeddingAvailabilityService } from './embeddingAvailabilityService.mjs';
-import { persistRagAuditLog } from './ragAuditLogService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { getStats as getStatsFn, getImageStats as getImageStatsFn, getPendingCount as getPendingCountFn, getPendingBreakdown as getPendingBreakdownFn, getPendingEmbeddings as getPendingEmbeddingsFn, hasMinimumEmbeddings as hasMinimumEmbeddingsFn } from './embeddingServiceQueries.mjs';
 import { formatForEmbedding as formatForEmbeddingFn, safeGet as safeGetFn, extractNames as extractNamesFn } from './embeddingServiceFormatters.mjs';
@@ -245,11 +244,11 @@ class EmbeddingService {
     }
 
     async storeImageEmbedding(classificationId, imageResult, { imageHash, imageSize, posterUrl } = {}) {
-        return storeImageEmbeddingFn({ db, logger, persistRagAuditLog }, classificationId, imageResult, { imageHash, imageSize, posterUrl });
+        return storeImageEmbeddingFn({ db, logger }, classificationId, imageResult, { imageHash, imageSize, posterUrl });
     }
 
     async storeEmbedding(classificationId, embeddingResult) {
-        return storeEmbeddingFn({ db, logger, persistRagAuditLog }, classificationId, embeddingResult);
+        return storeEmbeddingFn({ db, logger }, classificationId, embeddingResult);
     }
 
     async markStale(oldProvider = null, oldModel = null) {

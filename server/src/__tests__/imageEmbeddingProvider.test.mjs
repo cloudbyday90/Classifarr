@@ -126,24 +126,11 @@ describe('ImageEmbeddingProvider', () => {
     });
 
     describe('embedLocal', () => {
-        it('uses response dims when provided', async () => {
-            mockHttpPost.mockResolvedValueOnce({
-                data: { embedding: [0.1, 0.2], dims: 768 }
-            });
-
-            const result = await imageEmbeddingProvider.embedLocal(
-                'https://example.com/img.jpg',
-                { image_embedding_local_host: 'localhost', image_embedding_local_port: 8000 },
-                { model: 'ViT-L-14', imageSize: 512 }
-            );
-
-            expect(result).toEqual({
-                embedding: [0.1, 0.2],
-                dims: 768,
-                provider: 'local',
-                model: 'ViT-L-14',
-                size: 512
-            });
+        it('rejects inconsistent response dims', async () => {
+            mockHttpPost.mockResolvedValueOnce({ data: { embedding: [0.1, 0.2], dims: 768 } });
+            await expect(imageEmbeddingProvider.embedLocal('https://example.com/img.jpg',
+                { image_embedding_local_host: 'localhost' }, { model: 'ViT-L-14', imageSize: 512 }))
+                .rejects.toMatchObject({ code: 'INVALID_EMBEDDING' });
         });
 
         it('falls back to embedding length when dims missing', async () => {
@@ -240,7 +227,7 @@ describe('ImageEmbeddingProvider', () => {
 
         it('does NOT send X-Api-Key when _localApiKey is null', async () => {
             imageEmbeddingProvider._localApiKey = null;
-            mockHttpPost.mockResolvedValueOnce({ data: { embedding: [], dims: 0 } });
+            mockHttpPost.mockResolvedValueOnce({ data: { embedding: [0.1], dims: 1 } });
 
             await imageEmbeddingProvider.embedLocal(
                 'https://example.com/img.jpg',
@@ -252,7 +239,7 @@ describe('ImageEmbeddingProvider', () => {
         });
 
         it('uses configurable timeout from config', async () => {
-            mockHttpPost.mockResolvedValueOnce({ data: { embedding: [], dims: 0 } });
+            mockHttpPost.mockResolvedValueOnce({ data: { embedding: [0.1], dims: 1 } });
 
             await imageEmbeddingProvider.embedLocal(
                 'https://example.com/img.jpg',
@@ -264,7 +251,7 @@ describe('ImageEmbeddingProvider', () => {
         });
 
         it('defaults timeout to 15000 when not in config', async () => {
-            mockHttpPost.mockResolvedValueOnce({ data: { embedding: [], dims: 0 } });
+            mockHttpPost.mockResolvedValueOnce({ data: { embedding: [0.1], dims: 1 } });
 
             await imageEmbeddingProvider.embedLocal(
                 'https://example.com/img.jpg',

@@ -196,6 +196,18 @@ describe('EmbeddingProvider', () => {
         });
     });
 
+    it('does not account for invalid results or mark the circuit successful', async () => {
+        db.query.mockResolvedValue({ rows: [{ embedding_provider_mode: 'same', primary_provider: 'openai', api_key: 'fixture' }] });
+        cloudLLMService.embed.mockResolvedValue({ embedding: [0.1, 0.2], dims: 768, cost: 1 });
+        const success = jest.spyOn(embeddingProvider.circuitBreaker, 'recordSuccess');
+        try {
+            await expect(embeddingProvider.getEmbedding('fixture input')).rejects.toMatchObject({ code: 'INVALID_EMBEDDING' });
+            expect(embeddingProvider.metrics.successfulRequests).toBe(0);
+            expect(embeddingProvider.metrics.failedRequests).toBe(1);
+            expect(success).not.toHaveBeenCalled();
+        } finally { success.mockRestore(); }
+    });
+
     describe('getEmbedding - separate_ollama mode', () => {
         it('should use separate Ollama instance', async () => {
             const mockConfig = {

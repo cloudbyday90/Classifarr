@@ -2,6 +2,7 @@ import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { contentTypeAnalyzer } from './contentTypeAnalyzer.mjs';
 import { persistSyncedMediaItem } from './mediaSyncItemPersistence.mjs';
+import { sourceIdentityDiagnostics } from './mediaSyncIdentityDiagnostics.mjs';
 
 const logger = createLogger('mediaSync');
 
@@ -19,7 +20,10 @@ export async function upsertMediaItem(mediaServerId, libraryId, item) {
             query: (text, values) => db.query(text, values),
             analyze: (...args) => contentTypeAnalyzer.analyze(...args),
         });
-        if (result !== 'synced') logger.warn('Skipping media item', { reason: result });
+        if (result !== 'synced') logger.warn('Skipping media item', {
+            reason: result,
+            ...(result === 'invalid_source_identity' ? sourceIdentityDiagnostics(mediaServerId, libraryId, captured) : {}),
+        });
     } catch (error) {
         if (error.code === '23503') {
             logger.warn(`Skipping media item - library ${libraryId} no longer exists (race condition)`, {

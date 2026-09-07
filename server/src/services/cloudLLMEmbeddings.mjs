@@ -7,6 +7,7 @@
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  */
+import { readEmbeddingResponse } from '../utils/embeddingValidation.mjs';
 
 import { postEmbeddingRequest } from './embeddingHttpClient.mjs';
 import { createLogger } from '../utils/logger.mjs';
@@ -39,7 +40,7 @@ export async function embed(text, config, model = 'text-embedding-3-small', sign
             }
         );
 
-        const embedding = response.data.data?.[0]?.embedding;
+        const embedding = readEmbeddingResponse(response.data, 'openai');
         const usage = response.data.usage || {};
 
         const costPerMillion = model.includes('large') ? 0.13 : 0.02;
@@ -50,13 +51,13 @@ export async function embed(text, config, model = 'text-embedding-3-small', sign
         logger.info('Embedding generated', {
             provider: config.primary_provider,
             model: model,
-            dims: embedding?.length || 0,
+            dims: embedding.length,
             cost: `$${cost.toFixed(6)}`
         });
 
         return {
             embedding: embedding,
-            dims: embedding?.length || 0,
+            dims: embedding.length,
             cost: cost,
             tokens: usage.total_tokens || 0
         };
@@ -89,7 +90,7 @@ export async function embedGemini(text, config, model = 'text-embedding-005', si
             { timeout: 60000, signal: signal }
         );
 
-        const embedding = response.data.embedding?.values;
+        const embedding = readEmbeddingResponse(response.data, 'gemini');
 
         const cost = (text.length / 1000000) * 0.025;
 
@@ -97,13 +98,13 @@ export async function embedGemini(text, config, model = 'text-embedding-005', si
 
         logger.info('Gemini embedding generated', {
             model: model,
-            dims: embedding?.length || 0,
+            dims: embedding.length,
             cost: `$${cost.toFixed(6)}`
         });
 
         return {
             embedding: embedding,
-            dims: embedding?.length || 0,
+            dims: embedding.length,
             cost: cost,
             tokens: text.length
         };

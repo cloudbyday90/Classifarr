@@ -93,9 +93,6 @@ describe('EmbeddingService', () => {
         embeddingRouter.isEnabled.mockResolvedValue(true);
         imageEmbeddingProvider.getConfig.mockResolvedValue(null);
         imageEmbeddingProvider.isConfigured.mockReturnValue(false);
-        // Wire withTransaction so auto-heal DDL runs on the same mock connection as db.query.
-        // Without this, db.withTransaction() is an auto-mock that returns undefined and the
-        // heal callback never executes, which would make the auto-heal path silently fail.
         db.withTransaction.mockImplementation(async (fn) => fn({ query: db.query }));
     });
 
@@ -519,83 +516,31 @@ describe('EmbeddingService', () => {
         });
     });
 
-    describe('storeImageEmbedding', () => {
-        it('auto-heals image vector schema on dimension mismatch using pinned transaction', async () => {
-            let callCount = 0;
-            db.query.mockImplementation(async (_sql) => {
-                callCount += 1;
-                if (callCount === 1) {
-                    throw new Error('expected 2000 dimensions, not 768');
-                }
-                return { rows: [] };
-            });
-
-            const result = await embeddingService.storeImageEmbedding(
-                101,
-                { embedding: [0.1, 0.2], dims: 768, provider: 'local', model: 'ViT-L-14' },
-                { imageHash: 'hash', imageSize: 512, posterUrl: 'https://example.com/a.jpg' }
-            );
-
-            expect(result).toEqual({ classificationId: 101, dims: 768, provider: 'local' });
-            expect(db.withTransaction).toHaveBeenCalledTimes(1);
-            const executedSql = db.query.mock.calls.map(([sql]) => sql).join('\n');
-            expect(executedSql).toContain('DROP COLUMN image_embedding');
-            expect(executedSql).toContain('vector(768)');
-            // HNSW build must NOT be inside the heal transaction — it is deferred to a background task.
-            expect(executedSql).not.toMatch(/USING hnsw/i);
-            // Background rebuild task must be enqueued after the heal transaction commits.
-            expect(executedSql).toContain('INSERT INTO task_queue');
-            const taskInsertCall = db.query.mock.calls.find(
-                ([sql]) => typeof sql === 'string' && sql.includes('INSERT INTO task_queue')
-            );
-            expect(taskInsertCall).toBeDefined();
-            const taskPayload = JSON.parse(taskInsertCall[1][0]);
-            expect(taskPayload).toMatchObject({ reason: 'image_dimension_mismatch', targetDims: 768 });
-            // The INSERT should use the 'rebuild_hnsw_index' task type in the SQL
-            expect(taskInsertCall[0]).toContain('rebuild_hnsw_index');
-            const auditCall = db.query.mock.calls.find(
-                ([sql, params]) => sql === 'INSERT INTO rag_logs (level, type, message) VALUES ($1, $2, $3)' &&
-                    typeof params?.[2] === 'string' &&
-                    params[2].includes('Image embedding dimension mismatch auto-healed to vector(768)')
-            );
-            expect(auditCall).toBeDefined();
+    describe('storage preserves existing vectors on dimension mismatch', () => {
+        it('returns the existing image failure envelope without schema repair or queue writes', async () => {
+            db.query.mockRejectedValue(new Error('expected 2000 dimensions, not 2'));
+            await expect(embeddingService.storeImageEmbedding(101,
+                { embedding: [0.1, 0.2], dims: 2, provider: 'local', model: 'fixture' })).resolves.toBeNull();
+            expect(db.query).toHaveBeenCalledTimes(1);
+            expect(db.withTransaction).not.toHaveBeenCalled();
+            expect(db.query.mock.calls[0][0]).toMatch(/UPDATE classification_embeddings/);
         });
-    });
-
-    describe('storeEmbedding (text auto-heal)', () => {
-        it('auto-heals text embedding dimension mismatch using pinned transaction', async () => {
-            let callCount = 0;
-            db.query.mockImplementation(async (sql) => {
-                callCount++;
-                if (callCount === 1) {
-                    // First INSERT: trigger dimension mismatch auto-heal
-                    throw new Error('expected 768 dimensions, not 1536');
-                }
-                if (sql && sql.includes('INSERT INTO classification_embeddings')) {
-                    // Retry INSERT after heal
-                    return { rows: [{ id: 999 }] };
-                }
-                return { rows: [] };
-            });
-
-            const result = await embeddingService.storeEmbedding(200, {
-                embedding: new Array(1536).fill(0.1),
-                dims: 1536,
-                provider: 'openai',
-                model: 'text-embedding-ada-002'
-            });
-
-            expect(db.withTransaction).toHaveBeenCalledTimes(1);
-            const allSql = db.query.mock.calls.map(([sql]) => sql).join('\n');
-            expect(allSql).toContain('TRUNCATE TABLE classification_embeddings');
-            expect(allSql).toContain('vector(1536)');
-            expect(result).toEqual({ id: 999, dims: 1536, provider: 'openai' });
-            const auditCall = db.query.mock.calls.find(
-                ([sql, params]) => sql === 'INSERT INTO rag_logs (level, type, message) VALUES ($1, $2, $3)' &&
-                    typeof params?.[2] === 'string' &&
-                    params[2].includes('Text embedding dimension mismatch auto-healed to vector(1536)')
-            );
-            expect(auditCall).toBeDefined();
+        it('propagates the text failure without truncation or a retry', async () => {
+            const error = new Error('expected 768 dimensions, not 1536');
+            db.query.mockRejectedValue(error);
+            await expect(embeddingService.storeEmbedding(200, {
+                embedding: new Array(1536).fill(0.1), dims: 1536, provider: 'openai', model: 'fixture'
+            })).rejects.toBe(error);
+            expect(db.query).toHaveBeenCalledTimes(1);
+            expect(db.withTransaction).not.toHaveBeenCalled();
+        });
+        it.each([null, { embedding: [], dims: 0 }, { embedding: [1, 2], dims: '2' },
+            { embedding: [1, Infinity], dims: 2 }, { embedding: [1, 2], dims: 768 }])
+        ('rejects invalid text and image results before SQL: %j', async result => {
+            await expect(embeddingService.storeEmbedding(1, result)).rejects.toMatchObject({ code: 'INVALID_EMBEDDING' });
+            await expect(embeddingService.storeImageEmbedding(1, result)).resolves.toBeNull();
+            expect(db.query).not.toHaveBeenCalled();
+            expect(db.withTransaction).not.toHaveBeenCalled();
         });
     });
 });
