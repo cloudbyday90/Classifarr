@@ -226,6 +226,14 @@ evidence composition, including retries and fallbacks; they are not accuracy rat
 or independent labels. See the [design](docs/architecture/original-observation-types-design.md)
 and [outcome](docs/architecture/original-observation-types-outcome.md).
 
+Original classifier proposals are also compared with each history record's
+current library in the same UTC window. The bounded table separates same and
+different IDs, no candidate, invalid candidate and unknown recorded libraries.
+It preserves original proposals across later resolution and catalog removal;
+agreement does not establish correctness. See the
+[comparison design](docs/architecture/candidate-library-comparison-design.md)
+and [outcome](docs/architecture/candidate-library-comparison-outcome.md).
+
 Statistics describe their scope beside each section: retained policy feedback,
 recent accuracy windows and the latest activity feed. Policy details label their
 30-day breakdown and rolling seven-day comparison. These descriptions replace

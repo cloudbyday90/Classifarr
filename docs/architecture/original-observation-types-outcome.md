@@ -85,6 +85,9 @@ explicit and use immutable captured candidate IDs, not current placement as
 ground truth. Bounded agreement/disagreement counts would reveal what evidence
 exists for later evaluation; disagreement is not itself a measured error.
 
+Implemented in the subsequent [candidate comparison design](candidate-library-comparison-design.md)
+and [outcome](candidate-library-comparison-outcome.md).
+
 **Next engineering item: make bounded worker recycling standard for full local
 backend tests**, using the measured rerun to choose defaults. Independent labels,
 readiness and frozen-study preflight continue to gate review-only semantic

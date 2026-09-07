@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { PROVENANCE_STATUSES, PROVENANCE_COUNT_FIELDS, PROVENANCE_TREND_DAYS } from './evidenceProvenanceProjection.mjs';
 import { ORIGINAL_OBSERVATION_TYPE_SQL } from './originalObservationTypeSql.mjs';
+import { CANDIDATE_LIBRARY_COMPARISON_SQL } from './candidateLibraryComparisonSql.mjs';
 
 // Every instant/date conversion names UTC; the session TimeZone never supplies an offset.
 export const UTC_PROVENANCE_CTES_SQL = `utc_trend_clock AS (
@@ -9,6 +10,7 @@ export const UTC_PROVENANCE_CTES_SQL = `utc_trend_clock AS (
         (statement_timestamp() AT TIME ZONE 'UTC')::date - ${PROVENANCE_TREND_DAYS - 1} AS start_date
 ), utc_trend_population AS MATERIALIZED (
     SELECT history.library_id, ${ORIGINAL_OBSERVATION_TYPE_SQL} AS observation_type,
+        ${CANDIDATE_LIBRARY_COMPARISON_SQL} AS candidate_comparison_state,
         (history.recorded_at AT TIME ZONE 'UTC')::date AS day, history.provenance_status, CASE
         WHEN history.recorded_at IS NULL OR NOT isfinite(history.recorded_at) THEN 'unknown'
         WHEN history.recorded_at < (clock.start_date::timestamp AT TIME ZONE 'UTC') THEN 'older'

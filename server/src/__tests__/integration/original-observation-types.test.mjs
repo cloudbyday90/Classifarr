@@ -63,6 +63,7 @@ test('resolution and library removal preserve global origin composition', async 
     expect((await read()).utc_library_coverage.totals).toEqual(before);
     await client.query('DELETE FROM libraries WHERE id=$1', [library]);
     const after = (await read()).utc_library_coverage;
-    expect(after.totals).toEqual(before);
+    expect(after.totals).toEqual({ ...before,
+        candidate_comparison: { ...before.candidate_comparison, same_library_events: 0, unknown_library_events: 1 } });
     expect(after.groups[0]).toMatchObject({ library_id: null, observation_types: { classifier_workflow_events: 1, unknown_origin_events: 1 } });
 });

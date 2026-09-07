@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { EVIDENCE_CANDIDATE_STATUS_SQL, EVIDENCE_EXPLICIT_CAPTURE_STATUS_SQL } from './evidenceCandidateCoverageSql.mjs';
 import { EVIDENCE_PROVENANCE_STATUS_SQL, EVIDENCE_ORIGINAL_METHOD_SQL, EVIDENCE_CANDIDATE_SOURCE_SQL,
+    EVIDENCE_ORIGINAL_CANDIDATE_LIBRARY_SQL,
     EVIDENCE_ATTRIBUTION_GROUPS_SQL, EVIDENCE_ATTRIBUTION_SELECT_SQL } from './evidenceMethodAttributionSql.mjs';
 import { DAILY_PROVENANCE_CTES_SQL, DAILY_PROVENANCE_SELECT_SQL } from './dailyProvenanceCoverageSql.mjs';
 import { UTC_PROVENANCE_CTES_SQL, UTC_PROVENANCE_SELECT_SQL } from './utcProvenanceCoverageSql.mjs';
@@ -17,7 +18,8 @@ export const EVIDENCE_COVERAGE_SQL = `WITH history_evidence AS MATERIALIZED (
         ${EVIDENCE_CANDIDATE_STATUS_SQL} AS evidence_candidate_status,
         ${EVIDENCE_PROVENANCE_STATUS_SQL} AS provenance_status,
         ${EVIDENCE_ORIGINAL_METHOD_SQL} AS original_method,
-        ${EVIDENCE_CANDIDATE_SOURCE_SQL} AS candidate_source
+        ${EVIDENCE_CANDIDATE_SOURCE_SQL} AS candidate_source,
+        ${EVIDENCE_ORIGINAL_CANDIDATE_LIBRARY_SQL} AS original_candidate_library_id
     FROM (SELECT id, library_id, method, status, metadata, created_at, recorded_at,
         ${EVIDENCE_EXPLICIT_CAPTURE_STATUS_SQL} AS capture_status
         FROM classification_history) classification_history

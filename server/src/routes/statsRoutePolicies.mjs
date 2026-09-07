@@ -37,6 +37,7 @@ export function registerPolicyStatsRoutes(router, { db }) {
     overview.policy_overlap_metrics = policyOverlapMetricsCollector.getSnapshot();
     overview.policy_overlap_metrics_latest_snapshot = await policyOverlapMetricsSnapshotService.getLatestSnapshot();
     // Includes attribution, calendar/UTC trends and bounded UTC library groups with original observation types.
+    // Nested candidate comparison describes captured workflows, not classification accuracy.
     overview.evidence_coverage = await readEvidenceCoverage(db);
 
     return sendData(res, overview);

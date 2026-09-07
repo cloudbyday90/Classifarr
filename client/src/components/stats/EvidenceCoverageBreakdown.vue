@@ -179,6 +179,11 @@
         :trend="coverage.utc_provenance_trend"
         :history-events="coverage.history.totals.events"
       />
+      <CandidateLibraryComparison
+        :coverage="coverage.utc_library_coverage"
+        :trend="coverage.utc_provenance_trend"
+        :history-events="coverage.history.totals.events"
+      />
       <DailyProvenanceCoverage :trend="coverage.provenance_trend" />
       <p v-if="coverage.deleted_feedback_receipts">
         {{ number(coverage.deleted_feedback_receipts) }} deleted feedback results are excluded from these counts.
@@ -197,6 +202,7 @@ import DailyProvenanceCoverage from './DailyProvenanceCoverage.vue'
 import UtcProvenanceCoverage from './UtcProvenanceCoverage.vue'
 import LibraryUtcCoverage from './LibraryUtcCoverage.vue'
 import OriginalObservationTypes from './OriginalObservationTypes.vue'
+import CandidateLibraryComparison from './CandidateLibraryComparison.vue'
 import HistoryRecordingTimeCoverage from './HistoryRecordingTimeCoverage.vue'
 import { evidenceNumber as number, evidenceLibraryLabel as libraryLabel, evidenceMethodLabel as methodLabel } from '../../utils/evidenceCoverageLabels'
 

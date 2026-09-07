@@ -4,12 +4,19 @@ export function libraryUtcCoverageFixture(trend, groups) {
     ...trend.totals, ...trend.excluded }
   return { timestamp_basis: trend.timestamp_basis, time_zone: trend.time_zone, day_count: trend.day_count,
     start_date: trend.start_date, end_date: trend.end_date,
-    totals: { ...totals, observation_types: observationTypeFixture(totals) },
+    totals: { ...totals, observation_types: observationTypeFixture(totals),
+      candidate_comparison: candidateComparisonFixture(observationTypeFixture(totals)) },
     group_count: groups.length, group_limit: 200, truncated: false,
-    groups: groups.map(row => ({ ...row, observation_types: row.observation_types ?? observationTypeFixture(row) })) }
+    groups: groups.map(row => ({ ...row, observation_types: row.observation_types ?? observationTypeFixture(row),
+      candidate_comparison: row.candidate_comparison ?? candidateComparisonFixture(row.observation_types ?? observationTypeFixture(row)) })) }
 }
 
 export function observationTypeFixture(counts) {
   return { imported_membership_events: 0, manual_action_events: 0,
     classifier_workflow_events: counts.captured_events, unknown_origin_events: counts.events - counts.captured_events }
+}
+
+export function candidateComparisonFixture(types) {
+  return { same_library_events: 0, different_library_events: 0, no_candidate_events: types.classifier_workflow_events,
+    invalid_candidate_events: 0, unknown_library_events: 0 }
 }

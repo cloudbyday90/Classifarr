@@ -16,6 +16,11 @@ export const EVIDENCE_CANDIDATE_SOURCE_SQL = `CASE
         AND classification_history.capture_status <> 'unsupported_method'
     THEN (${capture}) ->> 'source' ELSE NULL END`;
 
+// The capture validator checks syntax and int4 range before this conditional cast.
+export const EVIDENCE_ORIGINAL_CANDIDATE_LIBRARY_SQL = `CASE
+    WHEN classification_history.capture_status = 'recorded'
+    THEN ((${capture}) ->> 'library_id')::integer ELSE NULL END`;
+
 const order = 'library_id NULLS LAST, original_method NULLS LAST, candidate_source NULLS LAST, recorded_method, provenance_status';
 export const EVIDENCE_ATTRIBUTION_GROUPS_SQL = `attribution_groups AS MATERIALIZED (
     SELECT history.library_id, library.name AS library_name, library.is_active AS library_active,

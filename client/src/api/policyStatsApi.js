@@ -38,6 +38,8 @@ export function getPolicyStatsOverview() {
   // utc_library_coverage applies the same window and exclusions by recorded
   // library, with its own bounded groups and uncapped global totals.
   // Its nested observation_types partition the window by validated original origin.
+  // candidate_comparison partitions only captured classifier workflows by original
+  // candidate versus recorded library, with explicit missing states and no accuracy claim.
   return getDataRequest('/stats/overview')
 }
 

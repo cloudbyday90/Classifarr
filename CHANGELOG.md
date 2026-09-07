@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Original candidate comparison** — Show how captured classifier proposals compare
+  with recorded libraries in the recent UTC window, retaining missing evidence
+  and unknown placements without implying accuracy or adding operator steps.
+
 - **Original observation types** — Automatically distinguish imported membership,
   manual actions, classifier workflows and unknown origins within library UTC
   coverage, with complete totals and no additional operator input.

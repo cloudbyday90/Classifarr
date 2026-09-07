@@ -2,6 +2,7 @@
 import { evidenceCount, reconcileEvidenceGroups } from './evidenceCoverageProjection.mjs';
 import { LIBRARY_UTC_COUNT_FIELDS, projectLibraryUtcCounts as project } from './libraryUtcCoverageCounts.mjs';
 import { OBSERVATION_TYPE_FIELDS } from './originalObservationTypeCounts.mjs';
+import { CANDIDATE_COMPARISON_FIELDS, assertCandidateComparisonLibrary } from './candidateLibraryComparisonCounts.mjs';
 
 export function buildLibraryUtcCoverage(snapshot, utcTrend, retainedEvents, limit) {
     const totals = project(snapshot.utc_library_totals);
@@ -20,12 +21,14 @@ export function buildLibraryUtcCoverage(snapshot, utcTrend, retainedEvents, limi
             || (id === null && (row.library_name !== null || row.library_active !== null))) throw new Error('Invalid library UTC identity');
         previous = order;
         const counts = project(row);
+        assertCandidateComparisonLibrary(counts.candidate_comparison, id);
         if (counts.retained_events === 0) throw new Error('Empty library UTC group');
         return { library_id: id, library_name: row.library_name, library_active: row.library_active, ...counts };
     });
     const truncated = groupCount > groups.length;
     reconcileEvidenceGroups(totals, groups, LIBRARY_UTC_COUNT_FIELDS, truncated);
     reconcileEvidenceGroups(totals.observation_types, groups.map(row => row.observation_types), OBSERVATION_TYPE_FIELDS, truncated);
+    reconcileEvidenceGroups(totals.candidate_comparison, groups.map(row => row.candidate_comparison), CANDIDATE_COMPARISON_FIELDS, truncated);
     const omittedEvents = totals.retained_events - groups.reduce((sum, row) => sum + row.retained_events, 0);
     if (omittedEvents < groupCount - groups.length) throw new Error('Inconsistent omitted library groups');
     return { timestamp_basis: utcTrend.timestamp_basis, time_zone: utcTrend.time_zone, day_count: utcTrend.day_count,

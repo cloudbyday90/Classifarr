@@ -67,6 +67,10 @@ test('automatically presents scoped statistics and evidence with keyboard and mo
     { retained_events: 70, ...coverage.utc_provenance_trend.totals, ...coverage.utc_provenance_trend.excluded,
       library_id: 1, library_name: 'Observed movies', library_active: true },
   ])
+  const comparisons = { same_library_events: 6, different_library_events: 1, no_candidate_events: 1,
+    invalid_candidate_events: 1, unknown_library_events: 0 }
+  coverage.utc_library_coverage.totals.candidate_comparison = { ...comparisons }
+  coverage.utc_library_coverage.groups[0].candidate_comparison = { ...comparisons }
   await page.route(url => url.pathname.startsWith('/api/'), async route => {
     const url = new URL(route.request().url())
     const path = url.pathname
@@ -98,7 +102,12 @@ test('automatically presents scoped statistics and evidence with keyboard and mo
   expect(statsReads.sort()).toEqual(['/api/stats/alerts', '/api/stats/live-feed?limit=20', '/api/stats/overview', '/api/stats/policies'])
   await page.screenshot({ path: testInfo.outputPath('statistics-scopes-desktop.png') })
   const section = page.getByRole('region', { name: 'Available evidence', exact: true })
-  await expect(section.getByRole('table')).toHaveCount(7)
+  await expect(section.getByRole('table')).toHaveCount(8)
+  const candidates = section.getByRole('region', { name: 'Candidate library comparison table', exact: true })
+  await expect(candidates.getByRole('table')).toHaveAccessibleName('Original candidate comparison within the library UTC window')
+  await expect(candidates.getByRole('columnheader')).toHaveCount(7)
+  await expect(candidates.getByRole('rowheader')).toHaveText(['Observed movies', 'All recorded libraries'])
+  await expect(candidates.getByRole('row').last().getByRole('cell')).toHaveText(['9', '6', '1', '1', '1', '0'])
   const observationTypes = section.getByRole('region', { name: 'Original observation types table', exact: true })
   await expect(observationTypes.getByRole('table')).toHaveAccessibleName('Original observation types within the library UTC window')
   await expect(observationTypes.getByRole('columnheader')).toHaveCount(6)
@@ -144,6 +153,7 @@ test('automatically presents scoped statistics and evidence with keyboard and mo
   await expect(section.getByText('7 original candidates recorded.', { exact: true })).toBeVisible()
   expect(await section.locator('dt').first().evaluate(textContrast)).toBeGreaterThanOrEqual(4.5)
   await section.screenshot({ path: testInfo.outputPath('evidence-coverage-desktop.png') })
+  await section.locator('.candidate-library-comparison').screenshot({ path: testInfo.outputPath('candidate-comparison-desktop.png') })
   await section.locator('.daily-provenance').scrollIntoViewIfNeeded()
   await section.locator('.daily-provenance').screenshot({ path: testInfo.outputPath('evidence-coverage-desktop-trend.png') })
   await section.locator('.utc-provenance').screenshot({ path: testInfo.outputPath('utc-provenance-desktop.png'), animations: 'disabled' })
@@ -176,6 +186,16 @@ test('automatically presents scoped statistics and evidence with keyboard and mo
   await expect.poll(() => trend.evaluate(element => element.scrollLeft)).toBeGreaterThan(0)
   expect(await trend.getByRole('columnheader').first().evaluate(textContrast)).toBeGreaterThanOrEqual(4.5)
   await page.screenshot({ path: testInfo.outputPath('evidence-coverage-mobile-trend.png') })
+  await page.setViewportSize({ width: 320, height: 844 })
+  await candidates.scrollIntoViewIfNeeded()
+  await candidates.focus()
+  await page.keyboard.press('ArrowRight')
+  await expect.poll(() => candidates.evaluate(element => element.scrollLeft)).toBeGreaterThan(0)
+  expect(await candidates.getByRole('columnheader').first().evaluate(textContrast)).toBeGreaterThanOrEqual(4.5)
+  expect(await page.evaluate(() => globalThis.document.documentElement.scrollWidth <= globalThis.innerWidth)).toBe(true)
+  await page.setViewportSize({ width: 320, height: 2200 })
+  await candidates.evaluate(element => { element.scrollLeft = 0 })
+  await section.locator('.candidate-library-comparison').screenshot({ path: testInfo.outputPath('candidate-comparison-mobile.png'), animations: 'disabled' })
   await page.setViewportSize({ width: 320, height: 844 })
   await observationTypes.scrollIntoViewIfNeeded()
   await observationTypes.focus()
