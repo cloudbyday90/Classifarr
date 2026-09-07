@@ -11,8 +11,9 @@ wrapper discards a connection test's `success: false` result. Provider outages,
 bad credentials and exhaustion can therefore become misleading coverage evidence.
 
 Use one small, deterministic ESM response classifier, a separate payload validator
-and a typed error adapter. Only a recognized missing-title response on successful
-HTTP transport produces null or an empty search. Credential failures, explicit
+and a typed error adapter. A recognized missing-title response on successful
+HTTP transport produces null or an empty search; a valid successful search may
+also contain an empty result set. Credential failures, explicit
 provider quota exhaustion, malformed data and unknown provider failures remain
 distinct failures. An HTTP error cannot become a successful lookup or a miss.
 

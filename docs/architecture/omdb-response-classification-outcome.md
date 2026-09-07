@@ -5,8 +5,9 @@ Date: 2026-09-07. See the separate
 
 ## Result
 
-Title, IMDb-ID and search lookups now use a shared response classifier. Only
-confirmed missing-title messages produce absent lookup evidence. Invalid keys,
+Title, IMDb-ID and search lookups now use a shared response classifier. Confirmed
+missing-title messages produce absent lookup evidence; valid successful searches
+can also contain an empty result set. Invalid keys,
 explicit provider quota exhaustion, rejected requests, malformed payloads and
 unknown provider errors retain distinct failures with fixed messages. HTTP 401
 does not become daily quota exhaustion unless the body explicitly identifies the
@@ -66,12 +67,43 @@ The full backend run, including the final HTTP regressions, passed **31,360 test
 across 1,096 suites** in 203.122 seconds with two workers and 512 MB idle worker
 recycling. Documentation lint passed across 1,081 Markdown files.
 
-Final Compose results will be recorded after validation completes.
+## Local Compose validation
+
+The no-cache build passed from clean source revision
+`6fb188eabe53008c282d0b0be535a59bd3becc8a`. Backend and frontend dependency installs
+both reported zero audit vulnerabilities, and the production UI build passed.
+Before recreation, a 44,533,424-byte database archive was copied to ignored local
+storage, checksum-verified and inspected with `pg_restore --list`. The prior image
+remains available locally for rollback.
+
+The recreated container is healthy and reports that source revision. An in-container
+HTTP stub exercised eight cases through the actual buffered HTTP client: valid
+metadata, confirmed miss, body-level authentication/quota failures, HTTP-401 quota,
+malformed success, an HTTP-401/body-miss conflict and HTTP-429 quota. Health,
+connection, title, IMDb-ID and search paths passed all assertions across **40 local
+HTTP requests and 24 fixture reservations**. This helper made zero real provider
+calls and zero database writes.
+
+All ten authenticated read-only smoke GETs returned 200. Six anonymous requests
+were rejected with 401, and unsupported health/overlap query parameters returned
+400. Health and overlap retained `no-store` and available status over 6,692 inventory
+rows across ten libraries, with sample times of 673 ms and 841 ms. History remained
+at 6,775 rows, with zero feedback records and 250 applied migrations. Provider
+integrity reported zero invalid providers, and read-only local quota availability
+remained available. Settings returned the expected masked selected configuration.
+
+The startup/smoke sample contained **432 informational records, five slow-query
+warnings, zero provider-drift warnings and zero error/fatal records**. Existing
+background work remained enabled; helper assertions do not describe all background
+runtime activity. Real credentials, configured quota values, raw logs and backups
+remain outside committed artifacts. Final documentation is the only difference
+from the tested image source.
 
 ## Open PR availability
 
-GitHub MCP returned an empty open-PR collection at task start. There was no PR
-population for random selection; no closed PR was substituted or merged.
+GitHub MCP returned an empty open-PR collection at task start and final readback.
+There was no PR population for random selection; no closed PR was substituted or
+merged.
 
 ## Recommendation stack and next item
 

@@ -176,3 +176,6 @@ keeps credential, quota and provider failures separate from absent evidence;
 dashboard health now respects the actual connection result. No additional
 operator workflow or classification authority is introduced. Transport response
 byte limits are the next recommended hardening step.
+The no-cache rebuilt image passed eight local HTTP fault cases and the authenticated
+inventory/settings smoke checks. Its startup/smoke sample contained five slow-query
+warnings and zero error/fatal or provider-drift records.
