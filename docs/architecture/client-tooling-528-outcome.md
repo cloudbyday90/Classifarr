@@ -2,6 +2,11 @@
 
 Date: 2026-09-07.
 
+The subsequent [recording-time follow-up](history-recording-instant-outcome.md)
+selected this PR while it was still open. Its exact patch was already present on
+main; reverse-check verification succeeded and no further dependency edit was
+made. Final GitHub readback reported it closed without merge.
+
 ## Selection and local implementation
 
 GitHub MCP returned one open PR at task start, [PR 528](https://github.com/cloudbyday90/Classifarr/pull/528).

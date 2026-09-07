@@ -199,6 +199,12 @@ Dates use the explicitly labelled database calendar because historical timestamp
 have no offsets. See the [daily design](docs/architecture/daily-provenance-coverage-design.md)
 and [outcome](docs/architecture/daily-provenance-coverage-outcome.md).
 
+New history also keeps an immutable recording instant across time zones. The
+statistics overview shows how many retained entries have a known or unknown
+instant; older times are never estimated or backfilled. The daily view continues
+to use stored calendar dates. See the [recording-time design](docs/architecture/history-recording-instant-design.md)
+and [outcome](docs/architecture/history-recording-instant-outcome.md).
+
 Statistics describe their scope beside each section: retained policy feedback,
 recent accuracy windows and the latest activity feed. Policy details label their
 30-day breakdown and rolling seven-day comparison. These descriptions replace

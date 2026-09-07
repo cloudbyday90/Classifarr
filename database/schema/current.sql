@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-07T01:15:31.152Z
--- Latest Migration: 20260907_020000_add_feedback_source_receipts.sql
+-- Generated: 2026-09-07T12:36:04.892Z
+-- Latest Migration: 20260907_030000_add_history_recording_instant.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -546,6 +546,21 @@ CREATE FUNCTION public.mark_library_profile_inventory_changed(library_ids bigint
     ON CONFLICT (library_id) DO UPDATE
     SET revision = public.library_profile_inventory_state.revision + 1,
         changed_at = clock_timestamp();
+$$;
+
+
+--
+-- Name: preserve_history_recording_instant(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.preserve_history_recording_instant() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog'
+    AS $$
+BEGIN
+    RAISE EXCEPTION USING ERRCODE = '23514',
+        MESSAGE = 'History recording instant cannot be changed';
+END;
 $$;
 
 
@@ -2356,10 +2371,12 @@ CREATE TABLE public.classification_history (
     cast_ids integer[],
     cast_names text[],
     pending_identity_key character varying(600),
+    recorded_at timestamp with time zone DEFAULT statement_timestamp(),
     CONSTRAINT chk_classification_completed_has_library CHECK ((((status)::text IS DISTINCT FROM 'completed'::text) OR (library_id IS NOT NULL))),
     CONSTRAINT chk_classification_confidence_range CHECK (((confidence IS NULL) OR ((confidence >= (0)::numeric) AND (confidence <= (100)::numeric)))),
     CONSTRAINT classification_history_media_type_check CHECK (((media_type)::text = ANY (ARRAY[('movie'::character varying)::text, ('tv'::character varying)::text]))),
     CONSTRAINT classification_history_method_check CHECK (((method)::text = ANY (ARRAY[('existing_media'::character varying)::text, ('manual_correction'::character varying)::text, ('manual_classification'::character varying)::text, ('exact_match'::character varying)::text, ('learned_pattern'::character varying)::text, ('source_library'::character varying)::text, ('policy_auto'::character varying)::text, ('policy_prompt'::character varying)::text, ('policy_recheck'::character varying)::text, ('ai_verified'::character varying)::text, ('ai_analysis'::character varying)::text, ('ai_rerun'::character varying)::text, ('signal_calculation'::character varying)::text, ('fallback'::character varying)::text, ('queued_for_retry'::character varying)::text, ('custom_rule'::character varying)::text, ('rule_match'::character varying)::text, ('ai_fallback'::character varying)::text, ('holiday_detection'::character varying)::text, ('library_rule'::character varying)::text, ('rag_improved'::character varying)::text, ('authoritative_source_library'::character varying)::text, ('policy_engine'::character varying)::text, ('policy_candidate_adjudication'::character varying)::text]))),
+    CONSTRAINT classification_history_recorded_at_finite CHECK (((recorded_at IS NULL) OR isfinite(recorded_at))),
     CONSTRAINT classification_history_status_check CHECK (((status)::text = ANY (ARRAY[('completed'::character varying)::text, ('failed'::character varying)::text, ('corrected'::character varying)::text, ('awaiting_decision'::character varying)::text, ('pending'::character varying)::text, ('pending_retry'::character varying)::text, ('verified'::character varying)::text, ('reclassified'::character varying)::text, ('routed'::character varying)::text])))
 )
 WITH (fillfactor='80', autovacuum_vacuum_scale_factor='0.05', autovacuum_analyze_scale_factor='0.05');
@@ -2398,6 +2415,13 @@ COMMENT ON COLUMN public.classification_history.max_retries IS 'Maximum number o
 --
 
 COMMENT ON COLUMN public.classification_history.pending_identity_key IS 'Stable unambiguous identity for the single active pending decision invariant.';
+
+
+--
+-- Name: COLUMN classification_history.recorded_at; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.classification_history.recorded_at IS 'INSERT statement start instant; immutable after insert. NULL means unknown legacy/import time. Not media creation or transaction commit time.';
 
 
 --
@@ -12224,6 +12248,13 @@ CREATE TRIGGER policy_tuning_cohorts_immutable BEFORE UPDATE ON public.policy_tu
 
 
 --
+-- Name: classification_history preserve_history_recording_instant; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER preserve_history_recording_instant AFTER UPDATE ON public.classification_history FOR EACH ROW WHEN ((old.recorded_at IS DISTINCT FROM new.recorded_at)) EXECUTE FUNCTION public.preserve_history_recording_instant();
+
+
+--
 -- Name: media_server_items reset_inventory_tmdb_observation_clocks; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -15413,6 +15444,7 @@ FROM unnest(ARRAY[
     '20260906_090000_add_incremental_library_coverage.sql',
     '20260906_230000_add_suggestion_cohort_provenance.sql',
     '20260907_010000_add_feedback_evaluation_views.sql',
-    '20260907_020000_add_feedback_source_receipts.sql'
+    '20260907_020000_add_feedback_source_receipts.sql',
+    '20260907_030000_add_history_recording_instant.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

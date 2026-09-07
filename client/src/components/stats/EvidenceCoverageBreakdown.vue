@@ -164,6 +164,10 @@
         :attribution="coverage.history_attribution"
         :history-events="coverage.history.totals.events"
       />
+      <HistoryRecordingTimeCoverage
+        :coverage="coverage.recording_time_coverage"
+        :history-events="coverage.history.totals.events"
+      />
       <DailyProvenanceCoverage :trend="coverage.provenance_trend" />
       <p v-if="coverage.deleted_feedback_receipts">
         {{ number(coverage.deleted_feedback_receipts) }} deleted feedback results are excluded from these counts.
@@ -179,6 +183,7 @@ import HistoryLifecycleCounts from './HistoryLifecycleCounts.vue'
 import CandidateCaptureCounts from './CandidateCaptureCounts.vue'
 import EvidenceMethodAttribution from './EvidenceMethodAttribution.vue'
 import DailyProvenanceCoverage from './DailyProvenanceCoverage.vue'
+import HistoryRecordingTimeCoverage from './HistoryRecordingTimeCoverage.vue'
 import { evidenceNumber as number, evidenceLibraryLabel as libraryLabel, evidenceMethodLabel as methodLabel } from '../../utils/evidenceCoverageLabels'
 
 const props = defineProps({ coverage: { type: Object, default: null } })

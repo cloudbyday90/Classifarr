@@ -12,6 +12,7 @@ const empty = () => ({ captured_at: new Date('2026-09-07T00:00:00Z'),
     attribution_totals: { events: 0, captured_events: 0, unrecorded_events: 0, invalid_events: 0, unsupported_events: 0 },
     attribution_group_count: 0, attribution_groups: [],
     provenance_trend: emptyProvenanceTrend(),
+    recording_time_coverage: { events: 0, recorded_events: 0, unknown_events: 0 },
     feedback_totals: { observations: 0, source_bound: 0, evaluated: 0, unevaluated: 0 },
     feedback_group_count: '0', feedback_groups: [], deleted_feedback_receipts: '0' });
 
@@ -123,6 +124,7 @@ test('read failure is explicitly unavailable and never leaks database details', 
 });
 
 function addUnrecordedAttribution(snapshot, events) {
+    snapshot.recording_time_coverage = { events, recorded_events: 0, unknown_events: events };
     snapshot.provenance_trend.excluded.older_events = events;
     Object.assign(snapshot.attribution_totals, { events, unrecorded_events: events });
     snapshot.attribution_group_count = 1;
@@ -135,4 +137,10 @@ test('missing attribution fails closed through the public service', async () => 
     delete snapshot.attribution_totals;
     const db = { withTransaction: callback => callback({ query: jest.fn().mockResolvedValue({ rows: [snapshot] }) }) };
     expect(await readEvidenceCoverage(db)).toMatchObject({ status: 'unavailable', history_attribution: null });
+});
+
+test.each([null, { events: 0, recorded_events: 1, unknown_events: 0 }])('invalid recording-time coverage fails closed', async value => {
+    const snapshot = { ...empty(), recording_time_coverage: value };
+    const db = { withTransaction: callback => callback({ query: jest.fn().mockResolvedValue({ rows: [snapshot] }) }) };
+    expect(await readEvidenceCoverage(db)).toMatchObject({ status: 'unavailable', recording_time_coverage: null });
 });

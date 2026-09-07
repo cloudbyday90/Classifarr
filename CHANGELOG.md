@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Reliable history recording times** — Automatically preserve an immutable
+  recording instant for new history and show known/unknown coverage. Legacy
+  timestamps stay unknown, with existing calendar reports preserved.
+
 - **Daily provenance coverage** — Automatically show a bounded daily history
   window, including partial today, with captured/missing provenance, explicit
   date exclusions and database-calendar labels.

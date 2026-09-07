@@ -7,7 +7,7 @@ export const EVIDENCE_COVERAGE_GROUP_LIMIT = 200;
 
 // Separate populations prevent a corrected destination from changing history attribution.
 export const EVIDENCE_COVERAGE_SQL = `WITH history_evidence AS MATERIALIZED (
-    SELECT id, library_id, method, created_at, CASE
+    SELECT id, library_id, method, created_at, recorded_at, CASE
         WHEN status IN ('completed', 'corrected', 'verified', 'routed') THEN 'completed'
         WHEN status IN ('pending', 'awaiting_decision') THEN 'pending'
         WHEN status = 'pending_retry' THEN 'retry'
@@ -16,7 +16,7 @@ export const EVIDENCE_COVERAGE_SQL = `WITH history_evidence AS MATERIALIZED (
         ${EVIDENCE_PROVENANCE_STATUS_SQL} AS provenance_status,
         ${EVIDENCE_ORIGINAL_METHOD_SQL} AS original_method,
         ${EVIDENCE_CANDIDATE_SOURCE_SQL} AS candidate_source
-    FROM (SELECT id, library_id, method, status, metadata, created_at,
+    FROM (SELECT id, library_id, method, status, metadata, created_at, recorded_at,
         ${EVIDENCE_EXPLICIT_CAPTURE_STATUS_SQL} AS capture_status
         FROM classification_history) classification_history
 ), history_groups AS MATERIALIZED (
@@ -57,6 +57,10 @@ export const EVIDENCE_COVERAGE_SQL = `WITH history_evidence AS MATERIALIZED (
             ELSE COALESCE(history.method, 'unknown_method') END
 )
 SELECT statement_timestamp() AS captured_at,
+    (SELECT jsonb_build_object('events', count(*),
+        'recorded_events', count(*) FILTER (WHERE isfinite(recorded_at)),
+        'unknown_events', count(*) FILTER (WHERE recorded_at IS NULL))
+        FROM history_evidence) AS recording_time_coverage,
     ${EVIDENCE_ATTRIBUTION_SELECT_SQL}
     ${DAILY_PROVENANCE_SELECT_SQL}
     (SELECT jsonb_build_object('events', COALESCE(sum(events), 0),

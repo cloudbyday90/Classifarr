@@ -104,8 +104,9 @@ as partial, retained-history variability and inability to recover old time zones
 The design compares alternatives and cites official PostgreSQL, W3C and OWASP
 guidance researched in September 2026.
 
-**Next: audit history writers and retain an offset-aware creation instant for new
-history.** Preserve the existing calendar field for compatibility and keep legacy
+**Follow-up completed: audit history writers and retain an offset-aware creation
+instant for new history.** See the [recording-time outcome](history-recording-instant-outcome.md).
+Preserve the existing calendar field for compatibility and keep legacy
 instants explicitly unknown. This would support unambiguous future date windows
 without asking operators to annotate or reinterpret old timestamps. A migration
 must not assign its execution time to old rows and present that as their creation

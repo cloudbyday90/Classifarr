@@ -31,6 +31,8 @@ export function getPolicyStatsOverview() {
   // provenance_trend includes 14 stored calendar dates with today explicitly
   // partial; its window plus dated/undated exclusions reconciles to history.
   // unavailable data stays null, and capped groups do not replace global totals.
+  // recording_time_coverage partitions retained events into recorded and unknown
+  // insert instants; it does not reinterpret the existing calendar-based trend.
   return getDataRequest('/stats/overview')
 }
 
