@@ -12,17 +12,22 @@ export function registerPolicyStatsRoutes(router, { db }) {
       SELECT 
         COUNT(*) as total_policies,
         SUM(total_decisions) as total_decisions,
+        SUM(evaluated_decisions) as evaluated_decisions,
+        SUM(unevaluated_decisions) as unevaluated_decisions,
+        SUM(evaluated_decisions)::real / NULLIF(SUM(total_decisions), 0) as evaluation_coverage,
         AVG(accuracy_rate) as avg_accuracy,
         SUM(CASE WHEN trend = 'improving' THEN 1 ELSE 0 END) as improving_count,
         SUM(CASE WHEN trend = 'declining' THEN 1 ELSE 0 END) as declining_count,
         SUM(auto_classified) as total_auto_classified
-      FROM policy_learning_stats
+      FROM policy_feedback_learning_stats
     `);
 
     const overview = result.rows[0] || {};
     const totalDecisions = Number(overview.total_decisions) || 0;
     const totalAutoClassified = Number(overview.total_auto_classified) || 0;
     overview.total_decisions = totalDecisions;
+    overview.evaluated_decisions = Number(overview.evaluated_decisions) || 0;
+    overview.unevaluated_decisions = Number(overview.unevaluated_decisions) || 0;
     overview.total_auto_classified = totalAutoClassified;
     overview.auto_rate = totalDecisions > 0 && totalAutoClassified > 0
       ? totalAutoClassified / totalDecisions
@@ -44,7 +49,7 @@ export function registerPolicyStatsRoutes(router, { db }) {
     const policyId = requireValidId(req.params.id, 'policy ID');
 
     const stats = await db.query(`
-      SELECT * FROM policy_learning_stats WHERE policy_id = $1
+      SELECT * FROM policy_feedback_learning_stats WHERE policy_id = $1
     `, [policyId]);
 
     if (stats.rows.length === 0) {
@@ -55,13 +60,17 @@ export function registerPolicyStatsRoutes(router, { db }) {
       SELECT 
         DATE(prompted_at) as date,
         COUNT(*) as decisions,
-        COUNT(*) FILTER (WHERE was_correction = false) as correct,
-        COUNT(*) FILTER (WHERE was_correction = true) as corrections,
+        COUNT(evaluation_correct) as evaluated_decisions,
+        COUNT(*) FILTER (WHERE evaluation_correct IS NULL) as unevaluated_decisions,
+        COUNT(evaluation_correct)::real / NULLIF(COUNT(*), 0) as evaluation_coverage,
+        COUNT(*) FILTER (WHERE evaluation_correct IS TRUE) as correct,
+        COUNT(*) FILTER (WHERE evaluation_correct IS FALSE) as corrections,
         COUNT(*) FILTER (WHERE prompt_type = 'auto_classify') as auto_classified,
         COUNT(*) FILTER (WHERE prompt_type IN ('prompt_confirm', 'prompt_select')) as prompted
-      FROM policy_feedback_log
+      FROM policy_feedback_evaluation
       WHERE selected_policy_id = $1
       AND prompted_at >= NOW() - INTERVAL '30 days'
+      AND prompted_at <= NOW()
       GROUP BY DATE(prompted_at)
       ORDER BY date
     `, [policyId]);
@@ -70,10 +79,14 @@ export function registerPolicyStatsRoutes(router, { db }) {
       SELECT 
         prompt_type,
         COUNT(*) as count,
-        AVG(CASE WHEN was_correction THEN 0 ELSE 1 END) as accuracy
-      FROM policy_feedback_log
+        COUNT(evaluation_correct) as evaluated_decisions,
+        COUNT(*) FILTER (WHERE evaluation_correct IS NULL) as unevaluated_decisions,
+        COUNT(evaluation_correct)::real / NULLIF(COUNT(*), 0) as evaluation_coverage,
+        AVG(evaluation_correct::integer) as accuracy
+      FROM policy_feedback_evaluation
       WHERE selected_policy_id = $1
       AND prompted_at >= NOW() - INTERVAL '30 days'
+      AND prompted_at <= NOW()
       GROUP BY prompt_type
     `, [policyId]);
 
@@ -91,20 +104,27 @@ export function registerPolicyStatsRoutes(router, { db }) {
       SELECT 
         'last_7_days' as period,
         COUNT(*) as decisions,
-        AVG(CASE WHEN was_correction THEN 0 ELSE 1 END) as accuracy,
+        COUNT(evaluation_correct) as evaluated_decisions,
+        COUNT(*) FILTER (WHERE evaluation_correct IS NULL) as unevaluated_decisions,
+        COUNT(evaluation_correct)::real / NULLIF(COUNT(*), 0) as evaluation_coverage,
+        AVG(evaluation_correct::integer) as accuracy,
         COUNT(*) FILTER (WHERE prompt_type = 'auto_classify') * 100.0 / NULLIF(COUNT(*), 0) as auto_rate
-      FROM policy_feedback_log
+      FROM policy_feedback_evaluation
       WHERE selected_policy_id = $1
       AND prompted_at >= NOW() - INTERVAL '7 days'
+      AND prompted_at <= NOW()
 
       UNION ALL
 
       SELECT 
         'previous_7_days' as period,
         COUNT(*) as decisions,
-        AVG(CASE WHEN was_correction THEN 0 ELSE 1 END) as accuracy,
+        COUNT(evaluation_correct) as evaluated_decisions,
+        COUNT(*) FILTER (WHERE evaluation_correct IS NULL) as unevaluated_decisions,
+        COUNT(evaluation_correct)::real / NULLIF(COUNT(*), 0) as evaluation_coverage,
+        AVG(evaluation_correct::integer) as accuracy,
         COUNT(*) FILTER (WHERE prompt_type = 'auto_classify') * 100.0 / NULLIF(COUNT(*), 0) as auto_rate
-      FROM policy_feedback_log
+      FROM policy_feedback_evaluation
       WHERE selected_policy_id = $1
       AND prompted_at >= NOW() - INTERVAL '14 days'
       AND prompted_at < NOW() - INTERVAL '7 days'
@@ -121,6 +141,10 @@ export function registerPolicyStatsRoutes(router, { db }) {
         lp.library_id,
         l.name as library_name,
         pls.total_decisions,
+        pls.evaluated_decisions,
+        pls.unevaluated_decisions,
+        pls.evaluation_coverage,
+        pls.evaluated_auto_classified,
         pls.accuracy_rate,
         pls.auto_accuracy_rate,
         pls.auto_classified,
@@ -132,7 +156,7 @@ export function registerPolicyStatsRoutes(router, { db }) {
         pls.last_correction_at
       FROM library_policies lp
       LEFT JOIN libraries l ON lp.library_id = l.id
-      LEFT JOIN policy_learning_stats pls ON lp.id = pls.policy_id
+      LEFT JOIN policy_feedback_learning_stats pls ON lp.id = pls.policy_id
       WHERE lp.enabled = true
       ORDER BY lp.priority DESC, lp.name
     `);

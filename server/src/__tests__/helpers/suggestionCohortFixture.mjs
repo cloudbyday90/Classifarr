@@ -2,10 +2,16 @@
 import { cohortDigest, suggestionEvidenceDigest } from '../../services/feedbackAnalysisCohortContract.mjs';
 
 export async function seedSuggestionFeedback(db, policyId, libraryId, count = 10) {
+    const { rows: candidates } = await db.query(`SELECT id FROM libraries
+        WHERE id <> $1 AND is_active IS TRUE AND media_type=(SELECT media_type FROM libraries WHERE id=$1)
+        ORDER BY id LIMIT 1`, [libraryId]);
+    const otherId = candidates[0]?.id;
+    if (!otherId) throw new Error('Suggestion fixture requires a second active library for correction evidence');
     const { rows } = await db.query(`INSERT INTO policy_feedback_log(tmdb_id, selected_policy_id,
-        selected_library_id, was_correction, item_metadata, original_scores, prompt_type, top_suggestion_score, prompted_at)
+        selected_library_id, was_correction, item_metadata, original_scores, prompt_type, top_suggestion_score, prompted_at, top_suggestion_library_id)
         SELECT n, $1, $2, n % 2 = 0, '{"genres":["Action"]}', '{"preset":85}', 'auto_classify', 85,
-            NOW() - INTERVAL '1 minute' FROM generate_series(1,$3::integer) n RETURNING id`, [policyId, libraryId, count]);
+            NOW() - INTERVAL '1 minute', CASE WHEN n % 2 = 0 THEN $4::integer ELSE $2::integer END
+            FROM generate_series(1,$3::integer) n RETURNING id`, [policyId, libraryId, count, otherId]);
     return rows.map(row => row.id);
 }
 

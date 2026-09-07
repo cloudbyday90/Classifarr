@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-06T23:41:00.970Z
--- Latest Migration: 20260906_230000_add_suggestion_cohort_provenance.sql
+-- Generated: 2026-09-07T00:54:15.851Z
+-- Latest Migration: 20260907_010000_add_feedback_evaluation_views.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -4928,7 +4928,7 @@ CREATE TABLE public.policy_feedback_log (
     top_suggestion_score real,
     selected_library_id integer,
     selected_policy_id integer,
-    was_correction boolean DEFAULT false,
+    was_correction boolean,
     user_reason character varying(100),
     user_reason_text text,
     patterns_created jsonb DEFAULT '[]'::jsonb,
@@ -4952,6 +4952,107 @@ COMMENT ON TABLE public.policy_feedback_log IS 'Captures user decisions and corr
 --
 
 COMMENT ON COLUMN public.policy_feedback_log.was_correction IS 'True if user corrected an auto-classification decision';
+
+
+--
+-- Name: policy_feedback_evaluation; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.policy_feedback_evaluation WITH (security_invoker='true') AS
+ SELECT feedback.id,
+    feedback.tmdb_id,
+    feedback.media_type,
+    feedback.title,
+    feedback.item_metadata,
+    feedback.prompt_type,
+    feedback.original_scores,
+    feedback.top_suggestion_library_id,
+    feedback.top_suggestion_score,
+    feedback.selected_library_id,
+    feedback.selected_policy_id,
+    feedback.was_correction,
+    feedback.user_reason,
+    feedback.user_reason_text,
+    feedback.patterns_created,
+    feedback.signal_analysis,
+    feedback.prompted_at,
+    feedback.responded_at,
+    feedback.response_time_seconds,
+    feedback.source,
+        CASE
+            WHEN ((feedback.selected_library_id > 0) AND (feedback.top_suggestion_library_id > 0) AND (destination.is_active IS TRUE) AND (candidate.is_active IS TRUE) AND (policy.library_id = feedback.selected_library_id) AND ((destination.media_type)::text = (candidate.media_type)::text) AND ((feedback.media_type IS NULL) OR ((feedback.media_type)::text = (destination.media_type)::text)) AND isfinite(feedback.prompted_at) AND (feedback.prompted_at <= CURRENT_TIMESTAMP) AND (feedback.was_correction = (feedback.selected_library_id <> feedback.top_suggestion_library_id))) THEN (NOT feedback.was_correction)
+            ELSE NULL::boolean
+        END AS evaluation_correct
+   FROM (((public.policy_feedback_log feedback
+     LEFT JOIN public.libraries destination ON ((destination.id = feedback.selected_library_id)))
+     LEFT JOIN public.libraries candidate ON ((candidate.id = feedback.top_suggestion_library_id)))
+     LEFT JOIN public.library_policies policy ON ((policy.id = feedback.selected_policy_id)));
+
+
+--
+-- Name: VIEW policy_feedback_evaluation; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON VIEW public.policy_feedback_evaluation IS 'Observed policy feedback with nullable correctness; null means incomplete, inconsistent or currently ineligible evidence.';
+
+
+--
+-- Name: policy_feedback_learning_stats; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.policy_feedback_learning_stats WITH (security_invoker='true') AS
+ WITH aggregates AS (
+         SELECT policy.id AS policy_id,
+            (count(feedback.id))::integer AS total_decisions,
+            (count(feedback.evaluation_correct))::integer AS evaluated_decisions,
+            (count(feedback.id) FILTER (WHERE (feedback.evaluation_correct IS NULL)))::integer AS unevaluated_decisions,
+            (count(feedback.id) FILTER (WHERE ((feedback.prompt_type)::text = 'auto_classify'::text)))::integer AS auto_classified,
+            (count(feedback.evaluation_correct) FILTER (WHERE ((feedback.prompt_type)::text = 'auto_classify'::text)))::integer AS evaluated_auto_classified,
+            (count(feedback.id) FILTER (WHERE ((feedback.prompt_type)::text = 'ai_validate'::text)))::integer AS ai_validated,
+            (count(feedback.id) FILTER (WHERE ((feedback.prompt_type)::text = ANY (ARRAY[('prompt_confirm'::character varying)::text, ('prompt_select'::character varying)::text]))))::integer AS user_prompted,
+            (count(feedback.id) FILTER (WHERE (feedback.evaluation_correct IS FALSE)))::integer AS user_corrections,
+            (avg((feedback.evaluation_correct)::integer))::real AS accuracy_rate,
+            (avg((feedback.evaluation_correct)::integer) FILTER (WHERE ((feedback.prompt_type)::text = 'auto_classify'::text)))::real AS auto_accuracy_rate,
+            (avg((feedback.evaluation_correct)::integer) FILTER (WHERE (feedback.prompted_at >= (CURRENT_TIMESTAMP - '7 days'::interval))))::real AS last_7_days_accuracy,
+            (avg((feedback.evaluation_correct)::integer) FILTER (WHERE (feedback.prompted_at >= (CURRENT_TIMESTAMP - '30 days'::interval))))::real AS last_30_days_accuracy,
+            max(feedback.prompted_at) FILTER (WHERE (isfinite(feedback.prompted_at) AND (feedback.prompted_at <= CURRENT_TIMESTAMP))) AS last_decision_at,
+            max(feedback.prompted_at) FILTER (WHERE (feedback.evaluation_correct IS FALSE)) AS last_correction_at
+           FROM (public.library_policies policy
+             LEFT JOIN public.policy_feedback_evaluation feedback ON ((feedback.selected_policy_id = policy.id)))
+          GROUP BY policy.id
+        )
+ SELECT policy_id,
+    total_decisions,
+    evaluated_decisions,
+    unevaluated_decisions,
+    auto_classified,
+    evaluated_auto_classified,
+    ai_validated,
+    user_prompted,
+    user_corrections,
+    accuracy_rate,
+    auto_accuracy_rate,
+    last_7_days_accuracy,
+    last_30_days_accuracy,
+    last_decision_at,
+    last_correction_at,
+    ((evaluated_decisions)::real / (NULLIF(total_decisions, 0))::double precision) AS evaluation_coverage,
+    (
+        CASE
+            WHEN ((last_7_days_accuracy IS NULL) OR (last_30_days_accuracy IS NULL)) THEN 'unknown'::text
+            WHEN (last_7_days_accuracy > (last_30_days_accuracy + (0.05)::double precision)) THEN 'improving'::text
+            WHEN (last_7_days_accuracy < (last_30_days_accuracy - (0.05)::double precision)) THEN 'declining'::text
+            ELSE 'stable'::text
+        END)::character varying(20) AS trend,
+    CURRENT_TIMESTAMP AS updated_at
+   FROM aggregates;
+
+
+--
+-- Name: VIEW policy_feedback_learning_stats; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON VIEW public.policy_feedback_learning_stats IS 'Live policy observation totals, evaluated coverage and accuracy; unavailable accuracy is null. updated_at is calculation time.';
 
 
 --
@@ -15256,6 +15357,7 @@ FROM unnest(ARRAY[
     '20260905_200000_add_fair_library_sampling.sql',
     '20260905_210000_seed_library_sampling_state.sql',
     '20260906_090000_add_incremental_library_coverage.sql',
-    '20260906_230000_add_suggestion_cohort_provenance.sql'
+    '20260906_230000_add_suggestion_cohort_provenance.sql',
+    '20260907_010000_add_feedback_evaluation_views.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

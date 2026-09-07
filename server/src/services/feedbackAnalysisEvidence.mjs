@@ -11,12 +11,13 @@ export async function readEligiblePolicyFeedback(client, policyId, days = 30, ca
         SELECT feedback.id, feedback.selected_policy_id, feedback.selected_library_id,
             feedback.was_correction, feedback.item_metadata, feedback.original_scores,
             feedback.top_suggestion_library_id, feedback.top_suggestion_score, feedback.prompt_type, feedback.prompted_at
-        FROM policy_feedback_log feedback
+        FROM policy_feedback_evaluation feedback
         JOIN library_policies policy ON policy.id = feedback.selected_policy_id
             AND policy.library_id = feedback.selected_library_id
         JOIN libraries destination ON destination.id = feedback.selected_library_id
             AND destination.is_active IS TRUE
         WHERE feedback.selected_policy_id = $1
+            AND feedback.evaluation_correct IS NOT NULL
             AND feedback.selected_library_id > 0
             AND feedback.prompted_at >= NOW() - INTERVAL '1 day' * $2
             ${capture ? 'AND feedback.prompted_at <= $3::timestamptz' : ''}

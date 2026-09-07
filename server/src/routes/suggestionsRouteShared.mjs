@@ -116,7 +116,7 @@ export function createSuggestionsRouter({ express, db, feedbackAnalysis }) {
               pls.accuracy_rate as current_accuracy,
               pls.auto_accuracy_rate as current_auto_accuracy
           FROM policy_tuning_suggestions pts
-          LEFT JOIN policy_learning_stats pls ON pts.policy_id = pls.policy_id
+          LEFT JOIN policy_feedback_learning_stats pls ON pts.policy_id = pls.policy_id
           WHERE pts.id = $1
         `,
       [id],

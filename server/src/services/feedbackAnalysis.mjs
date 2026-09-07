@@ -111,7 +111,7 @@ export class FeedbackAnalysis {
                 top_suggestion_score,
                 selected_library_id,
                 selected_policy_id,
-                was_correction || false,
+                typeof was_correction === 'boolean' ? was_correction : null,
                 user_reason,
                 user_reason_text,
                 JSON.stringify(signal_analysis || {}),

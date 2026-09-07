@@ -44,7 +44,7 @@ export async function applySuggestion(suggestionId, userId) {
         `, [suggestion.policy_id]);
 
         const before_metrics = beforeResult.rows[0];
-        const stats = await client.query('SELECT accuracy_rate FROM policy_learning_stats WHERE policy_id = $1', [suggestion.policy_id]);
+        const stats = await client.query('SELECT accuracy_rate FROM policy_feedback_learning_stats WHERE policy_id = $1', [suggestion.policy_id]);
         const beforeAccuracy = stats.rows.length > 0 ? stats.rows[0].accuracy_rate : suggestion.before_accuracy;
 
         let applied = false;
@@ -184,7 +184,7 @@ export async function getImpactMetrics(suggestionId) {
                 (pls.accuracy_rate - pts.before_accuracy) as improvement,
                 pts.applied_at
             FROM policy_tuning_suggestions pts
-            LEFT JOIN policy_learning_stats pls ON pts.policy_id = pls.policy_id
+            LEFT JOIN policy_feedback_learning_stats pls ON pts.policy_id = pls.policy_id
             WHERE pts.id = $1 AND pts.status = 'applied'
         `, [suggestionId]);
 

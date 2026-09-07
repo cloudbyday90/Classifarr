@@ -264,28 +264,18 @@ describe('FeedbackAnalysis.detectNewPatterns', () => {
 describe('FeedbackAnalysis.updateLearningStats', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  test('returns null when no feedback exists for policy', async () => {
+  test('returns null when the policy has no summary row', async () => {
     db.query.mockResolvedValueOnce({ rows: [] });
     const result = await feedbackAnalysis.updateLearningStats(1);
     expect(result).toBeNull();
   });
 
-  test('inserts/upserts stats and returns row', async () => {
-    const now = new Date();
-    const pastDate = new Date(now - 10 * 24 * 60 * 60 * 1000).toISOString();
-
-    const feedback = [
-      makeFeedback({ was_correction: false, prompt_type: 'auto_classify', prompted_at: now.toISOString() }),
-      makeFeedback({ id: 2, was_correction: true, prompt_type: 'prompt_select', prompted_at: pastDate })
-    ];
-
-    db.query
-      .mockResolvedValueOnce({ rows: feedback })
-      .mockResolvedValueOnce({ rows: [{ accuracy_rate: 0.5, trend: 'stable' }] });
-
-    const result = await feedbackAnalysis.updateLearningStats(1);
-    expect(result).toBeDefined();
-    expect(result.accuracy_rate).toBeDefined();
+  test('preserves unavailable accuracy while refreshing the compatibility cache', async () => {
+    const stats = { total_decisions: 2, evaluated_decisions: 0, unevaluated_decisions: 2,
+      accuracy_rate: null, auto_accuracy_rate: null, trend: 'unknown' };
+    db.query.mockResolvedValueOnce({ rows: [stats] }).mockResolvedValueOnce({ rows: [{ id: 1, accuracy_rate: 1 }] });
+    expect(await feedbackAnalysis.updateLearningStats(1)).toEqual({ id: 1, ...stats });
+    expect(db.query.mock.calls[1][1][6]).toBeNull();
   });
 
   test('throws on db error', async () => {
@@ -293,30 +283,15 @@ describe('FeedbackAnalysis.updateLearningStats', () => {
     await expect(feedbackAnalysis.updateLearningStats(1)).rejects.toThrow('DB failed');
   });
 
-  test('detects improving trend', async () => {
-    const now = new Date();
-    const feedback = [
-      ...Array.from({ length: 5 }, (_, i) => makeFeedback({
-        id: i + 1,
-        was_correction: false,
-        prompted_at: new Date(now - 2 * 24 * 60 * 60 * 1000).toISOString()
-      })),
-      ...Array.from({ length: 5 }, (_, i) => makeFeedback({
-        id: 10 + i,
-        was_correction: true,
-        prompted_at: new Date(now - 20 * 24 * 60 * 60 * 1000).toISOString()
-      }))
-    ];
-
-    db.query
-      .mockResolvedValueOnce({ rows: feedback })
-      .mockResolvedValueOnce({ rows: [{ trend: 'improving' }] });
-
-    await feedbackAnalysis.updateLearningStats(1);
-    const upsertCall = db.query.mock.calls[1];
-    const trendParam = upsertCall[1].find(p => p === 'improving' || p === 'stable' || p === 'declining');
-    expect(trendParam).toBe('improving');
+  test('refreshes the compatibility cache from evaluated aggregate fields', async () => {
+    const stats = { total_decisions: 10, evaluated_decisions: 2, unevaluated_decisions: 8,
+      evaluation_coverage: 0.2, accuracy_rate: 0.5, trend: 'improving' };
+    db.query.mockResolvedValueOnce({ rows: [stats] }).mockResolvedValueOnce({ rows: [{ id: 4 }] });
+    expect(await feedbackAnalysis.updateLearningStats(1)).toEqual({ id: 4, ...stats });
+    expect(db.query.mock.calls[0]).toEqual(['SELECT * FROM policy_feedback_learning_stats WHERE policy_id = $1', [1]]);
+    expect(db.query.mock.calls[1][1]).toContain('improving');
   });
+
 });
 
 describe('FeedbackAnalysis.getPendingSuggestions', () => {

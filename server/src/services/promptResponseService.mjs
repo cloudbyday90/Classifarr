@@ -32,7 +32,8 @@ export async function respondToPrompt({ db, feedbackAnalysis, id, body }) {
             WHERE id=ANY($1::integer[]) ORDER BY id FOR SHARE
         `, [libraryIds])).rows;
         const classification = (await client.query(`
-            SELECT id, tmdb_id, media_type, title, metadata, confidence, status, created_at
+            SELECT id, tmdb_id, media_type, title, metadata, confidence, status,
+                created_at AT TIME ZONE 'UTC' AS created_at
             FROM classification_history WHERE id=$1 FOR UPDATE
         `, [id])).rows[0];
         if (!classification) throw new NotFoundError('Classification not found');
@@ -64,7 +65,7 @@ export async function respondToPrompt({ db, feedbackAnalysis, id, body }) {
             top_suggestion_library_id: topSuggestion?.library_id,
             top_suggestion_score: topSuggestion?.score,
             selected_library_id: selectedLibraryId, selected_policy_id: selectedPolicyId,
-            was_correction: topSuggestion?.library_id != null ? Number(topSuggestion.library_id) !== selectedLibraryId : false,
+            was_correction: topSuggestion?.library_id != null ? Number(topSuggestion.library_id) !== selectedLibraryId : null,
             user_reason: reasons, user_reason_text: customReason, signal_analysis: evaluation.scores,
             patterns_created: patternActions, source: 'web',
             prompted_at: classification.created_at, responded_at: new Date(),

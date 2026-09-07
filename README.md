@@ -138,8 +138,8 @@ See the [cohort design](docs/architecture/suggestion-cohort-design.md) and
 [validation outcome](docs/architecture/suggestion-cohort-outcome.md).
 
 Each normalized metadata value contributes one pattern vote per feedback record.
-Cohort version 2 records this counting rule; suggestions from version 1 must be
-regenerated through normal analysis before application. See the
+Cohort version 3 also requires evaluated candidate evidence; suggestions from
+versions 1 and 2 must be regenerated through normal analysis before application. See the
 [metadata-vote design](docs/architecture/feedback-metadata-votes-design.md) and
 [outcome](docs/architecture/feedback-metadata-votes-outcome.md).
 
@@ -149,6 +149,13 @@ repeated responses cannot duplicate feedback. The `patternsCreated` result count
 distinct saved patterns, including updates to existing patterns. See the
 [prompt persistence design](docs/architecture/prompt-pattern-persistence-design.md)
 and [outcome](docs/architecture/prompt-pattern-persistence-outcome.md).
+
+Feedback statistics preserve all observations and report evaluated coverage
+separately. Missing, contradictory or currently ineligible candidate evidence does
+not count as a success or failure; accuracy is N/A when nothing can be evaluated.
+Live metrics use current library and policy state without an operator refresh.
+See the [evaluation design](docs/architecture/feedback-evaluation-coverage-design.md)
+and [outcome](docs/architecture/feedback-evaluation-coverage-outcome.md).
 
 <p align="center">
   <img src="./docs/assets/issue-262-classification-flow-v042.svg" alt="Classifarr classification flow diagram" width="1100" />

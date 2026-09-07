@@ -24,7 +24,7 @@ afterEach(async () => {
     await db.query('DELETE FROM libraries WHERE id=ANY($1::integer[])', [[destination, other]]);
 });
 
-async function addFeedback(count, { libraryId = destination, correction = false, genre = 'Action', days = 0, top = other } = {}) {
+async function addFeedback(count, { libraryId = destination, correction = false, genre = 'Action', days = 0, top = correction ? other : libraryId } = {}) {
     return (await db.query(`INSERT INTO policy_feedback_log(tmdb_id,selected_policy_id,selected_library_id,
         was_correction,item_metadata,original_scores,top_suggestion_library_id,top_suggestion_score,
         prompt_type,prompted_at,user_reason_text)
@@ -51,7 +51,7 @@ test('detached and contradictory destinations cannot create patterns, weight or 
 
 test('genuine corrections still store supported patterns and threshold suggestions', async () => {
     await addFeedback(3);
-    const support = await addFeedback(3, { correction: true, top: null });
+    const support = await addFeedback(3, { correction: true, top: other });
     await addFeedback(6, { libraryId: null, correction: true, genre: 'Detached' });
     const result = await feedbackAnalysis.analyzePolicy(policyId);
     expect(result.feedbackCount).toBe(6);

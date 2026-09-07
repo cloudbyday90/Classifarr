@@ -246,6 +246,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Feedback accuracy and coverage** — Accuracy now uses evaluated candidate
+  evidence and reports unknown results as unavailable. Observations remain intact,
+  evaluated coverage appears in policy statistics, and live metrics reflect current
+  library eligibility. Older suggestion cohorts require regeneration; prompt
+  timestamps are normalized to UTC for consistent feedback windows.
+
 - **Prompt feedback persistence** — Pattern choices now use current database
   fields and commit with feedback, learning statistics and prompt completion.
   Counts reflect distinct saved patterns; invalid actions and repeated responses

@@ -84,7 +84,7 @@ export function createFeedbackRouter({ express, feedbackAnalysis, db }) {
               lp.name as policy_name,
               lp.library_id,
               l.name as library_name
-          FROM policy_learning_stats pls
+          FROM policy_feedback_learning_stats pls
           JOIN library_policies lp ON pls.policy_id = lp.id
           JOIN libraries l ON lp.library_id = l.id
           WHERE pls.policy_id = $1

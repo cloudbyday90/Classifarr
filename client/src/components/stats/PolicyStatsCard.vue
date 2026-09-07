@@ -5,30 +5,31 @@
 -->
 
 <template>
-  <div
+  <button
+    type="button"
     class="policy-stats-card"
     @click="$emit('view-details', policy)"
   >
-    <div class="card-header">
-      <h3>{{ policy.name }}</h3>
+    <span class="card-header">
+      <span class="card-title">{{ policy.name }}</span>
       <span
         class="trend-badge"
         :class="policy.trend || 'stable'"
       >
         {{ policy.trend || 'stable' }}
       </span>
-    </div>
+    </span>
 
-    <div class="library-name">
+    <span class="library-name">
       {{ policy.library_name }}
-    </div>
+    </span>
 
-    <div class="stats-grid">
-      <div class="stat">
+    <span class="stats-grid">
+      <span class="stat">
         <span class="label">Decisions</span>
         <span class="value">{{ policy.total_decisions || 0 }}</span>
-      </div>
-      <div class="stat">
+      </span>
+      <span class="stat">
         <span class="label">Accuracy</span>
         <span
           class="value"
@@ -36,24 +37,29 @@
         >
           {{ formatPercent(policy.accuracy_rate) }}
         </span>
-      </div>
-      <div class="stat">
+      </span>
+      <span class="stat">
         <span class="label">Auto Rate</span>
         <span class="value">{{ formatAutoRate(policy) }}</span>
-      </div>
-      <div class="stat">
+      </span>
+      <span class="stat">
         <span class="label">7-Day Accuracy</span>
         <span class="value">{{ formatPercent(policy.last_7_days_accuracy) }}</span>
-      </div>
-    </div>
+      </span>
+      <span class="stat">
+        <span class="label">Evaluated Coverage</span>
+        <span class="value">{{ formatPercent(policy.evaluation_coverage) }}</span>
+        <span class="label">{{ policy.evaluated_decisions || 0 }} of {{ policy.total_decisions || 0 }} decisions</span>
+      </span>
+    </span>
 
-    <div
+    <span
       v-if="policy.last_decision_at"
       class="last-activity"
     >
       Last activity: {{ formatTime(policy.last_decision_at) }}
-    </div>
-  </div>
+    </span>
+  </button>
 </template>
 
 <script>
@@ -77,7 +83,7 @@ export default {
       return `${(rate * 100).toFixed(1)}%`;
     },
     getAccuracyClass(accuracy) {
-      if (!accuracy) return '';
+      if (accuracy === null || accuracy === undefined) return '';
       if (accuracy >= 0.9) return 'high';
       if (accuracy >= 0.7) return 'medium';
       return 'low';
@@ -103,12 +109,20 @@ export default {
 
 <style scoped>
 .policy-stats-card {
+  width: 100%;
+  text-align: left;
+  font: inherit;
   background: #1f2937;
   border-radius: 8px;
   padding: 20px;
   border: 1px solid #374151;
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+
+.policy-stats-card:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 3px;
 }
 
 .policy-stats-card:hover {
@@ -124,7 +138,7 @@ export default {
   margin-bottom: 8px;
 }
 
-.card-header h3 {
+.card-title {
   margin: 0;
   font-size: 18px;
   color: #f9fafb;
@@ -155,6 +169,7 @@ export default {
 }
 
 .library-name {
+  display: block;
   font-size: 14px;
   color: #9ca3af;
   margin-bottom: 16px;
@@ -199,6 +214,7 @@ export default {
 }
 
 .last-activity {
+  display: block;
   font-size: 12px;
   color: #6b7280;
   padding-top: 12px;

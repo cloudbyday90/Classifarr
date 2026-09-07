@@ -98,6 +98,9 @@ and the verified PostgreSQL, IETF and W3C sources for the August 2026 baseline.
 
 ## Next item
 
+Completed by the [evaluation coverage follow-up](feedback-evaluation-coverage-outcome.md).
+The original recommendation follows for context.
+
 **Separate observed feedback from evaluable correction evidence.** The existing
 feedback writer defaults a missing correction flag to false, and learning statistics
 count every non-correction as correct. When original candidate metadata is absent,

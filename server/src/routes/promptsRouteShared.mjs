@@ -44,7 +44,7 @@ export function createPromptsRouter({ express, db, promptBuilder, feedbackAnalys
               ch.year,
               ch.metadata,
               ch.confidence,
-              ch.created_at
+              ch.created_at AT TIME ZONE 'UTC' AS created_at
           FROM classification_history ch
           WHERE ch.status = 'pending'
           ORDER BY ch.created_at DESC
@@ -89,7 +89,7 @@ export function createPromptsRouter({ express, db, promptBuilder, feedbackAnalys
               ch.metadata,
               ch.confidence,
               ch.pending_reason,
-              ch.created_at,
+              ch.created_at AT TIME ZONE 'UTC' AS created_at,
               ch.method AS classification_method
           FROM classification_history ch
           WHERE ch.status = 'pending'
@@ -139,7 +139,7 @@ export function createPromptsRouter({ express, db, promptBuilder, feedbackAnalys
               ch.metadata,
               ch.confidence,
               ch.pending_reason,
-              ch.created_at,
+              ch.created_at AT TIME ZONE 'UTC' AS created_at,
               ch.method AS classification_method
           FROM classification_history ch
           WHERE ch.id = $1

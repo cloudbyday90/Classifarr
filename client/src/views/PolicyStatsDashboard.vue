@@ -39,6 +39,8 @@
       @dismiss="dismissAlert"
     />
 
+    <FeedbackEvaluationCoverage :stats="overview" />
+
     <!-- Overview cards -->
     <div class="overview-cards">
       <StatCard 
@@ -47,10 +49,15 @@
         icon="📊"
       />
       <StatCard 
-        title="Average Accuracy" 
+        title="Average Evaluated Accuracy"
         :value="formatPercent(overview.avg_accuracy)" 
         icon="🎯"
         :trend="accuracyTrend"
+      />
+      <StatCard
+        title="Evaluated Coverage"
+        :value="formatPercent(overview.evaluation_coverage)"
+        icon="%"
       />
       <StatCard 
         title="Auto-Classified" 
@@ -100,6 +107,7 @@
 </template>
 
 <script>
+import FeedbackEvaluationCoverage from '@/components/stats/FeedbackEvaluationCoverage.vue';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import api from '@/api';
 import AlertsBanner from '@/components/stats/AlertsBanner.vue';
@@ -111,6 +119,7 @@ import PolicyStatsModal from '@/components/stats/PolicyStatsModal.vue';
 export default {
   name: 'PolicyStatsDashboard',
   components: {
+    FeedbackEvaluationCoverage,
     AlertsBanner,
     StatCard,
     PolicyStatsCard,
@@ -129,7 +138,7 @@ export default {
     let consecutiveErrors = 0;
 
     const accuracyTrend = computed(() => {
-      if (!overview.value.avg_accuracy) return null;
+      if (overview.value.avg_accuracy == null) return null;
       if (overview.value.improving_count > overview.value.declining_count) return 'improving';
       if (overview.value.declining_count > overview.value.improving_count) return 'declining';
       return 'stable';

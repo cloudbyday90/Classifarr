@@ -84,7 +84,7 @@ export function registerMonitoringRoutes(router, { db }) {
     try {
       const declining = await db.query(`
         SELECT lp.id, lp.name, pls.accuracy_rate, pls.last_7_days_accuracy
-        FROM policy_learning_stats pls
+        FROM policy_feedback_learning_stats pls
         JOIN library_policies lp ON pls.policy_id = lp.id
         WHERE pls.trend = 'declining'
         AND pls.accuracy_rate < 0.8

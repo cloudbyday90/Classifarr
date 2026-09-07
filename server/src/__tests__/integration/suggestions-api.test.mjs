@@ -35,6 +35,7 @@ const { captureSuggestionCohort } = await import('../../services/feedbackAnalysi
 
 describe('Suggestions API Integration Tests', () => {
     let testLibraryId;
+    let otherLibraryId;
     let testPolicyId;
     let testSuggestionId;
     let testUserId;
@@ -73,6 +74,8 @@ describe('Suggestions API Integration Tests', () => {
             RETURNING id
         `, [testMediaServerId]);
         testLibraryId = libRes.rows[0].id;
+        otherLibraryId = (await db.query(`INSERT INTO libraries(external_id,name,media_type,is_active)
+            VALUES('suggestions-original-candidate','Other candidate','movie',true) RETURNING id`)).rows[0].id;
 
         // Create test policy
         const policyRes = await db.query(`
@@ -124,7 +127,7 @@ describe('Suggestions API Integration Tests', () => {
         await db.query('DELETE FROM policy_learning_stats WHERE policy_id = $1', [testPolicyId]);
         await db.query('DELETE FROM policy_feedback_log WHERE selected_policy_id = $1', [testPolicyId]);
         await db.query('DELETE FROM library_policies WHERE id = $1', [testPolicyId]);
-        await db.query('DELETE FROM libraries WHERE id = $1', [testLibraryId]);
+        await db.query('DELETE FROM libraries WHERE id = ANY($1::integer[])', [[testLibraryId, otherLibraryId]]);
         await db.query('DELETE FROM users WHERE id = $1', [testUserId]);
     });
 

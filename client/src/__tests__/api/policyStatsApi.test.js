@@ -194,3 +194,11 @@ describe('policyStatsApi', () => {
     expect(mockGetDataRequest).toHaveBeenCalledWith('/stats/route-safety-maintenance-handoff')
   })
 })
+
+
+it('preserves unknown accuracy and evaluated coverage in the stats API contract', async () => {
+  const stats = { accuracy_rate: null, evaluated_decisions: 0, unevaluated_decisions: 4,
+    total_decisions: 4, evaluation_coverage: 0 }
+  mockGetDataRequest.mockResolvedValueOnce(stats)
+  expect(await getPolicyStatsDetail(7)).toBe(stats)
+})

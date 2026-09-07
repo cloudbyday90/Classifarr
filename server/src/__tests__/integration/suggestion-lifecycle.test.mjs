@@ -69,7 +69,7 @@ test.each([['apply', 'apply'], ['apply', 'reject'], ['reject', 'apply'], ['rejec
         if (first === 'apply') {
             expect(before.suggestion.applied_at).toBeInstanceOf(Date);
             expect(before.suggestion.applied_by).toBe(userId);
-            expect(before.suggestion.before_accuracy).toBeCloseTo(0.8);
+            expect(before.suggestion.before_accuracy).toBeCloseTo(0.5);
         } else {
             expect(before.suggestion.before_accuracy).toBe(0.5);
             expect(before.suggestion.applied_at).toBeNull();
@@ -220,14 +220,15 @@ test('unchanged evidence outside the requested rolling window is stale', async (
     await expect(applySuggestion(suggestionId, userId)).rejects.toMatchObject({ code: 'SUGGESTION_EVIDENCE_STALE' });
 });
 
-test.each(['libraries', 'policy_feedback_log'])('busy %s returns a conflict without effects or supersession', async table => {
+test.each(['libraries', 'original_candidate', 'policy_feedback_log'])('busy %s returns a conflict without effects or supersession', async table => {
     const blocker = await db.connect();
     const before = await snapshot();
     const cohort = await captureSuggestionCohort(policyId);
     try {
         await blocker.query('BEGIN');
-        await blocker.query(table === 'libraries' ? 'SELECT id FROM libraries WHERE id=$1 FOR UPDATE'
-            : 'SELECT id FROM policy_feedback_log WHERE selected_policy_id=$1 FOR UPDATE', [table === 'libraries' ? libraryId : policyId]);
+        await blocker.query(table !== 'policy_feedback_log' ? 'SELECT id FROM libraries WHERE id=$1 FOR UPDATE'
+            : 'SELECT id FROM policy_feedback_log WHERE selected_policy_id=$1 FOR UPDATE',
+        [table === 'libraries' ? libraryId : table === 'original_candidate' ? otherLibraryId : policyId]);
         await expect(applySuggestion(suggestionId, userId)).rejects.toMatchObject({ code: 'SUGGESTION_EVIDENCE_BUSY' });
         await expect(storeSuggestions(policyId, [], cohort)).rejects.toMatchObject({ code: 'SUGGESTION_EVIDENCE_BUSY' });
         expect(await snapshot()).toEqual(before);
@@ -303,8 +304,8 @@ test('v1 analysis cannot be applied even when its feedback and configuration are
 test.each([1, 3])('normal analysis supersedes an inflated v1 pattern supported by %i correction records', async count => {
     const feedback = (await db.query('SELECT id FROM policy_feedback_log WHERE selected_policy_id=$1 ORDER BY id', [policyId])).rows;
     const support = feedback.slice(0, count).map(row => row.id);
-    await db.query('UPDATE policy_feedback_log SET was_correction=(id=ANY($2::integer[])),item_metadata=$3 WHERE selected_policy_id=$1',
-        [policyId, support, { genres: ['Action', 'Action', 'Action'] }]);
+    await db.query('UPDATE policy_feedback_log SET was_correction=(id=ANY($2::integer[])),item_metadata=$3, top_suggestion_library_id=CASE WHEN id=ANY($2::integer[]) THEN $4::integer ELSE $5::integer END WHERE selected_policy_id=$1',
+        [policyId, support, { genres: ['Action', 'Action', 'Action'] }, otherLibraryId, libraryId]);
     await db.query(`UPDATE policy_tuning_suggestions SET suggestion_type='create_pattern',suggestion_config=$2,
         supporting_feedback_ids=$3,confidence=85 WHERE id=$1`,
     [suggestionId, { pattern_type: 'genre', pattern_value: 'Action', confidence: 90 }, support]);
@@ -356,4 +357,21 @@ test.each([false, true])('failed pattern audit rolls back the %s existing-patter
     expect((await db.query('SELECT confidence,library_name,status FROM discovered_patterns WHERE library_id=$1', [libraryId])).rows)
         .toEqual([{ confidence: existing ? '75.00' : '60.00', library_name: 'Lifecycle', status: 'approved' }]);
     expect((await snapshot()).audit).toHaveLength(1);
+});
+
+
+test('v2 evidence must be regenerated before application', async () => {
+    const cohort = await captureSuggestionCohort(policyId);
+    cohort.version = 'feedback_suggestions.v2';
+    await attachSuggestionCohort(db, suggestionId, cohort);
+    await expect(applySuggestion(suggestionId, userId)).rejects.toMatchObject({ code: 'SUGGESTION_EVIDENCE_STALE' });
+    await feedbackAnalysis.analyzePolicy(policyId);
+    expect((await snapshot()).suggestion.status).toBe('superseded');
+});
+
+test('original candidate deactivation invalidates frozen evidence without changing its history', async () => {
+    const before = await snapshot();
+    await db.query('UPDATE libraries SET is_active=FALSE WHERE id=$1', [otherLibraryId]);
+    await expect(applySuggestion(suggestionId, userId)).rejects.toMatchObject({ code: 'SUGGESTION_EVIDENCE_STALE' });
+    expect(await snapshot()).toEqual(before);
 });

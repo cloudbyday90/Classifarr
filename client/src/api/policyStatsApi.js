@@ -18,6 +18,9 @@
 
 import { getDataRequest } from './core'
 
+// Accuracy fields are nullable and use evaluated feedback only. Coverage fields
+// describe evaluated_decisions / total_decisions; preserve null instead of coercing
+// unavailable accuracy to zero. The API also retains unevaluated observations.
 export function getPolicyStatsOverview() {
   return getDataRequest('/stats/overview')
 }

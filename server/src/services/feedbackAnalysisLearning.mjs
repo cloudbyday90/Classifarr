@@ -15,68 +15,12 @@ const logger = createLogger('FeedbackAnalysis');
 
 export async function updateLearningStats(policyId, client = db) {
     return withServiceCatch(logger, 'Failed to update learning stats', { policyId }, async () => {
-        const allFeedback = await client.query(`
-            SELECT * FROM policy_feedback_log
-            WHERE selected_policy_id = $1
-            ORDER BY prompted_at DESC
-        `, [policyId]);
-
-        const feedback = allFeedback.rows;
-
-        if (feedback.length === 0) {
-            return null;
-        }
-
-        const total_decisions = feedback.length;
-        const auto_classified = feedback.filter(f => f.prompt_type === 'auto_classify').length;
-        const ai_validated = feedback.filter(f => f.prompt_type === 'ai_validate').length;
-        const user_prompted = feedback.filter(f =>
-            f.prompt_type === 'prompt_confirm' || f.prompt_type === 'prompt_select'
-        ).length;
-        const user_corrections = feedback.filter(f => f.was_correction).length;
-
-        const accuracy_rate = total_decisions > 0
-            ? (total_decisions - user_corrections) / total_decisions
-            : 0;
-
-        const auto_accuracy_rate = auto_classified > 0
-            ? feedback.filter(f => f.prompt_type === 'auto_classify' && !f.was_correction).length / auto_classified
-            : 0;
-
-        const last7Days = feedback.filter(f => {
-            const date = new Date(f.prompted_at);
-            const now = new Date();
-            const diffDays = (now - date) / (1000 * 60 * 60 * 24);
-            return diffDays <= 7;
-        });
-
-        const last_7_days_accuracy = last7Days.length > 0
-            ? last7Days.filter(f => !f.was_correction).length / last7Days.length
-            : null;
-
-        const last30Days = feedback.filter(f => {
-            const date = new Date(f.prompted_at);
-            const now = new Date();
-            const diffDays = (now - date) / (1000 * 60 * 60 * 24);
-            return diffDays <= 30;
-        });
-
-        const last_30_days_accuracy = last30Days.length > 0
-            ? last30Days.filter(f => !f.was_correction).length / last30Days.length
-            : null;
-
-        let trend = 'stable';
-        if (last_7_days_accuracy !== null && last_30_days_accuracy !== null) {
-            if (last_7_days_accuracy > last_30_days_accuracy + 0.05) {
-                trend = 'improving';
-            } else if (last_7_days_accuracy < last_30_days_accuracy - 0.05) {
-                trend = 'declining';
-            }
-        }
-
-        const last_decision_at = feedback[0].prompted_at;
-        const lastCorrection = feedback.find(f => f.was_correction);
-        const last_correction_at = lastCorrection ? lastCorrection.prompted_at : null;
+        const summary = await client.query('SELECT * FROM policy_feedback_learning_stats WHERE policy_id = $1', [policyId]);
+        const stats = summary.rows[0];
+        if (!stats) return null;
+        const { total_decisions, auto_classified, ai_validated, user_prompted, user_corrections,
+            accuracy_rate, auto_accuracy_rate, last_7_days_accuracy, last_30_days_accuracy,
+            trend, last_decision_at, last_correction_at } = stats;
 
         const result = await client.query(`
             INSERT INTO policy_learning_stats (
@@ -129,10 +73,11 @@ export async function updateLearningStats(policyId, client = db) {
 
         logger.info('Learning stats updated', {
             policyId,
-            accuracy_rate: (accuracy_rate * 100).toFixed(1) + '%',
+            accuracy_rate: accuracy_rate === null ? null : (accuracy_rate * 100).toFixed(1) + '%',
+            evaluated_decisions: stats.evaluated_decisions,
             trend
         });
 
-        return result.rows[0];
+        return { ...result.rows[0], ...stats };
     });
 }

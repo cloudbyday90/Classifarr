@@ -43,8 +43,10 @@ export async function assertSuggestionCohortCurrent(client, manifest, policy) {
     assertCohortShape(manifest);
     if (cohortDigest(projectPolicy(policy)) !== cohortDigest(manifest.policy)) throw evidenceConflict();
     try {
-        const { rows: libraries } = await client.query('SELECT * FROM libraries WHERE id = $1 FOR SHARE NOWAIT', [policy.library_id]);
-        const library = libraries[0];
+        const libraryIds = [...new Set([policy.library_id, ...manifest.feedback.map(row => row.top_suggestion_library_id)])]
+            .filter(isLearningLibraryId).sort((a, b) => a - b);
+        const { rows: libraries } = await client.query('SELECT * FROM libraries WHERE id = ANY($1::integer[]) ORDER BY id FOR SHARE NOWAIT', [libraryIds]);
+        const library = libraries.find(row => row.id === policy.library_id);
         if (!library?.is_active || cohortDigest(projectDestination(library)) !== cohortDigest(manifest.destination)) throw evidenceConflict();
         const ids = manifest.feedback.map(row => row.id).sort((a, b) => a - b);
         const { rows } = await client.query(`
@@ -53,10 +55,12 @@ export async function assertSuggestionCohortCurrent(client, manifest, policy) {
             FROM policy_feedback_log WHERE id = ANY($1::integer[])
             ORDER BY id FOR SHARE NOWAIT
         `, [ids]);
+        const eligible = await client.query(`SELECT id FROM policy_feedback_evaluation
+            WHERE id = ANY($1::integer[]) AND evaluation_correct IS NOT NULL`, [ids]);
         const { rows: times } = await client.query('SELECT clock_timestamp() AS checked_at');
         const now = times[0].checked_at.getTime();
         const lowerBound = now - manifest.days * 86400000;
-        if (Date.parse(manifest.captured_at) > now || rows.length !== ids.length
+        if (Date.parse(manifest.captured_at) > now || rows.length !== ids.length || eligible.rows.length !== ids.length
             || rows.some(row => row.selected_policy_id !== policy.id || row.selected_library_id !== library.id
                 || !row.prompted_at || new Date(row.prompted_at).getTime() < lowerBound
                 || new Date(row.prompted_at).getTime() > Date.parse(manifest.captured_at))

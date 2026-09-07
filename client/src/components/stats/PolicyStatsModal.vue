@@ -22,6 +22,7 @@
       </div>
 
       <div class="modal-body">
+        <FeedbackEvaluationCoverage :stats="stats" />
         <!-- Key metrics -->
         <div class="metrics-row">
           <div class="metric-box">
@@ -31,6 +32,10 @@
           <div class="metric-box">
             <span class="metric-value">{{ formatPercent(stats.accuracy_rate) }}</span>
             <span class="metric-label">Overall Accuracy</span>
+          </div>
+          <div class="metric-box">
+            <span class="metric-value">{{ formatPercent(stats.evaluation_coverage) }}</span>
+            <span class="metric-label">Evaluated Coverage</span>
           </div>
           <div class="metric-box">
             <span class="metric-value">{{ formatPercent(stats.auto_accuracy_rate) }}</span>
@@ -124,11 +129,13 @@
 import { ref, computed, onMounted } from 'vue';
 import api from '@/api';
 import AccuracyChart from './AccuracyChart.vue';
+import FeedbackEvaluationCoverage from './FeedbackEvaluationCoverage.vue';
 
 export default {
   name: 'PolicyStatsModal',
   components: {
-    AccuracyChart
+    AccuracyChart,
+    FeedbackEvaluationCoverage
   },
   props: {
     policy: {

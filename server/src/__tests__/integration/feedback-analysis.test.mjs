@@ -237,9 +237,9 @@ describe('FeedbackAnalysis Integration Tests', () => {
                 await db.query(`
                     INSERT INTO policy_feedback_log (
                         tmdb_id, media_type, title, selected_library_id, 
-                        selected_policy_id, was_correction, prompt_type
-                    ) VALUES ($1, 'movie', 'Test', $2, $3, $4, $5)
-                `, [Math.floor(Math.random() * 100000), testLibraryId, testPolicyId, data.was_correction, data.prompt_type]);
+                        selected_policy_id, was_correction, prompt_type, top_suggestion_library_id
+                    ) VALUES ($1, 'movie', 'Test', $2, $3, $4, $5, $6)
+                `, [Math.floor(Math.random() * 100000), testLibraryId, testPolicyId, data.was_correction, data.prompt_type, data.was_correction ? testLibraryId2 : testLibraryId]);
             }
 
             const stats = await feedbackAnalysis.updateLearningStats(testPolicyId);
