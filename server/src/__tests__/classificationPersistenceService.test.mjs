@@ -416,6 +416,32 @@ describe('logClassification', () => {
     expect(id).toBe(42);
   });
 
+  test('captures an AI proposal before awaits without inheriting caller evidence or making a policy ranking', async () => {
+    const result = { method: 'ai_analysis', library: { id: 1 }, confidence: 80 };
+    libraryProfileService.getProfileStats.mockImplementationOnce(async () => {
+      result.library.id = 2;
+      return {};
+    });
+    await classificationPersistenceService.logClassification({ ...baseMetadata,
+      classification_details: { candidate_capture: { library_id: 999 } } }, result);
+    const params = db.query.mock.calls.find(call => call[0].includes('INSERT INTO classification_history'))[1];
+    const details = JSON.parse(params[9]).classification_details;
+    expect(details.candidate_capture).toMatchObject({ status: 'recorded', source: 'decision_proposal', library_id: 1 });
+    expect(details.ranked_candidates).toEqual([]);
+  });
+
+  test('a missing first policy candidate is not removed to promote the next candidate', async () => {
+    await classificationPersistenceService.logClassification(baseMetadata, {
+      method: 'policy_auto', library: { id: 2 }, confidence: 80,
+      policyResult: { ranked: [null, { library_id: 2 }] },
+    });
+    const params = db.query.mock.calls.find(call => call[0].includes('INSERT INTO classification_history'))[1];
+    const details = JSON.parse(params[9]).classification_details;
+    expect(details.candidate_capture).toMatchObject({ status: 'invalid_candidate', source: 'policy_ranked', library_id: null });
+    expect(details.ranked_candidates[0]).toBeNull();
+    expect(details.ranked_candidates[1].library_id).toBe(2);
+  });
+
   test('persists a bounded queue decision witness only after history receives an id', async () => {
     const queueDecisionWitnessRepository = {
       persist: jest.fn().mockResolvedValue({ persisted: true, reason: null }),

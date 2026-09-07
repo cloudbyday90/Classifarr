@@ -3,9 +3,10 @@ import { createLogger } from '../utils/logger.mjs';
 import { EVIDENCE_COVERAGE_GROUP_LIMIT, readEvidenceCoverageSnapshot } from './evidenceCoverageQuery.mjs';
 
 const logger = createLogger('EvidenceCoverage');
-const version = 'evidence.coverage.v1';
+const version = 'evidence.coverage.v2';
 const lifecycleFields = ['completed_events', 'pending_events', 'retry_events', 'other_events'];
-const historyFields = ['events', ...lifecycleFields, 'imported_observations', 'original_candidates', 'linked_feedback'];
+const candidateFields = ['original_candidates', 'candidate_no_proposal', 'candidate_invalid', 'candidate_not_applicable', 'candidate_unrecorded'];
+const historyFields = ['events', ...lifecycleFields, ...candidateFields, 'imported_observations', 'linked_feedback'];
 const feedbackFields = ['observations', 'source_bound', 'evaluated', 'unevaluated'];
 
 function count(value) {
@@ -25,6 +26,9 @@ function population(totals, groups, groupCount, fields) {
         if (Object.values(result).some(value => value > denominator)) throw new Error('Inconsistent evidence counts');
         if ('events' in result && lifecycleFields.reduce((sum, field) => sum + result[field], 0) !== denominator) {
             throw new Error('Inconsistent history lifecycle counts');
+        }
+        if ('events' in result && candidateFields.reduce((sum, field) => sum + result[field], 0) !== denominator) {
+            throw new Error('Inconsistent candidate capture counts');
         }
         if ('observations' in result) {
             if (result.evaluated + result.unevaluated !== denominator) throw new Error('Inconsistent evaluation counts');

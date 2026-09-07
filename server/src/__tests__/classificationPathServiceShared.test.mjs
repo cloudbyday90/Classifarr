@@ -24,6 +24,23 @@ import {
 	resolveClassificationPathAiSuccess,
 	resolveAiUnavailableResult,
 } from '../services/classificationPathServiceShared.mjs';
+import { buildPendingRetryResult } from '../services/classificationAiFailureUtils.mjs';
+import { buildClassificationCandidateCapture } from '../services/classificationCandidateCapture.mjs';
+import { evaluateClassificationRouteSafety, isCurrentDeterministicPolicyAuto } from '../services/classificationRouteSafetyGate.mjs';
+
+test.each([true, false])('preserves real candidate context through AI unavailability (retry=%s)', async retry => {
+  const policyResult = { ranked: [{ library_id: 1 }] };
+  const signalContext = { suggestedLibrary: { id: 2 } };
+  const result = await resolveAiUnavailableResult({ metadata: {}, policyResult, signalContext,
+    isTransientAiAvailability: retry, confidence: 60, libraries: [{ id: 9, name: 'Default' }],
+    buildPendingRetryResult, ensureDecisionQuestion: async ({ result: value }) => value });
+  expect(result.policyResult).toBe(policyResult);
+  expect(result.signalContext).toBe(signalContext);
+  expect(result.method).toBe(retry ? 'queued_for_retry' : 'fallback');
+  expect(buildClassificationCandidateCapture(result)).toMatchObject({ status: 'recorded', source: 'policy_ranked', library_id: 1 });
+  expect(isCurrentDeterministicPolicyAuto(result)).toBe(false);
+  expect(evaluateClassificationRouteSafety({ result }).automatic_route_allowed).toBe(false);
+});
 
 describe('classificationPathServiceShared', () => {
 	it('builds a shared AI result payload for classification paths', () => {
@@ -291,6 +308,8 @@ describe('classificationPathServiceShared', () => {
 		expect(ensureDecisionQuestion).toHaveBeenCalledWith({
 			metadata: { title: 'Test Film' },
 			result: {
+				policyResult: { confidence: 65 },
+				signalContext: { confidence: 65 },
 				library: libraries[1],
 				confidence: 50,
 				method: 'fallback',

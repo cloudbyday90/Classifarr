@@ -177,6 +177,14 @@ events; completed imported membership still does not establish accuracy. See the
 [lifecycle design](docs/architecture/evidence-lifecycle-design.md)
 and [outcome](docs/architecture/evidence-lifecycle-outcome.md).
 
+New classifier history captures the original candidate and its source before
+routing. Retry/fallback paths retain their policy and signal context. Evidence
+coverage v2 distinguishes recorded proposals, no proposal, invalid evidence,
+non-classifier observations and unrecorded legacy history. A later manual selection
+preserves the original capture. This availability does not expand feedback
+evaluation. See the [capture design](docs/architecture/original-candidate-capture-design.md)
+and [outcome](docs/architecture/original-candidate-capture-outcome.md).
+
 Statistics describe their scope beside each section: retained policy feedback,
 recent accuracy windows and the latest activity feed. Policy details label their
 30-day breakdown and rolling seven-day comparison. These descriptions replace

@@ -86,8 +86,9 @@ manual input. The limitation is that retained status describes workflow history,
 not validated classifier quality. The design records the official W3C/PostgreSQL
 sources and the alternatives with their pros and cons.
 
-**Next: audit and standardize automatic original-candidate capture across
-non-import classification methods.** Only five of 73 such observations currently
+**Follow-up implemented:** [original candidate capture](original-candidate-capture-outcome.md).
+The recommendation was to audit capture across non-import classification methods.
+Only five of 73 such observations in this snapshot
 contain the candidate ID recognized by this query. Identify which writers lack
 the original candidate snapshot, preserve provenance when a candidate exists, and
 expose bounded missing-reason counts when it does not. Do not reconstruct an

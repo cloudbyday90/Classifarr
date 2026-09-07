@@ -35,6 +35,8 @@
         Other includes failed, superseded and unknown states.
       </p>
       <p>History follows its recorded library; feedback follows its selected library. These populations cannot be added together.</p>
+      <p>{{ number(coverage.history.totals.original_candidates) }} original candidates recorded.</p>
+      <CandidateCaptureCounts :counts="coverage.history.totals" />
       <div
         class="table-scroll"
         tabindex="0"
@@ -75,7 +77,10 @@
                 <HistoryLifecycleCounts :counts="row" />
               </td>
               <td>{{ number(row.imported_observations) }}</td>
-              <td>{{ number(row.original_candidates) }}</td>
+              <td>
+                {{ number(row.original_candidates) }} recorded
+                <CandidateCaptureCounts :counts="row" />
+              </td>
               <td>{{ number(row.linked_feedback) }}</td>
             </tr>
             <tr v-if="coverage.history.groups.length === 0">
@@ -93,7 +98,12 @@
         Showing {{ coverage.history.groups.length }} of {{ number(coverage.history.group_count) }} history groups.
         Totals include all groups.
       </p>
-      <p>Candidate availability means an original library ID is recorded. It does not prove that the candidate is correct or reviewed.</p>
+      <p>
+        Candidate availability includes policy rankings and explicit proposals saved before routing.
+        No proposal means the classifier supplied none; unrecorded means capture was missing or unsupported.
+        Imports and direct manual selections are not applicable. Only nonzero missing-reason counts are shown.
+        Availability does not prove that a candidate is correct, reviewed or eligible for feedback evaluation.
+      </p>
       <div
         class="table-scroll"
         tabindex="0"
@@ -161,6 +171,7 @@
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import HistoryLifecycleCounts from './HistoryLifecycleCounts.vue'
+import CandidateCaptureCounts from './CandidateCaptureCounts.vue'
 
 const props = defineProps({ coverage: { type: Object, default: null } })
 const available = computed(() => props.coverage?.status === 'available')

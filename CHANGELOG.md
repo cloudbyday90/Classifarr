@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Original candidate provenance** — Automatically retain bounded candidate
+  proposals and their original method before routing, with visible missing-reason
+  counts and explicit evidence coverage versioning.
+
 - **Passive history lifecycle coverage** — Show completed, pending-decision,
   retry-pending and other observations by library and method, with reconciled
   totals and accessible labels. No operator input is required.
@@ -249,6 +253,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
   change policy, AI, RAG, or routing authority.
 
 ### Fixed
+
+- **Candidate evidence loss** — Preserve policy and signal context through AI
+  retry/fallback paths, keep empty ranking positions from promoting later
+  candidates, and retain original provenance after manual resolution.
 
 - **Policy comparison accuracy** — Rate changes now use percentage points, and
   missing or invalid values remain N/A instead of becoming zero. Comparisons use
@@ -493,6 +501,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - **Offline route-safety calibration** — A checked-in synthetic matrix now verifies that a high policy candidate remains behind provider recovery, evidence, AI-advisory, provenance, confirmation, fallback, low-confidence, and clarification safeguards before the human-only calibration packet is available.
 
 ### Changed
+
+- **Server development tooling** — Adopt PR #530's Jest, Knip, globals and Node
+  declaration updates locally, with ESM, database and container validation.
 
 - **Pinned QEMU action maintenance** — Adopt the verified v4.3.0 action revision
   locally from PR #526, retaining the existing release trigger and full SHA pin.

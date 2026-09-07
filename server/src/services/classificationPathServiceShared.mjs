@@ -165,7 +165,11 @@ export async function resolveAiUnavailableResult({
 	ensureDecisionQuestion,
 	...buildArgs
 }) {
-	const result = buildAiUnavailableResult(buildArgs);
+	const result = {
+		...buildAiUnavailableResult(buildArgs),
+		policyResult,
+		signalContext: buildArgs.signalContext || null,
+	};
 
 	if (shouldQueueAiUnavailableRetry(buildArgs)) {
 		return result;

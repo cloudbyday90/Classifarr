@@ -1,4 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { EVIDENCE_CANDIDATE_STATUS_SQL } from './evidenceCandidateCoverageSql.mjs';
 export const EVIDENCE_COVERAGE_GROUP_LIMIT = 200;
 
 // Separate populations prevent a corrected destination from changing history attribution.
@@ -11,20 +12,19 @@ export const EVIDENCE_COVERAGE_SQL = `WITH history_groups AS MATERIALIZED (
         count(*) FILTER (WHERE history.evidence_lifecycle = 'retry') AS retry_events,
         count(*) FILTER (WHERE history.evidence_lifecycle = 'other') AS other_events,
         count(*) FILTER (WHERE history.method = 'source_library') AS imported_observations,
-        count(*) FILTER (WHERE CASE
-            WHEN jsonb_typeof(history.metadata #> '{classification_details,ranked_candidates}') = 'array'
-                AND jsonb_typeof(history.metadata #> '{classification_details,ranked_candidates,0}') = 'object'
-            THEN CASE WHEN (history.metadata #>> '{classification_details,ranked_candidates,0,library_id}') ~ '^[1-9][0-9]{0,9}$'
-                THEN (history.metadata #>> '{classification_details,ranked_candidates,0,library_id}')::bigint <= 2147483647
-                ELSE FALSE END
-            ELSE FALSE END) AS original_candidates,
+        count(*) FILTER (WHERE history.evidence_candidate_status = 'recorded') AS original_candidates,
+        count(*) FILTER (WHERE history.evidence_candidate_status = 'no_candidate') AS candidate_no_proposal,
+        count(*) FILTER (WHERE history.evidence_candidate_status = 'invalid_candidate') AS candidate_invalid,
+        count(*) FILTER (WHERE history.evidence_candidate_status = 'not_applicable') AS candidate_not_applicable,
+        count(*) FILTER (WHERE history.evidence_candidate_status = 'unrecorded') AS candidate_unrecorded,
         count(source.feedback_id) AS linked_feedback
     FROM (
         SELECT classification_history.*, CASE
             WHEN status IN ('completed', 'corrected', 'verified', 'routed') THEN 'completed'
             WHEN status IN ('pending', 'awaiting_decision') THEN 'pending'
             WHEN status = 'pending_retry' THEN 'retry'
-            ELSE 'other' END AS evidence_lifecycle
+            ELSE 'other' END AS evidence_lifecycle,
+            ${EVIDENCE_CANDIDATE_STATUS_SQL} AS evidence_candidate_status
         FROM classification_history
     ) history
     LEFT JOIN libraries library ON library.id = history.library_id
@@ -56,6 +56,10 @@ SELECT statement_timestamp() AS captured_at,
         'other_events', COALESCE(sum(other_events), 0),
         'imported_observations', COALESCE(sum(imported_observations), 0),
         'original_candidates', COALESCE(sum(original_candidates), 0),
+        'candidate_no_proposal', COALESCE(sum(candidate_no_proposal), 0),
+        'candidate_invalid', COALESCE(sum(candidate_invalid), 0),
+        'candidate_not_applicable', COALESCE(sum(candidate_not_applicable), 0),
+        'candidate_unrecorded', COALESCE(sum(candidate_unrecorded), 0),
         'linked_feedback', COALESCE(sum(linked_feedback), 0)) FROM history_groups) AS history_totals,
     (SELECT count(*) FROM history_groups) AS history_group_count,
     COALESCE((SELECT jsonb_agg(to_jsonb(selected) ORDER BY library_id NULLS LAST, method)

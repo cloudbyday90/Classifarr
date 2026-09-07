@@ -46,6 +46,7 @@ import {
   buildPolicyCandidateCorrectionSignalSnapshot,
 } from './policyCandidateCorrectionSignalSnapshot.mjs';
 import { buildClassificationQueueDecisionWitness } from './classificationQueueDecisionWitness.mjs';
+import { buildClassificationCandidateCapture } from './classificationCandidateCapture.mjs';
 import {
   classificationQueueDecisionWitnessRepository,
 } from './classificationQueueDecisionWitnessRepository.mjs';
@@ -308,6 +309,10 @@ export class ClassificationPersistenceService {
   }
 
   async logClassification(metadata, result, startTime = null, { queueTask = null } = {}) {
+    const candidateCapture = buildClassificationCandidateCapture(result);
+    const rankedCandidates = Array.isArray(result.policyResult?.ranked)
+      ? result.policyResult.ranked.slice(0, 5).map(summarizeRankedCandidate)
+      : [];
     const collectionId = metadata.collectionId || null;
     const signalsJson = result.signals ? JSON.stringify(result.signals)
       : result.signalContext?.signals ? JSON.stringify(result.signalContext.signals) : null;
@@ -347,6 +352,7 @@ export class ClassificationPersistenceService {
     });
 
     const classificationDetails = {
+      candidate_capture: candidateCapture,
       policy_name: result.policyResult?.library?.policy_name || null,
       scores: result.policyResult?.scores || { preset: 0, profile: 0, pattern: 0, rag: 0, history: 0 },
       weights: result.policyResult?.weights || { preset: 0.35, profile: 0.25, pattern: 0.15, rag: 0.15, history: 0.10 },
@@ -354,9 +360,7 @@ export class ClassificationPersistenceService {
         || result.policyResult?.ranked?.[0]?.candidate_diagnostics
         || null,
       decision_diagnostics: result.policyResult?.decisionDiagnostics || null,
-      ranked_candidates: Array.isArray(result.policyResult?.ranked)
-        ? result.policyResult.ranked.slice(0, 5).map(summarizeRankedCandidate).filter(Boolean)
-        : [],
+      ranked_candidates: rankedCandidates,
       rag_details: ragDetails,
       rag_evidence: result.ragLoopTrace?.retrieval_evidence || null,
       rag_loop_trace: result.ragLoopTrace || null,

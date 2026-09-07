@@ -4,6 +4,8 @@ import express from 'express';
 import request from 'supertest';
 import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
 import { createMountedTestApp } from '../helpers/setupRouteTest.mjs';
+import { buildClassificationCandidateCapture } from '../../services/classificationCandidateCapture.mjs';
+import { projectPromptClassification } from '../../services/promptClassificationProjection.mjs';
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 const database = await import('../../config/database.mjs');
@@ -58,6 +60,72 @@ async function seedPopulations() {
     await db.query('DELETE FROM policy_feedback_log WHERE id=$1', [deleted]);
 }
 
+test('persists explicit proposal provenance without changing policy-ranked feedback eligibility', async () => {
+    for (const result of [
+        { method: 'policy_auto', policyResult: { ranked: [{ library_id: original }] } },
+        { method: 'ai_analysis', library: { id: original } },
+        { method: 'queued_for_retry', signalContext: { suggestedLibrary: { id: original } } },
+        { method: 'queued_for_retry', signalContext: { ranked: [{ library_id: original }] } },
+    ]) {
+        const capture = buildClassificationCandidateCapture(result);
+        const event = await history({ method: result.method, status: result.method === 'queued_for_retry' ? 'pending_retry' : 'completed',
+            metadata: { classification_details: { candidate_capture: capture } } });
+        await db.query("UPDATE classification_history SET library_id=$1,method='manual_classification',status='completed' WHERE id=$2", [destination, event]);
+        const persisted = (await db.query('SELECT metadata FROM classification_history WHERE id=$1', [event])).rows[0];
+        expect(persisted.metadata.classification_details.candidate_capture.library_id).toBe(original);
+        expect(projectPromptClassification(persisted).evaluation.ranked).toEqual([]);
+    }
+    const result = await readEvidenceCoverage(database);
+    expect(result.history.totals).toMatchObject({ events: 4, original_candidates: 4, candidate_no_proposal: 0,
+        candidate_invalid: 0, candidate_not_applicable: 0, candidate_unrecorded: 0 });
+    expect(result.history.groups.every(row => row.library_id === destination)).toBe(true);
+    expect(result.feedback.totals.evaluated).toBe(0);
+});
+
+test('candidate reasons partition legacy, absent, invalid, non-classifier and supported proposals', async () => {
+    const candidates = [
+        { method: 'ai_analysis', library: { id: original } },
+        { method: 'ai_analysis' },
+        { method: 'policy_auto', policyResult: { ranked: [null, { library_id: original }] } },
+        { method: 'manual_classification', library: { id: original } },
+        { method: 'source_library', library: { id: original } },
+    ];
+    for (const value of candidates) await history({ method: value.method,
+        metadata: { classification_details: { candidate_capture: buildClassificationCandidateCapture(value) } } });
+    await history({ method: 'ai_analysis' });
+    await history({ method: 'policy_auto', metadata: { classification_details: { ranked_candidates: [{ library_id: original }] } } });
+    const result = await readEvidenceCoverage(database);
+    expect(result.history.totals).toMatchObject({ events: 7, original_candidates: 2, candidate_no_proposal: 1,
+        candidate_invalid: 1, candidate_not_applicable: 2, candidate_unrecorded: 1 });
+});
+
+test.each([null, true, [], {}, { version: 'future' },
+    ...[true, -1, 1.5, '2147483648', '1junk'].map(library_id => ({
+        version: 'classification.candidate_capture.v1', stage: 'pre_routing', method: 'policy_auto', status: 'recorded', source: 'policy_ranked', library_id })),
+    { version: 'classification.candidate_capture.v1', stage: 'post_selection', method: 'policy_auto', status: 'recorded', source: 'policy_ranked', library_id: 1 },
+    { version: 'classification.candidate_capture.v1', stage: 'pre_routing', method: 'policy_auto', status: 'recorded', source: 'selected_destination', library_id: 1 },
+    { version: 'classification.candidate_capture.v1', stage: 'pre_routing', method: 'policy_auto', status: 'no_candidate', source: null, library_id: 1 },
+])('invalid explicit capture %j cannot fall back to legacy rankings', async candidate_capture => {
+    await history({ method: 'ai_analysis', metadata: { classification_details: {
+        candidate_capture, ranked_candidates: [{ library_id: original }],
+    } } });
+    expect((await readEvidenceCoverage(database)).history.totals).toMatchObject({ original_candidates: 0, candidate_invalid: 1 });
+});
+
+test('legacy membership stays excluded while a policy ranking survives later manual selection', async () => {
+    for (const method of ['source_library', 'manual_classification']) {
+        await history({ method, metadata: { classification_details: { ranked_candidates: [{ library_id: original }] } } });
+    }
+    expect((await readEvidenceCoverage(database)).history.totals).toMatchObject({ original_candidates: 1, candidate_not_applicable: 1 });
+});
+
+test('unsupported capture remains unrecorded rather than counting a supplied destination', async () => {
+    await history({ method: null, metadata: { classification_details: {
+        candidate_capture: buildClassificationCandidateCapture({ method: 'future_method', library: { id: original } }),
+    } } });
+    expect((await readEvidenceCoverage(database)).history.totals).toMatchObject({ original_candidates: 0, candidate_unrecorded: 1 });
+});
+
 test('reconciles separate populations without moving feedback into its original history library', async () => {
     await seedPopulations();
     const before = (await db.query('SELECT * FROM policy_feedback_log ORDER BY id')).rows;
@@ -67,7 +135,8 @@ test('reconciles separate populations without moving feedback into its original 
     const result = response.body.evidence_coverage;
     expect(result.status).toBe('available');
     expect(result.history.totals).toEqual({ events: 4, completed_events: 3, pending_events: 1, retry_events: 0, other_events: 0,
-        imported_observations: 2, original_candidates: 1, linked_feedback: 1 });
+        imported_observations: 2, original_candidates: 1, linked_feedback: 1,
+        candidate_no_proposal: 0, candidate_invalid: 0, candidate_not_applicable: 2, candidate_unrecorded: 1 });
     expect(result.feedback.totals).toEqual({ observations: 3, source_bound: 2, evaluated: 2, unevaluated: 1, evaluation_coverage: 2 / 3 });
     expect(result.history.groups.find(row => row.method === 'policy_auto')).toMatchObject({ library_id: original, events: 1, linked_feedback: 1 });
     expect(result.feedback.groups.find(row => row.method === 'policy_auto')).toMatchObject({ library_id: destination, observations: 1 });
@@ -153,12 +222,12 @@ test.each([null, {}, [], [null], [true], [{ library_id: true }], [{ library_id: 
     [{ library_id: '2147483648' }], [{ library_id: '99999999999999999999' }], [{ library_id: '1.5' }],
     [{ library_id: '1junk' }], [{}, { library_id: 1 }], { 0: { library_id: 1 } },
 ])('malformed original candidates %j do not become available evidence', async candidates => {
-    await history({ metadata: { classification_details: { ranked_candidates: candidates } } });
+    await history({ method: 'policy_auto', metadata: { classification_details: { ranked_candidates: candidates } } });
     expect((await readEvidenceCoverage(database)).history.totals).toMatchObject({ events: 1, original_candidates: 0 });
 });
 
 test.each([1, '2147483647'])('valid original ID %s denotes availability even without a current library', async candidate => {
-    await history({ metadata: { classification_details: { ranked_candidates: [{ library_id: candidate }] } } });
+    await history({ method: 'policy_auto', metadata: { classification_details: { ranked_candidates: [{ library_id: candidate }] } } });
     expect((await readEvidenceCoverage(database)).history.totals.original_candidates).toBe(1);
 });
 

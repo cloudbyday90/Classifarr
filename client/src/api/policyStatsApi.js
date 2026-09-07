@@ -24,6 +24,8 @@ import { getDataRequest } from './core'
 export function getPolicyStatsOverview() {
   // evidence_coverage contains separate all-retained history/feedback populations;
   // history lifecycle counts partition events (completed, pending, retry, other).
+  // v2 counts pre-routing proposals and partitions missing candidate reasons;
+  // this availability is separate from policy-ranked feedback evaluation.
   // unavailable data stays null, and capped groups do not replace global totals.
   return getDataRequest('/stats/overview')
 }

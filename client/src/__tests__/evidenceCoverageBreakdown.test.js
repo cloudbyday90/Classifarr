@@ -4,9 +4,11 @@ import { expect, test } from 'vitest'
 import EvidenceCoverageBreakdown from '../components/stats/EvidenceCoverageBreakdown.vue'
 
 const snapshot = () => ({ status: 'available', captured_at: '2026-09-07T00:00:00Z',
-  history: { totals: { events: 3, completed_events: 2, pending_events: 1, retry_events: 0, other_events: 0 }, groups: [{ library_id: 1, library_name: '<img src=x onerror=alert(1)>', library_active: false,
+  history: { totals: { events: 3, completed_events: 2, pending_events: 1, retry_events: 0, other_events: 0,
+    original_candidates: 0, candidate_no_proposal: 0, candidate_invalid: 0, candidate_not_applicable: 3, candidate_unrecorded: 0 }, groups: [{ library_id: 1, library_name: '<img src=x onerror=alert(1)>', library_active: false,
     method: 'source_library', events: 3, completed_events: 2, pending_events: 1, retry_events: 0, other_events: 0,
-    imported_observations: 3, original_candidates: 0, linked_feedback: 0 }], group_count: 1, truncated: false },
+    imported_observations: 3, original_candidates: 0, linked_feedback: 0,
+    candidate_no_proposal: 0, candidate_invalid: 0, candidate_not_applicable: 3, candidate_unrecorded: 0 }], group_count: 1, truncated: false },
   feedback: { totals: { observations: 0, evaluated: 0, evaluation_coverage: null }, groups: [], group_count: 0, truncated: false },
   deleted_feedback_receipts: 0 })
 const render = coverage => mount(EvidenceCoverageBreakdown, { props: { coverage }, global: { stubs: { RouterLink: true } } })
@@ -27,8 +29,8 @@ test('uses separately captioned tables with native column/row headers and keyboa
 
 test('automatically displays labelled lifecycle totals and group counts without controls', () => {
   const wrapper = render(snapshot())
-  expect(wrapper.findAll('dl')).toHaveLength(2)
-  for (const list of wrapper.findAll('dl')) {
+  expect(wrapper.findAll('.lifecycle-counts')).toHaveLength(2)
+  for (const list of wrapper.findAll('.lifecycle-counts')) {
     expect(list.findAll('dt').map(term => term.text())).toEqual(['Completed', 'Pending decision', 'Retry pending', 'Other'])
     expect(list.findAll('dd').map(count => count.text())).toEqual(['2', '1', '0', '0'])
   }
@@ -42,11 +44,27 @@ test.each([undefined, null, -1, 1.5, '2', 4])('missing or inconsistent lifecycle
   data.history.totals.completed_events = invalid
   data.history.groups[0].completed_events = invalid
   const wrapper = render(data)
-  expect(wrapper.findAll('dl')).toHaveLength(0)
+  expect(wrapper.findAll('.lifecycle-counts')).toHaveLength(0)
   expect(wrapper.findAll('.unavailable')).toHaveLength(2)
   expect(wrapper.text()).toContain('History lifecycle is unavailable')
   expect(wrapper.text()).toContain('3 history events')
   expect(wrapper.text()).not.toContain('NaN')
+});
+
+test('shows bounded candidate missing reasons automatically and distinguishes zero from unavailable', () => {
+  const data = snapshot()
+  const wrapper = render(data)
+  expect(wrapper.findAll('.capture-counts')).toHaveLength(2)
+  expect(wrapper.find('.capture-counts dt').text()).toBe('Not applicable')
+  expect(wrapper.find('.capture-counts dd').text()).toBe('3')
+  expect(wrapper.text()).toContain('0 original candidates recorded')
+  expect(wrapper.text()).toContain('Only nonzero missing-reason counts are shown')
+  delete data.history.totals.candidate_not_applicable
+  delete data.history.groups[0].candidate_not_applicable
+  const legacy = render(data)
+  expect(legacy.findAll('.capture-counts')).toHaveLength(0)
+  expect(legacy.findAll('.capture-unavailable')).toHaveLength(2)
+  expect(legacy.text()).not.toContain('NaN')
 });
 
 test('escapes library names and preserves inactive and empty-population labels', () => {
