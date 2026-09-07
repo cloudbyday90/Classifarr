@@ -143,6 +143,13 @@ regenerated through normal analysis before application. See the
 [metadata-vote design](docs/architecture/feedback-metadata-votes-design.md) and
 [outcome](docs/architecture/feedback-metadata-votes-outcome.md).
 
+Prompt responses save explicit pattern choices, feedback and learning statistics
+together with classification completion. Invalid actions fail without partial writes;
+repeated responses cannot duplicate feedback. The `patternsCreated` result counts
+distinct saved patterns, including updates to existing patterns. See the
+[prompt persistence design](docs/architecture/prompt-pattern-persistence-design.md)
+and [outcome](docs/architecture/prompt-pattern-persistence-outcome.md).
+
 <p align="center">
   <img src="./docs/assets/issue-262-classification-flow-v042.svg" alt="Classifarr classification flow diagram" width="1100" />
 </p>

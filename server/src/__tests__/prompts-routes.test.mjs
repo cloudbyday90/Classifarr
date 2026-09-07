@@ -35,7 +35,9 @@ const {
 } = createNamedServiceStub('feedbackAnalysis', ['recordFeedback']);
 const { recordFeedback } = feedbackAnalysis;
 
-jest.unstable_mockModule('../config/database.mjs', () => createStandardDbMock(query));
+jest.unstable_mockModule('../config/database.mjs', () => ({
+  ...createStandardDbMock(query), withTransaction: async callback => callback({ query }),
+}));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
@@ -252,135 +254,57 @@ describe('Prompts API Routes', () => {
   });
 
   describe('POST /api/prompts/:id/respond', () => {
-    test('should submit prompt response successfully', async () => {
-      const mockClassification = {
-        id: 1,
-        tmdb_id: 603,
-        media_type: 'movie',
-        title: 'The Matrix',
-        metadata: '{"genres":["Action"]}',
-        classification_result: '{"ranked":[{"library_id":1,"score":65}]}',
-        created_at: '2023-12-01T10:00:00Z',
-      };
-
-      query
-        .mockResolvedValueOnce({ rows: [mockClassification] })
-        .mockResolvedValueOnce({ rows: [] });
-
+    beforeEach(() => {
+      query.mockReset().mockImplementation(async sql => {
+        if (sql.includes('FROM library_policies')) return { rows: [{ id: 10, library_id: 1 }] };
+        if (sql.includes('FROM libraries')) return { rows: [{ id: 1, name: 'Movies', media_type: 'movie', is_active: true }] };
+        if (sql.includes('FROM classification_history')) return { rows: [{ id: 1, tmdb_id: 603,
+          title: 'Fixture', media_type: 'movie', status: 'pending', confidence: 65,
+          metadata: { classification_details: { ranked_candidates: [{ library_id: 1, score: 65 }] } },
+          created_at: new Date() }] };
+        if (sql.includes('INSERT INTO discovered_patterns')) return { rows: [{ id: 9 }] };
+        return { rows: [] };
+      });
       recordFeedback.mockResolvedValue(123);
-
-      const response = await request(app)
-        .post('/api/prompts/1/respond')
-        .send({
-          selectedLibraryId: 1,
-          selectedPolicyId: 10,
-          reasons: ['genre_based'],
-          customReason: 'Perfect match',
-          patternActions: [],
-        });
-
-      expect(response.status).toBe(200);
-      expect(response.body.success).toBe(true);
-      expect(response.body.data.feedbackId).toBe(123);
-      expect(recordFeedback).toHaveBeenCalled();
     });
 
-    test('should validate required selectedLibraryId', async () => {
-      const response = await request(app)
-        .post('/api/prompts/1/respond')
-        .send({
-          reasons: [],
-        });
+    test('submits feedback using the transaction client', async () => {
+      const response = await request(app).post('/api/prompts/1/respond')
+        .send({ selectedLibraryId: '1', selectedPolicyId: 10 });
+      expect(response.status).toBe(200);
+      expect(response.body.data).toEqual({ feedbackId: 123, classificationId: 1, patternsCreated: 0 });
+      expect(recordFeedback).toHaveBeenCalledWith(expect.objectContaining({ was_correction: false }), { query });
+    });
 
+    test('counts distinct persisted patterns with a current library name', async () => {
+      const action = { type: 'studio', value: 'Warner Bros', targetLibraryId: 1 };
+      const response = await request(app).post('/api/prompts/1/respond')
+        .send({ selectedLibraryId: 1, patternActions: [action, action] });
+      expect(response.status).toBe(200);
+      expect(response.body.data.patternsCreated).toBe(1);
+      expect(query).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO discovered_patterns'),
+        ['studio', 'Warner Bros', 1, 'Movies', 75]);
+      expect(recordFeedback).toHaveBeenCalledWith(expect.objectContaining({ patterns_created: [action] }), { query });
+    });
+
+    test('rejects invalid actions instead of counting them as created', async () => {
+      const response = await request(app).post('/api/prompts/1/respond')
+        .send({ selectedLibraryId: 1, patternActions: [{ targetLibraryId: 1 }] });
+      expect(response.status).toBe(400);
+      expect(query).not.toHaveBeenCalled();
+      expect(recordFeedback).not.toHaveBeenCalled();
+    });
+
+    test('validates required selectedLibraryId', async () => {
+      const response = await request(app).post('/api/prompts/1/respond').send({ reasons: [] });
       expect(response.status).toBe(400);
       expect(response.body.error).toContain('selectedLibraryId is required');
     });
 
-    test('should validate id parameter', async () => {
-      const response = await request(app)
-        .post('/api/prompts/invalid/respond')
-        .send({
-          selectedLibraryId: 1,
-        });
-
+    test('validates the prompt ID', async () => {
+      const response = await request(app).post('/api/prompts/invalid/respond').send({ selectedLibraryId: 1 });
       expect(response.status).toBe(400);
       expect(response.body.error).toContain('Invalid prompt ID');
-    });
-
-    test('should create pattern actions when provided', async () => {
-      const mockClassification = {
-        id: 1,
-        tmdb_id: 603,
-        media_type: 'movie',
-        title: 'The Matrix',
-        metadata: '{}',
-        classification_result: '{"ranked":[]}',
-        created_at: '2023-12-01T10:00:00Z',
-      };
-
-      query
-        .mockResolvedValueOnce({ rows: [mockClassification] })
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({ rows: [] });
-
-      recordFeedback.mockResolvedValue(123);
-
-      const response = await request(app)
-        .post('/api/prompts/1/respond')
-        .send({
-          selectedLibraryId: 1,
-          patternActions: [
-            {
-              type: 'studio',
-              value: 'Warner Bros',
-              targetLibraryId: 1,
-            },
-          ],
-        });
-
-      expect(response.status).toBe(200);
-      expect(response.body.data.patternsCreated).toBe(1);
-      expect(query).toHaveBeenCalledWith(
-        expect.stringContaining('INSERT INTO discovered_patterns'),
-        expect.arrayContaining(['studio', 'Warner Bros', 1, 75])
-      );
-    });
-
-    test('should skip invalid pattern actions but still succeed', async () => {
-      const mockClassification = {
-        id: 1,
-        tmdb_id: 603,
-        media_type: 'movie',
-        title: 'The Matrix',
-        metadata: '{}',
-        classification_result: '{"ranked":[]}',
-        created_at: '2023-12-01T10:00:00Z',
-      };
-
-      query
-        .mockResolvedValueOnce({ rows: [mockClassification] })
-        .mockResolvedValueOnce({ rows: [] });
-
-      recordFeedback.mockResolvedValue(123);
-
-      const response = await request(app)
-        .post('/api/prompts/1/respond')
-        .send({
-          selectedLibraryId: 1,
-          patternActions: [
-            {
-              targetLibraryId: 1,
-            },
-            {
-              type: 'studio',
-              value: 'Valid Studio',
-              targetLibraryId: 1,
-            },
-          ],
-        });
-
-      expect(response.status).toBe(200);
-      expect(response.body.data.patternsCreated).toBe(2);
     });
   });
 });

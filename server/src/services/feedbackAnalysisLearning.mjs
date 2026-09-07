@@ -13,9 +13,9 @@ import { withServiceCatch } from '../utils/serviceCatch.mjs';
 
 const logger = createLogger('FeedbackAnalysis');
 
-export async function updateLearningStats(policyId) {
+export async function updateLearningStats(policyId, client = db) {
     return withServiceCatch(logger, 'Failed to update learning stats', { policyId }, async () => {
-        const allFeedback = await db.query(`
+        const allFeedback = await client.query(`
             SELECT * FROM policy_feedback_log
             WHERE selected_policy_id = $1
             ORDER BY prompted_at DESC
@@ -78,7 +78,7 @@ export async function updateLearningStats(policyId) {
         const lastCorrection = feedback.find(f => f.was_correction);
         const last_correction_at = lastCorrection ? lastCorrection.prompted_at : null;
 
-        const result = await db.query(`
+        const result = await client.query(`
             INSERT INTO policy_learning_stats (
                 policy_id,
                 total_decisions,

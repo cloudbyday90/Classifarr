@@ -20,16 +20,11 @@ import express from 'express';
 import * as db from '../config/database.mjs';
 import { promptBuilder } from '../services/promptBuilder.mjs';
 import { feedbackAnalysis } from '../services/feedbackAnalysis.mjs';
-import { createLogger } from '../utils/logger.mjs';
 import { createPromptsRouter } from './promptsRouteShared.mjs';
-
-
-const logger = createLogger('PromptsAPI');
 
 export const router = createPromptsRouter({
   express,
   db,
   promptBuilder,
   feedbackAnalysis,
-  logger,
 });

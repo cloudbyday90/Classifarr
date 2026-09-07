@@ -87,6 +87,9 @@ decision. The July W3C string-matching source is explicitly identified as a draf
 
 ## Next item
 
+Completed by the [prompt persistence follow-up](prompt-pattern-persistence-outcome.md).
+The original recommendation follows for context.
+
 **Repair prompt-action pattern persistence and its success count.** Inspection of
 `server/src/routes/promptsRouteShared.mjs` found the same nonexistent `source`
 column and missing `library_name` in its pattern insert. That path catches write

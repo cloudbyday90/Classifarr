@@ -246,6 +246,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Prompt feedback persistence** — Pattern choices now use current database
+  fields and commit with feedback, learning statistics and prompt completion.
+  Counts reflect distinct saved patterns; invalid actions and repeated responses
+  cannot leave partial or duplicate feedback. Prompt reads use persisted candidate
+  metadata, and native-intent policies retain their legacy-write protection.
+
 - **Feedback pattern confidence** — Repeated metadata values count once per
   feedback record, preventing inflated pattern support and confidence. Old
   suggestion cohorts require fresh analysis, and applying regenerated pattern

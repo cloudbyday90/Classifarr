@@ -29,7 +29,7 @@ export class FeedbackAnalysis {
     groupByMetadataField(...args) { return groupByMetadataField(...args); }
     extractSignificantPatterns(...args) { return extractSignificantPatterns(...args); }
 
-    async recordFeedback(feedbackData) {
+    async recordFeedback(feedbackData, client = db) {
         return withServiceCatch(logger, 'Failed to record feedback', async () => {
             const {
                 tmdb_id,
@@ -76,7 +76,7 @@ export class FeedbackAnalysis {
                 }
             }
 
-            const result = await db.query(`
+            const result = await client.query(`
                 INSERT INTO policy_feedback_log (
                     tmdb_id,
                     media_type,
@@ -133,7 +133,7 @@ export class FeedbackAnalysis {
             });
 
             if (selected_policy_id) {
-                await this.updateLearningStats(selected_policy_id);
+                await this.updateLearningStats(selected_policy_id, client);
             }
 
             return feedbackId;

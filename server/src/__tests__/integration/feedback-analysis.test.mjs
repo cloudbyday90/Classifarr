@@ -18,11 +18,13 @@
 
 import { jest } from '@jest/globals';
 import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+import { attachSuggestionCohort } from '../helpers/suggestionCohortFixture.mjs';
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
 const { default: db } = await import('../../config/database.mjs');
 const { feedbackAnalysis } = await import('../../services/feedbackAnalysis.mjs');
+const { captureSuggestionCohort } = await import('../../services/feedbackAnalysisCohort.mjs');
 
 describe('FeedbackAnalysis Integration Tests', () => {
     let testLibraryId;
@@ -467,7 +469,7 @@ describe('FeedbackAnalysis Integration Tests', () => {
                 }
             ];
 
-            const stored = await feedbackAnalysis.storeSuggestions(testPolicyId, suggestions);
+            const stored = await feedbackAnalysis.storeSuggestions(testPolicyId, suggestions, await captureSuggestionCohort(testPolicyId));
 
             expect(stored.length).toBeGreaterThan(0);
             expect(stored[0].id).toBeDefined();
@@ -488,10 +490,11 @@ describe('FeedbackAnalysis Integration Tests', () => {
                 impact_estimate: 'Test'
             };
 
-            const stored1 = await feedbackAnalysis.storeSuggestions(testPolicyId, [suggestion]);
+            const cohort = await captureSuggestionCohort(testPolicyId);
+            const stored1 = await feedbackAnalysis.storeSuggestions(testPolicyId, [suggestion], cohort);
             expect(stored1.length).toBe(1);
 
-            const stored2 = await feedbackAnalysis.storeSuggestions(testPolicyId, [suggestion]);
+            const stored2 = await feedbackAnalysis.storeSuggestions(testPolicyId, [suggestion], cohort);
 
             expect(stored2).toEqual([]);
         });
@@ -529,6 +532,7 @@ describe('FeedbackAnalysis Integration Tests', () => {
 
             const suggestionId = suggestionRes.rows[0].id;
 
+            await attachSuggestionCohort(db, suggestionId, await captureSuggestionCohort(testPolicyId));
             const result = await feedbackAnalysis.applySuggestion(suggestionId, testUserId);
 
             expect(result.success).toBe(true);
@@ -569,6 +573,7 @@ describe('FeedbackAnalysis Integration Tests', () => {
 
             const suggestionId = suggestionRes.rows[0].id;
 
+            await attachSuggestionCohort(db, suggestionId, await captureSuggestionCohort(testPolicyId));
             const result = await feedbackAnalysis.applySuggestion(suggestionId, testUserId);
 
             expect(result.success).toBe(true);

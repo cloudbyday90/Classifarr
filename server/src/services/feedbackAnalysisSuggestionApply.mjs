@@ -1,3 +1,4 @@
+import { upsertApprovedPattern } from './approvedPatternWriter.mjs';
 import * as db from '../config/database.mjs';
 import { ValidationError } from '../utils/appError.mjs';
 import { createLogger } from '../utils/logger.mjs';
@@ -88,28 +89,13 @@ export async function applySuggestion(suggestionId, userId) {
             if (libraryResult.rows.length > 0) {
                 const library_id = libraryResult.rows[0].library_id;
 
-                await client.query(`
-                    INSERT INTO discovered_patterns (
-                        pattern_type,
-                        pattern_value,
-                        library_id,
-                        library_name,
-                        confidence,
-                        status
-                    )
-                    VALUES ($1, $2, $3, $4, $5, 'approved')
-                    ON CONFLICT (pattern_type, pattern_value, library_id) DO UPDATE
-                    SET confidence = GREATEST(discovered_patterns.confidence, EXCLUDED.confidence),
-                        library_name = EXCLUDED.library_name,
-                        status = 'approved',
-                        updated_at = NOW()
-                `, [
-                    config.pattern_type,
-                    config.pattern_value,
-                    library_id,
-                    libraryResult.rows[0].library_name,
-                    config.confidence
-                ]);
+                await upsertApprovedPattern(client, {
+                    type: config.pattern_type,
+                    value: config.pattern_value,
+                    libraryId: library_id,
+                    libraryName: libraryResult.rows[0].library_name,
+                    confidence: config.confidence,
+                });
                 applied = true;
             }
         }

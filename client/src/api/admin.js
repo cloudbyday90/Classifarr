@@ -18,10 +18,12 @@
 
 import adminApiKeysApi from './adminApiKeys'
 import adminSuggestionsApi from './adminSuggestions'
+import promptsApi from './promptsApi'
 
 const adminApi = {
   ...adminSuggestionsApi,
   ...adminApiKeysApi,
+  ...promptsApi,
 }
 
 export default adminApi
