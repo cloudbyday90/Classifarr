@@ -98,12 +98,12 @@ passive operation, traceable proposals and explicit missingness. Costs are a
 versioned availability change and continued inability to recover lost historical
 predictions. The design records W3C, PostgreSQL and OWASP sources and alternatives.
 
-**Next: distinguish original classification method from final resolution method
-in evidence attribution.** Manual resolution currently moves a row into the
-manual-classification group. The new capture already preserves the original
-method; expose a bounded original-method/source breakdown without changing the
-recorded-library view or requiring manual annotations. This will make the coverage
-of policy, AI and signal proposals easier to assess after real new traffic.
+**Follow-up implemented:** the [method attribution design](evidence-method-attribution-design.md)
+and [outcome](evidence-method-attribution-outcome.md) expose a bounded original
+method/source breakdown beside the recorded method, preserving the recorded-library
+view without manual annotations. The recorded method can still represent a pending
+decision, so it is not universally described as final resolution. The attribution
+outcome records the next recommendation.
 
 Independent labels, readiness and frozen-study preflight still gate any future
 review-only semantic counter-evidence. These changes do not enable semantic routing

@@ -79,6 +79,14 @@ test('persists explicit proposal provenance without changing policy-ranked feedb
     expect(result.history.totals).toMatchObject({ events: 4, original_candidates: 4, candidate_no_proposal: 0,
         candidate_invalid: 0, candidate_not_applicable: 0, candidate_unrecorded: 0 });
     expect(result.history.groups.every(row => row.library_id === destination)).toBe(true);
+    expect(result.history_attribution.totals).toEqual({ events: 4, captured_events: 4, unrecorded_events: 0, invalid_events: 0, unsupported_events: 0 });
+    expect(result.history_attribution.groups).toHaveLength(4);
+    expect(result.history_attribution.groups.map(row => [row.original_method, row.candidate_source])).toEqual([
+        ['ai_analysis', 'decision_proposal'], ['policy_auto', 'policy_ranked'],
+        ['queued_for_retry', 'signal_proposal'], ['queued_for_retry', 'signal_ranked'],
+    ]);
+    expect(result.history_attribution.groups.every(row => row.library_id === destination
+        && row.recorded_method === 'manual_classification' && row.provenance_status === 'captured' && row.events === 1)).toBe(true);
     expect(result.feedback.totals.evaluated).toBe(0);
 });
 
@@ -97,6 +105,12 @@ test('candidate reasons partition legacy, absent, invalid, non-classifier and su
     const result = await readEvidenceCoverage(database);
     expect(result.history.totals).toMatchObject({ events: 7, original_candidates: 2, candidate_no_proposal: 1,
         candidate_invalid: 1, candidate_not_applicable: 2, candidate_unrecorded: 1 });
+    expect(result.history_attribution.totals).toEqual({ events: 7, captured_events: 5, unrecorded_events: 2, invalid_events: 0, unsupported_events: 0 });
+    expect(result.history_attribution.groups).toEqual(expect.arrayContaining([
+        expect.objectContaining({ original_method: 'policy_auto', provenance_status: 'captured', candidate_source: 'policy_ranked', events: 1 }),
+        expect.objectContaining({ original_method: 'ai_analysis', provenance_status: 'captured', candidate_source: null, events: 1 }),
+        expect.objectContaining({ original_method: 'manual_classification', provenance_status: 'captured', candidate_source: null, events: 1 }),
+    ]));
 });
 
 test.each([null, true, [], {}, { version: 'future' },
@@ -109,21 +123,30 @@ test.each([null, true, [], {}, { version: 'future' },
     await history({ method: 'ai_analysis', metadata: { classification_details: {
         candidate_capture, ranked_candidates: [{ library_id: original }],
     } } });
-    expect((await readEvidenceCoverage(database)).history.totals).toMatchObject({ original_candidates: 0, candidate_invalid: 1 });
+    const result = await readEvidenceCoverage(database);
+    expect(result.history.totals).toMatchObject({ original_candidates: 0, candidate_invalid: 1 });
+    expect(result.history_attribution.totals).toMatchObject({ captured_events: 0, invalid_events: 1 });
+    expect(result.history_attribution.groups[0]).toMatchObject({ original_method: null, candidate_source: null, provenance_status: 'invalid' });
 });
 
 test('legacy membership stays excluded while a policy ranking survives later manual selection', async () => {
     for (const method of ['source_library', 'manual_classification']) {
         await history({ method, metadata: { classification_details: { ranked_candidates: [{ library_id: original }] } } });
     }
-    expect((await readEvidenceCoverage(database)).history.totals).toMatchObject({ original_candidates: 1, candidate_not_applicable: 1 });
+    const result = await readEvidenceCoverage(database);
+    expect(result.history.totals).toMatchObject({ original_candidates: 1, candidate_not_applicable: 1 });
+    expect(result.history_attribution.totals).toMatchObject({ events: 2, captured_events: 0, unrecorded_events: 2 });
+    expect(result.history_attribution.groups.every(row => row.original_method === null && row.candidate_source === null)).toBe(true);
 });
 
 test('unsupported capture remains unrecorded rather than counting a supplied destination', async () => {
     await history({ method: null, metadata: { classification_details: {
         candidate_capture: buildClassificationCandidateCapture({ method: 'future_method', library: { id: original } }),
     } } });
-    expect((await readEvidenceCoverage(database)).history.totals).toMatchObject({ original_candidates: 0, candidate_unrecorded: 1 });
+    const result = await readEvidenceCoverage(database);
+    expect(result.history.totals).toMatchObject({ original_candidates: 0, candidate_unrecorded: 1 });
+    expect(result.history_attribution.totals).toMatchObject({ unsupported_events: 1 });
+    expect(result.history_attribution.groups[0]).toMatchObject({ recorded_method: 'unknown_method', original_method: null, candidate_source: null, provenance_status: 'unsupported' });
 });
 
 test('reconciles separate populations without moving feedback into its original history library', async () => {
@@ -254,6 +277,8 @@ test('fixed group caps disclose omissions while preserving global totals', async
     expect(result.history).toMatchObject({ group_count: 201, truncated: true, totals: { events: 201 } });
     expect(result.feedback).toMatchObject({ group_count: 201, truncated: true, totals: { observations: 201 } });
     expect(result.history.groups).toHaveLength(200);
+    expect(result.history_attribution).toMatchObject({ group_count: 201, truncated: true, totals: { events: 201, unrecorded_events: 201 } });
+    expect(result.history_attribution.groups.map(row => row.library_id)).toEqual(ids.slice(0, 200));
     expect(result.feedback.groups).toHaveLength(200);
     expect(result.history.groups.map(row => row.library_id)).toEqual(ids.slice(0, 200));
     expect(result.history.totals).toMatchObject({ completed_events: 200, pending_events: 0, retry_events: 1, other_events: 0 });
@@ -269,6 +294,42 @@ test('missing coverage schema does not suppress existing overview metrics or inv
         expect(response.body).toHaveProperty('total_decisions');
         expect(response.body.evidence_coverage).toMatchObject({ status: 'unavailable', history: null, feedback: null });
     } finally { await db.query('ALTER TABLE coverage_receipts_unavailable RENAME TO policy_feedback_sources'); }
+});
+
+test('attribution is capped independently when original methods and sources expand a recorded group', async () => {
+    await db.query(`INSERT INTO classification_history(tmdb_id,media_type,title,method,library_id,status,metadata)
+        SELECT 603,'movie','PRIVATE coverage fixture',recorded_method,$1,'pending',
+            jsonb_build_object('classification_details',jsonb_build_object('candidate_capture',jsonb_build_object(
+                'version','classification.candidate_capture.v1','stage','pre_routing','status','recorded',
+                'method',original_method,'source',candidate_source,'library_id',$1::integer)))
+        FROM unnest(ARRAY['existing_media','manual_correction','manual_classification','exact_match',
+            'learned_pattern','source_library','policy_auto','policy_prompt','policy_recheck','ai_verified',
+            'ai_analysis','ai_rerun','signal_calculation','fallback','queued_for_retry','custom_rule','rule_match']) recorded_method
+        CROSS JOIN unnest(ARRAY['policy_auto','ai_analysis','queued_for_retry']) original_method
+        CROSS JOIN unnest(ARRAY['policy_ranked','signal_ranked','decision_proposal','signal_proposal']) candidate_source`, [original]);
+    const result = await readEvidenceCoverage(database);
+    expect(result.history).toMatchObject({ group_count: 17, truncated: false, totals: { events: 204, pending_events: 204 } });
+    expect(result.history_attribution).toMatchObject({ group_count: 204, truncated: true, totals: { events: 204, captured_events: 204 } });
+    expect(result.history_attribution.groups).toHaveLength(200);
+    expect(result.history_attribution.groups.reduce((sum, row) => sum + row.events, 0)).toBe(200);
+    expect((await readEvidenceCoverage(database)).history_attribution.groups).toEqual(result.history_attribution.groups);
+});
+
+test('normalizes an unknown current method without inventing an original method or duplicate attribution', async () => {
+    // The current schema excludes this explicit method; simulate a future vocabulary only in the disposable database.
+    const definition = (await db.query(`SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint
+        WHERE conrelid='classification_history'::regclass AND conname='classification_history_method_check'`)).rows[0].definition;
+    await db.query('ALTER TABLE classification_history DROP CONSTRAINT classification_history_method_check');
+    try {
+        await history({ method: null });
+        await history({ method: 'unknown_method' });
+        const result = await readEvidenceCoverage(database);
+        expect(result.history_attribution).toMatchObject({ group_count: 1, totals: { events: 2, unrecorded_events: 2 } });
+        expect(result.history_attribution.groups[0]).toMatchObject({ recorded_method: 'unknown_method', original_method: null, candidate_source: null, events: 2 });
+    } finally {
+        await db.query("DELETE FROM classification_history WHERE title='PRIVATE coverage fixture'");
+        await db.query(`ALTER TABLE classification_history ADD CONSTRAINT classification_history_method_check ${definition}`);
+    }
 });
 
 test('records local aggregate cost over 5000 retained import events', async () => {

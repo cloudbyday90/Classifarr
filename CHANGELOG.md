@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Original and recorded method attribution** — Automatically show how original
+  classification methods and candidate sources relate to current history methods,
+  with bounded library groups and explicit missing provenance.
+
 - **Original candidate provenance** — Automatically retain bounded candidate
   proposals and their original method before routing, with visible missing-reason
   counts and explicit evidence coverage versioning.
@@ -501,6 +505,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - **Offline route-safety calibration** — A checked-in synthetic matrix now verifies that a high policy candidate remains behind provider recovery, evidence, AI-advisory, provenance, confirmation, fallback, low-confidence, and clarification safeguards before the human-only calibration packet is available.
 
 ### Changed
+
+- **Client routing maintenance** — Adopt Vue Router 5.3.1 locally from PR #527,
+  with auth/setup navigation and browser regression checks.
 
 - **Server development tooling** — Adopt PR #530's Jest, Knip, globals and Node
   declaration updates locally, with ESM, database and container validation.

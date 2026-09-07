@@ -41,6 +41,15 @@ test('automatically presents scoped statistics and evidence with keyboard and mo
         imported_observations: 0, original_candidates: 7, linked_feedback: 5,
         candidate_no_proposal: 1, candidate_invalid: 1, candidate_not_applicable: 0, candidate_unrecorded: 1 },
     ] },
+    history_attribution: { totals: { events: 70, captured_events: 9, unrecorded_events: 61, invalid_events: 0, unsupported_events: 0 },
+      group_count: 3, truncated: false, groups: [
+        { library_id: 1, library_name: 'Observed movies', library_active: true, original_method: null,
+          candidate_source: null, recorded_method: 'source_library', provenance_status: 'unrecorded', events: 60 },
+        { library_id: 1, library_name: 'Observed movies', library_active: true, original_method: 'policy_prompt',
+          candidate_source: 'policy_ranked', recorded_method: 'policy_auto', provenance_status: 'captured', events: 9 },
+        { library_id: 1, library_name: 'Observed movies', library_active: true, original_method: null,
+          candidate_source: null, recorded_method: 'policy_auto', provenance_status: 'unrecorded', events: 1 },
+      ] },
     feedback: { totals: { observations: 8, evaluated: 4, evaluation_coverage: 0.5 }, group_count: 2, truncated: false, groups: [
       { library_id: 2, library_name: 'Selected movies', library_active: true, method: 'policy_auto',
         observations: 5, source_bound: 5, evaluated: 3, evaluation_coverage: 0.6 },
@@ -78,7 +87,13 @@ test('automatically presents scoped statistics and evidence with keyboard and mo
   expect(statsReads.sort()).toEqual(['/api/stats/alerts', '/api/stats/live-feed?limit=20', '/api/stats/overview', '/api/stats/policies'])
   await page.screenshot({ path: testInfo.outputPath('statistics-scopes-desktop.png') })
   const section = page.getByRole('region', { name: 'Available evidence', exact: true })
-  await expect(section.getByRole('table')).toHaveCount(2)
+  await expect(section.getByRole('table')).toHaveCount(3)
+  const attribution = section.getByRole('region', { name: 'Original method attribution table' })
+  await expect(attribution.getByRole('table')).toHaveAccessibleName('Retained history by original and recorded method')
+  await expect(attribution.getByRole('columnheader')).toHaveCount(5)
+  await expect(attribution.getByRole('row').filter({ hasText: 'policy prompt' })).toContainText('Policy ranking')
+  await expect(attribution.getByRole('row').filter({ hasText: 'policy prompt' })).toContainText('policy auto')
+  await expect(section.getByText(/Original method captured for 9 of 70 history events/)).toBeVisible()
   await expect(section.getByRole('columnheader', { name: 'Imported membership', exact: true })).toBeVisible()
   await expect(section.getByText('Source history removed', { exact: true })).toBeVisible()
   await expect(section.getByText(/50.0% of feedback/)).toBeVisible()
@@ -103,6 +118,12 @@ test('automatically presents scoped statistics and evidence with keyboard and mo
   await page.screenshot({ path: testInfo.outputPath('evidence-coverage-mobile-history.png') })
   await section.getByRole('region', { name: 'Feedback evidence table' }).scrollIntoViewIfNeeded()
   await page.screenshot({ path: testInfo.outputPath('evidence-coverage-mobile-feedback.png') })
+  await attribution.scrollIntoViewIfNeeded()
+  await attribution.focus()
+  await page.keyboard.press('ArrowRight')
+  await expect.poll(() => attribution.evaluate(element => element.scrollLeft)).toBeGreaterThan(0)
+  expect(await attribution.getByRole('columnheader').first().evaluate(textContrast)).toBeGreaterThanOrEqual(4.5)
+  await page.screenshot({ path: testInfo.outputPath('evidence-coverage-mobile-attribution.png') })
   await page.setViewportSize({ width: 320, height: 844 })
   await performance.scrollIntoViewIfNeeded()
   expect(await page.evaluate(() => globalThis.document.documentElement.scrollWidth <= globalThis.innerWidth)).toBe(true)

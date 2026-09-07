@@ -185,6 +185,13 @@ preserves the original capture. This availability does not expand feedback
 evaluation. See the [capture design](docs/architecture/original-candidate-capture-design.md)
 and [outcome](docs/architecture/original-candidate-capture-outcome.md).
 
+An automatic attribution table now separates the original method and candidate
+source from the current recorded method, including later manual resolution.
+Legacy history remains explicitly unrecorded. This is another view of the same
+history events, with bounded groups and complete totals; it adds no operator task.
+See the [attribution design](docs/architecture/evidence-method-attribution-design.md)
+and [outcome](docs/architecture/evidence-method-attribution-outcome.md).
+
 Statistics describe their scope beside each section: retained policy feedback,
 recent accuracy windows and the latest activity feed. Policy details label their
 30-day breakdown and rolling seven-day comparison. These descriptions replace

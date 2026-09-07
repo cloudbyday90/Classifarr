@@ -11,8 +11,8 @@ const nonClassifierMethods = `(${NON_CLASSIFIER_CAPTURE_METHODS.map(method => `'
 const validId = expression => `CASE WHEN (${expression}) ~ '^[1-9][0-9]{0,9}$'
     THEN (${expression})::bigint <= 2147483647 ELSE FALSE END`;
 
-export const EVIDENCE_CANDIDATE_STATUS_SQL = `CASE
-    WHEN ${capture} IS NOT NULL THEN CASE
+// SQL NULL means a malformed envelope, distinct from a valid invalid-candidate capture.
+export const EVIDENCE_EXPLICIT_CAPTURE_STATUS_SQL = `CASE
         WHEN jsonb_typeof(${capture}) = 'object'
             AND ${capture} ->> 'version' = 'classification.candidate_capture.v1'
             AND ${capture} ->> 'stage' = 'pre_routing'
@@ -26,10 +26,16 @@ export const EVIDENCE_CANDIDATE_STATUS_SQL = `CASE
             WHEN ${capture} -> 'library_id' = 'null'::jsonb AND ${capture} -> 'source' = 'null'::jsonb THEN CASE
                 WHEN ${capture} ->> 'status' = 'no_candidate' AND ${capture} ->> 'method' IN ${classifierMethods} THEN 'no_candidate'
                 WHEN ${capture} ->> 'status' = 'not_applicable' AND ${capture} ->> 'method' IN ${nonClassifierMethods} THEN 'not_applicable'
-                WHEN ${capture} ->> 'status' = 'unsupported_method' AND ${capture} -> 'method' = 'null'::jsonb THEN 'unrecorded'
-                ELSE 'invalid_candidate' END
-            ELSE 'invalid_candidate' END
-        ELSE 'invalid_candidate' END
+                WHEN ${capture} ->> 'status' = 'unsupported_method' AND ${capture} -> 'method' = 'null'::jsonb THEN 'unsupported_method'
+                ELSE NULL END
+            ELSE NULL END
+        ELSE NULL END`;
+
+// The query supplies capture_status using the validated expression above.
+export const EVIDENCE_CANDIDATE_STATUS_SQL = `CASE
+    WHEN ${capture} IS NOT NULL THEN CASE
+        WHEN classification_history.capture_status = 'unsupported_method' THEN 'unrecorded'
+        ELSE COALESCE(classification_history.capture_status, 'invalid_candidate') END
     WHEN classification_history.method IN ('source_library', 'authoritative_source_library', 'existing_media') THEN 'not_applicable'
     WHEN jsonb_typeof(${ranked}) = 'array' AND jsonb_typeof(${ranked} -> 0) = 'object'
         AND (${validId(`${ranked} #>> '{0,library_id}'`)}) THEN 'recorded'

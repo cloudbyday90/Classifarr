@@ -26,6 +26,8 @@ export function getPolicyStatsOverview() {
   // history lifecycle counts partition events (completed, pending, retry, other).
   // v2 counts pre-routing proposals and partitions missing candidate reasons;
   // this availability is separate from policy-ranked feedback evaluation.
+  // history_attribution separates captured original method/source from recorded
+  // method. It is another view of history, never an additional population.
   // unavailable data stays null, and capped groups do not replace global totals.
   return getDataRequest('/stats/overview')
 }

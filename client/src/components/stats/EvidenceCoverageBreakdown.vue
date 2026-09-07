@@ -111,11 +111,11 @@
         aria-label="Feedback evidence table"
       >
         <table>
-          <caption>Retained feedback by selected library and source method</caption>
+          <caption>Retained feedback by selected library and recorded source method</caption>
           <thead>
             <tr>
               <th scope="col">
-                Library / source method
+                Library / recorded source method
               </th>
               <th scope="col">
                 Feedback observations
@@ -160,6 +160,10 @@
         Totals include all groups.
       </p>
       <p>Evaluated coverage uses retained feedback as its denominator. N/A means there are no feedback observations.</p>
+      <EvidenceMethodAttribution
+        :attribution="coverage.history_attribution"
+        :history-events="coverage.history.totals.events"
+      />
       <p v-if="coverage.deleted_feedback_receipts">
         {{ number(coverage.deleted_feedback_receipts) }} deleted feedback results are excluded from these counts.
       </p>
@@ -172,18 +176,13 @@ import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import HistoryLifecycleCounts from './HistoryLifecycleCounts.vue'
 import CandidateCaptureCounts from './CandidateCaptureCounts.vue'
+import EvidenceMethodAttribution from './EvidenceMethodAttribution.vue'
+import { evidenceNumber as number, evidenceLibraryLabel as libraryLabel, evidenceMethodLabel as methodLabel } from '../../utils/evidenceCoverageLabels'
 
 const props = defineProps({ coverage: { type: Object, default: null } })
 const available = computed(() => props.coverage?.status === 'available')
 const capturedAt = computed(() => new Date(props.coverage.captured_at).toLocaleString())
-const numberFormatter = new Intl.NumberFormat()
-const number = value => numberFormatter.format(value)
 const percent = value => value == null ? 'N/A' : `${(value * 100).toFixed(1)}%`
-const libraryLabel = row => row.library_id == null ? 'Unassigned or removed library'
-  : `${row.library_name || 'Unnamed library'}${row.library_active === false ? ' (inactive)' : ''}`
-const methodNames = { source_library: 'Imported membership', unknown_method: 'Unknown method',
-  unlinked_feedback: 'Unlinked feedback', source_history_removed: 'Source history removed' }
-const methodLabel = method => Object.hasOwn(methodNames, method) ? methodNames[method] : method.replaceAll('_', ' ')
 </script>
 
 <style scoped>

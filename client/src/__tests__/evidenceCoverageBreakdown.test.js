@@ -17,7 +17,7 @@ test('uses separately captioned tables with native column/row headers and keyboa
   const wrapper = render(snapshot())
   expect(wrapper.findAll('table')).toHaveLength(2)
   expect(wrapper.findAll('caption').map(caption => caption.text())).toEqual([
-    'Retained history by recorded library and method', 'Retained feedback by selected library and source method',
+    'Retained history by recorded library and method', 'Retained feedback by selected library and recorded source method',
   ])
   expect(wrapper.findAll('th[scope="col"]')).toHaveLength(10)
   expect(wrapper.find('th[scope="row"]').text()).toContain('Imported membership')
@@ -25,6 +25,7 @@ test('uses separately captioned tables with native column/row headers and keyboa
   expect(wrapper.find('time').attributes('datetime')).toBe('2026-09-07T00:00:00Z')
   expect(wrapper.findComponent({ name: 'RouterLink' }).attributes('to')).toBe('/libraries')
   expect(wrapper.text()).toContain('These populations cannot be added together')
+  expect(wrapper.text()).toContain('Original method attribution is unavailable')
 });
 
 test('automatically displays labelled lifecycle totals and group counts without controls', () => {
