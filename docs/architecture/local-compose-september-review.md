@@ -200,3 +200,8 @@ Native signal composition retains deadlines through body consumption, while
 fixed cancellation errors stop retry admission and abortable backoff. This adds
 no operator workflow or classification authority. Explicit byte budgets for
 remaining provider responses are the next recommended compatibility assessment.
+The no-cache rebuilt container passed 59 cancellation assertions plus 23 response
+limit assertions across 31 local HTTP requests, with no real provider calls or
+database writes from those fixtures. Authenticated inventory/settings reads and
+anonymous access rejection passed. The startup/smoke sample contained five
+slow-query warnings and zero error/fatal or provider-drift records.
