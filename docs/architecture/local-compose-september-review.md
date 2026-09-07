@@ -131,3 +131,16 @@ rerun passed all **4,761 tests across 341 files** in 286.51 seconds. The initial
 backend run was incomplete because of the heap exhaustion above. The recycled
 worker run and final delivery checks are summarized in the
 [feature outcome](original-observation-types-outcome.md).
+
+## Inventory read follow-up
+
+The [inventory read performance outcome](inventory-read-performance-outcome.md)
+records the completed health/overlap optimization and a subsequent no-cache
+Compose build. On the same 6,692-row local population, measured database execution
+fell from 2,272 to 917 ms for health and 2,114 to 645 ms for overlap. The canonical
+projection, identity checks, unknown states and bounds remain unchanged; automatic
+fair sampling shares the narrowed health projection. Real PostgreSQL and browser
+regressions passed, and the rebuilt container was healthy with no error/fatal
+records in its startup/smoke sample. Slow-query warnings and the existing provider
+configuration warning remain explicitly recorded. Provider selection integrity
+is the next recommended investigation.

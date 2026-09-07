@@ -80,8 +80,44 @@ production queries retain `statement_timestamp()`.
   whitespace validation passed.
 
 No client source or endpoint changed, so the full client suite and combined
-coverage ratchet were not rerun. Rebuilt Compose measurements follow after the
-clean source build and runtime check.
+coverage ratchet were not rerun.
+
+The no-cache Compose build passed from clean source revision
+`98965c7278fc34ca428decb406e4513aba1c4ecc`. Both dependency installs reported zero
+audit vulnerabilities. The previous image was retained locally as a rollback
+reference. Recreation preserved the existing data volume, and the running image
+reports that same source revision. This outcome update is documentation only.
+
+After health readiness, all seven authenticated smoke reads returned 200.
+Health took 771 ms and overlap 1,040 ms, both available with 6,692 rows and ten
+selected libraries. Their responses retained `Cache-Control: no-store`. Anonymous
+overview/health/overlap reads returned 401; unexpected query parameters on health
+and overlap returned 400. The smoke helper requested zero writes and retained
+6,775 history records, ten libraries, zero feedback records and 249 migrations.
+The initial HTTP probe preceded listener readiness and was rerun successfully
+after the container became healthy.
+
+Plans collected from the rebuilt application on the real local database showed:
+
+| Measurement | Health | Overlap |
+| --- | ---: | ---: |
+| Metadata projection CTE | 613.729 ms | 396.551 ms |
+| Total execution including serialization | 916.794 ms | 644.806 ms |
+| Root shared buffer hits | 45,978 | 14,771 |
+| Three-run median query time | 765 ms | 728 ms |
+| Three-run median service time | 865 ms | 948 ms |
+
+Shared buffer hits fell about 73% and 90% from the baseline, respectively. There
+were no shared reads or temporary spills in these warm plans. API response sizes
+remained 7,469 and 89,345 bytes. This post-restart measurement is separate from
+the frozen-snapshot equivalence experiments; background acquisition remained
+enabled, so it is not a claim that stored metadata stayed unchanged over time.
+
+The startup and smoke log sample contained 442 informational records, seven
+slow-query warnings, one existing metadata-provider configuration warning and
+zero error/fatal records. The optimization reduces cost but does not remove all
+slow-query warnings. The existing duplicate active OMDb/TMDb configuration remains
+a separate follow-up; credentials and provider selection were not changed.
 
 ## Open PR availability
 
