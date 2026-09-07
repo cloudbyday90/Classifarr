@@ -144,3 +144,15 @@ regressions passed, and the rebuilt container was healthy with no error/fatal
 records in its startup/smoke sample. Slow-query warnings and the existing provider
 configuration warning remain explicitly recorded. Provider selection integrity
 is the next recommended investigation.
+
+## Metadata provider follow-up
+
+The [provider selection outcome](metadata-provider-selection-outcome.md) records
+the completed writer/selection repair and another no-cache rebuild. Repeated
+backup restore was allocating new TMDb/OMDb rows instead of conflicting on the
+existing ID. Shared ESM reads and serialized stable-ID writes now prevent this.
+The local migration consolidated only exactly equivalent active settings, retained
+every credential row, and reduced the provider integrity result to zero invalid
+providers. Distinct legacy settings remain untouched by the migration. The new
+startup/smoke sample had seven slow-query warnings and zero error/fatal records.
+Atomic OMDb quota admission is the next recommended fix.
