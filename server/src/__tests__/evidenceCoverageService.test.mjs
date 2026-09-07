@@ -3,8 +3,9 @@ import { jest, test, expect } from '@jest/globals';
 import { buildEvidenceCoverage, readEvidenceCoverage } from '../services/evidenceCoverageService.mjs';
 import { readEvidenceCoverageSnapshot, EVIDENCE_COVERAGE_SQL } from '../services/evidenceCoverageQuery.mjs';
 import { emptyProvenanceTrend, emptyUtcProvenanceTrend } from './helpers/evidenceTrendFixture.mjs';
+import { emptyLibraryUtcSnapshot } from './helpers/libraryUtcCoverageFixture.mjs';
 
-const empty = () => ({ captured_at: new Date('2026-09-07T00:00:00Z'),
+const empty = () => ({ ...emptyLibraryUtcSnapshot(), captured_at: new Date('2026-09-07T00:00:00Z'),
     history_totals: { events: 0, completed_events: 0, pending_events: 0, retry_events: 0, other_events: 0,
         imported_observations: 0, original_candidates: 0, linked_feedback: 0,
         candidate_no_proposal: 0, candidate_invalid: 0, candidate_not_applicable: 0, candidate_unrecorded: 0 },
@@ -125,6 +126,9 @@ test('read failure is explicitly unavailable and never leaks database details', 
 });
 
 function addUnrecordedAttribution(snapshot, events) {
+    Object.assign(snapshot.utc_library_totals, { retained_events: events, unknown_events: events });
+    snapshot.utc_library_group_count = 1;
+    snapshot.utc_library_groups = [{ ...snapshot.utc_library_totals, library_id: null, library_name: null, library_active: null }];
     snapshot.utc_provenance_trend.excluded.unknown_events = events;
     snapshot.recording_time_coverage = { events, recorded_events: 0, unknown_events: events };
     snapshot.provenance_trend.excluded.older_events = events;
@@ -151,4 +155,10 @@ test('missing UTC coverage makes the snapshot unavailable rather than borrowing 
     const snapshot = { ...empty(), utc_provenance_trend: undefined };
     const db = { withTransaction: callback => callback({ query: jest.fn().mockResolvedValue({ rows: [snapshot] }) }) };
     expect(await readEvidenceCoverage(db)).toMatchObject({ status: 'unavailable', utc_provenance_trend: null });
+});
+
+test('missing library UTC coverage is unavailable rather than borrowing all-retained library counts', async () => {
+    const snapshot = { ...empty(), utc_library_totals: undefined };
+    const db = { withTransaction: callback => callback({ query: jest.fn().mockResolvedValue({ rows: [snapshot] }) }) };
+    expect(await readEvidenceCoverage(db)).toMatchObject({ status: 'unavailable', utc_library_coverage: null });
 });

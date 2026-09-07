@@ -2,6 +2,7 @@
 import { expect, test } from '@playwright/test'
 import { URL } from 'node:url'
 import { dailyProvenanceFixture, utcProvenanceFixture } from '../src/__tests__/helpers/dailyProvenanceFixture'
+import { libraryUtcCoverageFixture } from '../src/__tests__/helpers/libraryUtcCoverageFixture'
 
 test.use({ timezoneId: 'Pacific/Honolulu' })
 
@@ -62,6 +63,10 @@ test('automatically presents scoped statistics and evidence with keyboard and mo
       { library_id: 1, library_name: 'Observed movies', library_active: true, method: 'source_history_removed',
         observations: 3, source_bound: 3, evaluated: 1, evaluation_coverage: 1 / 3 },
     ] } }
+  coverage.utc_library_coverage = libraryUtcCoverageFixture(coverage.utc_provenance_trend, [
+    { retained_events: 70, ...coverage.utc_provenance_trend.totals, ...coverage.utc_provenance_trend.excluded,
+      library_id: 1, library_name: 'Observed movies', library_active: true },
+  ])
   await page.route(url => url.pathname.startsWith('/api/'), async route => {
     const url = new URL(route.request().url())
     const path = url.pathname
@@ -93,7 +98,12 @@ test('automatically presents scoped statistics and evidence with keyboard and mo
   expect(statsReads.sort()).toEqual(['/api/stats/alerts', '/api/stats/live-feed?limit=20', '/api/stats/overview', '/api/stats/policies'])
   await page.screenshot({ path: testInfo.outputPath('statistics-scopes-desktop.png') })
   const section = page.getByRole('region', { name: 'Available evidence', exact: true })
-  await expect(section.getByRole('table')).toHaveCount(5)
+  await expect(section.getByRole('table')).toHaveCount(6)
+  const libraryUtc = section.getByRole('region', { name: 'UTC library capture table', exact: true })
+  await expect(libraryUtc.getByRole('table')).toHaveAccessibleName('UTC provenance window and time exclusions by recorded library')
+  await expect(libraryUtc.getByRole('columnheader')).toHaveCount(11)
+  await expect(libraryUtc.getByRole('rowheader')).toHaveText(['Observed movies'])
+  await expect(libraryUtc.getByRole('row').last().getByRole('cell')).toHaveText(['70', '10', '9', '1', '0', '0', '0', '0', '60', '90.0%'])
   const utcTrend = section.getByRole('region', { name: 'UTC provenance coverage table', exact: true })
   await expect(utcTrend.getByRole('table')).toHaveAccessibleName('Original method capture by UTC recording date')
   await expect(utcTrend.getByRole('columnheader')).toHaveCount(7)
@@ -131,6 +141,7 @@ test('automatically presents scoped statistics and evidence with keyboard and mo
   await section.locator('.daily-provenance').scrollIntoViewIfNeeded()
   await section.locator('.daily-provenance').screenshot({ path: testInfo.outputPath('evidence-coverage-desktop-trend.png') })
   await section.locator('.utc-provenance').screenshot({ path: testInfo.outputPath('utc-provenance-desktop.png'), animations: 'disabled' })
+  await section.locator('.library-utc-coverage').screenshot({ path: testInfo.outputPath('library-utc-desktop.png'), animations: 'disabled' })
   await page.setViewportSize({ width: 390, height: 844 })
   await recordingTimes.scrollIntoViewIfNeeded()
   await recordingTimes.screenshot({ path: testInfo.outputPath('history-recording-times-mobile.png'), animations: 'disabled' })
@@ -158,6 +169,15 @@ test('automatically presents scoped statistics and evidence with keyboard and mo
   await expect.poll(() => trend.evaluate(element => element.scrollLeft)).toBeGreaterThan(0)
   expect(await trend.getByRole('columnheader').first().evaluate(textContrast)).toBeGreaterThanOrEqual(4.5)
   await page.screenshot({ path: testInfo.outputPath('evidence-coverage-mobile-trend.png') })
+  await page.setViewportSize({ width: 320, height: 844 })
+  await libraryUtc.scrollIntoViewIfNeeded()
+  await libraryUtc.focus()
+  await page.keyboard.press('ArrowRight')
+  await expect.poll(() => libraryUtc.evaluate(element => element.scrollLeft)).toBeGreaterThan(0)
+  expect(await libraryUtc.getByRole('columnheader').first().evaluate(textContrast)).toBeGreaterThanOrEqual(4.5)
+  await page.setViewportSize({ width: 320, height: 2200 })
+  await libraryUtc.evaluate(element => { element.scrollLeft = 0 })
+  await section.locator('.library-utc-coverage').screenshot({ path: testInfo.outputPath('library-utc-mobile.png'), animations: 'disabled' })
   await page.setViewportSize({ width: 320, height: 844 })
   await utcTrend.scrollIntoViewIfNeeded()
   await utcTrend.focus()

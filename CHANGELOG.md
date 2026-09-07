@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **UTC capture by recorded library** — Automatically show recent provenance
+  coverage and excluded recording times for bounded library groups, with complete
+  global totals and accessible keyboard scrolling.
+
 - **UTC provenance coverage** — Show a bounded daily view of known recording
   times, with unknown legacy times explicitly excluded and today marked partial.
   Shared accessible tables keep UTC and stored-calendar views distinct.

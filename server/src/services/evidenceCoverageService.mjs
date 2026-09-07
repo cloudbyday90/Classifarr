@@ -6,6 +6,7 @@ import { buildEvidenceMethodAttribution } from './evidenceMethodAttribution.mjs'
 import { buildDailyProvenanceCoverage } from './dailyProvenanceCoverage.mjs';
 import { buildHistoryRecordingTimeCoverage } from './historyRecordingTimeCoverage.mjs';
 import { buildUtcProvenanceCoverage } from './utcProvenanceCoverage.mjs';
+import { buildLibraryUtcCoverage } from './libraryUtcCoverage.mjs';
 
 const logger = createLogger('EvidenceCoverage');
 const version = 'evidence.coverage.v2';
@@ -48,14 +49,16 @@ export function buildEvidenceCoverage(snapshot) {
     const history = population(snapshot.history_totals, snapshot.history_groups, snapshot.history_group_count, historyFields);
     const attribution = buildEvidenceMethodAttribution(snapshot, history.totals.events, EVIDENCE_COVERAGE_GROUP_LIMIT);
     const recordingCoverage = buildHistoryRecordingTimeCoverage(snapshot.recording_time_coverage, history.totals.events);
+    const utcTrend = buildUtcProvenanceCoverage(snapshot.utc_provenance_trend, attribution.totals,
+        recordingCoverage, new Date(captured).toISOString().slice(0, 10));
     return { version, status: 'available', scope: 'all_retained', captured_at: new Date(captured).toISOString(),
         group_limit: EVIDENCE_COVERAGE_GROUP_LIMIT,
         history,
         feedback: population(snapshot.feedback_totals, snapshot.feedback_groups, snapshot.feedback_group_count, feedbackFields),
         history_attribution: attribution,
         recording_time_coverage: recordingCoverage,
-        utc_provenance_trend: buildUtcProvenanceCoverage(snapshot.utc_provenance_trend, attribution.totals,
-            recordingCoverage, new Date(captured).toISOString().slice(0, 10)),
+        utc_provenance_trend: utcTrend,
+        utc_library_coverage: buildLibraryUtcCoverage(snapshot, utcTrend, history.totals.events, EVIDENCE_COVERAGE_GROUP_LIMIT),
         provenance_trend: buildDailyProvenanceCoverage(snapshot.provenance_trend, attribution.totals),
         deleted_feedback_receipts: count(snapshot.deleted_feedback_receipts) };
 }
@@ -67,6 +70,6 @@ export async function readEvidenceCoverage(db) {
         logger.warn('Evidence coverage unavailable', { code: error.code || 'READ_FAILED' });
         return { version, status: 'unavailable', scope: 'all_retained', captured_at: null,
             history: null, feedback: null, history_attribution: null, provenance_trend: null,
-            recording_time_coverage: null, utc_provenance_trend: null, deleted_feedback_receipts: null };
+            recording_time_coverage: null, utc_provenance_trend: null, utc_library_coverage: null, deleted_feedback_receipts: null };
     }
 }

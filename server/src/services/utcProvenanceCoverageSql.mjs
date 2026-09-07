@@ -7,7 +7,7 @@ export const UTC_PROVENANCE_CTES_SQL = `utc_trend_clock AS (
         (statement_timestamp() AT TIME ZONE 'UTC')::date AS end_date,
         (statement_timestamp() AT TIME ZONE 'UTC')::date - ${PROVENANCE_TREND_DAYS - 1} AS start_date
 ), utc_trend_population AS MATERIALIZED (
-    SELECT (history.recorded_at AT TIME ZONE 'UTC')::date AS day, history.provenance_status, CASE
+    SELECT history.library_id, (history.recorded_at AT TIME ZONE 'UTC')::date AS day, history.provenance_status, CASE
         WHEN history.recorded_at IS NULL OR NOT isfinite(history.recorded_at) THEN 'unknown'
         WHEN history.recorded_at < (clock.start_date::timestamp AT TIME ZONE 'UTC') THEN 'older'
         WHEN history.recorded_at >= clock.cutoff THEN 'future'

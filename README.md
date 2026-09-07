@@ -211,6 +211,14 @@ are explicitly excluded. Its counts and the stored-calendar view describe the
 same retained history and must not be added together. See the [UTC design](docs/architecture/utc-provenance-trend-design.md)
 and [outcome](docs/architecture/utc-provenance-trend-outcome.md).
 
+The same UTC window now shows capture coverage by recorded library, with explicit
+older, future and unknown-time counts. Groups are capped at 200 with complete
+global totals. Recorded library reflects the current history record, including
+inactive and unassigned libraries; it is not an independent classification label.
+No reporting controls or manual input are needed. See the
+[library UTC design](docs/architecture/library-utc-coverage-design.md) and
+[outcome](docs/architecture/library-utc-coverage-outcome.md).
+
 Statistics describe their scope beside each section: retained policy feedback,
 recent accuracy windows and the latest activity feed. Policy details label their
 30-day breakdown and rolling seven-day comparison. These descriptions replace

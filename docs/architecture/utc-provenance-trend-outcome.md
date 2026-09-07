@@ -97,6 +97,9 @@ library carefully, and reconcile capped groups to global totals. This should
 identify gaps passively without treating history placement as independently
 verified classification truth.
 
+Completed in the [per-library UTC outcome](library-utc-coverage-outcome.md), which
+records validation, limitations and the next recommendation.
+
 Independent labels, readiness and frozen-study preflight continue to gate
 review-only semantic counter-evidence. README, Unreleased and the preceding next
 item were updated. No release, version bump, tag or production deployment is part

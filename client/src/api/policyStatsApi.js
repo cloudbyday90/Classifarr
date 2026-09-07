@@ -35,6 +35,8 @@ export function getPolicyStatsOverview() {
   // insert instants; it does not reinterpret the existing calendar-based trend.
   // utc_provenance_trend separately groups known instants into UTC dates and
   // excludes unknown times. Neither temporal view is an additional population.
+  // utc_library_coverage applies the same window and exclusions by recorded
+  // library, with its own bounded groups and uncapped global totals.
   return getDataRequest('/stats/overview')
 }
 
