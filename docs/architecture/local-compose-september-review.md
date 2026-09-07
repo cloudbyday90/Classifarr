@@ -156,3 +156,14 @@ every credential row, and reduced the provider integrity result to zero invalid
 providers. Distinct legacy settings remain untouched by the migration. The new
 startup/smoke sample had seven slow-query warnings and zero error/fatal records.
 Atomic OMDb quota admission is the next recommended fix.
+
+## OMDb quota follow-up
+
+The [atomic quota outcome](omdb-quota-reservation-outcome.md) records the completed
+admission fix, PostgreSQL concurrency/rollover tests and another healthy no-cache
+Compose rebuild. Configured lookups now commit a shared local reservation before
+each attempt, including retries and failures. The live availability check ran in
+a read-only transaction, with no provider probes. The new startup/smoke sample
+contained seven slow-query warnings and zero error/fatal records. The next issue
+is distinguishing OMDb error responses from missing metadata and healthy service
+availability.

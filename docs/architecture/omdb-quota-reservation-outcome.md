@@ -56,14 +56,43 @@ Server and client typechecks, scoped ESLint, production dependency checks and ES
 static-import/mock-shape checks passed. All **41 existing client provider API tests**
 passed in 2.96 seconds. The complete backend run passed **31,217 tests across
 1,094 suites** in 192.964 seconds, with two workers and 512 MB idle worker
-recycling. Local Compose results will be recorded after the rebuild.
+recycling.
 Client changes are explanatory text only, so no new copy-only
 test, full client suite or combined coverage ratchet is required for this change.
 
+## Local Compose validation
+
+The no-cache build passed from clean revision
+`d501add9f81ca0abd12268a961168d276b6a1c55`. Both dependency installs reported zero
+audit vulnerabilities. Before recreation, a 44,517,446-byte custom-format database
+backup was copied to ignored local storage, checksum-verified and inspected with
+`pg_restore --list`. The previous image is retained locally for rollback.
+
+The recreated container is healthy and reports that source revision. All ten
+authenticated smoke GETs returned 200, including masked TMDb/OMDb/Tavily settings.
+Anonymous settings, overview, health and overlap requests returned 401. Health and
+overlap retained `no-store`, rejected unexpected query parameters with 400, and
+remained available with 6,692 inventory rows across ten selected libraries. Their
+sample times were 906 ms and 914 ms. History remained at 6,775 records, with ten
+libraries, zero feedback records and 250 applied migrations. No migration or
+schema regeneration was needed.
+
+The new quota store returned available quota using a PostgreSQL read-only
+transaction. The provider integrity audit reported zero invalid providers. The
+smoke helper requested zero writes and no provider probes; paid API calls were
+not used for validation. Live credentials, configured quota values, backups and
+raw logs remain outside committed artifacts.
+
+The startup/smoke sample contained **312 informational records, seven slow-query
+warnings, zero provider-drift warnings and zero error/fatal records**. Existing
+background work remained enabled; these measurements do not claim provider-side
+quota accuracy or that all runtime activity was read-only. The final outcome
+documentation is the only difference from the tested image source.
+
 ## Open PR availability
 
-GitHub MCP returned no open pull requests at task start. Final availability will
-be checked at delivery; there is currently no population for random selection.
+GitHub MCP returned no open pull requests at task start and final readback. There
+was no population for random selection; no closed PR was substituted or merged.
 
 ## Recommendation stack and next item
 
