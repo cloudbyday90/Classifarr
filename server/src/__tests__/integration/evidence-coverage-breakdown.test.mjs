@@ -283,7 +283,10 @@ test('fixed group caps disclose omissions while preserving global totals', async
     expect(result.history.groups.map(row => row.library_id)).toEqual(ids.slice(0, 200));
     expect(result.history.totals).toMatchObject({ completed_events: 200, pending_events: 0, retry_events: 1, other_events: 0 });
     expect(result.history.groups.every(row => row.completed_events === 1 && row.retry_events === 0)).toBe(true);
-    expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThan(150000);
+    const { provenance_trend, ...existingCoverage } = result;
+    expect(Buffer.byteLength(JSON.stringify(existingCoverage))).toBeLessThan(150000);
+    expect(provenance_trend.days).toHaveLength(14);
+    expect(Buffer.byteLength(JSON.stringify(provenance_trend))).toBeLessThan(6000);
 });
 
 test('missing coverage schema does not suppress existing overview metrics or invent zero', async () => {

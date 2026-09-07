@@ -3,6 +3,7 @@ import { createLogger } from '../utils/logger.mjs';
 import { EVIDENCE_COVERAGE_GROUP_LIMIT, readEvidenceCoverageSnapshot } from './evidenceCoverageQuery.mjs';
 import { evidenceCount as count, evidenceCounts as counts, reconcileEvidenceGroups } from './evidenceCoverageProjection.mjs';
 import { buildEvidenceMethodAttribution } from './evidenceMethodAttribution.mjs';
+import { buildDailyProvenanceCoverage } from './dailyProvenanceCoverage.mjs';
 
 const logger = createLogger('EvidenceCoverage');
 const version = 'evidence.coverage.v2';
@@ -43,11 +44,13 @@ export function buildEvidenceCoverage(snapshot) {
     const captured = snapshot?.captured_at == null ? NaN : new Date(snapshot.captured_at).getTime();
     if (!Number.isFinite(captured)) throw new Error('Invalid evidence snapshot time');
     const history = population(snapshot.history_totals, snapshot.history_groups, snapshot.history_group_count, historyFields);
+    const attribution = buildEvidenceMethodAttribution(snapshot, history.totals.events, EVIDENCE_COVERAGE_GROUP_LIMIT);
     return { version, status: 'available', scope: 'all_retained', captured_at: new Date(captured).toISOString(),
         group_limit: EVIDENCE_COVERAGE_GROUP_LIMIT,
         history,
         feedback: population(snapshot.feedback_totals, snapshot.feedback_groups, snapshot.feedback_group_count, feedbackFields),
-        history_attribution: buildEvidenceMethodAttribution(snapshot, history.totals.events, EVIDENCE_COVERAGE_GROUP_LIMIT),
+        history_attribution: attribution,
+        provenance_trend: buildDailyProvenanceCoverage(snapshot.provenance_trend, attribution.totals),
         deleted_feedback_receipts: count(snapshot.deleted_feedback_receipts) };
 }
 
@@ -57,6 +60,6 @@ export async function readEvidenceCoverage(db) {
     } catch (error) {
         logger.warn('Evidence coverage unavailable', { code: error.code || 'READ_FAILED' });
         return { version, status: 'unavailable', scope: 'all_retained', captured_at: null,
-            history: null, feedback: null, history_attribution: null, deleted_feedback_receipts: null };
+            history: null, feedback: null, history_attribution: null, provenance_trend: null, deleted_feedback_receipts: null };
     }
 }

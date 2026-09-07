@@ -99,11 +99,11 @@ groups and no recovery of lost historical provenance. The design compares
 alternatives and links official W3C, PostgreSQL and OWASP research checked in
 September 2026.
 
-**Next: add a bounded daily provenance-coverage trend using existing history
-timestamps.** All-retained totals are dominated by older uncaptured history; daily
-captured/unrecorded/invalid/unsupported counts would expose gaps in new traffic
-without manual labels, historical backfill or operator configuration. Keep the
-trend descriptive and reconcile it to its stated time window.
+**Follow-up implemented:** the [daily coverage design](daily-provenance-coverage-design.md)
+and [outcome](daily-provenance-coverage-outcome.md) add a bounded date window with
+explicit partial today and exclusions. The existing timestamp type required
+disclosing the database calendar rather than inventing historical offsets. The
+daily outcome records the next recommendation.
 
 Independently labelled real evidence, readiness and frozen-study preflight still
 gate future review-only semantic counter-evidence. This reporting does not enable

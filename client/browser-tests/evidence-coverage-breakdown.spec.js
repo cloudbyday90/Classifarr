@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { expect, test } from '@playwright/test'
 import { URL } from 'node:url'
+import { dailyProvenanceFixture } from '../src/__tests__/helpers/dailyProvenanceFixture'
 
 function textContrast(element) {
   const luminance = color => {
@@ -30,6 +31,7 @@ test('automatically presents scoped statistics and evidence with keyboard and mo
     { period: 'previous_7_days', decisions: '4', accuracy: '0.5', auto_rate: '0' },
   ]
   const coverage = { status: 'available', captured_at: '2026-09-07T00:00:00Z', deleted_feedback_receipts: 1,
+    provenance_trend: dailyProvenanceFixture({ events: 10, captured_events: 9, unrecorded_events: 1, invalid_events: 0, unsupported_events: 0 }, 60),
     history: { totals: { events: 70, completed_events: 64, pending_events: 3, retry_events: 2, other_events: 1,
       original_candidates: 7, candidate_no_proposal: 1, candidate_invalid: 1, candidate_not_applicable: 60, candidate_unrecorded: 1 }, group_count: 2, truncated: false, groups: [
       { library_id: 1, library_name: 'Observed movies', library_active: true, method: 'source_library',
@@ -87,7 +89,14 @@ test('automatically presents scoped statistics and evidence with keyboard and mo
   expect(statsReads.sort()).toEqual(['/api/stats/alerts', '/api/stats/live-feed?limit=20', '/api/stats/overview', '/api/stats/policies'])
   await page.screenshot({ path: testInfo.outputPath('statistics-scopes-desktop.png') })
   const section = page.getByRole('region', { name: 'Available evidence', exact: true })
-  await expect(section.getByRole('table')).toHaveCount(3)
+  await expect(section.getByRole('table')).toHaveCount(4)
+  const trend = section.getByRole('region', { name: 'Daily provenance coverage table' })
+  await expect(trend.getByRole('table')).toHaveAccessibleName('Original method capture by stored history date')
+  await expect(trend.getByRole('columnheader')).toHaveCount(7)
+  await expect(trend.getByRole('rowheader')).toHaveCount(14)
+  await expect(trend.getByText('Today (partial)', { exact: true })).toHaveCount(1)
+  await expect(trend.getByRole('row').last()).toContainText('90.0%')
+  await expect(trend.getByRole('cell', { name: 'N/A', exact: true })).toHaveCount(13)
   const attribution = section.getByRole('region', { name: 'Original method attribution table' })
   await expect(attribution.getByRole('table')).toHaveAccessibleName('Retained history by original and recorded method')
   await expect(attribution.getByRole('columnheader')).toHaveCount(5)
@@ -105,6 +114,8 @@ test('automatically presents scoped statistics and evidence with keyboard and mo
   await expect(section.getByText('7 original candidates recorded.', { exact: true })).toBeVisible()
   expect(await section.locator('dt').first().evaluate(textContrast)).toBeGreaterThanOrEqual(4.5)
   await section.screenshot({ path: testInfo.outputPath('evidence-coverage-desktop.png') })
+  await section.locator('.daily-provenance').scrollIntoViewIfNeeded()
+  await section.locator('.daily-provenance').screenshot({ path: testInfo.outputPath('evidence-coverage-desktop-trend.png') })
   await page.setViewportSize({ width: 390, height: 844 })
   await section.scrollIntoViewIfNeeded()
   expect(await page.evaluate(() => globalThis.document.documentElement.scrollWidth <= globalThis.innerWidth)).toBe(true)
@@ -124,6 +135,12 @@ test('automatically presents scoped statistics and evidence with keyboard and mo
   await expect.poll(() => attribution.evaluate(element => element.scrollLeft)).toBeGreaterThan(0)
   expect(await attribution.getByRole('columnheader').first().evaluate(textContrast)).toBeGreaterThanOrEqual(4.5)
   await page.screenshot({ path: testInfo.outputPath('evidence-coverage-mobile-attribution.png') })
+  await trend.scrollIntoViewIfNeeded()
+  await trend.focus()
+  await page.keyboard.press('ArrowRight')
+  await expect.poll(() => trend.evaluate(element => element.scrollLeft)).toBeGreaterThan(0)
+  expect(await trend.getByRole('columnheader').first().evaluate(textContrast)).toBeGreaterThanOrEqual(4.5)
+  await page.screenshot({ path: testInfo.outputPath('evidence-coverage-mobile-trend.png') })
   await page.setViewportSize({ width: 320, height: 844 })
   await performance.scrollIntoViewIfNeeded()
   expect(await page.evaluate(() => globalThis.document.documentElement.scrollWidth <= globalThis.innerWidth)).toBe(true)

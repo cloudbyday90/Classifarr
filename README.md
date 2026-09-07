@@ -192,6 +192,13 @@ history events, with bounded groups and complete totals; it adds no operator tas
 See the [attribution design](docs/architecture/evidence-method-attribution-design.md)
 and [outcome](docs/architecture/evidence-method-attribution-outcome.md).
 
+Daily provenance coverage shows the last 14 stored history dates, including today
+as a partial day. It separates captured, unrecorded, invalid and unsupported
+provenance, fills empty dates and reconciles older/future/undated exclusions.
+Dates use the explicitly labelled database calendar because historical timestamps
+have no offsets. See the [daily design](docs/architecture/daily-provenance-coverage-design.md)
+and [outcome](docs/architecture/daily-provenance-coverage-outcome.md).
+
 Statistics describe their scope beside each section: retained policy feedback,
 recent accuracy windows and the latest activity feed. Policy details label their
 30-day breakdown and rolling seven-day comparison. These descriptions replace

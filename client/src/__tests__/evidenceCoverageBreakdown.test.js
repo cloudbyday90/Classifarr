@@ -26,6 +26,7 @@ test('uses separately captioned tables with native column/row headers and keyboa
   expect(wrapper.findComponent({ name: 'RouterLink' }).attributes('to')).toBe('/libraries')
   expect(wrapper.text()).toContain('These populations cannot be added together')
   expect(wrapper.text()).toContain('Original method attribution is unavailable')
+  expect(wrapper.text()).toContain('Daily provenance coverage is unavailable')
 });
 
 test('automatically displays labelled lifecycle totals and group counts without controls', () => {

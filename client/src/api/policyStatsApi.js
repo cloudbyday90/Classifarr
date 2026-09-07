@@ -28,6 +28,8 @@ export function getPolicyStatsOverview() {
   // this availability is separate from policy-ranked feedback evaluation.
   // history_attribution separates captured original method/source from recorded
   // method. It is another view of history, never an additional population.
+  // provenance_trend includes 14 stored calendar dates with today explicitly
+  // partial; its window plus dated/undated exclusions reconciles to history.
   // unavailable data stays null, and capped groups do not replace global totals.
   return getDataRequest('/stats/overview')
 }

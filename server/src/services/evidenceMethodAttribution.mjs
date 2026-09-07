@@ -1,15 +1,14 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { CLASSIFIER_CAPTURE_METHODS, NON_CLASSIFIER_CAPTURE_METHODS } from './classificationCandidateCapture.mjs';
-import { evidenceCount, evidenceCounts, reconcileEvidenceGroups } from './evidenceCoverageProjection.mjs';
+import { evidenceCount, reconcileEvidenceGroups } from './evidenceCoverageProjection.mjs';
+import { PROVENANCE_STATUSES as statuses, PROVENANCE_COUNT_FIELDS as fields, projectProvenanceCounts } from './evidenceProvenanceProjection.mjs';
 
-const statuses = ['captured', 'unrecorded', 'invalid', 'unsupported'];
-const fields = ['events', ...statuses.map(status => `${status}_events`)];
 const methods = new Set([...CLASSIFIER_CAPTURE_METHODS, ...NON_CLASSIFIER_CAPTURE_METHODS]);
 const sources = new Set([null, 'policy_ranked', 'signal_ranked', 'decision_proposal', 'signal_proposal']);
 
 export function buildEvidenceMethodAttribution(snapshot, historyEvents, limit) {
-    const totals = evidenceCounts(snapshot.attribution_totals, fields);
-    if (totals.events !== historyEvents || statuses.reduce((sum, status) => sum + totals[`${status}_events`], 0) !== totals.events) {
+    const totals = projectProvenanceCounts(snapshot.attribution_totals);
+    if (totals.events !== historyEvents) {
         throw new Error('Inconsistent attribution totals');
     }
     const groupCount = evidenceCount(snapshot.attribution_group_count);

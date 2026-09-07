@@ -2,6 +2,7 @@
 import { jest, test, expect } from '@jest/globals';
 import { buildEvidenceCoverage, readEvidenceCoverage } from '../services/evidenceCoverageService.mjs';
 import { readEvidenceCoverageSnapshot, EVIDENCE_COVERAGE_SQL } from '../services/evidenceCoverageQuery.mjs';
+import { emptyProvenanceTrend } from './helpers/evidenceTrendFixture.mjs';
 
 const empty = () => ({ captured_at: new Date('2026-09-07T00:00:00Z'),
     history_totals: { events: 0, completed_events: 0, pending_events: 0, retry_events: 0, other_events: 0,
@@ -10,6 +11,7 @@ const empty = () => ({ captured_at: new Date('2026-09-07T00:00:00Z'),
     history_group_count: '0', history_groups: [],
     attribution_totals: { events: 0, captured_events: 0, unrecorded_events: 0, invalid_events: 0, unsupported_events: 0 },
     attribution_group_count: 0, attribution_groups: [],
+    provenance_trend: emptyProvenanceTrend(),
     feedback_totals: { observations: 0, source_bound: 0, evaluated: 0, unevaluated: 0 },
     feedback_group_count: '0', feedback_groups: [], deleted_feedback_receipts: '0' });
 
@@ -121,6 +123,7 @@ test('read failure is explicitly unavailable and never leaks database details', 
 });
 
 function addUnrecordedAttribution(snapshot, events) {
+    snapshot.provenance_trend.excluded.older_events = events;
     Object.assign(snapshot.attribution_totals, { events, unrecorded_events: events });
     snapshot.attribution_group_count = 1;
     snapshot.attribution_groups = [{ original_method: null, candidate_source: null,
