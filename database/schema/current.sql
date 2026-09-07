@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-07T12:36:04.892Z
--- Latest Migration: 20260907_180000_consolidate_equivalent_metadata_providers.sql
+-- Generated: 2026-09-07T20:41:35.680Z
+-- Latest Migration: 20260907_210000_add_unresolved_source_observations.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -4187,6 +4187,60 @@ CREATE SEQUENCE public.media_server_sync_status_id_seq
 --
 
 ALTER SEQUENCE public.media_server_sync_status_id_seq OWNED BY public.media_server_sync_status.id;
+
+
+--
+-- Name: media_source_capture_state; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.media_source_capture_state (
+    library_id integer NOT NULL,
+    media_server_id integer NOT NULL,
+    generation bigint NOT NULL,
+    mode text NOT NULL,
+    phase text NOT NULL,
+    source text NOT NULL,
+    started_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    completed_at timestamp with time zone,
+    observed_count integer DEFAULT 0 NOT NULL,
+    rejected_count integer DEFAULT 0 NOT NULL,
+    uncapturable_count integer DEFAULT 0 NOT NULL,
+    omitted_count integer DEFAULT 0 NOT NULL,
+    CONSTRAINT media_source_capture_state_generation_check CHECK ((generation > 0)),
+    CONSTRAINT media_source_capture_state_mode_check CHECK ((mode = ANY (ARRAY['full'::text, 'incremental'::text]))),
+    CONSTRAINT media_source_capture_state_observed_count_check CHECK ((observed_count >= 0)),
+    CONSTRAINT media_source_capture_state_omitted_count_check CHECK ((omitted_count >= 0)),
+    CONSTRAINT media_source_capture_state_phase_check CHECK ((phase = ANY (ARRAY['collecting'::text, 'complete'::text, 'failed'::text]))),
+    CONSTRAINT media_source_capture_state_rejected_count_check CHECK ((rejected_count >= 0)),
+    CONSTRAINT media_source_capture_state_source_check CHECK ((source = ANY (ARRAY['media_sync'::text, 'local_capture'::text]))),
+    CONSTRAINT media_source_capture_state_uncapturable_count_check CHECK ((uncapturable_count >= 0))
+);
+
+
+--
+-- Name: media_source_observations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.media_source_observations (
+    library_id integer NOT NULL,
+    media_server_id integer NOT NULL,
+    external_id text NOT NULL,
+    title text,
+    year integer,
+    media_type text,
+    identity_issue text NOT NULL,
+    provider_fields text[] DEFAULT '{}'::text[] NOT NULL,
+    first_seen_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    last_seen_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
+    generation bigint NOT NULL,
+    CONSTRAINT media_source_observations_external_id_check CHECK (((length(external_id) >= 1) AND (length(external_id) <= 500))),
+    CONSTRAINT media_source_observations_generation_check CHECK ((generation > 0)),
+    CONSTRAINT media_source_observations_identity_issue_check CHECK ((identity_issue = ANY (ARRAY['invalid_provider_ids'::text, 'conflicting_provider_ids'::text, 'invalid_media_type'::text]))),
+    CONSTRAINT media_source_observations_media_type_check CHECK ((media_type = ANY (ARRAY['movie'::text, 'tv'::text]))),
+    CONSTRAINT media_source_observations_provider_fields_check CHECK ((provider_fields <@ ARRAY['tmdb_id'::text, 'imdb_id'::text, 'tvdb_id'::text])),
+    CONSTRAINT media_source_observations_title_check CHECK ((length(title) <= 500)),
+    CONSTRAINT media_source_observations_year_check CHECK (((year >= 1) AND (year <= 9999)))
+);
 
 
 --
@@ -9170,6 +9224,30 @@ ALTER TABLE ONLY public.media_server_sync_status
 
 
 --
+-- Name: media_source_capture_state media_source_capture_state_library_id_media_server_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.media_source_capture_state
+    ADD CONSTRAINT media_source_capture_state_library_id_media_server_id_key UNIQUE (library_id, media_server_id);
+
+
+--
+-- Name: media_source_capture_state media_source_capture_state_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.media_source_capture_state
+    ADD CONSTRAINT media_source_capture_state_pkey PRIMARY KEY (library_id);
+
+
+--
+-- Name: media_source_observations media_source_observations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.media_source_observations
+    ADD CONSTRAINT media_source_observations_pkey PRIMARY KEY (library_id, media_server_id, external_id);
+
+
+--
 -- Name: notification_config notification_config_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11079,6 +11157,13 @@ CREATE UNIQUE INDEX idx_media_server_type_url_legacy ON public.media_server USIN
 
 
 --
+-- Name: idx_media_source_observations_recent; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_media_source_observations_recent ON public.media_source_observations USING btree (library_id, last_seen_at DESC, external_id);
+
+
+--
 -- Name: idx_path_mappings_active; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -12784,6 +12869,30 @@ ALTER TABLE ONLY public.media_server_sync_status
 
 ALTER TABLE ONLY public.media_server_sync_status
     ADD CONSTRAINT media_server_sync_status_media_server_id_fkey FOREIGN KEY (media_server_id) REFERENCES public.media_server(id) ON DELETE CASCADE;
+
+
+--
+-- Name: media_source_capture_state media_source_capture_state_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.media_source_capture_state
+    ADD CONSTRAINT media_source_capture_state_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
+
+
+--
+-- Name: media_source_capture_state media_source_capture_state_media_server_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.media_source_capture_state
+    ADD CONSTRAINT media_source_capture_state_media_server_id_fkey FOREIGN KEY (media_server_id) REFERENCES public.media_server(id) ON DELETE CASCADE;
+
+
+--
+-- Name: media_source_observations media_source_observations_library_id_media_server_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.media_source_observations
+    ADD CONSTRAINT media_source_observations_library_id_media_server_id_fkey FOREIGN KEY (library_id, media_server_id) REFERENCES public.media_source_capture_state(library_id, media_server_id) ON DELETE CASCADE;
 
 
 --
@@ -15446,6 +15555,7 @@ FROM unnest(ARRAY[
     '20260907_010000_add_feedback_evaluation_views.sql',
     '20260907_020000_add_feedback_source_receipts.sql',
     '20260907_030000_add_history_recording_instant.sql',
-    '20260907_180000_consolidate_equivalent_metadata_providers.sql'
+    '20260907_180000_consolidate_equivalent_metadata_providers.sql',
+    '20260907_210000_add_unresolved_source_observations.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

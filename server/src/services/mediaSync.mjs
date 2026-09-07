@@ -4,6 +4,7 @@ import { withServiceCatch } from '../utils/serviceCatch.mjs';
 import * as errorsModule from '../utils/errors.mjs';
 import { getMediaServerService as defaultGetMediaServerService } from './mediaServers/index.mjs';
 import { mediaSyncLibraryStateService } from './mediaSyncLibraryStateService.mjs';
+import { MediaSourceObservationStore } from './mediaSourceObservationStore.mjs';
 import { upsertMediaItem as _upsertMediaItem, upsertCollection as _upsertCollection } from './mediaSyncUpsert.mjs';
 import { pruneMissingMediaItems as _pruneMissingMediaItems, pruneMissingCollections as _pruneMissingCollections, getSyncStatus as _getSyncStatus, getLibraryItems as _getLibraryItems, syncLibrariesFromMediaServer as _syncLibrariesFromMediaServer } from './mediaSyncQueries.mjs';
 
@@ -16,6 +17,7 @@ export class MediaSyncService {
       getMediaServerService: defaultGetMediaServerService,
     };
     this.mediaSyncLibraryStateService = deps.mediaSyncLibraryStateService || mediaSyncLibraryStateService;
+    this.sourceObservations = deps.sourceObservations || new MediaSourceObservationStore(db);
   }
 
   async syncLibrary(libraryId, options = {}) {
@@ -47,8 +49,10 @@ export class MediaSyncService {
         [media_server_id, libraryId, incremental ? 'incremental' : 'full', 'running'],
       );
       const syncStatusId = syncStatusResult.rows[0].id;
+      let sourceCapture;
 
       try {
+        sourceCapture = await this.sourceObservations.start(media_server_id, libraryId, { incremental });
         const service = await this.getMediaServerService(type);
         let offset = 0;
         let totalItems = 0;
@@ -66,6 +70,8 @@ export class MediaSyncService {
             hasMore = false;
             break;
           }
+
+          await this.sourceObservations.capture(sourceCapture, items);
 
           for (const item of items) {
             if (item?.external_id) {
@@ -112,6 +118,7 @@ export class MediaSyncService {
         }
 
         await this.reconcileAwaitingDecisions(libraryId);
+        await this.sourceObservations.finish(sourceCapture);
 
         await db.query(
           `UPDATE media_server_sync_status 
@@ -137,6 +144,10 @@ export class MediaSyncService {
           prunedCollections,
         };
       } catch (error) {
+        if (sourceCapture) {
+          try { await this.sourceObservations.finish(sourceCapture, { failed: true }); }
+          catch { logger.warn('Source observation capture finalization unavailable', { libraryId }); }
+        }
         await db.query(
           `UPDATE media_server_sync_status 
            SET status = $1, error_message = $2, completed_at = NOW()

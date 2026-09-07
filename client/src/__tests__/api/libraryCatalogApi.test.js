@@ -34,6 +34,7 @@ import {
   getLibraries,
   getLibraryOverlap,
   getLibraryObservationHealth,
+  getLibrarySourceObservations,
   getLibraryObservationHistory,
   getLibrary,
   updateLibrary,
@@ -42,6 +43,12 @@ import {
 } from '../../api/libraryCatalogApi'
 
 describe('libraryCatalogApi', () => {
+  it('loads source observations through the central GET helper', async () => {
+    const result = { libraries: [] }
+    mockGetDataRequest.mockResolvedValueOnce(result)
+    expect(await getLibrarySourceObservations()).toBe(result)
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/libraries/source-observations')
+  })
   it('loads unwrapped observation history through the central GET helper', async () => {
     const report = { activity: [], samples: [{ libraryCoverage: [
       { libraryId: 7, comparison: 'population_changed', delta: null },

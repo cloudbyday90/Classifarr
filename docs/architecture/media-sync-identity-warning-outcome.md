@@ -47,6 +47,9 @@ authentication, inventory and log checks. No source identities were reassigned.
 
 ## Recommended next change
 
+Implemented by the subsequent [source observation outcome](unresolved-source-observations-outcome.md).
+The original recommendation was:
+
 Add bounded unresolved source-observation capture keyed by media server and source
 item, retaining library membership and conflict provenance independently of a
 resolved TMDb identity. Expose aggregate coverage/conflict counts in inventory

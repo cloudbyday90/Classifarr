@@ -20,6 +20,7 @@ import { ServiceUnavailableError } from '../utils/appError.mjs';
 import * as db from '../config/database.mjs';
 import { readMetadataProviderConfig } from './metadataProviderConfigStore.mjs';
 import { rateLimiters } from '../utils/rateLimiter.mjs';
+import { wrapTmdbDetailsFailure } from './tmdbObservationFailure.mjs';
 import { findTmdbIdentityByExternalId, getTmdbIdentityDetails, searchTmdbIdentityCandidates } from './tmdbIdentitySearch.mjs';
 import {
     classifyHealthError,
@@ -155,7 +156,7 @@ class TMDBService {
       );
       return response.data;
     } catch (error) {
-      throw new Error(`Failed to fetch movie details: ${error.message}`);
+      throw wrapTmdbDetailsFailure(error);
     }
   }
 
@@ -173,7 +174,7 @@ class TMDBService {
       );
       return response.data;
     } catch (error) {
-      throw new Error(`Failed to fetch TV details: ${error.message}`);
+      throw wrapTmdbDetailsFailure(error);
     }
   }
 

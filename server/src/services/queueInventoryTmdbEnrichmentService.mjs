@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { canonicalMediaType, positiveDatabaseInteger } from './mediaIdentityValues.mjs';
 import { buildInventoryTmdbObservation, inventoryTmdbObservationDue } from './inventoryTmdbObservation.mjs';
+import { tmdbObservationFailure } from './tmdbObservationFailure.mjs';
 
 export class QueueInventoryTmdbEnrichmentService {
     constructor({ tmdbService, logger, now = Date.now } = {}) {
@@ -19,9 +20,13 @@ export class QueueInventoryTmdbEnrichmentService {
                 : await this.tmdbService.getTVDetails(tmdbId);
             const observation = buildInventoryTmdbObservation(details, tmdbId, mediaType, new Date(this.now()).toISOString());
             if (observation) enrichmentData.inventory_tmdb = observation;
-            else this.logger.warn('Inventory TMDb observation unavailable', { reason: 'invalid_provider_observation' });
-        } catch {
-            this.logger.warn('Inventory TMDb observation unavailable', { reason: 'provider_unavailable' });
+            else this.logger.warn('Inventory TMDb observation unavailable', { reason: 'invalid_provider_observation', mediaType, tmdbId });
+        } catch (error) {
+            const failure = tmdbObservationFailure(error);
+            this.logger.warn('Inventory TMDb observation unavailable', {
+                reason: failure.category === 'not_found' ? 'identity_not_found' : 'provider_unavailable',
+                ...failure, mediaType, tmdbId,
+            });
         }
         return true;
     }

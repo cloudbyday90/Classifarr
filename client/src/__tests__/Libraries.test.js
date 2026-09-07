@@ -147,6 +147,9 @@ vi.mock('@/components/library/LibraryObservationHistory.vue', () => ({ default: 
 vi.mock('@/components/library/LibraryObservationHealth.vue', () => ({
   default: { template: '<section data-testid="library-observation-health" />' },
 }))
+vi.mock('@/components/library/LibrarySourceObservations.vue', () => ({
+  default: { template: '<section data-testid="library-source-observations" />' },
+}))
 
 function resetState() {
   state.libraries = [
@@ -436,7 +439,7 @@ describe('Libraries.vue', () => {
       state.currentLibrary = 'Movies Library'
       const wrapper = createWrapper()
       await flushPromises()
-      const progressBar = wrapper.find('.bg-gray-800')
+      const progressBar = wrapper.find('[data-testid="library-sync-progress"]')
       expect(progressBar.exists()).toBe(true)
       expect(progressBar.text()).toContain('Movies Library')
       const progressFill = wrapper.find('.bg-primary')
@@ -451,14 +454,14 @@ describe('Libraries.vue', () => {
       state.currentLibrary = ''
       const wrapper = createWrapper()
       await flushPromises()
-      const progressBar = wrapper.find('.bg-gray-800')
+      const progressBar = wrapper.find('[data-testid="library-sync-progress"]')
       expect(progressBar.text()).toContain('Processing...')
     })
 
     it('is hidden when not syncing', async () => {
       const wrapper = createWrapper()
       await flushPromises()
-      expect(wrapper.find('.bg-gray-800').exists()).toBe(false)
+      expect(wrapper.find('[data-testid="library-sync-progress"]').exists()).toBe(false)
     })
   })
 

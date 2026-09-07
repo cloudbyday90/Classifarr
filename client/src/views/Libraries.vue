@@ -44,6 +44,7 @@
     <!-- Progress bar during sync -->
     <div
       v-if="syncStore.isRunning"
+      data-testid="library-sync-progress"
       class="p-4 bg-gray-800 rounded-lg border border-gray-700"
     >
       <div class="mb-2 h-2 bg-gray-700 rounded-full overflow-hidden">
@@ -118,6 +119,7 @@
       </Card>
     </div>
     <LibraryObservationHealth />
+    <LibrarySourceObservations />
     <LibraryObservationHistory :libraries="libraries" />
     <LibraryOverlapSummary />
   </div>
@@ -138,6 +140,7 @@ import Badge from '@/components/common/Badge.vue'
 import MappingWarningBanner from '@/components/MappingWarningBanner.vue'
 import LibraryOverlapSummary from '@/components/library/LibraryOverlapSummary.vue'
 import LibraryObservationHealth from '@/components/library/LibraryObservationHealth.vue'
+import LibrarySourceObservations from '@/components/library/LibrarySourceObservations.vue'
 import LibraryObservationHistory from '@/components/library/LibraryObservationHistory.vue'
 
 // HTTP status codes

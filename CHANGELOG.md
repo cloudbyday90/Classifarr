@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Unresolved source visibility** — Automatically retain bounded source conflict
+  observations and library membership, with capture coverage and recent examples
+  in Libraries, without assigning IDs or adding operator steps.
+
 - **Original candidate comparison** — Show how captured classifier proposals compare
   with recorded libraries in the recent UTC window, retaining missing evidence
   and unknown placements without implying accuracy or adding operator steps.
@@ -281,6 +285,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
   change policy, AI, RAG, or routing authority.
 
 ### Fixed
+
+- **Inventory TMDb diagnostics** — Distinguish missing provider items from network,
+  throttling and access failures, preserving safe correlation details and existing
+  observation data without exposing credentials or changing retry behavior.
 
 - **Embedding integrity** — Reject malformed vectors before success accounting or
   storage, and preserve stored embeddings when provider dimensions do not match.

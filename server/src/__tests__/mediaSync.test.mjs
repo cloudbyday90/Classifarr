@@ -76,6 +76,8 @@ describe('MediaSyncService', () => {
         mockLogger.error.mockClear();
         mockLogger.debug.mockClear();
         mockGetMediaServerService.mockClear();
+        service.sourceObservations = { start: jest.fn().mockResolvedValue({ generation: 1 }),
+            capture: jest.fn().mockResolvedValue(true), finish: jest.fn().mockResolvedValue(true) };
 
         service.mediaServerServices = {
             getMediaServerService: mockGetMediaServerService
@@ -342,6 +344,9 @@ describe('MediaSyncService', () => {
             expect(result.success).toBe(true);
             expect(result.prunedItems).toBe(1);
             expect(result.prunedCollections).toBe(2);
+            expect(service.sourceObservations.start).toHaveBeenCalledWith(1, 1, { incremental: false });
+            expect(service.sourceObservations.capture).toHaveBeenCalledWith({ generation: 1 }, mockItems);
+            expect(service.sourceObservations.finish).toHaveBeenCalledWith({ generation: 1 });
         });
 
         it('should mark sync as failed on error', async () => {
@@ -367,6 +372,8 @@ describe('MediaSyncService', () => {
                 call => call[0].includes("SET status = $1, error_message = $2")
             );
             expect(failCall[1]).toEqual(['failed', 'Plex API error', 100]);
+            expect(service.sourceObservations.capture).not.toHaveBeenCalled();
+            expect(service.sourceObservations.finish).toHaveBeenCalledWith({ generation: 1 }, { failed: true });
         });
 
         it('should sync with Jellyfin', async () => {

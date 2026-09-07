@@ -822,6 +822,16 @@ Embedding vector validation and fixed-schema storage are documented in the
 The media-sync identity warning investigation has separate
 [design](docs/architecture/media-sync-identity-warning-design.md) and
 [outcome](docs/architecture/media-sync-identity-warning-outcome.md) documents.
+Unresolved source observations now retain descriptive library membership during
+normal sync, with bounded examples, capture state and visible incomplete coverage
+in Libraries. They do not assign provider identities or classification authority.
+See the [design](docs/architecture/unresolved-source-observations-design.md) and
+[outcome](docs/architecture/unresolved-source-observations-outcome.md).
+Inventory TMDb failures now distinguish missing items, throttling, access and
+transport errors using safe diagnostic fields; existing observations and retry
+cooldowns are preserved. See the
+[failure design](docs/architecture/inventory-tmdb-failure-design.md) and
+[investigation outcome](docs/architecture/inventory-tmdb-failure-outcome.md).
 Malformed observations repair automatically after cooldown using the full
 attributable observation validator. Bounded background passes advance past fresh
 records, while valid empty captures remain cached. See the

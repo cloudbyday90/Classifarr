@@ -324,6 +324,26 @@ describe('TMDBService', () => {
         });
     });
 
+    it.each(['getMovieDetails', 'getTVDetails'])('%s preserves safe failure status and removes private transport data', async method => {
+        db.query.mockResolvedValue({ rows: [{ api_key: 'test-key' }] });
+        mockHttpGet.mockRejectedValueOnce(Object.assign(new Error('private URL api_key=secret'), {
+            response: { status: 404, data: { private: true } }, config: { api_key: 'secret' },
+        }));
+        await expect(tmdbService[method](123)).rejects.toMatchObject({
+            message: 'TMDb details are unavailable', response: { status: 404 }, code: 'TMDB_DETAILS_UNAVAILABLE',
+        });
+        mockHttpGet.mockRejectedValueOnce(Object.assign(new Error('private URL'), {
+            code: 'ETIMEDOUT', config: { api_key: 'secret' },
+        }));
+        try { await tmdbService[method](123); throw new Error('Expected failure'); }
+        catch (error) {
+            expect(error.code).toBe('ETIMEDOUT');
+            expect(error.config).toBeUndefined();
+            expect(error.cause).toBeUndefined();
+            expect(error.message).not.toContain('private');
+        }
+    });
+
     describe('getMovieDetails', () => {
         it('should fetch movie details by TMDB ID', async () => {
             db.query.mockResolvedValueOnce({
