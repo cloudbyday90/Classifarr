@@ -246,6 +246,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Evidence coverage visibility** — Policy Statistics now separates imported
+  library observations, recorded candidates, linked feedback and evaluated outcomes.
+  The read-only breakdown loads automatically, preserves unknown states and reports
+  when rows are capped. Leaving the dashboard now removes its visibility listener.
+
 - **Feedback retry protection** — Standalone feedback now uses stored classification
   evidence and records each source event once. Matching retries return the saved
   result; conflicting submissions and duplicate prompt feedback are rejected.

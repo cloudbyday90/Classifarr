@@ -22,6 +22,8 @@ import { getDataRequest } from './core'
 // describe evaluated_decisions / total_decisions; preserve null instead of coercing
 // unavailable accuracy to zero. The API also retains unevaluated observations.
 export function getPolicyStatsOverview() {
+  // evidence_coverage contains separate all-retained history/feedback populations;
+  // unavailable data stays null, and capped groups do not replace global totals.
   return getDataRequest('/stats/overview')
 }
 

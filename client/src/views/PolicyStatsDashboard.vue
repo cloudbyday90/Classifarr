@@ -72,6 +72,8 @@
       />
     </div>
 
+    <EvidenceCoverageBreakdown :coverage="overview.evidence_coverage" />
+
     <!-- Policy cards grid -->
     <div class="policies-section">
       <h2>Policy Performance</h2>
@@ -108,6 +110,7 @@
 
 <script>
 import FeedbackEvaluationCoverage from '@/components/stats/FeedbackEvaluationCoverage.vue';
+import EvidenceCoverageBreakdown from '@/components/stats/EvidenceCoverageBreakdown.vue';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import api from '@/api';
 import AlertsBanner from '@/components/stats/AlertsBanner.vue';
@@ -120,6 +123,7 @@ export default {
   name: 'PolicyStatsDashboard',
   components: {
     FeedbackEvaluationCoverage,
+    EvidenceCoverageBreakdown,
     AlertsBanner,
     StatCard,
     PolicyStatsCard,
@@ -203,19 +207,19 @@ export default {
       }
     };
 
-    onMounted(() => {
-      const handleVisibilityChange = () => {
-        if (document.visibilityState === 'hidden') {
-          if (refreshInterval) {
-            clearInterval(refreshInterval);
-            refreshInterval = null;
-          }
-        } else if (document.visibilityState === 'visible' && !refreshInterval) {
-          loadAllData();
-          refreshInterval = setInterval(loadAllData, 30000);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        if (refreshInterval) {
+          clearInterval(refreshInterval);
+          refreshInterval = null;
         }
-      };
+      } else if (document.visibilityState === 'visible' && !refreshInterval) {
+        loadAllData();
+        refreshInterval = setInterval(loadAllData, 30000);
+      }
+    };
 
+    onMounted(() => {
       loadAllData();
       
       // Auto-refresh every 30 seconds
@@ -224,11 +228,11 @@ export default {
     });
 
     onUnmounted(() => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (refreshInterval) {
         clearInterval(refreshInterval);
         refreshInterval = null;
       }
-      document.removeEventListener('visibilitychange', () => {});
     });
 
     return {

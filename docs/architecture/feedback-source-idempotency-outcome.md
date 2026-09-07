@@ -118,6 +118,9 @@ stricter external API contract. Historical source linkage remains unknown; recei
 assume classification IDs are not reused. Keep new feedback ingress behind the
 source adapter rather than exposing the low-level writer directly.
 
+Completed by the [evidence coverage follow-up](evidence-coverage-breakdown-outcome.md).
+The original recommendation follows for context.
+
 **Next: add a read-only evidence-coverage breakdown by library and classification
 method to existing statistics.** Distinguish imported membership observations,
 available original-candidate snapshots, source-bound feedback and evaluated outcomes.

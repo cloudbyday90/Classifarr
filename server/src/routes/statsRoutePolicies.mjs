@@ -5,9 +5,11 @@ import { parseIntParam } from './evidenceRouteHelpers.mjs';
 import { requireValidId } from './routeHelpers.mjs';
 import { policyOverlapMetricsCollector } from '../services/policyOverlapMetricsCollector.mjs';
 import { policyOverlapMetricsSnapshotService } from '../services/policyOverlapMetricsSnapshotService.mjs';
+import { readEvidenceCoverage } from '../services/evidenceCoverageService.mjs';
 
 export function registerPolicyStatsRoutes(router, { db }) {
   router.get('/overview', asyncHandler(async (_req, res) => {
+    res.set('Cache-Control', 'no-store');
     const result = await db.query(`
       SELECT 
         COUNT(*) as total_policies,
@@ -34,6 +36,7 @@ export function registerPolicyStatsRoutes(router, { db }) {
       : 0;
     overview.policy_overlap_metrics = policyOverlapMetricsCollector.getSnapshot();
     overview.policy_overlap_metrics_latest_snapshot = await policyOverlapMetricsSnapshotService.getLatestSnapshot();
+    overview.evidence_coverage = await readEvidenceCoverage(db);
 
     return sendData(res, overview);
   }));

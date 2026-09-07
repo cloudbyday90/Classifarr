@@ -164,6 +164,13 @@ must stop sending metadata or correction flags to this endpoint. See the
 [source-binding design](docs/architecture/feedback-source-idempotency-design.md)
 and [outcome](docs/architecture/feedback-source-idempotency-outcome.md).
 
+Policy Statistics automatically shows retained evidence by library and method.
+History and selected-destination feedback have separate counts; imported membership
+and candidate availability do not establish classifier accuracy. Existing Library
+profiles explain common observed traits. See the
+[coverage design](docs/architecture/evidence-coverage-breakdown-design.md)
+and [outcome](docs/architecture/evidence-coverage-breakdown-outcome.md).
+
 <p align="center">
   <img src="./docs/assets/issue-262-classification-flow-v042.svg" alt="Classifarr classification flow diagram" width="1100" />
 </p>

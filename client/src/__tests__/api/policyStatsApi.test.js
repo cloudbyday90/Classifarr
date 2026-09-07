@@ -58,6 +58,13 @@ describe('policyStatsApi', () => {
     expect(mockGetDataRequest).toHaveBeenCalledWith('/stats/overview')
   })
 
+  it('preserves evidence populations, unavailable values and truncation from the overview', async () => {
+    const result = { evidence_coverage: { status: 'available', history: { truncated: true, group_count: 201 },
+      feedback: { totals: { observations: 0, evaluation_coverage: null } } } }
+    mockGetDataRequest.mockResolvedValueOnce(result)
+    expect(await getPolicyStatsOverview()).toBe(result)
+  })
+
   it('getPolicyStatsList calls getDataRequest with /stats/policies', async () => {
     mockGetDataRequest.mockResolvedValueOnce([])
     await getPolicyStatsList()
