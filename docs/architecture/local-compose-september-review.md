@@ -187,3 +187,7 @@ streaming byte reader, explicit OMDb budget and enforcement of existing image
 limits during transfer. Interrupted JSON transfers remain operational failures.
 Unbudgeted library/embedding responses retain their size contracts. Caller-provided
 cancellation signals in buffered HTTP requests are the next concrete gap identified.
+The no-cache rebuilt container passed 23 byte-limit assertions across 16 local HTTP
+requests and the authenticated inventory/settings smoke checks. The startup/smoke
+sample contained eight slow-query warnings and zero error/fatal or provider-drift
+records.

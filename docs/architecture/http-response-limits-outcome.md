@@ -78,12 +78,42 @@ recycling. Documentation lint passed across 1,083 Markdown files. No client API
 contract or database schema changed; existing backend route and quota regressions
 were included in the full run.
 
-Final Compose results will be recorded after validation completes.
+## Local Compose validation
+
+The no-cache build passed from clean source revision
+`1e61aae94e2712febb2305a32b948f057a63e954`. Backend and frontend dependency installs
+reported zero audit vulnerabilities, and the production frontend build passed.
+Before recreation, a 44,548,706-byte database archive was copied to ignored local
+storage, checksum-verified and inspected with `pg_restore --list`. The prior image
+is retained locally for rollback.
+
+The recreated container is healthy and reports that source revision. An in-container
+HTTP fixture passed **23 assertions across 16 local HTTP requests**. It verified
+oversized plain/error/compressed bodies, OMDb health and connection size failures,
+valid metadata, cancellation of a continuing response, deadlines after headers
+with and without a budget, and binary limits. The fixture used zero real provider
+calls and zero database writes.
+
+All ten authenticated read-only smoke requests returned 200, including masked
+provider settings. Six anonymous requests returned 401; unsupported health/overlap
+query parameters returned 400. Health and overlap remained available with
+`no-store`, 6,692 inventory rows and ten selected libraries, with sample times of
+894 ms and 977 ms. History remained at 6,775 records, with zero feedback records
+and 250 applied migrations. Provider integrity reported zero invalid providers;
+read-only local quota availability remained available.
+
+The startup/smoke sample contained **249 informational records, eight slow-query
+warnings, zero provider-drift warnings and zero error/fatal records**. Existing
+background work remained enabled; helper assertions do not describe all background
+runtime activity. Credentials, raw logs, configured quota values and backups remain
+outside committed artifacts. Final outcome documentation is the only difference
+from the tested image source.
 
 ## Open PR availability
 
-GitHub MCP returned an empty open-PR collection at task start. There was no PR
-population for random selection; no closed PR was substituted or merged.
+GitHub MCP returned an empty open-PR collection at task start and final readback.
+There was no PR population for random selection; no closed PR was substituted or
+merged.
 
 ## Recommendation stack and next item
 
