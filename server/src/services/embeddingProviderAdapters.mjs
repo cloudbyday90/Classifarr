@@ -16,7 +16,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { httpPost } from '../utils/httpClient.mjs';
+import { postEmbeddingRequest } from './embeddingHttpClient.mjs';
 import { ollamaService } from './ollama.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { PROVIDER_DEFAULTS } from './embeddingProviderConfig.mjs';
@@ -47,7 +47,7 @@ export function createAdapterMethods({ getAdaptiveTimeout, createRetriedOperatio
 
         const makeRequest = async () => {
             const baseUrl = `http://${host}:${port}`;
-            const response = await httpPost(
+            const response = await postEmbeddingRequest(
                 `${baseUrl}/api/embed`,
                 { model, input: text },
                 { timeout, signal }
@@ -82,7 +82,8 @@ export function createAdapterMethods({ getAdaptiveTimeout, createRetriedOperatio
                 cost: 0
             };
         } catch (error) {
-            if (error.name === 'AbortError' || error.code === 'ERR_CANCELED' || error.code === 'ABORT_ERR') {
+            if (error.name === 'AbortError' || error.code === 'ERR_CANCELED' || error.code === 'ABORT_ERR'
+                || error.code === 'HTTP_RESPONSE_TOO_LARGE') {
                 throw error;
             }
             throw new Error(`Failed to generate Ollama embedding: ${error.message}`);

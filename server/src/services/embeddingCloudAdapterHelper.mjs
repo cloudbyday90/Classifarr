@@ -1,4 +1,4 @@
-import { httpPost } from '../utils/httpClient.mjs';
+import { postEmbeddingRequest } from './embeddingHttpClient.mjs';
 import { createLogger } from '../utils/logger.mjs';
 
 const logger = createLogger('EmbeddingProvider');
@@ -12,7 +12,7 @@ export async function executeCloudEmbedding({ text, model, config, signal, url, 
 
     const makeRequest = async () => {
         const { body, headers } = bodyBuilder(text, model);
-        const response = await httpPost(url, body, { headers, timeout, signal });
+        const response = await postEmbeddingRequest(url, body, { headers, timeout, signal });
         return responseParser(response.data);
     };
 
@@ -36,7 +36,8 @@ export async function executeCloudEmbedding({ text, model, config, signal, url, 
     try {
         return await embeddingWithRetry();
     } catch (error) {
-        if (error.name === 'AbortError' || error.code === 'ERR_CANCELED' || error.code === 'ABORT_ERR') {
+        if (error.name === 'AbortError' || error.code === 'ERR_CANCELED' || error.code === 'ABORT_ERR'
+            || error.code === 'HTTP_RESPONSE_TOO_LARGE') {
             throw error;
         }
         throw new Error(`${providerName} embedding failed: ${errorExtractor(error)}`);

@@ -1,4 +1,5 @@
 import { httpPost, httpStream } from '../utils/httpClient.mjs';
+import { postEmbeddingRequest } from './embeddingHttpClient.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { OperationController } from '../utils/operationController.mjs';
 import { buildOllamaGenerateRequest } from './ollamaGenerateRequest.mjs';
@@ -81,7 +82,7 @@ export async function embed(getConfig, getModelsFn, pullModelFn, text, model = '
       await pullModelFn(model, signal);
     }
 
-    const response = await httpPost(`${config.baseUrl}/api/embed`, {
+    const response = await postEmbeddingRequest(`${config.baseUrl}/api/embed`, {
       model,
       input: text,
       keep_alive: keepAlive,
@@ -96,7 +97,8 @@ export async function embed(getConfig, getModelsFn, pullModelFn, text, model = '
       dims: embedding.length,
     };
   } catch (error) {
-    if (error.name === 'AbortError' || error.code === 'ERR_CANCELED') {
+    if (error.name === 'AbortError' || error.code === 'ERR_CANCELED'
+        || error.code === 'HTTP_RESPONSE_TOO_LARGE') {
       throw error;
     }
     throw new Error(`Failed to generate embedding: ${error.message}`);

@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-import { httpPost } from '../utils/httpClient.mjs';
+import { postEmbeddingRequest } from './embeddingHttpClient.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import * as db from '../config/database.mjs';
 import { getEndpoint, getHeaders } from './cloudLLMHelpers.mjs';
@@ -26,7 +26,7 @@ export async function embed(text, config, model = 'text-embedding-3-small', sign
             textLength: text.length
         });
 
-        const response = await httpPost(
+        const response = await postEmbeddingRequest(
             `${endpoint}/embeddings`,
             {
                 model: model,
@@ -79,7 +79,7 @@ export async function embedGemini(text, config, model = 'text-embedding-005', si
             textLength: text.length
         });
 
-        const response = await httpPost(
+        const response = await postEmbeddingRequest(
             `https://generativelanguage.googleapis.com/v1beta/models/${model}:embedContent?key=${config.api_key}`,
             {
                 content: {

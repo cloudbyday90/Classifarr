@@ -220,7 +220,7 @@ describe('EmbeddingProvider', () => {
                     model: 'mxbai-embed-large',
                     input: 'test text'
                 },
-                { timeout: 120000, signal: null }
+                { timeout: 120000, signal: null, maxResponseBytes: 4 * 1024 * 1024 }
             );
             expect(result.provider).toBe('ollama');
             expect(result.dims).toBe(3);

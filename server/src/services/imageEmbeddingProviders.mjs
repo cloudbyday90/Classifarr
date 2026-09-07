@@ -1,5 +1,6 @@
 import { ServiceUnavailableError, ValidationError } from '../utils/appError.mjs';
-import { httpGet, httpPost, httpGetBinary } from '../utils/httpClient.mjs';
+import { httpGet, httpGetBinary } from '../utils/httpClient.mjs';
+import { postEmbeddingRequest } from './embeddingHttpClient.mjs';
 
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
@@ -25,7 +26,7 @@ export async function embedLocal(imageUrl, config, { model, imageSize }, localAp
         headers['X-Api-Key'] = localApiKey;
     }
 
-    const response = await httpPost(
+    const response = await postEmbeddingRequest(
         `http://${host}:${port}/embed-image`,
         {
             image_url: imageUrl,
@@ -56,7 +57,7 @@ export async function embedVertex(imageUrl, { apiKey, apiEndpoint, model, imageS
     const modelId = model || 'multimodalembedding@001';
     const endpoint = `${apiEndpoint}/${modelId}:predict`;
 
-    const response = await httpPost(endpoint, {
+    const response = await postEmbeddingRequest(endpoint, {
         instances: [{ image: { bytesBase64Encoded: imageBase64 } }]
     }, {
         headers: {
@@ -78,7 +79,7 @@ export async function embedVertex(imageUrl, { apiKey, apiEndpoint, model, imageS
 
 export async function embedVoyage(imageUrl, { apiKey, model, imageSize }) {
     const modelId = model || 'voyage-multimodal-3.5';
-    const response = await httpPost(
+    const response = await postEmbeddingRequest(
         'https://api.voyageai.com/v1/embeddings',
         {
             model: modelId,
@@ -105,7 +106,7 @@ export async function embedCohere(imageUrl, { apiKey, model, imageSize }) {
     const modelId = model || 'embed-english-v3.0';
     const imageBase64 = await fetchImageBase64(imageUrl);
 
-    const response = await httpPost(
+    const response = await postEmbeddingRequest(
         'https://api.cohere.com/v1/embed',
         {
             model: modelId,

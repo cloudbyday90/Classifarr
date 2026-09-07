@@ -282,6 +282,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- Bound text and image embedding responses during transfer, including compressed
+  failures and warmup requests, while preserving cancellation and rejecting
+  oversized responses before parsing or immediate retry.
+
 - Buffered HTTP requests and embedding retry waits now honor caller cancellation,
   stopping cancelled work promptly while retaining request deadlines and response
   limits. Cancellation no longer enters transient retry handling.

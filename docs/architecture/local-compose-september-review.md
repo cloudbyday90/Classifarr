@@ -205,3 +205,13 @@ limit assertions across 31 local HTTP requests, with no real provider calls or
 database writes from those fixtures. Authenticated inventory/settings reads and
 anonymous access rejection passed. The startup/smoke sample contained five
 slow-query warnings and zero error/fatal or provider-drift records.
+
+## Embedding response budget follow-up
+
+The [embedding response budget outcome](embedding-response-budgets-outcome.md)
+records the shared 4 MiB decoded-response boundary across text/image adapters and
+Ollama warmup. Expanded provider-shaped fixtures fit comfortably, while oversized
+plain and compressed errors preserve the fixed size error and avoid immediate
+retries. The next task is validating returned vectors and dimension consistency
+before success accounting or persistence, especially before dimension-based
+schema repair.

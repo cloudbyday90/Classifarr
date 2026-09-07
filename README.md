@@ -812,6 +812,10 @@ their request deadlines. Cloud and direct-host Ollama embedding retry waits also
 stop on cancellation. See the
 [cancellation design](docs/architecture/buffered-http-cancellation-design.md) and
 [validation outcome](docs/architecture/buffered-http-cancellation-outcome.md).
+Text and image embedding requests now share a 4 MiB decoded-response budget,
+including Ollama warmup and fallback paths. See the
+[embedding budget design](docs/architecture/embedding-response-budgets-design.md)
+and [measured outcome](docs/architecture/embedding-response-budgets-outcome.md).
 Malformed observations repair automatically after cooldown using the full
 attributable observation validator. Bounded background passes advance past fresh
 records, while valid empty captures remain cached. See the

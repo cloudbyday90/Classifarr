@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 import { httpPost } from '../utils/httpClient.mjs';
+import { postEmbeddingRequest } from './embeddingHttpClient.mjs';
 import { ServiceUnavailableError } from '../utils/appError.mjs';
 import * as db from '../config/database.mjs';
 
@@ -75,7 +76,7 @@ export async function warmEmbeddingModel(getConfig, model, keepAlive = '24h', ho
 
   const startedAt = Date.now();
   try {
-    await httpPost(
+    await postEmbeddingRequest(
       `${warmUrl}/api/embed`,
       {
         model,
