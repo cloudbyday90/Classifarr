@@ -4,6 +4,7 @@
  */
 import { positiveDatabaseInteger } from './mediaIdentityValues.mjs';
 import { ENRICHMENT_SOURCE_SQL, encodeEnrichmentSource } from './queueEnrichmentSourceGuard.mjs';
+import { buildNonClassifierHistoryMetadata } from './nonClassifierHistoryMetadata.mjs';
 
 export function buildQueueClassificationHistoryExistsQuery(identity) {
   const hasTmdbId = identity.tmdbId !== null;
@@ -28,7 +29,7 @@ export function buildQueueClassificationHistoryInsertQuery(identity, payload, so
   const snapshot = guarded ? encodeEnrichmentSource(source, identity.mediaType, identity.libraryId) : null;
   const itemId = positiveDatabaseInteger(payload.itemId);
   if (guarded && (!itemId || !snapshot || source.title !== identity.title || source.year !== (payload.year ?? null))) return null;
-  const metadata = { ...payload };
+  const metadata = buildNonClassifierHistoryMetadata(payload, 'source_library');
   delete metadata.source_identity_snapshot;
   const sourceSelection = guarded ? `WITH source_guard AS MATERIALIZED (
     SELECT id FROM media_server_items WHERE id = $16 AND tmdb_id IS NOT DISTINCT FROM $1::integer

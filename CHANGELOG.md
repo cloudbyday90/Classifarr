@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Original observation types** — Automatically distinguish imported membership,
+  manual actions, classifier workflows and unknown origins within library UTC
+  coverage, with complete totals and no additional operator input.
+
 - **UTC capture by recorded library** — Automatically show recent provenance
   coverage and excluded recording times for bounded library groups, with complete
   global totals and accessible keyboard scrolling.
@@ -273,6 +277,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
   change policy, AI, RAG, or routing authority.
 
 ### Fixed
+
+- **Local runtime reliability** — Restore Pino log delivery to multiple targets,
+  exclude private runtime data from Docker build contexts, and isolate transport
+  and router tests from queued mocks and unrelated page compilation.
+- **Original observation capture** — Record trusted origin metadata for new
+  source-library and manual queue history, replacing caller-supplied candidates.
 
 - **Candidate evidence loss** — Preserve policy and signal context through AI
   retry/fallback paths, keep empty ranking positions from promoting later

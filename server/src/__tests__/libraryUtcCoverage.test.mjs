@@ -7,11 +7,13 @@ import { emptyUtcProvenanceTrend } from './helpers/evidenceTrendFixture.mjs';
 const fixture = () => {
     const raw = emptyLibraryUtcSnapshot();
     Object.assign(raw.utc_library_totals, { retained_events: '8', events: '4', captured_events: '1', unrecorded_events: '1',
-        invalid_events: '1', unsupported_events: '1', older_events: '1', future_events: '1', unknown_events: '2' });
+        invalid_events: '1', unsupported_events: '1', older_events: '1', future_events: '1', unknown_events: '2',
+        classifier_workflow_events: 1, unknown_origin_events: 3 });
     const empty = emptyLibraryUtcSnapshot().utc_library_totals;
     raw.utc_library_groups = [
         { ...empty, retained_events: 5, events: 4, captured_events: 1, unrecorded_events: 1, invalid_events: 1,
-            unsupported_events: 1, older_events: 1, library_id: 1, library_name: 'Library', library_active: false, metadata: 'PRIVATE' },
+            unsupported_events: 1, older_events: 1, classifier_workflow_events: 1, unknown_origin_events: 3,
+            library_id: 1, library_name: 'Library', library_active: false, metadata: 'PRIVATE' },
         { ...empty, retained_events: 3, future_events: 1, unknown_events: 2, library_id: null, library_name: null, library_active: null },
     ];
     raw.utc_library_group_count = '2';

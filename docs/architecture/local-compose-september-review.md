@@ -1,0 +1,107 @@
+# September local Compose rebuild and release review
+
+Date: 2026-09-07.
+
+## Scope and design
+
+The user requested a no-cache local Compose rebuild and review of work since the
+last release. GitHub MCP's release collection identifies
+[v0.48.4-beta](https://github.com/cloudbyday90/Classifarr/releases/tag/v0.48.4-beta),
+published 2026-08-29, as the most recent published release. GitHub's `latest`
+endpoint excludes prereleases and points to an older version; it is not the
+comparison baseline here. The starting main revision was `ab240487`, 126 commits
+after that release, with 27 added migration files.
+
+Review concentrates on database upgrade compatibility, authentication boundaries,
+inventory observation/identity, feedback eligibility and idempotency, and the
+accumulated statistics changes. Full unit suites, selected PostgreSQL integration
+tests, browser checks, a fresh-schema check and live HTTP observations complement
+the source review. This is not an exhaustive line-by-line audit of every changed
+file or a classifier accuracy study.
+
+The existing Compose service is rebuilt using the repository's smart wrapper
+with `build --no-cache`, then recreated with `up -d --no-build --force-recreate
+--wait`. Preserve its mounted data. Before replacing it, keep a custom-format
+PostgreSQL backup and the old image locally. The private backup is checksum-checked
+and readable by `pg_restore`; it remains ignored under `.tmp`.
+
+## Findings and changes
+
+1. `.dockerignore` did not exclude mounted database data, private `.tmp`
+   observations, credential files or browser artifacts. Added explicit exclusions.
+   Existing explicit Dockerfile COPY statements do not establish that these files
+   were included in prior final images; this change closes unnecessary build
+   context exposure and reduces unrelated build inputs.
+2. The HTTP transport test setup used `clearAllMocks()` followed by default mock
+   responses. The repository's full code-health check rejected this because queued
+   once-responses survive clearing. Reset each mock and reinstall the constructor
+   implementation before each test.
+3. Router guard tests compiled eager dashboard/setup view trees within the first
+   navigation test's timeout. That test timed out during the concurrent no-cache
+   build/full regression run. Stub those eager pages in the guard test while
+   preserving real router construction, guards and navigation assertions. Page
+   behavior remains covered separately; no production timeout is increased.
+4. Pino's formatter converted numeric `level` values to strings before worker
+   routing to stdout and rolling files. A real two-target test reproduced empty
+   log files. Removing that formatter restores numeric levels, correct per-target
+   filtering and redaction. The test console adapter maps numeric levels back to
+   their console methods. External file consumers should accept standard numeric
+   Pino levels. Quiet startup output before this fix was not proof of no errors.
+5. A new source-library history event lacked original provenance. The queue
+   membership writer and manual queue writer bypass classifier persistence.
+   They now capture fixed non-classifier origin in a shared metadata builder,
+   replacing caller-supplied candidate data. No legacy backfill is performed.
+6. The full serial backend unit run reached Node's default approximately 4 GB
+   heap limit. Validation uses two workers with a 512 MB idle recycling threshold;
+   this bounds accumulation between test files without increasing production heap
+   limits. Making this the standard full-suite workflow is a follow-up.
+
+## Official guidance and tradeoffs
+
+| Recommendation | Pros | Cons / limits | Source |
+| --- | --- | --- | --- |
+| Exclude private and irrelevant local build inputs | Smaller context and less exposure to builders | Must maintain exclusions as tooling changes | [Docker build context](https://docs.docker.com/build/concepts/context/) |
+| Separate no-cache build from service replacement | Validate the completed image before restart | Slower than cached development builds | [Compose build](https://docs.docker.com/reference/cli/docker/compose/build/) |
+| Recreate and wait for service health | Applies the built image and checks startup readiness | Health alone does not validate authenticated features | [Compose up](https://docs.docker.com/reference/cli/docker/compose/up/) |
+| Preserve numeric Pino levels | Restores worker routing and severity filtering | Collectors expecting string levels must adapt | [Pino transports](https://github.com/pinojs/pino/blob/main/docs/transports.md) |
+| Recycle bounded Jest workers | Limits memory accumulation across files | Worker restarts add initialization cost | [Jest configuration](https://jestjs.io/docs/30.4/configuration#workeridlememorylimit-numberstring) |
+
+Recommended stack: restricted build context, no-cache local build, verified backup,
+fresh and upgrade schema checks, preserved Compose data, authenticated read-only
+smoke checks, focused browser checks and regression tests. No image publication,
+release tag or version bump is requested.
+
+## Outcome
+
+The initial no-cache build transferred a 19.44 MB context, installed dependencies
+with zero reported audit vulnerabilities, and passed fresh schema comparison.
+The local service recreated successfully and became healthy. Its existing
+database advanced from 234 to 249 applied migrations while preserving all 6,772
+history records, 10 libraries and zero feedback records at the upgrade check.
+The private backup was 42,137,471 bytes and its checksum and archive catalog were
+verified. Docker Desktop could not copy the file directly from container tmpfs;
+streaming it through `docker exec` into a binary file descriptor preserved its
+exact checksum.
+
+Seven authenticated read-only HTTP requests returned 200: statistics overview,
+policy totals, alerts, activity, library observation health/history and overlap.
+Statistics evidence was available and retained unknown legacy recording times;
+anonymous overview access returned 401. The overview took 403 ms in that single
+observation; observation health and overlap took about one second each. These
+are local observations, not latency guarantees. A live browser displayed seven
+tables and 11 recorded-library groups with no page errors, failed HTTP responses
+or requested writes. A background source observation arrived after startup and
+exposed the writer gap above; normal background processing was not disabled.
+
+The first image was intentionally marked `VCS_REF=unknown` because its source
+tree was still being edited. Maintenance evidence correctly refuses that image.
+Final delivery rebuilds from the committed clean source with verified provenance
+and recreates Compose again so the writer and logging fixes are active.
+
+Focused runtime-fix/code-health validation passed 21,122 tests, and the writer
+and identity integration recheck passed 14 tests. Broader integration validation
+passed 300 tests across 17 suites. The full client run passed 4,760 of 4,761 tests;
+the corrected router file subsequently passed all 12 tests. The initial full
+backend run was incomplete because of the heap exhaustion above. The recycled
+worker run and final delivery checks are summarized in the
+[feature outcome](original-observation-types-outcome.md).

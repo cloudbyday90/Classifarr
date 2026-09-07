@@ -254,7 +254,9 @@ describe('source-library identity boundary', () => {
     expect(db.query.mock.calls[1][1]).toEqual(['Original', 1, 'tv']);
     const inserted = db.query.mock.calls[2][1];
     expect(inserted.slice(0, 5)).toEqual([null, 'tv', 'Original', 2001, 1]);
-    expect(JSON.parse(inserted[9])).toEqual({ title: 'Original', year: 2001, media: { media_type: 'tv' }, genres: ['Drama'] });
+    expect(JSON.parse(inserted[9])).toEqual({ title: 'Original', year: 2001, media: { media_type: 'tv' }, genres: ['Drama'],
+      classification_details: { candidate_capture: { version: 'classification.candidate_capture.v1', stage: 'pre_routing',
+        status: 'not_applicable', source: null, library_id: null, method: 'source_library' } } });
     expect(inserted[12]).toEqual(['Drama']);
   });
 });

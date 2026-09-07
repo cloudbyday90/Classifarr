@@ -12,6 +12,7 @@ import * as defaultDb from '../config/database.mjs';
 import { classificationService as defaultClassificationService } from './classification.mjs';
 import * as ragGraphExtractor from './ragGraphExtractor.mjs';
 import { parsePayload as sharedParsePayload } from '../utils/queueHelpers.mjs';
+import { buildNonClassifierHistoryMetadata } from './nonClassifierHistoryMetadata.mjs';
 
 export class QueueAdminService {
     constructor(deps = {}) {
@@ -84,7 +85,7 @@ export class QueueAdminService {
                     100,
                     'manual_classification',
                     `Manually classified by ${resolvedBy}`,
-                    JSON.stringify(metadata),
+                    JSON.stringify(buildNonClassifierHistoryMetadata(metadata, 'manual_classification')),
                     'completed',
                     graphRel.director_name,
                     graphRel.primary_studio_name,

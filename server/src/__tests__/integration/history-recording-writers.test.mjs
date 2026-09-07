@@ -2,6 +2,8 @@
 import { jest, test, expect, beforeEach, afterEach } from '@jest/globals';
 import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
 import { buildQueueClassificationHistoryInsertQuery } from '../../services/queueClassificationHistoryQueries.mjs';
+import { EVIDENCE_COVERAGE_SQL } from '../../services/evidenceCoverageQuery.mjs';
+import { buildEvidenceCoverage } from '../../services/evidenceCoverageService.mjs';
 
 // Exercise real writer SQL and transactions; provider/network effects stay stubbed.
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
@@ -18,7 +20,7 @@ const { ClassificationPersistenceService } = await import('../../services/classi
 const graph = { director_name: null, primary_studio_name: null, genre_names: [], cast_ids: [], cast_names: [] };
 let libraryId;
 const metadata = () => ({ title: 'PRIVATE recording writer', media_type: 'movie', tmdb_id: 603,
-    recorded_at: '1900-01-01T00:00:00Z' });
+    recorded_at: '1900-01-01T00:00:00Z', classification_details: { candidate_capture: { method: 'policy_auto', library_id: 88 } } });
 beforeEach(async () => {
     libraryId = (await getPool().query(`INSERT INTO libraries(name,external_id,media_type)
         VALUES('Recording writer','recording-writer-fixture','movie') RETURNING id`)).rows[0].id;
@@ -48,6 +50,14 @@ test.each([false, true])('classification persistence obtains a database instant,
     await expectRecorded(id, earliest);
 });
 
+async function expectOriginalType(field) {
+    const coverage = buildEvidenceCoverage((await getPool().query(EVIDENCE_COVERAGE_SQL, [200])).rows[0]);
+    expect(coverage.utc_library_coverage.totals).toMatchObject({ events: 1, captured_events: 1,
+        observation_types: { [field]: 1, unknown_origin_events: 0 } });
+    const stored = (await getPool().query("SELECT metadata FROM classification_history WHERE title='PRIVATE recording writer'")).rows[0].metadata;
+    expect(stored.classification_details.candidate_capture).toMatchObject({ status: 'not_applicable', library_id: null });
+}
+
 test('source-library history SQL receives the same default and ignores metadata timestamps', async () => {
     const earliest = await start();
     const query = buildQueueClassificationHistoryInsertQuery({ tmdbId: 603, title: metadata().title,
@@ -55,6 +65,7 @@ test('source-library history SQL receives the same default and ignores metadata 
     await getPool().query(query.text, query.values);
     const id = (await getPool().query("SELECT id FROM classification_history WHERE title='PRIVATE recording writer'")).rows[0].id;
     await expectRecorded(id, earliest);
+    await expectOriginalType('imported_membership_events');
 });
 
 test('manual queue history is stamped after routing finishes inside the transaction', async () => {
@@ -68,5 +79,6 @@ test('manual queue history is stamped after routing finishes inside the transact
     expect(result.success).toBe(true);
     expect(routeToArr).toHaveBeenCalledTimes(1);
     await expectRecorded(result.classificationId, routeFinished);
+    await expectOriginalType('manual_action_events');
     expect((await getPool().query('SELECT status FROM task_queue WHERE id=$1', [taskId])).rows[0].status).toBe('completed');
 });

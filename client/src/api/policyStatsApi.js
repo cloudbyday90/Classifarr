@@ -37,6 +37,7 @@ export function getPolicyStatsOverview() {
   // excludes unknown times. Neither temporal view is an additional population.
   // utc_library_coverage applies the same window and exclusions by recorded
   // library, with its own bounded groups and uncapped global totals.
+  // Its nested observation_types partition the window by validated original origin.
   return getDataRequest('/stats/overview')
 }
 

@@ -36,10 +36,7 @@ export function buildPinoOptions(config = LOG_CONFIG) {
       paths: [...SENSITIVE_FIELD_PATHS],
       censor: '[REDACTED]',
     },
-    formatters: {
-      // Emit "level":"info" string instead of pino's default numeric level field.
-      level: (label) => ({ level: label }),
-    },
+    // Multi-target worker routing requires Pino's numeric level field.
     base: { pid: process.pid },
     timestamp: pino.stdTimeFunctions.isoTime,
   };
@@ -47,7 +44,7 @@ export function buildPinoOptions(config = LOG_CONFIG) {
 
 /**
  * Build the pino transport destination for non-test environments.
- * Writes to stdout AND to two rolling log files (all + error-only).
+ * Writes to stdout AND to two rolling log files (all + warning/error).
  *
  * @param {{ logDir: string, maxFileSizeBytes: number, fileLoggingEnabled: boolean, level: string }} config
  * @returns {import('pino').DestinationStream}
@@ -112,15 +109,14 @@ export function createRootLogger(config = LOG_CONFIG) {
       write: (msg) => {
         try {
           const obj = JSON.parse(msg.trim());
-          // formatters.level emits a string label ("info", "warn", "error", "fatal")
-          // rather than pino's default numeric level.
-          if (obj.level === 'error' || obj.level === 'fatal') {
+          const level = pino.levels.labels[obj.level];
+          if (level === 'error' || level === 'fatal') {
             // eslint-disable-next-line no-console -- intentional test-stream output
             console.error(obj.msg);
-          } else if (obj.level === 'warn') {
+          } else if (level === 'warn') {
             // eslint-disable-next-line no-console -- intentional test-stream output
             console.warn(obj.msg);
-          } else if (obj.level === 'info' || obj.level === 'debug' || obj.level === 'trace') {
+          } else if (level === 'info' || level === 'debug' || level === 'trace') {
             // eslint-disable-next-line no-console -- intentional test-stream output
             console.log(obj.msg);
           }

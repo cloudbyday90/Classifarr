@@ -102,6 +102,9 @@ existing distinction between classifier and non-classifier capture methods;
 do not infer original type from the mutable current history method. This should
 help assess the available automation evidence without adding labels or controls.
 
+Completed in the [original observation types outcome](original-observation-types-outcome.md),
+including the source/manual writer gaps found during the local Compose review.
+
 Independent labels, readiness and frozen-study preflight still gate review-only
 semantic counter-evidence. README, Unreleased and the preceding next item were
 updated. No release, version bump, tag or production deployment is part of this

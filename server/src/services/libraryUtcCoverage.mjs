@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { evidenceCount, reconcileEvidenceGroups } from './evidenceCoverageProjection.mjs';
 import { LIBRARY_UTC_COUNT_FIELDS, projectLibraryUtcCounts as project } from './libraryUtcCoverageCounts.mjs';
+import { OBSERVATION_TYPE_FIELDS } from './originalObservationTypeCounts.mjs';
 
 export function buildLibraryUtcCoverage(snapshot, utcTrend, retainedEvents, limit) {
     const totals = project(snapshot.utc_library_totals);
@@ -24,6 +25,7 @@ export function buildLibraryUtcCoverage(snapshot, utcTrend, retainedEvents, limi
     });
     const truncated = groupCount > groups.length;
     reconcileEvidenceGroups(totals, groups, LIBRARY_UTC_COUNT_FIELDS, truncated);
+    reconcileEvidenceGroups(totals.observation_types, groups.map(row => row.observation_types), OBSERVATION_TYPE_FIELDS, truncated);
     const omittedEvents = totals.retained_events - groups.reduce((sum, row) => sum + row.retained_events, 0);
     if (omittedEvents < groupCount - groups.length) throw new Error('Inconsistent omitted library groups');
     return { timestamp_basis: utcTrend.timestamp_basis, time_zone: utcTrend.time_zone, day_count: utcTrend.day_count,

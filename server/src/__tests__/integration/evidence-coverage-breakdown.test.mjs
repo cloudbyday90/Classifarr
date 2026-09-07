@@ -292,7 +292,13 @@ test('fixed group caps disclose omissions while preserving global totals', async
     expect(utc_library_coverage).toMatchObject({ group_count: 201, group_limit: 200, truncated: true,
         totals: { retained_events: 201, events: 201, unrecorded_events: 201 } });
     expect(utc_library_coverage.groups.map(row => row.library_id)).toEqual(ids.slice(0, 200));
-    expect(Buffer.byteLength(JSON.stringify(utc_library_coverage))).toBeLessThan(85000);
+    expect(utc_library_coverage.totals.observation_types).toEqual({ imported_membership_events: 0,
+        manual_action_events: 0, classifier_workflow_events: 0, unknown_origin_events: 201 });
+    expect(utc_library_coverage.groups.every(row => row.observation_types.unknown_origin_events === 1)).toBe(true);
+    const { observation_types, ...totalsWithoutTypes } = utc_library_coverage.totals;
+    const groupsWithoutTypes = utc_library_coverage.groups.map(({ observation_types: _types, ...row }) => row);
+    expect(Buffer.byteLength(JSON.stringify({ ...utc_library_coverage, totals: totalsWithoutTypes, groups: groupsWithoutTypes }))).toBeLessThan(85000);
+    expect(Buffer.byteLength(JSON.stringify([observation_types, ...utc_library_coverage.groups.map(row => row.observation_types)]))).toBeLessThan(30000);
 });
 
 test('missing coverage schema does not suppress existing overview metrics or invent zero', async () => {

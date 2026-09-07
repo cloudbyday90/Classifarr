@@ -41,3 +41,11 @@ docker-compose*
 *.pid
 .npm
 .eslintcache
+
+# Local runtime data, private observations and development artifacts are not build inputs
+data/
+.tmp/
+credentials.json
+token.json
+client/test-results/
+client/playwright-report/

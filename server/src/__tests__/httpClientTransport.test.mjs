@@ -8,8 +8,9 @@ jest.unstable_mockModule('undici', () => ({ Agent, fetch: undiciFetch }));
 const { withBufferedHttpTransport } = await import('../utils/httpClientTransport.mjs');
 
 beforeEach(() => {
-  jest.clearAllMocks();
-  destroy.mockResolvedValue(undefined);
+  destroy.mockReset().mockResolvedValue(undefined);
+  undiciFetch.mockReset();
+  Agent.mockReset().mockImplementation(function (options) { this.options = options; this.destroy = destroy; });
 });
 
 test.each([true, undefined, null, 0, 'false'])('keeps native TLS verification unless explicitly disabled: %s', async value => {

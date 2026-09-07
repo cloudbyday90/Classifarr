@@ -219,6 +219,13 @@ No reporting controls or manual input are needed. See the
 [library UTC design](docs/architecture/library-utc-coverage-design.md) and
 [outcome](docs/architecture/library-utc-coverage-outcome.md).
 
+Original observation types now distinguish imported membership, manual actions,
+classifier workflows and unknown origins in that same UTC window. New membership
+and manual queue entries capture their origin automatically. These counts describe
+evidence composition, including retries and fallbacks; they are not accuracy rates
+or independent labels. See the [design](docs/architecture/original-observation-types-design.md)
+and [outcome](docs/architecture/original-observation-types-outcome.md).
+
 Statistics describe their scope beside each section: retained policy feedback,
 recent accuracy windows and the latest activity feed. Policy details label their
 30-day breakdown and rolling seven-day comparison. These descriptions replace

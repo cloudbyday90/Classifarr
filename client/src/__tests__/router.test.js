@@ -24,6 +24,13 @@ vi.mock('@/components/layout/MainLayout.vue', () => ({
   default: { template: '<div><router-view /></div>' }
 }))
 
+// Guard tests exercise real navigation; eager page trees have their own tests.
+// Avoid compiling the dashboard/setup dependency trees inside the first guard's timeout.
+vi.mock('@/views/CommandCenter.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('@/views/Login.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('@/views/SetupAccount.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('@/views/SetupWizard.vue', () => ({ default: { template: '<div />' } }))
+
 async function loadRouter() {
   vi.resetModules()
   // Router construction immediately starts its initial navigation. Boot at the
