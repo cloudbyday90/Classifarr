@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-07T00:54:15.851Z
--- Latest Migration: 20260907_010000_add_feedback_evaluation_views.sql
+-- Generated: 2026-09-07T01:15:31.152Z
+-- Latest Migration: 20260907_020000_add_feedback_source_receipts.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -5076,6 +5076,36 @@ ALTER SEQUENCE public.policy_feedback_log_id_seq OWNED BY public.policy_feedback
 
 
 --
+-- Name: policy_feedback_sources; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.policy_feedback_sources (
+    classification_id bigint NOT NULL,
+    feedback_id integer,
+    intake character varying(20) NOT NULL,
+    request_fingerprint text NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT policy_feedback_sources_classification_id_check CHECK ((classification_id > 0)),
+    CONSTRAINT policy_feedback_sources_intake_check CHECK (((intake)::text = ANY (ARRAY[('standalone'::character varying)::text, ('prompt'::character varying)::text]))),
+    CONSTRAINT policy_feedback_sources_request_fingerprint_check CHECK ((request_fingerprint ~ '^[a-f0-9]{64}$'::text))
+);
+
+
+--
+-- Name: TABLE policy_feedback_sources; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.policy_feedback_sources IS 'One feedback receipt per classification event; source IDs survive history retention and deleted feedback leaves a replay-blocking tombstone.';
+
+
+--
+-- Name: COLUMN policy_feedback_sources.classification_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.policy_feedback_sources.classification_id IS 'Validated against locked classification_history at intake; intentionally no cascading history foreign key. Legacy feedback is not backfilled.';
+
+
+--
 -- Name: policy_identity_evidence_admissions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -9340,6 +9370,22 @@ ALTER TABLE ONLY public.policy_feedback_log
 
 
 --
+-- Name: policy_feedback_sources policy_feedback_sources_feedback_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_feedback_sources
+    ADD CONSTRAINT policy_feedback_sources_feedback_id_key UNIQUE (feedback_id);
+
+
+--
+-- Name: policy_feedback_sources policy_feedback_sources_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_feedback_sources
+    ADD CONSTRAINT policy_feedback_sources_pkey PRIMARY KEY (classification_id);
+
+
+--
 -- Name: policy_identity_evidence_admissions policy_identity_evidence_admissions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12782,6 +12828,14 @@ ALTER TABLE ONLY public.policy_feedback_log
 
 
 --
+-- Name: policy_feedback_sources policy_feedback_sources_feedback_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_feedback_sources
+    ADD CONSTRAINT policy_feedback_sources_feedback_id_fkey FOREIGN KEY (feedback_id) REFERENCES public.policy_feedback_log(id) ON DELETE SET NULL;
+
+
+--
 -- Name: policy_initial_intent_establishments policy_initial_intent_establishments_intent_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -15358,6 +15412,7 @@ FROM unnest(ARRAY[
     '20260905_210000_seed_library_sampling_state.sql',
     '20260906_090000_add_incremental_library_coverage.sql',
     '20260906_230000_add_suggestion_cohort_provenance.sql',
-    '20260907_010000_add_feedback_evaluation_views.sql'
+    '20260907_010000_add_feedback_evaluation_views.sql',
+    '20260907_020000_add_feedback_source_receipts.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

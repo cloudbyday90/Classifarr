@@ -18,10 +18,12 @@
 
 import classificationOperationsApi from './classificationOperations'
 import reclassificationBatchesApi from './reclassificationBatches'
+import feedbackApi from './feedbackApi'
 
 const classificationApi = {
   ...classificationOperationsApi,
   ...reclassificationBatchesApi,
+  ...feedbackApi,
 }
 
 export default classificationApi

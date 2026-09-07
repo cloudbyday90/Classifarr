@@ -246,6 +246,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Feedback retry protection** — Standalone feedback now uses stored classification
+  evidence and records each source event once. Matching retries return the saved
+  result; conflicting submissions and duplicate prompt feedback are rejected.
+  Source receipts preserve retry protection through history or feedback cleanup.
+
 - **Feedback accuracy and coverage** — Accuracy now uses evaluated candidate
   evidence and reports unknown results as unavailable. Observations remain intact,
   evaluated coverage appears in policy statistics, and live metrics reflect current

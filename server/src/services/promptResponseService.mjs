@@ -5,6 +5,7 @@ import { normalizePromptResponse } from './promptResponseInput.mjs';
 import { projectPromptClassification } from './promptClassificationProjection.mjs';
 import { assertLegacyPolicyWriteAllowed } from './policyLegacyWriteGuard.mjs';
 import { POLICY_LEGACY_WRITE_OPERATION_IDS } from './policyLegacyWriteBoundary.mjs';
+import { assertFeedbackSourceUnused, feedbackRequestFingerprint, recordFeedbackSource } from './feedbackSourceReceipt.mjs';
 
 export async function respondToPrompt({ db, feedbackAnalysis, id, body }) {
     const { selectedLibraryId, selectedPolicyId, patternActions, reasons, customReason } = normalizePromptResponse(body);
@@ -40,6 +41,7 @@ export async function respondToPrompt({ db, feedbackAnalysis, id, body }) {
         if (classification.status !== 'pending') {
             throw new ConflictError('This prompt is no longer pending', { code: 'PROMPT_NOT_PENDING' });
         }
+        await assertFeedbackSourceUnused(client, id);
         if (libraries.length !== libraryIds.length || libraries.some(library => !library.is_active || library.media_type !== classification.media_type)) {
             throw new ValidationError('Pattern and selected destinations must be active libraries with the matching media type');
         }
@@ -70,6 +72,8 @@ export async function respondToPrompt({ db, feedbackAnalysis, id, body }) {
             patterns_created: patternActions, source: 'web',
             prompted_at: classification.created_at, responded_at: new Date(),
         }, client);
+        await recordFeedbackSource(client, { classificationId: id, feedbackId, intake: 'prompt',
+            fingerprint: feedbackRequestFingerprint({ selectedLibraryId, selectedPolicyId, patternActions, reasons, customReason }) });
         await client.query(`
             UPDATE classification_history SET status='completed', library_id=$1, library_name=$2,
                 pending_reason=NULL, pending_identity_key=NULL WHERE id=$3

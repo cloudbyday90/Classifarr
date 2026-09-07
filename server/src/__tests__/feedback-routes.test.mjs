@@ -7,6 +7,7 @@ import request from 'supertest';
 import { jest } from '@jest/globals';
 import { createLoggerModuleMock, createMountedTestApp, createStandardDbMock } from './helpers/setupRouteTest.mjs';
 import { createNamedServiceStub } from './helpers/mockFactory.mjs';
+import { ValidationError } from '../utils/appError.mjs';
 
 const {
   service: feedbackAnalysis,
@@ -20,7 +21,6 @@ const {
   'runFullAnalysis',
 ]);
 const {
-  recordFeedback,
   getPendingSuggestions,
   analyzePolicy,
   applySuggestion,
@@ -28,6 +28,8 @@ const {
   runFullAnalysis,
 } = feedbackAnalysis;
 const query = jest.fn();
+const recordStandaloneFeedback = jest.fn();
+jest.unstable_mockModule('../services/standaloneFeedbackService.mjs', () => ({ recordStandaloneFeedback }));
 
 jest.unstable_mockModule('../services/feedbackAnalysis.mjs', () => feedbackAnalysisModule);
 
@@ -54,34 +56,38 @@ describe('Feedback Routes', () => {
     });
   });
 
-  it('records feedback with the authenticated user id', async () => {
-    recordFeedback.mockResolvedValueOnce(901);
+  it('delegates source-bound intake and returns a created receipt', async () => {
+    recordStandaloneFeedback.mockResolvedValueOnce({ feedbackId: 901, replayed: false });
 
     const res = await request(app)
       .post('/feedback')
-      .send({ tmdb_id: 10, selected_library_id: 2, selected_policy_id: 3 })
+      .send({ classification_id: 10, selected_library_id: 2, selected_policy_id: 3 })
       .expect(201);
 
-    expect(recordFeedback).toHaveBeenCalledWith({
-      tmdb_id: 10,
-      selected_library_id: 2,
-      selected_policy_id: 3,
-      userId: 55,
-    });
+    expect(recordStandaloneFeedback).toHaveBeenCalledWith({ db: expect.any(Object), feedbackAnalysis,
+      body: { classification_id: 10, selected_library_id: 2, selected_policy_id: 3 } });
     expect(res.body).toEqual({
       success: true,
       feedbackId: 901,
+      replayed: false,
       message: 'Feedback recorded successfully',
     });
   });
 
   it('rejects feedback payloads missing required fields', async () => {
+    recordStandaloneFeedback.mockRejectedValueOnce(new ValidationError('classification_id is required'));
     const res = await request(app)
       .post('/feedback')
       .send({ tmdb_id: 10 })
       .expect(400);
 
-    expect(res.body.error).toBe('Missing required fields: tmdb_id, selected_library_id, and selected_policy_id are required');
+    expect(res.body.error).toBe('classification_id is required');
+  });
+
+  it('returns a successful replay without a created status', async () => {
+    recordStandaloneFeedback.mockResolvedValueOnce({ feedbackId: 901, replayed: true });
+    const response = await request(app).post('/feedback').send({ classification_id: 10 }).expect(200);
+    expect(response.body).toMatchObject({ feedbackId: 901, replayed: true });
   });
 
   it('returns pending suggestions for a valid policy id', async () => {

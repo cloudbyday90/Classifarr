@@ -95,6 +95,9 @@ conformance audit or authorization for automatic classification changes.
 
 ## Next item
 
+Completed by the [source-binding follow-up](feedback-source-idempotency-outcome.md).
+The original recommendation follows for context.
+
 Bind standalone feedback to a stable classification/source event and make retries
 idempotent. The generic feedback endpoint still accepts original-candidate fields
 and can record separate observations for retries, while the prompt-response path

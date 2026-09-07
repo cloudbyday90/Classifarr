@@ -11,6 +11,7 @@
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { ValidationError } from '../utils/appError.mjs';
 import { requireValidId } from './routeHelpers.mjs';
+import { recordStandaloneFeedback } from '../services/standaloneFeedbackService.mjs';
 
 function parseIdParam(value) {
   return Number.parseInt(value, 10);
@@ -20,17 +21,10 @@ export function createFeedbackRouter({ express, feedbackAnalysis, db }) {
   const router = express.Router();
 
   router.post('/', asyncHandler(async (req, res) => {
-    const feedbackData = { ...req.body, userId: req.user.id };
-
-    if (!feedbackData.tmdb_id || !feedbackData.selected_library_id || !feedbackData.selected_policy_id) {
-      throw new ValidationError('Missing required fields: tmdb_id, selected_library_id, and selected_policy_id are required');
-    }
-
-    const feedbackId = await feedbackAnalysis.recordFeedback(feedbackData);
-
-    return res.status(201).json({
+    const result = await recordStandaloneFeedback({ db, feedbackAnalysis, body: req.body });
+    return res.status(result.replayed ? 200 : 201).json({
       success: true,
-      feedbackId,
+      ...result,
       message: 'Feedback recorded successfully',
     });
   }));

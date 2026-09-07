@@ -157,6 +157,13 @@ Live metrics use current library and policy state without an operator refresh.
 See the [evaluation design](docs/architecture/feedback-evaluation-coverage-design.md)
 and [outcome](docs/architecture/feedback-evaluation-coverage-outcome.md).
 
+Standalone feedback requires a `classification_id`, selected library and selected
+policy. Candidate evidence comes from stored history. Matching retries return the
+saved feedback ID; conflicting submissions cannot add another vote. Integrations
+must stop sending metadata or correction flags to this endpoint. See the
+[source-binding design](docs/architecture/feedback-source-idempotency-design.md)
+and [outcome](docs/architecture/feedback-source-idempotency-outcome.md).
+
 <p align="center">
   <img src="./docs/assets/issue-262-classification-flow-v042.svg" alt="Classifarr classification flow diagram" width="1100" />
 </p>
