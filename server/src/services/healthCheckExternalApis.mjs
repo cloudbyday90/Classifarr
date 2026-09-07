@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 import * as db from '../config/database.mjs';
+import { readMetadataProviderConfig } from './metadataProviderConfigStore.mjs';
 import { tmdbService } from './tmdb.mjs';
 import { omdbService } from './omdb.mjs';
 import {
@@ -20,14 +21,14 @@ import {
 
 export async function checkTMDB(previous) {
     try {
-        const config = await db.query('SELECT api_key FROM tmdb_config LIMIT 1');
+        const config = await readMetadataProviderConfig(db, 'tmdb', { activeOnly: true });
 
-        if (config.rows.length === 0 || !config.rows[0].api_key) {
+        if (!config?.api_key) {
             return buildNotConfiguredHealthState(previous);
         }
 
         const result = await measureTime(async () => {
-            await tmdbService.testConnection();
+            await tmdbService.testConnection(config.api_key);
         });
 
         return buildTimedResultHealthState(previous, result);
@@ -38,14 +39,14 @@ export async function checkTMDB(previous) {
 
 export async function checkOMDb(previous) {
     try {
-        const config = await db.query('SELECT api_key FROM omdb_config WHERE is_active = true LIMIT 1');
+        const config = await readMetadataProviderConfig(db, 'omdb', { activeOnly: true });
 
-        if (config.rows.length === 0 || !config.rows[0].api_key) {
+        if (!config?.api_key) {
             return buildNotConfiguredHealthState(previous);
         }
 
         const result = await measureTime(async () => {
-            await omdbService.testConnection(config.rows[0].api_key);
+            await omdbService.testConnection(config.api_key);
         });
 
         return buildTimedResultHealthState(previous, result);
@@ -56,9 +57,9 @@ export async function checkOMDb(previous) {
 
 export async function checkTavily(previous) {
     try {
-        const config = await db.query('SELECT api_key FROM tavily_config LIMIT 1');
+        const config = await readMetadataProviderConfig(db, 'tavily', { activeOnly: true });
 
-        if (config.rows.length === 0 || !config.rows[0].api_key) {
+        if (!config?.api_key) {
             return buildNotConfiguredHealthState(previous);
         }
 

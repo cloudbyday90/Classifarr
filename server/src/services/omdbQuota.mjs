@@ -9,6 +9,7 @@
  */
 
 import * as db from '../config/database.mjs';
+import { readMetadataProviderConfig } from './metadataProviderConfigStore.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { ServiceUnavailableError } from '../utils/appError.mjs';
 
@@ -23,8 +24,7 @@ export class OMDbLimitReachedError extends Error {
 
 export async function hasRemainingQuota() {
 	try {
-		const result = await db.query('SELECT * FROM omdb_config WHERE is_active = true LIMIT 1');
-		const config = result.rows[0];
+		const config = await readMetadataProviderConfig(db, 'omdb', { activeOnly: true });
 
 		if (!config || !config.api_key) {
 			return { available: false, used: 0, limit: 0, reason: 'OMDb API key not configured' };
@@ -54,8 +54,7 @@ export async function hasRemainingQuota() {
 
 export async function checkAndIncrementUsage({ metadataProviderIntegrityService }) {
 	try {
-		const result = await db.query('SELECT * FROM omdb_config WHERE is_active = true LIMIT 1');
-		const config = result.rows[0];
+		const config = await readMetadataProviderConfig(db, 'omdb', { activeOnly: true });
 
 		if (!config || !config.api_key) {
 			throw new ServiceUnavailableError('OMDb API key not configured');

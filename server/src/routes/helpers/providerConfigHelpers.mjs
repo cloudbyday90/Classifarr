@@ -7,6 +7,13 @@
  */
 
 import { isMaskedToken, maskToken } from '../../utils/tokenMasking.mjs';
+import { readMetadataProviderConfig } from '../../services/metadataProviderConfigStore.mjs';
+
+const metadataProviders = new Map([['tmdb_config', 'tmdb'], ['omdb_config', 'omdb'], ['tavily_config', 'tavily']]);
+const otherProviderQueries = new Map([
+  ['ai_provider_config', ['SELECT * FROM ai_provider_config LIMIT 1', 'SELECT * FROM ai_provider_config WHERE is_active = true LIMIT 1']],
+  ['ollama_config', ['SELECT * FROM ollama_config LIMIT 1', 'SELECT * FROM ollama_config WHERE is_active = true LIMIT 1']],
+]);
 
 /**
  * @typedef {{
@@ -30,8 +37,11 @@ import { isMaskedToken, maskToken } from '../../utils/tokenMasking.mjs';
  * @returns {Promise<Record<string, any> | null>}
  */
 export async function fetchSingleProviderConfig(dbOrClient, table, { activeOnly = false } = {}) {
-  const whereClause = activeOnly ? ' WHERE is_active = true' : '';
-  const result = await dbOrClient.query(`SELECT * FROM ${table}${whereClause} LIMIT 1`);
+  const provider = metadataProviders.get(table);
+  if (provider) return readMetadataProviderConfig(dbOrClient, provider, { activeOnly });
+  const queries = otherProviderQueries.get(table);
+  if (!queries) throw new Error('Unsupported provider configuration table');
+  const result = await dbOrClient.query(activeOnly ? queries[1] : queries[0]);
   return result.rows[0] || null;
 }
 

@@ -787,6 +787,11 @@ Health, overlap and automatic sampling reads now reduce repeated processing of
 large metadata while retaining the same observations and limits. See the
 [performance design](docs/architecture/inventory-read-performance-design.md) and
 [measured outcome](docs/architecture/inventory-read-performance-outcome.md).
+Metadata provider reads and writes now use consistent selection and preserve
+configuration identity across saves and restores. Equivalent legacy duplicates
+consolidate automatically; distinct configurations remain visible in diagnostics.
+See the [provider design](docs/architecture/metadata-provider-selection-design.md)
+and [validation outcome](docs/architecture/metadata-provider-selection-outcome.md).
 Malformed observations repair automatically after cooldown using the full
 attributable observation validator. Bounded background passes advance past fresh
 records, while valid empty captures remain cached. See the

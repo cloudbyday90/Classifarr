@@ -282,6 +282,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Reliable metadata provider configuration** — Use consistent provider selection,
+  prevent duplicate active settings on concurrent saves and repeated restores,
+  preserve OMDb usage, and apply TMDb credential rotations immediately. Equivalent
+  legacy duplicates consolidate automatically while retaining stored credentials.
+
 - **Faster inventory summaries** — Reduce repeated metadata processing in library
   health, overlap and automatic sampling reads while preserving freshness,
   source validation, unknown states and existing capacity limits.

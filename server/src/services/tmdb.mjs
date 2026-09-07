@@ -18,6 +18,7 @@
 import { httpGet } from '../utils/httpClient.mjs';
 import { ServiceUnavailableError } from '../utils/appError.mjs';
 import * as db from '../config/database.mjs';
+import { readMetadataProviderConfig } from './metadataProviderConfigStore.mjs';
 import { rateLimiters } from '../utils/rateLimiter.mjs';
 import { findTmdbIdentityByExternalId, getTmdbIdentityDetails, searchTmdbIdentityCandidates } from './tmdbIdentitySearch.mjs';
 import {
@@ -29,7 +30,6 @@ import {
 class TMDBService {
   constructor(deps = {}) {
     this.baseUrl = 'https://api.themoviedb.org/3';
-    this.apiKey = null;
     this.rateLimiters = deps.rateLimiters || rateLimiters;
   }
 
@@ -38,18 +38,8 @@ class TMDBService {
   }
 
   async getApiKey() {
-    if (this.apiKey) {
-      return this.apiKey;
-    }
-
-    const result = await db.query('SELECT api_key FROM tmdb_config WHERE is_active = true LIMIT 1');
-    if (result.rows.length > 0) {
-      this.apiKey = result.rows[0].api_key;
-      return this.apiKey;
-    }
-
-    this.apiKey = process.env.TMDB_API_KEY;
-    return this.apiKey;
+    const config = await readMetadataProviderConfig(db, 'tmdb', { activeOnly: true });
+    return config ? config.api_key : process.env.TMDB_API_KEY;
   }
 
   async testConnection(apiKey = null) {

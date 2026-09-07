@@ -21,6 +21,7 @@ import { promises as fs } from 'node:fs';
 import { ValidationError } from '../utils/appError.mjs';
 import path from 'node:path';
 import * as db from '../config/database.mjs';
+import { metadataProviderConfigQuery } from './metadataProviderConfigStore.mjs';
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 import { classificationEvidenceRepository } from './classificationEvidenceRepository.mjs';
 import { createLogger } from '../utils/logger.mjs';
@@ -144,8 +145,8 @@ export class BackupService {
         db.query('SELECT * FROM auto_learned_preferences WHERE status = $1 ORDER BY id', ['active']),
         db.query('SELECT * FROM settings ORDER BY id'),
         db.query('SELECT * FROM ollama_config LIMIT 1'),
-        db.query('SELECT * FROM tmdb_config LIMIT 1'),
-        db.query('SELECT * FROM omdb_config LIMIT 1'),
+        db.query(metadataProviderConfigQuery('tmdb')),
+        db.query(metadataProviderConfigQuery('omdb')),
         db.query('SELECT * FROM webhook_config LIMIT 1'),
         db.query('SELECT * FROM path_mappings ORDER BY id')
       ]);

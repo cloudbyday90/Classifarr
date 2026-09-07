@@ -12,6 +12,7 @@ import { captureQueueEnrichmentPayload } from './queueEnrichmentPayload.mjs';
 import { omdbResultMatchesType } from './queueEnrichmentResults.mjs';
 import { canonicalMediaType, positiveDatabaseInteger } from './mediaIdentityValues.mjs';
 import { persistOmdbRating } from './queueEnrichmentPersistence.mjs';
+import { readMetadataProviderConfig } from './metadataProviderConfigStore.mjs';
 
 export class QueueOmdbEnrichmentService {
     constructor(deps = {}) {
@@ -211,13 +212,13 @@ export class QueueOmdbEnrichmentService {
         }
 
         try {
-            const omdbConfig = await this.db.query('SELECT * FROM omdb_config WHERE is_active = true LIMIT 1');
+            const omdbConfig = await readMetadataProviderConfig(this.db, 'omdb', { activeOnly: true });
 
-            if (omdbConfig.rows.length === 0 || !omdbConfig.rows[0].api_key) {
+            if (!omdbConfig?.api_key) {
                 return enrichmentData;
             }
 
-            const omdbApiKey = omdbConfig.rows[0].api_key;
+            const omdbApiKey = omdbConfig.api_key;
             const mediaType = payload.media.media_type;
 
             this.logger.info('OMDb lookup', { title: payload.title, type: mediaType });

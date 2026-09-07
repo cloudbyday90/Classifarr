@@ -133,11 +133,12 @@ is dependence on measured PostgreSQL execution behavior, so reprofile after a
 major engine or payload-distribution change. The design document compares other
 options and cites PostgreSQL, W3C and OWASP guidance.
 
-Next, resolve the duplicate-active-provider configuration warning documented in
-the [local Compose review](local-compose-september-review.md). Trace selection
-and configuration writers, make selection deterministic, and prevent new
-ambiguous active states while preserving existing credentials. Do not silently
-disable an existing credential to remove a warning. Other callers of the shared
+The subsequent [provider selection outcome](metadata-provider-selection-outcome.md)
+addresses the duplicate-active-provider configuration warning documented in
+the [local Compose review](local-compose-september-review.md), using deterministic
+selection, serialized configuration writers and repair of exactly equivalent
+duplicates while retaining credentials. Distinct legacy settings keep their
+integrity warning. Other callers of the shared
 projection, including per-library profile reads, are a separate measurement
 opportunity; this result is not evidence to change every caller blindly.
 

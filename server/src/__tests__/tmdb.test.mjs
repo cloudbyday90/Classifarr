@@ -59,7 +59,6 @@ describe('TMDBService', () => {
         jest.restoreAllMocks();
         jest.resetAllMocks();
         rateLimiters.tmdb.execute = jest.fn((fn) => fn());
-        tmdbService.apiKey = null;
         tmdbService.rateLimiters = rateLimiters;
         metadataProviderIntegrityService.warnProviderRuntimeFailure.mockReset();
         consoleErrorSpy = createConsoleSpy('error', { suppress: true });
@@ -70,11 +69,12 @@ describe('TMDBService', () => {
     });
 
     describe('getApiKey', () => {
-        it('should return cached API key if available', async () => {
-            tmdbService.apiKey = 'cached-key';
-            const key = await tmdbService.getApiKey();
-            expect(key).toBe('cached-key');
-            expect(db.query).not.toHaveBeenCalled();
+        it('uses a rotated database credential on the next request without a restart', async () => {
+            db.query.mockResolvedValueOnce({ rows: [{ api_key: 'first-key' }] })
+                .mockResolvedValueOnce({ rows: [{ api_key: 'rotated-key' }] });
+            expect(await tmdbService.getApiKey()).toBe('first-key');
+            expect(await tmdbService.getApiKey()).toBe('rotated-key');
+            expect(db.query).toHaveBeenCalledTimes(2);
         });
 
         it('should fetch API key from database', async () => {
@@ -85,7 +85,7 @@ describe('TMDBService', () => {
             const key = await tmdbService.getApiKey();
             expect(key).toBe('db-api-key');
             expect(db.query).toHaveBeenCalledWith(
-                'SELECT api_key FROM tmdb_config WHERE is_active = true LIMIT 1'
+                'SELECT * FROM tmdb_config WHERE is_active = true ORDER BY id DESC LIMIT 1'
             );
         });
 
@@ -105,7 +105,7 @@ describe('TMDBService', () => {
             ['movie', { primary_release_year: '2001' }],
             ['tv', { first_air_date_year: 2001 }],
         ])('preserves pagination and every candidate for %s with separate title/year parameters', async (type, yearParams) => {
-            tmdbService.apiKey = 'fixture-only';
+            db.query.mockResolvedValue({ rows: [{ api_key: 'fixture-only' }] });
             const data = { page: 1, total_pages: 2, total_results: 21,
                 results: Array.from({ length: 20 }, (_, i) => ({ id: i + 1 })) };
             mockHttpGet.mockResolvedValueOnce({ data });
@@ -226,7 +226,7 @@ describe('TMDBService', () => {
 
     describe('findIdentityByExternalId', () => {
         it.each([[123, 'tvdb_id'], ['tt1234', 'imdb_id']])('preserves the raw result for %j with bounded provider access', async (id, source) => {
-            tmdbService.apiKey = 'fixture-only';
+            db.query.mockResolvedValue({ rows: [{ api_key: 'fixture-only' }] });
             const data = { tv_results: [{ id: 11 }, { id: 12 }], movie_results: [] };
             mockHttpGet.mockResolvedValueOnce({ data });
             expect(await tmdbService.findIdentityByExternalId(id, source)).toBe(data);
@@ -245,7 +245,7 @@ describe('TMDBService', () => {
             });
 
         it('preserves outages instead of manufacturing an empty result', async () => {
-            tmdbService.apiKey = 'fixture-only';
+            db.query.mockResolvedValue({ rows: [{ api_key: 'fixture-only' }] });
             const failure = new Error('private upstream diagnostic');
             mockHttpGet.mockRejectedValueOnce(failure);
             await expect(tmdbService.findIdentityByExternalId('tt1234', 'imdb_id')).rejects.toBe(failure);

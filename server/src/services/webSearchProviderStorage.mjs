@@ -9,6 +9,7 @@
  */
 
 import * as defaultDb from '../config/database.mjs';
+import { readMetadataProviderConfig } from './metadataProviderConfigStore.mjs';
 import { maskToken } from '../utils/tokenMasking.mjs';
 import { normalizeWebSearchProviderKey } from './webSearchResultNormalizer.mjs';
 import { webSearchProviderHealthHistory as defaultHealthHistory } from './webSearchProviderHealthHistory.mjs';
@@ -213,13 +214,8 @@ export class WebSearchProviderStorage {
   }
 
   async getLegacyTavilyConfig({ maskSecrets = true } = {}) {
-    const result = await this.db.query(
-      `SELECT *
-         FROM tavily_config
-        ORDER BY id DESC
-        LIMIT 1`
-    );
-    return projectLegacyTavilyConfig(result.rows[0], { maskSecrets });
+    const config = await readMetadataProviderConfig(this.db, 'tavily');
+    return projectLegacyTavilyConfig(config, { maskSecrets });
   }
 
   async upsertProviderConfig(input = {}, { maskSecrets = true } = {}) {

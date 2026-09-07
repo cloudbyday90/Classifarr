@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
 -- Generated: 2026-09-07T12:36:04.892Z
--- Latest Migration: 20260907_030000_add_history_recording_instant.sql
+-- Latest Migration: 20260907_180000_consolidate_equivalent_metadata_providers.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -15445,6 +15445,7 @@ FROM unnest(ARRAY[
     '20260906_230000_add_suggestion_cohort_provenance.sql',
     '20260907_010000_add_feedback_evaluation_views.sql',
     '20260907_020000_add_feedback_source_receipts.sql',
-    '20260907_030000_add_history_recording_instant.sql'
+    '20260907_030000_add_history_recording_instant.sql',
+    '20260907_180000_consolidate_equivalent_metadata_providers.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

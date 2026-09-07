@@ -554,7 +554,9 @@ describe('webSearchProviderSettingsHandlers', () => {
   });
 
   test('updates Tavily generic storage and mirrors legacy Tavily config in one transaction', async () => {
-    const transactionClient = { query: jest.fn(async () => ({ rows: [] })) };
+    const transactionClient = { query: jest.fn(async sql => ({
+      rows: sql.includes('INSERT INTO tavily_config') ? [{ id: 7 }] : [],
+    })) };
     const transactionStorage = {
       upsertProviderConfig: jest.fn(async () => ({
         providerKey: 'tavily',
@@ -612,7 +614,10 @@ describe('webSearchProviderSettingsHandlers', () => {
       }),
       { maskSecrets: false }
     );
-    expect(transactionClient.query).toHaveBeenCalledWith('DELETE FROM tavily_config');
+    expect(transactionClient.query).toHaveBeenCalledWith('LOCK TABLE tavily_config IN SHARE ROW EXCLUSIVE MODE');
+    expect(transactionClient.query).toHaveBeenCalledWith(
+      'UPDATE tavily_config SET is_active = false WHERE id <> $1 AND is_active = true', [7]
+    );
     expect(transactionClient.query).toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO tavily_config'),
       ['live-key', 'advanced', 6, ['imdb.com'], [], true]

@@ -1,5 +1,6 @@
 import { classificationEvidenceService } from './classificationEvidenceService.mjs';
 import { classificationEvidenceRepository } from './classificationEvidenceRepository.mjs';
+import { persistMetadataProviderConfig } from './metadataProviderConfigStore.mjs';
 
 const RADARR_ALLOWED_COLUMNS = ['name', 'url', 'api_key', 'is_active', 'quality_profile_id', 'root_folder_path', 'monitored', 'search_on_add'];
 const SONARR_ALLOWED_COLUMNS = ['name', 'url', 'api_key', 'is_active', 'quality_profile_id', 'root_folder_path', 'monitored', 'search_on_add', 'season_folder'];
@@ -794,26 +795,22 @@ export async function restoreOllamaConfig(client, config) {
 
 export async function restoreTmdbConfig(client, config) {
   if (!config) return;
-  await client.query(
-    `INSERT INTO tmdb_config (api_key)
-     VALUES ($1)
-     ON CONFLICT (id) DO UPDATE SET
-       api_key = EXCLUDED.api_key`,
-    [config.api_key]
-  );
+  await persistMetadataProviderConfig(client, 'tmdb', existing => ({
+    apiKey: config.api_key,
+    language: config.language ?? existing?.language ?? 'en-US',
+    isActive: config.is_active ?? true,
+  }));
 }
 
 export async function restoreOmdbConfig(client, config) {
   if (!config) return;
-  await client.query(
-    `INSERT INTO omdb_config (api_key, is_active, daily_limit)
-     VALUES ($1, $2, $3)
-     ON CONFLICT (id) DO UPDATE SET
-       api_key = EXCLUDED.api_key,
-       is_active = EXCLUDED.is_active,
-       daily_limit = EXCLUDED.daily_limit`,
-    [config.api_key, config.is_active, config.daily_limit]
-  );
+  await persistMetadataProviderConfig(client, 'omdb', existing => ({
+    apiKey: config.api_key,
+    isActive: config.is_active ?? true,
+    dailyLimit: config.daily_limit ?? existing?.daily_limit ?? 1000,
+    requestsToday: existing?.requests_today ?? 0,
+    lastResetDate: existing?.last_reset_date ?? null,
+  }));
 }
 
 export async function restoreWebhookConfig(client, config) {

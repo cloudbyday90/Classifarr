@@ -625,7 +625,7 @@ describe('getTavilyConfig', () => {
         const result = await classificationMetadataService.getTavilyConfig();
         expect(result).toEqual(row);
         expect(db.query).toHaveBeenCalledWith(
-            'SELECT * FROM tavily_config WHERE is_active = true LIMIT 1'
+            'SELECT * FROM tavily_config WHERE is_active = true ORDER BY id DESC LIMIT 1'
         );
     });
 

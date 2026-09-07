@@ -137,14 +137,14 @@ describe('Settings metadata provider route helpers', () => {
       if (sql === 'BEGIN' || sql === 'COMMIT') {
         return { rows: [] };
       }
-      if (sql === 'SELECT * FROM tmdb_config WHERE is_active = true LIMIT 1') {
+      if (sql === 'SELECT * FROM tmdb_config ORDER BY (is_active IS TRUE) DESC, id DESC LIMIT 1') {
         return { rows: [{ api_key: 'stored-tmdb-key', language: 'fr-FR' }] };
       }
       if (typeof sql === 'string' && sql.startsWith('UPDATE tmdb_config SET is_active = false')) {
         return { rows: [] };
       }
       if (typeof sql === 'string' && sql.includes('INSERT INTO tmdb_config')) {
-        expect(params).toEqual(['stored-tmdb-key', 'fr-FR']);
+        expect(params).toEqual(['stored-tmdb-key', 'fr-FR', true]);
         return {
           rows: [{ id: 1, api_key: 'stored-tmdb-key', language: 'fr-FR', is_active: true }]
         };
@@ -172,14 +172,14 @@ describe('Settings metadata provider route helpers', () => {
       if (sql === 'BEGIN' || sql === 'COMMIT') {
         return { rows: [] };
       }
-      if (sql === 'SELECT * FROM tmdb_config WHERE is_active = true LIMIT 1') {
+      if (sql === 'SELECT * FROM tmdb_config ORDER BY (is_active IS TRUE) DESC, id DESC LIMIT 1') {
         return { rows: [{ api_key: 'stored-tmdb-key', language: 'fr-FR' }] };
       }
       if (typeof sql === 'string' && sql.startsWith('UPDATE tmdb_config SET is_active = false')) {
         return { rows: [] };
       }
       if (typeof sql === 'string' && sql.includes('INSERT INTO tmdb_config')) {
-        expect(params).toEqual(['', 'fr-FR']);
+        expect(params).toEqual(['', 'fr-FR', true]);
         return {
           rows: [{ id: 1, api_key: '', language: 'fr-FR', is_active: true }]
         };
@@ -206,7 +206,7 @@ describe('Settings metadata provider route helpers', () => {
       if (sql === 'BEGIN' || sql === 'COMMIT') {
         return { rows: [] };
       }
-      if (sql === 'SELECT * FROM tavily_config LIMIT 1') {
+      if (sql === 'SELECT * FROM tavily_config ORDER BY (is_active IS TRUE) DESC, id DESC LIMIT 1') {
         return {
           rows: [{
             api_key: 'stored-tavily-key',
@@ -266,7 +266,7 @@ describe('Settings metadata provider route helpers', () => {
       if (sql === 'BEGIN' || sql === 'COMMIT') {
         return { rows: [] };
       }
-      if (sql === 'SELECT * FROM tavily_config LIMIT 1') {
+      if (sql === 'SELECT * FROM tavily_config ORDER BY (is_active IS TRUE) DESC, id DESC LIMIT 1') {
         return {
           rows: [{
             api_key: 'stored-tavily-key',
@@ -316,7 +316,7 @@ describe('Settings metadata provider route helpers', () => {
       if (sql === 'BEGIN' || sql === 'COMMIT') {
         return { rows: [] };
       }
-      if (sql === 'SELECT * FROM omdb_config LIMIT 1') {
+      if (sql === 'SELECT * FROM omdb_config ORDER BY (is_active IS TRUE) DESC, id DESC LIMIT 1') {
         return {
           rows: [{
             api_key: 'stored-omdb-key',
@@ -368,7 +368,7 @@ describe('Settings metadata provider route helpers', () => {
       if (sql === 'BEGIN' || sql === 'COMMIT') {
         return { rows: [] };
       }
-      if (sql === 'SELECT * FROM omdb_config LIMIT 1') {
+      if (sql === 'SELECT * FROM omdb_config ORDER BY (is_active IS TRUE) DESC, id DESC LIMIT 1') {
         return {
           rows: [{
             api_key: 'stored-omdb-key',
@@ -472,7 +472,7 @@ describe('Settings metadata provider route helpers', () => {
       if (sql === 'BEGIN' || sql === 'ROLLBACK') {
         return { rows: [] };
       }
-      if (sql === 'SELECT * FROM tmdb_config WHERE is_active = true LIMIT 1') {
+      if (sql === 'SELECT * FROM tmdb_config ORDER BY (is_active IS TRUE) DESC, id DESC LIMIT 1') {
         return { rows: [{ api_key: 'stored-tmdb-key', language: 'en-US' }] };
       }
       if (typeof sql === 'string' && sql.startsWith('UPDATE tmdb_config SET is_active = false')) {
@@ -587,7 +587,7 @@ describe('Settings metadata provider route helpers', () => {
       if (sql === 'BEGIN' || sql === 'ROLLBACK') {
         return { rows: [] };
       }
-      if (sql === 'SELECT * FROM tavily_config LIMIT 1') {
+      if (sql === 'SELECT * FROM tavily_config ORDER BY (is_active IS TRUE) DESC, id DESC LIMIT 1') {
         return { rows: [{ api_key: 'stored-tavily-key', max_results: 8 }] };
       }
       if (typeof sql === 'string' && sql.startsWith('DELETE FROM tavily_config')) {

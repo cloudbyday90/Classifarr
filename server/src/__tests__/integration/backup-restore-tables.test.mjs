@@ -414,7 +414,7 @@ describe('Backup Restore Tables Integration Tests', () => {
 
     describe('restoreTmdbConfig', () => {
         it('inserts tmdb config', async () => {
-            await restoreTmdbConfig(db, { api_key: 'tmdb-key-123' });
+            await db.withTransaction(client => restoreTmdbConfig(client, { api_key: 'tmdb-key-123' }));
 
             const result = await db.query('SELECT * FROM tmdb_config');
             expect(result.rows).toHaveLength(1);
@@ -424,7 +424,7 @@ describe('Backup Restore Tables Integration Tests', () => {
 
     describe('restoreOmdbConfig', () => {
         it('inserts omdb config', async () => {
-            await restoreOmdbConfig(db, { api_key: 'omdb-key', is_active: true, daily_limit: 1000 });
+            await db.withTransaction(client => restoreOmdbConfig(client, { api_key: 'omdb-key', is_active: true, daily_limit: 1000 }));
 
             const result = await db.query('SELECT * FROM omdb_config');
             expect(result.rows).toHaveLength(1);

@@ -13,6 +13,7 @@ import { ValidationError } from '../../utils/appError.mjs';
 import { sendData } from '../../utils/responseHelpers.mjs';
 import { normalizeWebSearchProviderKey } from '../../services/webSearchResultNormalizer.mjs';
 import { buildWebSearchProviderRouteDiagnostics } from '../../services/webSearchProviderRouteDiagnostics.mjs';
+import { persistMetadataProviderConfig } from '../../services/metadataProviderConfigStore.mjs';
 import {
   buildLegacyTavilyConfigFromProvider,
   buildWebSearchProviderMutationPayload,
@@ -27,21 +28,7 @@ function storageWithDb(storage, db) {
 async function mirrorTavilyLegacyConfig(dbClient, providerConfig) {
   const legacyConfig = buildLegacyTavilyConfigFromProvider(providerConfig);
 
-  await dbClient.query('DELETE FROM tavily_config');
-  return dbClient.query(
-    `INSERT INTO tavily_config
-       (api_key, search_depth, max_results, include_domains, exclude_domains, is_active, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, NOW())
-     RETURNING *`,
-    [
-      legacyConfig.apiKey,
-      legacyConfig.searchDepth,
-      legacyConfig.maxResults,
-      legacyConfig.includeDomains,
-      legacyConfig.excludeDomains,
-      legacyConfig.isActive,
-    ]
-  );
+  return persistMetadataProviderConfig(dbClient, 'tavily', () => legacyConfig);
 }
 
 function requireProviderKey(providerKey) {
@@ -106,10 +93,8 @@ export function createWebSearchProviderSettingsHandlers({
 }) {
   async function saveProviderConfig(payload) {
     if (typeof db.withTransaction !== 'function') {
+      if (payload.providerKey === 'tavily') throw new Error('Tavily configuration requires a transaction');
       const saved = await webSearchProviderStorage.upsertProviderConfig(payload, { maskSecrets: false });
-      if (payload.providerKey === 'tavily') {
-        await mirrorTavilyLegacyConfig(db, saved);
-      }
       return saved;
     }
 

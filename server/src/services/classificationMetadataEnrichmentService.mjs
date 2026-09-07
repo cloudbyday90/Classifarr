@@ -9,6 +9,7 @@
  */
 
 import * as db from '../config/database.mjs';
+import { readMetadataProviderConfig } from './metadataProviderConfigStore.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { tmdbService } from './tmdb.mjs';
 import { mightBeAnime } from './classificationMetadataServiceShared.mjs';
@@ -68,8 +69,7 @@ export async function enrichWithTMDB(...args) {
 }
 
 export async function getTavilyConfig() {
-  const result = await db.query('SELECT * FROM tavily_config WHERE is_active = true LIMIT 1');
-  return result.rows[0] || null;
+  return readMetadataProviderConfig(db, 'tavily', { activeOnly: true });
 }
 
 async function searchEnrichment(webSearchEnrichmentService, request, stage) {

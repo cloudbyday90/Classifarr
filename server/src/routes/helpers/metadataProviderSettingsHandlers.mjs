@@ -26,6 +26,7 @@ import {
 import { asyncHandler } from '../../utils/asyncHandler.mjs';
 import { ValidationError } from '../../utils/appError.mjs';
 import { sendData } from '../../utils/responseHelpers.mjs';
+import { persistMetadataProviderConfig, readMetadataProviderConfig } from '../../services/metadataProviderConfigStore.mjs';
 
 /** @typedef {import('./settingsRouteContracts.mjs').SettingsRequest} SettingsRequest */
 /** @typedef {import('./settingsRouteContracts.mjs').SettingsBodyRequest<MetadataProviderHandlerBody>} MetadataProviderRequest */
@@ -175,19 +176,8 @@ export function createMetadataProviderSettingsHandlers({
 
     /** @param {MetadataProviderRequest} req @param {SettingsResponse} res */
     updateTmdbConfig: asyncHandler(async (req, res) => {
-      const result = await db.withTransaction(async (client) => {
-        const existingConfig = await fetchSingleProviderConfig(client, 'tmdb_config', { activeOnly: true });
-        const payload = buildTmdbConfigMutationPayload(req.body, existingConfig);
-
-        await client.query('UPDATE tmdb_config SET is_active = false');
-
-        return client.query(
-          `INSERT INTO tmdb_config (api_key, language, is_active)
-           VALUES ($1, $2, true)
-           RETURNING *`,
-          [payload.apiKey, payload.language]
-        );
-      });
+      const result = await db.withTransaction(client => persistMetadataProviderConfig(client, 'tmdb',
+        existing => buildTmdbConfigMutationPayload(req.body, existing)));
 
       return sendData(res, maskProviderApiKey(result.rows[0] || null));
     }),
@@ -223,27 +213,8 @@ export function createMetadataProviderSettingsHandlers({
 
     /** @param {MetadataProviderRequest} req @param {SettingsResponse} res */
     updateTavilyConfig: asyncHandler(async (req, res) => {
-      const result = await db.withTransaction(async (client) => {
-        const existingConfig = await fetchSingleProviderConfig(client, 'tavily_config');
-        const payload = buildTavilyConfigMutationPayload(req.body, existingConfig);
-
-        await client.query('DELETE FROM tavily_config');
-
-        return client.query(
-          `INSERT INTO tavily_config
-           (api_key, search_depth, max_results, include_domains, exclude_domains, is_active, updated_at)
-           VALUES ($1, $2, $3, $4, $5, $6, NOW())
-           RETURNING *`,
-          [
-            payload.apiKey,
-            payload.searchDepth,
-            payload.maxResults,
-            payload.includeDomains,
-            payload.excludeDomains,
-            payload.isActive,
-          ]
-        );
-      });
+      const result = await db.withTransaction(client => persistMetadataProviderConfig(client, 'tavily',
+        existing => buildTavilyConfigMutationPayload(req.body, existing)));
 
       return sendData(res, maskProviderApiKey(result.rows[0] || null));
     }),
@@ -295,19 +266,8 @@ export function createMetadataProviderSettingsHandlers({
 
     /** @param {MetadataProviderRequest} req @param {SettingsResponse} res */
     updateOmdbConfig: asyncHandler(async (req, res) => {
-      const result = await db.withTransaction(async (client) => {
-        const existing = await fetchSingleProviderConfig(client, 'omdb_config');
-        const payload = buildOmdbConfigMutationPayload(req.body, existing);
-
-        await client.query('DELETE FROM omdb_config');
-
-        return client.query(
-          `INSERT INTO omdb_config (id, api_key, is_active, daily_limit, requests_today, last_reset_date, updated_at)
-           VALUES (1, $1, $2, $3, $4, $5, NOW())
-           RETURNING *`,
-          [payload.apiKey, payload.isActive, payload.dailyLimit, payload.requestsToday, payload.lastResetDate]
-        );
-      });
+      const result = await db.withTransaction(client => persistMetadataProviderConfig(client, 'omdb',
+        existing => buildOmdbConfigMutationPayload(req.body, existing)));
 
       const finalIsActive = result.rows[0]?.is_active;
       if (finalIsActive) {
@@ -335,13 +295,13 @@ export function createMetadataProviderSettingsHandlers({
     /** @param {MetadataProviderRequest} req @param {SettingsResponse} res */
     searchOmdb: asyncHandler(async (req, res) => {
       const { title, year, type } = req.body || {};
-      const configResult = await db.query('SELECT api_key FROM omdb_config WHERE is_active = true LIMIT 1');
+      const config = await readMetadataProviderConfig(db, 'omdb', { activeOnly: true });
 
-      if (!configResult.rows[0]?.api_key) {
+      if (!config?.api_key) {
         throw new ValidationError(buildMissingOmdbConfigurationResponse().body.error);
       }
 
-      const result = await omdbService.getByTitle(title, year, type, configResult.rows[0].api_key);
+      const result = await omdbService.getByTitle(title, year, type, config.api_key);
       return sendData(res, result);
     }),
 
