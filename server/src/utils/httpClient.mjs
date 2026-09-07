@@ -26,17 +26,17 @@
  *    need minimal changes.
  *  • axios-compatible error shape: `error.response?.{ status, data }` for HTTP
  *    errors; `error.code` (ECONNREFUSED, ETIMEDOUT, …) for network errors.
- *  • AbortSignal.timeout() for timeouts — no need for a separate abort
- *    controller just to enforce deadlines.
+ *  • Native caller cancellation composed with the request deadline for buffered calls.
  *  • Optional per-request decoded response byte limits for buffered calls.
  *  • `httpGetBinary` for arraybuffer downloads (image embeddings).
  *  • `httpStream` for NDJSON/SSE streaming (ollama generate).
  *
- * Node.js version requirement: >=24.11.0 (enforced by server/package.json engines).
+ * Node.js version requirement: see server/package.json engines.
  * `undici` is bundled with Node.js ≥18 and accessible as an npm package.
  */
 
 import { withBufferedHttpTransport } from './httpClientTransport.mjs';
+import { createRequestCancellation } from './requestCancellation.mjs';
 import { HttpResponseTooLargeError, parseHttpResponseBody, readBoundedResponseBody,
   validateResponseByteLimit } from './httpResponseBody.mjs';
 
@@ -63,6 +63,7 @@ import { HttpResponseTooLargeError, parseHttpResponseBody, readBoundedResponseBo
  *   headers?: Record<string, string>,
  *   body?: unknown,
  *   timeout?: number,
+ *   signal?: AbortSignal | null,
  *   rejectUnauthorized?: boolean,
  *   maxResponseBytes?: number,
  * }} HttpRequestOptions
@@ -139,10 +140,12 @@ async function request(method, url, {
   headers = {},
   body,
   timeout = 30_000,
+  signal,
   rejectUnauthorized = true,
   maxResponseBytes,
 } = /** @type {HttpRequestOptions} */ ({})) {
   if (maxResponseBytes !== undefined) validateResponseByteLimit(maxResponseBytes);
+  const cancellation = createRequestCancellation(timeout, signal);
   const fullUrl = `${url}${buildSearchParams(params)}`;
 
   const init = {
@@ -151,12 +154,13 @@ async function request(method, url, {
       ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
       ...headers,
     },
-    signal: AbortSignal.timeout(timeout),
+    signal: cancellation.signal,
   };
 
   if (body !== undefined) {
     init.body = JSON.stringify(body);
   }
+  cancellation.throwIfAborted();
 
   return withBufferedHttpTransport(rejectUnauthorized, async (fetchRequest, dispatcher) => {
     if (dispatcher) init.dispatcher = dispatcher;
@@ -164,6 +168,7 @@ async function request(method, url, {
     try {
       response = await fetchRequest(fullUrl, init);
     } catch (cause) {
+      cancellation.throwIfAborted();
       throw normalizeNetworkError(cause);
     }
 
@@ -172,8 +177,10 @@ async function request(method, url, {
       data = await parseHttpResponseBody(response, maxResponseBytes);
     } catch (cause) {
       if (cause instanceof HttpResponseTooLargeError) throw cause;
-      throw normalizeNetworkError(init.signal.aborted ? init.signal.reason : cause);
+      cancellation.throwIfAborted();
+      throw normalizeNetworkError(cause);
     }
+    cancellation.throwIfAborted();
 
     if (!response.ok) {
       throw createHttpError(response, data);
@@ -212,35 +219,40 @@ export async function httpDelete(url, options = {}) {
  * Used for image embeddings where the response is an image file.
  *
  * @param {string} url
- * @param {{ timeout?: number, headers?: Record<string, string>, maxBytes?: number }} options
+ * @param {{ timeout?: number, headers?: Record<string, string>, maxBytes?: number, signal?: AbortSignal | null }} options
  * @returns {Promise<Buffer>}
  */
-export async function httpGetBinary(url, { timeout = 30_000, headers = {}, maxBytes } = {}) {
+export async function httpGetBinary(url, { timeout = 30_000, headers = {}, maxBytes, signal } = {}) {
   if (maxBytes !== undefined) validateResponseByteLimit(maxBytes);
-  const signal = AbortSignal.timeout(timeout);
+  const cancellation = createRequestCancellation(timeout, signal);
   let response;
   try {
     response = await fetch(url, {
       method: 'GET',
       headers,
-      signal,
+      signal: cancellation.signal,
     });
   } catch (cause) {
+    cancellation.throwIfAborted();
     throw normalizeNetworkError(cause);
   }
 
   if (!response.ok) {
     if (response.body) await Promise.allSettled([response.body.cancel()]);
+    cancellation.throwIfAborted();
     throw createHttpError(response, null);
   }
 
   try {
-    return maxBytes === undefined
+    const data = maxBytes === undefined
       ? Buffer.from(await response.arrayBuffer())
       : await readBoundedResponseBody(response, maxBytes);
+    cancellation.throwIfAborted();
+    return data;
   } catch (cause) {
     if (cause instanceof HttpResponseTooLargeError) throw cause;
-    throw normalizeNetworkError(signal.aborted ? signal.reason : cause);
+    cancellation.throwIfAborted();
+    throw normalizeNetworkError(cause);
   }
 }
 

@@ -38,6 +38,14 @@ test('disposes the custom Agent when reading the response fails', async () => {
   expect(destroy).toHaveBeenCalledTimes(1);
 });
 
+test('does not allocate an Agent or dispatch an already cancelled request', async () => {
+  await expect(httpGet('https://fixture.invalid', {
+    rejectUnauthorized: false, signal: AbortSignal.abort('private reason'),
+  })).rejects.toMatchObject({ code: 'ABORT_ERR' });
+  expect(Agent).not.toHaveBeenCalled();
+  expect(undiciFetch).not.toHaveBeenCalled();
+});
+
 test('cancels an oversized custom-transport body before disposing its Agent', async () => {
   const cancel = jest.fn(() => { expect(destroy).not.toHaveBeenCalled(); });
   const response = new Response(new ReadableStream({

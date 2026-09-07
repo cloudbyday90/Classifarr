@@ -21,6 +21,7 @@ export async function executeCloudEmbedding({ text, model, config, signal, url, 
         baseDelay,
         multiplier: backoffMultiplier,
         jitter,
+        signal,
         onRetry: (error, attempt, delay) => {
             logger.warn(`Retrying ${providerName} embedding request`, {
                 attempt: attempt + 1,

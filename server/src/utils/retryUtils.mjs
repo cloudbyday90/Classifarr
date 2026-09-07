@@ -9,6 +9,7 @@
  */
 
 import { setTimeout as sleepFor } from 'node:timers/promises';
+import { throwIfCancelled } from './requestCancellation.mjs';
 
 /**
  * Retry utilities for handling transient errors with exponential backoff
@@ -75,6 +76,10 @@ export function parseRetryAfter(header) {
  * @returns {boolean} True if error is retryable
  */
 export function isRetryableError(error) {
+	if (error.name === 'AbortError' || error.code === 'ABORT_ERR' || error.code === 'ERR_CANCELED') {
+		return false;
+	}
+
 	if (error.code === 'ECONNRESET' ||
 		error.code === 'ENOTFOUND' ||
 		error.code === 'ETIMEDOUT' ||
@@ -140,21 +145,25 @@ export function getRetryDelay(error, attempt, options = {}) {
  * @param {number} options.jitter - Jitter factor 0-1 (default: 0.3)
  * @param {number} options.maxDelay - Maximum delay in milliseconds (default: 60000)
  * @param {Function} options.onRetry - Callback on retry (error, attempt, delay)
+ * @param {AbortSignal | null} [options.signal] - Cancels retry admission and backoff
  * @returns {Function} Wrapped function
  */
 export function withRetry(fn, options = {}) {
 	const {
 		maxRetries = 3,
-		onRetry = null
+		onRetry = null,
+		signal = null
 	} = options;
 
 	return async function (...args) {
 		let lastError;
 
 		for (let attempt = 0; attempt <= maxRetries; attempt++) {
+			throwIfCancelled(signal);
 			try {
 				return await fn(...args);
 			} catch (error) {
+				throwIfCancelled(signal);
 				lastError = error;
 
 				if (!isRetryableError(error) || attempt === maxRetries) {
@@ -167,7 +176,12 @@ export function withRetry(fn, options = {}) {
 					onRetry(error, attempt, delay);
 				}
 
-				await sleepFor(delay);
+				try {
+					await sleepFor(delay, undefined, { signal: signal ?? undefined });
+				} catch (cause) {
+					throwIfCancelled(signal);
+					throw cause;
+				}
 			}
 		}
 

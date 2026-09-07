@@ -191,3 +191,12 @@ The no-cache rebuilt container passed 23 byte-limit assertions across 16 local H
 requests and the authenticated inventory/settings smoke checks. The startup/smoke
 sample contained eight slow-query warnings and zero error/fatal or provider-drift
 records.
+
+## Buffered cancellation follow-up
+
+The [buffered cancellation outcome](buffered-http-cancellation-outcome.md) records
+the repair for ignored caller signals and uninterruptible embedding retry waits.
+Native signal composition retains deadlines through body consumption, while
+fixed cancellation errors stop retry admission and abortable backoff. This adds
+no operator workflow or classification authority. Explicit byte budgets for
+remaining provider responses are the next recommended compatibility assessment.

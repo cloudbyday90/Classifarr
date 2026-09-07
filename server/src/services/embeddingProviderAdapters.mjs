@@ -60,6 +60,7 @@ export function createAdapterMethods({ getAdaptiveTimeout, createRetriedOperatio
             baseDelay,
             multiplier: backoffMultiplier,
             jitter,
+            signal,
             onRetry: (error, attempt, delay) => {
                 logger.warn('Retrying Ollama embedding request', {
                     attempt: attempt + 1,

@@ -282,6 +282,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- Buffered HTTP requests and embedding retry waits now honor caller cancellation,
+  stopping cancelled work promptly while retaining request deadlines and response
+  limits. Cancellation no longer enters transient retry handling.
+
 - Stop oversized OMDb responses and image downloads while reading them, before
   buffering or parsing the complete body. Preserve interrupted JSON transfers as
   errors so unavailable evidence cannot appear as an empty response.

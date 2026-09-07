@@ -807,6 +807,11 @@ image downloads enforce their existing 10 MiB limit during transfer. Other
 buffered HTTP callers can opt into a suitable budget. See the
 [HTTP limits design](docs/architecture/http-response-limits-design.md) and
 [validation outcome](docs/architecture/http-response-limits-outcome.md).
+Buffered HTTP requests and binary downloads honor caller cancellation while keeping
+their request deadlines. Cloud and direct-host Ollama embedding retry waits also
+stop on cancellation. See the
+[cancellation design](docs/architecture/buffered-http-cancellation-design.md) and
+[validation outcome](docs/architecture/buffered-http-cancellation-outcome.md).
 Malformed observations repair automatically after cooldown using the full
 attributable observation validator. Bounded background passes advance past fresh
 records, while valid empty captures remain cached. See the
