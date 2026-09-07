@@ -5,6 +5,7 @@ import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 const { feedbackAnalysis } = await import('../../services/feedbackAnalysis.mjs');
 const { readEligiblePolicyFeedback } = await import('../../services/feedbackAnalysisEvidence.mjs');
+const { COHORT_VERSION } = await import('../../services/feedbackAnalysisCohortContract.mjs');
 let db, destination, other, policyId;
 
 beforeEach(async () => {
@@ -148,3 +149,29 @@ test('disabled policies can still be explicitly analyzed using a read-only evide
         await peer.query('COMMIT');
     } finally { await peer.query('ROLLBACK'); peer.release(); }
 });
+
+test.each(['genres', 'keywords', 'production_companies'].flatMap(field => [1, 2, 3].map(count => [field, count])))(
+    '%s repeats in %i correction records cannot inflate stored pattern confidence', async (field, count) => {
+        const support = await addFeedback(count, { correction: true });
+        await addFeedback(5 - count);
+        const metadata = { [field]: [' Action ', { name: 'Action' }, { tag: 'Action' }, { title: 'Action' }] };
+        await db.query('UPDATE policy_feedback_log SET item_metadata=$1 WHERE id=ANY($2::integer[])', [metadata, support]);
+        const before = (await db.query('SELECT * FROM policy_feedback_log WHERE selected_policy_id=$1 ORDER BY id', [policyId])).rows;
+        const result = await feedbackAnalysis.analyzePolicy(policyId);
+        expect(result.feedbackCount).toBe(5);
+        const suggestions = result.suggestions.filter(row => row.suggestion_type === 'create_pattern');
+        if (count === 1) {
+            expect(result.analysis.newPatterns).toEqual([]);
+            expect(result.analysis.failurePatterns.missedPositives).toEqual([]);
+            expect(suggestions).toEqual([]);
+        } else {
+            expect(suggestions).toHaveLength(1);
+            expect(suggestions[0]).toMatchObject({ suggestion_config: { pattern_value: 'Action', confidence: count * 20 }, confidence: count * 15 });
+            const stored = (await db.query(`SELECT pts.supporting_feedback_ids,c.manifest FROM policy_tuning_suggestions pts
+                JOIN policy_tuning_cohorts c ON c.fingerprint=pts.cohort_fingerprint WHERE pts.id=$1`, [suggestions[0].id])).rows[0];
+            expect(stored.supporting_feedback_ids.sort((a, b) => a - b)).toEqual(support.sort((a, b) => a - b));
+            expect(stored.manifest.version).toBe(COHORT_VERSION);
+            expect(stored.manifest.feedback.find(row => row.id === support[0]).item_metadata).toEqual(metadata);
+        }
+        expect((await db.query('SELECT * FROM policy_feedback_log WHERE selected_policy_id=$1 ORDER BY id', [policyId])).rows).toEqual(before);
+    });

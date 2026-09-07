@@ -86,6 +86,9 @@ of linked presets, overrides, provider configuration, or a whole-model revision.
 
 ## Next item
 
+Completed by the [metadata-vote follow-up](feedback-metadata-votes-outcome.md).
+The original recommendation below records the handoff from this provenance work.
+
 **Count each feedback item once per normalized metadata value.** A local
 reproduction using one feedback row with three identical `Action` genres produced
 `count: 3` and `feedbackIds: [1, 1, 1]`. Stored supporting IDs are now unique, but

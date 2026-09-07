@@ -80,7 +80,9 @@ export async function applySuggestion(suggestionId, userId) {
             applied = true;
         } else if (suggestion.suggestion_type === 'create_pattern') {
             const libraryResult = await client.query(`
-                SELECT library_id FROM library_policies WHERE id = $1
+                SELECT lp.library_id, l.name AS library_name
+                FROM library_policies lp JOIN libraries l ON l.id = lp.library_id
+                WHERE lp.id = $1
             `, [suggestion.policy_id]);
 
             if (libraryResult.rows.length > 0) {
@@ -91,19 +93,21 @@ export async function applySuggestion(suggestionId, userId) {
                         pattern_type,
                         pattern_value,
                         library_id,
+                        library_name,
                         confidence,
-                        status,
-                        source
+                        status
                     )
-                    VALUES ($1, $2, $3, $4, 'approved', 'feedback_analysis')
+                    VALUES ($1, $2, $3, $4, $5, 'approved')
                     ON CONFLICT (pattern_type, pattern_value, library_id) DO UPDATE
                     SET confidence = GREATEST(discovered_patterns.confidence, EXCLUDED.confidence),
+                        library_name = EXCLUDED.library_name,
                         status = 'approved',
                         updated_at = NOW()
                 `, [
                     config.pattern_type,
                     config.pattern_value,
                     library_id,
+                    libraryResult.rows[0].library_name,
                     config.confidence
                 ]);
                 applied = true;

@@ -78,7 +78,8 @@ export function groupByMetadataField(feedback, field) {
             if (!values) continue;
             if (values.length === 0) continue;
 
-            for (const value of values) {
+            // One feedback record contributes at most one vote per normalized value.
+            for (const value of new Set(values)) {
                 if (!groups[value]) {
                     groups[value] = { count: 0, feedbackIds: [] };
                 }

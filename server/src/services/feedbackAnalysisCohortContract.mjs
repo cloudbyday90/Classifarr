@@ -2,7 +2,8 @@
 import { createHash } from 'node:crypto';
 import { ConflictError, ValidationError } from '../utils/appError.mjs';
 
-export const COHORT_VERSION = 'feedback_suggestions.v1';
+// Includes analysis semantics: v2 counts each normalized value once per feedback row.
+export const COHORT_VERSION = 'feedback_suggestions.v2';
 export const MAX_COHORT_ROWS = 5000;
 export const MAX_COHORT_BYTES = 2 * 1024 * 1024;
 const metadataKeys = ['genres', 'production_companies', 'keywords', 'belongs_to_collection'];

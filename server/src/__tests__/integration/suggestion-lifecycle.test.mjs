@@ -289,3 +289,71 @@ test('evidence share locks protect the validation-to-commit interval', async () 
         await expect(writer.query('UPDATE policy_feedback_log SET was_correction=false WHERE selected_policy_id=$1', [policyId])).resolves.toMatchObject({ rowCount: 10 });
     } finally { await client.query('ROLLBACK'); await writer.query('ROLLBACK'); client.release(); writer.release(); }
 });
+
+test('v1 analysis cannot be applied even when its feedback and configuration are unchanged', async () => {
+    const cohort = await captureSuggestionCohort(policyId);
+    cohort.version = 'feedback_suggestions.v1';
+    await attachSuggestionCohort(db, suggestionId, cohort);
+    const before = await snapshot();
+    await expect(applySuggestion(suggestionId, userId)).rejects.toMatchObject({ statusCode: 409, code: 'SUGGESTION_EVIDENCE_STALE' });
+    expect(await snapshot()).toEqual(before);
+    await expect(rejectSuggestion(suggestionId, userId, 'Obsolete analysis')).resolves.toMatchObject({ success: true });
+});
+
+test.each([1, 3])('normal analysis supersedes an inflated v1 pattern supported by %i correction records', async count => {
+    const feedback = (await db.query('SELECT id FROM policy_feedback_log WHERE selected_policy_id=$1 ORDER BY id', [policyId])).rows;
+    const support = feedback.slice(0, count).map(row => row.id);
+    await db.query('UPDATE policy_feedback_log SET was_correction=(id=ANY($2::integer[])),item_metadata=$3 WHERE selected_policy_id=$1',
+        [policyId, support, { genres: ['Action', 'Action', 'Action'] }]);
+    await db.query(`UPDATE policy_tuning_suggestions SET suggestion_type='create_pattern',suggestion_config=$2,
+        supporting_feedback_ids=$3,confidence=85 WHERE id=$1`,
+    [suggestionId, { pattern_type: 'genre', pattern_value: 'Action', confidence: 90 }, support]);
+    const cohort = await captureSuggestionCohort(policyId);
+    cohort.version = 'feedback_suggestions.v1';
+    await attachSuggestionCohort(db, suggestionId, cohort);
+    const before = (await snapshot()).suggestion;
+    const first = await feedbackAnalysis.analyzePolicy(policyId);
+    const original = (await snapshot()).suggestion;
+    expect(original).toEqual({ ...before, status: 'superseded', superseded_at: expect.any(Date) });
+    const replacements = first.suggestions.filter(row => row.suggestion_type === 'create_pattern');
+    if (count === 1) {
+        expect(replacements).toEqual([]);
+    } else {
+        expect(replacements).toHaveLength(1);
+        expect(replacements[0]).toMatchObject({ suggestion_config: { confidence: 60 }, confidence: 45 });
+        await expect(applySuggestion(replacements[0].id, userId)).resolves.toMatchObject({ success: true });
+        expect((await db.query('SELECT confidence,library_name FROM discovered_patterns WHERE library_id=$1', [libraryId])).rows).toEqual([{ confidence: '60.00', library_name: 'Lifecycle' }]);
+    }
+    expect((await db.query('SELECT manifest FROM policy_tuning_cohorts WHERE fingerprint=$1', [before.cohort_fingerprint])).rows[0].manifest).toEqual(cohort);
+});
+
+test.each(['applied', 'rejected'])('analysis preserves existing %s v1 history', async status => {
+    const cohort = await captureSuggestionCohort(policyId);
+    cohort.version = 'feedback_suggestions.v1';
+    await attachSuggestionCohort(db, suggestionId, cohort);
+    await db.query('UPDATE policy_tuning_suggestions SET status=$1,reviewed_at=NOW(),reviewed_by=$2 WHERE id=$3', [status, userId, suggestionId]);
+    const before = (await snapshot()).suggestion;
+    await feedbackAnalysis.analyzePolicy(policyId);
+    expect((await snapshot()).suggestion).toEqual(before);
+});
+
+
+test.each([false, true])('failed pattern audit rolls back the %s existing-pattern branch', async existing => {
+    await db.query(`UPDATE policy_tuning_suggestions SET suggestion_type='create_pattern',suggestion_config=$2 WHERE id=$1`,
+        [suggestionId, { pattern_type: 'genre', pattern_value: 'Action', confidence: 60 }]);
+    await attachSuggestionCohort(db, suggestionId, await captureSuggestionCohort(policyId));
+    if (existing) await db.query(`INSERT INTO discovered_patterns(pattern_type,pattern_value,library_id,library_name,confidence,status)
+        VALUES('genre','Action',$1,'Previous name',75,'discovered')`, [libraryId]);
+    const before = await snapshot();
+    const patternsBefore = (await db.query('SELECT * FROM discovered_patterns WHERE library_id=$1', [libraryId])).rows;
+    await db.query("ALTER TABLE policy_change_log ADD CONSTRAINT metadata_votes_fixture_failure CHECK(change_type <> 'create_pattern') NOT VALID");
+    try {
+        await expect(applySuggestion(suggestionId, userId)).rejects.toThrow(/metadata_votes_fixture_failure/);
+        expect(await snapshot()).toEqual(before);
+        expect((await db.query('SELECT * FROM discovered_patterns WHERE library_id=$1', [libraryId])).rows).toEqual(patternsBefore);
+    } finally { await db.query('ALTER TABLE policy_change_log DROP CONSTRAINT metadata_votes_fixture_failure'); }
+    await expect(applySuggestion(suggestionId, userId)).resolves.toMatchObject({ success: true });
+    expect((await db.query('SELECT confidence,library_name,status FROM discovered_patterns WHERE library_id=$1', [libraryId])).rows)
+        .toEqual([{ confidence: existing ? '75.00' : '60.00', library_name: 'Lifecycle', status: 'approved' }]);
+    expect((await snapshot()).audit).toHaveLength(1);
+});

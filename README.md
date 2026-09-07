@@ -137,6 +137,12 @@ legacy suggestions can still be dismissed. No automatic routing is introduced.
 See the [cohort design](docs/architecture/suggestion-cohort-design.md) and
 [validation outcome](docs/architecture/suggestion-cohort-outcome.md).
 
+Each normalized metadata value contributes one pattern vote per feedback record.
+Cohort version 2 records this counting rule; suggestions from version 1 must be
+regenerated through normal analysis before application. See the
+[metadata-vote design](docs/architecture/feedback-metadata-votes-design.md) and
+[outcome](docs/architecture/feedback-metadata-votes-outcome.md).
+
 <p align="center">
   <img src="./docs/assets/issue-262-classification-flow-v042.svg" alt="Classifarr classification flow diagram" width="1100" />
 </p>

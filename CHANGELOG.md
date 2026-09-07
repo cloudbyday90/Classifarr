@@ -246,6 +246,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Feedback pattern confidence** — Repeated metadata values count once per
+  feedback record, preventing inflated pattern support and confidence. Old
+  suggestion cohorts require fresh analysis, and applying regenerated pattern
+  suggestions now uses the correct database fields.
+
 - **Suggestion review lifecycle** — Apply and reject now allow one terminal transition
   from pending, preserving review history during retries and concurrent requests.
   Application metadata and policy changes commit together; stale dashboard actions
