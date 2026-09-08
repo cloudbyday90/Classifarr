@@ -26,8 +26,8 @@ declared specialized purpose and matching, verifiable normal lifecycle evidence.
 The re-audit source is now v2. It includes fixed lifecycle transition counts and
 the complete-evidence count. The scheduler runs the existing private eligibility
 audit only when both counts are positive. It first stops on a zero lifecycle
-count before reading the purpose inventory. It otherwise returns `null` without
-writing its cursor or scanning candidates.
+count before reading the purpose inventory. It otherwise checkpoints a changed
+aggregate source without scanning candidates or recording an audit receipt.
 
 ```text
 aggregate lifecycle receipt ─┐

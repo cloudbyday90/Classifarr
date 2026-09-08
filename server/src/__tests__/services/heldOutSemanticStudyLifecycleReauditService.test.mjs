@@ -8,9 +8,13 @@ import {
   createHeldOutSemanticStudyLifecycleReauditService,
 } from '../../services/heldOutSemanticStudyLifecycleReauditService.mjs';
 import {
+  buildHeldOutSemanticStudyLifecycleReauditSource,
   HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT_MAXIMUM_ATTEMPTS,
   heldOutSemanticStudyLifecycleReauditSourceFingerprint,
 } from '../../services/heldOutSemanticStudyLifecycleReauditContract.mjs';
+import {
+  buildHeldOutSemanticStudyLifecycleReauditPurposeEvidence,
+} from '../../services/heldOutSemanticStudyLifecycleReauditPurposeEvidence.mjs';
 
 function sourceRecord({ initial = 0, changed = 0, rebuild = 0 } = {}) {
   return {
@@ -35,6 +39,21 @@ function completePurposeEvidenceRecord() {
   };
 }
 
+function incompletePurposeEvidenceRecord() {
+  return {
+    ...completePurposeEvidenceRecord(),
+    retained_purpose_policy_count: 0,
+    complete_policy_evidence_count: 0,
+  };
+}
+
+function sourceFor(record, purposeEvidenceRecord = completePurposeEvidenceRecord()) {
+  return buildHeldOutSemanticStudyLifecycleReauditSource(
+    record,
+    buildHeldOutSemanticStudyLifecycleReauditPurposeEvidence(purposeEvidenceRecord),
+  );
+}
+
 function completeAuditReceipt() {
   return Object.freeze({
     version: 'policy.held_out_semantic_study_eligibility_audit.v3',
@@ -54,144 +73,134 @@ function completeAuditReceipt() {
   });
 }
 
-test('does not run the eligibility audit before a normal lifecycle receipt exists', async () => {
-  const audit = { audit: jest.fn() };
-  const loadPurposeEvidenceRecord = jest.fn();
-  const saveState = jest.fn();
-  const service = createHeldOutSemanticStudyLifecycleReauditService({
+function createService({
+  audit = { audit: jest.fn() },
+  loadAuditState = async () => null,
+  loadPurposeEvidenceRecord = async () => completePurposeEvidenceRecord(),
+  loadSourceCheckpoint = async () => null,
+  loadSourceRecord = async () => sourceRecord({ initial: 1 }),
+  now = () => new Date('2026-09-08T00:00:00.000Z'),
+  saveAuditState = jest.fn(async () => undefined),
+  saveSourceCheckpoint = jest.fn(async () => undefined),
+} = {}) {
+  return {
     audit,
+    saveAuditState,
+    saveSourceCheckpoint,
+    service: createHeldOutSemanticStudyLifecycleReauditService({
+      audit,
+      loadAuditState,
+      loadPurposeEvidenceRecord,
+      loadSourceCheckpoint,
+      loadSourceRecord,
+      now,
+      saveAuditState,
+      saveSourceCheckpoint,
+    }),
+  };
+}
+
+test('checkpoints a zero lifecycle source without reading purpose evidence or auditing', async () => {
+  const loadPurposeEvidenceRecord = jest.fn();
+  const { audit, saveAuditState, saveSourceCheckpoint, service } = createService({
     loadPurposeEvidenceRecord,
     loadSourceRecord: async () => sourceRecord(),
-    loadState: async () => null,
-    saveState,
   });
 
   await expect(service.run()).resolves.toBeNull();
   expect(loadPurposeEvidenceRecord).not.toHaveBeenCalled();
   expect(audit.audit).not.toHaveBeenCalled();
-  expect(saveState).not.toHaveBeenCalled();
+  expect(saveAuditState).not.toHaveBeenCalled();
+  expect(saveSourceCheckpoint).toHaveBeenCalledWith(expect.objectContaining({
+    source: expect.objectContaining({
+      completePolicyEvidenceCount: 0,
+      normalLifecycleReceiptCount: 0,
+    }),
+  }));
 });
 
-test('returns and persists the existing audit receipt unchanged after receipt evidence changes', async () => {
+test('returns and persists the existing audit receipt after a qualified source change', async () => {
   const auditReceipt = completeAuditReceipt();
   const audit = { audit: jest.fn(async () => auditReceipt) };
-  const saveState = jest.fn(async () => undefined);
-  const service = createHeldOutSemanticStudyLifecycleReauditService({
-    audit,
-    loadPurposeEvidenceRecord: async () => completePurposeEvidenceRecord(),
-    loadSourceRecord: async () => sourceRecord({ initial: 1 }),
-    loadState: async () => null,
-    now: () => new Date('2026-09-08T00:00:00.000Z'),
-    saveState,
-  });
+  const { saveAuditState, saveSourceCheckpoint, service } = createService({ audit });
 
   await expect(service.run()).resolves.toBe(auditReceipt);
   expect(audit.audit).toHaveBeenCalledTimes(1);
-  expect(saveState).toHaveBeenCalledWith(expect.objectContaining({
+  expect(saveSourceCheckpoint).toHaveBeenCalledWith(expect.objectContaining({
+    observedAt: '2026-09-08T00:00:00.000Z',
+  }));
+  expect(saveAuditState).toHaveBeenCalledWith(expect.objectContaining({
     attemptCount: 1,
     auditReceipt,
     auditedAt: '2026-09-08T00:00:00.000Z',
   }));
 });
 
-test('does not re-run a complete audit for an unchanged lifecycle receipt', async () => {
+test('does not re-run a complete audit for an unchanged lifecycle source', async () => {
   const record = sourceRecord({ changed: 1 });
-  const source = {
-    version: 'policy.held_out_semantic_study_lifecycle_reaudit_source.v2',
-    normalLifecycleReceiptCount: 1,
-    completePolicyEvidenceCount: 1,
-    completePolicyEvidenceAvailable: true,
-    lifecycleTransitionCounts: {
-      initial_intent_establishment: 0,
-      native_intent_change: 1,
-      library_rebuild_replacement: 0,
-    },
-    rawConfigurationExposed: false,
-    libraryIdentityExposed: false,
-    mediaIdentityExposed: false,
-  };
-  const audit = { audit: jest.fn() };
-  const service = createHeldOutSemanticStudyLifecycleReauditService({
-    audit,
-    loadPurposeEvidenceRecord: async () => completePurposeEvidenceRecord(),
-    loadSourceRecord: async () => record,
-    loadState: async () => ({
-      sourceFingerprint: heldOutSemanticStudyLifecycleReauditSourceFingerprint(source),
+  const sourceFingerprint = heldOutSemanticStudyLifecycleReauditSourceFingerprint(sourceFor(record));
+  const { audit, saveAuditState, saveSourceCheckpoint, service } = createService({
+    loadAuditState: async () => ({
+      sourceFingerprint,
       attemptCount: 1,
       auditStatusId: 'complete',
     }),
-    saveState: jest.fn(),
+    loadSourceCheckpoint: async () => ({ sourceFingerprint }),
+    loadSourceRecord: async () => record,
   });
 
   await expect(service.run()).resolves.toBeNull();
   expect(audit.audit).not.toHaveBeenCalled();
+  expect(saveAuditState).not.toHaveBeenCalled();
+  expect(saveSourceCheckpoint).not.toHaveBeenCalled();
 });
 
 test('retries a failed unchanged source only through its bounded attempt budget', async () => {
+  const record = sourceRecord({ rebuild: 1 });
+  const sourceFingerprint = heldOutSemanticStudyLifecycleReauditSourceFingerprint(sourceFor(record));
   const audit = { audit: jest.fn(async () => ({
     version: 'policy.held_out_semantic_study_eligibility_audit.v3',
     status: { id: 'failed' },
     summary: null,
   })) };
-  const saveState = jest.fn(async () => undefined);
-  const record = sourceRecord({ rebuild: 1 });
-  const source = {
-    version: 'policy.held_out_semantic_study_lifecycle_reaudit_source.v2',
-    normalLifecycleReceiptCount: 1,
-    completePolicyEvidenceCount: 1,
-    completePolicyEvidenceAvailable: true,
-    lifecycleTransitionCounts: {
-      initial_intent_establishment: 0,
-      native_intent_change: 0,
-      library_rebuild_replacement: 1,
-    },
-    rawConfigurationExposed: false,
-    libraryIdentityExposed: false,
-    mediaIdentityExposed: false,
-  };
-  const sourceFingerprint = heldOutSemanticStudyLifecycleReauditSourceFingerprint(source);
-  const service = createHeldOutSemanticStudyLifecycleReauditService({
+  const saveAuditState = jest.fn(async () => undefined);
+  const { service } = createService({
     audit,
-    loadPurposeEvidenceRecord: async () => completePurposeEvidenceRecord(),
-    loadSourceRecord: async () => record,
-    loadState: async () => ({
+    loadAuditState: async () => ({
       sourceFingerprint,
       attemptCount: HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT_MAXIMUM_ATTEMPTS - 1,
       auditStatusId: 'failed',
     }),
-    saveState,
+    loadSourceCheckpoint: async () => ({ sourceFingerprint }),
+    loadSourceRecord: async () => record,
+    saveAuditState,
   });
 
   await expect(service.run()).resolves.toEqual(expect.objectContaining({
     status: { id: 'failed' },
   }));
-  expect(saveState).toHaveBeenCalledWith(expect.objectContaining({
+  expect(saveAuditState).toHaveBeenCalledWith(expect.objectContaining({
     attemptCount: HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT_MAXIMUM_ATTEMPTS,
   }));
 
-  const exhaustedService = createHeldOutSemanticStudyLifecycleReauditService({
+  const { service: exhaustedService } = createService({
     audit,
-    loadPurposeEvidenceRecord: async () => completePurposeEvidenceRecord(),
-    loadSourceRecord: async () => record,
-    loadState: async () => ({
+    loadAuditState: async () => ({
       sourceFingerprint,
       attemptCount: HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT_MAXIMUM_ATTEMPTS,
       auditStatusId: 'failed',
     }),
-    saveState,
+    loadSourceCheckpoint: async () => ({ sourceFingerprint }),
+    loadSourceRecord: async () => record,
+    saveAuditState,
   });
   await expect(exhaustedService.run()).resolves.toBeNull();
   expect(audit.audit).toHaveBeenCalledTimes(1);
 });
 
 test('fails closed with the established aggregate receipt when the audit throws', async () => {
-  const saveState = jest.fn(async () => undefined);
-  const service = createHeldOutSemanticStudyLifecycleReauditService({
+  const { saveAuditState, service } = createService({
     audit: { audit: jest.fn(async () => { throw new Error('private provider'); }) },
-    loadPurposeEvidenceRecord: async () => completePurposeEvidenceRecord(),
-    loadSourceRecord: async () => sourceRecord({ initial: 1 }),
-    loadState: async () => null,
-    saveState,
   });
 
   await expect(service.run()).resolves.toEqual({
@@ -199,33 +208,66 @@ test('fails closed with the established aggregate receipt when the audit throws'
     status: { id: 'failed' },
     summary: null,
   });
-  expect(saveState).toHaveBeenCalledWith(expect.objectContaining({
+  expect(saveAuditState).toHaveBeenCalledWith(expect.objectContaining({
     auditReceipt: expect.objectContaining({ status: { id: 'failed' } }),
   }));
 });
 
-test('does not run the eligibility audit when no current policy has complete declared-purpose evidence', async () => {
+test('defers incomplete purpose evidence after recording only its source checkpoint', async () => {
   const audit = { audit: jest.fn() };
-  const saveState = jest.fn();
-  const service = createHeldOutSemanticStudyLifecycleReauditService({
+  const { saveAuditState, saveSourceCheckpoint, service } = createService({
     audit,
-    loadPurposeEvidenceRecord: async () => ({
-      active_policy_count: 10,
-      authoritative_active_native_policy_count: 10,
-      current_intent_version_policy_count: 10,
-      current_intent_schema_version_policy_count: 10,
-      retained_purpose_policy_count: 0,
-      normal_lifecycle_receipt_policy_count: 10,
-      verifiable_lifecycle_receipt_policy_count: 10,
-      current_intent_lifecycle_receipt_policy_count: 10,
-      complete_policy_evidence_count: 0,
-    }),
-    loadSourceRecord: async () => sourceRecord({ initial: 1 }),
-    loadState: async () => null,
-    saveState,
+    loadPurposeEvidenceRecord: async () => incompletePurposeEvidenceRecord(),
   });
 
   await expect(service.run()).resolves.toBeNull();
   expect(audit.audit).not.toHaveBeenCalled();
-  expect(saveState).not.toHaveBeenCalled();
+  expect(saveAuditState).not.toHaveBeenCalled();
+  expect(saveSourceCheckpoint).toHaveBeenCalledWith(expect.objectContaining({
+    source: expect.objectContaining({ completePolicyEvidenceCount: 0 }),
+  }));
+});
+
+test('re-audits when complete purpose evidence returns to a previously audited aggregate', async () => {
+  const record = sourceRecord({ initial: 1 });
+  const completeFingerprint = heldOutSemanticStudyLifecycleReauditSourceFingerprint(sourceFor(record));
+  const incompleteFingerprint = heldOutSemanticStudyLifecycleReauditSourceFingerprint(
+    sourceFor(record, incompletePurposeEvidenceRecord()),
+  );
+  const auditReceipt = completeAuditReceipt();
+  const audit = { audit: jest.fn(async () => auditReceipt) };
+  const retainedAuditState = {
+    sourceFingerprint: completeFingerprint,
+    attemptCount: 1,
+    auditStatusId: 'complete',
+  };
+
+  const first = createService({
+    audit,
+    loadAuditState: async () => retainedAuditState,
+    loadPurposeEvidenceRecord: async () => incompletePurposeEvidenceRecord(),
+    loadSourceCheckpoint: async () => ({ sourceFingerprint: completeFingerprint }),
+    loadSourceRecord: async () => record,
+  });
+  await expect(first.service.run()).resolves.toBeNull();
+  expect(first.saveSourceCheckpoint).toHaveBeenCalledWith(expect.objectContaining({
+    sourceFingerprint: incompleteFingerprint,
+  }));
+  expect(first.saveAuditState).not.toHaveBeenCalled();
+
+  const restored = createService({
+    audit,
+    loadAuditState: async () => retainedAuditState,
+    loadSourceCheckpoint: async () => ({ sourceFingerprint: incompleteFingerprint }),
+    loadSourceRecord: async () => record,
+  });
+  await expect(restored.service.run()).resolves.toBe(auditReceipt);
+  expect(restored.saveSourceCheckpoint).toHaveBeenCalledWith(expect.objectContaining({
+    sourceFingerprint: completeFingerprint,
+  }));
+  expect(restored.saveAuditState).toHaveBeenCalledWith(expect.objectContaining({
+    attemptCount: 1,
+    sourceFingerprint: completeFingerprint,
+  }));
+  expect(audit.audit).toHaveBeenCalledTimes(1);
 });

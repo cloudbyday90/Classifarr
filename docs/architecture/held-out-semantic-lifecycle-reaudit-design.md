@@ -34,18 +34,20 @@ The database counts those receipts by transition without selecting an identity,
 rule value, configuration value, provider value, or media row. The existing
 inventory supplies only its normalized complete-evidence count through a
 dedicated adapter. A deterministic SHA-256 digest of the fixed v2 aggregate
-source is compared with a one-row durable cursor. A changed source starts the
-existing eligibility audit after the commit only when both the lifecycle count
-and complete-evidence count are positive, under a dedicated PostgreSQL advisory
-lock. The audit itself remains the producer of the receipt: the re-audit returns
-and stores that unmodified v3 aggregate receipt.
+source is compared with a one-row source checkpoint. A changed source is
+checkpointed even while ineligible; it starts the existing eligibility audit
+after the commit only when both counts are positive, under a dedicated
+PostgreSQL advisory lock. The audit itself remains the producer of the receipt:
+the re-audit returns and stores that unmodified v3 aggregate receipt separately
+from the source checkpoint.
 
 ```text
 verified normal lifecycle receipt
   -> fixed aggregate transition counts + complete purpose-evidence count
+  -> aggregate fingerprint differs from durable source checkpoint
+  -> persist aggregate source checkpoint
   -> both counts are positive
-  -> aggregate fingerprint differs from durable cursor
-  -> lock-protected background eligibility audit
+  -> lock-protected background eligibility audit when audit state differs
   -> persist the existing aggregate audit receipt
   -> stop
 
@@ -53,19 +55,20 @@ no cohort capture, labels, readiness, frozen-study preflight,
 semantic retrieval, policy mutation, or routing
 ```
 
-The scheduler checks every 15 minutes and once 90 seconds after application
+The scheduler checks every five minutes and once 90 seconds after application
 readiness. An unchanged completed, truncated, or configuration-changed state
 emits nothing. A failed state receives at most three total attempts for its same
-source fingerprint, then stops until lifecycle evidence changes. A state with no
-normal lifecycle receipts or no complete declared-purpose evidence does not
-invoke the audit.
+source fingerprint, then stops until aggregate source evidence changes. A state
+with no normal lifecycle receipts or no complete declared-purpose evidence is
+checkpointed but does not invoke the audit.
 
 ## Security and data boundary
 
-The cursor persists only a source digest, count-only source receipt, attempt
-count, audit status, and the existing aggregate audit receipt. It is a derived
-automation cursor and is deliberately omitted from backup and restore; a
-restored instance safely rechecks its durable lifecycle source.
+The source checkpoint persists only a source digest, count-only source receipt,
+and observed time. The audit state separately persists its source digest,
+attempt count, audit status, and existing aggregate audit receipt. Both are
+derived automation state and are deliberately omitted from backup and restore;
+a restored instance safely rechecks its durable lifecycle source.
 
 The scheduler has a dedicated advisory lock so multiple application instances
 cannot concurrently run the expensive audit. It does not attach to individual

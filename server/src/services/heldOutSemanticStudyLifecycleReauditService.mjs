@@ -25,6 +25,10 @@ import {
   saveHeldOutSemanticStudyLifecycleReauditState,
 } from './heldOutSemanticStudyLifecycleReauditPersistence.mjs';
 import {
+  loadHeldOutSemanticStudyLifecycleSourceCheckpoint,
+  saveHeldOutSemanticStudyLifecycleSourceCheckpoint,
+} from './heldOutSemanticStudyLifecycleSourceCheckpointPersistence.mjs';
+import {
   loadHeldOutSemanticStudyLifecycleReauditSourceRecord,
 } from './heldOutSemanticStudyLifecycleReauditSource.mjs';
 import {
@@ -50,17 +54,21 @@ function isAuditReceipt(value) {
       .includes(value.status.id);
 }
 
-function nextAttemptCount({ sourceChanged, state }) {
-  return sourceChanged ? 1 : state.attemptCount + 1;
+function auditStateMatchesSource({ auditState, sourceFingerprint }) {
+  return auditState?.sourceFingerprint === sourceFingerprint;
 }
 
-function shouldRun({ source, sourceChanged, state }) {
+function nextAttemptCount({ auditState, auditStateCurrent, sourceChanged }) {
+  return sourceChanged || !auditStateCurrent ? 1 : auditState.attemptCount + 1;
+}
+
+function shouldRun({ auditState, auditStateCurrent, source, sourceChanged }) {
   if (source.normalLifecycleReceiptCount === 0) return false;
   if (source.completePolicyEvidenceCount === 0) return false;
-  if (sourceChanged) return true;
+  if (sourceChanged || !auditStateCurrent) return true;
 
-  return state.auditStatusId === HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_STATUS_IDS.FAILED &&
-    state.attemptCount < HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT_MAXIMUM_ATTEMPTS;
+  return auditState.auditStatusId === HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_STATUS_IDS.FAILED &&
+    auditState.attemptCount < HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT_MAXIMUM_ATTEMPTS;
 }
 
 /**
@@ -75,25 +83,45 @@ export function createHeldOutSemanticStudyLifecycleReauditService({
   loadPurposeEvidenceRecord = () =>
     loadHeldOutSemanticStudyLifecycleReauditPurposeEvidenceRecord({ db }),
   loadSourceRecord = () => loadHeldOutSemanticStudyLifecycleReauditSourceRecord({ db }),
-  loadState = () => loadHeldOutSemanticStudyLifecycleReauditState({ db }),
+  loadAuditState = () => loadHeldOutSemanticStudyLifecycleReauditState({ db }),
+  loadSourceCheckpoint = () => loadHeldOutSemanticStudyLifecycleSourceCheckpoint({ db }),
   now = () => new Date(),
-  saveState = (input) => saveHeldOutSemanticStudyLifecycleReauditState({ db, ...input }),
+  saveAuditState = (input) => saveHeldOutSemanticStudyLifecycleReauditState({ db, ...input }),
+  saveSourceCheckpoint = (input) =>
+    saveHeldOutSemanticStudyLifecycleSourceCheckpoint({ db, ...input }),
 } = {}) {
   return Object.freeze({
     async run() {
       const sourceRecord = await loadSourceRecord();
       const lifecycleSource = buildHeldOutSemanticStudyLifecycleReauditSource(sourceRecord);
-      if (lifecycleSource.normalLifecycleReceiptCount === 0) return null;
+      const source = lifecycleSource.normalLifecycleReceiptCount === 0
+        ? lifecycleSource
+        : buildHeldOutSemanticStudyLifecycleReauditSource(
+          sourceRecord,
+          buildHeldOutSemanticStudyLifecycleReauditPurposeEvidence(
+            await loadPurposeEvidenceRecord(),
+          ),
+        );
+      const [sourceCheckpoint, auditState] = await Promise.all([
+        loadSourceCheckpoint(),
+        loadAuditState(),
+      ]);
+      const sourceFingerprint = heldOutSemanticStudyLifecycleReauditSourceFingerprint(source);
+      const sourceChanged = isHeldOutSemanticStudyLifecycleReauditSourceChanged({
+        source,
+        state: sourceCheckpoint,
+      });
+      const auditStateCurrent = auditStateMatchesSource({ auditState, sourceFingerprint });
 
-      const purposeEvidenceRecord = await loadPurposeEvidenceRecord();
-      const source = buildHeldOutSemanticStudyLifecycleReauditSource(
-        sourceRecord,
-        buildHeldOutSemanticStudyLifecycleReauditPurposeEvidence(purposeEvidenceRecord),
-      );
-      const state = await loadState();
-      const sourceChanged = isHeldOutSemanticStudyLifecycleReauditSourceChanged({ source, state });
+      if (sourceChanged) {
+        await saveSourceCheckpoint({
+          source,
+          sourceFingerprint,
+          observedAt: now().toISOString(),
+        });
+      }
 
-      if (!shouldRun({ source, sourceChanged, state: state || {} })) return null;
+      if (!shouldRun({ auditState, auditStateCurrent, source, sourceChanged })) return null;
 
       let auditReceipt;
       try {
@@ -103,10 +131,10 @@ export function createHeldOutSemanticStudyLifecycleReauditService({
       }
       if (!isAuditReceipt(auditReceipt)) auditReceipt = failedAuditReceipt();
 
-      await saveState({
+      await saveAuditState({
         source,
-        sourceFingerprint: heldOutSemanticStudyLifecycleReauditSourceFingerprint(source),
-        attemptCount: nextAttemptCount({ sourceChanged, state: state || {} }),
+        sourceFingerprint,
+        attemptCount: nextAttemptCount({ auditState, auditStateCurrent, sourceChanged }),
         auditReceipt,
         auditedAt: now().toISOString(),
       });

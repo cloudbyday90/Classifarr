@@ -21,11 +21,13 @@ a SHA-256 fingerprint of that aggregate and returns exactly the existing
 `policy.held_out_semantic_study_eligibility_audit.v3` receipt when an audit ran.
 It returns no new item-level result.
 
-The database state holds only the latest aggregate cursor and audit receipt. A
-dedicated advisory lock prevents simultaneous service instances from running the
-audit together. An unchanged complete state remains quiet; failed work retries
-at most three times for the same lifecycle state. A normal lifecycle change with
-zero complete declared-purpose evidence remains quiet and creates no cursor.
+The database state holds a distinct latest aggregate source checkpoint and an
+actual audit receipt. A dedicated advisory lock prevents simultaneous service
+instances from running the audit together. An unchanged complete state remains
+quiet; failed work retries at most three times for the same lifecycle state. A
+normal lifecycle change with zero complete declared-purpose evidence remains
+quiet after saving only its aggregate source checkpoint, so a later return to
+the prior eligible state receives a new audit.
 
 ## Boundaries preserved
 
@@ -51,8 +53,8 @@ check pass.
 A no-cache Compose rebuild produced a healthy service and a provenance-labelled
 image. The scheduler completed its delayed automatic check. The local database
 has no durable normal lifecycle receipt and the current inventory reports zero
-complete declared-purpose policies, so it correctly emitted no audit receipt and
-created no cursor row. A direct private audit remained complete but
+complete declared-purpose policies, so it correctly emitted no audit receipt. A
+direct private audit remained complete but
 found no eligible policy-only comparison among 6,641 candidates; the frozen
 28-case cohort attempt returned `insufficient_eligible_cases`. No labels,
 readiness, frozen-study preflight, semantic selection, or routing ran.

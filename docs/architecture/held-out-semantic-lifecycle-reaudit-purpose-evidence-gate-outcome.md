@@ -8,10 +8,10 @@ for research, alternatives, and the recommendation stack.
 
 The lifecycle re-audit now uses an ESM purpose-evidence adapter over the
 existing policy-purpose evidence inventory. Its v2 source contains the complete
-policy-evidence count alongside fixed lifecycle counts. A re-audit requires both
-counts to be positive; a zero lifecycle count stops before the inventory query.
-Otherwise it stops before candidate retrieval and leaves the durable cursor
-unchanged.
+policy-evidence count alongside fixed lifecycle counts. A re-audit requires
+both counts to be positive; a zero lifecycle count stops before the inventory
+query. Otherwise it stops before candidate retrieval while storing only a
+changed aggregate source checkpoint, never an audit receipt.
 
 This directly addresses the observed state: 6,641 candidate comparisons existed,
 but zero policies retained declared purpose with complete lifecycle provenance.

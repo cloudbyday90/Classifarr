@@ -11,6 +11,13 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Held-out source-transition checkpoint** — The passive held-out re-audit
+  now stores changed aggregate source states independently of audit receipts.
+  A temporary absence of lifecycle or declared-purpose evidence therefore
+  cannot hide a later return to the same eligible source. Deferred states do
+  not scan candidates, create a cohort, label media, invoke AI, change policy,
+  or route media.
+
 - **Prompt passive held-out re-audit** — The aggregate-only lifecycle gate now
   rechecks every five minutes instead of fifteen, matching the bounded visible
   readiness refresh. It still requires a source fingerprint change before the
