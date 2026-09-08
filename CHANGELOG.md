@@ -11,6 +11,13 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Prompt passive held-out re-audit** — The aggregate-only lifecycle gate now
+  rechecks every five minutes instead of fifteen, matching the bounded visible
+  readiness refresh. It still requires a source fingerprint change before the
+  private audit can run, preserves the advisory lock and failure budget, and
+  cannot create evidence, collect labels, invoke AI, change policy, or route
+  media.
+
 - **Automatic held-out study status refresh** — The reconciliation page now
   refreshes only the existing count-only study-readiness report every five
   visible-page minutes and after a visibility return. It retains no new data,

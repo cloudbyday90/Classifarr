@@ -10,5 +10,8 @@
 
 export const HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT_TASK_NAME =
   'held-out-semantic-study-lifecycle-reaudit';
-export const HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT_CRON = '*/15 * * * *';
+// The re-audit performs only fixed aggregate source reads unless a fingerprint
+// changes. Keep its normal passive detection cadence aligned with the visible
+// readiness status without coupling it to authoring writes.
+export const HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT_CRON = '*/5 * * * *';
 export const HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT_INITIAL_DELAY_MS = 90 * 1000;

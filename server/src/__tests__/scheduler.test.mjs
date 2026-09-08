@@ -740,7 +740,7 @@ describe('SchedulerService', () => {
             expect(scheduler.startHeldOutSemanticStudyLifecycleReaudit()).toBe(true);
             expect(scheduler.startHeldOutSemanticStudyLifecycleReaudit()).toBe(false);
             expect(mockNodeCron.schedule).toHaveBeenCalledWith(
-                '*/15 * * * *',
+                '*/5 * * * *',
                 expect.any(Function),
                 { noOverlap: true },
             );
