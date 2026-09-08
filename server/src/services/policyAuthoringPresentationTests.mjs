@@ -513,7 +513,7 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
     false,
     POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.RUNTIME_VERIFIER,
     [],
-    'The declaration worklist validates a closed redacted response, uses accessible grouped table semantics, and opens only one existing guarded purpose declaration form without exposing terms, changing policy, selecting semantic evidence, or routing media.'
+    'The declaration worklist validates a closed redacted response, announces a truncated review window without making a global no-review claim, uses accessible grouped table semantics, and opens only one existing guarded purpose declaration form without exposing terms, changing policy, selecting semantic evidence, or routing media.'
   ),
   presentationTestRecord(
     'client/src/__tests__/PolicyPurposeLifecycleProvenanceReceipt.test.js',

@@ -45,7 +45,7 @@ transition, resolvability, and aggregate purpose-provenance counts. SQL IDs,
 actor data, fingerprints, library identity, configuration, rules, media, and
 other operational records stay inside the database.
 
-The public review contract is `policy_purpose_coverage_review.v10`; its nested
+The public review contract is `policy_purpose_coverage_review.v11`; its nested
 lifecycle receipt is version 3 and separates native intent changes from
 verified rebuild replacements. The Vue panel reports both aggregate counts in
 a labelled polite status region. It does not introduce an action, focus change,

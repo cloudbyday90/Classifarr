@@ -11,6 +11,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Truthful bounded declaration review** — The purpose-declaration worklist
+  now distinguishes a complete no-review result from an incomplete report
+  window. It never claims that omitted active policies need no declaration;
+  the read-only, redacted review still cannot change policy, select a cohort,
+  invoke AI, or route media.
+
 - **Server-generated purpose declaration worklist** — The existing
   administrator purpose-coverage review now groups matching profile-derived
   stored-purpose drafts without returning rule values. Each item opens the

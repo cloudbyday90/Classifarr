@@ -43,7 +43,7 @@ matches its native-intent ID, policy ID, source, and expected version before it
 reduces identity-purpose rules for `genres`, `keywords`, and `studios` to
 aggregate declared-native, profile-only, unverified, or absent counts. The response contains only
 transition and provenance totals. Its parent review response is
-`policy_purpose_coverage_review.v10`.
+`policy_purpose_coverage_review.v11`.
 
 ## Decision boundaries
 

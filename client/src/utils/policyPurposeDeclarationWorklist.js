@@ -10,9 +10,10 @@ import {
   normalizeNativeIntentPurposeProvenance,
 } from './policyNativeIntentPurposeProvenance'
 
-const VERSION = 'policy_purpose_declaration_worklist.v1'
+const VERSION = 'policy_purpose_declaration_worklist.v2'
 const STATUS_IDS = new Set([
   'declaration_review_required',
+  'declaration_review_window_truncated',
   'no_declaration_review_required',
 ])
 const ACTION_ID = 'review_and_declare_purpose'
@@ -121,7 +122,13 @@ export function normalizePolicyPurposeDeclarationWorklist(value) {
     typeof value.summary.truncated !== 'boolean' || groupCount !== groups.length ||
     declarationRequiredPolicyCount !== groups.reduce((count, group) => count + group.policyCount, 0) ||
     declarationRequiredPolicyCount > reviewedPolicyCount ||
-    (value.statusId === 'declaration_review_required') !== (declarationRequiredPolicyCount > 0)) return null
+    (value.statusId === 'declaration_review_required') !== (declarationRequiredPolicyCount > 0) ||
+    (value.statusId === 'declaration_review_window_truncated') !== (
+      declarationRequiredPolicyCount === 0 && value.summary.truncated
+    ) ||
+    (value.statusId === 'no_declaration_review_required') !== (
+      declarationRequiredPolicyCount === 0 && !value.summary.truncated
+    )) return null
 
   return Object.freeze({
     version: VERSION,

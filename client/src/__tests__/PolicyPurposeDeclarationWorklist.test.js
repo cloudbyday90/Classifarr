@@ -22,7 +22,7 @@ const entry = {
 }
 
 const worklist = {
-  version: 'policy_purpose_declaration_worklist.v1',
+  version: 'policy_purpose_declaration_worklist.v2',
   statusId: 'declaration_review_required',
   groups: [{
     id: 'purpose_declaration_group_1',
@@ -66,5 +66,27 @@ describe('PolicyPurposeDeclarationWorklist', () => {
     })
 
     expect(wrapper.find('#policy-purpose-declaration-worklist').exists()).toBe(false)
+  })
+
+  it('makes a truncated empty window explicitly uncertain instead of claiming no active policy needs review', () => {
+    const wrapper = mount(PolicyPurposeDeclarationWorklist, {
+      props: {
+        worklist: {
+          ...worklist,
+          statusId: 'declaration_review_window_truncated',
+          groups: [],
+          summary: {
+            reviewedPolicyCount: 1,
+            declarationRequiredPolicyCount: 0,
+            groupCount: 0,
+            truncated: true,
+          },
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('cannot determine whether omitted active policies need review')
+    expect(wrapper.text()).not.toContain('No active policy in the full report needs')
+    expect(wrapper.find('table').exists()).toBe(false)
   })
 })

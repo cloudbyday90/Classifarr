@@ -24,11 +24,11 @@
     </p>
 
     <p
-      v-if="worklist.summary.declarationRequiredPolicyCount === 0"
+      v-if="worklist.statusId === 'no_declaration_review_required'"
       class="mt-3 text-sm text-green-200"
       role="status"
     >
-      No active policy currently needs a purpose declaration review.
+      No active policy in the full report needs a purpose declaration review.
     </p>
 
     <template v-else>
@@ -50,11 +50,16 @@
       <p
         v-if="worklist.summary.truncated"
         class="mt-4 rounded border border-amber-500/30 bg-amber-950/20 p-3 text-sm text-amber-100"
+        role="status"
+        aria-live="polite"
       >
-        This bounded worklist shows current results only. It does not change policies outside the report.
+        {{ truncatedReportDescription }}
       </p>
 
-      <div class="mt-4 overflow-x-auto rounded border border-gray-700">
+      <div
+        v-if="worklist.groups.length > 0"
+        class="mt-4 overflow-x-auto rounded border border-gray-700"
+      >
         <table class="min-w-full text-left text-sm">
           <caption class="sr-only">Active policy purpose declaration review worklist</caption>
           <thead class="bg-background text-xs uppercase tracking-wide text-gray-400">
@@ -116,6 +121,13 @@ const emit = defineEmits({
 })
 
 const worklist = computed(() => normalizePolicyPurposeDeclarationWorklist(props.worklist))
+const truncatedReportDescription = computed(() => {
+  if (!worklist.value?.summary.truncated) return ''
+
+  return worklist.value.summary.declarationRequiredPolicyCount > 0
+    ? 'This bounded worklist omits active policies. The displayed declaration requests and shared groups apply only to the current report window; it does not change omitted policies.'
+    : 'This bounded worklist found no declaration request in the current report window. It cannot determine whether omitted active policies need review and does not change them.'
+})
 
 function groupLabel(group) {
   const number = Number(String(group?.id || '').split('_').at(-1))

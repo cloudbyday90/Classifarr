@@ -23,7 +23,7 @@ const entry = {
 }
 
 const worklist = {
-  version: 'policy_purpose_declaration_worklist.v1',
+  version: 'policy_purpose_declaration_worklist.v2',
   statusId: 'declaration_review_required',
   groups: [{
     id: 'purpose_declaration_group_1',
@@ -60,6 +60,26 @@ describe('policyPurposeDeclarationWorklist', () => {
     expect(normalizePolicyPurposeDeclarationWorklist({
       ...worklist,
       groups: [{ ...worklist.groups[0], id: 'untrusted-group' }],
+    })).toBeNull()
+  })
+
+  it('accepts an explicit truncated-window state but rejects a global no-review claim', () => {
+    const truncatedWindow = {
+      ...worklist,
+      statusId: 'declaration_review_window_truncated',
+      groups: [],
+      summary: {
+        reviewedPolicyCount: 1,
+        declarationRequiredPolicyCount: 0,
+        groupCount: 0,
+        truncated: true,
+      },
+    }
+
+    expect(normalizePolicyPurposeDeclarationWorklist(truncatedWindow)).toEqual(truncatedWindow)
+    expect(normalizePolicyPurposeDeclarationWorklist({
+      ...truncatedWindow,
+      statusId: 'no_declaration_review_required',
     })).toBeNull()
   })
 })

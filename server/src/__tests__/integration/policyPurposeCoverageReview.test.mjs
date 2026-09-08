@@ -498,9 +498,9 @@ describe('Policy purpose coverage review integration', () => {
     }));
     expect(review.studySourceReadiness.activePolicyCount).toBeGreaterThanOrEqual(6);
     expect(review.studySourceReadiness.retainedPurposePolicyCount).toBeGreaterThanOrEqual(4);
-    expect(review.version).toBe('policy_purpose_coverage_review.v10');
+    expect(review.version).toBe('policy_purpose_coverage_review.v11');
     expect(review.purposeDeclarationWorklist).toEqual(expect.objectContaining({
-      version: 'policy_purpose_declaration_worklist.v1',
+      version: 'policy_purpose_declaration_worklist.v2',
       rawPurposeRulesExposed: false,
       policyStorageMutated: false,
       semanticSelectionAffected: false,

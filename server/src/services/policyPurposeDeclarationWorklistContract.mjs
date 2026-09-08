@@ -15,10 +15,11 @@ import {
   buildStoredPurposeChangeCommandSignature,
 } from './policyNativeIntentPurposeChangeCommandProjection.mjs';
 
-export const POLICY_PURPOSE_DECLARATION_WORKLIST_VERSION = 1;
+export const POLICY_PURPOSE_DECLARATION_WORKLIST_VERSION = 2;
 
 export const POLICY_PURPOSE_DECLARATION_WORKLIST_STATUS_IDS = Object.freeze({
   DECLARATION_REVIEW_REQUIRED: 'declaration_review_required',
+  DECLARATION_REVIEW_WINDOW_TRUNCATED: 'declaration_review_window_truncated',
   NO_DECLARATION_REVIEW_REQUIRED: 'no_declaration_review_required',
 });
 
@@ -109,17 +110,22 @@ export function buildPolicyPurposeDeclarationWorklist({
     0,
   );
 
+  const isTruncated = truncated === true;
+  const statusId = declarationRequiredPolicyCount > 0
+    ? POLICY_PURPOSE_DECLARATION_WORKLIST_STATUS_IDS.DECLARATION_REVIEW_REQUIRED
+    : isTruncated
+      ? POLICY_PURPOSE_DECLARATION_WORKLIST_STATUS_IDS.DECLARATION_REVIEW_WINDOW_TRUNCATED
+      : POLICY_PURPOSE_DECLARATION_WORKLIST_STATUS_IDS.NO_DECLARATION_REVIEW_REQUIRED;
+
   return {
     version: `policy_purpose_declaration_worklist.v${POLICY_PURPOSE_DECLARATION_WORKLIST_VERSION}`,
-    statusId: declarationRequiredPolicyCount > 0
-      ? POLICY_PURPOSE_DECLARATION_WORKLIST_STATUS_IDS.DECLARATION_REVIEW_REQUIRED
-      : POLICY_PURPOSE_DECLARATION_WORKLIST_STATUS_IDS.NO_DECLARATION_REVIEW_REQUIRED,
+    statusId,
     groups,
     summary: {
       reviewedPolicyCount: asArray(records).length,
       declarationRequiredPolicyCount,
       groupCount: groups.length,
-      truncated: truncated === true,
+      truncated: isTruncated,
     },
     rawPurposeRulesExposed: false,
     policyStorageMutated: false,

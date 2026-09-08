@@ -364,7 +364,7 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY = deepFreeze([
     decisionId: POLICY_AUTHORING_COMPONENT_DECISION_IDS.DELETE_FROM_NORMAL_PATH,
     targetComponentIds: [],
     normalAuthoringAllowed: false,
-    notes: 'Administrator-only, read-only declaration discovery worklist; it groups server-owned current drafts without exposing purpose values and can only open the existing guarded declaration form for one selected policy.',
+    notes: 'Administrator-only, read-only declaration discovery worklist; it groups server-owned current drafts without exposing purpose values, distinguishes an incomplete bounded window from a full no-review result, and can only open the existing guarded declaration form for one selected policy.',
   },
   {
     id: 'policy_scoped_evidence_digest',

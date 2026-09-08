@@ -8,8 +8,8 @@ alternatives, and the recommendation stack.
 
 - Added ESM modules for server-only typed draft projection, exact worklist
   grouping, and bounded persistence.
-- Extended the existing administrator purpose-coverage response from v9 to v10
-  with a redacted `policy_purpose_declaration_worklist.v1` payload.
+- Extended the existing administrator purpose-coverage response to v11 with a
+  redacted `policy_purpose_declaration_worklist.v2` payload.
 - Grouped only equal current prefilled purpose commands. Group identifiers are
   response-local ordinals; neither signatures nor purpose terms leave the
   server reduction.
@@ -19,6 +19,9 @@ alternatives, and the recommendation stack.
 - Reused the existing declared-purpose maintenance form and gave its section a
   programmatic focus target. The worklist introduces no writer or routing
   action.
+- Corrected the bounded-report state: when no visible declaration request is
+  present but active policies are omitted, the worklist now reports an explicit
+  unknown window instead of claiming that no active policy needs review.
 
 ## Validation
 

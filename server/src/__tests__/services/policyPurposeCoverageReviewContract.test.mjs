@@ -37,7 +37,7 @@ describe('policyPurposeCoverageReviewContract', () => {
     });
 
     expect(review).toEqual(expect.objectContaining({
-      version: 'policy_purpose_coverage_review.v10',
+      version: 'policy_purpose_coverage_review.v11',
       rawConfigurationExposed: false,
       routingAffected: false,
       summary: expect.objectContaining({

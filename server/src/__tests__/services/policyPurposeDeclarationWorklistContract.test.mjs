@@ -61,7 +61,7 @@ describe('policyPurposeDeclarationWorklistContract', () => {
     });
 
     expect(worklist).toEqual(expect.objectContaining({
-      version: 'policy_purpose_declaration_worklist.v1',
+      version: 'policy_purpose_declaration_worklist.v2',
       statusId: 'declaration_review_required',
       rawPurposeRulesExposed: false,
       policyStorageMutated: false,
@@ -119,6 +119,31 @@ describe('policyPurposeDeclarationWorklistContract', () => {
         declarationRequiredPolicyCount: 0,
         groupCount: 0,
         truncated: false,
+      },
+    }));
+  });
+
+  test('does not claim that no active policy needs review when the bounded window is truncated', () => {
+    const worklist = buildPolicyPurposeDeclarationWorklist({
+      records: [{
+        policy_id: 17,
+        library_id: 18,
+        purpose_rules: [{
+          ...profilePurposeRule('declared'),
+          source: 'native_intent',
+        }],
+      }],
+      truncated: true,
+    });
+
+    expect(worklist).toEqual(expect.objectContaining({
+      statusId: 'declaration_review_window_truncated',
+      groups: [],
+      summary: {
+        reviewedPolicyCount: 1,
+        declarationRequiredPolicyCount: 0,
+        groupCount: 0,
+        truncated: true,
       },
     }));
   });

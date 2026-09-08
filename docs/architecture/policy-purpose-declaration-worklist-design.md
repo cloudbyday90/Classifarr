@@ -20,8 +20,8 @@ or make a routing decision.
 ## Design
 
 The administrator-only existing purpose-coverage endpoint advances to
-`policy_purpose_coverage_review.v10`. Its new nested
-`policy_purpose_declaration_worklist.v1` contract reads active authoritative
+`policy_purpose_coverage_review.v11`. Its nested
+`policy_purpose_declaration_worklist.v2` contract reads active authoritative
 native policies and their current purpose rules for one bounded, server-only
 reduction.
 
@@ -66,6 +66,9 @@ active native policies and current stored purpose
 - The page has no mutation endpoint. The review button is a navigation aid to
   the existing administrator, revision, command, idempotency, and transaction
   safeguards.
+- A truncated report with no visible declaration request reports an explicit
+  unknown window state. It never makes a full-population no-review claim from a
+  bounded subset.
 - The grouped table has a caption, column header scopes, and a row-group
   header for each shared draft. The existing declaration section is a
   programmatic focus target after the modal opens.
