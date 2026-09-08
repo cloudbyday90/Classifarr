@@ -5,7 +5,7 @@ Status: implemented on 2026-09-08.
 ## Outcome
 
 The administrator-only policy-purpose review now returns
-`policy_purpose_coverage_review.v9` with a version-2 aggregate
+`policy_purpose_coverage_review.v10` with a version-2 aggregate
 `evidenceInventory`. It reports availability of authoritative current native
 intent, intent version and schema version, retained declared purpose,
 verifiable lifecycle records, current-intent lifecycle records, complete

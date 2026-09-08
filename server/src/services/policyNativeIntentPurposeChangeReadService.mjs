@@ -10,9 +10,6 @@
 
 import * as defaultDb from '../config/database.mjs';
 import {
-  normalizePolicyNativeIntentChangePurposeCommand,
-} from './policyNativeIntentChangePurposePreflightContract.mjs';
-import {
   buildPurposeChangeAuthorityUnavailableResult,
   buildPurposeChangeAvailableResult,
   buildPurposeChangePolicyNotFoundResult,
@@ -23,31 +20,15 @@ import {
   loadPolicyNativeIntentPurposeChangeReadContext,
 } from './policyNativeIntentPurposeChangeReadPersistence.mjs';
 import {
-  projectStoredPurposeRulesForNativeIntentChange,
-} from './policyNativeIntentPurposeChangeStoredRuleAdapter.mjs';
-import {
   buildPolicyNativeIntentPurposeChangeProvenance,
 } from './policyNativeIntentPurposeChangeProvenance.mjs';
+import {
+  buildStoredPurposeChangeCommand,
+} from './policyNativeIntentPurposeChangeCommandProjection.mjs';
 
 function normalizePositiveInteger(value) {
   const numericValue = Number(value);
   return Number.isInteger(numericValue) && numericValue > 0 ? numericValue : null;
-}
-
-function buildStoredPurposeChangeCommand(purposeRules = []) {
-  const normalizedCommand = normalizePolicyNativeIntentChangePurposeCommand({
-    command_id: 'update_purpose',
-    values: projectStoredPurposeRulesForNativeIntentChange(purposeRules),
-  });
-
-  return {
-    command_id: normalizedCommand.command_id,
-    values: normalizedCommand.values.map(({
-      source: _source,
-      inference_state: _inferenceState,
-      ...rule
-    }) => rule),
-  };
 }
 
 function createPolicyNativeIntentPurposeChangeReadService({

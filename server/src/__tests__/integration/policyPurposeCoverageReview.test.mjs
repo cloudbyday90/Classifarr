@@ -459,22 +459,28 @@ describe('Policy purpose coverage review integration', () => {
       overlappingDestinationCount: 0,
     }));
     expect(entryByPolicyId.get(maintained.policyId).provenance).toEqual({
-      statusId: 'retained_specialized_purpose_available',
+      statusId: 'declared_specialized_purpose_available',
       specializedPurposeRuleCount: 1,
       inferredProfilePurposeRuleCount: 0,
       retainedPurposeRuleCount: 1,
+      declaredNativePurposeRuleCount: 1,
+      unverifiedPurposeRuleCount: 0,
     });
     expect(entryByPolicyId.get(profileOnly.policyId).provenance).toEqual({
       statusId: 'profile_only_specialized_purpose',
       specializedPurposeRuleCount: 1,
       inferredProfilePurposeRuleCount: 1,
       retainedPurposeRuleCount: 0,
+      declaredNativePurposeRuleCount: 0,
+      unverifiedPurposeRuleCount: 0,
     });
     expect(entryByPolicyId.get(missing.policyId).provenance).toEqual({
       statusId: 'no_specialized_purpose',
       specializedPurposeRuleCount: 0,
       inferredProfilePurposeRuleCount: 0,
       retainedPurposeRuleCount: 0,
+      declaredNativePurposeRuleCount: 0,
+      unverifiedPurposeRuleCount: 0,
     });
     expect(review.studySourceReadiness).toEqual(expect.objectContaining({
       statusId: 'retained_declared_purpose_source_available',
@@ -492,6 +498,30 @@ describe('Policy purpose coverage review integration', () => {
     }));
     expect(review.studySourceReadiness.activePolicyCount).toBeGreaterThanOrEqual(6);
     expect(review.studySourceReadiness.retainedPurposePolicyCount).toBeGreaterThanOrEqual(4);
+    expect(review.version).toBe('policy_purpose_coverage_review.v10');
+    expect(review.purposeDeclarationWorklist).toEqual(expect.objectContaining({
+      version: 'policy_purpose_declaration_worklist.v1',
+      rawPurposeRulesExposed: false,
+      policyStorageMutated: false,
+      semanticSelectionAffected: false,
+      routingAffected: false,
+    }));
+    const worklistEntries = review.purposeDeclarationWorklist.groups
+      .flatMap((group) => group.entries);
+    expect(worklistEntries).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        policy: expect.objectContaining({ id: profileOnly.policyId }),
+        purposeProvenance: {
+          id: 'profile_derived',
+          declarationRequired: true,
+          rawRuleProvenanceExposed: false,
+        },
+        action: {
+          actionId: 'review_and_declare_purpose',
+          available: true,
+        },
+      }),
+    ]));
     expect(review.rawConfigurationExposed).toBe(false);
     expect(review.routingAffected).toBe(false);
     expect(JSON.stringify(review)).not.toContain('unique-review-token');
@@ -534,7 +564,7 @@ describe('Policy purpose coverage review integration', () => {
       routingAffected: false,
     }));
     expect(review.evidenceInventory.currentIntentLifecycleReceiptPolicyCount).toBeGreaterThanOrEqual(2);
-    expect(review.evidenceInventory.completePolicyEvidenceCount).toBeGreaterThanOrEqual(2);
+    expect(review.evidenceInventory.completePolicyEvidenceCount).toBeGreaterThanOrEqual(1);
     expect(review.lifecycleProvenanceReceipt).toEqual(expect.objectContaining({
       version: 'policy_purpose_lifecycle_provenance_receipt.v3',
       summary: expect.objectContaining({

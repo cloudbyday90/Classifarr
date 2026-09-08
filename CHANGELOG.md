@@ -11,6 +11,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Server-generated purpose declaration worklist** — The existing
+  administrator purpose-coverage review now groups matching profile-derived
+  stored-purpose drafts without returning rule values. Each item opens the
+  existing revision-checked declaration form; the worklist cannot mutate
+  policy, select a cohort, invoke AI, or route media.
+
 - **Governed native-purpose declaration provenance** — Native purpose
   maintenance now distinguishes declared, profile-derived, mixed, and
   unverified stored-purpose provenance using a fixed, private v2 contract.

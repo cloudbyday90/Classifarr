@@ -151,6 +151,7 @@ const POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS = deepFreeze([
   'client/src/__tests__/PolicyNativeIntentReconciliationRemediationInventory.test.js',
   'client/src/__tests__/PolicyCompatibilityProfilePurposeSuggestion.test.js',
   'client/src/__tests__/PolicyPurposeCoverageReview.test.js',
+  'client/src/__tests__/PolicyPurposeDeclarationWorklist.test.js',
   'client/src/__tests__/PolicyPurposeLifecycleProvenanceReceipt.test.js',
   'client/src/__tests__/PolicyScopedEvidenceDigest.test.js',
   'client/src/__tests__/PolicyPurposeCoveragePreflight.test.js',
@@ -505,6 +506,14 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
     POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.RUNTIME_VERIFIER,
     [],
     'Purpose coverage review renders bounded aggregate evidence and explicit editor links without exposing rules, inspecting items, or changing policy routing.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyPurposeDeclarationWorklist.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_WORKFLOW_REGRESSION,
+    false,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.RUNTIME_VERIFIER,
+    [],
+    'The declaration worklist validates a closed redacted response, uses accessible grouped table semantics, and opens only one existing guarded purpose declaration form without exposing terms, changing policy, selecting semantic evidence, or routing media.'
   ),
   presentationTestRecord(
     'client/src/__tests__/PolicyPurposeLifecycleProvenanceReceipt.test.js',

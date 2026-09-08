@@ -491,6 +491,7 @@ const reviewPolicyEvidence = async entry => {
 const openPolicyEditor = async entry => {
   const policyId = Number(entry?.policy?.id)
   if (!Number.isInteger(policyId) || policyId <= 0) return
+  const focusPurposeDeclaration = entry?.action?.actionId === 'review_and_declare_purpose'
 
   policyEditorError.value = ''
   policyEditorFeedback.value = ''
@@ -512,6 +513,10 @@ const openPolicyEditor = async entry => {
       compatibilityPurposeSuggestion.value = null
     }
     policyEditorOpen.value = true
+    if (focusPurposeDeclaration) {
+      await nextTick()
+      document.getElementById('policy-native-purpose-change')?.focus()
+    }
   } catch {
     policyEditorError.value = 'Classifarr could not load the current policy for remediation. Refresh the inventory and try again.'
   }

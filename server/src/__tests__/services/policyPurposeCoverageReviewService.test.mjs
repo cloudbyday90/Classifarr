@@ -18,6 +18,9 @@ describe('PolicyPurposeCoverageReviewService', () => {
     const db = { query: jest.fn() };
     const records = [{ policy_id: 17 }, { policy_id: 18 }];
     const loadRecords = jest.fn().mockResolvedValue(records);
+    const purposeDeclarationWorklistRecords = [{ policy_id: 17 }, { policy_id: 18 }];
+    const loadPurposeDeclarationWorklistRecords = jest.fn()
+      .mockResolvedValue(purposeDeclarationWorklistRecords);
     const evidenceInventoryRecord = {
       active_policy_count: 2,
       profile_only_purpose_policy_count: 2,
@@ -31,6 +34,7 @@ describe('PolicyPurposeCoverageReviewService', () => {
       db,
       now: () => '2026-08-16T12:00:00.000Z',
       loadRecords,
+      loadPurposeDeclarationWorklistRecords,
       loadEvidenceInventoryRecord,
       loadLifecycleReceiptRecords,
       lifecycleReceiptLimit: 2,
@@ -39,10 +43,13 @@ describe('PolicyPurposeCoverageReviewService', () => {
 
     await expect(service.getReview({ limit: 1 })).resolves.toEqual({ rawConfigurationExposed: false });
     expect(loadRecords).toHaveBeenCalledWith({ db, limit: 2 });
+    expect(loadPurposeDeclarationWorklistRecords).toHaveBeenCalledWith({ db, limit: 2 });
     expect(loadEvidenceInventoryRecord).toHaveBeenCalledWith({ db });
     expect(loadLifecycleReceiptRecords).toHaveBeenCalledWith({ db, limit: 3 });
     expect(buildReview).toHaveBeenCalledWith({
       records: [records[0]],
+      purposeDeclarationWorklistRecords: [purposeDeclarationWorklistRecords[0]],
+      purposeDeclarationWorklistTruncated: true,
       evidenceInventoryRecord,
       lifecycleReceiptRecords,
       lifecycleReceiptLimit: 2,

@@ -10,6 +10,7 @@
   <section
     v-if="!accessDenied"
     id="policy-native-purpose-change"
+    tabindex="-1"
     class="rounded-lg border border-indigo-800/70 bg-indigo-950/20 p-4 text-indigo-50"
     aria-labelledby="policy-native-purpose-change-title"
   >

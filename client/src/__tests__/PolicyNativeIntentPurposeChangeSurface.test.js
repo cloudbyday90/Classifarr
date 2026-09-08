@@ -88,6 +88,15 @@ function recentReceiptDiscovery(recentChange = null) {
 }
 
 describe('PolicyNativeIntentPurposeChangeSurface', () => {
+  it('exposes a programmatic focus target for the declaration-review worklist', async () => {
+    apiMock.getPolicyNativeIntentPurposeChange.mockResolvedValue(purposeRead())
+
+    const wrapper = mount(PolicyNativeIntentPurposeChangeSurface, { props: { policyId: 17 } })
+    await flushPromises()
+
+    expect(wrapper.get('#policy-native-purpose-change').attributes('tabindex')).toBe('-1')
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     apiMock.getPolicyNativeIntentChangeRecentReceipt.mockResolvedValue(recentReceiptDiscovery())

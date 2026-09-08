@@ -17,6 +17,9 @@ import {
   loadPolicyPurposeCoverageReviewRecords,
 } from './policyPurposeCoverageReviewPersistence.mjs';
 import {
+  loadPolicyPurposeDeclarationWorklistRecords,
+} from './policyPurposeDeclarationWorklistPersistence.mjs';
+import {
   loadPolicyPurposeEvidenceInventoryRecord,
 } from './policyPurposeEvidenceInventoryPersistence.mjs';
 import {
@@ -31,6 +34,7 @@ export class PolicyPurposeCoverageReviewService {
     db = defaultDb,
     now = () => new Date(),
     loadRecords = loadPolicyPurposeCoverageReviewRecords,
+    loadPurposeDeclarationWorklistRecords = loadPolicyPurposeDeclarationWorklistRecords,
     loadEvidenceInventoryRecord = loadPolicyPurposeEvidenceInventoryRecord,
     loadLifecycleReceiptRecords = loadPolicyPurposeLifecycleProvenanceReceiptRecords,
     lifecycleReceiptLimit = DEFAULT_POLICY_PURPOSE_LIFECYCLE_PROVENANCE_RECEIPT_ROWS,
@@ -39,6 +43,7 @@ export class PolicyPurposeCoverageReviewService {
     this.db = db;
     this.now = now;
     this.loadRecords = loadRecords;
+    this.loadPurposeDeclarationWorklistRecords = loadPurposeDeclarationWorklistRecords;
     this.loadEvidenceInventoryRecord = loadEvidenceInventoryRecord;
     this.loadLifecycleReceiptRecords = loadLifecycleReceiptRecords;
     this.lifecycleReceiptLimit = lifecycleReceiptLimit;
@@ -48,8 +53,17 @@ export class PolicyPurposeCoverageReviewService {
   async getReview({ dbClient = this.db, limit, now = this.now() } = {}) {
     const normalizedLimit = normalizePolicyPurposeCoverageReviewLimit(limit);
     const lifecycleReceiptLimit = Math.max(1, Number(this.lifecycleReceiptLimit) || 1);
-    const [loadedRecords, evidenceInventoryRecord, loadedLifecycleReceiptRecords] = await Promise.all([
+    const [
+      loadedRecords,
+      loadedPurposeDeclarationWorklistRecords,
+      evidenceInventoryRecord,
+      loadedLifecycleReceiptRecords,
+    ] = await Promise.all([
       this.loadRecords({
+        db: dbClient,
+        limit: normalizedLimit + 1,
+      }),
+      this.loadPurposeDeclarationWorklistRecords({
         db: dbClient,
         limit: normalizedLimit + 1,
       }),
@@ -60,12 +74,18 @@ export class PolicyPurposeCoverageReviewService {
       }),
     ]);
     const records = Array.isArray(loadedRecords) ? loadedRecords : [];
+    const purposeDeclarationWorklistRecords = Array.isArray(loadedPurposeDeclarationWorklistRecords)
+      ? loadedPurposeDeclarationWorklistRecords
+      : [];
     const lifecycleReceiptRecords = Array.isArray(loadedLifecycleReceiptRecords)
       ? loadedLifecycleReceiptRecords
       : [];
 
     return this.buildReview({
       records: records.slice(0, normalizedLimit),
+      purposeDeclarationWorklistRecords: purposeDeclarationWorklistRecords.slice(0, normalizedLimit),
+      purposeDeclarationWorklistTruncated:
+        purposeDeclarationWorklistRecords.length > normalizedLimit,
       evidenceInventoryRecord,
       lifecycleReceiptRecords: lifecycleReceiptRecords.slice(0, lifecycleReceiptLimit),
       lifecycleReceiptLimit,

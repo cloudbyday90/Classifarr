@@ -21,8 +21,11 @@ import {
 import {
   buildPolicyPurposeLifecycleProvenanceReceipt,
 } from './policyPurposeLifecycleProvenanceReceipt.mjs';
+import {
+  buildPolicyPurposeDeclarationWorklist,
+} from './policyPurposeDeclarationWorklistContract.mjs';
 
-export const POLICY_PURPOSE_COVERAGE_REVIEW_VERSION = 9;
+export const POLICY_PURPOSE_COVERAGE_REVIEW_VERSION = 10;
 export const DEFAULT_POLICY_PURPOSE_COVERAGE_REVIEW_ROWS = 50;
 export const MAX_POLICY_PURPOSE_COVERAGE_REVIEW_ROWS = 100;
 
@@ -162,6 +165,8 @@ export function buildPolicyPurposeCoverageReviewEntry(record = {}) {
 
 export function buildPolicyPurposeCoverageReview({
   records = [],
+  purposeDeclarationWorklistRecords = [],
+  purposeDeclarationWorklistTruncated = false,
   evidenceInventoryRecord = {},
   lifecycleReceiptRecords = [],
   lifecycleReceiptLimit,
@@ -205,6 +210,10 @@ export function buildPolicyPurposeCoverageReview({
     version: `policy_purpose_coverage_review.v${POLICY_PURPOSE_COVERAGE_REVIEW_VERSION}`,
     evaluatedAt: toIsoTimestamp(evaluatedAt) || new Date().toISOString(),
     entries,
+    purposeDeclarationWorklist: buildPolicyPurposeDeclarationWorklist({
+      records: purposeDeclarationWorklistRecords,
+      truncated: purposeDeclarationWorklistTruncated,
+    }),
     evidenceInventory: buildPolicyPurposeEvidenceInventory(evidenceInventoryRecord),
     studySourceReadiness: buildPolicyPurposeCoverageStudySourceReadiness(evidenceInventoryRecord),
     lifecycleProvenanceReceipt: buildPolicyPurposeLifecycleProvenanceReceipt({

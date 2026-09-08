@@ -109,6 +109,11 @@
         :receipt="review?.lifecycleProvenanceReceipt"
       />
 
+      <PolicyPurposeDeclarationWorklist
+        :worklist="review?.purposeDeclarationWorklist"
+        @review-purpose="emit('edit-policy', $event)"
+      />
+
       <div
         v-if="entries.length === 0"
         class="p-5 text-sm text-gray-400"
@@ -354,6 +359,7 @@ import {
 } from '@/utils/policyPurposeCoverageStudySourceReadiness'
 import PolicyPurposeEvidenceInventory from '@/components/policies/PolicyPurposeEvidenceInventory.vue'
 import PolicyPurposeLifecycleProvenanceReceipt from '@/components/policies/PolicyPurposeLifecycleProvenanceReceipt.vue'
+import PolicyPurposeDeclarationWorklist from '@/components/policies/PolicyPurposeDeclarationWorklist.vue'
 
 const props = defineProps({
   review: {
