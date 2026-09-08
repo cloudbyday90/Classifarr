@@ -20,6 +20,8 @@ import { jest } from '@jest/globals';
 import fs from 'node:fs';
 import { createLoggerModuleMock, createMockModule } from './helpers/mockFactory.mjs';
 
+const originalReadFileSync = fs.readFileSync;
+
 const db = {
   query: jest.fn(),
 };
@@ -29,6 +31,12 @@ jest.unstable_mockModule('../config/database.mjs', () => createMockModule(db));
 jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
 
 const { avxGuard } = await import('../services/avxGuard.mjs');
+
+function mockCpuInfo(value) {
+  return jest.spyOn(fs, 'readFileSync').mockImplementation((path, ...args) => (
+    path === '/proc/cpuinfo' ? value : originalReadFileSync.call(fs, path, ...args)
+  ));
+}
 
 beforeEach(() => {
   db.query.mockReset();
@@ -40,7 +48,7 @@ beforeEach(() => {
 
 describe('avxGuard.run - CPU detection', () => {
   test('records avx=true, avx2=true when both flags present in cpuinfo', async () => {
-    jest.spyOn(fs, 'readFileSync').mockReturnValueOnce('flags : fpu avx avx2 sse4_2\n');
+    mockCpuInfo('flags : fpu avx avx2 sse4_2\n');
 
     const result = await avxGuard.run();
 
@@ -57,7 +65,7 @@ describe('avxGuard.run - CPU detection', () => {
   });
 
   test('records avx=true, avx2=false when only avx present', async () => {
-    jest.spyOn(fs, 'readFileSync').mockReturnValueOnce('flags : fpu vme avx sse4_2\n');
+    mockCpuInfo('flags : fpu vme avx sse4_2\n');
 
     await avxGuard.run();
 
@@ -67,7 +75,7 @@ describe('avxGuard.run - CPU detection', () => {
   });
 
   test('records avx=false, avx2=false when neither flag present', async () => {
-    jest.spyOn(fs, 'readFileSync').mockReturnValueOnce('flags : fpu vme sse4_2\n');
+    mockCpuInfo('flags : fpu vme sse4_2\n');
 
     await avxGuard.run();
 
@@ -77,8 +85,9 @@ describe('avxGuard.run - CPU detection', () => {
   });
 
   test('records avx=unknown, avx2=unknown when /proc/cpuinfo is unavailable', async () => {
-    jest.spyOn(fs, 'readFileSync').mockImplementationOnce(() => {
-      throw new Error('ENOENT');
+    mockCpuInfo(null).mockImplementation((path, ...args) => {
+      if (path === '/proc/cpuinfo') throw new Error('ENOENT');
+      return originalReadFileSync.call(fs, path, ...args);
     });
 
     await avxGuard.run();
@@ -89,7 +98,7 @@ describe('avxGuard.run - CPU detection', () => {
   });
 
   test('avx word-boundary match: "avxother" does not trigger avx=true', async () => {
-    jest.spyOn(fs, 'readFileSync').mockReturnValueOnce('flags : fpu vme avxother\n');
+    mockCpuInfo('flags : fpu vme avxother\n');
 
     await avxGuard.run();
 
@@ -100,7 +109,7 @@ describe('avxGuard.run - CPU detection', () => {
 
 describe('avxGuard.run - pgvector env vars', () => {
   beforeEach(() => {
-    jest.spyOn(fs, 'readFileSync').mockReturnValue('flags : fpu\n');
+    mockCpuInfo('flags : fpu\n');
   });
 
   test('records default build=multi and selected=generic when env vars absent', async () => {
@@ -131,7 +140,7 @@ describe('avxGuard.run - pgvector env vars', () => {
 
 describe('avxGuard.run - setSetting DB behaviour', () => {
   beforeEach(() => {
-    jest.spyOn(fs, 'readFileSync').mockReturnValue('flags : fpu\n');
+    mockCpuInfo('flags : fpu\n');
   });
 
   test('uses UPSERT SQL (INSERT ... ON CONFLICT DO UPDATE)', async () => {
@@ -169,7 +178,7 @@ describe('avxGuard.run - setSetting DB behaviour', () => {
 
 describe('avxGuard.run - return value', () => {
   beforeEach(() => {
-    jest.spyOn(fs, 'readFileSync').mockReturnValue('flags : fpu\n');
+    mockCpuInfo('flags : fpu\n');
   });
 
   test('always returns { action, selected, build }', async () => {

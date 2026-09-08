@@ -22,6 +22,7 @@ import {
   createMockLogger,
   createNamedMockModule,
 } from './helpers/mockFactory.mjs';
+import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from '../services/sourceConflictAuthorityGuard.mjs';
 
 const mockEnrichmentRetryService = {
     queueForRetry: jest.fn(),
@@ -112,7 +113,7 @@ describe('maybeBackfillRating', () => {
     svc.queryWithTimeout.mockResolvedValue({ rowCount: 0 });
     await svc.maybeBackfillRating(1, { type: 'series', rated: 'TV-MA' }, 'tv', sourceSnapshot('tv'), null);
     expect(svc.queryWithTimeout).toHaveBeenCalledWith(expect.stringContaining('media_type = $3'),
-      [1, 'TV-MA', 'tv', null, JSON.stringify(sourceSnapshot('tv'))]);
+      [1, 'TV-MA', 'tv', null, JSON.stringify(sourceSnapshot('tv')), SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]);
     expect(svc.db.query).not.toHaveBeenCalled();
     expect(svc.logger.info).not.toHaveBeenCalled();
   });
@@ -151,7 +152,7 @@ describe('maybeBackfillRating', () => {
     await svc.maybeBackfillRating(42, { rated: 'R', type: 'movie' }, 'movie', sourceSnapshot(), null);
     expect(queryWithTimeout).toHaveBeenCalledWith(
       expect.stringContaining('media_server_items'),
-      [42, 'R', 'movie', null, JSON.stringify(sourceSnapshot())]
+      [42, 'R', 'movie', null, JSON.stringify(sourceSnapshot()), SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]
     );
     expect(db.query).not.toHaveBeenCalled();
     expect(svc.logger.info).toHaveBeenCalledWith('Rating updated from OMDb', { itemId: 42, original: 'PG', omdb: 'R' });

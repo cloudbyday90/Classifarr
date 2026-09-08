@@ -163,7 +163,7 @@ describe('Enrichment Pipeline Integration', () => {
                 if (query.includes('tavily_config')) {
                     return Promise.resolve({ rows: [] });
                 }
-                if (query.includes('UPDATE media_server_items SET tmdb_id')) {
+                if (query.includes('UPDATE media_server_items') && query.includes('SET tmdb_id')) {
                     return Promise.resolve({ rows: [] });
                 }
                 if (query.includes('UPDATE media_server_items SET metadata')) {
@@ -633,7 +633,7 @@ describe('Enrichment Pipeline Integration', () => {
                 if (query.includes('omdb_config') || query.includes('tavily_config')) {
                     return Promise.resolve({ rows: [] });
                 }
-                if (query.includes('UPDATE media_server_items SET tmdb_id')) {
+                if (query.includes('UPDATE media_server_items') && query.includes('SET tmdb_id')) {
                     backfillCalled();
                     return Promise.resolve({ rows: [] });
                 }
