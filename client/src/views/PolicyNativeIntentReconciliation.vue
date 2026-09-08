@@ -338,6 +338,7 @@ import {
 import { usePolicyNativeIntentReconciliationStatus } from '@/composables/usePolicyNativeIntentReconciliationStatus'
 import { usePolicyNativeIntentReconciliationRemediationInventory } from '@/composables/usePolicyNativeIntentReconciliationRemediationInventory'
 import { useHeldOutSemanticStudyReadiness } from '@/composables/useHeldOutSemanticStudyReadiness'
+import { useHeldOutSemanticStudyReadinessAutoRefresh } from '@/composables/useHeldOutSemanticStudyReadinessAutoRefresh'
 import { usePolicyPurposeCoverageReview } from '@/composables/usePolicyPurposeCoverageReview'
 import { usePolicyScopedEvidenceDigest } from '@/composables/usePolicyScopedEvidenceDigest'
 import {
@@ -373,6 +374,9 @@ const {
   errorMessage: heldOutSemanticStudyReadinessErrorMessage,
   loadReadiness: loadHeldOutSemanticStudyReadiness,
 } = useHeldOutSemanticStudyReadiness()
+useHeldOutSemanticStudyReadinessAutoRefresh({
+  refresh: loadHeldOutSemanticStudyReadiness,
+})
 const {
   digest: policyScopedEvidenceDigest,
   isLoading: policyScopedEvidenceDigestLoading,

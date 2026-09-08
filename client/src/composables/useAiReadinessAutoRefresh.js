@@ -16,21 +16,12 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { ref } from 'vue'
+import {
+  useBoundedVisiblePageRefresh,
+} from './useBoundedVisiblePageRefresh'
 
 export const AI_READINESS_AUTO_REFRESH_INTERVAL_MS = 2 * 60 * 1000
-const AUTO_REFRESH_DEDUPLICATION_MS = 2 * 1000
-
-function isVisibleDocument() {
-  return typeof document === 'undefined' || document.visibilityState === 'visible'
-}
-
-function normalizeRefreshInterval(value) {
-  const interval = Number(value)
-  return Number.isSafeInteger(interval) && interval >= 1_000
-    ? interval
-    : AI_READINESS_AUTO_REFRESH_INTERVAL_MS
-}
 
 /**
  * Owns the bounded, read-only refresh lifecycle for the authoritative AI
@@ -52,100 +43,15 @@ export function useAiReadinessAutoRefresh({
     throw new TypeError('AI readiness auto refresh requires a refresh function.')
   }
 
-  const activeRefreshCount = ref(0)
-  const isRefreshing = computed(() => activeRefreshCount.value > 0)
-  const lastUpdatedAt = ref(null)
-  const intervalMs = normalizeRefreshInterval(refreshIntervalMs)
-  let intervalId = null
-  let lastAutomaticRefreshAt = Number.NEGATIVE_INFINITY
-
-  const stopAutomaticRefresh = () => {
-    if (intervalId !== null) {
-      clearInterval(intervalId)
-      intervalId = null
-    }
-  }
-
-  const canRefreshAutomatically = () => (
-    autoRefreshEnabled.value === true && isVisibleDocument()
-  )
-
-  const refreshReadiness = async ({ automatic = false } = {}) => {
-    if ((automatic && isRefreshing.value) || (automatic && !canRefreshAutomatically())) {
-      return false
-    }
-
-    if (automatic && Date.now() - lastAutomaticRefreshAt < AUTO_REFRESH_DEDUPLICATION_MS) {
-      return false
-    }
-
-    if (automatic) {
-      lastAutomaticRefreshAt = Date.now()
-    }
-
-    activeRefreshCount.value += 1
-    try {
-      const result = await refresh()
-      if (result !== null && result !== false) {
-        markReadinessUpdated()
-        return true
-      }
-      return false
-    } catch {
-      return false
-    } finally {
-      activeRefreshCount.value -= 1
-    }
-  }
-
-  const markReadinessUpdated = () => {
-    lastUpdatedAt.value = new Date().toISOString()
-  }
-
-  const startAutomaticRefresh = () => {
-    stopAutomaticRefresh()
-    if (!autoRefreshEnabled.value) return
-
-    intervalId = setInterval(() => {
-      void refreshReadiness({ automatic: true })
-    }, intervalMs)
-  }
-
-  const handleVisibilityChange = () => {
-    if (canRefreshAutomatically()) {
-      void refreshReadiness({ automatic: true })
-    }
-  }
-
-  const handleWindowFocus = () => {
-    if (canRefreshAutomatically()) {
-      void refreshReadiness({ automatic: true })
-    }
-  }
-
-  const stopAutoRefreshWatch = watch(autoRefreshEnabled, () => {
-    startAutomaticRefresh()
-  })
-
-  onMounted(() => {
-    void refreshReadiness()
-    startAutomaticRefresh()
-
-    window.addEventListener('focus', handleWindowFocus)
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-  })
-
-  onUnmounted(() => {
-    stopAutomaticRefresh()
-    stopAutoRefreshWatch()
-    window.removeEventListener('focus', handleWindowFocus)
-    document.removeEventListener('visibilitychange', handleVisibilityChange)
+  const refreshState = useBoundedVisiblePageRefresh({
+    refresh,
+    autoRefreshEnabled,
+    refreshIntervalMs,
   })
 
   return {
-    isRefreshing,
-    lastUpdatedAt,
-    markReadinessUpdated,
-    refreshReadiness,
+    ...refreshState,
+    markReadinessUpdated: refreshState.markUpdated,
+    refreshReadiness: refreshState.refreshNow,
   }
 }

@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Automatic held-out study status refresh** — The reconciliation page now
+  refreshes only the existing count-only study-readiness report every five
+  visible-page minutes and after a visibility return. It retains no new data,
+  cannot start study work or routing, and ignores stale reads.
+
 - **Passive held-out study readiness** — Administrators and future automation
   can read a rate-limited, no-store, aggregate-only report explaining whether
   normal lifecycle receipts or complete declared-purpose evidence still defer

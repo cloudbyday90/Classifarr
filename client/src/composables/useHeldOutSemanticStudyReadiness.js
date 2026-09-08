@@ -19,19 +19,28 @@ export function useHeldOutSemanticStudyReadiness() {
   const readiness = ref(null)
   const isLoading = ref(false)
   const errorMessage = ref('')
+  let requestSequence = 0
 
   async function loadReadiness() {
+    const activeRequestSequence = ++requestSequence
     isLoading.value = true
     errorMessage.value = ''
 
     try {
-      readiness.value = await api.getHeldOutSemanticStudyReadiness()
+      const nextReadiness = await api.getHeldOutSemanticStudyReadiness()
+      if (activeRequestSequence !== requestSequence) return null
+
+      readiness.value = nextReadiness
       return readiness.value
     } catch (error) {
+      if (activeRequestSequence !== requestSequence) return null
+
       errorMessage.value = getErrorMessage(error)
       return null
     } finally {
-      isLoading.value = false
+      if (activeRequestSequence === requestSequence) {
+        isLoading.value = false
+      }
     }
   }
 
