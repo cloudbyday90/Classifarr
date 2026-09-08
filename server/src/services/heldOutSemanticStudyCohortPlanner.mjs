@@ -7,6 +7,7 @@ import { createHash, createHmac } from 'node:crypto';
 import {
   POLICY_CANDIDATE_CONTRASTIVE_RETRIEVAL_CONTRACT_STATUS_IDS,
 } from './policyCandidateContrastiveRetrievalContract.mjs';
+import { heldOutSemanticStudyEligibilityDiagnosticCountId } from './heldOutSemanticStudyEligibilityDiagnostics.mjs';
 
 export const HELD_OUT_SEMANTIC_STUDY_COHORT_PLANNER_VERSION =
   'policy.held_out_semantic_study_cohort_planner.v1';
@@ -73,11 +74,24 @@ function selectionCommitment(selectionSecret) {
   return `sha256:${createHash('sha256').update(selectionSecret).digest('hex')}`;
 }
 
-function buildReceipt({ caseCount, eligibilityStatusCounts, eligibleByStratum, selectedByStratum, selectionSecret, statusId }) {
+function orderedCounts(counts) {
+  return Object.freeze(Object.fromEntries(Object.entries(counts).sort(([left], [right]) => left.localeCompare(right))));
+}
+
+function buildReceipt({
+  caseCount,
+  eligibilityDecisionCounts,
+  eligibilityStatusCounts,
+  eligibleByStratum,
+  selectedByStratum,
+  selectionSecret,
+  statusId,
+}) {
   return Object.freeze({
     automaticRoutingEligibility: false,
     caseCount,
-    eligibilityStatusCounts: Object.freeze({ ...eligibilityStatusCounts }),
+    eligibilityDecisionCounts: orderedCounts(eligibilityDecisionCounts),
+    eligibilityStatusCounts: orderedCounts(eligibilityStatusCounts),
     eligibleByStratum: Object.freeze({ ...eligibleByStratum }),
     independentLabelsAvailable: false,
     policyChangeEligibility: false,
@@ -93,6 +107,7 @@ function invalidPlan(selectionSecret) {
   return Object.freeze({
     receipt: buildReceipt({
       caseCount: 0,
+      eligibilityDecisionCounts: {},
       eligibilityStatusCounts: {},
       eligibleByStratum: fixedCountByStratum(),
       selectedByStratum: fixedCountByStratum(),
@@ -113,7 +128,7 @@ export function createHeldOutSemanticStudyCohortPlanner({
 } = {}) {
   return Object.freeze({
     async plan({ candidates, caseCount = 28, policies, selectionSecret } = {}) {
-      if (!preparation || typeof preparation.prepare !== 'function' ||
+      if (!preparation || (typeof preparation.prepare !== 'function' && typeof preparation.assess !== 'function') ||
           !Array.isArray(candidates) || !Array.isArray(policies) ||
           !Buffer.isBuffer(selectionSecret) || selectionSecret.length < 16 ||
           !Number.isInteger(caseCount) || caseCount < MINIMUM_CASES || caseCount > MAXIMUM_CASES) {
@@ -122,6 +137,7 @@ export function createHeldOutSemanticStudyCohortPlanner({
 
       const targets = selectedTargets(caseCount);
       const eligibilityStatusCounts = {};
+      const eligibilityDecisionCounts = {};
       const eligibleByStratum = fixedCountByStratum();
       const selectedByStratum = fixedCountByStratum();
       const eligible = Object.fromEntries(HELD_OUT_SEMANTIC_STUDY_COHORT_STRATA.map((stratum) => [stratum, []]));
@@ -137,9 +153,16 @@ export function createHeldOutSemanticStudyCohortPlanner({
         if (seenIdentities.has(key)) return invalidPlan(selectionSecret);
         seenIdentities.add(key);
 
-        const contract = await preparation.prepare({ metadata, policies });
+        const assessment = typeof preparation.assess === 'function'
+          ? await preparation.assess({ metadata, policies })
+          : { contract: await preparation.prepare({ metadata, policies }), diagnostic: null };
+        const contract = assessment?.contract;
         const contractStatus = contractStatusId(contract);
         eligibilityStatusCounts[contractStatus] = (eligibilityStatusCounts[contractStatus] ?? 0) + 1;
+        if (assessment?.diagnostic) {
+          const diagnosticId = heldOutSemanticStudyEligibilityDiagnosticCountId(assessment.diagnostic);
+          eligibilityDecisionCounts[diagnosticId] = (eligibilityDecisionCounts[diagnosticId] ?? 0) + 1;
+        }
         if (contract?.valid !== true || contractStatus !==
             POLICY_CANDIDATE_CONTRASTIVE_RETRIEVAL_CONTRACT_STATUS_IDS.READY) continue;
         eligible[stratum].push(Object.freeze({ contract, metadata }));
@@ -150,6 +173,7 @@ export function createHeldOutSemanticStudyCohortPlanner({
         return Object.freeze({
           receipt: buildReceipt({
             caseCount,
+            eligibilityDecisionCounts,
             eligibilityStatusCounts,
             eligibleByStratum,
             selectedByStratum,
@@ -177,6 +201,7 @@ export function createHeldOutSemanticStudyCohortPlanner({
       return Object.freeze({
         receipt: buildReceipt({
           caseCount,
+          eligibilityDecisionCounts,
           eligibilityStatusCounts,
           eligibleByStratum,
           selectedByStratum,

@@ -42,6 +42,7 @@ describe('held-out semantic study cohort planner', () => {
       policyChangeEligibility: false,
       semanticSelection: false,
       eligibilityStatusCounts: { ready: 28 },
+      eligibilityDecisionCounts: {},
       selectedByStratum: {
         documentary: 7,
         'genre-overlap': 7,
@@ -77,6 +78,23 @@ describe('held-out semantic study cohort planner', () => {
       ordinary: 0,
       reality: 0,
     });
+  });
+
+  test('retains only aggregate action and candidate-count diagnostics for unavailable policy comparisons', async () => {
+    const preparation = { assess: jest.fn(async () => ({
+      contract: { statusId: 'not_pending_policy_decision', valid: false },
+      diagnostic: { actionId: 'manual', rankedCandidateCountId: 'two_or_more' },
+    })) };
+    const planner = createHeldOutSemanticStudyCohortPlanner({ preparation });
+    const plan = await planner.plan({
+      candidates: candidates(7),
+      policies: [{}],
+      selectionSecret: Buffer.alloc(32, 11),
+    });
+
+    expect(plan.request).toBeNull();
+    expect(plan.receipt.eligibilityDecisionCounts).toEqual({ 'manual:two_or_more': 28 });
+    expect(JSON.stringify(plan.receipt)).not.toMatch(/Private|tmdb|library|title/u);
   });
 
   test('rejects duplicate identities before exposing any request', async () => {

@@ -129,5 +129,9 @@ describe('held-out semantic study', () => {
     });
     const metadata = request().cases[0].metadata;
     expect((await preparation.prepare({ metadata, policies })).valid).toBe(false);
+    expect(await preparation.assess({ metadata, policies })).toEqual({
+      contract: expect.objectContaining({ valid: false, statusId: 'not_pending_policy_decision' }),
+      diagnostic: { actionId: 'manual', rankedCandidateCountId: 'none' },
+    });
   });
 });
