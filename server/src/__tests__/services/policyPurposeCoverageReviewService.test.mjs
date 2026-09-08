@@ -18,12 +18,12 @@ describe('PolicyPurposeCoverageReviewService', () => {
     const db = { query: jest.fn() };
     const records = [{ policy_id: 17 }, { policy_id: 18 }];
     const loadRecords = jest.fn().mockResolvedValue(records);
-    const studySourceReadinessRecord = {
+    const evidenceInventoryRecord = {
       active_policy_count: 2,
       profile_only_purpose_policy_count: 2,
       retained_purpose_policy_count: 0,
     };
-    const loadStudySourceReadinessRecord = jest.fn().mockResolvedValue(studySourceReadinessRecord);
+    const loadEvidenceInventoryRecord = jest.fn().mockResolvedValue(evidenceInventoryRecord);
     const lifecycleReceiptRecords = [{ lifecycle_transition: 'native_intent_change' }];
     const loadLifecycleReceiptRecords = jest.fn().mockResolvedValue(lifecycleReceiptRecords);
     const buildReview = jest.fn().mockReturnValue({ rawConfigurationExposed: false });
@@ -31,7 +31,7 @@ describe('PolicyPurposeCoverageReviewService', () => {
       db,
       now: () => '2026-08-16T12:00:00.000Z',
       loadRecords,
-      loadStudySourceReadinessRecord,
+      loadEvidenceInventoryRecord,
       loadLifecycleReceiptRecords,
       lifecycleReceiptLimit: 2,
       buildReview,
@@ -39,11 +39,11 @@ describe('PolicyPurposeCoverageReviewService', () => {
 
     await expect(service.getReview({ limit: 1 })).resolves.toEqual({ rawConfigurationExposed: false });
     expect(loadRecords).toHaveBeenCalledWith({ db, limit: 2 });
-    expect(loadStudySourceReadinessRecord).toHaveBeenCalledWith({ db });
+    expect(loadEvidenceInventoryRecord).toHaveBeenCalledWith({ db });
     expect(loadLifecycleReceiptRecords).toHaveBeenCalledWith({ db, limit: 3 });
     expect(buildReview).toHaveBeenCalledWith({
       records: [records[0]],
-      studySourceReadinessRecord,
+      evidenceInventoryRecord,
       lifecycleReceiptRecords,
       lifecycleReceiptLimit: 2,
       lifecycleReceiptTruncated: false,

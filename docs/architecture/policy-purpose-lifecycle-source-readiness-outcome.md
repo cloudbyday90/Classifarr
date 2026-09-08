@@ -4,16 +4,15 @@ Status: implemented on 2026-09-08.
 
 ## Implemented outcome
 
-The policy-purpose coverage response is now version 6. Its held-out source
+The policy-purpose coverage response is now version 7. Its held-out source
 readiness now joins current declared-purpose provenance with lifecycle receipts
-for the same active policy. A retained purpose in one policy and a lifecycle
-receipt in another can no longer produce an available private-study source.
+for the same active policy and current active native intent. A retained purpose
+in one policy, a lifecycle receipt in another, or a receipt for a superseded
+intent can no longer produce an available private-study source.
 
-The response adds three aggregate partitions: lifecycle-qualified retained
-sources, policies that still need a normal lifecycle receipt, and policies
-whose available receipt evidence requires review. The client checks that the
-partitions match the retained-purpose total and derives the server status
-independently before rendering it.
+The response adds a library-neutral evidence inventory alongside the three
+source partitions. The client independently bounds the inventory and source
+partitions before rendering either status.
 
 The database migration adds a partial policy-first index for applied native
 intent change receipts. It is an implementation performance aid only; it does
@@ -25,8 +24,9 @@ not change authoring records, policy behavior, AI behavior, or routing.
   and review-required lifecycle partitions, contract versioning, and SQL data
   minimization.
 - PostgreSQL integration seeds one established receipt for a retained active
-  policy and confirms it qualifies exactly one source while three other
-  retained policies remain unqualified.
+  policy, then replaces another policy's current intent without a receipt. It
+  confirms only the current-receipted policy qualifies while the stale receipt
+  remains unqualified.
 - Client tests reject contradictory availability and display the new aggregate
   categories without introducing any control.
 - The focused server and client suites, integration test, lint, typecheck,
@@ -49,3 +49,6 @@ reports a qualified source, run the private eligibility audit, capture one real
 24–32-case cohort, collect independent labels, and run readiness plus
 frozen-study preflight. Only a good measured error profile can justify a
 review-only semantic counter-evidence experiment.
+
+The current-intent invariant and the configuration-agnostic inventory are
+documented in [Policy Evidence Inventory Outcome](policy-purpose-evidence-inventory-outcome.md).

@@ -11,6 +11,13 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Library-agnostic policy evidence inventory** — The administrator-only
+  policy-purpose review now reports fixed aggregate availability of current
+  authoritative native intents, retained declared purpose, and matching normal
+  lifecycle evidence without returning library identity or configuration. A
+  stale receipt cannot qualify a newer unreceipted intent; semantic selection,
+  labels, AI, and routing remain disabled.
+
 - **Policy-linked lifecycle source readiness** — Held-out semantic-study source
   availability now requires current retained declared purpose and complete
   normal lifecycle evidence for the same active policy. The administrator-only

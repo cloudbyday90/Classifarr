@@ -36,6 +36,10 @@
     </div>
 
     <template v-else>
+      <PolicyPurposeEvidenceInventory
+        :inventory="review?.evidenceInventory"
+      />
+
       <div
         v-if="studySourceReadiness"
         class="border-b border-gray-700 bg-background/50 p-5"
@@ -332,6 +336,7 @@ import { computed, ref } from 'vue'
 import {
   normalizePolicyPurposeCoverageStudySourceReadiness,
 } from '@/utils/policyPurposeCoverageStudySourceReadiness'
+import PolicyPurposeEvidenceInventory from '@/components/policies/PolicyPurposeEvidenceInventory.vue'
 import PolicyPurposeLifecycleProvenanceReceipt from '@/components/policies/PolicyPurposeLifecycleProvenanceReceipt.vue'
 
 const props = defineProps({

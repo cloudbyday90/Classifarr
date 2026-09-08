@@ -17,8 +17,8 @@ import {
   loadPolicyPurposeCoverageReviewRecords,
 } from './policyPurposeCoverageReviewPersistence.mjs';
 import {
-  loadPolicyPurposeCoverageStudySourceReadinessRecord as loadLifecycleBoundStudySourceReadinessRecord,
-} from './policyPurposeCoverageStudySourceReadinessPersistence.mjs';
+  loadPolicyPurposeEvidenceInventoryRecord,
+} from './policyPurposeEvidenceInventoryPersistence.mjs';
 import {
   DEFAULT_POLICY_PURPOSE_LIFECYCLE_PROVENANCE_RECEIPT_ROWS,
 } from './policyPurposeLifecycleProvenanceReceipt.mjs';
@@ -31,7 +31,7 @@ export class PolicyPurposeCoverageReviewService {
     db = defaultDb,
     now = () => new Date(),
     loadRecords = loadPolicyPurposeCoverageReviewRecords,
-    loadStudySourceReadinessRecord = loadLifecycleBoundStudySourceReadinessRecord,
+    loadEvidenceInventoryRecord = loadPolicyPurposeEvidenceInventoryRecord,
     loadLifecycleReceiptRecords = loadPolicyPurposeLifecycleProvenanceReceiptRecords,
     lifecycleReceiptLimit = DEFAULT_POLICY_PURPOSE_LIFECYCLE_PROVENANCE_RECEIPT_ROWS,
     buildReview = buildPolicyPurposeCoverageReview,
@@ -39,7 +39,7 @@ export class PolicyPurposeCoverageReviewService {
     this.db = db;
     this.now = now;
     this.loadRecords = loadRecords;
-    this.loadStudySourceReadinessRecord = loadStudySourceReadinessRecord;
+    this.loadEvidenceInventoryRecord = loadEvidenceInventoryRecord;
     this.loadLifecycleReceiptRecords = loadLifecycleReceiptRecords;
     this.lifecycleReceiptLimit = lifecycleReceiptLimit;
     this.buildReview = buildReview;
@@ -48,12 +48,12 @@ export class PolicyPurposeCoverageReviewService {
   async getReview({ dbClient = this.db, limit, now = this.now() } = {}) {
     const normalizedLimit = normalizePolicyPurposeCoverageReviewLimit(limit);
     const lifecycleReceiptLimit = Math.max(1, Number(this.lifecycleReceiptLimit) || 1);
-    const [loadedRecords, studySourceReadinessRecord, loadedLifecycleReceiptRecords] = await Promise.all([
+    const [loadedRecords, evidenceInventoryRecord, loadedLifecycleReceiptRecords] = await Promise.all([
       this.loadRecords({
         db: dbClient,
         limit: normalizedLimit + 1,
       }),
-      this.loadStudySourceReadinessRecord({ db: dbClient }),
+      this.loadEvidenceInventoryRecord({ db: dbClient }),
       this.loadLifecycleReceiptRecords({
         db: dbClient,
         limit: lifecycleReceiptLimit + 1,
@@ -66,7 +66,7 @@ export class PolicyPurposeCoverageReviewService {
 
     return this.buildReview({
       records: records.slice(0, normalizedLimit),
-      studySourceReadinessRecord,
+      evidenceInventoryRecord,
       lifecycleReceiptRecords: lifecycleReceiptRecords.slice(0, lifecycleReceiptLimit),
       lifecycleReceiptLimit,
       lifecycleReceiptTruncated: lifecycleReceiptRecords.length > lifecycleReceiptLimit,

@@ -13,8 +13,8 @@ import {
   loadPolicyPurposeCoverageReviewRecords,
 } from '../../services/policyPurposeCoverageReviewPersistence.mjs';
 import {
-  loadPolicyPurposeCoverageStudySourceReadinessRecord,
-} from '../../services/policyPurposeCoverageStudySourceReadinessPersistence.mjs';
+  loadPolicyPurposeEvidenceInventoryRecord,
+} from '../../services/policyPurposeEvidenceInventoryPersistence.mjs';
 
 describe('policyPurposeCoverageReviewPersistence', () => {
   test('compares active native required content terms and shared “any” alternatives inside PostgreSQL without selecting rule values', async () => {
@@ -47,7 +47,7 @@ describe('policyPurposeCoverageReviewPersistence', () => {
     expect(values).toEqual([51])
   });
 
-  test('links current retained policy purpose to complete lifecycle provenance without values', async () => {
+  test('builds a library-agnostic current-intent evidence inventory without values', async () => {
     const query = jest.fn().mockResolvedValue({
       rows: [{
         active_policy_count: 10,
@@ -59,7 +59,7 @@ describe('policyPurposeCoverageReviewPersistence', () => {
       }],
     });
 
-    await expect(loadPolicyPurposeCoverageStudySourceReadinessRecord({ db: { query } }))
+    await expect(loadPolicyPurposeEvidenceInventoryRecord({ db: { query } }))
       .resolves.toEqual({
         active_policy_count: 10,
         profile_only_purpose_policy_count: 10,
@@ -76,7 +76,7 @@ describe('policyPurposeCoverageReviewPersistence', () => {
     expect(sql).toContain('normal_lifecycle_receipts AS')
     expect(sql).toContain('lifecycle_receipt_provenance AS')
     expect(sql).toContain('lifecycle_source_state AS')
-    expect(sql).toContain('source_policy_state AS')
+    expect(sql).toContain('evidence_policy_state AS')
     expect(sql).toContain('policy_initial_intent_establishments')
     expect(sql).toContain("establishment.state = 'established'")
     expect(sql).toContain('policy_native_intent_change_receipts')
@@ -87,12 +87,17 @@ describe('policyPurposeCoverageReviewPersistence', () => {
     expect(sql).toContain('lifecycle_retained_purpose_policy_count')
     expect(sql).toContain('lifecycle_receipt_required_policy_count')
     expect(sql).toContain('lifecycle_receipt_review_required_policy_count')
+    expect(sql).toContain('current_intent_lifecycle_receipt_count')
+    expect(sql).toContain('current_intent_lifecycle_receipt_policy_count')
+    expect(sql).toContain('complete_policy_evidence_count')
     expect(sql).toContain("rule.source = 'media_server_library_profile'")
     expect(sql).toContain("rule.inference_state = 'inferred'")
     expect(sql).not.toContain('rule.values')
     expect(sql).not.toContain('actor_id')
     expect(sql).not.toContain('idempotency_key')
     expect(sql).not.toContain('command_fingerprint')
+    expect(sql).not.toContain('library.name')
+    expect(sql).not.toContain('policy.name')
     expect(sql).not.toContain('classification_history')
     expect(sql).not.toContain('rag_')
     expect(values).toBeUndefined()

@@ -16,10 +16,13 @@ import {
   buildPolicyPurposeCoverageStudySourceReadiness,
 } from './policyPurposeCoverageStudySourceReadiness.mjs';
 import {
+  buildPolicyPurposeEvidenceInventory,
+} from './policyPurposeEvidenceInventory.mjs';
+import {
   buildPolicyPurposeLifecycleProvenanceReceipt,
 } from './policyPurposeLifecycleProvenanceReceipt.mjs';
 
-export const POLICY_PURPOSE_COVERAGE_REVIEW_VERSION = 6;
+export const POLICY_PURPOSE_COVERAGE_REVIEW_VERSION = 7;
 export const DEFAULT_POLICY_PURPOSE_COVERAGE_REVIEW_ROWS = 50;
 export const MAX_POLICY_PURPOSE_COVERAGE_REVIEW_ROWS = 100;
 
@@ -159,7 +162,7 @@ export function buildPolicyPurposeCoverageReviewEntry(record = {}) {
 
 export function buildPolicyPurposeCoverageReview({
   records = [],
-  studySourceReadinessRecord = {},
+  evidenceInventoryRecord = {},
   lifecycleReceiptRecords = [],
   lifecycleReceiptLimit,
   lifecycleReceiptTruncated = false,
@@ -197,9 +200,8 @@ export function buildPolicyPurposeCoverageReview({
     version: `policy_purpose_coverage_review.v${POLICY_PURPOSE_COVERAGE_REVIEW_VERSION}`,
     evaluatedAt: toIsoTimestamp(evaluatedAt) || new Date().toISOString(),
     entries,
-    studySourceReadiness: buildPolicyPurposeCoverageStudySourceReadiness(
-      studySourceReadinessRecord,
-    ),
+    evidenceInventory: buildPolicyPurposeEvidenceInventory(evidenceInventoryRecord),
+    studySourceReadiness: buildPolicyPurposeCoverageStudySourceReadiness(evidenceInventoryRecord),
     lifecycleProvenanceReceipt: buildPolicyPurposeLifecycleProvenanceReceipt({
       records: lifecycleReceiptRecords,
       limit: lifecycleReceiptLimit,

@@ -21,6 +21,7 @@ describe('policyPurposeCoverageStudySourceReadiness', () => {
       activePolicyCount: 0,
       profileOnlyPurposePolicyCount: 0,
       retainedPurposePolicyCount: 0,
+      currentIntentLifecycleReceiptPolicyCount: 0,
       lifecycleRetainedPurposePolicyCount: 0,
       lifecycleReceiptRequiredPolicyCount: 0,
       lifecycleReceiptReviewRequiredPolicyCount: 0,
@@ -54,6 +55,7 @@ describe('policyPurposeCoverageStudySourceReadiness', () => {
       active_policy_count: 10,
       profile_only_purpose_policy_count: 8,
       retained_purpose_policy_count: 2,
+      current_intent_lifecycle_receipt_policy_count: 2,
       lifecycle_retained_purpose_policy_count: 2,
     })).toEqual(expect.objectContaining({
       statusId: POLICY_PURPOSE_COVERAGE_STUDY_SOURCE_READINESS_STATUS_IDS
@@ -81,6 +83,21 @@ describe('policyPurposeCoverageStudySourceReadiness', () => {
       semanticCohortReady: false,
       semanticSelectionAffected: false,
       routingAffected: false,
+    }));
+  });
+
+  test('requires a receipt for the current native intent rather than accepting an older receipt', () => {
+    expect(buildPolicyPurposeCoverageStudySourceReadiness({
+      active_policy_count: 2,
+      retained_purpose_policy_count: 1,
+      current_intent_lifecycle_receipt_policy_count: 0,
+      lifecycle_retained_purpose_policy_count: 1,
+    })).toEqual(expect.objectContaining({
+      statusId: POLICY_PURPOSE_COVERAGE_STUDY_SOURCE_READINESS_STATUS_IDS
+        .NORMAL_LIFECYCLE_PROVENANCE_REQUIRED,
+      currentIntentLifecycleReceiptPolicyCount: 0,
+      lifecycleRetainedPurposePolicyCount: 0,
+      heldOutAuditCandidateSourceAvailable: false,
     }));
   });
 

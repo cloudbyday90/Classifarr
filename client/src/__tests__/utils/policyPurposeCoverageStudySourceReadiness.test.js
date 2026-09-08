@@ -16,6 +16,7 @@ describe('policyPurposeCoverageStudySourceReadiness', () => {
       activePolicyCount: 3,
       profileOnlyPurposePolicyCount: 2,
       retainedPurposePolicyCount: 1,
+      currentIntentLifecycleReceiptPolicyCount: 1,
       lifecycleRetainedPurposePolicyCount: 1,
       lifecycleReceiptRequiredPolicyCount: 0,
       lifecycleReceiptReviewRequiredPolicyCount: 0,
@@ -27,6 +28,7 @@ describe('policyPurposeCoverageStudySourceReadiness', () => {
       activePolicyCount: 3,
       profileOnlyPurposePolicyCount: 2,
       retainedPurposePolicyCount: 1,
+      currentIntentLifecycleReceiptPolicyCount: 1,
       lifecycleRetainedPurposePolicyCount: 1,
       lifecycleReceiptRequiredPolicyCount: 0,
       lifecycleReceiptReviewRequiredPolicyCount: 0,
@@ -44,6 +46,16 @@ describe('policyPurposeCoverageStudySourceReadiness', () => {
       retainedPurposePolicyCount: 1,
       lifecycleRetainedPurposePolicyCount: 0,
       lifecycleReceiptReviewRequiredPolicyCount: 1,
+    })).toBeNull()
+  })
+
+  it('fails closed when a lifecycle source does not have a current-intent receipt', () => {
+    expect(normalizePolicyPurposeCoverageStudySourceReadiness({
+      statusId: 'retained_declared_purpose_source_available',
+      activePolicyCount: 2,
+      retainedPurposePolicyCount: 1,
+      currentIntentLifecycleReceiptPolicyCount: 0,
+      lifecycleRetainedPurposePolicyCount: 1,
     })).toBeNull()
   })
 

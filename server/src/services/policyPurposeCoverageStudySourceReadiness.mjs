@@ -38,8 +38,13 @@ export function buildPolicyPurposeCoverageStudySourceReadiness(record = {}) {
     activePolicyCount - profileOnlyPurposePolicyCount,
     asNonNegativeInteger(record.retained_purpose_policy_count),
   );
+  const currentIntentLifecycleReceiptPolicyCount = Math.min(
+    activePolicyCount,
+    asNonNegativeInteger(record.current_intent_lifecycle_receipt_policy_count),
+  );
   const lifecycleRetainedPurposePolicyCount = Math.min(
     retainedPurposePolicyCount,
+    currentIntentLifecycleReceiptPolicyCount,
     asNonNegativeInteger(record.lifecycle_retained_purpose_policy_count),
   );
   const lifecycleReceiptReviewRequiredPolicyCount = Math.min(
@@ -69,6 +74,7 @@ export function buildPolicyPurposeCoverageStudySourceReadiness(record = {}) {
     activePolicyCount,
     profileOnlyPurposePolicyCount,
     retainedPurposePolicyCount,
+    currentIntentLifecycleReceiptPolicyCount,
     lifecycleRetainedPurposePolicyCount,
     lifecycleReceiptRequiredPolicyCount,
     lifecycleReceiptReviewRequiredPolicyCount,

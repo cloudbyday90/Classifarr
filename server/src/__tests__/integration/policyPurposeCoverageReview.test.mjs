@@ -109,6 +109,52 @@ async function establishInitialIntent({ policyId, libraryId, intentId }) {
   ]);
 }
 
+async function replaceCurrentIntentWithoutLifecycleReceipt({ policyId, intentId, purposeRules }) {
+  const result = await db.query(`
+    WITH deactivated_intent AS (
+      UPDATE policy_intents
+      SET active = FALSE
+      WHERE id = $1
+        AND policy_id = $2
+      RETURNING policy_id, library_id
+    ), native_intent AS (
+      INSERT INTO policy_intents (
+        policy_id, library_id, schema_version, intent_version,
+        active, source, inference_state, review_behavior, validation_status
+      )
+      SELECT
+        policy_id, library_id, 1, 2,
+        TRUE, 'native_intent', 'inferred', '{}'::jsonb, 'valid'
+      FROM deactivated_intent
+      RETURNING id
+    )
+    INSERT INTO policy_intent_rules (
+      intent_id, intent_role, collection, signal_type, operator,
+      values, constraint_mode, semantics, source, inference_state
+    )
+    SELECT
+      native_intent.id,
+      'purpose',
+      'purpose',
+      purpose_rule.signal_type,
+      purpose_rule.operator,
+      purpose_rule.values,
+      'advisory',
+      'identity',
+      'native_intent',
+      'inferred'
+    FROM native_intent
+    CROSS JOIN jsonb_to_recordset($3::jsonb) AS purpose_rule(
+      signal_type TEXT,
+      operator TEXT,
+      values JSONB
+    )
+    RETURNING intent_id
+  `, [intentId, policyId, JSON.stringify(purposeRules)]);
+
+  return result.rows[0].intent_id;
+}
+
 describe('Policy purpose coverage review integration', () => {
   const fixtures = [];
 
@@ -175,8 +221,27 @@ describe('Policy purpose coverage review integration', () => {
         inference_state: 'inferred',
       }],
     });
-    fixtures.push(maintained, broadOne, broadTwo, mixedAny, missing, profileOnly);
+    const staleLifecycle = await createNativePurposeFixture({
+      libraryName: 'Coverage Stale Lifecycle Library',
+      policyName: 'Coverage Stale Lifecycle Policy',
+      purposeRules: [{
+        signal_type: 'genres',
+        operator: 'require_any',
+        values: { require_any: ['stale-lifecycle-token'] },
+      }],
+    });
+    fixtures.push(maintained, broadOne, broadTwo, mixedAny, missing, profileOnly, staleLifecycle);
     await establishInitialIntent(maintained);
+    await establishInitialIntent(staleLifecycle);
+    await replaceCurrentIntentWithoutLifecycleReceipt({
+      policyId: staleLifecycle.policyId,
+      intentId: staleLifecycle.intentId,
+      purposeRules: [{
+        signal_type: 'genres',
+        operator: 'require_any',
+        values: { require_any: ['unreceipted-current-token'] },
+      }],
+    });
 
     const review = await new PolicyPurposeCoverageReviewService({
       db,
@@ -245,8 +310,9 @@ describe('Policy purpose coverage review integration', () => {
       activePolicyCount: expect.any(Number),
       profileOnlyPurposePolicyCount: expect.any(Number),
       retainedPurposePolicyCount: expect.any(Number),
+      currentIntentLifecycleReceiptPolicyCount: 1,
       lifecycleRetainedPurposePolicyCount: 1,
-      lifecycleReceiptRequiredPolicyCount: 3,
+      lifecycleReceiptRequiredPolicyCount: 4,
       lifecycleReceiptReviewRequiredPolicyCount: 0,
       heldOutAuditCandidateSourceAvailable: true,
       semanticCohortReady: false,
@@ -261,5 +327,7 @@ describe('Policy purpose coverage review integration', () => {
     expect(JSON.stringify(review)).not.toContain('shared-review-token');
     expect(JSON.stringify(review)).not.toContain('unique-mixed-review-token');
     expect(JSON.stringify(review)).not.toContain('profile-only-review-token');
+    expect(JSON.stringify(review)).not.toContain('stale-lifecycle-token');
+    expect(JSON.stringify(review)).not.toContain('unreceipted-current-token');
   });
 });

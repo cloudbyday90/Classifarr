@@ -37,7 +37,7 @@ describe('policyPurposeCoverageReviewContract', () => {
     });
 
     expect(review).toEqual(expect.objectContaining({
-      version: 'policy_purpose_coverage_review.v6',
+      version: 'policy_purpose_coverage_review.v7',
       rawConfigurationExposed: false,
       routingAffected: false,
       summary: expect.objectContaining({
@@ -60,22 +60,42 @@ describe('policyPurposeCoverageReviewContract', () => {
     expect(JSON.stringify(review)).not.toContain('must-not-leak');
   });
 
-  test('attaches a full-population source signal without granting cohort or routing authority', () => {
+  test('attaches a library-agnostic evidence inventory and source signal without granting cohort or routing authority', () => {
     const review = buildPolicyPurposeCoverageReview({
       records: [{ policy_id: 17, library_id: 18 }],
-      studySourceReadinessRecord: {
+      evidenceInventoryRecord: {
         active_policy_count: 12,
+        authoritative_active_native_policy_count: 12,
+        current_intent_version_policy_count: 12,
+        current_intent_schema_version_policy_count: 12,
         profile_only_purpose_policy_count: 11,
         retained_purpose_policy_count: 1,
+        normal_lifecycle_receipt_policy_count: 1,
+        verifiable_lifecycle_receipt_policy_count: 1,
+        current_intent_lifecycle_receipt_policy_count: 1,
         lifecycle_retained_purpose_policy_count: 1,
+        complete_policy_evidence_count: 1,
       },
     });
 
+    expect(review.evidenceInventory).toEqual(expect.objectContaining({
+      statusId: 'complete_policy_evidence_available',
+      activePolicyCount: 12,
+      currentIntentVersionPolicyCount: 12,
+      currentIntentSchemaVersionPolicyCount: 12,
+      currentIntentLifecycleReceiptPolicyCount: 1,
+      completePolicyEvidenceCount: 1,
+      rawConfigurationExposed: false,
+      semanticCohortReady: false,
+      semanticSelectionAffected: false,
+      routingAffected: false,
+    }));
     expect(review.studySourceReadiness).toEqual({
       statusId: 'retained_declared_purpose_source_available',
       activePolicyCount: 12,
       profileOnlyPurposePolicyCount: 11,
       retainedPurposePolicyCount: 1,
+      currentIntentLifecycleReceiptPolicyCount: 1,
       lifecycleRetainedPurposePolicyCount: 1,
       lifecycleReceiptRequiredPolicyCount: 0,
       lifecycleReceiptReviewRequiredPolicyCount: 0,

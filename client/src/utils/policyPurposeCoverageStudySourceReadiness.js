@@ -35,8 +35,13 @@ export function normalizePolicyPurposeCoverageStudySourceReadiness(value) {
     activePolicyCount - profileOnlyPurposePolicyCount,
     nonNegativeCount(value.retainedPurposePolicyCount),
   )
+  const currentIntentLifecycleReceiptPolicyCount = Math.min(
+    activePolicyCount,
+    nonNegativeCount(value.currentIntentLifecycleReceiptPolicyCount),
+  )
   const lifecycleRetainedPurposePolicyCount = Math.min(
     retainedPurposePolicyCount,
+    currentIntentLifecycleReceiptPolicyCount,
     nonNegativeCount(value.lifecycleRetainedPurposePolicyCount),
   )
   const lifecycleReceiptReviewRequiredPolicyCount = Math.min(
@@ -69,6 +74,7 @@ export function normalizePolicyPurposeCoverageStudySourceReadiness(value) {
     activePolicyCount,
     profileOnlyPurposePolicyCount,
     retainedPurposePolicyCount,
+    currentIntentLifecycleReceiptPolicyCount,
     lifecycleRetainedPurposePolicyCount,
     lifecycleReceiptRequiredPolicyCount,
     lifecycleReceiptReviewRequiredPolicyCount,

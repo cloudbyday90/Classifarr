@@ -17,8 +17,8 @@ collect labels, invoke AI, change a policy, or route media.
 
 ## Design
 
-`policyPurposeCoverageStudySourceReadinessPersistence.mjs` evaluates this
-inside PostgreSQL. For each active validated native policy, it combines:
+`policyPurposeEvidenceInventoryPersistence.mjs` evaluates this inside
+PostgreSQL. For each active validated native policy, it combines:
 
 - current specialized-purpose provenance;
 - that policy's established initial-intent receipt and applied native-intent
@@ -29,7 +29,8 @@ It returns only fixed aggregate counts. The current retained-purpose policies
 are partitioned exactly into:
 
 1. `lifecycleRetainedPurposePolicyCount`: every recorded normal lifecycle
-   receipt is present, verifiable, and retains declared purpose;
+   receipt is present, verifiable, retains declared purpose, and at least one
+   verifiable receipt identifies the current active native intent;
 2. `lifecycleReceiptRequiredPolicyCount`: no matching normal lifecycle receipt
    has yet been observed; and
 3. `lifecycleReceiptReviewRequiredPolicyCount`: lifecycle evidence exists but
@@ -54,7 +55,9 @@ receipt data associated with active policies and returns no history rows.
   `result_status_id = 'applied'`. Change targets also match policy, source, and
   target intent version before being counted as verifiable.
 - A current retained policy and a historical receipt must share the same policy
-  ID inside the database. No cross-policy aggregate can qualify a source.
+  ID inside the database, and one verifiable receipt must name that policy's
+  current active intent. No cross-policy or stale-intent aggregate can qualify
+  a source.
 - The administrator-only coverage endpoint remains the sole presentation
   surface. It has no mutation or study action.
 - Every semantic, cohort, labeling, selection, and routing flag remains false.
@@ -103,3 +106,6 @@ alert. [W3C Alert Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/alert/)
 5. Require the existing readiness and frozen-study preflight. Any future
    semantic counter-evidence may send ambiguous items to review only and must
    never route them automatically.
+
+The implementation and complete library-neutral contract are documented in
+[Policy Evidence Inventory Design](policy-purpose-evidence-inventory-design.md).
