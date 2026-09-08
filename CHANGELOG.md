@@ -11,6 +11,14 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Governed native-purpose declaration provenance** — Native purpose
+  maintenance now distinguishes declared, profile-derived, mixed, and
+  unverified stored-purpose provenance using a fixed, private v2 contract.
+  Profile-derived terms remain a review draft until an administrator records a
+  revision-checked native declaration; the existing passive lifecycle
+  re-audit observes that durable change without selecting a cohort, invoking
+  AI, or routing media.
+
 - **Measured held-out study readiness** — The administrator-only aggregate
   readiness contract now identifies one fingerprint-current, fixed next
   prerequisite from the existing lifecycle audit without exposing its receipt

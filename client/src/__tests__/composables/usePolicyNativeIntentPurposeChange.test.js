@@ -8,7 +8,7 @@ import { usePolicyNativeIntentPurposeChange } from '@/composables/usePolicyNativ
 
 function purposeRead(revision = 3, term = 'Animation') {
   return {
-    version: 'policy.native_intent_purpose_change_read.v1',
+    version: 'policy.native_intent_purpose_change_read.v2',
     statusId: 'native_intent_purpose_change_available',
     policyId: 17,
     revision,
@@ -21,6 +21,11 @@ function purposeRead(revision = 3, term = 'Animation') {
         constraint_mode: 'advisory',
         semantics: 'identity',
       }],
+    },
+    purposeProvenance: {
+      id: 'declared_native',
+      declarationRequired: false,
+      rawRuleProvenanceExposed: false,
     },
     authority: {
       source: 'server_owned_native_intent',
@@ -189,5 +194,36 @@ describe('usePolicyNativeIntentPurposeChange', () => {
     expect(loadRecentReceiptRequest).toHaveBeenCalledWith(17)
     expect(purposeChange.recentReceiptNotice.value).toContain('revision 4')
     expect(purposeChange.recentReceiptNotice.value).not.toContain('idempotency')
+  })
+
+  it('reports the automatic aggregate re-audit follow-up only after an explicit profile-derived declaration', async () => {
+    const loadPurposeChangeRequest = vi.fn()
+      .mockResolvedValueOnce({
+        ...purposeRead(),
+        purposeProvenance: {
+          id: 'profile_derived',
+          declarationRequired: true,
+          rawRuleProvenanceExposed: false,
+        },
+      })
+      .mockResolvedValueOnce(purposeRead(4, 'Animation'))
+    const purposeChange = usePolicyNativeIntentPurposeChange({
+      loadPurposeChangeRequest,
+      loadRecentReceiptRequest: vi.fn().mockResolvedValue(recentReceiptDiscovery()),
+      applyPurposeChangeRequest: vi.fn().mockResolvedValue({
+        data: { statusId: 'applied', change: { applied: true, newIntentVersion: 4 } },
+      }),
+      createIdempotencyKey: () => '6fe3d170-9390-4ec5-95f7-42ad6f8ec777',
+    })
+
+    await purposeChange.load(17)
+    expect(purposeChange.purposeProvenance.value).toEqual(expect.objectContaining({
+      id: 'profile_derived',
+      declarationRequired: true,
+    }))
+    purposeChange.startEditing()
+    await expect(purposeChange.apply(17)).resolves.toBe(true)
+
+    expect(purposeChange.feedback.value).toContain('passive lifecycle re-audit')
   })
 })

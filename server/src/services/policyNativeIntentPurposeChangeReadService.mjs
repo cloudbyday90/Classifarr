@@ -25,6 +25,9 @@ import {
 import {
   projectStoredPurposeRulesForNativeIntentChange,
 } from './policyNativeIntentPurposeChangeStoredRuleAdapter.mjs';
+import {
+  buildPolicyNativeIntentPurposeChangeProvenance,
+} from './policyNativeIntentPurposeChangeProvenance.mjs';
 
 function normalizePositiveInteger(value) {
   const numericValue = Number(value);
@@ -72,6 +75,7 @@ function createPolicyNativeIntentPurposeChangeReadService({
         policyId: normalizedPolicyId,
         revision,
         changeCommand: buildStoredPurposeChangeCommand(context.purposeRules),
+        purposeProvenance: buildPolicyNativeIntentPurposeChangeProvenance(context.purposeRules),
       });
 
       return validatePolicyNativeIntentPurposeChangeRead(result).ok

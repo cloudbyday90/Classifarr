@@ -94,7 +94,7 @@ describe('native intent purpose change integration', () => {
     }
   });
 
-  test('reads a profile-derived purpose without replaying profile provenance, commits an explicit native change, and rejects a stale new attempt', async () => {
+  test('reads aggregate profile provenance, commits an explicit native declaration, and rejects a stale new attempt', async () => {
     const fixture = await createNativePurposeFixture({
       fixtureKey: 'target',
       term: 'existing-purpose-token',
@@ -115,6 +115,11 @@ describe('native intent purpose change integration', () => {
     expect(before.changeCommand.values[0].values).toEqual({ require_any: ['existing-purpose-token'] });
     expect(before.changeCommand.values[0]).not.toHaveProperty('source');
     expect(before.changeCommand.values[0]).not.toHaveProperty('inference_state');
+    expect(before.purposeProvenance).toEqual({
+      id: 'profile_derived',
+      declarationRequired: true,
+      rawRuleProvenanceExposed: false,
+    });
 
     const applied = await applyPolicyNativeIntentChange({
       dbClient: db,
@@ -190,6 +195,11 @@ describe('native intent purpose change integration', () => {
       revision: 4,
     }));
     expect(after.changeCommand.values[0].values).toEqual({ require_any: ['replacement-purpose-token'] });
+    expect(after.purposeProvenance).toEqual({
+      id: 'declared_native',
+      declarationRequired: false,
+      rawRuleProvenanceExposed: false,
+    });
 
     const stale = await applyPolicyNativeIntentChange({
       dbClient: db,

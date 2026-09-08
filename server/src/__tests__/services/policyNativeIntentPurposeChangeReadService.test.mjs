@@ -34,7 +34,7 @@ function activeContext(overrides = {}) {
 }
 
 describe('policyNativeIntentPurposeChangeReadService', () => {
-  test('returns a canonical active purpose command from profile-derived storage without replaying its provenance', async () => {
+  test('returns a canonical active purpose command with aggregate profile provenance only', async () => {
     const loadContext = jest.fn().mockResolvedValue(activeContext({
       purposeRules: [{
         signal_type: 'genres',
@@ -68,6 +68,11 @@ describe('policyNativeIntentPurposeChangeReadService', () => {
     expect(result.changeCommand.values[0]).not.toHaveProperty('source');
     expect(result.changeCommand.values[0]).not.toHaveProperty('inference_state');
     expect(JSON.stringify(result.changeCommand)).not.toContain('media_server_library_profile');
+    expect(result.purposeProvenance).toEqual({
+      id: 'profile_derived',
+      declarationRequired: true,
+      rawRuleProvenanceExposed: false,
+    });
   });
 
   test('does not project editable authority when native authority is absent or unavailable', async () => {

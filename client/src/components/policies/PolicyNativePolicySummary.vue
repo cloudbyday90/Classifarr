@@ -26,13 +26,13 @@
       Native policy summary
     </h4>
     <p class="mt-1 text-sm text-blue-50">
-      This destination uses stored native intent. Classifarr shows its declared purpose and current policy readiness without reopening policy setup.
+      This destination uses stored native intent. Classifarr shows its current stored purpose and policy readiness without reopening policy setup.
     </p>
 
     <dl class="mt-4 grid gap-3 text-sm md:grid-cols-3">
       <div class="rounded border border-blue-800/70 bg-gray-900/30 p-3">
         <dt class="font-medium text-blue-200">
-          Declared purpose
+          Current stored purpose
         </dt>
         <dd class="mt-2 text-blue-50">
           <ul
@@ -47,7 +47,7 @@
             </li>
           </ul>
           <span v-else>
-            No display-safe declared purpose is available.
+            No display-safe stored purpose is available.
           </span>
         </dd>
       </div>

@@ -44,6 +44,22 @@
       <p class="mt-3 text-sm text-indigo-100">
         Current native revision: <span class="font-semibold text-indigo-50">{{ currentRevision }}</span>
       </p>
+      <section
+        v-if="provenancePresentation"
+        id="policy-native-purpose-provenance"
+        class="mt-3 rounded border border-indigo-700/70 bg-gray-950/30 p-3 text-sm"
+        aria-labelledby="policy-native-purpose-provenance-title"
+      >
+        <h5
+          id="policy-native-purpose-provenance-title"
+          class="font-medium text-indigo-50"
+        >
+          {{ provenancePresentation.title }}
+        </h5>
+        <p class="mt-1 text-indigo-100">
+          {{ provenancePresentation.description }}
+        </p>
+      </section>
       <p
         v-if="recentReceiptNotice"
         id="policy-native-purpose-change-recent-receipt"
@@ -63,7 +79,7 @@
           class="rounded bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-400"
           @click="startEditing"
         >
-          Change declared purpose
+          {{ provenancePresentation?.startLabel || 'Review purpose' }}
         </button>
         <p
           v-if="feedback"
@@ -81,7 +97,7 @@
         @submit.prevent="applyPurposeChange"
       >
         <p class="text-sm text-indigo-100">
-          Review every rule below. Applying replaces this revision's purpose collection and creates the next native revision.
+          {{ provenancePresentation?.editingDescription || 'Review every rule below before applying a native revision.' }}
         </p>
 
         <fieldset
@@ -208,7 +224,7 @@
             class="rounded bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
             :disabled="!currentCommand || preflightLoading || applying"
           >
-            {{ applying ? 'Applying purpose change...' : 'Apply purpose change' }}
+            {{ applying ? 'Applying purpose change...' : (provenancePresentation?.applyLabel || 'Apply purpose change') }}
           </button>
           <button
             type="button"
@@ -271,6 +287,9 @@ import {
   NATIVE_PURPOSE_SIGNAL_TYPES,
   parseNativePurposeTerms,
 } from '@/utils/policyNativeIntentPurposeChange'
+import {
+  getNativeIntentPurposeProvenancePresentation,
+} from '@/utils/policyNativeIntentPurposeProvenance'
 
 defineOptions({
   name: 'PolicyNativeIntentPurposeChangeSurface',
@@ -309,6 +328,7 @@ const {
   currentCommand,
   currentRevision,
   available,
+  purposeProvenance,
   clearPreflight,
   startEditing,
   cancelEditing,
@@ -318,6 +338,8 @@ const {
 } = usePolicyNativeIntentPurposeChange()
 
 const normalizedPolicyId = computed(() => Number(props.policyId))
+const provenancePresentation = computed(() =>
+  getNativeIntentPurposeProvenancePresentation(purposeProvenance.value))
 watchPurposeChange(normalizedPolicyId)
 
 function getRuleTerms(rule) {

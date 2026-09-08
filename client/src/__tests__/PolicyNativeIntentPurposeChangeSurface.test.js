@@ -21,7 +21,7 @@ import PolicyNativeIntentPurposeChangeSurface from '@/components/policies/Policy
 
 function purposeRead(revision = 3, term = 'Animation') {
   return {
-    version: 'policy.native_intent_purpose_change_read.v1',
+    version: 'policy.native_intent_purpose_change_read.v2',
     statusId: 'native_intent_purpose_change_available',
     policyId: 17,
     revision,
@@ -34,6 +34,11 @@ function purposeRead(revision = 3, term = 'Animation') {
         constraint_mode: 'advisory',
         semantics: 'identity',
       }],
+    },
+    purposeProvenance: {
+      id: 'declared_native',
+      declarationRequired: false,
+      rawRuleProvenanceExposed: false,
     },
     authority: {
       source: 'server_owned_native_intent',
@@ -161,5 +166,24 @@ describe('PolicyNativeIntentPurposeChangeSurface', () => {
     expect(receiptNotice.text()).toContain('revision 4')
     expect(receiptNotice.text()).not.toContain('idempotency')
     expect(wrapper.findAll('button').map(button => button.text())).not.toContain('Retry receipt')
+  })
+
+  it('requires explicit review before profile-derived terms become a native declaration', async () => {
+    apiMock.getPolicyNativeIntentPurposeChange.mockResolvedValue({
+      ...purposeRead(),
+      purposeProvenance: {
+        id: 'profile_derived',
+        declarationRequired: true,
+        rawRuleProvenanceExposed: false,
+      },
+    })
+
+    const wrapper = mount(PolicyNativeIntentPurposeChangeSurface, { props: { policyId: 17 } })
+    await flushPromises()
+
+    const provenance = wrapper.get('#policy-native-purpose-provenance')
+    expect(provenance.text()).toContain('Profile-derived terms require review')
+    expect(provenance.text()).toContain('not declared purpose')
+    expect(wrapper.findAll('button').map(button => button.text())).toContain('Review and declare purpose')
   })
 })

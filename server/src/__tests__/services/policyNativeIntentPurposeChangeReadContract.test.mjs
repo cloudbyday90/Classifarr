@@ -9,6 +9,9 @@
  */
 
 import {
+  POLICY_NATIVE_INTENT_PURPOSE_CHANGE_PROVENANCE_IDS,
+} from '../../services/policyNativeIntentPurposeChangeProvenance.mjs';
+import {
   POLICY_NATIVE_INTENT_PURPOSE_CHANGE_READ_STATUS_IDS,
   POLICY_NATIVE_INTENT_PURPOSE_CHANGE_READ_VERSION,
   buildPurposeChangeAvailableResult,
@@ -28,12 +31,19 @@ const CHANGE_COMMAND = {
   }],
 };
 
+const PURPOSE_PROVENANCE = {
+  id: POLICY_NATIVE_INTENT_PURPOSE_CHANGE_PROVENANCE_IDS.DECLARED_NATIVE,
+  declarationRequired: false,
+  rawRuleProvenanceExposed: false,
+};
+
 describe('policyNativeIntentPurposeChangeReadContract', () => {
   test('projects only the server-owned revision and typed purpose command', () => {
     const result = buildPurposeChangeAvailableResult({
       policyId: 41,
       revision: 7,
       changeCommand: CHANGE_COMMAND,
+      purposeProvenance: PURPOSE_PROVENANCE,
     });
 
     expect(result).toEqual(expect.objectContaining({
@@ -42,6 +52,7 @@ describe('policyNativeIntentPurposeChangeReadContract', () => {
       policyId: 41,
       revision: 7,
       changeCommand: CHANGE_COMMAND,
+      purposeProvenance: PURPOSE_PROVENANCE,
       authority: {
         source: 'server_owned_native_intent',
         purposeChangeAllowed: true,
@@ -68,6 +79,7 @@ describe('policyNativeIntentPurposeChangeReadContract', () => {
       policyId: 41,
       revision: 7,
       changeCommand: CHANGE_COMMAND,
+      purposeProvenance: PURPOSE_PROVENANCE,
     });
 
     const validation = validatePolicyNativeIntentPurposeChangeRead({
@@ -78,5 +90,25 @@ describe('policyNativeIntentPurposeChangeReadContract', () => {
 
     expect(validation.ok).toBe(false);
     expect(validation.issueCount).toBeGreaterThanOrEqual(2);
+  });
+
+  test('rejects a provenance state that contradicts whether declaration is required', () => {
+    const result = buildPurposeChangeAvailableResult({
+      policyId: 41,
+      revision: 7,
+      changeCommand: CHANGE_COMMAND,
+      purposeProvenance: {
+        id: POLICY_NATIVE_INTENT_PURPOSE_CHANGE_PROVENANCE_IDS.PROFILE_DERIVED,
+        declarationRequired: false,
+        rawRuleProvenanceExposed: false,
+      },
+    });
+
+    expect(validatePolicyNativeIntentPurposeChangeRead(result)).toEqual(expect.objectContaining({
+      ok: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({ riskId: 'invalid_native_intent_purpose_change_read_provenance' }),
+      ]),
+    }));
   });
 });

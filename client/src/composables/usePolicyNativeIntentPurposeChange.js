@@ -22,8 +22,11 @@ import {
 import {
   createNativeIntentChangeIdempotencyKey,
 } from '@/utils/policyNativeIntentChangeIdempotency'
+import {
+  normalizeNativeIntentPurposeProvenance,
+} from '@/utils/policyNativeIntentPurposeProvenance'
 
-const PURPOSE_CHANGE_READ_VERSION = 'policy.native_intent_purpose_change_read.v1'
+const PURPOSE_CHANGE_READ_VERSION = 'policy.native_intent_purpose_change_read.v2'
 const PURPOSE_CHANGE_READ_STATUS = 'native_intent_purpose_change_available'
 const PURPOSE_CHANGE_STALE_CODES = new Set([
   'POLICY_NATIVE_INTENT_CHANGE_STALE_REVISION',
@@ -66,7 +69,8 @@ function isPurposeChangeRead(value, policyId) {
     return false
   }
 
-  return cloneNativeIntentPurposeChangeRules(value.changeCommand) !== null
+  return cloneNativeIntentPurposeChangeRules(value.changeCommand) !== null &&
+    normalizeNativeIntentPurposeProvenance(value.purposeProvenance) !== null
 }
 
 function getErrorStatus(error) {
@@ -164,6 +168,7 @@ export function usePolicyNativeIntentPurposeChange({
   const currentCommand = computed(() => buildNativeIntentPurposeChangeCommand(draftRules.value))
   const currentRevision = computed(() => normalizePositiveInteger(read.value?.revision))
   const available = computed(() => isPurposeChangeRead(read.value, normalizePositiveInteger(read.value?.policyId)))
+  const purposeProvenance = computed(() => normalizeNativeIntentPurposeProvenance(read.value?.purposeProvenance))
   const recentReceiptNotice = computed(() => getRecentReceiptNotice(recentReceipt.value))
 
   const clearPreflight = () => {
@@ -343,6 +348,7 @@ export function usePolicyNativeIntentPurposeChange({
     applyError.value = ''
     feedback.value = ''
     try {
+      const declarationRequired = purposeProvenance.value?.declarationRequired === true
       const attemptFingerprint = buildApplyAttemptFingerprint(policyId, revision, command)
       const idempotencyKey = applyAttempt.value?.fingerprint === attemptFingerprint
         ? applyAttempt.value.idempotencyKey
@@ -366,7 +372,9 @@ export function usePolicyNativeIntentPurposeChange({
       editing.value = false
       feedback.value = result.change.replayed === true
         ? 'The earlier declared-purpose change was confirmed. Classifarr loaded the committed native revision.'
-        : 'Declared purpose updated. Classifarr loaded the new native revision.'
+        : declarationRequired
+          ? 'Reviewed purpose recorded as a native declaration. Classifarr loaded the new revision; passive lifecycle re-audit will reassess aggregate eligibility.'
+          : 'Declared purpose updated. Classifarr loaded the new native revision.'
       return true
     } catch (error) {
       if (isStaleRevisionError(error)) {
@@ -436,6 +444,7 @@ export function usePolicyNativeIntentPurposeChange({
     currentCommand,
     currentRevision,
     available,
+    purposeProvenance,
     clearPreflight,
     resetDraft,
     clear,

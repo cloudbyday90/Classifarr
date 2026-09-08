@@ -8,8 +8,12 @@
  * (at your option) any later version.
  */
 
+import {
+  isPolicyNativeIntentPurposeChangeProvenance,
+} from './policyNativeIntentPurposeChangeProvenance.mjs';
+
 const POLICY_NATIVE_INTENT_PURPOSE_CHANGE_READ_VERSION =
-  'policy.native_intent_purpose_change_read.v1';
+  'policy.native_intent_purpose_change_read.v2';
 
 const POLICY_NATIVE_INTENT_PURPOSE_CHANGE_READ_STATUS_IDS = Object.freeze({
   AVAILABLE: 'native_intent_purpose_change_available',
@@ -24,6 +28,7 @@ const POLICY_NATIVE_INTENT_PURPOSE_CHANGE_READ_RISK_IDS = Object.freeze({
   INVALID_AUTHORITY: 'invalid_native_intent_purpose_change_read_authority',
   INVALID_REVISION: 'invalid_native_intent_purpose_change_read_revision',
   INVALID_COMMAND: 'invalid_native_intent_purpose_change_read_command',
+  INVALID_PROVENANCE: 'invalid_native_intent_purpose_change_read_provenance',
   UNSAFE_SIDE_EFFECT: 'unsafe_native_intent_purpose_change_read_side_effect',
   UNSAFE_PROJECTION: 'unsafe_native_intent_purpose_change_read_projection',
 });
@@ -57,6 +62,7 @@ function buildBaseResult({
   policyId = null,
   revision = null,
   changeCommand = null,
+  purposeProvenance = null,
   sideEffects = {},
 } = {}) {
   return {
@@ -65,6 +71,7 @@ function buildBaseResult({
     policyId: asPositiveInteger(policyId),
     revision: asPositiveInteger(revision),
     changeCommand,
+    purposeProvenance,
     authority: {
       source: 'server_owned_native_intent',
       purposeChangeAllowed: statusId === POLICY_NATIVE_INTENT_PURPOSE_CHANGE_READ_STATUS_IDS.AVAILABLE,
@@ -78,12 +85,18 @@ function buildBaseResult({
   };
 }
 
-function buildPurposeChangeAvailableResult({ policyId, revision, changeCommand } = {}) {
+function buildPurposeChangeAvailableResult({
+  policyId,
+  revision,
+  changeCommand,
+  purposeProvenance,
+} = {}) {
   return buildBaseResult({
     statusId: POLICY_NATIVE_INTENT_PURPOSE_CHANGE_READ_STATUS_IDS.AVAILABLE,
     policyId,
     revision,
     changeCommand,
+    purposeProvenance,
     sideEffects: {
       storedPolicyRead: true,
       storedNativeIntentRead: true,
@@ -167,6 +180,18 @@ function validatePolicyNativeIntentPurposeChangeRead(result = {}) {
         message: 'Available native purpose-change reads require one non-empty typed purpose command.',
       });
     }
+
+    if (!isPolicyNativeIntentPurposeChangeProvenance(source.purposeProvenance)) {
+      issues.push({
+        riskId: POLICY_NATIVE_INTENT_PURPOSE_CHANGE_READ_RISK_IDS.INVALID_PROVENANCE,
+        message: 'Available native purpose-change reads require one fixed aggregate provenance state.',
+      });
+    }
+  } else if (source.purposeProvenance !== null) {
+    issues.push({
+      riskId: POLICY_NATIVE_INTENT_PURPOSE_CHANGE_READ_RISK_IDS.INVALID_PROVENANCE,
+      message: 'Unavailable native purpose-change reads must not project purpose provenance.',
+    });
   }
 
   if (
