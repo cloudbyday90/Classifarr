@@ -11,14 +11,29 @@ export const HELD_OUT_SEMANTIC_STUDY_READINESS_STATUS_IDS = Object.freeze({
 })
 
 export const HELD_OUT_SEMANTIC_STUDY_READINESS_VERSION =
-  'policy.held_out_semantic_study_readiness.v2'
+  'policy.held_out_semantic_study_readiness.v3'
+
+export const HELD_OUT_SEMANTIC_STUDY_READINESS_MEASURED_BLOCKER_IDS = Object.freeze({
+  AWAIT_PASSIVE_ELIGIBILITY_AUDIT: 'await_passive_eligibility_audit',
+  AWAIT_QUALIFYING_POLICY_EVALUATIONS: 'await_qualifying_policy_evaluations',
+  AWAIT_BALANCED_ELIGIBLE_COHORT: 'await_balanced_eligible_cohort',
+  COMPLETE_DECLARED_PURPOSE_EVIDENCE_REQUIRED: 'complete_declared_purpose_evidence_required',
+  GOVERNED_DECLARED_PURPOSE_EVIDENCE_REQUIRED: 'governed_declared_purpose_evidence_required',
+  NORMAL_LIFECYCLE_RECEIPT_REQUIRED: 'normal_lifecycle_receipt_required',
+  UNAVAILABLE: 'held_out_semantic_study_readiness_unavailable',
+})
 
 const VALID_STATUS_IDS = new Set(Object.values(HELD_OUT_SEMANTIC_STUDY_READINESS_STATUS_IDS))
+const VALID_MEASURED_BLOCKER_IDS = new Set(
+  Object.values(HELD_OUT_SEMANTIC_STUDY_READINESS_MEASURED_BLOCKER_IDS),
+)
 const VALID_FIELDS = new Set([
   'version',
   'statusId',
   'normalLifecycleReceiptCount',
   'completePolicyEvidenceCount',
+  'currentCompleteAuditAvailable',
+  'measuredBlockerId',
   'reAuditPreconditionSatisfied',
   'rawConfigurationExposed',
   'libraryIdentityExposed',
@@ -32,6 +47,37 @@ const VALID_FIELDS = new Set([
 function nonNegativeCount(value) {
   const count = Number(value)
   return Number.isInteger(count) && count >= 0 ? count : null
+}
+
+function measuredBlockerMatches(value) {
+  const { measuredBlockerId, statusId } = value
+  const ids = HELD_OUT_SEMANTIC_STUDY_READINESS_MEASURED_BLOCKER_IDS
+  const sourceBlockerMatches = (
+    statusId === HELD_OUT_SEMANTIC_STUDY_READINESS_STATUS_IDS.NORMAL_LIFECYCLE_RECEIPT_REQUIRED &&
+    measuredBlockerId === ids.NORMAL_LIFECYCLE_RECEIPT_REQUIRED &&
+    value.currentCompleteAuditAvailable === false
+  ) || (
+    statusId === HELD_OUT_SEMANTIC_STUDY_READINESS_STATUS_IDS
+      .COMPLETE_DECLARED_PURPOSE_EVIDENCE_REQUIRED &&
+    measuredBlockerId === ids.COMPLETE_DECLARED_PURPOSE_EVIDENCE_REQUIRED &&
+    value.currentCompleteAuditAvailable === false
+  ) || (
+    statusId === HELD_OUT_SEMANTIC_STUDY_READINESS_STATUS_IDS.UNAVAILABLE &&
+    measuredBlockerId === ids.UNAVAILABLE &&
+    value.currentCompleteAuditAvailable === false
+  )
+  const auditBlockerMatches = statusId ===
+    HELD_OUT_SEMANTIC_STUDY_READINESS_STATUS_IDS.ELIGIBILITY_AUDIT_AVAILABLE && (
+    (measuredBlockerId === ids.AWAIT_PASSIVE_ELIGIBILITY_AUDIT &&
+      value.currentCompleteAuditAvailable === false) ||
+    ([
+      ids.GOVERNED_DECLARED_PURPOSE_EVIDENCE_REQUIRED,
+      ids.AWAIT_QUALIFYING_POLICY_EVALUATIONS,
+      ids.AWAIT_BALANCED_ELIGIBLE_COHORT,
+    ].includes(measuredBlockerId) && value.currentCompleteAuditAvailable === true)
+  )
+
+  return sourceBlockerMatches || auditBlockerMatches
 }
 
 /**
@@ -70,8 +116,10 @@ export function normalizeHeldOutSemanticStudyReadiness(value) {
 
   if (
     !VALID_STATUS_IDS.has(value.statusId) ||
+    !VALID_MEASURED_BLOCKER_IDS.has(value.measuredBlockerId) ||
     !statusMatchesCounts ||
-    value.reAuditPreconditionSatisfied !== reAuditPreconditionSatisfied
+    value.reAuditPreconditionSatisfied !== reAuditPreconditionSatisfied ||
+    !measuredBlockerMatches(value)
   ) return null
 
   return {
@@ -79,6 +127,8 @@ export function normalizeHeldOutSemanticStudyReadiness(value) {
     statusId: value.statusId,
     normalLifecycleReceiptCount,
     completePolicyEvidenceCount,
+    currentCompleteAuditAvailable: value.currentCompleteAuditAvailable,
+    measuredBlockerId: value.measuredBlockerId,
     reAuditPreconditionSatisfied,
     rawConfigurationExposed: false,
     libraryIdentityExposed: false,

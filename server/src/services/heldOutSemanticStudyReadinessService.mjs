@@ -20,16 +20,21 @@ import {
 import {
   loadHeldOutSemanticStudyLifecycleReauditSourceRecord,
 } from './heldOutSemanticStudyLifecycleReauditSource.mjs';
+import {
+  loadHeldOutSemanticStudyLifecycleReauditState,
+} from './heldOutSemanticStudyLifecycleReauditPersistence.mjs';
 
 /**
- * Reads only two existing aggregate sources. It does not schedule the audit,
- * call a provider, expose configuration, mutate policy state, or route media.
+ * Reads existing aggregate sources and, when available, one stored aggregate
+ * audit state. It does not schedule the audit, call a provider, expose
+ * configuration, mutate policy state, or route media.
  */
 export function createHeldOutSemanticStudyReadinessService({
   db = database,
   buildReadiness = buildHeldOutSemanticStudyReadiness,
   auditReadiness = auditHeldOutSemanticStudyReadiness,
   loadLifecycleRecord = loadHeldOutSemanticStudyLifecycleReauditSourceRecord,
+  loadAuditState = loadHeldOutSemanticStudyLifecycleReauditState,
   loadPurposeEvidenceRecord = loadHeldOutSemanticStudyLifecycleReauditPurposeEvidenceRecord,
   buildUnavailable = buildHeldOutSemanticStudyReadinessUnavailable,
 } = {}) {
@@ -40,7 +45,14 @@ export function createHeldOutSemanticStudyReadinessService({
           loadLifecycleRecord({ db: dbClient }),
           loadPurposeEvidenceRecord({ db: dbClient }),
         ]);
-        const report = buildReadiness({ lifecycleRecord, purposeEvidenceRecord });
+        let auditState = null;
+        try {
+          auditState = await loadAuditState({ db: dbClient });
+        } catch {
+          // The source prerequisite remains safe to report when its optional
+          // aggregate audit receipt is temporarily unavailable.
+        }
+        const report = buildReadiness({ auditState, lifecycleRecord, purposeEvidenceRecord });
         return auditReadiness(report).ok === true ? report : buildUnavailable();
       } catch {
         return buildUnavailable();

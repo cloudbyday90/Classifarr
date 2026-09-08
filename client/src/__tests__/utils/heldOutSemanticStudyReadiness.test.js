@@ -18,51 +18,53 @@ const safeFlags = {
   routingAffected: false,
 }
 
+const declaredPurposeRequired = {
+  version: 'policy.held_out_semantic_study_readiness.v3',
+  statusId: 'complete_declared_purpose_evidence_required',
+  normalLifecycleReceiptCount: 1,
+  completePolicyEvidenceCount: 0,
+  currentCompleteAuditAvailable: false,
+  measuredBlockerId: 'complete_declared_purpose_evidence_required',
+  reAuditPreconditionSatisfied: false,
+  ...safeFlags,
+}
+
 describe('heldOutSemanticStudyReadiness', () => {
-  it('accepts an aggregate-only availability report without granting study or routing authority', () => {
+  it('accepts an aggregate-only receipt with a current measured blocker without study authority', () => {
     expect(normalizeHeldOutSemanticStudyReadiness({
-      version: 'policy.held_out_semantic_study_readiness.v2',
+      version: 'policy.held_out_semantic_study_readiness.v3',
       statusId: 'eligibility_audit_available',
       normalLifecycleReceiptCount: 4,
       completePolicyEvidenceCount: 1,
+      currentCompleteAuditAvailable: true,
+      measuredBlockerId: 'await_balanced_eligible_cohort',
       reAuditPreconditionSatisfied: true,
       ...safeFlags,
     })).toEqual(expect.objectContaining({
       statusId: 'eligibility_audit_available',
-      reAuditPreconditionSatisfied: true,
+      currentCompleteAuditAvailable: true,
+      measuredBlockerId: 'await_balanced_eligible_cohort',
       rawConfigurationExposed: false,
       semanticCohortReady: false,
       routingAffected: false,
     }))
   })
 
-  it('fails closed for contradictory prerequisite, authority flags, or an extra projection', () => {
+  it('accepts a source blocker and rejects contradictory audit authority or an extra projection', () => {
+    expect(normalizeHeldOutSemanticStudyReadiness(declaredPurposeRequired)).toEqual(
+      expect.objectContaining({
+        measuredBlockerId: 'complete_declared_purpose_evidence_required',
+        currentCompleteAuditAvailable: false,
+      }),
+    )
+
     expect(normalizeHeldOutSemanticStudyReadiness({
-      version: 'policy.held_out_semantic_study_readiness.v2',
-      statusId: 'eligibility_audit_available',
-      normalLifecycleReceiptCount: 1,
-      completePolicyEvidenceCount: 0,
-      reAuditPreconditionSatisfied: true,
-      ...safeFlags,
+      ...declaredPurposeRequired,
+      currentCompleteAuditAvailable: true,
     })).toBeNull()
 
     expect(normalizeHeldOutSemanticStudyReadiness({
-      version: 'policy.held_out_semantic_study_readiness.v2',
-      statusId: 'normal_lifecycle_receipt_required',
-      normalLifecycleReceiptCount: 0,
-      completePolicyEvidenceCount: 0,
-      reAuditPreconditionSatisfied: false,
-      ...safeFlags,
-      mediaIdentityExposed: true,
-    })).toBeNull()
-
-    expect(normalizeHeldOutSemanticStudyReadiness({
-      version: 'policy.held_out_semantic_study_readiness.v2',
-      statusId: 'normal_lifecycle_receipt_required',
-      normalLifecycleReceiptCount: 0,
-      completePolicyEvidenceCount: 0,
-      reAuditPreconditionSatisfied: false,
-      ...safeFlags,
+      ...declaredPurposeRequired,
       libraryName: 'must-not-project',
     })).toBeNull()
   })

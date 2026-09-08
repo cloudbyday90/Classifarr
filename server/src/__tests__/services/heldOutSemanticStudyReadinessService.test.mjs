@@ -31,7 +31,9 @@ test('reads both aggregate sources and returns the reviewed readiness projection
   const dbClient = { query: jest.fn() };
   const loadLifecycleRecord = jest.fn(async () => lifecycleRecord);
   const loadPurposeEvidenceRecord = jest.fn(async () => purposeEvidenceRecord);
+  const loadAuditState = jest.fn(async () => null);
   const service = createHeldOutSemanticStudyReadinessService({
+    loadAuditState,
     loadLifecycleRecord,
     loadPurposeEvidenceRecord,
   });
@@ -42,10 +44,12 @@ test('reads both aggregate sources and returns the reviewed readiness projection
   }));
   expect(loadLifecycleRecord).toHaveBeenCalledWith({ db: dbClient });
   expect(loadPurposeEvidenceRecord).toHaveBeenCalledWith({ db: dbClient });
+  expect(loadAuditState).toHaveBeenCalledWith({ db: dbClient });
 });
 
 test('fails closed when either aggregate source cannot be read', async () => {
   const service = createHeldOutSemanticStudyReadinessService({
+    loadAuditState: async () => null,
     loadLifecycleRecord: async () => { throw new Error('database unavailable'); },
     loadPurposeEvidenceRecord: async () => purposeEvidenceRecord,
   });

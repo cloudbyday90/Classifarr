@@ -10,13 +10,18 @@
 
 import {
   buildHeldOutSemanticStudyLifecycleReauditSource,
+  heldOutSemanticStudyLifecycleReauditSourceFingerprint,
 } from './heldOutSemanticStudyLifecycleReauditContract.mjs';
 import {
   buildHeldOutSemanticStudyLifecycleReauditPurposeEvidence,
 } from './heldOutSemanticStudyLifecycleReauditPurposeEvidence.mjs';
+import {
+  buildHeldOutSemanticStudyReadinessMeasuredBlocker,
+  HELD_OUT_SEMANTIC_STUDY_READINESS_MEASURED_BLOCKER_IDS,
+} from './heldOutSemanticStudyReadinessMeasuredBlocker.mjs';
 
 export const HELD_OUT_SEMANTIC_STUDY_READINESS_VERSION =
-  'policy.held_out_semantic_study_readiness.v2';
+  'policy.held_out_semantic_study_readiness.v3';
 
 export const HELD_OUT_SEMANTIC_STUDY_READINESS_STATUS_IDS = Object.freeze({
   NORMAL_LIFECYCLE_RECEIPT_REQUIRED: 'normal_lifecycle_receipt_required',
@@ -38,6 +43,8 @@ const READINESS_FIELDS = new Set([
   'statusId',
   'normalLifecycleReceiptCount',
   'completePolicyEvidenceCount',
+  'currentCompleteAuditAvailable',
+  'measuredBlockerId',
   'reAuditPreconditionSatisfied',
   'rawConfigurationExposed',
   'libraryIdentityExposed',
@@ -53,7 +60,12 @@ function nonNegativeInteger(value) {
   return Number.isInteger(numeric) && numeric >= 0 ? numeric : 0;
 }
 
-function buildResult({ statusId, normalLifecycleReceiptCount = 0, completePolicyEvidenceCount = 0 } = {}) {
+function buildResult({
+  statusId,
+  normalLifecycleReceiptCount = 0,
+  completePolicyEvidenceCount = 0,
+  measuredBlocker,
+} = {}) {
   const normalizedLifecycleCount = nonNegativeInteger(normalLifecycleReceiptCount);
   const normalizedPurposeCount = nonNegativeInteger(completePolicyEvidenceCount);
   const reAuditPreconditionSatisfied = statusId ===
@@ -64,6 +76,9 @@ function buildResult({ statusId, normalLifecycleReceiptCount = 0, completePolicy
     statusId,
     normalLifecycleReceiptCount: normalizedLifecycleCount,
     completePolicyEvidenceCount: normalizedPurposeCount,
+    currentCompleteAuditAvailable: measuredBlocker?.currentCompleteAuditAvailable === true,
+    measuredBlockerId: measuredBlocker?.id ??
+      HELD_OUT_SEMANTIC_STUDY_READINESS_MEASURED_BLOCKER_IDS.UNAVAILABLE,
     reAuditPreconditionSatisfied,
     rawConfigurationExposed: false,
     libraryIdentityExposed: false,
@@ -81,6 +96,7 @@ function buildResult({ statusId, normalLifecycleReceiptCount = 0, completePolicy
  * not a cohort, label, accuracy, semantic-selection, or routing decision.
  */
 export function buildHeldOutSemanticStudyReadiness({
+  auditState = null,
   lifecycleRecord = {},
   purposeEvidenceRecord = {},
 } = {}) {
@@ -91,28 +107,36 @@ export function buildHeldOutSemanticStudyReadiness({
   const normalLifecycleReceiptCount = lifecycle.normalLifecycleReceiptCount;
   const completePolicyEvidenceCount = purposeEvidence.completePolicyEvidenceCount;
 
-  if (normalLifecycleReceiptCount === 0) {
+  const buildReadinessResult = (statusId) => {
+    const source = buildHeldOutSemanticStudyLifecycleReauditSource(lifecycleRecord, purposeEvidence);
     return buildResult({
-      statusId: HELD_OUT_SEMANTIC_STUDY_READINESS_STATUS_IDS.NORMAL_LIFECYCLE_RECEIPT_REQUIRED,
+      statusId,
       normalLifecycleReceiptCount,
       completePolicyEvidenceCount,
+      measuredBlocker: buildHeldOutSemanticStudyReadinessMeasuredBlocker({
+        auditState,
+        sourceFingerprint: heldOutSemanticStudyLifecycleReauditSourceFingerprint(source),
+        statusId,
+      }),
     });
+  };
+
+  if (normalLifecycleReceiptCount === 0) {
+    return buildReadinessResult(
+      HELD_OUT_SEMANTIC_STUDY_READINESS_STATUS_IDS.NORMAL_LIFECYCLE_RECEIPT_REQUIRED,
+    );
   }
 
   if (completePolicyEvidenceCount === 0) {
-    return buildResult({
-      statusId: HELD_OUT_SEMANTIC_STUDY_READINESS_STATUS_IDS
+    return buildReadinessResult(
+      HELD_OUT_SEMANTIC_STUDY_READINESS_STATUS_IDS
         .COMPLETE_DECLARED_PURPOSE_EVIDENCE_REQUIRED,
-      normalLifecycleReceiptCount,
-      completePolicyEvidenceCount,
-    });
+    );
   }
 
-  return buildResult({
-    statusId: HELD_OUT_SEMANTIC_STUDY_READINESS_STATUS_IDS.ELIGIBILITY_AUDIT_AVAILABLE,
-    normalLifecycleReceiptCount,
-    completePolicyEvidenceCount,
-  });
+  return buildReadinessResult(
+    HELD_OUT_SEMANTIC_STUDY_READINESS_STATUS_IDS.ELIGIBILITY_AUDIT_AVAILABLE,
+  );
 }
 
 export function buildHeldOutSemanticStudyReadinessUnavailable() {
@@ -156,6 +180,41 @@ export function auditHeldOutSemanticStudyReadiness(value = {}) {
     result.reAuditPreconditionSatisfied !== expectedPrecondition ||
     !statusMatchesCounts
   ) {
+    issues.push({ riskId: HELD_OUT_SEMANTIC_STUDY_READINESS_RISK_IDS.INVALID_PRECONDITION });
+  }
+  const validMeasuredBlockerId = Object.values(
+    HELD_OUT_SEMANTIC_STUDY_READINESS_MEASURED_BLOCKER_IDS,
+  ).includes(result.measuredBlockerId);
+  const sourceBlockerMatchesStatus = (
+    statusId === HELD_OUT_SEMANTIC_STUDY_READINESS_STATUS_IDS.NORMAL_LIFECYCLE_RECEIPT_REQUIRED &&
+    result.measuredBlockerId ===
+      HELD_OUT_SEMANTIC_STUDY_READINESS_MEASURED_BLOCKER_IDS.NORMAL_LIFECYCLE_RECEIPT_REQUIRED &&
+    result.currentCompleteAuditAvailable === false
+  ) || (
+    statusId === HELD_OUT_SEMANTIC_STUDY_READINESS_STATUS_IDS
+      .COMPLETE_DECLARED_PURPOSE_EVIDENCE_REQUIRED &&
+    result.measuredBlockerId === HELD_OUT_SEMANTIC_STUDY_READINESS_MEASURED_BLOCKER_IDS
+      .COMPLETE_DECLARED_PURPOSE_EVIDENCE_REQUIRED &&
+    result.currentCompleteAuditAvailable === false
+  ) || (
+    statusId === HELD_OUT_SEMANTIC_STUDY_READINESS_STATUS_IDS.UNAVAILABLE &&
+    result.measuredBlockerId === HELD_OUT_SEMANTIC_STUDY_READINESS_MEASURED_BLOCKER_IDS.UNAVAILABLE &&
+    result.currentCompleteAuditAvailable === false
+  );
+  const auditBlockerMatchesStatus = statusId ===
+    HELD_OUT_SEMANTIC_STUDY_READINESS_STATUS_IDS.ELIGIBILITY_AUDIT_AVAILABLE && (
+    (result.measuredBlockerId ===
+      HELD_OUT_SEMANTIC_STUDY_READINESS_MEASURED_BLOCKER_IDS.AWAIT_PASSIVE_ELIGIBILITY_AUDIT &&
+      result.currentCompleteAuditAvailable === false) ||
+    ([
+      HELD_OUT_SEMANTIC_STUDY_READINESS_MEASURED_BLOCKER_IDS
+        .GOVERNED_DECLARED_PURPOSE_EVIDENCE_REQUIRED,
+      HELD_OUT_SEMANTIC_STUDY_READINESS_MEASURED_BLOCKER_IDS
+        .AWAIT_QUALIFYING_POLICY_EVALUATIONS,
+      HELD_OUT_SEMANTIC_STUDY_READINESS_MEASURED_BLOCKER_IDS.AWAIT_BALANCED_ELIGIBLE_COHORT,
+    ].includes(result.measuredBlockerId) && result.currentCompleteAuditAvailable === true)
+  );
+  if (!validMeasuredBlockerId || (!sourceBlockerMatchesStatus && !auditBlockerMatchesStatus)) {
     issues.push({ riskId: HELD_OUT_SEMANTIC_STUDY_READINESS_RISK_IDS.INVALID_PRECONDITION });
   }
   if (

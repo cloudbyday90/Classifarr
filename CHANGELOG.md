@@ -11,6 +11,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Measured held-out study readiness** — The administrator-only aggregate
+  readiness contract now identifies one fingerprint-current, fixed next
+  prerequisite from the existing lifecycle audit without exposing its receipt
+  or operational data. It cannot create declared purpose, capture a cohort,
+  collect labels, invoke AI, change policy, or route media.
+
 - **Non-pending held-out decision partition** — The private eligibility audit
   now explains each non-pending policy-only comparison through a fixed,
   aggregate evaluator stage. It reconciles to the existing comparison count

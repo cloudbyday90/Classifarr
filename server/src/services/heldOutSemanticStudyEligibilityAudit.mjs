@@ -6,6 +6,10 @@
 import * as db from '../config/database.mjs';
 import { embeddingRouter } from './embeddingRouter.mjs';
 import {
+  HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_STATUS_IDS,
+  HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_VERSION,
+} from './heldOutSemanticStudyEligibilityAuditContract.mjs';
+import {
   buildHeldOutSemanticStudyComparisonEligibilityPartition,
 } from './heldOutSemanticStudyComparisonEligibilityPartition.mjs';
 import { heldOutSemanticStudyEligibilityDiagnosticCountId } from './heldOutSemanticStudyEligibilityDiagnostics.mjs';
@@ -21,15 +25,10 @@ import { heldOutSemanticStudyConfigurationFingerprint } from './heldOutSemanticS
 import { HELD_OUT_SEMANTIC_STUDY_STRATA } from './heldOutSemanticStudyInventoryCandidate.mjs';
 import { buildHeldOutSemanticStudyPolicySourceScreen } from './heldOutSemanticStudyPolicySourceScreen.mjs';
 
-export const HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_VERSION =
-  'policy.held_out_semantic_study_eligibility_audit.v6';
-
-export const HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_STATUS_IDS = Object.freeze({
-  CANDIDATE_SOURCE_TRUNCATED: 'candidate_source_truncated',
-  COMPLETE: 'complete',
-  CONFIGURATION_CHANGED: 'configuration_changed',
-  FAILED: 'failed',
-});
+export {
+  HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_STATUS_IDS,
+  HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_VERSION,
+};
 
 function fixedStratumCounts() {
   return Object.fromEntries(HELD_OUT_SEMANTIC_STUDY_STRATA.map((stratum) => [stratum, 0]));
