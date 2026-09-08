@@ -16,6 +16,9 @@ describe('policyPurposeCoverageStudySourceReadiness', () => {
       activePolicyCount: 3,
       profileOnlyPurposePolicyCount: 2,
       retainedPurposePolicyCount: 1,
+      lifecycleRetainedPurposePolicyCount: 1,
+      lifecycleReceiptRequiredPolicyCount: 0,
+      lifecycleReceiptReviewRequiredPolicyCount: 0,
       heldOutAuditCandidateSourceAvailable: true,
       semanticCohortReady: true,
       routingAffected: true,
@@ -24,11 +27,24 @@ describe('policyPurposeCoverageStudySourceReadiness', () => {
       activePolicyCount: 3,
       profileOnlyPurposePolicyCount: 2,
       retainedPurposePolicyCount: 1,
+      lifecycleRetainedPurposePolicyCount: 1,
+      lifecycleReceiptRequiredPolicyCount: 0,
+      lifecycleReceiptReviewRequiredPolicyCount: 0,
       heldOutAuditCandidateSourceAvailable: true,
       semanticCohortReady: false,
       semanticSelectionAffected: false,
       routingAffected: false,
     })
+  })
+
+  it('fails closed when lifecycle partition counts contradict an available status', () => {
+    expect(normalizePolicyPurposeCoverageStudySourceReadiness({
+      statusId: 'retained_declared_purpose_source_available',
+      activePolicyCount: 2,
+      retainedPurposePolicyCount: 1,
+      lifecycleRetainedPurposePolicyCount: 0,
+      lifecycleReceiptReviewRequiredPolicyCount: 1,
+    })).toBeNull()
   })
 
   it('fails closed for an unknown status and inconsistent counts', () => {

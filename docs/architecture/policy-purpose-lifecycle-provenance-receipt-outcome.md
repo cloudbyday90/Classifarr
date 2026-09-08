@@ -2,7 +2,7 @@
 
 ## Implemented outcome
 
-The administrator policy-purpose coverage response is now version 5 and carries
+The administrator policy-purpose coverage response is now version 6 and carries
 a read-only `policy_purpose_lifecycle_provenance_receipt.v1`. It summarizes the
 most recent complete or bounded window of ordinary initial-intent
 establishments and applied native-intent changes.
@@ -49,10 +49,7 @@ idempotency keys, command fingerprints, history, RAG, or AI data.
 ## Outcome against the platform goal
 
 This reduces operator work by measuring normal authoring retention
-automatically from durable records. It does not pretend that retained policy
-purpose is semantic accuracy or authorization for automation. The next task is
-to run the existing private eligibility audit again after normal authoring has
-produced retained declared purpose. If it becomes eligible, capture one real
-24–32-case cohort, obtain independent human labels, and use readiness plus
-frozen-study preflight before considering review-only semantic
-counter-evidence.
+automatically from durable records. The subsequent policy-linked source gate is
+documented in [Policy-Purpose Lifecycle Source-Readiness Design](policy-purpose-lifecycle-source-readiness-design.md).
+It does not pretend that retained policy purpose is semantic accuracy or
+authorization for automation.

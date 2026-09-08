@@ -19,7 +19,7 @@ import {
   buildPolicyPurposeLifecycleProvenanceReceipt,
 } from './policyPurposeLifecycleProvenanceReceipt.mjs';
 
-export const POLICY_PURPOSE_COVERAGE_REVIEW_VERSION = 5;
+export const POLICY_PURPOSE_COVERAGE_REVIEW_VERSION = 6;
 export const DEFAULT_POLICY_PURPOSE_COVERAGE_REVIEW_ROWS = 50;
 export const MAX_POLICY_PURPOSE_COVERAGE_REVIEW_ROWS = 100;
 

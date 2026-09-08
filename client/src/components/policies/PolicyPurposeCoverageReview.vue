@@ -74,6 +74,30 @@
               {{ studySourceReadiness.retainedPurposePolicyCount }}
             </dd>
           </div>
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-gray-400">
+              Lifecycle-qualified sources
+            </dt>
+            <dd class="mt-1 text-white">
+              {{ studySourceReadiness.lifecycleRetainedPurposePolicyCount }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-gray-400">
+              Lifecycle evidence required
+            </dt>
+            <dd class="mt-1 text-white">
+              {{ studySourceReadiness.lifecycleReceiptRequiredPolicyCount }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-gray-400">
+              Lifecycle review required
+            </dt>
+            <dd class="mt-1 text-white">
+              {{ studySourceReadiness.lifecycleReceiptReviewRequiredPolicyCount }}
+            </dd>
+          </div>
         </dl>
       </div>
 
@@ -405,10 +429,16 @@ function studySourceReadinessClass(statusId) {
 
 function studySourceReadinessDescription(statusId) {
   if (statusId === 'retained_declared_purpose_source_available') {
-    return 'At least one active policy retains declared specialized purpose outside inferred library-profile evidence. This makes a policy-only source available for the private eligibility audit; it does not establish a cohort, independent labels, measured accuracy, semantic selection, or automatic routing.'
+    return 'At least one active policy retains declared specialized purpose outside inferred library-profile evidence and has complete matching normal lifecycle evidence. This makes a policy-only source available for the private eligibility audit; it does not establish a cohort, independent labels, measured accuracy, semantic selection, or automatic routing.'
   }
   if (statusId === 'no_retained_declared_purpose_source') {
     return 'No active policy retains declared specialized purpose outside inferred library-profile evidence. Profile observations remain excluded from policy-only held-out study selection.'
+  }
+  if (statusId === 'normal_lifecycle_provenance_review_required') {
+    return 'A current retained-purpose policy has normal lifecycle evidence that is incomplete, unavailable, or profile-only. It cannot supply a held-out study source until the evidence is independently complete.'
+  }
+  if (statusId === 'normal_lifecycle_provenance_required') {
+    return 'Current retained-purpose policies do not yet have matching normal lifecycle evidence. The system will reassess this passively after normal authoring; no study, label, semantic selection, or routing action is created.'
   }
   return 'No active validated native policy is available for this static source check. This review does not select media, establish semantic correctness, or change routing.'
 }

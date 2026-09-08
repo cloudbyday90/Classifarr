@@ -21,6 +21,9 @@ describe('policyPurposeCoverageStudySourceReadiness', () => {
       activePolicyCount: 0,
       profileOnlyPurposePolicyCount: 0,
       retainedPurposePolicyCount: 0,
+      lifecycleRetainedPurposePolicyCount: 0,
+      lifecycleReceiptRequiredPolicyCount: 0,
+      lifecycleReceiptReviewRequiredPolicyCount: 0,
       heldOutAuditCandidateSourceAvailable: false,
       semanticCohortReady: false,
       semanticSelectionAffected: false,
@@ -46,15 +49,35 @@ describe('policyPurposeCoverageStudySourceReadiness', () => {
     }));
   });
 
-  test('allows a private eligibility-audit source without declaring cohort readiness', () => {
+  test('allows a private eligibility-audit source only after matching retained lifecycle evidence', () => {
     expect(buildPolicyPurposeCoverageStudySourceReadiness({
       active_policy_count: 10,
       profile_only_purpose_policy_count: 8,
       retained_purpose_policy_count: 2,
+      lifecycle_retained_purpose_policy_count: 2,
     })).toEqual(expect.objectContaining({
       statusId: POLICY_PURPOSE_COVERAGE_STUDY_SOURCE_READINESS_STATUS_IDS
         .RETAINED_DECLARED_PURPOSE_SOURCE_AVAILABLE,
       heldOutAuditCandidateSourceAvailable: true,
+      semanticCohortReady: false,
+      semanticSelectionAffected: false,
+      routingAffected: false,
+    }));
+  });
+
+  test('keeps current retained purpose out of the audit when lifecycle evidence is absent or needs review', () => {
+    expect(buildPolicyPurposeCoverageStudySourceReadiness({
+      active_policy_count: 4,
+      profile_only_purpose_policy_count: 1,
+      retained_purpose_policy_count: 3,
+      lifecycle_receipt_review_required_policy_count: 1,
+    })).toEqual(expect.objectContaining({
+      statusId: POLICY_PURPOSE_COVERAGE_STUDY_SOURCE_READINESS_STATUS_IDS
+        .NORMAL_LIFECYCLE_PROVENANCE_REVIEW_REQUIRED,
+      lifecycleRetainedPurposePolicyCount: 0,
+      lifecycleReceiptRequiredPolicyCount: 2,
+      lifecycleReceiptReviewRequiredPolicyCount: 1,
+      heldOutAuditCandidateSourceAvailable: false,
       semanticCohortReady: false,
       semanticSelectionAffected: false,
       routingAffected: false,

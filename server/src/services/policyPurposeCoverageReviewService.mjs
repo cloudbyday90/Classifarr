@@ -15,8 +15,10 @@ import {
 } from './policyPurposeCoverageReviewContract.mjs';
 import {
   loadPolicyPurposeCoverageReviewRecords,
-  loadPolicyPurposeCoverageStudySourceReadinessRecord,
 } from './policyPurposeCoverageReviewPersistence.mjs';
+import {
+  loadPolicyPurposeCoverageStudySourceReadinessRecord as loadLifecycleBoundStudySourceReadinessRecord,
+} from './policyPurposeCoverageStudySourceReadinessPersistence.mjs';
 import {
   DEFAULT_POLICY_PURPOSE_LIFECYCLE_PROVENANCE_RECEIPT_ROWS,
 } from './policyPurposeLifecycleProvenanceReceipt.mjs';
@@ -29,7 +31,7 @@ export class PolicyPurposeCoverageReviewService {
     db = defaultDb,
     now = () => new Date(),
     loadRecords = loadPolicyPurposeCoverageReviewRecords,
-    loadStudySourceReadinessRecord = loadPolicyPurposeCoverageStudySourceReadinessRecord,
+    loadStudySourceReadinessRecord = loadLifecycleBoundStudySourceReadinessRecord,
     loadLifecycleReceiptRecords = loadPolicyPurposeLifecycleProvenanceReceiptRecords,
     lifecycleReceiptLimit = DEFAULT_POLICY_PURPOSE_LIFECYCLE_PROVENANCE_RECEIPT_ROWS,
     buildReview = buildPolicyPurposeCoverageReview,

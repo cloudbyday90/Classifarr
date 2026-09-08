@@ -11,8 +11,10 @@
 import { jest } from '@jest/globals';
 import {
   loadPolicyPurposeCoverageReviewRecords,
-  loadPolicyPurposeCoverageStudySourceReadinessRecord,
 } from '../../services/policyPurposeCoverageReviewPersistence.mjs';
+import {
+  loadPolicyPurposeCoverageStudySourceReadinessRecord,
+} from '../../services/policyPurposeCoverageStudySourceReadinessPersistence.mjs';
 
 describe('policyPurposeCoverageReviewPersistence', () => {
   test('compares active native required content terms and shared “any” alternatives inside PostgreSQL without selecting rule values', async () => {
@@ -45,12 +47,15 @@ describe('policyPurposeCoverageReviewPersistence', () => {
     expect(values).toEqual([51])
   });
 
-  test('reads full-population source availability as fixed provenance counts without values', async () => {
+  test('links current retained policy purpose to complete lifecycle provenance without values', async () => {
     const query = jest.fn().mockResolvedValue({
       rows: [{
         active_policy_count: 10,
         profile_only_purpose_policy_count: 10,
         retained_purpose_policy_count: 0,
+        lifecycle_retained_purpose_policy_count: 0,
+        lifecycle_receipt_required_policy_count: 0,
+        lifecycle_receipt_review_required_policy_count: 0,
       }],
     });
 
@@ -59,18 +64,35 @@ describe('policyPurposeCoverageReviewPersistence', () => {
         active_policy_count: 10,
         profile_only_purpose_policy_count: 10,
         retained_purpose_policy_count: 0,
+        lifecycle_retained_purpose_policy_count: 0,
+        lifecycle_receipt_required_policy_count: 0,
+        lifecycle_receipt_review_required_policy_count: 0,
       });
 
     const [sql, values] = query.mock.calls[0];
     expect(sql).toContain('WITH active_native_policies AS')
     expect(sql).toContain("intent.source = 'native_intent'")
-    expect(sql).toContain('specialized_purpose_provenance_counts AS')
+    expect(sql).toContain('current_purpose_provenance AS')
+    expect(sql).toContain('normal_lifecycle_receipts AS')
+    expect(sql).toContain('lifecycle_receipt_provenance AS')
+    expect(sql).toContain('lifecycle_source_state AS')
+    expect(sql).toContain('source_policy_state AS')
+    expect(sql).toContain('policy_initial_intent_establishments')
+    expect(sql).toContain("establishment.state = 'established'")
+    expect(sql).toContain('policy_native_intent_change_receipts')
+    expect(sql).toContain("change_receipt.result_status_id = 'applied'")
     expect(sql).toContain('active_policy_count')
     expect(sql).toContain('profile_only_purpose_policy_count')
     expect(sql).toContain('retained_purpose_policy_count')
+    expect(sql).toContain('lifecycle_retained_purpose_policy_count')
+    expect(sql).toContain('lifecycle_receipt_required_policy_count')
+    expect(sql).toContain('lifecycle_receipt_review_required_policy_count')
     expect(sql).toContain("rule.source = 'media_server_library_profile'")
     expect(sql).toContain("rule.inference_state = 'inferred'")
     expect(sql).not.toContain('rule.values')
+    expect(sql).not.toContain('actor_id')
+    expect(sql).not.toContain('idempotency_key')
+    expect(sql).not.toContain('command_fingerprint')
     expect(sql).not.toContain('classification_history')
     expect(sql).not.toContain('rag_')
     expect(values).toBeUndefined()

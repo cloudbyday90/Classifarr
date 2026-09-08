@@ -30,7 +30,7 @@ async function createNativePurposeFixture({ libraryName, policyName, purposeRule
     presetSignals: {},
   });
 
-  await db.query(`
+  const intentResult = await db.query(`
     WITH native_intent AS (
       INSERT INTO policy_intents (
         policy_id, library_id, schema_version, intent_version,
@@ -38,7 +38,7 @@ async function createNativePurposeFixture({ libraryName, policyName, purposeRule
       )
       VALUES ($1, $2, 1, 1, TRUE, 'native_intent', 'inferred', '{}'::jsonb, 'valid')
       RETURNING id
-    )
+    ), inserted_rules AS (
     INSERT INTO policy_intent_rules (
       intent_id, intent_role, collection, signal_type, operator,
       values, constraint_mode, semantics, source, inference_state
@@ -62,9 +62,51 @@ async function createNativePurposeFixture({ libraryName, policyName, purposeRule
       source TEXT,
       inference_state TEXT
     )
+    RETURNING intent_id
+    )
+    SELECT id FROM native_intent
   `, [fixture.policyId, fixture.libraryId, JSON.stringify(purposeRules)]);
 
-  return fixture;
+  return { ...fixture, intentId: intentResult.rows[0].id };
+}
+
+async function establishInitialIntent({ policyId, libraryId, intentId }) {
+  const snapshot = await db.query(`
+    INSERT INTO policy_intent_rollback_snapshots (
+      intent_id, policy_id, snapshot_version, snapshot_payload,
+      payload_redacted, restore_path, expires_at
+    )
+    VALUES ($1, $2, 1, '{}'::jsonb, TRUE, 'policy/test/rollback', NOW() + INTERVAL '14 days')
+    RETURNING id
+  `, [intentId, policyId]);
+  const event = await db.query(`
+    INSERT INTO policy_intent_migration_events (
+      intent_id, policy_id, event_type, actor_type,
+      target_version, reason_code, metadata
+    )
+    VALUES ($1, $2, 'initial_intent_established', 'test_fixture', 1, 'test_fixture', '{}'::jsonb)
+    RETURNING id
+  `, [intentId, policyId]);
+  await db.query(`
+    INSERT INTO policy_initial_intent_establishments (
+      policy_id, library_id, intent_id, migration_event_id, rollback_snapshot_id,
+      idempotency_key, request_fingerprint, authority_source_id, accepted_by,
+      state, established_at
+    )
+    VALUES (
+      $1, $2, $3, $4, $5,
+      $6, $7, 'operator_declared_intent', 1,
+      'established', NOW()
+    )
+  `, [
+    policyId,
+    libraryId,
+    intentId,
+    event.rows[0].id,
+    snapshot.rows[0].id,
+    `policy-purpose-coverage-${policyId}`.padEnd(32, 'x'),
+    `${policyId}`.padStart(64, '0'),
+  ]);
 }
 
 describe('Policy purpose coverage review integration', () => {
@@ -134,6 +176,7 @@ describe('Policy purpose coverage review integration', () => {
       }],
     });
     fixtures.push(maintained, broadOne, broadTwo, mixedAny, missing, profileOnly);
+    await establishInitialIntent(maintained);
 
     const review = await new PolicyPurposeCoverageReviewService({
       db,
@@ -202,6 +245,9 @@ describe('Policy purpose coverage review integration', () => {
       activePolicyCount: expect.any(Number),
       profileOnlyPurposePolicyCount: expect.any(Number),
       retainedPurposePolicyCount: expect.any(Number),
+      lifecycleRetainedPurposePolicyCount: 1,
+      lifecycleReceiptRequiredPolicyCount: 3,
+      lifecycleReceiptReviewRequiredPolicyCount: 0,
       heldOutAuditCandidateSourceAvailable: true,
       semanticCohortReady: false,
       semanticSelectionAffected: false,

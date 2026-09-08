@@ -11,6 +11,13 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Policy-linked lifecycle source readiness** — Held-out semantic-study source
+  availability now requires current retained declared purpose and complete
+  normal lifecycle evidence for the same active policy. The administrator-only
+  aggregate distinguishes qualified, missing, and review-required evidence
+  without exposing policy values or enabling cohort selection, labels, AI, or
+  routing.
+
 - **Policy-purpose lifecycle provenance receipt** — The administrator-only
   purpose review now measures whether durable normal policy establishment and
   change receipts retain declared specialized purpose, remain profile-only, or

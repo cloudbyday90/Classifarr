@@ -65,6 +65,9 @@ describe('PolicyPurposeCoverageReview', () => {
             activePolicyCount: 10,
             profileOnlyPurposePolicyCount: 10,
             retainedPurposePolicyCount: 0,
+            lifecycleRetainedPurposePolicyCount: 0,
+            lifecycleReceiptRequiredPolicyCount: 0,
+            lifecycleReceiptReviewRequiredPolicyCount: 0,
             heldOutAuditCandidateSourceAvailable: false,
           },
         },
@@ -82,6 +85,7 @@ describe('PolicyPurposeCoverageReview', () => {
     expect(wrapper.text()).toContain('No Retained Declared Purpose Source')
     expect(wrapper.text()).toContain('Profile observations remain excluded')
     expect(wrapper.text()).toContain('Active validated policies')
+    expect(wrapper.text()).toContain('Lifecycle-qualified sources')
     expect(wrapper.text()).toContain('Profile Only Specialized Purpose')
     expect(wrapper.text()).toContain('Inferred profile rules')
     expect(wrapper.text()).toContain('does not expose rule values')
