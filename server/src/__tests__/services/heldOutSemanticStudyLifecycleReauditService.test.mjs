@@ -56,7 +56,7 @@ function sourceFor(record, purposeEvidenceRecord = completePurposeEvidenceRecord
 
 function completeAuditReceipt() {
   return Object.freeze({
-    version: 'policy.held_out_semantic_study_eligibility_audit.v3',
+    version: 'policy.held_out_semantic_study_eligibility_audit.v4',
     status: Object.freeze({ id: 'complete' }),
     summary: Object.freeze({
       candidateCount: 4,
@@ -144,6 +144,7 @@ test('does not re-run a complete audit for an unchanged lifecycle source', async
       sourceFingerprint,
       attemptCount: 1,
       auditStatusId: 'complete',
+      auditReceipt: completeAuditReceipt(),
     }),
     loadSourceCheckpoint: async () => ({ sourceFingerprint }),
     loadSourceRecord: async () => record,
@@ -155,11 +156,41 @@ test('does not re-run a complete audit for an unchanged lifecycle source', async
   expect(saveSourceCheckpoint).not.toHaveBeenCalled();
 });
 
+test('refreshes a prior-version receipt only when the qualified source is otherwise unchanged', async () => {
+  const record = sourceRecord({ changed: 1 });
+  const sourceFingerprint = heldOutSemanticStudyLifecycleReauditSourceFingerprint(sourceFor(record));
+  const auditReceipt = completeAuditReceipt();
+  const audit = { audit: jest.fn(async () => auditReceipt) };
+  const { saveAuditState, saveSourceCheckpoint, service } = createService({
+    audit,
+    loadAuditState: async () => ({
+      sourceFingerprint,
+      attemptCount: 3,
+      auditStatusId: 'complete',
+      auditReceipt: {
+        version: 'policy.held_out_semantic_study_eligibility_audit.v3',
+        status: { id: 'complete' },
+        summary: { candidateCount: 4 },
+      },
+    }),
+    loadSourceCheckpoint: async () => ({ sourceFingerprint }),
+    loadSourceRecord: async () => record,
+  });
+
+  await expect(service.run()).resolves.toBe(auditReceipt);
+  expect(audit.audit).toHaveBeenCalledTimes(1);
+  expect(saveAuditState).toHaveBeenCalledWith(expect.objectContaining({
+    attemptCount: 1,
+    auditReceipt,
+  }));
+  expect(saveSourceCheckpoint).not.toHaveBeenCalled();
+});
+
 test('retries a failed unchanged source only through its bounded attempt budget', async () => {
   const record = sourceRecord({ rebuild: 1 });
   const sourceFingerprint = heldOutSemanticStudyLifecycleReauditSourceFingerprint(sourceFor(record));
   const audit = { audit: jest.fn(async () => ({
-    version: 'policy.held_out_semantic_study_eligibility_audit.v3',
+    version: 'policy.held_out_semantic_study_eligibility_audit.v4',
     status: { id: 'failed' },
     summary: null,
   })) };
@@ -170,6 +201,11 @@ test('retries a failed unchanged source only through its bounded attempt budget'
       sourceFingerprint,
       attemptCount: HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT_MAXIMUM_ATTEMPTS - 1,
       auditStatusId: 'failed',
+      auditReceipt: {
+        version: 'policy.held_out_semantic_study_eligibility_audit.v4',
+        status: { id: 'failed' },
+        summary: null,
+      },
     }),
     loadSourceCheckpoint: async () => ({ sourceFingerprint }),
     loadSourceRecord: async () => record,
@@ -189,6 +225,11 @@ test('retries a failed unchanged source only through its bounded attempt budget'
       sourceFingerprint,
       attemptCount: HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT_MAXIMUM_ATTEMPTS,
       auditStatusId: 'failed',
+      auditReceipt: {
+        version: 'policy.held_out_semantic_study_eligibility_audit.v4',
+        status: { id: 'failed' },
+        summary: null,
+      },
     }),
     loadSourceCheckpoint: async () => ({ sourceFingerprint }),
     loadSourceRecord: async () => record,
@@ -204,7 +245,7 @@ test('fails closed with the established aggregate receipt when the audit throws'
   });
 
   await expect(service.run()).resolves.toEqual({
-    version: 'policy.held_out_semantic_study_eligibility_audit.v3',
+    version: 'policy.held_out_semantic_study_eligibility_audit.v4',
     status: { id: 'failed' },
     summary: null,
   });
@@ -240,6 +281,7 @@ test('re-audits when complete purpose evidence returns to a previously audited a
     sourceFingerprint: completeFingerprint,
     attemptCount: 1,
     auditStatusId: 'complete',
+    auditReceipt: completeAuditReceipt(),
   };
 
   const first = createService({

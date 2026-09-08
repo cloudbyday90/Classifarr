@@ -45,6 +45,22 @@ test('reports fixed aggregate eligibility only across the supplied canonical pop
   expect(result.summary).toMatchObject({
     candidateCount: 2,
     candidateCountByStratum: { documentary: 1, reality: 1 },
+    comparisonEligibilityPartition: {
+      version: 'policy.held_out_semantic_study_comparison_eligibility_partition.v1',
+      comparisonCount: 2,
+      eligibleComparisonCount: 1,
+      ineligibleComparisonCount: 1,
+      policyOnlyComparisonAvailable: true,
+      rawCandidateDataExposed: false,
+      reasonCounts: {
+        identity_unverified: 0,
+        insufficient_policy_candidates: 0,
+        invalid_contract: 0,
+        not_pending_policy_decision: 1,
+        ready_comparison: 1,
+      },
+      semanticSelection: false,
+    },
     eligibilityDecisionCounts: { 'manual:none': 1, 'prompt_select:two_or_more': 1 },
     eligibilityStatusCounts: { not_pending_policy_decision: 1, ready: 1 },
     eligibleCountByStratum: { documentary: 1, reality: 0 },

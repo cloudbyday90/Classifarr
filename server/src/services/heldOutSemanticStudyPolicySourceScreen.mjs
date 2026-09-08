@@ -3,6 +3,12 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
+import {
+  classifyHeldOutSemanticStudyPolicySourceDisposition,
+  HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_DISPOSITION_IDS,
+} from './heldOutSemanticStudyPolicySourceDisposition.mjs';
+import { isHeldOutSemanticStudyExcludedInferredProfileRule } from './heldOutSemanticStudyPolicySourceRule.mjs';
+
 export const HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_SCREEN_STATUS_IDS = Object.freeze({
   ALL_PURPOSE_RULES_EXCLUDED_AS_INFERRED_PROFILE:
     'all_purpose_rules_excluded_as_inferred_profile',
@@ -11,20 +17,18 @@ export const HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_SCREEN_STATUS_IDS = Object.fr
 });
 
 export const HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_SCREEN_VERSION =
-  'policy.held_out_semantic_study_policy_source_screen.v2';
+  'policy.held_out_semantic_study_policy_source_screen.v3';
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
-/**
- * The study excludes only observed profile rules that were inferred from a
- * destination's existing contents. Contract-level inference alone is not a
- * profile provenance signal: operator-declared native rules also use it.
- */
-export function isHeldOutSemanticStudyExcludedInferredProfileRule(rule = {}) {
-  return rule?.source === 'media_server_library_profile' &&
-    rule?.inference_state === 'inferred';
+export { isHeldOutSemanticStudyExcludedInferredProfileRule };
+
+function fixedDispositionCounts() {
+  return Object.fromEntries(Object.values(
+    HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_DISPOSITION_IDS,
+  ).map((id) => [id, 0]));
 }
 
 function statusId({ observedPurposeRuleCount, retainedPurposeRuleCount }) {
@@ -44,6 +48,7 @@ function statusId({ observedPurposeRuleCount, retainedPurposeRuleCount }) {
  * diagnostic-only and never returns policy identities, rule values, or media.
  */
 export function buildHeldOutSemanticStudyPolicySourceScreen({ policies = [] } = {}) {
+  const policyPurposeDispositionCounts = fixedDispositionCounts();
   const summary = {
     activePolicyCount: 0,
     excludedInferredProfilePurposeRuleCount: 0,
@@ -57,21 +62,20 @@ export function buildHeldOutSemanticStudyPolicySourceScreen({ policies = [] } = 
 
   for (const policy of asArray(policies)) {
     summary.activePolicyCount += 1;
-    const purposeRules = asArray(policy?.policy_intent_contract?.purpose);
-    summary.observedPurposeRuleCount += purposeRules.length;
-    if (purposeRules.length === 0) {
+    const disposition = classifyHeldOutSemanticStudyPolicySourceDisposition({
+      purposeRules: policy?.policy_intent_contract?.purpose,
+    });
+    policyPurposeDispositionCounts[disposition.id] += 1;
+    summary.excludedInferredProfilePurposeRuleCount +=
+      disposition.excludedInferredProfilePurposeRuleCount;
+    summary.observedPurposeRuleCount += disposition.observedPurposeRuleCount;
+    summary.retainedPurposeRuleCount += disposition.retainedPurposeRuleCount;
+    if (disposition.id === HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_DISPOSITION_IDS.NO_OBSERVED_PURPOSE) {
       summary.policyWithoutObservedPurposeCount += 1;
       continue;
     }
     summary.policyWithObservedPurposeCount += 1;
-
-    const retainedPurposeRules = purposeRules.filter((rule) => {
-      if (!isHeldOutSemanticStudyExcludedInferredProfileRule(rule)) return true;
-      summary.excludedInferredProfilePurposeRuleCount += 1;
-      return false;
-    });
-    summary.retainedPurposeRuleCount += retainedPurposeRules.length;
-    if (retainedPurposeRules.length > 0) {
+    if (disposition.id === HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_DISPOSITION_IDS.RETAINED_DECLARED_PURPOSE) {
       summary.policyWithRetainedPurposeCount += 1;
     } else {
       summary.profileOnlyPurposePolicyCount += 1;
@@ -81,6 +85,7 @@ export function buildHeldOutSemanticStudyPolicySourceScreen({ policies = [] } = 
   return Object.freeze({
     version: HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_SCREEN_VERSION,
     ...summary,
+    policyPurposeDispositionCounts: Object.freeze(policyPurposeDispositionCounts),
     policyWithoutRetainedPurposeCount: summary.activePolicyCount - summary.policyWithRetainedPurposeCount,
     rawConfigurationExposed: false,
     statusId: statusId(summary),

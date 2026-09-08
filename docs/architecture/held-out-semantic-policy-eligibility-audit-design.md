@@ -55,7 +55,7 @@ two fixed values: action (`auto_classify`, `manual`, `prompt_confirm`,
 explains availability without turning internal evidence into another source of
 authority.
 
-The v2 audit also records a fixed aggregate
+The v4 audit also records a fixed aggregate
 [policy source screen](held-out-semantic-policy-source-screen-design.md). It
 distinguishes the absence of declared purpose rules from their intentional
 exclusion as inferred profile evidence, while retaining only counts and a

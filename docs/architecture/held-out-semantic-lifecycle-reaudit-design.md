@@ -38,7 +38,7 @@ source is compared with a one-row source checkpoint. A changed source is
 checkpointed even while ineligible; it starts the existing eligibility audit
 after the commit only when both counts are positive, under a dedicated
 PostgreSQL advisory lock. The audit itself remains the producer of the receipt:
-the re-audit returns and stores that unmodified v3 aggregate receipt separately
+the re-audit returns and stores that unmodified v4 aggregate receipt separately
 from the source checkpoint.
 
 ```text

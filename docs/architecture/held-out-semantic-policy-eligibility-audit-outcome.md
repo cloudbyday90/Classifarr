@@ -22,7 +22,7 @@ architecture, research, alternatives, and recommendation stack.
   reporting, configuration drift, and private command lifecycle.
 - Added the separate count-only [policy source
   screen](held-out-semantic-policy-source-screen-outcome.md), which makes the
-  restricted evidence boundary explicit in the v2 audit receipt.
+  restricted evidence boundary explicit in the v4 audit receipt.
 
 ## Real local audit
 
@@ -36,7 +36,7 @@ All 6,639 results were `not_pending_policy_decision` with the fixed diagnostic
 `manual:none`. There were zero `ready` contracts and zero eligible cases in
 every stratum. The aggregate active configuration contained ten native policies
 (five movie and five TV) with declared-purpose rules, so this is not caused by
-the absence of an active policy for a media type. The v2 source screen rerun on
+the absence of an active policy for a media type. The v3 source screen rerun on
 8 September made the remaining cause explicit: all 15 declared purpose rules
 are inferred profile evidence and are intentionally excluded from held-out
 selection; no retained purpose rule was evaluated.

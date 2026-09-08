@@ -1,3 +1,6 @@
+-- Classifarr - AI-powered media classification for the *arr ecosystem
+-- Copyright (C) 2024-2026 Classifarr Contributors
+--
 -- Stores only the latest aggregate, private eligibility-audit receipt for a
 -- fixed durable lifecycle-receipt source. This is a resumable automation
 -- cursor, not a cohort, label set, semantic result, or routing instruction.

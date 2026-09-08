@@ -55,7 +55,7 @@ function isAuditReceipt(value) {
 }
 
 function auditStateMatchesSource({ auditState, sourceFingerprint }) {
-  return auditState?.sourceFingerprint === sourceFingerprint;
+  return auditState?.sourceFingerprint === sourceFingerprint && isAuditReceipt(auditState.auditReceipt);
 }
 
 function nextAttemptCount({ auditState, auditStateCurrent, sourceChanged }) {

@@ -11,6 +11,13 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Held-out eligibility explanation partitions** — The private policy-only
+  audit now reports fixed, mutually exclusive aggregate partitions for policy
+  source provenance and candidate comparison availability. A zero-ready result
+  is explainable without exposing library, policy, configuration, provider, or
+  media identity; it cannot capture a cohort, collect labels, invoke AI,
+  change policy, or route media.
+
 - **Restore-safe held-out lifecycle state** — Every merge and replace backup
   restore now atomically clears the aggregate-only lifecycle source checkpoint
   and audit receipt. The passive re-audit therefore observes restored durable

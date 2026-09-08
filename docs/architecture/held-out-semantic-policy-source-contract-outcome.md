@@ -7,14 +7,14 @@ research, alternatives, and recommendation stack.
 ## Outcome
 
 The private source screen is now
-`policy.held_out_semantic_study_policy_source_screen.v2`. It no longer calls all
+`policy.held_out_semantic_study_policy_source_screen.v3`. It no longer calls all
 observed rules declared purpose. Instead it returns fixed counts for observed
 purpose, profile-only purpose, retained purpose, and policies without observed
 purpose. The counts are library- and configuration-agnostic and contain no
 identities or rule values.
 
 The private eligibility audit is now
-`policy.held_out_semantic_study_eligibility_audit.v3` and returns its version on
+`policy.held_out_semantic_study_eligibility_audit.v4` and returns its version on
 every outcome. This lets future code recognize the corrected source terminology
 without treating a source receipt as study, semantic, or routing authority.
 

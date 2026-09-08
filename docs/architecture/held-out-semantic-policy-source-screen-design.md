@@ -29,7 +29,7 @@ does two things:
 
 `createHeldOutSemanticStudyPreparation()` now produces this receipt alongside
 the already filtered in-memory policies. The eligibility audit includes it in
-its v2 aggregate summary and configuration-drift fingerprint. It contains no
+its v4 aggregate summary and configuration-drift fingerprint. It contains no
 policy or library identity, rule value, title, TMDb ID, metadata, model output,
 or routing result.
 

@@ -12,7 +12,7 @@ research, alternatives, and recommendation stack.
 - Corrected held-out preparation so an operator-declared native rule with an
   `inferred` contract lifecycle state remains eligible for the restricted
   deterministic screen.
-- Added the private `policySourceScreen` aggregate to the v2 eligibility audit
+- Added the private `policySourceScreen` aggregate to the v4 eligibility audit
   and its configuration-drift check. It reports fixed counts and a status ID;
   no library, policy, rule value, metadata, title, identity, score, prompt, or
   semantic output is retained.

@@ -5,6 +5,9 @@
 
 import * as db from '../config/database.mjs';
 import { embeddingRouter } from './embeddingRouter.mjs';
+import {
+  buildHeldOutSemanticStudyComparisonEligibilityPartition,
+} from './heldOutSemanticStudyComparisonEligibilityPartition.mjs';
 import { heldOutSemanticStudyEligibilityDiagnosticCountId } from './heldOutSemanticStudyEligibilityDiagnostics.mjs';
 import {
   HELD_OUT_SEMANTIC_STUDY_INVENTORY_AUDIT_MAXIMUM_CANDIDATES,
@@ -16,7 +19,7 @@ import { HELD_OUT_SEMANTIC_STUDY_STRATA } from './heldOutSemanticStudyInventoryC
 import { buildHeldOutSemanticStudyPolicySourceScreen } from './heldOutSemanticStudyPolicySourceScreen.mjs';
 
 export const HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_VERSION =
-  'policy.held_out_semantic_study_eligibility_audit.v3';
+  'policy.held_out_semantic_study_eligibility_audit.v4';
 
 export const HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_STATUS_IDS = Object.freeze({
   CANDIDATE_SOURCE_TRUNCATED: 'candidate_source_truncated',
@@ -45,6 +48,11 @@ function auditSummary({ candidates, policies, assessments, policySourceScreen })
   const eligibilityDecisionCounts = {};
   const eligibilityStatusCounts = {};
   const identities = new Set();
+  const comparisonEligibilityPartition =
+    buildHeldOutSemanticStudyComparisonEligibilityPartition({ assessments });
+  if (comparisonEligibilityPartition.comparisonCount !== candidates.length) {
+    throw new Error('invalid_held_out_inventory_audit_assessment_count');
+  }
 
   for (const [index, candidate] of candidates.entries()) {
     if (!validCandidate(candidate)) throw new Error('invalid_held_out_inventory_audit_candidate');
@@ -65,9 +73,16 @@ function auditSummary({ candidates, policies, assessments, policySourceScreen })
     }
   }
 
+  const eligibleComparisonCount = Object.values(eligibleCountByStratum)
+    .reduce((total, count) => total + count, 0);
+  if (eligibleComparisonCount !== comparisonEligibilityPartition.eligibleComparisonCount) {
+    throw new Error('inconsistent_held_out_inventory_audit_eligibility_partition');
+  }
+
   return Object.freeze({
     candidateCount: candidates.length,
     candidateCountByStratum: Object.freeze(candidateCountByStratum),
+    comparisonEligibilityPartition,
     eligibilityDecisionCounts: orderedCounts(eligibilityDecisionCounts),
     eligibilityStatusCounts: orderedCounts(eligibilityStatusCounts),
     eligibleCountByStratum: Object.freeze(eligibleCountByStratum),

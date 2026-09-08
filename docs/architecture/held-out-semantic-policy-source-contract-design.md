@@ -31,7 +31,7 @@ retained evidence. `policyWithoutRetainedPurposeCount` remains a derived count.
 The partitions reconcile to `activePolicyCount`, while the rule counts remain
 separate because one policy can hold more than one rule.
 
-The enclosing eligibility audit advances to v3 and returns its version in every
+The enclosing eligibility audit advances to v4 and returns its version in every
 complete, truncated, configuration-changed, and failed result. This makes a
 consumer reject or branch explicitly on the corrected contract rather than
 silently interpreting renamed fields.
@@ -70,7 +70,7 @@ Secure AI Model Ops Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/
 | Keep `policyWithDeclaredPurposeCount` | No downstream contract change. | Misstates profile-only evidence and can mislead future automation. | Reject |
 | Infer declared purpose from profile membership | Could make the cohort appear ready. | Circular evidence; violates the frozen-study boundary. | Reject |
 | Return raw policy or rule details | Supports manual diagnosis. | Exposes library/configuration data and increases operational dependency. | Reject |
-| Versioned aggregate partition | Explains availability precisely, reconciles counts, and remains privacy-bounded. | Consumers must accept v3 deliberately. | Adopt |
+| Versioned aggregate partition | Explains availability precisely, reconciles counts, and remains privacy-bounded. | Consumers must accept v4 deliberately. | Adopt |
 
 ## Recommendation stack
 

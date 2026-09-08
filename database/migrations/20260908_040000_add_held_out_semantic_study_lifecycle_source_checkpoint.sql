@@ -1,3 +1,6 @@
+-- Classifarr - AI-powered media classification for the *arr ecosystem
+-- Copyright (C) 2024-2026 Classifarr Contributors
+--
 -- Stores a fixed aggregate source observation separately from an eligibility
 -- audit receipt. This lets the passive gate observe an ineligible state before
 -- later eligible evidence returns, without recording a fabricated audit.
