@@ -117,215 +117,215 @@
       </div>
 
       <template v-else>
-      <dl class="grid gap-4 border-b border-gray-800 p-5 sm:grid-cols-3 xl:grid-cols-6">
-        <div>
-          <dt class="text-xs uppercase tracking-wide text-gray-400">
-            Missing purpose coverage
-          </dt>
-          <dd class="mt-1 text-lg font-semibold text-amber-200">
-            {{ summary.missingCoverageCount }}
-          </dd>
-        </div>
-        <div>
-          <dt class="text-xs uppercase tracking-wide text-gray-400">
-            Profile-only purpose
-          </dt>
-          <dd class="mt-1 text-lg font-semibold text-amber-200">
-            {{ summary.profileOnlyPurposeCount }}
-          </dd>
-        </div>
-        <div>
-          <dt class="text-xs uppercase tracking-wide text-gray-400">
-            Retained purpose
-          </dt>
-          <dd class="mt-1 text-lg font-semibold text-green-200">
-            {{ summary.retainedPurposeCount }}
-          </dd>
-        </div>
-        <div>
-          <dt class="text-xs uppercase tracking-wide text-gray-400">
-            No specialized purpose
-          </dt>
-          <dd class="mt-1 text-lg font-semibold text-amber-200">
-            {{ summary.noSpecializedPurposeCount }}
-          </dd>
-        </div>
-        <div>
-          <dt class="text-xs uppercase tracking-wide text-gray-400">
-            Broad overlap review
-          </dt>
-          <dd class="mt-1 text-lg font-semibold text-amber-200">
-            {{ summary.broadOverlapCount }}
-          </dd>
-        </div>
-        <div>
-          <dt class="text-xs uppercase tracking-wide text-gray-400">
-            Distinct declared coverage
-          </dt>
-          <dd class="mt-1 text-lg font-semibold text-green-200">
-            {{ summary.declaredCoverageCount }}
-          </dd>
-        </div>
-      </dl>
-
-      <p
-        v-if="summary.truncated"
-        class="border-b border-amber-500/30 bg-amber-950/20 px-5 py-3 text-sm text-amber-100"
-      >
-        This bounded report shows the first {{ summary.reviewedPolicyCount }} active policies. It does not change the omitted policies.
-      </p>
-
-      <ul
-        class="divide-y divide-gray-800"
-        aria-label="Policy purpose coverage review"
-      >
-        <li
-          v-for="entry in entries"
-          :key="entry.policy.id"
-          class="p-5"
-        >
-          <div class="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p
-                class="text-xs font-semibold uppercase tracking-wide"
-                :class="statusClass(entry.coverage.statusId)"
-              >
-                {{ formatId(entry.coverage.statusId) }}
-              </p>
-              <h3 class="mt-1 text-base font-semibold text-white">
-                {{ entry.policy.name }}
-              </h3>
-              <p class="mt-1 text-sm text-gray-300">
-                {{ entry.library.name }}<span v-if="entry.library.mediaType"> · {{ entry.library.mediaType }}</span>
-              </p>
-            </div>
-            <div class="flex flex-wrap gap-2">
-              <button
-                type="button"
-                class="rounded border border-gray-500 px-4 py-2 text-sm font-medium text-gray-200 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background-light"
-                @click="emit('review-evidence', entry)"
-              >
-                Review evidence
-              </button>
-              <button
-                v-if="entry.action.available"
-                type="button"
-                class="rounded border border-primary px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background-light"
-                @click="emit('edit-policy', entry)"
-              >
-                {{ entry.action.actionLabel }}
-              </button>
-            </div>
+        <dl class="grid gap-4 border-b border-gray-800 p-5 sm:grid-cols-3 xl:grid-cols-6">
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-gray-400">
+              Missing purpose coverage
+            </dt>
+            <dd class="mt-1 text-lg font-semibold text-amber-200">
+              {{ summary.missingCoverageCount }}
+            </dd>
           </div>
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-gray-400">
+              Profile-only purpose
+            </dt>
+            <dd class="mt-1 text-lg font-semibold text-amber-200">
+              {{ summary.profileOnlyPurposeCount }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-gray-400">
+              Retained purpose
+            </dt>
+            <dd class="mt-1 text-lg font-semibold text-green-200">
+              {{ summary.retainedPurposeCount }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-gray-400">
+              No specialized purpose
+            </dt>
+            <dd class="mt-1 text-lg font-semibold text-amber-200">
+              {{ summary.noSpecializedPurposeCount }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-gray-400">
+              Broad overlap review
+            </dt>
+            <dd class="mt-1 text-lg font-semibold text-amber-200">
+              {{ summary.broadOverlapCount }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-gray-400">
+              Distinct declared coverage
+            </dt>
+            <dd class="mt-1 text-lg font-semibold text-green-200">
+              {{ summary.declaredCoverageCount }}
+            </dd>
+          </div>
+        </dl>
 
-          <dl class="mt-4 grid gap-3 rounded border border-gray-700 bg-background/50 p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
-            <div>
-              <dt class="text-xs uppercase tracking-wide text-gray-400">
-                Required content signals
-              </dt>
-              <dd class="mt-1 text-white">
-                {{ entry.coverage.requiredSignalTypeCount }}
-              </dd>
-            </div>
-            <div>
-              <dt class="text-xs uppercase tracking-wide text-gray-400">
-                Required terms
-              </dt>
-              <dd class="mt-1 text-white">
-                {{ entry.coverage.requiredTermCount }}
-              </dd>
-            </div>
-            <div>
-              <dt class="text-xs uppercase tracking-wide text-gray-400">
-                Unshared terms
-              </dt>
-              <dd class="mt-1 text-white">
-                {{ entry.coverage.uniqueRequiredTermCount }}
-              </dd>
-            </div>
-            <div>
-              <dt class="text-xs uppercase tracking-wide text-gray-400">
-                Shared terms
-              </dt>
-              <dd class="mt-1 text-white">
-                {{ entry.coverage.sharedRequiredTermCount }}
-              </dd>
-            </div>
-            <div>
-              <dt class="text-xs uppercase tracking-wide text-gray-400">
-                Overlapping destinations
-              </dt>
-              <dd class="mt-1 text-white">
-                {{ entry.coverage.overlappingDestinationCount }}
-              </dd>
-            </div>
-            <div>
-              <dt class="text-xs uppercase tracking-wide text-gray-400">
-                Shared “any” alternatives
-              </dt>
-              <dd class="mt-1 text-white">
-                {{ sharedRequireAnyTermCount(entry) }}
-                <span
-                  v-if="sharedRequireAnyDestinationCount(entry) > 0"
-                  class="text-gray-400"
-                >
-                  across {{ sharedRequireAnyDestinationCount(entry) }} destination{{ sharedRequireAnyDestinationCount(entry) === 1 ? '' : 's' }}
-                </span>
-              </dd>
-            </div>
-          </dl>
+        <p
+          v-if="summary.truncated"
+          class="border-b border-amber-500/30 bg-amber-950/20 px-5 py-3 text-sm text-amber-100"
+        >
+          This bounded report shows the first {{ summary.reviewedPolicyCount }} active policies. It does not change the omitted policies.
+        </p>
 
-          <div
-            v-if="provenance(entry)"
-            class="mt-4 rounded border border-gray-700 bg-background/50 p-4"
+        <ul
+          class="divide-y divide-gray-800"
+          aria-label="Policy purpose coverage review"
+        >
+          <li
+            v-for="entry in entries"
+            :key="entry.policy.id"
+            class="p-5"
           >
-            <p
-              class="text-sm font-semibold"
-              :class="provenanceClass(provenance(entry).statusId)"
-            >
-              {{ formatId(provenance(entry).statusId) }}
-            </p>
-            <p class="mt-1 text-sm leading-6 text-gray-300">
-              {{ provenanceDescription(provenance(entry).statusId) }}
-            </p>
-            <dl class="mt-3 grid gap-3 text-sm sm:grid-cols-3">
+            <div class="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p
+                  class="text-xs font-semibold uppercase tracking-wide"
+                  :class="statusClass(entry.coverage.statusId)"
+                >
+                  {{ formatId(entry.coverage.statusId) }}
+                </p>
+                <h3 class="mt-1 text-base font-semibold text-white">
+                  {{ entry.policy.name }}
+                </h3>
+                <p class="mt-1 text-sm text-gray-300">
+                  {{ entry.library.name }}<span v-if="entry.library.mediaType"> · {{ entry.library.mediaType }}</span>
+                </p>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  class="rounded border border-gray-500 px-4 py-2 text-sm font-medium text-gray-200 hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background-light"
+                  @click="emit('review-evidence', entry)"
+                >
+                  Review evidence
+                </button>
+                <button
+                  v-if="entry.action.available"
+                  type="button"
+                  class="rounded border border-primary px-4 py-2 text-sm font-medium text-primary hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background-light"
+                  @click="emit('edit-policy', entry)"
+                >
+                  {{ entry.action.actionLabel }}
+                </button>
+              </div>
+            </div>
+
+            <dl class="mt-4 grid gap-3 rounded border border-gray-700 bg-background/50 p-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
               <div>
                 <dt class="text-xs uppercase tracking-wide text-gray-400">
-                  Specialized purpose rules
+                  Required content signals
                 </dt>
                 <dd class="mt-1 text-white">
-                  {{ provenance(entry).specializedPurposeRuleCount }}
+                  {{ entry.coverage.requiredSignalTypeCount }}
                 </dd>
               </div>
               <div>
                 <dt class="text-xs uppercase tracking-wide text-gray-400">
-                  Inferred profile rules
+                  Required terms
                 </dt>
                 <dd class="mt-1 text-white">
-                  {{ provenance(entry).inferredProfilePurposeRuleCount }}
+                  {{ entry.coverage.requiredTermCount }}
                 </dd>
               </div>
               <div>
                 <dt class="text-xs uppercase tracking-wide text-gray-400">
-                  Retained purpose rules
+                  Unshared terms
                 </dt>
                 <dd class="mt-1 text-white">
-                  {{ provenance(entry).retainedPurposeRuleCount }}
+                  {{ entry.coverage.uniqueRequiredTermCount }}
+                </dd>
+              </div>
+              <div>
+                <dt class="text-xs uppercase tracking-wide text-gray-400">
+                  Shared terms
+                </dt>
+                <dd class="mt-1 text-white">
+                  {{ entry.coverage.sharedRequiredTermCount }}
+                </dd>
+              </div>
+              <div>
+                <dt class="text-xs uppercase tracking-wide text-gray-400">
+                  Overlapping destinations
+                </dt>
+                <dd class="mt-1 text-white">
+                  {{ entry.coverage.overlappingDestinationCount }}
+                </dd>
+              </div>
+              <div>
+                <dt class="text-xs uppercase tracking-wide text-gray-400">
+                  Shared “any” alternatives
+                </dt>
+                <dd class="mt-1 text-white">
+                  {{ sharedRequireAnyTermCount(entry) }}
+                  <span
+                    v-if="sharedRequireAnyDestinationCount(entry) > 0"
+                    class="text-gray-400"
+                  >
+                    across {{ sharedRequireAnyDestinationCount(entry) }} destination{{ sharedRequireAnyDestinationCount(entry) === 1 ? '' : 's' }}
+                  </span>
                 </dd>
               </div>
             </dl>
-          </div>
 
-          <div class="mt-4 rounded border border-gray-700 bg-background/50 p-4">
-            <p class="text-sm font-semibold text-white">
-              {{ entry.action.title }}
-            </p>
-            <p class="mt-1 text-sm leading-6 text-gray-300">
-              {{ entry.action.description }}
-            </p>
-          </div>
-        </li>
-      </ul>
+            <div
+              v-if="provenance(entry)"
+              class="mt-4 rounded border border-gray-700 bg-background/50 p-4"
+            >
+              <p
+                class="text-sm font-semibold"
+                :class="provenanceClass(provenance(entry).statusId)"
+              >
+                {{ formatId(provenance(entry).statusId) }}
+              </p>
+              <p class="mt-1 text-sm leading-6 text-gray-300">
+                {{ provenanceDescription(provenance(entry).statusId) }}
+              </p>
+              <dl class="mt-3 grid gap-3 text-sm sm:grid-cols-3">
+                <div>
+                  <dt class="text-xs uppercase tracking-wide text-gray-400">
+                    Specialized purpose rules
+                  </dt>
+                  <dd class="mt-1 text-white">
+                    {{ provenance(entry).specializedPurposeRuleCount }}
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-xs uppercase tracking-wide text-gray-400">
+                    Inferred profile rules
+                  </dt>
+                  <dd class="mt-1 text-white">
+                    {{ provenance(entry).inferredProfilePurposeRuleCount }}
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-xs uppercase tracking-wide text-gray-400">
+                    Retained purpose rules
+                  </dt>
+                  <dd class="mt-1 text-white">
+                    {{ provenance(entry).retainedPurposeRuleCount }}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+
+            <div class="mt-4 rounded border border-gray-700 bg-background/50 p-4">
+              <p class="text-sm font-semibold text-white">
+                {{ entry.action.title }}
+              </p>
+              <p class="mt-1 text-sm leading-6 text-gray-300">
+                {{ entry.action.description }}
+              </p>
+            </div>
+          </li>
+        </ul>
       </template>
     </template>
   </section>

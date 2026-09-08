@@ -26,36 +26,68 @@
     </p>
     <dl class="mt-3 grid gap-3 text-sm sm:grid-cols-3">
       <div>
-        <dt class="text-xs uppercase tracking-wide text-gray-400">Active authoritative policies</dt>
-        <dd class="mt-1 text-white">{{ inventory.authoritativeActiveNativePolicyCount }}</dd>
+        <dt class="text-xs uppercase tracking-wide text-gray-400">
+          Active authoritative policies
+        </dt>
+        <dd class="mt-1 text-white">
+          {{ inventory.authoritativeActiveNativePolicyCount }}
+        </dd>
       </div>
       <div>
-        <dt class="text-xs uppercase tracking-wide text-gray-400">Current intent versions</dt>
-        <dd class="mt-1 text-white">{{ inventory.currentIntentVersionPolicyCount }}</dd>
+        <dt class="text-xs uppercase tracking-wide text-gray-400">
+          Current intent versions
+        </dt>
+        <dd class="mt-1 text-white">
+          {{ inventory.currentIntentVersionPolicyCount }}
+        </dd>
       </div>
       <div>
-        <dt class="text-xs uppercase tracking-wide text-gray-400">Current intent schemas</dt>
-        <dd class="mt-1 text-white">{{ inventory.currentIntentSchemaVersionPolicyCount }}</dd>
+        <dt class="text-xs uppercase tracking-wide text-gray-400">
+          Current intent schemas
+        </dt>
+        <dd class="mt-1 text-white">
+          {{ inventory.currentIntentSchemaVersionPolicyCount }}
+        </dd>
       </div>
       <div>
-        <dt class="text-xs uppercase tracking-wide text-gray-400">Retained declared purposes</dt>
-        <dd class="mt-1 text-white">{{ inventory.retainedDeclaredPurposePolicyCount }}</dd>
+        <dt class="text-xs uppercase tracking-wide text-gray-400">
+          Retained declared purposes
+        </dt>
+        <dd class="mt-1 text-white">
+          {{ inventory.retainedDeclaredPurposePolicyCount }}
+        </dd>
       </div>
       <div>
-        <dt class="text-xs uppercase tracking-wide text-gray-400">Verifiable lifecycle records</dt>
-        <dd class="mt-1 text-white">{{ inventory.verifiableLifecycleReceiptPolicyCount }}</dd>
+        <dt class="text-xs uppercase tracking-wide text-gray-400">
+          Verifiable lifecycle records
+        </dt>
+        <dd class="mt-1 text-white">
+          {{ inventory.verifiableLifecycleReceiptPolicyCount }}
+        </dd>
       </div>
       <div>
-        <dt class="text-xs uppercase tracking-wide text-gray-400">Current-intent lifecycle records</dt>
-        <dd class="mt-1 text-white">{{ inventory.currentIntentLifecycleReceiptPolicyCount }}</dd>
+        <dt class="text-xs uppercase tracking-wide text-gray-400">
+          Current-intent lifecycle records
+        </dt>
+        <dd class="mt-1 text-white">
+          {{ inventory.currentIntentLifecycleReceiptPolicyCount }}
+        </dd>
       </div>
       <div>
-        <dt class="text-xs uppercase tracking-wide text-gray-400">Complete evidence records</dt>
-        <dd class="mt-1 text-white">{{ inventory.completePolicyEvidenceCount }}</dd>
+        <dt class="text-xs uppercase tracking-wide text-gray-400">
+          Complete evidence records
+        </dt>
+        <dd class="mt-1 text-white">
+          {{ inventory.completePolicyEvidenceCount }}
+        </dd>
       </div>
       <div>
-        <dt class="text-xs uppercase tracking-wide text-gray-400">Incomplete evidence records</dt>
-        <dd class="mt-1 text-white">{{ inventory.incompletePolicyEvidenceCount }}</dd>
+        <dt class="text-xs uppercase tracking-wide text-gray-400">
+          Incomplete evidence records
+        </dt>
+        <dd class="mt-1 text-white">
+          {{ inventory.incompletePolicyEvidenceCount }}
+        </dd>
       </div>
     </dl>
   </section>
