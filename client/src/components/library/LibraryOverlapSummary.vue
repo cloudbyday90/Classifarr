@@ -65,7 +65,7 @@
                   Library / type
                 </th>
                 <th scope="col">
-                  Inventory rows
+                  Trait-analysis rows
                 </th>
                 <th scope="col">
                   Rows with ID
@@ -102,7 +102,7 @@
                   <td>{{ cohort.duplicateRowCount }}</td>
                   <td>{{ cohort.unidentifiedRowCount }}</td>
                 </tr>
-                <tr v-if="!library.inventoryRowCount || library.unsupportedTypeRowCount || library.omittedTraitRowCount">
+                <tr v-if="!library.inventoryRowCount || library.sourceConflictExcludedRowCount || library.unsupportedTypeRowCount || library.omittedTraitRowCount">
                   <th
                     scope="row"
                     class="py-2 pr-3"
@@ -111,6 +111,7 @@
                   </th>
                   <td colspan="5">
                     <span v-if="!library.inventoryRowCount">No inventory rows. </span>
+                    <span v-if="library.sourceConflictExcludedRowCount">{{ library.sourceConflictExcludedRowCount }} rows have current source identity conflicts and are excluded from trait analysis. </span>
                     <span v-if="library.unsupportedTypeRowCount">{{ library.unsupportedTypeRowCount }} rows have an unsupported media type. </span>
                     <span v-if="library.omittedTraitRowCount">{{ library.omittedTraitRowCount }} rows have oversized trait fields withheld. </span>
                   </td>
@@ -149,6 +150,21 @@
             :right-name="libraryName(pair.rightLibraryId)"
           />
         </div>
+        <div
+          v-if="observedTraitCohorts.length"
+          class="space-y-2 border-t border-gray-600 pt-4"
+        >
+          <h3 class="font-semibold">
+            Observed trait prevalence by library
+          </h3>
+          <LibraryObservedTraitPrevalence
+            v-for="entry in observedTraitCohorts"
+            :key="`${entry.libraryId}:${entry.cohort.mediaType}`"
+            :library-name="libraryName(entry.libraryId)"
+            :cohort="entry.cohort"
+            :scope-status="observedTraitPrevalence.scopeStatus"
+          />
+        </div>
       </template>
     </template>
   </section>
@@ -158,6 +174,8 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { getLibraryOverlap } from '@/api/libraryCatalogApi'
 import LibraryOverlapTraits from './LibraryOverlapTraits.vue'
+import LibraryObservedTraitPrevalence from './LibraryObservedTraitPrevalence.vue'
+import { normalizeLibraryObservedTraitPrevalence } from '@/utils/libraryObservedTraitPrevalencePresentation'
 
 const report = ref(null)
 const loading = ref(true)
@@ -170,6 +188,15 @@ const libraryName = id => {
   const library = report.value.libraries.find(value => value.id === id)
   return `${library.name} (#${id})`
 }
+const observedTraitPrevalence = computed(() => normalizeLibraryObservedTraitPrevalence(
+  report.value?.observedTraitPrevalence
+))
+const observedTraitCohorts = computed(() => {
+  const knownLibraryIds = new Set((report.value?.libraries || []).map((library) => library.id))
+  return observedTraitPrevalence.value?.libraries
+    .filter((library) => knownLibraryIds.has(library.libraryId))
+    .flatMap((library) => library.cohorts.map((cohort) => ({ libraryId: library.libraryId, cohort }))) || []
+})
 async function load() {
   loading.value = true
   error.value = false

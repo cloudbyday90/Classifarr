@@ -38,6 +38,14 @@ describe('automatic library overlap summary', () => {
     expect(wrapper.text()).toContain('Showing 1 of 6 common values')
     expect(wrapper.text()).toContain('Drama — Movies (#1): 1 / 2 (50%); Family (#2): 1 / 1 (100%)')
   })
+  it('adds automatic, bounded local and selected-peer prevalence without suggesting a policy change', async () => {
+    const wrapper = await render()
+    expect(wrapper.text()).toContain('Observed trait prevalence by library')
+    expect(wrapper.text()).toContain('Observed trait prevalence: Movies (#1) (movie)')
+    expect(wrapper.text()).toContain('Action — local: 1 / 1 (100%); selected peers: 0 / 1')
+    expect(wrapper.text()).toContain('(0%; difference +100 points).')
+    expect(wrapper.text()).toContain('do not establish policy intent, exclusions, classification accuracy, or routing')
+  })
   it('reports omitted libraries and trait fields, unsupported rows and empty libraries', async () => {
     const report = libraryOverlapFixture()
     report.scope.excludedLibraryCount = 2
@@ -51,6 +59,12 @@ describe('automatic library overlap summary', () => {
     expect(wrapper.text()).toContain('3 rows have an unsupported media type')
     expect(wrapper.text()).toContain('No inventory rows')
     expect(wrapper.text()).toContain('No two selected libraries')
+  })
+  it('explains that source-conflict rows are withheld from automatic trait analysis', async () => {
+    const report = libraryOverlapFixture()
+    report.libraries[0].sourceConflictExcludedRowCount = 2
+    const wrapper = await render(report)
+    expect(wrapper.text()).toContain('2 rows have current source identity conflicts and are excluded from trait analysis')
   })
   it('does not present zero overlap when one side has no known identities', async () => {
     const report = libraryOverlapFixture()

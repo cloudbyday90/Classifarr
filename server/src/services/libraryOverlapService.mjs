@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { buildOverlapCohort } from './libraryOverlapCohorts.mjs';
 import { compareOverlapCohorts } from './libraryOverlapComparison.mjs';
+import { buildLibraryObservedTraitPrevalence } from './libraryObservedTraitPrevalence.mjs';
 import { LIBRARY_OVERLAP_LIMITS, readLibraryOverlapSnapshot } from './libraryOverlapQuery.mjs';
 
 export async function readLibraryOverlap(db) {
@@ -19,12 +20,19 @@ export async function readLibraryOverlap(db) {
     for (const item of snapshot.items) groups.get(item.library_id).push(item);
     const cohorts = snapshot.libraries.map(library => {
         const items = groups.get(library.id);
+        const evidenceItems = items.filter(item => item.source_conflict_blocks_authority !== true);
         return { ...library, inventoryRowCount: items.length,
-            unsupportedTypeRowCount: items.filter(item => !['movie', 'tv'].includes(item.media_type)).length,
-            omittedTraitRowCount: items.filter(item => item.omitted_traits).length,
-            cohorts: ['movie', 'tv'].map(type => buildOverlapCohort(items, type)) };
+            sourceConflictExcludedRowCount: items.length - evidenceItems.length,
+            unsupportedTypeRowCount: evidenceItems.filter(item => !['movie', 'tv'].includes(item.media_type)).length,
+            omittedTraitRowCount: evidenceItems.filter(item => item.omitted_traits).length,
+            cohorts: ['movie', 'tv'].map(type => buildOverlapCohort(evidenceItems, type)) };
     });
     response.libraries = cohorts.map(library => ({ ...library, cohorts: library.cohorts.map(cohort => cohort.summary) }));
+    response.observedTraitPrevalence = buildLibraryObservedTraitPrevalence({
+        libraries: cohorts,
+        activeLibraryCount: snapshot.active_library_count,
+        entryLimit: LIBRARY_OVERLAP_LIMITS.traitEntryLimit,
+    });
     for (let i = 0; i < cohorts.length; i++) {
         for (let j = i + 1; j < cohorts.length; j++) {
             for (let type = 0; type < 2; type++) {

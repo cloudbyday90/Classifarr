@@ -6,8 +6,11 @@ export async function setupObservationScanTables(db) {
         CREATE TEMP TABLE library_observation_scan_progress (LIKE public.library_observation_scan_progress INCLUDING ALL) ON COMMIT DROP;
         CREATE TEMP TABLE libraries (id integer PRIMARY KEY,name text,is_active boolean) ON COMMIT DROP;
         CREATE TEMP TABLE media_server_items (id integer PRIMARY KEY,library_id integer,media_type text,tmdb_id integer,
-            metadata jsonb,inventory_tmdb_attempted_at timestamptz,inventory_tmdb_fetched_at timestamptz) ON COMMIT DROP;
+            metadata jsonb,inventory_tmdb_attempted_at timestamptz,inventory_tmdb_fetched_at timestamptz,
+            media_server_id integer,external_id text) ON COMMIT DROP;
         CREATE INDEX ON media_server_items(library_id,id);
+        CREATE TEMP TABLE media_source_observations (library_id integer,media_server_id integer,
+            external_id text,last_seen_at timestamptz) ON COMMIT DROP;
         CREATE TEMP TABLE tmdb_config (is_active boolean,api_key text) ON COMMIT DROP;
         CREATE TEMP TABLE task_queue (task_type text,status text,payload jsonb) ON COMMIT DROP;
         INSERT INTO library_observation_sampling_state(singleton) VALUES(true);

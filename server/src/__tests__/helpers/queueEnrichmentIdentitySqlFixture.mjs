@@ -23,8 +23,12 @@ export async function verifyQueueEnrichmentIdentitySql(client) {
         genres jsonb, tags jsonb, content_rating text, original_rating text,
         inventory_tmdb_attempted_at timestamptz, inventory_tmdb_fetched_at timestamptz
       ) ON COMMIT DROP;
+      CREATE TEMP TABLE media_source_observations (
+        library_id integer, media_server_id integer, external_id text, last_seen_at timestamptz
+      ) ON COMMIT DROP;
       CREATE TEMP TABLE task_queue (task_type text, status text, payload jsonb) ON COMMIT DROP;
-      CREATE TEMP TABLE omdb_config (is_active boolean, api_key text) ON COMMIT DROP;
+      CREATE TEMP TABLE omdb_config (id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        is_active boolean, api_key text) ON COMMIT DROP;
       CREATE TEMP TABLE tmdb_config (is_active boolean, api_key text) ON COMMIT DROP;
       CREATE TEMP TABLE classification_history (
         tmdb_id integer, media_type text, title text, year integer, library_id integer,
@@ -32,7 +36,7 @@ export async function verifyQueueEnrichmentIdentitySql(client) {
         director_name text, primary_studio_name text, genre_names text[], cast_ids integer[], cast_names text[]
       ) ON COMMIT DROP;
       INSERT INTO libraries (id, name, media_type) VALUES (1, 'Source', 'movie');
-      INSERT INTO omdb_config VALUES (true, 'fixture-only');
+      INSERT INTO omdb_config (is_active, api_key) VALUES (true, 'fixture-only');
       INSERT INTO media_server_items (id, media_type, library_id, title, year) VALUES
         (1, 'movie', 1, 'Shared title', 2001), (2, 'tv', 1, 'Shared title', 2001),
         (3, NULL, 1, 'Unknown type', 2001), (4, 'tv', 1, 'Changing source', 2001);

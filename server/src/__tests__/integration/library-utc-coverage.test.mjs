@@ -50,23 +50,35 @@ test('library windows partition retained history with UTC boundaries, inactive a
     expect(JSON.stringify(result)).not.toMatch(/PRIVATE|metadata|tmdb_id/);
 });
 
-test('resolution moves the recorded library group while preserving original capture and global counts', async () => {
+test('resolution moves the recorded library group while preserving capture totals and recomputing the live comparison', async () => {
     const event = await history(ids[0], '2026-11-01T12:00:00Z', valid());
     const before = await readAt();
     await client.query("UPDATE classification_history SET library_id=$1,method='manual_classification',status='completed' WHERE id=$2", [ids[1], event]);
     const after = await readAt();
     expect(after.utc_library_coverage.groups[0]).toMatchObject({ library_id: ids[1], captured_events: 1 });
-    expect(after.utc_library_coverage.totals).toEqual(before.utc_library_coverage.totals);
+    const { candidate_comparison: beforeComparison, ...beforeTotals } = before.utc_library_coverage.totals;
+    const { candidate_comparison: afterComparison, ...afterTotals } = after.utc_library_coverage.totals;
+    expect(afterTotals).toEqual(beforeTotals);
+    expect(beforeComparison).toEqual({ same_library_events: 1, different_library_events: 0,
+        no_candidate_events: 0, invalid_candidate_events: 0, unknown_library_events: 0 });
+    expect(afterComparison).toEqual({ same_library_events: 0, different_library_events: 1,
+        no_candidate_events: 0, invalid_candidate_events: 0, unknown_library_events: 0 });
     expect(after.utc_provenance_trend).toEqual(before.utc_provenance_trend);
 });
 
-test('removed pending-history libraries join the unassigned group without losing counts', async () => {
+test('removed pending-history libraries join the unassigned group without losing capture totals', async () => {
     await history(ids[0], '2026-11-01T12:00:00Z', valid());
     await history(null, null);
     const before = await readAt();
     await client.query('DELETE FROM libraries WHERE id=$1', [ids[0]]);
     const removed = await readAt();
-    expect(removed.utc_library_coverage.totals).toEqual(before.utc_library_coverage.totals);
+    const { candidate_comparison: beforeComparison, ...beforeTotals } = before.utc_library_coverage.totals;
+    const { candidate_comparison: removedComparison, ...removedTotals } = removed.utc_library_coverage.totals;
+    expect(removedTotals).toEqual(beforeTotals);
+    expect(beforeComparison).toEqual({ same_library_events: 1, different_library_events: 0,
+        no_candidate_events: 0, invalid_candidate_events: 0, unknown_library_events: 0 });
+    expect(removedComparison).toEqual({ same_library_events: 0, different_library_events: 0,
+        no_candidate_events: 0, invalid_candidate_events: 0, unknown_library_events: 1 });
     expect(removed.utc_library_coverage.groups).toHaveLength(1);
     expect(removed.utc_library_coverage.groups[0]).toMatchObject({ library_id: null, retained_events: 2, captured_events: 1, unknown_events: 1 });
 });

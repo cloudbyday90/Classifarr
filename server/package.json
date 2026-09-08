@@ -16,7 +16,7 @@
     "study:capture:held-out-cohort": "node src/scripts/runHeldOutSemanticStudyCohortCapture.mjs",
     "study:audit:held-out-policy-eligibility": "node src/scripts/runHeldOutSemanticStudyEligibilityAudit.mjs",
     "typecheck": "tsc --project tsconfig.json --pretty false",
-    "test": "node ./scripts/run-jest.mjs --runInBand && node ./scripts/run-jest.mjs -c jest.integration.config.mjs --runInBand",
+    "test": "node ./scripts/run-jest.mjs --maxWorkers=2 --workerIdleMemoryLimit=512MB && node ./scripts/run-jest.mjs -c jest.integration.config.mjs --runInBand",
     "test:unit": "node ./scripts/run-jest.mjs --maxWorkers=2 --workerIdleMemoryLimit=512MB --no-coverage",
     "test:bail": "node ./scripts/run-jest.mjs --runInBand --bail=1 --no-coverage",
     "test:integration": "node ./scripts/run-jest.mjs -c jest.integration.config.mjs --runInBand",

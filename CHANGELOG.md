@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Automatic library trait prevalence** — Libraries now compares bounded
+  observed trait frequencies with same-type selected peers, names local and
+  peer denominators, and excludes current source-identity conflicts before any
+  trait analysis. The read-only view cannot change policy or routing.
+
 - **Policy-purpose provenance review** — The administrator-only purpose
   coverage report now distinguishes profile-only, retained, and absent
   specialized purpose with fixed aggregate counts, without exposing policy or
@@ -315,9 +320,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
   without passing profile provenance through the browser or blocking an
   explicit declared-purpose change.
 
-- **Backend unit test reliability** — Run the full unit suite with bounded
-  Jest workers and worker memory recycling so the documented local command
-  completes without exhausting Node's default heap.
+- **Backend test reliability** — Full and unit server tests now use bounded
+  Jest workers with memory recycling, while database integration stays serial,
+  preventing the former single-worker heap exhaustion.
 
 - **Source-conflict authority** — Fresh unresolved source conflicts now suppress
   automatic existing-media evidence, awaiting-decision reconciliation and

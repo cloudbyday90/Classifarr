@@ -1,4 +1,36 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+const trait = (field, entry = null) => ({
+  field,
+  status: entry ? 'complete_local_coverage' : 'insufficient_local_coverage',
+  localObservedIdentityCount: entry ? 1 : 0,
+  localConflictingIdentityCount: 0,
+  localIdentityCount: 1,
+  peerObservedIdentityCount: entry ? 1 : 0,
+  peerKnownLibraryCount: entry ? 1 : 0,
+  valueCount: entry ? 1 : 0,
+  truncated: false,
+  entries: entry ? [entry] : [],
+})
+
+const prevalenceCohort = (mediaType, value) => ({
+  mediaType,
+  selectedPeerLibraryCount: 1,
+  traits: [
+    trait('rating'),
+    trait('genres', {
+      value,
+      localCount: 1,
+      localPercentOfObservedIdentities: 100,
+      peerCount: 0,
+      peerPercentOfObservedIdentities: 0,
+      differencePercentPoints: 100,
+    }),
+    trait('studio'),
+    trait('keywords'),
+    trait('language'),
+  ],
+})
+
 export function libraryOverlapFixture() {
   return {
     version: 'library.overlap.v1', observedAt: '2026-09-05 12:00:00+00', status: 'available', inventoryRowCount: 5,
@@ -22,5 +54,16 @@ export function libraryOverlapFixture() {
         { field: 'studio', status: 'complete_coverage', leftObservedIdentityCount: 2, rightObservedIdentityCount: 1,
           leftConflictingIdentityCount: 0, rightConflictingIdentityCount: 0, commonValueCount: 0, truncated: false, entries: [] },
       ] }],
+    observedTraitPrevalence: {
+      version: 'library.observed_trait_prevalence.v1',
+      scopeStatus: 'complete_active_library_scope',
+      selectedLibraryCount: 2,
+      activeLibraryCount: 2,
+      entryLimit: 5,
+      libraries: [
+        { libraryId: 1, cohorts: [prevalenceCohort('movie', 'Action')] },
+        { libraryId: 2, cohorts: [prevalenceCohort('movie', 'Drama')] },
+      ],
+    },
   }
 }

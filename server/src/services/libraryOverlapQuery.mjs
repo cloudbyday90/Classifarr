@@ -1,4 +1,8 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import {
+    SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS,
+    sourceConflictAuthorityPredicateForMediaServerItem,
+} from './sourceConflictAuthorityGuard.mjs';
 
 export const LIBRARY_OVERLAP_LIMITS = Object.freeze({ libraryLimit: 12, rowLimit: 20000,
     traitEntryLimit: 5, metadataByteLimit: 4096, genresByteLimit: 2048 });
@@ -15,6 +19,7 @@ export async function readLibraryOverlapSnapshot(db) {
         ), size AS (SELECT COUNT(*)::int AS row_count FROM bounded_ids),
         projected AS MATERIALIZED (
             SELECT msi.library_id, msi.media_type, msi.tmdb_id, msi.content_rating, msi.studio,
+                ${sourceConflictAuthorityPredicateForMediaServerItem('$6')} AS source_conflict_blocks_authority,
                 -- Materialize JSONB once, avoiding repeated TOAST reads inside the SQL function.
                 msi.genres, public.library_profile_observed_metadata(to_jsonb(msi.metadata)) AS metadata
             FROM bounded_ids b JOIN media_server_items msi ON msi.id = b.id
@@ -27,11 +32,13 @@ export async function readLibraryOverlapSnapshot(db) {
             COALESCE((SELECT jsonb_agg(jsonb_build_object(
                 'library_id', library_id, 'media_type', media_type, 'tmdb_id', tmdb_id,
                 'content_rating', content_rating, 'studio', studio,
+                'source_conflict_blocks_authority', source_conflict_blocks_authority,
                 'genres', CASE WHEN octet_length(genres::text) <= $5 THEN genres ELSE NULL END,
                 'metadata', CASE WHEN octet_length(metadata::text) <= $4 THEN metadata ELSE NULL END,
                 'omitted_traits', COALESCE(octet_length(genres::text) > $5, false) OR
                     COALESCE(octet_length(metadata::text) > $4, false)
             )) FROM projected), '[]'::jsonb) AS items`,
-    [libraryLimit, rowLimit + 1, rowLimit, metadataByteLimit, genresByteLimit]);
+    [libraryLimit, rowLimit + 1, rowLimit, metadataByteLimit, genresByteLimit,
+        SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]);
     return rows[0];
 }
