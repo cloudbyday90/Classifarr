@@ -51,14 +51,14 @@ records no per-case receipt and does not assert that a cohort is possible: the
 existing stratum and 24–32 case requirements remain authoritative.
 
 The enclosing receipt advances to
-`policy.held_out_semantic_study_eligibility_audit.v5`. The lifecycle re-audit
+`policy.held_out_semantic_study_eligibility_audit.v6`. The lifecycle re-audit
 recognizes only the current version as a completed receipt. An older receipt
 is refreshed only when the existing lifecycle and current-purpose gates are
 already positive. It does not bypass the source gate, create a cohort, label
 media, or call an AI service.
 
 ```text
-active policy purpose rules -> source disposition partition -> v5 audit receipt
+active policy purpose rules -> source disposition partition -> v6 audit receipt
 canonical policy-only candidates -> comparison result partition -> stop when zero ready
 ```
 

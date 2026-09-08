@@ -732,7 +732,7 @@ describe('SchedulerService', () => {
                 return true;
             });
             mockHeldOutSemanticStudyLifecycleReauditService.run.mockResolvedValue({
-                version: 'policy.held_out_semantic_study_eligibility_audit.v5',
+                version: 'policy.held_out_semantic_study_eligibility_audit.v6',
                 status: { id: 'complete' },
                 summary: { candidateCount: 4 },
             });

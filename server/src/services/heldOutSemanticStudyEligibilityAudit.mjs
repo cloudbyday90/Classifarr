@@ -10,6 +10,9 @@ import {
 } from './heldOutSemanticStudyComparisonEligibilityPartition.mjs';
 import { heldOutSemanticStudyEligibilityDiagnosticCountId } from './heldOutSemanticStudyEligibilityDiagnostics.mjs';
 import {
+  buildHeldOutSemanticStudyNotPendingDecisionPartition,
+} from './heldOutSemanticStudyNotPendingDecisionPartition.mjs';
+import {
   HELD_OUT_SEMANTIC_STUDY_INVENTORY_AUDIT_MAXIMUM_CANDIDATES,
   readHeldOutSemanticStudyInventoryAuditCandidates,
 } from './heldOutSemanticStudyInventoryAuditSource.mjs';
@@ -19,7 +22,7 @@ import { HELD_OUT_SEMANTIC_STUDY_STRATA } from './heldOutSemanticStudyInventoryC
 import { buildHeldOutSemanticStudyPolicySourceScreen } from './heldOutSemanticStudyPolicySourceScreen.mjs';
 
 export const HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_VERSION =
-  'policy.held_out_semantic_study_eligibility_audit.v5';
+  'policy.held_out_semantic_study_eligibility_audit.v6';
 
 export const HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_STATUS_IDS = Object.freeze({
   CANDIDATE_SOURCE_TRUNCATED: 'candidate_source_truncated',
@@ -50,8 +53,14 @@ function auditSummary({ candidates, policies, assessments, policySourceScreen })
   const identities = new Set();
   const comparisonEligibilityPartition =
     buildHeldOutSemanticStudyComparisonEligibilityPartition({ assessments });
+  const notPendingDecisionPartition =
+    buildHeldOutSemanticStudyNotPendingDecisionPartition({ assessments });
   if (comparisonEligibilityPartition.comparisonCount !== candidates.length) {
     throw new Error('invalid_held_out_inventory_audit_assessment_count');
+  }
+  if (notPendingDecisionPartition.notPendingComparisonCount !==
+      comparisonEligibilityPartition.reasonCounts.not_pending_policy_decision) {
+    throw new Error('inconsistent_held_out_inventory_audit_not_pending_partition');
   }
 
   for (const [index, candidate] of candidates.entries()) {
@@ -87,6 +96,7 @@ function auditSummary({ candidates, policies, assessments, policySourceScreen })
     eligibilityStatusCounts: orderedCounts(eligibilityStatusCounts),
     eligibleCountByStratum: Object.freeze(eligibleCountByStratum),
     independentLabelsAvailable: false,
+    notPendingDecisionPartition,
     policyChangeEligibility: false,
     policyCount: policies.length,
     policySourceScreen,

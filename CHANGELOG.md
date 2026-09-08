@@ -11,6 +11,13 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Non-pending held-out decision partition** — The private eligibility audit
+  now explains each non-pending policy-only comparison through a fixed,
+  aggregate evaluator stage. It reconciles to the existing comparison count
+  without exposing media, policy, library, provider, or configuration data and
+  cannot create evidence, select a cohort, collect labels, invoke AI, change
+  policy, or route media.
+
 - **Declared-purpose provenance gate** — Policy-purpose evidence now accepts
   only server-recorded native declarations, keeps inferred profile observations
   descriptive, and fails closed for unknown sources. Versioned aggregate

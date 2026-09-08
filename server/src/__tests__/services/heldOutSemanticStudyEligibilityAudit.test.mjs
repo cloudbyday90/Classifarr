@@ -22,11 +22,19 @@ function preparation() {
     assess: jest.fn(async ({ metadata }) => metadata.tmdb_id === 1
       ? {
         contract: { valid: true, statusId: 'ready' },
-        diagnostic: { actionId: 'prompt_select', rankedCandidateCountId: 'two_or_more' },
+        diagnostic: {
+          actionId: 'prompt_select',
+          evaluationStageId: 'ranked_policy_decision',
+          rankedCandidateCountId: 'two_or_more',
+        },
       }
       : {
         contract: { valid: false, statusId: 'not_pending_policy_decision' },
-        diagnostic: { actionId: 'manual', rankedCandidateCountId: 'none' },
+        diagnostic: {
+          actionId: 'manual',
+          evaluationStageId: 'no_qualifying_policy_evaluations',
+          rankedCandidateCountId: 'none',
+        },
       }),
     loadPolicies: jest.fn(async () => [{ library_id: 9 }]),
   };
@@ -65,6 +73,20 @@ test('reports fixed aggregate eligibility only across the supplied canonical pop
     eligibilityStatusCounts: { not_pending_policy_decision: 1, ready: 1 },
     eligibleCountByStratum: { documentary: 1, reality: 0 },
     independentLabelsAvailable: false,
+    notPendingDecisionPartition: {
+      version: 'policy.held_out_semantic_study_not_pending_decision_partition.v1',
+      notPendingComparisonCount: 1,
+      rawCandidateDataExposed: false,
+      reasonCounts: {
+        invalid_not_pending_observation: 0,
+        no_active_policies: 0,
+        no_compatible_media_type_policies: 0,
+        no_qualifying_policy_evaluations: 1,
+        ranked_non_pending_decision: 0,
+        unknown_evaluation_path: 0,
+      },
+      semanticSelection: false,
+    },
     policyChangeEligibility: false,
     policySourceScreen: expect.objectContaining({
       rawConfigurationExposed: false,

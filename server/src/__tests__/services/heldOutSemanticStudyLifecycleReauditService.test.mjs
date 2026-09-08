@@ -56,7 +56,7 @@ function sourceFor(record, purposeEvidenceRecord = completePurposeEvidenceRecord
 
 function completeAuditReceipt() {
   return Object.freeze({
-    version: 'policy.held_out_semantic_study_eligibility_audit.v5',
+    version: 'policy.held_out_semantic_study_eligibility_audit.v6',
     status: Object.freeze({ id: 'complete' }),
     summary: Object.freeze({
       candidateCount: 4,
@@ -190,7 +190,7 @@ test('retries a failed unchanged source only through its bounded attempt budget'
   const record = sourceRecord({ rebuild: 1 });
   const sourceFingerprint = heldOutSemanticStudyLifecycleReauditSourceFingerprint(sourceFor(record));
   const audit = { audit: jest.fn(async () => ({
-    version: 'policy.held_out_semantic_study_eligibility_audit.v5',
+    version: 'policy.held_out_semantic_study_eligibility_audit.v6',
     status: { id: 'failed' },
     summary: null,
   })) };
@@ -202,7 +202,7 @@ test('retries a failed unchanged source only through its bounded attempt budget'
       attemptCount: HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT_MAXIMUM_ATTEMPTS - 1,
       auditStatusId: 'failed',
       auditReceipt: {
-        version: 'policy.held_out_semantic_study_eligibility_audit.v5',
+        version: 'policy.held_out_semantic_study_eligibility_audit.v6',
         status: { id: 'failed' },
         summary: null,
       },
@@ -226,7 +226,7 @@ test('retries a failed unchanged source only through its bounded attempt budget'
       attemptCount: HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT_MAXIMUM_ATTEMPTS,
       auditStatusId: 'failed',
       auditReceipt: {
-        version: 'policy.held_out_semantic_study_eligibility_audit.v5',
+        version: 'policy.held_out_semantic_study_eligibility_audit.v6',
         status: { id: 'failed' },
         summary: null,
       },
@@ -245,7 +245,7 @@ test('fails closed with the established aggregate receipt when the audit throws'
   });
 
   await expect(service.run()).resolves.toEqual({
-    version: 'policy.held_out_semantic_study_eligibility_audit.v5',
+    version: 'policy.held_out_semantic_study_eligibility_audit.v6',
     status: { id: 'failed' },
     summary: null,
   });

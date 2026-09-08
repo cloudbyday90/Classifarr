@@ -10,6 +10,7 @@ import { projectPolicyCandidateDecision } from './policyCandidateDecisionProject
 import { policyDecisionBuilder } from './policyDecisionBuilder.mjs';
 import { buildPolicyCandidateContrastiveRetrievalContract } from './policyCandidateContrastiveRetrievalContract.mjs';
 import { heldOutSemanticStudyEligibilityDiagnostic } from './heldOutSemanticStudyEligibilityDiagnostics.mjs';
+import { createHeldOutSemanticStudyPolicyEvaluationStageState } from './heldOutSemanticStudyPolicyEvaluationStage.mjs';
 import {
   buildHeldOutSemanticStudyPolicySourceScreen,
   isHeldOutSemanticStudyExcludedInferredProfileRule,
@@ -47,7 +48,12 @@ export function createHeldOutSemanticStudyPreparation({
   }
 
   async function assess({ metadata, policies }) {
-    const result = await evaluate(metadata, { ragCache: { matches: [] }, relatedEvidence: [] }, {
+    const evaluationStageState = createHeldOutSemanticStudyPolicyEvaluationStageState();
+    const result = await evaluate(metadata, {
+      heldOutSemanticStudyPolicyEvaluationStageState: evaluationStageState,
+      ragCache: { matches: [] },
+      relatedEvidence: [],
+    }, {
       checkAuthoritativeSignals: async () => null,
       getActivePolicies: async () => policies,
       evaluatePolicy: (policy, item, cache, related) => evaluatePolicy(policy, item, cache, related, {
@@ -66,7 +72,9 @@ export function createHeldOutSemanticStudyPreparation({
     }));
     return Object.freeze({
       contract: buildPolicyCandidateContrastiveRetrievalContract({ policyResult: result, libraries, metadata }),
-      diagnostic: heldOutSemanticStudyEligibilityDiagnostic(result),
+      diagnostic: heldOutSemanticStudyEligibilityDiagnostic(result, {
+        evaluationStageId: evaluationStageState.stageId,
+      }),
     });
   }
 

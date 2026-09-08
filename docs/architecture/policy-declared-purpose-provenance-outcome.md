@@ -19,7 +19,7 @@ held-out source screen. The administrator review displays unverified counts
 without exposing rule values.
 
 The receipt versions now make this semantic change explicit: policy source
-screen v4, eligibility audit v5, evidence inventory v2, lifecycle-purpose
+screen v4, eligibility audit v6, evidence inventory v2, lifecycle-purpose
 evidence v2, readiness v2, coverage review v9, and lifecycle receipt v3.
 No policy was edited and no evidence was created.
 

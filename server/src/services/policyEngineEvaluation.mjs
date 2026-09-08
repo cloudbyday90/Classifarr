@@ -10,6 +10,10 @@ import {
 import { evaluatePolicyConstraints } from './policyConstraintSemantics.mjs';
 import { evaluateNativePolicyIntent } from './policyNativeIntentRuntimeEvaluator.mjs';
 import { isNativePolicyRuntimeAuthority } from './policyEngineRuntimeAuthority.mjs';
+import {
+    HELD_OUT_SEMANTIC_STUDY_POLICY_EVALUATION_STAGE_IDS,
+    recordHeldOutSemanticStudyPolicyEvaluationStage,
+} from './heldOutSemanticStudyPolicyEvaluationStage.mjs';
 
 import { FORMULA_CONFIDENCE_CAP, DEFAULT_RAG_WEIGHT, normalizeCombinationMode, isPositiveContribution } from './policyEngineUtils.mjs';
 import { calculateAgreementMultiplier, scoreRelatedEvidence } from './policyEngineSourceScoring.mjs';
@@ -27,6 +31,9 @@ export async function evaluateItem(item, options, deps) {
 
         const authoritativeMatch = await checkAuthoritativeSignals(item);
         if (authoritativeMatch) {
+            recordHeldOutSemanticStudyPolicyEvaluationStage(
+                options, HELD_OUT_SEMANTIC_STUDY_POLICY_EVALUATION_STAGE_IDS.AUTHORITATIVE_SIGNAL,
+            );
             logger.info('Authoritative signal matched', {
                 title: item.title,
                 library: authoritativeMatch.library_name,
@@ -43,6 +50,9 @@ export async function evaluateItem(item, options, deps) {
 
         const policies = await getActivePolicies();
         if (policies.length === 0) {
+            recordHeldOutSemanticStudyPolicyEvaluationStage(
+                options, HELD_OUT_SEMANTIC_STUDY_POLICY_EVALUATION_STAGE_IDS.NO_ACTIVE_POLICIES,
+            );
             logger.warn('No active policies found');
             return policyDecisionBuilder.normalizeResult({
                 action: 'manual',
@@ -71,6 +81,9 @@ export async function evaluateItem(item, options, deps) {
         }
 
         if (candidatePolicies.length === 0) {
+            recordHeldOutSemanticStudyPolicyEvaluationStage(
+                options, HELD_OUT_SEMANTIC_STUDY_POLICY_EVALUATION_STAGE_IDS.NO_COMPATIBLE_MEDIA_TYPE_POLICIES,
+            );
             logger.warn('No policies match item media_type', {
                 title: item.title,
                 mediaType: itemMediaType
@@ -142,6 +155,9 @@ export async function evaluateItem(item, options, deps) {
         );
 
         if (evaluations.length === 0) {
+            recordHeldOutSemanticStudyPolicyEvaluationStage(
+                options, HELD_OUT_SEMANTIC_STUDY_POLICY_EVALUATION_STAGE_IDS.NO_QUALIFYING_POLICY_EVALUATIONS,
+            );
             logger.info('No policies matched', { title: item.title });
             return policyDecisionBuilder.normalizeResult({
                 action: 'manual',
@@ -160,6 +176,10 @@ export async function evaluateItem(item, options, deps) {
         const ranked = await policyCandidateRanker.rankResults(identityCalibratedEvaluations);
 
         const result = determineAction(ranked);
+
+        recordHeldOutSemanticStudyPolicyEvaluationStage(
+            options, HELD_OUT_SEMANTIC_STUDY_POLICY_EVALUATION_STAGE_IDS.RANKED_POLICY_DECISION,
+        );
 
         logger.info('Policy evaluation complete', {
             title: item.title,

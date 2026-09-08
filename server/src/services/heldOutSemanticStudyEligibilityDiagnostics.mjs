@@ -3,6 +3,8 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
+import { heldOutSemanticStudyPolicyEvaluationStageId } from './heldOutSemanticStudyPolicyEvaluationStage.mjs';
+
 export const HELD_OUT_SEMANTIC_STUDY_POLICY_ACTION_IDS = Object.freeze([
   'auto_classify',
   'manual',
@@ -33,9 +35,10 @@ function rankedCandidateCountId(ranked) {
  * Reduces a broad-policy result to fixed aggregate categories. It intentionally
  * omits scores, policy and library identifiers, item metadata, and evidence.
  */
-export function heldOutSemanticStudyEligibilityDiagnostic(policyResult = {}) {
+export function heldOutSemanticStudyEligibilityDiagnostic(policyResult = {}, { evaluationStageId } = {}) {
   return Object.freeze({
     actionId: actionId(policyResult?.action),
+    evaluationStageId: heldOutSemanticStudyPolicyEvaluationStageId(evaluationStageId),
     rankedCandidateCountId: rankedCandidateCountId(policyResult?.ranked),
   });
 }

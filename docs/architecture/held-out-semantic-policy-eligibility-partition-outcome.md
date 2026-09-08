@@ -13,7 +13,7 @@ architecture, research, alternatives, and recommendation stack.
 - Added a pure ESM comparison-eligibility partition. Every completed
   policy-only assessment contributes to one of five fixed aggregate outcomes,
   including an explicit `invalid_contract` failure class.
-- Advanced the private eligibility-audit receipt to v4 and validate that the
+- Advanced the private eligibility-audit receipt to v6 and validate that the
   comparison partition covers the candidate population and agrees with the
   stratum-level ready total.
 - Made the passive lifecycle re-audit refresh an old receipt version only when
