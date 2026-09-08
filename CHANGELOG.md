@@ -11,6 +11,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Restore-safe held-out lifecycle state** — Every merge and replace backup
+  restore now atomically clears the aggregate-only lifecycle source checkpoint
+  and audit receipt. The passive re-audit therefore observes restored durable
+  evidence without exporting stale cursors, creating study evidence, running
+  AI, changing policy, or routing media.
+
 - **Held-out source-transition checkpoint** — The passive held-out re-audit
   now stores changed aggregate source states independently of audit receipts.
   A temporary absence of lifecycle or declared-purpose evidence therefore

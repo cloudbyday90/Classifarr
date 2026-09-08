@@ -6,6 +6,9 @@ import {
   resetNativeIntentReconciliationSchedulingState,
 } from './nativeIntentReconciliationLifecyclePersistence.mjs';
 import {
+  resetHeldOutSemanticStudyLifecycleStateForRestore,
+} from './heldOutSemanticStudyLifecycleRestoreReset.mjs';
+import {
   resetPolicyCandidateCorrectionPolicyChangeReviewHistorySummaryForRestore,
 } from './policyCandidateCorrectionPolicyChangeReviewHistorySummaryPersistence.mjs';
 import {
@@ -144,6 +147,11 @@ export async function clearExistingConfig(client) {
 }
 
 export async function restoreAllTables(client, backupData, mode) {
+  // The lifecycle audit state is a derived aggregate cursor, rather than
+  // portable configuration. Reset it in the same transaction as every restore
+  // so the passive re-audit observes the restored durable evidence.
+  await resetHeldOutSemanticStudyLifecycleStateForRestore({ client });
+
   if (mode === 'replace') {
     await clearExistingConfig(client);
   } else {

@@ -18,6 +18,11 @@ table still records only actual audit receipts and their bounded failure state.
 Both tables exclude policy, library, configuration, provider, actor, rule, and
 media identity.
 
+They are destination-local derived state: backup export excludes them, and a
+merge or replace restore clears both in the same transaction as restored
+configuration. The next passive check therefore observes the restored durable
+source rather than a pre-restore checkpoint.
+
 Focused tests cover zero lifecycle evidence, deferred incomplete purpose
 evidence, unchanged completed and failed states, bounded failure retries, and
 the regression sequence of complete evidence, incomplete evidence, then the

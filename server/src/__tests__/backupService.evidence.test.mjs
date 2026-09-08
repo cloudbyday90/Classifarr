@@ -108,6 +108,30 @@ describe('BackupService evidence integration', () => {
         expect(classificationEvidenceService.listLegacyPatterns).toHaveBeenCalledWith();
         expect(result.data.learningPatterns).toEqual([{ id: 1 }, { id: 2 }]);
         expect(result.meta.learningPatternsCount).toBe(2);
+        expect(db.query.mock.calls.map(([sql]) => sql).join('\n')).not.toMatch(
+            /held_out_semantic_study_lifecycle_(reaudit_state|source_checkpoint)/,
+        );
+    });
+
+    test('restoreBackup resets held-out lifecycle cursors for a merge restore', async () => {
+        const client = {
+            query: jest.fn().mockResolvedValue({ rows: [], rowCount: 0 }),
+            release: jest.fn(),
+        };
+        db.pool.connect.mockResolvedValue(client);
+        jest.spyOn(backupService, 'readBackup').mockResolvedValue({
+            version: '2.0',
+            data: {},
+        });
+
+        await backupService.restoreBackup('merge-reset.json', { mode: 'merge' });
+
+        expect(client.query).toHaveBeenCalledWith(
+            'DELETE FROM held_out_semantic_study_lifecycle_reaudit_state',
+        );
+        expect(client.query).toHaveBeenCalledWith(
+            'DELETE FROM held_out_semantic_study_lifecycle_source_checkpoint',
+        );
     });
 
     test('restoreBackup uses the evidence service for replace-mode purge and pattern restore', async () => {

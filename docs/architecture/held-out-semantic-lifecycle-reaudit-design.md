@@ -67,8 +67,10 @@ checkpointed but does not invoke the audit.
 The source checkpoint persists only a source digest, count-only source receipt,
 and observed time. The audit state separately persists its source digest,
 attempt count, audit status, and existing aggregate audit receipt. Both are
-derived automation state and are deliberately omitted from backup and restore;
-a restored instance safely rechecks its durable lifecycle source.
+derived automation state and are deliberately omitted from backup. Every merge
+and replace restore clears both tables in its restore transaction, so a
+restored instance safely rechecks its durable lifecycle source rather than
+retaining a destination-local cursor.
 
 The scheduler has a dedicated advisory lock so multiple application instances
 cannot concurrently run the expensive audit. It does not attach to individual
