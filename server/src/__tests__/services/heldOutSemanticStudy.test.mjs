@@ -47,8 +47,8 @@ describe('held-out semantic study', () => {
     expect(result.status.id).toBe('complete');
     expect(validatePolicyCandidateCurrentInventorySemanticStudySnapshotDocument(result.document).ok).toBe(true);
     expect(result.summary.unavailableCount).toBe(24);
-    const scope = deps.preparation.prepare.mock.calls[0][0].heldOutScope;
-    expect(deps.preparation.prepare.mock.calls.every(([value]) => value.heldOutScope === scope)).toBe(true);
+    expect(deps.preparation.prepare.mock.calls.every(([value]) => value.heldOutScope === undefined)).toBe(true);
+    const scope = deps.retriever.retrieve.mock.calls[0][0].heldOutScope;
     expect(deps.retriever.retrieve.mock.calls.every(([value]) => value.heldOutScope === scope)).toBe(true);
     expect(JSON.stringify(result)).not.toMatch(/Private|secret|tmdb_id|libraryId|overview/u);
   });
@@ -109,12 +109,9 @@ describe('held-out semantic study', () => {
     expect(embed).not.toHaveBeenCalled();
   });
 
-  test('candidate preparation explicitly bypasses assignment, history, profiles and patterns', async () => {
-    const scope = createHeldOutSemanticStudyScope(request().cases.map((item) => item.metadata));
-    const matches = [{ libraryId: 20, similarity: 0.9 }];
-    const search = jest.fn(async () => matches);
+  test('candidate preparation explicitly bypasses semantic retrieval, assignment, history, profiles and patterns', async () => {
     const evaluate = jest.fn(async (_metadata, options, deps) => {
-      expect(options.ragCache.matches).toBe(matches);
+      expect(options.ragCache.matches).toEqual([]);
       expect(options.relatedEvidence).toEqual([]);
       expect(await deps.checkAuthoritativeSignals()).toBeNull();
       expect(await deps.getActivePolicies()).toBe(policies);
@@ -123,7 +120,7 @@ describe('held-out semantic study', () => {
       expect(deps.determineAction([]).action).toBe('manual');
       return { action: 'manual', ranked: [] };
     });
-    const preparation = createHeldOutSemanticStudyPreparation({ search, evaluate, loadPolicies: async () => [{
+    const preparation = createHeldOutSemanticStudyPreparation({ evaluate, loadPolicies: async () => [{
       ...policies[0], trust_history: true, trust_patterns: true,
       policy_intent_contract: { purpose: [{ source: 'media_server_library_profile' }, { source: 'operator' }] },
     }] });
@@ -131,7 +128,6 @@ describe('held-out semantic study', () => {
       trust_history: false, trust_patterns: false, policy_intent_contract: { purpose: [{ source: 'operator' }] },
     });
     const metadata = request().cases[0].metadata;
-    expect((await preparation.prepare({ metadata, heldOutScope: scope, policies })).valid).toBe(false);
-    expect(search).toHaveBeenCalledWith(metadata, scope);
+    expect((await preparation.prepare({ metadata, policies })).valid).toBe(false);
   });
 });

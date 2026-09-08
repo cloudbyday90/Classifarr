@@ -70,7 +70,7 @@ export function createHeldOutSemanticStudyCapture({
         const cases = [];
         for (const item of request.cases) {
           await verifyConfiguration();
-          const contract = await preparation.prepare({ metadata: item.metadata, heldOutScope, policies });
+          const contract = await preparation.prepare({ metadata: item.metadata, policies });
           if (!contract?.valid) throw new Error('held_out_case_ineligible');
           cases.push({ ...item, contract });
         }

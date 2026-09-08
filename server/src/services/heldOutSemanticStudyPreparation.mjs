@@ -9,8 +9,6 @@ import { scorePresets, scoreRAGWithDiagnostics } from './policyEngineSourceScori
 import { projectPolicyCandidateDecision } from './policyCandidateDecisionProjection.mjs';
 import { policyDecisionBuilder } from './policyDecisionBuilder.mjs';
 import { buildPolicyCandidateContrastiveRetrievalContract } from './policyCandidateContrastiveRetrievalContract.mjs';
-import { ragRetriever } from './ragRetriever.mjs';
-import { assertHeldOutSemanticStudyMember } from './heldOutSemanticStudyScope.mjs';
 
 function withoutLearnedSources(policy) {
   const contract = policy.policy_intent_contract;
@@ -34,19 +32,19 @@ function withoutLearnedSources(policy) {
 /** No shared singleton mutation, decision telemetry, history, or learned profiles. */
 export function createHeldOutSemanticStudyPreparation({
   loadPolicies = getActivePolicies,
-  search = (metadata, scope) => ragRetriever.semanticSearch(metadata, 5, {
-    heldOutScope: scope, throwOnError: true,
-  }),
   evaluate = evaluateItem,
 } = {}) {
   return Object.freeze({
     async loadPolicies() {
       return (await loadPolicies()).map(withoutLearnedSources);
     },
-    async prepare({ metadata, heldOutScope, policies }) {
-      assertHeldOutSemanticStudyMember(heldOutScope, metadata);
-      const matches = await search(metadata, heldOutScope);
-      const result = await evaluate(metadata, { ragCache: { matches }, relatedEvidence: [] }, {
+    /**
+     * Select only a broad-policy candidate comparison before semantic
+     * retrieval. This preserves the study's prospective cohort boundary: a
+     * semantic outcome cannot decide whether its case enters the cohort.
+     */
+    async prepare({ metadata, policies }) {
+      const result = await evaluate(metadata, { ragCache: { matches: [] }, relatedEvidence: [] }, {
         checkAuthoritativeSignals: async () => null,
         getActivePolicies: async () => policies,
         evaluatePolicy: (policy, item, cache, related) => evaluatePolicy(policy, item, cache, related, {
