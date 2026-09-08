@@ -27,6 +27,10 @@ import {
 import {
   loadHeldOutSemanticStudyLifecycleReauditSourceRecord,
 } from './heldOutSemanticStudyLifecycleReauditSource.mjs';
+import {
+  buildHeldOutSemanticStudyLifecycleReauditPurposeEvidence,
+  loadHeldOutSemanticStudyLifecycleReauditPurposeEvidenceRecord,
+} from './heldOutSemanticStudyLifecycleReauditPurposeEvidence.mjs';
 
 function failedAuditReceipt() {
   return Object.freeze({
@@ -52,6 +56,7 @@ function nextAttemptCount({ sourceChanged, state }) {
 
 function shouldRun({ source, sourceChanged, state }) {
   if (source.normalLifecycleReceiptCount === 0) return false;
+  if (source.completePolicyEvidenceCount === 0) return false;
   if (sourceChanged) return true;
 
   return state.auditStatusId === HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_STATUS_IDS.FAILED &&
@@ -67,6 +72,8 @@ function shouldRun({ source, sourceChanged, state }) {
 export function createHeldOutSemanticStudyLifecycleReauditService({
   audit = createHeldOutSemanticStudyEligibilityAudit(),
   db = database,
+  loadPurposeEvidenceRecord = () =>
+    loadHeldOutSemanticStudyLifecycleReauditPurposeEvidenceRecord({ db }),
   loadSourceRecord = () => loadHeldOutSemanticStudyLifecycleReauditSourceRecord({ db }),
   loadState = () => loadHeldOutSemanticStudyLifecycleReauditState({ db }),
   now = () => new Date(),
@@ -74,7 +81,15 @@ export function createHeldOutSemanticStudyLifecycleReauditService({
 } = {}) {
   return Object.freeze({
     async run() {
-      const source = buildHeldOutSemanticStudyLifecycleReauditSource(await loadSourceRecord());
+      const sourceRecord = await loadSourceRecord();
+      const lifecycleSource = buildHeldOutSemanticStudyLifecycleReauditSource(sourceRecord);
+      if (lifecycleSource.normalLifecycleReceiptCount === 0) return null;
+
+      const purposeEvidenceRecord = await loadPurposeEvidenceRecord();
+      const source = buildHeldOutSemanticStudyLifecycleReauditSource(
+        sourceRecord,
+        buildHeldOutSemanticStudyLifecycleReauditPurposeEvidence(purposeEvidenceRecord),
+      );
       const state = await loadState();
       const sourceChanged = isHeldOutSemanticStudyLifecycleReauditSourceChanged({ source, state });
 

@@ -21,6 +21,20 @@ function sourceRecord({ initial = 0, changed = 0, rebuild = 0 } = {}) {
   };
 }
 
+function completePurposeEvidenceRecord() {
+  return {
+    active_policy_count: 1,
+    authoritative_active_native_policy_count: 1,
+    current_intent_version_policy_count: 1,
+    current_intent_schema_version_policy_count: 1,
+    retained_purpose_policy_count: 1,
+    normal_lifecycle_receipt_policy_count: 1,
+    verifiable_lifecycle_receipt_policy_count: 1,
+    current_intent_lifecycle_receipt_policy_count: 1,
+    complete_policy_evidence_count: 1,
+  };
+}
+
 function completeAuditReceipt() {
   return Object.freeze({
     version: 'policy.held_out_semantic_study_eligibility_audit.v3',
@@ -42,15 +56,18 @@ function completeAuditReceipt() {
 
 test('does not run the eligibility audit before a normal lifecycle receipt exists', async () => {
   const audit = { audit: jest.fn() };
+  const loadPurposeEvidenceRecord = jest.fn();
   const saveState = jest.fn();
   const service = createHeldOutSemanticStudyLifecycleReauditService({
     audit,
+    loadPurposeEvidenceRecord,
     loadSourceRecord: async () => sourceRecord(),
     loadState: async () => null,
     saveState,
   });
 
   await expect(service.run()).resolves.toBeNull();
+  expect(loadPurposeEvidenceRecord).not.toHaveBeenCalled();
   expect(audit.audit).not.toHaveBeenCalled();
   expect(saveState).not.toHaveBeenCalled();
 });
@@ -61,6 +78,7 @@ test('returns and persists the existing audit receipt unchanged after receipt ev
   const saveState = jest.fn(async () => undefined);
   const service = createHeldOutSemanticStudyLifecycleReauditService({
     audit,
+    loadPurposeEvidenceRecord: async () => completePurposeEvidenceRecord(),
     loadSourceRecord: async () => sourceRecord({ initial: 1 }),
     loadState: async () => null,
     now: () => new Date('2026-09-08T00:00:00.000Z'),
@@ -79,8 +97,10 @@ test('returns and persists the existing audit receipt unchanged after receipt ev
 test('does not re-run a complete audit for an unchanged lifecycle receipt', async () => {
   const record = sourceRecord({ changed: 1 });
   const source = {
-    version: 'policy.held_out_semantic_study_lifecycle_reaudit_source.v1',
+    version: 'policy.held_out_semantic_study_lifecycle_reaudit_source.v2',
     normalLifecycleReceiptCount: 1,
+    completePolicyEvidenceCount: 1,
+    completePolicyEvidenceAvailable: true,
     lifecycleTransitionCounts: {
       initial_intent_establishment: 0,
       native_intent_change: 1,
@@ -93,6 +113,7 @@ test('does not re-run a complete audit for an unchanged lifecycle receipt', asyn
   const audit = { audit: jest.fn() };
   const service = createHeldOutSemanticStudyLifecycleReauditService({
     audit,
+    loadPurposeEvidenceRecord: async () => completePurposeEvidenceRecord(),
     loadSourceRecord: async () => record,
     loadState: async () => ({
       sourceFingerprint: heldOutSemanticStudyLifecycleReauditSourceFingerprint(source),
@@ -115,8 +136,10 @@ test('retries a failed unchanged source only through its bounded attempt budget'
   const saveState = jest.fn(async () => undefined);
   const record = sourceRecord({ rebuild: 1 });
   const source = {
-    version: 'policy.held_out_semantic_study_lifecycle_reaudit_source.v1',
+    version: 'policy.held_out_semantic_study_lifecycle_reaudit_source.v2',
     normalLifecycleReceiptCount: 1,
+    completePolicyEvidenceCount: 1,
+    completePolicyEvidenceAvailable: true,
     lifecycleTransitionCounts: {
       initial_intent_establishment: 0,
       native_intent_change: 0,
@@ -129,6 +152,7 @@ test('retries a failed unchanged source only through its bounded attempt budget'
   const sourceFingerprint = heldOutSemanticStudyLifecycleReauditSourceFingerprint(source);
   const service = createHeldOutSemanticStudyLifecycleReauditService({
     audit,
+    loadPurposeEvidenceRecord: async () => completePurposeEvidenceRecord(),
     loadSourceRecord: async () => record,
     loadState: async () => ({
       sourceFingerprint,
@@ -147,6 +171,7 @@ test('retries a failed unchanged source only through its bounded attempt budget'
 
   const exhaustedService = createHeldOutSemanticStudyLifecycleReauditService({
     audit,
+    loadPurposeEvidenceRecord: async () => completePurposeEvidenceRecord(),
     loadSourceRecord: async () => record,
     loadState: async () => ({
       sourceFingerprint,
@@ -163,6 +188,7 @@ test('fails closed with the established aggregate receipt when the audit throws'
   const saveState = jest.fn(async () => undefined);
   const service = createHeldOutSemanticStudyLifecycleReauditService({
     audit: { audit: jest.fn(async () => { throw new Error('private provider'); }) },
+    loadPurposeEvidenceRecord: async () => completePurposeEvidenceRecord(),
     loadSourceRecord: async () => sourceRecord({ initial: 1 }),
     loadState: async () => null,
     saveState,
@@ -176,4 +202,30 @@ test('fails closed with the established aggregate receipt when the audit throws'
   expect(saveState).toHaveBeenCalledWith(expect.objectContaining({
     auditReceipt: expect.objectContaining({ status: { id: 'failed' } }),
   }));
+});
+
+test('does not run the eligibility audit when no current policy has complete declared-purpose evidence', async () => {
+  const audit = { audit: jest.fn() };
+  const saveState = jest.fn();
+  const service = createHeldOutSemanticStudyLifecycleReauditService({
+    audit,
+    loadPurposeEvidenceRecord: async () => ({
+      active_policy_count: 10,
+      authoritative_active_native_policy_count: 10,
+      current_intent_version_policy_count: 10,
+      current_intent_schema_version_policy_count: 10,
+      retained_purpose_policy_count: 0,
+      normal_lifecycle_receipt_policy_count: 10,
+      verifiable_lifecycle_receipt_policy_count: 10,
+      current_intent_lifecycle_receipt_policy_count: 10,
+      complete_policy_evidence_count: 0,
+    }),
+    loadSourceRecord: async () => sourceRecord({ initial: 1 }),
+    loadState: async () => null,
+    saveState,
+  });
+
+  await expect(service.run()).resolves.toBeNull();
+  expect(audit.audit).not.toHaveBeenCalled();
+  expect(saveState).not.toHaveBeenCalled();
 });

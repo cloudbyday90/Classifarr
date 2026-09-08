@@ -12,7 +12,7 @@ import { createHash } from 'node:crypto';
 import { POLICY_PURPOSE_LIFECYCLE_TRANSITION_IDS } from './policyPurposeLifecycleReceiptSources.mjs';
 
 export const HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT_SOURCE_VERSION =
-  'policy.held_out_semantic_study_lifecycle_reaudit_source.v1';
+  'policy.held_out_semantic_study_lifecycle_reaudit_source.v2';
 
 export const HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT_MAXIMUM_ATTEMPTS = 3;
 
@@ -25,7 +25,7 @@ function nonNegativeInteger(value) {
  * Normalizes a source change detector to a fixed, library-agnostic receipt.
  * Every source value is a count; no per-policy or provider detail is present.
  */
-export function buildHeldOutSemanticStudyLifecycleReauditSource(record = {}) {
+export function buildHeldOutSemanticStudyLifecycleReauditSource(record = {}, purposeEvidence = {}) {
   const lifecycleTransitionCounts = Object.freeze({
     [POLICY_PURPOSE_LIFECYCLE_TRANSITION_IDS.INITIAL_INTENT_ESTABLISHMENT]:
       nonNegativeInteger(record.initial_intent_establishment_count),
@@ -40,10 +40,15 @@ export function buildHeldOutSemanticStudyLifecycleReauditSource(record = {}) {
     nonNegativeInteger(record.normal_lifecycle_receipt_count),
     transitionCount,
   );
+  const completePolicyEvidenceCount = nonNegativeInteger(
+    purposeEvidence.completePolicyEvidenceCount,
+  );
 
   return Object.freeze({
     version: HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT_SOURCE_VERSION,
     normalLifecycleReceiptCount,
+    completePolicyEvidenceCount,
+    completePolicyEvidenceAvailable: completePolicyEvidenceCount > 0,
     lifecycleTransitionCounts,
     rawConfigurationExposed: false,
     libraryIdentityExposed: false,

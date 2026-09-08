@@ -11,16 +11,21 @@ import {
 } from '../../services/heldOutSemanticStudyLifecycleReauditContract.mjs';
 
 test('builds a fixed aggregate lifecycle receipt with no library or media identity', () => {
-  const source = buildHeldOutSemanticStudyLifecycleReauditSource({
-    normal_lifecycle_receipt_count: '6',
-    initial_intent_establishment_count: '1',
-    native_intent_change_count: '2',
-    library_rebuild_replacement_count: '3',
-  });
+  const source = buildHeldOutSemanticStudyLifecycleReauditSource(
+    {
+      normal_lifecycle_receipt_count: '6',
+      initial_intent_establishment_count: '1',
+      native_intent_change_count: '2',
+      library_rebuild_replacement_count: '3',
+    },
+    { completePolicyEvidenceCount: 2 },
+  );
 
   expect(source).toEqual({
-    version: 'policy.held_out_semantic_study_lifecycle_reaudit_source.v1',
+    version: 'policy.held_out_semantic_study_lifecycle_reaudit_source.v2',
     normalLifecycleReceiptCount: 6,
+    completePolicyEvidenceCount: 2,
+    completePolicyEvidenceAvailable: true,
     lifecycleTransitionCounts: {
       initial_intent_establishment: 1,
       native_intent_change: 2,
@@ -34,10 +39,13 @@ test('builds a fixed aggregate lifecycle receipt with no library or media identi
 });
 
 test('detects only a normalized aggregate receipt change', () => {
-  const source = buildHeldOutSemanticStudyLifecycleReauditSource({
-    normal_lifecycle_receipt_count: 1,
-    initial_intent_establishment_count: 1,
-  });
+  const source = buildHeldOutSemanticStudyLifecycleReauditSource(
+    {
+      normal_lifecycle_receipt_count: 1,
+      initial_intent_establishment_count: 1,
+    },
+    { completePolicyEvidenceCount: 1 },
+  );
   const sourceFingerprint = heldOutSemanticStudyLifecycleReauditSourceFingerprint(source);
 
   expect(isHeldOutSemanticStudyLifecycleReauditSourceChanged({
@@ -45,11 +53,14 @@ test('detects only a normalized aggregate receipt change', () => {
     state: { sourceFingerprint },
   })).toBe(false);
   expect(isHeldOutSemanticStudyLifecycleReauditSourceChanged({
-    source: buildHeldOutSemanticStudyLifecycleReauditSource({
-      normal_lifecycle_receipt_count: 2,
-      initial_intent_establishment_count: 1,
-      native_intent_change_count: 1,
-    }),
+    source: buildHeldOutSemanticStudyLifecycleReauditSource(
+      {
+        normal_lifecycle_receipt_count: 2,
+        initial_intent_establishment_count: 1,
+        native_intent_change_count: 1,
+      },
+      { completePolicyEvidenceCount: 1 },
+    ),
     state: { sourceFingerprint },
   })).toBe(true);
 });

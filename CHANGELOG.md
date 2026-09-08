@@ -11,6 +11,13 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Purpose-evidence re-audit preflight** — Receipt-triggered held-out
+  eligibility re-audit now waits for fixed aggregate evidence that at least one
+  current policy retains declared purpose and complete normal lifecycle
+  provenance. This prevents a futile population scan while keeping the process
+  library- and configuration-agnostic; it cannot capture a cohort, label media,
+  invoke AI, alter policy, or route media.
+
 - **Receipt-triggered held-out re-audit** — The private eligibility audit now
   rechecks automatically after aggregate verified normal policy lifecycle
   evidence changes. A durable count-only cursor, three-attempt failure budget,

@@ -18,8 +18,12 @@ and never grow into cohort capture or automatic media handling.
 ## Decision
 
 Use the existing durable normal lifecycle receipts as a library- and
-configuration-agnostic aggregate change source. The source accepts only these
-verified transitions:
+configuration-agnostic aggregate change source. Before an audit can run, reduce
+the established policy-purpose evidence inventory to one aggregate condition:
+at least one current active native policy must retain declared specialized
+purpose and have complete, verifiable normal lifecycle provenance for that same
+intent. Profile-inferred purpose does not meet this condition. The source
+accepts only these verified transitions:
 
 - initial native-intent establishment;
 - applied native-intent change; and
@@ -27,15 +31,19 @@ verified transitions:
   event, source revision, and replacement revision agree.
 
 The database counts those receipts by transition without selecting an identity,
-rule value, configuration value, provider value, or media row. A deterministic
-SHA-256 digest of the fixed aggregate receipt is compared with a one-row durable
-cursor. A change starts the existing eligibility audit after the commit, under a
-dedicated PostgreSQL advisory lock. The audit itself remains the producer of the
-receipt: the re-audit returns and stores that unmodified v3 aggregate receipt.
+rule value, configuration value, provider value, or media row. The existing
+inventory supplies only its normalized complete-evidence count through a
+dedicated adapter. A deterministic SHA-256 digest of the fixed v2 aggregate
+source is compared with a one-row durable cursor. A changed source starts the
+existing eligibility audit after the commit only when both the lifecycle count
+and complete-evidence count are positive, under a dedicated PostgreSQL advisory
+lock. The audit itself remains the producer of the receipt: the re-audit returns
+and stores that unmodified v3 aggregate receipt.
 
 ```text
 verified normal lifecycle receipt
-  -> fixed aggregate transition counts
+  -> fixed aggregate transition counts + complete purpose-evidence count
+  -> both counts are positive
   -> aggregate fingerprint differs from durable cursor
   -> lock-protected background eligibility audit
   -> persist the existing aggregate audit receipt
@@ -49,7 +57,8 @@ The scheduler checks every 15 minutes and once 90 seconds after application
 readiness. An unchanged completed, truncated, or configuration-changed state
 emits nothing. A failed state receives at most three total attempts for its same
 source fingerprint, then stops until lifecycle evidence changes. A state with no
-normal lifecycle receipts does not invoke the audit.
+normal lifecycle receipts or no complete declared-purpose evidence does not
+invoke the audit.
 
 ## Security and data boundary
 
@@ -94,12 +103,13 @@ source, receipt, and scheduler logs avoid raw lifecycle inputs altogether.
 | Trigger the audit inside every policy write | Immediate. | Makes a bounded audit part of a transaction and couples three lifecycle implementations to study automation. | Reject |
 | Periodically audit every instance regardless of change | Simple. | Repeats expensive work and supplies no provenance for why it ran. | Reject |
 | Expose raw receipt details to help an operator trigger it | Easier manual debugging. | Adds sensitive detail and operator work. | Reject |
-| Aggregate receipt fingerprint with a durable cursor and advisory lock | Automatically covers every verified lifecycle path, survives restart, and bounds work. | Adds a small derived-state migration and polling delay. | Adopt |
+| Aggregate lifecycle receipt alone | Automatically covers verified lifecycle paths. | Can run a private population scan when every policy source is profile-inferred and cannot qualify. | Replace |
+| Aggregate receipt plus existing complete-purpose-evidence count | Avoids a provably futile audit without exposing or manufacturing evidence. | Adds one aggregate inventory read. | Adopt |
 
 ## Recommendation stack
 
-1. Treat a verified normal lifecycle receipt as the only automatic re-audit
-   trigger.
+1. Require both a verified normal lifecycle receipt and complete declared
+   policy-purpose evidence before automatic re-audit.
 2. Compare fixed aggregate source state before starting the private audit.
 3. Keep the eligibility audit's versioned aggregate receipt unchanged.
 4. Use a database advisory lock and three-attempt failure budget to control
