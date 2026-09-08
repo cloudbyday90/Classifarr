@@ -4,24 +4,26 @@
  */
 
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS, sourceConflictAuthorityExclusionForMediaServerItem } from './sourceConflictAuthorityGuard.mjs';
-import {
-  heldOutSemanticStudyInventoryCandidate,
-} from './heldOutSemanticStudyInventoryCandidate.mjs';
+import { heldOutSemanticStudyInventoryCandidate } from './heldOutSemanticStudyInventoryCandidate.mjs';
 
-export const HELD_OUT_SEMANTIC_STUDY_INVENTORY_FRAME_PER_STRATUM = 96;
+export const HELD_OUT_SEMANTIC_STUDY_INVENTORY_AUDIT_MAXIMUM_CANDIDATES = 8_000;
+
+function validMaximumCandidateCount(value) {
+  return Number.isInteger(value) && value >= 24 &&
+    value <= HELD_OUT_SEMANTIC_STUDY_INVENTORY_AUDIT_MAXIMUM_CANDIDATES;
+}
 
 /**
- * Reads an identity-verified, deterministic inventory frame. It returns media
- * metadata only in process memory; callers must not serialize it.
+ * Reads a bounded canonical inventory population for a content-free
+ * broad-policy availability audit. One additional row detects truncation;
+ * no identity survives this function's caller boundary.
  */
-export async function readHeldOutSemanticStudyInventoryFrame({
+export async function readHeldOutSemanticStudyInventoryAuditCandidates({
   query,
-  selectionSeed,
-  perStratum = HELD_OUT_SEMANTIC_STUDY_INVENTORY_FRAME_PER_STRATUM,
+  maximumCandidateCount = HELD_OUT_SEMANTIC_STUDY_INVENTORY_AUDIT_MAXIMUM_CANDIDATES,
 } = {}) {
-  if (typeof query !== 'function' || typeof selectionSeed !== 'string' || selectionSeed.length < 16 ||
-      !Number.isInteger(perStratum) || perStratum < 24 || perStratum > 256) {
-    throw new Error('invalid_held_out_inventory_frame_request');
+  if (typeof query !== 'function' || !validMaximumCandidateCount(maximumCandidateCount)) {
+    throw new Error('invalid_held_out_inventory_audit_request');
   }
 
   const result = await query(
@@ -35,7 +37,7 @@ export async function readHeldOutSemanticStudyInventoryFrame({
          AND msi.title IS NOT NULL
          AND btrim(msi.title) <> ''
          AND char_length(msi.title) <= 220
-         AND ${sourceConflictAuthorityExclusionForMediaServerItem('$2')}
+         AND ${sourceConflictAuthorityExclusionForMediaServerItem('$1')}
        ORDER BY msi.media_type, msi.tmdb_id, msi.id
      ), stratified AS (
        SELECT canonical_items.*,
@@ -46,39 +48,34 @@ export async function readHeldOutSemanticStudyInventoryFrame({
            ELSE 'ordinary'
          END AS study_stratum
        FROM canonical_items
-     ), ranked AS (
-       SELECT stratified.*,
-         row_number() OVER (
-           PARTITION BY study_stratum
-           ORDER BY md5($1::text || ':' || media_type || ':' || tmdb_id::text), id
-         ) AS sample_rank
-       FROM stratified
      )
-     SELECT ranked.content_rating, ranked.genres, ranked.media_type, ranked.metadata,
-       ranked.study_stratum, ranked.tmdb_id, ranked.title, ranked.year,
-       history.metadata AS history_metadata
-     FROM ranked
+     SELECT stratified.content_rating, stratified.genres, stratified.media_type,
+       stratified.metadata, stratified.study_stratum, stratified.tmdb_id,
+       stratified.title, stratified.year, history.metadata AS history_metadata
+     FROM stratified
      LEFT JOIN LATERAL (
        SELECT metadata
        FROM classification_history
-       WHERE tmdb_id = ranked.tmdb_id
-         AND media_type = ranked.media_type
+       WHERE tmdb_id = stratified.tmdb_id
+         AND media_type = stratified.media_type
        ORDER BY created_at DESC, id DESC
        LIMIT 1
      ) AS history ON true
-     WHERE ranked.sample_rank <= $3
-     ORDER BY ranked.sample_rank, ranked.study_stratum, ranked.media_type, ranked.tmdb_id`,
-    [selectionSeed, SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS, perStratum],
+     ORDER BY stratified.media_type, stratified.tmdb_id
+     LIMIT $2`,
+    [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS, maximumCandidateCount + 1],
   );
 
+  const rows = Array.isArray(result?.rows) ? result.rows : [];
+  const truncated = rows.length > maximumCandidateCount;
   const candidates = [];
   const identities = new Set();
-  for (const row of result?.rows ?? []) {
+  for (const row of rows.slice(0, maximumCandidateCount)) {
     const candidate = heldOutSemanticStudyInventoryCandidate(row);
     const identity = `${candidate.metadata.media_type}:${candidate.metadata.tmdb_id}`;
     if (identities.has(identity)) throw new Error('duplicate_held_out_inventory_identity');
     identities.add(identity);
     candidates.push(candidate);
   }
-  return Object.freeze(candidates);
+  return Object.freeze({ candidates: Object.freeze(candidates), truncated });
 }
