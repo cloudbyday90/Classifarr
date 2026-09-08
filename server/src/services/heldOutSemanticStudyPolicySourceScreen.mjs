@@ -6,9 +6,12 @@
 export const HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_SCREEN_STATUS_IDS = Object.freeze({
   ALL_PURPOSE_RULES_EXCLUDED_AS_INFERRED_PROFILE:
     'all_purpose_rules_excluded_as_inferred_profile',
-  NO_DECLARED_PURPOSE_RULES: 'no_declared_purpose_rules',
+  NO_OBSERVED_PURPOSE_RULES: 'no_observed_purpose_rules',
   RETAINED_PURPOSE_RULES_AVAILABLE: 'retained_purpose_rules_available',
 });
+
+export const HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_SCREEN_VERSION =
+  'policy.held_out_semantic_study_policy_source_screen.v2';
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -24,9 +27,9 @@ export function isHeldOutSemanticStudyExcludedInferredProfileRule(rule = {}) {
     rule?.inference_state === 'inferred';
 }
 
-function statusId({ purposeRuleCount, retainedPurposeRuleCount }) {
-  if (purposeRuleCount === 0) {
-    return HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_SCREEN_STATUS_IDS.NO_DECLARED_PURPOSE_RULES;
+function statusId({ observedPurposeRuleCount, retainedPurposeRuleCount }) {
+  if (observedPurposeRuleCount === 0) {
+    return HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_SCREEN_STATUS_IDS.NO_OBSERVED_PURPOSE_RULES;
   }
   if (retainedPurposeRuleCount === 0) {
     return HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_SCREEN_STATUS_IDS
@@ -44,17 +47,23 @@ export function buildHeldOutSemanticStudyPolicySourceScreen({ policies = [] } = 
   const summary = {
     activePolicyCount: 0,
     excludedInferredProfilePurposeRuleCount: 0,
-    policyWithDeclaredPurposeCount: 0,
+    policyWithObservedPurposeCount: 0,
+    profileOnlyPurposePolicyCount: 0,
     policyWithRetainedPurposeCount: 0,
-    purposeRuleCount: 0,
+    policyWithoutObservedPurposeCount: 0,
+    observedPurposeRuleCount: 0,
     retainedPurposeRuleCount: 0,
   };
 
   for (const policy of asArray(policies)) {
     summary.activePolicyCount += 1;
     const purposeRules = asArray(policy?.policy_intent_contract?.purpose);
-    summary.purposeRuleCount += purposeRules.length;
-    if (purposeRules.length > 0) summary.policyWithDeclaredPurposeCount += 1;
+    summary.observedPurposeRuleCount += purposeRules.length;
+    if (purposeRules.length === 0) {
+      summary.policyWithoutObservedPurposeCount += 1;
+      continue;
+    }
+    summary.policyWithObservedPurposeCount += 1;
 
     const retainedPurposeRules = purposeRules.filter((rule) => {
       if (!isHeldOutSemanticStudyExcludedInferredProfileRule(rule)) return true;
@@ -62,10 +71,15 @@ export function buildHeldOutSemanticStudyPolicySourceScreen({ policies = [] } = 
       return false;
     });
     summary.retainedPurposeRuleCount += retainedPurposeRules.length;
-    if (retainedPurposeRules.length > 0) summary.policyWithRetainedPurposeCount += 1;
+    if (retainedPurposeRules.length > 0) {
+      summary.policyWithRetainedPurposeCount += 1;
+    } else {
+      summary.profileOnlyPurposePolicyCount += 1;
+    }
   }
 
   return Object.freeze({
+    version: HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_SCREEN_VERSION,
     ...summary,
     policyWithoutRetainedPurposeCount: summary.activePolicyCount - summary.policyWithRetainedPurposeCount,
     rawConfigurationExposed: false,

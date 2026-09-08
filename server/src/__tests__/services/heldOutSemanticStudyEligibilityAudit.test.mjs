@@ -6,6 +6,7 @@
 import { expect, jest, test } from '@jest/globals';
 import {
   createHeldOutSemanticStudyEligibilityAudit,
+  HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_VERSION,
   HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_STATUS_IDS,
 } from '../../services/heldOutSemanticStudyEligibilityAudit.mjs';
 
@@ -51,10 +52,11 @@ test('reports fixed aggregate eligibility only across the supplied canonical pop
     policyChangeEligibility: false,
     policySourceScreen: expect.objectContaining({
       rawConfigurationExposed: false,
-      statusId: 'no_declared_purpose_rules',
+      statusId: 'no_observed_purpose_rules',
     }),
     semanticSelection: false,
   });
+  expect(result.version).toBe(HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_VERSION);
   expect(JSON.stringify(result)).not.toMatch(/Private|tmdb|library|model/u);
 });
 
@@ -67,7 +69,24 @@ test('fails closed when configuration changes while the audit runs', async () =>
   });
 
   await expect(service.audit()).resolves.toEqual({
+    version: HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_VERSION,
     status: { id: HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_STATUS_IDS.CONFIGURATION_CHANGED },
+    summary: null,
+  });
+});
+
+test('returns the current contract version when the audit fails closed', async () => {
+  const service = createHeldOutSemanticStudyEligibilityAudit({
+    loadCandidates: jest.fn(async () => {
+      throw new Error('private-source-unavailable');
+    }),
+    preparation: preparation(),
+    readConfig: async () => ({ model: 'private' }),
+  });
+
+  await expect(service.audit()).resolves.toEqual({
+    version: HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_VERSION,
+    status: { id: HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_STATUS_IDS.FAILED },
     summary: null,
   });
 });

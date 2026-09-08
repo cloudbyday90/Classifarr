@@ -7,6 +7,7 @@ import { expect, test } from '@jest/globals';
 import {
   buildHeldOutSemanticStudyPolicySourceScreen,
   HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_SCREEN_STATUS_IDS,
+  HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_SCREEN_VERSION,
   isHeldOutSemanticStudyExcludedInferredProfileRule,
 } from '../../services/heldOutSemanticStudyPolicySourceScreen.mjs';
 
@@ -45,14 +46,17 @@ test('excludes only inferred media-server profile rules from the held-out study 
   expect(screen).toEqual({
     activePolicyCount: 1,
     excludedInferredProfilePurposeRuleCount: 1,
-    policyWithDeclaredPurposeCount: 1,
+    policyWithObservedPurposeCount: 1,
+    profileOnlyPurposePolicyCount: 0,
     policyWithRetainedPurposeCount: 1,
+    policyWithoutObservedPurposeCount: 0,
     policyWithoutRetainedPurposeCount: 0,
-    purposeRuleCount: 3,
+    observedPurposeRuleCount: 3,
     rawConfigurationExposed: false,
     retainedPurposeRuleCount: 2,
     statusId: HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_SCREEN_STATUS_IDS
       .RETAINED_PURPOSE_RULES_AVAILABLE,
+    version: HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_SCREEN_VERSION,
   });
   expect(JSON.stringify(screen)).not.toMatch(/private|values|id/u);
 });
@@ -64,9 +68,42 @@ test('reports when the audit excludes every declared purpose rule as observed pr
     }] } }],
   })).toEqual(expect.objectContaining({
     excludedInferredProfilePurposeRuleCount: 1,
+    policyWithObservedPurposeCount: 1,
+    profileOnlyPurposePolicyCount: 1,
+    policyWithRetainedPurposeCount: 0,
+    policyWithoutObservedPurposeCount: 0,
     policyWithoutRetainedPurposeCount: 1,
+    observedPurposeRuleCount: 1,
     retainedPurposeRuleCount: 0,
     statusId: HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_SCREEN_STATUS_IDS
       .ALL_PURPOSE_RULES_EXCLUDED_AS_INFERRED_PROFILE,
+  }));
+});
+
+test('keeps absent, profile-only, and retained policy evidence mutually exclusive', () => {
+  const screen = buildHeldOutSemanticStudyPolicySourceScreen({
+    policies: [
+      { policy_intent_contract: { purpose: [] } },
+      { policy_intent_contract: { purpose: [{
+        source: 'media_server_library_profile', inference_state: 'inferred',
+      }] } },
+      { policy_intent_contract: { purpose: [{
+        source: 'operator_declared_intent', inference_state: 'inferred',
+      }] } },
+    ],
+  });
+
+  expect(screen).toEqual(expect.objectContaining({
+    activePolicyCount: 3,
+    policyWithoutObservedPurposeCount: 1,
+    profileOnlyPurposePolicyCount: 1,
+    policyWithRetainedPurposeCount: 1,
+    policyWithObservedPurposeCount: 2,
+    policyWithoutRetainedPurposeCount: 2,
+    observedPurposeRuleCount: 2,
+    excludedInferredProfilePurposeRuleCount: 1,
+    retainedPurposeRuleCount: 1,
+    statusId: HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_SCREEN_STATUS_IDS
+      .RETAINED_PURPOSE_RULES_AVAILABLE,
   }));
 });

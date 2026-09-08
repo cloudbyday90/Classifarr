@@ -24,8 +24,7 @@ does two things:
 
 1. Exclude a rule only when its provenance is both
    `media_server_library_profile` and `inferred`.
-2. Return an aggregate source-screen receipt: active-policy count, declared and
-   retained purpose-rule counts, inferred-profile exclusions, policies with a
+2. Return an aggregate source-screen receipt: active-policy count, observed and retained purpose-rule counts, inferred-profile exclusions, policies with a
    retained purpose rule, and one fixed status ID.
 
 `createHeldOutSemanticStudyPreparation()` now produces this receipt alongside

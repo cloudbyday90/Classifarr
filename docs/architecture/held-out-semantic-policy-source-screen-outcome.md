@@ -16,6 +16,8 @@ research, alternatives, and recommendation stack.
   and its configuration-drift check. It reports fixed counts and a status ID;
   no library, policy, rule value, metadata, title, identity, score, prompt, or
   semantic output is retained.
+- Its terminology and the enclosing audit version are corrected by the
+  separate [contract outcome](held-out-semantic-policy-source-contract-outcome.md).
 - Added focused regression tests for profile exclusion, operator-declared rule
   retention, receipt redaction, and audit integration.
 

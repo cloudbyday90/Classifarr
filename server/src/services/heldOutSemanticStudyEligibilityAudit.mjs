@@ -16,7 +16,7 @@ import { HELD_OUT_SEMANTIC_STUDY_STRATA } from './heldOutSemanticStudyInventoryC
 import { buildHeldOutSemanticStudyPolicySourceScreen } from './heldOutSemanticStudyPolicySourceScreen.mjs';
 
 export const HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_VERSION =
-  'policy.held_out_semantic_study_eligibility_audit.v2';
+  'policy.held_out_semantic_study_eligibility_audit.v3';
 
 export const HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_STATUS_IDS = Object.freeze({
   CANDIDATE_SOURCE_TRUNCATED: 'candidate_source_truncated',
@@ -125,16 +125,27 @@ export function createHeldOutSemanticStudyEligibilityAudit({
           readConfig(), loadPolicyContext(preparation),
         ]);
         if (fingerprint(finalConfig, finalPolicyContext) !== initialFingerprint) {
-          return Object.freeze({ status: Object.freeze({ id: HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_STATUS_IDS.CONFIGURATION_CHANGED }), summary: null });
+          return Object.freeze({
+            version: HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_VERSION,
+            status: Object.freeze({
+              id: HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_STATUS_IDS.CONFIGURATION_CHANGED,
+            }),
+            summary: null,
+          });
         }
         return Object.freeze({
+          version: HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_VERSION,
           status: Object.freeze({ id: source.truncated === true
             ? HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_STATUS_IDS.CANDIDATE_SOURCE_TRUNCATED
             : HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_STATUS_IDS.COMPLETE }),
           summary,
         });
       } catch {
-        return Object.freeze({ status: Object.freeze({ id: HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_STATUS_IDS.FAILED }), summary: null });
+        return Object.freeze({
+          version: HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_VERSION,
+          status: Object.freeze({ id: HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_STATUS_IDS.FAILED }),
+          summary: null,
+        });
       }
     },
   });

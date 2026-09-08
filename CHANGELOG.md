@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Held-out source provenance terminology** — The private semantic-study audit
+  now versions its receipt and distinguishes observed, profile-only, retained,
+  and absent policy-purpose evidence. The aggregate remains library- and
+  configuration-agnostic and cannot select a cohort, collect labels, invoke AI,
+  change policy, or route media.
 - **Passive verified rebuild lifecycle evidence** — The administrator-only
   policy-purpose review now counts an existing terminal library-rebuild
   replacement only when its execution gate, immutable verification run, event,
