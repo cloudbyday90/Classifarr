@@ -24,21 +24,29 @@ describe('PolicyPurposeCoverageReviewService', () => {
       retained_purpose_policy_count: 0,
     };
     const loadStudySourceReadinessRecord = jest.fn().mockResolvedValue(studySourceReadinessRecord);
+    const lifecycleReceiptRecords = [{ lifecycle_transition: 'native_intent_change' }];
+    const loadLifecycleReceiptRecords = jest.fn().mockResolvedValue(lifecycleReceiptRecords);
     const buildReview = jest.fn().mockReturnValue({ rawConfigurationExposed: false });
     const service = new PolicyPurposeCoverageReviewService({
       db,
       now: () => '2026-08-16T12:00:00.000Z',
       loadRecords,
       loadStudySourceReadinessRecord,
+      loadLifecycleReceiptRecords,
+      lifecycleReceiptLimit: 2,
       buildReview,
     });
 
     await expect(service.getReview({ limit: 1 })).resolves.toEqual({ rawConfigurationExposed: false });
     expect(loadRecords).toHaveBeenCalledWith({ db, limit: 2 });
     expect(loadStudySourceReadinessRecord).toHaveBeenCalledWith({ db });
+    expect(loadLifecycleReceiptRecords).toHaveBeenCalledWith({ db, limit: 3 });
     expect(buildReview).toHaveBeenCalledWith({
       records: [records[0]],
       studySourceReadinessRecord,
+      lifecycleReceiptRecords,
+      lifecycleReceiptLimit: 2,
+      lifecycleReceiptTruncated: false,
       evaluatedAt: '2026-08-16T12:00:00.000Z',
       limit: 1,
       truncated: true,

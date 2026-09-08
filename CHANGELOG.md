@@ -11,6 +11,13 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Policy-purpose lifecycle provenance receipt** — The administrator-only
+  purpose review now measures whether durable normal policy establishment and
+  change receipts retain declared specialized purpose, remain profile-only, or
+  cannot be verified. The bounded aggregate exposes no rule values or receipt
+  details and cannot select a cohort, collect labels, alter policy, or route
+  media.
+
 - **Cross-library common trait evidence** — Libraries now reports bounded,
   conflict-excluded trait values that recur across selected same-type libraries.
   Administrator-only aggregate purpose provenance provides context without

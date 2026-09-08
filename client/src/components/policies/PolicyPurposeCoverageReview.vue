@@ -77,6 +77,10 @@
         </dl>
       </div>
 
+      <PolicyPurposeLifecycleProvenanceReceipt
+        :receipt="review?.lifecycleProvenanceReceipt"
+      />
+
       <div
         v-if="entries.length === 0"
         class="p-5 text-sm text-gray-400"
@@ -304,6 +308,7 @@ import { computed, ref } from 'vue'
 import {
   normalizePolicyPurposeCoverageStudySourceReadiness,
 } from '@/utils/policyPurposeCoverageStudySourceReadiness'
+import PolicyPurposeLifecycleProvenanceReceipt from '@/components/policies/PolicyPurposeLifecycleProvenanceReceipt.vue'
 
 const props = defineProps({
   review: {
