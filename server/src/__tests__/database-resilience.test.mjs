@@ -523,6 +523,7 @@ describe('Database Resilience', () => {
             expect(db.DB_ADVISORY_LOCKS).toHaveProperty('BACKFILL_OWNER', 1004);
             expect(db.DB_ADVISORY_LOCKS).toHaveProperty('TASK_QUEUE_MAINTENANCE', 2012);
             expect(db.DB_ADVISORY_LOCKS).toHaveProperty('POLICY_NATIVE_INTENT_CHANGE_RECEIPT_RETENTION', 2013);
+            expect(db.DB_ADVISORY_LOCKS).toHaveProperty('HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT', 2016);
         });
     });
 

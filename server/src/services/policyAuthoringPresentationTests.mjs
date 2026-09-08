@@ -151,6 +151,7 @@ const POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS = deepFreeze([
   'client/src/__tests__/PolicyNativeIntentReconciliationRemediationInventory.test.js',
   'client/src/__tests__/PolicyCompatibilityProfilePurposeSuggestion.test.js',
   'client/src/__tests__/PolicyPurposeCoverageReview.test.js',
+  'client/src/__tests__/PolicyPurposeLifecycleProvenanceReceipt.test.js',
   'client/src/__tests__/PolicyScopedEvidenceDigest.test.js',
   'client/src/__tests__/PolicyPurposeCoveragePreflight.test.js',
   'client/src/__tests__/PolicyNativePolicyRecoveryNotice.test.js',
@@ -504,6 +505,14 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
     POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.RUNTIME_VERIFIER,
     [],
     'Purpose coverage review renders bounded aggregate evidence and explicit editor links without exposing rules, inspecting items, or changing policy routing.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyPurposeLifecycleProvenanceReceipt.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_WORKFLOW_REGRESSION,
+    false,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.RUNTIME_VERIFIER,
+    [],
+    'The lifecycle provenance receipt renders only fixed aggregate counts and cannot expose a receipt identity, configuration, media item, semantic selection, or routing authority.'
   ),
   presentationTestRecord(
     'client/src/__tests__/PolicyScopedEvidenceDigest.test.js',

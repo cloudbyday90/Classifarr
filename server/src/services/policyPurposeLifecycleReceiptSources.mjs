@@ -15,7 +15,11 @@ export const POLICY_PURPOSE_LIFECYCLE_TRANSITION_IDS = Object.freeze({
 });
 
 function normalizeScope(value) {
-  if (value === 'active-policy-inventory' || value === 'recent-receipt-window') {
+  if (
+    value === 'active-policy-inventory' ||
+    value === 'recent-receipt-window' ||
+    value === 'aggregate-receipt-state'
+  ) {
     return value;
   }
 

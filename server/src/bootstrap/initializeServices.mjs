@@ -119,6 +119,19 @@ function startPolicyProfileRefreshOutboxWorker(schedulerService, runtimeWiringSt
   }
 }
 
+function startHeldOutSemanticStudyLifecycleReaudit(schedulerService, runtimeWiringStatus) {
+  if (!runtimeWiringStatus.ok || typeof schedulerService.startHeldOutSemanticStudyLifecycleReaudit !== 'function') {
+    return;
+  }
+
+  try {
+    schedulerService.startHeldOutSemanticStudyLifecycleReaudit();
+    logger.info('Held-out semantic-study lifecycle re-audit scheduler started successfully');
+  } catch (error) {
+    logger.warn('Held-out semantic-study lifecycle re-audit scheduler failed to start:', { error: error.message });
+  }
+}
+
 async function initializeProviderLock(providerLock) {
   try {
     await providerLock.init();
@@ -272,4 +285,5 @@ export async function initializeServices({
   await ensureWebhookSecret(webhookService);
   startNativeIntentReconciliation(schedulerService, runtimeWiringStatus);
   startPolicyProfileRefreshOutboxWorker(schedulerService, runtimeWiringStatus);
+  startHeldOutSemanticStudyLifecycleReaudit(schedulerService, runtimeWiringStatus);
 }

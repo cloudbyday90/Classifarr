@@ -32,6 +32,14 @@ import {
     POLICY_PROFILE_REFRESH_OUTBOX_TASK_NAME,
 } from './policyProfileRefreshOutboxSchedule.mjs';
 import {
+    heldOutSemanticStudyLifecycleReauditService,
+} from './heldOutSemanticStudyLifecycleReauditService.mjs';
+import {
+    HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT_CRON,
+    HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT_INITIAL_DELAY_MS,
+    HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT_TASK_NAME,
+} from './heldOutSemanticStudyLifecycleReauditSchedule.mjs';
+import {
     runGapAnalysis as _runGapAnalysis,
     runPeriodicLibrarySync as _runPeriodicLibrarySync,
     runLibraryWatchdog as _runLibraryWatchdog,
@@ -378,6 +386,34 @@ class SchedulerService {
 
     async runPolicyProfileRefreshOutboxWorker() {
         return policyProfileRefreshAutomationService.run();
+    }
+
+    startHeldOutSemanticStudyLifecycleReaudit() {
+        if (this.tasks.has(HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT_TASK_NAME)) {
+            return false;
+        }
+
+        const handler = () => this.runHeldOutSemanticStudyLifecycleReaudit();
+        this.schedule(
+            HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT_TASK_NAME,
+            HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT_CRON,
+            handler,
+            DB_ADVISORY_LOCKS.HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT,
+            { noOverlap: true },
+        );
+        this.scheduleInitial(
+            HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT_TASK_NAME,
+            HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT_INITIAL_DELAY_MS,
+            handler,
+            DB_ADVISORY_LOCKS.HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT,
+        );
+
+        logger.info('Held-out semantic-study lifecycle re-audit scheduled after application readiness');
+        return true;
+    }
+
+    async runHeldOutSemanticStudyLifecycleReaudit() {
+        return heldOutSemanticStudyLifecycleReauditService.run();
     }
 
     /**

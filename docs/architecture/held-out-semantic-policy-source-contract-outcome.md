@@ -43,6 +43,13 @@ GitHub's public pull-request endpoint returned zero open pull requests. No
 random PR could therefore be implemented locally, and no closed or merged PR
 was substituted.
 
+## Automation follow-up
+
+The [lifecycle re-audit outcome](held-out-semantic-lifecycle-reaudit-outcome.md)
+documents the next implementation: verified normal lifecycle evidence now
+automatically rechecks this same aggregate audit without capturing a cohort or
+routing media.
+
 ## Next item
 
 Continue passive observation only. When the versioned aggregate first reports

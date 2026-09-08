@@ -11,11 +11,18 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Receipt-triggered held-out re-audit** — The private eligibility audit now
+  rechecks automatically after aggregate verified normal policy lifecycle
+  evidence changes. A durable count-only cursor, three-attempt failure budget,
+  and advisory lock keep the work bounded across instances; it cannot capture a
+  cohort, collect labels, invoke AI, alter policy, or route media.
+
 - **Held-out source provenance terminology** — The private semantic-study audit
   now versions its receipt and distinguishes observed, profile-only, retained,
   and absent policy-purpose evidence. The aggregate remains library- and
   configuration-agnostic and cannot select a cohort, collect labels, invoke AI,
   change policy, or route media.
+
 - **Passive verified rebuild lifecycle evidence** — The administrator-only
   policy-purpose review now counts an existing terminal library-rebuild
   replacement only when its execution gate, immutable verification run, event,
@@ -358,6 +365,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
   change policy, AI, RAG, or routing authority.
 
 ### Fixed
+
+- **Policy evidence maintenance inventories** — Restored complete ownership for
+  the read-only purpose-evidence and lifecycle-provenance components so the
+  policy presentation audit tracks every current component and test.
 
 - **Profile-derived purpose maintenance** — The administrator native-purpose
   editor can now prepare profile-derived stored purpose as a clean typed draft

@@ -30,6 +30,7 @@ const mockDb = {
         POLICY_ROLLBACK_SNAPSHOT_RETENTION: 2007, NATIVE_INTENT_RECONCILIATION: 2008,
         NATIVE_INTENT_RECONCILIATION_LEDGER_RETENTION: 2009,
         POLICY_PROFILE_REFRESH_OUTBOX: 2011,
+        HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT: 2016,
     }
 };
 
@@ -75,6 +76,10 @@ const mockPolicyProfileRefreshAutomationService = {
     run: jest.fn(),
 };
 
+const mockHeldOutSemanticStudyLifecycleReauditService = {
+    run: jest.fn(),
+};
+
 const mockMediaSync = {
     syncLibrary: jest.fn()
 };
@@ -116,6 +121,8 @@ jest.unstable_mockModule('../services/nativeIntentReconciliationService.mjs', ()
 
 jest.unstable_mockModule('../services/policyProfileRefreshAutomationService.mjs', () => createNamedMockModule('policyProfileRefreshAutomationService', mockPolicyProfileRefreshAutomationService));
 
+jest.unstable_mockModule('../services/heldOutSemanticStudyLifecycleReauditService.mjs', () => createNamedMockModule('heldOutSemanticStudyLifecycleReauditService', mockHeldOutSemanticStudyLifecycleReauditService));
+
 jest.unstable_mockModule('../services/mediaSync.mjs', () => createNamedMockModule('mediaSyncService', mockMediaSync));
 
 jest.unstable_mockModule('../services/discordBot.mjs', () => createNamedMockModule('discordBotService', mockDiscordBot));
@@ -154,6 +161,7 @@ describe('SchedulerService', () => {
         mockRatingNormalizationQueueService.queueDailyBackfill.mockReset();
         mockNativeIntentReconciliationService.run.mockReset();
         mockPolicyProfileRefreshAutomationService.run.mockReset();
+        mockHeldOutSemanticStudyLifecycleReauditService.run.mockReset();
         mockMediaSync.syncLibrary.mockReset();
         mockClassification.retryClassification.mockReset();
         logger.info.mockReset();
@@ -709,6 +717,43 @@ describe('SchedulerService', () => {
                 expect.any(Function),
             );
             expect(mockPolicyProfileRefreshAutomationService.run).toHaveBeenCalledTimes(2);
+        });
+    });
+
+    describe('held-out semantic-study lifecycle re-audit scheduling', () => {
+        afterEach(() => {
+            jest.useRealTimers();
+        });
+
+        it('runs one lock-protected aggregate-only re-audit and one delayed startup check', async () => {
+            jest.useFakeTimers();
+            mockDb.withSessionAdvisoryLock.mockImplementation(async (_key, handler) => {
+                await handler();
+                return true;
+            });
+            mockHeldOutSemanticStudyLifecycleReauditService.run.mockResolvedValue({
+                version: 'policy.held_out_semantic_study_eligibility_audit.v3',
+                status: { id: 'complete' },
+                summary: { candidateCount: 4 },
+            });
+
+            expect(scheduler.startHeldOutSemanticStudyLifecycleReaudit()).toBe(true);
+            expect(scheduler.startHeldOutSemanticStudyLifecycleReaudit()).toBe(false);
+            expect(mockNodeCron.schedule).toHaveBeenCalledWith(
+                '*/15 * * * *',
+                expect.any(Function),
+                { noOverlap: true },
+            );
+
+            const cronHandler = mockNodeCron.schedule.mock.calls.at(-1)[1];
+            await cronHandler();
+            await jest.advanceTimersByTimeAsync(90_000);
+
+            expect(mockDb.withSessionAdvisoryLock).toHaveBeenCalledWith(
+                2016,
+                expect.any(Function),
+            );
+            expect(mockHeldOutSemanticStudyLifecycleReauditService.run).toHaveBeenCalledTimes(2);
         });
     });
 
