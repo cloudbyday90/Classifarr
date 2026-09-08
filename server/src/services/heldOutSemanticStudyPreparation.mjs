@@ -10,8 +10,12 @@ import { projectPolicyCandidateDecision } from './policyCandidateDecisionProject
 import { policyDecisionBuilder } from './policyDecisionBuilder.mjs';
 import { buildPolicyCandidateContrastiveRetrievalContract } from './policyCandidateContrastiveRetrievalContract.mjs';
 import { heldOutSemanticStudyEligibilityDiagnostic } from './heldOutSemanticStudyEligibilityDiagnostics.mjs';
+import {
+  buildHeldOutSemanticStudyPolicySourceScreen,
+  isHeldOutSemanticStudyExcludedInferredProfileRule,
+} from './heldOutSemanticStudyPolicySourceScreen.mjs';
 
-function withoutLearnedSources(policy) {
+function withoutInferredProfileSources(policy) {
   const contract = policy.policy_intent_contract;
   return {
     ...policy,
@@ -22,8 +26,7 @@ function withoutLearnedSources(policy) {
         ...contract,
         ...Object.fromEntries(['purpose', 'hard_limits', 'helpful_hints', 'avoid'].map((key) => [
           key,
-          (contract[key] ?? []).filter((rule) => rule.source !== 'media_server_library_profile' &&
-            rule.inference_state !== 'inferred'),
+          (contract[key] ?? []).filter((rule) => !isHeldOutSemanticStudyExcludedInferredProfileRule(rule)),
         ])),
       },
     } : {}),
@@ -35,6 +38,14 @@ export function createHeldOutSemanticStudyPreparation({
   loadPolicies = getActivePolicies,
   evaluate = evaluateItem,
 } = {}) {
+  async function loadPoliciesWithSourceScreen() {
+    const sourcePolicies = await loadPolicies();
+    return Object.freeze({
+      policies: sourcePolicies.map(withoutInferredProfileSources),
+      policySourceScreen: buildHeldOutSemanticStudyPolicySourceScreen({ policies: sourcePolicies }),
+    });
+  }
+
   async function assess({ metadata, policies }) {
     const result = await evaluate(metadata, { ragCache: { matches: [] }, relatedEvidence: [] }, {
       checkAuthoritativeSignals: async () => null,
@@ -61,8 +72,9 @@ export function createHeldOutSemanticStudyPreparation({
 
   return Object.freeze({
     async loadPolicies() {
-      return (await loadPolicies()).map(withoutLearnedSources);
+      return (await loadPoliciesWithSourceScreen()).policies;
     },
+    loadPoliciesWithSourceScreen,
     /**
      * Select only a broad-policy candidate comparison before semantic
      * retrieval. This preserves the study's prospective cohort boundary: a

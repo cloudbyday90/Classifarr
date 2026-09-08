@@ -13,9 +13,10 @@ import {
 import { createHeldOutSemanticStudyPreparation } from './heldOutSemanticStudyPreparation.mjs';
 import { heldOutSemanticStudyConfigurationFingerprint } from './heldOutSemanticStudyProvenance.mjs';
 import { HELD_OUT_SEMANTIC_STUDY_STRATA } from './heldOutSemanticStudyInventoryCandidate.mjs';
+import { buildHeldOutSemanticStudyPolicySourceScreen } from './heldOutSemanticStudyPolicySourceScreen.mjs';
 
 export const HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_VERSION =
-  'policy.held_out_semantic_study_eligibility_audit.v1';
+  'policy.held_out_semantic_study_eligibility_audit.v2';
 
 export const HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_STATUS_IDS = Object.freeze({
   CANDIDATE_SOURCE_TRUNCATED: 'candidate_source_truncated',
@@ -38,7 +39,7 @@ function validCandidate(candidate) {
     candidate.metadata && typeof candidate.metadata === 'object';
 }
 
-function auditSummary({ candidates, policies, assessments }) {
+function auditSummary({ candidates, policies, assessments, policySourceScreen }) {
   const candidateCountByStratum = fixedStratumCounts();
   const eligibleCountByStratum = fixedStratumCounts();
   const eligibilityDecisionCounts = {};
@@ -73,13 +74,27 @@ function auditSummary({ candidates, policies, assessments }) {
     independentLabelsAvailable: false,
     policyChangeEligibility: false,
     policyCount: policies.length,
+    policySourceScreen,
     semanticSelection: false,
   });
 }
 
-function fingerprint(readConfig, preparation) {
-  return Promise.all([readConfig(), preparation.loadPolicies()]).then(([config, policies]) =>
-    heldOutSemanticStudyConfigurationFingerprint(config, policies));
+async function loadPolicyContext(preparation) {
+  if (typeof preparation.loadPoliciesWithSourceScreen === 'function') {
+    return preparation.loadPoliciesWithSourceScreen();
+  }
+  const policies = await preparation.loadPolicies();
+  return {
+    policies,
+    policySourceScreen: buildHeldOutSemanticStudyPolicySourceScreen({ policies }),
+  };
+}
+
+function fingerprint(config, policyContext) {
+  return JSON.stringify({
+    configurationFingerprint: heldOutSemanticStudyConfigurationFingerprint(config, policyContext.policies),
+    policySourceScreen: policyContext.policySourceScreen,
+  });
 }
 
 /**
@@ -96,16 +111,20 @@ export function createHeldOutSemanticStudyEligibilityAudit({
   return Object.freeze({
     async audit() {
       try {
-        const [initialConfig, policies] = await Promise.all([readConfig(), preparation.loadPolicies()]);
-        const initialFingerprint = heldOutSemanticStudyConfigurationFingerprint(initialConfig, policies);
+        const [initialConfig, policyContext] = await Promise.all([readConfig(), loadPolicyContext(preparation)]);
+        const { policies, policySourceScreen } = policyContext;
+        const initialFingerprint = fingerprint(initialConfig, policyContext);
         const source = await loadCandidates({ maximumCandidateCount });
         if (!Array.isArray(source?.candidates)) throw new Error('invalid_held_out_inventory_audit_source');
         const assessments = [];
         for (const candidate of source.candidates) {
           assessments.push(await preparation.assess({ metadata: candidate.metadata, policies }));
         }
-        const summary = auditSummary({ candidates: source.candidates, policies, assessments });
-        if ((await fingerprint(readConfig, preparation)) !== initialFingerprint) {
+        const summary = auditSummary({ candidates: source.candidates, policies, assessments, policySourceScreen });
+        const [finalConfig, finalPolicyContext] = await Promise.all([
+          readConfig(), loadPolicyContext(preparation),
+        ]);
+        if (fingerprint(finalConfig, finalPolicyContext) !== initialFingerprint) {
           return Object.freeze({ status: Object.freeze({ id: HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_STATUS_IDS.CONFIGURATION_CHANGED }), summary: null });
         }
         return Object.freeze({

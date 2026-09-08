@@ -49,6 +49,10 @@ test('reports fixed aggregate eligibility only across the supplied canonical pop
     eligibleCountByStratum: { documentary: 1, reality: 0 },
     independentLabelsAvailable: false,
     policyChangeEligibility: false,
+    policySourceScreen: expect.objectContaining({
+      rawConfigurationExposed: false,
+      statusId: 'no_declared_purpose_rules',
+    }),
     semanticSelection: false,
   });
   expect(JSON.stringify(result)).not.toMatch(/Private|tmdb|library|model/u);

@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Held-out policy source screen** — Corrected the study boundary to retain
+  operator-declared native purpose rules and added a private aggregate receipt
+  that explains inferred-profile exclusions without exposing policy or media
+  data.
+
 - **Held-out policy eligibility audit** — Added a private, read-only,
   configuration-bound canonical-population audit that reports only aggregate
   broad-policy decision availability before a semantic study cohort can be

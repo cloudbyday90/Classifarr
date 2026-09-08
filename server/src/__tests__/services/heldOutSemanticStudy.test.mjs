@@ -122,10 +122,15 @@ describe('held-out semantic study', () => {
     });
     const preparation = createHeldOutSemanticStudyPreparation({ evaluate, loadPolicies: async () => [{
       ...policies[0], trust_history: true, trust_patterns: true,
-      policy_intent_contract: { purpose: [{ source: 'media_server_library_profile' }, { source: 'operator' }] },
+      policy_intent_contract: { purpose: [
+        { source: 'media_server_library_profile', inference_state: 'inferred' },
+        { source: 'operator_declared_intent', inference_state: 'inferred' },
+      ] },
     }] });
     expect((await preparation.loadPolicies())[0]).toMatchObject({
-      trust_history: false, trust_patterns: false, policy_intent_contract: { purpose: [{ source: 'operator' }] },
+      trust_history: false,
+      trust_patterns: false,
+      policy_intent_contract: { purpose: [{ source: 'operator_declared_intent', inference_state: 'inferred' }] },
     });
     const metadata = request().cases[0].metadata;
     expect((await preparation.prepare({ metadata, policies })).valid).toBe(false);
