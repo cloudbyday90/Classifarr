@@ -262,7 +262,9 @@ exercised automatic capture and retained the same 19 observations.
 GitHub MCP still lists no open PRs. The latest published prerelease remains
 `v0.48.4-beta` (August 29); this review extends the existing release comparison
 with the new storage, capture and diagnostic paths. No release was created.
-The next item is guarding retained inventory identity authority when a current
-source observation reports a conflict: all 19 observations overlap older rows
-with TMDb IDs, and existing-media/reconciliation consumers currently read those
-rows without this guard.
+The retained-inventory authority guard is now complete; see the
+[source-conflict authority outcome](source-conflict-authority-guard-outcome.md).
+Fresh exact conflicts suppress automatic existing-media, reconciliation and
+enrichment authority while valid capture clears the block. The next item is the
+separately labelled 24–32-case semantic cohort and frozen-study readiness check;
+any future counter-evidence remains review-only.

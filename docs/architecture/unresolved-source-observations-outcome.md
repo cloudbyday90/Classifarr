@@ -98,20 +98,15 @@ error/fatal records, 19 expected identity-conflict warnings and eight slow-query
 warnings. These are local observations, not performance or accessibility
 certification. Private captures, screenshots and backups remain ignored.
 
-## Recommended next item
+## Follow-up completed
 
-Add an automatic guard against stale identity authority from pre-existing
-inventory rows with current source conflicts. The read-only audit found that
-**all 19 unresolved memberships match retained inventory rows with TMDb IDs**.
-`mediaSyncLibraryStateService.findExistingMedia` currently reads those rows
-without consulting conflict observations; `classificationAuthoritativeSignalShared`
-can treat a match as authoritative existing media. The awaiting-decision
-reconciliation query also reads existing inventory directly.
+The automatic consumer guard is implemented in the separate
+[source-conflict authority outcome](source-conflict-authority-guard-outcome.md).
+It uses fresh, exact source-conflict evidence to withhold automatic existing-media,
+reconciliation and enrichment authority while preserving historical inventory and
+descriptive membership. Valid source capture clears the conflict; incomplete
+capture cannot silently restore authority.
 
-Guard these consumers, and inventory enrichment, while preserving historical
-evidence and descriptive membership. Specify how incomplete, expired and omitted
-captures affect eligibility before implementation; an absent preview is not
-proof that an identity is valid. Test conflict arrival, duplicate placements,
-concurrent capture and later resolution. Do not guess replacement IDs or require
-routine manual labeling. This follow-up addresses a pre-existing consumer path;
-the new observation store itself supplies no classification authority.
+The next item remains a real 24–32-case independently labelled semantic cohort
+and the existing frozen-study/readiness preflight. Any later semantic
+counter-evidence must send ambiguity to review only, never automatic routing.
