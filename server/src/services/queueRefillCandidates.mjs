@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { inventoryTmdbObservationDue, INVENTORY_TMDB_RETRY_HOURS } from './inventoryTmdbObservation.mjs';
 import { INVENTORY_TMDB_REFILL_SQL } from './queueInventoryTmdbRefill.mjs';
+import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS, sourceConflictAuthorityExclusionForMediaServerItem } from './sourceConflictAuthorityGuard.mjs';
 
 export const REFILL_QUEUE_BATCH_LIMIT = 5000;
 const STANDARD_ENRICHMENT_SQL = `msi.metadata->'content_analysis' IS NULL
@@ -22,6 +23,7 @@ export async function readRefillCandidatePage(db, cursor) {
          CROSS JOIN (SELECT COALESCE($3::integer, (SELECT MAX(id) FROM media_server_items)) AS through_id) scan
          WHERE ((${STANDARD_ENRICHMENT_SQL}) OR (${INVENTORY_TMDB_REFILL_SQL}))
          AND msi.media_type IN ('movie', 'tv')
+         AND ${sourceConflictAuthorityExclusionForMediaServerItem('$4')}
          AND msi.id > $2 AND msi.id <= scan.through_id
          AND NOT EXISTS (
              SELECT 1 FROM task_queue tq
@@ -31,7 +33,7 @@ export async function readRefillCandidatePage(db, cursor) {
          )
          ORDER BY msi.id
          LIMIT ${REFILL_QUEUE_BATCH_LIMIT}`,
-        [INVENTORY_TMDB_RETRY_HOURS, cursor?.afterId ?? 0, cursor?.throughId ?? null]
+        [INVENTORY_TMDB_RETRY_HOURS, cursor?.afterId ?? 0, cursor?.throughId ?? null, SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]
     );
     const last = result.rows.at(-1);
     return {

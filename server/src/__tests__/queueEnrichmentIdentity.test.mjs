@@ -41,7 +41,7 @@ test('captures caller data before the source read and recovers IDs only from a m
   const prepared = await prepareQueueEnrichmentPayload(payload, query);
   expect(prepared).toMatchObject({ itemId: 1, tmdb_id: 42, source_library_id: 2,
     media: { media_type: 'tv' }, genres: ['Drama'], posterPath: '/poster' });
-  expect(query.mock.calls[0][1]).toEqual([1]);
+  expect(query.mock.calls[0][1]).toEqual([1, 30]);
 });
 
 test('database errors propagate instead of becoming identity guesses', async () => {
@@ -58,10 +58,12 @@ test('replaces stale queued identifiers and caller-supplied provenance with curr
   const current = { ...source, title: 'Current', year: 2001, imdb_id: 'tt123', tvdb_id: 7,
     media_server_id: 1, external_id: 'current-key' };
   const prepared = await prepareQueueEnrichmentPayload({ ...taskPayload(), title: 'Stale', year: 2002,
-    imdb_id: 'tt999', tvdb_id: 8, source_identity_snapshot: { title: 'Forged' } },
+    imdb_id: 'tt999', tvdb_id: 8, source_identity_snapshot: { title: 'Forged' },
+    source_conflict_blocks_authority: true },
   jest.fn().mockResolvedValue({ rows: [current] }));
   expect(prepared).toMatchObject({ title: 'Current', year: 2001, imdb_id: 'tt123', tvdb_id: 7,
     source_identity_snapshot: { media_server_id: 1, external_id: 'current-key', title: 'Current', year: 2001 } });
+  expect(prepared.source_conflict_blocks_authority).toBe(false);
 });
 
 test('replaces legacy queued tags and guessed language with current attributable observations', async () => {
@@ -113,12 +115,30 @@ test.each([undefined, 'movie'])('invalid or stale task skips providers, metadata
   expect(deps.logger.warn).toHaveBeenCalledWith('Metadata enrichment skipped', { reason: 'invalid_media_identity' });
 });
 
+test('a current source conflict skips automatic enrichment before provider calls or writes', async () => {
+  const deps = flowDeps({ ...source, source_conflict_blocks_authority: true });
+  await processMetadataEnrichmentTask({ id: 7, payload: taskPayload() }, deps);
+  expect(deps.enrichmentItemStateService.markProcessing).not.toHaveBeenCalled();
+  expect(deps.queueOmdbEnrichmentService.enrich).not.toHaveBeenCalled();
+  expect(deps.queueWebSearchEnrichmentService.enrich).not.toHaveBeenCalled();
+  expect(deps.queueTmdbResolutionService.resolveAndBackfill).not.toHaveBeenCalled();
+  expect(deps.queryWithTimeout).not.toHaveBeenCalled();
+  expect(deps.queueClassificationHistoryService.persist).not.toHaveBeenCalled();
+  expect(deps.completeTask).toHaveBeenCalledWith(7, {
+    enriched: false, skipped: true, reason: 'current_source_identity_conflict',
+  });
+  expect(deps.logger.warn).toHaveBeenCalledWith('Metadata enrichment skipped', {
+    reason: 'current_source_identity_conflict',
+  });
+});
+
 test('source drift at metadata update prevents history and a successful enrichment result', async () => {
   const deps = flowDeps();
   deps.queryWithTimeout.mockResolvedValue({ rowCount: 0 });
   await processMetadataEnrichmentTask({ id: 7, payload: taskPayload() }, deps);
   expect(deps.queryWithTimeout.mock.calls[0][1].slice(1, 7)).toEqual([1, 'tv', 2, 42, false, false]);
   expect(JSON.parse(deps.queryWithTimeout.mock.calls[0][1][7])).toMatchObject({ library_id: 2, media_type: 'tv' });
+  expect(deps.queryWithTimeout.mock.calls[0][1][8]).toBe(30);
   expect(deps.queueClassificationHistoryService.persist).not.toHaveBeenCalled();
   expect(deps.completeTask).toHaveBeenCalledWith(7, { enriched: false, skipped: true, reason: 'source_identity_changed' });
   expect(deps.enrichmentItemStateService.syncItemState).toHaveBeenCalledWith(1);

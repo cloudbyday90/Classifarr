@@ -72,6 +72,17 @@ test('fresh stored observation avoids provider calls', async () => {
         inventory_tmdb: record(), inventory_tmdb_fetched_at: new Date(now) }, {}, 7)).toBe(false);
     expect(provider.getApiKey).not.toHaveBeenCalled();
 });
+test('a source conflict prevents direct inventory TMDb enrichment', async () => {
+    const provider = { getApiKey: jest.fn(), getMovieDetails: jest.fn() };
+    const logger = { debug: jest.fn() };
+    const service = new QueueInventoryTmdbEnrichmentService({ logger, tmdbService: provider });
+    expect(await service.enrich({ ...payload(), source_conflict_blocks_authority: true }, {}, 7)).toBe(false);
+    expect(provider.getApiKey).not.toHaveBeenCalled();
+    expect(provider.getMovieDetails).not.toHaveBeenCalled();
+    expect(logger.debug).toHaveBeenCalledWith('Inventory TMDb observation skipped', {
+        reason: 'current_source_identity_conflict',
+    });
+});
 test('unconfigured provider does not claim an attempt', async () => {
     expect(await new QueueInventoryTmdbEnrichmentService({ tmdbService: { getApiKey: async () => null } }).enrich(payload(), {}, 7)).toBe(false);
 });

@@ -137,7 +137,7 @@ describe('MediaSyncService', () => {
             expect(result).toEqual(mockItem);
             expect(mockDb.query).toHaveBeenCalledWith(
                 expect.stringContaining('FROM media_server_items msi'),
-                [12345, 'movie']
+                [12345, 'movie', 30]
             );
         });
 

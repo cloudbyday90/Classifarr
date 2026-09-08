@@ -8,6 +8,7 @@ import { parsePayload } from '../utils/queueHelpers.mjs';
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 import { readInventoryTmdbObservation } from './inventoryTmdbObservation.mjs';
 import { captureEnrichmentSource } from './queueEnrichmentSourceGuard.mjs';
+import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS, sourceConflictAuthorityPredicateForMediaServerItem } from './sourceConflictAuthorityGuard.mjs';
 
 export function captureQueueEnrichmentPayload(payload) {
   const mediaType = payloadMediaType(payload);
@@ -23,6 +24,7 @@ export async function prepareQueueEnrichmentPayload(payload, query) {
   const captured = captureQueueEnrichmentPayload(payload);
   if (!captured) return null;
   delete captured.source_identity_snapshot;
+  delete captured.source_conflict_blocks_authority;
   const ids = [captured.tmdbId, captured.tmdb_id].filter((value) => value !== null && value !== undefined);
   if (ids.some((id) => !positiveDatabaseInteger(id)) ||
       new Set(ids.map(positiveDatabaseInteger)).size > 1) return null;
@@ -34,8 +36,9 @@ export async function prepareQueueEnrichmentPayload(payload, query) {
   const result = await query(`SELECT msi.tmdb_id, msi.media_type, msi.library_id, msi.metadata, msi.tags,
     msi.media_server_id, msi.external_id, msi.title, msi.year, msi.imdb_id, msi.tvdb_id,
     msi.inventory_tmdb_attempted_at, msi.inventory_tmdb_fetched_at,
+    ${sourceConflictAuthorityPredicateForMediaServerItem('$2')} AS source_conflict_blocks_authority,
     l.name AS library_name FROM media_server_items msi
-    LEFT JOIN libraries l ON msi.library_id = l.id WHERE msi.id = $1`, [itemId]);
+    LEFT JOIN libraries l ON msi.library_id = l.id WHERE msi.id = $1`, [itemId, SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]);
   const row = result.rows[0];
   if (!row || canonicalMediaType(row.media_type) !== captured.media.media_type) return null;
   const libraryId = positiveDatabaseInteger(row.library_id);
@@ -46,6 +49,7 @@ export async function prepareQueueEnrichmentPayload(payload, query) {
   const metadata = parsePayload(row.metadata);
   captured.itemId = itemId;
   captured.source_identity_snapshot = captureEnrichmentSource(row);
+  captured.source_conflict_blocks_authority = row.source_conflict_blocks_authority === true;
   for (const field of ['title', 'year', 'imdb_id', 'tvdb_id']) captured[field] = row[field] ?? null;
   // A queued ID can outlive source replacement; only the current row owns it.
   captured.tmdb_id = storedTmdbId;

@@ -103,7 +103,7 @@ describe('resolved and absent external identity evidence', () => {
     expect(metadata.tmdb_resolution).toEqual({ version: 1, status: 'resolved', method, reason });
     expect(tmdbService.findIdentityByExternalId).toHaveBeenCalledTimes(calls);
     expect(tmdbService.searchIdentityCandidates).not.toHaveBeenCalled();
-    expect(queryWithTimeout).toHaveBeenCalledWith(expect.stringContaining('tmdb_id IS NULL'), [42, 1, 'tv']);
+    expect(queryWithTimeout).toHaveBeenCalledWith(expect.stringContaining('tmdb_id IS NULL'), [42, 1, 'tv', 30]);
   });
 
   test.each([{}, { tvdb_id: 123 }, { tvdb_id: 123, imdb_id: 'tt456' }])('allows conservative title resolution only when external evidence is absent: %j', async (ids) => {
@@ -126,7 +126,7 @@ describe('resolved and absent external identity evidence', () => {
     });
     expect(await svc.resolveAndBackfill(item, metadata)).toBe(42);
     expect(tmdbService.findIdentityByExternalId.mock.calls).toEqual([[123, 'tvdb_id'], ['tt456', 'imdb_id']]);
-    expect(queryWithTimeout).toHaveBeenCalledWith(expect.any(String), [42, 1, 'tv']);
+    expect(queryWithTimeout).toHaveBeenCalledWith(expect.any(String), [42, 1, 'tv', 30]);
   });
 
   test('existing source IDs are preserved without attempting conflicting external declarations', async () => {

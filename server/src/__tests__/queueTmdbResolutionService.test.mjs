@@ -89,7 +89,7 @@ describe('typed provider boundary', () => {
     const queryWithTimeout = makeQueryWithTimeout();
     const svc = new QueueTmdbResolutionService({ logger: createMockLogger(), tmdbService, queryWithTimeout });
     expect(await svc.resolveAndBackfill(payload, {})).toBe(42);
-    expect(queryWithTimeout).toHaveBeenCalledWith(expect.stringContaining('media_type = $3'), [42, 1, 'tv']);
+    expect(queryWithTimeout).toHaveBeenCalledWith(expect.stringContaining('media_type = $3'), [42, 1, 'tv', 30]);
   });
 
   test.each([0, '', 'bad', 2147483648])('malformed current TMDb ID %j cannot trigger guessing', async (id) => {
@@ -265,7 +265,7 @@ describe('backfillTmdbId', () => {
     await svc.backfillTmdbId(42, 9999, 'tv');
     expect(queryWithTimeout).toHaveBeenCalledWith(
       expect.stringContaining('media_server_items'),
-      [9999, 42, 'tv']
+      [9999, 42, 'tv', 30]
     );
   });
 });

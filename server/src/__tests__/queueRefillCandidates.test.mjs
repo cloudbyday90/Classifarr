@@ -38,7 +38,7 @@ test('a full fresh page advances progress; a short page wraps the next call', as
     expect(await service.selectRefillCandidates()).toEqual([]);
     expect(await service.selectRefillCandidates()).toEqual([broken]);
     expect(await service.selectRefillCandidates()).toEqual([]);
-    expect(query.mock.calls.map(call => call[1])).toEqual([[6, 0, null], [6, 5000, 6000], [6, 0, null]]);
+    expect(query.mock.calls.map(call => call[1])).toEqual([[6, 0, null, 30], [6, 5000, 6000, 30], [6, 0, null, 30]]);
 });
 
 test('read failure preserves the current checkpoint', async () => {
@@ -47,7 +47,7 @@ test('read failure preserves the current checkpoint', async () => {
     service.refillCursor = { afterId: 40, throughId: 70 };
     await expect(service.selectRefillCandidates()).rejects.toThrow('offline');
     await service.selectRefillCandidates();
-    expect(query.mock.calls.map(call => call[1])).toEqual([[6, 40, 70], [6, 40, 70]]);
+    expect(query.mock.calls.map(call => call[1])).toEqual([[6, 40, 70, 30], [6, 40, 70, 30]]);
 });
 
 test('enqueue failure restores the checkpoint and permits retry', async () => {
@@ -57,7 +57,7 @@ test('enqueue failure restores the checkpoint and permits retry', async () => {
     service.refillCursor = { afterId: 40, throughId: 70 };
     await expect(service.refillQueue()).rejects.toThrow('queue unavailable');
     await expect(service.refillQueue()).resolves.toEqual({ queued: 1 });
-    expect(query.mock.calls.map(call => call[1])).toEqual([[6, 40, 70], [6, 40, 70]]);
+    expect(query.mock.calls.map(call => call[1])).toEqual([[6, 40, 70, 30], [6, 40, 70, 30]]);
 });
 
 test('overlapping refills share selection and enqueue completion', async () => {

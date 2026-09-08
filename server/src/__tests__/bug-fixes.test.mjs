@@ -270,7 +270,7 @@ describe('Bug Fixes - Comprehensive PR', () => {
             // Verify the main reconciliation query was called with correct libraryId
             expect(db.query).toHaveBeenCalledWith(
                 expect.stringContaining("status = 'awaiting_decision'"),
-                [libraryId]
+                [libraryId, 30]
             );
         });
 

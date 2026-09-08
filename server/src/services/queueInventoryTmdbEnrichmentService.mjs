@@ -2,6 +2,7 @@
 import { canonicalMediaType, positiveDatabaseInteger } from './mediaIdentityValues.mjs';
 import { buildInventoryTmdbObservation, inventoryTmdbObservationDue } from './inventoryTmdbObservation.mjs';
 import { tmdbObservationFailure } from './tmdbObservationFailure.mjs';
+import { SOURCE_CONFLICT_AUTHORITY_BLOCK_REASON } from './sourceConflictAuthorityGuard.mjs';
 
 export class QueueInventoryTmdbEnrichmentService {
     constructor({ tmdbService, logger, now = Date.now } = {}) {
@@ -11,6 +12,10 @@ export class QueueInventoryTmdbEnrichmentService {
     }
 
     async enrich(payload, enrichmentData, tmdbId) {
+        if (payload?.source_conflict_blocks_authority === true) {
+            this.logger?.debug?.('Inventory TMDb observation skipped', { reason: SOURCE_CONFLICT_AUTHORITY_BLOCK_REASON });
+            return false;
+        }
         const mediaType = canonicalMediaType(payload?.media?.media_type);
         tmdbId = positiveDatabaseInteger(tmdbId);
         if (!tmdbId || !mediaType || !inventoryTmdbObservationDue(payload, tmdbId, this.now())) return false;

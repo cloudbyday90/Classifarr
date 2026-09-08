@@ -11,6 +11,7 @@ import { captureQueueEnrichmentPayload } from './queueEnrichmentPayload.mjs';
 import { resolveQueueTmdbExternalIdentity } from './queueTmdbExternalResolution.mjs';
 import { buildTmdbTitleRequest, decideTmdbTitleMatch } from './tmdbTitleMatch.mjs';
 import { persistResolvedIdentity } from './mediaResolvedIdentityPersistence.mjs';
+import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS, sourceConflictAuthorityExclusionForMediaServerItem } from './sourceConflictAuthorityGuard.mjs';
 
 function recordResolution(data, method, reason, tmdbId) {
     if (data) data.tmdb_resolution = {
@@ -72,8 +73,9 @@ export class QueueTmdbResolutionService {
         const updated = source ? await persistResolvedIdentity(
             this.queryWithTimeout, itemId, tmdbId, mediaType, source
         ) : await this.queryWithTimeout(
-            'UPDATE media_server_items SET tmdb_id = $1 WHERE id = $2 AND media_type = $3 AND tmdb_id IS NULL',
-            [tmdbId, itemId, mediaType]
+            `UPDATE media_server_items AS msi SET tmdb_id = $1 WHERE msi.id = $2 AND msi.media_type = $3 AND msi.tmdb_id IS NULL
+              AND ${sourceConflictAuthorityExclusionForMediaServerItem('$4')}`,
+            [tmdbId, itemId, mediaType, SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]
         );
         if (updated?.rowCount !== 1) return;
         this.logger.info('Backfilled TMDB ID to media_server_items', {

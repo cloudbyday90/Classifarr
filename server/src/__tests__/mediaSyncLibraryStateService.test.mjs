@@ -43,7 +43,7 @@ describe('MediaSyncLibraryStateService', () => {
     await expect(service.findExistingMedia(12345, 'movie')).resolves.toEqual(mediaItem);
     expect(db.query).toHaveBeenCalledWith(
       expect.stringContaining('FROM media_server_items msi'),
-      [12345, 'movie']
+      [12345, 'movie', 30]
     );
   });
 
@@ -91,7 +91,7 @@ describe('MediaSyncLibraryStateService', () => {
     expect(db.query).toHaveBeenNthCalledWith(
       1,
       expect.stringContaining("status = 'awaiting_decision'"),
-      [1]
+      [1, 30]
     );
     expect(db.query).toHaveBeenCalledTimes(1);
   });

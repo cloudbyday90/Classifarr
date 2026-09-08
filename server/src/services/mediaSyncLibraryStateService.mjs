@@ -10,6 +10,7 @@
 
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS, sourceConflictAuthorityExclusionForMediaServerItem } from './sourceConflictAuthorityGuard.mjs';
 
 const defaultLogger = createLogger('mediaSyncLibraryStateService');
 
@@ -26,8 +27,9 @@ export class MediaSyncLibraryStateService {
          FROM media_server_items msi
          JOIN libraries l ON msi.library_id = l.id
          WHERE msi.tmdb_id = $1 AND msi.media_type = $2
+           AND ${sourceConflictAuthorityExclusionForMediaServerItem('$3')}
          LIMIT 1`,
-        [tmdbId, mediaType],
+        [tmdbId, mediaType, SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS],
       );
 
       return result.rows.length > 0 ? result.rows[0] : null;
@@ -75,8 +77,9 @@ export class MediaSyncLibraryStateService {
           AND ch.media_type = msi.media_type
           AND ch.status = 'awaiting_decision'
           AND msi.library_id = $1
+          AND ${sourceConflictAuthorityExclusionForMediaServerItem('$2')}
         RETURNING ch.id, ch.tmdb_id, ch.media_type, ch.title, l.id as library_id, l.name as library_name
-      `, [libraryId]);
+      `, [libraryId, SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]);
 
       if (reconciledResult.rows.length > 0) {
         this.logger.info('Reconciled awaiting decisions', {

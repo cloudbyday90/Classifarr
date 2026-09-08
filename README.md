@@ -827,6 +827,10 @@ normal sync, with bounded examples, capture state and visible incomplete coverag
 in Libraries. They do not assign provider identities or classification authority.
 See the [design](docs/architecture/unresolved-source-observations-design.md) and
 [outcome](docs/architecture/unresolved-source-observations-outcome.md).
+Fresh retained source conflicts now withhold only automatic inventory authority
+for that exact source item, while preserving the historical row and the explicit
+review path. See the [design](docs/architecture/source-conflict-authority-guard-design.md)
+and [outcome](docs/architecture/source-conflict-authority-guard-outcome.md).
 Inventory TMDb failures now distinguish missing items, throttling, access and
 transport errors using safe diagnostic fields; existing observations and retry
 cooldowns are preserved. See the

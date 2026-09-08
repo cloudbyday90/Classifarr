@@ -1,9 +1,13 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { randomUUID } from 'node:crypto';
+import { jest } from '@jest/globals';
 import { getPool } from './setup.mjs';
 import { MediaSourceObservationStore } from '../../services/mediaSourceObservationStore.mjs';
 import { readSourceObservationSummary } from '../../services/mediaSourceObservationSummary.mjs';
 import { SOURCE_OBSERVATION_LIMITS } from '../../services/mediaSourceObservationContract.mjs';
+import { MediaSyncLibraryStateService } from '../../services/mediaSyncLibraryStateService.mjs';
+import { prepareQueueEnrichmentPayload } from '../../services/queueEnrichmentPayload.mjs';
+import { persistResolvedIdentity } from '../../services/mediaResolvedIdentityPersistence.mjs';
 
 let client, store, serverId, libraryId;
 const conflict = (external_id = 'fixture', patch = {}) => ({ external_id, title: 'Fixture title', year: 2020,
@@ -47,6 +51,42 @@ test('valid identity removes its unresolved record without transferring data int
   let context = await start(); await store.capture(context, [conflict()]); await store.finish(context);
   context = await start(); await store.capture(context, [{ external_id: 'fixture', media_type: 'movie', tmdb_id: 42 }]); await store.finish(context);
   expect(await rows()).toEqual([]);
+});
+
+test('a fresh conflict blocks automatic authority until a valid source capture clears it', async () => {
+  const itemId = (await client.query(`INSERT INTO media_server_items
+    (media_server_id, library_id, external_id, title, year, media_type, tmdb_id)
+    VALUES ($1, $2, 'fixture', 'Fixture title', 2020, 'movie', 42) RETURNING id`,
+  [serverId, libraryId])).rows[0].id;
+  const authority = new MediaSyncLibraryStateService({ db: client, logger: {
+    debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn(),
+  } });
+  const conflictCapture = await start();
+  await store.capture(conflictCapture, [conflict()]);
+  await store.finish(conflictCapture);
+  await client.query(`INSERT INTO classification_history
+    (tmdb_id, media_type, title, library_id, library_name, status)
+    VALUES (42, 'movie', 'Fixture title', $1, 'Fixture', 'awaiting_decision')`, [libraryId]);
+
+  await expect(authority.findExistingMedia(42, 'movie')).resolves.toBeNull();
+  await expect(authority.reconcileAwaitingDecisions(libraryId)).resolves.toBe(0);
+  const prepared = await prepareQueueEnrichmentPayload({ itemId, media_type: 'movie' }, client.query.bind(client));
+  expect(prepared).toMatchObject({ source_conflict_blocks_authority: true });
+  await client.query('UPDATE media_server_items SET tmdb_id=NULL WHERE id=$1', [itemId]);
+  await expect(persistResolvedIdentity(client.query.bind(client), itemId, 42, 'movie', prepared.source_identity_snapshot))
+    .resolves.toMatchObject({ rowCount: 0 });
+  await expect(client.query('SELECT tmdb_id FROM media_server_items WHERE id=$1', [itemId]))
+    .resolves.toMatchObject({ rows: [{ tmdb_id: null }] });
+
+  await client.query('UPDATE media_server_items SET tmdb_id=42 WHERE id=$1', [itemId]);
+  const validCapture = await start();
+  await store.capture(validCapture, [{ external_id: 'fixture', media_type: 'movie', tmdb_id: 42 }]);
+  await store.finish(validCapture);
+  await expect(authority.findExistingMedia(42, 'movie')).resolves.toMatchObject({ id: itemId });
+  await expect(authority.reconcileAwaitingDecisions(libraryId)).resolves.toBe(1);
+  await expect(client.query(`SELECT status FROM classification_history
+    WHERE library_id=$1 AND title='Fixture title'`, [libraryId]))
+    .resolves.toMatchObject({ rows: [{ status: 'completed' }] });
 });
 
 test('failed and incremental scans preserve unseen observations; a full scan removes them', async () => {

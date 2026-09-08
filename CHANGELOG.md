@@ -286,6 +286,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Source-conflict authority** — Fresh unresolved source conflicts now suppress
+  automatic existing-media evidence, awaiting-decision reconciliation and
+  metadata/TMDb enrichment until valid source evidence clears the conflict or
+  the existing retention period expires.
+
 - **Inventory TMDb diagnostics** — Distinguish missing provider items from network,
   throttling and access failures, preserving safe correlation details and existing
   observation data without exposing credentials or changing retry behavior.

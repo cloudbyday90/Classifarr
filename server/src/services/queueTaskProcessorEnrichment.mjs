@@ -1,6 +1,7 @@
 import { parsePayload } from '../utils/queueHelpers.mjs';
 import { prepareQueueEnrichmentPayload } from './queueEnrichmentPayload.mjs';
 import { persistEnrichmentMetadata } from './queueEnrichmentPersistence.mjs';
+import { SOURCE_CONFLICT_AUTHORITY_BLOCK_REASON } from './sourceConflictAuthorityGuard.mjs';
 
 export async function resolveSourceLibraryName(sourceLibraryId, sourceLibraryName, taskContext, { db, logger }) {
     if (sourceLibraryName || !sourceLibraryId) {
@@ -46,6 +47,11 @@ export async function processMetadataEnrichmentTask(task, {
     if (!enrichPayload) {
         logger.warn('Metadata enrichment skipped', { reason: 'invalid_media_identity' });
         await completeTask(task.id, { enriched: false, skipped: true, reason: 'invalid_media_identity' });
+        return;
+    }
+    if (enrichPayload.source_conflict_blocks_authority === true) {
+        logger.warn('Metadata enrichment skipped', { reason: SOURCE_CONFLICT_AUTHORITY_BLOCK_REASON });
+        await completeTask(task.id, { enriched: false, skipped: true, reason: SOURCE_CONFLICT_AUTHORITY_BLOCK_REASON });
         return;
     }
     if (enrichPayload.itemId) {
