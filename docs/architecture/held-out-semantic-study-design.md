@@ -20,9 +20,12 @@ small study to avoid filtered approximate-search starvation. Production
 retrieval keeps its existing defaults.
 
 Prepare candidates inside the study service using the existing policy
-evaluation and decision projections. Supply filtered RAG matches explicitly;
-omit assignment authority, learned profiles, patterns, and direct history.
-Freeze existing operator policy configuration as the study's prior intent.
+evaluation and decision projections. Supply an empty RAG cache while selecting
+the broad-policy comparator; semantic retrieval happens only after that cohort
+is frozen. Omit assignment authority, learned profiles, patterns, and direct
+history. Freeze existing operator policy configuration as the study's prior
+intent. The follow-on [prospective cohort design](prospective-held-out-semantic-cohort-design.md)
+automates this selection without allowing semantic output to choose the sample.
 This is a distinct evaluation protocol, not a claim that the complete
 production classifier has been evaluated without training-data leakage.
 

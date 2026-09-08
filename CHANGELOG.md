@@ -11,6 +11,13 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Prospective held-out semantic cohorts** — Added a private, read-only,
+  broad-policy-first cohort capture that excludes source conflicts, freezes
+  balanced candidate comparisons before semantic retrieval, and emits only
+  opaque study artifacts and aggregate eligibility receipts. Independent human
+  labels, readiness, and frozen-study preflight remain required; routing stays
+  disabled.
+
 - **Unresolved source visibility** — Automatically retain bounded source conflict
   observations and library membership, with capture coverage and recent examples
   in Libraries, without assigning IDs or adding operator steps.

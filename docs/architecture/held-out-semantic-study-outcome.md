@@ -102,12 +102,13 @@ This provides an auditable evaluation path without enabling product behavior
 before evidence exists. A rebuilt isolated corpus would improve full-system
 evaluation but adds sensitive storage and rebuild complexity.
 
-The next study item is a prospectively selected eligible pending cohort with
-blinded human labels and validated broad-policy strata, followed by the existing
-readiness and frozen-study preflight. Independent humans must provide those
-labels; local Docker and assistant-generated labels cannot satisfy that contract.
-Only a qualifying measured profile justifies a separate change that sends
-ambiguous cases to operator review.
+The subsequent [prospective cohort implementation](prospective-held-out-semantic-cohort-outcome.md)
+automates selection without allowing semantic output to choose the sample. Its
+first local run correctly found no broad-policy `ready` comparison; independent
+humans still must provide labels for any complete future cohort. Local Docker
+and assistant-generated labels cannot satisfy that contract. Only a qualifying
+measured profile justifies a separate change that sends ambiguous cases to
+operator review.
 
 A separate source-scoring bug also surfaced: `scoreHistory` filtered by
 `tmdb_id` without `media_type`. The paired-identity fix and its collision
