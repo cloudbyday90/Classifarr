@@ -310,6 +310,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Backend unit test reliability** — Run the full unit suite with bounded
+  Jest workers and worker memory recycling so the documented local command
+  completes without exhausting Node's default heap.
+
 - **Source-conflict authority** — Fresh unresolved source conflicts now suppress
   automatic existing-media evidence, awaiting-decision reconciliation and
   metadata/TMDb enrichment until valid source evidence clears the conflict or
