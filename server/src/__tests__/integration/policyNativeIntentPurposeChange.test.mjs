@@ -26,7 +26,12 @@ const {
   POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS,
 } = await import('../../services/policyNativeIntentChangeService.mjs');
 
-async function createNativePurposeFixture({ fixtureKey, term, intentVersion = 3 }) {
+async function createNativePurposeFixture({
+  fixtureKey,
+  term,
+  intentVersion = 3,
+  purposeRuleSource = 'native_intent',
+}) {
   const fixture = await createPolicyEngineIntegrationFixture(db, {
     mediaServerName: 'Native Purpose Change Media Server',
     libraryExternalIdPrefix: `native-purpose-change-write-${fixtureKey}`,
@@ -59,10 +64,10 @@ async function createNativePurposeFixture({ fixtureKey, term, intentVersion = 3 
       jsonb_build_object('require_any', jsonb_build_array($4::text)),
       'advisory',
       'identity',
-      'native_intent',
+      $5,
       'inferred'
     FROM native_intent
-  `, [fixture.policyId, fixture.libraryId, intentVersion, term]);
+  `, [fixture.policyId, fixture.libraryId, intentVersion, term, purposeRuleSource]);
 
   return fixture;
 }
@@ -89,10 +94,11 @@ describe('native intent purpose change integration', () => {
     }
   });
 
-  test('reads a server-owned revision, replays the exact committed command, and rejects a stale new attempt', async () => {
+  test('reads a profile-derived purpose without replaying profile provenance, commits an explicit native change, and rejects a stale new attempt', async () => {
     const fixture = await createNativePurposeFixture({
       fixtureKey: 'target',
       term: 'existing-purpose-token',
+      purposeRuleSource: 'media_server_library_profile',
     });
     fixtures.push(fixture);
 
@@ -107,6 +113,8 @@ describe('native intent purpose change integration', () => {
       changeCommand: expect.objectContaining({ command_id: 'update_purpose' }),
     }));
     expect(before.changeCommand.values[0].values).toEqual({ require_any: ['existing-purpose-token'] });
+    expect(before.changeCommand.values[0]).not.toHaveProperty('source');
+    expect(before.changeCommand.values[0]).not.toHaveProperty('inference_state');
 
     const applied = await applyPolicyNativeIntentChange({
       dbClient: db,
@@ -205,6 +213,19 @@ describe('native intent purpose change integration', () => {
       expect.objectContaining({ intent_version: 3, active: false }),
       expect.objectContaining({ intent_version: 4, active: true }),
     ]);
+
+    const appliedPurposeRule = await db.query(`
+      SELECT rule.source, rule.inference_state
+      FROM policy_intents intent
+      JOIN policy_intent_rules rule ON rule.intent_id = intent.id
+      WHERE intent.policy_id = $1
+        AND intent.active = TRUE
+        AND rule.intent_role = 'purpose'
+    `, [fixture.policyId]);
+    expect(appliedPurposeRule.rows).toEqual([{
+      source: 'native_intent',
+      inference_state: 'inferred',
+    }]);
 
     const receipts = await db.query(`
       SELECT actor_id, source_intent_version, target_intent_version,

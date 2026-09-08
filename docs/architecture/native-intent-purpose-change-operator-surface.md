@@ -109,6 +109,28 @@ extends the audit-event allowlist for the committed native-purpose change
 event. This corrects the former mismatch that rolled back an otherwise valid
 transaction.
 
+## Profile-Derived Purpose Read Amendment
+
+On 8 September 2026, the read projection was amended for an active purpose
+rule whose stored provenance is `media_server_library_profile`. Stored profile
+provenance is evidence about the current library configuration, not a
+browser-authorized change instruction. Passing that row directly into the
+native-purpose command normalizer made the narrow administrator read
+unavailable because the write contract rightly accepts only native-intent
+provenance.
+
+The read service now uses a server-only allowlist adapter to project exactly
+the five editable fields: signal type, operator, values, constraint mode, and
+semantics. It canonicalizes those fields, then removes the normalizer's
+server-owned provenance fields from the GET projection. A later administrator
+submission still follows the existing revision-checked, transactional write
+path, which assigns its canonical native-intent provenance itself. The client
+does not receive or submit stored profile provenance.
+
+See [Native Purpose Profile Source Read Design](native-purpose-profile-source-read-design.md)
+and [Native Purpose Profile Source Read Outcome](native-purpose-profile-source-read-outcome.md)
+for the decision, alternatives, and local verification.
+
 ## Follow-Up
 
 12R.6 is complete. Native intent changes now use durable, actor- and

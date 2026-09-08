@@ -22,6 +22,9 @@ import {
 import {
   loadPolicyNativeIntentPurposeChangeReadContext,
 } from './policyNativeIntentPurposeChangeReadPersistence.mjs';
+import {
+  projectStoredPurposeRulesForNativeIntentChange,
+} from './policyNativeIntentPurposeChangeStoredRuleAdapter.mjs';
 
 function normalizePositiveInteger(value) {
   const numericValue = Number(value);
@@ -29,10 +32,19 @@ function normalizePositiveInteger(value) {
 }
 
 function buildStoredPurposeChangeCommand(purposeRules = []) {
-  return normalizePolicyNativeIntentChangePurposeCommand({
+  const normalizedCommand = normalizePolicyNativeIntentChangePurposeCommand({
     command_id: 'update_purpose',
-    values: purposeRules,
+    values: projectStoredPurposeRulesForNativeIntentChange(purposeRules),
   });
+
+  return {
+    command_id: normalizedCommand.command_id,
+    values: normalizedCommand.values.map(({
+      source: _source,
+      inference_state: _inferenceState,
+      ...rule
+    }) => rule),
+  };
 }
 
 function createPolicyNativeIntentPurposeChangeReadService({

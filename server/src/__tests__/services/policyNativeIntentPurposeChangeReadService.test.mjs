@@ -34,8 +34,18 @@ function activeContext(overrides = {}) {
 }
 
 describe('policyNativeIntentPurposeChangeReadService', () => {
-  test('returns a canonical active purpose command without accepting browser authority', async () => {
-    const loadContext = jest.fn().mockResolvedValue(activeContext());
+  test('returns a canonical active purpose command from profile-derived storage without replaying its provenance', async () => {
+    const loadContext = jest.fn().mockResolvedValue(activeContext({
+      purposeRules: [{
+        signal_type: 'genres',
+        operator: 'require_any',
+        values: { require_any: ['Animation'] },
+        constraint_mode: 'advisory',
+        semantics: 'identity',
+        source: 'media_server_library_profile',
+        inference_state: 'inferred',
+      }],
+    }));
     const service = createPolicyNativeIntentPurposeChangeReadService({ loadContext });
 
     const result = await service.getPurposeChange({
@@ -55,6 +65,9 @@ describe('policyNativeIntentPurposeChangeReadService', () => {
       changeCommand: expect.objectContaining({ command_id: 'update_purpose' }),
     }));
     expect(result.changeCommand.values[0].values).toEqual({ require_any: ['Animation'] });
+    expect(result.changeCommand.values[0]).not.toHaveProperty('source');
+    expect(result.changeCommand.values[0]).not.toHaveProperty('inference_state');
+    expect(JSON.stringify(result.changeCommand)).not.toContain('media_server_library_profile');
   });
 
   test('does not project editable authority when native authority is absent or unavailable', async () => {

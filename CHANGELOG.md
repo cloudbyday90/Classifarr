@@ -310,6 +310,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- **Profile-derived purpose maintenance** — The administrator native-purpose
+  editor can now prepare profile-derived stored purpose as a clean typed draft
+  without passing profile provenance through the browser or blocking an
+  explicit declared-purpose change.
+
 - **Backend unit test reliability** — Run the full unit suite with bounded
   Jest workers and worker memory recycling so the documented local command
   completes without exhausting Node's default heap.
