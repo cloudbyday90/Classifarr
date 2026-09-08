@@ -21,8 +21,8 @@ collect labels, invoke AI, change a policy, or route media.
 PostgreSQL. For each active validated native policy, it combines:
 
 - current specialized-purpose provenance;
-- that policy's established initial-intent receipt and applied native-intent
-  change receipts;
+- that policy's established initial-intent receipt, applied native-intent
+  change receipts, and strictly verified terminal library-rebuild replacements;
 - each receipt's referenced intent and aggregate retained-purpose provenance.
 
 It returns only fixed aggregate counts. The current retained-purpose policies
@@ -52,8 +52,10 @@ receipt data associated with active policies and returns no history rows.
   library, actor, receipt, timestamp, fingerprint, rule-value, media, model,
   prompt, response, RAG, or classification-history data.
 - Initial receipts require `state = 'established'`; changes require
-  `result_status_id = 'applied'`. Change targets also match policy, source, and
-  target intent version before being counted as verifiable.
+  `result_status_id = 'applied'`. Rebuild replacements require a terminal gate,
+  an immutable no-difference verification run, a matching replacement event, and
+  exact source and target intent revisions. All targets match the same policy and
+  current intent version before being counted as verifiable.
 - A current retained policy and a historical receipt must share the same policy
   ID inside the database, and one verifiable receipt must name that policy's
   current active intent. No cross-policy or stale-intent aggregate can qualify

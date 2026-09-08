@@ -11,6 +11,9 @@
 import {
   buildNativeIntentAuthoritySqlPredicate,
 } from './policyNativeIntentAuthorityEligibility.mjs';
+import {
+  buildPolicyPurposeLifecycleReceiptSourceCtesSql,
+} from './policyPurposeLifecycleReceiptSources.mjs';
 
 function asArray(value) {
   return Array.isArray(value?.rows) ? value.rows : [];
@@ -61,26 +64,9 @@ export async function loadPolicyPurposeEvidenceInventoryRecord({ db }) {
         AND rule.signal_type IN ('genres', 'keywords', 'studios')
        GROUP BY active.policy_id
      ),
-     normal_lifecycle_receipts AS (
-       SELECT
-         establishment.policy_id,
-         establishment.intent_id,
-         NULL::INTEGER AS expected_intent_version
-       FROM policy_initial_intent_establishments establishment
-       JOIN active_native_policies active ON active.policy_id = establishment.policy_id
-       WHERE establishment.state = 'established'
-         AND establishment.intent_id IS NOT NULL
-
-       UNION ALL
-
-       SELECT
-         change_receipt.policy_id,
-         change_receipt.target_intent_id AS intent_id,
-         change_receipt.target_intent_version AS expected_intent_version
-       FROM policy_native_intent_change_receipts change_receipt
-       JOIN active_native_policies active ON active.policy_id = change_receipt.policy_id
-       WHERE change_receipt.result_status_id = 'applied'
-     ),
+     ${buildPolicyPurposeLifecycleReceiptSourceCtesSql({
+       scope: 'active-policy-inventory',
+     })},
      lifecycle_receipt_provenance AS (
        SELECT
          receipt.policy_id,

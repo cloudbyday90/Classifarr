@@ -23,6 +23,7 @@ const retainedLifecycleReceipt = {
     normalLifecycleReceiptCount: 2,
     initialIntentEstablishmentCount: 1,
     nativeIntentChangeCount: 1,
+    libraryRebuildReplacementCount: 0,
     verifiableReceiptCount: 2,
     unverifiableReceiptCount: 0,
     retainedPurposeReceiptCount: 2,
@@ -47,6 +48,7 @@ describe('policyPurposeLifecycleProvenanceReceipt', () => {
         normalLifecycleReceiptCount: 2,
         initialIntentEstablishmentCount: 1,
         nativeIntentChangeCount: 1,
+        libraryRebuildReplacementCount: 0,
         verifiableReceiptCount: 2,
         unverifiableReceiptCount: 0,
         retainedPurposeReceiptCount: 2,
@@ -86,5 +88,33 @@ describe('policyPurposeLifecycleProvenanceReceipt', () => {
         profileOnlyPurposeReceiptCount: 2,
       },
     })).toBeNull()
+  })
+
+  it('accepts an aggregate-only verified rebuild replacement as a normal change', () => {
+    const rebuildReceipt = {
+      ...retainedLifecycleReceipt,
+      scope: {
+        ...retainedLifecycleReceipt.scope,
+        observedReceiptCount: 1,
+      },
+      summary: {
+        ...retainedLifecycleReceipt.summary,
+        normalLifecycleReceiptCount: 1,
+        initialIntentEstablishmentCount: 0,
+        nativeIntentChangeCount: 0,
+        libraryRebuildReplacementCount: 1,
+        verifiableReceiptCount: 1,
+        retainedPurposeReceiptCount: 1,
+      },
+    }
+
+    expect(normalizePolicyPurposeLifecycleProvenanceReceipt(rebuildReceipt)).toEqual(
+      expect.objectContaining({
+        summary: expect.objectContaining({
+          libraryRebuildReplacementCount: 1,
+          normalPolicyChangeObserved: true,
+        }),
+      }),
+    )
   })
 })

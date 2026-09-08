@@ -31,7 +31,7 @@ function boolean(value) {
 
 function deriveStatusId({
   normalLifecycleReceiptCount,
-  nativeIntentChangeCount,
+  normalPolicyChangeCount,
   unverifiableReceiptCount,
   retainedForEveryVerifiableReceipt,
   truncated,
@@ -39,7 +39,7 @@ function deriveStatusId({
   if (normalLifecycleReceiptCount === 0) return 'no_recorded_normal_lifecycle'
   if (unverifiableReceiptCount > 0) return 'normal_lifecycle_receipt_verification_required'
   if (truncated) return 'normal_lifecycle_history_truncated'
-  if (retainedForEveryVerifiableReceipt && nativeIntentChangeCount === 0) {
+  if (retainedForEveryVerifiableReceipt && normalPolicyChangeCount === 0) {
     return 'declared_purpose_retained_for_observed_initial_establishments'
   }
   if (retainedForEveryVerifiableReceipt) {
@@ -65,6 +65,9 @@ export function normalizePolicyPurposeLifecycleProvenanceReceipt(value) {
     value.summary?.initialIntentEstablishmentCount,
   )
   const nativeIntentChangeCount = nonNegativeInteger(value.summary?.nativeIntentChangeCount)
+  const libraryRebuildReplacementCount = nonNegativeInteger(
+    value.summary?.libraryRebuildReplacementCount,
+  )
   const verifiableReceiptCount = nonNegativeInteger(value.summary?.verifiableReceiptCount)
   const unverifiableReceiptCount = nonNegativeInteger(value.summary?.unverifiableReceiptCount)
   const retainedPurposeReceiptCount = nonNegativeInteger(
@@ -83,13 +86,15 @@ export function normalizePolicyPurposeLifecycleProvenanceReceipt(value) {
     normalLifecycleReceiptCount === null ||
     initialIntentEstablishmentCount === null ||
     nativeIntentChangeCount === null ||
+    libraryRebuildReplacementCount === null ||
     verifiableReceiptCount === null ||
     unverifiableReceiptCount === null ||
     retainedPurposeReceiptCount === null ||
     profileOnlyPurposeReceiptCount === null ||
     noSpecializedPurposeReceiptCount === null ||
     observedReceiptCount !== normalLifecycleReceiptCount ||
-    normalLifecycleReceiptCount !== initialIntentEstablishmentCount + nativeIntentChangeCount ||
+    normalLifecycleReceiptCount !== initialIntentEstablishmentCount + nativeIntentChangeCount +
+      libraryRebuildReplacementCount ||
     normalLifecycleReceiptCount !== verifiableReceiptCount + unverifiableReceiptCount ||
     verifiableReceiptCount !== retainedPurposeReceiptCount +
       profileOnlyPurposeReceiptCount + noSpecializedPurposeReceiptCount
@@ -98,7 +103,8 @@ export function normalizePolicyPurposeLifecycleProvenanceReceipt(value) {
   const truncated = boolean(value.scope?.truncated)
   const retainedForEveryVerifiableReceipt = verifiableReceiptCount > 0 &&
     retainedPurposeReceiptCount === verifiableReceiptCount
-  const normalPolicyChangeObserved = nativeIntentChangeCount > 0
+  const normalPolicyChangeCount = nativeIntentChangeCount + libraryRebuildReplacementCount
+  const normalPolicyChangeObserved = normalPolicyChangeCount > 0
   const normalPolicyChangeRetentionVerified = !truncated &&
     normalPolicyChangeObserved &&
     unverifiableReceiptCount === 0 &&
@@ -106,7 +112,7 @@ export function normalizePolicyPurposeLifecycleProvenanceReceipt(value) {
 
   if (value.statusId !== deriveStatusId({
     normalLifecycleReceiptCount,
-    nativeIntentChangeCount,
+    normalPolicyChangeCount,
     unverifiableReceiptCount,
     retainedForEveryVerifiableReceipt,
     truncated,
@@ -124,6 +130,7 @@ export function normalizePolicyPurposeLifecycleProvenanceReceipt(value) {
       normalLifecycleReceiptCount,
       initialIntentEstablishmentCount,
       nativeIntentChangeCount,
+      libraryRebuildReplacementCount,
       verifiableReceiptCount,
       unverifiableReceiptCount,
       retainedPurposeReceiptCount,

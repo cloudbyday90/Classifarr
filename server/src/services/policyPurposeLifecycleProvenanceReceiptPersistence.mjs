@@ -8,6 +8,10 @@
  * (at your option) any later version.
  */
 
+import {
+  buildPolicyPurposeLifecycleReceiptSourceCtesSql,
+} from './policyPurposeLifecycleReceiptSources.mjs';
+
 function asArray(value) {
   return Array.isArray(value?.rows) ? value.rows : [];
 }
@@ -20,40 +24,9 @@ function asArray(value) {
  */
 export async function loadPolicyPurposeLifecycleProvenanceReceiptRecords({ db, limit }) {
   const result = await db.query(
-    `WITH initial_lifecycle_receipts AS (
-       SELECT
-         establishment.intent_id,
-         establishment.policy_id,
-         1::INTEGER AS expected_intent_version,
-         establishment.established_at AS occurred_at,
-         establishment.id AS receipt_id,
-         'initial_intent_establishment'::TEXT AS lifecycle_transition
-       FROM policy_initial_intent_establishments establishment
-       WHERE establishment.state = 'established'
-         AND establishment.intent_id IS NOT NULL
-       ORDER BY establishment.established_at DESC NULLS LAST, establishment.id DESC
-       LIMIT $1
-     ),
-     change_lifecycle_receipts AS (
-       SELECT
-         change_receipt.target_intent_id AS intent_id,
-         change_receipt.policy_id,
-         change_receipt.target_intent_version AS expected_intent_version,
-         change_receipt.created_at AS occurred_at,
-         change_receipt.id AS receipt_id,
-         'native_intent_change'::TEXT AS lifecycle_transition
-       FROM policy_native_intent_change_receipts change_receipt
-       WHERE change_receipt.result_status_id = 'applied'
-       ORDER BY change_receipt.created_at DESC, change_receipt.id DESC
-       LIMIT $1
-     ),
-     normal_lifecycle_receipts AS (
-       SELECT * FROM initial_lifecycle_receipts
-
-       UNION ALL
-
-       SELECT * FROM change_lifecycle_receipts
-     ),
+    `WITH ${buildPolicyPurposeLifecycleReceiptSourceCtesSql({
+      scope: 'recent-receipt-window',
+    })},
      bounded_receipts AS (
        SELECT *
        FROM normal_lifecycle_receipts

@@ -5,11 +5,13 @@ Status: implemented on 2026-09-08.
 ## Outcome
 
 The administrator-only policy-purpose review now returns
-`policy_purpose_coverage_review.v7` with a new aggregate
+`policy_purpose_coverage_review.v8` with a new aggregate
 `evidenceInventory`. It reports availability of authoritative current native
 intent, intent version and schema version, retained declared purpose,
 verifiable lifecycle records, current-intent lifecycle records, complete
-records, and incomplete records.
+records, and incomplete records. Verified terminal library-rebuild replacements
+are recognised as normal lifecycle records only when their durable verification
+and revision bindings agree.
 
 The inventory is library- and configuration-agnostic. It contains no policy,
 library, intent, receipt, author, provider, media, profile, rule, or AI data.
@@ -23,8 +25,8 @@ eligibility input, never a cohort selection, label, or routing decision.
 ## Implementation
 
 - Added modular server inventory contract and persistence services.
-- Reused the single inventory aggregate to drive the existing source-readiness
-  contract, preventing divergent current-policy and lifecycle reads.
+- Reused the single receipt-source module for the inventory and bounded lifecycle panel, preventing divergent current-policy and lifecycle reads.
+- Recognized an already persisted verified terminal library-rebuild replacement as a current intent lifecycle receipt without returning library or configuration data.
 - Added strict client normalization and an accessible, read-only inventory
   panel.
 - Added a PostgreSQL integration case that replaces a policy's active intent
@@ -45,7 +47,7 @@ random PR could be implemented locally or merged.
 
 ## Next task
 
-Allow ordinary native policy authoring to accumulate complete passive evidence.
+Allow ordinary native policy authoring and verified terminal rebuilds to accumulate complete passive evidence.
 When the aggregate first reports availability, run the private eligibility
 audit and one independently labelled 24–32-case cohort. Treat a good measured
 error profile as a prerequisite for a review-only semantic counter-evidence

@@ -22,7 +22,7 @@
     <p class="mt-1 max-w-3xl text-sm leading-6 text-gray-300">
       {{ statusDescription(receipt.statusId) }}
     </p>
-    <dl class="mt-3 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+    <dl class="mt-3 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-5">
       <div>
         <dt class="text-xs uppercase tracking-wide text-gray-400">
           Initial establishments
@@ -33,10 +33,18 @@
       </div>
       <div>
         <dt class="text-xs uppercase tracking-wide text-gray-400">
-          Normal changes
+          Native-intent changes
         </dt>
         <dd class="mt-1 text-white">
           {{ receipt.summary.nativeIntentChangeCount }}
+        </dd>
+      </div>
+      <div>
+        <dt class="text-xs uppercase tracking-wide text-gray-400">
+          Verified rebuild replacements
+        </dt>
+        <dd class="mt-1 text-white">
+          {{ receipt.summary.libraryRebuildReplacementCount }}
         </dd>
       </div>
       <div>
@@ -102,7 +110,7 @@ function statusClass(statusId) {
 
 function statusDescription(statusId) {
   if (statusId === 'declared_purpose_retained_for_observed_lifecycle_receipts') {
-    return 'Every verifiable normal creation or change receipt in the complete observed history retained specialized declared purpose outside inferred library-profile evidence. This is provenance evidence only; it does not create a cohort, labels, semantic selection, or routing authority.'
+    return 'Every verifiable normal creation, native-intent change, or verified rebuild-replacement receipt in the complete observed history retained specialized declared purpose outside inferred library-profile evidence. This is provenance evidence only; it does not create a cohort, labels, semantic selection, or routing authority.'
   }
   if (statusId === 'declared_purpose_retained_for_observed_initial_establishments') {
     return 'Observed initial declared-intent establishments retained specialized purpose, but no normal policy change receipt is available yet. This does not create a cohort, labels, semantic selection, or routing authority.'
@@ -116,6 +124,6 @@ function statusDescription(statusId) {
   if (statusId === 'purpose_retention_review_required') {
     return 'At least one verifiable normal lifecycle receipt is profile-only or has no specialized purpose. The result requests review only and cannot change a policy, classify media, or route an item.'
   }
-  return 'No durable normal policy establishment or change receipt is available yet. This does not request an operator action or create semantic-study eligibility.'
+  return 'No durable normal policy establishment, native-intent change, or verified rebuild-replacement receipt is available yet. This does not request an operator action or create semantic-study eligibility.'
 }
 </script>

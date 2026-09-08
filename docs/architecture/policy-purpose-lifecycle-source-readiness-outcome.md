@@ -4,9 +4,9 @@ Status: implemented on 2026-09-08.
 
 ## Implemented outcome
 
-The policy-purpose coverage response is now version 7. Its held-out source
+The policy-purpose coverage response is now version 8. Its held-out source
 readiness now joins current declared-purpose provenance with lifecycle receipts
-for the same active policy and current active native intent. A retained purpose
+for the same active policy and current active native intent. A verified terminal library-rebuild replacement also qualifies only when its execution gate, immutable verification run, replacement event, and exact revisions agree. A retained purpose
 in one policy, a lifecycle receipt in another, or a receipt for a superseded
 intent can no longer produce an available private-study source.
 
@@ -24,8 +24,8 @@ not change authoring records, policy behavior, AI behavior, or routing.
   and review-required lifecycle partitions, contract versioning, and SQL data
   minimization.
 - PostgreSQL integration seeds one established receipt for a retained active
-  policy, then replaces another policy's current intent without a receipt. It
-  confirms only the current-receipted policy qualifies while the stale receipt
+  policy, then replaces another policy's current intent without a receipt, and creates one fully verified library-rebuild replacement. It
+  confirms the current-receipted and verified-rebuild policies qualify while the stale receipt
   remains unqualified.
 - Client tests reject contradictory availability and display the new aggregate
   categories without introducing any control.

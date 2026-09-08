@@ -1,107 +1,107 @@
 # Policy Purpose Lifecycle Provenance Receipt Design
 
-Status: implemented on 2026-09-08.
+Status: updated on 2026-09-08.
 
 ## Problem
 
-Classifarr could show whether the *current* active policy purpose was retained,
-profile-only, or absent. It could not automatically show whether declared
-purpose survived ordinary policy lifecycle operations. That leaves a gap before
-a retained policy-purpose source can be treated as a candidate input to the
-existing held-out-study eligibility audit.
+Classifarr could show whether the current active policy purpose was retained,
+profile-only, or absent. It needed to establish, without operator input,
+whether that declared purpose also survived the normal lifecycle pathway that
+created the current intent. The original receipt aggregate covered initial
+native-intent establishment and native-intent changes. It did not recognise an
+already durable, fully verified library-rebuild replacement.
 
-The solution must add no operator workflow, policy edit, label, cohort, or
-routing action. It must also avoid returning configured rule values, receipt
-fingerprints, actor identities, timestamps, media data, or profile data.
+The solution must stay library- and configuration-agnostic. It must return no
+configured rule values, receipt fingerprints, actor identities, timestamps,
+media data, or profile data. It cannot edit a policy, create a cohort, collect
+labels, invoke AI, or route media.
 
 ## Design
 
-The administrator-only existing purpose-coverage endpoint now includes a
-`policy_purpose_lifecycle_provenance_receipt.v1` aggregate. It reads only two
-existing append-only normal-authoring records:
+The administrator-only purpose-coverage endpoint includes the read-only
+`policy_purpose_lifecycle_provenance_receipt.v2` aggregate. Its ESM source
+module owns three normal lifecycle sources:
 
 - an established `policy_initial_intent_establishments` record, which refers to
   the first declared native-intent revision;
 - an applied `policy_native_intent_change_receipts` record, which refers to the
-  target revision of a normal native-intent change.
+  target revision of a normal native-intent change; and
+- a terminal `policy_library_rebuild_execution_gates` replacement, which binds
+  its source and replacement revisions to one immutable verification run and
+  replacement event.
 
-For each receipt, PostgreSQL verifies that the referenced native-intent ID,
-policy ID, source, and intended version still agree. It then reduces only
-identity-purpose rules for `genres`, `keywords`, and `studios` to two counts:
-all specialized rules and the inferred-library-profile subset. The server
-contract derives retained, profile-only, and absent states from those counts.
+A rebuild can contribute only when all durable bindings agree: the execution
+gate is `replacement_applied`; its replacement intent, event, and time exist;
+the event has the expected type and exact source/target revisions; both intents
+belong to the same policy and library; the verification run binds the same
+policy, source intent, library transition fingerprint, and verifier fingerprint;
+and every fixed source, verifier, and coordinator audit has zero differences.
 
-The reader fetches the most recent 101 receipts, returns at most 100, and marks
-the result `normal_lifecycle_history_truncated` when an omitted receipt exists.
-A missing or mismatched revision is `unverifiable`; the receipt then requires
-verification rather than making a retention claim. The response contains
-transition totals and aggregate provenance totals only.
-
-Two partial indexes support the bounded, newest-first reader. A new Vue child
-component and independent allow-list normalizer present the result within the
-existing purpose-coverage review. The API remains administrator-only, and the
-client discards unknown statuses or inconsistent counts.
+The shared source builder supports a complete active-policy inventory scope and
+a bounded recent-history scope. PostgreSQL verifies that every receipt still
+matches its native-intent ID, policy ID, source, and expected version before it
+reduces identity-purpose rules for `genres`, `keywords`, and `studios` to
+aggregate retained, profile-only, or absent counts. The response contains only
+transition and provenance totals. Its parent review response is
+`policy_purpose_coverage_review.v8`.
 
 ## Decision boundaries
 
-The receipt is evidence about authoring history. It cannot establish semantic
-correctness, a semantic cohort, independent labels, readiness, frozen-study
-preflight, counter-evidence, automatic routing, or a policy change. A retained
-result simply makes it possible for the separate private eligibility audit to
-consider a current policy source. The existing readiness and frozen-study gates
-remain required.
+This receipt is evidence about durable authoring history. It cannot establish
+semantic correctness, a semantic cohort, independent labels, readiness,
+frozen-study preflight, counter-evidence, automatic routing, or a policy
+change. A retained result only supplies passive evidence for the existing
+private eligibility audit. The existing readiness and frozen-study gates remain
+required.
 
 ## Security and privacy controls
 
-- All source records are append-only lifecycle receipts already protected by
-  the existing normal authoring path.
-- The query is parameterized and bounded. It selects no rule values,
-  identifiers, actors, fingerprints, timestamps, media IDs, titles, profile
-  observations, history, RAG data, or AI data.
-- The SQL reader checks that receipt and intent references agree before it
-  treats a record as verifiable.
-- The client validates a closed list of statuses and exact count relationships.
-  It hard-codes every semantic, labeling, and routing flag to `false`.
-- The view has no mutation control. Existing server-side administrator
+- Sources are durable lifecycle records protected by existing normal authoring
+  and verified rebuild workflows.
+- The query is bounded and selects no rule values, identifiers, actors,
+  fingerprints, timestamps, media IDs, titles, profile observations, history,
+  RAG data, or AI data for the application layer.
+- A mismatched, incomplete, nonterminal, or nonzero-difference rebuild is never
+  considered a receipt.
+- The client validates a closed status allow-list and exact count relationships.
+  Semantic, labelling, selection, and routing flags remain false.
+- The view has no mutation control; existing server-side administrator
   authorization remains the enforcement point.
 
 ## Research
 
-W3C PROV-DM describes provenance in terms of entities, activities, and
-responsible agents. The receipt follows that model by connecting a durable
-normal authoring activity to its resulting intent revision, while exposing only
-the minimal aggregate needed for quality assessment. [W3C PROV-DM](https://www.w3.org/TR/prov-dm/)
+W3C PROV-DM describes provenance through entities, activities, and agents. The
+aggregate keeps the entity/activity relationship while withholding the
+underlying records. [W3C PROV-DM](https://www.w3.org/2012/10/prov-dm)
 
-NIST's AI RMF Measure guidance emphasizes documenting and revisiting metrics so
-that results remain repeatable and useful for governance. The fixed schema,
-bounded scope, truncation signal, and explicit non-decision flags provide a
-repeatable measurement boundary rather than a probabilistic semantic claim.
-[NIST AI RMF Measure](https://airc.nist.gov/airmf-resources/playbook/measure/)
+NIST's SP 800-92 Rev. 1 draft treats collection, protection, review, and
+retention as log-management concerns. Existing durable verification evidence is
+stronger than a new manual attestation channel. [NIST SP 800-92 Rev. 1
+IPD](https://csrc.nist.gov/pubs/sp/800/92/r1/ipd)
 
-OWASP logging guidance recommends protecting recorded events and excluding or
-sanitizing sensitive material such as session values, credentials, and secrets.
-The design therefore reduces receipt records to counts and never serializes
-actor or idempotency material. [OWASP Logging Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html)
+OWASP recommends limiting sensitive data in logs and controlling access to log
+data. This contract returns aggregate counts and fixed statuses only. [OWASP
+Logging Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html)
 
 ## Options considered
 
 | Option | Advantages | Costs and risks |
 | --- | --- | --- |
-| Aggregate lifecycle receipt (chosen) | Automatic, low-disclosure, deterministic, bounded, and directly checks normal authoring retention | Does not explain a specific policy term or prove semantic correctness |
-| Return receipt or rule details | Faster manual diagnosis | Discloses unnecessary identifiers, timestamps, actor data, and configured purpose |
-| Infer lifecycle provenance from current policy only | No additional query | Cannot distinguish a normal authoring transition from an unrelated current state |
-| Ask an operator to attest after each change | Explicit acknowledgement | Adds recurring manual work and does not independently verify storage |
-| Add semantic counter-evidence now | Appears to advance automation | Bypasses cohort, independent-label, measured-error, readiness, and preflight gates |
+| Shared aggregate receipt source (chosen) | Automatic, bounded, deterministic, and prevents inventory/panel drift | Does not explain an individual policy term or prove semantic correctness |
+| Return receipt or rule details | Faster manual diagnosis | Discloses unnecessary identifiers, timestamps, and configuration |
+| Infer from a current library profile | No receipt query | Confuses observed configuration with declared policy purpose |
+| Ask for operator attestation | Explicit acknowledgement | Reintroduces manual work and does not verify stored evidence |
+| Add semantic counter-evidence now | Appears to advance automation | Bypasses cohort, independent-label, measured-error, and preflight gates |
 
 ## Recommendation stack
 
-1. Keep the lifecycle receipt aggregate-only, bounded, and read-only.
-2. Treat unmatched revisions, profile-only purpose, absent purpose, and
-   truncated history as non-verifying states.
-3. Use a complete retained result only as passive evidence for the existing
-   private held-out eligibility audit.
-4. Run one real 24–32-case cohort and collect independent human labels only
-   after the source audit reports eligible retained purpose.
-5. Add semantic counter-evidence only if measured error satisfies readiness and
-   frozen-study preflight; it may send ambiguous items to review and must never
-   route them automatically.
+1. Keep the three-source aggregate-only lifecycle receipt as shared inventory
+   and administrator evidence.
+2. Treat unmatched revisions, incomplete rebuild verification, profile-only
+   purpose, absent purpose, and truncated history as non-verifying states.
+3. Let normal authoring and verified rebuilds accumulate passive evidence;
+   never infer it from library configuration or manufacture receipts.
+4. When the aggregate is complete, capture one real independently labelled
+   24–32-case cohort and run the existing readiness plus frozen-study preflight.
+5. Only a good measured error profile may justify semantic counter-evidence that
+   sends ambiguous items to review; it must never route automatically.

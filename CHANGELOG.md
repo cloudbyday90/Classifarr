@@ -11,6 +11,13 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Passive verified rebuild lifecycle evidence** — The administrator-only
+  policy-purpose review now counts an existing terminal library-rebuild
+  replacement only when its execution gate, immutable verification run, event,
+  and intent-revision bindings agree. The aggregate remains library- and
+  configuration-agnostic; it exposes no configuration and cannot select a
+  cohort, label media, invoke AI, or route media.
+
 - **Library-agnostic policy evidence inventory** — The administrator-only
   policy-purpose review now reports fixed aggregate availability of current
   authoritative native intents, retained declared purpose, and matching normal

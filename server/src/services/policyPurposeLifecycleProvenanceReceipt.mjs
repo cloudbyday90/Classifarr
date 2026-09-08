@@ -12,8 +12,11 @@ import {
   buildPolicyPurposeCoverageProvenance,
   POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS,
 } from './policyPurposeCoverageProvenance.mjs';
+import {
+  POLICY_PURPOSE_LIFECYCLE_TRANSITION_IDS,
+} from './policyPurposeLifecycleReceiptSources.mjs';
 
-export const POLICY_PURPOSE_LIFECYCLE_PROVENANCE_RECEIPT_VERSION = 1;
+export const POLICY_PURPOSE_LIFECYCLE_PROVENANCE_RECEIPT_VERSION = 2;
 export const DEFAULT_POLICY_PURPOSE_LIFECYCLE_PROVENANCE_RECEIPT_ROWS = 100;
 
 export const POLICY_PURPOSE_LIFECYCLE_PROVENANCE_RECEIPT_STATUS_IDS = Object.freeze({
@@ -28,18 +31,13 @@ export const POLICY_PURPOSE_LIFECYCLE_PROVENANCE_RECEIPT_STATUS_IDS = Object.fre
   PURPOSE_RETENTION_REVIEW_REQUIRED: 'purpose_retention_review_required',
 });
 
-const NORMAL_LIFECYCLE_TRANSITION_IDS = Object.freeze({
-  INITIAL_INTENT_ESTABLISHMENT: 'initial_intent_establishment',
-  NATIVE_INTENT_CHANGE: 'native_intent_change',
-});
-
 function asNonNegativeInteger(value) {
   const numericValue = Number(value);
   return Number.isInteger(numericValue) && numericValue >= 0 ? numericValue : 0;
 }
 
 function isKnownTransition(value) {
-  return Object.values(NORMAL_LIFECYCLE_TRANSITION_IDS).includes(value);
+  return Object.values(POLICY_PURPOSE_LIFECYCLE_TRANSITION_IDS).includes(value);
 }
 
 function isIntentAvailable(record) {
@@ -77,11 +75,15 @@ export function buildPolicyPurposeLifecycleProvenanceReceipt({
     : [];
   const normalLifecycleReceiptCount = entries.length;
   const initialIntentEstablishmentCount = entries.filter((entry) => (
-    entry.transitionId === NORMAL_LIFECYCLE_TRANSITION_IDS.INITIAL_INTENT_ESTABLISHMENT
+    entry.transitionId === POLICY_PURPOSE_LIFECYCLE_TRANSITION_IDS.INITIAL_INTENT_ESTABLISHMENT
   )).length;
   const nativeIntentChangeCount = entries.filter((entry) => (
-    entry.transitionId === NORMAL_LIFECYCLE_TRANSITION_IDS.NATIVE_INTENT_CHANGE
+    entry.transitionId === POLICY_PURPOSE_LIFECYCLE_TRANSITION_IDS.NATIVE_INTENT_CHANGE
   )).length;
+  const libraryRebuildReplacementCount = entries.filter((entry) => (
+    entry.transitionId === POLICY_PURPOSE_LIFECYCLE_TRANSITION_IDS.LIBRARY_REBUILD_REPLACEMENT
+  )).length;
+  const normalPolicyChangeCount = nativeIntentChangeCount + libraryRebuildReplacementCount;
   const verifiableReceiptCount = entries.filter((entry) => entry.intentAvailable).length;
   const unverifiableReceiptCount = normalLifecycleReceiptCount - verifiableReceiptCount;
   const retainedPurposeReceiptCount = entries.filter((entry) => (
@@ -114,7 +116,7 @@ export function buildPolicyPurposeLifecycleProvenanceReceipt({
       : !fullHistoryObserved
         ? POLICY_PURPOSE_LIFECYCLE_PROVENANCE_RECEIPT_STATUS_IDS
           .NORMAL_LIFECYCLE_HISTORY_TRUNCATED
-      : retainedForEveryVerifiableReceipt && nativeIntentChangeCount === 0
+      : retainedForEveryVerifiableReceipt && normalPolicyChangeCount === 0
         ? POLICY_PURPOSE_LIFECYCLE_PROVENANCE_RECEIPT_STATUS_IDS
           .DECLARED_PURPOSE_RETAINED_FOR_OBSERVED_INITIAL_ESTABLISHMENTS
         : retainedForEveryVerifiableReceipt
@@ -138,15 +140,16 @@ export function buildPolicyPurposeLifecycleProvenanceReceipt({
       normalLifecycleReceiptCount,
       initialIntentEstablishmentCount,
       nativeIntentChangeCount,
+      libraryRebuildReplacementCount,
       verifiableReceiptCount,
       unverifiableReceiptCount,
       retainedPurposeReceiptCount,
       profileOnlyPurposeReceiptCount,
       noSpecializedPurposeReceiptCount,
       retainedForEveryVerifiableReceipt,
-      normalPolicyChangeObserved: nativeIntentChangeCount > 0,
+      normalPolicyChangeObserved: normalPolicyChangeCount > 0,
       normalPolicyChangeRetentionVerified: fullHistoryObserved &&
-        nativeIntentChangeCount > 0 &&
+        normalPolicyChangeCount > 0 &&
         unverifiableReceiptCount === 0 &&
         retainedForEveryVerifiableReceipt,
     },

@@ -32,7 +32,7 @@ describe('policyPurposeLifecycleProvenanceReceipt', () => {
     });
 
     expect(receipt).toEqual(expect.objectContaining({
-      version: 'policy_purpose_lifecycle_provenance_receipt.v1',
+      version: 'policy_purpose_lifecycle_provenance_receipt.v2',
       statusId: POLICY_PURPOSE_LIFECYCLE_PROVENANCE_RECEIPT_STATUS_IDS
         .DECLARED_PURPOSE_RETAINED_FOR_OBSERVED_LIFECYCLE_RECEIPTS,
       scope: {
@@ -45,6 +45,7 @@ describe('policyPurposeLifecycleProvenanceReceipt', () => {
         normalLifecycleReceiptCount: 2,
         initialIntentEstablishmentCount: 1,
         nativeIntentChangeCount: 1,
+        libraryRebuildReplacementCount: 0,
         verifiableReceiptCount: 2,
         unverifiableReceiptCount: 0,
         retainedPurposeReceiptCount: 2,
@@ -115,6 +116,7 @@ describe('policyPurposeLifecycleProvenanceReceipt', () => {
     );
     expect(receipt.summary).toEqual(expect.objectContaining({
       nativeIntentChangeCount: 0,
+      libraryRebuildReplacementCount: 0,
       normalPolicyChangeObserved: false,
       normalPolicyChangeRetentionVerified: false,
     }));
@@ -135,5 +137,29 @@ describe('policyPurposeLifecycleProvenanceReceipt', () => {
       POLICY_PURPOSE_LIFECYCLE_PROVENANCE_RECEIPT_STATUS_IDS.NORMAL_LIFECYCLE_HISTORY_TRUNCATED,
     );
     expect(receipt.summary.normalPolicyChangeRetentionVerified).toBe(false);
+  });
+
+  test('counts a fully verified library rebuild replacement as normal lifecycle evidence', () => {
+    const receipt = buildPolicyPurposeLifecycleProvenanceReceipt({
+      records: [{
+        lifecycle_transition: 'library_rebuild_replacement',
+        intent_available: true,
+        specialized_purpose_rule_count: 1,
+        inferred_profile_purpose_rule_count: 0,
+      }],
+    });
+
+    expect(receipt).toEqual(expect.objectContaining({
+      version: 'policy_purpose_lifecycle_provenance_receipt.v2',
+      statusId: POLICY_PURPOSE_LIFECYCLE_PROVENANCE_RECEIPT_STATUS_IDS
+        .DECLARED_PURPOSE_RETAINED_FOR_OBSERVED_LIFECYCLE_RECEIPTS,
+      summary: expect.objectContaining({
+        initialIntentEstablishmentCount: 0,
+        nativeIntentChangeCount: 0,
+        libraryRebuildReplacementCount: 1,
+        normalPolicyChangeObserved: true,
+        normalPolicyChangeRetentionVerified: true,
+      }),
+    }));
   });
 });

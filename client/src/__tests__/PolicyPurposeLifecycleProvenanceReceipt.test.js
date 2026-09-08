@@ -21,6 +21,7 @@ const receipt = {
     normalLifecycleReceiptCount: 2,
     initialIntentEstablishmentCount: 1,
     nativeIntentChangeCount: 1,
+    libraryRebuildReplacementCount: 0,
     verifiableReceiptCount: 2,
     unverifiableReceiptCount: 0,
     retainedPurposeReceiptCount: 2,
@@ -37,7 +38,8 @@ describe('PolicyPurposeLifecycleProvenanceReceipt', () => {
 
     expect(wrapper.text()).toContain('Normal policy purpose lifecycle')
     expect(wrapper.text()).toContain('Initial establishments')
-    expect(wrapper.text()).toContain('Normal changes')
+    expect(wrapper.text()).toContain('Native-intent changes')
+    expect(wrapper.text()).toContain('Verified rebuild replacements')
     expect(wrapper.text()).toContain('Retained-purpose receipts')
     expect(wrapper.text()).toContain('does not create a cohort, labels, semantic selection, or routing authority')
     expect(wrapper.findAll('button')).toHaveLength(0)

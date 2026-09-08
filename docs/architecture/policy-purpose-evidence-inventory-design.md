@@ -23,7 +23,7 @@ active authoritative native policies. For each policy, PostgreSQL compares:
 - the current native intent's existence, version, and schema version;
 - retained declared-purpose provenance, excluding inferred profile-only
   purpose;
-- established and applied normal lifecycle receipts;
+- established and applied normal lifecycle receipts, including strictly verified library-rebuild replacements;
 - whether every receipt is resolvable and retains declared purpose; and
 - whether at least one verifiable receipt names the current active intent and,
   when recorded, its current version.
@@ -39,7 +39,8 @@ A policy is complete only when all of these are true:
 1. its active native intent has a positive current intent and schema version;
 2. its current purpose contains retained declared evidence;
 3. it has normal lifecycle history, every receipt is verifiable and retains
-   declared purpose; and
+   declared purpose; this includes a library rebuild only when its terminal gate,
+   immutable verification run, event, and intent revisions agree; and
 4. at least one normal lifecycle receipt refers to the current active intent.
 
 The existing held-out source signal consumes the same inventory record and now
