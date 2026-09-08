@@ -122,7 +122,16 @@ export async function loadPolicyPurposeEvidenceInventoryRecord({ db }) {
                receipt.expected_intent_version IS NULL
                OR receipt.expected_intent_version = active.intent_version
              )
-         )::INTEGER AS current_intent_lifecycle_receipt_count
+         )::INTEGER AS current_intent_lifecycle_receipt_count,
+         COUNT(receipt.policy_id) FILTER (
+           WHERE receipt.intent_available
+             AND receipt.intent_id = active.intent_id
+             AND (
+               receipt.expected_intent_version IS NULL
+               OR receipt.expected_intent_version = active.intent_version
+             )
+             AND receipt.declared_native_purpose_rule_count > 0
+         )::INTEGER AS current_intent_retained_purpose_lifecycle_receipt_count
        FROM active_native_policies active
        LEFT JOIN lifecycle_receipt_provenance receipt ON receipt.policy_id = active.policy_id
        GROUP BY active.policy_id
@@ -138,7 +147,8 @@ export async function loadPolicyPurposeEvidenceInventoryRecord({ db }) {
          lifecycle.normal_lifecycle_receipt_count,
          lifecycle.verifiable_lifecycle_receipt_count,
          lifecycle.retained_purpose_lifecycle_receipt_count,
-         lifecycle.current_intent_lifecycle_receipt_count
+         lifecycle.current_intent_lifecycle_receipt_count,
+         lifecycle.current_intent_retained_purpose_lifecycle_receipt_count
        FROM active_native_policies active
        JOIN current_purpose_provenance current_purpose
          ON current_purpose.policy_id = active.policy_id
@@ -171,15 +181,16 @@ export async function loadPolicyPurposeEvidenceInventoryRecord({ db }) {
          WHERE current_intent_lifecycle_receipt_count > 0
        )::INTEGER AS current_intent_lifecycle_receipt_policy_count,
        COUNT(*) FILTER (
+         WHERE current_intent_retained_purpose_lifecycle_receipt_count > 0
+       )::INTEGER AS current_intent_retained_purpose_lifecycle_receipt_policy_count,
+       COUNT(*) FILTER (
          WHERE intent_version IS NOT NULL
            AND intent_version > 0
            AND schema_version IS NOT NULL
            AND schema_version > 0
            AND declared_native_purpose_rule_count > 0
-           AND normal_lifecycle_receipt_count > 0
-           AND normal_lifecycle_receipt_count = verifiable_lifecycle_receipt_count
-           AND normal_lifecycle_receipt_count = retained_purpose_lifecycle_receipt_count
            AND current_intent_lifecycle_receipt_count > 0
+           AND current_intent_retained_purpose_lifecycle_receipt_count > 0
        )::INTEGER AS complete_policy_evidence_count,
        COUNT(*) FILTER (
          WHERE specialized_purpose_rule_count > 0
@@ -187,26 +198,17 @@ export async function loadPolicyPurposeEvidenceInventoryRecord({ db }) {
        )::INTEGER AS profile_only_purpose_policy_count,
        COUNT(*) FILTER (
          WHERE declared_native_purpose_rule_count > 0
-           AND normal_lifecycle_receipt_count > 0
-           AND normal_lifecycle_receipt_count = verifiable_lifecycle_receipt_count
-           AND normal_lifecycle_receipt_count = retained_purpose_lifecycle_receipt_count
            AND current_intent_lifecycle_receipt_count > 0
+           AND current_intent_retained_purpose_lifecycle_receipt_count > 0
        )::INTEGER AS lifecycle_retained_purpose_policy_count,
        COUNT(*) FILTER (
          WHERE declared_native_purpose_rule_count > 0
-           AND (
-             normal_lifecycle_receipt_count = 0
-             OR current_intent_lifecycle_receipt_count = 0
-           )
+           AND current_intent_lifecycle_receipt_count = 0
        )::INTEGER AS lifecycle_receipt_required_policy_count,
        COUNT(*) FILTER (
          WHERE declared_native_purpose_rule_count > 0
-           AND normal_lifecycle_receipt_count > 0
            AND current_intent_lifecycle_receipt_count > 0
-           AND NOT (
-             normal_lifecycle_receipt_count = verifiable_lifecycle_receipt_count
-             AND normal_lifecycle_receipt_count = retained_purpose_lifecycle_receipt_count
-           )
+           AND current_intent_retained_purpose_lifecycle_receipt_count = 0
        )::INTEGER AS lifecycle_receipt_review_required_policy_count
      FROM evidence_policy_state`,
   );

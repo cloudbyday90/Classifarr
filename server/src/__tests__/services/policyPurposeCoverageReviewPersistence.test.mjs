@@ -96,6 +96,8 @@ describe('policyPurposeCoverageReviewPersistence', () => {
     expect(sql).toContain('lifecycle_receipt_review_required_policy_count')
     expect(sql).toContain('current_intent_lifecycle_receipt_count')
     expect(sql).toContain('current_intent_lifecycle_receipt_policy_count')
+    expect(sql).toContain('current_intent_retained_purpose_lifecycle_receipt_count')
+    expect(sql).toContain('current_intent_retained_purpose_lifecycle_receipt_policy_count')
     expect(sql).toContain('complete_policy_evidence_count')
     expect(sql).toContain("rule.source = 'media_server_library_profile'")
     expect(sql).toContain("rule.inference_state = 'inferred'")

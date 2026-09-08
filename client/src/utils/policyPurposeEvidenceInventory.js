@@ -58,9 +58,20 @@ export function normalizePolicyPurposeEvidenceInventory(value) {
     value.currentIntentLifecycleReceiptPolicyCount,
     verifiableLifecycleReceiptPolicyCount,
   )
+  const currentIntentRetainedPurposeLifecycleReceiptPolicyCount = boundedCount(
+    value.currentIntentRetainedPurposeLifecycleReceiptPolicyCount,
+    Math.min(
+      retainedDeclaredPurposePolicyCount,
+      currentIntentLifecycleReceiptPolicyCount,
+    ),
+  )
   const completePolicyEvidenceCount = boundedCount(
     value.completePolicyEvidenceCount,
-    Math.min(retainedDeclaredPurposePolicyCount, currentIntentLifecycleReceiptPolicyCount),
+    Math.min(
+      retainedDeclaredPurposePolicyCount,
+      currentIntentLifecycleReceiptPolicyCount,
+      currentIntentRetainedPurposeLifecycleReceiptPolicyCount,
+    ),
   )
   const incompletePolicyEvidenceCount = activePolicyCount - completePolicyEvidenceCount
   const completePolicyEvidenceAvailable = completePolicyEvidenceCount > 0
@@ -82,6 +93,7 @@ export function normalizePolicyPurposeEvidenceInventory(value) {
     normalLifecycleReceiptPolicyCount,
     verifiableLifecycleReceiptPolicyCount,
     currentIntentLifecycleReceiptPolicyCount,
+    currentIntentRetainedPurposeLifecycleReceiptPolicyCount,
     completePolicyEvidenceCount,
     incompletePolicyEvidenceCount,
     completePolicyEvidenceAvailable,

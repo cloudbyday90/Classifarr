@@ -24,9 +24,10 @@ active authoritative native policies. For each policy, PostgreSQL compares:
 - retained declared-purpose provenance, excluding inferred profile-only
   purpose;
 - established and applied normal lifecycle receipts, including strictly verified library-rebuild replacements;
-- whether every receipt is resolvable and retains declared purpose; and
-- whether at least one verifiable receipt names the current active intent and,
-  when recorded, its current version.
+- whether a normal lifecycle receipt names the current active intent and, when
+  recorded, its current version; and
+- whether that current receipt itself retains declared native-purpose
+  provenance.
 
 The query returns counts only. The pure
 `policyPurposeEvidenceInventory.mjs` contract bounds their relationships and
@@ -38,10 +39,15 @@ A policy is complete only when all of these are true:
 
 1. its active native intent has a positive current intent and schema version;
 2. its current purpose contains retained declared evidence;
-3. it has normal lifecycle history, every receipt is verifiable and retains
-   declared purpose; this includes a library rebuild only when its terminal gate,
-   immutable verification run, event, and intent revisions agree; and
-4. at least one normal lifecycle receipt refers to the current active intent.
+3. it has at least one normal lifecycle receipt for that current intent, and
+   that receipt retains declared native-purpose provenance; this includes a
+   library rebuild only when its terminal gate, immutable verification run,
+   event, and intent revisions agree.
+
+Historic profile-derived or otherwise nonqualifying receipts remain visible
+only through aggregate historical observability counts. They do not establish
+purpose authority, and they do not permanently veto a later explicit current
+intent with its own matching normal lifecycle receipt.
 
 The existing held-out source signal consumes the same inventory record and now
 requires a current-intent lifecycle receipt before it can become available.

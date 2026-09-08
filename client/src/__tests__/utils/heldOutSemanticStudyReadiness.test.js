@@ -19,7 +19,7 @@ const safeFlags = {
 }
 
 const declaredPurposeRequired = {
-  version: 'policy.held_out_semantic_study_readiness.v3',
+  version: 'policy.held_out_semantic_study_readiness.v4',
   statusId: 'complete_declared_purpose_evidence_required',
   normalLifecycleReceiptCount: 1,
   completePolicyEvidenceCount: 0,
@@ -32,7 +32,7 @@ const declaredPurposeRequired = {
 describe('heldOutSemanticStudyReadiness', () => {
   it('accepts an aggregate-only receipt with a current measured blocker without study authority', () => {
     expect(normalizeHeldOutSemanticStudyReadiness({
-      version: 'policy.held_out_semantic_study_readiness.v3',
+      version: 'policy.held_out_semantic_study_readiness.v4',
       statusId: 'eligibility_audit_available',
       normalLifecycleReceiptCount: 4,
       completePolicyEvidenceCount: 1,

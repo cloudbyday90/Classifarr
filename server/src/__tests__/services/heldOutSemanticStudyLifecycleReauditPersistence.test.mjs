@@ -10,7 +10,7 @@ import {
 } from '../../services/heldOutSemanticStudyLifecycleReauditPersistence.mjs';
 
 const source = {
-  version: 'policy.held_out_semantic_study_lifecycle_reaudit_source.v2',
+  version: 'policy.held_out_semantic_study_lifecycle_reaudit_source.v3',
   normalLifecycleReceiptCount: 1,
   lifecycleTransitionCounts: {
     initial_intent_establishment: 1,

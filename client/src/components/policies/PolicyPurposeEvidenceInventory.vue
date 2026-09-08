@@ -75,6 +75,14 @@
       </div>
       <div>
         <dt class="text-xs uppercase tracking-wide text-gray-400">
+          Current declared-purpose lifecycle records
+        </dt>
+        <dd class="mt-1 text-white">
+          {{ inventory.currentIntentRetainedPurposeLifecycleReceiptPolicyCount }}
+        </dd>
+      </div>
+      <div>
+        <dt class="text-xs uppercase tracking-wide text-gray-400">
           Complete evidence records
         </dt>
         <dd class="mt-1 text-white">

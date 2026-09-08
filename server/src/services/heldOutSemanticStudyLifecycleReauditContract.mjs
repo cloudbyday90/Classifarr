@@ -12,7 +12,7 @@ import { createHash } from 'node:crypto';
 import { POLICY_PURPOSE_LIFECYCLE_TRANSITION_IDS } from './policyPurposeLifecycleReceiptSources.mjs';
 
 export const HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT_SOURCE_VERSION =
-  'policy.held_out_semantic_study_lifecycle_reaudit_source.v2';
+  'policy.held_out_semantic_study_lifecycle_reaudit_source.v3';
 
 export const HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT_MAXIMUM_ATTEMPTS = 3;
 

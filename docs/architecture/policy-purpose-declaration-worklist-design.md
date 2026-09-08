@@ -20,7 +20,7 @@ or make a routing decision.
 ## Design
 
 The administrator-only existing purpose-coverage endpoint advances to
-`policy_purpose_coverage_review.v11`. Its nested
+`policy_purpose_coverage_review.v12`. Its nested
 `policy_purpose_declaration_worklist.v2` contract reads active authoritative
 native policies and their current purpose rules for one bounded, server-only
 reduction.

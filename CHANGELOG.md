@@ -11,6 +11,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Current-intent evidence recovery** — A native purpose declaration and its
+  matching durable lifecycle receipt can now restore passive evidence
+  eligibility even when the policy has an older profile-derived receipt. The
+  aggregate-only observation remains library-agnostic and cannot capture a
+  cohort, label media, invoke AI, select semantic evidence, or route media.
+
 - **Truthful bounded declaration review** — The purpose-declaration worklist
   now distinguishes a complete no-review result from an incomplete report
   window. It never claims that omitted active policies need no declaration;

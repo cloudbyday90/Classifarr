@@ -5,7 +5,7 @@ Status: implemented on 2026-09-08.
 ## Outcome
 
 The administrator-only policy-purpose review is now
-`policy_purpose_coverage_review.v11`. Its lifecycle receipt is version 3 and
+`policy_purpose_coverage_review.v12`. Its lifecycle receipt is version 3 and
 counts verified terminal library-rebuild replacements separately from native
 intent changes. The current-policy evidence inventory and the bounded lifecycle
 panel use the same modular source definition, so the two aggregate views cannot

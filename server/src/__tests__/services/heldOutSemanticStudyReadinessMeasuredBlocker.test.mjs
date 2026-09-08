@@ -32,6 +32,7 @@ const purposeEvidenceRecord = {
   normal_lifecycle_receipt_policy_count: 1,
   verifiable_lifecycle_receipt_policy_count: 1,
   current_intent_lifecycle_receipt_policy_count: 1,
+  current_intent_retained_purpose_lifecycle_receipt_policy_count: 1,
   complete_policy_evidence_count: 1,
 };
 

@@ -5,7 +5,7 @@ Status: implemented on 2026-09-08.
 ## Outcome
 
 The administrator-only policy-purpose review now returns
-`policy_purpose_coverage_review.v11` with a version-2 aggregate
+`policy_purpose_coverage_review.v12` with a version-3 aggregate
 `evidenceInventory`. It reports availability of authoritative current native
 intent, intent version and schema version, retained declared purpose,
 verifiable lifecycle records, current-intent lifecycle records, complete
@@ -18,9 +18,12 @@ library, intent, receipt, author, provider, media, profile, rule, or AI data.
 All semantic-cohort, selection, and routing flags remain false.
 
 The held-out source gate now consumes the same record. A historical receipt
-cannot qualify an active policy unless a verifiable normal lifecycle receipt
-also identifies its current native intent. The response remains a passive
-eligibility input, never a cohort selection, label, or routing decision.
+cannot qualify an active policy unless a matching normal lifecycle receipt also
+identifies its current native intent and retains declared-purpose provenance.
+Historic profile-derived receipts remain excluded from authority, but they no
+longer veto a later explicit current native intent with its own matching
+receipt. The response remains a passive eligibility input, never a cohort
+selection, label, or routing decision.
 
 ## Implementation
 

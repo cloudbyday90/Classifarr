@@ -18,6 +18,23 @@ const { default: db } = await import('../../config/database.mjs');
 const {
   PolicyPurposeCoverageReviewService,
 } = await import('../../services/policyPurposeCoverageReviewService.mjs');
+const {
+  applyPolicyNativeIntentChange,
+  POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS,
+} = await import('../../services/policyNativeIntentChangeService.mjs');
+
+function purposeChangeCommand(term) {
+  return {
+    command_id: 'update_purpose',
+    values: [{
+      signal_type: 'genres',
+      operator: 'require_any',
+      values: { require_any: [term] },
+      constraint_mode: 'advisory',
+      semantics: 'identity',
+    }],
+  };
+}
 
 async function createNativePurposeFixture({ libraryName, policyName, purposeRules }) {
   const fixture = await createPolicyEngineIntegrationFixture(db, {
@@ -498,7 +515,7 @@ describe('Policy purpose coverage review integration', () => {
     }));
     expect(review.studySourceReadiness.activePolicyCount).toBeGreaterThanOrEqual(6);
     expect(review.studySourceReadiness.retainedPurposePolicyCount).toBeGreaterThanOrEqual(4);
-    expect(review.version).toBe('policy_purpose_coverage_review.v11');
+    expect(review.version).toBe('policy_purpose_coverage_review.v12');
     expect(review.purposeDeclarationWorklist).toEqual(expect.objectContaining({
       version: 'policy_purpose_declaration_worklist.v2',
       rawPurposeRulesExposed: false,
@@ -578,5 +595,60 @@ describe('Policy purpose coverage review integration', () => {
       .toBeGreaterThanOrEqual(1);
     expect(JSON.stringify(review)).not.toContain('rebuild-original-purpose-token');
     expect(JSON.stringify(review)).not.toContain('rebuild-current-purpose-token');
+  });
+
+  test('recovers evidence after an ordinary native declaration despite an older profile-derived receipt', async () => {
+    const recovered = await createNativePurposeFixture({
+      libraryName: 'Coverage Current Declaration Recovery Library',
+      policyName: 'Coverage Current Declaration Recovery Policy',
+      purposeRules: [{
+        signal_type: 'genres',
+        operator: 'require_any',
+        values: { require_any: ['historic-profile-purpose-token'] },
+        source: 'media_server_library_profile',
+        inference_state: 'inferred',
+      }],
+    });
+    fixtures.push(recovered);
+    await establishInitialIntent(recovered);
+
+    const service = new PolicyPurposeCoverageReviewService({
+      db,
+      now: () => '2026-09-08T14:00:00.000Z',
+    });
+    const before = await service.getReview({ limit: 100 });
+
+    const applied = await applyPolicyNativeIntentChange({
+      dbClient: db,
+      policyId: recovered.policyId,
+      expectedRevision: 1,
+      actorId: 1,
+      actorRole: 'admin',
+      idempotencyKey: 'g'.repeat(32),
+      changeCommands: [purposeChangeCommand('current-native-declaration-token')],
+    });
+
+    expect(applied.statusId).toBe(POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.APPLIED);
+    expect(applied.change).toEqual(expect.objectContaining({
+      applied: true,
+      newIntentVersion: 2,
+      appliedCommandIds: ['update_purpose'],
+    }));
+
+    const after = await service.getReview({ limit: 100 });
+    expect(after.evidenceInventory.currentIntentLifecycleReceiptPolicyCount)
+      .toBe(before.evidenceInventory.currentIntentLifecycleReceiptPolicyCount);
+    expect(after.evidenceInventory.currentIntentRetainedPurposeLifecycleReceiptPolicyCount)
+      .toBe(before.evidenceInventory.currentIntentRetainedPurposeLifecycleReceiptPolicyCount + 1);
+    expect(after.evidenceInventory.completePolicyEvidenceCount)
+      .toBe(before.evidenceInventory.completePolicyEvidenceCount + 1);
+    expect(after.studySourceReadiness.lifecycleRetainedPurposePolicyCount)
+      .toBe(before.studySourceReadiness.lifecycleRetainedPurposePolicyCount + 1);
+    expect(after.studySourceReadiness.heldOutAuditCandidateSourceAvailable).toBe(true);
+    expect(after.evidenceInventory.semanticCohortReady).toBe(false);
+    expect(after.evidenceInventory.semanticSelectionAffected).toBe(false);
+    expect(after.evidenceInventory.routingAffected).toBe(false);
+    expect(JSON.stringify(after)).not.toContain('historic-profile-purpose-token');
+    expect(JSON.stringify(after)).not.toContain('current-native-declaration-token');
   });
 });

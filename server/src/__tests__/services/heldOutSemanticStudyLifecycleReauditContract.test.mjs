@@ -22,7 +22,7 @@ test('builds a fixed aggregate lifecycle receipt with no library or media identi
   );
 
   expect(source).toEqual({
-    version: 'policy.held_out_semantic_study_lifecycle_reaudit_source.v2',
+    version: 'policy.held_out_semantic_study_lifecycle_reaudit_source.v3',
     normalLifecycleReceiptCount: 6,
     completePolicyEvidenceCount: 2,
     completePolicyEvidenceAvailable: true,

@@ -30,6 +30,7 @@ function completePurposeEvidenceRecord(count = 0) {
     normal_lifecycle_receipt_policy_count: count,
     verifiable_lifecycle_receipt_policy_count: count,
     current_intent_lifecycle_receipt_policy_count: count,
+    current_intent_retained_purpose_lifecycle_receipt_policy_count: count,
     complete_policy_evidence_count: count,
   };
 }

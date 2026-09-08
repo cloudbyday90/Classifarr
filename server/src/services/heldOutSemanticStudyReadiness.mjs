@@ -21,7 +21,7 @@ import {
 } from './heldOutSemanticStudyReadinessMeasuredBlocker.mjs';
 
 export const HELD_OUT_SEMANTIC_STUDY_READINESS_VERSION =
-  'policy.held_out_semantic_study_readiness.v3';
+  'policy.held_out_semantic_study_readiness.v4';
 
 export const HELD_OUT_SEMANTIC_STUDY_READINESS_STATUS_IDS = Object.freeze({
   NORMAL_LIFECYCLE_RECEIPT_REQUIRED: 'normal_lifecycle_receipt_required',

@@ -21,6 +21,7 @@ describe('policyPurposeEvidenceInventory', () => {
       normalLifecycleReceiptPolicyCount: 3,
       verifiableLifecycleReceiptPolicyCount: 3,
       currentIntentLifecycleReceiptPolicyCount: 2,
+      currentIntentRetainedPurposeLifecycleReceiptPolicyCount: 2,
       completePolicyEvidenceCount: 2,
       rawConfigurationExposed: false,
       semanticCohortReady: false,

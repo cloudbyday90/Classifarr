@@ -25,7 +25,7 @@ import {
   buildPolicyPurposeDeclarationWorklist,
 } from './policyPurposeDeclarationWorklistContract.mjs';
 
-export const POLICY_PURPOSE_COVERAGE_REVIEW_VERSION = 11;
+export const POLICY_PURPOSE_COVERAGE_REVIEW_VERSION = 12;
 export const DEFAULT_POLICY_PURPOSE_COVERAGE_REVIEW_ROWS = 50;
 export const MAX_POLICY_PURPOSE_COVERAGE_REVIEW_ROWS = 100;
 

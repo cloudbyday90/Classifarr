@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-export const POLICY_PURPOSE_EVIDENCE_INVENTORY_VERSION = 2;
+export const POLICY_PURPOSE_EVIDENCE_INVENTORY_VERSION = 3;
 
 export const POLICY_PURPOSE_EVIDENCE_INVENTORY_STATUS_IDS = Object.freeze({
   NO_ACTIVE_VALIDATED_NATIVE_POLICY: 'no_active_validated_native_policy',
@@ -61,11 +61,19 @@ export function buildPolicyPurposeEvidenceInventory(record = {}) {
     record.current_intent_lifecycle_receipt_policy_count,
     verifiableLifecycleReceiptPolicyCount,
   );
+  const currentIntentRetainedPurposeLifecycleReceiptPolicyCount = boundedCount(
+    record.current_intent_retained_purpose_lifecycle_receipt_policy_count,
+    Math.min(
+      retainedDeclaredPurposePolicyCount,
+      currentIntentLifecycleReceiptPolicyCount,
+    ),
+  );
   const completePolicyEvidenceCount = boundedCount(
     record.complete_policy_evidence_count,
     Math.min(
       retainedDeclaredPurposePolicyCount,
       currentIntentLifecycleReceiptPolicyCount,
+      currentIntentRetainedPurposeLifecycleReceiptPolicyCount,
     ),
   );
   const incompletePolicyEvidenceCount = activePolicyCount - completePolicyEvidenceCount;
@@ -88,6 +96,7 @@ export function buildPolicyPurposeEvidenceInventory(record = {}) {
     normalLifecycleReceiptPolicyCount,
     verifiableLifecycleReceiptPolicyCount,
     currentIntentLifecycleReceiptPolicyCount,
+    currentIntentRetainedPurposeLifecycleReceiptPolicyCount,
     completePolicyEvidenceCount,
     incompletePolicyEvidenceCount,
     completePolicyEvidenceAvailable,

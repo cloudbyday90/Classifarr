@@ -8,7 +8,7 @@ import { mount } from '@vue/test-utils'
 import HeldOutSemanticStudyReadiness from '@/components/policies/HeldOutSemanticStudyReadiness.vue'
 
 const readiness = {
-  version: 'policy.held_out_semantic_study_readiness.v3',
+  version: 'policy.held_out_semantic_study_readiness.v4',
   statusId: 'eligibility_audit_available',
   normalLifecycleReceiptCount: 2,
   completePolicyEvidenceCount: 1,

@@ -83,6 +83,7 @@ describe('PolicyPurposeCoverageReview', () => {
             normalLifecycleReceiptPolicyCount: 0,
             verifiableLifecycleReceiptPolicyCount: 0,
             currentIntentLifecycleReceiptPolicyCount: 0,
+            currentIntentRetainedPurposeLifecycleReceiptPolicyCount: 0,
             completePolicyEvidenceCount: 0,
             rawConfigurationExposed: false,
             semanticCohortReady: false,
@@ -105,6 +106,7 @@ describe('PolicyPurposeCoverageReview', () => {
     expect(wrapper.text()).toContain('Library-agnostic policy evidence')
     expect(wrapper.text()).toContain('Policy Evidence Incomplete')
     expect(wrapper.text()).toContain('Current-intent lifecycle records')
+    expect(wrapper.text()).toContain('Current declared-purpose lifecycle records')
     expect(wrapper.text()).toContain('No Retained Declared Purpose Source')
     expect(wrapper.text()).toContain('Profile observations remain excluded')
     expect(wrapper.text()).toContain('Active validated policies')

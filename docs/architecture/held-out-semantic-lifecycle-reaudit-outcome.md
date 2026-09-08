@@ -14,7 +14,7 @@ through their common durable receipt source, so no library-specific
 configuration or operator prompt is needed.
 
 The new source is
-`policy.held_out_semantic_study_lifecycle_reaudit_source.v2`. It contains only
+`policy.held_out_semantic_study_lifecycle_reaudit_source.v3`. It contains only
 the total receipt count, fixed counts by transition, and the existing aggregate
 count of policies with complete declared-purpose evidence. The scheduler records
 a SHA-256 fingerprint of that aggregate and returns exactly the existing

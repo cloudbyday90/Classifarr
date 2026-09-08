@@ -18,7 +18,7 @@ evidence workflow the platform needs before a policy-only study can begin.
 
 The nested contract advances from
 `policy_purpose_declaration_worklist.v1` to v2, and the containing review to
-`policy_purpose_coverage_review.v11`.
+`policy_purpose_coverage_review.v12`.
 
 The worklist has three mutually exclusive states:
 

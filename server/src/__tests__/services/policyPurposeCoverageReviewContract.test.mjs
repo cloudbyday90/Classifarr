@@ -37,7 +37,7 @@ describe('policyPurposeCoverageReviewContract', () => {
     });
 
     expect(review).toEqual(expect.objectContaining({
-      version: 'policy_purpose_coverage_review.v11',
+      version: 'policy_purpose_coverage_review.v12',
       rawConfigurationExposed: false,
       routingAffected: false,
       summary: expect.objectContaining({
@@ -73,6 +73,7 @@ describe('policyPurposeCoverageReviewContract', () => {
         normal_lifecycle_receipt_policy_count: 1,
         verifiable_lifecycle_receipt_policy_count: 1,
         current_intent_lifecycle_receipt_policy_count: 1,
+        current_intent_retained_purpose_lifecycle_receipt_policy_count: 1,
         lifecycle_retained_purpose_policy_count: 1,
         complete_policy_evidence_count: 1,
       },

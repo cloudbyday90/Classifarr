@@ -23,7 +23,7 @@ returns only `completePolicyEvidenceCount` and its Boolean derivative. A count
 is complete only when a current active authoritative native policy has retained
 declared specialized purpose and matching, verifiable normal lifecycle evidence.
 
-The re-audit source is now v2. It includes fixed lifecycle transition counts and
+The re-audit source is now v3. It includes fixed lifecycle transition counts and
 the complete-evidence count. The scheduler runs the existing private eligibility
 audit only when both counts are positive. It first stops on a zero lifecycle
 count before reading the purpose inventory. It otherwise checkpoints a changed
@@ -31,7 +31,7 @@ aggregate source without scanning candidates or recording an audit receipt.
 
 ```text
 aggregate lifecycle receipt ─┐
-                             ├─> source v2 ─> both positive? ─> audit v3
+                             ├─> source v3 ─> both positive? ─> audit v3
 complete-purpose inventory ──┘                    │
                                                    └─> stop quietly
 ```

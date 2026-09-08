@@ -33,7 +33,7 @@ accepts only these verified transitions:
 The database counts those receipts by transition without selecting an identity,
 rule value, configuration value, provider value, or media row. The existing
 inventory supplies only its normalized complete-evidence count through a
-dedicated adapter. A deterministic SHA-256 digest of the fixed v2 aggregate
+dedicated adapter. A deterministic SHA-256 digest of the fixed v3 aggregate
 source is compared with a one-row source checkpoint. A changed source is
 checkpointed even while ineligible; it starts the existing eligibility audit
 after the commit only when both counts are positive, under a dedicated
