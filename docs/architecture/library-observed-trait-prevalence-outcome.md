@@ -40,9 +40,11 @@ policy terms or AI output through this addition.
 - Server/client lint, TypeScript/Vue type checks and static ESM import/mock
   checks passed.
 
-The final no-cache Compose verification and production build are recorded with
-the delivery commit after they complete. This outcome does not claim semantic
-classification accuracy or readiness for semantic counter-evidence.
+The provenance-verified `npm run docker:smart:provenance-rebuild` completed
+from implementation commit `2c90a12b5d062bd433ba9140f5de102fe4feeee1` with a
+no-cache image build, recreated Compose service and healthy `classifarr`
+container. This outcome does not claim semantic classification accuracy or
+readiness for semantic counter-evidence.
 
 ## Resulting recommendations
 

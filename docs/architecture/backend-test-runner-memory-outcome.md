@@ -29,8 +29,11 @@ The same run initially exposed three stale PostgreSQL test fixtures. They did
 not model the source-identity guard's columns/table or the current
 configuration primary key. The fixtures now mirror the production contract,
 and the full server verification above includes those repairs. A subsequent
-no-cache Compose build validates that this test-only script change does not
-affect the production image.
+provenance-verified `npm run docker:smart:provenance-rebuild` completed from
+commit `2c90a12b5d062bd433ba9140f5de102fe4feeee1`. It built with `--no-cache`,
+recreated the local Compose service and waited for `classifarr` to become
+healthy. The test-runner change therefore does not affect the production image
+or startup health.
 
 ## Next item
 
