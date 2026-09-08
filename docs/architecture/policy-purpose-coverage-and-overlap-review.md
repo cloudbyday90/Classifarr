@@ -1,6 +1,6 @@
 # Policy Purpose Coverage And Overlap Review
 
-Status: implemented for 12R.2 on 2026-08-16; semantic overlap coverage amended on 2026-08-29.
+Status: implemented for 12R.2 on 2026-08-16; semantic overlap coverage amended on 2026-08-29; provenance coverage amended on 2026-09-08.
 
 ## Decision
 
@@ -27,6 +27,14 @@ unshared term. The earlier one-unshared-term heuristic could otherwise imply
 that a disjunctive rule was safely specific. This remains a static, advisory
 configuration review; it neither changes route scoring nor proves that an item
 belongs in the policy.
+
+### 2026-09-08 provenance amendment
+
+The v3 report separately counts specialized purpose rules that are inferred
+from a media-server library profile and indicates whether any non-profile
+specialized purpose remains. It reports only fixed provenance statuses and
+counts. A profile-only result describes observed configuration; it neither
+establishes held-out study eligibility nor authorizes automatic routing.
 
 ## Research
 
@@ -68,7 +76,9 @@ Sources:
    additional row solely to disclose truncation.
 4. Keep the client panel read-only; it can only open the established policy
    editor after an administrator explicitly chooses to review a policy.
-5. Do not write a review record, call a provider, queue a classification,
+5. Report profile-only, retained, and absent specialized-purpose provenance as
+   aggregate statuses; never return profile observations or configured terms.
+6. Do not write a review record, call a provider, queue a classification,
    inspect classification/history/profile/RAG data, or change routing.
 
 ## Contract
@@ -80,6 +90,8 @@ requires an authenticated administrator. The response contains:
 - bounded counts of required content signal types, required terms, unshared
   terms, shared terms, overlapping active destinations, shared `require_any`
   alternatives, and destinations participating in that `require_any` overlap;
+- a count-only purpose provenance object with specialized, inferred-profile,
+  and retained rule counts plus one fixed status ID;
 - one of `declared_specialized_coverage`,
   `missing_specialized_coverage`, or `broad_overlap_review_required`; and
 - a server-authored editor action when review is required.
@@ -103,7 +115,7 @@ The implementation has focused unit coverage for the contract, bounded
 over-fetch behavior, SQL projection, endpoint authorization, client API,
 composable, and presentation. A real PostgreSQL integration test provisions
 native policy contracts that demonstrate distinct coverage, missing coverage,
-and no configuration-value leakage.
+profile-only provenance, and no configuration-value leakage.
 
 No database migration is required: the report reads the existing native intent
 storage and does not persist its result.

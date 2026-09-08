@@ -52,13 +52,15 @@ async function createNativePurposeFixture({ libraryName, policyName, purposeRule
       purpose_rule.values,
       'advisory',
       'identity',
-      'native_intent',
-      'inferred'
+      COALESCE(purpose_rule.source, 'native_intent'),
+      COALESCE(purpose_rule.inference_state, 'inferred')
     FROM native_intent
     CROSS JOIN jsonb_to_recordset($3::jsonb) AS purpose_rule(
       signal_type TEXT,
       operator TEXT,
-      values JSONB
+      values JSONB,
+      source TEXT,
+      inference_state TEXT
     )
   `, [fixture.policyId, fixture.libraryId, JSON.stringify(purposeRules)]);
 
@@ -120,7 +122,18 @@ describe('Policy purpose coverage review integration', () => {
         values: { require_any: ['movie'] },
       }],
     });
-    fixtures.push(maintained, broadOne, broadTwo, mixedAny, missing);
+    const profileOnly = await createNativePurposeFixture({
+      libraryName: 'Coverage Profile Only Library',
+      policyName: 'Coverage Profile Only Policy',
+      purposeRules: [{
+        signal_type: 'genres',
+        operator: 'require_any',
+        values: { require_any: ['profile-only-review-token'] },
+        source: 'media_server_library_profile',
+        inference_state: 'inferred',
+      }],
+    });
+    fixtures.push(maintained, broadOne, broadTwo, mixedAny, missing, profileOnly);
 
     const review = await new PolicyPurposeCoverageReviewService({
       db,
@@ -166,10 +179,29 @@ describe('Policy purpose coverage review integration', () => {
       requiredTermCount: 0,
       overlappingDestinationCount: 0,
     }));
+    expect(entryByPolicyId.get(maintained.policyId).provenance).toEqual({
+      statusId: 'retained_specialized_purpose_available',
+      specializedPurposeRuleCount: 1,
+      inferredProfilePurposeRuleCount: 0,
+      retainedPurposeRuleCount: 1,
+    });
+    expect(entryByPolicyId.get(profileOnly.policyId).provenance).toEqual({
+      statusId: 'profile_only_specialized_purpose',
+      specializedPurposeRuleCount: 1,
+      inferredProfilePurposeRuleCount: 1,
+      retainedPurposeRuleCount: 0,
+    });
+    expect(entryByPolicyId.get(missing.policyId).provenance).toEqual({
+      statusId: 'no_specialized_purpose',
+      specializedPurposeRuleCount: 0,
+      inferredProfilePurposeRuleCount: 0,
+      retainedPurposeRuleCount: 0,
+    });
     expect(review.rawConfigurationExposed).toBe(false);
     expect(review.routingAffected).toBe(false);
     expect(JSON.stringify(review)).not.toContain('unique-review-token');
     expect(JSON.stringify(review)).not.toContain('shared-review-token');
     expect(JSON.stringify(review)).not.toContain('unique-mixed-review-token');
+    expect(JSON.stringify(review)).not.toContain('profile-only-review-token');
   });
 });

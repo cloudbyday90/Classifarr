@@ -14,6 +14,9 @@ import {
   buildPolicyPurposeCoverageReview,
   normalizePolicyPurposeCoverageReviewLimit,
 } from '../../services/policyPurposeCoverageReviewContract.mjs';
+import {
+  POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS,
+} from '../../services/policyPurposeCoverageProvenance.mjs';
 
 describe('policyPurposeCoverageReviewContract', () => {
   test('presents only bounded counts and a fixed editor action for missing specialized coverage', () => {
@@ -34,7 +37,7 @@ describe('policyPurposeCoverageReviewContract', () => {
     });
 
     expect(review).toEqual(expect.objectContaining({
-      version: 'policy_purpose_coverage_review.v2',
+      version: 'policy_purpose_coverage_review.v3',
       rawConfigurationExposed: false,
       routingAffected: false,
       summary: expect.objectContaining({
@@ -55,6 +58,53 @@ describe('policyPurposeCoverageReviewContract', () => {
       }),
     }));
     expect(JSON.stringify(review)).not.toContain('must-not-leak');
+  });
+
+  test('separates inferred profile-only purpose from retained and absent specialized purpose', () => {
+    const review = buildPolicyPurposeCoverageReview({
+      records: [{
+        policy_id: 17,
+        library_id: 18,
+        specialized_purpose_rule_count: 3,
+        inferred_profile_purpose_rule_count: 3,
+      }, {
+        policy_id: 19,
+        library_id: 20,
+        specialized_purpose_rule_count: 3,
+        inferred_profile_purpose_rule_count: 1,
+      }, {
+        policy_id: 21,
+        library_id: 22,
+        specialized_purpose_rule_count: 0,
+        inferred_profile_purpose_rule_count: 5,
+      }],
+    });
+
+    expect(review.entries.map((entry) => entry.provenance)).toEqual([
+      {
+        statusId: POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.PROFILE_ONLY_SPECIALIZED_PURPOSE,
+        specializedPurposeRuleCount: 3,
+        inferredProfilePurposeRuleCount: 3,
+        retainedPurposeRuleCount: 0,
+      },
+      {
+        statusId: POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.RETAINED_SPECIALIZED_PURPOSE_AVAILABLE,
+        specializedPurposeRuleCount: 3,
+        inferredProfilePurposeRuleCount: 1,
+        retainedPurposeRuleCount: 2,
+      },
+      {
+        statusId: POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.NO_SPECIALIZED_PURPOSE,
+        specializedPurposeRuleCount: 0,
+        inferredProfilePurposeRuleCount: 0,
+        retainedPurposeRuleCount: 0,
+      },
+    ]);
+    expect(review.summary).toEqual(expect.objectContaining({
+      profileOnlyPurposeCount: 1,
+      retainedPurposeCount: 1,
+      noSpecializedPurposeCount: 1,
+    }));
   });
 
   test('requires review when a shared “any” alternative can satisfy an otherwise distinct policy', () => {

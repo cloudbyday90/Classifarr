@@ -43,13 +43,37 @@
     </div>
 
     <template v-else>
-      <dl class="grid gap-4 border-b border-gray-800 p-5 sm:grid-cols-3">
+      <dl class="grid gap-4 border-b border-gray-800 p-5 sm:grid-cols-3 xl:grid-cols-6">
         <div>
           <dt class="text-xs uppercase tracking-wide text-gray-400">
             Missing purpose coverage
           </dt>
           <dd class="mt-1 text-lg font-semibold text-amber-200">
             {{ summary.missingCoverageCount }}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-xs uppercase tracking-wide text-gray-400">
+            Profile-only purpose
+          </dt>
+          <dd class="mt-1 text-lg font-semibold text-amber-200">
+            {{ summary.profileOnlyPurposeCount }}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-xs uppercase tracking-wide text-gray-400">
+            Retained purpose
+          </dt>
+          <dd class="mt-1 text-lg font-semibold text-green-200">
+            {{ summary.retainedPurposeCount }}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-xs uppercase tracking-wide text-gray-400">
+            No specialized purpose
+          </dt>
+          <dd class="mt-1 text-lg font-semibold text-amber-200">
+            {{ summary.noSpecializedPurposeCount }}
           </dd>
         </div>
         <div>
@@ -177,6 +201,47 @@
             </div>
           </dl>
 
+          <div
+            v-if="provenance(entry)"
+            class="mt-4 rounded border border-gray-700 bg-background/50 p-4"
+          >
+            <p
+              class="text-sm font-semibold"
+              :class="provenanceClass(provenance(entry).statusId)"
+            >
+              {{ formatId(provenance(entry).statusId) }}
+            </p>
+            <p class="mt-1 text-sm leading-6 text-gray-300">
+              {{ provenanceDescription(provenance(entry).statusId) }}
+            </p>
+            <dl class="mt-3 grid gap-3 text-sm sm:grid-cols-3">
+              <div>
+                <dt class="text-xs uppercase tracking-wide text-gray-400">
+                  Specialized purpose rules
+                </dt>
+                <dd class="mt-1 text-white">
+                  {{ provenance(entry).specializedPurposeRuleCount }}
+                </dd>
+              </div>
+              <div>
+                <dt class="text-xs uppercase tracking-wide text-gray-400">
+                  Inferred profile rules
+                </dt>
+                <dd class="mt-1 text-white">
+                  {{ provenance(entry).inferredProfilePurposeRuleCount }}
+                </dd>
+              </div>
+              <div>
+                <dt class="text-xs uppercase tracking-wide text-gray-400">
+                  Retained purpose rules
+                </dt>
+                <dd class="mt-1 text-white">
+                  {{ provenance(entry).retainedPurposeRuleCount }}
+                </dd>
+              </div>
+            </dl>
+          </div>
+
           <div class="mt-4 rounded border border-gray-700 bg-background/50 p-4">
             <p class="text-sm font-semibold text-white">
               {{ entry.action.title }}
@@ -220,6 +285,9 @@ const summary = computed(() => ({
   missingCoverageCount: Number(props.review?.summary?.missingCoverageCount) || 0,
   broadOverlapCount: Number(props.review?.summary?.broadOverlapCount) || 0,
   declaredCoverageCount: Number(props.review?.summary?.declaredCoverageCount) || 0,
+  profileOnlyPurposeCount: Number(props.review?.summary?.profileOnlyPurposeCount) || 0,
+  retainedPurposeCount: Number(props.review?.summary?.retainedPurposeCount) || 0,
+  noSpecializedPurposeCount: Number(props.review?.summary?.noSpecializedPurposeCount) || 0,
   truncated: props.review?.summary?.truncated === true,
 }))
 
@@ -245,6 +313,34 @@ function sharedRequireAnyTermCount(entry) {
 
 function sharedRequireAnyDestinationCount(entry) {
   return nonNegativeCount(entry?.coverage?.sharedRequireAnyDestinationCount)
+}
+
+function provenance(entry) {
+  const value = entry?.provenance
+  if (typeof value?.statusId !== 'string' || !value.statusId.trim()) return null
+
+  return {
+    statusId: value.statusId,
+    specializedPurposeRuleCount: nonNegativeCount(value.specializedPurposeRuleCount),
+    inferredProfilePurposeRuleCount: nonNegativeCount(value.inferredProfilePurposeRuleCount),
+    retainedPurposeRuleCount: nonNegativeCount(value.retainedPurposeRuleCount),
+  }
+}
+
+function provenanceClass(statusId) {
+  return statusId === 'retained_specialized_purpose_available'
+    ? 'text-green-200'
+    : 'text-amber-200'
+}
+
+function provenanceDescription(statusId) {
+  if (statusId === 'profile_only_specialized_purpose') {
+    return 'Every specialized purpose rule is inferred from existing library contents. It is observed evidence and does not independently select a held-out semantic study case.'
+  }
+  if (statusId === 'retained_specialized_purpose_available') {
+    return 'At least one specialized purpose rule is retained outside inferred library-profile evidence. This review remains advisory and does not establish semantic correctness or routing authority.'
+  }
+  return 'No specialized genre, keyword, or studio purpose rule is currently declared. Existing library contents, media type, history, profiles, RAG, and AI output do not substitute for declared purpose.'
 }
 
 function focus() {

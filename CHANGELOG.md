@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Policy-purpose provenance review** — The administrator-only purpose
+  coverage report now distinguishes profile-only, retained, and absent
+  specialized purpose with fixed aggregate counts, without exposing policy or
+  profile values.
+
 - **Held-out policy source screen** — Corrected the study boundary to retain
   operator-declared native purpose rules and added a private aggregate receipt
   that explains inferred-profile exclusions without exposing policy or media

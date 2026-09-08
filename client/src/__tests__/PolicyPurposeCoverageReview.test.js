@@ -23,6 +23,12 @@ const entry = {
     sharedRequireAnyTermCount: 1,
     sharedRequireAnyDestinationCount: 1,
   },
+  provenance: {
+    statusId: 'profile_only_specialized_purpose',
+    specializedPurposeRuleCount: 2,
+    inferredProfilePurposeRuleCount: 2,
+    retainedPurposeRuleCount: 0,
+  },
   action: {
     available: true,
     title: 'Review shared purpose coverage',
@@ -50,6 +56,9 @@ describe('PolicyPurposeCoverageReview', () => {
             missingCoverageCount: 0,
             broadOverlapCount: 1,
             declaredCoverageCount: 0,
+            profileOnlyPurposeCount: 1,
+            retainedPurposeCount: 0,
+            noSpecializedPurposeCount: 0,
           },
         },
       },
@@ -61,6 +70,9 @@ describe('PolicyPurposeCoverageReview', () => {
     expect(wrapper.text()).toContain('Shared terms')
     expect(wrapper.text()).toContain('Overlapping destinations')
     expect(wrapper.text()).toContain('Shared “any” alternatives')
+    expect(wrapper.text()).toContain('Profile-only purpose')
+    expect(wrapper.text()).toContain('Profile Only Specialized Purpose')
+    expect(wrapper.text()).toContain('Inferred profile rules')
     expect(wrapper.text()).toContain('does not expose rule values')
     expect(wrapper.text()).not.toContain('shared-review-token')
 

@@ -8,7 +8,12 @@
  * (at your option) any later version.
  */
 
-export const POLICY_PURPOSE_COVERAGE_REVIEW_VERSION = 2;
+import {
+  buildPolicyPurposeCoverageProvenance,
+  POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS,
+} from './policyPurposeCoverageProvenance.mjs';
+
+export const POLICY_PURPOSE_COVERAGE_REVIEW_VERSION = 3;
 export const DEFAULT_POLICY_PURPOSE_COVERAGE_REVIEW_ROWS = 50;
 export const MAX_POLICY_PURPOSE_COVERAGE_REVIEW_ROWS = 100;
 
@@ -129,6 +134,7 @@ export function buildPolicyPurposeCoverageReviewEntry(record = {}) {
   if (!policyId || !libraryId) return null;
 
   const coverage = buildPolicyPurposeCoverage(record);
+  const provenance = buildPolicyPurposeCoverageProvenance(record);
   return {
     policy: {
       id: policyId,
@@ -140,6 +146,7 @@ export function buildPolicyPurposeCoverageReviewEntry(record = {}) {
       mediaType: asNonEmptyString(record.library_media_type),
     },
     coverage,
+    provenance,
     action: buildAction(coverage),
   };
 }
@@ -160,6 +167,21 @@ export function buildPolicyPurposeCoverageReview({
   const broadOverlapCount = entries.filter((entry) => (
     entry.coverage.statusId === POLICY_PURPOSE_COVERAGE_STATUS_IDS.BROAD_OVERLAP_REVIEW_REQUIRED
   )).length;
+  const profileOnlyPurposeCount = entries.filter((entry) => (
+    entry.provenance.statusId === (
+      POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.PROFILE_ONLY_SPECIALIZED_PURPOSE
+    )
+  )).length;
+  const retainedPurposeCount = entries.filter((entry) => (
+    entry.provenance.statusId === (
+      POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.RETAINED_SPECIALIZED_PURPOSE_AVAILABLE
+    )
+  )).length;
+  const noSpecializedPurposeCount = entries.filter((entry) => (
+    entry.provenance.statusId === (
+      POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.NO_SPECIALIZED_PURPOSE
+    )
+  )).length;
 
   return {
     version: `policy_purpose_coverage_review.v${POLICY_PURPOSE_COVERAGE_REVIEW_VERSION}`,
@@ -170,6 +192,9 @@ export function buildPolicyPurposeCoverageReview({
       declaredCoverageCount: entries.length - missingCoverageCount - broadOverlapCount,
       missingCoverageCount,
       broadOverlapCount,
+      profileOnlyPurposeCount,
+      retainedPurposeCount,
+      noSpecializedPurposeCount,
       reportLimit: normalizePolicyPurposeCoverageReviewLimit(limit),
       truncated: truncated === true,
     },

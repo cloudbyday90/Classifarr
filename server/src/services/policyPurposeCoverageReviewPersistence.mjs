@@ -116,6 +116,22 @@ export async function loadPolicyPurposeCoverageReviewRecords({ db, limit }) {
         AND other_terms.term_key = candidate_terms.term_key
        WHERE candidate_terms.term_operator = 'require_any'
        GROUP BY candidate_terms.policy_id
+     ),
+     specialized_purpose_provenance_counts AS (
+       SELECT
+         active.policy_id,
+         COUNT(rule.id)::INTEGER AS specialized_purpose_rule_count,
+         COUNT(rule.id) FILTER (
+           WHERE rule.source = 'media_server_library_profile'
+             AND rule.inference_state = 'inferred'
+         )::INTEGER AS inferred_profile_purpose_rule_count
+       FROM active_native_policies active
+       LEFT JOIN policy_intent_rules rule
+         ON rule.intent_id = active.intent_id
+        AND rule.intent_role = 'purpose'
+        AND rule.semantics = 'identity'
+        AND rule.signal_type IN ('genres', 'keywords', 'studios')
+       GROUP BY active.policy_id
      )
      SELECT
        active.policy_id,
@@ -133,12 +149,18 @@ export async function loadPolicyPurposeCoverageReviewRecords({ db, limit }) {
        COALESCE(shared_require_any.shared_require_any_term_count, 0)::INTEGER
          AS shared_require_any_term_count,
        COALESCE(shared_require_any.shared_require_any_destination_count, 0)::INTEGER
-         AS shared_require_any_destination_count
+         AS shared_require_any_destination_count,
+       COALESCE(provenance.specialized_purpose_rule_count, 0)::INTEGER
+         AS specialized_purpose_rule_count,
+       COALESCE(provenance.inferred_profile_purpose_rule_count, 0)::INTEGER
+         AS inferred_profile_purpose_rule_count
      FROM active_native_policies active
      LEFT JOIN policy_term_counts term_counts ON term_counts.policy_id = active.policy_id
      LEFT JOIN overlap_counts overlap ON overlap.policy_id = active.policy_id
      LEFT JOIN shared_require_any_counts shared_require_any
        ON shared_require_any.policy_id = active.policy_id
+     LEFT JOIN specialized_purpose_provenance_counts provenance
+       ON provenance.policy_id = active.policy_id
      ORDER BY active.policy_id ASC
      LIMIT $1`,
     [limit],
