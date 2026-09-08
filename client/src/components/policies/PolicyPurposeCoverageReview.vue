@@ -144,6 +144,14 @@
           </div>
           <div>
             <dt class="text-xs uppercase tracking-wide text-gray-400">
+              Unverified purpose source
+            </dt>
+            <dd class="mt-1 text-lg font-semibold text-amber-200">
+              {{ summary.unverifiedPurposeCount }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-gray-400">
               No specialized purpose
             </dt>
             <dd class="mt-1 text-lg font-semibold text-amber-200">
@@ -288,7 +296,7 @@
               <p class="mt-1 text-sm leading-6 text-gray-300">
                 {{ provenanceDescription(provenance(entry).statusId) }}
               </p>
-              <dl class="mt-3 grid gap-3 text-sm sm:grid-cols-3">
+              <dl class="mt-3 grid gap-3 text-sm sm:grid-cols-4">
                 <div>
                   <dt class="text-xs uppercase tracking-wide text-gray-400">
                     Specialized purpose rules
@@ -307,10 +315,18 @@
                 </div>
                 <div>
                   <dt class="text-xs uppercase tracking-wide text-gray-400">
-                    Retained purpose rules
+                    Declared native purpose rules
                   </dt>
                   <dd class="mt-1 text-white">
-                    {{ provenance(entry).retainedPurposeRuleCount }}
+                    {{ provenance(entry).declaredNativePurposeRuleCount }}
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-xs uppercase tracking-wide text-gray-400">
+                    Unverified purpose rules
+                  </dt>
+                  <dd class="mt-1 text-white">
+                    {{ provenance(entry).unverifiedPurposeRuleCount }}
                   </dd>
                 </div>
               </dl>
@@ -367,6 +383,7 @@ const summary = computed(() => ({
   declaredCoverageCount: Number(props.review?.summary?.declaredCoverageCount) || 0,
   profileOnlyPurposeCount: Number(props.review?.summary?.profileOnlyPurposeCount) || 0,
   retainedPurposeCount: Number(props.review?.summary?.retainedPurposeCount) || 0,
+  unverifiedPurposeCount: Number(props.review?.summary?.unverifiedPurposeCount) || 0,
   noSpecializedPurposeCount: Number(props.review?.summary?.noSpecializedPurposeCount) || 0,
   truncated: props.review?.summary?.truncated === true,
 }))
@@ -405,13 +422,15 @@ function provenance(entry) {
   return {
     statusId: value.statusId,
     specializedPurposeRuleCount: nonNegativeCount(value.specializedPurposeRuleCount),
+    declaredNativePurposeRuleCount: nonNegativeCount(value.declaredNativePurposeRuleCount),
     inferredProfilePurposeRuleCount: nonNegativeCount(value.inferredProfilePurposeRuleCount),
     retainedPurposeRuleCount: nonNegativeCount(value.retainedPurposeRuleCount),
+    unverifiedPurposeRuleCount: nonNegativeCount(value.unverifiedPurposeRuleCount),
   }
 }
 
 function provenanceClass(statusId) {
-  return statusId === 'retained_specialized_purpose_available'
+  return statusId === 'declared_specialized_purpose_available'
     ? 'text-green-200'
     : 'text-amber-200'
 }
@@ -420,8 +439,11 @@ function provenanceDescription(statusId) {
   if (statusId === 'profile_only_specialized_purpose') {
     return 'Every specialized purpose rule is inferred from existing library contents. It is observed evidence and does not independently select a held-out semantic study case.'
   }
-  if (statusId === 'retained_specialized_purpose_available') {
-    return 'At least one specialized purpose rule is retained outside inferred library-profile evidence. This review remains advisory and does not establish semantic correctness or routing authority.'
+  if (statusId === 'declared_specialized_purpose_available') {
+    return 'At least one specialized purpose rule comes from a server-recorded native declaration. This review remains advisory and does not establish semantic correctness or routing authority.'
+  }
+  if (statusId === 'unverified_purpose_source') {
+    return 'At least one specialized purpose rule lacks a recognized native declaration or profile-observation provenance. It remains excluded from held-out study selection and cannot change routing.'
   }
   return 'No specialized genre, keyword, or studio purpose rule is currently declared. Existing library contents, media type, history, profiles, RAG, and AI output do not substitute for declared purpose.'
 }

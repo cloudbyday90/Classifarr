@@ -37,7 +37,7 @@ describe('policyPurposeCoverageReviewContract', () => {
     });
 
     expect(review).toEqual(expect.objectContaining({
-      version: 'policy_purpose_coverage_review.v8',
+      version: 'policy_purpose_coverage_review.v9',
       rawConfigurationExposed: false,
       routingAffected: false,
       summary: expect.objectContaining({
@@ -118,6 +118,7 @@ describe('policyPurposeCoverageReviewContract', () => {
         library_id: 20,
         specialized_purpose_rule_count: 3,
         inferred_profile_purpose_rule_count: 1,
+        declared_native_purpose_rule_count: 2,
       }, {
         policy_id: 21,
         library_id: 22,
@@ -128,22 +129,29 @@ describe('policyPurposeCoverageReviewContract', () => {
 
     expect(review.entries.map((entry) => entry.provenance)).toEqual([
       {
+        declaredNativePurposeRuleCount: 0,
         statusId: POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.PROFILE_ONLY_SPECIALIZED_PURPOSE,
         specializedPurposeRuleCount: 3,
         inferredProfilePurposeRuleCount: 3,
         retainedPurposeRuleCount: 0,
+        unverifiedPurposeRuleCount: 0,
       },
       {
-        statusId: POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.RETAINED_SPECIALIZED_PURPOSE_AVAILABLE,
+        declaredNativePurposeRuleCount: 2,
+        statusId: POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS
+          .DECLARED_SPECIALIZED_PURPOSE_AVAILABLE,
         specializedPurposeRuleCount: 3,
         inferredProfilePurposeRuleCount: 1,
         retainedPurposeRuleCount: 2,
+        unverifiedPurposeRuleCount: 0,
       },
       {
+        declaredNativePurposeRuleCount: 0,
         statusId: POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.NO_SPECIALIZED_PURPOSE,
         specializedPurposeRuleCount: 0,
         inferredProfilePurposeRuleCount: 0,
         retainedPurposeRuleCount: 0,
+        unverifiedPurposeRuleCount: 0,
       },
     ]);
     expect(review.summary).toEqual(expect.objectContaining({

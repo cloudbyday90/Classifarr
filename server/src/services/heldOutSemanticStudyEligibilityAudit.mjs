@@ -19,7 +19,7 @@ import { HELD_OUT_SEMANTIC_STUDY_STRATA } from './heldOutSemanticStudyInventoryC
 import { buildHeldOutSemanticStudyPolicySourceScreen } from './heldOutSemanticStudyPolicySourceScreen.mjs';
 
 export const HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_VERSION =
-  'policy.held_out_semantic_study_eligibility_audit.v4';
+  'policy.held_out_semantic_study_eligibility_audit.v5';
 
 export const HELD_OUT_SEMANTIC_STUDY_ELIGIBILITY_AUDIT_STATUS_IDS = Object.freeze({
   CANDIDATE_SOURCE_TRUNCATED: 'candidate_source_truncated',

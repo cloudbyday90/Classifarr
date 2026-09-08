@@ -21,18 +21,20 @@ describe('policyPurposeLifecycleProvenanceReceipt', () => {
         intent_available: true,
         specialized_purpose_rule_count: 2,
         inferred_profile_purpose_rule_count: 0,
+        declared_native_purpose_rule_count: 2,
         values: { require_any: ['must-not-leak'] },
       }, {
         lifecycle_transition: 'native_intent_change',
         intent_available: true,
         specialized_purpose_rule_count: 3,
         inferred_profile_purpose_rule_count: 1,
+        declared_native_purpose_rule_count: 2,
       }],
       limit: 100,
     });
 
     expect(receipt).toEqual(expect.objectContaining({
-      version: 'policy_purpose_lifecycle_provenance_receipt.v2',
+      version: 'policy_purpose_lifecycle_provenance_receipt.v3',
       statusId: POLICY_PURPOSE_LIFECYCLE_PROVENANCE_RECEIPT_STATUS_IDS
         .DECLARED_PURPOSE_RETAINED_FOR_OBSERVED_LIFECYCLE_RECEIPTS,
       scope: {
@@ -51,6 +53,7 @@ describe('policyPurposeLifecycleProvenanceReceipt', () => {
         retainedPurposeReceiptCount: 2,
         profileOnlyPurposeReceiptCount: 0,
         noSpecializedPurposeReceiptCount: 0,
+        unverifiedPurposeReceiptCount: 0,
         retainedForEveryVerifiableReceipt: true,
         normalPolicyChangeObserved: true,
         normalPolicyChangeRetentionVerified: true,
@@ -95,7 +98,8 @@ describe('policyPurposeLifecycleProvenanceReceipt', () => {
       verifiableReceiptCount: 1,
       unverifiableReceiptCount: 1,
       retainedPurposeReceiptCount: 0,
-      profileOnlyPurposeReceiptCount: 1,
+        profileOnlyPurposeReceiptCount: 1,
+        unverifiedPurposeReceiptCount: 0,
       normalPolicyChangeRetentionVerified: false,
     }));
   });
@@ -107,6 +111,7 @@ describe('policyPurposeLifecycleProvenanceReceipt', () => {
         intent_available: true,
         specialized_purpose_rule_count: 1,
         inferred_profile_purpose_rule_count: 0,
+        declared_native_purpose_rule_count: 1,
       }],
     });
 
@@ -129,6 +134,7 @@ describe('policyPurposeLifecycleProvenanceReceipt', () => {
         intent_available: true,
         specialized_purpose_rule_count: 1,
         inferred_profile_purpose_rule_count: 0,
+        declared_native_purpose_rule_count: 1,
       }],
       truncated: true,
     });
@@ -146,11 +152,12 @@ describe('policyPurposeLifecycleProvenanceReceipt', () => {
         intent_available: true,
         specialized_purpose_rule_count: 1,
         inferred_profile_purpose_rule_count: 0,
+        declared_native_purpose_rule_count: 1,
       }],
     });
 
     expect(receipt).toEqual(expect.objectContaining({
-      version: 'policy_purpose_lifecycle_provenance_receipt.v2',
+      version: 'policy_purpose_lifecycle_provenance_receipt.v3',
       statusId: POLICY_PURPOSE_LIFECYCLE_PROVENANCE_RECEIPT_STATUS_IDS
         .DECLARED_PURPOSE_RETAINED_FOR_OBSERVED_LIFECYCLE_RECEIPTS,
       summary: expect.objectContaining({

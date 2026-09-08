@@ -16,7 +16,7 @@ import {
   POLICY_PURPOSE_LIFECYCLE_TRANSITION_IDS,
 } from './policyPurposeLifecycleReceiptSources.mjs';
 
-export const POLICY_PURPOSE_LIFECYCLE_PROVENANCE_RECEIPT_VERSION = 2;
+export const POLICY_PURPOSE_LIFECYCLE_PROVENANCE_RECEIPT_VERSION = 3;
 export const DEFAULT_POLICY_PURPOSE_LIFECYCLE_PROVENANCE_RECEIPT_ROWS = 100;
 
 export const POLICY_PURPOSE_LIFECYCLE_PROVENANCE_RECEIPT_STATUS_IDS = Object.freeze({
@@ -88,7 +88,7 @@ export function buildPolicyPurposeLifecycleProvenanceReceipt({
   const unverifiableReceiptCount = normalLifecycleReceiptCount - verifiableReceiptCount;
   const retainedPurposeReceiptCount = entries.filter((entry) => (
     entry.provenance?.statusId === (
-      POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.RETAINED_SPECIALIZED_PURPOSE_AVAILABLE
+      POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.DECLARED_SPECIALIZED_PURPOSE_AVAILABLE
     )
   )).length;
   const profileOnlyPurposeReceiptCount = entries.filter((entry) => (
@@ -99,6 +99,11 @@ export function buildPolicyPurposeLifecycleProvenanceReceipt({
   const noSpecializedPurposeReceiptCount = entries.filter((entry) => (
     entry.provenance?.statusId === (
       POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.NO_SPECIALIZED_PURPOSE
+    )
+  )).length;
+  const unverifiedPurposeReceiptCount = entries.filter((entry) => (
+    entry.provenance?.statusId === (
+      POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.UNVERIFIED_PURPOSE_SOURCE
     )
   )).length;
   const normalizedLimit = Math.max(1, asNonNegativeInteger(limit) || (
@@ -146,6 +151,7 @@ export function buildPolicyPurposeLifecycleProvenanceReceipt({
       retainedPurposeReceiptCount,
       profileOnlyPurposeReceiptCount,
       noSpecializedPurposeReceiptCount,
+      unverifiedPurposeReceiptCount,
       retainedForEveryVerifiableReceipt,
       normalPolicyChangeObserved: normalPolicyChangeCount > 0,
       normalPolicyChangeRetentionVerified: fullHistoryObserved &&

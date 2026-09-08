@@ -14,6 +14,10 @@ import {
 import {
   buildPolicyPurposeLifecycleReceiptSourceCtesSql,
 } from './policyPurposeLifecycleReceiptSources.mjs';
+import {
+  buildPolicyDeclaredNativePurposeRuleSqlPredicate,
+  buildPolicyProfileDerivedPurposeRuleSqlPredicate,
+} from './policyDeclaredPurposeProvenance.mjs';
 
 function asArray(value) {
   return Array.isArray(value?.rows) ? value.rows : [];
@@ -44,6 +48,8 @@ export async function loadPolicyPurposeEvidenceInventoryRecord({ db }) {
   const authorityPredicate = buildNativeIntentAuthoritySqlPredicate({
     intentAlias: 'intent',
   });
+  const declaredNativePurposePredicate = buildPolicyDeclaredNativePurposeRuleSqlPredicate();
+  const profileDerivedPurposePredicate = buildPolicyProfileDerivedPurposeRuleSqlPredicate();
   const result = await db.query(
     `WITH active_native_policies AS (
        ${buildActiveNativePoliciesSql(authorityPredicate)}
@@ -53,9 +59,11 @@ export async function loadPolicyPurposeEvidenceInventoryRecord({ db }) {
          active.policy_id,
          COUNT(rule.id)::INTEGER AS specialized_purpose_rule_count,
          COUNT(rule.id) FILTER (
-           WHERE rule.source = 'media_server_library_profile'
-             AND rule.inference_state = 'inferred'
-         )::INTEGER AS inferred_profile_purpose_rule_count
+           WHERE ${profileDerivedPurposePredicate}
+         )::INTEGER AS inferred_profile_purpose_rule_count,
+         COUNT(rule.id) FILTER (
+           WHERE ${declaredNativePurposePredicate}
+         )::INTEGER AS declared_native_purpose_rule_count
        FROM active_native_policies active
        LEFT JOIN policy_intent_rules rule
          ON rule.intent_id = active.intent_id
@@ -75,9 +83,11 @@ export async function loadPolicyPurposeEvidenceInventoryRecord({ db }) {
          intent.id IS NOT NULL AS intent_available,
          COUNT(rule.id)::INTEGER AS specialized_purpose_rule_count,
          COUNT(rule.id) FILTER (
-           WHERE rule.source = 'media_server_library_profile'
-             AND rule.inference_state = 'inferred'
-         )::INTEGER AS inferred_profile_purpose_rule_count
+           WHERE ${profileDerivedPurposePredicate}
+         )::INTEGER AS inferred_profile_purpose_rule_count,
+         COUNT(rule.id) FILTER (
+           WHERE ${declaredNativePurposePredicate}
+         )::INTEGER AS declared_native_purpose_rule_count
        FROM normal_lifecycle_receipts receipt
        LEFT JOIN policy_intents intent
          ON intent.id = receipt.intent_id
@@ -103,8 +113,7 @@ export async function loadPolicyPurposeEvidenceInventoryRecord({ db }) {
          )::INTEGER AS verifiable_lifecycle_receipt_count,
          COUNT(receipt.policy_id) FILTER (
            WHERE receipt.intent_available
-             AND receipt.specialized_purpose_rule_count
-               > receipt.inferred_profile_purpose_rule_count
+             AND receipt.declared_native_purpose_rule_count > 0
          )::INTEGER AS retained_purpose_lifecycle_receipt_count,
          COUNT(receipt.policy_id) FILTER (
            WHERE receipt.intent_available
@@ -125,6 +134,7 @@ export async function loadPolicyPurposeEvidenceInventoryRecord({ db }) {
          active.schema_version,
          current_purpose.specialized_purpose_rule_count,
          current_purpose.inferred_profile_purpose_rule_count,
+         current_purpose.declared_native_purpose_rule_count,
          lifecycle.normal_lifecycle_receipt_count,
          lifecycle.verifiable_lifecycle_receipt_count,
          lifecycle.retained_purpose_lifecycle_receipt_count,
@@ -148,7 +158,7 @@ export async function loadPolicyPurposeEvidenceInventoryRecord({ db }) {
            AND schema_version > 0
        )::INTEGER AS current_intent_schema_version_policy_count,
        COUNT(*) FILTER (
-         WHERE specialized_purpose_rule_count > inferred_profile_purpose_rule_count
+         WHERE declared_native_purpose_rule_count > 0
        )::INTEGER AS retained_purpose_policy_count,
        COUNT(*) FILTER (
          WHERE normal_lifecycle_receipt_count > 0
@@ -165,7 +175,7 @@ export async function loadPolicyPurposeEvidenceInventoryRecord({ db }) {
            AND intent_version > 0
            AND schema_version IS NOT NULL
            AND schema_version > 0
-           AND specialized_purpose_rule_count > inferred_profile_purpose_rule_count
+           AND declared_native_purpose_rule_count > 0
            AND normal_lifecycle_receipt_count > 0
            AND normal_lifecycle_receipt_count = verifiable_lifecycle_receipt_count
            AND normal_lifecycle_receipt_count = retained_purpose_lifecycle_receipt_count
@@ -176,21 +186,21 @@ export async function loadPolicyPurposeEvidenceInventoryRecord({ db }) {
            AND specialized_purpose_rule_count = inferred_profile_purpose_rule_count
        )::INTEGER AS profile_only_purpose_policy_count,
        COUNT(*) FILTER (
-         WHERE specialized_purpose_rule_count > inferred_profile_purpose_rule_count
+         WHERE declared_native_purpose_rule_count > 0
            AND normal_lifecycle_receipt_count > 0
            AND normal_lifecycle_receipt_count = verifiable_lifecycle_receipt_count
            AND normal_lifecycle_receipt_count = retained_purpose_lifecycle_receipt_count
            AND current_intent_lifecycle_receipt_count > 0
        )::INTEGER AS lifecycle_retained_purpose_policy_count,
        COUNT(*) FILTER (
-         WHERE specialized_purpose_rule_count > inferred_profile_purpose_rule_count
+         WHERE declared_native_purpose_rule_count > 0
            AND (
              normal_lifecycle_receipt_count = 0
              OR current_intent_lifecycle_receipt_count = 0
            )
        )::INTEGER AS lifecycle_receipt_required_policy_count,
        COUNT(*) FILTER (
-         WHERE specialized_purpose_rule_count > inferred_profile_purpose_rule_count
+         WHERE declared_native_purpose_rule_count > 0
            AND normal_lifecycle_receipt_count > 0
            AND current_intent_lifecycle_receipt_count > 0
            AND NOT (

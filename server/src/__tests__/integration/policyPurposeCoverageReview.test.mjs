@@ -536,7 +536,7 @@ describe('Policy purpose coverage review integration', () => {
     expect(review.evidenceInventory.currentIntentLifecycleReceiptPolicyCount).toBeGreaterThanOrEqual(2);
     expect(review.evidenceInventory.completePolicyEvidenceCount).toBeGreaterThanOrEqual(2);
     expect(review.lifecycleProvenanceReceipt).toEqual(expect.objectContaining({
-      version: 'policy_purpose_lifecycle_provenance_receipt.v2',
+      version: 'policy_purpose_lifecycle_provenance_receipt.v3',
       summary: expect.objectContaining({
         libraryRebuildReplacementCount: expect.any(Number),
       }),

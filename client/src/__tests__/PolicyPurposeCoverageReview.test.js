@@ -26,8 +26,10 @@ const entry = {
   provenance: {
     statusId: 'profile_only_specialized_purpose',
     specializedPurposeRuleCount: 2,
+    declaredNativePurposeRuleCount: 0,
     inferredProfilePurposeRuleCount: 2,
     retainedPurposeRuleCount: 0,
+    unverifiedPurposeRuleCount: 0,
   },
   action: {
     available: true,
@@ -58,6 +60,7 @@ describe('PolicyPurposeCoverageReview', () => {
             declaredCoverageCount: 0,
             profileOnlyPurposeCount: 1,
             retainedPurposeCount: 0,
+            unverifiedPurposeCount: 0,
             noSpecializedPurposeCount: 0,
           },
           studySourceReadiness: {
@@ -97,6 +100,7 @@ describe('PolicyPurposeCoverageReview', () => {
     expect(wrapper.text()).toContain('Overlapping destinations')
     expect(wrapper.text()).toContain('Shared “any” alternatives')
     expect(wrapper.text()).toContain('Profile-only purpose')
+    expect(wrapper.text()).toContain('Unverified purpose source')
     expect(wrapper.text()).toContain('Held-out semantic study source')
     expect(wrapper.text()).toContain('Library-agnostic policy evidence')
     expect(wrapper.text()).toContain('Policy Evidence Incomplete')
@@ -107,6 +111,7 @@ describe('PolicyPurposeCoverageReview', () => {
     expect(wrapper.text()).toContain('Lifecycle-qualified sources')
     expect(wrapper.text()).toContain('Profile Only Specialized Purpose')
     expect(wrapper.text()).toContain('Inferred profile rules')
+    expect(wrapper.text()).toContain('Declared native purpose rules')
     expect(wrapper.text()).toContain('does not expose rule values')
     expect(wrapper.text()).not.toContain('shared-review-token')
 

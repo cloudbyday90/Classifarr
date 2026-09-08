@@ -4,8 +4,8 @@ Status: updated on 2026-09-08.
 
 ## Implemented outcome
 
-The administrator policy-purpose coverage response is now version 8 and carries
-a read-only `policy_purpose_lifecycle_provenance_receipt.v2`. It summarizes the
+The administrator policy-purpose coverage response is now version 9 and carries
+a read-only `policy_purpose_lifecycle_provenance_receipt.v3`. It summarizes the
 most recent complete or bounded window of ordinary initial-intent
 establishments, applied native-intent changes, and verified terminal
 library-rebuild replacements.
@@ -13,8 +13,8 @@ library-rebuild replacements.
 A rebuild contributes only when its terminal execution gate, immutable
 no-difference verification run, replacement event, policy binding, transition
 fingerprints, and source/target intent revisions agree. The server verifies
-every target revision before reducing specialized purpose to retained,
-inferred-profile-only, or absent aggregate counts. Missing, inconsistent,
+every target revision before reducing specialized purpose to declared-native,
+inferred-profile-only, unverified, or absent aggregate counts. Missing, inconsistent,
 nonterminal, or incomplete records are not allowed to claim retention.
 
 The same ESM source module now drives both the bounded receipt panel and the
@@ -30,7 +30,7 @@ policy, select media, call AI, or route media.
 
 ## Validation
 
-Validation for the version-2 evolution includes:
+Validation for the version-3 evolution includes:
 
 - server unit tests for source bindings, data minimization, aggregate retention,
   profile-only purpose, absent or mismatched revisions, and contract versioning;

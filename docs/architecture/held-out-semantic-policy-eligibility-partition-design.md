@@ -27,7 +27,8 @@ policy into exactly one source disposition:
 | --- | --- |
 | `no_observed_purpose` | The policy has no observed purpose rule. |
 | `profile_only_purpose` | Every observed purpose rule is inferred from a media-server library profile. |
-| `retained_declared_purpose` | At least one purpose rule survives the profile-evidence boundary. |
+| `retained_declared_purpose` | At least one rule was recorded by a native-intent server command. |
+| `unverified_purpose_source` | Observed rules have no recognized native or profile provenance. |
 
 The v3 `policySourceScreen.policyPurposeDispositionCounts` sum to the active
 policy count. Existing convenience counts remain, but the partition is the
@@ -50,14 +51,14 @@ records no per-case receipt and does not assert that a cohort is possible: the
 existing stratum and 24–32 case requirements remain authoritative.
 
 The enclosing receipt advances to
-`policy.held_out_semantic_study_eligibility_audit.v4`. The lifecycle re-audit
+`policy.held_out_semantic_study_eligibility_audit.v5`. The lifecycle re-audit
 recognizes only the current version as a completed receipt. An older receipt
 is refreshed only when the existing lifecycle and current-purpose gates are
 already positive. It does not bypass the source gate, create a cohort, label
 media, or call an AI service.
 
 ```text
-active policy purpose rules -> source disposition partition -> v4 audit receipt
+active policy purpose rules -> source disposition partition -> v5 audit receipt
 canonical policy-only candidates -> comparison result partition -> stop when zero ready
 ```
 
@@ -104,7 +105,7 @@ preserving its existing access boundary.
 
 ## Recommendation stack
 
-1. Use the v4 aggregate partitions to explain a zero-comparison receipt
+1. Use the v5 aggregate partitions to explain a zero-comparison receipt
    without operational inspection.
 2. Keep profile-only purpose as observed evidence; do not convert it to
    declared policy authority or lower thresholds to manufacture a cohort.

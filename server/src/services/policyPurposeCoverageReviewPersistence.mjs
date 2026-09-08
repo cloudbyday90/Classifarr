@@ -11,6 +11,10 @@
 import {
   buildNativeIntentAuthoritySqlPredicate,
 } from './policyNativeIntentAuthorityEligibility.mjs';
+import {
+  buildPolicyDeclaredNativePurposeRuleSqlPredicate,
+  buildPolicyProfileDerivedPurposeRuleSqlPredicate,
+} from './policyDeclaredPurposeProvenance.mjs';
 
 function asArray(value) {
   return Array.isArray(value?.rows) ? value.rows : [];
@@ -44,6 +48,8 @@ export async function loadPolicyPurposeCoverageReviewRecords({ db, limit }) {
   const authorityPredicate = buildNativeIntentAuthoritySqlPredicate({
     intentAlias: 'intent',
   });
+  const declaredNativePurposePredicate = buildPolicyDeclaredNativePurposeRuleSqlPredicate();
+  const profileDerivedPurposePredicate = buildPolicyProfileDerivedPurposeRuleSqlPredicate();
   const result = await db.query(
     `WITH active_native_policies AS (
        ${buildActiveNativePoliciesSql(authorityPredicate)}
@@ -126,9 +132,11 @@ export async function loadPolicyPurposeCoverageReviewRecords({ db, limit }) {
          active.policy_id,
          COUNT(rule.id)::INTEGER AS specialized_purpose_rule_count,
          COUNT(rule.id) FILTER (
-           WHERE rule.source = 'media_server_library_profile'
-             AND rule.inference_state = 'inferred'
-         )::INTEGER AS inferred_profile_purpose_rule_count
+           WHERE ${profileDerivedPurposePredicate}
+         )::INTEGER AS inferred_profile_purpose_rule_count,
+         COUNT(rule.id) FILTER (
+           WHERE ${declaredNativePurposePredicate}
+         )::INTEGER AS declared_native_purpose_rule_count
        FROM active_native_policies active
        LEFT JOIN policy_intent_rules rule
          ON rule.intent_id = active.intent_id
@@ -157,7 +165,9 @@ export async function loadPolicyPurposeCoverageReviewRecords({ db, limit }) {
        COALESCE(provenance.specialized_purpose_rule_count, 0)::INTEGER
          AS specialized_purpose_rule_count,
        COALESCE(provenance.inferred_profile_purpose_rule_count, 0)::INTEGER
-         AS inferred_profile_purpose_rule_count
+         AS inferred_profile_purpose_rule_count,
+       COALESCE(provenance.declared_native_purpose_rule_count, 0)::INTEGER
+         AS declared_native_purpose_rule_count
      FROM active_native_policies active
      LEFT JOIN policy_term_counts term_counts ON term_counts.policy_id = active.policy_id
      LEFT JOIN overlap_counts overlap ON overlap.policy_id = active.policy_id

@@ -138,7 +138,7 @@ describe('Policy native intent reconciliation control routes', () => {
       routingAffected: false,
     });
     getHeldOutSemanticStudyReadiness.mockResolvedValue({
-      version: 'policy.held_out_semantic_study_readiness.v1',
+      version: 'policy.held_out_semantic_study_readiness.v2',
       statusId: 'normal_lifecycle_receipt_required',
       normalLifecycleReceiptCount: 0,
       completePolicyEvidenceCount: 0,

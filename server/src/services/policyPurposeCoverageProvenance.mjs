@@ -9,9 +9,10 @@
  */
 
 export const POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS = Object.freeze({
+  DECLARED_SPECIALIZED_PURPOSE_AVAILABLE: 'declared_specialized_purpose_available',
   NO_SPECIALIZED_PURPOSE: 'no_specialized_purpose',
   PROFILE_ONLY_SPECIALIZED_PURPOSE: 'profile_only_specialized_purpose',
-  RETAINED_SPECIALIZED_PURPOSE_AVAILABLE: 'retained_specialized_purpose_available',
+  UNVERIFIED_PURPOSE_SOURCE: 'unverified_purpose_source',
 });
 
 function asNonNegativeInteger(value) {
@@ -21,8 +22,9 @@ function asNonNegativeInteger(value) {
 
 /**
  * Reduces source provenance for content-bearing purpose rules to fixed counts.
- * Callers supply aggregate values only; rule terms and profile evidence never
- * cross this contract boundary.
+ * Only the server's two native-declaration source records survive as declared
+ * purpose. Callers supply aggregate values only; rule terms and profile
+ * evidence never cross this contract boundary.
  */
 export function buildPolicyPurposeCoverageProvenance(record = {}) {
   const specializedPurposeRuleCount = asNonNegativeInteger(record.specialized_purpose_rule_count);
@@ -30,18 +32,29 @@ export function buildPolicyPurposeCoverageProvenance(record = {}) {
     specializedPurposeRuleCount,
     asNonNegativeInteger(record.inferred_profile_purpose_rule_count),
   );
-  const retainedPurposeRuleCount = specializedPurposeRuleCount - inferredProfilePurposeRuleCount;
+  const declaredNativePurposeRuleCount = Math.min(
+    specializedPurposeRuleCount - inferredProfilePurposeRuleCount,
+    asNonNegativeInteger(record.declared_native_purpose_rule_count),
+  );
+  const unverifiedPurposeRuleCount = specializedPurposeRuleCount -
+    inferredProfilePurposeRuleCount - declaredNativePurposeRuleCount;
 
   const statusId = specializedPurposeRuleCount === 0
     ? POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.NO_SPECIALIZED_PURPOSE
-    : retainedPurposeRuleCount === 0
+    : declaredNativePurposeRuleCount > 0
+      ? POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.DECLARED_SPECIALIZED_PURPOSE_AVAILABLE
+      : unverifiedPurposeRuleCount > 0
+        ? POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.UNVERIFIED_PURPOSE_SOURCE
+        : inferredProfilePurposeRuleCount > 0
       ? POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.PROFILE_ONLY_SPECIALIZED_PURPOSE
-      : POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.RETAINED_SPECIALIZED_PURPOSE_AVAILABLE;
+      : POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.UNVERIFIED_PURPOSE_SOURCE;
 
   return {
+    declaredNativePurposeRuleCount,
     statusId,
     specializedPurposeRuleCount,
     inferredProfilePurposeRuleCount,
-    retainedPurposeRuleCount,
+    retainedPurposeRuleCount: declaredNativePurposeRuleCount,
+    unverifiedPurposeRuleCount,
   };
 }

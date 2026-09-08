@@ -11,6 +11,10 @@
 import {
   buildPolicyPurposeLifecycleReceiptSourceCtesSql,
 } from './policyPurposeLifecycleReceiptSources.mjs';
+import {
+  buildPolicyDeclaredNativePurposeRuleSqlPredicate,
+  buildPolicyProfileDerivedPurposeRuleSqlPredicate,
+} from './policyDeclaredPurposeProvenance.mjs';
 
 function asArray(value) {
   return Array.isArray(value?.rows) ? value.rows : [];
@@ -23,6 +27,8 @@ function asArray(value) {
  * receipt identifiers, timestamps, actor data, and media data stay in SQL.
  */
 export async function loadPolicyPurposeLifecycleProvenanceReceiptRecords({ db, limit }) {
+  const declaredNativePurposePredicate = buildPolicyDeclaredNativePurposeRuleSqlPredicate();
+  const profileDerivedPurposePredicate = buildPolicyProfileDerivedPurposeRuleSqlPredicate();
   const result = await db.query(
     `WITH ${buildPolicyPurposeLifecycleReceiptSourceCtesSql({
       scope: 'recent-receipt-window',
@@ -39,9 +45,11 @@ export async function loadPolicyPurposeLifecycleProvenanceReceiptRecords({ db, l
          (intent.id IS NOT NULL) AS intent_available,
          COUNT(rule.id)::INTEGER AS specialized_purpose_rule_count,
          COUNT(rule.id) FILTER (
-           WHERE rule.source = 'media_server_library_profile'
-             AND rule.inference_state = 'inferred'
-         )::INTEGER AS inferred_profile_purpose_rule_count
+           WHERE ${profileDerivedPurposePredicate}
+         )::INTEGER AS inferred_profile_purpose_rule_count,
+         COUNT(rule.id) FILTER (
+           WHERE ${declaredNativePurposePredicate}
+         )::INTEGER AS declared_native_purpose_rule_count
        FROM bounded_receipts receipt
        LEFT JOIN policy_intents intent
          ON intent.id = receipt.intent_id
@@ -59,7 +67,8 @@ export async function loadPolicyPurposeLifecycleProvenanceReceiptRecords({ db, l
        lifecycle_transition,
        intent_available,
        specialized_purpose_rule_count,
-       inferred_profile_purpose_rule_count
+       inferred_profile_purpose_rule_count,
+       declared_native_purpose_rule_count
      FROM receipt_provenance_counts`,
     [limit],
   );

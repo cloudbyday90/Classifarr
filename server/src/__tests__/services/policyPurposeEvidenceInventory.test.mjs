@@ -16,7 +16,7 @@ import {
 describe('policyPurposeEvidenceInventory', () => {
   test('fails closed when no active authoritative native policy exists', () => {
     expect(buildPolicyPurposeEvidenceInventory()).toEqual({
-      version: 'policy_purpose_evidence_inventory.v1',
+      version: 'policy_purpose_evidence_inventory.v2',
       statusId: POLICY_PURPOSE_EVIDENCE_INVENTORY_STATUS_IDS
         .NO_ACTIVE_VALIDATED_NATIVE_POLICY,
       activePolicyCount: 0,

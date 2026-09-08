@@ -27,6 +27,7 @@ const receipt = {
     retainedPurposeReceiptCount: 2,
     profileOnlyPurposeReceiptCount: 0,
     noSpecializedPurposeReceiptCount: 0,
+    unverifiedPurposeReceiptCount: 0,
   },
 }
 

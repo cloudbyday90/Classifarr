@@ -19,7 +19,7 @@ labels, invoke AI, or route media.
 ## Design
 
 The administrator-only purpose-coverage endpoint includes the read-only
-`policy_purpose_lifecycle_provenance_receipt.v2` aggregate. Its ESM source
+`policy_purpose_lifecycle_provenance_receipt.v3` aggregate. Its ESM source
 module owns three normal lifecycle sources:
 
 - an established `policy_initial_intent_establishments` record, which refers to
@@ -41,9 +41,9 @@ The shared source builder supports a complete active-policy inventory scope and
 a bounded recent-history scope. PostgreSQL verifies that every receipt still
 matches its native-intent ID, policy ID, source, and expected version before it
 reduces identity-purpose rules for `genres`, `keywords`, and `studios` to
-aggregate retained, profile-only, or absent counts. The response contains only
+aggregate declared-native, profile-only, unverified, or absent counts. The response contains only
 transition and provenance totals. Its parent review response is
-`policy_purpose_coverage_review.v8`.
+`policy_purpose_coverage_review.v9`.
 
 ## Decision boundaries
 
@@ -97,8 +97,8 @@ Logging Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Chea
 
 1. Keep the three-source aggregate-only lifecycle receipt as shared inventory
    and administrator evidence.
-2. Treat unmatched revisions, incomplete rebuild verification, profile-only
-   purpose, absent purpose, and truncated history as non-verifying states.
+2. Treat unmatched revisions, incomplete rebuild verification, profile-only or
+   unverified purpose, absent purpose, and truncated history as non-verifying states.
 3. Let normal authoring and verified rebuilds accumulate passive evidence;
    never infer it from library configuration or manufacture receipts.
 4. When the aggregate is complete, capture one real independently labelled

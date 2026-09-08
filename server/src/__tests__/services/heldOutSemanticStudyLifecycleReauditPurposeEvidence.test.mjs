@@ -21,7 +21,7 @@ test('reduces complete declared-purpose evidence to a fixed aggregate receipt', 
     current_intent_lifecycle_receipt_policy_count: 2,
     complete_policy_evidence_count: 2,
   })).toEqual({
-    version: 'policy.held_out_semantic_study_lifecycle_reaudit_purpose_evidence.v1',
+    version: 'policy.held_out_semantic_study_lifecycle_reaudit_purpose_evidence.v2',
     completePolicyEvidenceCount: 2,
     completePolicyEvidenceAvailable: true,
     rawConfigurationExposed: false,

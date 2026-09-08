@@ -22,7 +22,7 @@ import {
   buildPolicyPurposeLifecycleProvenanceReceipt,
 } from './policyPurposeLifecycleProvenanceReceipt.mjs';
 
-export const POLICY_PURPOSE_COVERAGE_REVIEW_VERSION = 8;
+export const POLICY_PURPOSE_COVERAGE_REVIEW_VERSION = 9;
 export const DEFAULT_POLICY_PURPOSE_COVERAGE_REVIEW_ROWS = 50;
 export const MAX_POLICY_PURPOSE_COVERAGE_REVIEW_ROWS = 100;
 
@@ -187,7 +187,12 @@ export function buildPolicyPurposeCoverageReview({
   )).length;
   const retainedPurposeCount = entries.filter((entry) => (
     entry.provenance.statusId === (
-      POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.RETAINED_SPECIALIZED_PURPOSE_AVAILABLE
+      POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.DECLARED_SPECIALIZED_PURPOSE_AVAILABLE
+    )
+  )).length;
+  const unverifiedPurposeCount = entries.filter((entry) => (
+    entry.provenance.statusId === (
+      POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.UNVERIFIED_PURPOSE_SOURCE
     )
   )).length;
   const noSpecializedPurposeCount = entries.filter((entry) => (
@@ -214,6 +219,7 @@ export function buildPolicyPurposeCoverageReview({
       broadOverlapCount,
       profileOnlyPurposeCount,
       retainedPurposeCount,
+      unverifiedPurposeCount,
       noSpecializedPurposeCount,
       reportLimit: normalizePolicyPurposeCoverageReviewLimit(limit),
       truncated: truncated === true,

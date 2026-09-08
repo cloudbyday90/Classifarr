@@ -8,7 +8,7 @@
  * (at your option) any later version.
  */
 
-export const POLICY_PURPOSE_EVIDENCE_INVENTORY_VERSION = 1;
+export const POLICY_PURPOSE_EVIDENCE_INVENTORY_VERSION = 2;
 
 export const POLICY_PURPOSE_EVIDENCE_INVENTORY_STATUS_IDS = Object.freeze({
   NO_ACTIVE_VALIDATED_NATIVE_POLICY: 'no_active_validated_native_policy',

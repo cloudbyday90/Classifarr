@@ -14,10 +14,11 @@ export const HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_SCREEN_STATUS_IDS = Object.fr
     'all_purpose_rules_excluded_as_inferred_profile',
   NO_OBSERVED_PURPOSE_RULES: 'no_observed_purpose_rules',
   RETAINED_PURPOSE_RULES_AVAILABLE: 'retained_purpose_rules_available',
+  UNVERIFIED_PURPOSE_SOURCE: 'unverified_purpose_source',
 });
 
 export const HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_SCREEN_VERSION =
-  'policy.held_out_semantic_study_policy_source_screen.v3';
+  'policy.held_out_semantic_study_policy_source_screen.v4';
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
@@ -31,16 +32,27 @@ function fixedDispositionCounts() {
   ).map((id) => [id, 0]));
 }
 
-function statusId({ observedPurposeRuleCount, retainedPurposeRuleCount }) {
+function statusId({
+  excludedInferredProfilePurposeRuleCount,
+  observedPurposeRuleCount,
+  retainedPurposeRuleCount,
+  unverifiedPurposeRuleCount,
+}) {
   if (observedPurposeRuleCount === 0) {
     return HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_SCREEN_STATUS_IDS.NO_OBSERVED_PURPOSE_RULES;
   }
-  if (retainedPurposeRuleCount === 0) {
+  if (retainedPurposeRuleCount > 0) {
+    return HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_SCREEN_STATUS_IDS
+      .RETAINED_PURPOSE_RULES_AVAILABLE;
+  }
+  if (unverifiedPurposeRuleCount > 0) {
+    return HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_SCREEN_STATUS_IDS.UNVERIFIED_PURPOSE_SOURCE;
+  }
+  if (excludedInferredProfilePurposeRuleCount === observedPurposeRuleCount) {
     return HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_SCREEN_STATUS_IDS
       .ALL_PURPOSE_RULES_EXCLUDED_AS_INFERRED_PROFILE;
   }
-  return HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_SCREEN_STATUS_IDS
-    .RETAINED_PURPOSE_RULES_AVAILABLE;
+  return HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_SCREEN_STATUS_IDS.UNVERIFIED_PURPOSE_SOURCE;
 }
 
 /**
@@ -51,10 +63,13 @@ export function buildHeldOutSemanticStudyPolicySourceScreen({ policies = [] } = 
   const policyPurposeDispositionCounts = fixedDispositionCounts();
   const summary = {
     activePolicyCount: 0,
+    declaredNativePurposeRuleCount: 0,
     excludedInferredProfilePurposeRuleCount: 0,
     policyWithObservedPurposeCount: 0,
     profileOnlyPurposePolicyCount: 0,
     policyWithRetainedPurposeCount: 0,
+    unverifiedPurposePolicyCount: 0,
+    unverifiedPurposeRuleCount: 0,
     policyWithoutObservedPurposeCount: 0,
     observedPurposeRuleCount: 0,
     retainedPurposeRuleCount: 0,
@@ -66,10 +81,12 @@ export function buildHeldOutSemanticStudyPolicySourceScreen({ policies = [] } = 
       purposeRules: policy?.policy_intent_contract?.purpose,
     });
     policyPurposeDispositionCounts[disposition.id] += 1;
+    summary.declaredNativePurposeRuleCount += disposition.declaredNativePurposeRuleCount;
     summary.excludedInferredProfilePurposeRuleCount +=
       disposition.excludedInferredProfilePurposeRuleCount;
     summary.observedPurposeRuleCount += disposition.observedPurposeRuleCount;
     summary.retainedPurposeRuleCount += disposition.retainedPurposeRuleCount;
+    summary.unverifiedPurposeRuleCount += disposition.unverifiedPurposeRuleCount;
     if (disposition.id === HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_DISPOSITION_IDS.NO_OBSERVED_PURPOSE) {
       summary.policyWithoutObservedPurposeCount += 1;
       continue;
@@ -77,6 +94,10 @@ export function buildHeldOutSemanticStudyPolicySourceScreen({ policies = [] } = 
     summary.policyWithObservedPurposeCount += 1;
     if (disposition.id === HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_DISPOSITION_IDS.RETAINED_DECLARED_PURPOSE) {
       summary.policyWithRetainedPurposeCount += 1;
+    } else if (disposition.id === (
+      HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_DISPOSITION_IDS.UNVERIFIED_PURPOSE_SOURCE
+    )) {
+      summary.unverifiedPurposePolicyCount += 1;
     } else {
       summary.profileOnlyPurposePolicyCount += 1;
     }

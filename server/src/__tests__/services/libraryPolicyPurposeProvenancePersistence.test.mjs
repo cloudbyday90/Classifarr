@@ -18,6 +18,7 @@ describe('libraryPolicyPurposeProvenancePersistence', () => {
     expect(sql).toContain('retained_declared_purpose_policy_count')
     expect(sql).toContain("rule.source = 'media_server_library_profile'")
     expect(sql).toContain("rule.inference_state = 'inferred'")
+    expect(sql).toContain("rule.source IN ('native_intent', 'operator_declared_intent')")
     expect(sql).not.toContain('rule.values')
     expect(sql).not.toContain('media_server_items')
     expect(sql).not.toContain('classification_history')

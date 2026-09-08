@@ -11,6 +11,13 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Declared-purpose provenance gate** — Policy-purpose evidence now accepts
+  only server-recorded native declarations, keeps inferred profile observations
+  descriptive, and fails closed for unknown sources. Versioned aggregate
+  screens expose bounded unverified counts without creating policy evidence,
+  selecting a cohort, collecting labels, invoking AI, changing policy, or
+  routing media.
+
 - **Held-out eligibility explanation partitions** — The private policy-only
   audit now reports fixed, mutually exclusive aggregate partitions for policy
   source provenance and candidate comparison availability. A zero-ready result

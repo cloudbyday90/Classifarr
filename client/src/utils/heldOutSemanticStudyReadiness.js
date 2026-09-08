@@ -11,7 +11,7 @@ export const HELD_OUT_SEMANTIC_STUDY_READINESS_STATUS_IDS = Object.freeze({
 })
 
 export const HELD_OUT_SEMANTIC_STUDY_READINESS_VERSION =
-  'policy.held_out_semantic_study_readiness.v1'
+  'policy.held_out_semantic_study_readiness.v2'
 
 const VALID_STATUS_IDS = new Set(Object.values(HELD_OUT_SEMANTIC_STUDY_READINESS_STATUS_IDS))
 const VALID_FIELDS = new Set([

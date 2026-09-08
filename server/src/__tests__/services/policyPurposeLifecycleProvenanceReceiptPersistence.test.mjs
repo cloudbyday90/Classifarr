@@ -37,6 +37,8 @@ describe('policyPurposeLifecycleProvenanceReceiptPersistence', () => {
     expect(sql).toContain("rule.signal_type IN ('genres', 'keywords', 'studios')")
     expect(sql).toContain('specialized_purpose_rule_count')
     expect(sql).toContain('inferred_profile_purpose_rule_count')
+    expect(sql).toContain('declared_native_purpose_rule_count')
+    expect(sql).toContain("rule.source IN ('native_intent', 'operator_declared_intent')")
     expect(sql).not.toContain('rule.values')
     expect(sql).not.toContain('actor_id')
     expect(sql).not.toContain('idempotency_key')

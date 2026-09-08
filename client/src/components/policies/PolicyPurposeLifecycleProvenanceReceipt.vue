@@ -94,6 +94,7 @@ const reviewOrUnverifiableReceiptCount = computed(() => {
 
   return receipt.value.summary.profileOnlyPurposeReceiptCount +
     receipt.value.summary.noSpecializedPurposeReceiptCount +
+    receipt.value.summary.unverifiedPurposeReceiptCount +
     receipt.value.summary.unverifiableReceiptCount
 })
 
@@ -122,7 +123,7 @@ function statusDescription(statusId) {
     return 'The receipt window excludes older normal lifecycle records. Its aggregate counts may be useful context, but they cannot verify retention across the omitted history.'
   }
   if (statusId === 'purpose_retention_review_required') {
-    return 'At least one verifiable normal lifecycle receipt is profile-only or has no specialized purpose. The result requests review only and cannot change a policy, classify media, or route an item.'
+    return 'At least one verifiable normal lifecycle receipt is profile-only, unverified, or has no specialized purpose. The result requests review only and cannot change a policy, classify media, or route an item.'
   }
   return 'No durable normal policy establishment, native-intent change, or verified rebuild-replacement receipt is available yet. This does not request an operator action or create semantic-study eligibility.'
 }

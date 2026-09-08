@@ -22,21 +22,30 @@ test('projects bounded provenance counts without retaining supplied rule data', 
   });
 
   expect(provenance).toEqual({
+    declaredNativePurposeRuleCount: 0,
     statusId: POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.PROFILE_ONLY_SPECIALIZED_PURPOSE,
     specializedPurposeRuleCount: 2,
     inferredProfilePurposeRuleCount: 2,
     retainedPurposeRuleCount: 0,
+    unverifiedPurposeRuleCount: 0,
   });
   expect(JSON.stringify(provenance)).not.toContain('private-profile-term');
 });
 
 test.each([
-  [0, 0, POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.NO_SPECIALIZED_PURPOSE],
-  [3, 3, POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.PROFILE_ONLY_SPECIALIZED_PURPOSE],
-  [3, 1, POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.RETAINED_SPECIALIZED_PURPOSE_AVAILABLE],
-])('classifies specialized-purpose provenance from aggregate counts', (purposeRules, profileRules, statusId) => {
+  [0, 0, 0, POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.NO_SPECIALIZED_PURPOSE],
+  [3, 3, 0, POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.PROFILE_ONLY_SPECIALIZED_PURPOSE],
+  [3, 1, 2, POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.DECLARED_SPECIALIZED_PURPOSE_AVAILABLE],
+  [3, 1, 0, POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.UNVERIFIED_PURPOSE_SOURCE],
+])('classifies specialized-purpose provenance from aggregate counts', (
+  purposeRules,
+  profileRules,
+  declaredRules,
+  statusId,
+) => {
   expect(buildPolicyPurposeCoverageProvenance({
     specialized_purpose_rule_count: purposeRules,
     inferred_profile_purpose_rule_count: profileRules,
+    declared_native_purpose_rule_count: declaredRules,
   }).statusId).toBe(statusId);
 });

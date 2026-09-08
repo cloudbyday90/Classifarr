@@ -18,7 +18,7 @@ The new source is
 the total receipt count, fixed counts by transition, and the existing aggregate
 count of policies with complete declared-purpose evidence. The scheduler records
 a SHA-256 fingerprint of that aggregate and returns exactly the existing
-`policy.held_out_semantic_study_eligibility_audit.v4` receipt when an audit ran.
+`policy.held_out_semantic_study_eligibility_audit.v5` receipt when an audit ran.
 It returns no new item-level result.
 
 The database state holds a distinct latest aggregate source checkpoint and an

@@ -1,5 +1,9 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { buildNativeIntentAuthoritySqlPredicate } from './policyNativeIntentAuthorityEligibility.mjs';
+import {
+  buildPolicyDeclaredNativePurposeRuleSqlPredicate,
+  buildPolicyProfileDerivedPurposeRuleSqlPredicate,
+} from './policyDeclaredPurposeProvenance.mjs';
 
 const SELECTED_LIBRARY_LIMIT = 12;
 
@@ -19,6 +23,8 @@ export async function loadLibraryPolicyPurposeProvenanceRecords({ db, libraryIds
   if (!selectedLibraryIds.length) return [];
 
   const authorityPredicate = buildNativeIntentAuthoritySqlPredicate({ intentAlias: 'intent' });
+  const declaredNativePurposePredicate = buildPolicyDeclaredNativePurposeRuleSqlPredicate();
+  const profileDerivedPurposePredicate = buildPolicyProfileDerivedPurposeRuleSqlPredicate();
   const result = await db.query(
     `WITH selected_libraries AS MATERIALIZED (
        SELECT UNNEST($1::INTEGER[]) AS library_id
@@ -39,9 +45,11 @@ export async function loadLibraryPolicyPurposeProvenanceRecords({ db, libraryIds
          active.policy_id,
          COUNT(rule.id)::INTEGER AS specialized_purpose_rule_count,
          COUNT(rule.id) FILTER (
-           WHERE rule.source = 'media_server_library_profile'
-             AND rule.inference_state = 'inferred'
-         )::INTEGER AS inferred_profile_purpose_rule_count
+           WHERE ${profileDerivedPurposePredicate}
+         )::INTEGER AS inferred_profile_purpose_rule_count,
+         COUNT(rule.id) FILTER (
+           WHERE ${declaredNativePurposePredicate}
+         )::INTEGER AS declared_native_purpose_rule_count
        FROM active_native_policies active
        LEFT JOIN policy_intent_rules rule
          ON rule.intent_id = active.intent_id
@@ -59,8 +67,7 @@ export async function loadLibraryPolicyPurposeProvenanceRecords({ db, libraryIds
              = provenance.inferred_profile_purpose_rule_count
        )::INTEGER AS profile_only_specialized_purpose_policy_count,
        COUNT(active.policy_id) FILTER (
-         WHERE provenance.specialized_purpose_rule_count
-           > provenance.inferred_profile_purpose_rule_count
+         WHERE provenance.declared_native_purpose_rule_count > 0
        )::INTEGER AS retained_declared_purpose_policy_count
      FROM selected_libraries selected
      LEFT JOIN active_native_policies active ON active.library_id = selected.library_id

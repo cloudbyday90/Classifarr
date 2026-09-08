@@ -6,10 +6,10 @@ sources on 2026-09-08.
 ## Problem
 
 The private held-out eligibility audit correctly excluded every inferred
-library-profile rule from its study boundary. Its aggregate source receipt then
-reported the same ten profile-only policies as `policyWithDeclaredPurposeCount`.
-That name could cause an automated consumer to mistake observed library-profile
-evidence for retained declared purpose.
+library-profile rule from its study boundary. A later provenance review found
+that its retained category still accepted an unrecognized non-profile source.
+That could cause future automation to mistake unsupported provenance for
+declared purpose.
 
 A semantic cohort must not be created from that ambiguity. The platform needs a
 library- and configuration-agnostic way to distinguish observed purpose evidence
@@ -23,15 +23,17 @@ a closed policy partition:
 
 - policies with at least one observed purpose rule;
 - policies whose observed purpose is profile-only and therefore excluded;
-- policies with at least one retained purpose rule; and
+- policies with at least one server-recorded native purpose rule;
+- policies with only unverified purpose sources; and
 - policies with no observed purpose rule.
 
-The screen also retains rule-level aggregate counts for observed, excluded, and
-retained evidence. `policyWithoutRetainedPurposeCount` remains a derived count.
+The screen also retains rule-level aggregate counts for observed, profile,
+declared-native, and unverified evidence. `policyWithoutRetainedPurposeCount`
+remains a derived count.
 The partitions reconcile to `activePolicyCount`, while the rule counts remain
 separate because one policy can hold more than one rule.
 
-The enclosing eligibility audit advances to v4 and returns its version in every
+The enclosing eligibility audit advances to v5 and returns its version in every
 complete, truncated, configuration-changed, and failed result. This makes a
 consumer reject or branch explicitly on the corrected contract rather than
 silently interpreting renamed fields.
@@ -39,8 +41,8 @@ silently interpreting renamed fields.
 ```text
 active native policy purpose rules
   -> count observed rules without values
-  -> remove inferred library-profile rules for the study boundary
-  -> classify each policy: absent | profile-only | retained
+  -> classify each rule: declared-native | profile-derived | unverified
+  -> classify each policy: absent | profile-only | retained | unverified
   -> emit versioned aggregate receipt
   -> keep cohort selection, labels, readiness, frozen-study preflight,
      semantic evidence, and routing disabled
@@ -70,11 +72,11 @@ Secure AI Model Ops Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/
 | Keep `policyWithDeclaredPurposeCount` | No downstream contract change. | Misstates profile-only evidence and can mislead future automation. | Reject |
 | Infer declared purpose from profile membership | Could make the cohort appear ready. | Circular evidence; violates the frozen-study boundary. | Reject |
 | Return raw policy or rule details | Supports manual diagnosis. | Exposes library/configuration data and increases operational dependency. | Reject |
-| Versioned aggregate partition | Explains availability precisely, reconciles counts, and remains privacy-bounded. | Consumers must accept v4 deliberately. | Adopt |
+| Versioned aggregate partition | Explains availability precisely, reconciles counts, and remains privacy-bounded. | Consumers must accept v5 deliberately. | Adopt |
 
 ## Recommendation stack
 
-1. Treat observed, profile-only, retained, and absent purpose evidence as
+1. Treat observed, profile-only, declared-native, unverified, and absent purpose evidence as
    distinct aggregate states.
 2. Require the private audit version before consuming a source-screen result.
 3. Keep inferred library-profile evidence excluded from cohort selection.

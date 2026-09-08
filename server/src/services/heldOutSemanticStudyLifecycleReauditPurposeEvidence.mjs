@@ -12,7 +12,7 @@ import { buildPolicyPurposeEvidenceInventory } from './policyPurposeEvidenceInve
 import { loadPolicyPurposeEvidenceInventoryRecord } from './policyPurposeEvidenceInventoryPersistence.mjs';
 
 export const HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT_PURPOSE_EVIDENCE_VERSION =
-  'policy.held_out_semantic_study_lifecycle_reaudit_purpose_evidence.v1';
+  'policy.held_out_semantic_study_lifecycle_reaudit_purpose_evidence.v2';
 
 /**
  * Reduces the established policy-purpose evidence inventory to the sole
