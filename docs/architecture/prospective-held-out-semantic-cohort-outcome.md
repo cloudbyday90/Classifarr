@@ -59,11 +59,11 @@ GitHub's pull-request endpoint for `cloudbyday90/Classifarr` returned zero open
 pull requests on 7 September 2026. There was therefore no random open PR to
 implement locally; no closed or merged PR was substituted.
 
-## Next item
+## Follow-up
 
-Establish broad-policy candidate-comparison availability in a separately
-reviewed policy-design task. It should determine why the current policies yield
-no `ready` two- or three-candidate comparisons, add no automatic routing, and
-then rerun this read-only cohort command. Only a complete cohort with genuine
-independent double-blind human labels can proceed to the existing readiness and
-frozen-study preflight gates.
+The subsequent [policy-eligibility audit](held-out-semantic-policy-eligibility-audit-outcome.md)
+confirmed that the complete canonical population has no broad-policy ranked
+candidate under this study boundary. The next item is native policy-intent
+coverage design, followed by a new audit and then cohort capture. Only a
+complete cohort with genuine independent double-blind human labels can proceed
+to the existing readiness and frozen-study preflight gates.

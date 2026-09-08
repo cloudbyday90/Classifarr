@@ -11,6 +11,13 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Held-out policy eligibility audit** — Added a private, read-only,
+  configuration-bound canonical-population audit that reports only aggregate
+  broad-policy decision availability before a semantic study cohort can be
+  captured. It excludes source conflicts, detects source truncation and
+  configuration drift, and cannot change policy, route media, or collect
+  labels.
+
 - **Prospective held-out semantic cohorts** — Added a private, read-only,
   broad-policy-first cohort capture that excludes source conflicts, freezes
   balanced candidate comparisons before semantic retrieval, and emits only
