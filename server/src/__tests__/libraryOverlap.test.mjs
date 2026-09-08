@@ -77,8 +77,28 @@ describe('aggregate overlap service and route', () => {
         expect(result.libraries[0]).toMatchObject({ omittedTraitRowCount: 1 });
         expect(result.libraries[1]).toMatchObject({ unsupportedTypeRowCount: 1 });
         expect(result.pairs.map(pair => [pair.mediaType, pair.sharedIdentityCount])).toEqual([['movie', 1], ['tv', 1]]);
+        expect(result.commonTraitEvidence.policyPurposeProvenanceIncluded).toBe(false);
         expect(JSON.stringify(result)).not.toMatch(/PRIVATE|1234567|tmdb_id|password/);
         expect(db.query).toHaveBeenCalledTimes(1);
+    });
+    test('loads aggregate policy provenance only when an administrator context asks for it', async () => {
+        const db = { query: jest.fn()
+            .mockResolvedValueOnce({ rows: [snapshot({ items: [item(1, { genres: ['Action'] }), item(2, { library_id: 2, genres: ['Action'] })] })] })
+            .mockResolvedValueOnce({ rows: [{ library_id: 1, active_validated_policy_count: 1,
+                profile_only_specialized_purpose_policy_count: 1, retained_declared_purpose_policy_count: 0 },
+            { library_id: 2, active_validated_policy_count: 1,
+                profile_only_specialized_purpose_policy_count: 0, retained_declared_purpose_policy_count: 1 }] }) };
+
+        const result = await readLibraryOverlap(db, { includePolicyPurposeContext: true });
+        const entry = result.commonTraitEvidence.groups[0].traits.find((trait) => trait.field === 'genres').entries[0];
+
+        expect(db.query).toHaveBeenCalledTimes(2);
+        expect(result.commonTraitEvidence.policyPurposeProvenanceIncluded).toBe(true);
+        expect(entry.policyPurpose).toEqual(expect.objectContaining({
+            profileOnlySpecializedPurposeLibraryCount: 1,
+            retainedDeclaredPurposeLibraryCount: 1,
+        }));
+        expect(JSON.stringify(result)).not.toContain('policy_id');
     });
     test('withholds every comparison on inventory overflow', async () => {
         const result = await readLibraryOverlap(database(snapshot({ row_count: 20001 })));
@@ -90,10 +110,14 @@ describe('aggregate overlap service and route', () => {
         expect((await readLibraryOverlap(database(snapshot()))).libraries[0]).toMatchObject({ inventoryRowCount: 0 });
         await expect(readLibraryOverlap({ query: jest.fn().mockRejectedValue(new Error('unavailable')) })).rejects.toThrow('unavailable');
     });
-    function appFor(db, authenticated = true) {
+    function appFor(db, authenticated = true, role = null) {
         const app = express();
         app.use('/api/libraries', createLibrariesRouter({ express, db, ...createLibrariesRouteTestDeps({
-            authenticateTokenOrApiKey: (req, res, next) => authenticated ? next() : res.sendStatus(401),
+            authenticateTokenOrApiKey: (req, res, next) => {
+                if (!authenticated) return res.sendStatus(401);
+                if (role) req.user = { id: 7, role };
+                return next();
+            },
         }) }));
         app.use((err, req, res, _next) => res.status(err.statusCode || 500).json({ error: 'Unavailable' }));
         return app;
@@ -107,6 +131,15 @@ describe('aggregate overlap service and route', () => {
         expect(result.headers['cache-control']).toBe('no-store');
         expect(result.body.version).toBe('library.overlap.v1');
         expect(db.query).toHaveBeenCalledTimes(1);
+    });
+    test('keeps policy-purpose context out of non-administrator overlap responses', async () => {
+        const db = database(snapshot());
+        const result = await request(appFor(db, true, 'user')).get('/api/libraries/overlap');
+
+        expect(result.status).toBe(200);
+        expect(db.query).toHaveBeenCalledTimes(1);
+        expect(result.body.commonTraitEvidence.policyPurposeProvenanceIncluded).toBe(false);
+        expect(JSON.stringify(result.body)).not.toContain('"policyPurpose":');
     });
     test.each(['limit=999999', 'libraryId=1', 'limit[]=1', 'sql=DROP'])('rejects unexpected inputs without querying: %s', query => {
         const db = database(snapshot());

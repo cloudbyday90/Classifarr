@@ -31,6 +31,16 @@ const prevalenceCohort = (mediaType, value) => ({
   ],
 })
 
+const commonTrait = (field, entry = null) => ({
+  field,
+  status: entry ? 'common_trait_evidence_available' : 'insufficient_trait_coverage',
+  typedSelectedLibraryCount: 2,
+  knownLibraryCount: entry ? 2 : 0,
+  commonValueCount: entry ? 1 : 0,
+  truncated: false,
+  entries: entry ? [entry] : [],
+})
+
 export function libraryOverlapFixture() {
   return {
     version: 'library.overlap.v1', observedAt: '2026-09-05 12:00:00+00', status: 'available', inventoryRowCount: 5,
@@ -64,6 +74,25 @@ export function libraryOverlapFixture() {
         { libraryId: 1, cohorts: [prevalenceCohort('movie', 'Action')] },
         { libraryId: 2, cohorts: [prevalenceCohort('movie', 'Drama')] },
       ],
+    },
+    commonTraitEvidence: {
+      version: 'library.common_trait_evidence.v1',
+      scopeStatus: 'complete_active_library_scope',
+      selectedLibraryCount: 2,
+      activeLibraryCount: 2,
+      entryLimit: 5,
+      policyPurposeProvenanceIncluded: false,
+      groups: [{
+        mediaType: 'movie',
+        typedSelectedLibraryCount: 2,
+        traits: [
+          commonTrait('rating'),
+          commonTrait('genres', { value: 'Action', observedLibraryCount: 2, matchingIdentityObservationCount: 2 }),
+          commonTrait('studio'),
+          commonTrait('keywords'),
+          commonTrait('language'),
+        ],
+      }],
     },
   }
 }

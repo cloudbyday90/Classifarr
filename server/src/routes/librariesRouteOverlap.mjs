@@ -11,6 +11,8 @@ export function registerOverlapRoutes(router, { db }) {
         next();
     }, rateLimit(libraryOverlapLimiterConfig), asyncHandler(async (req, res) => {
         if (Object.keys(req.query).length) throw new ValidationError('Library overlap does not accept query parameters');
-        res.json(await readLibraryOverlap(db));
+        res.json(await readLibraryOverlap(db, {
+            includePolicyPurposeContext: req.user?.role === 'admin',
+        }));
     }));
 }

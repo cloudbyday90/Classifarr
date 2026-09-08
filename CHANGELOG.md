@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Cross-library common trait evidence** — Libraries now reports bounded,
+  conflict-excluded trait values that recur across selected same-type libraries.
+  Administrator-only aggregate purpose provenance provides context without
+  exposing policy values or affecting policy, cohort selection, or routing.
+
 - **Held-out policy-source readiness** — The administrator-only policy-purpose
   review now reports full-population aggregate availability of retained declared
   purpose for the private eligibility audit. It excludes inferred

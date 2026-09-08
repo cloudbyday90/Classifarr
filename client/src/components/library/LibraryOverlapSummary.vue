@@ -165,6 +165,15 @@
             :scope-status="observedTraitPrevalence.scopeStatus"
           />
         </div>
+        <div
+          v-if="commonTraitEvidence?.groups.length"
+          class="space-y-2 border-t border-gray-600 pt-4"
+        >
+          <h3 class="font-semibold">
+            Common observed traits across libraries
+          </h3>
+          <LibraryCommonTraitEvidence :evidence="commonTraitEvidence" />
+        </div>
       </template>
     </template>
   </section>
@@ -175,6 +184,8 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { getLibraryOverlap } from '@/api/libraryCatalogApi'
 import LibraryOverlapTraits from './LibraryOverlapTraits.vue'
 import LibraryObservedTraitPrevalence from './LibraryObservedTraitPrevalence.vue'
+import LibraryCommonTraitEvidence from './LibraryCommonTraitEvidence.vue'
+import { normalizeLibraryCommonTraitEvidence } from '@/utils/libraryCommonTraitEvidencePresentation'
 import { normalizeLibraryObservedTraitPrevalence } from '@/utils/libraryObservedTraitPrevalencePresentation'
 
 const report = ref(null)
@@ -190,6 +201,9 @@ const libraryName = id => {
 }
 const observedTraitPrevalence = computed(() => normalizeLibraryObservedTraitPrevalence(
   report.value?.observedTraitPrevalence
+))
+const commonTraitEvidence = computed(() => normalizeLibraryCommonTraitEvidence(
+  report.value?.commonTraitEvidence
 ))
 const observedTraitCohorts = computed(() => {
   const knownLibraryIds = new Set((report.value?.libraries || []).map((library) => library.id))

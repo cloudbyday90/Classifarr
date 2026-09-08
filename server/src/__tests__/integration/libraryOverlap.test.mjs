@@ -55,7 +55,7 @@ describe('bounded library overlap PostgreSQL snapshot', () => {
         expect(result.pairs[0].traits.find(trait => trait.field === 'language').entries[0].value).toBe('en');
         expect(JSON.stringify(result)).not.toContain('PRIVATE');
     });
-    test('excludes current source-identity conflicts from overlap and observed trait prevalence', async () => {
+    test('excludes current source-identity conflicts from overlap, prevalence, and common trait evidence', async () => {
         await client.query(`INSERT INTO media_server_items (library_id, tmdb_id, media_type, genres, media_server_id, external_id)
             VALUES (1, 7, 'movie', ARRAY['Private conflict trait'], 1, 'source-7'),
                 (1, 8, 'movie', ARRAY['Action'], 1, 'source-8'),
@@ -67,10 +67,12 @@ describe('bounded library overlap PostgreSQL snapshot', () => {
         const cohort = result.libraries.find(library => library.id === 1).cohorts[0];
         const prevalence = result.observedTraitPrevalence.libraries.find(library => library.libraryId === 1)
             .cohorts[0].traits.find(trait => trait.field === 'genres');
+        const commonTraits = result.commonTraitEvidence.groups[0].traits.find(trait => trait.field === 'genres');
 
         expect(result.libraries.find(library => library.id === 1).sourceConflictExcludedRowCount).toBe(1);
         expect(cohort).toMatchObject({ rowCount: 1, distinctIdentityCount: 1 });
         expect(prevalence.entries).toEqual([expect.objectContaining({ value: 'Action', peerCount: 1 })]);
+        expect(commonTraits.entries).toEqual([expect.objectContaining({ value: 'Action', observedLibraryCount: 2 })]);
         expect(JSON.stringify(result)).not.toContain('Private conflict trait');
     });
     test('selects libraries by stable ID order and reports the omitted active population', async () => {

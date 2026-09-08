@@ -46,6 +46,28 @@ describe('automatic library overlap summary', () => {
     expect(wrapper.text()).toContain('(0%; difference +100 points).')
     expect(wrapper.text()).toContain('do not establish policy intent, exclusions, classification accuracy, or routing')
   })
+  it('adds bounded recurring trait observations without treating them as a routing input', async () => {
+    const wrapper = await render()
+    expect(wrapper.text()).toContain('Common observed traits across libraries')
+    expect(wrapper.text()).toContain('Common observed traits: Movies (2 selected libraries)')
+    expect(wrapper.text()).toContain('Action — 2 observed identity occurrences across 2 libraries.')
+    expect(wrapper.text()).toContain('do not establish policy intent, classification accuracy, confidence, eligibility, or routing')
+    expect(wrapper.text()).not.toContain('Administrator policy-purpose context:')
+  })
+  it('renders administrator provenance as aggregate context without policy values', async () => {
+    const report = libraryOverlapFixture()
+    report.commonTraitEvidence.policyPurposeProvenanceIncluded = true
+    report.commonTraitEvidence.groups[0].traits[1].entries[0].policyPurpose = {
+      noActiveValidatedPolicyLibraryCount: 0,
+      profileOnlySpecializedPurposeLibraryCount: 1,
+      noRetainedDeclaredPurposeLibraryCount: 0,
+      retainedDeclaredPurposeLibraryCount: 1,
+      privatePolicyValue: 'must not render',
+    }
+    const wrapper = await render(report)
+    expect(wrapper.text()).toContain('Administrator policy-purpose context: 1 with retained declared purpose; 1 profile-only')
+    expect(wrapper.text()).not.toContain('must not render')
+  })
   it('reports omitted libraries and trait fields, unsupported rows and empty libraries', async () => {
     const report = libraryOverlapFixture()
     report.scope.excludedLibraryCount = 2
