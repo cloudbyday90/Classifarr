@@ -27,7 +27,7 @@ function candidates(perStratum = 7) {
 
 describe('held-out semantic study cohort planner', () => {
   test('freezes a balanced 28-case broad-policy cohort before semantic retrieval', async () => {
-    const preparation = { prepare: jest.fn(async () => ({ valid: true })) };
+    const preparation = { prepare: jest.fn(async () => ({ statusId: 'ready', valid: true })) };
     const planner = createHeldOutSemanticStudyCohortPlanner({ preparation });
     const plan = await planner.plan({
       candidates: candidates(),
@@ -41,6 +41,7 @@ describe('held-out semantic study cohort planner', () => {
       independentLabelsAvailable: false,
       policyChangeEligibility: false,
       semanticSelection: false,
+      eligibilityStatusCounts: { ready: 28 },
       selectedByStratum: {
         documentary: 7,
         'genre-overlap': 7,
@@ -58,6 +59,7 @@ describe('held-out semantic study cohort planner', () => {
 
   test('does not return a partial cohort when one required stratum lacks eligible comparisons', async () => {
     const preparation = { prepare: jest.fn(async (value) => ({
+      statusId: value.metadata.tmdb_id % 7 !== 0 ? 'ready' : 'not_pending_policy_decision',
       valid: value.metadata.tmdb_id % 7 !== 0,
     })) };
     const planner = createHeldOutSemanticStudyCohortPlanner({ preparation });
