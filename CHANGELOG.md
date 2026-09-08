@@ -11,6 +11,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Held-out policy-source readiness** — The administrator-only policy-purpose
+  review now reports full-population aggregate availability of retained declared
+  purpose for the private eligibility audit. It excludes inferred
+  library-profile evidence and cannot select a cohort, collect labels, or
+  affect routing.
+
 - **Automatic library trait prevalence** — Libraries now compares bounded
   observed trait frequencies with same-type selected peers, names local and
   peer denominators, and excludes current source-identity conflicts before any

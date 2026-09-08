@@ -60,6 +60,13 @@ describe('PolicyPurposeCoverageReview', () => {
             retainedPurposeCount: 0,
             noSpecializedPurposeCount: 0,
           },
+          studySourceReadiness: {
+            statusId: 'no_retained_declared_purpose_source',
+            activePolicyCount: 10,
+            profileOnlyPurposePolicyCount: 10,
+            retainedPurposePolicyCount: 0,
+            heldOutAuditCandidateSourceAvailable: false,
+          },
         },
       },
     })
@@ -71,6 +78,10 @@ describe('PolicyPurposeCoverageReview', () => {
     expect(wrapper.text()).toContain('Overlapping destinations')
     expect(wrapper.text()).toContain('Shared “any” alternatives')
     expect(wrapper.text()).toContain('Profile-only purpose')
+    expect(wrapper.text()).toContain('Held-out semantic study source')
+    expect(wrapper.text()).toContain('No Retained Declared Purpose Source')
+    expect(wrapper.text()).toContain('Profile observations remain excluded')
+    expect(wrapper.text()).toContain('Active validated policies')
     expect(wrapper.text()).toContain('Profile Only Specialized Purpose')
     expect(wrapper.text()).toContain('Inferred profile rules')
     expect(wrapper.text()).toContain('does not expose rule values')
@@ -79,6 +90,23 @@ describe('PolicyPurposeCoverageReview', () => {
     await wrapper.findAll('button').find(button => button.text() === 'Review policy').trigger('click')
 
     expect(wrapper.emitted('edit-policy')).toEqual([[entry]])
+  })
+
+  it('fails closed when the server sends an unrecognized study-source status', () => {
+    const wrapper = mount(PolicyPurposeCoverageReview, {
+      props: {
+        review: {
+          entries: [entry],
+          studySourceReadiness: {
+            statusId: 'provider_supplied_status',
+            activePolicyCount: 99,
+          },
+        },
+      },
+    })
+
+    expect(wrapper.text()).not.toContain('Held-out semantic study source')
+    expect(wrapper.text()).not.toContain('provider supplied status')
   })
 
   it('opens a bounded evidence digest only for the policy represented by the selected row', async () => {

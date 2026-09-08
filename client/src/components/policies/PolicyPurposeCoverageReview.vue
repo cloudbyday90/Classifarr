@@ -35,14 +35,56 @@
       Loading current policy purpose coverage...
     </div>
 
-    <div
-      v-else-if="entries.length === 0"
-      class="p-5 text-sm text-gray-400"
-    >
-      No active validated native policies are available for coverage review.
-    </div>
-
     <template v-else>
+      <div
+        v-if="studySourceReadiness"
+        class="border-b border-gray-700 bg-background/50 p-5"
+      >
+        <p
+          class="text-sm font-semibold"
+          :class="studySourceReadinessClass(studySourceReadiness.statusId)"
+        >
+          Held-out semantic study source: {{ formatId(studySourceReadiness.statusId) }}
+        </p>
+        <p class="mt-1 max-w-3xl text-sm leading-6 text-gray-300">
+          {{ studySourceReadinessDescription(studySourceReadiness.statusId) }}
+        </p>
+        <dl class="mt-3 grid gap-3 text-sm sm:grid-cols-3">
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-gray-400">
+              Active validated policies
+            </dt>
+            <dd class="mt-1 text-white">
+              {{ studySourceReadiness.activePolicyCount }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-gray-400">
+              Profile-only purpose policies
+            </dt>
+            <dd class="mt-1 text-white">
+              {{ studySourceReadiness.profileOnlyPurposePolicyCount }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-gray-400">
+              Retained-purpose policies
+            </dt>
+            <dd class="mt-1 text-white">
+              {{ studySourceReadiness.retainedPurposePolicyCount }}
+            </dd>
+          </div>
+        </dl>
+      </div>
+
+      <div
+        v-if="entries.length === 0"
+        class="p-5 text-sm text-gray-400"
+      >
+        No active validated native policies are available for coverage review.
+      </div>
+
+      <template v-else>
       <dl class="grid gap-4 border-b border-gray-800 p-5 sm:grid-cols-3 xl:grid-cols-6">
         <div>
           <dt class="text-xs uppercase tracking-wide text-gray-400">
@@ -252,12 +294,16 @@
           </div>
         </li>
       </ul>
+      </template>
     </template>
   </section>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue'
+import {
+  normalizePolicyPurposeCoverageStudySourceReadiness,
+} from '@/utils/policyPurposeCoverageStudySourceReadiness'
 
 const props = defineProps({
   review: {
@@ -290,6 +336,9 @@ const summary = computed(() => ({
   noSpecializedPurposeCount: Number(props.review?.summary?.noSpecializedPurposeCount) || 0,
   truncated: props.review?.summary?.truncated === true,
 }))
+const studySourceReadiness = computed(() => (
+  normalizePolicyPurposeCoverageStudySourceReadiness(props.review?.studySourceReadiness)
+))
 
 function formatId(value) {
   if (typeof value !== 'string' || !value.trim()) return 'Unavailable'
@@ -341,6 +390,22 @@ function provenanceDescription(statusId) {
     return 'At least one specialized purpose rule is retained outside inferred library-profile evidence. This review remains advisory and does not establish semantic correctness or routing authority.'
   }
   return 'No specialized genre, keyword, or studio purpose rule is currently declared. Existing library contents, media type, history, profiles, RAG, and AI output do not substitute for declared purpose.'
+}
+
+function studySourceReadinessClass(statusId) {
+  return statusId === 'retained_declared_purpose_source_available'
+    ? 'text-green-200'
+    : 'text-amber-200'
+}
+
+function studySourceReadinessDescription(statusId) {
+  if (statusId === 'retained_declared_purpose_source_available') {
+    return 'At least one active policy retains declared specialized purpose outside inferred library-profile evidence. This makes a policy-only source available for the private eligibility audit; it does not establish a cohort, independent labels, measured accuracy, semantic selection, or automatic routing.'
+  }
+  if (statusId === 'no_retained_declared_purpose_source') {
+    return 'No active policy retains declared specialized purpose outside inferred library-profile evidence. Profile observations remain excluded from policy-only held-out study selection.'
+  }
+  return 'No active validated native policy is available for this static source check. This review does not select media, establish semantic correctness, or change routing.'
 }
 
 function focus() {

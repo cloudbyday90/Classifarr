@@ -16,18 +16,8 @@ function asArray(value) {
   return Array.isArray(value?.rows) ? value.rows : [];
 }
 
-/**
- * Reads current validated native-policy purpose coverage. Required terms are
- * compared only inside PostgreSQL and are never selected into application
- * memory or returned by this report.
- */
-export async function loadPolicyPurposeCoverageReviewRecords({ db, limit }) {
-  const authorityPredicate = buildNativeIntentAuthoritySqlPredicate({
-    intentAlias: 'intent',
-  });
-  const result = await db.query(
-    `WITH active_native_policies AS (
-       SELECT
+function buildActiveNativePoliciesSql(authorityPredicate) {
+  return `SELECT
          policy.id AS policy_id,
          policy.name AS policy_name,
          policy.library_id,
@@ -42,7 +32,21 @@ export async function loadPolicyPurposeCoverageReviewRecords({ db, limit }) {
         AND intent.library_id = policy.library_id
        WHERE policy.enabled = TRUE
          AND library.is_active = TRUE
-         AND ${authorityPredicate}
+         AND ${authorityPredicate}`;
+}
+
+/**
+ * Reads current validated native-policy purpose coverage. Required terms are
+ * compared only inside PostgreSQL and are never selected into application
+ * memory or returned by this report.
+ */
+export async function loadPolicyPurposeCoverageReviewRecords({ db, limit }) {
+  const authorityPredicate = buildNativeIntentAuthoritySqlPredicate({
+    intentAlias: 'intent',
+  });
+  const result = await db.query(
+    `WITH active_native_policies AS (
+       ${buildActiveNativePoliciesSql(authorityPredicate)}
      ),
      required_content_terms AS (
        SELECT DISTINCT
@@ -167,4 +171,52 @@ export async function loadPolicyPurposeCoverageReviewRecords({ db, limit }) {
   );
 
   return asArray(result);
+}
+
+/**
+ * Reads full-population provenance totals separately from the bounded review
+ * rows. The projection contains counts only: it never materializes configured
+ * rule values, profile observations, or media data.
+ */
+export async function loadPolicyPurposeCoverageStudySourceReadinessRecord({ db }) {
+  const authorityPredicate = buildNativeIntentAuthoritySqlPredicate({
+    intentAlias: 'intent',
+  });
+  const result = await db.query(
+    `WITH active_native_policies AS (
+       ${buildActiveNativePoliciesSql(authorityPredicate)}
+     ),
+     specialized_purpose_provenance_counts AS (
+       SELECT
+         active.policy_id,
+         COUNT(rule.id)::INTEGER AS specialized_purpose_rule_count,
+         COUNT(rule.id) FILTER (
+           WHERE rule.source = 'media_server_library_profile'
+             AND rule.inference_state = 'inferred'
+         )::INTEGER AS inferred_profile_purpose_rule_count
+       FROM active_native_policies active
+       LEFT JOIN policy_intent_rules rule
+         ON rule.intent_id = active.intent_id
+        AND rule.intent_role = 'purpose'
+        AND rule.semantics = 'identity'
+        AND rule.signal_type IN ('genres', 'keywords', 'studios')
+       GROUP BY active.policy_id
+     )
+     SELECT
+       COUNT(active.policy_id)::INTEGER AS active_policy_count,
+       COUNT(active.policy_id) FILTER (
+         WHERE provenance.specialized_purpose_rule_count > 0
+           AND provenance.specialized_purpose_rule_count
+             = provenance.inferred_profile_purpose_rule_count
+       )::INTEGER AS profile_only_purpose_policy_count,
+       COUNT(active.policy_id) FILTER (
+         WHERE provenance.specialized_purpose_rule_count
+           > provenance.inferred_profile_purpose_rule_count
+       )::INTEGER AS retained_purpose_policy_count
+     FROM active_native_policies active
+     LEFT JOIN specialized_purpose_provenance_counts provenance
+       ON provenance.policy_id = active.policy_id`,
+  );
+
+  return asArray(result)[0] || {};
 }

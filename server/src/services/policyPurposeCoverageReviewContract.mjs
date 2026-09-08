@@ -12,8 +12,11 @@ import {
   buildPolicyPurposeCoverageProvenance,
   POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS,
 } from './policyPurposeCoverageProvenance.mjs';
+import {
+  buildPolicyPurposeCoverageStudySourceReadiness,
+} from './policyPurposeCoverageStudySourceReadiness.mjs';
 
-export const POLICY_PURPOSE_COVERAGE_REVIEW_VERSION = 3;
+export const POLICY_PURPOSE_COVERAGE_REVIEW_VERSION = 4;
 export const DEFAULT_POLICY_PURPOSE_COVERAGE_REVIEW_ROWS = 50;
 export const MAX_POLICY_PURPOSE_COVERAGE_REVIEW_ROWS = 100;
 
@@ -153,6 +156,7 @@ export function buildPolicyPurposeCoverageReviewEntry(record = {}) {
 
 export function buildPolicyPurposeCoverageReview({
   records = [],
+  studySourceReadinessRecord = {},
   evaluatedAt = new Date(),
   limit = DEFAULT_POLICY_PURPOSE_COVERAGE_REVIEW_ROWS,
   truncated = false,
@@ -187,6 +191,9 @@ export function buildPolicyPurposeCoverageReview({
     version: `policy_purpose_coverage_review.v${POLICY_PURPOSE_COVERAGE_REVIEW_VERSION}`,
     evaluatedAt: toIsoTimestamp(evaluatedAt) || new Date().toISOString(),
     entries,
+    studySourceReadiness: buildPolicyPurposeCoverageStudySourceReadiness(
+      studySourceReadinessRecord,
+    ),
     summary: {
       reviewedPolicyCount: entries.length,
       declaredCoverageCount: entries.length - missingCoverageCount - broadOverlapCount,

@@ -37,7 +37,7 @@ describe('policyPurposeCoverageReviewContract', () => {
     });
 
     expect(review).toEqual(expect.objectContaining({
-      version: 'policy_purpose_coverage_review.v3',
+      version: 'policy_purpose_coverage_review.v4',
       rawConfigurationExposed: false,
       routingAffected: false,
       summary: expect.objectContaining({
@@ -58,6 +58,28 @@ describe('policyPurposeCoverageReviewContract', () => {
       }),
     }));
     expect(JSON.stringify(review)).not.toContain('must-not-leak');
+  });
+
+  test('attaches a full-population source signal without granting cohort or routing authority', () => {
+    const review = buildPolicyPurposeCoverageReview({
+      records: [{ policy_id: 17, library_id: 18 }],
+      studySourceReadinessRecord: {
+        active_policy_count: 12,
+        profile_only_purpose_policy_count: 11,
+        retained_purpose_policy_count: 1,
+      },
+    });
+
+    expect(review.studySourceReadiness).toEqual({
+      statusId: 'retained_declared_purpose_source_available',
+      activePolicyCount: 12,
+      profileOnlyPurposePolicyCount: 11,
+      retainedPurposePolicyCount: 1,
+      heldOutAuditCandidateSourceAvailable: true,
+      semanticCohortReady: false,
+      semanticSelectionAffected: false,
+      routingAffected: false,
+    });
   });
 
   test('separates inferred profile-only purpose from retained and absent specialized purpose', () => {

@@ -15,6 +15,7 @@ import {
 } from './policyPurposeCoverageReviewContract.mjs';
 import {
   loadPolicyPurposeCoverageReviewRecords,
+  loadPolicyPurposeCoverageStudySourceReadinessRecord,
 } from './policyPurposeCoverageReviewPersistence.mjs';
 
 export class PolicyPurposeCoverageReviewService {
@@ -22,24 +23,30 @@ export class PolicyPurposeCoverageReviewService {
     db = defaultDb,
     now = () => new Date(),
     loadRecords = loadPolicyPurposeCoverageReviewRecords,
+    loadStudySourceReadinessRecord = loadPolicyPurposeCoverageStudySourceReadinessRecord,
     buildReview = buildPolicyPurposeCoverageReview,
   } = {}) {
     this.db = db;
     this.now = now;
     this.loadRecords = loadRecords;
+    this.loadStudySourceReadinessRecord = loadStudySourceReadinessRecord;
     this.buildReview = buildReview;
   }
 
   async getReview({ dbClient = this.db, limit, now = this.now() } = {}) {
     const normalizedLimit = normalizePolicyPurposeCoverageReviewLimit(limit);
-    const loadedRecords = await this.loadRecords({
-      db: dbClient,
-      limit: normalizedLimit + 1,
-    });
+    const [loadedRecords, studySourceReadinessRecord] = await Promise.all([
+      this.loadRecords({
+        db: dbClient,
+        limit: normalizedLimit + 1,
+      }),
+      this.loadStudySourceReadinessRecord({ db: dbClient }),
+    ]);
     const records = Array.isArray(loadedRecords) ? loadedRecords : [];
 
     return this.buildReview({
       records: records.slice(0, normalizedLimit),
+      studySourceReadinessRecord,
       evaluatedAt: now,
       limit: normalizedLimit,
       truncated: records.length > normalizedLimit,

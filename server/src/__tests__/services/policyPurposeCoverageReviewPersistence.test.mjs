@@ -11,6 +11,7 @@
 import { jest } from '@jest/globals';
 import {
   loadPolicyPurposeCoverageReviewRecords,
+  loadPolicyPurposeCoverageStudySourceReadinessRecord,
 } from '../../services/policyPurposeCoverageReviewPersistence.mjs';
 
 describe('policyPurposeCoverageReviewPersistence', () => {
@@ -42,5 +43,36 @@ describe('policyPurposeCoverageReviewPersistence', () => {
     expect(sql).not.toContain('classification_history')
     expect(sql).not.toContain('rag_')
     expect(values).toEqual([51])
+  });
+
+  test('reads full-population source availability as fixed provenance counts without values', async () => {
+    const query = jest.fn().mockResolvedValue({
+      rows: [{
+        active_policy_count: 10,
+        profile_only_purpose_policy_count: 10,
+        retained_purpose_policy_count: 0,
+      }],
+    });
+
+    await expect(loadPolicyPurposeCoverageStudySourceReadinessRecord({ db: { query } }))
+      .resolves.toEqual({
+        active_policy_count: 10,
+        profile_only_purpose_policy_count: 10,
+        retained_purpose_policy_count: 0,
+      });
+
+    const [sql, values] = query.mock.calls[0];
+    expect(sql).toContain('WITH active_native_policies AS')
+    expect(sql).toContain("intent.source = 'native_intent'")
+    expect(sql).toContain('specialized_purpose_provenance_counts AS')
+    expect(sql).toContain('active_policy_count')
+    expect(sql).toContain('profile_only_purpose_policy_count')
+    expect(sql).toContain('retained_purpose_policy_count')
+    expect(sql).toContain("rule.source = 'media_server_library_profile'")
+    expect(sql).toContain("rule.inference_state = 'inferred'")
+    expect(sql).not.toContain('rule.values')
+    expect(sql).not.toContain('classification_history')
+    expect(sql).not.toContain('rag_')
+    expect(values).toBeUndefined()
   });
 });

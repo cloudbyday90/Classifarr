@@ -197,6 +197,18 @@ describe('Policy purpose coverage review integration', () => {
       inferredProfilePurposeRuleCount: 0,
       retainedPurposeRuleCount: 0,
     });
+    expect(review.studySourceReadiness).toEqual(expect.objectContaining({
+      statusId: 'retained_declared_purpose_source_available',
+      activePolicyCount: expect.any(Number),
+      profileOnlyPurposePolicyCount: expect.any(Number),
+      retainedPurposePolicyCount: expect.any(Number),
+      heldOutAuditCandidateSourceAvailable: true,
+      semanticCohortReady: false,
+      semanticSelectionAffected: false,
+      routingAffected: false,
+    }));
+    expect(review.studySourceReadiness.activePolicyCount).toBeGreaterThanOrEqual(6);
+    expect(review.studySourceReadiness.retainedPurposePolicyCount).toBeGreaterThanOrEqual(4);
     expect(review.rawConfigurationExposed).toBe(false);
     expect(review.routingAffected).toBe(false);
     expect(JSON.stringify(review)).not.toContain('unique-review-token');
