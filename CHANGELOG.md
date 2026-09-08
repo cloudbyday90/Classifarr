@@ -11,6 +11,14 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Passive held-out study readiness** — Administrators and future automation
+  can read a rate-limited, no-store, aggregate-only report explaining whether
+  normal lifecycle receipts or complete declared-purpose evidence still defer
+  the private eligibility audit. It exposes no library, policy, configuration,
+  or media identity and cannot create evidence, capture a cohort, label media,
+  invoke AI, change policy, or route media. Authorization precedes the
+  per-IP limiter to preserve administrator availability.
+
 - **Purpose-evidence re-audit preflight** — Receipt-triggered held-out
   eligibility re-audit now waits for fixed aggregate evidence that at least one
   current policy retains declared purpose and complete normal lifecycle

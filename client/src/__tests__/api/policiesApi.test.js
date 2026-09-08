@@ -51,6 +51,7 @@ import {
   getNativeIntentReconciliationStatus,
   getNativeIntentReconciliationRemediationInventory,
   getPolicyPurposeCoverageReview,
+  getHeldOutSemanticStudyReadiness,
   getPolicyNativeIntentReconciliationPurposeSuggestion,
   getPolicyScopedEvidenceDigest,
   preflightPolicyPurposeCoverage,
@@ -302,6 +303,16 @@ describe('policiesApi', () => {
     await getPolicyPurposeCoverageReview()
 
     expect(mockGetDataRequest).toHaveBeenCalledWith('/policies/native-intent-reconciliation/purpose-coverage')
+  })
+
+  it('gets the aggregate-only held-out semantic study readiness', async () => {
+    mockGetDataRequest.mockResolvedValueOnce({ statusId: 'normal_lifecycle_receipt_required' })
+
+    await getHeldOutSemanticStudyReadiness()
+
+    expect(mockGetDataRequest).toHaveBeenCalledWith(
+      '/policies/native-intent-reconciliation/held-out-study-readiness'
+    )
   })
 
   it('gets one policy-scoped, read-only reconciliation purpose suggestion', async () => {

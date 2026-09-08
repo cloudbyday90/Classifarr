@@ -31,6 +31,7 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS = Object.freeze({
   RECONCILIATION_REMEDIATION: 'reconciliation_remediation',
   PURPOSE_COVERAGE_REVIEW: 'purpose_coverage_review',
   PURPOSE_EVIDENCE_INVENTORY: 'purpose_evidence_inventory',
+  HELD_OUT_STUDY_READINESS: 'held_out_study_readiness',
   PURPOSE_LIFECYCLE_PROVENANCE_RECEIPT: 'purpose_lifecycle_provenance_receipt',
   PURPOSE_COVERAGE_PREFLIGHT: 'purpose_coverage_preflight',
   COHORT_SIMULATION: 'cohort_simulation',
@@ -327,6 +328,15 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY = deepFreeze([
     targetComponentIds: [],
     normalAuthoringAllowed: false,
     notes: 'Administrator-only read-only aggregate inventory; it reports native-purpose evidence availability without exposing a policy, library, rule value, configuration, or media record and cannot alter policy or routing.',
+  },
+  {
+    id: 'held_out_semantic_study_readiness',
+    path: 'client/src/components/policies/HeldOutSemanticStudyReadiness.vue',
+    roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.HELD_OUT_STUDY_READINESS,
+    decisionId: POLICY_AUTHORING_COMPONENT_DECISION_IDS.DELETE_FROM_NORMAL_PATH,
+    targetComponentIds: [],
+    normalAuthoringAllowed: false,
+    notes: 'Administrator-only aggregate study prerequisite; it displays the passive count-only lifecycle and declared-purpose state without exposing library or policy identity or creating cohort, label, semantic, policy, or routing authority.',
   },
   {
     id: 'policy_purpose_lifecycle_provenance_receipt',

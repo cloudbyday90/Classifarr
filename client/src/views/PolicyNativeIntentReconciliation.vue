@@ -267,6 +267,10 @@
       @edit-policy="openPolicyEditor"
     />
 
+    <HeldOutSemanticStudyReadiness
+      :readiness="heldOutSemanticStudyReadiness"
+    />
+
     <PolicyPurposeCoverageReview
       v-if="status || purposeCoverageReview"
       ref="purposeCoverageReviewElement"
@@ -322,6 +326,7 @@
 <script setup>
 import { computed, defineAsyncComponent, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import HeldOutSemanticStudyReadiness from '@/components/policies/HeldOutSemanticStudyReadiness.vue'
 import PolicyNativeIntentReconciliationRemediationInventory from '@/components/policies/PolicyNativeIntentReconciliationRemediationInventory.vue'
 import PolicyPurposeCoverageReview from '@/components/policies/PolicyPurposeCoverageReview.vue'
 import PolicyScopedEvidenceDigest from '@/components/policies/PolicyScopedEvidenceDigest.vue'
@@ -332,6 +337,7 @@ import {
 } from '@/api/policiesApi'
 import { usePolicyNativeIntentReconciliationStatus } from '@/composables/usePolicyNativeIntentReconciliationStatus'
 import { usePolicyNativeIntentReconciliationRemediationInventory } from '@/composables/usePolicyNativeIntentReconciliationRemediationInventory'
+import { useHeldOutSemanticStudyReadiness } from '@/composables/useHeldOutSemanticStudyReadiness'
 import { usePolicyPurposeCoverageReview } from '@/composables/usePolicyPurposeCoverageReview'
 import { usePolicyScopedEvidenceDigest } from '@/composables/usePolicyScopedEvidenceDigest'
 import {
@@ -362,6 +368,12 @@ const {
   loadReview: loadPurposeCoverageReview,
 } = usePolicyPurposeCoverageReview()
 const {
+  readiness: heldOutSemanticStudyReadiness,
+  isLoading: heldOutSemanticStudyReadinessLoading,
+  errorMessage: heldOutSemanticStudyReadinessErrorMessage,
+  loadReadiness: loadHeldOutSemanticStudyReadiness,
+} = useHeldOutSemanticStudyReadiness()
+const {
   digest: policyScopedEvidenceDigest,
   isLoading: policyScopedEvidenceDigestLoading,
   errorMessage: policyScopedEvidenceDigestErrorMessage,
@@ -376,10 +388,12 @@ const purposeCoverageReviewElement = ref(null)
 const policyScopedEvidenceDigestElement = ref(null)
 const isLoading = computed(() => (
   statusLoading.value || remediationLoading.value || purposeCoverageLoading.value ||
+  heldOutSemanticStudyReadinessLoading.value ||
   policyScopedEvidenceDigestLoading.value
 ))
 const errorMessage = computed(() => (
   statusErrorMessage.value || remediationErrorMessage.value || purposeCoverageErrorMessage.value ||
+  heldOutSemanticStudyReadinessErrorMessage.value ||
   policyScopedEvidenceDigestErrorMessage.value
 ))
 
@@ -430,6 +444,7 @@ const loadReconciliationView = async () => {
     loadStatus(),
     loadRemediationInventory(),
     loadPurposeCoverageReview(),
+    loadHeldOutSemanticStudyReadiness(),
     loadPolicyScopedEvidenceDigest(focusPolicyId.value),
   ])
 }

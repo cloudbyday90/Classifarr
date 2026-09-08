@@ -16,6 +16,7 @@ const getStatus = jest.fn();
 const getReconciliationStatus = jest.fn();
 const getRemediationInventory = jest.fn();
 const getPurposeCoverageReview = jest.fn();
+const getHeldOutSemanticStudyReadiness = jest.fn();
 const getPurposeSuggestion = jest.fn();
 const getScopedEvidenceDigest = jest.fn();
 const disableAutomation = jest.fn();
@@ -55,6 +56,12 @@ jest.unstable_mockModule('../services/policyPurposeCoverageReviewService.mjs', (
   },
 }));
 
+jest.unstable_mockModule('../services/heldOutSemanticStudyReadinessService.mjs', () => ({
+  heldOutSemanticStudyReadinessService: {
+    getReport: getHeldOutSemanticStudyReadiness,
+  },
+}));
+
 jest.unstable_mockModule('../services/nativeIntentReconciliationPurposeSuggestionService.mjs', () => ({
   nativeIntentReconciliationPurposeSuggestionService: {
     getSuggestion: getPurposeSuggestion,
@@ -71,6 +78,8 @@ const { registerPolicyNativeIntentReconciliationRoutes } =
   await import('../routes/policiesRouteNativeIntentReconciliation.mjs');
 const { registerPolicyScopedEvidenceDigestRoutes } =
   await import('../routes/policiesRoutePolicyScopedEvidenceDigest.mjs');
+const { registerPolicyHeldOutSemanticStudyReadinessRoutes } =
+  await import('../routes/policiesRouteHeldOutSemanticStudyReadiness.mjs');
 const { errorHandler } = await import('../middleware/errorHandler.mjs');
 
 function createApp(user = { id: 7, role: 'admin' }, rateLimit = null) {
@@ -84,6 +93,10 @@ function createApp(user = { id: 7, role: 'admin' }, rateLimit = null) {
   registerPolicyNativeIntentReconciliationRoutes(router, {
     db: { query: jest.fn(), withTransaction: jest.fn() },
     logger: { info: jest.fn(), warn: jest.fn() },
+  });
+  registerPolicyHeldOutSemanticStudyReadinessRoutes(router, {
+    db: { query: jest.fn(), withTransaction: jest.fn() },
+    rateLimit,
   });
   registerPolicyScopedEvidenceDigestRoutes(router, {
     db: { query: jest.fn(), withTransaction: jest.fn() },
@@ -100,6 +113,7 @@ describe('Policy native intent reconciliation control routes', () => {
     getReconciliationStatus.mockReset();
     getRemediationInventory.mockReset();
     getPurposeCoverageReview.mockReset();
+    getHeldOutSemanticStudyReadiness.mockReset();
     getPurposeSuggestion.mockReset();
     getScopedEvidenceDigest.mockReset();
     disableAutomation.mockReset();
@@ -121,6 +135,20 @@ describe('Policy native intent reconciliation control routes', () => {
     getPurposeCoverageReview.mockResolvedValue({
       entries: [],
       rawConfigurationExposed: false,
+      routingAffected: false,
+    });
+    getHeldOutSemanticStudyReadiness.mockResolvedValue({
+      version: 'policy.held_out_semantic_study_readiness.v1',
+      statusId: 'normal_lifecycle_receipt_required',
+      normalLifecycleReceiptCount: 0,
+      completePolicyEvidenceCount: 0,
+      reAuditPreconditionSatisfied: false,
+      rawConfigurationExposed: false,
+      libraryIdentityExposed: false,
+      mediaIdentityExposed: false,
+      semanticCohortReady: false,
+      independentLabelsAvailable: false,
+      semanticSelectionAffected: false,
       routingAffected: false,
     });
     getPurposeSuggestion.mockResolvedValue({
@@ -203,6 +231,49 @@ describe('Policy native intent reconciliation control routes', () => {
     await request(createApp({ id: 9, role: 'operator' }))
       .get('/api/policies/native-intent-reconciliation/purpose-coverage')
       .expect(403);
+  });
+
+  test('returns the administrator-only, no-store held-out-study prerequisite without identities', async () => {
+    const response = await request(createApp())
+      .get('/api/policies/native-intent-reconciliation/held-out-study-readiness')
+      .expect(200);
+
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.body).toEqual(expect.objectContaining({
+      statusId: 'normal_lifecycle_receipt_required',
+      rawConfigurationExposed: false,
+      libraryIdentityExposed: false,
+      mediaIdentityExposed: false,
+      reAuditPreconditionSatisfied: false,
+    }));
+    expect(getHeldOutSemanticStudyReadiness).toHaveBeenCalledWith({
+      dbClient: expect.any(Object),
+    });
+    await request(createApp({ id: 9, role: 'operator' }))
+      .get('/api/policies/native-intent-reconciliation/held-out-study-readiness')
+      .expect(403);
+  });
+
+  test('rate limits held-out-study aggregate readiness reads when the router provides a limiter', async () => {
+    const limiter = jest.fn((_req, _res, next) => next());
+    const rateLimit = jest.fn().mockReturnValue(limiter);
+
+    await request(createApp({ id: 7, role: 'admin' }, rateLimit))
+      .get('/api/policies/native-intent-reconciliation/held-out-study-readiness')
+      .expect(200);
+
+    expect(rateLimit).toHaveBeenCalledWith(expect.objectContaining({
+      max: 30,
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: expect.objectContaining({ error: expect.stringContaining('held-out study') }),
+    }));
+
+    limiter.mockClear();
+    await request(createApp({ id: 9, role: 'operator' }, rateLimit))
+      .get('/api/policies/native-intent-reconciliation/held-out-study-readiness')
+      .expect(403);
+    expect(limiter).not.toHaveBeenCalled();
   });
 
   test('returns one administrator-only, no-store profile purpose suggestion without a write action', async () => {

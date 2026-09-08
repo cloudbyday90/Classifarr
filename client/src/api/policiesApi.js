@@ -176,6 +176,10 @@ export function getPolicyPurposeCoverageReview() {
   return getDataRequest('/policies/native-intent-reconciliation/purpose-coverage')
 }
 
+export function getHeldOutSemanticStudyReadiness() {
+  return getDataRequest('/policies/native-intent-reconciliation/held-out-study-readiness')
+}
+
 export function getPolicyNativeIntentReconciliationPurposeSuggestion(id) {
   return getDataRequest(`/policies/${id}/native-intent-reconciliation/purpose-suggestion`)
 }
@@ -221,6 +225,7 @@ const policiesApi = {
   getNativeIntentReconciliationStatus,
   getNativeIntentReconciliationRemediationInventory,
   getPolicyPurposeCoverageReview,
+  getHeldOutSemanticStudyReadiness,
   getPolicyNativeIntentReconciliationPurposeSuggestion,
   getPolicyScopedEvidenceDigest,
   preflightPolicyPurposeCoverage,

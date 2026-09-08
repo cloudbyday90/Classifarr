@@ -126,6 +126,15 @@ export const routeSafetyReadinessLimiterConfig = {
   legacyHeaders: false,
 };
 
+/** Held-out semantic-study aggregate readiness reads (per IP, per 15 minutes). */
+export const heldOutSemanticStudyReadinessLimiterConfig = {
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: 'Too many held-out study readiness requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+};
+
 /** AI capability-metrics health aggregate reads (per IP, per 15 minutes). */
 export const aiProviderCapabilityMetricsHealthLimiterConfig = {
   windowMs: 15 * 60 * 1000,
