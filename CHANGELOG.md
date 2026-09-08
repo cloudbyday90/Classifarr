@@ -368,7 +368,8 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 - **Policy evidence maintenance inventories** — Restored complete ownership for
   the read-only purpose-evidence and lifecycle-provenance components so the
-  policy presentation audit tracks every current component and test.
+  policy presentation audit tracks every current component and test. Regenerated
+  the fresh-install schema snapshot so it tracks every current migration.
 
 - **Profile-derived purpose maintenance** — The administrator native-purpose
   editor can now prepare profile-derived stored purpose as a clean typed draft

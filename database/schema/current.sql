@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-07T20:41:35.680Z
--- Latest Migration: 20260907_210000_add_unresolved_source_observations.sql
+-- Generated: 2026-09-08T14:21:15.664Z
+-- Latest Migration: 20260908_030000_add_held_out_semantic_study_lifecycle_reaudit_state.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3049,6 +3049,27 @@ CREATE SEQUENCE public.error_log_id_seq
 --
 
 ALTER SEQUENCE public.error_log_id_seq OWNED BY public.error_log.id;
+
+
+--
+-- Name: held_out_semantic_study_lifecycle_reaudit_state; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.held_out_semantic_study_lifecycle_reaudit_state (
+    state_key text CONSTRAINT held_out_semantic_study_lifecycle_reaudit_st_state_key_not_null NOT NULL,
+    source_fingerprint character(64) CONSTRAINT held_out_semantic_study_lifecycle_r_source_fingerprint_not_null NOT NULL,
+    source_receipt jsonb CONSTRAINT held_out_semantic_study_lifecycle_reaud_source_receipt_not_null NOT NULL,
+    attempt_count smallint CONSTRAINT held_out_semantic_study_lifecycle_reaudi_attempt_count_not_null NOT NULL,
+    audit_status_id text CONSTRAINT held_out_semantic_study_lifecycle_reau_audit_status_id_not_null NOT NULL,
+    audit_receipt jsonb CONSTRAINT held_out_semantic_study_lifecycle_reaudi_audit_receipt_not_null NOT NULL,
+    audited_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP CONSTRAINT held_out_semantic_study_lifecycle_reaudit_s_audited_at_not_null NOT NULL,
+    CONSTRAINT held_out_semantic_study_lifecycle_reau_source_fingerprint_check CHECK ((source_fingerprint ~ '^[0-9a-f]{64}$'::text)),
+    CONSTRAINT held_out_semantic_study_lifecycle_reaudit__source_receipt_check CHECK ((jsonb_typeof(source_receipt) = 'object'::text)),
+    CONSTRAINT held_out_semantic_study_lifecycle_reaudit_audit_status_id_check CHECK ((audit_status_id = ANY (ARRAY['candidate_source_truncated'::text, 'complete'::text, 'configuration_changed'::text, 'failed'::text]))),
+    CONSTRAINT held_out_semantic_study_lifecycle_reaudit_s_attempt_count_check CHECK (((attempt_count >= 1) AND (attempt_count <= 3))),
+    CONSTRAINT held_out_semantic_study_lifecycle_reaudit_s_audit_receipt_check CHECK ((jsonb_typeof(audit_receipt) = 'object'::text)),
+    CONSTRAINT held_out_semantic_study_lifecycle_reaudit_state_state_key_check CHECK ((state_key = 'normal_policy_lifecycle_receipts'::text))
+);
 
 
 --
@@ -8880,6 +8901,14 @@ ALTER TABLE ONLY public.error_log
 
 
 --
+-- Name: held_out_semantic_study_lifecycle_reaudit_state held_out_semantic_study_lifecycle_reaudit_state_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.held_out_semantic_study_lifecycle_reaudit_state
+    ADD CONSTRAINT held_out_semantic_study_lifecycle_reaudit_state_pkey PRIMARY KEY (state_key);
+
+
+--
 -- Name: inventory_observation_activity inventory_observation_activity_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11367,10 +11396,24 @@ CREATE INDEX idx_policy_initial_intent_establishments_library ON public.policy_i
 
 
 --
+-- Name: idx_policy_initial_intent_establishments_lifecycle_receipt; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_initial_intent_establishments_lifecycle_receipt ON public.policy_initial_intent_establishments USING btree (established_at DESC, id DESC) INCLUDE (policy_id, intent_id) WHERE (((state)::text = 'established'::text) AND (intent_id IS NOT NULL));
+
+
+--
 -- Name: idx_policy_intent_migration_events_state; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_policy_intent_migration_events_state ON public.policy_intent_migration_events USING btree (policy_id, event_type, created_at);
+
+
+--
+-- Name: idx_policy_intent_receipts_policy_lifecycle_source; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_intent_receipts_policy_lifecycle_source ON public.policy_native_intent_change_receipts USING btree (policy_id, created_at DESC, id DESC) INCLUDE (target_intent_id, target_intent_version) WHERE ((result_status_id)::text = 'applied'::text);
 
 
 --
@@ -11525,6 +11568,13 @@ CREATE INDEX idx_policy_migration_verification_runs_transition ON public.policy_
 --
 
 CREATE INDEX idx_policy_native_intent_change_receipts_actor_policy ON public.policy_native_intent_change_receipts USING btree (actor_id, policy_id, created_at DESC, id DESC);
+
+
+--
+-- Name: idx_policy_native_intent_change_receipts_lifecycle_receipt; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_native_intent_change_receipts_lifecycle_receipt ON public.policy_native_intent_change_receipts USING btree (created_at DESC, id DESC) INCLUDE (policy_id, target_intent_id, target_intent_version) WHERE ((result_status_id)::text = 'applied'::text);
 
 
 --
@@ -15556,6 +15606,9 @@ FROM unnest(ARRAY[
     '20260907_020000_add_feedback_source_receipts.sql',
     '20260907_030000_add_history_recording_instant.sql',
     '20260907_180000_consolidate_equivalent_metadata_providers.sql',
-    '20260907_210000_add_unresolved_source_observations.sql'
+    '20260907_210000_add_unresolved_source_observations.sql',
+    '20260908_010000_add_policy_purpose_lifecycle_receipt_indexes.sql',
+    '20260908_020000_add_policy_lifecycle_source_readiness_index.sql',
+    '20260908_030000_add_held_out_semantic_study_lifecycle_reaudit_state.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

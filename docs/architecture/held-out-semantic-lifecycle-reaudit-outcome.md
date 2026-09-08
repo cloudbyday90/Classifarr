@@ -39,10 +39,19 @@ eligible for automatic routing.
 ## Validation
 
 Focused contract, source, persistence, re-audit service, eligibility audit,
-lifecycle source, scheduler, startup, and advisory-lock tests pass: 96 tests in
-9 suites. Server type checking, security lint, test lint, migration validation,
-and the static ESM import check pass. Final Compose and live audit validation is
-recorded with the implementation commit.
+lifecycle source, scheduler, startup, and advisory-lock tests pass. The full
+unit backend suite also passes: 1,133 suites and 32,383 tests. Server and client
+type checking, security lint, test lint, documentation lint, migration
+validation, the authoritative schema snapshot check, and the static ESM import
+check pass.
+
+A no-cache Compose rebuild produced a healthy service and a provenance-labelled
+image. The scheduler completed its delayed automatic check. The local database
+has no durable normal lifecycle receipt yet, so it correctly emitted no audit
+receipt and created no cursor row. A direct private audit remained complete but
+found no eligible policy-only comparison among 6,641 candidates; the frozen
+28-case cohort attempt returned `insufficient_eligible_cases`. No labels,
+readiness, frozen-study preflight, semantic selection, or routing ran.
 
 ## Next item
 
