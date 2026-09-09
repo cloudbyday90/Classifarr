@@ -10,6 +10,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 ## [Unreleased]
 
 ### Performance
+- Add passive, coalesced queue-startup performance receipts with fixed duration
+  and count buckets. They retain no query, media, library, provider,
+  configuration, policy, AI, or routing data.
 - Bound metadata-refill scans by stable item IDs before loading large item payloads, so ineligible pages progress automatically without repeated full-inventory scans.
 - Split queue-worker health aggregation into active and recent-completion reads backed by focused indexes.
 

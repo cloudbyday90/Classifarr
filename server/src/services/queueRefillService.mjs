@@ -18,6 +18,7 @@ export class QueueRefillService {
         this.db = deps.db;
         this.logger = deps.logger;
         this.enqueueTask = deps.enqueueTask || (async () => {});
+        this.performanceReceiptRecorder = deps.performanceReceiptRecorder || null;
         this.refillCursor = null;
         this.refillInFlight = null;
     }
@@ -32,7 +33,7 @@ export class QueueRefillService {
     }
 
     async selectRefillCandidates() {
-        const page = await readRefillCandidatePage(this.db, this.refillCursor);
+        const page = await readRefillCandidatePage(this.db, this.refillCursor, this.performanceReceiptRecorder);
         this.refillCursor = page.cursor;
         return page.rows;
     }

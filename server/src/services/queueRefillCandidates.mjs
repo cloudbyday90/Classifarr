@@ -1,6 +1,11 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { inventoryTmdbObservationDue, INVENTORY_TMDB_RETRY_HOURS } from './inventoryTmdbObservation.mjs';
 import { INVENTORY_TMDB_REFILL_SQL } from './queueInventoryTmdbRefill.mjs';
+import {
+    elapsedMilliseconds,
+    QUEUE_STARTUP_PERFORMANCE_OPERATION_IDS,
+    recordQueueStartupPerformanceObservation,
+} from './queueStartupPerformanceReceipt.mjs';
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS, sourceConflictAuthorityExclusionForMediaServerItem } from './sourceConflictAuthorityGuard.mjs';
 
 export const REFILL_QUEUE_BATCH_LIMIT = 5000;
@@ -28,7 +33,8 @@ function isCandidateRow(row) {
 }
 
 /** One bounded page per cycle; a fixed pass ceiling prevents insertions from delaying wraparound. */
-export async function readRefillCandidatePage(db, cursor) {
+export async function readRefillCandidatePage(db, cursor, performanceReceiptRecorder = null) {
+    const startedAt = process.hrtime.bigint();
     const result = await db.query(
         `WITH scan_bounds AS (
              SELECT COALESCE($3::integer, (SELECT MAX(id) FROM media_server_items)) AS through_id
@@ -75,15 +81,24 @@ export async function readRefillCandidatePage(db, cursor) {
         [INVENTORY_TMDB_RETRY_HOURS, cursor?.afterId ?? 0, cursor?.throughId ?? null, SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]
     );
     const progress = result.rows.at(0);
+    const rows = result.rows.filter(isCandidateRow).filter(item => item.needs_standard_enrichment !== false ||
+        inventoryTmdbObservationDue({
+            media: { media_type: item.media_type },
+            inventory_tmdb: item.metadata?.inventory_tmdb,
+            inventory_tmdb_attempted_at: item.inventory_tmdb_attempted_at,
+            inventory_tmdb_fetched_at: item.inventory_tmdb_fetched_at,
+        }, item.tmdb_id, new Date(item.inventory_tmdb_checked_at).getTime()))
+        .sort((left, right) => left.id - right.id);
+
+    recordQueueStartupPerformanceObservation(performanceReceiptRecorder, {
+        operationId: QUEUE_STARTUP_PERFORMANCE_OPERATION_IDS.QUEUE_REFILL_CANDIDATES,
+        durationMs: elapsedMilliseconds(startedAt),
+        scannedIdCount: progress?.scan_count,
+        candidateCount: rows.length,
+    });
+
     return {
         cursor: cursorFromScanProgress(progress),
-        rows: result.rows.filter(isCandidateRow).filter(item => item.needs_standard_enrichment !== false ||
-            inventoryTmdbObservationDue({
-                media: { media_type: item.media_type },
-                inventory_tmdb: item.metadata?.inventory_tmdb,
-                inventory_tmdb_attempted_at: item.inventory_tmdb_attempted_at,
-                inventory_tmdb_fetched_at: item.inventory_tmdb_fetched_at,
-            }, item.tmdb_id, new Date(item.inventory_tmdb_checked_at).getTime()))
-            .sort((left, right) => left.id - right.id),
+        rows,
     };
 }

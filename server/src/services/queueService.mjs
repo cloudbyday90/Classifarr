@@ -52,6 +52,7 @@ import { QueueCarsaService } from './queueCarsaService.mjs';
 import { QueueWorkerLoopService } from './queueWorkerLoopService.mjs';
 import { QueueTaskProcessorService } from './queueTaskProcessorService.mjs';
 import { QueueRefillService } from './queueRefillService.mjs';
+import { queueStartupPerformanceReceiptService } from './queueStartupPerformanceReceiptService.mjs';
 import { queueMaintenanceService as defaultQueueMaintenanceService } from './queueMaintenanceService.mjs';
 import {
   normalizeQueueTaskFailureReasonId,
@@ -236,6 +237,7 @@ export class QueueService {
       db: this.db,
       logger: this.logger,
       enqueueTask: (...args) => this.enqueue(...args),
+      performanceReceiptRecorder: queueStartupPerformanceReceiptService,
     });
   }
 

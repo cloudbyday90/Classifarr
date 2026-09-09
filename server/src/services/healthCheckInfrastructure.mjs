@@ -11,6 +11,12 @@ import os from 'node:os';
 import v8 from 'node:v8';
 import * as db from '../config/database.mjs';
 import { QUEUE_WORKER_HEALTH_READ_SQL } from './queueWorkerHealthRead.mjs';
+import {
+    elapsedMilliseconds,
+    QUEUE_STARTUP_PERFORMANCE_OPERATION_IDS,
+    recordQueueStartupPerformanceObservation,
+} from './queueStartupPerformanceReceipt.mjs';
+import { queueStartupPerformanceReceiptService } from './queueStartupPerformanceReceiptService.mjs';
 
 const WORKER_STALL_THRESHOLD_MS = 10 * 60 * 1000;
 
@@ -62,41 +68,55 @@ export function checkProcessMemory() {
     };
 }
 
-export async function checkQueueWorker() {
-    try {
-        const result = await db.query(QUEUE_WORKER_HEALTH_READ_SQL);
+export function createQueueWorkerHealthCheck({
+    database = db,
+    performanceReceiptRecorder = null,
+} = {}) {
+    return async function checkQueueWorker() {
+        try {
+            const startedAt = process.hrtime.bigint();
+            const result = await database.query(QUEUE_WORKER_HEALTH_READ_SQL);
+            recordQueueStartupPerformanceObservation(performanceReceiptRecorder, {
+                operationId: QUEUE_STARTUP_PERFORMANCE_OPERATION_IDS.QUEUE_WORKER_HEALTH,
+                durationMs: elapsedMilliseconds(startedAt),
+            });
 
-        const processingCount = parseInt(result.rows[0].processing) || 0;
-        const pendingCount = parseInt(result.rows[0].pending) || 0;
-        const lastActivity = result.rows[0].last_activity;
+            const processingCount = parseInt(result.rows[0].processing) || 0;
+            const pendingCount = parseInt(result.rows[0].pending) || 0;
+            const lastActivity = result.rows[0].last_activity;
 
-        let status = 'connected';
-        if (lastActivity) {
-            const lastActivityTime = new Date(lastActivity);
-            const stallThreshold = new Date(Date.now() - WORKER_STALL_THRESHOLD_MS);
-            if (lastActivityTime < stallThreshold && pendingCount > 0) {
-                status = 'degraded';
+            let status = 'connected';
+            if (lastActivity) {
+                const lastActivityTime = new Date(lastActivity);
+                const stallThreshold = new Date(Date.now() - WORKER_STALL_THRESHOLD_MS);
+                if (lastActivityTime < stallThreshold && pendingCount > 0) {
+                    status = 'degraded';
+                }
             }
+
+            return {
+                name: 'Queue Worker',
+                status,
+                latency: 0,
+                timestamp: new Date().toISOString(),
+                metadata: {
+                    processing: processingCount,
+                    pending: pendingCount,
+                    lastActivity: lastActivity
+                }
+            };
+        } catch (error) {
+            return {
+                name: 'Queue Worker',
+                status: 'disconnected',
+                latency: 0,
+                error: error.message,
+                timestamp: new Date().toISOString()
+            };
         }
-
-        return {
-            name: 'Queue Worker',
-            status,
-            latency: 0,
-            timestamp: new Date().toISOString(),
-            metadata: {
-                processing: processingCount,
-                pending: pendingCount,
-                lastActivity: lastActivity
-            }
-        };
-    } catch (error) {
-        return {
-            name: 'Queue Worker',
-            status: 'disconnected',
-            latency: 0,
-            error: error.message,
-            timestamp: new Date().toISOString()
-        };
-    }
+    };
 }
+
+export const checkQueueWorker = createQueueWorkerHealthCheck({
+    performanceReceiptRecorder: queueStartupPerformanceReceiptService,
+});

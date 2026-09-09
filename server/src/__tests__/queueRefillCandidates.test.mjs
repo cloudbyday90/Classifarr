@@ -67,6 +67,21 @@ test('candidate rows retain ascending ID order without a payload SQL sort', asyn
     expect(page.rows.map(item => item.id)).toEqual([1, 3, 4]);
 });
 
+test('refill emits aggregate receipt buckets without exposing a candidate row', async () => {
+    const recorder = { record: jest.fn() };
+    const item = row(null, { scan_count: 2, scan_after_id: 2 });
+
+    await readRefillCandidatePage({ query: jest.fn().mockResolvedValue({ rows: [item] }) }, null, recorder);
+
+    expect(recorder.record).toHaveBeenCalledWith(expect.objectContaining({
+        operationId: 'queue_refill_candidates',
+        scannedIdCount: 2,
+        candidateCount: 1,
+    }));
+    expect(recorder.record.mock.calls[0][0]).not.toHaveProperty('id');
+    expect(recorder.record.mock.calls[0][0]).not.toHaveProperty('metadata');
+});
+
 test('read failure preserves the current checkpoint', async () => {
     const query = jest.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({ rows: [] });
     const service = new QueueRefillService({ db: { query } });
