@@ -10,6 +10,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 ## [Unreleased]
 
 ### Performance
+- Add an administrator-only, parameter-free database-health summary that reads
+  fixed PostgreSQL aggregates and returns only bucketed I/O and table-health
+  observations with reset-aware freshness. It cannot expose operational
+  dimensions or trigger maintenance, policy, AI, or routing work.
 - Add passive, coalesced queue-startup performance receipts with fixed duration
   and count buckets. They retain no query, media, library, provider,
   configuration, policy, AI, or routing data.

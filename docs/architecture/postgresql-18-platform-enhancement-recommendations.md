@@ -7,11 +7,11 @@ compose service already runs PostgreSQL 18.6, which is the supported current
 major for this repository. It uses the PostgreSQL 18 asynchronous I/O worker
 method with both I/O concurrency settings at their default value of 16.
 
-The next database improvement should be a passive, fixed aggregate database
-health summary. It should read only server counters that already exist, bucket
-them server-side, require administrator authorization, and never return SQL,
-query IDs, media, library, provider, configuration, policy, AI, or routing
-data. It must not change application behavior or run maintenance work.
+The passive, fixed aggregate database-health summary is now implemented. It
+reads only server counters that already exist, buckets them server-side,
+requires administrator authorization, and never returns SQL, query IDs, media,
+library, provider, configuration, policy, AI, or routing data. It does not
+change application behavior or run maintenance work.
 
 ## Local evidence
 
@@ -31,7 +31,7 @@ data. It must not change application behavior or run maintenance work.
 | Candidate | Advantages | Costs and limits | Recommendation |
 | --- | --- | --- | --- |
 | Keep PostgreSQL 18 AIO defaults | Already improves eligible reads and maintenance without new application work. | Raising concurrency without evidence can increase contention. | Retain `worker` and both values at 16; benchmark a configuration change only after a passive signal persists. |
-| Aggregate `pg_stat_io` health summary | Shows database I/O direction without collecting application content or SQL. | Counters reset and need a documented observation window. | Implement next, with a fixed allow-list of aggregate buckets and read-only administrator access. |
+| Aggregate `pg_stat_io` health summary | Shows database I/O direction without collecting application content or SQL. | Counters reset and need a documented observation window. | Implemented with a parameter-free, administrator-only fixed-bucket endpoint. |
 | Preserve autovacuum | Reclaims dead tuples, refreshes planner statistics, and prevents transaction-ID wraparound automatically. | High-write tables might eventually need measured, table-specific tuning. | Retain defaults. Add a bounded aggregate warning only when a measured threshold persists. Do not schedule `VACUUM FULL`. |
 | Use B-tree skip scans | PostgreSQL can automatically use qualifying multicolumn indexes in more plans. | The planner decides; creating speculative indexes adds write cost. | Make no schema change. Evaluate an index only from a safe maintenance-time plan review after receipt evidence shows a bottleneck. |
 | Expose `pg_stat_statements` | Gives database administrators query execution aggregates. | The extension tracks per-statement information and can reveal operational structure. It is currently configured to track all statements and save stats across restarts. | Keep it out of application APIs and automation. Keep planning tracking disabled. If a future privileged tool uses it, call the function with query text suppressed and return only a fixed aggregate projection. |
@@ -68,7 +68,9 @@ selection, labels, or routing.
 
 ## Next item
 
-Build the passive database-health summary described above. Start with
-`pg_stat_io` and `pg_stat_user_tables`, persist or return only fixed aggregate
-buckets and freshness, and give it no control path to query execution,
-maintenance, policy, AI, semantic evidence, labels, or routing.
+After observing ordinary runtime use, consider a server-owned,
+bucket-transition-only receipt for the database-health summary. It must reset
+its baseline when PostgreSQL's statistics reset, retain no raw values or source
+dimensions, and have no control path to query execution, maintenance, policy,
+AI, semantic evidence, labels, or routing. The implemented design and outcome
+are documented in [the database-health summary outcome](database-health-summary-outcome.md).

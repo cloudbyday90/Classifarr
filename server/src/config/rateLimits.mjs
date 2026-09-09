@@ -99,6 +99,15 @@ export const libraryObservationHealthLimiterConfig = {
   legacyHeaders: false,
 };
 
+/** Database-health aggregate reads (per IP, per 15 minutes). */
+export const databaseHealthSummaryLimiterConfig = {
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: 'Too many database health summary requests, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+};
+
 /** Ollama strict-verification runtime aggregate reads (per IP, per 15 minutes). */
 export const ollamaVerificationRuntimeMismatchSummaryLimiterConfig = {
   windowMs: 15 * 60 * 1000,

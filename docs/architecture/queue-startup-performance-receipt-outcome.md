@@ -41,9 +41,8 @@ policy change, or automatic routing was added.
 
 ## Next item
 
-After receipts have accumulated across ordinary startup and refill activity,
-add a bounded, administrator-authenticated summary that returns only the fixed
-bucket counters and latest observation time. It should use a fixed window and
-allow-list its response. It must not expose SQL, exact timings, query plans,
-media, libraries, providers, configurations, policies, AI data, or routing
-controls, and it must not trigger any work.
+The recommended passive database-health summary is implemented separately in
+[the database-health summary outcome](database-health-summary-outcome.md). Its
+next item is a server-owned, reset-aware bucket-transition receipt, only if
+ordinary observations show a persistent trend. It must retain no raw values or
+source dimensions and cannot trigger maintenance, policy, AI, or routing work.

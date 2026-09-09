@@ -13,6 +13,7 @@ import { registerAiProviderCapabilityMetricsHealthTrendRoutes } from './statsRou
 import { registerAiProviderCapabilityMetricsFailureBreakdownRoutes } from './statsRouteAiProviderCapabilityMetricsFailureBreakdown.mjs';
 import { registerAiProviderCapabilityMetricsFailureCategoryCoverageRoutes } from './statsRouteAiProviderCapabilityMetricsFailureCategoryCoverage.mjs';
 import { registerAiProviderCapabilityMetricsFailureRecencyRoutes } from './statsRouteAiProviderCapabilityMetricsFailureRecency.mjs';
+import { registerDatabaseHealthSummaryRoutes } from './statsRouteDatabaseHealthSummary.mjs';
 import { registerPolicyStatsRoutes } from './statsRoutePolicies.mjs';
 import { registerMonitoringRoutes } from './statsRouteMonitoring.mjs';
 
@@ -25,6 +26,7 @@ export function createStatsRouter({ express, db, authenticateTokenOrApiKey, requ
   registerPolicyCandidateContrastiveOutcomeMetricsRoutes(router, { db });
   registerPolicyCandidateCorrectionAnalyticsMetricsRoutes(router, { db });
   registerCandidateBoundVerificationRemediationReadinessRoutes(router, { db, requireAdmin });
+  registerDatabaseHealthSummaryRoutes(router, { db, requireAdmin, rateLimit });
   registerOllamaVerificationRuntimeMismatchSummaryRoutes(router, { db, requireAdmin, rateLimit });
   registerOllamaVerificationCapabilityOutcomeHistoryRoutes(router, { db, requireAdmin, rateLimit });
   registerRouteSafetyReadinessRoutes(router, { db, requireAdmin, rateLimit });
