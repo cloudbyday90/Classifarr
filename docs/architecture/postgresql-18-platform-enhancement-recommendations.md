@@ -10,8 +10,11 @@ method with both I/O concurrency settings at their default value of 16.
 The passive, fixed aggregate database-health summary is now implemented. It
 reads only server counters that already exist, buckets them server-side,
 requires administrator authorization, and never returns SQL, query IDs, media,
-library, provider, configuration, policy, AI, or routing data. It does not
-change application behavior or run maintenance work.
+library, provider, configuration, policy, AI, or routing data. Its companion
+server-owned transition observer now establishes a baseline, resets it whenever
+PostgreSQL counters reset, and retains an append-only receipt only after two
+matching changed bucket observations. Neither path changes application behavior
+or runs maintenance work.
 
 ## Local evidence
 
@@ -32,6 +35,7 @@ change application behavior or run maintenance work.
 | --- | --- | --- | --- |
 | Keep PostgreSQL 18 AIO defaults | Already improves eligible reads and maintenance without new application work. | Raising concurrency without evidence can increase contention. | Retain `worker` and both values at 16; benchmark a configuration change only after a passive signal persists. |
 | Aggregate `pg_stat_io` health summary | Shows database I/O direction without collecting application content or SQL. | Counters reset and need a documented observation window. | Implemented with a parameter-free, administrator-only fixed-bucket endpoint. |
+| Server-owned bucket-transition receipt | Identifies a two-observation, current-reset-period bucket transition without raw measurements or operator input. | It deliberately delays recognition and remains advisory rather than a diagnosis. | Implemented; see [Database Health Transition Receipt Outcome](database-health-transition-receipt-outcome.md). |
 | Preserve autovacuum | Reclaims dead tuples, refreshes planner statistics, and prevents transaction-ID wraparound automatically. | High-write tables might eventually need measured, table-specific tuning. | Retain defaults. Add a bounded aggregate warning only when a measured threshold persists. Do not schedule `VACUUM FULL`. |
 | Use B-tree skip scans | PostgreSQL can automatically use qualifying multicolumn indexes in more plans. | The planner decides; creating speculative indexes adds write cost. | Make no schema change. Evaluate an index only from a safe maintenance-time plan review after receipt evidence shows a bottleneck. |
 | Expose `pg_stat_statements` | Gives database administrators query execution aggregates. | The extension tracks per-statement information and can reveal operational structure. It is currently configured to track all statements and save stats across restarts. | Keep it out of application APIs and automation. Keep planning tracking disabled. If a future privileged tool uses it, call the function with query text suppressed and return only a fixed aggregate projection. |
@@ -68,9 +72,9 @@ selection, labels, or routing.
 
 ## Next item
 
-After observing ordinary runtime use, consider a server-owned,
-bucket-transition-only receipt for the database-health summary. It must reset
-its baseline when PostgreSQL's statistics reset, retain no raw values or source
-dimensions, and have no control path to query execution, maintenance, policy,
-AI, semantic evidence, labels, or routing. The implemented design and outcome
-are documented in [the database-health summary outcome](database-health-summary-outcome.md).
+The transition receipt is implemented in
+[Database Health Transition Receipt Outcome](database-health-transition-receipt-outcome.md).
+Allow one current PostgreSQL statistics period of ordinary observations before
+considering a bounded readiness projection. It must remain advisory and must
+not add raw values, source dimensions, query execution, maintenance, policy,
+AI, semantic evidence, labels, or routing authority.

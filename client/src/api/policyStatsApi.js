@@ -87,6 +87,10 @@ export function getDatabaseHealthSummary() {
   return getDataRequest('/stats/database-health-summary')
 }
 
+export function getDatabaseHealthTransitionReceipt() {
+  return getDataRequest('/stats/database-health-transition-receipt')
+}
+
 export function getOllamaVerificationRuntimeMismatchSummary() {
   return getDataRequest('/stats/ollama-verification-runtime-mismatch-summary')
 }
@@ -136,6 +140,7 @@ const policyStatsApi = {
   getPolicyCandidateContrastiveOutcomeMetrics,
   getPolicyCandidateCorrectionAnalyticsMetrics,
   getDatabaseHealthSummary,
+  getDatabaseHealthTransitionReceipt,
   getOllamaVerificationRuntimeMismatchSummary,
   getOllamaVerificationCapabilityOutcomeHistory,
   getRouteSafetyReadiness,

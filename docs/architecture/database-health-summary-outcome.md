@@ -80,7 +80,7 @@ privileged database roles.
 | Fixed aggregate summary | Gives future automation a consistent signal without learning media, library, policy, or provider identity. | Cumulative counters lag, reset, and do not provide a complete operating-system view. | Implemented. Preserve the version and bucket vocabulary. |
 | Direct `pg_stat_*` or `pg_stat_statements` API | Could support detailed diagnosis. | Exposes table, query, user, database, and configuration-adjacent detail; creates an operational console. | Do not expose it through Classifarr. |
 | Automatic vacuum, tuning, or index work from this signal | Could reduce manual intervention. | A coarse cumulative observation cannot establish a safe root cause and automatic maintenance can affect availability. | Do not add a control path. |
-| Server-owned multi-observation receipt | Can identify a persistent bucket transition without exposing raw measurements or relying on an operator. | Requires careful reset handling and must remain advisory. | Recommended next, after ordinary runtime observations establish the need. |
+| Server-owned multi-observation receipt | Identifies a two-observation, current-reset-period bucket transition without raw measurements or operator input. | It deliberately trades immediate detection for trend confirmation and remains advisory. | Implemented; see [Database Health Transition Receipt Outcome](database-health-transition-receipt-outcome.md). |
 
 ### Final recommendation stack
 
@@ -91,10 +91,11 @@ privileged database roles.
 3. Keep PostgreSQL's normal automatic maintenance and current configuration;
    do not enable query-level observation or automate maintenance from a single
    bucketed read.
-4. Add a server-owned, fixed bucket-transition receipt only after this endpoint
-   has demonstrated that a durable trend is worth retaining. It must be
-   library- and configuration-agnostic, retain no raw counts, and have no
-   action, policy, AI, semantic-selection, label, or routing authority.
+4. The server-owned, fixed bucket-transition receipt now records only a
+   two-observation, current-reset-period change. It remains library- and
+   configuration-agnostic, retains no raw counts, and has no action, policy,
+   AI, semantic-selection, label, or routing authority. See
+   [Database Health Transition Receipt Outcome](database-health-transition-receipt-outcome.md).
 
 ## Verification
 
@@ -120,9 +121,8 @@ privileged database roles.
 
 ## Next item
 
-Add a passive, server-owned bucket-transition receipt only if ordinary
-observations show a persistent trend. It must record no raw counts or source
-dimensions, reset its comparison baseline when `statisticsResetAt` changes,
-and remain unable to schedule or execute database maintenance. This would let
-future automation recognize a durable platform condition without asking an
-operator to compare database details manually.
+The passive receipt is implemented in
+[Database Health Transition Receipt Outcome](database-health-transition-receipt-outcome.md).
+Let it collect ordinary observations for one current statistics period before
+considering a further, bounded readiness projection. No future endpoint should
+add raw values, source dimensions, maintenance, or routing authority.

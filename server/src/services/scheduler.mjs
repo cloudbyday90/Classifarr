@@ -48,6 +48,7 @@ import {
 } from './schedulerOperationalTasks.mjs';
 import { runAutoLearnRules as _runAutoLearnRules } from './schedulerAutoLearnRules.mjs';
 import { registerLibraryObservationHistorySchedule } from './libraryObservationHistorySchedule.mjs';
+import { registerDatabaseHealthTransitionObservationSchedule } from './databaseHealthTransitionObservationScheduler.mjs';
 
 const { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } = db;
 const logger = createLogger('SchedulerService');
@@ -80,6 +81,7 @@ class SchedulerService {
     init() {
         logger.info('Initializing scheduler...');
         registerLibraryObservationHistorySchedule(this);
+        registerDatabaseHealthTransitionObservationSchedule(this);
 
         this.schedule('gap-analysis', '*/5 * * * *', () => this.runGapAnalysis(), DB_ADVISORY_LOCKS.GAP_ANALYSIS);
 

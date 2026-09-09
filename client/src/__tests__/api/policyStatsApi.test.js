@@ -37,6 +37,7 @@ import {
   getPolicyCandidateContrastiveOutcomeMetrics,
   getPolicyCandidateCorrectionAnalyticsMetrics,
   getDatabaseHealthSummary,
+  getDatabaseHealthTransitionReceipt,
   getOllamaVerificationRuntimeMismatchSummary,
   getOllamaVerificationCapabilityOutcomeHistory,
   getAiProviderCapabilityMetricsHealth,
@@ -140,6 +141,13 @@ describe('policyStatsApi', () => {
     expect(mockGetDataRequest).toHaveBeenCalledWith('/stats/database-health-summary')
   })
 
+  it('getDatabaseHealthTransitionReceipt uses the protected fixed receipt endpoint without caller dimensions', async () => {
+    mockGetDataRequest.mockResolvedValueOnce({})
+
+    await getDatabaseHealthTransitionReceipt()
+
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/stats/database-health-transition-receipt')
+  })
   it('getOllamaVerificationRuntimeMismatchSummary uses the protected aggregate endpoint without dimensions', async () => {
     mockGetDataRequest.mockResolvedValueOnce({})
     await getOllamaVerificationRuntimeMismatchSummary()
