@@ -5,7 +5,7 @@ import { readRefillCandidatePage } from '../services/queueRefillCandidates.mjs';
 import { inventoryObservationValidityCases } from './helpers/inventoryObservationValidityCases.mjs';
 
 const now = new Date('2026-09-05T12:00:00Z');
-const row = (record, overrides = {}) => ({ id: 1, through_id: 6000, media_type: 'movie', tmdb_id: 7,
+const row = (record, overrides = {}) => ({ id: 1, through_id: 6000, scan_count: 1, scan_after_id: 1, media_type: 'movie', tmdb_id: 7,
     needs_standard_enrichment: false, metadata: { inventory_tmdb: record },
     inventory_tmdb_checked_at: now, inventory_tmdb_fetched_at: now,
     inventory_tmdb_attempted_at: new Date(now.getTime() - 7 * 3600000), ...overrides });
@@ -31,14 +31,40 @@ test.each([
 });
 
 test('a full fresh page advances progress; a short page wraps the next call', async () => {
-    const fresh = Array.from({ length: REFILL_QUEUE_BATCH_LIMIT }, (_, n) => row(inventoryObservationValidityCases[1].record, { id: n + 1 }));
-    const broken = row(null, { id: 5001 });
-    const query = jest.fn().mockResolvedValueOnce({ rows: fresh }).mockResolvedValueOnce({ rows: [broken] }).mockResolvedValueOnce({ rows: [] });
+    const fresh = Array.from({ length: REFILL_QUEUE_BATCH_LIMIT }, (_, n) => row(inventoryObservationValidityCases[1].record, {
+        id: n + 1, scan_count: REFILL_QUEUE_BATCH_LIMIT, scan_after_id: REFILL_QUEUE_BATCH_LIMIT,
+    }));
+    const broken = row(null, { id: 5001, scan_count: 1000, scan_after_id: 6000 });
+    const exhausted = { id: null, through_id: 6000, scan_count: 0, scan_after_id: null };
+    const query = jest.fn().mockResolvedValueOnce({ rows: fresh }).mockResolvedValueOnce({ rows: [broken] }).mockResolvedValueOnce({ rows: [exhausted] });
     const service = new QueueRefillService({ db: { query } });
     expect(await service.selectRefillCandidates()).toEqual([]);
     expect(await service.selectRefillCandidates()).toEqual([broken]);
     expect(await service.selectRefillCandidates()).toEqual([]);
     expect(query.mock.calls.map(call => call[1])).toEqual([[6, 0, null, 30], [6, 5000, 6000, 30], [6, 0, null, 30]]);
+});
+
+test('an ineligible scanned page still advances to the next bounded page', async () => {
+    const ineligible = { id: null, through_id: 6000, scan_count: REFILL_QUEUE_BATCH_LIMIT, scan_after_id: REFILL_QUEUE_BATCH_LIMIT };
+    const broken = row(null, { id: 5001, scan_count: 1000, scan_after_id: 6000 });
+    const query = jest.fn().mockResolvedValueOnce({ rows: [ineligible] }).mockResolvedValueOnce({ rows: [broken] });
+    const service = new QueueRefillService({ db: { query } });
+
+    expect(await service.selectRefillCandidates()).toEqual([]);
+    expect(await service.selectRefillCandidates()).toEqual([broken]);
+    expect(query.mock.calls.map(call => call[1])).toEqual([[6, 0, null, 30], [6, 5000, 6000, 30]]);
+});
+
+test('candidate rows retain ascending ID order without a payload SQL sort', async () => {
+    const query = jest.fn().mockResolvedValue({ rows: [
+        row(null, { id: 4 }),
+        row(null, { id: 3 }),
+        row(null, { id: 1 }),
+    ] });
+
+    const page = await readRefillCandidatePage({ query });
+
+    expect(page.rows.map(item => item.id)).toEqual([1, 3, 4]);
 });
 
 test('read failure preserves the current checkpoint', async () => {

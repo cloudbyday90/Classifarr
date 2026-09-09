@@ -10,6 +10,7 @@
 import os from 'node:os';
 import v8 from 'node:v8';
 import * as db from '../config/database.mjs';
+import { QUEUE_WORKER_HEALTH_READ_SQL } from './queueWorkerHealthRead.mjs';
 
 const WORKER_STALL_THRESHOLD_MS = 10 * 60 * 1000;
 
@@ -63,15 +64,7 @@ export function checkProcessMemory() {
 
 export async function checkQueueWorker() {
     try {
-        const result = await db.query(
-            `SELECT
-                 SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) AS processing,
-                 SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending,
-                 MAX(started_at) AS last_activity
-             FROM task_queue
-             WHERE status IN ('pending', 'processing')
-                OR (status = 'completed' AND completed_at > NOW() - INTERVAL '1 hour')`
-        );
+        const result = await db.query(QUEUE_WORKER_HEALTH_READ_SQL);
 
         const processingCount = parseInt(result.rows[0].processing) || 0;
         const pendingCount = parseInt(result.rows[0].pending) || 0;

@@ -9,6 +9,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ## [Unreleased]
 
+### Performance
+- Bound metadata-refill scans by stable item IDs before loading large item payloads, so ineligible pages progress automatically without repeated full-inventory scans.
+- Split queue-worker health aggregation into active and recent-completion reads backed by focused indexes.
+
 ### Added
 
 - **Current-intent evidence recovery** — A native purpose declaration and its
