@@ -29,11 +29,17 @@ import {
   createDatabaseHealthTransitionObservationService,
 } from './databaseHealthTransitionObservationService.mjs';
 
-export const databaseHealthTransitionObservationService =
-  createDatabaseHealthTransitionObservationService({
+/**
+ * Defers construction until an ordinary observation actually runs. That keeps
+ * scheduler registration independent of an eager database connection while the
+ * observer itself still requires the strict transaction boundary.
+ */
+export function observeDatabaseHealthTransition() {
+  return createDatabaseHealthTransitionObservationService({
     database: db,
     loadSummary: loadDatabaseHealthSummary,
     buildSummary: buildDatabaseHealthSummary,
     transitionRepository: databaseHealthTransitionReceiptRepository,
     projectReceipt: projectDatabaseHealthTransitionReceipt,
-  });
+  }).observe();
+}

@@ -42,7 +42,6 @@ export function registerDatabaseHealthTransitionReceiptRoutes(router, {
     throw new TypeError('Database health transition receipt requires a rate-limit factory.');
   }
 
-  const receiptReadService = createReceiptReadService({ database: db });
   const receiptLimiter = rateLimit(databaseHealthTransitionReceiptLimiterConfig);
 
   router.get('/database-health-transition-receipt', requireAdmin, receiptLimiter, asyncHandler(async (req, res) => {
@@ -50,6 +49,7 @@ export function registerDatabaseHealthTransitionReceiptRoutes(router, {
     if (Object.keys(req.query || {}).length > 0) {
       throw new ValidationError('Database health transition receipt does not accept query parameters');
     }
+    const receiptReadService = createReceiptReadService({ database: db });
     return sendData(res, await receiptReadService.getSummary());
   }));
 }

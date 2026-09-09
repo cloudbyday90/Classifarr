@@ -19,7 +19,7 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import {
-  databaseHealthTransitionObservationService,
+  observeDatabaseHealthTransition,
 } from './databaseHealthTransitionObservation.mjs';
 import {
   DATABASE_HEALTH_TRANSITION_OBSERVATION_CRON,
@@ -35,7 +35,7 @@ const logger = createLogger('DatabaseHealthTransitionObservation');
  * a database advisory lock prevents duplicated observations across replicas.
  */
 export function registerDatabaseHealthTransitionObservationSchedule(scheduler, {
-  observe = () => databaseHealthTransitionObservationService.observe(),
+  observe = observeDatabaseHealthTransition,
   log = logger,
   lockKey = db.DB_ADVISORY_LOCKS.DATABASE_HEALTH_TRANSITION_OBSERVATION,
 } = {}) {
