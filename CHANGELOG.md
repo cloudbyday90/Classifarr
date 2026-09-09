@@ -10,6 +10,16 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 ## [Unreleased]
 
 ### Performance
+- Bound backend CI coverage workers to the established 512 MB idle-memory
+  recycle limit, preventing a long-running coverage process from accumulating
+  unbounded worker memory.
+- Prevent same-process scheduled work from overlapping by applying node-cron
+  non-overlap protection to every core scheduler registration and guarding
+  recurring, delayed-start, and direct invocations by task name.
+- Add passive, coalesced scheduler execution receipts with fixed task-class,
+  outcome, and duration buckets. They retain no task name, schedule, error,
+  query, identifier, media, library, provider, configuration, policy, AI,
+  decision, or routing data.
 - Add an administrator-only, parameter-free database-health summary that reads
   fixed PostgreSQL aggregates and returns only bucketed I/O and table-health
   observations with reset-aware freshness. It cannot expose operational
@@ -19,6 +29,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
   configuration, policy, AI, or routing data.
 - Bound metadata-refill scans by stable item IDs before loading large item payloads, so ineligible pages progress automatically without repeated full-inventory scans.
 - Split queue-worker health aggregation into active and recent-completion reads backed by focused indexes.
+
+### Fixed
+
+- Restore backend dependency-declaration validation by removing an unused
+  compatibility re-export, and make the source-inventory scanner report a
+  staged deletion as a coverage gap instead of failing its scan.
 
 ### Added
 

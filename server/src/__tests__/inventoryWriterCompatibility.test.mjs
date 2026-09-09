@@ -1,6 +1,11 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { describe, test, expect, jest } from '@jest/globals';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { evaluateWriterInventory } from '../scripts/inventoryWriterCompatibility/inventory.mjs';
+import { readWriterSourceFiles } from '../scripts/inventoryWriterCompatibility/sourceFiles.mjs';
 import { extractWriterSqlSources } from '../scripts/inventoryWriterCompatibility/sqlSources.mjs';
 import { findWriterOperations } from '../scripts/inventoryWriterCompatibility/operations.mjs';
 import { createScopedSyncAdapter } from '../scripts/inventoryWriterCompatibility/syncAdapter.mjs';
@@ -48,6 +53,25 @@ test('does not execute scanned code or honor inline comments that disable collec
     const value = extractWriterSqlSources({ path: 'untrusted.mjs', source: `/* eslint-disable inventory/collect */
         throw new Error('must not run'); const sql = 'DELETE FROM media_server_items';` });
     expect(value.fragments.some(item => item.text === 'DELETE FROM media_server_items')).toBe(true);
+});
+
+test('reports a staged source removed from the working tree as a coverage gap', () => {
+    const root = mkdtempSync(join(tmpdir(), 'classifarr-writer-inventory-'));
+    const sourcePath = join(root, 'server', 'src', 'removed.mjs');
+    try {
+        mkdirSync(join(root, 'server', 'src'), { recursive: true });
+        execFileSync('git', ['init', '--quiet'], { cwd: root });
+        writeFileSync(sourcePath, 'export const removed = true;\n');
+        execFileSync('git', ['add', '--', 'server/src/removed.mjs'], { cwd: root });
+        rmSync(sourcePath);
+
+        expect(readWriterSourceFiles(root)).toMatchObject({
+            files: [],
+            gaps: [{ path: 'server/src/removed.mjs', reason: 'missing_worktree_source' }],
+        });
+    } finally {
+        rmSync(root, { recursive: true, force: true });
+    }
 });
 
 test('fingerprints are deterministic under enumeration order and change with source content', () => {

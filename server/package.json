@@ -24,7 +24,7 @@
     "test:coverage:unit": "node ./scripts/run-jest.mjs --coverage",
     "test:coverage:integration": "node ./scripts/run-jest.mjs -c jest.integration.config.mjs --coverage",
     "test:watch": "node ./scripts/run-jest.mjs --watch",
-    "test:ci": "npm run typecheck && node ./scripts/run-jest.mjs --ci --coverage --maxWorkers=2",
+    "test:ci": "npm run typecheck && node ./scripts/run-jest.mjs --ci --coverage --maxWorkers=2 --workerIdleMemoryLimit=512MB",
     "lint": "npm run lint:tests && npm run lint:security",
     "lint:tests": "eslint \"src/__tests__/**/*.{js,mjs}\"",
     "lint:security": "eslint \"src/**/*.{js,mjs}\" --ignore-pattern \"src/__tests__/**\"",

@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-09T07:28:58.930Z
--- Latest Migration: 20260909_071510_add_database_health_transition_receipts.sql
+-- Generated: 2026-09-09T09:02:55.472Z
+-- Latest Migration: 20260909_085356_add_scheduler_execution_receipts.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -7011,6 +7011,32 @@ ALTER SEQUENCE public.scheduled_tasks_id_seq OWNED BY public.scheduled_tasks.id;
 
 
 --
+-- Name: scheduler_execution_receipts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.scheduler_execution_receipts (
+    task_class character varying(32) NOT NULL,
+    outcome_id character varying(32) NOT NULL,
+    receipt_version character varying(64) NOT NULL,
+    duration_bucket character varying(20) NOT NULL,
+    observation_count bigint DEFAULT 0 NOT NULL,
+    last_observed_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT scheduler_execution_receipts_duration_bucket_chk CHECK (((duration_bucket)::text = ANY (ARRAY[('not_sampled'::character varying)::text, ('under_5ms'::character varying)::text, ('5_to_24ms'::character varying)::text, ('25_to_99ms'::character varying)::text, ('100_to_499ms'::character varying)::text, ('500ms_or_more'::character varying)::text]))),
+    CONSTRAINT scheduler_execution_receipts_duration_outcome_chk CHECK (((((outcome_id)::text = ANY (ARRAY[('completed'::character varying)::text, ('failed'::character varying)::text])) AND ((duration_bucket)::text <> 'not_sampled'::text)) OR (((outcome_id)::text <> ALL (ARRAY[('completed'::character varying)::text, ('failed'::character varying)::text])) AND ((duration_bucket)::text = 'not_sampled'::text)))),
+    CONSTRAINT scheduler_execution_receipts_observation_count_chk CHECK ((observation_count > 0)),
+    CONSTRAINT scheduler_execution_receipts_outcome_chk CHECK (((outcome_id)::text = ANY (ARRAY[('completed'::character varying)::text, ('failed'::character varying)::text, ('advisory_lock_held'::character varying)::text, ('in_process_overlap'::character varying)::text, ('cron_overlap'::character varying)::text]))),
+    CONSTRAINT scheduler_execution_receipts_task_class_chk CHECK (((task_class)::text = ANY (ARRAY[('queue'::character varying)::text, ('library_observation'::character varying)::text, ('maintenance'::character varying)::text, ('retention'::character varying)::text, ('policy_maintenance'::character varying)::text, ('observation'::character varying)::text, ('other'::character varying)::text])))
+);
+
+
+--
+-- Name: TABLE scheduler_execution_receipts; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.scheduler_execution_receipts IS 'Fixed aggregate scheduler execution counters; no task name, schedule, error, SQL, identifier, library, provider, configuration, media, policy, AI, decision, or routing data.';
+
+
+--
 -- Name: settings; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -10148,6 +10174,14 @@ ALTER TABLE ONLY public.refresh_tokens
 
 ALTER TABLE ONLY public.scheduled_tasks
     ADD CONSTRAINT scheduled_tasks_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: scheduler_execution_receipts scheduler_execution_receipts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.scheduler_execution_receipts
+    ADD CONSTRAINT scheduler_execution_receipts_pkey PRIMARY KEY (task_class, outcome_id, receipt_version, duration_bucket);
 
 
 --
@@ -15811,6 +15845,7 @@ FROM unnest(ARRAY[
     '20260908_030000_add_held_out_semantic_study_lifecycle_reaudit_state.sql',
     '20260908_040000_add_held_out_semantic_study_lifecycle_source_checkpoint.sql',
     '20260909_003713_add_queue_startup_performance_receipts.sql',
-    '20260909_071510_add_database_health_transition_receipts.sql'
+    '20260909_071510_add_database_health_transition_receipts.sql',
+    '20260909_085356_add_scheduler_execution_receipts.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

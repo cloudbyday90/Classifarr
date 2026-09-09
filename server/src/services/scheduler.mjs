@@ -11,6 +11,9 @@
 import cron from 'node-cron';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { createSchedulerCronOptions } from './schedulerCronOptions.mjs';
+import { schedulerExecutionReceiptService } from './schedulerExecutionReceiptService.mjs';
+import { createSchedulerTaskExecutionRunner } from './schedulerTaskExecutionRunner.mjs';
 import { queueService } from './queueService.mjs';
 import { queueMaintenanceService } from './queueMaintenanceService.mjs';
 import { TASK_QUEUE_CLEANUP_ORIGINS } from './queueMaintenanceRunContract.mjs';
@@ -58,6 +61,11 @@ class SchedulerService {
         this.tasks = new Map();
         this.initialTaskTimers = new Map();
         this.ratingNormalizationQueueService = ratingNormalizationQueueService;
+        this.taskExecutionRunner = createSchedulerTaskExecutionRunner({
+            withSessionAdvisoryLock,
+            logger,
+            receiptRecorder: schedulerExecutionReceiptService,
+        });
         queueService.setScheduler(this);
     }
 
@@ -73,6 +81,7 @@ class SchedulerService {
         }
         this.initialTaskTimers.clear();
         this.ratingNormalizationQueueService = ratingNormalizationQueueService;
+        this.taskExecutionRunner.reset();
     }
 
     /**
@@ -292,32 +301,19 @@ class SchedulerService {
         const scheduledHandler = async () => {
             await this.runScheduledTask(name, handler, lockKey);
         };
-        const task = Object.keys(scheduleOptions).length > 0
-            ? cron.schedule(cronExpression, scheduledHandler, scheduleOptions)
-            : cron.schedule(cronExpression, scheduledHandler);
+        const task = cron.schedule(
+            cronExpression,
+            scheduledHandler,
+            createSchedulerCronOptions(scheduleOptions),
+        );
 
         this.tasks.set(name, task);
+        this.taskExecutionRunner.observeCronOverlap(task, name);
         logger.info(`Scheduled task registered: ${name} (${cronExpression})`);
     }
 
     async runScheduledTask(name, handler, lockKey = null) {
-        logger.info(`Starting scheduled task: ${name}`);
-        try {
-            if (lockKey !== null) {
-                const acquired = await withSessionAdvisoryLock(lockKey, handler);
-                if (!acquired) {
-                    logger.debug(`Scheduled task ${name} skipped — advisory lock held by another process`, { lockKey });
-                    return false;
-                }
-            } else {
-                await handler();
-            }
-            logger.info(`Completed scheduled task: ${name}`);
-            return true;
-        } catch (error) {
-            logger.error(`Failed scheduled task: ${name}`, { error: error.message });
-            return false;
-        }
+        return this.taskExecutionRunner.run({ name, handler, lockKey });
     }
 
     scheduleInitial(name, delayMs, handler, lockKey = null) {

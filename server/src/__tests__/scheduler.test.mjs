@@ -103,6 +103,10 @@ const mockLoggerModule = {
     createLogger: () => mockLoggerInstance
 };
 
+const mockSchedulerExecutionReceiptService = {
+    record: jest.fn(),
+};
+
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 jest.unstable_mockModule('node-cron', () => createMockModule(mockNodeCron));
@@ -132,6 +136,10 @@ jest.unstable_mockModule('../services/ollama.mjs', () => createNamedMockModule('
 jest.unstable_mockModule('../services/classification.mjs', () => createNamedMockModule('classificationService', mockClassification));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
+
+jest.unstable_mockModule('../services/schedulerExecutionReceiptService.mjs', () => (
+    createNamedMockModule('schedulerExecutionReceiptService', mockSchedulerExecutionReceiptService)
+));
 
 const { schedulerService: scheduler } = await import('../services/scheduler.mjs');
 
@@ -168,6 +176,7 @@ describe('SchedulerService', () => {
         logger.warn.mockReset();
         logger.error.mockReset();
         logger.debug.mockReset();
+        mockSchedulerExecutionReceiptService.record.mockReset();
         scheduler.resetState();
     });
 
@@ -560,6 +569,11 @@ describe('SchedulerService', () => {
 
             expect(handler).toHaveBeenCalledTimes(1);
             expect(dbModule.withSessionAdvisoryLock).not.toHaveBeenCalled();
+            expect(cron.schedule).toHaveBeenLastCalledWith(
+                '*/5 * * * *',
+                expect.any(Function),
+                { noOverlap: true },
+            );
         });
     });
 
@@ -595,7 +609,7 @@ describe('SchedulerService', () => {
             expect(mockNativeIntentReconciliationService.run).toHaveBeenCalledTimes(2);
         });
 
-        it('runs reconciliation only once when the recurring and delayed-start invocations contend for its lock', async () => {
+        it('runs reconciliation only once when the recurring and delayed-start invocations overlap in-process', async () => {
             jest.useFakeTimers();
             let releaseFirstRun;
             let lockHeld = false;
@@ -625,21 +639,14 @@ describe('SchedulerService', () => {
 
             await jest.advanceTimersByTimeAsync(90_000);
 
-            expect(mockDb.withSessionAdvisoryLock).toHaveBeenCalledTimes(2);
-            expect(mockDb.withSessionAdvisoryLock).toHaveBeenNthCalledWith(
-                1,
-                2008,
-                expect.any(Function),
-            );
-            expect(mockDb.withSessionAdvisoryLock).toHaveBeenNthCalledWith(
-                2,
+            expect(mockDb.withSessionAdvisoryLock).toHaveBeenCalledTimes(1);
+            expect(mockDb.withSessionAdvisoryLock).toHaveBeenCalledWith(
                 2008,
                 expect.any(Function),
             );
             expect(mockNativeIntentReconciliationService.run).toHaveBeenCalledTimes(1);
             expect(logger.debug).toHaveBeenCalledWith(
-                expect.stringContaining('native-intent-reconciliation'),
-                expect.objectContaining({ lockKey: 2008 }),
+                'Scheduled task native-intent-reconciliation skipped — already running in this process',
             );
 
             releaseFirstRun();

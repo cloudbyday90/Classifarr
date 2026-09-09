@@ -16,7 +16,16 @@ export function readWriterSourceFiles(root) {
     for (const path of names) {
         const absolute = resolve(root, path);
         if (!inside(root, absolute)) throw new Error('Writer source escaped repository');
-        const stat = lstatSync(absolute);
+        let stat;
+        try {
+            stat = lstatSync(absolute);
+        } catch (error) {
+            if (error?.code === 'ENOENT') {
+                gaps.push({ path, reason: 'missing_worktree_source' });
+                continue;
+            }
+            throw error;
+        }
         if (stat.isSymbolicLink() || !stat.isFile() || !inside(actualRoot, realpathSync(absolute))) { gaps.push({ path, reason: 'nonlocal_or_nonregular_source' }); continue; }
         if (stat.size > 2 * 1024 * 1024) { gaps.push({ path, reason: 'source_size_limit' }); continue; }
         bytes += stat.size;
