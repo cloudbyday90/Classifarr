@@ -12,6 +12,9 @@ import { normalizeSourceProviderIds } from '../../mediaSourceIdentity.mjs';
 
 const emptyIds = () => ({ tmdb_id: null, imdb_id: null, tvdb_id: null });
 
+const providerFields = Object.freeze(['tmdb_id', 'imdb_id', 'tvdb_id']);
+const maximumPlexGuidsForIdentityEvidence = 100;
+
 function validatedIds(ids) {
   return normalizeSourceProviderIds(ids) || { ...emptyIds(), provider_identity_invalid: true };
 }
@@ -44,4 +47,45 @@ export function parsePlexGuids(guids = []) {
   }
 
   return result;
+}
+
+/**
+ * Normalizes provider values while retaining all distinct declarations in
+ * memory. This is deliberately separate from the normal sync parser: a
+ * conflicting source item remains invalid for sync, but a read-only evidence
+ * replay needs to compare the complete current candidate set without storing
+ * or logging those values.
+ */
+/** @param {Record<string, unknown>} providerIds */
+export function collectProviderIdCandidates(providerIds = {}) {
+  if (!providerIds || typeof providerIds !== 'object' || Array.isArray(providerIds)) return null;
+  const normalized = validatedIds({
+    tmdb_id: providerIds.Tmdb,
+    imdb_id: providerIds.Imdb,
+    tvdb_id: providerIds.Tvdb,
+  });
+  if (normalized.provider_identity_invalid) return null;
+  return Object.freeze(Object.fromEntries(providerFields.map((field) => Object.freeze([
+    field,
+    Object.freeze(normalized[field] == null ? [] : [normalized[field]]),
+  ]))));
+}
+
+/** Returns every valid Plex GUID declaration for each supported provider. */
+export function collectPlexGuidCandidates(guids = []) {
+  if (!Array.isArray(guids) || guids.length > maximumPlexGuidsForIdentityEvidence) return null;
+  const candidates = Object.fromEntries(providerFields.map((field) => [field, new Set()]));
+  for (const guid of guids) {
+    const id = typeof guid?.id === 'string' ? guid.id : '';
+    const provider = /^(tmdb|imdb|tvdb):\/\//.exec(id)?.[1];
+    if (!provider) continue;
+    const field = `${provider}_id`;
+    const parsed = validatedIds({ [field]: id.slice(provider.length + 3) });
+    if (parsed.provider_identity_invalid || parsed[field] == null) return null;
+    candidates[field].add(parsed[field]);
+  }
+  return Object.freeze(Object.fromEntries(providerFields.map((field) => Object.freeze([
+    field,
+    Object.freeze([...candidates[field]].sort((left, right) => String(left).localeCompare(String(right)))),
+  ]))));
 }

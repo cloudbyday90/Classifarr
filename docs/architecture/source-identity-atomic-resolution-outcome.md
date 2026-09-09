@@ -58,9 +58,11 @@ finding.
 2. Correct the source match only after a reviewer verifies the intended item;
    Plex exposes this as a show-level Fix Match workflow. A later source capture
    can then clear the observation through the existing guarded path.
-3. Before automating any eligible conflict, replay a bounded retained sample
-   through the existing generic external-evidence resolver and measure exact
-   candidate agreement, provider failures, and residual review rate.
+3. The delivered bounded retained-sample replay now measures exact candidate
+   agreement, provider failures, and residual review rate without persisting
+   source evidence. See the separate
+   [replay design](source-identity-evidence-replay-design.md) and
+   [outcome](source-identity-evidence-replay-outcome.md).
 4. Only if that profile is favorable, add the compare-and-apply transaction
    described in the design: capture generation plus candidate digest must still
    match, the evidence result must name exactly one declared candidate, and the

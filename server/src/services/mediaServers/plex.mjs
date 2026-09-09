@@ -9,7 +9,7 @@
  */
 import { httpGet } from '../../utils/httpClient.mjs';
 import { createLogger } from '../../utils/logger.mjs';
-import { parsePlexGuids } from './shared/providerIds.mjs';
+import { collectPlexGuidCandidates, parsePlexGuids } from './shared/providerIds.mjs';
 import { appendQueryParam, buildPathUrl } from './shared/url.mjs';
 
 const logger = createLogger('PlexService');
@@ -118,6 +118,30 @@ class PlexService {
       }));
     } catch (error) {
       throw new Error(`Failed to fetch Plex library items: ${error.message}`);
+    }
+  }
+
+  /**
+   * Fetch only one current source item and the provider IDs needed for a
+   * read-only identity-evidence comparison. A caller never receives title,
+   * summary, artwork, or any persisted item fields.
+   */
+  async getLibraryItemIdentityEvidence(url, apiKey, libraryKey, externalId) {
+    const sourceId = typeof externalId === 'string' ? externalId.trim() : '';
+    const sourceLibrary = String(libraryKey ?? '');
+    if (!sourceId || !sourceLibrary) return null;
+    try {
+      const response = await httpGet(
+        `${url}/library/metadata/${encodeURIComponent(sourceId)}`,
+        buildRequestConfig(apiKey, { params: { includeGuids: 1 }, timeout: 10000 }),
+      );
+      const item = response.data?.MediaContainer?.Metadata?.[0];
+      if (!item || String(item.ratingKey) !== sourceId || String(item.librarySectionID) !== sourceLibrary) return null;
+      const mediaType = item.type === 'show' ? 'tv' : item.type === 'movie' ? 'movie' : null;
+      const providerIds = collectPlexGuidCandidates(item.Guid || []);
+      return mediaType && providerIds ? Object.freeze({ mediaType, providerIds }) : null;
+    } catch (error) {
+      throw new Error(`Failed to fetch Plex library item identity evidence: ${error.message}`);
     }
   }
 

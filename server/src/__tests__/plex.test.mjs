@@ -194,6 +194,45 @@ describe('PlexService', () => {
         });
     });
 
+    describe('getLibraryItemIdentityEvidence', () => {
+        it('returns only current provider candidate evidence for the requested item in its library', async () => {
+            mockHttpGet.mockResolvedValue({
+                data: { MediaContainer: { Metadata: [{
+                    ratingKey: 'item-1', librarySectionID: 'library-1', type: 'show',
+                    Guid: [{ id: 'tmdb://10' }, { id: 'tmdb://11' }, { id: 'imdb://tt0000010' }]
+                }] } }
+            });
+
+            await expect(service.getLibraryItemIdentityEvidence('http://plex:32400', 'token', 'library-1', 'item-1'))
+                .resolves.toEqual({ mediaType: 'tv', providerIds: { tmdb_id: [10, 11], imdb_id: ['tt0000010'], tvdb_id: [] } });
+            expect(mockHttpGet).toHaveBeenCalledWith(
+                'http://plex:32400/library/metadata/item-1',
+                expect.objectContaining({ params: { includeGuids: 1 }, timeout: 10000 })
+            );
+        });
+
+        it('does not accept a source item from another library', async () => {
+            mockHttpGet.mockResolvedValue({
+                data: { MediaContainer: { Metadata: [{ ratingKey: 'item-1', librarySectionID: 'other', type: 'movie' }] } }
+            });
+
+            await expect(service.getLibraryItemIdentityEvidence('http://plex:32400', 'token', 'library-1', 'item-1'))
+                .resolves.toBeNull();
+        });
+
+        it('fails closed when a source response declares too many identity GUIDs', async () => {
+            mockHttpGet.mockResolvedValue({
+                data: { MediaContainer: { Metadata: [{
+                    ratingKey: 'item-1', librarySectionID: 'library-1', type: 'movie',
+                    Guid: Array.from({ length: 101 }, () => ({ id: 'tmdb://10' }))
+                }] } }
+            });
+
+            await expect(service.getLibraryItemIdentityEvidence('http://plex:32400', 'token', 'library-1', 'item-1'))
+                .resolves.toBeNull();
+        });
+    });
+
     describe('getCollections', () => {
         it('should return collections', async () => {
             mockHttpGet.mockResolvedValue({

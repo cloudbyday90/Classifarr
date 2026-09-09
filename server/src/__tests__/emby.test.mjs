@@ -97,6 +97,29 @@ describe('EmbyService', () => {
         });
     });
 
+    describe('getLibraryItemIdentityEvidence', () => {
+        it('returns only provider candidate evidence and verifies library membership', async () => {
+            mockHttpGet.mockResolvedValue({
+                data: { Id: 'item-1', ParentId: 'library-1', Type: 'Series',
+                    ProviderIds: { Tmdb: '10', Imdb: 'tt0000010' } }
+            });
+
+            await expect(service.getLibraryItemIdentityEvidence('http://emby:8096', 'key', 'library-1', 'item-1'))
+                .resolves.toEqual({ mediaType: 'tv', providerIds: { tmdb_id: [10], imdb_id: ['tt0000010'], tvdb_id: [] } });
+            expect(mockHttpGet).toHaveBeenCalledWith(
+                'http://emby:8096/Items/item-1',
+                expect.objectContaining({ params: { Fields: 'ProviderIds,ParentId,AncestorIds' }, timeout: 10000 })
+            );
+        });
+
+        it('does not accept a matching item identifier outside the source library', async () => {
+            mockHttpGet.mockResolvedValue({ data: { Id: 'item-1', ParentId: 'other', Type: 'Movie' } });
+
+            await expect(service.getLibraryItemIdentityEvidence('http://emby:8096', 'key', 'library-1', 'item-1'))
+                .resolves.toBeNull();
+        });
+    });
+
     describe('getLibraryItems', () => {
         it('should return formatted library items', async () => {
             mockHttpGet.mockResolvedValue({

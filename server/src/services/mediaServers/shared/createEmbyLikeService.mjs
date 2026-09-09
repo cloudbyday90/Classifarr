@@ -9,7 +9,7 @@
  */
 import { httpGet } from '../../../utils/httpClient.mjs';
 import { appendQueryParam, normalizeBaseUrl } from './url.mjs';
-import { parseProviderIds } from './providerIds.mjs';
+import { collectProviderIdCandidates, parseProviderIds } from './providerIds.mjs';
 
 function buildHeaders(apiKey) {
   return {
@@ -101,6 +101,29 @@ class EmbyLikeService {
       }));
     } catch (error) {
       throw new Error(`Failed to fetch ${this.displayName} library items: ${error.message}`);
+    }
+  }
+
+  /** Reads the minimum current source evidence for a single retained item. */
+  async getLibraryItemIdentityEvidence(url, apiKey, libraryId, externalId) {
+    const sourceId = typeof externalId === 'string' ? externalId.trim() : '';
+    const sourceLibrary = String(libraryId ?? '');
+    if (!sourceId || !sourceLibrary) return null;
+    try {
+      const response = await httpGet(`${url}/Items/${encodeURIComponent(sourceId)}`, {
+        headers: buildHeaders(apiKey),
+        timeout: 10000,
+        params: { Fields: 'ProviderIds,ParentId,AncestorIds' },
+      });
+      const item = response.data;
+      const belongsToLibrary = String(item?.ParentId) === sourceLibrary ||
+        (Array.isArray(item?.AncestorIds) && item.AncestorIds.some((id) => String(id) === sourceLibrary));
+      if (!item || String(item.Id) !== sourceId || !belongsToLibrary) return null;
+      const mediaType = item.Type === 'Series' ? 'tv' : item.Type === 'Movie' ? 'movie' : null;
+      const providerIds = collectProviderIdCandidates(item.ProviderIds || {});
+      return mediaType && providerIds ? Object.freeze({ mediaType, providerIds }) : null;
+    } catch (error) {
+      throw new Error(`Failed to fetch ${this.displayName} library item identity evidence: ${error.message}`);
     }
   }
 

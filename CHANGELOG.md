@@ -36,6 +36,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- Add a bounded, read-only replay of current conflicting source identities.
+  It reads one source item per selected observation through a provider-neutral
+  ESM adapter and reports aggregate evidence outcomes only; it cannot correct
+  source metadata, persist an identity, invoke AI, or route media.
 - Record repeated source-identity conflicts as one bounded, post-capture sync
   summary while retaining the existing strict identity guard and controlled
   unresolved-observation view.

@@ -1,0 +1,82 @@
+# Source identity evidence replay outcome
+
+Date: 2026-09-09. See the separate
+[design](source-identity-evidence-replay-design.md).
+
+## Delivered behavior
+
+The new `npm --prefix server run study:replay:source-identity-evidence`
+command performs a bounded, database-read-only evidence replay. It selects no
+more than 32 current, complete-capture conflicts and distributes the selection
+across libraries with an eight-item cap per library.
+
+The replay reads a single current item through its existing media-server
+adapter. The adapter verifies source-item and library membership, and returns
+only normalized provider candidate arrays in process memory. The generic TMDb
+external-ID resolver then checks independent IMDb and TVDB evidence. Output is
+an aggregate-only JSON record with fixed outcome and reason codes.
+
+No database migration was needed because the replay consumes the existing
+bounded observation and capture-state records. It performs no database write,
+source write, item persistence, policy mutation, AI call, semantic selection,
+or routing action.
+
+## Safety decisions
+
+An exact TMDb response is counted as `exact_candidate_agreement` only when it
+is one of the item's current source TMDb candidates and all supplied
+independent IDs agree. These conditions deliberately leave several outcomes
+review-only:
+
+| Condition | Aggregate result | Effect |
+| --- | --- | --- |
+| Source has changed or disappeared | `source_conflict_no_longer_present` or `source_item_unavailable` | No correction |
+| Independent evidence conflicts or is absent | `external_evidence_conflicting` or `external_evidence_absent` | No provider guess |
+| TMDb finds a value outside current source candidates | `resolved_not_current_candidate` | No correction |
+| TMDb result is ambiguous, incomplete, invalid, or unavailable | `review_required` | No correction |
+
+The output does not contain provider IDs, source data, library/server IDs,
+credentials, URLs, titles, or fingerprints. Per-item source and provider
+errors become fixed aggregate codes, which keeps routine operation useful
+without recreating an operator-managed error queue.
+
+## Live measurement
+
+The no-cache local-Compose rebuild completed successfully on 2026-09-09 and
+the rebuilt container returned a healthy `/health` response. The read-only
+replay then selected all 19 current conflicts within its 32-item limit. Its
+aggregate-only result was:
+
+| Outcome | Count | Interpretation |
+| --- | ---: | --- |
+| `exact_candidate_agreement` | 2 | Independent evidence named one current source candidate. |
+| `external_evidence_conflicting` | 15 | The current source still declares contradictory independent identifiers. |
+| `review_required` | 2 | Independent evidence was incomplete. |
+
+The resolver reasons were one `external_id_match`, one
+`external_ids_agree`, and two `incomplete_external_evidence` results. The
+source and TMDb values behind those counts were neither written nor printed.
+
+Two exact agreements among 19 cases, alongside 15 contradictory independent
+evidence cases, is not a suitable error profile for automatic resolution. It
+does not authorize semantic counter-evidence, an identity write, source
+mutation, or routing.
+
+## Validation
+
+Focused tests cover exact candidate agreement, disagreement with the current
+candidate set, source repair, conflicting independent evidence, no-current-
+conflict behavior, and fixed source failure aggregation. Adapter tests verify
+that Plex and Emby/Jellyfin read only one item and reject an item outside the
+recorded library. Type checking and server security lint pass.
+
+## Recommendation and next item
+
+The next item is a bounded, source-agnostic source-repair worklist for the 17
+non-exact cases. It should group only fixed conflict categories and offer the
+media server's own matching workflow as the repair boundary. It must not make
+automatic corrections or force an operator to manually transcribe identifiers.
+
+Do not build a compare-and-apply command or semantic counter-evidence now.
+Those require a materially better replay profile from a later fresh,
+complete-capture measurement.
