@@ -39,6 +39,17 @@ describe('scheduler execution receipt contract', () => {
         });
     });
 
+    test('groups the event-loop observation task with other fixed observations', () => {
+        expect(buildSchedulerExecutionReceipt({
+            taskName: 'event-loop-delay-observation',
+            outcomeId: SCHEDULER_EXECUTION_OUTCOME_IDS.COMPLETED,
+            durationMs: 5,
+        })).toMatchObject({
+            taskClass: 'observation',
+            durationBucket: '5_to_24ms',
+        });
+    });
+
     test('rejects caller-controlled outcomes and invalid monotonic timings', () => {
         expect(() => buildSchedulerExecutionReceipt({
             taskName: 'library-sync',

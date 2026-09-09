@@ -46,6 +46,7 @@ const TASK_CLASS_BY_NAME = Object.freeze({
     'policy-profile-refresh-outbox': SCHEDULER_EXECUTION_TASK_CLASS_IDS.POLICY_MAINTENANCE,
     'held-out-semantic-study-lifecycle-reaudit': SCHEDULER_EXECUTION_TASK_CLASS_IDS.OBSERVATION,
     'database-health-transition-observation': SCHEDULER_EXECUTION_TASK_CLASS_IDS.OBSERVATION,
+    'event-loop-delay-observation': SCHEDULER_EXECUTION_TASK_CLASS_IDS.OBSERVATION,
 });
 
 function durationBucket(durationMs) {

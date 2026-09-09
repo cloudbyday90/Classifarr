@@ -10,6 +10,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 ## [Unreleased]
 
 ### Performance
+- Add passive event-loop-delay observations that persist only a fixed p99
+  bucket, aggregate count, and freshness timestamp; no raw performance value,
+  process, operational, media, library, provider, configuration, policy, AI,
+  decision, error, or routing data is retained.
 - Bound backend CI coverage workers to the established 512 MB idle-memory
   recycle limit, preventing a long-running coverage process from accumulating
   unbounded worker memory.
@@ -32,6 +36,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- Remove the Node 24 DEP0190 source from the cross-platform workspace test
+  launcher by using explicit, allowlisted `cmd.exe` arguments with Node shell
+  mode disabled on Windows.
 - Restore backend dependency-declaration validation by removing an unused
   compatibility re-export, and make the source-inventory scanner report a
   staged deletion as a coverage gap instead of failing its scan.

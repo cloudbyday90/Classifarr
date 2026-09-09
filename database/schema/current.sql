@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-09T09:02:55.472Z
--- Latest Migration: 20260909_085356_add_scheduler_execution_receipts.sql
+-- Generated: 2026-09-09T10:42:15.173Z
+-- Latest Migration: 20260909_102827_add_event_loop_delay_receipts.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3144,6 +3144,28 @@ CREATE SEQUENCE public.error_log_id_seq
 --
 
 ALTER SEQUENCE public.error_log_id_seq OWNED BY public.error_log.id;
+
+
+--
+-- Name: event_loop_delay_receipts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.event_loop_delay_receipts (
+    receipt_version character varying(64) NOT NULL,
+    p99_delay_bucket character varying(20) NOT NULL,
+    observation_count bigint DEFAULT 0 NOT NULL,
+    last_observed_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT event_loop_delay_receipts_observation_count_chk CHECK ((observation_count > 0)),
+    CONSTRAINT event_loop_delay_receipts_p99_delay_bucket_chk CHECK (((p99_delay_bucket)::text = ANY (ARRAY[('unavailable'::character varying)::text, ('under_25ms'::character varying)::text, ('25_to_49ms'::character varying)::text, ('50_to_99ms'::character varying)::text, ('100_to_499ms'::character varying)::text, ('500ms_or_more'::character varying)::text]))),
+    CONSTRAINT event_loop_delay_receipts_version_chk CHECK (((receipt_version)::text = 'event_loop.delay_receipt.v1'::text))
+);
+
+
+--
+-- Name: TABLE event_loop_delay_receipts; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.event_loop_delay_receipts IS 'Fixed aggregate process event-loop delay counters; no raw timing, sample count, process, task, SQL, identifier, media, library, provider, configuration, policy, AI, decision, error, or routing data.';
 
 
 --
@@ -9078,6 +9100,14 @@ ALTER TABLE ONLY public.error_log
 
 ALTER TABLE ONLY public.error_log
     ADD CONSTRAINT error_log_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: event_loop_delay_receipts event_loop_delay_receipts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.event_loop_delay_receipts
+    ADD CONSTRAINT event_loop_delay_receipts_pkey PRIMARY KEY (receipt_version, p99_delay_bucket);
 
 
 --
@@ -15846,6 +15876,7 @@ FROM unnest(ARRAY[
     '20260908_040000_add_held_out_semantic_study_lifecycle_source_checkpoint.sql',
     '20260909_003713_add_queue_startup_performance_receipts.sql',
     '20260909_071510_add_database_health_transition_receipts.sql',
-    '20260909_085356_add_scheduler_execution_receipts.sql'
+    '20260909_085356_add_scheduler_execution_receipts.sql',
+    '20260909_102827_add_event_loop_delay_receipts.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;
