@@ -26,6 +26,7 @@ import { discordBotService as discordBot } from './services/discordBot.mjs';
 import { providerLock } from './services/providerLock.mjs';
 import { queueService } from './services/queueService.mjs';
 import { avxGuard } from './services/avxGuard.mjs';
+import { schedulerService as defaultSchedulerService } from './services/scheduler.mjs';
 import { createApp } from './bootstrap/createApp.mjs';
 import { initializeServices } from './bootstrap/initializeServices.mjs';
 import { registerProcessHandlers, startHttpServer } from './bootstrap/runtimeLifecycle.mjs';
@@ -72,11 +73,13 @@ export async function startServer({
 export function registerServerProcessHandlers({
   processRef = process,
   queueWorkerService = queueService,
+  schedulerService = defaultSchedulerService,
   loggerService = logger,
 } = {}) {
   registerProcessHandlers({
     processRef,
     queueService: queueWorkerService,
+    schedulerService,
     getServer: () => server,
     logger: loggerService,
   });

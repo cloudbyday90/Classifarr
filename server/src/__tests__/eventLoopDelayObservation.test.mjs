@@ -8,7 +8,10 @@ import {
 } from '../services/eventLoopDelayReceipt.mjs';
 import { incrementEventLoopDelayReceipt } from '../services/eventLoopDelayReceiptRepository.mjs';
 import { createEventLoopDelayObservationService } from '../services/eventLoopDelayObservationService.mjs';
-import { registerEventLoopDelayObservationSchedule } from '../services/eventLoopDelayObservationScheduler.mjs';
+import {
+    registerEventLoopDelayObservationSchedule,
+    stopEventLoopDelayObservationSchedule,
+} from '../services/eventLoopDelayObservationScheduler.mjs';
 import {
     EVENT_LOOP_DELAY_OBSERVATION_CRON,
     EVENT_LOOP_DELAY_OBSERVATION_INITIAL_DELAY_MS,
@@ -148,6 +151,21 @@ describe('event-loop delay schedule', () => {
             EVENT_LOOP_DELAY_OBSERVATION_INITIAL_DELAY_MS,
             expect.any(Function),
         );
+    });
+
+    test('stops local sampling during scheduler lifecycle cleanup', () => {
+        const observer = { stop: jest.fn().mockReturnValue(true) };
+
+        expect(stopEventLoopDelayObservationSchedule({ observer })).toBe(true);
+        expect(observer.stop).toHaveBeenCalledTimes(1);
+    });
+
+    test('contains local histogram shutdown faults', () => {
+        const log = { warn: jest.fn() };
+        const observer = { stop: jest.fn(() => { throw new Error('unavailable'); }) };
+
+        expect(stopEventLoopDelayObservationSchedule({ observer, log })).toBe(false);
+        expect(log.warn).toHaveBeenCalledWith('Passive event-loop delay monitoring shutdown unavailable');
     });
 });
 

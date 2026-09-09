@@ -45,6 +45,7 @@ const VALID_METHODS = [
 const NON_CLASSIFICATION_METHOD_SERVICE_FILES = new Set([
   'policyNativeSchemaContract.mjs',
   'queueTmdbExternalResolution.mjs',
+  'tmdbExternalIdentityResolution.mjs',
   // Operator identity receipts never write classification history; covered by SQL integration.
   'mediaIdentityReviewRepository.mjs',
 ]);

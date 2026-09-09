@@ -57,6 +57,7 @@ export async function startHttpServer({ app, port, host = '0.0.0.0' }) {
 export async function gracefulShutdown({
   signal,
   queueService,
+  schedulerService,
   server,
   exit = defaultExit,
   setTimeoutFn = defaultSetTimeout,
@@ -69,6 +70,12 @@ export async function gracefulShutdown({
     exit(1);
   }, 10_000);
   forceExit.unref?.();
+
+  try {
+    schedulerService?.resetState?.();
+  } catch (error) {
+    logger.error('Scheduler graceful shutdown error:', { error: error.message });
+  }
 
   try {
     await queueService.gracefulShutdown();
@@ -107,6 +114,7 @@ export function normalizeUnhandledReason(reason) {
 export function registerProcessHandlers({
   processRef = process,
   queueService,
+  schedulerService,
   getServer,
   logger,
   exit = defaultExit,
@@ -116,6 +124,7 @@ export function registerProcessHandlers({
   processRef.on('SIGTERM', () => gracefulShutdown({
     signal: 'SIGTERM',
     queueService,
+    schedulerService,
     server: getServer(),
     exit,
     setTimeoutFn,
@@ -125,6 +134,7 @@ export function registerProcessHandlers({
   processRef.on('SIGINT', () => gracefulShutdown({
     signal: 'SIGINT',
     queueService,
+    schedulerService,
     server: getServer(),
     exit,
     setTimeoutFn,

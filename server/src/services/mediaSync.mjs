@@ -5,6 +5,7 @@ import * as errorsModule from '../utils/errors.mjs';
 import { getMediaServerService as defaultGetMediaServerService } from './mediaServers/index.mjs';
 import { mediaSyncLibraryStateService } from './mediaSyncLibraryStateService.mjs';
 import { MediaSourceObservationStore } from './mediaSourceObservationStore.mjs';
+import { createMediaSyncSkipSummary } from './mediaSyncSkipSummary.mjs';
 import { upsertMediaItem as _upsertMediaItem, upsertCollection as _upsertCollection } from './mediaSyncUpsert.mjs';
 import { pruneMissingMediaItems as _pruneMissingMediaItems, pruneMissingCollections as _pruneMissingCollections, getSyncStatus as _getSyncStatus, getLibraryItems as _getLibraryItems, syncLibrariesFromMediaServer as _syncLibrariesFromMediaServer } from './mediaSyncQueries.mjs';
 
@@ -50,6 +51,7 @@ export class MediaSyncService {
       );
       const syncStatusId = syncStatusResult.rows[0].id;
       let sourceCapture;
+      const skippedItems = createMediaSyncSkipSummary();
 
       try {
         sourceCapture = await this.sourceObservations.start(media_server_id, libraryId, { incremental });
@@ -77,7 +79,9 @@ export class MediaSyncService {
             if (item?.external_id) {
               seenItemExternalIds.add(String(item.external_id));
             }
-            await this.upsertMediaItem(media_server_id, libraryId, item);
+            await this.upsertMediaItem(media_server_id, libraryId, item, {
+              onSkippedItem: skippedItem => skippedItems.record(skippedItem),
+            });
             processedItems += 1;
           }
 
@@ -119,6 +123,9 @@ export class MediaSyncService {
 
         await this.reconcileAwaitingDecisions(libraryId);
         await this.sourceObservations.finish(sourceCapture);
+
+        const skipSummary = skippedItems.snapshot();
+        if (skipSummary) logger.warn('Library sync skipped source items', { libraryId, ...skipSummary });
 
         await db.query(
           `UPDATE media_server_sync_status 
@@ -172,8 +179,8 @@ export class MediaSyncService {
     return this.mediaSyncLibraryStateService.getLibraryContext(tmdbId, metadata);
   }
 
-  async upsertMediaItem(...args) {
-    return _upsertMediaItem(...args);
+  async upsertMediaItem(mediaServerId, libraryId, item, options = {}) {
+    return _upsertMediaItem(mediaServerId, libraryId, item, options);
   }
 
   async upsertCollection(...args) {

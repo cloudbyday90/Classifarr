@@ -55,6 +55,9 @@ describe('runtimeLifecycle', () => {
     const queueService = {
       gracefulShutdown: jest.fn().mockResolvedValue(),
     };
+    const schedulerService = {
+      resetState: jest.fn(),
+    };
     const server = {
       close: jest.fn((callback) => callback()),
     };
@@ -66,6 +69,7 @@ describe('runtimeLifecycle', () => {
     await gracefulShutdown({
       signal: 'SIGTERM',
       queueService,
+      schedulerService,
       server,
       exit,
       setTimeoutFn,
@@ -73,9 +77,29 @@ describe('runtimeLifecycle', () => {
     });
 
     expect(setTimeoutFn).toHaveBeenCalledWith(expect.any(Function), 10_000);
-    expect(queueService.gracefulShutdown).toHaveBeenCalled();
+    expect(schedulerService.resetState.mock.invocationCallOrder[0])
+      .toBeLessThan(queueService.gracefulShutdown.mock.invocationCallOrder[0]);
     expect(server.close).toHaveBeenCalled();
     expect(clearTimeoutFn).toHaveBeenCalledWith(forceExit);
+    expect(exit).toHaveBeenCalledWith(0);
+  });
+
+  it('continues shutdown when scheduler cleanup fails', async () => {
+    const queueService = { gracefulShutdown: jest.fn().mockResolvedValue() };
+    const schedulerService = { resetState: jest.fn(() => { throw new Error('cleanup unavailable'); }) };
+    const exit = jest.fn();
+    const forceExit = { unref: jest.fn() };
+
+    await gracefulShutdown({
+      signal: 'SIGTERM',
+      queueService,
+      schedulerService,
+      exit,
+      setTimeoutFn: jest.fn(() => forceExit),
+      clearTimeoutFn: jest.fn(),
+    });
+
+    expect(queueService.gracefulShutdown).toHaveBeenCalledTimes(1);
     expect(exit).toHaveBeenCalledWith(0);
   });
 

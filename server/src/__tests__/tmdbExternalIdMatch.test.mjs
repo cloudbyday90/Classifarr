@@ -4,17 +4,17 @@
  */
 
 import { describe, expect, test } from '@jest/globals';
-import { buildQueueExternalIdPlan, buildTmdbExternalIdRequest, decideTmdbExternalIdMatch } from '../services/tmdbExternalIdMatch.mjs';
+import { buildTmdbExternalIdPlan, buildTmdbExternalIdRequest, decideTmdbExternalIdMatch } from '../services/tmdbExternalIdMatch.mjs';
 
 describe('external-ID input contract', () => {
   test.each([0, '', 'bad', '../123', 2147483648, 1.5, true, {}])('rejects invalid TVDB ID %j', (id) => {
     expect(buildTmdbExternalIdRequest(id, 'tvdb_id')).toBeNull();
-    expect(buildQueueExternalIdPlan({ media_type: 'tv', tvdb_id: id }, {}).reason).toBe('invalid_external_id');
+    expect(buildTmdbExternalIdPlan({ media_type: 'tv', tvdb_id: id }, {}).reason).toBe('invalid_external_id');
   });
   test.each(['', 'TT123', 'tt', 'tt123 ', 'tt123\n', 'tt123/other', 'tt1234567890123', 123, false, {}])(
     'rejects invalid IMDb ID %j', (id) => {
       expect(buildTmdbExternalIdRequest(id, 'imdb_id')).toBeNull();
-      expect(buildQueueExternalIdPlan({ media_type: 'movie', imdb_id: id }, {}).reason).toBe('invalid_external_id');
+      expect(buildTmdbExternalIdPlan({ media_type: 'movie', imdb_id: id }, {}).reason).toBe('invalid_external_id');
     });
   test('normalizes numeric TVDB IDs and retains exact IMDb strings', () => {
     expect(buildTmdbExternalIdRequest(' 00123 ', 'tvdb_id')).toEqual({ externalId: 123, source: 'tvdb_id' });
@@ -23,10 +23,10 @@ describe('external-ID input contract', () => {
   });
   test.each([{}, { media_type: 'person' }, { media_type: 'movie', media: { media_type: 'tv' } }])(
     'requires explicit consistent type: %j', (payload) => {
-      expect(buildQueueExternalIdPlan({ ...payload, imdb_id: 'tt123' }, {}).reason).toBe('invalid_media_identity');
+      expect(buildTmdbExternalIdPlan({ ...payload, imdb_id: 'tt123' }, {}).reason).toBe('invalid_media_identity');
     });
   test('ignores TVDB on movie tasks and null external declarations', () => {
-    expect(buildQueueExternalIdPlan({ media_type: 'movie', tvdb_id: 'bad', imdb_id: null }, {})).toEqual({
+    expect(buildTmdbExternalIdPlan({ media_type: 'movie', tvdb_id: 'bad', imdb_id: null }, {})).toEqual({
       mediaType: 'movie', reason: null, requests: [],
     });
   });
@@ -34,24 +34,24 @@ describe('external-ID input contract', () => {
     ['tt123', { imdbId: 'tt456' }], [undefined, { imdbId: 'tt123', imdbID: 'tt456' }],
     ['tt123', { imdbId: 'tt123', imdbID: 'tt456' }],
   ])('rejects contradictory IMDb evidence without precedence: %j', (payloadId, omdbIds) => {
-    expect(buildQueueExternalIdPlan({ media_type: 'tv', imdb_id: payloadId }, {
+    expect(buildTmdbExternalIdPlan({ media_type: 'tv', imdb_id: payloadId }, {
       omdb: { data: { type: 'series', ...omdbIds } },
     }).reason).toBe('conflicting_external_ids');
   });
   test('does not drop a malformed OMDb alias when another declaration is valid', () => {
-    expect(buildQueueExternalIdPlan({ media_type: 'movie', imdb_id: 'tt123' }, {
+    expect(buildTmdbExternalIdPlan({ media_type: 'movie', imdb_id: 'tt123' }, {
       omdb: { data: { type: 'movie', imdbId: 'tt123', imdbID: '' } },
     }).reason).toBe('invalid_external_id');
   });
   test('captures matching declarations once and excludes wrong-type OMDb data', () => {
     const payload = { media_type: 'tv', tvdb_id: 123, imdb_id: 'tt456' };
     const metadata = { omdb: { data: { type: 'series', imdbId: 'tt456', imdbID: 'tt456' } } };
-    const plan = buildQueueExternalIdPlan(payload, metadata);
+    const plan = buildTmdbExternalIdPlan(payload, metadata);
     payload.tvdb_id = 999; metadata.omdb.data.imdbId = 'tt999';
     expect(plan.requests).toEqual([{ externalId: 123, source: 'tvdb_id' }, { externalId: 'tt456', source: 'imdb_id' }]);
     expect(Object.isFrozen(plan.requests)).toBe(true);
     expect(Object.isFrozen(plan.requests[0])).toBe(true);
-    expect(buildQueueExternalIdPlan({ media_type: 'tv', imdb_id: 'tt456' }, {
+    expect(buildTmdbExternalIdPlan({ media_type: 'tv', imdb_id: 'tt456' }, {
       omdb: { data: { type: 'movie', imdbId: 'tt999' } },
     }).requests).toEqual([{ externalId: 'tt456', source: 'imdb_id' }]);
   });

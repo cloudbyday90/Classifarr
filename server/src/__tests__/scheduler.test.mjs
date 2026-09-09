@@ -107,6 +107,11 @@ const mockSchedulerExecutionReceiptService = {
     record: jest.fn(),
 };
 
+const mockEventLoopDelayObservationScheduler = {
+    registerEventLoopDelayObservationSchedule: jest.fn(),
+    stopEventLoopDelayObservationSchedule: jest.fn(),
+};
+
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 jest.unstable_mockModule('node-cron', () => createMockModule(mockNodeCron));
@@ -139,6 +144,10 @@ jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogge
 
 jest.unstable_mockModule('../services/schedulerExecutionReceiptService.mjs', () => (
     createNamedMockModule('schedulerExecutionReceiptService', mockSchedulerExecutionReceiptService)
+));
+
+jest.unstable_mockModule('../services/eventLoopDelayObservationScheduler.mjs', () => (
+    createMockModule(mockEventLoopDelayObservationScheduler)
 ));
 
 const { schedulerService: scheduler } = await import('../services/scheduler.mjs');
@@ -177,7 +186,35 @@ describe('SchedulerService', () => {
         logger.error.mockReset();
         logger.debug.mockReset();
         mockSchedulerExecutionReceiptService.record.mockReset();
+        mockEventLoopDelayObservationScheduler.registerEventLoopDelayObservationSchedule.mockReset();
+        mockEventLoopDelayObservationScheduler.stopEventLoopDelayObservationSchedule.mockReset();
         scheduler.resetState();
+    });
+
+    describe('core startup task lifecycle', () => {
+        afterEach(() => {
+            jest.useRealTimers();
+        });
+
+        it('tracks startup tasks and stops local event-loop sampling on reset', () => {
+            jest.useFakeTimers();
+            mockEventLoopDelayObservationScheduler.stopEventLoopDelayObservationSchedule.mockClear();
+
+            scheduler.init();
+
+            expect([...scheduler.initialTaskTimers.keys()]).toEqual(expect.arrayContaining([
+                'gap-analysis',
+                'library-watchdog',
+                'library-sync',
+                'retry-queue',
+            ]));
+
+            scheduler.resetState();
+
+            expect(scheduler.initialTaskTimers.size).toBe(0);
+            expect(mockEventLoopDelayObservationScheduler.stopEventLoopDelayObservationSchedule)
+                .toHaveBeenCalledTimes(1);
+        });
     });
 
     describe('Security Cleanup Tasks', () => {

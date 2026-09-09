@@ -48,3 +48,17 @@ export function registerEventLoopDelayObservationSchedule(scheduler, {
     );
     return true;
 }
+
+/** Stops local sampling when the scheduler is reset or the process exits. */
+export function stopEventLoopDelayObservationSchedule({
+    observer = eventLoopDelayObservationService,
+    log = logger,
+} = {}) {
+    if (!observer || typeof observer.stop !== 'function') return false;
+    try {
+        return observer.stop() === true;
+    } catch (_) {
+        log.warn('Passive event-loop delay monitoring shutdown unavailable');
+        return false;
+    }
+}

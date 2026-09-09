@@ -12,8 +12,8 @@ export function buildTmdbExternalIdRequest(externalId, source) {
   return id ? Object.freeze({ externalId: id, source }) : null;
 }
 
-/** Capture every applicable declaration before any provider wait. */
-export function buildQueueExternalIdPlan(payload, enrichmentData) {
+/** Captures all declared external IDs before any remote provider request. */
+export function buildTmdbExternalIdPlan(payload, enrichmentData) {
   const mediaType = payloadMediaType(payload);
   const invalid = (reason) => Object.freeze({ mediaType, reason, requests: Object.freeze([]) });
   if (!mediaType) return invalid('invalid_media_identity');

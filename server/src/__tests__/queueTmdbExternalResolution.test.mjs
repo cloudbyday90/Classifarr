@@ -5,6 +5,7 @@
 
 import { describe, expect, jest, test } from '@jest/globals';
 import { QueueTmdbResolutionService } from '../services/queueTmdbResolutionService.mjs';
+import { resolveTmdbExternalIdentity } from '../services/tmdbExternalIdentityResolution.mjs';
 import { createMockLogger } from './helpers/mockFactory.mjs';
 
 const payload = (extra = {}) => ({ itemId: 1, media_type: 'tv', title: 'Example', year: 2001, ...extra });
@@ -22,6 +23,15 @@ function setup() {
 }
 
 describe('external-ID uncertainty is terminal for queue resolution', () => {
+  test('the source-independent resolver exposes a terminal review decision', async () => {
+    const { tmdbService } = setup();
+    tmdbService.findIdentityByExternalId.mockResolvedValue(bucket(42, 43));
+
+    await expect(resolveTmdbExternalIdentity(payload({ tvdb_id: 123 }), {}, tmdbService)).resolves.toEqual({
+      status: 'review_required', tmdbId: null, method: 'tvdb', reason: 'ambiguous_external_id',
+    });
+  });
+
   test.each([
     [bucket(42, 43), 'ambiguous_external_id'], [bucket(42, '042'), 'duplicate_external_results'],
     [bucket(42, 0), 'invalid_response'], [{}, 'invalid_response'],

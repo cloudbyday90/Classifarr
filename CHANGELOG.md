@@ -36,6 +36,15 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- Record repeated source-identity conflicts as one bounded, post-capture sync
+  summary while retaining the existing strict identity guard and controlled
+  unresolved-observation view.
+- Expose the strict TMDb external-ID evidence decision through a
+  source-independent ESM service, while preserving the queue compatibility
+  export; it still rejects contradictory and incomplete evidence.
+- Route every core delayed scheduler startup task through the cancellable
+  scheduler lifecycle and stop local event-loop sampling before queue drain on
+  controlled shutdown.
 - Remove the Node 24 DEP0190 source from the cross-platform workspace test
   launcher by using explicit, allowlisted `cmd.exe` arguments with Node shell
   mode disabled on Windows.

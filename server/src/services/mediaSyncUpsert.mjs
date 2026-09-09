@@ -6,7 +6,26 @@ import { sourceIdentityDiagnostics } from './mediaSyncIdentityDiagnostics.mjs';
 
 const logger = createLogger('mediaSync');
 
-export async function upsertMediaItem(mediaServerId, libraryId, item) {
+/**
+ * @param {{reason: string, [key: string]: unknown}} details
+ * @param {((details: {reason: string, [key: string]: unknown}) => void) | undefined} onSkippedItem
+ */
+function reportSkippedItem(details, onSkippedItem) {
+    if (typeof onSkippedItem === 'function') {
+        onSkippedItem(details);
+        return;
+    }
+    logger.warn('Skipping media item', details);
+}
+
+/**
+ * @param {number} mediaServerId
+ * @param {number} libraryId
+ * @param {Record<string, unknown>} item
+ * @param {{onSkippedItem?: (details: {reason: string, [key: string]: unknown}) => void}} [options]
+ */
+export async function upsertMediaItem(mediaServerId, libraryId, item, options = {}) {
+    const { onSkippedItem } = options;
     const captured = structuredClone(item);
     try {
         const libraryCheck = await db.query('SELECT id FROM libraries WHERE id = $1', [libraryId]);
@@ -20,10 +39,10 @@ export async function upsertMediaItem(mediaServerId, libraryId, item) {
             query: (text, values) => db.query(text, values),
             analyze: (...args) => contentTypeAnalyzer.analyze(...args),
         });
-        if (result !== 'synced') logger.warn('Skipping media item', {
+        if (result !== 'synced') reportSkippedItem({
             reason: result,
             ...(result === 'invalid_source_identity' ? sourceIdentityDiagnostics(mediaServerId, libraryId, captured) : {}),
-        });
+        }, onSkippedItem);
     } catch (error) {
         if (error.code === '23503') {
             logger.warn(`Skipping media item - library ${libraryId} no longer exists (race condition)`, {

@@ -52,7 +52,11 @@ import {
 import { runAutoLearnRules as _runAutoLearnRules } from './schedulerAutoLearnRules.mjs';
 import { registerLibraryObservationHistorySchedule } from './libraryObservationHistorySchedule.mjs';
 import { registerDatabaseHealthTransitionObservationSchedule } from './databaseHealthTransitionObservationScheduler.mjs';
-import { registerEventLoopDelayObservationSchedule } from './eventLoopDelayObservationScheduler.mjs';
+import {
+    registerEventLoopDelayObservationSchedule,
+    stopEventLoopDelayObservationSchedule,
+} from './eventLoopDelayObservationScheduler.mjs';
+import { registerSchedulerStartupTasks } from './schedulerStartupTasks.mjs';
 
 const { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } = db;
 const logger = createLogger('SchedulerService');
@@ -81,6 +85,7 @@ class SchedulerService {
             clearTimeout(timer);
         }
         this.initialTaskTimers.clear();
+        stopEventLoopDelayObservationSchedule();
         this.ratingNormalizationQueueService = ratingNormalizationQueueService;
         this.taskExecutionRunner.reset();
     }
@@ -96,11 +101,7 @@ class SchedulerService {
 
         this.schedule('gap-analysis', '*/5 * * * *', () => this.runGapAnalysis(), DB_ADVISORY_LOCKS.GAP_ANALYSIS);
 
-        setTimeout(() => this.runGapAnalysis(), 30000);
-
         this.schedule('library-watchdog', '*/5 * * * *', () => this.runLibraryWatchdog());
-
-        setTimeout(() => this.runLibraryWatchdog(), 5000);
 
         // DISABLED: Auto-learn rules - feature removed as it creates duplicates
         // and makes assumptions that don't work for diverse library naming conventions.
@@ -112,12 +113,18 @@ class SchedulerService {
         // Periodic library sync every 6 hours to keep Plex data fresh
         this.schedule('library-sync', '0 */6 * * *', () => this.runPeriodicLibrarySync(), DB_ADVISORY_LOCKS.LIBRARY_SYNC);
 
-        setTimeout(() => this.runPeriodicLibrarySync(), 120000);
-
         // Process retry queue every 5 minutes for AI-unavailable retries
         this.schedule('retry-queue', '*/5 * * * *', () => this.processRetryQueue(), DB_ADVISORY_LOCKS.RETRY_QUEUE);
 
-        setTimeout(() => this.processRetryQueue(), 60000);
+        registerSchedulerStartupTasks(this, {
+            advisoryLocks: DB_ADVISORY_LOCKS,
+            handlers: {
+                runGapAnalysis: () => this.runGapAnalysis(),
+                runLibraryWatchdog: () => this.runLibraryWatchdog(),
+                runPeriodicLibrarySync: () => this.runPeriodicLibrarySync(),
+                processRetryQueue: () => this.processRetryQueue(),
+            },
+        });
 
         // Process enrichment retry queue every 6 hours as safety net for OMDb and Tavily
         this.schedule('enrichment-retry-queue', '0 */6 * * *', () => this.processEnrichmentRetryQueue(), DB_ADVISORY_LOCKS.ENRICHMENT_RETRY_QUEUE);

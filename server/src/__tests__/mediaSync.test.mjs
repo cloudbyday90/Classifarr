@@ -349,6 +349,42 @@ describe('MediaSyncService', () => {
             expect(service.sourceObservations.finish).toHaveBeenCalledWith({ generation: 1 });
         });
 
+        it('emits one bounded post-capture summary for skipped source identities', async () => {
+            const mockLibrary = {
+                id: 1, name: 'Movies', type: 'plex', url: 'http://plex:32400', api_key: 'test-token',
+                media_server_id: 1, external_id: '1'
+            };
+            mockDb.query.mockImplementation((sql) => {
+                if (sql.includes('FROM libraries l')) return Promise.resolve({ rows: [mockLibrary] });
+                if (sql.includes('INSERT INTO media_server_sync_status')) return Promise.resolve({ rows: [{ id: 100 }] });
+                if (sql.includes('SET items_total = $1, items_processed = $2')) return Promise.resolve({ rowCount: 1 });
+                if (sql.includes('DELETE FROM media_server_items')) return Promise.resolve({ rowCount: 0 });
+                if (sql.includes('DELETE FROM media_server_collections')) return Promise.resolve({ rowCount: 0 });
+                if (sql.includes('UPDATE classification_history ch')) return Promise.resolve({ rows: [] });
+                if (sql.includes('SET status = $1, completed_at = NOW(), items_total = $2, items_processed = $3')) return Promise.resolve({ rowCount: 1 });
+                throw new Error(`Unexpected query: ${sql}`);
+            });
+            mockPlexService.getLibraryItems.mockResolvedValue([{ external_id: '1', title: 'Movie 1', tmdb_id: 123 }]);
+            mockPlexService.getCollections.mockResolvedValue([]);
+            const upsertSpy = jest.spyOn(service, 'upsertMediaItem').mockImplementation(async (_serverId, _libraryId, _item, options) => {
+                options.onSkippedItem({
+                    reason: 'invalid_source_identity',
+                    identityIssue: 'conflicting_provider_ids',
+                    sourceFingerprint: 'not-forwarded',
+                });
+            });
+
+            await service.syncLibrary(1);
+
+            expect(mockLogger.warn).toHaveBeenCalledWith('Library sync skipped source items', {
+                libraryId: 1,
+                skippedItemCount: 1,
+                reasonCounts: { invalid_source_identity: 1 },
+                identityIssueCounts: { conflicting_provider_ids: 1 },
+            });
+            upsertSpy.mockRestore();
+        });
+
         it('should mark sync as failed on error', async () => {
             const mockLibrary = {
                 id: 1,
