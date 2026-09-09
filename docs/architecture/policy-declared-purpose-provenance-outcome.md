@@ -18,10 +18,12 @@ inventory, lifecycle receipt, library aggregate, coverage result, re-audit, or
 held-out source screen. The administrator review displays unverified counts
 without exposing rule values.
 
-The receipt versions now make this semantic change explicit: policy source
-screen v4, eligibility audit v6, evidence inventory v2, lifecycle-purpose
-evidence v2, readiness v2, coverage review v9, and lifecycle receipt v3.
-No policy was edited and no evidence was created.
+The receipt versions at implementation made this semantic change explicit:
+policy source screen v4, eligibility audit v6, evidence inventory v2,
+lifecycle-purpose evidence v2, readiness v2, coverage review v9, and
+lifecycle receipt v3. Later passive-readiness work advanced the readiness
+projection to v4 and the coverage review to v12 without changing the
+provenance rule. No policy was edited and no evidence was created.
 
 ## Live read-only result
 
@@ -49,8 +51,13 @@ to implement locally. [Open pull requests](https://github.com/cloudbyday90/Class
 
 ## Next item
 
-Add a fixed, aggregate-only explanation for which deterministic
-policy-comparison precondition produced `not_pending_policy_decision`. It must
-not return candidate, policy, library, provider, or configuration data, and it
-  must remain a passive diagnostic rather than a cohort, label, semantic, or
-  routing workflow.
+The fixed, aggregate-only non-pending decision partition was subsequently
+implemented. It identifies the deterministic stop stage without returning
+candidate, policy, library, provider, or configuration data.
+
+The current next prerequisite is documented in the separate
+[current evidence-gate outcome](held-out-semantic-study-current-evidence-gate-outcome.md):
+ordinary native authoring or a verified terminal rebuild must first produce a
+durable normal lifecycle receipt. A later separately governed native-purpose
+declaration may then create complete current-purpose evidence. Neither fact
+can be inferred from library profile data or manufactured by automation.

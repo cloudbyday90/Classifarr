@@ -22,6 +22,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Held-out study gate reconciliation** — Documented the current passive
+  readiness and private-audit observations, including their intentionally
+  separate authority boundaries. Existing automation remains library- and
+  configuration-agnostic and cannot synthesize lifecycle or declared-purpose
+  evidence, capture a cohort, invoke AI, or route media.
+
 - **Current-intent evidence recovery** — A native purpose declaration and its
   matching durable lifecycle receipt can now restore passive evidence
   eligibility even when the policy has an older profile-derived receipt. The
