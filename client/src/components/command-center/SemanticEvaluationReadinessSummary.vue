@@ -23,6 +23,9 @@
         v-if="readiness"
         class="semantic-evaluation-readiness-status"
         :class="`semantic-evaluation-readiness-status-${readiness.statusId}`"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
       >{{ statusLabel }}</span>
     </div>
 
@@ -74,6 +77,7 @@ const readiness = computed(() => normalizeHeldOutSemanticStudyReadiness(props.re
 const shouldRender = computed(() => Boolean(readiness.value || props.loading || props.errorMessage))
 
 const statusLabel = computed(() => {
+  if (readiness.value?.privateCohortCaptureReady) return 'Private capture ready'
   switch (readiness.value?.statusId) {
     case STATUS_IDS.ELIGIBILITY_AUDIT_AVAILABLE:
       return 'Checking evidence'
@@ -87,6 +91,9 @@ const statusLabel = computed(() => {
 })
 
 const summaryText = computed(() => {
+  if (readiness.value?.privateCohortCaptureReady) {
+    return 'The automatic aggregate audit found a balanced policy-only frame. A controlled private capture can now prepare a redacted reviewer packet; nothing is retained, routed, or labeled automatically.'
+  }
   switch (readiness.value?.statusId) {
     case STATUS_IDS.ELIGIBILITY_AUDIT_AVAILABLE:
       return 'Policy evidence is available for the next private eligibility check. A study still requires a bounded cohort and independently reviewed labels before semantic quality can be measured.'

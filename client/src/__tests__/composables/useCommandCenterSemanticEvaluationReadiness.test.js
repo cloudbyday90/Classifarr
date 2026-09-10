@@ -11,7 +11,7 @@ import {
 } from '@/composables/useCommandCenterSemanticEvaluationReadiness'
 
 const readinessResponse = {
-  version: 'policy.held_out_semantic_study_readiness.v4',
+  version: 'policy.held_out_semantic_study_readiness.v5',
   statusId: 'normal_lifecycle_receipt_required',
   normalLifecycleReceiptCount: 0,
   completePolicyEvidenceCount: 0,
@@ -22,6 +22,7 @@ const readinessResponse = {
   libraryIdentityExposed: false,
   mediaIdentityExposed: false,
   semanticCohortReady: false,
+  privateCohortCaptureReady: false,
   independentLabelsAvailable: false,
   semanticSelectionAffected: false,
   routingAffected: false,

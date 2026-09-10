@@ -21,7 +21,7 @@ import {
 } from './heldOutSemanticStudyReadinessMeasuredBlocker.mjs';
 
 export const HELD_OUT_SEMANTIC_STUDY_READINESS_VERSION =
-  'policy.held_out_semantic_study_readiness.v4';
+  'policy.held_out_semantic_study_readiness.v5';
 
 export const HELD_OUT_SEMANTIC_STUDY_READINESS_STATUS_IDS = Object.freeze({
   NORMAL_LIFECYCLE_RECEIPT_REQUIRED: 'normal_lifecycle_receipt_required',
@@ -50,6 +50,7 @@ const READINESS_FIELDS = new Set([
   'libraryIdentityExposed',
   'mediaIdentityExposed',
   'semanticCohortReady',
+  'privateCohortCaptureReady',
   'independentLabelsAvailable',
   'semanticSelectionAffected',
   'routingAffected',
@@ -84,6 +85,8 @@ function buildResult({
     libraryIdentityExposed: false,
     mediaIdentityExposed: false,
     semanticCohortReady: false,
+    privateCohortCaptureReady: measuredBlocker?.id ===
+      HELD_OUT_SEMANTIC_STUDY_READINESS_MEASURED_BLOCKER_IDS.PRIVATE_COHORT_CAPTURE_READY,
     independentLabelsAvailable: false,
     semanticSelectionAffected: false,
     routingAffected: false,
@@ -212,6 +215,7 @@ export function auditHeldOutSemanticStudyReadiness(value = {}) {
       HELD_OUT_SEMANTIC_STUDY_READINESS_MEASURED_BLOCKER_IDS
         .AWAIT_QUALIFYING_POLICY_EVALUATIONS,
       HELD_OUT_SEMANTIC_STUDY_READINESS_MEASURED_BLOCKER_IDS.AWAIT_BALANCED_ELIGIBLE_COHORT,
+      HELD_OUT_SEMANTIC_STUDY_READINESS_MEASURED_BLOCKER_IDS.PRIVATE_COHORT_CAPTURE_READY,
     ].includes(result.measuredBlockerId) && result.currentCompleteAuditAvailable === true)
   );
   if (!validMeasuredBlockerId || (!sourceBlockerMatchesStatus && !auditBlockerMatchesStatus)) {
@@ -222,6 +226,9 @@ export function auditHeldOutSemanticStudyReadiness(value = {}) {
     result.libraryIdentityExposed !== false ||
     result.mediaIdentityExposed !== false ||
     result.semanticCohortReady !== false ||
+    typeof result.privateCohortCaptureReady !== 'boolean' ||
+    result.privateCohortCaptureReady !== (result.measuredBlockerId ===
+      HELD_OUT_SEMANTIC_STUDY_READINESS_MEASURED_BLOCKER_IDS.PRIVATE_COHORT_CAPTURE_READY) ||
     result.independentLabelsAvailable !== false ||
     result.semanticSelectionAffected !== false ||
     result.routingAffected !== false

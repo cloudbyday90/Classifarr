@@ -36,6 +36,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- Configure the workspace ESLint language server to use the system Node runtime
+  directly, avoiding Node DEP0190's unsafe shell-argument launch warning in
+  current VS Code installations.
+- Reconcile the policy-authoring component inventory with the native-purpose
+  bootstrap surface so the repository inventory audit covers every component.
+
 - Let a weak manual policy decision use one bounded, advisory AI/RAG
   comparison when the policy engine already owns two or three eligible
   destinations. Hard manual-review safeguards and insufficient candidate sets
@@ -88,6 +94,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
   staged deletion as a coverage gap instead of failing its scan.
 
 ### Added
+
+- **Automatic private-capture handoff** — The existing passive, aggregate
+  eligibility audit now recognizes a complete balanced cohort frame and
+  exposes a compact, auto-refreshing readiness state. It neither selects nor
+  retains media, calls AI/RAG, creates labels, changes policy, or routes
+  content; the protected capture workflow remains separately controlled.
 
 - **Prospective independent-review consensus** — Added a private ESM-only
   composer that turns two separately supplied, opaque, fingerprint-bound

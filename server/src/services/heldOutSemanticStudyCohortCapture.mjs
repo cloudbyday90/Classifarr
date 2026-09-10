@@ -8,7 +8,10 @@ import * as db from '../config/database.mjs';
 import { embeddingRouter } from './embeddingRouter.mjs';
 import { buildHeldOutSemanticStudyBundle } from './heldOutSemanticStudyBundle.mjs';
 import { createHeldOutSemanticStudyCapture } from './heldOutSemanticStudyCapture.mjs';
-import { createHeldOutSemanticStudyCohortPlanner } from './heldOutSemanticStudyCohortPlanner.mjs';
+import {
+  createHeldOutSemanticStudyCohortPlanner,
+  HELD_OUT_SEMANTIC_STUDY_DEFAULT_COHORT_CASE_COUNT,
+} from './heldOutSemanticStudyCohortPlanner.mjs';
 import {
   HELD_OUT_SEMANTIC_STUDY_INVENTORY_FRAME_PER_STRATUM,
   readHeldOutSemanticStudyInventoryFrame,
@@ -62,7 +65,7 @@ export function createHeldOutSemanticStudyCohortCapture({
 
   return Object.freeze({
     async capture({
-      caseCount = 28,
+      caseCount = HELD_OUT_SEMANTIC_STUDY_DEFAULT_COHORT_CASE_COUNT,
       perStratum = HELD_OUT_SEMANTIC_STUDY_INVENTORY_FRAME_PER_STRATUM,
     } = {}) {
       try {

@@ -15,11 +15,15 @@ import {
 import {
   HELD_OUT_SEMANTIC_STUDY_POLICY_SOURCE_SCREEN_STATUS_IDS,
 } from './heldOutSemanticStudyPolicySourceScreen.mjs';
+import {
+  isHeldOutSemanticStudyPrivateCohortCaptureReady,
+} from './heldOutSemanticStudyCohortCaptureReadiness.mjs';
 
 export const HELD_OUT_SEMANTIC_STUDY_READINESS_MEASURED_BLOCKER_IDS = Object.freeze({
   AWAIT_PASSIVE_ELIGIBILITY_AUDIT: 'await_passive_eligibility_audit',
   AWAIT_QUALIFYING_POLICY_EVALUATIONS: 'await_qualifying_policy_evaluations',
   AWAIT_BALANCED_ELIGIBLE_COHORT: 'await_balanced_eligible_cohort',
+  PRIVATE_COHORT_CAPTURE_READY: 'private_cohort_capture_ready',
   COMPLETE_DECLARED_PURPOSE_EVIDENCE_REQUIRED: 'complete_declared_purpose_evidence_required',
   GOVERNED_DECLARED_PURPOSE_EVIDENCE_REQUIRED: 'governed_declared_purpose_evidence_required',
   NORMAL_LIFECYCLE_RECEIPT_REQUIRED: 'normal_lifecycle_receipt_required',
@@ -120,6 +124,12 @@ export function buildHeldOutSemanticStudyReadinessMeasuredBlocker({
       currentCompleteAuditAvailable: true,
       id: HELD_OUT_SEMANTIC_STUDY_READINESS_MEASURED_BLOCKER_IDS
         .AWAIT_QUALIFYING_POLICY_EVALUATIONS,
+    });
+  }
+  if (isHeldOutSemanticStudyPrivateCohortCaptureReady(auditState.auditReceipt)) {
+    return Object.freeze({
+      currentCompleteAuditAvailable: true,
+      id: HELD_OUT_SEMANTIC_STUDY_READINESS_MEASURED_BLOCKER_IDS.PRIVATE_COHORT_CAPTURE_READY,
     });
   }
 

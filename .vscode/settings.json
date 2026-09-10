@@ -10,6 +10,7 @@
     "editor.quickSuggestions": {
         "strings": true
     },
+    "eslint.runtime": "node",
     "files.exclude": {
         "**/.tmp/**": true
     },

@@ -40,6 +40,7 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS = Object.freeze({
   DESTINATION_COMPETITION_COVERAGE: 'destination_competition_coverage',
   DESTINATION_COMPETITION_EXPLANATION: 'destination_competition_explanation',
   NATIVE_PURPOSE_MAINTENANCE: 'native_purpose_maintenance',
+  NATIVE_PURPOSE_BOOTSTRAP: 'native_purpose_bootstrap',
   POLICY_SCOPED_EVIDENCE_DIGEST: 'policy_scoped_evidence_digest',
 });
 
@@ -284,6 +285,15 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY = deepFreeze([
     targetComponentIds: [],
     normalAuthoringAllowed: false,
     notes: 'Administrator-only native-purpose maintenance reads an allow-listed server projection and submits only a revision-bound update_purpose command; it cannot reopen compatibility authoring or invoke AI, routing, or learning behavior.',
+  },
+  {
+    id: 'policy_native_intent_purpose_bootstrap',
+    path: 'client/src/components/policies/PolicyNativeIntentPurposeBootstrap.vue',
+    roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.NATIVE_PURPOSE_BOOTSTRAP,
+    decisionId: POLICY_AUTHORING_COMPONENT_DECISION_IDS.DELETE_FROM_NORMAL_PATH,
+    targetComponentIds: [],
+    normalAuthoringAllowed: false,
+    notes: 'Administrator-only native-purpose bootstrap keeps observed suggestions separate from declared purpose and emits only local draft changes; it cannot save, invoke AI, learn, or route media.',
   },
   {
     id: 'policy_native_profile_recovery_status',

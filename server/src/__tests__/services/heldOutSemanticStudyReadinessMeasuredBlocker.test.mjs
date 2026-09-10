@@ -96,6 +96,47 @@ test('rejects stale, malformed, and incomplete receipts without exposing them', 
   expect(JSON.stringify(stale)).not.toMatch(/policy_id|library_id|tmdb|rule_value/u);
 });
 
+test('reports capture readiness only for a complete, internally consistent balanced audit', () => {
+  const balancedSummary = {
+    candidateCount: 28,
+    candidateCountByStratum: {
+      documentary: 7,
+      'genre-overlap': 7,
+      ordinary: 7,
+      reality: 7,
+    },
+    eligibleCountByStratum: {
+      documentary: 7,
+      'genre-overlap': 7,
+      ordinary: 7,
+      reality: 7,
+    },
+  };
+  const ready = buildHeldOutSemanticStudyReadinessMeasuredBlocker({
+    sourceFingerprint: sourceFingerprint(),
+    statusId: 'eligibility_audit_available',
+    auditState: currentAuditState(balancedSummary),
+  });
+  const insufficient = buildHeldOutSemanticStudyReadinessMeasuredBlocker({
+    sourceFingerprint: sourceFingerprint(),
+    statusId: 'eligibility_audit_available',
+    auditState: currentAuditState({
+      ...balancedSummary,
+      eligibleCountByStratum: { ...balancedSummary.eligibleCountByStratum, reality: 6 },
+    }),
+  });
+
+  expect(ready).toEqual({
+    currentCompleteAuditAvailable: true,
+    id: HELD_OUT_SEMANTIC_STUDY_READINESS_MEASURED_BLOCKER_IDS.PRIVATE_COHORT_CAPTURE_READY,
+  });
+  expect(insufficient).toEqual({
+    currentCompleteAuditAvailable: true,
+    id: HELD_OUT_SEMANTIC_STUDY_READINESS_MEASURED_BLOCKER_IDS.AWAIT_BALANCED_ELIGIBLE_COHORT,
+  });
+  expect(JSON.stringify(ready)).not.toMatch(/tmdb|library|policy|title/u);
+});
+
 test('never advances a source prerequisite to a study action', () => {
   expect(buildHeldOutSemanticStudyReadinessMeasuredBlocker({
     statusId: 'complete_declared_purpose_evidence_required',

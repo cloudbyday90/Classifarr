@@ -11,12 +11,13 @@ export const HELD_OUT_SEMANTIC_STUDY_READINESS_STATUS_IDS = Object.freeze({
 })
 
 export const HELD_OUT_SEMANTIC_STUDY_READINESS_VERSION =
-  'policy.held_out_semantic_study_readiness.v4'
+  'policy.held_out_semantic_study_readiness.v5'
 
 export const HELD_OUT_SEMANTIC_STUDY_READINESS_MEASURED_BLOCKER_IDS = Object.freeze({
   AWAIT_PASSIVE_ELIGIBILITY_AUDIT: 'await_passive_eligibility_audit',
   AWAIT_QUALIFYING_POLICY_EVALUATIONS: 'await_qualifying_policy_evaluations',
   AWAIT_BALANCED_ELIGIBLE_COHORT: 'await_balanced_eligible_cohort',
+  PRIVATE_COHORT_CAPTURE_READY: 'private_cohort_capture_ready',
   COMPLETE_DECLARED_PURPOSE_EVIDENCE_REQUIRED: 'complete_declared_purpose_evidence_required',
   GOVERNED_DECLARED_PURPOSE_EVIDENCE_REQUIRED: 'governed_declared_purpose_evidence_required',
   NORMAL_LIFECYCLE_RECEIPT_REQUIRED: 'normal_lifecycle_receipt_required',
@@ -39,6 +40,7 @@ const VALID_FIELDS = new Set([
   'libraryIdentityExposed',
   'mediaIdentityExposed',
   'semanticCohortReady',
+  'privateCohortCaptureReady',
   'independentLabelsAvailable',
   'semanticSelectionAffected',
   'routingAffected',
@@ -74,6 +76,7 @@ function measuredBlockerMatches(value) {
       ids.GOVERNED_DECLARED_PURPOSE_EVIDENCE_REQUIRED,
       ids.AWAIT_QUALIFYING_POLICY_EVALUATIONS,
       ids.AWAIT_BALANCED_ELIGIBLE_COHORT,
+      ids.PRIVATE_COHORT_CAPTURE_READY,
     ].includes(measuredBlockerId) && value.currentCompleteAuditAvailable === true)
   )
 
@@ -93,6 +96,9 @@ export function normalizeHeldOutSemanticStudyReadiness(value) {
     value.libraryIdentityExposed !== false ||
     value.mediaIdentityExposed !== false ||
     value.semanticCohortReady !== false ||
+    typeof value.privateCohortCaptureReady !== 'boolean' ||
+    value.privateCohortCaptureReady !== (value.measuredBlockerId ===
+      HELD_OUT_SEMANTIC_STUDY_READINESS_MEASURED_BLOCKER_IDS.PRIVATE_COHORT_CAPTURE_READY) ||
     value.independentLabelsAvailable !== false ||
     value.semanticSelectionAffected !== false ||
     value.routingAffected !== false
@@ -134,6 +140,7 @@ export function normalizeHeldOutSemanticStudyReadiness(value) {
     libraryIdentityExposed: false,
     mediaIdentityExposed: false,
     semanticCohortReady: false,
+    privateCohortCaptureReady: value.privateCohortCaptureReady,
     independentLabelsAvailable: false,
     semanticSelectionAffected: false,
     routingAffected: false,

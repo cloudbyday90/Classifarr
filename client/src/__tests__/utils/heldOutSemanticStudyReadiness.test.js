@@ -13,13 +13,14 @@ const safeFlags = {
   libraryIdentityExposed: false,
   mediaIdentityExposed: false,
   semanticCohortReady: false,
+  privateCohortCaptureReady: false,
   independentLabelsAvailable: false,
   semanticSelectionAffected: false,
   routingAffected: false,
 }
 
 const declaredPurposeRequired = {
-  version: 'policy.held_out_semantic_study_readiness.v4',
+  version: 'policy.held_out_semantic_study_readiness.v5',
   statusId: 'complete_declared_purpose_evidence_required',
   normalLifecycleReceiptCount: 1,
   completePolicyEvidenceCount: 0,
@@ -32,7 +33,7 @@ const declaredPurposeRequired = {
 describe('heldOutSemanticStudyReadiness', () => {
   it('accepts an aggregate-only receipt with a current measured blocker without study authority', () => {
     expect(normalizeHeldOutSemanticStudyReadiness({
-      version: 'policy.held_out_semantic_study_readiness.v4',
+      version: 'policy.held_out_semantic_study_readiness.v5',
       statusId: 'eligibility_audit_available',
       normalLifecycleReceiptCount: 4,
       completePolicyEvidenceCount: 1,
@@ -45,6 +46,25 @@ describe('heldOutSemanticStudyReadiness', () => {
       currentCompleteAuditAvailable: true,
       measuredBlockerId: 'await_balanced_eligible_cohort',
       rawConfigurationExposed: false,
+      semanticCohortReady: false,
+      privateCohortCaptureReady: false,
+      routingAffected: false,
+    }))
+  })
+
+  it('accepts an aggregate capture-ready handoff without granting study authority', () => {
+    expect(normalizeHeldOutSemanticStudyReadiness({
+      version: 'policy.held_out_semantic_study_readiness.v5',
+      statusId: 'eligibility_audit_available',
+      normalLifecycleReceiptCount: 4,
+      completePolicyEvidenceCount: 1,
+      currentCompleteAuditAvailable: true,
+      measuredBlockerId: 'private_cohort_capture_ready',
+      reAuditPreconditionSatisfied: true,
+      ...safeFlags,
+      privateCohortCaptureReady: true,
+    })).toEqual(expect.objectContaining({
+      privateCohortCaptureReady: true,
       semanticCohortReady: false,
       routingAffected: false,
     }))

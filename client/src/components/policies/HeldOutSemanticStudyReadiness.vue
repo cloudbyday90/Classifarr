@@ -97,6 +97,9 @@ function description(statusId) {
 }
 
 function measuredBlockerDescription(blockerId) {
+  if (blockerId === 'private_cohort_capture_ready') {
+    return 'The automatic aggregate audit found enough balanced, policy-eligible cases for the existing controlled private-capture workflow. It has not selected media, retained a packet, called AI/RAG, created labels, or changed routing.'
+  }
   if (blockerId === 'governed_declared_purpose_evidence_required') {
     return 'The current aggregate audit found that profile-derived purpose observations were excluded before policy-only comparison. A separately governed declared-purpose revision is required; the scheduler will reassess it without selecting media or changing routing.'
   }

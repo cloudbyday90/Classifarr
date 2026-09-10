@@ -9,7 +9,7 @@ import SemanticEvaluationReadinessSummary from '@/components/command-center/Sema
 import { ROUTER_LINK_SIMPLE_STUB } from '../../helpers/vueTestUtils'
 
 const baselineReadiness = {
-  version: 'policy.held_out_semantic_study_readiness.v4',
+  version: 'policy.held_out_semantic_study_readiness.v5',
   statusId: 'normal_lifecycle_receipt_required',
   normalLifecycleReceiptCount: 0,
   completePolicyEvidenceCount: 0,
@@ -20,6 +20,7 @@ const baselineReadiness = {
   libraryIdentityExposed: false,
   mediaIdentityExposed: false,
   semanticCohortReady: false,
+  privateCohortCaptureReady: false,
   independentLabelsAvailable: false,
   semanticSelectionAffected: false,
   routingAffected: false,
@@ -39,7 +40,10 @@ describe('SemanticEvaluationReadinessSummary', () => {
     expect(wrapper.text()).toContain('does not label media, tune AI/RAG, or change routing')
     expect(wrapper.text()).toContain('See evaluation details')
     expect(wrapper.findAll('button')).toHaveLength(0)
-    expect(wrapper.find('[role="status"]').exists()).toBe(false)
+    expect(wrapper.get('[role="status"]').attributes()).toMatchObject({
+      'aria-live': 'polite',
+      'aria-atomic': 'true',
+    })
   })
 
   it('explains that eligible source evidence still needs independent review before measurement', () => {
@@ -68,5 +72,27 @@ describe('SemanticEvaluationReadinessSummary', () => {
     })
 
     expect(wrapper.find('#semantic-evaluation-readiness').exists()).toBe(false)
+  })
+
+  it('summarizes a capture-ready handoff without adding an action', () => {
+    const wrapper = mount(SemanticEvaluationReadinessSummary, {
+      props: {
+        readiness: {
+          ...baselineReadiness,
+          statusId: 'eligibility_audit_available',
+          normalLifecycleReceiptCount: 2,
+          completePolicyEvidenceCount: 1,
+          currentCompleteAuditAvailable: true,
+          measuredBlockerId: 'private_cohort_capture_ready',
+          reAuditPreconditionSatisfied: true,
+          privateCohortCaptureReady: true,
+        },
+      },
+      global: { stubs: { RouterLink: ROUTER_LINK_SIMPLE_STUB } },
+    })
+
+    expect(wrapper.text()).toContain('Private capture ready')
+    expect(wrapper.text()).toContain('nothing is retained, routed, or labeled automatically')
+    expect(wrapper.findAll('button')).toHaveLength(0)
   })
 })

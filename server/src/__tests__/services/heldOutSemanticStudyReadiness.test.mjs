@@ -10,6 +10,13 @@ import {
   buildHeldOutSemanticStudyReadinessUnavailable,
   HELD_OUT_SEMANTIC_STUDY_READINESS_STATUS_IDS,
 } from '../../services/heldOutSemanticStudyReadiness.mjs';
+import {
+  buildHeldOutSemanticStudyLifecycleReauditSource,
+  heldOutSemanticStudyLifecycleReauditSourceFingerprint,
+} from '../../services/heldOutSemanticStudyLifecycleReauditContract.mjs';
+import {
+  buildHeldOutSemanticStudyLifecycleReauditPurposeEvidence,
+} from '../../services/heldOutSemanticStudyLifecycleReauditPurposeEvidence.mjs';
 
 function lifecycleRecord({ initial = 0, changed = 0, rebuild = 0 } = {}) {
   return {
@@ -50,6 +57,7 @@ test('reports the lifecycle prerequisite without disclosing source identities', 
     libraryIdentityExposed: false,
     mediaIdentityExposed: false,
     semanticCohortReady: false,
+    privateCohortCaptureReady: false,
     independentLabelsAvailable: false,
     semanticSelectionAffected: false,
     routingAffected: false,
@@ -77,9 +85,55 @@ test('reports declared-purpose evidence before allowing a private eligibility au
     statusId: HELD_OUT_SEMANTIC_STUDY_READINESS_STATUS_IDS.ELIGIBILITY_AUDIT_AVAILABLE,
     reAuditPreconditionSatisfied: true,
     semanticCohortReady: false,
+    privateCohortCaptureReady: false,
     semanticSelectionAffected: false,
     routingAffected: false,
   }));
+});
+
+test('projects a current balanced aggregate as capture-ready without study authority', () => {
+  const lifecycle = lifecycleRecord({ initial: 1 });
+  const purposeEvidence = completePurposeEvidenceRecord(1);
+  const source = buildHeldOutSemanticStudyLifecycleReauditSource(
+    lifecycle,
+    buildHeldOutSemanticStudyLifecycleReauditPurposeEvidence(purposeEvidence),
+  );
+  const report = buildHeldOutSemanticStudyReadiness({
+    lifecycleRecord: lifecycle,
+    purposeEvidenceRecord: purposeEvidence,
+    auditState: {
+      sourceFingerprint: heldOutSemanticStudyLifecycleReauditSourceFingerprint(source),
+      auditStatusId: 'complete',
+      auditReceipt: {
+        version: 'policy.held_out_semantic_study_eligibility_audit.v6',
+        status: { id: 'complete' },
+        summary: {
+          candidateCount: 28,
+          candidateCountByStratum: {
+            documentary: 7,
+            'genre-overlap': 7,
+            ordinary: 7,
+            reality: 7,
+          },
+          eligibleCountByStratum: {
+            documentary: 7,
+            'genre-overlap': 7,
+            ordinary: 7,
+            reality: 7,
+          },
+        },
+      },
+    },
+  });
+
+  expect(report).toEqual(expect.objectContaining({
+    currentCompleteAuditAvailable: true,
+    measuredBlockerId: 'private_cohort_capture_ready',
+    privateCohortCaptureReady: true,
+    semanticCohortReady: false,
+    routingAffected: false,
+  }));
+  expect(auditHeldOutSemanticStudyReadiness(report)).toEqual(expect.objectContaining({ ok: true }));
 });
 
 test('fails closed for a contradictory report and produces a closed unavailable result', () => {

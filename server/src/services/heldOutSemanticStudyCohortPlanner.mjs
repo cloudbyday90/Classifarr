@@ -25,6 +25,8 @@ export const HELD_OUT_SEMANTIC_STUDY_COHORT_STRATA = Object.freeze([
   'reality',
 ]);
 
+export const HELD_OUT_SEMANTIC_STUDY_DEFAULT_COHORT_CASE_COUNT = 28;
+
 const MINIMUM_CASES = 24;
 const MAXIMUM_CASES = 32;
 const MINIMUM_PER_STRATUM = 4;
@@ -53,7 +55,14 @@ function contractStatusId(contract) {
   return CONTRACT_STATUS_IDS.has(contract?.statusId) ? contract.statusId : 'invalid_contract';
 }
 
-function selectedTargets(caseCount) {
+/**
+ * Produces the fixed, balanced target shape used by a later private capture.
+ * It contains no inventory information and does not select any media.
+ */
+export function buildHeldOutSemanticStudyCohortTargets(caseCount = HELD_OUT_SEMANTIC_STUDY_DEFAULT_COHORT_CASE_COUNT) {
+  if (!Number.isInteger(caseCount) || caseCount < MINIMUM_CASES || caseCount > MAXIMUM_CASES) {
+    return null;
+  }
   const targets = Object.fromEntries(HELD_OUT_SEMANTIC_STUDY_COHORT_STRATA.map((stratum) => [
     stratum,
     MINIMUM_PER_STRATUM,
@@ -63,7 +72,7 @@ function selectedTargets(caseCount) {
     targets[HELD_OUT_SEMANTIC_STUDY_COHORT_STRATA[index]] += 1;
     remaining -= 1;
   }
-  return targets;
+  return Object.freeze(targets);
 }
 
 function createOpaqueIdentifier(prefix, selectionSecret, identity) {
@@ -127,7 +136,7 @@ export function createHeldOutSemanticStudyCohortPlanner({
   preparation,
 } = {}) {
   return Object.freeze({
-    async plan({ candidates, caseCount = 28, policies, selectionSecret } = {}) {
+    async plan({ candidates, caseCount = HELD_OUT_SEMANTIC_STUDY_DEFAULT_COHORT_CASE_COUNT, policies, selectionSecret } = {}) {
       if (!preparation || (typeof preparation.prepare !== 'function' && typeof preparation.assess !== 'function') ||
           !Array.isArray(candidates) || !Array.isArray(policies) ||
           !Buffer.isBuffer(selectionSecret) || selectionSecret.length < 16 ||
@@ -135,7 +144,7 @@ export function createHeldOutSemanticStudyCohortPlanner({
         return invalidPlan(selectionSecret ?? Buffer.alloc(16));
       }
 
-      const targets = selectedTargets(caseCount);
+      const targets = buildHeldOutSemanticStudyCohortTargets(caseCount);
       const eligibilityStatusCounts = {};
       const eligibilityDecisionCounts = {};
       const eligibleByStratum = fixedCountByStratum();

@@ -8,7 +8,7 @@ import { mount } from '@vue/test-utils'
 import HeldOutSemanticStudyReadiness from '@/components/policies/HeldOutSemanticStudyReadiness.vue'
 
 const readiness = {
-  version: 'policy.held_out_semantic_study_readiness.v4',
+  version: 'policy.held_out_semantic_study_readiness.v5',
   statusId: 'eligibility_audit_available',
   normalLifecycleReceiptCount: 2,
   completePolicyEvidenceCount: 1,
@@ -19,6 +19,7 @@ const readiness = {
   libraryIdentityExposed: false,
   mediaIdentityExposed: false,
   semanticCohortReady: false,
+  privateCohortCaptureReady: false,
   independentLabelsAvailable: false,
   semanticSelectionAffected: false,
   routingAffected: false,
@@ -41,5 +42,22 @@ describe('HeldOutSemanticStudyReadiness.vue', () => {
     })
 
     expect(wrapper.find('section').exists()).toBe(false)
+  })
+
+  it('states the capture-ready boundary without presenting an action', () => {
+    const wrapper = mount(HeldOutSemanticStudyReadiness, {
+      props: {
+        readiness: {
+          ...readiness,
+          measuredBlockerId: 'private_cohort_capture_ready',
+          privateCohortCaptureReady: true,
+        },
+      },
+    })
+
+    expect(wrapper.text()).toContain('Private Cohort Capture Ready')
+    expect(wrapper.text()).toContain('enough balanced, policy-eligible cases')
+    expect(wrapper.text()).toContain('has not selected media')
+    expect(wrapper.findAll('button')).toHaveLength(0)
   })
 })
