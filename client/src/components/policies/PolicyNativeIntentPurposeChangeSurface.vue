@@ -18,10 +18,10 @@
       id="policy-native-purpose-change-title"
       class="font-semibold"
     >
-      Declared purpose maintenance
+      {{ hasPurposeBootstrap ? 'Set library purpose' : 'Declared purpose maintenance' }}
     </h4>
     <p class="mt-1 text-sm text-indigo-100">
-      Change only the stored native purpose. This does not edit compatibility policy data, select routing, invoke AI, or change learning.
+      This saved purpose tells Classifarr what belongs here. It does not edit compatibility policy data, move media, or change learning by itself.
     </p>
 
     <p
@@ -78,7 +78,7 @@
         <button
           type="button"
           class="rounded bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-          @click="startEditing"
+          @click="startPurposeEditing"
         >
           {{ provenancePresentation?.startLabel || 'Review purpose' }}
         </button>
@@ -98,8 +98,32 @@
         @submit.prevent="applyPurposeChange"
       >
         <p class="text-sm text-indigo-100">
-          {{ provenancePresentation?.editingDescription || 'Review every rule below before applying a native revision.' }}
+          {{ hasPurposeBootstrap
+            ? 'Select only the signals that define this library. Current contents are suggestions, not the definition of the collection.'
+            : (provenancePresentation?.editingDescription || 'Review every rule below before applying a native revision.') }}
         </p>
+
+        <PolicyNativeIntentPurposeBootstrap
+          v-if="showPurposeBootstrap"
+          :suggestion-command="read?.changeCommand"
+          :model-value="draftRules"
+          :library-name="libraryName"
+          :busy="preflightLoading || applying"
+          @update:model-value="replaceBootstrapDraft"
+          @show-advanced="showAdvancedPurposeControls = true"
+        />
+
+        <details
+          v-if="showPurposeBootstrap"
+          class="rounded border border-gray-700 bg-gray-950/20 p-3 text-sm text-indigo-100"
+        >
+          <summary class="cursor-pointer font-medium text-indigo-50">
+            Why the observed terms need review
+          </summary>
+          <p class="mt-2">
+            Current contents can reflect earlier placements or broad library history. Only the terms you keep in this revision become the declared purpose used by policy evaluation.
+          </p>
+        </details>
 
         <section
           v-if="confirmedOutcomeSuggestion"
@@ -134,110 +158,113 @@
           </p>
         </section>
 
-        <fieldset
-          v-for="(rule, index) in draftRules"
-          :key="`native-purpose-rule-${index}`"
-          class="rounded border border-indigo-800/70 bg-gray-950/30 p-3"
-        >
-          <legend class="px-1 text-sm font-medium text-indigo-100">
-            Purpose rule {{ index + 1 }}
-          </legend>
-
-          <div class="grid gap-3 md:grid-cols-2">
-            <label class="grid gap-1 text-sm">
-              <span>Signal</span>
-              <select
-                v-model="rule.signal_type"
-                class="rounded border border-gray-600 bg-gray-900 px-2 py-1.5 text-white"
-                @change="clearPreflight"
-              >
-                <option
-                  v-for="option in signalTypes"
-                  :key="option.id"
-                  :value="option.id"
-                >
-                  {{ option.label }}
-                </option>
-              </select>
-            </label>
-
-            <label class="grid gap-1 text-sm">
-              <span>Matching rule</span>
-              <select
-                :value="rule.operator"
-                class="rounded border border-gray-600 bg-gray-900 px-2 py-1.5 text-white"
-                @change="setRuleOperator(index, $event.target.value)"
-              >
-                <option
-                  v-for="option in operators"
-                  :key="option.id"
-                  :value="option.id"
-                >
-                  {{ option.label }}
-                </option>
-              </select>
-            </label>
-
-            <label class="grid gap-1 text-sm">
-              <span>Purpose terms</span>
-              <input
-                :value="formatRuleTerms(rule)"
-                type="text"
-                class="rounded border border-gray-600 bg-gray-900 px-2 py-1.5 text-white"
-                :aria-label="`Purpose terms for rule ${index + 1}`"
-                autocomplete="off"
-                @input="setRuleTerms(index, $event.target.value)"
-              >
-              <span class="text-xs text-indigo-200">Separate terms with commas.</span>
-            </label>
-
-            <label class="grid gap-1 text-sm">
-              <span>Meaning</span>
-              <select
-                v-model="rule.semantics"
-                class="rounded border border-gray-600 bg-gray-900 px-2 py-1.5 text-white"
-                @change="clearPreflight"
-              >
-                <option
-                  v-for="option in semantics"
-                  :key="option.id"
-                  :value="option.id"
-                >
-                  {{ option.label }}
-                </option>
-              </select>
-            </label>
-
-            <label class="grid gap-1 text-sm">
-              <span>Constraint mode</span>
-              <select
-                v-model="rule.constraint_mode"
-                class="rounded border border-gray-600 bg-gray-900 px-2 py-1.5 text-white"
-                @change="clearPreflight"
-              >
-                <option
-                  v-for="option in constraintModes"
-                  :key="option.id"
-                  :value="option.id"
-                >
-                  {{ option.label }}
-                </option>
-              </select>
-            </label>
-          </div>
-
-          <button
-            type="button"
-            class="mt-3 rounded border border-red-500/70 px-3 py-1.5 text-sm text-red-100 hover:bg-red-950/50 disabled:cursor-not-allowed disabled:opacity-50"
-            :disabled="draftRules.length <= 1 || applying"
-            @click="removeRule(index)"
+        <template v-if="!showPurposeBootstrap || showAdvancedPurposeControls">
+          <fieldset
+            v-for="(rule, index) in draftRules"
+            :key="`native-purpose-rule-${index}`"
+            class="rounded border border-indigo-800/70 bg-gray-950/30 p-3"
           >
-            Remove rule
-          </button>
-        </fieldset>
+            <legend class="px-1 text-sm font-medium text-indigo-100">
+              Purpose rule {{ index + 1 }}
+            </legend>
+
+            <div class="grid gap-3 md:grid-cols-2">
+              <label class="grid gap-1 text-sm">
+                <span>Signal</span>
+                <select
+                  v-model="rule.signal_type"
+                  class="rounded border border-gray-600 bg-gray-900 px-2 py-1.5 text-white"
+                  @change="clearPreflight"
+                >
+                  <option
+                    v-for="option in signalTypes"
+                    :key="option.id"
+                    :value="option.id"
+                  >
+                    {{ option.label }}
+                  </option>
+                </select>
+              </label>
+
+              <label class="grid gap-1 text-sm">
+                <span>Matching rule</span>
+                <select
+                  :value="rule.operator"
+                  class="rounded border border-gray-600 bg-gray-900 px-2 py-1.5 text-white"
+                  @change="setRuleOperator(index, $event.target.value)"
+                >
+                  <option
+                    v-for="option in operators"
+                    :key="option.id"
+                    :value="option.id"
+                  >
+                    {{ option.label }}
+                  </option>
+                </select>
+              </label>
+
+              <label class="grid gap-1 text-sm">
+                <span>Purpose terms</span>
+                <input
+                  :value="formatRuleTerms(rule)"
+                  type="text"
+                  class="rounded border border-gray-600 bg-gray-900 px-2 py-1.5 text-white"
+                  :aria-label="`Purpose terms for rule ${index + 1}`"
+                  autocomplete="off"
+                  @input="setRuleTerms(index, $event.target.value)"
+                >
+                <span class="text-xs text-indigo-200">Separate terms with commas.</span>
+              </label>
+
+              <label class="grid gap-1 text-sm">
+                <span>Meaning</span>
+                <select
+                  v-model="rule.semantics"
+                  class="rounded border border-gray-600 bg-gray-900 px-2 py-1.5 text-white"
+                  @change="clearPreflight"
+                >
+                  <option
+                    v-for="option in semantics"
+                    :key="option.id"
+                    :value="option.id"
+                  >
+                    {{ option.label }}
+                  </option>
+                </select>
+              </label>
+
+              <label class="grid gap-1 text-sm">
+                <span>Constraint mode</span>
+                <select
+                  v-model="rule.constraint_mode"
+                  class="rounded border border-gray-600 bg-gray-900 px-2 py-1.5 text-white"
+                  @change="clearPreflight"
+                >
+                  <option
+                    v-for="option in constraintModes"
+                    :key="option.id"
+                    :value="option.id"
+                  >
+                    {{ option.label }}
+                  </option>
+                </select>
+              </label>
+            </div>
+
+            <button
+              type="button"
+              class="mt-3 rounded border border-red-500/70 px-3 py-1.5 text-sm text-red-100 hover:bg-red-950/50 disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="draftRules.length <= 1 || applying"
+              @click="removeRule(index)"
+            >
+              Remove rule
+            </button>
+          </fieldset>
+        </template>
 
         <div class="flex flex-wrap gap-3">
           <button
+            v-if="!showPurposeBootstrap || showAdvancedPurposeControls"
             type="button"
             class="rounded border border-indigo-400 px-3 py-2 text-sm font-medium text-indigo-100 hover:bg-indigo-900/40 disabled:cursor-not-allowed disabled:opacity-50"
             :disabled="applying"
@@ -258,13 +285,15 @@
             class="rounded bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
             :disabled="!currentCommand || preflightLoading || applying"
           >
-            {{ applying ? 'Applying purpose change...' : (provenancePresentation?.applyLabel || 'Apply purpose change') }}
+            {{ applying
+              ? 'Saving library purpose...'
+              : (hasPurposeBootstrap ? 'Save library purpose' : (provenancePresentation?.applyLabel || 'Apply purpose change')) }}
           </button>
           <button
             type="button"
             class="rounded border border-gray-500 px-3 py-2 text-sm text-gray-100 hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
             :disabled="applying"
-            @click="cancelEditing"
+            @click="cancelPurposeEditing"
           >
             Cancel
           </button>
@@ -311,6 +340,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import PolicyNativeIntentPurposeBootstrap from '@/components/policies/PolicyNativeIntentPurposeBootstrap.vue'
 import { usePolicyNativeIntentPurposeChange } from '@/composables/usePolicyNativeIntentPurposeChange'
 import {
   usePolicyNativeIntentConfirmedOutcomePurposeSuggestion,
@@ -323,8 +353,12 @@ import {
   NATIVE_PURPOSE_OPERATORS,
   NATIVE_PURPOSE_SEMANTICS,
   NATIVE_PURPOSE_SIGNAL_TYPES,
+  normalizeNativePurposeRules,
   parseNativePurposeTerms,
 } from '@/utils/policyNativeIntentPurposeChange'
+import {
+  isNativePurposeBootstrapEligible,
+} from '@/utils/policyNativeIntentPurposeBootstrap'
 import {
   getNativeIntentPurposeProvenancePresentation,
 } from '@/utils/policyNativeIntentPurposeProvenance'
@@ -337,6 +371,10 @@ const props = defineProps({
   policyId: {
     type: Number,
     required: true,
+  },
+  libraryName: {
+    type: String,
+    default: '',
   },
 })
 
@@ -378,7 +416,19 @@ const {
 const normalizedPolicyId = computed(() => Number(props.policyId))
 const provenancePresentation = computed(() =>
   getNativeIntentPurposeProvenancePresentation(purposeProvenance.value))
+const showAdvancedPurposeControls = ref(false)
+const hasPurposeBootstrap = computed(() => (
+  purposeProvenance.value?.id === 'profile_derived' &&
+  isNativePurposeBootstrapEligible(read.value?.changeCommand)
+))
+const showPurposeBootstrap = computed(() => (
+  hasPurposeBootstrap.value && !showAdvancedPurposeControls.value
+))
 watchPurposeChange(normalizedPolicyId)
+
+watch(normalizedPolicyId, () => {
+  showAdvancedPurposeControls.value = false
+})
 
 const {
   suggestion: confirmedOutcomeSuggestion,
@@ -436,6 +486,28 @@ function addRule() {
 function removeRule(index) {
   if (applying.value || draftRules.value.length <= 1) return
   draftRules.value.splice(index, 1)
+}
+
+function startPurposeEditing() {
+  showAdvancedPurposeControls.value = false
+  startEditing()
+}
+
+function cancelPurposeEditing() {
+  showAdvancedPurposeControls.value = false
+  cancelEditing()
+}
+
+function replaceBootstrapDraft(value) {
+  if (!Array.isArray(value)) return
+  if (value.length === 0) {
+    draftRules.value = []
+    return
+  }
+
+  const normalizedRules = normalizeNativePurposeRules(value)
+  if (!normalizedRules) return
+  draftRules.value = normalizedRules
 }
 
 function applyConfirmedOutcomeSuggestion() {

@@ -21,6 +21,7 @@ vi.mock('@/api/policiesApi', () => apiMock)
 import PolicyNativeIntentPurposeChangeSurface from '@/components/policies/PolicyNativeIntentPurposeChangeSurface.vue'
 
 function purposeRead(revision = 3, term = 'Animation') {
+  const terms = Array.isArray(term) ? term : [term]
   return {
     version: 'policy.native_intent_purpose_change_read.v2',
     statusId: 'native_intent_purpose_change_available',
@@ -31,7 +32,7 @@ function purposeRead(revision = 3, term = 'Animation') {
       values: [{
         signal_type: 'genres',
         operator: 'require_any',
-        values: { require_any: [term] },
+        values: { require_any: terms },
         constraint_mode: 'advisory',
         semantics: 'identity',
       }],
@@ -173,7 +174,7 @@ describe('PolicyNativeIntentPurposeChangeSurface', () => {
 
     expect(wrapper.text()).toContain('Declared purpose maintenance')
     expect(wrapper.text()).toContain('Current native revision: 3')
-    expect(wrapper.text()).toContain('compatibility policy data, select routing, invoke AI')
+    expect(wrapper.text()).toContain('does not edit compatibility policy data, move media')
 
     await wrapper.get('button').trigger('click')
     await wrapper.get('input[aria-label="Purpose terms for rule 1"]').setValue('Comedy')
@@ -242,6 +243,56 @@ describe('PolicyNativeIntentPurposeChangeSurface', () => {
     expect(provenance.text()).toContain('Profile-derived terms require review')
     expect(provenance.text()).toContain('not declared purpose')
     expect(wrapper.findAll('button').map(button => button.text())).toContain('Review and declare purpose')
+  })
+
+  it('uses a compact selection bootstrap and saves only operator-kept profile suggestions', async () => {
+    apiMock.getPolicyNativeIntentPurposeChange
+      .mockResolvedValueOnce({
+        ...purposeRead(3, ['Comedy', 'Documentary']),
+        purposeProvenance: {
+          id: 'profile_derived',
+          declarationRequired: true,
+          rawRuleProvenanceExposed: false,
+        },
+      })
+      .mockResolvedValueOnce(purposeRead(4, 'Comedy'))
+    apiMock.applyPolicyNativeIntentPurposeChange.mockResolvedValue({
+      data: { statusId: 'applied', change: { applied: true, newIntentVersion: 4 } },
+    })
+
+    const wrapper = mount(PolicyNativeIntentPurposeChangeSurface, {
+      props: { policyId: 17, libraryName: 'Comedy and Standup' },
+    })
+    await flushPromises()
+
+    await wrapper.get('button').trigger('click')
+    await flushPromises()
+
+    const bootstrap = wrapper.get('#policy-native-purpose-bootstrap')
+    expect(bootstrap.text()).toContain('What belongs in Comedy and Standup?')
+    expect(bootstrap.text()).toContain('observed suggestions from the current library contents')
+    expect(wrapper.find('input[aria-label="Purpose terms for rule 1"]').exists()).toBe(false)
+
+    await bootstrap.get('[data-purpose-term="Documentary"]').trigger('click')
+    expect(bootstrap.get('[data-purpose-term="Documentary"]').attributes('aria-pressed')).toBe('false')
+    expect(bootstrap.text()).toContain('1 selected identity term')
+
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(apiMock.applyPolicyNativeIntentPurposeChange).toHaveBeenCalledWith(
+      17,
+      3,
+      expect.objectContaining({
+        command_id: 'update_purpose',
+        values: [expect.objectContaining({
+          signal_type: 'genres',
+          values: { require_any: ['Comedy'] },
+        })],
+      }),
+      expect.objectContaining({ idempotencyKey: expect.any(String) })
+    )
+    expect(wrapper.emitted('authority-refreshed')).toEqual([[purposeRead(4, 'Comedy')]])
   })
 
   it('automatically loads a compact learned suggestion and adds it only to the review draft', async () => {

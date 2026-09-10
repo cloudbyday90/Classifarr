@@ -45,6 +45,7 @@
         <PolicyNativeIntentPurposeChangeSurface
           v-if="experienceMode.isNativeView"
           :policy-id="Number(policy?.id)"
+          :library-name="currentLibrary?.name || ''"
           @authority-refreshed="refreshNativePurposeAuthority"
         />
 

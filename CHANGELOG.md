@@ -89,6 +89,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- Add a compact, accessible library-purpose bootstrap for profile-derived
+  identity terms. Current contents are explicitly shown as suggestions, while
+  the existing revision-checked server writer records only operator-selected
+  purpose terms; advanced policy rules remain available separately.
+
 - **Outcome-backed purpose drafts** — Native purpose maintenance now loads one
   compact, read-only suggestion from repeated, operator-originated genre
   outcomes. The suggestion is optional, excludes profile and self-reinforcing
