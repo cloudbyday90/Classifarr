@@ -15,6 +15,7 @@
     "study:capture:held-out": "node src/scripts/runHeldOutSemanticStudyCapture.mjs",
     "study:capture:held-out-cohort": "node src/scripts/runHeldOutSemanticStudyCohortCapture.mjs",
     "study:capture:reviewer-packet": "node src/scripts/runHeldOutSemanticStudyReviewerPacket.mjs",
+    "study:reviewer-submission": "node src/scripts/runHeldOutSemanticStudyReviewerSubmission.mjs",
     "study:audit:held-out-policy-eligibility": "node src/scripts/runHeldOutSemanticStudyEligibilityAudit.mjs",
     "study:replay:source-identity-evidence": "node src/scripts/runSourceIdentityExternalEvidenceReplay.mjs",
     "typecheck": "tsc --project tsconfig.json --pretty false",

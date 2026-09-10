@@ -98,6 +98,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Bound reviewer submissions** — Private held-out review packets can now
+  produce separate incomplete, content-free local worksheets and packet-bound
+  finalized submissions. Expired, altered, incomplete, or malformed worksheets
+  fail closed before existing independent consensus; no AI/RAG output, policy
+  change, learning, or routing authority is added.
+
 - **Controlled private reviewer packets** — Added an explicit, read-only local
   ESM workflow that creates a short-lived, content-minimized held-out review
   packet only after the aggregate capture handoff is current. Packets stay
