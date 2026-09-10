@@ -9,7 +9,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { useCommandCenterPurposeHealth } from '@/composables/useCommandCenterPurposeHealth'
 
 const healthResponse = {
-  version: 'policy_purpose_health.v1',
+  version: 'policy_purpose_health.v2',
   statusId: 'ready',
   summary: {
     reviewedLibraryCount: 1,
@@ -20,6 +20,29 @@ const healthResponse = {
     unverifiedPurposeLibraryCount: 0,
     needsAttentionLibraryCount: 0,
     reviewWindowTruncated: false,
+  },
+  outcomeQuality: {
+    version: 'policy_purpose_outcome_quality.v1',
+    statusId: 'awaiting_confirmed_outcomes',
+    summary: {
+      reviewedLibraryCount: 1,
+      eligibleDeclaredPurposeLibraryCount: 1,
+      confirmedOutcomeLibraryCount: 0,
+      outcomeCorroboratedLibraryCount: 0,
+      outcomeReviewRequiredLibraryCount: 0,
+      awaitingConfirmedOutcomeLibraryCount: 1,
+      reviewWindowTruncated: false,
+    },
+    confirmedOperatorOutcomeEvidenceOnly: true,
+    stableClassificationAnchorRequired: true,
+    rawOutcomeEvidenceExposed: false,
+    libraryIdentityExposed: false,
+    policyIdentityExposed: false,
+    semanticSelectionAffected: false,
+    policyChanged: false,
+    aiRagTuningAffected: false,
+    routingAffected: false,
+    learningAffected: false,
   },
   rawPurposeRulesExposed: false,
   libraryIdentityExposed: false,

@@ -56,6 +56,13 @@
         </li>
       </ul>
       <p
+        v-if="outcomeQualityText"
+        class="purpose-health-outcome"
+        :class="`purpose-health-outcome-${outcomeQuality?.statusId}`"
+      >
+        {{ outcomeQualityText }}
+      </p>
+      <p
         v-if="health.statusId === STATUS_IDS.REVIEW_WINDOW_TRUNCATED"
         class="purpose-health-note"
       >
@@ -71,7 +78,7 @@
         :to="{ name: 'PolicyNativeIntentReconciliation', query: { focus: 'purpose-coverage' } }"
         class="purpose-health-link"
       >
-        {{ attentionItems.length ? 'Review exceptions' : 'Open detailed review' }} <span aria-hidden="true">→</span>
+        {{ needsDetailedReview ? 'Review exceptions' : 'Open detailed review' }} <span aria-hidden="true">→</span>
       </RouterLink>
       <p class="purpose-health-boundary">
         Read-only summary. It does not change routing, invoke AI/RAG, or change learning.
@@ -82,7 +89,10 @@
 
 <script setup>
 import { computed } from 'vue'
-import { POLICY_PURPOSE_HEALTH_STATUS_IDS as STATUS_IDS } from '@/utils/policyPurposeHealth'
+import {
+  POLICY_PURPOSE_HEALTH_STATUS_IDS as STATUS_IDS,
+  POLICY_PURPOSE_OUTCOME_QUALITY_STATUS_IDS as OUTCOME_QUALITY_STATUS_IDS,
+} from '@/utils/policyPurposeHealth'
 
 const props = defineProps({
   health: { type: Object, default: null },
@@ -92,6 +102,7 @@ const props = defineProps({
 
 const shouldRender = computed(() => Boolean(props.health || props.loading || props.errorMessage))
 const summary = computed(() => props.health?.summary || {})
+const outcomeQuality = computed(() => props.health?.outcomeQuality || null)
 
 const statusLabel = computed(() => {
   switch (props.health?.statusId) {
@@ -130,6 +141,31 @@ const attentionItems = computed(() => {
   }
   return items
 })
+
+const outcomeQualityText = computed(() => {
+  const quality = outcomeQuality.value
+  if (!quality) return ''
+  const counts = quality.summary
+  switch (quality.statusId) {
+    case OUTCOME_QUALITY_STATUS_IDS.CORROBORATED:
+      return `Repeated confirmed operator outcomes corroborate the declared purpose for ${counts.outcomeCorroboratedLibraryCount} ${counts.outcomeCorroboratedLibraryCount === 1 ? 'library' : 'libraries'}.`
+    case OUTCOME_QUALITY_STATUS_IDS.REVIEW_REQUIRED:
+      return `Repeated confirmed operator outcomes do not overlap the declared purpose for ${counts.outcomeReviewRequiredLibraryCount} ${counts.outcomeReviewRequiredLibraryCount === 1 ? 'library' : 'libraries'}. Review the purpose; this does not mean a destination is wrong.`
+    case OUTCOME_QUALITY_STATUS_IDS.AWAITING_CONFIRMED_OUTCOMES:
+      return `No repeated confirmed operator outcomes are available yet for ${counts.awaitingConfirmedOutcomeLibraryCount} declared, distinct ${counts.awaitingConfirmedOutcomeLibraryCount === 1 ? 'library' : 'libraries'}.`
+    case OUTCOME_QUALITY_STATUS_IDS.NO_DECLARED_DISTINCT_PURPOSE:
+      return 'Outcome checks begin after a library has a declared, distinct purpose.'
+    case OUTCOME_QUALITY_STATUS_IDS.REVIEW_WINDOW_TRUNCATED:
+      return 'Outcome checks are limited to this bounded assessment window.'
+    default:
+      return 'Confirmed-outcome quality could not be read, so no conclusion is shown.'
+  }
+})
+
+const needsDetailedReview = computed(() => (
+  attentionItems.value.length > 0 ||
+  outcomeQuality.value?.statusId === OUTCOME_QUALITY_STATUS_IDS.REVIEW_REQUIRED
+))
 </script>
 
 <style scoped>
@@ -158,7 +194,8 @@ h2 {
 
 .purpose-health-intro,
 .purpose-health-boundary,
-.purpose-health-note {
+.purpose-health-note,
+.purpose-health-outcome {
   margin: 0.25rem 0 0;
   font-size: 0.75rem;
   color: #9ca3af;
@@ -200,6 +237,17 @@ h2 {
 
 .purpose-health-error {
   color: #fca5a5;
+}
+
+.purpose-health-outcome {
+  margin-top: 0.75rem;
+  color: #d1d5db;
+}
+
+.purpose-health-outcome-review_required,
+.purpose-health-outcome-review_window_truncated,
+.purpose-health-outcome-read_unavailable {
+  color: #fcd34d;
 }
 
 .purpose-health-exceptions {

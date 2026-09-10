@@ -18,6 +18,9 @@ import {
 import {
   buildPolicyPurposeHealthSummary,
 } from './policyPurposeHealthContract.mjs';
+import {
+  loadPolicyPurposeOutcomeQualityRecords,
+} from './policyPurposeOutcomeQualityPersistence.mjs';
 
 /**
  * Produces the Command Center's fixed, bounded purpose-health aggregate. This
@@ -28,11 +31,13 @@ export class PolicyPurposeHealthService {
   constructor({
     db = defaultDb,
     loadRecords = loadPolicyPurposeCoverageReviewRecords,
+    loadOutcomeRecords = loadPolicyPurposeOutcomeQualityRecords,
     buildSummary = buildPolicyPurposeHealthSummary,
     limit = MAX_POLICY_PURPOSE_COVERAGE_REVIEW_ROWS,
   } = {}) {
     this.db = db;
     this.loadRecords = loadRecords;
+    this.loadOutcomeRecords = loadOutcomeRecords;
     this.buildSummary = buildSummary;
     this.limit = Math.max(1, Math.min(MAX_POLICY_PURPOSE_COVERAGE_REVIEW_ROWS, Number(limit) || 1));
   }
@@ -43,8 +48,24 @@ export class PolicyPurposeHealthService {
       limit: this.limit + 1,
     });
     const records = Array.isArray(loadedRecords) ? loadedRecords : [];
+    const boundedRecords = records.slice(0, this.limit);
+    let outcomeRecords = [];
+    let outcomeQualityReadAvailable = true;
+
+    try {
+      const loadedOutcomeRecords = await this.loadOutcomeRecords({
+        db: dbClient,
+        records: boundedRecords,
+      });
+      outcomeRecords = Array.isArray(loadedOutcomeRecords) ? loadedOutcomeRecords : [];
+    } catch {
+      outcomeQualityReadAvailable = false;
+    }
+
     return this.buildSummary({
-      records: records.slice(0, this.limit),
+      records: boundedRecords,
+      outcomeRecords,
+      outcomeQualityReadAvailable,
       truncated: records.length > this.limit,
     });
   }

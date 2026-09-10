@@ -16,8 +16,11 @@ import {
   buildPolicyPurposeCoverageProvenance,
   POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS,
 } from './policyPurposeCoverageProvenance.mjs';
+import {
+  buildPolicyPurposeOutcomeQualitySummary,
+} from './policyPurposeOutcomeQualityContract.mjs';
 
-export const POLICY_PURPOSE_HEALTH_VERSION = 1;
+export const POLICY_PURPOSE_HEALTH_VERSION = 2;
 export const POLICY_PURPOSE_HEALTH_STATUS_IDS = Object.freeze({
   READY: 'ready',
   ATTENTION_REQUIRED: 'attention_required',
@@ -55,10 +58,13 @@ function attentionLibraryCount(records) {
 /**
  * Reduces bounded server-side purpose records to a Command Center health
  * snapshot. It deliberately returns aggregate counts only: no library,
- * policy, rule, profile, media, AI, RAG, or outcome data crosses this boundary.
+ * policy, rule, profile, media, AI, RAG, or raw outcome identity crosses this
+ * boundary.
  */
 export function buildPolicyPurposeHealthSummary({
   records = [],
+  outcomeRecords = [],
+  outcomeQualityReadAvailable = true,
   truncated = false,
 } = {}) {
   const validRecords = Array.isArray(records)
@@ -87,6 +93,12 @@ export function buildPolicyPurposeHealthSummary({
       POLICY_PURPOSE_COVERAGE_PROVENANCE_STATUS_IDS.UNVERIFIED_PURPOSE_SOURCE
   ));
   const needsAttentionLibraryCount = attentionLibraryCount(validRecords);
+  const outcomeQuality = buildPolicyPurposeOutcomeQualitySummary({
+    records: validRecords,
+    outcomeRecords,
+    readAvailable: outcomeQualityReadAvailable,
+    truncated: reviewWindowTruncated,
+  });
 
   const statusId = reviewedLibraryCount === 0
     ? POLICY_PURPOSE_HEALTH_STATUS_IDS.NO_ACTIVE_VALIDATED_NATIVE_POLICY
@@ -109,6 +121,7 @@ export function buildPolicyPurposeHealthSummary({
       needsAttentionLibraryCount,
       reviewWindowTruncated,
     },
+    outcomeQuality,
     rawPurposeRulesExposed: false,
     libraryIdentityExposed: false,
     policyIdentityExposed: false,

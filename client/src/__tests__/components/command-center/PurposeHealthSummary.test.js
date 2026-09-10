@@ -9,7 +9,7 @@ import PurposeHealthSummary from '@/components/command-center/PurposeHealthSumma
 import { ROUTER_LINK_SIMPLE_STUB } from '../../helpers/vueTestUtils'
 
 const health = {
-  version: 'policy_purpose_health.v1',
+  version: 'policy_purpose_health.v2',
   statusId: 'attention_required',
   summary: {
     reviewedLibraryCount: 4,
@@ -20,6 +20,12 @@ const health = {
     unverifiedPurposeLibraryCount: 0,
     needsAttentionLibraryCount: 2,
     reviewWindowTruncated: false,
+  },
+  outcomeQuality: {
+    statusId: 'review_required',
+    summary: {
+      outcomeReviewRequiredLibraryCount: 1,
+    },
   },
 }
 
@@ -34,6 +40,8 @@ describe('PurposeHealthSummary', () => {
     expect(wrapper.text()).toContain('1 lack a declared purpose.')
     expect(wrapper.text()).toContain('1 have a competing destination.')
     expect(wrapper.text()).toContain('1 still rely on observed profile suggestions.')
+    expect(wrapper.text()).toContain('Repeated confirmed operator outcomes do not overlap the declared purpose for 1 library.')
+    expect(wrapper.text()).toContain('this does not mean a destination is wrong.')
     expect(wrapper.text()).toContain('Review exceptions')
     expect(wrapper.text()).toContain('does not change routing, invoke AI/RAG, or change learning')
     expect(wrapper.find('[aria-live]').exists()).toBe(false)

@@ -46,7 +46,7 @@ describe('policyPurposeHealthContract', () => {
     });
 
     expect(summary).toEqual({
-      version: 'policy_purpose_health.v1',
+      version: 'policy_purpose_health.v2',
       statusId: POLICY_PURPOSE_HEALTH_STATUS_IDS.ATTENTION_REQUIRED,
       summary: {
         reviewedLibraryCount: 3,
@@ -57,6 +57,29 @@ describe('policyPurposeHealthContract', () => {
         unverifiedPurposeLibraryCount: 0,
         needsAttentionLibraryCount: 2,
         reviewWindowTruncated: false,
+      },
+      outcomeQuality: {
+        version: 'policy_purpose_outcome_quality.v1',
+        statusId: 'awaiting_confirmed_outcomes',
+        summary: {
+          reviewedLibraryCount: 3,
+          eligibleDeclaredPurposeLibraryCount: 1,
+          confirmedOutcomeLibraryCount: 0,
+          outcomeCorroboratedLibraryCount: 0,
+          outcomeReviewRequiredLibraryCount: 0,
+          awaitingConfirmedOutcomeLibraryCount: 1,
+          reviewWindowTruncated: false,
+        },
+        confirmedOperatorOutcomeEvidenceOnly: true,
+        stableClassificationAnchorRequired: true,
+        rawOutcomeEvidenceExposed: false,
+        libraryIdentityExposed: false,
+        policyIdentityExposed: false,
+        semanticSelectionAffected: false,
+        policyChanged: false,
+        aiRagTuningAffected: false,
+        routingAffected: false,
+        learningAffected: false,
       },
       rawPurposeRulesExposed: false,
       libraryIdentityExposed: false,

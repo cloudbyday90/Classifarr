@@ -146,7 +146,7 @@ describe('Policy native intent reconciliation control routes', () => {
       routingAffected: false,
     });
     getPurposeHealth.mockResolvedValue({
-      version: 'policy_purpose_health.v1',
+      version: 'policy_purpose_health.v2',
       statusId: 'ready',
       summary: { reviewedLibraryCount: 1 },
       rawPurposeRulesExposed: false,
@@ -259,7 +259,7 @@ describe('Policy native intent reconciliation control routes', () => {
 
     expect(response.headers['cache-control']).toBe('no-store');
     expect(response.body).toEqual(expect.objectContaining({
-      version: 'policy_purpose_health.v1',
+      version: 'policy_purpose_health.v2',
       statusId: 'ready',
       rawPurposeRulesExposed: false,
       libraryIdentityExposed: false,

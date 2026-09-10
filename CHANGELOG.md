@@ -89,6 +89,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Outcome-backed purpose quality** — Purpose health now includes a compact,
+  no-store aggregate that compares repeated, policy-authorized manual outcomes
+  with an already declared, distinct genre purpose. It exposes no identities or
+  terms, fails closed on unavailable evidence, and only prioritizes review; it
+  cannot change policy, AI/RAG, learning, or routing.
+
 - **Command Center purpose health** — Added an administrator-only,
   auto-refreshing aggregate summary of declared library purpose and structural
   exceptions. It is bounded, no-store, identity-free, and links to the
