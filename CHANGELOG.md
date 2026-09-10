@@ -39,6 +39,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- Update the root documentation-lint dependency override to a non-vulnerable
+  `smol-toml` release, removing the high-severity malformed-TOML
+  denial-of-service advisory from repository and CI tooling.
 - Configure the workspace ESLint language server to use the system Node runtime
   directly, avoiding Node DEP0190's unsafe shell-argument launch warning in
   current VS Code installations.
