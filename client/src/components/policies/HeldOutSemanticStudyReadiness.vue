@@ -6,6 +6,8 @@
 <template>
   <section
     v-if="readiness"
+    id="held-out-semantic-study-readiness"
+    tabindex="-1"
     class="overflow-hidden rounded-lg border border-gray-700 bg-background-light"
     aria-labelledby="held-out-semantic-study-readiness-heading"
   >

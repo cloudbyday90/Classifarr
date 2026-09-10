@@ -132,6 +132,12 @@
           :error-message="purposeHealthError"
         />
 
+        <SemanticEvaluationReadinessSummary
+          :readiness="semanticEvaluationReadiness"
+          :loading="semanticEvaluationReadinessLoading"
+          :error-message="semanticEvaluationReadinessError"
+        />
+
         <div class="primary-panels">
           <ProcessingPanel
             :ai-generation-telemetry-line="aiGenerationTelemetryLine"
@@ -281,6 +287,7 @@ import PurposeHealthSummary from '@/components/command-center/PurposeHealthSumma
 import ProcessingPanel from '@/components/command-center/ProcessingPanel.vue'
 import ProcessingDetailsSheet from '@/components/command-center/ProcessingDetailsSheet.vue'
 import QuickAddPanel from '@/components/command-center/QuickAddPanel.vue'
+import SemanticEvaluationReadinessSummary from '@/components/command-center/SemanticEvaluationReadinessSummary.vue'
 import { useCommandCenterData } from '@/composables/useCommandCenterData'
 import { useCommandCenterOperations } from '@/composables/useCommandCenterOperations'
 import { useNeedsAttentionActions } from '@/composables/useNeedsAttentionActions'
@@ -288,6 +295,7 @@ import { useProcessingDetails } from '@/composables/useProcessingDetails'
 import { useQuickAdd } from '@/composables/useQuickAdd'
 import { useCommandCenterShell } from '@/composables/useCommandCenterShell'
 import { useCommandCenterPurposeHealth } from '@/composables/useCommandCenterPurposeHealth'
+import { useCommandCenterSemanticEvaluationReadiness } from '@/composables/useCommandCenterSemanticEvaluationReadiness'
 
 const router = useRouter()
 const route = useRoute()
@@ -305,6 +313,12 @@ const {
   health: purposeHealth,
   isLoading: purposeHealthLoading,
 } = useCommandCenterPurposeHealth()
+
+const {
+  errorMessage: semanticEvaluationReadinessError,
+  isLoading: semanticEvaluationReadinessLoading,
+  readiness: semanticEvaluationReadiness,
+} = useCommandCenterSemanticEvaluationReadiness()
 
 const {
   activeLibraries,

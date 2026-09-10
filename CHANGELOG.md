@@ -89,6 +89,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Command Center semantic-evaluation readiness** — Added an
+  administrator-only, auto-refreshing, no-store summary of the existing
+  protected semantic-evaluation prerequisite. It reports only the next
+  aggregate evidence stage, links to detailed review, and cannot collect
+  labels, invoke AI/RAG, tune learning, change policy, or route media.
+
 - **Outcome-backed purpose quality** — Purpose health now includes a compact,
   no-store aggregate that compares repeated, policy-authorized manual outcomes
   with an already declared, distinct genre purpose. It exposes no identities or
