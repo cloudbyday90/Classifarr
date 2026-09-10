@@ -36,6 +36,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- Bound the source-identity external-evidence replay to a deterministic,
+  daily rotating active-library window. The read-only aggregate study now
+  reports its selected scope and shares the repair worklist's ESM selector,
+  avoiding unbounded observation scans and permanent low-ID selection.
 - Add a bounded, provider-neutral source repair worklist for current,
   complete-capture identity conflicts. It exposes only local repair context
   and a source-match-then-resync action; it cannot choose an ID, modify source

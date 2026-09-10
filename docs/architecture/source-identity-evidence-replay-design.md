@@ -1,6 +1,6 @@
 # Source identity evidence replay design
 
-Date: 2026-09-09.
+Date: 2026-09-10.
 
 ## Goal
 
@@ -20,14 +20,25 @@ invoke AI, or route media.
 `runSourceIdentityExternalEvidenceReplay.mjs` uses
 `default_transaction_read_only=on` before the database module is loaded. The
 service issues one bounded `SELECT` for current observations and makes at most
-32 single-item source reads, with at most eight from any one library. It
-selects only observations that are all of the following:
+32 single-item source reads, with at most eight from any one library. It first
+selects a deterministic daily rotating window of at most 12 active libraries,
+then reads conflicts only from that window. The shared ESM selector uses a
+unique library-ID order and a statement-stable daily pivot, so higher-ID
+libraries are not permanently excluded and the query does not inspect source
+observations for every active library. It selects only observations that are all
+of the following:
 
 - from an active library and active media server;
 - from the matching, completed, full capture generation;
 - from a capture with no omitted or uncapturable items;
 - retained within the existing 30-day window; and
 - marked `conflicting_provider_ids`.
+
+The aggregate response records the active, selected, and excluded library
+counts plus the fixed selection strategy. It does not reveal selected library
+IDs. A `no_current_conflicts` result describes the reported daily window, not
+every excluded library. A frozen held-out study remains a separate artifact and
+must record its own population; replay output is not a substitute for it.
 
 The output contains only fixed aggregate outcome and resolver-reason counts.
 It excludes library and server identifiers, source keys, titles, URLs,
@@ -89,6 +100,7 @@ correction.
 | Store every provider payload | Easy later inspection | Retains identifiers and source details without need | Reject |
 | Take first or configured-preferred source ID | Low implementation cost | Provider- and configuration-specific, and converts ambiguity into a false fact | Reject |
 | Bounded single-item replay with independent evidence | Low load, source-neutral, measurable, privacy-bounded | May yield no eligible automatic cases | Adopt |
+| Scan every active library before applying the item limit | More apparent coverage in a small deployment | Unbounded source-observation work and permanent low-ID bias | Reject |
 
 ## Recommendation stack
 
@@ -107,5 +119,11 @@ correction.
   documents lookup by external identifier and its IMDb/TVDB support matrix.
 - [PostgreSQL SET TRANSACTION](https://www.postgresql.org/docs/current/sql-set-transaction.html)
   defines the constraints of a read-only transaction.
+- [PostgreSQL LIMIT and OFFSET](https://www.postgresql.org/docs/current/queries-limit.html)
+  requires a deterministic `ORDER BY` when a limit selects a subset; the
+  selector provides one rather than relying on planner order.
+- [PostgreSQL WITH Queries](https://www.postgresql.org/docs/current/queries-with.html)
+  describes CTE materialization tradeoffs. The shared selector deliberately
+  materializes the small active-library window before joining observations.
 - [W3C Privacy Principles](https://www.w3.org/TR/privacy-principles/) calls
   for data minimization and purpose limitation.

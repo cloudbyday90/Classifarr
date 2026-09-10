@@ -6,6 +6,8 @@ import {
 } from '../services/sourceIdentityExternalEvidenceReplay.mjs';
 
 const row = Object.freeze({
+  active_library_count: 2,
+  selected_library_count: 1,
   library_id: 10,
   media_server_id: 2,
   external_id: 'source-item',
@@ -16,6 +18,8 @@ const row = Object.freeze({
   url: 'http://private-source',
   api_key: 'private-key',
 });
+
+const emptyWindow = Object.freeze({ active_library_count: 2, selected_library_count: 1, library_id: null });
 
 function response(...ids) {
   return { tv_results: ids.map((id) => ({ id })) };
@@ -39,7 +43,7 @@ describe('source identity external-evidence replay', () => {
 
     const result = await replay.replay();
 
-    expect(query).toHaveBeenCalledWith(expect.stringContaining("o.identity_issue='conflicting_provider_ids'"), [8, 32, 30]);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining("o.identity_issue='conflicting_provider_ids'"), [8, 32, 30, 12]);
     expect(source.getLibraryItemIdentityEvidence).toHaveBeenCalledWith(
       'http://private-source', 'private-key', 'source-library', 'source-item',
     );
@@ -51,6 +55,11 @@ describe('source identity external-evidence replay', () => {
         selectedObservationCount: 1,
         maximumObservations: 32,
         maximumObservationsPerLibrary: 8,
+        libraryLimit: 12,
+        librarySelection: 'daily_rotating_library_id_window',
+        activeLibraryCount: 2,
+        selectedLibraryCount: 1,
+        excludedLibraryCount: 1,
         outcomes: { exact_candidate_agreement: 1 },
         resolutionReasons: { external_id_match: 1 },
       },
@@ -95,7 +104,7 @@ describe('source identity external-evidence replay', () => {
   });
 
   test('returns a non-error empty result when no current complete capture qualifies', async () => {
-    const { replay, source, tmdbService } = setup({ rows: [] });
+    const { replay, source, tmdbService } = setup({ rows: [emptyWindow] });
 
     await expect(replay.replay()).resolves.toEqual({
       version: SOURCE_IDENTITY_EVIDENCE_REPLAY_VERSION,
@@ -104,6 +113,11 @@ describe('source identity external-evidence replay', () => {
         selectedObservationCount: 0,
         maximumObservations: 32,
         maximumObservationsPerLibrary: 8,
+        libraryLimit: 12,
+        librarySelection: 'daily_rotating_library_id_window',
+        activeLibraryCount: 2,
+        selectedLibraryCount: 1,
+        excludedLibraryCount: 1,
         outcomes: {},
         resolutionReasons: {},
       },

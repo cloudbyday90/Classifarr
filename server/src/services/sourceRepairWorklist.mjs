@@ -1,27 +1,19 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { sourceIdentityDiagnostics } from './mediaSyncIdentityDiagnostics.mjs';
+import {
+  SOURCE_CONFLICT_LIBRARY_WINDOW_LIMITS,
+  sourceConflictLibraryWindowCtes,
+} from './sourceConflictLibraryWindow.mjs';
 
 export const SOURCE_REPAIR_WORKLIST_LIMITS = Object.freeze({
   maximumEntries: 32,
   maximumEntriesPerLibrary: 8,
-  libraryLimit: 12,
+  libraryLimit: SOURCE_CONFLICT_LIBRARY_WINDOW_LIMITS.libraryLimit,
   retentionDays: 30,
 });
 
-const SELECT_SOURCE_REPAIR_WORKLIST = `WITH active_libraries AS MATERIALIZED (
-  SELECT id, name, media_server_id, library_rank, active_library_count FROM (
-    SELECT id, name, media_server_id, row_number() OVER (ORDER BY id) AS library_rank,
-      COUNT(*) OVER () AS active_library_count
-    FROM libraries WHERE is_active=true
-  ) AS ranked_active_libraries
-), selected_libraries AS MATERIALIZED (
-  SELECT * FROM active_libraries
-  ORDER BY CASE WHEN library_rank > (
-    MOD(FLOOR(EXTRACT(EPOCH FROM date_trunc('day', statement_timestamp())) / 86400)::bigint,
-      active_library_count)+1
-  ) THEN 0 ELSE 1 END, library_rank
-  LIMIT $4::integer
-), current_conflicts AS MATERIALIZED (
+const SELECT_SOURCE_REPAIR_WORKLIST = `WITH ${sourceConflictLibraryWindowCtes('$4::integer')},
+current_conflicts AS MATERIALIZED (
   SELECT l.id AS library_id, l.name AS library_name, l.media_server_id, o.external_id,
     o.title, o.year, o.media_type, o.provider_fields, o.last_seen_at,
     row_number() OVER (PARTITION BY l.id ORDER BY o.last_seen_at DESC, o.external_id) AS library_rank
@@ -96,7 +88,7 @@ export async function readSourceRepairWorklist(db) {
     observedAt: new Date(first.observed_at).toISOString(),
     scope: Object.freeze({
       ...limits,
-      librarySelection: 'daily_rotating_library_id_window',
+      librarySelection: SOURCE_CONFLICT_LIBRARY_WINDOW_LIMITS.librarySelection,
       activeLibraryCount: first.active_library_count,
       selectedLibraryCount: first.selected_library_count,
       excludedLibraryCount: first.active_library_count-first.selected_library_count,

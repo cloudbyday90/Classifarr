@@ -3,11 +3,16 @@ import * as db from '../config/database.mjs';
 import { getMediaServerService as defaultGetMediaServerService } from './mediaServers/index.mjs';
 import { resolveTmdbExternalIdentity } from './tmdbExternalIdentityResolution.mjs';
 import { tmdbService as defaultTmdbService } from './tmdb.mjs';
+import {
+  SOURCE_CONFLICT_LIBRARY_WINDOW_LIMITS,
+  sourceConflictLibraryWindowCtes,
+} from './sourceConflictLibraryWindow.mjs';
 
 export const SOURCE_IDENTITY_EVIDENCE_REPLAY_VERSION = 'source_identity_external_evidence_replay.v1';
 export const SOURCE_IDENTITY_EVIDENCE_REPLAY_LIMITS = Object.freeze({
   maximumObservations: 32,
   maximumObservationsPerLibrary: 8,
+  libraryLimit: SOURCE_CONFLICT_LIBRARY_WINDOW_LIMITS.libraryLimit,
   retentionDays: 30,
 });
 
@@ -43,12 +48,13 @@ const RESOLUTION_REASONS = Object.freeze([
 ]);
 const MAXIMUM_CANDIDATES_PER_PROVIDER = 20;
 
-const SELECT_CURRENT_CONFLICTS = `WITH current_conflicts AS MATERIALIZED (
+const SELECT_CURRENT_CONFLICTS = `WITH ${sourceConflictLibraryWindowCtes('$4::integer')},
+current_conflicts AS MATERIALIZED (
   SELECT o.library_id, o.media_server_id, o.external_id, o.media_type, o.provider_fields,
     l.external_id AS library_external_id, server.type AS media_server_type, server.url, server.api_key,
     row_number() OVER (PARTITION BY o.library_id ORDER BY o.last_seen_at DESC, o.external_id) AS library_rank
-  FROM media_source_observations AS o
-  JOIN libraries AS l ON l.id=o.library_id AND l.media_server_id=o.media_server_id AND l.is_active=true
+  FROM selected_libraries AS l
+  JOIN media_source_observations AS o ON o.library_id=l.id AND o.media_server_id=l.media_server_id
   JOIN media_source_capture_state AS capture ON capture.library_id=o.library_id
     AND capture.media_server_id=o.media_server_id AND capture.generation=o.generation
   JOIN media_server AS server ON server.id=o.media_server_id AND server.is_active=true
@@ -56,13 +62,20 @@ const SELECT_CURRENT_CONFLICTS = `WITH current_conflicts AS MATERIALIZED (
     AND o.last_seen_at >= statement_timestamp()-$3::integer*INTERVAL '1 day'
     AND capture.phase='complete' AND capture.mode='full'
     AND capture.omitted_count=0 AND capture.uncapturable_count=0
+), selected AS MATERIALIZED (
+  SELECT * FROM current_conflicts
+  WHERE library_rank <= $1::integer
+  ORDER BY library_rank, library_id, media_server_id, external_id
+  LIMIT $2::integer
 )
-SELECT library_id, media_server_id, external_id, media_type, provider_fields, library_external_id,
-  media_server_type, url, api_key
-FROM current_conflicts
-WHERE library_rank <= $1::integer
-ORDER BY library_id, media_server_id, external_id
-LIMIT $2::integer`;
+SELECT
+  COALESCE((SELECT MAX(active_library_count)::integer FROM active_libraries), 0) AS active_library_count,
+  (SELECT COUNT(*)::integer FROM selected_libraries) AS selected_library_count,
+  selected.library_id, selected.media_server_id, selected.external_id, selected.media_type, selected.provider_fields,
+  selected.library_external_id, selected.media_server_type, selected.url, selected.api_key
+FROM (SELECT true) AS anchor
+LEFT JOIN selected ON true
+ORDER BY selected.library_rank, selected.library_id, selected.media_server_id, selected.external_id`;
 
 function fixedCounts(ids) {
   return Object.fromEntries(ids.map((id) => [id, 0]));
@@ -72,6 +85,14 @@ function orderedNonzero(counts) {
   return Object.freeze(Object.fromEntries(Object.entries(counts)
     .filter(([, count]) => count > 0)
     .sort(([left], [right]) => left.localeCompare(right))));
+}
+
+function nonnegativeInteger(value) {
+  return Number.isSafeInteger(value) && value >= 0 ? value : 0;
+}
+
+function selectedConflictRows(rows) {
+  return rows.filter((row) => Number.isSafeInteger(row?.library_id));
 }
 
 function increment(counts, id) {
@@ -177,6 +198,7 @@ export function createSourceIdentityExternalEvidenceReplay({
   if (typeof query !== 'function' || typeof getMediaServerService !== 'function' || !tmdbService ||
       !Number.isInteger(limits.maximumObservations) || limits.maximumObservations < 1 ||
       !Number.isInteger(limits.maximumObservationsPerLibrary) || limits.maximumObservationsPerLibrary < 1 ||
+      !Number.isInteger(limits.libraryLimit) || limits.libraryLimit < 1 ||
       !Number.isInteger(limits.retentionDays) || limits.retentionDays < 1) {
     throw new Error('invalid_source_identity_evidence_replay_dependencies');
   }
@@ -188,22 +210,30 @@ export function createSourceIdentityExternalEvidenceReplay({
           limits.maximumObservationsPerLibrary,
           limits.maximumObservations,
           limits.retentionDays,
+          limits.libraryLimit,
         ]);
         if (!Array.isArray(rows)) throw new Error('invalid_source_identity_evidence_replay_rows');
+        const first = rows[0] ?? {};
+        const selectedRows = selectedConflictRows(rows);
         const outcomes = fixedCounts(OUTCOME_IDS);
         const resolutionReasons = fixedCounts(RESOLUTION_REASONS);
-        for (const row of rows) {
+        for (const row of selectedRows) {
           const result = await replayOne(row, { getMediaServerService, tmdbService });
           increment(outcomes, result.outcome);
           if (result.resolutionReason) increment(resolutionReasons, result.resolutionReason);
         }
         return Object.freeze({
           version: SOURCE_IDENTITY_EVIDENCE_REPLAY_VERSION,
-          status: Object.freeze({ id: rows.length ? 'complete' : 'no_current_conflicts' }),
+          status: Object.freeze({ id: selectedRows.length ? 'complete' : 'no_current_conflicts' }),
           summary: Object.freeze({
-            selectedObservationCount: rows.length,
+            selectedObservationCount: selectedRows.length,
             maximumObservations: limits.maximumObservations,
             maximumObservationsPerLibrary: limits.maximumObservationsPerLibrary,
+            libraryLimit: limits.libraryLimit,
+            librarySelection: SOURCE_CONFLICT_LIBRARY_WINDOW_LIMITS.librarySelection,
+            activeLibraryCount: nonnegativeInteger(first.active_library_count),
+            selectedLibraryCount: nonnegativeInteger(first.selected_library_count),
+            excludedLibraryCount: Math.max(0, nonnegativeInteger(first.active_library_count) - nonnegativeInteger(first.selected_library_count)),
             outcomes: orderedNonzero(outcomes),
             resolutionReasons: orderedNonzero(resolutionReasons),
           }),
