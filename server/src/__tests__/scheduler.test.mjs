@@ -31,6 +31,8 @@ const mockDb = {
         NATIVE_INTENT_RECONCILIATION_LEDGER_RETENTION: 2009,
         POLICY_PROFILE_REFRESH_OUTBOX: 2011,
         HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT: 2016,
+        SOURCE_IDENTITY_EVIDENCE_REPLAY_OBSERVATION: 2018,
+        SOURCE_IDENTITY_EVIDENCE_REPLAY_OBSERVATION_RETENTION: 2019,
     }
 };
 
@@ -78,6 +80,11 @@ const mockPolicyProfileRefreshAutomationService = {
 
 const mockHeldOutSemanticStudyLifecycleReauditService = {
     run: jest.fn(),
+};
+
+const mockSourceIdentityEvidenceReplayObservationService = {
+    observe: jest.fn(),
+    prune: jest.fn(),
 };
 
 const mockMediaSync = {
@@ -132,6 +139,10 @@ jest.unstable_mockModule('../services/policyProfileRefreshAutomationService.mjs'
 
 jest.unstable_mockModule('../services/heldOutSemanticStudyLifecycleReauditService.mjs', () => createNamedMockModule('heldOutSemanticStudyLifecycleReauditService', mockHeldOutSemanticStudyLifecycleReauditService));
 
+jest.unstable_mockModule('../services/sourceIdentityEvidenceReplayObservationService.mjs', () => (
+    createNamedMockModule('sourceIdentityEvidenceReplayObservationService', mockSourceIdentityEvidenceReplayObservationService)
+));
+
 jest.unstable_mockModule('../services/mediaSync.mjs', () => createNamedMockModule('mediaSyncService', mockMediaSync));
 
 jest.unstable_mockModule('../services/discordBot.mjs', () => createNamedMockModule('discordBotService', mockDiscordBot));
@@ -179,6 +190,8 @@ describe('SchedulerService', () => {
         mockNativeIntentReconciliationService.run.mockReset();
         mockPolicyProfileRefreshAutomationService.run.mockReset();
         mockHeldOutSemanticStudyLifecycleReauditService.run.mockReset();
+        mockSourceIdentityEvidenceReplayObservationService.observe.mockReset();
+        mockSourceIdentityEvidenceReplayObservationService.prune.mockReset();
         mockMediaSync.syncLibrary.mockReset();
         mockClassification.retryClassification.mockReset();
         logger.info.mockReset();
@@ -798,6 +811,51 @@ describe('SchedulerService', () => {
                 expect.any(Function),
             );
             expect(mockHeldOutSemanticStudyLifecycleReauditService.run).toHaveBeenCalledTimes(2);
+        });
+    });
+
+    describe('source identity evidence replay observation scheduling', () => {
+        test('runs daily after readiness, records only aggregates, and has no startup replay', async () => {
+            mockDb.withSessionAdvisoryLock.mockImplementation(async (_key, handler) => {
+                await handler();
+                return true;
+            });
+            mockSourceIdentityEvidenceReplayObservationService.observe.mockResolvedValue({
+                version: 'source_identity_evidence_replay_observation.v1',
+                status: { id: 'complete' },
+                summary: { selectedObservationCount: 1 },
+            });
+            mockSourceIdentityEvidenceReplayObservationService.prune.mockResolvedValue();
+
+            expect(scheduler.startSourceIdentityEvidenceReplayObservation()).toBe(true);
+            expect(scheduler.startSourceIdentityEvidenceReplayObservation()).toBe(false);
+            expect(mockNodeCron.schedule).toHaveBeenNthCalledWith(
+                1, '25 3 * * *', expect.any(Function), { noOverlap: true },
+            );
+            expect(mockNodeCron.schedule).toHaveBeenNthCalledWith(
+                2, '26 3 * * *', expect.any(Function), { noOverlap: true },
+            );
+            expect(scheduler.initialTaskTimers.size).toBe(0);
+
+            await mockNodeCron.schedule.mock.calls[0][1]();
+            await mockNodeCron.schedule.mock.calls[1][1]();
+
+            expect(mockDb.withSessionAdvisoryLock).toHaveBeenNthCalledWith(1, 2018, expect.any(Function));
+            expect(mockDb.withSessionAdvisoryLock).toHaveBeenNthCalledWith(2, 2019, expect.any(Function));
+            expect(mockSourceIdentityEvidenceReplayObservationService.observe).toHaveBeenCalledTimes(1);
+            expect(mockSourceIdentityEvidenceReplayObservationService.prune).toHaveBeenCalledTimes(1);
+        });
+
+        test('marks a persisted failed replay as a scheduler failure without retaining error detail', async () => {
+            mockSourceIdentityEvidenceReplayObservationService.observe.mockResolvedValue({
+                version: 'source_identity_evidence_replay_observation.v1',
+                status: { id: 'failed' },
+                summary: null,
+            });
+
+            await expect(scheduler.runSourceIdentityEvidenceReplayObservation()).rejects.toThrow(
+                'Source identity evidence replay observation failed',
+            );
         });
     });
 

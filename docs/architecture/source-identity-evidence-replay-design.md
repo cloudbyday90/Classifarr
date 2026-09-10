@@ -19,8 +19,10 @@ invoke AI, or route media.
 
 `runSourceIdentityExternalEvidenceReplay.mjs` uses
 `default_transaction_read_only=on` before the database module is loaded. The
-service issues one bounded `SELECT` for current observations and makes at most
-32 single-item source reads, with at most eight from any one library. It first
+automatic daily observation instead selects the same window through a short
+`REPEATABLE READ READ ONLY` transaction, which commits before source-server or
+TMDb calls begin. The service makes at most 32 single-item source reads, with
+at most eight from any one library. It first
 selects a deterministic daily rotating window of at most 12 active libraries,
 then reads conflicts only from that window. The shared ESM selector uses a
 unique library-ID order and a statement-stable daily pivot, so higher-ID
@@ -43,6 +45,10 @@ must record its own population; replay output is not a substitute for it.
 The output contains only fixed aggregate outcome and resolver-reason counts.
 It excludes library and server identifiers, source keys, titles, URLs,
 credentials, fingerprints, candidate IDs, and provider response bodies.
+
+The automatic [daily observation](source-identity-evidence-replay-observation-design.md)
+stores only this already-redacted aggregate receipt for 120 UTC days. It has no
+startup replay, no source write, and no automatic correction path.
 
 The PostgreSQL reference documents that read-only transactions reject data
 modification statements and DDL. That database-level guard complements the

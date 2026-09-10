@@ -43,6 +43,15 @@ import {
     HELD_OUT_SEMANTIC_STUDY_LIFECYCLE_REAUDIT_TASK_NAME,
 } from './heldOutSemanticStudyLifecycleReauditSchedule.mjs';
 import {
+    sourceIdentityEvidenceReplayObservationService,
+} from './sourceIdentityEvidenceReplayObservationService.mjs';
+import {
+    SOURCE_IDENTITY_EVIDENCE_REPLAY_OBSERVATION_CRON,
+    SOURCE_IDENTITY_EVIDENCE_REPLAY_OBSERVATION_RETENTION_CRON,
+    SOURCE_IDENTITY_EVIDENCE_REPLAY_OBSERVATION_RETENTION_TASK_NAME,
+    SOURCE_IDENTITY_EVIDENCE_REPLAY_OBSERVATION_TASK_NAME,
+} from './sourceIdentityEvidenceReplayObservationSchedule.mjs';
+import {
     runGapAnalysis as _runGapAnalysis,
     runPeriodicLibrarySync as _runPeriodicLibrarySync,
     runLibraryWatchdog as _runLibraryWatchdog,
@@ -421,6 +430,43 @@ class SchedulerService {
 
     async runHeldOutSemanticStudyLifecycleReaudit() {
         return heldOutSemanticStudyLifecycleReauditService.run();
+    }
+
+    startSourceIdentityEvidenceReplayObservation() {
+        if (this.tasks.has(SOURCE_IDENTITY_EVIDENCE_REPLAY_OBSERVATION_TASK_NAME) ||
+            this.tasks.has(SOURCE_IDENTITY_EVIDENCE_REPLAY_OBSERVATION_RETENTION_TASK_NAME)) {
+            return false;
+        }
+
+        this.schedule(
+            SOURCE_IDENTITY_EVIDENCE_REPLAY_OBSERVATION_TASK_NAME,
+            SOURCE_IDENTITY_EVIDENCE_REPLAY_OBSERVATION_CRON,
+            () => this.runSourceIdentityEvidenceReplayObservation(),
+            DB_ADVISORY_LOCKS.SOURCE_IDENTITY_EVIDENCE_REPLAY_OBSERVATION,
+            { noOverlap: true },
+        );
+        this.schedule(
+            SOURCE_IDENTITY_EVIDENCE_REPLAY_OBSERVATION_RETENTION_TASK_NAME,
+            SOURCE_IDENTITY_EVIDENCE_REPLAY_OBSERVATION_RETENTION_CRON,
+            () => this.runSourceIdentityEvidenceReplayObservationRetention(),
+            DB_ADVISORY_LOCKS.SOURCE_IDENTITY_EVIDENCE_REPLAY_OBSERVATION_RETENTION,
+            { noOverlap: true },
+        );
+
+        logger.info('Source identity evidence replay observation scheduled after application readiness');
+        return true;
+    }
+
+    async runSourceIdentityEvidenceReplayObservation() {
+        const observation = await sourceIdentityEvidenceReplayObservationService.observe();
+        if (observation.status.id === 'failed') {
+            throw new Error('Source identity evidence replay observation failed');
+        }
+        return observation;
+    }
+
+    async runSourceIdentityEvidenceReplayObservationRetention() {
+        return sourceIdentityEvidenceReplayObservationService.prune();
     }
 
     /**

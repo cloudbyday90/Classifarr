@@ -132,6 +132,19 @@ function startHeldOutSemanticStudyLifecycleReaudit(schedulerService, runtimeWiri
   }
 }
 
+function startSourceIdentityEvidenceReplayObservation(schedulerService, runtimeWiringStatus) {
+  if (!runtimeWiringStatus.ok || typeof schedulerService.startSourceIdentityEvidenceReplayObservation !== 'function') {
+    return;
+  }
+
+  try {
+    schedulerService.startSourceIdentityEvidenceReplayObservation();
+    logger.info('Source identity evidence replay observation scheduler started successfully');
+  } catch (error) {
+    logger.warn('Source identity evidence replay observation scheduler failed to start:', { error: error.message });
+  }
+}
+
 async function initializeProviderLock(providerLock) {
   try {
     await providerLock.init();
@@ -286,4 +299,5 @@ export async function initializeServices({
   startNativeIntentReconciliation(schedulerService, runtimeWiringStatus);
   startPolicyProfileRefreshOutboxWorker(schedulerService, runtimeWiringStatus);
   startHeldOutSemanticStudyLifecycleReaudit(schedulerService, runtimeWiringStatus);
+  startSourceIdentityEvidenceReplayObservation(schedulerService, runtimeWiringStatus);
 }

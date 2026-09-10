@@ -100,6 +100,9 @@ or expose identifiers. Because the replay keeps only aggregate results, its
 17 non-exact cases cannot be singled out without expanding retention; current
 source conflicts remain the safe repair boundary.
 
-After source repairs and a fresh full sync, rerun the replay. Do not build a
-compare-and-apply command or semantic counter-evidence unless that new,
-complete-capture measurement has a materially better error profile.
+After source repairs and a fresh full sync, the daily aggregate
+[replay observation](source-identity-evidence-replay-observation-outcome.md)
+will measure the next rotating scope without an operator remembering a CLI
+command. Do not build a compare-and-apply command or semantic counter-evidence
+unless a new, complete-capture measurement has a materially better error
+profile.

@@ -50,6 +50,19 @@ describe('scheduler execution receipt contract', () => {
         });
     });
 
+    test('groups source replay history and retention without exposing its task name', () => {
+        expect(buildSchedulerExecutionReceipt({
+            taskName: 'source-identity-evidence-replay-observation',
+            outcomeId: SCHEDULER_EXECUTION_OUTCOME_IDS.COMPLETED,
+            durationMs: 100,
+        })).toMatchObject({ taskClass: 'observation', durationBucket: '100_to_499ms' });
+        expect(buildSchedulerExecutionReceipt({
+            taskName: 'source-identity-evidence-replay-observation-retention',
+            outcomeId: SCHEDULER_EXECUTION_OUTCOME_IDS.COMPLETED,
+            durationMs: 4,
+        })).toMatchObject({ taskClass: 'retention', durationBucket: 'under_5ms' });
+    });
+
     test('rejects caller-controlled outcomes and invalid monotonic timings', () => {
         expect(() => buildSchedulerExecutionReceipt({
             taskName: 'library-sync',

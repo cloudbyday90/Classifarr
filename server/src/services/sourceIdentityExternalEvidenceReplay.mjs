@@ -16,7 +16,7 @@ export const SOURCE_IDENTITY_EVIDENCE_REPLAY_LIMITS = Object.freeze({
   retentionDays: 30,
 });
 
-const OUTCOME_IDS = Object.freeze([
+export const SOURCE_IDENTITY_EVIDENCE_REPLAY_OUTCOME_IDS = Object.freeze([
   'exact_candidate_agreement',
   'external_evidence_absent',
   'external_evidence_conflicting',
@@ -32,7 +32,7 @@ const OUTCOME_IDS = Object.freeze([
   'source_service_unavailable',
 ]);
 
-const RESOLUTION_REASONS = Object.freeze([
+export const SOURCE_IDENTITY_EVIDENCE_REPLAY_RESOLUTION_REASON_IDS = Object.freeze([
   'ambiguous_external_id',
   'conflicting_external_ids',
   'duplicate_external_results',
@@ -138,6 +138,36 @@ function buildResolutionPayload(mediaType, providerIds) {
   return Object.freeze({ payload, tmdbIds: Object.freeze([...new Set(tmdbIds)]) });
 }
 
+function validReplayLimits(limits) {
+  return Number.isInteger(limits?.maximumObservations) && limits.maximumObservations >= 1 &&
+    Number.isInteger(limits.maximumObservationsPerLibrary) && limits.maximumObservationsPerLibrary >= 1 &&
+    Number.isInteger(limits.libraryLimit) && limits.libraryLimit >= 1 &&
+    Number.isInteger(limits.retentionDays) && limits.retentionDays >= 1;
+}
+
+/**
+ * Loads the bounded replay window without interpreting or retaining the
+ * selected source data. A caller can provide a transaction-bound query to
+ * make the snapshot boundary explicit before any external provider call.
+ */
+export async function readSourceIdentityExternalEvidenceReplayRows({
+  query = db.query,
+  limits = SOURCE_IDENTITY_EVIDENCE_REPLAY_LIMITS,
+} = {}) {
+  if (typeof query !== 'function' || !validReplayLimits(limits)) {
+    throw new Error('invalid_source_identity_evidence_replay_dependencies');
+  }
+
+  const { rows } = await query(SELECT_CURRENT_CONFLICTS, [
+    limits.maximumObservationsPerLibrary,
+    limits.maximumObservations,
+    limits.retentionDays,
+    limits.libraryLimit,
+  ]);
+  if (!Array.isArray(rows)) throw new Error('invalid_source_identity_evidence_replay_rows');
+  return rows;
+}
+
 async function replayOne(row, { getMediaServerService, tmdbService }) {
   const providerFields = normalizedProviderFields(row?.provider_fields);
   if (!providerFields || typeof row?.external_id !== 'string' || typeof row?.library_external_id !== 'string' ||
@@ -191,32 +221,27 @@ async function replayOne(row, { getMediaServerService, tmdbService }) {
  */
 export function createSourceIdentityExternalEvidenceReplay({
   query = db.query,
+  readRows,
   getMediaServerService = defaultGetMediaServerService,
   tmdbService = defaultTmdbService,
   limits = SOURCE_IDENTITY_EVIDENCE_REPLAY_LIMITS,
 } = {}) {
   if (typeof query !== 'function' || typeof getMediaServerService !== 'function' || !tmdbService ||
-      !Number.isInteger(limits.maximumObservations) || limits.maximumObservations < 1 ||
-      !Number.isInteger(limits.maximumObservationsPerLibrary) || limits.maximumObservationsPerLibrary < 1 ||
-      !Number.isInteger(limits.libraryLimit) || limits.libraryLimit < 1 ||
-      !Number.isInteger(limits.retentionDays) || limits.retentionDays < 1) {
+      (readRows !== undefined && typeof readRows !== 'function') || !validReplayLimits(limits)) {
     throw new Error('invalid_source_identity_evidence_replay_dependencies');
   }
+
+  const readSelectedRows = readRows ?? (() => readSourceIdentityExternalEvidenceReplayRows({ query, limits }));
 
   return Object.freeze({
     async replay() {
       try {
-        const { rows } = await query(SELECT_CURRENT_CONFLICTS, [
-          limits.maximumObservationsPerLibrary,
-          limits.maximumObservations,
-          limits.retentionDays,
-          limits.libraryLimit,
-        ]);
+        const rows = await readSelectedRows();
         if (!Array.isArray(rows)) throw new Error('invalid_source_identity_evidence_replay_rows');
         const first = rows[0] ?? {};
         const selectedRows = selectedConflictRows(rows);
-        const outcomes = fixedCounts(OUTCOME_IDS);
-        const resolutionReasons = fixedCounts(RESOLUTION_REASONS);
+        const outcomes = fixedCounts(SOURCE_IDENTITY_EVIDENCE_REPLAY_OUTCOME_IDS);
+        const resolutionReasons = fixedCounts(SOURCE_IDENTITY_EVIDENCE_REPLAY_RESOLUTION_REASON_IDS);
         for (const row of selectedRows) {
           const result = await replayOne(row, { getMediaServerService, tmdbService });
           increment(outcomes, result.outcome);

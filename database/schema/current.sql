@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-09T10:42:15.173Z
--- Latest Migration: 20260909_102827_add_event_loop_delay_receipts.sql
+-- Generated: 2026-09-10T11:22:20.274Z
+-- Latest Migration: 20260910_120000_add_source_identity_evidence_replay_observations.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -7137,6 +7137,27 @@ ALTER SEQUENCE public.sonarr_config_id_seq OWNED BY public.sonarr_config.id;
 
 
 --
+-- Name: source_identity_evidence_replay_observations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.source_identity_evidence_replay_observations (
+    observed_on date CONSTRAINT source_identity_evidence_replay_observatio_observed_on_not_null NOT NULL,
+    observed_at timestamp with time zone CONSTRAINT source_identity_evidence_replay_observatio_observed_at_not_null NOT NULL,
+    receipt_version character varying(96) CONSTRAINT source_identity_evidence_replay_observ_receipt_version_not_null NOT NULL,
+    status_id character varying(48) NOT NULL,
+    observation jsonb CONSTRAINT source_identity_evidence_replay_observatio_observation_not_null NOT NULL,
+    CONSTRAINT source_identity_evidence_replay_observations_status_id_check CHECK (((status_id)::text = ANY (ARRAY[('complete'::character varying)::text, ('failed'::character varying)::text, ('no_current_conflicts'::character varying)::text])))
+);
+
+
+--
+-- Name: TABLE source_identity_evidence_replay_observations; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.source_identity_evidence_replay_observations IS 'Daily aggregate-only source identity evidence replay receipts; no source or provider identities retained.';
+
+
+--
 -- Name: source_library_policy_links; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -10236,6 +10257,14 @@ ALTER TABLE ONLY public.settings
 
 ALTER TABLE ONLY public.sonarr_config
     ADD CONSTRAINT sonarr_config_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: source_identity_evidence_replay_observations source_identity_evidence_replay_observations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.source_identity_evidence_replay_observations
+    ADD CONSTRAINT source_identity_evidence_replay_observations_pkey PRIMARY KEY (observed_on);
 
 
 --
@@ -15877,6 +15906,7 @@ FROM unnest(ARRAY[
     '20260909_003713_add_queue_startup_performance_receipts.sql',
     '20260909_071510_add_database_health_transition_receipts.sql',
     '20260909_085356_add_scheduler_execution_receipts.sql',
-    '20260909_102827_add_event_loop_delay_receipts.sql'
+    '20260909_102827_add_event_loop_delay_receipts.sql',
+    '20260910_120000_add_source_identity_evidence_replay_observations.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

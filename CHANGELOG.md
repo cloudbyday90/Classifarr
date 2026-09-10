@@ -36,6 +36,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- Automatically retain one bounded, aggregate-only daily source-identity
+  evidence replay receipt after application readiness. Its database selection
+  uses a short read-only repeatable-read transaction before external evidence
+  calls, has no startup replay, and cannot select an identity, modify source
+  metadata, invoke AI, or route media.
 - Bound the source-identity external-evidence replay to a deterministic,
   daily rotating active-library window. The read-only aggregate study now
   reports its selected scope and shares the repair worklist's ESM selector,

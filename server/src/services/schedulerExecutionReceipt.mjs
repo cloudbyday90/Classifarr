@@ -47,6 +47,8 @@ const TASK_CLASS_BY_NAME = Object.freeze({
     'held-out-semantic-study-lifecycle-reaudit': SCHEDULER_EXECUTION_TASK_CLASS_IDS.OBSERVATION,
     'database-health-transition-observation': SCHEDULER_EXECUTION_TASK_CLASS_IDS.OBSERVATION,
     'event-loop-delay-observation': SCHEDULER_EXECUTION_TASK_CLASS_IDS.OBSERVATION,
+    'source-identity-evidence-replay-observation': SCHEDULER_EXECUTION_TASK_CLASS_IDS.OBSERVATION,
+    'source-identity-evidence-replay-observation-retention': SCHEDULER_EXECUTION_TASK_CLASS_IDS.RETENTION,
 });
 
 function durationBucket(durationMs) {
