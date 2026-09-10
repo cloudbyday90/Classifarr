@@ -13,7 +13,8 @@ source-neutral adapter contract and the same daily rotating 12-library /
 The database selection runs in a short PostgreSQL `REPEATABLE READ READ ONLY`
 transaction. The transaction completes before any media-server or TMDb call.
 The result is then projected into one aggregate-only UTC-day receipt. A
-separate next-minute task retains at most 120 days. Daily work is protected by
+separate next-minute task retains exactly 120 inclusive UTC dates (rather than
+an off-by-one 121-date range). Daily work is protected by
 scheduler no-overlap and separate cross-replica advisory locks; no startup run
 can cause external calls.
 

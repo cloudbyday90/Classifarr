@@ -36,6 +36,8 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- Corrected source-identity replay-observation retention so its inclusive UTC
+  date range contains exactly the documented 120 days.
 - Automatically retain one bounded, aggregate-only daily source-identity
   evidence replay receipt after application readiness. Its database selection
   uses a short read-only repeatable-read transaction before external evidence

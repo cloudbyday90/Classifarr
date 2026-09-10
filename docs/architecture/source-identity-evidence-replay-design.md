@@ -47,8 +47,10 @@ It excludes library and server identifiers, source keys, titles, URLs,
 credentials, fingerprints, candidate IDs, and provider response bodies.
 
 The automatic [daily observation](source-identity-evidence-replay-observation-design.md)
-stores only this already-redacted aggregate receipt for 120 UTC days. It has no
-startup replay, no source write, and no automatic correction path.
+stores only this already-redacted aggregate receipt for exactly 120 inclusive
+UTC calendar dates. The retention query deletes dates before the first of that
+120-date range, so it cannot retain an accidental extra boundary date. It has
+no startup replay, no source write, and no automatic correction path.
 
 The PostgreSQL reference documents that read-only transactions reject data
 modification statements and DDL. That database-level guard complements the

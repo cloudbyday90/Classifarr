@@ -21,10 +21,17 @@ function utcDate(value) {
   return value.toISOString().slice(0, 10);
 }
 
-function cutoffUtcDate(now, retentionDays) {
-  const cutoff = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  cutoff.setUTCDate(cutoff.getUTCDate() - retentionDays);
-  return utcDate(cutoff);
+function firstRetainedUtcDate(now, retentionDays) {
+  const firstRetained = new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+  ));
+  // `observed_on` is a UTC calendar date and the deletion predicate is
+  // strictly before this boundary. Subtract one fewer day so an inclusive
+  // range contains exactly `retentionDays` dates (not retentionDays + 1).
+  firstRetained.setUTCDate(firstRetained.getUTCDate() - (retentionDays - 1));
+  return utcDate(firstRetained);
 }
 
 /**
@@ -77,7 +84,7 @@ export function createSourceIdentityEvidenceReplayObservationService({
       const observedAt = now();
       await removeExpired({
         query,
-        cutoffOn: cutoffUtcDate(observedAt, retentionDays),
+        cutoffOn: firstRetainedUtcDate(observedAt, retentionDays),
       });
     },
   });

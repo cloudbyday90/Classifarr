@@ -84,7 +84,7 @@ describe('source identity evidence replay observation persistence', () => {
     });
     await deleteExpiredSourceIdentityEvidenceReplayObservations({
       query,
-      cutoffOn: '2026-05-13',
+      cutoffOn: '2026-05-14',
     });
 
     expect(query).toHaveBeenNthCalledWith(1, expect.stringContaining('ON CONFLICT'), [
@@ -94,7 +94,7 @@ describe('source identity evidence replay observation persistence', () => {
       'complete',
       JSON.stringify(observation),
     ]);
-    expect(query).toHaveBeenNthCalledWith(2, expect.stringContaining('WHERE observed_on < $1::date'), ['2026-05-13']);
+    expect(query).toHaveBeenNthCalledWith(2, expect.stringContaining('WHERE observed_on < $1::date'), ['2026-05-14']);
   });
 });
 
@@ -152,7 +152,7 @@ describe('source identity evidence replay observation service', () => {
     expect(JSON.stringify(upsert.mock.calls[0][0])).not.toContain('not-retained');
   });
 
-  test('prunes on a fixed UTC retention boundary', async () => {
+  test('prunes on an inclusive UTC retention boundary of exactly 120 dates', async () => {
     const removeExpired = jest.fn().mockResolvedValue();
     const service = createSourceIdentityEvidenceReplayObservationService({
       createReader: () => ({ read: jest.fn() }),
@@ -163,6 +163,21 @@ describe('source identity evidence replay observation service', () => {
 
     await service.prune();
 
-    expect(removeExpired).toHaveBeenCalledWith(expect.objectContaining({ cutoffOn: '2026-05-13' }));
+    expect(removeExpired).toHaveBeenCalledWith(expect.objectContaining({ cutoffOn: '2026-05-14' }));
+  });
+
+  test('keeps only the current UTC date when retention is one day', async () => {
+    const removeExpired = jest.fn().mockResolvedValue();
+    const service = createSourceIdentityEvidenceReplayObservationService({
+      createReader: () => ({ read: jest.fn() }),
+      createReplay: () => ({ replay: jest.fn() }),
+      removeExpired,
+      now: () => new Date('2026-09-10T00:00:00.000Z'),
+      retentionDays: 1,
+    });
+
+    await service.prune();
+
+    expect(removeExpired).toHaveBeenCalledWith(expect.objectContaining({ cutoffOn: '2026-09-10' }));
   });
 });
