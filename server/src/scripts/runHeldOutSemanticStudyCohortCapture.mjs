@@ -32,9 +32,16 @@ export async function runHeldOutSemanticStudyCohortCapture({
   }
 }
 
+function publicReport(result) {
+  return Object.freeze({
+    receipt: result?.receipt ?? null,
+    status: result?.status ?? { id: 'capture_failed' },
+  });
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
   runHeldOutSemanticStudyCohortCapture().then((result) => {
-    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    process.stdout.write(`${JSON.stringify(publicReport(result), null, 2)}\n`);
     if (result.status.id !== 'captured_pending_independent_labels') process.exitCode = 1;
   }).catch(() => {
     process.stderr.write('Held-out semantic study cohort capture could not run.\n');

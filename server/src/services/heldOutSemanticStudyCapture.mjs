@@ -51,58 +51,71 @@ export function createHeldOutSemanticStudyCapture({
   retriever = currentLibraryCandidateSemanticRetriever,
   readConfig = () => embeddingRouter.getConfig(),
 } = {}) {
-  return Object.freeze({
-    async capture(input) {
-      try {
-        const { request, heldOutScope } = freezeRequest(input);
-        const policies = await preparation.loadPolicies();
-        const configurationFingerprint = heldOutSemanticStudyConfigurationFingerprint(await readConfig(), policies);
-        let configurationInvalid = false;
-        const verifyConfiguration = async () => {
-          try {
-            const current = heldOutSemanticStudyConfigurationFingerprint(await readConfig(), await preparation.loadPolicies());
-            if (configurationInvalid || current !== configurationFingerprint) throw new Error('held_out_configuration_changed');
-          } catch (error) {
-            configurationInvalid = true;
-            throw error;
-          }
-        };
-        const cases = [];
-        for (const item of request.cases) {
-          await verifyConfiguration();
-          const contract = await preparation.prepare({ metadata: item.metadata, policies });
-          if (!contract?.valid) throw new Error('held_out_case_ineligible');
-          cases.push({ ...item, contract });
+  async function capture(input, { includePrivateReviewCases = false } = {}) {
+    try {
+      const { request, heldOutScope } = freezeRequest(input);
+      const policies = await preparation.loadPolicies();
+      const configurationFingerprint = heldOutSemanticStudyConfigurationFingerprint(await readConfig(), policies);
+      let configurationInvalid = false;
+      const verifyConfiguration = async () => {
+        try {
+          const current = heldOutSemanticStudyConfigurationFingerprint(await readConfig(), await preparation.loadPolicies());
+          if (configurationInvalid || current !== configurationFingerprint) throw new Error('held_out_configuration_changed');
+        } catch (error) {
+          configurationInvalid = true;
+          throw error;
         }
-        const capture = createPolicyCandidateCurrentInventorySemanticStudyCapture({
-          retriever: {
-            async retrieve(value) {
-              // The outer final check ensures drift cannot become an abstention
-              // and then leave behind an apparently complete study.
-              await verifyConfiguration();
-              return retriever.retrieve({ ...value, heldOutScope });
-            },
-          },
-        });
-        const result = await capture.capture({ cases, snapshotSetId: request.snapshotSetId });
+      };
+      const cases = [];
+      for (const item of request.cases) {
         await verifyConfiguration();
-        if (!result.document) throw new Error('invalid_held_out_capture');
-        return Object.freeze({
-          ...result,
-          document: Object.freeze({
-            ...result.document,
-            version: HELD_OUT_SEMANTIC_STUDY_DOCUMENT_VERSION,
-            studyProvenance: Object.freeze({
-              configurationFingerprint,
-              excludedIdentityCount: cases.length,
-              exclusionSetFingerprint: heldOutScope.fingerprint,
-              protocolVersion: HELD_OUT_SEMANTIC_STUDY_PROTOCOL,
-            }),
-          }),
-        });
-      } catch {
-        return Object.freeze({ document: null, status: Object.freeze({ id: 'invalid_request' }) });
+        const contract = await preparation.prepare({ metadata: item.metadata, policies });
+        if (!contract?.valid) throw new Error('held_out_case_ineligible');
+        cases.push({ ...item, contract });
       }
-    },
+      const currentInventoryCapture = createPolicyCandidateCurrentInventorySemanticStudyCapture({
+        retriever: {
+          async retrieve(value) {
+            // The outer final check ensures drift cannot become an abstention
+            // and then leave behind an apparently complete study.
+            await verifyConfiguration();
+            return retriever.retrieve({ ...value, heldOutScope });
+          },
+        },
+      });
+      const result = await currentInventoryCapture.capture({ cases, snapshotSetId: request.snapshotSetId });
+      await verifyConfiguration();
+      if (!result.document) throw new Error('invalid_held_out_capture');
+      const document = Object.freeze({
+        ...result.document,
+        version: HELD_OUT_SEMANTIC_STUDY_DOCUMENT_VERSION,
+        studyProvenance: Object.freeze({
+          configurationFingerprint,
+          excludedIdentityCount: cases.length,
+          exclusionSetFingerprint: heldOutScope.fingerprint,
+          protocolVersion: HELD_OUT_SEMANTIC_STUDY_PROTOCOL,
+        }),
+      });
+      return Object.freeze({
+        ...result,
+        document,
+        ...(includePrivateReviewCases ? {
+          // This is available only to the explicit, local reviewer-packet
+          // workflow. The normal capture result remains redacted.
+          privateReviewCases: Object.freeze(cases.map(({ contract, fixtureId, metadata }) => Object.freeze({
+            contract,
+            fixtureId,
+            metadata,
+          }))),
+        } : {}),
+      });
+    } catch {
+      return Object.freeze({ document: null, status: Object.freeze({ id: 'invalid_request' }) });
+    }
+  }
+
+  return Object.freeze({
+    capture: (input) => capture(input),
+    captureForPrivateReviewerPacket: (input) => capture(input, { includePrivateReviewCases: true }),
   });
 }

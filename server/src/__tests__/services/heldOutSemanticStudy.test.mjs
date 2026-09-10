@@ -53,6 +53,21 @@ describe('held-out semantic study', () => {
     expect(JSON.stringify(result)).not.toMatch(/Private|secret|tmdb_id|libraryId|overview/u);
   });
 
+  test('keeps private case context out of standard capture and exposes it only to the packet path', async () => {
+    const capture = createHeldOutSemanticStudyCapture(setup());
+
+    const standardResult = await capture.capture(request());
+    const privateResult = await capture.captureForPrivateReviewerPacket(request());
+
+    expect(standardResult.privateReviewCases).toBeUndefined();
+    expect(privateResult.privateReviewCases).toHaveLength(24);
+    expect(privateResult.privateReviewCases[0]).toEqual(expect.objectContaining({
+      fixtureId: id('fixture', 0),
+      metadata: expect.objectContaining({ title: 'Private title' }),
+    }));
+    expect(JSON.stringify(standardResult)).not.toMatch(/Private|secret|tmdb_id|libraryId|overview/u);
+  });
+
   test.each(['duplicate', 'missing', 'type', 'overflow', 'contract', 'source', 'too_few', 'coerced_id'])('rejects %s before preparation or provider I/O', async (kind) => {
     const input = request();
     if (kind === 'duplicate') input.cases[1].metadata.tmdb_id = 1;

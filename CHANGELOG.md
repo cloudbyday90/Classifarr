@@ -10,6 +10,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 ## [Unreleased]
 
 ### Performance
+- Bound direct backend coverage runs to the existing two-worker, 512 MB idle
+  recycle settings so local coverage verification cannot create an unbounded
+  Jest worker fan-out.
 - Add passive event-loop-delay observations that persist only a fixed p99
   bucket, aggregate count, and freshness timestamp; no raw performance value,
   process, operational, media, library, provider, configuration, policy, AI,
@@ -94,6 +97,13 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
   staged deletion as a coverage gap instead of failing its scan.
 
 ### Added
+
+- **Controlled private reviewer packets** — Added an explicit, read-only local
+  ESM workflow that creates a short-lived, content-minimized held-out review
+  packet only after the aggregate capture handoff is current. Packets stay
+  outside HTTP APIs under exclusive `.tmp` files, omit semantic/RAG output and
+  current placement, and feed only the existing fingerprint-bound independent
+  review path; they cannot learn, change policy, or route media.
 
 - **Semantic evaluation results summary** — Added a content-free, offline ESM
   report for a fixed semantic snapshot and independent human reference set. It

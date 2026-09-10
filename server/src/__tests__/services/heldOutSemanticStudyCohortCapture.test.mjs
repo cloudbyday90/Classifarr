@@ -86,6 +86,48 @@ test('returns only the redacted bundle and receipt after a stable prospective ca
   expect(capture.capture).toHaveBeenCalledTimes(1);
 });
 
+test('exposes private case context only to the explicit reviewer-packet builder', async () => {
+  const privateReviewCases = selected().map((entry) => ({
+    contract: { candidates: [{ libraryId: 1 }, { libraryId: 2 }], valid: true },
+    fixtureId: entry.fixtureId,
+    metadata: entry.metadata,
+  }));
+  const capture = {
+    captureForPrivateReviewerPacket: jest.fn(async () => ({
+      document: snapshotDocument(),
+      privateReviewCases,
+      status: { id: 'complete' },
+    })),
+  };
+  const planner = { plan: jest.fn(async () => ({
+    receipt: receipt(),
+    request: { cases: selected(), snapshotSetId: id('snapshot_set', 1) },
+    selected: selected(),
+  })) };
+  const preparation = { loadPolicies: jest.fn(async () => [{ library_id: 1 }]) };
+  const buildPacket = jest.fn(() => ({ packetId: `review_packet_${'a'.repeat(64)}` }));
+  const service = createHeldOutSemanticStudyCohortCapture({
+    capture,
+    loadCandidates: jest.fn(async () => []),
+    planner,
+    preparation,
+    random: () => Buffer.alloc(32, 1),
+    readConfig: async () => ({ embedding_model: 'local' }),
+  });
+
+  const result = await service.captureForPrivateReviewerPacket({ buildPacket });
+
+  expect(result.status.id).toBe('captured_pending_independent_labels');
+  expect(result.reviewerPacket.packetId).toMatch(/^review_packet_/u);
+  expect(capture.captureForPrivateReviewerPacket).toHaveBeenCalledTimes(1);
+  expect(buildPacket).toHaveBeenCalledWith(expect.objectContaining({
+    privateReviewCases: expect.arrayContaining([
+      expect.objectContaining({ metadata: expect.objectContaining({ title: 'Private title 0' }) }),
+    ]),
+  }));
+  expect(JSON.stringify(result.bundle)).not.toContain('Private title');
+});
+
 test('fails closed when configuration changes between planning and capture', async () => {
   let read = 0;
   const service = createHeldOutSemanticStudyCohortCapture({

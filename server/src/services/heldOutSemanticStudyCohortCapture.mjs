@@ -43,13 +43,24 @@ function projectStatus(planStatusId) {
   return HELD_OUT_SEMANTIC_STUDY_COHORT_CAPTURE_STATUS_IDS.CAPTURE_FAILED;
 }
 
+function capturedResult({ bundle, receipt, reviewerPacket = null }) {
+  return Object.freeze({
+    bundle,
+    receipt,
+    ...(reviewerPacket ? { reviewerPacket } : {}),
+    status: Object.freeze({
+      id: HELD_OUT_SEMANTIC_STUDY_COHORT_CAPTURE_STATUS_IDS.CAPTURED_PENDING_INDEPENDENT_LABELS,
+    }),
+  });
+}
+
 /**
  * Coordinates a private, read-only real-inventory capture. The planner sees
  * only broad-policy eligibility; the held-out retriever receives a frozen
  * cohort only after selection completes.
  */
 export function createHeldOutSemanticStudyCohortCapture({
-  capture = null,
+  capture: captureService = null,
   loadCandidates = ({ selectionSeed, perStratum }) => readHeldOutSemanticStudyInventoryFrame({
     query: db.query,
     selectionSeed,
@@ -61,71 +72,94 @@ export function createHeldOutSemanticStudyCohortCapture({
   readConfig = () => embeddingRouter.getConfig(),
 } = {}) {
   const cohortPlanner = planner ?? createHeldOutSemanticStudyCohortPlanner({ preparation });
-  const heldOutCapture = capture ?? createHeldOutSemanticStudyCapture({ preparation, readConfig });
+  const heldOutCapture = captureService ?? createHeldOutSemanticStudyCapture({ preparation, readConfig });
 
-  return Object.freeze({
-    async capture({
-      caseCount = HELD_OUT_SEMANTIC_STUDY_DEFAULT_COHORT_CASE_COUNT,
-      perStratum = HELD_OUT_SEMANTIC_STUDY_INVENTORY_FRAME_PER_STRATUM,
-    } = {}) {
-      try {
-        const selectionSeed = random(32).toString('hex');
-        const selectionSecret = random(32);
-        const [initialConfig, policies] = await Promise.all([
-          readConfig(),
-          preparation.loadPolicies(),
-        ]);
-        const initialFingerprint = heldOutSemanticStudyConfigurationFingerprint(initialConfig, policies);
-        const candidates = await loadCandidates({ perStratum, selectionSeed });
-        const plan = await cohortPlanner.plan({ candidates, caseCount, policies, selectionSecret });
-        if (!plan.request) {
-          return Object.freeze({
-            bundle: null,
-            receipt: plan.receipt,
-            status: Object.freeze({ id: projectStatus(plan.receipt.statusId) }),
-          });
-        }
-
-        const beforeCaptureFingerprint = await configurationFingerprint(readConfig, preparation);
-        if (beforeCaptureFingerprint !== initialFingerprint) {
-          return Object.freeze({
-            bundle: null,
-            receipt: plan.receipt,
-            status: Object.freeze({ id: HELD_OUT_SEMANTIC_STUDY_COHORT_CAPTURE_STATUS_IDS.CONFIGURATION_CHANGED }),
-          });
-        }
-
-        const result = await heldOutCapture.capture(plan.request);
-        if (result?.status?.id !== 'complete' || !result.document) {
-          return Object.freeze({
-            bundle: null,
-            receipt: plan.receipt,
-            status: Object.freeze({ id: HELD_OUT_SEMANTIC_STUDY_COHORT_CAPTURE_STATUS_IDS.CAPTURE_FAILED }),
-          });
-        }
-        const bundle = buildHeldOutSemanticStudyBundle({
-          selected: plan.selected,
-          snapshotDocument: result.document,
-        });
-        if (!bundle) {
-          return Object.freeze({
-            bundle: null,
-            receipt: plan.receipt,
-            status: Object.freeze({ id: HELD_OUT_SEMANTIC_STUDY_COHORT_CAPTURE_STATUS_IDS.CAPTURE_FAILED }),
-          });
-        }
-        return Object.freeze({
-          bundle,
-          receipt: plan.receipt,
-          status: Object.freeze({ id: HELD_OUT_SEMANTIC_STUDY_COHORT_CAPTURE_STATUS_IDS.CAPTURED_PENDING_INDEPENDENT_LABELS }),
-        });
-      } catch {
+  async function runCapture({
+    buildPacket = null,
+    caseCount = HELD_OUT_SEMANTIC_STUDY_DEFAULT_COHORT_CASE_COUNT,
+    perStratum = HELD_OUT_SEMANTIC_STUDY_INVENTORY_FRAME_PER_STRATUM,
+  } = {}) {
+    const privatePacketRequested = typeof buildPacket === 'function';
+    if ((buildPacket != null && !privatePacketRequested) ||
+        (privatePacketRequested && typeof heldOutCapture.captureForPrivateReviewerPacket !== 'function')) {
+      return Object.freeze({
+        bundle: null,
+        receipt: null,
+        status: Object.freeze({ id: HELD_OUT_SEMANTIC_STUDY_COHORT_CAPTURE_STATUS_IDS.CAPTURE_FAILED }),
+      });
+    }
+    try {
+      const selectionSeed = random(32).toString('hex');
+      const selectionSecret = random(32);
+      const [initialConfig, policies] = await Promise.all([
+        readConfig(),
+        preparation.loadPolicies(),
+      ]);
+      const initialFingerprint = heldOutSemanticStudyConfigurationFingerprint(initialConfig, policies);
+      const candidates = await loadCandidates({ perStratum, selectionSeed });
+      const plan = await cohortPlanner.plan({ candidates, caseCount, policies, selectionSecret });
+      if (!plan.request) {
         return Object.freeze({
           bundle: null,
-          receipt: null,
+          receipt: plan.receipt,
+          status: Object.freeze({ id: projectStatus(plan.receipt.statusId) }),
+        });
+      }
+      if (await configurationFingerprint(readConfig, preparation) !== initialFingerprint) {
+        return Object.freeze({
+          bundle: null,
+          receipt: plan.receipt,
+          status: Object.freeze({ id: HELD_OUT_SEMANTIC_STUDY_COHORT_CAPTURE_STATUS_IDS.CONFIGURATION_CHANGED }),
+        });
+      }
+
+      const result = privatePacketRequested
+        ? await heldOutCapture.captureForPrivateReviewerPacket(plan.request)
+        : await heldOutCapture.capture(plan.request);
+      if (result?.status?.id !== 'complete' || !result.document ||
+          (privatePacketRequested && !Array.isArray(result.privateReviewCases))) {
+        return Object.freeze({
+          bundle: null,
+          receipt: plan.receipt,
           status: Object.freeze({ id: HELD_OUT_SEMANTIC_STUDY_COHORT_CAPTURE_STATUS_IDS.CAPTURE_FAILED }),
         });
       }
-    },
+      const bundle = buildHeldOutSemanticStudyBundle({
+        selected: plan.selected,
+        snapshotDocument: result.document,
+      });
+      const reviewerPacket = privatePacketRequested && bundle
+        ? buildPacket({
+          bundle,
+          policies,
+          privateReviewCases: result.privateReviewCases,
+          selected: plan.selected,
+        })
+        : null;
+      if (!bundle || (privatePacketRequested && !reviewerPacket)) {
+        return Object.freeze({
+          bundle: null,
+          receipt: plan.receipt,
+          status: Object.freeze({ id: HELD_OUT_SEMANTIC_STUDY_COHORT_CAPTURE_STATUS_IDS.CAPTURE_FAILED }),
+        });
+      }
+      return capturedResult({ bundle, receipt: plan.receipt, reviewerPacket });
+    } catch {
+      return Object.freeze({
+        bundle: null,
+        receipt: null,
+        status: Object.freeze({ id: HELD_OUT_SEMANTIC_STUDY_COHORT_CAPTURE_STATUS_IDS.CAPTURE_FAILED }),
+      });
+    }
+  }
+
+  return Object.freeze({
+    capture: ({ caseCount, perStratum } = {}) => runCapture({ caseCount, perStratum }),
+    /**
+     * Produces a private, caller-owned reviewer packet only for the dedicated
+     * local workflow. Normal capture callers never receive metadata or policy
+     * candidate contracts.
+     */
+    captureForPrivateReviewerPacket: ({ buildPacket } = {}) => runCapture({ buildPacket }),
   });
 }
