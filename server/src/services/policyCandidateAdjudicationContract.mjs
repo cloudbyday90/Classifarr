@@ -12,7 +12,7 @@ export const POLICY_CANDIDATE_ADJUDICATION_MAXIMUM_CANDIDATES = 3;
 
 export const POLICY_CANDIDATE_ADJUDICATION_STATUS_IDS = Object.freeze({
   READY: 'ready',
-  NOT_PROMPT_SELECT: 'not_prompt_select',
+  NOT_REVIEWABLE_POLICY_ACTION: 'not_reviewable_policy_action',
   INSUFFICIENT_CANDIDATES: 'insufficient_candidates',
   PROPOSED: 'proposed',
   ABSTAINED: 'abstained',
@@ -86,8 +86,8 @@ export function buildPolicyCandidateAdjudicationContract({
   mediaType = null,
   maximumCandidates = POLICY_CANDIDATE_ADJUDICATION_MAXIMUM_CANDIDATES,
 } = {}) {
-  if (policyResult?.action !== 'prompt_select') {
-    return invalidContract(POLICY_CANDIDATE_ADJUDICATION_STATUS_IDS.NOT_PROMPT_SELECT);
+  if (!['prompt_confirm', 'prompt_select'].includes(policyResult?.action)) {
+    return invalidContract(POLICY_CANDIDATE_ADJUDICATION_STATUS_IDS.NOT_REVIEWABLE_POLICY_ACTION);
   }
 
   const limit = Math.min(

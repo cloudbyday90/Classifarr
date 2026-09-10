@@ -36,6 +36,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- When strict candidate-bound verification abstains (or the selected provider
+  cannot satisfy its strict structured-output contract), make one bounded,
+  advisory comparison among the same two or three policy-eligible libraries.
+  The comparison cannot route media and still requires operator confirmation.
+
 - Prevent a candidate-scoped semantic comparison from retrieving the incoming
   item's own same-media historical identity as current-library corroboration.
   The versioned v3 retrieval protocol now compares only other eligible

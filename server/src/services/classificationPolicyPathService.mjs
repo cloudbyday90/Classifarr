@@ -36,6 +36,9 @@ import {
 	buildPolicyCandidateAdjudicationContract,
 } from './policyCandidateAdjudicationContract.mjs';
 import {
+	resolveCandidateAdjudicationFallback,
+} from './classificationCandidateAdjudicationFallback.mjs';
+import {
 	policyCandidateAdjudicationEvidenceService,
 } from './policyCandidateAdjudicationEvidence.mjs';
 import {
@@ -68,6 +71,8 @@ export class ClassificationPolicyPathService {
 		this.resolveDeterministicOutcomeAiMode = deps.resolveDeterministicOutcomeAiMode || resolveDeterministicOutcomeAiMode;
 		this.buildDeterministicOutcomeAiAbstentionResult = deps.buildDeterministicOutcomeAiAbstentionResult || buildDeterministicOutcomeAiAbstentionResult;
 		this.buildPolicyCandidateAdjudicationContract = deps.buildPolicyCandidateAdjudicationContract || buildPolicyCandidateAdjudicationContract;
+		this.resolveCandidateAdjudicationFallback =
+			deps.resolveCandidateAdjudicationFallback || resolveCandidateAdjudicationFallback;
 		this.policyCandidateAdjudicationEvidenceService = deps.policyCandidateAdjudicationEvidenceService || policyCandidateAdjudicationEvidenceService;
 		this.finalizePolicyCandidateAdjudication = deps.finalizePolicyCandidateAdjudication || finalizePolicyCandidateAdjudication;
 		this.buildPolicyCandidateContrastiveRetrievalContract =
@@ -211,19 +216,28 @@ export class ClassificationPolicyPathService {
 			libraries,
 			mediaType: metadata.media_type,
 		});
-		const candidateAdjudicationEvidence = candidateAdjudication.valid
-			? await this.policyCandidateAdjudicationEvidenceService.build({
+		let candidateAdjudicationEvidence = null;
+		let currentLibraryCandidateRetrievalTelemetry = null;
+		let currentLibraryCandidateSemanticRetrievalStatusId = null;
+		let currentLibraryCandidateSemanticOutcomeCalibrationStatusId = null;
+		const loadCandidateAdjudicationEvidence = async () => {
+			if (candidateAdjudication.valid !== true) return null;
+			if (candidateAdjudicationEvidence) return candidateAdjudicationEvidence;
+
+			candidateAdjudicationEvidence = await this.policyCandidateAdjudicationEvidenceService.build({
 				contract: candidateAdjudication,
 				ragContext,
 				metadata,
-			})
-			: null;
-		const currentLibraryCandidateRetrievalTelemetry =
-			candidateAdjudicationEvidence?.currentLibraryCandidateRetrievalTelemetry || null;
-		const currentLibraryCandidateSemanticRetrievalStatusId =
-			candidateAdjudicationEvidence?.currentLibraryCandidateSemanticRetrievalStatusId || null;
-		const currentLibraryCandidateSemanticOutcomeCalibrationStatusId =
-			candidateAdjudicationEvidence?.currentLibraryCandidateSemanticOutcomeCalibrationStatusId || null;
+			});
+			currentLibraryCandidateRetrievalTelemetry =
+				candidateAdjudicationEvidence?.currentLibraryCandidateRetrievalTelemetry || null;
+			currentLibraryCandidateSemanticRetrievalStatusId =
+				candidateAdjudicationEvidence?.currentLibraryCandidateSemanticRetrievalStatusId || null;
+			currentLibraryCandidateSemanticOutcomeCalibrationStatusId =
+				candidateAdjudicationEvidence?.currentLibraryCandidateSemanticOutcomeCalibrationStatusId || null;
+
+			return candidateAdjudicationEvidence;
+		};
 		const candidateContrastiveRetrievalContract =
 			this.buildPolicyCandidateContrastiveRetrievalContract({
 				policyResult,
@@ -298,6 +312,10 @@ export class ClassificationPolicyPathService {
 		}
 
 		try {
+			if (aiModeDecision.mode === 'adjudicate') {
+				await loadCandidateAdjudicationEvidence();
+			}
+
 			const aiLibraries = aiModeDecision.mode === 'adjudicate'
 				? candidateAdjudication.candidates.map((candidate) => candidate.library)
 				: libraries;
@@ -358,6 +376,73 @@ export class ClassificationPolicyPathService {
 						ragContext,
 					}),
 				};
+			}
+
+			const fallbackDecision = this.resolveCandidateAdjudicationFallback({
+				aiModeDecision,
+				candidateAdjudication,
+				verificationResult: providerMatch,
+			});
+			if (fallbackDecision.shouldInvoke) {
+				try {
+					const fallbackEvidence = await loadCandidateAdjudicationEvidence();
+					if (fallbackEvidence) {
+						const fallbackMatch = await this.aiClassify(
+							metadata,
+							candidateAdjudication.candidates.map((candidate) => candidate.library),
+							policySignalContext,
+							{
+								mode: 'adjudicate',
+								ragContext,
+								candidateAdjudicationEvidence: fallbackEvidence,
+							},
+						);
+						const result = {
+							...this.finalizePolicyCandidateAdjudication({
+								contract: candidateAdjudication,
+								aiMatch: fallbackMatch,
+								policyResult,
+								libraries,
+								semanticRetrievalStatusId: currentLibraryCandidateSemanticRetrievalStatusId,
+								semanticOutcomeCalibrationStatusId:
+									currentLibraryCandidateSemanticOutcomeCalibrationStatusId,
+							}),
+							libraries,
+							signalContext: policySignalContext,
+							policyResult,
+							ragContext,
+							deterministic_ai_mode: aiModeDecision,
+							candidate_bound_verification: providerMatch.candidate_bound_verification || null,
+							current_library_candidate_retrieval_telemetry:
+								currentLibraryCandidateRetrievalTelemetry,
+							candidate_contrastive_evidence: candidateContrastiveEvidence,
+						};
+
+						if (taskId && !metadata.source_library_id) {
+							await this.classificationProgressStageService.updateStage(taskId, 'decision', {
+								confidence: result.confidence,
+								skippedStages: ['signal_combine'],
+								skippedStageMetadata: { signal_combine: { reason: 'policy_signal_path' } },
+							});
+						}
+
+						return {
+							handled: true,
+							result: await this.classificationRoutingService.ensureDecisionQuestion({
+								metadata,
+								result,
+								policyResult,
+								libraries,
+								ragContext,
+							}),
+						};
+					}
+				} catch (_fallbackError) {
+					this.logger.warn('Bounded candidate adjudication fallback did not complete; retaining verification outcome', {
+						title: metadata.title,
+						reasonCode: fallbackDecision.reasonCode,
+					});
+				}
 			}
 
 			const successResult = await resolveClassificationPathAiSuccess({
