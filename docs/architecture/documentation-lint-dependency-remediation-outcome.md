@@ -17,6 +17,7 @@ Status: implemented, unreleased. Validated on 10 September 2026.
 - Direct server and client `npm audit --json` runs: 0 vulnerabilities each.
 - `npm run lint:docs`: 1,208 Markdown files checked with 0 issues.
 - `npm run esm:check-static-imports`: passed.
+- GitHub Dependabot alert #109: **Fixed** and closed by commit `6fb3f4db`.
 
 ## Security outcome
 
