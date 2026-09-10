@@ -73,6 +73,13 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Outcome-backed purpose drafts** — Native purpose maintenance now loads one
+  compact, read-only suggestion from repeated, operator-originated genre
+  outcomes. The suggestion is optional, excludes profile and self-reinforcing
+  policy-pattern evidence, and still requires the existing revision-checked
+  coverage review and purpose-change workflow; it cannot invoke AI, route
+  media, or write a policy on its own.
+
 - **Held-out study gate reconciliation** — Documented the current passive
   readiness and private-audit observations, including their intentionally
   separate authority boundaries. Existing automation remains library- and

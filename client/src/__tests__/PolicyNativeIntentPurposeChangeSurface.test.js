@@ -9,6 +9,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 const { apiMock } = vi.hoisted(() => ({
   apiMock: {
     getPolicyNativeIntentPurposeChange: vi.fn(),
+    getPolicyNativeIntentConfirmedOutcomePurposeSuggestion: vi.fn(),
     getPolicyNativeIntentChangeRecentReceipt: vi.fn(),
     preflightPolicyNativeIntentPurposeChange: vi.fn(),
     applyPolicyNativeIntentPurposeChange: vi.fn(),
@@ -87,6 +88,52 @@ function recentReceiptDiscovery(recentChange = null) {
   }
 }
 
+function confirmedOutcomeSuggestion() {
+  return {
+    version: 'policy.native_intent_confirmed_outcome_purpose_suggestion.v1',
+    statusId: 'native_intent_confirmed_outcome_purpose_suggestion_available',
+    available: true,
+    policyId: 17,
+    revision: 3,
+    suggestion: {
+      sourceId: 'repeated_confirmed_outcomes',
+      confirmationCount: 3,
+      changeCommand: {
+        command_id: 'update_purpose',
+        values: [{
+          signal_type: 'genres',
+          operator: 'require_any',
+          values: { require_any: ['Documentary'] },
+          constraint_mode: 'advisory',
+          semantics: 'identity',
+        }],
+      },
+    },
+    authority: {
+      source: 'server_owned_native_intent',
+      purposeChangeAllowed: false,
+      browserAuthorityAccepted: false,
+    },
+    sideEffects: {
+      storedPolicyRead: true,
+      storedNativeIntentRead: true,
+      storedOutcomeEvidenceRead: true,
+      providerAccessed: false,
+      policyStorageMutated: false,
+      routingAffected: false,
+      learningAffected: false,
+      databaseWritten: false,
+    },
+    rawOutcomeEvidenceExposed: false,
+    rawLibraryContentExposed: false,
+    compatibilityDataExposed: false,
+    aiDataExposed: false,
+    retrievalDataExposed: false,
+    routingDataExposed: false,
+    learningDataExposed: false,
+  }
+}
+
 describe('PolicyNativeIntentPurposeChangeSurface', () => {
   it('exposes a programmatic focus target for the declaration-review worklist', async () => {
     apiMock.getPolicyNativeIntentPurposeChange.mockResolvedValue(purposeRead())
@@ -100,6 +147,7 @@ describe('PolicyNativeIntentPurposeChangeSurface', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     apiMock.getPolicyNativeIntentChangeRecentReceipt.mockResolvedValue(recentReceiptDiscovery())
+    apiMock.getPolicyNativeIntentConfirmedOutcomePurposeSuggestion.mockResolvedValue(null)
   })
 
   it('uses the bounded purpose command, then emits the refreshed server-owned read after applying', async () => {
@@ -194,5 +242,27 @@ describe('PolicyNativeIntentPurposeChangeSurface', () => {
     expect(provenance.text()).toContain('Profile-derived terms require review')
     expect(provenance.text()).toContain('not declared purpose')
     expect(wrapper.findAll('button').map(button => button.text())).toContain('Review and declare purpose')
+  })
+
+  it('automatically loads a compact learned suggestion and adds it only to the review draft', async () => {
+    apiMock.getPolicyNativeIntentPurposeChange.mockResolvedValue(purposeRead())
+    apiMock.getPolicyNativeIntentConfirmedOutcomePurposeSuggestion.mockResolvedValue(
+      confirmedOutcomeSuggestion()
+    )
+
+    const wrapper = mount(PolicyNativeIntentPurposeChangeSurface, { props: { policyId: 17 } })
+    await flushPromises()
+    await wrapper.get('button').trigger('click')
+    await flushPromises()
+
+    const suggestion = wrapper.get('#policy-native-purpose-confirmed-outcome-suggestion')
+    expect(suggestion.text()).toContain('3 confirmed choices support additional genre terms')
+    expect(suggestion.text()).toContain('not a routing decision')
+    expect(apiMock.getPolicyNativeIntentConfirmedOutcomePurposeSuggestion).toHaveBeenCalledWith(17)
+
+    await suggestion.get('button').trigger('click')
+    expect(wrapper.findAll('input[aria-label^="Purpose terms"]').at(1).element.value).toBe('Documentary')
+    expect(wrapper.text()).toContain('Suggested terms added to this review draft')
+    expect(apiMock.applyPolicyNativeIntentPurposeChange).not.toHaveBeenCalled()
   })
 })

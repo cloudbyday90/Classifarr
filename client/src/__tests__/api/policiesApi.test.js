@@ -41,6 +41,7 @@ import {
   admitPolicyAuthoringProposal,
   getPolicyNativeReadinessSummary,
   getPolicyNativeIntentPurposeChange,
+  getPolicyNativeIntentConfirmedOutcomePurposeSuggestion,
   getPolicyNativeIntentChangeRecentReceipt,
   preflightPolicyNativeIntentPurposeChange,
   applyPolicyNativeIntentPurposeChange,
@@ -169,6 +170,7 @@ describe('policiesApi', () => {
     mockPost.mockResolvedValueOnce({ data: { statusId: 'applied' } })
 
     await getPolicyNativeIntentPurposeChange(7)
+    await getPolicyNativeIntentConfirmedOutcomePurposeSuggestion(7)
     await getPolicyNativeIntentChangeRecentReceipt(7)
     await preflightPolicyNativeIntentPurposeChange(7, 3, command)
     await applyPolicyNativeIntentPurposeChange(7, 3, command, {
@@ -176,6 +178,9 @@ describe('policiesApi', () => {
     })
 
     expect(mockGetDataRequest).toHaveBeenCalledWith('/policies/7/native-intent/purpose-change')
+    expect(mockGetDataRequest).toHaveBeenCalledWith(
+      '/policies/7/native-intent/confirmed-outcome-purpose-suggestion'
+    )
     expect(mockGetDataRequest).toHaveBeenCalledWith(
       '/policies/7/native-intent/change-receipts/recent'
     )

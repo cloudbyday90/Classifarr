@@ -101,6 +101,10 @@ export function getPolicyNativeIntentPurposeChange(id) {
   return getDataRequest(`/policies/${id}/native-intent/purpose-change`)
 }
 
+export function getPolicyNativeIntentConfirmedOutcomePurposeSuggestion(id) {
+  return getDataRequest(`/policies/${id}/native-intent/confirmed-outcome-purpose-suggestion`)
+}
+
 export function getPolicyNativeIntentChangeRecentReceipt(id) {
   return getDataRequest(`/policies/${id}/native-intent/change-receipts/recent`)
 }
@@ -215,6 +219,7 @@ const policiesApi = {
   admitPolicyAuthoringProposal,
   getPolicyNativeReadinessSummary,
   getPolicyNativeIntentPurposeChange,
+  getPolicyNativeIntentConfirmedOutcomePurposeSuggestion,
   getPolicyNativeIntentChangeRecentReceipt,
   preflightPolicyNativeIntentPurposeChange,
   applyPolicyNativeIntentPurposeChange,

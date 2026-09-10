@@ -7,6 +7,9 @@ import { registerPolicyNativeIntentReversionRoutes } from './policiesRouteNative
 import { registerPolicyNativeIntentChangeRoutes } from './policiesRouteNativeIntentChange.mjs';
 import { registerPolicyNativeIntentChangeRecentReceiptDiscoveryRoutes } from './policiesRouteNativeIntentChangeRecentReceiptDiscovery.mjs';
 import { registerPolicyNativeIntentPurposeChangeReadRoutes } from './policiesRouteNativeIntentPurposeChangeRead.mjs';
+import {
+  registerPolicyNativeIntentConfirmedOutcomePurposeSuggestionRoutes,
+} from './policiesRouteNativeIntentConfirmedOutcomePurposeSuggestion.mjs';
 import { registerPolicyNativeIntentChangePurposePreflightRoutes } from './policiesRouteNativeIntentChangePurposePreflight.mjs';
 import { registerPolicyPurposeCoveragePreflightRoutes } from './policiesRoutePolicyPurposeCoveragePreflight.mjs';
 import { registerPolicyCohortSimulationRoutes } from './policiesRoutePolicyCohortSimulation.mjs';
@@ -66,6 +69,7 @@ export function registerPolicyCrudRoutes(router, deps) {
   registerPolicyNativeIntentChangeRoutes(router, deps);
   registerPolicyNativeIntentChangeRecentReceiptDiscoveryRoutes(router, deps);
   registerPolicyNativeIntentPurposeChangeReadRoutes(router, deps);
+  registerPolicyNativeIntentConfirmedOutcomePurposeSuggestionRoutes(router, deps);
   registerPolicyNativeIntentChangePurposePreflightRoutes(router, deps);
   registerPolicyPurposeCoveragePreflightRoutes(router, deps);
   registerPolicyCohortSimulationRoutes(router, deps);

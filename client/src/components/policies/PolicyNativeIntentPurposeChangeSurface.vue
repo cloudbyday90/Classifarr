@@ -101,6 +101,39 @@
           {{ provenancePresentation?.editingDescription || 'Review every rule below before applying a native revision.' }}
         </p>
 
+        <section
+          v-if="confirmedOutcomeSuggestion"
+          id="policy-native-purpose-confirmed-outcome-suggestion"
+          class="rounded border border-indigo-700/70 bg-indigo-950/30 p-3 text-sm"
+          aria-labelledby="policy-native-purpose-confirmed-outcome-suggestion-title"
+        >
+          <h5
+            id="policy-native-purpose-confirmed-outcome-suggestion-title"
+            class="font-medium text-indigo-50"
+          >
+            Learned suggestion
+          </h5>
+          <p class="mt-1 text-indigo-100">
+            {{ confirmedOutcomeSuggestion.suggestion.confirmationCount }} confirmed choice{{ confirmedOutcomeSuggestion.suggestion.confirmationCount === 1 ? '' : 's' }} support additional genre terms. This is a review draft, not a routing decision.
+          </p>
+          <button
+            type="button"
+            class="mt-3 rounded border border-indigo-400 px-3 py-1.5 text-sm font-medium text-indigo-100 hover:bg-indigo-900/40 disabled:cursor-not-allowed disabled:opacity-50"
+            :disabled="applying"
+            @click="applyConfirmedOutcomeSuggestion"
+          >
+            Add learned terms to this draft
+          </button>
+          <p
+            v-if="learnedSuggestionStatus"
+            class="mt-2 text-indigo-100"
+            role="status"
+            aria-live="polite"
+          >
+            {{ learnedSuggestionStatus }}
+          </p>
+        </section>
+
         <fieldset
           v-for="(rule, index) in draftRules"
           :key="`native-purpose-rule-${index}`"
@@ -277,9 +310,13 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { usePolicyNativeIntentPurposeChange } from '@/composables/usePolicyNativeIntentPurposeChange'
 import {
+  usePolicyNativeIntentConfirmedOutcomePurposeSuggestion,
+} from '@/composables/usePolicyNativeIntentConfirmedOutcomePurposeSuggestion'
+import {
+  cloneNativeIntentPurposeChangeRules,
   createNativePurposeRule,
   getNativePurposeOperatorValueKey,
   NATIVE_PURPOSE_CONSTRAINT_MODES,
@@ -343,6 +380,26 @@ const provenancePresentation = computed(() =>
   getNativeIntentPurposeProvenancePresentation(purposeProvenance.value))
 watchPurposeChange(normalizedPolicyId)
 
+const {
+  suggestion: confirmedOutcomeSuggestion,
+  clear: clearConfirmedOutcomeSuggestion,
+  load: loadConfirmedOutcomeSuggestion,
+} = usePolicyNativeIntentConfirmedOutcomePurposeSuggestion()
+const learnedSuggestionStatus = ref('')
+
+watch(
+  [normalizedPolicyId, available],
+  ([policyId, purposeChangeAvailable]) => {
+    learnedSuggestionStatus.value = ''
+    if (!purposeChangeAvailable) {
+      clearConfirmedOutcomeSuggestion()
+      return
+    }
+    void loadConfirmedOutcomeSuggestion(policyId)
+  },
+  { immediate: true },
+)
+
 function getRuleTerms(rule) {
   const valueKey = getNativePurposeOperatorValueKey(rule?.operator)
   const values = rule?.values && typeof rule.values === 'object' ? rule.values : {}
@@ -381,12 +438,34 @@ function removeRule(index) {
   draftRules.value.splice(index, 1)
 }
 
+function applyConfirmedOutcomeSuggestion() {
+  if (applying.value) return
+
+  const suggestedRules = cloneNativeIntentPurposeChangeRules(
+    confirmedOutcomeSuggestion.value?.suggestion?.changeCommand,
+  )
+  if (!suggestedRules) return
+
+  const existingRuleKeys = new Set(draftRules.value.map(rule => JSON.stringify(rule)))
+  const rulesToAdd = suggestedRules.filter(rule => !existingRuleKeys.has(JSON.stringify(rule)))
+  if (rulesToAdd.length === 0) {
+    learnedSuggestionStatus.value = 'The suggested purpose terms are already in this review draft.'
+    return
+  }
+
+  draftRules.value.push(...rulesToAdd)
+  learnedSuggestionStatus.value = 'Suggested terms added to this review draft. Review coverage before applying the purpose change.'
+}
+
 async function reviewCoverage() {
   await runPreflight(normalizedPolicyId.value)
 }
 
 async function applyPurposeChange() {
   const applied = await apply(normalizedPolicyId.value)
-  if (applied) emit('authority-refreshed', read.value)
+  if (applied) {
+    await loadConfirmedOutcomeSuggestion(normalizedPolicyId.value)
+    emit('authority-refreshed', read.value)
+  }
 }
 </script>
