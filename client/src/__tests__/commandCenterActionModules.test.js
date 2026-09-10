@@ -34,6 +34,7 @@ const { apiMock } = vi.hoisted(() => ({
     getLiveFeed: vi.fn(),
     getMediaServerConfig: vi.fn(),
     getArrConfigStatus: vi.fn(),
+    getPolicyPurposeHealth: vi.fn(),
     cancelQueueTask: vi.fn(),
     cancelAllPendingTasks: vi.fn(),
     post: vi.fn(),
@@ -242,6 +243,7 @@ describe('CommandCenter action modules', () => {
     apiMock.getLiveFeed.mockResolvedValue({ items: [] })
     apiMock.getMediaServerConfig.mockResolvedValue({ id: 1, name: 'Plex' })
     apiMock.getArrConfigStatus.mockResolvedValue({ incompleteConfigs: [] })
+    apiMock.getPolicyPurposeHealth.mockRejectedValue({ response: { status: 403 } })
   })
 
   it('renders module headers and unresolved counts from live data', async () => {

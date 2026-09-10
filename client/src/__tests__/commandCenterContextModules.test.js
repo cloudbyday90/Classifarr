@@ -21,6 +21,7 @@ const { apiMock } = vi.hoisted(() => ({
     getLiveFeed: vi.fn(),
     getMediaServerConfig: vi.fn(),
     getArrConfigStatus: vi.fn(),
+    getPolicyPurposeHealth: vi.fn(),
     searchTMDB: vi.fn(),
     submitManualRequest: vi.fn(),
     syncLibrary: vi.fn(),
@@ -107,6 +108,7 @@ describe('CommandCenter context modules', () => {
     })
     apiMock.getMediaServerConfig.mockResolvedValue({ id: 1, name: 'Plex' })
     apiMock.getArrConfigStatus.mockResolvedValue({ incompleteConfigs: [] })
+    apiMock.getPolicyPurposeHealth.mockRejectedValue({ response: { status: 403 } })
     apiMock.searchTMDB.mockResolvedValue([
       { id: 27205, media_type: 'movie', title: 'Inception', release_date: '2010-07-16' },
     ])

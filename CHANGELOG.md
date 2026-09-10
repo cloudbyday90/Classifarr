@@ -89,6 +89,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Command Center purpose health** — Added an administrator-only,
+  auto-refreshing aggregate summary of declared library purpose and structural
+  exceptions. It is bounded, no-store, identity-free, and links to the
+  existing detailed review; it cannot invoke AI/RAG, learn, or change routing.
+
 - Add a compact, accessible library-purpose bootstrap for profile-derived
   identity terms. Current contents are explicitly shown as suggestions, while
   the existing revision-checked server writer records only operator-selected

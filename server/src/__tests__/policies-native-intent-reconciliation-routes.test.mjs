@@ -16,6 +16,7 @@ const getStatus = jest.fn();
 const getReconciliationStatus = jest.fn();
 const getRemediationInventory = jest.fn();
 const getPurposeCoverageReview = jest.fn();
+const getPurposeHealth = jest.fn();
 const getHeldOutSemanticStudyReadiness = jest.fn();
 const getPurposeSuggestion = jest.fn();
 const getScopedEvidenceDigest = jest.fn();
@@ -53,6 +54,12 @@ jest.unstable_mockModule('../services/nativeIntentReconciliationRemediationServi
 jest.unstable_mockModule('../services/policyPurposeCoverageReviewService.mjs', () => ({
   policyPurposeCoverageReviewService: {
     getReview: getPurposeCoverageReview,
+  },
+}));
+
+jest.unstable_mockModule('../services/policyPurposeHealthService.mjs', () => ({
+  policyPurposeHealthService: {
+    getSummary: getPurposeHealth,
   },
 }));
 
@@ -113,6 +120,7 @@ describe('Policy native intent reconciliation control routes', () => {
     getReconciliationStatus.mockReset();
     getRemediationInventory.mockReset();
     getPurposeCoverageReview.mockReset();
+    getPurposeHealth.mockReset();
     getHeldOutSemanticStudyReadiness.mockReset();
     getPurposeSuggestion.mockReset();
     getScopedEvidenceDigest.mockReset();
@@ -135,6 +143,17 @@ describe('Policy native intent reconciliation control routes', () => {
     getPurposeCoverageReview.mockResolvedValue({
       entries: [],
       rawConfigurationExposed: false,
+      routingAffected: false,
+    });
+    getPurposeHealth.mockResolvedValue({
+      version: 'policy_purpose_health.v1',
+      statusId: 'ready',
+      summary: { reviewedLibraryCount: 1 },
+      rawPurposeRulesExposed: false,
+      libraryIdentityExposed: false,
+      policyIdentityExposed: false,
+      observedOutcomeDataExposed: false,
+      semanticSelectionAffected: false,
       routingAffected: false,
     });
     getHeldOutSemanticStudyReadiness.mockResolvedValue({
@@ -230,6 +249,28 @@ describe('Policy native intent reconciliation control routes', () => {
     });
     await request(createApp({ id: 9, role: 'operator' }))
       .get('/api/policies/native-intent-reconciliation/purpose-coverage')
+      .expect(403);
+  });
+
+  test('returns an administrator-only, no-store aggregate purpose-health snapshot', async () => {
+    const response = await request(createApp())
+      .get('/api/policies/native-intent-reconciliation/purpose-health')
+      .expect(200);
+
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.body).toEqual(expect.objectContaining({
+      version: 'policy_purpose_health.v1',
+      statusId: 'ready',
+      rawPurposeRulesExposed: false,
+      libraryIdentityExposed: false,
+      policyIdentityExposed: false,
+      observedOutcomeDataExposed: false,
+      semanticSelectionAffected: false,
+      routingAffected: false,
+    }));
+    expect(getPurposeHealth).toHaveBeenCalledWith({ dbClient: expect.any(Object) });
+    await request(createApp({ id: 9, role: 'operator' }))
+      .get('/api/policies/native-intent-reconciliation/purpose-health')
       .expect(403);
   });
 

@@ -32,6 +32,7 @@ vi.mock('@/api', () => ({
     getLiveFeed: vi.fn().mockResolvedValue({ data: { items: [] } }),
     getMediaServerConfig: vi.fn().mockResolvedValue({ data: null }),
     getArrConfigStatus: vi.fn().mockResolvedValue({ data: { incompleteConfigs: [] } }),
+    getPolicyPurposeHealth: vi.fn().mockRejectedValue({ response: { status: 403 } }),
     cancelQueueTask: vi.fn().mockResolvedValue({}),
     cancelAllPendingTasks: vi.fn().mockResolvedValue({}),
     post: vi.fn().mockResolvedValue({}),

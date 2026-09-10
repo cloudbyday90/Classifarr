@@ -52,6 +52,7 @@ import {
   getNativeIntentReconciliationStatus,
   getNativeIntentReconciliationRemediationInventory,
   getPolicyPurposeCoverageReview,
+  getPolicyPurposeHealth,
   getHeldOutSemanticStudyReadiness,
   getPolicyNativeIntentReconciliationPurposeSuggestion,
   getPolicyScopedEvidenceDigest,
@@ -308,6 +309,14 @@ describe('policiesApi', () => {
     await getPolicyPurposeCoverageReview()
 
     expect(mockGetDataRequest).toHaveBeenCalledWith('/policies/native-intent-reconciliation/purpose-coverage')
+  })
+
+  it('gets the administrator-only aggregate purpose-health snapshot', async () => {
+    mockGetDataRequest.mockResolvedValueOnce({ statusId: 'ready' })
+
+    await getPolicyPurposeHealth()
+
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/policies/native-intent-reconciliation/purpose-health')
   })
 
   it('gets the aggregate-only held-out semantic study readiness', async () => {

@@ -21,6 +21,7 @@ const { apiMock } = vi.hoisted(() => ({
     getLiveFeed: vi.fn(),
     getMediaServerConfig: vi.fn(),
     getArrConfigStatus: vi.fn(),
+    getPolicyPurposeHealth: vi.fn(),
     searchTMDB: vi.fn(),
     submitManualRequest: vi.fn(),
     syncLibrary: vi.fn(),
@@ -135,6 +136,7 @@ describe('CommandCenter realtime and mobile behavior', () => {
     apiMock.getLiveFeed.mockResolvedValue({ items: [] })
     apiMock.getMediaServerConfig.mockResolvedValue({ id: 1, name: 'Plex' })
     apiMock.getArrConfigStatus.mockResolvedValue({ incompleteConfigs: [] })
+    apiMock.getPolicyPurposeHealth.mockRejectedValue({ response: { status: 403 } })
   })
 
   it('shows freshness UX and polite live-update announcement', async () => {

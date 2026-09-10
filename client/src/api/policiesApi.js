@@ -180,6 +180,15 @@ export function getPolicyPurposeCoverageReview() {
   return getDataRequest('/policies/native-intent-reconciliation/purpose-coverage')
 }
 
+/**
+ * Returns the administrator-only, aggregate Command Center purpose-health
+ * snapshot. The server deliberately omits library, policy, rule, media, AI,
+ * RAG, and outcome data from this read.
+ */
+export function getPolicyPurposeHealth() {
+  return getDataRequest('/policies/native-intent-reconciliation/purpose-health')
+}
+
 export function getHeldOutSemanticStudyReadiness() {
   return getDataRequest('/policies/native-intent-reconciliation/held-out-study-readiness')
 }
@@ -230,6 +239,7 @@ const policiesApi = {
   getNativeIntentReconciliationStatus,
   getNativeIntentReconciliationRemediationInventory,
   getPolicyPurposeCoverageReview,
+  getPolicyPurposeHealth,
   getHeldOutSemanticStudyReadiness,
   getPolicyNativeIntentReconciliationPurposeSuggestion,
   getPolicyScopedEvidenceDigest,

@@ -126,6 +126,12 @@
       </section>
 
       <div class="command-center-main">
+        <PurposeHealthSummary
+          :health="purposeHealth"
+          :loading="purposeHealthLoading"
+          :error-message="purposeHealthError"
+        />
+
         <div class="primary-panels">
           <ProcessingPanel
             :ai-generation-telemetry-line="aiGenerationTelemetryLine"
@@ -271,6 +277,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { Badge, Button } from '@/components/common'
 import CommandCenterOverviewSections from '@/components/command-center/CommandCenterOverviewSections.vue'
 import NeedsAttentionPanel from '@/components/command-center/NeedsAttentionPanel.vue'
+import PurposeHealthSummary from '@/components/command-center/PurposeHealthSummary.vue'
 import ProcessingPanel from '@/components/command-center/ProcessingPanel.vue'
 import ProcessingDetailsSheet from '@/components/command-center/ProcessingDetailsSheet.vue'
 import QuickAddPanel from '@/components/command-center/QuickAddPanel.vue'
@@ -280,6 +287,7 @@ import { useNeedsAttentionActions } from '@/composables/useNeedsAttentionActions
 import { useProcessingDetails } from '@/composables/useProcessingDetails'
 import { useQuickAdd } from '@/composables/useQuickAdd'
 import { useCommandCenterShell } from '@/composables/useCommandCenterShell'
+import { useCommandCenterPurposeHealth } from '@/composables/useCommandCenterPurposeHealth'
 
 const router = useRouter()
 const route = useRoute()
@@ -291,6 +299,12 @@ const {
   legacyRouteNotice,
   toggleSection,
 } = useCommandCenterShell({ route, router })
+
+const {
+  errorMessage: purposeHealthError,
+  health: purposeHealth,
+  isLoading: purposeHealthLoading,
+} = useCommandCenterPurposeHealth()
 
 const {
   activeLibraries,

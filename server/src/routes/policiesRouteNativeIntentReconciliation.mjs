@@ -30,6 +30,9 @@ import {
   policyPurposeCoverageReviewService,
 } from '../services/policyPurposeCoverageReviewService.mjs';
 import {
+  policyPurposeHealthService,
+} from '../services/policyPurposeHealthService.mjs';
+import {
   nativeIntentReconciliationPurposeSuggestionService,
 } from '../services/nativeIntentReconciliationPurposeSuggestionService.mjs';
 
@@ -110,6 +113,15 @@ export function registerPolicyNativeIntentReconciliationRoutes(router, { db, log
       dbClient: db,
       limit: req.query?.limit,
     }));
+  }));
+
+  router.get('/native-intent-reconciliation/purpose-health', asyncHandler(async (req, res) => {
+    if (req.user?.role !== 'admin') {
+      throw new ForbiddenError('Admin access required');
+    }
+
+    res.set('Cache-Control', 'no-store');
+    return sendData(res, await policyPurposeHealthService.getSummary({ dbClient: db }));
   }));
 
   router.get('/native-intent-reconciliation/status', asyncHandler(async (req, res) => {
