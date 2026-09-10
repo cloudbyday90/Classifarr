@@ -105,6 +105,17 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Paired retrieval-representation artifacts** — Added an ESM-only,
+  aggregate-only artifact producer for a historical-classification-label
+  ablation. It pins both conditions to one held-out cohort, rejects raw source
+  material and confounded non-history changes, and cannot invoke AI/RAG,
+  learn, change policy, retry, or route media.
+
+- **Low-touch purpose proposal workflow design** — Documented a revision-pinned,
+  all-or-nothing grouped review model to replace repeated profile-derived
+  purpose-declaration actions. It keeps profile evidence as a draft, refreshes
+  readiness automatically, and reserves manual work for genuine exceptions.
+
 - **Retrieval-representation study** — Added an ESM-only, aggregate-only
   comparison of media description, declared library purpose, and nearest-item
   history against the same independently labelled held-out cohort. Its strict

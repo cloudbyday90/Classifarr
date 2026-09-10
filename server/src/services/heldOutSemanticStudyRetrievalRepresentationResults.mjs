@@ -11,6 +11,10 @@ import {
   validateHeldOutSemanticStudyRetrievalRepresentationArtifactBinding,
 } from './heldOutSemanticStudyRetrievalRepresentationArtifact.mjs';
 import {
+  isHeldOutSemanticStudyRetrievalRepresentationArtifactSetShape,
+  validateHeldOutSemanticStudyRetrievalRepresentationArtifactSetBinding,
+} from './heldOutSemanticStudyRetrievalRepresentationArtifactSet.mjs';
+import {
   buildPolicyCandidateSemanticEvaluationAggregateReport,
 } from './policyCandidateSemanticEvaluationAggregateReport.mjs';
 import {
@@ -83,7 +87,7 @@ function representationRows({ fixtureDocument, representationSignals, sourceRows
   return rows.includes(null) ? null : Object.freeze(rows);
 }
 
-function buildAvailableReport({ artifact, fixtureDocument, source }) {
+function buildComparisons({ artifact, fixtureDocument, source }) {
   const signalsByRepresentation = artifactSignalsByRepresentation(artifact);
   const comparisons = Object.values(HELD_OUT_SEMANTIC_STUDY_RETRIEVAL_REPRESENTATION_IDS)
     .map((representationId) => {
@@ -102,14 +106,42 @@ function buildAvailableReport({ artifact, fixtureDocument, source }) {
         }),
       });
     });
-  if (comparisons.includes(null)) return null;
+  return comparisons.includes(null) ? null : Object.freeze(comparisons);
+}
+
+function buildAvailableReport({ artifact, fixtureDocument, source }) {
+  const comparisons = buildComparisons({ artifact, fixtureDocument, source });
+  if (!comparisons) return null;
   return Object.freeze({
     calibration: Object.freeze({
       available: false,
       reasonId: POLICY_CANDIDATE_SEMANTIC_EVALUATION_RESULTS_CALIBRATION_STATUS_IDS
         .SCORELESS_CATEGORICAL_SIGNAL,
     }),
-    comparisons: Object.freeze(comparisons),
+    comparisons,
+  });
+}
+
+function buildArtifactSetReport({ artifactSet, fixtureDocument, source }) {
+  const conditions = artifactSet.conditions.map((condition) => {
+    const comparisons = buildComparisons({
+      artifact: condition.representationArtifact,
+      fixtureDocument,
+      source,
+    });
+    return comparisons ? Object.freeze({
+      comparisons,
+      conditionId: condition.conditionId,
+    }) : null;
+  });
+  if (conditions.includes(null)) return null;
+  return Object.freeze({
+    calibration: Object.freeze({
+      available: false,
+      reasonId: POLICY_CANDIDATE_SEMANTIC_EVALUATION_RESULTS_CALIBRATION_STATUS_IDS
+        .SCORELESS_CATEGORICAL_SIGNAL,
+    }),
+    conditions: Object.freeze(conditions),
   });
 }
 
@@ -130,11 +162,20 @@ export function buildHeldOutSemanticStudyRetrievalRepresentationResults({
       POLICY_CANDIDATE_SEMANTIC_EVALUATION_RESULTS_SUMMARY_STATUS_IDS.EVALUATION_SOURCE_INVALID,
     );
   }
-  const binding = validateHeldOutSemanticStudyRetrievalRepresentationArtifactBinding({
-    artifact: representationArtifact,
-    fixtureDocument: evaluationBundle.fixtureDocument,
-    snapshotDocument: evaluationBundle.snapshotDocument,
-  });
+  const artifactSet = isHeldOutSemanticStudyRetrievalRepresentationArtifactSetShape(representationArtifact)
+    ? representationArtifact
+    : null;
+  const binding = artifactSet
+    ? validateHeldOutSemanticStudyRetrievalRepresentationArtifactSetBinding({
+      artifactSet,
+      fixtureDocument: evaluationBundle.fixtureDocument,
+      snapshotDocument: evaluationBundle.snapshotDocument,
+    })
+    : validateHeldOutSemanticStudyRetrievalRepresentationArtifactBinding({
+      artifact: representationArtifact,
+      fixtureDocument: evaluationBundle.fixtureDocument,
+      snapshotDocument: evaluationBundle.snapshotDocument,
+    });
   if (!binding.ok) {
     return buildResult(
       POLICY_CANDIDATE_SEMANTIC_EVALUATION_RESULTS_SUMMARY_STATUS_IDS.EVALUATION_SOURCE_INVALID,
@@ -162,11 +203,17 @@ export function buildHeldOutSemanticStudyRetrievalRepresentationResults({
       POLICY_CANDIDATE_SEMANTIC_EVALUATION_RESULTS_SUMMARY_STATUS_IDS.INDEPENDENT_REFERENCE_SET_REQUIRED,
     );
   }
-  const report = buildAvailableReport({
-    artifact: representationArtifact,
-    fixtureDocument: evaluationBundle.fixtureDocument,
-    source,
-  });
+  const report = artifactSet
+    ? buildArtifactSetReport({
+      artifactSet,
+      fixtureDocument: evaluationBundle.fixtureDocument,
+      source,
+    })
+    : buildAvailableReport({
+      artifact: representationArtifact,
+      fixtureDocument: evaluationBundle.fixtureDocument,
+      source,
+    });
   return report
     ? buildResult(POLICY_CANDIDATE_SEMANTIC_EVALUATION_RESULTS_SUMMARY_STATUS_IDS.SUMMARY_AVAILABLE, report)
     : buildResult(POLICY_CANDIDATE_SEMANTIC_EVALUATION_RESULTS_SUMMARY_STATUS_IDS.EVALUATION_SOURCE_INVALID);

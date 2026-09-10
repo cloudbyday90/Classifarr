@@ -43,7 +43,12 @@ export function extractNames(items, limit = 3) {
         .filter(Boolean);
 }
 
-export function formatForEmbedding(metadata) {
+/**
+ * Formats one media representation for embedding. Historical embedding writes
+ * retain their existing default, while offline studies can deliberately remove
+ * the prior classification label instead of claiming an ablation happened.
+ */
+export function formatForEmbedding(metadata, { includeClassificationLabel = true } = {}) {
     const parts = [];
 
     if (metadata.title) {
@@ -109,7 +114,7 @@ export function formatForEmbedding(metadata) {
         parts.push(`Score: ${parseFloat(voteAverage).toFixed(1)}/10`);
     }
 
-    if (metadata.library_name) {
+    if (includeClassificationLabel && metadata.library_name) {
         parts.push(`Classified: ${metadata.library_name}`);
     }
 
@@ -121,4 +126,9 @@ export function formatForEmbedding(metadata) {
     }
 
     return parts.join(' | ').trim();
+}
+
+/** Produces the exact formatter variant used for a label-free study condition. */
+export function formatForEmbeddingWithoutClassificationLabel(metadata) {
+    return formatForEmbedding(metadata, { includeClassificationLabel: false });
 }

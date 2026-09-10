@@ -375,6 +375,25 @@ describe('EmbeddingService - Rich Embeddings', () => {
             expect(result).toContain('Classified: Movies');
             expect(result).toContain('Synopsis: Epic conclusion to the Infinity Saga.');
         });
+
+        it('can omit the historic classification label for a controlled ablation', () => {
+            const metadata = {
+                library_name: 'Comedy and Standup',
+                overview: 'A factual disaster documentary.',
+                title: 'Deep Water',
+                year: 2006,
+            };
+
+            const defaultText = embeddingService.formatForEmbedding(metadata);
+            const labelFreeText = embeddingService.formatForEmbedding(metadata, {
+                includeClassificationLabel: false,
+            });
+
+            expect(defaultText).toContain('Classified: Comedy and Standup');
+            expect(labelFreeText).not.toContain('Classified: Comedy and Standup');
+            expect(labelFreeText).toContain('Title: Deep Water');
+            expect(labelFreeText).toContain('Synopsis: A factual disaster documentary.');
+        });
     });
 
     describe('checkEmbeddingVersionMismatch', () => {

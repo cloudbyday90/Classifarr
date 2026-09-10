@@ -279,8 +279,8 @@ class EmbeddingService {
         return hasMinimumEmbeddingsFn({ db, embeddingRouter });
     }
 
-    formatForEmbedding(metadata) {
-        return formatForEmbeddingFn(metadata);
+    formatForEmbedding(metadata, options) {
+        return formatForEmbeddingFn(metadata, options);
     }
 
     safeGet(obj, path, defaultValue) {
