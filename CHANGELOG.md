@@ -101,6 +101,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Packet-bound reference-set completion** — A new ESM-only local study command
+  now composes two finalized, content-free reviewer submissions into a
+  packet-bound reference set without a manual identifier. It writes only after
+  complete consensus, requests adjudication on disagreement, and cannot call
+  AI/RAG, learn, change policy, or route media.
+
 - **Bound reviewer submissions** — Private held-out review packets can now
   produce separate incomplete, content-free local worksheets and packet-bound
   finalized submissions. Expired, altered, incomplete, or malformed worksheets

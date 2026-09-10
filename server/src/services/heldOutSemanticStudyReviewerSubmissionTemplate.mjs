@@ -47,7 +47,7 @@ function canonicalTimestamp(value) {
   return Number.isNaN(timestamp.getTime()) ? null : timestamp.toISOString();
 }
 
-function projectPacket(packet, now) {
+function projectPacket(packet, { now = null, requireCurrent = false } = {}) {
   if (!hasExactlyKeys(packet, [
     'cases',
     'fixtureDocumentFingerprint',
@@ -62,8 +62,11 @@ function projectPacket(packet, now) {
 
   const startsAt = canonicalTimestamp(packet.studyWindow.startsAt);
   const expiresAt = canonicalTimestamp(packet.studyWindow.expiresAt);
-  const current = canonicalTimestamp(now);
-  if (!startsAt || !expiresAt || !current || startsAt > current || current >= expiresAt) return null;
+  if (!startsAt || !expiresAt || startsAt >= expiresAt) return null;
+  if (requireCurrent) {
+    const current = canonicalTimestamp(now);
+    if (!current || startsAt > current || current >= expiresAt) return null;
+  }
   if (!Array.isArray(packet.cases) || packet.cases.length < MIN_CASES || packet.cases.length > MAX_CASES) return null;
 
   const fixtureIds = [];
@@ -79,6 +82,16 @@ function projectPacket(packet, now) {
     fixtureDocumentFingerprint: packet.fixtureDocumentFingerprint,
     fixtureIds: Object.freeze(fixtureIds),
   });
+}
+
+/**
+ * Returns the redacted binding of a structurally valid reviewer packet. It
+ * intentionally permits an expired packet because finalized submissions have
+ * already proved their review-time expiry boundary; consensus only needs to
+ * prove that their fixture set belongs to the same packet.
+ */
+export function getHeldOutSemanticStudyReviewerPacketBinding({ packet } = {}) {
+  return projectPacket(packet);
 }
 
 function buildSubmissionId(random) {
@@ -130,7 +143,7 @@ export function buildHeldOutSemanticStudyReviewerSubmissionTemplate({
   packet,
   random = randomBytes,
 } = {}) {
-  const projectedPacket = projectPacket(packet, now);
+  const projectedPacket = projectPacket(packet, { now, requireCurrent: true });
   const submissionId = buildSubmissionId(random);
   if (!projectedPacket || !submissionId) return null;
   return Object.freeze({
@@ -154,7 +167,7 @@ export function finalizeHeldOutSemanticStudyReviewerSubmission({
   packet,
   template,
 } = {}) {
-  const projectedPacket = projectPacket(packet, now);
+  const projectedPacket = projectPacket(packet, { now, requireCurrent: true });
   const projectedTemplate = projectedPacket
     ? projectTemplate(template, projectedPacket, { requireCompleteLabels: true })
     : null;
