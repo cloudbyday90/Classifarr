@@ -45,8 +45,19 @@ regression tests and are not evidence of RAG quality.
 - The direct Jest binary was intentionally not used for final validation: it
   bypasses the project's ESM bootstrap and fails before tests load. This is a
   test-runner invocation constraint, not an application result.
-- Broader lint, type, build, and local Compose verification are recorded with
-  the implementation commit after completion.
+- Server and client type checks, the production client build, static ESM import
+  validation, ESM test-mock-shape validation, server lint, and Markdown lint
+  passed.
+- The full repository lint completed with no errors. It retains 33 pre-existing
+  Vue formatting warnings in the unrelated
+  `PolicyPurposeDeclarationWorklist.vue` component.
+- The coverage ratchet passed: server coverage is 89.91% statements, 81.13%
+  branches, 92.01% functions, and 89.91% lines; the existing client report also
+  remains above its ratchet baseline.
+- `docker compose build --no-cache` completed, followed by
+  `docker compose up -d --no-build --force-recreate --wait`. The local
+  `classifarr` service reached `healthy`; unauthenticated
+  `/api/system/health` correctly returned `401`.
 
 ## Pull-request check
 
