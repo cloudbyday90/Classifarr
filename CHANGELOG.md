@@ -105,6 +105,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Private reviewer aggregate results** — Added an ESM-only local handoff
+  that combines the packet-bound redacted evaluation bundle and a completed
+  independent reference set into the existing content-free semantic-study
+  report. It writes only on valid independent evidence and cannot invoke
+  AI/RAG, learn, change policy, retry, or route media.
+
 - **Private reviewer evidence continuity** — Authorised private reviewer-packet
   creation now automatically writes a fingerprint-bound, content-free sibling
   semantic-evaluation bundle. The packet is withheld if that companion cannot

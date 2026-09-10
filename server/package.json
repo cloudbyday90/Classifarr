@@ -17,6 +17,7 @@
     "study:capture:reviewer-packet": "node src/scripts/runHeldOutSemanticStudyReviewerPacket.mjs",
     "study:reviewer-submission": "node src/scripts/runHeldOutSemanticStudyReviewerSubmission.mjs",
     "study:reviewer-reference-set": "node src/scripts/runHeldOutSemanticStudyReviewerReferenceSet.mjs",
+    "study:reviewer-results": "node src/scripts/runHeldOutSemanticStudyReviewerResults.mjs",
     "study:audit:held-out-policy-eligibility": "node src/scripts/runHeldOutSemanticStudyEligibilityAudit.mjs",
     "study:replay:source-identity-evidence": "node src/scripts/runSourceIdentityExternalEvidenceReplay.mjs",
     "typecheck": "tsc --project tsconfig.json --pretty false",
