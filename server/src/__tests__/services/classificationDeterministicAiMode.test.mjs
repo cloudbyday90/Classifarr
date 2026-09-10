@@ -96,11 +96,46 @@ describe('classificationDeterministicAiMode', () => {
       CLASSIFICATION_DETERMINISTIC_AI_MODE_REASON_IDS.CANDIDATE_ADJUDICATION_READY,
     ],
     [
-      'abstains for insufficient policy evidence',
+      'adjudicates a bounded manual candidate set without granting a route',
+      {
+        policyResult: policyResult({
+          action: 'manual',
+          ranked: [{ library_id: 1, score: 45 }, { library_id: 2, score: 43 }],
+        }),
+        libraries,
+        candidateAdjudication: {
+          valid: true,
+          candidates: [{ libraryId: 1 }, { libraryId: 2 }],
+        },
+      },
+      CLASSIFICATION_DETERMINISTIC_AI_MODE_IDS.ADJUDICATE,
+      true,
+      CLASSIFICATION_DETERMINISTIC_AI_MODE_REASON_IDS.MANUAL_CANDIDATE_ADJUDICATION_READY,
+    ],
+    [
+      'abstains for manual policy evidence without a bounded candidate set',
       { policyResult: policyResult({ action: 'manual' }), libraries },
       CLASSIFICATION_DETERMINISTIC_AI_MODE_IDS.ABSTAIN,
       false,
       CLASSIFICATION_DETERMINISTIC_AI_MODE_REASON_IDS.INSUFFICIENT_POLICY_EVIDENCE,
+    ],
+    [
+      'keeps a hard manual-review safeguard provider-free even with bounded candidates',
+      {
+        policyResult: policyResult({
+          action: 'manual',
+          ranked: [{ library_id: 1, score: 45 }, { library_id: 2, score: 43 }],
+          decisionDiagnostics: { requires_manual_review: true },
+        }),
+        libraries,
+        candidateAdjudication: {
+          valid: true,
+          candidates: [{ libraryId: 1 }, { libraryId: 2 }],
+        },
+      },
+      CLASSIFICATION_DETERMINISTIC_AI_MODE_IDS.ABSTAIN,
+      false,
+      CLASSIFICATION_DETERMINISTIC_AI_MODE_REASON_IDS.MANUAL_REVIEW_REQUIRED,
     ],
     [
       'abstains when an otherwise unique result requires manual review',

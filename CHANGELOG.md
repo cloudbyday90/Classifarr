@@ -36,6 +36,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- Let a weak manual policy decision use one bounded, advisory AI/RAG
+  comparison when the policy engine already owns two or three eligible
+  destinations. Hard manual-review safeguards and insufficient candidate sets
+  remain provider-free; every recommendation still requires operator
+  confirmation before routing.
+
 - When strict candidate-bound verification abstains (or the selected provider
   cannot satisfy its strict structured-output contract), make one bounded,
   advisory comparison among the same two or three policy-eligible libraries.

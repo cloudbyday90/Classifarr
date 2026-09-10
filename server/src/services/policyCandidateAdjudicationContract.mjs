@@ -86,7 +86,7 @@ export function buildPolicyCandidateAdjudicationContract({
   mediaType = null,
   maximumCandidates = POLICY_CANDIDATE_ADJUDICATION_MAXIMUM_CANDIDATES,
 } = {}) {
-  if (!['prompt_confirm', 'prompt_select'].includes(policyResult?.action)) {
+  if (!['manual', 'prompt_confirm', 'prompt_select'].includes(policyResult?.action)) {
     return invalidContract(POLICY_CANDIDATE_ADJUDICATION_STATUS_IDS.NOT_REVIEWABLE_POLICY_ACTION);
   }
 

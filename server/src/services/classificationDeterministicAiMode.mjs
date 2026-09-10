@@ -24,6 +24,7 @@ export const CLASSIFICATION_DETERMINISTIC_AI_MODE_REASON_IDS = Object.freeze({
   POLICY_AUTO: 'policy_auto',
   UNIQUE_REVIEW_CANDIDATE: 'unique_review_candidate',
   CANDIDATE_ADJUDICATION_READY: 'candidate_adjudication_ready',
+  MANUAL_CANDIDATE_ADJUDICATION_READY: 'manual_candidate_adjudication_ready',
   AMBIGUOUS_POLICY_CANDIDATES: 'ambiguous_policy_candidates',
   INSUFFICIENT_POLICY_EVIDENCE: 'insufficient_policy_evidence',
   MANUAL_REVIEW_REQUIRED: 'manual_review_required',
@@ -155,6 +156,27 @@ export function resolveDeterministicOutcomeAiMode({
   }
 
   if (policyAction === 'manual') {
+    if (policyResult?.decisionDiagnostics?.requires_manual_review === true) {
+      return buildDecision({
+        mode: CLASSIFICATION_DETERMINISTIC_AI_MODE_IDS.ABSTAIN,
+        shouldInvoke: false,
+        reasonCode: CLASSIFICATION_DETERMINISTIC_AI_MODE_REASON_IDS.MANUAL_REVIEW_REQUIRED,
+        policyAction,
+        candidateCount: ranked.length,
+      });
+    }
+
+    if (candidateAdjudication?.valid === true) {
+      return buildDecision({
+        mode: CLASSIFICATION_DETERMINISTIC_AI_MODE_IDS.ADJUDICATE,
+        shouldInvoke: true,
+        reasonCode:
+          CLASSIFICATION_DETERMINISTIC_AI_MODE_REASON_IDS.MANUAL_CANDIDATE_ADJUDICATION_READY,
+        policyAction,
+        candidateCount: candidateAdjudication.candidates.length,
+      });
+    }
+
     return buildDecision({
       mode: CLASSIFICATION_DETERMINISTIC_AI_MODE_IDS.ABSTAIN,
       shouldInvoke: false,

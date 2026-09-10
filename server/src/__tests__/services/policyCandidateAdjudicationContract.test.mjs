@@ -60,6 +60,24 @@ describe('policyCandidateAdjudicationContract', () => {
     expect(contract.candidates.map((candidate) => candidate.libraryId)).toEqual([2, 1]);
   });
 
+  test('binds a manual review to two or three server-owned alternatives', () => {
+    const contract = buildPolicyCandidateAdjudicationContract({
+      policyResult: {
+        action: 'manual',
+        ranked: [
+          { library_id: 1, policy_id: 11, score: 45 },
+          { library_id: 2, policy_id: 13, score: 43 },
+          { library_id: 4, policy_id: 14, score: 40 },
+        ],
+      },
+      libraries,
+      mediaType: 'movie',
+    });
+
+    expect(contract).toMatchObject({ valid: true, reasonCode: 'ready' });
+    expect(contract.candidates.map((candidate) => candidate.libraryId)).toEqual([1, 2]);
+  });
+
   test('does not make a contract when fewer than two eligible destinations remain', () => {
     const contract = buildPolicyCandidateAdjudicationContract({
       policyResult: { action: 'prompt_select', ranked: [{ library_id: 1, score: 71 }] },

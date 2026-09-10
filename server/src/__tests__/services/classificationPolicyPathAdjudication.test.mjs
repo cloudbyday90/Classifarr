@@ -14,13 +14,16 @@ const libraries = [
 ];
 
 describe('ClassificationPolicyPathService candidate adjudication', () => {
-  test('sends only bounded candidates to AI and preserves operator routing authority', async () => {
+  test.each([
+    ['an ambiguous policy selection', 'prompt_select'],
+    ['a weak manual policy outcome', 'manual'],
+  ])('sends only bounded candidates to AI for %s and preserves operator routing authority', async (_label, action) => {
     const selectedCandidates = [
       { library: libraries[0], libraryId: 1, libraryNumber: 1, policyScore: 71 },
       { library: libraries[1], libraryId: 2, libraryNumber: 2, policyScore: 69 },
     ];
     const policyResult = {
-      action: 'prompt_select',
+      action,
       confidence: 71,
       ranked: [
         { library_id: 1, score: 71 },
