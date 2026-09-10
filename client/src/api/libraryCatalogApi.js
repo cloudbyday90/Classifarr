@@ -34,6 +34,10 @@ export function getLibrarySourceObservations() {
   return getDataRequest('/libraries/source-observations')
 }
 
+export function getLibrarySourceRepairWorklist() {
+  return getDataRequest('/libraries/source-repair-worklist')
+}
+
 /** Reads complete/partial scans, retained diagnostics and legacy coverage without starting acquisition. */
 export function getLibraryObservationHistory() {
   return getDataRequest('/libraries/observation-history')
@@ -60,6 +64,7 @@ const libraryCatalogApi = {
   getLibraryOverlap,
   getLibraryObservationHealth,
   getLibrarySourceObservations,
+  getLibrarySourceRepairWorklist,
   getLibraryObservationHistory,
   getLibrary,
   updateLibrary,

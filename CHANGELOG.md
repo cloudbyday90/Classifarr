@@ -36,6 +36,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- Add a bounded, provider-neutral source repair worklist for current,
+  complete-capture identity conflicts. It exposes only local repair context
+  and a source-match-then-resync action; it cannot choose an ID, modify source
+  metadata, persist an identity, invoke AI, or route media.
 - Add a bounded, read-only replay of current conflicting source identities.
   It reads one source item per selected observation through a provider-neutral
   ESM adapter and reports aggregate evidence outcomes only; it cannot correct

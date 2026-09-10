@@ -25,6 +25,7 @@ import { registerOverlapRoutes } from './librariesRouteOverlap.mjs';
 import { registerObservationHealthRoutes } from './librariesRouteObservationHealth.mjs';
 import { registerObservationHistoryRoutes } from './librariesRouteObservationHistory.mjs';
 import { registerSourceObservationRoutes } from './librariesRouteSourceObservations.mjs';
+import { registerSourceRepairWorklistRoutes } from './librariesRouteSourceRepairWorklist.mjs';
 import { registerLabelRoutes } from './librariesRouteLabels.mjs';
 import { registerRulesRoutes } from './librariesRouteRules.mjs';
 import { NotFoundError, ValidationError } from '../utils/appError.mjs';
@@ -70,6 +71,7 @@ export function createLibrariesRouter({
   registerObservationHealthRoutes(router, { db });
   registerObservationHistoryRoutes(router, { db });
   registerSourceObservationRoutes(router, { db });
+  registerSourceRepairWorklistRoutes(router, { db });
 
   registerCrudRoutes(router, { db });
 

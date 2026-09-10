@@ -150,6 +150,9 @@ vi.mock('@/components/library/LibraryObservationHealth.vue', () => ({
 vi.mock('@/components/library/LibrarySourceObservations.vue', () => ({
   default: { template: '<section data-testid="library-source-observations" />' },
 }))
+vi.mock('@/components/library/LibrarySourceRepairWorklist.vue', () => ({
+  default: { template: '<section data-testid="library-source-repair-worklist" />' },
+}))
 
 function resetState() {
   state.libraries = [

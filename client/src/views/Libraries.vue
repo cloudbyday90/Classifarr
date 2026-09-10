@@ -119,6 +119,7 @@
       </Card>
     </div>
     <LibraryObservationHealth />
+    <LibrarySourceRepairWorklist />
     <LibrarySourceObservations />
     <LibraryObservationHistory :libraries="libraries" />
     <LibraryOverlapSummary />
@@ -141,6 +142,7 @@ import MappingWarningBanner from '@/components/MappingWarningBanner.vue'
 import LibraryOverlapSummary from '@/components/library/LibraryOverlapSummary.vue'
 import LibraryObservationHealth from '@/components/library/LibraryObservationHealth.vue'
 import LibrarySourceObservations from '@/components/library/LibrarySourceObservations.vue'
+import LibrarySourceRepairWorklist from '@/components/library/LibrarySourceRepairWorklist.vue'
 import LibraryObservationHistory from '@/components/library/LibraryObservationHistory.vue'
 
 // HTTP status codes

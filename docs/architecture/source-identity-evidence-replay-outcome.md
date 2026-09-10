@@ -72,11 +72,13 @@ recorded library. Type checking and server security lint pass.
 
 ## Recommendation and next item
 
-The next item is a bounded, source-agnostic source-repair worklist for the 17
-non-exact cases. It should group only fixed conflict categories and offer the
-media server's own matching workflow as the repair boundary. It must not make
-automatic corrections or force an operator to manually transcribe identifiers.
+The bounded, source-agnostic [source repair worklist](source-repair-worklist-outcome.md)
+is now delivered. It surfaces current complete-capture conflicts with only a
+fixed source-side repair instruction and does not make automatic corrections
+or expose identifiers. Because the replay keeps only aggregate results, its
+17 non-exact cases cannot be singled out without expanding retention; current
+source conflicts remain the safe repair boundary.
 
-Do not build a compare-and-apply command or semantic counter-evidence now.
-Those require a materially better replay profile from a later fresh,
-complete-capture measurement.
+After source repairs and a fresh full sync, rerun the replay. Do not build a
+compare-and-apply command or semantic counter-evidence unless that new,
+complete-capture measurement has a materially better error profile.

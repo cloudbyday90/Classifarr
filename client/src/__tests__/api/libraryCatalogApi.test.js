@@ -35,6 +35,7 @@ import {
   getLibraryOverlap,
   getLibraryObservationHealth,
   getLibrarySourceObservations,
+  getLibrarySourceRepairWorklist,
   getLibraryObservationHistory,
   getLibrary,
   updateLibrary,
@@ -48,6 +49,12 @@ describe('libraryCatalogApi', () => {
     mockGetDataRequest.mockResolvedValueOnce(result)
     expect(await getLibrarySourceObservations()).toBe(result)
     expect(mockGetDataRequest).toHaveBeenCalledWith('/libraries/source-observations')
+  })
+  it('loads the source repair worklist through the central GET helper', async () => {
+    const result = { entries: [] }
+    mockGetDataRequest.mockResolvedValueOnce(result)
+    expect(await getLibrarySourceRepairWorklist()).toBe(result)
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/libraries/source-repair-worklist')
   })
   it('loads unwrapped observation history through the central GET helper', async () => {
     const report = { activity: [], samples: [{ libraryCoverage: [
