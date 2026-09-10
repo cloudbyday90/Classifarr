@@ -89,6 +89,13 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Prospective independent-review consensus** — Added a private ESM-only
+  composer that turns two separately supplied, opaque, fingerprint-bound
+  reviewer submissions into the existing offline reference-set format, while
+  requiring a third bounded adjudication for every disagreement. It accepts no
+  media/library or reviewer data, writes only a fresh `.tmp` artifact, and
+  cannot invoke AI/RAG, learn, alter policy, or route media.
+
 - **Command Center semantic-evaluation readiness** — Added an
   administrator-only, auto-refreshing, no-store summary of the existing
   protected semantic-evaluation prerequisite. It reports only the next
