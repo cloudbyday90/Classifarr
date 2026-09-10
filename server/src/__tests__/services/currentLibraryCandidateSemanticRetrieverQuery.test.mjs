@@ -10,6 +10,14 @@ import {
 } from '../../services/currentLibraryCandidateSemanticRetrieverQuery.mjs';
 
 describe('currentLibraryCandidateSemanticRetrieverQuery', () => {
+  test('excludes the incoming stable identity from all same-media candidate evidence', () => {
+    expect(CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_SQL).toContain(
+      '($4::integer IS NULL OR history.tmdb_id IS DISTINCT FROM $4::integer)',
+    );
+    expect(CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_SQL).toContain('LIMIT $5::integer');
+    expect(CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_SQL).toContain('item_rank <= $6::integer');
+  });
+
   test('admits calibration only from an authenticated learning-ready final outcome', () => {
     expect(CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_SQL).toContain(
       'FROM policy_authorized_outcome_source_event_receipts AS receipt',

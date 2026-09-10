@@ -36,6 +36,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- Prevent a candidate-scoped semantic comparison from retrieving the incoming
+  item's own same-media historical identity as current-library corroboration.
+  The versioned v3 retrieval protocol now compares only other eligible
+  library items and remains advisory; it cannot change policy or route media.
+
 - Corrected source-identity replay-observation retention so its inclusive UTC
   date range contains exactly the documented 120 days.
 - Automatically retain one bounded, aggregate-only daily source-identity

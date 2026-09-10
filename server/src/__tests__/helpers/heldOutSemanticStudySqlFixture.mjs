@@ -44,9 +44,15 @@ export async function verifyHeldOutSemanticStudySql(client) {
     const scope = createHeldOutSemanticStudyScope(Array.from({ length: 24 }, (_, index) => ({
       media_type: 'movie', tmdb_id: index + 1,
     })));
-    const request = { candidates: [{ libraryId: 10 }, { libraryId: 20 }], mediaType: 'movie', scanLimit: 1, maximumItemsPerCandidate: 3 };
+    const request = {
+      candidates: [{ libraryId: 10 }, { libraryId: 20 }],
+      mediaType: 'movie',
+      queryTmdbId: 1,
+      scanLimit: 1,
+      maximumItemsPerCandidate: 3,
+    };
     const original = buildCurrentLibraryCandidateSemanticRetrieverQuery(request, '[1,0,0]');
-    assert.ok(['self', 'duplicate self'].includes((await client.query(original.text, original.values)).rows[0].title));
+    assert.equal((await client.query(original.text, original.values)).rows[0].title, 'cohort peer');
     await applyHeldOutSemanticStudyQuerySettings(client, scope);
     const heldOut = buildCurrentLibraryCandidateSemanticRetrieverQuery(request, '[1,0,0]', scope);
     const rows = (await client.query(heldOut.text, heldOut.values)).rows;

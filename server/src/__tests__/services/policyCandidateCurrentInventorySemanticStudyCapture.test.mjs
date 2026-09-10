@@ -54,7 +54,7 @@ function availableRetrieval() {
       { libraryId: 30, topRelevance: 57, items: [{ title: 'Do not retain this alternative item' }] },
     ],
     statusId: 'available',
-    version: 'current_library.candidate_semantic_retrieval.v2',
+    version: 'current_library.candidate_semantic_retrieval.v3',
   };
 }
 

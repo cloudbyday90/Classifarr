@@ -180,6 +180,7 @@ describe('policyCandidateAdjudicationEvidence', () => {
       retrieveCurrentLibraryEvidence: async () => ({ statusId: 'not_applicable', candidates: [] }),
       retrieveCurrentLibrarySemanticEvidence: async () => ({
         statusId: 'available',
+        queryIdentityExcluded: true,
         candidates: [{
           libraryId: 1,
           matchCount: 1,
@@ -209,6 +210,7 @@ describe('policyCandidateAdjudicationEvidence', () => {
       .toBe('outcome_calibrated');
     expect(local.candidates[0].currentLibrary.semantic).toEqual({
       statusId: 'available',
+      queryIdentityExcluded: true,
       matchCount: 1,
       topRelevance: 88,
       outcomeCalibratedMatchCount: 1,
@@ -221,6 +223,7 @@ describe('policyCandidateAdjudicationEvidence', () => {
     });
     expect(remote.candidates[0].currentLibrary.semantic).toEqual({
       statusId: 'available',
+      queryIdentityExcluded: true,
       matchCount: 1,
       topRelevance: 88,
       outcomeCalibratedMatchCount: 1,

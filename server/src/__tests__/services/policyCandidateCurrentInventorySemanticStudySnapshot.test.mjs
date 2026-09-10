@@ -32,7 +32,7 @@ describe('policyCandidateCurrentInventorySemanticStudySnapshot', () => {
       fixtureId: 'fixture_0000000000000001',
       snapshotId: 'snapshot_0000000000000001',
       retrieval: {
-        version: 'current_library.candidate_semantic_retrieval.v2',
+        version: 'current_library.candidate_semantic_retrieval.v3',
         statusId: 'available',
         candidates: [
           { libraryId: 10, topRelevance: 58, items: [{ title: 'Do not retain this title' }] },
@@ -64,7 +64,7 @@ describe('policyCandidateCurrentInventorySemanticStudySnapshot', () => {
       fixtureId: 'fixture_0000000000000002',
       snapshotId: 'snapshot_0000000000000002',
       retrieval: {
-        version: 'current_library.candidate_semantic_retrieval.v2',
+        version: 'current_library.candidate_semantic_retrieval.v3',
         statusId: 'unavailable',
         candidates: [{ libraryId: 10, topRelevance: 99 }],
       },
@@ -84,7 +84,7 @@ describe('policyCandidateCurrentInventorySemanticStudySnapshot', () => {
       fixtureId: 'deep-water-2006',
       snapshotId: 'snapshot_0000000000000003',
       retrieval: {
-        version: 'current_library.candidate_semantic_retrieval.v2',
+        version: 'current_library.candidate_semantic_retrieval.v3',
         statusId: 'available',
         candidates: [{ libraryId: 10, topRelevance: 90 }, { libraryId: 20, topRelevance: 20 }],
       },
@@ -95,7 +95,7 @@ describe('policyCandidateCurrentInventorySemanticStudySnapshot', () => {
 
   test('rejects invalid current-inventory study documents and content-bearing fields', () => {
     const document = {
-      retrievalProtocolVersion: 'current_library.candidate_semantic_retrieval.v2',
+      retrievalProtocolVersion: 'current_library.candidate_semantic_retrieval.v3',
       snapshotSetId: 'snapshot_set_0000000000000001',
       snapshots: [{
         alternativeRelevance: 91,

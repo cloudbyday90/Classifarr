@@ -35,7 +35,7 @@ describe('policyCandidateCurrentInventorySemanticStudySnapshot adapter', () => {
       semanticSnapshotId: 'snapshot_0000000000000001',
     })];
     const snapshotDocument = {
-      retrievalProtocolVersion: 'current_library.candidate_semantic_retrieval.v2',
+      retrievalProtocolVersion: 'current_library.candidate_semantic_retrieval.v3',
       snapshotSetId: 'snapshot_set_0000000000000001',
       snapshots: [{
         alternativeRelevance: 92,
@@ -64,7 +64,7 @@ describe('policyCandidateCurrentInventorySemanticStudySnapshot adapter', () => {
       ok: true,
       provenance: {
         sourceId: 'current_inventory_relevance',
-        retrievalProtocolVersion: 'current_library.candidate_semantic_retrieval.v2',
+        retrievalProtocolVersion: 'current_library.candidate_semantic_retrieval.v3',
       },
       signals: [{
         fixtureId: 'fixture_0000000000000001',

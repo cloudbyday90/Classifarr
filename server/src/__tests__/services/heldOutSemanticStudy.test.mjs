@@ -28,7 +28,7 @@ function setup(overrides = {}) {
     prepare: jest.fn(async () => candidateContract),
   };
   const retriever = { retrieve: jest.fn(async () => ({
-    version: 'current_library.candidate_semantic_retrieval.v2', statusId: 'available',
+    version: 'current_library.candidate_semantic_retrieval.v3', statusId: 'available',
     candidates: [{ libraryId: 10, topRelevance: 48 }, { libraryId: 20, topRelevance: 95 }],
   })) };
   const readConfig = jest.fn(async () => ({ rag_enabled: true, embedding_model: 'Private model', api_key: 'secret' }));

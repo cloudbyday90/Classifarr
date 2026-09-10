@@ -99,6 +99,7 @@ function evidenceForRequest(request, statusId, rows = []) {
   return Object.freeze({
     version: CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_VERSION,
     statusId,
+    queryIdentityExcluded: Number.isInteger(request.queryTmdbId) && request.queryTmdbId > 0,
     candidates: Object.freeze(request.candidates.map((candidate) => {
       const items = Object.freeze([...itemsByLibraryId.get(candidate.libraryId)]
         .sort((left, right) => (

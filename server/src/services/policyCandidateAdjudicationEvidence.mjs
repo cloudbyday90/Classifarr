@@ -96,6 +96,7 @@ function emptyCurrentLibraryEvidence() {
     items: [],
     semantic: {
       statusId: CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_STATUS_IDS.NOT_APPLICABLE,
+      queryIdentityExcluded: false,
       matchCount: 0,
       topRelevance: null,
       outcomeCalibratedMatchCount: 0,
@@ -165,6 +166,7 @@ function candidateCurrentLibrarySemanticEvidence(retrieval, libraryId) {
 
   return {
     statusId: currentLibrarySemanticStatusId(retrieval?.statusId),
+    queryIdentityExcluded: retrieval?.queryIdentityExcluded === true,
     matchCount: boundedSemanticMatchCount(candidate.matchCount),
     topRelevance: boundedSemanticRelevance(candidate.topRelevance),
     outcomeCalibratedMatchCount: boundedOutcomeCalibratedMatchCount(
@@ -219,6 +221,7 @@ function remoteCurrentLibraryEvidence(currentLibrary) {
     topRelevance: currentLibrary?.topRelevance ?? null,
     semantic: {
       statusId: currentLibrarySemanticStatusId(currentLibrary?.semantic?.statusId),
+      queryIdentityExcluded: currentLibrary?.semantic?.queryIdentityExcluded === true,
       matchCount: boundedSemanticMatchCount(currentLibrary?.semantic?.matchCount),
       topRelevance: boundedSemanticRelevance(currentLibrary?.semantic?.topRelevance),
       outcomeCalibratedMatchCount: boundedOutcomeCalibratedMatchCount(

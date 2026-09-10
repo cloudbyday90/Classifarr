@@ -113,7 +113,7 @@ function buildCurrentInventoryBundle() {
     },
   }));
   bundle.snapshotDocument = {
-    retrievalProtocolVersion: 'current_library.candidate_semantic_retrieval.v2',
+    retrievalProtocolVersion: 'current_library.candidate_semantic_retrieval.v3',
     snapshotSetId: 'snapshot_set_0000000000000001',
     snapshots: bundle.fixtureDocument.map((fixture) => ({
       alternativeRelevance: 94,

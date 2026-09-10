@@ -44,16 +44,20 @@ describe('currentLibraryCandidateSemanticRetriever', () => {
       withTransaction: transaction.withTransaction,
     });
 
-    const result = await service.retrieve({ contract, metadata: { title: 'Incoming item' } });
+    const result = await service.retrieve({
+      contract,
+      metadata: { title: 'Incoming item', tmdb_id: 441_323 },
+    });
 
     expect(embed).toHaveBeenCalledWith('Title: Incoming item | Synopsis: A disaster documentary');
     expect(transaction.withTransaction).toHaveBeenCalledTimes(1);
     expect(transaction.client.query).toHaveBeenCalledWith(
       CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_SQL,
-      [[7, 9], 'movie', '[0.25,-0.5]', 128, 3],
+      [[7, 9], 'movie', '[0.25,-0.5]', 441_323, 128, 3],
     );
     expect(result).toMatchObject({
       statusId: 'available',
+      queryIdentityExcluded: true,
       candidates: [
         {
           libraryId: 7,
@@ -95,6 +99,24 @@ describe('currentLibraryCandidateSemanticRetriever', () => {
     });
     expect(embed).not.toHaveBeenCalled();
     expect(withTransaction).not.toHaveBeenCalled();
+  });
+
+  test('uses a null identity guard when the incoming item has no stable identity', async () => {
+    const transaction = createTransaction([]);
+    const service = createCurrentLibraryCandidateSemanticRetriever({
+      embed: async () => ({ embedding: [0.25, -0.5] }),
+      formatForEmbedding: () => 'Title: Incoming item',
+      isEnabled: async () => true,
+      withTransaction: transaction.withTransaction,
+    });
+
+    const result = await service.retrieve({ contract, metadata: { title: 'Incoming item' } });
+
+    expect(transaction.client.query).toHaveBeenCalledWith(
+      CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_SQL,
+      [[7, 9], 'movie', '[0.25,-0.5]', null, 128, 3],
+    );
+    expect(result).toMatchObject({ statusId: 'available', queryIdentityExcluded: false });
   });
 
   test('uses an authenticated outcome only to calibrate an already-relevant advisory match', async () => {

@@ -246,7 +246,10 @@ export function formatCandidateAdjudication(data) {
         }
         if (candidate.currentLibrary?.semantic?.statusId === 'available') {
             const semantic = candidate.currentLibrary.semantic;
-            lines.push(`   Current-library semantic matches: ${semantic.matchCount || 0}${semantic.topRelevance !== null && semantic.topRelevance !== undefined ? ` (strongest similarity ${semantic.topRelevance}%)` : ''}`);
+            const semanticLabel = semantic.queryIdentityExcluded === true
+                ? 'Independent current-library semantic matches'
+                : 'Current-library semantic matches';
+            lines.push(`   ${semanticLabel}: ${semantic.matchCount || 0}${semantic.topRelevance !== null && semantic.topRelevance !== undefined ? ` (strongest similarity ${semantic.topRelevance}%)` : ''}`);
             if (Number(semantic.outcomeCalibratedMatchCount) > 0) {
                 lines.push(`   Outcome-backed semantic matches: ${semantic.outcomeCalibratedMatchCount} (small advisory calibration only; policy and routing remain unchanged)`);
             }

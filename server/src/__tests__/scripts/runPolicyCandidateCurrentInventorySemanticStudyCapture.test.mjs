@@ -41,7 +41,7 @@ function request() {
 
 function redactedDocument() {
   return {
-    retrievalProtocolVersion: 'current_library.candidate_semantic_retrieval.v2',
+    retrievalProtocolVersion: 'current_library.candidate_semantic_retrieval.v3',
     snapshotSetId: opaqueId('snapshot_set', 1),
     snapshots: [{
       alternativeRelevance: 52,

@@ -7,10 +7,13 @@ import { heldOutSemanticStudyParameters } from './heldOutSemanticStudyScope.mjs'
 
 /**
  * The stable TMDb join proves that every returned embedding still represents a
- * synchronized current-library item. The query returns titles and bounded
- * distances only. A receipt can mark an already-close result as eligible for
- * a bounded advisory calibration, but descriptions, raw metadata, embeddings,
- * receipt fields, and identifiers do not cross the retrieval boundary.
+ * synchronized current-library item. A stable incoming identity excludes all
+ * same-type historical representations of that exact item, so an earlier
+ * placement cannot become its own semantic corroboration. The query returns
+ * titles and bounded distances only. A receipt can mark an already-close
+ * result as eligible for a bounded advisory calibration, but descriptions,
+ * raw metadata, embeddings, receipt fields, and identifiers do not cross the
+ * retrieval boundary.
  */
 function retrievalSql(heldOut = false) {
   return `
@@ -40,13 +43,14 @@ function retrievalSql(heldOut = false) {
       AND embedding.embedding IS NOT NULL
       AND history.library_id = ANY($1::integer[])
       AND history.media_type = $2::text
+      AND ($4::integer IS NULL OR history.tmdb_id IS DISTINCT FROM $4::integer)
       ${heldOut ? `AND history.tmdb_id > 0
       AND NOT EXISTS (
-        SELECT 1 FROM unnest($6::text[], $7::integer[]) AS held(media_type, tmdb_id)
+        SELECT 1 FROM unnest($7::text[], $8::integer[]) AS held(media_type, tmdb_id)
         WHERE held.media_type = history.media_type AND held.tmdb_id = history.tmdb_id
       )` : ''}
     ORDER BY embedding.embedding <=> $3::vector ASC${heldOut ? ', embedding.id ASC' : ''}
-    LIMIT $4::integer
+    LIMIT $5::integer
   ), distinct_items AS (
     SELECT DISTINCT ON (library_id, media_item_id)
       library_id,
@@ -77,7 +81,7 @@ function retrievalSql(heldOut = false) {
     LEAST(100, GREATEST(0, ROUND((1 - distance) * 100)::integer)) AS relevance,
     has_authorized_outcome
   FROM ranked_items
-  WHERE item_rank <= $5::integer
+  WHERE item_rank <= $6::integer
   ORDER BY library_id ASC, item_rank ASC
 `;
 }
@@ -92,6 +96,7 @@ export function buildCurrentLibraryCandidateSemanticRetrieverQuery(request, vect
       request.candidates.map((candidate) => candidate.libraryId),
       request.mediaType,
       vectorString,
+      request.queryTmdbId ?? null,
       request.scanLimit,
       request.maximumItemsPerCandidate,
       ...(heldOutScope === undefined ? [] : heldOutSemanticStudyParameters(heldOutScope)),

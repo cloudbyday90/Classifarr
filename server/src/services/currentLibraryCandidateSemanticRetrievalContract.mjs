@@ -9,7 +9,7 @@ import {
 } from './currentLibraryCandidateRetrievalContract.mjs';
 
 export const CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_VERSION =
-  'current_library.candidate_semantic_retrieval.v2';
+  'current_library.candidate_semantic_retrieval.v3';
 export const CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_MAXIMUM_ITEMS_PER_CANDIDATE =
   CURRENT_LIBRARY_CANDIDATE_RETRIEVAL_MAXIMUM_ITEMS_PER_CANDIDATE;
 export const CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_SCAN_PER_CANDIDATE = 64;
@@ -75,6 +75,11 @@ export function buildCurrentLibraryCandidateSemanticRetrievalRequest({
     statusId: CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_STATUS_IDS.READY,
     candidates: lexicalRequest.candidates,
     embeddingText,
+    // A stable incoming identity lets the query reject every same-type
+    // historical representation of this exact item. It is a comparison guard,
+    // not a candidate selector, and the raw identifier never crosses the
+    // retrieval result boundary.
+    queryTmdbId: lexicalRequest.tmdbId,
     maximumItemsPerCandidate: CURRENT_LIBRARY_CANDIDATE_SEMANTIC_RETRIEVAL_MAXIMUM_ITEMS_PER_CANDIDATE,
     mediaType: lexicalRequest.mediaType,
     scanLimit: Math.min(

@@ -24,7 +24,7 @@ function selected() {
 
 function snapshotDocument() {
   return {
-    retrievalProtocolVersion: 'current_library.candidate_semantic_retrieval.v2',
+    retrievalProtocolVersion: 'current_library.candidate_semantic_retrieval.v3',
     snapshotSetId: id('snapshot_set', 1),
     snapshots: selected().map((entry) => ({
       alternativeRelevance: 20,
