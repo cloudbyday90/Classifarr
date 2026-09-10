@@ -24,6 +24,7 @@ describe('policyCandidateEvidenceOfflineEvaluationSignalMapping', () => {
   });
 
   test.each([
+    ['not_applicable', 'abstain'],
     ['leading_identity_match', 'admit'],
     ['alternative_identity_match', 'review'],
     ['shared_identity_match', 'abstain'],

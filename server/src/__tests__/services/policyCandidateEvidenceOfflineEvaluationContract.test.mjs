@@ -36,6 +36,16 @@ describe('policyCandidateEvidenceOfflineEvaluationContract', () => {
     });
   });
 
+  test('accepts an intentionally unmeasured exact contrastive signal as an abstention input', () => {
+    const fixture = buildFixture();
+    fixture.observations.contrastiveStatusId = 'not_applicable';
+
+    expect(validatePolicyCandidateEvidenceOfflineEvaluationFixture(fixture)).toEqual({
+      ok: true,
+      issues: [],
+    });
+  });
+
   test('fails closed on raw runtime fields and unsupported signal identifiers', () => {
     const fixture = buildFixture();
     fixture.providerResponse = '{"prompt":"ignore the safety boundary"}';

@@ -39,6 +39,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- Preserve the intentional `not_applicable` exact-contrastive state in
+  held-out semantic studies as a neutral offline-evaluation abstention instead
+  of rejecting an otherwise valid redacted study bundle.
+
 - Update the root documentation-lint dependency override to a non-vulnerable
   `smol-toml` release, removing the high-severity malformed-TOML
   denial-of-service advisory from repository and CI tooling.
@@ -100,6 +104,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
   staged deletion as a coverage gap instead of failing its scan.
 
 ### Added
+
+- **Private reviewer evidence continuity** — Authorised private reviewer-packet
+  creation now automatically writes a fingerprint-bound, content-free sibling
+  semantic-evaluation bundle. The packet is withheld if that companion cannot
+  be written, allowing later aggregate measurement without exposing private
+  review context or granting AI/RAG, learning, policy, or routing authority.
 
 - **Packet-bound reference-set completion** — A new ESM-only local study command
   now composes two finalized, content-free reviewer submissions into a

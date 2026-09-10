@@ -6,7 +6,16 @@
 import { resolve } from 'node:path';
 
 import { createHeldOutSemanticStudyReviewerPacketWorkflow } from '../services/heldOutSemanticStudyReviewerPacketWorkflow.mjs';
+import {
+  buildHeldOutSemanticStudyEvaluationBundle,
+} from '../services/heldOutSemanticStudyEvaluationBundle.mjs';
 import { heldOutSemanticStudyReadinessService } from '../services/heldOutSemanticStudyReadinessService.mjs';
+import {
+  deriveHeldOutSemanticStudyReviewerBundleFile,
+} from './heldOutSemanticStudyReviewerBundlePath.mjs';
+import {
+  writeHeldOutSemanticStudyEvaluationBundle,
+} from './writeHeldOutSemanticStudyEvaluationBundle.mjs';
 import { writePrivateStudyPacket } from './writePrivateStudyPacket.mjs';
 
 const CONFIRMATION_FLAG = '--confirm-private-reviewer-packet';
@@ -17,7 +26,10 @@ function parseArguments(argv) {
       argv[1] !== OUTPUT_FLAG || typeof argv[2] !== 'string' || !argv[2]) {
     throw new Error('private_reviewer_packet_arguments_invalid');
   }
-  return Object.freeze({ outputFile: argv[2] });
+  const outputFile = argv[2];
+  const bundleOutputFile = deriveHeldOutSemanticStudyReviewerBundleFile(outputFile);
+  if (!bundleOutputFile) throw new Error('private_reviewer_packet_arguments_invalid');
+  return Object.freeze({ bundleOutputFile, outputFile });
 }
 
 async function loadPrivateRuntime() {
@@ -44,18 +56,22 @@ async function loadPrivateRuntime() {
  */
 export async function runHeldOutSemanticStudyReviewerPacket({
   argv = process.argv.slice(2),
+  createEvaluationBundle = buildHeldOutSemanticStudyEvaluationBundle,
   loadRuntime = loadPrivateRuntime,
+  writeBundle = writeHeldOutSemanticStudyEvaluationBundle,
   writePacket = writePrivateStudyPacket,
 } = {}) {
-  const { outputFile } = parseArguments(argv);
+  const { bundleOutputFile, outputFile } = parseArguments(argv);
   const runtime = await loadRuntime();
   try {
     const workflow = createHeldOutSemanticStudyReviewerPacketWorkflow({
       cohortCapture: runtime.cohortCapture,
+      createEvaluationBundle,
       readReadiness: runtime.readReadiness,
+      writeBundle,
       writePacket,
     });
-    return workflow.create({ outputFile });
+    return workflow.create({ bundleOutputFile, outputFile });
   } finally {
     await runtime.close();
   }

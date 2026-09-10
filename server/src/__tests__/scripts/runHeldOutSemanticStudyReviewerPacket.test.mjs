@@ -23,25 +23,34 @@ test('requires explicit local confirmation, writes the private packet, and close
       bundle: { manifest: { fixtureDocumentFingerprint: `sha256:${'b'.repeat(64)}` } },
       reviewerPacket: packet,
       status: { id: 'captured_pending_independent_labels' },
-    })),
+  })),
   };
   const loadRuntime = jest.fn(async () => ({ cohortCapture, close, readReadiness: async () => ready }));
+  const evaluationBundle = { version: 'redacted-bundle' };
+  const createEvaluationBundle = jest.fn(() => evaluationBundle);
+  const writeBundle = jest.fn(async () => undefined);
   const writePacket = jest.fn(async () => undefined);
 
   await expect(runHeldOutSemanticStudyReviewerPacket({
     argv: ['--output-file', '.tmp/reviewer-packet.json'],
+    createEvaluationBundle,
     loadRuntime,
+    writeBundle,
     writePacket,
   })).rejects.toThrow('arguments_invalid');
   expect(loadRuntime).not.toHaveBeenCalled();
 
   const result = await runHeldOutSemanticStudyReviewerPacket({
     argv: ['--confirm-private-reviewer-packet', '--output-file', '.tmp/reviewer-packet.json'],
+    createEvaluationBundle,
     loadRuntime,
+    writeBundle,
     writePacket,
   });
   expect(result.status.id).toBe('packet_created');
   expect(JSON.stringify(result)).not.toContain('not in report');
+  expect(result.receipt.evaluationBundlePrepared).toBe(true);
+  expect(writeBundle).toHaveBeenCalledWith('.tmp\\reviewer-packet.evaluation-bundle.json', evaluationBundle);
   expect(writePacket).toHaveBeenCalledWith('.tmp/reviewer-packet.json', packet);
   expect(close).toHaveBeenCalledTimes(1);
 });
