@@ -4,31 +4,14 @@
  */
 
 import {
-  HELD_OUT_SEMANTIC_STUDY_EVALUATION_BUNDLE_VERSION,
-} from './heldOutSemanticStudyEvaluationBundle.mjs';
-import {
   buildPolicyCandidateSemanticEvaluationResultsSummary,
 } from './policyCandidateSemanticEvaluationResultsSummary.mjs';
 import {
   evaluatePolicyCandidateSemanticSnapshotOfflineFixtureDocument,
 } from './policyCandidateSemanticSnapshotOfflineEvaluation.mjs';
-
-const EVALUATION_BUNDLE_KEYS = Object.freeze([
-  'fixtureDocument',
-  'manifest',
-  'snapshotDocument',
-  'version',
-]);
-
-function isExactEvaluationBundle(value) {
-  if (!value || typeof value !== 'object' || Array.isArray(value) ||
-      value.version !== HELD_OUT_SEMANTIC_STUDY_EVALUATION_BUNDLE_VERSION) {
-    return false;
-  }
-  const keys = Object.keys(value);
-  return keys.length === EVALUATION_BUNDLE_KEYS.length &&
-    keys.every((key) => EVALUATION_BUNDLE_KEYS.includes(key));
-}
+import {
+  isHeldOutSemanticStudyEvaluationBundleShape,
+} from './heldOutSemanticStudyEvaluationBundleShape.mjs';
 
 function buildInvalidSourceSummary(referenceSetDocument) {
   return buildPolicyCandidateSemanticEvaluationResultsSummary({
@@ -48,7 +31,7 @@ export function buildHeldOutSemanticStudyEvaluationResults({
   evaluationBundle,
   referenceSetDocument,
 } = {}) {
-  if (!isExactEvaluationBundle(evaluationBundle)) {
+  if (!isHeldOutSemanticStudyEvaluationBundleShape(evaluationBundle)) {
     return buildInvalidSourceSummary(referenceSetDocument);
   }
 

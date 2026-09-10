@@ -105,6 +105,13 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Retrieval-representation study** — Added an ESM-only, aggregate-only
+  comparison of media description, declared library purpose, and nearest-item
+  history against the same independently labelled held-out cohort. Its strict
+  fingerprint-bound artifact rejects raw context and partial variants; the
+  local workflow cannot invoke AI/RAG, learn, change policy, retry, or route
+  media.
+
 - **Private reviewer aggregate results** — Added an ESM-only local handoff
   that combines the packet-bound redacted evaluation bundle and a completed
   independent reference set into the existing content-free semantic-study
