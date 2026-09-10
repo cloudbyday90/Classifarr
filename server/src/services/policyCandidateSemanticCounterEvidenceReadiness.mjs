@@ -3,24 +3,16 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
-import {
-  POLICY_CANDIDATE_EVIDENCE_OFFLINE_EVALUATION_DECISION_IDS,
-  validatePolicyCandidateEvidenceOfflineEvaluationFixtureDocument,
-} from './policyCandidateEvidenceOfflineEvaluationContract.mjs';
 import { isHeldOutSemanticStudyProvenance } from './heldOutSemanticStudyProvenance.mjs';
 import {
   buildPolicyCandidateEvidenceOfflineSignalMetrics,
 } from './policyCandidateEvidenceOfflineEvaluationMetrics.mjs';
 import {
-  createPolicyCandidateSemanticSnapshotFingerprint,
-} from './policyCandidateSemanticSnapshotFingerprint.mjs';
+  buildPolicyCandidateSemanticEvaluationSource,
+} from './policyCandidateSemanticEvaluationSource.mjs';
 import {
-  buildPolicyCandidateSemanticReferenceSetArtifact,
   POLICY_CANDIDATE_SEMANTIC_REFERENCE_SET_ARTIFACT_STATUS_IDS,
 } from './policyCandidateSemanticReferenceSetArtifact.mjs';
-import {
-  POLICY_CANDIDATE_SEMANTIC_SNAPSHOT_OFFLINE_EVALUATION_REPORT_VERSION,
-} from './policyCandidateSemanticSnapshotOfflineEvaluation.mjs';
 import {
   POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_AUTHORITY,
   POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_BLOCKER_IDS,
@@ -28,8 +20,6 @@ import {
   POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_REPORT_VERSION,
   POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_STATUS_IDS,
 } from './policyCandidateSemanticCounterEvidenceReadinessContract.mjs';
-
-const VALID_DECISION_IDS = new Set(Object.values(POLICY_CANDIDATE_EVIDENCE_OFFLINE_EVALUATION_DECISION_IDS));
 
 function cloneAuthority() {
   return Object.freeze({
@@ -40,13 +30,13 @@ function cloneAuthority() {
   });
 }
 
-function countFixturesWithTag(fixtureDocument, tagId) {
-  return fixtureDocument.filter((fixture) => fixture.tags.includes(tagId)).length;
+function countRowsWithTag(rows, tagId) {
+  return rows.filter((row) => row.tags.includes(tagId)).length;
 }
 
-function buildCoverage(fixtureDocument) {
+function buildCoverage(rows) {
   return Object.freeze(POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_PROFILE.requiredStrata.map((stratum) => {
-    const fixtureCount = countFixturesWithTag(fixtureDocument, stratum.tagId);
+    const fixtureCount = countRowsWithTag(rows, stratum.tagId);
     return Object.freeze({
       fixtureCount,
       minimumFixtureCount: stratum.minimumFixtureCount,
@@ -54,85 +44,6 @@ function buildCoverage(fixtureDocument) {
       tagId: stratum.tagId,
     });
   }));
-}
-
-function hasExpectedAuthority(authority) {
-  const expected = POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_AUTHORITY;
-  return authority?.scope === expected.scope &&
-    authority?.operatorWorkflowAdmission === expected.operatorWorkflowAdmission &&
-    authority?.snapshotAccess === expected.snapshotAccess &&
-    Object.entries(expected.automaticActions).every(([key, value]) => (
-      authority?.automaticActions?.[key] === value
-    ));
-}
-
-function hasValidSnapshotValidation(validation) {
-  return ['binding', 'fixture', 'manifest', 'semanticSnapshot'].every((key) => (
-    validation?.[key]?.ok === true && validation[key].issueCount === 0
-  ));
-}
-
-function buildReferenceDecisions(fixtureDocument, referenceSetDocument, referenceSetArtifact) {
-  if (referenceSetArtifact.status.id ===
-      POLICY_CANDIDATE_SEMANTIC_REFERENCE_SET_ARTIFACT_STATUS_IDS.INDEPENDENTLY_LABELLED) {
-    const labelsByFixtureId = new Map(referenceSetDocument.labels.map((label) => [
-      label.fixtureId,
-      label.referenceDecisionId,
-    ]));
-    if (labelsByFixtureId.size !== fixtureDocument.length ||
-        !fixtureDocument.every((fixture) => VALID_DECISION_IDS.has(labelsByFixtureId.get(fixture.id)))) {
-      return null;
-    }
-    return labelsByFixtureId;
-  }
-
-  return new Map(fixtureDocument.map((fixture) => [fixture.id, fixture.reference.decisionId]));
-}
-
-function buildRows(fixtureDocument, snapshotReport, referenceDecisions) {
-  const resultsByFixtureId = new Map(snapshotReport.evaluation.results.map((result) => [
-    result?.fixtureId,
-    result,
-  ]));
-  if (resultsByFixtureId.size !== fixtureDocument.length || !referenceDecisions) return null;
-
-  const rows = [];
-  for (const fixture of fixtureDocument) {
-    const result = resultsByFixtureId.get(fixture.id);
-    const referenceDecisionId = referenceDecisions.get(fixture.id);
-    const signalDecisionId = result?.signalDecisions?.[
-      POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_PROFILE.semanticSignalId
-    ];
-    if (!result || !VALID_DECISION_IDS.has(referenceDecisionId) ||
-        !VALID_DECISION_IDS.has(signalDecisionId)) {
-      return null;
-    }
-    rows.push(Object.freeze({
-      referenceDecisionId,
-      signalDecisionId,
-    }));
-  }
-  return Object.freeze(rows);
-}
-
-function buildSourceValidation(fixtureDocument, snapshotReport) {
-  const fixtureValidation = validatePolicyCandidateEvidenceOfflineEvaluationFixtureDocument(fixtureDocument);
-  const fixtureDocumentFingerprint = fixtureValidation.ok
-    ? createPolicyCandidateSemanticSnapshotFingerprint(fixtureDocument)
-    : null;
-  const sourceIsValid = fixtureValidation.ok &&
-    snapshotReport?.version === POLICY_CANDIDATE_SEMANTIC_SNAPSHOT_OFFLINE_EVALUATION_REPORT_VERSION &&
-    hasExpectedAuthority(snapshotReport.authority) &&
-    snapshotReport?.evaluation?.validation?.ok === true &&
-    hasValidSnapshotValidation(snapshotReport?.semanticSnapshot?.validation) &&
-    snapshotReport?.semanticSnapshot?.provenance?.fixtureDocumentFingerprint === fixtureDocumentFingerprint &&
-    Array.isArray(snapshotReport?.evaluation?.results);
-
-  return Object.freeze({
-    fixtureCount: fixtureValidation.ok ? fixtureDocument.length : 0,
-    fixtureDocumentFingerprint,
-    ok: sourceIsValid,
-  });
 }
 
 function buildInvalidReport({ referenceSetArtifact, sourceValidation }) {
@@ -216,32 +127,27 @@ export function evaluatePolicyCandidateSemanticCounterEvidenceReadiness({
   referenceSetDocument,
   snapshotReport,
 } = {}) {
-  const referenceSetArtifact = buildPolicyCandidateSemanticReferenceSetArtifact({
+  const source = buildPolicyCandidateSemanticEvaluationSource({
     fixtureDocument,
     referenceSetDocument,
+    signalId: POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_PROFILE.semanticSignalId,
+    snapshotReport,
   });
-  const sourceValidation = buildSourceValidation(fixtureDocument, snapshotReport);
-  if (!sourceValidation.ok || referenceSetArtifact.status.id ===
-      POLICY_CANDIDATE_SEMANTIC_REFERENCE_SET_ARTIFACT_STATUS_IDS.INVALID) {
-    return buildInvalidReport({ referenceSetArtifact, sourceValidation });
+  if (!source.ok) {
+    return buildInvalidReport({
+      referenceSetArtifact: source.referenceSet,
+      sourceValidation: source.sourceValidation,
+    });
   }
 
-  const referenceDecisions = buildReferenceDecisions(
-    fixtureDocument,
-    referenceSetDocument,
-    referenceSetArtifact,
-  );
-  const rows = buildRows(fixtureDocument, snapshotReport, referenceDecisions);
-  if (!rows) return buildInvalidReport({ referenceSetArtifact, sourceValidation });
-
   const metrics = buildPolicyCandidateEvidenceOfflineSignalMetrics({
-    rows,
+    rows: source.rows,
     signalId: POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_PROFILE.semanticSignalId,
   });
-  const coverage = buildCoverage(fixtureDocument);
+  const coverage = buildCoverage(source.rows);
   const blockers = buildBlockers({
-    coverage, metrics, referenceSetArtifact,
-    provenance: snapshotReport.semanticSnapshot.provenance,
+    coverage, metrics, referenceSetArtifact: source.referenceSet,
+    provenance: source.provenance,
   });
   const ready = blockers.length === 0;
 
@@ -251,8 +157,8 @@ export function evaluatePolicyCandidateSemanticCounterEvidenceReadiness({
     blockers,
     coverage,
     profile: POLICY_CANDIDATE_SEMANTIC_COUNTER_EVIDENCE_READINESS_PROFILE,
-    referenceSet: referenceSetArtifact,
-    sourceValidation,
+    referenceSet: source.referenceSet,
+    sourceValidation: source.sourceValidation,
     status: Object.freeze({
       automaticRoutingEligibility: false,
       id: ready

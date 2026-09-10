@@ -95,6 +95,13 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Added
 
+- **Semantic evaluation results summary** — Added a content-free, offline ESM
+  report for a fixed semantic snapshot and independent human reference set. It
+  reports aggregate and stratum coverage, disagreement, precision/recall,
+  abstention coverage, reviewer consensus, and 95% Wilson uncertainty; it
+  explicitly does not claim calibration for a scoreless categorical signal and
+  cannot call AI/RAG, learn, change policy, or route media.
+
 - **Automatic private-capture handoff** — The existing passive, aggregate
   eligibility audit now recognizes a complete balanced cohort frame and
   exposes a compact, auto-refreshing readiness state. It neither selects nor
