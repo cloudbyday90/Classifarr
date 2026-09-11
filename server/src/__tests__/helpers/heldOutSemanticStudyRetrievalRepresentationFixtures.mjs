@@ -94,6 +94,30 @@ export function createRetrievalRepresentationSubmission(bundle) {
   };
 }
 
+/** Creates private-only scorer input pinned to the shared redacted fixture set. */
+export function createRetrievalRepresentationScoringInput(bundle) {
+  return {
+    cases: bundle.fixtureDocument.map((fixture, index) => ({
+      candidates: [
+        { candidateId: 'candidate_a', declaredPurposeTerms: ['documentary'], libraryId: 1 },
+        { candidateId: 'candidate_b', declaredPurposeTerms: ['feature'], libraryId: 2 },
+      ],
+      fixtureId: fixture.id,
+      metadata: {
+        genres: ['Documentary'],
+        media_type: index % 2 === 0 ? 'movie' : 'tv',
+        overview: `Private synopsis ${index}`,
+        title: `Private title ${index}`,
+        tmdb_id: index + 1,
+        year: 2020,
+      },
+    })),
+    fixtureDocumentFingerprint: createPolicyCandidateSemanticSnapshotFingerprint(bundle.fixtureDocument),
+    snapshotDocumentFingerprint: createPolicyCandidateSemanticSnapshotFingerprint(bundle.snapshotDocument),
+    version: 'policy.held_out_semantic_study_retrieval_representation_scoring_input.v1',
+  };
+}
+
 export function createRetrievalRepresentationReferenceSet(bundle) {
   return {
     fixtureDocumentFingerprint: bundle.manifest.fixtureDocumentFingerprint,

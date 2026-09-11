@@ -19,6 +19,7 @@
     "study:reviewer-reference-set": "node src/scripts/runHeldOutSemanticStudyReviewerReferenceSet.mjs",
     "study:reviewer-results": "node src/scripts/runHeldOutSemanticStudyReviewerResults.mjs",
     "study:retrieval-representation-artifacts": "node src/scripts/runHeldOutSemanticStudyRetrievalRepresentationArtifacts.mjs",
+    "study:retrieval-representation-score": "node src/scripts/runHeldOutSemanticStudyRetrievalRepresentationScorer.mjs",
     "study:retrieval-representation-results": "node src/scripts/runHeldOutSemanticStudyRetrievalRepresentationResults.mjs",
     "study:audit:held-out-policy-eligibility": "node src/scripts/runHeldOutSemanticStudyEligibilityAudit.mjs",
     "study:replay:source-identity-evidence": "node src/scripts/runSourceIdentityExternalEvidenceReplay.mjs",

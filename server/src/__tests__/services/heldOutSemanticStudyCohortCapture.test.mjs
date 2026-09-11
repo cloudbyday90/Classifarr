@@ -106,6 +106,7 @@ test('exposes private case context only to the explicit reviewer-packet builder'
   })) };
   const preparation = { loadPolicies: jest.fn(async () => [{ library_id: 1 }]) };
   const buildPacket = jest.fn(() => ({ packetId: `review_packet_${'a'.repeat(64)}` }));
+  const buildScoringInput = jest.fn(() => ({ version: 'private-scoring-input' }));
   const service = createHeldOutSemanticStudyCohortCapture({
     capture,
     loadCandidates: jest.fn(async () => []),
@@ -115,12 +116,18 @@ test('exposes private case context only to the explicit reviewer-packet builder'
     readConfig: async () => ({ embedding_model: 'local' }),
   });
 
-  const result = await service.captureForPrivateReviewerPacket({ buildPacket });
+  const result = await service.captureForPrivateReviewerPacket({ buildPacket, buildScoringInput });
 
   expect(result.status.id).toBe('captured_pending_independent_labels');
   expect(result.reviewerPacket.packetId).toMatch(/^review_packet_/u);
+  expect(result.scoringInput).toEqual({ version: 'private-scoring-input' });
   expect(capture.captureForPrivateReviewerPacket).toHaveBeenCalledTimes(1);
   expect(buildPacket).toHaveBeenCalledWith(expect.objectContaining({
+    privateReviewCases: expect.arrayContaining([
+      expect.objectContaining({ metadata: expect.objectContaining({ title: 'Private title 0' }) }),
+    ]),
+  }));
+  expect(buildScoringInput).toHaveBeenCalledWith(expect.objectContaining({
     privateReviewCases: expect.arrayContaining([
       expect.objectContaining({ metadata: expect.objectContaining({ title: 'Private title 0' }) }),
     ]),

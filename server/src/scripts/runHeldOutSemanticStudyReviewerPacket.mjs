@@ -12,6 +12,7 @@ import {
 import { heldOutSemanticStudyReadinessService } from '../services/heldOutSemanticStudyReadinessService.mjs';
 import {
   deriveHeldOutSemanticStudyReviewerBundleFile,
+  deriveHeldOutSemanticStudyReviewerScoringInputFile,
 } from './heldOutSemanticStudyReviewerBundlePath.mjs';
 import {
   writeHeldOutSemanticStudyEvaluationBundle,
@@ -28,8 +29,9 @@ function parseArguments(argv) {
   }
   const outputFile = argv[2];
   const bundleOutputFile = deriveHeldOutSemanticStudyReviewerBundleFile(outputFile);
-  if (!bundleOutputFile) throw new Error('private_reviewer_packet_arguments_invalid');
-  return Object.freeze({ bundleOutputFile, outputFile });
+  const scoringInputOutputFile = deriveHeldOutSemanticStudyReviewerScoringInputFile(outputFile);
+  if (!bundleOutputFile || !scoringInputOutputFile) throw new Error('private_reviewer_packet_arguments_invalid');
+  return Object.freeze({ bundleOutputFile, outputFile, scoringInputOutputFile });
 }
 
 async function loadPrivateRuntime() {
@@ -60,8 +62,9 @@ export async function runHeldOutSemanticStudyReviewerPacket({
   loadRuntime = loadPrivateRuntime,
   writeBundle = writeHeldOutSemanticStudyEvaluationBundle,
   writePacket = writePrivateStudyPacket,
+  writeScoringInput = writePrivateStudyPacket,
 } = {}) {
-  const { bundleOutputFile, outputFile } = parseArguments(argv);
+  const { bundleOutputFile, outputFile, scoringInputOutputFile } = parseArguments(argv);
   const runtime = await loadRuntime();
   try {
     const workflow = createHeldOutSemanticStudyReviewerPacketWorkflow({
@@ -70,8 +73,9 @@ export async function runHeldOutSemanticStudyReviewerPacket({
       readReadiness: runtime.readReadiness,
       writeBundle,
       writePacket,
+      writeScoringInput,
     });
-    return workflow.create({ bundleOutputFile, outputFile });
+    return workflow.create({ bundleOutputFile, outputFile, scoringInputOutputFile });
   } finally {
     await runtime.close();
   }

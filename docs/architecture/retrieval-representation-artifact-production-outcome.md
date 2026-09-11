@@ -29,9 +29,9 @@ content is rejected or discarded.
 
 The new producer does not score source content itself. It is deliberately a
 safe admission and projection boundary. Existing vectors cannot be declared
-label-free because their source text was not retained. A later private scorer
-must create both conditions from the same source records before the paired
-artifact has evidentiary value.
+label-free because their source text was not retained. The bounded private
+scorer is now delivered separately in
+[Retrieval-Representation Private Scorer — Outcome](retrieval-representation-private-scorer-outcome.md).
 
 ## Open-PR check
 
@@ -41,9 +41,6 @@ available to implement locally; no closed or merged change was reapplied.
 
 ## Next item
 
-Build the bounded private scorer adapter. It should read the same fixed cohort
-once, construct label-included and label-free historical representations with
-the formatter option, request only schema-validated categorical output from an
-admitted local evaluator, and retain no raw scoring material after producing
-the submission. Only then can the paired aggregate report tell us whether the
-historical classification field improves or contaminates the RAG signal.
+Collect an independently double-labelled reference set for the fixed cohort,
+then run the new private scorer and paired aggregate report. Compare conditions
+by stratum and uncertainty before considering a reversible re-embedding pilot.

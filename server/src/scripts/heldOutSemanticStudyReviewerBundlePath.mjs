@@ -21,3 +21,16 @@ export function deriveHeldOutSemanticStudyReviewerBundleFile(packetOutputFile) {
     `${basename(packetOutputFile, extension)}.evaluation-bundle.json`,
   );
 }
+
+/** Derives the private scorer input pinned to the same captured cohort. */
+export function deriveHeldOutSemanticStudyReviewerScoringInputFile(packetOutputFile) {
+  if (typeof packetOutputFile !== 'string' || !packetOutputFile ||
+      extname(packetOutputFile).toLowerCase() !== '.json') {
+    return null;
+  }
+  const extension = extname(packetOutputFile);
+  return join(
+    dirname(packetOutputFile),
+    `${basename(packetOutputFile, extension)}.scoring-input.json`,
+  );
+}

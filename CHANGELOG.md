@@ -11,6 +11,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a bounded private RAG retrieval-representation scorer that creates
+  paired label-included and label-free evidence from the same held-out cohort.
+  It requires verified self-hosted structured output, persists only a
+  categorical study submission, and cannot route media, change policy, or
+  learn from library contents.
+
 - Replace the repetitive profile-derived purpose-declaration worklist with a
   compact, automatically refreshed proposal summary. Compatible drafts can be
   applied with one revision-pinned, all-or-nothing administrator action;

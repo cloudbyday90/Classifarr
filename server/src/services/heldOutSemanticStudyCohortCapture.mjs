@@ -43,11 +43,12 @@ function projectStatus(planStatusId) {
   return HELD_OUT_SEMANTIC_STUDY_COHORT_CAPTURE_STATUS_IDS.CAPTURE_FAILED;
 }
 
-function capturedResult({ bundle, receipt, reviewerPacket = null }) {
+function capturedResult({ bundle, receipt, reviewerPacket = null, scoringInput = null }) {
   return Object.freeze({
     bundle,
     receipt,
     ...(reviewerPacket ? { reviewerPacket } : {}),
+    ...(scoringInput ? { scoringInput } : {}),
     status: Object.freeze({
       id: HELD_OUT_SEMANTIC_STUDY_COHORT_CAPTURE_STATUS_IDS.CAPTURED_PENDING_INDEPENDENT_LABELS,
     }),
@@ -76,11 +77,15 @@ export function createHeldOutSemanticStudyCohortCapture({
 
   async function runCapture({
     buildPacket = null,
+    buildScoringInput = null,
     caseCount = HELD_OUT_SEMANTIC_STUDY_DEFAULT_COHORT_CASE_COUNT,
     perStratum = HELD_OUT_SEMANTIC_STUDY_INVENTORY_FRAME_PER_STRATUM,
   } = {}) {
     const privatePacketRequested = typeof buildPacket === 'function';
+    const privateScoringInputRequested = typeof buildScoringInput === 'function';
     if ((buildPacket != null && !privatePacketRequested) ||
+        (buildScoringInput != null && !privateScoringInputRequested) ||
+        (privateScoringInputRequested && !privatePacketRequested) ||
         (privatePacketRequested && typeof heldOutCapture.captureForPrivateReviewerPacket !== 'function')) {
       return Object.freeze({
         bundle: null,
@@ -136,14 +141,23 @@ export function createHeldOutSemanticStudyCohortCapture({
           selected: plan.selected,
         })
         : null;
-      if (!bundle || (privatePacketRequested && !reviewerPacket)) {
+      const scoringInput = privateScoringInputRequested && bundle
+        ? buildScoringInput({
+          bundle,
+          policies,
+          privateReviewCases: result.privateReviewCases,
+          selected: plan.selected,
+        })
+        : null;
+      if (!bundle || (privatePacketRequested && !reviewerPacket) ||
+          (privateScoringInputRequested && !scoringInput)) {
         return Object.freeze({
           bundle: null,
           receipt: plan.receipt,
           status: Object.freeze({ id: HELD_OUT_SEMANTIC_STUDY_COHORT_CAPTURE_STATUS_IDS.CAPTURE_FAILED }),
         });
       }
-      return capturedResult({ bundle, receipt: plan.receipt, reviewerPacket });
+      return capturedResult({ bundle, receipt: plan.receipt, reviewerPacket, scoringInput });
     } catch {
       return Object.freeze({
         bundle: null,
@@ -160,6 +174,9 @@ export function createHeldOutSemanticStudyCohortCapture({
      * local workflow. Normal capture callers never receive metadata or policy
      * candidate contracts.
      */
-    captureForPrivateReviewerPacket: ({ buildPacket } = {}) => runCapture({ buildPacket }),
+    captureForPrivateReviewerPacket: ({ buildPacket, buildScoringInput } = {}) => runCapture({
+      buildPacket,
+      buildScoringInput,
+    }),
   });
 }

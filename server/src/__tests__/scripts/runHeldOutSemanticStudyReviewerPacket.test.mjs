@@ -18,10 +18,12 @@ const ready = {
 test('requires explicit local confirmation, writes the private packet, and closes the read-only runtime', async () => {
   const close = jest.fn();
   const packet = { packetId: `review_packet_${'a'.repeat(64)}`, privateTitle: 'not in report' };
+  const scoringInput = { privateTitle: 'not in report scorer input' };
   const cohortCapture = {
     captureForPrivateReviewerPacket: jest.fn(async () => ({
       bundle: { manifest: { fixtureDocumentFingerprint: `sha256:${'b'.repeat(64)}` } },
       reviewerPacket: packet,
+      scoringInput,
       status: { id: 'captured_pending_independent_labels' },
   })),
   };
@@ -30,6 +32,7 @@ test('requires explicit local confirmation, writes the private packet, and close
   const createEvaluationBundle = jest.fn(() => evaluationBundle);
   const writeBundle = jest.fn(async () => undefined);
   const writePacket = jest.fn(async () => undefined);
+  const writeScoringInput = jest.fn(async () => undefined);
 
   await expect(runHeldOutSemanticStudyReviewerPacket({
     argv: ['--output-file', '.tmp/reviewer-packet.json'],
@@ -37,6 +40,7 @@ test('requires explicit local confirmation, writes the private packet, and close
     loadRuntime,
     writeBundle,
     writePacket,
+    writeScoringInput,
   })).rejects.toThrow('arguments_invalid');
   expect(loadRuntime).not.toHaveBeenCalled();
 
@@ -46,11 +50,14 @@ test('requires explicit local confirmation, writes the private packet, and close
     loadRuntime,
     writeBundle,
     writePacket,
+    writeScoringInput,
   });
   expect(result.status.id).toBe('packet_created');
   expect(JSON.stringify(result)).not.toContain('not in report');
   expect(result.receipt.evaluationBundlePrepared).toBe(true);
+  expect(result.receipt.scoringInputPrepared).toBe(true);
   expect(writeBundle).toHaveBeenCalledWith('.tmp\\reviewer-packet.evaluation-bundle.json', evaluationBundle);
   expect(writePacket).toHaveBeenCalledWith('.tmp/reviewer-packet.json', packet);
+  expect(writeScoringInput).toHaveBeenCalledWith('.tmp\\reviewer-packet.scoring-input.json', scoringInput);
   expect(close).toHaveBeenCalledTimes(1);
 });
