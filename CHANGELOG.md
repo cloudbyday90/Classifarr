@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a local, label-free description comparison for the inventory sampler.
+  It re-embeds sampled items and their fixed neighbors in bounded batches,
+  verifies model consistency, and reports ranking changes without changing
+  live routing or adding manual policy declarations.
+
 - Add a read-only inventory semantic sampler that compares current-library
   neighbors without requiring manual policy declarations. It reuses stored
   embeddings, excludes the sampled cohort from retrieval, and reports coverage

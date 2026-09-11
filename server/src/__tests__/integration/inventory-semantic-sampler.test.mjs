@@ -72,6 +72,7 @@ test('holds out identities across libraries, removes incompatible/conflicting ve
   expect(rows.find(row => row.tmdb_id === 100).similarity).toBeCloseTo(Math.SQRT1_2);
   expect(rows.find(row => row.tmdb_id === 101).has_authorized_outcome).toBe(true);
   expect(rows.every(row => row.overview === 'Current description')).toBe(true);
+  expect(rows.every(row => row.embedding_provider === 'test' && row.embedding_model === 'test-v1' && row.embedding_dimensions === 3)).toBe(true);
   expect(rows.some(row => 'embedding' in row || 'provider' in row)).toBe(false);
 });
 
@@ -114,6 +115,7 @@ test('runs the full sampler without policies in a bounded read-only snapshot and
   expect(first.report.summary.sampled).toBe(2);
   expect(first.report.activeLibraries).toBe(3);
   expect(first.report.summary.accuracy).toBeNull();
+  expect(first.cases[0].representation).toEqual({ provider: 'test', model: 'test-v1', dimensions: 3 });
   expect(JSON.stringify(first.report)).not.toMatch(/Current description|Item |Movies|Comedy/);
   expect((await client.query('SHOW enable_indexscan')).rows[0].enable_indexscan).toBe(before);
 });

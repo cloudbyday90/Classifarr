@@ -1,6 +1,13 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { HELD_OUT_SEMANTIC_STUDY_STRATA } from './heldOutSemanticStudyInventoryCandidate.mjs';
 
+export function rankInventorySemanticLibraries(libraries) {
+  return libraries.filter(library => library.neighbors.length).map(library => ({
+    libraryId: library.id, observedMembership: library.observedMembership,
+    score: library.neighbors.reduce((sum, neighbor) => sum + neighbor.similarity, 0) / library.neighbors.length,
+  })).sort((a, b) => b.score - a.score);
+}
+
 function summarize(cases) {
   const counts = {
     sampled: cases.length, withDescription: 0, withStoredEmbedding: 0,
@@ -14,23 +21,16 @@ function summarize(cases) {
     counts.withDescription += Number(Boolean(entry.item.metadata.overview));
     counts.withStoredEmbedding += Number(entry.hasStoredEmbedding);
     counts.withObservedMembership += Number(entry.libraries.some(library => library.observedMembership));
-    const scored = [];
+    const scored = rankInventorySemanticLibraries(entry.libraries);
     for (const library of entry.libraries) {
       counts.neighbors += library.neighbors.length;
       counts.neighborsWithDescription += library.neighbors.filter(neighbor => neighbor.item.metadata.overview).length;
       counts.neighborsWithAuthorizedOutcome += library.neighbors.filter(neighbor => neighbor.hasAuthorizedOutcome).length;
-      if (library.neighbors.length) {
-        scored.push({
-          observedMembership: library.observedMembership,
-          score: library.neighbors.reduce((sum, neighbor) => sum + neighbor.similarity, 0) / library.neighbors.length,
-        });
-      }
     }
     counts.withNeighbors += Number(scored.length > 0);
     counts.withScoredObservedLibrary += Number(scored.some(library => library.observedMembership));
     if (scored.length < 2) continue;
     counts.withCrossLibraryComparison++;
-    scored.sort((a, b) => b.score - a.score);
     if (Math.abs(scored[0].score - scored[1].score) <= 1e-9) {
       counts.tiedComparisons++;
     } else if (scored.some(library => library.observedMembership)) {

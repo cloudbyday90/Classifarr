@@ -43,6 +43,11 @@ function assembleCase(item, rows) {
   return {
     item, libraries: [...libraries.values()],
     hasStoredEmbedding: rows.some(row => row.query_embedding_available === true),
+    representation: rows.length ? {
+      provider: rows[0].embedding_provider,
+      model: rows[0].embedding_model,
+      dimensions: rows[0].embedding_dimensions,
+    } : null,
   };
 }
 

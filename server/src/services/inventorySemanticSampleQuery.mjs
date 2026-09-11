@@ -22,6 +22,9 @@ export const INVENTORY_SEMANTIC_SAMPLE_SQL = `
   )
   SELECT l.id AS library_id, l.name AS library_name,
     EXISTS (SELECT 1 FROM query_embedding) AS query_embedding_available,
+    (SELECT provider FROM query_embedding) AS embedding_provider,
+    (SELECT model FROM query_embedding) AS embedding_model,
+    (SELECT embedding_dims FROM query_embedding) AS embedding_dimensions,
     EXISTS (
       SELECT 1 FROM media_server_items msi
       WHERE msi.library_id = l.id AND msi.media_type = $1 AND msi.tmdb_id = $2

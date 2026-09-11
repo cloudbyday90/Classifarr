@@ -113,7 +113,10 @@ neighbors and explicit missing-evidence counts. Its limitation is that existing
 embeddings are not verified label-free representations and current placement
 is not an independent correctness label.
 
-Next implement a paired, label-free description-embedding comparison using
+Follow-up implemented: see the
+[description comparison outcome](inventory-description-comparison-outcome.md)
+for the measured results and the next retrieval component. The original next
+step was a paired, label-free description-embedding comparison using
 these same sampled identities and held-out exclusions. Compare it with the
 stored-embedding baseline to learn whether actual descriptions improve
 cross-library distinctions, especially reality versus neighboring TV libraries.
