@@ -81,6 +81,31 @@ test('rejects invalid arguments before reading a private document', async () => 
   expect(readJson).not.toHaveBeenCalled();
 });
 
+test('does not treat a write permission error as an existing validated reference set', async () => {
+  const readJson = jest.fn(async () => ({}));
+  const failure = Object.assign(new Error('permission denied'), { code: 'EACCES' });
+  await expect(runHeldOutSemanticStudyReviewerReferenceSet({
+    argv: validArguments,
+    composeReferenceSet: jest.fn(() => completeResult),
+    readJson,
+    writeJson: jest.fn(async () => { throw failure; }),
+  })).rejects.toBe(failure);
+  expect(readJson).toHaveBeenCalledTimes(3);
+});
+
+test('rejects an unreadable existing reference set instead of trusting its existence', async () => {
+  const readJson = jest.fn(async (file) => {
+    if (file === '.tmp/reference-set.json') throw new Error('invalid private JSON');
+    return {};
+  });
+  await expect(runHeldOutSemanticStudyReviewerReferenceSet({
+    argv: validArguments,
+    composeReferenceSet: jest.fn(() => completeResult),
+    readJson,
+    writeJson: jest.fn(async () => { throw Object.assign(new Error('exists'), { code: 'EEXIST' }); }),
+  })).rejects.toThrow('invalid private JSON');
+});
+
 test('writes an exact completed document through the real private-file boundary without packet context', async () => {
   const temporaryDirectory = '.tmp/reviewer-reference-set-workflow-test';
   const packetFile = `${temporaryDirectory}/packet.json`;

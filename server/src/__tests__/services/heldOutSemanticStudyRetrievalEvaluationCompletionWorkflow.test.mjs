@@ -4,6 +4,7 @@
  */
 
 import { describe, expect, jest, test } from '@jest/globals';
+import { join } from 'node:path';
 
 import {
   createHeldOutSemanticStudyRetrievalEvaluationCompletionWorkflow,
@@ -126,7 +127,13 @@ describe('held-out semantic study retrieval evaluation completion workflow', () 
     expect(runResults).not.toHaveBeenCalled();
   });
 
-  test('rejects colliding reviewer and generated study paths before calling a stage', async () => {
+  test.each([
+    paths.referenceSetFile,
+    '.tmp/study/./results.reference-set.json',
+    '.tmp/study/child/../results.reference-set.json',
+    join('.tmp', 'study', 'results.reference-set.json'),
+    ...(process.platform === 'win32' ? ['.TMP/STUDY/RESULTS.REFERENCE-SET.JSON'] : []),
+  ])('rejects colliding reviewer and generated study paths before calling a stage: %s', async (reviewerOneFile) => {
     const runReferenceSet = jest.fn();
     const workflow = createHeldOutSemanticStudyRetrievalEvaluationCompletionWorkflow({
       runArtifacts: jest.fn(),
@@ -135,8 +142,20 @@ describe('held-out semantic study retrieval evaluation completion workflow', () 
       runScorer: jest.fn(),
     });
 
-    const completion = await workflow.complete({ ...input, reviewerOneFile: paths.referenceSetFile });
+    const completion = await workflow.complete({ ...input, reviewerOneFile });
 
+    expect(completion.status.id).toBe(STATUS_IDS.INVALID);
+    expect(runReferenceSet).not.toHaveBeenCalled();
+  });
+
+  test('rejects path aliases between the two independent reviewer inputs', async () => {
+    const runReferenceSet = jest.fn();
+    const workflow = createHeldOutSemanticStudyRetrievalEvaluationCompletionWorkflow({
+      runArtifacts: jest.fn(), runReferenceSet, runResults: jest.fn(), runScorer: jest.fn(),
+    });
+    const completion = await workflow.complete({
+      ...input, reviewerTwoFile: '.tmp/study/./reviewer-one.json',
+    });
     expect(completion.status.id).toBe(STATUS_IDS.INVALID);
     expect(runReferenceSet).not.toHaveBeenCalled();
   });

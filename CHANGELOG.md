@@ -65,6 +65,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Fixed
 
+- Allow retrieval evaluations to retry after a provider failure by verifying
+  an unchanged reviewer reference set, while preserving conflicting outputs.
+  Correct cross-platform completion tests and reject equivalent input/output
+  paths before study work begins.
+
 - Preserve the intentional `not_applicable` exact-contrastive state in
   held-out semantic studies as a neutral offline-evaluation abstention instead
   of rejecting an otherwise valid redacted study bundle.

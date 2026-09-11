@@ -35,8 +35,9 @@ substituted.
 
 ## Next high-value item
 
-Use one real independently labelled study to establish whether the label-free
-history representation performs as well as or better than the label-included
-variant. Only if that result has adequate coverage and acceptable uncertainty
-should Classifarr proceed to a bounded, reversible ephemeral re-embedding pilot
-that tests candidate selection itself rather than just evaluator text.
+The subsequent [recovery and live-source audit](retrieval-evaluation-recovery-outcome.md)
+found no qualifying cohort on local Compose: all 10 policies currently have
+only inferred profile-purpose evidence. Reassess the evaluation source gate
+before requesting independent labels or claiming the real study is ready.
+An evaluation-only inventory sampler is the next component; later paired
+representation and re-embedding experiments still require adequate evidence.

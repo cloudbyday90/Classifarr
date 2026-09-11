@@ -4,6 +4,7 @@
  */
 
 import { resolve } from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 
 import {
   composeHeldOutSemanticStudyReviewerReferenceSet,
@@ -57,10 +58,28 @@ function publicReport(result, referenceSetWritten) {
   });
 }
 
+async function writeOrVerifyReferenceSet(outputFile, document, { readJson, writeJson }) {
+  const options = { label: 'Reviewer reference set' };
+  try {
+    await writeJson(outputFile, document, options);
+  } catch (error) {
+    if (error?.code !== 'EEXIST') throw error;
+    // Consensus was recomputed from the current packet and submissions. Reuse
+    // only the exact resulting document, with all existing read protections.
+    const existing = await readJson(outputFile, options);
+    if (!isDeepStrictEqual(existing, document)) {
+      throw Object.assign(new Error('Existing reference set differs from current reviewer consensus.'), {
+        code: 'STUDY_REFERENCE_SET_CONFLICT',
+      });
+    }
+  }
+}
+
 /**
  * Completes the offline human-review handoff with one packet-bound consensus
  * attempt. It reads and writes only bounded local `.tmp` JSON and prints an
  * aggregate-only receipt. A disagreement never writes a partial reference set.
+ * An identical, freshly validated result can be reused after a downstream failure.
  */
 export async function runHeldOutSemanticStudyReviewerReferenceSet({
   argv = process.argv.slice(2),
@@ -86,7 +105,7 @@ export async function runHeldOutSemanticStudyReviewerReferenceSet({
   const complete = result.status?.id ===
     POLICY_CANDIDATE_SEMANTIC_INDEPENDENT_REVIEW_CONSENSUS_STATUS_IDS.COMPLETE;
   if (complete) {
-    await writeJson(values['--output-file'], result.referenceSetDocument, { label: 'Reviewer reference set' });
+    await writeOrVerifyReferenceSet(values['--output-file'], result.referenceSetDocument, { readJson, writeJson });
   }
   return publicReport(result, complete);
 }

@@ -53,6 +53,12 @@ only, no symlinks, 512 KiB input maximum, realpath containment, exclusive
 create, and requested `0600` output mode. Its stdout receipt includes only a
 fixed status, aggregate counts, and whether output was written.
 
+The command can also verify an identical existing reference set after a
+downstream failure. It recomputes consensus first and compares the entire
+bounded JSON document before continuing. Different or unreadable contents
+remain errors; existing files are never overwritten. See the
+[recovery design](retrieval-evaluation-recovery-design.md).
+
 ## Security and authority boundaries
 
 - A structurally malformed packet, altered fingerprint, duplicate/missing

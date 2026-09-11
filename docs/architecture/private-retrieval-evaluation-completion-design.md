@@ -43,9 +43,15 @@ database process, private file boundary, and output writes.
 one results output path. It derives all intermediate `.json` names from those
 two local paths, preventing a user from manually wiring a mismatched cohort.
 An optional adjudication input is passed only to the existing consensus step.
-The receipt contains only fixed stage states (`ready`, `unavailable`, or
-`adjudication_required`) and never prints a path, label, description, library,
+The receipt contains only fixed stage states (`not_started`, `ready`,
+`unavailable`, `conflict`, or `adjudication_required`) and never prints a path, label, description, library,
 policy, neighbor, model result, or aggregate metric.
+
+After a provider failure, rerunning the same command recomputes consensus and
+can reuse an identical existing reference set. Changed consensus produces
+`reference_set_conflict`; select a new results basename to keep both attempts.
+This recovery does not reuse model outputs or later artifacts. See the
+[recovery design](retrieval-evaluation-recovery-design.md).
 
 ## Security and authority boundaries
 

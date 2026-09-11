@@ -3,6 +3,8 @@
  * Copyright (C) 2024-2026 Classifarr Contributors
  */
 
+import { resolve } from 'node:path';
+
 export const HELD_OUT_SEMANTIC_STUDY_RETRIEVAL_EVALUATION_COMPLETION_WORKFLOW_VERSION =
   'policy.held_out_semantic_study_retrieval_evaluation_completion_workflow.v1';
 
@@ -10,6 +12,7 @@ export const HELD_OUT_SEMANTIC_STUDY_RETRIEVAL_EVALUATION_COMPLETION_STATUS_IDS 
   ARTIFACT_UNAVAILABLE: 'artifact_unavailable',
   COMPLETE: 'complete',
   INVALID: 'invalid',
+  REFERENCE_SET_CONFLICT: 'reference_set_conflict',
   RESULTS_UNAVAILABLE: 'results_unavailable',
   REVIEWER_CONSENSUS_INCOMPLETE: 'reviewer_consensus_incomplete',
   SCORER_UNAVAILABLE: 'scorer_unavailable',
@@ -45,6 +48,11 @@ function hasNonEmptyString(value) {
   return typeof value === 'string' && value.length > 0;
 }
 
+function pathIdentity(value) {
+  const absolutePath = resolve(value);
+  return process.platform === 'win32' ? absolutePath.toLowerCase() : absolutePath;
+}
+
 function hasDistinctPaths(paths) {
   if (!paths || typeof paths !== 'object' || Array.isArray(paths)) return false;
   const requiredKeys = [
@@ -58,13 +66,13 @@ function hasDistinctPaths(paths) {
   ];
   return Object.keys(paths).length === requiredKeys.length &&
     requiredKeys.every((key) => hasNonEmptyString(paths[key])) &&
-    new Set(requiredKeys.map((key) => paths[key])).size === requiredKeys.length;
+    new Set(requiredKeys.map((key) => pathIdentity(paths[key]))).size === requiredKeys.length;
 }
 
 function hasDistinctInputAndOutputPaths({ adjudicationFile, paths, reviewerOneFile, reviewerTwoFile }) {
   const inputs = [reviewerOneFile, reviewerTwoFile, ...(adjudicationFile ? [adjudicationFile] : [])];
   return inputs.every(hasNonEmptyString) &&
-    new Set([...Object.values(paths), ...inputs]).size === Object.keys(paths).length + inputs.length;
+    new Set([...Object.values(paths), ...inputs].map(pathIdentity)).size === Object.keys(paths).length + inputs.length;
 }
 
 function isReferenceSetReady(receipt) {
@@ -124,7 +132,13 @@ export function createHeldOutSemanticStudyRetrievalEvaluationCompletionWorkflow(
             ['--output-file', paths.referenceSetFile],
           ]),
         });
-      } catch {
+      } catch (error) {
+        if (error?.code === 'STUDY_REFERENCE_SET_CONFLICT') {
+          return result(
+            HELD_OUT_SEMANTIC_STUDY_RETRIEVAL_EVALUATION_COMPLETION_STATUS_IDS.REFERENCE_SET_CONFLICT,
+            buildStages({ referenceSet: 'conflict' }),
+          );
+        }
         referenceSetReceipt = null;
       }
       if (!isReferenceSetReady(referenceSetReceipt)) {
