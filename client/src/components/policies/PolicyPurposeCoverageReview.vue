@@ -109,8 +109,17 @@
         :receipt="review?.lifecycleProvenanceReceipt"
       />
 
+      <PolicyPurposeProposalBatch
+        :proposal="proposalBatch"
+        :loading="proposalBatchLoading"
+        :applying="proposalBatchApplying"
+        :action-error="proposalBatchActionError"
+        @apply="emit('apply-proposal-batch')"
+      />
+
       <PolicyPurposeDeclarationWorklist
         :worklist="review?.purposeDeclarationWorklist"
+        :exclude-policy-ids="proposalCandidatePolicyIds"
         @review-purpose="emit('edit-policy', $event)"
       />
 
@@ -360,6 +369,7 @@ import {
 import PolicyPurposeEvidenceInventory from '@/components/policies/PolicyPurposeEvidenceInventory.vue'
 import PolicyPurposeLifecycleProvenanceReceipt from '@/components/policies/PolicyPurposeLifecycleProvenanceReceipt.vue'
 import PolicyPurposeDeclarationWorklist from '@/components/policies/PolicyPurposeDeclarationWorklist.vue'
+import PolicyPurposeProposalBatch from '@/components/policies/PolicyPurposeProposalBatch.vue'
 
 const props = defineProps({
   review: {
@@ -370,11 +380,28 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  proposalBatch: {
+    type: Object,
+    default: null,
+  },
+  proposalBatchLoading: {
+    type: Boolean,
+    default: false,
+  },
+  proposalBatchApplying: {
+    type: Boolean,
+    default: false,
+  },
+  proposalBatchActionError: {
+    type: String,
+    default: '',
+  },
 })
 
 const emit = defineEmits({
   'edit-policy': entry => Boolean(entry?.policy?.id),
   'review-evidence': entry => Boolean(entry?.policy?.id),
+  'apply-proposal-batch': () => true,
 })
 
 const rootElement = ref(null)
@@ -395,6 +422,11 @@ const summary = computed(() => ({
 }))
 const studySourceReadiness = computed(() => (
   normalizePolicyPurposeCoverageStudySourceReadiness(props.review?.studySourceReadiness)
+))
+const proposalCandidatePolicyIds = computed(() => (
+  props.proposalBatch?.statusId === 'ready_for_apply' && Array.isArray(props.proposalBatch?.action?.candidatePolicyIds)
+    ? props.proposalBatch.action.candidatePolicyIds
+    : []
 ))
 
 function formatId(value) {

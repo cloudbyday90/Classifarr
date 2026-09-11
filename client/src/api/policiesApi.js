@@ -181,6 +181,38 @@ export function getPolicyPurposeCoverageReview() {
 }
 
 /**
+ * Returns the current server-derived purpose proposal batch. The summary is
+ * read-only and deliberately omits the underlying purpose-rule values.
+ */
+export function getPolicyPurposeProposalBatch() {
+  return getDataRequest('/policies/native-intent-reconciliation/purpose-proposals')
+}
+
+/**
+ * Applies the complete, revision-pinned proposal set returned by the server.
+ * The caller cannot submit purpose terms or a partial selection.
+ *
+ * @param {string} proposalFingerprint
+ * @param {number[]} candidatePolicyIds
+ * @param {{ idempotencyKey?: string }} [options]
+ */
+export function applyPolicyPurposeProposalBatch(
+  proposalFingerprint,
+  candidatePolicyIds,
+  { idempotencyKey } = {}
+) {
+  const requestIdempotencyKey = idempotencyKey || createNativeIntentChangeIdempotencyKey()
+  return apiClient.post(
+    '/policies/native-intent-reconciliation/purpose-proposals/apply',
+    {
+      proposal_fingerprint: proposalFingerprint,
+      candidate_policy_ids: candidatePolicyIds,
+    },
+    buildNativeIntentChangeRequestOptions(requestIdempotencyKey)
+  )
+}
+
+/**
  * Returns the administrator-only, aggregate Command Center purpose-health
  * snapshot. The server deliberately omits library, policy, rule, media, AI,
  * RAG, and outcome data from this read.
@@ -239,6 +271,8 @@ const policiesApi = {
   getNativeIntentReconciliationStatus,
   getNativeIntentReconciliationRemediationInventory,
   getPolicyPurposeCoverageReview,
+  getPolicyPurposeProposalBatch,
+  applyPolicyPurposeProposalBatch,
   getPolicyPurposeHealth,
   getHeldOutSemanticStudyReadiness,
   getPolicyNativeIntentReconciliationPurposeSuggestion,

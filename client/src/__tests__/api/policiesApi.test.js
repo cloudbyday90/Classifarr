@@ -52,6 +52,8 @@ import {
   getNativeIntentReconciliationStatus,
   getNativeIntentReconciliationRemediationInventory,
   getPolicyPurposeCoverageReview,
+  getPolicyPurposeProposalBatch,
+  applyPolicyPurposeProposalBatch,
   getPolicyPurposeHealth,
   getHeldOutSemanticStudyReadiness,
   getPolicyNativeIntentReconciliationPurposeSuggestion,
@@ -309,6 +311,30 @@ describe('policiesApi', () => {
     await getPolicyPurposeCoverageReview()
 
     expect(mockGetDataRequest).toHaveBeenCalledWith('/policies/native-intent-reconciliation/purpose-coverage')
+  })
+
+  it('gets and applies only the opaque complete purpose proposal batch', async () => {
+    mockGetDataRequest.mockResolvedValueOnce({ statusId: 'ready_for_apply' })
+    mockPost.mockResolvedValueOnce({ data: { statusId: 'applied' } })
+
+    await getPolicyPurposeProposalBatch()
+    await applyPolicyPurposeProposalBatch(
+      `sha256:${'a'.repeat(64)}`,
+      [7, 9],
+      { idempotencyKey: '6fe3d170-9390-4ec5-95f7-42ad6f8ec777' }
+    )
+
+    expect(mockGetDataRequest).toHaveBeenCalledWith(
+      '/policies/native-intent-reconciliation/purpose-proposals'
+    )
+    expect(mockPost).toHaveBeenCalledWith(
+      '/policies/native-intent-reconciliation/purpose-proposals/apply',
+      {
+        proposal_fingerprint: `sha256:${'a'.repeat(64)}`,
+        candidate_policy_ids: [7, 9],
+      },
+      { headers: { 'Idempotency-Key': '"6fe3d170-9390-4ec5-95f7-42ad6f8ec777"' } }
+    )
   })
 
   it('gets the administrator-only aggregate purpose-health snapshot', async () => {

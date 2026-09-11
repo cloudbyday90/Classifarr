@@ -276,8 +276,13 @@
       ref="purposeCoverageReviewElement"
       :review="purposeCoverageReview"
       :loading="purposeCoverageLoading"
+      :proposal-batch="purposeProposalBatch"
+      :proposal-batch-loading="purposeProposalBatchLoading"
+      :proposal-batch-applying="purposeProposalBatchApplying"
+      :proposal-batch-action-error="purposeProposalBatchActionError"
       @edit-policy="openPolicyEditor"
       @review-evidence="reviewPolicyEvidence"
+      @apply-proposal-batch="applyPurposeProposalBatch"
     />
 
     <PolicyScopedEvidenceDigest
@@ -340,6 +345,8 @@ import { usePolicyNativeIntentReconciliationRemediationInventory } from '@/compo
 import { useHeldOutSemanticStudyReadiness } from '@/composables/useHeldOutSemanticStudyReadiness'
 import { useHeldOutSemanticStudyReadinessAutoRefresh } from '@/composables/useHeldOutSemanticStudyReadinessAutoRefresh'
 import { usePolicyPurposeCoverageReview } from '@/composables/usePolicyPurposeCoverageReview'
+import { usePolicyPurposeProposalBatch } from '@/composables/usePolicyPurposeProposalBatch'
+import { usePolicyPurposeProposalBatchAutoRefresh } from '@/composables/usePolicyPurposeProposalBatchAutoRefresh'
 import { usePolicyScopedEvidenceDigest } from '@/composables/usePolicyScopedEvidenceDigest'
 import {
   isPolicyConfirmationEvidenceReviewFocus,
@@ -369,6 +376,18 @@ const {
   loadReview: loadPurposeCoverageReview,
 } = usePolicyPurposeCoverageReview()
 const {
+  proposal: purposeProposalBatch,
+  isLoading: purposeProposalBatchLoading,
+  isApplying: purposeProposalBatchApplying,
+  actionErrorMessage: purposeProposalBatchActionError,
+  loadProposal: loadPurposeProposalBatch,
+  applyProposal: submitPurposeProposalBatch,
+} = usePolicyPurposeProposalBatch()
+usePolicyPurposeProposalBatchAutoRefresh({
+  refresh: loadPurposeProposalBatch,
+  autoRefreshEnabled: computed(() => !purposeProposalBatchApplying.value),
+})
+const {
   readiness: heldOutSemanticStudyReadiness,
   isLoading: heldOutSemanticStudyReadinessLoading,
   errorMessage: heldOutSemanticStudyReadinessErrorMessage,
@@ -392,6 +411,7 @@ const purposeCoverageReviewElement = ref(null)
 const policyScopedEvidenceDigestElement = ref(null)
 const isLoading = computed(() => (
   statusLoading.value || remediationLoading.value || purposeCoverageLoading.value ||
+  purposeProposalBatchLoading.value ||
   heldOutSemanticStudyReadinessLoading.value ||
   policyScopedEvidenceDigestLoading.value
 ))
@@ -448,6 +468,7 @@ const loadReconciliationView = async () => {
     loadStatus(),
     loadRemediationInventory(),
     loadPurposeCoverageReview(),
+    loadPurposeProposalBatch(),
     loadHeldOutSemanticStudyReadiness(),
     loadPolicyScopedEvidenceDigest(focusPolicyId.value),
   ])
@@ -537,6 +558,18 @@ const saveRemediationPolicy = async payload => {
   await updatePolicy(policyId, payload)
   closePolicyEditor()
   policyEditorFeedback.value = 'Policy saved. The protected reconciliation scheduler will independently re-evaluate the current configuration; this page does not convert policies.'
+  await loadReconciliationView()
+}
+
+const applyPurposeProposalBatch = async () => {
+  policyEditorFeedback.value = ''
+  const result = await submitPurposeProposalBatch()
+  if (!result) return
+
+  const policyCount = Number(result.policyCount) || 0
+  policyEditorFeedback.value = result.replayed === true
+    ? `Purpose setup was already applied for ${policyCount} ${policyCount === 1 ? 'policy' : 'policies'}. Current status has been refreshed.`
+    : `Applied purpose setup for ${policyCount} ${policyCount === 1 ? 'policy' : 'policies'}. Current status has been refreshed.`
   await loadReconciliationView()
 }
 

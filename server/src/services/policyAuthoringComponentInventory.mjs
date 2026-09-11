@@ -31,6 +31,7 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS = Object.freeze({
   RECONCILIATION_REMEDIATION: 'reconciliation_remediation',
   PURPOSE_COVERAGE_REVIEW: 'purpose_coverage_review',
   PURPOSE_DECLARATION_WORKLIST: 'purpose_declaration_worklist',
+  PURPOSE_PROPOSAL_BATCH: 'purpose_proposal_batch',
   PURPOSE_EVIDENCE_INVENTORY: 'purpose_evidence_inventory',
   HELD_OUT_STUDY_READINESS: 'held_out_study_readiness',
   PURPOSE_LIFECYCLE_PROVENANCE_RECEIPT: 'purpose_lifecycle_provenance_receipt',
@@ -375,6 +376,15 @@ const POLICY_AUTHORING_COMPONENT_INVENTORY = deepFreeze([
     targetComponentIds: [],
     normalAuthoringAllowed: false,
     notes: 'Administrator-only, read-only declaration discovery worklist; it groups server-owned current drafts without exposing purpose values, distinguishes an incomplete bounded window from a full no-review result, and can only open the existing guarded declaration form for one selected policy.',
+  },
+  {
+    id: 'policy_purpose_proposal_batch',
+    path: 'client/src/components/policies/PolicyPurposeProposalBatch.vue',
+    roleId: POLICY_AUTHORING_COMPONENT_INVENTORY_ROLE_IDS.PURPOSE_PROPOSAL_BATCH,
+    decisionId: POLICY_AUTHORING_COMPONENT_DECISION_IDS.DELETE_FROM_NORMAL_PATH,
+    targetComponentIds: [],
+    normalAuthoringAllowed: false,
+    notes: 'Administrator-only purpose-maintenance batch card; it renders a redacted server proposal, permits one explicit all-or-nothing apply event, and cannot derive terms, invoke AI/RAG, select semantic evidence, learn, or route media.',
   },
   {
     id: 'policy_scoped_evidence_digest',

@@ -26,6 +26,7 @@ describe('policyPurposeDeclarationWorklistPersistence', () => {
     const [sql, values] = query.mock.calls[0];
     expect(sql).toContain('WITH active_native_policies AS')
     expect(sql).toContain("intent.source = 'native_intent'")
+    expect(sql).toContain('active.intent_version')
     expect(sql).toContain('jsonb_agg(')
     expect(sql).toContain("rule.intent_role = 'purpose'")
     expect(sql).toContain("rule.collection = 'purpose'")

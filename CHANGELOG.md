@@ -9,6 +9,14 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ## [Unreleased]
 
+### Changed
+
+- Replace the repetitive profile-derived purpose-declaration worklist with a
+  compact, automatically refreshed proposal summary. Compatible drafts can be
+  applied with one revision-pinned, all-or-nothing administrator action;
+  mixed and unverified provenance remains in the individual exception queue.
+  The flow neither calls AI/RAG nor changes routing.
+
 ### Performance
 - Bound direct backend coverage runs to the existing two-worker, 512 MB idle
   recycle settings so local coverage verification cannot create an unbounded

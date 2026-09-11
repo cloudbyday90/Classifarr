@@ -23,7 +23,8 @@ function buildActiveNativePoliciesSql(authorityPredicate) {
          policy.library_id,
          library.name AS library_name,
          library.media_type AS library_media_type,
-         intent.id AS intent_id
+         intent.id AS intent_id,
+         intent.intent_version
        FROM library_policies policy
        JOIN libraries library ON library.id = policy.library_id
        JOIN policy_intents intent
@@ -53,6 +54,7 @@ export async function loadPolicyPurposeDeclarationWorklistRecords({ db, limit })
        active.library_id,
        active.library_name,
        active.library_media_type,
+       active.intent_version,
        COALESCE(
          jsonb_agg(
            jsonb_build_object(
@@ -78,7 +80,8 @@ export async function loadPolicyPurposeDeclarationWorklistRecords({ db, limit })
        active.policy_name,
        active.library_id,
        active.library_name,
-       active.library_media_type
+       active.library_media_type,
+       active.intent_version
      ORDER BY active.policy_id ASC
      LIMIT $1`,
     [limit],

@@ -68,6 +68,15 @@ describe('PolicyPurposeDeclarationWorklist', () => {
     expect(wrapper.find('#policy-purpose-declaration-worklist').exists()).toBe(false)
   })
 
+  it('leaves compatible batch policies out of the individual exception queue', () => {
+    const wrapper = mount(PolicyPurposeDeclarationWorklist, {
+      props: { worklist, excludePolicyIds: [17] },
+    })
+
+    expect(wrapper.find('table').exists()).toBe(false)
+    expect(wrapper.text()).toContain('No individual purpose declaration review is currently required')
+  })
+
   it('makes a truncated empty window explicitly uncertain instead of claiming no active policy needs review', () => {
     const wrapper = mount(PolicyPurposeDeclarationWorklist, {
       props: {

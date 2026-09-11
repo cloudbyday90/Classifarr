@@ -17,33 +17,54 @@
       id="policy-purpose-declaration-worklist-heading"
       class="text-base font-semibold text-white"
     >
-      Purpose declaration review
+      Individual purpose review
     </h3>
     <p class="mt-1 max-w-3xl text-sm leading-6 text-gray-300">
-      This server-generated worklist groups policies with the same current stored-purpose draft. It exposes no purpose terms and cannot change a policy, select a study case, or route media. Review opens the existing revision-checked declaration form for one policy.
+      These are the exceptions that cannot use the compatible purpose setup batch. This server-generated worklist exposes no purpose terms and cannot change a policy, select a study case, or route media. Review opens the existing revision-checked declaration form for one policy.
     </p>
 
     <p
-      v-if="worklist.statusId === 'no_declaration_review_required'"
+      v-if="groups.length === 0 && worklist.summary.truncated"
+      class="mt-3 rounded border border-amber-500/30 bg-amber-950/20 p-3 text-sm text-amber-100"
+      role="status"
+      aria-live="polite"
+    >
+      {{ truncatedReportDescription }}
+    </p>
+
+    <p
+      v-else-if="groups.length === 0"
       class="mt-3 text-sm text-green-200"
       role="status"
     >
-      No active policy in the full report needs a purpose declaration review.
+      No individual purpose declaration review is currently required in this report.
     </p>
 
     <template v-else>
       <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-3">
         <div>
-          <dt class="text-xs uppercase tracking-wide text-gray-400">Policies requiring declaration</dt>
-          <dd class="mt-1 text-lg font-semibold text-amber-200">{{ worklist.summary.declarationRequiredPolicyCount }}</dd>
+          <dt class="text-xs uppercase tracking-wide text-gray-400">
+            Individual reviews
+          </dt>
+          <dd class="mt-1 text-lg font-semibold text-amber-200">
+            {{ visiblePolicyCount }}
+          </dd>
         </div>
         <div>
-          <dt class="text-xs uppercase tracking-wide text-gray-400">Shared stored-purpose groups</dt>
-          <dd class="mt-1 text-lg font-semibold text-white">{{ worklist.summary.groupCount }}</dd>
+          <dt class="text-xs uppercase tracking-wide text-gray-400">
+            Shared stored-purpose groups
+          </dt>
+          <dd class="mt-1 text-lg font-semibold text-white">
+            {{ groups.length }}
+          </dd>
         </div>
         <div>
-          <dt class="text-xs uppercase tracking-wide text-gray-400">Policies reviewed</dt>
-          <dd class="mt-1 text-lg font-semibold text-white">{{ worklist.summary.reviewedPolicyCount }}</dd>
+          <dt class="text-xs uppercase tracking-wide text-gray-400">
+            Policies reviewed
+          </dt>
+          <dd class="mt-1 text-lg font-semibold text-white">
+            {{ worklist.summary.reviewedPolicyCount }}
+          </dd>
         </div>
       </dl>
 
@@ -57,35 +78,68 @@
       </p>
 
       <div
-        v-if="worklist.groups.length > 0"
+        v-if="groups.length > 0"
         class="mt-4 overflow-x-auto rounded border border-gray-700"
       >
         <table class="min-w-full text-left text-sm">
-          <caption class="sr-only">Active policy purpose declaration review worklist</caption>
+          <caption class="sr-only">
+            Active policy purpose declaration review worklist
+          </caption>
           <thead class="bg-background text-xs uppercase tracking-wide text-gray-400">
             <tr>
-              <th scope="col" class="px-4 py-3">Policy</th>
-              <th scope="col" class="px-4 py-3">Library</th>
-              <th scope="col" class="px-4 py-3">Stored-purpose provenance</th>
-              <th scope="col" class="px-4 py-3"><span class="sr-only">Action</span></th>
+              <th
+                scope="col"
+                class="px-4 py-3"
+              >
+                Policy
+              </th>
+              <th
+                scope="col"
+                class="px-4 py-3"
+              >
+                Library
+              </th>
+              <th
+                scope="col"
+                class="px-4 py-3"
+              >
+                Stored-purpose provenance
+              </th>
+              <th
+                scope="col"
+                class="px-4 py-3"
+              >
+                <span class="sr-only">Action</span>
+              </th>
             </tr>
           </thead>
           <tbody
-            v-for="group in worklist.groups"
+            v-for="group in groups"
             :key="group.id"
             class="divide-y divide-gray-800"
           >
             <tr class="bg-gray-900/40">
-              <th scope="rowgroup" colspan="4" class="px-4 py-3 text-sm font-medium text-gray-200">
+              <th
+                scope="rowgroup"
+                colspan="4"
+                class="px-4 py-3 text-sm font-medium text-gray-200"
+              >
                 Shared stored-purpose group {{ groupLabel(group) }} · {{ group.policyCount }} {{ pluralize(group.policyCount, 'policy') }} · {{ group.libraryCount }} {{ pluralize(group.libraryCount, 'library') }}
               </th>
             </tr>
-            <tr v-for="entry in group.entries" :key="entry.policy.id">
-              <td class="px-4 py-3 font-medium text-white">{{ entry.policy.name }}</td>
+            <tr
+              v-for="entry in group.entries"
+              :key="entry.policy.id"
+            >
+              <td class="px-4 py-3 font-medium text-white">
+                {{ entry.policy.name }}
+              </td>
               <td class="px-4 py-3 text-gray-300">
                 {{ entry.library.name }}<span v-if="entry.library.mediaType"> · {{ entry.library.mediaType }}</span>
               </td>
-              <td class="px-4 py-3 text-amber-100">{{ provenancePresentation(entry.purposeProvenance)?.title || 'Purpose provenance requires review' }}</td>
+              <td class="px-4 py-3 text-amber-100">
+                {{ provenancePresentation(entry.purposeProvenance)?.title || 'Purpose provenance requires review' }}
+              </td>
               <td class="px-4 py-3 text-right">
                 <button
                   type="button"
@@ -114,6 +168,7 @@ import {
 
 const props = defineProps({
   worklist: { type: Object, default: null },
+  excludePolicyIds: { type: Array, default: () => [] },
 })
 
 const emit = defineEmits({
@@ -121,6 +176,24 @@ const emit = defineEmits({
 })
 
 const worklist = computed(() => normalizePolicyPurposeDeclarationWorklist(props.worklist))
+const excludedPolicyIds = computed(() => new Set(
+  props.excludePolicyIds
+    .map(value => Number(value))
+    .filter(value => Number.isInteger(value) && value > 0)
+))
+const groups = computed(() => (worklist.value?.groups || [])
+  .map(group => {
+    const entries = group.entries.filter(entry => !excludedPolicyIds.value.has(entry.policy.id))
+    return {
+      ...group,
+      policyCount: entries.length,
+      libraryCount: new Set(entries.map(entry => entry.library.id)).size,
+      entries,
+    }
+  })
+  .filter(group => group.entries.length > 0)
+)
+const visiblePolicyCount = computed(() => groups.value.reduce((count, group) => count + group.policyCount, 0))
 const truncatedReportDescription = computed(() => {
   if (!worklist.value?.summary.truncated) return ''
 

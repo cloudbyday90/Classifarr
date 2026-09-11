@@ -152,6 +152,7 @@ const POLICY_AUTHORING_PRESENTATION_TEST_INVENTORY_FILE_PATHS = deepFreeze([
   'client/src/__tests__/PolicyCompatibilityProfilePurposeSuggestion.test.js',
   'client/src/__tests__/PolicyPurposeCoverageReview.test.js',
   'client/src/__tests__/PolicyPurposeDeclarationWorklist.test.js',
+  'client/src/__tests__/PolicyPurposeProposalBatch.test.js',
   'client/src/__tests__/PolicyPurposeLifecycleProvenanceReceipt.test.js',
   'client/src/__tests__/PolicyScopedEvidenceDigest.test.js',
   'client/src/__tests__/PolicyPurposeCoveragePreflight.test.js',
@@ -514,6 +515,14 @@ const POLICY_AUTHORING_PRESENTATION_TEST_RECORDS = deepFreeze([
     POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.RUNTIME_VERIFIER,
     [],
     'The declaration worklist validates a closed redacted response, announces a truncated review window without making a global no-review claim, uses accessible grouped table semantics, and opens only one existing guarded purpose declaration form without exposing terms, changing policy, selecting semantic evidence, or routing media.'
+  ),
+  presentationTestRecord(
+    'client/src/__tests__/PolicyPurposeProposalBatch.test.js',
+    POLICY_AUTHORING_PRESENTATION_TEST_CATEGORY_IDS.KEEP_WORKFLOW_REGRESSION,
+    false,
+    POLICY_AUTHORING_PRESENTATION_TEST_OWNER_IDS.RUNTIME_VERIFIER,
+    [],
+    'The purpose proposal batch shows one server-derived compatible set with an accessible explicit apply action and progressive disclosure; it does not expose terms, call AI/RAG, select semantic evidence, learn, or route media.'
   ),
   presentationTestRecord(
     'client/src/__tests__/PolicyPurposeLifecycleProvenanceReceipt.test.js',

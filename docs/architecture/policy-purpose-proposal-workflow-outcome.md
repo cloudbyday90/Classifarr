@@ -1,7 +1,8 @@
 # Low-Touch Policy-Purpose Proposal Workflow — Outcome
 
-Status: assessed, not yet implemented on 10 September 2026. This is not a
-release and creates no policy change.
+Status: implemented and locally verified on 10 September 2026. This is not a
+release. The feature creates policy changes only after one explicit
+administrator action.
 
 ## Finding
 
@@ -15,16 +16,42 @@ example.
 
 ## Recommended outcome
 
-Implement one server-derived, revision-pinned proposal batch for compatible
-policies, one explicit administrator review action for that batch, and a small
-exception queue for conflicts or uncertainty. Refresh the readiness and
-reconciliation summaries automatically after the transaction. Do not add a
-second testing or acknowledgement step for normal compatible proposals.
+Implemented one server-derived, revision-pinned proposal batch for compatible
+profile-derived policies, one explicit administrator action for that complete
+batch, and a small exception queue for mixed or unverified provenance. The
+reconciliation view refreshes the proposal after the transaction and on a
+bounded visible-page interval. It does not add a separate refresh, test, or
+acknowledgement step for compatible drafts.
 
 This removes most repetitive clicks while keeping the one action that changes
 policy authority visible and reversible. It also makes the interface quieter:
 the default state becomes a concise readiness summary, with proposal evidence
 and exception reasons available on demand.
+
+## Delivered safeguards and verification
+
+- The read response contains only policy/library identity, aggregate counts,
+  provenance categories, and an opaque fingerprint. Raw purpose terms remain
+  server-side.
+- The apply request supplies only that fingerprint and the complete compatible
+  policy list. The server reads the current plan again inside one transaction,
+  rejects stale, truncated, malformed, partial, or replay-inconsistent work,
+  and commits all child changes or rolls back all of them.
+- Existing append-only, per-policy native-intent change receipts provide the
+  durable idempotency record. The batch derives a distinct child key for every
+  policy and exposes none of those keys.
+- The card uses a polite status message and progressive disclosure, preserving
+  focus while a background refresh updates its readiness. It makes no AI/RAG
+  provider call, semantic-study selection, learning write, or routing change.
+- Unit, route, component, API, and PostgreSQL integration coverage verify the
+  opaque contract, authenticated route, exact-plan admission, durable replay,
+  and rollback of a first child write when a later child cannot apply.
+
+## Open pull-request check
+
+The repository's GitHub pull-request API was queried with `state=open` on 10
+September 2026. It returned no open pull requests, so there was no random PR
+to implement locally. No pull request was merged or otherwise changed.
 
 ## What remains deliberately unchanged
 
@@ -38,8 +65,7 @@ and exception reasons available on demand.
 
 ## Next item
 
-Build the read-only proposal summary and the strict batch contract first. It
-is the highest-value usability prerequisite because it reduces the current
-ten-policy setup flow to one safe review plus genuine exceptions, while the
-new private retrieval scorer remains the evidence prerequisite for any future
-AI-assisted or autonomous proposal ranking.
+Run the private scorer for the paired retrieval-label ablation already added
+to this release line, then inspect its held-out result. It is the next
+evidence prerequisite for any AI/RAG-assisted proposal ranking; until it is
+measured, the new purpose batch remains deterministic and administrator-gated.

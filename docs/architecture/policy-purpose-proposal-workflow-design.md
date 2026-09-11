@@ -1,8 +1,8 @@
 # Low-Touch Policy-Purpose Proposal Workflow — Design
 
-Status: proposed. Assessed on 10 September 2026 against the requested August
-2026 best-practice baseline. No automatic policy change is enabled by this
-document.
+Status: implemented on 10 September 2026. Assessed against the requested
+August 2026 best-practice baseline. No automatic policy change is enabled by
+this document.
 
 ## Problem
 
@@ -57,9 +57,11 @@ policy authority.
 2. The default view shows only the summary, the grouped libraries, and the
    reason an exception needs attention. Rule-level detail is progressively
    disclosed.
-3. **Review 8 proposals** opens a single review surface. It presents a count,
-   library/policy identity, each proposed change, and any overlap warning; the
-   final action is one explicit, accessible **Apply 8 reviewed purposes**.
+3. The compact card presents the count and library/policy identity under a
+   progressively disclosed **Review compatible libraries** summary. The final
+   action is one explicit, accessible **Apply 8 reviewed purposes** button;
+   it applies the full compatible set or none of it. Rule terms remain on the
+   server and are not displayed in the batch card.
 4. The server re-reads every current revision, validates every proposal, and
    either commits the complete batch with per-policy audit receipts or returns
    no changes and identifies the stale/conflicting entries. It must not apply a
@@ -75,9 +77,12 @@ policy authority.
   policy, library, and current declared-purpose inputs already authorised for
   the maintenance view; it does not call an external model or expose raw rules
   to an aggregate dashboard.
-- Every proposal is bound to policy ID, policy revision, and a short-lived
-  server-created batch token. The apply endpoint accepts that token only once,
-  requires an administrator identity, and writes an append-only audit receipt.
+- Every proposal is bound to policy ID, current native-intent revision, and an
+  opaque SHA-256 fingerprint over the server-only purpose command. The apply
+  endpoint requires the exact complete policy-ID list, an administrator
+  identity, and a standard idempotency key. It derives distinct child keys for
+  the existing append-only per-policy receipts; neither purpose terms nor the
+  keys are returned in the response.
 - Validation occurs again inside the one database transaction. Stale,
   conflicting, malformed, or truncated proposals fail closed with no policy
   mutation.
@@ -113,12 +118,11 @@ policy authority.
 
 ## Recommended implementation order
 
-1. Add a read-only proposal summary and compact exception grouping to replace
-   the repeated worklist controls.
-2. Add the revision-pinned, all-or-nothing batch review/apply API and audit
-   receipt, with no AI/RAG call and no automatic apply.
-3. Build the private scorer for the paired retrieval-label ablation already
+1. Delivered: read-only proposal summary, compact exception grouping, and the
+   revision-pinned, all-or-nothing batch API with existing per-policy audit
+   receipts. It makes no AI/RAG call and has no automatic apply mode.
+2. Build the private scorer for the paired retrieval-label ablation already
    implemented in this release line; use its measured outcome to decide
    whether a bounded proposal ranker is warranted.
-4. Only after calibration, add an opt-in unattended mode for a narrow,
+3. Only after calibration, add an opt-in unattended mode for a narrow,
    monitored proposal class with rollback and drift thresholds.
