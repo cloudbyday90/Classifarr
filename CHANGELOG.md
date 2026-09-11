@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Keep the inventory description cache current automatically after library sync
+  and through periodic catch-up. Reuse unchanged descriptions, checkpoint small
+  local-only batches, yield to queued work, and back off on failures without
+  changing routing thresholds or adding user settings.
+
 - Add inventory-wide description retrieval in shadow mode, with a separate
   versioned vector cache that reuses unchanged descriptions and resumes verified
   batches. Search current-library contents independently of historical embedding

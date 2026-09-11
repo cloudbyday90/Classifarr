@@ -6,6 +6,7 @@ import { getMediaServerService as defaultGetMediaServerService } from './mediaSe
 import { mediaSyncLibraryStateService } from './mediaSyncLibraryStateService.mjs';
 import { MediaSourceObservationStore } from './mediaSourceObservationStore.mjs';
 import { createMediaSyncSkipSummary } from './mediaSyncSkipSummary.mjs';
+import { requestInventoryDescriptionRefresh } from './inventoryDescriptionRefreshSignal.mjs';
 import { upsertMediaItem as _upsertMediaItem, upsertCollection as _upsertCollection } from './mediaSyncUpsert.mjs';
 import { pruneMissingMediaItems as _pruneMissingMediaItems, pruneMissingCollections as _pruneMissingCollections, getSyncStatus as _getSyncStatus, getLibraryItems as _getLibraryItems, syncLibrariesFromMediaServer as _syncLibrariesFromMediaServer } from './mediaSyncQueries.mjs';
 
@@ -141,6 +142,7 @@ export class MediaSyncService {
           prunedItems,
           prunedCollections,
         });
+        requestInventoryDescriptionRefresh();
 
         return {
           success: true,

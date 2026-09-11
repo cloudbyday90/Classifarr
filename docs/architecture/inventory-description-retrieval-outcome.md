@@ -159,3 +159,6 @@ state, bound each job and skip unchanged content. Separate that maintenance job
 from the historical comparison sampler. Then the AI comparison can consume
 fresh description-selected examples without asking users to rebuild indexes
 or declare every library's purpose manually.
+
+This follow-up is now implemented in the
+[automatic description refresh outcome](inventory-description-refresh-outcome.md).

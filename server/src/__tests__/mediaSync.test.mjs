@@ -59,6 +59,7 @@ const mockLoggerModule = {
 jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLoggerModule));
 
 const { MediaSyncService, mediaSyncService: service } = await import('../services/mediaSync.mjs');
+const { getInventoryDescriptionRefreshRevision } = await import('../services/inventoryDescriptionRefreshSignal.mjs');
 
 describe('MediaSyncService', () => {
     beforeEach(() => {
@@ -338,7 +339,9 @@ describe('MediaSyncService', () => {
             mockPlexService.getCollections.mockResolvedValue([]);
             mockContentTypeAnalyzer.analyze.mockResolvedValue({ analyzed: false });
 
+            const descriptionRevision = getInventoryDescriptionRefreshRevision();
             const result = await service.syncLibrary(1);
+            expect(getInventoryDescriptionRefreshRevision()).toBe(descriptionRevision + 1);
 
             expect(mockPlexService.getLibraryItems).toHaveBeenCalled();
             expect(result.success).toBe(true);
@@ -402,7 +405,9 @@ describe('MediaSyncService', () => {
 
             mockPlexService.getLibraryItems.mockRejectedValue(new Error('Plex API error'));
 
+            const descriptionRevision = getInventoryDescriptionRefreshRevision();
             await expect(service.syncLibrary(1)).rejects.toThrow('Plex API error');
+            expect(getInventoryDescriptionRefreshRevision()).toBe(descriptionRevision);
 
             const failCall = mockDb.query.mock.calls.find(
                 call => call[0].includes("SET status = $1, error_message = $2")

@@ -214,16 +214,19 @@ describe('SchedulerService', () => {
             mockEventLoopDelayObservationScheduler.stopEventLoopDelayObservationSchedule.mockClear();
 
             scheduler.init();
+            const stopDescriptionRefresh = jest.spyOn(scheduler.inventoryDescriptionRefreshWorker, 'stop');
 
             expect([...scheduler.initialTaskTimers.keys()]).toEqual(expect.arrayContaining([
                 'gap-analysis',
                 'library-watchdog',
                 'library-sync',
                 'retry-queue',
+                'inventory-description-refresh',
             ]));
 
             scheduler.resetState();
 
+            expect(stopDescriptionRefresh).toHaveBeenCalledTimes(1);
             expect(scheduler.initialTaskTimers.size).toBe(0);
             expect(mockEventLoopDelayObservationScheduler.stopEventLoopDelayObservationSchedule)
                 .toHaveBeenCalledTimes(1);

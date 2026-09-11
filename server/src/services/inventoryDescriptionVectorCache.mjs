@@ -18,6 +18,21 @@ function validateHashes(hashes, maximum) {
 /** Immutable representation/content keys; no plaintext or inventory membership. */
 export function createInventoryDescriptionVectorCache({ query }) {
   return {
+    async findPresent(representation, hashes) {
+      const parameters = validateDescriptionRepresentation(representation);
+      validateHashes(hashes, 10000);
+      if (!hashes.length) return new Set();
+      const { rows } = await query(`SELECT description_hash FROM inventory_description_vector_cache
+        WHERE projection_version=$1 AND model_name=$2 AND model_digest=$3 AND dimensions=$4
+          AND description_hash=ANY($5::text[]) AND created_at > now() - interval '30 days'`, [...parameters, hashes]);
+      const requested = new Set(hashes);
+      const present = new Set();
+      for (const row of rows) {
+        if (!requested.has(row.description_hash) || present.has(row.description_hash)) throw new Error('inventory_description_cache_scope_invalid');
+        present.add(row.description_hash);
+      }
+      return present;
+    },
     async read(representation, hashes) {
       const parameters = validateDescriptionRepresentation(representation);
       validateHashes(hashes, 10000);

@@ -66,6 +66,7 @@ import {
     stopEventLoopDelayObservationSchedule,
 } from './eventLoopDelayObservationScheduler.mjs';
 import { registerSchedulerStartupTasks } from './schedulerStartupTasks.mjs';
+import { registerInventoryDescriptionRefreshSchedule } from './inventoryDescriptionRefreshScheduler.mjs';
 
 const { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } = db;
 const logger = createLogger('SchedulerService');
@@ -84,6 +85,7 @@ class SchedulerService {
     }
 
     resetState() {
+        this.inventoryDescriptionRefreshWorker?.stop();
         for (const task of this.tasks.values()) {
             if (typeof task?.stop === 'function') {
                 task.stop();
@@ -104,6 +106,7 @@ class SchedulerService {
      */
     init() {
         logger.info('Initializing scheduler...');
+        registerInventoryDescriptionRefreshSchedule(this);
         registerLibraryObservationHistorySchedule(this);
         registerDatabaseHealthTransitionObservationSchedule(this);
         registerEventLoopDelayObservationSchedule(this);

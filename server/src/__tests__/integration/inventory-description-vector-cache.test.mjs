@@ -50,3 +50,14 @@ test('validates batches atomically and database constraints reject malformed vec
   await expect(client.query("UPDATE inventory_description_vector_cache SET embedding='[1,0]'::vector")).rejects.toThrow();
   await expect(client.query("UPDATE inventory_description_vector_cache SET embedding='[0,0,0]'::vector")).rejects.toThrow();
 });
+
+test('maintenance presence lookup is content and representation scoped, without returning vectors', async () => {
+  await cache.write(identity, [{ hash, vector: [1, 0, 0] }]);
+  expect(await cache.findPresent(identity, [hash, 'd'.repeat(64)])).toEqual(new Set([hash]));
+  expect(await cache.findPresent({ ...identity, digest: 'c'.repeat(64) }, [hash])).toEqual(new Set());
+  expect(await cache.findPresent({ ...identity, dimensions: 2 }, [hash])).toEqual(new Set());
+  expect(await cache.findPresent(identity, [])).toEqual(new Set());
+  await expect(cache.findPresent(identity, [hash, hash])).rejects.toThrow();
+  await client.query("UPDATE inventory_description_vector_cache SET created_at=now()-interval '31 days'");
+  expect(await cache.findPresent(identity, [hash])).toEqual(new Set());
+});
