@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a read-only inventory semantic sampler that compares current-library
+  neighbors without requiring manual policy declarations. It reuses stored
+  embeddings, excludes the sampled cohort from retrieval, and reports coverage
+  separately from correctness without provider calls or routing changes.
+
 - Add one explicitly confirmed, fail-closed local command that completes a
   private retrieval evaluation after independent reviewer labels are ready. It
   chains consensus, the admitted scorer, paired artifact construction, and an

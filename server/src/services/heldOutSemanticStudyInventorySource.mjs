@@ -18,10 +18,15 @@ export async function readHeldOutSemanticStudyInventoryFrame({
   query,
   selectionSeed,
   perStratum = HELD_OUT_SEMANTIC_STUDY_INVENTORY_FRAME_PER_STRATUM,
+  libraryIds = null,
 } = {}) {
   if (typeof query !== 'function' || typeof selectionSeed !== 'string' || selectionSeed.length < 16 ||
       !Number.isInteger(perStratum) || perStratum < 24 || perStratum > 256) {
     throw new Error('invalid_held_out_inventory_frame_request');
+  }
+  if (libraryIds !== null && (!Array.isArray(libraryIds) || libraryIds.length > 64 ||
+      libraryIds.some(id => !Number.isInteger(id) || id < 1 || id > 2_147_483_647))) {
+    throw new Error('invalid_held_out_inventory_library_scope');
   }
 
   const result = await query(
@@ -32,6 +37,7 @@ export async function readHeldOutSemanticStudyInventoryFrame({
        FROM media_server_items AS msi
        WHERE msi.media_type IN ('movie', 'tv')
          AND msi.tmdb_id > 0
+         AND ($4::integer[] IS NULL OR msi.library_id = ANY($4::integer[]))
          AND msi.title IS NOT NULL
          AND btrim(msi.title) <> ''
          AND char_length(msi.title) <= 220
@@ -68,7 +74,7 @@ export async function readHeldOutSemanticStudyInventoryFrame({
      ) AS history ON true
      WHERE ranked.sample_rank <= $3
      ORDER BY ranked.sample_rank, ranked.study_stratum, ranked.media_type, ranked.tmdb_id`,
-    [selectionSeed, SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS, perStratum],
+    [selectionSeed, SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS, perStratum, libraryIds],
   );
 
   const candidates = [];

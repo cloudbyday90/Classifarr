@@ -23,6 +23,7 @@
     "study:retrieval-representation-results": "node src/scripts/runHeldOutSemanticStudyRetrievalRepresentationResults.mjs",
     "study:complete:retrieval-evaluation": "node src/scripts/runHeldOutSemanticStudyRetrievalEvaluationCompletion.mjs",
     "study:audit:held-out-policy-eligibility": "node src/scripts/runHeldOutSemanticStudyEligibilityAudit.mjs",
+    "study:sample:inventory-semantics": "node src/scripts/runInventorySemanticSample.mjs",
     "study:replay:source-identity-evidence": "node src/scripts/runSourceIdentityExternalEvidenceReplay.mjs",
     "typecheck": "tsc --project tsconfig.json --pretty false",
     "test": "node ./scripts/run-jest.mjs --maxWorkers=2 --workerIdleMemoryLimit=512MB && node ./scripts/run-jest.mjs -c jest.integration.config.mjs --runInBand",
