@@ -11,6 +11,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add one explicitly confirmed, fail-closed local command that completes a
+  private retrieval evaluation after independent reviewer labels are ready. It
+  chains consensus, the admitted scorer, paired artifact construction, and an
+  aggregate report without adding browser state, learning, policy changes, or
+  routing authority.
+
 - Automatically prepare two distinct, content-free independent-review
   worksheets when a protected held-out study packet is captured, and reduce the
   Command Center semantic-evaluation card to its current status, one plain

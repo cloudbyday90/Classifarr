@@ -53,8 +53,8 @@ classification evidence—not a learner, policy editor, or routing authority.
 ## Next high-value item
 
 Run one qualified local study through the newly shortened handoff: collect two
-independent labels, compose the reference set, run the paired
-label-included/label-free scorer, and inspect the aggregate report. That first
-measurement determines whether it is justified to propose a bounded,
-reversible advisory review-priority pilot; it does not justify automatic
-routing.
+independent labels, then use `study:complete:retrieval-evaluation` to compose
+the reference set, run the paired label-included/label-free scorer, and write
+the aggregate report. That first measurement determines whether it is justified
+to propose a bounded, reversible advisory review-priority pilot; it does not
+justify automatic routing.

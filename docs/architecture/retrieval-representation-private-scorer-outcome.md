@@ -58,7 +58,8 @@ available to implement locally; no closed or merged change was reapplied.
 ## Next item
 
 Acquire an independently double-labelled reference set for the pinned cohort,
-then run the scorer and paired aggregate report. Review the included versus
-excluded history result by stratum and uncertainty. If the label-free condition
-does not regress, the next engineering proposal is a bounded, reversible
-ephemeral re-embedding pilot—not an automatic routing or policy change.
+then invoke `study:complete:retrieval-evaluation` once to run the scorer and
+paired aggregate report. Review the included versus excluded history result by
+stratum and uncertainty. If the label-free condition does not regress, the next
+engineering proposal is a bounded, reversible ephemeral re-embedding pilot—not
+an automatic routing or policy change.
