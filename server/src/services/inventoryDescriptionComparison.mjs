@@ -1,22 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { validateEmbedding } from '../utils/embeddingValidation.mjs';
-import { buildInventorySemanticSampleReport, rankInventorySemanticLibraries } from './inventorySemanticSampleReport.mjs';
+import { buildInventorySemanticSampleReport, inventorySemanticLibraryWinner as winner } from './inventorySemanticSampleReport.mjs';
+import { normalizeDescriptionVector as normalize, descriptionCosineSimilarity as similarity } from './inventoryDescriptionSimilarity.mjs';
 import { INVENTORY_DESCRIPTION_PROJECTION_VERSION, prepareInventoryDescriptionComparison } from './inventoryDescriptionProjection.mjs';
-
-function normalize(vector, dimensions) {
-  validateEmbedding(vector, dimensions);
-  const norm = Math.sqrt(vector.reduce((sum, value) => sum + value * value, 0));
-  return vector.map(value => value / norm);
-}
-
-function similarity(a, b) {
-  return Math.max(-1, Math.min(1, a.reduce((sum, value, index) => sum + value * b[index], 0)));
-}
-
-function winner(entry) {
-  const scores = rankInventorySemanticLibraries(entry.libraries);
-  return scores.length < 2 || Math.abs(scores[0].score - scores[1].score) <= 1e-9 ? null : scores[0].libraryId;
-}
 
 export function createInventoryDescriptionComparison({ sampler, embedder }) {
   if (typeof sampler?.sample !== 'function' || typeof embedder?.inspect !== 'function' ||

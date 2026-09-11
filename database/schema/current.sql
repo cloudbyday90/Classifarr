@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-10T11:22:20.274Z
--- Latest Migration: 20260910_120000_add_source_identity_evidence_replay_observations.sql
+-- Generated: 2026-09-11T10:32:13.679Z
+-- Latest Migration: 20260911_120000_add_inventory_description_vector_cache.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3202,6 +3202,34 @@ CREATE TABLE public.held_out_semantic_study_lifecycle_source_checkpoint (
     CONSTRAINT held_out_semantic_study_lifecycle_source_c_source_receipt_check CHECK ((jsonb_typeof(source_receipt) = 'object'::text)),
     CONSTRAINT held_out_semantic_study_lifecycle_source_checkp_state_key_check CHECK ((state_key = 'normal_policy_lifecycle_source'::text))
 );
+
+
+--
+-- Name: inventory_description_vector_cache; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.inventory_description_vector_cache (
+    projection_version text NOT NULL,
+    model_name text NOT NULL,
+    model_digest text NOT NULL,
+    dimensions integer NOT NULL,
+    description_hash text NOT NULL,
+    embedding public.vector NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT inventory_description_vector_cache_check CHECK (((public.vector_dims(embedding) = dimensions) AND (public.vector_norm(embedding) > (0)::double precision))),
+    CONSTRAINT inventory_description_vector_cache_description_hash_check CHECK ((description_hash ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT inventory_description_vector_cache_dimensions_check CHECK (((dimensions >= 1) AND (dimensions <= 16000))),
+    CONSTRAINT inventory_description_vector_cache_model_digest_check CHECK ((model_digest ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT inventory_description_vector_cache_model_name_check CHECK (((char_length(model_name) >= 1) AND (char_length(model_name) <= 207))),
+    CONSTRAINT inventory_description_vector_cache_projection_version_check CHECK (((char_length(projection_version) >= 1) AND (char_length(projection_version) <= 100)))
+);
+
+
+--
+-- Name: TABLE inventory_description_vector_cache; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.inventory_description_vector_cache IS 'Local Ollama shadow cache only; current inventory determines membership. No live routing consumer.';
 
 
 --
@@ -9148,6 +9176,14 @@ ALTER TABLE ONLY public.held_out_semantic_study_lifecycle_source_checkpoint
 
 
 --
+-- Name: inventory_description_vector_cache inventory_description_vector_cache_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.inventory_description_vector_cache
+    ADD CONSTRAINT inventory_description_vector_cache_pkey PRIMARY KEY (projection_version, model_name, model_digest, dimensions, description_hash);
+
+
+--
 -- Name: inventory_observation_activity inventory_observation_activity_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11138,6 +11174,13 @@ CREATE INDEX idx_error_log_unresolved_stage ON public.error_log USING btree (err
 --
 
 CREATE INDEX idx_historic_route_safety_refresh_receipts_actor_recent ON public.policy_runtime_historic_route_safety_refresh_receipts USING btree (actor_id, created_at DESC, receipt_id DESC);
+
+
+--
+-- Name: idx_inventory_description_vector_cache_created; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_inventory_description_vector_cache_created ON public.inventory_description_vector_cache USING btree (created_at);
 
 
 --
@@ -15907,6 +15950,7 @@ FROM unnest(ARRAY[
     '20260909_071510_add_database_health_transition_receipts.sql',
     '20260909_085356_add_scheduler_execution_receipts.sql',
     '20260909_102827_add_event_loop_delay_receipts.sql',
-    '20260910_120000_add_source_identity_evidence_replay_observations.sql'
+    '20260910_120000_add_source_identity_evidence_replay_observations.sql',
+    '20260911_120000_add_inventory_description_vector_cache.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

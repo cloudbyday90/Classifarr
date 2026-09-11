@@ -3,6 +3,7 @@ import { beforeEach, afterEach, expect, test } from '@jest/globals';
 import { getPool } from './setup.mjs';
 import { INVENTORY_SEMANTIC_SAMPLE_SQL } from '../../services/inventorySemanticSampleQuery.mjs';
 import { createInventorySemanticSampler } from '../../services/inventorySemanticSampler.mjs';
+import { INVENTORY_DESCRIPTION_CORPUS_SQL, prepareInventoryDescriptionCorpus } from '../../services/inventoryDescriptionCorpus.mjs';
 
 let client;
 beforeEach(async () => {
@@ -64,6 +65,22 @@ async function retrieve(tmdbId = 1, mediaType = 'movie', heldIds = [1, 2]) {
     mediaType, tmdbId, [10, 20, 30, 40], heldIds.map(() => mediaType), heldIds, 30,
   ])).rows;
 }
+
+test('description corpus reads inventory without requiring historical embeddings', async () => {
+  await client.query(`INSERT INTO media_server_items (id,tmdb_id,media_type,library_id,external_id,title,metadata)
+    VALUES (100,900,'movie',10,'new','No embedding','{"overview":"Current overview","summary":"Older summary"}'),
+      (101,901,'movie',30,'inactive','Inactive','{"summary":"Inactive description"}'),
+      (102,902,'tv',10,'mismatch','Mismatch','{"summary":"Wrong media library"}'),
+      (103,903,'movie',10,'object','Object metadata','{"overview":{"not":"a synopsis"},"summary":"Typed fallback"}')`);
+  const { rows } = await client.query(INVENTORY_DESCRIPTION_CORPUS_SQL, [30]);
+  expect(rows.find(row => row.tmdb_id === 900)?.overview).toBe('Current overview');
+  expect(rows.find(row => row.tmdb_id === 903)?.overview).toBe('Typed fallback');
+  expect(rows.some(row => [901, 902, 107].includes(row.tmdb_id))).toBe(false);
+  expect(rows.some(row => row.media_type === 'tv' && row.tmdb_id === 1)).toBe(true);
+  const corpus = prepareInventoryDescriptionCorpus(rows);
+  expect(corpus.documents.filter(doc => doc.key === 'movie:100')).toHaveLength(1);
+  expect(corpus.documents.find(doc => doc.key === 'movie:1').libraryIds).toEqual([10, 20]);
+});
 
 test('holds out identities across libraries, removes incompatible/conflicting vectors, and deduplicates before limits', async () => {
   const rows = await retrieve();

@@ -62,7 +62,10 @@ export function createLocalStudyEmbeddingClient(config, { fetchRequest = fetch }
           !details.capabilities.includes('embedding')) {
         throw new Error('local_study_embedding_capability_required');
       }
-      return { provider: 'ollama', model, digest: entry.digest.replace(/^sha256:/, '') };
+      const architecture = details.model_info?.['general.architecture'];
+      const dimensions = typeof architecture === 'string' ? details.model_info[`${architecture}.embedding_length`] : undefined;
+      return { provider: 'ollama', model, digest: entry.digest.replace(/^sha256:/, ''),
+        ...(Number.isInteger(dimensions) && dimensions > 0 && dimensions <= 16000 ? { dimensions } : {}) };
     },
     async embedBatch(texts, { dimensions, signal } = {}) {
       if (!Array.isArray(texts) || texts.length < 1 || texts.length > 8 ||

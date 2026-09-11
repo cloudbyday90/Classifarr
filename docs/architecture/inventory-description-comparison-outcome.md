@@ -124,7 +124,10 @@ The [design document](inventory-description-comparison-design.md) records
 official sources discovered through web/MCP research, August-baseline date
 limitations, W3C considerations and security decisions.
 
-Next build isolated, description-based retrieval across the current inventory.
+Follow-up implemented: see the
+[inventory-wide retrieval outcome](inventory-description-retrieval-outcome.md)
+for the real cache and retrieval measurements. The original next step was to
+build isolated, description-based retrieval across the current inventory.
 Let it select its own neighbors, retaining whole-cohort exclusions and testing
 provider-recommended query formatting as a separate condition. Start with a
 bounded shadow evaluation, not a live routing switch. Use these results to

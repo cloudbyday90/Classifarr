@@ -22,7 +22,8 @@ beforeEach(async () => {
     if (request.url === '/api/tags') {
       response.end(JSON.stringify({ models: [{ name: 'test:latest', digest: 'a'.repeat(64), ...(mode === 'remote' ? { remote_host: 'https://example.com' } : {}) }] }));
     } else if (request.url === '/api/show') {
-      response.end(JSON.stringify({ capabilities: mode === 'no_embedding' ? ['completion'] : ['embedding'] }));
+      response.end(JSON.stringify({ capabilities: mode === 'no_embedding' ? ['completion'] : ['embedding'],
+        ...(mode === 'dimensions' ? { model_info: { 'general.architecture': 'bert', 'bert.embedding_length': 1024 } } : {}) }));
     } else if (request.url === '/api/embed') {
       const { input } = JSON.parse(body);
       response.end(JSON.stringify({ model: mode === 'different_model' ? 'other' : 'test',
@@ -45,6 +46,11 @@ test('uses installed local identity and sends ordered batches without hidden tru
   expect(await client.embedBatch(['one', 'two'], { dimensions: 2 })).toEqual([[3, 4], [3, 4]]);
   expect(requests.map(request => request.path)).toEqual(['/api/tags', '/api/show', '/api/embed']);
   expect(requests[2].body).toEqual({ model: 'test:latest', input: ['one', 'two'], truncate: false, keep_alive: '5m' });
+});
+
+test('retains installed architecture dimensions for shadow cache provenance', async () => {
+  mode = 'dimensions';
+  expect(await createLocalStudyEmbeddingClient(config).inspect()).toMatchObject({ dimensions: 1024 });
 });
 
 test.each(['redirect', 'oversized', 'error', 'malformed', 'remote', 'no_embedding'])('rejects %s preflight without inference or redirected requests', async value => {

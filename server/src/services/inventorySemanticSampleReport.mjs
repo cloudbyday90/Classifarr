@@ -8,6 +8,11 @@ export function rankInventorySemanticLibraries(libraries) {
   })).sort((a, b) => b.score - a.score);
 }
 
+export function inventorySemanticLibraryWinner(entry) {
+  const scores = rankInventorySemanticLibraries(entry.libraries);
+  return scores.length < 2 || Math.abs(scores[0].score - scores[1].score) <= 1e-9 ? null : scores[0].libraryId;
+}
+
 function summarize(cases) {
   const counts = {
     sampled: cases.length, withDescription: 0, withStoredEmbedding: 0,

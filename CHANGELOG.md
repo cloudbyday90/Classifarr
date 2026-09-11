@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add inventory-wide description retrieval in shadow mode, with a separate
+  versioned vector cache that reuses unchanged descriptions and resumes verified
+  batches. Search current-library contents independently of historical embedding
+  neighbors without changing live routing or adding user review screens.
+
 - Add a local, label-free description comparison for the inventory sampler.
   It re-embeds sampled items and their fixed neighbors in bounded batches,
   verifies model consistency, and reports ranking changes without changing
