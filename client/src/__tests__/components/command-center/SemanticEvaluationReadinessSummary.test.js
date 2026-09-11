@@ -36,8 +36,6 @@ describe('SemanticEvaluationReadinessSummary', () => {
     expect(wrapper.text()).toContain('Semantic evaluation')
     expect(wrapper.text()).toContain('Building baseline')
     expect(wrapper.text()).toContain('waiting for ordinary policy lifecycle activity')
-    expect(wrapper.text()).toContain('Updates automatically while this page is open.')
-    expect(wrapper.text()).toContain('does not label media, tune AI/RAG, or change routing')
     expect(wrapper.text()).toContain('See evaluation details')
     expect(wrapper.findAll('button')).toHaveLength(0)
     expect(wrapper.get('[role="status"]').attributes()).toMatchObject({
@@ -63,7 +61,7 @@ describe('SemanticEvaluationReadinessSummary', () => {
     })
 
     expect(wrapper.text()).toContain('Checking evidence')
-    expect(wrapper.text()).toContain('independently reviewed labels')
+    expect(wrapper.text()).toContain('Independently reviewed labels')
   })
 
   it('withholds an invalid projection', () => {
@@ -74,7 +72,7 @@ describe('SemanticEvaluationReadinessSummary', () => {
     expect(wrapper.find('#semantic-evaluation-readiness').exists()).toBe(false)
   })
 
-  it('summarizes a capture-ready handoff without adding an action', () => {
+  it('summarizes an automatic reviewer-template handoff without adding an action', () => {
     const wrapper = mount(SemanticEvaluationReadinessSummary, {
       props: {
         readiness: {
@@ -92,7 +90,8 @@ describe('SemanticEvaluationReadinessSummary', () => {
     })
 
     expect(wrapper.text()).toContain('Private capture ready')
-    expect(wrapper.text()).toContain('nothing is retained, routed, or labeled automatically')
+    expect(wrapper.text()).toContain('two independent reviewer worksheets')
+    expect(wrapper.text()).toContain('never routes media')
     expect(wrapper.findAll('button')).toHaveLength(0)
   })
 })

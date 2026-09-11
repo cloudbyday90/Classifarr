@@ -55,8 +55,12 @@ context, or reviewer identity.
 
 ## Controlled operator flow
 
-After an administrator has created a current private packet, create one
-worksheet for each reviewer:
+The protected packet-capture command now creates one worksheet for each
+reviewer automatically, using the packet filename with
+`.reviewer-one-template.json` and `.reviewer-two-template.json` suffixes. The
+manual `create-template` command remains available only to recover an expired
+or deliberately discarded worksheet while the original packet is still
+current:
 
 ```powershell
 npm --prefix server run study:reviewer-submission -- `
@@ -77,11 +81,11 @@ npm --prefix server run study:reviewer-submission -- `
   --output-file .tmp/private-review/reviewer-one.json
 ```
 
-The second reviewer gets a separately generated template and therefore a fresh
-opaque submission ID. Only the resulting content-free JSON submissions are
-given to the existing consensus command. In the read-only production container,
-these paths resolve below `/app/data/.tmp`; in a development checkout they
-resolve below repository `.tmp`.
+The second reviewer receives the separately generated template and therefore a
+fresh opaque submission ID. Only the resulting content-free JSON submissions
+are given to the existing consensus command. In the read-only production
+container, these paths resolve below `/app/data/.tmp`; in a development
+checkout they resolve below repository `.tmp`.
 
 ## Security and authority boundaries
 

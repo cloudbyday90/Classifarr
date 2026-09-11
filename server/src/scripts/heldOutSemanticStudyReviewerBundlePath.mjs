@@ -34,3 +34,26 @@ export function deriveHeldOutSemanticStudyReviewerScoringInputFile(packetOutputF
     `${basename(packetOutputFile, extension)}.scoring-input.json`,
   );
 }
+
+function deriveHeldOutSemanticStudyReviewerTemplateFile(packetOutputFile, reviewerId) {
+  if (typeof reviewerId !== 'string' || !['one', 'two'].includes(reviewerId) ||
+      typeof packetOutputFile !== 'string' || !packetOutputFile ||
+      extname(packetOutputFile).toLowerCase() !== '.json') {
+    return null;
+  }
+  const extension = extname(packetOutputFile);
+  return join(
+    dirname(packetOutputFile),
+    `${basename(packetOutputFile, extension)}.reviewer-${reviewerId}-template.json`,
+  );
+}
+
+/** Derives an opaque, content-free worksheet for the first independent reviewer. */
+export function deriveHeldOutSemanticStudyReviewerOneTemplateFile(packetOutputFile) {
+  return deriveHeldOutSemanticStudyReviewerTemplateFile(packetOutputFile, 'one');
+}
+
+/** Derives an opaque, content-free worksheet for the second independent reviewer. */
+export function deriveHeldOutSemanticStudyReviewerTwoTemplateFile(packetOutputFile) {
+  return deriveHeldOutSemanticStudyReviewerTemplateFile(packetOutputFile, 'two');
+}

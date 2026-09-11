@@ -12,7 +12,9 @@ import {
 import { heldOutSemanticStudyReadinessService } from '../services/heldOutSemanticStudyReadinessService.mjs';
 import {
   deriveHeldOutSemanticStudyReviewerBundleFile,
+  deriveHeldOutSemanticStudyReviewerOneTemplateFile,
   deriveHeldOutSemanticStudyReviewerScoringInputFile,
+  deriveHeldOutSemanticStudyReviewerTwoTemplateFile,
 } from './heldOutSemanticStudyReviewerBundlePath.mjs';
 import {
   writeHeldOutSemanticStudyEvaluationBundle,
@@ -29,9 +31,18 @@ function parseArguments(argv) {
   }
   const outputFile = argv[2];
   const bundleOutputFile = deriveHeldOutSemanticStudyReviewerBundleFile(outputFile);
+  const reviewerOneTemplateOutputFile = deriveHeldOutSemanticStudyReviewerOneTemplateFile(outputFile);
   const scoringInputOutputFile = deriveHeldOutSemanticStudyReviewerScoringInputFile(outputFile);
-  if (!bundleOutputFile || !scoringInputOutputFile) throw new Error('private_reviewer_packet_arguments_invalid');
-  return Object.freeze({ bundleOutputFile, outputFile, scoringInputOutputFile });
+  const reviewerTwoTemplateOutputFile = deriveHeldOutSemanticStudyReviewerTwoTemplateFile(outputFile);
+  if (!bundleOutputFile || !reviewerOneTemplateOutputFile || !reviewerTwoTemplateOutputFile ||
+      !scoringInputOutputFile) throw new Error('private_reviewer_packet_arguments_invalid');
+  return Object.freeze({
+    bundleOutputFile,
+    outputFile,
+    reviewerOneTemplateOutputFile,
+    reviewerTwoTemplateOutputFile,
+    scoringInputOutputFile,
+  });
 }
 
 async function loadPrivateRuntime() {
@@ -59,23 +70,39 @@ async function loadPrivateRuntime() {
 export async function runHeldOutSemanticStudyReviewerPacket({
   argv = process.argv.slice(2),
   createEvaluationBundle = buildHeldOutSemanticStudyEvaluationBundle,
+  createReviewerTemplatePair,
   loadRuntime = loadPrivateRuntime,
   writeBundle = writeHeldOutSemanticStudyEvaluationBundle,
   writePacket = writePrivateStudyPacket,
+  writeReviewerTemplate = writePrivateStudyPacket,
   writeScoringInput = writePrivateStudyPacket,
 } = {}) {
-  const { bundleOutputFile, outputFile, scoringInputOutputFile } = parseArguments(argv);
+  const {
+    bundleOutputFile,
+    outputFile,
+    reviewerOneTemplateOutputFile,
+    reviewerTwoTemplateOutputFile,
+    scoringInputOutputFile,
+  } = parseArguments(argv);
   const runtime = await loadRuntime();
   try {
     const workflow = createHeldOutSemanticStudyReviewerPacketWorkflow({
       cohortCapture: runtime.cohortCapture,
       createEvaluationBundle,
+      ...(createReviewerTemplatePair ? { createReviewerTemplatePair } : {}),
       readReadiness: runtime.readReadiness,
       writeBundle,
       writePacket,
+      writeReviewerTemplate,
       writeScoringInput,
     });
-    return workflow.create({ bundleOutputFile, outputFile, scoringInputOutputFile });
+    return workflow.create({
+      bundleOutputFile,
+      outputFile,
+      reviewerOneTemplateOutputFile,
+      reviewerTwoTemplateOutputFile,
+      scoringInputOutputFile,
+    });
   } finally {
     await runtime.close();
   }

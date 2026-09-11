@@ -47,7 +47,7 @@ freeze cohort -> prepare policy-owned candidates -> held-out capture
                                       (no semantic/RAG output)
                                                    |
                                                    v
-                      exclusive .tmp JSON write, 24-hour review window
+             exclusive .tmp JSON writes, 24-hour review window, two worksheets
                                                    |
                                                    v
                     independent opaque submissions -> existing consensus
@@ -70,9 +70,11 @@ freeze cohort -> prepare policy-owned candidates -> held-out capture
   library names, and bounded declared-purpose terms. It does not read a
   database or invoke RAG/AI.
 - `heldOutSemanticStudyReviewerPacketWorkflow.mjs` requires the existing
-  current `private_cohort_capture_ready` condition before capture. Its public
-  result exposes only status, opaque packet ID, and a fixture-document
-  fingerprint—not packet data or a path.
+  current `private_cohort_capture_ready` condition before capture. It prepares
+  two distinct, content-free reviewer worksheets from the resulting packet
+  before it writes that packet. Its public result exposes only status, opaque
+  packet ID, a fixture-document fingerprint, and companion-artifact flags—not
+  packet data or a path.
 - `runHeldOutSemanticStudyReviewerPacket.mjs` is the only delivered launcher.
   It starts a read-only local runtime, requires an explicit confirmation flag,
   and never prints packet contents.
@@ -96,10 +98,13 @@ npm --prefix server run study:capture:reviewer-packet -- `
 The launcher checks the aggregate handoff again, so a manually run command
 cannot capture while it is absent or stale. A packet is never overwritten, is
 ignored by Git, and is outside all HTTP routes. The packet records its
-`startsAt` and `expiresAt`; distribute it only to the two independent reviewers
-and securely delete it after the 24-hour window. Because no application API
-ever reopens this local packet, the later consensus receives only the existing
-content-free reviewer submissions and their fixture fingerprint.
+`startsAt` and `expiresAt`; the command also creates separate reviewer-one and
+reviewer-two content-free worksheets with fresh opaque submission IDs.
+Distribute the packet and distinct worksheets only to the two independent
+reviewers and securely delete the packet after the 24-hour window. Because no
+application API ever reopens this local packet, the later consensus receives
+only the existing content-free reviewer submissions and their fixture
+fingerprint.
 
 ## Security and authority properties
 

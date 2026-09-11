@@ -15,9 +15,6 @@
         <h2 id="semantic-evaluation-readiness-heading">
           Semantic evaluation
         </h2>
-        <p class="semantic-evaluation-readiness-intro">
-          Tracks whether Classifarr has enough protected evidence to measure whether metadata and RAG improve library placement.
-        </p>
       </div>
       <span
         v-if="readiness"
@@ -53,9 +50,6 @@
       >
         See evaluation details <span aria-hidden="true">→</span>
       </RouterLink>
-      <p class="semantic-evaluation-readiness-boundary">
-        Updates automatically while this page is open. It does not label media, tune AI/RAG, or change routing.
-      </p>
     </template>
   </section>
 </template>
@@ -92,11 +86,11 @@ const statusLabel = computed(() => {
 
 const summaryText = computed(() => {
   if (readiness.value?.privateCohortCaptureReady) {
-    return 'The automatic aggregate audit found a balanced policy-only frame. A controlled private capture can now prepare a redacted reviewer packet; nothing is retained, routed, or labeled automatically.'
+    return 'A protected study can prepare two independent reviewer worksheets. It measures RAG and metadata quality offline; it never routes media.'
   }
   switch (readiness.value?.statusId) {
     case STATUS_IDS.ELIGIBILITY_AUDIT_AVAILABLE:
-      return 'Policy evidence is available for the next private eligibility check. A study still requires a bounded cohort and independently reviewed labels before semantic quality can be measured.'
+      return 'Classifarr is checking whether a protected study can be prepared. Independently reviewed labels are still required before semantic quality can be measured.'
     case STATUS_IDS.COMPLETE_DECLARED_PURPOSE_EVIDENCE_REQUIRED:
       return 'Normal policy activity is present, but current declared-purpose evidence is incomplete. Classifarr will reassess after ordinary policy updates; no study action is needed here.'
     case STATUS_IDS.NORMAL_LIFECYCLE_RECEIPT_REQUIRED:
@@ -130,19 +124,12 @@ const summaryText = computed(() => {
   color: #f3f4f6;
 }
 
-.semantic-evaluation-readiness-intro,
 .semantic-evaluation-readiness-summary,
-.semantic-evaluation-readiness-message,
-.semantic-evaluation-readiness-boundary {
+.semantic-evaluation-readiness-message {
   max-width: 58rem;
   color: #d1d5db;
   font-size: 0.8125rem;
   line-height: 1.5;
-}
-
-.semantic-evaluation-readiness-intro {
-  margin-top: 0.25rem;
-  color: #9ca3af;
 }
 
 .semantic-evaluation-readiness-status {
@@ -186,11 +173,6 @@ const summaryText = computed(() => {
 .semantic-evaluation-readiness-link:hover {
   color: #bfdbfe;
   text-decoration: underline;
-}
-
-.semantic-evaluation-readiness-boundary {
-  margin-top: 0.75rem;
-  color: #9ca3af;
 }
 
 @media (max-width: 1023px) {

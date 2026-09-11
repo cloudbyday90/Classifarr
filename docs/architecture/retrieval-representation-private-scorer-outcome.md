@@ -8,8 +8,9 @@ Status: implemented, unreleased on 10 September 2026. No release was created.
   current-history retrieval, admitted structured evaluation, and categorical
   submission construction.
 - Made reviewer-packet capture automatically create the private scoring input
-  from the exact same prospective cohort. One explicit capture command now
-  produces the redacted bundle, reviewer packet, and scorer input together.
+  and two independent reviewer worksheets from the exact same prospective
+  cohort. One explicit capture command now produces the redacted bundle,
+  reviewer packet, scorer input, and both worksheets together.
 - Added `study:retrieval-representation-score`, a status-only CLI that is
   database read-only, writes only a valid categorical submission below `.tmp`,
   and always closes its short-lived database pool.
@@ -34,7 +35,7 @@ reference set are evaluated by the existing aggregate workflow.
 
 ## Local use
 
-After the existing authorised reviewer-packet capture creates its three
+After the existing authorised reviewer-packet capture creates its five
 companions, run the scorer with its exact paths:
 
 ```text

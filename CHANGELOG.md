@@ -11,6 +11,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Automatically prepare two distinct, content-free independent-review
+  worksheets when a protected held-out study packet is captured, and reduce the
+  Command Center semantic-evaluation card to its current status, one plain
+  language explanation, and a details link. The workflow remains offline and
+  cannot learn, change policy, or route media.
+
 - Add a bounded private RAG retrieval-representation scorer that creates
   paired label-included and label-free evidence from the same held-out cohort.
   It requires verified self-hosted structured output, persists only a
