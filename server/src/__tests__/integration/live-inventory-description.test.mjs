@@ -4,6 +4,8 @@ import { beforeEach, afterEach, expect, test } from '@jest/globals';
 import { getPool } from './setup.mjs';
 import { createLiveInventoryDescriptionRepository } from '../../services/liveInventoryDescriptionRepository.mjs';
 import { createInventoryDescriptionVectorCache } from '../../services/inventoryDescriptionVectorCache.mjs';
+import { createDescriptionBenchmarkRepository } from '../../services/inventoryDescriptionBenchmarkRepository.mjs';
+import { prepareDescriptionBenchmark } from '../../services/inventoryDescriptionBenchmarkSample.mjs';
 
 let client;
 let repository;
@@ -87,4 +89,28 @@ test('deleted, edited and expired inventory cannot reuse old description evidenc
   expect((await retrieve())[0]).toMatchObject({ eligible: 1, indexed: 0, items: [] });
   await client.query('DELETE FROM media_server_items WHERE tmdb_id=2');
   expect((await retrieve())[1]).toMatchObject({ eligible: 0, indexed: 0, items: [] });
+});
+
+test('benchmark snapshots real inventory and cache read-only, holds out 100 titles, and fails on stale provenance', async () => {
+  await client.query("ALTER TABLE libraries ADD COLUMN name text DEFAULT 'Private library'");
+  const benchmark = createDescriptionBenchmarkRepository({ withTransaction: async callback => {
+    await client.query('BEGIN');
+    try {
+      const result = await callback(client);
+      expect((await client.query('SHOW transaction_read_only')).rows[0].transaction_read_only).toBe('on');
+      await client.query('COMMIT'); return result;
+    } catch (error) { await client.query('ROLLBACK'); throw error; }
+  } });
+  for (let index = 1; index <= 120; index++) await add(index, index % 2 ? 10 : 20, `Synopsis ${index}`);
+  const before = (await client.query('SELECT count(*)::integer AS count FROM inventory_description_vector_cache')).rows[0].count;
+  const snapshot = await benchmark.read(identity);
+  expect(snapshot.corpus.documents).toHaveLength(120);
+  expect(snapshot.libraries.map(library => library.id)).toEqual([10, 20, 40]);
+  const prepared = prepareDescriptionBenchmark(snapshot, snapshot.vectors, 3, { seed: 'benchmark-test-seed-2026' });
+  expect(prepared.cases).toHaveLength(100);
+  expect(prepared.cases.every(entry => entry.candidates.reduce((sum, candidate) => sum + candidate.eligible, 0) === 20)).toBe(true);
+  expect((await client.query('SELECT count(*)::integer AS count FROM inventory_description_vector_cache')).rows[0].count).toBe(before);
+  await expect(benchmark.read({ ...identity, digest: 'b'.repeat(64) })).rejects.toThrow('cache_incomplete');
+  await client.query("UPDATE inventory_description_vector_cache SET created_at=now()-interval '31 days'");
+  await expect(benchmark.read(identity)).rejects.toThrow('cache_incomplete');
 });

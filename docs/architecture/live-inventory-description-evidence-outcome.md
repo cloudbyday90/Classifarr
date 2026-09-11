@@ -90,7 +90,12 @@ exchange for richer content comparison without additional user configuration.
 See the [design and official research](live-inventory-description-evidence-design.md)
 for alternatives, pros/cons, and the September retrieval-date caveat.
 
-Next high-value component: measure description-backed decisions against reviewed
+Updated sequencing: first compare the evidence budget on a reproducible
+100-title sample, as described in the
+[9/30/100 benchmark design](inventory-description-benchmark-design.md).
+This measures the cost and behavior of more context without inflating scores.
+
+Then measure description-backed decisions against reviewed
 outcomes and use those results to qualify a narrowly scoped automatic-routing
 path. The remaining 45-point policy score is not an AI confidence estimate and
 should not be increased merely because the model agrees. Reducing manual review

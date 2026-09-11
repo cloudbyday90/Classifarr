@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a seeded 100-title, local-only description benchmark comparing 9, 30,
+  and 100 retrieved examples. Report actual evidence counts, abstentions,
+  latency, tokens, and observational agreement without changing live routing
+  or treating existing library placements as verified correct answers.
+
 - Feed maintained inventory descriptions into live AI candidate comparison,
   including competing libraries. Reuse cached vectors, report incomplete
   coverage, keep snippets local, and omit adjudication response excerpts from

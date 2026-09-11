@@ -26,6 +26,7 @@
     "study:sample:inventory-semantics": "node src/scripts/runInventorySemanticSample.mjs",
     "study:compare:inventory-descriptions": "node src/scripts/runInventoryDescriptionComparison.mjs",
     "study:retrieve:inventory-descriptions": "node src/scripts/runInventoryDescriptionRetrieval.mjs",
+    "study:benchmark:inventory-descriptions": "node src/scripts/runInventoryDescriptionBenchmark.mjs",
     "study:replay:source-identity-evidence": "node src/scripts/runSourceIdentityExternalEvidenceReplay.mjs",
     "typecheck": "tsc --project tsconfig.json --pretty false",
     "test": "node ./scripts/run-jest.mjs --maxWorkers=2 --workerIdleMemoryLimit=512MB && node ./scripts/run-jest.mjs -c jest.integration.config.mjs --runInBand",

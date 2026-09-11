@@ -1,0 +1,28 @@
+/* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { INVENTORY_DESCRIPTION_CORPUS_SQL, prepareInventoryDescriptionCorpus } from './inventoryDescriptionCorpus.mjs';
+import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from './sourceConflictAuthorityGuard.mjs';
+import { createInventoryDescriptionVectorCache } from './inventoryDescriptionVectorCache.mjs';
+
+export function createDescriptionBenchmarkRepository({ withTransaction }) {
+  return {
+    async read(identity) {
+      return withTransaction(async client => {
+        await client.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
+        await client.query("SET LOCAL statement_timeout = '15s'");
+        await client.query("SET LOCAL lock_timeout = '1s'");
+        await client.query("SET LOCAL idle_in_transaction_session_timeout = '20s'");
+        await client.query("SET LOCAL transaction_timeout = '90s'");
+        const { rows } = await client.query(INVENTORY_DESCRIPTION_CORPUS_SQL, [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]);
+        const corpus = prepareInventoryDescriptionCorpus(rows);
+        if (corpus.texts.size * identity.dimensions > 20_000_000) throw new Error('description_benchmark_vector_budget');
+        const libraries = (await client.query(`SELECT id, name, media_type FROM libraries
+          WHERE is_active=true AND media_type IN ('movie','tv') ORDER BY id LIMIT 65`)).rows;
+        if (libraries.length > 64) throw new Error('description_benchmark_library_budget');
+        const cache = createInventoryDescriptionVectorCache({ query: (sql, params) => client.query(sql, params) });
+        const vectors = await cache.read(identity, [...corpus.texts.keys()]);
+        if (vectors.size !== corpus.texts.size) throw new Error('description_benchmark_cache_incomplete');
+        return { corpus, libraries, vectors };
+      });
+    },
+  };
+}
