@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Feed maintained inventory descriptions into live AI candidate comparison,
+  including competing libraries. Reuse cached vectors, report incomplete
+  coverage, keep snippets local, and omit adjudication response excerpts from
+  diagnostics without changing routing thresholds or adding user settings.
+
 - Keep the inventory description cache current automatically after library sync
   and through periodic catch-up. Reuse unchanged descriptions, checkpoint small
   local-only batches, yield to queued work, and back off on failures without

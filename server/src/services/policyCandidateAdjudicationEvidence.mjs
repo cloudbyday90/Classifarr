@@ -5,6 +5,8 @@ import { profileObservationCoverage } from './libraryProfileObservationPresentat
  */
 
 import { libraryProfileService } from './libraryProfileService.mjs';
+import { liveInventoryDescriptionRetriever } from './liveInventoryDescriptionRetriever.mjs';
+import { projectLiveInventoryDescriptionEvidence } from './liveInventoryDescriptionEvidence.mjs';
 import { isTrustedLocalOllamaEndpoint } from './ollamaLocalEndpointTrust.mjs';
 import { currentLibraryCandidateRetriever } from './currentLibraryCandidateRetriever.mjs';
 import {
@@ -239,6 +241,7 @@ export function createPolicyCandidateAdjudicationEvidenceService({
   getProfileStats = null,
   retrieveCurrentLibraryEvidence = null,
   retrieveCurrentLibrarySemanticEvidence = null,
+  retrieveInventoryDescriptions = null,
 } = {}) {
   const readProfileStats = typeof getProfileStats === 'function'
     ? getProfileStats
@@ -255,15 +258,18 @@ export function createPolicyCandidateAdjudicationEvidenceService({
     : typeof currentLibraryCandidateSemanticRetriever.retrieve === 'function'
       ? currentLibraryCandidateSemanticRetriever.retrieve.bind(currentLibraryCandidateSemanticRetriever)
       : async () => null;
+  const retrieveDescriptions = retrieveInventoryDescriptions ?? liveInventoryDescriptionRetriever.retrieve;
 
   return Object.freeze({
     async build({ contract = null, ragContext = null, metadata = null } = {}) {
       if (contract?.valid !== true) return null;
 
-      const [currentLibraryRetrieval, currentLibrarySemanticRetrieval] = await Promise.all([
+      const [currentLibraryRetrieval, descriptions] = await Promise.all([
         Promise.resolve().then(() => retrieveCurrentLibrary({ contract, metadata })).catch(() => null),
-        Promise.resolve().then(() => retrieveCurrentLibrarySemantic({ contract, metadata })).catch(() => null),
+        Promise.resolve().then(() => retrieveDescriptions({ contract, metadata })).catch(() => null),
       ]);
+      const currentLibrarySemanticRetrieval = descriptions?.statusId === 'available' ? null
+        : await Promise.resolve().then(() => retrieveCurrentLibrarySemantic({ contract, metadata })).catch(() => null);
 
       const candidates = await Promise.all(contract.candidates.map(async (candidate) => {
         let profile = null;
@@ -281,6 +287,10 @@ export function createPolicyCandidateAdjudicationEvidenceService({
           policyScore: candidate.policyScore,
           profile: localProfile(profile),
           rag: candidateRagFacts(ragContext, candidate.libraryId, true),
+          descriptionEvidence: projectLiveInventoryDescriptionEvidence({
+            ...descriptions?.candidates?.find(item => item.libraryId === candidate.libraryId),
+            statusId: descriptions?.statusId ?? 'unavailable',
+          }, true),
           currentLibrary: candidateCurrentLibraryEvidence(
             currentLibraryRetrieval,
             currentLibrarySemanticRetrieval,
@@ -298,7 +308,7 @@ export function createPolicyCandidateAdjudicationEvidenceService({
           currentLibrarySemanticStatusId(currentLibrarySemanticRetrieval?.statusId),
         currentLibraryCandidateSemanticOutcomeCalibrationStatusId:
           buildCurrentLibraryCandidateSemanticOutcomeCalibrationObservation(
-            currentLibrarySemanticRetrieval,
+            currentLibrarySemanticRetrieval ?? {},
           ),
       });
     },
@@ -324,6 +334,7 @@ export function projectPolicyCandidateAdjudicationEvidenceForProvider(
       libraryName: candidate.libraryName,
       mediaType: candidate.mediaType,
       policyScore: candidate.policyScore,
+      descriptionEvidence: projectLiveInventoryDescriptionEvidence(candidate.descriptionEvidence, local),
       profile: local ? candidate.profile : remoteProfile(candidate.profile),
       rag: local
         ? candidate.rag

@@ -952,6 +952,18 @@ describe('aiClassify', () => {
     expect(result.parse_diagnostics._diagnostics).toBe(true);
   });
 
+  test('adjudication diagnostics omit model-echoed private inventory text before and after repair', async () => {
+    db.query.mockResolvedValueOnce({ rows: [defaultProviderRow] });
+    aiRouter.getProvider.mockResolvedValueOnce(ollamaProvider);
+    ollamaService.generateWithProgress.mockResolvedValueOnce('PRIVATE inventory synopsis');
+    aiResponseParser.parse.mockReturnValue({ ...fallbackParseResult });
+    ollamaService.generate.mockResolvedValueOnce('PRIVATE repaired inventory synopsis');
+    const result = await classificationAiService.aiClassify(baseMetadata, baseLibraries, {}, { mode: 'adjudicate' });
+    expect(JSON.stringify(result.parse_diagnostics)).not.toContain('PRIVATE');
+    expect(JSON.stringify(aiProviderCapabilityMetricsService.record.mock.calls)).not.toContain('PRIVATE');
+    expect(JSON.stringify(mockLoggerModule.logger.warn.mock.calls)).not.toContain('PRIVATE');
+  });
+
   test('does NOT call attemptAiResponseRepair when first parse succeeds', async () => {
     setupHappyPath({ parseResult: goodParseResult });
     await classificationAiService.aiClassify(baseMetadata, baseLibraries);

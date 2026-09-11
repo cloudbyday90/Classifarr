@@ -454,7 +454,7 @@ Respond with ONLY one of the formats above.`;
     logMalformed: !suppressParseWarnings
   });
   const firstFailureReason = _getParseFailureReason(firstParseResult);
-  const responseArtifact = firstFailureReason
+  const responseArtifact = firstFailureReason && mode !== 'adjudicate'
     ? buildAiResponseDiagnosticArtifact(safeProviderDiagnosticOutput)
     : null;
   // A strict verification response cannot be rewritten by another model. A
@@ -518,7 +518,7 @@ Respond with ONLY one of the formats above.`;
         const repairedResponseForParsing = normalizedRepairOutput.normalizedOutput;
         repairThinkingTraceDetected = normalizedRepairOutput.thinkingTraceDetected;
         thinkingTraceDetected ||= repairThinkingTraceDetected;
-        repairResponseArtifact = buildAiResponseDiagnosticArtifact(repairedResponseForParsing);
+        repairResponseArtifact = mode === 'adjudicate' ? null : buildAiResponseDiagnosticArtifact(repairedResponseForParsing);
         const repairedParse = aiResponseParser.parse(repairedResponseForParsing, parseContext, {
           mode,
           logInvalid: false,
@@ -592,7 +592,7 @@ Respond with ONLY one of the formats above.`;
       title: metadata?.title,
       mode,
       parseFailureReason: finalParseResult.parse_diagnostics.failure_reason,
-      response: String(response || '').substring(0, 200)
+      ...(mode === 'adjudicate' ? {} : { response: String(response || '').substring(0, 200) })
     });
   }
 

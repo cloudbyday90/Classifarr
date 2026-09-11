@@ -53,6 +53,13 @@ export class AIResponseParser {
     parse(response, context, options = {}) {
         const { libraries, metadata } = context;
         const mode = options.mode || 'classify';
+        if (mode === 'adjudicate' && options.contentLogs !== false) {
+            // A model can echo private retrieval text in any response field.
+            // Use a per-call parser; never mutate the shared logger during a request.
+            const logger = Object.fromEntries(['debug', 'info', 'warn', 'error'].map(level =>
+                [level, message => this.logger[level](message)]));
+            return new AIResponseParser({ logger }).parse(response, context, { ...options, contentLogs: false });
+        }
         const logInvalid = options.logInvalid !== false;
         const logMalformed = options.logMalformed !== false;
 

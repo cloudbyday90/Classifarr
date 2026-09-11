@@ -95,3 +95,7 @@ library's previous incorrect placements become self-confirming truth.
 This component makes the index hands-off; it does not yet change the destination
 chosen for Deep Water, raise policy scores or prove classification correctness.
 That live consumer integration is the next component, not another review form.
+
+Follow-up implemented: [live inventory description evidence](live-inventory-description-evidence-outcome.md)
+connects the maintained cache to local AI candidate comparison. The refresh
+component itself remains background-only and does not authorize routing.
