@@ -2,6 +2,7 @@
 import { createHash } from 'node:crypto';
 import { normalizeDescriptionVector, descriptionCosineSimilarity } from './inventoryDescriptionSimilarity.mjs';
 import { rankInventoryMetadataCandidates } from './inventoryMetadataCandidates.mjs';
+import { learnInventoryProfiles, rankInventoryLearnedCandidates, INVENTORY_LEARNED_PROFILE_VERSION } from './inventoryLearnedProfiles.mjs';
 
 const digest = value => createHash('sha256').update(value).digest('hex');
 const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
@@ -44,12 +45,16 @@ export function selectDescriptionBenchmarkSample(corpus, options) {
 }
 
 /** Freeze vectors, candidate selection and neighbor ordering for all three arms. */
-export function prepareDescriptionBenchmark(snapshot, rawVectors, dimensions, options, { metadataCandidates = false } = {}) {
+export function prepareDescriptionBenchmark(snapshot, rawVectors, dimensions, options, { metadataCandidates = false, learnedProfiles = false } = {}) {
+  if (metadataCandidates && learnedProfiles) throw new Error('description_benchmark_selection_mode_conflict');
+  const usesMetadata = metadataCandidates || learnedProfiles;
+  const selectionVersion = learnedProfiles ? INVENTORY_LEARNED_PROFILE_VERSION : 'metadata_rrf_v1';
   const { corpus, libraries } = snapshot;
   if (corpus.texts.size * dimensions > 20_000_000) throw new Error('description_benchmark_vector_budget');
   const vectors = new Map([...corpus.texts.keys()].map(hash => [hash, normalizeDescriptionVector(rawVectors.get(hash), dimensions)]));
   const sample = selectDescriptionBenchmarkSample(corpus, options);
   const held = new Set(sample.map(doc => doc.hash));
+  const learned = learnedProfiles ? learnInventoryProfiles(corpus.documents, snapshot.candidateMetadata, libraries, held) : null;
   const metadataExamples = corpus.documents.filter(doc => !held.has(doc.hash))
     .map(doc => ({ ...doc, metadata: snapshot.candidateMetadata?.get(doc.key) }));
   const membership = new Map();
@@ -70,14 +75,15 @@ export function prepareDescriptionBenchmark(snapshot, rawVectors, dimensions, op
       return { ...library, items: items.slice(0, 100), eligible: items.length,
         rank: top.length ? top.reduce((sum, item) => sum + item.similarity, 0) / top.length : -2 };
     }).sort((a, b) => b.rank - a.rank || a.id - b.id);
-    const ordered = metadataCandidates ? rankInventoryMetadataCandidates(ranked, snapshot.candidateMetadata?.get(doc.key),
-      metadataExamples.filter(example => example.type === doc.type)) : ranked;
+    const ordered = learned ? rankInventoryLearnedCandidates(ranked, snapshot.candidateMetadata?.get(doc.key), learned)
+      : metadataCandidates ? rankInventoryMetadataCandidates(ranked, snapshot.candidateMetadata?.get(doc.key),
+        metadataExamples.filter(example => example.type === doc.type)) : ranked;
     const shortlist = ordered.slice(0, 3);
     const offset = caseIndex % Math.max(1, shortlist.length);
     const candidates = [...shortlist.slice(offset), ...shortlist.slice(0, offset)];
     return { overview: corpus.texts.get(doc.hash), mediaType: doc.type, observedLibraryIds: doc.libraryIds, candidates,
       investigationCandidates: ordered, itemIdentity: { mediaType: doc.type, tmdbId: doc.id },
-      ...(metadataCandidates ? { descriptionOnlyCandidateIds: ranked.slice(0, 3).map(candidate => candidate.id) } : {}) };
+      ...(usesMetadata ? { descriptionOnlyCandidateIds: ranked.slice(0, 3).map(candidate => candidate.id) } : {}) };
   });
   // Fingerprint includes vector values and names; never print individual content hashes.
   const fingerprintHash = createHash('sha256').update(JSON.stringify({
@@ -85,12 +91,14 @@ export function prepareDescriptionBenchmark(snapshot, rawVectors, dimensions, op
     libraries: [...libraries].sort((a, b) => a.id - b.id),
   }));
   for (const [hash, vector] of [...rawVectors].sort(([a], [b]) => compare(a, b))) fingerprintHash.update(JSON.stringify([hash, vector]));
-  if (metadataCandidates) fingerprintHash.update(JSON.stringify(['metadata_rrf_v1',
+  if (usesMetadata) fingerprintHash.update(JSON.stringify([selectionVersion,
     [...(snapshot.candidateMetadata ?? new Map())].sort(([a], [b]) => compare(a, b))]));
   return { cases, texts: corpus.texts, fingerprint: fingerprintHash.digest('hex'), sampleFingerprint: digest(JSON.stringify(sample.map(doc => doc.key))),
-    ...(metadataCandidates ? { metadataSelection: { version: 'metadata_rrf_v1',
+    ...(learned ? { profileLearning: learned.summary } : {}),
+    ...(usesMetadata ? { metadataSelection: { version: selectionVersion,
       missingQueryMetadata: sample.filter(doc => !snapshot.candidateMetadata?.get(doc.key) ||
-        (!snapshot.candidateMetadata.get(doc.key).genres.length && !snapshot.candidateMetadata.get(doc.key).studio)).length,
+        (!snapshot.candidateMetadata.get(doc.key).genres.length && !snapshot.candidateMetadata.get(doc.key).studio &&
+          (!learnedProfiles || !snapshot.candidateMetadata.get(doc.key).rating))).length,
       changedShortlists: cases.filter(entry => entry.candidates.some(candidate => !entry.descriptionOnlyCandidateIds.includes(candidate.id))).length,
       recoveredObservedDestinations: cases.filter(entry => !entry.observedLibraryIds.some(id => entry.descriptionOnlyCandidateIds.includes(id)) &&
         entry.candidates.some(candidate => entry.observedLibraryIds.includes(candidate.id))).length,

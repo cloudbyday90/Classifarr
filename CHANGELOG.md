@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add library-agnostic profile learning to local candidate benchmarks, using
+  contrastive inventory patterns without manual purpose declarations. Exclude
+  held-out examples, downweight shared observations, and preserve live routing.
+
 - Add a local metadata-aware candidate-selection benchmark using held-out genre
   and studio evidence alongside synopsis ranking, with coverage and shortlist
   comparisons. Preserve default selection and live routing pending evaluation.

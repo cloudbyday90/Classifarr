@@ -20,6 +20,12 @@ test('metadata trial excludes the entire cohort and fingerprints metadata withou
   expect(trial.sampleFingerprint).toBe(baseline.sampleFingerprint);
   expect(trial.fingerprint).not.toBe(baseline.fingerprint);
   expect(prepareDescriptionBenchmark(snapshot, snapshot.vectors, 2, { seed }).fingerprint).toBe(baseline.fingerprint);
+  const learned = prepareDescriptionBenchmark(snapshot, snapshot.vectors, 2, { seed }, { learnedProfiles: true });
+  expect(learned.profileLearning.trainingDescriptions).toBe(0);
+  expect(learned.cases.map(entry => entry.candidates)).toEqual(baseline.cases.map(entry => entry.candidates));
+  expect(learned.sampleFingerprint).toBe(baseline.sampleFingerprint);
+  expect(learned.fingerprint).not.toBe(trial.fingerprint);
+  expect(() => prepareDescriptionBenchmark(snapshot, snapshot.vectors, 2, { seed }, { learnedProfiles: true, metadataCandidates: true })).toThrow('mode_conflict');
 });
 function fixture(size = 600) {
   const libraries = Array.from({ length: 6 }, (_, index) => ({ id: index + 1, name: `Private library ${index}`, media_type: index < 3 ? 'movie' : 'tv' }));

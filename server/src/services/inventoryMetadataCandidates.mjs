@@ -1,4 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { fuseInventoryCandidateRanks } from './inventoryCandidateRankFusion.mjs';
 const clean = value => typeof value === 'string' && value.length <= 160
   ? value.normalize('NFKC').replace(/[\p{Cc}\p{Cf}]/gu, '').trim().toLowerCase() : '';
 
@@ -38,10 +39,5 @@ export function rankInventoryMetadataCandidates(ranked, query, examples) {
       .map(example => similarity(query, example.metadata)).filter(score => score > 0).sort((a, b) => b - a).slice(0, 3);
     return { id: candidate.id, score: scores.length ? scores.reduce((sum, score) => sum + score, 0) / 3 : 0 };
   }).filter(entry => entry.score > 0).sort((a, b) => b.score - a.score || a.id - b.id);
-  if (!scored.length) return ranked;
-  // Equal metadata scores share a rank; library IDs must not invent a preference.
-  const metadataRanks = new Map(scored.map(entry => [entry.id, 1 + scored.filter(other => other.score > entry.score).length]));
-  return ranked.map((candidate, index) => ({ candidate, index,
-    score: 1 / (60 + index + 1) + (metadataRanks.has(candidate.id) ? 1 / (60 + metadataRanks.get(candidate.id)) : 0) }))
-    .sort((a, b) => b.score - a.score || a.index - b.index).map(entry => entry.candidate);
+  return fuseInventoryCandidateRanks(ranked, scored);
 }

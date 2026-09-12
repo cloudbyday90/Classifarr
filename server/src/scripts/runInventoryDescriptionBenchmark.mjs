@@ -27,7 +27,8 @@ async function loadPrivateRuntime() {
 export async function runInventoryDescriptionBenchmark({ argv = process.argv.slice(2), loadRuntime = loadPrivateRuntime, signal, onProgress, onPrivateCase } = {}) {
   const { values } = parseArgs({ args: argv, options: { seed: { type: 'string' }, size: { type: 'string' },
     'generate-cases': { type: 'string' }, context: { type: 'string' }, 'max-minutes': { type: 'string' },
-    investigate: { type: 'boolean' }, 'metadata-candidates': { type: 'boolean' } } });
+    investigate: { type: 'boolean' }, 'metadata-candidates': { type: 'boolean' }, 'learned-profiles': { type: 'boolean' } } });
+  if (values['metadata-candidates'] && values['learned-profiles']) throw new Error('description_benchmark_selection_mode_conflict');
   const options = validateDescriptionBenchmarkOptions({ seed: values.seed,
     ...(values.size === undefined ? {} : { size: Number(values.size) }),
     ...(values['generate-cases'] === undefined ? {} : { generateCases: Number(values['generate-cases']) }),
@@ -41,7 +42,7 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     const snapshot = await runtime.repository.read(representation);
     await verifyDescriptionRepresentation(runtime.embedder, representation, abort);
     const prepared = prepareDescriptionBenchmark(snapshot, snapshot.vectors, representation.dimensions, options,
-      { metadataCandidates: values['metadata-candidates'] === true });
+      { metadataCandidates: values['metadata-candidates'] === true, learnedProfiles: values['learned-profiles'] === true });
     const client = options.generateCases ? runtime.createClient() : undefined;
     const identity = client ? await client.inspect(abort) : undefined;
     const report = await runDescriptionBenchmark(prepared, options, { client, identity, signal: abort, onProgress,

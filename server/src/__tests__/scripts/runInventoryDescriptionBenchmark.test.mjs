@@ -5,6 +5,17 @@ import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescr
 
 const seed = 'benchmark-test-seed-2026';
 
+test('learned profiles train automatically without names or declarations and report only coverage', async () => {
+  const instance = runtime();
+  const report = await runInventoryDescriptionBenchmark({ argv: ['--seed', seed, '--size', '10', '--learned-profiles'], loadRuntime: async () => instance });
+  expect(report.profileLearning).toMatchObject({ version: 'contrastive_profile_v1', trainingDescriptions: 0, missingOrConflictingMetadata: 10 });
+  expect(report.metadataSelection.version).toBe('contrastive_profile_v1');
+  expect(JSON.stringify(report)).not.toMatch(/Private|counts|studio|rating/);
+  const loadRuntime = jest.fn();
+  await expect(runInventoryDescriptionBenchmark({ argv: ['--seed', seed, '--learned-profiles', '--metadata-candidates'], loadRuntime })).rejects.toThrow('mode_conflict');
+  expect(loadRuntime).not.toHaveBeenCalled();
+});
+
 test('metadata selection is explicit and reports aggregate coverage without exposing observations', async () => {
   const instance = runtime();
   const report = await runInventoryDescriptionBenchmark({ argv: ['--seed', seed, '--size', '10', '--metadata-candidates'], loadRuntime: async () => instance });

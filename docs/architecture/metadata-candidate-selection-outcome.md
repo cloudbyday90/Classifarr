@@ -52,6 +52,11 @@ Shared sample fingerprint:
 
 ## Final recommendation
 
+Product-direction update: the next [organic profile learner](organic-library-profile-outcome.md)
+does not require declared purpose first. It discovers each library's observed
+character from inventory; explicit policy constraints remain a separate layer.
+The earlier declared-intent-first follow-up below is superseded for discovery.
+
 Keep this mode available for controlled evaluation; do not replace live policy
 selection yet. The gain is better candidate coverage without extra model calls
 or user forms. The cost is sensitivity to generic metadata and a demonstrated
