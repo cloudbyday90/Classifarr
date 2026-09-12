@@ -66,8 +66,8 @@ test('samples 200 additional titles without reusing the earlier 100, across both
   expect(prepared.profileLearning.missingOrConflictingMetadata).toBe(300);
 });
 
-test.each([{ size: 201 }, { size: 0 }, { size: 1.5 }, { seed: '../unsafe' }, { generateCases: 101 }, { generateCases: -1 },
-  { context: 0 }, { maxMinutes: 121 }, { excludePriorSize: -1 }, { excludePriorSize: 201 }])('rejects invalid budgets %j', invalid => {
+test.each([{ size: 301 }, { size: 0 }, { size: 1.5 }, { seed: '../unsafe' }, { generateCases: 101 }, { generateCases: -1 },
+  { context: 0 }, { maxMinutes: 121 }, { excludePriorSize: -1 }, { excludePriorSize: 301 }])('rejects invalid budgets %j', invalid => {
   expect(() => validateDescriptionBenchmarkOptions({ seed, ...invalid })).toThrow();
 });
 

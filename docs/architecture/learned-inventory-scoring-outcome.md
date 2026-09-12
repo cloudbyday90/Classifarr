@@ -138,6 +138,10 @@ explicit and bounded. No paid provider, fallback or model pull was used.
 
 ## Next high-value item
 
+Implemented in the [grouped-library benchmark follow-up](grouped-library-benchmark-outcome.md):
+five library-aware folds, a same-200 preflight comparison, and a new 300-item
+cohort. The recommendation below records the reasoning at this commit.
+
 Use **library-size-aware, grouped held-out folds** before tuning retrieval
 thresholds. Evaluate the same 200 additional titles while retaining training
 examples in small libraries; exclude each query identity and every synopsis

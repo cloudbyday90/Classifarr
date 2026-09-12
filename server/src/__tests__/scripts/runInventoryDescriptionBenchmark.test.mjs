@@ -5,6 +5,16 @@ import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescr
 
 const seed = 'benchmark-test-seed-2026';
 
+test('CLI grouped mode excludes successive cohorts only from test selection and keeps training coverage', async () => {
+  const instance = runtime();
+  const report = await runInventoryDescriptionBenchmark({ argv: ['--seed', seed, '--size', '5', '--exclude-prior-sizes', '5,5', '--folds', '5', '--learned-profiles'],
+    loadRuntime: async () => instance });
+  expect(report).toMatchObject({ excludedPriorDescriptions: 10, sampledTitles: 5,
+    evaluation: { folds: 5, priorCohortSizes: [5, 5], previousSampleOverlap: 0, priorItemsAvailableForTraining: true } });
+  expect(report.profileLearning.folds.every(fold => fold.missingOrConflictingMetadata === 19)).toBe(true);
+  expect(instance.createClient).not.toHaveBeenCalled();
+});
+
 test('CLI can exclude a previous seeded sample before selection and training', async () => {
   const instance = runtime();
   const report = await runInventoryDescriptionBenchmark({ argv: ['--seed', seed, '--size', '5', '--exclude-prior-size', '10', '--learned-profiles'],
@@ -64,7 +74,9 @@ test('generation is explicit and separate from sampled/held-out title count', as
 
 test('rejects malformed/unknown arguments before loading configuration', async () => {
   const loadRuntime = jest.fn();
-  for (const argv of [[], ['--seed', seed, '--size', '201'], ['--seed', seed, '--context', 'NaN'], ['--seed', seed, '--url', 'https://example.com']]) {
+  for (const argv of [[], ['--seed', seed, '--size', '301'], ['--seed', seed, '--context', 'NaN'], ['--seed', seed, '--url', 'https://example.com'],
+    ['--seed', seed, '--folds', '1'], ['--seed', seed, '--exclude-prior-sizes', '100,,200'],
+    ['--seed', seed, '--exclude-prior-size', '100', '--exclude-prior-sizes', '200']]) {
     await expect(runInventoryDescriptionBenchmark({ argv, loadRuntime })).rejects.toThrow();
   }
   expect(loadRuntime).not.toHaveBeenCalled();

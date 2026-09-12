@@ -26,18 +26,19 @@ export async function runDescriptionBenchmark(prepared, settings, { client, iden
       const armIndex = (index + offset) % arms.length;
       const arm = arms[armIndex], entry = prepared.cases[index];
       const packet = packets[index][armIndex];
-      if (packet.actualExamples === 0) { arm.results.push({ status: 'no_examples' }); continue; }
+      if (packet.actualExamples === 0) { arm.results.push({ status: 'no_examples', caseIndex: index }); continue; }
       try {
         const result = await client.generate({ prompt: packet.prompt, count: entry.candidates.length, context: options.context, identity, signal: abort });
         const proposal = parseDescriptionBenchmarkProposal(result.response, entry.candidates.length);
         const status = result.outputLimitReached ? 'output_limit' : proposal === null ? 'invalid' : proposal === 0 ? 'abstained' : 'proposed';
         arm.results.push({ status, latencyMs: result.latencyMs, promptTokens: result.promptTokens, outputTokens: result.outputTokens,
+          caseIndex: index,
           contextLimitSuspected: result.contextLimitSuspected,
           agreement: status === 'proposed' && entry.observedLibraryIds.includes(entry.candidates[proposal - 1].id) });
         if (status === 'proposed' || status === 'abstained') outcomes.set(arm.budget, proposal);
       } catch (error) {
         const status = error?.message === 'description_benchmark_context_budget' ? 'context_budget' : 'failed';
-        arm.results.push({ status });
+        arm.results.push({ status, caseIndex: index });
       }
       onProgress({ sampled: prepared.cases.length, requestedGenerationCases: requested,
         finishedArms: arms.reduce((sum, candidate) => sum + candidate.results.length, 0), totalArms: requested * 3 });
@@ -53,6 +54,7 @@ export async function runDescriptionBenchmark(prepared, settings, { client, iden
     ...(investigation ? { investigation } : {}),
     ...(prepared.metadataSelection ? { metadataSelection: prepared.metadataSelection } : {}),
     ...(prepared.profileLearning ? { profileLearning: prepared.profileLearning } : {}),
+    ...(prepared.evaluation ? { evaluation: prepared.evaluation } : {}),
     seed: options.seed, snapshotFingerprint: prepared.fingerprint, sampleFingerprint: prepared.sampleFingerprint,
     requestedTitles: options.size, sampledTitles: prepared.cases.length, sampleShortfall: Math.max(0, options.size - prepared.cases.length),
     excludedPriorDescriptions: prepared.excludedPriorDescriptions ?? 0,
@@ -72,6 +74,15 @@ export async function runDescriptionBenchmark(prepared, settings, { client, iden
       contextLimitSuspected: arm.results.filter(result => result.contextLimitSuspected).length,
       observedPlacementAgreement: { agreed: arm.results.filter(result => result.agreement).length,
         proposals: arm.results.filter(result => result.status === 'proposed').length },
+      ...(prepared.libraryStrata ? { libraryAgreement: prepared.libraryStrata.map(({ id, stratum }) => {
+        const cases = prepared.cases.slice(0, requested).map((entry, index) => ({ entry, index }))
+          .filter(({ entry }) => entry.observedLibraryIds.includes(id));
+        const indices = new Set(cases.map(({ index }) => index));
+        const results = arm.results.filter(result => indices.has(result.caseIndex));
+        return { stratum, sampled: cases.length, finished: results.length,
+          proposals: results.filter(result => result.status === 'proposed').length,
+          agreed: results.filter(result => result.agreement).length };
+      }) } : {}),
     })),
     paired: [30, 100].map(budget => {
       const eligible = paired.filter(outcomes => outcomes.has(9) && outcomes.has(budget));

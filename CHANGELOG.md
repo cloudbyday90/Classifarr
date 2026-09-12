@@ -11,14 +11,14 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add library-aware grouped evaluation folds and sequential cohort exclusions
+  for 300 additional local benchmark items. Preserve small-library training
+  coverage, isolate held-out description copies, and report per-library results
+  without changing live routing, model settings or release versions.
 - Make weak-evidence score discounts responsive to fresh, library-agnostic
   description comparisons and learned metadata. Preserve original policy scores,
   exclusions and thresholds; require existing local consensus checks for newly
   qualifying automatic routes. Explain retained scores within the existing UI.
-- Support local benchmarks of up to 200 titles, with optional exclusion of an
-  earlier seeded sample from both selection and training. Keep results separate
-  from verified accuracy and make no release.
-
 - Allow fresh local AI and learned-library evidence to resolve threshold-qualified
   policy ambiguity automatically. Preserve manual-review vetoes and configured
   thresholds, revalidate before granting routing authority, restore expired
