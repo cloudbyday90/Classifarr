@@ -22,6 +22,7 @@ export const POLICY_RUNTIME_QUESTION_SCORE_EXPLANATION_SOURCE_IDS = Object.freez
 
 export const POLICY_RUNTIME_QUESTION_SCORE_EXPLANATION_CALIBRATION_STATUS_IDS = Object.freeze({
   NOT_ADJUSTED: 'not_adjusted',
+  LEARNED_INVENTORY_SUPPORT: 'learned_inventory_support',
   NEGATIVE_CONFLICT: 'negative_conflict',
   COMPATIBILITY_ONLY: 'compatibility_only',
   BROAD_COMPATIBILITY_OVERLAP: 'broad_compatibility_overlap',
@@ -108,7 +109,10 @@ function calibrationPresentation(candidate, displayedScore) {
   const calibration = asObject(diagnostics.score_calibration || diagnostics.scoreCalibration);
   if (calibration.applied !== true) {
     return {
-      status_id: POLICY_RUNTIME_QUESTION_SCORE_EXPLANATION_CALIBRATION_STATUS_IDS.NOT_ADJUSTED,
+      status_id: diagnostics.primary_viability === 'learned_inventory_support' &&
+          diagnostics.inventory_comparison?.status_id === 'distinct_support'
+        ? POLICY_RUNTIME_QUESTION_SCORE_EXPLANATION_CALIBRATION_STATUS_IDS.LEARNED_INVENTORY_SUPPORT
+        : POLICY_RUNTIME_QUESTION_SCORE_EXPLANATION_CALIBRATION_STATUS_IDS.NOT_ADJUSTED,
       pre_safety_score: null,
     };
   }

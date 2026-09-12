@@ -16,6 +16,17 @@ import {
 } from '../../services/policyRuntimeQuestionScoreExplanation.mjs';
 
 describe('policyRuntimeQuestionScoreExplanation', () => {
+  test('explains retained learned-inventory support without exposing descriptions', () => {
+    const explanation = buildPolicyRuntimeQuestionScoreExplanation({ candidate: {
+      score: 75, breakdown: [{ type: 'profile', score: 75, activeWeight: .25 }],
+      candidate_diagnostics: { primary_viability: 'learned_inventory_support',
+        inventory_comparison: { status_id: 'distinct_support', private_text: 'never show this' },
+        score_calibration: { applied: false } },
+    } });
+    expect(explanation.calibration).toEqual({ status_id: 'learned_inventory_support', pre_safety_score: null });
+    expect(JSON.stringify(explanation)).not.toContain('never show this');
+  });
+
   test('projects fixed evidence categories and reproducible score mechanics', () => {
     const explanation = buildPolicyRuntimeQuestionScoreExplanation({
       displayedScore: 82,

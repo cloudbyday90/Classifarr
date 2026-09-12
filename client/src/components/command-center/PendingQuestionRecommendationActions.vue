@@ -402,6 +402,7 @@ const scoreExplanationCalibrationMessage = computed(() => {
   const statusId = scoreExplanation.value?.calibration?.status_id
   const messages = {
     not_adjusted: 'No evidence-safety calibration changed this score.',
+    learned_inventory_support: 'Description comparisons and learned library patterns support this match, so the weak-evidence discount was not applied.',
     negative_conflict: 'An evidence-safety calibration was applied because deterministic evidence conflicted.',
     compatibility_only: 'An evidence-safety calibration was applied because only compatibility evidence was available.',
     broad_compatibility_overlap: 'An evidence-safety calibration was applied because declared compatibility evidence overlapped another destination.',

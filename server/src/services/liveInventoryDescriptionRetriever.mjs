@@ -9,11 +9,11 @@ import { createLiveInventoryDescriptionRepository } from './liveInventoryDescrip
 import { validateEmbedding } from '../utils/embeddingValidation.mjs';
 import { projectLiveInventoryQueryMetadata } from './liveInventoryLearnedProfile.mjs';
 
-function buildRequest(contract, metadata) {
+function buildRequest(contract, metadata, maxCandidates) {
   const key = inventoryDescriptionIdentity(metadata);
   const projection = projectInventoryDescription({ metadata });
   if (!projection || contract?.valid !== true || !Array.isArray(contract.candidates) ||
-      contract.candidates.length < 2 || contract.candidates.length > 3) return null;
+      contract.candidates.length < 2 || contract.candidates.length > maxCandidates) return null;
   const libraryIds = contract.candidates.map(candidate => candidate.libraryId);
   if (new Set(libraryIds).size !== libraryIds.length || contract.candidates.some(candidate =>
     !Number.isInteger(candidate.libraryId) || candidate.libraryId < 1 || candidate.libraryId > 2_147_483_647 ||
@@ -28,11 +28,13 @@ export function createLiveInventoryDescriptionRetriever({
   repository = createLiveInventoryDescriptionRepository({ withTransaction: callback => db.withTransaction(callback) }),
   createEmbedder = createLocalStudyEmbeddingClient,
   timeoutMs = 15_000,
+  maxCandidates = 3,
 } = {}) {
+  if (!Number.isInteger(maxCandidates) || maxCandidates < 2 || maxCandidates > 64) throw new RangeError('invalid_candidate_limit');
   return {
     async retrieve({ contract, metadata, signal: parentSignal } = {}) {
       let request;
-      try { request = buildRequest(contract, metadata); } catch { request = null; }
+      try { request = buildRequest(contract, metadata, maxCandidates); } catch { request = null; }
       if (!request) return { statusId: 'not_applicable', candidates: [] };
       const signal = AbortSignal.any([AbortSignal.timeout(timeoutMs), ...(parentSignal ? [parentSignal] : [])]);
       try {

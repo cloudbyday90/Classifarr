@@ -7,15 +7,16 @@ import { learnInventoryProfiles, rankInventoryLearnedCandidates, INVENTORY_LEARN
 const digest = value => createHash('sha256').update(value).digest('hex');
 const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 
-export function validateDescriptionBenchmarkOptions({ seed, size = 100, generateCases = 0, context = 32768, maxMinutes = 20 } = {}) {
+export function validateDescriptionBenchmarkOptions({ seed, size = 100, generateCases = 0, context = 32768, maxMinutes = 20, excludePriorSize = 0 } = {}) {
   if (typeof seed !== 'string' || !/^[a-zA-Z0-9_-]{16,128}$/.test(seed) ||
-      !Number.isInteger(size) || size < 1 || size > 100 ||
+      !Number.isInteger(size) || size < 1 || size > 200 ||
       !Number.isInteger(generateCases) || generateCases < 0 || generateCases > size ||
+      !Number.isInteger(excludePriorSize) || excludePriorSize < 0 || excludePriorSize > 200 ||
       ![8192, 16384, 32768, 65536].includes(context) ||
       !Number.isInteger(maxMinutes) || maxMinutes < 1 || maxMinutes > 120) {
     throw new Error('description_benchmark_options_invalid');
   }
-  return { seed, size, generateCases, context, maxMinutes };
+  return { seed, size, generateCases, context, maxMinutes, excludePriorSize };
 }
 
 /** Private snapshot in; deterministic, distinct-description sample out. */
@@ -47,6 +48,15 @@ export function selectDescriptionBenchmarkSample(corpus, options) {
 /** Freeze vectors, candidate selection and neighbor ordering for all three arms. */
 export function prepareDescriptionBenchmark(snapshot, rawVectors, dimensions, options, { metadataCandidates = false, learnedProfiles = false } = {}) {
   if (metadataCandidates && learnedProfiles) throw new Error('description_benchmark_selection_mode_conflict');
+  const { excludePriorSize } = validateDescriptionBenchmarkOptions(options);
+  if (excludePriorSize > 0) {
+    const prior = new Set(selectDescriptionBenchmarkSample(snapshot.corpus,
+      { seed: options.seed, size: excludePriorSize }).map(doc => doc.hash));
+    const corpus = { ...snapshot.corpus, documents: snapshot.corpus.documents.filter(doc => !prior.has(doc.hash)),
+      texts: new Map([...snapshot.corpus.texts].filter(([hash]) => !prior.has(hash))) };
+    return { ...prepareDescriptionBenchmark({ ...snapshot, corpus }, rawVectors, dimensions,
+      { ...options, excludePriorSize: 0 }, { metadataCandidates, learnedProfiles }), excludedPriorDescriptions: prior.size };
+  }
   const usesMetadata = metadataCandidates || learnedProfiles;
   const selectionVersion = learnedProfiles ? INVENTORY_LEARNED_PROFILE_VERSION : 'metadata_rrf_v1';
   const { corpus, libraries } = snapshot;

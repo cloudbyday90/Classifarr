@@ -97,7 +97,10 @@ export function projectPolicyCandidateDecision({ ranked = [] } = {}) {
   });
 
   return {
-    action: decisionBand.action,
+    // Inventory can remove a weak-evidence discount, but cannot authorize a
+    // new automatic route without the existing local consensus/revalidation.
+    action: decisionBand.action === 'auto_classify' && top.candidate_diagnostics?.primary_viability === 'learned_inventory_support'
+      ? 'prompt_select' : decisionBand.action,
     top,
     ranked: normalizedRanked,
     decisionDiagnostics: null,

@@ -46,8 +46,28 @@ test('samples 100 distinct descriptions reproducibly across movie and TV library
   expect(selectDescriptionBenchmarkSample(corpus, { seed: 'another-valid-seed' })).not.toEqual(sample);
 });
 
-test.each([{ size: 101 }, { size: 0 }, { size: 1.5 }, { seed: '../unsafe' }, { generateCases: 101 }, { generateCases: -1 },
-  { context: 0 }, { maxMinutes: 121 }])('rejects invalid budgets %j', invalid => {
+test('samples 200 additional titles without reusing the earlier 100, across both media types', () => {
+  const snapshot = fixture();
+  const earlier = new Set(selectDescriptionBenchmarkSample(snapshot.corpus, { seed, size: 100 }).map(doc => doc.hash));
+  const remaining = { ...snapshot.corpus, documents: snapshot.corpus.documents.filter(doc => !earlier.has(doc.hash)) };
+  const sample = selectDescriptionBenchmarkSample(remaining, { seed, size: 200 });
+  expect(sample).toHaveLength(200);
+  expect(sample.every(doc => !earlier.has(doc.hash))).toBe(true);
+  expect(new Set(sample.map(doc => doc.hash)).size).toBe(200);
+  expect(new Set(sample.flatMap(doc => doc.libraryIds)).size).toBe(6);
+  expect(new Set(sample.map(doc => doc.type))).toEqual(new Set(['movie', 'tv']));
+  const prepared = prepareDescriptionBenchmark(snapshot, snapshot.vectors, 2, { seed, size: 200, excludePriorSize: 100 }, { learnedProfiles: true });
+  expect(prepared.excludedPriorDescriptions).toBe(100);
+  const allHeld = new Set([...earlier, ...sample.map(doc => doc.hash)]);
+  expect(prepared.cases).toHaveLength(200);
+  expect(prepared.cases.every(entry => !earlier.has(snapshot.corpus.documents.find(doc => doc.id === entry.itemIdentity.tmdbId).hash))).toBe(true);
+  expect(prepared.cases.every(entry => entry.investigationCandidates.every(candidate =>
+    candidate.items.every(item => !allHeld.has(item.hash))))).toBe(true);
+  expect(prepared.profileLearning.missingOrConflictingMetadata).toBe(300);
+});
+
+test.each([{ size: 201 }, { size: 0 }, { size: 1.5 }, { seed: '../unsafe' }, { generateCases: 101 }, { generateCases: -1 },
+  { context: 0 }, { maxMinutes: 121 }, { excludePriorSize: -1 }, { excludePriorSize: 201 }])('rejects invalid budgets %j', invalid => {
   expect(() => validateDescriptionBenchmarkOptions({ seed, ...invalid })).toThrow();
 });
 

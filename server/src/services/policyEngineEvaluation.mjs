@@ -4,6 +4,7 @@ import { policyDecisionBuilder } from './policyDecisionBuilder.mjs';
 import { policyExclusionService } from './policyExclusionService.mjs';
 import { policyCandidateRanker } from './policyCandidateRanker.mjs';
 import { buildCandidateDiagnostics } from './policyCandidateDiagnostics.mjs';
+import { policyInventoryEvidenceService } from './policyInventoryEvidenceService.mjs';
 import {
     applySpecializedDestinationIdentityEvidence,
 } from './policySpecializedDestinationIdentityEvidence.mjs';
@@ -24,6 +25,7 @@ export async function evaluateItem(item, options, deps) {
     const {
         checkAuthoritativeSignals, getActivePolicies, evaluatePolicy,
         determineAction = (ranked) => policyCandidateRanker.determineAction(ranked),
+        applyInventoryEvidence = (input) => policyInventoryEvidenceService.apply(input),
     } = deps;
 
     try {
@@ -173,7 +175,10 @@ export async function evaluateItem(item, options, deps) {
             policies: candidatePolicies,
             item,
         });
-        const ranked = await policyCandidateRanker.rankResults(identityCalibratedEvaluations);
+        const inventoryEvaluations = await applyInventoryEvidence({
+            evaluations: identityCalibratedEvaluations, policies: candidatePolicies, item,
+        });
+        const ranked = await policyCandidateRanker.rankResults(inventoryEvaluations);
 
         const result = determineAction(ranked);
 

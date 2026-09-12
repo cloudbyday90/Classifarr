@@ -33,6 +33,19 @@ test('warm retrieval uses the query cache, same representation and every candida
   expect(embedder.inspect).toHaveBeenCalledTimes(2);
 });
 
+test('only an explicitly bounded internal retriever can compare more than three libraries', async () => {
+  const { retriever, repository, embedder } = setup();
+  const expanded = { valid: true, candidates: [1, 2, 3, 4].map(libraryId => ({ libraryId, mediaType: 'movie' })) };
+  expect((await retriever.retrieve({ contract: expanded, metadata })).statusId).toBe('not_applicable');
+  expect(repository.readConfig).not.toHaveBeenCalled();
+  const scorer = createLiveInventoryDescriptionRetriever({ repository, createEmbedder: () => embedder, maxCandidates: 64 });
+  await scorer.retrieve({ contract: expanded, metadata });
+  expect(repository.retrieve.mock.calls[0][0].request.libraryIds).toEqual([1, 2, 3, 4]);
+  for (const maxCandidates of [0, 1, 65, NaN, '64']) {
+    expect(() => createLiveInventoryDescriptionRetriever({ maxCandidates })).toThrow('invalid_candidate_limit');
+  }
+});
+
 test('live metadata reaches the learner and only allowlisted fit reaches local and remote comparison prompts', async () => {
   const { retriever, repository, candidates } = setup();
   for (const candidate of candidates) candidate.learnedProfile = {

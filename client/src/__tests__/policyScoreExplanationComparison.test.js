@@ -46,6 +46,14 @@ function decisionPresentation(overrides = {}) {
 }
 
 describe('policyScoreExplanationComparison', () => {
+  it('accepts the bounded learned-inventory explanation without adding another score component', () => {
+    const presentation = decisionPresentation()
+    presentation.deterministic.score_explanation.calibration.status_id = 'learned_inventory_support'
+    const result = buildPolicyScoreExplanationComparison([presentation, decisionPresentation()])
+    expect(result.entries[0].calibration.status_id).toBe('learned_inventory_support')
+    expect(result.entries[0].components).toHaveLength(2)
+  })
+
   it('creates a bounded identity-free comparison from valid presentations', () => {
     const first = decisionPresentation()
     first.deterministic.destination = { library_id: 4, library_name: 'Do not show' }

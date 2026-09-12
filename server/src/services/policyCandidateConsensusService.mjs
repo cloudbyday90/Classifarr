@@ -10,7 +10,7 @@ import * as db from '../config/database.mjs';
 import { canonicalStudyModel } from './localStudyEmbeddingClient.mjs';
 import { isTrustedLocalOllamaEndpoint } from './ollamaLocalEndpointTrust.mjs';
 
-/** Re-evaluate with cached RAG: no new generation, retrieval or metrics finalization. */
+/** Reuse historical RAG matches; refresh live inventory scoring without generation or metrics finalization. */
 async function refreshPolicy(metadata, previous, relatedEvidence) {
   return evaluateItem(metadata, { ragCache: previous.ragCache ?? { matches: [] }, relatedEvidence }, {
     checkAuthoritativeSignals: item => policyEngine.checkAuthoritativeSignals(item),

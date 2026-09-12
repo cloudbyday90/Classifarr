@@ -148,3 +148,7 @@ The practical benefit of the next component should be fewer unnecessary reviews
 for well-supported matches, including cases like the low-scored Movies example.
 Its tradeoff is that calibration needs trustworthy outcome evidence; raw cosine
 similarity, learned fit and model agreement are not interchangeable percentages.
+
+The first scoring follow-up is now implemented; see
+[learned inventory scoring outcome](learned-inventory-scoring-outcome.md) for
+the additional 200-title test, its limited gains and the next evaluation step.

@@ -7,6 +7,8 @@ import { createInventoryDescriptionVectorCache } from '../../services/inventoryD
 import { createDescriptionBenchmarkRepository } from '../../services/inventoryDescriptionBenchmarkRepository.mjs';
 import { prepareDescriptionBenchmark } from '../../services/inventoryDescriptionBenchmarkSample.mjs';
 import { createPolicyCandidateShortlistService } from '../../services/policyCandidateShortlistService.mjs';
+import { createPolicyInventoryEvidenceService } from '../../services/policyInventoryEvidenceService.mjs';
+import { projectRankedPolicyCandidates } from '../../services/policyCandidateRankingProjection.mjs';
 
 let client;
 let repository;
@@ -40,6 +42,26 @@ async function add(id, library, text, vector = [1, 0, 0], media = 'movie') {
   if (vector) await cache.write(identity, [{ hash: hash(text), vector }]);
 }
 const retrieve = (representation = identity) => repository.retrieve({ request, identity: representation, vector: [1, 0, 0] });
+
+test('current PostgreSQL description/metadata evidence restores a weak score and loses support after edits', async () => {
+  for (let id = 1; id <= 24; id++) {
+    await add(id, id <= 12 ? 10 : 20, `Distinct evidence ${id}`, id <= 12 ? [1, .1, 0] : [0, 1, 0]);
+  }
+  await client.query(`UPDATE media_server_items SET genres=CASE WHEN library_id=10 THEN '["Documentary"]'::jsonb ELSE '["Comedy"]'::jsonb END`);
+  const policies = [10, 20].map(id => ({ id, library_id: id, library_media_type: 'movie', enabled: true, trust_rag: true }));
+  const evaluations = policies.map(policy => ({ policy_id: policy.id, library_id: policy.library_id, score: 75,
+    candidate_diagnostics: { primary_viability: 'compatibility_only', evidence_class: 'compatibility_only',
+      primary_anchor_eligible: false, suppression_reasons: ['weak_primary_evidence'] } }));
+  const service = createPolicyInventoryEvidenceService({ retriever: { retrieve: async ({ contract }) => ({
+    statusId: 'available', candidates: await repository.retrieve({ identity, vector: [1, 0, 0],
+      request: { ...request, libraryIds: contract.candidates.map(candidate => candidate.libraryId), queryMetadata: { genres: ['documentary'] } } }),
+  }) } });
+  const input = { evaluations, policies, item: { media_type: 'movie', tmdb_id: 90, overview: 'Query' } };
+  expect(projectRankedPolicyCandidates(await service.apply(input))[0]).toMatchObject({ library_id: 10, score: 75 });
+  await client.query(`UPDATE media_server_items SET genres='["Comedy"]'::jsonb WHERE library_id=10`);
+  expect(projectRankedPolicyCandidates(await service.apply(input))[0].score).toBe(45);
+  expect((await client.query('SELECT count(*)::integer AS count FROM inventory_description_vector_cache')).rows[0].count).toBe(24);
+});
 
 test('real cosine ranking compares all candidates, excludes self and duplicates, and bounds each candidate', async () => {
   await add(90, 10, 'Query');

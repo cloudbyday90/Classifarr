@@ -27,10 +27,12 @@ async function loadPrivateRuntime() {
 export async function runInventoryDescriptionBenchmark({ argv = process.argv.slice(2), loadRuntime = loadPrivateRuntime, signal, onProgress, onPrivateCase } = {}) {
   const { values } = parseArgs({ args: argv, options: { seed: { type: 'string' }, size: { type: 'string' },
     'generate-cases': { type: 'string' }, context: { type: 'string' }, 'max-minutes': { type: 'string' },
+    'exclude-prior-size': { type: 'string' },
     investigate: { type: 'boolean' }, 'metadata-candidates': { type: 'boolean' }, 'learned-profiles': { type: 'boolean' } } });
   if (values['metadata-candidates'] && values['learned-profiles']) throw new Error('description_benchmark_selection_mode_conflict');
   const options = validateDescriptionBenchmarkOptions({ seed: values.seed,
     ...(values.size === undefined ? {} : { size: Number(values.size) }),
+    ...(values['exclude-prior-size'] === undefined ? {} : { excludePriorSize: Number(values['exclude-prior-size']) }),
     ...(values['generate-cases'] === undefined ? {} : { generateCases: Number(values['generate-cases']) }),
     ...(values.context === undefined ? {} : { context: Number(values.context) }),
     ...(values['max-minutes'] === undefined ? {} : { maxMinutes: Number(values['max-minutes']) }),

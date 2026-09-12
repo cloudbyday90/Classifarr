@@ -1,7 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { createHash } from 'node:crypto';
 import { buildPolicyCandidateAdjudicationPool } from './policyCandidateAdjudicationContract.mjs';
-import { projectLiveInventoryLearnedProfile } from './liveInventoryLearnedProfileEvidence.mjs';
+import { assessInventoryDescriptionSeparation } from './inventoryDescriptionSeparation.mjs';
 import { isProviderRecoveryRoutingBlocked } from './classificationProviderRecovery.mjs';
 import { validatePolicyDecisionThresholds } from '../utils/policyThresholds.mjs';
 
@@ -49,22 +49,14 @@ export function assessPolicyCandidateConsensus({ contract, policyResult, evidenc
   const compared = [];
   for (const id of ids) {
     const candidate = evidence.candidates.find(value => value?.libraryId === id);
-    const description = candidate?.descriptionEvidence, items = description?.items;
-    const profile = projectLiveInventoryLearnedProfile(description?.learnedProfile);
-    if (candidate?.mediaType !== metadata.media_type || description?.statusId !== 'available' ||
-        !Number.isInteger(description.eligible) || description.eligible < 3 || description.eligible > 10000 ||
-        description.indexed !== description.eligible || !Array.isArray(items) || items.length !== 3 ||
-        !profile || profile.trainingDescriptions < 20 ||
-        items.some(item => typeof item?.description !== 'string' || !item.description.trim() ||
-          !Number.isFinite(item.similarity) || item.similarity < -1 || item.similarity > 1) ||
-        new Set(items.map(item => item.description)).size !== 3) return reject('evidence_incomplete');
-    compared.push({ id, candidate, profile, items, mean: items.reduce((sum, item) => sum + item.similarity, 0) / 3 });
+    if (candidate?.mediaType !== metadata.media_type || candidate.descriptionEvidence?.statusId !== 'available') {
+      return reject('evidence_incomplete');
+    }
+    compared.push({ ...candidate.descriptionEvidence, libraryId: id });
   }
-  const winner = compared.find(candidate => candidate.id === selected.libraryId);
-  const others = compared.filter(candidate => candidate !== winner);
-  if (winner.profile.statusId !== 'available' || winner.profile.relativeFit <= 0 ||
-      winner.items.some(item => item.sharedAcrossCandidates !== false || item.similarity < .75) || winner.mean < .80 ||
-      others.some(candidate => winner.mean - candidate.mean < .05 || candidate.profile.relativeFit >= winner.profile.relativeFit ||
-        candidate.candidate.currentLibrary?.directMatch === true)) return reject('evidence_ambiguous');
+  const separation = assessInventoryDescriptionSeparation(compared);
+  if (!separation.eligible) return reject(separation.reason);
+  if (separation.libraryId !== selected.libraryId || evidence.candidates.some(candidate =>
+    candidate.libraryId !== selected.libraryId && candidate.currentLibrary?.directMatch === true)) return reject('evidence_ambiguous');
   return { eligible: true, reason: 'threshold_qualified_consensus', libraryId: selected.libraryId, score: policyCandidate.score };
 }

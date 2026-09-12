@@ -25,6 +25,7 @@ export const POLICY_SCORE_EXPLANATION_SOURCE_LABELS = Object.freeze({
 
 export const POLICY_SCORE_EXPLANATION_CALIBRATION_LABELS = Object.freeze({
   not_adjusted: 'No evidence-safety calibration changed this score.',
+  learned_inventory_support: 'Description comparisons and learned library patterns support this match, so the weak-evidence discount was not applied.',
   negative_conflict: 'Evidence-safety calibration reduced this score because evidence conflicts.',
   compatibility_only: 'Evidence-safety calibration reduced this compatibility-only score.',
   broad_compatibility_overlap: 'Evidence-safety calibration reduced this score because the match is broadly compatible.',

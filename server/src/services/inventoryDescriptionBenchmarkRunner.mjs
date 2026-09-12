@@ -55,6 +55,7 @@ export async function runDescriptionBenchmark(prepared, settings, { client, iden
     ...(prepared.profileLearning ? { profileLearning: prepared.profileLearning } : {}),
     seed: options.seed, snapshotFingerprint: prepared.fingerprint, sampleFingerprint: prepared.sampleFingerprint,
     requestedTitles: options.size, sampledTitles: prepared.cases.length, sampleShortfall: Math.max(0, options.size - prepared.cases.length),
+    excludedPriorDescriptions: prepared.excludedPriorDescriptions ?? 0,
     requestedGenerationCases: options.generateCases, availableGenerationCases: requested, independentLabels: 0, accuracy: null,
     observedPlacementIsGroundTruth: false, inputTruncation: 'unknown', liveRoutingChanged: false,
     representedLibraryStrata: prepared.strata,
