@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { createHash } from 'node:crypto';
 import { normalizeDescriptionVector, descriptionCosineSimilarity } from './inventoryDescriptionSimilarity.mjs';
+import { rankInventoryMetadataCandidates } from './inventoryMetadataCandidates.mjs';
 
 const digest = value => createHash('sha256').update(value).digest('hex');
 const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
@@ -43,12 +44,14 @@ export function selectDescriptionBenchmarkSample(corpus, options) {
 }
 
 /** Freeze vectors, candidate selection and neighbor ordering for all three arms. */
-export function prepareDescriptionBenchmark(snapshot, rawVectors, dimensions, options) {
+export function prepareDescriptionBenchmark(snapshot, rawVectors, dimensions, options, { metadataCandidates = false } = {}) {
   const { corpus, libraries } = snapshot;
   if (corpus.texts.size * dimensions > 20_000_000) throw new Error('description_benchmark_vector_budget');
   const vectors = new Map([...corpus.texts.keys()].map(hash => [hash, normalizeDescriptionVector(rawVectors.get(hash), dimensions)]));
   const sample = selectDescriptionBenchmarkSample(corpus, options);
   const held = new Set(sample.map(doc => doc.hash));
+  const metadataExamples = corpus.documents.filter(doc => !held.has(doc.hash))
+    .map(doc => ({ ...doc, metadata: snapshot.candidateMetadata?.get(doc.key) }));
   const membership = new Map();
   for (const doc of corpus.documents) {
     if (held.has(doc.hash)) continue;
@@ -67,11 +70,14 @@ export function prepareDescriptionBenchmark(snapshot, rawVectors, dimensions, op
       return { ...library, items: items.slice(0, 100), eligible: items.length,
         rank: top.length ? top.reduce((sum, item) => sum + item.similarity, 0) / top.length : -2 };
     }).sort((a, b) => b.rank - a.rank || a.id - b.id);
-    const shortlist = ranked.slice(0, 3);
+    const ordered = metadataCandidates ? rankInventoryMetadataCandidates(ranked, snapshot.candidateMetadata?.get(doc.key),
+      metadataExamples.filter(example => example.type === doc.type)) : ranked;
+    const shortlist = ordered.slice(0, 3);
     const offset = caseIndex % Math.max(1, shortlist.length);
     const candidates = [...shortlist.slice(offset), ...shortlist.slice(0, offset)];
     return { overview: corpus.texts.get(doc.hash), mediaType: doc.type, observedLibraryIds: doc.libraryIds, candidates,
-      investigationCandidates: ranked, itemIdentity: { mediaType: doc.type, tmdbId: doc.id } };
+      investigationCandidates: ordered, itemIdentity: { mediaType: doc.type, tmdbId: doc.id },
+      ...(metadataCandidates ? { descriptionOnlyCandidateIds: ranked.slice(0, 3).map(candidate => candidate.id) } : {}) };
   });
   // Fingerprint includes vector values and names; never print individual content hashes.
   const fingerprintHash = createHash('sha256').update(JSON.stringify({
@@ -79,6 +85,17 @@ export function prepareDescriptionBenchmark(snapshot, rawVectors, dimensions, op
     libraries: [...libraries].sort((a, b) => a.id - b.id),
   }));
   for (const [hash, vector] of [...rawVectors].sort(([a], [b]) => compare(a, b))) fingerprintHash.update(JSON.stringify([hash, vector]));
+  if (metadataCandidates) fingerprintHash.update(JSON.stringify(['metadata_rrf_v1',
+    [...(snapshot.candidateMetadata ?? new Map())].sort(([a], [b]) => compare(a, b))]));
   return { cases, texts: corpus.texts, fingerprint: fingerprintHash.digest('hex'), sampleFingerprint: digest(JSON.stringify(sample.map(doc => doc.key))),
+    ...(metadataCandidates ? { metadataSelection: { version: 'metadata_rrf_v1',
+      missingQueryMetadata: sample.filter(doc => !snapshot.candidateMetadata?.get(doc.key) ||
+        (!snapshot.candidateMetadata.get(doc.key).genres.length && !snapshot.candidateMetadata.get(doc.key).studio)).length,
+      changedShortlists: cases.filter(entry => entry.candidates.some(candidate => !entry.descriptionOnlyCandidateIds.includes(candidate.id))).length,
+      recoveredObservedDestinations: cases.filter(entry => !entry.observedLibraryIds.some(id => entry.descriptionOnlyCandidateIds.includes(id)) &&
+        entry.candidates.some(candidate => entry.observedLibraryIds.includes(candidate.id))).length,
+      newObservedDestinationMisses: cases.filter(entry => entry.observedLibraryIds.some(id => entry.descriptionOnlyCandidateIds.includes(id)) &&
+        !entry.candidates.some(candidate => entry.observedLibraryIds.includes(candidate.id))).length,
+      descriptionOnlyPlacementMisses: cases.filter(entry => !entry.observedLibraryIds.some(id => entry.descriptionOnlyCandidateIds.includes(id))).length } } : {}),
     coverage: corpus.coverage, strata: new Set(sample.flatMap(doc => doc.libraryIds.map(id => `${doc.type}:${id}`))).size };
 }

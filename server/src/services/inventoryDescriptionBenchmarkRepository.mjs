@@ -1,7 +1,10 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { INVENTORY_DESCRIPTION_CORPUS_SQL, prepareInventoryDescriptionCorpus } from './inventoryDescriptionCorpus.mjs';
+import { buildInventoryDescriptionCorpusSql, prepareInventoryDescriptionCorpus } from './inventoryDescriptionCorpus.mjs';
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from './sourceConflictAuthorityGuard.mjs';
 import { createInventoryDescriptionVectorCache } from './inventoryDescriptionVectorCache.mjs';
+import { collectInventoryCandidateMetadata } from './inventoryMetadataCandidates.mjs';
+
+export const INVENTORY_METADATA_BENCHMARK_SQL = buildInventoryDescriptionCorpusSql({ includeCandidateMetadata: true });
 
 export function createDescriptionBenchmarkRepository({ withTransaction }) {
   return {
@@ -12,7 +15,7 @@ export function createDescriptionBenchmarkRepository({ withTransaction }) {
         await client.query("SET LOCAL lock_timeout = '1s'");
         await client.query("SET LOCAL idle_in_transaction_session_timeout = '20s'");
         await client.query("SET LOCAL transaction_timeout = '90s'");
-        const { rows } = await client.query(INVENTORY_DESCRIPTION_CORPUS_SQL, [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]);
+        const { rows } = await client.query(INVENTORY_METADATA_BENCHMARK_SQL, [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]);
         const corpus = prepareInventoryDescriptionCorpus(rows);
         if (corpus.texts.size * identity.dimensions > 20_000_000) throw new Error('description_benchmark_vector_budget');
         const libraries = (await client.query(`SELECT id, name, media_type FROM libraries
@@ -21,7 +24,7 @@ export function createDescriptionBenchmarkRepository({ withTransaction }) {
         const cache = createInventoryDescriptionVectorCache({ query: (sql, params) => client.query(sql, params) });
         const vectors = await cache.read(identity, [...corpus.texts.keys()]);
         if (vectors.size !== corpus.texts.size) throw new Error('description_benchmark_cache_incomplete');
-        return { corpus, libraries, vectors };
+        return { corpus, libraries, vectors, candidateMetadata: collectInventoryCandidateMetadata(rows) };
       });
     },
   };

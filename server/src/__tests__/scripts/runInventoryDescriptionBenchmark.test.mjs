@@ -4,6 +4,14 @@ import { runInventoryDescriptionBenchmark } from '../../scripts/runInventoryDesc
 import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescriptionCorpus.mjs';
 
 const seed = 'benchmark-test-seed-2026';
+
+test('metadata selection is explicit and reports aggregate coverage without exposing observations', async () => {
+  const instance = runtime();
+  const report = await runInventoryDescriptionBenchmark({ argv: ['--seed', seed, '--size', '10', '--metadata-candidates'], loadRuntime: async () => instance });
+  expect(report.metadataSelection).toMatchObject({ version: 'metadata_rrf_v1', missingQueryMetadata: 10, changedShortlists: 0 });
+  expect(JSON.stringify(report)).not.toMatch(/Private|genres|studio|rating/);
+  expect(instance.createClient).not.toHaveBeenCalled();
+});
 function runtime() {
   const identity = { provider: 'ollama', model: 'local:latest', digest: 'a'.repeat(64), dimensions: 2 };
   const corpus = prepareInventoryDescriptionCorpus(Array.from({ length: 20 }, (_, index) => ({ tmdb_id: index + 1,

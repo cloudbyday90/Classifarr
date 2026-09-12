@@ -98,6 +98,10 @@ The [design document](benchmark-disagreement-investigation-design.md) records
 alternatives, the recommendation stack, and official sources. Research was
 checked September 12, 2026; living sources are not certified August snapshots.
 
+The next controlled [metadata candidate trial](metadata-candidate-selection-outcome.md)
+is now implemented. It recovers omitted candidates but exposes a new regression;
+it is not a replacement for live policy selection.
+
 ## Validation
 
 - Full backend coverage run: 1,221 suites and 34,574 tests passed.

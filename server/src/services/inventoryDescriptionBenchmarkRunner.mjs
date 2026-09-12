@@ -51,6 +51,7 @@ export async function runDescriptionBenchmark(prepared, settings, { client, iden
   return {
     version: 1, status: options.generateCases === 0 ? 'preflight' : !completed ? 'interrupted' : hasErrors ? 'completed_with_errors' : 'complete',
     ...(investigation ? { investigation } : {}),
+    ...(prepared.metadataSelection ? { metadataSelection: prepared.metadataSelection } : {}),
     seed: options.seed, snapshotFingerprint: prepared.fingerprint, sampleFingerprint: prepared.sampleFingerprint,
     requestedTitles: options.size, sampledTitles: prepared.cases.length, sampleShortfall: Math.max(0, options.size - prepared.cases.length),
     requestedGenerationCases: options.generateCases, availableGenerationCases: requested, independentLabels: 0, accuracy: null,

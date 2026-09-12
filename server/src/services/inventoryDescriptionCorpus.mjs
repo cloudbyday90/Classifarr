@@ -4,8 +4,10 @@ import { createInventorySemanticSampler } from './inventorySemanticSampler.mjs';
 import { projectInventoryDescription } from './inventoryDescriptionProjection.mjs';
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS, sourceConflictAuthorityExclusionForMediaServerItem } from './sourceConflictAuthorityGuard.mjs';
 
-export const INVENTORY_DESCRIPTION_CORPUS_SQL = `
+export function buildInventoryDescriptionCorpusSql({ includeCandidateMetadata = false } = {}) {
+  return `
   SELECT msi.media_type, msi.tmdb_id, msi.library_id,
+    ${includeCandidateMetadata ? 'msi.genres, msi.studio, msi.content_rating,' : ''}
     left(COALESCE(
       CASE WHEN jsonb_typeof(msi.metadata->'overview')='string' THEN NULLIF(btrim(msi.metadata->>'overview'), '') END,
       CASE WHEN jsonb_typeof(msi.metadata->'summary')='string' THEN NULLIF(btrim(msi.metadata->>'summary'), '') END,
@@ -22,6 +24,9 @@ export const INVENTORY_DESCRIPTION_CORPUS_SQL = `
   ORDER BY msi.media_type, msi.tmdb_id, msi.library_id, msi.id
   LIMIT 50001
 `;
+}
+
+export const INVENTORY_DESCRIPTION_CORPUS_SQL = buildInventoryDescriptionCorpusSql();
 
 export function inventoryDescriptionIdentity(item) {
   const { media_type: type, tmdb_id: id } = item?.metadata ?? item ?? {};

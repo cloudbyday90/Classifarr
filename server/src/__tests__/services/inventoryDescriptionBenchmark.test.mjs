@@ -6,6 +6,21 @@ import { buildDescriptionBenchmarkPrompt, parseDescriptionBenchmarkProposal, sel
 import { runDescriptionBenchmark } from '../../services/inventoryDescriptionBenchmarkRunner.mjs';
 
 const seed = 'benchmark-test-seed-2026';
+
+test('metadata trial excludes the entire cohort and fingerprints metadata without changing the baseline', () => {
+  const snapshot = fixture();
+  const baseline = prepareDescriptionBenchmark(snapshot, snapshot.vectors, 2, { seed });
+  const sample = selectDescriptionBenchmarkSample(snapshot.corpus, { seed });
+  snapshot.candidateMetadata = new Map(sample.map(doc => [doc.key, { genres: ['private genre'], studio: 'private studio', rating: '' }]));
+  const trial = prepareDescriptionBenchmark(snapshot, snapshot.vectors, 2, { seed }, { metadataCandidates: true });
+  expect(trial.metadataSelection.changedShortlists).toBe(0);
+  expect(trial.metadataSelection.recoveredObservedDestinations).toBe(0);
+  expect(trial.metadataSelection.newObservedDestinationMisses).toBe(0);
+  expect(trial.cases.map(entry => entry.candidates)).toEqual(baseline.cases.map(entry => entry.candidates));
+  expect(trial.sampleFingerprint).toBe(baseline.sampleFingerprint);
+  expect(trial.fingerprint).not.toBe(baseline.fingerprint);
+  expect(prepareDescriptionBenchmark(snapshot, snapshot.vectors, 2, { seed }).fingerprint).toBe(baseline.fingerprint);
+});
 function fixture(size = 600) {
   const libraries = Array.from({ length: 6 }, (_, index) => ({ id: index + 1, name: `Private library ${index}`, media_type: index < 3 ? 'movie' : 'tv' }));
   const rows = Array.from({ length: size }, (_, index) => ({ tmdb_id: index + 1, library_id: index % 6 + 1,

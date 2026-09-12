@@ -1,13 +1,13 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { expect, jest, test } from '@jest/globals';
-import { createDescriptionBenchmarkRepository } from '../../services/inventoryDescriptionBenchmarkRepository.mjs';
-import { INVENTORY_DESCRIPTION_CORPUS_SQL, prepareInventoryDescriptionCorpus } from '../../services/inventoryDescriptionCorpus.mjs';
+import { createDescriptionBenchmarkRepository, INVENTORY_METADATA_BENCHMARK_SQL } from '../../services/inventoryDescriptionBenchmarkRepository.mjs';
+import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescriptionCorpus.mjs';
 
 const identity = { provider: 'ollama', model: 'test:latest', digest: 'a'.repeat(64), dimensions: 2 };
 const rows = [{ tmdb_id: 1, library_id: 1, media_type: 'movie', overview: 'Private synopsis' }];
 function setup({ incomplete = false, libraryCount = 3, documents = rows } = {}) {
   const corpus = prepareInventoryDescriptionCorpus(documents);
-  const query = jest.fn(async sql => ({ rows: sql === INVENTORY_DESCRIPTION_CORPUS_SQL ? documents
+  const query = jest.fn(async sql => ({ rows: sql === INVENTORY_METADATA_BENCHMARK_SQL ? documents
     : sql.includes('SELECT id, name') ? Array.from({ length: libraryCount }, (_, index) => ({ id: index + 1, name: 'Private', media_type: 'movie' }))
       : sql.includes('embedding::text') && !incomplete ? [...corpus.texts.keys()].map(hash => ({ description_hash: hash, embedding: '[1,0]' })) : [] }));
   return { query, repository: createDescriptionBenchmarkRepository({ withTransaction: async callback => callback({ query }) }) };

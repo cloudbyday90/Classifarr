@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a local metadata-aware candidate-selection benchmark using held-out genre
+  and studio evidence alongside synopsis ranking, with coverage and shortlist
+  comparisons. Preserve default selection and live routing pending evaluation.
+
 - Add bounded local investigation of benchmark disagreements, including omitted
   destinations and blind content re-checks. Keep case evidence private and
   distinguish technical gaps from unresolved semantic differences without

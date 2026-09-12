@@ -93,6 +93,7 @@ test('deleted, edited and expired inventory cannot reuse old description evidenc
 
 test('benchmark snapshots real inventory and cache read-only, holds out 100 titles, and fails on stale provenance', async () => {
   await client.query("ALTER TABLE libraries ADD COLUMN name text DEFAULT 'Private library'");
+  await client.query('ALTER TABLE media_server_items ADD COLUMN genres jsonb, ADD COLUMN studio text, ADD COLUMN content_rating text');
   const benchmark = createDescriptionBenchmarkRepository({ withTransaction: async callback => {
     await client.query('BEGIN');
     try {
@@ -102,9 +103,12 @@ test('benchmark snapshots real inventory and cache read-only, holds out 100 titl
     } catch (error) { await client.query('ROLLBACK'); throw error; }
   } });
   for (let index = 1; index <= 120; index++) await add(index, index % 2 ? 10 : 20, `Synopsis ${index}`);
+  await client.query('UPDATE media_server_items SET genres=$1::jsonb, studio=$2, content_rating=$3 WHERE tmdb_id=1',
+    [JSON.stringify(['Animation']), 'Private Studio', 'PG']);
   const before = (await client.query('SELECT count(*)::integer AS count FROM inventory_description_vector_cache')).rows[0].count;
   const snapshot = await benchmark.read(identity);
   expect(snapshot.corpus.documents).toHaveLength(120);
+  expect(snapshot.candidateMetadata.get('movie:1')).toEqual({ genres: ['animation'], studio: 'private studio', rating: 'pg' });
   expect(snapshot.libraries.map(library => library.id)).toEqual([10, 20, 40]);
   const prepared = prepareDescriptionBenchmark(snapshot, snapshot.vectors, 3, { seed: 'benchmark-test-seed-2026' });
   expect(prepared.cases).toHaveLength(100);
