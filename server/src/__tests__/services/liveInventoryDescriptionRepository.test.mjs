@@ -86,3 +86,16 @@ test('selected-library baseline is internal and shares the read-only snapshot', 
   expect(result[1].matchBaseline).toBeUndefined();
   expect(query.mock.calls.filter(([sql]) => sql.includes('ISOLATION LEVEL'))).toHaveLength(1);
 });
+
+test('profile-only reads reuse fitting but refresh from a new read-only snapshot each time', async () => {
+  const rows = [row(1, 1, 'A'), row(2, 2, 'B')];
+  rows[0].genres = ['documentary']; rows[1].genres = ['comedy'];
+  const { repository, query } = setup(rows);
+  const input = { request: { ...request, queryMetadata: { genres: ['documentary'] } } };
+  const first = await repository.readLearnedProfiles(input);
+  expect(await repository.readLearnedProfiles(input)).toEqual(first);
+  expect(query.mock.calls.filter(([sql]) => sql.includes('ISOLATION LEVEL'))).toHaveLength(2);
+  rows[0].genres = ['comedy'];
+  expect((await repository.readLearnedProfiles(input)).get(1).relativeFit).toBe(0);
+  expect(first.get(1).relativeFit).toBeGreaterThan(0);
+});

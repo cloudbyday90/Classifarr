@@ -1,6 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { createHash } from 'node:crypto';
-import { beforeEach, afterEach, expect, test } from '@jest/globals';
+import { beforeEach, afterEach, expect, jest, test } from '@jest/globals';
 import { getPool } from './setup.mjs';
 import { createLiveInventoryDescriptionRepository } from '../../services/liveInventoryDescriptionRepository.mjs';
 import { createInventoryDescriptionVectorCache } from '../../services/inventoryDescriptionVectorCache.mjs';
@@ -18,10 +18,13 @@ import { buildPolicyCandidateAdjudicationContract } from '../../services/policyC
 import { finalizePolicyCandidateAdjudication } from '../../services/policyCandidateAdjudicationResult.mjs';
 import { hasCandidateConsensusReceipt } from '../../services/policyCandidateConsensusReceipt.mjs';
 import { evaluateClassificationRouteSafety } from '../../services/classificationRouteSafetyGate.mjs';
+import { createLiveInventoryModelCache } from '../../services/liveInventoryModelCache.mjs';
 
 let client;
 let repository;
 let cache;
+let profileCache;
+let baselineCache;
 const identity = { provider: 'ollama', model: 'test:latest', digest: 'a'.repeat(64), dimensions: 3 };
 const hash = text => createHash('sha256').update(text).digest('hex');
 const request = { key: 'movie:90', mediaType: 'movie', libraryIds: [10, 20], hash: hash('Query') };
@@ -36,7 +39,10 @@ beforeEach(async () => {
     CREATE TEMP TABLE inventory_description_vector_cache (LIKE public.inventory_description_vector_cache INCLUDING ALL);
     INSERT INTO libraries VALUES (10,'movie',true), (20,'movie',true), (30,'movie',false), (40,'tv',true);
   `);
-  repository = createLiveInventoryDescriptionRepository({ withTransaction: async callback => {
+  const profiles = createLiveInventoryModelCache(), baselines = createLiveInventoryModelCache();
+  profileCache = { get: jest.fn(profiles.get), set: jest.fn(profiles.set) };
+  baselineCache = { get: jest.fn(baselines.get), set: jest.fn(baselines.set) };
+  repository = createLiveInventoryDescriptionRepository({ profileCache, baselineCache, withTransaction: async callback => {
     await client.query('BEGIN');
     try { const result = await callback(client); await client.query('COMMIT'); return result; }
     catch (error) { await client.query('ROLLBACK'); throw error; }
@@ -82,6 +88,17 @@ test('fresh database descriptions and learned baseline resolve soft review; subs
   expect(hasCandidateConsensusReceipt(result, { metadata: input.metadata })).toBe(true);
   expect(result.confidence).toBe(45);
   expect(evaluateClassificationRouteSafety({ result }).automatic_route_allowed).toBe(true);
+  const profileFits = profileCache.set.mock.calls.length;
+  expect(baselineCache.set).toHaveBeenCalledTimes(1);
+  const warm = await service.resolve({ ...input, learnedContext: await service.prepare(input) });
+  expect(hasCandidateConsensusReceipt(warm, { metadata: input.metadata })).toBe(true);
+  expect(warm.confidence).toBe(result.confidence);
+  expect(profileCache.set).toHaveBeenCalledTimes(profileFits);
+  expect(baselineCache.set).toHaveBeenCalledTimes(1);
+  await client.query("UPDATE inventory_description_vector_cache SET created_at=now()-interval '31 days'");
+  expect(await service.resolve({ ...input, learnedContext: await service.prepare(input) })).toBe(input.result);
+  expect(baselineCache.set).toHaveBeenCalledTimes(1);
+  await client.query('UPDATE inventory_description_vector_cache SET created_at=now()');
   const changed = createLearnedEvidenceRoutingService({ ...dependencies, readPolicy: async () => {
     await client.query('UPDATE media_server_items SET library_id=1 WHERE tmdb_id=81');
     return input.policyResult;
@@ -89,6 +106,25 @@ test('fresh database descriptions and learned baseline resolve soft review; subs
   expect(await changed.resolve({ ...input, learnedContext: await changed.prepare(input) })).toBe(input.result);
   expect((await client.query('SELECT count(*)::integer AS count FROM inventory_description_vector_cache')).rows[0].count).toBe(160);
   expect((await client.query('SELECT count(*)::integer AS count FROM classification_history')).rows[0].count).toBe(0);
+});
+
+test('cached baseline refreshes for real vector rewrites and refuses deleted vectors or inactive libraries', async () => {
+  for (let id = 1; id <= 80; id++) await add(id, 10, `Baseline ${id}`, [Math.cos(id / 100), Math.sin(id / 100), 0]);
+  const run = () => repository.retrieve({ request: { ...request, matchLibraryId: 10 }, identity,
+    vector: [Math.cos(.4), Math.sin(.4), 0] });
+  const first = (await run())[0].matchBaseline;
+  expect(first.status).toBe('familiar');
+  expect((await run())[0].matchBaseline).toEqual(first);
+  expect(baselineCache.set).toHaveBeenCalledTimes(1);
+  await client.query("UPDATE inventory_description_vector_cache SET embedding='[1,0,0]'::vector WHERE description_hash=$1", [hash('Baseline 1')]);
+  const edited = (await run())[0].matchBaseline;
+  expect(edited.snapshotId).not.toBe(first.snapshotId);
+  expect(baselineCache.set).toHaveBeenCalledTimes(2);
+  await client.query('DELETE FROM inventory_description_vector_cache WHERE description_hash=$1', [hash('Baseline 1')]);
+  expect((await run())[0].matchBaseline.status).toBe('incomplete');
+  expect(baselineCache.set).toHaveBeenCalledTimes(2);
+  await client.query('UPDATE libraries SET is_active=false WHERE id=10');
+  expect((await run())[0].matchBaseline.status).toBe('sparse');
 });
 
 test('current PostgreSQL description/metadata evidence restores a weak score and loses support after edits', async () => {

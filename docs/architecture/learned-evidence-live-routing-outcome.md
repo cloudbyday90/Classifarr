@@ -106,6 +106,11 @@ node scripts/run-jest.mjs -c jest.integration.config.mjs --runInBand --no-covera
 
 ## Next high-value component
 
+The [model-reuse design](live-library-model-reuse-design.md) implements the next
+step as demand-driven refresh against fresh snapshots. It defers background
+prewarming until latency measurements justify extra idle work; see the separate
+[model-reuse outcome](live-library-model-reuse-outcome.md).
+
 Reduce repeated library-profile and baseline work with snapshot-keyed reuse and
 automatic background refresh. Measure cold/warm validation latency and review
 coverage across all movie/TV libraries before and after the optimization. Cache

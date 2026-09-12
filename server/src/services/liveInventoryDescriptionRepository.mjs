@@ -7,6 +7,7 @@ import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from './sourceConflictAuthor
 import { validateDescriptionRepresentation, createInventoryDescriptionVectorCache } from './inventoryDescriptionVectorCache.mjs';
 import { validateEmbedding } from '../utils/embeddingValidation.mjs';
 import { assessLiveLibraryMatch } from './liveLibraryMatchBaseline.mjs';
+import { createLiveInventoryModelCache } from './liveInventoryModelCache.mjs';
 
 export const LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL = buildInventoryDescriptionCorpusSql({ includeCandidateMetadata: true });
 
@@ -28,7 +29,10 @@ export const LIVE_INVENTORY_DESCRIPTION_RANK_SQL = `
     WHERE position <= 3 ORDER BY library_id, position
 `;
 
-export function createLiveInventoryDescriptionRepository({ withTransaction }) {
+export function createLiveInventoryDescriptionRepository({ withTransaction,
+  profileCache = createLiveInventoryModelCache({ maxWeight: 4 * 1024 * 1024 }),
+  baselineCache = createLiveInventoryModelCache(),
+}) {
   const snapshot = callback => withTransaction(async client => {
     await client.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
     await client.query("SET LOCAL statement_timeout = '5s'");
@@ -55,7 +59,7 @@ export function createLiveInventoryDescriptionRepository({ withTransaction }) {
     async readLearnedProfiles({ request, signal }) {
       return snapshot(async client => {
         const source = await readCorpus(client, signal);
-        const profiles = buildLiveInventoryLearnedProfiles({ ...source, request });
+        const profiles = buildLiveInventoryLearnedProfiles({ ...source, request, modelCache: profileCache });
         signal?.throwIfAborted();
         return profiles;
       });
@@ -67,7 +71,7 @@ export function createLiveInventoryDescriptionRepository({ withTransaction }) {
         const { rows, corpus } = await readCorpus(client, signal);
         let learnedProfiles = new Map();
         try {
-          if (request.queryMetadata) learnedProfiles = buildLiveInventoryLearnedProfiles({ rows, corpus, request });
+          if (request.queryMetadata) learnedProfiles = buildLiveInventoryLearnedProfiles({ rows, corpus, request, modelCache: profileCache });
         } catch {
           // A bounded profile failure must not discard otherwise usable description evidence.
         }
@@ -83,7 +87,8 @@ export function createLiveInventoryDescriptionRepository({ withTransaction }) {
           [...representation, JSON.stringify(scope), encodedVector])).rows : [];
         signal?.throwIfAborted();
         const matchBaseline = request.matchLibraryId == null ? null : await assessLiveLibraryMatch({
-          rows, corpus, request, identity, vector, signal, query: (sql, parameters) => client.query(sql, parameters),
+          rows, corpus, request, identity, vector, signal, modelCache: baselineCache,
+          query: (sql, parameters) => client.query(sql, parameters),
         });
         return request.libraryIds.map(libraryId => {
           const matches = ranked.filter(row => row.library_id === libraryId);

@@ -1,10 +1,11 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { expect, test } from '@jest/globals';
+import { expect, jest, test } from '@jest/globals';
 import { createHash } from 'node:crypto';
 import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescriptionCorpus.mjs';
 import { buildLiveInventoryLearnedProfiles, projectLiveInventoryQueryMetadata } from '../../services/liveInventoryLearnedProfile.mjs';
 import { INVENTORY_LEARNED_PROFILE_VERSION } from '../../services/inventoryLearnedProfiles.mjs';
 import { projectLiveInventoryLearnedProfile, formatLiveInventoryLearnedProfile } from '../../services/liveInventoryLearnedProfileEvidence.mjs';
+import { createLiveInventoryModelCache } from '../../services/liveInventoryModelCache.mjs';
 
 const hash = text => createHash('sha256').update(text).digest('hex');
 const row = (id, library, genre, overview = `Description ${id}`) => ({ tmdb_id: id, library_id: library,
@@ -83,6 +84,41 @@ test('live query projection bounds values and normalizes string or TMDB-object g
 
 test('profile budgets fail explicitly and cannot partially publish a fitted model', () => {
   expect(() => build(Array.from({ length: 65 }, (_, i) => row(i + 1, i + 1, 'a')))).toThrow('inventory_profile_budget');
+});
+
+test('warm profiles preserve evidence, rescore new metadata, and share only identical training inputs', () => {
+  const cache = createLiveInventoryModelCache();
+  const modelCache = { get: jest.fn(cache.get), set: jest.fn(cache.set) };
+  const run = (input = rows(), query = request) => buildLiveInventoryLearnedProfiles({ rows: input,
+    corpus: prepareInventoryDescriptionCorpus(input), request: query, modelCache });
+  const first = run();
+  expect(run()).toEqual(first);
+  expect(modelCache.set).toHaveBeenCalledTimes(1);
+  const other = run(rows(), { ...request, key: 'movie:1000', hash: hash('Another new query'), queryMetadata: { genres: ['pattern b'] } });
+  expect(other.get(17).relativeFit).toBeLessThan(0);
+  expect(other.get(17).snapshotId).not.toBe(first.get(17).snapshotId);
+  expect(modelCache.set).toHaveBeenCalledTimes(1);
+  first.get(17).relativeFit = 999;
+  expect(run()).toEqual(build());
+  const edited = rows(); edited[0].genres = ['changed'];
+  expect(run(edited)).toEqual(build(edited));
+  expect(modelCache.set).toHaveBeenCalledTimes(2);
+  const moved = rows(); moved[0].library_id = 42;
+  expect(run(moved)).toEqual(build(moved));
+  expect(modelCache.set).toHaveBeenCalledTimes(3);
+  const copies = [...rows(), row(999, 17, 'pattern a', 'Description 1')];
+  expect(run(copies)).toEqual(build(copies));
+  expect(modelCache.set).toHaveBeenCalledTimes(4);
+  expect(run(rows().slice(1))).toEqual(build(rows().slice(1)));
+  expect(modelCache.set).toHaveBeenCalledTimes(4);
+});
+
+test('empty or failed profile fits never populate the cache', () => {
+  const modelCache = { get: jest.fn(), set: jest.fn() };
+  for (const input of [[], Array.from({ length: 65 }, (_, i) => row(i + 1, i + 1, 'a'))]) {
+    try { buildLiveInventoryLearnedProfiles({ rows: input, corpus: prepareInventoryDescriptionCorpus(input), request, modelCache }); } catch { /* expected budget refusal */ }
+  }
+  expect(modelCache.set).not.toHaveBeenCalled();
 });
 
 test('provider projection strips all private data and formats only known bounded fields', () => {

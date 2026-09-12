@@ -45,10 +45,10 @@ export async function fitLibraryMatchBaseline(referenceVectors, calibrationVecto
   const status = upper - lower <= 1e-6 ? 'degenerate' : 'available';
   const summary = Object.freeze({ status, referenceDescriptions: references.length, calibrationDescriptions: scores.length });
   return Object.freeze({ summary,
-    assess(vector) {
+    assess(vector, { consumeWork: assessWork = consumeWork } = {}) {
       if (status !== 'available') return { status, empiricalRank: null };
       const query = normalizeDescriptionVector(vector, dimensions);
-      consumeWork?.(work);
+      assessWork?.(work);
       const similarity = score(query, references);
       const rank = (1 + scores.filter(value => value <= similarity).length) / (scores.length + 1);
       return { status: rank > limits.tail ? 'familiar' : 'unusual', empiricalRank: rank };

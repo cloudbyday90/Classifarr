@@ -24,6 +24,16 @@ test('the same query can be ordinary for a broad library and unusual for a narro
   expect(broad.assess(vector(2))).toMatchObject({ status: 'familiar' });
 });
 
+test('reused live assessments charge their own work budget without retaining a previous request budget', async () => {
+  const fitWork = jest.fn(), queryWork = jest.fn();
+  const model = await fitLibraryMatchBaseline(reference(), calibration(), 2, { consumeWork: fitWork });
+  expect(fitWork).toHaveBeenCalledTimes(20);
+  model.assess(vector(.1), { consumeWork: queryWork });
+  expect(fitWork).toHaveBeenCalledTimes(20);
+  expect(queryWork).toHaveBeenCalledWith(48);
+  expect(() => model.assess(vector(.1), { consumeWork: () => { throw new Error('budget'); } })).toThrow('budget');
+});
+
 test('normalization, ordering, and post-fit input mutation do not change the model', async () => {
   const refs = reference(), cal = calibration();
   const original = await fitLibraryMatchBaseline(refs, cal, 2);

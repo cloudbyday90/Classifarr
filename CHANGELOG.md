@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Reuse learned library profiles and description-match baselines when their exact
+  training inputs remain current, refreshing automatically on use after changes.
+  Bound in-memory reuse while preserving fresh inventory, vector expiry, query
+  exclusion and routing checks without adding user settings or AI calls.
 - Allow fresh AI, description and learned-library agreement to resolve ordinary
   soft-evidence reviews automatically, using a library-specific familiarity check
   and short-lived server routing authority without inflating policy scores.
