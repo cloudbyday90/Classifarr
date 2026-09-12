@@ -1,16 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 
-const numericSummary = values => ({ count: values.length,
-  mean: values.length ? Number((values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(2)) : null });
-
-export function summarizeContrastiveResults(results) {
-  const valid = results.filter(result => ['proposed', 'abstained'].includes(result.status));
-  return { finished: results.length, valid: valid.length, agreed: valid.filter(result => result.agreement).length,
-    statuses: Object.fromEntries(['proposed', 'abstained', 'invalid_or_limited', 'failed', 'context_budget', 'evidence_unavailable']
-      .map(status => [status, results.filter(result => result.status === status).length])),
-    latencyMs: numericSummary(results.flatMap(result => Number.isFinite(result.latencyMs) ? [result.latencyMs] : [])),
-    promptTokens: numericSummary(results.flatMap(result => Number.isFinite(result.promptTokens) ? [result.promptTokens] : [])) };
-}
+export { summarizeDescriptionComparisons as summarizeContrastiveResults } from './inventoryDescriptionBenchmarkComparison.mjs';
 
 /** No names, descriptions, item IDs, raw vectors or model text in the returned report. */
 export function summarizeContrastivePairs(prepared, baseline) {

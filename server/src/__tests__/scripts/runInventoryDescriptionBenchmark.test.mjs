@@ -5,6 +5,24 @@ import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescr
 
 const seed = 'benchmark-test-seed-2026';
 
+test('content-first CLI preflights the frozen cohort, rejects mixed modes, and pairs every requested title', async () => {
+  const instance = runtime();
+  const args = ['--seed', seed, '--size', '10', '--folds', '5', '--content-first-comparison', '--learned-profiles'];
+  const preflight = await runInventoryDescriptionBenchmark({ argv: args, loadRuntime: async () => instance });
+  expect(preflight).toMatchObject({ protocol: 'content_first_library_comparison_v1', status: 'preflight', calls: 0,
+    snapshotComponents: { counts: { documents: 20, vectors: 20 } } });
+  expect(instance.createClient).not.toHaveBeenCalled();
+  const report = await runInventoryDescriptionBenchmark({ argv: [...args, '--generate-cases', '10'], loadRuntime: async () => instance });
+  expect(report).toMatchObject({ status: 'complete', calls: 20, paired: { validPairs: 10 } });
+  expect(instance.repository.read).toHaveBeenCalledTimes(2);
+  expect(instance.close).toHaveBeenCalledTimes(2);
+  const loadRuntime = jest.fn();
+  for (const argv of [args.filter(value => !['--folds', '5'].includes(value)), [...args, '--investigate'], [...args, '--contrastive-investigation']]) {
+    await expect(runInventoryDescriptionBenchmark({ argv, loadRuntime })).rejects.toThrow('requires_folds_and_exclusive_mode');
+  }
+  expect(loadRuntime).not.toHaveBeenCalled();
+});
+
 test('contrastive mode uses grouped snapshots without calling the model during preflight', async () => {
   const instance = runtime();
   const report = await runInventoryDescriptionBenchmark({ argv: ['--seed', seed, '--size', '10', '--folds', '5', '--contrastive-investigation'], loadRuntime: async () => instance });

@@ -142,6 +142,10 @@ until the broader comparison and outcome validation support a change.
 Also retain canonical per-component snapshot hashes in future aggregate reports
 to localize provenance differences without storing private corpus contents.
 
+Follow-up: the [full-cohort paired comparison](content-first-library-comparison-outcome.md)
+now covers all 300 cases. It found more lost agreements than recoveries, so the
+selected case/control result above must not be used to justify a blanket switch.
+
 ## Pull requests
 
 GitHub MCP returned no open PRs for this repository on September 12, 2026,

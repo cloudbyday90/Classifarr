@@ -20,6 +20,14 @@ test('retaining private contrastive vectors does not change snapshot provenance 
   expect(contrastive.vectors.size).toBe(snapshot.vectors.size);
   expect(contrastive.cases.every((entry, index) => buildDescriptionBenchmarkPrompt(entry, contrastive.texts, 9).prompt ===
     buildDescriptionBenchmarkPrompt(baseline.cases[index], baseline.texts, 9).prompt)).toBe(true);
+  const paired = prepareDescriptionBenchmark(snapshot, snapshot.vectors, 2, options,
+    { learnedProfiles: true, includeComparisonEvidence: true });
+  expect(paired.fingerprint).toBe(baseline.fingerprint);
+  expect(paired.sampleFingerprint).toBe(baseline.sampleFingerprint);
+  expect(paired.vectors).toBeUndefined();
+  expect(paired.snapshotComponents.counts.documents).toBe(snapshot.corpus.documents.length);
+  expect(paired.cases.every((entry, index) => buildDescriptionBenchmarkPrompt(entry, paired.texts, 9).prompt ===
+    buildDescriptionBenchmarkPrompt(baseline.cases[index], baseline.texts, 9).prompt)).toBe(true);
 });
 function fixture(sizes = [29, 300, 350, 45, 67, 350]) {
   const libraries = sizes.map((_, index) => ({ id: index + 1, name: `Private library ${index}`, media_type: index < 3 ? 'movie' : 'tv' }));

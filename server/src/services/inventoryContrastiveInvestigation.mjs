@@ -1,5 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { buildDescriptionBenchmarkPrompt, parseDescriptionBenchmarkProposal } from './inventoryDescriptionBenchmarkPrompt.mjs';
+import { compareInventoryDescription } from './inventoryDescriptionBenchmarkComparison.mjs';
 import { validateDescriptionBenchmarkOptions } from './inventoryDescriptionBenchmarkSelection.mjs';
 import { selectContrastiveLibraryExamples } from './inventoryContrastiveExamples.mjs';
 import { planContrastiveInvestigationCases } from './inventoryContrastiveCasePlan.mjs';
@@ -12,21 +12,9 @@ export async function runContrastiveInventoryInvestigation(prepared, settings, {
   const abort = AbortSignal.any([AbortSignal.timeout(options.maxMinutes * 60000), ...(signal ? [signal] : [])]);
   const requested = Math.min(options.generateCases, prepared.cases.length);
   let calls = 0;
-  const compare = async (entry, anonymousLibraries = false) => {
-    const packet = buildDescriptionBenchmarkPrompt(entry, prepared.texts, 9, { anonymousLibraries });
-    if (packet.actualExamples === 0) return { status: 'evidence_unavailable' };
-    calls++;
-    try {
-      const result = await client.generate({ prompt: packet.prompt, count: entry.candidates.length,
-        context: options.context, identity, signal: abort });
-      const proposal = parseDescriptionBenchmarkProposal(result.response, entry.candidates.length);
-      const status = result.outputLimitReached || result.contextLimitSuspected || proposal === null ? 'invalid_or_limited'
-        : proposal === 0 ? 'abstained' : 'proposed';
-      const destinationId = status === 'proposed' ? entry.candidates[proposal - 1].id : null;
-      return { status, destinationId, agreement: destinationId !== null && entry.observedLibraryIds.includes(destinationId),
-        latencyMs: result.latencyMs, promptTokens: result.promptTokens };
-    } catch (error) { return { status: error?.message === 'description_benchmark_context_budget' ? 'context_budget' : 'failed' }; }
-  };
+  const compare = (entry, anonymousLibraries = false) => compareInventoryDescription(entry, prepared.texts, {
+    client, identity, context: options.context, signal: abort, anonymousLibraries, onCall: () => calls++,
+  });
   const baseline = [];
   for (let index = 0; index < requested && !abort.aborted; index++) {
     baseline.push(await compare(prepared.cases[index]));

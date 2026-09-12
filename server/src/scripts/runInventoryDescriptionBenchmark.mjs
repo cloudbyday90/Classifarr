@@ -8,6 +8,7 @@ import { prepareDescriptionBenchmark, validateDescriptionBenchmarkOptions } from
 import { createLocalDescriptionBenchmarkClient } from '../services/localDescriptionBenchmarkClient.mjs';
 import { runDescriptionBenchmark } from '../services/inventoryDescriptionBenchmarkRunner.mjs';
 import { runContrastiveInventoryInvestigation } from '../services/inventoryContrastiveInvestigation.mjs';
+import { runContentFirstInventoryComparison } from '../services/inventoryContentFirstComparison.mjs';
 
 async function loadPrivateRuntime() {
   process.env.LOG_LEVEL = 'fatal';
@@ -29,7 +30,7 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
   const { values } = parseArgs({ args: argv, options: { seed: { type: 'string' }, size: { type: 'string' },
     'generate-cases': { type: 'string' }, context: { type: 'string' }, 'max-minutes': { type: 'string' },
     'exclude-prior-size': { type: 'string' }, 'exclude-prior-sizes': { type: 'string' }, folds: { type: 'string' },
-    investigate: { type: 'boolean' }, 'contrastive-investigation': { type: 'boolean' },
+    investigate: { type: 'boolean' }, 'contrastive-investigation': { type: 'boolean' }, 'content-first-comparison': { type: 'boolean' },
     'metadata-candidates': { type: 'boolean' }, 'learned-profiles': { type: 'boolean' } } });
   if (values['metadata-candidates'] && values['learned-profiles']) throw new Error('description_benchmark_selection_mode_conflict');
   const options = validateDescriptionBenchmarkOptions({ seed: values.seed,
@@ -44,6 +45,9 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
   if (values['contrastive-investigation'] && (!options.folds || values.investigate)) {
     throw new Error('contrastive_investigation_requires_folds_and_exclusive_mode');
   }
+  if (values['content-first-comparison'] && (!options.folds || values.investigate || values['contrastive-investigation'])) {
+    throw new Error('content_first_comparison_requires_folds_and_exclusive_mode');
+  }
   const abort = AbortSignal.any([AbortSignal.timeout(options.maxMinutes * 60_000), ...(signal ? [signal] : [])]);
   const runtime = await loadRuntime();
   try {
@@ -52,10 +56,12 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     await verifyDescriptionRepresentation(runtime.embedder, representation, abort);
     const prepared = prepareDescriptionBenchmark(snapshot, snapshot.vectors, representation.dimensions, options,
       { metadataCandidates: values['metadata-candidates'] === true, learnedProfiles: values['learned-profiles'] === true,
-        includeContrastiveVectors: values['contrastive-investigation'] === true });
+        includeContrastiveVectors: values['contrastive-investigation'] === true,
+        includeComparisonEvidence: values['content-first-comparison'] === true });
     const client = options.generateCases ? runtime.createClient() : undefined;
     const identity = client ? await client.inspect(abort) : undefined;
-    const runner = values['contrastive-investigation'] ? runContrastiveInventoryInvestigation : runDescriptionBenchmark;
+    const runner = values['content-first-comparison'] ? runContentFirstInventoryComparison
+      : values['contrastive-investigation'] ? runContrastiveInventoryInvestigation : runDescriptionBenchmark;
     const report = await runner(prepared, options, { client, identity, signal: abort, onProgress,
       investigate: values.investigate === true, onPrivateCase });
     return { ...report, embedding: { model: representation.model, digest: representation.digest, dimensions: representation.dimensions } };

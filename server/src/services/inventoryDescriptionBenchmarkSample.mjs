@@ -5,6 +5,7 @@ import { rankInventoryMetadataCandidates } from './inventoryMetadataCandidates.m
 import { learnInventoryProfiles, rankInventoryLearnedCandidates, INVENTORY_LEARNED_PROFILE_VERSION } from './inventoryLearnedProfiles.mjs';
 import { validateDescriptionBenchmarkOptions, selectAdditionalDescriptionBenchmarkSample } from './inventoryDescriptionBenchmarkSelection.mjs';
 import { planDescriptionBenchmarkFolds } from './inventoryDescriptionBenchmarkFolds.mjs';
+import { describeInventorySnapshotDigests } from './inventoryDescriptionSnapshotDigests.mjs';
 export { validateDescriptionBenchmarkOptions, selectDescriptionBenchmarkSample } from './inventoryDescriptionBenchmarkSelection.mjs';
 
 const digest = value => createHash('sha256').update(value).digest('hex');
@@ -12,7 +13,7 @@ const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 
 /** Freeze vectors, candidate selection and neighbor ordering for all three arms. */
 export function prepareDescriptionBenchmark(snapshot, rawVectors, dimensions, options,
-  { metadataCandidates = false, learnedProfiles = false, includeContrastiveVectors = false } = {}) {
+  { metadataCandidates = false, learnedProfiles = false, includeContrastiveVectors = false, includeComparisonEvidence = false } = {}) {
   if (metadataCandidates && learnedProfiles) throw new Error('description_benchmark_selection_mode_conflict');
   const { folds } = validateDescriptionBenchmarkOptions(options);
   const { sample, excluded, priorCohortSizes, priorSampleFingerprints } = selectAdditionalDescriptionBenchmarkSample(snapshot.corpus, options);
@@ -20,7 +21,8 @@ export function prepareDescriptionBenchmark(snapshot, rawVectors, dimensions, op
     const corpus = { ...snapshot.corpus, documents: snapshot.corpus.documents.filter(doc => !excluded.has(doc.hash)),
       texts: new Map([...snapshot.corpus.texts].filter(([hash]) => !excluded.has(hash))) };
     return { ...prepareDescriptionBenchmark({ ...snapshot, corpus }, rawVectors, dimensions,
-      { ...options, excludePriorSize: 0, excludePriorSizes: [] }, { metadataCandidates, learnedProfiles, includeContrastiveVectors }), excludedPriorDescriptions: excluded.size };
+      { ...options, excludePriorSize: 0, excludePriorSizes: [] },
+      { metadataCandidates, learnedProfiles, includeContrastiveVectors, includeComparisonEvidence }), excludedPriorDescriptions: excluded.size };
   }
   const usesMetadata = metadataCandidates || learnedProfiles;
   const selectionVersion = learnedProfiles ? INVENTORY_LEARNED_PROFILE_VERSION : 'metadata_rrf_v1';
@@ -61,7 +63,7 @@ export function prepareDescriptionBenchmark(snapshot, rawVectors, dimensions, op
     const candidates = [...shortlist.slice(offset), ...shortlist.slice(0, offset)];
     return { overview: corpus.texts.get(doc.hash), mediaType: doc.type, observedLibraryIds: doc.libraryIds, candidates,
       ...(plan ? { foldIndex } : {}),
-      ...(includeContrastiveVectors ? { descriptionHash: doc.hash, heldDescriptionHashes: plan?.held[foldIndex] } : {}),
+      ...(includeContrastiveVectors || includeComparisonEvidence ? { descriptionHash: doc.hash, heldDescriptionHashes: plan?.held[foldIndex] } : {}),
       investigationCandidates: ordered, itemIdentity: { mediaType: doc.type, tmdbId: doc.id },
       ...(usesMetadata ? { descriptionOnlyCandidateIds: ranked.slice(0, 3).map(candidate => candidate.id) } : {}) };
   });
@@ -76,6 +78,7 @@ export function prepareDescriptionBenchmark(snapshot, rawVectors, dimensions, op
   if (plan) fingerprintHash.update(JSON.stringify([plan.summary.protocol, plan.summary.assignmentFingerprint, priorCohortSizes]));
   return { cases, texts: corpus.texts, fingerprint: fingerprintHash.digest('hex'), sampleFingerprint: digest(JSON.stringify(sample.map(doc => doc.key))),
     ...(includeContrastiveVectors ? { vectors } : {}),
+    ...(includeComparisonEvidence ? { snapshotComponents: describeInventorySnapshotDigests(snapshot, rawVectors) } : {}),
     ...(learnedProfiles ? { profileLearning: plan ? { version: INVENTORY_LEARNED_PROFILE_VERSION,
       folds: contexts.map((context, index) => ({ fold: index + 1, ...context.learned.summary })) } : contexts[0].learned.summary } : {}),
     ...(plan ? { libraryStrata: [...libraries].sort((a, b) => a.id - b.id).map((library, index) => ({ id: library.id, stratum: index + 1 })),

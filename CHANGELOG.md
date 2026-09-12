@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a bounded full-cohort comparison of named and content-first library
+  evidence, with paired per-library gains and regressions and canonical snapshot
+  component fingerprints. Reuse local inference services without changing live
+  routing or requiring additional user settings.
 - Add bounded local investigation of classification disagreements, with matched
   agreeing controls, anonymous-library comparisons and contrastive description
   examples. Keep findings separate from verified labels and live routing, and
