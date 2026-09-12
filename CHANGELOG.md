@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Preserve the strongest usable library-description candidate when learned
+  metadata would exclude it from AI comparison, while retaining the policy leader
+  and three-candidate limit. Reuse same-snapshot retrieval and learned profiles,
+  with local candidate-recall reporting and no additional user settings.
 - Add a selective, library-name-independent inventory-conflict recheck to local
   evaluation, reusing learned metadata and description evidence with at most one
   extra comparison. Report gains, regressions and actual inference cost without

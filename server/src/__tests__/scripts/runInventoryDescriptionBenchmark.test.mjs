@@ -84,6 +84,21 @@ function runtime() {
     createClient: jest.fn(() => client), close: jest.fn(), client };
 }
 
+test('description-preserving CLI validates grouped profiles before loading and supports a no-inference comparison', async () => {
+  const loadRuntime = jest.fn(), base = ['--seed', seed, '--preserve-description-candidate'];
+  for (const args of [[], ['--folds', '5'], ['--learned-profiles']]) {
+    await expect(runInventoryDescriptionBenchmark({ argv: [...base, ...args], loadRuntime })).rejects.toThrow('description_anchor_requires');
+  }
+  expect(loadRuntime).not.toHaveBeenCalled();
+  const instance = runtime();
+  const report = await runInventoryDescriptionBenchmark({
+    argv: [...base, '--size', '10', '--folds', '5', '--learned-profiles', '--content-first-comparison'], loadRuntime: async () => instance });
+  expect(report).toMatchObject({ status: 'preflight', calls: 0,
+    metadataSelection: { descriptionAnchor: { requested: 10, changedShortlists: 0 } }, snapshotComponents: { counts: { documents: 20 } } });
+  expect(instance.createClient).not.toHaveBeenCalled();
+  expect(instance.close).toHaveBeenCalledTimes(1);
+});
+
 test('selective CLI requires exclusive grouped learned profiles and reports actual calls separately', async () => {
   const base = ['--seed', seed, '--selective-recheck'];
   const loadRuntime = jest.fn();

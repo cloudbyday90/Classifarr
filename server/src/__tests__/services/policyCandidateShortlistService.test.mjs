@@ -18,8 +18,61 @@ function setup() {
   const evidence = profiles();
   const repository = { readConfig: jest.fn(async () => ({ rag_enabled: true })),
     readLearnedProfiles: jest.fn(async () => evidence) };
-  return { repository, evidence, service: createPolicyCandidateShortlistService({ repository }) };
+  const retriever = { retrieve: jest.fn(async () => ({ statusId: 'unavailable', candidates: [] })) };
+  return { repository, evidence, retriever, service: createPolicyCandidateShortlistService({ repository, retriever }) };
 }
+
+function descriptions(evidence) {
+  return { statusId: 'available', candidates: libraries.map(({ id }) => ({ libraryId: id, eligible: 30, indexed: 30,
+    learnedProfile: evidence.get(id), items: [1, 2, 3].map(index => ({ description: `Private synopsis ${id}:${index}`,
+      similarity: id === 5 ? .9 : .6, sharedAcrossCandidates: false })) })) };
+}
+
+test('live full-pool retrieval preserves policy and description leaders with same-snapshot learning and no extra profile query', async () => {
+  const { service, repository, retriever, evidence } = setup(), before = structuredClone(policyResult);
+  retriever.retrieve.mockResolvedValue(descriptions(evidence));
+  const result = await service.build({ policyResult, libraries, metadata });
+  expect(ids(result)).toEqual([1, 4, 5]);
+  expect(result.candidates.map(candidate => candidate.policyScore)).toEqual([45, 42, 41]);
+  expect(retriever.retrieve.mock.calls[0][0].contract.candidates.map(candidate => candidate.libraryId)).toEqual([1, 2, 3, 4, 5]);
+  expect(repository.readLearnedProfiles).not.toHaveBeenCalled();
+  expect(repository.readConfig).toHaveBeenCalledTimes(2);
+  expect(policyResult).toEqual(before);
+  expect(JSON.stringify(result)).not.toMatch(/Private synopsis|snapshotId|similarity|relativeFit/);
+});
+
+test('missing query metadata or unusable profiles does not suppress usable description evidence', async () => {
+  const { service, repository, retriever, evidence } = setup();
+  const source = descriptions(evidence);
+  source.candidates.forEach(candidate => { delete candidate.learnedProfile; });
+  retriever.retrieve.mockResolvedValue(source);
+  expect(ids(await service.build({ policyResult, libraries, metadata: { ...metadata, genres: [] } }))).toEqual([1, 2, 5]);
+  expect(repository.readLearnedProfiles).not.toHaveBeenCalled();
+});
+
+test.each(['partial', 'foreign', 'duplicate', 'missing', 'extra'])('invalid %s retrieval scope retains the old metadata path', async kind => {
+  const { service, repository, retriever, evidence } = setup(), source = descriptions(evidence);
+  if (kind === 'partial') source.statusId = 'partial';
+  if (kind === 'foreign') source.candidates[0].libraryId = 999;
+  if (kind === 'duplicate') source.candidates[0].libraryId = 2;
+  if (kind === 'missing') source.candidates.pop();
+  if (kind === 'extra') source.candidates.push(source.candidates[0]);
+  retriever.retrieve.mockResolvedValue(source);
+  expect(ids(await service.build({ policyResult, libraries, metadata }))).toEqual([1, 4, 2]);
+  expect(repository.readLearnedProfiles).toHaveBeenCalledTimes(1);
+});
+
+test.each(['aborted', 'disabled', 'thrown'])('retrieval %s cannot apply a stale anchor or continue work', async kind => {
+  const { service, repository, retriever, evidence } = setup(), controller = new AbortController();
+  retriever.retrieve.mockImplementation(async () => {
+    if (kind === 'aborted') controller.abort();
+    if (kind === 'disabled') repository.readConfig.mockResolvedValue({ rag_enabled: false });
+    if (kind === 'thrown') throw new Error('PRIVATE retrieval error');
+    return descriptions(evidence);
+  });
+  expect(await service.build({ policyResult, libraries, metadata, signal: controller.signal })).toEqual(buildPolicyCandidateAdjudicationContract(options));
+  expect(repository.readLearnedProfiles).not.toHaveBeenCalled();
+});
 
 test('learns before truncation, keeps the policy leader, and never changes scores or policy results', async () => {
   const { service, repository } = setup(), before = structuredClone(policyResult);

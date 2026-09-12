@@ -32,6 +32,7 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     'exclude-prior-size': { type: 'string' }, 'exclude-prior-sizes': { type: 'string' }, folds: { type: 'string' },
     investigate: { type: 'boolean' }, 'contrastive-investigation': { type: 'boolean' }, 'content-first-comparison': { type: 'boolean' },
     'selective-recheck': { type: 'boolean' },
+    'preserve-description-candidate': { type: 'boolean' },
     'metadata-candidates': { type: 'boolean' }, 'learned-profiles': { type: 'boolean' } } });
   if (values['metadata-candidates'] && values['learned-profiles']) throw new Error('description_benchmark_selection_mode_conflict');
   const options = validateDescriptionBenchmarkOptions({ seed: values.seed,
@@ -54,6 +55,9 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     throw new Error('selective_recheck_requires_grouped_profiles_and_exclusive_mode');
   }
   const abort = AbortSignal.any([AbortSignal.timeout(options.maxMinutes * 60_000), ...(signal ? [signal] : [])]);
+  if (values['preserve-description-candidate'] && (!options.folds || !values['learned-profiles'])) {
+    throw new Error('description_anchor_requires_grouped_profiles');
+  }
   const runtime = await loadRuntime();
   try {
     const representation = await inspectDescriptionRepresentation(runtime.embedder, abort);
@@ -62,8 +66,9 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     const prepared = prepareDescriptionBenchmark(snapshot, snapshot.vectors, representation.dimensions, options,
       { metadataCandidates: values['metadata-candidates'] === true, learnedProfiles: values['learned-profiles'] === true,
         includeContrastiveVectors: values['contrastive-investigation'] === true,
-        includeComparisonEvidence: values['content-first-comparison'] === true || values['selective-recheck'] === true,
-        includeConflictEvidence: values['selective-recheck'] === true });
+        includeComparisonEvidence: values['content-first-comparison'] === true || values['selective-recheck'] === true || values['preserve-description-candidate'] === true,
+        includeConflictEvidence: values['selective-recheck'] === true,
+        preserveDescriptionCandidate: values['preserve-description-candidate'] === true });
     const client = options.generateCases ? runtime.createClient() : undefined;
     const identity = client ? await client.inspect(abort) : undefined;
     const runner = values['content-first-comparison'] || values['selective-recheck'] ? runContentFirstInventoryComparison

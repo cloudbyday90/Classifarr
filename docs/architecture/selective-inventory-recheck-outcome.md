@@ -99,6 +99,11 @@ cohort proves four production misroutes. The current recheck cannot recover an
 omitted destination, and most of the remaining 54 placement disagreements were
 not resolved by this narrow trigger.
 
+This follow-up is now implemented in the
+[description-preserving shortlist design](description-preserving-shortlist-design.md)
+with separate [measured outcomes](description-preserving-shortlist-outcome.md).
+It preserves one description leader; it does not recover all four misses above.
+
 ## Recommendations and final stack
 
 | Option | Pro | Con | Recommendation |

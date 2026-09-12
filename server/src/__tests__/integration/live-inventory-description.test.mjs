@@ -210,3 +210,28 @@ test('real learned profiles recover the fourth eligible library before the live 
   expect((await service.build(input)).candidates.map(candidate => candidate.libraryId)).toEqual([10, 20, 50]);
   expect((await client.query('SELECT count(*)::integer AS count FROM inventory_description_vector_cache')).rows[0].count).toBe(8);
 });
+
+test('live shortlist uses current PostgreSQL descriptions to preserve a metadata-disfavored library without routing or cache writes', async () => {
+  await client.query("INSERT INTO libraries VALUES (50,'movie',true),(60,'movie',true)");
+  const available = [10, 20, 50, 60].map(id => ({ id, name: `Arbitrary ${id}`, media_type: 'movie', is_active: true }));
+  for (let id = 1; id <= 24; id++) {
+    const library = available[Math.floor((id - 1) / 6)].id;
+    await add(id, library, `Distinct candidate evidence ${id}`, library === 60 ? [1, .1, 0] : [0, 1, 0]);
+  }
+  await client.query(`UPDATE media_server_items SET genres=CASE WHEN library_id=20 THEN '["Comedy"]'::jsonb ELSE '["Documentary"]'::jsonb END`);
+  const scopedRepository = { ...repository, readConfig: async () => ({ rag_enabled: true }) };
+  const retriever = { retrieve: async ({ contract, metadata, signal }) => ({ statusId: 'available',
+    candidates: await repository.retrieve({ identity, vector: [1, 0, 0], signal,
+      request: { key: 'movie:90', hash: hash('Query'), mediaType: metadata.media_type,
+        libraryIds: contract.candidates.map(candidate => candidate.libraryId), queryMetadata: { genres: ['comedy'], studio: '', rating: '' } } }) }) };
+  const service = createPolicyCandidateShortlistService({ repository: scopedRepository, retriever });
+  const policyResult = { action: 'manual', confidence: 45, ranked: available.map(library => ({ library_id: library.id, score: 45 })) };
+  const input = { policyResult, libraries: available, metadata: { tmdb_id: 90, media_type: 'movie', overview: 'Query', genres: ['Comedy'] } };
+  const before = structuredClone(policyResult);
+  expect((await service.build(input)).candidates.map(candidate => candidate.libraryId)).toEqual([10, 20, 60]);
+  await client.query(`UPDATE libraries SET is_active=false WHERE id=60`);
+  const inactiveInput = { ...input, libraries: available.map(library => ({ ...library, is_active: library.id !== 60 })) };
+  expect((await service.build(inactiveInput)).candidates.map(candidate => candidate.libraryId)).toEqual([10, 20, 50]);
+  expect(policyResult).toEqual(before);
+  expect((await client.query('SELECT count(*)::integer AS count FROM inventory_description_vector_cache')).rows[0].count).toBe(24);
+});

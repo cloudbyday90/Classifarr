@@ -36,6 +36,38 @@ function fixture(size = 600) {
   return { corpus, libraries, vectors };
 }
 
+test('description anchor keeps two learned choices, rescues a missing leader and reports grouped recall without labels influencing ranking', () => {
+  const libraries = [1, 2, 3, 4, 5].map(id => ({ id, name: `Arbitrary ${id}`, media_type: 'movie' }));
+  const rows = Array.from({ length: 100 }, (_, index) => ({ tmdb_id: index + 1, library_id: index % 5 + 1,
+    media_type: 'movie', overview: `Private synopsis ${index}` }));
+  const corpus = prepareInventoryDescriptionCorpus(rows);
+  const sample = selectDescriptionBenchmarkSample(corpus, { seed, size: 10 });
+  const queryHashes = new Set(sample.map(doc => doc.hash)), queryKeys = new Set(sample.map(doc => doc.key));
+  const vectors = new Map(corpus.documents.map(doc => [doc.hash, doc.libraryIds.includes(5) || queryHashes.has(doc.hash) ? [1, 0] : [0, 1]]));
+  const snapshot = { corpus, libraries, vectors, candidateMetadata: new Map(corpus.documents.map(doc => [doc.key,
+    { genres: [doc.libraryIds.includes(5) && !queryKeys.has(doc.key) ? 'documentary' : 'comedy'], studio: '', rating: '' }])) };
+  const options = { seed, size: 10, folds: 5 };
+  const baseline = prepareDescriptionBenchmark(snapshot, vectors, 2, options, { learnedProfiles: true });
+  const trial = prepareDescriptionBenchmark(snapshot, vectors, 2, options, { learnedProfiles: true, preserveDescriptionCandidate: true });
+  expect(trial.sampleFingerprint).toBe(baseline.sampleFingerprint);
+  expect(trial.evaluation.assignmentFingerprint).toBe(baseline.evaluation.assignmentFingerprint);
+  expect(trial.fingerprint).not.toBe(baseline.fingerprint);
+  expect(trial.metadataSelection.descriptionAnchor.changedShortlists).toBeGreaterThan(0);
+  trial.cases.forEach((entry, index) => {
+    const prior = baseline.cases[index];
+    expect(entry.investigationCandidates.slice(0, 2).map(candidate => candidate.id))
+      .toEqual(prior.investigationCandidates.slice(0, 2).map(candidate => candidate.id));
+    expect(entry.candidates.map(candidate => candidate.id)).toContain(5);
+  });
+  const summary = trial.metadataSelection.descriptionAnchor;
+  expect(summary.protectedPlacementMisses).toBe(summary.unprotectedPlacementMisses - summary.recoveredObservedDestinations + summary.newObservedDestinationMisses);
+  expect(summary.media[0].requested).toBe(10);
+  expect(summary.media[1].requested).toBe(0);
+  expect(summary.libraries.reduce((sum, row) => sum + row.requested, 0)).toBe(10);
+  expect(JSON.stringify(summary)).not.toMatch(/Private|Arbitrary|observedLibraryIds|unprotectedCandidateIds/);
+  expect(() => prepareDescriptionBenchmark(snapshot, vectors, 2, { seed }, { preserveDescriptionCandidate: true })).toThrow('requires_grouped_profiles');
+});
+
 test('conflict evidence reuses fold-fitted metadata and retrieved examples without changing prompts or fingerprints', () => {
   const snapshot = fixture(100);
   snapshot.candidateMetadata = new Map(snapshot.corpus.documents.map(doc => [doc.key,
