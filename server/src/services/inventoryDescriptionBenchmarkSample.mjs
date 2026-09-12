@@ -66,10 +66,12 @@ export function prepareDescriptionBenchmark(snapshot, rawVectors, dimensions, op
       const top = items.slice(0, 3);
       return { ...library, items: items.slice(0, 100), eligible: items.length,
         rank: top.length ? top.reduce((sum, item) => sum + item.similarity, 0) / top.length : -2 };
-    }).sort((a, b) => b.rank - a.rank || a.id - b.id).slice(0, 3);
-    const offset = caseIndex % Math.max(1, ranked.length);
-    const candidates = [...ranked.slice(offset), ...ranked.slice(0, offset)];
-    return { overview: corpus.texts.get(doc.hash), mediaType: doc.type, observedLibraryIds: doc.libraryIds, candidates };
+    }).sort((a, b) => b.rank - a.rank || a.id - b.id);
+    const shortlist = ranked.slice(0, 3);
+    const offset = caseIndex % Math.max(1, shortlist.length);
+    const candidates = [...shortlist.slice(offset), ...shortlist.slice(0, offset)];
+    return { overview: corpus.texts.get(doc.hash), mediaType: doc.type, observedLibraryIds: doc.libraryIds, candidates,
+      investigationCandidates: ranked, itemIdentity: { mediaType: doc.type, tmdbId: doc.id } };
   });
   // Fingerprint includes vector values and names; never print individual content hashes.
   const fingerprintHash = createHash('sha256').update(JSON.stringify({

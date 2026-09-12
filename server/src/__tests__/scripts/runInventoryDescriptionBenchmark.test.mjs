@@ -43,6 +43,14 @@ test('rejects malformed/unknown arguments before loading configuration', async (
   expect(loadRuntime).not.toHaveBeenCalled();
 });
 
+test('investigation is opt-in, runs after benchmark arms, and keeps private evidence out of output', async () => {
+  const instance = runtime();
+  const report = await runInventoryDescriptionBenchmark({ argv: ['--seed', seed, '--size', '10', '--generate-cases', '2', '--investigate'], loadRuntime: async () => instance });
+  expect(report.investigation).toMatchObject({ comparisonsNotRun: 8, verifiedLabelsCreated: 0, userQuestionsCreated: 0 });
+  expect(report.arms.every(arm => arm.finished === 2)).toBe(true);
+  expect(JSON.stringify(report)).not.toContain('Private');
+});
+
 test('snapshot failures and model replacement close the runtime and do not send query text', async () => {
   const instance = runtime();
   instance.repository.read.mockRejectedValueOnce(new Error('private failure'));

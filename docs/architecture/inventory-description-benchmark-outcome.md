@@ -94,6 +94,10 @@ Embedding model was `mxbai-embed-large:latest`, 1,024 dimensions, digest
 
 ## Recommendation and next component
 
+Follow-up: [automatic disagreement investigation](benchmark-disagreement-investigation-outcome.md)
+now identifies and rechecks discrepancies before asking for reference answers.
+It does not promote re-check results into independently verified labels.
+
 Keep the live budget unchanged for now. One hundred examples cost about **8.4×
 the input tokens** and **3.3× the mean generation-request latency** of nine,
 without improving observed-placement agreement in this experiment. This does

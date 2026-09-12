@@ -24,9 +24,9 @@ async function loadPrivateRuntime() {
   } catch (error) { await db.pool.end(); throw error; }
 }
 
-export async function runInventoryDescriptionBenchmark({ argv = process.argv.slice(2), loadRuntime = loadPrivateRuntime, signal, onProgress } = {}) {
+export async function runInventoryDescriptionBenchmark({ argv = process.argv.slice(2), loadRuntime = loadPrivateRuntime, signal, onProgress, onPrivateCase } = {}) {
   const { values } = parseArgs({ args: argv, options: { seed: { type: 'string' }, size: { type: 'string' },
-    'generate-cases': { type: 'string' }, context: { type: 'string' }, 'max-minutes': { type: 'string' } } });
+    'generate-cases': { type: 'string' }, context: { type: 'string' }, 'max-minutes': { type: 'string' }, investigate: { type: 'boolean' } } });
   const options = validateDescriptionBenchmarkOptions({ seed: values.seed,
     ...(values.size === undefined ? {} : { size: Number(values.size) }),
     ...(values['generate-cases'] === undefined ? {} : { generateCases: Number(values['generate-cases']) }),
@@ -42,7 +42,8 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     const prepared = prepareDescriptionBenchmark(snapshot, snapshot.vectors, representation.dimensions, options);
     const client = options.generateCases ? runtime.createClient() : undefined;
     const identity = client ? await client.inspect(abort) : undefined;
-    const report = await runDescriptionBenchmark(prepared, options, { client, identity, signal: abort, onProgress });
+    const report = await runDescriptionBenchmark(prepared, options, { client, identity, signal: abort, onProgress,
+      investigate: values.investigate === true, onPrivateCase });
     return { ...report, embedding: { model: representation.model, digest: representation.digest, dimensions: representation.dimensions } };
   } finally { await runtime.close(); }
 }

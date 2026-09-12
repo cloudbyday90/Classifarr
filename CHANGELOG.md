@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add bounded local investigation of benchmark disagreements, including omitted
+  destinations and blind content re-checks. Keep case evidence private and
+  distinguish technical gaps from unresolved semantic differences without
+  changing routing or creating labels from model agreement.
+
 - Add a seeded 100-title, local-only description benchmark comparing 9, 30,
   and 100 retrieved examples. Report actual evidence counts, abstentions,
   latency, tokens, and observational agreement without changing live routing

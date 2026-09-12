@@ -1,13 +1,14 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { buildDescriptionBenchmarkPrompt, DESCRIPTION_BENCHMARK_ARMS, parseDescriptionBenchmarkProposal } from './inventoryDescriptionBenchmarkPrompt.mjs';
 import { validateDescriptionBenchmarkOptions } from './inventoryDescriptionBenchmarkSample.mjs';
+import { investigateDescriptionDisagreements } from './inventoryDescriptionBenchmarkInvestigation.mjs';
 
 const summarize = values => values.length ? { count: values.length, min: Math.min(...values), max: Math.max(...values),
   mean: Number((values.reduce((a, b) => a + b, 0) / values.length).toFixed(2)),
   p95: [...values].sort((a, b) => a - b)[Math.ceil(values.length * 0.95) - 1] } : { count: 0, min: null, max: null, mean: null, p95: null };
 
 /** Keep private packets/responses in memory; return only allowlisted aggregates. */
-export async function runDescriptionBenchmark(prepared, settings, { client, identity, signal, onProgress = () => {} } = {}) {
+export async function runDescriptionBenchmark(prepared, settings, { client, identity, signal, onProgress = () => {}, investigate = false, onPrivateCase } = {}) {
   const options = validateDescriptionBenchmarkOptions(settings);
   const abort = AbortSignal.any([AbortSignal.timeout(options.maxMinutes * 60_000), ...(signal ? [signal] : [])]);
   const arms = DESCRIPTION_BENCHMARK_ARMS.map(budget => ({ budget, counts: [], bytes: [], shared: [], results: [] }));
@@ -45,8 +46,11 @@ export async function runDescriptionBenchmark(prepared, settings, { client, iden
   }
   const completed = arms.every(arm => arm.results.length === requested);
   const hasErrors = arms.some(arm => arm.results.some(result => !['proposed', 'abstained'].includes(result.status)));
+  const investigation = investigate ? await investigateDescriptionDisagreements(prepared, paired,
+    { client, identity, context: options.context, signal: abort, onPrivateCase }) : null;
   return {
     version: 1, status: options.generateCases === 0 ? 'preflight' : !completed ? 'interrupted' : hasErrors ? 'completed_with_errors' : 'complete',
+    ...(investigation ? { investigation } : {}),
     seed: options.seed, snapshotFingerprint: prepared.fingerprint, sampleFingerprint: prepared.sampleFingerprint,
     requestedTitles: options.size, sampledTitles: prepared.cases.length, sampleShortfall: Math.max(0, options.size - prepared.cases.length),
     requestedGenerationCases: options.generateCases, availableGenerationCases: requested, independentLabels: 0, accuracy: null,
