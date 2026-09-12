@@ -11,6 +11,13 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Learn per-library description-match baselines automatically during held-out
+  evaluation, distinguishing familiar matches from merely the closest candidate.
+  Keep calibration separate from test items, report sparse-library coverage,
+  and compare review qualification without changing live routing or scores.
+- Preserve frozen evaluation inputs when background metadata refreshes during
+  preparation, while continuing to reject policy, library, vector and
+  configuration drift and clearly reporting that the snapshot is not current.
 - Add a paired, read-only learned-evidence review evaluation using full-pool
   description neighbors, contrastive library metadata and the existing AI
   proposal. Distinguish soft evidence reviews from hard policy conflicts and

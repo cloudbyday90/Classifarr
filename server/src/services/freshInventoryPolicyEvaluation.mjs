@@ -6,6 +6,7 @@ import { createFreshInventoryPolicyEvidence } from './freshInventoryPolicyEviden
 import { prepareFreshInventoryPolicyCase } from './freshInventoryPolicyPreparation.mjs';
 import { reducePolicyShortlistReplayResponse } from './policyShortlistReplay.mjs';
 import { buildFreshPolicyReport } from './freshInventoryPolicyReport.mjs';
+import { createInventoryMatchCalibration } from './inventoryMatchCalibration.mjs';
 
 /** Fresh policies, fold-local evidence, sequential admitted inference, aggregate output only. */
 export async function runFreshInventoryPolicyEvaluation(settings, {
@@ -26,10 +27,13 @@ export async function runFreshInventoryPolicyEvaluation(settings, {
     const prepared = prepareDescriptionBenchmark(source, source.vectors, representation.dimensions, options,
       { learnedProfiles: true, includeComparisonEvidence: true, preserveDescriptionCandidate: true });
     const evidence = createFreshInventoryPolicyEvidence(source, prepared);
+    const calibration = createInventoryMatchCalibration({ documents: source.corpus.documents,
+      libraries: source.libraries, vectors: source.vectors, representation });
     const rows = [];
     for (const sample of prepared.cases) {
       abort.throwIfAborted();
-      rows.push({ sample, prepared: await prepareCase(sample, source, evidence, abort) });
+      const matchCalibration = await calibration.assess(sample, { signal: abort });
+      rows.push({ sample, prepared: { ...await prepareCase(sample, source, evidence, abort), matchCalibration } });
       onProgress({ stage: 'fresh_policy_preparation', completed: rows.length, requested: prepared.cases.length });
     }
     const initialComponents = describeFreshPolicySnapshot(source);
@@ -49,7 +53,9 @@ export async function runFreshInventoryPolicyEvaluation(settings, {
       }
       await verifyDescriptionRepresentation(runtime.embedder, representation, abort);
     };
-    await verify();
+    // Preparation reads only the captured source. Background metadata refresh
+    // cannot change those frozen inputs, including the newly fitted baselines.
+    await verify({ allowMetadataRefresh: true });
     const requested = rows.slice(0, options.generateCases).filter(row => row.prepared.status === 'ready');
     const client = requested.length ? runtime.createClient() : null;
     const identity = client ? await client.inspect(abort) : null;

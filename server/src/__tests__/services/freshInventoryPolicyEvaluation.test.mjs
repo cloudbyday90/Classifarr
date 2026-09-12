@@ -25,6 +25,8 @@ test('fresh full-cohort preflight evaluates movies and TV without loading a gene
   expect(runtime.createClient).not.toHaveBeenCalled();
   expect(runtime.close).toHaveBeenCalledTimes(1);
   expect(report.learnedReview).toMatchObject({ evaluated: 0, livePromotionAllowed: false });
+  expect(report.matchCalibration).toMatchObject({ sampled: 12, afterNoveltyCheck: 0, livePromotionAllowed: false });
+  expect(report.matchCalibration.observedPlacementStates.sparse).toBe(12);
   expect(JSON.stringify(report)).not.toMatch(/Private|tmdb|ollama_host|library_id|observedLibraryIds/);
 });
 
@@ -35,6 +37,7 @@ test('admitted generation uses one production contract per case, separates weak 
     routeSafetyAllowed: 0, routingReceiptsCreated: 0, learningRecordsCreated: 0, totalOutputTokens: 168, accuracy: null });
   expect(client.generate.mock.calls.every(([request]) => request.responseContract === 'adjudication')).toBe(true);
   expect(report.learnedReview).toMatchObject({ evaluated: 12, livePromotionAllowed: false });
+  expect(report.matchCalibration).toMatchObject({ sampled: 12, afterNoveltyCheck: 0, probabilityCalibrated: false });
   expect(JSON.stringify(report)).not.toMatch(/Private|tmdb|ollama_host|destinationId/);
 });
 
@@ -114,6 +117,32 @@ test('background metadata refresh preserves the frozen evaluation but explicitly
   expect(report).toMatchObject({ status: 'complete', calls: 30, sourceVerified: false, evaluationSnapshotValid: true,
     liveMetadataRefreshed: true, snapshotScope: 'frozen_at_start', changedComponents: ['metadata', 'observedTraits'] });
   expect(source.evaluationRows[0].genres).toEqual(['Genre 0']);
+});
+
+test('metadata refresh during baseline preparation is also a frozen experiment, not current live evidence', async () => {
+  const { source, runtime } = freshFixture(), refreshed = structuredClone(source);
+  refreshed.candidateMetadata.get('movie:1').genres = ['refreshed'];
+  refreshed.fingerprint = fingerprintFreshPolicySnapshot(refreshed);
+  runtime.repository.read.mockReset().mockResolvedValueOnce(source).mockResolvedValue(refreshed);
+  const report = await runFreshInventoryPolicyEvaluation(freshSettings, { loadRuntime: async () => runtime, prepareCase: admittedCase });
+  expect(report).toMatchObject({ status: 'complete', calls: 12, sourceVerified: false, evaluationSnapshotValid: true,
+    liveMetadataRefreshed: true, snapshotScope: 'frozen_at_start', changedComponents: ['metadata'],
+    matchCalibration: { sampled: 12, livePromotionAllowed: false }, liveRoutingChanged: false });
+});
+
+test.each(['configuration', 'policies', 'libraries', 'vectors', 'documents'])('pre-generation %s drift still prevents all inference', async kind => {
+  const { source, runtime, client } = freshFixture(), changed = structuredClone(source);
+  if (kind === 'configuration') changed.config.configuration_revision = 2;
+  if (kind === 'policies') changed.policies[0].prompt_threshold = 61;
+  if (kind === 'libraries') changed.libraries[0].is_active = false;
+  if (kind === 'vectors') changed.vectors.set([...changed.vectors.keys()][0], [0, 1]);
+  if (kind === 'documents') changed.corpus.documents[0].libraryIds = [2];
+  changed.fingerprint = fingerprintFreshPolicySnapshot(changed);
+  runtime.repository.read.mockReset().mockResolvedValueOnce(source).mockResolvedValue(changed);
+  await expect(runFreshInventoryPolicyEvaluation(freshSettings, { loadRuntime: async () => runtime, prepareCase: admittedCase }))
+    .rejects.toThrow('source_changed');
+  expect(client.generate).not.toHaveBeenCalled();
+  expect(runtime.close).toHaveBeenCalledTimes(1);
 });
 
 test.each(['configuration', 'policies', 'libraries', 'vectors', 'documents'])('meaningful %s drift still invalidates rather than relaxing authority', async kind => {

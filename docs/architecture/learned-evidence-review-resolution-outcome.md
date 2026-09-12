@@ -150,6 +150,11 @@ embedding: 468836162de7f81e041c43663fedbbba921dcea9b9fefea135685a39b2d83dd8
 
 ## Next high-value component
 
+Follow-up: the [library match baseline design](library-match-calibration-design.md)
+implements the separate reference/calibration/test split in the frozen evaluator.
+Its [outcome](library-match-calibration-outcome.md) records the measured effect.
+This is not yet a production background scheduler or live promotion.
+
 Implement **per-library novelty calibration**: learn the normal range of
 description-neighbor distances from each library's own grouped training items,
 then reject incoming items that are merely closer to that library than the
