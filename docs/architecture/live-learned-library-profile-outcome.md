@@ -98,6 +98,10 @@ cannot win if it never reaches comparison. Validate that live selection path on
 at least 100 held-out titles, reporting candidate recall, contradictions,
 abstentions and review burden separately from confidence and true accuracy.
 
+Follow-up implemented: [learned candidate shortlist outcome](learned-candidate-shortlist-outcome.md).
+The new component reranks alternatives before the cutoff; it does not remove
+existing manual-review vetoes or establish improved routing accuracy.
+
 ## PR, CI and release scope
 
 GitHub MCP returned no open Classifarr PRs for random selection. No PR could be

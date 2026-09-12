@@ -6,12 +6,43 @@
 import { describe, expect, jest, test } from '@jest/globals';
 
 import { ClassificationPolicyPathService } from '../../services/classificationPolicyPathService.mjs';
+import { createPolicyCandidateShortlistService } from '../../services/policyCandidateShortlistService.mjs';
 
 const libraries = [
   { id: 1, name: 'Movies', media_type: 'movie' },
   { id: 2, name: 'Family', media_type: 'movie' },
   { id: 3, name: 'Unrelated', media_type: 'movie' },
 ];
+
+test('learned shortlist reaches AI and identity comparison without changing policy authority', async () => {
+  const available = [...libraries, { id: 4, name: 'Fourth library', media_type: 'movie' }];
+  const policyResult = { action: 'prompt_select', confidence: 45,
+    decisionDiagnostics: { requires_manual_review: true, reason_code: 'weak_evidence_primary' },
+    ranked: available.map(library => ({ library_id: library.id, score: 45 })) };
+  const before = structuredClone(policyResult);
+  const aiClassify = jest.fn(async () => ({ library: available[3], format: 'confident', confidence: 99 }));
+  const retrieve = jest.fn(async () => null);
+  const service = new ClassificationPolicyPathService({
+    policyEngine: { evaluateItem: async () => policyResult },
+    policyScoringContextBuilder: { buildSignalContext: () => ({ confidence: 45 }) },
+    policyCandidateShortlistService: createPolicyCandidateShortlistService({ repository: {
+      readConfig: async () => ({ rag_enabled: true }),
+      readLearnedProfiles: async () => new Map(available.map(({ id }) => [id, { version: 'contrastive_profile_v1',
+        snapshotId: 'a'.repeat(64), trainingDescriptions: 100, statusId: 'available', relativeFit: id === 4 ? 1 : -1 }])),
+    } }),
+    classificationAiService: { aiClassify },
+    policyCandidateAdjudicationEvidenceService: { build: async ({ contract }) => ({ candidates: contract.candidates }) },
+    policyCandidateContrastiveRetriever: { retrieve },
+    classificationRoutingService: { ensureDecisionQuestion: async ({ result }) => result },
+    logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+  });
+  const outcome = await service.execute({ metadata: { tmdb_id: 999, media_type: 'movie', overview: 'Synopsis', genres: ['Pattern'] }, libraries: available });
+  expect(aiClassify.mock.calls[0][1].map(library => library.id)).toEqual([1, 4, 2]);
+  expect(retrieve.mock.calls[0][0].contract.candidates.map(candidate => candidate.libraryId)).toEqual([1, 4, 2]);
+  expect(outcome.result).toMatchObject({ confidence: 45, needs_clarification: true,
+    candidate_adjudication: { statusId: 'proposed', candidateCount: 3, proposedDestination: { library_id: 4 } } });
+  expect(policyResult).toEqual(before);
+});
 
 describe('ClassificationPolicyPathService candidate adjudication', () => {
   test.each([

@@ -37,6 +37,12 @@ export function createLiveInventoryDescriptionRepository({ withTransaction }) {
   });
   const query = (sql, parameters) => snapshot(client => client.query(sql, parameters));
   const cache = createInventoryDescriptionVectorCache({ query });
+  const readCorpus = async (client, signal) => {
+    signal?.throwIfAborted();
+    const { rows } = await client.query(LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL, [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]);
+    signal?.throwIfAborted();
+    return { rows, corpus: prepareInventoryDescriptionCorpus(rows) };
+  };
   return {
     async readConfig() {
       const { rows } = await query(INVENTORY_DESCRIPTION_REFRESH_STATE_SQL);
@@ -45,14 +51,19 @@ export function createLiveInventoryDescriptionRepository({ withTransaction }) {
     async readQueryVector(identity, hash) {
       return (await cache.read(identity, [hash])).get(hash) ?? null;
     },
+    async readLearnedProfiles({ request, signal }) {
+      return snapshot(async client => {
+        const source = await readCorpus(client, signal);
+        const profiles = buildLiveInventoryLearnedProfiles({ ...source, request });
+        signal?.throwIfAborted();
+        return profiles;
+      });
+    },
     async retrieve({ request, identity, vector, signal }) {
       const representation = validateDescriptionRepresentation(identity);
       const encodedVector = JSON.stringify(validateEmbedding(vector, identity.dimensions));
       return snapshot(async client => {
-        signal?.throwIfAborted();
-        const { rows } = await client.query(LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL, [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]);
-        signal?.throwIfAborted();
-        const corpus = prepareInventoryDescriptionCorpus(rows);
+        const { rows, corpus } = await readCorpus(client, signal);
         let learnedProfiles = new Map();
         try {
           if (request.queryMetadata) learnedProfiles = buildLiveInventoryLearnedProfiles({ rows, corpus, request });

@@ -6,6 +6,7 @@ import { createLiveInventoryDescriptionRepository } from '../../services/liveInv
 import { createInventoryDescriptionVectorCache } from '../../services/inventoryDescriptionVectorCache.mjs';
 import { createDescriptionBenchmarkRepository } from '../../services/inventoryDescriptionBenchmarkRepository.mjs';
 import { prepareDescriptionBenchmark } from '../../services/inventoryDescriptionBenchmarkSample.mjs';
+import { createPolicyCandidateShortlistService } from '../../services/policyCandidateShortlistService.mjs';
 
 let client;
 let repository;
@@ -146,4 +147,22 @@ test('benchmark snapshots real inventory and cache read-only, holds out 100 titl
   await expect(benchmark.read({ ...identity, digest: 'b'.repeat(64) })).rejects.toThrow('cache_incomplete');
   await client.query("UPDATE inventory_description_vector_cache SET created_at=now()-interval '31 days'");
   await expect(benchmark.read(identity)).rejects.toThrow('cache_incomplete');
+});
+
+test('real learned profiles recover the fourth eligible library before the live comparison cutoff', async () => {
+  await client.query("INSERT INTO libraries VALUES (50,'movie',true),(60,'movie',true)");
+  for (let id = 1; id <= 8; id++) {
+    await add(id, [10, 20, 50, 60][Math.floor((id - 1) / 2)], `Distinct training ${id}`);
+  }
+  await client.query(`UPDATE media_server_items SET genres=CASE WHEN library_id=60 THEN '["Documentary"]'::jsonb ELSE '["Comedy"]'::jsonb END`);
+  const service = createPolicyCandidateShortlistService({ repository: { ...repository, readConfig: async () => ({ rag_enabled: true }) } });
+  const available = [10, 20, 50, 60].map(id => ({ id, name: `Arbitrary ${id}`, media_type: 'movie', is_active: true }));
+  const policyResult = { action: 'manual', confidence: 45, ranked: available.map(library => ({ library_id: library.id, score: 45 })) };
+  const input = { policyResult, libraries: available, metadata: { tmdb_id: 90, media_type: 'movie', overview: 'Query', genres: ['Documentary'] } };
+  expect((await service.build(input)).candidates.map(candidate => candidate.libraryId)).toEqual([10, 60, 20]);
+  expect((await service.build({ ...input, policyResult: { ...policyResult, ranked: policyResult.ranked.slice(0, 3) } })).candidates.map(candidate => candidate.libraryId))
+    .toEqual([10, 20, 50]);
+  await client.query(`UPDATE media_server_items SET genres='["Comedy"]'::jsonb WHERE library_id=60`);
+  expect((await service.build(input)).candidates.map(candidate => candidate.libraryId)).toEqual([10, 20, 50]);
+  expect((await client.query('SELECT count(*)::integer AS count FROM inventory_description_vector_cache')).rows[0].count).toBe(8);
 });

@@ -54,6 +54,7 @@ import {
 	buildPolicyCandidateContrastiveEvidence,
 } from './policyCandidateContrastiveEvidence.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { createPolicyCandidateShortlistService } from './policyCandidateShortlistService.mjs';
 
 const defaultLogger = createLogger('classificationPolicyPathService');
 
@@ -71,6 +72,8 @@ export class ClassificationPolicyPathService {
 		this.resolveDeterministicOutcomeAiMode = deps.resolveDeterministicOutcomeAiMode || resolveDeterministicOutcomeAiMode;
 		this.buildDeterministicOutcomeAiAbstentionResult = deps.buildDeterministicOutcomeAiAbstentionResult || buildDeterministicOutcomeAiAbstentionResult;
 		this.buildPolicyCandidateAdjudicationContract = deps.buildPolicyCandidateAdjudicationContract || buildPolicyCandidateAdjudicationContract;
+		this.policyCandidateShortlistService = deps.policyCandidateShortlistService ||
+			createPolicyCandidateShortlistService({ buildContract: this.buildPolicyCandidateAdjudicationContract });
 		this.resolveCandidateAdjudicationFallback =
 			deps.resolveCandidateAdjudicationFallback || resolveCandidateAdjudicationFallback;
 		this.policyCandidateAdjudicationEvidenceService = deps.policyCandidateAdjudicationEvidenceService || policyCandidateAdjudicationEvidenceService;
@@ -211,10 +214,10 @@ export class ClassificationPolicyPathService {
 			};
 		}
 
-		const candidateAdjudication = this.buildPolicyCandidateAdjudicationContract({
+		const candidateAdjudication = await this.policyCandidateShortlistService.build({
 			policyResult,
 			libraries,
-			mediaType: metadata.media_type,
+			metadata,
 		});
 		let candidateAdjudicationEvidence = null;
 		let currentLibraryCandidateRetrievalTelemetry = null;
@@ -240,7 +243,9 @@ export class ClassificationPolicyPathService {
 		};
 		const candidateContrastiveRetrievalContract =
 			this.buildPolicyCandidateContrastiveRetrievalContract({
-				policyResult,
+				policyResult: candidateAdjudication.valid ? { ...policyResult,
+					ranked: candidateAdjudication.candidates.map(candidate => ({ library_id: candidate.libraryId })),
+				} : policyResult,
 				libraries,
 				metadata,
 			});

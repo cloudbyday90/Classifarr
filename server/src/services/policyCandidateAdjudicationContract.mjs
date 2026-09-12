@@ -75,16 +75,41 @@ function invalidContract(reasonCode) {
   });
 }
 
+/** Full server-owned eligible pool, before the provider comparison limit. */
+export function buildPolicyCandidateAdjudicationPool({ policyResult = null, libraries = [], mediaType = null } = {}) {
+  if (!['manual', 'prompt_confirm', 'prompt_select'].includes(policyResult?.action)) return [];
+  const seen = new Set();
+  return (Array.isArray(policyResult?.ranked) ? policyResult.ranked : []).flatMap(rankedCandidate => {
+    const library = candidateLibrary(libraries, rankedCandidate);
+    const libraryId = libraryIdentifier(library);
+    if (!libraryId || seen.has(libraryId) || library?.is_active === false ||
+        (mediaType && library?.media_type && library.media_type !== mediaType)) return [];
+    seen.add(libraryId);
+    return [Object.freeze({ library, libraryId,
+      libraryName: boundedString(library.name, 160) || `Library ${libraryId}`,
+      mediaType: boundedString(library.media_type, 40),
+      policyId: positiveInteger(rankedCandidate?.policy_id), policyScore: candidateScore(rankedCandidate) })];
+  });
+}
+
+function orderedPool(pool, order) {
+  if (!Array.isArray(order) || pool.length > 64 || order.length !== pool.length ||
+      new Set(order).size !== pool.length || order[0] !== pool[0]?.libraryId) return pool;
+  const byId = new Map(pool.map(candidate => [candidate.libraryId, candidate]));
+  return order.every(id => byId.has(id)) ? order.map(id => byId.get(id)) : pool;
+}
+
 /**
  * Defines the complete set of destinations an advisory model may compare.
- * This runtime-only contract is deliberately built from the policy ranking;
- * no provider response can expand it or make a routing decision.
+ * Eligibility and baseline order come from policy; a validated internal order
+ * may rerank alternatives. No provider can expand it or make a routing decision.
  */
 export function buildPolicyCandidateAdjudicationContract({
   policyResult = null,
   libraries = [],
   mediaType = null,
   maximumCandidates = POLICY_CANDIDATE_ADJUDICATION_MAXIMUM_CANDIDATES,
+  candidateOrder = null,
 } = {}) {
   if (!['manual', 'prompt_confirm', 'prompt_select'].includes(policyResult?.action)) {
     return invalidContract(POLICY_CANDIDATE_ADJUDICATION_STATUS_IDS.NOT_REVIEWABLE_POLICY_ACTION);
@@ -94,27 +119,8 @@ export function buildPolicyCandidateAdjudicationContract({
     POLICY_CANDIDATE_ADJUDICATION_MAXIMUM_CANDIDATES,
     Math.max(2, Number.isInteger(maximumCandidates) ? maximumCandidates : POLICY_CANDIDATE_ADJUDICATION_MAXIMUM_CANDIDATES),
   );
-  const seen = new Set();
-  const candidates = (Array.isArray(policyResult?.ranked) ? policyResult.ranked : [])
-    .map((rankedCandidate) => {
-      const library = candidateLibrary(libraries, rankedCandidate);
-      const libraryId = libraryIdentifier(library);
-      if (!libraryId || seen.has(libraryId) || library?.is_active === false ||
-          (mediaType && library?.media_type && library.media_type !== mediaType)) {
-        return null;
-      }
-
-      seen.add(libraryId);
-      return Object.freeze({
-        library,
-        libraryId,
-        libraryName: boundedString(library.name, 160) || `Library ${libraryId}`,
-        mediaType: boundedString(library.media_type, 40),
-        policyId: positiveInteger(rankedCandidate?.policy_id),
-        policyScore: candidateScore(rankedCandidate),
-      });
-    })
-    .filter(Boolean)
+  const pool = buildPolicyCandidateAdjudicationPool({ policyResult, libraries, mediaType });
+  const candidates = orderedPool(pool, candidateOrder)
     .slice(0, limit)
     .map((candidate, index) => Object.freeze({ ...candidate, libraryNumber: index + 1 }));
 

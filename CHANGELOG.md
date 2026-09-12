@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Use fresh learned library fit before the live three-candidate AI shortlist
+  cutoff. Preserve hard eligibility, the policy leader, scores and routing rules;
+  rerank alternatives automatically with safe fallback and no new UI controls.
+
 - Feed organically learned library patterns into live AI candidate comparison,
   refreshed from current inventory without manual purpose declarations. Keep
   fit distinct from confidence, exclude the item's current and stored synopsis
