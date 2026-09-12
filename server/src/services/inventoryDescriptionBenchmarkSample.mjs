@@ -2,7 +2,7 @@
 import { createHash } from 'node:crypto';
 import { normalizeDescriptionVector, descriptionCosineSimilarity } from './inventoryDescriptionSimilarity.mjs';
 import { rankInventoryMetadataCandidates } from './inventoryMetadataCandidates.mjs';
-import { learnInventoryProfiles, rankInventoryLearnedCandidates, INVENTORY_LEARNED_PROFILE_VERSION } from './inventoryLearnedProfiles.mjs';
+import { learnInventoryProfiles, rankInventoryLearnedCandidates, scoreInventoryProfile, INVENTORY_LEARNED_PROFILE_VERSION } from './inventoryLearnedProfiles.mjs';
 import { validateDescriptionBenchmarkOptions, selectAdditionalDescriptionBenchmarkSample } from './inventoryDescriptionBenchmarkSelection.mjs';
 import { planDescriptionBenchmarkFolds } from './inventoryDescriptionBenchmarkFolds.mjs';
 import { describeInventorySnapshotDigests } from './inventoryDescriptionSnapshotDigests.mjs';
@@ -13,16 +13,18 @@ const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 
 /** Freeze vectors, candidate selection and neighbor ordering for all three arms. */
 export function prepareDescriptionBenchmark(snapshot, rawVectors, dimensions, options,
-  { metadataCandidates = false, learnedProfiles = false, includeContrastiveVectors = false, includeComparisonEvidence = false } = {}) {
+  { metadataCandidates = false, learnedProfiles = false, includeContrastiveVectors = false, includeComparisonEvidence = false,
+    includeConflictEvidence = false } = {}) {
   if (metadataCandidates && learnedProfiles) throw new Error('description_benchmark_selection_mode_conflict');
   const { folds } = validateDescriptionBenchmarkOptions(options);
+  if (includeConflictEvidence && (!folds || !learnedProfiles)) throw new Error('inventory_conflict_evidence_requires_grouped_profiles');
   const { sample, excluded, priorCohortSizes, priorSampleFingerprints } = selectAdditionalDescriptionBenchmarkSample(snapshot.corpus, options);
   if (!folds && excluded.size > 0) {
     const corpus = { ...snapshot.corpus, documents: snapshot.corpus.documents.filter(doc => !excluded.has(doc.hash)),
       texts: new Map([...snapshot.corpus.texts].filter(([hash]) => !excluded.has(hash))) };
     return { ...prepareDescriptionBenchmark({ ...snapshot, corpus }, rawVectors, dimensions,
       { ...options, excludePriorSize: 0, excludePriorSizes: [] },
-      { metadataCandidates, learnedProfiles, includeContrastiveVectors, includeComparisonEvidence }), excludedPriorDescriptions: excluded.size };
+      { metadataCandidates, learnedProfiles, includeContrastiveVectors, includeComparisonEvidence, includeConflictEvidence }), excludedPriorDescriptions: excluded.size };
   }
   const usesMetadata = metadataCandidates || learnedProfiles;
   const selectionVersion = learnedProfiles ? INVENTORY_LEARNED_PROFILE_VERSION : 'metadata_rrf_v1';
@@ -61,9 +63,18 @@ export function prepareDescriptionBenchmark(snapshot, rawVectors, dimensions, op
     const shortlist = ordered.slice(0, 3);
     const offset = caseIndex % Math.max(1, shortlist.length);
     const candidates = [...shortlist.slice(offset), ...shortlist.slice(0, offset)];
+    const conflictEvidence = includeConflictEvidence ? candidates.map(candidate => {
+      const relativeFit = Number(scoreInventoryProfile(learned, candidate.id, snapshot.candidateMetadata?.get(doc.key)).toFixed(4));
+      return { libraryId: candidate.id, eligible: candidate.eligible, indexed: candidate.eligible,
+        learnedProfile: { version: INVENTORY_LEARNED_PROFILE_VERSION, relativeFit,
+          statusId: relativeFit === 0 ? 'neutral' : 'available', trainingDescriptions: learned.summary.trainingDescriptions },
+        items: candidate.items.slice(0, 3).map(item => ({ description: corpus.texts.get(item.hash), similarity: item.similarity,
+          sharedAcrossCandidates: candidates.some(other => other.id !== candidate.id && item.libraryIds.has(other.id)) })) };
+    }) : undefined;
     return { overview: corpus.texts.get(doc.hash), mediaType: doc.type, observedLibraryIds: doc.libraryIds, candidates,
+      ...(includeConflictEvidence ? { conflictEvidence } : {}),
       ...(plan ? { foldIndex } : {}),
-      ...(includeContrastiveVectors || includeComparisonEvidence ? { descriptionHash: doc.hash, heldDescriptionHashes: plan?.held[foldIndex] } : {}),
+      ...(includeContrastiveVectors || includeComparisonEvidence || includeConflictEvidence ? { descriptionHash: doc.hash, heldDescriptionHashes: plan?.held[foldIndex] } : {}),
       investigationCandidates: ordered, itemIdentity: { mediaType: doc.type, tmdbId: doc.id },
       ...(usesMetadata ? { descriptionOnlyCandidateIds: ranked.slice(0, 3).map(candidate => candidate.id) } : {}) };
   });

@@ -31,6 +31,7 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     'generate-cases': { type: 'string' }, context: { type: 'string' }, 'max-minutes': { type: 'string' },
     'exclude-prior-size': { type: 'string' }, 'exclude-prior-sizes': { type: 'string' }, folds: { type: 'string' },
     investigate: { type: 'boolean' }, 'contrastive-investigation': { type: 'boolean' }, 'content-first-comparison': { type: 'boolean' },
+    'selective-recheck': { type: 'boolean' },
     'metadata-candidates': { type: 'boolean' }, 'learned-profiles': { type: 'boolean' } } });
   if (values['metadata-candidates'] && values['learned-profiles']) throw new Error('description_benchmark_selection_mode_conflict');
   const options = validateDescriptionBenchmarkOptions({ seed: values.seed,
@@ -48,6 +49,10 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
   if (values['content-first-comparison'] && (!options.folds || values.investigate || values['contrastive-investigation'])) {
     throw new Error('content_first_comparison_requires_folds_and_exclusive_mode');
   }
+  if (values['selective-recheck'] && (!options.folds || !values['learned-profiles'] || values.investigate ||
+    values['contrastive-investigation'] || values['content-first-comparison'])) {
+    throw new Error('selective_recheck_requires_grouped_profiles_and_exclusive_mode');
+  }
   const abort = AbortSignal.any([AbortSignal.timeout(options.maxMinutes * 60_000), ...(signal ? [signal] : [])]);
   const runtime = await loadRuntime();
   try {
@@ -57,13 +62,14 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     const prepared = prepareDescriptionBenchmark(snapshot, snapshot.vectors, representation.dimensions, options,
       { metadataCandidates: values['metadata-candidates'] === true, learnedProfiles: values['learned-profiles'] === true,
         includeContrastiveVectors: values['contrastive-investigation'] === true,
-        includeComparisonEvidence: values['content-first-comparison'] === true });
+        includeComparisonEvidence: values['content-first-comparison'] === true || values['selective-recheck'] === true,
+        includeConflictEvidence: values['selective-recheck'] === true });
     const client = options.generateCases ? runtime.createClient() : undefined;
     const identity = client ? await client.inspect(abort) : undefined;
-    const runner = values['content-first-comparison'] ? runContentFirstInventoryComparison
+    const runner = values['content-first-comparison'] || values['selective-recheck'] ? runContentFirstInventoryComparison
       : values['contrastive-investigation'] ? runContrastiveInventoryInvestigation : runDescriptionBenchmark;
     const report = await runner(prepared, options, { client, identity, signal: abort, onProgress,
-      investigate: values.investigate === true, onPrivateCase });
+      investigate: values.investigate === true, selectiveRecheck: values['selective-recheck'] === true, onPrivateCase });
     return { ...report, embedding: { model: representation.model, digest: representation.digest, dimensions: representation.dimensions } };
   } finally { await runtime.close(); }
 }

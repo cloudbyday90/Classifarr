@@ -2,6 +2,8 @@
 import { validateDescriptionBenchmarkOptions } from './inventoryDescriptionBenchmarkSelection.mjs';
 import { compareInventoryDescription, isValidDescriptionComparison, summarizeDescriptionComparisons } from './inventoryDescriptionBenchmarkComparison.mjs';
 import { summarizeContentFirstPairs, summarizeContentFirstStrata } from './inventoryContentFirstReport.mjs';
+import { resolveInventoryEvidenceConflict, selectInventoryConflictResult } from './inventoryEvidenceConflictRecheck.mjs';
+import { summarizeSelectiveInventoryRecheck } from './inventorySelectiveRecheckReport.mjs';
 
 function validateScope(prepared, options) {
   if (!options.folds || prepared.evaluation?.folds !== options.folds || !Array.isArray(prepared.libraryStrata) ||
@@ -33,29 +35,47 @@ function validateScope(prepared, options) {
   }
 }
 
-/** Every case receives both treatments; observed outcomes never select an arm. */
-export async function runContentFirstInventoryComparison(prepared, settings, { client, identity, signal, onProgress = () => {} } = {}) {
+/** Paired or content-triggered comparisons; observed outcomes never select an arm. */
+export async function runContentFirstInventoryComparison(prepared, settings,
+  { client, identity, signal, onProgress = () => {}, selectiveRecheck = false } = {}) {
   const options = validateDescriptionBenchmarkOptions(settings);
   validateScope(prepared, options);
+  if (selectiveRecheck && (!prepared.profileLearning || prepared.cases.some(entry =>
+    !Array.isArray(entry.conflictEvidence) || entry.conflictEvidence.length !== entry.candidates.length ||
+    entry.conflictEvidence.some((evidence, index) => evidence?.libraryId !== entry.candidates[index].id)))) {
+    throw new Error('selective_recheck_evidence_scope_invalid');
+  }
   const abort = AbortSignal.any([AbortSignal.timeout(options.maxMinutes * 60000), ...(signal ? [signal] : [])]);
   const requested = Math.min(options.generateCases, prepared.cases.length);
-  const pairs = [], arms = { named: [], anonymous: [] };
+  const pairs = [], arms = { named: [], anonymous: [] }, decisions = [];
   let calls = 0;
   for (let index = 0; index < requested && !abort.aborted; index++) {
     const pair = {};
     pairs.push(pair);
-    for (const arm of index % 2 ? ['anonymous', 'named'] : ['named', 'anonymous']) {
+    for (const arm of !selectiveRecheck && index % 2 ? ['anonymous', 'named'] : ['named', 'anonymous']) {
       if (abort.aborted) break;
+      let decision;
+      if (selectiveRecheck && arm === 'anonymous') {
+        decision = resolveInventoryEvidenceConflict({
+          proposedLibraryId: pair.named.status === 'proposed' ? pair.named.destinationId : null,
+          candidates: prepared.cases[index].conflictEvidence,
+        });
+        decisions.push(decision);
+        if (!decision.shouldRecheck) { pair.anonymous = pair.named; break; }
+      }
       const result = await compareInventoryDescription(prepared.cases[index], prepared.texts, {
         client, identity, context: options.context, signal: abort, anonymousLibraries: arm === 'anonymous', onCall: () => calls++,
       });
-      pair[arm] = result; arms[arm].push(result);
-      onProgress({ stage: 'paired_comparison', completedCalls: calls, maximumCalls: requested * 2,
+      pair[arm] = decision ? (abort.aborted ? pair.named : selectInventoryConflictResult(pair.named, result, decision)) : result;
+      arms[arm].push(result);
+      if (!selectiveRecheck) onProgress({ stage: 'paired_comparison', completedCalls: calls, maximumCalls: requested * 2,
         completedPairs: pairs.filter(value => value.named && value.anonymous).length, requested });
     }
+    if (selectiveRecheck) onProgress({ stage: 'selective_recheck', completedCalls: calls, maximumCalls: requested * 2,
+      completedPairs: pairs.filter(value => value.named && value.anonymous).length, requested });
   }
   const results = Object.values(arms).flat();
-  return { version: 1, protocol: 'content_first_library_comparison_v1',
+  return { version: 1, protocol: selectiveRecheck ? 'selective_inventory_recheck_v1' : 'content_first_library_comparison_v1',
     status: options.generateCases === 0 ? 'preflight' : abort.aborted ? 'interrupted'
       : results.some(result => !isValidDescriptionComparison(result)) ? 'completed_with_errors' : 'complete',
     seed: options.seed, snapshotFingerprint: prepared.fingerprint, snapshotComponents: prepared.snapshotComponents,
@@ -67,5 +87,6 @@ export async function runContentFirstInventoryComparison(prepared, settings, { c
     generation: identity ? { model: identity.model, digest: identity.digest, context: options.context, temperature: 0, seed: 42, thinking: false, outputLimit: 64 } : null,
     requestedGenerationCases: options.generateCases, availableGenerationCases: requested, calls, maximumCalls: requested * 2,
     arms: Object.entries(arms).map(([id, values]) => ({ id, examples: 9, ...summarizeDescriptionComparisons(values) })),
-    paired: summarizeContentFirstPairs(pairs, requested), strata: summarizeContentFirstStrata(prepared, pairs, requested) };
+    ...(selectiveRecheck ? summarizeSelectiveInventoryRecheck(prepared, pairs, requested, decisions)
+      : { paired: summarizeContentFirstPairs(pairs, requested), strata: summarizeContentFirstStrata(prepared, pairs, requested) }) };
 }

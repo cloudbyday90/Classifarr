@@ -22,7 +22,92 @@ function fixture(count = 6) {
   });
   return { cases, texts, evaluation: { folds: 5 }, libraryStrata: [1, 2, 3, 4].map(id => ({ id, stratum: id })) };
 }
+function selectiveFixture(count = 6) {
+  const prepared = fixture(count);
+  prepared.profileLearning = { version: 'contrastive_profile_v1' };
+  prepared.cases.forEach(entry => {
+    entry.conflictEvidence = entry.candidates.map(candidate => ({ libraryId: candidate.id, eligible: 30, indexed: 30,
+      learnedProfile: { version: 'contrastive_profile_v1', statusId: 'available', trainingDescriptions: 60,
+        relativeFit: candidate.id === 2 ? .5 : -.5 },
+      items: candidate.items.slice(0, 3).map(item => ({ description: prepared.texts.get(item.hash),
+        similarity: candidate.id === 2 ? .75 : .7, sharedAcrossCandidates: false })) }));
+  });
+  return prepared;
+}
 const options = count => ({ seed, size: count, folds: 5, generateCases: count });
+
+test('selective mode only calls again for a joint conflict and accepts only its alternative', async () => {
+  const prepared = selectiveFixture(), packets = [], onProgress = jest.fn();
+  const named = [1, 2, 1, 1, 0, 1], anonymous = [2, 1, 3, 0, 2, 2];
+  const client = { generate: jest.fn(async ({ prompt }) => {
+    const packet = JSON.parse(prompt.split('\n')[3]); packets.push(packet);
+    const index = Number(packet.query.overview.split(' ').at(-1));
+    return { response: JSON.stringify({ candidate: (packet.libraries[0].name === 'Library 1' ? anonymous : named)[index] }) };
+  }) };
+  const report = await runContentFirstInventoryComparison(prepared, options(6), { client, selectiveRecheck: true, onProgress });
+  expect(report).toMatchObject({ protocol: 'selective_inventory_recheck_v1', status: 'complete', calls: 10,
+    selection: { evaluated: 6, triggered: 4, accepted: 2, validPairs: 6, baselineAgreed: 4, selectedAgreed: 2, gained: 0, lost: 2 } });
+  expect(report.arms.map(arm => arm.finished)).toEqual([6, 4]);
+  expect(onProgress).toHaveBeenLastCalledWith({ stage: 'selective_recheck', completedCalls: 10, maximumCalls: 12, completedPairs: 6, requested: 6 });
+  expect(report.strata.media[0].selectedAgreed).toBe(2);
+  expect(report.paired).toBeUndefined();
+  expect(JSON.stringify(report)).not.toMatch(/Private|alternativeId|destinationId|descriptionHash/);
+  for (let index = 0; index < packets.length - 1; index++) {
+    if (packets[index + 1].libraries[0].name !== 'Library 1') continue;
+    expect(packets[index].examples).toEqual(packets[index + 1].examples);
+    expect(packets[index].query).toEqual(packets[index + 1].query);
+  }
+});
+
+test.each(['before', 'baseline', 'recheck'])('selective cancellation at %s never replaces baseline or starts later calls', async when => {
+  const controller = new AbortController();
+  let calls = 0;
+  if (when === 'before') controller.abort();
+  const client = { generate: jest.fn(async () => {
+    calls++;
+    if (calls === (when === 'baseline' ? 1 : 2)) controller.abort();
+    return { response: JSON.stringify({ candidate: calls }) };
+  }) };
+  const report = await runContentFirstInventoryComparison(selectiveFixture(3), options(3), {
+    client, signal: controller.signal, selectiveRecheck: true });
+  expect(report.status).toBe('interrupted');
+  expect(report.selection.accepted).toBe(0);
+  expect(report.selection.missingPairs).toBe(when === 'recheck' ? 2 : 3);
+  expect(client.generate).toHaveBeenCalledTimes(when === 'before' ? 0 : when === 'baseline' ? 1 : 2);
+});
+
+test.each(['failed', 'invalid', 'limit', 'context', 'abstained'])('selective %s recheck retains baseline and exposes actual outcome', async kind => {
+  let calls = 0;
+  const client = { generate: async () => {
+    if (++calls === 1) return { response: '{"candidate":1}' };
+    if (kind === 'failed') throw new Error('Private error');
+    return { response: kind === 'invalid' ? 'Private output' : kind === 'abstained' ? '{"candidate":0}' : '{"candidate":2}',
+      outputLimitReached: kind === 'limit', contextLimitSuspected: kind === 'context' };
+  } };
+  const report = await runContentFirstInventoryComparison(selectiveFixture(1), options(1), { client, selectiveRecheck: true });
+  expect(report).toMatchObject({ calls: 2, status: kind === 'abstained' ? 'complete' : 'completed_with_errors',
+    selection: { triggered: 1, accepted: 0, baselineAgreed: 1, selectedAgreed: 1, gained: 0, lost: 0 } });
+});
+
+test('selective mode skips unavailable evidence and malformed baseline without inventing extra calls', async () => {
+  const prepared = selectiveFixture(2);
+  prepared.cases[0].conflictEvidence[0].learnedProfile = null;
+  let calls = 0;
+  const report = await runContentFirstInventoryComparison(prepared, options(2), { selectiveRecheck: true,
+    client: { generate: async () => ({ response: ++calls === 1 ? '{"candidate":1}' : 'invalid' }) } });
+  expect(report).toMatchObject({ calls: 2, status: 'completed_with_errors',
+    selection: { triggered: 0, invalidPairs: 1, reasons: { evidence_incomplete: 1, proposal_unavailable: 1 } } });
+});
+
+test('selective mode refuses missing or foreign evidence scope before even a baseline call', async () => {
+  const client = { generate: jest.fn() };
+  for (const prepared of [fixture(1), selectiveFixture(1)]) {
+    if (prepared.cases[0].conflictEvidence) prepared.cases[0].conflictEvidence[0].libraryId = 9;
+    await expect(runContentFirstInventoryComparison(prepared, options(1), { client, selectiveRecheck: true }))
+      .rejects.toThrow('selective_recheck_evidence_scope_invalid');
+  }
+  expect(client.generate).not.toHaveBeenCalled();
+});
 
 test('all cases receive paired, order-balanced treatments with identical evidence and separate gains/losses', async () => {
   const prepared = fixture(), onProgress = jest.fn(), packets = [];

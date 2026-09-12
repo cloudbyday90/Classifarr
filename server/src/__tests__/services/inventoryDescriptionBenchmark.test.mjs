@@ -36,6 +36,35 @@ function fixture(size = 600) {
   return { corpus, libraries, vectors };
 }
 
+test('conflict evidence reuses fold-fitted metadata and retrieved examples without changing prompts or fingerprints', () => {
+  const snapshot = fixture(100);
+  snapshot.candidateMetadata = new Map(snapshot.corpus.documents.map(doc => [doc.key,
+    { genres: [`genre${doc.libraryIds[0]}`], studio: '', rating: '' }]));
+  const options = { seed, size: 10, folds: 5 };
+  const baseline = prepareDescriptionBenchmark(snapshot, snapshot.vectors, 2, options, { learnedProfiles: true });
+  const trial = prepareDescriptionBenchmark(snapshot, snapshot.vectors, 2, options, { learnedProfiles: true, includeConflictEvidence: true });
+  expect(trial.fingerprint).toBe(baseline.fingerprint);
+  expect(trial.sampleFingerprint).toBe(baseline.sampleFingerprint);
+  trial.cases.forEach((entry, index) => {
+    expect(entry.candidates).toEqual(baseline.cases[index].candidates);
+    expect(buildDescriptionBenchmarkPrompt(entry, trial.texts, 9)).toEqual(buildDescriptionBenchmarkPrompt(baseline.cases[index], baseline.texts, 9));
+    entry.conflictEvidence.forEach((evidence, candidateIndex) => {
+      const candidate = entry.candidates[candidateIndex];
+      expect(evidence.libraryId).toBe(candidate.id);
+      expect(evidence.items.map(item => item.description)).toEqual(candidate.items.slice(0, 3).map(item => trial.texts.get(item.hash)));
+      expect(candidate.items.every(item => !entry.heldDescriptionHashes.has(item.hash))).toBe(true);
+      expect(evidence.learnedProfile.trainingDescriptions).toBe(trial.profileLearning.folds[entry.foldIndex].trainingDescriptions);
+    });
+  });
+  const held = trial.cases[0].heldDescriptionHashes;
+  snapshot.corpus.documents.filter(doc => held.has(doc.hash)).forEach(doc => snapshot.candidateMetadata.set(doc.key,
+    { genres: ['heldout-only'], studio: 'heldout-only', rating: '' }));
+  const changed = prepareDescriptionBenchmark(snapshot, snapshot.vectors, 2, options, { learnedProfiles: true, includeConflictEvidence: true });
+  expect(changed.cases[0].conflictEvidence.every(evidence => evidence.learnedProfile.relativeFit === 0)).toBe(true);
+  expect(() => prepareDescriptionBenchmark(snapshot, snapshot.vectors, 2, { seed }, { includeConflictEvidence: true }))
+    .toThrow('requires_grouped_profiles');
+});
+
 test('samples 100 distinct descriptions reproducibly across movie and TV library strata', () => {
   const { corpus } = fixture();
   const sample = selectDescriptionBenchmarkSample(corpus, { seed });

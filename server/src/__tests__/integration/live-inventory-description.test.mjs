@@ -169,7 +169,7 @@ test('benchmark snapshots real inventory and cache read-only, holds out 100 titl
   expect(prepared.cases.every(entry => entry.candidates.reduce((sum, candidate) => sum + candidate.eligible, 0) === 20)).toBe(true);
   const grouped = prepareDescriptionBenchmark(snapshot, snapshot.vectors, 3,
     { seed: 'benchmark-test-seed-2026', size: 100, folds: 5 },
-    { learnedProfiles: true, includeContrastiveVectors: true, includeComparisonEvidence: true });
+    { learnedProfiles: true, includeContrastiveVectors: true, includeComparisonEvidence: true, includeConflictEvidence: true });
   expect(grouped.cases).toHaveLength(100);
   expect(grouped.evaluation.foldSizes).toEqual([20, 20, 20, 20, 20]);
   expect(grouped.evaluation.libraryCoverage.slice(0, 2).every(row => row.minimumTrainingDescriptions === 50)).toBe(true);
@@ -183,6 +183,10 @@ test('benchmark snapshots real inventory and cache read-only, holds out 100 titl
     { client: { generate: async () => ({ response: '{"candidate":1}' }) } });
   expect(compared).toMatchObject({ status: 'complete', calls: 4, paired: { validPairs: 2 },
     snapshotComponents: { counts: { documents: 120, vectors: 120 } } });
+  const selective = await runContentFirstInventoryComparison(grouped,
+    { seed: 'benchmark-test-seed-2026', size: 100, folds: 5, generateCases: 2 },
+    { selectiveRecheck: true, client: { generate: async () => ({ response: '{"candidate":1}' }) } });
+  expect(selective).toMatchObject({ status: 'complete', calls: 2, selection: { triggered: 0, validPairs: 2 } });
   expect((await client.query('SELECT count(*)::integer AS count FROM inventory_description_vector_cache')).rows[0].count).toBe(before);
   await expect(benchmark.read({ ...identity, digest: 'b'.repeat(64) })).rejects.toThrow('cache_incomplete');
   await client.query("UPDATE inventory_description_vector_cache SET created_at=now()-interval '31 days'");

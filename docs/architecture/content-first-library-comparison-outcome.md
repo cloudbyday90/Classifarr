@@ -1,5 +1,9 @@
 # Content-first library comparison outcome
 
+Follow-up: the [selective conflict recheck design](selective-inventory-recheck-design.md)
+tests an outcome-independent trigger on a fresh cohort; see its
+[separate outcome](selective-inventory-recheck-outcome.md) before adopting name-free comparisons.
+
 ## Scope
 
 Implementation follows the [separate design](content-first-library-comparison-design.md).

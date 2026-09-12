@@ -84,6 +84,28 @@ function runtime() {
     createClient: jest.fn(() => client), close: jest.fn(), client };
 }
 
+test('selective CLI requires exclusive grouped learned profiles and reports actual calls separately', async () => {
+  const base = ['--seed', seed, '--selective-recheck'];
+  const loadRuntime = jest.fn();
+  for (const args of [[], ['--folds', '5'], ['--learned-profiles'],
+    ...['--content-first-comparison', '--contrastive-investigation', '--investigate']
+      .map(mode => ['--folds', '5', '--learned-profiles', mode])]) {
+    await expect(runInventoryDescriptionBenchmark({ argv: [...base, ...args], loadRuntime })).rejects.toThrow('selective_recheck_requires');
+  }
+  expect(loadRuntime).not.toHaveBeenCalled();
+  const instance = runtime();
+  const argv = [...base, '--folds', '5', '--learned-profiles', '--size', '10'];
+  const preflight = await runInventoryDescriptionBenchmark({ argv, loadRuntime: async () => instance });
+  expect(preflight).toMatchObject({ status: 'preflight', calls: 0, selection: { evaluated: 0, triggered: 0 } });
+  expect(instance.createClient).not.toHaveBeenCalled();
+  const report = await runInventoryDescriptionBenchmark({ argv: [...argv, '--generate-cases', '2'], loadRuntime: async () => instance });
+  expect(report).toMatchObject({ protocol: 'selective_inventory_recheck_v1', status: 'complete', calls: 2,
+    selection: { evaluated: 2, triggered: 0, accepted: 0, reasons: { evidence_incomplete: 2 } } });
+  expect(instance.client.generate).toHaveBeenCalledTimes(2);
+  expect(instance.close).toHaveBeenCalledTimes(2);
+  expect(JSON.stringify(report)).not.toMatch(/Private|observedLibraryIds|conflictEvidence/);
+});
+
 test('preflight loads one snapshot, verifies representation, closes, and never generates', async () => {
   const instance = runtime();
   const report = await runInventoryDescriptionBenchmark({ argv: ['--seed', seed, '--size', '10'], loadRuntime: async () => instance });

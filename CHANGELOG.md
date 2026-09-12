@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a selective, library-name-independent inventory-conflict recheck to local
+  evaluation, reusing learned metadata and description evidence with at most one
+  extra comparison. Report gains, regressions and actual inference cost without
+  adding user settings or changing live routing safeguards.
 - Add a bounded full-cohort comparison of named and content-first library
   evidence, with paired per-library gains and regressions and canonical snapshot
   component fingerprints. Reuse local inference services without changing live
