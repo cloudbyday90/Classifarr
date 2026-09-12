@@ -56,6 +56,10 @@ export function projectPolicyCandidateDecision({ ranked = [] } = {}) {
   }
 
   const top = normalizedRanked[0];
+  // Admission without evidence is comparison-only, even with a zero threshold.
+  if (top.score === 0) {
+    return { action: 'manual', top, ranked: normalizedRanked, decisionDiagnostics: null };
+  }
   const ambiguousTopCandidates = getAmbiguousTopPolicyCandidates(normalizedRanked);
   const topUsesWeakEvidence = isWeakCandidateViability(top?.candidate_diagnostics);
   const weakEvidenceOverlap = allPolicyCandidatesUseWeakEvidence(ambiguousTopCandidates);

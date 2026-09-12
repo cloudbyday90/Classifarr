@@ -13,6 +13,7 @@ import {
   getPolicyConstraintEntries,
   normalizePolicyConstraintMode,
 } from './policyConstraintSemantics.mjs';
+import { isComparablePolicyCandidate } from './policyInferredPurposeAdmission.mjs';
 
 class PolicyExclusionService {
 
@@ -139,7 +140,7 @@ class PolicyExclusionService {
 
   filterValidEvaluations(evaluations, languageConflictIds = new Set()) {
     return evaluations.filter(
-      e => e.score > 0 && !languageConflictIds.has(e.policy_id ?? e.id)
+      e => isComparablePolicyCandidate(e) && !languageConflictIds.has(e.policy_id ?? e.id)
     );
   }
 }

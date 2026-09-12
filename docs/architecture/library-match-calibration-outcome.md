@@ -186,6 +186,10 @@ user policies automatically or requiring a new declaration questionnaire. Once
 that upstream issue is corrected, re-evaluate the paired resolver and integrate
 qualified live decisions with existing fresh server-side checks.
 
+The next admission component is implemented in
+[inferred-purpose candidate admission](inferred-purpose-candidate-admission-outcome.md),
+with its separate [design](inferred-purpose-candidate-admission-design.md).
+
 ## Release and pull-request scope
 
 The GitHub MCP search returned no open Classifarr PRs on September 12, 2026.

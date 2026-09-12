@@ -4,6 +4,7 @@
  */
 
 import { calibratePolicyCandidate } from './policyCandidateCalibration.mjs';
+import { isComparablePolicyCandidate } from './policyInferredPurposeAdmission.mjs';
 
 /**
  * Orders already-calibrated candidates without relying on mutable names.
@@ -42,8 +43,8 @@ export function projectRankedPolicyCandidates(evaluations = []) {
   }
 
   return evaluations
-    .filter((evaluation) => Number.isFinite(evaluation?.score) && evaluation.score > 0)
+    .filter(isComparablePolicyCandidate)
     .map(calibratePolicyCandidate)
-    .filter((evaluation) => Number.isFinite(evaluation?.score) && evaluation.score > 0)
+    .filter(isComparablePolicyCandidate)
     .sort(compareRankedPolicyCandidates);
 }

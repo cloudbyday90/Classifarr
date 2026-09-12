@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { createLiveInventoryDescriptionRetriever } from './liveInventoryDescriptionRetriever.mjs';
 import { applyInventoryScoreEvidence, canUseInventoryScoreEvidence } from './policyInventoryEvidenceScoring.mjs';
+import { isInferredPurposeCandidate } from './policyInferredPurposeAdmission.mjs';
 
 /** One bounded comparison of the whole eligible pool, before ranking/shortlist truncation. */
 export function createPolicyInventoryEvidenceService({
@@ -12,7 +13,11 @@ export function createPolicyInventoryEvidenceService({
       try {
         if (!['movie', 'tv'].includes(item?.media_type) || !Array.isArray(evaluations) || !Array.isArray(policies)) return baseline;
         const policyById = new Map(policies.map(policy => [policy.id, policy]));
-        if (!evaluations.some(candidate => canUseInventoryScoreEvidence(candidate, policyById.get(candidate.policy_id)))) return baseline;
+        if (!evaluations.some(candidate => {
+          const policy = policyById.get(candidate.policy_id);
+          return canUseInventoryScoreEvidence(candidate, policy) ||
+            (isInferredPurposeCandidate(candidate) && policy?.trust_rag === true && (policy.rag_weight ?? .15) > 0);
+        })) return baseline;
         // Invalid membership is not silently dropped: doing so would manufacture separation.
         if (evaluations.some(candidate => {
           const policy = policyById.get(candidate?.policy_id);

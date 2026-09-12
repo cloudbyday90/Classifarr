@@ -17,6 +17,7 @@ import {
 } from '../utils/policySignals.mjs';
 import { isPositiveContribution } from './policyEngineUtils.mjs';
 import { hasPolicyConstraintFailure } from './policyConstraintSemantics.mjs';
+import { INFERRED_PURPOSE_ADMISSION } from './policyInferredPurposeAdmission.mjs';
 
 export const CANDIDATE_VIABILITY = Object.freeze({
   IDENTITY_EVIDENCE: 'identity_evidence',
@@ -222,7 +223,9 @@ export function buildCandidateDiagnostics(policy, scores = {}, agreement = null,
   }
 
   const profileAbsenceAdvisory = profileObservedAbsence &&
-    primaryViability === CANDIDATE_VIABILITY.IDENTITY_EVIDENCE;
+    (primaryViability === CANDIDATE_VIABILITY.IDENTITY_EVIDENCE ||
+      (details.nativeIntentDiagnostics?.eligible === true &&
+       details.nativeIntentDiagnostics.admissionBasis === INFERRED_PURPOSE_ADMISSION));
   const profileHardExcluded = profileObservedAbsence && !profileAbsenceAdvisory;
 
   const suppressionReasons = [];

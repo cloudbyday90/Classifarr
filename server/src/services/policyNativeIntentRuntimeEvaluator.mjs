@@ -16,6 +16,7 @@ import {
 } from './policyConstraintSemantics.mjs';
 import { FORMULA_CONFIDENCE_CAP, normalizeCombinationMode } from './policyEngineUtils.mjs';
 import { isNativePolicyRuntimeAuthority } from './policyEngineRuntimeAuthority.mjs';
+import { INFERRED_PURPOSE_ADMISSION, isInferredProfilePurposeRule } from './policyInferredPurposeAdmission.mjs';
 
 export const POLICY_NATIVE_INTENT_RUNTIME_STATUS_IDS = Object.freeze({
   ACTIVE: 'native_intent_runtime_active',
@@ -111,10 +112,12 @@ function buildResult({
   contract = {},
   constraintDiagnostics = null,
   eligible = false,
+  admissionBasis = null,
 } = {}) {
   return {
     statusId,
     eligible,
+    ...(admissionBasis ? { admissionBasis } : {}),
     score: Math.max(0, Math.min(score, FORMULA_CONFIDENCE_CAP)),
     purposeScore: Math.max(0, Math.min(purposeScore, FORMULA_CONFIDENCE_CAP)),
     helpfulBoost,
@@ -168,8 +171,16 @@ export function evaluateNativePolicyIntent(policy = {}, item = {}) {
   }
 
   const combinationMode = contract.review_behavior?.combination_mode || policy.combination_mode;
+  const inferredRules = contract.purpose.filter(isInferredProfilePurposeRule);
+  const requiredRules = contract.purpose.filter(rule => !isInferredProfilePurposeRule(rule));
   const purposeScore = combineRuleScores(contract.purpose, item, combinationMode);
-  if (purposeScore <= 50) {
+  const requiredScore = combineRuleScores(requiredRules, item, combinationMode);
+  const inferredScopeMatches = ['movie', 'tv'].includes(item.media_type) &&
+    policy.library_media_type === item.media_type && inferredRules.every(rule =>
+      rule.signal_type !== 'media_type' || rule.values.require_any.includes(item.media_type));
+  if ((inferredRules.length > 0 && !inferredScopeMatches) ||
+      (requiredRules.length > 0 && requiredScore <= 50) ||
+      (inferredRules.length === 0 && purposeScore <= 50)) {
     return buildResult({
       statusId: POLICY_NATIVE_INTENT_RUNTIME_STATUS_IDS.PURPOSE_NOT_MATCHED,
       purposeScore,
@@ -179,7 +190,7 @@ export function evaluateNativePolicyIntent(policy = {}, item = {}) {
   }
 
   const helpfulScore = combineRuleScores(contract.helpful_hints, item, combinationMode);
-  const helpfulBoost = helpfulScore > 50
+  const helpfulBoost = purposeScore > 50 && helpfulScore > 50
     ? Math.min(10, (helpfulScore - 50) * 0.2)
     : 0;
   const avoid = evaluateAvoidRules(contract.avoid, item);
@@ -187,12 +198,13 @@ export function evaluateNativePolicyIntent(policy = {}, item = {}) {
 
   return buildResult({
     statusId: POLICY_NATIVE_INTENT_RUNTIME_STATUS_IDS.ACTIVE,
-    score: purposeScore + helpfulBoost - avoidPenalty,
+    score: (purposeScore > 50 ? purposeScore : 0) + helpfulBoost - avoidPenalty,
     purposeScore,
     helpfulBoost,
     avoidPenalty,
     contract,
     constraintDiagnostics,
     eligible: true,
+    admissionBasis: inferredRules.length > 0 ? INFERRED_PURPOSE_ADMISSION : null,
   });
 }

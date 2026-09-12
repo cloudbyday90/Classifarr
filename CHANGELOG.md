@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Keep profile-inferred library traits as ranking evidence instead of admission
+  requirements, allowing description retrieval to compare eligible destinations
+  with incomplete metadata. Preserve explicit restrictions, media boundaries
+  and zero scores without introducing new settings or routing authority.
 - Learn per-library description-match baselines automatically during held-out
   evaluation, distinguishing familiar matches from merely the closest candidate.
   Keep calibration separate from test items, report sparse-library coverage,
