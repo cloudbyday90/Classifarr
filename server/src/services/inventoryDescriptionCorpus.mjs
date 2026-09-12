@@ -4,10 +4,14 @@ import { createInventorySemanticSampler } from './inventorySemanticSampler.mjs';
 import { projectInventoryDescription } from './inventoryDescriptionProjection.mjs';
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS, sourceConflictAuthorityExclusionForMediaServerItem } from './sourceConflictAuthorityGuard.mjs';
 
-export function buildInventoryDescriptionCorpusSql({ includeCandidateMetadata = false } = {}) {
+export function buildInventoryDescriptionCorpusSql({ includeCandidateMetadata = false, includeEvaluationMetadata = false } = {}) {
   return `
   SELECT msi.media_type, msi.tmdb_id, msi.library_id,
     ${includeCandidateMetadata ? 'msi.genres, msi.studio, msi.content_rating,' : ''}
+    ${includeEvaluationMetadata ? `msi.title, msi.year,
+      CASE WHEN octet_length((msi.metadata->'inventory_tmdb')::text) <= 100000
+        THEN jsonb_build_object('inventory_tmdb', msi.metadata->'inventory_tmdb')
+        ELSE '{}'::jsonb END AS evaluation_metadata,` : ''}
     left(COALESCE(
       CASE WHEN jsonb_typeof(msi.metadata->'overview')='string' THEN NULLIF(btrim(msi.metadata->>'overview'), '') END,
       CASE WHEN jsonb_typeof(msi.metadata->'summary')='string' THEN NULLIF(btrim(msi.metadata->>'summary'), '') END,

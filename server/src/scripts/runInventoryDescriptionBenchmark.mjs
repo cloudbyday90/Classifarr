@@ -10,6 +10,7 @@ import { runDescriptionBenchmark } from '../services/inventoryDescriptionBenchma
 import { runContrastiveInventoryInvestigation } from '../services/inventoryContrastiveInvestigation.mjs';
 import { runContentFirstInventoryComparison } from '../services/inventoryContentFirstComparison.mjs';
 import { runPolicyShortlistReplay } from '../services/policyShortlistReplay.mjs';
+import { runFreshInventoryPolicyEvaluation } from '../services/freshInventoryPolicyEvaluation.mjs';
 
 async function loadPrivateRuntime() {
   process.env.LOG_LEVEL = 'fatal';
@@ -27,13 +28,14 @@ async function loadPrivateRuntime() {
   } catch (error) { await db.pool.end(); throw error; }
 }
 
-export async function runInventoryDescriptionBenchmark({ argv = process.argv.slice(2), loadRuntime = loadPrivateRuntime, loadReplayRuntime, signal, onProgress, onPrivateCase } = {}) {
+export async function runInventoryDescriptionBenchmark({ argv = process.argv.slice(2), loadRuntime = loadPrivateRuntime, loadReplayRuntime, loadFreshRuntime, signal, onProgress, onPrivateCase } = {}) {
   const { values } = parseArgs({ args: argv, options: { seed: { type: 'string' }, size: { type: 'string' },
     'generate-cases': { type: 'string' }, context: { type: 'string' }, 'max-minutes': { type: 'string' },
     'exclude-prior-size': { type: 'string' }, 'exclude-prior-sizes': { type: 'string' }, folds: { type: 'string' },
     investigate: { type: 'boolean' }, 'contrastive-investigation': { type: 'boolean' }, 'content-first-comparison': { type: 'boolean' },
     'selective-recheck': { type: 'boolean' },
     'policy-shortlist-replay': { type: 'boolean' },
+    'fresh-policy-evaluation': { type: 'boolean' },
     'preserve-description-candidate': { type: 'boolean' },
     'metadata-candidates': { type: 'boolean' }, 'learned-profiles': { type: 'boolean' } } });
   if (values['metadata-candidates'] && values['learned-profiles']) throw new Error('description_benchmark_selection_mode_conflict');
@@ -46,6 +48,12 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     ...(values.context === undefined ? {} : { context: Number(values.context) }),
     ...(values['max-minutes'] === undefined ? {} : { maxMinutes: Number(values['max-minutes']) }),
   });
+  if (values['fresh-policy-evaluation']) {
+    if (values['policy-shortlist-replay'] || values.investigate || values['contrastive-investigation'] ||
+        values['content-first-comparison'] || values['selective-recheck'] || values['preserve-description-candidate'] ||
+        values['metadata-candidates'] || values['learned-profiles']) throw new Error('fresh_policy_requires_exclusive_mode');
+    return runFreshInventoryPolicyEvaluation(options, { signal, onProgress, loadRuntime: loadFreshRuntime });
+  }
   if (values['policy-shortlist-replay']) {
     if (values.investigate || values['contrastive-investigation'] || values['content-first-comparison'] || values['selective-recheck'] ||
         values['preserve-description-candidate'] || values['metadata-candidates'] || values['learned-profiles']) {
@@ -95,7 +103,7 @@ if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
   runInventoryDescriptionBenchmark({ signal: controller.signal, onProgress: progress => process.stderr.write(`${JSON.stringify(progress)}\n`) })
     .then(report => {
       process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-      if (['interrupted', 'completed_with_errors'].includes(report.status) || report.sampleShortfall ||
+      if (['interrupted', 'completed_with_errors', 'invalidated'].includes(report.status) || report.sampleShortfall ||
           report.arms.some(arm => arm.estimatedInputBudgetExceeded)) process.exitCode = 1;
     }).catch(() => {
       process.stderr.write('Description benchmark did not complete. Check local model availability and description cache coverage. No routing changes were made.\n');

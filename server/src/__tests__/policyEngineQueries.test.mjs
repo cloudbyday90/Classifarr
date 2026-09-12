@@ -104,6 +104,17 @@ describe('policyEngineQueries native authority recovery', () => {
     Object.values(logger).forEach((method) => method.mockReset());
   });
 
+  test('injected snapshot reader owns native and compatibility reads without the global pool', async () => {
+    const snapshotQuery = jest.fn(queryForNonAuthoritativeIntent);
+    const policies = await getActivePolicies({ dbClient: { query: snapshotQuery }, throwOnError: true });
+    expect(policies).toHaveLength(1);
+    expect(snapshotQuery).toHaveBeenCalledTimes(3);
+    expect(query).not.toHaveBeenCalled();
+    snapshotQuery.mockRejectedValue(new Error('snapshot_failed'));
+    await expect(getActivePolicies({ dbClient: { query: snapshotQuery }, throwOnError: true })).rejects.toThrow('snapshot_failed');
+    expect(await getActivePolicies({ dbClient: { query: snapshotQuery } })).toEqual([]);
+  });
+
   test('loads compatibility presets for a single non-authoritative active intent', async () => {
     query.mockImplementation(queryForNonAuthoritativeIntent);
 

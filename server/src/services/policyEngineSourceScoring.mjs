@@ -190,11 +190,11 @@ export async function scoreProfile(libraryId, item) {
     return result.score;
 }
 
-export async function scoreProfileWithDiagnostics(libraryId, item) {
+export async function scoreProfileWithDiagnostics(libraryId, item, profileService = libraryProfileService) {
     try {
-        const profileDetails = typeof libraryProfileService.getProfileScoreDetails === 'function'
-            ? await libraryProfileService.getProfileScoreDetails(libraryId, item)
-            : { finalScore: await libraryProfileService.getProfileScore(libraryId, item), diagnostics: null };
+        const profileDetails = typeof profileService.getProfileScoreDetails === 'function'
+            ? await profileService.getProfileScoreDetails(libraryId, item)
+            : { finalScore: await profileService.getProfileScore(libraryId, item), diagnostics: null };
         const profileScore = typeof profileDetails === 'number' ? profileDetails : profileDetails.finalScore;
         
         let finalScore = 0;

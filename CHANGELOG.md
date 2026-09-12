@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a read-only fresh policy and AI evaluation across grouped movie/TV samples.
+  Rebuild library observations and description evidence without held-out items,
+  report placement agreement separately from accuracy, and preserve existing
+  routing safeguards without adding settings or user acknowledgements.
 - Align bounded AI comparison prompts, provider schemas and parsing around a
   minimal proposal-or-abstention JSON response. Remove generated confidence and
   clarification fields and the second-model repair step from this mode, while

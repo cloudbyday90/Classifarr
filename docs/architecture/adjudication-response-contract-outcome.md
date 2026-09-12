@@ -104,6 +104,10 @@ Completed-repeat provenance:
 
 Run **fresh, read-only policy plus AI evaluation across the existing held-out
 300 movie/TV items**, instead of replaying four repeatedly stored policy results.
+
+Implementation and measured follow-up are recorded in the
+[fresh inventory policy evaluation outcome](fresh-inventory-policy-evaluation-outcome.md).
+
 Use the production learned-library metadata, description retrieval, shortlist,
 new response contract and routing checks through an isolated evaluation adapter.
 Exclude each held-out item's identity and duplicate descriptions from its learned

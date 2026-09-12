@@ -21,12 +21,12 @@ function buildLegacyPreset(policyPreset) {
     };
 }
 
-async function loadLegacyPresetsByPolicyId(policyIds = []) {
+async function loadLegacyPresetsByPolicyId(policyIds = [], dbClient = db) {
     if (policyIds.length === 0) {
         return new Map();
     }
 
-    const presetsResult = await db.query(`
+    const presetsResult = await dbClient.query(`
         SELECT
             pp.policy_id,
             cp.id,
@@ -91,9 +91,9 @@ export async function checkAuthoritativeSignals(item) {
     }
 }
 
-export async function getActivePolicies() {
+export async function getActivePolicies({ dbClient = db, throwOnError = false } = {}) {
     try {
-        const result = await db.query(`
+        const result = await dbClient.query(`
             SELECT 
                 lp.id,
                 lp.library_id,
@@ -125,7 +125,7 @@ export async function getActivePolicies() {
         }
 
         const policiesWithNativeIntent = await attachActiveNativeIntentsForPolicies({
-            dbClient: db,
+            dbClient,
             policies: result.rows,
         });
         const compatibilityPolicyIds = new Set(
@@ -133,7 +133,7 @@ export async function getActivePolicies() {
                 .filter(requiresLegacyPolicyPresetsForRuntime)
                 .map((policy) => policy.id)
         );
-        const legacyPresetsByPolicyId = await loadLegacyPresetsByPolicyId([...compatibilityPolicyIds]);
+        const legacyPresetsByPolicyId = await loadLegacyPresetsByPolicyId([...compatibilityPolicyIds], dbClient);
         const policies = policiesWithNativeIntent.map((policy) => {
             const policyForRuntime = compatibilityPolicyIds.has(policy.id)
                 ? {
@@ -150,6 +150,7 @@ export async function getActivePolicies() {
 
     } catch (error) {
         logger.error('Failed to get active policies', { error: error.message });
+        if (throwOnError) throw error;
         return [];
     }
 }

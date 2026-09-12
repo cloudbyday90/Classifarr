@@ -25,6 +25,7 @@ export async function evaluateItem(item, options, deps) {
     const {
         checkAuthoritativeSignals, getActivePolicies, evaluatePolicy,
         determineAction = (ranked) => policyCandidateRanker.determineAction(ranked),
+        rankResults = (evaluations) => policyCandidateRanker.rankResults(evaluations),
         applyInventoryEvidence = (input) => policyInventoryEvidenceService.apply(input),
     } = deps;
 
@@ -178,7 +179,7 @@ export async function evaluateItem(item, options, deps) {
         const inventoryEvaluations = await applyInventoryEvidence({
             evaluations: identityCalibratedEvaluations, policies: candidatePolicies, item,
         });
-        const ranked = await policyCandidateRanker.rankResults(inventoryEvaluations);
+        const ranked = await rankResults(inventoryEvaluations);
 
         const result = determineAction(ranked);
 
