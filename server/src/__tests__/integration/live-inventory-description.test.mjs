@@ -19,6 +19,11 @@ import { finalizePolicyCandidateAdjudication } from '../../services/policyCandid
 import { hasCandidateConsensusReceipt } from '../../services/policyCandidateConsensusReceipt.mjs';
 import { evaluateClassificationRouteSafety } from '../../services/classificationRouteSafetyGate.mjs';
 import { createLiveInventoryModelCache } from '../../services/liveInventoryModelCache.mjs';
+import { buildInventoryDescriptionCorpusSql, prepareInventoryDescriptionCorpus } from '../../services/inventoryDescriptionCorpus.mjs';
+import { LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL } from '../../services/liveInventoryDescriptionCorpus.mjs';
+import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from '../../services/sourceConflictAuthorityGuard.mjs';
+import { buildLiveInventoryLearnedProfiles } from '../../services/liveInventoryLearnedProfile.mjs';
+import { assessLiveLibraryMatch } from '../../services/liveLibraryMatchBaseline.mjs';
 
 let client;
 let repository;
@@ -57,6 +62,52 @@ async function add(id, library, text, vector = [1, 0, 0], media = 'movie') {
   if (vector) await cache.write(identity, [{ hash: hash(text), vector }]);
 }
 const retrieve = (representation = identity) => repository.retrieve({ request, identity: representation, vector: [1, 0, 0] });
+
+test('SQL-scoped TV evidence equals global-corpus evidence and retains exclusions across all same-media libraries', async () => {
+  await client.query("INSERT INTO libraries VALUES (50,'tv',true),(60,'tv',true)");
+  for (let id = 1; id <= 80; id++) {
+    const vector = [Math.cos(id / 100), Math.sin(id / 100), 0];
+    await add(id, 40, `Shared across media ${id}`, vector, 'tv');
+    await add(id, 10, `Shared across media ${id}`, vector);
+  }
+  await add(1001, 60, 'Shared across media 1', null, 'tv');
+  await add(90, 40, 'Shared across media 2', null, 'tv');
+  await add(20, 60, 'Conflicting TV description', null, 'tv');
+  await add(1002, 50, 'Rival TV description', [0, 1, 0], 'tv');
+  await client.query("INSERT INTO media_source_observations VALUES (40,1,'3',now())");
+  await client.query(`UPDATE media_server_items SET genres=CASE WHEN library_id=40 THEN '["Documentary"]'::jsonb ELSE '["Comedy"]'::jsonb END`);
+  const input = { ...request, key: 'tv:90', mediaType: 'tv', libraryIds: [40, 50], matchLibraryId: 40,
+    queryMetadata: { genres: ['documentary'] } };
+  const queryVector = [Math.cos(.4), Math.sin(.4), 0];
+  const all = (await client.query(buildInventoryDescriptionCorpusSql({ includeCandidateMetadata: true }), [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS])).rows;
+  const scoped = (await client.query(LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL, [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS, 'tv'])).rows;
+  expect(scoped).toEqual(all.filter(row => row.media_type === 'tv'));
+  expect(all.some(row => row.media_type === 'movie')).toBe(true);
+  expect(scoped.some(row => row.library_id === 60)).toBe(true);
+  expect(scoped.some(row => row.library_id === 40 && row.tmdb_id === 3)).toBe(false);
+  const corpus = prepareInventoryDescriptionCorpus(all);
+  const globalProfiles = buildLiveInventoryLearnedProfiles({ rows: all, corpus, request: input });
+  const globalBaseline = await assessLiveLibraryMatch({ rows: all, corpus, request: input, identity, vector: queryVector,
+    query: client.query.bind(client) });
+  const result = await repository.retrieve({ request: input, identity, vector: queryVector });
+  expect(result[0].learnedProfile).toEqual(globalProfiles.get(40));
+  expect(result[0].matchBaseline).toEqual(globalBaseline);
+  expect(result[0].matchBaseline.sharedDescriptionsExcluded).toBe(1);
+  expect(result[0].items.every(item => !['Shared across media 2', 'Shared across media 3', 'Shared across media 20'].includes(item.description))).toBe(true);
+  expect(await repository.retrieve({ request: input, identity, vector: queryVector })).toEqual(result);
+});
+
+test('unrelated-media corpus overflow no longer blocks a bounded live movie request', async () => {
+  await add(1, 10, 'Movie evidence');
+  await add(2, 20, 'Other movie evidence', [0, 1, 0]);
+  await client.query(`INSERT INTO media_server_items (tmdb_id,library_id,media_type,external_id,metadata)
+    SELECT id,40,'tv',id::text,jsonb_build_object('overview','TV synopsis ' || id) FROM generate_series(1,10001) id`);
+  const global = (await client.query(buildInventoryDescriptionCorpusSql(), [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS])).rows;
+  expect(() => prepareInventoryDescriptionCorpus(global)).toThrow('document_limit_exceeded');
+  expect((await retrieve()).map(candidate => candidate.eligible)).toEqual([1, 1]);
+  await expect(repository.readLearnedProfiles({ request: { ...request, key: 'tv:90', mediaType: 'tv', libraryIds: [40] } }))
+    .rejects.toThrow('document_limit_exceeded');
+});
 
 test('fresh database descriptions and learned baseline resolve soft review; subsequent membership drift keeps review', async () => {
   await client.query('UPDATE libraries SET id=1 WHERE id=10; UPDATE libraries SET id=2 WHERE id=20');

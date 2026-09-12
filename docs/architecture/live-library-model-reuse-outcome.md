@@ -136,6 +136,10 @@ Then validate unchanged outcomes across a balanced movie/TV library sample.
 The existing background vector refresh already exists; this is not a proposal
 to build a second index-refresh system or another settings panel.
 
+This follow-up is now covered by the separate
+[media-scoped retrieval design](media-scoped-live-retrieval-design.md) and
+[outcome](media-scoped-live-retrieval-outcome.md).
+
 ## PR and release scope
 
 GitHub MCP returned no open Classifarr PRs on 12 September 2026, so there was no

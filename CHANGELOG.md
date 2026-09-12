@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Scope live library-description reads to the requested movie or TV type while
+  preserving all same-media memberships, conflict checks and query exclusions.
+  Avoid unrelated-media retrieval work and corpus-limit failures without changing
+  global refresh jobs, learned scoring or routing safeguards.
 - Reuse learned library profiles and description-match baselines when their exact
   training inputs remain current, refreshing automatically on use after changes.
   Bound in-memory reuse while preserving fresh inventory, vector expiry, query

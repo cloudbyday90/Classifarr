@@ -1,15 +1,14 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { buildInventoryDescriptionCorpusSql, prepareInventoryDescriptionCorpus } from './inventoryDescriptionCorpus.mjs';
+import { readLiveInventoryDescriptionCorpus } from './liveInventoryDescriptionCorpus.mjs';
 import { buildLiveInventoryLearnedProfiles } from './liveInventoryLearnedProfile.mjs';
 import { inventoryDescriptionQueryExcludedHashes } from './inventoryDescriptionQueryExclusions.mjs';
 import { INVENTORY_DESCRIPTION_REFRESH_STATE_SQL } from './inventoryDescriptionRefreshRepository.mjs';
-import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from './sourceConflictAuthorityGuard.mjs';
 import { validateDescriptionRepresentation, createInventoryDescriptionVectorCache } from './inventoryDescriptionVectorCache.mjs';
 import { validateEmbedding } from '../utils/embeddingValidation.mjs';
 import { assessLiveLibraryMatch } from './liveLibraryMatchBaseline.mjs';
 import { createLiveInventoryModelCache } from './liveInventoryModelCache.mjs';
 
-export const LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL = buildInventoryDescriptionCorpusSql({ includeCandidateMetadata: true });
+export { LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL } from './liveInventoryDescriptionCorpus.mjs';
 
 export const LIVE_INVENTORY_DESCRIPTION_RANK_SQL = `
   WITH membership AS (
@@ -42,12 +41,6 @@ export function createLiveInventoryDescriptionRepository({ withTransaction,
   });
   const query = (sql, parameters) => snapshot(client => client.query(sql, parameters));
   const cache = createInventoryDescriptionVectorCache({ query });
-  const readCorpus = async (client, signal) => {
-    signal?.throwIfAborted();
-    const { rows } = await client.query(LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL, [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]);
-    signal?.throwIfAborted();
-    return { rows, corpus: prepareInventoryDescriptionCorpus(rows) };
-  };
   return {
     async readConfig() {
       const { rows } = await query(INVENTORY_DESCRIPTION_REFRESH_STATE_SQL);
@@ -58,7 +51,7 @@ export function createLiveInventoryDescriptionRepository({ withTransaction,
     },
     async readLearnedProfiles({ request, signal }) {
       return snapshot(async client => {
-        const source = await readCorpus(client, signal);
+        const source = await readLiveInventoryDescriptionCorpus(client, request, signal);
         const profiles = buildLiveInventoryLearnedProfiles({ ...source, request, modelCache: profileCache });
         signal?.throwIfAborted();
         return profiles;
@@ -68,7 +61,7 @@ export function createLiveInventoryDescriptionRepository({ withTransaction,
       const representation = validateDescriptionRepresentation(identity);
       const encodedVector = JSON.stringify(validateEmbedding(vector, identity.dimensions));
       return snapshot(async client => {
-        const { rows, corpus } = await readCorpus(client, signal);
+        const { rows, corpus } = await readLiveInventoryDescriptionCorpus(client, request, signal);
         let learnedProfiles = new Map();
         try {
           if (request.queryMetadata) learnedProfiles = buildLiveInventoryLearnedProfiles({ rows, corpus, request, modelCache: profileCache });

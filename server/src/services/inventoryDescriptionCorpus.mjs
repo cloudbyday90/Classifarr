@@ -4,7 +4,8 @@ import { createInventorySemanticSampler } from './inventorySemanticSampler.mjs';
 import { projectInventoryDescription } from './inventoryDescriptionProjection.mjs';
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS, sourceConflictAuthorityExclusionForMediaServerItem } from './sourceConflictAuthorityGuard.mjs';
 
-export function buildInventoryDescriptionCorpusSql({ includeCandidateMetadata = false, includeEvaluationMetadata = false } = {}) {
+export function buildInventoryDescriptionCorpusSql({ includeCandidateMetadata = false, includeEvaluationMetadata = false,
+  mediaTypeScoped = false } = {}) {
   return `
   SELECT msi.media_type, msi.tmdb_id, msi.library_id,
     ${includeCandidateMetadata ? 'msi.genres, msi.studio, msi.content_rating,' : ''}
@@ -23,7 +24,7 @@ export function buildInventoryDescriptionCorpusSql({ includeCandidateMetadata = 
     WHERE h.media_type = msi.media_type AND h.tmdb_id = msi.tmdb_id
     ORDER BY h.created_at DESC, h.id DESC LIMIT 1
   ) history ON true
-  WHERE msi.media_type IN ('movie', 'tv') AND msi.tmdb_id > 0
+  WHERE msi.media_type IN ('movie', 'tv') ${mediaTypeScoped ? 'AND msi.media_type = $2::text ' : ''}AND msi.tmdb_id > 0
     AND ${sourceConflictAuthorityExclusionForMediaServerItem('$1')}
   ORDER BY msi.media_type, msi.tmdb_id, msi.library_id, msi.id
   LIMIT 50001

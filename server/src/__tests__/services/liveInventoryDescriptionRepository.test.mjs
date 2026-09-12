@@ -9,7 +9,7 @@ const identity = { provider: 'ollama', model: 'test:latest', digest: 'a'.repeat(
 const request = { key: 'movie:90', mediaType: 'movie', libraryIds: [1, 2], hash: hash('Query') };
 const row = (id, library, overview, media = 'movie') => ({ tmdb_id: id, library_id: library, overview, media_type: media });
 function setup(rows = [], ranked = []) {
-  const query = jest.fn(async (sql) => ({ rows: sql === INVENTORY_DESCRIPTION_CORPUS_SQL ? rows
+  const query = jest.fn(async (sql, parameters) => ({ rows: sql === INVENTORY_DESCRIPTION_CORPUS_SQL ? rows.filter(row => row.media_type === parameters[1])
     : sql === LIVE_INVENTORY_DESCRIPTION_RANK_SQL ? ranked : [] }));
   const repository = createLiveInventoryDescriptionRepository({ withTransaction: async callback => callback({ query }) });
   return { query, repository, retrieve: (signal, input = request) => repository.retrieve({ request: input, identity, vector: [1, 0], signal }) };
