@@ -11,12 +11,38 @@ import { createPolicyCandidateConsensusService } from '../../services/policyCand
 import { hasCandidateConsensusReceipt } from '../../services/policyCandidateConsensusReceipt.mjs';
 import { evaluateClassificationRouteSafety } from '../../services/classificationRouteSafetyGate.mjs';
 import { consensusDependencies, consensusFixture } from '../fixtures/policyCandidateConsensusFixture.mjs';
+import { createLearnedEvidenceRoutingService } from '../../services/learnedEvidenceRoutingService.mjs';
+import { learnedRoutingDependencies, learnedRoutingFixture } from '../fixtures/learnedEvidenceRoutingFixture.mjs';
 
 const libraries = [
   { id: 1, name: 'Movies', media_type: 'movie' },
   { id: 2, name: 'Family', media_type: 'movie' },
   { id: 3, name: 'Unrelated', media_type: 'movie' },
 ];
+
+test('ordinary review carries learned qualification through the live policy path without an extra AI call', async () => {
+  const input = learnedRoutingFixture(), dependencies = learnedRoutingDependencies(input);
+  const aiClassify = jest.fn(async () => input.aiMatch);
+  const service = new ClassificationPolicyPathService({
+    policyEngine: { evaluateItem: async () => input.policyResult },
+    policyScoringContextBuilder: { buildSignalContext: () => ({ confidence: 45 }) },
+    policyCandidateShortlistService: { build: async () => input.contract },
+    classificationAiService: { aiClassify },
+    policyCandidateAdjudicationEvidenceService: { build: async () => input.evidence },
+    policyCandidateConsensusService: createPolicyCandidateConsensusService(consensusDependencies(input)),
+    learnedEvidenceRoutingService: createLearnedEvidenceRoutingService(dependencies),
+    policyCandidateContrastiveRetriever: { retrieve: async () => null },
+    classificationRoutingService: { ensureDecisionQuestion: async ({ result }) => {
+      expect(evaluateClassificationRouteSafety({ result }).automatic_route_allowed).toBe(true);
+      return result;
+    } },
+    logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+  });
+  const outcome = await service.execute({ metadata: input.metadata, libraries: input.libraries });
+  expect(outcome.result).toMatchObject({ method: 'library_consensus_auto', confidence: 45, needs_clarification: false });
+  expect(hasCandidateConsensusReceipt(outcome.result, { metadata: input.metadata })).toBe(true);
+  expect(aiClassify).toHaveBeenCalledTimes(1);
+});
 
 test('threshold-qualified comparison carries fresh server consensus through the policy path', async () => {
   const input = consensusFixture(), dependencies = consensusDependencies(input);

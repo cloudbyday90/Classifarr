@@ -5,7 +5,7 @@ import { inspectLearnedEvidenceReviewScope } from './learnedEvidenceReviewScope.
 
 export const LEARNED_EVIDENCE_REVIEW_VERSION = 'learned_evidence_review_v1';
 
-/** Evaluation-only selective rule. No receipts, calibrated confidence or routing permission. */
+/** Shared selective assessment. No receipts, calibrated confidence or routing permission. */
 export function assessLearnedEvidenceReview(input = {}) {
   const result = (reason, wouldResolve = false) => ({ version: LEARNED_EVIDENCE_REVIEW_VERSION,
     wouldResolve, reason, automaticRouteAllowed: false });

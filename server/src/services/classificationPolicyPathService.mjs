@@ -56,6 +56,7 @@ import {
 import { createLogger } from '../utils/logger.mjs';
 import { createPolicyCandidateShortlistService } from './policyCandidateShortlistService.mjs';
 import { createPolicyCandidateConsensusService } from './policyCandidateConsensusService.mjs';
+import { createLearnedEvidenceRoutingService } from './learnedEvidenceRoutingService.mjs';
 
 const defaultLogger = createLogger('classificationPolicyPathService');
 
@@ -82,6 +83,7 @@ export class ClassificationPolicyPathService {
 			readEvidence: options => this.policyCandidateAdjudicationEvidenceService.build(options),
 		});
 		this.finalizePolicyCandidateAdjudication = deps.finalizePolicyCandidateAdjudication || finalizePolicyCandidateAdjudication;
+		this.learnedEvidenceRoutingService = deps.learnedEvidenceRoutingService || createLearnedEvidenceRoutingService();
 		this.buildPolicyCandidateContrastiveRetrievalContract =
 			deps.buildPolicyCandidateContrastiveRetrievalContract || buildPolicyCandidateContrastiveRetrievalContract;
 		this.policyCandidateContrastiveRetriever =
@@ -97,7 +99,8 @@ export class ClassificationPolicyPathService {
 
 	async finalizeCandidateOutcome(options) {
 		const result = this.finalizePolicyCandidateAdjudication(options);
-		return this.policyCandidateConsensusService.resolve({ ...options, result });
+		const consensus = await this.policyCandidateConsensusService.resolve({ ...options, result });
+		return this.learnedEvidenceRoutingService.resolve({ ...options, result: consensus });
 	}
 
 	async execute({ metadata, libraries, taskId, relatedEvidence }) {
@@ -342,6 +345,9 @@ export class ClassificationPolicyPathService {
 					: {}),
 			};
 			const consensusContext = await this.policyCandidateConsensusService.prepare(policyResult);
+			const learnedContext = aiModeDecision.mode === 'adjudicate'
+				? await this.learnedEvidenceRoutingService.prepare({ metadata, policyResult, libraries,
+					contract: candidateAdjudication, evidence: candidateAdjudicationEvidence, relatedEvidence }) : null;
 			const providerMatch = await this.aiClassify(
 				metadata,
 				aiLibraries,
@@ -358,7 +364,7 @@ export class ClassificationPolicyPathService {
 					...await this.finalizeCandidateOutcome({
 						contract: candidateAdjudication,
 						aiMatch: providerMatch,
-						metadata, evidence: candidateAdjudicationEvidence, ragContext, relatedEvidence, consensusContext,
+						metadata, evidence: candidateAdjudicationEvidence, ragContext, relatedEvidence, consensusContext, learnedContext,
 					policyResult,
 						libraries,
 						semanticRetrievalStatusId: currentLibraryCandidateSemanticRetrievalStatusId,

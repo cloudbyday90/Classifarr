@@ -2,26 +2,13 @@
 import { assessPolicyCandidateConsensus, consensusPolicyFingerprint } from './policyCandidateConsensus.mjs';
 import { CONSENSUS_ROUTE_METHOD, issueCandidateConsensusReceipt } from './policyCandidateConsensusReceipt.mjs';
 import { policyCandidateAdjudicationEvidenceService } from './policyCandidateAdjudicationEvidence.mjs';
-import { policyEngine } from './policyEngine.mjs';
-import { evaluateItem } from './policyEngineEvaluation.mjs';
-import { projectPolicyCandidateDecision } from './policyCandidateDecisionProjection.mjs';
-import { policyDecisionBuilder } from './policyDecisionBuilder.mjs';
+import { refreshCandidatePolicy } from './policyCandidateRevalidation.mjs';
 import * as db from '../config/database.mjs';
 import { canonicalStudyModel } from './localStudyEmbeddingClient.mjs';
 import { isTrustedLocalOllamaEndpoint } from './ollamaLocalEndpointTrust.mjs';
 
-/** Reuse historical RAG matches; refresh live inventory scoring without generation or metrics finalization. */
-async function refreshPolicy(metadata, previous, relatedEvidence) {
-  return evaluateItem(metadata, { ragCache: previous.ragCache ?? { matches: [] }, relatedEvidence }, {
-    checkAuthoritativeSignals: item => policyEngine.checkAuthoritativeSignals(item),
-    getActivePolicies: () => policyEngine.getActivePolicies(),
-    evaluatePolicy: (...args) => policyEngine.evaluatePolicy(...args),
-    determineAction: ranked => policyDecisionBuilder.buildPolicyDecision(projectPolicyCandidateDecision({ ranked })),
-  });
-}
-
 export function createPolicyCandidateConsensusService({
-  readPolicy = refreshPolicy,
+  readPolicy = refreshCandidatePolicy,
   readEvidence = options => policyCandidateAdjudicationEvidenceService.build(options),
   readConfig = async () => (await db.query('SELECT rag_enabled, primary_provider, ollama_model, ollama_host, ollama_port, configuration_revision FROM ai_provider_config WHERE id=1')).rows[0],
   readLibraries = async ids => (await db.query('SELECT * FROM libraries WHERE id = ANY($1::int[]) AND is_active = true', [ids])).rows,

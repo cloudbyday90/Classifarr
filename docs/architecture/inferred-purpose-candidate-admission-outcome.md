@@ -144,6 +144,9 @@ to the 255-call benchmark denominators.
 
 ## Recommendation and next component
 
+Follow-up: [learned-evidence live routing](learned-evidence-live-routing-design.md)
+connects this candidate admission work to fresh, bounded routing qualification.
+
 Keep explicit boundaries ahead of retrieval, but use learned library contents
 to compare destinations rather than asking users to declare every library's
 purpose. Admission and confidence are different questions.

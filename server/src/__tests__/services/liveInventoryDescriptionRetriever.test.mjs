@@ -33,6 +33,18 @@ test('warm retrieval uses the query cache, same representation and every candida
   expect(embedder.inspect).toHaveBeenCalledTimes(2);
 });
 
+test('baseline retrieval checks representation after the fit and rejects foreign selected libraries', async () => {
+  const { retriever, repository, embedder } = setup();
+  expect((await retriever.retrieve({ contract, metadata, matchLibraryId: 99 })).statusId).toBe('not_applicable');
+  expect(repository.readConfig).not.toHaveBeenCalled();
+  expect((await retriever.retrieve({ contract, metadata, matchLibraryId: 2 })).statusId).toBe('available');
+  expect(repository.retrieve.mock.calls[0][0].request.matchLibraryId).toBe(2);
+  expect(embedder.inspect).toHaveBeenCalledTimes(3);
+  const original = await embedder.inspect();
+  embedder.inspect.mockResolvedValueOnce(original).mockResolvedValueOnce(original).mockResolvedValueOnce({ ...original, digest: 'b'.repeat(64) });
+  expect((await retriever.retrieve({ contract, metadata, matchLibraryId: 2 })).statusId).toBe('unavailable');
+});
+
 test('only an explicitly bounded internal retriever can compare more than three libraries', async () => {
   const { retriever, repository, embedder } = setup();
   const expanded = { valid: true, candidates: [1, 2, 3, 4].map(libraryId => ({ libraryId, mediaType: 'movie' })) };

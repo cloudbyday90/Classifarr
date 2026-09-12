@@ -6,6 +6,7 @@ import { INVENTORY_DESCRIPTION_REFRESH_STATE_SQL } from './inventoryDescriptionR
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from './sourceConflictAuthorityGuard.mjs';
 import { validateDescriptionRepresentation, createInventoryDescriptionVectorCache } from './inventoryDescriptionVectorCache.mjs';
 import { validateEmbedding } from '../utils/embeddingValidation.mjs';
+import { assessLiveLibraryMatch } from './liveLibraryMatchBaseline.mjs';
 
 export const LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL = buildInventoryDescriptionCorpusSql({ includeCandidateMetadata: true });
 
@@ -81,6 +82,9 @@ export function createLiveInventoryDescriptionRepository({ withTransaction }) {
         const ranked = scope.length ? (await client.query(LIVE_INVENTORY_DESCRIPTION_RANK_SQL,
           [...representation, JSON.stringify(scope), encodedVector])).rows : [];
         signal?.throwIfAborted();
+        const matchBaseline = request.matchLibraryId == null ? null : await assessLiveLibraryMatch({
+          rows, corpus, request, identity, vector, signal, query: (sql, parameters) => client.query(sql, parameters),
+        });
         return request.libraryIds.map(libraryId => {
           const matches = ranked.filter(row => row.library_id === libraryId);
           const items = matches.filter(row => row.similarity !== null).map(row => {
@@ -91,6 +95,9 @@ export function createLiveInventoryDescriptionRepository({ withTransaction }) {
               sharedAcrossCandidates: [...memberships.values()].filter(hashes => hashes.has(row.hash)).length > 1 };
           });
           return { libraryId, eligible: memberships.get(libraryId).size, indexed: matches[0]?.indexed ?? 0, items,
+            ...(request.matchLibraryId != null ? { queryIdentityPresent: rows.some(row => row.library_id === libraryId &&
+              `${row.media_type}:${row.tmdb_id}` === request.key) } : {}),
+            ...(matchBaseline?.libraryId === libraryId ? { matchBaseline } : {}),
             ...(learnedProfiles.has(libraryId) ? { learnedProfile: learnedProfiles.get(libraryId) } : {}) };
         });
       });

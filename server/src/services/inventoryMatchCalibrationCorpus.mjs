@@ -4,6 +4,7 @@ import { inventoryDescriptionIdentity } from './inventoryDescriptionCorpus.mjs';
 import { normalizeDescriptionVector } from './inventoryDescriptionSimilarity.mjs';
 import { validateDescriptionRepresentation } from './inventoryDescriptionVectorCache.mjs';
 import { LIBRARY_MATCH_BASELINE_VERSION, LIBRARY_MATCH_BASELINE_LIMITS } from './libraryMatchBaseline.mjs';
+import { splitLibraryMatchGroups } from './libraryMatchGroupSplit.mjs';
 
 export const matchCalibrationDigest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const id = value => Number.isInteger(value) && value > 0 && value <= 2147483647;
@@ -52,17 +53,6 @@ export function validateMatchCalibrationFold(corpus, mediaType, held) {
 /** Shared/copy groups cannot count as independent per-library training observations. */
 export function splitMatchCalibrationGroups(corpus, mediaType, held) {
   validateMatchCalibrationFold(corpus, mediaType, held);
-  return [...corpus.media].filter(([, type]) => type === mediaType).sort(([a], [b]) => a - b).map(([libraryId]) => {
-    const groups = [...corpus.groups.values()].filter(group => group.mediaType === mediaType &&
-      !held.has(group.hash) && group.libraryIds.has(libraryId));
-    const exclusive = groups.filter(group => group.libraryIds.size === 1).map(group => ({ hash: group.hash,
-      order: matchCalibrationDigest([LIBRARY_MATCH_BASELINE_VERSION, mediaType, group.hash]) }))
-      .sort((a, b) => compare(a.order, b.order));
-    const limits = LIBRARY_MATCH_BASELINE_LIMITS;
-    const count = Math.min(limits.calibration, Math.max(limits.minimum, Math.floor(exclusive.length / 4)));
-    const calibration = exclusive.slice(0, count).map(group => group.hash);
-    const references = exclusive.slice(count, count + limits.references).map(group => group.hash);
-    return { libraryId, eligibleDescriptions: exclusive.length, sharedDescriptionsExcluded: groups.length - exclusive.length,
-      references, calibration };
-  });
+  return [...corpus.media].filter(([, type]) => type === mediaType).sort(([a], [b]) => a - b)
+    .map(([libraryId]) => splitLibraryMatchGroups(corpus.groups.values(), libraryId, mediaType, held));
 }

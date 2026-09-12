@@ -78,3 +78,11 @@ test('changed incoming synopsis holds out old and conflicting stored copies from
   expect((await retrieve()).every(candidate => candidate.eligible === 0)).toBe(true);
   expect(query.mock.calls.some(([sql]) => sql === LIVE_INVENTORY_DESCRIPTION_RANK_SQL)).toBe(false);
 });
+
+test('selected-library baseline is internal and shares the read-only snapshot', async () => {
+  const { retrieve, query } = setup([row(1, 1, 'A')]);
+  const result = await retrieve(undefined, { ...request, matchLibraryId: 1 });
+  expect(result[0].matchBaseline).toMatchObject({ libraryId: 1, status: 'sparse' });
+  expect(result[1].matchBaseline).toBeUndefined();
+  expect(query.mock.calls.filter(([sql]) => sql.includes('ISOLATION LEVEL'))).toHaveLength(1);
+});

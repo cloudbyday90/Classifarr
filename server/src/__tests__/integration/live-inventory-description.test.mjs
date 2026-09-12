@@ -11,6 +11,13 @@ import { createPolicyInventoryEvidenceService } from '../../services/policyInven
 import { projectRankedPolicyCandidates } from '../../services/policyCandidateRankingProjection.mjs';
 import { selectContrastiveLibraryExamples } from '../../services/inventoryContrastiveExamples.mjs';
 import { runContentFirstInventoryComparison } from '../../services/inventoryContentFirstComparison.mjs';
+import { learnedRoutingFixture, learnedRoutingDependencies } from '../fixtures/learnedEvidenceRoutingFixture.mjs';
+import { createLearnedEvidenceRoutingService } from '../../services/learnedEvidenceRoutingService.mjs';
+import { projectLiveInventoryDescriptionEvidence } from '../../services/liveInventoryDescriptionEvidence.mjs';
+import { buildPolicyCandidateAdjudicationContract } from '../../services/policyCandidateAdjudicationContract.mjs';
+import { finalizePolicyCandidateAdjudication } from '../../services/policyCandidateAdjudicationResult.mjs';
+import { hasCandidateConsensusReceipt } from '../../services/policyCandidateConsensusReceipt.mjs';
+import { evaluateClassificationRouteSafety } from '../../services/classificationRouteSafetyGate.mjs';
 
 let client;
 let repository;
@@ -44,6 +51,45 @@ async function add(id, library, text, vector = [1, 0, 0], media = 'movie') {
   if (vector) await cache.write(identity, [{ hash: hash(text), vector }]);
 }
 const retrieve = (representation = identity) => repository.retrieve({ request, identity: representation, vector: [1, 0, 0] });
+
+test('fresh database descriptions and learned baseline resolve soft review; subsequent membership drift keeps review', async () => {
+  await client.query('UPDATE libraries SET id=1 WHERE id=10; UPDATE libraries SET id=2 WHERE id=20');
+  for (let id = 1; id <= 160; id++) {
+    const angle = id <= 80 ? 2 + id / 100 : (id - 80) / 100;
+    await add(id, id <= 80 ? 1 : 2, `Distinct synthetic synopsis ${id}`, [Math.cos(angle), Math.sin(angle), 0]);
+  }
+  await client.query(`UPDATE media_server_items SET genres=CASE WHEN library_id=2 THEN '["Documentary"]'::jsonb ELSE '["Comedy"]'::jsonb END`);
+  const input = learnedRoutingFixture();
+  input.metadata.tmdb_id = 9999;
+  input.libraries = input.libraries.slice(0, 2);
+  input.policies = input.policies.slice(0, 2);
+  input.policyResult.ranked = input.policyResult.ranked.slice(0, 2);
+  input.contract = buildPolicyCandidateAdjudicationContract({ ...input, mediaType: 'movie' });
+  const liveRequest = { key: 'movie:9999', hash: hash(input.metadata.overview), mediaType: 'movie',
+    libraryIds: [1, 2], queryMetadata: { genres: ['documentary'] } };
+  const queryVector = [Math.cos(.4), Math.sin(.4), 0];
+  const read = async matchLibraryId => ({ statusId: 'available', candidates: await repository.retrieve({
+    request: { ...liveRequest, ...(matchLibraryId === undefined ? {} : { matchLibraryId }) }, identity, vector: queryVector,
+  }) });
+  const supplied = await read();
+  input.evidence.candidates = supplied.candidates.map(candidate => ({ libraryId: candidate.libraryId,
+    mediaType: 'movie', currentLibrary: { directMatch: false },
+    descriptionEvidence: projectLiveInventoryDescriptionEvidence({ ...candidate, statusId: supplied.statusId }, true) }));
+  input.result = finalizePolicyCandidateAdjudication(input);
+  const dependencies = { ...learnedRoutingDependencies(input), retriever: { retrieve: options => read(options.matchLibraryId) } };
+  const service = createLearnedEvidenceRoutingService(dependencies);
+  const result = await service.resolve({ ...input, learnedContext: await service.prepare(input) });
+  expect(hasCandidateConsensusReceipt(result, { metadata: input.metadata })).toBe(true);
+  expect(result.confidence).toBe(45);
+  expect(evaluateClassificationRouteSafety({ result }).automatic_route_allowed).toBe(true);
+  const changed = createLearnedEvidenceRoutingService({ ...dependencies, readPolicy: async () => {
+    await client.query('UPDATE media_server_items SET library_id=1 WHERE tmdb_id=81');
+    return input.policyResult;
+  } });
+  expect(await changed.resolve({ ...input, learnedContext: await changed.prepare(input) })).toBe(input.result);
+  expect((await client.query('SELECT count(*)::integer AS count FROM inventory_description_vector_cache')).rows[0].count).toBe(160);
+  expect((await client.query('SELECT count(*)::integer AS count FROM classification_history')).rows[0].count).toBe(0);
+});
 
 test('current PostgreSQL description/metadata evidence restores a weak score and loses support after edits', async () => {
   for (let id = 1; id <= 24; id++) {

@@ -32,10 +32,14 @@ export function createLiveInventoryDescriptionRetriever({
 } = {}) {
   if (!Number.isInteger(maxCandidates) || maxCandidates < 2 || maxCandidates > 64) throw new RangeError('invalid_candidate_limit');
   return {
-    async retrieve({ contract, metadata, signal: parentSignal } = {}) {
+    async retrieve({ contract, metadata, matchLibraryId, signal: parentSignal } = {}) {
       let request;
       try { request = buildRequest(contract, metadata, maxCandidates); } catch { request = null; }
       if (!request) return { statusId: 'not_applicable', candidates: [] };
+      if (matchLibraryId !== undefined) {
+        if (!request.libraryIds.includes(matchLibraryId)) return { statusId: 'not_applicable', candidates: [] };
+        request.matchLibraryId = matchLibraryId;
+      }
       const signal = AbortSignal.any([AbortSignal.timeout(timeoutMs), ...(parentSignal ? [parentSignal] : [])]);
       try {
         signal.throwIfAborted();
@@ -51,6 +55,7 @@ export function createLiveInventoryDescriptionRetriever({
         }
         await verifyDescriptionRepresentation(embedder, identity, signal);
         const candidates = await repository.retrieve({ request, identity, vector, signal });
+        if (matchLibraryId !== undefined) await verifyDescriptionRepresentation(embedder, identity, signal);
         const current = resolveLocalStudyEmbeddingConfig(await repository.readConfig());
         if (JSON.stringify(resolved) !== JSON.stringify(current)) throw new Error('live_inventory_description_config_changed');
         signal.throwIfAborted();

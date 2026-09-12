@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Allow fresh AI, description and learned-library agreement to resolve ordinary
+  soft-evidence reviews automatically, using a library-specific familiarity check
+  and short-lived server routing authority without inflating policy scores.
+  Preserve explicit restrictions, administrative confirmation, ambiguous matches
+  and drift checks without adding another settings panel or AI call.
 - Keep profile-inferred library traits as ranking evidence instead of admission
   requirements, allowing description retrieval to compare eligible destinations
   with incomplete metadata. Preserve explicit restrictions, media boundaries
