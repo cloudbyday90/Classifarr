@@ -1,9 +1,13 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { INVENTORY_DESCRIPTION_CORPUS_SQL, prepareInventoryDescriptionCorpus } from './inventoryDescriptionCorpus.mjs';
+import { buildInventoryDescriptionCorpusSql, prepareInventoryDescriptionCorpus } from './inventoryDescriptionCorpus.mjs';
+import { buildLiveInventoryLearnedProfiles } from './liveInventoryLearnedProfile.mjs';
+import { inventoryDescriptionQueryExcludedHashes } from './inventoryDescriptionQueryExclusions.mjs';
 import { INVENTORY_DESCRIPTION_REFRESH_STATE_SQL } from './inventoryDescriptionRefreshRepository.mjs';
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from './sourceConflictAuthorityGuard.mjs';
 import { validateDescriptionRepresentation, createInventoryDescriptionVectorCache } from './inventoryDescriptionVectorCache.mjs';
 import { validateEmbedding } from '../utils/embeddingValidation.mjs';
+
+export const LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL = buildInventoryDescriptionCorpusSql({ includeCandidateMetadata: true });
 
 export const LIVE_INVENTORY_DESCRIPTION_RANK_SQL = `
   WITH membership AS (
@@ -28,6 +32,7 @@ export function createLiveInventoryDescriptionRepository({ withTransaction }) {
     await client.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
     await client.query("SET LOCAL statement_timeout = '5s'");
     await client.query("SET LOCAL lock_timeout = '1s'");
+    await client.query("SET LOCAL idle_in_transaction_session_timeout = '20s'");
     return callback(client);
   });
   const query = (sql, parameters) => snapshot(client => client.query(sql, parameters));
@@ -45,11 +50,19 @@ export function createLiveInventoryDescriptionRepository({ withTransaction }) {
       const encodedVector = JSON.stringify(validateEmbedding(vector, identity.dimensions));
       return snapshot(async client => {
         signal?.throwIfAborted();
-        const { rows } = await client.query(INVENTORY_DESCRIPTION_CORPUS_SQL, [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]);
+        const { rows } = await client.query(LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL, [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]);
+        signal?.throwIfAborted();
         const corpus = prepareInventoryDescriptionCorpus(rows);
+        let learnedProfiles = new Map();
+        try {
+          if (request.queryMetadata) learnedProfiles = buildLiveInventoryLearnedProfiles({ rows, corpus, request });
+        } catch {
+          // A bounded profile failure must not discard otherwise usable description evidence.
+        }
         const memberships = new Map(request.libraryIds.map(id => [id, new Set()]));
+        const held = inventoryDescriptionQueryExcludedHashes(rows, request);
         for (const document of corpus.documents) {
-          if (document.type !== request.mediaType || document.key === request.key || document.hash === request.hash) continue;
+          if (document.type !== request.mediaType || document.key === request.key || held.has(document.hash)) continue;
           for (const id of document.libraryIds) memberships.get(id)?.add(document.hash);
         }
         const scope = [...memberships].flatMap(([library_id, hashes]) => [...hashes].map(hash => ({ library_id, hash })));
@@ -66,7 +79,8 @@ export function createLiveInventoryDescriptionRepository({ withTransaction }) {
             return { description: corpus.texts.get(row.hash), similarity: Math.max(-1, Math.min(1, row.similarity)),
               sharedAcrossCandidates: [...memberships.values()].filter(hashes => hashes.has(row.hash)).length > 1 };
           });
-          return { libraryId, eligible: memberships.get(libraryId).size, indexed: matches[0]?.indexed ?? 0, items };
+          return { libraryId, eligible: memberships.get(libraryId).size, indexed: matches[0]?.indexed ?? 0, items,
+            ...(learnedProfiles.has(libraryId) ? { learnedProfile: learnedProfiles.get(libraryId) } : {}) };
         });
       });
     },

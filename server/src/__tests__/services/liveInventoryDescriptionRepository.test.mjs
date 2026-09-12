@@ -1,8 +1,8 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { createHash } from 'node:crypto';
 import { expect, jest, test } from '@jest/globals';
-import { createLiveInventoryDescriptionRepository, LIVE_INVENTORY_DESCRIPTION_RANK_SQL } from '../../services/liveInventoryDescriptionRepository.mjs';
-import { INVENTORY_DESCRIPTION_CORPUS_SQL } from '../../services/inventoryDescriptionCorpus.mjs';
+import { createLiveInventoryDescriptionRepository, LIVE_INVENTORY_DESCRIPTION_RANK_SQL,
+  LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL as INVENTORY_DESCRIPTION_CORPUS_SQL } from '../../services/liveInventoryDescriptionRepository.mjs';
 import { INVENTORY_DESCRIPTION_REFRESH_STATE_SQL } from '../../services/inventoryDescriptionRefreshRepository.mjs';
 const hash = text => createHash('sha256').update(text).digest('hex');
 const identity = { provider: 'ollama', model: 'test:latest', digest: 'a'.repeat(64), dimensions: 2 };
@@ -12,7 +12,7 @@ function setup(rows = [], ranked = []) {
   const query = jest.fn(async (sql) => ({ rows: sql === INVENTORY_DESCRIPTION_CORPUS_SQL ? rows
     : sql === LIVE_INVENTORY_DESCRIPTION_RANK_SQL ? ranked : [] }));
   const repository = createLiveInventoryDescriptionRepository({ withTransaction: async callback => callback({ query }) });
-  return { query, repository, retrieve: signal => repository.retrieve({ request, identity, vector: [1, 0], signal }) };
+  return { query, repository, retrieve: (signal, input = request) => repository.retrieve({ request: input, identity, vector: [1, 0], signal }) };
 }
 
 test('snapshot joins only current scoped distinct descriptions, holds out self, and returns rival snippets', async () => {
@@ -62,4 +62,19 @@ test('configuration and query cache reads use bounded transactions without writi
     ? [{ description_hash: hash('A'), embedding: '[1,0]' }] : [{ rag_enabled: true }] }));
   expect(await repository.readQueryVector(identity, hash('A'))).toEqual([1, 0]);
   expect(await repository.readConfig()).toEqual({ rag_enabled: true });
+});
+
+test('learned profile budget failure preserves usable descriptions and does not expose partial profiles', async () => {
+  const rows = Array.from({ length: 65 }, (_, i) => ({ ...row(i + 1, i + 1, `Example ${i}`), genres: ['test'] }));
+  const { retrieve } = setup(rows, [{ library_id: 1, hash: hash('Example 0'), similarity: 0.8, indexed: 1 }]);
+  const result = await retrieve(undefined, { ...request, queryMetadata: { genres: ['test'] } });
+  expect(result[0].items).toHaveLength(1);
+  expect(result.some(candidate => candidate.learnedProfile)).toBe(false);
+});
+
+test('changed incoming synopsis holds out old and conflicting stored copies from retrieval too', async () => {
+  const { retrieve, query } = setup([row(90, 1, 'Old'), row(90, 2, 'Conflicting old'),
+    row(91, 1, 'Old'), row(92, 2, 'Conflicting old'), row(93, 1, 'Query')]);
+  expect((await retrieve()).every(candidate => candidate.eligible === 0)).toBe(true);
+  expect(query.mock.calls.some(([sql]) => sql === LIVE_INVENTORY_DESCRIPTION_RANK_SQL)).toBe(false);
 });

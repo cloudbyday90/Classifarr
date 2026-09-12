@@ -19,7 +19,7 @@ beforeEach(async () => {
     CREATE TEMP TABLE libraries (id integer, media_type text, is_active boolean);
     CREATE TEMP TABLE classification_history (id integer, tmdb_id integer, media_type text, metadata jsonb, created_at timestamptz);
     CREATE TEMP TABLE media_server_items (id serial, tmdb_id integer, media_type text, library_id integer,
-      media_server_id integer DEFAULT 1, external_id text, metadata jsonb);
+      media_server_id integer DEFAULT 1, external_id text, metadata jsonb, genres jsonb, studio text, content_rating text);
     CREATE TEMP TABLE media_source_observations (library_id integer, media_server_id integer, external_id text, last_seen_at timestamptz);
     CREATE TEMP TABLE inventory_description_vector_cache (LIKE public.inventory_description_vector_cache INCLUDING ALL);
     INSERT INTO libraries VALUES (10,'movie',true), (20,'movie',true), (30,'movie',false), (40,'tv',true);
@@ -91,9 +91,38 @@ test('deleted, edited and expired inventory cannot reuse old description evidenc
   expect((await retrieve())[1]).toMatchObject({ eligible: 0, indexed: 0, items: [] });
 });
 
+test('live learned evidence refreshes from current same-snapshot metadata and membership without writes', async () => {
+  for (let id = 1; id <= 6; id++) await add(id, id <= 3 ? 10 : 20, `Training ${id}`);
+  await add(90, 10, 'Old query synopsis');
+  await add(91, 20, 'Old query synopsis');
+  await add(92, 20, 'Query');
+  await add(93, 30, 'Inactive evidence');
+  await add(94, 10, 'Source-conflicted evidence');
+  await client.query("INSERT INTO media_source_observations VALUES (10,1,'94',now())");
+  await client.query(`UPDATE media_server_items SET genres=CASE WHEN tmdb_id <= 3 THEN '["Documentary"]'::jsonb ELSE '["Comedy"]'::jsonb END`);
+  const run = () => repository.retrieve({ request: { ...request, queryMetadata: { genres: ['documentary'] } }, identity, vector: [1, 0, 0] });
+  const before = await run();
+  expect(before.flatMap(candidate => candidate.items).every(item => item.description.startsWith('Training '))).toBe(true);
+  expect(before[0].learnedProfile.trainingDescriptions).toBe(6);
+  expect(before[0].learnedProfile.relativeFit).toBeGreaterThan(0);
+  expect(before[1].learnedProfile.relativeFit).toBeLessThan(0);
+  expect((await run())[0].learnedProfile).toEqual(before[0].learnedProfile);
+  await client.query(`UPDATE media_server_items SET genres='["Comedy"]'::jsonb WHERE tmdb_id <= 3`);
+  const edited = await run();
+  expect(edited[0].learnedProfile.relativeFit).toBe(0);
+  expect(edited[0].learnedProfile.snapshotId).not.toBe(before[0].learnedProfile.snapshotId);
+  await client.query('UPDATE media_server_items SET library_id=20 WHERE tmdb_id=1');
+  const moved = await run();
+  expect(moved[0].learnedProfile.snapshotId).not.toBe(edited[0].learnedProfile.snapshotId);
+  await client.query('DELETE FROM media_server_items WHERE tmdb_id=2');
+  expect((await run())[0].learnedProfile.trainingDescriptions).toBe(5);
+  await client.query('UPDATE libraries SET is_active=false WHERE id=20');
+  expect((await run())[0].learnedProfile.trainingDescriptions).toBe(1);
+  expect((await client.query('SELECT count(*)::integer AS count FROM inventory_description_vector_cache')).rows[0].count).toBe(10);
+});
+
 test('benchmark snapshots real inventory and cache read-only, holds out 100 titles, and fails on stale provenance', async () => {
   await client.query("ALTER TABLE libraries ADD COLUMN name text DEFAULT 'Private library'");
-  await client.query('ALTER TABLE media_server_items ADD COLUMN genres jsonb, ADD COLUMN studio text, ADD COLUMN content_rating text');
   const benchmark = createDescriptionBenchmarkRepository({ withTransaction: async callback => {
     await client.query('BEGIN');
     try {

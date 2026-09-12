@@ -119,6 +119,11 @@ constraints intact. This is a path toward hands-off classification, not another
 manual library-purpose form. The current commit supplies training and evaluation,
 not production automatic routing or metadata correction.
 
+Follow-up: [live learned profile integration](live-learned-library-profile-outcome.md)
+now supplies this evidence to AI comparison from fresh retrieval snapshots. It
+does not yet replace the earlier policy-eligible candidate shortlist or calibrate
+automatic-routing confidence.
+
 ## PR and CI scope
 
 GitHub MCP returned no open Classifarr PRs, so none was available for random

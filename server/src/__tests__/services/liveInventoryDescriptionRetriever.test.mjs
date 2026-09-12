@@ -33,6 +33,29 @@ test('warm retrieval uses the query cache, same representation and every candida
   expect(embedder.inspect).toHaveBeenCalledTimes(2);
 });
 
+test('live metadata reaches the learner and only allowlisted fit reaches local and remote comparison prompts', async () => {
+  const { retriever, repository, candidates } = setup();
+  for (const candidate of candidates) candidate.learnedProfile = {
+    version: 'contrastive_profile_v1', statusId: 'available', relativeFit: candidate.libraryId === 1 ? 0.8 : -0.8,
+    trainingDescriptions: 100, snapshotId: 'PRIVATE fingerprint', features: ['PRIVATE studio'],
+  };
+  const service = createPolicyCandidateAdjudicationEvidenceService({ getProfileStats: async () => null,
+    retrieveCurrentLibraryEvidence: async () => null, retrieveCurrentLibrarySemanticEvidence: async () => null,
+    retrieveInventoryDescriptions: retriever.retrieve });
+  const evidence = await service.build({ contract, metadata: { ...metadata, genres: [{ name: 'Documentary' }], content_rating: 'PG' } });
+  expect(repository.retrieve.mock.calls[0][0].request.queryMetadata).toEqual({ genres: ['documentary'], rating: 'pg', studio: '' });
+  for (const provider of [{ providerType: 'ollama', providerHost: 'localhost' }, { providerType: 'remote' }]) {
+    const projected = projectPolicyCandidateAdjudicationEvidenceForProvider(evidence, provider);
+    const prompt = formatCandidateAdjudication(projected);
+    expect(prompt).toContain('Learned inventory fit: 0.8');
+    expect(prompt).toContain('Learned inventory fit: -0.8');
+    expect(prompt).not.toContain('PRIVATE fingerprint');
+    expect(prompt).not.toContain('PRIVATE studio');
+    expect(projected.candidates.map(candidate => candidate.libraryNumber)).toEqual([1, 2]);
+    expect(projected.candidates.map(candidate => candidate.policyScore)).toEqual([45, 45]);
+  }
+});
+
 test('cold query embeds only one synopsis; incomplete inventory stays partial', async () => {
   const { retriever, repository, candidates, embedder } = setup();
   repository.readQueryVector.mockResolvedValue(null);

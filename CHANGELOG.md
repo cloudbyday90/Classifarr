@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Feed organically learned library patterns into live AI candidate comparison,
+  refreshed from current inventory without manual purpose declarations. Keep
+  fit distinct from confidence, exclude the item's current and stored synopsis
+  copies, and preserve routing constraints and provider privacy boundaries.
+
 - Add library-agnostic profile learning to local candidate benchmarks, using
   contrastive inventory patterns without manual purpose declarations. Exclude
   held-out examples, downweight shared observations, and preserve live routing.

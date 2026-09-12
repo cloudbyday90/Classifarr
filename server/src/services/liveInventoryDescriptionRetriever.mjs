@@ -7,6 +7,7 @@ import { createLocalStudyEmbeddingClient, resolveLocalStudyEmbeddingConfig } fro
 import { inspectDescriptionRepresentation, verifyDescriptionRepresentation } from './inventoryDescriptionBatchWriter.mjs';
 import { createLiveInventoryDescriptionRepository } from './liveInventoryDescriptionRepository.mjs';
 import { validateEmbedding } from '../utils/embeddingValidation.mjs';
+import { projectLiveInventoryQueryMetadata } from './liveInventoryLearnedProfile.mjs';
 
 function buildRequest(contract, metadata) {
   const key = inventoryDescriptionIdentity(metadata);
@@ -18,6 +19,7 @@ function buildRequest(contract, metadata) {
     !Number.isInteger(candidate.libraryId) || candidate.libraryId < 1 || candidate.libraryId > 2_147_483_647 ||
     candidate.mediaType !== metadata.media_type)) return null;
   return { key, mediaType: metadata.media_type, libraryIds, text: projection.text,
+    queryMetadata: projectLiveInventoryQueryMetadata(metadata),
     hash: createHash('sha256').update(projection.text).digest('hex') };
 }
 
