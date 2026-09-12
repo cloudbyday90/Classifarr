@@ -527,7 +527,7 @@ describe('aiClassify', () => {
   test('uses aggregate-only evidence and a proposal-only schema for remote adjudication', async () => {
     db.query.mockResolvedValueOnce({ rows: [defaultProviderRow] });
     aiRouter.getProvider.mockResolvedValueOnce(cloudProvider);
-    aiRouter.classify.mockResolvedValueOnce('CONFIDENT|1|80|match');
+    aiRouter.classify.mockResolvedValueOnce('{"decision":"PROPOSE","library_number":1}');
     aiResponseParser.parse.mockReturnValueOnce({ ...goodParseResult });
 
     await classificationAiService.aiClassify(
@@ -580,7 +580,10 @@ describe('aiClassify', () => {
       requestType: 'classification_adjudication',
       format: expect.objectContaining({
         properties: expect.objectContaining({
-          decision: expect.objectContaining({ enum: ['CONFIDENT', 'CLARIFY'] }),
+          decision: expect.objectContaining({ enum: ['PROPOSE', 'ABSTAIN'] }),
+          library_number: expect.objectContaining({ anyOf: [
+            { type: 'integer', minimum: 1, maximum: baseLibraries.length }, { type: 'null' },
+          ] }),
         }),
       }),
     }));
@@ -589,7 +592,7 @@ describe('aiClassify', () => {
   test('keeps bounded detail for adjudication at the configured private Ollama endpoint', async () => {
     db.query.mockResolvedValueOnce({ rows: [defaultProviderRow] });
     aiRouter.getProvider.mockResolvedValueOnce(ollamaProvider);
-    ollamaService.generateWithProgress.mockResolvedValueOnce('CONFIDENT|1|80|match');
+    ollamaService.generateWithProgress.mockResolvedValueOnce('{"decision":"PROPOSE","library_number":1}');
     aiResponseParser.parse.mockReturnValueOnce({ ...goodParseResult });
 
     await classificationAiService.aiClassify(
@@ -952,7 +955,7 @@ describe('aiClassify', () => {
     expect(result.parse_diagnostics._diagnostics).toBe(true);
   });
 
-  test('adjudication diagnostics omit model-echoed private inventory text before and after repair', async () => {
+  test('adjudication diagnostics omit private inventory text and never request a model repair', async () => {
     db.query.mockResolvedValueOnce({ rows: [defaultProviderRow] });
     aiRouter.getProvider.mockResolvedValueOnce(ollamaProvider);
     ollamaService.generateWithProgress.mockResolvedValueOnce('PRIVATE inventory synopsis');
@@ -962,6 +965,26 @@ describe('aiClassify', () => {
     expect(JSON.stringify(result.parse_diagnostics)).not.toContain('PRIVATE');
     expect(JSON.stringify(aiProviderCapabilityMetricsService.record.mock.calls)).not.toContain('PRIVATE');
     expect(JSON.stringify(mockLoggerModule.logger.warn.mock.calls)).not.toContain('PRIVATE');
+    expect(ollamaService.generate).not.toHaveBeenCalled();
+    expect(result.parse_diagnostics.attemptCount).toBe(1);
+  });
+
+  test('adjudication passes raw output to validation without salvaging JSON inside prose', async () => {
+    db.query.mockResolvedValueOnce({ rows: [defaultProviderRow] });
+    aiRouter.getProvider.mockResolvedValueOnce(ollamaProvider);
+    const raw = 'PRIVATE prose\n```json\n{"decision":"PROPOSE","library_number":1}\n```';
+    ollamaService.generateWithProgress.mockResolvedValueOnce(raw);
+    aiResponseParser.parse.mockReturnValueOnce({ ...fallbackParseResult, format: 'contract_violation' });
+    await classificationAiService.aiClassify(baseMetadata, baseLibraries, {}, { mode: 'adjudicate' });
+    expect(aiResponseParser.parse.mock.calls[0][0]).toBe(raw);
+    expect(ollamaService.generate).not.toHaveBeenCalled();
+  });
+
+  test.each([undefined, [], [baseLibraries[0]], [...baseLibraries, ...baseLibraries]])('invalid adjudication candidate count fails before generation: %j', async libraries => {
+    await expect(classificationAiService.aiClassify(baseMetadata, libraries, {}, { mode: 'adjudicate' }))
+      .rejects.toThrow('adjudication_candidate_count_invalid');
+    expect(ollamaService.generateWithProgress).not.toHaveBeenCalled();
+    expect(aiRouter.classify).not.toHaveBeenCalled();
   });
 
   test('does NOT call attemptAiResponseRepair when first parse succeeds', async () => {

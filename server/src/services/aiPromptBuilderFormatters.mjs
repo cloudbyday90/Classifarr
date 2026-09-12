@@ -1,5 +1,6 @@
 import { formatObservationContext } from './libraryProfileObservationPresentation.mjs';
 import { formatLiveInventoryDescriptionEvidence } from './liveInventoryDescriptionEvidence.mjs';
+import { formatCandidateAdjudicationResponseInstructions } from './candidateAdjudicationResponseContract.mjs';
 
 export function parseArray(value, normalizeMetadataList) {
     if (!value) return null;
@@ -347,19 +348,12 @@ export function formatInstructions(data) {
     const libraries = data.libraries || [];
     const signalContext = data.signalContext;
     const verificationContract = data.verificationContract;
-    const candidateAdjudicationEvidence = data.candidateAdjudicationEvidence;
 
     const lines = [];
     lines.push('=== YOUR TASK ===');
 
-    if (mode === 'adjudicate' && Array.isArray(candidateAdjudicationEvidence?.candidates) && candidateAdjudicationEvidence.candidates.length >= 2) {
-        lines.push('BOUNDED CANDIDATE ADJUDICATION MODE: Compare only the numbered policy-eligible candidates above.');
-        lines.push('');
-        lines.push('You may make one advisory proposal or request clarification. The server and operator retain all routing authority.');
-        lines.push('');
-        lines.push('Respond in ONE of these formats:');
-        lines.push('CONFIDENT|<library_number>|<confidence_integer>|<brief_reason>');
-        lines.push('CLARIFY|<problem_summary>|<why_uncertain>|<question>|<library_number_1>|<library_number_2>|<library_number_3_optional>');
+    if (mode === 'adjudicate') {
+        return formatCandidateAdjudicationResponseInstructions(libraries);
     } else if (mode === 'verify' && verificationContract?.valid === true) {
         lines.push(`CANDIDATE-BOUND VERIFICATION MODE: The server selected "${verificationContract.candidate.libraryName}" at ${signalContext?.confidence ?? 'unknown'}% confidence.`);
         lines.push('');

@@ -77,17 +77,7 @@ export const classificationResponseSchema = {
  * closed list. It has no confirmation form because it cannot authorize a
  * route or verify a server-selected singleton.
  */
-export const candidateAdjudicationResponseSchema = {
-    ...classificationResponseSchema,
-    properties: {
-        ...classificationResponseSchema.properties,
-        decision: {
-            type: 'string',
-            enum: ['CONFIDENT', 'CLARIFY'],
-            description: 'An advisory proposal for a bounded candidate, or a request for clarification.'
-        },
-    },
-};
+export { candidateAdjudicationResponseSchema } from './candidateAdjudicationResponseContract.mjs';
 
 /**
  * Strict contract for a server-selected, candidate-bound verification. The

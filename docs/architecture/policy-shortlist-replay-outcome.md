@@ -66,6 +66,11 @@ separate from model-response validation; no database contents were removed.
 
 ## Findings and next high-value item
 
+The response-contract follow-up below is now implemented; see the separate
+[aligned-contract design](adjudication-response-contract-design.md) and
+[measured outcome](adjudication-response-contract-outcome.md). This document
+retains the earlier measurements as the before-change baseline.
+
 **Align and simplify the AI adjudication response contract next.** Production
 `aiPromptBuilderFormatters.mjs` currently demands a pipe-delimited answer while
 `classificationAiService.mjs` supplies non-reasoning local models with a JSON

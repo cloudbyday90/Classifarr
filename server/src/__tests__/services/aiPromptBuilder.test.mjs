@@ -480,7 +480,10 @@ describe('AIPromptBuilder', () => {
 
             expect(result).toContain('BOUNDED CANDIDATE ADJUDICATION MODE');
             expect(result).toContain('server and operator retain all routing authority');
-            expect(result).toContain('CONFIDENT|<library_number>|<confidence_integer>|<brief_reason>');
+            expect(result).toContain('"enum":["PROPOSE","ABSTAIN"]');
+            expect(result).toContain('"maximum":2');
+            expect(result).not.toContain('CONFIDENT|');
+            expect(result).not.toContain('CRITICAL FORMAT RULES');
             expect(result).toContain('1. "Movies" (movie)');
             expect(result).toContain('2. "Family" (movie)');
         });

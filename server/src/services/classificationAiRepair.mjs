@@ -24,6 +24,7 @@ export function normalizeAiResponseLine(value) {
  * Builds the prompt for repairing malformed AI responses with strict instructions.
  */
 export function buildAiRepairPrompt({ response, libraries, signalContext, mode, validationErrors }) {
+  if (mode === 'adjudicate') throw new Error('adjudication_response_repair_not_supported');
   const allowedFormats = mode === 'verify'
     ? [
         'CONFIRM|<library_number>|<brief_verification_reason>',

@@ -1,7 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { canonicalStudyModel, resolveLocalStudyEmbeddingConfig } from './localStudyEmbeddingClient.mjs';
 import { readBoundedResponseBody } from '../utils/httpResponseBody.mjs';
-import { candidateAdjudicationResponseSchema } from './aiResponseSchema.mjs';
+import { buildCandidateAdjudicationResponseSchema } from './candidateAdjudicationResponseContract.mjs';
 import { isReasoningModel } from './aiResponseNormalizer.mjs';
 
 export const DESCRIPTION_BENCHMARK_OUTPUT_TOKENS = 64;
@@ -60,7 +60,7 @@ export function createLocalDescriptionBenchmarkClient(config, { fetchRequest = f
       const start = now();
       onGenerationCall();
       const result = await request('/api/generate', { model, prompt, stream: false, think: false, keep_alive: '5m',
-        format: responseContract === 'adjudication' ? (isReasoningModel(model) ? undefined : candidateAdjudicationResponseSchema) : { type: 'object', properties: { candidate: { type: 'integer', enum: Array.from({ length: count + 1 }, (_, index) => index) } },
+        format: responseContract === 'adjudication' ? (isReasoningModel(model) ? undefined : buildCandidateAdjudicationResponseSchema(count)) : { type: 'object', properties: { candidate: { type: 'integer', enum: Array.from({ length: count + 1 }, (_, index) => index) } },
           required: ['candidate'], additionalProperties: false },
         options: { temperature: 0, seed: 42, num_ctx: context, num_predict: outputTokens },
       }, signal);

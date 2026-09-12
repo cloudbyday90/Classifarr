@@ -10,6 +10,7 @@
 import { z } from 'zod';
 import { createLogger } from '../utils/logger.mjs';
 import { normalizeResponseForParsing } from './aiResponseNormalizer.mjs';
+import { parseCandidateAdjudicationResponse } from './candidateAdjudicationResponseContract.mjs';
 import {
     getDefaultLibrary as _getDefaultLibrary,
     createFallbackResult as _createFallbackResult,
@@ -53,13 +54,7 @@ export class AIResponseParser {
     parse(response, context, options = {}) {
         const { libraries, metadata } = context;
         const mode = options.mode || 'classify';
-        if (mode === 'adjudicate' && options.contentLogs !== false) {
-            // A model can echo private retrieval text in any response field.
-            // Use a per-call parser; never mutate the shared logger during a request.
-            const logger = Object.fromEntries(['debug', 'info', 'warn', 'error'].map(level =>
-                [level, message => this.logger[level](message)]));
-            return new AIResponseParser({ logger }).parse(response, context, { ...options, contentLogs: false });
-        }
+        if (mode === 'adjudicate') return parseCandidateAdjudicationResponse(response, context);
         const logInvalid = options.logInvalid !== false;
         const logMalformed = options.logMalformed !== false;
 

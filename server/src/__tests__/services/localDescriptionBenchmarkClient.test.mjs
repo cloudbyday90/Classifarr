@@ -83,3 +83,10 @@ test('adjudication replay follows production reasoning-model grammar bypass', as
     identity: { ...identity, model: 'qwen3:latest' }, responseContract: 'adjudication' });
   expect(requests.find(request => request.path === '/api/generate').body).not.toHaveProperty('format');
 });
+
+test('adjudication provider grammar is bounded to the actual two candidates', async () => {
+  await createLocalDescriptionBenchmarkClient(config).generate({ prompt: 'Private synopsis', count: 2, context: 32768,
+    identity, responseContract: 'adjudication' });
+  expect(requests.find(request => request.path === '/api/generate').body.format.properties.library_number.anyOf)
+    .toEqual([{ type: 'integer', minimum: 1, maximum: 2 }, { type: 'null' }]);
+});

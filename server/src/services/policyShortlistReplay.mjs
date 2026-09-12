@@ -3,7 +3,7 @@ import { validateDescriptionBenchmarkOptions } from './inventoryDescriptionBench
 import { preparePolicyShortlistReplayCase, replayFingerprint } from './policyShortlistReplayCase.mjs';
 import { loadPolicyShortlistReplayRuntime } from './policyShortlistReplayRuntime.mjs';
 import { AIResponseParser } from './aiResponseParser.mjs';
-import { normalizeAiProviderOutput } from './aiProviderOutputNormalization.mjs';
+import { CANDIDATE_ADJUDICATION_RESPONSE_VERSION } from './candidateAdjudicationResponseContract.mjs';
 import { buildAiProviderAuthorityProfile } from './aiProviderAuthority.mjs';
 import { finalizePolicyCandidateAdjudication } from './policyCandidateAdjudicationResult.mjs';
 import { assessPolicyCandidateConsensus } from './policyCandidateConsensus.mjs';
@@ -22,8 +22,7 @@ export function reducePolicyShortlistReplayResponse(entry, arm, generated, ident
   if (generated.outputLimitReached || generated.contextLimitSuspected) return { ...usage,
     status: generated.outputLimitReached ? 'output_limited' : 'context_limit_suspected' };
   const { contract, evidence } = entry.arms[arm];
-  const normalized = normalizeAiProviderOutput(generated.response);
-  const parsed = parser.parse(normalized.normalizedOutput, {
+  const parsed = parser.parse(generated.response, {
     libraries: contract.candidates.map(candidate => candidate.library), metadata: entry.metadata, signalContext: entry.signalContext,
   }, { mode: 'adjudicate', contentLogs: false, logInvalid: false, logMalformed: false });
   const aiMatch = { ...parsed, ai_authority: buildAiProviderAuthorityProfile({
@@ -123,7 +122,8 @@ export async function runPolicyShortlistReplay(settings, { signal, onProgress = 
         lostConsensusEligibility: validPairs.filter(pair => pair.baseline.consensusEligible && !pair.protected.consensusEligible).length },
       arms: Object.entries(actual).map(([id, results]) => ({ id, ...summarize(results) })),
       effectiveOutcomes: ['baseline', 'protected'].map(id => ({ id, ...summarize(pairs.flatMap(pair => pair[id] ? [pair[id]] : [])) })),
-      generation: identity ? { ...identity, context: options.context, temperature: 0, seed: 42, thinking: false,
+      generation: identity ? { ...identity, responseContractVersion: CANDIDATE_ADJUDICATION_RESPONSE_VERSION,
+        context: options.context, temperature: 0, seed: 42, thinking: false,
         structuredOutput: !isReasoningModel(identity.model), outputLimit: ADJUDICATION_REPLAY_OUTPUT_TOKENS } : null,
       independentLabels: 0, accuracy: null, inputTruncation: 'unknown', freshPolicyEvaluation: false,
       liveRoutingChanged: false, routingReceiptsCreated: 0, userQuestionsCreated: 0, learningRecordsCreated: 0 };

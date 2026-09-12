@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Align bounded AI comparison prompts, provider schemas and parsing around a
+  minimal proposal-or-abstention JSON response. Remove generated confidence and
+  clarification fields and the second-model repair step from this mode, while
+  preserving policy thresholds, candidate boundaries and routing safeguards.
 - Add a read-only comparison of metadata-only and description-preserving
   shortlists using production AI prompts, parsing and routing-eligibility checks.
   Reuse identical comparisons, report actual inference cost and review blockers,

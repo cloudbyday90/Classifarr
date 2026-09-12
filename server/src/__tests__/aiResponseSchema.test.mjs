@@ -88,11 +88,11 @@ describe('AI Response Schema Validation (OpenAI Strict Mode & Ollama Grammar Com
         expect(classificationResponseSchema.allOf).toBeUndefined();
     });
 
-    it('restricts bounded adjudication to proposal or clarification decisions', () => {
+    it('restricts bounded adjudication to a proposal or abstention without generated scores or questions', () => {
         expect(candidateAdjudicationResponseSchema.additionalProperties).toBe(false);
         expect(candidateAdjudicationResponseSchema.required)
-            .toEqual(classificationResponseSchema.required);
+            .toEqual(['decision', 'library_number']);
         expect(candidateAdjudicationResponseSchema.properties.decision.enum)
-            .toEqual(['CONFIDENT', 'CLARIFY']);
+            .toEqual(['PROPOSE', 'ABSTAIN']);
     });
 });

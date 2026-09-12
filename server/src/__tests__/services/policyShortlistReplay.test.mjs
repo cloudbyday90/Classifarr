@@ -19,7 +19,7 @@ function fixture() {
     items: [1, 2, 3].map(index => ({ description: `Private evidence ${id}:${index}`, similarity: id === 5 ? .9 : .6, sharedAcrossCandidates: false })) })) };
   const client = { inspect: jest.fn(async () => ({ model: 'test:latest', digest: 'c'.repeat(64), contextLength: 32768 })),
     generate: jest.fn(async ({ prompt, onGenerationCall }) => { onGenerationCall(); return {
-      response: `CONFIDENT|${prompt.includes('Private library 5') ? 3 : 1}|95|Private reason`, latencyMs: 3, promptTokens: 100 }; }) };
+      response: JSON.stringify({ decision: 'PROPOSE', library_number: prompt.includes('Private library 5') ? 3 : 1 }), latencyMs: 3, promptTokens: 100 }; }) };
   const runtime = { repository: { read: jest.fn(async () => structuredClone(source)) },
     retrieve: jest.fn(async () => evidence), readProfile: jest.fn(async () => null), retrieveCurrent: jest.fn(async () => null),
     createClient: jest.fn(() => client), close: jest.fn() };
@@ -67,7 +67,7 @@ test.each(['invalid', 'limited', 'failed', 'cancelled'])('rejects %s outputs rat
     onGenerationCall();
     if (kind === 'failed') throw new Error('PRIVATE provider secret');
     if (kind === 'cancelled') controller.abort();
-    return { response: kind === 'invalid' ? 'CONFIDENT|99|100|PRIVATE' : 'CONFIDENT|1|99|PRIVATE', outputLimitReached: kind === 'limited' };
+    return { response: JSON.stringify({ decision: 'PROPOSE', library_number: kind === 'invalid' ? 99 : 1 }), outputLimitReached: kind === 'limited' };
   });
   const report = await runPolicyShortlistReplay(settings, { loadRuntime: async () => runtime, signal: controller.signal });
   expect(report.status).toBe(kind === 'cancelled' ? 'interrupted' : 'completed_with_errors');
@@ -91,12 +91,20 @@ test('shared candidate drift, source drift and cancellation are not accepted as 
 
 test('threshold-qualified replay reports potential consensus but cannot mint live routing authority', () => {
   const input = consensusFixture(), entry = { ...input, arms: { baseline: { contract: input.contract, evidence: input.evidence } } };
-  const result = reducePolicyShortlistReplayResponse(entry, 'baseline', { response: 'CONFIDENT|2|95|Private' }, { model: 'test:latest' });
+  const result = reducePolicyShortlistReplayResponse(entry, 'baseline', { response: '{"decision":"PROPOSE","library_number":2}' }, { model: 'test:latest' });
   expect(result).toMatchObject({ status: 'proposed', destinationId: 2, consensusEligible: true, automaticRouteAllowed: false });
   expect(result).not.toHaveProperty('library_consensus_auto');
 });
 
-test('limited responses retain usage and rejected JSON exposes only schema-owned field names', () => {
+test('replay accepts abstention but rejects JSON wrapped in model prose', () => {
+  const input = consensusFixture(), entry = { ...input, arms: { baseline: { contract: input.contract, evidence: input.evidence } } };
+  expect(reducePolicyShortlistReplayResponse(entry, 'baseline', { response: '{"decision":"ABSTAIN","library_number":null}' }, { model: 'test:latest' }))
+    .toMatchObject({ status: 'abstained', destinationId: null, consensusEligible: false, automaticRouteAllowed: false });
+  expect(reducePolicyShortlistReplayResponse(entry, 'baseline', { response: 'PRIVATE prose {"decision":"PROPOSE","library_number":2}' }, { model: 'test:latest' }))
+    .toMatchObject({ status: 'response_rejected', destinationId: null, consensusEligible: false, automaticRouteAllowed: false });
+});
+
+test('limited responses retain usage and rejected JSON never exposes model text', () => {
   const input = consensusFixture(), entry = { ...input, arms: { baseline: { contract: input.contract, evidence: input.evidence } } };
   const usage = { latencyMs: 123, promptTokens: 2000, outputTokens: 256 };
   for (const [flag, status] of [['outputLimitReached', 'output_limited'], ['contextLimitSuspected', 'context_limit_suspected']]) {
@@ -104,9 +112,9 @@ test('limited responses retain usage and rejected JSON exposes only schema-owned
       .toEqual({ status, ...usage });
   }
   const result = reducePolicyShortlistReplayResponse(entry, 'baseline', { ...usage, response: JSON.stringify({
-    decision: 'CONFIDENT', library_number: 2, confidence: 95, reason: 'Private reason', question: '',
+    decision: 'PROPOSE', library_number: 2, reason: 'Private reason',
   }) }, { model: 'test:latest' });
-  expect(result).toMatchObject({ status: 'response_rejected', validationFields: ['question'], ...usage });
+  expect(result).toMatchObject({ status: 'response_rejected', validationFields: [], ...usage });
   expect(JSON.stringify(result)).not.toMatch(/Private|validation_errors/);
 });
 

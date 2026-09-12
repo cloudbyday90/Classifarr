@@ -16,6 +16,7 @@ export function getParseFailureReason(parseResult) {
 }
 
 export function isRepairEligibleParseResult(parseResult, mode) {
+  if (mode === 'adjudicate') return false;
   if (!parseResult || typeof parseResult !== 'object') {
     return false;
   }
@@ -24,7 +25,7 @@ export function isRepairEligibleParseResult(parseResult, mode) {
     return true;
   }
 
-  if (!['classify', 'adjudicate'].includes(mode) || parseResult.format !== 'contract_violation') {
+  if (mode !== 'classify' || parseResult.format !== 'contract_violation') {
     return false;
   }
 

@@ -3,9 +3,9 @@ import * as db from '../config/database.mjs';
 import { ollamaService } from './ollama.mjs';
 import {
   candidateBoundVerificationResponseSchema,
-  candidateAdjudicationResponseSchema,
   classificationResponseSchema,
 } from './aiResponseSchema.mjs';
+import { buildCandidateAdjudicationResponseSchema } from './candidateAdjudicationResponseContract.mjs';
 import { aiRouterService as aiRouter } from './aiRouter.mjs';
 import { providerLock } from './providerLock.mjs';
 import { aiPromptBuilder } from './aiPromptBuilder.mjs';
@@ -159,6 +159,7 @@ async function aiClassifyImpl(metadata, libraries, signalContext = null, options
   // generic proposal path for backwards-compatible direct callers; signal
   // context alone must never escalate a request into verification.
   const mode = options.mode || 'classify';
+  const adjudicationSchema = mode === 'adjudicate' ? buildCandidateAdjudicationResponseSchema(libraries?.length ?? 0) : null;
   const verificationContract = mode === 'verify'
     ? buildCandidateBoundVerificationContract({
         libraries,
@@ -337,7 +338,7 @@ Respond with ONLY one of the formats above.`;
               format: reasoningModel ? undefined : (mode === 'verify'
                 ? candidateBoundVerificationResponseSchema
                 : (mode === 'adjudicate'
-                  ? candidateAdjudicationResponseSchema
+                  ? adjudicationSchema
                   : classificationResponseSchema)),
                 expectedModelDigest: mode === 'verify'
                   ? provider.config?.verificationModelDigest || undefined
@@ -364,7 +365,7 @@ Respond with ONLY one of the formats above.`;
               format: reasoningModel ? undefined : (mode === 'verify'
                 ? candidateBoundVerificationResponseSchema
                 : (mode === 'adjudicate'
-                  ? candidateAdjudicationResponseSchema
+                  ? adjudicationSchema
                   : classificationResponseSchema))
             });
           }
@@ -420,7 +421,7 @@ Respond with ONLY one of the formats above.`;
 
   const rawProviderResponse = response;
   const normalizedProviderOutput = normalizeAiProviderOutput(rawProviderResponse);
-  response = normalizedProviderOutput.normalizedOutput;
+  response = mode === 'adjudicate' ? rawProviderResponse : normalizedProviderOutput.normalizedOutput;
   const sourceThinkingTraceDetected = normalizedProviderOutput.thinkingTraceDetected;
   thinkingTraceDetected = sourceThinkingTraceDetected;
   const safeProviderDiagnosticOutput = sanitizeAiProviderOutputForDiagnostics(rawProviderResponse);
@@ -442,9 +443,9 @@ Respond with ONLY one of the formats above.`;
   const responseArtifact = firstFailureReason && mode !== 'adjudicate'
     ? buildAiResponseDiagnosticArtifact(safeProviderDiagnosticOutput)
     : null;
-  // A strict verification response cannot be rewritten by another model. A
+  // Strict verification and adjudication cannot be rewritten by another model. A
   // malformed bound response is an abstention, not a repaired confirmation.
-  const shouldAttemptRepair = mode !== 'verify'
+  const shouldAttemptRepair = mode === 'classify'
     && aiResponseRepairEnabled
     && _isRepairEligibleParseResult(firstParseResult, mode);
 
