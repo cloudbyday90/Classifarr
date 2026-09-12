@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add bounded local investigation of classification disagreements, with matched
+  agreeing controls, anonymous-library comparisons and contrastive description
+  examples. Keep findings separate from verified labels and live routing, and
+  require no new user declarations or settings panels.
 - Add library-aware grouped evaluation folds and sequential cohort exclusions
   for 300 additional local benchmark items. Preserve small-library training
   coverage, isolate held-out description copies, and report per-library results

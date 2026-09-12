@@ -171,6 +171,10 @@ libraries organically, with no new declaration forms or mandatory user prompts.
 There are zero independent labels in this experiment, so accuracy and an
 automatic-routing threshold improvement remain unproven.
 
+Follow-up: the [controlled disagreement investigation](contrastive-library-investigation-outcome.md)
+now measures name sensitivity and contrastive examples against matched controls,
+using this same 300-title cohort and a freshly regenerated baseline.
+
 ## Pull requests
 
 GitHub MCP search returned no open PRs for `cloudbyday90/Classifarr` on

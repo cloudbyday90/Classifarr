@@ -19,11 +19,12 @@ export function selectDescriptionBenchmarkExamples(candidates, budget) {
   return selected;
 }
 
-export function buildDescriptionBenchmarkPrompt(entry, texts, budget) {
+export function buildDescriptionBenchmarkPrompt(entry, texts, budget, { anonymousLibraries = false } = {}) {
   const selected = selectDescriptionBenchmarkExamples(entry.candidates, budget);
   const packet = {
     query: { mediaType: entry.mediaType, overview: clean(entry.overview, 1000) },
-    libraries: entry.candidates.map((library, index) => ({ candidate: index + 1, name: clean(library.name, 120) })),
+    libraries: entry.candidates.map((library, index) => ({ candidate: index + 1,
+      name: anonymousLibraries ? `Library ${index + 1}` : clean(library.name, 120) })),
     examples: selected.map(item => ({ candidate: item.candidate, overview: clean(texts.get(item.hash), 600),
       shared: entry.candidates.filter(candidate => item.libraryIds?.has(candidate.id) ?? candidate.items.some(other => other.hash === item.hash)).length > 1 })),
   };

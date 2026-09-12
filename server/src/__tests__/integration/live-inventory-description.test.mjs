@@ -9,6 +9,7 @@ import { prepareDescriptionBenchmark } from '../../services/inventoryDescription
 import { createPolicyCandidateShortlistService } from '../../services/policyCandidateShortlistService.mjs';
 import { createPolicyInventoryEvidenceService } from '../../services/policyInventoryEvidenceService.mjs';
 import { projectRankedPolicyCandidates } from '../../services/policyCandidateRankingProjection.mjs';
+import { selectContrastiveLibraryExamples } from '../../services/inventoryContrastiveExamples.mjs';
 
 let client;
 let repository;
@@ -166,12 +167,15 @@ test('benchmark snapshots real inventory and cache read-only, holds out 100 titl
   expect(prepared.cases).toHaveLength(100);
   expect(prepared.cases.every(entry => entry.candidates.reduce((sum, candidate) => sum + candidate.eligible, 0) === 20)).toBe(true);
   const grouped = prepareDescriptionBenchmark(snapshot, snapshot.vectors, 3,
-    { seed: 'benchmark-test-seed-2026', size: 100, folds: 5 }, { learnedProfiles: true });
+    { seed: 'benchmark-test-seed-2026', size: 100, folds: 5 }, { learnedProfiles: true, includeContrastiveVectors: true });
   expect(grouped.cases).toHaveLength(100);
   expect(grouped.evaluation.foldSizes).toEqual([20, 20, 20, 20, 20]);
   expect(grouped.evaluation.libraryCoverage.slice(0, 2).every(row => row.minimumTrainingDescriptions === 50)).toBe(true);
   expect(grouped.cases.every(entry => entry.candidates.reduce((sum, candidate) => sum + candidate.eligible, 0) === 100)).toBe(true);
   expect(grouped.cases.every(entry => entry.candidates.every(candidate => candidate.items.every(item => item.hash !== hash(entry.overview))))).toBe(true);
+  const contrastive = selectContrastiveLibraryExamples(grouped.cases[0], grouped.vectors);
+  expect(contrastive.status).toBe('available');
+  expect(contrastive.candidates.every(candidate => candidate.items.every(item => !grouped.cases[0].heldDescriptionHashes.has(item.hash)))).toBe(true);
   expect((await client.query('SELECT count(*)::integer AS count FROM inventory_description_vector_cache')).rows[0].count).toBe(before);
   await expect(benchmark.read({ ...identity, digest: 'b'.repeat(64) })).rejects.toThrow('cache_incomplete');
   await client.query("UPDATE inventory_description_vector_cache SET created_at=now()-interval '31 days'");

@@ -5,8 +5,22 @@ import { prepareDescriptionBenchmark } from '../../services/inventoryDescription
 import { selectAdditionalDescriptionBenchmarkSample, selectDescriptionBenchmarkSample, validateDescriptionBenchmarkOptions } from '../../services/inventoryDescriptionBenchmarkSelection.mjs';
 import { planDescriptionBenchmarkFolds } from '../../services/inventoryDescriptionBenchmarkFolds.mjs';
 import { runDescriptionBenchmark } from '../../services/inventoryDescriptionBenchmarkRunner.mjs';
+import { buildDescriptionBenchmarkPrompt } from '../../services/inventoryDescriptionBenchmarkPrompt.mjs';
 
 const seed = 'benchmark-test-seed-2026';
+
+test('retaining private contrastive vectors does not change snapshot provenance or baseline prompts', () => {
+  const snapshot = fixture(), options = { seed, size: 100, folds: 5 };
+  const baseline = prepareDescriptionBenchmark(snapshot, snapshot.vectors, 2, options, { learnedProfiles: true });
+  const contrastive = prepareDescriptionBenchmark(snapshot, snapshot.vectors, 2, options,
+    { learnedProfiles: true, includeContrastiveVectors: true });
+  expect(contrastive.fingerprint).toBe(baseline.fingerprint);
+  expect(contrastive.sampleFingerprint).toBe(baseline.sampleFingerprint);
+  expect(baseline.vectors).toBeUndefined();
+  expect(contrastive.vectors.size).toBe(snapshot.vectors.size);
+  expect(contrastive.cases.every((entry, index) => buildDescriptionBenchmarkPrompt(entry, contrastive.texts, 9).prompt ===
+    buildDescriptionBenchmarkPrompt(baseline.cases[index], baseline.texts, 9).prompt)).toBe(true);
+});
 function fixture(sizes = [29, 300, 350, 45, 67, 350]) {
   const libraries = sizes.map((_, index) => ({ id: index + 1, name: `Private library ${index}`, media_type: index < 3 ? 'movie' : 'tv' }));
   const rows = libraries.flatMap((library, index) => Array.from({ length: sizes[index] }, (_, item) => ({

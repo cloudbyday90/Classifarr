@@ -5,6 +5,19 @@ import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescr
 
 const seed = 'benchmark-test-seed-2026';
 
+test('contrastive mode uses grouped snapshots without calling the model during preflight', async () => {
+  const instance = runtime();
+  const report = await runInventoryDescriptionBenchmark({ argv: ['--seed', seed, '--size', '10', '--folds', '5', '--contrastive-investigation'], loadRuntime: async () => instance });
+  expect(report).toMatchObject({ status: 'preflight', protocol: 'contrastive_library_investigation_v1', calls: 0 });
+  expect(instance.createClient).not.toHaveBeenCalled();
+  const loadRuntime = jest.fn();
+  for (const argv of [['--seed', seed, '--contrastive-investigation'],
+    ['--seed', seed, '--folds', '5', '--contrastive-investigation', '--investigate']]) {
+    await expect(runInventoryDescriptionBenchmark({ argv, loadRuntime })).rejects.toThrow('requires_folds_and_exclusive_mode');
+  }
+  expect(loadRuntime).not.toHaveBeenCalled();
+});
+
 test('CLI grouped mode excludes successive cohorts only from test selection and keeps training coverage', async () => {
   const instance = runtime();
   const report = await runInventoryDescriptionBenchmark({ argv: ['--seed', seed, '--size', '5', '--exclude-prior-sizes', '5,5', '--folds', '5', '--learned-profiles'],
