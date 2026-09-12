@@ -10,6 +10,13 @@ import {
 } from '../../services/ragEvidenceQualityGate.mjs';
 
 describe('ragEvidenceQualityGate', () => {
+  test.each(['completed', 'routed', ''])('does not promote automatic consensus into reviewed evidence (%s)', status => {
+    const result = assessRagEvidenceMatch({ libraryId: 5, libraryName: 'Library 5',
+      method: 'library_consensus_auto', status, similarity: .9 });
+    expect(result.trusted_outcome).toBe(false);
+    expect(result.quality_multiplier).toBe(.4);
+    expect(result.reasons).toContain('untrusted_outcome');
+  });
   test('keeps trusted final outcomes at full quality', () => {
     const result = assessRagEvidenceMatch({
       libraryId: 5,

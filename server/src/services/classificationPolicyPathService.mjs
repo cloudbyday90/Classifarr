@@ -55,6 +55,7 @@ import {
 } from './policyCandidateContrastiveEvidence.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { createPolicyCandidateShortlistService } from './policyCandidateShortlistService.mjs';
+import { createPolicyCandidateConsensusService } from './policyCandidateConsensusService.mjs';
 
 const defaultLogger = createLogger('classificationPolicyPathService');
 
@@ -77,6 +78,9 @@ export class ClassificationPolicyPathService {
 		this.resolveCandidateAdjudicationFallback =
 			deps.resolveCandidateAdjudicationFallback || resolveCandidateAdjudicationFallback;
 		this.policyCandidateAdjudicationEvidenceService = deps.policyCandidateAdjudicationEvidenceService || policyCandidateAdjudicationEvidenceService;
+		this.policyCandidateConsensusService = deps.policyCandidateConsensusService || createPolicyCandidateConsensusService({
+			readEvidence: options => this.policyCandidateAdjudicationEvidenceService.build(options),
+		});
 		this.finalizePolicyCandidateAdjudication = deps.finalizePolicyCandidateAdjudication || finalizePolicyCandidateAdjudication;
 		this.buildPolicyCandidateContrastiveRetrievalContract =
 			deps.buildPolicyCandidateContrastiveRetrievalContract || buildPolicyCandidateContrastiveRetrievalContract;
@@ -89,6 +93,11 @@ export class ClassificationPolicyPathService {
 
 	async aiClassify(metadata, libraries, signalContext = null, options = {}) {
 		return this.classificationAiService.aiClassify(metadata, libraries, signalContext, options);
+	}
+
+	async finalizeCandidateOutcome(options) {
+		const result = this.finalizePolicyCandidateAdjudication(options);
+		return this.policyCandidateConsensusService.resolve({ ...options, result });
 	}
 
 	async execute({ metadata, libraries, taskId, relatedEvidence }) {
@@ -332,6 +341,7 @@ export class ClassificationPolicyPathService {
 					? { candidateAdjudicationEvidence }
 					: {}),
 			};
+			const consensusContext = await this.policyCandidateConsensusService.prepare(policyResult);
 			const providerMatch = await this.aiClassify(
 				metadata,
 				aiLibraries,
@@ -345,9 +355,10 @@ export class ClassificationPolicyPathService {
 
 			if (aiModeDecision.mode === 'adjudicate') {
 				const result = {
-					...this.finalizePolicyCandidateAdjudication({
+					...await this.finalizeCandidateOutcome({
 						contract: candidateAdjudication,
 						aiMatch: providerMatch,
+						metadata, evidence: candidateAdjudicationEvidence, ragContext, relatedEvidence, consensusContext,
 					policyResult,
 						libraries,
 						semanticRetrievalStatusId: currentLibraryCandidateSemanticRetrievalStatusId,
@@ -403,9 +414,10 @@ export class ClassificationPolicyPathService {
 							},
 						);
 						const result = {
-							...this.finalizePolicyCandidateAdjudication({
+							...await this.finalizeCandidateOutcome({
 								contract: candidateAdjudication,
 								aiMatch: fallbackMatch,
+								metadata, evidence: fallbackEvidence, ragContext, relatedEvidence, consensusContext,
 								policyResult,
 								libraries,
 								semanticRetrievalStatusId: currentLibraryCandidateSemanticRetrievalStatusId,

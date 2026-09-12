@@ -14,6 +14,7 @@ const HISTORY_SCORING_SQL = `
   WHERE tmdb_id = $1::integer
     AND media_type = $2::text
     AND status = 'completed'
+    AND method IS DISTINCT FROM 'library_consensus_auto'
     AND library_id IS NOT NULL
   GROUP BY library_id
   ORDER BY match_count DESC, confidence DESC, library_id ASC

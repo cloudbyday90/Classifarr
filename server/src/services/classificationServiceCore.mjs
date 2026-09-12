@@ -20,6 +20,8 @@ import {
   isPolicyDecisionReviewRequired,
 } from '../utils/policyDecisionAuthority.mjs';
 import { isProviderRecoveryRoutingBlocked } from './classificationProviderRecovery.mjs';
+import { CONSENSUS_ROUTE_METHOD, hasCandidateConsensusReceipt } from './policyCandidateConsensusReceipt.mjs';
+import { restoreConsensusReview } from './classificationConsensusReviewRecovery.mjs';
 import {
   validatePolicyRuntimeQuestionReduction,
 } from './policyRuntimeQuestionReduction.mjs';
@@ -139,7 +141,7 @@ export class ClassificationService {
     return this.normalizePolicyDecisionThresholds(row).autoClassifyThreshold;
   }
 
-  buildAutoRouteDecision({ result = {}, requireAllConfirmations = false, policyAutoThreshold = null } = {}) {
+  buildAutoRouteDecision({ result = {}, metadata, requireAllConfirmations = false, policyAutoThreshold = null } = {}) {
     if (!result.library) {
       return { shouldRoute: false, reason: 'no_library' };
     }
@@ -158,6 +160,12 @@ export class ClassificationService {
 
     if (isAiAuthorityRoutingBlocked(result)) {
       return { shouldRoute: false, reason: 'ai_authority_advisory' };
+    }
+
+    if (result.method === CONSENSUS_ROUTE_METHOD) {
+      return metadata && hasCandidateConsensusReceipt(result, { metadata })
+        ? { shouldRoute: true, reason: 'library_consensus' }
+        : { shouldRoute: false, reason: 'consensus_provenance_required' };
     }
 
     if (isPolicyDecisionReviewRequired(result.policyResult)) {
@@ -183,11 +191,15 @@ export class ClassificationService {
     const policyAutoThreshold = this.resolvePolicyAutoThreshold(result);
     const decision = this.buildAutoRouteDecision({
       result,
+      metadata,
       requireAllConfirmations,
       policyAutoThreshold,
     });
 
     if (!decision.shouldRoute) {
+      await restoreConsensusReview({ classificationId, metadata, result }, {
+        db: this.db, ensureDecisionQuestion: options => this.ensureDecisionQuestion(options),
+      });
       this.logger.debug('Auto-route skipped for classification result', {
         title: metadata?.title || null,
         libraryId: result?.library?.id || result?.library?.library_id || null,

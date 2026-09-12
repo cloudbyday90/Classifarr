@@ -11,6 +11,9 @@ import { buildPolicyHistoryScoringQuery } from '../../services/policyHistoryScor
 const movie = { tmdb_id: 42, media_type: 'movie' };
 
 describe('policy history scoring', () => {
+  test('excludes unreviewed consensus placements before aggregation', () => {
+    expect(buildPolicyHistoryScoringQuery(10, movie).text).toContain("method IS DISTINCT FROM 'library_consensus_auto'");
+  });
   test('preserves the source-scoring named export', () => {
     expect(facadeScoreHistory).toBe(scoreHistory);
   });

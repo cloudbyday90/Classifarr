@@ -138,7 +138,12 @@ export function assessRagEvidenceMatch(match = {}, { profileDiagnostics = null, 
     reasons.push('missing_library_identity');
   }
 
-  if (status) {
+  // An automatic model-assisted placement is an observation, not a reviewed
+  // label. Do not let its completed/routed status create a self-confirming vote.
+  if (method === 'library_consensus_auto') {
+    qualityFactors.push(multipliers.untrusted_outcome);
+    reasons.push('untrusted_outcome');
+  } else if (status) {
     if (!TRUSTED_OUTCOME_STATUSES.has(status)) {
       qualityFactors.push(multipliers.untrusted_outcome);
       reasons.push('untrusted_outcome');

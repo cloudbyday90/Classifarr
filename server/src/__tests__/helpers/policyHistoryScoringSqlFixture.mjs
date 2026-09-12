@@ -33,6 +33,10 @@ export async function verifyPolicyHistoryScoringSql(client) {
         CROSS JOIN generate_series(1,4);
       INSERT INTO classification_history
         SELECT 46, 'movie', library, 60, 'completed' FROM generate_series(16,11,-1) library;
+      ALTER TABLE classification_history ADD COLUMN method text;
+      INSERT INTO classification_history VALUES
+        (42, 'movie', 10, 99, 'completed', 'library_consensus_auto'),
+        (47, 'movie', 10, 99, 'completed', 'library_consensus_auto');
     `);
 
     const scorer = createPolicyHistoryScorer({ query: (text, values) => client.query(text, values) });
@@ -44,6 +48,7 @@ export async function verifyPolicyHistoryScoringSql(client) {
     assert.equal(tvScore, 95);
     assert.equal(crossTypeDestinationScore, 0);
     assert.equal(beforeLimitScore, 70);
+    assert.equal(await scorer(10, { tmdb_id: 47, media_type: 'movie' }), 0);
     assert.equal(await scorer(10, { tmdb_id: 45, media_type: 'movie' }), 0);
     assert.equal(await scorer(10, { tmdb_id: 999, media_type: 'movie' }), 0);
     assert.equal(await scorer(10, { tmdb_id: 42 }), 0);

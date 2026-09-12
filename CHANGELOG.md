@@ -11,6 +11,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Allow fresh local AI and learned-library evidence to resolve threshold-qualified
+  policy ambiguity automatically. Preserve manual-review vetoes and configured
+  thresholds, revalidate before granting routing authority, restore expired
+  decisions to review, and prevent automatic placements from becoming trusted
+  history labels. No new settings or release.
+
 - Use fresh learned library fit before the live three-candidate AI shortlist
   cutoff. Preserve hard eligibility, the policy leader, scores and routing rules;
   rerank alternatives automatically with safe fallback and no new UI controls.

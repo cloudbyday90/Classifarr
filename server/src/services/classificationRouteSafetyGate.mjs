@@ -10,6 +10,7 @@ import {
 } from '../utils/policyDecisionAuthority.mjs';
 import { normalizePolicyDecisionThresholds } from '../utils/policyThresholds.mjs';
 import { requiresProviderRecoveryReview } from './classificationProviderRecovery.mjs';
+import { CONSENSUS_ROUTE_METHOD, hasCandidateConsensusReceipt } from './policyCandidateConsensusReceipt.mjs';
 
 export const CLASSIFICATION_ROUTE_SAFETY_VERSION = 'classification.route_safety.v1';
 
@@ -26,6 +27,7 @@ export const CLASSIFICATION_ROUTE_SAFETY_GATE_IDS = Object.freeze({
   FALLBACK_RESULT_REVIEW_REQUIRED: 'fallback_result_review_required',
   LOW_CONFIDENCE_REVIEW_REQUIRED: 'low_confidence_review_required',
   CLARIFICATION_REQUESTED: 'clarification_requested',
+  CONSENSUS_PROVENANCE_REQUIRED: 'consensus_provenance_required',
 });
 
 const MAX_BLOCKING_GATES = 4;
@@ -143,6 +145,11 @@ export function evaluateClassificationRouteSafety({
   requireAllConfirmations = false,
 } = {}) {
   const normalizedResult = asObject(result);
+  if (hasCandidateConsensusReceipt(normalizedResult) && !requireAllConfirmations &&
+      !normalizedResult.provider_recovery && !isAiAuthorityRoutingBlocked(normalizedResult)) {
+    return { version: CLASSIFICATION_ROUTE_SAFETY_VERSION, automatic_route_allowed: true,
+      primary_gate: null, blocking_gates: [] };
+  }
   const effectivePolicyResult = asObject(normalizedResult.policyResult || policyResult);
   const action = policyDecisionAction(effectivePolicyResult);
   const policyCandidate = getPolicyDecisionCandidate(effectivePolicyResult, normalizedResult.library);
@@ -158,6 +165,12 @@ export function evaluateClassificationRouteSafety({
     (typeof autoThreshold !== 'number' || routeScore === null || routeScore < autoThreshold),
   );
   const gates = [];
+
+  if (normalizedResult.method === CONSENSUS_ROUTE_METHOD && !hasCandidateConsensusReceipt(normalizedResult)) {
+    gates.push(buildGate(CLASSIFICATION_ROUTE_SAFETY_GATE_IDS.CONSENSUS_PROVENANCE_REQUIRED,
+      'Fresh comparison required', 'This comparison no longer has current automatic-routing evidence. Reclassify or choose a destination.',
+      'Fresh comparison required'));
+  }
 
   if (requiresProviderRecoveryReview(normalizedResult)) {
     gates.push(buildGate(

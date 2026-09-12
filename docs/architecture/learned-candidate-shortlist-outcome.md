@@ -1,5 +1,9 @@
 # Learned candidate shortlist outcome
 
+Follow-up: [evidence-aware routing outcome](evidence-aware-routing-outcome.md)
+records the next component, its limited admission coverage and the scoring work
+still needed for low-confidence cases.
+
 ## Delivered behavior
 
 The previous commit, `8e7c79e8`, added learned inventory fit inside live AI
