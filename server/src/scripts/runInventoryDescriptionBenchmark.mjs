@@ -9,6 +9,7 @@ import { createLocalDescriptionBenchmarkClient } from '../services/localDescript
 import { runDescriptionBenchmark } from '../services/inventoryDescriptionBenchmarkRunner.mjs';
 import { runContrastiveInventoryInvestigation } from '../services/inventoryContrastiveInvestigation.mjs';
 import { runContentFirstInventoryComparison } from '../services/inventoryContentFirstComparison.mjs';
+import { runPolicyShortlistReplay } from '../services/policyShortlistReplay.mjs';
 
 async function loadPrivateRuntime() {
   process.env.LOG_LEVEL = 'fatal';
@@ -26,12 +27,13 @@ async function loadPrivateRuntime() {
   } catch (error) { await db.pool.end(); throw error; }
 }
 
-export async function runInventoryDescriptionBenchmark({ argv = process.argv.slice(2), loadRuntime = loadPrivateRuntime, signal, onProgress, onPrivateCase } = {}) {
+export async function runInventoryDescriptionBenchmark({ argv = process.argv.slice(2), loadRuntime = loadPrivateRuntime, loadReplayRuntime, signal, onProgress, onPrivateCase } = {}) {
   const { values } = parseArgs({ args: argv, options: { seed: { type: 'string' }, size: { type: 'string' },
     'generate-cases': { type: 'string' }, context: { type: 'string' }, 'max-minutes': { type: 'string' },
     'exclude-prior-size': { type: 'string' }, 'exclude-prior-sizes': { type: 'string' }, folds: { type: 'string' },
     investigate: { type: 'boolean' }, 'contrastive-investigation': { type: 'boolean' }, 'content-first-comparison': { type: 'boolean' },
     'selective-recheck': { type: 'boolean' },
+    'policy-shortlist-replay': { type: 'boolean' },
     'preserve-description-candidate': { type: 'boolean' },
     'metadata-candidates': { type: 'boolean' }, 'learned-profiles': { type: 'boolean' } } });
   if (values['metadata-candidates'] && values['learned-profiles']) throw new Error('description_benchmark_selection_mode_conflict');
@@ -44,6 +46,13 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     ...(values.context === undefined ? {} : { context: Number(values.context) }),
     ...(values['max-minutes'] === undefined ? {} : { maxMinutes: Number(values['max-minutes']) }),
   });
+  if (values['policy-shortlist-replay']) {
+    if (values.investigate || values['contrastive-investigation'] || values['content-first-comparison'] || values['selective-recheck'] ||
+        values['preserve-description-candidate'] || values['metadata-candidates'] || values['learned-profiles']) {
+      throw new Error('policy_replay_requires_exclusive_mode');
+    }
+    return runPolicyShortlistReplay(options, { signal, onProgress, loadRuntime: loadReplayRuntime });
+  }
   if (values['contrastive-investigation'] && (!options.folds || values.investigate)) {
     throw new Error('contrastive_investigation_requires_folds_and_exclusive_mode');
   }

@@ -1,8 +1,11 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { canonicalStudyModel, resolveLocalStudyEmbeddingConfig } from './localStudyEmbeddingClient.mjs';
 import { readBoundedResponseBody } from '../utils/httpResponseBody.mjs';
+import { candidateAdjudicationResponseSchema } from './aiResponseSchema.mjs';
+import { isReasoningModel } from './aiResponseNormalizer.mjs';
 
 export const DESCRIPTION_BENCHMARK_OUTPUT_TOKENS = 64;
+export const ADJUDICATION_REPLAY_OUTPUT_TOKENS = 256;
 
 /** Local-only inference with no provider fallback, model pulls or persistence. */
 export function createLocalDescriptionBenchmarkClient(config, { fetchRequest = fetch, now = () => performance.now() } = {}) {
@@ -39,10 +42,12 @@ export function createLocalDescriptionBenchmarkClient(config, { fetchRequest = f
   }
   return {
     inspect,
-    async generate({ prompt, count, context, identity, signal }) {
+    async generate({ prompt, count, context, identity, signal, responseContract = 'candidate', onGenerationCall = () => {} }) {
+      if (!['candidate', 'adjudication'].includes(responseContract)) throw new Error('description_benchmark_response_contract_invalid');
+      const outputTokens = responseContract === 'adjudication' ? ADJUDICATION_REPLAY_OUTPUT_TOKENS : DESCRIPTION_BENCHMARK_OUTPUT_TOKENS;
       if (typeof prompt !== 'string' || !prompt.length || ![8192, 16384, 32768, 65536].includes(context) ||
           !Number.isInteger(count) || count < 2 || count > 3 || context > identity.contextLength ||
-          Buffer.byteLength(prompt, 'utf8') > (context - DESCRIPTION_BENCHMARK_OUTPUT_TOKENS) * 3) {
+          Buffer.byteLength(prompt, 'utf8') > (context - outputTokens) * 3) {
         throw new Error('description_benchmark_context_budget');
       }
       const check = async () => {
@@ -53,22 +58,23 @@ export function createLocalDescriptionBenchmarkClient(config, { fetchRequest = f
       };
       await check();
       const start = now();
+      onGenerationCall();
       const result = await request('/api/generate', { model, prompt, stream: false, think: false, keep_alive: '5m',
-        format: { type: 'object', properties: { candidate: { type: 'integer', enum: Array.from({ length: count + 1 }, (_, index) => index) } },
+        format: responseContract === 'adjudication' ? (isReasoningModel(model) ? undefined : candidateAdjudicationResponseSchema) : { type: 'object', properties: { candidate: { type: 'integer', enum: Array.from({ length: count + 1 }, (_, index) => index) } },
           required: ['candidate'], additionalProperties: false },
-        options: { temperature: 0, seed: 42, num_ctx: context, num_predict: DESCRIPTION_BENCHMARK_OUTPUT_TOKENS },
+        options: { temperature: 0, seed: 42, num_ctx: context, num_predict: outputTokens },
       }, signal);
       const latencyMs = Math.round(now() - start);
       await check();
       if (canonicalStudyModel(result?.model) !== model || result.remote_host || result.remote_model || result.done !== true ||
           typeof result.response !== 'string' || !['stop', 'length'].includes(result.done_reason) ||
           !Number.isSafeInteger(result.prompt_eval_count) || result.prompt_eval_count < 1 || result.prompt_eval_count > context ||
-          !Number.isSafeInteger(result.eval_count) || result.eval_count < 0 || result.eval_count > DESCRIPTION_BENCHMARK_OUTPUT_TOKENS) {
+          !Number.isSafeInteger(result.eval_count) || result.eval_count < 0 || result.eval_count > outputTokens) {
         throw new Error('description_benchmark_generation_invalid');
       }
       return { response: result.response, latencyMs, promptTokens: result.prompt_eval_count, outputTokens: result.eval_count,
         outputLimitReached: result.done_reason === 'length',
-        inputTruncation: 'unknown', contextLimitSuspected: result.prompt_eval_count >= context - DESCRIPTION_BENCHMARK_OUTPUT_TOKENS };
+        inputTruncation: 'unknown', contextLimitSuspected: result.prompt_eval_count >= context - outputTokens };
     },
   };
 }

@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a read-only comparison of metadata-only and description-preserving
+  shortlists using production AI prompts, parsing and routing-eligibility checks.
+  Reuse identical comparisons, report actual inference cost and review blockers,
+  and distinguish retained policy cases from independent benchmark samples.
 - Preserve the strongest usable library-description candidate when learned
   metadata would exclude it from AI comparison, while retaining the policy leader
   and three-candidate limit. Reuse same-snapshot retrieval and learned profiles,

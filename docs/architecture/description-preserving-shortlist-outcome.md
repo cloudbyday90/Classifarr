@@ -92,6 +92,12 @@ classification, rather than just another improved internal metric. Reuse one
 classification-scoped, identity/configuration-validated evidence snapshot where
 practical; do not introduce a stale global cache or another user-facing control.
 
+Follow-up implementation: the [production-contract replay outcome](policy-shortlist-replay-outcome.md)
+now records this comparison over retained policy cases. Only four distinct local
+identities were available, so it does not establish 300-item end-to-end accuracy.
+It exposed response-contract failures and identifies prompt/schema alignment as
+the next direct AI-reliability fix before wider fresh-policy evaluation.
+
 Final stack: policy eligibility → organic metadata learning + description retrieval
 → description-preserving shortlist → existing AI comparison → existing routing
 authorization. The prior selective anonymous recheck remains benchmark-only.
