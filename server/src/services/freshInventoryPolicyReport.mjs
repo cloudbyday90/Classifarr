@@ -1,4 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { summarizeLearnedEvidenceReviews } from './learnedEvidenceReviewReport.mjs';
 export const countFreshPolicyValues = values => Object.fromEntries([...new Set(values)].sort()
   .map(value => [value, values.filter(item => item === value).length]));
 const sum = values => values.reduce((total, value) => total + value, 0);
@@ -29,6 +30,7 @@ export function summarizeFreshPolicyCases(rows) {
     consensusEligible: finished.filter(row => row.generated.consensusEligible).length,
     consensusReasons: countFreshPolicyValues(finished.flatMap(row => row.generated.consensusReason ? [row.generated.consensusReason] : [])),
     routeSafetyAllowed: finished.filter(row => row.generated.automaticRouteAllowed).length,
+    learnedReview: summarizeLearnedEvidenceReviews(rows),
     blockingGates: countFreshPolicyValues(finished.flatMap(row => row.generated.blockingGates ?? [])),
     measuredCalls: measured.length, meanLatencyMs: mean(measured.map(row => row.generated.latencyMs)),
     totalPromptTokens: sum(measured.map(row => row.generated.promptTokens)),

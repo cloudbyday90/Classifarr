@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a paired, read-only learned-evidence review evaluation using full-pool
+  description neighbors, contrastive library metadata and the existing AI
+  proposal. Distinguish soft evidence reviews from hard policy conflicts and
+  report potential review reduction without changing live routing or scores.
 - Add a read-only fresh policy and AI evaluation across grouped movie/TV samples.
   Rebuild library observations and description evidence without held-out items,
   report placement agreement separately from accuracy, and preserve existing

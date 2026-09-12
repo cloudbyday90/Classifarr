@@ -38,5 +38,5 @@ export async function prepareFreshInventoryPolicyCase(entry, source, evidence, s
     missingMetadata: ['genres', 'keywords', 'certification', 'original_language'].filter(field => !metadata[field]?.length) };
   if (!mode.shouldInvoke || mode.mode !== 'adjudicate') return { ...common, status: 'mode_not_adjudication' };
   const replay = await preparePolicyShortlistReplayCase({ metadata, policyResult }, source, runtime, signal);
-  return { ...replay, ...common };
+  return { ...replay, ...common, reviewPolicies: source.policies };
 }

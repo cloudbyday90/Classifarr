@@ -2,7 +2,7 @@
 import { createHash } from 'node:crypto';
 import { buildPolicyCandidateAdjudicationPool } from './policyCandidateAdjudicationContract.mjs';
 import { assessInventoryDescriptionSeparation } from './inventoryDescriptionSeparation.mjs';
-import { isProviderRecoveryRoutingBlocked } from './classificationProviderRecovery.mjs';
+import { isLocalCandidateProposal } from './policyCandidateProposalAuthority.mjs';
 import { validatePolicyDecisionThresholds } from '../utils/policyThresholds.mjs';
 
 export function consensusPolicyFingerprint(policyResult) {
@@ -36,12 +36,7 @@ export function assessPolicyCandidateConsensus({ contract, policyResult, evidenc
       policyResult.ranked.some(candidate => thresholdQualified(candidate) && !ids.includes(candidate.library_id))) {
     return reject('policy_threshold_not_met');
   }
-  const authority = aiMatch?.ai_authority;
-  if (aiMatch.format !== 'confident' || aiMatch.needs_clarification || aiMatch.needs_retry ||
-      isProviderRecoveryRoutingBlocked(aiMatch) || authority?.version !== 'ai.provider_authority.v1' ||
-      authority.providerId !== 'ollama' || authority.effectiveMode !== 'proposal' || authority.isFallback !== false ||
-      authority.downgraded !== false || authority.sideEffects?.canRoute !== false ||
-      typeof authority.model !== 'string' || !authority.model.trim() || authority.model === 'unknown') {
+  if (!isLocalCandidateProposal(aiMatch)) {
     return reject('provider_proposal_unavailable');
   }
   if (evidence?.version !== contract.version || !Array.isArray(evidence.candidates) || evidence.candidates.length !== ids.length ||

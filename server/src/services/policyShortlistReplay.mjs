@@ -7,6 +7,7 @@ import { CANDIDATE_ADJUDICATION_RESPONSE_VERSION } from './candidateAdjudication
 import { buildAiProviderAuthorityProfile } from './aiProviderAuthority.mjs';
 import { finalizePolicyCandidateAdjudication } from './policyCandidateAdjudicationResult.mjs';
 import { assessPolicyCandidateConsensus } from './policyCandidateConsensus.mjs';
+import { assessLearnedEvidenceReview } from './learnedEvidenceReviewResolver.mjs';
 import { evaluateClassificationRouteSafety } from './classificationRouteSafetyGate.mjs';
 import { ADJUDICATION_REPLAY_OUTPUT_TOKENS } from './localDescriptionBenchmarkClient.mjs';
 import { isReasoningModel } from './aiResponseNormalizer.mjs';
@@ -30,6 +31,8 @@ export function reducePolicyShortlistReplayResponse(entry, arm, generated, ident
   const input = { contract, evidence, aiMatch, metadata: entry.metadata, policyResult: entry.policyResult, libraries: entry.libraries };
   const advisory = finalizePolicyCandidateAdjudication(input);
   const consensus = assessPolicyCandidateConsensus(input);
+  const learnedReview = entry.reviewPolicies ? assessLearnedEvidenceReview({ ...input,
+    reviewEvidence: entry.reviewEvidence, policies: entry.reviewPolicies }) : null;
   const safety = evaluateClassificationRouteSafety({ result: { ...advisory, policyResult: entry.policyResult } });
   // Only schema-owned field names leave the private parser; never its error text.
   const validationFields = ['decision', 'library_number', 'confidence', 'reason', 'problem_summary', 'why_uncertain', 'question', 'options']
@@ -37,6 +40,7 @@ export function reducePolicyShortlistReplayResponse(entry, arm, generated, ident
   return { status: advisory.candidate_adjudication.statusId,
     destinationId: advisory.candidate_adjudication.proposedDestination?.library_id ?? null,
     consensusEligible: consensus.eligible, consensusReason: consensus.reason,
+    ...(learnedReview ? { learnedReview } : {}),
     automaticRouteAllowed: safety.automatic_route_allowed,
     blockingGates: safety.blocking_gates.map(gate => gate.id),
     validationFields, ...usage };

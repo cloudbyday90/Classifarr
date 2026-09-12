@@ -13,7 +13,8 @@ async function admittedCase(sample, source, evidence, signal) {
     .filter(library => library.media_type === sample.mediaType).map(library => ({ library_id: library.id,
       score: 45, auto_classify_threshold: 85, prompt_threshold: 60 })) };
   const replay = await preparePolicyShortlistReplayCase({ metadata: runtime.metadata, policyResult }, source, runtime, signal);
-  return { ...replay, mode: 'adjudicate', modeReason: 'manual_candidate_adjudication_ready', policyResult, missingMetadata: [] };
+  return { ...replay, mode: 'adjudicate', modeReason: 'manual_candidate_adjudication_ready', policyResult,
+    reviewPolicies: source.policies, missingMetadata: [] };
 }
 
 test('fresh full-cohort preflight evaluates movies and TV without loading a generation client', async () => {
@@ -23,6 +24,7 @@ test('fresh full-cohort preflight evaluates movies and TV without loading a gene
   expect(report.media.every(row => row.policyEvaluated > 0)).toBe(true);
   expect(runtime.createClient).not.toHaveBeenCalled();
   expect(runtime.close).toHaveBeenCalledTimes(1);
+  expect(report.learnedReview).toMatchObject({ evaluated: 0, livePromotionAllowed: false });
   expect(JSON.stringify(report)).not.toMatch(/Private|tmdb|ollama_host|library_id|observedLibraryIds/);
 });
 
@@ -32,6 +34,7 @@ test('admitted generation uses one production contract per case, separates weak 
   expect(report).toMatchObject({ status: 'complete', calls: 12, proposals: 12, adjudicationReady: 12,
     routeSafetyAllowed: 0, routingReceiptsCreated: 0, learningRecordsCreated: 0, totalOutputTokens: 168, accuracy: null });
   expect(client.generate.mock.calls.every(([request]) => request.responseContract === 'adjudication')).toBe(true);
+  expect(report.learnedReview).toMatchObject({ evaluated: 12, livePromotionAllowed: false });
   expect(JSON.stringify(report)).not.toMatch(/Private|tmdb|ollama_host|destinationId/);
 });
 

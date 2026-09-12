@@ -65,6 +65,7 @@ export async function preparePolicyShortlistReplayCase(entry, source, runtime, s
   }
   signal?.throwIfAborted();
   return { status: 'ready', metadata, policyResult, libraries, signalContext, arms,
+    reviewEvidence: descriptions,
     changedShortlist: arms.baseline !== arms.protected,
     fingerprint: replayFingerprint({ metadata, policyResult, arms }) };
 }

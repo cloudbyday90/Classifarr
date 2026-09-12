@@ -214,6 +214,13 @@ model. These changes do not alter its scoring or successful-generation path.
 
 ## Next high-value component
 
+Follow-up: the resolver and paired evaluation are now implemented in
+[learned-evidence review resolution](learned-evidence-review-resolution-outcome.md).
+It qualifies 147 comparisons versus two under existing consensus, with one
+observed-placement disagreement. Live promotion remains pending per-library
+novelty calibration; the recommendation below records this evaluation's original
+handoff.
+
 Implement a **library-agnostic learned-evidence decision resolver**. Its job is to
 distinguish genuinely conflicting evidence from a low aggregate policy score, so
 strong description retrieval, contrastive library metadata and an agreeing AI
