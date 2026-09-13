@@ -42,6 +42,11 @@ import {
 } from '../../api/logsApi'
 
 describe('logsApi', () => {
+  it('preserves live remediation in administrator detail responses', async () => {
+    const detail = { error_id: 'e1', remediation: { status: 'unresolved', items: [{ title: 'Fixture', plexUrl: null }] } }
+    mockGetDataRequest.mockResolvedValueOnce(detail)
+    expect(await getLogError('e1')).toBe(detail)
+  })
   beforeEach(() => {
     vi.clearAllMocks()
   })

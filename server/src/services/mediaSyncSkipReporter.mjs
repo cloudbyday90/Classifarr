@@ -1,10 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { positiveDatabaseInteger } from './mediaIdentityValues.mjs';
 
-export const PLEX_IDENTITY_ISSUE_REFERENCE = Object.freeze({
-  title: 'Plex: duplicate provider IDs in metadata',
-  url: 'https://forums.plex.tv/t/double-plex-guids-validation-for-movies-series-and-episodes/882863',
-});
 const REASONS = ['invalid_source_identity', 'concurrent_source_change'];
 const ISSUES = ['conflicting_provider_ids', 'invalid_provider_ids', 'invalid_media_type', 'invalid_external_id', 'invalid_media_server_id'];
 const WARN_AFTER = `state.summary IS DISTINCT FROM EXCLUDED.summary
@@ -25,7 +21,7 @@ function counts(input, keys) {
 /** Operational notification policy only; never changes source identity authority. */
 export function createMediaSyncSkipReporter({ query, logger }) {
   return Object.freeze({
-    async report({ libraryId, mediaServerId, syncStatusId, incremental, sourceType }, input) {
+    async report({ libraryId, mediaServerId, syncStatusId, incremental }, input) {
       if (![libraryId, mediaServerId, syncStatusId].every(positiveDatabaseInteger)) return;
       let summary = null;
       if (input !== null) {
@@ -56,10 +52,8 @@ export function createMediaSyncSkipReporter({ query, logger }) {
         notify = result.rows[0]?.should_warn === true;
       } catch { notify = Boolean(summary); fallback = true; }
       if (!notify) return;
-      const data = { libraryId, ...summary,
+      const data = { libraryId, mediaServerId, ...summary,
         recovery: 'Unresolved items remain excluded; scheduled syncs retry recovery when due.',
-        ...(sourceType === 'plex' && summary.identityIssueCounts.conflicting_provider_ids
-          ? { reference: PLEX_IDENTITY_ISSUE_REFERENCE } : {}),
       };
       try {
         await logger.warn('Library sync skipped source items', data, fallback

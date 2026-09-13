@@ -20,6 +20,8 @@ import {
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { parseIntParam } from './evidenceRouteHelpers.mjs';
 import { NotFoundError } from '../utils/appError.mjs';
+import { createMediaSyncLogRemediation } from '../services/mediaSyncLogRemediation.mjs';
+import { formatMediaSyncRemediation } from '../services/mediaSyncRemediationReport.mjs';
 
 export function createLogsRouter({
   express,
@@ -28,6 +30,7 @@ export function createLogsRouter({
   authenticateToken,
   requireAdmin,
   logger,
+  enrichLog = createMediaSyncLogRemediation({ query: (...args) => db.query(...args) }),
 }) {
   if (typeof requireAdmin !== 'function') {
     throw new TypeError('Logs routes require administrator authorization.');
@@ -106,7 +109,8 @@ export function createLogsRouter({
       throw new NotFoundError('Error log not found');
     }
 
-    res.json(result.rows[0]);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.json(await enrichLog(result.rows[0]));
   }));
 
   router.get('/error/:errorId/report', asyncHandler(async (req, res) => {
@@ -119,7 +123,8 @@ export function createLogsRouter({
       throw new NotFoundError('Error log not found');
     }
 
-    const log = result.rows[0];
+    res.setHeader('Cache-Control', 'private, no-store');
+    const log = await enrichLog(result.rows[0]);
 
     let report = `## Bug Report\n\n`;
     report += `**Error ID:** \`${log.error_id}\`\n`;
@@ -130,6 +135,7 @@ export function createLogsRouter({
     report += `**Level:** ${log.level}\n`;
     report += `**Module:** ${log.module}\n\n`;
     report += `### Description\n\n${log.message}\n\n`;
+    report += formatMediaSyncRemediation(log.remediation);
 
     if (log.stack_trace) {
       report += `### Stack Trace\n\n\`\`\`\n${log.stack_trace}\n\`\`\`\n\n`;

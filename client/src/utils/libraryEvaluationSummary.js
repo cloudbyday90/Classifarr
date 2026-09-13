@@ -1,3 +1,4 @@
+/* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 const COUNTERS = Object.freeze([
   'prepared_admin_held', 'strict_qualified_admin_held', 'calibrated_qualified_admin_held',
   'live_guard_blocked', 'busy', 'unavailable', 'fallback_blocked', 'freshness_blocked', 'qualified',

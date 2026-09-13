@@ -11,11 +11,17 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Preserve PostgreSQL timestamp precision when capturing learning feedback, so
+  newly committed evidence is not skipped by a rounded analysis cutoff.
+- Repair CI dependency and copyright checks, and include both in local CI
+  preflight so test-only runs do not hide those failures.
 - Recover verifiable Plex metadata identity conflicts automatically, retry
   unresolved cases with durable backoff, and resume existing metadata backfill
   without discarding completed enrichment on repeat syncs.
 - Deduplicate unchanged library-sync warnings across rebuilds while retaining
-  changed-state and daily reminders, with a public Plex metadata issue reference.
+  changed-state and daily reminders. Existing warning details now show affected
+  Plex titles and repair steps, automatically retrying missing item links when
+  Plex comes back online without creating another warning.
 - Show a compact, automatically refreshed Command Center library-evidence summary
   that separates passing checks from confirmation holds, keeps technical details
   optional, and uses memory-only SWR with safe request deduplication and cleanup.

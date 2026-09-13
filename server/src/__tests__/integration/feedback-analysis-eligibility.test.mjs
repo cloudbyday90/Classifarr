@@ -2,13 +2,36 @@
 import { jest, beforeEach, afterEach, test, expect } from '@jest/globals';
 import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
 
-jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
+let captureTime = null;
+let captureTimezone = 'UTC';
+jest.unstable_mockModule('../../config/database.mjs', () => {
+    const database = createIntegrationDatabaseModuleMock();
+    return { ...database, withTransaction: fn => database.withTransaction(async client => {
+        if (!captureTime) return fn(client);
+        return fn({ query: async (sql, values) => {
+            if (sql.startsWith('SET TRANSACTION')) {
+                const result = await client.query(sql, values);
+                await client.query("SELECT set_config('TimeZone', $1, true)", [captureTimezone]);
+                return result;
+            }
+            // Only freeze the capture clock; execute the real query through pg so
+            // its timestamp parsing and PostgreSQL's comparisons remain covered.
+            if (captureTime && sql.includes(' AS captured_at')) {
+                return client.query(sql.replace(/NOW\(\)/gu, '$1::timestamptz'), [captureTime]);
+            }
+            return client.query(sql, values);
+        } });
+    }) };
+});
 const { feedbackAnalysis } = await import('../../services/feedbackAnalysis.mjs');
+const { captureSuggestionCohort } = await import('../../services/feedbackAnalysisCohort.mjs');
 const { readEligiblePolicyFeedback } = await import('../../services/feedbackAnalysisEvidence.mjs');
 const { COHORT_VERSION } = await import('../../services/feedbackAnalysisCohortContract.mjs');
 let db, destination, other, policyId;
 
 beforeEach(async () => {
+    captureTime = null;
+    captureTimezone = 'UTC';
     db = getPool();
     [destination, other] = (await db.query(`INSERT INTO libraries(name,external_id,media_type,is_active)
         VALUES('Destination','analysis-destination','movie',true),('Other','analysis-other','movie',true)
@@ -32,6 +55,23 @@ async function addFeedback(count, { libraryId = destination, correction = false,
             'Preserved historical reason' FROM generate_series(1,$7::integer) n RETURNING id`,
     [policyId, libraryId, correction, { genres: [genre], library_snapshot: { libraryId: destination } }, top, days, count])).rows.map(row => row.id);
 }
+
+test.each(['UTC', 'America/New_York'])(
+    'capture preserves microseconds without admitting later feedback in a %s session', async timezone => {
+        captureTimezone = timezone;
+        // Yesterday keeps the fixed instant inside the lookback without relying
+        // on execution speed or an absolute calendar date.
+        captureTime = new Date(Date.now() - 86400000).toISOString().replace(/\.\d{3}Z$/u, '.123900Z');
+        const ids = await addFeedback(4);
+        for (const [index, microseconds] of [-800, -1, 0, 1].entries()) {
+            await db.query(`UPDATE policy_feedback_log SET prompted_at = $1::timestamptz
+                + $2::integer * INTERVAL '1 microsecond' WHERE id=$3`, [captureTime, microseconds, ids[index]]);
+        }
+        const cohort = await captureSuggestionCohort(policyId);
+        expect(cohort.feedback.map(row => row.id).sort((a, b) => a - b)).toEqual(ids.slice(0, 3));
+        expect(cohort.captured_at).toBe(captureTime);
+        expect(cohort.feedback.some(row => row.id === ids[3])).toBe(false);
+    });
 
 test('detached and contradictory destinations cannot create patterns, weight or threshold suggestions', async () => {
     await addFeedback(5);

@@ -410,6 +410,13 @@
               </div>
             </div>
 
+            <MediaSyncRemediation
+              v-if="selectedLog.remediation"
+              :key="selectedLog.error_id"
+              :error-id="selectedLog.error_id"
+              :remediation="selectedLog.remediation"
+            />
+
             <!-- Stack Trace -->
             <div v-if="selectedLog.stack_trace">
               <div class="text-sm text-gray-400 mb-2">
@@ -477,6 +484,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../../api'
+import MediaSyncRemediation from '@/components/settings/MediaSyncRemediation.vue'
 import {
   removeCapabilityMetricsErrorLogHandoffQuery,
   resolveCapabilityMetricsErrorLogHandoffReasonCode,

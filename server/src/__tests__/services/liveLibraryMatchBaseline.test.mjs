@@ -115,6 +115,7 @@ test('failure states do not populate model cache and invalid queries cannot publ
 });
 
 test('the live scalar-work ceiling rejects expensive fits without retaining a partial model', async () => {
+  // Exercise the real 100-million-operation ceiling under coverage on slower CPUs.
   const { input } = cachedFixture(1000);
   input.identity.dimensions = 4096;
   input.vector = [1, ...Array(4095).fill(0)];
@@ -123,7 +124,7 @@ test('the live scalar-work ceiling rejects expensive fits without retaining a pa
   })) }));
   await expect(assessLiveLibraryMatch(input)).rejects.toThrow('live_match_work_budget');
   expect(input.modelCache.set).not.toHaveBeenCalled();
-});
+}, 30000);
 
 test('live and held-out evaluation share the exact split and empirical assessment', async () => {
   const { input, vectors } = fixture();

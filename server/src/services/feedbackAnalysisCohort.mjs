@@ -19,8 +19,11 @@ export async function captureSuggestionCohort(policyId, days = 30) {
         const { rows: policies } = await client.query('SELECT * FROM library_policies WHERE id = $1', [policyId]);
         if (!policies[0]) throw new NotFoundError('Policy not found');
         const { rows: destinations } = await client.query('SELECT * FROM libraries WHERE id = $1', [policies[0].library_id]);
-        const { rows: times } = await client.query('SELECT NOW() AS captured_at');
-        const capturedAt = times[0].captured_at.toISOString();
+        // pg converts timestamps to millisecond-precision Dates. Keep this SQL
+        // boundary as UTC text so recently committed feedback is not cut off.
+        const { rows: times } = await client.query(`SELECT
+            to_char(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS captured_at`);
+        const capturedAt = times[0].captured_at;
         const feedback = await readEligiblePolicyFeedback(client, policyId, days, {
             capturedAt, limit: MAX_COHORT_ROWS + 1,
         });

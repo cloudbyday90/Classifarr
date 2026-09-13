@@ -1,3 +1,4 @@
+/* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { describe, expect, it, vi } from 'vitest'
 import { ref } from 'vue'
 import { useCommandCenterData } from '@/composables/useCommandCenterData'

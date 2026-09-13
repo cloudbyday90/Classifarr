@@ -1,3 +1,4 @@
+-- Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0
 -- Isolated shadow embeddings. No media content or routing authority is stored.
 CREATE TABLE IF NOT EXISTS inventory_description_vector_cache (
     projection_version text NOT NULL CHECK (char_length(projection_version) BETWEEN 1 AND 100),

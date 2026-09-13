@@ -1,3 +1,4 @@
+/* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import LibraryEvaluationSummary from '@/components/command-center/LibraryEvaluationSummary.vue'

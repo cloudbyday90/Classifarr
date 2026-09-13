@@ -1,5 +1,10 @@
 # Media sync warning deduplication outcome
 
+Follow-up: the [actionable-report design](media-sync-actionable-report-design.md)
+supersedes the forum pointer in current detail/report reads with affected titles,
+repair steps and automatically retried Plex item links. The historical behavior
+and measurements below describe the original deduplication delivery.
+
 ## Implemented — 13 September 2026
 
 The [design](media-sync-warning-deduplication-design.md) records the verified

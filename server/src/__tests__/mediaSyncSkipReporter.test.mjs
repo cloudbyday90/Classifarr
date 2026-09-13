@@ -1,6 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { jest } from '@jest/globals';
-import { createMediaSyncSkipReporter, PLEX_IDENTITY_ISSUE_REFERENCE } from '../services/mediaSyncSkipReporter.mjs';
+import { createMediaSyncSkipReporter } from '../services/mediaSyncSkipReporter.mjs';
 
 const context = { libraryId: 10, mediaServerId: 1, syncStatusId: 100, incremental: false, sourceType: 'plex' };
 const summary = { skippedItemCount: 2, reasonCounts: { invalid_source_identity: 2 }, identityIssueCounts: { conflicting_provider_ids: 2 } };
@@ -10,11 +10,11 @@ function setup() {
   return { query, logger, reporter: createMediaSyncSkipReporter({ query, logger }) };
 }
 
-test('projects fixed counts and a verified public Plex reference without forwarding private fields', async () => {
+test('projects fixed counts and owner without forwarding private fields or forum links', async () => {
   const test = setup();
   await test.reporter.report(context, { ...summary, title: 'private', reference: { url: 'http://private' } });
   expect(test.logger.warn).toHaveBeenCalledWith('Library sync skipped source items', {
-    libraryId: 10, ...summary, recovery: expect.any(String), reference: PLEX_IDENTITY_ISSUE_REFERENCE,
+    libraryId: 10, mediaServerId: 1, ...summary, recovery: expect.any(String),
   }, {});
   expect(JSON.stringify(test.query.mock.calls[0][1])).not.toContain('private');
 });

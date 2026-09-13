@@ -27,10 +27,12 @@ export function getLogs(params) {
   return getDataRequest(`/logs?${query}`)
 }
 
+/** Administrator detail, including live remediation when available; never persist this response. */
 export function getLogError(errorId) {
   return getDataRequest(`/logs/error/${errorId}`)
 }
 
+/** Copies current repair steps and retries missing Plex links, including for older warnings. */
 export function getBugReport(errorId) {
   return getDataRequest(`/logs/error/${errorId}/report`)
 }

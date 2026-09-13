@@ -12,9 +12,6 @@ import {
   getHeldOutSemanticStudyReviewerPacketBinding,
 } from './heldOutSemanticStudyReviewerSubmissionTemplate.mjs';
 
-export const HELD_OUT_SEMANTIC_STUDY_REVIEWER_REFERENCE_SET_VERSION =
-  'policy.held_out_semantic_study_reviewer_reference_set.v1';
-
 function buildAuthority() {
   return Object.freeze({
     automaticActions: Object.freeze({

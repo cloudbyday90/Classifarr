@@ -4,7 +4,6 @@
  */
 
 import {
-  HELD_OUT_SEMANTIC_STUDY_RETRIEVAL_REPRESENTATION_ARTIFACT_VERSION,
   HELD_OUT_SEMANTIC_STUDY_RETRIEVAL_REPRESENTATION_IDS,
   validateHeldOutSemanticStudyRetrievalRepresentationArtifact,
   validateHeldOutSemanticStudyRetrievalRepresentationArtifactBinding,
@@ -281,5 +280,3 @@ export function buildHeldOutSemanticStudyRetrievalRepresentationArtifactSet({
     version: HELD_OUT_SEMANTIC_STUDY_RETRIEVAL_REPRESENTATION_ARTIFACT_SET_VERSION,
   });
 }
-
-export { HELD_OUT_SEMANTIC_STUDY_RETRIEVAL_REPRESENTATION_ARTIFACT_VERSION };

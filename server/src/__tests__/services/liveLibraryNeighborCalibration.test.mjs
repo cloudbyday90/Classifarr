@@ -88,10 +88,11 @@ test('aborted cold fitting is not cached and later attempts can succeed', async 
 });
 
 test('per-attempt numeric ceiling rejects an expensive fit without caching it', async () => {
+  // Exercise the real 100-million-operation ceiling under coverage on slower CPUs.
   const { input } = fixture(65); input.identity.dimensions = 16000; input.vector = [1, ...Array(15999).fill(0)];
   input.query.mockImplementation(async (_sql, parameters) => ({ rows: parameters[4].map((h, i) => ({
     description_hash: h, embedding: JSON.stringify([...vector(i / 100), ...Array(15998).fill(0)]),
   })) }));
   await expect(assessLiveLibraryNeighbors(input)).rejects.toThrow('work_budget');
   expect(input.modelCache.set).not.toHaveBeenCalled();
-});
+}, 30000);
