@@ -45,6 +45,7 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     'neighbor-fallback': { type: 'boolean' },
     'evidence-reranker': { type: 'boolean' },
     'neighborhood-profiles': { type: 'boolean' },
+    'representative-groups': { type: 'boolean' },
     'semantic-pairs': { type: 'boolean' },
     'preserve-description-candidate': { type: 'boolean' },
     'metadata-candidates': { type: 'boolean' }, 'learned-profiles': { type: 'boolean' } } });
@@ -62,6 +63,9 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     throw new Error('semantic_pairs_require_exclusive_grouped_mode');
   }
   if (values['neighborhood-profiles'] && !values['evidence-reranker']) throw new Error('neighborhood_profiles_requires_evidence_reranker');
+  if (values['representative-groups'] && (!values['evidence-reranker'] || values['neighborhood-profiles'])) {
+    throw new Error('representative_groups_require_exclusive_evidence_reranker');
+  }
   if (values['evidence-reranker'] && (!options.folds || options.generateCases ||
       ['fresh-policy-evaluation', 'policy-shortlist-replay', 'investigate', 'contrastive-investigation',
         'content-first-comparison', 'selective-recheck', 'preserve-description-candidate', 'metadata-candidates',
@@ -114,7 +118,8 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
         ? await runInventorySemanticPairComparison(snapshot, representation.dimensions, options,
           { signal: abort, onProgress, client: pairClient, identity: pairIdentity })
         : await runInventoryEvidenceRerankerComparison(snapshot, representation.dimensions, options,
-          { signal: abort, onProgress, neighborhoodProfiles: values['neighborhood-profiles'] === true });
+          { signal: abort, onProgress, neighborhoodProfiles: values['neighborhood-profiles'] === true,
+            representativeGroups: values['representative-groups'] === true });
       if (abort.aborted) return { ...report, status: 'interrupted', sourceVerified: false };
       const current = await runtime.repository.read(representation);
       await verifyDescriptionRepresentation(runtime.embedder, representation, abort);

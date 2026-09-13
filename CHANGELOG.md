@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Learn bounded, library-agnostic content groups from cached inventory descriptions,
+  retaining real representatives and reporting training coverage, convergence and
+  held-out ranking results. Reuse existing metadata fusion and baseline fallback
+  without model generation, new settings or live routing changes.
 - Add a read-only, library-agnostic semantic pair-grading pilot using cached
   descriptions and the installed local model. Require complete bounded responses
   and agreement across reversed example order, preserve baseline fallback, and

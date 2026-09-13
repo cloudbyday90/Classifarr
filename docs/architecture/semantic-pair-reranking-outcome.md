@@ -108,6 +108,9 @@ No new acknowledgements, manual labels or user-facing controls are introduced.
 
 ## Security, accessibility and reproduction
 
+Follow-up implementation: [representative-group design](inventory-representative-groups-design.md)
+and [measured outcome](inventory-representative-groups-outcome.md).
+
 All reads used the existing local runtime with PostgreSQL read-only enforcement.
 No prompts, responses, private titles, item IDs or descriptions are in committed
 reports. The model sees no library names, destination IDs, tools or credentials.

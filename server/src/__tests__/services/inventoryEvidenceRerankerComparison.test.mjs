@@ -7,6 +7,26 @@ import { prepareInventoryRerankerRows, prepareInventoryRerankerTraining } from '
 import { runInventoryEvidenceRerankerComparison } from '../../services/inventoryEvidenceRerankerComparison.mjs';
 
 const options = { seed: 'reranker-test-seed-2026', size: 20, folds: 5, generateCases: 0 };
+
+test('representative groups fit each fold once, preserve controls and expose no private representatives', async () => {
+  const snapshot = fixture();
+  for (const doc of snapshot.corpus.documents) if (Number(doc.id) % 2 === 0) {
+    snapshot.candidateMetadata.set(doc.key, { genres: [`trait-${doc.libraryIds[0] % 2 ? doc.libraryIds[0] + 1 : doc.libraryIds[0] - 1}`], studio: '', rating: '' });
+  }
+  const report = await runInventoryEvidenceRerankerComparison(snapshot, 2, options, { representativeGroups: true });
+  expect(report).toMatchObject({ protocol: 'inventory_representative_groups_v1', status: 'complete', selections: [], calls: 0,
+    comparison: { evaluated: 20 }, consensusControls: { changed: 0 }, independentLabels: 0, liveRoutingChanged: false });
+  expect(report.representatives.folds).toHaveLength(5);
+  expect(report.representatives.folds.every(fold => fold.eligibleDescriptions + fold.heldDescriptions === 160)).toBe(true);
+  expect(report.representatives.statuses.scored).toBeGreaterThan(0);
+  expect(JSON.stringify(report)).not.toMatch(/Private|trait-|centroid|descriptionHash|representatives":\[|tmdb/);
+  const controller = new AbortController();
+  await expect(runInventoryEvidenceRerankerComparison(snapshot, 2, options, { representativeGroups: true, signal: controller.signal,
+    onProgress: () => controller.abort() })).rejects.toThrow();
+  await expect(runInventoryEvidenceRerankerComparison(snapshot, 2, options, { representativeGroups: true, neighborhoodProfiles: true }))
+    .rejects.toThrow('representation_conflict');
+});
+
 function fixture() {
   const libraries = [1, 2, 3, 4].map(id => ({ id, media_type: id <= 2 ? 'movie' : 'tv', name: `Private ${id}` }));
   const rows = libraries.flatMap(library => Array.from({ length: 40 }, (_, index) => ({ tmdb_id: library.id * 100 + index,
