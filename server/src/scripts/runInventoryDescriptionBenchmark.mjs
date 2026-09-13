@@ -12,6 +12,8 @@ import { runContentFirstInventoryComparison } from '../services/inventoryContent
 import { runPolicyShortlistReplay } from '../services/policyShortlistReplay.mjs';
 import { runFreshInventoryPolicyEvaluation } from '../services/freshInventoryPolicyEvaluation.mjs';
 import { runInventoryNeighborComparison } from '../services/inventoryNeighborComparison.mjs';
+import { runInventoryEvidenceRerankerComparison } from '../services/inventoryEvidenceRerankerComparison.mjs';
+import { describeInventorySnapshotDigests } from '../services/inventoryDescriptionSnapshotDigests.mjs';
 
 async function loadPrivateRuntime() {
   process.env.LOG_LEVEL = 'fatal';
@@ -40,6 +42,7 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     'neighbor-calibration': { type: 'boolean' },
     'neighbor-cross-fit': { type: 'boolean' },
     'neighbor-fallback': { type: 'boolean' },
+    'evidence-reranker': { type: 'boolean' },
     'preserve-description-candidate': { type: 'boolean' },
     'metadata-candidates': { type: 'boolean' }, 'learned-profiles': { type: 'boolean' } } });
   if (values['metadata-candidates'] && values['learned-profiles']) throw new Error('description_benchmark_selection_mode_conflict');
@@ -52,6 +55,12 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     ...(values.context === undefined ? {} : { context: Number(values.context) }),
     ...(values['max-minutes'] === undefined ? {} : { maxMinutes: Number(values['max-minutes']) }),
   });
+  if (values['evidence-reranker'] && (!options.folds || options.generateCases ||
+      ['fresh-policy-evaluation', 'policy-shortlist-replay', 'investigate', 'contrastive-investigation',
+        'content-first-comparison', 'selective-recheck', 'preserve-description-candidate', 'metadata-candidates',
+        'learned-profiles', 'neighbor-calibration', 'neighbor-cross-fit', 'neighbor-fallback'].some(mode => values[mode]))) {
+    throw new Error('inventory_reranker_requires_exclusive_grouped_zero_generation');
+  }
   if (values['neighbor-cross-fit'] && !values['neighbor-calibration']) throw new Error('neighbor_cross_fit_requires_neighbor_calibration');
   if (values['neighbor-fallback'] && !values['fresh-policy-evaluation']) throw new Error('neighbor_fallback_requires_fresh_policy_evaluation');
   if (values['neighbor-calibration'] && (!options.folds || options.generateCases ||
@@ -91,6 +100,16 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     const representation = await inspectDescriptionRepresentation(runtime.embedder, abort);
     const snapshot = await runtime.repository.read(representation);
     await verifyDescriptionRepresentation(runtime.embedder, representation, abort);
+    if (values['evidence-reranker']) {
+      const report = await runInventoryEvidenceRerankerComparison(snapshot, representation.dimensions, options,
+        { signal: abort, onProgress });
+      const current = await runtime.repository.read(representation);
+      await verifyDescriptionRepresentation(runtime.embedder, representation, abort);
+      const sourceVerified = JSON.stringify(describeInventorySnapshotDigests(current, current.vectors)) ===
+        JSON.stringify(report.snapshotComponents);
+      return { ...report, status: sourceVerified ? report.status : 'invalidated', sourceVerified,
+        embedding: { model: representation.model, digest: representation.digest, dimensions: representation.dimensions } };
+    }
     if (values['neighbor-calibration']) {
       const report = await runInventoryNeighborComparison(snapshot, representation, options,
         { signal: abort, onProgress, crossFit: values['neighbor-cross-fit'] === true });

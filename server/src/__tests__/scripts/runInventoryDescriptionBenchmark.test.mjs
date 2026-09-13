@@ -5,6 +5,30 @@ import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescr
 
 const seed = 'benchmark-test-seed-2026';
 
+test('learned evidence CLI rejects incompatible work before loading and checks source freshness afterwards', async () => {
+  const args = ['--seed', seed, '--size', '10', '--folds', '5', '--evidence-reranker'];
+  const loadRuntime = jest.fn();
+  for (const argv of [args.filter(value => !['--folds', '5'].includes(value)), [...args, '--generate-cases', '1'],
+    ...['--fresh-policy-evaluation', '--neighbor-calibration', '--learned-profiles', '--policy-shortlist-replay',
+      '--neighbor-cross-fit', '--neighbor-fallback', '--investigate', '--contrastive-investigation',
+      '--content-first-comparison', '--selective-recheck', '--preserve-description-candidate', '--metadata-candidates'].map(mode => [...args, mode])]) {
+    await expect(runInventoryDescriptionBenchmark({ argv, loadRuntime })).rejects.toThrow('reranker_requires');
+  }
+  expect(loadRuntime).not.toHaveBeenCalled();
+  const instance = runtime();
+  const report = await runInventoryDescriptionBenchmark({ argv: args, loadRuntime: async () => instance });
+  expect(report).toMatchObject({ protocol: 'inventory_evidence_reranker_v1', status: 'complete', sourceVerified: true, calls: 0 });
+  expect(instance.repository.read).toHaveBeenCalledTimes(2);
+  expect(instance.embedder.inspect).toHaveBeenCalledTimes(3);
+  expect(instance.createClient).not.toHaveBeenCalled();
+  expect(instance.close).toHaveBeenCalledTimes(1);
+  const snapshot = await instance.repository.read();
+  instance.repository.read.mockResolvedValueOnce(snapshot).mockResolvedValueOnce({ ...snapshot,
+    libraries: snapshot.libraries.map(row => ({ ...row, name: 'Changed' })) });
+  expect(await runInventoryDescriptionBenchmark({ argv: args, loadRuntime: async () => instance }))
+    .toMatchObject({ status: 'invalidated', sourceVerified: false, livePromotionAllowed: false });
+});
+
 test('cross-fit CLI requires neighbor mode, rejects generation, and uses cached vectors without model generation', async () => {
   const base = ['--seed', seed, '--size', '10', '--folds', '5', '--neighbor-cross-fit'];
   const loadRuntime = jest.fn();

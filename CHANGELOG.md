@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a library-agnostic, nested held-out reranking experiment that learns how
+  to combine description and metadata evidence. Preserve live scoring and routing
+  after the 600-item comparison found regressions; retain field-level attribution
+  and reproducible, aggregate-only results for the next matching improvement.
 - Complete the focused movie/TV AI comparison and distinguish insufficient
   familiarity evidence from rejected matches in fallback benchmark reports.
   Report strict-control coverage explicitly without changing live routing.

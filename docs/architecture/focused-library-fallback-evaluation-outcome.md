@@ -117,6 +117,11 @@ substituted.
 ## Next high-value component
 
 **Resolve metadata-versus-description disagreement using learned library evidence.**
+The first field-attribution and combined-reranking comparison is now recorded in
+[the learned evidence reranker outcome](learned-evidence-reranker-outcome.md).
+Its 600-item evaluation rejected global recipe replacement because of regressions;
+the next hypothesis is neighborhood-conditioned metadata matching.
+
 Start with the six measured cases: attribute the existing metadata fit to genre,
 studio and audience features, compare them with the retrieved synopsis examples,
 and evaluate a library-agnostic combined reranker on separate held-out controls.
