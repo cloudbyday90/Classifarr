@@ -80,6 +80,23 @@ test('counts incomplete pools and missing sample coverage without claiming succe
   expect(report.comparison.evaluated).toBe(80);
 });
 
+test('fixed neighborhood mode preserves consensus without inner recipe selection and reports only aggregates', async () => {
+  const snapshot = fixture();
+  const report = await runInventoryEvidenceRerankerComparison(snapshot, 2, options, { neighborhoodProfiles: true });
+  expect(report).toMatchObject({ protocol: 'inventory_neighborhood_profile_v1', selections: [], calls: 0,
+    comparison: { evaluated: 20, changed: 0 }, neighborhood: { statuses: { consensus: 20 }, candidatePools: 0, minimumSupport: null } });
+  // Invert metadata placement relative to description vectors for half of each library.
+  for (const doc of snapshot.corpus.documents) if (Number(doc.id) % 2 === 0) {
+    snapshot.candidateMetadata.set(doc.key, { genres: [`trait-${doc.libraryIds[0] % 2 ? doc.libraryIds[0] + 1 : doc.libraryIds[0] - 1}`], studio: '', rating: '' });
+  }
+  const mixed = await runInventoryEvidenceRerankerComparison(snapshot, 2, options, { neighborhoodProfiles: true });
+  expect(mixed.neighborhood.candidatePools).toBeGreaterThan(0);
+  expect(mixed.neighborhood.maximumSupport).toBeLessThanOrEqual(20);
+  expect(mixed.neighborhood.minimumSupport).toBeGreaterThanOrEqual(10);
+  expect(mixed.consensusControls.changed).toBe(0);
+  expect(JSON.stringify(mixed)).not.toMatch(/Private|trait-|studio-|rating-|libraryIds|descriptionHash|tmdb|overview/);
+});
+
 test('enforces zero-generation, grouped, work and cancellation boundaries', async () => {
   const snapshot = fixture();
   await expect(runInventoryEvidenceRerankerComparison(snapshot, 2, { ...options, generateCases: 1 })).rejects.toThrow('zero_generation');

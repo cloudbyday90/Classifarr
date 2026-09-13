@@ -43,6 +43,7 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     'neighbor-cross-fit': { type: 'boolean' },
     'neighbor-fallback': { type: 'boolean' },
     'evidence-reranker': { type: 'boolean' },
+    'neighborhood-profiles': { type: 'boolean' },
     'preserve-description-candidate': { type: 'boolean' },
     'metadata-candidates': { type: 'boolean' }, 'learned-profiles': { type: 'boolean' } } });
   if (values['metadata-candidates'] && values['learned-profiles']) throw new Error('description_benchmark_selection_mode_conflict');
@@ -55,6 +56,7 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     ...(values.context === undefined ? {} : { context: Number(values.context) }),
     ...(values['max-minutes'] === undefined ? {} : { maxMinutes: Number(values['max-minutes']) }),
   });
+  if (values['neighborhood-profiles'] && !values['evidence-reranker']) throw new Error('neighborhood_profiles_requires_evidence_reranker');
   if (values['evidence-reranker'] && (!options.folds || options.generateCases ||
       ['fresh-policy-evaluation', 'policy-shortlist-replay', 'investigate', 'contrastive-investigation',
         'content-first-comparison', 'selective-recheck', 'preserve-description-candidate', 'metadata-candidates',
@@ -102,7 +104,7 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     await verifyDescriptionRepresentation(runtime.embedder, representation, abort);
     if (values['evidence-reranker']) {
       const report = await runInventoryEvidenceRerankerComparison(snapshot, representation.dimensions, options,
-        { signal: abort, onProgress });
+        { signal: abort, onProgress, neighborhoodProfiles: values['neighborhood-profiles'] === true });
       const current = await runtime.repository.read(representation);
       await verifyDescriptionRepresentation(runtime.embedder, representation, abort);
       const sourceVerified = JSON.stringify(describeInventorySnapshotDigests(current, current.vectors)) ===

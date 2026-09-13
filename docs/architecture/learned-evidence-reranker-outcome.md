@@ -120,6 +120,10 @@ No release, tag, dependency change, database migration or version bump is includ
 
 ## Next high-value component
 
+Follow-up completed: see the [neighborhood matching outcome](neighborhood-metadata-matching-outcome.md)
+for the measured 600-item results and original-conflict check. The proposal below
+records the hypothesis at the end of this experiment, not a live-enabled feature.
+
 **Neighborhood-conditioned metadata matching.** A library can contain several
 distinct content groups. Compare an incoming item's metadata with its nearest
 description neighbors inside each eligible library, rather than treating one

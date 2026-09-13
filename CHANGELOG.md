@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a bounded, library-agnostic neighborhood metadata matcher and compare it
+  against existing ranking on 600 movie/TV descriptions. Preserve consensus cases
+  and live routing; keep the experimental matcher offline after broader regressions,
+  with documented results for the original metadata conflicts.
 - Add a library-agnostic, nested held-out reranking experiment that learns how
   to combine description and metadata evidence. Preserve live scoring and routing
   after the 600-item comparison found regressions; retain field-level attribution

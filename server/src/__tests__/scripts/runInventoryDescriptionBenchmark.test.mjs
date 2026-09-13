@@ -5,6 +5,23 @@ import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescr
 
 const seed = 'benchmark-test-seed-2026';
 
+test('neighborhood CLI requires grouped reranker mode and retains source verification and zero generation', async () => {
+  const base = ['--seed', seed, '--size', '10', '--folds', '5', '--neighborhood-profiles'], loadRuntime = jest.fn();
+  await expect(runInventoryDescriptionBenchmark({ argv: base, loadRuntime })).rejects.toThrow('requires_evidence_reranker');
+  await expect(runInventoryDescriptionBenchmark({ argv: [...base, '--evidence-reranker', '--generate-cases', '1'], loadRuntime }))
+    .rejects.toThrow('zero_generation');
+  expect(loadRuntime).not.toHaveBeenCalled();
+  const instance = runtime(), argv = [...base, '--evidence-reranker'];
+  expect(await runInventoryDescriptionBenchmark({ argv, loadRuntime: async () => instance }))
+    .toMatchObject({ protocol: 'inventory_neighborhood_profile_v1', sourceVerified: true, calls: 0, selections: [] });
+  const snapshot = await instance.repository.read();
+  instance.repository.read.mockResolvedValueOnce(snapshot).mockResolvedValueOnce({ ...snapshot, candidateMetadata: new Map([['movie:1', null]]) });
+  expect(await runInventoryDescriptionBenchmark({ argv, loadRuntime: async () => instance }))
+    .toMatchObject({ status: 'invalidated', sourceVerified: false, livePromotionAllowed: false });
+  expect(instance.close).toHaveBeenCalledTimes(2);
+  expect(instance.createClient).not.toHaveBeenCalled();
+});
+
 test('learned evidence CLI rejects incompatible work before loading and checks source freshness afterwards', async () => {
   const args = ['--seed', seed, '--size', '10', '--folds', '5', '--evidence-reranker'];
   const loadRuntime = jest.fn();

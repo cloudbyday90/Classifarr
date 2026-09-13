@@ -3,14 +3,16 @@ import { setImmediate } from 'node:timers/promises';
 import { prepareDescriptionBenchmark, validateDescriptionBenchmarkOptions } from './inventoryDescriptionBenchmarkSample.mjs';
 import { prepareInventoryRerankerRows, prepareInventoryRerankerTraining } from './inventoryEvidenceRerankerSample.mjs';
 import { rankInventoryEvidence, selectInventoryEvidenceRecipe } from './inventoryEvidenceReranker.mjs';
+import { createInventoryNeighborhoodIndex, INVENTORY_NEIGHBORHOOD_PROFILE_VERSION } from './inventoryNeighborhoodProfiles.mjs';
+import { inventoryEvidenceLeaderState, rankInventoryNeighborhoodEvidence } from './inventoryNeighborhoodReranker.mjs';
 
 const summarize = rows => ({ evaluated: rows.length, baselineAgreed: rows.filter(row => row.before).length,
   rerankerAgreed: rows.filter(row => row.after).length, gainedAgreement: rows.filter(row => !row.before && row.after).length,
   lostAgreement: rows.filter(row => row.before && !row.after).length, changed: rows.filter(row => row.changed).length });
 
-/** Offline nested comparison. No model generation, routing, policy or label writes. */
+/** Offline grouped comparison. No model generation, routing, policy or label writes. */
 export async function runInventoryEvidenceRerankerComparison(snapshot, dimensions, settings,
-  { signal, onProgress = () => {} } = {}) {
+  { signal, onProgress = () => {}, neighborhoodProfiles = false } = {}) {
   const options = validateDescriptionBenchmarkOptions(settings);
   const abort = AbortSignal.any([AbortSignal.timeout(options.maxMinutes * 60000), ...(signal ? [signal] : [])]);
   if (!options.folds || options.generateCases) throw new Error('inventory_reranker_requires_grouped_zero_generation');
@@ -20,22 +22,34 @@ export async function runInventoryEvidenceRerankerComparison(snapshot, dimension
   abort.throwIfAborted();
   const prepared = prepareDescriptionBenchmark(snapshot, snapshot.vectors, dimensions, options, { includeComparisonEvidence: true });
   const rows = prepareInventoryRerankerRows(snapshot, prepared), results = [], selections = [];
+  const index = neighborhoodProfiles ? createInventoryNeighborhoodIndex(snapshot.corpus.documents,
+    snapshot.candidateMetadata, snapshot.libraries) : null;
+  const neighborhood = { version: INVENTORY_NEIGHBORHOOD_PROFILE_VERSION, statuses: {}, candidatePools: 0,
+    minimumSupport: null, maximumSupport: null };
   for (let fold = 0; fold < options.folds; fold++) {
     await setImmediate();
     abort.throwIfAborted();
     const outer = rows.filter(row => row.entry.foldIndex === fold);
     if (!outer.length) continue;
-    const training = prepareInventoryRerankerTraining(snapshot, dimensions, options, outer[0].entry.heldDescriptionHashes);
+    const training = neighborhoodProfiles ? [] : prepareInventoryRerankerTraining(snapshot, dimensions, options, outer[0].entry.heldDescriptionHashes);
     for (const mediaType of ['movie', 'tv']) {
       const libraryIds = snapshot.libraries.filter(library => library.media_type === mediaType).map(library => library.id);
-      const selected = selectInventoryEvidenceRecipe(training.filter(row => row.entry.mediaType === mediaType), libraryIds);
-      if (outer.some(row => row.entry.mediaType === mediaType)) selections.push({ fold: fold + 1, mediaType, ...selected });
+      const selected = neighborhoodProfiles ? null : selectInventoryEvidenceRecipe(training.filter(row => row.entry.mediaType === mediaType), libraryIds);
+      if (selected && outer.some(row => row.entry.mediaType === mediaType)) selections.push({ fold: fold + 1, mediaType, ...selected });
       for (const row of outer.filter(row => row.entry.mediaType === mediaType && row.candidates.length)) {
-        const before = rankInventoryEvidence(row.candidates)[0], after = rankInventoryEvidence(row.candidates, selected.recipe)[0];
-        const description = [...row.candidates].sort((a, b) => b.description - a.description);
-        const metadata = [...row.candidates].sort((a, b) => b.profileFit - a.profileFit);
-        const consensus = description[0].id === metadata[0].id && metadata[0].profileFit > 0 &&
-          description[0].description > description[1].description && metadata[0].profileFit > metadata[1].profileFit;
+        const before = rankInventoryEvidence(row.candidates)[0];
+        const local = neighborhoodProfiles ? rankInventoryNeighborhoodEvidence(index, row,
+          snapshot.candidateMetadata?.get(`${row.entry.mediaType}:${row.entry.itemIdentity.tmdbId}`)) : null;
+        const after = local ? local.ranking[0] : rankInventoryEvidence(row.candidates, selected.recipe)[0];
+        if (local) {
+          neighborhood.statuses[local.status] = (neighborhood.statuses[local.status] ?? 0) + 1;
+          if (local.support.length) {
+            neighborhood.candidatePools++;
+            neighborhood.minimumSupport = Math.min(neighborhood.minimumSupport ?? Infinity, ...local.support);
+            neighborhood.maximumSupport = Math.max(neighborhood.maximumSupport ?? 0, ...local.support);
+          }
+        }
+        const consensus = inventoryEvidenceLeaderState(row.candidates) === 'consensus';
         results.push({ mediaType, memberships: row.observedLibraryIds, consensus,
           before: row.observedLibraryIds.includes(before), after: row.observedLibraryIds.includes(after), changed: before !== after });
       }
@@ -44,7 +58,8 @@ export async function runInventoryEvidenceRerankerComparison(snapshot, dimension
   }
   await setImmediate();
   abort.throwIfAborted();
-  return { version: 1, protocol: 'inventory_evidence_reranker_v1', status: 'complete', seed: options.seed,
+  return { version: 1, protocol: neighborhoodProfiles ? INVENTORY_NEIGHBORHOOD_PROFILE_VERSION : 'inventory_evidence_reranker_v1',
+    ...(neighborhoodProfiles ? { neighborhood } : {}), status: 'complete', seed: options.seed,
     sampleFingerprint: prepared.sampleFingerprint, snapshotFingerprint: prepared.fingerprint,
     snapshotComponents: prepared.snapshotComponents, evaluation: prepared.evaluation,
     sampledTitles: prepared.cases.length, sampleShortfall: Math.max(0, options.size - prepared.cases.length),
