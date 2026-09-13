@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Compare strict, mean and library-calibrated description-neighbor checks in a
+  grouped, read-only movie/TV benchmark. Report sparse-library coverage and
+  placement disagreement without AI generation, new settings or routing changes.
 - Load historical synopsis fallback only when inventory text is unavailable,
   reducing corpus sorting and database work while preserving library evidence,
   metadata precedence and fresh routing checks across live and background reads.

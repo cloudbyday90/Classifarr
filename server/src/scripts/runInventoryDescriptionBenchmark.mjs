@@ -11,6 +11,7 @@ import { runContrastiveInventoryInvestigation } from '../services/inventoryContr
 import { runContentFirstInventoryComparison } from '../services/inventoryContentFirstComparison.mjs';
 import { runPolicyShortlistReplay } from '../services/policyShortlistReplay.mjs';
 import { runFreshInventoryPolicyEvaluation } from '../services/freshInventoryPolicyEvaluation.mjs';
+import { runInventoryNeighborComparison } from '../services/inventoryNeighborComparison.mjs';
 
 async function loadPrivateRuntime() {
   process.env.LOG_LEVEL = 'fatal';
@@ -36,6 +37,7 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     'selective-recheck': { type: 'boolean' },
     'policy-shortlist-replay': { type: 'boolean' },
     'fresh-policy-evaluation': { type: 'boolean' },
+    'neighbor-calibration': { type: 'boolean' },
     'preserve-description-candidate': { type: 'boolean' },
     'metadata-candidates': { type: 'boolean' }, 'learned-profiles': { type: 'boolean' } } });
   if (values['metadata-candidates'] && values['learned-profiles']) throw new Error('description_benchmark_selection_mode_conflict');
@@ -48,6 +50,10 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     ...(values.context === undefined ? {} : { context: Number(values.context) }),
     ...(values['max-minutes'] === undefined ? {} : { maxMinutes: Number(values['max-minutes']) }),
   });
+  if (values['neighbor-calibration'] && (!options.folds || options.generateCases ||
+      ['fresh-policy-evaluation', 'policy-shortlist-replay', 'investigate', 'contrastive-investigation',
+        'content-first-comparison', 'selective-recheck', 'preserve-description-candidate', 'metadata-candidates', 'learned-profiles']
+        .some(mode => values[mode]))) throw new Error('neighbor_comparison_requires_exclusive_grouped_zero_generation');
   if (values['fresh-policy-evaluation']) {
     if (values['policy-shortlist-replay'] || values.investigate || values['contrastive-investigation'] ||
         values['content-first-comparison'] || values['selective-recheck'] || values['preserve-description-candidate'] ||
@@ -80,6 +86,10 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     const representation = await inspectDescriptionRepresentation(runtime.embedder, abort);
     const snapshot = await runtime.repository.read(representation);
     await verifyDescriptionRepresentation(runtime.embedder, representation, abort);
+    if (values['neighbor-calibration']) {
+      const report = await runInventoryNeighborComparison(snapshot, representation, options, { signal: abort, onProgress });
+      return { ...report, embedding: { model: representation.model, digest: representation.digest, dimensions: representation.dimensions } };
+    }
     const prepared = prepareDescriptionBenchmark(snapshot, snapshot.vectors, representation.dimensions, options,
       { metadataCandidates: values['metadata-candidates'] === true, learnedProfiles: values['learned-profiles'] === true,
         includeContrastiveVectors: values['contrastive-investigation'] === true,

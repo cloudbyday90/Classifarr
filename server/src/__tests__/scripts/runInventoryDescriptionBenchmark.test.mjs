@@ -5,6 +5,27 @@ import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescr
 
 const seed = 'benchmark-test-seed-2026';
 
+test('neighbor calibration is an exclusive grouped zero-generation evaluation with redacted output', async () => {
+  const args = ['--seed', seed, '--size', '10', '--folds', '5', '--neighbor-calibration'];
+  const instance = runtime();
+  const report = await runInventoryDescriptionBenchmark({ argv: args, loadRuntime: async () => instance });
+  expect(report).toMatchObject({ protocol: 'inventory_neighbor_comparison_v1', status: 'complete', calls: 0,
+    sampledTitles: 10, evaluated: 10, noUniqueProposal: 10, independentLabels: 0, accuracy: null, livePromotionAllowed: false });
+  expect(report.arms).toHaveLength(4);
+  expect(JSON.stringify(report)).not.toMatch(/Private|libraryId|descriptionHash|tmdb|overview/);
+  expect(instance.createClient).not.toHaveBeenCalled();
+  expect(instance.embedder.inspect).toHaveBeenCalledTimes(2);
+  expect(instance.close).toHaveBeenCalledTimes(1);
+  const loadRuntime = jest.fn();
+  for (const argv of [args.filter(value => !['--folds', '5'].includes(value)), [...args, '--generate-cases', '1'],
+    ...['--fresh-policy-evaluation', '--policy-shortlist-replay', '--investigate', '--contrastive-investigation',
+      '--content-first-comparison', '--selective-recheck', '--preserve-description-candidate', '--metadata-candidates', '--learned-profiles']
+      .map(mode => [...args, mode])]) {
+    await expect(runInventoryDescriptionBenchmark({ argv, loadRuntime })).rejects.toThrow('neighbor_comparison_requires');
+  }
+  expect(loadRuntime).not.toHaveBeenCalled();
+});
+
 test('content-first CLI preflights the frozen cohort, rejects mixed modes, and pairs every requested title', async () => {
   const instance = runtime();
   const args = ['--seed', seed, '--size', '10', '--folds', '5', '--content-first-comparison', '--learned-profiles'];

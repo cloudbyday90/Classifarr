@@ -168,6 +168,11 @@ evaluate, not evidence that the current veto is wrong or permission to simply
 raise confidence or lower routing thresholds. Work on this component before
 adding another settings or diagnostics panel.
 
+Follow-up evaluation is now recorded in
+[neighbor-margin comparison outcome](neighbor-margin-comparison-outcome.md).
+It measures the proposed alternative without changing this query optimization
+or granting new routing authority.
+
 ## PR, changelog and release
 
 GitHub MCP returned no open Classifarr PRs during the checks on 12 September 2026
