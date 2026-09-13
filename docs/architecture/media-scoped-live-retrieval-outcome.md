@@ -155,6 +155,10 @@ results before selecting an implementation, then repeat a balanced movie/TV
 sample. Do not cache stale routing authority, hard-code library categories or
 build another settings panel to obtain the speedup.
 
+The projection follow-up is documented separately in the
+[lazy synopsis design](lazy-corpus-synopsis-design.md) and
+[outcome](lazy-corpus-synopsis-outcome.md).
+
 ## PR and release scope
 
 Two GitHub MCP checks on 12 September 2026 returned no open Classifarr PRs. There

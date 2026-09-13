@@ -33,6 +33,13 @@ test('scoped SQL filters before ordering/limits and leaves all-media consumers u
   expect(buildInventoryDescriptionCorpusSql({ includeCandidateMetadata: true, includeEvaluationMetadata: true })).not.toContain('$2');
 });
 
+test('history projects only the latest overview inside the lazy fallback', () => {
+  expect(LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL).not.toContain('LEFT JOIN LATERAL');
+  expect(LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL).not.toContain('SELECT h.metadata');
+  expect(LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL).toContain("(SELECT CASE WHEN jsonb_typeof(h.metadata->'overview')='string' THEN h.metadata->>'overview' END");
+  expect(LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL).toContain('ORDER BY h.created_at DESC, h.id DESC LIMIT 1)');
+});
+
 test.each([undefined, null, {}, { mediaType: null }, { mediaType: 'MOVIE' }, { mediaType: ['movie'] },
   { mediaType: "movie' OR true --" }, { key: 'tv:90' }, { key: 'movie:0' }, { key: 'movie:01' },
   { key: 'movie:-1' }, { key: 'movie:2147483648' }, { key: 'movie:90:extra' }, { key: 'movie:NaN' },

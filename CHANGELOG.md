@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Load historical synopsis fallback only when inventory text is unavailable,
+  reducing corpus sorting and database work while preserving library evidence,
+  metadata precedence and fresh routing checks across live and background reads.
 - Scope live library-description reads to the requested movie or TV type while
   preserving all same-media memberships, conflict checks and query exclusions.
   Avoid unrelated-media retrieval work and corpus-limit failures without changing
