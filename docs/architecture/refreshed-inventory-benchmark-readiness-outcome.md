@@ -2,6 +2,9 @@
 
 Date: 2026-09-13
 
+Follow-up completed: the [focused AI comparison](focused-library-fallback-evaluation-outcome.md)
+records actual inference on all 23 ready fallback targets and the remaining causes.
+
 ## Original objective and protocol
 
 Evaluate whether refreshed descriptions improve library-agnostic movie/TV

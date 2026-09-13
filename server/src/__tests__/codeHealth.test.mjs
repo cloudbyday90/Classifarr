@@ -23,7 +23,7 @@
  * runtime bugs — particularly issues that can occur during AI-assisted editing:
  *   • Truncated files (missing closing braces / unexpected end of input)
  *   • Unbalanced delimiters ( { } [ ] ( ) )
- *   • Test files missing their final closing `});`
+ *   • Truncated test modules, including tests with explicit timeouts
  *   • Known dead-code stub patterns (commented via underscore-prefixed params)
  *   • Mock chain mismatches in test files (more mockResolvedValueOnce than
  *     associated mockResolvedValue fallbacks, which silently return undefined)
@@ -130,25 +130,34 @@ describe('Code Health — syntax validity', () => {
 // producing spurious failures with no debugging value.
 
 // ---------------------------------------------------------------------------
-// 3. Test file structure — test files must end with a closing `});`
+// 3. Test module syntax — compile without linking or executing imports
 // ---------------------------------------------------------------------------
 
-describe('Code Health — test file closure', () => {
-  /**
-   * Every test file wraps its content in at least one describe() block.
-   * A file that is truncated mid-test will not end with `});` on the last
-   * non-blank line — catching AI-assisted edits that went wrong.
-   */
-  for (const filePath of TEST_FILES) {
-    test(`${rel(filePath)} — ends with });`, () => {
-      const lines = fs.readFileSync(filePath, 'utf8')
-        .split('\n')
-        .map(l => l.trim())
-        .filter(l => l.length > 0);
+describe('Code Health — test module syntax', () => {
+  // A last-line regex cannot distinguish truncation from a valid timed test,
+  // trailing comment or export. Parse ESM without evaluating private fixtures.
+  const compile = (source, identifier) => new vm.SourceTextModule(source, { identifier });
 
-      const lastLine = lines[lines.length - 1];
-      // Accept `});`, `})`, `});`, or bare `}` — the outer describe/test must close.
-      expect(lastLine).toMatch(/^\}[);]*$/);
+  test.each([
+    "test('timed', async () => {}, 30000);",
+    "test('complete', () => {}); // trailing comment",
+    "export const fixture = {};",
+  ])('accepts complete ESM test syntax: %s', source => {
+    expect(() => compile(source, 'valid-test.mjs')).not.toThrow();
+  });
+
+  test.each([
+    "test('truncated', async () => {",
+    "test('truncated', async () => {}, 30000",
+    "test('truncated', () => { const fixture = [1, 2; });",
+  ])('rejects incomplete ESM test syntax: %s', source => {
+    // VM parser errors belong to another realm; compare the error name.
+    expect(() => compile(source, 'invalid-test.mjs')).toThrow(expect.objectContaining({ name: 'SyntaxError' }));
+  });
+
+  for (const filePath of TEST_FILES) {
+    test(`${rel(filePath)} — parses as a complete test module`, () => {
+      expect(() => compile(fs.readFileSync(filePath, 'utf8'), filePath)).not.toThrow();
     });
   }
 });

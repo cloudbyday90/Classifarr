@@ -4,6 +4,7 @@
  */
 
 import { expect, jest, test } from '@jest/globals';
+import { join } from 'node:path';
 
 import {
   runHeldOutSemanticStudyReviewerPacket,
@@ -63,14 +64,14 @@ test('requires explicit local confirmation, writes the private packet, and close
   expect(result.receipt.evaluationBundlePrepared).toBe(true);
   expect(result.receipt.reviewerTemplatesPrepared).toBe(true);
   expect(result.receipt.scoringInputPrepared).toBe(true);
-  expect(writeBundle).toHaveBeenCalledWith('.tmp\\reviewer-packet.evaluation-bundle.json', evaluationBundle);
+  expect(writeBundle).toHaveBeenCalledWith(join('.tmp', 'reviewer-packet.evaluation-bundle.json'), evaluationBundle);
   expect(writePacket).toHaveBeenCalledWith('.tmp/reviewer-packet.json', packet);
   expect(writeReviewerTemplate).toHaveBeenCalledWith(
-    '.tmp\\reviewer-packet.reviewer-one-template.json', { submissionId: 'reviewer-one' },
+    join('.tmp', 'reviewer-packet.reviewer-one-template.json'), { submissionId: 'reviewer-one' },
   );
   expect(writeReviewerTemplate).toHaveBeenCalledWith(
-    '.tmp\\reviewer-packet.reviewer-two-template.json', { submissionId: 'reviewer-two' },
+    join('.tmp', 'reviewer-packet.reviewer-two-template.json'), { submissionId: 'reviewer-two' },
   );
-  expect(writeScoringInput).toHaveBeenCalledWith('.tmp\\reviewer-packet.scoring-input.json', scoringInput);
+  expect(writeScoringInput).toHaveBeenCalledWith(join('.tmp', 'reviewer-packet.scoring-input.json'), scoringInput);
   expect(close).toHaveBeenCalledTimes(1);
 });

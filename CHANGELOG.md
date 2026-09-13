@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Complete the focused movie/TV AI comparison and distinguish insufficient
+  familiarity evidence from rejected matches in fallback benchmark reports.
+  Report strict-control coverage explicitly without changing live routing.
+- Repair cross-platform CI tests with native path expectations and ESM syntax
+  validation that accepts timed tests while still detecting truncated modules.
 - Preserve PostgreSQL timestamp precision when capturing learning feedback, so
   newly committed evidence is not skipped by a rounded analysis cutoff.
 - Repair CI dependency and copyright checks, and include both in local CI

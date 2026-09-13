@@ -18,7 +18,8 @@ test('separates targeted, generated, jointly assessed and familiarity-qualified 
   expect(report).toMatchObject({ sampled: 5, strictNeighborSupported: 1, selected: 4, adjudicationReady: 4,
     generationsFinished: 3, evaluated: 3, additionalReviewResolutions: 3, strictLost: 0,
     additionalPlacementAgreement: 2, additionalPlacementDisagreement: 1, afterFamiliarityCheck: 2,
-    familiarPlacementAgreement: 1, familiarPlacementDisagreement: 1, livePromotionAllowed: false });
+    familiarPlacementAgreement: 1, familiarPlacementDisagreement: 1, livePromotionAllowed: false,
+    familiarityWithheldStates: { unusual: 1, sparse: 0, degenerate: 0, unavailable: 0 } });
   expect(JSON.stringify(report)).not.toMatch(/libraryId|destinationId|observedLibraryIds|snapshotId|description/);
 });
 
@@ -32,4 +33,39 @@ test('reports changed proposals, retained strict results, failures and missing f
     generationsFinished: 4, evaluated: 3, aiProposalChanged: 1, strictPreserved: 1, strictLost: 0,
     additionalReviewResolutions: 1, afterFamiliarityCheck: 0 });
   expect(summarizeInventoryNeighborFallback([])).toMatchObject({ selected: 0, evaluated: 0, reasons: {} });
+});
+
+test('separates scarce, unusual, degenerate and unavailable evidence without exporting arbitrary status text', () => {
+  const cases = ['sparse', 'unusual', 'degenerate', 'private invalid status', 'missing_candidate', 'wrong_version'].map(status => {
+    const value = row(true, false);
+    value.prepared.matchCalibration.candidates[0].status = status;
+    if (status === 'missing_candidate') value.prepared.matchCalibration.candidates = [];
+    if (status === 'wrong_version') value.prepared.matchCalibration.version = 'private invalid version';
+    return value;
+  });
+  const result = summarizeInventoryNeighborFallback(cases);
+  expect(result).toMatchObject({ additionalReviewResolutions: 6, afterFamiliarityCheck: 0,
+    familiarityWithheldStates: { unusual: 1, sparse: 1, degenerate: 1, unavailable: 3 },
+    strictControlsEvaluated: 0, comparisonScope: 'fallback_targets_only' });
+  expect(Object.values(result.familiarityWithheldStates).reduce((sum, count) => sum + count, 0))
+    .toBe(result.additionalReviewResolutions - result.afterFamiliarityCheck);
+  expect(JSON.stringify(result)).not.toContain('private');
+});
+
+test('counts strict controls separately from fallback targets, including any strict loss', () => {
+  const controls = [true, false].map(wouldResolve => {
+    const value = row(true, true);
+    value.prepared.neighborFallback.proposal.strict = true;
+    value.generated.neighborFallback.baseline.wouldResolve = true;
+    value.generated.neighborFallback.wouldResolve = wouldResolve;
+    return value;
+  });
+  const untested = row(true, true);
+  untested.prepared.neighborFallback.proposal.strict = true;
+  delete untested.generated;
+  expect(summarizeInventoryNeighborFallback([row(true, true), ...controls, untested])).toMatchObject({
+    selected: 1, evaluated: 1, strictNeighborSupported: 3, strictControlsEvaluated: 2,
+    comparisonScope: 'includes_strict_controls', strictPreserved: 1, strictLost: 1,
+    additionalReviewResolutions: 1, afterFamiliarityCheck: 1,
+  });
 });
