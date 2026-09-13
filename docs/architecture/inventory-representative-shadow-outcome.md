@@ -99,6 +99,10 @@ substituted, and no PR was merged.
 
 ## Recommendation stack
 
+Follow-up: [bounded profile recovery](inventory-representative-recovery-outcome.md)
+resolved the measured 64-pass exhaustion without changing the 29 completed starts
+or weakening the candidate guard. Unseen-item evidence evaluation remains next.
+
 1. Keep this hands-off diagnostic: bounded batches and cached vectors minimize
    foreground work. Trade-off: busy periods can expire observations, and counters
    reset on restart. Skips are not errors or evidence of a correct destination.

@@ -4,14 +4,16 @@ import { normalizeDescriptionVector } from './inventoryDescriptionSimilarity.mjs
 import { fitRepresentativeGeometry, representativeSimilarity, REPRESENTATIVE_MAX_GROUPS, REPRESENTATIVE_MAX_PASSES } from './inventoryRepresentativeGeometry.mjs';
 import { rankInventoryEvidence } from './inventoryEvidenceReranker.mjs';
 import { inventoryEvidenceLeaderState } from './inventoryNeighborhoodReranker.mjs';
-import { fitStableRepresentativeGeometry, REPRESENTATIVE_STABILITY_STARTS, REPRESENTATIVE_STABILITY_WORK_COMPONENTS } from './inventoryRepresentativeStability.mjs';
+import { fitStableRepresentativeGeometry, REPRESENTATIVE_STABILITY_STARTS, REPRESENTATIVE_STABILITY_WORK_COMPONENTS, REPRESENTATIVE_RECOVERY_WORK_COMPONENTS } from './inventoryRepresentativeStability.mjs';
 
 export const INVENTORY_REPRESENTATIVE_VERSION = 'inventory_representative_groups_v1';
 
 /** Private reusable vectors/membership only; no singleton and no library-name features. */
-export function createInventoryRepresentativeIndex(snapshot, dimensions, folds = 1, { stability = false } = {}) {
-  const work = stability ? REPRESENTATIVE_STABILITY_WORK_COMPONENTS : REPRESENTATIVE_MAX_GROUPS * (REPRESENTATIVE_MAX_PASSES + 2);
-  if (!Number.isSafeInteger(dimensions) || dimensions < 1 || dimensions > 16000 ||
+export function createInventoryRepresentativeIndex(snapshot, dimensions, folds = 1, { stability = false, recovery = false } = {}) {
+  const work = recovery ? REPRESENTATIVE_RECOVERY_WORK_COMPONENTS :
+    stability ? REPRESENTATIVE_STABILITY_WORK_COMPONENTS : REPRESENTATIVE_MAX_GROUPS * (REPRESENTATIVE_MAX_PASSES + 2);
+  if (typeof recovery !== 'boolean' || (recovery && !stability) ||
+      !Number.isSafeInteger(dimensions) || dimensions < 1 || dimensions > 16000 ||
       !Number.isSafeInteger(folds) || folds < 1 || folds > 10 ||
       snapshot.corpus.texts.size * dimensions > 20_000_000 ||
       snapshot.corpus.documents.length * dimensions * work * folds > (stability ? 80_000_000_000 : 20_000_000_000)) {

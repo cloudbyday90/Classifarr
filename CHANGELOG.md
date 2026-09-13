@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Recover unfinished library-profile fits automatically by continuing their existing
+  progress within bounded work limits. Preserve completed fits, reject stale
+  evidence, and retain safe fallback when recovery is exhausted; no new controls,
+  model calls or live routing changes.
 - Compare cached library profiles with existing candidate decisions automatically
   for unseen items, reusing query vectors without extra inference. Batch and
   deduplicate comparisons, reject stale/self-matching evidence, and summarize

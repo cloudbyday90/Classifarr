@@ -5,7 +5,7 @@ import { fitStableRepresentativeGeometry } from './inventoryRepresentativeStabil
 import { validateDescriptionRepresentation } from './inventoryDescriptionVectorCache.mjs';
 import { validateEmbedding } from '../utils/embeddingValidation.mjs';
 
-export const INVENTORY_REPRESENTATIVE_PROFILE_VERSION = 'inventory_representative_profile_v1';
+export const INVENTORY_REPRESENTATIVE_PROFILE_VERSION = 'inventory_representative_profile_v2';
 export const REPRESENTATIVE_PROFILE_COMPONENT_LIMIT = 8_000_000;
 
 /** Private canonical source digest. Neither the key nor these inputs belong in logs. */
@@ -34,10 +34,11 @@ export async function buildInventoryRepresentativeProfile({ snapshot, dimensions
   if (snapshot.corpus.texts.size * dimensions > REPRESENTATIVE_PROFILE_COMPONENT_LIMIT) {
     throw new Error('inventory_representative_profile_input_budget');
   }
-  const index = createInventoryRepresentativeIndex(snapshot, dimensions, 1, { stability: true });
+  const index = createInventoryRepresentativeIndex(snapshot, dimensions, 1, { stability: true, recovery: true });
   const buckets = new Map([...index.scope.keys()].sort((a, b) => a - b).map(id => [id, []]));
   const summary = { libraries: buckets.size, trainingDescriptions: 0, sharedDescriptions: 0,
-    groups: 0, sparseLibraries: 0, unconvergedStarts: 0, discardedDescriptions: 0 };
+    groups: 0, sparseLibraries: 0, unconvergedStarts: 0, discardedDescriptions: 0,
+    recoveredStarts: 0, recoveryIterations: 0 };
   for (const group of index.groups.values()) {
     if (group.libraries.size > 1) { summary.sharedDescriptions++; continue; }
     if (group.libraries.size === 1) {
@@ -50,12 +51,14 @@ export async function buildInventoryRepresentativeProfile({ snapshot, dimensions
   for (const [id, items] of buckets) {
     signal?.throwIfAborted();
     items.sort((a, b) => a.hash < b.hash ? -1 : a.hash > b.hash ? 1 : 0);
-    const fit = await fitStableRepresentativeGeometry(items, { signal, includeLegacy: false });
+    const fit = await fitStableRepresentativeGeometry(items, { signal, includeLegacy: false, recoverUnconverged: true });
     libraries.set(id, { mediaType: index.scope.get(id), selectedStart: fit.stability.selectedStart,
       starts: fit.runs.map(run => ({ groups: run.groups, converged: run.converged })), stability: fit.stability });
     summary.groups += fit.groups.length;
     summary.sparseLibraries += Number(!fit.groups.length);
     summary.unconvergedStarts += fit.runs.filter(run => !run.converged).length;
+    summary.recoveredStarts += fit.stability.recovery.recoveredStarts;
+    summary.recoveryIterations += fit.stability.recovery.additionalIterations;
     summary.discardedDescriptions += fit.discarded;
     weight += 4096 + fit.runs.reduce((sum, run) => sum + run.groups.length * (dimensions * 8 + 2048), 0);
   }

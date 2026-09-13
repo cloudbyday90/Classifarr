@@ -1,12 +1,16 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { createHash } from 'node:crypto';
 import { fitRepresentativeGeometry, REPRESENTATIVE_MAX_GROUPS, REPRESENTATIVE_MAX_PASSES, REPRESENTATIVE_STABILITY_PASSES } from './inventoryRepresentativeGeometry.mjs';
+import { createRepresentativeFitSession, REPRESENTATIVE_RECOVERY_PASSES } from './representativeFitSession.mjs';
 
 export const INVENTORY_REPRESENTATIVE_STABILITY_VERSION = 'inventory_representative_stability_v1';
 export const REPRESENTATIVE_STABILITY_STARTS = 3;
 // Assignment + mean updates, seeding and final diagnostics for the control and all starts.
 export const REPRESENTATIVE_STABILITY_WORK_COMPONENTS = REPRESENTATIVE_MAX_GROUPS * (REPRESENTATIVE_MAX_PASSES + 4) + REPRESENTATIVE_MAX_PASSES +
   REPRESENTATIVE_STABILITY_STARTS * (REPRESENTATIVE_MAX_GROUPS * (REPRESENTATIVE_STABILITY_PASSES + 4) + REPRESENTATIVE_STABILITY_PASSES);
+// Include continuation and a second diagnostic summary for every start in the worst case.
+export const REPRESENTATIVE_RECOVERY_WORK_COMPONENTS = REPRESENTATIVE_STABILITY_WORK_COMPONENTS +
+  REPRESENTATIVE_STABILITY_STARTS * ((REPRESENTATIVE_MAX_GROUPS + 1) * (REPRESENTATIVE_RECOVERY_PASSES - REPRESENTATIVE_STABILITY_PASSES) + 2 * REPRESENTATIVE_MAX_GROUPS);
 const round = value => Math.round(value * 1_000_000) / 1_000_000;
 const pairs = count => count * (count - 1) / 2;
 
@@ -49,19 +53,37 @@ function saltedFirst(items, start) {
 }
 
 /** Sorted, validated, training-only items supplied by the scoped learner. */
-export async function fitStableRepresentativeGeometry(items, { signal, includeLegacy = true } = {}) {
+export async function fitStableRepresentativeGeometry(items, { signal, includeLegacy = true, recoverUnconverged = false } = {}) {
+  if (typeof recoverUnconverged !== 'boolean') throw new Error('inventory_representative_recovery_options');
   const legacy = includeLegacy ? await fitRepresentativeGeometry(items, { signal }) : null;
-  const runs = [];
+  const runs = [], recovery = { attemptedStarts: 0, recoveredStarts: 0, exhaustedStarts: 0, additionalIterations: 0 };
   for (let start = 0; start < REPRESENTATIVE_STABILITY_STARTS; start++) {
     signal?.throwIfAborted();
-    runs.push(await fitRepresentativeGeometry(items, { signal, maxPasses: REPRESENTATIVE_STABILITY_PASSES,
-      firstIndex: start ? saltedFirst(items, start) : null, diagnostics: true }));
+    const options = { signal, firstIndex: start ? saltedFirst(items, start) : null, diagnostics: true };
+    if (!recoverUnconverged) {
+      runs.push(await fitRepresentativeGeometry(items, { ...options, maxPasses: REPRESENTATIVE_STABILITY_PASSES }));
+      continue;
+    }
+    const session = createRepresentativeFitSession(items, options);
+    try {
+      let run = await session.advance(REPRESENTATIVE_STABILITY_PASSES);
+      if (!run.converged) {
+        recovery.attemptedStarts++;
+        const initialIterations = run.iterations;
+        run = await session.advance(REPRESENTATIVE_RECOVERY_PASSES - REPRESENTATIVE_STABILITY_PASSES);
+        recovery.additionalIterations += run.iterations - initialIterations;
+        if (run.converged) recovery.recoveredStarts++;
+        else recovery.exhaustedStarts++;
+      }
+      runs.push(run);
+    } finally { session.dispose(); }
   }
   const selectedStart = selectRepresentativeFit(runs), agreements = [];
   for (let a = 0; a < runs.length; a++) for (let b = a + 1; b < runs.length; b++) {
     agreements.push(representativePartitionAgreement(runs[a].labels, runs[b].labels));
   }
   const stability = { selectedStart,
+    ...(recoverUnconverged ? { recovery } : {}),
     ...(legacy ? { legacyIterations: legacy.iterations, legacyConverged: legacy.converged } : {}),
     totalIterations: (legacy?.iterations ?? 0) + runs.reduce((sum, run) => sum + run.iterations, 0),
     minimumPartitionAgreement: round(Math.min(...agreements)),
