@@ -39,6 +39,7 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     'fresh-policy-evaluation': { type: 'boolean' },
     'neighbor-calibration': { type: 'boolean' },
     'neighbor-cross-fit': { type: 'boolean' },
+    'neighbor-fallback': { type: 'boolean' },
     'preserve-description-candidate': { type: 'boolean' },
     'metadata-candidates': { type: 'boolean' }, 'learned-profiles': { type: 'boolean' } } });
   if (values['metadata-candidates'] && values['learned-profiles']) throw new Error('description_benchmark_selection_mode_conflict');
@@ -52,6 +53,7 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     ...(values['max-minutes'] === undefined ? {} : { maxMinutes: Number(values['max-minutes']) }),
   });
   if (values['neighbor-cross-fit'] && !values['neighbor-calibration']) throw new Error('neighbor_cross_fit_requires_neighbor_calibration');
+  if (values['neighbor-fallback'] && !values['fresh-policy-evaluation']) throw new Error('neighbor_fallback_requires_fresh_policy_evaluation');
   if (values['neighbor-calibration'] && (!options.folds || options.generateCases ||
       ['fresh-policy-evaluation', 'policy-shortlist-replay', 'investigate', 'contrastive-investigation',
         'content-first-comparison', 'selective-recheck', 'preserve-description-candidate', 'metadata-candidates', 'learned-profiles']
@@ -60,7 +62,8 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     if (values['policy-shortlist-replay'] || values.investigate || values['contrastive-investigation'] ||
         values['content-first-comparison'] || values['selective-recheck'] || values['preserve-description-candidate'] ||
         values['metadata-candidates'] || values['learned-profiles']) throw new Error('fresh_policy_requires_exclusive_mode');
-    return runFreshInventoryPolicyEvaluation(options, { signal, onProgress, loadRuntime: loadFreshRuntime });
+    return runFreshInventoryPolicyEvaluation(options, { signal, onProgress, loadRuntime: loadFreshRuntime,
+      neighborFallback: values['neighbor-fallback'] === true });
   }
   if (values['policy-shortlist-replay']) {
     if (values.investigate || values['contrastive-investigation'] || values['content-first-comparison'] || values['selective-recheck'] ||

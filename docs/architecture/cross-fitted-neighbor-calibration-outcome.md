@@ -161,6 +161,10 @@ Reuse the current evaluation/receipt infrastructure and report jointly qualified
 outcomes before any live promotion. Do not turn an empirical rank into a policy
 score, bypass explicit restrictions, or add more acknowledgements/settings.
 
+The next implementation is documented in the
+[selective fallback design](selective-neighbor-fallback-design.md) and its separate
+[outcome](selective-neighbor-fallback-outcome.md).
+
 ## PR, changelog and release
 
 GitHub MCP returned no open Classifarr PRs in both checks on 12 September 2026 local

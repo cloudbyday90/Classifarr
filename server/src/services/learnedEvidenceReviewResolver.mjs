@@ -1,5 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { compareInventoryDescriptionEvidence } from './inventoryDescriptionEvidenceComparison.mjs';
+import { compareInventoryDescriptionEvidence, hasLeadingLearnedMetadata } from './inventoryDescriptionEvidenceComparison.mjs';
 import { isLocalCandidateProposal } from './policyCandidateProposalAuthority.mjs';
 import { inspectLearnedEvidenceReviewScope } from './learnedEvidenceReviewScope.mjs';
 
@@ -30,7 +30,6 @@ export function assessLearnedEvidenceReview(input = {}) {
   }
   const weakest = Math.min(...examples.map(item => item.similarity));
   if (others.some(entry => entry.candidate.items.some(item => item.similarity >= weakest))) return result('neighbors_disagree');
-  if (winner.profile.statusId !== 'available' || winner.profile.relativeFit <= 0 ||
-      others.some(entry => entry.profile.relativeFit >= winner.profile.relativeFit)) return result('metadata_disagrees');
+  if (!hasLeadingLearnedMetadata(winner, others)) return result('metadata_disagrees');
   return result('learned_evidence_agrees', true);
 }

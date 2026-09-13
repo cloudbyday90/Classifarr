@@ -5,9 +5,9 @@ import { collectInventoryCandidateMetadata } from '../../services/inventoryMetad
 import { fingerprintFreshPolicySnapshot } from '../../services/freshInventoryPolicyRuntime.mjs';
 
 export const freshSettings = { seed: 'fresh-policy-test-seed-2026', size: 12, generateCases: 12, folds: 3 };
-export function freshFixture() {
+export function freshFixture(count = 120) {
   const libraries = Array.from({ length: 6 }, (_, index) => ({ id: index + 1, name: `Private library ${index}`, is_active: true, media_type: index < 3 ? 'movie' : 'tv' }));
-  const evaluationRows = Array.from({ length: 120 }, (_, index) => ({ tmdb_id: index + 1, library_id: index % 6 + 1,
+  const evaluationRows = Array.from({ length: count }, (_, index) => ({ tmdb_id: index + 1, library_id: index % 6 + 1,
     media_type: libraries[index % 6].media_type, overview: `Private synopsis number ${index}.`,
     title: `Private title ${index}`, year: 2020, genres: [`Genre ${index % 6}`], studio: 'Private studio', content_rating: 'PG',
     evaluation_metadata: { inventory_tmdb: { version: 1, tmdb_id: index + 1, media_type: libraries[index % 6].media_type,

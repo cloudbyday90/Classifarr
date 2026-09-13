@@ -7,13 +7,18 @@ import { prepareFreshInventoryPolicyCase } from './freshInventoryPolicyPreparati
 import { reducePolicyShortlistReplayResponse } from './policyShortlistReplay.mjs';
 import { buildFreshPolicyReport } from './freshInventoryPolicyReport.mjs';
 import { createInventoryMatchCalibration } from './inventoryMatchCalibration.mjs';
+import { createInventoryNeighborCalibration } from './inventoryNeighborCalibration.mjs';
+import { inspectInventoryNeighborProposal } from './inventoryNeighborProposal.mjs';
+import { isInventoryNeighborFallbackTarget } from './inventoryNeighborFallback.mjs';
 
 /** Fresh policies, fold-local evidence, sequential admitted inference, aggregate output only. */
 export async function runFreshInventoryPolicyEvaluation(settings, {
   loadRuntime = loadFreshInventoryPolicyRuntime, signal, onProgress = () => {},
   prepareCase = prepareFreshInventoryPolicyCase,
+  neighborFallback = false,
 } = {}) {
   const options = validateDescriptionBenchmarkOptions(settings);
+  if (typeof neighborFallback !== 'boolean') throw new Error('neighbor_fallback_mode_invalid');
   if (!options.folds) throw new Error('fresh_policy_evaluation_requires_folds');
   const abort = AbortSignal.any([AbortSignal.timeout(options.maxMinutes * 60000), ...(signal ? [signal] : [])]);
   abort.throwIfAborted();
@@ -29,11 +34,16 @@ export async function runFreshInventoryPolicyEvaluation(settings, {
     const evidence = createFreshInventoryPolicyEvidence(source, prepared);
     const calibration = createInventoryMatchCalibration({ documents: source.corpus.documents,
       libraries: source.libraries, vectors: source.vectors, representation });
+    const neighbors = neighborFallback ? createInventoryNeighborCalibration({ documents: source.corpus.documents,
+      libraries: source.libraries, vectors: source.vectors, representation }, { crossFit: true }) : null;
     const rows = [];
     for (const sample of prepared.cases) {
       abort.throwIfAborted();
       const matchCalibration = await calibration.assess(sample, { signal: abort });
-      rows.push({ sample, prepared: { ...await prepareCase(sample, source, evidence, abort), matchCalibration } });
+      const fallback = neighbors ? { proposal: inspectInventoryNeighborProposal(sample, prepared.texts),
+        calibration: await neighbors.assess(sample, { signal: abort }) } : null;
+      rows.push({ sample, prepared: { ...await prepareCase(sample, source, evidence, abort), matchCalibration,
+        ...(fallback ? { neighborFallback: fallback } : {}) } });
       onProgress({ stage: 'fresh_policy_preparation', completed: rows.length, requested: prepared.cases.length });
     }
     const initialComponents = describeFreshPolicySnapshot(source);
@@ -56,7 +66,9 @@ export async function runFreshInventoryPolicyEvaluation(settings, {
     // Preparation reads only the captured source. Background metadata refresh
     // cannot change those frozen inputs, including the newly fitted baselines.
     await verify({ allowMetadataRefresh: true });
-    const requested = rows.slice(0, options.generateCases).filter(row => row.prepared.status === 'ready');
+    const requested = neighborFallback
+      ? rows.filter(row => isInventoryNeighborFallbackTarget(row.prepared.neighborFallback) && row.prepared.status === 'ready').slice(0, options.generateCases)
+      : rows.slice(0, options.generateCases).filter(row => row.prepared.status === 'ready');
     const client = requested.length ? runtime.createClient() : null;
     const identity = client ? await client.inspect(abort) : null;
     let calls = 0, verificationFailure = null;
@@ -90,6 +102,6 @@ export async function runFreshInventoryPolicyEvaluation(settings, {
     }
     if (!abort.aborted && !verificationFailure) await verifyGenerationSnapshot();
     return buildFreshPolicyReport({ source, prepared, rows, options, calls, identity, representation,
-      interrupted: abort.aborted, verificationFailure, changedComponents });
+      interrupted: abort.aborted, verificationFailure, changedComponents, neighborFallback });
   } finally { await runtime.close(); }
 }

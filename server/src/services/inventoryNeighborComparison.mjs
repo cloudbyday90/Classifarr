@@ -5,19 +5,7 @@ import { createInventoryNeighborCalibration } from './inventoryNeighborCalibrati
 import { NEIGHBOR_MARGIN_VERSION, NEIGHBOR_MARGIN_LIMITS } from './libraryNeighborMargin.mjs';
 import { NEIGHBOR_CROSS_FIT_VERSION, NEIGHBOR_CROSS_FIT_LIMITS } from './libraryNeighborCrossFit.mjs';
 import { summarizeNeighborComparison } from './inventoryNeighborComparisonReport.mjs';
-
-function fullCorpusCheck(entry, texts) {
-  const [selected, ...others] = entry.investigationCandidates;
-  const complete = others.length > 0 && entry.investigationCandidates.every(candidate => candidate.items.length >= 3);
-  const unique = complete && selected.rank > others[0].rank;
-  const normalized = hash => texts.get(hash).trim().toLowerCase();
-  const otherDescriptions = new Set(others.flatMap(candidate => candidate.items.slice(0, 3).map(item => normalized(item.hash))));
-  const items = selected?.items.slice(0, 3) ?? [];
-  const shared = unique && items.some(item => item.libraryIds.size > 1 || otherDescriptions.has(normalized(item.hash)));
-  const strict = unique && !shared && Math.min(...items.map(item => item.similarity)) >
-    Math.max(...others.flatMap(candidate => candidate.items.slice(0, 3).map(item => item.similarity)));
-  return { selected: unique ? selected.id : null, shared, strict };
-}
+import { inspectInventoryNeighborProposal } from './inventoryNeighborProposal.mjs';
 
 /** Paired, held-out neighbor-only experiment. No generation, policies, receipts, or routing. */
 export async function runInventoryNeighborComparison(snapshot, representation, rawOptions, { signal, onProgress, crossFit = false } = {}) {
@@ -46,7 +34,7 @@ export async function runInventoryNeighborComparison(snapshot, representation, r
   try {
     for (const entry of prepared.cases) {
       signal?.throwIfAborted();
-      const full = fullCorpusCheck(entry, prepared.texts);
+      const full = inspectInventoryNeighborProposal(entry, prepared.texts);
       const assessment = await calibration.assess(entry, { signal });
       recordCoverage(entry, assessment, coverage);
       const crossAssessment = crossFit ? await crossFitCalibration.assess(entry, { signal }) : null;

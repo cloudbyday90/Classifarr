@@ -11,6 +11,7 @@ import { assessLearnedEvidenceReview } from './learnedEvidenceReviewResolver.mjs
 import { evaluateClassificationRouteSafety } from './classificationRouteSafetyGate.mjs';
 import { ADJUDICATION_REPLAY_OUTPUT_TOKENS } from './localDescriptionBenchmarkClient.mjs';
 import { isReasoningModel } from './aiResponseNormalizer.mjs';
+import { assessInventoryNeighborFallback } from './inventoryNeighborFallback.mjs';
 
 const parser = new AIResponseParser({ logger: Object.fromEntries(['info', 'warn', 'error', 'debug'].map(level => [level, () => {}])) });
 const valid = result => ['proposed', 'abstained'].includes(result?.status);
@@ -33,6 +34,8 @@ export function reducePolicyShortlistReplayResponse(entry, arm, generated, ident
   const consensus = assessPolicyCandidateConsensus(input);
   const learnedReview = entry.reviewPolicies ? assessLearnedEvidenceReview({ ...input,
     reviewEvidence: entry.reviewEvidence, policies: entry.reviewPolicies }) : null;
+  const neighborFallback = entry.reviewPolicies && entry.neighborFallback ? assessInventoryNeighborFallback({ ...input,
+    reviewEvidence: entry.reviewEvidence, policies: entry.reviewPolicies }, entry.neighborFallback) : null;
   const safety = evaluateClassificationRouteSafety({ result: { ...advisory, policyResult: entry.policyResult } });
   // Only schema-owned field names leave the private parser; never its error text.
   const validationFields = ['decision', 'library_number', 'confidence', 'reason', 'problem_summary', 'why_uncertain', 'question', 'options']
@@ -41,6 +44,7 @@ export function reducePolicyShortlistReplayResponse(entry, arm, generated, ident
     destinationId: advisory.candidate_adjudication.proposedDestination?.library_id ?? null,
     consensusEligible: consensus.eligible, consensusReason: consensus.reason,
     ...(learnedReview ? { learnedReview } : {}),
+    ...(neighborFallback ? { neighborFallback } : {}),
     automaticRouteAllowed: safety.automatic_route_allowed,
     blockingGates: safety.blocking_gates.map(gate => gate.id),
     validationFields, ...usage };

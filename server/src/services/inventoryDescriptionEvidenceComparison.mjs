@@ -1,6 +1,12 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { projectLiveInventoryLearnedProfile } from './liveInventoryLearnedProfileEvidence.mjs';
 
+/** Call only with the complete, validated comparison below. */
+export function hasLeadingLearnedMetadata(winner, others) {
+  return winner.profile.statusId === 'available' && winner.profile.relativeFit > 0 &&
+    others.every(entry => entry.profile.relativeFit < winner.profile.relativeFit);
+}
+
 /** Validate a complete comparison before any consumer interprets relative support. */
 export function compareInventoryDescriptionEvidence(candidates) {
   if (!Array.isArray(candidates) || candidates.length < 2 || candidates.length > 64 ||

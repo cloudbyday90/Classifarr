@@ -1,13 +1,14 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { summarizeLearnedEvidenceReviews } from './learnedEvidenceReviewReport.mjs';
 import { summarizeInventoryMatchCalibration } from './inventoryMatchCalibrationReport.mjs';
+import { summarizeInventoryNeighborFallback } from './inventoryNeighborFallbackReport.mjs';
 export const countFreshPolicyValues = values => Object.fromEntries([...new Set(values)].sort()
   .map(value => [value, values.filter(item => item === value).length]));
 const sum = values => values.reduce((total, value) => total + value, 0);
 const mean = values => values.length ? Number((sum(values) / values.length).toFixed(2)) : null;
 
 /** IDs and content are used only for private comparisons; output contains aggregate counts. */
-export function summarizeFreshPolicyCases(rows) {
+export function summarizeFreshPolicyCases(rows, { neighborFallback = false } = {}) {
   const evaluated = rows.filter(row => row.prepared.policyResult);
   const admitted = rows.filter(row => row.prepared.status === 'ready');
   const finished = rows.filter(row => row.generated);
@@ -33,16 +34,18 @@ export function summarizeFreshPolicyCases(rows) {
     routeSafetyAllowed: finished.filter(row => row.generated.automaticRouteAllowed).length,
     learnedReview: summarizeLearnedEvidenceReviews(rows),
     matchCalibration: summarizeInventoryMatchCalibration(rows),
+    ...(neighborFallback ? { neighborFallback: summarizeInventoryNeighborFallback(rows) } : {}),
     blockingGates: countFreshPolicyValues(finished.flatMap(row => row.generated.blockingGates ?? [])),
     measuredCalls: measured.length, meanLatencyMs: mean(measured.map(row => row.generated.latencyMs)),
     totalPromptTokens: sum(measured.map(row => row.generated.promptTokens)),
     totalOutputTokens: sum(measured.map(row => row.generated.outputTokens)) };
 }
 
-export function buildFreshPolicyReport({ source, prepared, rows, options, calls, identity, representation, interrupted, verificationFailure, changedComponents }) {
+export function buildFreshPolicyReport({ source, prepared, rows, options, calls, identity, representation, interrupted, verificationFailure, changedComponents, neighborFallback = false }) {
   const errors = rows.some(row => (row.generated && !['proposed', 'abstained'].includes(row.generated.status)) ||
     !['ready', 'mode_not_adjudication'].includes(row.prepared.status));
-  return { version: 1, protocol: 'fresh_inventory_policy_evaluation_v1',
+  const summarize = rows => summarizeFreshPolicyCases(rows, { neighborFallback });
+  return { version: 1, protocol: neighborFallback ? 'fresh_inventory_neighbor_fallback_v1' : 'fresh_inventory_policy_evaluation_v1',
     status: interrupted ? 'interrupted' : verificationFailure ? 'invalidated' : errors ? 'completed_with_errors' : options.generateCases ? 'complete' : 'preflight',
     sourceVerified: !interrupted && !verificationFailure && !changedComponents?.length,
     evaluationSnapshotValid: !interrupted && !verificationFailure,
@@ -52,10 +55,10 @@ export function buildFreshPolicyReport({ source, prepared, rows, options, calls,
     evidenceFingerprint: prepared.fingerprint, evaluation: prepared.evaluation,
     requested: options.size, sampleShortfall: options.size - rows.length, calls,
     requestedGenerationCases: options.generateCases, maximumCalls: options.generateCases,
-    ...summarizeFreshPolicyCases(rows),
-    media: ['movie', 'tv'].map(mediaType => ({ mediaType, ...summarizeFreshPolicyCases(rows.filter(row => row.sample.mediaType === mediaType)) })),
+    ...summarize(rows),
+    media: ['movie', 'tv'].map(mediaType => ({ mediaType, ...summarize(rows.filter(row => row.sample.mediaType === mediaType)) })),
     libraries: [...source.libraries].sort((a, b) => a.id - b.id).map((library, index) => ({ stratum: index + 1,
-      mediaType: library.media_type, ...summarizeFreshPolicyCases(rows.filter(row => row.sample.observedLibraryIds.includes(library.id))) })),
+      mediaType: library.media_type, ...summarize(rows.filter(row => row.sample.observedLibraryIds.includes(library.id))) })),
     embedding: { model: representation.model, digest: representation.digest, dimensions: representation.dimensions },
     generation: identity ? { ...identity, context: options.context, temperature: 0, seed: 42, thinking: false } : null,
     unavailableSources: ['historical_rag', 'outcome_history', 'learned_patterns', 'source_library_shortcut', 'exact_inventory_identity'],
