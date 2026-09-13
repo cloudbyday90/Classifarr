@@ -24,6 +24,7 @@ import { LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL } from '../../services/liveInvent
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from '../../services/sourceConflictAuthorityGuard.mjs';
 import { buildLiveInventoryLearnedProfiles } from '../../services/liveInventoryLearnedProfile.mjs';
 import { assessLiveLibraryMatch } from '../../services/liveLibraryMatchBaseline.mjs';
+import { createLiveInventoryDescriptionRetriever } from '../../services/liveInventoryDescriptionRetriever.mjs';
 
 let client;
 let repository;
@@ -169,7 +170,25 @@ test('fresh database descriptions and learned baseline resolve soft review; subs
   expect(warm.confidence).toBe(result.confidence);
   expect(profileCache.set).toHaveBeenCalledTimes(profileFits);
   expect(baselineCache.set).toHaveBeenCalledTimes(1);
+  await client.query("CREATE TEMP TABLE settings (key text, value text); INSERT INTO settings VALUES ('require_all_confirmations','true')");
+  await cache.write(identity, [{ hash: liveRequest.hash, vector: queryVector }]);
+  const configuration = { ...(await dependencies.readConfig()), embedding_provider_mode: 'same', embedding_model: 'test' };
+  const embedder = { provider: 'ollama', model: identity.model, inspect: async () => identity, embedBatch: jest.fn() };
+  const held = createLearnedEvidenceRoutingService({ ...dependencies,
+    readConfig: async () => ({ ...configuration,
+      confirmation_setting: (await client.query("SELECT value FROM settings WHERE key='require_all_confirmations'")).rows[0].value }),
+    retriever: createLiveInventoryDescriptionRetriever({ repository: { ...repository, readConfig: async () => configuration }, createEmbedder: () => embedder }),
+  });
+  expect(await held.resolve({ ...input, learnedContext: await held.prepare(input) })).toBe(input.result);
+  expect(held.shadowStatus().counts.strict_qualified_admin_held).toBe(1);
+  expect(hasCandidateConsensusReceipt(input.result)).toBe(false);
+  expect(evaluateClassificationRouteSafety({ result: input.result, requireAllConfirmations: true }).automatic_route_allowed).toBe(false);
+  expect(embedder.embedBatch).not.toHaveBeenCalled();
+  expect((await client.query("SELECT value FROM settings WHERE key='require_all_confirmations'")).rows[0].value).toBe('true');
   await client.query("UPDATE inventory_description_vector_cache SET created_at=now()-interval '31 days'");
+  expect(await held.resolve({ ...input, learnedContext: await held.prepare(input) })).toBe(input.result);
+  expect(held.shadowStatus().counts).toMatchObject({ strict_qualified_admin_held: 1, unavailable: 1 });
+  expect(embedder.embedBatch).not.toHaveBeenCalled();
   expect(await service.resolve({ ...input, learnedContext: await service.prepare(input) })).toBe(input.result);
   expect(baselineCache.set).toHaveBeenCalledTimes(1);
   await client.query('UPDATE inventory_description_vector_cache SET created_at=now()');
@@ -178,7 +197,7 @@ test('fresh database descriptions and learned baseline resolve soft review; subs
     return input.policyResult;
   } });
   expect(await changed.resolve({ ...input, learnedContext: await changed.prepare(input) })).toBe(input.result);
-  expect((await client.query('SELECT count(*)::integer AS count FROM inventory_description_vector_cache')).rows[0].count).toBe(160);
+  expect((await client.query('SELECT count(*)::integer AS count FROM inventory_description_vector_cache')).rows[0].count).toBe(161);
   expect((await client.query('SELECT count(*)::integer AS count FROM classification_history')).rows[0].count).toBe(0);
 });
 

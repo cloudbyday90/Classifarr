@@ -33,6 +33,22 @@ test('warm retrieval uses the query cache, same representation and every candida
   expect(embedder.inspect).toHaveBeenCalledTimes(2);
 });
 
+test('confirmation-held retrieval uses cached queries for strict evidence without enabling calibration or generation', async () => {
+  const { retriever, repository, embedder } = setup();
+  for (const queryCacheOnly of ['true', 1, null]) {
+    expect((await retriever.retrieve({ contract, metadata, queryCacheOnly })).statusId).toBe('not_applicable');
+  }
+  expect(repository.readConfig).not.toHaveBeenCalled();
+  const result = await retriever.retrieve({ contract, metadata, matchLibraryId: 2, queryCacheOnly: true });
+  expect(result.statusId).toBe('available');
+  expect(repository.retrieve.mock.calls[0][0].request.neighborCalibration).toBeUndefined();
+  repository.readQueryVector.mockResolvedValue(null);
+  expect(await retriever.retrieve({ contract, metadata, matchLibraryId: 2, queryCacheOnly: true }))
+    .toEqual({ statusId: 'unavailable', candidates: [] });
+  expect(repository.retrieve).toHaveBeenCalledTimes(1);
+  expect(embedder.embedBatch).not.toHaveBeenCalled();
+});
+
 test('shadow calibration requires a cached query and a selected library; it never calls embedding generation', async () => {
   const { retriever, repository, embedder, candidates } = setup();
   for (const request of [{ neighborCalibration: true }, { neighborCalibration: 'true', matchLibraryId: 1 }]) {

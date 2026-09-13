@@ -136,7 +136,7 @@ test.each(['prompt_confirm', 'auto_classify'])('does not prepare an explicit %s 
 
 test('preparation rejects unavailable, remote, restricted and unknown inputs', async () => {
   const input = learnedRoutingFixture(), deps = learnedRoutingDependencies(input);
-  for (const config of [null, { rag_enabled: false }, { ...(await deps.readConfig()), confirmation_setting: 'true' },
+  for (const config of [null, { rag_enabled: false }, { ...(await deps.readConfig()), confirmation_setting: 'unknown' },
     { ...(await deps.readConfig()), ollama_host: 'https://example.org' }]) {
     expect(await createLearnedEvidenceRoutingService({ ...deps, readConfig: async () => config }).prepare(input)).toBeNull();
   }

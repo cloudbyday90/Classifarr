@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Continue cached library-evidence evaluation when routing confirmations are
+  required, distinguishing qualified evidence from approval holds while preserving
+  fresh routing checks, bounded work and zero additional inference.
 - Shadow-test calibrated neighbor overlap against current library evidence and
   existing AI proposals, with bounded cached fitting, no extra inference and no
   new routing authority, user settings or acknowledgement steps.

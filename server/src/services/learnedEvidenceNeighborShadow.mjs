@@ -20,13 +20,3 @@ export function assessLearnedNeighborShadow(input) {
   return assessInventoryNeighborFallback(input, { proposal: { selected, strict: false, shared: false },
     calibration: compared[0].candidate.neighborCalibration }).wouldResolve;
 }
-
-/** Fixed, saturating counters only; no user content or per-item identifiers. */
-export function createLearnedNeighborShadowCounters() {
-  const counts = Object.fromEntries(['preparation_admin_blocked', 'live_guard_blocked', 'busy', 'unavailable',
-    'fallback_blocked', 'freshness_blocked', 'qualified'].map(reason => [reason, 0]));
-  return Object.freeze({
-    record(reason) { if (Object.hasOwn(counts, reason)) counts[reason] = Math.min(1_000_000, counts[reason] + 1); },
-    read() { return { version: 'learned_neighbor_shadow_v1', counts: { ...counts }, automaticRouteAllowed: false }; },
-  });
-}

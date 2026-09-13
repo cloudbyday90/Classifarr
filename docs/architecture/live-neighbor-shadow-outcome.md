@@ -72,6 +72,11 @@ image has `VCS_REF=unknown`, not release provenance.
 
 ## Important local finding
 
+This finding describes `e6d643cc`. The subsequent
+[confirmation-independent evaluation outcome](confirmation-independent-evaluation-outcome.md)
+documents the implemented separation: evaluation can now continue with the
+preference on, while actual routing remains held.
+
 `require_all_confirmations` is currently `true`. The existing preparation gate
 therefore stops the learned-evidence path before calibrated shadow fitting.
 That preference was not changed. The smoke check exercised current retrieval

@@ -25,8 +25,10 @@ test('default configuration, active-policy and library readers preserve the stri
     expect(query.mock.calls.some(([sql]) => sql.includes("key='require_all_confirmations'"))).toBe(true);
     expect(query).toHaveBeenCalledWith(expect.stringContaining('is_active = true'), [[1, 2, 3]]);
     config.confirmation_setting = 'true';
-    expect(await service.prepare(input)).toBeNull();
-    expect(service.shadowStatus().counts.preparation_admin_blocked).toBe(1);
+    const heldContext = await service.prepare(input);
+    expect(heldContext).not.toBeNull();
+    expect(await service.resolve({ ...input, learnedContext: heldContext })).toBe(input.result);
+    expect(service.shadowStatus().counts).toMatchObject({ prepared_admin_held: 1, strict_qualified_admin_held: 1 });
   } finally { connect.mockRestore(); }
 });
 

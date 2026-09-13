@@ -1,7 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { expect, jest, test } from '@jest/globals';
 import { createLearnedEvidenceRoutingService } from '../../services/learnedEvidenceRoutingService.mjs';
-import { assessLearnedNeighborShadow, canAssessLearnedNeighborShadow, createLearnedNeighborShadowCounters } from '../../services/learnedEvidenceNeighborShadow.mjs';
+import { assessLearnedNeighborShadow, canAssessLearnedNeighborShadow } from '../../services/learnedEvidenceNeighborShadow.mjs';
 import { learnedRoutingFixture, learnedRoutingDependencies } from '../fixtures/learnedEvidenceRoutingFixture.mjs';
 import { neighborFallbackFixture } from '../fixtures/inventoryNeighborFallbackFixture.mjs';
 import { projectLiveInventoryDescriptionEvidence } from '../../services/liveInventoryDescriptionEvidence.mjs';
@@ -143,16 +143,14 @@ test('an expired shared signal rejects a completed read and releases the in-flig
   expect(service.shadowStatus().counts.qualified).toBe(1);
 });
 
-test('admin confirmation remains unchanged and counters contain bounded categories only', async () => {
+test('admin confirmation allows calibrated evaluation without changing the original review', async () => {
   const { input, deps, service } = fixture();
   deps.readConfig.mockResolvedValue({ ...(await deps.readConfig()), confirmation_setting: 'true' });
-  expect(await service.prepare(input)).toBeNull();
-  expect(service.shadowStatus().counts.preparation_admin_blocked).toBe(1);
-  expect(deps.retriever.retrieve).not.toHaveBeenCalled();
-  const counters = createLearnedNeighborShadowCounters(); counters.record('PRIVATE unknown reason');
-  for (let i = 0; i < 1000002; i++) counters.record('qualified');
-  const status = counters.read(); expect(status.counts.qualified).toBe(1000000);
-  status.counts.qualified = 0; expect(counters.read().counts.qualified).toBe(1000000);
-  expect(JSON.stringify(status)).not.toContain('PRIVATE');
+  const learnedContext = await service.prepare(input);
+  expect(learnedContext).not.toBeNull();
+  expect(await service.resolve({ ...input, learnedContext })).toBe(input.result);
+  expect(service.shadowStatus().counts).toMatchObject({ prepared_admin_held: 1, calibrated_qualified_admin_held: 1, qualified: 0 });
+  expect(deps.retriever.retrieve.mock.calls.every(([request]) => request.queryCacheOnly === true)).toBe(true);
+  expect(hasCandidateConsensusReceipt(input.result)).toBe(false);
   expect(canAssessLearnedNeighborShadow({})).toBe(false); expect(assessLearnedNeighborShadow({})).toBe(false);
 });
