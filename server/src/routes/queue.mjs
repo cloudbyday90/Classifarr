@@ -13,6 +13,7 @@ import { queueService } from '../services/queueService.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { authenticateTokenOrApiKey, requireReadWrite } from '../middleware/apiKeyAuth.mjs';
 import { createQueueRouter } from './queueRouteShared.mjs';
+import { classificationPolicyPathService } from '../services/classificationPolicyPathService.mjs';
 import {
   classificationQueueDecisionWitnessReadService,
 } from '../services/classificationQueueDecisionWitnessReadService.mjs';
@@ -26,4 +27,5 @@ export const router = createQueueRouter({
   authenticateTokenOrApiKey,
   requireReadWrite,
   decisionWitnessReadService: classificationQueueDecisionWitnessReadService,
+  readLibraryEvaluationStatus: () => classificationPolicyPathService.readLibraryEvaluationStatus(),
 });

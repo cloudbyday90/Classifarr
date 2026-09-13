@@ -13,6 +13,7 @@ import { sendData, sendError } from '../utils/responseHelpers.mjs';
 import { ValidationError, NotFoundError, ConflictError } from '../utils/appError.mjs';
 import { requireValidPositiveInt, requireValidLimit } from './routeHelpers.mjs';
 import { registerQueueDecisionWitnessRoute } from './queueRouteDecisionWitness.mjs';
+import { readLibraryEvaluationSummary } from '../services/libraryEvaluationSummary.mjs';
 
 const VALID_RETRY_ENRICHMENT_TYPES = new Set(['tavily', 'web_search', 'omdb']);
 const MAX_QUEUE_LIST_LIMIT = 100;
@@ -64,6 +65,7 @@ export function createQueueRouter({
   authenticateTokenOrApiKey,
   requireReadWrite,
   decisionWitnessReadService = null,
+  readLibraryEvaluationStatus = null,
 }) {
   const router = express.Router();
 
@@ -84,9 +86,15 @@ export function createQueueRouter({
     return sendData(res, stats);
   }));
 
-  router.get('/live-stats', asyncHandler(async (_req, res) => {
+  router.get('/live-stats', asyncHandler(async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.vary('Authorization');
     const stats = await queueService.getLiveStats();
-    return sendData(res, stats);
+    const { libraryEvaluation: _discarded, ...publicStats } = stats;
+    if (req.user?.role === 'admin') {
+      publicStats.libraryEvaluation = readLibraryEvaluationSummary(readLibraryEvaluationStatus);
+    }
+    return sendData(res, publicStats);
   }));
 
   router.get('/pending', asyncHandler(async (req, res) => {

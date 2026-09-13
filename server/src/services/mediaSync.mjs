@@ -6,6 +6,9 @@ import { getMediaServerService as defaultGetMediaServerService } from './mediaSe
 import { mediaSyncLibraryStateService } from './mediaSyncLibraryStateService.mjs';
 import { MediaSourceObservationStore } from './mediaSourceObservationStore.mjs';
 import { createMediaSyncSkipSummary } from './mediaSyncSkipSummary.mjs';
+import { createMediaSyncSkipReporter } from './mediaSyncSkipReporter.mjs';
+import { createMediaSyncIdentityRecovery } from './mediaSyncIdentityRecovery.mjs';
+import { claimSyncIdentityRecovery, persistRecoveredSyncItem, readSyncIdentityRecoveryReceipt } from './mediaSyncIdentityRecoveryPersistence.mjs';
 import { requestInventoryDescriptionRefresh } from './inventoryDescriptionRefreshSignal.mjs';
 import { upsertMediaItem as _upsertMediaItem, upsertCollection as _upsertCollection } from './mediaSyncUpsert.mjs';
 import { pruneMissingMediaItems as _pruneMissingMediaItems, pruneMissingCollections as _pruneMissingCollections, getSyncStatus as _getSyncStatus, getLibraryItems as _getLibraryItems, syncLibrariesFromMediaServer as _syncLibrariesFromMediaServer } from './mediaSyncQueries.mjs';
@@ -20,6 +23,9 @@ export class MediaSyncService {
     };
     this.mediaSyncLibraryStateService = deps.mediaSyncLibraryStateService || mediaSyncLibraryStateService;
     this.sourceObservations = deps.sourceObservations || new MediaSourceObservationStore(db);
+    this.createIdentityRecovery = deps.createIdentityRecovery || createMediaSyncIdentityRecovery;
+    this.persistIdentityRecovery = deps.persistIdentityRecovery || persistRecoveredSyncItem;
+    this.skipReporter = deps.skipReporter || createMediaSyncSkipReporter({ query: db.query, logger });
   }
 
   async syncLibrary(libraryId, options = {}) {
@@ -53,6 +59,7 @@ export class MediaSyncService {
       const syncStatusId = syncStatusResult.rows[0].id;
       let sourceCapture;
       const skippedItems = createMediaSyncSkipSummary();
+      const identityRecovery = this.createIdentityRecovery();
 
       try {
         sourceCapture = await this.sourceObservations.start(media_server_id, libraryId, { incremental });
@@ -79,6 +86,22 @@ export class MediaSyncService {
           for (const item of items) {
             if (item?.external_id) {
               seenItemExternalIds.add(String(item.external_id));
+            }
+            const recovery = await identityRecovery.recover(item, {
+              service, url, apiKey: api_key, libraryKey: String(external_id),
+              claimAttempt: candidate => claimSyncIdentityRecovery(this.sourceObservations, sourceCapture, candidate),
+              readReceipt: candidate => readSyncIdentityRecoveryReceipt(this.sourceObservations, sourceCapture, candidate),
+            });
+            if (recovery) {
+              try {
+                if (await this.persistIdentityRecovery(this.sourceObservations, sourceCapture, recovery)) {
+                  processedItems += 1;
+                  continue;
+                }
+              } catch {
+                logger.warn('Source identity recovery deferred; sync will retry', { libraryId },
+                  { dedupeKey: `identity-recovery:${libraryId}`, dedupeWindowMs: 3600000 });
+              }
             }
             await this.upsertMediaItem(media_server_id, libraryId, item, {
               onSkippedItem: skippedItem => skippedItems.record(skippedItem),
@@ -125,15 +148,14 @@ export class MediaSyncService {
         await this.reconcileAwaitingDecisions(libraryId);
         await this.sourceObservations.finish(sourceCapture);
 
-        const skipSummary = skippedItems.snapshot();
-        if (skipSummary) logger.warn('Library sync skipped source items', { libraryId, ...skipSummary });
-
         await db.query(
           `UPDATE media_server_sync_status 
            SET status = $1, completed_at = NOW(), items_total = $2, items_processed = $3
            WHERE id = $4`,
           ['completed', totalItems, processedItems, syncStatusId],
         );
+        await this.skipReporter.report({ libraryId, mediaServerId: media_server_id, syncStatusId,
+          incremental, sourceType: type }, skippedItems.snapshot());
 
         logger.info('Library sync completed', {
           libraryId,

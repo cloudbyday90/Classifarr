@@ -20,6 +20,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { defineComponent, nextTick, ref } from 'vue'
 import { useSWR } from '../../composables/useSWR'
+import { useOnline } from '@vueuse/core'
 import {
   setupLocalStorageMock,
   cleanupLocalStorageMock,
@@ -34,7 +35,7 @@ import {
 vi.mock('@vueuse/core', async () => {
   const vue = await import('vue')
   return {
-    useOnline: () => vue.ref(true)
+    useOnline: vi.fn(() => vue.ref(true))
   }
 })
 
@@ -66,6 +67,102 @@ describe('useSWR composable', () => {
   // ============================================
   // Initial Load Behavior
   // ============================================
+  describe('memory-only operational status', () => {
+    it('automatically recovers an empty memory-only cache when the connection returns', async () => {
+      const online = ref(false)
+      vi.mocked(useOnline).mockReturnValueOnce(online)
+      const fetcher = createMockFetcher({ value: 'reconnected' })
+      const wrapper = mount(createTestComponent('test:reconnect', fetcher, { persist: false }))
+      await flushPromises()
+      expect(wrapper.vm.data).toBeNull()
+      expect(fetcher).not.toHaveBeenCalled()
+      online.value = true
+      await flushPromises()
+      expect(wrapper.vm.data).toEqual({ value: 'reconnected' })
+      expect(fetcher).toHaveBeenCalledOnce()
+      wrapper.unmount()
+    })
+
+    it('does not hydrate, persist, or accept cross-tab cache data', async () => {
+      setSWRCache('test:private', { value: 'old' })
+      localStorage.setItem.mockClear()
+      const fetcher = createMockFetcher({ value: 'live' })
+      const wrapper = mount(createTestComponent('test:private', fetcher, { persist: false }))
+      expect(wrapper.vm.data).toBeNull()
+      await flushPromises()
+      expect(wrapper.vm.data).toEqual({ value: 'live' })
+      expect(wrapper.vm.cacheTimestamp).toBeGreaterThan(0)
+      expect(localStorage.setItem).not.toHaveBeenCalled()
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'classifarr:v1:swr:test:private',
+        newValue: JSON.stringify({ value: { value: 'injected' }, timestamp: Date.now() }),
+      }))
+      expect(wrapper.vm.data).toEqual({ value: 'live' })
+      wrapper.unmount()
+    })
+
+    it('clears a previously valid snapshot after a failed or forbidden refresh', async () => {
+      const fetcher = vi.fn().mockResolvedValueOnce({ counts: 2 }).mockRejectedValueOnce({ response: { status: 403 } })
+      const wrapper = mount(createTestComponent('test:private', fetcher, { persist: false }))
+      await flushPromises()
+      await wrapper.vm.refresh()
+      expect(wrapper.vm.data).toBeNull()
+      expect(wrapper.vm.error.retryable).toBe(false)
+      wrapper.unmount()
+    })
+
+    it('coalesces concurrent refreshes and ignores responses after unmount', async () => {
+      let resolve
+      const fetcher = vi.fn(() => new Promise(done => { resolve = done }))
+      const wrapper = mount(createTestComponent('test:private', fetcher, { persist: false, pollInterval: 1000 }))
+      const vm = wrapper.vm
+      void vm.refresh()
+      await vi.advanceTimersByTimeAsync(2000)
+      expect(fetcher).toHaveBeenCalledOnce()
+      wrapper.unmount()
+      resolve({ counts: 9 })
+      await flushPromises()
+      expect(vm.data).toBeNull()
+      expect(localStorage.setItem).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(2000)
+      expect(fetcher).toHaveBeenCalledOnce()
+    })
+
+    it('keeps one follow-up read for explicit refreshes after a mutation during an older request', async () => {
+      let resolveOldRead
+      const fetcher = vi.fn()
+        .mockImplementationOnce(() => new Promise(resolve => { resolveOldRead = resolve }))
+        .mockResolvedValueOnce({ value: 'after mutation' })
+      const wrapper = mount(createTestComponent('test:mutation', fetcher, { persist: false }))
+      const firstRefresh = wrapper.vm.refresh()
+      const secondRefresh = wrapper.vm.refresh()
+      expect(fetcher).toHaveBeenCalledOnce()
+      resolveOldRead({ value: 'before mutation' })
+      await Promise.all([firstRefresh, secondRefresh])
+      expect(fetcher).toHaveBeenCalledTimes(2)
+      expect(wrapper.vm.data).toEqual({ value: 'after mutation' })
+      wrapper.unmount()
+    })
+
+    it('does not swallow a newer mutation refresh while a follow-up request is running', async () => {
+      const pending = []
+      const fetcher = vi.fn(() => new Promise(resolve => pending.push(resolve)))
+      const wrapper = mount(createTestComponent('test:mutation', fetcher, { persist: false }))
+      const firstRefresh = wrapper.vm.refresh()
+      pending.shift()({ value: 'initial' })
+      await flushPromises()
+      expect(fetcher).toHaveBeenCalledTimes(2)
+      const secondRefresh = wrapper.vm.refresh()
+      pending.shift()({ value: 'first mutation' })
+      await flushPromises()
+      expect(fetcher).toHaveBeenCalledTimes(3)
+      pending.shift()({ value: 'second mutation' })
+      await Promise.all([firstRefresh, secondRefresh])
+      expect(wrapper.vm.data).toEqual({ value: 'second mutation' })
+      wrapper.unmount()
+    })
+  })
+
   describe('Initial Load Behavior', () => {
     it('returns isLoading=true initially when no cache exists', async () => {
       const fetcher = createMockFetcher({ value: 'fresh' })

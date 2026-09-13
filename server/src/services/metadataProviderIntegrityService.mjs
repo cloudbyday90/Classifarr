@@ -111,6 +111,7 @@ export class MetadataProviderIntegrityService extends BaseIntegrityService {
     );
   }
 
+  /** @param {{ provider?: string, category?: string, message?: string, metadata?: object, dedupeSignature?: string, dedupeWindowMs?: number }} [options] */
   warnProviderRuntimeFailure({
     provider,
     category = 'general',

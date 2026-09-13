@@ -48,6 +48,8 @@ const NON_CLASSIFICATION_METHOD_SERVICE_FILES = new Set([
   'tmdbExternalIdentityResolution.mjs',
   // Operator identity receipts never write classification history; covered by SQL integration.
   'mediaIdentityReviewRepository.mjs',
+  // Sync repair receipts describe identity evidence, never a classification method.
+  'sourceIdentityRecoveryReceipt.mjs',
 ]);
 
 function getAllJavaScriptFiles(dir) {

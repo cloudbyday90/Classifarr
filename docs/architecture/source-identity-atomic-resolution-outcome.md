@@ -69,3 +69,7 @@ finding.
    resolved inventory write and observation removal must commit together.
 
 This item is not eligible for step 4. It must never trigger automatic routing.
+
+The later [self-healing outcome](source-identity-self-healing-outcome.md) implements
+guarded repair only for newly verified candidates. It does not override this
+record's contradictory evidence or authorize automatic routing.

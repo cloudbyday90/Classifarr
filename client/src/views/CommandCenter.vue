@@ -132,11 +132,13 @@
           :error-message="purposeHealthError"
         />
 
-        <SemanticEvaluationReadinessSummary
-          :readiness="semanticEvaluationReadiness"
-          :loading="semanticEvaluationReadinessLoading"
-          :error-message="semanticEvaluationReadinessError"
-        />
+        <LibraryEvaluationSummary :evaluation="libraryEvaluation">
+          <SemanticEvaluationReadinessSummary
+            :readiness="semanticEvaluationReadiness"
+            :loading="semanticEvaluationReadinessLoading"
+            :error-message="semanticEvaluationReadinessError"
+          />
+        </LibraryEvaluationSummary>
 
         <div class="primary-panels">
           <ProcessingPanel
@@ -288,6 +290,7 @@ import ProcessingPanel from '@/components/command-center/ProcessingPanel.vue'
 import ProcessingDetailsSheet from '@/components/command-center/ProcessingDetailsSheet.vue'
 import QuickAddPanel from '@/components/command-center/QuickAddPanel.vue'
 import SemanticEvaluationReadinessSummary from '@/components/command-center/SemanticEvaluationReadinessSummary.vue'
+import LibraryEvaluationSummary from '@/components/command-center/LibraryEvaluationSummary.vue'
 import { useCommandCenterData } from '@/composables/useCommandCenterData'
 import { useCommandCenterOperations } from '@/composables/useCommandCenterOperations'
 import { useNeedsAttentionActions } from '@/composables/useNeedsAttentionActions'
@@ -322,6 +325,7 @@ const {
 
 const {
   activeLibraries,
+  libraryEvaluation,
   activeLibrariesSummary,
   activeProcessingTasks,
   aiOnline,

@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-11T10:32:13.679Z
--- Latest Migration: 20260911_120000_add_inventory_description_vector_cache.sql
+-- Generated: 2026-09-13T12:50:24.852Z
+-- Latest Migration: 20260913_140000_add_source_identity_recovery_state.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -4414,13 +4414,34 @@ CREATE TABLE public.media_source_observations (
     first_seen_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
     last_seen_at timestamp with time zone DEFAULT clock_timestamp() NOT NULL,
     generation bigint NOT NULL,
+    source_digest text,
+    recovery_retry_after timestamp with time zone,
     CONSTRAINT media_source_observations_external_id_check CHECK (((length(external_id) >= 1) AND (length(external_id) <= 500))),
     CONSTRAINT media_source_observations_generation_check CHECK ((generation > 0)),
     CONSTRAINT media_source_observations_identity_issue_check CHECK ((identity_issue = ANY (ARRAY['invalid_provider_ids'::text, 'conflicting_provider_ids'::text, 'invalid_media_type'::text]))),
     CONSTRAINT media_source_observations_media_type_check CHECK ((media_type = ANY (ARRAY['movie'::text, 'tv'::text]))),
     CONSTRAINT media_source_observations_provider_fields_check CHECK ((provider_fields <@ ARRAY['tmdb_id'::text, 'imdb_id'::text, 'tvdb_id'::text])),
+    CONSTRAINT media_source_observations_source_digest_check CHECK (((source_digest IS NULL) OR (source_digest ~ '^[a-f0-9]{64}$'::text))),
     CONSTRAINT media_source_observations_title_check CHECK ((length(title) <= 500)),
     CONSTRAINT media_source_observations_year_check CHECK (((year >= 1) AND (year <= 9999)))
+);
+
+
+--
+-- Name: media_sync_warning_state; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.media_sync_warning_state (
+    library_id integer NOT NULL,
+    media_server_id integer NOT NULL,
+    sync_type text NOT NULL,
+    last_sync_id integer NOT NULL,
+    summary jsonb,
+    last_warned_at timestamp with time zone,
+    last_warning_sync_id integer,
+    CONSTRAINT media_sync_warning_state_last_sync_id_check CHECK ((last_sync_id > 0)),
+    CONSTRAINT media_sync_warning_state_summary_check CHECK (((summary IS NULL) OR (jsonb_typeof(summary) = 'object'::text))),
+    CONSTRAINT media_sync_warning_state_sync_type_check CHECK ((sync_type = ANY (ARRAY['full'::text, 'incremental'::text])))
 );
 
 
@@ -9552,6 +9573,14 @@ ALTER TABLE ONLY public.media_source_observations
 
 
 --
+-- Name: media_sync_warning_state media_sync_warning_state_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.media_sync_warning_state
+    ADD CONSTRAINT media_sync_warning_state_pkey PRIMARY KEY (library_id, sync_type);
+
+
+--
 -- Name: notification_config notification_config_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13280,6 +13309,22 @@ ALTER TABLE ONLY public.media_source_observations
 
 
 --
+-- Name: media_sync_warning_state media_sync_warning_state_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.media_sync_warning_state
+    ADD CONSTRAINT media_sync_warning_state_library_id_fkey FOREIGN KEY (library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
+
+
+--
+-- Name: media_sync_warning_state media_sync_warning_state_media_server_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.media_sync_warning_state
+    ADD CONSTRAINT media_sync_warning_state_media_server_id_fkey FOREIGN KEY (media_server_id) REFERENCES public.media_server(id) ON DELETE CASCADE;
+
+
+--
 -- Name: pattern_match_log pattern_match_log_classification_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -15951,6 +15996,7 @@ FROM unnest(ARRAY[
     '20260909_085356_add_scheduler_execution_receipts.sql',
     '20260909_102827_add_event_loop_delay_receipts.sql',
     '20260910_120000_add_source_identity_evidence_replay_observations.sql',
-    '20260911_120000_add_inventory_description_vector_cache.sql'
+    '20260911_120000_add_inventory_description_vector_cache.sql',
+    '20260913_140000_add_source_identity_recovery_state.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

@@ -60,7 +60,17 @@ jest.unstable_mockModule('../services/ragRetriever.mjs', () => createNamedStubMo
 jest.unstable_mockModule('../services/classificationRoutingService.mjs', () => createNamedMockModule('classificationRoutingService', { ensureDecisionQuestion }));
 const policyScoringContextBuilder = { buildSignalContext };
 const classificationRoutingService = { ensureDecisionQuestion };
-const { execute } = await import('../services/classificationPolicyPathService.mjs');
+const { execute, ClassificationPolicyPathService } = await import('../services/classificationPolicyPathService.mjs');
+
+it('reads evaluation status from the same routing service instance without preparing or resolving work', () => {
+  const status = { version: 'learned_evidence_evaluation_v1', counts: {} };
+  const service = { shadowStatus: jest.fn(() => status), prepare: jest.fn(), resolve: jest.fn() };
+  const owner = new ClassificationPolicyPathService({ learnedEvidenceRoutingService: service });
+  expect(owner.readLibraryEvaluationStatus()).toBe(status);
+  expect(service.shadowStatus).toHaveBeenCalledTimes(1);
+  expect(service.prepare).not.toHaveBeenCalled();
+  expect(service.resolve).not.toHaveBeenCalled();
+});
 
 const libraries = [
   { id: 1, name: 'Movies' },

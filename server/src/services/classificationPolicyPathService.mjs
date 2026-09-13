@@ -93,6 +93,10 @@ export class ClassificationPolicyPathService {
 		this.logger = deps.logger || defaultLogger;
 	}
 
+	readLibraryEvaluationStatus() {
+		return this.learnedEvidenceRoutingService.shadowStatus();
+	}
+
 	async aiClassify(metadata, libraries, signalContext = null, options = {}) {
 		return this.classificationAiService.aiClassify(metadata, libraries, signalContext, options);
 	}

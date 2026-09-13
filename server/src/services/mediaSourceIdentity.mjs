@@ -58,6 +58,7 @@ export function sourceMetadata(metadata) {
   delete copy.tmdb_identity_origin;
   delete copy.tmdb_resolution;
   delete copy.inventory_tmdb;
+  delete copy.source_identity_recovery;
   return copy;
 }
 

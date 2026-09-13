@@ -17,10 +17,10 @@ export function useCommandCenterData({ router }) {
     return isOperationallyActive.value ? POLL_INTERVALS.NORMAL : POLL_INTERVALS.SLOW
   }
 
-  const { data: liveStatsData, isStale: liveStatsStale, refresh: refreshLiveStats, cacheTimestamp: liveStatsTimestamp } = useSWR(
+  const { data: liveStatsData, error: liveStatsError, isStale: liveStatsStale, refresh: refreshLiveStats, cacheTimestamp: liveStatsTimestamp } = useSWR(
     'command-center:live-stats',
     async () => (await api.getLiveStats()) ?? {},
-    { ttl: CACHE_TTL.SHORT, pollInterval: getOperationalPollInterval, pollOnlyWhenVisible: true }
+    { ttl: CACHE_TTL.SHORT, pollInterval: getOperationalPollInterval, pollOnlyWhenVisible: true, persist: false }
   )
 
   const { data: progressData, isStale: progressStale, refresh: refreshProgressData, cacheTimestamp: progressTimestamp } = useSWR(
@@ -97,6 +97,7 @@ export function useCommandCenterData({ router }) {
   ))
 
   const liveStats = computed(() => liveStatsData.value || {})
+  const libraryEvaluation = computed(() => liveStatsError?.value ? null : liveStats.value.libraryEvaluation)
   const queueStats = computed(() => liveStats.value.queue || {})
   const gapStats = computed(() => liveStats.value.gapAnalysis || {})
   const librarySyncStats = computed(() => liveStats.value.librarySync || {})
@@ -301,6 +302,7 @@ export function useCommandCenterData({ router }) {
   }
 
   return {
+    libraryEvaluation,
     activeLibraries,
     activeLibrariesSummary,
     activeProcessingTasks,

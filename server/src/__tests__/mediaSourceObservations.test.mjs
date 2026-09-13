@@ -8,9 +8,19 @@ test('captures only bounded observation fields, never provider IDs or metadata',
   const before = structuredClone(input);
   const page = sourceObservationPage(1, 2, [input]);
   expect(page).toEqual({ observed: 1, rejected: 1, uncapturable: 0, resolved: [], unresolved: [{ external_id: 'source',
-    title: 'A B', year: 2020, media_type: 'movie', identity_issue: 'conflicting_provider_ids', provider_fields: ['tvdb_id'] }] });
+    title: 'A B', year: 2020, media_type: 'movie', identity_issue: 'conflicting_provider_ids', provider_fields: ['tvdb_id'], source_digest: null }] });
   expect(input).toEqual(before);
   expect(JSON.stringify(page)).not.toContain('private');
+});
+
+test('retains only a bounded recovery digest, never transient candidate arrays', () => {
+  const page = sourceObservationPage(1, 2, [invalid({ source_identity_evidence: {
+    snapshotDigest: 'a'.repeat(64), providerIds: { imdb_id: ['tt123'] }, url: 'private',
+  } })]);
+  expect(page.unresolved[0].source_digest).toBe('a'.repeat(64));
+  expect(JSON.stringify(page)).not.toMatch(/tt123|private|providerIds/);
+  expect(sourceObservationPage(1, 2, [invalid({ source_identity_evidence: { snapshotDigest: 'private' } })])
+    .unresolved[0].source_digest).toBeNull();
 });
 test.each([null, 1, '', ' ', 'x'.repeat(501), 'a\0b'])('counts unusable source keys without inventing a record: %#', external_id => {
   expect(sourceObservationPage(1, 2, [invalid({ external_id })])).toMatchObject({ rejected: 1, uncapturable: 1, unresolved: [] });

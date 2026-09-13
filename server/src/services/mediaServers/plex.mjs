@@ -10,6 +10,7 @@
 import { httpGet } from '../../utils/httpClient.mjs';
 import { createLogger } from '../../utils/logger.mjs';
 import { collectPlexGuidCandidates, parsePlexGuids } from './shared/providerIds.mjs';
+import { sourceIdentityRecoveryEvidence } from '../sourceIdentityRecoveryEvidence.mjs';
 import { appendQueryParam, buildPathUrl } from './shared/url.mjs';
 
 const logger = createLogger('PlexService');
@@ -91,31 +92,39 @@ class PlexService {
       const container = response.data?.MediaContainer || {};
       const items = container.Metadata || [];
 
-      return items.map((item) => ({
-        external_id: item.ratingKey,
-        title: item.title,
-        original_title: item.originalTitle,
-        year: item.year,
-        media_type: item.type === 'show' ? 'tv' : 'movie',
-        genres: (item.Genre || []).map((genre) => genre.tag),
-        tags: (item.Label || []).map((tag) => tag.tag),
-        collections: (item.Collection || []).map((collection) => collection.tag),
-        studio: item.studio,
-        content_rating: item.contentRating,
-        added_at: item.addedAt ? new Date(item.addedAt * 1000) : null,
-        ...this.parseGuids(item),
-        metadata: {
-          rating: item.rating,
-          summary: item.summary,
-          thumb: item.thumb,
-          posterPath: this.buildPosterUrl(
-            url,
-            apiKey,
-            item.thumb || item.parentThumb || item.grandparentThumb,
-          ),
-        },
-        total: container.totalSize,
-      }));
+      return items.map((item) => {
+        const parsed = this.parseGuids(item);
+        return {
+          external_id: item.ratingKey,
+          title: item.title,
+          original_title: item.originalTitle,
+          year: item.year,
+          media_type: item.type === 'show' ? 'tv' : 'movie',
+          genres: (item.Genre || []).map((genre) => genre.tag),
+          tags: (item.Label || []).map((tag) => tag.tag),
+          collections: (item.Collection || []).map((collection) => collection.tag),
+          studio: item.studio,
+          content_rating: item.contentRating,
+          added_at: item.addedAt ? new Date(item.addedAt * 1000) : null,
+          ...parsed,
+          ...(parsed.provider_identity_invalid ? {
+            source_identity_evidence: sourceIdentityRecoveryEvidence({ external_id: String(item.ratingKey),
+              title: item.title, year: item.year, media_type: item.type === 'show' ? 'tv' : 'movie' },
+            String(libraryKey), collectPlexGuidCandidates(item.Guid || [])),
+          } : {}),
+          metadata: {
+            rating: item.rating,
+            summary: item.summary,
+            thumb: item.thumb,
+            posterPath: this.buildPosterUrl(
+              url,
+              apiKey,
+              item.thumb || item.parentThumb || item.grandparentThumb,
+            ),
+          },
+          total: container.totalSize,
+        };
+      });
     } catch (error) {
       throw new Error(`Failed to fetch Plex library items: ${error.message}`);
     }
@@ -139,7 +148,10 @@ class PlexService {
       if (!item || String(item.ratingKey) !== sourceId || String(item.librarySectionID) !== sourceLibrary) return null;
       const mediaType = item.type === 'show' ? 'tv' : item.type === 'movie' ? 'movie' : null;
       const providerIds = collectPlexGuidCandidates(item.Guid || []);
-      return mediaType && providerIds ? Object.freeze({ mediaType, providerIds }) : null;
+      const recovery = sourceIdentityRecoveryEvidence({ external_id: sourceId, title: item.title,
+        year: item.year, media_type: mediaType }, sourceLibrary, providerIds);
+      return mediaType && providerIds ? Object.freeze({ mediaType, providerIds,
+        ...(recovery ? { snapshotDigest: recovery.snapshotDigest } : {}) }) : null;
     } catch (error) {
       throw new Error(`Failed to fetch Plex library item identity evidence: ${error.message}`);
     }

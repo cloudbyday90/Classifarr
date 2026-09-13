@@ -103,6 +103,13 @@ describe('queueOperationsApi', () => {
     expect(result).toEqual(status)
   })
 
+  it('preserves the administrator-only library evaluation aggregate in live stats', async () => {
+    const stats = { queue: {}, libraryEvaluation: { version: 'library_evaluation_summary_v1', status: 'unavailable', routingAffected: false } }
+    mockGetDataRequest.mockResolvedValueOnce(stats)
+    expect(await getLiveStats()).toEqual(stats)
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/queue/live-stats')
+  })
+
   it('processEnrichmentRetries calls POST with empty default options', async () => {
     mockPost.mockResolvedValueOnce({ data: { processed: 10 } })
     const result = await processEnrichmentRetries()

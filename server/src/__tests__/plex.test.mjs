@@ -195,6 +195,18 @@ describe('PlexService', () => {
     });
 
     describe('getLibraryItemIdentityEvidence', () => {
+        it('binds listing and fresh-item recovery evidence to the same source without exposing title in the receipt', async () => {
+            const item = { ratingKey: 'item-1', librarySectionID: 'library-1', title: 'Fixture', year: 2001,
+                type: 'movie', Guid: [{ id: 'tmdb://11' }, { id: 'tmdb://22' }, { id: 'imdb://tt123' }] };
+            mockHttpGet.mockResolvedValue({ data: { MediaContainer: { Metadata: [item] } } });
+            const listing = await service.getLibraryItems('http://plex:32400', 'token', 'library-1');
+            const fresh = await service.getLibraryItemIdentityEvidence('http://plex:32400', 'token', 'library-1', 'item-1');
+            expect(listing[0].provider_identity_invalid).toBe(true);
+            expect(listing[0].source_identity_evidence.snapshotDigest).toMatch(/^[a-f0-9]{64}$/);
+            expect(fresh.snapshotDigest).toBe(listing[0].source_identity_evidence.snapshotDigest);
+            expect(JSON.stringify(fresh)).not.toMatch(/Fixture|token|http/);
+        });
+
         it('returns only current provider candidate evidence for the requested item in its library', async () => {
             mockHttpGet.mockResolvedValue({
                 data: { MediaContainer: { Metadata: [{

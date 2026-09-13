@@ -131,6 +131,8 @@ access controls, and avoid another settings panel. That makes natural-traffic
 results observable before deciding whether calibrated fallback merits promotion;
 the current internal counters alone cannot establish a durable outcome history.
 
+Implemented next in the [Command Center library evaluation summary](command-center-library-evaluation-outcome.md).
+
 ## PR, documentation and release
 
 GitHub MCP returned no open Classifarr PRs on both checks, so none was available

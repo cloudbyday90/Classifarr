@@ -278,6 +278,36 @@ describe('MediaSyncService', () => {
     });
 
     describe('syncLibrary', () => {
+        it.each([true, false, 'failure'])('applies proven recovery before normal upsert, or safely retains the conflict: %s', async applied => {
+            const context = { libraryId: 1, mediaServerId: 1, generation: 1 };
+            const item = { external_id: 'fixture', provider_identity_invalid: true,
+                provider_identity_issue: 'conflicting_provider_ids', media_type: 'movie', title: 'Fixture' };
+            const proof = { item: { ...item, provider_identity_invalid: false, tmdb_id: 22 } };
+            const sourceObservations = { start: jest.fn().mockResolvedValue(context),
+                capture: jest.fn(), finish: jest.fn() };
+            const recover = jest.fn().mockResolvedValue(proof);
+            const persistIdentityRecovery = applied === 'failure' ? jest.fn().mockRejectedValue(new Error('fixture'))
+                : jest.fn().mockResolvedValue(applied);
+            const report = jest.fn();
+            const instance = new MediaSyncService({ sourceObservations, createIdentityRecovery: () => ({ recover }),
+                persistIdentityRecovery, skipReporter: { report }, mediaServerServices: { getMediaServerService: mockGetMediaServerService } });
+            jest.spyOn(instance, 'upsertMediaItem').mockImplementation(async (_s, _l, _item, options) => {
+                options.onSkippedItem({ reason: 'invalid_source_identity', identityIssue: 'conflicting_provider_ids' });
+            });
+            jest.spyOn(instance, 'reconcileAwaitingDecisions').mockResolvedValue(undefined);
+            mockDb.query.mockImplementation(async sql => sql.includes('FROM libraries l')
+                ? { rows: [{ id: 1, type: 'plex', media_server_id: 1, external_id: 'library-1' }] }
+                : { rows: [{ id: 100 }], rowCount: 1 });
+            mockPlexService.getLibraryItems.mockResolvedValue([item]);
+            mockPlexService.getCollections.mockResolvedValue([]);
+            expect(await instance.syncLibrary(1, { incremental: true })).toMatchObject({ success: true, processedItems: 1 });
+            expect(persistIdentityRecovery).toHaveBeenCalledWith(sourceObservations, context, proof);
+            expect(sourceObservations.capture.mock.invocationCallOrder[0]).toBeLessThan(recover.mock.invocationCallOrder[0]);
+            expect(instance.upsertMediaItem).toHaveBeenCalledTimes(applied === true ? 0 : 1);
+            expect(report.mock.calls[0][1]).toEqual(applied === true ? null : {
+                skippedItemCount: 1, reasonCounts: { invalid_source_identity: 1 }, identityIssueCounts: { conflicting_provider_ids: 1 } });
+        });
+
         it('should throw LibraryNotFoundError for missing library', async () => {
             mockDb.query.mockResolvedValue({ rows: [] });
 
@@ -379,12 +409,12 @@ describe('MediaSyncService', () => {
 
             await service.syncLibrary(1);
 
-            expect(mockLogger.warn).toHaveBeenCalledWith('Library sync skipped source items', {
+            expect(mockLogger.warn).toHaveBeenCalledWith('Library sync skipped source items', expect.objectContaining({
                 libraryId: 1,
                 skippedItemCount: 1,
                 reasonCounts: { invalid_source_identity: 1 },
                 identityIssueCounts: { conflicting_provider_ids: 1 },
-            });
+            }), expect.any(Object));
             upsertSpy.mockRestore();
         });
 

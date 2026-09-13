@@ -11,6 +11,14 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Recover verifiable Plex metadata identity conflicts automatically, retry
+  unresolved cases with durable backoff, and resume existing metadata backfill
+  without discarding completed enrichment on repeat syncs.
+- Deduplicate unchanged library-sync warnings across rebuilds while retaining
+  changed-state and daily reminders, with a public Plex metadata issue reference.
+- Show a compact, automatically refreshed Command Center library-evidence summary
+  that separates passing checks from confirmation holds, keeps technical details
+  optional, and uses memory-only SWR with safe request deduplication and cleanup.
 - Continue cached library-evidence evaluation when routing confirmations are
   required, distinguishing qualified evidence from approval holds while preserving
   fresh routing checks, bounded work and zero additional inference.

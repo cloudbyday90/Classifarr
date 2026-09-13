@@ -25,7 +25,9 @@ export function sourceObservationPage(mediaServerId, libraryId, items) {
     const title = typeof item.title === 'string' ? item.title.normalize('NFKC').replace(/[\p{Cc}\p{Cf}]/gu, ' ').trim().slice(0, 500) : null;
     const year = positiveDatabaseInteger(item.year);
     unresolved.set(key, { external_id: key, title: title || null, year: year && year <= 9999 ? year : null,
-      media_type: type, identity_issue: diagnostics.identityIssue, provider_fields: diagnostics.providerFields });
+      media_type: type, identity_issue: diagnostics.identityIssue, provider_fields: diagnostics.providerFields,
+      source_digest: typeof item.source_identity_evidence?.snapshotDigest === 'string' &&
+        /^[a-f0-9]{64}$/u.test(item.source_identity_evidence.snapshotDigest) ? item.source_identity_evidence.snapshotDigest : null });
   }
   return { resolved: [...resolved], unresolved: [...unresolved.values()], observed: items.length, rejected, uncapturable };
 }

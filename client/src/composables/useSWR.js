@@ -37,6 +37,7 @@ const RETRY_DELAYS = [1000, 3000, 10000];
  * @param {number|null} options.pollInterval - Auto-poll interval in ms (default: null)
  * @param {boolean} options.pollOnlyWhenVisible - Pause polling when tab hidden (default: true)
  * @param {boolean} options.autoRetry - Auto-retry on transient errors (default: true)
+ * @param {boolean} options.persist - Store and share cached data (false for no-store responses)
  *
  * @returns {Object} { data, isLoading, isStale, error, refresh, isOffline, retryCount, cacheTimestamp }
  */
@@ -47,6 +48,7 @@ export function useSWR(cacheKey, fetcher, options = {}) {
     pollInterval = null,
     pollOnlyWhenVisible = true,
     autoRetry = true,
+    persist = true,
   } = options;
 
   // State
@@ -56,6 +58,10 @@ export function useSWR(cacheKey, fetcher, options = {}) {
   const error = ref(null);
   const retryCount = ref(0);
   const cacheTimestamp = ref(null);
+  let disposed = false;
+  let inFlight = null;
+  let queuedRefresh = null;
+  let retryTimerId = null;
 
   // Network status
   const isOnline = useOnline();
@@ -70,6 +76,7 @@ export function useSWR(cacheKey, fetcher, options = {}) {
    * @returns {*} Cached value or null if not found/expired
    */
   function loadFromCache() {
+    if (!persist) return null;
     if (typeof window === "undefined") return null;
     try {
       const cached = localStorage.getItem(STORAGE_KEY);
@@ -94,6 +101,10 @@ export function useSWR(cacheKey, fetcher, options = {}) {
    * @param {*} value - Data to cache
    */
   function saveToCache(value) {
+    if (!persist) {
+      cacheTimestamp.value = Date.now();
+      return;
+    }
     if (typeof window === "undefined") return;
     try {
       const timestamp = Date.now();
@@ -153,15 +164,25 @@ export function useSWR(cacheKey, fetcher, options = {}) {
   function scheduleRetry() {
     const delay = RETRY_DELAYS[retryCount.value] || 10000;
     retryCount.value++;
-    setTimeout(revalidate, delay);
+    retryTimerId = setTimeout(revalidate, delay);
   }
 
   /**
    * Fetch fresh data from the API
    */
-  async function revalidate() {
+  function revalidate() {
+    if (disposed) return Promise.resolve();
+    if (inFlight) return inFlight;
+    if (retryTimerId !== null) clearTimeout(retryTimerId);
+    retryTimerId = null;
+    inFlight = fetchLatest().finally(() => { inFlight = null; });
+    return inFlight;
+  }
+
+  async function fetchLatest() {
     // Offline handling
     if (!isOnline.value) {
+      if (!persist) data.value = null;
       const cached = loadFromCache();
       if (cached !== null) {
         data.value = cached;
@@ -174,11 +195,14 @@ export function useSWR(cacheKey, fetcher, options = {}) {
 
     try {
       const freshData = await fetcher();
+      if (disposed) return;
       data.value = freshData;
       saveToCache(freshData);
       error.value = null;
       retryCount.value = 0;
     } catch (e) {
+      if (disposed) return;
+      if (!persist) data.value = null;
       const retryable = isRetryableError(e);
       error.value = {
         message: e.message || "Fetch failed",
@@ -203,6 +227,15 @@ export function useSWR(cacheKey, fetcher, options = {}) {
    */
   function refresh() {
     if (data.value) isStale.value = true;
+    // An explicit refresh can follow a mutation while an older read is pending.
+    // Coalesce these callers into one follow-up read, rather than losing it.
+    if (inFlight) {
+      queuedRefresh ||= inFlight.then(() => {
+        queuedRefresh = null;
+        return revalidate();
+      });
+      return queuedRefresh;
+    }
     return revalidate();
   }
 
@@ -213,6 +246,7 @@ export function useSWR(cacheKey, fetcher, options = {}) {
    * @param {StorageEvent} e - The storage event
    */
   function handleStorageChange(e) {
+    if (!persist) return;
     if (e.key === STORAGE_KEY && e.newValue) {
       try {
         const { value, timestamp } = JSON.parse(e.newValue);
@@ -254,7 +288,7 @@ export function useSWR(cacheKey, fetcher, options = {}) {
     if (!intervalMs) return;
     pollIntervalId = setInterval(() => {
       if (!pollOnlyWhenVisible || document.visibilityState === "visible") {
-        refresh();
+        void revalidate();
       }
     }, intervalMs);
   }
@@ -283,6 +317,8 @@ export function useSWR(cacheKey, fetcher, options = {}) {
   });
 
   onUnmounted(() => {
+    disposed = true;
+    if (retryTimerId !== null) clearTimeout(retryTimerId);
     window.removeEventListener("storage", handleStorageChange);
     stopPolling();
     if (typeof stopPollIntervalWatch === "function") {
@@ -293,8 +329,8 @@ export function useSWR(cacheKey, fetcher, options = {}) {
 
   // Auto-revalidate when coming back online
   watch(isOnline, (online) => {
-    if (online && data.value) {
-      isStale.value = true;
+    if (online) {
+      if (data.value) isStale.value = true;
       revalidate();
     }
   });
