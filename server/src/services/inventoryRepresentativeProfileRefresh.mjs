@@ -11,7 +11,7 @@ const configKeyOf = state => {
 
 /** One process owns one private cache. No HTTP handler can initiate a fit. */
 export function createInventoryRepresentativeProfileRefresh({ repository, readState, createEmbedder, fit,
-  getRevision = () => 0, now = Date.now,
+  getRevision = () => 0, now = Date.now, observer = null,
   cache = createLiveInventoryModelCache({ maxEntries: 1, maxWeight: 32 * 1024 * 1024, ttlMs: 1_800_000, now }),
 }) {
   let active = null, stopped = false, key = null, revision = -1, configKey = null, available = false;
@@ -42,6 +42,9 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
     if (model?.version !== INVENTORY_REPRESENTATIVE_PROFILE_VERSION || model.kind !== 'full_inventory_shadow') {
       throw new Error('inventory_representative_model_invalid');
     }
+    let batch = null;
+    try { batch = observer?.prepare({ model, snapshot, identity, configKey: expected }); }
+    catch { /* Optional diagnostics cannot discard an otherwise valid profile. */ }
     const fresh = await repository.read(identity);
     signal.throwIfAborted();
     await verifyDescriptionRepresentation(embedder, identity, signal);
@@ -53,11 +56,12 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
     signal.throwIfAborted();
     if (!cache.set(sourceKey, model, model.weight)) { clear(); return report('cache_budget_exceeded'); }
     key = sourceKey; revision = runRevision; available = true; verifiedAt = now(); nextRunAt = now() + 300_000;
+    try { batch?.commit(fresh); } catch { /* No partial or unverified observation is published. */ }
     return report(cached ? 'up_to_date' : 'published', model.summary);
   }
 
   return {
-    stop() { stopped = true; active?.abort(); clear(); },
+    stop() { stopped = true; active?.abort(); clear(); observer?.stop(); },
     // Future internal consumers must supply a key from their own fresh snapshot.
     read(sourceKey) { invalidateHint(); return available && sourceKey === key ? cache.get(sourceKey) : undefined; },
     getStatus() {
@@ -71,16 +75,17 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
       const controller = new AbortController(); active = controller;
       const runSignal = AbortSignal.any([controller.signal, AbortSignal.timeout(120_000), ...(signal ? [signal] : [])]);
       try {
+        const pending = observer?.hasPending() === true;
         invalidateHint();
         const state = await readState();
         runSignal.throwIfAborted();
         const expected = configKeyOf(state);
         if (expected !== configKey) { clear(); nextRunAt = 0; backoffUntil = 0; failures = 0; configKey = expected; }
-        if (!expected) { clear(); return report(state?.rag_enabled === true ? 'unsupported_provider' : 'disabled'); }
+        if (!expected) { clear(); observer?.clear(); return report(state?.rag_enabled === true ? 'unsupported_provider' : 'disabled'); }
         if (state.busy !== false) { invalidate(); return report('yielded'); }
         if (now() < backoffUntil) return report('cooldown');
         const runRevision = getRevision();
-        if (now() < nextRunAt && revision === runRevision && available && key && cache.get(key)) return { ...lastReport, status: 'not_due' };
+        if (!pending && now() < nextRunAt && revision === runRevision && available && key && cache.get(key)) return { ...lastReport, status: 'not_due' };
         const result = await refresh(state, runSignal, runRevision, expected);
         failures = 0; backoffUntil = 0;
         return result;

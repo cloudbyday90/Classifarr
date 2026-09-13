@@ -62,6 +62,24 @@ const policyScoringContextBuilder = { buildSignalContext };
 const classificationRoutingService = { ensureDecisionQuestion };
 const { execute, ClassificationPolicyPathService } = await import('../services/classificationPolicyPathService.mjs');
 
+it('observes the final candidate destination without changing scores, review state or receipts', async () => {
+  const initial = { confidence: 45 }, consensus = { confidence: 45, needs_clarification: true };
+  const final = Object.freeze({ ...consensus, library: Object.freeze({ id: 2 }), receipt: 'unchanged' });
+  const observe = jest.fn(() => { throw new Error('optional observer unavailable'); });
+  const owner = new ClassificationPolicyPathService({
+    finalizePolicyCandidateAdjudication: jest.fn(() => initial),
+    policyCandidateConsensusService: { resolve: jest.fn(async () => consensus) },
+    learnedEvidenceRoutingService: { resolve: jest.fn(async () => final), shadowStatus: () => ({ counts: {} }) },
+    observeRepresentativeDecision: observe, readRepresentativeShadow: () => ({ pending: 1 }),
+  });
+  const options = { metadata: { tmdb_id: 1 }, contract: { valid: true } };
+  expect(await owner.finalizeCandidateOutcome(options)).toBe(final);
+  expect(owner.policyCandidateConsensusService.resolve).toHaveBeenCalledWith({ ...options, result: initial });
+  expect(owner.learnedEvidenceRoutingService.resolve).toHaveBeenCalledWith({ ...options, result: consensus });
+  expect(observe).toHaveBeenCalledWith({ ...options, result: final });
+  expect(owner.readLibraryEvaluationStatus()).toEqual({ counts: {}, representative: { pending: 1 } });
+});
+
 it('reads evaluation status from the same routing service instance without preparing or resolving work', () => {
   const status = { version: 'learned_evidence_evaluation_v1', counts: {} };
   const service = { shadowStatus: jest.fn(() => status), prepare: jest.fn(), resolve: jest.fn() };

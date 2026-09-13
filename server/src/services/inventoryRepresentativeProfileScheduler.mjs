@@ -7,23 +7,28 @@ import { getInventoryDescriptionRefreshRevision } from './inventoryDescriptionRe
 import { createInventoryRepresentativeProfileRepository } from './inventoryRepresentativeProfileRepository.mjs';
 import { createInventoryRepresentativeProfileRefresh } from './inventoryRepresentativeProfileRefresh.mjs';
 import { fitInventoryRepresentativeProfile } from './inventoryRepresentativeProfileFit.mjs';
+import { createInventoryRepresentativeShadow } from './inventoryRepresentativeShadow.mjs';
+import { installRepresentativeShadow } from './inventoryRepresentativeShadowRuntime.mjs';
 
 export const INVENTORY_REPRESENTATIVE_PROFILE_TASK = 'inventory-representative-profile-refresh';
 
 export function createInventoryRepresentativeProfileRuntime(database = db) {
-  return createInventoryRepresentativeProfileRefresh({
+  const observer = createInventoryRepresentativeShadow();
+  const worker = createInventoryRepresentativeProfileRefresh({
     repository: createInventoryRepresentativeProfileRepository(database),
     readState: createInventoryDescriptionRefreshRepository(database).readState,
     createEmbedder: createLocalStudyEmbeddingClient, fit: fitInventoryRepresentativeProfile,
-    getRevision: getInventoryDescriptionRefreshRevision,
+    getRevision: getInventoryDescriptionRefreshRevision, observer,
   });
+  return { ...worker, observer };
 }
 
 export function registerInventoryRepresentativeProfileSchedule(scheduler, {
   worker = createInventoryRepresentativeProfileRuntime(), log = createLogger('InventoryRepresentativeProfile'),
 } = {}) {
   scheduler.inventoryRepresentativeProfileWorker?.stop();
-  scheduler.inventoryRepresentativeProfileWorker = worker;
+  const disconnect = installRepresentativeShadow(worker.observer ?? null);
+  scheduler.inventoryRepresentativeProfileWorker = { ...worker, stop() { disconnect(); worker.stop(); } };
   const run = async () => {
     const report = await worker.run();
     if (report.status === 'failed') throw new Error('inventory_representative_refresh_unavailable');

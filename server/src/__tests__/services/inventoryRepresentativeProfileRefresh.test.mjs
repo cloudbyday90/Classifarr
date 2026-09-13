@@ -4,13 +4,15 @@ import { createInventoryRepresentativeProfileRefresh } from '../../services/inve
 import { buildInventoryRepresentativeProfile, inventoryRepresentativeSourceKey } from '../../services/inventoryRepresentativeProfile.mjs';
 import { resolveLocalStudyEmbeddingConfig } from '../../services/localStudyEmbeddingClient.mjs';
 import { representativeProfileFixture } from '../helpers/inventoryRepresentativeProfileFixture.mjs';
+import { representativeShadowFixture } from '../helpers/inventoryRepresentativeShadowFixture.mjs';
+import { createInventoryRepresentativeShadow } from '../../services/inventoryRepresentativeShadow.mjs';
 
-function setup() {
+function setup(observer = null) {
   const fixture = representativeProfileFixture();
   let time = 0, revision = 0;
   const { state, identity, snapshot } = fixture;
   const embedder = { model: identity.model, provider: identity.provider, inspect: jest.fn(async () => ({ ...identity })), embedBatch: jest.fn() };
-  const dependencies = { repository: { read: jest.fn(async () => structuredClone(snapshot)) },
+  const dependencies = { observer, repository: { read: jest.fn(async () => ({ ...structuredClone(snapshot), observedKeys: new Set(snapshot.observedKeys) })) },
     readState: jest.fn(async () => ({ ...state })), createEmbedder: jest.fn(() => embedder),
     fit: jest.fn(async (input, dimensions, options) => buildInventoryRepresentativeProfile({ snapshot: input, dimensions }, options)),
     now: () => time, getRevision: () => revision };
@@ -33,6 +35,45 @@ test('publishes atomically; quiet/periodic reconciliation reuses cached fits wit
   expect(dependencies.repository.read).toHaveBeenCalledTimes(4);
   expect(embedder.embedBatch).not.toHaveBeenCalled();
   expect(JSON.stringify(worker.getStatus())).not.toMatch(/PRIVATE|hash|digest|localhost|libraryId|vector/i);
+});
+
+test('pending comparisons bypass the quiet interval, reuse the fit and commit only after fresh validation', async () => {
+  const observer = createInventoryRepresentativeShadow(), fixture = setup(observer);
+  const { worker, dependencies, state, snapshot } = fixture;
+  await worker.run();
+  const queryFixture = await representativeShadowFixture();
+  observer.remember(queryFixture.metadata, { ...queryFixture.query, configKey: JSON.stringify(resolveLocalStudyEmbeddingConfig(state)) });
+  observer.observe(queryFixture.decision);
+  state.busy = true;
+  expect((await worker.run()).status).toBe('yielded');
+  expect(observer.read().pending).toBe(1);
+  state.busy = false;
+  const read = dependencies.repository.read.getMockImplementation();
+  dependencies.repository.read.mockImplementationOnce(async () => {
+    const before = await read(); snapshot.observedKeys.add(queryFixture.query.request.key); return before;
+  });
+  expect((await worker.run()).status).toBe('up_to_date');
+  expect(observer.read()).toMatchObject({ pending: 1, counts: { agrees: 0, invalidated_batches: 1 } });
+  expect((await worker.run()).status).toBe('up_to_date');
+  expect(observer.read()).toMatchObject({ pending: 0, counts: { known_item: 1, agrees: 0 } });
+  expect(dependencies.fit).toHaveBeenCalledTimes(1);
+  expect(fixture.embedder.embedBatch).not.toHaveBeenCalled();
+  worker.stop(); expect(observer.read().status).toBe('unavailable');
+});
+
+test('profile invalidation never commits a staged comparison and disabled RAG clears pending work', async () => {
+  const commit = jest.fn(), observer = { prepare: jest.fn(() => ({ commit })), hasPending: () => true, clear: jest.fn() };
+  const { worker, snapshot, dependencies, state } = setup(observer);
+  const read = dependencies.repository.read.getMockImplementation();
+  dependencies.repository.read.mockImplementationOnce(async () => {
+    const before = await read(); snapshot.vectors.values().next().value[0] += 0.1; return before;
+  });
+  expect((await worker.run()).status).toBe('invalidated');
+  expect(observer.prepare).toHaveBeenCalledTimes(1);
+  expect(commit).not.toHaveBeenCalled();
+  state.rag_enabled = false;
+  expect((await worker.run()).status).toBe('disabled');
+  expect(observer.clear).toHaveBeenCalledTimes(1);
 });
 
 test('sync hints invalidate availability immediately and do not lose changes during fitting', async () => {

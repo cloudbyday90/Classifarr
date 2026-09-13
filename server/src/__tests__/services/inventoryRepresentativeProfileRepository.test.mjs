@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { expect, jest, test } from '@jest/globals';
-import { createInventoryRepresentativeProfileRepository, REPRESENTATIVE_PROFILE_LIBRARIES_SQL } from '../../services/inventoryRepresentativeProfileRepository.mjs';
+import { createInventoryRepresentativeProfileRepository, REPRESENTATIVE_PROFILE_LIBRARIES_SQL,
+  REPRESENTATIVE_PROFILE_IDENTITIES_SQL } from '../../services/inventoryRepresentativeProfileRepository.mjs';
 import { INVENTORY_DESCRIPTION_REFRESH_STATE_SQL } from '../../services/inventoryDescriptionRefreshRepository.mjs';
 import { INVENTORY_DESCRIPTION_CORPUS_SQL } from '../../services/inventoryDescriptionCorpus.mjs';
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from '../../services/sourceConflictAuthorityGuard.mjs';
@@ -11,6 +12,7 @@ function setup() {
   const client = { query: jest.fn(async (sql, params) => {
     if (sql === INVENTORY_DESCRIPTION_REFRESH_STATE_SQL) return { rows: [fixture.state] };
     if (sql === REPRESENTATIVE_PROFILE_LIBRARIES_SQL) return { rows: fixture.snapshot.libraries };
+    if (sql === REPRESENTATIVE_PROFILE_IDENTITIES_SQL) return { rows: fixture.rows };
     if (sql === INVENTORY_DESCRIPTION_CORPUS_SQL) return { rows: fixture.rows };
     if (sql.includes('embedding::text')) return { rows: params[4].flatMap(hash => fixture.snapshot.vectors.has(hash)
       ? [{ description_hash: hash, embedding: JSON.stringify(fixture.snapshot.vectors.get(hash)) }] : []) };
@@ -50,4 +52,13 @@ test('library and vector bounds reject before loading large vectors', async () =
   for (let i = 12; i < 501; i++) rows.push({ media_type: 'movie', tmdb_id: i + 1, library_id: 1, overview: `Unique ${i}` });
   await expect(repository.read({ ...identity, dimensions: 16000 })).rejects.toThrow('vector_budget');
   expect(client.query.mock.calls.some(([sql]) => sql.includes('embedding::text'))).toBe(false);
+});
+
+test('novelty identity budget rejects before training or vector loading', async () => {
+  const { repository, identity, client } = setup();
+  const query = client.query.getMockImplementation();
+  client.query.mockImplementation((sql, params) => sql === REPRESENTATIVE_PROFILE_IDENTITIES_SQL
+    ? { rows: Array(50001).fill({ media_type: 'movie', tmdb_id: 1 }) } : query(sql, params));
+  await expect(repository.read(identity)).rejects.toThrow('identity_budget');
+  expect(client.query.mock.calls.some(([sql]) => sql === INVENTORY_DESCRIPTION_CORPUS_SQL)).toBe(false);
 });

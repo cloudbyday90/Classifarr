@@ -57,6 +57,7 @@ import { createLogger } from '../utils/logger.mjs';
 import { createPolicyCandidateShortlistService } from './policyCandidateShortlistService.mjs';
 import { createPolicyCandidateConsensusService } from './policyCandidateConsensusService.mjs';
 import { createLearnedEvidenceRoutingService } from './learnedEvidenceRoutingService.mjs';
+import { observeRepresentativeDecision, readRepresentativeShadow } from './inventoryRepresentativeShadowRuntime.mjs';
 
 const defaultLogger = createLogger('classificationPolicyPathService');
 
@@ -84,6 +85,8 @@ export class ClassificationPolicyPathService {
 		});
 		this.finalizePolicyCandidateAdjudication = deps.finalizePolicyCandidateAdjudication || finalizePolicyCandidateAdjudication;
 		this.learnedEvidenceRoutingService = deps.learnedEvidenceRoutingService || createLearnedEvidenceRoutingService();
+		this.observeRepresentativeDecision = deps.observeRepresentativeDecision || observeRepresentativeDecision;
+		this.readRepresentativeShadow = deps.readRepresentativeShadow || readRepresentativeShadow;
 		this.buildPolicyCandidateContrastiveRetrievalContract =
 			deps.buildPolicyCandidateContrastiveRetrievalContract || buildPolicyCandidateContrastiveRetrievalContract;
 		this.policyCandidateContrastiveRetriever =
@@ -94,7 +97,9 @@ export class ClassificationPolicyPathService {
 	}
 
 	readLibraryEvaluationStatus() {
-		return this.learnedEvidenceRoutingService.shadowStatus();
+		const status = this.learnedEvidenceRoutingService.shadowStatus();
+		const representative = this.readRepresentativeShadow();
+		return representative ? { ...status, representative } : status;
 	}
 
 	async aiClassify(metadata, libraries, signalContext = null, options = {}) {
@@ -104,7 +109,10 @@ export class ClassificationPolicyPathService {
 	async finalizeCandidateOutcome(options) {
 		const result = this.finalizePolicyCandidateAdjudication(options);
 		const consensus = await this.policyCandidateConsensusService.resolve({ ...options, result });
-		return this.learnedEvidenceRoutingService.resolve({ ...options, result: consensus });
+		const resolved = await this.learnedEvidenceRoutingService.resolve({ ...options, result: consensus });
+		try { this.observeRepresentativeDecision({ metadata: options.metadata, contract: options.contract, result: resolved }); }
+		catch { /* Optional observation never changes the final destination or authority. */ }
+		return resolved;
 	}
 
 	async execute({ metadata, libraries, taskId, relatedEvidence }) {

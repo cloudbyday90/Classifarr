@@ -3,6 +3,15 @@ import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import LibraryEvaluationSummary from '@/components/command-center/LibraryEvaluationSummary.vue'
 import { normalizeLibraryEvaluationSummary } from '@/utils/libraryEvaluationSummary'
+import { normalizeRepresentativeShadowSummary } from '@/utils/representativeShadowSummary'
+
+function representative() {
+  const keys = ['agrees', 'disagrees', 'known_item', 'known_description', 'scope_changed', 'representation_changed',
+    'sparse_profiles', 'unstable_profiles', 'ambiguous_profiles', 'invalid_input', 'missing_query', 'duplicate', 'expired', 'capacity', 'invalidated_batches']
+  return { version: 'inventory_representative_shadow_v1', status: 'available', routingAffected: false, pending: 2,
+    counts: { ...Object.fromEntries(keys.map(key => [key, 0])), agrees: 4, disagrees: 1, known_item: 3 },
+    latency: { under_1ms: 0, under_10ms: 5, at_least_10ms: 0 } }
+}
 
 function summary(overrides = {}) {
   return {
@@ -16,6 +25,45 @@ function summary(overrides = {}) {
 }
 
 describe('LibraryEvaluationSummary', () => {
+  it('adds a quiet, automatically refreshed profile comparison in the existing card and pause boundary', async () => {
+    const value = representative();
+    const wrapper = mount(LibraryEvaluationSummary, { props: { evaluation: { ...summary(), representative: value } } })
+    expect(wrapper.text()).toContain('5 decisions compared; 1 differed')
+    expect(wrapper.text()).toContain('Routing is unchanged')
+    expect(wrapper.get('details').text()).toContain('3 observations were skipped')
+    expect(wrapper.get('details').text()).toContain('Agreement is not accuracy')
+    const announcement = wrapper.get('[role="status"]').text()
+    await wrapper.setProps({ evaluation: { ...summary(), representative: { ...value, counts: { ...value.counts, agrees: 5 } } } })
+    expect(wrapper.text()).toContain('6 decisions compared')
+    expect(wrapper.get('[role="status"]').text()).toBe(announcement)
+    await wrapper.get('button').trigger('click')
+    await wrapper.setProps({ evaluation: { ...summary(), representative: value } })
+    expect(wrapper.text()).toContain('6 decisions compared')
+    await wrapper.get('button').trigger('click')
+    expect(wrapper.text()).toContain('5 decisions compared')
+    await wrapper.setProps({ evaluation: null })
+    expect(wrapper.text()).not.toContain('decisions compared')
+  })
+  it('labels saturated profile counts as lower bounds without counting invalidated batches as items', () => {
+    const value = representative(); value.counts.agrees = 1_000_000; value.counts.invalidated_batches = 9
+    expect(normalizeRepresentativeShadowSummary(value)).toMatchObject({ capped: true, skipped: 3 })
+    const wrapper = mount(LibraryEvaluationSummary, { props: { evaluation: { ...summary(), representative: value } } })
+    expect(wrapper.text()).toContain('profile-comparison counter reached its limit')
+  })
+  it.each([
+    value => { value.version = 'future' }, value => { value.status = 'unavailable' },
+    value => { value.routingAffected = true }, value => { value.privateText = 'PRIVATE title' },
+    value => { value.pending = 33 }, value => { value.counts.agrees = -1 },
+    value => { value.counts.agrees = '1' }, value => { value.counts.agrees = 1_000_001 },
+    value => { value.counts.privateText = 1 }, value => { value.counts = null },
+    value => { value.latency = null }, value => { value.latency.under_1ms = NaN },
+  ])('hides malformed optional profiles while keeping existing counters available', mutate => {
+    const value = representative(); mutate(value)
+    expect(normalizeRepresentativeShadowSummary(value)).toBeNull()
+    const result = normalizeLibraryEvaluationSummary({ ...summary(), representative: value })
+    expect(result.representative).toBeNull()
+    expect(result.passed).toBe(9)
+  })
   it('separates evidence passes from the held subset, not preparation or accuracy', () => {
     const wrapper = mount(LibraryEvaluationSummary, { props: { evaluation: summary() }, slots: { default: 'Protected study details' } })
     expect(wrapper.text()).toContain('9 checks passed')

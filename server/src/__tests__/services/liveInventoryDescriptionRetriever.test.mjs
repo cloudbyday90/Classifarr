@@ -19,9 +19,25 @@ function setup() {
     items: [{ description: `PRIVATE voyage ${libraryId}`, similarity: 0.7, sharedAcrossCandidates: false }] }));
   const repository = { readConfig: jest.fn(async () => ({ ...config })), readQueryVector: jest.fn(async () => [1, 0]),
     retrieve: jest.fn(async () => candidates) };
-  return { config, identity, candidates, embedder, repository,
-    retriever: createLiveInventoryDescriptionRetriever({ repository, createEmbedder: () => embedder }) };
+  const rememberQuery = jest.fn();
+  return { config, identity, candidates, embedder, repository, rememberQuery,
+    retriever: createLiveInventoryDescriptionRetriever({ repository, createEmbedder: () => embedder, rememberQuery }) };
 }
+
+test('captures only the verified complete query and isolates optional observation failure', async () => {
+  const { retriever, rememberQuery, identity, candidates, embedder } = setup();
+  const first = await retriever.retrieve({ contract, metadata });
+  expect(rememberQuery).toHaveBeenCalledWith(metadata, expect.objectContaining({
+    identity, vector: [1, 0], request: expect.objectContaining({ key: 'movie:90' }), configKey: expect.any(String),
+  }));
+  expect(rememberQuery.mock.calls[0][0]).toBe(metadata);
+  rememberQuery.mockImplementationOnce(() => { throw new Error('private diagnostic failure'); });
+  expect(await retriever.retrieve({ contract, metadata })).toEqual(first);
+  rememberQuery.mockClear(); candidates[0].indexed = 0;
+  expect((await retriever.retrieve({ contract, metadata })).statusId).toBe('partial');
+  expect(rememberQuery).not.toHaveBeenCalled();
+  expect(embedder.embedBatch).not.toHaveBeenCalled();
+});
 
 test('warm retrieval uses the query cache, same representation and every candidate without inference', async () => {
   const { retriever, repository, embedder } = setup();
@@ -142,7 +158,7 @@ test.each([null, { valid: false }, { ...contract, candidates: [contract.candidat
 
 test.each(['disabled', 'changed_model', 'changed_config', 'invalid_batch', 'database', 'aborted', 'empty'])(
   'unusable evidence fails closed: %s', async failure => {
-    const { retriever, repository, embedder, config, identity, candidates } = setup();
+    const { retriever, repository, embedder, config, identity, candidates, rememberQuery } = setup();
     const controller = new AbortController();
     if (failure === 'disabled') config.rag_enabled = false;
     if (failure === 'changed_model') embedder.inspect.mockResolvedValueOnce(identity).mockResolvedValue({ ...identity, digest: 'b'.repeat(64) });
@@ -154,6 +170,7 @@ test.each(['disabled', 'changed_model', 'changed_config', 'invalid_batch', 'data
     const result = await retriever.retrieve({ contract, metadata, signal: controller.signal });
     expect(result.statusId).toBe('unavailable');
     expect(JSON.stringify(result)).not.toContain('secret');
+    expect(rememberQuery).not.toHaveBeenCalled();
   },
 );
 

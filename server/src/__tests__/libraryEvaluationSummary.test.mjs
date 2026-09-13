@@ -4,6 +4,36 @@ import request from 'supertest';
 import { createQueueRouter } from '../routes/queueRouteShared.mjs';
 import { createLearnedEvidenceEvaluationControl } from '../services/learnedEvidenceEvaluationControl.mjs';
 import { LIBRARY_EVALUATION_COUNTERS, readLibraryEvaluationSummary } from '../services/libraryEvaluationSummary.mjs';
+import { createInventoryRepresentativeShadow } from '../services/inventoryRepresentativeShadow.mjs';
+import { projectRepresentativeShadowSummary } from '../services/inventoryRepresentativeShadowSummary.mjs';
+
+test('optional profile counters are redacted, bounded and remain admin-only', async () => {
+  const representative = createInventoryRepresentativeShadow().read();
+  representative.counts.agrees = 2;
+  representative.privateText = 'PRIVATE title'; representative.counts.secret = 'PRIVATE vector';
+  representative.latency.secret = 'PRIVATE timing';
+  const source = { ...createLearnedEvidenceEvaluationControl().read(), representative };
+  const { app } = appFor(() => source);
+  const response = await request(app).get('/api/queue/live-stats').set('Authorization', 'test').expect(200);
+  expect(response.body.libraryEvaluation.representative.counts.agrees).toBe(2);
+  expect(JSON.stringify(response.body)).not.toContain('PRIVATE');
+  const viewer = appFor(() => source, 'viewer');
+  expect((await request(viewer.app).get('/api/queue/live-stats').set('Authorization', 'test')).body.libraryEvaluation).toBeUndefined();
+  response.body.libraryEvaluation.representative.counts.agrees = 9;
+  expect(representative.counts.agrees).toBe(2);
+});
+
+test.each([
+  value => { value.version = 'future'; }, value => { value.routingAffected = true; },
+  value => { value.status = 'unavailable'; }, value => { value.pending = 33; },
+  value => { value.counts.agrees = -1; }, value => { value.counts = null; },
+  value => { value.latency.under_1ms = Infinity; }, value => { value.latency = null; },
+])('invalid optional counters do not hide existing library evaluation', mutate => {
+  const representative = createInventoryRepresentativeShadow().read(); mutate(representative);
+  expect(projectRepresentativeShadowSummary(representative)).toBeNull();
+  const result = readLibraryEvaluationSummary(() => ({ ...createLearnedEvidenceEvaluationControl().read(), representative }));
+  expect(result.status).toBe('available'); expect(result.representative).toBeUndefined();
+});
 
 describe('library evaluation summary', () => {
   test('projects only bounded counters, without mutating the source or granting routing', () => {

@@ -110,6 +110,16 @@ describe('queueOperationsApi', () => {
     expect(mockGetDataRequest).toHaveBeenCalledWith('/queue/live-stats')
   })
 
+  it('preserves optional background comparison counters through the same named GET endpoint', async () => {
+    const representative = { version: 'inventory_representative_shadow_v1', routingAffected: false,
+      status: 'available', pending: 2, counts: { agrees: 4, disagrees: 1 } }
+    const stats = { queue: {}, libraryEvaluation: { representative } }
+    mockGetDataRequest.mockResolvedValueOnce(stats)
+    expect(await getLiveStats()).toBe(stats)
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/queue/live-stats')
+    expect(mockPost).not.toHaveBeenCalled()
+  })
+
   it('processEnrichmentRetries calls POST with empty default options', async () => {
     mockPost.mockResolvedValueOnce({ data: { processed: 10 } })
     const result = await processEnrichmentRetries()

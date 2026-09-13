@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Compare cached library profiles with existing candidate decisions automatically
+  for unseen items, reusing query vectors without extra inference. Batch and
+  deduplicate comparisons, reject stale/self-matching evidence, and summarize
+  agreement and skips in Library learning without changing live routing.
 - Refresh source-versioned library representative profiles automatically in a
   bounded background worker. Reuse cached embeddings, retry after interruptions
   and reject changed inputs before publishing; no new controls or routing changes.

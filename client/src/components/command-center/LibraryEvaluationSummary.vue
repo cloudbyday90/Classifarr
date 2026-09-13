@@ -28,6 +28,11 @@
       Library evaluation status is unavailable. It will refresh automatically.
     </p>
     <template v-else>
+      <p v-if="snapshot.representative">
+        <strong>Background profiles:</strong> {{ formatCount(snapshot.representative.compared) }} decisions compared;
+        {{ formatCount(snapshot.representative.differs) }} differed from the existing destination.
+        Routing is unchanged.
+      </p>
       <p v-if="snapshot.passed || snapshot.blocked || snapshot.incomplete">
         <strong>Evidence:</strong> {{ formatCount(snapshot.passed) }} checks passed;
         {{ formatCount(snapshot.blocked) }} did not meet the evidence checks;
@@ -61,6 +66,15 @@
           These counters exclude some early exits and successful strict automatic routes.
           Repeated attempts can count again. Counts reset when the service restarts and are
           not the number of items currently waiting for you.
+        </p>
+        <p v-if="snapshot.representative">
+          Profiles compare descriptions for items not already in the current inventory, using query vectors
+          classification already produced. {{ formatCount(snapshot.representative.pending) }} comparisons are waiting;
+          {{ formatCount(snapshot.representative.skipped) }} observations were skipped or unavailable.
+          Agreement is not accuracy. Duplicate suppression lasts 30 minutes; counts reset on restart.
+        </p>
+        <p v-if="snapshot.representative?.capped">
+          A profile-comparison counter reached its limit; these counts are lower bounds.
         </p>
         <p v-if="snapshot.capped">
           At least one counter reached its limit; displayed counts are lower bounds.

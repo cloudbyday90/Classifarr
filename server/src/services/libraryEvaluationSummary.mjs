@@ -1,4 +1,5 @@
 // Public, read-only projection of the existing process-local evaluation counters.
+import { projectRepresentativeShadowSummary } from './inventoryRepresentativeShadowSummary.mjs';
 export const LIBRARY_EVALUATION_COUNTERS = Object.freeze([
   'prepared_admin_held', 'strict_qualified_admin_held', 'calibrated_qualified_admin_held',
   'live_guard_blocked', 'busy', 'unavailable', 'fallback_blocked', 'freshness_blocked', 'qualified',
@@ -15,7 +16,8 @@ export function readLibraryEvaluationSummary(readStatus) {
       if (!Number.isInteger(count) || count < 0 || count > 1_000_000) return unavailable;
       counts[key] = count;
     }
-    return { ...unavailable, status: 'available', counts };
+    const representative = projectRepresentativeShadowSummary(source.representative);
+    return { ...unavailable, status: 'available', counts, ...(representative ? { representative } : {}) };
   } catch {
     return unavailable;
   }

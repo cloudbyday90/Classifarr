@@ -11,5 +11,6 @@ export function representativeProfileFixture() {
     library_id: i < 6 ? 1 : 2, overview: `PRIVATE description ${i}` }));
   const corpus = prepareInventoryDescriptionCorpus(rows);
   const vectors = new Map([...corpus.texts.keys()].map((key, i) => [key, i < 6 ? [1, 0.01 * i] : [0.01 * i, 1]]));
-  return { state, identity, rows, snapshot: { state, corpus, libraries, vectors } };
+  const observedKeys = new Set(corpus.documents.map(row => row.key));
+  return { state, identity, rows, snapshot: { state, corpus, libraries, vectors, observedKeys } };
 }

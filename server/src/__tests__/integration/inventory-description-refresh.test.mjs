@@ -90,17 +90,25 @@ test('representative snapshots reconcile membership, conflicts and expired pgvec
     catch (error) { await client.query('ROLLBACK'); throw error; }
   } });
   const first = await profiles.read(identity);
+  expect(first.observedKeys).toEqual(new Set(['movie:1']));
   expect(first.state.busy).toBe(false);
   expect(first.vectors.get(hash)).toEqual([1, 0, 0]);
   expect(first.libraries).toEqual([{ id: 1, media_type: 'movie' }, { id: 2, media_type: 'tv' }]);
   await client.query("INSERT INTO media_source_observations VALUES (1,1,'source-1',now())");
   const conflicted = await profiles.read(identity);
   expect(conflicted.corpus.documents).toHaveLength(0);
+  expect(conflicted.observedKeys.has('movie:1')).toBe(true);
+  await client.query("INSERT INTO media_server_items VALUES (2,1,'source-2',2,'tv',2,'{}')");
+  const descriptionless = await profiles.read(identity);
+  expect(descriptionless.corpus.documents).toHaveLength(0);
+  expect(descriptionless.observedKeys).toEqual(new Set(['movie:1', 'tv:2']));
   expect(inventoryRepresentativeSourceKey(conflicted, identity, 'config')).not.toBe(inventoryRepresentativeSourceKey(first, identity, 'config'));
   await client.query('DELETE FROM media_source_observations');
   expect((await profiles.read(identity)).corpus.documents).toHaveLength(1);
   await client.query("UPDATE inventory_description_vector_cache SET created_at=now()-interval '31 days'");
   expect((await profiles.read(identity)).vectors.size).toBe(0);
   await client.query('UPDATE libraries SET is_active=false WHERE id=1');
-  expect((await profiles.read(identity)).corpus.documents).toHaveLength(0);
+  const inactive = await profiles.read(identity);
+  expect(inactive.corpus.documents).toHaveLength(0);
+  expect(inactive.observedKeys).toEqual(new Set(['tv:2']));
 });

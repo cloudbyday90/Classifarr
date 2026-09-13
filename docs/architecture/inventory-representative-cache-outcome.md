@@ -111,6 +111,10 @@ no release, version bump or tag.
 3. Evaluate routing promotion only after independent correctness checks. Existing
    inventory placement and cluster similarity are not calibrated confidence.
 
+Follow-up implementation: [automatic cached-profile comparison](inventory-representative-shadow-outcome.md)
+adds background diagnostics for unseen queries without changing this cache's
+training or routing boundaries.
+
 This version admits the existing trusted local Ollama embedding configuration.
 It waits for existing vector backfill and yields to current sync/queue activity.
 Remote providers and inventories beyond runtime budgets remain unavailable rather

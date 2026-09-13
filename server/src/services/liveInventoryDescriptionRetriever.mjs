@@ -8,6 +8,7 @@ import { inspectDescriptionRepresentation, verifyDescriptionRepresentation } fro
 import { createLiveInventoryDescriptionRepository } from './liveInventoryDescriptionRepository.mjs';
 import { validateEmbedding } from '../utils/embeddingValidation.mjs';
 import { projectLiveInventoryQueryMetadata } from './liveInventoryLearnedProfile.mjs';
+import { rememberRepresentativeQuery } from './inventoryRepresentativeShadowRuntime.mjs';
 
 function buildRequest(contract, metadata, maxCandidates) {
   const key = inventoryDescriptionIdentity(metadata);
@@ -27,6 +28,7 @@ function buildRequest(contract, metadata, maxCandidates) {
 export function createLiveInventoryDescriptionRetriever({
   repository = createLiveInventoryDescriptionRepository({ withTransaction: callback => db.withTransaction(callback) }),
   createEmbedder = createLocalStudyEmbeddingClient,
+  rememberQuery = rememberRepresentativeQuery,
   timeoutMs = 15_000,
   maxCandidates = 3,
 } = {}) {
@@ -66,6 +68,10 @@ export function createLiveInventoryDescriptionRetriever({
         signal.throwIfAborted();
         const complete = candidates.every(candidate => candidate.indexed === candidate.eligible);
         const any = candidates.some(candidate => candidate.items.length > 0);
+        if (complete && any) {
+          try { rememberQuery(metadata, { request, identity, vector, configKey: JSON.stringify(resolved) }); }
+          catch { /* Shadow capture cannot change the verified retrieval result. */ }
+        }
         return { statusId: any ? (complete ? 'available' : 'partial') : 'unavailable', candidates };
       } catch {
         // Provider/database errors can contain private text or endpoint details.
