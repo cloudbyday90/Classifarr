@@ -63,6 +63,29 @@ async function add(id, library, text, vector = [1, 0, 0], media = 'movie') {
 }
 const retrieve = (representation = identity) => repository.retrieve({ request, identity: representation, vector: [1, 0, 0] });
 
+test('neighbor shadow calibration shares the read-only SQL snapshot, excludes the query and fails closed after cache expiry', async () => {
+  for (const library of [10, 20]) for (let i = 0; i < 30; i++) {
+    const angle = (library === 10 ? 0 : Math.PI) + i / 100;
+    await add(library * 100 + i, library, `Neighbor ${library}:${i}`, [Math.cos(angle), Math.sin(angle), 0]);
+  }
+  await add(90, 10, 'Query', [Math.cos(.12), Math.sin(.12), 0]);
+  const input = { request: { ...request, matchLibraryId: 10, neighborCalibration: true }, identity,
+    vector: [Math.cos(.12), Math.sin(.12), 0] };
+  const first = await repository.retrieve(input);
+  expect(first[0].neighborCalibration).toMatchObject({ status: 'evaluated', candidates: [
+    { libraryId: 10, status: 'available', referenceDescriptions: 30, minimumCalibrationReferences: 29, calibrated: true },
+    { libraryId: 20, status: 'available', calibrated: false },
+  ] });
+  expect(first[1].neighborCalibration).toBeUndefined();
+  expect(first[0].items.some(item => item.description === 'Query')).toBe(false);
+  expect(await repository.retrieve(input)).toEqual(first);
+  expect(JSON.stringify(projectLiveInventoryDescriptionEvidence({ ...first[0], statusId: 'available' }, true)))
+    .not.toMatch(/neighborCalibration|snapshotId/);
+  await client.query("UPDATE inventory_description_vector_cache SET created_at=now()-interval '31 days' WHERE description_hash=$1", [hash('Neighbor 10:0')]);
+  const expired = await repository.retrieve(input);
+  expect(expired[0].neighborCalibration).toMatchObject({ status: 'incomplete', candidates: [] });
+});
+
 test('SQL-scoped TV evidence equals global-corpus evidence and retains exclusions across all same-media libraries', async () => {
   await client.query("INSERT INTO libraries VALUES (50,'tv',true),(60,'tv',true)");
   for (let id = 1; id <= 80; id++) {

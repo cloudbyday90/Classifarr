@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Shadow-test calibrated neighbor overlap against current library evidence and
+  existing AI proposals, with bounded cached fitting, no extra inference and no
+  new routing authority, user settings or acknowledgement steps.
 - Evaluate calibrated description matching as a selective fallback for ambiguous
   neighbors, reusing fresh AI and learned-metadata checks while preserving strict
   matches, bounded local inference and unchanged live routing safeguards.

@@ -50,9 +50,9 @@ export async function fitLibraryNeighborCrossFit(groups, dimensions, { signal, c
   const models = summarizeNeighborMarginDistributions(copied.map(group => group.libraryId), distributions, sparse, limits.tail);
   const references = copied.map(group => referencesFor(group));
   signal?.throwIfAborted();
-  return Object.freeze({ assess(vector) {
+  return Object.freeze({ assess(vector, { consumeWork: queryWork = consumeWork } = {}) {
     const query = normalizeDescriptionVector(vector, dimensions);
-    const scores = references.map(group => scoreNeighborReferences(query, group, consumeWork));
+    const scores = references.map(group => scoreNeighborReferences(query, group, queryWork));
     return assessNeighborMarginModels(models, scores, coverage, limits.tail);
   } });
 }

@@ -32,10 +32,14 @@ export function createLiveInventoryDescriptionRetriever({
 } = {}) {
   if (!Number.isInteger(maxCandidates) || maxCandidates < 2 || maxCandidates > 64) throw new RangeError('invalid_candidate_limit');
   return {
-    async retrieve({ contract, metadata, matchLibraryId, signal: parentSignal } = {}) {
+    async retrieve({ contract, metadata, matchLibraryId, neighborCalibration = false, signal: parentSignal } = {}) {
       let request;
       try { request = buildRequest(contract, metadata, maxCandidates); } catch { request = null; }
       if (!request) return { statusId: 'not_applicable', candidates: [] };
+      if (typeof neighborCalibration !== 'boolean' || (neighborCalibration && matchLibraryId === undefined)) {
+        return { statusId: 'not_applicable', candidates: [] };
+      }
+      if (neighborCalibration) request.neighborCalibration = true;
       if (matchLibraryId !== undefined) {
         if (!request.libraryIds.includes(matchLibraryId)) return { statusId: 'not_applicable', candidates: [] };
         request.matchLibraryId = matchLibraryId;
@@ -49,6 +53,7 @@ export function createLiveInventoryDescriptionRetriever({
         const identity = await inspectDescriptionRepresentation(embedder, signal);
         let vector = await repository.readQueryVector(identity, request.hash);
         if (!vector) {
+          if (neighborCalibration) throw new Error('live_neighbor_query_cache_required');
           const batch = await embedder.embedBatch([request.text], { dimensions: identity.dimensions, signal });
           if (!Array.isArray(batch) || batch.length !== 1) throw new Error('live_inventory_description_batch_invalid');
           vector = validateEmbedding(batch[0], identity.dimensions).map(Math.fround);

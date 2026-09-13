@@ -33,6 +33,23 @@ test('warm retrieval uses the query cache, same representation and every candida
   expect(embedder.inspect).toHaveBeenCalledTimes(2);
 });
 
+test('shadow calibration requires a cached query and a selected library; it never calls embedding generation', async () => {
+  const { retriever, repository, embedder, candidates } = setup();
+  for (const request of [{ neighborCalibration: true }, { neighborCalibration: 'true', matchLibraryId: 1 }]) {
+    expect((await retriever.retrieve({ contract, metadata, ...request })).statusId).toBe('not_applicable');
+  }
+  expect(repository.readConfig).not.toHaveBeenCalled();
+  expect((await retriever.retrieve({ contract, metadata, matchLibraryId: 1, neighborCalibration: true })).statusId).toBe('available');
+  expect(repository.retrieve.mock.calls[0][0].request.neighborCalibration).toBe(true);
+  candidates[0].neighborCalibration = { private: 'PRIVATE model data' };
+  expect(JSON.stringify(projectLiveInventoryDescriptionEvidence({ ...candidates[0], statusId: 'available' }, true))).not.toContain('PRIVATE model data');
+  repository.readQueryVector.mockResolvedValue(null);
+  expect(await retriever.retrieve({ contract, metadata, matchLibraryId: 1, neighborCalibration: true }))
+    .toEqual({ statusId: 'unavailable', candidates: [] });
+  expect(repository.retrieve).toHaveBeenCalledTimes(1);
+  expect(embedder.embedBatch).not.toHaveBeenCalled();
+});
+
 test('baseline retrieval checks representation after the fit and rejects foreign selected libraries', async () => {
   const { retriever, repository, embedder } = setup();
   expect((await retriever.retrieve({ contract, metadata, matchLibraryId: 99 })).statusId).toBe('not_applicable');

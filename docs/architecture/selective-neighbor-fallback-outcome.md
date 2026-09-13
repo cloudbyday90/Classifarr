@@ -148,6 +148,12 @@ rank as a calibrated probability or routing permission.
 
 ## PR and release
 
+The follow-up [live shadow outcome](live-neighbor-shadow-outcome.md) now documents
+the selective live integration and current Compose verification. It does not
+promote these offline gains into automatic routing. In particular, the current
+administrative confirmation setting still blocks live preparation; separating
+background evaluation from final routing approval is the next component.
+
 GitHub MCP returned no open Classifarr PRs on 13 September 2026. No random PR was
 available to implement, and none was substituted or merged. The changelog was
 updated under Unreleased. No version bump, tag or release was created.

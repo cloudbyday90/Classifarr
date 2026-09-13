@@ -87,6 +87,15 @@ test('selected-library baseline is internal and shares the read-only snapshot', 
   expect(query.mock.calls.filter(([sql]) => sql.includes('ISOLATION LEVEL'))).toHaveLength(1);
 });
 
+test('both calibration readers use the existing transaction and an incomplete cache remains neutral', async () => {
+  const rows = [1, 2].flatMap(library => Array.from({ length: 80 }, (_, i) => row(library * 100 + i, library, `Sample ${library}:${i}`)));
+  const { retrieve, query } = setup(rows);
+  const result = await retrieve(undefined, { ...request, matchLibraryId: 1, neighborCalibration: true });
+  expect(result[0].neighborCalibration).toMatchObject({ status: 'incomplete', candidates: [] });
+  expect(query.mock.calls.filter(([sql]) => sql.includes('embedding::text')).length).toBeGreaterThanOrEqual(2);
+  expect(query.mock.calls.filter(([sql]) => sql.includes('ISOLATION LEVEL'))).toHaveLength(1);
+});
+
 test('profile-only reads reuse fitting but refresh from a new read-only snapshot each time', async () => {
   const rows = [row(1, 1, 'A'), row(2, 2, 'B')];
   rows[0].genres = ['documentary']; rows[1].genres = ['comedy'];

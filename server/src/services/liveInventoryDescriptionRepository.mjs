@@ -7,6 +7,7 @@ import { validateDescriptionRepresentation, createInventoryDescriptionVectorCach
 import { validateEmbedding } from '../utils/embeddingValidation.mjs';
 import { assessLiveLibraryMatch } from './liveLibraryMatchBaseline.mjs';
 import { createLiveInventoryModelCache } from './liveInventoryModelCache.mjs';
+import { assessLiveLibraryNeighbors } from './liveLibraryNeighborCalibration.mjs';
 
 export { LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL } from './liveInventoryDescriptionCorpus.mjs';
 
@@ -31,6 +32,7 @@ export const LIVE_INVENTORY_DESCRIPTION_RANK_SQL = `
 export function createLiveInventoryDescriptionRepository({ withTransaction,
   profileCache = createLiveInventoryModelCache({ maxWeight: 4 * 1024 * 1024 }),
   baselineCache = createLiveInventoryModelCache(),
+  neighborCache = createLiveInventoryModelCache(),
 }) {
   const snapshot = callback => withTransaction(async client => {
     await client.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
@@ -83,6 +85,10 @@ export function createLiveInventoryDescriptionRepository({ withTransaction,
           rows, corpus, request, identity, vector, signal, modelCache: baselineCache,
           query: (sql, parameters) => client.query(sql, parameters),
         });
+        const neighborCalibration = request.neighborCalibration === true ? await assessLiveLibraryNeighbors({
+          rows, corpus, request, identity, vector, signal, modelCache: neighborCache,
+          query: (sql, parameters) => client.query(sql, parameters),
+        }) : null;
         return request.libraryIds.map(libraryId => {
           const matches = ranked.filter(row => row.library_id === libraryId);
           const items = matches.filter(row => row.similarity !== null).map(row => {
@@ -96,6 +102,7 @@ export function createLiveInventoryDescriptionRepository({ withTransaction,
             ...(request.matchLibraryId != null ? { queryIdentityPresent: rows.some(row => row.library_id === libraryId &&
               `${row.media_type}:${row.tmdb_id}` === request.key) } : {}),
             ...(matchBaseline?.libraryId === libraryId ? { matchBaseline } : {}),
+            ...(neighborCalibration && request.matchLibraryId === libraryId ? { neighborCalibration } : {}),
             ...(learnedProfiles.has(libraryId) ? { learnedProfile: learnedProfiles.get(libraryId) } : {}) };
         });
       });

@@ -7,6 +7,11 @@ import { projectLiveInventoryDescriptionEvidence } from './liveInventoryDescript
 export function assessLearnedEvidenceRouting(input) {
   const review = assessLearnedEvidenceReview(input);
   if (!review.wouldResolve) return false;
+  return assessLearnedEvidenceRoutingGuards(input);
+}
+
+/** Requires a previously validated full review scope. No authority is granted. */
+export function assessLearnedEvidenceRoutingGuards(input) {
   if (input.reviewEvidence.candidates.some(candidate => candidate.libraryId !== input.aiMatch.library.id &&
       candidate.queryIdentityPresent !== false)) return false;
   const limits = LIBRARY_MATCH_BASELINE_LIMITS;

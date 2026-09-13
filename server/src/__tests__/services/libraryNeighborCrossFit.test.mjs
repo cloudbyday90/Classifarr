@@ -7,6 +7,14 @@ const vector = angle => [Math.cos(angle), Math.sin(angle)];
 const groups = (count = 25) => [0, Math.PI].map((offset, index) => ({ libraryId: index + 1,
   references: Array.from({ length: count }, (_, i) => ({ hash: calibrationHash(`${index}:${i}`), vector: vector(offset + i / 100) })) }));
 
+test('cached consumers can give each query a fresh work budget without charging the old fit', async () => {
+  let fitWork = 0, queryWork = 0;
+  const model = await fitLibraryNeighborCrossFit(groups(), 2, { consumeWork: value => { fitWork += value; } });
+  const before = fitWork;
+  for (let i = 0; i < 3; i++) model.assess(vector(.12), { consumeWork: value => { queryWork += value; } });
+  expect(fitWork).toBe(before); expect(queryWork).toBe(3 * 2 * 25 * 2);
+});
+
 // Deliberately independent brute-force oracle: remove hashes, then cap, sort all scores.
 function oracle(input, query) {
   const scores = (value, excluded) => input.map(group => group.references.filter(item => item.hash !== excluded).slice(0, 64)
