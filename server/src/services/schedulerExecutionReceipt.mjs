@@ -31,6 +31,7 @@ const TASK_CLASS_BY_NAME = Object.freeze({
     'library-observation-history': SCHEDULER_EXECUTION_TASK_CLASS_IDS.LIBRARY_OBSERVATION,
     'rating-normalization-check': SCHEDULER_EXECUTION_TASK_CLASS_IDS.MAINTENANCE,
     'inventory-description-refresh': SCHEDULER_EXECUTION_TASK_CLASS_IDS.MAINTENANCE,
+    'inventory-representative-profile-refresh': SCHEDULER_EXECUTION_TASK_CLASS_IDS.MAINTENANCE,
     'stale-awaiting-cleanup': SCHEDULER_EXECUTION_TASK_CLASS_IDS.MAINTENANCE,
     'refresh-token-cleanup': SCHEDULER_EXECUTION_TASK_CLASS_IDS.RETENTION,
     'api-key-audit-prune': SCHEDULER_EXECUTION_TASK_CLASS_IDS.RETENTION,

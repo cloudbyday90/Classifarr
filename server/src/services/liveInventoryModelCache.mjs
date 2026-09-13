@@ -19,6 +19,7 @@ export function createLiveInventoryModelCache({ maxEntries = 8, maxWeight = 16 *
   };
   const validKey = key => typeof key === 'string' && /^[a-f0-9]{64}$/.test(key);
   return Object.freeze({
+    clear() { entries.clear(); weight = 0; },
     get(key) {
       prune();
       const entry = entries.get(key);

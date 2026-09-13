@@ -49,8 +49,8 @@ function saltedFirst(items, start) {
 }
 
 /** Sorted, validated, training-only items supplied by the scoped learner. */
-export async function fitStableRepresentativeGeometry(items, { signal } = {}) {
-  const legacy = await fitRepresentativeGeometry(items, { signal });
+export async function fitStableRepresentativeGeometry(items, { signal, includeLegacy = true } = {}) {
+  const legacy = includeLegacy ? await fitRepresentativeGeometry(items, { signal }) : null;
   const runs = [];
   for (let start = 0; start < REPRESENTATIVE_STABILITY_STARTS; start++) {
     signal?.throwIfAborted();
@@ -61,8 +61,9 @@ export async function fitStableRepresentativeGeometry(items, { signal } = {}) {
   for (let a = 0; a < runs.length; a++) for (let b = a + 1; b < runs.length; b++) {
     agreements.push(representativePartitionAgreement(runs[a].labels, runs[b].labels));
   }
-  const stability = { selectedStart, legacyIterations: legacy.iterations, legacyConverged: legacy.converged,
-    totalIterations: legacy.iterations + runs.reduce((sum, run) => sum + run.iterations, 0),
+  const stability = { selectedStart,
+    ...(legacy ? { legacyIterations: legacy.iterations, legacyConverged: legacy.converged } : {}),
+    totalIterations: (legacy?.iterations ?? 0) + runs.reduce((sum, run) => sum + run.iterations, 0),
     minimumPartitionAgreement: round(Math.min(...agreements)),
     starts: runs.map(run => ({ iterations: run.iterations, converged: run.converged, objective: round(run.objective),
       groups: run.groups.length, discardedDescriptions: run.discarded })) };

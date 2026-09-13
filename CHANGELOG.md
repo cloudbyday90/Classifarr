@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Refresh source-versioned library representative profiles automatically in a
+  bounded background worker. Reuse cached embeddings, retry after interruptions
+  and reject changed inputs before publishing; no new controls or routing changes.
 - Add bounded multi-start representative learning with convergence diagnostics,
   training-only fit selection and fallback when starting points disagree. Compare
   against the existing learner on the same inventory snapshot without adding model

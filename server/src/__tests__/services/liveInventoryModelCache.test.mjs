@@ -50,3 +50,12 @@ test('profile accounting includes feature strings and per-library overhead', () 
   empty.background.set('movie', { genres: { counts: new Map([['test', 1]]) } });
   expect(estimateInventoryProfileWeight(empty)).toBe(2320);
 });
+
+test('clear removes all completed models and resets weight accounting', () => {
+  const cache = createLiveInventoryModelCache({ maxWeight: 10 });
+  cache.set(key('a'), { value: 1 }, 10);
+  cache.clear();
+  expect(cache.get(key('a'))).toBeUndefined();
+  expect(cache.set(key('b'), { value: 2 }, 10)).toBe(true);
+  expect(cache.get(key('b'))).toEqual({ value: 2 });
+});

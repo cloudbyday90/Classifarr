@@ -142,3 +142,7 @@ Invalidated reports do not count as successful evaluations or additional samples
 GitHub MCP reported no open Classifarr PR at selection time. No closed PR or
 unrelated repository was substituted, and no PR was merged. All six workflows on
 the previous commit, `0c74bf39`, passed before this work began.
+
+The next component is now implemented separately: see
+[automatic representative-cache outcome](inventory-representative-cache-outcome.md).
+Its full-inventory profiles do not replace this study's held-out models.

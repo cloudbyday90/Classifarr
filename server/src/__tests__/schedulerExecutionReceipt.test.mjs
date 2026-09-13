@@ -14,6 +14,10 @@ import { createSchedulerExecutionReceiptService } from '../services/schedulerExe
 import { createSchedulerTaskExecutionRunner } from '../services/schedulerTaskExecutionRunner.mjs';
 
 describe('scheduler execution receipt contract', () => {
+    test('representative profile refresh uses the existing maintenance class', () => {
+        expect(buildSchedulerExecutionReceipt({ taskName: 'inventory-representative-profile-refresh',
+            outcomeId: 'completed', durationMs: 1000 })).toMatchObject({ taskClass: 'maintenance' });
+    });
     test('builds fixed task-class, outcome, and duration buckets', () => {
         expect(buildSchedulerExecutionReceipt({
             taskName: 'library-sync',
