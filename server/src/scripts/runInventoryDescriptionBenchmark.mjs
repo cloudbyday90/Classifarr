@@ -13,6 +13,7 @@ import { runPolicyShortlistReplay } from '../services/policyShortlistReplay.mjs'
 import { runFreshInventoryPolicyEvaluation } from '../services/freshInventoryPolicyEvaluation.mjs';
 import { runInventoryNeighborComparison } from '../services/inventoryNeighborComparison.mjs';
 import { runInventoryEvidenceRerankerComparison } from '../services/inventoryEvidenceRerankerComparison.mjs';
+import { runInventorySemanticPairComparison } from '../services/inventorySemanticPairComparison.mjs';
 import { describeInventorySnapshotDigests } from '../services/inventoryDescriptionSnapshotDigests.mjs';
 
 async function loadPrivateRuntime() {
@@ -44,6 +45,7 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     'neighbor-fallback': { type: 'boolean' },
     'evidence-reranker': { type: 'boolean' },
     'neighborhood-profiles': { type: 'boolean' },
+    'semantic-pairs': { type: 'boolean' },
     'preserve-description-candidate': { type: 'boolean' },
     'metadata-candidates': { type: 'boolean' }, 'learned-profiles': { type: 'boolean' } } });
   if (values['metadata-candidates'] && values['learned-profiles']) throw new Error('description_benchmark_selection_mode_conflict');
@@ -56,6 +58,9 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     ...(values.context === undefined ? {} : { context: Number(values.context) }),
     ...(values['max-minutes'] === undefined ? {} : { maxMinutes: Number(values['max-minutes']) }),
   });
+  if (values['semantic-pairs'] && (!options.folds || Object.entries(values).some(([name, value]) => name !== 'semantic-pairs' && value === true))) {
+    throw new Error('semantic_pairs_require_exclusive_grouped_mode');
+  }
   if (values['neighborhood-profiles'] && !values['evidence-reranker']) throw new Error('neighborhood_profiles_requires_evidence_reranker');
   if (values['evidence-reranker'] && (!options.folds || options.generateCases ||
       ['fresh-policy-evaluation', 'policy-shortlist-replay', 'investigate', 'contrastive-investigation',
@@ -102,9 +107,15 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     const representation = await inspectDescriptionRepresentation(runtime.embedder, abort);
     const snapshot = await runtime.repository.read(representation);
     await verifyDescriptionRepresentation(runtime.embedder, representation, abort);
-    if (values['evidence-reranker']) {
-      const report = await runInventoryEvidenceRerankerComparison(snapshot, representation.dimensions, options,
-        { signal: abort, onProgress, neighborhoodProfiles: values['neighborhood-profiles'] === true });
+    if (values['evidence-reranker'] || values['semantic-pairs']) {
+      const pairClient = values['semantic-pairs'] && options.generateCases ? runtime.createClient() : undefined;
+      const pairIdentity = pairClient ? await pairClient.inspect(abort) : undefined;
+      const report = values['semantic-pairs']
+        ? await runInventorySemanticPairComparison(snapshot, representation.dimensions, options,
+          { signal: abort, onProgress, client: pairClient, identity: pairIdentity })
+        : await runInventoryEvidenceRerankerComparison(snapshot, representation.dimensions, options,
+          { signal: abort, onProgress, neighborhoodProfiles: values['neighborhood-profiles'] === true });
+      if (abort.aborted) return { ...report, status: 'interrupted', sourceVerified: false };
       const current = await runtime.repository.read(representation);
       await verifyDescriptionRepresentation(runtime.embedder, representation, abort);
       const sourceVerified = JSON.stringify(describeInventorySnapshotDigests(current, current.vectors)) ===

@@ -3,6 +3,7 @@ import { canonicalStudyModel, resolveLocalStudyEmbeddingConfig } from './localSt
 import { readBoundedResponseBody } from '../utils/httpResponseBody.mjs';
 import { buildCandidateAdjudicationResponseSchema } from './candidateAdjudicationResponseContract.mjs';
 import { isReasoningModel } from './aiResponseNormalizer.mjs';
+import { buildInventoryPairResponseSchema, INVENTORY_SEMANTIC_PAIR_OUTPUT_TOKENS } from './inventorySemanticPairContract.mjs';
 
 export const DESCRIPTION_BENCHMARK_OUTPUT_TOKENS = 64;
 export const ADJUDICATION_REPLAY_OUTPUT_TOKENS = 256;
@@ -43,10 +44,12 @@ export function createLocalDescriptionBenchmarkClient(config, { fetchRequest = f
   return {
     inspect,
     async generate({ prompt, count, context, identity, signal, responseContract = 'candidate', onGenerationCall = () => {} }) {
-      if (!['candidate', 'adjudication'].includes(responseContract)) throw new Error('description_benchmark_response_contract_invalid');
-      const outputTokens = responseContract === 'adjudication' ? ADJUDICATION_REPLAY_OUTPUT_TOKENS : DESCRIPTION_BENCHMARK_OUTPUT_TOKENS;
+      if (!['candidate', 'adjudication', 'pair_relevance'].includes(responseContract)) throw new Error('description_benchmark_response_contract_invalid');
+      const pairSchema = responseContract === 'pair_relevance' ? buildInventoryPairResponseSchema(count) : null;
+      const outputTokens = pairSchema ? INVENTORY_SEMANTIC_PAIR_OUTPUT_TOKENS
+        : responseContract === 'adjudication' ? ADJUDICATION_REPLAY_OUTPUT_TOKENS : DESCRIPTION_BENCHMARK_OUTPUT_TOKENS;
       if (typeof prompt !== 'string' || !prompt.length || ![8192, 16384, 32768, 65536].includes(context) ||
-          !Number.isInteger(count) || count < 2 || count > 3 || context > identity.contextLength ||
+          (!pairSchema && (!Number.isInteger(count) || count < 2 || count > 3)) || context > identity.contextLength ||
           Buffer.byteLength(prompt, 'utf8') > (context - outputTokens) * 3) {
         throw new Error('description_benchmark_context_budget');
       }
@@ -60,8 +63,8 @@ export function createLocalDescriptionBenchmarkClient(config, { fetchRequest = f
       const start = now();
       onGenerationCall();
       const result = await request('/api/generate', { model, prompt, stream: false, think: false, keep_alive: '5m',
-        format: responseContract === 'adjudication' ? (isReasoningModel(model) ? undefined : buildCandidateAdjudicationResponseSchema(count)) : { type: 'object', properties: { candidate: { type: 'integer', enum: Array.from({ length: count + 1 }, (_, index) => index) } },
-          required: ['candidate'], additionalProperties: false },
+        format: pairSchema ?? (responseContract === 'adjudication' ? (isReasoningModel(model) ? undefined : buildCandidateAdjudicationResponseSchema(count)) : { type: 'object', properties: { candidate: { type: 'integer', enum: Array.from({ length: count + 1 }, (_, index) => index) } },
+          required: ['candidate'], additionalProperties: false }),
         options: { temperature: 0, seed: 42, num_ctx: context, num_predict: outputTokens },
       }, signal);
       const latencyMs = Math.round(now() - start);

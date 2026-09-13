@@ -90,3 +90,18 @@ test('adjudication provider grammar is bounded to the actual two candidates', as
   expect(requests.find(request => request.path === '/api/generate').body.format.properties.library_number.anyOf)
     .toEqual([{ type: 'integer', minimum: 1, maximum: 2 }, { type: 'null' }]);
 });
+
+test('pair relevance uses its own bounded schema/output budget without widening candidate decisions', async () => {
+  const client = createLocalDescriptionBenchmarkClient(config);
+  let calls = 0;
+  await client.generate({ prompt: 'Private pairs', count: 15, context: 32768, identity,
+    responseContract: 'pair_relevance', onGenerationCall: () => { calls++; } });
+  expect(calls).toBe(1);
+  expect(requests.find(request => request.path === '/api/generate').body).toMatchObject({
+    format: { properties: { grades: { minItems: 15, maxItems: 15 } }, additionalProperties: false }, options: { num_predict: 512 } });
+  await expect(client.generate({ prompt: 'Private', count: 25, context: 32768, identity, responseContract: 'pair_relevance' })).rejects.toThrow('count_invalid');
+  await expect(client.generate({ prompt: 'Private', count: 15, context: 32768, identity })).rejects.toThrow('context_budget');
+  await expect(client.generate({ prompt: 'x'.repeat((8192 - 512) * 3 + 1), count: 6, context: 8192, identity,
+    responseContract: 'pair_relevance' })).rejects.toThrow('context_budget');
+  expect(requests.filter(request => request.path === '/api/generate')).toHaveLength(1);
+});

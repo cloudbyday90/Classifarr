@@ -5,6 +5,26 @@ import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescr
 
 const seed = 'benchmark-test-seed-2026';
 
+test('semantic pair CLI requires exclusive grouped mode and source verification, with explicit generation only', async () => {
+  const args = ['--seed', seed, '--size', '10', '--folds', '5', '--semantic-pairs'], loadRuntime = jest.fn();
+  for (const argv of [args.filter(value => !['--folds', '5'].includes(value)),
+    ...['--evidence-reranker', '--neighborhood-profiles', '--fresh-policy-evaluation', '--learned-profiles', '--investigate'].map(mode => [...args, mode])]) {
+    await expect(runInventoryDescriptionBenchmark({ argv, loadRuntime })).rejects.toThrow('exclusive_grouped');
+  }
+  expect(loadRuntime).not.toHaveBeenCalled();
+  const instance = runtime();
+  expect(await runInventoryDescriptionBenchmark({ argv: args, loadRuntime: async () => instance }))
+    .toMatchObject({ protocol: 'inventory_semantic_pairs_v1', status: 'preflight', sourceVerified: true, calls: 0 });
+  expect(instance.createClient).not.toHaveBeenCalled();
+  const snapshot = await instance.repository.read();
+  instance.repository.read.mockResolvedValueOnce(snapshot).mockResolvedValueOnce({ ...snapshot, candidateMetadata: new Map([['movie:1', null]]) });
+  expect(await runInventoryDescriptionBenchmark({ argv: [...args, '--generate-cases', '1'], loadRuntime: async () => instance }))
+    .toMatchObject({ status: 'invalidated', sourceVerified: false });
+  expect(instance.createClient).toHaveBeenCalledTimes(1);
+  expect(instance.client.generate).not.toHaveBeenCalled();
+  expect(instance.close).toHaveBeenCalledTimes(2);
+});
+
 test('neighborhood CLI requires grouped reranker mode and retains source verification and zero generation', async () => {
   const base = ['--seed', seed, '--size', '10', '--folds', '5', '--neighborhood-profiles'], loadRuntime = jest.fn();
   await expect(runInventoryDescriptionBenchmark({ argv: base, loadRuntime })).rejects.toThrow('requires_evidence_reranker');

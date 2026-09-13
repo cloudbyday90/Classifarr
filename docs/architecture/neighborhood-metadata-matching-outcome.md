@@ -98,6 +98,10 @@ for the next assessment. Retain the existing matcher on missing/unavailable
 evidence, protect consensus cases, and measure both gains and losses before live
 integration. No extra user declarations are needed to run that evaluation.
 
+Follow-up: [semantic pair-reranking design](semantic-pair-reranking-design.md) and
+[measured outcome](semantic-pair-reranking-outcome.md) implement the next bounded
+description-comparison experiment using the installed local model.
+
 ## Reproduction
 
 ```powershell

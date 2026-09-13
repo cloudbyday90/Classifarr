@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a read-only, library-agnostic semantic pair-grading pilot using cached
+  descriptions and the installed local model. Require complete bounded responses
+  and agreement across reversed example order, preserve baseline fallback, and
+  report actual inference separately from sample preflight without changing live routing.
 - Add a bounded, library-agnostic neighborhood metadata matcher and compare it
   against existing ranking on 600 movie/TV descriptions. Preserve consensus cases
   and live routing; keep the experimental matcher offline after broader regressions,
