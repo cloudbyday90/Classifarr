@@ -46,6 +46,7 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     'evidence-reranker': { type: 'boolean' },
     'neighborhood-profiles': { type: 'boolean' },
     'representative-groups': { type: 'boolean' },
+    'representative-stability': { type: 'boolean' },
     'semantic-pairs': { type: 'boolean' },
     'preserve-description-candidate': { type: 'boolean' },
     'metadata-candidates': { type: 'boolean' }, 'learned-profiles': { type: 'boolean' } } });
@@ -63,6 +64,7 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     throw new Error('semantic_pairs_require_exclusive_grouped_mode');
   }
   if (values['neighborhood-profiles'] && !values['evidence-reranker']) throw new Error('neighborhood_profiles_requires_evidence_reranker');
+  if (values['representative-stability'] && !values['representative-groups']) throw new Error('representative_stability_requires_groups');
   if (values['representative-groups'] && (!values['evidence-reranker'] || values['neighborhood-profiles'])) {
     throw new Error('representative_groups_require_exclusive_evidence_reranker');
   }
@@ -119,7 +121,7 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
           { signal: abort, onProgress, client: pairClient, identity: pairIdentity })
         : await runInventoryEvidenceRerankerComparison(snapshot, representation.dimensions, options,
           { signal: abort, onProgress, neighborhoodProfiles: values['neighborhood-profiles'] === true,
-            representativeGroups: values['representative-groups'] === true });
+            representativeGroups: values['representative-groups'] === true, representativeStability: values['representative-stability'] === true });
       if (abort.aborted) return { ...report, status: 'interrupted', sourceVerified: false };
       const current = await runtime.repository.read(representation);
       await verifyDescriptionRepresentation(runtime.embedder, representation, abort);

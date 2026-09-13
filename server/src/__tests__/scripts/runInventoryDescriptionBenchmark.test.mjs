@@ -5,6 +5,21 @@ import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescr
 
 const seed = 'benchmark-test-seed-2026';
 
+test('stability CLI rejects missing groups before runtime, uses no generation and invalidates source drift', async () => {
+  const base = ['--seed', seed, '--size', '10', '--folds', '5', '--representative-stability'], loadRuntime = jest.fn();
+  for (const argv of [base, [...base, '--representative-groups'], [...base, '--representative-groups', '--evidence-reranker', '--generate-cases', '1']]) {
+    await expect(runInventoryDescriptionBenchmark({ argv, loadRuntime })).rejects.toThrow();
+  }
+  expect(loadRuntime).not.toHaveBeenCalled();
+  const instance = runtime(), argv = [...base, '--representative-groups', '--evidence-reranker'];
+  expect(await runInventoryDescriptionBenchmark({ argv, loadRuntime: async () => instance }))
+    .toMatchObject({ protocol: 'inventory_representative_stability_v1', status: 'complete', sourceVerified: true, calls: 0 });
+  const snapshot = await instance.repository.read();
+  instance.repository.read.mockResolvedValueOnce(snapshot).mockResolvedValueOnce({ ...snapshot, candidateMetadata: new Map([['movie:1', null]]) });
+  expect(await runInventoryDescriptionBenchmark({ argv, loadRuntime: async () => instance })).toMatchObject({ status: 'invalidated', sourceVerified: false });
+  expect(instance.createClient).not.toHaveBeenCalled(); expect(instance.close).toHaveBeenCalledTimes(2);
+});
+
 test('representative CLI rejects mixed/generation modes and retains source verification without a generation client', async () => {
   const base = ['--seed', seed, '--size', '10', '--folds', '5', '--representative-groups'], loadRuntime = jest.fn();
   for (const argv of [base, [...base, '--evidence-reranker', '--neighborhood-profiles'],

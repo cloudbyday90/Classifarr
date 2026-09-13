@@ -3,6 +3,7 @@ import { setImmediate } from 'node:timers/promises';
 
 export const REPRESENTATIVE_MAX_GROUPS = 8;
 export const REPRESENTATIVE_MAX_PASSES = 12;
+export const REPRESENTATIVE_STABILITY_PASSES = 64;
 
 export function representativeSimilarity(a, b) {
   let sum = 0;
@@ -22,13 +23,19 @@ async function checkpoint(index, signal) {
 }
 
 /** Internal normalized-vector geometry. Caller validates scope, vectors and work budget. */
-export async function fitRepresentativeGeometry(items, { signal } = {}) {
+export async function fitRepresentativeGeometry(items, { signal, maxPasses = REPRESENTATIVE_MAX_PASSES, firstIndex = null, diagnostics = false } = {}) {
   signal?.throwIfAborted();
-  if (items.length < 3) return { groups: [], iterations: 0, converged: true, discarded: items.length };
+  if (!Number.isSafeInteger(maxPasses) || maxPasses < 1 || maxPasses > REPRESENTATIVE_STABILITY_PASSES ||
+      (firstIndex !== null && (!Number.isSafeInteger(firstIndex) || firstIndex < 0 || firstIndex >= items.length))) {
+    throw new Error('inventory_representative_fit_options');
+  }
+  if (items.length < 3) return { groups: [], iterations: 0, converged: true, discarded: items.length,
+    ...(diagnostics ? { objective: 0, labels: items.map(() => 0) } : {}) };
   const count = Math.min(REPRESENTATIVE_MAX_GROUPS, Math.max(1, Math.floor(Math.sqrt(items.length / 3))));
   const mean = meanDirection(items) ?? items[0].vector;
-  let first = 0;
-  for (let i = 1; i < items.length; i++) {
+  let first = firstIndex ?? 0;
+  if (firstIndex === null) for (let i = 1; i < items.length; i++) {
+    await checkpoint(i, signal);
     if (representativeSimilarity(items[i].vector, mean) > representativeSimilarity(items[first].vector, mean)) first = i;
   }
   const centers = [items[first].vector], closest = Array(items.length).fill(-Infinity);
@@ -44,7 +51,7 @@ export async function fitRepresentativeGeometry(items, { signal } = {}) {
   }
   const labels = Array(items.length).fill(-1);
   let members, iterations = 0, converged = false;
-  for (let pass = 0; pass < REPRESENTATIVE_MAX_PASSES; pass++) {
+  for (let pass = 0; pass < maxPasses; pass++) {
     members = centers.map(() => []);
     let changes = 0;
     for (let i = 0; i < items.length; i++) {
@@ -63,14 +70,18 @@ export async function fitRepresentativeGeometry(items, { signal } = {}) {
       if (members[group].length) centers[group] = meanDirection(members[group]) ?? centers[group];
     }
   }
+  let objective = 0;
   const groups = members.flatMap(rows => {
-    if (rows.length < 3) return [];
+    if (!rows.length) return [];
     const centroid = meanDirection(rows);
     if (!centroid) return [];
+    if (diagnostics) objective += rows.reduce((sum, row) => sum + representativeSimilarity(row.vector, centroid), 0);
+    if (rows.length < 3) return [];
     const ranked = rows.map(row => ({ hash: row.hash, similarity: representativeSimilarity(row.vector, centroid) }))
       .sort((a, b) => b.similarity - a.similarity || (a.hash < b.hash ? -1 : a.hash > b.hash ? 1 : 0));
     return [{ centroid, support: rows.length, representatives: ranked.slice(0, 3).map(row => row.hash),
       meanSimilarity: ranked.reduce((sum, row) => sum + row.similarity, 0) / ranked.length }];
   });
-  return { groups, iterations, converged, discarded: items.length - groups.reduce((sum, group) => sum + group.support, 0) };
+  return { groups, iterations, converged, discarded: items.length - groups.reduce((sum, group) => sum + group.support, 0),
+    ...(diagnostics ? { objective: objective / items.length, labels } : {}) };
 }

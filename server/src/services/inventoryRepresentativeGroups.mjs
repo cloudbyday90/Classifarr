@@ -4,21 +4,23 @@ import { normalizeDescriptionVector } from './inventoryDescriptionSimilarity.mjs
 import { fitRepresentativeGeometry, representativeSimilarity, REPRESENTATIVE_MAX_GROUPS, REPRESENTATIVE_MAX_PASSES } from './inventoryRepresentativeGeometry.mjs';
 import { rankInventoryEvidence } from './inventoryEvidenceReranker.mjs';
 import { inventoryEvidenceLeaderState } from './inventoryNeighborhoodReranker.mjs';
+import { fitStableRepresentativeGeometry, REPRESENTATIVE_STABILITY_STARTS, REPRESENTATIVE_STABILITY_WORK_COMPONENTS } from './inventoryRepresentativeStability.mjs';
 
 export const INVENTORY_REPRESENTATIVE_VERSION = 'inventory_representative_groups_v1';
 
 /** Private reusable vectors/membership only; no singleton and no library-name features. */
-export function createInventoryRepresentativeIndex(snapshot, dimensions, folds = 1) {
+export function createInventoryRepresentativeIndex(snapshot, dimensions, folds = 1, { stability = false } = {}) {
+  const work = stability ? REPRESENTATIVE_STABILITY_WORK_COMPONENTS : REPRESENTATIVE_MAX_GROUPS * (REPRESENTATIVE_MAX_PASSES + 2);
   if (!Number.isSafeInteger(dimensions) || dimensions < 1 || dimensions > 16000 ||
       !Number.isSafeInteger(folds) || folds < 1 || folds > 10 ||
       snapshot.corpus.texts.size * dimensions > 20_000_000 ||
-      snapshot.corpus.documents.length * dimensions * REPRESENTATIVE_MAX_GROUPS * (REPRESENTATIVE_MAX_PASSES + 2) * folds > 20_000_000_000) {
+      snapshot.corpus.documents.length * dimensions * work * folds > (stability ? 80_000_000_000 : 20_000_000_000)) {
     throw new Error('inventory_representative_work_budget');
   }
   const index = createInventoryNeighborhoodIndex(snapshot.corpus.documents, null, snapshot.libraries);
   if ([...index.groups.values()].some(group => !/^[a-f0-9]{64}$/.test(group.hash))) throw new Error('inventory_representative_identity_invalid');
   const vectors = new Map([...snapshot.corpus.texts.keys()].map(hash => [hash, normalizeDescriptionVector(snapshot.vectors.get(hash), dimensions)]));
-  return { ...index, vectors };
+  return { ...index, vectors, stability };
 }
 
 /** Hold-out copies are excluded BEFORE fitting; shared descriptions never supply multiple votes. */
@@ -38,21 +40,32 @@ export async function learnInventoryRepresentativeGroups(index, held, { signal }
     summary.eligibleDescriptions++;
   }
   const libraries = new Map(), coverage = new Map();
+  const legacyLibraries = new Map(), startLibraries = Array.from({ length: REPRESENTATIVE_STABILITY_STARTS }, () => new Map());
+  if (index.stability) Object.assign(summary, { legacyIterationLimitLibraries: 0, iterationLimitStarts: 0, totalIterations: 0 });
   for (const [id, items] of buckets) {
     items.sort((a, b) => a.hash < b.hash ? -1 : a.hash > b.hash ? 1 : 0);
-    const result = await fitRepresentativeGeometry(items, { signal });
+    const result = await (index.stability ? fitStableRepresentativeGeometry : fitRepresentativeGeometry)(items, { signal });
     libraries.set(id, result.groups);
     coverage.set(id, { trainingDescriptions: items.length, discardedDescriptions: result.discarded,
       iterations: result.iterations, converged: result.converged,
+      ...(index.stability ? { stability: result.stability } : {}),
       groups: result.groups.map(group => ({ support: group.support, meanSimilarity: Math.round(group.meanSimilarity * 10000) / 10000 })) });
     summary.groups += result.groups.length;
     summary.discardedDescriptions += result.discarded;
     summary.sparseLibraries += Number(!result.groups.length);
     summary.iterationLimitLibraries += Number(!result.converged);
     summary.maximumIterations = Math.max(summary.maximumIterations, result.iterations);
+    if (index.stability) {
+      legacyLibraries.set(id, result.legacy.groups);
+      result.runs.forEach((run, start) => startLibraries[start].set(id, run.groups));
+      summary.legacyIterationLimitLibraries += Number(!result.legacy.converged);
+      summary.iterationLimitStarts += result.runs.filter(run => !run.converged).length;
+      summary.totalIterations += result.stability.totalIterations;
+    }
   }
   summary.supportedDescriptions = summary.eligibleDescriptions - summary.discardedDescriptions;
-  return { libraries, coverage, scope: index.scope, vectors: index.vectors, held: new Set(held), summary };
+  return { libraries, coverage, scope: index.scope, vectors: index.vectors, held: new Set(held), summary,
+    ...(index.stability ? { legacyLibraries, startLibraries } : {}) };
 }
 
 /** Rank only complete, matching-fold pools. This is similarity, never route authority. */

@@ -152,3 +152,11 @@ or substituted from another repository.
 No API/schema/dependency/version change or release is included. No new frontend
 or dedicated PostgreSQL integration suite is claimed; real read-only benchmark
 execution used the local Compose runtime. Private reports remain outside Git.
+
+## Follow-up
+
+The next implementation is documented separately in the
+[stability design](inventory-representative-stability-design.md) and
+[stability outcome](inventory-representative-stability-outcome.md). The results
+above remain the original 12-pass experiment, not a retrospective claim about
+multi-start fitting.

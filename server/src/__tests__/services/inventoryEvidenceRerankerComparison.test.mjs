@@ -8,6 +8,26 @@ import { runInventoryEvidenceRerankerComparison } from '../../services/inventory
 
 const options = { seed: 'reranker-test-seed-2026', size: 20, folds: 5, generateCases: 0 };
 
+test('stability comparison keeps a same-snapshot v1 control, redacts fits and uses no held-out recipe selection', async () => {
+  const snapshot = fixture();
+  for (const doc of snapshot.corpus.documents) if (Number(doc.id) % 2 === 0) {
+    snapshot.candidateMetadata.set(doc.key, { genres: [`trait-${doc.libraryIds[0] % 2 ? doc.libraryIds[0] + 1 : doc.libraryIds[0] - 1}`], studio: '', rating: '' });
+  }
+  const control = await runInventoryEvidenceRerankerComparison(snapshot, 2, options, { representativeGroups: true });
+  const report = await runInventoryEvidenceRerankerComparison(snapshot, 2, options, { representativeGroups: true, representativeStability: true });
+  expect(report).toMatchObject({ protocol: 'inventory_representative_stability_v1', calls: 0, selections: [], independentLabels: 0,
+    liveRoutingChanged: false, livePromotionAllowed: false, consensusControls: { changed: 0 }, comparison: { evaluated: 20 } });
+  expect(report.legacyComparison).toEqual(control.comparison);
+  expect(report.selectedComparison.evaluated).toBe(20);
+  expect(report.representatives.folds.every(fold => fold.iterationLimitStarts === 0)).toBe(true);
+  expect(report.representatives.folds[0].libraries[0].stability.starts).toHaveLength(3);
+  expect(JSON.stringify(report)).not.toMatch(/Private|trait-|centroid|descriptionHash|representatives":\[|tmdb|labels|firstIndex/);
+  await expect(runInventoryEvidenceRerankerComparison(snapshot, 2, options, { representativeStability: true })).rejects.toThrow('requires_groups');
+  const controller = new AbortController();
+  await expect(runInventoryEvidenceRerankerComparison(snapshot, 2, options, { representativeGroups: true, representativeStability: true,
+    signal: controller.signal, onProgress: () => controller.abort() })).rejects.toThrow();
+});
+
 test('representative groups fit each fold once, preserve controls and expose no private representatives', async () => {
   const snapshot = fixture();
   for (const doc of snapshot.corpus.documents) if (Number(doc.id) % 2 === 0) {

@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add bounded multi-start representative learning with convergence diagnostics,
+  training-only fit selection and fallback when starting points disagree. Compare
+  against the existing learner on the same inventory snapshot without adding model
+  calls, user controls or live routing changes.
 - Learn bounded, library-agnostic content groups from cached inventory descriptions,
   retaining real representatives and reporting training coverage, convergence and
   held-out ranking results. Reuse existing metadata fusion and baseline fallback
