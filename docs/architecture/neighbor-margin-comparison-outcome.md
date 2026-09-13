@@ -144,6 +144,10 @@ and metadata already present. Independent contradiction checks and quality evide
 still matter before any live promotion; more acknowledgements or per-library
 declaration forms are not required for this next component.
 
+The follow-up is now implemented and measured in
+[cross-fitted neighbor calibration outcome](cross-fitted-neighbor-calibration-outcome.md).
+That comparison preserves this original protocol as its regression baseline.
+
 ## PR and release status
 
 GitHub MCP returned no open PRs for `cloudbyday90/Classifarr` in both checks on

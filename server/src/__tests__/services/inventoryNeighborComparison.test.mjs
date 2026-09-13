@@ -32,6 +32,25 @@ test('pairs a balanced movie/TV cohort, preserves every library and emits no ite
   expect(await runInventoryNeighborComparison(input, representation, options)).toEqual(result);
 });
 
+test('cross-fit option preserves all original arms and reports small-library coverage gains separately', async () => {
+  const input = snapshot(); input.corpus.documents = input.corpus.documents.filter(doc => doc.libraryIds[0] !== 1 || doc.id < 130);
+  const baseline = await runInventoryNeighborComparison(input, representation, options);
+  const result = await runInventoryNeighborComparison(input, representation, options, { crossFit: true });
+  expect(result).toMatchObject({ protocol: 'inventory_neighbor_comparison_v2', calls: 0, evaluated: 40,
+    independentLabels: 0, accuracy: null, livePromotionAllowed: false, liveRoutingChanged: false });
+  expect(result.arms).toHaveLength(7);
+  expect(result.arms.slice(0, 4)).toEqual(baseline.arms);
+  expect(result.sampleFingerprint).toBe(baseline.sampleFingerprint);
+  expect(result.calibration).toEqual(baseline.calibration);
+  expect(result.crossFitCalibration.coverage).toHaveLength(20);
+  expect(result.crossFitCalibration.coverage.every(row => row.minimumCalibrationReferences >= 20 && row.status === 'available')).toBe(true);
+  expect(result.paired.find(row => row.from === 'reference_calibrated' && row.to === 'cross_fit_calibrated'))
+    .toMatchObject({ gainedAvailability: 20, lostAvailability: 0 });
+  expect(JSON.stringify(result)).not.toMatch(/Private|libraryId|descriptionHash|tmdb|overview|vectors/);
+  for (const row of result.byMedia) expect(row.arms).toHaveLength(7);
+  for (const row of result.byLibrary) expect(row.arms).toHaveLength(7);
+});
+
 test('cancellation reports an incomplete run without private errors or additional work', async () => {
   const abort = new AbortController();
   const result = await runInventoryNeighborComparison(snapshot(), representation, options,

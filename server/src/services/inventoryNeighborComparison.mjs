@@ -3,6 +3,7 @@ import { setImmediate } from 'node:timers/promises';
 import { prepareDescriptionBenchmark, validateDescriptionBenchmarkOptions } from './inventoryDescriptionBenchmarkSample.mjs';
 import { createInventoryNeighborCalibration } from './inventoryNeighborCalibration.mjs';
 import { NEIGHBOR_MARGIN_VERSION, NEIGHBOR_MARGIN_LIMITS } from './libraryNeighborMargin.mjs';
+import { NEIGHBOR_CROSS_FIT_VERSION, NEIGHBOR_CROSS_FIT_LIMITS } from './libraryNeighborCrossFit.mjs';
 import { summarizeNeighborComparison } from './inventoryNeighborComparisonReport.mjs';
 
 function fullCorpusCheck(entry, texts) {
@@ -19,27 +20,38 @@ function fullCorpusCheck(entry, texts) {
 }
 
 /** Paired, held-out neighbor-only experiment. No generation, policies, receipts, or routing. */
-export async function runInventoryNeighborComparison(snapshot, representation, rawOptions, { signal, onProgress } = {}) {
+export async function runInventoryNeighborComparison(snapshot, representation, rawOptions, { signal, onProgress, crossFit = false } = {}) {
   const options = validateDescriptionBenchmarkOptions(rawOptions);
   if (!options.folds || options.generateCases) throw new Error('neighbor_comparison_requires_folds_without_generation');
   signal?.throwIfAborted();
-  const calibration = createInventoryNeighborCalibration({ documents: snapshot.corpus.documents,
-    libraries: snapshot.libraries, vectors: snapshot.vectors, representation });
+  if (typeof crossFit !== 'boolean') throw new Error('neighbor_calibration_mode_invalid');
+  const input = { documents: snapshot.corpus.documents, libraries: snapshot.libraries, vectors: snapshot.vectors, representation };
+  const calibration = createInventoryNeighborCalibration(input);
+  const crossFitCalibration = crossFit ? createInventoryNeighborCalibration(input, { crossFit: true }) : null;
   const prepared = prepareDescriptionBenchmark(snapshot, snapshot.vectors, representation.dimensions, options,
     { includeComparisonEvidence: true });
-  const rows = [], coverage = new Map();
+  const rows = [], coverage = new Map(), crossFitCoverage = new Map();
   const strata = new Map(prepared.libraryStrata.map(row => [row.id, row.stratum]));
+  const protocol = crossFit ? 'inventory_neighbor_comparison_v2' : 'inventory_neighbor_comparison_v1';
+  const summarize = rows => summarizeNeighborComparison(rows, { crossFit });
+  const recordCoverage = (entry, assessment, target) => {
+    for (const candidate of assessment.candidates) {
+      const stratum = strata.get(candidate.libraryId), fold = entry.foldIndex + 1;
+      target.set(`${fold}:${stratum}`, { fold, stratum, mediaType: entry.mediaType, status: candidate.status,
+        referenceDescriptions: candidate.referenceDescriptions, calibrationDescriptions: candidate.calibrationDescriptions,
+        ...(candidate.minimumCalibrationReferences === undefined ? {} : { minimumCalibrationReferences: candidate.minimumCalibrationReferences }) });
+    }
+  };
   let status = 'complete';
   try {
     for (const entry of prepared.cases) {
       signal?.throwIfAborted();
       const full = fullCorpusCheck(entry, prepared.texts);
       const assessment = await calibration.assess(entry, { signal });
-      for (const candidate of assessment.candidates) {
-        const stratum = strata.get(candidate.libraryId), fold = entry.foldIndex + 1;
-        coverage.set(`${fold}:${stratum}`, { fold, stratum, mediaType: entry.mediaType, status: candidate.status,
-          referenceDescriptions: candidate.referenceDescriptions, calibrationDescriptions: candidate.calibrationDescriptions });
-      }
+      recordCoverage(entry, assessment, coverage);
+      const crossAssessment = crossFit ? await crossFitCalibration.assess(entry, { signal }) : null;
+      if (crossAssessment) recordCoverage(entry, crossAssessment, crossFitCoverage);
+      const crossSelected = crossAssessment?.candidates.find(candidate => candidate.libraryId === full.selected);
       const selected = assessment.candidates.find(candidate => candidate.libraryId === full.selected);
       const referenceAvailable = selected?.referenceComplete === true;
       const calibratedAvailable = selected?.status === 'available';
@@ -50,23 +62,30 @@ export async function runInventoryNeighborComparison(snapshot, representation, r
           reference_strict: { available: referenceAvailable, support: referenceAvailable && !full.shared && selected.strict },
           reference_mean: { available: referenceAvailable, support: referenceAvailable && !full.shared && selected.mean },
           reference_calibrated: { available: calibratedAvailable, support: calibratedAvailable && !full.shared && selected.calibrated },
+          ...(crossFit ? Object.fromEntries(['strict', 'mean', 'calibrated'].map(kind => {
+            const available = kind === 'calibrated' ? crossSelected?.status === 'available' : crossSelected?.referenceComplete === true;
+            return [`cross_fit_${kind}`, { available, support: available && !full.shared && crossSelected[kind] }];
+          })) : {}),
         } });
-      onProgress?.({ protocol: 'inventory_neighbor_comparison_v1', completed: rows.length, total: prepared.cases.length });
+      onProgress?.({ protocol, completed: rows.length, total: prepared.cases.length });
       await setImmediate(undefined, { signal });
     }
   } catch (error) {
     if (!signal?.aborted) throw error;
     status = 'interrupted';
   }
-  return { protocol: 'inventory_neighbor_comparison_v1', status, calls: 0, requestedTitles: options.size,
+  const orderedCoverage = map => [...map.values()].sort((a, b) => a.fold - b.fold || a.stratum - b.stratum);
+  return { protocol, status, calls: 0, requestedTitles: options.size,
     sampledTitles: prepared.cases.length, sampleShortfall: options.size - prepared.cases.length,
     sampleFingerprint: prepared.sampleFingerprint, snapshotFingerprint: prepared.fingerprint,
     evaluation: prepared.evaluation, calibration: { version: NEIGHBOR_MARGIN_VERSION, limits: NEIGHBOR_MARGIN_LIMITS,
-      coverage: [...coverage.values()].sort((a, b) => a.fold - b.fold || a.stratum - b.stratum) },
-    ...summarizeNeighborComparison(rows),
-    byMedia: ['movie', 'tv'].map(mediaType => ({ mediaType, ...summarizeNeighborComparison(rows.filter(row => row.mediaType === mediaType)) })),
+      coverage: orderedCoverage(coverage) },
+    ...(crossFit ? { crossFitCalibration: { version: NEIGHBOR_CROSS_FIT_VERSION, limits: NEIGHBOR_CROSS_FIT_LIMITS,
+      coverage: orderedCoverage(crossFitCoverage) } } : {}),
+    ...summarize(rows),
+    byMedia: ['movie', 'tv'].map(mediaType => ({ mediaType, ...summarize(rows.filter(row => row.mediaType === mediaType)) })),
     byLibrary: prepared.libraryStrata.map(({ stratum }) => ({ stratum,
-      ...summarizeNeighborComparison(rows.filter(row => row.strata.includes(stratum))) })),
+      ...summarize(rows.filter(row => row.strata.includes(stratum))) })),
     independentLabels: 0, accuracy: null, observedPlacementIsGroundTruth: false, livePromotionAllowed: false,
     liveRoutingChanged: false, userQuestionsCreated: 0 };
 }

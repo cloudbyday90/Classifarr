@@ -5,6 +5,21 @@ import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescr
 
 const seed = 'benchmark-test-seed-2026';
 
+test('cross-fit CLI requires neighbor mode, rejects generation, and uses cached vectors without model generation', async () => {
+  const base = ['--seed', seed, '--size', '10', '--folds', '5', '--neighbor-cross-fit'];
+  const loadRuntime = jest.fn();
+  await expect(runInventoryDescriptionBenchmark({ argv: base, loadRuntime })).rejects.toThrow('requires_neighbor_calibration');
+  await expect(runInventoryDescriptionBenchmark({ argv: [...base, '--neighbor-calibration', '--generate-cases', '1'], loadRuntime })).rejects.toThrow('requires_exclusive');
+  expect(loadRuntime).not.toHaveBeenCalled();
+  const instance = runtime();
+  const report = await runInventoryDescriptionBenchmark({ argv: [...base, '--neighbor-calibration'], loadRuntime: async () => instance });
+  expect(report).toMatchObject({ protocol: 'inventory_neighbor_comparison_v2', status: 'complete', calls: 0, evaluated: 10 });
+  expect(report.arms).toHaveLength(7);
+  expect(instance.embedder.inspect).toHaveBeenCalledTimes(2);
+  expect(instance.createClient).not.toHaveBeenCalled();
+  expect(instance.close).toHaveBeenCalledTimes(1);
+});
+
 test('neighbor calibration is an exclusive grouped zero-generation evaluation with redacted output', async () => {
   const args = ['--seed', seed, '--size', '10', '--folds', '5', '--neighbor-calibration'];
   const instance = runtime();

@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Calibrate small-library description matches with group-excluded cross-fitting
+  in the read-only benchmark, reusing existing examples while preserving
+  per-score evidence minimums, bounded resource use and unchanged live routing.
 - Compare strict, mean and library-calibrated description-neighbor checks in a
   grouped, read-only movie/TV benchmark. Report sparse-library coverage and
   placement disagreement without AI generation, new settings or routing changes.

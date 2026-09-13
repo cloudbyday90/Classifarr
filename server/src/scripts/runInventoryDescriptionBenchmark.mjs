@@ -38,6 +38,7 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     'policy-shortlist-replay': { type: 'boolean' },
     'fresh-policy-evaluation': { type: 'boolean' },
     'neighbor-calibration': { type: 'boolean' },
+    'neighbor-cross-fit': { type: 'boolean' },
     'preserve-description-candidate': { type: 'boolean' },
     'metadata-candidates': { type: 'boolean' }, 'learned-profiles': { type: 'boolean' } } });
   if (values['metadata-candidates'] && values['learned-profiles']) throw new Error('description_benchmark_selection_mode_conflict');
@@ -50,6 +51,7 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     ...(values.context === undefined ? {} : { context: Number(values.context) }),
     ...(values['max-minutes'] === undefined ? {} : { maxMinutes: Number(values['max-minutes']) }),
   });
+  if (values['neighbor-cross-fit'] && !values['neighbor-calibration']) throw new Error('neighbor_cross_fit_requires_neighbor_calibration');
   if (values['neighbor-calibration'] && (!options.folds || options.generateCases ||
       ['fresh-policy-evaluation', 'policy-shortlist-replay', 'investigate', 'contrastive-investigation',
         'content-first-comparison', 'selective-recheck', 'preserve-description-candidate', 'metadata-candidates', 'learned-profiles']
@@ -87,7 +89,8 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     const snapshot = await runtime.repository.read(representation);
     await verifyDescriptionRepresentation(runtime.embedder, representation, abort);
     if (values['neighbor-calibration']) {
-      const report = await runInventoryNeighborComparison(snapshot, representation, options, { signal: abort, onProgress });
+      const report = await runInventoryNeighborComparison(snapshot, representation, options,
+        { signal: abort, onProgress, crossFit: values['neighbor-cross-fit'] === true });
       return { ...report, embedding: { model: representation.model, digest: representation.digest, dimensions: representation.dimensions } };
     }
     const prepared = prepareDescriptionBenchmark(snapshot, snapshot.vectors, representation.dimensions, options,
