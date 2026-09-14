@@ -38,3 +38,10 @@ test('supports legacy Ollama shape but does not hide a malformed modern response
   expect(() => readEmbeddingResponse({ embeddings: [], embedding: [1] }, 'ollama')).toThrow();
   expect(() => readEmbeddingResponse({ embedding: [1], dims: null }, 'sidecar')).toThrow();
 });
+
+test.each([
+  [null, 2, 'shape'], [[1], 2, 'dimensions'], [[NaN, 1], 2, 'nonfinite'],
+  [[1e39, 1], 2, 'float32'], [[1e-50, 1], 2, 'float32'], [[0, 0], 2, 'zero'],
+])('adds a fixed diagnostic reason without changing rejection: %#', (vector, dims, embeddingIssue) => {
+  expect(() => validateEmbedding(vector, dims)).toThrow(expect.objectContaining({ code: 'INVALID_EMBEDDING', embeddingIssue }));
+});

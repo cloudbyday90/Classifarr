@@ -18,7 +18,7 @@ test('schedule registration coalesces work, cancels the replaced worker, and sha
   expect(log.info).toHaveBeenCalledWith('Inventory description refresh completed', report);
   worker.run.mockResolvedValueOnce({ status: 'failed' });
   await expect(handler()).rejects.toThrow('inventory_description_refresh_unavailable');
-  expect(log.warn).toHaveBeenCalledTimes(1);
+  expect(log.warn).not.toHaveBeenCalled();
   worker.run.mockResolvedValueOnce({ status: 'cooldown' });
   await handler();
   expect(log.info).toHaveBeenCalledTimes(1);

@@ -2,6 +2,7 @@
 import { resolveLocalStudyEmbeddingConfig } from './localStudyEmbeddingClient.mjs';
 import { INVENTORY_DESCRIPTION_CACHE_LOCK, inspectDescriptionRepresentation,
   writeInventoryDescriptionBatch } from './inventoryDescriptionBatchWriter.mjs';
+import { createInventoryDescriptionRecovery } from './inventoryDescriptionRecovery.mjs';
 
 const QUIET_INTERVAL_MS = 300_000;
 const MAX_NEW_DESCRIPTIONS = 64;
@@ -14,13 +15,12 @@ function eligibleConfig(state) {
 
 export function createInventoryDescriptionRefreshWorker({
   repository, cache, createEmbedder, withSessionAdvisoryLock, getRevision = () => 0, now = Date.now,
+  recovery = createInventoryDescriptionRecovery({ now }),
 }) {
   let activeController = null;
   let stopped = false;
   let nextRunAt = 0;
   let completedRevision = -1;
-  let failures = 0;
-  let backoffUntil = 0;
   const result = (status, counts = {}) => ({ version: 'inventory_description_refresh.v1', mode: 'cache_only', status, ...counts });
 
   async function refresh(signal, revision) {
@@ -54,6 +54,7 @@ export function createInventoryDescriptionRefreshWorker({
       const entries = await writeInventoryDescriptionBatch({ embedder, identity, cache, signal, admit,
         hashes: pending.slice(offset, Math.min(offset + 8, MAX_NEW_DESCRIPTIONS)), texts: corpus.texts });
       if (!entries) return result('yielded', counts);
+      recovery.committed(entries.length);
       counts.embeddedDescriptions += entries.length;
       counts.remainingDescriptions -= entries.length;
     }
@@ -66,7 +67,7 @@ export function createInventoryDescriptionRefreshWorker({
     async run({ signal } = {}) {
       if (stopped || signal?.aborted) return result('cancelled');
       if (activeController) return result('already_running');
-      if (now() < backoffUntil) return result('cooldown');
+      if (recovery.isCoolingDown()) return result('cooldown');
       const revision = getRevision();
       if (now() < nextRunAt && completedRevision === revision) return result('not_due');
       const controller = new AbortController();
@@ -78,18 +79,16 @@ export function createInventoryDescriptionRefreshWorker({
           report = await refresh(runSignal, revision);
         });
         if (!acquired) return result('already_running');
-        failures = 0;
-        backoffUntil = 0;
+        // Yielding, disabling RAG, or lock contention is not evidence of recovery.
+        if (report.status === 'up_to_date') recovery.completed();
         if (['up_to_date', 'empty_corpus', 'disabled', 'unsupported_provider'].includes(report.status)) {
           completedRevision = revision;
           nextRunAt = now() + QUIET_INTERVAL_MS;
         }
         return report;
-      } catch {
+      } catch (error) {
         if (controller.signal.aborted || signal?.aborted) return result('cancelled');
-        failures = Math.min(failures + 1, 7);
-        backoffUntil = now() + Math.min(3_600_000, 60_000 * 2 ** (failures - 1));
-        return result('failed');
+        return result('failed', recovery.failed(error));
       } finally {
         activeController = null;
       }

@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Diagnose rejected description-provider responses with actionable, deduplicated
+  logs. Preserve retry backoff across busy passes and automatically backfill missing
+  validated descriptions from existing checkpoints after provider recovery.
 - Diagnose malformed query/profile data with actionable, deduplicated warnings.
   Rebuild invalid private profile caches with scheduled backoff, resume pending
   comparisons after validated recovery, and prevent stale query reuse.

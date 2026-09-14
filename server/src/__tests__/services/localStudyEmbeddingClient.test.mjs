@@ -2,14 +2,19 @@
 import { createServer } from 'node:http';
 import { beforeEach, afterEach, expect, jest, test } from '@jest/globals';
 import { canonicalStudyModel, createLocalStudyEmbeddingClient, resolveLocalStudyEmbeddingConfig } from '../../services/localStudyEmbeddingClient.mjs';
+import { diagnoseProviderResponse } from '../../services/providerResponseDiagnosis.mjs';
+import { createInventoryDescriptionRefreshWorker } from '../../services/inventoryDescriptionRefreshWorker.mjs';
+import { createInventoryDescriptionRecovery } from '../../services/inventoryDescriptionRecovery.mjs';
 
 let server;
 let config;
 let mode;
 let requests;
+let failEmbeddingAt;
 beforeEach(async () => {
   mode = 'normal';
   requests = [];
+  failEmbeddingAt = 0;
   server = createServer(async (request, response) => {
     let body = '';
     for await (const chunk of request) body += chunk;
@@ -23,11 +28,13 @@ beforeEach(async () => {
       response.end(JSON.stringify({ models: [{ name: 'test:latest', digest: 'a'.repeat(64), ...(mode === 'remote' ? { remote_host: 'https://example.com' } : {}) }] }));
     } else if (request.url === '/api/show') {
       response.end(JSON.stringify({ capabilities: mode === 'no_embedding' ? ['completion'] : ['embedding'],
-        ...(mode === 'dimensions' ? { model_info: { 'general.architecture': 'bert', 'bert.embedding_length': 1024 } } : {}) }));
+        ...(['dimensions', 'two_dimensions'].includes(mode)
+          ? { model_info: { 'general.architecture': 'bert', 'bert.embedding_length': mode === 'dimensions' ? 1024 : 2 } } : {}) }));
     } else if (request.url === '/api/embed') {
       const { input } = JSON.parse(body);
       response.end(JSON.stringify({ model: mode === 'different_model' ? 'other' : 'test',
-        embeddings: mode === 'wrong_count' ? [] : input.map(() => mode === 'zero' ? [0, 0] : [3, 4]) }));
+        embeddings: mode === 'wrong_count' || requests.filter(entry => entry.path === '/api/embed').length === failEmbeddingAt
+          ? [] : input.map(() => mode === 'zero' ? [0, 0] : [3, 4]) }));
     } else { response.writeHead(404); response.end('{}'); }
   });
   await new Promise(resolve => { server.listen(0, '127.0.0.1', resolve); });
@@ -89,4 +96,82 @@ test('uses only explicit separate-Ollama settings when that mode is selected', (
     embedding_ollama_host: 'http://127.0.0.1', embedding_ollama_port: 12000, embedding_ollama_model: 'different:tag' });
   expect(local).toEqual({ baseUrl: 'http://127.0.0.1:12000', model: 'different:tag' });
   expect(canonicalStudyModel('test')).toBe(canonicalStudyModel('test:latest'));
+});
+
+test.each([
+  ['redirect', 'transport'], ['oversized', 'body_limit'], ['error', 'http_busy'], ['malformed', 'json'],
+  ['remote', 'representation'], ['no_embedding', 'representation'],
+])('classifies actual HTTP inspection failures: %s', async (value, code) => {
+  mode = value;
+  let error;
+  try { await createLocalStudyEmbeddingClient(config).inspect(); } catch (caught) { error = caught; }
+  expect(diagnoseProviderResponse(error)).toMatchObject({ code, phase: 'inspection' });
+  expect(JSON.stringify(error)).not.toMatch(/PRIVATE|127\.0\.0\.1|https/);
+});
+
+test.each([[400, 'http_rejected'], [401, 'http_auth'], [403, 'http_auth'], [404, 'http_missing'],
+  [408, 'timeout'], [429, 'http_busy'], [503, 'http_busy']])('classifies HTTP %i without retaining the error body', async (status, code) => {
+  const fetchRequest = jest.fn(async () => new Response('PRIVATE token and input', { status }));
+  const client = createLocalStudyEmbeddingClient(config, { fetchRequest });
+  await expect(client.embedBatch(['one'], { dimensions: 2 })).rejects.toMatchObject({ providerResponseIssue: code });
+  expect(fetchRequest).toHaveBeenCalledTimes(1);
+});
+
+test.each([
+  [null, 'model'], [{ model: 'other', embeddings: [[1, 0]] }, 'model'],
+  [{ model: 'test', remote_model: 'private', embeddings: [[1, 0]] }, 'model'],
+  [{ model: 'test', embeddings: [] }, 'batch'], [{ model: 'test', embeddings: [null] }, 'shape'],
+  [{ model: 'test', embeddings: [[1]] }, 'dimensions'], [{ model: 'test', embeddings: [[null, 1]] }, 'nonfinite'],
+  [{ model: 'test', embeddings: [[1e39, 1]] }, 'float32'], [{ model: 'test', embeddings: [[0, 0]] }, 'zero'],
+])('diagnoses rejected embedding data without retaining it: %#', async (body, code) => {
+  const client = createLocalStudyEmbeddingClient(config, { fetchRequest: async () => new Response(JSON.stringify(body)) });
+  let error;
+  try { await client.embedBatch(['PRIVATE description'], { dimensions: 2 }); } catch (caught) { error = caught; }
+  expect(diagnoseProviderResponse(error)).toMatchObject({ code, phase: 'embedding' });
+  expect(JSON.stringify(error)).not.toContain('PRIVATE');
+});
+
+test('rejects invalid UTF-8 instead of replacing bytes in a provider response', async () => {
+  const client = createLocalStudyEmbeddingClient(config, { fetchRequest: async () => new Response(new Uint8Array([0xc3, 0x28])) });
+  await expect(client.embedBatch(['one'], { dimensions: 2 })).rejects.toMatchObject({ providerResponseIssue: 'encoding' });
+});
+
+test('an interrupted response stream is a transport failure, not malformed JSON', async () => {
+  const client = createLocalStudyEmbeddingClient(config, { fetchRequest: async () => new Response(new ReadableStream({
+    start(controller) { controller.error(new Error('PRIVATE stream failure')); },
+  })) });
+  await expect(client.embedBatch(['one'], { dimensions: 2 })).rejects.toMatchObject({ providerResponseIssue: 'transport' });
+});
+
+test('provider recovery backfills only missing descriptions after a rejected partial pass', async () => {
+  mode = 'two_dimensions';
+  const embedder = createLocalStudyEmbeddingClient(config);
+  failEmbeddingAt = 2;
+  let time = 0;
+  const saved = new Set();
+  const texts = new Map(Array.from({ length: 10 }, (_, index) => [String(index).padStart(64, '0'), `Synthetic description ${index}`]));
+  const log = { warn: jest.fn(), info: jest.fn() };
+  const dependencies = {
+    repository: { readState: async () => ({ ...config, busy: false }), readCorpus: async () => ({ texts }) },
+    cache: { pruneExpired: async () => 0, findPresent: async () => new Set(saved),
+      write: async (identity, entries) => { entries.forEach(entry => saved.add(entry.hash)); } },
+    createEmbedder: () => embedder, withSessionAdvisoryLock: async (key, callback) => { await callback(); return true; },
+    now: () => time, recovery: createInventoryDescriptionRecovery({ log, now: () => time, random: () => 0 }),
+  };
+  const worker = createInventoryDescriptionRefreshWorker(dependencies);
+  expect(await worker.run()).toMatchObject({ status: 'failed', failureCode: 'batch', retryAfterSeconds: 60 });
+  expect(saved.size).toBe(8);
+  const calls = requests.length;
+  expect(await worker.run()).toMatchObject({ status: 'cooldown' });
+  expect(requests).toHaveLength(calls);
+  time += 60_000;
+  expect(await worker.run()).toMatchObject({ status: 'up_to_date', cacheHits: 8, embeddedDescriptions: 2 });
+  expect(saved.size).toBe(10);
+  expect(requests.filter(entry => entry.path === '/api/embed').map(entry => entry.body.input.length)).toEqual([8, 2, 2]);
+  expect(log.warn).toHaveBeenCalledTimes(1);
+  expect(log.info).toHaveBeenCalledWith('Description backfill caught up', expect.objectContaining({ code: 'batch', validatedDescriptionsCommitted: 2 }));
+  const restarted = createInventoryDescriptionRefreshWorker({ ...dependencies,
+    recovery: createInventoryDescriptionRecovery({ now: () => time }) });
+  expect(await restarted.run()).toMatchObject({ status: 'up_to_date', cacheHits: 10, embeddedDescriptions: 0 });
+  expect(requests.filter(entry => entry.path === '/api/embed')).toHaveLength(3);
 });

@@ -98,3 +98,8 @@ provider-response boundary and a bounded, idempotent retry/backfill queue. Resum
 only after the provider is healthy and returns validated data. Preserve media-
 agnostic recovery mechanics while leaving provider-specific parsing in adapters;
 do not use a library-name or genre allowlist to guess missing evidence.
+
+Follow-up implemented for local inventory-description refresh:
+[provider-response backfill outcome](provider-response-backfill-outcome.md).
+It reuses existing PostgreSQL checkpoints rather than adding a second queue.
+Cloud-provider recovery and live-query replay are not included in that slice.

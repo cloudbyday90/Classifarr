@@ -33,7 +33,7 @@ export async function writeInventoryDescriptionBatch({
     { dimensions: identity.dimensions, signal });
   if (!Array.isArray(batch) || batch.length !== hashes.length) throw new Error('inventory_description_batch_invalid');
   // Match pgvector's float32 storage before both cold and warm scoring.
-  const entries = batch.map((vector, index) => ({ hash: hashes[index],
+  const entries = Array.from(batch, (vector, index) => ({ hash: hashes[index],
     vector: validateEmbedding(vector, identity.dimensions).map(Math.fround) }));
   if (!await admit()) return null;
   await verifyDescriptionRepresentation(embedder, identity, signal);

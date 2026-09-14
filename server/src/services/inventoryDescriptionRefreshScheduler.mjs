@@ -6,6 +6,7 @@ import { createInventoryDescriptionVectorCache } from './inventoryDescriptionVec
 import { createInventoryDescriptionRefreshWorker } from './inventoryDescriptionRefreshWorker.mjs';
 import { createLocalStudyEmbeddingClient } from './localStudyEmbeddingClient.mjs';
 import { getInventoryDescriptionRefreshRevision } from './inventoryDescriptionRefreshSignal.mjs';
+import { createInventoryDescriptionRecovery } from './inventoryDescriptionRecovery.mjs';
 
 export const INVENTORY_DESCRIPTION_REFRESH_TASK = 'inventory-description-refresh';
 
@@ -16,6 +17,7 @@ export function createInventoryDescriptionRefreshRuntime(database = db) {
     createEmbedder: createLocalStudyEmbeddingClient,
     withSessionAdvisoryLock: database.withSessionAdvisoryLock,
     getRevision: getInventoryDescriptionRefreshRevision,
+    recovery: createInventoryDescriptionRecovery({ log: createLogger('InventoryDescriptionRecovery') }),
   });
 }
 
@@ -27,8 +29,7 @@ export function registerInventoryDescriptionRefreshSchedule(scheduler, {
   const run = async () => {
     const report = await worker.run();
     if (report.status === 'failed') {
-      // The worker deliberately omits raw provider, database and media details.
-      log.warn('Inventory description refresh unavailable; automatic retry is delayed');
+      // The recovery service owns deduplicated, redacted failure diagnostics.
       throw new Error('inventory_description_refresh_unavailable');
     }
     if (['up_to_date', 'warming_cache', 'empty_corpus'].includes(report.status)) {

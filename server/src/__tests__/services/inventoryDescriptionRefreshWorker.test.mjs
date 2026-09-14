@@ -3,6 +3,7 @@ import { expect, jest, test } from '@jest/globals';
 import { createInventoryDescriptionRefreshWorker } from '../../services/inventoryDescriptionRefreshWorker.mjs';
 import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescriptionCorpus.mjs';
 import { INVENTORY_DESCRIPTION_CACHE_LOCK } from '../../services/inventoryDescriptionBatchWriter.mjs';
+import { createInventoryDescriptionRecovery } from '../../services/inventoryDescriptionRecovery.mjs';
 
 function setup(count = 10) {
   let time = 0;
@@ -22,7 +23,8 @@ function setup(count = 10) {
     write: jest.fn(async (representation, entries) => { entries.forEach(({ hash }) => saved.add(`${representation.digest}:${hash}`)); }) };
   const dependencies = { repository, cache, createEmbedder: jest.fn(() => embedder),
     withSessionAdvisoryLock: jest.fn(async (key, callback) => { await callback(); return true; }),
-    now: () => time, getRevision: () => revision };
+    now: () => time, getRevision: () => revision,
+    recovery: createInventoryDescriptionRecovery({ now: () => time, random: () => 0 }) };
   return { state, rows, saved, identity, embedder, repository, cache, dependencies,
     worker: createInventoryDescriptionRefreshWorker(dependencies),
     advance: (ms = 300_000) => { time += ms; }, sync: () => { revision++; } };
@@ -122,12 +124,31 @@ test('failure backoff is exponential and capped; new sync hints cannot bypass it
   const { worker, repository, advance, sync } = setup();
   repository.readState.mockRejectedValue(new Error('PRIVATE database and credentials'));
   for (const delay of [60_000, 120_000, 240_000, 480_000, 960_000, 1_920_000, 3_600_000, 3_600_000]) {
-    expect(await worker.run()).toEqual({ version: 'inventory_description_refresh.v1', mode: 'cache_only', status: 'failed' });
+    expect(await worker.run()).toEqual({ version: 'inventory_description_refresh.v1', mode: 'cache_only', status: 'failed',
+      failureCode: 'unknown', retryAfterSeconds: delay / 1000 });
     sync();
     advance(delay - 1);
     expect(await worker.run()).toMatchObject({ status: 'cooldown' });
     advance(1);
   }
+});
+
+test('busy passes cannot reset an unresolved failure episode or its exponential delay', async () => {
+  const { worker, state, embedder, advance } = setup();
+  embedder.embedBatch.mockRejectedValue(new Error('PRIVATE'));
+  expect(await worker.run()).toMatchObject({ status: 'failed', retryAfterSeconds: 60 });
+  advance(60_000);
+  state.busy = true;
+  expect(await worker.run()).toMatchObject({ status: 'yielded' });
+  state.busy = false;
+  expect(await worker.run()).toMatchObject({ status: 'failed', retryAfterSeconds: 120 });
+});
+
+test('rejects sparse batches without a partial cache write', async () => {
+  const { worker, embedder, cache } = setup(2);
+  embedder.embedBatch.mockResolvedValue(new Array(2));
+  expect(await worker.run()).toMatchObject({ status: 'failed', failureCode: 'shape' });
+  expect(cache.write).not.toHaveBeenCalled();
 });
 
 test('cross-process lock contention does no repository or provider work', async () => {

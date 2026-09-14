@@ -2,6 +2,7 @@
 import { isTrustedLocalOllamaEndpoint } from './ollamaLocalEndpointTrust.mjs';
 import { readBoundedResponseBody } from '../utils/httpResponseBody.mjs';
 import { validateEmbedding } from '../utils/embeddingValidation.mjs';
+import { providerResponseError } from './providerResponseDiagnosis.mjs';
 
 export function canonicalStudyModel(model) {
   if (typeof model !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9_./:-]{0,199}$/.test(model) || /cloud/i.test(model)) {
@@ -33,16 +34,40 @@ export function resolveLocalStudyEmbeddingConfig(config = {}) {
 export function createLocalStudyEmbeddingClient(config, { fetchRequest = fetch } = {}) {
   const { baseUrl, model } = resolveLocalStudyEmbeddingConfig(config);
   async function request(path, body, signal) {
-    const response = await fetchRequest(`${baseUrl}${path}`, {
-      method: body === undefined ? 'GET' : 'POST', redirect: 'error',
-      headers: { 'Content-Type': 'application/json' },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      signal: AbortSignal.any([AbortSignal.timeout(60_000), ...(signal ? [signal] : [])]),
-    });
-    const bytes = await readBoundedResponseBody(response, 4 * 1024 * 1024);
-    if (!response.ok) throw new Error('local_study_embedding_request_failed');
-    try { return JSON.parse(bytes.toString('utf8')); }
-    catch { throw new Error('local_study_embedding_response_invalid'); }
+    const phase = path === '/api/embed' ? 'embedding' : 'inspection';
+    const requestSignal = AbortSignal.any([AbortSignal.timeout(60_000), ...(signal ? [signal] : [])]);
+    let response;
+    try {
+      requestSignal.throwIfAborted();
+      response = await fetchRequest(`${baseUrl}${path}`, {
+        method: body === undefined ? 'GET' : 'POST', redirect: 'error',
+        headers: { 'Content-Type': 'application/json' },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: requestSignal,
+      });
+    } catch {
+      signal?.throwIfAborted();
+      throw providerResponseError(requestSignal.aborted ? 'timeout' : 'transport', phase);
+    }
+    if (!response.ok) {
+      // Discard error bodies; provider messages can contain input or credentials.
+      await Promise.allSettled([response.body?.cancel()]);
+      const status = response.status;
+      const issue = [401, 403].includes(status) ? 'http_auth' : status === 404 ? 'http_missing'
+        : status === 408 ? 'timeout' : status === 429 || status >= 500 ? 'http_busy' : 'http_rejected';
+      throw providerResponseError(issue, phase);
+    }
+    let bytes;
+    try { bytes = await readBoundedResponseBody(response, 4 * 1024 * 1024); }
+    catch (error) {
+      signal?.throwIfAborted();
+      throw providerResponseError(error?.code === 'HTTP_RESPONSE_TOO_LARGE' ? 'body_limit'
+        : requestSignal.aborted ? 'timeout' : 'transport', phase);
+    }
+    let decoded;
+    try { decoded = new TextDecoder('utf-8', { fatal: true }).decode(bytes); }
+    catch { throw providerResponseError('encoding', phase); }
+    try { return JSON.parse(decoded); }
+    catch { throw providerResponseError('json', phase); }
   }
   return {
     provider: 'ollama', model,
@@ -74,11 +99,14 @@ export function createLocalStudyEmbeddingClient(config, { fetchRequest = fetch }
         throw new Error('local_study_embedding_batch_invalid');
       }
       const result = await request('/api/embed', { model, input: texts, truncate: false, keep_alive: '5m' }, signal);
-      if (canonicalStudyModel(result?.model) !== model || result.remote_host || result.remote_model ||
-          !Array.isArray(result.embeddings) || result.embeddings.length !== texts.length) {
-        throw new Error('local_study_embedding_batch_response_invalid');
+      let returnedModel;
+      try { returnedModel = canonicalStudyModel(result?.model); }
+      catch { throw providerResponseError('model', 'embedding'); }
+      if (returnedModel !== model || result.remote_host || result.remote_model) throw providerResponseError('model', 'embedding');
+      if (!Array.isArray(result.embeddings) || result.embeddings.length !== texts.length) {
+        throw providerResponseError('batch', 'embedding');
       }
-      return result.embeddings.map(vector => validateEmbedding(vector, dimensions));
+      return Array.from(result.embeddings, vector => validateEmbedding(vector, dimensions));
     },
   };
 }

@@ -7,6 +7,7 @@ import { createInventoryDescriptionRefreshWorker } from '../../services/inventor
 import { createInventoryRepresentativeProfileRepository } from '../../services/inventoryRepresentativeProfileRepository.mjs';
 import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescriptionCorpus.mjs';
 import { inventoryRepresentativeSourceKey } from '../../services/inventoryRepresentativeProfile.mjs';
+import { createInventoryDescriptionRecovery } from '../../services/inventoryDescriptionRecovery.mjs';
 
 let client;
 let repository;
@@ -67,6 +68,30 @@ test('worker resumes actual pgvector checkpoints without any routing write', asy
   expect(await createInventoryDescriptionRefreshWorker(dependencies).run()).toMatchObject({ status: 'up_to_date', cacheHits: 1, embeddedDescriptions: 0 });
   expect(embeddings).toBe(1);
   expect((await cache.read(identity, [hash])).get(hash)).toEqual([1, 0, 0]);
+});
+
+test('malformed batch exclusion survives restart and backfills only missing pgvector checkpoints', async () => {
+  const identity = { provider: 'ollama', model: 'test:latest', digest: 'c'.repeat(64), dimensions: 3 };
+  const texts = new Map(Array.from({ length: 10 }, (_, index) => [String(index).padStart(64, '0'), `Synthetic synopsis ${index}`]));
+  const cache = createInventoryDescriptionVectorCache(repository);
+  const batchSizes = [];
+  const dependencies = {
+    repository: { ...repository, readCorpus: async () => ({ texts }) }, cache,
+    withSessionAdvisoryLock: async (key, callback) => { await callback(); return true; },
+    createEmbedder: () => ({ provider: identity.provider, model: identity.model, inspect: async () => identity,
+      embedBatch: async batch => {
+        batchSizes.push(batch.length);
+        return batch.map(() => batchSizes.length === 2 ? [1, 0] : [1, 0, 0]);
+      } }),
+    recovery: createInventoryDescriptionRecovery({ random: () => 0 }),
+  };
+  expect(await createInventoryDescriptionRefreshWorker(dependencies).run()).toMatchObject({ status: 'failed', failureCode: 'dimensions' });
+  expect((await cache.findPresent(identity, [...texts.keys()])).size).toBe(8);
+  const restarted = createInventoryDescriptionRefreshWorker({ ...dependencies, recovery: createInventoryDescriptionRecovery() });
+  expect(await restarted.run()).toMatchObject({ status: 'up_to_date', cacheHits: 8, embeddedDescriptions: 2 });
+  expect(batchSizes).toEqual([8, 2, 2]);
+  expect((await cache.read(identity, [...texts.keys()])).size).toBe(10);
+  expect((await client.query('SELECT count(*)::int AS count FROM task_queue')).rows[0].count).toBe(0);
 });
 
 test('representative snapshots reconcile membership, conflicts and expired pgvector rows without writes', async () => {
