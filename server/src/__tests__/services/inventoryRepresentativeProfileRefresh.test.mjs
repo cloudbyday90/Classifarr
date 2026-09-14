@@ -6,13 +6,14 @@ import { resolveLocalStudyEmbeddingConfig } from '../../services/localStudyEmbed
 import { representativeProfileFixture } from '../helpers/inventoryRepresentativeProfileFixture.mjs';
 import { representativeShadowFixture } from '../helpers/inventoryRepresentativeShadowFixture.mjs';
 import { createInventoryRepresentativeShadow } from '../../services/inventoryRepresentativeShadow.mjs';
+import { createRepresentativeValidationDiagnostics } from '../../services/representativeValidationDiagnostics.mjs';
 
-function setup(observer = null) {
+function setup(observer = null, diagnostics = undefined) {
   const fixture = representativeProfileFixture();
   let time = 0, revision = 0;
   const { state, identity, snapshot } = fixture;
   const embedder = { model: identity.model, provider: identity.provider, inspect: jest.fn(async () => ({ ...identity })), embedBatch: jest.fn() };
-  const dependencies = { observer, repository: { read: jest.fn(async () => ({ ...structuredClone(snapshot), observedKeys: new Set(snapshot.observedKeys) })) },
+  const dependencies = { observer, diagnostics, repository: { read: jest.fn(async () => ({ ...structuredClone(snapshot), observedKeys: new Set(snapshot.observedKeys) })) },
     readState: jest.fn(async () => ({ ...state })), createEmbedder: jest.fn(() => embedder),
     fit: jest.fn(async (input, dimensions, options) => buildInventoryRepresentativeProfile({ snapshot: input, dimensions }, options)),
     now: () => time, getRevision: () => revision };
@@ -164,6 +165,48 @@ test('failure redaction, bounded backoff and provider recovery require no operat
   expect(await worker.run()).toMatchObject({ status: 'failed' }); advance(120_000);
   expect(await worker.run()).toMatchObject({ status: 'published' });
   expect(JSON.stringify(worker.getStatus())).not.toContain('PRIVATE');
+});
+
+test('withdraws malformed cached geometry, rebuilds with backoff, and backfills pending comparisons', async () => {
+  const log = { warn: jest.fn(), info: jest.fn() }, diagnostics = createRepresentativeValidationDiagnostics({ log });
+  const observer = createInventoryRepresentativeShadow({ diagnostics }), fixture = setup(observer, diagnostics);
+  const { worker, dependencies, key, advance, state, embedder } = fixture;
+  // Both destinations must be compatible with this movie query, as in the shadow fixture.
+  fixture.snapshot.libraries.forEach(library => { library.media_type = 'movie'; });
+  fixture.snapshot.corpus.documents.forEach(document => { document.type = 'movie'; document.key = `movie:${document.id}`; });
+  fixture.snapshot.observedKeys = new Set(fixture.snapshot.corpus.documents.map(document => document.key));
+  await worker.run();
+  worker.read(key()).libraries.get(1).starts[0].groups[0].centroid = [NaN, 1];
+  const queryFixture = await representativeShadowFixture();
+  observer.remember(queryFixture.metadata, { ...queryFixture.query, configKey: JSON.stringify(resolveLocalStudyEmbeddingConfig(state)) });
+  observer.observe(queryFixture.decision);
+  expect((await worker.run()).status).toBe('failed');
+  expect(worker.getStatus().cacheStored).toBe(false);
+  expect(worker.read(key())).toBeUndefined();
+  expect(observer.read()).toMatchObject({ pending: 1, counts: { agrees: 0 } });
+  expect(log.warn.mock.calls[0][1]).toMatchObject({ code: 'profile_nonfinite', routingAffected: false });
+  expect((await worker.run()).status).toBe('cooldown');
+  expect(dependencies.fit).toHaveBeenCalledTimes(1);
+  expect(log.info).not.toHaveBeenCalled();
+  advance(60_000);
+  expect((await worker.run()).status).toBe('published');
+  expect(observer.read()).toMatchObject({ pending: 0, counts: { agrees: 1 } });
+  expect(dependencies.fit).toHaveBeenCalledTimes(2);
+  expect(embedder.embedBatch).not.toHaveBeenCalled();
+  expect(log.info.mock.calls[0][1]).toMatchObject({ code: 'profile_nonfinite', routingAffected: false });
+  expect(JSON.stringify(log.warn.mock.calls)).not.toMatch(/PRIVATE|90000|localhost/);
+});
+
+test('never reports recovery for a rejected fresh snapshot', async () => {
+  const log = { warn: jest.fn(), info: jest.fn() }, diagnostics = createRepresentativeValidationDiagnostics({ log });
+  const { worker, dependencies, snapshot } = setup(null, diagnostics);
+  diagnostics.report('profile_structure');
+  const fit = dependencies.fit.getMockImplementation();
+  dependencies.fit.mockImplementationOnce(async (...args) => { const model = await fit(...args); snapshot.corpus.documents.pop(); return model; });
+  expect((await worker.run()).status).toBe('invalidated');
+  expect(log.info).not.toHaveBeenCalled();
+  expect((await worker.run()).status).toBe('published');
+  expect(log.info).toHaveBeenCalledTimes(1);
 });
 
 test('concurrent refreshes coalesce and shutdown prevents publication', async () => {

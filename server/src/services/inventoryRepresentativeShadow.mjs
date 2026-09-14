@@ -2,14 +2,18 @@
 import { performance } from 'node:perf_hooks';
 import { projectRepresentativeQuery, bindRepresentativeDecision } from './inventoryRepresentativeShadowInput.mjs';
 import { compareInventoryRepresentativeShadow, representativeNoveltyKey, REPRESENTATIVE_SHADOW_REASONS } from './inventoryRepresentativeShadowScorer.mjs';
+import { representativeValidationError } from './representativeValidation.mjs';
+import { createRepresentativeValidationDiagnostics, representativeValidationIssue } from './representativeValidationDiagnostics.mjs';
 
-export const REPRESENTATIVE_SHADOW_VERSION = 'inventory_representative_shadow_v1';
+export const REPRESENTATIVE_SHADOW_VERSION = 'inventory_representative_shadow_v2';
 export const REPRESENTATIVE_SHADOW_COUNTERS = Object.freeze([...REPRESENTATIVE_SHADOW_REASONS,
   'missing_query', 'duplicate', 'expired', 'capacity', 'invalidated_batches']);
 const LIMIT = 32, COMPONENT_LIMIT = 262144, TTL = 300000;
 
 /** Bounded ephemeral capsules and decision-time observations; no media objects are retained. */
-export function createInventoryRepresentativeShadow({ now = Date.now, monotonic = () => performance.now() } = {}) {
+export function createInventoryRepresentativeShadow({ now = Date.now, monotonic = () => performance.now(),
+  diagnostics = createRepresentativeValidationDiagnostics({ now }),
+} = {}) {
   let bindings = new WeakMap(), stopped = false;
   const captured = new Map(), pending = new Map(), seen = new Map();
   const counts = Object.fromEntries(REPRESENTATIVE_SHADOW_COUNTERS.map(key => [key, 0]));
@@ -37,14 +41,16 @@ export function createInventoryRepresentativeShadow({ now = Date.now, monotonic 
       if (stopped) return;
       prune();
       try {
+        // A rejected replacement must not leave an earlier capsule available for a later decision.
+        const old = bindings.get(metadata);
+        bindings.delete(metadata); if (old) captured.delete(old);
         const createdAt = now();
-        if (!Number.isFinite(createdAt)) throw new Error('representative_clock_invalid');
-        const query = projectRepresentativeQuery(input), old = bindings.get(metadata);
-        if (old) captured.delete(old);
+        if (!Number.isFinite(createdAt)) throw representativeValidationError('clock_invalid');
+        const query = projectRepresentativeQuery(input);
         if (!room(captured, query.vector)) { increment('capacity'); return; }
         const token = {}; bindings.set(metadata, token);
         captured.set(token, { ...query, createdAt });
-      } catch { increment('invalid_input'); }
+      } catch (error) { increment('invalid_input'); diagnostics.report(representativeValidationIssue(error)); }
     },
     observe(input) {
       if (stopped) return;
@@ -58,7 +64,7 @@ export function createInventoryRepresentativeShadow({ now = Date.now, monotonic 
         if (!room(pending, observation.vector)) { increment('capacity'); return; }
         while (seen.size >= 1024) seen.delete(seen.keys().next().value);
         seen.set(key, now()); pending.set(key, observation);
-      } catch { increment('invalid_input'); }
+      } catch (error) { increment('invalid_input'); diagnostics.report(representativeValidationIssue(error)); }
     },
     prepare(context) {
       prune();
@@ -66,9 +72,10 @@ export function createInventoryRepresentativeShadow({ now = Date.now, monotonic 
       const noveltyKey = representativeNoveltyKey(context.snapshot), batch = [...pending].slice(0, 8);
       const results = batch.map(([key, observation]) => {
         const start = monotonic();
-        const reason = compareInventoryRepresentativeShadow({ ...context, observation });
+        let issue = null;
+        const reason = compareInventoryRepresentativeShadow({ ...context, observation, onInvalid: code => { issue = code; } });
         const duration = monotonic() - start;
-        return { key, observation, reason, duration };
+        return { key, observation, reason, duration, issue };
       });
       let committed = false;
       return { commit(fresh) {
@@ -77,9 +84,10 @@ export function createInventoryRepresentativeShadow({ now = Date.now, monotonic 
           if (representativeNoveltyKey(fresh) !== noveltyKey) { increment('invalidated_batches'); return; }
         } catch { increment('invalidated_batches'); return; }
         prune();
-        for (const { key, observation, reason, duration } of results) {
+        for (const { key, observation, reason, duration, issue } of results) {
           if (pending.get(key) !== observation) continue;
           pending.delete(key); increment(reason);
+          if (issue) diagnostics.report(issue);
           if (Number.isFinite(duration) && duration >= 0) {
             const bucket = duration < 1 ? 'under_1ms' : duration < 10 ? 'under_10ms' : 'at_least_10ms';
             latency[bucket] = Math.min(1000000, latency[bucket] + 1);

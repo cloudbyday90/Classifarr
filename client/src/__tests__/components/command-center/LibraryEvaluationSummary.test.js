@@ -7,8 +7,9 @@ import { normalizeRepresentativeShadowSummary } from '@/utils/representativeShad
 
 function representative() {
   const keys = ['agrees', 'disagrees', 'known_item', 'known_description', 'scope_changed', 'representation_changed',
-    'sparse_profiles', 'unstable_profiles', 'ambiguous_profiles', 'invalid_input', 'missing_query', 'duplicate', 'expired', 'capacity', 'invalidated_batches']
-  return { version: 'inventory_representative_shadow_v1', status: 'available', routingAffected: false, pending: 2,
+    'sparse_profiles', 'unconverged_profiles', 'initialization_sensitive', 'no_positive_match', 'tied_destinations',
+    'invalid_input', 'missing_query', 'duplicate', 'expired', 'capacity', 'invalidated_batches']
+  return { version: 'inventory_representative_shadow_v2', status: 'available', routingAffected: false, pending: 2,
     counts: { ...Object.fromEntries(keys.map(key => [key, 0])), agrees: 4, disagrees: 1, known_item: 3 },
     latency: { under_1ms: 0, under_10ms: 5, at_least_10ms: 0 } }
 }
@@ -25,12 +26,42 @@ function summary(overrides = {}) {
 }
 
 describe('LibraryEvaluationSummary', () => {
+  it('separates unseen coverage, nonzero causes and excluded attempts without claiming accuracy', () => {
+    const value = representative()
+    Object.assign(value.counts, { unconverged_profiles: 2, sparse_profiles: 1, initialization_sensitive: 3,
+      no_positive_match: 4, tied_destinations: 5, duplicate: 6, invalid_input: 2, invalidated_batches: 100 })
+    const normalized = normalizeRepresentativeShadowSummary(value)
+    expect(normalized).toMatchObject({ compared: 5, differs: 1, unseen: 20, notCompared: 15, excluded: 11 })
+    expect(normalized.reasons.map(reason => reason.count)).toEqual([2, 1, 3, 4, 5])
+    const wrapper = mount(LibraryEvaluationSummary, { props: { evaluation: { ...summary(), representative: value } } })
+    const details = wrapper.get('details')
+    expect(details.attributes('open')).toBeUndefined()
+    expect(details.text()).toContain('20 eligible unseen observations, 5 were compared and 15 could not be compared')
+    expect(details.text()).toContain('11 other observations were excluded')
+    for (const reason of normalized.reasons) expect(details.text()).toContain(reason.label)
+    expect(wrapper.get('[role="status"]').text()).not.toMatch(/20|15|profiles picked/)
+  })
+  it('shows only nonzero diagnoses and preserves pause, resume and permission clearing', async () => {
+    const value = representative()
+    const wrapper = mount(LibraryEvaluationSummary, { props: { evaluation: { ...summary(), representative: value } } })
+    expect(wrapper.text()).not.toContain('Library profiles have not finished fitting')
+    await wrapper.get('button').trigger('click')
+    const changed = { ...value, counts: { ...value.counts, unconverged_profiles: 2 } }
+    await wrapper.setProps({ evaluation: { ...summary(), representative: changed } })
+    expect(wrapper.text()).not.toContain('Library profiles have not finished fitting')
+    await wrapper.get('button').trigger('click')
+    expect(wrapper.get('details').text()).toContain('Library profiles have not finished fitting')
+    expect(wrapper.text()).not.toContain('Learned profiles picked different destinations')
+    await wrapper.get('button').trigger('click')
+    await wrapper.setProps({ evaluation: undefined })
+    expect(wrapper.find('section').exists()).toBe(false)
+  })
   it('adds a quiet, automatically refreshed profile comparison in the existing card and pause boundary', async () => {
     const value = representative();
     const wrapper = mount(LibraryEvaluationSummary, { props: { evaluation: { ...summary(), representative: value } } })
     expect(wrapper.text()).toContain('5 decisions compared; 1 differed')
     expect(wrapper.text()).toContain('Routing is unchanged')
-    expect(wrapper.get('details').text()).toContain('3 observations were skipped')
+    expect(wrapper.get('details').text()).toContain('3 other observations were excluded')
     expect(wrapper.get('details').text()).toContain('Agreement is not accuracy')
     const announcement = wrapper.get('[role="status"]').text()
     await wrapper.setProps({ evaluation: { ...summary(), representative: { ...value, counts: { ...value.counts, agrees: 5 } } } })
@@ -52,11 +83,13 @@ describe('LibraryEvaluationSummary', () => {
   })
   it.each([
     value => { value.version = 'future' }, value => { value.status = 'unavailable' },
+    value => { value.version = 'inventory_representative_shadow_v1' },
     value => { value.routingAffected = true }, value => { value.privateText = 'PRIVATE title' },
     value => { value.pending = 33 }, value => { value.counts.agrees = -1 },
     value => { value.counts.agrees = '1' }, value => { value.counts.agrees = 1_000_001 },
     value => { value.counts.privateText = 1 }, value => { value.counts = null },
     value => { value.latency = null }, value => { value.latency.under_1ms = NaN },
+    value => { delete value.counts.initialization_sensitive }, value => { value.counts.no_positive_match = 0.5 },
   ])('hides malformed optional profiles while keeping existing counters available', mutate => {
     const value = representative(); mutate(value)
     expect(normalizeRepresentativeShadowSummary(value)).toBeNull()

@@ -111,7 +111,7 @@ describe('queueOperationsApi', () => {
   })
 
   it('preserves optional background comparison counters through the same named GET endpoint', async () => {
-    const representative = { version: 'inventory_representative_shadow_v1', routingAffected: false,
+    const representative = { version: 'inventory_representative_shadow_v2', routingAffected: false,
       status: 'available', pending: 2, counts: { agrees: 4, disagrees: 1 } }
     const stats = { queue: {}, libraryEvaluation: { representative } }
     mockGetDataRequest.mockResolvedValueOnce(stats)

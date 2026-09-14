@@ -3,6 +3,8 @@ import { resolveLocalStudyEmbeddingConfig } from './localStudyEmbeddingClient.mj
 import { inspectDescriptionRepresentation, verifyDescriptionRepresentation } from './inventoryDescriptionBatchWriter.mjs';
 import { createLiveInventoryModelCache } from './liveInventoryModelCache.mjs';
 import { inventoryRepresentativeSourceKey, INVENTORY_REPRESENTATIVE_PROFILE_VERSION } from './inventoryRepresentativeProfile.mjs';
+import { representativeValidationError, validateRepresentativeProfiles } from './representativeValidation.mjs';
+import { createRepresentativeValidationDiagnostics, representativeValidationIssue } from './representativeValidationDiagnostics.mjs';
 
 const configKeyOf = state => {
   if (state?.rag_enabled !== true) return null;
@@ -12,6 +14,7 @@ const configKeyOf = state => {
 /** One process owns one private cache. No HTTP handler can initiate a fit. */
 export function createInventoryRepresentativeProfileRefresh({ repository, readState, createEmbedder, fit,
   getRevision = () => 0, now = Date.now, observer = null,
+  diagnostics = createRepresentativeValidationDiagnostics({ now }),
   cache = createLiveInventoryModelCache({ maxEntries: 1, maxWeight: 32 * 1024 * 1024, ttlMs: 1_800_000, now }),
 }) {
   let active = null, stopped = false, key = null, revision = -1, configKey = null, available = false;
@@ -39,9 +42,11 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
     const cached = cache.get(sourceKey);
     const model = cached ?? await fit(snapshot, identity.dimensions, { signal });
     signal.throwIfAborted();
-    if (model?.version !== INVENTORY_REPRESENTATIVE_PROFILE_VERSION || model.kind !== 'full_inventory_shadow') {
-      throw new Error('inventory_representative_model_invalid');
+    if (model?.version !== INVENTORY_REPRESENTATIVE_PROFILE_VERSION || model.kind !== 'full_inventory_shadow' ||
+        !(model.libraries instanceof Map)) {
+      throw representativeValidationError('profile_header');
     }
+    validateRepresentativeProfiles([...model.libraries.values()], identity.dimensions);
     let batch = null;
     try { batch = observer?.prepare({ model, snapshot, identity, configKey: expected }); }
     catch { /* Optional diagnostics cannot discard an otherwise valid profile. */ }
@@ -56,6 +61,7 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
     signal.throwIfAborted();
     if (!cache.set(sourceKey, model, model.weight)) { clear(); return report('cache_budget_exceeded'); }
     key = sourceKey; revision = runRevision; available = true; verifiedAt = now(); nextRunAt = now() + 300_000;
+    diagnostics.profilesRecovered();
     try { batch?.commit(fresh); } catch { /* No partial or unverified observation is published. */ }
     return report(cached ? 'up_to_date' : 'published', model.summary);
   }
@@ -89,9 +95,10 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
         const result = await refresh(state, runSignal, runRevision, expected);
         failures = 0; backoffUntil = 0;
         return result;
-      } catch {
+      } catch (error) {
         clear();
         if (controller.signal.aborted || signal?.aborted) return report('cancelled');
+        if (representativeValidationIssue(error) !== 'unknown_check') diagnostics.report(representativeValidationIssue(error));
         failures = Math.min(failures + 1, 7);
         backoffUntil = now() + Math.min(3_600_000, 60_000 * 2 ** (failures - 1));
         return report('failed');

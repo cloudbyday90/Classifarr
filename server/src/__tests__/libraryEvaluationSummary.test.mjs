@@ -10,12 +10,16 @@ import { projectRepresentativeShadowSummary } from '../services/inventoryReprese
 test('optional profile counters are redacted, bounded and remain admin-only', async () => {
   const representative = createInventoryRepresentativeShadow().read();
   representative.counts.agrees = 2;
+  representative.counts.initialization_sensitive = 3;
   representative.privateText = 'PRIVATE title'; representative.counts.secret = 'PRIVATE vector';
   representative.latency.secret = 'PRIVATE timing';
   const source = { ...createLearnedEvidenceEvaluationControl().read(), representative };
   const { app } = appFor(() => source);
   const response = await request(app).get('/api/queue/live-stats').set('Authorization', 'test').expect(200);
   expect(response.body.libraryEvaluation.representative.counts.agrees).toBe(2);
+  expect(response.body.libraryEvaluation.representative.version).toBe('inventory_representative_shadow_v2');
+  expect(response.body.libraryEvaluation.representative.counts.initialization_sensitive).toBe(3);
+  expect(response.body.libraryEvaluation.representative.counts).not.toHaveProperty('unstable_profiles');
   expect(JSON.stringify(response.body)).not.toContain('PRIVATE');
   const viewer = appFor(() => source, 'viewer');
   expect((await request(viewer.app).get('/api/queue/live-stats').set('Authorization', 'test')).body.libraryEvaluation).toBeUndefined();
@@ -25,6 +29,8 @@ test('optional profile counters are redacted, bounded and remain admin-only', as
 
 test.each([
   value => { value.version = 'future'; }, value => { value.routingAffected = true; },
+  value => { value.version = 'inventory_representative_shadow_v1'; },
+  value => { delete value.counts.initialization_sensitive; }, value => { value.counts.tied_destinations = 0.5; },
   value => { value.status = 'unavailable'; }, value => { value.pending = 33; },
   value => { value.counts.agrees = -1; }, value => { value.counts = null; },
   value => { value.latency.under_1ms = Infinity; }, value => { value.latency = null; },

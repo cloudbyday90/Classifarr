@@ -9,16 +9,18 @@ import { createInventoryRepresentativeProfileRefresh } from './inventoryRepresen
 import { fitInventoryRepresentativeProfile } from './inventoryRepresentativeProfileFit.mjs';
 import { createInventoryRepresentativeShadow } from './inventoryRepresentativeShadow.mjs';
 import { installRepresentativeShadow } from './inventoryRepresentativeShadowRuntime.mjs';
+import { createRepresentativeValidationDiagnostics } from './representativeValidationDiagnostics.mjs';
 
 export const INVENTORY_REPRESENTATIVE_PROFILE_TASK = 'inventory-representative-profile-refresh';
 
 export function createInventoryRepresentativeProfileRuntime(database = db) {
-  const observer = createInventoryRepresentativeShadow();
+  const diagnostics = createRepresentativeValidationDiagnostics({ log: createLogger('RepresentativeValidation') });
+  const observer = createInventoryRepresentativeShadow({ diagnostics });
   const worker = createInventoryRepresentativeProfileRefresh({
     repository: createInventoryRepresentativeProfileRepository(database),
     readState: createInventoryDescriptionRefreshRepository(database).readState,
     createEmbedder: createLocalStudyEmbeddingClient, fit: fitInventoryRepresentativeProfile,
-    getRevision: getInventoryDescriptionRefreshRevision, observer,
+    getRevision: getInventoryDescriptionRefreshRevision, observer, diagnostics,
   });
   return { ...worker, observer };
 }

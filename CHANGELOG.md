@@ -11,6 +11,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Diagnose malformed query/profile data with actionable, deduplicated warnings.
+  Rebuild invalid private profile caches with scheduled backoff, resume pending
+  comparisons after validated recovery, and prevent stale query reuse.
+- Distinguish unfinished, sparse, inconsistent and tied library-profile comparisons
+  from excluded observations. Show unseen comparison coverage and plain-language
+  causes in existing expandable, auto-refreshing Library learning details.
 - Recover unfinished library-profile fits automatically by continuing their existing
   progress within bounded work limits. Preserve completed fits, reject stale
   evidence, and retain safe fallback when recovery is exhausted; no new controls,

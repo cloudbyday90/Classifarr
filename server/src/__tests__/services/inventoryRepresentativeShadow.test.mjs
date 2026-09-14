@@ -26,6 +26,37 @@ test('commits one bounded aggregate only after explicit fresh-snapshot approval'
   enqueue(); expect(shadow.read().counts.duplicate).toBe(1);
 });
 
+test.each([
+  ['unconverged_profiles', model => { model.libraries.get(2).starts[2].converged = false; }],
+  ['sparse_profiles', model => { model.libraries.get(2).starts[2].groups[0].support = 2; }],
+  ['initialization_sensitive', model => {
+    model.libraries.get(1).starts[1].groups[0].centroid = [0, 1];
+    model.libraries.get(2).starts[1].groups[0].centroid = [1, 0];
+  }],
+  ['no_positive_match', model => {
+    for (const profile of model.libraries.values()) for (const start of profile.starts)
+      for (const group of start.groups) group.centroid = [-1, 0];
+  }],
+  ['tied_destinations', model => { model.libraries.get(2).starts = structuredClone(model.libraries.get(1).starts); }],
+])('commits only one %s diagnosis after fresh validation, without changing the decision', async (reason, mutate) => {
+  const fixture = await setup(), original = structuredClone(fixture.decision);
+  mutate(fixture.model); fixture.enqueue();
+  const stage = fixture.shadow.prepare(fixture);
+  expect(Object.values(fixture.shadow.read().counts).every(count => count === 0)).toBe(true);
+  stage.commit(fixture.snapshot); stage.commit(fixture.snapshot);
+  expect(Object.entries(fixture.shadow.read().counts).filter(([, count]) => count > 0)).toEqual([[reason, 1]]);
+  expect(fixture.shadow.read().version).toBe('inventory_representative_shadow_v2');
+  expect(fixture.decision).toEqual(original);
+});
+
+test('known evidence wins over diagnostic causes and never counts as unseen comparison', async () => {
+  const fixture = await setup(); fixture.enqueue();
+  fixture.snapshot.observedKeys.add('movie:90000');
+  fixture.model.libraries.get(2).starts[2].converged = false;
+  fixture.shadow.prepare(fixture).commit(fixture.snapshot);
+  expect(Object.entries(fixture.shadow.read().counts).filter(([, count]) => count > 0)).toEqual([['known_item', 1]]);
+});
+
 test('novelty changes and discarded batches never count; the unchanged observation can retry', async () => {
   const fixture = await setup(); fixture.enqueue();
   const stage = fixture.shadow.prepare(fixture), fresh = { ...fixture.snapshot, observedKeys: new Set(fixture.snapshot.observedKeys) };

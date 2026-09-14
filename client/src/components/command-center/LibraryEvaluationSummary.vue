@@ -69,9 +69,24 @@
         </p>
         <p v-if="snapshot.representative">
           Profiles compare descriptions for items not already in the current inventory, using query vectors
-          classification already produced. {{ formatCount(snapshot.representative.pending) }} comparisons are waiting;
-          {{ formatCount(snapshot.representative.skipped) }} observations were skipped or unavailable.
+          classification already produced. Of {{ formatCount(snapshot.representative.unseen) }} eligible unseen observations,
+          {{ formatCount(snapshot.representative.compared) }} were compared and
+          {{ formatCount(snapshot.representative.notCompared) }} could not be compared.
           Agreement is not accuracy. Duplicate suppression lasts 30 minutes; counts reset on restart.
+        </p>
+        <dl v-if="snapshot.representative?.reasons.length">
+          <div
+            v-for="reason in snapshot.representative.reasons"
+            :key="reason.key"
+          >
+            <dt>{{ reason.label }}</dt><dd>{{ formatCount(reason.count) }}</dd>
+          </div>
+        </dl>
+        <p v-if="snapshot.representative">
+          {{ formatCount(snapshot.representative.pending) }} comparisons are waiting;
+          {{ formatCount(snapshot.representative.excluded) }} other observations were excluded or unavailable,
+          including known items, duplicate attempts and changed evidence. These are not placement errors.
+          Each unseen observation records its first stopping reason, not every possible issue.
         </p>
         <p v-if="snapshot.representative?.capped">
           A profile-comparison counter reached its limit; these counts are lower bounds.

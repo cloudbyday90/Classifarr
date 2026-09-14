@@ -127,3 +127,10 @@ Nothing was merged. All six workflows for the previous commit passed.
 Official-source recommendations and pros/cons are documented in the design. This
 is the first recovery slice, not completion of every content-agnostic controller
 or evidence-evaluation component.
+
+## Follow-up
+
+The next slice separates [unseen comparison causes](unseen-profile-diagnosis-design.md)
+and adds [malformed-data diagnosis and safe profile rebuilding](representative-validation-recovery-design.md).
+Independent outcome attribution remains separate work; these diagnostics do not
+establish placement accuracy or authorize more routing.

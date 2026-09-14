@@ -27,11 +27,11 @@ test.each([
   ['scope_changed', value => { value.observation.libraryIds.push(99); }],
   ['scope_changed', value => { value.model.libraries.get(1).mediaType = 'tv'; }],
   ['scope_changed', value => { value.observation.libraryIds = [1, 1]; }],
-  ['unstable_profiles', value => { value.model.libraries.get(1).starts[0].converged = false; }],
-  ['unstable_profiles', value => { value.model.libraries.get(1).selectedStart = 3; }],
+  ['unconverged_profiles', value => { value.model.libraries.get(1).starts[0].converged = false; }],
+  ['invalid_input', value => { value.model.libraries.get(1).selectedStart = 3; }],
   ['sparse_profiles', value => { value.model.libraries.get(1).starts[0].groups = []; }],
   ['sparse_profiles', value => { value.model.libraries.get(1).starts[0].groups[0].support = 2; }],
-  ['ambiguous_profiles', value => { value.model.libraries.get(2).starts = structuredClone(value.model.libraries.get(1).starts); }],
+  ['tied_destinations', value => { value.model.libraries.get(2).starts = structuredClone(value.model.libraries.get(1).starts); }],
   ['invalid_input', value => { value.observation.vector = [NaN, 1]; }],
   ['invalid_input', value => { value.model.kind = 'held_out'; }],
   ['invalid_input', value => { value.snapshot.observedKeys = undefined; }],
@@ -44,7 +44,7 @@ test('requires agreement across coherent starts AND the selected mixed view', as
   const value = await context();
   value.model.libraries.get(1).starts[1].groups[0].centroid = [0, 1];
   value.model.libraries.get(2).starts[1].groups[0].centroid = [1, 0];
-  expect(compareInventoryRepresentativeShadow(value)).toBe('unstable_profiles');
+  expect(compareInventoryRepresentativeShadow(value)).toBe('initialization_sensitive');
 });
 
 test('novelty digest includes descriptionless identities, ignores order, and rejects invalid scope', async () => {
