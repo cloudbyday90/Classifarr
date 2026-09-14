@@ -43,7 +43,7 @@ export function clearAndResync() {
 }
 
 export function getLiveStats() {
-  // Includes administrator-only process-local libraryEvaluation and optional representative-comparison aggregates.
+  // Includes administrator-only libraryEvaluation; representative v3 separates partial-coverage comparisons.
   // The server marks this response no-store; callers must not persist it.
   return getDataRequest('/queue/live-stats')
 }

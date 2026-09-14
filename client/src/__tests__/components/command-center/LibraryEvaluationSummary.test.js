@@ -14,6 +14,12 @@ function representative() {
     latency: { under_1ms: 0, under_10ms: 5, at_least_10ms: 0 } }
 }
 
+function coverageRepresentative() {
+  const value = representative()
+  return { ...value, version: 'inventory_representative_shadow_v3',
+    counts: { ...value.counts, partial_agrees: 2, partial_disagrees: 1, incomplete_profiles: 4 } }
+}
+
 function summary(overrides = {}) {
   return {
     version: 'library_evaluation_summary_v1', status: 'available', routingAffected: false,
@@ -26,6 +32,44 @@ function summary(overrides = {}) {
 }
 
 describe('LibraryEvaluationSummary', () => {
+  it('separates partial comparisons from missing coverage in the existing closed disclosure', async () => {
+    const value = coverageRepresentative()
+    expect(normalizeRepresentativeShadowSummary(value)).toMatchObject({ compared: 8, differs: 2,
+      partialCompared: 3, partialDiffers: 1, unseen: 12, notCompared: 4, excluded: 3 })
+    const wrapper = mount(LibraryEvaluationSummary, { props: { evaluation: { ...summary(), representative: value } } })
+    expect(wrapper.get('details').attributes('open')).toBeUndefined()
+    expect(wrapper.get('details').text()).toContain('3 of these comparisons used profiles with some descriptions still missing; 1 differed')
+    expect(wrapper.get('details').text()).toContain('at least 90%')
+    expect(wrapper.get('details').text()).toContain('Missing descriptions can bias a profile')
+    expect(wrapper.get('details').text()).toContain('Descriptions are still backfilling for one or more destinations')
+    expect(wrapper.get('[role="status"]').attributes('aria-atomic')).toBe('true')
+    const announcement = wrapper.get('[role="status"]').text()
+    await wrapper.get('button').trigger('click')
+    const updated = { ...value, counts: { ...value.counts, partial_agrees: 3 } }
+    await wrapper.setProps({ evaluation: { ...summary(), representative: updated } })
+    expect(wrapper.text()).toContain('8 decisions compared')
+    await wrapper.get('button').trigger('click')
+    expect(wrapper.text()).toContain('9 decisions compared')
+    expect(wrapper.get('[role="status"]').text()).toBe(announcement)
+    await wrapper.get('button').trigger('click')
+    await wrapper.setProps({ evaluation: undefined })
+    expect(wrapper.find('section').exists()).toBe(false)
+  })
+  it('does not show partial coverage prose when no partial comparisons have run', () => {
+    const value = coverageRepresentative()
+    value.counts.partial_agrees = 0; value.counts.partial_disagrees = 0
+    const wrapper = mount(LibraryEvaluationSummary, { props: { evaluation: { ...summary(), representative: value } } })
+    expect(wrapper.text()).not.toContain('Missing descriptions can bias a profile')
+    expect(normalizeRepresentativeShadowSummary(representative()).partialCompared).toBe(0)
+  })
+  it.each([
+    value => { delete value.counts.partial_agrees }, value => { delete value.counts.incomplete_profiles },
+    value => { value.counts.partial_disagrees = -1 }, value => { value.counts.incomplete_profiles = 1_000_001 },
+  ])('rejects malformed v3 coverage counts without hiding the main summary', mutate => {
+    const value = coverageRepresentative(); mutate(value)
+    expect(normalizeRepresentativeShadowSummary(value)).toBeNull()
+    expect(normalizeLibraryEvaluationSummary({ ...summary(), representative: value }).passed).toBe(9)
+  })
   it('separates unseen coverage, nonzero causes and excluded attempts without claiming accuracy', () => {
     const value = representative()
     Object.assign(value.counts, { unconverged_profiles: 2, sparse_profiles: 1, initialization_sensitive: 3,

@@ -3,6 +3,7 @@ import { expect, test } from '@jest/globals';
 import { compareInventoryRepresentativeShadow, representativeNoveltyKey } from '../../services/inventoryRepresentativeShadowScorer.mjs';
 import { projectRepresentativeQuery, bindRepresentativeDecision } from '../../services/inventoryRepresentativeShadowInput.mjs';
 import { representativeShadowFixture } from '../helpers/inventoryRepresentativeShadowFixture.mjs';
+import { buildInventoryRepresentativeProfile } from '../../services/inventoryRepresentativeProfile.mjs';
 
 async function context(mediaType) {
   const value = await representativeShadowFixture(mediaType);
@@ -66,4 +67,26 @@ test('capsules reject changed metadata, foreign decisions and malformed vectors'
   value.decision.metadata = value.metadata = { media_type: 'movie', tmdb_id: 90000, overview: 'PRIVATE unseen voyage' };
   value.decision.result.library.id = 999;
   expect(() => bindRepresentativeDecision(query, value.decision)).toThrow('decision_scope_invalid');
+});
+
+test.each(['movie', 'tv'])('partial %s comparisons stay distinct; a below-coverage candidate is not dropped', async mediaType => {
+  const value = await representativeShadowFixture(mediaType, { perLibrary: 10 });
+  value.observation = bindRepresentativeDecision(projectRepresentativeQuery(value.query), value.decision);
+  const first = value.snapshot.corpus.documents[0].hash;
+  value.snapshot.vectors.delete(first);
+  value.model = await buildInventoryRepresentativeProfile({ snapshot: value.snapshot, dimensions: 2 });
+  expect(compareInventoryRepresentativeShadow(value)).toBe('partial_agrees');
+  value.observation.destinationId = 2;
+  expect(compareInventoryRepresentativeShadow(value)).toBe('partial_disagrees');
+  value.snapshot.vectors.delete(value.snapshot.corpus.documents[1].hash);
+  value.model = await buildInventoryRepresentativeProfile({ snapshot: value.snapshot, dimensions: 2 });
+  expect(compareInventoryRepresentativeShadow(value)).toBe('incomplete_profiles');
+  expect(value.model.libraries.size).toBe(2);
+  value.observation.hash = first;
+  expect(compareInventoryRepresentativeShadow(value)).toBe('known_description');
+});
+
+test('malformed coverage never downgrades into a similarity result', async () => {
+  const value = await context(); delete value.model.libraries.get(1).coverage;
+  expect(compareInventoryRepresentativeShadow(value)).toBe('invalid_input');
 });

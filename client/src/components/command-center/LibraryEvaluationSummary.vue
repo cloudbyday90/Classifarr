@@ -21,6 +21,7 @@
     <p
       class="sr-only"
       role="status"
+      aria-atomic="true"
     >
       {{ announcement }}
     </p>
@@ -82,6 +83,11 @@
             <dt>{{ reason.label }}</dt><dd>{{ formatCount(reason.count) }}</dd>
           </div>
         </dl>
+        <p v-if="snapshot.representative?.partialCompared">
+          {{ formatCount(snapshot.representative.partialCompared) }} of these comparisons used profiles with some descriptions still missing;
+          {{ formatCount(snapshot.representative.partialDiffers) }} differed. Each destination had at least 90% of its eligible descriptions available.
+          Missing descriptions can bias a profile; these results do not establish accuracy or authorize routing.
+        </p>
         <p v-if="snapshot.representative">
           {{ formatCount(snapshot.representative.pending) }} comparisons are waiting;
           {{ formatCount(snapshot.representative.excluded) }} other observations were excluded or unavailable,

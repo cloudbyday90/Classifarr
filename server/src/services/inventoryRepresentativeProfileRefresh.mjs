@@ -3,8 +3,11 @@ import { resolveLocalStudyEmbeddingConfig } from './localStudyEmbeddingClient.mj
 import { inspectDescriptionRepresentation, verifyDescriptionRepresentation } from './inventoryDescriptionBatchWriter.mjs';
 import { createLiveInventoryModelCache } from './liveInventoryModelCache.mjs';
 import { inventoryRepresentativeSourceKey, INVENTORY_REPRESENTATIVE_PROFILE_VERSION } from './inventoryRepresentativeProfile.mjs';
-import { representativeValidationError, validateRepresentativeProfiles } from './representativeValidation.mjs';
+import { representativeValidationError } from './representativeValidation.mjs';
 import { createRepresentativeValidationDiagnostics, representativeValidationIssue } from './representativeValidationDiagnostics.mjs';
+import { assertRepresentativeSnapshotBudget, inspectRepresentativeCoverage } from './inventoryRepresentativeCoverage.mjs';
+import { validateInventoryRepresentativeProfileCoverage } from './inventoryRepresentativeProfileValidation.mjs';
+import { isMap } from 'node:util/types';
 
 const configKeyOf = state => {
   if (state?.rag_enabled !== true) return null;
@@ -35,25 +38,27 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
     const snapshot = await repository.read(identity);
     signal.throwIfAborted();
     if (!current(snapshot.state, expected) || getRevision() !== runRevision) { clear(); return report('invalidated'); }
-    if (snapshot.vectors.size !== snapshot.corpus.texts.size) { clear(); return report('waiting_for_vectors'); }
     if (!snapshot.corpus.texts.size) { clear(); return report('empty_corpus'); }
+    assertRepresentativeSnapshotBudget(snapshot, identity.dimensions);
+    const coverage = inspectRepresentativeCoverage(snapshot);
+    if (!coverage.summary.readyLibraries) { clear(); return report('waiting_for_vectors', coverage.summary); }
     const sourceKey = inventoryRepresentativeSourceKey(snapshot, identity, expected);
     if (key !== sourceKey) clear();
     const cached = cache.get(sourceKey);
     const model = cached ?? await fit(snapshot, identity.dimensions, { signal });
     signal.throwIfAborted();
     if (model?.version !== INVENTORY_REPRESENTATIVE_PROFILE_VERSION || model.kind !== 'full_inventory_shadow' ||
-        !(model.libraries instanceof Map)) {
+        !isMap(model.libraries)) {
       throw representativeValidationError('profile_header');
     }
-    validateRepresentativeProfiles([...model.libraries.values()], identity.dimensions);
+    const summary = validateInventoryRepresentativeProfileCoverage(model, snapshot, identity.dimensions);
     let batch = null;
     try { batch = observer?.prepare({ model, snapshot, identity, configKey: expected }); }
     catch { /* Optional diagnostics cannot discard an otherwise valid profile. */ }
     const fresh = await repository.read(identity);
     signal.throwIfAborted();
     await verifyDescriptionRepresentation(embedder, identity, signal);
-    if (!current(fresh.state, expected) || fresh.vectors.size !== fresh.corpus.texts.size ||
+    if (!current(fresh.state, expected) ||
         inventoryRepresentativeSourceKey(fresh, identity, expected) !== sourceKey ||
         !current(await readState(), expected) || getRevision() !== runRevision) {
       clear(); return report('invalidated');
@@ -63,7 +68,7 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
     key = sourceKey; revision = runRevision; available = true; verifiedAt = now(); nextRunAt = now() + 300_000;
     diagnostics.profilesRecovered();
     try { batch?.commit(fresh); } catch { /* No partial or unverified observation is published. */ }
-    return report(cached ? 'up_to_date' : 'published', model.summary);
+    return report(cached ? 'up_to_date' : 'published', summary);
   }
 
   return {

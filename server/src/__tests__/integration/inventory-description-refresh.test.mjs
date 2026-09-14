@@ -9,6 +9,9 @@ import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescr
 import { inventoryRepresentativeSourceKey } from '../../services/inventoryRepresentativeProfile.mjs';
 import { createInventoryDescriptionRecovery } from '../../services/inventoryDescriptionRecovery.mjs';
 import { createInventoryDescriptionIsolationRepository } from '../../services/inventoryDescriptionIsolationRepository.mjs';
+import { createInventoryRepresentativeProfileRefresh } from '../../services/inventoryRepresentativeProfileRefresh.mjs';
+import { fitInventoryRepresentativeProfile } from '../../services/inventoryRepresentativeProfileFit.mjs';
+import { resolveLocalStudyEmbeddingConfig } from '../../services/localStudyEmbeddingClient.mjs';
 import { readFile } from 'node:fs/promises';
 
 let client;
@@ -194,4 +197,59 @@ test('representative snapshots reconcile membership, conflicts and expired pgvec
   const inactive = await profiles.read(identity);
   expect(inactive.corpus.documents).toHaveLength(0);
   expect(inactive.observedKeys).toEqual(new Set(['tv:2']));
+});
+
+test('partial movie and TV profiles publish, backfill and withdraw expired coverage using real pgvector snapshots', async () => {
+  await client.query(`
+    CREATE TEMP TABLE libraries (id int, media_type text, is_active boolean);
+    CREATE TEMP TABLE media_server_items (id int, media_server_id int, external_id text,
+      library_id int, media_type text, tmdb_id int, metadata jsonb);
+    CREATE TEMP TABLE media_source_observations (library_id int, media_server_id int,
+      external_id text, last_seen_at timestamptz);
+    INSERT INTO libraries VALUES (1,'movie',true),(2,'tv',true);
+    INSERT INTO media_server_items
+      SELECT n,1,'source-'||n,CASE WHEN n<=10 THEN 1 ELSE 2 END,
+        CASE WHEN n<=10 THEN 'movie' ELSE 'tv' END,n,
+        jsonb_build_object('overview','Synthetic coverage description '||n)
+      FROM generate_series(1,20) AS n;
+  `);
+  const identity = { provider: 'ollama', model: 'test:latest', digest: 'a'.repeat(64), dimensions: 3 };
+  const profiles = createInventoryRepresentativeProfileRepository({ withTransaction: async callback => {
+    await client.query('BEGIN');
+    try { const result = await callback(client); await client.query('COMMIT'); return result; }
+    catch (error) { await client.query('ROLLBACK'); throw error; }
+  } });
+  const cache = createInventoryDescriptionVectorCache(repository);
+  const empty = await profiles.read(identity);
+  const rows = empty.corpus.documents.map(doc => ({ hash: doc.hash, vector: doc.type === 'movie' ? [1, 0, 0] : [0, 1, 0] }));
+  const missing = rows.shift();
+  for (let index = 0; index < rows.length; index += 8) await cache.write(identity, rows.slice(index, index + 8));
+  let time = 0;
+  const worker = createInventoryRepresentativeProfileRefresh({ repository: profiles, readState: repository.readState,
+    fit: fitInventoryRepresentativeProfile, now: () => time,
+    createEmbedder: () => ({ provider: identity.provider, model: identity.model, inspect: async () => identity,
+      embedBatch: () => { throw new Error('Profile publication must not perform inference'); } }),
+  });
+  const keyFor = snapshot => inventoryRepresentativeSourceKey(snapshot, identity, JSON.stringify(resolveLocalStudyEmbeddingConfig(snapshot.state)));
+  try {
+    expect(await worker.run()).toMatchObject({ status: 'published', availableDescriptions: 19, missingDescriptions: 1,
+      readyLibraries: 2, partialLibraries: 1, waitingLibraries: 0 });
+    const partialKey = keyFor(await profiles.read(identity));
+    expect(worker.read(partialKey).libraries.size).toBe(2);
+    await cache.write(identity, [missing]); time += 300_000;
+    expect(await worker.run()).toMatchObject({ status: 'published', availableDescriptions: 20, partialLibraries: 0 });
+    expect(worker.read(partialKey)).toBeUndefined();
+    const movieRows = empty.corpus.documents.filter(doc => doc.type === 'movie').slice(0, 2);
+    await client.query("UPDATE inventory_description_vector_cache SET created_at=now()-interval '31 days' WHERE description_hash=ANY($1::text[])", [movieRows.map(doc => doc.hash)]);
+    time += 300_000;
+    expect(await worker.run()).toMatchObject({ status: 'published', readyLibraries: 1, waitingLibraries: 1, trainingDescriptions: 10 });
+    const reduced = worker.read(keyFor(await profiles.read(identity)));
+    expect(reduced.libraries.size).toBe(2);
+    expect(reduced.libraries.get(1).coverage.status).toBe('waiting');
+    expect(reduced.libraries.get(2).coverage.status).toBe('complete');
+    await cache.write(identity, movieRows.map(doc => ({ hash: doc.hash, vector: [1, 0, 0] }))); time += 300_000;
+    expect(await worker.run()).toMatchObject({ status: 'published', availableDescriptions: 20, readyLibraries: 2, waitingLibraries: 0 });
+    expect((await client.query('SELECT count(*)::int AS count FROM task_queue')).rows[0].count).toBe(0);
+    expect((await client.query('SELECT count(*)::int AS count FROM media_server_items')).rows[0].count).toBe(20);
+  } finally { worker.stop(); }
 });

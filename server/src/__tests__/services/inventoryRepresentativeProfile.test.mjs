@@ -59,7 +59,7 @@ test('runtime omission of legacy control leaves selected and per-start fits unch
   expect(runtime.stability.totalIterations).toBe(benchmark.stability.totalIterations - benchmark.legacy.iterations);
 });
 
-test('rejects input limits, incomplete vectors, invalid vectors and pre-cancellation', async () => {
+test('rejects input limits, invalid vectors and pre-cancellation while hashing missing evidence explicitly', async () => {
   const { snapshot, identity } = representativeProfileFixture();
   const large = { ...snapshot, corpus: { ...snapshot.corpus, texts: { size: 8_000_001 } } };
   expect(() => inventoryRepresentativeSourceKey(large, identity, '')).toThrow('input_budget');
@@ -69,7 +69,7 @@ test('rejects input limits, incomplete vectors, invalid vectors and pre-cancella
   snapshot.vectors.values().next().value[0] = NaN;
   expect(() => inventoryRepresentativeSourceKey(snapshot, identity, '')).toThrow('Embedding');
   snapshot.vectors.clear();
-  expect(() => inventoryRepresentativeSourceKey(snapshot, identity, '')).toThrow('input_budget');
+  expect(inventoryRepresentativeSourceKey(snapshot, identity, '')).toMatch(/^[a-f0-9]{64}$/);
 });
 
 test('real ESM thread matches direct fit and sanitizes failed work', async () => {
@@ -93,7 +93,8 @@ test('an in-flight thread can be cancelled and is terminated before returning', 
 test('worker input is bounded before cloning; unscoped documents cannot train a library', async () => {
   const { snapshot } = representativeProfileFixture();
   await expect(fitInventoryRepresentativeProfile(snapshot, 0)).rejects.toThrow('fit_input_budget');
-  await expect(fitInventoryRepresentativeProfile({ ...snapshot, vectors: new Map() }, 2)).rejects.toThrow('fit_input_budget');
+  expect((await fitInventoryRepresentativeProfile({ ...snapshot, vectors: new Map() }, 2)).summary.readyLibraries).toBe(0);
+  await expect(fitInventoryRepresentativeProfile({ ...snapshot, vectors: new Map([['unknown', [1, 0]]]) }, 2)).rejects.toThrow('fit_input_budget');
   snapshot.corpus.documents[0].libraryIds = [999];
   const model = await buildInventoryRepresentativeProfile({ snapshot, dimensions: 2 });
   expect(model.summary.trainingDescriptions).toBe(11);

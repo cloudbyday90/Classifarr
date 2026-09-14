@@ -101,6 +101,11 @@ fallback for under-covered libraries. Validate on held-out movie and TV inventor
 before considering changes to live routing; never learn genre rules from library
 names or treat the system's own unconfirmed placements as ground truth.
 
+Follow-up: this component is now implemented in the
+[coverage-aware publication design](partial-library-profile-design.md), with
+verification and remaining limitations in its
+[separate outcome](partial-library-profile-outcome.md).
+
 ## Delivery boundaries
 
 GitHub MCP returned no open Classifarr PRs during selection and recheck. No PR was

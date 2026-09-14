@@ -1,14 +1,11 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { Worker } from 'node:worker_threads';
-import { REPRESENTATIVE_PROFILE_COMPONENT_LIMIT } from './inventoryRepresentativeProfile.mjs';
+import { assertRepresentativeSnapshotBudget } from './inventoryRepresentativeCoverage.mjs';
 
 /** Fixed code only; no database, provider config, titles or plaintext in the worker. */
 export async function fitInventoryRepresentativeProfile(snapshot, dimensions, { signal } = {}) {
   signal?.throwIfAborted();
-  if (!Number.isSafeInteger(dimensions) || dimensions < 1 || dimensions > 16000 ||
-      snapshot.libraries.length > 64 || snapshot.corpus.documents.length > 50000 ||
-      snapshot.corpus.texts.size > 10000 || snapshot.corpus.texts.size * dimensions > REPRESENTATIVE_PROFILE_COMPONENT_LIMIT ||
-      snapshot.vectors.size !== snapshot.corpus.texts.size) throw new Error('inventory_representative_fit_input_budget');
+  assertRepresentativeSnapshotBudget(snapshot, dimensions, 'inventory_representative_fit_input_budget');
   const worker = new Worker(new URL('./inventoryRepresentativeProfileThread.mjs', import.meta.url), {
     workerData: { dimensions, snapshot: {
       libraries: snapshot.libraries.map(({ id, media_type }) => ({ id, media_type })),

@@ -5,7 +5,7 @@ import { compareInventoryRepresentativeShadow, representativeNoveltyKey, REPRESE
 import { representativeValidationError } from './representativeValidation.mjs';
 import { createRepresentativeValidationDiagnostics, representativeValidationIssue } from './representativeValidationDiagnostics.mjs';
 
-export const REPRESENTATIVE_SHADOW_VERSION = 'inventory_representative_shadow_v2';
+export const REPRESENTATIVE_SHADOW_VERSION = 'inventory_representative_shadow_v3';
 export const REPRESENTATIVE_SHADOW_COUNTERS = Object.freeze([...REPRESENTATIVE_SHADOW_REASONS,
   'missing_query', 'duplicate', 'expired', 'capacity', 'invalidated_batches']);
 const LIMIT = 32, COMPONENT_LIMIT = 262144, TTL = 300000;

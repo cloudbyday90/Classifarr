@@ -3,8 +3,8 @@ import { createHash } from 'node:crypto';
 import { representativeProfileFixture } from './inventoryRepresentativeProfileFixture.mjs';
 import { buildInventoryRepresentativeProfile } from '../../services/inventoryRepresentativeProfile.mjs';
 
-export async function representativeShadowFixture(mediaType = 'movie') {
-  const { snapshot, identity } = representativeProfileFixture();
+export async function representativeShadowFixture(mediaType = 'movie', options = {}) {
+  const { snapshot, identity } = representativeProfileFixture(options);
   snapshot.libraries.forEach(row => { row.media_type = mediaType; });
   snapshot.corpus.documents.forEach(row => { row.type = mediaType; row.key = `${mediaType}:${row.id}`; });
   snapshot.observedKeys = new Set(snapshot.corpus.documents.map(row => row.key));

@@ -8,8 +8,8 @@ import { representativeShadowFixture } from '../helpers/inventoryRepresentativeS
 import { createInventoryRepresentativeShadow } from '../../services/inventoryRepresentativeShadow.mjs';
 import { createRepresentativeValidationDiagnostics } from '../../services/representativeValidationDiagnostics.mjs';
 
-function setup(observer = null, diagnostics = undefined) {
-  const fixture = representativeProfileFixture();
+function setup(observer = null, diagnostics = undefined, options = {}) {
+  const fixture = representativeProfileFixture(options);
   let time = 0, revision = 0;
   const { state, identity, snapshot } = fixture;
   const embedder = { model: identity.model, provider: identity.provider, inspect: jest.fn(async () => ({ ...identity })), embedBatch: jest.fn() };
@@ -145,6 +145,51 @@ test('incomplete vectors self-heal on the next scheduled run without generating 
   expect(dependencies.fit).not.toHaveBeenCalled(); snapshot.vectors = vectors;
   expect(await worker.run()).toMatchObject({ status: 'published' });
   expect(embedder.embedBatch).not.toHaveBeenCalled();
+});
+
+test('partial publication survives missing descriptions and automatically reconciles their backfill', async () => {
+  const { worker, snapshot, dependencies, key, advance, embedder } = setup(null, undefined, { perLibrary: 10 });
+  const hash = snapshot.corpus.documents[0].hash, vector = snapshot.vectors.get(hash);
+  snapshot.vectors.delete(hash);
+  expect(await worker.run()).toMatchObject({ status: 'published', missingDescriptions: 1, partialLibraries: 1, readyLibraries: 2 });
+  const partialKey = key();
+  expect(worker.read(partialKey).libraries.get(1).coverage.status).toBe('partial');
+  snapshot.vectors.set(hash, vector); advance();
+  expect(await worker.run()).toMatchObject({ status: 'published', missingDescriptions: 0, partialLibraries: 0, trainingDescriptions: 20 });
+  expect(worker.read(partialKey)).toBeUndefined();
+  expect(dependencies.fit).toHaveBeenCalledTimes(2);
+  expect(embedder.embedBatch).not.toHaveBeenCalled();
+});
+
+test('one waiting library does not stop a complete library from publishing', async () => {
+  const { worker, snapshot, key } = setup();
+  snapshot.corpus.documents.filter(doc => doc.type === 'tv').forEach(doc => snapshot.vectors.delete(doc.hash));
+  expect(await worker.run()).toMatchObject({ status: 'published', readyLibraries: 1, waitingLibraries: 1, missingDescriptions: 6 });
+  expect(worker.read(key()).libraries.get(1).coverage.status).toBe('complete');
+  expect(worker.read(key()).libraries.get(2).coverage.status).toBe('waiting');
+});
+
+test('a recovered vector during a partial fit invalidates that publication and staged observations', async () => {
+  const commit = jest.fn(), observer = { prepare: () => ({ commit }), hasPending: () => true };
+  const { worker, snapshot, dependencies } = setup(observer, undefined, { perLibrary: 10 });
+  const hash = snapshot.corpus.documents[0].hash, vector = snapshot.vectors.get(hash);
+  snapshot.vectors.delete(hash);
+  const fit = dependencies.fit.getMockImplementation();
+  dependencies.fit.mockImplementationOnce(async (...args) => { snapshot.vectors.set(hash, vector); return fit(...args); });
+  expect(await worker.run()).toMatchObject({ status: 'invalidated' });
+  expect(commit).not.toHaveBeenCalled();
+  expect(await worker.run()).toMatchObject({ status: 'published', missingDescriptions: 0 });
+  expect(commit).toHaveBeenCalledTimes(1);
+});
+
+test('publication projects only fixed summary fields from the private fit result', async () => {
+  const { worker, dependencies } = setup();
+  const fit = dependencies.fit.getMockImplementation();
+  dependencies.fit.mockImplementationOnce(async (...args) => {
+    const model = await fit(...args); model.summary.privateText = 'PRIVATE'; return model;
+  });
+  expect(await worker.run()).toMatchObject({ status: 'published' });
+  expect(JSON.stringify(worker.getStatus())).not.toContain('PRIVATE');
 });
 
 test('empty inventory and initial snapshot drift skip fitting', async () => {

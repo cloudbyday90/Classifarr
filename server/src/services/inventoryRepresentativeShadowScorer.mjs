@@ -5,10 +5,11 @@ import { compareRepresentativeCandidates } from './representativeCandidateCompar
 import { INVENTORY_REPRESENTATIVE_PROFILE_VERSION } from './inventoryRepresentativeProfile.mjs';
 import { representativeValidationError } from './representativeValidation.mjs';
 import { representativeValidationIssue } from './representativeValidationDiagnostics.mjs';
+import { validateRepresentativeCoverage } from './inventoryRepresentativeCoverage.mjs';
 
 export const REPRESENTATIVE_SHADOW_REASONS = Object.freeze(['agrees', 'disagrees', 'known_item', 'known_description',
   'scope_changed', 'representation_changed', 'sparse_profiles', 'unconverged_profiles', 'initialization_sensitive',
-  'no_positive_match', 'tied_destinations', 'invalid_input']);
+  'no_positive_match', 'tied_destinations', 'invalid_input', 'incomplete_profiles', 'partial_agrees', 'partial_disagrees']);
 
 /** Includes identities excluded from training; this digest never enters a model or public report. */
 export function representativeNoveltyKey(snapshot) {
@@ -34,7 +35,11 @@ export function compareInventoryRepresentativeShadow({ observation, snapshot, mo
         !ids.includes(observation.destinationId) || ids.some(id => !Number.isSafeInteger(id) || id < 1 ||
           model.libraries.get(id)?.mediaType !== observation.mediaType)) return 'scope_changed';
     const profiles = ids.map(id => model.libraries.get(id));
-    return compareRepresentativeCandidates(profiles, observation.vector, identity.dimensions, ids.indexOf(observation.destinationId), onInvalid);
+    profiles.forEach(profile => validateRepresentativeCoverage(profile.coverage));
+    if (profiles.some(profile => profile.coverage.status === 'waiting')) return 'incomplete_profiles';
+    if (profiles.some(profile => profile.coverage.status === 'sparse')) return 'sparse_profiles';
+    const reason = compareRepresentativeCandidates(profiles, observation.vector, identity.dimensions, ids.indexOf(observation.destinationId), onInvalid);
+    return ['agrees', 'disagrees'].includes(reason) && profiles.some(profile => profile.coverage.status === 'partial') ? `partial_${reason}` : reason;
   } catch (error) {
     try { onInvalid?.(representativeValidationIssue(error)); } catch { /* No observer authority. */ }
     return 'invalid_input';

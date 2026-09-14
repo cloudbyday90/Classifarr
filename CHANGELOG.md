@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Publish sufficiently covered library profiles while missing descriptions backfill,
+  retaining all candidate libraries and withdrawing under-covered profiles safely.
+  Track partial-data comparisons separately in existing Library learning details;
+  no extra inference, controls or live routing changes.
 - Isolate repeatedly rejected inventory descriptions with durable, bounded retries
   so healthy descriptions can continue backfilling. Preserve validated checkpoints,
   retry failed batch members individually, and retain provider-wide cooldowns.
