@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Isolate repeatedly rejected inventory descriptions with durable, bounded retries
+  so healthy descriptions can continue backfilling. Preserve validated checkpoints,
+  retry failed batch members individually, and retain provider-wide cooldowns.
 - Diagnose rejected description-provider responses with actionable, deduplicated
   logs. Preserve retry backoff across busy passes and automatically backfill missing
   validated descriptions from existing checkpoints after provider recovery.

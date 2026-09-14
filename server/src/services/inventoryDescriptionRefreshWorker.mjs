@@ -1,11 +1,11 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { resolveLocalStudyEmbeddingConfig } from './localStudyEmbeddingClient.mjs';
-import { INVENTORY_DESCRIPTION_CACHE_LOCK, inspectDescriptionRepresentation,
-  writeInventoryDescriptionBatch } from './inventoryDescriptionBatchWriter.mjs';
+import { INVENTORY_DESCRIPTION_CACHE_LOCK, inspectDescriptionRepresentation } from './inventoryDescriptionBatchWriter.mjs';
 import { createInventoryDescriptionRecovery } from './inventoryDescriptionRecovery.mjs';
+import { createInventoryDescriptionIsolationRepository } from './inventoryDescriptionIsolationRepository.mjs';
+import { backfillInventoryDescriptions } from './inventoryDescriptionBackfill.mjs';
 
 const QUIET_INTERVAL_MS = 300_000;
-const MAX_NEW_DESCRIPTIONS = 64;
 
 function eligibleConfig(state) {
   if (state?.rag_enabled !== true) return null;
@@ -16,6 +16,7 @@ function eligibleConfig(state) {
 export function createInventoryDescriptionRefreshWorker({
   repository, cache, createEmbedder, withSessionAdvisoryLock, getRevision = () => 0, now = Date.now,
   recovery = createInventoryDescriptionRecovery({ now }),
+  isolation = createInventoryDescriptionIsolationRepository(repository), random = Math.random,
 }) {
   let activeController = null;
   let stopped = false;
@@ -26,6 +27,7 @@ export function createInventoryDescriptionRefreshWorker({
   async function refresh(signal, revision) {
     signal.throwIfAborted();
     const expiredRowsPruned = await cache.pruneExpired();
+    await isolation.pruneExpired();
     const state = await repository.readState();
     signal.throwIfAborted();
     if (state?.rag_enabled !== true) return result('disabled', { expiredRowsPruned });
@@ -45,21 +47,9 @@ export function createInventoryDescriptionRefreshWorker({
     if (!corpus.texts.size) return result('empty_corpus', counts);
     const embedder = createEmbedder(state);
     const identity = await inspectDescriptionRepresentation(embedder, signal);
-    const hashes = [...corpus.texts.keys()];
-    const present = await cache.findPresent(identity, hashes);
-    counts.cacheHits = present.size;
-    const pending = hashes.filter(hash => !present.has(hash));
-    counts.remainingDescriptions = pending.length;
-    for (let offset = 0; offset < Math.min(pending.length, MAX_NEW_DESCRIPTIONS); offset += 8) {
-      const entries = await writeInventoryDescriptionBatch({ embedder, identity, cache, signal, admit,
-        hashes: pending.slice(offset, Math.min(offset + 8, MAX_NEW_DESCRIPTIONS)), texts: corpus.texts });
-      if (!entries) return result('yielded', counts);
-      recovery.committed(entries.length);
-      counts.embeddedDescriptions += entries.length;
-      counts.remainingDescriptions -= entries.length;
-    }
-    if (!await admit()) return result('yielded', counts);
-    return result(counts.remainingDescriptions ? 'warming_cache' : 'up_to_date', counts);
+    const status = await backfillInventoryDescriptions({ embedder, identity, cache, isolation, signal, admit,
+      hashes: [...corpus.texts.keys()], texts: corpus.texts, counts, recovery, random });
+    return result(status, counts);
   }
 
   return {

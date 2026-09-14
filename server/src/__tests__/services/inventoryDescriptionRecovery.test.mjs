@@ -77,3 +77,14 @@ test('both synchronous and asynchronous logger failures cannot break recovery', 
     await Promise.resolve();
   }
 });
+
+test('isolation warnings do not pause unrelated work or expose content fingerprints', () => {
+  const log = { warn: jest.fn(), info: jest.fn() };
+  const recovery = createInventoryDescriptionRecovery({ log, now: () => 0, random: () => 0 });
+  for (let index = 0; index < 5000; index++) recovery.isolated(providerResponseError('batch'), 8, 60000);
+  expect(recovery.isCoolingDown()).toBe(false);
+  expect(log.warn).toHaveBeenCalledTimes(1);
+  expect(log.warn.mock.calls[0][1]).toMatchObject({ affectedDescriptions: 8, recovery: expect.stringContaining('does not identify the culprit') });
+  for (const [count, delay] of [[0, 60000], [9, 60000], [1, 0], [1, 3600001]]) recovery.isolated(new Error('PRIVATE'), count, delay);
+  expect(log.warn).toHaveBeenCalledTimes(1);
+});

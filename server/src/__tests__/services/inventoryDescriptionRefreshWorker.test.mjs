@@ -4,6 +4,8 @@ import { createInventoryDescriptionRefreshWorker } from '../../services/inventor
 import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescriptionCorpus.mjs';
 import { INVENTORY_DESCRIPTION_CACHE_LOCK } from '../../services/inventoryDescriptionBatchWriter.mjs';
 import { createInventoryDescriptionRecovery } from '../../services/inventoryDescriptionRecovery.mjs';
+import { createMemoryDescriptionIsolation } from '../fixtures/descriptionIsolation.mjs';
+import { providerResponseError } from '../../services/providerResponseDiagnosis.mjs';
 
 function setup(count = 10) {
   let time = 0;
@@ -24,7 +26,8 @@ function setup(count = 10) {
   const dependencies = { repository, cache, createEmbedder: jest.fn(() => embedder),
     withSessionAdvisoryLock: jest.fn(async (key, callback) => { await callback(); return true; }),
     now: () => time, getRevision: () => revision,
-    recovery: createInventoryDescriptionRecovery({ now: () => time, random: () => 0 }) };
+    recovery: createInventoryDescriptionRecovery({ now: () => time, random: () => 0 }),
+    isolation: createMemoryDescriptionIsolation(() => time), random: () => 0 };
   return { state, rows, saved, identity, embedder, repository, cache, dependencies,
     worker: createInventoryDescriptionRefreshWorker(dependencies),
     advance: (ms = 300_000) => { time += ms; }, sync: () => { revision++; } };
@@ -147,7 +150,7 @@ test('busy passes cannot reset an unresolved failure episode or its exponential 
 test('rejects sparse batches without a partial cache write', async () => {
   const { worker, embedder, cache } = setup(2);
   embedder.embedBatch.mockResolvedValue(new Array(2));
-  expect(await worker.run()).toMatchObject({ status: 'failed', failureCode: 'shape' });
+  expect(await worker.run()).toMatchObject({ status: 'warming_cache', isolatedDescriptions: 2, remainingDescriptions: 2 });
   expect(cache.write).not.toHaveBeenCalled();
 });
 
@@ -186,4 +189,90 @@ test('public refresh reports never include corpus, configuration, vectors or mod
   const report = await worker.run();
   expect(JSON.stringify(report)).not.toMatch(/PRIVATE|localhost|11434|test:latest|digest|tmdb_id|library_id|overview|vector|hash/);
   expect(report).toMatchObject({ mode: 'cache_only', status: 'up_to_date' });
+});
+
+test('a bad description cannot starve healthy movie/TV work and eventually self-heals', async () => {
+  const { worker, rows, embedder, advance, dependencies, saved } = setup(24);
+  rows.slice(12).forEach(row => { row.media_type = 'tv'; row.library_id = 2; });
+  const original = embedder.embedBatch.getMockImplementation();
+  embedder.embedBatch.mockImplementation(async texts => {
+    if (texts.includes('PRIVATE synopsis 0')) throw providerResponseError('http_rejected', 'embedding');
+    return original(texts);
+  });
+  expect(await worker.run()).toMatchObject({ status: 'warming_cache', isolatedDescriptions: 8, embeddedDescriptions: 16, remainingDescriptions: 8 });
+  expect(saved.size).toBe(16);
+  expect([...dependencies.isolation.records.values()].every(record => record.attempts === 0)).toBe(true);
+  advance(60000);
+  const partial = await worker.run();
+  expect(partial).toMatchObject({ status: 'warming_cache', embeddedDescriptions: 7, isolatedDescriptions: 1, remainingDescriptions: 1 });
+  expect(saved.size).toBe(23);
+  expect([...dependencies.isolation.records.values()]).toMatchObject([{ attempts: 1 }]);
+  const calls = embedder.embedBatch.mock.calls.length;
+  expect(await worker.run()).toMatchObject({ status: 'waiting_for_retry', deferredDescriptions: 1 });
+  expect(embedder.embedBatch).toHaveBeenCalledTimes(calls);
+  advance(60000);
+  embedder.embedBatch.mockImplementation(original);
+  expect(await worker.run()).toMatchObject({ status: 'up_to_date', cacheHits: 23, embeddedDescriptions: 1, deferredDescriptions: 0 });
+  expect(dependencies.isolation.records.size).toBe(0);
+});
+
+test('all-bad provider responses stop after two calls, persist suspects and retain global cooldown', async () => {
+  const { worker, embedder, dependencies } = setup(40);
+  embedder.embedBatch.mockResolvedValue([]);
+  expect(await worker.run()).toMatchObject({ status: 'failed', failureCode: 'batch', retryAfterSeconds: 60 });
+  expect(embedder.embedBatch).toHaveBeenCalledTimes(2);
+  expect(dependencies.isolation.records.size).toBe(16);
+  expect(await worker.run()).toMatchObject({ status: 'cooldown' });
+});
+
+test.each(['transport', 'http_busy', 'http_auth', 'json', 'model'])('provider-wide %s failures do not isolate individual descriptions', async code => {
+  const { worker, embedder, dependencies } = setup();
+  embedder.embedBatch.mockRejectedValue(providerResponseError(code, 'embedding'));
+  expect(await worker.run()).toMatchObject({ status: 'failed', failureCode: code });
+  expect(embedder.embedBatch).toHaveBeenCalledTimes(1);
+  expect(dependencies.isolation.records.size).toBe(0);
+});
+
+test('busy admission after rejection prevents a stale isolation write', async () => {
+  const { worker, state, embedder, dependencies } = setup();
+  embedder.embedBatch.mockImplementationOnce(async () => { state.busy = true; return []; });
+  expect(await worker.run()).toMatchObject({ status: 'yielded' });
+  expect(dependencies.isolation.records.size).toBe(0);
+});
+
+test('a cache write failure is not reclassified as an individual input error', async () => {
+  const { worker, cache, dependencies } = setup();
+  cache.write.mockRejectedValue(Object.assign(new Error('PRIVATE storage'), { code: 'INVALID_EMBEDDING', embeddingIssue: 'zero' }));
+  expect(await worker.run()).toMatchObject({ status: 'failed' });
+  expect(dependencies.isolation.records.size).toBe(0);
+});
+
+test('model drift behind a malformed response does not label descriptions as suspect', async () => {
+  const { worker, embedder, identity, dependencies } = setup();
+  embedder.embedBatch.mockImplementationOnce(async () => { identity.digest = 'b'.repeat(64); return []; });
+  expect(await worker.run()).toMatchObject({ status: 'failed', failureCode: 'model_changed' });
+  expect(dependencies.isolation.records.size).toBe(0);
+});
+
+test('journal namespace follows the installed representation and changed content', async () => {
+  const { worker, embedder, identity, dependencies, advance, rows } = setup(2);
+  embedder.embedBatch.mockResolvedValueOnce([]);
+  await worker.run();
+  expect(dependencies.isolation.records.size).toBe(2);
+  identity.digest = 'b'.repeat(64);
+  rows[0].overview = 'New synthetic description';
+  advance(60000);
+  expect(await worker.run()).toMatchObject({ status: 'up_to_date', embeddedDescriptions: 2, deferredDescriptions: 0 });
+  expect(dependencies.isolation.records.size).toBe(2); // Old namespace expires independently.
+});
+
+test('journal cleanup failure after a cache commit cannot regenerate that checkpoint', async () => {
+  const { worker, dependencies, saved, embedder, advance } = setup(8);
+  const clear = jest.spyOn(dependencies.isolation, 'clear');
+  clear.mockResolvedValueOnce().mockRejectedValueOnce(new Error('PRIVATE database'));
+  expect(await worker.run()).toMatchObject({ status: 'failed' });
+  expect(saved.size).toBe(8);
+  advance(60000);
+  expect(await worker.run()).toMatchObject({ status: 'up_to_date', cacheHits: 8, embeddedDescriptions: 0 });
+  expect(embedder.embedBatch).toHaveBeenCalledTimes(1);
 });

@@ -8,6 +8,8 @@ import { createInventoryRepresentativeProfileRepository } from '../../services/i
 import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescriptionCorpus.mjs';
 import { inventoryRepresentativeSourceKey } from '../../services/inventoryRepresentativeProfile.mjs';
 import { createInventoryDescriptionRecovery } from '../../services/inventoryDescriptionRecovery.mjs';
+import { createInventoryDescriptionIsolationRepository } from '../../services/inventoryDescriptionIsolationRepository.mjs';
+import { readFile } from 'node:fs/promises';
 
 let client;
 let repository;
@@ -22,6 +24,7 @@ beforeEach(async () => {
     CREATE TEMP TABLE task_queue (status text, next_retry_at timestamp DEFAULT now());
     CREATE TEMP TABLE media_server_sync_status (id serial, library_id int, status text, created_at timestamptz DEFAULT now());
     CREATE TEMP TABLE inventory_description_vector_cache (LIKE public.inventory_description_vector_cache INCLUDING ALL);
+    CREATE TEMP TABLE inventory_description_retry_journal (LIKE public.inventory_description_retry_journal INCLUDING ALL);
   `);
   repository = createInventoryDescriptionRefreshRepository({ withTransaction: async callback => {
     await client.query('BEGIN');
@@ -85,13 +88,68 @@ test('malformed batch exclusion survives restart and backfills only missing pgve
       } }),
     recovery: createInventoryDescriptionRecovery({ random: () => 0 }),
   };
-  expect(await createInventoryDescriptionRefreshWorker(dependencies).run()).toMatchObject({ status: 'failed', failureCode: 'dimensions' });
+  expect(await createInventoryDescriptionRefreshWorker(dependencies).run()).toMatchObject({ status: 'warming_cache', isolatedDescriptions: 2 });
   expect((await cache.findPresent(identity, [...texts.keys()])).size).toBe(8);
   const restarted = createInventoryDescriptionRefreshWorker({ ...dependencies, recovery: createInventoryDescriptionRecovery() });
+  expect(await restarted.run()).toMatchObject({ status: 'waiting_for_retry', deferredDescriptions: 2 });
+  await client.query("UPDATE inventory_description_retry_journal SET next_retry_at=now()-interval '1 second'");
   expect(await restarted.run()).toMatchObject({ status: 'up_to_date', cacheHits: 8, embeddedDescriptions: 2 });
-  expect(batchSizes).toEqual([8, 2, 2]);
+  expect(batchSizes).toEqual([8, 2, 1, 1]);
   expect((await cache.read(identity, [...texts.keys()])).size).toBe(10);
   expect((await client.query('SELECT count(*)::int AS count FROM task_queue')).rows[0].count).toBe(0);
+});
+
+test('retry journal persists due times, attempt counts and representation separation', async () => {
+  const journal = createInventoryDescriptionIsolationRepository(repository);
+  const identity = { provider: 'ollama', model: 'test:latest', digest: 'd'.repeat(64), dimensions: 3 };
+  const hash = 'e'.repeat(64), other = 'f'.repeat(64);
+  await journal.defer(identity, [hash, other], { code: 'batch', attempts: 0, delayMs: 60000 });
+  expect(await journal.read(identity, [hash])).toEqual(new Map([[hash, { attempts: 0, due: false }]]));
+  expect(await journal.read({ ...identity, digest: 'a'.repeat(64) }, [hash])).toEqual(new Map());
+  await client.query("UPDATE inventory_description_retry_journal SET next_retry_at=now()-interval '1 second' WHERE description_hash=$1", [hash]);
+  expect(await journal.read(identity, [hash])).toEqual(new Map([[hash, { attempts: 0, due: true }]]));
+  await journal.defer(identity, [hash], { code: 'zero', attempts: 1, delayMs: 120000 });
+  expect(await journal.read(identity, [hash])).toEqual(new Map([[hash, { attempts: 1, due: false }]]));
+  await journal.defer(identity, [hash], { code: 'zero', attempts: 1, delayMs: 120000 });
+  expect((await client.query('SELECT count(*)::int AS count FROM inventory_description_retry_journal')).rows[0].count).toBe(2);
+  await client.query("UPDATE inventory_description_retry_journal SET expires_at=now()-interval '1 second' WHERE description_hash=$1", [hash]);
+  expect(await journal.read(identity, [hash])).toEqual(new Map());
+  await journal.pruneExpired();
+  expect((await journal.read(identity, [other])).size).toBe(1);
+  await journal.clear(identity, [other]);
+  expect((await client.query('SELECT count(*)::int AS count FROM inventory_description_retry_journal')).rows[0].count).toBe(0);
+});
+
+test('retry journal admits existing rows but cannot grow beyond the shared-lock capacity budget', async () => {
+  const journal = createInventoryDescriptionIsolationRepository(repository);
+  const identity = { provider: 'ollama', model: 'test:latest', digest: 'a'.repeat(64), dimensions: 3 };
+  const sample = '0'.repeat(63) + '1';
+  await journal.defer(identity, [sample], { code: 'zero', attempts: 1, delayMs: 60000 });
+  await client.query(`INSERT INTO inventory_description_retry_journal
+    SELECT projection_version,model_name,model_digest,dimensions,lpad(to_hex(n),64,'0'),attempts,failure_code,next_retry_at,last_failed_at,expires_at
+    FROM inventory_description_retry_journal CROSS JOIN generate_series(2,19999) AS n`);
+  await expect(journal.defer(identity, ['e'.repeat(64), 'f'.repeat(64)], { code: 'batch', attempts: 0, delayMs: 60000 })).rejects.toThrow('description_isolation_capacity_exceeded');
+  expect(await journal.read(identity, ['e'.repeat(64), 'f'.repeat(64)])).toEqual(new Map());
+  expect((await client.query('SELECT count(*)::int AS count FROM inventory_description_retry_journal')).rows[0].count).toBe(19999);
+  await journal.defer(identity, ['e'.repeat(64)], { code: 'batch', attempts: 0, delayMs: 60000 });
+  await expect(journal.defer(identity, ['f'.repeat(64)], { code: 'batch', attempts: 0, delayMs: 60000 })).rejects.toThrow('description_isolation_capacity_exceeded');
+  await journal.defer(identity, [sample], { code: 'zero', attempts: 2, delayMs: 120000 });
+  expect((await journal.read(identity, [sample])).get(sample).attempts).toBe(2);
+  expect((await client.query('SELECT count(*)::int AS count FROM inventory_description_retry_journal')).rows[0].count).toBe(20000);
+});
+
+test('additive journal migration works fresh and is idempotent with existing retry state', async () => {
+  const sql = await readFile(new URL('../../../../database/migrations/20260913_220000_add_description_retry_journal.sql', import.meta.url), 'utf8');
+  await client.query('BEGIN');
+  try {
+    await client.query('DROP TABLE pg_temp.inventory_description_retry_journal');
+    await client.query('CREATE SCHEMA isolation_migration_test');
+    await client.query('SET LOCAL search_path TO isolation_migration_test');
+    await client.query(sql);
+    await client.query(`INSERT INTO inventory_description_retry_journal VALUES ('test','test:latest',$1,3,$2,0,'batch',now(),now(),now()+interval '30 days')`, ['a'.repeat(64), 'b'.repeat(64)]);
+    await client.query(sql);
+    expect((await client.query('SELECT count(*)::int AS count FROM inventory_description_retry_journal')).rows[0].count).toBe(1);
+  } finally { await client.query('ROLLBACK'); }
 });
 
 test('representative snapshots reconcile membership, conflicts and expired pgvector rows without writes', async () => {

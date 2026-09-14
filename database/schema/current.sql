@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-13T12:50:24.852Z
--- Latest Migration: 20260913_140000_add_source_identity_recovery_state.sql
+-- Generated: 2026-09-14T01:59:57.315Z
+-- Latest Migration: 20260913_220000_add_description_retry_journal.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3202,6 +3202,38 @@ CREATE TABLE public.held_out_semantic_study_lifecycle_source_checkpoint (
     CONSTRAINT held_out_semantic_study_lifecycle_source_c_source_receipt_check CHECK ((jsonb_typeof(source_receipt) = 'object'::text)),
     CONSTRAINT held_out_semantic_study_lifecycle_source_checkp_state_key_check CHECK ((state_key = 'normal_policy_lifecycle_source'::text))
 );
+
+
+--
+-- Name: inventory_description_retry_journal; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.inventory_description_retry_journal (
+    projection_version text NOT NULL,
+    model_name text NOT NULL,
+    model_digest text NOT NULL,
+    dimensions integer NOT NULL,
+    description_hash text NOT NULL,
+    attempts integer NOT NULL,
+    failure_code text NOT NULL,
+    next_retry_at timestamp with time zone NOT NULL,
+    last_failed_at timestamp with time zone DEFAULT now() NOT NULL,
+    expires_at timestamp with time zone DEFAULT (now() + '30 days'::interval) NOT NULL,
+    CONSTRAINT inventory_description_retry_journal_attempts_check CHECK (((attempts >= 0) AND (attempts <= 7))),
+    CONSTRAINT inventory_description_retry_journal_description_hash_check CHECK ((description_hash ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT inventory_description_retry_journal_dimensions_check CHECK (((dimensions >= 1) AND (dimensions <= 16000))),
+    CONSTRAINT inventory_description_retry_journal_failure_code_check CHECK ((failure_code = ANY (ARRAY['http_rejected'::text, 'batch'::text, 'shape'::text, 'dimensions'::text, 'nonfinite'::text, 'float32'::text, 'zero'::text]))),
+    CONSTRAINT inventory_description_retry_journal_model_digest_check CHECK ((model_digest ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT inventory_description_retry_journal_model_name_check CHECK (((char_length(model_name) >= 1) AND (char_length(model_name) <= 207))),
+    CONSTRAINT inventory_description_retry_journal_projection_version_check CHECK (((char_length(projection_version) >= 1) AND (char_length(projection_version) <= 100)))
+);
+
+
+--
+-- Name: TABLE inventory_description_retry_journal; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.inventory_description_retry_journal IS 'Private bounded description retry state. Zero attempts means an unattributed failed batch; only singleton failures increment attempts. No routing authority.';
 
 
 --
@@ -9197,6 +9229,14 @@ ALTER TABLE ONLY public.held_out_semantic_study_lifecycle_source_checkpoint
 
 
 --
+-- Name: inventory_description_retry_journal inventory_description_retry_journal_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.inventory_description_retry_journal
+    ADD CONSTRAINT inventory_description_retry_journal_pkey PRIMARY KEY (projection_version, model_name, model_digest, dimensions, description_hash);
+
+
+--
 -- Name: inventory_description_vector_cache inventory_description_vector_cache_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11203,6 +11243,13 @@ CREATE INDEX idx_error_log_unresolved_stage ON public.error_log USING btree (err
 --
 
 CREATE INDEX idx_historic_route_safety_refresh_receipts_actor_recent ON public.policy_runtime_historic_route_safety_refresh_receipts USING btree (actor_id, created_at DESC, receipt_id DESC);
+
+
+--
+-- Name: idx_inventory_description_retry_expiry; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_inventory_description_retry_expiry ON public.inventory_description_retry_journal USING btree (expires_at);
 
 
 --
@@ -15997,6 +16044,7 @@ FROM unnest(ARRAY[
     '20260909_102827_add_event_loop_delay_receipts.sql',
     '20260910_120000_add_source_identity_evidence_replay_observations.sql',
     '20260911_120000_add_inventory_description_vector_cache.sql',
-    '20260913_140000_add_source_identity_recovery_state.sql'
+    '20260913_140000_add_source_identity_recovery_state.sql',
+    '20260913_220000_add_description_retry_journal.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

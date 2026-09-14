@@ -13,6 +13,23 @@ export function createInventoryDescriptionRecovery({ log, now = Date.now, random
     try { Promise.resolve(log?.[level]?.(message, data)).catch(() => {}); } // swallow-error: Logging must not interrupt backfill or recursively log its own failure.
     catch { /* A synchronous logger failure must not interrupt backfill. */ }
   };
+  const record = (diagnosis, delay, affectedDescriptions = 0) => {
+    const time = now();
+    const entry = issues.get(diagnosis.code) ?? { count: 0, reportedAt: null, committed: 0 };
+    entry.count = Math.min(MAX_COUNT, entry.count + 1);
+    issues.set(diagnosis.code, entry);
+    if (entry.reportedAt === null || time - entry.reportedAt >= REMINDER_MS) {
+      entry.reportedAt = time;
+      const { slowRetry: _slowRetry, ...details } = diagnosis;
+      emit('warn', 'Description provider data unavailable; automatic backfill scheduled', {
+        ...details, occurrences: entry.count, retryAfterSeconds: Math.ceil(delay / 1000), affectedDescriptions,
+        recovery: affectedDescriptions
+          ? 'Retry affected descriptions individually when due; a failed batch does not identify the culprit. Other eligible work can continue unless provider-wide failures pause the worker. Only validated data is saved.'
+          : 'Keep completed cache entries. Recheck the local model and retry missing current descriptions when due and foreground work is idle. Only validated batches are saved.',
+        routingAffected: false,
+      });
+    }
+  };
   return {
     isCoolingDown: () => now() < retryAt,
     failed(error) {
@@ -22,21 +39,13 @@ export function createInventoryDescriptionRecovery({ log, now = Date.now, random
       const sample = random();
       const jitter = Number.isFinite(sample) ? Math.min(1, Math.max(0, sample)) : 0;
       const delay = Math.min(MAX_DELAY_MS, base + Math.floor(base * 0.25 * jitter));
-      const time = now();
-      retryAt = time + delay;
-      const entry = issues.get(diagnosis.code) ?? { count: 0, reportedAt: null, committed: 0 };
-      entry.count = Math.min(MAX_COUNT, entry.count + 1);
-      issues.set(diagnosis.code, entry);
-      if (entry.reportedAt === null || time - entry.reportedAt >= REMINDER_MS) {
-        entry.reportedAt = time;
-        const { slowRetry: _slowRetry, ...details } = diagnosis;
-        emit('warn', 'Description provider data unavailable; automatic backfill scheduled', {
-          ...details, occurrences: entry.count, retryAfterSeconds: Math.ceil(delay / 1000),
-          recovery: 'Keep completed cache entries. Recheck the local model and retry missing current descriptions when due and foreground work is idle. Only validated batches are saved.',
-          routingAffected: false,
-        });
-      }
+      retryAt = now() + delay;
+      record(diagnosis, delay);
       return { failureCode: diagnosis.code, retryAfterSeconds: Math.ceil(delay / 1000) };
+    },
+    isolated(error, count, delayMs) {
+      if (!Number.isInteger(count) || count < 1 || count > 8 || !Number.isInteger(delayMs) || delayMs < 60_000 || delayMs > MAX_DELAY_MS) return;
+      record(diagnoseProviderResponse(error), delayMs, count);
     },
     committed(count) {
       if (!Number.isSafeInteger(count) || count <= 0 || count > 8) return;

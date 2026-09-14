@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { validateEmbedding } from '../utils/embeddingValidation.mjs';
 import { validateDescriptionRepresentation } from './inventoryDescriptionVectorCache.mjs';
+import { markDescriptionInputFailure } from './inventoryDescriptionIsolation.mjs';
 
 export const INVENTORY_DESCRIPTION_CACHE_LOCK = 0x49445247;
 
@@ -29,12 +30,15 @@ export async function writeInventoryDescriptionBatch({
   signal?.throwIfAborted();
   if (!await admit()) return null;
   signal?.throwIfAborted();
-  const batch = await embedder.embedBatch(hashes.map(hash => texts.get(hash)),
-    { dimensions: identity.dimensions, signal });
-  if (!Array.isArray(batch) || batch.length !== hashes.length) throw new Error('inventory_description_batch_invalid');
-  // Match pgvector's float32 storage before both cold and warm scoring.
-  const entries = Array.from(batch, (vector, index) => ({ hash: hashes[index],
-    vector: validateEmbedding(vector, identity.dimensions).map(Math.fround) }));
+  let entries;
+  try {
+    const batch = await embedder.embedBatch(hashes.map(hash => texts.get(hash)),
+      { dimensions: identity.dimensions, signal });
+    if (!Array.isArray(batch) || batch.length !== hashes.length) throw new Error('inventory_description_batch_invalid');
+    // Match pgvector's float32 storage before both cold and warm scoring.
+    entries = Array.from(batch, (vector, index) => ({ hash: hashes[index],
+      vector: validateEmbedding(vector, identity.dimensions).map(Math.fround) }));
+  } catch (error) { throw markDescriptionInputFailure(error); }
   if (!await admit()) return null;
   await verifyDescriptionRepresentation(embedder, identity, signal);
   if (!await admit()) return null;

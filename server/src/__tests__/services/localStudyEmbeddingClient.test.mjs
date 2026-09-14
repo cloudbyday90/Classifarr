@@ -5,6 +5,7 @@ import { canonicalStudyModel, createLocalStudyEmbeddingClient, resolveLocalStudy
 import { diagnoseProviderResponse } from '../../services/providerResponseDiagnosis.mjs';
 import { createInventoryDescriptionRefreshWorker } from '../../services/inventoryDescriptionRefreshWorker.mjs';
 import { createInventoryDescriptionRecovery } from '../../services/inventoryDescriptionRecovery.mjs';
+import { createMemoryDescriptionIsolation } from '../fixtures/descriptionIsolation.mjs';
 
 let server;
 let config;
@@ -157,21 +158,22 @@ test('provider recovery backfills only missing descriptions after a rejected par
       write: async (identity, entries) => { entries.forEach(entry => saved.add(entry.hash)); } },
     createEmbedder: () => embedder, withSessionAdvisoryLock: async (key, callback) => { await callback(); return true; },
     now: () => time, recovery: createInventoryDescriptionRecovery({ log, now: () => time, random: () => 0 }),
+    isolation: createMemoryDescriptionIsolation(() => time), random: () => 0,
   };
   const worker = createInventoryDescriptionRefreshWorker(dependencies);
-  expect(await worker.run()).toMatchObject({ status: 'failed', failureCode: 'batch', retryAfterSeconds: 60 });
+  expect(await worker.run()).toMatchObject({ status: 'warming_cache', isolatedDescriptions: 2 });
   expect(saved.size).toBe(8);
   const calls = requests.length;
-  expect(await worker.run()).toMatchObject({ status: 'cooldown' });
-  expect(requests).toHaveLength(calls);
+  expect(await worker.run()).toMatchObject({ status: 'waiting_for_retry' });
+  expect(requests.slice(calls).map(entry => entry.path)).toEqual(['/api/tags', '/api/show']);
   time += 60_000;
   expect(await worker.run()).toMatchObject({ status: 'up_to_date', cacheHits: 8, embeddedDescriptions: 2 });
   expect(saved.size).toBe(10);
-  expect(requests.filter(entry => entry.path === '/api/embed').map(entry => entry.body.input.length)).toEqual([8, 2, 2]);
+  expect(requests.filter(entry => entry.path === '/api/embed').map(entry => entry.body.input.length)).toEqual([8, 2, 1, 1]);
   expect(log.warn).toHaveBeenCalledTimes(1);
   expect(log.info).toHaveBeenCalledWith('Description backfill caught up', expect.objectContaining({ code: 'batch', validatedDescriptionsCommitted: 2 }));
   const restarted = createInventoryDescriptionRefreshWorker({ ...dependencies,
     recovery: createInventoryDescriptionRecovery({ now: () => time }) });
   expect(await restarted.run()).toMatchObject({ status: 'up_to_date', cacheHits: 10, embeddedDescriptions: 0 });
-  expect(requests.filter(entry => entry.path === '/api/embed')).toHaveLength(3);
+  expect(requests.filter(entry => entry.path === '/api/embed')).toHaveLength(4);
 });

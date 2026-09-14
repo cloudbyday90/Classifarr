@@ -114,6 +114,11 @@ learning across otherwise healthy movie and TV libraries. Use bounded per-input
 retry state and fair scheduling, preserving media-neutral mechanics and validation.
 Cloud adapters and live-classification query replay remain separate work.
 
+Follow-up: [description failure isolation](description-isolation-outcome.md) now
+adds durable, bounded per-description retries. The preceding results describe this
+original change; the follow-up records its separate design, verification and
+remaining profile-publication limitation.
+
 GitHub MCP found no open Classifarr PR during selection, so no PR was applied or
 merged. All six workflows for predecessor `31aeabca` were successful. No release,
 tag, dependency update, schema migration or version bump is part of this change.
