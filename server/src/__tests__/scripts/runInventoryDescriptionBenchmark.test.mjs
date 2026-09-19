@@ -5,6 +5,23 @@ import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescr
 
 const seed = 'benchmark-test-seed-2026';
 
+test('candidate-local CLI is exclusive, zero-generation and invalidates changed metadata', async () => {
+  const argv = ['--seed', seed, '--size', '8', '--folds', '2', '--candidate-local-evidence'], loadRuntime = jest.fn();
+  for (const invalid of [argv.filter(value => !['--folds', '2'].includes(value)), [...argv, '--generate-cases', '1'],
+    ...['--coverage-robustness', '--candidate-stability', '--semantic-pairs', '--evidence-reranker', '--fresh-policy-evaluation', '--investigate'].map(mode => [...argv, mode])]) {
+    await expect(runInventoryDescriptionBenchmark({ argv: invalid, loadRuntime })).rejects.toThrow('exclusive_grouped_zero_generation');
+  }
+  expect(loadRuntime).not.toHaveBeenCalled();
+  const instance = runtime();
+  expect(await runInventoryDescriptionBenchmark({ argv, loadRuntime: async () => instance }))
+    .toMatchObject({ protocol: 'inventory_candidate_local_evidence_v1', status: 'complete', sourceVerified: true, calls: 0 });
+  const snapshot = await instance.repository.read();
+  instance.repository.read.mockResolvedValueOnce(snapshot).mockResolvedValueOnce({ ...snapshot, candidateMetadata: new Map([['movie:1', null]]) });
+  expect(await runInventoryDescriptionBenchmark({ argv, loadRuntime: async () => instance }))
+    .toMatchObject({ status: 'invalidated', sourceVerified: false });
+  expect(instance.createClient).not.toHaveBeenCalled(); expect(instance.close).toHaveBeenCalledTimes(2);
+});
+
 test('independent candidate CLI is exclusive, zero-generation and source-verified after fitting', async () => {
   const argv = ['--seed', seed, '--size', '8', '--folds', '2', '--candidate-stability'], loadRuntime = jest.fn();
   for (const invalid of [argv.filter(value => !['--folds', '2'].includes(value)), [...argv, '--generate-cases', '1'],

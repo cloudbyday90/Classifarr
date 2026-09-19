@@ -137,6 +137,9 @@ claim that existing placements are ground truth.
 
 ## Rollback and delivery boundary
 
+Follow-up: [candidate-local evidence design](candidate-local-evidence-design.md)
+and [measured outcome](candidate-local-evidence-outcome.md).
+
 Use a new commit to revert the comparator/helper and shadow-contract changes;
 the benchmark and PR update can be reverted independently. Existing vector caches,
 profile memberships, checkpoints and recovery journals remain compatible.

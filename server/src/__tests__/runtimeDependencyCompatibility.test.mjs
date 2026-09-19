@@ -5,9 +5,18 @@ import express from 'express';
 import { rateLimit } from 'express-rate-limit';
 import request from 'supertest';
 import { z } from 'zod';
+import morgan from 'morgan';
 import { httpGet } from '../utils/httpClient.mjs';
 
 describe('runtime dependency compatibility', () => {
+  test('request log tokens escape quotes, delimiters and controls without adding a forged line', () => {
+    const hostile = 'agent"\\\r\nforged\tline';
+    const token = morgan['user-agent']({ headers: { 'user-agent': hostile } }, {});
+    expect(token).toBe('agent\\"\\\\\\r\\nforged\\tline');
+    expect(token).not.toContain('\n');
+    expect(morgan['user-agent']({ headers: {} }, {})).toBeUndefined();
+  });
+
   test('rate limiting rejects excess requests and provides retry metadata', async () => {
     const app = express();
     app.use(rateLimit({ windowMs: 60_000, limit: 2, standardHeaders: 'draft-7', legacyHeaders: false }));

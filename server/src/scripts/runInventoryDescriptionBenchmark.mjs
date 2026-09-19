@@ -52,6 +52,7 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     'semantic-pairs': { type: 'boolean' },
     'coverage-robustness': { type: 'boolean' },
     'candidate-stability': { type: 'boolean' },
+    'candidate-local-evidence': { type: 'boolean' },
     'preserve-description-candidate': { type: 'boolean' },
     'metadata-candidates': { type: 'boolean' }, 'learned-profiles': { type: 'boolean' } } });
   if (values['metadata-candidates'] && values['learned-profiles']) throw new Error('description_benchmark_selection_mode_conflict');
@@ -67,6 +68,10 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
   if (values['candidate-stability'] && (!options.folds || options.generateCases ||
       Object.entries(values).some(([name, value]) => name !== 'candidate-stability' && value === true))) {
     throw new Error('candidate_stability_requires_exclusive_grouped_zero_generation');
+  }
+  if (values['candidate-local-evidence'] && (!options.folds || options.generateCases ||
+      Object.entries(values).some(([name, value]) => name !== 'candidate-local-evidence' && value === true))) {
+    throw new Error('candidate_local_evidence_requires_exclusive_grouped_zero_generation');
   }
   if (values['coverage-robustness'] && (!options.folds || options.generateCases ||
       Object.entries(values).some(([name, value]) => name !== 'coverage-robustness' && value === true))) {
@@ -125,11 +130,12 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     const representation = await inspectDescriptionRepresentation(runtime.embedder, abort);
     const snapshot = await runtime.repository.read(representation);
     await verifyDescriptionRepresentation(runtime.embedder, representation, abort);
-    if (values['evidence-reranker'] || values['semantic-pairs'] || values['coverage-robustness'] || values['candidate-stability']) {
+    if (values['evidence-reranker'] || values['semantic-pairs'] || values['coverage-robustness'] || values['candidate-stability'] || values['candidate-local-evidence']) {
       const pairClient = values['semantic-pairs'] && options.generateCases ? runtime.createClient() : undefined;
       const pairIdentity = pairClient ? await pairClient.inspect(abort) : undefined;
-      const report = values['candidate-stability']
-        ? await runInventoryCandidateStabilityBenchmark(snapshot, representation.dimensions, options, { signal: abort, onProgress })
+      const report = values['candidate-stability'] || values['candidate-local-evidence']
+        ? await runInventoryCandidateStabilityBenchmark(snapshot, representation.dimensions, options,
+          { signal: abort, onProgress, localEvidence: values['candidate-local-evidence'] === true })
         : values['coverage-robustness']
         ? await runInventoryCoverageBenchmark(snapshot, representation.dimensions, options, { signal: abort, onProgress })
         : values['semantic-pairs']

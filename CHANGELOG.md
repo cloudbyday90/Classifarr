@@ -11,6 +11,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a read-only, candidate-local library evidence evaluation using distinct
+  nearby items, learned content groups and metadata checks. Compare ambiguous
+  cases and stable controls without changing live routing or adding user prompts.
+- Apply server-runtime updates from PR #536 locally, including patched Morgan
+  and Undici, and reconcile Discord's separate Undici overrides. No PR merge,
+  product-version bump or release is included.
 - Reject library-profile comparisons that only appear stable when unrelated
   fitting starts are paired. Add source-verified, read-only movie/TV hold-out
   comparisons with unusual-description diagnostics; no routing changes or new

@@ -45,6 +45,53 @@ test('paired hold-outs cover both media and every library with private ranges an
   expect(snapshot).toEqual(before);
 });
 
+test('local evidence pairs all held cases with frozen independent controls and redacted minority diagnostics', async () => {
+  const snapshot = fixture(), before = structuredClone(snapshot), onProgress = jest.fn();
+  const control = await run(snapshot);
+  const report = await run(snapshot, {}, { localEvidence: true, onProgress });
+  expect(report).toMatchObject({ protocol: 'inventory_candidate_local_evidence_v1', calls: 0, livePromotionAllowed: false,
+    evaluation: { nearestExampleSliceIsDiagnosticOnly: true, supportingExamples: 3, correlationVeto: 0.98 } });
+  expect(report.sampleFingerprint).toBe(control.sampleFingerprint);
+  expect(report.arms.map(row => row.name)).toEqual(['independent', 'local', 'combined']);
+  const [baseline, local, combined] = report.arms;
+  expect(local).toMatchObject({ compared: 0, reasons: { local_correlated_examples: 8 } });
+  expect(combined).toEqual({ ...baseline, name: 'combined' });
+  expect(baseline.compared).toBe(control.arms[1].compared);
+  expect(baseline.nearestExamples.reduce((sum, row) => sum + row.evaluated, 0)).toBe(8);
+  expect(JSON.stringify([report, onProgress.mock.calls])).not.toMatch(/PRIVATE|centroid|overview|libraryIds|tmdb_id|pairedWithComplete|pairedWithAligned/);
+  expect(snapshot).toEqual(before);
+  snapshot.libraries.reverse();
+  expect((await run(snapshot, {}, { localEvidence: true })).arms).toEqual(report.arms);
+});
+
+test('local proposals map back to full candidate scope and recover ambiguous cases without placement leakage', async () => {
+  const snapshot = fixture(), dimensions = 4 + snapshot.corpus.documents.length;
+  snapshot.candidateMetadata = new Map();
+  snapshot.corpus.documents.forEach((doc, index) => {
+    snapshot.vectors.set(doc.hash, Array.from({ length: dimensions }, (_, axis) =>
+      axis === doc.libraryIds[0] - 1 ? 1 : axis === index + 4 ? 0.5 : 0));
+    snapshot.candidateMetadata.set(doc.key, { genres: [`trait-${doc.libraryIds[0]}`], studio: 'shared' });
+  });
+  snapshot.libraries.reverse();
+  const fit = async (training, dims, dependencies) => {
+    const model = await localFit(training, dims, dependencies);
+    // Preserve real selected means/membership; inject tied alternate views to isolate combination/mapping.
+    for (const profile of model.libraries.values()) for (let start = 0; start < 3; start++) {
+      if (start === profile.selectedStart) continue;
+      profile.starts[start].groups.forEach(group => {
+        group.centroid = Array.from({ length: dims }, (_, axis) => axis < 4 ? 0.5 : 0);
+      });
+    }
+    return model;
+  };
+  const report = await runInventoryCandidateStabilityBenchmark(snapshot, dimensions, options, { fit, localEvidence: true });
+  expect(report.arms[0].compared).toBe(0);
+  expect(report.arms[0].reasons).toEqual({ tied_destinations: 8 });
+  expect(report.arms[1]).toMatchObject({ compared: 8, placementAgreements: 8 });
+  expect(report.arms[2]).toMatchObject({ compared: 8, placementAgreements: 8,
+    pairedWithIndependent: { recoveredComparisons: 8, changedDestination: 0 } });
+});
+
 test('observed training ranges detect unusual geometry without deciding or learning a destination', async () => {
   const snapshot = fixture(), model = await localFit(snapshot, 4);
   const ranges = await buildCandidateSupportRanges(model, snapshot, 4);
