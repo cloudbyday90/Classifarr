@@ -96,6 +96,21 @@ test('restart discovers existing checkpoints without an in-memory sync hint', as
   expect(await restarted.run()).toMatchObject({ status: 'up_to_date', cacheHits: 10, embeddedDescriptions: 0 });
 });
 
+test('lost session lock cancels inference before writing its batch and a later pass recovers', async () => {
+  const { worker, dependencies, embedder, cache, advance } = setup(2);
+  const controller = new AbortController();
+  dependencies.withSessionAdvisoryLock.mockImplementationOnce(async (key, callback) => {
+    await callback({ signal: controller.signal }); return true;
+  });
+  embedder.embedBatch.mockImplementationOnce(async texts => {
+    controller.abort(new Error('connection lost')); return texts.map(() => [1, 0]);
+  });
+  expect(await worker.run()).toMatchObject({ status: 'failed' });
+  expect(cache.write).not.toHaveBeenCalled();
+  advance();
+  expect(await worker.run()).toMatchObject({ status: 'up_to_date', embeddedDescriptions: 2 });
+});
+
 test.each([
   [{ rag_enabled: false }, 'disabled'],
   [{ primary_provider: 'openai' }, 'unsupported_provider'],

@@ -1,13 +1,16 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { createHash } from 'node:crypto';
 import pg from 'pg';
-import { createDescriptionBenchmarkRepository } from './inventoryDescriptionBenchmarkRepository.mjs';
+import { readDescriptionBenchmarkSnapshot, decodeDescriptionBenchmarkSnapshot } from './inventoryDescriptionBenchmarkRepository.mjs';
 import { describeInventorySnapshotDigests } from './inventoryDescriptionSnapshotDigests.mjs';
 import { getActivePolicies } from './policyEngineQueries.mjs';
 import { createLocalStudyEmbeddingClient } from './localStudyEmbeddingClient.mjs';
 import { createLocalDescriptionBenchmarkClient } from './localDescriptionBenchmarkClient.mjs';
 import { readLibraryObservationTraits } from './libraryProfileObservation.mjs';
 import { LOG_CONFIG } from '../utils/logging/logConfig.mjs';
+import { runDatabaseTransaction } from '../utils/databaseTransaction.mjs';
+import { databaseConnectionErrorCode } from '../utils/databaseClientLease.mjs';
+import { createLogger } from '../utils/logger.mjs';
 
 const policyFields = ['id', 'library_id', 'name', 'enabled', 'priority', 'auto_classify_threshold', 'prompt_threshold',
   'trust_patterns', 'trust_rag', 'trust_history', 'combination_mode', 'preset_weight', 'profile_weight',
@@ -38,26 +41,28 @@ export function fingerprintFreshPolicySnapshot(snapshot) {
 
 /** Configuration, policies, bounded metadata and cached vectors share one read snapshot. */
 export function createFreshInventoryPolicyRepository({ withTransaction, loadPolicies = getActivePolicies }) {
-  return createDescriptionBenchmarkRepository({ includeEvaluationMetadata: true,
-    withTransaction: callback => withTransaction(async client => {
+  return { async read(identity) {
+    const captured = await withTransaction(async client => {
       // Production bulk readers may use Promise.all; a transaction has exactly one connection.
       let pending = Promise.resolve();
       const reader = { query: (sql, parameters) => {
         pending = pending.then(() => client.query(sql, parameters));
         return pending;
       } };
-      const snapshot = await callback(reader);
+      const snapshot = await readDescriptionBenchmarkSnapshot(reader, identity, true);
       const config = (await reader.query(FRESH_POLICY_CONFIG_SQL)).rows[0];
       const loadedPolicies = await loadPolicies({ dbClient: reader, throwOnError: true });
-      const policies = loadedPolicies.map(projectFreshPolicyConfiguration);
-      if (!config || policies.length > 64 || JSON.stringify(policies).length > 2_000_000 ||
-          snapshot.evaluationRows.some(row => JSON.stringify(row).length > 110_000)) {
-        throw new Error('fresh_policy_snapshot_budget');
-      }
-      const source = { ...snapshot, config, policies };
-      return { ...source, fingerprint: fingerprintFreshPolicySnapshot(source) };
-    }),
-  });
+      return { snapshot, config, loadedPolicies };
+    });
+    const policies = captured.loadedPolicies.map(projectFreshPolicyConfiguration);
+    if (!captured.config || policies.length > 64 || JSON.stringify(policies).length > 2_000_000 ||
+        captured.snapshot.rows.some(row => JSON.stringify(row).length > 110_000)) {
+      throw new Error('fresh_policy_snapshot_budget');
+    }
+    const source = { ...decodeDescriptionBenchmarkSnapshot(captured.snapshot, identity, true),
+      config: captured.config, policies };
+    return { ...source, fingerprint: fingerprintFreshPolicySnapshot(source) };
+  } };
 }
 
 /** No domain writers. Default read-only also protects statements outside explicit transactions. */
@@ -71,15 +76,13 @@ export async function loadFreshInventoryPolicyRuntime({ logging = LOG_CONFIG } =
   const pool = new pg.Pool({ ...db.pool.options, max: 1, min: 0,
     options: '-c default_transaction_read_only=on -c statement_timeout=15000 -c lock_timeout=1000',
     application_name: 'classifarr-fresh-policy-evaluation' });
+  const logger = createLogger('freshInventoryPolicy');
+  pool.on?.('error', error => logger.warn('Evaluation database connection lost',
+    { code: databaseConnectionErrorCode(error) }, { skipDbPersist: true }));
   const close = async () => { await pool.end(); await db.pool.end(); };
   try {
     const config = (await pool.query(FRESH_POLICY_CONFIG_SQL)).rows[0];
-    const withTransaction = async callback => {
-      const client = await pool.connect();
-      try { await client.query('BEGIN'); const result = await callback(client); await client.query('COMMIT'); return result; }
-      catch (error) { await client.query('ROLLBACK'); throw error; }
-      finally { client.release(); }
-    };
+    const withTransaction = async callback => runDatabaseTransaction(await pool.connect(), callback, { logger });
     return { config, embedder: createLocalStudyEmbeddingClient(config),
       repository: createFreshInventoryPolicyRepository({ withTransaction }),
       createClient: () => createLocalDescriptionBenchmarkClient(config), close };

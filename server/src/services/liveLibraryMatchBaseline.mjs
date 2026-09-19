@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { splitLibraryMatchGroups } from './libraryMatchGroupSplit.mjs';
 import { fitLibraryMatchBaseline, LIBRARY_MATCH_BASELINE_VERSION, LIBRARY_MATCH_BASELINE_LIMITS } from './libraryMatchBaseline.mjs';
 import { inventoryDescriptionQueryExcludedHashes } from './inventoryDescriptionQueryExclusions.mjs';
-import { createInventoryDescriptionVectorCache, validateDescriptionRepresentation } from './inventoryDescriptionVectorCache.mjs';
+import { readInventoryDescriptionVectorRows, decodeInventoryDescriptionVectorRows, validateDescriptionRepresentation } from './inventoryDescriptionVectorCache.mjs';
 
 // Separate closure: a cached model must not retain a request's corpus or transaction.
 function createWorkBudget() {
@@ -16,6 +16,12 @@ function createWorkBudget() {
 
 /** Revalidate actual vectors before reusing a proposed-library fit in this read snapshot. */
 export async function assessLiveLibraryMatch({ rows, corpus, request, identity, vector, query, signal, modelCache }) {
+  const prepared = await prepareLiveLibraryMatch({ rows, corpus, request, identity, query, signal });
+  return assessPreparedLiveLibraryMatch(prepared, { request, identity, vector, signal, modelCache });
+}
+
+/** Only snapshot capture belongs in a transaction; no fitting or vector decoding. */
+export async function prepareLiveLibraryMatch({ rows, corpus, request, identity, query, signal }) {
   const libraryId = request.matchLibraryId;
   if (!request.libraryIds.includes(libraryId)) throw new Error('live_match_scope_invalid');
   const representation = validateDescriptionRepresentation(identity);
@@ -31,12 +37,21 @@ export async function assessLiveLibraryMatch({ rows, corpus, request, identity, 
   const summary = { version: LIBRARY_MATCH_BASELINE_VERSION, ...counts,
     referenceDescriptions: references.length, calibrationDescriptions: calibration.length };
   if (references.length < LIBRARY_MATCH_BASELINE_LIMITS.minimum || calibration.length < LIBRARY_MATCH_BASELINE_LIMITS.minimum) {
-    return { ...summary, status: 'sparse', empiricalRank: null };
+    return { result: { ...summary, status: 'sparse', empiricalRank: null } };
   }
   signal?.throwIfAborted();
   const hashes = [...references, ...calibration];
-  const vectors = await createInventoryDescriptionVectorCache({ query }).read(identity, hashes);
+  const vectorRows = await readInventoryDescriptionVectorRows(query, identity, hashes);
   signal?.throwIfAborted();
+  return { summary, representation, libraryId, references, calibration, held, split, hashes, vectorRows };
+}
+
+/** Private packet only: no database client or query closure survives commit. */
+export async function assessPreparedLiveLibraryMatch(prepared, { request, identity, vector, signal, modelCache }) {
+  signal?.throwIfAborted();
+  if (prepared.result) return prepared.result;
+  const { summary, representation, libraryId, references, calibration, held, split, hashes, vectorRows } = prepared;
+  const vectors = decodeInventoryDescriptionVectorRows(vectorRows, identity);
   if (vectors.size !== hashes.length) return { ...summary, status: 'incomplete', empiricalRank: null };
   const consumeWork = createWorkBudget();
   const fitKey = createHash('sha256').update(JSON.stringify([

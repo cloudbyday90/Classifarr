@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { splitLibraryMatchGroups } from './libraryMatchGroupSplit.mjs';
 import { fitLibraryNeighborCrossFit, selectNeighborCrossFitGroups, NEIGHBOR_CROSS_FIT_VERSION, NEIGHBOR_CROSS_FIT_LIMITS } from './libraryNeighborCrossFit.mjs';
 import { inventoryDescriptionQueryExcludedHashes } from './inventoryDescriptionQueryExclusions.mjs';
-import { createInventoryDescriptionVectorCache, validateDescriptionRepresentation } from './inventoryDescriptionVectorCache.mjs';
+import { readInventoryDescriptionVectorRows, decodeInventoryDescriptionVectorRows, validateDescriptionRepresentation } from './inventoryDescriptionVectorCache.mjs';
 
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 // A cached kernel must not retain a transaction, corpus, request or signal.
@@ -14,6 +14,12 @@ function workBudget() {
 
 /** Current private snapshot only. This assessment cannot authorize a route. */
 export async function assessLiveLibraryNeighbors({ rows, corpus, request, identity, vector, query, signal, modelCache }) {
+  const prepared = await prepareLiveLibraryNeighbors({ rows, corpus, request, identity, query, signal });
+  return assessPreparedLiveLibraryNeighbors(prepared, { request, identity, vector, signal, modelCache });
+}
+
+/** Capture a single current snapshot without retaining a client in the prepared packet. */
+export async function prepareLiveLibraryNeighbors({ rows, corpus, request, identity, query, signal }) {
   const ids = [...request.libraryIds].sort((a, b) => a - b), limits = NEIGHBOR_CROSS_FIT_LIMITS;
   if (ids.length < 2 || ids.length > 64 || new Set(ids).size !== ids.length ||
       ids.some(id => !Number.isInteger(id) || id < 1 || id > 2147483647) || !ids.includes(request.matchLibraryId)) {
@@ -30,8 +36,15 @@ export async function assessLiveLibraryNeighbors({ rows, corpus, request, identi
   const hashes = splits.flatMap(split => [...split.calibration, ...split.references].slice(0, limits.pool));
   if (hashes.length * identity.dimensions > limits.modelVectorComponents) throw new Error('live_neighbor_vector_budget');
   signal?.throwIfAborted();
-  const vectors = await createInventoryDescriptionVectorCache({ query }).read(identity, hashes);
+  const vectorRows = await readInventoryDescriptionVectorRows(query, identity, hashes);
   signal?.throwIfAborted();
+  return { ids, representation, held, splits, hashes, vectorRows };
+}
+
+export async function assessPreparedLiveLibraryNeighbors(prepared, { request, identity, vector, signal, modelCache }) {
+  signal?.throwIfAborted();
+  const { ids, representation, held, splits, hashes, vectorRows } = prepared, limits = NEIGHBOR_CROSS_FIT_LIMITS;
+  const vectors = decodeInventoryDescriptionVectorRows(vectorRows, identity);
   if (vectors.size !== hashes.length) return { version: NEIGHBOR_CROSS_FIT_VERSION, status: 'incomplete', candidates: [] };
   const selected = selectNeighborCrossFitGroups(splits, vectors);
   const key = digest([NEIGHBOR_CROSS_FIT_VERSION, limits, representation, request.mediaType, selected]);

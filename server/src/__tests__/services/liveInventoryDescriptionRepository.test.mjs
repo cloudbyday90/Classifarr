@@ -127,3 +127,38 @@ test('profile-only reads reuse fitting but refresh from a new read-only snapshot
   expect((await repository.readLearnedProfiles(input)).get(1).relativeFit).toBe(0);
   expect(first.get(1).relativeFit).toBeGreaterThan(0);
 });
+
+test('single SQL snapshot closes before vector decoding, both calibration fits, learned profiles and optional context', async () => {
+  let open = false, commits = 0;
+  const rows = [1, 2].flatMap(library => Array.from({ length: 80 }, (_, i) => ({
+    ...row(library * 100 + i, library, `Sample ${library}:${i}`), genres: ['test'],
+  })));
+  const modelCache = { get: jest.fn(() => { expect(open).toBe(false); return undefined; }),
+    set: jest.fn(() => { expect(open).toBe(false); }) };
+  const query = jest.fn(async (sql, params) => {
+    expect(open).toBe(true);
+    if (sql === INVENTORY_DESCRIPTION_CORPUS_SQL) return { rows };
+    if (sql.includes('embedding::text')) return { rows: params[4].map(description_hash => ({ description_hash,
+      get embedding() { expect(open).toBe(false); return '[1,0]'; } })) };
+    return { rows: [] };
+  });
+  const retrieveContext = jest.fn(async () => { expect(open).toBe(false); return null; });
+  const repository = createLiveInventoryDescriptionRepository({
+    withTransaction: async callback => { open = true; try { return await callback({ query }); } finally { open = false; commits++; } },
+    profileCache: modelCache, baselineCache: modelCache, neighborCache: modelCache, retrieveContext,
+  });
+  const input = { ...request, queryMetadata: { genres: ['test'] } };
+  await repository.retrieve({ request: { ...input, matchLibraryId: 1, neighborCalibration: true }, identity, vector: [1, 0] });
+  expect(commits).toBe(1); expect(modelCache.get).toHaveBeenCalledTimes(3);
+  await repository.retrieve({ request: { ...input, contextConfigKey: 'config' }, identity, vector: [1, 0] });
+  expect(commits).toBe(2); expect(retrieveContext).toHaveBeenCalledTimes(1);
+  await repository.readLearnedProfiles({ request: input }); expect(commits).toBe(3);
+});
+
+test('failed commit cannot start optional post-snapshot context', async () => {
+  const retrieveContext = jest.fn(), repository = createLiveInventoryDescriptionRepository({
+    withTransaction: async callback => { await callback({ query: async () => ({ rows: [] }) }); throw new Error('commit failed'); }, retrieveContext,
+  });
+  await expect(repository.retrieve({ request: { ...request, contextConfigKey: 'config' }, identity, vector: [1, 0] })).rejects.toThrow('commit failed');
+  expect(retrieveContext).not.toHaveBeenCalled();
+});

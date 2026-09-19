@@ -35,3 +35,18 @@ test('vector memory cap is enforced before loading vectors; empty inventory stay
   const empty = await setup({ documents: [] }).repository.read(identity);
   expect(empty.vectors.size).toBe(0);
 });
+
+test('decodes the captured representation only after its read-only transaction completes', async () => {
+  const { query } = setup(), runQuery = query.getMockImplementation();
+  let open = false;
+  query.mockImplementation(async sql => {
+    const result = await runQuery(sql);
+    if (sql.includes('embedding::text')) return { rows: result.rows.map(row => ({ description_hash: row.description_hash,
+      get embedding() { expect(open).toBe(false); return row.embedding; } })) };
+    return result;
+  });
+  const repository = createDescriptionBenchmarkRepository({ withTransaction: async callback => {
+    open = true; try { return await callback({ query }); } finally { open = false; }
+  } });
+  expect((await repository.read(identity)).vectors.size).toBe(1);
+});

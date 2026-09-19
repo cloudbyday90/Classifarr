@@ -15,6 +15,30 @@ function validateHashes(hashes, maximum) {
       hashes.some(hash => typeof hash !== 'string' || !/^[a-f0-9]{64}$/.test(hash))) throw new Error('inventory_description_hashes_invalid');
 }
 
+/** Capture only scoped encoded rows inside the transaction; decode after it commits. */
+export async function readInventoryDescriptionVectorRows(query, representation, hashes) {
+  const parameters = validateDescriptionRepresentation(representation);
+  validateHashes(hashes, 10000);
+  const captured = [], seen = new Set();
+  for (let offset = 0; offset < hashes.length; offset += 256) {
+    const requested = new Set(hashes.slice(offset, offset + 256));
+    const { rows } = await query(`SELECT description_hash, embedding::text AS embedding
+      FROM inventory_description_vector_cache
+      WHERE projection_version=$1 AND model_name=$2 AND model_digest=$3 AND dimensions=$4
+        AND description_hash=ANY($5::text[]) AND created_at > now() - interval '30 days'`, [...parameters, [...requested]]);
+    for (const row of rows) {
+      if (!requested.has(row.description_hash) || seen.has(row.description_hash)) throw new Error('inventory_description_cache_scope_invalid');
+      seen.add(row.description_hash);
+      captured.push(row);
+    }
+  }
+  return captured;
+}
+
+export function decodeInventoryDescriptionVectorRows(rows, representation) {
+  return new Map(rows.map(row => [row.description_hash, validateEmbedding(JSON.parse(row.embedding), representation.dimensions)]));
+}
+
 /** Immutable representation/content keys; no plaintext or inventory membership. */
 export function createInventoryDescriptionVectorCache({ query }) {
   return {
@@ -34,21 +58,7 @@ export function createInventoryDescriptionVectorCache({ query }) {
       return present;
     },
     async read(representation, hashes) {
-      const parameters = validateDescriptionRepresentation(representation);
-      validateHashes(hashes, 10000);
-      const vectors = new Map();
-      for (let offset = 0; offset < hashes.length; offset += 256) {
-        const requested = hashes.slice(offset, offset + 256);
-        const { rows } = await query(`SELECT description_hash, embedding::text AS embedding
-          FROM inventory_description_vector_cache
-          WHERE projection_version=$1 AND model_name=$2 AND model_digest=$3 AND dimensions=$4
-            AND description_hash=ANY($5::text[]) AND created_at > now() - interval '30 days'`, [...parameters, requested]);
-        for (const row of rows) {
-          if (!requested.includes(row.description_hash) || vectors.has(row.description_hash)) throw new Error('inventory_description_cache_scope_invalid');
-          vectors.set(row.description_hash, validateEmbedding(JSON.parse(row.embedding), representation.dimensions));
-        }
-      }
-      return vectors;
+      return decodeInventoryDescriptionVectorRows(await readInventoryDescriptionVectorRows(query, representation, hashes), representation);
     },
     async write(representation, entries) {
       const parameters = validateDescriptionRepresentation(representation);

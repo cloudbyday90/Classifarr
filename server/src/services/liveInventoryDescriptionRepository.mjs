@@ -5,9 +5,9 @@ import { inventoryDescriptionQueryExcludedHashes } from './inventoryDescriptionQ
 import { INVENTORY_DESCRIPTION_REFRESH_STATE_SQL } from './inventoryDescriptionRefreshRepository.mjs';
 import { validateDescriptionRepresentation, createInventoryDescriptionVectorCache } from './inventoryDescriptionVectorCache.mjs';
 import { validateEmbedding } from '../utils/embeddingValidation.mjs';
-import { assessLiveLibraryMatch } from './liveLibraryMatchBaseline.mjs';
+import { prepareLiveLibraryMatch, assessPreparedLiveLibraryMatch } from './liveLibraryMatchBaseline.mjs';
 import { createLiveInventoryModelCache } from './liveInventoryModelCache.mjs';
-import { assessLiveLibraryNeighbors } from './liveLibraryNeighborCalibration.mjs';
+import { prepareLiveLibraryNeighbors, assessPreparedLiveLibraryNeighbors } from './liveLibraryNeighborCalibration.mjs';
 import { retrieveLiveMultiScaleExamples } from './liveMultiScaleRuntime.mjs';
 
 export { LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL } from './liveInventoryDescriptionCorpus.mjs';
@@ -54,24 +54,17 @@ export function createLiveInventoryDescriptionRepository({ withTransaction,
       return (await cache.read(identity, [hash])).get(hash) ?? null;
     },
     async readLearnedProfiles({ request, signal }) {
-      return snapshot(async client => {
-        const source = await readLiveInventoryDescriptionCorpus(client, request, signal);
-        const profiles = buildLiveInventoryLearnedProfiles({ ...source, request, modelCache: profileCache });
-        signal?.throwIfAborted();
-        return profiles;
-      });
+      const source = await snapshot(client => readLiveInventoryDescriptionCorpus(client, request, signal));
+      signal?.throwIfAborted();
+      const profiles = buildLiveInventoryLearnedProfiles({ ...source, request, modelCache: profileCache });
+      signal?.throwIfAborted();
+      return profiles;
     },
     async retrieve({ request, identity, vector, signal }) {
       const representation = validateDescriptionRepresentation(identity);
       const encodedVector = JSON.stringify(validateEmbedding(vector, identity.dimensions));
-      return snapshot(async client => {
+      const captured = await snapshot(async client => {
         const { rows, corpus } = await readLiveInventoryDescriptionCorpus(client, request, signal);
-        let learnedProfiles = new Map();
-        try {
-          if (request.queryMetadata) learnedProfiles = buildLiveInventoryLearnedProfiles({ rows, corpus, request, modelCache: profileCache });
-        } catch {
-          // A bounded profile failure must not discard otherwise usable description evidence.
-        }
         const memberships = new Map(request.libraryIds.map(id => [id, new Set()]));
         const held = inventoryDescriptionQueryExcludedHashes(rows, request);
         for (const document of corpus.documents) {
@@ -83,44 +76,58 @@ export function createLiveInventoryDescriptionRepository({ withTransaction,
         const ranked = scope.length ? (await client.query(LIVE_INVENTORY_DESCRIPTION_RANK_SQL,
           [...representation, JSON.stringify(scope), encodedVector])).rows : [];
         signal?.throwIfAborted();
-        const matchBaseline = request.matchLibraryId == null ? null : await assessLiveLibraryMatch({
-          rows, corpus, request, identity, vector, signal, modelCache: baselineCache,
+        const matchInput = request.matchLibraryId == null ? null : await prepareLiveLibraryMatch({
+          rows, corpus, request, identity, signal,
           query: (sql, parameters) => client.query(sql, parameters),
         });
-        const neighborCalibration = request.neighborCalibration === true ? await assessLiveLibraryNeighbors({
-          rows, corpus, request, identity, vector, signal, modelCache: neighborCache,
+        const neighborInput = request.neighborCalibration === true ? await prepareLiveLibraryNeighbors({
+          rows, corpus, request, identity, signal,
           query: (sql, parameters) => client.query(sql, parameters),
         }) : null;
-        let context = null;
-        if (request.contextConfigKey && request.matchLibraryId == null && !request.neighborCalibration) {
-          try { context = await retrieveContext({ request, identity, vector, rows, corpus, signal }); }
-          catch { /* Optional context never discards the ordinary self-excluding evidence. */ }
-        }
-        signal?.throwIfAborted();
-        return request.libraryIds.map(libraryId => {
-          const matches = ranked.filter(row => row.library_id === libraryId);
-          const items = matches.filter(row => row.similarity !== null).map(row => {
-            if (!memberships.get(libraryId).has(row.hash) || !Number.isFinite(row.similarity)) {
-              throw new Error('live_inventory_description_scope_invalid');
-            }
-            return { description: corpus.texts.get(row.hash), similarity: Math.max(-1, Math.min(1, row.similarity)),
-              sharedAcrossCandidates: [...memberships.values()].filter(hashes => hashes.has(row.hash)).length > 1 };
-          });
-          const extra = context instanceof Map ? context.get(libraryId) : null;
-          const seen = new Set(items.map(item => item.description));
-          const contextExamples = (Array.isArray(extra) ? extra.slice(0, 9) : []).filter(item => {
-            if (typeof item?.description !== 'string' || !Number.isFinite(item.similarity) ||
-                item.similarity < -1 || item.similarity > 1 || item.sharedAcrossCandidates !== false || seen.has(item.description)) return false;
-            seen.add(item.description); return true;
-          }).slice(0, 3);
-          return { libraryId, eligible: memberships.get(libraryId).size, indexed: matches[0]?.indexed ?? 0, items,
-            ...(contextExamples.length ? { contextExamples } : {}),
-            ...(request.matchLibraryId != null ? { queryIdentityPresent: rows.some(row => row.library_id === libraryId &&
-              `${row.media_type}:${row.tmdb_id}` === request.key) } : {}),
-            ...(matchBaseline?.libraryId === libraryId ? { matchBaseline } : {}),
-            ...(neighborCalibration && request.matchLibraryId === libraryId ? { neighborCalibration } : {}),
-            ...(learnedProfiles.has(libraryId) ? { learnedProfile: learnedProfiles.get(libraryId) } : {}) };
+        return { rows, corpus, memberships, ranked, matchInput, neighborInput };
+      });
+      // Snapshot ownership ended. CPU fitting and optional context cannot hold this transaction idle.
+      signal?.throwIfAborted();
+      const { rows, corpus, memberships, ranked, matchInput, neighborInput } = captured;
+      let learnedProfiles = new Map();
+      try {
+        if (request.queryMetadata) learnedProfiles = buildLiveInventoryLearnedProfiles({ rows, corpus, request, modelCache: profileCache });
+      } catch {
+        // A bounded profile failure must not discard otherwise usable description evidence.
+      }
+      const matchBaseline = matchInput === null ? null : await assessPreparedLiveLibraryMatch(matchInput,
+        { request, identity, vector, signal, modelCache: baselineCache });
+      const neighborCalibration = neighborInput === null ? null : await assessPreparedLiveLibraryNeighbors(neighborInput,
+        { request, identity, vector, signal, modelCache: neighborCache });
+      let context = null;
+      if (request.contextConfigKey && request.matchLibraryId == null && !request.neighborCalibration) {
+        try { context = await retrieveContext({ request, identity, vector, rows, corpus, signal }); }
+        catch { /* Optional context never discards the ordinary self-excluding evidence. */ }
+      }
+      signal?.throwIfAborted();
+      return request.libraryIds.map(libraryId => {
+        const matches = ranked.filter(row => row.library_id === libraryId);
+        const items = matches.filter(row => row.similarity !== null).map(row => {
+          if (!memberships.get(libraryId).has(row.hash) || !Number.isFinite(row.similarity)) {
+            throw new Error('live_inventory_description_scope_invalid');
+          }
+          return { description: corpus.texts.get(row.hash), similarity: Math.max(-1, Math.min(1, row.similarity)),
+            sharedAcrossCandidates: [...memberships.values()].filter(hashes => hashes.has(row.hash)).length > 1 };
         });
+        const extra = context instanceof Map ? context.get(libraryId) : null;
+        const seen = new Set(items.map(item => item.description));
+        const contextExamples = (Array.isArray(extra) ? extra.slice(0, 9) : []).filter(item => {
+          if (typeof item?.description !== 'string' || !Number.isFinite(item.similarity) ||
+              item.similarity < -1 || item.similarity > 1 || item.sharedAcrossCandidates !== false || seen.has(item.description)) return false;
+          seen.add(item.description); return true;
+        }).slice(0, 3);
+        return { libraryId, eligible: memberships.get(libraryId).size, indexed: matches[0]?.indexed ?? 0, items,
+          ...(contextExamples.length ? { contextExamples } : {}),
+          ...(request.matchLibraryId != null ? { queryIdentityPresent: rows.some(row => row.library_id === libraryId &&
+            `${row.media_type}:${row.tmdb_id}` === request.key) } : {}),
+          ...(matchBaseline?.libraryId === libraryId ? { matchBaseline } : {}),
+          ...(neighborCalibration && request.matchLibraryId === libraryId ? { neighborCalibration } : {}),
+          ...(learnedProfiles.has(libraryId) ? { learnedProfile: learnedProfiles.get(libraryId) } : {}) };
       });
     },
   };

@@ -11,6 +11,9 @@ import './env.mjs';
 import pg from 'pg';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { createLogger } from '../utils/logger.mjs';
+import { createDatabaseClientLease, databaseConnectionErrorCode } from '../utils/databaseClientLease.mjs';
+import { createDatabaseLockScope } from '../utils/databaseLockScope.mjs';
+import { runDatabaseTransaction } from '../utils/databaseTransaction.mjs';
 
 function createSlowQueryThreshold(environment) {
   const parsedSlowQueryThreshold = environment.POSTGRES_SLOW_QUERY_THRESHOLD_MS !== undefined
@@ -107,6 +110,7 @@ export function createDatabaseModule({
   const logger = loggerFactory('database');
   const slowQueryThresholdMs = createSlowQueryThreshold(environment);
   const connectRetryConfig = createConnectRetryConfig(environment);
+  const lockScope = createDatabaseLockScope();
 
   if (pgModule.types && typeof pgModule.types.setTypeParser === 'function') {
     pgModule.types.setTypeParser(20, (val) => {
@@ -120,7 +124,7 @@ export function createDatabaseModule({
 
   if (typeof pool.on === 'function') {
     pool.on('error', (err) => {
-      logger.error('Unexpected error on idle client', { error: err.message });
+      logger.error('Unexpected error on idle client', { code: databaseConnectionErrorCode(err) }, { skipDbPersist: true });
     });
   }
 
@@ -164,24 +168,28 @@ export function createDatabaseModule({
   }
 
   async function healthCheck() {
-    let client;
+    let client, lease, failed = false;
     try {
       client = await pool.connect();
+      lease = createDatabaseClientLease(client, { operation: 'health_check', logger });
       await client.query('SELECT 1');
+      lease.assertHealthy();
       return { healthy: true };
     } catch (err) {
+      failed = true;
       const errorMsg = environment.NODE_ENV === 'production'
         ? 'Database connection failed'
         : err.message;
       return { healthy: false, error: errorMsg };
     } finally {
-      if (client) client.release();
+      lease?.release(failed);
     }
   }
 
   async function query(text, params) {
+    lockScope.assertHealthy();
     const startedAt = process.hrtime.bigint();
-    let client;
+    let client, lease, failed = false;
     let poolWaitDurationMs = null;
     let executionDurationMs = null;
 
@@ -189,12 +197,16 @@ export function createDatabaseModule({
       if (typeof pool.connect === 'function') {
         const poolWaitStartedAt = process.hrtime.bigint();
         client = await connectWithRetry();
+        if (client) lease = createDatabaseClientLease(client, { operation: 'query', logger });
+        lockScope.assertHealthy();
         poolWaitDurationMs = Number(process.hrtime.bigint() - poolWaitStartedAt) / 1e6;
 
         if (client && typeof client.query === 'function') {
           const executionStartedAt = process.hrtime.bigint();
           try {
-            return await client.query(text, params);
+            const result = await client.query(text, params);
+            lease.assertHealthy();
+            return result;
           } finally {
             executionDurationMs = Number(process.hrtime.bigint() - executionStartedAt) / 1e6;
           }
@@ -207,9 +219,12 @@ export function createDatabaseModule({
       } finally {
         executionDurationMs = Number(process.hrtime.bigint() - executionStartedAt) / 1e6;
       }
+    } catch (error) {
+      failed = true;
+      throw error;
     } finally {
       if (client && typeof client.release === 'function') {
-        client.release();
+        lease.release(failed);
       }
 
       const durationMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
@@ -250,25 +265,9 @@ export function createDatabaseModule({
   }
 
   async function withTransaction(fn) {
+    lockScope.assertHealthy();
     const client = await connectWithRetry();
-    try {
-      await client.query('BEGIN');
-      const result = await fn(client);
-      await client.query('COMMIT');
-      return result;
-    } catch (error) {
-      try {
-        await client.query('ROLLBACK');
-      } catch (rollbackErr) {
-        logger.error('Failed to rollback transaction', {
-          rollbackError: rollbackErr.message,
-          originalError: error.message,
-        });
-      }
-      throw error;
-    } finally {
-      client.release();
-    }
+    return runDatabaseTransaction(client, fn, { logger, assertActive: lockScope.assertHealthy });
   }
 
   async function tryAdvisoryLock(client, lockKey) {
@@ -280,23 +279,43 @@ export function createDatabaseModule({
   }
 
   async function withSessionAdvisoryLock(lockKey, fn) {
+    lockScope.assertHealthy();
     const client = await connectWithRetry();
+    const lease = createDatabaseClientLease(client, { operation: 'session_lock', logger });
+    let discard = false;
     try {
+      lockScope.assertHealthy();
       const { rows } = await client.query(
         'SELECT pg_try_advisory_lock($1) AS acquired',
         [lockKey]
       );
+      lease.assertHealthy();
       if (!rows[0].acquired) {
         return false;
       }
+      let callbackFailed = false;
       try {
-        await fn();
+        await lockScope.run(lease, () => fn({ signal: lease.signal }));
+        lease.assertHealthy();
         return true;
+      } catch (error) {
+        callbackFailed = true;
+        throw error;
       } finally {
-        await client.query('SELECT pg_advisory_unlock($1)', [lockKey]);
+        try {
+          lease.assertHealthy();
+          await client.query('SELECT pg_advisory_unlock($1)', [lockKey]);
+          lease.assertHealthy();
+        } catch (error) {
+          discard = true;
+          if (!callbackFailed) throw error;
+        }
       }
+    } catch (error) {
+      discard = true;
+      throw error;
     } finally {
-      client.release();
+      lease.release(discard);
     }
   }
 

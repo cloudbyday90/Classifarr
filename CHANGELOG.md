@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Contain checked-out database connection failures without replaying transactions.
+  Discard broken clients, keep failure logs private-safe, and move inventory model
+  fitting and vector decoding after read-only snapshots close while preserving
+  source consistency and automatic background recovery.
 - Add a read-only, library-agnostic local AI comparison of nearest examples with
   and without additional library context. Measure held-out movie/TV choices,
   order sensitivity and inference cost without changing routing, and invalidate

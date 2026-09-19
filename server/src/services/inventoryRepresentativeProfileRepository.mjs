@@ -2,7 +2,7 @@
 import { buildInventoryDescriptionCorpusSql, prepareInventoryDescriptionCorpus, inventoryDescriptionIdentity } from './inventoryDescriptionCorpus.mjs';
 import { collectInventoryObservationReadiness } from './inventoryObservationReadiness.mjs';
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from './sourceConflictAuthorityGuard.mjs';
-import { createInventoryDescriptionVectorCache, validateDescriptionRepresentation } from './inventoryDescriptionVectorCache.mjs';
+import { readInventoryDescriptionVectorRows, decodeInventoryDescriptionVectorRows, validateDescriptionRepresentation } from './inventoryDescriptionVectorCache.mjs';
 import { INVENTORY_DESCRIPTION_REFRESH_STATE_SQL } from './inventoryDescriptionRefreshRepository.mjs';
 import { REPRESENTATIVE_PROFILE_COMPONENT_LIMIT } from './inventoryRepresentativeProfile.mjs';
 
@@ -20,7 +20,7 @@ export function createInventoryRepresentativeProfileRepository({ withTransaction
   return {
     async read(identity) {
       validateDescriptionRepresentation(identity);
-      return withTransaction(async client => {
+      const source = await withTransaction(async client => {
         await client.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
         await client.query("SET LOCAL statement_timeout = '15s'");
         await client.query("SET LOCAL lock_timeout = '1s'");
@@ -31,16 +31,17 @@ export function createInventoryRepresentativeProfileRepository({ withTransaction
         if (libraries.length > 64) throw new Error('inventory_representative_library_budget');
         const identities = (await client.query(REPRESENTATIVE_PROFILE_IDENTITIES_SQL)).rows;
         if (identities.length > 50000) throw new Error('inventory_representative_identity_budget');
-        const observedKeys = new Set(identities.map(inventoryDescriptionIdentity));
         const { rows } = await client.query(REPRESENTATIVE_PROFILE_CORPUS_SQL, [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]);
         const corpus = prepareInventoryDescriptionCorpus(rows);
         if (corpus.texts.size * identity.dimensions > REPRESENTATIVE_PROFILE_COMPONENT_LIMIT) {
           throw new Error('inventory_representative_vector_budget');
         }
-        const cache = createInventoryDescriptionVectorCache({ query: (sql, params) => client.query(sql, params) });
-        const vectors = await cache.read(identity, [...corpus.texts.keys()]);
-        return { state, libraries, corpus, vectors, observedKeys, observationReadiness: collectInventoryObservationReadiness(rows) };
+        const vectorRows = await readInventoryDescriptionVectorRows((sql, params) => client.query(sql, params), identity, [...corpus.texts.keys()]);
+        return { state, libraries, corpus, vectorRows, identities, rows };
       });
+      const { vectorRows, identities, rows, ...snapshot } = source;
+      return { ...snapshot, vectors: decodeInventoryDescriptionVectorRows(vectorRows, identity),
+        observedKeys: new Set(identities.map(inventoryDescriptionIdentity)), observationReadiness: collectInventoryObservationReadiness(rows) };
     },
   };
 }

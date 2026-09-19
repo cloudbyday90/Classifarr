@@ -165,6 +165,9 @@ that baseline; this separate blocked audit is not reported as completed cleanup.
 
 ## Final recommendation stack
 
+Follow-up: [transaction recovery outcome](inventory-transaction-recovery-outcome.md)
+records the scoped connection and snapshot-lifetime changes and the repeat run.
+
 1. Keep the paired, held-out comparison and its complete-context admission check.
    It measures actual model behavior without adding user controls or routing power.
 2. Next, isolate inventory snapshot processing from open transactions and contain

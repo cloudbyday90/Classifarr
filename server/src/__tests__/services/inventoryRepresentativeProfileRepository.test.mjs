@@ -64,3 +64,19 @@ test('novelty identity budget rejects before training or vector loading', async 
   await expect(repository.read(identity)).rejects.toThrow('identity_budget');
   expect(client.query.mock.calls.some(([sql]) => sql === REPRESENTATIVE_PROFILE_CORPUS_SQL)).toBe(false);
 });
+
+test('vector decoding and readiness processing happen after snapshot ownership ends', async () => {
+  const { identity, client, snapshot } = setup();
+  const query = client.query.getMockImplementation();
+  let open = false;
+  client.query.mockImplementation(async (sql, params) => {
+    const result = await query(sql, params);
+    if (sql.includes('embedding::text')) return { rows: result.rows.map(row => ({ description_hash: row.description_hash,
+      get embedding() { expect(open).toBe(false); return row.embedding; } })) };
+    return result;
+  });
+  const repository = createInventoryRepresentativeProfileRepository({ withTransaction: async callback => {
+    open = true; try { return await callback(client); } finally { open = false; }
+  } });
+  expect((await repository.read(identity)).vectors).toEqual(snapshot.vectors);
+});

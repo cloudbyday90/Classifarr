@@ -234,7 +234,7 @@ describe('Database Resilience', () => {
             const fn = jest.fn().mockResolvedValue('result');
             const result = await db.withTransaction(fn);
             expect(mockClient.query).toHaveBeenCalledWith('BEGIN');
-            expect(fn).toHaveBeenCalledWith(mockClient);
+            expect(fn).toHaveBeenCalledWith(mockClient, { signal: expect.any(AbortSignal) });
             expect(result).toBe('result');
             expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
             expect(mockClient.release).toHaveBeenCalled();
@@ -672,7 +672,8 @@ describe('Database Resilience', () => {
                 await expect(db.withTransaction(jest.fn().mockRejectedValue(new Error('fn failed')))).rejects.toThrow('fn failed');
                 expect(mockLoggerError).toHaveBeenCalledWith(
                     'Failed to rollback transaction',
-                    expect.objectContaining({ rollbackError: expect.any(String) })
+                    expect.objectContaining({ rollbackError: expect.any(String) }),
+                    { skipDbPersist: true }
                 );
             } finally {
             }

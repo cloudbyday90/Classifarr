@@ -80,6 +80,24 @@ test('parallel production readers are serialized on the transaction client', asy
   expect(maximum).toBe(1);
 });
 
+test('policy replay decodes vectors only after the complete source transaction closes', async () => {
+  const { client, loadPolicies } = setup();
+  let open = false;
+  const original = client.query.getMockImplementation();
+  client.query.mockImplementation(async (sql, parameters) => {
+    expect(open).toBe(true);
+    const result = await original(sql, parameters);
+    if (sql.includes('embedding::text')) return { rows: result.rows.map(row => ({ description_hash: row.description_hash,
+      get embedding() { expect(open).toBe(false); return row.embedding; } })) };
+    return result;
+  });
+  const repository = createFreshInventoryPolicyRepository({ loadPolicies, withTransaction: async callback => {
+    open = true;
+    try { return await callback(client); } finally { open = false; }
+  } });
+  expect((await repository.read(identity)).fingerprint).toMatch(/^[a-f0-9]{64}$/);
+});
+
 test.each(['policies', 'policy_bytes', 'metadata_bytes', 'missing_config', 'read_failure'])('fails closed on %s', async kind => {
   const { source, repository, loadPolicies } = setup();
   if (kind === 'policies') source.policies = Array.from({ length: 65 }, () => ({}));
@@ -93,7 +111,7 @@ test.each(['policies', 'policy_bytes', 'metadata_bytes', 'missing_config', 'read
 test.each(['success', 'rollback', 'initialization_failure'])('dedicated runtime enforces read-only defaults and cleanup on %s', async kind => {
   const { source, client } = setup();
   client.release = jest.fn();
-  const pool = { query: jest.fn(async () => ({ rows: [source.config] })), connect: jest.fn(async () => client), end: jest.fn() };
+  const pool = { query: jest.fn(async () => ({ rows: [source.config] })), connect: jest.fn(async () => client), end: jest.fn(), on: jest.fn() };
   const constructor = jest.spyOn(pg, 'Pool').mockImplementation(function () { return pool; });
   const globalEnd = jest.spyOn(db.pool, 'end').mockResolvedValue();
   try {
@@ -114,6 +132,8 @@ test.each(['success', 'rollback', 'initialization_failure'])('dedicated runtime 
       await runtime.close();
     }
     expect(constructor.mock.calls[0][0].options).toContain('default_transaction_read_only=on');
+    expect(pool.on).toHaveBeenCalledWith('error', expect.any(Function));
+    expect(() => pool.on.mock.calls[0][1](new Error('PRIVATE idle failure'))).not.toThrow();
     expect(pool.end).toHaveBeenCalledTimes(1);
     expect(globalEnd).toHaveBeenCalledTimes(1);
   } finally {

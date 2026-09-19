@@ -74,6 +74,19 @@ test('partial builds resume without presenting incomplete retrieval results', as
   expect(embedder.embedBatch.mock.calls.map(call => call[0].length)).toEqual([2, 4]);
 });
 
+test.each(['lock', 'caller'])('exclusive retrieval combines %s cancellation with inference', async source => {
+  const { retrieval, embedder, cache } = setup();
+  const lock = new AbortController(), caller = new AbortController();
+  const error = new Error('cancelled');
+  const withSessionAdvisoryLock = async (key, callback) => { await callback({ signal: lock.signal }); return true; };
+  embedder.embedBatch.mockImplementationOnce(async texts => {
+    (source === 'lock' ? lock : caller).abort(error); return texts.map(() => [1, 0]);
+  });
+  await expect(runExclusiveInventoryDescriptionRetrieval({ withSessionAdvisoryLock, retrieval }, {},
+    { signal: caller.signal })).rejects.toBe(error);
+  expect(cache.write).not.toHaveBeenCalled();
+});
+
 test('removing inventory identities excludes their old cached vectors from candidates', async () => {
   const { retrieval, rows } = setup();
   await retrieval.run();

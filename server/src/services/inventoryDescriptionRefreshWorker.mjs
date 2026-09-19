@@ -66,8 +66,9 @@ export function createInventoryDescriptionRefreshWorker({
       const runSignal = AbortSignal.any([controller.signal, AbortSignal.timeout(120_000), ...(signal ? [signal] : [])]);
       try {
         let report;
-        const acquired = await withSessionAdvisoryLock(INVENTORY_DESCRIPTION_CACHE_LOCK, async () => {
-          report = await refresh(runSignal, revision);
+        const acquired = await withSessionAdvisoryLock(INVENTORY_DESCRIPTION_CACHE_LOCK, async ({ signal: lockSignal } = {}) => {
+          const ownedSignal = lockSignal ? AbortSignal.any([runSignal, lockSignal]) : runSignal;
+          report = await refresh(ownedSignal, revision);
         });
         if (!acquired) return result('already_running');
         // Yielding, disabling RAG, or lock contention is not evidence of recovery.

@@ -13,8 +13,9 @@ export function validateDescriptionRetrievalBudget(value = 512) {
 /** One shadow build per database; no transaction remains open during inference. */
 export async function runExclusiveInventoryDescriptionRetrieval({ withSessionAdvisoryLock, retrieval }, options, settings) {
   let report;
-  const acquired = await withSessionAdvisoryLock(INVENTORY_DESCRIPTION_CACHE_LOCK, async () => {
-    report = await retrieval.run(options, settings);
+  const acquired = await withSessionAdvisoryLock(INVENTORY_DESCRIPTION_CACHE_LOCK, async ({ signal: lockSignal } = {}) => {
+    const signal = lockSignal ? AbortSignal.any([lockSignal, ...(settings?.signal ? [settings.signal] : [])]) : settings?.signal;
+    report = await retrieval.run(options, { ...settings, signal });
   });
   return acquired ? report : { version: 'inventory_description_retrieval.v1', mode: 'shadow', status: 'already_running' };
 }
