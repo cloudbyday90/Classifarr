@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add content-only adaptive group discovery with validation-gated splits, bounded
+  work and explicit small-group retention diagnostics. Compare cached movie/TV
+  vectors in a source-verified offline benchmark without inference, new controls
+  or changes to automatic routing and recovery.
 - Add a bounded, local-only comparison of learned content groups using anonymous
   descriptions and observed metadata. Evaluate overlapping movie/TV candidates
   with reversed-order checks and source verification; preserve live routing,

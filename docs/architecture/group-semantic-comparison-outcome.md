@@ -119,6 +119,8 @@ efficient cached-vector grouping → adaptive group-quality evaluation → exist
 retrieval/routing safeguards. Keep group-fit LLM grading offline. Improve the
 learned representation before adding another inference layer or user-facing panel.
 
+Follow-up design: [adaptive content-group discovery](adaptive-content-groups-design.md).
+
 ## Reproduction
 
 ```powershell

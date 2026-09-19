@@ -5,6 +5,23 @@ import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescr
 
 const seed = 'benchmark-test-seed-2026';
 
+test('adaptive groups require exclusive zero-generation folds and verify source drift without inference', async () => {
+  const argv = ['--seed', seed, '--size', '8', '--folds', '2', '--adaptive-groups'], loadRuntime = jest.fn();
+  for (const invalid of [argv.filter(value => !['--folds', '2'].includes(value)), [...argv, '--generate-cases', '1'],
+    ...['--candidate-local-evidence', '--group-contrast', '--group-semantics', '--semantic-pairs', '--evidence-reranker', '--fresh-policy-evaluation'].map(mode => [...argv, mode])]) {
+    await expect(runInventoryDescriptionBenchmark({ argv: invalid, loadRuntime })).rejects.toThrow();
+  }
+  expect(loadRuntime).not.toHaveBeenCalled();
+  const instance = runtime();
+  expect(await runInventoryDescriptionBenchmark({ argv, loadRuntime: async () => instance }))
+    .toMatchObject({ protocol: 'inventory_adaptive_groups_v1', status: 'complete', sourceVerified: true, changedSourceComponents: [], calls: 0 });
+  const snapshot = await instance.repository.read();
+  instance.repository.read.mockResolvedValueOnce(snapshot).mockResolvedValueOnce({ ...snapshot, candidateMetadata: new Map([['movie:1', null]]) });
+  expect(await runInventoryDescriptionBenchmark({ argv, loadRuntime: async () => instance }))
+    .toMatchObject({ status: 'invalidated', sourceVerified: false, changedSourceComponents: ['metadata'] });
+  expect(instance.createClient).not.toHaveBeenCalled(); expect(instance.close).toHaveBeenCalledTimes(2);
+});
+
 test('group-semantics CLI enforces grouped exclusive budgets, opt-in inference and source verification', async () => {
   const argv = ['--seed', seed, '--size', '8', '--folds', '2', '--group-semantics'], loadRuntime = jest.fn();
   for (const invalid of [argv.filter(value => !['--folds', '2'].includes(value)), [...argv, '--size', '300', '--generate-cases', '101'],
