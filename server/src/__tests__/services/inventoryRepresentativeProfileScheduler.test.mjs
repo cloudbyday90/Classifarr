@@ -32,3 +32,22 @@ test('runtime uses existing config admission and shutdown without starting provi
   expect(await worker.run()).toMatchObject({ status: 'disabled', mode: 'shadow_cache' });
   worker.stop(); expect(await worker.run()).toMatchObject({ status: 'cancelled' });
 });
+
+test('metadata healing is logged once on verified change, not on each periodic refresh', async () => {
+  const scheduler = { schedule: jest.fn(), scheduleInitial: jest.fn() };
+  const observationReadiness = { groups: 2, groupsWithObservationGaps: 1, groupsWithCurrentObservations: 1 };
+  const worker = { run: jest.fn().mockResolvedValue({ status: 'published', observationReadiness }), stop: jest.fn() };
+  const log = { info: jest.fn() };
+  registerInventoryRepresentativeProfileSchedule(scheduler, { worker, log });
+  const handler = scheduler.schedule.mock.calls[0][2];
+  await handler();
+  worker.run.mockResolvedValue({ status: 'up_to_date', observationReadiness });
+  await handler(); await handler();
+  expect(log.info).toHaveBeenCalledTimes(1);
+  const healed = { groups: 2, groupsWithObservationGaps: 0, groupsWithCurrentObservations: 2 };
+  worker.run.mockResolvedValue({ status: 'up_to_date', observationReadiness: healed });
+  await handler(); await handler();
+  expect(log.info).toHaveBeenCalledTimes(2);
+  expect(log.info).toHaveBeenLastCalledWith('Library group metadata readiness changed', healed);
+  scheduler.inventoryRepresentativeProfileWorker.stop();
+});

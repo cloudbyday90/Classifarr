@@ -1,9 +1,9 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { expect, jest, test } from '@jest/globals';
 import { createInventoryRepresentativeProfileRepository, REPRESENTATIVE_PROFILE_LIBRARIES_SQL,
-  REPRESENTATIVE_PROFILE_IDENTITIES_SQL } from '../../services/inventoryRepresentativeProfileRepository.mjs';
+  REPRESENTATIVE_PROFILE_IDENTITIES_SQL, REPRESENTATIVE_PROFILE_CORPUS_SQL } from '../../services/inventoryRepresentativeProfileRepository.mjs';
 import { INVENTORY_DESCRIPTION_REFRESH_STATE_SQL } from '../../services/inventoryDescriptionRefreshRepository.mjs';
-import { INVENTORY_DESCRIPTION_CORPUS_SQL } from '../../services/inventoryDescriptionCorpus.mjs';
+import { collectInventoryObservationReadiness } from '../../services/inventoryObservationReadiness.mjs';
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from '../../services/sourceConflictAuthorityGuard.mjs';
 import { representativeProfileFixture } from '../helpers/inventoryRepresentativeProfileFixture.mjs';
 
@@ -13,7 +13,7 @@ function setup() {
     if (sql === INVENTORY_DESCRIPTION_REFRESH_STATE_SQL) return { rows: [fixture.state] };
     if (sql === REPRESENTATIVE_PROFILE_LIBRARIES_SQL) return { rows: fixture.snapshot.libraries };
     if (sql === REPRESENTATIVE_PROFILE_IDENTITIES_SQL) return { rows: fixture.rows };
-    if (sql === INVENTORY_DESCRIPTION_CORPUS_SQL) return { rows: fixture.rows };
+    if (sql === REPRESENTATIVE_PROFILE_CORPUS_SQL) return { rows: fixture.rows };
     if (sql.includes('embedding::text')) return { rows: params[4].flatMap(hash => fixture.snapshot.vectors.has(hash)
       ? [{ description_hash: hash, embedding: JSON.stringify(fixture.snapshot.vectors.get(hash)) }] : []) };
     return { rows: [] };
@@ -23,12 +23,14 @@ function setup() {
 }
 
 test('snapshot is read-only, bounded and current; conflict exclusions and vector representation remain scoped', async () => {
-  const { repository, identity, client, withTransaction, snapshot } = setup();
-  expect(await repository.read(identity)).toEqual(snapshot);
+  const { repository, identity, client, withTransaction, snapshot, rows } = setup();
+  expect(await repository.read(identity)).toEqual({ ...snapshot, observationReadiness: collectInventoryObservationReadiness(rows) });
   expect(withTransaction).toHaveBeenCalledTimes(1);
   expect(client.query.mock.calls[0]).toEqual(['SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY']);
   expect(client.query).toHaveBeenCalledWith("SET LOCAL transaction_timeout = '90s'");
-  expect(client.query).toHaveBeenCalledWith(INVENTORY_DESCRIPTION_CORPUS_SQL, [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]);
+  expect(client.query).toHaveBeenCalledWith(REPRESENTATIVE_PROFILE_CORPUS_SQL, [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]);
+  expect(REPRESENTATIVE_PROFILE_CORPUS_SQL).toContain('octet_length');
+  expect(REPRESENTATIVE_PROFILE_CORPUS_SQL).not.toContain('msi.title');
   const [sql, params] = client.query.mock.calls.find(([query]) => query.includes('embedding::text'));
   expect(sql).toContain("created_at > now() - interval '30 days'");
   expect(params.slice(1, 4)).toEqual([identity.model, identity.digest, identity.dimensions]);
@@ -60,5 +62,5 @@ test('novelty identity budget rejects before training or vector loading', async 
   client.query.mockImplementation((sql, params) => sql === REPRESENTATIVE_PROFILE_IDENTITIES_SQL
     ? { rows: Array(50001).fill({ media_type: 'movie', tmdb_id: 1 }) } : query(sql, params));
   await expect(repository.read(identity)).rejects.toThrow('identity_budget');
-  expect(client.query.mock.calls.some(([sql]) => sql === INVENTORY_DESCRIPTION_CORPUS_SQL)).toBe(false);
+  expect(client.query.mock.calls.some(([sql]) => sql === REPRESENTATIVE_PROFILE_CORPUS_SQL)).toBe(false);
 });

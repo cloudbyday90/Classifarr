@@ -238,6 +238,7 @@ export class QueueService {
       logger: this.logger,
       enqueueTask: (...args) => this.enqueue(...args),
       performanceReceiptRecorder: queueStartupPerformanceReceiptService,
+      prioritizeCandidates: rows => this.scheduler?.inventoryNeighborhoodRecovery?.prioritizeMetadata(rows) ?? rows,
     });
   }
 

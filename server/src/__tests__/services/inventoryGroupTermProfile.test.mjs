@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { expect, test } from '@jest/globals';
 import { descriptionTerms, fitGroupTermProfile } from '../../services/inventoryGroupTermProfile.mjs';
+import { createGroupTermReadinessCounter } from '../../services/inventoryGroupTermReadiness.mjs';
 
 function fixture() {
   const items = [], texts = new Map([['held', 'leakedword leakedword']]);
@@ -62,6 +63,25 @@ test('rejects held-out leaks, missing descriptions, oversized input and cancella
 test('no other-library groups means no discrimination, even with recurring terms', async () => {
   const { index, texts } = fixture(); index.items = index.items.filter(item => item.id === 1);
   expect((await fitGroupTermProfile(index, texts)).every(row => row.weights.size === 0)).toBe(true);
+  expect((await fitGroupTermProfile(index, texts)).every(row => row.readiness === 'no_other_library_groups')).toBe(true);
+});
+
+test('aggregate diagnostics distinguish lexical limitations without exposing private vocabulary', async () => {
+  const { index, texts } = fixture(), counter = createGroupTermReadinessCounter();
+  counter.record(await fitGroupTermProfile(index, texts));
+  index.items.forEach(item => texts.set(item.hash, 'common words'));
+  const common = await fitGroupTermProfile(index, texts);
+  expect(common.every(group => group.readiness === 'only_common_terms')).toBe(true);
+  counter.record(common);
+  index.items.forEach(item => texts.set(item.hash, '42 a'));
+  expect((await fitGroupTermProfile(index, texts)).every(group => group.readiness === 'no_recurring_terms')).toBe(true);
+  index.items = index.items.filter((_, n) => n % 4 < 2);
+  expect((await fitGroupTermProfile(index, texts)).every(group => group.readiness === 'insufficient_distinct_examples')).toBe(true);
+  expect(counter.read()).toMatchObject({ folds: 2, groupFits: 8, reasons: { available: 4, only_common_terms: 4 } });
+  expect(JSON.stringify(counter.read())).not.toMatch(/ocean|forest|leakedword|hash/);
+  const receipt = counter.read(); receipt.reasons.available = 999;
+  expect(counter.read().reasons.available).toBe(4);
+  expect(() => counter.record([{ readiness: 'PRIVATE' }])).toThrow('unknown_reason');
 });
 
 test('resource guards stop unique-vocabulary and cross-group work explosions', async () => {
@@ -79,7 +99,7 @@ test('equal rival prevalence is not contrast and cancellation is observed betwee
     index.items.push({ hash: `background-${n}`, type: 'movie', id: null, group: null });
     texts.set(`background-${n}`, 'different background');
   }
-  expect((await fitGroupTermProfile(index, texts)).filter(row => row.type === 'movie').every(row => row.weights.size === 0)).toBe(true);
+  expect((await fitGroupTermProfile(index, texts)).filter(row => row.type === 'movie').every(row => row.weights.size === 0 && row.readiness === 'no_distinctive_terms')).toBe(true);
   const controller = new AbortController();
   const pending = fitGroupTermProfile(index, texts, controller.signal); controller.abort();
   await expect(pending).rejects.toThrow();

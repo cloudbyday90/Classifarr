@@ -78,6 +78,10 @@ were not relaxed after inspecting results. Lexical frequency is not semantic pro
 | Semantic contrast between competing groups | Can represent shared wording and synonyms beyond terms | Requires a separately frozen evaluation; follow readiness diagnosis |
 
 **Next high-value item: group-level evidence readiness and targeted enrichment.**
+Implemented and re-evaluated in the subsequent
+[group evidence readiness outcome](group-evidence-readiness-outcome.md); the
+recommendation below records the original hand-off, not outstanding work.
+
 Extend the existing automatic backfill selector with counts that distinguish absent
 descriptions/metadata, too few distinct examples, and complete-but-indistinguishable
 groups. Reuse current validated memberships, checkpoints, provider cooldowns and

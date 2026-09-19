@@ -41,6 +41,19 @@ describe('REFILL_QUEUE_BATCH_LIMIT', () => {
 // ---------------------------------------------------------------------------
 
 describe('selectRefillCandidates', () => {
+  test('optional readiness ordering preserves scan progress and falls back on hint failure', async () => {
+    const db = createMockDb();
+    const rows = [1, 2].map(id => ({ id, scan_count: 5000, scan_after_id: 5000, through_id: 9000 }));
+    db.query.mockResolvedValue({ rows });
+    const prioritizeCandidates = jest.fn(candidates => [...candidates].reverse());
+    const svc = new QueueRefillService({ db, logger: createMockLogger(), prioritizeCandidates });
+    expect(await svc.selectRefillCandidates()).toEqual([rows[1], rows[0]]);
+    expect(svc.refillCursor).toEqual({ afterId: 5000, throughId: 9000 });
+    prioritizeCandidates.mockImplementation(() => { throw new Error('unavailable'); });
+    expect(await svc.selectRefillCandidates()).toEqual(rows);
+    expect(svc.refillCursor).toEqual({ afterId: 5000, throughId: 9000 });
+  });
+
   test('returns rows from DB query', async () => {
     const db = createMockDb();
     const rows = [{ id: 1, title: 'Movie A' }, { id: 2, title: 'Movie B' }];

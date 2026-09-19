@@ -14,6 +14,7 @@ import { buildCandidateSupportRanges, candidateSupportSlice } from './inventoryC
 import { createCandidateLocalIndex, retrieveCandidateLocalEvidence } from './inventoryCandidateLocalIndex.mjs';
 import { resolveCandidateLocalEvidence, combineCandidateLocalEvidence } from './inventoryCandidateLocalEvidence.mjs';
 import { fitGroupTermProfile } from './inventoryGroupTermProfile.mjs';
+import { createGroupTermReadinessCounter } from './inventoryGroupTermReadiness.mjs';
 import { resolveGroupTermEvidence, combineGroupTermEvidence } from './inventoryGroupTermEvidence.mjs';
 
 function pairedDecision(candidates, vector, dimensions) {
@@ -52,6 +53,7 @@ export async function runInventoryCandidateStabilityBenchmark(snapshot, dimensio
   const strata = [...snapshot.libraries].sort((a, b) => a.id - b.id);
   const names = groupContrast ? ['independent', 'local', 'combined', 'contrast', 'enhanced']
     : localEvidence ? ['independent', 'local', 'combined'] : ['aligned', 'independent'];
+  const readiness = createGroupTermReadinessCounter();
   const arms = names.map(name => ({ name, ...createCoverageMetrics(),
     mediaTypes: ['movie', 'tv'].map(mediaType => ({ mediaType, ...createCoverageMetrics() })),
     libraries: strata.map((library, index) => ({ stratum: index + 1, mediaType: library.media_type, ...createCoverageMetrics() })),
@@ -65,6 +67,7 @@ export async function runInventoryCandidateStabilityBenchmark(snapshot, dimensio
     const ranges = await buildCandidateSupportRanges(model, training, dimensions, abort);
     const localIndex = localEvidence ? await createCandidateLocalIndex(snapshot, model, folds.held[fold], dimensions, abort) : null;
     const terms = groupContrast ? await fitGroupTermProfile(localIndex, snapshot.corpus.texts, abort) : null;
+    if (terms) readiness.record(terms);
     for (const doc of sample.filter(row => folds.foldByHash.get(row.hash) === fold)) {
       abort.throwIfAborted();
       const candidates = [...model.libraries].filter(([, profile]) => profile.mediaType === doc.type);
@@ -106,6 +109,7 @@ export async function runInventoryCandidateStabilityBenchmark(snapshot, dimensio
   }
   abort.throwIfAborted();
   return { protocol: groupContrast ? 'inventory_group_contrast_v1' : localEvidence ? 'inventory_candidate_local_evidence_v1' : 'inventory_candidate_stability_v1', status: 'complete', calls: 0, livePromotionAllowed: false,
+    ...(groupContrast ? { trainingReadiness: readiness.read() } : {}),
     independentLabels: 0, accuracy: null, observedPlacementIsGroundTruth: false,
     metric: 'historical_placement_agreement_not_verified_correctness', sampledDescriptions: sample.length,
     sampleShortfall: options.size - sample.length, excludedPriorDescriptions: selection.excluded.size,

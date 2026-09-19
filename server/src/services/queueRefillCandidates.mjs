@@ -60,7 +60,7 @@ export async function readRefillCandidatePage(db, cursor, performanceReceiptReco
          LEFT JOIN LATERAL (
              SELECT msi.id, msi.title, msi.metadata, msi.genres, msi.tags, msi.content_rating,
                 msi.tmdb_id, msi.tvdb_id, msi.imdb_id, msi.year,
-                msi.library_id, l.name as library_name, msi.media_type,
+                msi.library_id, l.name as library_name, msi.media_type, l.is_active AS source_library_active,
                 msi.inventory_tmdb_attempted_at, msi.inventory_tmdb_fetched_at,
                 NOW() AS inventory_tmdb_checked_at,
                 (${STANDARD_ENRICHMENT_SQL}) AS needs_standard_enrichment

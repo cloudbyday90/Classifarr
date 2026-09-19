@@ -129,6 +129,49 @@ test('clear, cancellation and newer publication prevent stale commits', async ()
   expect(inspect().summary.referencedLibraries).toBe(2);
 });
 
+test('metadata readiness uses final verified snapshot, expires and invalidates on revision changes', async () => {
+  const { input, rows } = await setup();
+  let revision = 0, time = 0;
+  const recovery = createInventoryNeighborhoodRecovery({ getRevision: () => revision, now: () => time });
+  input.snapshot.observationReadiness = new Map(input.snapshot.corpus.documents.map(doc => [`${doc.key}:${doc.libraryIds[0]}`, 'stale']));
+  const batch = await recovery.prepare(input);
+  const fresh = { ...input.snapshot, observationReadiness: new Map([...input.snapshot.observationReadiness].map(([key]) => [key, 'current'])) };
+  batch.commit(fresh);
+  expect(recovery.readReadiness()).toMatchObject({ groupsWithObservationGaps: 0, groupsWithUnknownObservations: 0 });
+  expect(recovery.readReadiness().groupsWithCurrentObservations).toBeGreaterThan(0);
+  time = 1_800_000;
+  expect(recovery.readReadiness()).toBeNull();
+  expect(recovery.prioritizeMetadata(rows)).toBe(rows);
+  (await recovery.prepare(input)).commit();
+  expect(recovery.readReadiness().groupsWithObservationGaps).toBeGreaterThan(0);
+  revision++;
+  expect(recovery.readReadiness()).toBeNull();
+  const stale = await recovery.prepare(input); revision++; stale.commit();
+  expect(recovery.readReadiness()).toBeNull();
+});
+
+test('source drift cannot publish metadata targets and clear removes all readiness', async () => {
+  const { input, recovery, snapshot, rows } = await setup();
+  const batch = await recovery.prepare(input);
+  const fresh = structuredClone(snapshot); fresh.corpus.documents.pop();
+  batch.commit(fresh);
+  expect(recovery.readReadiness()).toBeNull();
+  (await recovery.prepare(input)).commit();
+  expect(recovery.readReadiness()).not.toBeNull();
+  recovery.clear();
+  expect(recovery.readReadiness()).toBeNull();
+  expect(recovery.prioritizeMetadata(rows)).toBe(rows);
+});
+
+test('metadata invalidation withdraws hints and staged plans without losing vector recovery references', async () => {
+  const { input, recovery, inspect } = await setup();
+  (await recovery.prepare(input)).commit();
+  const staged = await recovery.prepare(input);
+  recovery.clearMetadata(); staged.commit();
+  expect(recovery.readReadiness()).toBeNull();
+  expect(inspect({ present: new Set() }).summary.prioritizedDescriptions).toBeGreaterThan(0);
+});
+
 test.each([
   corpus => { corpus.documents = null; },
   corpus => { corpus.texts = {}; },

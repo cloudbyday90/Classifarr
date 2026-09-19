@@ -7,6 +7,10 @@ import { QueueInventoryTmdbEnrichmentService } from '../../services/queueInvento
 import { processMetadataEnrichmentTask } from '../../services/queueTaskProcessorEnrichment.mjs';
 import { readLibraryProfileObservation } from '../../services/libraryProfileQueries.mjs';
 import { inventoryObservationValidityCases } from '../helpers/inventoryObservationValidityCases.mjs';
+import { buildInventoryDescriptionCorpusSql, prepareInventoryDescriptionCorpus } from '../../services/inventoryDescriptionCorpus.mjs';
+import { collectInventoryObservationReadiness } from '../../services/inventoryObservationReadiness.mjs';
+import { buildInventoryGroupReadiness, orderInventoryReadinessRefill } from '../../services/inventoryGroupReadiness.mjs';
+import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from '../../services/sourceConflictAuthorityGuard.mjs';
 
 let db, libraryId, refill, provider, deps;
 const response = type => ({ id: 7, original_language: type === 'movie' ? 'ja' : 'fr',
@@ -62,6 +66,36 @@ test('automatically backfills typed movie and TV observations and refreshes aggr
     await run(candidates[0]);
     expect(provider.getMovieDetails).toHaveBeenCalledTimes(1);
     expect(await revision()).toBe('4');
+});
+
+test('real corpus readiness prioritizes only due gaps and heals through existing guarded persistence', async () => {
+    const items = [];
+    for (let id = 7; id < 11; id++) {
+        const item = await add('movie', id); items.push(item);
+        await db.query("UPDATE media_server_items SET metadata = metadata || jsonb_build_object('overview', $2::text) WHERE id = $1",
+            [item.id, `Synthetic description ${id}`]);
+    }
+    const snapshot = async () => {
+        const rows = (await db.query(buildInventoryDescriptionCorpusSql({ includeReadinessMetadata: true }),
+            [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS])).rows.filter(row => row.library_id === libraryId);
+        return { corpus: prepareInventoryDescriptionCorpus(rows), observationReadiness: collectInventoryObservationReadiness(rows) };
+    };
+    const before = await snapshot();
+    const references = new Map([[libraryId, { groups: [before.corpus.documents.filter(doc => doc.id !== 7).map(doc => doc.hash)] }]]);
+    const plan = buildInventoryGroupReadiness(before, references);
+    expect(plan.summary.groupsWithObservationGaps).toBe(1);
+    refill.prioritizeCandidates = rows => orderInventoryReadinessRefill(rows, plan.targets);
+    const candidates = await pending();
+    expect(candidates.map(row => row.tmdb_id)).toEqual([8, 7, 9, 10]);
+    provider.getMovieDetails.mockImplementation(async id => ({ ...response('movie'), id }));
+    for (const candidate of candidates) await run(candidate);
+    expect(await pending()).toEqual([]);
+    const healed = buildInventoryGroupReadiness(await snapshot(), references);
+    expect(healed.summary).toMatchObject({ groupsWithCurrentObservations: 1, groupsWithObservationGaps: 0 });
+    expect(healed.targets.size).toBe(0);
+    expect(provider.getMovieDetails).toHaveBeenCalledTimes(4);
+    await db.query("UPDATE media_server_items SET metadata = metadata || jsonb_build_object('inventory_tmdb', repeat('x', 5000)) WHERE id = $1", [items[1].id]);
+    expect(buildInventoryGroupReadiness(await snapshot(), references).summary.groupsWithUnknownObservations).toBe(1);
 });
 test('normal enrichment adds the observation after existing identity resolution', async () => {
     const item = await add();

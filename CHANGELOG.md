@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Diagnose learned-group evidence gaps separately from common or overlapping
+  vocabulary. Automatically prioritize already-due metadata backfill within the
+  existing fair queue, with expiring source-checked hints and unchanged routing.
+- Apply client-tooling PR #538 locally and validate its dependency updates with
+  client, browser and production-build checks; no PR merge or release.
 - Evaluate learned content-group terms against existing library evidence on
   source-verified movie/TV samples. Keep the experiment offline because it did
   not recover additional ambiguous cases; no new prompts or routing changes.

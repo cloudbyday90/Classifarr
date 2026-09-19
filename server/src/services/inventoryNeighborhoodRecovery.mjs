@@ -3,21 +3,31 @@ import { inventoryNeighborhoodRecoverySource } from './inventoryNeighborhoodReco
 import { assertRepresentativeSnapshotBudget, REPRESENTATIVE_MIN_COVERAGE_PERCENT } from './inventoryRepresentativeCoverage.mjs';
 import { validateInventoryRepresentativeProfileCoverage } from './inventoryRepresentativeProfileValidation.mjs';
 import { validatedRecoveryGroups } from './inventoryRepresentativeMembership.mjs';
+import { buildInventoryGroupReadiness, orderInventoryReadinessRefill } from './inventoryGroupReadiness.mjs';
 
 const REFERENCE_TTL_MS = 1_800_000;
 
 /** Scheduler-owned, bounded sidecar. No vectors, source text, routing decisions or I/O retained. */
-export function createInventoryNeighborhoodRecovery({ now = Date.now } = {}) {
+export function createInventoryNeighborhoodRecovery({ now = Date.now, getRevision = () => 0 } = {}) {
   let references = new Map(), representation = null, generation = 0;
-  const clear = () => { references.clear(); representation = null; generation++; };
+  let metadataPlan = null;
+  const clear = () => { references.clear(); representation = null; metadataPlan = null; generation++; };
+  const currentPlan = () => {
+    if (metadataPlan && (metadataPlan.expiresAt <= now() || metadataPlan.revision !== getRevision())) metadataPlan = null;
+    return metadataPlan;
+  };
   const prune = source => {
     for (const [id, reference] of references) if (reference.expiresAt <= now() ||
-        source.libraries.get(id)?.binding !== reference.binding) references.delete(id);
+        source.libraries.get(id)?.binding !== reference.binding) { references.delete(id); metadataPlan = null; }
   };
   return {
     clear,
+    clearMetadata() { metadataPlan = null; generation++; },
+    readReadiness() { const plan = currentPlan(); return plan ? { ...plan.summary } : null; },
+    prioritizeMetadata(rows) { const plan = currentPlan(); return plan ? orderInventoryReadinessRefill(rows, plan.targets) : rows; },
     async prepare({ model, snapshot, identity, configKey, signal }) {
       const token = generation;
+      const revision = getRevision();
       assertRepresentativeSnapshotBudget(snapshot, identity.dimensions);
       validateInventoryRepresentativeProfileCoverage(model, snapshot, identity.dimensions);
       const source = inventoryNeighborhoodRecoverySource(snapshot.corpus, identity, configKey);
@@ -29,12 +39,17 @@ export function createInventoryNeighborhoodRecovery({ now = Date.now } = {}) {
         const groups = await validatedRecoveryGroups(profile, snapshot.vectors, identity.dimensions, signal);
         if (groups) staged.set(id, { binding: library.binding, groups });
       }
-      return { commit() {
-        if (token !== generation || signal?.aborted) return;
+      return { commit(fresh = snapshot) {
+        if (token !== generation || signal?.aborted || revision !== getRevision()) return;
+        const verified = inventoryNeighborhoodRecoverySource(fresh.corpus, identity, configKey);
+        if (verified.libraries.size !== source.libraries.size || [...source.libraries].some(([id, library]) =>
+          verified.libraries.get(id)?.binding !== library.binding)) return;
+        const readiness = buildInventoryGroupReadiness(fresh, staged);
         if (representation !== source.representation) references.clear();
         representation = source.representation;
         prune(source);
         for (const [id, reference] of staged) references.set(id, { ...reference, expiresAt: now() + REFERENCE_TTL_MS });
+        metadataPlan = { ...readiness, revision, expiresAt: now() + REFERENCE_TTL_MS };
         generation++; // A previously staged publication cannot supersede this one.
       } };
     },

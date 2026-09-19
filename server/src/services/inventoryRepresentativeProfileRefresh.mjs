@@ -23,7 +23,7 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
   let active = null, stopped = false, key = null, revision = -1, configKey = null, available = false;
   let nextRunAt = 0, backoffUntil = 0, failures = 0, verifiedAt = null;
   let lastReport = { version: INVENTORY_REPRESENTATIVE_PROFILE_VERSION, mode: 'shadow_cache', status: 'pending' };
-  const invalidate = () => { available = false; verifiedAt = null; };
+  const invalidate = () => { available = false; verifiedAt = null; neighborhoodRecovery?.clearMetadata?.(); };
   const clear = () => { cache.clear(); key = null; invalidate(); };
   const report = (status, summary = {}) => {
     lastReport = { version: INVENTORY_REPRESENTATIVE_PROFILE_VERSION, mode: 'shadow_cache', status, ...summary };
@@ -75,8 +75,9 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
     key = sourceKey; revision = runRevision; available = true; verifiedAt = now(); nextRunAt = now() + 300_000;
     diagnostics.profilesRecovered();
     try { batch?.commit(fresh); } catch { /* No partial or unverified observation is published. */ }
-    try { recoveryBatch?.commit(); } catch { /* Ordinary backfill remains available. */ }
-    return report(cached ? 'up_to_date' : 'published', summary);
+    try { recoveryBatch?.commit(fresh); } catch { /* Ordinary backfill remains available. */ }
+    const readiness = neighborhoodRecovery?.readReadiness?.();
+    return report(cached ? 'up_to_date' : 'published', { ...summary, ...(readiness ? { observationReadiness: readiness } : {}) });
   }
 
   return {

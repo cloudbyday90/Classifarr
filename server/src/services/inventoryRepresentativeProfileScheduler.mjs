@@ -32,10 +32,18 @@ export function registerInventoryRepresentativeProfileSchedule(scheduler, {
   scheduler.inventoryRepresentativeProfileWorker?.stop();
   const disconnect = installRepresentativeShadow(worker.observer ?? null);
   scheduler.inventoryRepresentativeProfileWorker = { ...worker, stop() { disconnect(); worker.stop(); } };
+  let lastReadiness = null;
   const run = async () => {
     const report = await worker.run();
     if (report.status === 'failed') throw new Error('inventory_representative_refresh_unavailable');
     if (report.status === 'published') log.info('Library representative profiles refreshed automatically', report);
+    if (['published', 'up_to_date'].includes(report.status) && report.observationReadiness) {
+      const signature = JSON.stringify(report.observationReadiness);
+      if (lastReadiness !== null && lastReadiness !== signature && report.status !== 'published') {
+        log.info('Library group metadata readiness changed', report.observationReadiness);
+      }
+      lastReadiness = signature;
+    }
     return report;
   };
   scheduler.schedule(INVENTORY_REPRESENTATIVE_PROFILE_TASK, '30 * * * * *', run, null, { noOverlap: true });

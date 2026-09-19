@@ -40,15 +40,24 @@ export async function fitGroupTermProfile(index, texts, signal) {
     await setImmediate(); signal?.throwIfAborted();
     const corpus = media.get(group.type), weights = new Map();
     const rivals = [...groups.values()].filter(row => row.type === group.type && row.id !== group.id);
+    let repeatedTerms = 0, uncommonRepeatedTerms = 0;
     for (const [term, count] of group.counts) {
       if (processed++ % 256 === 0) { await setImmediate(); signal?.throwIfAborted(); }
-      if (count < 3 || corpus.counts.get(term) * 2 > corpus.size || !rivals.length) continue;
+      if (count < 3) continue;
+      repeatedTerms++;
+      if (corpus.counts.get(term) * 2 > corpus.size) continue;
+      uncommonRepeatedTerms++;
+      if (!rivals.length) continue;
       const rival = Math.max(...rivals.map(row => ((row.counts.get(term) ?? 0) + 1) / (row.size + 2)));
       const contrast = Math.log(((count + 1) / (group.size + 2)) / rival);
       if (contrast > 0) weights.set(term, contrast * (1 + Math.log((corpus.size + 1) / (corpus.counts.get(term) + 1))));
     }
     const norm = Math.sqrt([...weights.values()].reduce((sum, weight) => sum + weight * weight, 0));
+    const readiness = weights.size ? 'available' : group.size < 3 ? 'insufficient_distinct_examples' :
+      !rivals.length ? 'no_other_library_groups' : !repeatedTerms ? 'no_recurring_terms' :
+        !uncommonRepeatedTerms ? 'only_common_terms' : 'no_distinctive_terms';
     result.push({ id: group.id, type: group.type, group: group.group,
+      readiness,
       weights: new Map([...weights].map(([term, weight]) => [term, weight / norm])) });
   }
   signal?.throwIfAborted();
