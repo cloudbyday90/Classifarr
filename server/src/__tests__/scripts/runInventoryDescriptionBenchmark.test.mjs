@@ -5,6 +5,23 @@ import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescr
 
 const seed = 'benchmark-test-seed-2026';
 
+test('multi-scale context is exclusive, zero-generation, source-verified and closes after drift', async () => {
+  const argv = ['--seed', seed, '--size', '8', '--folds', '2', '--multi-scale-context'], loadRuntime = jest.fn();
+  for (const invalid of [argv.filter(value => !['--folds', '2'].includes(value)), [...argv, '--generate-cases', '1'],
+    ...['--local-communities', '--adaptive-groups', '--evidence-reranker', '--fresh-policy-evaluation'].map(mode => [...argv, mode])]) {
+    await expect(runInventoryDescriptionBenchmark({ argv: invalid, loadRuntime })).rejects.toThrow();
+  }
+  expect(loadRuntime).not.toHaveBeenCalled();
+  const instance = runtime();
+  expect(await runInventoryDescriptionBenchmark({ argv, loadRuntime: async () => instance }))
+    .toMatchObject({ protocol: 'inventory_multi_scale_context_v1', status: 'complete', sourceVerified: true, calls: 0 });
+  const snapshot = await instance.repository.read();
+  instance.repository.read.mockResolvedValueOnce(snapshot).mockResolvedValueOnce({ ...snapshot, candidateMetadata: new Map([['movie:1', null]]) });
+  expect(await runInventoryDescriptionBenchmark({ argv, loadRuntime: async () => instance }))
+    .toMatchObject({ status: 'invalidated', sourceVerified: false, changedSourceComponents: ['metadata'] });
+  expect(instance.createClient).not.toHaveBeenCalled(); expect(instance.close).toHaveBeenCalledTimes(2);
+});
+
 test('local communities require exclusive zero-generation folds and invalidate source drift', async () => {
   const argv = ['--seed', seed, '--size', '8', '--folds', '2', '--local-communities'], loadRuntime = jest.fn();
   for (const invalid of [argv.filter(value => !['--folds', '2'].includes(value)), [...argv, '--generate-cases', '1'],

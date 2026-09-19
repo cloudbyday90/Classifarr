@@ -110,6 +110,11 @@ the measured coverage/detail trade-off, not a claim that the combined method is
 already effective. Do not spend the next component solely on faster approximate
 search before its retrieval quality is established.
 
+Follow-up implementation: [multi-scale retrieval design](multi-scale-retrieval-design.md)
+and [outcome](multi-scale-retrieval-outcome.md). Its representative diagnostic
+excludes self matches but does not claim a full leave-one-out refit. The actual
+query evaluation remains grouped and held out from training.
+
 Final recommendation stack: validated inventory and automatic recovery → cached
 descriptions/vectors → current broad profiles plus raw-item retrieval → optional
 local-community context → unchanged policy/routing safeguards. No extra settings,

@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a bounded, snapshot-cached retrieval context that preserves raw matches and
+  broad library coverage while adding deduplicated local examples. Retry failed
+  optional discovery without caching failures, validate source-bound reuse, and
+  measure held-out movie/TV coverage without changing routing or adding controls.
 - Add bounded, library-agnostic local content-community discovery and a paired,
   source-verified movie/TV evaluation. Preserve shared evidence and ungrouped
   items explicitly, reuse control validation, and keep live routing, automatic
