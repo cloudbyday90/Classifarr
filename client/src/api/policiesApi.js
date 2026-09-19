@@ -89,7 +89,12 @@ export function admitPolicyAuthoringProposal(
         values: command.values,
       })),
     },
-    buildNativePolicyCreateRequestOptions(requestIdempotencyKey)
+    {
+      ...buildNativePolicyCreateRequestOptions(requestIdempotencyKey),
+      // A lost admission response may already have created the policy. Let the
+      // caller reconcile current lifecycle instead of replaying the write.
+      skipAutomaticRetry: true,
+    }
   )
 }
 

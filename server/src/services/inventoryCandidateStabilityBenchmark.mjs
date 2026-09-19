@@ -13,6 +13,8 @@ import { inspectRepresentativeCandidates } from './representativeCandidateCompar
 import { buildCandidateSupportRanges, candidateSupportSlice } from './inventoryCandidateSupportRange.mjs';
 import { createCandidateLocalIndex, retrieveCandidateLocalEvidence } from './inventoryCandidateLocalIndex.mjs';
 import { resolveCandidateLocalEvidence, combineCandidateLocalEvidence } from './inventoryCandidateLocalEvidence.mjs';
+import { fitGroupTermProfile } from './inventoryGroupTermProfile.mjs';
+import { resolveGroupTermEvidence, combineGroupTermEvidence } from './inventoryGroupTermEvidence.mjs';
 
 function pairedDecision(candidates, vector, dimensions) {
   const reason = candidates.length < 2 ? 'insufficient_candidates'
@@ -33,7 +35,8 @@ const summarize = ({ pairedWithComplete, ...metrics }, localEvidence) => ({ ...m
 
 /** Paired zero-generation hold-out evaluation; never publishes profiles or writes routing state. */
 export async function runInventoryCandidateStabilityBenchmark(snapshot, dimensions, rawOptions, { signal, onProgress,
-  fit = fitInventoryRepresentativeProfile, localEvidence = false } = {}) {
+  fit = fitInventoryRepresentativeProfile, localEvidence = false, groupContrast = false } = {}) {
+  localEvidence ||= groupContrast;
   const options = validateDescriptionBenchmarkOptions(rawOptions);
   if (!options.folds || options.generateCases) throw new Error('candidate_stability_requires_grouped_zero_generation');
   const abort = AbortSignal.any([AbortSignal.timeout(options.maxMinutes * 60_000), ...(signal ? [signal] : [])]);
@@ -47,7 +50,9 @@ export async function runInventoryCandidateStabilityBenchmark(snapshot, dimensio
   const selection = selectAdditionalDescriptionBenchmarkSample(snapshot.corpus, options), sample = selection.sample;
   const folds = planDescriptionBenchmarkFolds(snapshot.corpus, sample, snapshot.libraries, options);
   const strata = [...snapshot.libraries].sort((a, b) => a.id - b.id);
-  const arms = (localEvidence ? ['independent', 'local', 'combined'] : ['aligned', 'independent']).map(name => ({ name, ...createCoverageMetrics(),
+  const names = groupContrast ? ['independent', 'local', 'combined', 'contrast', 'enhanced']
+    : localEvidence ? ['independent', 'local', 'combined'] : ['aligned', 'independent'];
+  const arms = names.map(name => ({ name, ...createCoverageMetrics(),
     mediaTypes: ['movie', 'tv'].map(mediaType => ({ mediaType, ...createCoverageMetrics() })),
     libraries: strata.map((library, index) => ({ stratum: index + 1, mediaType: library.media_type, ...createCoverageMetrics() })),
     supportRanges: ['within_observed_groups', 'outside_observed_groups', 'unavailable'].map(slice => ({ slice, ...createCoverageMetrics() })),
@@ -59,6 +64,7 @@ export async function runInventoryCandidateStabilityBenchmark(snapshot, dimensio
     const model = await fit(training, dimensions, { signal: abort });
     const ranges = await buildCandidateSupportRanges(model, training, dimensions, abort);
     const localIndex = localEvidence ? await createCandidateLocalIndex(snapshot, model, folds.held[fold], dimensions, abort) : null;
+    const terms = groupContrast ? await fitGroupTermProfile(localIndex, snapshot.corpus.texts, abort) : null;
     for (const doc of sample.filter(row => folds.foldByHash.get(row.hash) === fold)) {
       abort.throwIfAborted();
       const candidates = [...model.libraries].filter(([, profile]) => profile.mediaType === doc.type);
@@ -75,6 +81,12 @@ export async function runInventoryCandidateStabilityBenchmark(snapshot, dimensio
         decisions.local = proposal.reason === 'selected' ? { reason: 'selected',
           index: candidates.findIndex(([id]) => id === evidence.candidates[proposal.index].id) } : proposal;
         decisions.combined = combineCandidateLocalEvidence(decisions.independent, decisions.local);
+        if (terms) {
+          const contrast = resolveGroupTermEvidence(terms, doc.type, snapshot.corpus.texts.get(doc.hash), evidence, snapshot.candidateMetadata?.get(doc.key));
+          decisions.contrast = contrast.reason === 'selected' ? { reason: 'selected',
+            index: candidates.findIndex(([id]) => id === evidence.candidates[contrast.index].id) } : contrast;
+          decisions.enhanced = combineGroupTermEvidence(decisions.combined, decisions.contrast);
+        }
         nearestSlice = evidence.slice;
       }
       const baseline = withPlacement(localEvidence ? decisions.independent : decisions.aligned, candidates, doc);
@@ -90,10 +102,10 @@ export async function runInventoryCandidateStabilityBenchmark(snapshot, dimensio
         });
       }
     }
-    onProgress?.({ phase: localEvidence ? 'candidate_local_evidence' : 'candidate_stability', fold: fold + 1, evaluated: arms[0].evaluated });
+    onProgress?.({ phase: groupContrast ? 'group_contrast' : localEvidence ? 'candidate_local_evidence' : 'candidate_stability', fold: fold + 1, evaluated: arms[0].evaluated });
   }
   abort.throwIfAborted();
-  return { protocol: localEvidence ? 'inventory_candidate_local_evidence_v1' : 'inventory_candidate_stability_v1', status: 'complete', calls: 0, livePromotionAllowed: false,
+  return { protocol: groupContrast ? 'inventory_group_contrast_v1' : localEvidence ? 'inventory_candidate_local_evidence_v1' : 'inventory_candidate_stability_v1', status: 'complete', calls: 0, livePromotionAllowed: false,
     independentLabels: 0, accuracy: null, observedPlacementIsGroundTruth: false,
     metric: 'historical_placement_agreement_not_verified_correctness', sampledDescriptions: sample.length,
     sampleShortfall: options.size - sample.length, excludedPriorDescriptions: selection.excluded.size,

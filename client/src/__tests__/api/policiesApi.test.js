@@ -109,7 +109,7 @@ describe('policiesApi', () => {
     )
   })
 
-  it('admits the opaque reference, revision, typed adjustments, and stable idempotency key', async () => {
+  it('admits once with typed adjustments and an idempotency key, leaving recovery to the caller', async () => {
     mockPost.mockResolvedValueOnce({ data: { statusId: 'proposal_admission_created' } })
 
     await admitPolicyAuthoringProposal(
@@ -135,6 +135,7 @@ describe('policiesApi', () => {
         ],
       },
       {
+        skipAutomaticRetry: true,
         headers: {
           'Idempotency-Key': '"6fe3d170-9390-4ec5-95f7-42ad6f8ec777"',
         },

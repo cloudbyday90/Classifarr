@@ -17,9 +17,9 @@ const recoveryLifecycle = {
   version: 'policy.authoring_proposal.v1',
   statusId: 'profile_recovery_required',
   library: { id: 7, name: 'Movies', mediaType: 'movie' },
-  action: { id: 'await_recovery', available: false },
+  action: { id: 'refresh_profile', available: false },
   policy: null,
-  proposal: { available: false, reasonId: 'profile_recovery_in_progress' },
+  proposal: { available: false, reasonId: 'profile_not_current' },
 }
 
 const recoveryWorkflowRead = {
@@ -59,7 +59,7 @@ test('automatic profile recovery is informational and does not create a maintain
   await mockAutomaticRecovery(page)
   await page.goto('/policies?library=7')
 
-  await expect(page.getByText(/refresh|recover/i)).toBeVisible({ timeout: 10000 })
+  await expect(page.getByRole('region', { name: 'Movies', exact: true }).getByText('Profile recovery in progress', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: /Refresh|Retry|Reset|Sync/i })).not.toBeVisible()
   await expect(page.getByRole('button', { name: /Create policy/i })).not.toBeVisible()
 })

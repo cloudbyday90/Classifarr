@@ -17,9 +17,9 @@ const existingPolicyLifecycle = {
   version: 'policy.authoring_proposal.v1',
   statusId: 'existing_native_policy',
   library: { id: 7, name: 'Movies', mediaType: 'movie' },
-  action: { id: 'inspect_policy', available: true },
-  policy: { id: 12, libraryId: 7, name: 'Movies Policy' },
-  proposal: { available: false, reasonId: 'existing_policy' },
+  action: { id: 'inspect_policy', available: false },
+  policy: { id: 12, name: 'Movies Policy' },
+  proposal: { available: false, reasonId: 'existing_native_policy' },
 }
 
 const existingPolicyRead = {
@@ -65,6 +65,6 @@ test('an existing native policy shows its summary instead of a create flow', asy
   await mockExistingPolicy(page)
   await page.goto('/policies?library=7')
 
-  await expect(page.getByText('Movies Policy')).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Movies', exact: true }).getByText('Movies Policy', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: /Create policy/ })).not.toBeVisible()
 })

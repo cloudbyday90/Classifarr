@@ -15,11 +15,11 @@ const library = { id: 8, name: 'New Library', media_type: 'movie' }
 
 const sparseLifecycle = {
   version: 'policy.authoring_proposal.v1',
-  statusId: 'eligible_to_prepare_proposal',
+  statusId: 'proposal_unavailable',
   library: { id: 8, name: 'New Library', mediaType: 'movie' },
-  action: { id: 'prepare_proposal', available: true },
+  action: { id: 'inspect_policy', available: false },
   policy: null,
-  proposal: { available: false, reasonId: 'insufficient_profile' },
+  proposal: { available: false, reasonId: 'profile_does_not_support_a_safe_proposal' },
 }
 
 const sparseWorkflowRead = {
@@ -55,11 +55,13 @@ async function mockSparseLibrary(page) {
   await page.route('**/api/policies/operator-workflow/libraries/8', route => fulfillJson(route, sparseWorkflowRead))
 }
 
-test('a sparse library shows declared-intent guidance instead of a failure', async ({ page }) => {
+test('a sparse library shows no safe proposal without pretending the request failed', async ({ page }) => {
   await mockSparseLibrary(page)
   await page.goto('/policies?library=8')
 
-  await expect(page.getByText(/New Library/i)).toBeVisible()
-  await expect(page.getByText(/limited content|belongs here/i)).toBeVisible()
-  await expect(page.getByText(/error|failed|unavailable/i)).not.toBeVisible()
+  const section = page.getByRole('region', { name: 'New Library', exact: true })
+  await expect(section.getByRole('heading', { name: 'New Library', exact: true })).toBeVisible()
+  await expect(section.getByText('No safe proposal yet', { exact: true })).toBeVisible()
+  await expect(section.getByText('Authoring state unavailable', { exact: true })).toHaveCount(0)
+  await expect(section.getByRole('button', { name: 'Create policy', exact: true })).toHaveCount(0)
 })

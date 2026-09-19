@@ -64,6 +64,19 @@ test('local evidence pairs all held cases with frozen independent controls and r
   expect((await run(snapshot, {}, { localEvidence: true })).arms).toEqual(report.arms);
 });
 
+test('group contrast retains prior decisions and reports no private terms or new authority', async () => {
+  const snapshot = fixture(), before = structuredClone(snapshot), onProgress = jest.fn();
+  const control = await run(snapshot, {}, { localEvidence: true });
+  const report = await run(snapshot, {}, { groupContrast: true, onProgress });
+  expect(report).toMatchObject({ protocol: 'inventory_group_contrast_v1', calls: 0, accuracy: null, livePromotionAllowed: false });
+  expect(report.sampleFingerprint).toBe(control.sampleFingerprint);
+  expect(report.arms.slice(0, 3)).toEqual(control.arms);
+  expect(report.arms[3]).toMatchObject({ compared: 0, reasons: { group_incomplete_terms: 8 } });
+  expect(report.arms[4]).toEqual({ ...report.arms[2], name: 'enhanced' });
+  expect(JSON.stringify([report, onProgress.mock.calls])).not.toMatch(/PRIVATE|weights|centroid|overview|libraryIds|tmdb_id/);
+  expect(snapshot).toEqual(before);
+});
+
 test('local proposals map back to full candidate scope and recover ambiguous cases without placement leakage', async () => {
   const snapshot = fixture(), dimensions = 4 + snapshot.corpus.documents.length;
   snapshot.candidateMetadata = new Map();

@@ -28,20 +28,26 @@ export function resolveCandidateLocalEvidence(evidence, metadata) {
   if (!complete || candidates.some(row => row.items.length !== 3)) return abstain('local_incomplete_evidence');
   const ranked = candidates.map((row, index) => ({ index, score: row.items[2].similarity }))
     .sort((a, b) => b.score - a.score);
-  const winner = ranked[0], items = candidates[winner.index].items;
+  const winner = ranked[0];
   if (winner.score <= 0) return abstain('local_no_positive_match');
   if (winner.score - sharedMaximum <= EPSILON || candidates.some((row, index) =>
     index !== winner.index && winner.score - row.items[0].similarity <= EPSILON)) return abstain('local_overlapping_examples');
+  return validateCandidateLocalSupport(evidence, winner.index, metadata);
+}
+
+/** Shared consistency checks for private description proposals, not a routing authorization. */
+export function validateCandidateLocalSupport(evidence, index, metadata) {
+  const { candidates, sharedMaximum } = evidence, items = candidates[index].items;
   if (items[0].group === null || items.some(item => item.group !== items[0].group)) return abstain('local_unsupported_group');
   if (candidates.some(row => row.items[0].similarity >= CORRELATION_VETO) || sharedMaximum >= CORRELATION_VETO ||
       items.some((item, index) => items.slice(index + 1).some(other =>
         descriptionCosineSimilarity(item.vector, other.vector) >= CORRELATION_VETO))) return abstain('local_correlated_examples');
   const scores = metadataScores(metadata, candidates);
   if (!scores) return abstain('local_missing_metadata');
-  const selected = scores[winner.index];
-  if (scores.some((row, index) => index !== winner.index && (row.some((score, field) => score - selected[field] > EPSILON) ||
+  const selected = scores[index];
+  if (scores.some((row, candidateIndex) => candidateIndex !== index && (row.some((score, field) => score - selected[field] > EPSILON) ||
       !row.some((score, field) => selected[field] - score > EPSILON)))) return abstain('local_metadata_not_distinct');
-  return { reason: 'selected', index: winner.index };
+  return { reason: 'selected', index };
 }
 
 /** Only measured ambiguity can use this proposal; never override stable or unavailable evidence. */

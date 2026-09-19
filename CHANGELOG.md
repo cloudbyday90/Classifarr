@@ -11,6 +11,14 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Evaluate learned content-group terms against existing library evidence on
+  source-verified movie/TV samples. Keep the experiment offline because it did
+  not recover additional ambiguous cases; no new prompts or routing changes.
+- Apply client-tooling PR #532 locally, reconcile dependency overrides, and repair
+  browser fixtures and development/production test isolation. Reference the direct
+  YAML dependency in its override to prevent future Dependabot update conflicts.
+- Recover uncertain policy-creation responses by checking current policy state
+  immediately instead of automatically resubmitting the admission request.
 - Add a read-only, candidate-local library evidence evaluation using distinct
   nearby items, learned content groups and metadata checks. Compare ambiguous
   cases and stable controls without changing live routing or adding user prompts.

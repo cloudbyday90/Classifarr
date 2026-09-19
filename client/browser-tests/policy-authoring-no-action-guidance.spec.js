@@ -15,11 +15,11 @@ const library = { id: 9, name: 'Special Collection', media_type: 'movie' }
 
 const blockedLifecycle = {
   version: 'policy.authoring_proposal.v1',
-  statusId: 'safely_blocked',
+  statusId: 'proposal_unavailable',
   library: { id: 9, name: 'Special Collection', mediaType: 'movie' },
-  action: { id: 'resolve_blocker', available: false },
+  action: { id: 'inspect_policy', available: false },
   policy: null,
-  proposal: { available: false, reasonId: 'blocked_by_maintenance' },
+  proposal: { available: false, reasonId: 'profile_does_not_support_a_safe_proposal' },
 }
 
 const blockedWorkflowRead = {
@@ -58,7 +58,8 @@ test('a blocked library shows bounded guidance without dead controls', async ({ 
   await mockNoActionGuidance(page)
   await page.goto('/policies?library=9')
 
-  await expect(page.getByText(/Special Collection/i)).toBeVisible({ timeout: 10000 })
+  const section = page.getByRole('region', { name: 'Special Collection', exact: true })
+  await expect(section.getByRole('heading', { name: 'Special Collection', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: /Create policy/i })).not.toBeVisible()
-  await expect(page.getByText(/maintenance/i)).toBeVisible()
+  await expect(section.getByText('No safe proposal yet', { exact: true })).toBeVisible()
 })

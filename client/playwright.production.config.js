@@ -24,6 +24,7 @@ import {
 
 export default defineConfig({
   testDir: './browser-tests',
+  outputDir: './test-results/production',
   testMatch: '**/production-policy-route-assets.spec.js',
   fullyParallel: false,
   forbidOnly: true,

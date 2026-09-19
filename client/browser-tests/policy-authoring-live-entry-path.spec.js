@@ -111,7 +111,7 @@ test('the lifecycle list leads by keyboard to one admitted policy-create action'
     proposal_revision: 'd'.repeat(64),
     adjustment_commands: [],
   }))
-  await expect(page.getByText('Policy created: Movies Policy')).toBeVisible()
+  await expect(page.getByRole('status').filter({ hasText: 'Policy created: Movies Policy' })).toBeVisible()
 })
 
 test('the retired advanced-settings hash does not expose a normal authoring target', async ({ page }) => {

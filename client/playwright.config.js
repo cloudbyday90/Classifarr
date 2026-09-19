@@ -20,6 +20,8 @@ import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
   testDir: './browser-tests',
+  testIgnore: '**/production-policy-route-assets.spec.js',
+  outputDir: './test-results/browser',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,

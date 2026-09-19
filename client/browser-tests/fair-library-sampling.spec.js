@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { expect, test } from '@playwright/test'
+import { librarySourceFixture } from './support/librarySourceFixtures.js'
 import { libraryObservationSamplingFixture } from '../src/__tests__/fixtures/libraryObservationSamplingFixture'
 import { libraryObservationHealthFixture } from '../src/__tests__/fixtures/libraryObservationHealthFixture'
 import { libraryOverlapFixture } from '../src/__tests__/fixtures/libraryOverlapFixture'
@@ -15,7 +16,7 @@ test(`${mode} sampling shows bounded coverage, keyboard pagination and visit tab
   await page.route(url => url.pathname.startsWith('/api/'), async route => {
     const path = new globalThis.URL(route.request().url()).pathname
     if (route.request().method() !== 'GET') writes++
-    let data = {}
+    let data = librarySourceFixture(path)
     if (path === '/api/setup/status') data = { setupRequired: false }
     if (path === '/api/auth/me' || path === '/api/user/me') data = { id: 1, role: 'admin', username: 'operator' }
     if (path === '/api/notifications') data = { data: [] }

@@ -127,6 +127,9 @@ overlap is the target; better semantic discrimination remains a hypothesis to te
 
 ## Reproduction and rollback
 
+Follow-up: [learned group contrast results](learned-group-contrast-outcome.md)
+evaluate the proposed distinction learner on the frozen cohorts and 300 fresh cases.
+
 ```powershell
 docker exec -e LOG_LEVEL=fatal -e FILE_LOGGING_ENABLED=false -e 'PGOPTIONS=-c default_transaction_read_only=on' classifarr node src/scripts/runInventoryDescriptionBenchmark.mjs --seed classifarr-profile-20260912 --size 300 --folds 5 --candidate-local-evidence --max-minutes 15
 docker exec -e LOG_LEVEL=fatal -e FILE_LOGGING_ENABLED=false -e 'PGOPTIONS=-c default_transaction_read_only=on' classifarr node src/scripts/runInventoryDescriptionBenchmark.mjs --seed classifarr-profile-20260912 --size 300 --exclude-prior-sizes 300,300,100,100 --folds 5 --candidate-local-evidence --max-minutes 15

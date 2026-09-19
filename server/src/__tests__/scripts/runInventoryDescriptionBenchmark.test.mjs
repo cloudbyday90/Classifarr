@@ -5,6 +5,23 @@ import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescr
 
 const seed = 'benchmark-test-seed-2026';
 
+test('group-contrast CLI requires exclusive zero-generation folds and verifies source freshness', async () => {
+  const argv = ['--seed', seed, '--size', '8', '--folds', '2', '--group-contrast'], loadRuntime = jest.fn();
+  for (const invalid of [argv.filter(value => !['--folds', '2'].includes(value)), [...argv, '--generate-cases', '1'],
+    ...['--candidate-local-evidence', '--candidate-stability', '--coverage-robustness', '--semantic-pairs', '--evidence-reranker'].map(mode => [...argv, mode])]) {
+    await expect(runInventoryDescriptionBenchmark({ argv: invalid, loadRuntime })).rejects.toThrow('exclusive_grouped_zero_generation');
+  }
+  expect(loadRuntime).not.toHaveBeenCalled();
+  const instance = runtime();
+  expect(await runInventoryDescriptionBenchmark({ argv, loadRuntime: async () => instance }))
+    .toMatchObject({ protocol: 'inventory_group_contrast_v1', status: 'complete', sourceVerified: true, calls: 0 });
+  const snapshot = await instance.repository.read();
+  instance.repository.read.mockResolvedValueOnce(snapshot).mockResolvedValueOnce({ ...snapshot, candidateMetadata: new Map([['movie:1', null]]) });
+  expect(await runInventoryDescriptionBenchmark({ argv, loadRuntime: async () => instance }))
+    .toMatchObject({ status: 'invalidated', sourceVerified: false });
+  expect(instance.createClient).not.toHaveBeenCalled(); expect(instance.close).toHaveBeenCalledTimes(2);
+});
+
 test('candidate-local CLI is exclusive, zero-generation and invalidates changed metadata', async () => {
   const argv = ['--seed', seed, '--size', '8', '--folds', '2', '--candidate-local-evidence'], loadRuntime = jest.fn();
   for (const invalid of [argv.filter(value => !['--folds', '2'].includes(value)), [...argv, '--generate-cases', '1'],

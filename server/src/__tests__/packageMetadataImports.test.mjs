@@ -56,6 +56,11 @@ const PACKAGE_METADATA_FILES = collectSourceFiles(SERVER_SRC).filter((filePath) 
 });
 
 describe('Native server package metadata imports', () => {
+  test('direct js-yaml updates keep their override aligned without a duplicate version pin', () => {
+    const manifest = JSON.parse(fs.readFileSync(SERVER_PACKAGE_JSON, 'utf8'));
+    expect(manifest.dependencies['js-yaml']).toBeTruthy();
+    expect(manifest.overrides['js-yaml']).toBe('$js-yaml');
+  });
   for (const filePath of PACKAGE_METADATA_FILES) {
     test(`${relativeToServer(filePath)} resolves package.json imports inside server/package.json`, () => {
       const source = fs.readFileSync(filePath, 'utf8');

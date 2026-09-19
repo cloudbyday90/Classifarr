@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { expect, test } from '@playwright/test'
+import { librarySourceFixture } from './support/librarySourceFixtures.js'
 import { libraryOverlapFixture } from '../src/__tests__/fixtures/libraryOverlapFixture.js'
 import { libraryObservationHealthFixture } from '../src/__tests__/fixtures/libraryObservationHealthFixture.js'
 import { libraryObservationHistoryFixture } from '../src/__tests__/fixtures/libraryObservationHistoryFixture.js'
@@ -11,7 +12,7 @@ test('library overlap loads without operational input and supports keyboard disc
   await page.route(url => url.pathname.startsWith('/api/'), async route => {
     const path = new globalThis.URL(route.request().url()).pathname
     if (route.request().method() !== 'GET') writes++
-    let data = {}
+    let data = librarySourceFixture(path)
     if (path === '/api/setup/status') data = { setupRequired: false }
     if (path === '/api/auth/me' || path === '/api/user/me') data = { id: 1, role: 'admin', username: 'operator' }
     if (path === '/api/notifications') data = { data: [] }
@@ -28,13 +29,14 @@ test('library overlap loads without operational input and supports keyboard disc
   await expect(section.getByRole('table', { name: 'Inventory and identity coverage' })).toBeVisible()
   await expect(section.getByText('Library comparisons loaded: 1.', { exact: true })).toBeVisible()
   await expect(section.getByText(/1 \/ 2 \(50%\) of Movies/)).toBeVisible()
-  const summary = section.locator('summary')
+  const summary = section.locator('summary').filter({ hasText: 'Common traits:' })
+  const disclosure = summary.locator('..')
   await summary.focus()
   await page.keyboard.press('Enter')
   await expect(section.getByText(/Insufficient coverage to compare this trait/)).toBeVisible()
   await expect(section.getByText(/Conflicting duplicate observations/)).toBeVisible()
   await page.keyboard.press('Space')
-  await expect(section.locator('details')).not.toHaveAttribute('open', '')
+  await expect(disclosure).not.toHaveAttribute('open', '')
   await page.setViewportSize({ width: 390, height: 844 })
   await section.scrollIntoViewIfNeeded()
   expect(await page.evaluate(() => globalThis.document.documentElement.scrollWidth <= globalThis.innerWidth)).toBe(true)
