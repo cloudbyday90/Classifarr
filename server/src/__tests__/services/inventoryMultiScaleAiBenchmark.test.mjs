@@ -18,6 +18,8 @@ test('real fitting preflights both media types; generation is opt-in and all res
     independentLabels: 0, accuracy: null, livePromotionAllowed: false, sampledDescriptions: 8, generationShortfall: 0,
     comparison: { sampled: 8, ready: 8, rawExamples: 48, generatedPairs: 0 } });
   expect(report.comparison.mediaTypes.map(row => row.sampled)).toEqual([4, 4]);
+  expect(report.profiles[0].memory).toEqual({ rss: expect.any(Number), heapUsed: expect.any(Number),
+    heapTotal: expect.any(Number), external: expect.any(Number), arrayBuffers: expect.any(Number), maxRSSKiB: expect.any(Number) });
   expect(JSON.stringify([report, onProgress.mock.calls])).not.toMatch(/PRIVATE|overview|libraryIds|tmdb_id/);
   for (const doc of snapshot.corpus.documents) expect(JSON.stringify(report)).not.toContain(doc.hash);
   expect(snapshot).toEqual(before);
@@ -35,7 +37,9 @@ test('pairs exact sample prefix across folds, generates after fitting, and accou
   expect(report).toMatchObject({ status: 'complete', calls: 16, generationShortfall: 0, availableGenerationCases: 4,
     comparison: { generatedPairs: 4, arms: [{ abstained: 4 }, { abstained: 4 }] } });
   expect(report.comparison.mediaTypes.map(row => row.generatedPairs)).toEqual([2, 2]);
-  expect(loader.clear).toHaveBeenCalledTimes(1);
+  expect(loader.clear).toHaveBeenCalledTimes(3);
+  expect(loader.clear.mock.invocationCallOrder[0]).toBeLessThan(loader.load.mock.invocationCallOrder[0]);
+  expect(loader.clear.mock.invocationCallOrder[1]).toBeLessThan(loader.load.mock.invocationCallOrder[1]);
   const later = await run(fixture(), { excludePriorSizes: [8] });
   expect(later.sampleFingerprint).not.toBe(report.sampleFingerprint); expect(later.excludedPriorDescriptions).toBe(8);
   const short = await run(fixture(), { size: 100 }); expect(short.sampleShortfall).toBe(52);
@@ -61,7 +65,7 @@ test.each(['time_budget', 'invalid_groups', 'discovery_failed', 'PRIVATE failure
   const report = await run(snapshot, { generateCases: 4 }, { client, identity, onProgress, createLoader: () => loader });
   expect(report).toMatchObject({ status: 'completed_with_errors', contextComplete: false, calls: 0, generationShortfall: 4,
     inference: { status: 'not_run_incomplete_context' } });
-  expect(client.generate).not.toHaveBeenCalled(); expect(loader.clear).toHaveBeenCalledTimes(1);
+  expect(client.generate).not.toHaveBeenCalled(); expect(loader.clear).toHaveBeenCalledTimes(3);
   expect(JSON.stringify(report)).not.toContain('PRIVATE');
   expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ stage: 'multi_scale_ai_preflight', fold: 1,
     localStatus: 'unavailable', fitMs: expect.any(Number), prepared: 4 }));
@@ -80,7 +84,7 @@ test('preflights both arms against the smaller context and skips the whole pair 
   const report = await run(snapshot, { context: 8192, generateCases: 2 }, { client, identity, createLoader: () => loader });
   expect(report).toMatchObject({ calls: 0, generationShortfall: 2, availableGenerationCases: 0,
     comparison: { contextBudgetExceeded: 8, generatedPairs: 0 } });
-  expect(client.generate).not.toHaveBeenCalled(); expect(loader.clear).toHaveBeenCalledTimes(1);
+  expect(client.generate).not.toHaveBeenCalled(); expect(loader.clear).toHaveBeenCalledTimes(3);
 });
 
 test('empty folds and insufficient candidates stay visible without padding a pair', async () => {
@@ -101,7 +105,7 @@ test('validates budgets before fitting, propagates cancellation, and always clea
   await expect(run(fixture(), {}, { signal: AbortSignal.abort() })).rejects.toThrow();
   const loader = { clear: jest.fn(), load: jest.fn(async () => { throw new Error('PRIVATE fit failed'); }) };
   await expect(run(fixture(), {}, { createLoader: () => loader })).rejects.toThrow('fit failed');
-  expect(loader.clear).toHaveBeenCalledTimes(1);
+  expect(loader.clear).toHaveBeenCalledTimes(2);
   const snapshot = fixture();
   snapshot.corpus.texts = new Map([...snapshot.corpus.texts, ...Array.from({ length: 7952 }, (_, i) => [i.toString(16).padStart(64, '0'), null])]);
   await expect(runInventoryMultiScaleAiBenchmark(snapshot, { ...representation, dimensions: 1000 }, { ...options, folds: 10 })).rejects.toThrow('work_budget');

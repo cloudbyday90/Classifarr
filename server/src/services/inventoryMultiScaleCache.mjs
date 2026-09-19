@@ -1,6 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { createLiveInventoryModelCache } from './liveInventoryModelCache.mjs';
-import { prepareMultiScaleSource } from './inventoryMultiScaleSource.mjs';
+import { inspectMultiScaleSource, ownMultiScaleSource } from './inventoryMultiScaleSource.mjs';
 import { buildMultiScaleProfile } from './inventoryMultiScaleProfile.mjs';
 
 function joinBuild(entry, signal) {
@@ -29,14 +29,15 @@ export function createMultiScaleProfileLoader({ build = buildMultiScaleProfile, 
     async load(snapshot, representation, { held, signal } = {}) {
       signal?.throwIfAborted();
       if (flight?.waiters >= 8) throw new Error('multi_scale_busy');
-      const source = prepareMultiScaleSource(snapshot, representation, held);
+      const inspected = inspectMultiScaleSource(snapshot, representation, held);
       signal?.throwIfAborted();
-      const cached = cache.get(source.key);
+      const cached = cache.get(inspected.key);
       if (cached) return { profile: cached, cache: 'hit' };
       if (flight) {
-        if (flight.key !== source.key || flight.controller.signal.aborted) throw new Error('multi_scale_busy');
+        if (flight.key !== inspected.key || flight.controller.signal.aborted) throw new Error('multi_scale_busy');
         return { profile: (await joinBuild(flight, signal)).handle, cache: 'shared' };
       }
+      const source = ownMultiScaleSource(inspected);
       const entry = { key: source.key, controller: new AbortController(), waiters: 0, done: false };
       const abort = AbortSignal.any([entry.controller.signal, AbortSignal.timeout(360_000)]);
       flight = entry;

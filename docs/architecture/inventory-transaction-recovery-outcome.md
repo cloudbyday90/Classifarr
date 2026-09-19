@@ -98,6 +98,9 @@ work limits and incomplete-context admission. Do not raise limits or disable
 automatic recovery merely to obtain a passing benchmark. Once complete, compare
 smaller query-focused evidence against raw descriptions for stability and cost.
 
+Follow-up: [discovery allocation design](discovery-allocation-design.md) and
+[measured outcome](discovery-allocation-outcome.md).
+
 Also audit source-fingerprint relevance: the shared CLI verifies candidate
 metadata for every comparison, while these two arms consume descriptions,
 membership and vectors, not `candidateMetadata`. Any narrower fingerprint needs

@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Reduce retained discovery scratch data and avoid full vector copies during cache
+  hits and background revalidation. Release completed benchmark folds sooner and
+  verify paired AI comparisons against the content they actually consume, without
+  changing fitting, recovery limits or routing authority.
 - Contain checked-out database connection failures without replaying transactions.
   Discard broken clients, keep failure logs private-safe, and move inventory model
   fitting and vector decoding after read-only snapshots close while preserving

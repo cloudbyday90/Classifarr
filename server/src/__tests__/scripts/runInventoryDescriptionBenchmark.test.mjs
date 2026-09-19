@@ -22,8 +22,22 @@ test('multi-scale AI CLI validates before config, bounds inference, verifies sou
   const snapshot = await instance.repository.read();
   instance.repository.read.mockResolvedValueOnce(snapshot).mockResolvedValueOnce({ ...snapshot, candidateMetadata: new Map([['movie:1', null]]) });
   expect(await runInventoryDescriptionBenchmark({ argv: [...argv, '--generate-cases', '2'], loadRuntime: async () => instance }))
-    .toMatchObject({ status: 'invalidated', sourceVerified: false, changedSourceComponents: ['metadata'], calls: 8 });
+    .toMatchObject({ status: 'complete', sourceVerified: true, changedSourceComponents: [], calls: 8,
+      snapshotComponents: { version: 'inventory_multi_scale_ai_inputs_v1' } });
   expect(instance.createClient).toHaveBeenCalledTimes(1); expect(instance.close).toHaveBeenCalledTimes(2);
+});
+
+test.each(['documents', 'libraries', 'vectors', 'descriptions'])('paired AI still invalidates consumed %s drift', async component => {
+  const instance = runtime(), snapshot = await instance.repository.read(), changed = structuredClone(snapshot);
+  if (component === 'documents') changed.corpus.documents[0].libraryIds = [999];
+  if (component === 'libraries') changed.libraries[0].media_type = 'changed';
+  if (component === 'vectors') changed.vectors.values().next().value[0] += 0.01;
+  if (component === 'descriptions') changed.corpus.texts.set(changed.corpus.documents[0].hash, 'changed description');
+  instance.repository.read.mockResolvedValueOnce(snapshot).mockResolvedValueOnce(changed);
+  expect(await runInventoryDescriptionBenchmark({ argv: ['--seed', seed, '--size', '8', '--folds', '2', '--multi-scale-ai'],
+    loadRuntime: async () => instance })).toMatchObject({ status: 'invalidated', sourceVerified: false,
+    changedSourceComponents: [component], calls: 0 });
+  expect(instance.close).toHaveBeenCalledTimes(1);
 });
 
 test('multi-scale context is exclusive, zero-generation, source-verified and closes after drift', async () => {

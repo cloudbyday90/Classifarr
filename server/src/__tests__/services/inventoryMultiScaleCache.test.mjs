@@ -21,6 +21,26 @@ test('reuses a completed fit, expires it, evicts changed identities and clears e
   expect(build).toHaveBeenCalledTimes(5);
 });
 
+test('copies vectors only for an admitted build, validates hits, and owns before the first yield', async () => {
+  const snapshot = fixture(), held = new Set([snapshot.corpus.documents[0].hash]);
+  const vector = snapshot.vectors.get(snapshot.corpus.documents[1].hash), original = [...vector];
+  let copies = 0, captured, complete;
+  vector[Symbol.iterator] = function* () { copies++; yield* original; };
+  const build = jest.fn(source => { captured = source; return new Promise(resolve => { complete = resolve; }); });
+  const loader = createMultiScaleProfileLoader({ build }), load = () => loader.load(snapshot, representation, { held });
+  const first = load(), shared = load();
+  expect(copies).toBe(1);
+  vector[0] = 0.25;
+  await setImmediate();
+  expect(captured.training.vectors.get(snapshot.corpus.documents[1].hash)).toEqual(original);
+  complete(result()); await Promise.all([first, shared]);
+  vector[0] = original[0];
+  expect((await load()).cache).toBe('hit'); expect(copies).toBe(1);
+  vector[0] = NaN;
+  await expect(load()).rejects.toThrow(); expect(copies).toBe(1);
+  loader.clear();
+});
+
 test('shares same-key work, bounds waiters, rejects different-key concurrent work and isolates caller cancellation', async () => {
   let complete, buildSignal;
   const build = jest.fn((_source, { signal }) => { buildSignal = signal; return new Promise(resolve => { complete = resolve; }); });

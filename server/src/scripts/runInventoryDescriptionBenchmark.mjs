@@ -15,6 +15,7 @@ import { runInventoryNeighborComparison } from '../services/inventoryNeighborCom
 import { runInventoryEvidenceRerankerComparison } from '../services/inventoryEvidenceRerankerComparison.mjs';
 import { runInventorySemanticPairComparison } from '../services/inventorySemanticPairComparison.mjs';
 import { describeInventorySnapshotDigests } from '../services/inventoryDescriptionSnapshotDigests.mjs';
+import { describeMultiScaleAiInputs } from '../services/inventoryMultiScaleAiInputs.mjs';
 import { runInventoryCoverageBenchmark } from '../services/inventoryCoverageBenchmark.mjs';
 import { runInventoryCandidateStabilityBenchmark } from '../services/inventoryCandidateStabilityBenchmark.mjs';
 import { runInventoryAdaptiveGroupBenchmark } from '../services/inventoryAdaptiveGroupBenchmark.mjs';
@@ -172,9 +173,10 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
       if (abort.aborted) return { ...report, status: 'interrupted', sourceVerified: false };
       const current = await runtime.repository.read(representation);
       await verifyDescriptionRepresentation(runtime.embedder, representation, abort);
-      const currentComponents = describeInventorySnapshotDigests(current, current.vectors);
+      const currentComponents = values['multi-scale-ai'] ? describeMultiScaleAiInputs(current)
+        : describeInventorySnapshotDigests(current, current.vectors);
       const sourceVerified = JSON.stringify(currentComponents) === JSON.stringify(report.snapshotComponents);
-      const changedSourceComponents = ['documents', 'libraries', 'vectors', 'metadata'].filter(name =>
+      const changedSourceComponents = Object.keys(currentComponents.hashes).filter(name =>
         currentComponents.hashes[name] !== report.snapshotComponents.hashes[name]);
       return { ...report, status: sourceVerified ? report.status : 'invalidated', sourceVerified, changedSourceComponents,
         embedding: { model: representation.model, digest: representation.digest, dimensions: representation.dimensions } };

@@ -29,6 +29,21 @@ test('cold requests cannot fit, warm requests reuse context, unchanged refresh r
   expect(await v.worker.run()).toEqual({ status: 'ready' }); expect(v.build).toHaveBeenCalledTimes(2);
 });
 
+test('live SWR copies only a new fit, not verification or unchanged revalidation', async () => {
+  const v = setup(), vector = v.snapshot.vectors.values().next().value, original = [...vector];
+  let copies = 0;
+  vector[Symbol.iterator] = function* () { copies++; yield* original; };
+  expect(await v.worker.run()).toEqual({ status: 'ready' });
+  expect(copies).toBe(1);
+  expect(v.build.mock.calls[0][0].training.vectors.values().next().value).not.toBe(vector);
+  v.advance(300000);
+  expect(await v.worker.run()).toEqual({ status: 'revalidated' });
+  expect(copies).toBe(1);
+  vector[0] = NaN; v.advance(300000);
+  expect(await v.worker.run()).toEqual({ status: 'unavailable' });
+  expect(await v.worker.retrieve(v.input)).toBeNull(); expect(v.build).toHaveBeenCalledTimes(1);
+});
+
 test('failed discovery serves raw/broad but retries after backoff; transport failure clears and self-recovers', async () => {
   const v = setup();
   v.build.mockResolvedValueOnce({ handle: v.handle, cacheable: false, weight: 1000 });

@@ -8,6 +8,12 @@ import { representativeSimilarity as similarity } from './representativeFitSessi
 import { retrieveMultiScaleContext } from './inventoryMultiScaleRetrieval.mjs';
 import { normalizeDescriptionVector } from './inventoryDescriptionSimilarity.mjs';
 
+// A separate closure scope must not retain community/control scratch vectors after fitting.
+function createProfileHandle(state, summary) {
+  return Object.freeze({ summary: () => structuredClone(summary),
+    retrieve: (query, signal) => retrieveMultiScaleContext(state, query, signal) });
+}
+
 function validateLocalGroups(communities, control, dimensions) {
   if (!Array.isArray(communities?.libraries) || communities.libraries.length !== control.libraries.length ||
       new Set(communities.libraries.map(row => row.id)).size !== control.libraries.length) throw new Error('multi_scale_local_scope');
@@ -45,7 +51,10 @@ export async function buildMultiScaleProfile(source, { signal, fit = fitInventor
   const { training, dimensions, held } = source;
   const model = await fit(training, dimensions, { signal });
   const control = await readGroupBenchmarkControl(training, model, dimensions, signal);
-  const vectors = new Map([...training.vectors].map(([hash, vector]) => [hash, normalizeDescriptionVector(vector, dimensions)]));
+  const vectors = new Map([...control.buckets.values()].flatMap(rows => rows.map(row => [row.hash, row.vector])));
+  for (const [hash, vector] of training.vectors) if (!vectors.has(hash)) {
+    vectors.set(hash, normalizeDescriptionVector(vector, dimensions));
+  }
   let communities, localFailureReason, localStatus = 'available', localStage = 'discovery';
   try {
     communities = await discover(control.index, training.vectors, dimensions, signal);
@@ -78,7 +87,5 @@ export async function buildMultiScaleProfile(source, { signal, fit = fitInventor
   const groups = libraries.flatMap(row => [...row.groups, ...row.localGroups]);
   const weight = (training.vectors.size + groups.length) * dimensions * 16 + items.length * 2048 + groups.length * 2048;
   signal?.throwIfAborted();
-  return { cacheable: localStatus === 'available', weight, handle: Object.freeze({
-    summary: () => structuredClone(summary), retrieve: (query, signal) => retrieveMultiScaleContext(state, query, signal),
-  }) };
+  return { cacheable: localStatus === 'available', weight, handle: createProfileHandle(state, summary) };
 }

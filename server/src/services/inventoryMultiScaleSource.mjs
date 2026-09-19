@@ -8,12 +8,28 @@ export const MULTI_SCALE_VERSION = 'inventory_multi_scale_context_v1';
 
 /** Owned content-only snapshot; cache identity includes every input that affects fitting. */
 export function prepareMultiScaleSource(snapshot, representation, held) {
+  return ownMultiScaleSource(inspectMultiScaleSource(snapshot, representation, held));
+}
+
+/** Borrow vectors for synchronous admission; acquire ownership before asynchronous fitting. */
+export function inspectMultiScaleSource(snapshot, representation, held) {
   if (!(held instanceof Set) || !held.size) throw new Error('multi_scale_holdout_required');
   return prepareSource(snapshot, representation, held);
 }
 
+/** Copy only an admitted new build, synchronously before any caller can mutate its input. */
+export function ownMultiScaleSource(source) {
+  return { ...source, training: { ...source.training,
+    vectors: new Map([...source.training.vectors].map(([hash, vector]) => [hash, [...vector]])) } };
+}
+
 /** Separate live contract: full-inventory profiles may retrieve unseen descriptions only. */
 export function prepareUnseenMultiScaleSource(snapshot, representation) {
+  return ownMultiScaleSource(inspectUnseenMultiScaleSource(snapshot, representation));
+}
+
+/** Synchronous live fingerprint without materializing another complete vector copy. */
+export function inspectUnseenMultiScaleSource(snapshot, representation) {
   return prepareSource(snapshot, representation, new Set());
 }
 
@@ -29,8 +45,8 @@ function prepareSource(snapshot, representation, held) {
     throw new Error('multi_scale_unscoped_source');
   }
   const training = coverageTrainingSnapshot(snapshot, held);
-  // Preserve exact source values: existing fitters perform their own normalization.
-  training.vectors = new Map([...training.vectors].map(([hash, vector]) => [hash, [...validateEmbedding(vector, dimensions)]]));
+  // Validate fresh exact values even on hits; ownership is acquired only after admission.
+  for (const vector of training.vectors.values()) validateEmbedding(vector, dimensions);
   const { index } = inspectRepresentativeCoverage(training);
   // Canonicalize copies/order; irrelevant names and metadata cannot trigger an expensive refit.
   training.libraries.sort((a, b) => a.id - b.id);

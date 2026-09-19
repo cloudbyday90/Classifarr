@@ -1,8 +1,9 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { createHash } from 'node:crypto';
+import { memoryUsage, resourceUsage } from 'node:process';
 import { validateDescriptionBenchmarkOptions, selectAdditionalDescriptionBenchmarkSample } from './inventoryDescriptionBenchmarkSelection.mjs';
 import { planDescriptionBenchmarkFolds } from './inventoryDescriptionBenchmarkFolds.mjs';
-import { describeInventorySnapshotDigests } from './inventoryDescriptionSnapshotDigests.mjs';
+import { describeMultiScaleAiInputs } from './inventoryMultiScaleAiInputs.mjs';
 import { assertRepresentativeSnapshotBudget } from './inventoryRepresentativeCoverage.mjs';
 import { REPRESENTATIVE_RECOVERY_WORK_COMPONENTS } from './inventoryRepresentativeStability.mjs';
 import { createMultiScaleProfileLoader } from './inventoryMultiScaleCache.mjs';
@@ -35,10 +36,13 @@ export async function runInventoryMultiScaleAiBenchmark(snapshot, representation
     for (let fold = 0; fold < options.folds; fold++) {
       abort.throwIfAborted();
       if (!folds.held[fold].size) continue;
+      // Packets own only bounded text evidence; no completed fold is needed by the next fit.
+      loader.clear();
       const started = performance.now();
       const { profile } = await loader.load(snapshot, representation, { held: folds.held[fold], signal: abort });
       const summary = profile.summary();
       profiles.push({ fold: fold + 1, localStatus: summary.localStatus, fitMs: Math.round(performance.now() - started),
+        memory: { ...memoryUsage(), maxRSSKiB: resourceUsage().maxRSS },
         ...(['time_budget', 'invalid_groups', 'discovery_failed'].includes(summary.localFailureReason)
           ? { localFailureReason: summary.localFailureReason } : {}) });
       for (const doc of sample.filter(row => folds.foldByHash.get(row.hash) === fold)) {
@@ -79,7 +83,7 @@ export async function runInventoryMultiScaleAiBenchmark(snapshot, representation
       priorSampleFingerprints: selection.priorSampleFingerprints, priorItemsAvailableForTraining: true,
       candidateSelection: 'top_three_raw_similarity_without_observed_destination', anonymousCandidates: true,
       productionPolicyReplay: false, candidateOrders: 2, armsPerCase: 2 },
-    snapshotComponents: describeInventorySnapshotDigests(snapshot, snapshot.vectors), profiles,
+    snapshotComponents: describeMultiScaleAiInputs(snapshot), profiles,
     comparison: totals, inference: measurement,
     arms: measurement.arms.map((arm, index) => ({ ...arm, ...totals.arms[index], estimatedInputBudgetExceeded: totals.contextBudgetExceeded })) };
 }

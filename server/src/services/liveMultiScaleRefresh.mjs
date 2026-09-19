@@ -2,7 +2,7 @@
 import { resolveLocalStudyEmbeddingConfig } from './localStudyEmbeddingClient.mjs';
 import { inspectDescriptionRepresentation, verifyDescriptionRepresentation } from './inventoryDescriptionBatchWriter.mjs';
 import { createLiveInventoryModelCache } from './liveInventoryModelCache.mjs';
-import { prepareUnseenMultiScaleSource } from './inventoryMultiScaleSource.mjs';
+import { inspectUnseenMultiScaleSource, ownMultiScaleSource } from './inventoryMultiScaleSource.mjs';
 import { buildMultiScaleProfile } from './inventoryMultiScaleProfile.mjs';
 import { bindLiveMultiScaleContext, retrieveLiveMultiScaleContext } from './liveMultiScaleContext.mjs';
 
@@ -63,17 +63,17 @@ export function createLiveMultiScaleRefresh({ repository, readState, createEmbed
         if (configKey(snapshot.state) !== expected || snapshot.state.busy !== false || getRevision() !== revision) {
           clear(); due(); return { status: 'invalidated' };
         }
-        const source = prepareUnseenMultiScaleSource(snapshot, identity);
+        const source = inspectUnseenMultiScaleSource(snapshot, identity);
         if (entry?.key !== source.key) clear();
         const stored = cache.get(source.key), cached = stored?.cacheable ? stored : null;
-        const built = cached ?? await build(source, { signal: abort });
+        const built = cached ?? await build(ownMultiScaleSource(source), { signal: abort });
         const fresh = await repository.read(identity);
         await verifyDescriptionRepresentation(embedder, identity, abort);
         const finalState = await readState();
         abort.throwIfAborted();
         if (configKey(fresh.state) !== expected || fresh.state.busy !== false ||
             configKey(finalState) !== expected || finalState.busy !== false || getRevision() !== revision ||
-            prepareUnseenMultiScaleSource(fresh, identity).key !== source.key) {
+            inspectUnseenMultiScaleSource(fresh, identity).key !== source.key) {
           clear(); due(); return { status: 'invalidated' };
         }
         const bound = bindLiveMultiScaleContext(fresh, identity, built.handle);
