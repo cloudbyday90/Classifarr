@@ -18,8 +18,16 @@ export function descriptionIsolationCode(error) {
 }
 
 /** Eight calls total; fresh work and oldest due singleton retries share that budget. */
-export function planDescriptionBackfill(pending, journal) {
-  const fresh = pending.filter(hash => !journal.has(hash));
+export function planDescriptionBackfill(pending, journal, priority = []) {
+  const pendingSet = new Set(pending);
+  const preferred = [...new Set(priority)].filter(hash => pendingSet.has(hash) && !journal.has(hash));
+  const preferredSet = new Set(preferred);
+  const ordinary = pending.filter(hash => !journal.has(hash) && !preferredSet.has(hash));
+  // Reserve half of fresh capacity for ordinary work; borrow unused capacity both ways.
+  const fresh = [];
+  for (let offset = 0; offset < Math.max(preferred.length, ordinary.length); offset += 4) {
+    fresh.push(...preferred.slice(offset, offset + 4), ...ordinary.slice(offset, offset + 4));
+  }
   const due = [...journal].filter(([, state]) => state.due).map(([hash]) => hash);
   const plan = [];
   let freshOffset = 0, dueOffset = 0;

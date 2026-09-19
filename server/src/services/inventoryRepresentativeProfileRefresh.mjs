@@ -16,7 +16,7 @@ const configKeyOf = state => {
 
 /** One process owns one private cache. No HTTP handler can initiate a fit. */
 export function createInventoryRepresentativeProfileRefresh({ repository, readState, createEmbedder, fit,
-  getRevision = () => 0, now = Date.now, observer = null,
+  getRevision = () => 0, now = Date.now, observer = null, neighborhoodRecovery = null,
   diagnostics = createRepresentativeValidationDiagnostics({ now }),
   cache = createLiveInventoryModelCache({ maxEntries: 1, maxWeight: 32 * 1024 * 1024, ttlMs: 1_800_000, now }),
 }) {
@@ -55,6 +55,9 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
     let batch = null;
     try { batch = observer?.prepare({ model, snapshot, identity, configKey: expected }); }
     catch { /* Optional diagnostics cannot discard an otherwise valid profile. */ }
+    let recoveryBatch = null;
+    try { recoveryBatch = await neighborhoodRecovery?.prepare({ model, snapshot, identity, configKey: expected, signal }); }
+    catch { /* Recovery priority is optional; never promote malformed or incomplete references. */ }
     const fresh = await repository.read(identity);
     signal.throwIfAborted();
     await verifyDescriptionRepresentation(embedder, identity, signal);
@@ -68,11 +71,12 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
     key = sourceKey; revision = runRevision; available = true; verifiedAt = now(); nextRunAt = now() + 300_000;
     diagnostics.profilesRecovered();
     try { batch?.commit(fresh); } catch { /* No partial or unverified observation is published. */ }
+    try { recoveryBatch?.commit(); } catch { /* Ordinary backfill remains available. */ }
     return report(cached ? 'up_to_date' : 'published', summary);
   }
 
   return {
-    stop() { stopped = true; active?.abort(); clear(); observer?.stop(); },
+    stop() { stopped = true; active?.abort(); clear(); observer?.stop(); neighborhoodRecovery?.clear(); },
     // Future internal consumers must supply a key from their own fresh snapshot.
     read(sourceKey) { invalidateHint(); return available && sourceKey === key ? cache.get(sourceKey) : undefined; },
     getStatus() {
@@ -91,7 +95,7 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
         const state = await readState();
         runSignal.throwIfAborted();
         const expected = configKeyOf(state);
-        if (expected !== configKey) { clear(); nextRunAt = 0; backoffUntil = 0; failures = 0; configKey = expected; }
+        if (expected !== configKey) { clear(); neighborhoodRecovery?.clear(); nextRunAt = 0; backoffUntil = 0; failures = 0; configKey = expected; }
         if (!expected) { clear(); observer?.clear(); return report(state?.rag_enabled === true ? 'unsupported_provider' : 'disabled'); }
         if (state.busy !== false) { invalidate(); return report('yielded'); }
         if (now() < backoffUntil) return report('cooldown');

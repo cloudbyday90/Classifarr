@@ -38,6 +38,34 @@ test('publishes atomically; quiet/periodic reconciliation reuses cached fits wit
   expect(JSON.stringify(worker.getStatus())).not.toMatch(/PRIVATE|hash|digest|localhost|libraryId|vector/i);
 });
 
+test('recovery reference commits only after source validation and clears on disable/stop', async () => {
+  const fixture = setup(), commit = jest.fn();
+  const neighborhoodRecovery = { prepare: jest.fn(async () => ({ commit })), clear: jest.fn() };
+  const worker = createInventoryRepresentativeProfileRefresh({ ...fixture.dependencies, neighborhoodRecovery });
+  const read = fixture.dependencies.repository.read.getMockImplementation();
+  fixture.dependencies.repository.read.mockImplementationOnce(async () => {
+    const before = await read(); fixture.snapshot.vectors.values().next().value[0] += 0.1; return before;
+  });
+  expect((await worker.run()).status).toBe('invalidated');
+  expect(neighborhoodRecovery.prepare).toHaveBeenCalledTimes(1);
+  expect(commit).not.toHaveBeenCalled();
+  expect((await worker.run()).status).toBe('published');
+  expect(commit).toHaveBeenCalledTimes(1);
+  fixture.state.rag_enabled = false;
+  expect((await worker.run()).status).toBe('disabled');
+  expect(neighborhoodRecovery.clear).toHaveBeenCalledTimes(2);
+  worker.stop(); expect(neighborhoodRecovery.clear).toHaveBeenCalledTimes(3);
+});
+
+test.each(['prepare', 'commit'])('optional recovery %s failure cannot discard a valid profile', async phase => {
+  const fixture = setup();
+  const fail = () => { throw new Error('PRIVATE'); };
+  const neighborhoodRecovery = { clear() {}, prepare: phase === 'prepare' ? fail : async () => ({ commit: fail }) };
+  const worker = createInventoryRepresentativeProfileRefresh({ ...fixture.dependencies, neighborhoodRecovery });
+  expect((await worker.run()).status).toBe('published');
+  expect(JSON.stringify(worker.getStatus())).not.toContain('PRIVATE');
+});
+
 test('pending comparisons bypass the quiet interval, reuse the fit and commit only after fresh validation', async () => {
   const observer = createInventoryRepresentativeShadow(), fixture = setup(observer);
   const { worker, dependencies, state, snapshot } = fixture;

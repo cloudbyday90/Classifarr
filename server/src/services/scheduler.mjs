@@ -68,6 +68,7 @@ import {
 import { registerSchedulerStartupTasks } from './schedulerStartupTasks.mjs';
 import { registerInventoryDescriptionRefreshSchedule } from './inventoryDescriptionRefreshScheduler.mjs';
 import { registerInventoryRepresentativeProfileSchedule } from './inventoryRepresentativeProfileScheduler.mjs';
+import { createInventoryNeighborhoodRecovery } from './inventoryNeighborhoodRecovery.mjs';
 
 const { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } = db;
 const logger = createLogger('SchedulerService');
@@ -88,6 +89,7 @@ class SchedulerService {
     resetState() {
         this.inventoryDescriptionRefreshWorker?.stop();
         this.inventoryRepresentativeProfileWorker?.stop();
+        this.inventoryNeighborhoodRecovery?.clear();
         for (const task of this.tasks.values()) {
             if (typeof task?.stop === 'function') {
                 task.stop();
@@ -108,8 +110,11 @@ class SchedulerService {
      */
     init() {
         logger.info('Initializing scheduler...');
-        registerInventoryDescriptionRefreshSchedule(this);
-        registerInventoryRepresentativeProfileSchedule(this);
+        this.inventoryNeighborhoodRecovery?.clear();
+        this.inventoryNeighborhoodRecovery = createInventoryNeighborhoodRecovery();
+        const neighborhoodRecovery = this.inventoryNeighborhoodRecovery;
+        registerInventoryDescriptionRefreshSchedule(this, { neighborhoodRecovery });
+        registerInventoryRepresentativeProfileSchedule(this, { neighborhoodRecovery });
         registerLibraryObservationHistorySchedule(this);
         registerDatabaseHealthTransitionObservationSchedule(this);
         registerEventLoopDelayObservationSchedule(this);

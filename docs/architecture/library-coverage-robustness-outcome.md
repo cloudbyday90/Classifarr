@@ -108,6 +108,10 @@ initially diagnostic and test the proposal against fresh held-out samples before
 using it to alter routing. This addresses missing content, not every instance of
 initialization sensitivity, which remains a separate measured limitation.
 
+Implemented next in [neighborhood-aware automatic backfill](neighborhood-backfill-design.md);
+see the separate [implementation outcome](neighborhood-backfill-outcome.md) for
+fresh local evidence and remaining limitations. Routing authority remains unchanged.
+
 These two reused control cohorts, one inventory/model snapshot and one seeded
 mask family per fold do not establish generalization. No threshold was tuned and
 no model was promoted based on these controls. Independently checked difficult

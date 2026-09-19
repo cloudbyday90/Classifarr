@@ -4,12 +4,18 @@ import { descriptionIsolationCode, descriptionIsolationDelay, planDescriptionBac
 
 export async function backfillInventoryDescriptions({
   embedder, identity, cache, isolation, signal, admit, hashes, texts, counts, recovery, random = Math.random,
+  neighborhoodRecovery = null, corpus, configKey,
 }) {
   const present = await cache.findPresent(identity, hashes);
   await isolation.clear(identity, [...present]);
   const pending = hashes.filter(hash => !present.has(hash));
   const journal = await isolation.read(identity, pending);
-  const plan = planDescriptionBackfill(pending, journal);
+  let priority = [];
+  try {
+    const repair = neighborhoodRecovery?.prioritize({ corpus, identity, configKey, present });
+    if (repair) { priority = repair.priority; counts.neighborhoodRecovery = repair.summary; }
+  } catch { /* Unknown references must not stop ordinary checkpointed recovery. */ }
+  const plan = planDescriptionBackfill(pending, journal, priority);
   counts.cacheHits = present.size; counts.remainingDescriptions = pending.length;
   counts.deferredDescriptions = journal.size; counts.isolatedDescriptions = 0;
   let consecutiveFailures = 0;

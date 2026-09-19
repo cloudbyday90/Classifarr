@@ -6,6 +6,9 @@ import { INVENTORY_DESCRIPTION_CACHE_LOCK } from '../../services/inventoryDescri
 import { createInventoryDescriptionRecovery } from '../../services/inventoryDescriptionRecovery.mjs';
 import { createMemoryDescriptionIsolation } from '../fixtures/descriptionIsolation.mjs';
 import { providerResponseError } from '../../services/providerResponseDiagnosis.mjs';
+import { createInventoryNeighborhoodRecovery } from '../../services/inventoryNeighborhoodRecovery.mjs';
+import { buildInventoryRepresentativeProfile } from '../../services/inventoryRepresentativeProfile.mjs';
+import { resolveLocalStudyEmbeddingConfig } from '../../services/localStudyEmbeddingClient.mjs';
 
 function setup(count = 10) {
   let time = 0;
@@ -43,6 +46,36 @@ test('bounded passes resume; unchanged descriptions only need hash lookups', asy
   expect(await worker.run()).toMatchObject({ status: 'up_to_date', cacheHits: 70, embeddedDescriptions: 0 });
   expect(embedder.embedBatch).toHaveBeenCalledTimes(9);
   expect(dependencies.withSessionAdvisoryLock).toHaveBeenCalledWith(INVENTORY_DESCRIPTION_CACHE_LOCK, expect.any(Function));
+});
+
+test('backfill repairs a lost group first while ordinary new-library work shares the existing budget', async () => {
+  const fixture = setup(70), { identity, state, repository, rows, saved, cache, dependencies } = fixture;
+  const corpus = await repository.readCorpus(), hashes = [...corpus.texts.keys()];
+  const snapshot = { corpus, libraries: [{ id: 1, media_type: 'movie' }],
+    vectors: new Map(hashes.map((hash, i) => [hash, i < 67 ? [1, 0] : [0, 1]])) };
+  const model = await buildInventoryRepresentativeProfile({ snapshot, dimensions: identity.dimensions });
+  const neighborhoodRecovery = createInventoryNeighborhoodRecovery();
+  (await neighborhoodRecovery.prepare({ model, snapshot, identity,
+    configKey: JSON.stringify(resolveLocalStudyEmbeddingConfig(state)) })).commit();
+  hashes.slice(0, 67).forEach(hash => saved.add(`${identity.digest}:${hash}`));
+  rows.push(...Array.from({ length: 100 }, (_, i) => ({ media_type: 'tv', tmdb_id: i + 100,
+    library_id: 2, overview: `PRIVATE newly discovered TV description ${i}` })));
+  const worker = createInventoryDescriptionRefreshWorker({ ...dependencies, neighborhoodRecovery });
+  expect(await worker.run()).toMatchObject({ status: 'warming_cache', embeddedDescriptions: 64, remainingDescriptions: 39,
+    neighborhoodRecovery: { referencedLibraries: 1, unknownLibraries: 1, underrepresentedGroups: 1, prioritizedDescriptions: 3 } });
+  expect(new Set(cache.write.mock.calls[0][1].slice(0, 3).map(row => row.hash))).toEqual(new Set(hashes.slice(-3)));
+  expect(cache.write.mock.calls).toHaveLength(8);
+  expect(await worker.run()).toMatchObject({ status: 'up_to_date', embeddedDescriptions: 39,
+    neighborhoodRecovery: { underrepresentedGroups: 0, prioritizedDescriptions: 0 } });
+});
+
+test('unusable recovery references fall back without leaking source errors or stopping ordinary backfill', async () => {
+  const { dependencies } = setup(2);
+  const worker = createInventoryDescriptionRefreshWorker({ ...dependencies,
+    neighborhoodRecovery: { prioritize() { throw new Error('PRIVATE malformed source'); } } });
+  const report = await worker.run();
+  expect(report).toMatchObject({ status: 'up_to_date', embeddedDescriptions: 2 });
+  expect(JSON.stringify(report)).not.toContain('PRIVATE');
 });
 
 test('sync hints refresh changed text; periodic catch-up observes other writers and deletion', async () => {

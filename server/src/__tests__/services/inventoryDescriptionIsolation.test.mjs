@@ -22,6 +22,22 @@ test('unused fresh slots serve due retries; no due work produces an empty plan',
   expect(planDescriptionBackfill(['one'], new Map())).toEqual([['one']]);
 });
 
+test('neighborhood priorities share fresh capacity without bypassing isolated retries', () => {
+  const ordinary = Array.from({ length: 100 }, (_, index) => `ordinary-${index}`);
+  const preferred = Array.from({ length: 100 }, (_, index) => `preferred-${index}`);
+  const journal = new Map([['oldest', { due: true }], ['second', { due: true }], ['waiting', { due: false }]]);
+  const pending = [...ordinary, ...preferred, ...journal.keys()];
+  const plan = planDescriptionBackfill(pending, journal, ['waiting', 'absent', ...preferred, preferred[0], 'second']);
+  expect(plan).toHaveLength(8);
+  expect(plan[0]).toEqual([...preferred.slice(0, 4), ...ordinary.slice(0, 4)]);
+  expect(plan[1]).toEqual(['oldest']); expect(plan[5]).toEqual(['second']);
+  expect(plan.flat().filter(hash => hash.startsWith('ordinary-'))).toHaveLength(24);
+  expect(plan.flat().filter(hash => hash.startsWith('preferred-'))).toHaveLength(24);
+  expect(new Set(plan.flat()).size).toBe(50);
+  expect(plan.flat()).not.toContain('waiting'); expect(plan.flat()).not.toContain('absent');
+  expect(planDescriptionBackfill(preferred, new Map(), preferred).flat()).toEqual(preferred.slice(0, 64));
+});
+
 test.each(['transport', 'timeout', 'json', 'encoding', 'body_limit', 'http_auth', 'http_missing', 'http_busy', 'model'])('%s never identifies a bad individual description', code => {
   const error = providerResponseError(code, 'embedding');
   expect(markDescriptionInputFailure(error)).toBe(error);

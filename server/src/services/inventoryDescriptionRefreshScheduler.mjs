@@ -10,10 +10,10 @@ import { createInventoryDescriptionRecovery } from './inventoryDescriptionRecove
 
 export const INVENTORY_DESCRIPTION_REFRESH_TASK = 'inventory-description-refresh';
 
-export function createInventoryDescriptionRefreshRuntime(database = db) {
+export function createInventoryDescriptionRefreshRuntime(database = db, { neighborhoodRecovery = null } = {}) {
   const repository = createInventoryDescriptionRefreshRepository(database);
   return createInventoryDescriptionRefreshWorker({
-    repository, cache: createInventoryDescriptionVectorCache(repository),
+    repository, cache: createInventoryDescriptionVectorCache(repository), neighborhoodRecovery,
     createEmbedder: createLocalStudyEmbeddingClient,
     withSessionAdvisoryLock: database.withSessionAdvisoryLock,
     getRevision: getInventoryDescriptionRefreshRevision,
@@ -22,7 +22,8 @@ export function createInventoryDescriptionRefreshRuntime(database = db) {
 }
 
 export function registerInventoryDescriptionRefreshSchedule(scheduler, {
-  worker = createInventoryDescriptionRefreshRuntime(), log = createLogger('InventoryDescriptionRefresh'),
+  neighborhoodRecovery = null,
+  worker = createInventoryDescriptionRefreshRuntime(db, { neighborhoodRecovery }), log = createLogger('InventoryDescriptionRefresh'),
 } = {}) {
   scheduler.inventoryDescriptionRefreshWorker?.stop();
   scheduler.inventoryDescriptionRefreshWorker = worker;

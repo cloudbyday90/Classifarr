@@ -11,6 +11,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Prioritize automatic description backfill for underrepresented content groups
+  learned from validated library profiles, while preserving ordinary progress,
+  retry delays and provider cooldowns. Stale or unknown references use normal
+  recovery; no new controls, inference budget or routing changes.
+- Update SHA-pinned CodeQL analysis and SARIF upload actions from PR #531,
+  applied locally without merging the PR, with workflow contract regression tests.
 - Add read-only, held-out coverage stress tests for learned library profiles,
   comparing random gaps, concentrated gaps and missing content groups across
   movie and TV libraries without changing live routing or adding review steps.

@@ -13,6 +13,7 @@ import { createInventoryRepresentativeProfileRefresh } from '../../services/inve
 import { fitInventoryRepresentativeProfile } from '../../services/inventoryRepresentativeProfileFit.mjs';
 import { resolveLocalStudyEmbeddingConfig } from '../../services/localStudyEmbeddingClient.mjs';
 import { readFile } from 'node:fs/promises';
+import { createInventoryNeighborhoodRecovery } from '../../services/inventoryNeighborhoodRecovery.mjs';
 
 let client;
 let repository;
@@ -225,8 +226,9 @@ test('partial movie and TV profiles publish, backfill and withdraw expired cover
   const missing = rows.shift();
   for (let index = 0; index < rows.length; index += 8) await cache.write(identity, rows.slice(index, index + 8));
   let time = 0;
+  const neighborhoodRecovery = createInventoryNeighborhoodRecovery({ now: () => time });
   const worker = createInventoryRepresentativeProfileRefresh({ repository: profiles, readState: repository.readState,
-    fit: fitInventoryRepresentativeProfile, now: () => time,
+    fit: fitInventoryRepresentativeProfile, now: () => time, neighborhoodRecovery,
     createEmbedder: () => ({ provider: identity.provider, model: identity.model, inspect: async () => identity,
       embedBatch: () => { throw new Error('Profile publication must not perform inference'); } }),
   });
@@ -247,7 +249,19 @@ test('partial movie and TV profiles publish, backfill and withdraw expired cover
     expect(reduced.libraries.size).toBe(2);
     expect(reduced.libraries.get(1).coverage.status).toBe('waiting');
     expect(reduced.libraries.get(2).coverage.status).toBe('complete');
-    await cache.write(identity, movieRows.map(doc => ({ hash: doc.hash, vector: [1, 0, 0] }))); time += 300_000;
+    const isolation = createInventoryDescriptionIsolationRepository(repository);
+    await isolation.defer(identity, [movieRows[0].hash], { code: 'zero', attempts: 1, delayMs: 60000 });
+    const backfill = createInventoryDescriptionRefreshWorker({ repository, cache, isolation, neighborhoodRecovery,
+      now: () => time, withSessionAdvisoryLock: async (key, callback) => { await callback(); return true; },
+      createEmbedder: () => ({ provider: identity.provider, model: identity.model, inspect: async () => identity,
+        embedBatch: async batch => batch.map(() => [1, 0, 0]) }),
+    });
+    expect(await backfill.run()).toMatchObject({ status: 'warming_cache', embeddedDescriptions: 1, remainingDescriptions: 1,
+      neighborhoodRecovery: { referencedLibraries: 2, unknownLibraries: 0, prioritizedDescriptions: 2 } });
+    expect(await backfill.run()).toMatchObject({ status: 'waiting_for_retry', embeddedDescriptions: 0 });
+    await client.query("UPDATE inventory_description_retry_journal SET next_retry_at=now()-interval '1 second'");
+    expect(await backfill.run()).toMatchObject({ status: 'up_to_date', embeddedDescriptions: 1, remainingDescriptions: 0 });
+    backfill.stop(); time += 300_000;
     expect(await worker.run()).toMatchObject({ status: 'published', availableDescriptions: 20, readyLibraries: 2, waitingLibraries: 0 });
     expect((await client.query('SELECT count(*)::int AS count FROM task_queue')).rows[0].count).toBe(0);
     expect((await client.query('SELECT count(*)::int AS count FROM media_server_items')).rows[0].count).toBe(20);

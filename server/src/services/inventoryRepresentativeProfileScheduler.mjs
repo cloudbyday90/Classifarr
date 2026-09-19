@@ -13,20 +13,21 @@ import { createRepresentativeValidationDiagnostics } from './representativeValid
 
 export const INVENTORY_REPRESENTATIVE_PROFILE_TASK = 'inventory-representative-profile-refresh';
 
-export function createInventoryRepresentativeProfileRuntime(database = db) {
+export function createInventoryRepresentativeProfileRuntime(database = db, { neighborhoodRecovery = null } = {}) {
   const diagnostics = createRepresentativeValidationDiagnostics({ log: createLogger('RepresentativeValidation') });
   const observer = createInventoryRepresentativeShadow({ diagnostics });
   const worker = createInventoryRepresentativeProfileRefresh({
     repository: createInventoryRepresentativeProfileRepository(database),
     readState: createInventoryDescriptionRefreshRepository(database).readState,
     createEmbedder: createLocalStudyEmbeddingClient, fit: fitInventoryRepresentativeProfile,
-    getRevision: getInventoryDescriptionRefreshRevision, observer, diagnostics,
+    getRevision: getInventoryDescriptionRefreshRevision, observer, diagnostics, neighborhoodRecovery,
   });
   return { ...worker, observer };
 }
 
 export function registerInventoryRepresentativeProfileSchedule(scheduler, {
-  worker = createInventoryRepresentativeProfileRuntime(), log = createLogger('InventoryRepresentativeProfile'),
+  neighborhoodRecovery = null,
+  worker = createInventoryRepresentativeProfileRuntime(db, { neighborhoodRecovery }), log = createLogger('InventoryRepresentativeProfile'),
 } = {}) {
   scheduler.inventoryRepresentativeProfileWorker?.stop();
   const disconnect = installRepresentativeShadow(worker.observer ?? null);

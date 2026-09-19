@@ -16,6 +16,7 @@ function eligibleConfig(state) {
 export function createInventoryDescriptionRefreshWorker({
   repository, cache, createEmbedder, withSessionAdvisoryLock, getRevision = () => 0, now = Date.now,
   recovery = createInventoryDescriptionRecovery({ now }),
+  neighborhoodRecovery = null,
   isolation = createInventoryDescriptionIsolationRepository(repository), random = Math.random,
 }) {
   let activeController = null;
@@ -48,7 +49,7 @@ export function createInventoryDescriptionRefreshWorker({
     const embedder = createEmbedder(state);
     const identity = await inspectDescriptionRepresentation(embedder, signal);
     const status = await backfillInventoryDescriptions({ embedder, identity, cache, isolation, signal, admit,
-      hashes: [...corpus.texts.keys()], texts: corpus.texts, counts, recovery, random });
+      hashes: [...corpus.texts.keys()], texts: corpus.texts, counts, recovery, random, neighborhoodRecovery, corpus, configKey });
     return result(status, counts);
   }
 
