@@ -68,6 +68,7 @@ import {
 import { registerSchedulerStartupTasks } from './schedulerStartupTasks.mjs';
 import { registerInventoryDescriptionRefreshSchedule } from './inventoryDescriptionRefreshScheduler.mjs';
 import { registerInventoryRepresentativeProfileSchedule } from './inventoryRepresentativeProfileScheduler.mjs';
+import { registerLiveMultiScaleSchedule } from './liveMultiScaleScheduler.mjs';
 import { createInventoryNeighborhoodRecovery } from './inventoryNeighborhoodRecovery.mjs';
 import { getInventoryDescriptionRefreshRevision } from './inventoryDescriptionRefreshSignal.mjs';
 
@@ -90,6 +91,7 @@ class SchedulerService {
     resetState() {
         this.inventoryDescriptionRefreshWorker?.stop();
         this.inventoryRepresentativeProfileWorker?.stop();
+        this.liveMultiScaleWorker?.stop();
         this.inventoryNeighborhoodRecovery?.clear();
         for (const task of this.tasks.values()) {
             if (typeof task?.stop === 'function') {
@@ -116,6 +118,7 @@ class SchedulerService {
         const neighborhoodRecovery = this.inventoryNeighborhoodRecovery;
         registerInventoryDescriptionRefreshSchedule(this, { neighborhoodRecovery });
         registerInventoryRepresentativeProfileSchedule(this, { neighborhoodRecovery });
+        registerLiveMultiScaleSchedule(this);
         registerLibraryObservationHistorySchedule(this);
         registerDatabaseHealthTransitionObservationSchedule(this);
         registerEventLoopDelayObservationSchedule(this);

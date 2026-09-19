@@ -8,10 +8,20 @@ export const MULTI_SCALE_VERSION = 'inventory_multi_scale_context_v1';
 
 /** Owned content-only snapshot; cache identity includes every input that affects fitting. */
 export function prepareMultiScaleSource(snapshot, representation, held) {
+  if (!(held instanceof Set) || !held.size) throw new Error('multi_scale_holdout_required');
+  return prepareSource(snapshot, representation, held);
+}
+
+/** Separate live contract: full-inventory profiles may retrieve unseen descriptions only. */
+export function prepareUnseenMultiScaleSource(snapshot, representation) {
+  return prepareSource(snapshot, representation, new Set());
+}
+
+function prepareSource(snapshot, representation, held) {
   const dimensions = representation?.dimensions;
   assertRepresentativeSnapshotBudget(snapshot, dimensions);
   if (typeof representation.model !== 'string' || !representation.model.length || representation.model.length > 200 ||
-      typeof representation.digest !== 'string' || !/^[a-f0-9]{64}$/.test(representation.digest) || !(held instanceof Set) || !held.size || held.size > 300 ||
+      typeof representation.digest !== 'string' || !/^[a-f0-9]{64}$/.test(representation.digest) || held.size > 300 ||
       [...held].some(hash => typeof hash !== 'string' || !/^[a-f0-9]{64}$/.test(hash))) throw new Error('multi_scale_source_invalid');
   if (snapshot.vectors.size !== snapshot.corpus.texts.size) throw new Error('multi_scale_complete_cache_required');
   const scope = new Map(snapshot.libraries.map(row => [row.id, row.media_type]));

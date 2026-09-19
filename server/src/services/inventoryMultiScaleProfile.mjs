@@ -64,7 +64,8 @@ export async function buildMultiScaleProfile(source, { signal, fit = fitInventor
     rawDescriptions: control.buckets.get(library.id).length, broadGroups: library.groups.length, localGroups: library.localGroups.length,
     broadNonSelf: await measureNonSelfRepresentatives(library.groups, vectors, signal),
     localNonSelf: await measureNonSelfRepresentatives(library.localGroups, vectors, signal) });
-  const state = { items, libraries, localMembership, localStatus, dimensions, held };
+  const state = { items, libraries, localMembership, localStatus, dimensions, held,
+    knownHashes: new Set(training.corpus.texts.keys()) };
   const summary = { localStatus, rawDescriptions: items.length, sharedDescriptions: items.filter(row => row.id === null).length, quality };
   // Conservative accounting includes owned vectors, means, hashes, membership and object overhead.
   const groups = libraries.flatMap(row => [...row.groups, ...row.localGroups]);

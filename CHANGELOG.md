@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Automatically prepare bounded library-description context for local ambiguous
+  destination comparisons. Preserve nearest examples, exclude self-placement
+  evidence, redact remote-provider details and recover stale or failed context
+  in the background without new controls or routing permissions.
 - Add a bounded, snapshot-cached retrieval context that preserves raw matches and
   broad library coverage while adding deduplicated local examples. Retry failed
   optional discovery without caching failures, validate source-bound reuse, and

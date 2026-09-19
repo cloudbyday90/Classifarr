@@ -266,7 +266,7 @@ export function createPolicyCandidateAdjudicationEvidenceService({
 
       const [currentLibraryRetrieval, descriptions] = await Promise.all([
         Promise.resolve().then(() => retrieveCurrentLibrary({ contract, metadata })).catch(() => null),
-        Promise.resolve().then(() => retrieveDescriptions({ contract, metadata })).catch(() => null),
+        Promise.resolve().then(() => retrieveDescriptions({ contract, metadata, multiScaleContext: true })).catch(() => null),
       ]);
       const currentLibrarySemanticRetrieval = descriptions?.statusId === 'available' ? null
         : await Promise.resolve().then(() => retrieveCurrentLibrarySemantic({ contract, metadata })).catch(() => null);

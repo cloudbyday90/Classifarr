@@ -124,7 +124,7 @@ ambiguous candidates → existing routing safeguards.
 | Raise confidence from multiple views of the same item | Appears more automatic | Counts correlated evidence repeatedly; rejected |
 | Wire the context into the existing ambiguous-candidate comparison | Can directly improve destination selection without new controls | Requires downstream held-out comparison before promotion; next component |
 
-The next high-value item is the consumer: compare ambiguous destinations using
+The next high-value item was the consumer: compare ambiguous destinations using
 this bounded context rather than changing confidence thresholds. Preserve the
 baseline when context is unavailable, test movie/TV and ungrouped-item regressions,
 and measure useful decisions rather than adding more status panels. This outcome
@@ -134,6 +134,10 @@ background warming, bounded retry/backoff and raw/broad fallback while context i
 unavailable. It must adapt the explicit evaluation holdout contract without
 letting an item's own placement become evidence for its destination; this loader
 is not yet a drop-in live-query cache.
+
+The subsequent [live comparison-context outcome](live-multi-scale-context-outcome.md)
+documents the scheduler-owned adapter, unseen-item admission, current-scope checks
+and automatic fallback. It does not relax this component's offline holdouts.
 
 W3C status-message guidance is relevant to any later recovery/status presentation;
 the current UI and SWR behavior remain unchanged. Official research, alternative

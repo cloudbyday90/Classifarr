@@ -8,6 +8,7 @@ import { validateEmbedding } from '../utils/embeddingValidation.mjs';
 import { assessLiveLibraryMatch } from './liveLibraryMatchBaseline.mjs';
 import { createLiveInventoryModelCache } from './liveInventoryModelCache.mjs';
 import { assessLiveLibraryNeighbors } from './liveLibraryNeighborCalibration.mjs';
+import { retrieveLiveMultiScaleExamples } from './liveMultiScaleRuntime.mjs';
 
 export { LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL } from './liveInventoryDescriptionCorpus.mjs';
 
@@ -33,6 +34,7 @@ export function createLiveInventoryDescriptionRepository({ withTransaction,
   profileCache = createLiveInventoryModelCache({ maxWeight: 4 * 1024 * 1024 }),
   baselineCache = createLiveInventoryModelCache(),
   neighborCache = createLiveInventoryModelCache(),
+  retrieveContext = retrieveLiveMultiScaleExamples,
 }) {
   const snapshot = callback => withTransaction(async client => {
     await client.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
@@ -89,6 +91,12 @@ export function createLiveInventoryDescriptionRepository({ withTransaction,
           rows, corpus, request, identity, vector, signal, modelCache: neighborCache,
           query: (sql, parameters) => client.query(sql, parameters),
         }) : null;
+        let context = null;
+        if (request.contextConfigKey && request.matchLibraryId == null && !request.neighborCalibration) {
+          try { context = await retrieveContext({ request, identity, vector, rows, corpus, signal }); }
+          catch { /* Optional context never discards the ordinary self-excluding evidence. */ }
+        }
+        signal?.throwIfAborted();
         return request.libraryIds.map(libraryId => {
           const matches = ranked.filter(row => row.library_id === libraryId);
           const items = matches.filter(row => row.similarity !== null).map(row => {
@@ -98,7 +106,15 @@ export function createLiveInventoryDescriptionRepository({ withTransaction,
             return { description: corpus.texts.get(row.hash), similarity: Math.max(-1, Math.min(1, row.similarity)),
               sharedAcrossCandidates: [...memberships.values()].filter(hashes => hashes.has(row.hash)).length > 1 };
           });
+          const extra = context instanceof Map ? context.get(libraryId) : null;
+          const seen = new Set(items.map(item => item.description));
+          const contextExamples = (Array.isArray(extra) ? extra.slice(0, 9) : []).filter(item => {
+            if (typeof item?.description !== 'string' || !Number.isFinite(item.similarity) ||
+                item.similarity < -1 || item.similarity > 1 || item.sharedAcrossCandidates !== false || seen.has(item.description)) return false;
+            seen.add(item.description); return true;
+          }).slice(0, 3);
           return { libraryId, eligible: memberships.get(libraryId).size, indexed: matches[0]?.indexed ?? 0, items,
+            ...(contextExamples.length ? { contextExamples } : {}),
             ...(request.matchLibraryId != null ? { queryIdentityPresent: rows.some(row => row.library_id === libraryId &&
               `${row.media_type}:${row.tmdb_id}` === request.key) } : {}),
             ...(matchBaseline?.libraryId === libraryId ? { matchBaseline } : {}),

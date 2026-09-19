@@ -17,7 +17,9 @@ function nearestGroup(groups, query) {
 /** Returns fresh bounded evidence, never vectors, stored content or routing authority. */
 export async function retrieveMultiScaleContext(state, { type, hash, vector }, signal) {
   signal?.throwIfAborted();
-  if (!state.held.has(hash) || !['movie', 'tv'].includes(type)) throw new Error('multi_scale_holdout_required');
+  const admitted = state.held.size ? state.held.has(hash)
+    : typeof hash === 'string' && /^[a-f0-9]{64}$/.test(hash) && state.knownHashes && !state.knownHashes.has(hash);
+  if (!admitted || !['movie', 'tv'].includes(type)) throw new Error('multi_scale_holdout_required');
   const query = normalizeDescriptionVector(vector, state.dimensions);
   const candidates = state.libraries.filter(row => row.mediaType === type).map(row => ({ id: row.id, raw: [] }));
   const byId = new Map(candidates.map(row => [row.id, row])), shared = [], scores = new Map();

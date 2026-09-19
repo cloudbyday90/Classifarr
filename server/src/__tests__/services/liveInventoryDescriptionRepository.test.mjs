@@ -8,12 +8,31 @@ const hash = text => createHash('sha256').update(text).digest('hex');
 const identity = { provider: 'ollama', model: 'test:latest', digest: 'a'.repeat(64), dimensions: 2 };
 const request = { key: 'movie:90', mediaType: 'movie', libraryIds: [1, 2], hash: hash('Query') };
 const row = (id, library, overview, media = 'movie') => ({ tmdb_id: id, library_id: library, overview, media_type: media });
-function setup(rows = [], ranked = []) {
+function setup(rows = [], ranked = [], retrieveContext) {
   const query = jest.fn(async (sql, parameters) => ({ rows: sql === INVENTORY_DESCRIPTION_CORPUS_SQL ? rows.filter(row => row.media_type === parameters[1])
     : sql === LIVE_INVENTORY_DESCRIPTION_RANK_SQL ? ranked : [] }));
-  const repository = createLiveInventoryDescriptionRepository({ withTransaction: async callback => callback({ query }) });
+  const repository = createLiveInventoryDescriptionRepository({ withTransaction: async callback => callback({ query }), retrieveContext });
   return { query, repository, retrieve: (signal, input = request) => repository.retrieve({ request: input, identity, vector: [1, 0], signal }) };
 }
+
+test('only comparison requests append distinct bounded examples, preserving raw evidence on failure', async () => {
+  const raw = { library_id: 1, hash: hash('A'), similarity: 0.8, indexed: 1 };
+  const example = description => ({ description, similarity: 0.7, sharedAcrossCandidates: false });
+  const retrieveContext = jest.fn(async () => new Map([[1, [example('A'), example('B'), example('B'), example('C'), example('D'), example('E')]]]));
+  const { retrieve } = setup([row(1, 1, 'A')], [raw], retrieveContext);
+  const baseline = await retrieve(); expect(retrieveContext).not.toHaveBeenCalled();
+  const input = { ...request, contextConfigKey: 'config' };
+  const result = await retrieve(undefined, input);
+  expect(result[0].items).toEqual(baseline[0].items);
+  expect(result[0].contextExamples.map(item => item.description)).toEqual(['B', 'C', 'D']);
+  expect(result[1]).toEqual(baseline[1]);
+  retrieveContext.mockRejectedValueOnce(new Error('PRIVATE'));
+  expect(await retrieve(undefined, input)).toEqual(baseline);
+  for (const invalid of [{ get: 7 }, new Map([[1, null]]), new Map([[1, [null, example('A'), { ...example('bad'), similarity: NaN }]]])]) {
+    retrieveContext.mockResolvedValueOnce(invalid);
+    expect(await retrieve(undefined, input)).toEqual(baseline);
+  }
+});
 
 test('snapshot joins only current scoped distinct descriptions, holds out self, and returns rival snippets', async () => {
   const rows = [row(90, 1, 'Query'), row(90, 2, 'Query'), row(99, 2, 'Query'), row(1, 1, 'A'), row(2, 1, 'A'),
