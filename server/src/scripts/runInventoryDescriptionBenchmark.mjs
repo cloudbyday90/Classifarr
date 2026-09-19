@@ -16,6 +16,7 @@ import { runInventoryEvidenceRerankerComparison } from '../services/inventoryEvi
 import { runInventorySemanticPairComparison } from '../services/inventorySemanticPairComparison.mjs';
 import { describeInventorySnapshotDigests } from '../services/inventoryDescriptionSnapshotDigests.mjs';
 import { runInventoryCoverageBenchmark } from '../services/inventoryCoverageBenchmark.mjs';
+import { runInventoryCandidateStabilityBenchmark } from '../services/inventoryCandidateStabilityBenchmark.mjs';
 
 async function loadPrivateRuntime() {
   process.env.LOG_LEVEL = 'fatal';
@@ -50,6 +51,7 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     'representative-stability': { type: 'boolean' },
     'semantic-pairs': { type: 'boolean' },
     'coverage-robustness': { type: 'boolean' },
+    'candidate-stability': { type: 'boolean' },
     'preserve-description-candidate': { type: 'boolean' },
     'metadata-candidates': { type: 'boolean' }, 'learned-profiles': { type: 'boolean' } } });
   if (values['metadata-candidates'] && values['learned-profiles']) throw new Error('description_benchmark_selection_mode_conflict');
@@ -62,6 +64,10 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     ...(values.context === undefined ? {} : { context: Number(values.context) }),
     ...(values['max-minutes'] === undefined ? {} : { maxMinutes: Number(values['max-minutes']) }),
   });
+  if (values['candidate-stability'] && (!options.folds || options.generateCases ||
+      Object.entries(values).some(([name, value]) => name !== 'candidate-stability' && value === true))) {
+    throw new Error('candidate_stability_requires_exclusive_grouped_zero_generation');
+  }
   if (values['coverage-robustness'] && (!options.folds || options.generateCases ||
       Object.entries(values).some(([name, value]) => name !== 'coverage-robustness' && value === true))) {
     throw new Error('coverage_benchmark_requires_exclusive_grouped_zero_generation');
@@ -119,10 +125,12 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     const representation = await inspectDescriptionRepresentation(runtime.embedder, abort);
     const snapshot = await runtime.repository.read(representation);
     await verifyDescriptionRepresentation(runtime.embedder, representation, abort);
-    if (values['evidence-reranker'] || values['semantic-pairs'] || values['coverage-robustness']) {
+    if (values['evidence-reranker'] || values['semantic-pairs'] || values['coverage-robustness'] || values['candidate-stability']) {
       const pairClient = values['semantic-pairs'] && options.generateCases ? runtime.createClient() : undefined;
       const pairIdentity = pairClient ? await pairClient.inspect(abort) : undefined;
-      const report = values['coverage-robustness']
+      const report = values['candidate-stability']
+        ? await runInventoryCandidateStabilityBenchmark(snapshot, representation.dimensions, options, { signal: abort, onProgress })
+        : values['coverage-robustness']
         ? await runInventoryCoverageBenchmark(snapshot, representation.dimensions, options, { signal: abort, onProgress })
         : values['semantic-pairs']
         ? await runInventorySemanticPairComparison(snapshot, representation.dimensions, options,

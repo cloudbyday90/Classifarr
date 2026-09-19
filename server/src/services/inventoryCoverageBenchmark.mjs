@@ -57,7 +57,7 @@ export async function runInventoryCoverageBenchmark(snapshot, dimensions, rawOpt
     }
   }
   abort.throwIfAborted();
-  return { protocol: 'inventory_coverage_robustness_v1', status: 'complete', calls: 0, livePromotionAllowed: false,
+  return { protocol: 'inventory_coverage_robustness_v2', status: 'complete', calls: 0, livePromotionAllowed: false,
     metric: 'historical_placement_agreement_not_verified_correctness', sampledDescriptions: sample.length,
     sampleShortfall: options.size - sample.length, excludedPriorDescriptions: selection.excluded.size,
     sampleFingerprint: createHash('sha256').update(JSON.stringify(sample.map(doc => doc.key))).digest('hex'),

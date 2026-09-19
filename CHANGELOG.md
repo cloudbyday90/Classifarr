@@ -11,6 +11,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Reject library-profile comparisons that only appear stable when unrelated
+  fitting starts are paired. Add source-verified, read-only movie/TV hold-out
+  comparisons with unusual-description diagnostics; no routing changes or new
+  user prompts. Existing Library learning summaries remain compatible.
+- Update SHA-pinned Docker and OSV actions from PR #537, applied locally without
+  merging the PR; retain least-privilege scan jobs and tag-only publication.
 - Preserve validated content-group memberships separately from outliers so all
   supported library groups can participate in automatic recovery. Unassigned
   descriptions still backfill normally; malformed profiles rebuild with bounded,

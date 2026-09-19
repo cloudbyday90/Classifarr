@@ -74,7 +74,7 @@ test('concentrated masks remove neighboring vectors, and group masks remove a wh
 test('actual fitting reports paired abstentions, movie/TV strata and redacted aggregate output', async () => {
   const snapshot = fixture(), before = structuredClone(snapshot), progress = jest.fn();
   const report = await run(snapshot, {}, { onProgress: progress });
-  expect(report).toMatchObject({ protocol: 'inventory_coverage_robustness_v1', status: 'complete', calls: 0,
+  expect(report).toMatchObject({ protocol: 'inventory_coverage_robustness_v2', status: 'complete', calls: 0,
     livePromotionAllowed: false, sampledDescriptions: 8, sampleShortfall: 0 });
   expect(report.arms).toHaveLength(6);
   expect(report.arms[0]).toMatchObject({ evaluated: 8, compared: 8, placementAgreements: 8, abstained: 0 });

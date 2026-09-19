@@ -20,7 +20,7 @@ test('optional profile counters are redacted, bounded and remain admin-only', as
   const { app } = appFor(() => source);
   const response = await request(app).get('/api/queue/live-stats').set('Authorization', 'test').expect(200);
   expect(response.body.libraryEvaluation.representative.counts.agrees).toBe(2);
-  expect(response.body.libraryEvaluation.representative.version).toBe('inventory_representative_shadow_v3');
+  expect(response.body.libraryEvaluation.representative.version).toBe('inventory_representative_shadow_v4');
   expect(response.body.libraryEvaluation.representative.counts.initialization_sensitive).toBe(3);
   expect(response.body.libraryEvaluation.representative.counts).toMatchObject({ partial_agrees: 4, partial_disagrees: 1, incomplete_profiles: 6 });
   expect(response.body.libraryEvaluation.representative.counts).not.toHaveProperty('unstable_profiles');

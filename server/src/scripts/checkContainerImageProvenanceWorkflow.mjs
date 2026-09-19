@@ -54,7 +54,7 @@ const EXPECTED_ATTESTATIONS = Object.freeze([
 
 const EXPECTED_DIGEST_EXPRESSION = githubExpression('steps.build-and-push-image.outputs.digest');
 const EXPECTED_BUILD_ACTION =
-  'docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a';
+  'docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc';
 const EXPECTED_WORKFLOW_ENVIRONMENT = Object.freeze({
   IMAGE_NAME: GHCR_IMAGE_NAME,
   REGISTRY: 'ghcr.io',

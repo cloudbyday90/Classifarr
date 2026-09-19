@@ -14,7 +14,7 @@ const DIAGNOSTICS = [
 ]
 
 export function normalizeRepresentativeShadowSummary(value) {
-  const coverageAware = value?.version === 'inventory_representative_shadow_v3'
+  const coverageAware = ['inventory_representative_shadow_v3', 'inventory_representative_shadow_v4'].includes(value?.version)
   if ((!coverageAware && value?.version !== 'inventory_representative_shadow_v2') || value.status !== 'available' || value.routingAffected !== false ||
       Object.keys(value).some(key => !['version', 'status', 'routingAffected', 'pending', 'counts', 'latency'].includes(key)) ||
       !Number.isInteger(value.pending) || value.pending < 0 || value.pending > 32) return null

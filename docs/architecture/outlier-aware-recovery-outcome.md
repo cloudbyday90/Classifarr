@@ -91,6 +91,11 @@ and abstentions, and fix the largest demonstrated error class. Existing placemen
 is a comparison signal, not ground truth. Do not raise policy confidence or promote
 shadow evidence to automatic routing merely because recovery coverage is now 10/10.
 
+The first follow-up found and fixed an independent-start comparison defect, with
+paired read-only evaluation documented in the
+[candidate-stability outcome](independent-candidate-stability-outcome.md).
+That result improves diagnostic reliability, not semantic routing authority.
+
 ## Remaining limits and rollback
 
 References remain process-local with a 30-minute TTL. Restarts, expired references,

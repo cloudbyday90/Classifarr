@@ -3,6 +3,9 @@ import { normalizeDescriptionVector } from './inventoryDescriptionSimilarity.mjs
 import { representativeSimilarity } from './inventoryRepresentativeGeometry.mjs';
 import { representativeValidationError, validateRepresentativeProfiles, validateRepresentativeVector } from './representativeValidation.mjs';
 import { representativeValidationIssue } from './representativeValidationDiagnostics.mjs';
+import { inspectRepresentativeStartAgreement } from './representativeStartAgreement.mjs';
+
+const abstain = reason => ({ aligned: { reason }, independent: { reason } });
 
 /** Content-neutral diagnostic. All candidates stay in scope; no score grants routing authority. */
 function evaluateCandidates(profiles, vector, dimensions, onInvalid, decision) {
@@ -15,33 +18,27 @@ function evaluateCandidates(profiles, vector, dimensions, onInvalid, decision) {
     // Validate every retained centroid before diagnosing; reuse these bounded scalar scores in the selected view.
     const candidateScores = profiles.map(profile => profile.starts.map(start => Math.max(...start.groups.map(group =>
       representativeSimilarity(query, normalizeDescriptionVector(group.centroid, dimensions))))));
-    if (profiles.some(profile => profile.starts.some(start => !start.converged))) return 'unconverged_profiles';
+    if (profiles.some(profile => profile.starts.some(start => !start.converged))) return abstain('unconverged_profiles');
     if (profiles.some(profile => profile.starts.some(start => !start.groups.length ||
-        start.groups.some(group => group.support < 3)))) return 'sparse_profiles';
-    const winners = [];
-    for (let view = 0; view < 4; view++) {
-      const scores = profiles.map((profile, index) => ({ index,
-        score: candidateScores[index][view === 3 ? profile.selectedStart : view] }));
-      scores.sort((a, b) => b.score - a.score);
-      if (scores[0].score <= 0) return 'no_positive_match';
-      if (scores[0].score - scores[1].score <= 1e-12) return 'tied_destinations';
-      winners.push(scores[0].index);
-    }
-    if (new Set(winners).size !== 1) return 'initialization_sensitive';
-    return { index: winners[0] };
+        start.groups.some(group => group.support < 3)))) return abstain('sparse_profiles');
+    return inspectRepresentativeStartAgreement(candidateScores, profiles.map(profile => profile.selectedStart));
   } catch (error) {
     try { onInvalid?.(representativeValidationIssue(error)); } catch { /* Passive diagnostics only. */ }
-    return 'invalid_input';
+    return abstain('invalid_input');
   }
 }
 
 /** Private index only; callers must retain their complete, validated candidate scope. */
 export function rankRepresentativeCandidates(profiles, vector, dimensions, onInvalid = null) {
-  const result = evaluateCandidates(profiles, vector, dimensions, onInvalid, null);
-  return typeof result === 'string' ? { reason: result } : { reason: 'selected', index: result.index };
+  return evaluateCandidates(profiles, vector, dimensions, onInvalid, null).independent;
+}
+
+/** Paired private benchmark control. Neither result carries routing authority. */
+export function inspectRepresentativeCandidates(profiles, vector, dimensions) {
+  return evaluateCandidates(profiles, vector, dimensions, null, null);
 }
 
 export function compareRepresentativeCandidates(profiles, vector, dimensions, destinationIndex, onInvalid = null) {
-  const result = evaluateCandidates(profiles, vector, dimensions, onInvalid, { index: destinationIndex });
-  return typeof result === 'string' ? result : result.index === destinationIndex ? 'agrees' : 'disagrees';
+  const result = evaluateCandidates(profiles, vector, dimensions, onInvalid, { index: destinationIndex }).independent;
+  return result.reason !== 'selected' ? result.reason : result.index === destinationIndex ? 'agrees' : 'disagrees';
 }

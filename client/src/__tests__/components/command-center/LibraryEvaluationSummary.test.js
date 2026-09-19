@@ -32,6 +32,15 @@ function summary(overrides = {}) {
 }
 
 describe('LibraryEvaluationSummary', () => {
+  it('accepts independent-start v4 diagnostics while preserving older coverage summaries', () => {
+    const value = coverageRepresentative()
+    const current = { ...value, version: 'inventory_representative_shadow_v4' }
+    expect(normalizeRepresentativeShadowSummary(current)).toEqual(normalizeRepresentativeShadowSummary(value))
+    const wrapper = mount(LibraryEvaluationSummary, { props: { evaluation: { ...summary(), representative: current } } })
+    expect(wrapper.get('details').attributes('open')).toBeUndefined()
+    expect(wrapper.get('[role="status"]').attributes('aria-atomic')).toBe('true')
+    expect(wrapper.text()).toContain('8 decisions compared')
+  })
   it('separates partial comparisons from missing coverage in the existing closed disclosure', async () => {
     const value = coverageRepresentative()
     expect(normalizeRepresentativeShadowSummary(value)).toMatchObject({ compared: 8, differs: 2,

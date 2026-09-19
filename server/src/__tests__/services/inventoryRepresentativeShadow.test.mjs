@@ -45,7 +45,7 @@ test.each([
   expect(Object.values(fixture.shadow.read().counts).every(count => count === 0)).toBe(true);
   stage.commit(fixture.snapshot); stage.commit(fixture.snapshot);
   expect(Object.entries(fixture.shadow.read().counts).filter(([, count]) => count > 0)).toEqual([[reason, 1]]);
-  expect(fixture.shadow.read().version).toBe('inventory_representative_shadow_v3');
+  expect(fixture.shadow.read().version).toBe('inventory_representative_shadow_v4');
   expect(fixture.decision).toEqual(original);
 });
 

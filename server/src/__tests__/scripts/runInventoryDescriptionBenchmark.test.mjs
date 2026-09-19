@@ -5,6 +5,24 @@ import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescr
 
 const seed = 'benchmark-test-seed-2026';
 
+test('independent candidate CLI is exclusive, zero-generation and source-verified after fitting', async () => {
+  const argv = ['--seed', seed, '--size', '8', '--folds', '2', '--candidate-stability'], loadRuntime = jest.fn();
+  for (const invalid of [argv.filter(value => !['--folds', '2'].includes(value)), [...argv, '--generate-cases', '1'],
+    ...['--coverage-robustness', '--semantic-pairs', '--evidence-reranker', '--fresh-policy-evaluation', '--investigate'].map(mode => [...argv, mode])]) {
+    await expect(runInventoryDescriptionBenchmark({ argv: invalid, loadRuntime })).rejects.toThrow('candidate_stability_requires');
+  }
+  expect(loadRuntime).not.toHaveBeenCalled();
+  const instance = runtime();
+  expect(await runInventoryDescriptionBenchmark({ argv, loadRuntime: async () => instance }))
+    .toMatchObject({ protocol: 'inventory_candidate_stability_v1', status: 'complete', sourceVerified: true, calls: 0 });
+  const snapshot = await instance.repository.read();
+  instance.repository.read.mockResolvedValueOnce(snapshot).mockResolvedValueOnce({ ...snapshot,
+    libraries: snapshot.libraries.map(row => ({ ...row, name: 'Changed source' })) });
+  expect(await runInventoryDescriptionBenchmark({ argv, loadRuntime: async () => instance }))
+    .toMatchObject({ status: 'invalidated', sourceVerified: false });
+  expect(instance.createClient).not.toHaveBeenCalled(); expect(instance.close).toHaveBeenCalledTimes(2);
+});
+
 test('coverage robustness requires exclusive grouped zero-generation mode and verifies sources', async () => {
   const base = ['--seed', seed, '--size', '8', '--folds', '2', '--coverage-robustness'], loadRuntime = jest.fn();
   for (const argv of [base.filter(value => !['--folds', '2'].includes(value)), [...base, '--generate-cases', '1'],
@@ -14,7 +32,7 @@ test('coverage robustness requires exclusive grouped zero-generation mode and ve
   expect(loadRuntime).not.toHaveBeenCalled();
   const instance = runtime();
   expect(await runInventoryDescriptionBenchmark({ argv: base, loadRuntime: async () => instance }))
-    .toMatchObject({ protocol: 'inventory_coverage_robustness_v1', status: 'complete', sourceVerified: true, calls: 0 });
+    .toMatchObject({ protocol: 'inventory_coverage_robustness_v2', status: 'complete', sourceVerified: true, calls: 0 });
   const snapshot = await instance.repository.read();
   instance.repository.read.mockResolvedValueOnce(snapshot).mockResolvedValueOnce({ ...snapshot,
     libraries: snapshot.libraries.map(row => ({ ...row, name: 'Changed source' })) });
