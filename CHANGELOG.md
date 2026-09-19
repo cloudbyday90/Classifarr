@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add bounded, library-agnostic local content-community discovery and a paired,
+  source-verified movie/TV evaluation. Preserve shared evidence and ungrouped
+  items explicitly, reuse control validation, and keep live routing, automatic
+  recovery and the UI unchanged while measuring representation quality.
 - Add content-only adaptive group discovery with validation-gated splits, bounded
   work and explicit small-group retention diagnostics. Compare cached movie/TV
   vectors in a source-verified offline benchmark without inference, new controls

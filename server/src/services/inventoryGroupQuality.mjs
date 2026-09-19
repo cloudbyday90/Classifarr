@@ -11,14 +11,14 @@ export function summarizeGroupValues(values) {
 }
 
 /** Geometry only, never semantic correctness. Caller supplies validated private partitions. */
-export async function measureGroupQuality(groups, items, signal) {
+export async function measureGroupQuality(groups, items, signal, { includeMargins = true } = {}) {
   const vectors = new Map(items.map(row => [row.hash, row.vector]));
   const cohesion = [], representation = [], margins = [], support = { threeToNine: 0, tenToFortyNine: 0, fiftyOrMore: 0 };
   let processed = 0;
   for (const group of groups) {
     support[group.support < 10 ? 'threeToNine' : group.support < 50 ? 'tenToFortyNine' : 'fiftyOrMore']++;
     const representatives = group.representatives.map(hash => vectors.get(hash));
-    const alternatives = groups.filter(other => other !== group);
+    const alternatives = includeMargins ? groups.filter(other => other !== group) : [];
     for (const hash of group.hashes) {
       if (processed++ % 128 === 0) { await setImmediate(); signal?.throwIfAborted(); }
       const vector = vectors.get(hash), own = similarity(vector, group.centroid);
@@ -30,7 +30,8 @@ export async function measureGroupQuality(groups, items, signal) {
   signal?.throwIfAborted();
   return { groups: groups.length, trainingDescriptions: items.length, representedDescriptions: cohesion.length,
     unassignedDescriptions: items.length - cohesion.length, support, cohesion: summarizeGroupValues(cohesion),
-    representation: summarizeGroupValues(representation), ownGroupMargin: summarizeGroupValues(margins) };
+    representation: summarizeGroupValues(representation), ownGroupMargin: summarizeGroupValues(margins),
+    ...(!includeMargins ? { marginsMeasured: false } : {}) };
 }
 
 /** Preserve missing destinations as abstentions; this diagnostic is not a routing decision. */

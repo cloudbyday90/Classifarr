@@ -18,6 +18,7 @@ import { describeInventorySnapshotDigests } from '../services/inventoryDescripti
 import { runInventoryCoverageBenchmark } from '../services/inventoryCoverageBenchmark.mjs';
 import { runInventoryCandidateStabilityBenchmark } from '../services/inventoryCandidateStabilityBenchmark.mjs';
 import { runInventoryAdaptiveGroupBenchmark } from '../services/inventoryAdaptiveGroupBenchmark.mjs';
+import { runInventoryCommunityBenchmark } from '../services/inventoryCommunityBenchmark.mjs';
 
 async function loadPrivateRuntime() {
   process.env.LOG_LEVEL = 'fatal';
@@ -57,6 +58,7 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     'group-contrast': { type: 'boolean' },
     'group-semantics': { type: 'boolean' },
     'adaptive-groups': { type: 'boolean' },
+    'local-communities': { type: 'boolean' },
     'preserve-description-candidate': { type: 'boolean' },
     'metadata-candidates': { type: 'boolean' }, 'learned-profiles': { type: 'boolean' } } });
   if (values['metadata-candidates'] && values['learned-profiles']) throw new Error('description_benchmark_selection_mode_conflict');
@@ -69,7 +71,7 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     ...(values.context === undefined ? {} : { context: Number(values.context) }),
     ...(values['max-minutes'] === undefined ? {} : { maxMinutes: Number(values['max-minutes']) }),
   });
-  for (const mode of ['candidate-stability', 'candidate-local-evidence', 'group-contrast', 'adaptive-groups']) {
+  for (const mode of ['candidate-stability', 'candidate-local-evidence', 'group-contrast', 'adaptive-groups', 'local-communities']) {
     if (values[mode] && (!options.folds || options.generateCases ||
         Object.entries(values).some(([name, value]) => name !== mode && value === true))) {
       throw new Error(`${mode.replaceAll('-', '_')}_requires_exclusive_grouped_zero_generation`);
@@ -136,10 +138,12 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     const representation = await inspectDescriptionRepresentation(runtime.embedder, abort);
     const snapshot = await runtime.repository.read(representation);
     await verifyDescriptionRepresentation(runtime.embedder, representation, abort);
-    if (values['evidence-reranker'] || values['semantic-pairs'] || values['coverage-robustness'] || values['candidate-stability'] || values['candidate-local-evidence'] || values['group-contrast'] || values['group-semantics'] || values['adaptive-groups']) {
+    if (values['evidence-reranker'] || values['semantic-pairs'] || values['coverage-robustness'] || values['candidate-stability'] || values['candidate-local-evidence'] || values['group-contrast'] || values['group-semantics'] || values['adaptive-groups'] || values['local-communities']) {
       const pairClient = (values['semantic-pairs'] || values['group-semantics']) && options.generateCases ? runtime.createClient() : undefined;
       const pairIdentity = pairClient ? await pairClient.inspect(abort) : undefined;
-      const report = values['adaptive-groups']
+      const report = values['local-communities']
+        ? await runInventoryCommunityBenchmark(snapshot, representation.dimensions, options, { signal: abort, onProgress })
+        : values['adaptive-groups']
         ? await runInventoryAdaptiveGroupBenchmark(snapshot, representation.dimensions, options, { signal: abort, onProgress })
         : values['candidate-stability'] || values['candidate-local-evidence'] || values['group-contrast'] || values['group-semantics']
         ? await runInventoryCandidateStabilityBenchmark(snapshot, representation.dimensions, options,

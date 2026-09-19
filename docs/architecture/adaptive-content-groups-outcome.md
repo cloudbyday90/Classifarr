@@ -116,6 +116,10 @@ global loss-gain gate is a frozen hypothesis, not a universal best-practice valu
 
 ## Recommendations and next component
 
+Follow-up: the [local-community design](local-content-communities-design.md) and
+[implementation outcome](local-content-communities-outcome.md) evaluate the next
+component without changing this earlier result or promoting its rejected method.
+
 | Recommendation | Benefit | Cost / limitation |
 | --- | --- | --- |
 | Keep current runtime groups | Avoids demonstrated loss of detail | Existing eight-group limit remains |
