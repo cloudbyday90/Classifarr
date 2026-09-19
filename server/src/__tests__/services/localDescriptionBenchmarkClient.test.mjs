@@ -105,3 +105,15 @@ test('pair relevance uses its own bounded schema/output budget without widening 
     responseContract: 'pair_relevance' })).rejects.toThrow('context_budget');
   expect(requests.filter(request => request.path === '/api/generate')).toHaveLength(1);
 });
+
+test('group relevance constrains all anonymous groups and keeps the old candidate contract narrow', async () => {
+  const client = createLocalDescriptionBenchmarkClient(config);
+  await client.generate({ prompt: 'Private groups', count: 5, context: 32768, identity, responseContract: 'group_relevance' });
+  expect(requests.find(request => request.path === '/api/generate').body).toMatchObject({
+    format: { properties: { grades: { minItems: 5, maxItems: 5 } }, additionalProperties: false }, options: { num_predict: 256 } });
+  await expect(client.generate({ prompt: 'Private', count: 9, context: 32768, identity, responseContract: 'group_relevance' })).rejects.toThrow('count_invalid');
+  await expect(client.generate({ prompt: 'Private', count: 5, context: 32768, identity })).rejects.toThrow('context_budget');
+  await expect(client.generate({ prompt: 'x'.repeat((8192 - 256) * 3 + 1), count: 2, context: 8192, identity,
+    responseContract: 'group_relevance' })).rejects.toThrow('context_budget');
+  expect(requests.filter(request => request.path === '/api/generate')).toHaveLength(1);
+});

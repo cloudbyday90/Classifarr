@@ -54,6 +54,7 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     'candidate-stability': { type: 'boolean' },
     'candidate-local-evidence': { type: 'boolean' },
     'group-contrast': { type: 'boolean' },
+    'group-semantics': { type: 'boolean' },
     'preserve-description-candidate': { type: 'boolean' },
     'metadata-candidates': { type: 'boolean' }, 'learned-profiles': { type: 'boolean' } } });
   if (values['metadata-candidates'] && values['learned-profiles']) throw new Error('description_benchmark_selection_mode_conflict');
@@ -78,6 +79,10 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
   }
   if (values['semantic-pairs'] && (!options.folds || Object.entries(values).some(([name, value]) => name !== 'semantic-pairs' && value === true))) {
     throw new Error('semantic_pairs_require_exclusive_grouped_mode');
+  }
+  if (values['group-semantics'] && (!options.folds || options.generateCases > 100 ||
+      Object.entries(values).some(([name, value]) => name !== 'group-semantics' && value === true))) {
+    throw new Error('group_semantics_requires_exclusive_grouped_bounded_mode');
   }
   if (values['neighborhood-profiles'] && !values['evidence-reranker']) throw new Error('neighborhood_profiles_requires_evidence_reranker');
   if (values['representative-stability'] && !values['representative-groups']) throw new Error('representative_stability_requires_groups');
@@ -129,12 +134,13 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     const representation = await inspectDescriptionRepresentation(runtime.embedder, abort);
     const snapshot = await runtime.repository.read(representation);
     await verifyDescriptionRepresentation(runtime.embedder, representation, abort);
-    if (values['evidence-reranker'] || values['semantic-pairs'] || values['coverage-robustness'] || values['candidate-stability'] || values['candidate-local-evidence'] || values['group-contrast']) {
-      const pairClient = values['semantic-pairs'] && options.generateCases ? runtime.createClient() : undefined;
+    if (values['evidence-reranker'] || values['semantic-pairs'] || values['coverage-robustness'] || values['candidate-stability'] || values['candidate-local-evidence'] || values['group-contrast'] || values['group-semantics']) {
+      const pairClient = (values['semantic-pairs'] || values['group-semantics']) && options.generateCases ? runtime.createClient() : undefined;
       const pairIdentity = pairClient ? await pairClient.inspect(abort) : undefined;
-      const report = values['candidate-stability'] || values['candidate-local-evidence'] || values['group-contrast']
+      const report = values['candidate-stability'] || values['candidate-local-evidence'] || values['group-contrast'] || values['group-semantics']
         ? await runInventoryCandidateStabilityBenchmark(snapshot, representation.dimensions, options,
-          { signal: abort, onProgress, localEvidence: values['candidate-local-evidence'] === true, groupContrast: values['group-contrast'] === true })
+          { signal: abort, onProgress, localEvidence: values['candidate-local-evidence'] === true, groupContrast: values['group-contrast'] === true,
+            groupSemantics: values['group-semantics'] === true, client: pairClient, identity: pairIdentity })
         : values['coverage-robustness']
         ? await runInventoryCoverageBenchmark(snapshot, representation.dimensions, options, { signal: abort, onProgress })
         : values['semantic-pairs']
@@ -146,9 +152,11 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
       if (abort.aborted) return { ...report, status: 'interrupted', sourceVerified: false };
       const current = await runtime.repository.read(representation);
       await verifyDescriptionRepresentation(runtime.embedder, representation, abort);
-      const sourceVerified = JSON.stringify(describeInventorySnapshotDigests(current, current.vectors)) ===
-        JSON.stringify(report.snapshotComponents);
-      return { ...report, status: sourceVerified ? report.status : 'invalidated', sourceVerified,
+      const currentComponents = describeInventorySnapshotDigests(current, current.vectors);
+      const sourceVerified = JSON.stringify(currentComponents) === JSON.stringify(report.snapshotComponents);
+      const changedSourceComponents = ['documents', 'libraries', 'vectors', 'metadata'].filter(name =>
+        currentComponents.hashes[name] !== report.snapshotComponents.hashes[name]);
+      return { ...report, status: sourceVerified ? report.status : 'invalidated', sourceVerified, changedSourceComponents,
         embedding: { model: representation.model, digest: representation.digest, dimensions: representation.dimensions } };
     }
     if (values['neighbor-calibration']) {

@@ -5,6 +5,24 @@ import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescr
 
 const seed = 'benchmark-test-seed-2026';
 
+test('group-semantics CLI enforces grouped exclusive budgets, opt-in inference and source verification', async () => {
+  const argv = ['--seed', seed, '--size', '8', '--folds', '2', '--group-semantics'], loadRuntime = jest.fn();
+  for (const invalid of [argv.filter(value => !['--folds', '2'].includes(value)), [...argv, '--size', '300', '--generate-cases', '101'],
+    ...['--candidate-local-evidence', '--group-contrast', '--semantic-pairs', '--evidence-reranker', '--fresh-policy-evaluation'].map(mode => [...argv, mode])]) {
+    await expect(runInventoryDescriptionBenchmark({ argv: invalid, loadRuntime })).rejects.toThrow();
+  }
+  expect(loadRuntime).not.toHaveBeenCalled();
+  const instance = runtime();
+  expect(await runInventoryDescriptionBenchmark({ argv, loadRuntime: async () => instance }))
+    .toMatchObject({ protocol: 'inventory_group_semantics_v1', status: 'preflight', sourceVerified: true, changedSourceComponents: [], calls: 0 });
+  expect(instance.createClient).not.toHaveBeenCalled();
+  const snapshot = await instance.repository.read();
+  instance.repository.read.mockResolvedValueOnce(snapshot).mockResolvedValueOnce({ ...snapshot, candidateMetadata: new Map([['movie:1', null]]) });
+  expect(await runInventoryDescriptionBenchmark({ argv: [...argv, '--generate-cases', '1'], loadRuntime: async () => instance }))
+    .toMatchObject({ status: 'invalidated', sourceVerified: false, changedSourceComponents: ['metadata'] });
+  expect(instance.createClient).toHaveBeenCalledTimes(1); expect(instance.close).toHaveBeenCalledTimes(2);
+});
+
 test('group-contrast CLI requires exclusive zero-generation folds and verifies source freshness', async () => {
   const argv = ['--seed', seed, '--size', '8', '--folds', '2', '--group-contrast'], loadRuntime = jest.fn();
   for (const invalid of [argv.filter(value => !['--folds', '2'].includes(value)), [...argv, '--generate-cases', '1'],

@@ -107,6 +107,9 @@ rollback; existing recovery still works.
 
 ## Final recommendation and next component
 
+Follow-up: the [semantic group comparison](group-semantic-comparison-outcome.md)
+now records its verified evaluation and adoption decision.
+
 Keep the small readiness services and existing guarded recovery queue. The benefit
 is automatic, attributable recovery without retry storms or new controls; the
 limitation is that ordering within a page does not increase global throughput or

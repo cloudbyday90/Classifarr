@@ -16,6 +16,8 @@ import { resolveCandidateLocalEvidence, combineCandidateLocalEvidence } from './
 import { fitGroupTermProfile } from './inventoryGroupTermProfile.mjs';
 import { createGroupTermReadinessCounter } from './inventoryGroupTermReadiness.mjs';
 import { resolveGroupTermEvidence, combineGroupTermEvidence } from './inventoryGroupTermEvidence.mjs';
+import { createGroupSemanticIndex, prepareGroupSemanticPlan } from './inventoryGroupSemanticPlan.mjs';
+import { createGroupSemanticComparison } from './inventoryGroupSemanticComparison.mjs';
 
 function pairedDecision(candidates, vector, dimensions) {
   const reason = candidates.length < 2 ? 'insufficient_candidates'
@@ -34,12 +36,13 @@ function withPlacement(decision, candidates, doc) {
 const summarize = ({ pairedWithComplete, ...metrics }, localEvidence) => ({ ...metrics,
   [localEvidence ? 'pairedWithIndependent' : 'pairedWithAligned']: pairedWithComplete });
 
-/** Paired zero-generation hold-out evaluation; never publishes profiles or writes routing state. */
+/** Paired hold-out evaluation; optional explicitly budgeted local inference never writes routing state. */
 export async function runInventoryCandidateStabilityBenchmark(snapshot, dimensions, rawOptions, { signal, onProgress,
-  fit = fitInventoryRepresentativeProfile, localEvidence = false, groupContrast = false } = {}) {
-  localEvidence ||= groupContrast;
+  fit = fitInventoryRepresentativeProfile, localEvidence = false, groupContrast = false, groupSemantics = false, client, identity } = {}) {
+  localEvidence ||= groupContrast || groupSemantics;
   const options = validateDescriptionBenchmarkOptions(rawOptions);
-  if (!options.folds || options.generateCases) throw new Error('candidate_stability_requires_grouped_zero_generation');
+  if (groupSemantics && (groupContrast || options.generateCases > 100)) throw new Error('group_semantics_mode_or_budget_invalid');
+  if (!options.folds || (!groupSemantics && options.generateCases)) throw new Error('candidate_stability_requires_grouped_zero_generation');
   const abort = AbortSignal.any([AbortSignal.timeout(options.maxMinutes * 60_000), ...(signal ? [signal] : [])]);
   abort.throwIfAborted();
   assertRepresentativeSnapshotBudget(snapshot, dimensions);
@@ -51,7 +54,8 @@ export async function runInventoryCandidateStabilityBenchmark(snapshot, dimensio
   const selection = selectAdditionalDescriptionBenchmarkSample(snapshot.corpus, options), sample = selection.sample;
   const folds = planDescriptionBenchmarkFolds(snapshot.corpus, sample, snapshot.libraries, options);
   const strata = [...snapshot.libraries].sort((a, b) => a.id - b.id);
-  const names = groupContrast ? ['independent', 'local', 'combined', 'contrast', 'enhanced']
+  const semantic = groupSemantics ? createGroupSemanticComparison(options, { client, identity, signal: abort, onProgress }) : null;
+  const names = groupSemantics ? ['independent', 'local', 'combined', 'semantic'] : groupContrast ? ['independent', 'local', 'combined', 'contrast', 'enhanced']
     : localEvidence ? ['independent', 'local', 'combined'] : ['aligned', 'independent'];
   const readiness = createGroupTermReadinessCounter();
   const arms = names.map(name => ({ name, ...createCoverageMetrics(),
@@ -66,6 +70,7 @@ export async function runInventoryCandidateStabilityBenchmark(snapshot, dimensio
     const model = await fit(training, dimensions, { signal: abort });
     const ranges = await buildCandidateSupportRanges(model, training, dimensions, abort);
     const localIndex = localEvidence ? await createCandidateLocalIndex(snapshot, model, folds.held[fold], dimensions, abort) : null;
+    const semanticIndex = semantic ? await createGroupSemanticIndex(localIndex, abort) : null;
     const terms = groupContrast ? await fitGroupTermProfile(localIndex, snapshot.corpus.texts, abort) : null;
     if (terms) readiness.record(terms);
     for (const doc of sample.filter(row => folds.foldByHash.get(row.hash) === fold)) {
@@ -84,6 +89,12 @@ export async function runInventoryCandidateStabilityBenchmark(snapshot, dimensio
         decisions.local = proposal.reason === 'selected' ? { reason: 'selected',
           index: candidates.findIndex(([id]) => id === evidence.candidates[proposal.index].id) } : proposal;
         decisions.combined = combineCandidateLocalEvidence(decisions.independent, decisions.local);
+        if (semantic) {
+          const plan = decisions.combined.reason === 'local_overlapping_examples'
+            ? prepareGroupSemanticPlan(semanticIndex, doc, snapshot.corpus.texts, evidence, snapshot.candidateMetadata?.get(doc.key)) : null;
+          const proposed = await semantic.compare(plan, decisions.combined);
+          decisions.semantic = proposed.id === undefined ? proposed : { reason: 'selected', index: candidates.findIndex(([id]) => id === proposed.id) };
+        }
         if (terms) {
           const contrast = resolveGroupTermEvidence(terms, doc.type, snapshot.corpus.texts.get(doc.hash), evidence, snapshot.candidateMetadata?.get(doc.key));
           decisions.contrast = contrast.reason === 'selected' ? { reason: 'selected',
@@ -105,10 +116,12 @@ export async function runInventoryCandidateStabilityBenchmark(snapshot, dimensio
         });
       }
     }
-    onProgress?.({ phase: groupContrast ? 'group_contrast' : localEvidence ? 'candidate_local_evidence' : 'candidate_stability', fold: fold + 1, evaluated: arms[0].evaluated });
+    onProgress?.({ stage: groupSemantics ? 'group_semantics' : groupContrast ? 'group_contrast' : localEvidence ? 'candidate_local_evidence' : 'candidate_stability', fold: fold + 1, evaluated: arms[0].evaluated });
   }
   abort.throwIfAborted();
-  return { protocol: groupContrast ? 'inventory_group_contrast_v1' : localEvidence ? 'inventory_candidate_local_evidence_v1' : 'inventory_candidate_stability_v1', status: 'complete', calls: 0, livePromotionAllowed: false,
+  const inference = semantic?.read();
+  return { protocol: groupSemantics ? 'inventory_group_semantics_v1' : groupContrast ? 'inventory_group_contrast_v1' : localEvidence ? 'inventory_candidate_local_evidence_v1' : 'inventory_candidate_stability_v1', status: inference?.status ?? 'complete', calls: inference?.calls ?? 0, livePromotionAllowed: false,
+    ...(inference ? { inference } : {}),
     ...(groupContrast ? { trainingReadiness: readiness.read() } : {}),
     independentLabels: 0, accuracy: null, observedPlacementIsGroundTruth: false,
     metric: 'historical_placement_agreement_not_verified_correctness', sampledDescriptions: sample.length,

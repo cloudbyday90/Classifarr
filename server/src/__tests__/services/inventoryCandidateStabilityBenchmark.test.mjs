@@ -77,6 +77,46 @@ test('group contrast retains prior decisions and reports no private terms or new
   expect(snapshot).toEqual(before);
 });
 
+test('semantic comparison preserves every stable control without inference and rejects mixed or excessive generation', async () => {
+  const snapshot = fixture(), before = structuredClone(snapshot), client = { generate: jest.fn() };
+  const control = await run(snapshot, {}, { localEvidence: true });
+  const report = await run(snapshot, { generateCases: 2 }, { groupSemantics: true, client });
+  expect(report).toMatchObject({ protocol: 'inventory_group_semantics_v1', status: 'complete', calls: 0,
+    inference: { statuses: { preserved_baseline: 8 } }, accuracy: null, livePromotionAllowed: false });
+  expect(report.arms.slice(0, 3)).toEqual(control.arms);
+  expect(report.arms[3]).toEqual({ ...report.arms[2], name: 'semantic' });
+  expect(client.generate).not.toHaveBeenCalled(); expect(snapshot).toEqual(before);
+  await expect(run(snapshot, {}, { groupSemantics: true, groupContrast: true })).rejects.toThrow('mode_or_budget');
+  await expect(run(snapshot, { size: 300, generateCases: 101 }, { groupSemantics: true })).rejects.toThrow('mode_or_budget');
+});
+
+test('semantic proposals recover only overlapping cases, preserve full controls and map anonymous IDs', async () => {
+  const snapshot = fixture(), dimensions = snapshot.corpus.documents.length + 1;
+  snapshot.corpus.documents.forEach((doc, index) => snapshot.vectors.set(doc.hash,
+    Array.from({ length: dimensions }, (_, axis) => axis === 0 ? 1 : axis === index + 1 ? 0.6 : 0)));
+  const client = { generate: jest.fn(async ({ prompt, onGenerationCall }) => {
+    onGenerationCall();
+    const groups = JSON.parse(prompt.split('\n').find(line => line.startsWith('GROUPS=')).slice(7));
+    const grades = groups.map(row => /description (1|3) /.test(row.examples[0].description) ? 3 : 1);
+    return { response: JSON.stringify({ grades }), latencyMs: 1, promptTokens: 100, outputTokens: 5 };
+  }) };
+  const fit = async (training, dims, dependencies) => {
+    const model = await localFit(training, dims, dependencies);
+    for (const profile of model.libraries.values()) for (let start = 0; start < 3; start++) {
+      if (start !== profile.selectedStart) profile.starts[start].groups.forEach(group => {
+        group.centroid = Array.from({ length: dims }, (_, axis) => axis === 0 ? 1 : 0);
+      });
+    }
+    return model;
+  };
+  const report = await runInventoryCandidateStabilityBenchmark(snapshot, dimensions, { ...options, generateCases: 2 }, { fit, client, groupSemantics: true });
+  expect(report).toMatchObject({ calls: 4, inference: { attemptedCases: 2, validPasses: 4, statuses: { semantic_supported: 2 } } });
+  expect(report.arms[2]).toMatchObject({ compared: 0, reasons: { local_overlapping_examples: 8 } });
+  expect(report.arms[3]).toMatchObject({ compared: 2, abstained: 6, pairedWithIndependent: { recoveredComparisons: 2 } });
+  expect(report.arms[3].libraries.reduce((total, row) => total + row.compared, 0)).toBe(2);
+  expect(JSON.stringify(report)).not.toMatch(/PRIVATE|description 1|"id"|centroid/);
+});
+
 test('local proposals map back to full candidate scope and recover ambiguous cases without placement leakage', async () => {
   const snapshot = fixture(), dimensions = 4 + snapshot.corpus.documents.length;
   snapshot.candidateMetadata = new Map();

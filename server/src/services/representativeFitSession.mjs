@@ -55,15 +55,14 @@ export function createRepresentativeFitSession(items, { signal, firstIndex = nul
     signal?.throwIfAborted();
     if (disposed) throw new Error('inventory_representative_fit_disposed');
   }
-  async function checkpoint(index) {
-    if (index % 256 === 0) { await setImmediate(); check(); }
-  }
+  // Call only at real yield boundaries; an async no-op still creates a promise/microtask per item.
+  async function checkpoint() { await setImmediate(); check(); }
   async function seed() {
     const count = Math.min(REPRESENTATIVE_MAX_GROUPS, Math.max(1, Math.floor(Math.sqrt(items.length / 3))));
     const mean = meanDirection(items) ?? items[0].vector;
     let first = firstIndex ?? 0;
     if (firstIndex === null) for (let i = 1; i < items.length; i++) {
-      await checkpoint(i);
+      if (i % 256 === 0) await checkpoint();
       if (representativeSimilarity(items[i].vector, mean) > representativeSimilarity(items[first].vector, mean)) first = i;
     }
     centers = [items[first].vector];
@@ -71,7 +70,7 @@ export function createRepresentativeFitSession(items, { signal, firstIndex = nul
     while (centers.length < count) {
       let farthest = 0;
       for (let i = 0; i < items.length; i++) {
-        await checkpoint(i);
+        if (i % 256 === 0) await checkpoint();
         closest[i] = Math.max(closest[i], representativeSimilarity(items[i].vector, centers.at(-1)));
         if (closest[i] < closest[farthest]) farthest = i;
       }
@@ -97,7 +96,7 @@ export function createRepresentativeFitSession(items, { signal, firstIndex = nul
         members = centers.map(() => []);
         let changes = 0;
         for (let i = 0; i < items.length; i++) {
-          await checkpoint(i);
+          if (i % 256 === 0) await checkpoint();
           let best = 0, similarity = -Infinity;
           for (let group = 0; group < centers.length; group++) {
             const score = representativeSimilarity(items[i].vector, centers[group]);

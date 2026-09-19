@@ -11,6 +11,13 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a bounded, local-only comparison of learned content groups using anonymous
+  descriptions and observed metadata. Evaluate overlapping movie/TV candidates
+  with reversed-order checks and source verification; preserve live routing,
+  stable decisions and existing automatic recovery without new UI controls.
+- Reduce unnecessary promise overhead in learned-group fitting while retaining
+  cancellation checkpoints and identical fit results. Identify changed source
+  components when a read-only benchmark is invalidated.
 - Diagnose learned-group evidence gaps separately from common or overlapping
   vocabulary. Automatically prioritize already-due metadata backfill within the
   existing fair queue, with expiring source-checked hints and unchanged routing.
