@@ -5,6 +5,24 @@ import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescr
 
 const seed = 'benchmark-test-seed-2026';
 
+test('coverage robustness requires exclusive grouped zero-generation mode and verifies sources', async () => {
+  const base = ['--seed', seed, '--size', '8', '--folds', '2', '--coverage-robustness'], loadRuntime = jest.fn();
+  for (const argv of [base.filter(value => !['--folds', '2'].includes(value)), [...base, '--generate-cases', '1'],
+    ...['--evidence-reranker', '--semantic-pairs', '--fresh-policy-evaluation', '--investigate'].map(mode => [...base, mode])]) {
+    await expect(runInventoryDescriptionBenchmark({ argv, loadRuntime })).rejects.toThrow('coverage_benchmark_requires');
+  }
+  expect(loadRuntime).not.toHaveBeenCalled();
+  const instance = runtime();
+  expect(await runInventoryDescriptionBenchmark({ argv: base, loadRuntime: async () => instance }))
+    .toMatchObject({ protocol: 'inventory_coverage_robustness_v1', status: 'complete', sourceVerified: true, calls: 0 });
+  const snapshot = await instance.repository.read();
+  instance.repository.read.mockResolvedValueOnce(snapshot).mockResolvedValueOnce({ ...snapshot,
+    libraries: snapshot.libraries.map(row => ({ ...row, name: 'Changed source' })) });
+  expect(await runInventoryDescriptionBenchmark({ argv: base, loadRuntime: async () => instance }))
+    .toMatchObject({ status: 'invalidated', sourceVerified: false });
+  expect(instance.createClient).not.toHaveBeenCalled(); expect(instance.close).toHaveBeenCalledTimes(2);
+});
+
 test('stability CLI rejects missing groups before runtime, uses no generation and invalidates source drift', async () => {
   const base = ['--seed', seed, '--size', '10', '--folds', '5', '--representative-stability'], loadRuntime = jest.fn();
   for (const argv of [base, [...base, '--representative-groups'], [...base, '--representative-groups', '--evidence-reranker', '--generate-cases', '1']]) {

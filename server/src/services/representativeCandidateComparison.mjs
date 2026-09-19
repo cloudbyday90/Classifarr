@@ -5,10 +5,10 @@ import { representativeValidationError, validateRepresentativeProfiles, validate
 import { representativeValidationIssue } from './representativeValidationDiagnostics.mjs';
 
 /** Content-neutral diagnostic. All candidates stay in scope; no score grants routing authority. */
-export function compareRepresentativeCandidates(profiles, vector, dimensions, destinationIndex, onInvalid = null) {
+function evaluateCandidates(profiles, vector, dimensions, onInvalid, decision) {
   try {
     validateRepresentativeProfiles(profiles, dimensions, 2);
-    if (!Number.isInteger(destinationIndex) || destinationIndex < 0 || destinationIndex >= profiles.length)
+    if (decision && (!Number.isInteger(decision.index) || decision.index < 0 || decision.index >= profiles.length))
       throw representativeValidationError('decision_scope');
     validateRepresentativeVector(vector, dimensions, 'query');
     const query = normalizeDescriptionVector(vector, dimensions);
@@ -28,9 +28,20 @@ export function compareRepresentativeCandidates(profiles, vector, dimensions, de
       winners.push(scores[0].index);
     }
     if (new Set(winners).size !== 1) return 'initialization_sensitive';
-    return winners[0] === destinationIndex ? 'agrees' : 'disagrees';
+    return { index: winners[0] };
   } catch (error) {
     try { onInvalid?.(representativeValidationIssue(error)); } catch { /* Passive diagnostics only. */ }
     return 'invalid_input';
   }
+}
+
+/** Private index only; callers must retain their complete, validated candidate scope. */
+export function rankRepresentativeCandidates(profiles, vector, dimensions, onInvalid = null) {
+  const result = evaluateCandidates(profiles, vector, dimensions, onInvalid, null);
+  return typeof result === 'string' ? { reason: result } : { reason: 'selected', index: result.index };
+}
+
+export function compareRepresentativeCandidates(profiles, vector, dimensions, destinationIndex, onInvalid = null) {
+  const result = evaluateCandidates(profiles, vector, dimensions, onInvalid, { index: destinationIndex });
+  return typeof result === 'string' ? result : result.index === destinationIndex ? 'agrees' : 'disagrees';
 }

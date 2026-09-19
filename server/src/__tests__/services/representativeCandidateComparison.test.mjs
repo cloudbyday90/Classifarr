@@ -1,6 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { expect, test } from '@jest/globals';
-import { compareRepresentativeCandidates } from '../../services/representativeCandidateComparison.mjs';
+import { compareRepresentativeCandidates, rankRepresentativeCandidates } from '../../services/representativeCandidateComparison.mjs';
 
 function profile(centroid) {
   return { selectedStart: 0, starts: Array.from({ length: 3 }, () => ({
@@ -10,6 +10,12 @@ function profile(centroid) {
 function fixture() { return [profile([1, 0]), profile([0, 1])]; }
 const compare = (profiles, vector = [1, 0], index = 0, dimensions = 2) =>
   compareRepresentativeCandidates(profiles, vector, dimensions, index);
+
+test('private ranking shares all comparison guards without requiring an expected destination', () => {
+  expect(rankRepresentativeCandidates(fixture(), [0, 1], 2)).toEqual({ reason: 'selected', index: 1 });
+  expect(rankRepresentativeCandidates([profile([1, 0]), profile([1, 0])], [1, 0], 2)).toEqual({ reason: 'tied_destinations' });
+  expect(rankRepresentativeCandidates([], [1, 0], 2, () => { throw new Error('passive'); })).toEqual({ reason: 'invalid_input' });
+});
 
 test('compares geometry without content labels or mutation and remaps candidate order', () => {
   const profiles = fixture();

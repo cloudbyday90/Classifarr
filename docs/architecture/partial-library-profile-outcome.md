@@ -92,6 +92,9 @@ officially prescribed threshold. The missing 10% could contain an entire minorit
 topic. Three descriptions retain the existing geometry minimum but do not prove
 that a library's content is well represented.
 
+Follow-up completed on 2026-09-19: [600-case coverage benchmark and next recommendation](library-coverage-robustness-outcome.md).
+The following records the original recommendation at delivery time.
+
 **Next component: a held-out coverage-robustness benchmark across movie and TV
 libraries.** Reuse the existing cached inventory evaluation corpus, exclude all
 held-out identities/descriptions from fitting, and compare complete profiles with

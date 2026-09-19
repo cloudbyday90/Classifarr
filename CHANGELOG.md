@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add read-only, held-out coverage stress tests for learned library profiles,
+  comparing random gaps, concentrated gaps and missing content groups across
+  movie and TV libraries without changing live routing or adding review steps.
+- Update server development tooling from PR #534 (Node type definitions, ESLint
+  and Knip), applied and validated locally without merging the PR.
 - Publish sufficiently covered library profiles while missing descriptions backfill,
   retaining all candidate libraries and withdrawing under-covered profiles safely.
   Track partial-data comparisons separately in existing Library learning details;
