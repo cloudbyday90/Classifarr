@@ -91,6 +91,21 @@ test('non-self diagnostic removes trivial representative self matches', async ()
   await expect(measureNonSelfRepresentatives(groups, vectors, AbortSignal.abort())).rejects.toThrow();
 });
 
+test('retains only fixed optional-failure categories and still retries future loads', async () => {
+  const { source } = setup();
+  for (const [discover, reason] of [
+    [async () => { throw new DOMException('PRIVATE deadline body', 'TimeoutError'); }, 'time_budget'],
+    [async () => { throw new Error('PRIVATE endpoint'); }, 'discovery_failed'],
+    [async () => null, 'invalid_groups'],
+  ]) {
+    const result = await build(source, { discover });
+    expect(result.cacheable).toBe(false);
+    expect(result.handle.summary()).toMatchObject({ localStatus: 'unavailable', localFailureReason: reason });
+    expect(JSON.stringify(result.handle.summary())).not.toContain('PRIVATE');
+  }
+  expect((await build(source)).handle.summary()).not.toHaveProperty('localFailureReason');
+});
+
 test('optional failure self-recovers on the next load, then reuses the repaired profile', async () => {
   const snapshot = fixture(), { source, query } = setup(snapshot);
   let calls = 0;

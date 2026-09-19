@@ -46,11 +46,17 @@ export async function buildMultiScaleProfile(source, { signal, fit = fitInventor
   const model = await fit(training, dimensions, { signal });
   const control = await readGroupBenchmarkControl(training, model, dimensions, signal);
   const vectors = new Map([...training.vectors].map(([hash, vector]) => [hash, normalizeDescriptionVector(vector, dimensions)]));
-  let communities, localStatus = 'available';
+  let communities, localFailureReason, localStatus = 'available', localStage = 'discovery';
   try {
     communities = await discover(control.index, training.vectors, dimensions, signal);
+    localStage = 'validation';
     validateLocalGroups(communities, control, dimensions);
-  } catch { signal?.throwIfAborted(); communities = undefined; localStatus = 'unavailable'; }
+  } catch (error) {
+    signal?.throwIfAborted(); communities = undefined; localStatus = 'unavailable';
+    // Fixed categories only: provider errors may contain source data or endpoints.
+    localFailureReason = localStage === 'validation' ? 'invalid_groups'
+      : error?.name === 'TimeoutError' ? 'time_budget' : 'discovery_failed';
+  }
   const localMembership = new Set();
   const libraries = control.libraries.map(library => {
     const localGroups = communities?.libraries.find(row => row.id === library.id)?.groups ?? [];
@@ -66,7 +72,8 @@ export async function buildMultiScaleProfile(source, { signal, fit = fitInventor
     localNonSelf: await measureNonSelfRepresentatives(library.localGroups, vectors, signal) });
   const state = { items, libraries, localMembership, localStatus, dimensions, held,
     knownHashes: new Set(training.corpus.texts.keys()) };
-  const summary = { localStatus, rawDescriptions: items.length, sharedDescriptions: items.filter(row => row.id === null).length, quality };
+  const summary = { localStatus, ...(localFailureReason ? { localFailureReason } : {}),
+    rawDescriptions: items.length, sharedDescriptions: items.filter(row => row.id === null).length, quality };
   // Conservative accounting includes owned vectors, means, hashes, membership and object overhead.
   const groups = libraries.flatMap(row => [...row.groups, ...row.localGroups]);
   const weight = (training.vectors.size + groups.length) * dimensions * 16 + items.length * 2048 + groups.length * 2048;

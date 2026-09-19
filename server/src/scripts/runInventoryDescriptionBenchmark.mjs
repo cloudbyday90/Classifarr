@@ -20,6 +20,7 @@ import { runInventoryCandidateStabilityBenchmark } from '../services/inventoryCa
 import { runInventoryAdaptiveGroupBenchmark } from '../services/inventoryAdaptiveGroupBenchmark.mjs';
 import { runInventoryCommunityBenchmark } from '../services/inventoryCommunityBenchmark.mjs';
 import { runInventoryMultiScaleBenchmark } from '../services/inventoryMultiScaleBenchmark.mjs';
+import { runInventoryMultiScaleAiBenchmark } from '../services/inventoryMultiScaleAiBenchmark.mjs';
 
 async function loadPrivateRuntime() {
   process.env.LOG_LEVEL = 'fatal';
@@ -61,6 +62,7 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     'adaptive-groups': { type: 'boolean' },
     'local-communities': { type: 'boolean' },
     'multi-scale-context': { type: 'boolean' },
+    'multi-scale-ai': { type: 'boolean' },
     'preserve-description-candidate': { type: 'boolean' },
     'metadata-candidates': { type: 'boolean' }, 'learned-profiles': { type: 'boolean' } } });
   if (values['metadata-candidates'] && values['learned-profiles']) throw new Error('description_benchmark_selection_mode_conflict');
@@ -78,6 +80,10 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
         Object.entries(values).some(([name, value]) => name !== mode && value === true))) {
       throw new Error(`${mode.replaceAll('-', '_')}_requires_exclusive_grouped_zero_generation`);
     }
+  }
+  if (values['multi-scale-ai'] && (!options.folds || options.generateCases > 100 ||
+      Object.entries(values).some(([name, value]) => name !== 'multi-scale-ai' && value === true))) {
+    throw new Error('multi_scale_ai_requires_exclusive_grouped_bounded_mode');
   }
   if (values['coverage-robustness'] && (!options.folds || options.generateCases ||
       Object.entries(values).some(([name, value]) => name !== 'coverage-robustness' && value === true))) {
@@ -140,10 +146,12 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     const representation = await inspectDescriptionRepresentation(runtime.embedder, abort);
     const snapshot = await runtime.repository.read(representation);
     await verifyDescriptionRepresentation(runtime.embedder, representation, abort);
-    if (values['evidence-reranker'] || values['semantic-pairs'] || values['coverage-robustness'] || values['candidate-stability'] || values['candidate-local-evidence'] || values['group-contrast'] || values['group-semantics'] || values['adaptive-groups'] || values['local-communities'] || values['multi-scale-context']) {
-      const pairClient = (values['semantic-pairs'] || values['group-semantics']) && options.generateCases ? runtime.createClient() : undefined;
+    if (values['evidence-reranker'] || values['semantic-pairs'] || values['coverage-robustness'] || values['candidate-stability'] || values['candidate-local-evidence'] || values['group-contrast'] || values['group-semantics'] || values['adaptive-groups'] || values['local-communities'] || values['multi-scale-context'] || values['multi-scale-ai']) {
+      const pairClient = (values['semantic-pairs'] || values['group-semantics'] || values['multi-scale-ai']) && options.generateCases ? runtime.createClient() : undefined;
       const pairIdentity = pairClient ? await pairClient.inspect(abort) : undefined;
-      const report = values['multi-scale-context']
+      const report = values['multi-scale-ai']
+        ? await runInventoryMultiScaleAiBenchmark(snapshot, representation, options, { signal: abort, onProgress, client: pairClient, identity: pairIdentity })
+        : values['multi-scale-context']
         ? await runInventoryMultiScaleBenchmark(snapshot, representation, options, { signal: abort, onProgress })
         : values['local-communities']
         ? await runInventoryCommunityBenchmark(snapshot, representation.dimensions, options, { signal: abort, onProgress })
@@ -199,7 +207,7 @@ if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
   runInventoryDescriptionBenchmark({ signal: controller.signal, onProgress: progress => process.stderr.write(`${JSON.stringify(progress)}\n`) })
     .then(report => {
       process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-      if (['interrupted', 'completed_with_errors', 'invalidated'].includes(report.status) || report.sampleShortfall ||
+      if (['interrupted', 'completed_with_errors', 'invalidated'].includes(report.status) || report.sampleShortfall || report.generationShortfall ||
           report.arms.some(arm => arm.estimatedInputBudgetExceeded)) process.exitCode = 1;
     }).catch(() => {
       process.stderr.write('Description benchmark did not complete. Check local model availability and description cache coverage. No routing changes were made.\n');

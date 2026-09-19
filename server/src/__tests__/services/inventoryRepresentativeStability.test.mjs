@@ -44,7 +44,9 @@ test('fit selection uses convergence then training objective with deterministic 
 });
 
 test('continues the original initialization, measures three bounded fits, and keeps v1 reproducible', async () => {
-  const training = items(2000, 16), legacy = await fitRepresentativeGeometry(training);
+  // This seeded fixture still needs 33 fitting passes; avoid repeated 2,000-row
+  // fits inside instrumented Jest when the contract under test is not throughput.
+  const training = items(800, 16), legacy = await fitRepresentativeGeometry(training);
   const result = await fitStableRepresentativeGeometry(training);
   expect(result.legacy).toEqual(legacy);
   expect(result.stability.starts).toHaveLength(3);

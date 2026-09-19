@@ -121,5 +121,9 @@ Observed placement agreement is not ground-truth accuracy. Separately, extend
 cached self-excluding context to known-item retries only after its training
 exclusions and memory/work budget are demonstrated; do not refit per request.
 
+The follow-up [paired AI comparison](multi-scale-ai-comparison-outcome.md) now
+records actual choices and costs. Its admission check distinguishes fully
+prepared context from optional live fallback; it does not broaden routing power.
+
 Official-source findings, W3C considerations and rejected alternatives are in the
 design document. Routine background progress adds no new user-facing messages.

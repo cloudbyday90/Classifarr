@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a read-only, library-agnostic local AI comparison of nearest examples with
+  and without additional library context. Measure held-out movie/TV choices,
+  order sensitivity and inference cost without changing routing, and invalidate
+  results when their source data changes. Reject incomplete discovery before
+  model calls and report non-sensitive discovery failure categories.
 - Automatically prepare bounded library-description context for local ambiguous
   destination comparisons. Preserve nearest examples, exclude self-placement
   evidence, redact remote-provider details and recover stale or failed context
