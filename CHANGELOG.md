@@ -11,6 +11,12 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Preserve validated content-group memberships separately from outliers so all
+  supported library groups can participate in automatic recovery. Unassigned
+  descriptions still backfill normally; malformed profiles rebuild with bounded,
+  deduplicated diagnostics. No routing changes, new controls or extra model calls.
+- Update server Node type definitions from PR #535, applied locally without
+  merging the PR; the supported Node runtime and product version are unchanged.
 - Prioritize automatic description backfill for underrepresented content groups
   learned from validated library profiles, while preserving ordinary progress,
   retry delays and provider cooldowns. Stale or unknown references use normal

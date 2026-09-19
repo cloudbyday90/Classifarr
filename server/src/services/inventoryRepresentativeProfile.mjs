@@ -7,7 +7,7 @@ import { normalizeDescriptionVector } from './inventoryDescriptionSimilarity.mjs
 import { assertRepresentativeSnapshotBudget, inspectRepresentativeCoverage, representativeCoverageReady } from './inventoryRepresentativeCoverage.mjs';
 export { REPRESENTATIVE_PROFILE_COMPONENT_LIMIT } from './inventoryRepresentativeCoverage.mjs';
 
-export const INVENTORY_REPRESENTATIVE_PROFILE_VERSION = 'inventory_representative_profile_v3';
+export const INVENTORY_REPRESENTATIVE_PROFILE_VERSION = 'inventory_representative_profile_v4';
 
 /** Private canonical source digest. Neither the key nor these inputs belong in logs. */
 export function inventoryRepresentativeSourceKey(snapshot, identity, configKey) {
@@ -54,16 +54,17 @@ export async function buildInventoryRepresentativeProfile({ snapshot, dimensions
   for (const [id, items] of buckets) {
     signal?.throwIfAborted();
     items.sort((a, b) => a.hash < b.hash ? -1 : a.hash > b.hash ? 1 : 0);
-    const fit = await fitStableRepresentativeGeometry(items, { signal, includeLegacy: false, recoverUnconverged: true });
+    const fit = await fitStableRepresentativeGeometry(items, { signal, includeLegacy: false, recoverUnconverged: true, retainMemberships: true });
     libraries.set(id, { mediaType: index.scope.get(id), coverage: coverage.libraries.get(id), selectedStart: fit.stability.selectedStart,
-      starts: fit.runs.map(run => ({ groups: run.groups, converged: run.converged })), stability: fit.stability });
+      starts: fit.runs.map(run => ({ groups: run.groups, converged: run.converged })), stability: fit.stability, membership: fit.membership });
     summary.groups += fit.groups.length;
     summary.sparseLibraries += Number(!fit.groups.length);
     summary.unconvergedStarts += fit.runs.filter(run => !run.converged).length;
     summary.recoveredStarts += fit.stability.recovery.recoveredStarts;
     summary.recoveryIterations += fit.stability.recovery.additionalIterations;
     summary.discardedDescriptions += fit.discarded;
-    weight += 4096 + fit.runs.reduce((sum, run) => sum + run.groups.length * (dimensions * 8 + 2048), 0);
+    // Conservative per-hash allowance includes the selected partition's array slots and strings.
+    weight += 4096 + items.length * 192 + fit.runs.reduce((sum, run) => sum + run.groups.length * (dimensions * 8 + 2048), 0);
   }
   return { kind: 'full_inventory_shadow', version: INVENTORY_REPRESENTATIVE_PROFILE_VERSION, libraries, summary, weight };
 }

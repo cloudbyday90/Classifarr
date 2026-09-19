@@ -19,27 +19,33 @@ function meanDirection(items) {
   return norm > 1e-12 ? sum.map(value => value / norm) : null;
 }
 
-function summarize(members, length, labels, iterations, converged, diagnostics) {
+function summarize(members, length, labels, iterations, converged, diagnostics, retainMemberships) {
   let objective = 0;
+  const membership = { groups: [], unassigned: [] };
   const groups = members.flatMap(rows => {
     if (!rows.length) return [];
     const centroid = meanDirection(rows);
-    if (!centroid) return [];
-    if (diagnostics) objective += rows.reduce((sum, row) => sum + representativeSimilarity(row.vector, centroid), 0);
-    if (rows.length < 3) return [];
+    if (centroid && diagnostics) objective += rows.reduce((sum, row) => sum + representativeSimilarity(row.vector, centroid), 0);
+    if (!centroid || rows.length < 3) {
+      if (retainMemberships) membership.unassigned.push(...rows.map(row => row.hash));
+      return [];
+    }
+    if (retainMemberships) membership.groups.push(rows.map(row => row.hash));
     const ranked = rows.map(row => ({ hash: row.hash, similarity: representativeSimilarity(row.vector, centroid) }))
       .sort((a, b) => b.similarity - a.similarity || (a.hash < b.hash ? -1 : a.hash > b.hash ? 1 : 0));
     return [{ centroid, support: rows.length, representatives: ranked.slice(0, 3).map(row => row.hash),
       meanSimilarity: ranked.reduce((sum, row) => sum + row.similarity, 0) / ranked.length }];
   });
   return { groups, iterations, converged, discarded: length - groups.reduce((sum, group) => sum + group.support, 0),
+    ...(retainMemberships ? { membership } : {}),
     ...(diagnostics ? { objective: objective / length, labels: [...labels] } : {}) };
 }
 
 /** Worker-private continuation. Caller owns immutable, scoped, normalized input and work preflight. */
-export function createRepresentativeFitSession(items, { signal, firstIndex = null, diagnostics = false } = {}) {
+export function createRepresentativeFitSession(items, { signal, firstIndex = null, diagnostics = false, retainMemberships = false } = {}) {
   signal?.throwIfAborted();
-  if (firstIndex !== null && (!Number.isSafeInteger(firstIndex) || firstIndex < 0 || firstIndex >= items.length)) {
+  if (typeof retainMemberships !== 'boolean' ||
+      (firstIndex !== null && (!Number.isSafeInteger(firstIndex) || firstIndex < 0 || firstIndex >= items.length))) {
     throw new Error('inventory_representative_fit_options');
   }
   let centers = [], labels = [], members = [], iterations = 0, converged = false, active = false, disposed = false;
@@ -83,6 +89,7 @@ export function createRepresentativeFitSession(items, { signal, firstIndex = nul
     try {
       check();
       if (items.length < 3) return { groups: [], iterations: 0, converged: true, discarded: items.length,
+        ...(retainMemberships ? { membership: { groups: [], unassigned: items.map(row => row.hash) } } : {}),
         ...(diagnostics ? { objective: 0, labels: items.map(() => 0) } : {}) };
       if (!centers.length) await seed();
       const end = Math.min(REPRESENTATIVE_RECOVERY_PASSES, iterations + passBudget);
@@ -106,7 +113,7 @@ export function createRepresentativeFitSession(items, { signal, firstIndex = nul
         }
       }
       check();
-      return summarize(members, items.length, labels, iterations, converged, diagnostics);
+      return summarize(members, items.length, labels, iterations, converged, diagnostics, retainMemberships);
     } catch (error) {
       dispose();
       throw error;

@@ -38,6 +38,66 @@ beforeEach(async () => {
 });
 afterEach(() => { client?.release(true); client = null; });
 
+test('outlier-aware movie and TV references prioritize supported gaps while ordinary backfill repairs outliers', async () => {
+  await client.query(`
+    CREATE TEMP TABLE libraries (id int, media_type text, is_active boolean);
+    CREATE TEMP TABLE media_server_items (id int, media_server_id int, external_id text,
+      library_id int, media_type text, tmdb_id int, metadata jsonb);
+    CREATE TEMP TABLE media_source_observations (library_id int, media_server_id int,
+      external_id text, last_seen_at timestamptz);
+    INSERT INTO libraries VALUES (1,'movie',true),(2,'tv',true);
+    INSERT INTO media_server_items
+      SELECT n,1,'source-'||n,CASE WHEN n<=14 THEN 1 ELSE 2 END,
+        CASE WHEN n<=14 THEN 'movie' ELSE 'tv' END,n,
+        jsonb_build_object('overview','Synthetic outlier recovery description '||n)
+      FROM generate_series(1,28) AS n;
+  `);
+  const identity = { provider: 'ollama', model: 'test:latest', digest: 'a'.repeat(64), dimensions: 3 };
+  const profiles = createInventoryRepresentativeProfileRepository({ withTransaction: async callback => {
+    await client.query('BEGIN');
+    try { const result = await callback(client); await client.query('COMMIT'); return result; }
+    catch (error) { await client.query('ROLLBACK'); throw error; }
+  } });
+  const cache = createInventoryDescriptionVectorCache(repository), empty = await profiles.read(identity);
+  const rows = empty.corpus.documents.map(doc => ({ hash: doc.hash, vector: doc.id % 14 === 0 ? [0, 1, 0] : [1, 0, 0] }));
+  for (let index = 0; index < rows.length; index += 8) await cache.write(identity, rows.slice(index, index + 8));
+  const vectorsByText = new Map(rows.map(row => [empty.corpus.texts.get(row.hash), row.vector]));
+  const neighborhoodRecovery = createInventoryNeighborhoodRecovery();
+  const worker = createInventoryRepresentativeProfileRefresh({ repository: profiles, readState: repository.readState,
+    fit: fitInventoryRepresentativeProfile, neighborhoodRecovery,
+    createEmbedder: () => ({ provider: identity.provider, model: identity.model, inspect: async () => identity,
+      embedBatch: () => { throw new Error('Profile publication must not perform inference'); } }),
+  });
+  let backfill;
+  try {
+    expect(await worker.run()).toMatchObject({ status: 'published', availableDescriptions: 28, discardedDescriptions: 2, groups: 2 });
+    const complete = await profiles.read(identity), configKey = JSON.stringify(resolveLocalStudyEmbeddingConfig(complete.state));
+    const model = worker.read(inventoryRepresentativeSourceKey(complete, identity, configKey));
+    const supported = [], unassigned = [];
+    for (const profile of model.libraries.values()) {
+      supported.push(...profile.membership.groups[0].slice(0, 2));
+      unassigned.push(...profile.membership.unassigned);
+    }
+    await client.query("UPDATE inventory_description_vector_cache SET created_at=now()-interval '31 days' WHERE description_hash=ANY($1::text[])", [[...supported, ...unassigned]]);
+    const partial = await profiles.read(identity);
+    const priority = neighborhoodRecovery.prioritize({ corpus: partial.corpus, identity, configKey, present: new Set(partial.vectors.keys()) });
+    expect(priority.summary).toMatchObject({ referencedLibraries: 2, unknownLibraries: 0, prioritizedDescriptions: 4 });
+    expect(new Set(priority.priority)).toEqual(new Set(supported));
+    backfill = createInventoryDescriptionRefreshWorker({ repository, cache, neighborhoodRecovery,
+      isolation: createInventoryDescriptionIsolationRepository(repository),
+      withSessionAdvisoryLock: async (_key, callback) => { await callback(); return true; },
+      createEmbedder: () => ({ provider: identity.provider, model: identity.model, inspect: async () => identity,
+        embedBatch: async batch => batch.map(text => vectorsByText.get(text)) }),
+    });
+    expect(await backfill.run()).toMatchObject({ status: 'up_to_date', embeddedDescriptions: 6, remainingDescriptions: 0 });
+    const restored = await profiles.read(identity);
+    expect(restored.vectors.size).toBe(28);
+    expect(neighborhoodRecovery.prioritize({ corpus: restored.corpus, identity, configKey, present: new Set(restored.vectors.keys()) }).priority).toEqual([]);
+    expect((await client.query('SELECT count(*)::int AS count FROM task_queue')).rows[0].count).toBe(0);
+    expect((await client.query('SELECT count(*)::int AS count FROM media_server_items')).rows[0].count).toBe(28);
+  } finally { backfill?.stop(); worker.stop(); }
+});
+
 test('real admission SQL sees sync and queue pressure and does not leak local timeouts', async () => {
   const timeoutBefore = (await client.query('SHOW statement_timeout')).rows[0];
   expect(await repository.readState()).toMatchObject({ rag_enabled: true, busy: false });

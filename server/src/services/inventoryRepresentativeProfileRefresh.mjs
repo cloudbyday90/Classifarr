@@ -57,7 +57,11 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
     catch { /* Optional diagnostics cannot discard an otherwise valid profile. */ }
     let recoveryBatch = null;
     try { recoveryBatch = await neighborhoodRecovery?.prepare({ model, snapshot, identity, configKey: expected, signal }); }
-    catch { /* Recovery priority is optional; never promote malformed or incomplete references. */ }
+    catch (error) {
+      // Known malformed evidence must use the redacted diagnostic/backoff path, not look healthy.
+      if (representativeValidationIssue(error) !== 'unknown_check') throw error;
+      // Optional recovery service failures still leave ordinary backfill available.
+    }
     const fresh = await repository.read(identity);
     signal.throwIfAborted();
     await verifyDescriptionRepresentation(embedder, identity, signal);

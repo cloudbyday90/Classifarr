@@ -9,7 +9,7 @@ const VECTOR_PROBLEMS = {
 const ISSUES = Object.freeze({
   ...Object.fromEntries(['query', 'profile'].flatMap(source => Object.entries(VECTOR_PROBLEMS).map(([cause, problem]) =>
     [`${source}_${cause}`, { source, problem }]))),
-  profile_structure: { source: 'profile', problem: 'The profile starts, selected view, groups or support counts were malformed.' },
+  profile_structure: { source: 'profile', problem: 'The profile starts, selected view, groups, memberships or support counts were malformed.' },
   profile_header: { source: 'profile', problem: 'The cached or fitted model did not match the supported profile contract.' },
   query_contract: { source: 'query', problem: 'The query identity, description fingerprint or configuration binding was invalid.' },
   query_representation: { source: 'query', problem: 'The query did not identify a valid embedding provider, model and dimensions.' },

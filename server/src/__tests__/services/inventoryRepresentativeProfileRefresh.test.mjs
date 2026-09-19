@@ -7,6 +7,7 @@ import { representativeProfileFixture } from '../helpers/inventoryRepresentative
 import { representativeShadowFixture } from '../helpers/inventoryRepresentativeShadowFixture.mjs';
 import { createInventoryRepresentativeShadow } from '../../services/inventoryRepresentativeShadow.mjs';
 import { createRepresentativeValidationDiagnostics } from '../../services/representativeValidationDiagnostics.mjs';
+import { createInventoryNeighborhoodRecovery } from '../../services/inventoryNeighborhoodRecovery.mjs';
 
 function setup(observer = null, diagnostics = undefined, options = {}) {
   const fixture = representativeProfileFixture(options);
@@ -64,6 +65,30 @@ test.each(['prepare', 'commit'])('optional recovery %s failure cannot discard a 
   const worker = createInventoryRepresentativeProfileRefresh({ ...fixture.dependencies, neighborhoodRecovery });
   expect((await worker.run()).status).toBe('published');
   expect(JSON.stringify(worker.getStatus())).not.toContain('PRIVATE');
+});
+
+test.each(['membership', 'geometry'])('malformed %s triggers redacted diagnosis, backoff and automatic rebuilding', async mode => {
+  const log = { warn: jest.fn(), info: jest.fn() }, diagnostics = createRepresentativeValidationDiagnostics({ log });
+  const fixture = setup(null, diagnostics), neighborhoodRecovery = createInventoryNeighborhoodRecovery();
+  const worker = createInventoryRepresentativeProfileRefresh({ ...fixture.dependencies, neighborhoodRecovery });
+  const fit = fixture.dependencies.fit.getMockImplementation();
+  fixture.dependencies.fit.mockImplementationOnce(async (...args) => {
+    const model = await fit(...args), profile = model.libraries.get(1);
+    if (mode === 'membership') delete profile.membership;
+    else profile.starts[profile.selectedStart].groups[0].centroid = [0, 1];
+    return model;
+  });
+  expect((await worker.run()).status).toBe('failed');
+  expect(worker.getStatus().cacheStored).toBe(false);
+  expect(log.warn.mock.calls[0][1]).toMatchObject({ code: 'profile_structure', routingAffected: false });
+  expect((await worker.run()).status).toBe('cooldown');
+  expect(log.warn).toHaveBeenCalledTimes(1);
+  fixture.advance(60_000);
+  expect((await worker.run()).status).toBe('published');
+  expect(log.info).toHaveBeenCalledTimes(1);
+  expect(fixture.embedder.embedBatch).not.toHaveBeenCalled();
+  expect(JSON.stringify(log.warn.mock.calls)).not.toMatch(/PRIVATE|hash|localhost/);
+  worker.stop();
 });
 
 test('pending comparisons bypass the quiet interval, reuse the fit and commit only after fresh validation', async () => {

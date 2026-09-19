@@ -1,32 +1,10 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { setImmediate } from 'node:timers/promises';
 import { inventoryNeighborhoodRecoverySource } from './inventoryNeighborhoodRecoverySource.mjs';
 import { assertRepresentativeSnapshotBudget, REPRESENTATIVE_MIN_COVERAGE_PERCENT } from './inventoryRepresentativeCoverage.mjs';
 import { validateInventoryRepresentativeProfileCoverage } from './inventoryRepresentativeProfileValidation.mjs';
-import { normalizeDescriptionVector } from './inventoryDescriptionSimilarity.mjs';
-import { representativeSimilarity } from './representativeFitSession.mjs';
+import { validatedRecoveryGroups } from './inventoryRepresentativeMembership.mjs';
 
 const REFERENCE_TTL_MS = 1_800_000;
-
-/** Reconstruct only fully retained, converged groups; never invent labels for discarded items. */
-async function groupMemberships(profile, hashes, snapshot, dimensions, signal) {
-  const start = profile.starts[profile.selectedStart];
-  if (profile.coverage.status !== 'complete' || !start.converged || !start.groups.length ||
-      start.groups.some(group => group.support < 3) ||
-      start.groups.reduce((sum, group) => sum + group.support, 0) !== hashes.length) return null;
-  const groups = start.groups.map(() => []);
-  for (let index = 0; index < hashes.length; index++) {
-    if (index % 128 === 0) { await setImmediate(); signal?.throwIfAborted(); }
-    const hash = hashes[index], vector = normalizeDescriptionVector(snapshot.vectors.get(hash), dimensions);
-    let best = 0, score = -Infinity;
-    for (let group = 0; group < groups.length; group++) {
-      const similarity = representativeSimilarity(vector, start.groups[group].centroid);
-      if (similarity > score) { score = similarity; best = group; }
-    }
-    groups[best].push(hash);
-  }
-  return groups.every((group, index) => group.length === start.groups[index].support) ? groups : null;
-}
 
 /** Scheduler-owned, bounded sidecar. No vectors, source text, routing decisions or I/O retained. */
 export function createInventoryNeighborhoodRecovery({ now = Date.now } = {}) {
@@ -48,7 +26,7 @@ export function createInventoryNeighborhoodRecovery({ now = Date.now } = {}) {
         signal?.throwIfAborted();
         const profile = model.libraries.get(id);
         if (!profile || profile.mediaType !== library.type) continue;
-        const groups = await groupMemberships(profile, library.exclusive, snapshot, identity.dimensions, signal);
+        const groups = await validatedRecoveryGroups(profile, snapshot.vectors, identity.dimensions, signal);
         if (groups) staged.set(id, { binding: library.binding, groups });
       }
       return { commit() {

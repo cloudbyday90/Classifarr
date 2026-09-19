@@ -60,7 +60,7 @@ test('runtime profile recovery uses content-neutral vectors for either current m
       documents: items.map((item, i) => ({ key: `movie:${i + 1}`, type: 'movie', hash: item.hash, libraryIds: [1] })),
     } };
   const movie = await buildInventoryRepresentativeProfile({ snapshot, dimensions: 4 });
-  expect(movie.version).toBe('inventory_representative_profile_v3');
+  expect(movie.version).toBe('inventory_representative_profile_v4');
   expect(movie.summary.recoveredStarts).toBeGreaterThan(0);
   expect(movie.summary.unconvergedStarts).toBe(0);
   snapshot.libraries[0] = { id: 1, media_type: 'tv', name: 'Renamed without a category' };

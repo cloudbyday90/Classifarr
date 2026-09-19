@@ -89,6 +89,9 @@ in these two libraries participate in recovery without mislabeling outliers or
 requiring users to declare library purposes. Test it against fresh movie/TV data
 and held-out difficult cases before changing classification behavior.
 
+Follow-up: the [outlier-aware recovery outcome](outlier-aware-recovery-outcome.md)
+records implementation and verification of that membership-preservation step.
+
 The current reference is process-local and expires after 30 minutes without a
 complete validated refresh. Long outages, restarts and changed sources fall back
 to ordinary backfill. Durable reference storage is deferred until operational

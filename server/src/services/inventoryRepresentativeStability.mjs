@@ -53,13 +53,13 @@ function saltedFirst(items, start) {
 }
 
 /** Sorted, validated, training-only items supplied by the scoped learner. */
-export async function fitStableRepresentativeGeometry(items, { signal, includeLegacy = true, recoverUnconverged = false } = {}) {
+export async function fitStableRepresentativeGeometry(items, { signal, includeLegacy = true, recoverUnconverged = false, retainMemberships = false } = {}) {
   if (typeof recoverUnconverged !== 'boolean') throw new Error('inventory_representative_recovery_options');
   const legacy = includeLegacy ? await fitRepresentativeGeometry(items, { signal }) : null;
   const runs = [], recovery = { attemptedStarts: 0, recoveredStarts: 0, exhaustedStarts: 0, additionalIterations: 0 };
   for (let start = 0; start < REPRESENTATIVE_STABILITY_STARTS; start++) {
     signal?.throwIfAborted();
-    const options = { signal, firstIndex: start ? saltedFirst(items, start) : null, diagnostics: true };
+    const options = { signal, firstIndex: start ? saltedFirst(items, start) : null, diagnostics: true, retainMemberships };
     if (!recoverUnconverged) {
       runs.push(await fitRepresentativeGeometry(items, { ...options, maxPasses: REPRESENTATIVE_STABILITY_PASSES }));
       continue;
@@ -89,7 +89,8 @@ export async function fitStableRepresentativeGeometry(items, { signal, includeLe
     minimumPartitionAgreement: round(Math.min(...agreements)),
     starts: runs.map(run => ({ iterations: run.iterations, converged: run.converged, objective: round(run.objective),
       groups: run.groups.length, discardedDescriptions: run.discarded })) };
-  // Individual assignments are needed only for the local partition comparison.
-  const privateRuns = runs.map(({ labels: _labels, ...run }) => run);
-  return { ...privateRuns[selectedStart], runs: privateRuns, legacy, stability };
+  // Retain only the selected partition when explicitly requested by the profile worker.
+  const privateRuns = runs.map(({ labels: _labels, membership: _membership, ...run }) => run);
+  return { ...privateRuns[selectedStart], runs: privateRuns, legacy, stability,
+    ...(retainMemberships ? { membership: runs[selectedStart].membership } : {}) };
 }

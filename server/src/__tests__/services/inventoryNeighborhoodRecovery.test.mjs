@@ -95,13 +95,13 @@ test('duplicate copies do not renew or amplify membership; shared descriptions c
   expect(inspect().summary.referencedLibraries).toBe(1);
 });
 
-test('invalid support reconstruction and unconverged fits cannot establish a reference', async () => {
+test('invalid support and unconverged fits cannot establish a reference', async () => {
   const { input, recovery, inspect } = await setup();
   const profile = input.model.libraries.get(1);
   profile.starts[profile.selectedStart].groups[0].support--;
-  (await recovery.prepare(input)).commit();
-  expect(inspect().summary.referencedLibraries).toBe(1);
-  recovery.clear();
+  await expect(recovery.prepare(input)).rejects.toMatchObject({ representativeIssue: 'profile_structure' });
+  expect(inspect().summary.referencedLibraries).toBe(0);
+  profile.starts[profile.selectedStart].groups[0].support++;
   profile.starts[profile.selectedStart].converged = false;
   (await recovery.prepare(input)).commit();
   expect(inspect().summary.referencedLibraries).toBe(1);
@@ -111,8 +111,8 @@ test('equal total support with incorrect per-group assignments is rejected', asy
   const { input, recovery, inspect } = await setup();
   const groups = input.model.libraries.get(1).starts[input.model.libraries.get(1).selectedStart].groups;
   groups[0].support--; groups[1].support++;
-  (await recovery.prepare(input)).commit();
-  expect(inspect().summary.referencedLibraries).toBe(1);
+  await expect(recovery.prepare(input)).rejects.toMatchObject({ representativeIssue: 'profile_structure' });
+  expect(inspect().summary.referencedLibraries).toBe(0);
 });
 
 test('clear, cancellation and newer publication prevent stale commits', async () => {
