@@ -10,6 +10,34 @@ import { createFreshInventoryPolicyEvidence } from '../../services/freshInventor
 
 const settings = { ...freshSettings, generateCases: 0 };
 const representation = { provider: 'ollama', model: 'embedding:latest', digest: 'b'.repeat(64), dimensions: 2 };
+test('dedicated scorer mode is explicit, zero generation, source-verified and default-off', async () => {
+  const argv = ['--seed', settings.seed, '--size', '12', '--folds', '3', '--leader-cross-encoder'], loadFreshRuntime = jest.fn();
+  for (const flags of [['--generate-cases', '1'], ['--leader-grounded'], ['--score-cases', '13'], ['--score-cases', '-1']]) {
+    await expect(runInventoryDescriptionBenchmark({ argv: [...argv, ...flags], loadFreshRuntime })).rejects.toThrow();
+  }
+  await expect(runInventoryDescriptionBenchmark({ argv: ['--seed', settings.seed, '--score-cases', '0'], loadFreshRuntime })).rejects.toThrow();
+  expect(loadFreshRuntime).not.toHaveBeenCalled();
+  const { runtime } = fixture();
+  expect(await runInventoryDescriptionBenchmark({ argv, loadFreshRuntime: async () => runtime })).toMatchObject({
+    protocol: 'inventory_cross_encoder_v1', calls: 0, scoringCalls: 0, sourceVerified: true,
+    crossEncoderComparison: { status: 'preflight', considered: 12, livePromotionAllowed: false } });
+  expect(runtime.createClient).not.toHaveBeenCalled(); expect(runtime.close).toHaveBeenCalledTimes(1);
+});
+
+test('dedicated scoring retains real call counts, closes runtime and invalidates source drift', async () => {
+  const { source, runtime } = fixture();
+  const changed = structuredClone(source); changed.config.configuration_revision = 2;
+  changed.fingerprint = fingerprintFreshPolicySnapshot(changed);
+  runtime.repository.read.mockResolvedValueOnce(source).mockResolvedValueOnce(changed);
+  const score = jest.fn(async (input, { onScoringCall }) => {
+    onScoringCall(); return { identity: { model: 'pinned' }, scores: input.texts.map(() => 0), latencyMs: 1 };
+  });
+  const report = await runInventoryLeaderChallengeBenchmark(settings, { loadRuntime: async () => runtime, crossEncoder: true, scoreCases: 2,
+    createScorer: () => ({ score }) });
+  expect(report).toMatchObject({ status: 'invalidated', sourceVerified: false, calls: 0, scoringCalls: 6,
+    crossEncoderComparison: { completed: 2, statuses: { abstained: 2 } }, livePromotionAllowed: false });
+  expect(score).toHaveBeenCalledTimes(6); expect(runtime.close).toHaveBeenCalledTimes(1);
+});
 function fixture() {
   const value = freshFixture();
   value.source.trainingExclusions = new Set(['movie:1']);

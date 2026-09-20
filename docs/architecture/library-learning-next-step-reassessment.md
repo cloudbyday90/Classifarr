@@ -2,6 +2,11 @@
 
 Date: 2026-09-20. Status: researched recommendation, not a deployed service.
 
+Implementation follow-up: the [local cross-encoder outcome](local-cross-encoder-outcome.md)
+records the dedicated scorer pilot and supersedes the next-step recommendation
+below. It is not approved for live routing; reconcile the existing snapshot-drift
+contracts before another comparison. This document preserves the original research.
+
 ## Why the next step must be different
 
 The product goal is automatic understanding of actual library contents, not a

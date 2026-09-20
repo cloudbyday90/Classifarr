@@ -26,6 +26,7 @@ import { createInventoryDiscoveryAdmission, DiscoveryDeferredError } from '../se
 import { runInventoryLinearRankerBenchmark } from '../services/inventoryLinearRankerBenchmark.mjs';
 import { describeLinearRankerInputs } from '../services/inventoryLinearRankerSource.mjs';
 import { runInventoryLeaderChallengeBenchmark } from '../services/inventoryLeaderChallengeBenchmark.mjs';
+import { validateCrossEncoderCases } from '../services/inventoryCrossEncoderEvaluation.mjs';
 
 async function loadPrivateRuntime({ includeTrainingProvenance = false } = {}) {
   process.env.LOG_LEVEL = 'fatal';
@@ -55,6 +56,8 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     'leader-challenge': { type: 'boolean' },
     'leader-semantic': { type: 'boolean' },
     'leader-grounded': { type: 'boolean' },
+    'leader-cross-encoder': { type: 'boolean' },
+    'score-cases': { type: 'string' },
     'admission-wait-ms': { type: 'string' },
     'neighbor-calibration': { type: 'boolean' },
     'neighbor-cross-fit': { type: 'boolean' },
@@ -89,8 +92,16 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
   });
   const admissionWaitMs = values['admission-wait-ms'] === undefined ? 0 : Number(values['admission-wait-ms']);
   if (!Number.isSafeInteger(admissionWaitMs) || admissionWaitMs < 0 || admissionWaitMs > 300_000 ||
-      (values['admission-wait-ms'] !== undefined && !values['leader-semantic'] && !values['leader-grounded'] && !values['leader-challenge'])) {
+      (values['admission-wait-ms'] !== undefined && !values['leader-semantic'] && !values['leader-grounded'] && !values['leader-challenge'] && !values['leader-cross-encoder'])) {
     throw new Error('inventory_discovery_wait_invalid');
+  }
+  const scoreCases = validateCrossEncoderCases(Number(values['score-cases'] ?? 0), options.size);
+  if (values['score-cases'] !== undefined && !values['leader-cross-encoder']) throw new Error('cross_encoder_mode_invalid');
+  if (values['leader-cross-encoder']) {
+    if (!options.folds || options.generateCases || Object.entries(values).some(([name, value]) => name !== 'leader-cross-encoder' && value === true)) {
+      throw new Error('cross_encoder_mode_invalid');
+    }
+    return runInventoryLeaderChallengeBenchmark(options, { signal, onProgress, loadRuntime: loadFreshRuntime, crossEncoder: true, scoreCases, admissionWaitMs });
   }
   if (values['leader-semantic'] || values['leader-grounded']) {
     const mode = values['leader-grounded'] ? 'leader-grounded' : 'leader-semantic';

@@ -10,6 +10,14 @@ const runId = '12345678-1234-1234-1234-123456789abc';
 const container = { image: `sha256:${'a'.repeat(64)}`, running: true, health: 'healthy', project: 'classifarr' };
 const args = ['--seed', 'classifarr-test-20260920', '--folds', '5', '--leader-grounded'];
 const plan = () => inventoryBenchmarkComposePlan(container, args, runId, BENCHMARK_HOST_RESERVE);
+test('dedicated scorer flags are bounded and cannot accidentally enable chat generation', () => {
+  const scorer = args.map(value => value === '--leader-grounded' ? '--leader-cross-encoder' : value);
+  expect(inventoryBenchmarkComposePlan(container, [...scorer, '--score-cases', '100'], runId, BENCHMARK_HOST_RESERVE).args).toContain('--leader-cross-encoder');
+  for (const extra of [['--score-cases', '101'], ['--generate-cases', '1'], ['--leader-semantic']]) {
+    expect(() => inventoryBenchmarkComposePlan(container, [...scorer, ...extra], runId, BENCHMARK_HOST_RESERVE)).toThrow();
+  }
+  expect(() => inventoryBenchmarkComposePlan(container, [...args, '--score-cases', '0'], runId, BENCHMARK_HOST_RESERVE)).toThrow();
+});
 function docker() { return { start: jest.fn(async () => {}), wait: jest.fn(async () => 0), stop: jest.fn(async () => {}),
   remove: jest.fn(async () => {}), follow: jest.fn(() => ({ close: jest.fn(async () => {}) })) }; }
 

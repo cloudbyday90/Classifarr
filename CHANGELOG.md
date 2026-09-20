@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add an opt-in, pinned local cross-encoder for held-out library-content evaluation,
+  with bounded inference, repeat/order checks, private-network isolation and a
+  shadow-only stale-while-revalidate cache. Preserve current routing and keep
+  relevance scores separate from confidence.
 - Evaluate semantic fit with bounded example references, explicit contradiction and
   insufficient-evidence outcomes, and separate repeat/order stability checks. Keep
   local comparison results private and separate from automatic routing.

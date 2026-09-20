@@ -1,0 +1,66 @@
+# Optional, local evaluation only. Prepare pinned model artifacts before starting.
+services:
+  classifarr:
+    networks:
+      - classifarr_internal
+      - cross_encoder_private
+  inventory-cross-encoder:
+    profiles: [cross-encoder]
+    image: ghcr.io/huggingface/text-embeddings-inference@sha256:8419f533857b503ebf6ec292a95d4f1cf9c0464ac8b8abeef39518cf110e5726
+    platform: linux/amd64
+    pull_policy: never
+    networks: [cross_encoder_private]
+    user: "1000:1000"
+    read_only: true
+    init: true
+    restart: "no"
+    healthcheck:
+      test: [CMD, /usr/bin/curl, --fail, --silent, --max-time, "2", http://127.0.0.1:21325/health]
+      interval: 5s
+      timeout: 3s
+      start_period: 180s
+      retries: 3
+    mem_limit: 4g
+    memswap_limit: 4g
+    cpus: 2
+    pids_limit: 128
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    volumes:
+      - ./.tmp/cross-encoder-model/2cfc18c9415c912f9d8155881c133215df768a70:/models/2cfc18c9415c912f9d8155881c133215df768a70:ro
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m,uid=1000,gid=1000,mode=700
+    environment:
+      HF_HUB_OFFLINE: "1"
+      HF_HUB_DISABLE_TELEMETRY: "1"
+      HF_HOME: /tmp/hf
+      RUST_LOG: error
+      OMP_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+    command:
+      - --model-id
+      - /models/2cfc18c9415c912f9d8155881c133215df768a70
+      - --revision
+      - 2cfc18c9415c912f9d8155881c133215df768a70
+      - --dtype
+      - float32
+      - --hostname
+      - 0.0.0.0
+      - --port
+      - "21325"
+      - --auto-truncate=false
+      - --max-client-batch-size
+      - "16"
+      - --max-batch-tokens
+      - "512"
+      - --max-concurrent-requests
+      - "16"
+      - --max-batch-requests
+      - "4"
+      - --tokenization-workers
+      - "2"
+      - --payload-limit
+      - "65536"
+networks:
+  cross_encoder_private:
+    internal: true
