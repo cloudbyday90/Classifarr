@@ -2,6 +2,7 @@
 import { expect, jest, test } from '@jest/globals';
 import { createLiveMultiScaleRefresh } from '../../services/liveMultiScaleRefresh.mjs';
 import { liveFixture } from '../fixtures/liveMultiScaleFixture.mjs';
+import { createInventoryDiscoveryAdmission } from '../../services/inventoryDiscoveryAdmission.mjs';
 
 function setup(extra = {}) {
   const value = liveFixture(); let time = 1_000_000, revision = 0;
@@ -15,6 +16,50 @@ function setup(extra = {}) {
   return { ...value, worker, handle, build, repository, embedder, readState,
     advance: delta => { time += delta; }, setTime: val => { time = val; }, revise: () => { revision++; } };
 }
+
+test('memory deferral precedes snapshot/provider work and retries automatically after backoff', async () => {
+  let available = 0;
+  const withAdmission = createInventoryDiscoveryAdmission({
+    withSessionAdvisoryLock: async (_key, callback) => { await callback({}); return true; },
+    readMemory: () => ({ available, constrained: 2 ** 31, total: 2 ** 34 }),
+  });
+  const v = setup({ withAdmission });
+  expect(await v.worker.run()).toEqual({ status: 'deferred', reason: 'memory_pressure' });
+  expect(v.repository.read).not.toHaveBeenCalled(); expect(v.embedder.inspect).not.toHaveBeenCalled();
+  expect(await v.worker.run()).toEqual({ status: 'not_due' });
+  available = 2 ** 31; v.advance(60000);
+  expect(await v.worker.run()).toEqual({ status: 'ready' });
+  expect(await v.worker.retrieve(v.input)).not.toBeNull();
+  v.advance(300000); available = 0;
+  expect(await v.worker.run()).toEqual({ status: 'deferred', reason: 'memory_pressure' });
+  expect(await v.worker.retrieve(v.input)).toBeNull();
+});
+
+test('pressure before publication rejects the result without retaining the profile', async () => {
+  let available = 2 ** 31;
+  const withAdmission = createInventoryDiscoveryAdmission({
+    withSessionAdvisoryLock: async (_key, callback) => { await callback({}); return true; },
+    readMemory: () => ({ available, constrained: 2 ** 31, total: 2 ** 34 }),
+  });
+  const v = setup({ withAdmission });
+  v.build.mockImplementationOnce(async () => { available = 0; return { handle: v.handle, cacheable: true, weight: 1000 }; });
+  expect(await v.worker.run()).toEqual({ status: 'deferred', reason: 'memory_pressure' });
+  expect(await v.worker.retrieve(v.input)).toBeNull();
+});
+
+test('contention retains valid SWR context until its existing TTL expires', async () => {
+  let busy = false;
+  const withAdmission = createInventoryDiscoveryAdmission({
+    withSessionAdvisoryLock: async (_key, callback) => { if (busy) return false; await callback({}); return true; },
+    readMemory: () => ({ available: 2 ** 31, constrained: 2 ** 31, total: 2 ** 34 }),
+  });
+  const v = setup({ withAdmission });
+  expect(await v.worker.run()).toEqual({ status: 'ready' });
+  v.advance(300000); busy = true;
+  expect(await v.worker.run()).toEqual({ status: 'deferred', reason: 'busy' });
+  expect(await v.worker.retrieve(v.input)).not.toBeNull();
+  v.advance(300001); expect(await v.worker.retrieve(v.input)).toBeNull();
+});
 
 test('cold requests cannot fit, warm requests reuse context, unchanged refresh revalidates without rebuilding', async () => {
   const v = setup();

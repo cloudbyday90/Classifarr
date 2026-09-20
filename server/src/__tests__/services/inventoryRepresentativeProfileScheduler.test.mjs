@@ -3,6 +3,18 @@ import { expect, jest, test } from '@jest/globals';
 import { registerInventoryRepresentativeProfileSchedule, INVENTORY_REPRESENTATIVE_PROFILE_TASK,
   createInventoryRepresentativeProfileRuntime } from '../../services/inventoryRepresentativeProfileScheduler.mjs';
 import { readRepresentativeShadow } from '../../services/inventoryRepresentativeShadowRuntime.mjs';
+import { representativeProfileFixture } from '../helpers/inventoryRepresentativeProfileFixture.mjs';
+import { INVENTORY_DISCOVERY_LOCK } from '../../services/inventoryDiscoveryAdmission.mjs';
+
+test('production representative runtime shares discovery admission before provider/vector work', async () => {
+  const { state } = representativeProfileFixture();
+  const database = { withTransaction: jest.fn(callback => callback({ query: async () => ({ rows: [state] }) })),
+    withSessionAdvisoryLock: jest.fn(async () => false) };
+  const runtime = createInventoryRepresentativeProfileRuntime(database);
+  expect(await runtime.run()).toMatchObject({ status: 'deferred', reason: 'busy' });
+  expect(database.withSessionAdvisoryLock).toHaveBeenCalledWith(INVENTORY_DISCOVERY_LOCK, expect.any(Function));
+  expect(database.withTransaction).toHaveBeenCalledTimes(1); runtime.stop();
+});
 
 test('startup/cron share a coalesced automatic handler, replacing and stopping the previous owner', async () => {
   const previous = { stop: jest.fn() };

@@ -2,6 +2,18 @@
 import { expect, jest, test } from '@jest/globals';
 import { registerLiveMultiScaleSchedule, createLiveMultiScaleRuntime } from '../../services/liveMultiScaleScheduler.mjs';
 import { installLiveMultiScaleContext, retrieveLiveMultiScaleExamples } from '../../services/liveMultiScaleRuntime.mjs';
+import { liveFixture } from '../fixtures/liveMultiScaleFixture.mjs';
+import { INVENTORY_DISCOVERY_LOCK } from '../../services/inventoryDiscoveryAdmission.mjs';
+
+test('production runtime wires shared admission before provider or vector snapshot work', async () => {
+  const { state } = liveFixture();
+  const database = { withTransaction: jest.fn(callback => callback({ query: async () => ({ rows: [state] }) })),
+    withSessionAdvisoryLock: jest.fn(async () => false) };
+  const runtime = createLiveMultiScaleRuntime(database);
+  expect(await runtime.run()).toEqual({ status: 'deferred', reason: 'busy' });
+  expect(database.withSessionAdvisoryLock).toHaveBeenCalledWith(INVENTORY_DISCOVERY_LOCK, expect.any(Function));
+  expect(database.withTransaction).toHaveBeenCalledTimes(1); runtime.stop();
+});
 
 test('scheduler owns installation, periodic recovery, replacement and cleanup', async () => {
   const previous = { stop: jest.fn() }, scheduler = { liveMultiScaleWorker: previous, schedule: jest.fn(), scheduleInitial: jest.fn() };

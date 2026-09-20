@@ -158,3 +158,6 @@ Recommended stack:
 
 No inference result in this experiment changed a route, policy, model or learning
 configuration. No new review/acknowledgement workflow was added.
+
+The next implementation is recorded in [shared discovery admission design](discovery-admission-design.md)
+and its [outcome](discovery-admission-outcome.md).

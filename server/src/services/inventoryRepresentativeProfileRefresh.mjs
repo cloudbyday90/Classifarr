@@ -8,6 +8,7 @@ import { createRepresentativeValidationDiagnostics, representativeValidationIssu
 import { assertRepresentativeSnapshotBudget, inspectRepresentativeCoverage } from './inventoryRepresentativeCoverage.mjs';
 import { validateInventoryRepresentativeProfileCoverage } from './inventoryRepresentativeProfileValidation.mjs';
 import { isMap } from 'node:util/types';
+import { DiscoveryDeferredError } from './inventoryDiscoveryAdmission.mjs';
 
 const configKeyOf = state => {
   if (state?.rag_enabled !== true) return null;
@@ -17,6 +18,7 @@ const configKeyOf = state => {
 /** One process owns one private cache. No HTTP handler can initiate a fit. */
 export function createInventoryRepresentativeProfileRefresh({ repository, readState, createEmbedder, fit,
   getRevision = () => 0, now = Date.now, observer = null, neighborhoodRecovery = null,
+  withAdmission = (callback, { signal }) => callback(signal, () => signal.throwIfAborted()),
   diagnostics = createRepresentativeValidationDiagnostics({ now }),
   cache = createLiveInventoryModelCache({ maxEntries: 1, maxWeight: 32 * 1024 * 1024, ttlMs: 1_800_000, now }),
 }) {
@@ -32,7 +34,7 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
   const invalidateHint = () => { if (getRevision() !== revision) invalidate(); };
   const current = (state, expected) => state?.busy === false && configKeyOf(state) === expected;
 
-  async function refresh(state, signal, runRevision, expected) {
+  async function refresh(state, signal, runRevision, expected, checkpoint) {
     const embedder = createEmbedder(state);
     const identity = await inspectDescriptionRepresentation(embedder, signal);
     const snapshot = await repository.read(identity);
@@ -71,6 +73,7 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
       clear(); return report('invalidated');
     }
     signal.throwIfAborted();
+    checkpoint();
     if (!cache.set(sourceKey, model, model.weight)) { clear(); return report('cache_budget_exceeded'); }
     key = sourceKey; revision = runRevision; available = true; verifiedAt = now(); nextRunAt = now() + 300_000;
     diagnostics.profilesRecovered();
@@ -106,16 +109,17 @@ export function createInventoryRepresentativeProfileRefresh({ repository, readSt
         if (now() < backoffUntil) return report('cooldown');
         const runRevision = getRevision();
         if (!pending && now() < nextRunAt && revision === runRevision && available && key && cache.get(key)) return { ...lastReport, status: 'not_due' };
-        const result = await refresh(state, runSignal, runRevision, expected);
+        const result = await withAdmission((admittedSignal, checkpoint) =>
+          refresh(state, admittedSignal, runRevision, expected, checkpoint), { signal: runSignal });
         failures = 0; backoffUntil = 0;
         return result;
       } catch (error) {
-        clear();
-        if (controller.signal.aborted || signal?.aborted) return report('cancelled');
+        if (!(error instanceof DiscoveryDeferredError && error.reason === 'busy')) clear();
+        if (controller.signal.aborted || signal?.aborted) { clear(); return report('cancelled'); }
         if (representativeValidationIssue(error) !== 'unknown_check') diagnostics.report(representativeValidationIssue(error));
         failures = Math.min(failures + 1, 7);
         backoffUntil = now() + Math.min(3_600_000, 60_000 * 2 ** (failures - 1));
-        return report('failed');
+        return error instanceof DiscoveryDeferredError ? report('deferred', { reason: error.reason }) : report('failed');
       } finally { active = null; }
     },
   };

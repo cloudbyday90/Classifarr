@@ -2,8 +2,18 @@
 import { expect, jest, test } from '@jest/globals';
 import { runInventoryDescriptionBenchmark } from '../../scripts/runInventoryDescriptionBenchmark.mjs';
 import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescriptionCorpus.mjs';
+import { createInventoryDiscoveryAdmission } from '../../services/inventoryDiscoveryAdmission.mjs';
 
 const seed = 'benchmark-test-seed-2026';
+
+test('CLI reports deferral without snapshot/model work or a misleading completed comparison', async () => {
+  const instance = runtime();
+  instance.withDiscoveryAdmission = createInventoryDiscoveryAdmission({ withSessionAdvisoryLock: async () => false });
+  expect(await runInventoryDescriptionBenchmark({ argv: ['--seed', seed], loadRuntime: async () => instance }))
+    .toEqual({ protocol: 'inventory_discovery_admission_v1', status: 'deferred', reason: 'busy', sourceVerified: false, livePromotionAllowed: false });
+  expect(instance.repository.read).not.toHaveBeenCalled(); expect(instance.embedder.inspect).not.toHaveBeenCalled();
+  expect(instance.createClient).not.toHaveBeenCalled(); expect(instance.close).toHaveBeenCalledTimes(1);
+});
 
 test('multi-scale AI CLI validates before config, bounds inference, verifies source drift and closes', async () => {
   const argv = ['--seed', seed, '--size', '8', '--folds', '2', '--multi-scale-ai'], loadRuntime = jest.fn();
@@ -384,6 +394,7 @@ function runtime() {
   const client = { inspect: jest.fn(async () => ({ model: 'local:latest', digest: 'b'.repeat(64), contextLength: 32768 })),
     generate: jest.fn(async () => ({ response: '{"candidate":1}', latencyMs: 1, promptTokens: 100, outputTokens: 5 })) };
   return { embedder: { ...identity, inspect: jest.fn(async () => identity) }, repository: { read: jest.fn(async () => snapshot) },
+    withDiscoveryAdmission: jest.fn((callback, { signal }) => callback(signal)),
     createClient: jest.fn(() => client), close: jest.fn(), client };
 }
 

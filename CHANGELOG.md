@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Coordinate heavy library discovery and description evaluations across processes.
+  Defer work when memory is scarce, cancel safely under pressure, and retry live
+  refreshes automatically while preserving ordinary retrieval and metadata backfill.
 - Reduce retained discovery scratch data and avoid full vector copies during cache
   hits and background revalidation. Release completed benchmark folds sooner and
   verify paired AI comparisons against the content they actually consume, without

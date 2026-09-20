@@ -8,6 +8,7 @@ import { representativeShadowFixture } from '../helpers/inventoryRepresentativeS
 import { createInventoryRepresentativeShadow } from '../../services/inventoryRepresentativeShadow.mjs';
 import { createRepresentativeValidationDiagnostics } from '../../services/representativeValidationDiagnostics.mjs';
 import { createInventoryNeighborhoodRecovery } from '../../services/inventoryNeighborhoodRecovery.mjs';
+import { createInventoryDiscoveryAdmission } from '../../services/inventoryDiscoveryAdmission.mjs';
 
 function setup(observer = null, diagnostics = undefined, options = {}) {
   const fixture = representativeProfileFixture(options);
@@ -22,6 +23,22 @@ function setup(observer = null, diagnostics = undefined, options = {}) {
     key: () => inventoryRepresentativeSourceKey(snapshot, identity, JSON.stringify(resolveLocalStudyEmbeddingConfig(state))),
     advance: (ms = 300_000) => { time += ms; }, sync: () => { revision++; } };
 }
+
+test('representative discovery defers before allocation, backs off, and self-recovers', async () => {
+  const v = setup(); let available = 0;
+  const withAdmission = createInventoryDiscoveryAdmission({
+    withSessionAdvisoryLock: async (_key, callback) => { await callback({}); return true; },
+    readMemory: () => ({ available, constrained: 2 ** 31, total: 2 ** 34 }),
+  });
+  const worker = createInventoryRepresentativeProfileRefresh({ ...v.dependencies, withAdmission });
+  expect(await worker.run()).toMatchObject({ status: 'deferred', reason: 'memory_pressure' });
+  expect(v.dependencies.repository.read).not.toHaveBeenCalled(); expect(v.dependencies.createEmbedder).not.toHaveBeenCalled();
+  expect(await worker.run()).toMatchObject({ status: 'cooldown' });
+  available = 2 ** 31; v.advance(60000);
+  expect(await worker.run()).toMatchObject({ status: 'published' });
+  expect(worker.read(v.key())).toBeDefined();
+  worker.stop();
+});
 
 test('publishes atomically; quiet/periodic reconciliation reuses cached fits without embedding', async () => {
   const { worker, dependencies, advance, key, embedder } = setup();

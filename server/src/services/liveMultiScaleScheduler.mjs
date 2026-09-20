@@ -7,9 +7,11 @@ import { getInventoryDescriptionRefreshRevision } from './inventoryDescriptionRe
 import { createLiveMultiScaleRefresh } from './liveMultiScaleRefresh.mjs';
 import { installLiveMultiScaleContext } from './liveMultiScaleRuntime.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { createInventoryDiscoveryAdmission } from './inventoryDiscoveryAdmission.mjs';
 
 export function createLiveMultiScaleRuntime(database = db) {
   return createLiveMultiScaleRefresh({ repository: createInventoryRepresentativeProfileRepository(database),
+    withAdmission: createInventoryDiscoveryAdmission(database),
     readState: createInventoryDescriptionRefreshRepository(database).readState,
     createEmbedder: createLocalStudyEmbeddingClient, getRevision: getInventoryDescriptionRefreshRevision });
 }
@@ -22,7 +24,7 @@ export function registerLiveMultiScaleSchedule(scheduler, { worker = createLiveM
   let last = null;
   const run = async () => {
     const report = await worker.run();
-    const state = ['unavailable', 'invalidated', 'capacity', 'degraded'].includes(report.status) ? 'retrying'
+    const state = ['unavailable', 'invalidated', 'capacity', 'degraded', 'deferred'].includes(report.status) ? 'retrying'
       : ['ready', 'revalidated'].includes(report.status) ? 'ready' : null;
     if (state && state !== last) {
       if (state === 'retrying') log.warn('Library comparison context is retrying automatically; ordinary retrieval remains available', { status: report.status });

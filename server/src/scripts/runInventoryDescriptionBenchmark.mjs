@@ -22,6 +22,7 @@ import { runInventoryAdaptiveGroupBenchmark } from '../services/inventoryAdaptiv
 import { runInventoryCommunityBenchmark } from '../services/inventoryCommunityBenchmark.mjs';
 import { runInventoryMultiScaleBenchmark } from '../services/inventoryMultiScaleBenchmark.mjs';
 import { runInventoryMultiScaleAiBenchmark } from '../services/inventoryMultiScaleAiBenchmark.mjs';
+import { createInventoryDiscoveryAdmission, DiscoveryDeferredError } from '../services/inventoryDiscoveryAdmission.mjs';
 
 async function loadPrivateRuntime() {
   process.env.LOG_LEVEL = 'fatal';
@@ -34,6 +35,7 @@ async function loadPrivateRuntime() {
       ollama_host, ollama_port, ollama_model FROM ai_provider_config WHERE id=1`);
     const config = rows[0];
     return { embedder: createLocalStudyEmbeddingClient(config),
+      withDiscoveryAdmission: createInventoryDiscoveryAdmission(db),
       repository: createDescriptionBenchmarkRepository({ withTransaction: db.withTransaction }),
       createClient: () => createLocalDescriptionBenchmarkClient(config), close: () => db.pool.end() };
   } catch (error) { await db.pool.end(); throw error; }
@@ -144,61 +146,67 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
   }
   const runtime = await loadRuntime();
   try {
-    const representation = await inspectDescriptionRepresentation(runtime.embedder, abort);
-    const snapshot = await runtime.repository.read(representation);
-    await verifyDescriptionRepresentation(runtime.embedder, representation, abort);
-    if (values['evidence-reranker'] || values['semantic-pairs'] || values['coverage-robustness'] || values['candidate-stability'] || values['candidate-local-evidence'] || values['group-contrast'] || values['group-semantics'] || values['adaptive-groups'] || values['local-communities'] || values['multi-scale-context'] || values['multi-scale-ai']) {
-      const pairClient = (values['semantic-pairs'] || values['group-semantics'] || values['multi-scale-ai']) && options.generateCases ? runtime.createClient() : undefined;
-      const pairIdentity = pairClient ? await pairClient.inspect(abort) : undefined;
-      const report = values['multi-scale-ai']
-        ? await runInventoryMultiScaleAiBenchmark(snapshot, representation, options, { signal: abort, onProgress, client: pairClient, identity: pairIdentity })
-        : values['multi-scale-context']
-        ? await runInventoryMultiScaleBenchmark(snapshot, representation, options, { signal: abort, onProgress })
-        : values['local-communities']
-        ? await runInventoryCommunityBenchmark(snapshot, representation.dimensions, options, { signal: abort, onProgress })
-        : values['adaptive-groups']
-        ? await runInventoryAdaptiveGroupBenchmark(snapshot, representation.dimensions, options, { signal: abort, onProgress })
-        : values['candidate-stability'] || values['candidate-local-evidence'] || values['group-contrast'] || values['group-semantics']
-        ? await runInventoryCandidateStabilityBenchmark(snapshot, representation.dimensions, options,
-          { signal: abort, onProgress, localEvidence: values['candidate-local-evidence'] === true, groupContrast: values['group-contrast'] === true,
-            groupSemantics: values['group-semantics'] === true, client: pairClient, identity: pairIdentity })
-        : values['coverage-robustness']
-        ? await runInventoryCoverageBenchmark(snapshot, representation.dimensions, options, { signal: abort, onProgress })
-        : values['semantic-pairs']
-        ? await runInventorySemanticPairComparison(snapshot, representation.dimensions, options,
-          { signal: abort, onProgress, client: pairClient, identity: pairIdentity })
-        : await runInventoryEvidenceRerankerComparison(snapshot, representation.dimensions, options,
-          { signal: abort, onProgress, neighborhoodProfiles: values['neighborhood-profiles'] === true,
-            representativeGroups: values['representative-groups'] === true, representativeStability: values['representative-stability'] === true });
-      if (abort.aborted) return { ...report, status: 'interrupted', sourceVerified: false };
-      const current = await runtime.repository.read(representation);
+    return await runtime.withDiscoveryAdmission(async abort => {
+      const representation = await inspectDescriptionRepresentation(runtime.embedder, abort);
+      const snapshot = await runtime.repository.read(representation);
       await verifyDescriptionRepresentation(runtime.embedder, representation, abort);
-      const currentComponents = values['multi-scale-ai'] ? describeMultiScaleAiInputs(current)
-        : describeInventorySnapshotDigests(current, current.vectors);
-      const sourceVerified = JSON.stringify(currentComponents) === JSON.stringify(report.snapshotComponents);
-      const changedSourceComponents = Object.keys(currentComponents.hashes).filter(name =>
-        currentComponents.hashes[name] !== report.snapshotComponents.hashes[name]);
-      return { ...report, status: sourceVerified ? report.status : 'invalidated', sourceVerified, changedSourceComponents,
-        embedding: { model: representation.model, digest: representation.digest, dimensions: representation.dimensions } };
-    }
-    if (values['neighbor-calibration']) {
-      const report = await runInventoryNeighborComparison(snapshot, representation, options,
-        { signal: abort, onProgress, crossFit: values['neighbor-cross-fit'] === true });
+      if (values['evidence-reranker'] || values['semantic-pairs'] || values['coverage-robustness'] || values['candidate-stability'] || values['candidate-local-evidence'] || values['group-contrast'] || values['group-semantics'] || values['adaptive-groups'] || values['local-communities'] || values['multi-scale-context'] || values['multi-scale-ai']) {
+        const pairClient = (values['semantic-pairs'] || values['group-semantics'] || values['multi-scale-ai']) && options.generateCases ? runtime.createClient() : undefined;
+        const pairIdentity = pairClient ? await pairClient.inspect(abort) : undefined;
+        const report = values['multi-scale-ai']
+          ? await runInventoryMultiScaleAiBenchmark(snapshot, representation, options, { signal: abort, onProgress, client: pairClient, identity: pairIdentity })
+          : values['multi-scale-context']
+          ? await runInventoryMultiScaleBenchmark(snapshot, representation, options, { signal: abort, onProgress })
+          : values['local-communities']
+          ? await runInventoryCommunityBenchmark(snapshot, representation.dimensions, options, { signal: abort, onProgress })
+          : values['adaptive-groups']
+          ? await runInventoryAdaptiveGroupBenchmark(snapshot, representation.dimensions, options, { signal: abort, onProgress })
+          : values['candidate-stability'] || values['candidate-local-evidence'] || values['group-contrast'] || values['group-semantics']
+          ? await runInventoryCandidateStabilityBenchmark(snapshot, representation.dimensions, options,
+            { signal: abort, onProgress, localEvidence: values['candidate-local-evidence'] === true, groupContrast: values['group-contrast'] === true,
+              groupSemantics: values['group-semantics'] === true, client: pairClient, identity: pairIdentity })
+          : values['coverage-robustness']
+          ? await runInventoryCoverageBenchmark(snapshot, representation.dimensions, options, { signal: abort, onProgress })
+          : values['semantic-pairs']
+          ? await runInventorySemanticPairComparison(snapshot, representation.dimensions, options,
+            { signal: abort, onProgress, client: pairClient, identity: pairIdentity })
+          : await runInventoryEvidenceRerankerComparison(snapshot, representation.dimensions, options,
+            { signal: abort, onProgress, neighborhoodProfiles: values['neighborhood-profiles'] === true,
+              representativeGroups: values['representative-groups'] === true, representativeStability: values['representative-stability'] === true });
+        if (abort.aborted) return { ...report, status: 'interrupted', sourceVerified: false };
+        const current = await runtime.repository.read(representation);
+        await verifyDescriptionRepresentation(runtime.embedder, representation, abort);
+        const currentComponents = values['multi-scale-ai'] ? describeMultiScaleAiInputs(current)
+          : describeInventorySnapshotDigests(current, current.vectors);
+        const sourceVerified = JSON.stringify(currentComponents) === JSON.stringify(report.snapshotComponents);
+        const changedSourceComponents = Object.keys(currentComponents.hashes).filter(name =>
+          currentComponents.hashes[name] !== report.snapshotComponents.hashes[name]);
+        return { ...report, status: sourceVerified ? report.status : 'invalidated', sourceVerified, changedSourceComponents,
+          embedding: { model: representation.model, digest: representation.digest, dimensions: representation.dimensions } };
+      }
+      if (values['neighbor-calibration']) {
+        const report = await runInventoryNeighborComparison(snapshot, representation, options,
+          { signal: abort, onProgress, crossFit: values['neighbor-cross-fit'] === true });
+        return { ...report, embedding: { model: representation.model, digest: representation.digest, dimensions: representation.dimensions } };
+      }
+      const prepared = prepareDescriptionBenchmark(snapshot, snapshot.vectors, representation.dimensions, options,
+        { metadataCandidates: values['metadata-candidates'] === true, learnedProfiles: values['learned-profiles'] === true,
+          includeContrastiveVectors: values['contrastive-investigation'] === true,
+          includeComparisonEvidence: values['content-first-comparison'] === true || values['selective-recheck'] === true || values['preserve-description-candidate'] === true,
+          includeConflictEvidence: values['selective-recheck'] === true,
+          preserveDescriptionCandidate: values['preserve-description-candidate'] === true });
+      const client = options.generateCases ? runtime.createClient() : undefined;
+      const identity = client ? await client.inspect(abort) : undefined;
+      const runner = values['content-first-comparison'] || values['selective-recheck'] ? runContentFirstInventoryComparison
+        : values['contrastive-investigation'] ? runContrastiveInventoryInvestigation : runDescriptionBenchmark;
+      const report = await runner(prepared, options, { client, identity, signal: abort, onProgress,
+        investigate: values.investigate === true, selectiveRecheck: values['selective-recheck'] === true, onPrivateCase });
       return { ...report, embedding: { model: representation.model, digest: representation.digest, dimensions: representation.dimensions } };
-    }
-    const prepared = prepareDescriptionBenchmark(snapshot, snapshot.vectors, representation.dimensions, options,
-      { metadataCandidates: values['metadata-candidates'] === true, learnedProfiles: values['learned-profiles'] === true,
-        includeContrastiveVectors: values['contrastive-investigation'] === true,
-        includeComparisonEvidence: values['content-first-comparison'] === true || values['selective-recheck'] === true || values['preserve-description-candidate'] === true,
-        includeConflictEvidence: values['selective-recheck'] === true,
-        preserveDescriptionCandidate: values['preserve-description-candidate'] === true });
-    const client = options.generateCases ? runtime.createClient() : undefined;
-    const identity = client ? await client.inspect(abort) : undefined;
-    const runner = values['content-first-comparison'] || values['selective-recheck'] ? runContentFirstInventoryComparison
-      : values['contrastive-investigation'] ? runContrastiveInventoryInvestigation : runDescriptionBenchmark;
-    const report = await runner(prepared, options, { client, identity, signal: abort, onProgress,
-      investigate: values.investigate === true, selectiveRecheck: values['selective-recheck'] === true, onPrivateCase });
-    return { ...report, embedding: { model: representation.model, digest: representation.digest, dimensions: representation.dimensions } };
+    }, { signal: abort });
+  } catch (error) {
+    if (!(error instanceof DiscoveryDeferredError)) throw error;
+    return { protocol: 'inventory_discovery_admission_v1', status: 'deferred', reason: error.reason,
+      sourceVerified: false, livePromotionAllowed: false };
   } finally { await runtime.close(); }
 }
 
@@ -209,8 +217,8 @@ if (process.argv[1] && resolve(process.argv[1]) === import.meta.filename) {
   runInventoryDescriptionBenchmark({ signal: controller.signal, onProgress: progress => process.stderr.write(`${JSON.stringify(progress)}\n`) })
     .then(report => {
       process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-      if (['interrupted', 'completed_with_errors', 'invalidated'].includes(report.status) || report.sampleShortfall || report.generationShortfall ||
-          report.arms.some(arm => arm.estimatedInputBudgetExceeded)) process.exitCode = 1;
+      if (['interrupted', 'completed_with_errors', 'invalidated', 'deferred'].includes(report.status) || report.sampleShortfall || report.generationShortfall ||
+          report.arms?.some(arm => arm.estimatedInputBudgetExceeded)) process.exitCode = 1;
     }).catch(() => {
       process.stderr.write('Description benchmark did not complete. Check local model availability and description cache coverage. No routing changes were made.\n');
       process.exitCode = 1;

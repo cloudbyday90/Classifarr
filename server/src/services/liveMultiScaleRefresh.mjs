@@ -5,6 +5,7 @@ import { createLiveInventoryModelCache } from './liveInventoryModelCache.mjs';
 import { inspectUnseenMultiScaleSource, ownMultiScaleSource } from './inventoryMultiScaleSource.mjs';
 import { buildMultiScaleProfile } from './inventoryMultiScaleProfile.mjs';
 import { bindLiveMultiScaleContext, retrieveLiveMultiScaleContext } from './liveMultiScaleContext.mjs';
+import { DiscoveryDeferredError } from './inventoryDiscoveryAdmission.mjs';
 
 const configKey = state => {
   try { return state?.rag_enabled === true ? JSON.stringify(resolveLocalStudyEmbeddingConfig(state)) : null; }
@@ -14,6 +15,7 @@ const configKey = state => {
 /** Scheduler-owned SWR, not a request-driven fitter. Only validated unchanged entries can serve. */
 export function createLiveMultiScaleRefresh({ repository, readState, createEmbedder,
   getRevision = () => 0, now = Date.now, random = Math.random, build = buildMultiScaleProfile,
+  withAdmission = (callback, { signal }) => callback(signal, () => signal.throwIfAborted()),
   cache = createLiveInventoryModelCache({ maxEntries: 1, maxWeight: 256 * 1024 * 1024, ttlMs: 600_000, now }),
 }) {
   let active = null, stopped = false, entry = null, nextAt = 0, failures = 0, lastTime = null;
@@ -57,38 +59,43 @@ export function createLiveMultiScaleRefresh({ repository, readState, createEmbed
         if (entry && (entry.configKey !== expected || entry.revision !== revision)) { clear(); nextAt = 0; }
         if (state.busy !== false) { clear(); return { status: 'yielded' }; }
         if (time < nextAt) return { status: 'not_due' };
-        const embedder = createEmbedder(state), identity = await inspectDescriptionRepresentation(embedder, abort);
-        const snapshot = await repository.read(identity);
-        abort.throwIfAborted();
-        if (configKey(snapshot.state) !== expected || snapshot.state.busy !== false || getRevision() !== revision) {
-          clear(); due(); return { status: 'invalidated' };
-        }
-        const source = inspectUnseenMultiScaleSource(snapshot, identity);
-        if (entry?.key !== source.key) clear();
-        const stored = cache.get(source.key), cached = stored?.cacheable ? stored : null;
-        const built = cached ?? await build(ownMultiScaleSource(source), { signal: abort });
-        const fresh = await repository.read(identity);
-        await verifyDescriptionRepresentation(embedder, identity, abort);
-        const finalState = await readState();
-        abort.throwIfAborted();
-        if (configKey(fresh.state) !== expected || fresh.state.busy !== false ||
-            configKey(finalState) !== expected || finalState.busy !== false || getRevision() !== revision ||
-            inspectUnseenMultiScaleSource(fresh, identity).key !== source.key) {
-          clear(); due(); return { status: 'invalidated' };
-        }
-        const bound = bindLiveMultiScaleContext(fresh, identity, built.handle);
-        if (!cache.set(source.key, built, built.weight + fresh.observedKeys.size * 128)) {
-          clear(); due(); return { status: 'capacity' };
-        }
-        entry = { key: source.key, configKey: expected, revision, bound };
-        if (built.cacheable) { failures = 0; nextAt = now() + 300_000; }
-        else due();
-        // Degraded raw/broad context may serve, but optional discovery must retry rather than be reused.
-        return { status: cached ? 'revalidated' : built.cacheable ? 'ready' : 'degraded' };
-      } catch {
-        clear();
-        if (controller.signal.aborted || signal?.aborted) return { status: 'cancelled' };
-        due(); return { status: 'unavailable' };
+        return await withAdmission(async (abort, checkpoint) => {
+          const embedder = createEmbedder(state), identity = await inspectDescriptionRepresentation(embedder, abort);
+          const snapshot = await repository.read(identity);
+          abort.throwIfAborted();
+          if (configKey(snapshot.state) !== expected || snapshot.state.busy !== false || getRevision() !== revision) {
+            clear(); due(); return { status: 'invalidated' };
+          }
+          const source = inspectUnseenMultiScaleSource(snapshot, identity);
+          if (entry?.key !== source.key) clear();
+          const stored = cache.get(source.key), cached = stored?.cacheable ? stored : null;
+          const built = cached ?? await build(ownMultiScaleSource(source), { signal: abort });
+          const fresh = await repository.read(identity);
+          await verifyDescriptionRepresentation(embedder, identity, abort);
+          const finalState = await readState();
+          abort.throwIfAborted();
+          if (configKey(fresh.state) !== expected || fresh.state.busy !== false ||
+              configKey(finalState) !== expected || finalState.busy !== false || getRevision() !== revision ||
+              inspectUnseenMultiScaleSource(fresh, identity).key !== source.key) {
+            clear(); due(); return { status: 'invalidated' };
+          }
+          const bound = bindLiveMultiScaleContext(fresh, identity, built.handle);
+          checkpoint();
+          if (!cache.set(source.key, built, built.weight + fresh.observedKeys.size * 128)) {
+            clear(); due(); return { status: 'capacity' };
+          }
+          entry = { key: source.key, configKey: expected, revision, bound };
+          if (built.cacheable) { failures = 0; nextAt = now() + 300_000; }
+          else due();
+          // Degraded raw/broad context may serve, but optional discovery must retry rather than be reused.
+          return { status: cached ? 'revalidated' : built.cacheable ? 'ready' : 'degraded' };
+        }, { signal: abort });
+      } catch (error) {
+        // Contention does not invalidate an already verified entry; its TTL/revision still govern serving.
+        if (!(error instanceof DiscoveryDeferredError && error.reason === 'busy')) clear();
+        if (controller.signal.aborted || signal?.aborted) { clear(); return { status: 'cancelled' }; }
+        due(); return error instanceof DiscoveryDeferredError
+          ? { status: 'deferred', reason: error.reason } : { status: 'unavailable' };
       } finally { active = null; }
     },
   };
