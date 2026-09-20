@@ -109,3 +109,19 @@ test('calibration never lifts a policy review veto, including when it accepts th
   expect(withheld).toMatchObject({ statusId: 'review_veto', challengerId: null, candidateOrder: [1, 2, 3],
     blockedContent: { statusId: 'acceptance_withheld', challengerId: null } });
 });
+
+test('cross-fitted familiarity needs explicit admission, exact reference counts and its own version', () => {
+  const { assessment, calibration } = fixture();
+  expect(assessLeaderChallengeAcceptance(assessment, calibration, { crossFit: true }).reason).toBe('calibration_unavailable');
+  calibration.match.version = 'library_match_cross_fit_v1';
+  for (const candidate of calibration.match.candidates) Object.assign(candidate, {
+    referenceDescriptions: 23, calibrationDescriptions: 24, minimumCalibrationReferences: 23 });
+  expect(assessLeaderChallengeAcceptance(assessment, calibration).reason).toBe('calibration_unavailable');
+  expect(applyLeaderChallengeAcceptance(assessment, calibration, { crossFit: true }).acceptance.accepted).toBe(true);
+  delete calibration.match.candidates[0].minimumCalibrationReferences;
+  expect(assessLeaderChallengeAcceptance(assessment, calibration, { crossFit: true }).reason).toBe('incumbent_unassessable');
+  calibration.match.candidates[0].minimumCalibrationReferences = 23;
+  calibration.match.candidates[1].calibrationDescriptions = 20;
+  expect(assessLeaderChallengeAcceptance(assessment, calibration, { crossFit: true }).reason).toBe('challenger_unassessable');
+  expect(() => assessLeaderChallengeAcceptance(assessment, calibration, { crossFit: 'true' })).toThrow('mode_invalid');
+});

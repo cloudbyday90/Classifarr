@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Evaluate small-library familiarity using description-excluded cross-fitting,
+  retaining minimum evidence requirements and comparing it with the existing
+  split baseline. Keep provenance exclusions, cancellation and live routing
+  safeguards intact without adding user configuration.
 - Evaluate proposed library changes against each library's learned matching patterns
   and calibrated distinctions. Share provenance-clean held-out evidence, report
   raw versus accepted results per library, and preserve all live routing safeguards.

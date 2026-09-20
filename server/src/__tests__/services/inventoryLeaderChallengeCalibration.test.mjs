@@ -14,6 +14,7 @@ test('both calibration families use exactly the clean training groups, while eva
   const entry = await prepared.forDocument(doc);
   const first = await prepared.calibrate(entry);
   expect(first.match.candidates.find(candidate => candidate.libraryId === 1)).toMatchObject({ eligibleDescriptions: 0, status: 'sparse' });
+  expect(first.crossFitMatch.candidates.find(candidate => candidate.libraryId === 1)).toMatchObject({ eligibleDescriptions: 0, status: 'sparse' });
   expect(first.neighbor.candidates.every(candidate => candidate.status === 'sparse')).toBe(true);
   for (const candidate of first.match.candidates.filter(value => value.libraryId !== 1)) {
     const admitted = source.corpus.documents.filter(value => value.libraryIds.includes(candidate.libraryId) && !entry.heldDescriptionHashes.has(value.hash));
@@ -49,6 +50,10 @@ test('whole held folds and all retained-history description copies are excluded 
       const expected = source.corpus.documents.filter(doc => doc.libraryIds.includes(candidate.libraryId) &&
         !entry.heldDescriptionHashes.has(doc.hash) && !excludedHashes.has(doc.hash)).length;
       expect(candidate.eligibleDescriptions).toBe(expected);
+      const crossFitted = result.crossFitMatch.candidates.find(value => value.libraryId === candidate.libraryId);
+      expect(crossFitted.eligibleDescriptions).toBe(expected);
+      expect(crossFitted.referenceDescriptions).toBe(expected - 1);
+      expect(crossFitted.calibrationDescriptions).toBe(expected);
     }
   }
 });

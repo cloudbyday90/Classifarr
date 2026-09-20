@@ -115,6 +115,9 @@ claim the old and new runs share every source digest.
 
 ## Final recommendation and next item
 
+Follow-up: [small-library cross-fit outcome](library-familiarity-cross-fit-outcome.md)
+records the implemented alternative and its paired coverage/loss tradeoffs.
+
 Keep acceptance evaluation-only: observed loss avoidance is promising, but only
 three accepted nominations and weak placement labels cannot establish reliability.
 No thresholds were tuned against the results, and unknown-content rejection is

@@ -9,7 +9,7 @@ export function createLeaderChallengeCalibration(snapshot, representation, train
     const admitted = new Set(documents.map(doc => doc.hash));
     return [fold, new Set([...hashes].filter(hash => !admitted.has(hash)))];
   }));
-  let match, neighbor;
+  let match, neighbor, crossFitMatch;
   return async (entry, { signal } = {}) => {
     signal?.throwIfAborted();
     const held = exclusions.get(entry?.foldIndex);
@@ -20,11 +20,13 @@ export function createLeaderChallengeCalibration(snapshot, representation, train
         vectors: snapshot.vectors, representation };
       match = createInventoryMatchCalibration(input);
       neighbor = createInventoryNeighborCalibration(input, { crossFit: true });
+      crossFitMatch = createInventoryMatchCalibration(input, { crossFit: true });
     }
     const query = { ...entry, heldDescriptionHashes: new Set(held) };
-    // Sequential fitting avoids overlapping scratch memory; both kernels enforce work budgets.
+    // Sequential fitting avoids overlapping scratch memory; all kernels enforce work budgets.
     const familiar = await match.assess(query, { signal });
     const distinct = await neighbor.assess(query, { signal });
-    return { match: familiar, neighbor: distinct };
+    const crossFitted = await crossFitMatch.assess(query, { signal });
+    return { match: familiar, neighbor: distinct, crossFitMatch: crossFitted };
   };
 }
