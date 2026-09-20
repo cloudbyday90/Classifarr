@@ -140,3 +140,15 @@ test('cancelling a library-withheld probe closes the runtime and a fresh run can
   const retry = fixture();
   expect(await runInventoryLeaderChallengeBenchmark(settings, { loadRuntime: async () => retry.runtime })).toMatchObject({ status: 'complete' });
 });
+
+test('semantic CLI stays exclusive, bounded and zero-generation by default', async () => {
+  const argv = ['--seed', settings.seed, '--size', '12', '--folds', '3', '--leader-semantic'], loadFreshRuntime = jest.fn();
+  for (const flags of [['--leader-challenge'], ['--generate-cases', '33'], ['--semantic-pairs'], ['--fresh-policy-evaluation']]) {
+    await expect(runInventoryDescriptionBenchmark({ argv: [...argv, ...flags], loadFreshRuntime })).rejects.toThrow();
+  }
+  expect(loadFreshRuntime).not.toHaveBeenCalled();
+  const { runtime } = fixture();
+  expect(await runInventoryDescriptionBenchmark({ argv, loadFreshRuntime: async () => runtime })).toMatchObject({
+    protocol: 'inventory_leader_semantic_v1', sourceVerified: true, calls: 0, semanticComparison: { status: 'preflight', livePromotionAllowed: false } });
+  expect(runtime.createClient).not.toHaveBeenCalled();
+});

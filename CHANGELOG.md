@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Evaluate ambiguous destinations with bounded, local AI comparisons of item metadata
+  and anonymous library examples. Reject order-sensitive suggestions, preserve complete
+  candidate scopes, and keep experimental results separate from live routing.
 - Bind offline calibration evidence to its item, snapshot and retrieval scope;
   automatically test corrupted evidence and library-withheld content probes without
   adding user setup or changing live routing safeguards.

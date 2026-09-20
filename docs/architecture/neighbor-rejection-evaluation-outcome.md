@@ -137,6 +137,11 @@ neighbors → library-relative familiarity/distinction → automatic integrity a
 withheld-library checks → existing policy safeguards.
 
 **Next: a bounded, library-agnostic semantic comparison of ambiguous destinations.**
+
+Implemented next in the [semantic comparison design](leader-semantic-comparison-design.md)
+and [measured outcome](leader-semantic-comparison-outcome.md). The following rationale
+records why that follow-up was selected.
+
 Use the actual item description, metadata and nearest examples from competing
 libraries to investigate the three supported withheld-library probes and the 25
 undistinguished nominations. Reuse the existing candidate-bound AI adapter,

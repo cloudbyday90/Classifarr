@@ -53,6 +53,7 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     'policy-shortlist-replay': { type: 'boolean' },
     'fresh-policy-evaluation': { type: 'boolean' },
     'leader-challenge': { type: 'boolean' },
+    'leader-semantic': { type: 'boolean' },
     'neighbor-calibration': { type: 'boolean' },
     'neighbor-cross-fit': { type: 'boolean' },
     'neighbor-fallback': { type: 'boolean' },
@@ -84,6 +85,12 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     ...(values.context === undefined ? {} : { context: Number(values.context) }),
     ...(values['max-minutes'] === undefined ? {} : { maxMinutes: Number(values['max-minutes']) }),
   });
+  if (values['leader-semantic']) {
+    if (!options.folds || options.generateCases > 32 || Object.entries(values).some(([name, value]) => name !== 'leader-semantic' && value === true)) {
+      throw new Error('leader_semantic_requires_exclusive_grouped_bounded_mode');
+    }
+    return runInventoryLeaderChallengeBenchmark(options, { signal, onProgress, loadRuntime: loadFreshRuntime, semantic: true });
+  }
   if (values['leader-challenge']) {
     if (!options.folds || options.generateCases || Object.entries(values).some(([name, value]) => name !== 'leader-challenge' && value === true)) {
       throw new Error('leader_challenge_requires_exclusive_grouped_zero_generation');

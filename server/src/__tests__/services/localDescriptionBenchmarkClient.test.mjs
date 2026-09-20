@@ -7,6 +7,16 @@ import { candidateAdjudicationResponseSchema } from '../../services/aiResponseSc
 let server, config, mode, requests;
 const identity = { model: 'local:latest', digest: 'a'.repeat(64), contextLength: 32768 };
 
+test('library comparison preserves a complete larger scope without widening existing candidate contracts', async () => {
+  const client = createLocalDescriptionBenchmarkClient(config);
+  await client.generate({ prompt: 'Private complete scope', count: 5, context: 8192, identity, responseContract: 'library_comparison' });
+  expect(requests.find(request => request.path === '/api/generate').body).toMatchObject({
+    format: { properties: { candidate: { minimum: 0, maximum: 5 } }, additionalProperties: false }, options: { num_predict: 64 } });
+  await expect(client.generate({ prompt: 'Private', count: 65, context: 8192, identity, responseContract: 'library_comparison' })).rejects.toThrow('scope_invalid');
+  await expect(client.generate({ prompt: 'Private', count: 5, context: 8192, identity })).rejects.toThrow('context_budget');
+  expect(requests.filter(request => request.path === '/api/generate')).toHaveLength(1);
+});
+
 test('independent fit admits exactly one candidate with a narrow grammar and the 64-token ceiling', async () => {
   const client = createLocalDescriptionBenchmarkClient(config);
   await client.generate({ prompt: 'Private single candidate', count: 1, context: 8192, identity, responseContract: 'independent_fit' });
