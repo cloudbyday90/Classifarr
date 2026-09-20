@@ -125,3 +125,19 @@ test('cross-fitted familiarity needs explicit admission, exact reference counts 
   expect(assessLeaderChallengeAcceptance(assessment, calibration, { crossFit: true }).reason).toBe('challenger_unassessable');
   expect(() => assessLeaderChallengeAcceptance(assessment, calibration, { crossFit: 'true' })).toThrow('mode_invalid');
 });
+
+test('representative selection has separate explicit admission and cannot remove vetoes', () => {
+  const { assessment, calibration } = fixture();
+  calibration.match.version = 'library_match_cross_fit_v1';
+  for (const candidate of calibration.match.candidates) Object.assign(candidate, {
+    referenceDescriptions: 23, calibrationDescriptions: 24, minimumCalibrationReferences: 23 });
+  const options = { crossFit: true, representative: true };
+  expect(assessLeaderChallengeAcceptance(assessment, calibration, options).reason).toBe('calibration_unavailable');
+  calibration.neighbor.version = 'library_neighbor_representative_cross_fit_v1';
+  expect(assessLeaderChallengeAcceptance(assessment, calibration, { crossFit: true }).reason).toBe('calibration_unavailable');
+  expect(assessLeaderChallengeAcceptance(assessment, calibration, options).accepted).toBe(true);
+  const veto = { ...assessment, statusId: 'review_veto', challengerId: null, blockedContent: { statusId: 'challenger', challengerId: 2 } };
+  expect(applyLeaderChallengeAcceptance(veto, calibration, options)).toMatchObject({ statusId: 'review_veto', challengerId: null, acceptance: { accepted: true } });
+  expect(() => assessLeaderChallengeAcceptance(assessment, calibration, { representative: true })).toThrow('mode_invalid');
+  expect(() => assessLeaderChallengeAcceptance(assessment, calibration, { crossFit: true, representative: 'true' })).toThrow('mode_invalid');
+});

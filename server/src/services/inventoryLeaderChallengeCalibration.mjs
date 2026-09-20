@@ -1,6 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { createInventoryMatchCalibration } from './inventoryMatchCalibration.mjs';
-import { createInventoryNeighborCalibration } from './inventoryNeighborCalibration.mjs';
+import { createPairedInventoryNeighborCalibration } from './inventoryNeighborCalibration.mjs';
 
 /** Snapshot-owned, lazy calibration. Query validation must not admit query rows into fitting. */
 export function createLeaderChallengeCalibration(snapshot, representation, trainingByFold) {
@@ -9,7 +9,7 @@ export function createLeaderChallengeCalibration(snapshot, representation, train
     const admitted = new Set(documents.map(doc => doc.hash));
     return [fold, new Set([...hashes].filter(hash => !admitted.has(hash)))];
   }));
-  let match, neighbor, crossFitMatch;
+  let match, neighbor, crossFitMatch, representativeNeighbor;
   return async (entry, { signal } = {}) => {
     signal?.throwIfAborted();
     const held = exclusions.get(entry?.foldIndex);
@@ -19,14 +19,17 @@ export function createLeaderChallengeCalibration(snapshot, representation, train
       const input = { documents: snapshot.corpus.documents, libraries: snapshot.libraries,
         vectors: snapshot.vectors, representation };
       match = createInventoryMatchCalibration(input);
-      neighbor = createInventoryNeighborCalibration(input, { crossFit: true });
+      const pair = createPairedInventoryNeighborCalibration(input, { diagnostics: true });
+      neighbor = pair.ordered;
       crossFitMatch = createInventoryMatchCalibration(input, { crossFit: true });
+      representativeNeighbor = pair.representative;
     }
     const query = { ...entry, heldDescriptionHashes: new Set(held) };
     // Sequential fitting avoids overlapping scratch memory; all kernels enforce work budgets.
     const familiar = await match.assess(query, { signal });
     const distinct = await neighbor.assess(query, { signal });
     const crossFitted = await crossFitMatch.assess(query, { signal });
-    return { match: familiar, neighbor: distinct, crossFitMatch: crossFitted };
+    const selected = await representativeNeighbor.assess(query, { signal });
+    return { match: familiar, neighbor: distinct, crossFitMatch: crossFitted, representativeNeighbor: selected };
   };
 }

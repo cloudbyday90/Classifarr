@@ -22,13 +22,16 @@ test('compares fresh production policy results across both media without inferen
   const { runtime, source, client } = fixture(), before = structuredClone(source), loadRuntime = jest.fn(async () => runtime);
   const onProgress = jest.fn();
   const report = await runInventoryLeaderChallengeBenchmark(settings, { loadRuntime, onProgress });
-  expect(report).toMatchObject({ protocol: 'inventory_leader_challenge_v3', status: 'complete', sourceVerified: true,
+  expect(report).toMatchObject({ protocol: 'inventory_leader_challenge_v4', status: 'complete', sourceVerified: true,
     calls: 0, sampleShortfall: 0, liveRoutingChanged: false, livePromotionAllowed: false, accuracy: null,
     comparison: { sampled: 12, compared: 12, poolSizes: { 3: 12 } } });
   expect(report.comparison.byMedia.every(row => row.sampled > 0)).toBe(true);
   expect(report.comparison.byLibrary).toHaveLength(6);
   expect(report.acceptanceComparison).toMatchObject({ sampled: 12, compared: 12, acceptance: { reasons: expect.any(Object) } });
   expect(report.crossFitAcceptanceComparison).toMatchObject({ sampled: 12, compared: 12, acceptance: { reasons: expect.any(Object) } });
+  expect(report.representativeAcceptanceComparison).toMatchObject({ sampled: 12, compared: 12, acceptance: { reasons: expect.any(Object) } });
+  expect(report.referenceCoverage).toMatchObject({ nominatedQueries: expect.any(Number), candidateComparisons: expect.any(Number) });
+  expect(report.referenceCoverage.byLibrary).toHaveLength(6);
   expect(loadRuntime).toHaveBeenCalledWith({ includeTrainingProvenance: true });
   expect(runtime.withDiscoveryAdmission).toHaveBeenCalledTimes(1);
   expect(runtime.repository.read).toHaveBeenCalledTimes(2);
@@ -37,7 +40,7 @@ test('compares fresh production policy results across both media without inferen
   expect(runtime.close).toHaveBeenCalledTimes(1);
   expect(onProgress).toHaveBeenCalledTimes(12);
   expect(source).toEqual(before);
-  expect(JSON.stringify(report)).not.toMatch(/Private|candidateOrder|challengerId|movie:1|localhost/);
+  expect(JSON.stringify(report)).not.toMatch(/Private|candidateOrder|challengerId|libraryId|movie:1|localhost/);
 });
 
 test('canonical, provenance-clean fold evidence excludes retained decisions and all held copies for policy and content', async () => {

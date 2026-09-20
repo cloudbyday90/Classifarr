@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Measure missing nearest-library examples during held-out classification evaluation
+  and compare a bounded, content-representative reference sample with the existing
+  baseline. Share snapshot memory, retain safe fallback and preserve live routing.
 - Evaluate small-library familiarity using description-excluded cross-fitting,
   retaining minimum evidence requirements and comparing it with the existing
   split baseline. Keep provenance exclusions, cancellation and live routing

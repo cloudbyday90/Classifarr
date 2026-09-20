@@ -124,6 +124,9 @@ Provenance digest: `0a06355a860e2da958b20df5144a986666fbb062c698df9811a4d4ae37e1
 
 ## Final recommendation stack and next item
 
+Follow-up: [neighbor-reference coverage outcome](neighbor-reference-coverage-outcome.md)
+records the measured coverage gap and the representative-selection comparison.
+
 1. Retain the provenance-clean, library-agnostic evidence path and grouped outer
    evaluation. Do not treat current placement or Classifarr's own decisions as truth.
 2. Keep cross-fit familiarity as an evaluation option. It fixes sparse assessment

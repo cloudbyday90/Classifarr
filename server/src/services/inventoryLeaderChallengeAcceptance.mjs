@@ -2,6 +2,7 @@
 import { LIBRARY_MATCH_BASELINE_VERSION, LIBRARY_MATCH_BASELINE_LIMITS as matchLimits } from './libraryMatchBaseline.mjs';
 import { NEIGHBOR_CROSS_FIT_VERSION, NEIGHBOR_CROSS_FIT_LIMITS as neighborLimits } from './libraryNeighborCrossFit.mjs';
 import { LIBRARY_MATCH_CROSS_FIT_VERSION } from './libraryMatchCrossFit.mjs';
+import { NEIGHBOR_REPRESENTATIVE_VERSION } from './neighborRepresentativeSelection.mjs';
 
 const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const count = (value, min, max) => Number.isInteger(value) && value >= min && value <= max;
@@ -19,8 +20,8 @@ export function leaderChallengeNomination(assessment) {
 }
 
 /** Empirical evidence, not a live receipt, confidence score or authority to bypass review. */
-export function assessLeaderChallengeAcceptance(assessment, calibration, { crossFit = false } = {}) {
-  if (typeof crossFit !== 'boolean') throw new Error('leader_acceptance_mode_invalid');
+export function assessLeaderChallengeAcceptance(assessment, calibration, { crossFit = false, representative = false } = {}) {
+  if (typeof crossFit !== 'boolean' || typeof representative !== 'boolean' || (representative && !crossFit)) throw new Error('leader_acceptance_mode_invalid');
   const nomination = leaderChallengeNomination(assessment);
   const result = (reason, incumbent = null, challenger = null) => ({ reason, accepted: reason === 'accepted',
     incumbent: state(incumbent?.status), challenger: state(challenger?.status) });
@@ -30,7 +31,7 @@ export function assessLeaderChallengeAcceptance(assessment, calibration, { cross
       pool.some(id => !count(id, 1, 2147483647)) || !pool.includes(assessment.policyLeaderId) ||
       !pool.includes(nomination.challengerId) || assessment.policyLeaderId === nomination.challengerId ||
       match?.version !== (crossFit ? LIBRARY_MATCH_CROSS_FIT_VERSION : LIBRARY_MATCH_BASELINE_VERSION) ||
-      neighbor?.version !== NEIGHBOR_CROSS_FIT_VERSION ||
+      neighbor?.version !== (representative ? NEIGHBOR_REPRESENTATIVE_VERSION : NEIGHBOR_CROSS_FIT_VERSION) ||
       !hash(match.snapshotId) || !hash(neighbor.snapshotId) || neighbor.status !== 'evaluated' ||
       !Array.isArray(match.candidates) || !Array.isArray(neighbor.candidates) ||
       match.candidates.length < pool.length || match.candidates.length > 64 ||
