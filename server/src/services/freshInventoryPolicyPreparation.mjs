@@ -11,10 +11,10 @@ import { resolveDeterministicOutcomeAiMode } from './classificationDeterministic
 import { preparePolicyShortlistReplayCase } from './policyShortlistReplayCase.mjs';
 
 /** Production formulas and exclusions; all evidence readers are explicitly fold-local. */
-export async function prepareFreshInventoryPolicyCase(entry, source, evidence, signal) {
+export async function evaluateFreshInventoryPolicyCase(entry, source, evidence, signal) {
   signal?.throwIfAborted();
   const runtime = evidence.forCase(entry);
-  if (!runtime) return { status: 'metadata_unavailable' };
+  if (!runtime) return { common: { status: 'metadata_unavailable' }, runtime: null };
   const { metadata } = runtime;
   const inventory = createPolicyInventoryEvidenceService({ retriever: runtime });
   const result = await evaluateItem(metadata, { ragCache: { matches: [], timestamp: 1 }, relatedEvidence: [] }, {
@@ -36,7 +36,15 @@ export async function prepareFreshInventoryPolicyCase(entry, source, evidence, s
   const mode = resolveDeterministicOutcomeAiMode({ policyResult, libraries: source.libraries, candidateAdjudication });
   const common = { policyResult, mode: mode.mode, modeReason: mode.reasonCode,
     missingMetadata: ['genres', 'keywords', 'certification', 'original_language'].filter(field => !metadata[field]?.length) };
+  return { common, runtime, mode };
+}
+
+/** Prepare provider evidence only for the existing admitted comparison path. */
+export async function prepareFreshInventoryPolicyCase(entry, source, evidence, signal) {
+  const { common, runtime, mode } = await evaluateFreshInventoryPolicyCase(entry, source, evidence, signal);
+  if (!runtime) return common;
   if (!mode.shouldInvoke || mode.mode !== 'adjudicate') return { ...common, status: 'mode_not_adjudication' };
+  const { metadata } = runtime, { policyResult } = common;
   const replay = await preparePolicyShortlistReplayCase({ metadata, policyResult }, source, runtime, signal);
   return { ...replay, ...common, reviewPolicies: source.policies };
 }

@@ -4,6 +4,7 @@ import pg from 'pg';
 import * as db from '../../config/database.mjs';
 import { createFreshInventoryPolicyRepository, fingerprintFreshPolicySnapshot, FRESH_POLICY_CONFIG_SQL, loadFreshInventoryPolicyRuntime } from '../../services/freshInventoryPolicyRuntime.mjs';
 import { freshFixture } from '../fixtures/freshInventoryPolicyFixture.mjs';
+import { INVENTORY_TRAINING_HISTORY_SQL } from '../../services/inventoryTrainingProvenance.mjs';
 
 function setup() {
   const { source } = freshFixture();
@@ -18,6 +19,19 @@ function setup() {
 }
 const identity = { provider: 'ollama', model: 'embedding:latest', digest: 'b'.repeat(64), dimensions: 2 };
 const privateLogging = { level: 'fatal', fileLoggingEnabled: false };
+
+test('opt-in training provenance is captured inside the same policy snapshot and fingerprinted', async () => {
+  const { client, withTransaction, loadPolicies } = setup(), original = client.query.getMockImplementation();
+  client.query.mockImplementation((sql, parameters) => sql === INVENTORY_TRAINING_HISTORY_SQL
+    ? Promise.resolve({ rows: [{ media_type: 'movie', tmdb_id: 1 }] }) : original(sql, parameters));
+  const repository = createFreshInventoryPolicyRepository({ withTransaction, loadPolicies, includeTrainingProvenance: true });
+  const snapshot = await repository.read(identity);
+  expect(snapshot.trainingExclusions).toEqual(new Set(['movie:1']));
+  const fingerprint = snapshot.fingerprint;
+  snapshot.trainingExclusions.clear();
+  expect(fingerprintFreshPolicySnapshot(snapshot)).not.toBe(fingerprint);
+  expect(withTransaction).toHaveBeenCalledTimes(1);
+});
 
 test.each([{ level: 'info', fileLoggingEnabled: false }, { level: 'fatal', fileLoggingEnabled: true }])(
   'refuses private content access when startup logging is unsafe: %j', async logging => {

@@ -174,6 +174,9 @@ no release or version bump.
 
 ## Final recommendation stack and next high-value item
 
+Follow-up completed: [content-supported leader challenge evaluation](inventory-leader-challenge-outcome.md).
+It retains live behavior after identifying small-library regressions in balanced coverage.
+
 1. Keep the linear experiment available for reproducible evaluation, not live
    adoption. It was deterministic but weaker overall and sensitive to label noise.
 2. Preserve the existing organic metadata profiles and raw description retrieval.

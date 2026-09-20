@@ -25,6 +25,7 @@ import { runInventoryMultiScaleAiBenchmark } from '../services/inventoryMultiSca
 import { createInventoryDiscoveryAdmission, DiscoveryDeferredError } from '../services/inventoryDiscoveryAdmission.mjs';
 import { runInventoryLinearRankerBenchmark } from '../services/inventoryLinearRankerBenchmark.mjs';
 import { describeLinearRankerInputs } from '../services/inventoryLinearRankerSource.mjs';
+import { runInventoryLeaderChallengeBenchmark } from '../services/inventoryLeaderChallengeBenchmark.mjs';
 
 async function loadPrivateRuntime({ includeTrainingProvenance = false } = {}) {
   process.env.LOG_LEVEL = 'fatal';
@@ -51,6 +52,7 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     'selective-recheck': { type: 'boolean' },
     'policy-shortlist-replay': { type: 'boolean' },
     'fresh-policy-evaluation': { type: 'boolean' },
+    'leader-challenge': { type: 'boolean' },
     'neighbor-calibration': { type: 'boolean' },
     'neighbor-cross-fit': { type: 'boolean' },
     'neighbor-fallback': { type: 'boolean' },
@@ -82,6 +84,12 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     ...(values.context === undefined ? {} : { context: Number(values.context) }),
     ...(values['max-minutes'] === undefined ? {} : { maxMinutes: Number(values['max-minutes']) }),
   });
+  if (values['leader-challenge']) {
+    if (!options.folds || options.generateCases || Object.entries(values).some(([name, value]) => name !== 'leader-challenge' && value === true)) {
+      throw new Error('leader_challenge_requires_exclusive_grouped_zero_generation');
+    }
+    return runInventoryLeaderChallengeBenchmark(options, { signal, onProgress, loadRuntime: loadFreshRuntime });
+  }
   for (const mode of ['candidate-stability', 'candidate-local-evidence', 'group-contrast', 'adaptive-groups', 'local-communities', 'multi-scale-context', 'linear-ranker']) {
     if (values[mode] && (!options.folds || options.generateCases ||
         Object.entries(values).some(([name, value]) => name !== mode && value === true))) {

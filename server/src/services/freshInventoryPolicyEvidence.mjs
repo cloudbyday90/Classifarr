@@ -16,7 +16,7 @@ export function projectFreshInventoryMetadata(row) {
 }
 
 /** Fold training never includes the query identity or any copy of its description. */
-export function createFreshInventoryPolicyEvidence(snapshot, prepared) {
+export function createFreshInventoryPolicyEvidence(snapshot, prepared, { trainingByFold = null } = {}) {
   const documents = new Map(snapshot.corpus.documents.map(doc => [doc.key, doc]));
   const metadata = new Map();
   for (const row of snapshot.evaluationRows) {
@@ -30,12 +30,17 @@ export function createFreshInventoryPolicyEvidence(snapshot, prepared) {
     if (folds.has(key)) return folds.get(key);
     const held = entry.heldDescriptionHashes;
     if (!(held instanceof Set) || !held.has(entry.descriptionHash)) throw new Error('fresh_policy_fold_missing');
-    const training = snapshot.corpus.documents.filter(doc => doc.type === entry.mediaType && !held.has(doc.hash));
+    if (trainingByFold !== null && (!(trainingByFold instanceof Map) || !Array.isArray(trainingByFold.get(entry.foldIndex)))) {
+      throw new Error('fresh_policy_training_fold_missing');
+    }
+    const training = (trainingByFold === null ? snapshot.corpus.documents : trainingByFold.get(entry.foldIndex))
+      .filter(doc => doc.type === entry.mediaType && !held.has(doc.hash));
+    const trainingKeys = new Set(training.map(doc => doc.key));
     const libraries = snapshot.libraries.filter(library => library.media_type === entry.mediaType);
     const learned = learnInventoryProfiles(training, snapshot.candidateMetadata, libraries);
     const profiles = new Map(libraries.map(library => {
       const rows = snapshot.evaluationRows.filter(row => row.library_id === library.id &&
-        documents.has(keyOf(row)) && !held.has(documents.get(keyOf(row)).hash));
+        trainingKeys.has(keyOf(row)));
       const observation = buildLibraryProfileObservation(rows.map(row => ({ ...row, metadata: row.evaluation_metadata })));
       return [library.id, { profile: { media_type: library.media_type,
         rating_distribution: observationDistribution(observation, 'rating'),

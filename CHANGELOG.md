@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Evaluate content-supported challenges to provisional policy leaders, including
+  small candidate pools, with shared provenance-clean evidence and paired outcome
+  diagnostics. Distinguish manual-review blockers from weak content matches;
+  preserve live routing safeguards, reject changed snapshots and avoid new UI work.
 - Add a bounded, read-only learned content-ranker benchmark using existing
   description vectors. Compare it with nearest-item and organic metadata matching,
   exclude retained classification decisions from training, and measure placement
