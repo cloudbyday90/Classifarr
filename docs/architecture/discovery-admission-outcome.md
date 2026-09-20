@@ -85,6 +85,10 @@ with these smoke checks. No new accuracy or inference-quality claim is made.
 
 ## Tradeoffs and next recommendation
 
+The follow-up extractive selection experiment is specified in the
+[compact evidence design](compact-inventory-evidence-design.md) and measured in its
+[separate outcome](compact-inventory-evidence-outcome.md).
+
 1. Keep shared admission and automatic retry. It coordinates the participating
    processes and protects a reserve; the cost is deferred expensive work and one
    pooled database connection per admitted job. Existing ordinary work is not

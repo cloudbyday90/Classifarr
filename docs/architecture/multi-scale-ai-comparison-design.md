@@ -2,6 +2,11 @@
 
 ## Goal and scope
 
+This document records protocol v1. The current CLI uses protocol v2, specified in
+the [compact evidence design](compact-inventory-evidence-design.md); its raw control
+and safety boundaries remain unchanged, but its second arm replaces appended
+context with a bounded selection. Do not combine results across protocol versions.
+
 Evaluate whether the additional context introduced in `dddd1597` changes local AI
 choices usefully. Retrieval coverage alone did not establish semantic correctness.
 This is a read-only, content-only ablation, not a replay of the full live policy

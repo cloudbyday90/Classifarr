@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { expect, jest, test } from '@jest/globals';
+import { createHash } from 'node:crypto';
 import { runInventoryMultiScaleAiBenchmark } from '../../services/inventoryMultiScaleAiBenchmark.mjs';
 import { createMultiScaleProfileLoader } from '../../services/inventoryMultiScaleCache.mjs';
 import { buildMultiScaleProfile } from '../../services/inventoryMultiScaleProfile.mjs';
@@ -14,7 +15,7 @@ const run = (snapshot = fixture(), extra = {}, dependencies = {}) => runInventor
 test('real fitting preflights both media types; generation is opt-in and all results are private-safe', async () => {
   const snapshot = fixture(), before = structuredClone(snapshot), onProgress = jest.fn();
   const report = await run(snapshot, {}, { onProgress });
-  expect(report).toMatchObject({ protocol: 'inventory_multi_scale_ai_v1', status: 'preflight', calls: 0,
+  expect(report).toMatchObject({ protocol: 'inventory_multi_scale_ai_v2', evidenceSelection: { version: 'query_mmr_v1' }, status: 'preflight', calls: 0,
     independentLabels: 0, accuracy: null, livePromotionAllowed: false, sampledDescriptions: 8, generationShortfall: 0,
     comparison: { sampled: 8, ready: 8, rawExamples: 48, generatedPairs: 0 } });
   expect(report.comparison.mediaTypes.map(row => row.sampled)).toEqual([4, 4]);
@@ -76,7 +77,14 @@ test.each(['time_budget', 'invalid_groups', 'discovery_failed', 'PRIVATE failure
 
 test('preflights both arms against the smaller context and skips the whole pair without model calls', async () => {
   const snapshot = fixture(), client = { generate: jest.fn() };
-  for (const [index, hash] of [...snapshot.corpus.texts.keys()].entries()) snapshot.corpus.texts.set(hash, index + '文'.repeat(1000));
+  // Three candidates with four-byte code points exceed the smaller complete-prompt budget.
+  snapshot.libraries.push({ id: 5, media_type: 'movie' }, { id: 6, media_type: 'tv' });
+  for (const doc of [...snapshot.corpus.documents].filter(row => [1, 3].includes(row.libraryIds[0]))) {
+    const hash = createHash('sha256').update(doc.hash).digest('hex'), id = doc.type === 'movie' ? 5 : 6;
+    snapshot.corpus.documents.push({ ...doc, hash, key: `${doc.key}-copy`, libraryIds: [id] });
+    snapshot.corpus.texts.set(hash, 'copy'); snapshot.vectors.set(hash, [...snapshot.vectors.get(doc.hash)]);
+  }
+  for (const [index, hash] of [...snapshot.corpus.texts.keys()].entries()) snapshot.corpus.texts.set(hash, index + '🦊'.repeat(1000));
   const loader = { clear: jest.fn(), load: async (_snapshot, _identity, { held }) => ({ profile: {
     summary: () => ({ localStatus: 'available' }), retrieve: async ({ hash }) =>
       resultFor(snapshot, snapshot.corpus.documents.find(doc => doc.hash === hash), held),

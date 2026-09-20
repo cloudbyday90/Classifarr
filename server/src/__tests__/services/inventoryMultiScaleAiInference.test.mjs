@@ -60,14 +60,15 @@ test('provider failure/cancellation never leaks text or scores an incomplete pai
 
 test('anonymous metrics separate selected/abstained/unstable and gained/lost placement agreement', () => {
   const metrics = createMultiScaleAiMetrics([{ id: 7, media_type: 'movie' }, { id: 8, media_type: 'movie' }, { id: 9, media_type: 'tv' }]);
-  const doc = { type: 'movie', libraryIds: [7] }, ready = { status: 'ready', rawExamples: 6, extraExamples: 2, emptyCandidates: 0, shortlistMiss: false };
+  const doc = { type: 'movie', libraryIds: [7] }, ready = { status: 'ready', rawExamples: 6, compactExamples: 3,
+    compactContextExamples: 1, evidencePoolExamples: 12, compactEmptyCandidates: 0, emptyCandidates: 0, shortlistMiss: false };
   metrics.prepare(doc, ready, false); metrics.prepare(doc, { status: 'insufficient_candidates' }, false);
   metrics.record(doc, [{ status: 'abstained' }, { status: 'selected', id: 7 }]);
   metrics.record(doc, [{ status: 'selected', id: 7 }, { status: 'selected', id: 8 }]);
   metrics.record(doc, [{ status: 'order_sensitive' }, { status: 'abstained' }]);
   expect(metrics.read()).toMatchObject({ sampled: 2, ready: 1, generatedPairs: 3, changedStableChoice: 2,
-    gainedPlacementAgreement: 1, lostPlacementAgreement: 1,
-    arms: [{ selected: 1, abstained: 1, orderSensitive: 1 }, { selected: 2, abstained: 1, orderSensitive: 0 }] });
+    gainedPlacementAgreement: 1, lostPlacementAgreement: 1, compactExamples: 3, compactContextExamples: 1, evidencePoolExamples: 12,
+    arms: [{ name: 'raw', selected: 1, abstained: 1, orderSensitive: 1 }, { name: 'compact', selected: 2, abstained: 1, orderSensitive: 0 }] });
   expect(metrics.read().mediaTypes[1].generatedPairs).toBe(0);
   expect(metrics.read().libraries[0].generatedPairs).toBe(3);
   expect(JSON.stringify(metrics.read())).not.toContain('libraryIds');

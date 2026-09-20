@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Compare compact, query-relevant and nonredundant inventory evidence against
+  unchanged raw examples in the local held-out AI benchmark. Version the experiment
+  and report evidence coverage, order stability and cost without changing live routing.
 - Coordinate heavy library discovery and description evaluations across processes.
   Defer work when memory is scarce, cancel safely under pressure, and retry live
   refreshes automatically while preserving ordinary retrieval and metadata backfill.

@@ -1,8 +1,9 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 const arm = name => ({ name, selected: 0, abstained: 0, orderSensitive: 0, placementAgreements: 0 });
-const counters = () => ({ sampled: 0, ready: 0, rawExamples: 0, extraExamples: 0, emptyCandidates: 0, shortlistMisses: 0,
+const counters = () => ({ sampled: 0, ready: 0, rawExamples: 0, compactExamples: 0, compactContextExamples: 0,
+  evidencePoolExamples: 0, compactEmptyCandidates: 0, emptyCandidates: 0, shortlistMisses: 0,
   contextBudgetExceeded: 0, generatedPairs: 0, changedStableChoice: 0, gainedPlacementAgreement: 0, lostPlacementAgreement: 0,
-  arms: [arm('raw'), arm('context')] });
+  arms: [arm('raw'), arm('compact')] });
 
 /** Anonymous strata and totals only. Never retain packets, responses, titles or item keys. */
 export function createMultiScaleAiMetrics(libraries) {
@@ -16,7 +17,8 @@ export function createMultiScaleAiMetrics(libraries) {
       for (const row of targets(doc)) {
         row.sampled++;
         if (plan.status !== 'ready') continue;
-        row.ready++; row.rawExamples += plan.rawExamples; row.extraExamples += plan.extraExamples;
+        row.ready++;
+        for (const key of ['rawExamples', 'compactExamples', 'compactContextExamples', 'evidencePoolExamples', 'compactEmptyCandidates']) row[key] += plan[key];
         row.emptyCandidates += plan.emptyCandidates; row.shortlistMisses += Number(plan.shortlistMiss);
         row.contextBudgetExceeded += Number(overBudget);
       }

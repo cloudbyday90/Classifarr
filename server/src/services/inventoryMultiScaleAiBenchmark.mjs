@@ -11,6 +11,7 @@ import { prepareMultiScaleAiCase, buildMultiScaleAiPrompt } from './inventoryMul
 import { createMultiScaleAiInference } from './inventoryMultiScaleAiInference.mjs';
 import { createMultiScaleAiMetrics } from './inventoryMultiScaleAiMetrics.mjs';
 import { DESCRIPTION_BENCHMARK_OUTPUT_TOKENS } from './localDescriptionBenchmarkClient.mjs';
+import { COMPACT_EVIDENCE_SELECTION } from './inventoryCompactEvidence.mjs';
 
 /** Content-only paired experiment. It cannot persist learned state or authorize media routing. */
 export async function runInventoryMultiScaleAiBenchmark(snapshot, representation, rawOptions, { signal, onProgress,
@@ -48,7 +49,7 @@ export async function runInventoryMultiScaleAiBenchmark(snapshot, representation
       for (const doc of sample.filter(row => folds.foldByHash.get(row.hash) === fold)) {
         const result = await profile.retrieve({ type: doc.type, hash: doc.hash, vector: snapshot.vectors.get(doc.hash) }, abort);
         const plan = prepareMultiScaleAiCase(snapshot, doc, folds.held[fold], result);
-        const prompts = plan.status === 'ready' ? [false, true].map(enhanced => [false, true].map(reverse => buildMultiScaleAiPrompt(plan, enhanced, reverse))) : [];
+        const prompts = plan.status === 'ready' ? [false, true].map(compact => [false, true].map(reverse => buildMultiScaleAiPrompt(plan, compact, reverse))) : [];
         const bytes = prompts.flat().map(prompt => Buffer.byteLength(prompt));
         const overBudget = bytes.some(value => value > (options.context - DESCRIPTION_BENCHMARK_OUTPUT_TOKENS) * 3);
         metrics.prepare(doc, plan, overBudget);
@@ -71,7 +72,7 @@ export async function runInventoryMultiScaleAiBenchmark(snapshot, representation
     if (abort.aborted || inference.read().status === 'completed_with_errors') break;
   }
   const measurement = { ...inference.read(), ...(!contextComplete ? { status: 'not_run_incomplete_context' } : {}) }, totals = metrics.read();
-  return { protocol: 'inventory_multi_scale_ai_v1', status: contextComplete ? measurement.status : 'completed_with_errors',
+  return { protocol: 'inventory_multi_scale_ai_v2', evidenceSelection: { ...COMPACT_EVIDENCE_SELECTION }, status: contextComplete ? measurement.status : 'completed_with_errors',
     contextComplete, calls: measurement.calls,
     seed: options.seed, independentLabels: 0, accuracy: null, livePromotionAllowed: false, observedPlacementIsGroundTruth: false,
     metric: 'paired_content_choice_not_verified_routing_accuracy', sampledDescriptions: sample.length,

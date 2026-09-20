@@ -6,7 +6,7 @@ const armStats = name => ({ name, calls: 0, validPasses: 0, latencyMs: 0, prompt
 
 /** Four passes per case, stopping rather than silently repairing invalid/provider output. */
 export function createMultiScaleAiInference(options, { client, identity, signal, onProgress } = {}) {
-  const arms = [armStats('raw'), armStats('context')], failures = {};
+  const arms = [armStats('raw'), armStats('compact')], failures = {};
   let attemptedCases = 0, completePairs = 0, failed = false;
   const fail = status => { failed = true; failures[status] = (failures[status] ?? 0) + 1; };
   return {

@@ -24,7 +24,7 @@ test('multi-scale AI CLI validates before config, bounds inference, verifies sou
   expect(loadRuntime).not.toHaveBeenCalled();
   const instance = runtime();
   expect(await runInventoryDescriptionBenchmark({ argv, loadRuntime: async () => instance }))
-    .toMatchObject({ protocol: 'inventory_multi_scale_ai_v1', status: 'preflight', sourceVerified: true, calls: 0 });
+    .toMatchObject({ protocol: 'inventory_multi_scale_ai_v2', status: 'preflight', sourceVerified: true, calls: 0 });
   expect(instance.createClient).not.toHaveBeenCalled();
   instance.client.generate.mockImplementation(async ({ onGenerationCall }) => {
     onGenerationCall(); return { response: '{"candidate":0}', latencyMs: 1, promptTokens: 100, outputTokens: 5 };
