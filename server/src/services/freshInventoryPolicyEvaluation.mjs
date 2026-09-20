@@ -10,6 +10,7 @@ import { createInventoryMatchCalibration } from './inventoryMatchCalibration.mjs
 import { createInventoryNeighborCalibration } from './inventoryNeighborCalibration.mjs';
 import { inspectInventoryNeighborProposal } from './inventoryNeighborProposal.mjs';
 import { isInventoryNeighborFallbackTarget } from './inventoryNeighborFallback.mjs';
+import { createFrozenEvaluationSnapshot } from './frozenEvaluationSnapshot.mjs';
 
 /** Fresh policies, fold-local evidence, sequential admitted inference, aggregate output only. */
 export async function runFreshInventoryPolicyEvaluation(settings, {
@@ -29,6 +30,7 @@ export async function runFreshInventoryPolicyEvaluation(settings, {
     if (source.config?.rag_enabled !== true || source.config.primary_provider !== 'ollama' ||
         JSON.stringify(source.config) !== JSON.stringify(runtime.config)) throw new Error('fresh_policy_configuration_unavailable');
     await verifyDescriptionRepresentation(runtime.embedder, representation, abort);
+    const snapshot = createFrozenEvaluationSnapshot({ fingerprint: source.fingerprint, components: describeFreshPolicySnapshot(source) });
     const prepared = prepareDescriptionBenchmark(source, source.vectors, representation.dimensions, options,
       { learnedProfiles: true, includeComparisonEvidence: true, preserveDescriptionCandidate: true });
     const evidence = createFreshInventoryPolicyEvidence(source, prepared);
@@ -46,26 +48,18 @@ export async function runFreshInventoryPolicyEvaluation(settings, {
         ...(fallback ? { neighborFallback: fallback } : {}) } });
       onProgress({ stage: 'fresh_policy_preparation', completed: rows.length, requested: prepared.cases.length });
     }
-    const initialComponents = describeFreshPolicySnapshot(source);
-    let changedComponents = [];
-    const verify = async ({ allowMetadataRefresh = false } = {}) => {
+    const verify = async () => {
       abort.throwIfAborted();
       const current = await runtime.repository.read(representation);
-      if (current.fingerprint !== source.fingerprint) {
-        const currentComponents = describeFreshPolicySnapshot(current);
-        const changed = Object.keys(initialComponents).filter(key => initialComponents[key] !== currentComponents[key]);
-        changedComponents = [...new Set([...changedComponents, ...changed])].sort();
-        // All prompts and fold models were frozen before generation. Background metadata
-        // refresh cannot alter those inputs; it changes freshness, not snapshot validity.
-        if (!allowMetadataRefresh || !changed.length || changed.some(key => !['metadata', 'observedTraits'].includes(key))) {
-          throw new Error('fresh_policy_source_changed');
-        }
-      }
+      abort.throwIfAborted();
+      const result = snapshot.observe({ fingerprint: current.fingerprint, components: describeFreshPolicySnapshot(current) });
+      if (!result.evaluationSnapshotValid) throw new Error('fresh_policy_source_changed');
       await verifyDescriptionRepresentation(runtime.embedder, representation, abort);
+      abort.throwIfAborted();
     };
     // Preparation reads only the captured source. Background metadata refresh
     // cannot change those frozen inputs, including the newly fitted baselines.
-    await verify({ allowMetadataRefresh: true });
+    await verify();
     const requested = neighborFallback
       ? rows.filter(row => isInventoryNeighborFallbackTarget(row.prepared.neighborFallback) && row.prepared.status === 'ready').slice(0, options.generateCases)
       : rows.slice(0, options.generateCases).filter(row => row.prepared.status === 'ready');
@@ -73,12 +67,12 @@ export async function runFreshInventoryPolicyEvaluation(settings, {
     const identity = client ? await client.inspect(abort) : null;
     let calls = 0, verificationFailure = null;
     const verifyGenerationSnapshot = async () => {
-      try { await verify({ allowMetadataRefresh: true }); }
+      try { await verify(); }
       catch (error) {
         verificationFailure = error?.message === 'fresh_policy_source_changed' ? 'source_changed' : 'snapshot_verification_failed';
       }
       onProgress({ stage: 'fresh_policy_snapshot_check', calls,
-        status: verificationFailure ?? (changedComponents.length ? 'frozen_snapshot_metadata_refreshed' : 'verified') });
+        status: abort.aborted ? 'interrupted' : verificationFailure ?? (snapshot.summary().liveMetadataRefreshed ? 'frozen_snapshot_metadata_refreshed' : 'verified') });
     };
     for (const row of requested) {
       if (abort.aborted) break;
@@ -102,6 +96,6 @@ export async function runFreshInventoryPolicyEvaluation(settings, {
     }
     if (!abort.aborted && !verificationFailure) await verifyGenerationSnapshot();
     return buildFreshPolicyReport({ source, prepared, rows, options, calls, identity, representation,
-      interrupted: abort.aborted, verificationFailure, changedComponents, neighborFallback });
+      interrupted: abort.aborted, verificationFailure, changedComponents: snapshot.summary().changedComponents, neighborFallback });
   } finally { await runtime.close(); }
 }

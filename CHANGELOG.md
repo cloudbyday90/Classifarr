@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Share frozen-snapshot verification across offline policy and content evaluations.
+  Retain historical measurements during metadata enrichment, keep safety-relevant
+  drift invalidating, and check source validity before optional inference.
 - Add an opt-in, pinned local cross-encoder for held-out library-content evaluation,
   with bounded inference, repeat/order checks, private-network isolation and a
   shadow-only stale-while-revalidate cache. Preserve current routing and keep

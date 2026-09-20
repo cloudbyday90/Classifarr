@@ -2,6 +2,7 @@
 import { beforeEach, expect, jest, test } from '@jest/globals';
 import { freshFixture, freshSettings } from '../fixtures/freshInventoryPolicyFixture.mjs';
 import { DiscoveryDeferredError } from '../../services/inventoryDiscoveryAdmission.mjs';
+import { fingerprintFreshPolicySnapshot } from '../../services/freshInventoryPolicyRuntime.mjs';
 
 const run = jest.fn(), add = jest.fn(), createLeaderSemanticEvaluation = jest.fn(() => ({ run, add }));
 jest.unstable_mockModule('../../services/inventoryLeaderSemanticEvaluation.mjs', () => ({
@@ -11,6 +12,7 @@ const { runInventoryLeaderChallengeBenchmark } = await import('../../services/in
 const settings = { ...freshSettings, generateCases: 2 };
 function fixture() {
   const value = freshFixture(); value.source.trainingExclusions = new Set();
+  value.source.fingerprint = fingerprintFreshPolicySnapshot(value.source);
   value.runtime.withDiscoveryAdmission = jest.fn(async (callback, { signal }) => callback(signal, () => signal.throwIfAborted()));
   return value;
 }
@@ -25,7 +27,7 @@ test.each([false, true])('semantic call accounting and snapshot verification sha
   const { runtime } = fixture();
   expect(await runInventoryLeaderChallengeBenchmark(settings, { semantic: true, grounded, loadRuntime: async () => runtime })).toMatchObject({
     protocol: grounded ? 'inventory_leader_grounded_v1' : 'inventory_leader_semantic_v1', sourceVerified: true, calls: 2, liveRoutingChanged: false, routingReceiptsCreated: 0 });
-  expect(runtime.repository.read).toHaveBeenCalledTimes(2); expect(runtime.close).toHaveBeenCalledTimes(1);
+  expect(runtime.repository.read).toHaveBeenCalledTimes(3); expect(runtime.close).toHaveBeenCalledTimes(1);
   expect(run.mock.calls[0][0]).toMatchObject({ createClient: runtime.createClient });
   if (grounded) expect(createLeaderSemanticEvaluation).toHaveBeenCalledWith(expect.objectContaining({ grounded: true }));
 });
@@ -56,9 +58,31 @@ test.each([false, true])('post-generation source drift invalidates the result (g
   const { source, runtime } = fixture(), changed = structuredClone(source);
   changed.trainingExclusions = new Set(source.trainingExclusions);
   changed.config.configuration_revision = 2;
-  runtime.repository.read.mockResolvedValueOnce(source).mockResolvedValue(changed);
+  changed.fingerprint = fingerprintFreshPolicySnapshot(changed);
+  runtime.repository.read.mockResolvedValueOnce(source).mockResolvedValueOnce(source).mockResolvedValue(changed);
   expect(await runInventoryLeaderChallengeBenchmark(settings, { semantic: true, grounded, loadRuntime: async () => runtime })).toMatchObject({
     status: 'invalidated', calls: 2, sourceVerified: false, changedComponents: ['configuration'] });
+});
+
+test.each([false, true])('pre-generation source drift prevents semantic calls (grounded=%s)', async grounded => {
+  const { source, runtime } = fixture(), changed = { ...source, config: { ...source.config, configuration_revision: 2 } };
+  changed.fingerprint = fingerprintFreshPolicySnapshot(changed);
+  runtime.repository.read.mockResolvedValueOnce(source).mockResolvedValue(changed);
+  await expect(runInventoryLeaderChallengeBenchmark(settings, { semantic: true, grounded, loadRuntime: async () => runtime }))
+    .rejects.toThrow('source_changed');
+  expect(run).not.toHaveBeenCalled(); expect(runtime.close).toHaveBeenCalledTimes(1);
+});
+
+test.each([false, true])('metadata enrichment retains semantic results without live authority (grounded=%s)', async grounded => {
+  const { source, runtime } = fixture(), changed = structuredClone(source);
+  changed.trainingExclusions = new Set(source.trainingExclusions);
+  changed.candidateMetadata.get('movie:1').genres = ['refreshed'];
+  changed.fingerprint = fingerprintFreshPolicySnapshot(changed);
+  runtime.repository.read.mockResolvedValueOnce(source).mockResolvedValue(changed);
+  expect(await runInventoryLeaderChallengeBenchmark(settings, { semantic: true, grounded, loadRuntime: async () => runtime }))
+    .toMatchObject({ status: 'complete', calls: 2, evaluationSnapshotValid: true, sourceVerified: false,
+      liveMetadataRefreshed: true, changedComponents: ['metadata'], livePromotionAllowed: false });
+  expect(runtime.close).toHaveBeenCalledTimes(1);
 });
 test('provider protocol failure marks the whole report as incomplete without bypassing source verification', async () => {
   const { runtime } = fixture();

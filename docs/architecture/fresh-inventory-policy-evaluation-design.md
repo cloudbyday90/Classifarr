@@ -63,8 +63,10 @@ reason to restart a read-only evaluation. All query metadata, observations,
 learned models and prompts already belong to the starting snapshot. Report
 `snapshotScope: frozen_at_start`, `liveMetadataRefreshed: true` and
 `sourceVerified: false` when this happens. Such results do not describe the updated
-live metadata or authorize a current route. Metadata drift before generation
-still requires a new preparation. This avoids interrupting organic enrichment
+live metadata or authorize a current route. Preparation also uses only captured
+inputs, so metadata refresh during preparation has the same historical status.
+The [shared snapshot contract](frozen-evaluation-snapshot-design.md) now applies
+to fresh-policy and leader/scorer evaluations. This avoids interrupting organic enrichment
 or discarding valid frozen-snapshot measurements merely because enrichment runs.
 
 Public progress and reports contain counts, anonymous library strata and aggregate

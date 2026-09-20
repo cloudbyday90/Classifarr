@@ -28,7 +28,7 @@ test('dedicated scoring retains real call counts, closes runtime and invalidates
   const { source, runtime } = fixture();
   const changed = structuredClone(source); changed.config.configuration_revision = 2;
   changed.fingerprint = fingerprintFreshPolicySnapshot(changed);
-  runtime.repository.read.mockResolvedValueOnce(source).mockResolvedValueOnce(changed);
+  runtime.repository.read.mockResolvedValueOnce(source).mockResolvedValueOnce(source).mockResolvedValueOnce(changed);
   const score = jest.fn(async (input, { onScoringCall }) => {
     onScoringCall(); return { identity: { model: 'pinned' }, scores: input.texts.map(() => 0), latencyMs: 1 };
   });
@@ -100,11 +100,10 @@ test('an explicitly missing training fold cannot silently fall back to the unfil
   expect(() => evidence.forCase(entry)).toThrow('training_fold_missing');
 });
 
-test.each(['provenance', 'policies', 'metadata', 'vectors', 'configuration'])('%s drift invalidates rather than promoting stale results', async field => {
+test.each(['provenance', 'policies', 'vectors', 'configuration'])('%s drift invalidates rather than promoting stale results', async field => {
   const { source, runtime } = fixture(), changed = structuredClone(source);
   if (field === 'provenance') changed.trainingExclusions.add('movie:2');
   if (field === 'policies') changed.policies[0].prompt_threshold = 61;
-  if (field === 'metadata') changed.candidateMetadata.get('movie:1').genres = ['changed'];
   if (field === 'vectors') changed.vectors.set([...changed.vectors.keys()][0], [0, 1]);
   if (field === 'configuration') changed.config.configuration_revision = 2;
   changed.fingerprint = fingerprintFreshPolicySnapshot(changed);

@@ -15,6 +15,7 @@ import { assessLibraryWithheldProbe, buildLibraryWithheldProbeReport } from './i
 import { createLeaderSemanticEvaluation, LEADER_SEMANTIC_MAX_CASES } from './inventoryLeaderSemanticEvaluation.mjs';
 import { waitForInventoryDiscovery } from './inventoryDiscoveryWait.mjs';
 import { createCrossEncoderEvaluation, validateCrossEncoderCases } from './inventoryCrossEncoderEvaluation.mjs';
+import { createFrozenEvaluationSnapshot } from './frozenEvaluationSnapshot.mjs';
 
 /** Compare frozen policy leaders; optional local semantic evaluation has no domain writers. */
 export async function runInventoryLeaderChallengeBenchmark(settings, {
@@ -41,7 +42,14 @@ export async function runInventoryLeaderChallengeBenchmark(settings, {
         throw new Error('leader_challenge_configuration_unavailable');
       }
       await verifyDescriptionRepresentation(runtime.embedder, representation, signal);
-      const components = describeFreshPolicySnapshot(source);
+      const snapshot = createFrozenEvaluationSnapshot({ fingerprint: source.fingerprint, components: describeFreshPolicySnapshot(source) });
+      const verifySnapshot = async () => {
+        checkpoint(); signal.throwIfAborted();
+        const current = await runtime.repository.read(representation);
+        await verifyDescriptionRepresentation(runtime.embedder, representation, signal);
+        signal.throwIfAborted();
+        return snapshot.observe({ fingerprint: current.fingerprint, components: describeFreshPolicySnapshot(current) });
+      };
       const prepared = await prepareLeaderChallengeEvidence(source, representation, options, { signal, checkpoint });
       const rows = [], acceptedRows = [], crossFitRows = [], representativeRows = [], referenceRows = [], exactRows = [];
       const semanticEvaluation = semantic ? createLeaderSemanticEvaluation({ ...options, ...(grounded ? { grounded: true } : {}) }) : null;
@@ -105,22 +113,20 @@ export async function runInventoryLeaderChallengeBenchmark(settings, {
       }
       const integrityControls = summarizeNeighborIntegrityControls(integrityRows);
       if ((semanticEvaluation || scorerEvaluation) && integrityControls.status === 'failed') throw new Error('leader_semantic_integrity_controls_failed');
+      if ((options.generateCases || scoreCases) && !(await verifySnapshot()).evaluationSnapshotValid) {
+        throw new Error('fresh_policy_source_changed');
+      }
       const semanticComparison = semanticEvaluation ? await semanticEvaluation.run({ createClient: runtime.createClient, signal, checkpoint, onProgress,
         onGenerationCall: () => { generationCalls++; } }) : null;
       const crossEncoderComparison = scorerEvaluation ? await scorerEvaluation.run({ signal, checkpoint, onProgress,
         onScoringCall: () => { scoringCalls++; } }) : null;
       signal.throwIfAborted();
-      const current = await runtime.repository.read(representation);
-      await verifyDescriptionRepresentation(runtime.embedder, representation, signal);
-      const latest = describeFreshPolicySnapshot(current);
-      const changedComponents = [...new Set([...Object.keys(components), ...Object.keys(latest)])]
-        .filter(key => latest[key] !== components[key]).sort();
-      signal.throwIfAborted();
+      const verification = await verifySnapshot();
       const comparison = buildLeaderChallengeReport(rows, source.libraries);
-      return { protocol, status: changedComponents.length ? 'invalidated'
+      return { protocol, status: !verification.evaluationSnapshotValid ? 'invalidated'
         : comparison.statuses.metadata_unavailable || integrityControls.status === 'failed' || semanticComparison?.status === 'completed_with_errors' || crossEncoderComparison?.status === 'completed_with_errors'
           ? 'completed_with_errors' : 'complete',
-        sourceVerified: !changedComponents.length, changedComponents, sourceComponents: components,
+        ...verification, sourceComponents: snapshot.sourceComponents,
         sampleFingerprint: prepared.sampleFingerprint, sampleShortfall: options.size - rows.length,
         evaluation: prepared.evaluation, training: prepared.training, comparison,
         acceptanceComparison: buildLeaderChallengeReport(acceptedRows, source.libraries),

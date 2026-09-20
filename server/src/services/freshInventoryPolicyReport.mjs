@@ -2,6 +2,7 @@
 import { summarizeLearnedEvidenceReviews } from './learnedEvidenceReviewReport.mjs';
 import { summarizeInventoryMatchCalibration } from './inventoryMatchCalibrationReport.mjs';
 import { summarizeInventoryNeighborFallback } from './inventoryNeighborFallbackReport.mjs';
+import { summarizeFrozenEvaluationSnapshot } from './frozenEvaluationSnapshot.mjs';
 export const countFreshPolicyValues = values => Object.fromEntries([...new Set(values)].sort()
   .map(value => [value, values.filter(item => item === value).length]));
 const sum = values => values.reduce((total, value) => total + value, 0);
@@ -45,12 +46,10 @@ export function buildFreshPolicyReport({ source, prepared, rows, options, calls,
   const errors = rows.some(row => (row.generated && !['proposed', 'abstained'].includes(row.generated.status)) ||
     !['ready', 'mode_not_adjudication'].includes(row.prepared.status));
   const summarize = rows => summarizeFreshPolicyCases(rows, { neighborFallback });
+  const snapshot = summarizeFrozenEvaluationSnapshot({ changedComponents, interrupted, verificationFailure });
   return { version: 1, protocol: neighborFallback ? 'fresh_inventory_neighbor_fallback_v1' : 'fresh_inventory_policy_evaluation_v1',
-    status: interrupted ? 'interrupted' : verificationFailure ? 'invalidated' : errors ? 'completed_with_errors' : options.generateCases ? 'complete' : 'preflight',
-    sourceVerified: !interrupted && !verificationFailure && !changedComponents?.length,
-    evaluationSnapshotValid: !interrupted && !verificationFailure,
-    snapshotScope: 'frozen_at_start', liveMetadataRefreshed: changedComponents?.includes('metadata') || changedComponents?.includes('observedTraits') || false,
-    verificationFailure, changedComponents,
+    status: interrupted ? 'interrupted' : !snapshot.evaluationSnapshotValid ? 'invalidated' : errors ? 'completed_with_errors' : options.generateCases ? 'complete' : 'preflight',
+    ...snapshot,
     sourceFingerprint: source.fingerprint, sampleFingerprint: prepared.sampleFingerprint,
     evidenceFingerprint: prepared.fingerprint, evaluation: prepared.evaluation,
     requested: options.size, sampleShortfall: options.size - rows.length, calls,

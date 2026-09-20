@@ -104,6 +104,10 @@ verification to release memory; the live routing path never consumed its cache.
 
 ## Recommendations and next item
 
+Follow-up: the [shared snapshot outcome](frozen-evaluation-snapshot-outcome.md)
+records the prospective reconciliation and current next item. It does not alter
+the pilot's original invalidated status or authorize live scoring.
+
 | Option | Benefit | Cost / recommendation |
 | --- | --- | --- |
 | Enable BGE scores in routing | Adds content relevance | Invalidated evidence and worse diagnostic placement counts; reject |
