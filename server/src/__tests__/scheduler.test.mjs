@@ -120,6 +120,12 @@ const mockEventLoopDelayObservationScheduler = {
 };
 
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
+jest.unstable_mockModule('../services/automaticClassificationRecoveryService.mjs', () => ({
+    automaticClassificationRecoveryService: { run: jest.fn().mockResolvedValue(undefined) },
+}));
+jest.unstable_mockModule('../services/classificationProviderAdmissionService.mjs', () => ({
+    classificationProviderAdmissionService: { getCurrentDependencyKey: jest.fn().mockResolvedValue('') },
+}));
 
 jest.unstable_mockModule('node-cron', () => createMockModule(mockNodeCron));
 

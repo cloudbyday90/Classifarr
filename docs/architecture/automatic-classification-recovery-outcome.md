@@ -80,3 +80,7 @@ without spending each item's retry budget on a dependency known to be down. Pers
 the provider cooldown, admit a small recovery batch, and retain per-item failure
 limits for genuine content/metadata problems. This should reduce wasted inference
 calls and repeated failures, rather than add more review UI or sampling studies.
+
+Implemented in [provider-aware classification deferral](provider-aware-classification-deferral-outcome.md).
+That follow-up moves verified recovery before ordinary retry selection and restores
+normal pending-job throughput after real generation succeeds.

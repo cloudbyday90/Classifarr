@@ -53,3 +53,10 @@ test('propagates provider errors to the orchestration boundary without returning
   cloud.chat.mockRejectedValue(new Error('unavailable'));
   await expect(service.probe(snapshot)).rejects.toThrow('unavailable');
 });
+
+test('binds completed generation to a provider dependency even at configuration revision zero', async () => {
+  const { service, cloud } = harness({ type: 'custom', isCloud: true, config: { model: 'model' } });
+  cloud.chat.mockResolvedValue({ content: 'OK', finishReason: 'stop' });
+  expect(await service.probe({ ...snapshot, config: { ...snapshot.config, configuration_revision: 0 } }))
+    .toMatchObject({ dependencyKey: expect.stringMatching(/^[a-f0-9]{64}$/) });
+});

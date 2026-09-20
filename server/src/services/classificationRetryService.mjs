@@ -198,6 +198,19 @@ export class ClassificationRetryService {
 
     try {
       const txResult = await this.db.withTransaction(async (client) => {
+      const providerCheckedRetry = typeof retryEligibilityCheck === 'function' &&
+        (taskSource === AUTOMATIC_RECOVERY_TASK_SOURCE || taskSource === SCHEDULER_RETRY_TASK_SOURCE);
+      let lockedIdentity = null;
+      if (providerCheckedRetry) {
+        const identityResult = await client.query(
+          'SELECT pending_identity_key FROM classification_history WHERE id = $1', [classificationId],
+        );
+        lockedIdentity = identityResult.rows[0]?.pending_identity_key || null;
+        if (lockedIdentity) {
+          // Pending-decision replacement takes identity before row locks as well.
+          await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [lockedIdentity]);
+        }
+      }
 
       const rowResult = await client.query(
         `SELECT id, tmdb_id, media_type, title, year, status, metadata, policy_question,
@@ -221,6 +234,9 @@ export class ClassificationRetryService {
           reasonCode: 'not_found'
         });
         return { ...baseResult, skipped: true, reasonCode: 'not_found' };
+      }
+      if (providerCheckedRetry && (row.pending_identity_key || null) !== lockedIdentity) {
+        return { ...baseResult, skipped: true, reasonCode: 'recovery_identity_changed' };
       }
 
       const retryEligibility = getClassificationRetryEligibility(row, taskSource);

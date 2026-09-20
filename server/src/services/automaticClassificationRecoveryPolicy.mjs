@@ -12,6 +12,9 @@ export const AUTOMATIC_RECOVERY_FAILURE_CODES = Object.freeze([
   'ai_connection_error', 'ai_timeout', 'ai_rate_limited',
   'ai_server_error', 'ai_gateway_error', 'ai_unavailable',
 ]);
+export const PROVIDER_AWARE_PENDING_RETRY_CODES = Object.freeze([
+  ...AUTOMATIC_RECOVERY_FAILURE_CODES, 'ai_provider_deferred',
+]);
 
 export function getAutomaticRecoveryErrorCode(error) {
   const status = error?.response?.status;
@@ -28,7 +31,7 @@ export function getAutomaticRecoveryErrorCode(error) {
 
 export function getAutomaticRecoveryFailureCode(result) {
   return result?.needs_retry === true && result.method === 'queued_for_retry' &&
-    AUTOMATIC_RECOVERY_FAILURE_CODES.includes(result.retry_failure_code)
+    PROVIDER_AWARE_PENDING_RETRY_CODES.includes(result.retry_failure_code)
     ? result.retry_failure_code : null;
 }
 

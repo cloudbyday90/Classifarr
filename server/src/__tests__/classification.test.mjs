@@ -3330,6 +3330,10 @@ describe('Phase 1 AI contract and stream guard', () => {
     expect(result.format).toBe('confident');
     expect(aiRouter.getProvider).toHaveBeenCalledWith('classification', {
       authorityMode: 'proposal',
+      configuration: {
+        primary_provider: 'openai', model: 'gpt-5-mini', temperature: 0.2,
+        ai_response_repair_enabled: true, classification_disallow_partial_stream_response: true,
+      },
     });
     expect(aiRouter.classify).toHaveBeenCalledWith(
       expect.any(String),

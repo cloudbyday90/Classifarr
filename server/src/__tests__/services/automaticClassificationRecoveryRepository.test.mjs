@@ -58,8 +58,9 @@ test.each([100001, 39999, NaN])('rejects future/stale/invalid readiness time %s'
 });
 test.each([true, false])('checks current lease under lock (%s)', async (valid) => {
   leaseValid = valid;
-  const proof = { ...(await repository.loadConfiguration()), checkedAt: 40000 };
+  const proof = { ...(await repository.loadConfiguration()), checkedAt: 40000, dependencyKey: 'dependency' };
   expect((await repository.checkReadiness(database, proof, 'lease', classification)).eligible).toBe(valid);
+  expect(database.query.mock.calls.some(([sql]) => sql.includes("SET state = 'half_open'"))).toBe(valid);
 });
 test('late completion cannot overwrite a replacement lease', async () => {
   await repository.completeProbe('old-lease', 'unavailable');
@@ -72,4 +73,21 @@ test('missing canonical identity is not eligible', async () => {
 test('newer classification supersedes an exhausted row', async () => {
   database.query.mockResolvedValue({ rows: [{ id: 2 }] });
   expect(await repository.checkReadiness(database, {}, 'lease', classification)).toMatchObject({ eligible: false, reasonCode: 'recovery_superseded' });
+});
+
+test.each([{ library_id: 9 }, { method: 'other' }, { retry_failure_code: 'ai_stream_incomplete' }])('rechecks pending state under the retry row lock %#', async changed => {
+  const pending = { ...classification, status: 'pending_retry', method: 'queued_for_retry', library_id: null,
+    retry_failure_code: 'ai_provider_deferred', retry_after: new Date(99999), ...changed };
+  expect(await repository.checkReadiness(database, {}, 'lease', pending))
+    .toEqual({ eligible: false, reasonCode: 'recovery_pending_state_changed' });
+  expect(database.query).not.toHaveBeenCalled();
+});
+
+test.each([true, false])('checks due pending work against the database clock (%s)', async due => {
+  const proof = { ...(await repository.loadConfiguration()), checkedAt: 99999 };
+  database.query.mockResolvedValueOnce({ rows: due ? [{ id: 1 }] : [] });
+  const pending = { ...classification, status: 'pending_retry', method: 'queued_for_retry', library_id: null,
+    retry_failure_code: 'ai_provider_deferred' };
+  expect((await repository.checkReadiness(database, proof, 'lease', pending)).eligible).toBe(due);
+  expect(database.query).toHaveBeenCalledWith(expect.stringContaining('retry_after <= clock_timestamp()'), [1]);
 });

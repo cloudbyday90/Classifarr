@@ -15,6 +15,8 @@ import { classificationService } from './classification.mjs';
 import { enrichmentRetryService } from './enrichmentRetryService.mjs';
 import { queueService } from './queueService.mjs';
 import { automaticClassificationRecoveryService } from './automaticClassificationRecoveryService.mjs';
+import { PROVIDER_AWARE_PENDING_RETRY_CODES } from './automaticClassificationRecoveryPolicy.mjs';
+import { classificationProviderAdmissionService } from './classificationProviderAdmissionService.mjs';
 
 const logger = createLogger('SchedulerService');
 
@@ -84,6 +86,10 @@ export async function runLibraryWatchdog() {
 export async function processRetryQueue() {
     try {
         await deadLetterExhaustedRetries();
+        // Verify a small recovery batch before admitting ordinary retries. Once
+        // real generation closes the circuit, the next sweep drains normally.
+        await automaticClassificationRecoveryService.run();
+        const dependencyKey = await classificationProviderAdmissionService.getCurrentDependencyKey();
 
         const result = await db.query(`
             SELECT id, title, retry_count, max_retries
@@ -91,9 +97,14 @@ export async function processRetryQueue() {
             WHERE status = 'pending_retry'
               AND retry_after <= NOW()
               AND retry_count < max_retries
+              AND NOT (COALESCE(method = 'queued_for_retry', false) AND library_id IS NULL
+                AND pending_identity_key IS NOT NULL
+                AND COALESCE(retry_failure_code = ANY($1::text[]), false)
+                AND EXISTS (SELECT 1 FROM classification_provider_circuits AS circuit
+                  WHERE circuit.state <> 'closed' AND ($2::text IS NULL OR circuit.dependency_key = $2)))
             ORDER BY retry_after ASC
             LIMIT 50
-        `);
+        `, [PROVIDER_AWARE_PENDING_RETRY_CODES, dependencyKey]);
 
         if (result.rows.length === 0) {
             logger.debug('Retry queue: No items ready for retry');
@@ -119,8 +130,6 @@ export async function processRetryQueue() {
             error: error.message,
             stack: error.stack,
         });
-    } finally {
-        await automaticClassificationRecoveryService.run();
     }
 }
 

@@ -7,6 +7,7 @@ import { classificationRetryService } from './classificationRetryService.mjs';
 import { AutomaticClassificationRecoveryRepository } from './automaticClassificationRecoveryRepository.mjs';
 import { ClassificationRecoveryReadiness } from './classificationRecoveryReadiness.mjs';
 import { AUTOMATIC_RECOVERY_TASK_SOURCE } from './automaticClassificationRecoveryPolicy.mjs';
+import { SCHEDULER_RETRY_TASK_SOURCE } from './classificationRetryEligibility.mjs';
 
 export class AutomaticClassificationRecoveryService {
   constructor({ repository = new AutomaticClassificationRecoveryRepository(),
@@ -38,7 +39,7 @@ export class AutomaticClassificationRecoveryService {
       for (const candidate of candidates) {
         const result = await this.retryService.retrySingle({
           classificationId: candidate.id, actor: 'scheduler', correlationId: lease,
-          taskSource: AUTOMATIC_RECOVERY_TASK_SOURCE,
+          taskSource: candidate.status === 'pending_retry' ? SCHEDULER_RETRY_TASK_SOURCE : AUTOMATIC_RECOVERY_TASK_SOURCE,
           metadataEnrichmentSource: 'provider_recovery_followup',
           route: 'scheduler:provider-recovery',
           retryEligibilityCheck: ({ client, classification }) => this.repository.checkReadiness(client, proof, lease, classification),
@@ -52,7 +53,7 @@ export class AutomaticClassificationRecoveryService {
       }
       const state = configurationChanged ? 'configuration_changed' : 'ready';
       await this.repository.completeProbe(lease, state);
-      if (queued > 0) this.logger.info('Exhausted classifications resumed after generation check', { queued });
+      if (queued > 0) this.logger.info('Waiting classifications resumed after generation check', { queued });
       return { state, queued };
     } catch {
       this.logger.warn('Automatic classification recovery could not complete; scheduled recovery will retry',

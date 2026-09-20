@@ -1,4 +1,5 @@
 import { ServiceUnavailableError } from '../utils/appError.mjs';
+import { classificationProviderAdmissionService } from './classificationProviderAdmissionService.mjs';
 import * as db from '../config/database.mjs';
 import { ollamaService } from './ollama.mjs';
 import {
@@ -180,6 +181,7 @@ async function aiClassifyImpl(metadata, libraries, signalContext = null, options
     : AI_PROVIDER_AUTHORITY_MODE_IDS.PROPOSAL;
   const provider = await aiRouter.getProvider('classification', {
     authorityMode: requestedAuthorityMode,
+    ...(providerRow ? { configuration: providerRow } : {}),
   });
 
   if (!provider) {
@@ -215,6 +217,7 @@ async function aiClassifyImpl(metadata, libraries, signalContext = null, options
     });
   }
 
+  const providerTicket = await classificationProviderAdmissionService.admit(providerRow, provider);
   const webSearchResults = mode === 'classify'
     ? await enrichWithWebSearch(metadata)
     : null;
@@ -373,6 +376,8 @@ Respond with ONLY one of the formats above.`;
           break;
         } catch (streamError) {
           lastStreamError = streamError;
+          // A shared outage is not an item-specific stream repair opportunity.
+          if (await classificationProviderAdmissionService.failed(providerTicket, streamError)) throw streamError;
           const isTransientStreamError = isAiTransientAvailabilityError(streamError);
           if (!isTransientStreamError || streamAttempt >= maxTransientStreamAttempts) {
             throw streamError;
@@ -393,6 +398,9 @@ Respond with ONLY one of the formats above.`;
 
       if (!response && lastStreamError) {
         throw lastStreamError;
+      }
+      if (typeof response === 'string' && response.trim()) {
+        await classificationProviderAdmissionService.succeeded(providerTicket);
       }
     } catch (generationError) {
       const capabilityRevoked = await ollamaVerificationCapabilityRuntimeInvalidationService.invalidateFromGenerationError({

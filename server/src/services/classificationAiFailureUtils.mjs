@@ -1,8 +1,10 @@
 import { getAutomaticRecoveryErrorCode } from './automaticClassificationRecoveryPolicy.mjs';
+import { isProviderDeferredError, PROVIDER_DEFERRAL_REASON } from './classificationProviderDeferralPolicy.mjs';
 
 export const RETRY_DELAY_MS = 5 * 60 * 1000;
 
 function isAiTransientAvailabilityErrorImpl(error) {
+  if (isProviderDeferredError(error)) return true;
   const message = typeof error?.message === 'string' ? error.message.toLowerCase() : '';
   const code = typeof error?.code === 'string' ? error.code.toUpperCase() : '';
   const status = error?.response?.status;
@@ -73,6 +75,7 @@ export function isAiTransientAvailabilityError(...args) {
 }
 
 export function resolveRetryReason(error) {
+  if (isProviderDeferredError(error)) return { code: 'ai_provider_deferred', reason: PROVIDER_DEFERRAL_REASON };
   const message = typeof error?.message === 'string' ? error.message.toLowerCase() : '';
   const code = typeof error?.code === 'string' ? error.code.toUpperCase() : '';
 
@@ -196,9 +199,10 @@ export function buildPendingRetryResult({
     method: 'queued_for_retry',
     reason: retryReason.reason,
     retry_reason_code: retryReason.code,
-    retry_failure_code: getAutomaticRecoveryErrorCode(transientError),
+    retry_failure_code: isProviderDeferredError(transientError) ? 'ai_provider_deferred' : getAutomaticRecoveryErrorCode(transientError),
     retry_after: new Date(Date.now() + RETRY_DELAY_MS),
-    retry_count: normalizedPreviousRetryCount === null ? 0 : normalizedPreviousRetryCount + 1,
+    retry_count: normalizedPreviousRetryCount === null ? 0
+      : normalizedPreviousRetryCount + (isProviderDeferredError(transientError) ? 0 : 1),
     max_retries: normalizedMaxRetries,
     libraries,
     signalContext,

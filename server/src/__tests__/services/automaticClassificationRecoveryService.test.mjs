@@ -42,6 +42,14 @@ test('queues through transactional retry with internal source and transaction-bo
   await options.retryEligibilityCheck({ client, classification });
   expect(repository.checkReadiness).toHaveBeenCalledWith(client, { fingerprint: 'fingerprint', checkedAt: 123 }, 'lease', classification);
 });
+
+test('pending work uses the ordinary scheduler source rather than renewing an exhausted-job budget', async () => {
+  repository.findDue.mockResolvedValue([{ id: 9, status: 'pending_retry' }]);
+  expect(await service.run()).toEqual({ state: 'ready', queued: 1 });
+  expect(retryService.retrySingle).toHaveBeenCalledWith(expect.objectContaining({
+    classificationId: 9, taskSource: 'retry_queue', retryEligibilityCheck: expect.any(Function),
+  }));
+});
 test.each(['recovery_configuration_changed', 'recovery_readiness_expired', 'recovery_lease_expired'])('stops a batch when proof becomes invalid: %s', async (reasonCode) => {
   retryService.retrySingle.mockResolvedValue({ queued: false, reasonCode });
   const result = await service.run();

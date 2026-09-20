@@ -30,6 +30,10 @@ const mockOllamaService = createServiceStubs([
 ]);
 
 const mockAiRouter = createServiceStubs(['getProvider', 'classify', 'clearCache']);
+const mockProviderAdmission = createServiceStubs(['admit', 'failed', 'succeeded']);
+jest.unstable_mockModule('../services/classificationProviderAdmissionService.mjs', () => ({
+  classificationProviderAdmissionService: mockProviderAdmission,
+}));
 const mockAiProviderCapabilityMetricsService = createServiceStubs(['record']);
 mockAiProviderCapabilityMetricsService.record.mockResolvedValue(undefined);
 const mockOllamaVerificationCapabilityRuntimeInvalidationService = createServiceStubs([
@@ -403,6 +407,9 @@ describe('attemptAiResponseRepair', () => {
 
 describe('aiClassify', () => {
   beforeEach(() => {
+    mockProviderAdmission.admit.mockReset().mockResolvedValue(null);
+    mockProviderAdmission.failed.mockReset().mockResolvedValue(false);
+    mockProviderAdmission.succeeded.mockReset().mockResolvedValue(undefined);
     db.query.mockReset();
     ollamaService.generate.mockReset();
     ollamaService.generateWithProgress.mockReset();
@@ -433,6 +440,40 @@ describe('aiClassify', () => {
     await expect(
       classificationAiService.aiClassify(baseMetadata, baseLibraries)
     ).rejects.toThrow('AI is not available');
+  });
+
+  test('waits before enrichment, locks and generation when the provider circuit is open', async () => {
+    setupHappyPath({ generatedResponse: 'CONFIDENT|1|85|match' });
+    const deferred = new Error('synthetic provider wait');
+    mockProviderAdmission.admit.mockRejectedValue(deferred);
+    await expect(classificationAiService.aiClassify(baseMetadata, baseLibraries)).rejects.toBe(deferred);
+    expect(classificationMetadataService.enrichWithWebSearch).not.toHaveBeenCalled();
+    expect(providerLock.acquireLock).not.toHaveBeenCalled();
+    expect(ollamaService.generateWithProgress).not.toHaveBeenCalled();
+    expect(aiRouter.classify).not.toHaveBeenCalled();
+  });
+
+  test('reports a shared outage once instead of immediately retrying the same provider', async () => {
+    setupHappyPath({ generatedResponse: 'CONFIDENT|1|85|match' });
+    const ticket = { key: 'synthetic', epoch: 1 };
+    const failure = Object.assign(new Error('synthetic outage'), { code: 'ECONNREFUSED' });
+    mockProviderAdmission.admit.mockResolvedValue(ticket);
+    mockProviderAdmission.failed.mockResolvedValue(true);
+    ollamaService.generateWithProgress.mockReset().mockRejectedValue(failure);
+    classificationUtilsService.isAiTransientAvailabilityError.mockReturnValue(true);
+    await expect(classificationAiService.aiClassify(baseMetadata, baseLibraries)).rejects.toBe(failure);
+    expect(ollamaService.generateWithProgress).toHaveBeenCalledTimes(1);
+    expect(mockProviderAdmission.failed).toHaveBeenCalledWith(ticket, failure);
+    expect(providerLock.releaseLock).toHaveBeenCalled();
+    expect(classificationUtilsService.sleep).not.toHaveBeenCalled();
+  });
+
+  test('reports actual generation success independently of semantic confidence', async () => {
+    setupHappyPath({ generatedResponse: 'CONFIDENT|1|85|match' });
+    const ticket = { key: 'synthetic', epoch: 1 };
+    mockProviderAdmission.admit.mockResolvedValue(ticket);
+    await classificationAiService.aiClassify(baseMetadata, baseLibraries);
+    expect(mockProviderAdmission.succeeded).toHaveBeenCalledWith(ticket);
   });
 
   test('normalizes every provider output and records a safe authority view', async () => {
@@ -485,6 +526,7 @@ describe('aiClassify', () => {
     );
     expect(aiRouter.getProvider).toHaveBeenCalledWith('classification', {
       authorityMode: 'proposal',
+      configuration: defaultProviderRow,
     });
   });
 
@@ -501,6 +543,7 @@ describe('aiClassify', () => {
 
     expect(aiRouter.getProvider).toHaveBeenCalledWith('classification', {
       authorityMode: 'verification',
+      configuration: defaultProviderRow,
     });
     expect(aiPromptBuilder.buildPrompt).not.toHaveBeenCalled();
     expect(ollamaService.generateWithProgress).not.toHaveBeenCalled();

@@ -488,7 +488,8 @@ describe('ClassificationRetryService', () => {
     expect(eligibilityOverride).not.toHaveBeenCalled();
     expect(mockRecordOutcome).not.toHaveBeenCalled();
     expect(followupService.enqueueMetadataEnrichmentTask).not.toHaveBeenCalled();
-    expect(client.query.mock.calls.filter(([sql]) => sql !== 'BEGIN' && sql !== 'COMMIT')).toHaveLength(1);
+    expect(client.query.mock.calls.filter(([sql]) => sql !== 'BEGIN' && sql !== 'COMMIT'))
+      .toHaveLength(taskSource === 'retry_queue' ? 2 : 1);
   });
 
   test('retrySingle preserves retry_count for scheduler-sourced (auto) retries', async () => {

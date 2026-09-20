@@ -5,9 +5,11 @@
 import { createHash, randomUUID } from 'node:crypto';
 import * as db from '../config/database.mjs';
 import { acquireAiProviderConfigurationRevisionWriteLock } from './aiProviderConfigurationRevisionIntegrity.mjs';
+import { ClassificationProviderCircuitRepository } from './classificationProviderCircuitRepository.mjs';
 import {
   AUTOMATIC_RECOVERY_BATCH_SIZE, AUTOMATIC_RECOVERY_COOLDOWN_MS,
   AUTOMATIC_RECOVERY_FAILURE_CODES, AUTOMATIC_RECOVERY_PROOF_MAX_AGE_MS,
+  PROVIDER_AWARE_PENDING_RETRY_CODES,
 } from './automaticClassificationRecoveryPolicy.mjs';
 
 // Include effective endpoint and credential changes without retaining their values in a receipt/log.
@@ -25,18 +27,22 @@ export class AutomaticClassificationRecoveryRepository {
 
   async findDue() {
     const result = await this.db.query(
-      `SELECT history.id FROM classification_history AS history
-       WHERE history.status = 'failed' AND history.method = 'queued_for_retry' AND history.library_id IS NULL
-         AND history.retry_after IS NULL AND history.retry_count >= history.max_retries AND history.max_retries > 0
-         AND history.retry_recovery_attempts = 0 AND history.retry_failure_code = ANY($1::text[])
+      `SELECT history.id, history.status FROM classification_history AS history
+       WHERE history.method = 'queued_for_retry' AND history.library_id IS NULL AND history.max_retries > 0
+         AND ((history.status = 'failed' AND history.retry_after IS NULL
+           AND history.retry_count >= history.max_retries AND history.retry_recovery_attempts = 0
+           AND history.retry_failure_code = ANY($1::text[])
+           AND history.retry_exhausted_at <= NOW() - ($2 * interval '1 millisecond'))
+         OR (history.status = 'pending_retry' AND history.retry_after <= NOW()
+           AND history.retry_count < history.max_retries AND history.retry_failure_code = ANY($4::text[])))
          AND history.pending_identity_key IS NOT NULL
-         AND history.retry_exhausted_at <= NOW() - ($2 * interval '1 millisecond')
          AND NOT EXISTS (SELECT 1 FROM classification_history AS newer
            WHERE (newer.recorded_at, newer.id) > (history.recorded_at, history.id)
              AND (newer.pending_identity_key = history.pending_identity_key OR
                (newer.tmdb_id = history.tmdb_id AND newer.media_type = history.media_type)))
-       ORDER BY history.retry_exhausted_at, history.id LIMIT $3`,
-      [AUTOMATIC_RECOVERY_FAILURE_CODES, AUTOMATIC_RECOVERY_COOLDOWN_MS, AUTOMATIC_RECOVERY_BATCH_SIZE],
+       ORDER BY COALESCE(history.retry_exhausted_at, history.retry_after), history.id LIMIT $3`,
+      [AUTOMATIC_RECOVERY_FAILURE_CODES, AUTOMATIC_RECOVERY_COOLDOWN_MS, AUTOMATIC_RECOVERY_BATCH_SIZE,
+        PROVIDER_AWARE_PENDING_RETRY_CODES],
     );
     return result.rows;
   }
@@ -80,6 +86,18 @@ export class AutomaticClassificationRecoveryRepository {
     if (!classification?.pending_identity_key) {
       return { eligible: false, reasonCode: 'recovery_identity_unavailable' };
     }
+    if (classification.status === 'pending_retry') {
+      if (classification.method !== 'queued_for_retry' || classification.library_id !== null ||
+        !PROVIDER_AWARE_PENDING_RETRY_CODES.includes(classification.retry_failure_code)) {
+        return { eligible: false, reasonCode: 'recovery_pending_state_changed' };
+      }
+      // Keep schedule comparison in PostgreSQL: retry_after is a timestamp without
+      // time zone, so converting its driver value through a host-local clock can drift.
+      const schedule = await client.query(
+        'SELECT id FROM classification_history WHERE id = $1 AND retry_after <= clock_timestamp()', [classification.id],
+      );
+      if (!schedule.rows.length) return { eligible: false, reasonCode: 'recovery_pending_state_changed' };
+    }
     await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [classification.pending_identity_key]);
     const newer = await client.query(
       `SELECT newer.id FROM classification_history AS newer
@@ -104,6 +122,9 @@ export class AutomaticClassificationRecoveryRepository {
       [leaseToken],
     );
     const eligible = lease.rows.length === 1;
+    if (eligible && proof.dependencyKey) {
+      await new ClassificationProviderCircuitRepository({ database: this.db }).grantTrial(client, proof.dependencyKey, leaseToken);
+    }
     return { eligible, reasonCode: eligible ? null : 'recovery_lease_expired' };
   }
 

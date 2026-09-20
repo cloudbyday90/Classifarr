@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-20T18:49:06.392Z
--- Latest Migration: 20260920_160000_add_classification_automatic_recovery.sql
+-- Generated: 2026-09-20T20:19:06.016Z
+-- Latest Migration: 20260920_200000_add_classification_provider_circuits.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -2471,6 +2471,27 @@ CREATE TABLE public.classification_history_totals (
     failed_count bigint DEFAULT 0 NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT classification_history_totals_singleton_check CHECK ((singleton = true))
+);
+
+
+--
+-- Name: classification_provider_circuits; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.classification_provider_circuits (
+    dependency_key text NOT NULL,
+    epoch bigint DEFAULT 1 NOT NULL,
+    state text NOT NULL,
+    trial_remaining smallint DEFAULT 0 NOT NULL,
+    ready_until timestamp with time zone,
+    last_probe_token uuid,
+    failure_code text NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT classification_provider_circuits_dependency_key_check CHECK ((dependency_key ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT classification_provider_circuits_epoch_check CHECK ((epoch > 0)),
+    CONSTRAINT classification_provider_circuits_failure_code_check CHECK ((failure_code = ANY (ARRAY['ai_connection_error'::text, 'ai_timeout'::text, 'ai_rate_limited'::text, 'ai_server_error'::text, 'ai_gateway_error'::text, 'ai_unavailable'::text]))),
+    CONSTRAINT classification_provider_circuits_state_check CHECK ((state = ANY (ARRAY['open'::text, 'half_open'::text, 'closed'::text]))),
+    CONSTRAINT classification_provider_circuits_trial_remaining_check CHECK (((trial_remaining >= 0) AND (trial_remaining <= 5)))
 );
 
 
@@ -9047,6 +9068,14 @@ ALTER TABLE ONLY public.classification_history
 
 ALTER TABLE ONLY public.classification_history_totals
     ADD CONSTRAINT classification_history_totals_pkey PRIMARY KEY (singleton);
+
+
+--
+-- Name: classification_provider_circuits classification_provider_circuits_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.classification_provider_circuits
+    ADD CONSTRAINT classification_provider_circuits_pkey PRIMARY KEY (dependency_key);
 
 
 --
@@ -16082,6 +16111,7 @@ FROM unnest(ARRAY[
     '20260911_120000_add_inventory_description_vector_cache.sql',
     '20260913_140000_add_source_identity_recovery_state.sql',
     '20260913_220000_add_description_retry_journal.sql',
-    '20260920_160000_add_classification_automatic_recovery.sql'
+    '20260920_160000_add_classification_automatic_recovery.sql',
+    '20260920_200000_add_classification_provider_circuits.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

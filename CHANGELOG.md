@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Wait automatically during known AI provider outages without spending each item's
+  retry budget. Persist provider-specific pauses across restarts, verify recovery
+  with a small trial batch, and restore normal backlog processing after success.
+- Keep deterministic classification available during AI outages and reject stale
+  recovery results without weakening routing safeguards or adding user setup.
 - Resume eligible exhausted classifications automatically after a verified AI
   generation check. Persist cooldowns and a one-cycle recovery budget across
   restarts and replacement jobs, while retaining manual retry and routing safeguards.

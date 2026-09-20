@@ -5,6 +5,7 @@
 import { aiRouterService } from './aiRouter.mjs';
 import { cloudLLMService } from './cloudLLM.mjs';
 import { ollamaService } from './ollama.mjs';
+import { buildClassificationDependencyKey } from './classificationProviderDeferralPolicy.mjs';
 
 const COMPLETE_FINISH_REASONS = new Set(['stop', 'STOP', 'completed', 'end_turn']);
 
@@ -41,6 +42,8 @@ export class ClassificationRecoveryReadiness {
       ready = typeof result?.content === 'string' && Boolean(result.content.trim()) &&
         COMPLETE_FINISH_REASONS.has(result.finishReason);
     }
-    return ready ? { fingerprint: snapshot.fingerprint, checkedAt: this.now() } : null;
+    const dependencyKey = buildClassificationDependencyKey(snapshot, provider);
+    return ready ? { fingerprint: snapshot.fingerprint, checkedAt: this.now(),
+      ...(dependencyKey ? { dependencyKey } : {}) } : null;
   }
 }
