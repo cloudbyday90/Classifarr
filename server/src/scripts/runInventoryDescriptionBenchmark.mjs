@@ -23,8 +23,10 @@ import { runInventoryCommunityBenchmark } from '../services/inventoryCommunityBe
 import { runInventoryMultiScaleBenchmark } from '../services/inventoryMultiScaleBenchmark.mjs';
 import { runInventoryMultiScaleAiBenchmark } from '../services/inventoryMultiScaleAiBenchmark.mjs';
 import { createInventoryDiscoveryAdmission, DiscoveryDeferredError } from '../services/inventoryDiscoveryAdmission.mjs';
+import { runInventoryLinearRankerBenchmark } from '../services/inventoryLinearRankerBenchmark.mjs';
+import { describeLinearRankerInputs } from '../services/inventoryLinearRankerSource.mjs';
 
-async function loadPrivateRuntime() {
+async function loadPrivateRuntime({ includeTrainingProvenance = false } = {}) {
   process.env.LOG_LEVEL = 'fatal';
   process.env.FILE_LOGGING_ENABLED = 'false';
   process.env.PGOPTIONS = `${process.env.PGOPTIONS || ''} -c statement_timeout=15000 -c lock_timeout=1000`.trim();
@@ -36,7 +38,7 @@ async function loadPrivateRuntime() {
     const config = rows[0];
     return { embedder: createLocalStudyEmbeddingClient(config),
       withDiscoveryAdmission: createInventoryDiscoveryAdmission(db),
-      repository: createDescriptionBenchmarkRepository({ withTransaction: db.withTransaction }),
+      repository: createDescriptionBenchmarkRepository({ withTransaction: db.withTransaction, includeTrainingProvenance }),
       createClient: () => createLocalDescriptionBenchmarkClient(config), close: () => db.pool.end() };
   } catch (error) { await db.pool.end(); throw error; }
 }
@@ -67,6 +69,7 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     'multi-scale-context': { type: 'boolean' },
     'multi-scale-ai': { type: 'boolean' },
     'independent-fit': { type: 'boolean' },
+    'linear-ranker': { type: 'boolean' },
     'preserve-description-candidate': { type: 'boolean' },
     'metadata-candidates': { type: 'boolean' }, 'learned-profiles': { type: 'boolean' } } });
   if (values['metadata-candidates'] && values['learned-profiles']) throw new Error('description_benchmark_selection_mode_conflict');
@@ -79,7 +82,7 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     ...(values.context === undefined ? {} : { context: Number(values.context) }),
     ...(values['max-minutes'] === undefined ? {} : { maxMinutes: Number(values['max-minutes']) }),
   });
-  for (const mode of ['candidate-stability', 'candidate-local-evidence', 'group-contrast', 'adaptive-groups', 'local-communities', 'multi-scale-context']) {
+  for (const mode of ['candidate-stability', 'candidate-local-evidence', 'group-contrast', 'adaptive-groups', 'local-communities', 'multi-scale-context', 'linear-ranker']) {
     if (values[mode] && (!options.folds || options.generateCases ||
         Object.entries(values).some(([name, value]) => name !== mode && value === true))) {
       throw new Error(`${mode.replaceAll('-', '_')}_requires_exclusive_grouped_zero_generation`);
@@ -146,12 +149,23 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
   if (values['preserve-description-candidate'] && (!options.folds || !values['learned-profiles'])) {
     throw new Error('description_anchor_requires_grouped_profiles');
   }
-  const runtime = await loadRuntime();
+  const runtime = values['linear-ranker'] ? await loadRuntime({ includeTrainingProvenance: true }) : await loadRuntime();
   try {
     return await runtime.withDiscoveryAdmission(async abort => {
       const representation = await inspectDescriptionRepresentation(runtime.embedder, abort);
       const snapshot = await runtime.repository.read(representation);
       await verifyDescriptionRepresentation(runtime.embedder, representation, abort);
+      if (values['linear-ranker']) {
+        const report = await runInventoryLinearRankerBenchmark(snapshot, representation.dimensions, options, { signal: abort, onProgress });
+        const current = await runtime.repository.read(representation);
+        await verifyDescriptionRepresentation(runtime.embedder, representation, abort);
+        abort.throwIfAborted();
+        const currentComponents = describeLinearRankerInputs(current);
+        const sourceVerified = JSON.stringify(currentComponents) === JSON.stringify(report.snapshotComponents);
+        const changedSourceComponents = Object.keys(currentComponents.hashes).filter(name => currentComponents.hashes[name] !== report.snapshotComponents.hashes[name]);
+        return { ...report, status: sourceVerified ? report.status : 'invalidated', sourceVerified, changedSourceComponents,
+          embedding: { model: representation.model, digest: representation.digest, dimensions: representation.dimensions } };
+      }
       if (values['evidence-reranker'] || values['semantic-pairs'] || values['coverage-robustness'] || values['candidate-stability'] || values['candidate-local-evidence'] || values['group-contrast'] || values['group-semantics'] || values['adaptive-groups'] || values['local-communities'] || values['multi-scale-context'] || values['multi-scale-ai']) {
         const pairClient = (values['semantic-pairs'] || values['group-semantics'] || values['multi-scale-ai']) && options.generateCases ? runtime.createClient() : undefined;
         const pairIdentity = pairClient ? await pairClient.inspect(abort) : undefined;

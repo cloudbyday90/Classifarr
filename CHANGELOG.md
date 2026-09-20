@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a bounded, read-only learned content-ranker benchmark using existing
+  description vectors. Compare it with nearest-item and organic metadata matching,
+  exclude retained classification decisions from training, and measure placement
+  noise sensitivity without changing live routing or adding user controls.
 - Add a read-only comparison of independent library content-fit assessments with
   the existing raw-evidence AI baseline. Bound and validate each assessment, abstain
   on ties, and measure repeatability and cost without changing live routing.

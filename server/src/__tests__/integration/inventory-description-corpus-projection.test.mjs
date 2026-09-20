@@ -4,6 +4,8 @@ import { getPool } from './setup.mjs';
 import { buildInventoryDescriptionCorpusSql, prepareInventoryDescriptionCorpus } from '../../services/inventoryDescriptionCorpus.mjs';
 import { buildPreviousInventoryDescriptionCorpusSql } from '../fixtures/previousInventoryDescriptionCorpusSql.mjs';
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS as retention } from '../../services/sourceConflictAuthorityGuard.mjs';
+import { readInventoryTrainingExclusions } from '../../services/inventoryTrainingProvenance.mjs';
+import { buildClassificationCandidateCapture } from '../../services/classificationCandidateCapture.mjs';
 
 let client;
 beforeEach(async () => {
@@ -13,7 +15,7 @@ beforeEach(async () => {
     CREATE TEMP TABLE media_server_items (id serial PRIMARY KEY, tmdb_id integer, media_type text, library_id integer,
       media_server_id integer DEFAULT 1, external_id text, metadata jsonb, genres jsonb, studio text, content_rating text,
       title text, year integer);
-    CREATE TEMP TABLE classification_history (id serial PRIMARY KEY, tmdb_id integer, media_type text, metadata jsonb, created_at timestamptz);
+    CREATE TEMP TABLE classification_history (id serial PRIMARY KEY, tmdb_id integer, media_type text, metadata jsonb, created_at timestamptz, method text, reason text);
     CREATE TEMP TABLE media_source_observations (library_id integer, media_server_id integer, external_id text, last_seen_at timestamptz);
     INSERT INTO libraries VALUES (10,'movie',true),(20,'movie',true),(30,'movie',false),(40,'tv',true);
   `);
@@ -37,6 +39,37 @@ async function compare(options = {}, media = 'movie') {
   expect(current).toEqual(previous);
   return current;
 }
+
+test('training provenance excludes all retained decisions without duplicates, type conflation or out-of-scope rows', async () => {
+  await history(1, { overview: 'Private' }); await history(1, {}); await history(3, {}, 'tv'); await history(99, {});
+  const docs = [{ key: 'movie:1', type: 'movie', id: 1 }, { key: 'tv:1', type: 'tv', id: 1 },
+    { key: 'movie:2', type: 'movie', id: 2 }, { key: 'tv:3', type: 'tv', id: 3 }];
+  expect(await readInventoryTrainingExclusions(client, docs)).toEqual(new Set(['movie:1', 'tv:3']));
+  await client.query("DELETE FROM classification_history WHERE tmdb_id=1");
+  expect(await readInventoryTrainingExclusions(client, docs)).toEqual(new Set(['tv:3']));
+  // Absence after deletion is unknown provenance, never an independently verified placement.
+});
+
+test('source observations are weak labels, while mixed decisions, reconciliations and malformed capture remain excluded', async () => {
+  const capture = buildClassificationCandidateCapture({ method: 'source_library' });
+  const cases = [
+    ['source_library', 'Already in library: Private', {}, false],
+    ['source_library', null, { classification_details: { candidate_capture: capture } }, false],
+    ['source_library', 'Resolved via library placement', {}, true],
+    ['source_library', null, { classification_details: { candidate_capture: { ...capture, method: 'policy_auto' } } }, true],
+    ['source_library', null, { classification_details: { candidate_capture: null } }, true],
+    ['source_library', null, { classification_details: { candidate_capture: 'source_library' } }, true],
+    [null, null, {}, true], ['manual_classification', null, {}, true], ['policy_auto', null, {}, true],
+  ];
+  for (const [index, [method, reason, metadata]] of cases.entries()) {
+    await client.query('INSERT INTO classification_history(tmdb_id,media_type,method,reason,metadata) VALUES($1,$2,$3,$4,$5)',
+      [index + 1, 'movie', method, reason, metadata]);
+  }
+  const docs = cases.map((_, i) => ({ id: i + 1, key: `movie:${i + 1}`, type: 'movie' }));
+  expect(await readInventoryTrainingExclusions(client, docs)).toEqual(new Set(cases.flatMap((row, i) => row[3] ? [`movie:${i + 1}`] : [])));
+  await history(1, {}); // A source observation cannot erase another retained decision/unknown-origin row.
+  expect((await readInventoryTrainingExclusions(client, docs)).has('movie:1')).toBe(true);
+});
 
 const cases = [
   [{ overview: '  Inventory  ', summary: 'Summary' }, { overview: 'History' }, 'Inventory'],

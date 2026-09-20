@@ -145,3 +145,8 @@ training-only preprocessing and held-out evaluation. These sources were discover
 and opened on 2026-09-19. They support an experimental direction, not a claim that
 this model will improve Classifarr. No Python dependency or implementation is
 introduced; any implementation must retain the repository's modular ESM contract.
+
+Follow-up: the [linear content-ranker experiment](linear-inventory-ranker-outcome.md)
+is now implemented and evaluated. Its results do not support replacing the existing
+organic metadata profile; the next recommendation targets provisional-leader
+selection using the evidence already available.

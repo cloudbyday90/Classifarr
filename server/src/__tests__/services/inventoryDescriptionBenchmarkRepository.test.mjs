@@ -2,6 +2,7 @@
 import { expect, jest, test } from '@jest/globals';
 import { createDescriptionBenchmarkRepository, INVENTORY_METADATA_BENCHMARK_SQL } from '../../services/inventoryDescriptionBenchmarkRepository.mjs';
 import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescriptionCorpus.mjs';
+import { INVENTORY_TRAINING_HISTORY_SQL } from '../../services/inventoryTrainingProvenance.mjs';
 
 const identity = { provider: 'ollama', model: 'test:latest', digest: 'a'.repeat(64), dimensions: 2 };
 const rows = [{ tmdb_id: 1, library_id: 1, media_type: 'movie', overview: 'Private synopsis' }];
@@ -49,4 +50,19 @@ test('decodes the captured representation only after its read-only transaction c
     open = true; try { return await callback({ query }); } finally { open = false; }
   } });
   expect((await repository.read(identity)).vectors.size).toBe(1);
+});
+
+test('provenance is opt-in, read inside the snapshot, and carried through deferred vector decoding', async () => {
+  const { query, repository: ordinary } = setup(), original = query.getMockImplementation();
+  let open = false;
+  query.mockImplementation(async sql => {
+    if (sql === INVENTORY_TRAINING_HISTORY_SQL) { expect(open).toBe(true); return { rows: [{ media_type: 'movie', tmdb_id: 1 }] }; }
+    return original(sql);
+  });
+  expect(await ordinary.read(identity)).not.toHaveProperty('trainingExclusions');
+  expect(query.mock.calls.some(([sql]) => sql === INVENTORY_TRAINING_HISTORY_SQL)).toBe(false);
+  const repository = createDescriptionBenchmarkRepository({ includeTrainingProvenance: true, withTransaction: async callback => {
+    open = true; try { return await callback({ query }); } finally { open = false; }
+  } });
+  expect((await repository.read(identity)).trainingExclusions).toEqual(new Set(['movie:1']));
 });

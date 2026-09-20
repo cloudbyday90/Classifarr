@@ -3,6 +3,7 @@ import { buildInventoryDescriptionCorpusSql, prepareInventoryDescriptionCorpus }
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from './sourceConflictAuthorityGuard.mjs';
 import { readInventoryDescriptionVectorRows, decodeInventoryDescriptionVectorRows } from './inventoryDescriptionVectorCache.mjs';
 import { collectInventoryCandidateMetadata } from './inventoryMetadataCandidates.mjs';
+import { readInventoryTrainingExclusions } from './inventoryTrainingProvenance.mjs';
 
 export const INVENTORY_METADATA_BENCHMARK_SQL = buildInventoryDescriptionCorpusSql({ includeCandidateMetadata: true });
 const LIBRARIES_SQL = `SELECT id, name, media_type FROM libraries
@@ -10,17 +11,17 @@ const LIBRARIES_SQL = `SELECT id, name, media_type FROM libraries
 const EVALUATION_LIBRARIES_SQL = `SELECT id, name, media_type, is_active FROM libraries
   WHERE is_active=true AND media_type IN ('movie','tv') ORDER BY id LIMIT 65`;
 
-export function createDescriptionBenchmarkRepository({ withTransaction, includeEvaluationMetadata = false }) {
+export function createDescriptionBenchmarkRepository({ withTransaction, includeEvaluationMetadata = false, includeTrainingProvenance = false }) {
   return {
     async read(identity) {
-      const source = await withTransaction(client => readDescriptionBenchmarkSnapshot(client, identity, includeEvaluationMetadata));
+      const source = await withTransaction(client => readDescriptionBenchmarkSnapshot(client, identity, includeEvaluationMetadata, includeTrainingProvenance));
       return decodeDescriptionBenchmarkSnapshot(source, identity, includeEvaluationMetadata);
     },
   };
 }
 
 /** Shared capture boundary for ordinary and policy-replay readers. */
-export async function readDescriptionBenchmarkSnapshot(client, identity, includeEvaluationMetadata = false) {
+export async function readDescriptionBenchmarkSnapshot(client, identity, includeEvaluationMetadata = false, includeTrainingProvenance = false) {
   await client.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
   await client.query("SET LOCAL statement_timeout = '15s'");
   await client.query("SET LOCAL lock_timeout = '1s'");
@@ -35,10 +36,12 @@ export async function readDescriptionBenchmarkSnapshot(client, identity, include
   if (libraries.length > 64) throw new Error('description_benchmark_library_budget');
   const vectorRows = await readInventoryDescriptionVectorRows((sql, params) => client.query(sql, params), identity, [...corpus.texts.keys()]);
   if (vectorRows.length !== corpus.texts.size) throw new Error('description_benchmark_cache_incomplete');
-  return { corpus, libraries, vectorRows, rows };
+  const provenance = includeTrainingProvenance ? { trainingExclusions: await readInventoryTrainingExclusions(client, corpus.documents) } : {};
+  return { corpus, libraries, vectorRows, rows, ...provenance };
 }
 
-export function decodeDescriptionBenchmarkSnapshot({ corpus, libraries, vectorRows, rows }, identity, includeEvaluationMetadata = false) {
+export function decodeDescriptionBenchmarkSnapshot({ corpus, libraries, vectorRows, rows, trainingExclusions }, identity, includeEvaluationMetadata = false) {
   return { corpus, libraries, vectors: decodeInventoryDescriptionVectorRows(vectorRows, identity),
+    ...(trainingExclusions === undefined ? {} : { trainingExclusions }),
     candidateMetadata: collectInventoryCandidateMetadata(rows), ...(includeEvaluationMetadata ? { evaluationRows: rows } : {}) };
 }
