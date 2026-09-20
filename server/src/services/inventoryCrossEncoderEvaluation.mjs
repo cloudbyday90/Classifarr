@@ -1,5 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { prepareSemanticComparisonPlan } from './inventorySemanticComparisonContract.mjs';
+import { prepareCrossEncoderEvidence, createCrossEncoderExclusionDiagnostics } from './inventoryCrossEncoderAdmission.mjs';
 import { createLocalCrossEncoderClient } from './localCrossEncoderClient.mjs';
 import { runCrossEncoderTrial } from './inventoryCrossEncoderTrial.mjs';
 import { DiscoveryDeferredError } from './inventoryDiscoveryAdmission.mjs';
@@ -11,19 +11,15 @@ export function validateCrossEncoderCases(value, size = 300) {
 /** Source-order retention then library/media round-robin, fixed before observing any model output. */
 export function createCrossEncoderEvaluation({ scoreCases = 0, createClient = createLocalCrossEncoderClient } = {}) {
   validateCrossEncoderCases(scoreCases);
-  const pending = [], excluded = {};
+  const pending = [], diagnostics = createCrossEncoderExclusionDiagnostics();
   let considered = 0, bytes = 0;
-  const exclude = reason => { excluded[reason] = (excluded[reason] ?? 0) + 1; };
   return {
     add(input) {
       considered++;
-      let plan;
-      try {
-        plan = prepareSemanticComparisonPlan(input);
-        if (plan.candidates.some(candidate => candidate.examples.length < 2)) throw new Error('missing');
-      } catch { exclude('evidence_unavailable'); return; }
+      const { plan, reason } = prepareCrossEncoderEvidence(input);
+      if (!plan) { diagnostics.record(reason, input?.metadata?.media_type ?? input?.mediaType); return; }
       const size = Buffer.byteLength(JSON.stringify(plan));
-      if (pending.length >= 300 || bytes + size > 8_000_000) { exclude('retention_budget'); return; }
+      if (pending.length >= 300 || bytes + size > 8_000_000) { diagnostics.record('retention_budget', plan.query.mediaType); return; }
       bytes += size;
       pending.push({ plan, observed: [...input.observed], baselineId: input.baselineId });
     },
@@ -75,7 +71,7 @@ export function createCrossEncoderEvaluation({ scoreCases = 0, createClient = cr
       }
       latencies.sort((a, b) => a - b);
       const p95BatchLatencyMs = latencies.length ? latencies[Math.ceil(latencies.length * 0.95) - 1] : null;
-      return { status: failed ? 'completed_with_errors' : scoreCases ? 'complete' : 'preflight', considered, eligible: pending.length, excluded,
+      return { status: failed ? 'completed_with_errors' : scoreCases ? 'complete' : 'preflight', considered, eligible: pending.length, ...diagnostics.report(),
         requested: scoreCases, selected: rows.length, completed, shortfall: scoreCases - completed,
         statuses, failureReasons, perMedia, originalLanguageCounts: languages, descriptionLanguageAssessed: false,
         observedLibraries: libraries.size, calls, identity: identity ?? null,

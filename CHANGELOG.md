@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Distinguish intentional policy exclusions from missing scorer evidence in
+  offline evaluations. Preserve specific, privacy-safe validation reasons and
+  recovery guidance without unnecessary retries or changes to live routing.
 - Share frozen-snapshot verification across offline policy and content evaluations.
   Retain historical measurements during metadata enrichment, keep safety-relevant
   drift invalidating, and check source validity before optional inference.

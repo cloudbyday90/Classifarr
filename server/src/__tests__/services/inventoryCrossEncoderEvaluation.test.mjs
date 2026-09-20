@@ -8,6 +8,8 @@ import { DiscoveryDeferredError } from '../../services/inventoryDiscoveryAdmissi
 
 function fixture(count = 5) {
   const input = leaderSemanticFixture(count), plan = prepareSemanticComparisonPlan(input);
+  input.policyResult = { action: 'manual', ranked: input.candidateIds.map(id => ({ id })) };
+  input.libraries = input.candidateIds.map(id => ({ id }));
   const preferred = new Set(plan.candidates[0].examples);
   const client = { score: jest.fn(async (data, { onScoringCall }) => {
     onScoringCall(); return { identity: { revision: 'pinned' }, scores: data.texts.map(text => preferred.has(text) ? 2 : -1), latencyMs: 3 };
@@ -20,7 +22,7 @@ test.each([-1, 101, NaN, 0.5, '1'])('rejects invalid scoring budget %s', value =
 test('zero scoring never creates a provider; insufficient examples and duplicate evidence abstain before requests', async () => {
   const { input, createClient } = fixture(), evaluation = createCrossEncoderEvaluation({ createClient });
   evaluation.add(input); const invalid = structuredClone(input); invalid.evidence.candidates[0].items = []; evaluation.add(invalid);
-  expect(await evaluation.run()).toMatchObject({ calls: 0, eligible: 1, excluded: { evidence_unavailable: 1 }, livePromotionAllowed: false });
+  expect(await evaluation.run()).toMatchObject({ calls: 0, eligible: 1, excluded: { examples_missing: 1 }, livePromotionAllowed: false });
   expect(createClient).not.toHaveBeenCalled();
 });
 test('three uncached passes preserve pair indices across batches and reversed order', async () => {

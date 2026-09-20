@@ -80,7 +80,7 @@ export async function runInventoryLeaderChallengeBenchmark(settings, {
         if (scorerEvaluation) {
           const contextId = retrieved?.candidates?.[0]?.learnedProfile?.snapshotId;
           const sameContext = retrieved?.candidates?.every(candidate => candidate.learnedProfile?.snapshotId === contextId);
-          scorerEvaluation.add({ contextId: sameContext ? contextId : null, metadata: evidence?.metadata,
+          scorerEvaluation.add({ ...input, contextId: sameContext ? contextId : null, metadata: evidence?.metadata,
             candidateIds: pool.map(candidate => candidate.libraryId), evidence: retrieved, observed: doc.libraryIds,
             baselineId: assessment.policyLeaderId });
         }

@@ -3,6 +3,11 @@
 Date: 2026-09-20. Implementation follows the
 [shared snapshot design](frozen-evaluation-snapshot-design.md). No release.
 
+Follow-up: the [admission investigation](cross-encoder-evidence-admission-outcome.md)
+found that the two apparent evidence gaps below were automatic-policy scope
+exclusions, not demonstrated missing data. That corrects the interpretation,
+not the original run's counts or validity.
+
 ## What changed
 
 Both fresh-policy and leader/scorer evaluations now use one small ESM drift
