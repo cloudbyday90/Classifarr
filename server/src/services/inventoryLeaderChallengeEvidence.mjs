@@ -7,6 +7,7 @@ import { prepareLinearRankerSource, selectLinearRankerTraining } from './invento
 import { descriptionCosineSimilarity } from './inventoryDescriptionSimilarity.mjs';
 import { createFreshInventoryPolicyEvidence } from './freshInventoryPolicyEvidence.mjs';
 import { createLeaderChallengeCalibration } from './inventoryLeaderChallengeCalibration.mjs';
+import { selectLibraryWithheldProbes } from './inventoryLibraryWithheldProbes.mjs';
 
 /** Same admitted description groups support policy observations, metadata fit and nearest examples. */
 export async function prepareLeaderChallengeEvidence(snapshot, representation, options, { signal, checkpoint = () => {} } = {}) {
@@ -25,6 +26,7 @@ export async function prepareLeaderChallengeEvidence(snapshot, representation, o
   // Existing source and sample limits bound this to 300 * 8 million components.
   const evidence = createFreshInventoryPolicyEvidence(snapshot, { texts: snapshot.corpus.texts }, { trainingByFold });
   return { evidence, sample: selection.sample, training,
+    withheldLibraryProbes: selectLibraryWithheldProbes(snapshot.corpus.documents, selection.sample, plan.foldByHash),
     calibrate: createLeaderChallengeCalibration(snapshot, representation, trainingByFold),
     sampleFingerprint: createHash('sha256').update(JSON.stringify(selection.sample.map(doc => doc.key))).digest('hex'),
     evaluation: { ...plan.summary, priorCohortSizes: selection.priorCohortSizes,

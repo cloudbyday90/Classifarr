@@ -22,7 +22,7 @@ test('compares fresh production policy results across both media without inferen
   const { runtime, source, client } = fixture(), before = structuredClone(source), loadRuntime = jest.fn(async () => runtime);
   const onProgress = jest.fn();
   const report = await runInventoryLeaderChallengeBenchmark(settings, { loadRuntime, onProgress });
-  expect(report).toMatchObject({ protocol: 'inventory_leader_challenge_v5', status: 'complete', sourceVerified: true,
+  expect(report).toMatchObject({ protocol: 'inventory_leader_challenge_v6', status: 'complete', sourceVerified: true,
     calls: 0, sampleShortfall: 0, liveRoutingChanged: false, livePromotionAllowed: false, accuracy: null,
     comparison: { sampled: 12, compared: 12, poolSizes: { 3: 12 } } });
   expect(report.comparison.byMedia.every(row => row.sampled > 0)).toBe(true);
@@ -33,13 +33,15 @@ test('compares fresh production policy results across both media without inferen
   expect(report.exactAcceptanceComparison).toMatchObject({ sampled: 12, compared: 12, acceptance: { reasons: expect.any(Object) } });
   expect(report.referenceCoverage).toMatchObject({ nominatedQueries: expect.any(Number), candidateComparisons: expect.any(Number) });
   expect(report.referenceCoverage.byLibrary).toHaveLength(6);
+  expect(report.integrityControls).toMatchObject({ unexpectedAcceptance: 0, unexpectedErrors: 0 });
+  expect(report.withheldLibraryProbes).toMatchObject({ semanticGroundTruth: false, falseAcceptanceRate: null, sampled: expect.any(Number) });
   expect(loadRuntime).toHaveBeenCalledWith({ includeTrainingProvenance: true });
   expect(runtime.withDiscoveryAdmission).toHaveBeenCalledTimes(1);
   expect(runtime.repository.read).toHaveBeenCalledTimes(2);
   expect(runtime.createClient).not.toHaveBeenCalled();
   expect(client.generate).not.toHaveBeenCalled();
   expect(runtime.close).toHaveBeenCalledTimes(1);
-  expect(onProgress).toHaveBeenCalledTimes(12);
+  expect(onProgress).toHaveBeenCalledTimes(12 + report.withheldLibraryProbes.sampled);
   expect(source).toEqual(before);
   expect(JSON.stringify(report)).not.toMatch(/Private|candidateOrder|challengerId|libraryId|movie:1|localhost/);
 });
@@ -120,4 +122,21 @@ test('invalid options and initial cancellation never open a runtime; CLI rejects
   expect(loadRuntime).not.toHaveBeenCalled();
   const { runtime } = fixture();
   expect(await runInventoryDescriptionBenchmark({ argv, loadFreshRuntime: async () => runtime })).toMatchObject({ status: 'complete' });
+});
+
+test('changed embedding representation invalidates the whole evaluation, including its rejection diagnostics', async () => {
+  const { runtime } = fixture();
+  runtime.embedder.inspect.mockResolvedValueOnce(representation).mockResolvedValueOnce(representation)
+    .mockResolvedValue({ ...representation, digest: 'f'.repeat(64) });
+  await expect(runInventoryLeaderChallengeBenchmark(settings, { loadRuntime: async () => runtime })).rejects.toThrow('model_changed');
+  expect(runtime.createClient).not.toHaveBeenCalled(); expect(runtime.close).toHaveBeenCalledTimes(1);
+});
+
+test('cancelling a library-withheld probe closes the runtime and a fresh run can recover', async () => {
+  const { runtime } = fixture(), controller = new AbortController();
+  await expect(runInventoryLeaderChallengeBenchmark(settings, { loadRuntime: async () => runtime, signal: controller.signal,
+    onProgress: progress => { if (progress.stage === 'library_withheld_probes') controller.abort(); } })).rejects.toThrow();
+  expect(runtime.close).toHaveBeenCalledTimes(1);
+  const retry = fixture();
+  expect(await runInventoryLeaderChallengeBenchmark(settings, { loadRuntime: async () => retry.runtime })).toMatchObject({ status: 'complete' });
 });

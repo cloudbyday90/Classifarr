@@ -21,7 +21,7 @@ export function leaderChallengeNomination(assessment) {
 }
 
 /** Empirical evidence, not a live receipt, confidence score or authority to bypass review. */
-export function assessLeaderChallengeAcceptance(assessment, calibration, { crossFit = false, representative = false, exact = false } = {}) {
+export function assessLeaderChallengeAcceptance(assessment, calibration, { crossFit = false, representative = false, exact = false, expectedContextId } = {}) {
   if (typeof crossFit !== 'boolean' || typeof representative !== 'boolean' || typeof exact !== 'boolean' ||
       ((representative || exact) && !crossFit) || (representative && exact)) throw new Error('leader_acceptance_mode_invalid');
   const referenceLimit = exact ? EXACT_NEIGHBOR_LIMITS.references : neighborLimits.references;
@@ -30,6 +30,9 @@ export function assessLeaderChallengeAcceptance(assessment, calibration, { cross
     incumbent: state(incumbent?.status), challenger: state(challenger?.status) });
   if (nomination?.statusId !== 'challenger') return result('not_nominated');
   const { match, neighbor } = calibration ?? {}, pool = assessment.candidateOrder;
+  if (exact && (!hash(expectedContextId) || match?.contextId !== expectedContextId || neighbor?.contextId !== expectedContextId)) {
+    return result('calibration_context_mismatch');
+  }
   if (!Array.isArray(pool) || pool.length < 2 || pool.length > 64 || new Set(pool).size !== pool.length ||
       pool.some(id => !count(id, 1, 2147483647)) || !pool.includes(assessment.policyLeaderId) ||
       !pool.includes(nomination.challengerId) || assessment.policyLeaderId === nomination.challengerId ||

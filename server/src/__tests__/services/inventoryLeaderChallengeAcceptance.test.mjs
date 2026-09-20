@@ -143,16 +143,22 @@ test('representative selection has separate explicit admission and cannot remove
 });
 
 test('exact retrieval requires its own version and full-pool exclusion counts without relaxing other modes or vetoes', () => {
-  const { assessment, calibration } = fixture(), options = { crossFit: true, exact: true };
+  const { assessment, calibration } = fixture(), options = { crossFit: true, exact: true, expectedContextId: 'c'.repeat(64) };
+  calibration.match.contextId = options.expectedContextId;
+  calibration.neighbor.contextId = options.expectedContextId;
   calibration.match.version = 'library_match_cross_fit_v1';
   for (const candidate of calibration.match.candidates) Object.assign(candidate, {
     referenceDescriptions: 23, calibrationDescriptions: 24, minimumCalibrationReferences: 23 });
   expect(assessLeaderChallengeAcceptance(assessment, calibration, options).reason).toBe('calibration_unavailable');
-  calibration.neighbor.version = 'library_neighbor_exact_cross_fit_v1';
+  calibration.neighbor.version = 'library_neighbor_exact_cross_fit_v2';
   for (const candidate of calibration.neighbor.candidates) Object.assign(candidate, {
     referenceDescriptions: 300, minimumCalibrationReferences: 299, calibrationDescriptions: 32 });
   expect(assessLeaderChallengeAcceptance(assessment, calibration, { crossFit: true }).accepted).toBe(false);
   expect(assessLeaderChallengeAcceptance(assessment, calibration, options).accepted).toBe(true);
+  expect(assessLeaderChallengeAcceptance(assessment, calibration, { crossFit: true, exact: true }).reason).toBe('calibration_context_mismatch');
+  const stale = structuredClone(calibration);
+  stale.match.contextId = stale.neighbor.contextId = 'd'.repeat(64);
+  expect(assessLeaderChallengeAcceptance(assessment, stale, options).reason).toBe('calibration_context_mismatch');
   const veto = { ...assessment, statusId: 'review_veto', challengerId: null, blockedContent: { statusId: 'challenger', challengerId: 2 } };
   expect(applyLeaderChallengeAcceptance(veto, calibration, options)).toMatchObject({ statusId: 'review_veto', challengerId: null, acceptance: { accepted: true } });
   for (const update of [{ minimumCalibrationReferences: 300 }, { calibrationDescriptions: 31 },

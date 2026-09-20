@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Bind offline calibration evidence to its item, snapshot and retrieval scope;
+  automatically test corrupted evidence and library-withheld content probes without
+  adding user setup or changing live routing safeguards.
 - Compare full eligible-library nearest examples with sampled references during
   offline classification evaluation. Reuse bounded similarity calculations across
   held-out folds, preserve provenance exclusions and keep live routing unchanged.

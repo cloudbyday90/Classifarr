@@ -144,3 +144,7 @@ retained placement gains, cancellation/retry and snapshot invalidation separatel
 Use library-agnostic fixtures and frozen comparisons, not category-name rules or
 another approval screen. Independent semantic labels are still required before
 claiming routing accuracy or relaxing safety gates.
+
+The follow-up is now implemented in the
+[neighbor rejection evaluation design](neighbor-rejection-evaluation-design.md),
+with results recorded in its [outcome](neighbor-rejection-evaluation-outcome.md).

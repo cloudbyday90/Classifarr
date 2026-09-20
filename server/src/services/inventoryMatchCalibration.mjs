@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { fitLibraryMatchBaseline, LIBRARY_MATCH_BASELINE_LIMITS, LIBRARY_MATCH_BASELINE_VERSION } from './libraryMatchBaseline.mjs';
-import { prepareMatchCalibrationCorpus, splitMatchCalibrationGroups, validateMatchCalibrationFold, matchCalibrationDigest } from './inventoryMatchCalibrationCorpus.mjs';
+import { prepareMatchCalibrationCorpus, splitMatchCalibrationGroups, matchCalibrationDigest } from './inventoryMatchCalibrationCorpus.mjs';
+import { resolveInventoryCalibrationContext } from './inventoryCalibrationContext.mjs';
 import { fitLibraryMatchCrossFit, LIBRARY_MATCH_CROSS_FIT_VERSION, LIBRARY_MATCH_CROSS_FIT_LIMITS } from './libraryMatchCrossFit.mjs';
 
 async function fitSplit(split, corpus, crossFit, options) {
@@ -25,20 +26,14 @@ export function createInventoryMatchCalibration(input, { crossFit = false } = {}
     if (operations > 2_000_000_000) throw new Error('inventory_match_calibration_work_budget');
   };
   return Object.freeze({
-    async assess(entry, { signal } = {}) {
+    async assess(entry, { signal, omittedLibraryId = null } = {}) {
       signal?.throwIfAborted();
-      const held = entry?.heldDescriptionHashes;
-      const queryHash = entry?.descriptionHash;
-      const queryKey = `${entry?.mediaType}:${entry?.itemIdentity?.tmdbId}`;
-      if (!(held instanceof Set) || !held.has(entry.descriptionHash) || entry.itemIdentity?.mediaType !== entry.mediaType ||
-          corpus.identities.get(queryKey) !== entry.descriptionHash) throw new Error('inventory_match_calibration_query_invalid');
-      // Validate even on cache hits, then copy the exclusion set before the first await.
-      validateMatchCalibrationFold(corpus, entry.mediaType, held);
-      const key = matchCalibrationDigest([corpus.fingerprint, entry.mediaType, [...held].sort(),
+      const { mediaType, descriptionHash: queryHash, exclusions: held, contextId } = resolveInventoryCalibrationContext(corpus, entry, omittedLibraryId);
+      const key = matchCalibrationDigest([corpus.fingerprint, mediaType, [...held].sort(),
         ...(crossFit ? [version, LIBRARY_MATCH_CROSS_FIT_LIMITS] : [])]);
       if (!models.has(key)) {
         if (models.size >= 20) throw new Error('inventory_match_calibration_fold_budget');
-        const splits = splitMatchCalibrationGroups(corpus, entry.mediaType, new Set(held));
+        const splits = splitMatchCalibrationGroups(corpus, mediaType, held);
         const components = crossFit ? splits.reduce((sum, split) => sum +
           Math.min(split.references.length + split.calibration.length, LIBRARY_MATCH_CROSS_FIT_LIMITS.pool), 0) * corpus.dimensions : 0;
         if (retainedComponents + components > LIBRARY_MATCH_CROSS_FIT_LIMITS.modelVectorComponents) {
@@ -59,7 +54,8 @@ export function createInventoryMatchCalibration(input, { crossFit = false } = {}
       }
       const fitted = await models.get(key);
       signal?.throwIfAborted();
-      return { version, snapshotId: key, candidates: fitted.map(model => ({
+      // Familiarity is fitted independently per library, so omission does not refit remaining libraries.
+      return { version, snapshotId: key, contextId, candidates: fitted.filter(model => model.libraryId !== omittedLibraryId).map(model => ({
         libraryId: model.libraryId, eligibleDescriptions: model.eligibleDescriptions,
         sharedDescriptionsExcluded: model.sharedDescriptionsExcluded,
         referenceDescriptions: model.baseline?.summary.referenceDescriptions ?? 0,

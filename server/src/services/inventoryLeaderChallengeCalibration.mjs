@@ -10,10 +10,10 @@ export function createLeaderChallengeCalibration(snapshot, representation, train
     return [fold, new Set([...hashes].filter(hash => !admitted.has(hash)))];
   }));
   let match, neighbor, crossFitMatch, representativeNeighbor, exactNeighbor;
-  return async (entry, { signal } = {}) => {
+  return async (entry, { signal, omittedLibraryId = null } = {}) => {
     signal?.throwIfAborted();
     const held = exclusions.get(entry?.foldIndex);
-    if (!held || !(entry?.heldDescriptionHashes instanceof Set) || !held.has(entry.descriptionHash) ||
+    if (!held || !(entry?.heldDescriptionHashes instanceof Set) || !held.has(entry.descriptionHash) || !entry.heldDescriptionHashes.has(entry.descriptionHash) ||
         [...entry.heldDescriptionHashes].some(hash => !held.has(hash))) throw new Error('leader_calibration_fold_invalid');
     if (!match) {
       const input = { documents: snapshot.corpus.documents, libraries: snapshot.libraries,
@@ -26,12 +26,16 @@ export function createLeaderChallengeCalibration(snapshot, representation, train
       exactNeighbor = pair.exact;
     }
     const query = { ...entry, heldDescriptionHashes: new Set(held) };
+    const contextId = exactNeighbor.contextFor(query, omittedLibraryId);
+    if (omittedLibraryId !== null) return { contextId,
+      crossFitMatch: await crossFitMatch.assess(query, { signal, omittedLibraryId }),
+      exactNeighbor: await exactNeighbor.assess(query, { signal, omittedLibraryId }) };
     // Sequential fitting avoids overlapping scratch memory; all kernels enforce work budgets.
     const familiar = await match.assess(query, { signal });
     const distinct = await neighbor.assess(query, { signal });
     const crossFitted = await crossFitMatch.assess(query, { signal });
     const selected = await representativeNeighbor.assess(query, { signal });
     const exact = await exactNeighbor.assess(query, { signal });
-    return { match: familiar, neighbor: distinct, crossFitMatch: crossFitted, representativeNeighbor: selected, exactNeighbor: exact };
+    return { contextId, match: familiar, neighbor: distinct, crossFitMatch: crossFitted, representativeNeighbor: selected, exactNeighbor: exact };
   };
 }

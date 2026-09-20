@@ -1,9 +1,10 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { validateMatchCalibrationFold, splitMatchCalibrationGroups, matchCalibrationDigest } from './inventoryMatchCalibrationCorpus.mjs';
+import { splitMatchCalibrationGroups, matchCalibrationDigest } from './inventoryMatchCalibrationCorpus.mjs';
+import { resolveInventoryCalibrationContext } from './inventoryCalibrationContext.mjs';
 import { createExactNeighborScoreCache, EXACT_NEIGHBOR_BUDGET } from './exactNeighborScoreCache.mjs';
 import { neighborMargin, summarizeNeighborMarginDistributions, assessNeighborMarginModels } from './libraryNeighborScoring.mjs';
 
-export const EXACT_NEIGHBOR_VERSION = 'library_neighbor_exact_cross_fit_v1';
+export const EXACT_NEIGHBOR_VERSION = 'library_neighbor_exact_cross_fit_v2';
 export const EXACT_NEIGHBOR_LIMITS = Object.freeze({ minimum: 20, references: 10000, calibration: 32, tail: .05 });
 
 /** Internal factory: corpus is already validated, copied and exclusively owned by the paired evaluator. */
@@ -28,18 +29,15 @@ export function createExactNeighborCalibration(corpus) {
     return { groups, coverage, summaries: summarizeNeighborMarginDistributions(groups.map(group => group.libraryId), distributions, sparse, limits.tail) };
   }
   return Object.freeze({
-    async assess(entry, { signal } = {}) {
+    contextFor: (entry, omittedLibraryId = null) => resolveInventoryCalibrationContext(corpus, entry, omittedLibraryId).contextId,
+    async assess(entry, { signal, omittedLibraryId = null } = {}) {
       signal?.throwIfAborted();
-      const { mediaType, descriptionHash, itemIdentity, heldDescriptionHashes: held } = entry ?? {};
-      if (!(held instanceof Set) || !held.has(descriptionHash) || itemIdentity?.mediaType !== mediaType ||
-          corpus.identities.get(`${mediaType}:${itemIdentity?.tmdbId}`) !== descriptionHash) throw new Error('exact_neighbor_query_invalid');
-      validateMatchCalibrationFold(corpus, mediaType, held);
-      const exclusions = new Set(held);
-      const key = matchCalibrationDigest([EXACT_NEIGHBOR_VERSION, limits, EXACT_NEIGHBOR_BUDGET, corpus.fingerprint, mediaType, [...exclusions].sort()]);
+      const { mediaType, descriptionHash, exclusions, contextId } = resolveInventoryCalibrationContext(corpus, entry, omittedLibraryId);
+      const key = matchCalibrationDigest([EXACT_NEIGHBOR_VERSION, limits, EXACT_NEIGHBOR_BUDGET, corpus.fingerprint, mediaType, [...exclusions].sort(), omittedLibraryId]);
       if (!models.has(key)) {
         if (models.size >= 20) throw new Error('exact_neighbor_fold_budget');
-        const splits = splitMatchCalibrationGroups(corpus, mediaType, exclusions);
-        if (splits.length < 2) return { version: EXACT_NEIGHBOR_VERSION, candidates: [], status: 'insufficient_libraries' };
+        const splits = splitMatchCalibrationGroups(corpus, mediaType, exclusions).filter(split => split.libraryId !== omittedLibraryId);
+        if (splits.length < 2) return { version: EXACT_NEIGHBOR_VERSION, contextId, candidates: [], status: 'insufficient_libraries' };
         const admitted = [...corpus.groups.values()].filter(group => group.mediaType === mediaType &&
           group.libraryIds.size === 1 && !exclusions.has(group.hash));
         const groups = splits.map(split => ({ libraryId: split.libraryId,
@@ -56,7 +54,7 @@ export function createExactNeighborCalibration(corpus) {
       const fitted = await models.get(key);
       const scores = await score(descriptionHash, fitted.groups, signal);
       signal?.throwIfAborted();
-      return { version: EXACT_NEIGHBOR_VERSION, snapshotId: key, status: 'evaluated',
+      return { version: EXACT_NEIGHBOR_VERSION, snapshotId: key, contextId, status: 'evaluated',
         candidates: assessNeighborMarginModels(fitted.summaries, scores, fitted.coverage, limits.tail), resources: cache.stats() };
     },
   });
