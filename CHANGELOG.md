@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Allow weak-evidence overlaps to reach the existing bounded AI comparison.
+  Preserve explicit review holds, confirmation settings and fresh-evidence
+  routing checks instead of stopping supported cases before evaluation.
 - Distinguish intentional policy exclusions from missing scorer evidence in
   offline evaluations. Preserve specific, privacy-safe validation reasons and
   recovery guidance without unnecessary retries or changes to live routing.

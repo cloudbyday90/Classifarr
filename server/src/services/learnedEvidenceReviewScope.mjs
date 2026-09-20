@@ -1,8 +1,8 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { buildPolicyCandidateAdjudicationPool } from './policyCandidateAdjudicationContract.mjs';
 import { validatePolicyDecisionThresholds } from '../utils/policyThresholds.mjs';
+import { isLearnedEvidenceSoftReview } from './learnedEvidenceReviewReasons.mjs';
 
-const softReviews = new Set(['weak_evidence_primary', 'weak_evidence_overlap']);
 const softSuppressions = new Set(['weak_primary_evidence', 'compatibility_profile_only',
   'broad_compatibility_overlap', 'insufficient_specialized_evidence']);
 const id = value => Number.isInteger(value) && value > 0 && value <= 2147483647;
@@ -13,8 +13,8 @@ export function inspectLearnedEvidenceReviewScope({ metadata, policyResult, cont
   if (requireAllConfirmations || !id(metadata?.tmdb_id) || !['movie', 'tv'].includes(metadata.media_type) ||
       !['manual', 'prompt_select'].includes(policyResult?.action)) return { reason: 'review_not_resolvable' };
   const review = policyResult.decisionDiagnostics;
-  if (review && ((review.reason_code && !softReviews.has(review.reason_code)) ||
-      (review.requires_manual_review && !softReviews.has(review.reason_code)))) return { reason: 'explicit_review_required' };
+  if (review && ((review.reason_code && !isLearnedEvidenceSoftReview(review.reason_code)) ||
+      (review.requires_manual_review && !isLearnedEvidenceSoftReview(review.reason_code)))) return { reason: 'explicit_review_required' };
   const ranked = policyResult.ranked;
   if (!Array.isArray(ranked) || ranked.length < 2 || ranked.length > 64 ||
       ranked.some(candidate => !id(candidate?.library_id)) ||

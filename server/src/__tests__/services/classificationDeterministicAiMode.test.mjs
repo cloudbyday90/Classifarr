@@ -13,6 +13,8 @@ import {
   buildDeterministicOutcomeAiModeProjection,
   resolveDeterministicOutcomeAiMode,
 } from '../../services/classificationDeterministicAiMode.mjs';
+import { buildPolicyCandidateAdjudicationContract } from '../../services/policyCandidateAdjudicationContract.mjs';
+import { projectPolicyCandidateDecision } from '../../services/policyCandidateDecisionProjection.mjs';
 
 const libraries = [
   { id: 1, name: 'Movies', media_type: 'movie' },
@@ -35,6 +37,44 @@ function policyResult({
 }
 
 describe('classificationDeterministicAiMode', () => {
+  test.each(['movie', 'tv'])('production weak-overlap decisions reach bounded %s comparison without clearing review', mediaType => {
+    const available = libraries.map(library => ({ ...library, media_type: mediaType, is_active: true }));
+    const decision = projectPolicyCandidateDecision({ ranked: available.map(library => ({
+      library_id: library.id, score: 45,
+      candidate_diagnostics: { primary_viability: 'profile_only' },
+    })) });
+    expect(decision).toMatchObject({ action: 'manual', decisionDiagnostics: {
+      requires_manual_review: true, reason_code: 'weak_evidence_overlap',
+    } });
+    const before = structuredClone(decision);
+    const contract = buildPolicyCandidateAdjudicationContract({ policyResult: decision, libraries: available, mediaType });
+    expect(resolveDeterministicOutcomeAiMode({ policyResult: decision, libraries: available, candidateAdjudication: contract }))
+      .toMatchObject({ mode: 'adjudicate', shouldInvoke: true, candidateCount: 2, reasonCode: 'manual_candidate_adjudication_ready' });
+    expect(decision).toEqual(before);
+  });
+
+  test.each(['weak_evidence_primary', 'weak_evidence_overlap'])('known soft review %s still requires a valid contract', reason => {
+    const decision = policyResult({ action: 'manual', ranked: [{ library_id: 1, score: 45 }, { library_id: 2, score: 44 }],
+      decisionDiagnostics: { requires_manual_review: true, reason_code: reason } });
+    for (const candidateAdjudication of [null, { valid: false, candidates: [] }]) {
+      expect(resolveDeterministicOutcomeAiMode({ policyResult: decision, libraries, candidateAdjudication }))
+        .toMatchObject({ mode: 'abstain', shouldInvoke: false });
+    }
+    const candidateAdjudication = buildPolicyCandidateAdjudicationContract({ policyResult: decision, libraries, mediaType: 'movie' });
+    expect(resolveDeterministicOutcomeAiMode({ policyResult: decision, libraries, candidateAdjudication }))
+      .toMatchObject({ mode: 'adjudicate', shouldInvoke: true });
+  });
+
+  test.each([undefined, null, '', 'operator_hold', 'policy_constraint_conflict', 'future_review_reason',
+    ' weak_evidence_overlap', 'weak_evidence_overlap ', ['weak_evidence_overlap'], { reason_code: 'weak_evidence_overlap' }])(
+    'unknown or explicit manual hold %j remains provider-free', reason => {
+      const decision = policyResult({ action: 'manual', ranked: [{ library_id: 1, score: 45 }, { library_id: 2, score: 44 }],
+        decisionDiagnostics: { requires_manual_review: true, reason_code: reason } });
+      const candidateAdjudication = buildPolicyCandidateAdjudicationContract({ policyResult: decision, libraries, mediaType: 'movie' });
+      expect(resolveDeterministicOutcomeAiMode({ policyResult: decision, libraries, candidateAdjudication }))
+        .toMatchObject({ mode: 'abstain', shouldInvoke: false, reasonCode: 'manual_review_required' });
+    });
+
   test.each([
     [
       'uses generic classification only when no policy outcome exists',

@@ -7,6 +7,7 @@ import {
   policyDecisionAction,
   policyDecisionLibraryIdentifier,
 } from '../utils/policyDecisionAuthority.mjs';
+import { isLearnedEvidenceSoftReview } from './learnedEvidenceReviewReasons.mjs';
 
 export const CLASSIFICATION_DETERMINISTIC_AI_MODE_VERSION = 'classification.deterministic_ai_mode.v1';
 
@@ -156,7 +157,10 @@ export function resolveDeterministicOutcomeAiMode({
   }
 
   if (policyAction === 'manual') {
-    if (policyResult?.decisionDiagnostics?.requires_manual_review === true) {
+    // A soft evidence review may be compared, but its hold remains until the
+    // existing learned-evidence service and final routing gate authorize it.
+    if (policyResult?.decisionDiagnostics?.requires_manual_review === true &&
+        !isLearnedEvidenceSoftReview(policyResult.decisionDiagnostics.reason_code)) {
       return buildDecision({
         mode: CLASSIFICATION_DETERMINISTIC_AI_MODE_IDS.ABSTAIN,
         shouldInvoke: false,

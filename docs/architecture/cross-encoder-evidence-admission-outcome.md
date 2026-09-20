@@ -3,6 +3,10 @@
 Date: 2026-09-20. Implementation follows the
 [admission design](cross-encoder-evidence-admission-design.md). No release.
 
+Follow-up: the [soft-review adjudication outcome](soft-review-adjudication-outcome.md)
+traces the initial weak reviews and repairs the unreachable weak-overlap comparison
+path without changing the scorer or weakening live routing safeguards.
+
 ## Correction to the previous interpretation
 
 The two exclusions in the previous 20-item smoke were not demonstrated missing
