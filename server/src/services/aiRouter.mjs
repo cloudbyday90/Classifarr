@@ -93,7 +93,8 @@ export class AIRouterService {
     }
 
     async getProvider(taskType = 'classification', options = {}) {
-        const config = await this.getConfig();
+        // Recovery uses a fresh server-loaded snapshot, never the 30-second UI/runtime cache.
+        const config = options.configuration || await this.getConfig();
         const requestedAuthorityMode = options.authorityMode;
 
         if (config.primary_provider === 'none') {

@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-14T01:59:57.315Z
--- Latest Migration: 20260913_220000_add_description_retry_journal.sql
+-- Generated: 2026-09-20T18:49:06.392Z
+-- Latest Migration: 20260920_160000_add_classification_automatic_recovery.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -2386,11 +2386,15 @@ CREATE TABLE public.classification_history (
     cast_names text[],
     pending_identity_key character varying(600),
     recorded_at timestamp with time zone DEFAULT statement_timestamp(),
+    retry_failure_code text,
+    retry_exhausted_at timestamp with time zone,
+    retry_recovery_attempts smallint DEFAULT 0 NOT NULL,
     CONSTRAINT chk_classification_completed_has_library CHECK ((((status)::text IS DISTINCT FROM 'completed'::text) OR (library_id IS NOT NULL))),
     CONSTRAINT chk_classification_confidence_range CHECK (((confidence IS NULL) OR ((confidence >= (0)::numeric) AND (confidence <= (100)::numeric)))),
     CONSTRAINT classification_history_media_type_check CHECK (((media_type)::text = ANY (ARRAY[('movie'::character varying)::text, ('tv'::character varying)::text]))),
     CONSTRAINT classification_history_method_check CHECK (((method)::text = ANY (ARRAY[('existing_media'::character varying)::text, ('manual_correction'::character varying)::text, ('manual_classification'::character varying)::text, ('exact_match'::character varying)::text, ('learned_pattern'::character varying)::text, ('source_library'::character varying)::text, ('policy_auto'::character varying)::text, ('policy_prompt'::character varying)::text, ('policy_recheck'::character varying)::text, ('ai_verified'::character varying)::text, ('ai_analysis'::character varying)::text, ('ai_rerun'::character varying)::text, ('signal_calculation'::character varying)::text, ('fallback'::character varying)::text, ('queued_for_retry'::character varying)::text, ('custom_rule'::character varying)::text, ('rule_match'::character varying)::text, ('ai_fallback'::character varying)::text, ('holiday_detection'::character varying)::text, ('library_rule'::character varying)::text, ('rag_improved'::character varying)::text, ('authoritative_source_library'::character varying)::text, ('policy_engine'::character varying)::text, ('policy_candidate_adjudication'::character varying)::text]))),
     CONSTRAINT classification_history_recorded_at_finite CHECK (((recorded_at IS NULL) OR isfinite(recorded_at))),
+    CONSTRAINT classification_history_retry_recovery_attempts_check CHECK (((retry_recovery_attempts >= 0) AND (retry_recovery_attempts <= 1))),
     CONSTRAINT classification_history_status_check CHECK (((status)::text = ANY (ARRAY[('completed'::character varying)::text, ('failed'::character varying)::text, ('corrected'::character varying)::text, ('awaiting_decision'::character varying)::text, ('pending'::character varying)::text, ('pending_retry'::character varying)::text, ('verified'::character varying)::text, ('reclassified'::character varying)::text, ('routed'::character varying)::text])))
 )
 WITH (fillfactor='80', autovacuum_vacuum_scale_factor='0.05', autovacuum_analyze_scale_factor='0.05');
@@ -2490,6 +2494,21 @@ CREATE TABLE public.classification_queue_decision_witnesses (
 --
 
 COMMENT ON TABLE public.classification_queue_decision_witnesses IS 'Bounded, versioned queued classification outcomes for local evaluation; contains no raw request or provider evidence.';
+
+
+--
+-- Name: classification_recovery_probe_state; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.classification_recovery_probe_state (
+    id boolean DEFAULT true NOT NULL,
+    next_probe_at timestamp with time zone DEFAULT now() NOT NULL,
+    lease_token uuid,
+    checked_at timestamp with time zone,
+    last_outcome text,
+    CONSTRAINT classification_recovery_probe_state_id_check CHECK (id),
+    CONSTRAINT classification_recovery_probe_state_last_outcome_check CHECK ((last_outcome = ANY (ARRAY['ready'::text, 'unavailable'::text, 'configuration_changed'::text])))
+);
 
 
 --
@@ -7344,6 +7363,8 @@ CREATE TABLE public.task_queue (
     stage_started_at timestamp without time zone,
     stage_history jsonb DEFAULT '[]'::jsonb,
     visible_at timestamp with time zone,
+    classification_recovery_attempts smallint DEFAULT 0 NOT NULL,
+    CONSTRAINT task_queue_classification_recovery_attempts_check CHECK (((classification_recovery_attempts >= 0) AND (classification_recovery_attempts <= 1))),
     CONSTRAINT task_queue_status_check CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('processing'::character varying)::text, ('completed'::character varying)::text, ('failed'::character varying)::text, ('cancelled'::character varying)::text])))
 )
 WITH (fillfactor='75', autovacuum_vacuum_scale_factor='0.01', autovacuum_vacuum_threshold='50', autovacuum_analyze_scale_factor='0.05', autovacuum_vacuum_cost_delay='2', autovacuum_vacuum_insert_scale_factor='0.02', autovacuum_vacuum_insert_threshold='500');
@@ -9034,6 +9055,14 @@ ALTER TABLE ONLY public.classification_history_totals
 
 ALTER TABLE ONLY public.classification_queue_decision_witnesses
     ADD CONSTRAINT classification_queue_decision_witnesses_pkey PRIMARY KEY (queue_task_id, classification_id);
+
+
+--
+-- Name: classification_recovery_probe_state classification_recovery_probe_state_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.classification_recovery_probe_state
+    ADD CONSTRAINT classification_recovery_probe_state_pkey PRIMARY KEY (id);
 
 
 --
@@ -10750,6 +10779,13 @@ CREATE INDEX idx_clarification_responses_classification ON public.clarification_
 --
 
 CREATE INDEX idx_clarification_responses_question ON public.clarification_responses USING btree (question_id);
+
+
+--
+-- Name: idx_classification_automatic_recovery_due; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_classification_automatic_recovery_due ON public.classification_history USING btree (retry_exhausted_at, id) WHERE (((status)::text = 'failed'::text) AND ((method)::text = 'queued_for_retry'::text) AND (library_id IS NULL) AND (retry_recovery_attempts = 0) AND (retry_failure_code IS NOT NULL));
 
 
 --
@@ -16045,6 +16081,7 @@ FROM unnest(ARRAY[
     '20260910_120000_add_source_identity_evidence_replay_observations.sql',
     '20260911_120000_add_inventory_description_vector_cache.sql',
     '20260913_140000_add_source_identity_recovery_state.sql',
-    '20260913_220000_add_description_retry_journal.sql'
+    '20260913_220000_add_description_retry_journal.sql',
+    '20260920_160000_add_classification_automatic_recovery.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

@@ -1,3 +1,5 @@
+import { getAutomaticRecoveryErrorCode } from './automaticClassificationRecoveryPolicy.mjs';
+
 export const RETRY_DELAY_MS = 5 * 60 * 1000;
 
 function isAiTransientAvailabilityErrorImpl(error) {
@@ -19,6 +21,7 @@ function isAiTransientAvailabilityErrorImpl(error) {
   if ([
     'ECONNREFUSED',
     'ETIMEDOUT',
+    'ECONNABORTED',
     'ECONNRESET',
     'EHOSTUNREACH',
     'ENOTFOUND',
@@ -72,6 +75,10 @@ export function isAiTransientAvailabilityError(...args) {
 export function resolveRetryReason(error) {
   const message = typeof error?.message === 'string' ? error.message.toLowerCase() : '';
   const code = typeof error?.code === 'string' ? error.code.toUpperCase() : '';
+
+  if (['ECONNREFUSED', 'ECONNRESET', 'EHOSTUNREACH', 'ENOTFOUND'].includes(code)) {
+    return { code: 'ai_connection_error', reason: 'AI connection unavailable - queued for retry' };
+  }
 
   if (code === 'EINCOMPLETE' || message.includes('completion signal')) {
     return {
@@ -189,6 +196,7 @@ export function buildPendingRetryResult({
     method: 'queued_for_retry',
     reason: retryReason.reason,
     retry_reason_code: retryReason.code,
+    retry_failure_code: getAutomaticRecoveryErrorCode(transientError),
     retry_after: new Date(Date.now() + RETRY_DELAY_MS),
     retry_count: normalizedPreviousRetryCount === null ? 0 : normalizedPreviousRetryCount + 1,
     max_retries: normalizedMaxRetries,

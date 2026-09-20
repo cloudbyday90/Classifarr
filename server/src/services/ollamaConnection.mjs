@@ -65,7 +65,7 @@ export async function probeGeneration(host, port, model, options = {}) {
   const startedAt = Date.now();
   const contextLength = getProbeContextLength(options?.contextLength);
 
-  await httpPost(
+  const response = await httpPost(
     `${testUrl}/api/generate`,
     {
       model,
@@ -82,10 +82,15 @@ export async function probeGeneration(host, port, model, options = {}) {
     },
   );
 
-  return {
-    ok: true,
-    latency_ms: Date.now() - startedAt,
-  };
+  // A tiny token budget can end in the separate thinking channel. This tests
+  // generation availability, not answer quality; never retain either text field.
+  const data = response?.data;
+  const generatedText = [data?.response, data?.thinking]
+    .some((value) => typeof value === 'string' && value.trim().length > 0);
+  if (data?.done !== true || !generatedText || data.error) {
+    throw Object.assign(new Error('Generation probe did not return completed generation output'), { code: 'EINCOMPLETE' });
+  }
+  return { ok: true, latency_ms: Date.now() - startedAt };
 }
 
 export async function preflightConnection(getConfig, preflightCache, options = {}) {

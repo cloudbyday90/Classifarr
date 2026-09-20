@@ -111,6 +111,18 @@ describe('AIRouterService', () => {
     });
 
     describe('getProvider', () => {
+        it('uses a fresh internal recovery snapshot without replacing the normal configuration cache', async () => {
+            const cached = { primary_provider: 'none', ollama_fallback_enabled: false };
+            mockDb.query.mockResolvedValue(createDbSingleRowResult(cached));
+            await service.getConfig();
+            const snapshot = { primary_provider: 'custom', model: 'fresh-model', api_key: 'test-key' };
+            mockCloudLLM.checkBudget.mockResolvedValue({ exhausted: false });
+            const provider = await service.getProvider('classification', { configuration: snapshot });
+            expect(provider).toMatchObject({ type: 'custom', config: { model: 'fresh-model' } });
+            expect(await service.getConfig()).toEqual(cached);
+            expect(mockDb.query).toHaveBeenCalledTimes(1);
+        });
+
         it('should return null when AI is disabled', async () => {
             mockDb.query.mockResolvedValue(createDbSingleRowResult({
                 primary_provider: 'none',

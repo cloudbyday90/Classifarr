@@ -109,3 +109,5 @@ replay budget**, not another sampling study or additional review UI:
 The benefit is fewer user actions during temporary outages; the cost is durable
 state and stronger concurrency/lifecycle tests. Implement this targeted recovery
 handoff before adopting another orchestration product or weakening routing gates.
+
+Follow-up implementation: [automatic classification recovery design](automatic-classification-recovery-design.md).

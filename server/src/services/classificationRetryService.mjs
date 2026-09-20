@@ -12,6 +12,7 @@ import { classificationOutcomeService } from './classificationOutcomeService.mjs
 import { ClassificationRetryFollowupService } from './classificationRetryFollowupService.mjs';
 import { ClassificationRetryStateService } from './classificationRetryStateService.mjs';
 import * as classificationRetryPayloads from '../utils/classificationRetryPayloads.mjs';
+import { AUTOMATIC_RECOVERY_TASK_SOURCE, AUTOMATIC_RECOVERY_MAX_RETRIES } from './automaticClassificationRecoveryPolicy.mjs';
 import {
   getClassificationRetryEligibility,
   MANUAL_RETRY_TASK_SOURCE,
@@ -200,7 +201,9 @@ export class ClassificationRetryService {
 
       const rowResult = await client.query(
         `SELECT id, tmdb_id, media_type, title, year, status, metadata, policy_question,
-                retry_count, max_retries, method, library_id, retry_after
+                retry_count, max_retries, method, library_id, retry_after,
+                retry_failure_code, retry_exhausted_at, retry_recovery_attempts,
+                pending_identity_key, recorded_at
          FROM classification_history
          WHERE id = $1
          FOR UPDATE`,
@@ -239,10 +242,14 @@ export class ClassificationRetryService {
         buildRetryPayload,
         safeParseJsonObject,
       } = this.classificationRetryPayloads;
+      if (taskSource === AUTOMATIC_RECOVERY_TASK_SOURCE && typeof retryEligibilityCheck !== 'function') {
+        return { ...baseResult, skipped: true, reasonCode: 'recovery_readiness_required' };
+      }
       const metadata = safeParseJsonObject(row.metadata, {});
       if (typeof retryEligibilityCheck === 'function') {
         const eligibility = normalizeEligibilityResult(await retryEligibilityCheck({
           classification: row,
+          client,
         }));
         if (!eligibility.eligible) {
           this.logger.warn('Classification retry skipped: eligibility not met', {
@@ -282,14 +289,19 @@ export class ClassificationRetryService {
       const enrichmentCleanup = await this.cleanupEnrichmentState(client, mediaItemId);
 
       const retryPayload = buildRetryPayload(row, metadata, mediaItemId, {
-        // Automatic retries consume the existing budget; admitted manual recovery starts a new one.
+        // Ordinary scheduled retries keep their budget; explicit and bounded recovery start a cycle.
         resetRetryBudget: taskSource !== SCHEDULER_RETRY_TASK_SOURCE,
       });
+      if (taskSource === AUTOMATIC_RECOVERY_TASK_SOURCE) {
+        retryPayload.max_retries = Math.min(retryPayload.max_retries, AUTOMATIC_RECOVERY_MAX_RETRIES);
+      }
       const queueResult = await client.query(
-        `INSERT INTO task_queue (task_type, payload, priority, source, max_attempts)
-         VALUES ($1, $2::jsonb, $3, $4, $5)
+        `INSERT INTO task_queue (task_type, payload, priority, source, max_attempts, classification_recovery_attempts)
+         VALUES ($1, $2::jsonb, $3, $4, $5, $6)
          RETURNING id`,
-        ['classification', JSON.stringify(retryPayload), 2, taskSource, 5]
+        ['classification', JSON.stringify(retryPayload), 2, taskSource, 5,
+          taskSource === MANUAL_RETRY_TASK_SOURCE ? 0
+            : taskSource === AUTOMATIC_RECOVERY_TASK_SOURCE ? 1 : (row.retry_recovery_attempts ?? 0)]
       );
       const taskId = queueResult.rows[0]?.id || null;
 
@@ -306,9 +318,10 @@ export class ClassificationRetryService {
       await client.query(
         `UPDATE classification_history
          SET status = 'reclassified',
-             pending_reason = NULL
+             pending_reason = NULL,
+             retry_recovery_attempts = GREATEST(retry_recovery_attempts, $2)
          WHERE id = $1`,
-        [classificationId]
+        [classificationId, taskSource === AUTOMATIC_RECOVERY_TASK_SOURCE ? 1 : 0]
       );
       await classificationOutcomeService.recordOutcome(classificationId, {
         type: 'retried',

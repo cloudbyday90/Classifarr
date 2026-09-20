@@ -8,6 +8,8 @@
  * (at your option) any later version.
  */
 
+import { AUTOMATIC_RECOVERY_TASK_SOURCE, isAutomaticRecoveryDue } from './automaticClassificationRecoveryPolicy.mjs';
+
 export const MANUAL_RETRY_TASK_SOURCE = 'manual_retry';
 export const SCHEDULER_RETRY_TASK_SOURCE = 'retry_queue';
 
@@ -27,6 +29,10 @@ export function getExhaustedRetryRecovery(row) {
 }
 
 export function getClassificationRetryEligibility(row, taskSource = MANUAL_RETRY_TASK_SOURCE) {
+  if (taskSource === AUTOMATIC_RECOVERY_TASK_SOURCE) {
+    const eligible = getExhaustedRetryRecovery(row) !== null && isAutomaticRecoveryDue(row);
+    return { eligible, reasonCode: eligible ? null : 'automatic_recovery_ineligible' };
+  }
   if (taskSource === SCHEDULER_RETRY_TASK_SOURCE) {
     if (row?.status !== 'pending_retry') return { eligible: false, reasonCode: 'status_ineligible' };
     if (!hasValidBudget(row) || row.retry_count >= row.max_retries) {

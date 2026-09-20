@@ -553,6 +553,36 @@ describe('OllamaService', () => {
             );
         });
 
+        it.each([{}, { done: false, response: 'OK' }, { done: true, response: '' },
+            { done: true, response: '   ' }, { done: true, response: 42 },
+            { done: true, response: 'OK', error: 'failed' },
+            { done: true, response: '', thinking: '   ' },
+            { done: false, response: '', thinking: 'Working' },
+            { done: true, thinking: 42 },
+            { done: true, thinking: 'Working', error: 'failed' }])('rejects empty/incomplete HTTP-success generation probes %#', async (data) => {
+            mockHttpGet.mockResolvedValueOnce({ data: { models: [{ name: 'test-model' }] } });
+            mockHttpPost.mockResolvedValueOnce({ data });
+            const result = await ollamaService.preflightConnection({
+                host: 'localhost', port: 11434, model: 'test-model', probeGeneration: true, force: true,
+            });
+            expect(result.success).toBe(false);
+            expect(result.errorCode).toBe('EINCOMPLETE');
+            expect(result.checks.generation_probe.ok).toBe(false);
+        });
+
+        it('accepts completed generation in the thinking channel without retaining its text', async () => {
+            mockHttpGet.mockResolvedValueOnce({ data: { models: [{ name: 'test-model' }] } });
+            mockHttpPost.mockResolvedValueOnce({ data: {
+                done: true, response: '', thinking: 'Synthetic private probe text', done_reason: 'length',
+            } });
+            const result = await ollamaService.preflightConnection({
+                host: 'localhost', port: 11434, model: 'test-model', probeGeneration: true, force: true,
+            });
+            expect(result.success).toBe(true);
+            expect(result.checks.generation_probe.ok).toBe(true);
+            expect(JSON.stringify(result)).not.toContain('Synthetic private probe text');
+        });
+
         it('uses a small default num_ctx for generation probes when no override is supplied', async () => {
             mockHttpGet.mockResolvedValueOnce({
                 data: {

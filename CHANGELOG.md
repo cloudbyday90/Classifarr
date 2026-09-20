@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Resume eligible exhausted classifications automatically after a verified AI
+  generation check. Persist cooldowns and a one-cycle recovery budget across
+  restarts and replacement jobs, while retaining manual retry and routing safeguards.
+- Reject incomplete or empty Ollama generation probes instead of treating an HTTP
+  success alone as model readiness.
 - Restore History retry recovery for exhausted, unrouted AI classifications.
   Recheck eligibility under a database lock, preserve bounded automatic retries,
   and show clear inline queue results without replaying unrelated failures.

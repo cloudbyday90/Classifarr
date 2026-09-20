@@ -14,13 +14,14 @@ import { mediaSyncService } from './mediaSync.mjs';
 import { classificationService } from './classification.mjs';
 import { enrichmentRetryService } from './enrichmentRetryService.mjs';
 import { queueService } from './queueService.mjs';
+import { automaticClassificationRecoveryService } from './automaticClassificationRecoveryService.mjs';
 
 const logger = createLogger('SchedulerService');
 
 // Human-readable reason stamped on classifications that exhaust their automatic
 // retry budget and are dead-lettered to a terminal `failed` state.
 const DEAD_LETTER_REASON =
-    'AI retry attempts exhausted - resolve the AI issue and use Retry Classification to try again';
+    'AI retry attempts exhausted - Classifarr checks eligible items for recovery; Retry Classification is also available';
 
 export async function runGapAnalysis() {
     try {
@@ -118,6 +119,8 @@ export async function processRetryQueue() {
             error: error.message,
             stack: error.stack,
         });
+    } finally {
+        await automaticClassificationRecoveryService.run();
     }
 }
 
@@ -131,8 +134,8 @@ export async function processRetryQueue() {
  * "fail after N attempts"), we move them to a terminal `failed` state with a
  * clear reason/description, remove them from the active retry loop
  * (`retry_after = NULL`), and leave them visible in History. They remain
- * recoverable via the manual Retry Classification action, which intentionally
- * ignores the `max_retries` cap once the underlying issue is resolved.
+ * recoverable via explicit manual retry or the separately bounded, readiness-
+ * checked recovery service. Exhaustion never directly resets a retry budget.
  */
 export async function deadLetterExhaustedRetries() {
     try {
@@ -140,6 +143,7 @@ export async function deadLetterExhaustedRetries() {
             UPDATE classification_history
             SET status = 'failed',
                 retry_after = NULL,
+                retry_exhausted_at = COALESCE(retry_exhausted_at, NOW()),
                 reason = $1,
                 pending_reason = $1,
                 error_message = COALESCE(
