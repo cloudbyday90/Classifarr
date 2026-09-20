@@ -171,6 +171,9 @@ and documentation are recorded under Unreleased without creating a release.
 
 ## Final recommendation stack and next item
 
+Follow-up: [candidate-specific acceptance outcome](inventory-challenge-acceptance-outcome.md)
+records the paired calibration audit and the remaining small-library limitation.
+
 1. Keep this challenger evaluation-only. Its benefit on larger-library replay
    cohorts does not erase regressions exposed by balanced small-library coverage.
 2. Preserve the existing raw descriptions, organic metadata profiles, provenance

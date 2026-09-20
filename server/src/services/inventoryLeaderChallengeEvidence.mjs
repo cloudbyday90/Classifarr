@@ -6,9 +6,11 @@ import { planDescriptionBenchmarkFolds } from './inventoryDescriptionBenchmarkFo
 import { prepareLinearRankerSource, selectLinearRankerTraining } from './inventoryLinearRankerSource.mjs';
 import { descriptionCosineSimilarity } from './inventoryDescriptionSimilarity.mjs';
 import { createFreshInventoryPolicyEvidence } from './freshInventoryPolicyEvidence.mjs';
+import { createLeaderChallengeCalibration } from './inventoryLeaderChallengeCalibration.mjs';
 
 /** Same admitted description groups support policy observations, metadata fit and nearest examples. */
-export async function prepareLeaderChallengeEvidence(snapshot, dimensions, options, { signal, checkpoint = () => {} } = {}) {
+export async function prepareLeaderChallengeEvidence(snapshot, representation, options, { signal, checkpoint = () => {} } = {}) {
+  const { dimensions } = representation;
   const source = prepareLinearRankerSource(snapshot, dimensions);
   const selection = selectAdditionalDescriptionBenchmarkSample(snapshot.corpus, options);
   const plan = planDescriptionBenchmarkFolds(snapshot.corpus, selection.sample, snapshot.libraries, options);
@@ -23,6 +25,7 @@ export async function prepareLeaderChallengeEvidence(snapshot, dimensions, optio
   // Existing source and sample limits bound this to 300 * 8 million components.
   const evidence = createFreshInventoryPolicyEvidence(snapshot, { texts: snapshot.corpus.texts }, { trainingByFold });
   return { evidence, sample: selection.sample, training,
+    calibrate: createLeaderChallengeCalibration(snapshot, representation, trainingByFold),
     sampleFingerprint: createHash('sha256').update(JSON.stringify(selection.sample.map(doc => doc.key))).digest('hex'),
     evaluation: { ...plan.summary, priorCohortSizes: selection.priorCohortSizes,
       priorSampleFingerprints: selection.priorSampleFingerprints, excludedPriorDescriptions: selection.excluded.size,
@@ -39,7 +42,7 @@ export async function prepareLeaderChallengeEvidence(snapshot, dimensions, optio
         return { id: library.id, eligible: items.length, items: items.slice(0, 3) };
       });
       signal?.throwIfAborted();
-      return { mediaType: doc.type, itemIdentity: { tmdbId: doc.id }, overview: snapshot.corpus.texts.get(doc.hash),
+      return { mediaType: doc.type, itemIdentity: { tmdbId: doc.id, mediaType: doc.type }, overview: snapshot.corpus.texts.get(doc.hash),
         descriptionHash: doc.hash, heldDescriptionHashes: plan.held[foldIndex], foldIndex, investigationCandidates };
     },
   };

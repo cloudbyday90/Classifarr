@@ -9,6 +9,7 @@ import { runInventoryDescriptionBenchmark } from '../../scripts/runInventoryDesc
 import { createFreshInventoryPolicyEvidence } from '../../services/freshInventoryPolicyEvidence.mjs';
 
 const settings = { ...freshSettings, generateCases: 0 };
+const representation = { provider: 'ollama', model: 'embedding:latest', digest: 'b'.repeat(64), dimensions: 2 };
 function fixture() {
   const value = freshFixture();
   value.source.trainingExclusions = new Set(['movie:1']);
@@ -21,11 +22,12 @@ test('compares fresh production policy results across both media without inferen
   const { runtime, source, client } = fixture(), before = structuredClone(source), loadRuntime = jest.fn(async () => runtime);
   const onProgress = jest.fn();
   const report = await runInventoryLeaderChallengeBenchmark(settings, { loadRuntime, onProgress });
-  expect(report).toMatchObject({ protocol: 'inventory_leader_challenge_v1', status: 'complete', sourceVerified: true,
+  expect(report).toMatchObject({ protocol: 'inventory_leader_challenge_v2', status: 'complete', sourceVerified: true,
     calls: 0, sampleShortfall: 0, liveRoutingChanged: false, livePromotionAllowed: false, accuracy: null,
     comparison: { sampled: 12, compared: 12, poolSizes: { 3: 12 } } });
   expect(report.comparison.byMedia.every(row => row.sampled > 0)).toBe(true);
   expect(report.comparison.byLibrary).toHaveLength(6);
+  expect(report.acceptanceComparison).toMatchObject({ sampled: 12, compared: 12, acceptance: { reasons: expect.any(Object) } });
   expect(loadRuntime).toHaveBeenCalledWith({ includeTrainingProvenance: true });
   expect(runtime.withDiscoveryAdmission).toHaveBeenCalledTimes(1);
   expect(runtime.repository.read).toHaveBeenCalledTimes(2);
@@ -39,7 +41,7 @@ test('compares fresh production policy results across both media without inferen
 
 test('canonical, provenance-clean fold evidence excludes retained decisions and all held copies for policy and content', async () => {
   const { source } = fixture();
-  const prepared = await prepareLeaderChallengeEvidence(source, 2, settings);
+  const prepared = await prepareLeaderChallengeEvidence(source, representation, settings);
   for (const doc of prepared.sample) {
     const entry = await prepared.forDocument(doc), runtime = prepared.evidence.forCase(entry);
     const contract = { valid: true, candidates: source.libraries.filter(library => library.media_type === doc.type)
@@ -57,7 +59,7 @@ test('canonical, provenance-clean fold evidence excludes retained decisions and 
 });
 
 test('an explicitly missing training fold cannot silently fall back to the unfiltered corpus', async () => {
-  const { source } = fixture(), prepared = await prepareLeaderChallengeEvidence(source, 2, settings);
+  const { source } = fixture(), prepared = await prepareLeaderChallengeEvidence(source, representation, settings);
   const entry = await prepared.forDocument(prepared.sample[0]);
   const evidence = createFreshInventoryPolicyEvidence(source, { texts: source.corpus.texts }, { trainingByFold: new Map() });
   expect(() => evidence.forCase(entry)).toThrow('training_fold_missing');

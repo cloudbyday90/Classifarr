@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Evaluate proposed library changes against each library's learned matching patterns
+  and calibrated distinctions. Share provenance-clean held-out evidence, report
+  raw versus accepted results per library, and preserve all live routing safeguards.
 - Evaluate content-supported challenges to provisional policy leaders, including
   small candidate pools, with shared provenance-clean evidence and paired outcome
   diagnostics. Distinguish manual-review blockers from weak content matches;

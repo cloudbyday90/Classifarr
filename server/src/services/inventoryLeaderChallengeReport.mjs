@@ -20,6 +20,11 @@ export function summarizeLeaderChallenges(rows) {
     changedWithoutAgreement: changed.filter(row => !baselineMatches(row) && !challengerMatches(row)).length,
     observedOutsidePool: compared.filter(row => !row.observed.some(id => row.assessment.candidateOrder.includes(id))).length,
     heldWithRetainedHistory: rows.filter(row => row.retainedHistory).length,
+    ...(rows.some(row => row.assessment.acceptance) ? { acceptance: {
+      reasons: counts(rows.map(row => row.assessment.acceptance.reason)),
+      candidatePairs: counts(rows.filter(row => row.assessment.acceptance.reason !== 'not_nominated')
+        .map(row => `${row.assessment.acceptance.incumbent}:${row.assessment.acceptance.challenger}`)),
+    } } : {}),
     vetoDiagnostics: { blocked: blocked.length, reasons: counts(blocked.map(row => row.assessment.reviewReason)),
       contentStatuses: counts(blocked.map(row => row.assessment.blockedContent.statusId)),
       hypotheticalChallenges: blockedChallenges.length,
