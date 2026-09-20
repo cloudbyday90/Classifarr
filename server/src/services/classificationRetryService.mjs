@@ -2,7 +2,7 @@
  * Classifarr - AI-powered media classification for the *arr ecosystem
  * Copyright (C) 2024-2026 Classifarr Contributors
  *
- * Retry + reset service for pending classifications.
+ * Transactional retry service for pending decisions and eligible exhausted AI failures.
  */
 
 import * as db from '../config/database.mjs';
@@ -12,23 +12,20 @@ import { classificationOutcomeService } from './classificationOutcomeService.mjs
 import { ClassificationRetryFollowupService } from './classificationRetryFollowupService.mjs';
 import { ClassificationRetryStateService } from './classificationRetryStateService.mjs';
 import * as classificationRetryPayloads from '../utils/classificationRetryPayloads.mjs';
+import {
+  getClassificationRetryEligibility,
+  MANUAL_RETRY_TASK_SOURCE,
+  SCHEDULER_RETRY_TASK_SOURCE,
+} from './classificationRetryEligibility.mjs';
 
 const logger = createLogger('ClassificationRetryService');
 
 const MAX_BATCH_SIZE = 100;
-const ELIGIBLE_STATUSES = new Set(['awaiting_decision', 'pending_retry']);
 const RETRY_ROUTE = '/api/classification/retry';
-const DEFAULT_RETRY_TASK_SOURCE = 'manual_retry';
+const DEFAULT_RETRY_TASK_SOURCE = MANUAL_RETRY_TASK_SOURCE;
 const DEFAULT_RETRY_FOLLOWUP_SOURCE = 'manual_retry_followup';
 const DEFAULT_INELIGIBLE_RETRY_REASON_CODE = 'retry_eligibility_not_met';
 const RETRY_REASON_CODE_PATTERN = /^[a-z0-9_]{1,120}$/;
-
-// Task source used by the scheduler's automatic retry queue. Retries from this
-// source preserve the carried-forward retry_count so the auto-retry loop stays
-// bounded by max_retries. Any other source is treated as an operator-initiated
-// retry and resets the retry budget (fresh attempts) - mirroring the DLQ
-// "operator resubmit after fixing the issue" pattern.
-const SCHEDULER_RETRY_TASK_SOURCE = 'retry_queue';
 
 function toPositiveInt(value) {
   const parsed = Number.parseInt(value, 10);
@@ -202,7 +199,8 @@ export class ClassificationRetryService {
       const txResult = await this.db.withTransaction(async (client) => {
 
       const rowResult = await client.query(
-        `SELECT id, tmdb_id, media_type, title, year, status, metadata, policy_question, retry_count, max_retries
+        `SELECT id, tmdb_id, media_type, title, year, status, metadata, policy_question,
+                retry_count, max_retries, method, library_id, retry_after
          FROM classification_history
          WHERE id = $1
          FOR UPDATE`,
@@ -222,17 +220,18 @@ export class ClassificationRetryService {
         return { ...baseResult, skipped: true, reasonCode: 'not_found' };
       }
 
-      if (!ELIGIBLE_STATUSES.has(row.status)) {
-        this.logger.warn('Classification retry skipped: status ineligible', {
+      const retryEligibility = getClassificationRetryEligibility(row, taskSource);
+      if (!retryEligibility.eligible) {
+        this.logger.warn('Classification retry skipped: state ineligible', {
           correlationId,
           actor,
           route,
           classificationId,
           result: 'skipped',
           status: row.status,
-          reasonCode: 'status_ineligible'
+          reasonCode: retryEligibility.reasonCode
         });
-        return { ...baseResult, skipped: true, reasonCode: 'status_ineligible' };
+        return { ...baseResult, skipped: true, reasonCode: retryEligibility.reasonCode };
       }
 
       const {
@@ -283,6 +282,7 @@ export class ClassificationRetryService {
       const enrichmentCleanup = await this.cleanupEnrichmentState(client, mediaItemId);
 
       const retryPayload = buildRetryPayload(row, metadata, mediaItemId, {
+        // Automatic retries consume the existing budget; admitted manual recovery starts a new one.
         resetRetryBudget: taskSource !== SCHEDULER_RETRY_TASK_SOURCE,
       });
       const queueResult = await client.query(

@@ -71,6 +71,23 @@ describe('Classification history filters', () => {
     app.use(errorHandler);
   });
 
+  test('list and detail expose server-derived exhaustion recovery only for eligible records', async () => {
+    const exhausted = {
+      id: 801, title: 'Synthetic exhausted item', status: 'failed', method: 'queued_for_retry',
+      library_id: null, retry_after: null, retry_count: 3, max_retries: 3,
+    };
+    db.query.mockResolvedValueOnce({ rows: [
+      { ...exhausted, total_count: '2' },
+      { ...exhausted, id: 802, method: 'ai_analysis', total_count: '2' },
+    ] });
+    const list = await request(app).get('/api/classification/history').expect(200);
+    expect(list.body.data[0].retry_recovery).toEqual({ eligible: true, reasonCode: 'retry_exhausted' });
+    expect(list.body.data[1].retry_recovery).toBeNull();
+    db.query.mockResolvedValueOnce({ rows: [exhausted] }).mockResolvedValueOnce({ rows: [] });
+    const detail = await request(app).get('/api/classification/history/801').expect(200);
+    expect(detail.body.retry_recovery).toEqual(list.body.data[0].retry_recovery);
+  });
+
   test('applies search and date range filters to history query', async () => {
     db.query
       .mockResolvedValueOnce({

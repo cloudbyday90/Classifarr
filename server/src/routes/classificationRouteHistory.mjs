@@ -11,6 +11,7 @@
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { NotFoundError } from '../utils/appError.mjs';
 import { parseIntParam } from './evidenceRouteHelpers.mjs';
+import { getExhaustedRetryRecovery } from '../services/classificationRetryEligibility.mjs';
 
 const historyIdentitySql = (alias) => `
   CASE
@@ -207,7 +208,7 @@ export function registerHistoryRoutes(router, { db }) {
           resolved_library_name: _resolvedLibraryName,
           ...rest
         } = row;
-        return rest;
+        return { ...rest, retry_recovery: getExhaustedRetryRecovery(row) };
       }),
       pagination: {
         page: normalizedPage,
@@ -253,6 +254,7 @@ export function registerHistoryRoutes(router, { db }) {
 
     res.json({
       ...result.rows[0],
+      retry_recovery: getExhaustedRetryRecovery(result.rows[0]),
       corrections: corrections.rows,
     });
   }));

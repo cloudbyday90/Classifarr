@@ -858,7 +858,7 @@ describe('Classification Routes - Pending Resolution', () => {
       expect(classificationRetryService.retryClassifications).not.toHaveBeenCalled();
     });
 
-    test('queues retries without changing learning evidence', async () => {
+    test('queues retries without changing learning evidence or trusting client retry source overrides', async () => {
       classificationRetryService.retryClassifications.mockResolvedValueOnce({
         correlationId: 'corr-default-preserve',
         requested: 1,
@@ -873,7 +873,9 @@ describe('Classification Routes - Pending Resolution', () => {
       const response = await request(app)
         .post('/api/classification/retry')
         .send({
-          classificationIds: [204]
+          classificationIds: [204],
+          taskSource: 'retry_queue',
+          options: { taskSource: 'historic_route_safety_refresh', force: true, resetRetryBudget: false },
         });
 
       expect(response.status).toBe(200);
@@ -888,6 +890,10 @@ describe('Classification Routes - Pending Resolution', () => {
           actor: 'admin'
         })
       );
+      const [argumentsPassed] = classificationRetryService.retryClassifications.mock.calls[0];
+      expect(argumentsPassed).not.toHaveProperty('taskSource');
+      expect(argumentsPassed).not.toHaveProperty('options');
+      expect(argumentsPassed).not.toHaveProperty('retryEligibilityCheck');
     });
 
     test('blocks read-only API keys via requireReadWrite', async () => {

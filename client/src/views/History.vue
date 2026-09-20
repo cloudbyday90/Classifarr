@@ -322,10 +322,16 @@
             </div>
           </div>
 
+          <ExhaustedRetryRecovery
+            :key="selectedItem.id"
+            :classification="selectedItem"
+            @refresh="loadPage(pagination?.page || 1)"
+          />
+
           <!-- Final Outcome -->
           <div class="bg-background rounded-lg p-4 border border-gray-700">
             <h4 class="font-semibold mb-3 text-emerald-400">
-              Final Outcome
+              {{ selectedItem.status === 'failed' ? 'Classification Details' : 'Final Outcome' }}
             </h4>
             <div class="flex items-center justify-between mb-3">
               <span class="text-gray-400">Classified To:</span>
@@ -1081,6 +1087,7 @@ import Badge from '@/components/common/Badge.vue'
 import Button from '@/components/common/Button.vue'
 import BatchReclassifyModal from '@/components/BatchReclassifyModal.vue'
 import LibraryProfilePanel from '@/components/history/LibraryProfilePanel.vue'
+import ExhaustedRetryRecovery from '@/components/history/ExhaustedRetryRecovery.vue'
 import SignalRow from '@/components/history/SignalRow.vue'
 
 const librariesStore = useLibrariesStore()

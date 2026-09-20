@@ -14,6 +14,8 @@ jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDat
 const { default: db } = await import('../../config/database.mjs');
 const { ClassificationRetryService } = await import('../../services/classificationRetryService.mjs');
 const { queueService } = await import('../../services/queueService.mjs');
+const { deadLetterExhaustedRetries } = await import('../../services/schedulerOperationalTasks.mjs');
+const { getExhaustedRetryRecovery } = await import('../../services/classificationRetryEligibility.mjs');
 
 describe('ClassificationRetryService integration', () => {
   let pool;
@@ -482,6 +484,77 @@ describe('ClassificationRetryService integration', () => {
          AND status = 'pending'`
     );
     expect(queuedClassificationTasks.rows[0].count).toBe(1);
+  });
+
+  async function seedExhaustedRetry(mediaType = 'movie') {
+    const inserted = await pool.query(`
+      INSERT INTO classification_history
+        (tmdb_id, media_type, title, status, method, retry_count, max_retries, retry_after, metadata)
+      VALUES (887001, $1, 'Synthetic exhausted retry', 'pending_retry', 'queued_for_retry',
+              3, 3, NOW() - INTERVAL '1 minute', '{}'::jsonb)
+      RETURNING id
+    `, [mediaType]);
+    return inserted.rows[0].id;
+  }
+
+  test.each(['movie', 'tv'])('dead-lettered %s can be recovered once across service instances', async mediaType => {
+    const id = await seedExhaustedRetry(mediaType);
+    expect(await deadLetterExhaustedRetries()).toEqual({ deadLettered: 1 });
+    expect(await deadLetterExhaustedRetries()).toEqual({ deadLettered: 0 });
+    const failed = (await pool.query('SELECT * FROM classification_history WHERE id = $1', [id])).rows[0];
+    expect(getExhaustedRetryRecovery(failed)).toEqual({ eligible: true, reasonCode: 'retry_exhausted' });
+
+    const automatic = await service.retryClassifications({ classificationIds: [id], taskSource: 'retry_queue' });
+    expect(automatic.results[0]).toMatchObject({ queued: false, reasonCode: 'status_ineligible' });
+    const restartedService = new ClassificationRetryService({ db, logger });
+    const responses = await Promise.all([service, restartedService].map(instance => instance.retryClassifications({
+      classificationIds: [id], actor: 'integration-operator', correlationId: 'exhausted-recovery',
+    })));
+    expect(responses.reduce((sum, result) => sum + result.queued, 0)).toBe(1);
+    expect(responses.reduce((sum, result) => sum + result.skipped, 0)).toBe(1);
+    const tasks = await pool.query("SELECT * FROM task_queue WHERE task_type = 'classification'");
+    expect(tasks.rows).toHaveLength(1);
+    expect(tasks.rows[0]).toMatchObject({ source: 'manual_retry', status: 'pending' });
+    expect(tasks.rows[0].payload).toMatchObject({ retry_count: 0, max_retries: 3, media_type: mediaType });
+    expect(tasks.rows[0].payload).not.toHaveProperty('policy_question');
+    const recovered = (await pool.query('SELECT * FROM classification_history WHERE id = $1', [id])).rows[0];
+    expect(recovered).toMatchObject({ status: 'reclassified', retry_count: 3, max_retries: 3 });
+    expect(getExhaustedRetryRecovery(recovered)).toBeNull();
+    expect(JSON.stringify(recovered.metadata)).toContain('replacement_task_id');
+    expect((await restartedService.retryClassifications({ classificationIds: [id] })).queued).toBe(0);
+  });
+
+  test('recovery rollback leaves the exhausted record and no replacement task', async () => {
+    const id = await seedExhaustedRetry();
+    await deadLetterExhaustedRetries();
+    const response = await service.retryClassifications({
+      classificationIds: [id],
+      retryReceiptRecorder: async () => { throw new Error('Synthetic transactional failure'); },
+    });
+    expect(response).toMatchObject({ failed: 1, queued: 0 });
+    expect((await pool.query('SELECT * FROM task_queue')).rows).toHaveLength(0);
+    const row = (await pool.query('SELECT * FROM classification_history WHERE id = $1', [id])).rows[0];
+    expect(getExhaustedRetryRecovery(row)).not.toBeNull();
+    expect((await service.retryClassifications({ classificationIds: [id] })).queued).toBe(1);
+  });
+
+  test('stale scheduler selections cannot replay an exhausted pending row', async () => {
+    const id = await seedExhaustedRetry();
+    const response = await service.retryClassifications({ classificationIds: [id], taskSource: 'retry_queue' });
+    expect(response.results[0]).toMatchObject({ queued: false, reasonCode: 'retry_budget_exhausted' });
+    expect((await pool.query('SELECT * FROM task_queue')).rows).toHaveLength(0);
+    expect(await deadLetterExhaustedRetries()).toEqual({ deadLettered: 1 });
+  });
+
+  test('exhausted recovery leaves an existing active task intact', async () => {
+    const id = await seedExhaustedRetry();
+    await deadLetterExhaustedRetries();
+    const taskId = await queueService.enqueue('classification', { tmdb_id: 887001, media_type: 'movie' });
+    const response = await service.retryClassifications({ classificationIds: [id] });
+    expect(response.results[0]).toMatchObject({ queued: false, reasonCode: 'duplicate_pending_task' });
+    const row = (await pool.query('SELECT * FROM classification_history WHERE id = $1', [id])).rows[0];
+    expect(getExhaustedRetryRecovery(row)).not.toBeNull();
+    expect((await pool.query('SELECT * FROM task_queue')).rows).toEqual([expect.objectContaining({ id: taskId })]);
   });
 
   test('preserves queue ordering semantics with webhook burst plus retry enqueue', async () => {

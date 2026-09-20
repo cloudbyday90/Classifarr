@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Restore History retry recovery for exhausted, unrouted AI classifications.
+  Recheck eligibility under a database lock, preserve bounded automatic retries,
+  and show clear inline queue results without replaying unrelated failures.
 - Explain live library-evidence holds with privacy-safe reasons in the Command
   Center's existing details. Separate unusual items from unavailable familiarity
   checks while preserving confirmation settings, freshness checks and routing rules.

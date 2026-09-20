@@ -85,6 +85,10 @@ select, and none was merged or represented as implemented.
 
 ## Recommendation and next functional fix
 
+Follow-up: the recovery handoff below is now addressed by
+[exhausted classification retry recovery](exhausted-classification-retry-recovery-outcome.md).
+The investigation and original recommendation are retained here as historical context.
+
 Keep the existing library-agnostic content and familiarity checks. The benefit of
 this change is a truthful explanation without another scoring implementation; the
 limitation is aggregate, restart-local visibility rather than per-item diagnosis.

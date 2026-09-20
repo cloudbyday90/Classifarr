@@ -23,6 +23,7 @@ export function classify(data) {
 }
 
 export function getHistory(params) {
+  // Rows include server-derived retry_recovery (null unless exhaustion recovery is eligible).
   return getDataRequest('/classification/history', { params })
 }
 
@@ -91,6 +92,7 @@ export function rememberResolvedExactItem(classificationId) {
 }
 
 export function retryClassifications(classificationIds, options = {}) {
+  // HTTP success is not queue success: inspect the per-item results[].queued flag.
   return apiClient.post('/classification/retry', { classificationIds, options })
 }
 

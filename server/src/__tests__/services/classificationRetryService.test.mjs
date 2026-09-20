@@ -26,6 +26,7 @@ describe('ClassificationRetryService', () => {
   let followupService;
 
   beforeEach(() => {
+    mockRecordOutcome.mockClear();
     logger = createMockLogger();
     client = {
       query: jest.fn(),
@@ -182,7 +183,7 @@ describe('ClassificationRetryService', () => {
       skipped: true,
       reasonCode: 'status_ineligible'
     });
-    expect(logger.warn).toHaveBeenCalledWith('Classification retry skipped: status ineligible', expect.objectContaining({
+    expect(logger.warn).toHaveBeenCalledWith('Classification retry skipped: state ineligible', expect.objectContaining({
       classificationId: 302,
       status: 'completed',
       route: '/api/classification/retry',
@@ -302,7 +303,7 @@ describe('ClassificationRetryService', () => {
     );
   });
 
-  test('retrySingle queues retry with cleanup without purging learning evidence', async () => {
+  test.each(['awaiting_decision', 'failed'])('retrySingle queues %s retry with cleanup without purging learning evidence', async (status) => {
     client.query.mockImplementation(async (sql) => {
       if (sql === 'BEGIN' || sql === 'COMMIT') return { rows: [] };
       if (sql.includes('FROM classification_history')) {
@@ -313,8 +314,11 @@ describe('ClassificationRetryService', () => {
             media_type: 'movie',
             title: 'Retry Item',
             year: 2026,
-            status: 'awaiting_decision',
-            retry_count: 2,
+            status,
+            method: 'queued_for_retry',
+            library_id: null,
+            retry_after: null,
+            retry_count: 4,
             max_retries: 4,
             metadata: '{}'
           }]
@@ -460,6 +464,31 @@ describe('ClassificationRetryService', () => {
     );
     expect(queueCallIndex).toBeGreaterThan(-1);
     expect(classificationUpdateIndex).toBeGreaterThan(queueCallIndex);
+  });
+
+  test.each([
+    ['failed', 3, 'manual_retry', 'ai_analysis', 'status_ineligible'],
+    ['failed', 3, 'retry_queue', 'queued_for_retry', 'status_ineligible'],
+    ['failed', 3, 'historic_route_safety_refresh', 'queued_for_retry', 'status_ineligible'],
+    ['pending_retry', 3, 'retry_queue', 'queued_for_retry', 'retry_budget_exhausted'],
+    ['awaiting_decision', 2, 'retry_queue', 'queued_for_retry', 'status_ineligible'],
+  ])('blocks unsafe/stale retry %s/%s/%s before cleanup', async (status, retry_count, taskSource, method, reasonCode) => {
+    client.query.mockImplementation(async sql => {
+      if (sql === 'BEGIN' || sql === 'COMMIT') return { rows: [] };
+      if (sql.includes('FROM classification_history')) return { rows: [{
+        id: 800, status, retry_count, max_retries: 3, method, library_id: null, retry_after: null,
+      }] };
+      throw new Error('Unexpected mutation');
+    });
+    const cleanup = jest.spyOn(service, 'cleanupClassificationArtifacts');
+    const eligibilityOverride = jest.fn().mockResolvedValue({ eligible: true });
+    const result = await service.retrySingle({ classificationId: 800, taskSource, retryEligibilityCheck: eligibilityOverride });
+    expect(result).toMatchObject({ queued: false, skipped: true, failed: false, reasonCode });
+    expect(cleanup).not.toHaveBeenCalled();
+    expect(eligibilityOverride).not.toHaveBeenCalled();
+    expect(mockRecordOutcome).not.toHaveBeenCalled();
+    expect(followupService.enqueueMetadataEnrichmentTask).not.toHaveBeenCalled();
+    expect(client.query.mock.calls.filter(([sql]) => sql !== 'BEGIN' && sql !== 'COMMIT')).toHaveLength(1);
   });
 
   test('retrySingle preserves retry_count for scheduler-sourced (auto) retries', async () => {
