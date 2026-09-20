@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Explain live library-evidence holds with privacy-safe reasons in the Command
+  Center's existing details. Separate unusual items from unavailable familiarity
+  checks while preserving confirmation settings, freshness checks and routing rules.
 - Allow weak-evidence overlaps to reach the existing bounded AI comparison.
   Preserve explicit review holds, confirmation settings and fresh-evidence
   routing checks instead of stopping supported cases before evaluation.

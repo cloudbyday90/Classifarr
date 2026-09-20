@@ -104,5 +104,9 @@ retry layer or declaration screen. A decision to disable require-all-confirmatio
 is a separate operational choice, not an inferred code fix. The four demonstrated
 neighbor disagreements remain review cases; model agreement alone cannot resolve them.
 
+Follow-up completed: the [live guard outcome](live-routing-guard-diagnostics-outcome.md)
+separates five fully qualified confirmation holds from one unusual-item guard.
+It also identifies the concrete exhausted-retry recovery handoff as the next fix.
+
 Final stack: policy eligibility → bounded advisory comparison → existing learned
 evidence and familiarity checks → fresh one-use server authority → final route gate.

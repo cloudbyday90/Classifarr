@@ -4,7 +4,7 @@ import * as db from '../config/database.mjs';
 import { getActivePolicies } from './policyEngineQueries.mjs';
 import { buildPolicyCandidateAdjudicationPool } from './policyCandidateAdjudicationContract.mjs';
 import { createLiveInventoryDescriptionRetriever } from './liveInventoryDescriptionRetriever.mjs';
-import { assessLearnedEvidenceRouting } from './learnedEvidenceRoutingAssessment.mjs';
+import { assessLearnedEvidenceRouting, inspectLearnedEvidenceRouting } from './learnedEvidenceRoutingAssessment.mjs';
 import { inspectLearnedEvidenceReviewScope } from './learnedEvidenceReviewScope.mjs';
 import { isLocalCandidateProposal } from './policyCandidateProposalAuthority.mjs';
 import { consensusPolicyFingerprint } from './policyCandidateConsensus.mjs';
@@ -61,7 +61,7 @@ export function createLearnedEvidenceRoutingService({
     async resolve({ result, learnedContext, ...input }) {
       const context = contexts.get(learnedContext);
       contexts.delete(learnedContext);
-      let shadowing = false, outcome = 'unavailable', session;
+      let shadowing = false, outcome = 'unavailable', session, guardReason;
       try {
         if (!context || hasCandidateConsensusReceipt(result) || !isLocalCandidateProposal(input.aiMatch) ||
             result?.candidate_adjudication?.statusId !== 'proposed' || result.library?.id !== input.aiMatch.library.id ||
@@ -88,10 +88,12 @@ export function createLearnedEvidenceRoutingService({
         if (evidence?.statusId !== 'available') return result;
         outcome = 'live_guard_blocked';
         const assessment = { ...review, policies, reviewEvidence: evidence };
-        if (!assessLearnedEvidenceRouting(assessment)) {
+        const inspection = inspectLearnedEvidenceRouting(assessment);
+        if (!inspection.passed) {
+          guardReason = inspection.reason;
           if (assessLearnedEvidenceReview(assessment).reason !== 'neighbors_disagree') return result;
           if (!canAssessLearnedNeighborShadow(assessment)) {
-            if (!session) evaluation.record('live_guard_blocked');
+            if (!session) evaluation.record('live_guard_blocked', guardReason);
             return result;
           }
           session ??= evaluation.begin();
@@ -134,7 +136,7 @@ export function createLearnedEvidenceRoutingService({
         }, input.metadata, now());
       } catch { return result; }
       finally {
-        session?.finish(outcome);
+        session?.finish(outcome, guardReason);
       }
     },
   };

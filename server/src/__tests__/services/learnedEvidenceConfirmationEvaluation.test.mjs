@@ -105,3 +105,16 @@ test('held strict work acquires the bounded slot before retrieval and releases i
   expect(await service.resolve({ ...input, learnedContext: await service.prepare(input) })).toBe(input.result);
   expect(service.shadowStatus().counts.strict_qualified_admin_held).toBe(1);
 });
+
+test('a valid unusual live match explains the hold without retrying, routing or double-counting', async () => {
+  const { input, deps, service } = await setup();
+  Object.assign(input.reviewEvidence.candidates[1].matchBaseline, { status: 'unusual', empiricalRank: .03 });
+  const learnedContext = await service.prepare(input);
+  expect(await service.resolve({ ...input, learnedContext })).toBe(input.result);
+  expect(service.shadowStatus()).toMatchObject({ counts: { live_guard_blocked: 1 }, guardReasons: { item_unusual: 1 } });
+  expect(deps.retriever.retrieve).toHaveBeenCalledTimes(1);
+  expect(deps.readPolicy).not.toHaveBeenCalled();
+  expect(hasCandidateConsensusReceipt(input.result)).toBe(false);
+  await service.resolve({ ...input, learnedContext });
+  expect(service.shadowStatus().guardReasons.item_unusual).toBe(1);
+});

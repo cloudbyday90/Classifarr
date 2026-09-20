@@ -31,6 +31,53 @@ function summary(overrides = {}) {
   }
 }
 
+function guardReasons(overrides = {}) {
+  return { comparison_not_supported: 0, identity_not_clear: 0, item_unusual: 0,
+    familiarity_unavailable: 0, prompt_evidence_changed: 0, ...overrides }
+}
+
+describe('live guard reason details', () => {
+  it('shows only nonzero fixed explanations in the existing closed details without changing totals', async () => {
+    const value = { ...summary(), guardReasons: guardReasons({ item_unusual: 1 }) }
+    const wrapper = mount(LibraryEvaluationSummary, { props: { evaluation: value } })
+    expect(wrapper.findAll('details')).toHaveLength(1)
+    expect(wrapper.get('details').attributes('open')).toBeUndefined()
+    expect(wrapper.get('details').text()).toContain('Item descriptions were unusual for the suggested library')
+    expect(wrapper.text()).not.toContain('Library familiarity could not be established')
+    expect(wrapper.text()).toContain('4 did not meet the evidence checks')
+    expect(wrapper.get('details').text()).toContain('not additional failures')
+    const announcement = wrapper.get('[role="status"]').text()
+    await wrapper.get('button').trigger('click')
+    await wrapper.setProps({ evaluation: { ...summary(), guardReasons: guardReasons({ familiarity_unavailable: 1 }) } })
+    expect(wrapper.text()).not.toContain('Library familiarity could not be established')
+    expect(wrapper.text()).toContain('Item descriptions were unusual')
+    await wrapper.get('button').trigger('click')
+    expect(wrapper.get('details').text()).toContain('Library familiarity could not be established')
+    expect(wrapper.get('[role="status"]').text()).toBe(announcement)
+    await wrapper.get('button').trigger('click')
+    await wrapper.setProps({ evaluation: undefined })
+    expect(wrapper.find('section').exists()).toBe(false)
+  })
+  it.each([undefined, null, {}, 'PRIVATE', guardReasons({ item_unusual: -1 }),
+    guardReasons({ item_unusual: 1.5 }), guardReasons({ item_unusual: '1' }),
+    guardReasons({ item_unusual: Infinity }), guardReasons({ item_unusual: 1_000_001 }),
+    guardReasons({ item_unusual: 2 }), guardReasons({ item_unusual: 1, identity_not_clear: 1 }),
+    guardReasons({ PRIVATE: 1 }),
+  ])('keeps the main counters available when optional reasons are absent or invalid: %j', value => {
+    const result = normalizeLibraryEvaluationSummary({ ...summary(), guardReasons: value })
+    expect(result).toMatchObject({ passed: 9, blocked: 4, guardReasons: [] })
+  })
+  it('does not mistake zero counts for diagnoses and handles saturation without re-counting', () => {
+    const wrapper = mount(LibraryEvaluationSummary, { props: { evaluation: { ...summary(), guardReasons: guardReasons() } } })
+    expect(wrapper.text()).not.toContain('Why live checks stopped')
+    const result = normalizeLibraryEvaluationSummary({ ...summary({ live_guard_blocked: 1_000_000 }),
+      guardReasons: guardReasons({ item_unusual: 1_000_000, identity_not_clear: 1 }) })
+    expect(result.guardReasons).toHaveLength(2)
+    expect(result.capped).toBe(true)
+    expect(result.blocked).toBe(1_000_003)
+  })
+})
+
 describe('LibraryEvaluationSummary', () => {
   it('accepts independent-start v4 diagnostics while preserving older coverage summaries', () => {
     const value = coverageRepresentative()

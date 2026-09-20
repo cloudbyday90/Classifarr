@@ -41,3 +41,19 @@ test('timer failure never leaves the slot busy and diagnostics stay bounded and 
   expect(control.read().counts.qualified).toBe(1000000);
   expect(JSON.stringify(status)).not.toContain('PRIVATE');
 });
+
+test('guard reasons are bounded, detached and counted once only with a live-guard outcome', () => {
+  const control = createLearnedEvidenceEvaluationControl();
+  const session = control.begin();
+  session.finish('live_guard_blocked', 'item_unusual');
+  session.finish('live_guard_blocked', 'item_unusual');
+  control.record('qualified', 'item_unusual');
+  control.record('live_guard_blocked', 'PRIVATE unknown');
+  control.record('live_guard_blocked', '__proto__');
+  expect(control.read()).toMatchObject({ counts: { live_guard_blocked: 3 }, guardReasons: { item_unusual: 1 } });
+  const snapshot = control.read(); snapshot.guardReasons.item_unusual = 99;
+  expect(control.read().guardReasons.item_unusual).toBe(1);
+  for (let index = 0; index < 1_000_002; index++) control.record('live_guard_blocked', 'item_unusual');
+  expect(control.read().guardReasons.item_unusual).toBe(1_000_000);
+  expect(JSON.stringify(control.read())).not.toContain('PRIVATE');
+});

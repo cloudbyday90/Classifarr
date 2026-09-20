@@ -54,7 +54,7 @@ describe('library evaluation summary', () => {
     const source = { ...control.read(), privateText: 'must not escape' };
     source.counts.privateText = 'must not escape';
     const result = readLibraryEvaluationSummary(() => source);
-    expect(Object.keys(result)).toEqual(['version', 'status', 'routingAffected', 'counts']);
+    expect(Object.keys(result)).toEqual(['version', 'status', 'routingAffected', 'counts', 'guardReasons']);
     expect(Object.keys(result.counts)).toEqual(LIBRARY_EVALUATION_COUNTERS);
     expect(result.counts.strict_qualified_admin_held).toBe(1);
     expect(result.routingAffected).toBe(false);
@@ -82,6 +82,42 @@ describe('library evaluation summary', () => {
     expect(readLibraryEvaluationSummary(() => ({ ...source, counts: null })).status).toBe('unavailable');
     source.counts.busy = 1_000_000;
     expect(readLibraryEvaluationSummary(() => source).counts.busy).toBe(1_000_000);
+  });
+});
+
+describe('optional live guard reasons', () => {
+  test('projects fixed keys through the authorized API without retaining extra fields', async () => {
+    const control = createLearnedEvidenceEvaluationControl();
+    control.record('live_guard_blocked', 'item_unusual');
+    const source = control.read(); source.guardReasons.privateText = 'PRIVATE title';
+    const { app } = appFor(() => source);
+    const response = await request(app).get('/api/queue/live-stats').set('Authorization', 'test').expect(200);
+    expect(response.body.libraryEvaluation.guardReasons.item_unusual).toBe(1);
+    expect(JSON.stringify(response.body)).not.toContain('PRIVATE');
+    response.body.libraryEvaluation.guardReasons.item_unusual = 99;
+    expect(source.guardReasons.item_unusual).toBe(1);
+    const viewer = appFor(() => source, 'viewer');
+    expect((await request(viewer.app).get('/api/queue/live-stats').set('Authorization', 'test')).body.libraryEvaluation).toBeUndefined();
+  });
+  test.each([undefined, null, 'PRIVATE', {}, { item_unusual: 1 }])('preserves the main summary without optional details: %j', guardReasons => {
+    const source = { ...createLearnedEvidenceEvaluationControl().read(), guardReasons };
+    const result = readLibraryEvaluationSummary(() => source);
+    expect(result.status).toBe('available'); expect(result.guardReasons).toBeUndefined();
+  });
+  test.each([-1, 1.5, Infinity, NaN, '1', 1_000_001])('omits invalid reason counts: %s', count => {
+    const source = createLearnedEvidenceEvaluationControl().read();
+    source.counts.live_guard_blocked = 1_000_000; source.guardReasons.item_unusual = count;
+    expect(readLibraryEvaluationSummary(() => source).guardReasons).toBeUndefined();
+  });
+  test('checks the aggregate subset unless it has saturated, without double-counting', () => {
+    const source = createLearnedEvidenceEvaluationControl().read();
+    source.guardReasons.item_unusual = 1;
+    expect(readLibraryEvaluationSummary(() => source).guardReasons).toBeUndefined();
+    source.counts.live_guard_blocked = 1; source.guardReasons.familiarity_unavailable = 1;
+    expect(readLibraryEvaluationSummary(() => source).guardReasons).toBeUndefined();
+    source.counts.live_guard_blocked = 1_000_000;
+    source.guardReasons.item_unusual = 1_000_000;
+    expect(readLibraryEvaluationSummary(() => source).guardReasons.familiarity_unavailable).toBe(1);
   });
 });
 

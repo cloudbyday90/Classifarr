@@ -120,6 +120,14 @@ describe('queueOperationsApi', () => {
     expect(mockPost).not.toHaveBeenCalled()
   })
 
+  it('passes optional guard reasons through the existing read-only endpoint without extra requests', async () => {
+    const stats = { queue: {}, libraryEvaluation: { guardReasons: { item_unusual: 1 } } }
+    mockGetDataRequest.mockResolvedValueOnce(stats)
+    expect(await getLiveStats()).toBe(stats)
+    expect(mockGetDataRequest).toHaveBeenCalledExactlyOnceWith('/queue/live-stats')
+    expect(mockPost).not.toHaveBeenCalled()
+  })
+
   it('processEnrichmentRetries calls POST with empty default options', async () => {
     mockPost.mockResolvedValueOnce({ data: { processed: 10 } })
     const result = await processEnrichmentRetries()

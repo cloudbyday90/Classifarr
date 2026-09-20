@@ -24,6 +24,8 @@ test('library evidence uses SWR, supports keyboard pause, and stays compact on m
         version: 'library_evaluation_summary_v1', status: 'available', routingAffected: false,
         counts: { prepared_admin_held: 20, strict_qualified_admin_held: held, calibrated_qualified_admin_held: 3,
           live_guard_blocked: 1, busy: 0, unavailable: 0, fallback_blocked: 1, freshness_blocked: 0, qualified: 4 },
+        guardReasons: { comparison_not_supported: 0, identity_not_clear: 0, item_unusual: 1,
+          familiarity_unavailable: 0, prompt_evidence_changed: 0 },
       }
     }
     if (path.includes('native-intent-reconciliation') || path.includes('held-out-semantic')) {
@@ -36,10 +38,16 @@ test('library evidence uses SWR, supports keyboard pause, and stays compact on m
   const panel = page.getByRole('region', { name: 'Library learning' })
   await expect(panel).toContainText('9 checks passed')
   await expect(panel).toContainText('5 passing checks were held')
+  const explanation = panel.getByText('Item descriptions were unusual for the suggested library')
+  await expect(explanation).not.toBeVisible()
   const disclosure = panel.locator('summary')
   await disclosure.focus()
   await page.keyboard.press('Enter')
   await expect(panel.locator('details')).toHaveAttribute('open', '')
+  await expect(explanation).toBeVisible()
+  await expect(panel).toContainText('not additional failures')
+  await expect(panel.getByRole('status')).not.toContainText('unusual')
+  await panel.screenshot({ path: testInfo.outputPath('library-evaluation-reasons-desktop.png') })
   await page.keyboard.press('Enter')
   await expect(panel.locator('details')).not.toHaveAttribute('open')
   await panel.getByRole('button', { name: 'Pause summary' }).focus()
@@ -62,6 +70,10 @@ test('library evidence uses SWR, supports keyboard pause, and stays compact on m
   expect(bounds.x + bounds.width).toBeLessThanOrEqual(390)
   expect(await panel.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
   await panel.screenshot({ path: testInfo.outputPath('library-evaluation-mobile.png'), animations: 'disabled' })
+  await disclosure.press('Enter')
+  await expect(explanation).toBeVisible()
+  expect(await panel.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true)
+  await panel.screenshot({ path: testInfo.outputPath('library-evaluation-reasons-mobile.png'), animations: 'disabled' })
   includeEvaluation = false
   await expect(panel).toHaveCount(0, { timeout: 15_000 })
   expect(writes).toBe(0)

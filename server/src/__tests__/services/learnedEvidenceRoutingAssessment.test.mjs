@@ -1,11 +1,12 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { expect, test } from '@jest/globals';
-import { assessLearnedEvidenceRouting } from '../../services/learnedEvidenceRoutingAssessment.mjs';
+import { assessLearnedEvidenceRouting, inspectLearnedEvidenceRouting } from '../../services/learnedEvidenceRoutingAssessment.mjs';
 import { learnedRoutingFixture } from '../fixtures/learnedEvidenceRoutingFixture.mjs';
 
 test('fresh full-pool agreement and familiar baseline qualify without trusting generated confidence', () => {
   const input = learnedRoutingFixture(); input.aiMatch.confidence = 0;
   expect(assessLearnedEvidenceRouting(input)).toBe(true);
+  expect(inspectLearnedEvidenceRouting(input)).toEqual({ passed: true, reason: null });
 });
 
 test.each([
@@ -21,6 +22,7 @@ test.each([
   const input = learnedRoutingFixture(), selected = input.reviewEvidence.candidates[1];
   selected.matchBaseline = change(selected.matchBaseline);
   expect(assessLearnedEvidenceRouting(input)).toBe(false);
+  expect(inspectLearnedEvidenceRouting(input)).toEqual({ passed: false, reason: 'familiarity_unavailable' });
 });
 
 test.each([
@@ -37,4 +39,29 @@ test.each([
 ])('rejects %s', (_name, mutate) => {
   const input = learnedRoutingFixture(); mutate(input);
   expect(assessLearnedEvidenceRouting(input)).toBe(false);
+});
+
+test.each([
+  ['item_unusual', i => Object.assign(i.reviewEvidence.candidates[1].matchBaseline, { status: 'unusual', empiricalRank: .05 })],
+  ['familiarity_unavailable', i => Object.assign(i.reviewEvidence.candidates[1].matchBaseline, { status: 'unusual', empiricalRank: -1 })],
+  ['familiarity_unavailable', i => Object.assign(i.reviewEvidence.candidates[1].matchBaseline, { status: 'unusual', empiricalRank: .03, snapshotId: undefined })],
+  ['identity_not_clear', i => { i.reviewEvidence.candidates[0].queryIdentityPresent = true; }],
+  ['identity_not_clear', i => { delete i.reviewEvidence.candidates[0].queryIdentityPresent; }],
+  ['prompt_evidence_changed', i => { i.evidence = null; }],
+  ['prompt_evidence_changed', i => { i.evidence.candidates[0].descriptionEvidence.items[0].description = 'PRIVATE replacement'; }],
+  ['prompt_evidence_changed', i => { i.evidence.candidates[0].currentLibrary.directMatch = true; }],
+  ['comparison_not_supported', i => { i.reviewEvidence.candidates[1].learnedProfile.relativeFit = -1; }],
+])('reports %s without exposing source content or mutating the assessment', (reason, mutate) => {
+  const input = learnedRoutingFixture(); mutate(input); const before = structuredClone(input);
+  expect(inspectLearnedEvidenceRouting(input)).toEqual({ passed: false, reason });
+  expect(assessLearnedEvidenceRouting(input)).toBe(false);
+  expect(input).toEqual(before);
+});
+
+test('reports the first stopping check, not every problem or a routing authority', () => {
+  const input = learnedRoutingFixture();
+  Object.assign(input.reviewEvidence.candidates[1].matchBaseline, { status: 'unusual', empiricalRank: .03 });
+  input.reviewEvidence.candidates[0].queryIdentityPresent = true;
+  input.evidence = null;
+  expect(inspectLearnedEvidenceRouting(input)).toEqual({ passed: false, reason: 'identity_not_clear' });
 });

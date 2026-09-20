@@ -68,6 +68,18 @@
           Repeated attempts can count again. Counts reset when the service restarts and are
           not the number of items currently waiting for you.
         </p>
+        <template v-if="snapshot.guardReasons.length">
+          <p>Why live checks stopped (first reason per recorded attempt):</p>
+          <dl>
+            <div
+              v-for="reason in snapshot.guardReasons"
+              :key="reason.key"
+            >
+              <dt>{{ reason.label }}</dt><dd>{{ formatCount(reason.count) }}</dd>
+            </div>
+          </dl>
+          <p>These reasons are part of the failed-check total above, not additional failures.</p>
+        </template>
         <p v-if="snapshot.representative">
           Profiles compare descriptions for items not already in the current inventory, using query vectors
           classification already produced. Of {{ formatCount(snapshot.representative.unseen) }} eligible unseen observations,

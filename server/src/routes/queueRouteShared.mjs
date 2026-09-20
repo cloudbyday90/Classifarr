@@ -92,6 +92,7 @@ export function createQueueRouter({
     const stats = await queueService.getLiveStats();
     const { libraryEvaluation: _discarded, ...publicStats } = stats;
     if (req.user?.role === 'admin') {
+      // The projection allowlists aggregate counts, including optional content-free guard reasons.
       publicStats.libraryEvaluation = readLibraryEvaluationSummary(readLibraryEvaluationStatus);
     }
     return sendData(res, publicStats);

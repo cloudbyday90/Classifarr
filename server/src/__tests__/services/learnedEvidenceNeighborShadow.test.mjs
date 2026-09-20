@@ -31,6 +31,7 @@ test('qualified shadow reuses all final live checks but returns the exact origin
   const result = await service.resolve({ ...input, learnedContext });
   expect(result).toBe(input.result); expect(input).toEqual(before);
   expect(service.shadowStatus()).toMatchObject({ counts: { qualified: 1 }, automaticRouteAllowed: false });
+  expect(Object.values(service.shadowStatus().guardReasons).every(count => count === 0)).toBe(true);
   expect(hasCandidateConsensusReceipt(result)).toBe(false);
   expect(evaluateClassificationRouteSafety({ result }).automatic_route_allowed).toBe(false);
   expect(deps.retriever.retrieve.mock.calls.map(([r]) => r.neighborCalibration ?? false)).toEqual([false, true, true]);
@@ -63,6 +64,7 @@ test.each(['calibration', 'scope', 'mean'])('unsupported %s never qualifies even
   }
   expect(await service.resolve({ ...input, learnedContext: await service.prepare(input) })).toBe(input.result);
   expect(service.shadowStatus().counts[kind === 'mean' ? 'live_guard_blocked' : 'fallback_blocked']).toBe(1);
+  expect(service.shadowStatus().guardReasons.comparison_not_supported).toBe(kind === 'mean' ? 1 : 0);
   expect(deps.retriever.retrieve).toHaveBeenCalledTimes(kind === 'mean' ? 1 : 2);
   expect(deps.readPolicy).not.toHaveBeenCalled();
 });
