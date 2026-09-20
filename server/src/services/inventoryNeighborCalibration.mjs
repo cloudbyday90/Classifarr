@@ -4,17 +4,20 @@ import { fitLibraryNeighborMargins, NEIGHBOR_MARGIN_VERSION, NEIGHBOR_MARGIN_LIM
 import { fitLibraryNeighborCrossFit, selectNeighborCrossFitGroups, NEIGHBOR_CROSS_FIT_VERSION, NEIGHBOR_CROSS_FIT_LIMITS } from './libraryNeighborCrossFit.mjs';
 import { selectRepresentativeNeighborGroups, NEIGHBOR_REPRESENTATIVE_VERSION, NEIGHBOR_REPRESENTATIVE_LIMITS } from './neighborRepresentativeSelection.mjs';
 import { copyNeighborReferenceTargets, measureNeighborReferenceCoverage } from './neighborReferenceCoverage.mjs';
+import { createExactNeighborCalibration } from './inventoryExactNeighborCalibration.mjs';
 
 /** One private evaluation snapshot. It cannot supply a live routing receipt. */
 export function createInventoryNeighborCalibration(input, options) {
   return createCalibration(prepareMatchCalibrationCorpus(input), options);
 }
 
-/** Both experiment arms share one privately copied corpus, never caller-owned vectors. */
-export function createPairedInventoryNeighborCalibration(input, { diagnostics = false } = {}) {
+/** Experiment arms share one privately copied corpus, never caller-owned vectors. */
+export function createPairedInventoryNeighborCalibration(input, { diagnostics = false, exact = false } = {}) {
+  if (typeof exact !== 'boolean') throw new Error('neighbor_calibration_mode_invalid');
   const corpus = prepareMatchCalibrationCorpus(input);
   return Object.freeze({ ordered: createCalibration(corpus, { crossFit: true, diagnostics }),
-    representative: createCalibration(corpus, { crossFit: true, referenceSelection: 'representative', diagnostics }) });
+    representative: createCalibration(corpus, { crossFit: true, referenceSelection: 'representative', diagnostics }),
+    ...(exact ? { exact: createExactNeighborCalibration(corpus) } : {}) });
 }
 
 function createCalibration(corpus, { crossFit = false, referenceSelection = 'ordered', diagnostics = false } = {}) {

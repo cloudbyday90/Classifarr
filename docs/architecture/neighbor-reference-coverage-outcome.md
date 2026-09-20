@@ -140,3 +140,7 @@ Measure distinction and accepted gains/losses separately from retrieval recall.
 This experiment establishes a coverage gap, but does not yet establish that it
 causes the 27 withheld distinctions. The purpose of the next comparison is to
 resolve that causal question, not add another operator acknowledgement or panel.
+
+The follow-up is implemented in the
+[exact-neighbor calibration design](exact-neighbor-calibration-design.md), with
+paired results in its [outcome](exact-neighbor-calibration-outcome.md).

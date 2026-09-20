@@ -141,3 +141,26 @@ test('representative selection has separate explicit admission and cannot remove
   expect(() => assessLeaderChallengeAcceptance(assessment, calibration, { representative: true })).toThrow('mode_invalid');
   expect(() => assessLeaderChallengeAcceptance(assessment, calibration, { crossFit: true, representative: 'true' })).toThrow('mode_invalid');
 });
+
+test('exact retrieval requires its own version and full-pool exclusion counts without relaxing other modes or vetoes', () => {
+  const { assessment, calibration } = fixture(), options = { crossFit: true, exact: true };
+  calibration.match.version = 'library_match_cross_fit_v1';
+  for (const candidate of calibration.match.candidates) Object.assign(candidate, {
+    referenceDescriptions: 23, calibrationDescriptions: 24, minimumCalibrationReferences: 23 });
+  expect(assessLeaderChallengeAcceptance(assessment, calibration, options).reason).toBe('calibration_unavailable');
+  calibration.neighbor.version = 'library_neighbor_exact_cross_fit_v1';
+  for (const candidate of calibration.neighbor.candidates) Object.assign(candidate, {
+    referenceDescriptions: 300, minimumCalibrationReferences: 299, calibrationDescriptions: 32 });
+  expect(assessLeaderChallengeAcceptance(assessment, calibration, { crossFit: true }).accepted).toBe(false);
+  expect(assessLeaderChallengeAcceptance(assessment, calibration, options).accepted).toBe(true);
+  const veto = { ...assessment, statusId: 'review_veto', challengerId: null, blockedContent: { statusId: 'challenger', challengerId: 2 } };
+  expect(applyLeaderChallengeAcceptance(veto, calibration, options)).toMatchObject({ statusId: 'review_veto', challengerId: null, acceptance: { accepted: true } });
+  for (const update of [{ minimumCalibrationReferences: 300 }, { calibrationDescriptions: 31 },
+    { referenceDescriptions: 10001, minimumCalibrationReferences: 10000 }]) {
+    const changed = structuredClone(calibration); Object.assign(changed.neighbor.candidates[0], update);
+    expect(assessLeaderChallengeAcceptance(assessment, changed, options).reason).toBe('neighbor_unavailable');
+  }
+  for (const invalid of [{ exact: true }, { crossFit: true, exact: true, representative: true }, { crossFit: true, exact: 'true' }]) {
+    expect(() => assessLeaderChallengeAcceptance(assessment, calibration, invalid)).toThrow('mode_invalid');
+  }
+});

@@ -9,7 +9,7 @@ export function createLeaderChallengeCalibration(snapshot, representation, train
     const admitted = new Set(documents.map(doc => doc.hash));
     return [fold, new Set([...hashes].filter(hash => !admitted.has(hash)))];
   }));
-  let match, neighbor, crossFitMatch, representativeNeighbor;
+  let match, neighbor, crossFitMatch, representativeNeighbor, exactNeighbor;
   return async (entry, { signal } = {}) => {
     signal?.throwIfAborted();
     const held = exclusions.get(entry?.foldIndex);
@@ -19,10 +19,11 @@ export function createLeaderChallengeCalibration(snapshot, representation, train
       const input = { documents: snapshot.corpus.documents, libraries: snapshot.libraries,
         vectors: snapshot.vectors, representation };
       match = createInventoryMatchCalibration(input);
-      const pair = createPairedInventoryNeighborCalibration(input, { diagnostics: true });
+      const pair = createPairedInventoryNeighborCalibration(input, { diagnostics: true, exact: true });
       neighbor = pair.ordered;
       crossFitMatch = createInventoryMatchCalibration(input, { crossFit: true });
       representativeNeighbor = pair.representative;
+      exactNeighbor = pair.exact;
     }
     const query = { ...entry, heldDescriptionHashes: new Set(held) };
     // Sequential fitting avoids overlapping scratch memory; all kernels enforce work budgets.
@@ -30,6 +31,7 @@ export function createLeaderChallengeCalibration(snapshot, representation, train
     const distinct = await neighbor.assess(query, { signal });
     const crossFitted = await crossFitMatch.assess(query, { signal });
     const selected = await representativeNeighbor.assess(query, { signal });
-    return { match: familiar, neighbor: distinct, crossFitMatch: crossFitted, representativeNeighbor: selected };
+    const exact = await exactNeighbor.assess(query, { signal });
+    return { match: familiar, neighbor: distinct, crossFitMatch: crossFitted, representativeNeighbor: selected, exactNeighbor: exact };
   };
 }

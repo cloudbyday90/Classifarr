@@ -21,7 +21,9 @@ test('both calibration families use exactly the clean training groups, while eva
     expect(candidate.eligibleDescriptions).toBe(admitted.length);
     expect(candidate.referenceDescriptions + candidate.calibrationDescriptions).toBe(admitted.length);
   }
-  expect(await prepared.calibrate(entry)).toEqual(first);
+  const repeated = await prepared.calibrate(entry);
+  expect(repeated).toEqual({ ...first, exactNeighbor: { ...first.exactNeighbor, resources: expect.any(Object) } });
+  expect(repeated.exactNeighbor.resources.computedComponents).toBe(first.exactNeighbor.resources.computedComponents);
   await expect(prepared.calibrate({ ...entry, foldIndex: 999 })).rejects.toThrow('fold_invalid');
   await expect(prepared.calibrate({ ...entry, heldDescriptionHashes: null })).rejects.toThrow('fold_invalid');
   await expect(prepared.calibrate({ ...entry, descriptionHash: 'x' })).rejects.toThrow('fold_invalid');
@@ -50,6 +52,8 @@ test('whole held folds and all retained-history description copies are excluded 
       const expected = source.corpus.documents.filter(doc => doc.libraryIds.includes(candidate.libraryId) &&
         !entry.heldDescriptionHashes.has(doc.hash) && !excludedHashes.has(doc.hash)).length;
       expect(candidate.eligibleDescriptions).toBe(expected);
+      expect(result.exactNeighbor.candidates.find(value => value.libraryId === candidate.libraryId)).toMatchObject({
+        referenceDescriptions: expected, minimumCalibrationReferences: expected - 1, calibrationDescriptions: Math.min(expected, 32) });
       const crossFitted = result.crossFitMatch.candidates.find(value => value.libraryId === candidate.libraryId);
       expect(crossFitted.eligibleDescriptions).toBe(expected);
       expect(crossFitted.referenceDescriptions).toBe(expected - 1);

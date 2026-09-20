@@ -3,6 +3,7 @@ import { LIBRARY_MATCH_BASELINE_VERSION, LIBRARY_MATCH_BASELINE_LIMITS as matchL
 import { NEIGHBOR_CROSS_FIT_VERSION, NEIGHBOR_CROSS_FIT_LIMITS as neighborLimits } from './libraryNeighborCrossFit.mjs';
 import { LIBRARY_MATCH_CROSS_FIT_VERSION } from './libraryMatchCrossFit.mjs';
 import { NEIGHBOR_REPRESENTATIVE_VERSION } from './neighborRepresentativeSelection.mjs';
+import { EXACT_NEIGHBOR_VERSION, EXACT_NEIGHBOR_LIMITS } from './inventoryExactNeighborCalibration.mjs';
 
 const hash = value => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
 const count = (value, min, max) => Number.isInteger(value) && value >= min && value <= max;
@@ -20,8 +21,10 @@ export function leaderChallengeNomination(assessment) {
 }
 
 /** Empirical evidence, not a live receipt, confidence score or authority to bypass review. */
-export function assessLeaderChallengeAcceptance(assessment, calibration, { crossFit = false, representative = false } = {}) {
-  if (typeof crossFit !== 'boolean' || typeof representative !== 'boolean' || (representative && !crossFit)) throw new Error('leader_acceptance_mode_invalid');
+export function assessLeaderChallengeAcceptance(assessment, calibration, { crossFit = false, representative = false, exact = false } = {}) {
+  if (typeof crossFit !== 'boolean' || typeof representative !== 'boolean' || typeof exact !== 'boolean' ||
+      ((representative || exact) && !crossFit) || (representative && exact)) throw new Error('leader_acceptance_mode_invalid');
+  const referenceLimit = exact ? EXACT_NEIGHBOR_LIMITS.references : neighborLimits.references;
   const nomination = leaderChallengeNomination(assessment);
   const result = (reason, incumbent = null, challenger = null) => ({ reason, accepted: reason === 'accepted',
     incumbent: state(incumbent?.status), challenger: state(challenger?.status) });
@@ -31,7 +34,7 @@ export function assessLeaderChallengeAcceptance(assessment, calibration, { cross
       pool.some(id => !count(id, 1, 2147483647)) || !pool.includes(assessment.policyLeaderId) ||
       !pool.includes(nomination.challengerId) || assessment.policyLeaderId === nomination.challengerId ||
       match?.version !== (crossFit ? LIBRARY_MATCH_CROSS_FIT_VERSION : LIBRARY_MATCH_BASELINE_VERSION) ||
-      neighbor?.version !== (representative ? NEIGHBOR_REPRESENTATIVE_VERSION : NEIGHBOR_CROSS_FIT_VERSION) ||
+      neighbor?.version !== (exact ? EXACT_NEIGHBOR_VERSION : representative ? NEIGHBOR_REPRESENTATIVE_VERSION : NEIGHBOR_CROSS_FIT_VERSION) ||
       !hash(match.snapshotId) || !hash(neighbor.snapshotId) || neighbor.status !== 'evaluated' ||
       !Array.isArray(match.candidates) || !Array.isArray(neighbor.candidates) ||
       match.candidates.length < pool.length || match.candidates.length > 64 ||
@@ -47,9 +50,11 @@ export function assessLeaderChallengeAcceptance(assessment, calibration, { cross
   if (!assessable(challenger, crossFit)) return result('challenger_unassessable', incumbent, challenger);
   if (challenger.status !== 'familiar') return result('challenger_unfamiliar', incumbent, challenger);
   if (neighbor.candidates.some(candidate => candidate.status !== 'available' || candidate.referenceComplete !== true ||
-      !count(candidate.referenceDescriptions, neighborLimits.minimum, neighborLimits.references) ||
+      !count(candidate.referenceDescriptions, neighborLimits.minimum, referenceLimit) ||
       !count(candidate.calibrationDescriptions, neighborLimits.minimum, neighborLimits.calibration) ||
-      !count(candidate.minimumCalibrationReferences, neighborLimits.minimum, neighborLimits.references) ||
+      !count(candidate.minimumCalibrationReferences, neighborLimits.minimum, referenceLimit) ||
+      (exact && (candidate.minimumCalibrationReferences !== candidate.referenceDescriptions - 1 ||
+        candidate.calibrationDescriptions !== Math.min(candidate.referenceDescriptions, neighborLimits.calibration))) ||
       typeof candidate.calibrated !== 'boolean')) return result('neighbor_unavailable', incumbent, challenger);
   const distinguished = neighbor.candidates.filter(candidate => candidate.calibrated);
   return result(distinguished.length === 1 && distinguished[0].libraryId === nomination.challengerId

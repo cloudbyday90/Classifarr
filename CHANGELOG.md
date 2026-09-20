@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Compare full eligible-library nearest examples with sampled references during
+  offline classification evaluation. Reuse bounded similarity calculations across
+  held-out folds, preserve provenance exclusions and keep live routing unchanged.
 - Measure missing nearest-library examples during held-out classification evaluation
   and compare a bounded, content-representative reference sample with the existing
   baseline. Share snapshot memory, retain safe fallback and preserve live routing.
