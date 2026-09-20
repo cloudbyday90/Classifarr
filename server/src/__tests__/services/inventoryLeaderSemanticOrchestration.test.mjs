@@ -21,26 +21,43 @@ beforeEach(() => {
     return { status: 'complete', calls: 2, livePromotionAllowed: false };
   });
 });
-test('semantic call accounting and final snapshot verification share the existing read-only runtime', async () => {
+test.each([false, true])('semantic call accounting and snapshot verification share the read-only runtime (grounded=%s)', async grounded => {
   const { runtime } = fixture();
-  expect(await runInventoryLeaderChallengeBenchmark(settings, { semantic: true, loadRuntime: async () => runtime })).toMatchObject({
-    protocol: 'inventory_leader_semantic_v1', sourceVerified: true, calls: 2, liveRoutingChanged: false, routingReceiptsCreated: 0 });
+  expect(await runInventoryLeaderChallengeBenchmark(settings, { semantic: true, grounded, loadRuntime: async () => runtime })).toMatchObject({
+    protocol: grounded ? 'inventory_leader_grounded_v1' : 'inventory_leader_semantic_v1', sourceVerified: true, calls: 2, liveRoutingChanged: false, routingReceiptsCreated: 0 });
   expect(runtime.repository.read).toHaveBeenCalledTimes(2); expect(runtime.close).toHaveBeenCalledTimes(1);
   expect(run.mock.calls[0][0]).toMatchObject({ createClient: runtime.createClient });
+  if (grounded) expect(createLeaderSemanticEvaluation).toHaveBeenCalledWith(expect.objectContaining({ grounded: true }));
 });
-test('a deferred run preserves calls already made instead of falsely reporting zero', async () => {
+test.each([false, true])('deferred run preserves issued calls (grounded=%s)', async grounded => {
   const { runtime } = fixture();
   run.mockImplementation(async ({ onGenerationCall }) => { onGenerationCall(); throw new DiscoveryDeferredError('memory_pressure'); });
-  expect(await runInventoryLeaderChallengeBenchmark(settings, { semantic: true, loadRuntime: async () => runtime })).toMatchObject({
+  expect(await runInventoryLeaderChallengeBenchmark(settings, { semantic: true, grounded, admissionWaitMs: 300_000, loadRuntime: async () => runtime })).toMatchObject({
     status: 'deferred', reason: 'memory_pressure', calls: 1, sourceVerified: false });
   expect(runtime.close).toHaveBeenCalledTimes(1);
+  expect(runtime.withDiscoveryAdmission).toHaveBeenCalledTimes(1);
 });
-test('post-generation source drift invalidates the entire result rather than claiming a valid comparison', async () => {
+
+test('admission waiting forwards progress and cancellation and always closes the runtime', async () => {
+  const { runtime } = fixture(), controller = new AbortController(), onProgress = jest.fn(() => controller.abort());
+  runtime.withDiscoveryAdmission.mockRejectedValue(new DiscoveryDeferredError('busy'));
+  await expect(runInventoryLeaderChallengeBenchmark(settings, { semantic: true, grounded: true, admissionWaitMs: 300_000,
+    signal: controller.signal, onProgress, loadRuntime: async () => runtime })).rejects.toThrow();
+  expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ stage: 'discovery_wait', reason: 'busy' }));
+  expect(runtime.close).toHaveBeenCalledTimes(1); expect(runtime.repository.read).not.toHaveBeenCalled(); expect(run).not.toHaveBeenCalled();
+});
+
+test.each([-1, NaN, 300001])('invalid admission budget %s cannot load private runtime', async admissionWaitMs => {
+  const loadRuntime = jest.fn();
+  await expect(runInventoryLeaderChallengeBenchmark(settings, { semantic: true, admissionWaitMs, loadRuntime })).rejects.toThrow('wait_invalid');
+  expect(loadRuntime).not.toHaveBeenCalled();
+});
+test.each([false, true])('post-generation source drift invalidates the result (grounded=%s)', async grounded => {
   const { source, runtime } = fixture(), changed = structuredClone(source);
   changed.trainingExclusions = new Set(source.trainingExclusions);
   changed.config.configuration_revision = 2;
   runtime.repository.read.mockResolvedValueOnce(source).mockResolvedValue(changed);
-  expect(await runInventoryLeaderChallengeBenchmark(settings, { semantic: true, loadRuntime: async () => runtime })).toMatchObject({
+  expect(await runInventoryLeaderChallengeBenchmark(settings, { semantic: true, grounded, loadRuntime: async () => runtime })).toMatchObject({
     status: 'invalidated', calls: 2, sourceVerified: false, changedComponents: ['configuration'] });
 });
 test('provider protocol failure marks the whole report as incomplete without bypassing source verification', async () => {

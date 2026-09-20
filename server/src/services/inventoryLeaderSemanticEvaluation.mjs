@@ -2,13 +2,17 @@
 import { prepareSemanticComparisonPlan, buildSemanticComparisonPrompt, parseSemanticComparisonResponse,
   SEMANTIC_COMPARISON_OUTPUT_TOKENS } from './inventorySemanticComparisonContract.mjs';
 import { buildLeaderSemanticReport } from './inventoryLeaderSemanticReport.mjs';
+import { buildGroundedComparisonPrompt, groundedComparisonOutputTokens } from './inventoryGroundedComparisonContract.mjs';
+import { runGroundedComparisonTrial } from './inventoryGroundedComparisonTrial.mjs';
+import { DiscoveryDeferredError } from './inventoryDiscoveryAdmission.mjs';
 
 export const LEADER_SEMANTIC_MAX_CASES = 32;
 
 /** Retention and selection do not observe model output; source sample order is deterministic. */
 export function createLeaderSemanticEvaluation(options) {
   if (!Number.isInteger(options?.generateCases) || options.generateCases < 0 || options.generateCases > LEADER_SEMANTIC_MAX_CASES ||
-      ![8192, 16384, 32768, 65536].includes(options.context)) throw new Error('leader_semantic_options_invalid');
+      ![8192, 16384, 32768, 65536].includes(options.context) ||
+      (options.grounded !== undefined && typeof options.grounded !== 'boolean')) throw new Error('leader_semantic_options_invalid');
   const pending = [], excluded = {};
   let eligible = 0, bytes = 0;
   const exclude = reason => { excluded[reason] = (excluded[reason] ?? 0) + 1; };
@@ -20,7 +24,9 @@ export function createLeaderSemanticEvaluation(options) {
       try { plan = prepareSemanticComparisonPlan(input); }
       catch { exclude('evidence_unavailable'); return; }
       const prompts = [false, true].map(reverse => buildSemanticComparisonPrompt(plan, reverse));
-      if (prompts.some(prompt => Buffer.byteLength(prompt) > (options.context - SEMANTIC_COMPARISON_OUTPUT_TOKENS) * 3)) {
+      if (options.grounded) prompts.push(...[false, false, true].map(reverse => buildGroundedComparisonPrompt(plan, reverse)));
+      if (prompts.some((prompt, index) => Buffer.byteLength(prompt) > (options.context -
+        (index < 2 ? SEMANTIC_COMPARISON_OUTPUT_TOKENS : groundedComparisonOutputTokens(plan.candidates.length))) * 3)) {
         exclude('context_budget'); return;
       }
       const size = prompts.reduce((sum, prompt) => sum + Buffer.byteLength(prompt), 0);
@@ -44,26 +50,35 @@ export function createLeaderSemanticEvaluation(options) {
         checkpoint(); signal?.throwIfAborted(); row.attempted = true;
         try {
           if (!client) { client = createClient(); identity = await client.inspect(signal); }
-          const choices = [];
-          for (const [index, prompt] of row.prompts.entries()) {
-            signal?.throwIfAborted();
-            const result = await client.generate({ prompt, count: row.plan.candidates.length, context: options.context,
-              identity, signal, responseContract: 'library_comparison', onGenerationCall: () => { calls++; onGenerationCall(); } });
-            signal?.throwIfAborted();
-            for (const field of Object.keys(usage)) usage[field] += result[field];
-            const selected = parseSemanticComparisonResponse(result.response, row.plan.candidates.length);
-            if (result.outputLimitReached || result.contextLimitSuspected || selected === null) {
-              row.status = result.outputLimitReached ? 'output_limit' : result.contextLimitSuspected ? 'context_limit' : 'invalid_response';
-              failed = true; break;
+          if (options.grounded) {
+            failed = !await runGroundedComparisonTrial(row, { client, identity, options, signal, usage, checkpoint,
+              onGenerationCall: () => { calls++; onGenerationCall(); } });
+          } else {
+            const choices = [];
+            for (const [index, prompt] of row.prompts.entries()) {
+              signal?.throwIfAborted();
+              const result = await client.generate({ prompt, count: row.plan.candidates.length, context: options.context,
+                identity, signal, responseContract: 'library_comparison', onGenerationCall: () => { calls++; onGenerationCall(); } });
+              signal?.throwIfAborted();
+              for (const field of Object.keys(usage)) usage[field] += result[field];
+              const selected = parseSemanticComparisonResponse(result.response, row.plan.candidates.length);
+              if (result.outputLimitReached || result.contextLimitSuspected || selected === null) {
+                row.status = result.outputLimitReached ? 'output_limit' : result.contextLimitSuspected ? 'context_limit' : 'invalid_response';
+                failed = true; break;
+              }
+              const candidates = index ? [...row.plan.candidates].reverse() : row.plan.candidates;
+              choices.push(selected === 0 ? null : candidates[selected - 1].id);
             }
-            const candidates = index ? [...row.plan.candidates].reverse() : row.plan.candidates;
-            choices.push(selected === 0 ? null : candidates[selected - 1].id);
+            if (!failed) {
+              row.status = choices[0] !== choices[1] ? 'order_sensitive' : choices[0] === null ? 'abstained' : 'supported';
+              row.before = row.observed.includes(row.baselineId); row.after = row.observed.includes(choices[0]);
+            }
           }
-          if (!failed) {
-            row.status = choices[0] !== choices[1] ? 'order_sensitive' : choices[0] === null ? 'abstained' : 'supported';
-            row.before = row.observed.includes(row.baselineId); row.after = row.observed.includes(choices[0]);
-          }
-        } catch { signal?.throwIfAborted(); row.status = 'provider_failed'; failed = true; }
+        } catch (error) {
+          signal?.throwIfAborted();
+          if (error instanceof DiscoveryDeferredError) throw error;
+          row.status = 'provider_failed'; failed = true;
+        }
         onProgress({ stage: 'leader_semantic_comparison', calls, completed: rows.filter(value => value.attempted).length });
         checkpoint(); signal?.throwIfAborted();
         if (failed) break; // No repair loop, fallback, or further calls following a provider/protocol failure.

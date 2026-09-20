@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Evaluate semantic fit with bounded example references, explicit contradiction and
+  insufficient-evidence outcomes, and separate repeat/order stability checks. Keep
+  local comparison results private and separate from automatic routing.
 - Evaluate ambiguous destinations with bounded, local AI comparisons of item metadata
   and anonymous library examples. Reject order-sensitive suggestions, preserve complete
   candidate scopes, and keep experimental results separate from live routing.
@@ -384,6 +387,8 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 - Split queue-worker health aggregation into active and recent-completion reads backed by focused indexes.
 
 ### Fixed
+
+- Isolate local inventory benchmarks from the live app's memory budget and wait automatically for temporary discovery contention, with bounded cancellation, owned-container cleanup, and unchanged routing safeguards.
 
 - Allow retrieval evaluations to retry after a provider failure by verifying
   an unchanged reviewer reference set, while preserving conflicting outputs.

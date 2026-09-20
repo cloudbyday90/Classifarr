@@ -7,6 +7,7 @@ import { buildInventoryPairResponseSchema, INVENTORY_SEMANTIC_PAIR_OUTPUT_TOKENS
 import { buildGroupSemanticSchema, GROUP_SEMANTIC_OUTPUT_TOKENS } from './inventoryGroupSemanticContract.mjs';
 import { buildIndependentFitSchema } from './inventoryIndependentFitContract.mjs';
 import { buildSemanticComparisonSchema, SEMANTIC_COMPARISON_OUTPUT_TOKENS } from './inventorySemanticComparisonContract.mjs';
+import { buildGroundedComparisonSchema, groundedComparisonOutputTokens } from './inventoryGroundedComparisonContract.mjs';
 
 export const DESCRIPTION_BENCHMARK_OUTPUT_TOKENS = 64;
 export const ADJUDICATION_REPLAY_OUTPUT_TOKENS = 256;
@@ -47,12 +48,14 @@ export function createLocalDescriptionBenchmarkClient(config, { fetchRequest = f
   return {
     inspect,
     async generate({ prompt, count, context, identity, signal, responseContract = 'candidate', onGenerationCall = () => {} }) {
-      if (!['candidate', 'adjudication', 'pair_relevance', 'group_relevance', 'independent_fit', 'library_comparison'].includes(responseContract)) throw new Error('description_benchmark_response_contract_invalid');
+      if (!['candidate', 'adjudication', 'pair_relevance', 'group_relevance', 'independent_fit', 'library_comparison', 'grounded_comparison'].includes(responseContract)) throw new Error('description_benchmark_response_contract_invalid');
       const gradeSchema = responseContract === 'pair_relevance' ? buildInventoryPairResponseSchema(count)
         : responseContract === 'group_relevance' ? buildGroupSemanticSchema(count)
         : responseContract === 'independent_fit' ? buildIndependentFitSchema(count)
-        : responseContract === 'library_comparison' ? buildSemanticComparisonSchema(count) : null;
-      const outputTokens = responseContract === 'library_comparison' ? SEMANTIC_COMPARISON_OUTPUT_TOKENS
+        : responseContract === 'library_comparison' ? buildSemanticComparisonSchema(count)
+        : responseContract === 'grounded_comparison' ? buildGroundedComparisonSchema(count) : null;
+      const outputTokens = responseContract === 'grounded_comparison' ? groundedComparisonOutputTokens(count)
+        : responseContract === 'library_comparison' ? SEMANTIC_COMPARISON_OUTPUT_TOKENS
         : responseContract === 'independent_fit' ? DESCRIPTION_BENCHMARK_OUTPUT_TOKENS
         : responseContract === 'group_relevance' ? GROUP_SEMANTIC_OUTPUT_TOKENS
         : gradeSchema ? INVENTORY_SEMANTIC_PAIR_OUTPUT_TOKENS

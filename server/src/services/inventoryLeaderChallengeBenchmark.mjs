@@ -13,21 +13,23 @@ import { buildNeighborReferenceReport } from './inventoryNeighborReferenceReport
 import { evaluateNeighborIntegrityControls, summarizeNeighborIntegrityControls } from './inventoryNeighborIntegrityControls.mjs';
 import { assessLibraryWithheldProbe, buildLibraryWithheldProbeReport } from './inventoryLibraryWithheldProbes.mjs';
 import { createLeaderSemanticEvaluation, LEADER_SEMANTIC_MAX_CASES } from './inventoryLeaderSemanticEvaluation.mjs';
+import { waitForInventoryDiscovery } from './inventoryDiscoveryWait.mjs';
 
 /** Compare frozen policy leaders; optional local semantic evaluation has no domain writers. */
 export async function runInventoryLeaderChallengeBenchmark(settings, {
-  loadRuntime = loadFreshInventoryPolicyRuntime, signal, onProgress = () => {}, semantic = false,
+  loadRuntime = loadFreshInventoryPolicyRuntime, signal, onProgress = () => {}, semantic = false, grounded = false, admissionWaitMs = 0,
 } = {}) {
   const options = validateDescriptionBenchmarkOptions(settings);
-  if (typeof semantic !== 'boolean' || !options.folds || (!semantic && options.generateCases) ||
+  if (!Number.isSafeInteger(admissionWaitMs) || admissionWaitMs < 0 || admissionWaitMs > 300_000) throw new Error('inventory_discovery_wait_invalid');
+  if (typeof semantic !== 'boolean' || typeof grounded !== 'boolean' || (grounded && !semantic) || !options.folds || (!semantic && options.generateCases) ||
       (semantic && options.generateCases > LEADER_SEMANTIC_MAX_CASES)) throw new Error('leader_challenge_requires_grouped_zero_generation_or_bounded_semantics');
-  const protocol = semantic ? 'inventory_leader_semantic_v1' : 'inventory_leader_challenge_v6';
+  const protocol = grounded ? 'inventory_leader_grounded_v1' : semantic ? 'inventory_leader_semantic_v1' : 'inventory_leader_challenge_v6';
   const abort = AbortSignal.any([AbortSignal.timeout(options.maxMinutes * 60000), ...(signal ? [signal] : [])]);
   abort.throwIfAborted();
   const runtime = await loadRuntime({ includeTrainingProvenance: true });
   let generationCalls = 0;
   try {
-    return await runtime.withDiscoveryAdmission(async (signal, checkpoint) => {
+    return await waitForInventoryDiscovery(runtime.withDiscoveryAdmission, async (signal, checkpoint) => {
       const representation = await inspectDescriptionRepresentation(runtime.embedder, signal);
       const source = await runtime.repository.read(representation);
       if (source.config?.rag_enabled !== true || JSON.stringify(source.config) !== JSON.stringify(runtime.config)) {
@@ -37,7 +39,7 @@ export async function runInventoryLeaderChallengeBenchmark(settings, {
       const components = describeFreshPolicySnapshot(source);
       const prepared = await prepareLeaderChallengeEvidence(source, representation, options, { signal, checkpoint });
       const rows = [], acceptedRows = [], crossFitRows = [], representativeRows = [], referenceRows = [], exactRows = [];
-      const semanticEvaluation = semantic ? createLeaderSemanticEvaluation(options) : null;
+      const semanticEvaluation = semantic ? createLeaderSemanticEvaluation({ ...options, ...(grounded ? { grounded: true } : {}) }) : null;
       let exactNeighborResources = null;
       const integrityRows = [], withheldRows = [];
       for (const doc of prepared.sample) {
@@ -117,7 +119,7 @@ export async function runInventoryLeaderChallengeBenchmark(settings, {
         calls: generationCalls, liveRoutingChanged: false, livePromotionAllowed: false,
         routingReceiptsCreated: 0, independentLabels: 0, accuracy: null, provenanceComplete: false,
         metric: 'held_out_placement_agreement_not_verified_accuracy', unknownContentRejectionAssessed: false };
-    }, { signal: abort });
+    }, { signal: abort, waitMs: admissionWaitMs, onProgress });
   } catch (error) {
     if (error instanceof DiscoveryDeferredError) return { protocol, status: 'deferred',
       reason: error.reason, sourceVerified: false, calls: generationCalls, liveRoutingChanged: false, livePromotionAllowed: false };

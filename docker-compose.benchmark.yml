@@ -1,0 +1,38 @@
+# Opt-in, one-shot evaluation. No live-app recreation or persistent data mounts.
+services:
+  inventory-benchmark:
+    profiles: [benchmark]
+    image: ${CLASSIFARR_BENCHMARK_IMAGE:?Use scripts/run-inventory-benchmark-compose.mjs}
+    pull_policy: never
+    network_mode: service:classifarr
+    user: "1000:1000"
+    entrypoint: [node, src/scripts/runInventoryDescriptionBenchmark.mjs]
+    working_dir: /app
+    read_only: true
+    init: true
+    restart: "no"
+    mem_limit: 2g
+    memswap_limit: 2g
+    cpus: 2
+    pids_limit: 128
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      disable: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m,uid=1000,gid=1000,mode=700
+    environment:
+      NODE_ENV: production
+      NODE_OPTIONS: --max-old-space-size=1536
+      LOG_LEVEL: fatal
+      FILE_LOGGING_ENABLED: "false"
+      # Offline local-provider evaluation never decrypts integration credentials.
+      # Satisfy shared configuration initialization without mounting the live key.
+      API_KEY_ENCRYPTION_KEY: ${CLASSIFARR_BENCHMARK_EPHEMERAL_KEY:?Use scripts/run-inventory-benchmark-compose.mjs}
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: classifarr
+      POSTGRES_USER: classifarr
+      POSTGRES_PASSWORD: ""
+      POSTGRES_POOL_MAX: "2"
+      PGOPTIONS: -c default_transaction_read_only=on -c statement_timeout=15000 -c lock_timeout=1000

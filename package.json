@@ -10,6 +10,7 @@
   },
   "scripts": {
     "docker:smart": "node scripts/docker-compose-smart.mjs",
+    "benchmark:inventory:compose": "node scripts/run-inventory-benchmark-compose.mjs",
     "docker:smart:build": "node scripts/docker-compose-smart.mjs build",
     "docker:smart:up": "node scripts/docker-compose-smart.mjs up -d",
     "docker:smart:up:wait": "node scripts/docker-compose-smart.mjs up -d --wait",

@@ -1,5 +1,10 @@
 # Library-agnostic semantic comparison outcome
 
+Follow-up: [grounded library comparison](grounded-library-comparison-outcome.md)
+adds evidence references and separate repeat/order checks. The
+[next-step reassessment](library-learning-next-step-reassessment.md) evaluates a
+dedicated cross-encoder direction rather than another generative prompt variant.
+
 ## Implemented on 20 September 2026
 
 Implemented the [design](leader-semantic-comparison-design.md) with focused ESM

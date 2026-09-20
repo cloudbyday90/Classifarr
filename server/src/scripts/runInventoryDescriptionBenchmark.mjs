@@ -54,6 +54,8 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     'fresh-policy-evaluation': { type: 'boolean' },
     'leader-challenge': { type: 'boolean' },
     'leader-semantic': { type: 'boolean' },
+    'leader-grounded': { type: 'boolean' },
+    'admission-wait-ms': { type: 'string' },
     'neighbor-calibration': { type: 'boolean' },
     'neighbor-cross-fit': { type: 'boolean' },
     'neighbor-fallback': { type: 'boolean' },
@@ -85,17 +87,23 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     ...(values.context === undefined ? {} : { context: Number(values.context) }),
     ...(values['max-minutes'] === undefined ? {} : { maxMinutes: Number(values['max-minutes']) }),
   });
-  if (values['leader-semantic']) {
-    if (!options.folds || options.generateCases > 32 || Object.entries(values).some(([name, value]) => name !== 'leader-semantic' && value === true)) {
+  const admissionWaitMs = values['admission-wait-ms'] === undefined ? 0 : Number(values['admission-wait-ms']);
+  if (!Number.isSafeInteger(admissionWaitMs) || admissionWaitMs < 0 || admissionWaitMs > 300_000 ||
+      (values['admission-wait-ms'] !== undefined && !values['leader-semantic'] && !values['leader-grounded'] && !values['leader-challenge'])) {
+    throw new Error('inventory_discovery_wait_invalid');
+  }
+  if (values['leader-semantic'] || values['leader-grounded']) {
+    const mode = values['leader-grounded'] ? 'leader-grounded' : 'leader-semantic';
+    if (!options.folds || options.generateCases > 32 || Object.entries(values).some(([name, value]) => name !== mode && value === true)) {
       throw new Error('leader_semantic_requires_exclusive_grouped_bounded_mode');
     }
-    return runInventoryLeaderChallengeBenchmark(options, { signal, onProgress, loadRuntime: loadFreshRuntime, semantic: true });
+    return runInventoryLeaderChallengeBenchmark(options, { signal, onProgress, loadRuntime: loadFreshRuntime, semantic: true, grounded: mode === 'leader-grounded', admissionWaitMs });
   }
   if (values['leader-challenge']) {
     if (!options.folds || options.generateCases || Object.entries(values).some(([name, value]) => name !== 'leader-challenge' && value === true)) {
       throw new Error('leader_challenge_requires_exclusive_grouped_zero_generation');
     }
-    return runInventoryLeaderChallengeBenchmark(options, { signal, onProgress, loadRuntime: loadFreshRuntime });
+    return runInventoryLeaderChallengeBenchmark(options, { signal, onProgress, loadRuntime: loadFreshRuntime, admissionWaitMs });
   }
   for (const mode of ['candidate-stability', 'candidate-local-evidence', 'group-contrast', 'adaptive-groups', 'local-communities', 'multi-scale-context', 'linear-ranker']) {
     if (values[mode] && (!options.folds || options.generateCases ||

@@ -7,6 +7,17 @@ import { candidateAdjudicationResponseSchema } from '../../services/aiResponseSc
 let server, config, mode, requests;
 const identity = { model: 'local:latest', digest: 'a'.repeat(64), contextLength: 32768 };
 
+test('grounded comparison has its own complete-scope schema and count-bounded output', async () => {
+  const client = createLocalDescriptionBenchmarkClient(config);
+  await client.generate({ prompt: 'Private evidence', count: 5, context: 8192, identity, responseContract: 'grounded_comparison' });
+  expect(requests.find(request => request.path === '/api/generate').body).toMatchObject({
+    format: { properties: { grades: { minItems: 5, maxItems: 5 } }, additionalProperties: false }, options: { num_predict: 352 } });
+  await expect(client.generate({ prompt: 'Private', count: 65, context: 8192, identity, responseContract: 'grounded_comparison' })).rejects.toThrow('scope_invalid');
+  await expect(client.generate({ prompt: 'x'.repeat((8192 - 352) * 3 + 1), count: 5, context: 8192, identity,
+    responseContract: 'grounded_comparison' })).rejects.toThrow('context_budget');
+  expect(requests.filter(request => request.path === '/api/generate')).toHaveLength(1);
+});
+
 test('library comparison preserves a complete larger scope without widening existing candidate contracts', async () => {
   const client = createLocalDescriptionBenchmarkClient(config);
   await client.generate({ prompt: 'Private complete scope', count: 5, context: 8192, identity, responseContract: 'library_comparison' });
