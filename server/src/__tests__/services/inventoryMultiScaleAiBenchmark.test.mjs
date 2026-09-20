@@ -12,6 +12,23 @@ const createLoader = () => createMultiScaleProfileLoader({ build: (source, depen
 const run = (snapshot = fixture(), extra = {}, dependencies = {}) => runInventoryMultiScaleAiBenchmark(snapshot, representation,
   { ...options, ...extra }, { createLoader, ...dependencies });
 
+test('independent arm preserves the frozen sample/control but uses separate raw-example assessments', async () => {
+  const client = { generate: jest.fn(async ({ onGenerationCall, responseContract }) => {
+    onGenerationCall(); return { ...generationResult, response: responseContract === 'independent_fit' ? '{"fit":1}' : '{"candidate":0}' };
+  }) };
+  const report = await run(fixture(), { generateCases: 4 }, { client, identity, independentFit: true });
+  const control = await run();
+  expect(report).toMatchObject({ protocol: 'inventory_independent_fit_v1', status: 'complete', calls: 24,
+    generationShortfall: 0, sampleFingerprint: control.sampleFingerprint, snapshotComponents: control.snapshotComponents,
+    evaluation: { compactEvidenceConsumed: false, independentArmSensitivity: 'repeat_and_example_order' },
+    comparison: { generatedPairs: 4, arms: [{ name: 'raw', abstained: 4 }, { name: 'independent', abstained: 4 }] },
+    inference: { maximumCalls: 32, assessments: { compared: 8, changed: 0, grades: [0, 16, 0, 0] } } });
+  const packets = client.generate.mock.calls.map(([row]) => row);
+  expect(packets.filter(row => row.responseContract === 'independent_fit')).toHaveLength(16);
+  expect(packets.filter(row => row.responseContract === 'independent_fit').every(row => row.count === 1)).toBe(true);
+  expect(JSON.stringify(report)).not.toMatch(/PRIVATE|overview|libraryIds/);
+});
+
 test('real fitting preflights both media types; generation is opt-in and all results are private-safe', async () => {
   const snapshot = fixture(), before = structuredClone(snapshot), onProgress = jest.fn();
   const report = await run(snapshot, {}, { onProgress });

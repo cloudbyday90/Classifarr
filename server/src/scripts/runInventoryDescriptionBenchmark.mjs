@@ -66,6 +66,7 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
     'local-communities': { type: 'boolean' },
     'multi-scale-context': { type: 'boolean' },
     'multi-scale-ai': { type: 'boolean' },
+    'independent-fit': { type: 'boolean' },
     'preserve-description-candidate': { type: 'boolean' },
     'metadata-candidates': { type: 'boolean' }, 'learned-profiles': { type: 'boolean' } } });
   if (values['metadata-candidates'] && values['learned-profiles']) throw new Error('description_benchmark_selection_mode_conflict');
@@ -84,8 +85,9 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
       throw new Error(`${mode.replaceAll('-', '_')}_requires_exclusive_grouped_zero_generation`);
     }
   }
+  if (values['independent-fit'] && !values['multi-scale-ai']) throw new Error('independent_fit_requires_multi_scale_ai');
   if (values['multi-scale-ai'] && (!options.folds || options.generateCases > 100 ||
-      Object.entries(values).some(([name, value]) => name !== 'multi-scale-ai' && value === true))) {
+      Object.entries(values).some(([name, value]) => !['multi-scale-ai', 'independent-fit'].includes(name) && value === true))) {
     throw new Error('multi_scale_ai_requires_exclusive_grouped_bounded_mode');
   }
   if (values['coverage-robustness'] && (!options.folds || options.generateCases ||
@@ -154,7 +156,8 @@ export async function runInventoryDescriptionBenchmark({ argv = process.argv.sli
         const pairClient = (values['semantic-pairs'] || values['group-semantics'] || values['multi-scale-ai']) && options.generateCases ? runtime.createClient() : undefined;
         const pairIdentity = pairClient ? await pairClient.inspect(abort) : undefined;
         const report = values['multi-scale-ai']
-          ? await runInventoryMultiScaleAiBenchmark(snapshot, representation, options, { signal: abort, onProgress, client: pairClient, identity: pairIdentity })
+          ? await runInventoryMultiScaleAiBenchmark(snapshot, representation, options, { signal: abort, onProgress, client: pairClient, identity: pairIdentity,
+            independentFit: values['independent-fit'] === true })
           : values['multi-scale-context']
           ? await runInventoryMultiScaleBenchmark(snapshot, representation, options, { signal: abort, onProgress })
           : values['local-communities']

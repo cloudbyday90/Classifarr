@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a read-only comparison of independent library content-fit assessments with
+  the existing raw-evidence AI baseline. Bound and validate each assessment, abstain
+  on ties, and measure repeatability and cost without changing live routing.
 - Compare compact, query-relevant and nonredundant inventory evidence against
   unchanged raw examples in the local held-out AI benchmark. Version the experiment
   and report evidence coverage, order stability and cost without changing live routing.

@@ -5,6 +5,7 @@ import { buildCandidateAdjudicationResponseSchema } from './candidateAdjudicatio
 import { isReasoningModel } from './aiResponseNormalizer.mjs';
 import { buildInventoryPairResponseSchema, INVENTORY_SEMANTIC_PAIR_OUTPUT_TOKENS } from './inventorySemanticPairContract.mjs';
 import { buildGroupSemanticSchema, GROUP_SEMANTIC_OUTPUT_TOKENS } from './inventoryGroupSemanticContract.mjs';
+import { buildIndependentFitSchema } from './inventoryIndependentFitContract.mjs';
 
 export const DESCRIPTION_BENCHMARK_OUTPUT_TOKENS = 64;
 export const ADJUDICATION_REPLAY_OUTPUT_TOKENS = 256;
@@ -45,10 +46,12 @@ export function createLocalDescriptionBenchmarkClient(config, { fetchRequest = f
   return {
     inspect,
     async generate({ prompt, count, context, identity, signal, responseContract = 'candidate', onGenerationCall = () => {} }) {
-      if (!['candidate', 'adjudication', 'pair_relevance', 'group_relevance'].includes(responseContract)) throw new Error('description_benchmark_response_contract_invalid');
+      if (!['candidate', 'adjudication', 'pair_relevance', 'group_relevance', 'independent_fit'].includes(responseContract)) throw new Error('description_benchmark_response_contract_invalid');
       const gradeSchema = responseContract === 'pair_relevance' ? buildInventoryPairResponseSchema(count)
-        : responseContract === 'group_relevance' ? buildGroupSemanticSchema(count) : null;
-      const outputTokens = responseContract === 'group_relevance' ? GROUP_SEMANTIC_OUTPUT_TOKENS
+        : responseContract === 'group_relevance' ? buildGroupSemanticSchema(count)
+        : responseContract === 'independent_fit' ? buildIndependentFitSchema(count) : null;
+      const outputTokens = responseContract === 'independent_fit' ? DESCRIPTION_BENCHMARK_OUTPUT_TOKENS
+        : responseContract === 'group_relevance' ? GROUP_SEMANTIC_OUTPUT_TOKENS
         : gradeSchema ? INVENTORY_SEMANTIC_PAIR_OUTPUT_TOKENS
         : responseContract === 'adjudication' ? ADJUDICATION_REPLAY_OUTPUT_TOKENS : DESCRIPTION_BENCHMARK_OUTPUT_TOKENS;
       if (typeof prompt !== 'string' || !prompt.length || ![8192, 16384, 32768, 65536].includes(context) ||

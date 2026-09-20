@@ -6,6 +6,19 @@ import { candidateAdjudicationResponseSchema } from '../../services/aiResponseSc
 
 let server, config, mode, requests;
 const identity = { model: 'local:latest', digest: 'a'.repeat(64), contextLength: 32768 };
+
+test('independent fit admits exactly one candidate with a narrow grammar and the 64-token ceiling', async () => {
+  const client = createLocalDescriptionBenchmarkClient(config);
+  await client.generate({ prompt: 'Private single candidate', count: 1, context: 8192, identity, responseContract: 'independent_fit' });
+  expect(requests.find(request => request.path === '/api/generate').body).toMatchObject({
+    format: { properties: { fit: { type: 'integer', enum: [0, 1, 2, 3] } }, required: ['fit'], additionalProperties: false },
+    options: { num_predict: 64, num_ctx: 8192, seed: 42, temperature: 0 } });
+  await expect(client.generate({ prompt: 'Private', count: 2, context: 8192, identity, responseContract: 'independent_fit' })).rejects.toThrow('count_invalid');
+  await expect(client.generate({ prompt: 'Private', count: 1, context: 8192, identity })).rejects.toThrow('context_budget');
+  await expect(client.generate({ prompt: 'x'.repeat((8192 - 64) * 3 + 1), count: 1, context: 8192, identity,
+    responseContract: 'independent_fit' })).rejects.toThrow('context_budget');
+  expect(requests.filter(request => request.path === '/api/generate')).toHaveLength(1);
+});
 beforeEach(async () => {
   mode = 'normal'; requests = [];
   server = createServer(async (request, response) => {

@@ -12,10 +12,11 @@ import { createMultiScaleAiInference } from './inventoryMultiScaleAiInference.mj
 import { createMultiScaleAiMetrics } from './inventoryMultiScaleAiMetrics.mjs';
 import { DESCRIPTION_BENCHMARK_OUTPUT_TOKENS } from './localDescriptionBenchmarkClient.mjs';
 import { COMPACT_EVIDENCE_SELECTION } from './inventoryCompactEvidence.mjs';
+import { buildIndependentFitPrompts } from './inventoryIndependentFitContract.mjs';
 
 /** Content-only paired experiment. It cannot persist learned state or authorize media routing. */
 export async function runInventoryMultiScaleAiBenchmark(snapshot, representation, rawOptions, { signal, onProgress,
-  client, identity, createLoader = createMultiScaleProfileLoader } = {}) {
+  client, identity, createLoader = createMultiScaleProfileLoader, independentFit = false } = {}) {
   const options = validateDescriptionBenchmarkOptions(rawOptions), dimensions = representation.dimensions;
   if (!options.folds || options.generateCases > 100) throw new Error('multi_scale_ai_requires_grouped_bounded_mode');
   if (options.generateCases && (!client || !identity || options.context > identity.contextLength)) throw new Error('multi_scale_ai_local_model_required');
@@ -28,8 +29,8 @@ export async function runInventoryMultiScaleAiBenchmark(snapshot, representation
   }
   const selection = selectAdditionalDescriptionBenchmarkSample(snapshot.corpus, options), sample = selection.sample;
   const folds = planDescriptionBenchmarkFolds(snapshot.corpus, sample, snapshot.libraries, options);
-  const metrics = createMultiScaleAiMetrics(snapshot.libraries), packets = new Map(), loader = createLoader();
-  const inference = createMultiScaleAiInference(options, { client, identity, signal: abort, onProgress });
+  const metrics = createMultiScaleAiMetrics(snapshot.libraries, independentFit ? 'independent' : 'compact'), packets = new Map(), loader = createLoader();
+  const inference = createMultiScaleAiInference(options, { client, identity, signal: abort, onProgress, independentFit });
   let packetBytes = 0;
   const profiles = [];
   try {
@@ -49,8 +50,9 @@ export async function runInventoryMultiScaleAiBenchmark(snapshot, representation
       for (const doc of sample.filter(row => folds.foldByHash.get(row.hash) === fold)) {
         const result = await profile.retrieve({ type: doc.type, hash: doc.hash, vector: snapshot.vectors.get(doc.hash) }, abort);
         const plan = prepareMultiScaleAiCase(snapshot, doc, folds.held[fold], result);
-        const prompts = plan.status === 'ready' ? [false, true].map(compact => [false, true].map(reverse => buildMultiScaleAiPrompt(plan, compact, reverse))) : [];
-        const bytes = prompts.flat().map(prompt => Buffer.byteLength(prompt));
+        const prompts = plan.status === 'ready' ? [false, true].map(alternative => [false, true].map(reverse =>
+          independentFit && alternative ? buildIndependentFitPrompts(plan, reverse) : buildMultiScaleAiPrompt(plan, alternative, reverse))) : [];
+        const bytes = prompts.flat(2).filter(prompt => prompt !== null).map(prompt => Buffer.byteLength(prompt));
         const overBudget = bytes.some(value => value > (options.context - DESCRIPTION_BENCHMARK_OUTPUT_TOKENS) * 3);
         metrics.prepare(doc, plan, overBudget);
         // Preserve the sample's round-robin order, not fold order or favorable model outcomes.
@@ -72,7 +74,10 @@ export async function runInventoryMultiScaleAiBenchmark(snapshot, representation
     if (abort.aborted || inference.read().status === 'completed_with_errors') break;
   }
   const measurement = { ...inference.read(), ...(!contextComplete ? { status: 'not_run_incomplete_context' } : {}) }, totals = metrics.read();
-  return { protocol: 'inventory_multi_scale_ai_v2', evidenceSelection: { ...COMPACT_EVIDENCE_SELECTION }, status: contextComplete ? measurement.status : 'completed_with_errors',
+  return { protocol: independentFit ? 'inventory_independent_fit_v1' : 'inventory_multi_scale_ai_v2',
+    evidenceSelection: independentFit ? { version: 'raw_top_three_v1', minimumFit: 2, ties: 'abstain',
+      independentCandidateRequests: true, reversedExamples: true } : { ...COMPACT_EVIDENCE_SELECTION },
+    status: contextComplete ? measurement.status : 'completed_with_errors',
     contextComplete, calls: measurement.calls,
     seed: options.seed, independentLabels: 0, accuracy: null, livePromotionAllowed: false, observedPlacementIsGroundTruth: false,
     metric: 'paired_content_choice_not_verified_routing_accuracy', sampledDescriptions: sample.length,
@@ -83,7 +88,8 @@ export async function runInventoryMultiScaleAiBenchmark(snapshot, representation
     excludedPriorDescriptions: selection.excluded.size, evaluation: { ...folds.summary, priorCohortSizes: selection.priorCohortSizes,
       priorSampleFingerprints: selection.priorSampleFingerprints, priorItemsAvailableForTraining: true,
       candidateSelection: 'top_three_raw_similarity_without_observed_destination', anonymousCandidates: true,
-      productionPolicyReplay: false, candidateOrders: 2, armsPerCase: 2 },
+      productionPolicyReplay: false, candidateOrders: 2, armsPerCase: 2,
+      ...(independentFit ? { independentArmSensitivity: 'repeat_and_example_order', compactEvidenceConsumed: false } : {}) },
     snapshotComponents: describeMultiScaleAiInputs(snapshot), profiles,
     comparison: totals, inference: measurement,
     arms: measurement.arms.map((arm, index) => ({ ...arm, ...totals.arms[index], estimatedInputBudgetExceeded: totals.contextBudgetExceeded })) };

@@ -6,6 +6,23 @@ import { createInventoryDiscoveryAdmission } from '../../services/inventoryDisco
 
 const seed = 'benchmark-test-seed-2026';
 
+test('independent-fit CLI requires its parent mode, retains source verification and never enables live routing', async () => {
+  const argv = ['--seed', seed, '--size', '8', '--folds', '2', '--independent-fit'], loadRuntime = jest.fn();
+  for (const invalid of [argv, [...argv, '--fresh-policy-evaluation'], [...argv, '--multi-scale-ai', '--learned-profiles']]) {
+    await expect(runInventoryDescriptionBenchmark({ argv: invalid, loadRuntime })).rejects.toThrow();
+  }
+  expect(loadRuntime).not.toHaveBeenCalled();
+  const instance = runtime();
+  expect(await runInventoryDescriptionBenchmark({ argv: [...argv, '--multi-scale-ai'], loadRuntime: async () => instance }))
+    .toMatchObject({ protocol: 'inventory_independent_fit_v1', status: 'preflight', calls: 0, sourceVerified: true, livePromotionAllowed: false });
+  const snapshot = await instance.repository.read(), changed = structuredClone(snapshot);
+  changed.corpus.texts.set(changed.corpus.documents[0].hash, 'changed');
+  instance.repository.read.mockResolvedValueOnce(snapshot).mockResolvedValueOnce(changed);
+  expect(await runInventoryDescriptionBenchmark({ argv: [...argv, '--multi-scale-ai'], loadRuntime: async () => instance }))
+    .toMatchObject({ status: 'invalidated', sourceVerified: false, changedSourceComponents: ['descriptions'] });
+  expect(instance.createClient).not.toHaveBeenCalled(); expect(instance.close).toHaveBeenCalledTimes(2);
+});
+
 test('CLI reports deferral without snapshot/model work or a misleading completed comparison', async () => {
   const instance = runtime();
   instance.withDiscoveryAdmission = createInventoryDiscoveryAdmission({ withSessionAdvisoryLock: async () => false });

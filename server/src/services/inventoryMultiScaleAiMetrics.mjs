@@ -1,15 +1,15 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 const arm = name => ({ name, selected: 0, abstained: 0, orderSensitive: 0, placementAgreements: 0 });
-const counters = () => ({ sampled: 0, ready: 0, rawExamples: 0, compactExamples: 0, compactContextExamples: 0,
+const counters = (secondArm) => ({ sampled: 0, ready: 0, rawExamples: 0, compactExamples: 0, compactContextExamples: 0,
   evidencePoolExamples: 0, compactEmptyCandidates: 0, emptyCandidates: 0, shortlistMisses: 0,
   contextBudgetExceeded: 0, generatedPairs: 0, changedStableChoice: 0, gainedPlacementAgreement: 0, lostPlacementAgreement: 0,
-  arms: [arm('raw'), arm('compact')] });
+  arms: [arm('raw'), arm(secondArm)] });
 
 /** Anonymous strata and totals only. Never retain packets, responses, titles or item keys. */
-export function createMultiScaleAiMetrics(libraries) {
+export function createMultiScaleAiMetrics(libraries, secondArm = 'compact') {
   const strata = [...libraries].sort((a, b) => a.id - b.id);
-  const result = { ...counters(), mediaTypes: ['movie', 'tv'].map(mediaType => ({ mediaType, ...counters() })),
-    libraries: strata.map((row, index) => ({ stratum: index + 1, mediaType: row.media_type, ...counters() })) };
+  const result = { ...counters(secondArm), mediaTypes: ['movie', 'tv'].map(mediaType => ({ mediaType, ...counters(secondArm) })),
+    libraries: strata.map((row, index) => ({ stratum: index + 1, mediaType: row.media_type, ...counters(secondArm) })) };
   const targets = doc => [result, result.mediaTypes.find(row => row.mediaType === doc.type),
     ...strata.flatMap((row, index) => doc.libraryIds.includes(row.id) ? [result.libraries[index]] : [])];
   return {

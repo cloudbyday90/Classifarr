@@ -2,6 +2,10 @@
 
 Date: 2026-09-19
 
+Follow-up: [independent content-fit design](independent-inventory-fit-design.md)
+and its separate [outcome](independent-inventory-fit-outcome.md) test assessment
+isolation rather than another evidence-packet tuning pass.
+
 ## Implementation
 
 The [design](compact-inventory-evidence-design.md) is implemented as a pure bounded
