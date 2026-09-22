@@ -82,6 +82,32 @@ test('live query projection bounds values and normalizes string or TMDB-object g
   expect(projectLiveInventoryQueryMetadata({ genres: 'Drama' })).toEqual({ genres: [], studio: '', rating: '' });
 });
 
+test.each(['movie', 'tv'])('canonical %s classification metadata preserves the inventory rating feature', media_type => {
+  const shared = { media_type, tmdb_id: 999, genres: ['Pattern A'], studio: 'Studio' };
+  const inventory = projectLiveInventoryQueryMetadata({ ...shared, content_rating: 'PG' });
+  const classification = projectLiveInventoryQueryMetadata({ ...shared, certification: 'PG', rating: 8.7 });
+  expect(classification).toEqual(inventory);
+  const input = rows().map(value => ({ ...value, media_type, content_rating: value.library_id === 17 ? 'PG' : 'R' }));
+  const query = { ...request, key: `${media_type}:999`, mediaType: media_type };
+  expect(build(input, { ...query, queryMetadata: classification }))
+    .toEqual(build(input, { ...query, queryMetadata: inventory }));
+});
+
+test.each([
+  [{ certification: ' ＰＧ ', content_rating: 'pg' }, 'pg'],
+  [{ certification: 'PG', content_rating: 'R' }, ''],
+  [{ certification: null, content_rating: 'PG' }, 'pg'],
+  [{ certification: 'PG', content_rating: null }, 'pg'],
+  [{ certification: ' ', content_rating: 'PG' }, 'pg'],
+  [{ certification: {}, content_rating: 'PG' }, ''],
+  [{ certification: 'PG', content_rating: {} }, ''],
+  [{ certification: 7.8, content_rating: 'PG' }, ''],
+  [{ certification: 'x'.repeat(161), content_rating: 'PG' }, ''],
+  [{ rating: 8.7, vote_average: 8.7 }, ''],
+])('rating aliases are bounded and conflicts are neutral: %j', (metadata, rating) => {
+  expect(projectLiveInventoryQueryMetadata(metadata).rating).toBe(rating);
+});
+
 test('profile budgets fail explicitly and cannot partially publish a fitted model', () => {
   expect(() => build(Array.from({ length: 65 }, (_, i) => row(i + 1, i + 1, 'a')))).toThrow('inventory_profile_budget');
 });

@@ -76,6 +76,10 @@ report or coverage-ratchet result is claimed.
 
 ## Recommendation and next item
 
+Follow-up: the disjoint live-path cohort and its resulting feature-contract repair
+are recorded in the [learned query metadata parity outcome](learned-query-metadata-parity-outcome.md).
+The original recommendation below is retained as context.
+
 Keep PostgreSQL, the current scheduler/queue and the focused ESM services. The
 benefit is automatic recovery despite queue delay without renewing budgets or
 asking the user to retry. The tradeoff is conservative cooldown latency and a

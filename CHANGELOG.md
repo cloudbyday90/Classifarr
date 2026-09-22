@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Preserve age-certification metadata in live learned-library comparisons using
+  the same bounded feature projection as inventory training; keep conflicting
+  ratings neutral and all routing and confirmation safeguards intact.
+- Evaluate a disjoint movie/TV cohort through the existing live review path, and
+  locally apply PR #544's server test/lint tooling updates without merging the PR.
 - Start AI recovery trial timing when a worker reaches provider admission, so
   queue delays cannot repeatedly expire unused trials. Preserve automatic
   rescheduling, item identity and retry budgets after an active trial expires.

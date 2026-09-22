@@ -3,14 +3,13 @@ import { createHash } from 'node:crypto';
 import { INVENTORY_DESCRIPTION_PROJECTION_VERSION } from './inventoryDescriptionProjection.mjs';
 import { inventoryDescriptionQueryExcludedHashes } from './inventoryDescriptionQueryExclusions.mjs';
 import { collectInventoryCandidateMetadata } from './inventoryMetadataCandidates.mjs';
+import { projectClassificationCandidateMetadata } from './inventoryMetadataProjection.mjs';
 import { INVENTORY_LEARNED_PROFILE_VERSION, learnInventoryProfiles, scoreInventoryProfile } from './inventoryLearnedProfiles.mjs';
 import { estimateInventoryProfileWeight } from './liveInventoryModelCache.mjs';
 
 /** Normalize live metadata through the same bounded projection as training. */
 export function projectLiveInventoryQueryMetadata(metadata) {
-  const genres = Array.isArray(metadata.genres) ? metadata.genres.slice(0, 32)
-    .map(genre => typeof genre === 'string' ? genre : genre?.name) : [];
-  return collectInventoryCandidateMetadata([{ ...metadata, genres }]).values().next().value;
+  return projectClassificationCandidateMetadata(metadata);
 }
 
 /** Reuse fitting only after hashing this fresh snapshot's exact held-out training inputs. */

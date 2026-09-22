@@ -1,15 +1,13 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { fuseInventoryCandidateRanks } from './inventoryCandidateRankFusion.mjs';
-const clean = value => typeof value === 'string' && value.length <= 160
-  ? value.normalize('NFKC').replace(/[\p{Cc}\p{Cf}]/gu, '').trim().toLowerCase() : '';
+import { projectInventoryCandidateMetadata } from './inventoryMetadataProjection.mjs';
 
 /** Local inventory observations, never declared policy or model instructions. */
 export function collectInventoryCandidateMetadata(rows) {
   const result = new Map();
   for (const row of rows) {
     const key = `${row.media_type}:${row.tmdb_id}`;
-    const value = { genres: [...new Set((Array.isArray(row.genres) ? row.genres.slice(0, 32) : []).map(clean).filter(Boolean))].sort(),
-      studio: clean(row.studio), rating: clean(row.content_rating) };
+    const value = projectInventoryCandidateMetadata(row);
     if (!result.has(key)) result.set(key, value);
     else if (JSON.stringify(result.get(key)) !== JSON.stringify(value)) result.set(key, null);
   }

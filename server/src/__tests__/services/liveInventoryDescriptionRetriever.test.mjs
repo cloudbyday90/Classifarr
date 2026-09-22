@@ -151,7 +151,7 @@ test('live metadata reaches the learner and only allowlisted fit reaches local a
   const service = createPolicyCandidateAdjudicationEvidenceService({ getProfileStats: async () => null,
     retrieveCurrentLibraryEvidence: async () => null, retrieveCurrentLibrarySemanticEvidence: async () => null,
     retrieveInventoryDescriptions: retriever.retrieve });
-  const evidence = await service.build({ contract, metadata: { ...metadata, genres: [{ name: 'Documentary' }], content_rating: 'PG' } });
+  const evidence = await service.build({ contract, metadata: { ...metadata, genres: [{ name: 'Documentary' }], certification: 'PG', rating: 8.7 } });
   expect(repository.retrieve.mock.calls[0][0].request.queryMetadata).toEqual({ genres: ['documentary'], rating: 'pg', studio: '' });
   for (const provider of [{ providerType: 'ollama', providerHost: 'localhost' }, { providerType: 'remote' }]) {
     const projected = projectPolicyCandidateAdjudicationEvidenceForProvider(evidence, provider);

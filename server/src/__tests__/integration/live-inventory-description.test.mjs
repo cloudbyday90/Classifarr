@@ -64,6 +64,34 @@ async function add(id, library, text, vector = [1, 0, 0], media = 'movie') {
 }
 const retrieve = (representation = identity) => repository.retrieve({ request, identity: representation, vector: [1, 0, 0] });
 
+test.each(['movie', 'tv'])('canonical %s ratings reach fresh SQL-backed learned evidence without a cache rewrite', async mediaType => {
+  await client.query('UPDATE libraries SET media_type=$1 WHERE id IN (10,20)', [mediaType]);
+  for (let id = 1; id <= 60; id++) await add(id, id <= 30 ? 10 : 20, `Rating evidence ${id}`, [1, 0, 0], mediaType);
+  await client.query(`UPDATE media_server_items SET genres='["Shared genre"]'::jsonb,
+    content_rating=CASE WHEN library_id=10 THEN 'PG' ELSE 'R' END`);
+  await cache.write(identity, [{ hash: hash('Query'), vector: [1, 0, 0] }]);
+  const configuration = { rag_enabled: true, embedding_provider_mode: 'same', primary_provider: 'ollama',
+    embedding_model: 'test', ollama_host: 'localhost' };
+  const embedder = { provider: 'ollama', model: identity.model, inspect: async () => identity, embedBatch: jest.fn() };
+  const retriever = createLiveInventoryDescriptionRetriever({ repository: { ...repository, readConfig: async () => configuration },
+    createEmbedder: () => embedder, rememberQuery: jest.fn() });
+  const contract = { valid: true, candidates: [10, 20].map(libraryId => ({ libraryId, mediaType })) };
+  const read = aliases => retriever.retrieve({ contract, queryCacheOnly: true,
+    metadata: { media_type: mediaType, tmdb_id: 90, overview: 'Query', genres: ['Shared genre'], ...aliases } });
+  const stored = await read({ content_rating: 'PG' });
+  expect(stored.statusId).toBe('available');
+  expect(await read({ certification: 'PG', rating: 8.7 })).toEqual(stored);
+  expect(stored.candidates[0].learnedProfile.relativeFit).toBeGreaterThan(0);
+  expect(stored.candidates[1].learnedProfile.relativeFit).toBeLessThan(0);
+  const conflict = await read({ certification: 'PG', content_rating: 'R' });
+  expect(conflict.candidates.every(candidate => candidate.learnedProfile.relativeFit === 0)).toBe(true);
+  expect(await read({ certification: 'PG' })).toEqual(stored);
+  expect(profileCache.set).toHaveBeenCalledTimes(1);
+  expect(embedder.embedBatch).not.toHaveBeenCalled();
+  expect((await client.query('SELECT count(*)::integer AS count FROM inventory_description_vector_cache')).rows[0].count).toBe(61);
+  expect((await client.query('SELECT count(*)::integer AS count FROM classification_history')).rows[0].count).toBe(0);
+});
+
 test('neighbor shadow calibration shares the read-only SQL snapshot, excludes the query and fails closed after cache expiry', async () => {
   for (const library of [10, 20]) for (let i = 0; i < 30; i++) {
     const angle = (library === 10 ? 0 : Math.PI) + i / 100;
