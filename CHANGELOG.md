@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Verify automatic movie and TV queue recovery across an isolated AI provider
+  outage, successful generation probe and fresh worker, with no duplicate retry
+  tasks or media routes; locally apply and validate the open Knip 6.37.0 tooling
+  update without merging its PR.
 - Wait automatically during known AI provider outages without spending each item's
   retry budget. Persist provider-specific pauses across restarts, verify recovery
   with a small trial batch, and restore normal backlog processing after success.

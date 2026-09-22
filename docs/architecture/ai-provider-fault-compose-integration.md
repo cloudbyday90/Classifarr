@@ -1,5 +1,12 @@
 # Disposable AI Provider-Fault Compose Integration
 
+The fixture now also exercises a one-way provider recovery, durable probe,
+retry queue and fresh worker for synthetic movie and TV items. See the
+[recovery design](provider-fault-recovery-compose-design.md) and
+[recovery outcome](provider-fault-recovery-compose-outcome.md) for the current
+scope and validation. The original 503-only design below is retained as the
+historical boundary and motivation.
+
 ## Outcome
 
 Classifarr now has a narrowly scoped, locally runnable integration test for a

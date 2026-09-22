@@ -22,6 +22,7 @@ const PORT = 11434;
 const MAX_REQUESTS = 20;
 let tagRequests = 0;
 let generationRequests = 0;
+let recovered = false;
 
 function sendJson(response, statusCode, payload) {
   response.writeHead(statusCode, {
@@ -38,7 +39,7 @@ function sendJson(response, statusCode, payload) {
  * integration assertion, and the Compose file publishes it on loopback only.
  */
 const server = createServer((request, response) => {
-  const url = new URL(request.url || '/', `http://${request.headers.host || 'localhost'}`);
+  const url = new URL(request.url || '/', 'http://127.0.0.1:11434');
 
   if (request.method === 'GET' && url.pathname === '/api/tags') {
     tagRequests = Math.min(tagRequests + 1, MAX_REQUESTS);
@@ -49,13 +50,23 @@ const server = createServer((request, response) => {
   if (request.method === 'POST' && url.pathname === '/api/generate') {
     generationRequests = Math.min(generationRequests + 1, MAX_REQUESTS);
     request.resume();
-    sendJson(response, 503, { error: 'synthetic_provider_unavailable' });
+    sendJson(response, recovered ? 200 : 503, recovered
+      ? { response: 'OK', done: true, done_reason: 'stop' }
+      : { error: 'synthetic_provider_unavailable' });
+    return;
+  }
+
+  if (request.method === 'POST' && url.pathname === '/_test/recover') {
+    request.resume();
+    recovered = true;
+    sendJson(response, 200, { recovered: true });
     return;
   }
 
   if (request.method === 'GET' && url.pathname === '/_test/metrics') {
     sendJson(response, 200, {
       generationRequests,
+      recovered,
       tagRequests,
     });
     return;
