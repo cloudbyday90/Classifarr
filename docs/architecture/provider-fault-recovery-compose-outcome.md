@@ -1,5 +1,10 @@
 # Disposable provider recovery: outcome
 
+Follow-up completed on 22 September 2026: the
+[worker-started trial outcome](worker-started-recovery-trial-outcome.md) fixes
+queue-delay starvation and adds expired-trial replacement/final history
+persistence to this fixture. The observations below describe the original run.
+
 ## What changed
 
 The existing fixed Compose provider starts with a generation-only HTTP 503 and

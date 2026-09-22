@@ -11,6 +11,13 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Start AI recovery trial timing when a worker reaches provider admission, so
+  queue delays cannot repeatedly expire unused trials. Preserve automatic
+  rescheduling, item identity and retry budgets after an active trial expires.
+- Preserve timezone offsets when storing classification retry deadlines, and
+  verify delayed recovery and durable history through the disposable Compose test.
+- Update Vue to 3.5.43 and VueUse to 15.0.0 from PR #540 locally, with online/offline
+  SWR and browser regression coverage; no PR merge or release.
 - Verify automatic movie and TV queue recovery across an isolated AI provider
   outage, successful generation probe and fresh worker, with no duplicate retry
   tasks or media routes; locally apply and validate the open Knip 6.37.0 tooling

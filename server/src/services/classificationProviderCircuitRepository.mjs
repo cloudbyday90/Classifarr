@@ -6,10 +6,14 @@ export class ClassificationProviderCircuitRepository {
   constructor({ database = db } = {}) { this.db = database; }
 
   async admit(key) {
+    // Start the admission window at the first worker, not at enqueue time: a
+    // busy queue must not consume it. Row locking makes the deadline and slot
+    // claim atomic across workers; later admissions never extend the window.
     const trial = await this.db.query(
-      `UPDATE classification_provider_circuits SET trial_remaining = trial_remaining - 1
+      `UPDATE classification_provider_circuits SET trial_remaining = trial_remaining - 1,
+         ready_until = COALESCE(ready_until, clock_timestamp() + interval '60 seconds')
        WHERE dependency_key = $1 AND state = 'half_open' AND trial_remaining > 0
-         AND ready_until > clock_timestamp() RETURNING epoch`, [key],
+         AND (ready_until IS NULL OR ready_until > clock_timestamp()) RETURNING epoch`, [key],
     );
     if (trial.rows.length) return { key, epoch: trial.rows[0].epoch };
     const result = await this.db.query(
@@ -55,9 +59,11 @@ export class ClassificationProviderCircuitRepository {
 
   async grantTrial(client, key, leaseToken) {
     // The caller holds the current configuration and shared probe lease locks.
+    // NULL means this half-open trial has not admitted a worker yet. It still
+    // has only five slots and grants no routing authority or success evidence.
     await client.query(
       `UPDATE classification_provider_circuits SET state = 'half_open', epoch = epoch + 1,
-         trial_remaining = 5, ready_until = clock_timestamp() + interval '60 seconds',
+         trial_remaining = 5, ready_until = NULL,
          last_probe_token = $2, updated_at = NOW()
        WHERE dependency_key = $1 AND state <> 'closed' AND last_probe_token IS DISTINCT FROM $2::uuid`,
       [key, leaseToken],

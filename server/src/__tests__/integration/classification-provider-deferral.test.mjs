@@ -104,6 +104,73 @@ test('failed probes leave jobs waiting and do not consume any item attempt', asy
   expect(await circuits.admit(key)).toBeNull();
 });
 
+test('queue delay does not spend the trial window before the first worker admission', async () => {
+  await trip();
+  await seedPending();
+  await due();
+  expect(await recovery.run()).toEqual({ state: 'ready', queued: 1 });
+  // Advance only persisted deadlines in the disposable database, not wall time.
+  // Subtracting from NULL preserves an unstarted window. The old enqueue-time
+  // deadline instead expires here, reproducing a queue delay longer than 60s.
+  await pool.query(`UPDATE classification_provider_circuits
+    SET updated_at = updated_at - interval '2 minutes', ready_until = ready_until - interval '2 minutes'`);
+  const restarted = new ClassificationProviderCircuitRepository({ database: db });
+  const ticket = await restarted.admit(key);
+  expect(ticket).not.toBeNull();
+  const first = (await pool.query(`SELECT ready_until, trial_remaining,
+    ready_until > clock_timestamp() AS active,
+    ready_until <= clock_timestamp() + interval '60 seconds' AS bounded
+    FROM classification_provider_circuits`)).rows[0];
+  expect(first).toMatchObject({ active: true, bounded: true, trial_remaining: 4 });
+  expect(await restarted.admit(key)).toEqual(ticket);
+  expect((await pool.query('SELECT ready_until FROM classification_provider_circuits')).rows[0].ready_until)
+    .toEqual(first.ready_until);
+});
+
+test.each(['movie', 'tv'])('expired active trial persists %s work and resumes it without renewing budgets', async mediaType => {
+  await trip();
+  const originalId = await seedPending(994002, mediaType, 2);
+  await due();
+  expect(await recovery.run()).toEqual({ state: 'ready', queued: 1 });
+  const task = (await pool.query("SELECT * FROM task_queue WHERE task_type = 'classification'")).rows[0];
+  expect(task.payload.retry_count).toBe(2);
+  expect(task.classification_recovery_attempts).toBe(1);
+  expect(await circuits.admit(key)).not.toBeNull();
+  await pool.query("UPDATE classification_provider_circuits SET ready_until = clock_timestamp() - interval '1 second'");
+  let deferred;
+  try { await admission.admit(snapshot.config, provider); } catch (error) { deferred = error; }
+  expect(isProviderDeferredError(deferred)).toBe(true);
+  const result = buildPendingRetryResult({ transientError: deferred,
+    previousRetryCount: task.payload.retry_count, maxRetries: task.payload.max_retries });
+  const persistence = new ClassificationPersistenceService();
+  const replacementId = await persistence.logClassification(task.payload, result, null, { queueTask: task });
+  await persistence.rebindRetryLineage(replacementId, task.payload);
+  // Complete the simulated worker only after its replacement decision is durable.
+  await pool.query("UPDATE task_queue SET status = 'completed' WHERE id = $1", [task.id]);
+  const pending = (await pool.query(`SELECT status, retry_count, max_retries, retry_recovery_attempts,
+    pending_identity_key, retry_failure_code, library_id, retry_after > clock_timestamp() AS scheduled
+    FROM classification_history WHERE id = $1`, [replacementId])).rows[0];
+  expect(pending).toEqual({ status: 'pending_retry', retry_count: 2, max_retries: 3,
+    retry_recovery_attempts: 1, pending_identity_key: `tmdb:${mediaType}:994002`,
+    retry_failure_code: 'ai_provider_deferred', library_id: null, scheduled: true });
+  expect((await pool.query('SELECT status FROM classification_history WHERE id = $1', [originalId])).rows[0].status)
+    .toBe('reclassified');
+  await pool.query("UPDATE classification_history SET retry_after = NOW() - interval '1 second' WHERE id = $1", [replacementId]);
+  await due();
+  const restarted = new AutomaticClassificationRecoveryService({ repository: recoveryRepository, readiness,
+    retryService: new ClassificationRetryService({ db, logger: createMockLogger() }), logger: createMockLogger() });
+  expect(await restarted.run()).toEqual({ state: 'ready', queued: 1 });
+  expect(await recovery.run()).toEqual({ state: 'idle', queued: 0 });
+  const resumed = (await pool.query("SELECT * FROM task_queue WHERE task_type = 'classification' AND status = 'pending'")).rows;
+  expect(resumed).toHaveLength(1);
+  expect(resumed[0].payload).toMatchObject({ tmdb_id: 994002, media_type: mediaType, retry_count: 2, max_retries: 3 });
+  expect(resumed[0].classification_recovery_attempts).toBe(1);
+  const ticket = await circuits.admit(key);
+  expect(ticket).not.toBeNull();
+  expect(await circuits.close(ticket)).toBe(true);
+  expect(readiness.probe).toHaveBeenCalledTimes(2);
+});
+
 test('a rescheduled pending item is rechecked after probing before opening a trial or queueing work', async () => {
   await trip();
   const id = await seedPending();
@@ -191,6 +258,17 @@ test('deferred replacement history persists unchanged counters and remains autom
   const row = (await pool.query('SELECT retry_count, retry_failure_code, status FROM classification_history WHERE id = $1', [id])).rows[0];
   expect(row).toEqual({ retry_count: 2, retry_failure_code: 'ai_provider_deferred', status: 'pending_retry' });
 });
+
+test.each(['2030-01-01T03:00:00-04:00', '2030-01-01T16:00:00+09:00', null])(
+  'retry persistence preserves the instant of an offset-bearing deadline (%s)', async retryAfter => {
+    const persistence = new ClassificationPersistenceService();
+    const result = { ...buildPendingRetryResult({}), retry_after: retryAfter };
+    const id = await persistence.logClassification({ tmdb_id: 994003, media_type: 'tv', title: 'Synthetic timezone case' }, result);
+    const row = (await pool.query(`SELECT retry_after AT TIME ZONE current_setting('TimeZone') AS instant
+      FROM classification_history WHERE id = $1`, [id])).rows[0];
+    expect(row.instant).toEqual(retryAfter === null ? null : new Date('2030-01-01T07:00:00Z'));
+  },
+);
 
 test('pending replacement and recovery use the same identity-first lock order', async () => {
   await trip();

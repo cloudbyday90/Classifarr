@@ -30,6 +30,7 @@ const { AutomaticClassificationRecoveryRepository } = await import('../../servic
 const { AutomaticClassificationRecoveryService } = await import('../../services/automaticClassificationRecoveryService.mjs');
 const { ClassificationRecoveryReadiness } = await import('../../services/classificationRecoveryReadiness.mjs');
 const { ClassificationRetryService } = await import('../../services/classificationRetryService.mjs');
+const { ClassificationPersistenceService } = await import('../../services/classificationPersistenceService.mjs');
 
 const runComposeFaultSuite = process.env.CLASSIFARR_AI_PROVIDER_FAULT_COMPOSE === '1';
 const suite = runComposeFaultSuite ? describe : describe.skip;
@@ -90,7 +91,8 @@ function createPolicyPath({ aiRouterService, admission, configuration, logger })
           if (response !== 'OK') throw new Error('Synthetic provider returned incomplete recovery output');
           await admission.succeeded(ticket);
           // The fixture tests transport recovery, not model destination quality.
-          return { library: null, confidence: 0 };
+          return { library: null, confidence: 0, needs_clarification: true,
+            reason: 'Synthetic transport recovered; no destination evaluated' };
         } catch (error) {
           await admission.failed(ticket, error);
           throw error;
@@ -172,7 +174,7 @@ suite('Docker Compose provider fault integration', () => {
     ollamaService.resetConfig();
   });
 
-  test('persists a 503 then resumes movie and TV jobs after provider recovery and worker restart', async () => {
+  test('persists and resumes movie and TV work across 503, trial expiry, queue delay and a fresh worker', async () => {
     const { baseUrl, host, port } = parseStubEndpoint();
     const stubPreflightResponse = await fetch(`${baseUrl}/api/tags`);
     expect(stubPreflightResponse.ok).toBe(true);
@@ -204,27 +206,33 @@ suite('Docker Compose provider fault integration', () => {
     });
     const routeToArr = jest.fn();
     routingService.routeToArr = routeToArr;
+    const persistence = new ClassificationPersistenceService();
 
     const classificationService = {
       classifyQueueTask: async (task) => {
         const payload = task.payload;
+        const metadata = {
+          ...payload,
+          media_type: payload.media_type || 'movie',
+          title: 'Compose Provider Fault Fixture',
+          tmdb_id: payload.tmdb_id || 999001,
+        };
         const outcome = await policyPath.execute({
           libraries,
-          metadata: {
-            media_type: payload.media_type || 'movie',
-            title: 'Compose Provider Fault Fixture',
-            tmdb_id: payload.tmdb_id || 999001,
-          },
+          metadata,
           relatedEvidence: [],
         });
+        const classificationId = await persistence.logClassification(metadata, outcome.result, null, { queueTask: task });
+        await persistence.rebindRetryLineage(classificationId, metadata);
         const routingOutcome = await routingService.routeClassificationResult(
-          null,
+          classificationId,
           { classification_details: {} },
           outcome.result,
           false,
         );
         return {
           ...outcome.result,
+          classificationId,
           routingOutcome,
         };
       },
@@ -271,6 +279,8 @@ suite('Docker Compose provider fault integration', () => {
 
     const circuit = await db.query('SELECT state FROM classification_provider_circuits');
     expect(circuit.rows).toEqual([{ state: 'open' }]);
+    expect((await db.query('SELECT status, retry_failure_code FROM classification_history WHERE id = $1',
+      [persistedResult.classificationId])).rows).toEqual([{ status: 'pending_retry', retry_failure_code: 'ai_unavailable' }]);
     const movieId = await seedDueDecision('movie', 999002);
     const tvId = await seedDueDecision('tv', 999003);
     const recovery = new AutomaticClassificationRecoveryService({
@@ -289,11 +299,44 @@ suite('Docker Compose provider fault integration', () => {
     await db.query("UPDATE classification_recovery_probe_state SET next_probe_at = NOW() - interval '1 second'");
     expect(await recovery.run()).toEqual({ state: 'ready', queued: 2 });
     expect(await recovery.run()).toEqual({ state: 'idle', queued: 0 });
-    const resumed = (await db.query(
+    const trialTasks = (await db.query(
       "SELECT id, payload, source, status FROM task_queue WHERE source = 'retry_queue' ORDER BY id",
     )).rows;
+    expect(trialTasks).toHaveLength(2);
+    expect(trialTasks.map(({ payload }) => payload.media_type)).toEqual(['movie', 'tv']);
+    expect(trialTasks.map(({ payload }) => payload.retry_count)).toEqual([1, 1]);
+
+    // A started trial can still expire. Advance its deadline in the disposable
+    // DB to test the real worker's no-request deferral without sleeping 60s.
+    const circuits = new ClassificationProviderCircuitRepository({ database: db });
+    const key = (await db.query('SELECT dependency_key FROM classification_provider_circuits')).rows[0].dependency_key;
+    expect(await circuits.admit(key)).not.toBeNull();
+    await db.query("UPDATE classification_provider_circuits SET ready_until = clock_timestamp() - interval '1 second'");
+    const deferredIds = [];
+    for (const task of trialTasks) {
+      expect(await queueService.queueWorkerLoopService.maybeDispatchTask()).toBe(true);
+      const completed = await waitForCompletedTask(task.id);
+      expect(completed.payload.result).toMatchObject({ retry_failure_code: 'ai_provider_deferred', retry_count: 1,
+        needs_retry: true, routingOutcome: { shouldRoute: false } });
+      deferredIds.push(completed.payload.result.classificationId);
+    }
+    expect((await (await fetch(`${baseUrl}/_test/metrics`)).json()).generationRequests).toBe(3);
+    expect((await db.query(`SELECT pending_identity_key, retry_count, retry_recovery_attempts, status, library_id,
+      retry_after > clock_timestamp() AS scheduled FROM classification_history WHERE id = ANY($1::integer[]) ORDER BY id`,
+    [deferredIds])).rows).toEqual(['movie', 'tv'].map(mediaType => ({
+      pending_identity_key: `tmdb:${mediaType}:${mediaType === 'movie' ? 999002 : 999003}`,
+      retry_count: 1, retry_recovery_attempts: 0, status: 'pending_retry', library_id: null, scheduled: true,
+    })));
+    await db.query("UPDATE classification_history SET retry_after = NOW() - interval '1 second' WHERE id = ANY($1::integer[])", [deferredIds]);
+    await db.query("UPDATE classification_recovery_probe_state SET next_probe_at = NOW() - interval '1 second'");
+    expect(await recovery.run()).toEqual({ state: 'ready', queued: 2 });
+    expect(await recovery.run()).toEqual({ state: 'idle', queued: 0 });
+    // Simulate another two-minute queue delay before any trial worker starts.
+    // An unstarted NULL deadline stays NULL; an enqueue-time deadline expires.
+    await db.query(`UPDATE classification_provider_circuits SET
+      updated_at = updated_at - interval '2 minutes', ready_until = ready_until - interval '2 minutes'`);
+    const resumed = (await db.query("SELECT id, payload FROM task_queue WHERE source = 'retry_queue' AND status = 'pending' ORDER BY id")).rows;
     expect(resumed).toHaveLength(2);
-    expect(resumed.map(({ payload }) => payload.media_type)).toEqual(['movie', 'tv']);
     expect(resumed.map(({ payload }) => payload.retry_count)).toEqual([1, 1]);
 
     // A fresh service instance retains only database state, like a worker restart.
@@ -305,9 +348,11 @@ suite('Docker Compose provider fault integration', () => {
         method: 'ai_analysis',
         routingOutcome: expect.objectContaining({ shouldRoute: false }),
       }));
+      expect((await db.query('SELECT status, library_id FROM classification_history WHERE id = $1',
+        [completed.payload.result.classificationId])).rows).toEqual([{ status: 'awaiting_decision', library_id: null }]);
     }
     expect(routeToArr).not.toHaveBeenCalled();
-    expect((await db.query('SELECT id FROM task_queue')).rows).toHaveLength(3);
+    expect((await db.query('SELECT id FROM task_queue')).rows).toHaveLength(5);
     expect((await db.query(
       'SELECT id, retry_count, status FROM classification_history WHERE id = ANY($1::integer[]) ORDER BY id',
       [[movieId, tvId]],
@@ -318,7 +363,7 @@ suite('Docker Compose provider fault integration', () => {
     expect((await db.query('SELECT state FROM classification_provider_circuits')).rows)
       .toEqual([{ state: 'closed' }]);
     expect(await (await fetch(`${baseUrl}/_test/metrics`)).json()).toEqual({
-      generationRequests: 5,
+      generationRequests: 6,
       recovered: true,
       tagRequests: expect.any(Number),
     });

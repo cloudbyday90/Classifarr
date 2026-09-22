@@ -22,7 +22,9 @@ providers/models and changed configurations do not inherit an old outage.
 3. The scheduler sends known transient pending retries through the same verified
    recovery path as exhausted jobs. Both share one durable, jittered 15-minute
    probe cooldown. No network call runs inside a database transaction.
-4. Successful proof admits at most five trial calls for 60 seconds. A real
+4. Successful proof grants at most five trial calls; the 60-second admission
+   window starts with the first worker claim, not queue insertion. See the
+   [worker-started trial design](worker-started-recovery-trial-design.md). A real
    generation success restores normal traffic, including the scheduler's normal
    50-item retry sweep; a transient failure reopens the
    circuit. Epoch checks prevent stale in-flight results from overwriting a newer

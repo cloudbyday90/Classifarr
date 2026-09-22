@@ -12,6 +12,8 @@ test('atomically consumes a half-open slot', async () => {
   expect(await repository.admit('key')).toEqual({ key: 'key', epoch: '2' });
   expect(database.query).toHaveBeenCalledTimes(1);
   expect(database.query.mock.calls[0][0]).toContain('trial_remaining = trial_remaining - 1');
+  expect(database.query.mock.calls[0][0]).toContain("COALESCE(ready_until, clock_timestamp() + interval '60 seconds')");
+  expect(database.query.mock.calls[0][0]).toContain('(ready_until IS NULL OR ready_until > clock_timestamp())');
 });
 test.each([null, { state: 'closed', epoch: 3 }, { state: 'open', epoch: 1 }, { state: 'half_open', epoch: 2 }])('reads current admission state %#', async row => {
   database.query.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({ rows: row ? [row] : [] });
@@ -29,6 +31,7 @@ test.each(['insert', 'update', 'stale'])('opens the circuit using epoch CAS (%s)
 test('same proof cannot replenish the trial batch', async () => {
   await repository.grantTrial(database, 'key', 'lease');
   expect(database.query).toHaveBeenCalledWith(expect.stringContaining('last_probe_token IS DISTINCT FROM'), ['key', 'lease']);
+  expect(database.query.mock.calls[0][0]).toContain('trial_remaining = 5, ready_until = NULL');
 });
 test.each([{ rows: [] }, { rows: [{ dependency_key: 'key' }] }])('only closes the matching half-open generation %#', async ({ rows }) => {
   database.query.mockResolvedValue({ rows });

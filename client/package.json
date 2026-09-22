@@ -28,10 +28,10 @@
   },
   "dependencies": {
     "@heroicons/vue": "^2.2.0",
-    "@vueuse/core": "^14.4.0",
+    "@vueuse/core": "^15.0.0",
     "axios": "^1.20.0",
     "pinia": "^4.0.3",
-    "vue": "^3.5.42",
+    "vue": "^3.5.43",
     "vue-router": "^5.3.1"
   },
   "devDependencies": {

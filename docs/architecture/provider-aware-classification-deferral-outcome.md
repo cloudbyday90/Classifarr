@@ -1,5 +1,9 @@
 # Provider-aware classification deferral outcome
 
+Follow-up: the [worker-started trial outcome](worker-started-recovery-trial-outcome.md)
+replaces enqueue-time trial expiration and corrects offset handling when new
+retry deadlines are persisted. The original implementation evidence follows.
+
 ## Root cause and implementation
 
 The previous recovery commit helped only after each item had exhausted its retry
