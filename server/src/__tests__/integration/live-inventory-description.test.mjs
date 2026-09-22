@@ -25,6 +25,8 @@ import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from '../../services/sourceC
 import { buildLiveInventoryLearnedProfiles } from '../../services/liveInventoryLearnedProfile.mjs';
 import { assessLiveLibraryMatch } from '../../services/liveLibraryMatchBaseline.mjs';
 import { createLiveInventoryDescriptionRetriever } from '../../services/liveInventoryDescriptionRetriever.mjs';
+import { parseOverseerrPayload } from '../../services/classificationMetadataServiceShared.mjs';
+import { buildRetryPayload } from '../../utils/classificationRetryPayloads.mjs';
 
 let client;
 let repository;
@@ -63,6 +65,35 @@ async function add(id, library, text, vector = [1, 0, 0], media = 'movie') {
   if (vector) await cache.write(identity, [{ hash: hash(text), vector }]);
 }
 const retrieve = (representation = identity) => repository.retrieve({ request, identity: representation, vector: [1, 0, 0] });
+
+test.each(['movie', 'tv'])('source %s studio survives arrival and retry into SQL-backed learned evidence', async mediaType => {
+  await client.query('UPDATE libraries SET media_type=$1 WHERE id IN (10,20)', [mediaType]);
+  for (let id = 1; id <= 60; id++) await add(id, id <= 30 ? 10 : 20, `Studio evidence ${id}`, [1, 0, 0], mediaType);
+  await client.query(`UPDATE media_server_items SET genres='["Shared genre"]'::jsonb,
+    studio=CASE WHEN library_id=10 THEN 'Producer One' ELSE 'Producer Two' END`);
+  await cache.write(identity, [{ hash: hash('Query'), vector: [1, 0, 0] }]);
+  const configuration = { rag_enabled: true, embedding_provider_mode: 'same', primary_provider: 'ollama',
+    embedding_model: 'test', ollama_host: 'localhost' };
+  const embedder = { provider: 'ollama', model: identity.model, inspect: async () => identity, embedBatch: jest.fn() };
+  const retriever = createLiveInventoryDescriptionRetriever({ repository: { ...repository, readConfig: async () => configuration },
+    createEmbedder: () => embedder, rememberQuery: jest.fn() });
+  const contract = { valid: true, candidates: [10, 20].map(libraryId => ({ libraryId, mediaType })) };
+  const read = metadata => retriever.retrieve({ contract, queryCacheOnly: true, metadata: { ...metadata, media_type: mediaType, tmdb_id: 90 } });
+  const payload = { overview: 'Query', genres: ['Shared genre'], studio: 'Producer One',
+    production_companies: [{ id: 2, name: 'Producer Two' }] };
+  const arrival = parseOverseerrPayload(payload).existingMetadata;
+  const evidence = await read(arrival);
+  expect(evidence.statusId).toBe('available');
+  expect(evidence.candidates[0].learnedProfile.relativeFit).toBeGreaterThan(0);
+  expect(evidence.candidates[1].learnedProfile.relativeFit).toBeLessThan(0);
+  const retry = parseOverseerrPayload(buildRetryPayload({ media_type: mediaType }, arrival)).existingMetadata;
+  expect(await read(retry)).toEqual(evidence);
+  const noStudio = await read({ ...arrival, studio: null });
+  expect(noStudio.candidates.every(candidate => candidate.learnedProfile.relativeFit === 0)).toBe(true);
+  expect(profileCache.set).toHaveBeenCalledTimes(1);
+  expect(embedder.embedBatch).not.toHaveBeenCalled();
+  expect((await client.query('SELECT count(*)::integer AS count FROM classification_history')).rows[0].count).toBe(0);
+});
 
 test.each(['movie', 'tv'])('canonical %s ratings reach fresh SQL-backed learned evidence without a cache rewrite', async mediaType => {
   await client.query('UPDATE libraries SET media_type=$1 WHERE id IN (10,20)', [mediaType]);

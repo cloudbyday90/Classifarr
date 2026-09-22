@@ -7,6 +7,9 @@
  */
 
 import { jest } from '@jest/globals';
+import { parseOverseerrPayload } from '../services/classificationMetadataServiceShared.mjs';
+import { projectLiveInventoryQueryMetadata } from '../services/liveInventoryLearnedProfile.mjs';
+import { buildRetryPayload } from '../utils/classificationRetryPayloads.mjs';
 import {
   createClassificationService,
 } from '../services/classificationServiceCore.mjs';
@@ -171,6 +174,34 @@ function createService({ handoff, admission } = {}) {
 
   return service;
 }
+
+describe('organization metadata arrival and retry parity', () => {
+  test.each(['movie', 'tv'].flatMap(type => ['existing', 'id', 'search', 'basic'].map(path => [type, path])))
+  ('preserves %s organizations through %s and retry without routing', async (mediaType, path) => {
+    const service = createService();
+    service.classificationMetadataService.parseOverseerrPayload = parseOverseerrPayload;
+    const companies = [{ id: 1, name: 'Studio One' }, { id: 2, name: 'Studio Two' }];
+    const source = { studio: 'Studio One', production_companies: companies };
+    const payload = { title: 'Synthetic arrival', media_type: mediaType, ...source,
+      ...(path === 'existing' ? { overview: 'Synthetic description', genres: ['Drama'] } : {}),
+      ...(['existing', 'id'].includes(path) ? { tmdb_id: 900 } : {}) };
+    service.tmdbService.search = jest.fn().mockResolvedValue(path === 'search' ? [{ id: 900 }] : []);
+    service.classificationMetadataService.enrichWithTMDB = jest.fn().mockResolvedValue({
+      tmdb_id: 900, media_type: mediaType, overview: 'Synthetic description', genres: ['Drama'], production_companies: companies,
+    });
+    const seen = [];
+    service.runDecisionTree = jest.fn(async metadata => { seen.push(metadata); throw new Error('stop_before_side_effects'); });
+    await expect(service.classify(payload)).rejects.toThrow('stop_before_side_effects');
+    expect(seen[0]).toEqual(expect.objectContaining(source));
+    expect(projectLiveInventoryQueryMetadata(seen[0]).studio).toBe('studio one');
+    const retry = buildRetryPayload({ tmdb_id: seen[0].tmdb_id, media_type: mediaType }, seen[0]);
+    await expect(service.classify(retry)).rejects.toThrow('stop_before_side_effects');
+    expect(seen[1]).toEqual(expect.objectContaining(source));
+    expect(projectLiveInventoryQueryMetadata(seen[1])).toEqual(projectLiveInventoryQueryMetadata(seen[0]));
+    expect(service.classificationRoutingService.routeToArr).not.toHaveBeenCalled();
+    expect(service.classificationPersistenceService.logClassification).not.toHaveBeenCalled();
+  });
+});
 
 describe('classificationServiceCore native question-reduction handoff', () => {
   test.each([true, false])('does not invent English in the metadata path (existing=%s)', async existing => {

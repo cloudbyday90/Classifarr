@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Preserve distinct studio and production-company observations through
+  classification, retries and reprocessing; refresh older enrichment tasks from
+  current identity-checked inventory and keep conflicting organization claims neutral.
+- Locally apply PR #541's client DOM test-environment update with its compatible
+  focus-fix patch, without merging the PR or changing application runtime versions.
 - Preserve age-certification metadata in live learned-library comparisons using
   the same bounded feature projection as inventory training; keep conflicting
   ratings neutral and all routing and confirmation safeguards intact.

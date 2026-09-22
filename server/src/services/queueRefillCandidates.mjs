@@ -58,7 +58,7 @@ export async function readRefillCandidatePage(db, cursor, performanceReceiptReco
          SELECT candidate.*, scan_progress.through_id, scan_progress.scan_count, scan_progress.scan_after_id
          FROM scan_progress
          LEFT JOIN LATERAL (
-             SELECT msi.id, msi.title, msi.metadata, msi.genres, msi.tags, msi.content_rating,
+             SELECT msi.id, msi.title, msi.metadata, msi.genres, msi.tags, msi.content_rating, msi.studio,
                 msi.tmdb_id, msi.tvdb_id, msi.imdb_id, msi.year,
                 msi.library_id, l.name as library_name, msi.media_type, l.is_active AS source_library_active,
                 msi.inventory_tmdb_attempted_at, msi.inventory_tmdb_fetched_at,

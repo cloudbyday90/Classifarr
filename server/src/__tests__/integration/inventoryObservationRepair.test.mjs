@@ -10,7 +10,7 @@ beforeEach(async () => {
     await db.query('BEGIN');
     await db.query(`CREATE TEMP TABLE libraries (id integer PRIMARY KEY, name text, is_active boolean) ON COMMIT DROP;
         CREATE TEMP TABLE media_server_items (id integer PRIMARY KEY, library_id integer, media_type text,
-            tmdb_id integer, title text, year integer, genres jsonb, tags text[], content_rating text,
+            tmdb_id integer, title text, year integer, genres jsonb, tags text[], content_rating text, studio text,
             tvdb_id integer, imdb_id text, metadata jsonb, inventory_tmdb_attempted_at timestamptz,
             inventory_tmdb_fetched_at timestamptz, media_server_id integer, external_id text) ON COMMIT DROP;
         CREATE TEMP TABLE media_source_observations (library_id integer, media_server_id integer,

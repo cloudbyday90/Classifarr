@@ -7,6 +7,7 @@
  */
 
 import { NotFoundError, ValidationError } from '../utils/appError.mjs';
+import { mergeOrganizationMetadata } from '../utils/metadataOrganizations.mjs';
 import {
   buildClassificationDestinationSummary,
   buildClassificationRoutingSummary,
@@ -419,6 +420,7 @@ export class ClassificationService {
       }
 
       if (metadata) {
+        Object.assign(metadata, mergeOrganizationMetadata(existingMetadata, metadata));
         metadata.requested_seasons = existingMetadata.requested_seasons;
         metadata.include_specials = existingMetadata.include_specials;
         metadata.retry_count = existingMetadata.retry_count;

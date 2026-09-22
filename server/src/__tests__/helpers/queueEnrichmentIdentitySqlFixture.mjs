@@ -20,7 +20,7 @@ export async function verifyQueueEnrichmentIdentitySql(client) {
         media_server_id integer, external_id text,
         id integer PRIMARY KEY, media_type text, tmdb_id integer, tvdb_id integer, imdb_id text,
         library_id integer, title text, year integer, metadata jsonb DEFAULT '{}',
-        genres jsonb, tags jsonb, content_rating text, original_rating text,
+        genres jsonb, tags jsonb, content_rating text, original_rating text, studio text,
         inventory_tmdb_attempted_at timestamptz, inventory_tmdb_fetched_at timestamptz
       ) ON COMMIT DROP;
       CREATE TEMP TABLE media_source_observations (
@@ -40,6 +40,7 @@ export async function verifyQueueEnrichmentIdentitySql(client) {
       INSERT INTO media_server_items (id, media_type, library_id, title, year) VALUES
         (1, 'movie', 1, 'Shared title', 2001), (2, 'tv', 1, 'Shared title', 2001),
         (3, NULL, 1, 'Unknown type', 2001), (4, 'tv', 1, 'Changing source', 2001);
+      UPDATE media_server_items SET studio = 'Source Studio';
     `);
     const query = (text, values) => client.query(text, values);
     const logger = { info() {}, warn() {}, debug() {}, error() {} };
@@ -48,6 +49,12 @@ export async function verifyQueueEnrichmentIdentitySql(client) {
     assert.deepEqual(candidates.map((row) => row.id).sort(), [1, 2, 4]);
     const movie = refill.buildMetadataEnrichmentPayload(candidates.find((row) => row.id === 1));
     const tv = refill.buildMetadataEnrichmentPayload(candidates.find((row) => row.id === 2));
+    assert.equal(movie.studio, 'Source Studio');
+    assert.equal(tv.studio, 'Source Studio');
+    // Old queued payloads may omit the field or retain an obsolete observation.
+    delete movie.studio;
+    tv.studio = 'Stale Studio';
+    await query("UPDATE media_server_items SET studio = 'Current Studio'");
     assert.equal(tv.media.media_type, 'tv'); // Source item wins over movie library type.
     const providerTypes = [];
     const omdb = new QueueOmdbEnrichmentService({ db: { query }, logger, queryWithTimeout: query,
@@ -88,6 +95,8 @@ export async function verifyQueueEnrichmentIdentitySql(client) {
     assert.deepEqual((await query('SELECT media_type, tmdb_id FROM classification_history ORDER BY media_type')).rows,
       [{ media_type: 'movie', tmdb_id: 111 }, { media_type: 'tv', tmdb_id: 222 }]);
     assert.equal(completions.every((result) => result.enriched), true);
+    const capturedStudios = (await query("SELECT metadata->>'studio' AS studio FROM classification_history")).rows;
+    assert.deepEqual(capturedStudios.map(row => row.studio), ['Current Studio', 'Current Studio']);
 
     await processMetadataEnrichmentTask({ id: 3, payload: { ...tv, media: { media_type: 'movie' } } }, deps);
     assert.equal(providerTypes.length, 2);

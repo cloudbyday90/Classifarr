@@ -146,6 +146,10 @@ still needs its own CI run; local results are not a substitute for that status.
 
 ## Next high-value item
 
+Follow-up: the [organization-metadata design](classification-organization-metadata-design.md)
+and [outcome](classification-organization-metadata-outcome.md) implement the
+arrival/retry preservation work below without conflating organization roles.
+
 Repair **studio/production-company metadata across normal ingestion and retries**.
 The current learned profile uses inventory `studio`, while classification payload
 parsing and existing-metadata reconstruction can drop it. Fresh TMDB enrichment

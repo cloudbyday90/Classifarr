@@ -9,6 +9,7 @@
  */
 
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
+import { captureOrganizationMetadata } from '../utils/metadataOrganizations.mjs';
 import { parsePayload } from '../utils/queueHelpers.mjs';
 
 export class QueueMutationService {
@@ -262,6 +263,7 @@ export class QueueMutationService {
                 const metadata = parsePayload(item.metadata);
 
                 await this.enqueueTask('classification', {
+                    ...captureOrganizationMetadata(metadata),
                     title: item.title,
                     overview: metadata.overview || '',
                     genres: normalizeMetadataList(metadata.genres),

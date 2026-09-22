@@ -13,6 +13,7 @@ import { readMetadataProviderConfig } from './metadataProviderConfigStore.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { tmdbService } from './tmdb.mjs';
 import { mightBeAnime } from './classificationMetadataServiceShared.mjs';
+import { captureOrganizationMetadata } from '../utils/metadataOrganizations.mjs';
 import {
   buildWebSearchResult,
 } from './classificationMetadataWebSearchShared.mjs';
@@ -55,7 +56,7 @@ async function enrichWithTMDBImpl(tmdbId, mediaType) {
       poster_path: details.poster_path,
       backdrop_path: details.backdrop_path,
       belongs_to_collection: details.belongs_to_collection || null,
-      production_companies: Array.isArray(details.production_companies) ? details.production_companies : [],
+      ...captureOrganizationMetadata({ production_companies: details.production_companies ?? [] }),
       cast: Array.isArray(details.credits?.cast) ? details.credits.cast.slice(0, 10) : [],
       director_name,
     };

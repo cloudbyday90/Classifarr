@@ -126,6 +126,8 @@ describe('QueueMutationService', () => {
                 year: 2010,
                 metadata: JSON.stringify({
                     overview: 'Dream thieves',
+                    studio: 'Source Studio',
+                    production_companies: [{ id: 7, name: 'Producer' }],
                     genres: [{ name: 'Sci-Fi' }],
                     keywords: [{ name: 'dream' }],
                     certification: 'PG-13',
@@ -142,6 +144,8 @@ describe('QueueMutationService', () => {
             expect.objectContaining({
                 title: 'Inception',
                 overview: 'Dream thieves',
+                studio: 'Source Studio',
+                production_companies: [{ id: 7, name: 'Producer' }],
                 genres: ['Sci-Fi'],
                 keywords: ['dream'],
                 content_rating: 'PG-13',

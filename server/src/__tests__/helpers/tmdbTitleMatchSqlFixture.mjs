@@ -20,7 +20,7 @@ export async function verifyTmdbTitleMatchSql(client) {
       CREATE TEMP TABLE media_server_items (
         media_server_id integer, external_id text,
         id integer PRIMARY KEY, media_type text, tmdb_id integer, library_id integer,
-        title text, year integer, imdb_id text, tvdb_id integer, metadata jsonb DEFAULT '{}', tags text[],
+        title text, year integer, imdb_id text, tvdb_id integer, metadata jsonb DEFAULT '{}', tags text[], studio text,
         inventory_tmdb_attempted_at timestamptz, inventory_tmdb_fetched_at timestamptz
       ) ON COMMIT DROP;
       CREATE TEMP TABLE classification_history (

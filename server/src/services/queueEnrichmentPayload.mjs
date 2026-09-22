@@ -6,6 +6,7 @@
 import { canonicalMediaType, payloadMediaType, positiveDatabaseInteger } from './mediaIdentityValues.mjs';
 import { parsePayload } from '../utils/queueHelpers.mjs';
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
+import { captureOrganizationMetadata } from '../utils/metadataOrganizations.mjs';
 import { readInventoryTmdbObservation } from './inventoryTmdbObservation.mjs';
 import { captureEnrichmentSource } from './queueEnrichmentSourceGuard.mjs';
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS, sourceConflictAuthorityPredicateForMediaServerItem } from './sourceConflictAuthorityGuard.mjs';
@@ -14,6 +15,7 @@ export function captureQueueEnrichmentPayload(payload) {
   const mediaType = payloadMediaType(payload);
   if (!mediaType) return null;
   const captured = JSON.parse(JSON.stringify(payload));
+  Object.assign(captured, captureOrganizationMetadata(captured));
   captured.media = { ...captured.media, media_type: mediaType };
   if (captured.media_type !== undefined) captured.media_type = mediaType;
   return captured;
@@ -33,7 +35,7 @@ export async function prepareQueueEnrichmentPayload(payload, query) {
   if (captured.itemId === null || captured.itemId === undefined) return captured;
   const itemId = positiveDatabaseInteger(captured.itemId);
   if (!itemId) return null;
-  const result = await query(`SELECT msi.tmdb_id, msi.media_type, msi.library_id, msi.metadata, msi.tags,
+  const result = await query(`SELECT msi.tmdb_id, msi.media_type, msi.library_id, msi.metadata, msi.tags, msi.studio,
     msi.media_server_id, msi.external_id, msi.title, msi.year, msi.imdb_id, msi.tvdb_id,
     msi.inventory_tmdb_attempted_at, msi.inventory_tmdb_fetched_at,
     ${sourceConflictAuthorityPredicateForMediaServerItem('$2')} AS source_conflict_blocks_authority,
@@ -65,5 +67,7 @@ export async function prepareQueueEnrichmentPayload(payload, query) {
   captured.keywords = observation?.keywords || [];
   captured.original_language = observation?.original_language ?? null;
   captured.tags = normalizeMetadataList(row.tags);
+  // Refresh old queued observations only after the current source identity is verified.
+  Object.assign(captured, captureOrganizationMetadata({ studio: row.studio }));
   return captured;
 }

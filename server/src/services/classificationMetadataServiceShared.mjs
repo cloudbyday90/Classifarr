@@ -1,4 +1,5 @@
 import { normalizeMetadataList, normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
+import { captureOrganizationMetadata, mergeOrganizationMetadata } from '../utils/metadataOrganizations.mjs';
 
 export function parseOverseerrPayload(payload) {
 	let media_type = payload.media?.media_type || payload.media_type || 'movie';
@@ -30,6 +31,7 @@ export function parseOverseerrPayload(payload) {
 	const title = payload.title || payload.subject || payload.media?.title || 'Unknown';
 	const year = payload.year || payload.media?.year;
 	const existingMetadata = {
+		...captureOrganizationMetadata(payload),
 		overview: payload.overview,
 		genres: payload.genres,
 		keywords: payload.keywords,
@@ -147,9 +149,7 @@ export function mergeMetadataForRecheck(originalMetadata, enrichedMetadata) {
 	if (shouldReplaceNamedObject('belongs_to_collection')) {
 		merged.belongs_to_collection = enrichedMetadata.belongs_to_collection;
 	}
-	if (shouldReplaceList('production_companies')) {
-		merged.production_companies = enrichedMetadata.production_companies;
-	}
+	Object.assign(merged, mergeOrganizationMetadata(originalMetadata, enrichedMetadata));
 	if (shouldReplaceList('cast')) {
 		merged.cast = enrichedMetadata.cast;
 	}

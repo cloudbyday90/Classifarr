@@ -100,6 +100,7 @@ describe('buildMetadataEnrichmentPayload', () => {
       genres: ['Action', 'Comedy'],
       tags: ['tag1'],
       content_rating: 'PG-13',
+      studio: 'Studio One',
       tmdb_id: 999,
       tvdb_id: null,
       imdb_id: 'tt123',
@@ -117,6 +118,7 @@ describe('buildMetadataEnrichmentPayload', () => {
     expect(payload.tags).toEqual(['tag1']);
     expect(payload.original_language).toBeNull();
     expect(payload.content_rating).toBe('PG-13');
+    expect(payload.studio).toBe('Studio One');
     expect(payload.tmdb_id).toBe(999);
     expect(payload.imdb_id).toBe('tt123');
     expect(payload.posterPath).toBe('/poster.jpg');

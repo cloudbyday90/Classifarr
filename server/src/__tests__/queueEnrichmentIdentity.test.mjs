@@ -11,6 +11,23 @@ import { processMetadataEnrichmentTask } from '../services/queueTaskProcessorEnr
 const source = { media_type: 'tv', library_id: 2, library_name: 'Source', tmdb_id: 42, metadata: {} };
 const taskPayload = () => ({ title: 'Example', media_type: ' TV ', itemId: 1, source_library_id: 2, tmdb_id: 42 });
 
+test.each([undefined, 'Stale Studio'])('old queued studio %j self-heals from the verified current source', async studio => {
+  const payload = { ...taskPayload(), studio };
+  const query = jest.fn().mockResolvedValue({ rows: [{ ...source, studio: 'Current Studio' }] });
+  expect((await prepareQueueEnrichmentPayload(payload, query)).studio).toBe('Current Studio');
+  expect(payload.studio).toBe(studio);
+  query.mockResolvedValue({ rows: [{ ...source, studio: null }] });
+  expect((await prepareQueueEnrichmentPayload(payload, query)).studio).toBeNull();
+});
+
+test('unbound enrichment payloads copy bounded organizations without trusting extra company fields', async () => {
+  const query = jest.fn();
+  const payload = { media_type: 'movie', studio: ' Studio ', production_companies: [{ name: 'Producer', url: 'private' }] };
+  expect(await prepareQueueEnrichmentPayload(payload, query)).toMatchObject({ studio: 'Studio', production_companies: [{ name: 'Producer' }] });
+  expect(query).not.toHaveBeenCalled();
+  expect(payload.production_companies[0].url).toBe('private');
+});
+
 test.each([
   {}, { media_type: 'person' }, { media_type: null },
   { media_type: 'movie', media: { media_type: 'tv' } },

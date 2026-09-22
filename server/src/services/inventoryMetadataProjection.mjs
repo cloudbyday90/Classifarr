@@ -1,11 +1,12 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { normalizeOrganizationName } from '../utils/metadataOrganizations.mjs';
 const clean = value => typeof value === 'string' && value.length <= 160
   ? value.normalize('NFKC').replace(/[\p{Cc}\p{Cf}]/gu, '').trim().toLowerCase() : '';
 
 /** Stored inventory observations: no policy labels, placement or provider instructions. */
 export function projectInventoryCandidateMetadata(row) {
   return { genres: [...new Set((Array.isArray(row.genres) ? row.genres.slice(0, 32) : []).map(clean).filter(Boolean))].sort(),
-    studio: clean(row.studio), rating: clean(row.content_rating) };
+    studio: normalizeOrganizationName(row.studio)?.toLowerCase() ?? '', rating: clean(row.content_rating) };
 }
 
 function queryContentRating(metadata) {

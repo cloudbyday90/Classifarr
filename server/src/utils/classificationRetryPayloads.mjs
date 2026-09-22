@@ -5,6 +5,7 @@
  * Pure helpers for classification retry payload shaping.
  */
 import { normalizeMetadataList } from './metadataNormalization.mjs';
+import { captureOrganizationMetadata } from './metadataOrganizations.mjs';
 function isFinitePositiveInt(value) {
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) && parsed > 0;
@@ -52,6 +53,7 @@ export function buildRetryPayload(row = {}, metadata = {}, mediaItemId, options 
   const year = row.year || metadata.year || null;
   const requestedSeasons = Array.isArray(metadata.requested_seasons) ? metadata.requested_seasons : null;
   const payload = {
+    ...captureOrganizationMetadata(metadata),
     title: row.title || metadata.title || 'Unknown',
     year,
     tmdb_id: tmdbId,
@@ -91,6 +93,7 @@ export function buildRetryPayload(row = {}, metadata = {}, mediaItemId, options 
 export function buildMetadataEnrichmentPayload(retryPayload = {}, metadata = {}, mediaItemId) {
   if (!mediaItemId) return null;
   return {
+    ...captureOrganizationMetadata(retryPayload),
     title: retryPayload.title,
     year: retryPayload.year || null,
     overview: retryPayload.overview || '',

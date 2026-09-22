@@ -7,6 +7,7 @@
  */
 
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
+import { captureOrganizationMetadata } from '../utils/metadataOrganizations.mjs';
 import { canonicalMediaType } from './mediaIdentityValues.mjs';
 import { readInventoryTmdbObservation } from './inventoryTmdbObservation.mjs';
 import { readRefillCandidatePage } from './queueRefillCandidates.mjs';
@@ -48,6 +49,7 @@ export class QueueRefillService {
         const observation = readInventoryTmdbObservation(item);
 
         return {
+            ...captureOrganizationMetadata({ studio: item.studio }),
             title: item.title,
             year: item.year,
             overview: metadata.summary || '',
