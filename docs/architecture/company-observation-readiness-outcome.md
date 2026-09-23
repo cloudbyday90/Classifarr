@@ -80,7 +80,48 @@ copy sequence stop on failure. The additional focused build regression run passe
 the full application coverage totals above precede this Dockerfile-only runtime
 change. The new test passed ESLint. DNS lookup succeeded on a subsequent check.
 
-Build, restart and post-deployment observations will be recorded after validation.
+The retry succeeded without changing network settings, download source or checksum.
+Built from clean commit `06bf183ffea4c84ff098c0ff6565652003208478`; the local image
+is `sha256:de73e6f74e12e7d88dd61031aee5c497e313b8bdf1f5b405b7e1aa36f9d6e523`.
+The image includes the readiness change at `5dc1af53` and the preceding company/
+prospective-capture changes. A subsequent documentation-only commit records these
+observations and does not require another image build.
+
+Recreated only `classifarr` using the existing smart Compose workflow with
+`--no-build --no-deps --pull never --wait --wait-timeout 180`. It became healthy,
+with zero restarts and the expected image revision. Both company and prospective
+capture modules are present. HTTP `/health` returns 200; unauthenticated access to
+the detailed observation-health API returns 401. Other containers were not changed.
+
+At `2026-09-23T09:04:21.812Z`, the new read-only health service reported 6,696 rows
+across all 10 active libraries, no excluded libraries, 40 current company checks
+(37 with companies, 3 valid empty sets), and no withheld company envelopes.
+This rose automatically from the zero-observation baseline after startup; no
+manual queue refill, provider batch or reclassification was triggered. The normal
+startup gap analysis and five-minute refill schedule remain responsible for the
+rest of the inventory, subject to provider availability and existing cooldowns.
+Backfill is in progress, not complete.
+
+A subsequent read found 200 movie and 51 TV company observations, with 4,053 movie
+and 1,586 TV enrichment tasks pending and two movie tasks processing. Both media
+types are backfilling organically; these are acquisition counts, not evidence of
+routing accuracy. The inventory still contains the same 6,696 source rows.
+
+The actual deployed prospective CLI succeeded for the fixed starting window
+`2026-09-23T09:03:40.000Z` to `2026-09-23T09:04:21.489Z`. It correctly reported zero
+captures/outcomes, `awaiting_eligible_outcomes`, `promotionAllowed: false`, zero
+evaluation provider calls and zero routing changes. That is expected before new
+eligible classification traffic and later operator feedback; no accuracy gain is
+claimed. Existing classifications were not fabricated into prospective captures.
+
+Repeat the same start boundary with a later cutoff after real traffic accumulates:
+
+```text
+docker exec -e POSTGRES_HOST=/var/run/postgresql classifarr node src/scripts/runInventoryOutcomeCalibration.mjs --prospective --since 2026-09-23T09:03:40.000Z
+```
+
+This command is read-only and specific to the standard embedded-PostgreSQL local
+deployment. External database deployments should use their configured connection.
 
 ## Next high-value item
 
