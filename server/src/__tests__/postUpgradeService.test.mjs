@@ -17,9 +17,7 @@ const mockDb = {
     DB_ADVISORY_LOCKS: { POST_UPGRADE_TASKS: 2020 }
 };
 
-const mockLibraryProfileService = {
-    generateAllProfiles: jest.fn()
-};
+const mockQueueLibraryProfileUpgrade = jest.fn();
 
 const legacyRatingProfileRows = [
     { library_id: 20, media_type: 'tv', rating_distribution: { '16': 11, 'TV-MA': 4 } }
@@ -31,8 +29,8 @@ const normalizedRatingProfileRows = [
 
 await jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
-await jest.unstable_mockModule('../services/libraryProfileService.mjs', () => ({
-    libraryProfileService: mockLibraryProfileService
+await jest.unstable_mockModule('../services/libraryProfileUpgradeQueue.mjs', () => ({
+    queueLibraryProfileUpgrade: mockQueueLibraryProfileUpgrade
 }));
 
 const { postUpgradeService } = await import('../services/postUpgradeService.mjs');
@@ -43,11 +41,8 @@ describe('PostUpgradeService', () => {
         delete mockDb.options;
         mockDb.withSessionAdvisoryLock.mockReset();
         mockDb.withSessionAdvisoryLock.mockImplementation(async (_key, fn) => { await fn(); return true; });
-        mockLibraryProfileService.generateAllProfiles.mockReset();
-        mockLibraryProfileService.generateAllProfiles.mockResolvedValue([
-            { id: 1, success: true },
-            { id: 2, success: false, error: 'sync unavailable' }
-        ]);
+        mockQueueLibraryProfileUpgrade.mockReset();
+        mockQueueLibraryProfileUpgrade.mockResolvedValue({ queued: 2, alreadyRecorded: false });
     });
 
     describe('runPendingTasks', () => {
@@ -85,12 +80,10 @@ describe('PostUpgradeService', () => {
                 if (sql.includes('SELECT lp.library_id')) return { rows: legacyRatingProfileRows };
                 return { rows: [], rowCount: 1 };
             });
-            mockLibraryProfileService.generateAllProfiles.mockResolvedValue([{ id: 1, success: true }]);
-
             const result = await postUpgradeService.runPendingTasks();
 
-            expect(result).toMatchObject({ executed: 3, skipped: 8, failed: 0, profilesRefreshAttempted: true });
-            expect(mockLibraryProfileService.generateAllProfiles).toHaveBeenCalledTimes(1);
+            expect(result).toMatchObject({ executed: 3, skipped: 9, failed: 0, profilesRefreshAttempted: true });
+            expect(mockQueueLibraryProfileUpgrade).toHaveBeenCalledTimes(1);
             expect(mockDb.query).not.toHaveBeenCalledWith(expect.stringContaining('DELETE FROM app_log'));
         });
 
@@ -118,8 +111,6 @@ describe('PostUpgradeService', () => {
                 if (sql.includes('SELECT lp.library_id')) return { rows: normalizedRatingProfileRows };
                 return { rows: [], rowCount: 1 };
             });
-            mockLibraryProfileService.generateAllProfiles.mockResolvedValue([{ id: 1, success: true }]);
-
             const result = await postUpgradeService.runPendingTasks();
 
             expect(result.executed).toBeGreaterThan(0);
@@ -141,15 +132,16 @@ describe('PostUpgradeService', () => {
                         { task_id: 'regenerate_library_profiles_rating_normalization_0472' },
                         { task_id: 'reset_stale_rating_normalization_0475' },
                         { task_id: 'clear_logs_0475a' },
-                        { task_id: 'regenerate_library_profile_observations_v1' }
+                        { task_id: 'regenerate_library_profile_observations_v1' },
+                        { task_id: 'queue_library_profile_observations_v2' }
                     ]
                 });
 
             const result = await postUpgradeService.runPendingTasks();
 
             expect(result.executed).toBe(0);
-            expect(result.skipped).toBe(11);
-            expect(mockLibraryProfileService.generateAllProfiles).not.toHaveBeenCalled();
+            expect(result.skipped).toBe(12);
+            expect(mockQueueLibraryProfileUpgrade).not.toHaveBeenCalled();
         });
 
         it('leaves later tasks pending when an earlier task fails', async () => {
@@ -178,7 +170,8 @@ describe('PostUpgradeService', () => {
                         { task_id: 'clear_logs_0427' },
                         { task_id: 'clear_logs_0431b' },
                         { task_id: 'clear_logs_0439' },
-                        { task_id: 'regenerate_library_profile_observations_v1' }
+                        { task_id: 'regenerate_library_profile_observations_v1' },
+                        { task_id: 'queue_library_profile_observations_v2' }
                     ]
                 })
                 .mockResolvedValueOnce({ rows: [{ count: '1' }] })
@@ -190,9 +183,9 @@ describe('PostUpgradeService', () => {
             const result = await postUpgradeService.runPendingTasks();
 
             expect(result.executed).toBe(1);
-            expect(result.skipped).toBe(10);
+            expect(result.skipped).toBe(11);
             expect(result.profilesRefreshAttempted).toBe(false);
-            expect(mockLibraryProfileService.generateAllProfiles).not.toHaveBeenCalled();
+            expect(mockQueueLibraryProfileUpgrade).not.toHaveBeenCalled();
             expect(mockDb.query).toHaveBeenCalledWith(
                 expect.stringContaining('INSERT INTO post_upgrade_tasks'),
                 [
@@ -213,13 +206,17 @@ describe('PostUpgradeService', () => {
             if (sql.includes('INSERT INTO post_upgrade_tasks')) completed.push(values[0]);
             return { rows: [], rowCount: 1 };
         });
+        mockQueueLibraryProfileUpgrade.mockRejectedValueOnce(new Error('queue unavailable'));
         expect((await postUpgradeService.runPendingTasks()).executed).toBe(0);
         expect(completed).not.toContain(taskId);
-        mockLibraryProfileService.generateAllProfiles.mockResolvedValue([{ id: 1, success: true }]);
+        mockQueueLibraryProfileUpgrade.mockImplementationOnce(async () => {
+            completed.push(taskId);
+            return { queued: 1, alreadyRecorded: false };
+        });
         expect((await postUpgradeService.runPendingTasks()).executed).toBe(1);
         expect(completed.filter(id => id === taskId)).toHaveLength(1);
         expect((await postUpgradeService.runPendingTasks()).executed).toBe(0);
-        expect(mockLibraryProfileService.generateAllProfiles).toHaveBeenCalledTimes(2);
+        expect(mockQueueLibraryProfileUpgrade).toHaveBeenCalledTimes(2);
     });
 
     describe('executeTask', () => {
@@ -275,15 +272,14 @@ describe('PostUpgradeService', () => {
 
         it('should execute regenerate_library_profiles task', async () => {
             mockDb.query.mockResolvedValueOnce({ rows: legacyRatingProfileRows });
-            mockLibraryProfileService.generateAllProfiles.mockResolvedValue([{ id: 1, success: true }]);
-
             await postUpgradeService.executeTask({
                 id: 'test_regenerate_library_profiles',
                 action: 'regenerate_library_profiles',
+                version: 'test',
                 description: 'Test'
             });
 
-            expect(mockLibraryProfileService.generateAllProfiles).toHaveBeenCalledTimes(1);
+            expect(mockQueueLibraryProfileUpgrade).toHaveBeenCalledTimes(1);
         });
 
         it('should skip regenerate_library_profiles task when profiles are already normalized', async () => {
@@ -299,7 +295,7 @@ describe('PostUpgradeService', () => {
                 skipped: true,
                 reason: 'rating_profiles_already_normalized'
             });
-            expect(mockLibraryProfileService.generateAllProfiles).not.toHaveBeenCalled();
+            expect(mockQueueLibraryProfileUpgrade).not.toHaveBeenCalled();
         });
 
         it('should execute reset_stale_normalizations task', async () => {

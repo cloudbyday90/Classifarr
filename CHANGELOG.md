@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Queue post-upgrade library profile regeneration durably per library through
+  the existing revision/outbox worker, including inactive libraries, and
+  remove the competing whole-library startup rebuild. No release is created.
 - Serialize post-upgrade task replay across processes, skip legacy automatic
   log clearing while retaining scheduled/manual cleanup, preserve pending
   work on failure, and avoid duplicate startup

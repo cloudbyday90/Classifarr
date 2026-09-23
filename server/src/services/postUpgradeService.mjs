@@ -10,7 +10,7 @@ import * as db from '../config/database.mjs';
 import { DB_ADVISORY_LOCKS } from '../config/database.mjs';
 import { persistRagAuditLog } from './ragAuditLogService.mjs';
 import { buildPostUpgradeTaskPlan } from './postUpgradeTaskPlan.mjs';
-import { libraryProfileService } from './libraryProfileService.mjs';
+import { queueLibraryProfileUpgrade } from './libraryProfileUpgradeQueue.mjs';
 import { runPolicyPostUpgradeApplyGate as runPolicyPostUpgradeApplyGateService } from './policyPostUpgradeApplyGate.mjs';
 import { runPolicyPostUpgradeDryRun } from './policyPostUpgradeDryRun.mjs';
 import { createLogger } from '../utils/logger.mjs';
@@ -94,6 +94,11 @@ const POST_UPGRADE_TASKS = {
             id: 'regenerate_library_profile_observations_v1',
             action: 'regenerate_library_profile_observations',
             description: 'Rebuild library prevalence and metadata coverage from synchronized inventory'
+        },
+        {
+            id: 'queue_library_profile_observations_v2',
+            action: 'regenerate_library_profile_observations',
+            description: 'Queue durable per-library observation refresh after upgrade'
         }
     ],
     '0.47.5a-beta': [
@@ -191,7 +196,7 @@ class PostUpgradeService {
                     profilesRefreshed = true;
                     profilesRefreshAttempted = true;
                 }
-                await this.markTaskComplete(task);
+                if (!result?.ledgerRecorded) await this.markTaskComplete(task);
                 if (result?.skipped) {
                     skippedByGuard++;
                     logger.info(`Task skipped: ${task.id}`, { reason: result.reason });
@@ -263,12 +268,11 @@ class PostUpgradeService {
                 return await this.backfillLibraryName();
 
             case 'regenerate_library_profiles':
-                return await this.regenerateLibraryProfiles();
+                return await this.regenerateLibraryProfiles(task);
 
             case 'regenerate_library_profile_observations': {
-                const results = await libraryProfileService.generateAllProfiles();
-                if (results.some(result => !result.success)) throw new Error('Library observation refresh incomplete; retry on next startup');
-                return { refreshed: results.length };
+                const result = await queueLibraryProfileUpgrade(task);
+                return { ...result, ledgerRecorded: true };
             }
 
             case 'reset_stale_normalizations':
@@ -335,7 +339,7 @@ class PostUpgradeService {
     /**
      * Task Action: Regenerate library profiles after scoring-model changes
      */
-    async regenerateLibraryProfiles() {
+    async regenerateLibraryProfiles(task) {
         const needsRegeneration = await this.needsLibraryProfileRatingRegeneration();
         if (!needsRegeneration) {
             logger.info('Library profile rating distributions are already normalized; skipping regeneration');
@@ -345,28 +349,9 @@ class PostUpgradeService {
             };
         }
 
-        logger.info('Regenerating library profiles...');
-
-        const results = await libraryProfileService.generateAllProfiles();
-        const successCount = results.filter(result => result.success).length;
-        const failureCount = results.length - successCount;
-
-        if (failureCount > 0) {
-            throw new Error('Library profile regeneration incomplete; retry on next startup');
-        }
-
-        logger.info('Library profile regeneration complete', {
-            total: results.length,
-            success: successCount,
-            failed: failureCount
-        });
-
-        return {
-            skipped: false,
-            total: results.length,
-            success: successCount,
-            failed: failureCount
-        };
+        const result = await queueLibraryProfileUpgrade(task);
+        logger.info('Library profile refresh queued for existing libraries', { queued: result.queued });
+        return { ...result, ledgerRecorded: true };
     }
 
     /**

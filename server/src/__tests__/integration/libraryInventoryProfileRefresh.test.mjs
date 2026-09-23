@@ -7,6 +7,7 @@ import { LibraryInventoryProfileRefreshPlanner } from '../../services/libraryInv
 import { PolicyProfileRefreshOutboxWorker } from '../../services/policyProfileRefreshOutboxWorker.mjs';
 import { policyProfileRefreshOutboxWorkerRepository as claims } from '../../services/policyProfileRefreshOutboxWorkerRepository.mjs';
 import { compactInventoryProfileRefreshes } from '../../services/libraryInventoryProfileRefreshRepository.mjs';
+import { queueLibraryProfileUpgrade } from '../../services/libraryProfileUpgradeQueue.mjs';
 
 const db = createIntegrationDatabaseModuleMock();
 const profiles = createLibraryProfileService({ dbClient: db });
@@ -37,6 +38,60 @@ function worker(profileService = profiles, extra = {}) {
 }
 
 describe('inventory-driven profile refresh in PostgreSQL', () => {
+    test('upgrade intent is durable, idempotent and resumes inactive libraries after reactivation', async () => {
+        const task = { id: `profile-refresh-${randomUUID()}`, version: 'fixture', description: 'Fixture upgrade' };
+        try {
+            await add(libraryIds[0]);
+            await add(libraryIds[1]);
+            await planner.run();
+            await worker().run();
+            await db.query('UPDATE libraries SET is_active = false WHERE id = $1', [libraryIds[1]]);
+
+            expect(await queueLibraryProfileUpgrade(task, db)).toEqual({ queued: 2, alreadyRecorded: false });
+            expect(await queueLibraryProfileUpgrade(task, db)).toEqual({ queued: 0, alreadyRecorded: true });
+            expect(await state(libraryIds[0])).toMatchObject({ revision: '2', refreshed_revision: '1' });
+            expect(await state(libraryIds[1])).toMatchObject({ revision: '2', refreshed_revision: '1' });
+
+            expect((await planner.run()).queued).toBe(1);
+            expect((await worker().run()).completed).toBe(1);
+            await db.query('UPDATE libraries SET is_active = true WHERE id = $1', [libraryIds[1]]);
+            expect((await planner.run()).queued).toBe(1);
+            expect((await worker().run()).completed).toBe(1);
+            expect((await state(libraryIds[1])).refreshed_revision).toBe('2');
+        } finally {
+            await db.query('DELETE FROM post_upgrade_tasks WHERE task_id = $1', [task.id]);
+        }
+    });
+    test('upgrade queue rolls back its task ledger when revision seeding fails', async () => {
+        const task = { id: `profile-refresh-${randomUUID()}`, version: 'fixture', description: 'Fixture rollback' };
+        await add();
+        const initialRevision = (await state()).revision;
+        const brokenDb = { withTransaction: callback => db.withTransaction(client => callback({
+            query: (sql, values) => sql.includes('INSERT INTO library_profile_inventory_state')
+                ? Promise.reject(new Error('fixture revision failure'))
+                : client.query(sql, values),
+        })) };
+
+        await expect(queueLibraryProfileUpgrade(task, brokenDb)).rejects.toThrow('fixture revision failure');
+        expect((await db.query('SELECT 1 FROM post_upgrade_tasks WHERE task_id = $1', [task.id])).rowCount).toBe(0);
+        expect((await state()).revision).toBe(initialRevision);
+    });
+    test('an in-flight refresh cannot acknowledge a newer upgrade revision', async () => {
+        const task = { id: `profile-refresh-${randomUUID()}`, version: 'fixture', description: 'Fixture concurrent upgrade' };
+        try {
+            await add();
+            expect((await planner.run()).queued).toBe(1);
+            expect((await queueLibraryProfileUpgrade(task, db)).queued).toBe(1);
+            expect((await planner.run()).queued).toBe(0);
+            expect((await worker().run()).completed).toBe(1);
+            expect(await state()).toMatchObject({ revision: '2', refreshed_revision: '1' });
+            expect((await planner.run()).queued).toBe(1);
+            expect((await worker().run()).completed).toBe(1);
+            expect((await state()).refreshed_revision).toBe('2');
+        } finally {
+            await db.query('DELETE FROM post_upgrade_tasks WHERE task_id = $1', [task.id]);
+        }
+    });
     test('clock revisions change once per statement without dirtying an acknowledged profile', async () => {
         await add(); await add();
         await db.query('UPDATE library_profile_inventory_state SET refreshed_revision=revision WHERE library_id=$1', [libraryIds[0]]);

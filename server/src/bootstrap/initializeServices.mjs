@@ -15,7 +15,6 @@ import { backfillOrchestrator } from '../services/backfillOrchestrator.mjs';
 import * as defaultApiKeyService from '../services/apiKeyService.mjs';
 import { embeddingMigrationService as defaultEmbeddingMigrationService } from '../services/embeddingMigrationService.mjs';
 import * as defaultHealthCheckService from '../services/healthCheckService.mjs';
-import { libraryProfileService as defaultLibraryProfileService } from '../services/libraryProfileService.mjs';
 import { ollamaService as defaultOllamaService } from '../services/ollama.mjs';
 import { schedulerService as defaultSchedulerService } from '../services/scheduler.mjs';
 import { startupService as defaultStartupService } from '../services/startupService.mjs';
@@ -200,20 +199,6 @@ async function startGraphRelationshipBackfill(graphRelationshipBackfillService) 
   }
 }
 
-function startLibraryProfiles(libraryProfileService) {
-  try {
-    libraryProfileService.generateAllProfiles().then(results => {
-      const success = results.filter(result => result.success).length;
-      const failed = results.filter(result => !result.success).length;
-      logger.info(`Startup library profile generation complete: ${success} success, ${failed} failed`);
-    }).catch(error => {
-      logger.warn('Startup library profile generation failed:', { error: error.message });
-    });
-  } catch (error) {
-    logger.warn('Library profile service not available:', { error: error.message });
-  }
-}
-
 async function generateMissingPolicies(database) {
   try {
     const result = await database.query(`
@@ -265,7 +250,6 @@ export async function initializeServices({
   apiKeyService = defaultApiKeyService,
   embeddingMigrationService = defaultEmbeddingMigrationService,
   healthCheckService = defaultHealthCheckService,
-  libraryProfileService = defaultLibraryProfileService,
   ollamaService = defaultOllamaService,
   schedulerService = defaultSchedulerService,
   startupService = defaultStartupService,
@@ -274,7 +258,6 @@ export async function initializeServices({
   graphRelationshipBackfillService = graphRelationshipBackfillServiceModule,
   ratingNormalizerService = ratingNormalizer,
   ratingNormalizationQueueService,
-  postUpgradeResult = null,
   database = db,
 }) {
   const runtimeWiringStatus = validateRuntimeWiring(startupService);
@@ -288,11 +271,8 @@ export async function initializeServices({
   await checkEmbeddingMigration(embeddingMigrationService);
   await initializeBackfillOrchestrator(backfillOrchestratorService);
   await startGraphRelationshipBackfill(graphRelationshipBackfillService);
-  if (postUpgradeResult?.profilesRefreshAttempted) {
-    logger.info('Startup library profile refresh deferred to post-upgrade work; avoiding duplicate rebuild');
-  } else {
-    startLibraryProfiles(libraryProfileService);
-  }
+  // Inventory revisions and the profile-refresh outbox own both initial and
+  // upgrade regeneration. Do not start an unbounded parallel rebuild here.
   await generateMissingPolicies(database);
   const startupRatingNormalizationQueue = ratingNormalizationQueueService || new RatingNormalizationQueueService({
     db: database,

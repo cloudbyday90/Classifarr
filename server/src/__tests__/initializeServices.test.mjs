@@ -145,6 +145,7 @@ describe('initializeServices', () => {
     expect(schedulerService.init).toHaveBeenCalled();
     expect(schedulerService.startNativeIntentReconciliation).toHaveBeenCalledTimes(1);
     expect(schedulerService.startPolicyProfileRefreshOutboxWorker).toHaveBeenCalledTimes(1);
+    expect(libraryProfileService.generateAllProfiles).not.toHaveBeenCalled();
     expect(schedulerService.startHeldOutSemanticStudyLifecycleReaudit).toHaveBeenCalledTimes(1);
     expect(schedulerService.startSourceIdentityEvidenceReplayObservation).toHaveBeenCalledTimes(1);
     expect(providerLock.init).toHaveBeenCalled();
