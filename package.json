@@ -11,6 +11,7 @@
   "scripts": {
     "docker:smart": "node scripts/docker-compose-smart.mjs",
     "benchmark:inventory:compose": "node scripts/run-inventory-benchmark-compose.mjs",
+    "test:local:library-profile-upgrade-rehearsal": "node server/src/scripts/runLibraryProfileUpgradeRehearsal.mjs",
     "benchmark:cross-encoder:prepare": "node scripts/prepare-cross-encoder-model.mjs",
     "docker:smart:build": "node scripts/docker-compose-smart.mjs build",
     "docker:smart:up": "node scripts/docker-compose-smart.mjs up -d",

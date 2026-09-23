@@ -42,6 +42,18 @@ describe('Migration Path Resolution', () => {
         expect(migrationRunner.schemaFile).toBe(customSchemaPath);
     });
 
+    test('uses an injected database connection for isolated upgrade rehearsals', async () => {
+        const queries = [];
+        const dbClient = { query: async sql => {
+            queries.push(sql);
+            return { rows: [{ filename: 'fixture.sql' }] };
+        } };
+        const migrationRunner = createMigrationRunner({ dbClient });
+
+        expect(await migrationRunner.getAppliedMigrations()).toEqual(['fixture.sql']);
+        expect(queries).toEqual(['SELECT filename FROM schema_migrations ORDER BY filename']);
+    });
+
     test('init.sql should use script-relative migration includes', () => {
         const initSqlPath = path.resolve(__dirname, '../../../database/init.sql');
         const initSql = fs.readFileSync(initSqlPath, 'utf8');

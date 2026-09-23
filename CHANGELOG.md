@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a disposable, pinned last-release schema rehearsal for library-profile
+  migration, backfill enrollment, retry recovery, inactive pause, and
+  revision-verified movie/TV profile publication; leave live data untouched.
 - Show a bounded, read-only library profile refresh summary in the Command
   Center with per-library recovery states and accessible disclosure; keep
   routing unchanged and create no release.

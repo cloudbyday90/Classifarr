@@ -70,11 +70,13 @@ export function compareMigrations(a, b) {
  */
 class MigrationRunner {
     constructor({
+        dbClient = db,
         env = process.env,
         fileSystem = fs,
         pathModule = path,
         currentDir = import.meta.dirname,
     } = {}) {
+        this.db = dbClient;
         this.env = env;
         this.fs = fileSystem;
         this.path = pathModule;
@@ -110,7 +112,7 @@ class MigrationRunner {
     }
 
     async ensureMigrationsTable() {
-        const { rows } = await db.query(`
+        const { rows } = await this.db.query(`
             SELECT EXISTS (
                 SELECT FROM information_schema.tables
                 WHERE table_name = 'schema_migrations'
@@ -122,7 +124,7 @@ class MigrationRunner {
             return;
         }
 
-        await db.query(`
+        await this.db.query(`
       CREATE TABLE IF NOT EXISTS schema_migrations (
         id SERIAL PRIMARY KEY,
         filename VARCHAR(255) UNIQUE NOT NULL,
@@ -143,7 +145,7 @@ class MigrationRunner {
         const schemaSQL = this.fs.readFileSync(this.schemaFile, 'utf8').replace(/^\uFEFF/, '');
 
         try {
-            await db.withTransaction(async (client) => {
+            await this.db.withTransaction(async (client) => {
                 await client.query(schemaSQL);
             });
             logger.info('[Migrations] ✅ Database initialized from schema snapshot');
@@ -155,7 +157,7 @@ class MigrationRunner {
     }
 
     async getAppliedMigrations() {
-        const result = await db.query('SELECT filename FROM schema_migrations ORDER BY filename');
+        const result = await this.db.query('SELECT filename FROM schema_migrations ORDER BY filename');
         return result.rows.map(row => row.filename);
     }
 
@@ -179,7 +181,7 @@ class MigrationRunner {
         const filepath = this.path.join(this.migrationsDir, filename);
         const sql = this.fs.readFileSync(filepath, 'utf8').replace(/^\uFEFF/, '');
 
-        await db.withTransaction(async (client) => {
+        await this.db.withTransaction(async (client) => {
             await client.query(sql);
             await client.query(
                 'INSERT INTO schema_migrations (filename) VALUES ($1) ON CONFLICT (filename) DO NOTHING',
@@ -193,7 +195,7 @@ class MigrationRunner {
         try {
             logger.info('[Migrations] Checking for pending database migrations...');
 
-            const { rows } = await db.query(`
+            const { rows } = await this.db.query(`
                 SELECT EXISTS (
                     SELECT FROM information_schema.tables 
                     WHERE table_name = 'schema_migrations'
