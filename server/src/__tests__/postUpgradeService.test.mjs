@@ -82,7 +82,7 @@ describe('PostUpgradeService', () => {
             });
             const result = await postUpgradeService.runPendingTasks();
 
-            expect(result).toMatchObject({ executed: 3, skipped: 9, failed: 0, profilesRefreshAttempted: true });
+            expect(result).toMatchObject({ executed: 3, skipped: 10, failed: 0, profilesRefreshAttempted: true });
             expect(mockQueueLibraryProfileUpgrade).toHaveBeenCalledTimes(1);
             expect(mockDb.query).not.toHaveBeenCalledWith(expect.stringContaining('DELETE FROM app_log'));
         });
@@ -133,14 +133,15 @@ describe('PostUpgradeService', () => {
                         { task_id: 'reset_stale_rating_normalization_0475' },
                         { task_id: 'clear_logs_0475a' },
                         { task_id: 'regenerate_library_profile_observations_v1' },
-                        { task_id: 'queue_library_profile_observations_v2' }
+                        { task_id: 'queue_library_profile_observations_v2' },
+                        { task_id: 'queue_library_profile_revision_verification_v1' }
                     ]
                 });
 
             const result = await postUpgradeService.runPendingTasks();
 
             expect(result.executed).toBe(0);
-            expect(result.skipped).toBe(12);
+            expect(result.skipped).toBe(13);
             expect(mockQueueLibraryProfileUpgrade).not.toHaveBeenCalled();
         });
 
@@ -171,7 +172,8 @@ describe('PostUpgradeService', () => {
                         { task_id: 'clear_logs_0431b' },
                         { task_id: 'clear_logs_0439' },
                         { task_id: 'regenerate_library_profile_observations_v1' },
-                        { task_id: 'queue_library_profile_observations_v2' }
+                        { task_id: 'queue_library_profile_observations_v2' },
+                        { task_id: 'queue_library_profile_revision_verification_v1' }
                     ]
                 })
                 .mockResolvedValueOnce({ rows: [{ count: '1' }] })
@@ -183,7 +185,7 @@ describe('PostUpgradeService', () => {
             const result = await postUpgradeService.runPendingTasks();
 
             expect(result.executed).toBe(1);
-            expect(result.skipped).toBe(11);
+            expect(result.skipped).toBe(12);
             expect(result.profilesRefreshAttempted).toBe(false);
             expect(mockQueueLibraryProfileUpgrade).not.toHaveBeenCalled();
             expect(mockDb.query).toHaveBeenCalledWith(

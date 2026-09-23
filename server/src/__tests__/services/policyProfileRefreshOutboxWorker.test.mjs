@@ -116,6 +116,21 @@ describe('PolicyProfileRefreshOutboxWorker', () => {
     expect(fixture.outboxRepository.failClaim).not.toHaveBeenCalled();
   });
 
+  test('hands off a superseded inventory revision without cooldown or clearing native readiness', async () => {
+    const error = Object.assign(new Error('changed inventory'), { code: 'LIBRARY_PROFILE_REVISION_SUPERSEDED' });
+    const fixture = createWorker({
+      records: [{ id: '91', libraryId: '8', attemptCount: 1, requestType: 'inventory_change' }],
+      profileError: error,
+    });
+
+    await expect(fixture.worker.run()).resolves.toMatchObject({
+      completed: 1, superseded: 1, retried: 0, completedWithoutProfile: 0,
+    });
+    expect(fixture.outboxRepository.completeClaim).toHaveBeenCalledTimes(1);
+    expect(fixture.outboxRepository.failClaim).not.toHaveBeenCalled();
+    expect(fixture.nativeCircuitRepository.clearForLibrary).not.toHaveBeenCalled();
+  });
+
   test('reschedules an unclassified profile refresh failure with bounded server-owned retry data', async () => {
     const fixture = createWorker({
       records: [{ id: '91', libraryId: '8', attemptCount: 1 }],

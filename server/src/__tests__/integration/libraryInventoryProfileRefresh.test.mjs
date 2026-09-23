@@ -236,6 +236,30 @@ describe('inventory-driven profile refresh in PostgreSQL', () => {
         await worker().run();
         expect((await profiles.getProfile(libraryIds[0])).genre_distribution).toEqual({ Drama: 100 });
     });
+    test('superseded publication yields to the latest inventory without retry cooldown', async () => {
+        await add();
+        expect((await planner.run()).queued).toBe(1);
+        let changed = false;
+        const dbClient = {
+            withTransaction: callback => db.withTransaction(callback),
+            query: async (sql, values) => {
+                const result = await db.query(sql, values);
+                if (!changed && sql.includes('FROM libraries library')) {
+                    changed = true;
+                    await db.query("UPDATE media_server_items SET genres = ARRAY['Drama'] WHERE library_id = $1", [libraryIds[0]]);
+                }
+                return result;
+            },
+        };
+        const racingProfiles = createLibraryProfileService({ dbClient });
+        expect(await worker(racingProfiles).run()).toMatchObject({ completed: 1, superseded: 1, retried: 0 });
+        expect(await state()).toMatchObject({ revision: '2', refreshed_revision: '1' });
+        expect(await profiles.getProfile(libraryIds[0])).toBeNull();
+        expect((await planner.run()).queued).toBe(1);
+        expect((await worker().run()).completed).toBe(1);
+        expect((await profiles.getProfile(libraryIds[0])).genre_distribution).toEqual({ Drama: 100 });
+        expect(await state()).toMatchObject({ revision: '2', refreshed_revision: '2' });
+    });
     test('lost claims cannot acknowledge revisions and bigint revisions remain exact', async () => {
         await add();
         await db.query('UPDATE library_profile_inventory_state SET revision = 9007199254740993 WHERE library_id = $1', [libraryIds[0]]);

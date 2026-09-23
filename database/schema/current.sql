@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-23T10:37:18.187Z
--- Latest Migration: 20260923_120000_add_classification_intake_receipts.sql
+-- Generated: 2026-09-23T11:59:49.511Z
+-- Latest Migration: 20260923_130000_add_library_profile_inventory_revision.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -4092,7 +4092,9 @@ CREATE TABLE public.library_profiles (
     last_generated_at timestamp without time zone,
     created_at timestamp without time zone DEFAULT now(),
     updated_at timestamp without time zone DEFAULT now(),
-    observation_summary jsonb
+    observation_summary jsonb,
+    inventory_revision bigint,
+    CONSTRAINT library_profiles_inventory_revision_positive_chk CHECK (((inventory_revision IS NULL) OR (inventory_revision > 0)))
 );
 
 
@@ -4101,6 +4103,13 @@ CREATE TABLE public.library_profiles (
 --
 
 COMMENT ON COLUMN public.library_profiles.observation_summary IS 'Versioned inventory-row prevalence, metadata coverage, and typed identity counts; observed evidence, not policy exclusions.';
+
+
+--
+-- Name: COLUMN library_profiles.inventory_revision; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.library_profiles.inventory_revision IS 'Exact library_profile_inventory_state revision used to compute this profile; NULL denotes legacy unverified provenance.';
 
 
 --
@@ -16167,6 +16176,7 @@ FROM unnest(ARRAY[
     '20260913_220000_add_description_retry_journal.sql',
     '20260920_160000_add_classification_automatic_recovery.sql',
     '20260920_200000_add_classification_provider_circuits.sql',
-    '20260923_120000_add_classification_intake_receipts.sql'
+    '20260923_120000_add_classification_intake_receipts.sql',
+    '20260923_130000_add_library_profile_inventory_revision.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

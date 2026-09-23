@@ -234,7 +234,10 @@ describe('Bug Fixes - Comprehensive PR', () => {
 
     describe('Bug 3: Genre Distribution TEXT[] Handling', () => {
         it('handles TEXT[] genres with the shared per-item measurement', async () => {
-            db.query.mockResolvedValueOnce({ rows: [{ genres: ['Action', 'Drama'] }, { genres: ['Action'] }] });
+            db.query.mockResolvedValueOnce({ rows: [
+                { observed_item_id: 1, genres: ['Action', 'Drama'] },
+                { observed_item_id: 2, genres: ['Action'] },
+            ] });
             expect(await libraryProfileService.getGenreDistribution(1)).toEqual([
                 { genre: 'Action', count: 2, percentage: 100 }, { genre: 'Drama', count: 1, percentage: 50 },
             ]);

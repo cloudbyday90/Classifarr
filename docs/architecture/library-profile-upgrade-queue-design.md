@@ -78,8 +78,9 @@ slice; add accessible status only when a verified progress API exists.
 
 ## Follow-up boundary
 
-The next high-value slice is revision-verified profile publication: persist
-the source revision alongside the profile, atomically reject a publication
-whose source changed during generation, and expose per-library pending,
-retrying, and terminal-cooldown counts for operators. Test it on a disposable
-old-version snapshot before considering automatic route promotion.
+Revision-verified profile publication is implemented separately in
+[its design](revision-verified-library-profile-publication-design.md) and
+[outcome](revision-verified-library-profile-publication-outcome.md). The next
+slice is a read-only per-library progress summary for pending, retrying, and
+terminal-cooldown work. Test it on a disposable old-version snapshot before
+considering automatic route promotion.

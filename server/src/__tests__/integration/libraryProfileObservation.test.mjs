@@ -31,6 +31,7 @@ describe('shared library observations in PostgreSQL', () => {
         expect(stored.genre_distribution).toEqual({ Action: 66.7, Drama: 33.3 });
         expect(live.genreDistribution).toEqual([{ genre: 'Action', count: 2, percentage: 66.7 }, { genre: 'Drama', count: 1, percentage: 33.3 }]);
         expect(stored.observation_summary).toEqual(generated.observation);
+        expect(String(stored.inventory_revision)).toBe(generated.inventoryRevision);
         expect(live.observation.traits.genres).toEqual({ observedCount: 2, unknownCount: 1 });
         expect(stored.observation_summary).toMatchObject({ distinctTypedIdentityCount: 2, duplicateIdentifiedRowCount: 1 });
         expect(stored.exclusion_ratings).toEqual([]);
@@ -72,9 +73,9 @@ describe('shared library observations in PostgreSQL', () => {
         let finishOld;
         let signalRead;
         const readStarted = new Promise(resolve => { signalRead = resolve; });
-        const older = createLibraryProfileService({ dbClient: { query: async (sql, values) => {
+        const older = createLibraryProfileService({ dbClient: { withTransaction: db.withTransaction, query: async (sql, values) => {
             const result = await db.query(sql, values);
-            if (sql.startsWith('SELECT msi.tmdb_id')) {
+            if (sql.includes('FROM libraries library')) {
                 signalRead();
                 await new Promise(resolve => { finishOld = resolve; });
             }
@@ -85,7 +86,7 @@ describe('shared library observations in PostgreSQL', () => {
         else await add({ genres: ['Action'] });
         await service.generateProfile(libraryId);
         finishOld();
-        await older;
+        await expect(older).rejects.toMatchObject({ code: 'LIBRARY_PROFILE_REVISION_SUPERSEDED' });
         const stored = await service.getProfile(libraryId);
         if (empty) expect(stored).toBeNull();
         else expect(stored.item_count).toBe(2);

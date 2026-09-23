@@ -99,6 +99,11 @@ const POST_UPGRADE_TASKS = {
             id: 'queue_library_profile_observations_v2',
             action: 'regenerate_library_profile_observations',
             description: 'Queue durable per-library observation refresh after upgrade'
+        },
+        {
+            id: 'queue_library_profile_revision_verification_v1',
+            action: 'regenerate_library_profile_observations',
+            description: 'Queue revision-verified profile publication for existing libraries'
         }
     ],
     '0.47.5a-beta': [

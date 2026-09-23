@@ -12,6 +12,7 @@ import { randomUUID } from 'node:crypto';
 import * as database from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { libraryProfileService } from './libraryProfileService.mjs';
+import { isLibraryProfileRevisionSuperseded } from './libraryProfileRevision.mjs';
 import {
   buildPolicyLibraryProfileFreshness,
 } from './policyLibraryProfileEvidenceLoader.mjs';
@@ -46,6 +47,7 @@ function buildResult({ claimed = 0, expired = 0 } = {}) {
     completed: 0,
     completedWithoutProfile: 0,
     completedAlreadyCurrent: 0,
+    superseded: 0,
     retried: 0,
     failed: expired,
     lostClaims: 0,
@@ -125,10 +127,12 @@ class PolicyProfileRefreshOutboxWorker {
         return;
       }
 
-      await this.clearNativeCircuit(record, result);
+      if (!refreshResult.superseded) await this.clearNativeCircuit(record, result);
 
       result.completed += 1;
-      if (refreshResult.alreadyCurrent) {
+      if (refreshResult.superseded) {
+        result.superseded += 1;
+      } else if (refreshResult.alreadyCurrent) {
         result.completedAlreadyCurrent += 1;
       } else if (refreshResult.profile === null) {
         result.completedWithoutProfile += 1;
@@ -186,10 +190,20 @@ class PolicyProfileRefreshOutboxWorker {
       });
     }
 
-    return {
-      profile: await this.profileService.generateProfile(record.libraryId),
-      alreadyCurrent: false,
-    };
+    try {
+      return {
+        profile: await this.profileService.generateProfile(record.libraryId),
+        alreadyCurrent: false,
+      };
+    } catch (error) {
+      // The old claim may safely acknowledge only its own revision. The
+      // inventory planner then admits the newer dirty revision next tick.
+      if (record.requestType === POLICY_PROFILE_REFRESH_OUTBOX_REQUEST_TYPE_IDS.INVENTORY_CHANGE &&
+          isLibraryProfileRevisionSuperseded(error)) {
+        return { profile: null, alreadyCurrent: false, superseded: true };
+      }
+      throw error;
+    }
   }
 
   async run() {

@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Verify the exact inventory revision before publishing learned library
+  profiles; superseded refreshes yield to newer work without a retry delay.
+  Queue a one-time provenance refresh for existing profiles. No release is
+  created.
 - Queue post-upgrade library profile regeneration durably per library through
   the existing revision/outbox worker, including inactive libraries, and
   remove the competing whole-library startup rebuild. No release is created.

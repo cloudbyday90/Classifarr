@@ -9,7 +9,10 @@
 import { jest } from '@jest/globals';
 import { createNamedMockModule, createLoggerModuleMock} from './helpers/mockFactory.mjs';
 
-const mockDb = { query: jest.fn() };
+const mockDb = { query: jest.fn(), withTransaction: jest.fn() };
+const observedRows = items => items.map((item, index) => ({
+    observed_item_id: index + 1, inventory_revision: '1', observed_at: '2026-09-23 00:00:00+00', ...item,
+}));
 jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
 
 jest.unstable_mockModule('../utils/logger.mjs', () => createLoggerModuleMock().module);
@@ -20,19 +23,23 @@ const db = mockDb;
 describe('LibraryProfileService', () => {
     beforeEach(() => {
         db.query.mockReset();
+        db.withTransaction.mockReset().mockImplementation(async callback => callback({ query: async sql =>
+            sql.startsWith('SELECT revision::text')
+                ? { rows: [{ revision: '1' }] }
+                : { rowCount: 1, rows: [{ library_id: 1 }] }
+        }));
     });
 
     describe('generateProfile', () => {
         it('should calculate rating distribution from synced items', async () => {
             db.query.mockResolvedValueOnce({
-                rows: [
+                rows: observedRows([
                     { content_rating: 'PG', genres: ['Animation'], studio: 'Disney', metadata: {}, media_type: 'movie' },
                     { content_rating: 'PG', genres: ['Animation', 'Family'], studio: 'Disney', metadata: {}, media_type: 'movie' },
                     { content_rating: 'G', genres: ['Animation'], studio: 'Pixar', metadata: {}, media_type: 'movie' },
                     { content_rating: 'PG', genres: ['Comedy'], studio: 'Disney', metadata: {}, media_type: 'movie' },
-                ]
+                ])
             });
-            db.query.mockResolvedValueOnce({ rows: [] });
 
             const profile = await libraryProfileService.generateProfile(1);
 
@@ -44,14 +51,13 @@ describe('LibraryProfileService', () => {
 
         it('normalizes age-based TV ratings before calculating rating distribution', async () => {
             db.query.mockResolvedValueOnce({
-                rows: [
+                rows: observedRows([
                     { content_rating: '16', genres: [], studio: null, metadata: {}, media_type: 'tv' },
                     { content_rating: '17', genres: [], studio: null, metadata: {}, media_type: 'tv' },
                     { content_rating: '18', genres: [], studio: null, metadata: {}, media_type: 'tv' },
                     { content_rating: 'TV-MA', genres: [], studio: null, metadata: {}, media_type: 'tv' },
-                ]
+                ])
             });
-            db.query.mockResolvedValueOnce({ rows: [] });
 
             const profile = await libraryProfileService.generateProfile(1);
 
@@ -61,12 +67,11 @@ describe('LibraryProfileService', () => {
 
         it('should calculate genre distribution from synced items', async () => {
             db.query.mockResolvedValueOnce({
-                rows: [
+                rows: observedRows([
                     { content_rating: 'PG', genres: ['Animation', 'Family'], studio: 'Disney', metadata: {} },
                     { content_rating: 'PG', genres: ['Animation', 'Comedy'], studio: 'Pixar', metadata: {} },
-                ]
+                ])
             });
-            db.query.mockResolvedValueOnce({ rows: [] });
 
             const profile = await libraryProfileService.generateProfile(1);
 
@@ -77,12 +82,11 @@ describe('LibraryProfileService', () => {
 
         it('does not turn absent ratings into exclusions', async () => {
             db.query.mockResolvedValueOnce({
-                rows: [
+                rows: observedRows([
                     { content_rating: 'PG', genres: [], studio: null, metadata: {} },
                     { content_rating: 'G', genres: [], studio: null, metadata: {} },
-                ]
+                ])
             });
-            db.query.mockResolvedValueOnce({ rows: [] });
 
             const profile = await libraryProfileService.generateProfile(1);
 
@@ -93,6 +97,7 @@ describe('LibraryProfileService', () => {
 
         it('should handle empty libraries gracefully', async () => {
             db.query.mockResolvedValueOnce({ rows: [] });
+            db.query.mockResolvedValueOnce({ rows: [] });
 
             const profile = await libraryProfileService.generateProfile(1);
 
@@ -101,13 +106,12 @@ describe('LibraryProfileService', () => {
 
         it('should count enriched items correctly', async () => {
             db.query.mockResolvedValueOnce({
-                rows: [
+                rows: observedRows([
                     { content_rating: 'PG', genres: [], studio: null, metadata: { omdb: { rated: 'PG' } } },
                     { content_rating: 'PG', genres: [], studio: null, metadata: { tmdb: { id: 123 } } },
                     { content_rating: 'PG', genres: [], studio: null, metadata: {} },
-                ]
+                ])
             });
-            db.query.mockResolvedValueOnce({ rows: [] });
 
             const profile = await libraryProfileService.generateProfile(1);
 
@@ -267,13 +271,11 @@ describe('LibraryProfileService', () => {
             });
 
             db.query.mockResolvedValueOnce({
-                rows: [{ content_rating: 'PG', genres: [], studio: null, metadata: {} }]
+                rows: observedRows([{ content_rating: 'PG', genres: [], studio: null, metadata: {} }])
             });
-            db.query.mockResolvedValueOnce({ rows: [] });
             db.query.mockResolvedValueOnce({
-                rows: [{ content_rating: 'R', genres: [], studio: null, metadata: {} }]
+                rows: observedRows([{ content_rating: 'R', genres: [], studio: null, metadata: {} }])
             });
-            db.query.mockResolvedValueOnce({ rows: [] });
 
             const results = await libraryProfileService.generateAllProfiles();
 
