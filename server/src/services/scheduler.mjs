@@ -29,6 +29,7 @@ import {
 import {
     policyProfileRefreshAutomationService,
 } from './policyProfileRefreshAutomationService.mjs';
+import { recordProfileRefreshWorkerProgress } from './profileRefreshWorkerProgress.mjs';
 import {
     POLICY_PROFILE_REFRESH_OUTBOX_CRON,
     POLICY_PROFILE_REFRESH_OUTBOX_INITIAL_DELAY_MS,
@@ -416,7 +417,29 @@ class SchedulerService {
     }
 
     async runPolicyProfileRefreshOutboxWorker() {
-        return policyProfileRefreshAutomationService.run();
+        let result;
+        let outcomeId = 'failed';
+        try {
+            result = await policyProfileRefreshAutomationService.run();
+            outcomeId = result?.planning?.statusId === 'failed' ||
+                result?.inventoryPlanning?.statusId === 'failed' ||
+                (result?.delivery?.failed ?? 0) > 0 ||
+                (result?.delivery?.retried ?? 0) > 0 ||
+                (result?.delivery?.lostClaims ?? 0) > 0 ? 'partial_failure' : 'completed';
+            return result;
+        } finally {
+            try {
+                await recordProfileRefreshWorkerProgress(db, {
+                    outcomeId,
+                    claimedCount: result?.delivery?.claimed ?? 0,
+                    completedCount: result?.delivery?.completed ?? 0,
+                });
+            } catch {
+                logger.warn('Profile refresh worker progress could not be recorded', {
+                    reasonId: 'profile_refresh_worker_progress_write_failed',
+                });
+            }
+        }
     }
 
     startHeldOutSemanticStudyLifecycleReaudit() {

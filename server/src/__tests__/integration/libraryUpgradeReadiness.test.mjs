@@ -4,6 +4,7 @@ import { afterEach, beforeEach, test, expect } from '@jest/globals';
 import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 import { readLibraryUpgradeReadiness } from '../../services/libraryUpgradeReadiness.mjs';
 import { LibraryInventoryProfileRefreshPlanner } from '../../services/libraryInventoryProfileRefreshPlanner.mjs';
+import { recordProfileRefreshWorkerProgress } from '../../services/profileRefreshWorkerProgress.mjs';
 
 const db = createIntegrationDatabaseModuleMock();
 const libraryIds = [];
@@ -23,10 +24,38 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+    await db.query('DELETE FROM profile_refresh_worker_progress');
     await db.query('DELETE FROM media_server_items WHERE library_id = ANY($1::bigint[])', [libraryIds]);
     await db.query('DELETE FROM policy_profile_refresh_outbox WHERE library_id = ANY($1::bigint[])', [libraryIds]);
     await db.query('DELETE FROM libraries WHERE id = ANY($1::bigint[])', [libraryIds]);
     await db.query('DELETE FROM media_server WHERE id = $1', [serverId]);
+});
+
+test('single-row progress distinguishes an unobserved worker from due work that is completing', async () => {
+    await db.query(`INSERT INTO media_server_items (external_id, title, library_id, media_type, metadata)
+        VALUES ($1, 'Private progress fixture', $2, 'movie', '{}'::jsonb)`, [randomUUID(), libraryIds[0]]);
+    await new LibraryInventoryProfileRefreshPlanner({ dbClient: db }).run();
+    await db.query(`UPDATE policy_profile_refresh_outbox SET available_at=statement_timestamp()-INTERVAL '20 minutes'
+        WHERE library_id=$1 AND processing_state='pending'`, [libraryIds[0]]);
+    const before = await readLibraryUpgradeReadiness(db);
+    expect(before.workerHealth.statusId).toBe('not_observed');
+    expect(before.workerHealth.claimableCount).toBeGreaterThanOrEqual(1);
+
+    await recordProfileRefreshWorkerProgress(db, { outcomeId: 'completed' });
+    const noCompletion = await readLibraryUpgradeReadiness(db);
+    expect(noCompletion.workerHealth.statusId).toBe('no_recent_completion');
+
+    await recordProfileRefreshWorkerProgress(db, { outcomeId: 'completed', claimedCount: 1,
+        completedCount: 1 });
+    const progressing = await readLibraryUpgradeReadiness(db);
+    expect(progressing.workerHealth.statusId).toBe('backlog_progressing');
+    expect((await db.query('SELECT COUNT(*)::integer AS count FROM profile_refresh_worker_progress'))
+        .rows[0].count).toBe(1);
+    await recordProfileRefreshWorkerProgress(db, { outcomeId: 'failed' });
+    const afterFailure = await readLibraryUpgradeReadiness(db);
+    expect(afterFailure.workerHealth.statusId).toBe('cycle_failed');
+    expect(afterFailure.workerHealth.lastSuccessAt).toBe(progressing.workerHealth.lastSuccessAt);
+    expect(JSON.stringify(progressing)).not.toContain('Private progress fixture');
 });
 
 test('overdue assessment clears through the durable planner without direct retry mutation', async () => {

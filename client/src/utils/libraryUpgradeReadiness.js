@@ -18,6 +18,29 @@ export function parseLibraryUpgradeReadiness(value) {
       !['movie', 'tv', 'other'].every(key => nonNegativeCount(value.mediaTypes?.[key])) ||
       value.mediaTypes.movie + value.mediaTypes.tv + value.mediaTypes.other !== value.libraryCount ||
       !nonNegativeCount(value.sourceIdentity?.completeCaptureLibraryCount) ||
+      (value.workerHealth != null && (
+        !['idle', 'not_observed', 'check_in_overdue', 'cycle_failed',
+          'no_recent_completion', 'backlog_progressing', 'overdue_without_claimable_work']
+          .includes(value.workerHealth.statusId) ||
+        !nonNegativeCount(value.workerHealth.claimableCount) ||
+        !['lastTickAt', 'lastSuccessAt', 'lastClaimedAt', 'lastCompletedAt', 'oldestClaimableAt']
+          .every(key => value.workerHealth[key] == null ||
+            (typeof value.workerHealth[key] === 'string' &&
+              Number.isFinite(Date.parse(value.workerHealth[key])))) ||
+        (value.workerHealth.lastSuccessAgeMinutes != null &&
+          !nonNegativeCount(value.workerHealth.lastSuccessAgeMinutes)) ||
+        (value.workerHealth.lastSuccessAt == null &&
+          value.workerHealth.lastSuccessAgeMinutes != null) ||
+        (value.workerHealth.lastSuccessAt != null &&
+          !nonNegativeCount(value.workerHealth.lastSuccessAgeMinutes)) ||
+        (value.workerHealth.claimableCount === 0 &&
+          (value.workerHealth.oldestClaimableAt != null ||
+            value.workerHealth.oldestClaimableAgeMinutes != null)) ||
+        (value.workerHealth.claimableCount > 0 &&
+          (value.workerHealth.oldestClaimableAt == null ||
+            !nonNegativeCount(value.workerHealth.oldestClaimableAgeMinutes))) ||
+        value.workerHealth.checkInGraceMinutes !== 5 ||
+        value.workerHealth.completionGraceMinutes !== 15)) ||
       (value.recovery != null && (
         !['plannerOverdue', 'workerOverdue', 'leaseRecoveryOverdue']
           .every(key => nonNegativeCount(value.recovery?.[key])) ||
@@ -47,6 +70,19 @@ export function parseLibraryUpgradeReadiness(value) {
       workerOverdue: value.recovery.workerOverdue,
       leaseRecoveryOverdue: value.recovery.leaseRecoveryOverdue,
       graceMinutes: value.recovery.graceMinutes,
+    },
+    workerHealth: value.workerHealth == null ? null : {
+      statusId: value.workerHealth.statusId,
+      claimableCount: value.workerHealth.claimableCount,
+      lastTickAt: value.workerHealth.lastTickAt,
+      lastSuccessAt: value.workerHealth.lastSuccessAt,
+      lastSuccessAgeMinutes: value.workerHealth.lastSuccessAgeMinutes,
+      lastClaimedAt: value.workerHealth.lastClaimedAt,
+      lastCompletedAt: value.workerHealth.lastCompletedAt,
+      oldestClaimableAt: value.workerHealth.oldestClaimableAt,
+      oldestClaimableAgeMinutes: value.workerHealth.oldestClaimableAgeMinutes,
+      checkInGraceMinutes: value.workerHealth.checkInGraceMinutes,
+      completionGraceMinutes: value.workerHealth.completionGraceMinutes,
     },
     sourceIdentity: {
       completeCaptureLibraryCount: value.sourceIdentity.completeCaptureLibraryCount,

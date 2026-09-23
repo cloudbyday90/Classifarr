@@ -14,6 +14,10 @@ test('upgrade readiness is administrator-only, no-store, and rejects query contr
         no_inventory_count: 0, covered_count: 0, issue_count: 0, conflict_count: 0,
         planner_overdue_count: 0, worker_overdue_count: 0, lease_recovery_overdue_count: 0,
         invalid_provider_count: 0, invalid_type_count: 0, enrollment_recorded: false,
+        claimable_count: 0, oldest_claimable_at: null, worker_last_tick_at: null,
+        worker_last_success_at: null,
+        worker_last_claimed_at: null, worker_last_completed_at: null,
+        worker_last_outcome_id: null,
     }] }) };
     const app = express();
     app.use((req, _res, next) => { req.user = { role: req.get('x-test-role') || 'viewer' }; next(); });
@@ -28,7 +32,8 @@ test('upgrade readiness is administrator-only, no-store, and rejects query contr
     const allowed = await request(app).get('/api/libraries/upgrade-readiness')
         .set('x-test-role', 'admin').expect(200);
     expect(allowed.headers['cache-control']).toBe('no-store');
-    expect(allowed.body).toMatchObject({ libraryCount: 0, profile: { current: 0 } });
+    expect(allowed.body).toMatchObject({ libraryCount: 0, profile: { current: 0 },
+        workerHealth: { statusId: 'not_observed', claimableCount: 0 } });
     await request(app).get('/api/libraries/upgrade-readiness?limit=100')
         .set('x-test-role', 'admin').expect(400);
     expect(db.query).toHaveBeenCalledTimes(1);

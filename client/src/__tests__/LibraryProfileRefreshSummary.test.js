@@ -38,11 +38,28 @@ describe('LibraryProfileRefreshSummary', () => {
         profile: { current: 300, queued: 10, processing: 2, retryWait: 1, waiting: 3,
           cooldown: 4, unverified: 5, paused: 15, noInventory: 10 },
         recovery: { plannerOverdue: 1, workerOverdue: 2, leaseRecoveryOverdue: 0 },
+        workerHealth: { statusId: 'no_recent_completion', claimableCount: 2,
+          oldestClaimableAgeMinutes: 25 },
         sourceIdentity: { completeCaptureLibraryCount: 90, unresolvedItemCount: 2,
           conflictingProviderItemCount: 2 } },
     } })
     expect(wrapper.find('[role="status"]').text()).toContain('350 libraries:')
     expect(wrapper.text()).toContain('cover 90 of 320 active libraries')
     expect(wrapper.text()).toContain('3 active libraries are overdue')
+    expect(wrapper.text()).toContain('2 jobs are due (oldest 25 min), with no completion')
+  })
+
+  it('explains a failed worker cycle without asserting that the process is offline', () => {
+    const wrapper = mount(LibraryProfileRefreshSummary, { props: {
+      report: { summary: {}, libraries: [], windowTruncated: false },
+      readiness: { libraryCount: 1, activeLibraryCount: 1, profile: { current: 0, queued: 1,
+        processing: 0, retryWait: 0, waiting: 0, cooldown: 0, unverified: 0, paused: 0,
+        noInventory: 0 }, recovery: { plannerOverdue: 0, workerOverdue: 1,
+        leaseRecoveryOverdue: 0 }, sourceIdentity: { completeCaptureLibraryCount: 0,
+        unresolvedItemCount: 0 }, workerHealth: { statusId: 'cycle_failed', claimableCount: 1,
+        lastSuccessAgeMinutes: 18 },
+    } } })
+    expect(wrapper.text()).toContain('last full success 18 min ago')
+    expect(wrapper.text()).not.toContain('offline')
   })
 })

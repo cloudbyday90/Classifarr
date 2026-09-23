@@ -44,59 +44,63 @@ describe('backup restore authorized outcome receipt lifecycle', () => {
     );
     expect(client.query).toHaveBeenNthCalledWith(
       2,
-      'DELETE FROM policy_native_profile_refresh_circuits'
+      'DELETE FROM profile_refresh_worker_progress'
     );
     expect(client.query).toHaveBeenNthCalledWith(
       3,
-      "SELECT set_config('classifarr.policy_identity_evidence_admission_maintenance', 'replace_restore', true)"
+      'DELETE FROM policy_native_profile_refresh_circuits'
     );
     expect(client.query).toHaveBeenNthCalledWith(
       4,
-      'DELETE FROM policy_identity_evidence_admissions'
+      "SELECT set_config('classifarr.policy_identity_evidence_admission_maintenance', 'replace_restore', true)"
     );
     expect(client.query).toHaveBeenNthCalledWith(
       5,
-      "SELECT set_config('classifarr.policy_authorized_outcome_receipt_maintenance', 'replace_restore', true)"
+      'DELETE FROM policy_identity_evidence_admissions'
     );
     expect(client.query).toHaveBeenNthCalledWith(
       6,
-      'DELETE FROM policy_authorized_outcome_source_event_receipts'
+      "SELECT set_config('classifarr.policy_authorized_outcome_receipt_maintenance', 'replace_restore', true)"
     );
     expect(client.query).toHaveBeenNthCalledWith(
       7,
-      "SELECT set_config('classifarr.policy_native_intent_change_receipt_maintenance', 'replace_restore', true)"
+      'DELETE FROM policy_authorized_outcome_source_event_receipts'
     );
     expect(client.query).toHaveBeenNthCalledWith(
       8,
-      'DELETE FROM policy_change_review_history_aggregates'
+      "SELECT set_config('classifarr.policy_native_intent_change_receipt_maintenance', 'replace_restore', true)"
     );
     expect(client.query).toHaveBeenNthCalledWith(
       9,
+      'DELETE FROM policy_change_review_history_aggregates'
+    );
+    expect(client.query).toHaveBeenNthCalledWith(
+      10,
       expect.stringContaining('UPDATE policy_change_review_history_controls'),
       expect.any(Array)
     );
     expect(client.query).toHaveBeenNthCalledWith(
-      10,
+      11,
       'DELETE FROM policy_candidate_correction_policy_change_decision_records'
     );
     expect(client.query).toHaveBeenNthCalledWith(
-      11,
+      12,
       'DELETE FROM policy_candidate_correction_policy_change_outcome_observations'
     );
     expect(client.query).toHaveBeenNthCalledWith(
-      12,
+      13,
       'DELETE FROM policy_native_intent_change_receipts'
     );
     expect(client.query).toHaveBeenNthCalledWith(
-      13,
+      14,
       "SELECT set_config('classifarr.verification_capability_receipt_maintenance', 'replace_restore', true)"
     );
     expect(client.query).toHaveBeenNthCalledWith(
-      14,
+      15,
       'DELETE FROM candidate_bound_verification_capability_receipts'
     );
     expect(client.query).toHaveBeenNthCalledWith(
-      15,
+      16,
       "SELECT set_config('classifarr.policy_migration_verification_run_maintenance', 'replace_restore', true)"
     );
     expect(client.query).toHaveBeenCalledWith(

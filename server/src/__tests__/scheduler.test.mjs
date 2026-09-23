@@ -786,6 +786,29 @@ describe('SchedulerService', () => {
                 expect.any(Function),
             );
             expect(mockPolicyProfileRefreshAutomationService.run).toHaveBeenCalledTimes(2);
+            expect(mockDb.query).toHaveBeenCalledWith(
+                expect.stringContaining('INSERT INTO profile_refresh_worker_progress'),
+                ['completed', 1, 0],
+            );
+        });
+
+        it('records partial failure and preserves worker errors if progress recording fails', async () => {
+            mockPolicyProfileRefreshAutomationService.run.mockResolvedValueOnce({
+                inventoryPlanning: { statusId: 'failed' }, delivery: { claimed: 2, completed: 1 },
+            });
+            await scheduler.runPolicyProfileRefreshOutboxWorker();
+            expect(mockDb.query).toHaveBeenCalledWith(
+                expect.stringContaining('INSERT INTO profile_refresh_worker_progress'),
+                ['partial_failure', 2, 1],
+            );
+
+            mockPolicyProfileRefreshAutomationService.run.mockRejectedValueOnce(new Error('claim failed'));
+            mockDb.query.mockRejectedValueOnce(new Error('progress storage failed'));
+            await expect(scheduler.runPolicyProfileRefreshOutboxWorker()).rejects.toThrow('claim failed');
+            expect(mockLoggerInstance.warn).toHaveBeenCalledWith(
+                'Profile refresh worker progress could not be recorded',
+                { reasonId: 'profile_refresh_worker_progress_write_failed' },
+            );
         });
     });
 

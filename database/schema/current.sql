@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-23T11:59:49.511Z
--- Latest Migration: 20260923_130000_add_library_profile_inventory_revision.sql
+-- Generated: 2026-09-23T22:35:21.968Z
+-- Latest Migration: 20260923_140000_add_profile_refresh_worker_progress.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -6878,6 +6878,29 @@ ALTER SEQUENCE public.post_upgrade_tasks_id_seq OWNED BY public.post_upgrade_tas
 
 
 --
+-- Name: profile_refresh_worker_progress; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.profile_refresh_worker_progress (
+    singleton_id smallint DEFAULT 1 NOT NULL,
+    last_tick_at timestamp with time zone NOT NULL,
+    last_success_at timestamp with time zone,
+    last_claimed_at timestamp with time zone,
+    last_completed_at timestamp with time zone,
+    last_outcome_id character varying(24) NOT NULL,
+    CONSTRAINT profile_refresh_worker_progress_last_outcome_id_check CHECK (((last_outcome_id)::text = ANY (ARRAY[('completed'::character varying)::text, ('partial_failure'::character varying)::text, ('failed'::character varying)::text]))),
+    CONSTRAINT profile_refresh_worker_progress_singleton_id_check CHECK ((singleton_id = 1))
+);
+
+
+--
+-- Name: TABLE profile_refresh_worker_progress; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.profile_refresh_worker_progress IS 'Single operational worker progress row; no library, media, provider, or error payloads.';
+
+
+--
 -- Name: queue_startup_performance_receipts; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -10388,6 +10411,14 @@ ALTER TABLE ONLY public.post_upgrade_tasks
 
 ALTER TABLE ONLY public.post_upgrade_tasks
     ADD CONSTRAINT post_upgrade_tasks_task_id_key UNIQUE (task_id);
+
+
+--
+-- Name: profile_refresh_worker_progress profile_refresh_worker_progress_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.profile_refresh_worker_progress
+    ADD CONSTRAINT profile_refresh_worker_progress_pkey PRIMARY KEY (singleton_id);
 
 
 --
@@ -16177,6 +16208,7 @@ FROM unnest(ARRAY[
     '20260920_160000_add_classification_automatic_recovery.sql',
     '20260920_200000_add_classification_provider_circuits.sql',
     '20260923_120000_add_classification_intake_receipts.sql',
-    '20260923_130000_add_library_profile_inventory_revision.sql'
+    '20260923_130000_add_library_profile_inventory_revision.sql',
+    '20260923_140000_add_profile_refresh_worker_progress.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

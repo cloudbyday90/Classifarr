@@ -10,6 +10,12 @@ const counts = {
     no_inventory_count: 0, covered_count: 1, issue_count: 3, conflict_count: 2,
     invalid_provider_count: 1, invalid_type_count: 0, enrollment_recorded: true,
     planner_overdue_count: 0, worker_overdue_count: 1, lease_recovery_overdue_count: 0,
+    claimable_count: 1, oldest_claimable_at: '2026-09-23T11:30:00.000Z',
+    worker_last_tick_at: '2026-09-23T11:59:00.000Z',
+    worker_last_success_at: '2026-09-23T11:59:00.000Z',
+    worker_last_claimed_at: '2026-09-23T11:50:00.000Z',
+    worker_last_completed_at: '2026-09-23T11:58:00.000Z',
+    worker_last_outcome_id: 'completed',
 };
 
 test('reads a whole-installation aggregate without returning media or provider data', async () => {
@@ -20,6 +26,7 @@ test('reads a whole-installation aggregate without returning media or provider d
         mediaTypes: { movie: 1, tv: 1, other: 1 },
         profile: { current: 1, queued: 1, paused: 1, missing: 1 },
         recovery: { plannerOverdue: 0, workerOverdue: 1, leaseRecoveryOverdue: 0, graceMinutes: 15 },
+        workerHealth: { statusId: 'backlog_progressing', claimableCount: 1 },
         sourceIdentity: { completeCaptureLibraryCount: 1, unresolvedItemCount: 3,
             conflictingProviderItemCount: 2, invalidProviderItemCount: 1 },
         upgradeEnrollmentRecorded: true,

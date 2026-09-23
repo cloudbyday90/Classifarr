@@ -1,6 +1,9 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { POLICY_NATIVE_PROFILE_REFRESH_CIRCUIT_PROBE_DELAY_MS } from './policyNativeProfileRefreshCircuitVocabulary.mjs';
 import { LIBRARY_PROFILE_RECOVERY_GRACE_MS, libraryProfileRecoveryReasonSql } from './libraryProfileRecoveryAssessment.mjs';
+import { assessProfileRefreshWorkerHealth } from './profileRefreshWorkerHealth.mjs';
+import { POLICY_PROFILE_REFRESH_OUTBOX_REQUEST_TYPE_IDS } from './policyProfileRefreshOutboxVocabulary.mjs';
+import { POLICY_PROFILE_REFRESH_OUTBOX_WORKER_MAX_ATTEMPTS } from './policyProfileRefreshOutboxWorkerVocabulary.mjs';
 
 export const LIBRARY_UPGRADE_READINESS_VERSION = 'library.upgrade_readiness.v1';
 
@@ -77,11 +80,28 @@ const READINESS_SQL = `WITH library_state AS MATERIALIZED (
         ON o.library_id=c.library_id AND o.media_server_id=c.media_server_id
         AND o.generation=c.generation
         AND o.last_seen_at >= statement_timestamp()-INTERVAL '30 days'
+), claimable_work AS (
+    SELECT COUNT(*)::integer AS claimable_count,
+        MIN(CASE WHEN o.processing_state='pending' THEN o.available_at
+            ELSE o.lease_expires_at END) AS oldest_claimable_at
+    FROM policy_profile_refresh_outbox o
+    LEFT JOIN libraries l ON l.id=o.library_id
+    WHERE o.request_type = ANY($3::text[])
+        AND (o.request_type <> 'inventory_change' OR l.is_active = TRUE)
+        AND o.attempt_count < $4::integer
+        AND ((o.processing_state='pending' AND o.available_at <= statement_timestamp())
+            OR (o.processing_state='processing' AND o.lease_expires_at <= statement_timestamp()))
 )
 SELECT statement_timestamp() AS observed_at, totals.*, source_totals.*,
+    claimable_work.*, progress.last_tick_at AS worker_last_tick_at,
+    progress.last_success_at AS worker_last_success_at,
+    progress.last_claimed_at AS worker_last_claimed_at,
+    progress.last_completed_at AS worker_last_completed_at,
+    progress.last_outcome_id AS worker_last_outcome_id,
     EXISTS (SELECT 1 FROM post_upgrade_tasks
         WHERE task_id='queue_library_profile_revision_verification_v1') AS enrollment_recorded
-FROM totals CROSS JOIN source_totals`;
+FROM totals CROSS JOIN source_totals CROSS JOIN claimable_work
+LEFT JOIN profile_refresh_worker_progress progress ON progress.singleton_id=1`;
 
 function count(value) {
     const parsed = Number(value);
@@ -92,7 +112,8 @@ function count(value) {
 /** One read-only aggregate across every library; never exposes names, titles, or provider payloads. */
 export async function readLibraryUpgradeReadiness(db) {
     const { rows } = await db.query(READINESS_SQL, [POLICY_NATIVE_PROFILE_REFRESH_CIRCUIT_PROBE_DELAY_MS,
-        LIBRARY_PROFILE_RECOVERY_GRACE_MS]);
+        LIBRARY_PROFILE_RECOVERY_GRACE_MS, Object.values(POLICY_PROFILE_REFRESH_OUTBOX_REQUEST_TYPE_IDS),
+        POLICY_PROFILE_REFRESH_OUTBOX_WORKER_MAX_ATTEMPTS]);
     const row = rows[0];
     if (!row || !Number.isFinite(new Date(row.observed_at).getTime())) {
         throw new TypeError('Invalid upgrade readiness snapshot');
@@ -143,5 +164,10 @@ export async function readLibraryUpgradeReadiness(db) {
         report.recovery.leaseRecoveryOverdue > report.activeLibraryCount) {
         throw new TypeError('Inconsistent upgrade recovery assessment');
     }
+    report.workerHealth = assessProfileRefreshWorkerHealth(row, {
+        asOf: report.asOf,
+        overdueCount: report.recovery.plannerOverdue + report.recovery.workerOverdue +
+            report.recovery.leaseRecoveryOverdue,
+    });
     return report;
 }

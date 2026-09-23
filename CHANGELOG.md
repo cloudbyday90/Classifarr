@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Correlate overdue library-profile recovery with a durable, privacy-bounded
+  worker check-in and claimable queue count in the Command Center; preserve
+  existing retry and routing behavior.
 - Diagnose active, dirty libraries whose profile refresh planning, queue claim,
   or expired lease recovery is overdue after scheduler grace. Show bounded
   reasons in the Command Center without changing retries or routing.

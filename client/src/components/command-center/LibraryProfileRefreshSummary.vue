@@ -37,7 +37,7 @@
           v-if="readiness && overdueCount"
           class="profile-refresh-note"
         >
-          {{ overdueCount }} active {{ overdueCount === 1 ? 'library is' : 'libraries are' }} overdue for automatic profile recovery. If this persists, check worker health.
+          {{ overdueCount }} active {{ overdueCount === 1 ? 'library is' : 'libraries are' }} overdue for automatic profile recovery. {{ workerHealthText }}
         </p>
         <p
           v-if="readiness && !readiness.upgradeEnrollmentRecorded && readiness.libraryCount"
@@ -93,6 +93,22 @@ const readinessText = computed(() => {
 const overdueCount = computed(() => {
   const recovery = props.readiness?.recovery
   return recovery ? recovery.plannerOverdue + recovery.workerOverdue + recovery.leaseRecoveryOverdue : 0
+})
+
+const workerHealthText = computed(() => {
+  const health = props.readiness?.workerHealth
+  if (!health) return 'Worker progress is unavailable.'
+  switch (health.statusId) {
+    case 'not_observed': return 'No worker check-in has been recorded yet.'
+    case 'check_in_overdue': return 'No worker check-in in the last 5 minutes; check the scheduler.'
+    case 'cycle_failed': return health.lastSuccessAgeMinutes == null
+      ? 'The worker checked in, but no fully successful cycle is recorded.'
+      : `The worker checked in, but its last cycle reported a failure; last full success ${health.lastSuccessAgeMinutes} min ago.`
+    case 'no_recent_completion': return `${health.claimableCount} jobs are due (oldest ${health.oldestClaimableAgeMinutes} min), with no completion in the last 15 minutes.`
+    case 'backlog_progressing': return `The worker recently completed work; ${health.claimableCount} jobs remain due (oldest ${health.oldestClaimableAgeMinutes} min).`
+    case 'overdue_without_claimable_work': return 'The worker checked in, but overdue library work is not claimable.'
+    default: return 'The worker checked in; no jobs are currently claimable.'
+  }
 })
 
 const sourceText = computed(() => {

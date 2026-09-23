@@ -9,6 +9,10 @@ const report = {
     waiting: 0, paused: 1, unverified: 0, noInventory: 0, missing: 0 },
   upgradeEnrollmentRecorded: true,
   recovery: { plannerOverdue: 0, workerOverdue: 0, leaseRecoveryOverdue: 0, graceMinutes: 15 },
+  workerHealth: { statusId: 'idle', claimableCount: 0, lastTickAt: '2026-09-23T11:59:00.000Z',
+    lastSuccessAt: '2026-09-23T11:59:00.000Z', lastSuccessAgeMinutes: 1,
+    lastClaimedAt: null, lastCompletedAt: null, oldestClaimableAt: null, oldestClaimableAgeMinutes: null,
+    checkInGraceMinutes: 5, completionGraceMinutes: 15 },
   sourceIdentity: { completeCaptureLibraryCount: 1, unresolvedItemCount: 2,
     conflictingProviderItemCount: 2, invalidProviderItemCount: 0, invalidMediaTypeItemCount: 0,
     scope: 'active_complete_full_captures_last_30_days' },
@@ -26,6 +30,9 @@ describe('upgrade readiness contract', () => {
     expect(parseLibraryUpgradeReadiness({ ...report, profile: { ...report.profile, paused: -1 } })).toBeNull()
     expect(parseLibraryUpgradeReadiness({ ...report, recovery: { ...report.recovery,
       workerOverdue: 2 } })).toBeNull()
+    expect(parseLibraryUpgradeReadiness({ ...report, workerHealth: {
+      ...report.workerHealth, statusId: 'untrusted',
+    } })).toBeNull()
     expect(parseLibraryUpgradeReadiness({ ...report, sourceIdentity: {
       ...report.sourceIdentity, completeCaptureLibraryCount: 2,
     } })).toBeNull()
