@@ -3,6 +3,7 @@ import { beforeEach, afterEach, test, expect } from '@jest/globals';
 import { getPool } from './setup.mjs';
 import { INVENTORY_OUTCOME_LABEL_SQL } from '../../services/inventoryOutcomeLabels.mjs';
 import { INVENTORY_PROSPECTIVE_OUTCOME_SQL } from '../../services/inventoryProspectiveOutcomeRepository.mjs';
+import { INVENTORY_PROSPECTIVE_ACTIVITY_SQL } from '../../services/inventoryProspectiveActivityRepository.mjs';
 import { evaluateInventoryProspectiveOutcomes } from '../../services/inventoryProspectiveOutcomes.mjs';
 import { inventoryRankingShadowFixture } from '../fixtures/inventoryRankingShadowFixture.mjs';
 
@@ -26,6 +27,27 @@ afterEach(async () => {
   await db.query('DELETE FROM policy_feedback_log WHERE selected_policy_id=$1', [policyId]);
   await db.query('DELETE FROM library_policies WHERE id=$1', [policyId]);
   await db.query('DELETE FROM libraries WHERE id=ANY($1::integer[])', [[selectedId, candidateId]]);
+});
+
+test('bounded activity count uses the same exclusive window and movie/TV scope', async () => {
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('CREATE TEMP TABLE classification_history (recorded_at timestamptz, media_type text) ON COMMIT DROP');
+    await client.query(`INSERT INTO classification_history(recorded_at, media_type) VALUES
+      ('2026-09-23T00:00:00Z','movie'), ('2026-09-23T12:00:00Z','tv'),
+      ('2026-09-24T00:00:00Z','movie'), ('2026-09-23T12:00:00Z','other')`);
+    const window = ['2026-09-23T00:00:00Z', '2026-09-24T00:00:00Z'];
+    expect((await client.query(INVENTORY_PROSPECTIVE_ACTIVITY_SQL, window)).rows[0])
+      .toEqual({ recorded_movie_tv_events: 2 });
+    await client.query(`INSERT INTO classification_history(recorded_at, media_type)
+      SELECT '2026-09-23T12:00:00Z', 'movie' FROM generate_series(1, 5002)`);
+    expect((await client.query(INVENTORY_PROSPECTIVE_ACTIVITY_SQL, window)).rows[0])
+      .toEqual({ recorded_movie_tv_events: 5001 });
+  } finally {
+    await client.query('ROLLBACK');
+    client.release();
+  }
 });
 
 test('prospective SQL binds delayed outcomes to exact history, never a same-identity neighbor or current placement', async () => {

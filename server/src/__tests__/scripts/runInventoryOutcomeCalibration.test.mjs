@@ -31,15 +31,19 @@ test('CLI closes its pool when the snapshot fails', async () => {
 test('prospective mode reads frozen events only, without inventory reconstruction or providers', async () => {
   const queries = [], close = jest.fn();
   const load = async () => ({ close, withTransaction: callback => callback({ query: async (sql, params) => {
-    queries.push({ sql, params }); return { rows: [] };
+    queries.push({ sql, params });
+    return { rows: sql.includes('AS recorded_movie_tv_events') ? [{ recorded_movie_tv_events: 0 }] : [] };
   } }) });
   const result = await runInventoryOutcomeCalibration({ argv: ['--prospective', '--since', '2026-01-01T00:00:00Z',
     '--until', '2026-02-01T00:00:00Z'], load });
   expect(result).toMatchObject({ status: 'awaiting_eligible_outcomes', providerCalls: 0,
-    evidenceState: { phase: 'awaiting_live_comparisons', missing: ['complete_live_comparisons'] },
+    activity: { recordedMovieTvEvents: 0, capped: false },
+    evidenceState: { phase: 'awaiting_classification_intake', missing: ['recorded_movie_tv_classifications'] },
     window: { since: '2026-01-01T00:00:00.000Z', until: '2026-02-01T00:00:00.000Z' } });
   expect(queries[0].sql).toContain('READ ONLY');
+  expect(queries.at(-2).sql).toContain('classification_history');
   expect(queries.at(-1).sql).toContain('policy_feedback_sources');
+  expect(queries.at(-2).params).toEqual(queries.at(-1).params);
   expect(queries.at(-1).params).toEqual(['2026-01-01T00:00:00.000Z', '2026-02-01T00:00:00.000Z']);
   expect(queries.some(query => query.sql.includes('FROM media_server_items'))).toBe(false);
   expect(close).toHaveBeenCalledTimes(1);

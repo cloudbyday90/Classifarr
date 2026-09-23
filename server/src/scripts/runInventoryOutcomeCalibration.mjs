@@ -9,6 +9,8 @@ import { benchmarkInventoryOutcomeCalibration } from '../services/inventoryOutco
 import { validateDescriptionBenchmarkOptions } from '../services/inventoryDescriptionBenchmarkSelection.mjs';
 import { INVENTORY_PROSPECTIVE_OUTCOME_SQL } from '../services/inventoryProspectiveOutcomeRepository.mjs';
 import { evaluateInventoryProspectiveOutcomes } from '../services/inventoryProspectiveOutcomes.mjs';
+import { INVENTORY_PROSPECTIVE_ACTIVITY_SQL } from '../services/inventoryProspectiveActivityRepository.mjs';
+import { withInventoryProspectiveActivity } from '../services/inventoryProspectiveActivity.mjs';
 
 async function loadRuntime() {
   process.env.LOG_LEVEL = 'fatal';
@@ -37,15 +39,20 @@ export async function runInventoryOutcomeCalibration({ argv = process.argv.slice
       await client.query("SET LOCAL statement_timeout = '15s'");
       await client.query("SET LOCAL lock_timeout = '1s'");
       await client.query("SET LOCAL idle_in_transaction_session_timeout = '20s'");
-      if (values.prospective) return (await client.query(INVENTORY_PROSPECTIVE_OUTCOME_SQL,
-        [new Date(since).toISOString(), new Date(until).toISOString()])).rows;
+      if (values.prospective) {
+        const params = [new Date(since).toISOString(), new Date(until).toISOString()];
+        const activity = (await client.query(INVENTORY_PROSPECTIVE_ACTIVITY_SQL, params)).rows[0];
+        const rows = (await client.query(INVENTORY_PROSPECTIVE_OUTCOME_SQL, params)).rows;
+        return { activity, rows };
+      }
       const { rows } = await client.query(buildInventoryDescriptionCorpusSql({ includeCandidateMetadata: true, includeCompanyMetadata: true }),
         [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]);
       const { rows: libraries } = await client.query("SELECT id, media_type FROM libraries WHERE is_active=true AND media_type IN ('movie','tv') ORDER BY id LIMIT 65");
       const { rows: feedbackRows } = await client.query(INVENTORY_OUTCOME_LABEL_SQL);
       return { rows, libraries, feedbackRows };
     });
-    return values.prospective ? { ...evaluateInventoryProspectiveOutcomes(snapshot, { now }),
+    return values.prospective ? { ...withInventoryProspectiveActivity(
+      evaluateInventoryProspectiveOutcomes(snapshot.rows, { now }), snapshot.activity),
       window: { since: new Date(since).toISOString(), until: new Date(until).toISOString(), outcomesAsOf: new Date(now).toISOString() } }
       : benchmarkInventoryOutcomeCalibration(snapshot, options);
   } finally { await runtime.close(); }

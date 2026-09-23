@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Distinguish quiet movie/TV classification intake from live events lacking a
+  complete prospective comparison using a bounded, read-only same-window count;
+  leave routing and ranking promotion unchanged.
 - Explain whether prospective library-ranking evidence is waiting for live
   comparisons, exact-event outcomes, or correction/company coverage without
   changing routing, confidence, provider traffic, or promotion safeguards.
