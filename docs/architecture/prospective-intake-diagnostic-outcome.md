@@ -53,6 +53,24 @@ passed its build/test, database and release-acceptance jobs. GitHub's open-PR
 endpoint returned no PRs, so there
 was no random PR patch to apply locally or merge.
 
+## Local deployment verification
+
+With operator approval, the local image was rebuilt from code commit
+`966f3fcf65a252db5e1289269bc60bbb05a58c30` and passed an isolated
+no-network diagnostic smoke test. The previous image remains tagged
+`classifarr:rollback-20260923`. The Compose service was recreated without
+changing its persistent data mount or routing settings; the new container is
+healthy with zero restarts. `/health` returned HTTP 200 with a connected
+database, and unauthenticated `/api/libraries` still returned HTTP 401.
+
+The deployed read-only report for `[2026-09-23T09:03:40Z,
+2026-09-23T09:54:00Z)` returned zero recorded movie/TV classifications and
+zero complete comparison captures. Its phase is now
+`awaiting_classification_intake`, with `promotionAllowed: false`, zero provider
+calls, and zero routing changes. This confirms the diagnostic behavior, not
+future capture correctness or classification accuracy. No release or tag was
+created in Git.
+
 ## Next high-value item
 
 First reconcile the enabled Overseerr source with actual request activity: if
