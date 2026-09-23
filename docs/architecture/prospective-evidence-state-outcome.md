@@ -44,6 +44,26 @@ passed its build, test, database and release-acceptance jobs. New hosted CI is
 separate from this local result. No random PR patch was applied: GitHub returned
 an empty open-PR list on repeated checks.
 
+## Approved local deployment
+
+The user approved rebuilding and restarting the local `classifarr` container.
+The prior image (`sha256:de73e6f74e12e7d88dd61031aee5c497e313b8bdf1f5b405b7e1aa36f9d6e523`)
+is retained as `classifarr:rollback-20260923-evidence`. No other container was
+recreated, no persistent volume was removed, and there was no schema migration.
+
+Built the image from code/documentation commit `846541ff32bb9bab91dad1ff5eb98160f5ab8c12`.
+The local image is `sha256:b86a33f1475a8473a1828865ecbb72755b105d7ddcf3fd85217b5dbe6a18548c`.
+An isolated container smoke check verified ESM loading and the empty-cohort state
+before restart. The Compose restart finished healthy with zero restarts. HTTP
+`/health` returned 200 and connected-database status; unauthenticated access to
+the detailed observation-health API returned 401.
+
+The real deployed report for the same starting boundary and a cutoff of
+`2026-09-23T09:25:35.259Z` returned `captured: 0`, `sampleSize: 0`,
+`evidenceState.phase: awaiting_live_comparisons`, `promotionAllowed: false`,
+`providerCalls: 0`, and `routingChanges: 0`. This is still a wait for genuine
+classification traffic, not a measured model result.
+
 ## Next high-value item
 
 Allow ordinary classification and feedback to create a real prospective cohort.
