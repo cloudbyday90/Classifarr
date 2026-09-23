@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { validInventoryRankingShadow, INVENTORY_RANKING_SHADOW_VERSION } from './inventoryRankingShadow.mjs';
+import { inventoryProspectiveEvidenceState } from './inventoryProspectiveEvidenceState.mjs';
 
 const empty = () => ({ sampled: 0, confirmations: 0, corrections: 0, companyObserved: 0,
   baselineDecisions: 0, baselineMatches: 0, combinedDecisions: 0, combinedMatches: 0, gains: 0, regressions: 0 });
@@ -56,7 +57,9 @@ export function evaluateInventoryProspectiveOutcomes(rows, { now = Date.now() } 
   }
   const sampleSize = media.movie.sampled + media.tv.sampled;
   return { protocol: INVENTORY_RANKING_SHADOW_VERSION, status: sampleSize ? 'diagnostic_only' : 'awaiting_eligible_outcomes',
-    sampleSize, coverage, media, kinds, libraries: [...strata.values()], promotionAllowed: false, routingChanges: 0, providerCalls: 0,
+    sampleSize, coverage, media, kinds, libraries: [...strata.values()],
+    evidenceState: inventoryProspectiveEvidenceState({ coverage, media, kinds, sampleSize }),
+    promotionAllowed: false, routingChanges: 0, providerCalls: 0,
     evaluation: { prospective: true, notFullPipelineAccuracy: true, confirmationsMayBeSuggestionBiased: true,
       fixedMetadataWeight: .25, fixedCompanyWeight: .25, scoreTransform: 'tanh',
       scope: 'complete_live_inventory_comparisons_only', uniqueDescriptionGroups: true } };

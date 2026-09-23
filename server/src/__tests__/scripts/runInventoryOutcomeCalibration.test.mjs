@@ -36,6 +36,7 @@ test('prospective mode reads frozen events only, without inventory reconstructio
   const result = await runInventoryOutcomeCalibration({ argv: ['--prospective', '--since', '2026-01-01T00:00:00Z',
     '--until', '2026-02-01T00:00:00Z'], load });
   expect(result).toMatchObject({ status: 'awaiting_eligible_outcomes', providerCalls: 0,
+    evidenceState: { phase: 'awaiting_live_comparisons', missing: ['complete_live_comparisons'] },
     window: { since: '2026-01-01T00:00:00.000Z', until: '2026-02-01T00:00:00.000Z' } });
   expect(queries[0].sql).toContain('READ ONLY');
   expect(queries.at(-1).sql).toContain('policy_feedback_sources');
