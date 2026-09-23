@@ -6,7 +6,7 @@
     aria-labelledby="profile-refresh-heading"
   >
     <h3 id="profile-refresh-heading">
-      Library profile refresh
+      Library status
     </h3>
     <p
       v-if="loading && !report"
@@ -23,14 +23,25 @@
       {{ errorMessage }}
     </p>
     <template v-else-if="report">
-      <p
-        role="status"
-        class="profile-refresh-note"
-      >
-        {{ summaryText }}
-      </p>
+      <div role="status">
+        <p class="profile-refresh-note">
+          {{ readiness ? readinessText : summaryText }}
+        </p>
+        <p
+          v-if="readiness"
+          class="profile-refresh-note"
+        >
+          {{ sourceText }}
+        </p>
+        <p
+          v-if="readiness && !readiness.upgradeEnrollmentRecorded && readiness.libraryCount"
+          class="profile-refresh-note"
+        >
+          Upgrade enrollment has not been recorded on this installation; this is a read-only assessment.
+        </p>
+      </div>
       <details v-if="report.libraries.length">
-        <summary>Show per-library status</summary>
+        <summary>Show per-library status{{ report.windowTruncated ? ' (first 200)' : '' }}</summary>
         <ul>
           <li
             v-for="library in report.libraries"
@@ -57,8 +68,29 @@ import { LIBRARY_PROFILE_REFRESH_STATUS_LABELS as labels } from '@/utils/library
 
 const props = defineProps({
   report: { type: Object, default: null },
+  readiness: { type: Object, default: null },
   loading: { type: Boolean, default: false },
   errorMessage: { type: String, default: '' },
+})
+
+const readinessText = computed(() => {
+  const snapshot = props.readiness
+  if (!snapshot) return ''
+  const p = snapshot.profile
+  const updating = p.queued + p.processing + p.retryWait + p.waiting
+  const attention = p.cooldown + p.unverified
+  return `${snapshot.libraryCount} libraries: ${p.current} current, ${updating} updating, ` +
+    `${attention} need recovery, ${p.paused} paused, ${p.noInventory} not synced.`
+})
+
+const sourceText = computed(() => {
+  const snapshot = props.readiness
+  if (!snapshot) return ''
+  const observed = snapshot.sourceIdentity
+  if (snapshot.activeLibraryCount === 0) return 'No active libraries have source-identity coverage to assess.'
+  return `Source identity: ${observed.unresolvedItemCount} unresolved items observed; ` +
+    `recent complete captures cover ${observed.completeCaptureLibraryCount} of ` +
+    `${snapshot.activeLibraryCount} active libraries.`
 })
 
 const summaryText = computed(() => {

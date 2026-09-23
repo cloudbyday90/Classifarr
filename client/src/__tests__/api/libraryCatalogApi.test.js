@@ -35,6 +35,7 @@ import {
   getLibraryOverlap,
   getLibraryObservationHealth,
   getLibraryProfileRefreshStatus,
+  getLibraryUpgradeReadiness,
   getLibrarySourceObservations,
   getLibrarySourceRepairWorklist,
   getLibraryObservationHistory,
@@ -90,6 +91,13 @@ describe('libraryCatalogApi', () => {
     mockGetDataRequest.mockResolvedValueOnce(report)
     expect(await getLibraryProfileRefreshStatus()).toBe(report)
     expect(mockGetDataRequest).toHaveBeenCalledWith('/libraries/profile-refresh-status')
+  })
+
+  it('loads the unwrapped read-only upgrade readiness aggregate', async () => {
+    const report = { version: 'library.upgrade_readiness.v1', libraryCount: 2 }
+    mockGetDataRequest.mockResolvedValueOnce(report)
+    expect(await getLibraryUpgradeReadiness()).toBe(report)
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/libraries/upgrade-readiness')
   })
 
   it('getLibraries calls getDataRequest with /libraries', async () => {

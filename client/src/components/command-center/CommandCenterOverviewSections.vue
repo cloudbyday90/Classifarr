@@ -302,6 +302,7 @@
       <LibraryProfileRefreshSummary
         v-if="profileRefreshAvailable"
         :report="profileRefreshStatus"
+        :readiness="profileUpgradeReadiness"
         :loading="profileRefreshLoading"
         :error-message="profileRefreshError"
       />
@@ -400,6 +401,7 @@ defineProps({
   profileRefreshError: { type: String, default: '' },
   profileRefreshLoading: { type: Boolean, default: false },
   profileRefreshStatus: { type: Object, default: null },
+  profileUpgradeReadiness: { type: Object, default: null },
   safePercent: { type: Function, required: true },
   showConfigureMediaServerCta: { type: Boolean, default: false },
   showEnrichmentSection: { type: Boolean, default: false },

@@ -247,6 +247,7 @@
           :profile-refresh-error="profileRefreshError"
           :profile-refresh-loading="profileRefreshLoading"
           :profile-refresh-status="profileRefreshStatus"
+          :profile-upgrade-readiness="profileUpgradeReadiness"
           :safe-percent="safePercent"
           :show-configure-media-server-cta="showConfigureMediaServerCta"
           :show-enrichment-section="showEnrichmentSection"
@@ -333,6 +334,7 @@ const {
   isAvailable: profileRefreshAvailable,
   isLoading: profileRefreshLoading,
   status: profileRefreshStatus,
+  readiness: profileUpgradeReadiness,
 } = useCommandCenterProfileRefreshStatus()
 
 const {

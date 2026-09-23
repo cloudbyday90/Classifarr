@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add an administrator-only, all-library, count-only upgrade assessment in
+  the Command Center, with current profile recovery and scoped unresolved
+  source-identity coverage; keep routing and background work unchanged.
 - Add a disposable, pinned last-release schema rehearsal for library-profile
   migration, backfill enrollment, retry recovery, inactive pause, and
   revision-verified movie/TV profile publication; leave live data untouched.

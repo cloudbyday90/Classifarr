@@ -10,6 +10,16 @@ const response = {
   libraries: [{ libraryId: 7, name: 'Movies', isActive: true, statusId: 'waiting',
     sourceRevision: '2', acknowledgedRevision: '1', profileRevision: '1', retryAt: null }],
 }
+const readinessResponse = {
+  version: 'library.upgrade_readiness.v1', asOf: '2026-09-23T12:00:00.000Z',
+  libraryCount: 1, activeLibraryCount: 1, mediaTypes: { movie: 1, tv: 0, other: 0 },
+  profile: { current: 0, queued: 0, processing: 0, retryWait: 0, cooldown: 0,
+    waiting: 1, paused: 0, unverified: 0, noInventory: 0, missing: 0 },
+  upgradeEnrollmentRecorded: true,
+  sourceIdentity: { completeCaptureLibraryCount: 0, unresolvedItemCount: 0,
+    conflictingProviderItemCount: 0, invalidProviderItemCount: 0, invalidMediaTypeItemCount: 0,
+    scope: 'active_complete_full_captures_last_30_days' },
+}
 
 function mountComposable(options) {
   let result
@@ -25,12 +35,28 @@ function mountComposable(options) {
 describe('useCommandCenterProfileRefreshStatus', () => {
   it('loads a no-store snapshot without writing browser storage', async () => {
     const loadStatus = vi.fn().mockResolvedValue(response)
-    const { result, wrapper } = mountComposable({ loadStatus, refreshIntervalMs: 0 })
+    const loadReadiness = vi.fn().mockResolvedValue(readinessResponse)
+    const { result, wrapper } = mountComposable({ loadStatus, loadReadiness, refreshIntervalMs: 0 })
     await nextTick()
     await flushPromises()
     expect(loadStatus).toHaveBeenCalledOnce()
     expect(result.status.value.summary.waiting).toBe(1)
+    expect(result.readiness.value.libraryCount).toBe(1)
+    await result.refresh()
+    expect(loadReadiness).toHaveBeenCalledOnce()
     expect(localStorage.getItem('classifarr:cache:command-center:profile-refresh')).toBeNull()
+    wrapper.unmount()
+  })
+
+  it('keeps the bounded profile view when the aggregate cannot be read', async () => {
+    const { result, wrapper } = mountComposable({
+      loadStatus: vi.fn().mockResolvedValue(response),
+      loadReadiness: vi.fn().mockRejectedValue(new Error('unavailable')),
+      refreshIntervalMs: 0,
+    })
+    await flushPromises()
+    expect(result.status.value.summary.waiting).toBe(1)
+    expect(result.readiness.value).toBeNull()
     wrapper.unmount()
   })
 
@@ -44,7 +70,7 @@ describe('useCommandCenterProfileRefreshStatus', () => {
     }
     const loadStatus = vi.fn().mockResolvedValueOnce(response)
       .mockRejectedValueOnce({ response: { status: 403 } })
-    const { result, wrapper } = mountComposable({ loadStatus, documentRef, refreshIntervalMs: 0 })
+    const { result, wrapper } = mountComposable({ loadStatus, loadReadiness: null, documentRef, refreshIntervalMs: 0 })
     await flushPromises()
     expect(loadStatus).not.toHaveBeenCalled()
 

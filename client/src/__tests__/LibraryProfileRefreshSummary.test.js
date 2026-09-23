@@ -30,4 +30,17 @@ describe('LibraryProfileRefreshSummary', () => {
     expect(wrapper.find('[role="status"]').text()).toContain('unavailable')
     expect(wrapper.find('details').exists()).toBe(false)
   })
+
+  it('uses installation-wide counts without presenting partial source coverage as complete', () => {
+    const wrapper = mount(LibraryProfileRefreshSummary, { props: {
+      report: { summary: {}, libraries: [], windowTruncated: true },
+      readiness: { libraryCount: 350, activeLibraryCount: 320,
+        profile: { current: 300, queued: 10, processing: 2, retryWait: 1, waiting: 3,
+          cooldown: 4, unverified: 5, paused: 15, noInventory: 10 },
+        sourceIdentity: { completeCaptureLibraryCount: 90, unresolvedItemCount: 2,
+          conflictingProviderItemCount: 2 } },
+    } })
+    expect(wrapper.find('[role="status"]').text()).toContain('350 libraries:')
+    expect(wrapper.text()).toContain('cover 90 of 320 active libraries')
+  })
 })
