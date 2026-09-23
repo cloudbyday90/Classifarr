@@ -21,16 +21,24 @@ test('300 grouped operator corrections measure a shadow combination across movie
   expect(benchmarkInventoryOutcomeCalibration({ ...fixture, feedbackRows: feedback(fixture) }, options)).toEqual(report);
 });
 
-test('conflicting labels and mismatched current inventory are excluded, not silently scored', () => {
+test('contradictory choices are excluded even when one choice is absent from current inventory', () => {
   const fixture = inventoryCompanyFixture(2), labels = feedback(fixture);
   fixture.rows.push({ ...fixture.rows[0], library_id: 2 });
   labels.push({ ...labels[0], selected_library_id: 2 });
   labels.push({ ...labels[1], selected_library_id: 3 });
   labels.push({ ...labels[2], tmdb_id: 999999 });
   const report = benchmarkInventoryOutcomeCalibration({ ...fixture, feedbackRows: labels }, options);
-  expect(report.labelCoverage).toMatchObject({ eligibleRows: 15, conflictingIdentities: 1,
-    absentFromCurrentInventory: 1, withoutInventoryDescription: 1, labeledIdentities: 11 });
-  expect(report.sampleSize).toBe(11);
+  expect(report.labelCoverage).toMatchObject({ eligibleRows: 15, conflictingIdentities: 2,
+    absentFromCurrentInventory: 1, withoutInventoryDescription: 1, labeledIdentities: 10 });
+  expect(report.sampleSize).toBe(10);
+});
+
+test('a correction awaiting placement or sync remains a label', () => {
+  const result = prepareInventoryOutcomeLabels([{ media_type: 'movie', tmdb_id: 3,
+    selected_library_id: 2, was_correction: true }], [{ key: 'movie:3', libraryIds: [1] }],
+  [{ id: 1, media_type: 'movie' }, { id: 2, media_type: 'movie' }]);
+  expect(result.labels.get('movie:3')).toEqual({ libraryId: 2, kind: 'correction' });
+  expect(result.coverage).toMatchObject({ absentFromCurrentInventory: 1, labeledIdentities: 1 });
 });
 
 test('missing company observations retain the baseline and never imply a company gain', () => {

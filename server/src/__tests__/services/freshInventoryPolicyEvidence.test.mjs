@@ -67,6 +67,7 @@ test('fresh policy scoring uses content without query placement shortcuts or sto
   const { source, prepared, evidence } = setup();
   const sample = prepared.cases[0], before = structuredClone(source);
   const result = await prepareFreshInventoryPolicyCase(sample, source, evidence);
+  expect(result.policyResult.inventoryRankingShadow).toBeNull();
   expect(result.policyResult.ranked.length).toBeGreaterThan(0);
   expect(result.policyResult.ranked.every(candidate => candidate.scores.history === 0 && candidate.scores.pattern === 0 && candidate.scores.rag === 0)).toBe(true);
   const changedLabels = await prepareFreshInventoryPolicyCase({ ...sample, observedLibraryIds: [999] }, source, evidence);

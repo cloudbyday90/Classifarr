@@ -38,7 +38,7 @@ function record(target, label, observed, baseline, combined) {
   target[`${prefix}Regressions`] += Number(baseline === label.libraryId && combined !== label.libraryId);
 }
 
-/** Shadow-only, grouped evaluation on operator selections still present in current inventory. */
+/** Shadow-only grouped evaluation; the item needs a description, not placement in its selected destination. */
 export function benchmarkInventoryOutcomeCalibration({ rows, libraries, feedbackRows }, rawOptions) {
   const options = validateDescriptionBenchmarkOptions(rawOptions);
   if (!options.folds || options.generateCases) throw new Error('inventory_outcome_requires_grouped_zero_generation');

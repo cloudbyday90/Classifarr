@@ -20,8 +20,12 @@ bounded in one snapshot. Confirmations and changes are retained
 as separate counts because confirmations are suggestion-influenced. Automatic
 route success is not a label. Require responded, finite, non-future feedback,
 an active same-media selected policy/library, a consistent correction flag, a
-usable inventory description, and current membership in the selected library.
+usable inventory description. Current membership in the selected library is a
+coverage observation, not an eligibility condition: corrections can precede sync.
 If one typed item has contradictory destinations, exclude it rather than vote.
+
+The membership correction and automatic event-time comparison are documented in
+the [prospective ranking design](prospective-inventory-ranking-design.md).
 
 Run seeded stratified selection across up to 300 labeled identities and grouped
 folds shared by all copies of a description, including across movie/TV. Learn

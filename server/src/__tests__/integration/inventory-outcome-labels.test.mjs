@@ -2,6 +2,9 @@
 import { beforeEach, afterEach, test, expect } from '@jest/globals';
 import { getPool } from './setup.mjs';
 import { INVENTORY_OUTCOME_LABEL_SQL } from '../../services/inventoryOutcomeLabels.mjs';
+import { INVENTORY_PROSPECTIVE_OUTCOME_SQL } from '../../services/inventoryProspectiveOutcomeRepository.mjs';
+import { evaluateInventoryProspectiveOutcomes } from '../../services/inventoryProspectiveOutcomes.mjs';
+import { inventoryRankingShadowFixture } from '../fixtures/inventoryRankingShadowFixture.mjs';
 
 let db, selectedId, candidateId, policyId, historyId;
 
@@ -13,6 +16,8 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  await db.query(`DELETE FROM policy_feedback_sources WHERE feedback_id IN
+    (SELECT id FROM policy_feedback_log WHERE selected_policy_id=$1)`, [policyId]);
   if (historyId) {
     await db.query('DELETE FROM classification_corrections WHERE classification_id=$1', [historyId]);
     await db.query('DELETE FROM classification_history WHERE id=$1', [historyId]);
@@ -21,6 +26,35 @@ afterEach(async () => {
   await db.query('DELETE FROM policy_feedback_log WHERE selected_policy_id=$1', [policyId]);
   await db.query('DELETE FROM library_policies WHERE id=$1', [policyId]);
   await db.query('DELETE FROM libraries WHERE id=ANY($1::integer[])', [[selectedId, candidateId]]);
+});
+
+test('prospective SQL binds delayed outcomes to exact history, never a same-identity neighbor or current placement', async () => {
+  const capture = structuredClone(inventoryRankingShadowFixture().capture);
+  capture.candidates[0].libraryId = candidateId;
+  capture.candidates[1].libraryId = selectedId;
+  capture.baselineLibraryId = candidateId; capture.combinedLibraryId = selectedId;
+  historyId = (await db.query(`INSERT INTO classification_history(tmdb_id,media_type,title,library_id,status,metadata,recorded_at)
+    VALUES(900005,'movie','Prospective item',$1,'awaiting_decision',$2,$3) RETURNING id`,
+  [candidateId, { classification_details: { inventory_ranking_shadow: capture } }, capture.capturedAt])).rows[0].id;
+  const feedbackIds = (await db.query(`INSERT INTO policy_feedback_log(tmdb_id,media_type,selected_policy_id,selected_library_id,
+    top_suggestion_library_id,was_correction,prompted_at,responded_at)
+    VALUES (900005,'movie',$1,$2,$3,true,NOW(),NOW()),
+      (900005,'movie',$1,$2,$3,true,NOW(),NOW()) RETURNING id`, [policyId, selectedId, candidateId])).rows.map(row => row.id);
+  await db.query(`INSERT INTO policy_feedback_sources(classification_id,feedback_id,intake,request_fingerprint)
+    VALUES($1,$2,'prompt',$3),($4,$5,'prompt',$3)`,
+  [historyId, feedbackIds[0], 'a'.repeat(64), historyId + 999999, feedbackIds[1]]);
+  const read = async () => (await db.query(INVENTORY_PROSPECTIVE_OUTCOME_SQL,
+    ['2000-01-01T00:00:00Z', '2999-01-01T00:00:00Z'])).rows.filter(row => row.classification_id === historyId);
+  const rows = await read();
+  expect(rows).toHaveLength(1);
+  expect(rows[0].outcomes).toHaveLength(1);
+  expect(evaluateInventoryProspectiveOutcomes(rows).media.movie).toMatchObject({ sampled: 1, gains: 1 });
+  await db.query("UPDATE policy_feedback_log SET responded_at='2000-01-01' WHERE id=$1", [feedbackIds[0]]);
+  expect((await read())[0].outcomes).toEqual([]);
+  await db.query(`INSERT INTO classification_corrections(classification_id,original_library_id,corrected_library_id,corrected_by)
+    VALUES($1,$2,$3,'test-user')`, [historyId, candidateId, selectedId]);
+  // The old history placement is intentionally unchanged: a pending move must not remove the label.
+  expect(evaluateInventoryProspectiveOutcomes(await read()).media.movie).toMatchObject({ sampled: 1, corrections: 1, gains: 1 });
 });
 
 test('read-only label selection admits feedback and manual corrections, excluding unknown and contradictory rows', async () => {

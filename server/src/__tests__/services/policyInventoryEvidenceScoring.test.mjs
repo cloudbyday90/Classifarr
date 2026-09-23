@@ -12,6 +12,7 @@ import { createPolicyCandidateConsensusService } from '../../services/policyCand
 import { hasCandidateConsensusReceipt } from '../../services/policyCandidateConsensusReceipt.mjs';
 import { buildPolicyCandidateAdjudicationContract } from '../../services/policyCandidateAdjudicationContract.mjs';
 import { finalizePolicyCandidateAdjudication } from '../../services/policyCandidateAdjudicationResult.mjs';
+import { projectInventoryRankingShadow } from '../../services/inventoryRankingShadow.mjs';
 
 function setup(score = 75) {
   const fixture = consensusFixture();
@@ -141,6 +142,7 @@ test('renaming libraries or changing their input order cannot change the winner'
 
 test('shared live evaluation invokes inventory scoring after eligibility and before calibration', async () => {
   const input = setup();
+  input.evidence.candidates.forEach(candidate => { candidate.learnedProfile.snapshotId = 'a'.repeat(64); });
   const applyInventoryEvidence = jest.fn(options => input.service.apply(options));
   const result = await evaluateItem(input.item, { ragCache: { matches: [] } }, {
     checkAuthoritativeSignals: async () => null, getActivePolicies: async () => input.policies,
@@ -150,4 +152,7 @@ test('shared live evaluation invokes inventory scoring after eligibility and bef
   });
   expect(applyInventoryEvidence).toHaveBeenCalledTimes(1);
   expect(result).toMatchObject({ action: 'prompt_confirm', confidence: 75, library: { library_id: 2 } });
+  expect(projectInventoryRankingShadow({ policyResult: result }, input.item)).toMatchObject({
+    baselineLibraryId: 2, combinedLibraryId: 2, companyAvailable: false,
+  });
 });

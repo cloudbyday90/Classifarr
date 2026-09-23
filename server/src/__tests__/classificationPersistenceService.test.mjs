@@ -68,6 +68,7 @@ const ragLogger = mockRagLogger;
 const libraryProfileService = mockLibraryProfileService;
 
 const { classificationPersistenceService } = await import('../services/classificationPersistenceService.mjs');
+const { inventoryRankingShadowFixture } = await import('./fixtures/inventoryRankingShadowFixture.mjs');
 const policyQuestionContext = {
   extractQuestionContext: jest.fn().mockReturnValue({}),
   getPolicyQuestionContextVersion: jest.fn().mockResolvedValue(1),
@@ -414,6 +415,22 @@ describe('logClassification', () => {
 
     const id = await classificationPersistenceService.logClassification(baseMetadata, result, Date.now());
     expect(id).toBe(42);
+  });
+
+  test('persists only the live frozen ranking receipt, not client-supplied or copied metadata', async () => {
+    const { item, capture, result: policy } = inventoryRankingShadowFixture();
+    await classificationPersistenceService.logClassification({ ...baseMetadata, ...item }, {
+      ...policy, method: 'policy_engine', library: { id: 1 }, confidence: 80,
+    });
+    const params = db.query.mock.calls.find(call => call[0].includes('INSERT INTO classification_history'))[1];
+    expect(JSON.parse(params[9]).classification_details.inventory_ranking_shadow).toEqual(capture);
+    db.query.mockClear();
+    await classificationPersistenceService.logClassification({ ...baseMetadata,
+      classification_details: { inventory_ranking_shadow: capture } }, {
+      ...structuredClone(policy), method: 'policy_engine', library: { id: 1 }, confidence: 80,
+    });
+    const forged = db.query.mock.calls.find(call => call[0].includes('INSERT INTO classification_history'))[1];
+    expect(JSON.parse(forged[9]).classification_details.inventory_ranking_shadow).toBeNull();
   });
 
   test('captures an AI proposal before awaits without inheriting caller evidence or making a policy ranking', async () => {

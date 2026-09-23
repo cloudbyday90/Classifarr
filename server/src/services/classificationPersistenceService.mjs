@@ -48,6 +48,7 @@ import {
 } from './policyCandidateCorrectionSignalSnapshot.mjs';
 import { buildClassificationQueueDecisionWitness } from './classificationQueueDecisionWitness.mjs';
 import { buildClassificationCandidateCapture } from './classificationCandidateCapture.mjs';
+import { projectInventoryRankingShadow } from './inventoryRankingShadow.mjs';
 import {
   classificationQueueDecisionWitnessRepository,
 } from './classificationQueueDecisionWitnessRepository.mjs';
@@ -311,6 +312,7 @@ export class ClassificationPersistenceService {
 
   async logClassification(metadata, result, startTime = null, { queueTask = null } = {}) {
     const candidateCapture = buildClassificationCandidateCapture(result);
+    const inventoryRankingShadow = projectInventoryRankingShadow(result, metadata);
     const rankedCandidates = Array.isArray(result.policyResult?.ranked)
       ? result.policyResult.ranked.slice(0, 5).map(summarizeRankedCandidate)
       : [];
@@ -354,6 +356,7 @@ export class ClassificationPersistenceService {
 
     const classificationDetails = {
       candidate_capture: candidateCapture,
+      inventory_ranking_shadow: inventoryRankingShadow,
       policy_name: result.policyResult?.library?.policy_name || null,
       scores: result.policyResult?.scores || { preset: 0, profile: 0, pattern: 0, rag: 0, history: 0 },
       weights: result.policyResult?.weights || { preset: 0.35, profile: 0.25, pattern: 0.15, rag: 0.15, history: 0.10 },

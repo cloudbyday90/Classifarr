@@ -48,7 +48,8 @@ export function prepareInventoryOutcomeLabels(rows, documents, libraries) {
         typeof row.was_correction !== 'boolean') { coverage.invalidRows++; continue; }
     const key = `${type}:${id}`, doc = known.get(key);
     if (!doc) { coverage.withoutInventoryDescription++; continue; }
-    if (!doc.libraryIds.includes(destination)) { coverage.absentFromCurrentInventory++; continue; }
+    // A correction can precede a move/sync. Membership is coverage, not label authority.
+    if (!doc.libraryIds.includes(destination)) coverage.absentFromCurrentInventory++;
     if (!groups.has(key)) groups.set(key, { doc, destinations: new Set(), correction: false });
     const group = groups.get(key);
     group.destinations.add(destination);

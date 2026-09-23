@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Automatically preserve bounded description/company ranking comparisons before
+  feedback, and evaluate later exact-classification outcomes without new AI calls
+  or changes to routing. Keep corrections eligible while their move/sync is pending.
+- Locally apply PR #545's client ESLint and Node type-definition updates without
+  merging the PR, changing runtime versions, or creating a release.
 - Add a read-only, grouped operator-feedback benchmark for the existing organic
   profile and a fixed diagnostic production-company contribution. Report
   correction/confirmation coverage and paired regressions without enabling routes.

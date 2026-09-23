@@ -51,6 +51,11 @@ the new implementation.
 
 ## Next item
 
+Follow-up: the [prospective ranking implementation](prospective-inventory-ranking-outcome.md)
+removes the current-membership label bias and captures the existing live
+description evidence automatically. The original measurements above describe
+the earlier commit; they are not results for the prospective cohort.
+
 After normal deployment and bounded backfill, freeze a prospective operator
 feedback cohort and replay the actual semantic-description/RAG and company
 ranking together. Separate confirmations from corrections, measure abstention

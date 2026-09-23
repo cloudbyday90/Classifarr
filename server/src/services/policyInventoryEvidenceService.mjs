@@ -2,16 +2,19 @@
 import { createLiveInventoryDescriptionRetriever } from './liveInventoryDescriptionRetriever.mjs';
 import { applyInventoryScoreEvidence, canUseInventoryScoreEvidence } from './policyInventoryEvidenceScoring.mjs';
 import { isInferredPurposeCandidate } from './policyInferredPurposeAdmission.mjs';
+import { rememberInventoryRankingShadow } from './inventoryRankingShadow.mjs';
 
 /** One bounded comparison of the whole eligible pool, before ranking/shortlist truncation. */
 export function createPolicyInventoryEvidenceService({
   retriever = createLiveInventoryDescriptionRetriever({ maxCandidates: 64 }),
+  captureShadow = true,
 } = {}) {
   return {
     async apply({ evaluations, policies, item }) {
       const baseline = evaluations;
       try {
         if (!['movie', 'tv'].includes(item?.media_type) || !Array.isArray(evaluations) || !Array.isArray(policies)) return baseline;
+        rememberInventoryRankingShadow(evaluations, item, null);
         const policyById = new Map(policies.map(policy => [policy.id, policy]));
         if (!evaluations.some(candidate => {
           const policy = policyById.get(candidate.policy_id);
@@ -30,7 +33,9 @@ export function createPolicyInventoryEvidenceService({
           candidates: ids.map(libraryId => ({ libraryId, mediaType: item.media_type })) } });
         if (!Array.isArray(evidence?.candidates) || evidence.candidates.length !== ids.length ||
             evidence.candidates.some(candidate => !ids.includes(candidate?.libraryId))) return baseline;
-        return applyInventoryScoreEvidence({ evaluations, policies, evidence });
+        const scored = applyInventoryScoreEvidence({ evaluations, policies, evidence });
+        if (captureShadow) rememberInventoryRankingShadow(scored, item, evidence);
+        return scored;
       } catch {
         // Missing/stale evidence never changes a score; do not log private provider errors.
         return baseline;
