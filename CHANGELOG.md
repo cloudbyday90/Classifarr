@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a read-only, grouped operator-feedback benchmark for the existing organic
+  profile and a fixed diagnostic production-company contribution. Report
+  correction/confirmation coverage and paired regressions without enabling routes.
+- Locally apply open PR #542's server dotenv and js-yaml updates, validating the
+  ESM runtime APIs and lockfile without merging the PR or creating a release.
 - Retain production-company sets during inventory enrichment and automatically
   backfill missing or expired observations with bounded retries. Learn a separate,
   library-agnostic company profile without changing routing scores or safeguards.
