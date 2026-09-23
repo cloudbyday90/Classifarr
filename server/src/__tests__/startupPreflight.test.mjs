@@ -115,7 +115,7 @@ describe('runStartupPreflight', () => {
   });
 
   it('runs the startup preflight sequence and registers the logger database', async () => {
-    await runStartupPreflight({
+    const result = await runStartupPreflight({
       database,
       setLoggerDb,
       runtimeSettings,
@@ -130,6 +130,7 @@ describe('runStartupPreflight', () => {
       postUpgradeTaskService: postUpgradeService,
     });
 
+    expect(result.postUpgradeResult).toEqual({ executed: 2, skipped: 1 });
     expect(database.query).toHaveBeenCalledWith('SELECT 1');
     expect(setLoggerDb).toHaveBeenCalledWith(database);
     expect(migrationRunner.run).toHaveBeenCalled();
@@ -201,6 +202,27 @@ describe('runStartupPreflight', () => {
     expect(database.ensurePgStatStatements).toHaveBeenCalled();
     expect(database.checkPgStatStatements).toHaveBeenCalled();
     expect(postUpgradeService.runPendingTasks).toHaveBeenCalled();
+  });
+
+  it('reports post-upgrade failure as deferred so startup avoids another profile rebuild', async () => {
+    postUpgradeService.runPendingTasks.mockRejectedValueOnce(new Error('upgrade ledger unavailable'));
+
+    const result = await runStartupPreflight({
+      database,
+      setLoggerDb,
+      runtimeSettings,
+      avxGuard,
+      clarificationService,
+      aiEmbeddingProviderIntegrityService,
+      discordConfigIntegrityService,
+      metadataProviderIntegrityService,
+      policyThresholdIntegrityService,
+      routingConfigIntegrityService,
+      migrationRunnerService: migrationRunner,
+      postUpgradeTaskService: postUpgradeService,
+    });
+
+    expect(result.postUpgradeResult).toEqual({ deferred: true, profilesRefreshAttempted: true });
   });
 
   it('does not warn when CORS origin restriction is left unset in production', async () => {

@@ -73,9 +73,17 @@ async function ensurePgStatStatements(database) {
 async function runPostUpgradeTasks(postUpgradeService) {
   try {
     const taskResult = await postUpgradeService.runPendingTasks();
-    logger.info(`Post-upgrade tasks: ${taskResult.executed} executed, ${taskResult.skipped} already completed`);
+    logger.info('Post-upgrade task check complete', {
+      executed: taskResult.executed,
+      skipped: taskResult.skipped,
+      failed: taskResult.failed ?? 0,
+      deferred: taskResult.deferred === true,
+    });
+    return taskResult;
   } catch (upgradeError) {
     logger.error('Post-upgrade task error:', { error: upgradeError.message });
+    // A failed preflight must not trigger a second, uncontrolled profile rebuild.
+    return { deferred: true, profilesRefreshAttempted: true };
   }
 }
 
@@ -173,7 +181,8 @@ export async function runStartupPreflight({
   await prewarmHnswIndexes(database);
   await ensurePgStatStatements(database);
   await checkPgStatStatements(database);
-  await runPostUpgradeTasks(postUpgradeTaskService);
+  const postUpgradeResult = await runPostUpgradeTasks(postUpgradeTaskService);
   await loadRuntimeSettings(runtimeSettings);
   await recordAvxGuard(avxGuard);
+  return { postUpgradeResult };
 }

@@ -6,11 +6,10 @@
  * See LICENSE file for details.
  */
 
-/* eslint-disable security/detect-non-literal-fs-filename -- paths come from trusted internal config, not user input */
-import fs from 'node:fs/promises';
-import path from 'node:path';
 import * as db from '../config/database.mjs';
+import { DB_ADVISORY_LOCKS } from '../config/database.mjs';
 import { persistRagAuditLog } from './ragAuditLogService.mjs';
+import { buildPostUpgradeTaskPlan } from './postUpgradeTaskPlan.mjs';
 import { libraryProfileService } from './libraryProfileService.mjs';
 import { runPolicyPostUpgradeApplyGate as runPolicyPostUpgradeApplyGateService } from './policyPostUpgradeApplyGate.mjs';
 import { runPolicyPostUpgradeDryRun } from './policyPostUpgradeDryRun.mjs';
@@ -19,6 +18,10 @@ import { ratingNormalizer } from '../utils/ratingNormalizer.mjs';
 import { withServiceCatch } from '../utils/serviceCatch.mjs';
 
 const logger = createLogger('PostUpgradeService');
+const PROFILE_REFRESH_ACTIONS = new Set([
+    'regenerate_library_profiles',
+    'regenerate_library_profile_observations'
+]);
 
 /**
  * Post-Upgrade Task Definitions
@@ -29,7 +32,7 @@ const POST_UPGRADE_TASKS = {
         {
             id: 'clear_logs_0393',
             action: 'clear_logs',
-            description: 'Clear logs for fresh start in v0.39.3'
+            description: 'Skip legacy automatic clear; normal log cleanup remains available'
         },
         {
             id: 'backfill_library_name_0393',
@@ -41,35 +44,35 @@ const POST_UPGRADE_TASKS = {
         {
             id: 'clear_logs_0412',
             action: 'clear_logs',
-            description: 'Clear logs for fresh start in v0.41.2-alpha'
+            description: 'Skip legacy automatic clear; normal log cleanup remains available'
         }
     ],
     '0.41.3': [
         {
             id: 'clear_logs_0413',
             action: 'clear_logs',
-            description: 'Clear logs for fresh start in v0.41.3-alpha'
+            description: 'Skip legacy automatic clear; normal log cleanup remains available'
         }
     ],
     '0.42.7': [
         {
             id: 'clear_logs_0427',
             action: 'clear_logs',
-            description: 'Clear logs for fresh start in v0.42.7-alpha'
+            description: 'Skip legacy automatic clear; normal log cleanup remains available'
         }
     ],
     '0.43.1b': [
         {
             id: 'clear_logs_0431b',
             action: 'clear_logs',
-            description: 'Clear logs for fresh start in v0.43.1b-alpha'
+            description: 'Skip legacy automatic clear; normal log cleanup remains available'
         }
     ],
     '0.43.9': [
         {
             id: 'clear_logs_0439',
             action: 'clear_logs',
-            description: 'Clear logs for fresh start in v0.43.9-beta'
+            description: 'Skip legacy automatic clear; normal log cleanup remains available'
         }
     ],
     '0.47.2-beta': [
@@ -97,7 +100,7 @@ const POST_UPGRADE_TASKS = {
         {
             id: 'clear_logs_0475a',
             action: 'clear_logs',
-            description: 'Clear logs for fresh start in v0.47.5a-beta'
+            description: 'Skip legacy automatic clear; normal log cleanup remains available'
         }
     ]
 };
@@ -112,9 +115,17 @@ class PostUpgradeService {
     async isFreshInstall() {
         try {
             const result = await db.query('SELECT COUNT(*) FROM users');
-            return parseInt(result.rows[0].count, 10) === 0;
-        } catch (_err) {
-            return false;
+            if (parseInt(result.rows[0].count, 10) !== 0) return false;
+            // A restored installation can have inventory before its first local user.
+            const inventory = await db.query(`
+                SELECT EXISTS (SELECT 1 FROM libraries)
+                    OR EXISTS (SELECT 1 FROM media_server_items)
+                    OR EXISTS (SELECT 1 FROM classification_history) AS has_data
+            `);
+            return inventory.rows[0].has_data === false;
+        } catch (error) {
+            // An unknown install state must not replay historical upgrade work.
+            throw new Error('Cannot establish install state for post-upgrade work', { cause: error });
         }
     }
 
@@ -122,62 +133,86 @@ class PostUpgradeService {
      * Run all pending post-upgrade tasks
      */
     async runPendingTasks() {
-        return withServiceCatch(logger, 'Failed to run post-upgrade tasks', async () => {
-            logger.info('Checking for pending post-upgrade tasks...');
-
-            await this.ensureTableExists();
-
-            const allTasks = this.getAllTasks();
-
-            if (allTasks.length === 0) {
-                logger.info('No post-upgrade tasks defined');
-                return { executed: 0, skipped: 0 };
-            }
-
-            const executedTaskIds = await this.getExecutedTaskIds();
-
-            const pendingTasks = allTasks.filter(task => !executedTaskIds.includes(task.id));
-
-            if (pendingTasks.length === 0) {
-                logger.info('All post-upgrade tasks already completed');
-                return { executed: 0, skipped: executedTaskIds.length };
-            }
-
-            if (await this.isFreshInstall()) {
-                logger.info('Fresh install detected — pre-seeding all post-upgrade tasks as complete (no prior data to process)');
-                for (const task of pendingTasks) {
-                    await this.markTaskComplete(task);
-                }
-                return { executed: 0, skipped: allTasks.length };
-            }
-
-            logger.info(`Found ${pendingTasks.length} pending post-upgrade tasks`);
-
-            // Execute each pending task
-            let executed = 0;
-            let skippedByGuard = 0;
-            for (const task of pendingTasks) {
-                try {
-                    logger.info(`Executing post-upgrade task: ${task.id} - ${task.description}`);
-                    const result = await this.executeTask(task);
-                    await this.markTaskComplete(task);
-                    if (result?.skipped) {
-                        skippedByGuard++;
-                        logger.info(`Task skipped: ${task.id}`, { reason: result.reason });
-                    } else {
-                        executed++;
-                        logger.info(`✓ Task completed: ${task.id}`);
-                    }
-                } catch (error) {
-                    logger.error(`Failed to execute task ${task.id}:`, { error: error.message });
-                    // Continue with other tasks even if one fails
-                }
-            }
-
-            const skipped = executedTaskIds.length + skippedByGuard;
-            logger.info(`Post-upgrade tasks complete: ${executed} executed, ${skipped} skipped`);
-            return { executed, skipped };
+        if (db.pool?.options?.max === 1) {
+            throw new Error('Post-upgrade work needs a second database connection while its session lock is held');
+        }
+        let taskResult;
+        const acquired = await db.withSessionAdvisoryLock(DB_ADVISORY_LOCKS.POST_UPGRADE_TASKS, async () => {
+            taskResult = await withServiceCatch(logger, 'Failed to run post-upgrade tasks', () => this.runLockedPendingTasks());
         });
+        if (!acquired) {
+            logger.warn('Post-upgrade work is active in another process; this instance will not replay it');
+            return { executed: 0, skipped: 0, deferred: true, profilesRefreshAttempted: true };
+        }
+        return taskResult;
+    }
+
+    async runLockedPendingTasks() {
+        logger.info('Checking for pending post-upgrade tasks...');
+
+        await this.ensureTableExists();
+        const allTasks = this.getAllTasks();
+        if (allTasks.length === 0) {
+            logger.info('No post-upgrade tasks defined');
+            return { executed: 0, skipped: 0, profilesRefreshAttempted: false };
+        }
+
+        const executedTaskIds = await this.getExecutedTaskIds();
+        const plan = buildPostUpgradeTaskPlan(allTasks, executedTaskIds);
+        const pendingTaskIds = new Set(plan.entries.filter(entry => entry.status !== 'recorded').map(entry => entry.id));
+        const pendingTasks = allTasks.filter(task => pendingTaskIds.has(task.id));
+        if (pendingTasks.length === 0) {
+            logger.info('All post-upgrade tasks already completed');
+            return { executed: 0, skipped: executedTaskIds.length, profilesRefreshAttempted: false };
+        }
+
+        if (await this.isFreshInstall()) {
+            logger.info('Fresh install detected — pre-seeding all post-upgrade tasks as complete (no prior data to process)');
+            for (const task of pendingTasks) {
+                await this.markTaskComplete(task);
+            }
+            return { executed: 0, skipped: allTasks.length, profilesRefreshAttempted: false };
+        }
+
+        logger.info('Post-upgrade task plan', { pending: plan.pending, legacyClearPending: plan.legacyClearPending });
+        let executed = 0;
+        let skippedByGuard = 0;
+        let failed = 0;
+        let profilesRefreshAttempted = false;
+        let profilesRefreshed = false;
+        for (const task of pendingTasks) {
+            try {
+                logger.info(`Executing post-upgrade task: ${task.id} - ${task.description}`);
+                const isProfileRefresh = PROFILE_REFRESH_ACTIONS.has(task.action);
+                const result = isProfileRefresh && profilesRefreshed
+                    ? { skipped: true, reason: 'satisfied_by_previous_profile_refresh' }
+                    : await this.executeTask(task);
+                if (isProfileRefresh && !result?.skipped) {
+                    profilesRefreshed = true;
+                    profilesRefreshAttempted = true;
+                }
+                await this.markTaskComplete(task);
+                if (result?.skipped) {
+                    skippedByGuard++;
+                    logger.info(`Task skipped: ${task.id}`, { reason: result.reason });
+                } else {
+                    executed++;
+                    logger.info(`✓ Task completed: ${task.id}`);
+                }
+            } catch (error) {
+                failed++;
+                if (PROFILE_REFRESH_ACTIONS.has(task.action)) {
+                    profilesRefreshAttempted = true;
+                }
+                logger.error(`Failed to execute task ${task.id}:`, { error: error.message });
+                // Later tasks may consume this output. Leave them pending for the next startup.
+                break;
+            }
+        }
+
+        const skipped = executedTaskIds.length + skippedByGuard;
+        logger.info(`Post-upgrade tasks complete: ${executed} executed, ${skipped} skipped, ${failed} failed`);
+        return { executed, skipped, failed, profilesRefreshAttempted };
     }
 
     /**
@@ -200,31 +235,16 @@ class PostUpgradeService {
      * Get list of task IDs that have already been executed
      */
     async getExecutedTaskIds() {
-        try {
-            const result = await db.query(
-                'SELECT task_id FROM post_upgrade_tasks ORDER BY executed_at'
-            );
-            return result.rows.map(row => row.task_id);
-        } catch (error) {
-            // If table doesn't exist yet, return empty array
-            if (error.code === '42P01') {
-                return [];
-            }
-            throw error;
-        }
+        const result = await db.query('SELECT task_id FROM post_upgrade_tasks ORDER BY executed_at');
+        return result.rows.map(row => row.task_id);
     }
 
     /**
      * Ensure the post_upgrade_tasks table exists
      */
     async ensureTableExists() {
-        try {
-            await db.query('SELECT 1 FROM post_upgrade_tasks LIMIT 1');
-        } catch (error) {
-            if (error.code === '42P01') {
-                logger.warn('post_upgrade_tasks table does not exist yet - will be created by migration');
-            }
-        }
+        // Migrations have already completed; a missing ledger is not an empty ledger.
+        await db.query('SELECT 1 FROM post_upgrade_tasks LIMIT 1');
     }
 
     /**
@@ -233,7 +253,8 @@ class PostUpgradeService {
     async executeTask(task) {
         switch (task.action) {
             case 'clear_logs':
-                return await this.clearLogs();
+                // The old automatic clear is not replayed. Manual and scheduled cleanup remain available.
+                return { skipped: true, reason: 'legacy_auto_clear_skipped' };
 
             case 'rebuild_embeddings':
                 return await this.rebuildEmbeddings();
@@ -274,54 +295,6 @@ class PostUpgradeService {
              ON CONFLICT (task_id) DO NOTHING`,
             [task.id, task.version, task.description]
         );
-    }
-
-    /**
-     * Task Action: Clear logs (app_log and error_log tables, plus log files)
-     * 
-     * WARNING: This operation permanently removes all application and error logs
-     * from the database and truncates all .log files on disk. Any unreviewed
-     * production errors or audit information stored in these locations will be
-     * irrecoverably lost unless they have been archived elsewhere beforehand.
-     * 
-     * Only enable or run this task when you explicitly intend to start with a
-     * clean logging state (for example, immediately after an upgrade) and are
-     * confident that critical logs have already been collected or backed up.
-     */
-    async clearLogs() {
-        logger.info('Clearing logs...');
-        logger.warn('All application and error logs will now be permanently deleted from the database and log files.');
-
-        // Clear database log tables.
-        // error_log: delete only unresolved rows so resolved (operator-reviewed) entries are preserved.
-        // app_log: has no resolved concept — delete all rows.
-        await db.query('DELETE FROM error_log WHERE resolved = false');
-        await db.query('DELETE FROM app_log');
-
-        // Clear log files if they exist (destructive: truncates contents)
-        const logDir = path.join(import.meta.dirname, '../../logs');
-        try {
-            // Check if directory exists first
-            await fs.access(logDir);
-
-            const files = await fs.readdir(logDir);
-            for (const file of files) {
-                if (file.endsWith('.log')) {
-                    const filePath = path.join(logDir, file);
-                    await fs.writeFile(filePath, '');
-                    logger.info(`Cleared log file: ${file}`);
-                }
-            }
-        } catch (error) {
-            // Log directory might not exist, that's expected in containerized environments
-            if (error.code === 'ENOENT') {
-                logger.debug('Log directory does not exist, skipping file cleanup');
-            } else {
-                logger.warn('Could not clear log files:', { error: error.message });
-            }
-        }
-
-        logger.info('Logs cleared successfully');
     }
 
     /**
@@ -377,6 +350,10 @@ class PostUpgradeService {
         const results = await libraryProfileService.generateAllProfiles();
         const successCount = results.filter(result => result.success).length;
         const failureCount = results.length - successCount;
+
+        if (failureCount > 0) {
+            throw new Error('Library profile regeneration incomplete; retry on next startup');
+        }
 
         logger.info('Library profile regeneration complete', {
             total: results.length,

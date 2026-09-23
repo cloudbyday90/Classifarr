@@ -274,6 +274,7 @@ export async function initializeServices({
   graphRelationshipBackfillService = graphRelationshipBackfillServiceModule,
   ratingNormalizerService = ratingNormalizer,
   ratingNormalizationQueueService,
+  postUpgradeResult = null,
   database = db,
 }) {
   const runtimeWiringStatus = validateRuntimeWiring(startupService);
@@ -287,7 +288,11 @@ export async function initializeServices({
   await checkEmbeddingMigration(embeddingMigrationService);
   await initializeBackfillOrchestrator(backfillOrchestratorService);
   await startGraphRelationshipBackfill(graphRelationshipBackfillService);
-  startLibraryProfiles(libraryProfileService);
+  if (postUpgradeResult?.profilesRefreshAttempted) {
+    logger.info('Startup library profile refresh deferred to post-upgrade work; avoiding duplicate rebuild');
+  } else {
+    startLibraryProfiles(libraryProfileService);
+  }
   await generateMissingPolicies(database);
   const startupRatingNormalizationQueue = ratingNormalizationQueueService || new RatingNormalizationQueueService({
     db: database,

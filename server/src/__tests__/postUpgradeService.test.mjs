@@ -12,13 +12,9 @@ import { jest } from '@jest/globals';
 import { createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = {
-    query: jest.fn()
-};
-
-const mockFs = {
-    access: jest.fn(),
-    readdir: jest.fn(),
-    writeFile: jest.fn()
+    query: jest.fn(),
+    withSessionAdvisoryLock: jest.fn(async (_key, fn) => { await fn(); return true; }),
+    DB_ADVISORY_LOCKS: { POST_UPGRADE_TASKS: 2020 }
 };
 
 const mockLibraryProfileService = {
@@ -39,18 +35,14 @@ await jest.unstable_mockModule('../services/libraryProfileService.mjs', () => ({
     libraryProfileService: mockLibraryProfileService
 }));
 
-await jest.unstable_mockModule('node:fs/promises', () => ({
-    default: mockFs
-}));
-
 const { postUpgradeService } = await import('../services/postUpgradeService.mjs');
 
 describe('PostUpgradeService', () => {
     beforeEach(() => {
         mockDb.query.mockReset();
-        mockFs.access.mockReset();
-        mockFs.readdir.mockReset();
-        mockFs.writeFile.mockReset();
+        delete mockDb.options;
+        mockDb.withSessionAdvisoryLock.mockReset();
+        mockDb.withSessionAdvisoryLock.mockImplementation(async (_key, fn) => { await fn(); return true; });
         mockLibraryProfileService.generateAllProfiles.mockReset();
         mockLibraryProfileService.generateAllProfiles.mockResolvedValue([
             { id: 1, success: true },
@@ -59,44 +51,47 @@ describe('PostUpgradeService', () => {
     });
 
     describe('runPendingTasks', () => {
-        it('should execute pending tasks that have not been run', async () => {
-            mockDb.query
-                .mockResolvedValueOnce({ rows: [] })
-                .mockResolvedValueOnce({ rows: [] })
-                .mockResolvedValueOnce({ rows: [{ count: '1' }] })
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rowCount: 1 })
-                .mockResolvedValueOnce({ rowCount: 5 })
-                .mockResolvedValueOnce({ rowCount: 1 })
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rowCount: 1 })
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rowCount: 1 })
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rowCount: 1 })
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rowCount: 1 })
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rowCount: 1 })
-                .mockResolvedValueOnce({ rows: legacyRatingProfileRows })
-                .mockResolvedValueOnce({ rowCount: 1 })
-                .mockResolvedValueOnce({ rowCount: 10 })
-                .mockResolvedValueOnce({ rowCount: 1 });
+        it('rejects a one-connection pool before taking a session lock', async () => {
+            mockDb.options = { max: 1 };
 
-            mockFs.access.mockResolvedValue();
-            mockFs.readdir.mockResolvedValue([]);
+            await expect(postUpgradeService.runPendingTasks()).rejects.toThrow('second database connection');
+            expect(mockDb.withSessionAdvisoryLock).not.toHaveBeenCalled();
+        });
+
+        it('defers without reading or mutating state when another instance owns the upgrade lock', async () => {
+            mockDb.withSessionAdvisoryLock.mockResolvedValueOnce(false);
+
+            await expect(postUpgradeService.runPendingTasks()).resolves.toMatchObject({
+                deferred: true,
+                profilesRefreshAttempted: true
+            });
+            expect(mockDb.query).not.toHaveBeenCalled();
+            expect(mockDb.withSessionAdvisoryLock).toHaveBeenCalledWith(2020, expect.any(Function));
+        });
+
+        it('does not replay tasks if the migrated ledger is missing', async () => {
+            const error = new Error('missing ledger');
+            error.code = '42P01';
+            mockDb.query.mockRejectedValueOnce(error);
+
+            await expect(postUpgradeService.runPendingTasks()).rejects.toThrow('missing ledger');
+            expect(mockDb.query).toHaveBeenCalledTimes(1);
+        });
+
+        it('should execute pending tasks that have not been run', async () => {
+            mockDb.query.mockImplementation(async sql => {
+                if (sql.includes('SELECT task_id')) return { rows: [] };
+                if (sql.includes('FROM users')) return { rows: [{ count: '1' }] };
+                if (sql.includes('SELECT lp.library_id')) return { rows: legacyRatingProfileRows };
+                return { rows: [], rowCount: 1 };
+            });
+            mockLibraryProfileService.generateAllProfiles.mockResolvedValue([{ id: 1, success: true }]);
 
             const result = await postUpgradeService.runPendingTasks();
 
-            expect(result.executed).toBe(10);
-            expect(result.skipped).toBe(0);
-            expect(mockLibraryProfileService.generateAllProfiles).toHaveBeenCalledTimes(2);
+            expect(result).toMatchObject({ executed: 3, skipped: 8, failed: 0, profilesRefreshAttempted: true });
+            expect(mockLibraryProfileService.generateAllProfiles).toHaveBeenCalledTimes(1);
+            expect(mockDb.query).not.toHaveBeenCalledWith(expect.stringContaining('DELETE FROM app_log'));
         });
 
         it('should pre-seed all tasks as complete on a fresh install without executing them', async () => {
@@ -104,6 +99,7 @@ describe('PostUpgradeService', () => {
                 .mockResolvedValueOnce({ rows: [] })
                 .mockResolvedValueOnce({ rows: [] })
                 .mockResolvedValueOnce({ rows: [{ count: '0' }] })
+                .mockResolvedValueOnce({ rows: [{ has_data: false }] })
                 .mockResolvedValue({ rowCount: 1 });
 
             const result = await postUpgradeService.runPendingTasks();
@@ -112,6 +108,22 @@ describe('PostUpgradeService', () => {
             expect(result.skipped).toBeGreaterThan(0);
             expect(mockDb.query).not.toHaveBeenCalledWith('DELETE FROM error_log WHERE resolved = false');
             expect(mockDb.query).not.toHaveBeenCalledWith('DELETE FROM app_log');
+        });
+
+        it('does not mistake a zero-user restored library for a fresh install', async () => {
+            mockDb.query.mockImplementation(async sql => {
+                if (sql.includes('SELECT task_id')) return { rows: [] };
+                if (sql.includes('FROM users')) return { rows: [{ count: '0' }] };
+                if (sql.includes('AS has_data')) return { rows: [{ has_data: true }] };
+                if (sql.includes('SELECT lp.library_id')) return { rows: normalizedRatingProfileRows };
+                return { rows: [], rowCount: 1 };
+            });
+            mockLibraryProfileService.generateAllProfiles.mockResolvedValue([{ id: 1, success: true }]);
+
+            const result = await postUpgradeService.runPendingTasks();
+
+            expect(result.executed).toBeGreaterThan(0);
+            expect(mockDb.query).toHaveBeenCalledWith(expect.stringContaining('AS has_data'));
         });
 
         it('should skip tasks that have already been executed', async () => {
@@ -140,37 +152,18 @@ describe('PostUpgradeService', () => {
             expect(mockLibraryProfileService.generateAllProfiles).not.toHaveBeenCalled();
         });
 
-        it('should handle partial execution when some tasks fail', async () => {
-            mockDb.query
-                .mockResolvedValueOnce({ rows: [] })
-                .mockResolvedValueOnce({ rows: [] })
-                .mockResolvedValueOnce({ rows: [{ count: '1' }] })
-                .mockRejectedValueOnce(new Error('Failed to truncate'))
-                .mockResolvedValueOnce({ rowCount: 5 })
-                .mockResolvedValueOnce({ rowCount: 1 })
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rowCount: 1 })
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rowCount: 1 })
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rowCount: 1 })
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rowCount: 1 })
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rowCount: 0 })
-                .mockResolvedValueOnce({ rowCount: 1 })
-                .mockResolvedValueOnce({ rows: legacyRatingProfileRows })
-                .mockResolvedValueOnce({ rowCount: 1 })
-                .mockResolvedValueOnce({ rowCount: 15 })
-                .mockResolvedValueOnce({ rowCount: 1 });
+        it('leaves later tasks pending when an earlier task fails', async () => {
+            mockDb.query.mockImplementation(async sql => {
+                if (sql.includes('SELECT task_id')) return { rows: [] };
+                if (sql.includes('FROM users')) return { rows: [{ count: '1' }] };
+                if (sql.includes('UPDATE classification_history ch')) throw new Error('source unavailable');
+                return { rows: [], rowCount: 1 };
+            });
 
             const result = await postUpgradeService.runPendingTasks();
 
-            expect(result.executed).toBe(9);
+            expect(result).toMatchObject({ executed: 0, skipped: 1, failed: 1 });
+            expect(mockDb.query).not.toHaveBeenCalledWith(expect.stringContaining('UPDATE media_server_items'));
         });
 
         it('should mark rating profile regeneration complete without running when profiles are already normalized', async () => {
@@ -196,8 +189,9 @@ describe('PostUpgradeService', () => {
 
             const result = await postUpgradeService.runPendingTasks();
 
-            expect(result.executed).toBe(2);
-            expect(result.skipped).toBe(9);
+            expect(result.executed).toBe(1);
+            expect(result.skipped).toBe(10);
+            expect(result.profilesRefreshAttempted).toBe(false);
             expect(mockLibraryProfileService.generateAllProfiles).not.toHaveBeenCalled();
             expect(mockDb.query).toHaveBeenCalledWith(
                 expect.stringContaining('INSERT INTO post_upgrade_tasks'),
@@ -229,23 +223,15 @@ describe('PostUpgradeService', () => {
     });
 
     describe('executeTask', () => {
-        it('should execute clear_logs task', async () => {
-            mockDb.query
-                .mockResolvedValueOnce({ rowCount: 10 })
-                .mockResolvedValueOnce({ rowCount: 5 });
-
-            mockFs.access.mockResolvedValue();
-            mockFs.readdir.mockResolvedValue(['app.log', 'error.log']);
-            mockFs.writeFile.mockResolvedValue();
-
-            await postUpgradeService.executeTask({
+        it('skips historical automatic clear_logs without deleting current evidence', async () => {
+            const result = await postUpgradeService.executeTask({
                 id: 'test_clear_logs',
                 action: 'clear_logs',
                 description: 'Test'
             });
 
-            expect(mockDb.query).toHaveBeenCalledWith('DELETE FROM error_log WHERE resolved = false');
-            expect(mockDb.query).toHaveBeenCalledWith('DELETE FROM app_log');
+            expect(result).toEqual({ skipped: true, reason: 'legacy_auto_clear_skipped' });
+            expect(mockDb.query).not.toHaveBeenCalled();
         });
 
         it('should execute rebuild_embeddings task', async () => {
@@ -289,6 +275,7 @@ describe('PostUpgradeService', () => {
 
         it('should execute regenerate_library_profiles task', async () => {
             mockDb.query.mockResolvedValueOnce({ rows: legacyRatingProfileRows });
+            mockLibraryProfileService.generateAllProfiles.mockResolvedValue([{ id: 1, success: true }]);
 
             await postUpgradeService.executeTask({
                 id: 'test_regenerate_library_profiles',
@@ -392,14 +379,12 @@ describe('PostUpgradeService', () => {
             expect(taskIds).toEqual(['task1', 'task2', 'task3']);
         });
 
-        it('should return empty array if table does not exist', async () => {
+        it('fails closed if the migrated task ledger does not exist', async () => {
             const error = new Error('Table does not exist');
             error.code = '42P01';
             mockDb.query.mockRejectedValueOnce(error);
 
-            const taskIds = await postUpgradeService.getExecutedTaskIds();
-
-            expect(taskIds).toEqual([]);
+            await expect(postUpgradeService.getExecutedTaskIds()).rejects.toThrow('Table does not exist');
         });
     });
 

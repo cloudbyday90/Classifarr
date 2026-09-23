@@ -53,7 +53,7 @@ export async function startServer({
     port,
   });
 
-  await runStartupPreflight({
+  const { postUpgradeResult } = await runStartupPreflight({
     database,
     setLoggerDb,
     runtimeSettings: runtimeSettingsService,
@@ -64,6 +64,7 @@ export async function startServer({
     discordBot: discordBotService,
     queueService: queueWorkerService,
     providerLock: providerLockService,
+    postUpgradeResult,
   });
 
   server = await startHttpServer({ app, port });

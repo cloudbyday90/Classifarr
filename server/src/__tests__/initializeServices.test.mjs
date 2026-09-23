@@ -156,6 +156,32 @@ describe('initializeServices', () => {
     expect(ollamaService.startScheduledPreflight).toHaveBeenCalledWith(24 * 60 * 60 * 1000);
   });
 
+  it('avoids a second startup profile rebuild after upgrade work attempted one', async () => {
+    await initializeServices({
+      discordBot,
+      queueService,
+      providerLock,
+      authService,
+      apiKeyService,
+      embeddingMigrationService,
+      healthCheckService,
+      libraryProfileService,
+      ollamaService,
+      schedulerService,
+      startupService,
+      webhookService,
+      backfillOrchestratorService: backfillOrchestrator,
+      graphRelationshipBackfillService,
+      ratingNormalizerService: ratingNormalizer,
+      ratingNormalizationQueueService,
+      postUpgradeResult: { profilesRefreshAttempted: true, failed: 1 },
+      database,
+    });
+
+    expect(libraryProfileService.generateAllProfiles).not.toHaveBeenCalled();
+    expect(queueService.startWorker).toHaveBeenCalledTimes(1);
+  });
+
   it('skips queue and scheduler when runtime wiring validation fails', async () => {
     startupService.validateRuntimeWiring.mockReturnValue({
       ok: false,

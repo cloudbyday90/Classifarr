@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Serialize post-upgrade task replay across processes, skip legacy automatic
+  log clearing while retaining scheduled/manual cleanup, preserve pending
+  work on failure, and avoid duplicate startup
+  profile rebuilds; add a read-only upgrade-task manifest for release planning.
 - Retain short-lived, redacted classification intake receipts across queue
   cleanup, with fixed comparison reason codes and a bounded read-only report;
   keep routing unchanged and defer release/deployment.
