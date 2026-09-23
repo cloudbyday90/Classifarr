@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Report current production-company coverage separately from older keyword and
+  language captures, including empty and withheld observations, inside existing
+  library health details without changing routing or requiring manual review.
+- Locally apply PR #546's server dotenv patch and verify its ESM configuration
+  behavior without merging the PR or creating a release.
 - Automatically preserve bounded description/company ranking comparisons before
   feedback, and evaluate later exact-classification outcomes without new AI calls
   or changes to routing. Keep corrections eligible while their move/sync is pending.

@@ -27,6 +27,22 @@ async function task(id, status = 'pending', type = 'metadata_enrichment', key = 
 }
 
 describe('library observation health PostgreSQL snapshot', () => {
+    test.each(['movie', 'tv'])('projects bounded %s company checks without changing legacy coverage', async type => {
+        const recent = new Date().toISOString();
+        const record = observation({ media_type: type, fetched_at: recent, production_companies: [{ id: 12, name: 'PRIVATE COMPANY' }] });
+        await add({ type, record, fetched: recent });
+        await add({ type, record: { ...record, production_companies: [] }, fetched: recent });
+        await add({ type, record: observation({ media_type: type }), fetched: recent });
+        await add({ type, record: { ...record, tmdb_id: 8 }, fetched: recent });
+        await add({ type, record: { ...record, fetched_at: '2020-01-01Z' }, fetched: recent });
+        await add({ type, record: { ...record, production_companies: Array.from({ length: 32 }, (_, id) => ({ id: id + 1, name: 'x'.repeat(160) })) }, fetched: recent });
+        const report = await readLibraryObservationHealth(client);
+        expect(report.libraries[0]).toMatchObject({ identifiedRowCount: 6, companyCoveragePercent: 33.3,
+            counts: { companiesCurrent: 2, companiesKnown: 1, emptyCompanies: 1, companiesWithheld: 1 },
+            states: { fresh: 5, due: 1 } });
+        expect(JSON.stringify(report)).not.toMatch(/PRIVATE|production_companies|company_observation|tmdb_id/);
+        expect(report.libraries[1].companyCoveragePercent).toBeNull();
+    });
     test('uses real typed provenance, source-row coverage and empty/inactive library semantics', async () => {
         const recent = new Date().toISOString();
         await add({ record: observation(), fetched: recent, attempted: recent });

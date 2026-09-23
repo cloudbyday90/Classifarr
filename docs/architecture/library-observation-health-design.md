@@ -3,6 +3,10 @@
 Date: 2026-09-05. Status: implemented and locally verified; see the separate
 [outcome](library-observation-health-outcome.md).
 
+September 23 follow-up: [company observation readiness](company-observation-readiness-design.md)
+adds separate current-company counters and coverage without changing the legacy
+acquisition states or historical scan counters.
+
 ## Problem and decision
 
 Library overlap now exposes incomplete metadata, but cannot explain whether the

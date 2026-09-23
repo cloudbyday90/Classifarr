@@ -2,6 +2,9 @@
 
 Date: 2026-09-22. Implements the [design and recommendation stack](prospective-inventory-ranking-design.md).
 
+Follow-up: [company readiness and local deployment outcome](company-observation-readiness-outcome.md)
+records the deployment gap, new coverage distinction and subsequent verification.
+
 ## Implemented
 
 Fixed the preceding benchmark's placement bias: a correction awaiting a move or

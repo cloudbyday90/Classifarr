@@ -5,7 +5,8 @@ import { readLibraryObservationHealthSnapshot, OBSERVATION_HEALTH_LIMITS } from 
 
 const percent = (count, total) => total ? Math.round(count * 1000 / total) / 10 : null;
 const detailFields = ['captured', 'keywordsKnown', 'languageKnown', 'emptyKeywords', 'unknownLanguage',
-    'invalidObservation', 'undatedObservation', 'clockAnomaly', 'attemptWithoutRefresh'];
+    'invalidObservation', 'undatedObservation', 'clockAnomaly', 'attemptWithoutRefresh',
+    'companiesCurrent', 'companiesKnown', 'emptyCompanies', 'companiesWithheld'];
 
 function summarize(library, items, now) {
     const counts = Object.fromEntries(detailFields.map(field => [field, 0]));
@@ -31,6 +32,7 @@ function summarize(library, items, now) {
         identityCoveragePercent: percent(identifiedRowCount, supportedRowCount),
         keywordCoveragePercent: percent(counts.keywordsKnown, identifiedRowCount),
         languageCoveragePercent: percent(counts.languageKnown, identifiedRowCount),
+        companyCoveragePercent: percent(counts.companiesCurrent, identifiedRowCount),
         counts, states, queue,
         oldestSuccessfulObservationAt: oldest === null ? null : new Date(oldest).toISOString(),
         lastSuccessfulObservationAt: latest === null ? null : new Date(latest).toISOString() };

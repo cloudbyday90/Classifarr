@@ -8,6 +8,23 @@
       Each of the {{ library.inventoryRowCount }} inventory rows appears in one state below.
       Repeated placements have their own clocks and count separately here.
     </p>
+    <p
+      v-if="library.companyCoveragePercent !== undefined"
+      class="my-2 text-sm"
+    >
+      Current production-company checks: {{ library.counts.companiesCurrent }} / {{ library.identifiedRowCount }}
+      ({{ library.companyCoveragePercent === null ? 'unknown' : `${library.companyCoveragePercent}%` }}).
+      With companies: {{ library.counts.companiesKnown }}; none reported: {{ library.counts.emptyCompanies }};
+      oversized records withheld: {{ library.counts.companiesWithheld }}.
+      Missing or expired checks are handled by automatic enrichment when eligible.
+      A completed check does not mean a routing decision is correct.
+    </p>
+    <p
+      v-else
+      class="my-2 text-sm"
+    >
+      Production-company coverage is unavailable from this server version.
+    </p>
     <table class="w-full text-left text-sm">
       <caption class="pb-2 text-left font-semibold">
         Acquisition states for {{ library.name }} (#{{ library.id }})

@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { positiveDatabaseInteger } from './mediaIdentityValues.mjs';
 import { readInventoryTmdbObservation, INVENTORY_TMDB_CACHE_DAYS, INVENTORY_TMDB_RETRY_HOURS } from './inventoryTmdbObservation.mjs';
+import { projectInventoryCompanyMetadata } from './inventoryCompanyMetadata.mjs';
 
 export const OBSERVATION_HEALTH_STATES = Object.freeze(['unsupported_type', 'missing_identity', 'observation_withheld',
     'clock_anomaly', 'fresh', 'backoff', 'never_observed', 'due']);
@@ -16,6 +17,11 @@ export function measureLibraryObservationRow(item, now) {
     const supported = ['movie', 'tv'].includes(item.media_type);
     const identified = supported && Boolean(positiveDatabaseInteger(item.tmdb_id));
     const observation = identified && !item.observation_withheld ? readInventoryTmdbObservation(item) : null;
+    // Company freshness is independent of the legacy keyword/language envelope.
+    const company = identified && !item.company_observation_withheld ? projectInventoryCompanyMetadata({
+        media_type: item.media_type, tmdb_id: positiveDatabaseInteger(item.tmdb_id),
+        company_observation: item.company_observation, company_checked_at: now,
+    }) : null;
     const fetched = clock(item.inventory_tmdb_fetched_at, now);
     const attempted = clock(item.inventory_tmdb_attempted_at, now);
     let state;
@@ -29,6 +35,10 @@ export function measureLibraryObservationRow(item, now) {
     else state = 'due';
     return {
         state, supported, identified, captured: Boolean(observation),
+        companiesCurrent: company !== null,
+        companiesKnown: Boolean(company?.productionCompanies.length),
+        emptyCompanies: Boolean(company && !company.productionCompanies.length),
+        companiesWithheld: Boolean(identified && item.company_observation_withheld),
         keywordsKnown: Boolean(observation?.keywords.length), languageKnown: Boolean(observation?.original_language),
         emptyKeywords: Boolean(observation && !observation.keywords.length),
         unknownLanguage: Boolean(observation && !observation.original_language),

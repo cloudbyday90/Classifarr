@@ -19,6 +19,29 @@ const snapshot = extra => ({ observed_at: ago(0), acquisition_configured: true, 
 const database = value => ({ query: jest.fn().mockResolvedValue({ rows: [value] }) });
 
 describe('observation row health', () => {
+    const company = extra => ({ ...observation(), fetched_at: ago(1), production_companies: [{ id: 12, name: 'Synthetic producer' }], ...extra });
+    test.each([
+        [company(), 1, 1, 0], [company({ production_companies: [] }), 1, 0, 1],
+        [company({ production_companies: null }), 0, 0, 0],
+        [company({ production_companies: [{ id: 0, name: 'Invalid' }] }), 0, 0, 0],
+        [company({ tmdb_id: 8 }), 0, 0, 0], [company({ media_type: 'tv' }), 0, 0, 0],
+        [company({ version: 2 }), 0, 0, 0], [company({ fetched_at: ago(720) }), 0, 0, 0],
+        [company({ fetched_at: ago(-1) }), 0, 0, 0], [company({ fetched_at: 'invalid' }), 0, 0, 0],
+        [company({ fetched_at: null }), 0, 0, 0], [undefined, 0, 0, 0],
+    ])('measures current company observations independently: %j', (record, current, known, empty) => {
+        expect(measureLibraryObservationRow(captured({ company_observation: record }), now)).toMatchObject({
+            state: 'fresh', companiesCurrent: Boolean(current), companiesKnown: Boolean(known), emptyCompanies: Boolean(empty),
+        });
+    });
+    test('company bounds and identity requirements are independent of keyword coverage', () => {
+        expect(measureLibraryObservationRow(captured({ company_observation: company(), company_observation_withheld: true }), now))
+            .toMatchObject({ companiesCurrent: false, companiesWithheld: true });
+        expect(measureLibraryObservationRow(captured({ company_observation: company(), observation_withheld: true }), now))
+            .toMatchObject({ companiesCurrent: true, state: 'observation_withheld' });
+        for (const change of [{ tmdb_id: null }, { media_type: 'music' }]) {
+            expect(measureLibraryObservationRow(captured({ company_observation: company(), ...change }), now).companiesCurrent).toBe(false);
+        }
+    });
     test.each([
         [item({ media_type: 'music' }), 'unsupported_type'], [item({ tmdb_id: null }), 'missing_identity'],
         [item({ tmdb_id: '7x' }), 'missing_identity'], [item({ observation_withheld: true }), 'observation_withheld'],
@@ -74,6 +97,17 @@ describe('observation row health', () => {
 });
 
 describe('aggregate observation health and authenticated route', () => {
+    test('company coverage counts successful empty checks but not legacy keyword-only captures', async () => {
+        const record = { ...observation(), fetched_at: ago(1), production_companies: [{ id: 12, name: 'PRIVATE COMPANY' }] };
+        const report = await readLibraryObservationHealth(database(snapshot({ row_count: 4, items: [
+            captured({ company_observation: record }),
+            captured({ company_observation: { ...record, production_companies: [] } }),
+            captured({}), captured({ company_observation_withheld: true }),
+        ] })));
+        expect(report.libraries[0]).toMatchObject({ companyCoveragePercent: 50,
+            counts: { companiesCurrent: 2, companiesKnown: 1, emptyCompanies: 1, companiesWithheld: 1 } });
+        expect(JSON.stringify(report)).not.toMatch(/PRIVATE|production_companies|company_observation/);
+    });
     test('partitions rows, retains row denominators and excludes media content and credentials', async () => {
         const db = database(snapshot({ row_count: 4, items: [captured({ title: 'PRIVATE', id: 9876543 }), captured({}),
             item({ tmdb_id: null }), item({ media_type: 'music', metadata: { secret: 'PRIVATE' } })] }));
@@ -93,7 +127,7 @@ describe('aggregate observation health and authenticated route', () => {
     });
     test('empty libraries have no invented percentages or successful times', async () => {
         expect((await readLibraryObservationHealth(database(snapshot()))).libraries[0]).toMatchObject({
-            inventoryRowCount: 0, identityCoveragePercent: null, keywordCoveragePercent: null, languageCoveragePercent: null,
+            inventoryRowCount: 0, identityCoveragePercent: null, keywordCoveragePercent: null, languageCoveragePercent: null, companyCoveragePercent: null,
             lastSuccessfulObservationAt: null, oldestSuccessfulObservationAt: null });
     });
     test('withholds all sampled counts at capacity and discloses excluded libraries', async () => {

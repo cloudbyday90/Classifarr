@@ -7,7 +7,14 @@ export const OBSERVATION_INVENTORY_CTES = `size AS (SELECT COUNT(*)::int AS row_
                 COALESCE(msi.metadata ? 'inventory_tmdb', false) AS has_observation,
                 -- Narrow the input before the canonical function repeatedly reads nested fields.
                 public.library_profile_observed_metadata(jsonb_build_object(
-                    'inventory_tmdb', msi.metadata -> 'inventory_tmdb')) -> 'inventory_tmdb' AS observation
+                    'inventory_tmdb', msi.metadata -> 'inventory_tmdb')) -> 'inventory_tmdb' AS observation,
+                jsonb_build_object(
+                    'version', msi.metadata->'inventory_tmdb'->'version',
+                    'tmdb_id', msi.metadata->'inventory_tmdb'->'tmdb_id',
+                    'media_type', msi.metadata->'inventory_tmdb'->'media_type',
+                    'fetched_at', msi.metadata->'inventory_tmdb'->'fetched_at',
+                    'production_companies', msi.metadata->'inventory_tmdb'->'production_companies'
+                ) AS company_observation
             FROM bounded_ids b CROSS JOIN LATERAL (
                 SELECT id,library_id,media_type,tmdb_id,metadata,inventory_tmdb_attempted_at,inventory_tmdb_fetched_at
                 FROM media_server_items WHERE id=b.id LIMIT 1
@@ -39,5 +46,7 @@ export const OBSERVATION_SNAPSHOT_FIELDS = `statement_timestamp()::text AS obser
                 'has_observation', i.has_observation,
                 'observation_withheld', COALESCE(octet_length(i.observation::text) > $4, false),
                 'metadata', jsonb_build_object('inventory_tmdb', CASE WHEN octet_length(i.observation::text) <= $4 THEN i.observation ELSE NULL END),
+                'company_observation_withheld', octet_length(i.company_observation::text) > $4,
+                'company_observation', CASE WHEN octet_length(i.company_observation::text) <= $4 THEN i.company_observation ELSE NULL END,
                 'has_processing_task', COALESCE(t.has_processing_task, false), 'has_pending_task', COALESCE(t.has_pending_task, false)
             )) FROM inventory i LEFT JOIN active_tasks t ON t.id = i.id), '[]'::jsonb) AS items`;

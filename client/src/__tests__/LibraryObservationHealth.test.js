@@ -41,6 +41,19 @@ describe('automatic library observation health', () => {
     expect(wrapper.text()).toContain('processing: 1; pending: 2; no active task recorded: 5')
     expect(wrapper.text()).toContain('A task does not prove that TMDb will be called')
     expect(wrapper.text()).toContain('not a permanent success or failure history')
+    const details = wrapper.get('details')
+    expect(details.attributes('open')).toBeUndefined()
+    expect(details.text()).toContain('Current production-company checks: 2 / 6 (33.3%)')
+    expect(details.text()).toContain('With companies: 1; none reported: 1; oversized records withheld: 1')
+    expect(details.text()).toContain('handled by automatic enrichment when eligible')
+    expect(details.text()).toContain('does not mean a routing decision is correct')
+  })
+  it('distinguishes an older server from zero company coverage', async () => {
+    const report = libraryObservationHealthFixture()
+    delete report.libraries[0].companyCoveragePercent
+    const wrapper = await render(report)
+    expect(wrapper.text()).toContain('Production-company coverage is unavailable from this server version')
+    expect(wrapper.text()).not.toContain('Current production-company checks')
   })
   it('reports configuration absence and excluded libraries without prompting per-item work', async () => {
     const report = libraryObservationHealthFixture()
@@ -65,11 +78,12 @@ describe('automatic library observation health', () => {
   it('uses unknown percentages and unrecorded times instead of invented values', async () => {
     const report = libraryObservationHealthFixture()
     Object.assign(report.libraries[0], { identityCoveragePercent: null, keywordCoveragePercent: null,
-      languageCoveragePercent: null, lastSuccessfulObservationAt: null, oldestSuccessfulObservationAt: null })
+      languageCoveragePercent: null, companyCoveragePercent: null, lastSuccessfulObservationAt: null, oldestSuccessfulObservationAt: null })
     const wrapper = await render(report)
     expect(wrapper.text()).toContain('(unknown)')
     expect(wrapper.text()).toContain('Not recorded')
     expect(wrapper.text()).not.toContain('null%')
+    expect(wrapper.get('details').text()).toContain('Current production-company checks: 2 / 6 (unknown)')
   })
   it('handles an empty active population', async () => {
     const report = libraryObservationHealthFixture()
