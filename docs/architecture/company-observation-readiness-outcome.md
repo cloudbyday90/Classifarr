@@ -71,6 +71,15 @@ contain private configuration and must not be committed or shared. Docker could
 not copy directly from the container tmpfs, so the archive was transferred via a
 temporary file in the existing data bind mount and then moved to the ignored folder.
 
+The first image build failed resolving GitHub during the checksum-pinned pgvector
+download. The live container remained healthy and was not restarted. Inspection
+also found that the existing Dockerfile cleanup fallback hid that upstream
+failure. Grouped the `make clean` exception and made every variant's build/install/
+copy sequence stop on failure. The additional focused build regression run passed
+2 suites / 14 tests, including 32 stubbed shell scenarios across all four variants;
+the full application coverage totals above precede this Dockerfile-only runtime
+change. The new test passed ESLint. DNS lookup succeeded on a subsequent check.
+
 Build, restart and post-deployment observations will be recorded after validation.
 
 ## Next high-value item

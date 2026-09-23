@@ -80,3 +80,22 @@ selected PR's exact lockfile rather than silently expanding the dependency updat
    company-assisted ranking promotion. Do not increase confidence to hide gaps.
 
 Implementation and verification are recorded separately in the outcome document.
+
+## Build failure discovered during deployment
+
+The initial build encountered a GitHub DNS lookup failure. An existing ungrouped
+`&& make clean ... || true` then swallowed the upstream error and entered a build
+without extracted sources. Group only the tolerated cleanup command; chain
+compilation, installation and copies with `&&` in every variant, so a failed stage
+cannot fall through to a successful later command. Keep download checksum
+verification and bounded retries unchanged; do not bypass integrity to deploy.
+
+This follows the [POSIX shell AND/OR semantics](https://pubs.opengroup.org/onlinepubs/000095399/utilities/xcu_chap02.html)
+(equal precedence and left associativity) and
+[Docker's build guidance](https://docs.docker.com/build/building/best-practices/)
+on preserving failures in multi-command RUN steps. The benefit is reliable error
+propagation; the cost is correctly failing builds that formerly continued past an
+error. It does not fix DNS itself. Regression tests execute the actual shell
+structure with stubbed commands across generic, AVX, AVX2 and multi builds, with
+no downloads, file mutations or real compilation. Windows test environments need
+POSIX `sh` on PATH, supplied here by the installed Git tooling.

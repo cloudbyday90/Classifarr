@@ -11,6 +11,8 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Stop image builds on pgvector download, integrity, compilation or installation
+  failures; limit the tolerated cleanup failure to `make clean` itself.
 - Report current production-company coverage separately from older keyword and
   language captures, including empty and withheld observations, inside existing
   library health details without changing routing or requiring manual review.

@@ -123,39 +123,39 @@ RUN apk add --no-cache --virtual .pgvector-build-deps \
     && PKGLIBDIR17="$($PG17_CONFIG --pkglibdir)" \
     && PKGLIBDIR18="$($PG18_CONFIG --pkglibdir)" \
     && echo "Building pgvector v${PGVECTOR_VERSION} for PostgreSQL 17..." \
-    && make clean PG_CONFIG=$PG17_CONFIG || true \
+    && (make clean PG_CONFIG=$PG17_CONFIG || true) \
     && make OPTFLAGS="$PGVECTOR_GENERIC_OPTFLAGS" PG_CONFIG=$PG17_CONFIG \
     && make install PG_CONFIG=$PG17_CONFIG \
     && echo "Building pgvector v${PGVECTOR_VERSION} for PostgreSQL 18..." \
     && if [ "$PGVECTOR_BUILD" = "generic" ]; then \
-        make clean PG_CONFIG=$PG18_CONFIG || true; \
-        make OPTFLAGS="$PGVECTOR_GENERIC_OPTFLAGS" PG_CONFIG=$PG18_CONFIG; \
-        make install PG_CONFIG=$PG18_CONFIG; \
-        cp "$PKGLIBDIR18/vector.so" "$PKGLIBDIR18/vector_generic.so"; \
+        (make clean PG_CONFIG=$PG18_CONFIG || true) \
+        && make OPTFLAGS="$PGVECTOR_GENERIC_OPTFLAGS" PG_CONFIG=$PG18_CONFIG \
+        && make install PG_CONFIG=$PG18_CONFIG \
+        && cp "$PKGLIBDIR18/vector.so" "$PKGLIBDIR18/vector_generic.so"; \
       elif [ "$PGVECTOR_BUILD" = "avx" ]; then \
-        make clean PG_CONFIG=$PG18_CONFIG || true; \
-        make OPTFLAGS="$PGVECTOR_AVX_OPTFLAGS" PG_CONFIG=$PG18_CONFIG; \
-        make install PG_CONFIG=$PG18_CONFIG; \
-        cp "$PKGLIBDIR18/vector.so" "$PKGLIBDIR18/vector_avx.so"; \
+        (make clean PG_CONFIG=$PG18_CONFIG || true) \
+        && make OPTFLAGS="$PGVECTOR_AVX_OPTFLAGS" PG_CONFIG=$PG18_CONFIG \
+        && make install PG_CONFIG=$PG18_CONFIG \
+        && cp "$PKGLIBDIR18/vector.so" "$PKGLIBDIR18/vector_avx.so"; \
       elif [ "$PGVECTOR_BUILD" = "avx2" ]; then \
-        make clean PG_CONFIG=$PG18_CONFIG || true; \
-        make OPTFLAGS="$PGVECTOR_AVX2_OPTFLAGS" PG_CONFIG=$PG18_CONFIG; \
-        make install PG_CONFIG=$PG18_CONFIG; \
-        cp "$PKGLIBDIR18/vector.so" "$PKGLIBDIR18/vector_avx2.so"; \
+        (make clean PG_CONFIG=$PG18_CONFIG || true) \
+        && make OPTFLAGS="$PGVECTOR_AVX2_OPTFLAGS" PG_CONFIG=$PG18_CONFIG \
+        && make install PG_CONFIG=$PG18_CONFIG \
+        && cp "$PKGLIBDIR18/vector.so" "$PKGLIBDIR18/vector_avx2.so"; \
       else \
-        make clean PG_CONFIG=$PG18_CONFIG || true; \
-        make OPTFLAGS="$PGVECTOR_GENERIC_OPTFLAGS" PG_CONFIG=$PG18_CONFIG; \
-        make install PG_CONFIG=$PG18_CONFIG; \
-        cp "$PKGLIBDIR18/vector.so" "$PKGLIBDIR18/vector_generic.so"; \
-        make clean PG_CONFIG=$PG18_CONFIG || true; \
-        make OPTFLAGS="$PGVECTOR_AVX_OPTFLAGS" PG_CONFIG=$PG18_CONFIG; \
-        make install PG_CONFIG=$PG18_CONFIG; \
-        cp "$PKGLIBDIR18/vector.so" "$PKGLIBDIR18/vector_avx.so"; \
-        make clean PG_CONFIG=$PG18_CONFIG || true; \
-        make OPTFLAGS="$PGVECTOR_AVX2_OPTFLAGS" PG_CONFIG=$PG18_CONFIG; \
-        make install PG_CONFIG=$PG18_CONFIG; \
-        cp "$PKGLIBDIR18/vector.so" "$PKGLIBDIR18/vector_avx2.so"; \
-        cp -f "$PKGLIBDIR18/vector_generic.so" "$PKGLIBDIR18/vector.so"; \
+        (make clean PG_CONFIG=$PG18_CONFIG || true) \
+        && make OPTFLAGS="$PGVECTOR_GENERIC_OPTFLAGS" PG_CONFIG=$PG18_CONFIG \
+        && make install PG_CONFIG=$PG18_CONFIG \
+        && cp "$PKGLIBDIR18/vector.so" "$PKGLIBDIR18/vector_generic.so" \
+        && (make clean PG_CONFIG=$PG18_CONFIG || true) \
+        && make OPTFLAGS="$PGVECTOR_AVX_OPTFLAGS" PG_CONFIG=$PG18_CONFIG \
+        && make install PG_CONFIG=$PG18_CONFIG \
+        && cp "$PKGLIBDIR18/vector.so" "$PKGLIBDIR18/vector_avx.so" \
+        && (make clean PG_CONFIG=$PG18_CONFIG || true) \
+        && make OPTFLAGS="$PGVECTOR_AVX2_OPTFLAGS" PG_CONFIG=$PG18_CONFIG \
+        && make install PG_CONFIG=$PG18_CONFIG \
+        && cp "$PKGLIBDIR18/vector.so" "$PKGLIBDIR18/vector_avx2.so" \
+        && cp -f "$PKGLIBDIR18/vector_generic.so" "$PKGLIBDIR18/vector.so"; \
       fi \
     && cd / && rm -rf pgvector-${PGVECTOR_VERSION} pgvector.tar.gz \
     && apk del --no-cache .pgvector-build-deps
