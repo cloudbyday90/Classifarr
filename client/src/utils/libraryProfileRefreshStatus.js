@@ -15,6 +15,11 @@ export const LIBRARY_PROFILE_REFRESH_STATUS_LABELS = Object.freeze({
 })
 
 const revisionPattern = /^(0|[1-9]\d*)$/
+export const LIBRARY_PROFILE_RECOVERY_LABELS = Object.freeze({
+  planner_overdue: 'Refresh planning is overdue',
+  worker_overdue: 'Queued refresh is overdue for a worker',
+  lease_recovery_overdue: 'Expired worker lease is overdue for recovery',
+})
 
 function validRevision(value) {
   return value === null || (typeof value === 'string' && revisionPattern.test(value))
@@ -33,11 +38,13 @@ export function parseLibraryProfileRefreshStatus(value) {
         typeof row.name !== 'string' || row.name.length > 160 ||
         typeof row.isActive !== 'boolean' ||
         !Object.hasOwn(LIBRARY_PROFILE_REFRESH_STATUS_LABELS, row.statusId) ||
+        (row.recoveryReasonId != null &&
+          !Object.hasOwn(LIBRARY_PROFILE_RECOVERY_LABELS, row.recoveryReasonId)) ||
         !validRevision(row.sourceRevision) || !validRevision(row.acknowledgedRevision) ||
         !validRevision(row.profileRevision)) return null
     summary[row.statusId] += 1
     libraries.push({ libraryId: row.libraryId, name: row.name, isActive: row.isActive,
-      statusId: row.statusId })
+      statusId: row.statusId, recoveryReasonId: row.recoveryReasonId ?? null })
   }
   return { asOf: value.asOf, windowTruncated: value.windowTruncated, summary, libraries }
 }

@@ -12,6 +12,7 @@ function row(libraryId, overrides = {}) {
         source_revision: '1', acknowledged_revision: '1', profile_revision: '1',
         has_inventory: true, has_profile: true, processing_state: null, available_at: null,
         lease_expires_at: null, probe_at: null, read_at: readAt,
+        changed_at: earlier, job_updated_at: null,
         ...overrides,
     };
 }
@@ -47,6 +48,14 @@ test('projects distinct recovery states from one bounded read without mutation',
     expect(report.libraries[9].retryAt).toBe(later);
     expect(report.libraries[10].retryAt).toBe(later);
     expect(report.libraries[11].retryAt).toBeNull();
+    expect(report.libraries[6].recoveryReasonId).toBe('planner_overdue');
+    expect(report.libraries[7].recoveryReasonId).toBe('worker_overdue');
+    expect(report.libraries[8].recoveryReasonId).toBeNull();
+    expect(report.libraries[9].recoveryReasonId).toBeNull();
+    expect(report.libraries[10].recoveryReasonId).toBeNull();
+    expect(report.libraries[11].recoveryReasonId).toBe('planner_overdue');
+    expect(report.libraries[12].recoveryReasonId).toBeNull();
+    expect(report.libraries[13].recoveryReasonId).toBe('lease_recovery_overdue');
     expect(db.query).toHaveBeenCalledTimes(1);
     expect(db.query.mock.calls[0][0]).toContain('SELECT library.id');
     expect(db.query.mock.calls[0][1][1]).toBe(201);

@@ -12,6 +12,7 @@ test('upgrade readiness is administrator-only, no-store, and rejects query contr
         current_count: 0, queued_count: 0, processing_count: 0, retry_wait_count: 0,
         cooldown_count: 0, waiting_count: 0, paused_count: 0, unverified_count: 0,
         no_inventory_count: 0, covered_count: 0, issue_count: 0, conflict_count: 0,
+        planner_overdue_count: 0, worker_overdue_count: 0, lease_recovery_overdue_count: 0,
         invalid_provider_count: 0, invalid_type_count: 0, enrollment_recorded: false,
     }] }) };
     const app = express();

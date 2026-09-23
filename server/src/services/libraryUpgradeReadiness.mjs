@@ -1,14 +1,17 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { POLICY_NATIVE_PROFILE_REFRESH_CIRCUIT_PROBE_DELAY_MS } from './policyNativeProfileRefreshCircuitVocabulary.mjs';
+import { LIBRARY_PROFILE_RECOVERY_GRACE_MS, libraryProfileRecoveryReasonSql } from './libraryProfileRecoveryAssessment.mjs';
 
 export const LIBRARY_UPGRADE_READINESS_VERSION = 'library.upgrade_readiness.v1';
 
 const READINESS_SQL = `WITH library_state AS MATERIALIZED (
     SELECT l.id, l.media_type, l.is_active,
-        s.revision, s.refreshed_revision, p.inventory_revision AS profile_revision,
+        s.revision, s.refreshed_revision, s.changed_at,
+        COALESCE(s.revision > s.refreshed_revision, false) AS dirty,
+        p.inventory_revision AS profile_revision,
         (p.library_id IS NOT NULL) AS has_profile,
         EXISTS (SELECT 1 FROM media_server_items item WHERE item.library_id=l.id) AS has_inventory,
-        job.processing_state, job.available_at, job.lease_expires_at,
+        job.processing_state, job.available_at, job.lease_expires_at, job.updated_at AS job_updated_at,
         job.updated_at + ($1::bigint * INTERVAL '1 millisecond') AS probe_at
     FROM libraries l
     LEFT JOIN library_profile_inventory_state s ON s.library_id=l.id
@@ -34,7 +37,9 @@ const READINESS_SQL = `WITH library_state AS MATERIALIZED (
         WHEN revision > refreshed_revision THEN 'waiting'
         WHEN has_inventory AND has_profile AND revision IS NOT NULL AND profile_revision=revision THEN 'current'
         ELSE 'unverified'
-    END AS profile_status FROM library_state
+    END AS profile_status,
+    ${libraryProfileRecoveryReasonSql('library_state', 2)} AS recovery_reason_id
+    FROM library_state
 ), totals AS (
     SELECT COUNT(*)::integer AS library_count,
         COUNT(*) FILTER (WHERE is_active)::integer AS active_count,
@@ -50,7 +55,10 @@ const READINESS_SQL = `WITH library_state AS MATERIALIZED (
         COUNT(*) FILTER (WHERE profile_status='waiting')::integer AS waiting_count,
         COUNT(*) FILTER (WHERE profile_status='paused')::integer AS paused_count,
         COUNT(*) FILTER (WHERE profile_status='unverified')::integer AS unverified_count,
-        COUNT(*) FILTER (WHERE profile_status='no_inventory')::integer AS no_inventory_count
+        COUNT(*) FILTER (WHERE profile_status='no_inventory')::integer AS no_inventory_count,
+        COUNT(*) FILTER (WHERE recovery_reason_id='planner_overdue')::integer AS planner_overdue_count,
+        COUNT(*) FILTER (WHERE recovery_reason_id='worker_overdue')::integer AS worker_overdue_count,
+        COUNT(*) FILTER (WHERE recovery_reason_id='lease_recovery_overdue')::integer AS lease_recovery_overdue_count
     FROM classified
 ), complete_captures AS MATERIALIZED (
     SELECT c.library_id, c.media_server_id, c.generation
@@ -83,7 +91,8 @@ function count(value) {
 
 /** One read-only aggregate across every library; never exposes names, titles, or provider payloads. */
 export async function readLibraryUpgradeReadiness(db) {
-    const { rows } = await db.query(READINESS_SQL, [POLICY_NATIVE_PROFILE_REFRESH_CIRCUIT_PROBE_DELAY_MS]);
+    const { rows } = await db.query(READINESS_SQL, [POLICY_NATIVE_PROFILE_REFRESH_CIRCUIT_PROBE_DELAY_MS,
+        LIBRARY_PROFILE_RECOVERY_GRACE_MS]);
     const row = rows[0];
     if (!row || !Number.isFinite(new Date(row.observed_at).getTime())) {
         throw new TypeError('Invalid upgrade readiness snapshot');
@@ -102,6 +111,12 @@ export async function readLibraryUpgradeReadiness(db) {
             noInventory: count(row.no_inventory_count), missing: count(row.missing_profile_count),
         },
         upgradeEnrollmentRecorded: row.enrollment_recorded === true,
+        recovery: {
+            plannerOverdue: count(row.planner_overdue_count),
+            workerOverdue: count(row.worker_overdue_count),
+            leaseRecoveryOverdue: count(row.lease_recovery_overdue_count),
+            graceMinutes: LIBRARY_PROFILE_RECOVERY_GRACE_MS / 60_000,
+        },
         sourceIdentity: {
             completeCaptureLibraryCount: count(row.covered_count),
             unresolvedItemCount: count(row.issue_count),
@@ -123,6 +138,10 @@ export async function readLibraryUpgradeReadiness(db) {
             report.sourceIdentity.invalidMediaTypeItemCount ||
         report.sourceIdentity.completeCaptureLibraryCount > report.activeLibraryCount) {
         throw new TypeError('Inconsistent upgrade readiness snapshot');
+    }
+    if (report.recovery.plannerOverdue + report.recovery.workerOverdue +
+        report.recovery.leaseRecoveryOverdue > report.activeLibraryCount) {
+        throw new TypeError('Inconsistent upgrade recovery assessment');
     }
     return report;
 }

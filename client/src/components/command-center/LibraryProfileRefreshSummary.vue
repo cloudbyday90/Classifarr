@@ -34,6 +34,12 @@
           {{ sourceText }}
         </p>
         <p
+          v-if="readiness && overdueCount"
+          class="profile-refresh-note"
+        >
+          {{ overdueCount }} active {{ overdueCount === 1 ? 'library is' : 'libraries are' }} overdue for automatic profile recovery. If this persists, check worker health.
+        </p>
+        <p
           v-if="readiness && !readiness.upgradeEnrollmentRecorded && readiness.libraryCount"
           class="profile-refresh-note"
         >
@@ -48,7 +54,7 @@
             :key="library.libraryId"
           >
             <span>{{ library.name }}</span>
-            <span>{{ labels[library.statusId] }}</span>
+            <span>{{ recoveryLabels[library.recoveryReasonId] || labels[library.statusId] }}</span>
           </li>
         </ul>
       </details>
@@ -65,6 +71,7 @@
 <script setup>
 import { computed } from 'vue'
 import { LIBRARY_PROFILE_REFRESH_STATUS_LABELS as labels } from '@/utils/libraryProfileRefreshStatus'
+import { LIBRARY_PROFILE_RECOVERY_LABELS as recoveryLabels } from '@/utils/libraryProfileRefreshStatus'
 
 const props = defineProps({
   report: { type: Object, default: null },
@@ -81,6 +88,11 @@ const readinessText = computed(() => {
   const attention = p.cooldown + p.unverified
   return `${snapshot.libraryCount} libraries: ${p.current} current, ${updating} updating, ` +
     `${attention} need recovery, ${p.paused} paused, ${p.noInventory} not synced.`
+})
+
+const overdueCount = computed(() => {
+  const recovery = props.readiness?.recovery
+  return recovery ? recovery.plannerOverdue + recovery.workerOverdue + recovery.leaseRecoveryOverdue : 0
 })
 
 const sourceText = computed(() => {

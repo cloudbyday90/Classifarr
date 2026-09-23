@@ -3,12 +3,14 @@ import { randomUUID } from 'node:crypto';
 import { afterEach, beforeEach, test, expect } from '@jest/globals';
 import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 import { readLibraryUpgradeReadiness } from '../../services/libraryUpgradeReadiness.mjs';
+import { LibraryInventoryProfileRefreshPlanner } from '../../services/libraryInventoryProfileRefreshPlanner.mjs';
 
 const db = createIntegrationDatabaseModuleMock();
 const libraryIds = [];
 let serverId;
 
 beforeEach(async () => {
+    libraryIds.length = 0;
     serverId = (await db.query(`INSERT INTO media_server (type, name, url, api_key)
         VALUES ('plex', $1, 'http://localhost', 'fixture-only') RETURNING id`,
     [`Readiness fixture ${randomUUID()}`])).rows[0].id;
@@ -22,8 +24,26 @@ beforeEach(async () => {
 
 afterEach(async () => {
     await db.query('DELETE FROM media_server_items WHERE library_id = ANY($1::bigint[])', [libraryIds]);
+    await db.query('DELETE FROM policy_profile_refresh_outbox WHERE library_id = ANY($1::bigint[])', [libraryIds]);
     await db.query('DELETE FROM libraries WHERE id = ANY($1::bigint[])', [libraryIds]);
     await db.query('DELETE FROM media_server WHERE id = $1', [serverId]);
+});
+
+test('overdue assessment clears through the durable planner without direct retry mutation', async () => {
+    const baseline = await readLibraryUpgradeReadiness(db);
+    await db.query(`INSERT INTO media_server_items (external_id, title, library_id, media_type, metadata)
+        VALUES ($1, 'Private overdue fixture', $2, 'movie', '{}'::jsonb)`, [randomUUID(), libraryIds[0]]);
+    await db.query(`UPDATE library_profile_inventory_state
+        SET changed_at=statement_timestamp()-INTERVAL '20 minutes' WHERE library_id=$1`, [libraryIds[0]]);
+    const overdue = await readLibraryUpgradeReadiness(db);
+    expect(overdue.recovery.plannerOverdue).toBe(baseline.recovery.plannerOverdue + 1);
+    expect(JSON.stringify(overdue)).not.toContain('Private overdue fixture');
+    expect((await db.query(`SELECT COUNT(*)::integer AS count FROM policy_profile_refresh_outbox
+        WHERE library_id=$1`, [libraryIds[0]])).rows[0].count).toBe(0);
+    await new LibraryInventoryProfileRefreshPlanner({ dbClient: db }).run();
+    const queued = await readLibraryUpgradeReadiness(db);
+    expect(queued.recovery.plannerOverdue).toBe(baseline.recovery.plannerOverdue);
+    expect(queued.profile.queued).toBeGreaterThanOrEqual(1);
 });
 
 test('real PostgreSQL aggregate counts movie and TV recovery without exposing titles', async () => {

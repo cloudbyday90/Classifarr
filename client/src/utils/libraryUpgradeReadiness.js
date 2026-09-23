@@ -18,6 +18,13 @@ export function parseLibraryUpgradeReadiness(value) {
       !['movie', 'tv', 'other'].every(key => nonNegativeCount(value.mediaTypes?.[key])) ||
       value.mediaTypes.movie + value.mediaTypes.tv + value.mediaTypes.other !== value.libraryCount ||
       !nonNegativeCount(value.sourceIdentity?.completeCaptureLibraryCount) ||
+      (value.recovery != null && (
+        !['plannerOverdue', 'workerOverdue', 'leaseRecoveryOverdue']
+          .every(key => nonNegativeCount(value.recovery?.[key])) ||
+        !Number.isSafeInteger(value.recovery.graceMinutes) ||
+        value.recovery.graceMinutes < 1 || value.recovery.graceMinutes > 1440 ||
+        value.recovery.plannerOverdue + value.recovery.workerOverdue +
+          value.recovery.leaseRecoveryOverdue > value.activeLibraryCount)) ||
       !nonNegativeCount(value.sourceIdentity?.unresolvedItemCount) ||
       !nonNegativeCount(value.sourceIdentity?.conflictingProviderItemCount) ||
       !nonNegativeCount(value.sourceIdentity?.invalidProviderItemCount) ||
@@ -35,6 +42,12 @@ export function parseLibraryUpgradeReadiness(value) {
     mediaTypes: Object.fromEntries(['movie', 'tv', 'other'].map(key => [key, value.mediaTypes[key]])),
     profile: Object.fromEntries(profileKeys.map(key => [key, value.profile[key]])),
     upgradeEnrollmentRecorded: value.upgradeEnrollmentRecorded,
+    recovery: value.recovery == null ? null : {
+      plannerOverdue: value.recovery.plannerOverdue,
+      workerOverdue: value.recovery.workerOverdue,
+      leaseRecoveryOverdue: value.recovery.leaseRecoveryOverdue,
+      graceMinutes: value.recovery.graceMinutes,
+    },
     sourceIdentity: {
       completeCaptureLibraryCount: value.sourceIdentity.completeCaptureLibraryCount,
       unresolvedItemCount: value.sourceIdentity.unresolvedItemCount,

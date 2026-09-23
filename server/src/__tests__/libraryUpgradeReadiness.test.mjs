@@ -9,6 +9,7 @@ const counts = {
     cooldown_count: 0, waiting_count: 0, paused_count: 1, unverified_count: 0,
     no_inventory_count: 0, covered_count: 1, issue_count: 3, conflict_count: 2,
     invalid_provider_count: 1, invalid_type_count: 0, enrollment_recorded: true,
+    planner_overdue_count: 0, worker_overdue_count: 1, lease_recovery_overdue_count: 0,
 };
 
 test('reads a whole-installation aggregate without returning media or provider data', async () => {
@@ -18,6 +19,7 @@ test('reads a whole-installation aggregate without returning media or provider d
         libraryCount: 3, activeLibraryCount: 2,
         mediaTypes: { movie: 1, tv: 1, other: 1 },
         profile: { current: 1, queued: 1, paused: 1, missing: 1 },
+        recovery: { plannerOverdue: 0, workerOverdue: 1, leaseRecoveryOverdue: 0, graceMinutes: 15 },
         sourceIdentity: { completeCaptureLibraryCount: 1, unresolvedItemCount: 3,
             conflictingProviderItemCount: 2, invalidProviderItemCount: 1 },
         upgradeEnrollmentRecorded: true,

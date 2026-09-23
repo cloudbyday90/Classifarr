@@ -18,7 +18,8 @@ describe('library profile refresh status contract', () => {
       libraryId: 8, name: 'TV', statusId: 'cooldown',
     })] }))
     expect(parsed.summary).toMatchObject({ current: 1, cooldown: 1 })
-    expect(parsed.libraries[0]).toEqual({ libraryId: 7, name: 'Movies', isActive: true, statusId: 'current' })
+    expect(parsed.libraries[0]).toEqual({ libraryId: 7, name: 'Movies', isActive: true,
+      statusId: 'current', recoveryReasonId: null })
     expect(JSON.stringify(parsed)).not.toContain('9007199254740993')
   })
 
@@ -28,5 +29,16 @@ describe('library profile refresh status contract', () => {
     expect(parseLibraryProfileRefreshStatus(report({ libraries: Array.from({ length: 201 }, (_, index) =>
       row({ libraryId: index + 1 })) }))).toBeNull()
     expect(parseLibraryProfileRefreshStatus(report({ asOf: 0 }))).toBeNull()
+  })
+
+  it('accepts only bounded recovery reasons without exposing extra fields', () => {
+    const parsed = parseLibraryProfileRefreshStatus(report({ libraries: [row({
+      statusId: 'waiting', recoveryReasonId: 'planner_overdue', token: 'secret fixture',
+    })] }))
+    expect(parsed.libraries[0].recoveryReasonId).toBe('planner_overdue')
+    expect(JSON.stringify(parsed)).not.toContain('secret fixture')
+    expect(parseLibraryProfileRefreshStatus(report({ libraries: [row({
+      recoveryReasonId: 'arbitrary',
+    })] }))).toBeNull()
   })
 })

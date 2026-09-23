@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Diagnose active, dirty libraries whose profile refresh planning, queue claim,
+  or expired lease recovery is overdue after scheduler grace. Show bounded
+  reasons in the Command Center without changing retries or routing.
 - Add an administrator-only, all-library, count-only upgrade assessment in
   the Command Center, with current profile recovery and scoped unresolved
   source-identity coverage; keep routing and background work unchanged.

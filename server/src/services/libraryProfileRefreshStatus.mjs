@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { POLICY_NATIVE_PROFILE_REFRESH_CIRCUIT_PROBE_DELAY_MS } from './policyNativeProfileRefreshCircuitVocabulary.mjs';
+import { classifyLibraryProfileRecovery } from './libraryProfileRecoveryAssessment.mjs';
 
 export const LIBRARY_PROFILE_REFRESH_STATUS_LIMIT = 200;
 export const LIBRARY_PROFILE_REFRESH_STATUS_VERSION = 'library.profile_refresh_status.v1';
@@ -70,6 +71,7 @@ function classify(row, asOf) {
         acknowledgedRevision,
         profileRevision,
         retryAt,
+        recoveryReasonId: classifyLibraryProfileRecovery({ ...row, dirty }, asOf),
     };
 }
 
@@ -78,18 +80,19 @@ export async function readLibraryProfileRefreshStatus(db) {
     const { rows } = await db.query(`WITH selected AS MATERIALIZED (
         SELECT library.id, library.name, library.is_active,
             state.revision::text AS source_revision,
-            state.refreshed_revision::text AS acknowledged_revision,
+            state.refreshed_revision::text AS acknowledged_revision, state.changed_at,
             (state.revision > state.refreshed_revision) AS dirty
         FROM libraries library
         LEFT JOIN library_profile_inventory_state state ON state.library_id = library.id
         ORDER BY (state.revision > state.refreshed_revision) DESC NULLS LAST, library.id
         LIMIT $2::integer
     ) SELECT library.id AS library_id, library.name, library.is_active,
-        library.source_revision, library.acknowledged_revision,
+        library.source_revision, library.acknowledged_revision, library.changed_at,
         profile.inventory_revision::text AS profile_revision,
         (profile.library_id IS NOT NULL) AS has_profile,
         EXISTS (SELECT 1 FROM media_server_items item WHERE item.library_id = library.id) AS has_inventory,
         latest.processing_state, latest.available_at, latest.lease_expires_at,
+        latest.updated_at AS job_updated_at,
         latest.updated_at + ($1::bigint * INTERVAL '1 millisecond') AS probe_at,
         statement_timestamp() AS read_at
         FROM selected library
