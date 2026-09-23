@@ -8,6 +8,7 @@ import { PolicyProfileRefreshOutboxWorker } from '../../services/policyProfileRe
 import { policyProfileRefreshOutboxWorkerRepository as claims } from '../../services/policyProfileRefreshOutboxWorkerRepository.mjs';
 import { compactInventoryProfileRefreshes } from '../../services/libraryInventoryProfileRefreshRepository.mjs';
 import { queueLibraryProfileUpgrade } from '../../services/libraryProfileUpgradeQueue.mjs';
+import { readLibraryProfileRefreshStatus } from '../../services/libraryProfileRefreshStatus.mjs';
 
 const db = createIntegrationDatabaseModuleMock();
 const profiles = createLibraryProfileService({ dbClient: db });
@@ -38,6 +39,29 @@ function worker(profileService = profiles, extra = {}) {
 }
 
 describe('inventory-driven profile refresh in PostgreSQL', () => {
+    test('read-only status follows a library from dirty through queued to verified', async () => {
+        const entry = async () => (await readLibraryProfileRefreshStatus(db)).libraries
+            .find(library => library.libraryId === libraryIds[0]);
+        expect((await entry()).statusId).toBe('no_inventory');
+        await add();
+        expect((await entry()).statusId).toBe('waiting');
+        await planner.run();
+        expect((await entry()).statusId).toBe('queued');
+        await worker().run();
+        expect(await entry()).toMatchObject({ statusId: 'current', sourceRevision: '1',
+            acknowledgedRevision: '1', profileRevision: '1' });
+        await db.query("UPDATE media_server_items SET genres = ARRAY['Drama'] WHERE library_id = $1", [libraryIds[0]]);
+        expect(await entry()).toMatchObject({ statusId: 'waiting', sourceRevision: '2',
+            acknowledgedRevision: '1', profileRevision: '1' });
+        expect((await state()).refreshed_revision).toBe('1');
+    });
+    test('a legacy profile without a source revision is not presented as an empty library', async () => {
+        await db.query('INSERT INTO library_profiles (library_id) VALUES ($1)', [libraryIds[0]]);
+        const entry = (await readLibraryProfileRefreshStatus(db)).libraries
+            .find(library => library.libraryId === libraryIds[0]);
+        expect(entry).toMatchObject({ statusId: 'unverified', sourceRevision: null,
+            profileRevision: null });
+    });
     test('upgrade intent is durable, idempotent and resumes inactive libraries after reactivation', async () => {
         const task = { id: `profile-refresh-${randomUUID()}`, version: 'fixture', description: 'Fixture upgrade' };
         try {

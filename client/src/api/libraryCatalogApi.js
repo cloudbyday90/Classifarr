@@ -30,6 +30,10 @@ export function getLibraryObservationHealth() {
   return getDataRequest('/libraries/observation-health')
 }
 
+export function getLibraryProfileRefreshStatus() {
+  return getDataRequest('/libraries/profile-refresh-status')
+}
+
 export function getLibrarySourceObservations() {
   return getDataRequest('/libraries/source-observations')
 }
@@ -63,6 +67,7 @@ const libraryCatalogApi = {
   getLibraries,
   getLibraryOverlap,
   getLibraryObservationHealth,
+  getLibraryProfileRefreshStatus,
   getLibrarySourceObservations,
   getLibrarySourceRepairWorklist,
   getLibraryObservationHistory,

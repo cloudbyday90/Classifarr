@@ -243,6 +243,10 @@
           :format-relative-time="formatRelativeTime"
           :is-action-busy="isActionBusy"
           :recently-completed-items="recentlyCompletedItems"
+          :profile-refresh-available="profileRefreshAvailable"
+          :profile-refresh-error="profileRefreshError"
+          :profile-refresh-loading="profileRefreshLoading"
+          :profile-refresh-status="profileRefreshStatus"
           :safe-percent="safePercent"
           :show-configure-media-server-cta="showConfigureMediaServerCta"
           :show-enrichment-section="showEnrichmentSection"
@@ -299,6 +303,7 @@ import { useQuickAdd } from '@/composables/useQuickAdd'
 import { useCommandCenterShell } from '@/composables/useCommandCenterShell'
 import { useCommandCenterPurposeHealth } from '@/composables/useCommandCenterPurposeHealth'
 import { useCommandCenterSemanticEvaluationReadiness } from '@/composables/useCommandCenterSemanticEvaluationReadiness'
+import { useCommandCenterProfileRefreshStatus } from '@/composables/useCommandCenterProfileRefreshStatus'
 
 const router = useRouter()
 const route = useRoute()
@@ -322,6 +327,13 @@ const {
   isLoading: semanticEvaluationReadinessLoading,
   readiness: semanticEvaluationReadiness,
 } = useCommandCenterSemanticEvaluationReadiness()
+
+const {
+  errorMessage: profileRefreshError,
+  isAvailable: profileRefreshAvailable,
+  isLoading: profileRefreshLoading,
+  status: profileRefreshStatus,
+} = useCommandCenterProfileRefreshStatus()
 
 const {
   activeLibraries,

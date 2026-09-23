@@ -256,13 +256,16 @@ describe('CommandCenter extracted panels', () => {
     await buttons.find(node => node.text() === 'Configure Media Server').trigger('click')
 
     await wrapper.find('section.secondary-section .secondary-section-header').trigger('click')
+    const libraryToggle = wrapper.find('#libraries button.library-section-toggle')
+    expect(libraryToggle.attributes('aria-expanded')).toBe('true')
+    await libraryToggle.trigger('click')
 
     expect(wrapper.emitted('retry-all-failed')).toHaveLength(1)
     expect(wrapper.emitted('retry-failed-task')).toEqual([[77]])
     expect(wrapper.emitted('dismiss-failed-task')).toEqual([[77]])
     expect(wrapper.emitted('process-enrichment-retries')).toEqual([['omdb'], ['web_search']])
     expect(wrapper.emitted('open-media-server-settings')).toHaveLength(1)
-    expect(wrapper.emitted('toggle-section')).toEqual([['errors']])
+    expect(wrapper.emitted('toggle-section')).toEqual([['errors'], ['libraries']])
   })
 
   it('hides the Tavily deferred note and counter when there are no deferred items', () => {

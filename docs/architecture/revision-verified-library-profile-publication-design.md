@@ -70,3 +70,7 @@ leased outbox worker, and add revision-checked publication at the final write.
 Next, expose a read-only per-library progress summary that distinguishes
 pending, processing, retry cooldown, and verified profile revision. Validate
 it on a disposable old-version snapshot before changing routing behavior.
+
+The [library profile refresh status design](library-profile-refresh-status-design.md)
+implements that read-only summary. Its next boundary remains the disposable
+old-version snapshot rehearsal.

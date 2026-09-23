@@ -34,6 +34,7 @@ import {
   getLibraries,
   getLibraryOverlap,
   getLibraryObservationHealth,
+  getLibraryProfileRefreshStatus,
   getLibrarySourceObservations,
   getLibrarySourceRepairWorklist,
   getLibraryObservationHistory,
@@ -82,6 +83,13 @@ describe('libraryCatalogApi', () => {
     mockGetDataRequest.mockResolvedValueOnce(report)
     expect(await getLibraryObservationHealth()).toEqual(report)
     expect(mockGetDataRequest).toHaveBeenCalledWith('/libraries/observation-health')
+  })
+
+  it('loads the unwrapped read-only profile refresh status', async () => {
+    const report = { version: 'library.profile_refresh_status.v1', libraries: [] }
+    mockGetDataRequest.mockResolvedValueOnce(report)
+    expect(await getLibraryProfileRefreshStatus()).toBe(report)
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/libraries/profile-refresh-status')
   })
 
   it('getLibraries calls getDataRequest with /libraries', async () => {

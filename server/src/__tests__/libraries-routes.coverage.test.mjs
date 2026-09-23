@@ -15,7 +15,8 @@ import { errorHandler } from '../middleware/errorHandler.mjs';
 
 const mockApiKeyAuth = {
   authenticateTokenOrApiKey: jest.fn((req, res, next) => next()),
-  requireReadWrite: jest.fn((req, res, next) => next())
+  requireReadWrite: jest.fn((req, res, next) => next()),
+  requireAdmin: jest.fn((req, res, next) => next())
 };
 
 const mockDb = {

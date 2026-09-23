@@ -284,13 +284,27 @@
         >
           Manage →
         </router-link>
-        <span class="secondary-section-toggle">{{ expandedSections.libraries ? '−' : '+' }}</span>
+        <button
+          type="button"
+          class="secondary-section-toggle library-section-toggle"
+          :aria-expanded="expandedSections.libraries"
+          :aria-label="expandedSections.libraries ? 'Collapse Libraries' : 'Expand Libraries'"
+          @click.stop="$emit('toggle-section', 'libraries')"
+        >
+          {{ expandedSections.libraries ? '−' : '+' }}
+        </button>
       </div>
     </div>
     <div
       v-if="expandedSections.libraries"
       class="secondary-section-content"
     >
+      <LibraryProfileRefreshSummary
+        v-if="profileRefreshAvailable"
+        :report="profileRefreshStatus"
+        :loading="profileRefreshLoading"
+        :error-message="profileRefreshError"
+      />
       <div
         v-if="showConfigureMediaServerCta"
         class="libraries-cta"
@@ -356,6 +370,7 @@
 
 <script setup>
 import { Badge, Button } from '@/components/common'
+import LibraryProfileRefreshSummary from './LibraryProfileRefreshSummary.vue'
 
 defineProps({
   activeLibrariesSummary: { type: Array, default: () => [] },
@@ -381,6 +396,10 @@ defineProps({
   formatRelativeTime: { type: Function, required: true },
   isActionBusy: { type: Function, required: true },
   recentlyCompletedItems: { type: Array, default: () => [] },
+  profileRefreshAvailable: { type: Boolean, default: false },
+  profileRefreshError: { type: String, default: '' },
+  profileRefreshLoading: { type: Boolean, default: false },
+  profileRefreshStatus: { type: Object, default: null },
   safePercent: { type: Function, required: true },
   showConfigureMediaServerCta: { type: Boolean, default: false },
   showEnrichmentSection: { type: Boolean, default: false },
@@ -464,6 +483,18 @@ defineEmits([
   color: #6b7280;
   width: 1.25rem;
   text-align: center;
+}
+
+.library-section-toggle {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.library-section-toggle:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 2px;
 }
 
 .secondary-section-content {

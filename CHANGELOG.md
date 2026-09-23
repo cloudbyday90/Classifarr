@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Show a bounded, read-only library profile refresh summary in the Command
+  Center with per-library recovery states and accessible disclosure; keep
+  routing unchanged and create no release.
 - Verify the exact inventory revision before publishing learned library
   profiles; superseded refreshes yield to newer work without a retry delay.
   Queue a one-time provenance refresh for existing profiles. No release is
