@@ -18,7 +18,7 @@ export class QueueInventoryTmdbEnrichmentService {
         }
         const mediaType = canonicalMediaType(payload?.media?.media_type);
         tmdbId = positiveDatabaseInteger(tmdbId);
-        if (!tmdbId || !mediaType || !inventoryTmdbObservationDue(payload, tmdbId, this.now())) return false;
+        if (!tmdbId || !mediaType || !inventoryTmdbObservationDue(payload, tmdbId, this.now(), { requireCompanies: true })) return false;
         try {
             if (!await this.tmdbService.getApiKey()) return false;
             const details = mediaType === 'movie' ? await this.tmdbService.getMovieDetails(tmdbId)

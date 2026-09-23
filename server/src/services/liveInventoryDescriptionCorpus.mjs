@@ -3,7 +3,7 @@ import { buildInventoryDescriptionCorpusSql, inventoryDescriptionIdentity, prepa
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from './sourceConflictAuthorityGuard.mjs';
 
 export const LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL = buildInventoryDescriptionCorpusSql({
-  includeCandidateMetadata: true, mediaTypeScoped: true,
+  includeCandidateMetadata: true, includeCompanyMetadata: true, mediaTypeScoped: true,
 });
 
 /** Called inside a fresh read-only transaction; all active same-media libraries remain in scope. */

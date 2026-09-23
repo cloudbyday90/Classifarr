@@ -27,6 +27,8 @@ import { assessLiveLibraryMatch } from '../../services/liveLibraryMatchBaseline.
 import { createLiveInventoryDescriptionRetriever } from '../../services/liveInventoryDescriptionRetriever.mjs';
 import { parseOverseerrPayload } from '../../services/classificationMetadataServiceShared.mjs';
 import { buildRetryPayload } from '../../utils/classificationRetryPayloads.mjs';
+import { projectLiveInventoryQueryMetadata } from '../../services/liveInventoryLearnedProfile.mjs';
+import { projectLiveInventoryLearnedProfile } from '../../services/liveInventoryLearnedProfileEvidence.mjs';
 
 let client;
 let repository;
@@ -65,6 +67,26 @@ async function add(id, library, text, vector = [1, 0, 0], media = 'movie') {
   if (vector) await cache.write(identity, [{ hash: hash(text), vector }]);
 }
 const retrieve = (representation = identity) => repository.retrieve({ request, identity: representation, vector: [1, 0, 0] });
+
+test.each(['movie', 'tv'])('SQL-backed %s company learning is fresh, held-out and separate from routing evidence', async mediaType => {
+  await client.query('UPDATE libraries SET media_type=$1 WHERE id IN (10,20)', [mediaType]);
+  for (let id = 1; id <= 60; id++) await add(id, id <= 30 ? 10 : 20, `Company evidence ${id}`, [1, 0, 0], mediaType);
+  await client.query(`UPDATE media_server_items SET metadata=metadata || jsonb_build_object('inventory_tmdb',
+    jsonb_build_object('version',1,'tmdb_id',tmdb_id,'media_type',media_type,'fetched_at',NOW(),
+      'production_companies',jsonb_build_array(jsonb_build_object('id',library_id,'name','Synthetic producer'))))`);
+  const query = { ...request, mediaType, key: `${mediaType}:1`,
+    queryMetadata: projectLiveInventoryQueryMetadata({ production_companies: [{ id: 10, name: 'Localized producer' }] }) };
+  const evidence = (await repository.readLearnedProfiles({ request: query })).get(10);
+  expect(evidence.relativeFit).toBe(0);
+  expect(evidence.companyProfile).toMatchObject({ trainingDescriptions: 59 });
+  expect(evidence.companyProfile.relativeFit).toBeGreaterThan(0);
+  expect(projectLiveInventoryLearnedProfile(evidence)).not.toHaveProperty('companyProfile');
+  expect((await repository.readLearnedProfiles({ request: query })).get(10)).toEqual(evidence);
+  expect(profileCache.set).toHaveBeenCalledTimes(1);
+  await client.query(`UPDATE media_server_items SET metadata=jsonb_set(metadata,'{inventory_tmdb,fetched_at}',to_jsonb(NOW()-interval '31 days'))`);
+  expect((await repository.readLearnedProfiles({ request: query })).get(10)).not.toHaveProperty('companyProfile');
+  expect((await client.query('SELECT count(*)::integer AS count FROM classification_history')).rows[0].count).toBe(0);
+});
 
 test.each(['movie', 'tv'])('source %s studio survives arrival and retry into SQL-backed learned evidence', async mediaType => {
   await client.query('UPDATE libraries SET media_type=$1 WHERE id IN (10,20)', [mediaType]);
@@ -162,8 +184,10 @@ test('SQL-scoped TV evidence equals global-corpus evidence and retains exclusion
   const input = { ...request, key: 'tv:90', mediaType: 'tv', libraryIds: [40, 50], matchLibraryId: 40,
     queryMetadata: { genres: ['documentary'] } };
   const queryVector = [Math.cos(.4), Math.sin(.4), 0];
-  const all = (await client.query(buildInventoryDescriptionCorpusSql({ includeCandidateMetadata: true }), [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS])).rows;
+  await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
+  const all = (await client.query(buildInventoryDescriptionCorpusSql({ includeCandidateMetadata: true, includeCompanyMetadata: true }), [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS])).rows;
   const scoped = (await client.query(LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL, [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS, 'tv'])).rows;
+  await client.query('COMMIT');
   expect(scoped).toEqual(all.filter(row => row.media_type === 'tv'));
   expect(all.some(row => row.media_type === 'movie')).toBe(true);
   expect(scoped.some(row => row.library_id === 60)).toBe(true);

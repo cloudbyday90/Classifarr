@@ -6,7 +6,7 @@ import { QueueRefillService } from '../services/queueRefillService.mjs';
 import { buildLibraryProfileObservation } from '../services/libraryProfileObservation.mjs';
 
 const now = Date.parse('2026-09-05T12:00:00Z');
-const details = (type = 'movie') => ({ id: 7, original_language: 'JA', keywords: { [type === 'movie' ? 'keywords' : 'results']: [{ name: ' space ' }, { name: 'space' }] } });
+const details = (type = 'movie') => ({ id: 7, original_language: 'JA', production_companies: [], keywords: { [type === 'movie' ? 'keywords' : 'results']: [{ name: ' space ' }, { name: 'space' }] } });
 const record = () => buildInventoryTmdbObservation(details(), 7, 'movie', new Date(now).toISOString());
 const payload = () => ({ tmdb_id: 7, media: { media_type: 'movie' } });
 
@@ -17,7 +17,7 @@ test.each([[null, null], [undefined, null], ['', null], ['unknown', null], ['en_
 });
 test.each(['movie', 'tv'])('accepts only the %s keyword envelope and records provenance', type => {
     expect(buildInventoryTmdbObservation(details(type), 7, type, 'time')).toEqual({ version: 1, tmdb_id: 7, media_type: type,
-        keywords: ['space'], original_language: 'ja', fetched_at: 'time' });
+        keywords: ['space'], original_language: 'ja', production_companies: [], fetched_at: 'time' });
 });
 test.each([null, {}, { ...details(), id: 8 }, { ...details(), id: '7' }, { ...details(), media_type: 'tv' },
     { ...details(), keywords: { results: [] } }, { ...details(), keywords: { id: 8, keywords: [] } },
@@ -57,6 +57,27 @@ test('cache freshness and retry cooldown are independent', () => {
     expect(inventoryTmdbObservationDue(stale, 7, now)).toBe(true);
     expect(inventoryTmdbObservationDue({ ...stale, inventory_tmdb_attempted_at: new Date(now - 3600000) }, 7, now)).toBe(false);
     expect(inventoryTmdbObservationDue({ ...stale, inventory_tmdb_attempted_at: new Date(now - 6 * 3600000) }, 7, now)).toBe(true);
+});
+
+test.each([undefined, null, 'invalid', 123, new Date(now + 1).toISOString(),
+    new Date(now - 30 * 86400000).toISOString()])('company backfill repairs unusable provenance without a tight loop: %j', fetched_at => {
+    const input = { ...payload(), inventory_tmdb: { ...record(), fetched_at }, inventory_tmdb_fetched_at: new Date(now) };
+    expect(inventoryTmdbObservationDue(input, 7, now)).toBe(false);
+    expect(inventoryTmdbObservationDue(input, 7, now, { requireCompanies: true })).toBe(true);
+    expect(inventoryTmdbObservationDue({ ...input, inventory_tmdb_attempted_at: new Date(now - 3600000) },
+        7, now, { requireCompanies: true })).toBe(false);
+});
+
+test.each([undefined, null, [{ name: '' }], 'invalid'])('legacy or malformed company sets remain eligible for bounded backfill: %j', production_companies => {
+    const input = { ...payload(), inventory_tmdb: { ...record(), production_companies }, inventory_tmdb_fetched_at: new Date(now) };
+    expect(inventoryTmdbObservationDue(input, 7, now, { requireCompanies: true })).toBe(true);
+    expect(readInventoryTmdbObservation({ tmdb_id: 7, media_type: 'movie', metadata: { inventory_tmdb: input.inventory_tmdb } }))
+        .toEqual({ keywords: ['space'], original_language: 'ja' });
+});
+
+test('a fresh valid empty company set is complete and does not fetch repeatedly', () => {
+    expect(inventoryTmdbObservationDue({ ...payload(), inventory_tmdb: record(), inventory_tmdb_fetched_at: new Date(now) },
+        7, now, { requireCompanies: true })).toBe(false);
 });
 test.each(['movie', 'tv'])('fetches the existing typed %s detail method with no additional keyword request', async type => {
     const provider = { getApiKey: jest.fn().mockResolvedValue('fixture'), getMovieDetails: jest.fn().mockResolvedValue(details()), getTVDetails: jest.fn().mockResolvedValue(details('tv')) };

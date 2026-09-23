@@ -98,6 +98,9 @@ requires its own CI run after push.
 
 ## Recommendation and next item
 
+Follow-up implemented: [production-company learning outcome](production-company-learning-outcome.md).
+The original recommendation below is retained as the decision history.
+
 Keep the shared ESM contract on the existing PostgreSQL/local-RAG stack. Its
 benefit is preserved evidence and automatic recovery at existing handoffs; the
 tradeoff is that invalid or contradictory observations deliberately contribute

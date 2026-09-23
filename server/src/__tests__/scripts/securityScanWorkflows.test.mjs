@@ -54,6 +54,7 @@ test('CodeQL and SARIF upload use one immutable action revision and unchanged le
   }
   expect(references).toHaveLength(4);
   expect(new Set(references).size).toBe(1);
+  expect(references[0]).toBe('1c5b675653bb5c22dbe9b12b556ec555138e09fd'); // PR #539; upstream v4.38.1.
   expect(codeql.jobs.analyze.strategy.matrix.language).toEqual(['javascript-typescript', 'actions']);
   expect(codeql.jobs.analyze.steps.find(step => step.uses?.includes('/init@')).with.queries).toBe('security-extended');
   expect(trivy.jobs['trivy-fs'].steps.find(step => step.name === 'Run Trivy (PR gate)').with['exit-code']).toBe('1');

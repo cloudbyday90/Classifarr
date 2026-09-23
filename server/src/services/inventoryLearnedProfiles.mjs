@@ -3,12 +3,12 @@ import { fuseInventoryCandidateRanks } from './inventoryCandidateRankFusion.mjs'
 import { meanInventoryProfileFields, scoreInventoryProfileFields } from './inventoryProfileScoring.mjs';
 
 export const INVENTORY_LEARNED_PROFILE_VERSION = 'contrastive_profile_v1';
-const fields = ['genres', 'studio', 'rating'];
-const empty = () => Object.fromEntries(fields.map(field => [field, { total: 0, counts: new Map() }]));
-const terms = (metadata, field) => [...new Set(field === 'genres' ? metadata?.genres ?? [] : metadata?.[field] ? [metadata[field]] : [])];
+const defaultFields = ['genres', 'studio', 'rating'];
+const empty = fields => Object.fromEntries(fields.map(field => [field, { total: 0, counts: new Map() }]));
+const terms = (metadata, field) => [...new Set(Array.isArray(metadata?.[field]) ? metadata[field] : metadata?.[field] ? [metadata[field]] : [])];
 
 function observe(profile, metadata, weight, budget) {
-  for (const field of fields) {
+  for (const field of Object.keys(profile)) {
     const values = terms(metadata, field);
     if (!values.length) continue;
     profile[field].total += weight;
@@ -20,10 +20,11 @@ function observe(profile, metadata, weight, budget) {
 }
 
 /** Caller supplies normalized private metadata; all held-out copies are excluded before fitting. */
-export function learnInventoryProfiles(documents, metadata, libraries, heldHashes = new Set()) {
+export function learnInventoryProfiles(documents, metadata, libraries, heldHashes = new Set(),
+  { fields = defaultFields, version = INVENTORY_LEARNED_PROFILE_VERSION } = {}) {
   if (documents.length > 50000 || libraries.length > 64) throw new Error('inventory_profile_budget');
-  const profiles = new Map(libraries.map(library => [library.id, { mediaType: library.media_type, fields: empty() }]));
-  const background = new Map(['movie', 'tv'].map(type => [type, empty()]));
+  const profiles = new Map(libraries.map(library => [library.id, { mediaType: library.media_type, fields: empty(fields) }]));
+  const background = new Map(['movie', 'tv'].map(type => [type, empty(fields)]));
   const budget = { entries: 0 };
   const groups = new Map();
   for (const doc of documents) {
@@ -43,7 +44,7 @@ export function learnInventoryProfiles(documents, metadata, libraries, heldHashe
     observe(background.get(group.type), group.metadata, 1, budget);
     for (const id of [...group.libraries].sort((a, b) => a - b)) observe(profiles.get(id).fields, group.metadata, 1 / group.libraries.size, budget);
   }
-  return { profiles, background, summary: { version: INVENTORY_LEARNED_PROFILE_VERSION, trainingDescriptions,
+  return { profiles, background, summary: { version, trainingDescriptions,
     sharedDescriptions, missingOrConflictingMetadata,
     trainedLibraries: [...profiles.values()].filter(profile => fields.some(field => profile.fields[field].total > 0)).length } };
 }

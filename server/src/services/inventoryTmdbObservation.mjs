@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { canonicalMediaType, positiveDatabaseInteger } from './mediaIdentityValues.mjs';
+import { normalizeProductionCompanies } from '../utils/metadataOrganizations.mjs';
 
 export const INVENTORY_TMDB_CACHE_DAYS = 30;
 export const INVENTORY_TMDB_RETRY_HOURS = 6;
@@ -41,16 +42,27 @@ export function buildInventoryTmdbObservation(details, tmdbId, mediaType, acquir
     const values = type === 'movie' ? envelope?.keywords : envelope?.results;
     if (!Array.isArray(values) || values.length > MAX_KEYWORDS ||
         (envelope.id != null && envelope.id !== id) || values.some(value => !keyword(value?.name))) return null;
+    const companies = normalizeProductionCompanies(details.production_companies);
     return { version: 1, tmdb_id: id, media_type: type,
+        ...(companies === null ? {} : { production_companies: companies }),
         keywords: [...new Set(values.map(value => keyword(value.name)))],
         original_language: normalizeOriginalLanguage(details.original_language), fetched_at: acquiredAt };
 }
 
-export function inventoryTmdbObservationDue(payload, tmdbId, now) {
+export function isCurrentInventoryTmdbTimestamp(value, now) {
+    const fetched = typeof value === 'string' && value.length <= 64 ? Date.parse(value) : NaN;
+    return Number.isFinite(now) && Number.isFinite(fetched) && fetched <= now &&
+        now - fetched < INVENTORY_TMDB_CACHE_DAYS * 86400000;
+}
+
+export function inventoryTmdbObservationDue(payload, tmdbId, now, { requireCompanies = false } = {}) {
     const fetched = new Date(payload.inventory_tmdb_fetched_at ?? NaN).getTime();
     const attempted = new Date(payload.inventory_tmdb_attempted_at ?? NaN).getTime();
     const observation = readInventoryTmdbObservation({ tmdb_id: tmdbId, media_type: payload.media.media_type,
         metadata: { inventory_tmdb: payload.inventory_tmdb } });
-    if (observation && fetched <= now && now - fetched < INVENTORY_TMDB_CACHE_DAYS * 86400000) return false;
+    const companiesAvailable = normalizeProductionCompanies(payload.inventory_tmdb?.production_companies) !== null;
+    const companiesCurrent = companiesAvailable && isCurrentInventoryTmdbTimestamp(payload.inventory_tmdb?.fetched_at, now);
+    if (observation && fetched <= now && now - fetched < INVENTORY_TMDB_CACHE_DAYS * 86400000 &&
+        (!requireCompanies || companiesCurrent)) return false;
     return !Number.isFinite(attempted) || now - attempted >= INVENTORY_TMDB_RETRY_HOURS * 3600000;
 }

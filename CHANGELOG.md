@@ -11,6 +11,13 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Retain production-company sets during inventory enrichment and automatically
+  backfill missing or expired observations with bounded retries. Learn a separate,
+  library-agnostic company profile without changing routing scores or safeguards.
+- Add a read-only, grouped movie/TV company benchmark that reports coverage and
+  placement agreement without presenting existing placements as verified accuracy.
+- Locally apply PR #539's pinned CodeQL action update; preserve workflow permissions
+  and security gates without merging the PR or creating a release.
 - Preserve distinct studio and production-company observations through
   classification, retries and reprocessing; refresh older enrichment tasks from
   current identity-checked inventory and keep conflicting organization claims neutral.

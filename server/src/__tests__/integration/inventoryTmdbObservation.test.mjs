@@ -14,6 +14,7 @@ import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from '../../services/sourceC
 
 let db, libraryId, refill, provider, deps;
 const response = type => ({ id: 7, original_language: type === 'movie' ? 'ja' : 'fr',
+    production_companies: [{ id: 12, name: 'Synthetic producer', logo_path: '/discarded' }],
     keywords: { [type === 'movie' ? 'keywords' : 'results']: [{ name: 'space' }, { name: 'space' }] } });
 beforeEach(async () => {
     db = await getPool().connect();
@@ -44,6 +45,26 @@ async function pending() { return (await refill.selectRefillCandidates()).filter
 async function run(item) { await processMetadataEnrichmentTask({ id: 1, payload: refill.buildMetadataEnrichmentPayload(item) }, deps); }
 async function stored(id) { return (await db.query('SELECT * FROM media_server_items WHERE id = $1', [id])).rows[0]; }
 async function revision() { return (await db.query('SELECT revision::text FROM library_profile_inventory_state WHERE library_id = $1', [libraryId])).rows[0].revision; }
+
+test.each(['movie', 'tv'])('legacy %s observations backfill companies after cooldown and recover after provider failure', async type => {
+    const item = await add(type);
+    await run((await pending())[0]);
+    expect((await stored(item.id)).metadata.inventory_tmdb.production_companies).toEqual([{ id: 12, name: 'Synthetic producer' }]);
+    await db.query(`UPDATE media_server_items SET metadata = metadata #- '{inventory_tmdb,production_companies}' WHERE id=$1`, [item.id]);
+    expect(await pending()).toEqual([]); // Still respects the successful attempt's cooldown.
+    await db.query("UPDATE media_server_items SET inventory_tmdb_attempted_at=NOW()-interval '7 hours' WHERE id=$1", [item.id]);
+    const providerMethod = provider[type === 'movie' ? 'getMovieDetails' : 'getTVDetails'];
+    providerMethod.mockRejectedValueOnce(new Error('private provider diagnostic'));
+    await run((await pending())[0]);
+    expect((await stored(item.id)).metadata.inventory_tmdb).not.toHaveProperty('production_companies');
+    expect(await pending()).toEqual([]);
+    await db.query("UPDATE media_server_items SET inventory_tmdb_attempted_at=NOW()-interval '7 hours' WHERE id=$1", [item.id]);
+    await run((await pending())[0]);
+    expect((await stored(item.id)).metadata.inventory_tmdb.production_companies).toHaveLength(1);
+    expect(await pending()).toEqual([]);
+    expect(deps.queueClassificationHistoryService.persist).not.toHaveBeenCalled();
+    expect(JSON.stringify(deps.logger.warn.mock.calls)).not.toContain('private provider diagnostic');
+});
 
 test('automatically backfills typed movie and TV observations and refreshes aggregate coverage', async () => {
     await add(); await add('tv');
@@ -157,18 +178,20 @@ test('identity correction hides old traits and bookkeeping alone does not dirty 
 });
 test('valid empty records stop automatic retries until expiry', async () => {
     const item = await add();
-    provider.getMovieDetails.mockResolvedValueOnce({ id: 7, keywords: { keywords: [] } });
+    provider.getMovieDetails.mockResolvedValueOnce({ id: 7, keywords: { keywords: [] }, production_companies: [] });
     await run((await pending())[0]);
     expect((await stored(item.id)).metadata.inventory_tmdb).toMatchObject({ keywords: [], original_language: null });
     expect(await pending()).toEqual([]);
 });
 
 test('refill repairs 26 malformed fresh captures through guarded observation-only workers', async () => {
+    const acquiredAt = (await db.query('SELECT NOW() AS now')).rows[0].now.toISOString();
     for (const fixture of inventoryObservationValidityCases) {
         const item = await add();
         await db.query(`UPDATE media_server_items SET metadata = metadata || $2::jsonb,
             inventory_tmdb_fetched_at = NOW(), inventory_tmdb_attempted_at = NOW() - INTERVAL '7 hours' WHERE id = $1`,
-        [item.id, JSON.stringify({ inventory_tmdb: fixture.record })]);
+        [item.id, JSON.stringify({ inventory_tmdb: fixture.record == null ? fixture.record :
+            { ...fixture.record, production_companies: [], fetched_at: acquiredAt } })]);
     }
     const candidates = await pending();
     expect(candidates).toHaveLength(26);

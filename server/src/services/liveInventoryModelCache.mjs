@@ -45,6 +45,7 @@ export function createLiveInventoryModelCache({ maxEntries = 8, maxWeight = 16 *
 /** Conservative accounting units for Maps/strings; not an exact V8 heap measurement. */
 export function estimateInventoryProfileWeight(model) {
   let weight = 1024 + model.profiles.size * 1024;
+  if (model.companyModel) weight += estimateInventoryProfileWeight(model.companyModel);
   for (const fields of [...model.background.values(), ...[...model.profiles.values()].map(profile => profile.fields)]) {
     for (const field of Object.values(fields)) {
       for (const term of field.counts.keys()) weight += 128 + term.length * 2;

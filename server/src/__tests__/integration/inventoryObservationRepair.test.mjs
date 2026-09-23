@@ -4,10 +4,11 @@ import { getPool } from './setup.mjs';
 import { QueueRefillService } from '../../services/queueRefillService.mjs';
 import { inventoryObservationValidityCases } from '../helpers/inventoryObservationValidityCases.mjs';
 
-let db, refill;
+let db, refill, acquiredAt;
 beforeEach(async () => {
     db = await getPool().connect();
     await db.query('BEGIN');
+    acquiredAt = (await db.query('SELECT NOW() AS now')).rows[0].now.toISOString();
     await db.query(`CREATE TEMP TABLE libraries (id integer PRIMARY KEY, name text, is_active boolean) ON COMMIT DROP;
         CREATE TEMP TABLE media_server_items (id integer PRIMARY KEY, library_id integer, media_type text,
             tmdb_id integer, title text, year integer, genres jsonb, tags text[], content_rating text, studio text,
@@ -28,8 +29,9 @@ async function insert(id, record, type = 'movie') {
     await db.query(`INSERT INTO media_server_items
         (id, library_id, media_type, tmdb_id, metadata, inventory_tmdb_attempted_at, inventory_tmdb_fetched_at)
         VALUES ($1, 1, $2, 7, $3, NOW() - INTERVAL '7 hours', NOW())`,
-    [id, type, JSON.stringify({ content_analysis: { source: 'metadata_enrichment' }, omdb: {}, inventory_tmdb: record })]);
+    [id, type, JSON.stringify({ content_analysis: { source: 'metadata_enrichment' }, omdb: {}, inventory_tmdb: completeCompanies(record) })]);
 }
+const completeCompanies = record => record == null ? record : { ...record, production_companies: [], fetched_at: acquiredAt };
 async function selected() { return (await refill.selectRefillCandidates()).map(item => item.id); }
 
 test('32 explicit validity cases agree with automatic repair for fresh captures', async () => {
@@ -46,7 +48,7 @@ test('stable pages reach a repair behind 5,000 fresh rows and wrap despite new i
         (id, library_id, media_type, tmdb_id, metadata, inventory_tmdb_attempted_at, inventory_tmdb_fetched_at)
         SELECT id, 1, 'movie', 7, $1::jsonb, NOW() - INTERVAL '7 hours', NOW()
         FROM generate_series(1, 5000) id`,
-    [JSON.stringify({ content_analysis: { source: 'metadata_enrichment' }, omdb: {}, inventory_tmdb: inventoryObservationValidityCases[1].record })]);
+    [JSON.stringify({ content_analysis: { source: 'metadata_enrichment' }, omdb: {}, inventory_tmdb: completeCompanies(inventoryObservationValidityCases[1].record) })]);
     await insert(5001, { ...inventoryObservationValidityCases[0].record, keywords: 'invalid' });
     expect(await selected()).toEqual([]);
     await insert(5002, null);

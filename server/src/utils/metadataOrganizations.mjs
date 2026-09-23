@@ -24,6 +24,11 @@ function readCompanies(value, maxItems = 32) {
   return [...companies.values()];
 }
 
+/** Distinguish a valid empty set from missing or malformed observations. */
+export function normalizeProductionCompanies(value) {
+  return Array.isArray(value) ? readCompanies(value) : null;
+}
+
 /** Copy only the two distinct roles. Missing fields stay missing for legacy payloads. */
 export function captureOrganizationMetadata(metadata = {}) {
   const result = {};

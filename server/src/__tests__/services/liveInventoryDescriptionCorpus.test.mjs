@@ -27,7 +27,7 @@ test('scoped SQL filters before ordering/limits and leaves all-media consumers u
   expect(LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL).toContain('source_conflict.last_seen_at');
   expect(LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL).toContain('l.is_active = true AND l.media_type = msi.media_type');
   expect(LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL.replace('AND msi.media_type = $2::text ', ''))
-    .toBe(buildInventoryDescriptionCorpusSql({ includeCandidateMetadata: true }));
+    .toBe(buildInventoryDescriptionCorpusSql({ includeCandidateMetadata: true, includeCompanyMetadata: true }));
   expect(INVENTORY_DESCRIPTION_CORPUS_SQL).toBe(buildInventoryDescriptionCorpusSql());
   expect(INVENTORY_DESCRIPTION_CORPUS_SQL).not.toContain('$2');
   expect(buildInventoryDescriptionCorpusSql({ includeCandidateMetadata: true, includeEvaluationMetadata: true })).not.toContain('$2');

@@ -87,7 +87,7 @@ export async function readRefillCandidatePage(db, cursor, performanceReceiptReco
             inventory_tmdb: item.metadata?.inventory_tmdb,
             inventory_tmdb_attempted_at: item.inventory_tmdb_attempted_at,
             inventory_tmdb_fetched_at: item.inventory_tmdb_fetched_at,
-        }, item.tmdb_id, new Date(item.inventory_tmdb_checked_at).getTime()))
+        }, item.tmdb_id, new Date(item.inventory_tmdb_checked_at).getTime(), { requireCompanies: true }))
         .sort((left, right) => left.id - right.id);
 
     recordQueueStartupPerformanceObservation(performanceReceiptRecorder, {

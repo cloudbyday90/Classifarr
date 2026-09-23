@@ -5,12 +5,20 @@ import { projectInventoryDescription } from './inventoryDescriptionProjection.mj
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS, sourceConflictAuthorityExclusionForMediaServerItem } from './sourceConflictAuthorityGuard.mjs';
 
 export function buildInventoryDescriptionCorpusSql({ includeCandidateMetadata = false, includeEvaluationMetadata = false, includeReadinessMetadata = false,
+  includeCompanyMetadata = false,
   mediaTypeScoped = false } = {}) {
   // Keep history inside COALESCE: unused fallback rows and their full JSON must
   // not be joined into the corpus sort. Latest-row semantics stay unchanged.
   return `
   SELECT msi.media_type, msi.tmdb_id, msi.library_id,
     ${includeCandidateMetadata ? 'msi.genres, msi.studio, msi.content_rating,' : ''}
+    ${includeCompanyMetadata ? `NOW() AS company_checked_at,
+      CASE WHEN octet_length((msi.metadata->'inventory_tmdb')::text) <= 100000
+        THEN jsonb_build_object('version', msi.metadata->'inventory_tmdb'->'version',
+          'tmdb_id', msi.metadata->'inventory_tmdb'->'tmdb_id', 'media_type', msi.metadata->'inventory_tmdb'->'media_type',
+          'fetched_at', msi.metadata->'inventory_tmdb'->'fetched_at',
+          'production_companies', msi.metadata->'inventory_tmdb'->'production_companies')
+        ELSE NULL END AS company_observation,` : ''}
     ${includeReadinessMetadata ? `msi.inventory_tmdb_fetched_at, NOW() AS inventory_tmdb_checked_at,
       CASE WHEN msi.metadata->'inventory_tmdb' IS NULL THEN '{}'::jsonb
         WHEN octet_length((msi.metadata->'inventory_tmdb')::text) <= 4096

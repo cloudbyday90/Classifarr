@@ -6,7 +6,8 @@ import { inventoryObservationValidityCases } from './helpers/inventoryObservatio
 
 const now = new Date('2026-09-05T12:00:00Z');
 const row = (record, overrides = {}) => ({ id: 1, through_id: 6000, scan_count: 1, scan_after_id: 1, media_type: 'movie', tmdb_id: 7,
-    needs_standard_enrichment: false, metadata: { inventory_tmdb: record },
+    needs_standard_enrichment: false, metadata: { inventory_tmdb: record == null ? record :
+        { production_companies: [], fetched_at: now.toISOString(), ...record } },
     inventory_tmdb_checked_at: now, inventory_tmdb_fetched_at: now,
     inventory_tmdb_attempted_at: new Date(now.getTime() - 7 * 3600000), ...overrides });
 const logger = () => ({ debug: jest.fn(), info: jest.fn(), error: jest.fn() });

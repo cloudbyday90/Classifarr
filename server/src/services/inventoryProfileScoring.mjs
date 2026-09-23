@@ -1,14 +1,14 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 /** Numeric attribution only; null means unavailable, not evidence against a library. */
-export function scoreInventoryProfileFields(model, libraryId, metadata) {
-  const scores = { genres: null, studio: null, rating: null };
+export function scoreInventoryProfileFields(model, libraryId, metadata, fields = ['genres', 'studio', 'rating']) {
+  const scores = Object.fromEntries(fields.map(field => [field, null]));
   const profile = model.profiles.get(libraryId);
   if (!profile || !metadata) return scores;
   const background = model.background.get(profile.mediaType);
   for (const field of Object.keys(scores)) {
     const local = profile.fields[field], global = background[field];
-    if (!local.total || global.total - local.total < 1) continue;
-    const terms = [...new Set(field === 'genres' ? metadata.genres ?? [] : metadata[field] ? [metadata[field]] : [])];
+    if (!local?.total || !global || global.total - local.total < 1) continue;
+    const terms = [...new Set(Array.isArray(metadata[field]) ? metadata[field] : metadata[field] ? [metadata[field]] : [])];
     // Universally observed traits carry no contrast, even with unequal library sizes.
     const values = terms.filter(term => global.counts.has(term) && global.counts.get(term) < global.total - 1e-9);
     if (!values.length) continue;
