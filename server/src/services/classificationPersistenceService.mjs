@@ -49,6 +49,8 @@ import {
 import { buildClassificationQueueDecisionWitness } from './classificationQueueDecisionWitness.mjs';
 import { buildClassificationCandidateCapture } from './classificationCandidateCapture.mjs';
 import { projectInventoryRankingShadow } from './inventoryRankingShadow.mjs';
+import { buildClassificationIntakeComparison } from './classificationIntakeComparison.mjs';
+import { ClassificationIntakeReceiptService } from './classificationIntakeReceiptService.mjs';
 import {
   classificationQueueDecisionWitnessRepository,
 } from './classificationQueueDecisionWitnessRepository.mjs';
@@ -134,6 +136,8 @@ export class ClassificationPersistenceService {
       classificationPendingDecisionLifecycleService;
     this.queueDecisionWitnessRepository = deps.queueDecisionWitnessRepository ||
       classificationQueueDecisionWitnessRepository;
+    this.intakeReceiptService = deps.intakeReceiptService ||
+      new ClassificationIntakeReceiptService({ db, logger });
   }
 
   async getRagErrorHandler() {
@@ -313,6 +317,9 @@ export class ClassificationPersistenceService {
   async logClassification(metadata, result, startTime = null, { queueTask = null } = {}) {
     const candidateCapture = buildClassificationCandidateCapture(result);
     const inventoryRankingShadow = projectInventoryRankingShadow(result, metadata);
+    const intakeComparison = buildClassificationIntakeComparison({
+      result, mediaType: metadata.media_type, capture: inventoryRankingShadow,
+    });
     const rankedCandidates = Array.isArray(result.policyResult?.ranked)
       ? result.policyResult.ranked.slice(0, 5).map(summarizeRankedCandidate)
       : [];
@@ -357,6 +364,8 @@ export class ClassificationPersistenceService {
     const classificationDetails = {
       candidate_capture: candidateCapture,
       inventory_ranking_shadow: inventoryRankingShadow,
+      inventory_ranking_shadow_status_id: intakeComparison.statusId,
+      inventory_ranking_shadow_reason_id: intakeComparison.reasonId,
       policy_name: result.policyResult?.library?.policy_name || null,
       scores: result.policyResult?.scores || { preset: 0, profile: 0, pattern: 0, rag: 0, history: 0 },
       weights: result.policyResult?.weights || { preset: 0.35, profile: 0.25, pattern: 0.15, rag: 0.15, history: 0.10 },
@@ -487,6 +496,10 @@ export class ClassificationPersistenceService {
       },
     });
     const classificationId = lifecycleResult.classificationId;
+
+    if (queueTask?.id) {
+      await this.intakeReceiptService.recordClassification(queueTask.id, classificationId, intakeComparison);
+    }
 
     // A witness is diagnostic/evaluation evidence, never a prerequisite for a
     // user classification. Its failure must not roll back a valid decision.

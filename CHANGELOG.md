@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Retain short-lived, redacted classification intake receipts across queue
+  cleanup, with fixed comparison reason codes and a bounded read-only report;
+  keep routing unchanged and defer release/deployment.
 - Distinguish quiet movie/TV classification intake from live events lacking a
   complete prospective comparison using a bounded, read-only same-window count;
   leave routing and ranking promotion unchanged.

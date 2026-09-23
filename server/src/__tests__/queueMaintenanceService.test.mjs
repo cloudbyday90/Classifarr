@@ -61,6 +61,7 @@ describe('QueueMaintenanceService', () => {
             logger,
             withSessionAdvisoryLock,
             taskQueueMaintenanceLockKey: 2012,
+            intakeReceiptService: { reconcileAndPrune: jest.fn().mockResolvedValue({ reconciled: 0, linked: 0, pruned: 0 }) },
         });
     });
 

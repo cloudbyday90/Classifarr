@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-20T20:19:06.016Z
--- Latest Migration: 20260920_200000_add_classification_provider_circuits.sql
+-- Generated: 2026-09-23T10:37:18.187Z
+-- Latest Migration: 20260923_120000_add_classification_intake_receipts.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -2472,6 +2472,45 @@ CREATE TABLE public.classification_history_totals (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT classification_history_totals_singleton_check CHECK ((singleton = true))
 );
+
+
+--
+-- Name: classification_intake_receipts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.classification_intake_receipts (
+    queue_task_id bigint NOT NULL,
+    webhook_log_id bigint,
+    classification_id integer,
+    source_class text NOT NULL,
+    status_id text NOT NULL,
+    comparison_status_id text DEFAULT 'not_evaluated'::text NOT NULL,
+    comparison_reason_id text,
+    attempt_count integer DEFAULT 0 NOT NULL,
+    last_failure_code text,
+    queued_at timestamp with time zone NOT NULL,
+    started_at timestamp with time zone,
+    finished_at timestamp with time zone,
+    classification_linked_at timestamp with time zone,
+    updated_at timestamp with time zone DEFAULT statement_timestamp() NOT NULL,
+    CONSTRAINT classification_intake_comparison_reason_check CHECK (((comparison_status_id = 'not_captured'::text) = (comparison_reason_id IS NOT NULL))),
+    CONSTRAINT classification_intake_receipts_attempt_count_check CHECK (((attempt_count >= 0) AND (attempt_count <= 10000))),
+    CONSTRAINT classification_intake_receipts_classification_id_check CHECK ((classification_id > 0)),
+    CONSTRAINT classification_intake_receipts_comparison_reason_id_check CHECK (((comparison_reason_id IS NULL) OR (comparison_reason_id = ANY (ARRAY['not_applicable_media'::text, 'no_policy_result'::text, 'no_eligible_pool'::text, 'invalid_candidate_pool'::text, 'candidate_pool_size'::text, 'retrieval_unavailable'::text, 'retrieval_mismatch'::text, 'description_unavailable'::text, 'comparison_incomplete'::text, 'identity_mismatch'::text, 'capture_disabled'::text, 'capture_invalid'::text, 'unexpected_error'::text, 'not_observed'::text])))),
+    CONSTRAINT classification_intake_receipts_comparison_status_id_check CHECK ((comparison_status_id = ANY (ARRAY['not_evaluated'::text, 'captured'::text, 'not_captured'::text]))),
+    CONSTRAINT classification_intake_receipts_last_failure_code_check CHECK (((last_failure_code IS NULL) OR (last_failure_code ~ '^[a-z][a-z0-9_]{0,63}$'::text))),
+    CONSTRAINT classification_intake_receipts_queue_task_id_check CHECK ((queue_task_id > 0)),
+    CONSTRAINT classification_intake_receipts_source_class_check CHECK ((source_class = ANY (ARRAY['webhook'::text, 'manual'::text, 'reprocess'::text, 'other'::text]))),
+    CONSTRAINT classification_intake_receipts_status_id_check CHECK ((status_id = ANY (ARRAY['queued'::text, 'processing'::text, 'retry_scheduled'::text, 'completed'::text, 'failed'::text, 'cancelled'::text]))),
+    CONSTRAINT classification_intake_receipts_webhook_log_id_check CHECK ((webhook_log_id > 0))
+);
+
+
+--
+-- Name: TABLE classification_intake_receipts; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.classification_intake_receipts IS 'Thirty-day, id-only classification intake diagnostics; no media, provider, policy, user, request body, AI, or routing content.';
 
 
 --
@@ -9071,6 +9110,14 @@ ALTER TABLE ONLY public.classification_history_totals
 
 
 --
+-- Name: classification_intake_receipts classification_intake_receipts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.classification_intake_receipts
+    ADD CONSTRAINT classification_intake_receipts_pkey PRIMARY KEY (queue_task_id);
+
+
+--
 -- Name: classification_provider_circuits classification_provider_circuits_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11035,6 +11082,13 @@ CREATE INDEX idx_classification_history_title_trgm ON public.classification_hist
 --
 
 CREATE INDEX idx_classification_history_tmdb ON public.classification_history USING btree (tmdb_id);
+
+
+--
+-- Name: idx_classification_intake_receipts_queued; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_classification_intake_receipts_queued ON public.classification_intake_receipts USING btree (queued_at DESC, queue_task_id DESC);
 
 
 --
@@ -16112,6 +16166,7 @@ FROM unnest(ARRAY[
     '20260913_140000_add_source_identity_recovery_state.sql',
     '20260913_220000_add_description_retry_journal.sql',
     '20260920_160000_add_classification_automatic_recovery.sql',
-    '20260920_200000_add_classification_provider_circuits.sql'
+    '20260920_200000_add_classification_provider_circuits.sql',
+    '20260923_120000_add_classification_intake_receipts.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

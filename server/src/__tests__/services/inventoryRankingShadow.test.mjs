@@ -1,13 +1,15 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { getInventoryRankingShadow, rememberInventoryRankingShadow, projectInventoryRankingShadow,
+import { getInventoryRankingShadow, getInventoryRankingShadowReason,
+  rememberInventoryRankingShadow, projectInventoryRankingShadow,
   validInventoryRankingShadow } from '../../services/inventoryRankingShadow.mjs';
 import { inventoryRankingShadowFixture } from '../fixtures/inventoryRankingShadowFixture.mjs';
 
 test.each(['movie', 'tv'])('freezes a same-evidence description/company pair for %s without copying provider content', type => {
-  const { capture, item, result, evidence } = inventoryRankingShadowFixture(type);
+  const { capture, item, result, evidence, evaluations } = inventoryRankingShadowFixture(type);
   expect(capture).toMatchObject({ mediaType: type, baselineLibraryId: 1, combinedLibraryId: 2, companyAvailable: true });
   expect(validInventoryRankingShadow(capture)).toBe(true);
   expect(projectInventoryRankingShadow(result, item)).toBe(capture);
+  expect(getInventoryRankingShadowReason(evaluations)).toBeNull();
   evidence.candidates[0].items[0].similarity = -1;
   expect(capture.candidates[0].descriptionMean).toBe(.85);
   expect(Object.isFrozen(capture.candidates[0])).toBe(true);
@@ -24,18 +26,19 @@ test('rejects replayed JSON, mismatched items and metadata-forged captures', () 
 });
 
 test.each([
-  ['incomplete', input => { input.evidence.candidates[0].indexed = 1; }],
-  ['duplicate', input => { input.evidence.candidates[1] = input.evidence.candidates[0]; }],
-  ['mixed snapshots', input => { input.evidence.candidates[0].learnedProfile.snapshotId = 'b'.repeat(64); }],
-  ['foreign scope', input => { input.evaluations[0].library_id = 3; }],
-  ['no description', input => { delete input.item.overview; }],
-  ['unavailable', input => { input.evidence.statusId = 'unavailable'; }],
-])('invalid %s evidence clears the previous capture without changing decisions', (_name, mutate) => {
+  ['incomplete', input => { input.evidence.candidates[0].indexed = 1; }, 'comparison_incomplete'],
+  ['duplicate', input => { input.evidence.candidates[1] = input.evidence.candidates[0]; }, 'comparison_incomplete'],
+  ['mixed snapshots', input => { input.evidence.candidates[0].learnedProfile.snapshotId = 'b'.repeat(64); }, 'comparison_incomplete'],
+  ['foreign scope', input => { input.evaluations[0].library_id = 3; }, 'comparison_incomplete'],
+  ['no description', input => { delete input.item.overview; }, 'description_unavailable'],
+  ['unavailable', input => { input.evidence.statusId = 'unavailable'; }, 'retrieval_unavailable'],
+])('invalid %s evidence clears the previous capture without changing decisions', (_name, mutate, reason) => {
   const input = inventoryRankingShadowFixture();
   mutate(input);
   const before = structuredClone(input.evaluations);
   rememberInventoryRankingShadow(input.evaluations, input.item, input.evidence);
   expect(getInventoryRankingShadow(input.evaluations)).toBeNull();
+  expect(getInventoryRankingShadowReason(input.evaluations)).toBe(reason);
   expect(input.evaluations).toEqual(before);
 });
 

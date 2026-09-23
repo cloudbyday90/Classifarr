@@ -66,6 +66,7 @@ import {
 import {
   createClassificationDecisionPathTelemetryService,
 } from './classificationDecisionPathTelemetryService.mjs';
+import { ClassificationIntakeReceiptService } from './classificationIntakeReceiptService.mjs';
 
 
 const POLL_INTERVAL_MS = 1000;
@@ -87,6 +88,8 @@ export class QueueService {
     this.enrichmentRetryService = deps.enrichmentRetryService || defaultEnrichmentRetryService;
     this.evidenceService = deps.evidenceService || classificationEvidenceService;
     this.logger = deps.logger || createLogger('QueueService');
+    this.classificationIntakeReceiptService = deps.classificationIntakeReceiptService
+      || new ClassificationIntakeReceiptService({ db: this.db, logger: this.logger });
     this.queueMaintenanceService = deps.queueMaintenanceService || defaultQueueMaintenanceService;
     this.scheduler = deps.scheduler || null;
     this.processingByType = {
@@ -271,6 +274,9 @@ export class QueueService {
       );
 
       const taskId = result.rows[0].id;
+      if (taskType === 'classification') {
+        await this.classificationIntakeReceiptService.recordQueued(taskId);
+      }
       this.logger.info('Task enqueued', { taskId, taskType, source });
 
       if (taskType === 'metadata_enrichment') {
@@ -367,7 +373,11 @@ export class QueueService {
         params,
       );
 
-      return result.rows[0] || null;
+      const task = result.rows[0] || null;
+      if (task?.task_type === 'classification') {
+        await this.classificationIntakeReceiptService.recordProcessing(task.id, task.attempts);
+      }
+      return task;
     } catch {
       this.logger.error('Failed to dequeue task', {
         reasonCode: QUEUE_TASK_LOG_REASON_IDS.DEQUEUE_FAILED,
@@ -378,12 +388,15 @@ export class QueueService {
 
   async completeTask(taskId, result = {}) {
     try {
-      await this.db.query(
+      const update = await this.db.query(
         `UPDATE task_queue
          SET status = 'completed', completed_at = NOW(), visible_at = NULL, payload = payload || $2
-         WHERE id = $1`,
+         WHERE id = $1 RETURNING task_type, attempts`,
         [taskId, JSON.stringify({ result })],
       );
+      if (update?.rows?.[0]?.task_type === 'classification') {
+        await this.classificationIntakeReceiptService.recordTerminal(taskId, 'completed', update.rows[0].attempts);
+      }
       this.logger.info('Task completed', { taskId });
     } catch {
       this.logger.error('Failed to complete task', {
@@ -399,23 +412,33 @@ export class QueueService {
 
     try {
       if (nextAttempt >= maxAttempts) {
-        await this.db.query(
+        const update = await this.db.query(
           `UPDATE task_queue
            SET status = 'failed', error_message = $2, attempts = $3, completed_at = NOW()
-           WHERE id = $1`,
+           WHERE id = $1 RETURNING task_type`,
           [taskId, boundedFailureReasonId, nextAttempt],
         );
+        if (update?.rows?.[0]?.task_type === 'classification') {
+          await this.classificationIntakeReceiptService.recordTerminal(
+            taskId, 'failed', nextAttempt, boundedFailureReasonId,
+          );
+        }
         this.logger.error('Task permanently failed', { taskId, attempts: nextAttempt });
       } else {
         const delaySeconds = RETRY_DELAYS[Math.min(nextAttempt - 1, RETRY_DELAYS.length - 1)];
-        await this.db.query(
+        const update = await this.db.query(
           `UPDATE task_queue
            SET status = 'pending', error_message = $2, attempts = $3,
                next_retry_at = NOW() + INTERVAL '${delaySeconds} seconds',
                started_at = NULL, visible_at = NULL
-           WHERE id = $1`,
+           WHERE id = $1 RETURNING task_type`,
           [taskId, boundedFailureReasonId, nextAttempt],
         );
+        if (update?.rows?.[0]?.task_type === 'classification') {
+          await this.classificationIntakeReceiptService.recordTerminal(
+            taskId, 'retry_scheduled', nextAttempt, boundedFailureReasonId,
+          );
+        }
         this.logger.warn('Task scheduled for retry', { taskId, attempt: nextAttempt, delaySeconds });
       }
     } catch {

@@ -6,6 +6,7 @@ import { projectInventoryDescription } from './inventoryDescriptionProjection.mj
 export const INVENTORY_RANKING_SHADOW_VERSION = 'inventory_description_company_shadow_v1';
 const captures = new WeakMap();
 const identities = new WeakMap();
+const reasons = new WeakMap();
 const id = value => Number.isInteger(value) && value > 0 && value <= 2147483647;
 const fit = value => Number.isFinite(value) && Math.abs(value) <= 20;
 const identity = item => ['movie', 'tv'].includes(item?.media_type) && id(item?.tmdb_id)
@@ -41,17 +42,25 @@ export function validInventoryRankingShadow(value) {
 /** In-process receipt: only this live retrieval boundary can mint a persistable capture. */
 export function rememberInventoryRankingShadow(evaluations, item, evidence) {
   captures.delete(evaluations);
+  reasons.set(evaluations, 'retrieval_unavailable');
   try {
     const key = identity(item);
-    if (!key || evidence?.statusId !== 'available') return;
+    if (!key) { reasons.set(evaluations, 'identity_mismatch'); return; }
+    if (evidence?.statusId !== 'available') return;
     const projection = projectInventoryDescription({ metadata: item });
-    if (!projection) return;
+    if (!projection) { reasons.set(evaluations, 'description_unavailable'); return; }
     const compared = compareInventoryDescriptionEvidence(evidence.candidates);
     if (!compared || new Set(evaluations.map(row => row.library_id)).size !== compared.length ||
-        compared.some(row => !evaluations.some(candidate => candidate.library_id === row.candidate.libraryId))) return;
+        compared.some(row => !evaluations.some(candidate => candidate.library_id === row.candidate.libraryId))) {
+      reasons.set(evaluations, 'comparison_incomplete');
+      return;
+    }
     const first = compared[0].candidate.learnedProfile;
     if (compared.some(row => row.candidate.learnedProfile.snapshotId !== first.snapshotId ||
-        row.profile.trainingDescriptions !== first.trainingDescriptions)) return;
+        row.profile.trainingDescriptions !== first.trainingDescriptions)) {
+      reasons.set(evaluations, 'comparison_incomplete');
+      return;
+    }
     const companyAvailable = compared.every(({ candidate }) => {
       const company = candidate.learnedProfile.companyProfile;
       return company?.version === 'production_company_set_v1' && fit(company.relativeFit) &&
@@ -68,10 +77,22 @@ export function rememberInventoryRankingShadow(evaluations, item, evidence) {
       queryHash: createHash('sha256').update(projection.text).digest('hex'),
       candidates: Object.freeze(candidates), baselineLibraryId: chooseInventoryShadowCandidate(candidates),
       combinedLibraryId: chooseInventoryShadowCandidate(candidates, true) });
-    if (!validInventoryRankingShadow(capture)) return;
+    if (!validInventoryRankingShadow(capture)) { reasons.set(evaluations, 'capture_invalid'); return; }
     identities.set(capture, key);
     captures.set(evaluations, capture);
-  } catch { /* Diagnostic failure must never change classification or expose provider content. */ }
+    reasons.delete(evaluations);
+  } catch {
+    reasons.set(evaluations, 'unexpected_error');
+    /* Diagnostic failure must never change classification or expose provider content. */
+  }
+}
+
+export function setInventoryRankingShadowReason(evaluations, reasonId) {
+  if (Array.isArray(evaluations)) reasons.set(evaluations, reasonId);
+}
+
+export function getInventoryRankingShadowReason(evaluations) {
+  return reasons.get(evaluations) ?? null;
 }
 
 export function getInventoryRankingShadow(evaluations) {

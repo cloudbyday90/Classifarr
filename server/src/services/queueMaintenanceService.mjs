@@ -34,6 +34,7 @@ import {
     getBackgroundDrainLogDescriptor,
     TASK_QUEUE_CLEANUP_ORIGINS,
 } from './queueMaintenanceRunContract.mjs';
+import { ClassificationIntakeReceiptService } from './classificationIntakeReceiptService.mjs';
 
 const BLOAT_THRESHOLD = 1000;
 const TERMINAL_QUEUE_STATUSES = Object.freeze(['cancelled', 'completed', 'failed']);
@@ -59,6 +60,8 @@ export class QueueMaintenanceService {
         this.taskQueueMaintenanceLockKey = deps.taskQueueMaintenanceLockKey
             ?? this.db.DB_ADVISORY_LOCKS?.TASK_QUEUE_MAINTENANCE
             ?? defaultDb.DB_ADVISORY_LOCKS?.TASK_QUEUE_MAINTENANCE;
+        this.intakeReceiptService = deps.intakeReceiptService ||
+            new ClassificationIntakeReceiptService({ db: this.db, logger: this.logger });
         this.activeCleanupRun = null;
     }
 
@@ -147,6 +150,7 @@ export class QueueMaintenanceService {
 
     async runBackgroundDrain(cleanupOrigin) {
         const cleanupType = 'startup';
+        await this.intakeReceiptService.reconcileAndPrune();
         const MAX_TOTAL_ROWS = this.getTaskQueueMaxTotalRows();
         const retentionPolicy = await this.getTaskQueueRetentionPolicy();
         const counts = await this.getTerminalRowCounts(retentionPolicy);
@@ -268,6 +272,8 @@ export class QueueMaintenanceService {
 
     async runScheduledCleanup(cleanupOrigin) {
         const cleanupType = 'scheduled';
+        // Reconcile retained tasks before queue deletion; receipt expiry is independently bounded.
+        await this.intakeReceiptService.reconcileAndPrune();
         const retentionPolicy = await this.getTaskQueueRetentionPolicy();
         const MAX_TOTAL_ROWS = this.getTaskQueueMaxTotalRows();
         const initialCounts = await this.getTerminalRowCounts(retentionPolicy);

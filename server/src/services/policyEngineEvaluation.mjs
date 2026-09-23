@@ -5,7 +5,7 @@ import { policyExclusionService } from './policyExclusionService.mjs';
 import { policyCandidateRanker } from './policyCandidateRanker.mjs';
 import { buildCandidateDiagnostics } from './policyCandidateDiagnostics.mjs';
 import { policyInventoryEvidenceService } from './policyInventoryEvidenceService.mjs';
-import { getInventoryRankingShadow } from './inventoryRankingShadow.mjs';
+import { getInventoryRankingShadow, getInventoryRankingShadowReason } from './inventoryRankingShadow.mjs';
 import {
     applySpecializedDestinationIdentityEvidence,
 } from './policySpecializedDestinationIdentityEvidence.mjs';
@@ -200,6 +200,7 @@ export async function evaluateItem(item, options, deps) {
         return policyDecisionBuilder.normalizeResult({
             ...result,
             inventoryRankingShadow: getInventoryRankingShadow(inventoryEvaluations),
+            inventoryRankingShadowReasonId: getInventoryRankingShadowReason(inventoryEvaluations),
             languageConflicts: combinedLanguageConflicts,
             constraintConflicts,
             ragCache: anyPolicyUsesRAG ? ragCache : { matches: [], timestamp: Date.now() }

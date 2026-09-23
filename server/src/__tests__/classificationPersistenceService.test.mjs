@@ -423,14 +423,22 @@ describe('logClassification', () => {
       ...policy, method: 'policy_engine', library: { id: 1 }, confidence: 80,
     });
     const params = db.query.mock.calls.find(call => call[0].includes('INSERT INTO classification_history'))[1];
-    expect(JSON.parse(params[9]).classification_details.inventory_ranking_shadow).toEqual(capture);
+    expect(JSON.parse(params[9]).classification_details).toMatchObject({
+      inventory_ranking_shadow: capture,
+      inventory_ranking_shadow_status_id: 'captured',
+      inventory_ranking_shadow_reason_id: null,
+    });
     db.query.mockClear();
     await classificationPersistenceService.logClassification({ ...baseMetadata,
       classification_details: { inventory_ranking_shadow: capture } }, {
       ...structuredClone(policy), method: 'policy_engine', library: { id: 1 }, confidence: 80,
     });
     const forged = db.query.mock.calls.find(call => call[0].includes('INSERT INTO classification_history'))[1];
-    expect(JSON.parse(forged[9]).classification_details.inventory_ranking_shadow).toBeNull();
+    expect(JSON.parse(forged[9]).classification_details).toMatchObject({
+      inventory_ranking_shadow: null,
+      inventory_ranking_shadow_status_id: 'not_captured',
+      inventory_ranking_shadow_reason_id: 'identity_mismatch',
+    });
   });
 
   test('captures an AI proposal before awaits without inheriting caller evidence or making a policy ranking', async () => {
@@ -464,6 +472,8 @@ describe('logClassification', () => {
       persist: jest.fn().mockResolvedValue({ persisted: true, reason: null }),
     };
     const originalRepository = classificationPersistenceService.queueDecisionWitnessRepository;
+    const recordClassification = jest.spyOn(classificationPersistenceService.intakeReceiptService,
+      'recordClassification').mockResolvedValue(true);
     classificationPersistenceService.queueDecisionWitnessRepository = queueDecisionWitnessRepository;
 
     try {
@@ -490,7 +500,10 @@ describe('logClassification', () => {
       }));
       expect(JSON.stringify(queueDecisionWitnessRepository.persist.mock.calls[0][0]))
         .not.toContain('must not persist');
+      expect(recordClassification).toHaveBeenCalledWith(16, 42,
+        { statusId: 'not_captured', reasonId: 'no_policy_result' });
     } finally {
+      recordClassification.mockRestore();
       classificationPersistenceService.queueDecisionWitnessRepository = originalRepository;
     }
   });

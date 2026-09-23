@@ -145,6 +145,16 @@ describe('QueueService', () => {
             );
         });
 
+        it('records a classification receipt after admission, but not for unrelated tasks', async () => {
+            const recordQueued = jest.spyOn(queueService.classificationIntakeReceiptService, 'recordQueued')
+                .mockResolvedValue(true);
+            db.query.mockResolvedValue({ rows: [{ id: 123 }] });
+            await queueService.enqueue('classification', { title: 'Test' });
+            await queueService.enqueue('metadata_enrichment', { itemId: 1 });
+            expect(recordQueued).toHaveBeenCalledTimes(1);
+            expect(recordQueued).toHaveBeenCalledWith(123);
+        });
+
         it('should handle database errors', async () => {
             db.query.mockRejectedValue(new Error('DB Error'));
 
@@ -921,6 +931,14 @@ describe('QueueService', () => {
             expect(task).toEqual(mockTask);
         });
 
+        it('records the claimed classification attempt', async () => {
+            const recordProcessing = jest.spyOn(queueService.classificationIntakeReceiptService, 'recordProcessing')
+                .mockResolvedValue(true);
+            db.query.mockResolvedValue({ rows: [{ id: 19, task_type: 'classification', attempts: 2 }] });
+            await queueService.dequeue();
+            expect(recordProcessing).toHaveBeenCalledWith(19, 2);
+        });
+
         it('should exclude classification tasks when requested', async () => {
             db.query.mockResolvedValue({ rows: [] });
 
@@ -1028,6 +1046,14 @@ describe('QueueService', () => {
                 expect.arrayContaining([123]),
             );
         });
+
+        it('records a terminal classification state after task completion', async () => {
+            const recordTerminal = jest.spyOn(queueService.classificationIntakeReceiptService, 'recordTerminal')
+                .mockResolvedValue(true);
+            db.query.mockResolvedValue({ rows: [{ task_type: 'classification', attempts: 1 }] });
+            await queueService.completeTask(123, { success: true });
+            expect(recordTerminal).toHaveBeenCalledWith(123, 'completed', 1);
+        });
     });
 
     describe('failTask', () => {
@@ -1040,6 +1066,16 @@ describe('QueueService', () => {
                 expect.stringMatching(/UPDATE task_queue.*SET status = 'failed'/s),
                 expect.arrayContaining([123, 'task_processing_failed']),
             );
+        });
+
+        it('records normalized retry and terminal failure codes', async () => {
+            const recordTerminal = jest.spyOn(queueService.classificationIntakeReceiptService, 'recordTerminal')
+                .mockResolvedValue(true);
+            db.query.mockResolvedValue({ rows: [{ task_type: 'classification' }] });
+            await queueService.failTask(123, 'private upstream detail', 0, 3);
+            await queueService.failTask(123, 'private upstream detail', 2, 3);
+            expect(recordTerminal).toHaveBeenNthCalledWith(1, 123, 'retry_scheduled', 1, 'task_processing_failed');
+            expect(recordTerminal).toHaveBeenNthCalledWith(2, 123, 'failed', 3, 'task_processing_failed');
         });
 
         it('should reschedule task for retry when attempts remain', async () => {
