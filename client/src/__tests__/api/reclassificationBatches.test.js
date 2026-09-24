@@ -36,6 +36,7 @@ import {
   resumeReclassificationBatch,
   cancelReclassificationBatch,
   getReclassificationBatchStatus,
+  getReclassificationBatchActivity,
   skipReclassificationItem,
   retryReclassificationItem,
 } from '../../api/reclassificationBatches'
@@ -43,6 +44,14 @@ import {
 describe('reclassificationBatches', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('reads bounded activity with an optional cursor and returns unwrapped data', async () => {
+    mockGetDataRequest.mockResolvedValue({ batches: [], nextCursor: null })
+    expect(await getReclassificationBatchActivity()).toEqual({ batches: [], nextCursor: null })
+    expect(mockGetDataRequest).toHaveBeenLastCalledWith('/reclassification/batches/activity', { params: {} })
+    await getReclassificationBatchActivity('0:12')
+    expect(mockGetDataRequest).toHaveBeenLastCalledWith('/reclassification/batches/activity', { params: { after: '0:12' } })
   })
 
   it('createReclassificationBatch calls POST with items and default pauseOnError', async () => {

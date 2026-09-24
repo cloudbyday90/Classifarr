@@ -50,6 +50,12 @@ export function getReclassificationBatchStatus(batchId) {
   return getDataRequest(`/reclassification/batch/${batchId}`)
 }
 
+export function getReclassificationBatchActivity(after = null) {
+  return getDataRequest('/reclassification/batches/activity', {
+    params: after === null ? {} : { after },
+  })
+}
+
 export function skipReclassificationItem(batchId, itemId) {
   return apiClient.post(`/reclassification/batch/${batchId}/item/${itemId}/skip`)
 }
@@ -66,6 +72,7 @@ const reclassificationBatchesApi = {
   resumeReclassificationBatch,
   cancelReclassificationBatch,
   getReclassificationBatchStatus,
+  getReclassificationBatchActivity,
   skipReclassificationItem,
   retryReclassificationItem,
 }

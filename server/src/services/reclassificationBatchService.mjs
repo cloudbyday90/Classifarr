@@ -4,6 +4,7 @@ import { withServiceCatch } from '../utils/serviceCatch.mjs';
 import { reclassificationService } from './reclassificationService.mjs';
 import { ensureTables as ensureSchema } from './reclassificationBatchSchema.mjs';
 import { createBatchCoordinatorRepository } from './reclassificationBatchCoordinatorRepository.mjs';
+import { getBatchActivity } from './reclassificationBatchActivity.mjs';
 import { validateBatch as processValidateBatch } from './reclassificationBatchProcessing.mjs';
 import {
     getBatchStatus as queryGetBatchStatus,
@@ -98,6 +99,11 @@ export class ReclassificationBatchService {
     async listBatches(limit = 20) {
         await this.ensureTables();
         return queryListBatches(limit);
+    }
+
+    async getBatchActivity(after) {
+        await this.ensureTables();
+        return getBatchActivity(after);
     }
 }
 

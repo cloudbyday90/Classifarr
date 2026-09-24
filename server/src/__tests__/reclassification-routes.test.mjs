@@ -19,6 +19,7 @@ const { service: reclassificationBatchService, module: reclassificationBatchServ
   'executeBatch',
   'getBatchProgress',
   'getBatchStatus',
+  'getBatchActivity',
   'listBatches',
   'pauseBatch',
   'resumeBatch',
@@ -48,6 +49,15 @@ describe('reclassification routes', () => {
     app.use(express.json());
     app.use('/api/reclassification', reclassificationRouter);
     app.use(errorHandler);
+  });
+
+  test('GET activity passes only the cursor and disables HTTP caching', async () => {
+    reclassificationBatchService.getBatchActivity.mockResolvedValue({ batches: [], nextCursor: null });
+    const response = await request(app).get('/api/reclassification/batches/activity?after=0:7&limit=999999').expect(200);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(response.body).toEqual({ batches: [], nextCursor: null });
+    expect(reclassificationBatchService.getBatchActivity).toHaveBeenCalledWith('0:7');
+    expect(reclassificationBatchService.executeBatch).not.toHaveBeenCalled();
   });
 
   test('POST /api/reclassification/batch validates items payload', async () => {

@@ -21,6 +21,9 @@ import { describe, expect, it } from 'vitest'
 import api from '../../api'
 
 describe('api/index.js barrel export validation', () => {
+  it('exposes saved batch activity', () => {
+    expect(typeof api.getReclassificationBatchActivity).toBe('function')
+  })
   function expectFunction(name) {
     expect(typeof api[name], `api.${name} should be a function`).toBe('function')
   }

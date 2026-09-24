@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Rediscover saved reclassification batches in a compact Command Center activity
+  view after closing or reloading the browser. Show bounded, active-first progress
+  and recovery summaries, reuse existing controls, and prevent duplicate control
+  requests without automatically starting or resuming work.
 - Run reclassification batches through a restart-safe background coordinator,
   preserve pause/cancel intent, and reconcile exact interrupted move receipts
   without replaying file moves. Acknowledge execution immediately and keep

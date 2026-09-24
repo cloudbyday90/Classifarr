@@ -113,6 +113,39 @@ describe('BatchReclassifyModal.vue', () => {
   })
 
   describe('durable move recovery updates', () => {
+    it('reconnects a saved paused batch without any implicit write', async () => {
+      apiMock.getReclassificationBatchStatus.mockResolvedValue({ id: 42, status: 'paused', items: [],
+        progress: { total: 2, completed: 1, failed: 0, skipped: 0, percentage: 50 } })
+      const wrapper = mountModal({ existingBatchId: 42, items: [] })
+      expect(wrapper.text()).toContain('Loading saved batch')
+      await flushPromises()
+      expect(apiMock.getReclassificationBatchStatus).toHaveBeenCalledWith(42)
+      expect(wrapper.text()).toContain('Execution Paused')
+      expect(wrapper.text()).toContain('Resume')
+      for (const [name, mock] of Object.entries(apiMock)) {
+        if (name !== 'getReclassificationBatchStatus') expect(mock).not.toHaveBeenCalled()
+      }
+      wrapper.unmount()
+    })
+
+    it('suppresses duplicate controls and reports unconfirmed mutations without retrying writes', async () => {
+      apiMock.getReclassificationBatchStatus.mockResolvedValue({ id: 42, status: 'executing', items: [],
+        progress: { total: 2, completed: 0, failed: 0, skipped: 0, percentage: 0 } })
+      let rejectPause
+      apiMock.pauseReclassificationBatch.mockImplementationOnce(() => new Promise((_, reject) => { rejectPause = reject }))
+      const wrapper = mountModal({ existingBatchId: 42, items: [] })
+      await flushPromises()
+      const first = wrapper.vm.pauseBatch()
+      await wrapper.vm.pauseBatch()
+      expect(apiMock.pauseReclassificationBatch).toHaveBeenCalledOnce()
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      rejectPause(new Error('private'))
+      await first
+      expect(wrapper.get('[role="alert"]').text()).toContain('Pause could not be confirmed')
+      expect(wrapper.text()).not.toContain('private')
+      spy.mockRestore()
+      wrapper.unmount()
+    })
     it('keeps polling after batch execution ends until pending recovery completes', async () => {
       const wrapper = mountModal()
       wrapper.vm.batchId = 'recovery-batch'

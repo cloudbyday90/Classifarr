@@ -11,6 +11,19 @@
     v-model="showModal"
     :title="modalTitle"
   >
+    <p
+      v-if="step === 'reconnecting'"
+      role="status"
+    >
+      {{ recoveryError ? 'Saved batch unavailable. Close and reopen to try again.' : 'Loading saved batch…' }}
+    </p>
+    <p
+      v-if="actionError"
+      role="alert"
+      class="text-red-300 mb-3"
+    >
+      {{ actionError }}
+    </p>
     <!-- Step 1: Configure Batch -->
     <div
       v-if="step === 'configure'"
@@ -197,6 +210,7 @@
         <div class="flex gap-2">
           <Button
             v-if="progress.failed"
+            :disabled="controlsDisabled"
             variant="warning"
             size="sm"
             @click="skipCurrentItem"
@@ -205,6 +219,7 @@
           </Button>
           <Button
             v-if="progress.failed"
+            :disabled="controlsDisabled"
             size="sm"
             @click="retryCurrentItem"
           >
@@ -212,6 +227,7 @@
           </Button>
           <Button
             v-if="!allItemsFinished"
+            :disabled="controlsDisabled"
             variant="secondary"
             size="sm"
             @click="cancelBatch"
@@ -275,9 +291,15 @@
         v-for="item in batchStatus?.items || []"
         :key="item.id"
       >
-        <template v-if="item.move_recovery || item.execution_result?.moveReconciled">
+        <template v-if="item.move_recovery || item.execution_result?.moveReconciled || item.status === 'failed'">
           <p class="font-medium">
             {{ item.title || `Item ${item.classification_id}` }}
+          </p>
+          <p
+            v-if="item.status === 'failed' && !item.move_recovery"
+            class="text-sm text-gray-400"
+          >
+            {{ item.error_message || 'Move failed. Inspect this item before retrying.' }}
           </p>
           <MoveRecoveryStatus
             :recovery="item.move_recovery"
@@ -313,6 +335,7 @@
       </Button>
       <Button
         v-if="step === 'validated' && validCount > 0"
+        :disabled="controlsDisabled"
         @click="startExecution"
       >
         Execute {{ validCount }} Items
@@ -320,6 +343,7 @@
 
       <Button
         v-if="step === 'executing' && batchStatus?.status === 'executing'"
+        :disabled="controlsDisabled"
         variant="warning"
         @click="pauseBatch"
       >
@@ -327,6 +351,7 @@
       </Button>
       <Button
         v-if="step === 'executing' && batchStatus?.status === 'paused' && !allItemsFinished"
+        :disabled="controlsDisabled"
         @click="resumeBatch"
       >
         Resume
@@ -361,6 +386,10 @@ const props = defineProps({
   items: {
     type: Array,
     default: () => []
+  },
+  existingBatchId: {
+    type: Number,
+    default: null
   }
 })
 
@@ -375,6 +404,8 @@ const itemTargets = ref({})
 const batchId = ref(null)
 const batchStatus = ref(null)
 const polling = ref(false)
+const actionBusy = ref(false)
+const actionError = ref('')
 
 const showModal = computed({
   get: () => props.modelValue,
@@ -385,6 +416,7 @@ const modalTitle = computed(() => {
   if (step.value === 'executing' && batchStatus.value?.status === 'paused') return 'Batch Paused'
   const titles = {
     configure: 'Batch Reclassification',
+    reconnecting: 'Loading saved batch',
     validating: 'Validating...',
     validated: 'Validation Complete',
     executing: 'Executing Batch',
@@ -428,10 +460,12 @@ const { data: recoveryData, error: recoveryError, refresh: refreshRecovery } = u
   },
   { persist: false, pollInterval: () => polling.value && showModal.value ? 2000 : null },
 )
+const controlsDisabled = computed(() => actionBusy.value || !!recoveryError.value)
 watch(recoveryData, value => {
   if (!value || value.id !== batchId.value || !showModal.value || !polling.value) return
   const previousCompleted = progress.value.completed
   batchStatus.value = value.batch
+  if (step.value === 'reconnecting') step.value = 'executing'
   if (['completed', 'cancelled', 'failed'].includes(value.batch.status)) {
     const wasComplete = step.value === 'complete'
     step.value = 'complete'
@@ -452,6 +486,7 @@ const close = () => {
   itemTargets.value = {}
   batchId.value = null
   batchStatus.value = null
+  actionError.value = ''
   emit('update:modelValue', false)
 }
 
@@ -481,64 +516,51 @@ const startValidation = async () => {
 const startExecution = async () => {
   step.value = 'executing'
   startPolling()
+  await runBatchAction('Execution', id => api.executeReclassificationBatch(id))
+}
+
+const runBatchAction = async (label, action) => {
+  if (actionBusy.value || recoveryError.value || !batchId.value) return
+  const id = batchId.value
+  actionBusy.value = true
+  actionError.value = ''
   try {
-    await api.executeReclassificationBatch(batchId.value)
-    await refreshBatchStatus()
+    await action(id)
+    if (batchId.value === id && showModal.value) await refreshBatchStatus()
   } catch (error) {
-    console.error('Execution failed:', error)
+    console.error(`${label} failed:`, error)
+    if (batchId.value === id && showModal.value) {
+      actionError.value = `${label} could not be confirmed. Check current batch status before trying again.`
+      await refreshBatchStatus()
+    }
+  } finally {
+    actionBusy.value = false
   }
 }
 
-const pauseBatch = async () => {
-  try {
-    await api.pauseReclassificationBatch(batchId.value)
-    await refreshBatchStatus()
-  } catch (error) {
-    console.error('Pause failed:', error)
-  }
-}
+const pauseBatch = () => runBatchAction('Pause', id => api.pauseReclassificationBatch(id))
 
-const resumeBatch = async () => {
-  try {
-    await api.resumeReclassificationBatch(batchId.value)
-    startPolling()
-    await refreshBatchStatus()
-  } catch (error) {
-    console.error('Resume failed:', error)
-  }
-}
+const resumeBatch = () => runBatchAction('Resume', id => api.resumeReclassificationBatch(id))
 
-const cancelBatch = async () => {
-  try {
-    await api.cancelReclassificationBatch(batchId.value)
-    await refreshBatchStatus()
-    step.value = 'complete'
-  } catch (error) {
-    console.error('Cancel failed:', error)
-  }
-}
+const cancelBatch = () => runBatchAction('Cancel', id => api.cancelReclassificationBatch(id))
 
 const skipCurrentItem = async () => {
   const failedItem = batchStatus.value?.items?.find(i => i.status === 'failed')
   if (failedItem) {
-    try {
-      await api.skipReclassificationItem(batchId.value, failedItem.id)
-      await resumeBatch()
-    } catch (error) {
-      console.error('Skip failed:', error)
-    }
+    await runBatchAction('Skip', async id => {
+      await api.skipReclassificationItem(id, failedItem.id)
+      await api.resumeReclassificationBatch(id)
+    })
   }
 }
 
 const retryCurrentItem = async () => {
   const failedItem = batchStatus.value?.items?.find(i => i.status === 'failed')
   if (failedItem) {
-    try {
-      await api.retryReclassificationItem(batchId.value, failedItem.id)
-      await resumeBatch()
-    } catch (error) {
-      console.error('Retry failed:', error)
-    }
+    await runBatchAction('Retry', async id => {
+      await api.retryReclassificationItem(id, failedItem.id)
+      await api.resumeReclassificationBatch(id)
+    })
   }
 }
 
@@ -564,6 +586,15 @@ watch(showModal, (val) => {
     void refreshBatchStatus()
   }
 })
+
+// Rediscover saved work without creating, validating, executing or resuming it.
+watch(() => [props.modelValue, props.existingBatchId], ([open, id]) => {
+  if (!open || !Number.isSafeInteger(id) || id <= 0) return
+  batchId.value = id
+  batchStatus.value = null
+  step.value = 'reconnecting'
+  void refreshBatchStatus()
+}, { immediate: true })
 
 // Initialize item targets when items change
 watch(() => props.items, (newItems) => {

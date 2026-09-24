@@ -132,6 +132,8 @@
           @open-library-status="!expandedSections.libraries && toggleSection('libraries')"
         />
 
+        <BatchActivityPanel />
+
         <details class="advanced-learning-diagnostics">
           <summary>Advanced policy and evaluation diagnostics</summary>
           <PurposeHealthSummary
@@ -297,6 +299,7 @@
 import { useRoute, useRouter } from 'vue-router'
 import { Badge, Button } from '@/components/common'
 import CommandCenterOverviewSections from '@/components/command-center/CommandCenterOverviewSections.vue'
+import BatchActivityPanel from '@/components/command-center/BatchActivityPanel.vue'
 import NeedsAttentionPanel from '@/components/command-center/NeedsAttentionPanel.vue'
 import PurposeHealthSummary from '@/components/command-center/PurposeHealthSummary.vue'
 import ProcessingPanel from '@/components/command-center/ProcessingPanel.vue'

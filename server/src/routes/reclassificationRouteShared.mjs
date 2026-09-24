@@ -165,5 +165,12 @@ export function createReclassificationRouter({ express, reclassificationBatchSer
     sendData(res, result);
   }));
 
+  // Bounded, privacy-minimized rediscovery. GET never starts or resumes work.
+  router.get('/batches/activity', asyncHandler(async (req, res) => {
+    const result = await reclassificationBatchService.getBatchActivity(req.query.after);
+    res.set('Cache-Control', 'no-store');
+    sendData(res, result);
+  }));
+
   return router;
 }

@@ -82,6 +82,9 @@ workflow engine is not justified by this bounded requirement.
 
 ## Next high-value item
 
+Implemented by the [batch activity design](reclassification-batch-activity-design.md)
+and [outcome](reclassification-batch-activity-outcome.md).
+
 Add a compact, reconnectable batch activity view in Command Center using the
 existing saved batch APIs. Today, closing the modal clears its local batch ID;
 work continues correctly, but reopening the browser does not rediscover it.
