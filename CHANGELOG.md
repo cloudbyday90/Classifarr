@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Gate release acceptance on an isolated mixed movie/TV profile-upgrade canary
+  with multi-library backfill, retry recovery, and synthetic held-out profile
+  probes; report real classification quality as unmeasured and leave routing
+  unchanged.
 - Gate CI on a disposable replay of the last pinned release snapshot through
   current migrations, compare its catalog with fresh-install schema, and
   reconcile review-history primary-key names; no release is created.

@@ -338,6 +338,9 @@ jobs:
       - name: Replay last released schema and compare current catalog
         run: npm run test:local:schema-release-replay
 
+      - name: Rehearse mixed movie and TV profile upgrade canary
+        run: npm run test:local:library-profile-upgrade-rehearsal
+
   release-acceptance:
     name: Release Acceptance Readout
     runs-on: ubuntu-latest

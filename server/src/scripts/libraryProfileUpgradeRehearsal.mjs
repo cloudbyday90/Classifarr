@@ -6,6 +6,8 @@ import { LibraryInventoryProfileRefreshPlanner } from '../services/libraryInvent
 import { LibraryProfileService } from '../services/libraryProfileService.mjs';
 import { readLibraryProfileRefreshStatus } from '../services/libraryProfileRefreshStatus.mjs';
 import { PolicyProfileRefreshOutboxWorker } from '../services/policyProfileRefreshOutboxWorker.mjs';
+import { evaluateUpgradeCanaryProfiles } from './libraryProfileUpgradeCanaryEvaluation.mjs';
+import { CANARY_ITEMS_PER_LIBRARY, CANARY_LIBRARIES } from './libraryProfileUpgradeCanaryFixtures.mjs';
 import { BASELINE_TAG } from './pinnedReleaseSchema.mjs';
 export { BASELINE_COMMIT, BASELINE_TAG, BASELINE_SCHEMA_PATH, readPinnedReleaseSchema } from './pinnedReleaseSchema.mjs';
 
@@ -45,19 +47,18 @@ export function createIsolatedDbClient(pool) {
 
 async function seedBaseline(db) {
     const libraryIds = {};
-    for (const [kind, mediaType, active, genre] of [
-        ['movie', 'movie', true, 'Adventure'],
-        ['tv', 'tv', false, 'Drama'],
-    ]) {
+    for (const { key, mediaType, active, genre } of CANARY_LIBRARIES) {
         const library = await db.query(`INSERT INTO libraries (external_id, name, media_type, is_active)
             VALUES ($1, $2, $3, $4) RETURNING id`,
-        [`rehearsal-${randomUUID()}`, `Synthetic ${kind} library`, mediaType, active]);
+        [`rehearsal-${randomUUID()}`, `Synthetic ${key} library`, mediaType, active]);
         const libraryId = library.rows[0].id;
-        libraryIds[kind] = libraryId;
-        await db.query(`INSERT INTO media_server_items
-            (external_id, title, library_id, media_type, genres, metadata)
-            VALUES ($1, $2, $3, $4, $5, '{}'::jsonb)`,
-        [`rehearsal-${randomUUID()}`, `Synthetic ${kind} item`, libraryId, mediaType, [genre]]);
+        libraryIds[key] = libraryId;
+        for (let index = 0; index < CANARY_ITEMS_PER_LIBRARY; index++) {
+            await db.query(`INSERT INTO media_server_items
+                (external_id, title, library_id, media_type, genres, metadata)
+                VALUES ($1, $2, $3, $4, $5, '{}'::jsonb)`,
+            [`rehearsal-${randomUUID()}`, `Synthetic ${key} item ${index + 1}`, libraryId, mediaType, [genre]]);
+        }
         await db.query(`INSERT INTO library_profiles (library_id, item_count, genre_distribution)
             VALUES ($1, 1, '{}'::jsonb)`, [libraryId]);
     }
@@ -89,7 +90,7 @@ async function verifyPublication(db, libraryId, expectedGenre) {
     `library ${libraryId} revisions were not verified together`);
     const profile = (await db.query(`SELECT item_count, genre_distribution, observation_summary
         FROM library_profiles WHERE library_id = $1`, [libraryId])).rows[0];
-    expect(profile?.item_count === 1 && profile.observation_summary,
+    expect(profile?.item_count === CANARY_ITEMS_PER_LIBRARY && profile.observation_summary,
         `library ${libraryId} did not publish its synthetic inventory observation`);
     expect(JSON.stringify(profile.genre_distribution).includes(expectedGenre),
         `library ${libraryId} did not retain its synthetic genre`);
@@ -115,62 +116,75 @@ export async function rehearseLibraryProfileUpgrade({ dbClient, releaseSchema, m
     const migrations = await migrationRunner.run();
     expect(migrations.applied > 0, 'no post-release migrations were applied');
 
-    const beforeMovie = await statusFor(dbClient, libraryIds.movie);
-    const beforeTv = await statusFor(dbClient, libraryIds.tv);
-    expect(beforeMovie.statusId === 'waiting' && beforeMovie.profileRevision === null,
-        'the active legacy movie profile was not queued for verification');
-    expect(beforeTv.statusId === 'paused' && beforeTv.profileRevision === null,
-        'the inactive legacy TV profile was not paused');
+    for (const library of CANARY_LIBRARIES) {
+        const before = await statusFor(dbClient, libraryIds[library.key]);
+        expect(before.statusId === (library.active ? 'waiting' : 'paused') && before.profileRevision === null,
+            `the legacy ${library.key} profile did not retain its expected pre-upgrade state`);
+    }
 
     const enrolled = await queueLibraryProfileUpgrade(upgradeTask, dbClient);
-    expect(enrolled.queued === 2, 'upgrade enrollment did not capture both libraries');
+    expect(enrolled.queued === CANARY_LIBRARIES.length, 'upgrade enrollment did not capture every library');
     const replay = await queueLibraryProfileUpgrade(upgradeTask, dbClient);
     expect(replay.alreadyRecorded === true && replay.queued === 0,
         'upgrade enrollment was not idempotent');
 
     const firstPlanner = new LibraryInventoryProfileRefreshPlanner({ dbClient });
     const planning = await firstPlanner.run();
-    expect(planning.queued === 1, 'the active library was not admitted exactly once');
-    expect((await statusFor(dbClient, libraryIds.movie)).statusId === 'queued',
-        'the movie refresh was not visible as queued');
+    const activeLibraries = CANARY_LIBRARIES.filter(library => library.active);
+    expect(planning.queued === activeLibraries.length, 'the active libraries were not admitted exactly once');
+    for (const library of activeLibraries) {
+        expect((await statusFor(dbClient, libraryIds[library.key])).statusId === 'queued',
+            `the ${library.key} refresh was not visible as queued`);
+    }
     expect((await statusFor(dbClient, libraryIds.tv)).statusId === 'paused',
         'the inactive TV library was not retained as paused');
 
     const transient = new Error('Synthetic timeout during upgrade rehearsal');
     transient.code = 'ETIMEDOUT';
     const failed = await createWorker(dbClient, { generateProfile: async () => { throw transient; } }).run();
-    expect(failed.retried === 1 && (await statusFor(dbClient, libraryIds.movie)).statusId === 'retry_wait',
-        'the transient failure was not retained for a scheduled retry');
+    expect(failed.retried === activeLibraries.length,
+        'the transient failures were not retained for scheduled retries');
+    for (const library of activeLibraries) {
+        expect((await statusFor(dbClient, libraryIds[library.key])).statusId === 'retry_wait',
+            `the ${library.key} transient failure was not retained`);
+    }
 
-    // Advance only this disposable queue record instead of sleeping for the production retry delay.
+    // Advance only these disposable queue records instead of sleeping for the production retry delay.
     const advanced = await dbClient.query(`UPDATE policy_profile_refresh_outbox
         SET available_at = NOW() - INTERVAL '1 second'
-        WHERE library_id = $1 AND request_type = 'inventory_change' AND processing_state = 'pending'`,
-    [libraryIds.movie]);
-    expect(advanced.rowCount === 1, 'the synthetic retry was not advanced');
+        WHERE library_id = ANY($1::integer[]) AND request_type = 'inventory_change' AND processing_state = 'pending'`,
+    [activeLibraries.map(library => libraryIds[library.key])]);
+    expect(advanced.rowCount === activeLibraries.length, 'the synthetic retries were not advanced');
 
     // Fresh service instances simulate a process restart against the same durable database.
     const restartedProfileService = new LibraryProfileService({ dbClient });
     const restartedWorker = createWorker(dbClient, restartedProfileService);
     const recovered = await restartedWorker.run();
-    expect(recovered.completed === 1, 'the restarted worker did not complete the movie refresh');
-    const movieRevision = await verifyPublication(dbClient, libraryIds.movie, 'Adventure');
+    expect(recovered.completed === activeLibraries.length,
+        'the restarted worker did not complete every active refresh');
+    const revisionsByLibrary = {};
+    for (const library of activeLibraries) {
+        revisionsByLibrary[library.key] = await verifyPublication(dbClient, libraryIds[library.key], library.genre);
+    }
 
     await dbClient.query('UPDATE libraries SET is_active = TRUE WHERE id = $1', [libraryIds.tv]);
     const resumedPlanner = new LibraryInventoryProfileRefreshPlanner({ dbClient });
     expect((await resumedPlanner.run()).queued === 1, 'the reactivated TV library was not admitted');
     expect((await createWorker(dbClient, restartedProfileService).run()).completed === 1,
         'the TV refresh did not complete');
-    const tvRevision = await verifyPublication(dbClient, libraryIds.tv, 'Drama');
+    revisionsByLibrary.tv = await verifyPublication(dbClient, libraryIds.tv, 'Drama');
+    const profileProbe = await evaluateUpgradeCanaryProfiles({ profileService: restartedProfileService, libraryIds });
 
     return {
         baselineTag: BASELINE_TAG,
         migrationCount: migrations.applied,
-        syntheticLibraries: 2,
+        syntheticLibraries: CANARY_LIBRARIES.length,
+        syntheticInventoryItems: CANARY_LIBRARIES.length * CANARY_ITEMS_PER_LIBRARY,
         enrollmentIdempotent: true,
         transientRetryRecovered: true,
         inactiveLibraryResumed: true,
-        finalStatuses: ['current', 'current'],
-        verifiedRevisions: [movieRevision, tvRevision],
+        finalStatuses: CANARY_LIBRARIES.map(() => 'current'),
+        verifiedRevisions: CANARY_LIBRARIES.map(library => revisionsByLibrary[library.key]),
+        profileProbe,
     };
 }
