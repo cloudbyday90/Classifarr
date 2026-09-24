@@ -2,8 +2,6 @@
 import { createHash } from 'node:crypto';
 import { validateDescriptionRepresentation } from './inventoryDescriptionVectorCache.mjs';
 
-export const INVENTORY_DESCRIPTION_REPRESENTATION_MAX_AGE_MINUTES = 10;
-
 export function descriptionConfigDigest(configKey) {
   if (typeof configKey !== 'string' || !configKey || configKey.length > 1024) {
     throw new Error('inventory_description_config_key_invalid');

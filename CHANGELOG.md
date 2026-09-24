@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a private, read-only 300-case movie/TV comparison of TMDB-linked and
+  source-aware retrieval evidence, with transitive duplicate holdouts, explicit
+  cache/label shortages, and correction-only quality metrics. Keep routing,
+  approval calibration, and releases unchanged.
 - Automatically backfill and use eligible movie/TV source descriptions without
   TMDB IDs in live retrieval and learned library profiles. Preserve music and
   source-conflict exclusions, duplicate holdouts, checkpointed recovery, and

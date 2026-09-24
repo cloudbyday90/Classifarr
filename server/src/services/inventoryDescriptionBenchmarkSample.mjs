@@ -16,12 +16,14 @@ const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 /** Freeze vectors, candidate selection and neighbor ordering for all three arms. */
 export function prepareDescriptionBenchmark(snapshot, rawVectors, dimensions, options,
   { metadataCandidates = false, learnedProfiles = false, includeContrastiveVectors = false, includeComparisonEvidence = false,
-    includeConflictEvidence = false, preserveDescriptionCandidate = false, eligibleSampleKeys = null } = {}) {
+    includeConflictEvidence = false, preserveDescriptionCandidate = false, eligibleSampleKeys = null,
+    trainingExcludedHashes = new Set(), trainingExcludedKeys = new Set(), fixedFoldPlan = null } = {}) {
   if (metadataCandidates && learnedProfiles) throw new Error('description_benchmark_selection_mode_conflict');
   const { folds } = validateDescriptionBenchmarkOptions(options);
   if (includeConflictEvidence && (!folds || !learnedProfiles)) throw new Error('inventory_conflict_evidence_requires_grouped_profiles');
   if (preserveDescriptionCandidate && (!folds || !learnedProfiles)) throw new Error('description_anchor_requires_grouped_profiles');
   if (eligibleSampleKeys !== null && !(eligibleSampleKeys instanceof Set)) throw new Error('description_benchmark_sample_keys_invalid');
+  if (!(trainingExcludedHashes instanceof Set) || !(trainingExcludedKeys instanceof Set)) throw new Error('description_benchmark_training_holdout_invalid');
   const sampleCorpus = eligibleSampleKeys === null ? snapshot.corpus : { ...snapshot.corpus,
     documents: snapshot.corpus.documents.filter(doc => eligibleSampleKeys.has(doc.key)) };
   const { sample, excluded, priorCohortSizes, priorSampleFingerprints } = selectAdditionalDescriptionBenchmarkSample(sampleCorpus, options);
@@ -31,7 +33,7 @@ export function prepareDescriptionBenchmark(snapshot, rawVectors, dimensions, op
     return { ...prepareDescriptionBenchmark({ ...snapshot, corpus }, rawVectors, dimensions,
       { ...options, excludePriorSize: 0, excludePriorSizes: [] },
       { metadataCandidates, learnedProfiles, includeContrastiveVectors, includeComparisonEvidence, includeConflictEvidence,
-        preserveDescriptionCandidate, eligibleSampleKeys }), excludedPriorDescriptions: excluded.size };
+        preserveDescriptionCandidate, eligibleSampleKeys, trainingExcludedHashes, trainingExcludedKeys, fixedFoldPlan }), excludedPriorDescriptions: excluded.size };
   }
   const usesMetadata = metadataCandidates || learnedProfiles;
   const selectionVersion = learnedProfiles ? INVENTORY_LEARNED_PROFILE_VERSION +
@@ -39,10 +41,18 @@ export function prepareDescriptionBenchmark(snapshot, rawVectors, dimensions, op
   const { corpus, libraries } = snapshot;
   if (corpus.texts.size * dimensions > 20_000_000) throw new Error('description_benchmark_vector_budget');
   const vectors = new Map([...corpus.texts.keys()].map(hash => [hash, normalizeDescriptionVector(rawVectors.get(hash), dimensions)]));
-  const plan = folds ? planDescriptionBenchmarkFolds(corpus, sample, libraries, { seed: options.seed, folds }) : null;
-  const contexts = (plan?.held ?? [new Set(sample.map(doc => doc.hash))]).map(held => {
-    const learned = learnedProfiles ? learnInventoryProfiles(corpus.documents, snapshot.candidateMetadata, libraries, held) : null;
-    const metadataExamples = corpus.documents.filter(doc => !held.has(doc.hash))
+  if (fixedFoldPlan && (!folds || fixedFoldPlan.held?.length !== folds || !(fixedFoldPlan.foldByHash instanceof Map) ||
+      fixedFoldPlan.foldByHash.size !== sample.length || fixedFoldPlan.held.some(held => !(held instanceof Set)) ||
+      sample.some(doc => !Number.isInteger(fixedFoldPlan.foldByHash.get(doc.hash)) ||
+        !fixedFoldPlan.held[fixedFoldPlan.foldByHash.get(doc.hash)]?.has(doc.hash)))) {
+    throw new Error('description_benchmark_fixed_fold_plan_invalid');
+  }
+  const plan = fixedFoldPlan ?? (folds ? planDescriptionBenchmarkFolds(corpus, sample, libraries, { seed: options.seed, folds }) : null);
+  const trainingDocuments = corpus.documents.filter(doc => !trainingExcludedKeys.has(doc.key));
+  const contexts = (plan?.held ?? [new Set(sample.map(doc => doc.hash))]).map(foldHeld => {
+    const held = new Set([...foldHeld, ...trainingExcludedHashes]);
+    const learned = learnedProfiles ? learnInventoryProfiles(trainingDocuments, snapshot.candidateMetadata, libraries, held) : null;
+    const metadataExamples = trainingDocuments.filter(doc => !held.has(doc.hash))
       .map(doc => ({ ...doc, metadata: snapshot.candidateMetadata?.get(doc.key) }));
     const membership = new Map();
     for (const doc of metadataExamples) {
@@ -50,11 +60,11 @@ export function prepareDescriptionBenchmark(snapshot, rawVectors, dimensions, op
       if (!membership.has(key)) membership.set(key, { type: doc.type, hash: doc.hash, libraryIds: new Set() });
       for (const id of doc.libraryIds) membership.get(key).libraryIds.add(id);
     }
-    return { learned, metadataExamples, membership };
+    return { learned, metadataExamples, membership, held };
   });
   const cases = sample.map((doc, caseIndex) => {
     const foldIndex = plan?.foldByHash.get(doc.hash) ?? 0;
-    const { learned, metadataExamples, membership } = contexts[foldIndex];
+    const { learned, metadataExamples, membership, held } = contexts[foldIndex];
     const query = vectors.get(doc.hash);
     const scored = [...membership.values()].filter(entry => entry.type === doc.type)
       .map(entry => ({ ...entry, similarity: descriptionCosineSimilarity(query, vectors.get(entry.hash)) }))
@@ -89,7 +99,8 @@ export function prepareDescriptionBenchmark(snapshot, rawVectors, dimensions, op
       ...(includeConflictEvidence ? { conflictEvidence } : {}),
       ...(preserveDescriptionCandidate ? { unprotectedCandidateIds: unprotected.slice(0, 3).map(candidate => candidate.id) } : {}),
       ...(plan ? { foldIndex } : {}),
-      ...(includeContrastiveVectors || includeComparisonEvidence || includeConflictEvidence ? { descriptionHash: doc.hash, heldDescriptionHashes: plan?.held[foldIndex] } : {}),
+      ...(includeContrastiveVectors || includeComparisonEvidence || includeConflictEvidence ? { descriptionHash: doc.hash,
+        heldDescriptionHashes: plan || trainingExcludedHashes.size ? held : undefined } : {}),
       investigationCandidates: ordered, itemIdentity: { mediaType: doc.type, tmdbId: doc.id },
       ...(usesMetadata ? { descriptionOnlyCandidateIds: ranked.slice(0, 3).map(candidate => candidate.id) } : {}) };
   });
@@ -102,6 +113,9 @@ export function prepareDescriptionBenchmark(snapshot, rawVectors, dimensions, op
   if (usesMetadata) fingerprintHash.update(JSON.stringify([selectionVersion,
     [...(snapshot.candidateMetadata ?? new Map())].sort(([a], [b]) => compare(a, b))]));
   if (plan) fingerprintHash.update(JSON.stringify([plan.summary.protocol, plan.summary.assignmentFingerprint, priorCohortSizes]));
+  if (trainingExcludedHashes.size || trainingExcludedKeys.size || fixedFoldPlan) fingerprintHash.update(JSON.stringify({
+    excludedHashes: [...trainingExcludedHashes].sort(), excludedKeys: [...trainingExcludedKeys].sort(),
+    heldFolds: fixedFoldPlan?.held.map(held => [...held].sort()) }));
   return { cases, texts: corpus.texts, fingerprint: fingerprintHash.digest('hex'), sampleFingerprint: digest(JSON.stringify(sample.map(doc => doc.key))),
     ...(includeContrastiveVectors ? { vectors } : {}),
     ...(includeComparisonEvidence ? { snapshotComponents: describeInventorySnapshotDigests(snapshot, rawVectors) } : {}),

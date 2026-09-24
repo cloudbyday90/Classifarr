@@ -81,3 +81,7 @@ claims; report insufficient labeled cases instead of inventing ground truth.
 This produces a decision about whether source-aware calibration is justified,
 not another diagnostic card. Keep source-only evidence out of approval
 calibration until that comparison establishes a benefit without safety regression.
+
+Follow-up implemented: [paired evaluation outcome](source-description-paired-evaluation-outcome.md).
+The local 300-case cohort spans all ten movie/TV libraries; three missing source
+embeddings and an empty recorded-correction cohort prevent a quality conclusion.
