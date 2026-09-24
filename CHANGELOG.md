@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Extend per-library evidence coverage with provider-neutral, source-anchored
+  description counts, including items without TMDB IDs. Keep source conflicts
+  blocked, provider IDs observational, and current retrieval/routing unchanged.
 - Add administrator-only, per-library movie/TV evidence coverage: scoped source-ID
   exclusions, distinct description readiness, and recently verified retrieval
   cache/retry counts. Keep the endpoint read-only, privacy-bounded, and explicit

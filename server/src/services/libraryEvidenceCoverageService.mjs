@@ -7,8 +7,9 @@ import { resolveLocalStudyEmbeddingConfig } from './localStudyEmbeddingClient.mj
 import { readCurrentDescriptionRepresentation } from './inventoryDescriptionRepresentationCheckpoint.mjs';
 import { LIBRARY_EVIDENCE_COVERAGE_ROW_LIMIT,
   withLibraryEvidenceCoverageSnapshot } from './libraryEvidenceCoverageRepository.mjs';
+import { summarizeLibrarySourceEvidence } from './librarySourceEvidenceAdapter.mjs';
 
-export const LIBRARY_EVIDENCE_COVERAGE_VERSION = 'library.evidence_coverage.v1';
+export const LIBRARY_EVIDENCE_COVERAGE_VERSION = 'library.evidence_coverage.v2';
 
 function count(value) {
   const parsed = Number(value);
@@ -56,7 +57,7 @@ async function measureRetrieval(corpus, config, query) {
 /** Counts are scoped to one immutable inventory snapshot and never expose text or vectors. */
 export async function readLibraryEvidenceCoverage(db, libraryId) {
   if (!Number.isSafeInteger(libraryId) || libraryId < 1) throw new TypeError('Invalid library ID');
-  return withLibraryEvidenceCoverageSnapshot(db, libraryId, async ({ source, rows, config, query }) => {
+  return withLibraryEvidenceCoverageSnapshot(db, libraryId, async ({ source, sourceRows, rows, config, query }) => {
     if (!source) throw new NotFoundError('Library not found');
     const itemCount = count(source.item_count);
     const base = {
@@ -65,10 +66,22 @@ export async function readLibraryEvidenceCoverage(db, libraryId) {
       inventoryRevision: revision(source.inventory_revision),
       mediaType: source.media_type, classificationQuality: 'not_measured',
     };
+    let sourceEvidence = null;
+    if (source.is_active === true) {
+      if (!itemCount) sourceEvidence = { statusId: 'no_inventory' };
+      else if (sourceRows === null) sourceEvidence = { statusId: 'window_truncated' };
+      else {
+        if (sourceRows.length !== itemCount) throw new TypeError('Inconsistent source evidence window');
+        sourceEvidence = summarizeLibrarySourceEvidence(sourceRows, libraryId, source.media_type);
+        if (sourceEvidence.typeMatchedItemCount !== itemCount - count(source.type_mismatch_count)) {
+          throw new TypeError('Inconsistent source evidence media types');
+        }
+      }
+    }
     if (source.is_active !== true || !['movie', 'tv'].includes(source.media_type)) {
       return { ...base, statusId: source.is_active ? 'unsupported_type' : 'inactive',
         source: { itemCount, candidateRowCount: null, excluded: null },
-        description: null, retrieval: null };
+        sourceEvidence, description: null, retrieval: null };
     }
     const excluded = {
       typeMismatch: count(source.type_mismatch_count),
@@ -78,11 +91,14 @@ export async function readLibraryEvidenceCoverage(db, libraryId) {
     const candidateRowCount = itemCount - Object.values(excluded).reduce((sum, value) => sum + value, 0);
     if (candidateRowCount < 0) throw new TypeError('Inconsistent library evidence source counts');
     const sourceSummary = { itemCount, candidateRowCount, excluded };
-    if (!itemCount) return { ...base, statusId: 'no_inventory', source: sourceSummary,
+    if (!itemCount) return { ...base, statusId: 'no_inventory', source: sourceSummary, sourceEvidence,
       description: null, retrieval: null };
-    if (rows.length > LIBRARY_EVIDENCE_COVERAGE_ROW_LIMIT) {
-      return { ...base, statusId: 'window_truncated', source: sourceSummary,
+    if (sourceEvidence.statusId === 'window_truncated') {
+      return { ...base, statusId: 'window_truncated', source: sourceSummary, sourceEvidence,
         description: null, retrieval: null };
+    }
+    if (rows.length > LIBRARY_EVIDENCE_COVERAGE_ROW_LIMIT) {
+      throw new TypeError('Inconsistent bounded library evidence corpus');
     }
     if (rows.length !== candidateRowCount) throw new TypeError('Inconsistent library evidence corpus');
     const corpus = prepareInventoryDescriptionCorpus(rows);
@@ -104,6 +120,6 @@ export async function readLibraryEvidenceCoverage(db, libraryId) {
         retrieval.retryDueIdentityCount > retrieval.eligibleIdentityCount) {
       throw new TypeError('Inconsistent library retrieval coverage');
     }
-    return { ...base, statusId: 'measured', source: sourceSummary, description, retrieval };
+    return { ...base, statusId: 'measured', source: sourceSummary, sourceEvidence, description, retrieval };
   });
 }

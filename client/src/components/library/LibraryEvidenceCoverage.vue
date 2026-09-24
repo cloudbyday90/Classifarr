@@ -36,12 +36,27 @@
       {{ errorMessage }}
     </p>
     <template v-else-if="report">
-      <p
+      <div
         role="status"
         class="mt-2"
       >
-        {{ headline }}
-      </p>
+        <p>{{ headline }}</p>
+        <p
+          v-if="report.sourceEvidence?.statusId === 'measured'"
+          class="mt-2 text-sm text-gray-200"
+        >
+          {{ report.sourceEvidence.describedItemCount }} of {{ report.sourceEvidence.eligibleItemCount }} source-anchored items have a local metadata description.
+          <span v-if="report.sourceEvidence.describedWithoutTmdbItemCount">
+            {{ sourceWithoutTmdbText }}
+          </span>
+        </p>
+        <p
+          v-else-if="report.sourceEvidence?.statusId === 'window_truncated'"
+          class="mt-2 text-sm text-gray-300"
+        >
+          Source-level evidence exceeds the 10,000-item diagnostic window and is not estimated.
+        </p>
+      </div>
       <template v-if="report.statusId === 'measured'">
         <p class="mt-2 text-sm text-gray-200">
           {{ report.description.usableIdentityCount }} of {{ report.description.candidateIdentityCount }} eligible movie/TV identities have a usable description.
@@ -52,6 +67,13 @@
             Gaps and measurement limits
           </summary>
           <ul class="mt-2 list-disc space-y-1 pl-5">
+            <li v-if="report.sourceEvidence?.statusId === 'measured'">
+              {{ report.sourceEvidence.conflictBlockedItemCount }} source-anchored items are blocked by unresolved identity conflicts;
+              {{ report.sourceEvidence.typeMatchedItemCount - report.sourceEvidence.anchoredItemCount }} lack a valid source anchor.
+            </li>
+            <li v-if="report.sourceEvidence?.statusId === 'measured'">
+              {{ report.sourceEvidence.alternateProviderObservedItemCount }} eligible source items have an IMDb or TVDB observation; this does not join items across libraries.
+            </li>
             <li>{{ report.source.excluded.missingIdentity }} source items lack a usable TMDB identity.</li>
             <li>{{ report.source.excluded.typeMismatch }} source items differ from this library's media type.</li>
             <li>
@@ -124,7 +146,7 @@ const headline = computed(() => {
     case 'inactive': return 'This library is inactive; evidence coverage is not evaluated.'
     case 'unsupported_type': return 'Description retrieval coverage is not yet measured for this media type.'
     case 'no_inventory': return 'No synced inventory is available for this library yet.'
-    case 'window_truncated': return `This library has more than 10,000 eligible source rows. Coverage is not estimated from a partial window.`
+    case 'window_truncated': return 'This library has more than 10,000 synced source items. Coverage is not estimated from a partial window.'
     default: return `${report.value?.source.itemCount ?? 0} synced source items; ${report.value?.source.candidateRowCount ?? 0} rows are eligible for description assessment.`
   }
 })
@@ -138,5 +160,10 @@ const retrievalText = computed(() => {
     case 'model_unverified': return 'The local model has not been verified recently; current cache coverage is unknown.'
     default: return `${value.indexedIdentityCount} of ${value.eligibleIdentityCount} usable identities have a cached vector for the model inspected within the last ten minutes.`
   }
+})
+
+const sourceWithoutTmdbText = computed(() => {
+  const count = report.value?.sourceEvidence?.describedWithoutTmdbItemCount ?? 0
+  return `${count} described source item${count === 1 ? '' : 's'} ${count === 1 ? 'has' : 'have'} no TMDB ID and ${count === 1 ? 'is' : 'are'} not yet in the description-vector corpus.`
 })
 </script>

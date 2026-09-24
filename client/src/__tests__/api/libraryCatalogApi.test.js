@@ -102,7 +102,7 @@ describe('libraryCatalogApi', () => {
   })
 
   it('loads per-library evidence coverage through the central GET helper', async () => {
-    const report = { version: 'library.evidence_coverage.v1', libraryId: 7 }
+    const report = { version: 'library.evidence_coverage.v2', libraryId: 7 }
     mockGetDataRequest.mockResolvedValueOnce(report)
     expect(await getLibraryEvidenceCoverage(7)).toBe(report)
     expect(mockGetDataRequest).toHaveBeenCalledWith('/libraries/7/evidence-coverage')

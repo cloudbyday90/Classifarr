@@ -22,6 +22,17 @@ const SOURCE_SQL = `SELECT l.id, l.media_type, l.is_active,
 const CORPUS_SQL = buildInventoryDescriptionCorpusSql({ libraryScoped: true,
   limit: LIBRARY_EVIDENCE_COVERAGE_ROW_LIMIT + 1 });
 
+const SOURCE_EVIDENCE_SQL = `SELECT msi.media_server_id, msi.external_id,
+    msi.media_type, msi.tmdb_id, msi.imdb_id, msi.tvdb_id,
+    ${sourceConflictAuthorityPredicateForMediaServerItem('$2')} AS source_conflict,
+    left(COALESCE(
+      CASE WHEN jsonb_typeof(msi.metadata->'overview')='string'
+        THEN NULLIF(btrim(msi.metadata->>'overview'), '') END,
+      CASE WHEN jsonb_typeof(msi.metadata->'summary')='string'
+        THEN NULLIF(btrim(msi.metadata->>'summary'), '') END, ''), 4000) AS overview
+  FROM media_server_items msi WHERE msi.library_id=$1::integer
+  ORDER BY msi.id LIMIT ${LIBRARY_EVIDENCE_COVERAGE_ROW_LIMIT + 1}`;
+
 const CONFIG_SQL = `SELECT rag_enabled, embedding_provider_mode, primary_provider,
   embedding_model, embedding_ollama_host, embedding_ollama_port, embedding_ollama_model,
   ollama_host, ollama_port FROM ai_provider_config WHERE id=1`;
@@ -36,13 +47,23 @@ export async function withLibraryEvidenceCoverageSnapshot(db, libraryId, project
     await client.query("SET LOCAL transaction_timeout = '30s'");
     const source = (await client.query(SOURCE_SQL,
       [libraryId, SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS])).rows[0] ?? null;
-    if (!source || !source.is_active || !['movie', 'tv'].includes(source.media_type) ||
-        Number(source.item_count) === 0) return project({ source, rows: null, config: null,
-      query: (sql, values) => client.query(sql, values) });
+    if (!source || !source.is_active || Number(source.item_count) === 0) {
+      return project({ source, sourceRows: source?.is_active ? [] : null,
+        rows: null, config: null,
+        query: (sql, values) => client.query(sql, values) });
+    }
+    const sourceRows = Number(source.item_count) <= LIBRARY_EVIDENCE_COVERAGE_ROW_LIMIT
+      ? (await client.query(SOURCE_EVIDENCE_SQL,
+        [libraryId, SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS])).rows : null;
+    if (sourceRows === null || !['movie', 'tv'].includes(source.media_type)) {
+      return project({ source, sourceRows, rows: null, config: null,
+        query: (sql, values) => client.query(sql, values) });
+    }
     const rows = (await client.query(CORPUS_SQL,
       [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS, libraryId])).rows;
     const config = rows.length <= LIBRARY_EVIDENCE_COVERAGE_ROW_LIMIT
       ? (await client.query(CONFIG_SQL)).rows[0] ?? null : null;
-    return project({ source, rows, config, query: (sql, values) => client.query(sql, values) });
+    return project({ source, sourceRows, rows, config,
+      query: (sql, values) => client.query(sql, values) });
   });
 }
