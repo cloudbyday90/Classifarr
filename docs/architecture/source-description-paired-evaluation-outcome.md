@@ -121,6 +121,11 @@ Follow-up implemented in Unreleased:
 It preserves future explicit correction evidence without reconstructing the
 missing historical labels; deployment remains a separate release decision.
 
+The subsequent [failure-attribution increment](source-description-failure-attribution-outcome.md)
+adds version-two correction-stage breakdowns and distinguishes completed
+coverage comparisons from measured correction quality. The results above remain
+the historical version-one readiness check, not a fresh benchmark.
+
 Recommendation stack: deploy the existing bounded backfill in a planned release
 → reconcile automatic outcome capture → rerun paired retrieval → evaluate full
 decision outcomes → consider calibrated autonomy. This targets the actual missing

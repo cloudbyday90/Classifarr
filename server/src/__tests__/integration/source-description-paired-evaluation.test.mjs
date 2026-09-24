@@ -59,6 +59,10 @@ test('real PostgreSQL snapshot pairs movie/TV evidence and verified feedback wit
   const result = evaluateSourceDescriptionPair(captured, identity, { seed: 'source-pair-integration', size: 8 });
   expect(result.status).toBe('complete'); expect(result.metrics.cases).toBe(8);
   expect(result.coverage.correctionLabels).toBe(2);
+  expect(result.qualityStatus).toBe('correction_cohort_measured');
+  for (const arm of [result.metrics.baseline, result.metrics.sourceAware]) {
+    expect(Object.values(arm.correctionOutcomes).reduce((a, b) => a + b, 0)).toBe(result.metrics.correctionCases);
+  }
   expect((await client.query('SELECT count(*)::integer AS n FROM media_server_items')).rows[0].n).toBe(48);
   expect((await client.query('SELECT count(*)::integer AS n FROM inventory_description_vector_cache')).rows[0].n).toBe(48);
 });

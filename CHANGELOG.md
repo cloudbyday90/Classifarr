@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Explain correction-labeled retrieval misses in the paired movie/TV evaluation:
+  distinguish missing training evidence, retrieval misses, shortlist displacement,
+  and ranking misses. Separate completed coverage checks from measured quality,
+  without changing routing, learning, or approval thresholds.
 - Rediscover saved reclassification batches in a compact Command Center activity
   view after closing or reloading the browser. Show bounded, active-first progress
   and recovery summaries, reuse existing controls, and prevent duplicate control

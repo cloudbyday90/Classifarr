@@ -27,12 +27,14 @@ test('durable source-only outcomes supply labels and exclude their entire group 
   expect(cohort.corrections.has(doc.key)).toBe(true);
   expect(cohort.feedbackExcludedHashes.has(doc.hash)).toBe(true);
   const report = evaluateSourceDescriptionPair(source, identity, options);
+  expect(report.qualityStatus).toBe('correction_cohort_measured');
   expect(report.limits.sourceOnlyQualityLabelsAvailable).toBe(true);
   expect(report.byQueryIdentity.source_only.correctionCases).toBe(1);
 });
 test('pairs the same cases and reports strata without exposing content or claiming routing quality', () => {
   const source = sourcePairFixture(), report = evaluateSourceDescriptionPair(source, identity, options);
-  expect(report).toMatchObject({ status: 'complete', requested: 8, sampled: 8, sampleShortfall: 0,
+  expect(report).toMatchObject({ version: 'source_description_pair_v2', status: 'complete',
+    qualityStatus: 'no_correction_labels', requested: 8, sampled: 8, sampleShortfall: 0,
     metrics: { cases: 8, correctionCases: 0, baseline: { candidateRecallAt3: null, leadingProposalMismatchRate: null } },
     limits: { fullPipelineAccuracy: null, manualReviewRate: null, promotionAllowed: false } });
   expect(report.byMedia.movie.cases).toBe(4); expect(report.byMedia.tv.cases).toBe(4);
@@ -46,7 +48,8 @@ test('pairs the same cases and reports strata without exposing content or claimi
 test('missing source vectors block both arms rather than silently changing the evidence population', () => {
   const source = sourcePairFixture(), doc = source.corpus.documents.find(doc => doc.id === null);
   source.vectors.delete(doc.hash);
-  expect(evaluateSourceDescriptionPair(source, identity, options)).toMatchObject({ status: 'cache_incomplete', metrics: null,
+  expect(evaluateSourceDescriptionPair(source, identity, options)).toMatchObject({ status: 'cache_incomplete',
+    qualityStatus: 'not_evaluated', metrics: null,
     sampleCoverage: { byMedia: { movie: 4, tv: 4 }, byQueryIdentity: { source_only: 4, tmdb_linked: 4 } },
     coverage: { missingCachedDescriptions: 1, sourceOnlyMissingCachedDescriptions: 1 } });
 });
@@ -59,7 +62,15 @@ test('shortages remain explicit; empty and entirely held-out training sets do no
   expect(report).toMatchObject({ sampled: 4, sampleShortfall: 4, metrics: { correctionCases: 4,
     baseline: { noEvidence: 4, candidateRecallAt3: 0, labeledProposals: 0, leadingProposalMismatchRate: null },
     sourceAware: { noEvidence: 4, candidateRecallAt3: 0, labeledProposals: 0 } } });
-  expect(evaluateSourceDescriptionPair(sourcePairFixture(0), identity, options)).toMatchObject({ status: 'no_eligible_cases', sampled: 0, metrics: null });
+  expect(report.metrics.baseline.correctionOutcomes.noTrainingEvidence).toBe(4);
+  for (const metrics of [report.metrics, ...Object.values(report.byMedia), ...Object.values(report.byQueryIdentity),
+    ...report.libraries.map(row => row.metrics)]) {
+    for (const arm of [metrics.baseline, metrics.sourceAware]) {
+      expect(Object.values(arm.correctionOutcomes).reduce((a, b) => a + b, 0)).toBe(metrics.correctionCases);
+    }
+  }
+  expect(evaluateSourceDescriptionPair(sourcePairFixture(0), identity, options)).toMatchObject({ status: 'no_eligible_cases',
+    qualityStatus: 'not_evaluated', sampled: 0, metrics: null });
 });
 
 test('held-out aliases cannot improve retrieval or metadata-profile training', () => {

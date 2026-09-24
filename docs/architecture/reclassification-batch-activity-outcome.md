@@ -91,3 +91,8 @@ unchanged until that evidence supports a change.
 Do not build another dashboard or approval gate next. The durable worker,
 recovery receipts and reconnectable controls close this specific operations loop;
 the next result should quantify placement quality and reduce avoidable reviews.
+
+Follow-up: the [paired retrieval attribution increment](source-description-failure-attribution-outcome.md)
+returns to that evaluation path, reports the observed failure stage, and records
+the separately authorized local update and real-inventory results. Missing
+correction labels remain a measurement limit, not permission to infer accuracy.

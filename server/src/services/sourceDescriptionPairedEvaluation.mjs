@@ -6,41 +6,10 @@ import { prepareSourceDescriptionEvaluationCohort } from './sourceDescriptionEva
 import { describeInventorySnapshotDigests } from './inventoryDescriptionSnapshotDigests.mjs';
 import { validateDescriptionRepresentation } from './inventoryDescriptionVectorCache.mjs';
 import { planDescriptionBenchmarkFolds } from './inventoryDescriptionBenchmarkFolds.mjs';
+import { createSourceDescriptionMetrics as empty, addSourceDescriptionMetrics as add,
+  finishSourceDescriptionMetrics as finish, projectSourceDescriptionRanking } from './sourceDescriptionEvaluationMetrics.mjs';
 
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
-const rate = (numerator, denominator) => denominator ? Number((numerator / denominator).toFixed(6)) : null;
-const empty = () => ({ cases: 0, changedShortlists: 0, changedLeaders: 0, correctionCases: 0,
-  baseline: { noEvidence: 0, candidateHits: 0, leadingMatches: 0, leadingMismatches: 0 },
-  sourceAware: { noEvidence: 0, candidateHits: 0, leadingMatches: 0, leadingMismatches: 0 },
-  candidateGains: 0, candidateRegressions: 0, leadingGains: 0, leadingRegressions: 0 });
-
-function finish(value) {
-  for (const arm of [value.baseline, value.sourceAware]) {
-    arm.candidateRecallAt3 = rate(arm.candidateHits, value.correctionCases);
-    arm.leadingProposalMismatchRate = rate(arm.leadingMismatches, arm.leadingMatches + arm.leadingMismatches);
-    arm.labeledProposals = arm.leadingMatches + arm.leadingMismatches;
-  }
-  return value;
-}
-
-function add(value, baseline, sourceAware, label) {
-  value.cases++;
-  value.changedShortlists += Number(JSON.stringify([...baseline.ids].sort()) !== JSON.stringify([...sourceAware.ids].sort()));
-  value.changedLeaders += Number(baseline.leader !== sourceAware.leader);
-  for (const [name, result] of [['baseline', baseline], ['sourceAware', sourceAware]]) {
-    value[name].noEvidence += Number(result.leader === null);
-    if (!label) continue;
-    value[name].candidateHits += Number(result.ids.includes(label.libraryId));
-    value[name].leadingMatches += Number(result.leader === label.libraryId);
-    value[name].leadingMismatches += Number(result.leader !== null && result.leader !== label.libraryId);
-  }
-  if (!label) return;
-  value.correctionCases++;
-  const a = baseline.ids.includes(label.libraryId), b = sourceAware.ids.includes(label.libraryId);
-  value.candidateGains += Number(!a && b); value.candidateRegressions += Number(a && !b);
-  value.leadingGains += Number(baseline.leader !== label.libraryId && sourceAware.leader === label.libraryId);
-  value.leadingRegressions += Number(baseline.leader === label.libraryId && sourceAware.leader !== label.libraryId);
-}
 
 /** One frozen snapshot, one held-out cohort, identical existing scorer, two training populations. */
 export function evaluateSourceDescriptionPair(source, identity, rawOptions = {}) {
@@ -75,7 +44,8 @@ export function evaluateSourceDescriptionPair(source, identity, rawOptions = {})
   for (const row of source.rows) snapshotHash.update(JSON.stringify(row)).update('\n');
   for (const row of source.operatorFeedbackRows) snapshotHash.update(JSON.stringify(row)).update('\n');
   const fingerprint = snapshotHash.digest('hex');
-  const report = { version: 'source_description_pair_v1', status: missing.size ? 'cache_incomplete' : sample.length ? 'complete' : 'no_eligible_cases',
+  const report = { version: 'source_description_pair_v2', status: missing.size ? 'cache_incomplete' : sample.length ? 'complete' : 'no_eligible_cases',
+    qualityStatus: 'not_evaluated',
     requested: options.size, sampled: sample.length, sampleShortfall: Math.max(0, options.size - sample.length),
     snapshotFingerprint: fingerprint, sampleFingerprint: digest(sample.map(doc => doc.key).sort()),
     sampleCoverage, evaluation: { folds: 3, holdout: 'known_identity_grouped_folds', feedbackGroupsExcludedFromEveryFold: true },
@@ -102,10 +72,7 @@ export function evaluateSourceDescriptionPair(source, identity, rawOptions = {})
       { ...options, folds: 3 }, { learnedProfiles: true, preserveDescriptionCandidate: true,
         includeComparisonEvidence: true, eligibleSampleKeys: sampleKeys, fixedFoldPlan: foldPlan,
         trainingExcludedKeys: new Set(includeSourceItems ? [] : sourceDocs.map(doc => doc.key)) });
-    const results = new Map(prepared.cases.map(entry => [entry.descriptionHash, {
-      ids: entry.candidates.filter(candidate => candidate.eligible > 0).map(candidate => candidate.id),
-      leader: entry.investigationCandidates.find(candidate => candidate.eligible > 0)?.id ?? null,
-    }]));
+    const results = new Map(prepared.cases.map(entry => [entry.descriptionHash, projectSourceDescriptionRanking(entry)]));
     if (results.size !== sample.length || sample.some(doc => !results.has(doc.hash))) throw new Error('source_pair_cohort_mismatch');
     return results;
   }
@@ -119,7 +86,8 @@ export function evaluateSourceDescriptionPair(source, identity, rawOptions = {})
     for (const target of [metrics, byMedia[doc.type], byQueryIdentity[doc.id === null ? 'source_only' : 'tmdb_linked'],
       ...libraries.filter(library => doc.libraryIds.includes(library.id)).map(library => library.metrics)]) add(target, a, b, label);
   }
-  return { ...report, metrics: finish(metrics), byMedia: Object.fromEntries(Object.entries(byMedia).map(([key, value]) => [key, finish(value)])),
+  return { ...report, qualityStatus: metrics.correctionCases ? 'correction_cohort_measured' : 'no_correction_labels',
+    metrics: finish(metrics), byMedia: Object.fromEntries(Object.entries(byMedia).map(([key, value]) => [key, finish(value)])),
     byQueryIdentity: Object.fromEntries(Object.entries(byQueryIdentity).map(([key, value]) => [key, finish(value)])),
     libraries: libraries.map(({ id: _id, ...library }) => ({ ...library, metrics: finish(library.metrics) })) };
 }
