@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a private, read-only operator-correction policy replay with grouped
+  description holdout and aggregate movie/TV agreement diagnostics; keep
+  full-pipeline accuracy unmeasured and routing unchanged.
 - Gate release acceptance on an isolated mixed movie/TV profile-upgrade canary
   with multi-library backfill, retry recovery, and synthetic held-out profile
   probes; report real classification quality as unmeasured and leave routing

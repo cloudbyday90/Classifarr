@@ -12,6 +12,7 @@ import { runDatabaseTransaction } from '../utils/databaseTransaction.mjs';
 import { databaseConnectionErrorCode } from '../utils/databaseClientLease.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { createInventoryDiscoveryAdmission } from './inventoryDiscoveryAdmission.mjs';
+import { INVENTORY_OUTCOME_LABEL_SQL } from './inventoryOutcomeLabels.mjs';
 
 const policyFields = ['id', 'library_id', 'name', 'enabled', 'priority', 'auto_classify_threshold', 'prompt_threshold',
   'trust_patterns', 'trust_rag', 'trust_history', 'combination_mode', 'preset_weight', 'profile_weight',
@@ -34,6 +35,7 @@ export function describeFreshPolicySnapshot(snapshot) {
   return { ...describeInventorySnapshotDigests(snapshot, snapshot.vectors).hashes,
     configuration: digest(snapshot.config), policies: digest(snapshot.policies.map(projectFreshPolicyConfiguration)),
     observedTraits: hash.digest('hex'),
+    ...(Array.isArray(snapshot.operatorFeedbackRows) ? { operatorCorrections: digest(snapshot.operatorFeedbackRows) } : {}),
     ...(snapshot.trainingExclusions instanceof Set ? { provenance: digest([...snapshot.trainingExclusions].sort()) } : {}) };
 }
 
@@ -42,7 +44,8 @@ export function fingerprintFreshPolicySnapshot(snapshot) {
 }
 
 /** Configuration, policies, bounded metadata and cached vectors share one read snapshot. */
-export function createFreshInventoryPolicyRepository({ withTransaction, loadPolicies = getActivePolicies, includeTrainingProvenance = false }) {
+export function createFreshInventoryPolicyRepository({ withTransaction, loadPolicies = getActivePolicies,
+  includeTrainingProvenance = false, includeOperatorCorrectionLabels = false }) {
   return { async read(identity) {
     const captured = await withTransaction(async client => {
       // Production bulk readers may use Promise.all; a transaction has exactly one connection.
@@ -54,7 +57,8 @@ export function createFreshInventoryPolicyRepository({ withTransaction, loadPoli
       const snapshot = await readDescriptionBenchmarkSnapshot(reader, identity, true, includeTrainingProvenance);
       const config = (await reader.query(FRESH_POLICY_CONFIG_SQL)).rows[0];
       const loadedPolicies = await loadPolicies({ dbClient: reader, throwOnError: true });
-      return { snapshot, config, loadedPolicies };
+      const operatorFeedbackRows = includeOperatorCorrectionLabels ? (await reader.query(INVENTORY_OUTCOME_LABEL_SQL)).rows : undefined;
+      return { snapshot, config, loadedPolicies, operatorFeedbackRows };
     });
     const policies = captured.loadedPolicies.map(projectFreshPolicyConfiguration);
     if (!captured.config || policies.length > 64 || JSON.stringify(policies).length > 2_000_000 ||
@@ -62,13 +66,15 @@ export function createFreshInventoryPolicyRepository({ withTransaction, loadPoli
       throw new Error('fresh_policy_snapshot_budget');
     }
     const source = { ...decodeDescriptionBenchmarkSnapshot(captured.snapshot, identity, true),
-      config: captured.config, policies };
+      config: captured.config, policies,
+      ...(includeOperatorCorrectionLabels ? { operatorFeedbackRows: captured.operatorFeedbackRows } : {}) };
     return { ...source, fingerprint: fingerprintFreshPolicySnapshot(source) };
   } };
 }
 
 /** No domain writers. Default read-only also protects statements outside explicit transactions. */
-export async function loadFreshInventoryPolicyRuntime({ logging = LOG_CONFIG, includeTrainingProvenance = false } = {}) {
+export async function loadFreshInventoryPolicyRuntime({ logging = LOG_CONFIG, includeTrainingProvenance = false,
+  includeOperatorCorrectionLabels = false } = {}) {
   // Logging configuration is captured during ESM initialization, not when the
   // first snapshot is read. Refuse content access if startup flags were omitted.
   if (logging.level !== 'fatal' || logging.fileLoggingEnabled !== false) {
@@ -86,7 +92,7 @@ export async function loadFreshInventoryPolicyRuntime({ logging = LOG_CONFIG, in
     const config = (await pool.query(FRESH_POLICY_CONFIG_SQL)).rows[0];
     const withTransaction = async callback => runDatabaseTransaction(await pool.connect(), callback, { logger });
     return { config, embedder: createLocalStudyEmbeddingClient(config),
-      repository: createFreshInventoryPolicyRepository({ withTransaction, includeTrainingProvenance }),
+      repository: createFreshInventoryPolicyRepository({ withTransaction, includeTrainingProvenance, includeOperatorCorrectionLabels }),
       withDiscoveryAdmission: createInventoryDiscoveryAdmission(db),
       createClient: () => createLocalDescriptionBenchmarkClient(config), close };
   } catch (error) { await close(); throw error; }

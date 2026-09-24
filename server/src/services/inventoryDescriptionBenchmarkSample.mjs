@@ -16,19 +16,22 @@ const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 /** Freeze vectors, candidate selection and neighbor ordering for all three arms. */
 export function prepareDescriptionBenchmark(snapshot, rawVectors, dimensions, options,
   { metadataCandidates = false, learnedProfiles = false, includeContrastiveVectors = false, includeComparisonEvidence = false,
-    includeConflictEvidence = false, preserveDescriptionCandidate = false } = {}) {
+    includeConflictEvidence = false, preserveDescriptionCandidate = false, eligibleSampleKeys = null } = {}) {
   if (metadataCandidates && learnedProfiles) throw new Error('description_benchmark_selection_mode_conflict');
   const { folds } = validateDescriptionBenchmarkOptions(options);
   if (includeConflictEvidence && (!folds || !learnedProfiles)) throw new Error('inventory_conflict_evidence_requires_grouped_profiles');
   if (preserveDescriptionCandidate && (!folds || !learnedProfiles)) throw new Error('description_anchor_requires_grouped_profiles');
-  const { sample, excluded, priorCohortSizes, priorSampleFingerprints } = selectAdditionalDescriptionBenchmarkSample(snapshot.corpus, options);
+  if (eligibleSampleKeys !== null && !(eligibleSampleKeys instanceof Set)) throw new Error('description_benchmark_sample_keys_invalid');
+  const sampleCorpus = eligibleSampleKeys === null ? snapshot.corpus : { ...snapshot.corpus,
+    documents: snapshot.corpus.documents.filter(doc => eligibleSampleKeys.has(doc.key)) };
+  const { sample, excluded, priorCohortSizes, priorSampleFingerprints } = selectAdditionalDescriptionBenchmarkSample(sampleCorpus, options);
   if (!folds && excluded.size > 0) {
     const corpus = { ...snapshot.corpus, documents: snapshot.corpus.documents.filter(doc => !excluded.has(doc.hash)),
       texts: new Map([...snapshot.corpus.texts].filter(([hash]) => !excluded.has(hash))) };
     return { ...prepareDescriptionBenchmark({ ...snapshot, corpus }, rawVectors, dimensions,
       { ...options, excludePriorSize: 0, excludePriorSizes: [] },
       { metadataCandidates, learnedProfiles, includeContrastiveVectors, includeComparisonEvidence, includeConflictEvidence,
-        preserveDescriptionCandidate }), excludedPriorDescriptions: excluded.size };
+        preserveDescriptionCandidate, eligibleSampleKeys }), excludedPriorDescriptions: excluded.size };
   }
   const usesMetadata = metadataCandidates || learnedProfiles;
   const selectionVersion = learnedProfiles ? INVENTORY_LEARNED_PROFILE_VERSION +

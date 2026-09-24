@@ -16,7 +16,7 @@ import {
   isHeldOutSemanticStudyExcludedInferredProfileRule,
 } from './heldOutSemanticStudyPolicySourceScreen.mjs';
 
-function withoutInferredProfileSources(policy) {
+export function withoutInferredProfileSources(policy) {
   const contract = policy.policy_intent_contract;
   return {
     ...policy,

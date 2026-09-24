@@ -11,19 +11,23 @@ import { createInventoryNeighborCalibration } from './inventoryNeighborCalibrati
 import { inspectInventoryNeighborProposal } from './inventoryNeighborProposal.mjs';
 import { isInventoryNeighborFallbackTarget } from './inventoryNeighborFallback.mjs';
 import { createFrozenEvaluationSnapshot } from './frozenEvaluationSnapshot.mjs';
+import { buildOperatorCorrectionFreshPolicyReport, prepareOperatorCorrectionFreshPolicySource,
+  summarizeOperatorCorrectionFreshPolicy } from './operatorCorrectionFreshPolicyEvaluation.mjs';
 
 /** Fresh policies, fold-local evidence, sequential admitted inference, aggregate output only. */
 export async function runFreshInventoryPolicyEvaluation(settings, {
   loadRuntime = loadFreshInventoryPolicyRuntime, signal, onProgress = () => {},
   prepareCase = prepareFreshInventoryPolicyCase,
   neighborFallback = false,
+  operatorCorrectionsOnly = false,
 } = {}) {
   const options = validateDescriptionBenchmarkOptions(settings);
-  if (typeof neighborFallback !== 'boolean') throw new Error('neighbor_fallback_mode_invalid');
+  if (typeof neighborFallback !== 'boolean' || typeof operatorCorrectionsOnly !== 'boolean' ||
+      (neighborFallback && operatorCorrectionsOnly)) throw new Error('fresh_policy_evaluation_mode_invalid');
   if (!options.folds) throw new Error('fresh_policy_evaluation_requires_folds');
   const abort = AbortSignal.any([AbortSignal.timeout(options.maxMinutes * 60000), ...(signal ? [signal] : [])]);
   abort.throwIfAborted();
-  const runtime = await loadRuntime();
+  const runtime = await loadRuntime({ includeOperatorCorrectionLabels: operatorCorrectionsOnly });
   try {
     const representation = await inspectDescriptionRepresentation(runtime.embedder, abort);
     const source = await runtime.repository.read(representation);
@@ -31,9 +35,12 @@ export async function runFreshInventoryPolicyEvaluation(settings, {
         JSON.stringify(source.config) !== JSON.stringify(runtime.config)) throw new Error('fresh_policy_configuration_unavailable');
     await verifyDescriptionRepresentation(runtime.embedder, representation, abort);
     const snapshot = createFrozenEvaluationSnapshot({ fingerprint: source.fingerprint, components: describeFreshPolicySnapshot(source) });
-    const prepared = prepareDescriptionBenchmark(source, source.vectors, representation.dimensions, options,
-      { learnedProfiles: true, includeComparisonEvidence: true, preserveDescriptionCandidate: true });
-    const evidence = createFreshInventoryPolicyEvidence(source, prepared);
+    const correctionCohort = operatorCorrectionsOnly ? prepareOperatorCorrectionFreshPolicySource(source) : null;
+    const evaluationSource = correctionCohort?.source ?? source;
+    const prepared = prepareDescriptionBenchmark(evaluationSource, source.vectors, representation.dimensions, options,
+      { learnedProfiles: true, includeComparisonEvidence: true, preserveDescriptionCandidate: true,
+        eligibleSampleKeys: correctionCohort?.eligibleSampleKeys ?? null });
+    const evidence = createFreshInventoryPolicyEvidence(evaluationSource, prepared);
     const calibration = createInventoryMatchCalibration({ documents: source.corpus.documents,
       libraries: source.libraries, vectors: source.vectors, representation });
     const neighbors = neighborFallback ? createInventoryNeighborCalibration({ documents: source.corpus.documents,
@@ -44,7 +51,7 @@ export async function runFreshInventoryPolicyEvaluation(settings, {
       const matchCalibration = await calibration.assess(sample, { signal: abort });
       const fallback = neighbors ? { proposal: inspectInventoryNeighborProposal(sample, prepared.texts),
         calibration: await neighbors.assess(sample, { signal: abort }) } : null;
-      rows.push({ sample, prepared: { ...await prepareCase(sample, source, evidence, abort), matchCalibration,
+      rows.push({ sample, prepared: { ...await prepareCase(sample, evaluationSource, evidence, abort), matchCalibration,
         ...(fallback ? { neighborFallback: fallback } : {}) } });
       onProgress({ stage: 'fresh_policy_preparation', completed: rows.length, requested: prepared.cases.length });
     }
@@ -95,7 +102,11 @@ export async function runFreshInventoryPolicyEvaluation(settings, {
       }
     }
     if (!abort.aborted && !verificationFailure) await verifyGenerationSnapshot();
-    return buildFreshPolicyReport({ source, prepared, rows, options, calls, identity, representation,
+    const report = buildFreshPolicyReport({ source, prepared, rows, options, calls, identity, representation,
       interrupted: abort.aborted, verificationFailure, changedComponents: snapshot.summary().changedComponents, neighborFallback });
+    if (!correctionCohort) return report;
+    const correctionEvaluation = summarizeOperatorCorrectionFreshPolicy({ rows, corrections: correctionCohort.corrections,
+      coverage: correctionCohort.coverage, evaluationSnapshotValid: report.evaluationSnapshotValid });
+    return buildOperatorCorrectionFreshPolicyReport(report, correctionEvaluation);
   } finally { await runtime.close(); }
 }

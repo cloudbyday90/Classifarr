@@ -5,6 +5,7 @@ import * as db from '../../config/database.mjs';
 import { createFreshInventoryPolicyRepository, fingerprintFreshPolicySnapshot, FRESH_POLICY_CONFIG_SQL, loadFreshInventoryPolicyRuntime } from '../../services/freshInventoryPolicyRuntime.mjs';
 import { freshFixture } from '../fixtures/freshInventoryPolicyFixture.mjs';
 import { INVENTORY_TRAINING_HISTORY_SQL } from '../../services/inventoryTrainingProvenance.mjs';
+import { INVENTORY_OUTCOME_LABEL_SQL } from '../../services/inventoryOutcomeLabels.mjs';
 
 function setup() {
   const { source } = freshFixture();
@@ -30,6 +31,24 @@ test('opt-in training provenance is captured inside the same policy snapshot and
   const fingerprint = snapshot.fingerprint;
   snapshot.trainingExclusions.clear();
   expect(fingerprintFreshPolicySnapshot(snapshot)).not.toBe(fingerprint);
+  expect(withTransaction).toHaveBeenCalledTimes(1);
+});
+
+test('opt-in operator corrections are captured in the same read-only snapshot and fingerprinted', async () => {
+  const { client, withTransaction, loadPolicies } = setup(), original = client.query.getMockImplementation();
+  const row = { media_type: 'movie', tmdb_id: 1, selected_library_id: 1,
+    was_correction: true, origin: 'manual_correction' };
+  client.query.mockImplementation((sql, parameters) => sql === INVENTORY_OUTCOME_LABEL_SQL
+    ? Promise.resolve({ rows: [row] }) : original(sql, parameters));
+  const repository = createFreshInventoryPolicyRepository({ withTransaction, loadPolicies,
+    includeOperatorCorrectionLabels: true });
+  const snapshot = await repository.read(identity);
+  expect(snapshot.operatorFeedbackRows).toEqual([row]);
+  expect(client.query.mock.calls[0][0]).toBe('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
+  expect(client.query.mock.calls.some(([sql]) => sql === INVENTORY_OUTCOME_LABEL_SQL)).toBe(true);
+  const changed = structuredClone(snapshot);
+  changed.operatorFeedbackRows[0].selected_library_id = 2;
+  expect(fingerprintFreshPolicySnapshot(changed)).not.toBe(snapshot.fingerprint);
   expect(withTransaction).toHaveBeenCalledTimes(1);
 });
 
