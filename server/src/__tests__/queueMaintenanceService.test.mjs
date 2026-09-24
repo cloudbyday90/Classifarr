@@ -63,6 +63,7 @@ describe('QueueMaintenanceService', () => {
             taskQueueMaintenanceLockKey: 2012,
             intakeReceiptService: { reconcileAndPrune: jest.fn().mockResolvedValue({ reconciled: 0, linked: 0, pruned: 0 }) },
         });
+        jest.spyOn(service, 'pruneCorrectionOutcomes').mockResolvedValue(undefined);
     });
 
     function mockRetentionSettings(overrides = {}) {
@@ -74,6 +75,16 @@ describe('QueueMaintenanceService', () => {
 
         db.query.mockResolvedValueOnce({ rows });
     }
+
+    test('correction outcome expiry retries on later maintenance without blocking queue cleanup', async () => {
+        service.pruneCorrectionOutcomes.mockRestore();
+        db.query.mockRejectedValueOnce(new Error('private database detail')).mockResolvedValueOnce({ rowCount: 1 });
+        await expect(service.pruneCorrectionOutcomes()).resolves.toBeUndefined();
+        expect(logger.warn).toHaveBeenCalledWith('Correction outcome expiry failed; the next maintenance run will retry');
+        await service.pruneCorrectionOutcomes();
+        expect(db.query).toHaveBeenCalledTimes(2);
+        expect(db.query.mock.calls[1][0]).toContain('LIMIT 1000');
+    });
 
     function mockTerminalCounts({
         completed = { stale: 0, total: 0 },

@@ -4,6 +4,7 @@ import { createLogger } from '../utils/logger.mjs';
 import { moveMovie, moveSeries } from './reclassificationMoves.mjs';
 import { rollback as _rollback, previewReclassification as _previewReclassification, triggerPlexScan as _triggerPlexScan } from './reclassificationQueries.mjs';
 import { NotFoundError, ValidationError, AppError } from '../utils/appError.mjs';
+import { recordClassificationCorrection } from './classificationCorrectionWriter.mjs';
 
 const logger = createLogger('ReclassificationService');
 
@@ -12,7 +13,7 @@ export class ReclassificationService {
     const rollbackInfo = { executed: false, originalData: null };
 
     const classResult = await db.query(`
-      SELECT ch.*, l.name as library_name, l.media_type, l.media_server_id
+      SELECT ch.*, l.name as library_name, l.media_server_id
       FROM classification_history ch
       LEFT JOIN libraries l ON ch.library_id = l.id
       WHERE ch.id = $1
@@ -67,20 +68,20 @@ export class ReclassificationService {
     };
 
     try {
-      await db.query(`
+      await db.withTransaction(async client => {
+        const update = await client.query(`
         UPDATE classification_history
         SET library_id = $1,
             library_name = (SELECT name FROM libraries WHERE id = $1),
-            status = 'reclassified',
-            updated_at = NOW()
-        WHERE id = $2
-      `, [targetLibraryId, classificationId]);
-
-      await db.query(`
-        INSERT INTO classification_corrections
-        (classification_id, original_library_id, corrected_library_id, corrected_by)
-        VALUES ($1, $2, $3, $4)
-      `, [classificationId, originalLibraryId, targetLibraryId, correctedBy]);
+            status = 'reclassified'
+        WHERE id = $2 AND library_id IS NOT DISTINCT FROM $3::integer
+          AND tmdb_id IS NOT DISTINCT FROM $4::integer AND media_type = $5
+      `, [targetLibraryId, classificationId, originalLibraryId, tmdb_id, media_type]);
+        if (update.rowCount === 0) throw new ValidationError('Classification changed during the move; correction was not saved.');
+        await recordClassificationCorrection(client, {
+          classification, originalLibraryId, destinationLibraryId: targetLibraryId, correctedBy,
+        });
+      });
 
       try {
         const plexScanResult = await this.triggerPlexScan({

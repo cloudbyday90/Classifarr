@@ -30,7 +30,7 @@ const mockLibraryMappingService = {
     getLibraryMapping: jest.fn()
 };
 
-const mockDb = { query: jest.fn() };
+const mockDb = { query: jest.fn(), withTransaction: async callback => callback(mockDb) };
 
 const mockLogger = {
     createLogger: () => ({
@@ -119,6 +119,8 @@ describe('Reclassification Service', () => {
 
             // Mock Radarr config fetch
             db.query.mockResolvedValueOnce({ rows: [{ id: 1, url: 'http://radarr:7878', api_key: 'abc' }] });
+            db.query.mockResolvedValueOnce({ rows: [], rowCount: 1 });
+            db.query.mockResolvedValueOnce({ rows: [{ id: 77 }], rowCount: 1 });
 
             // Mock Radarr movie lookup
             radarrService.getMovieByTmdbId.mockResolvedValue({

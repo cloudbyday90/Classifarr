@@ -12,6 +12,7 @@ import {
   normalizeIdentifier,
   normalizeString,
 } from './policyAuthorizedOutcomePersistenceCommandValues.mjs';
+import { recordClassificationCorrection } from './classificationCorrectionWriter.mjs';
 
 const POLICY_MANUAL_CORRECTION_EXECUTION_REASON_IDS = Object.freeze({
   CLASSIFICATION_NOT_FOUND: 'manual_correction_execution_classification_not_found',
@@ -72,13 +73,14 @@ async function applyPolicyManualCorrectionLifecycle({
   const normalizedDestinationLibraryId = normalizeIdentifier(destinationLibraryId);
   const normalizedActorId = normalizeString(actorId, 128);
 
-  const classification = normalizeClassification(firstRow(await client.query(
-    `SELECT id, library_id, tmdb_id, media_type
+  const classificationRow = firstRow(await client.query(
+    `SELECT id, library_id, tmdb_id, media_type, method, metadata, title, year
      FROM classification_history
      WHERE id = $1
      FOR UPDATE`,
     [normalizedClassificationId],
-  )));
+  ));
+  const classification = normalizeClassification(classificationRow);
   if (!classification.id) {
     return { ok: false, reasonId: POLICY_MANUAL_CORRECTION_EXECUTION_REASON_IDS.CLASSIFICATION_NOT_FOUND };
   }
@@ -106,13 +108,12 @@ async function applyPolicyManualCorrectionLifecycle({
      WHERE id = $3`,
     [destination.id, destination.name, classification.id],
   );
-  const correction = firstRow(await client.query(
-    `INSERT INTO classification_corrections
-       (classification_id, original_library_id, corrected_library_id, corrected_by)
-     VALUES ($1, $2, $3, $4)
-     RETURNING *`,
-    [classification.id, classification.originalLibraryId, destination.id, normalizedActorId],
-  ));
+  const correction = await recordClassificationCorrection(client, {
+    classification: classificationRow,
+    originalLibraryId: classification.originalLibraryId,
+    destinationLibraryId: destination.id,
+    correctedBy: normalizedActorId,
+  });
   if (!normalizeIdentifier(correction?.id)) {
     throw new Error(POLICY_MANUAL_CORRECTION_EXECUTION_REASON_IDS.CORRECTION_NOT_RECORDED);
   }

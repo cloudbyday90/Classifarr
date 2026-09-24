@@ -4,8 +4,32 @@ import { evaluateSourceDescriptionPair } from '../../services/sourceDescriptionP
 import { prepareSourceDescriptionEvaluationCohort } from '../../services/sourceDescriptionEvaluationCohort.mjs';
 import { sourcePairFixture, sourcePairIdentity as identity, sourcePairSnapshot } from '../fixtures/sourceDescriptionPairFixture.mjs';
 import { prepareDescriptionBenchmark } from '../../services/inventoryDescriptionBenchmarkSample.mjs';
+import { inventorySourceDescriptionKey } from '../../services/inventorySourceDescriptionIdentity.mjs';
 
 const options = { seed: 'source-pair-test-seed', size: 8 };
+test('a prior source-only outcome excludes the known alias after TMDB attachment without transferring its label', () => {
+  const source = sourcePairFixture();
+  const row = source.rows.find(candidate => candidate.tmdb_id !== null);
+  const current = source.corpus.documents.find(doc => doc.key === `${row.media_type}:${row.tmdb_id}`);
+  source.operatorFeedbackRows = [{ identity_key: inventorySourceDescriptionKey({ ...row, tmdb_id: null }),
+    tmdb_id: null, media_type: row.media_type, selected_library_id: row.library_id,
+    was_correction: true, origin: 'manual_correction' }];
+  const cohort = prepareSourceDescriptionEvaluationCohort(source, options);
+  expect(cohort.corrections.size).toBe(0);
+  expect(cohort.feedbackExcludedHashes.has(current.hash)).toBe(true);
+});
+test('durable source-only outcomes supply labels and exclude their entire group from training', () => {
+  const source = sourcePairFixture();
+  const doc = source.corpus.documents.find(candidate => candidate.id === null);
+  source.operatorFeedbackRows = [{ identity_key: doc.key, tmdb_id: null, media_type: doc.type,
+    selected_library_id: doc.libraryIds[0], was_correction: true, origin: 'manual_correction' }];
+  const cohort = prepareSourceDescriptionEvaluationCohort(source, options);
+  expect(cohort.corrections.has(doc.key)).toBe(true);
+  expect(cohort.feedbackExcludedHashes.has(doc.hash)).toBe(true);
+  const report = evaluateSourceDescriptionPair(source, identity, options);
+  expect(report.limits.sourceOnlyQualityLabelsAvailable).toBe(true);
+  expect(report.byQueryIdentity.source_only.correctionCases).toBe(1);
+});
 test('pairs the same cases and reports strata without exposing content or claiming routing quality', () => {
   const source = sourcePairFixture(), report = evaluateSourceDescriptionPair(source, identity, options);
   expect(report).toMatchObject({ status: 'complete', requested: 8, sampled: 8, sampleShortfall: 0,

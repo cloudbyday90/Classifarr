@@ -11,7 +11,7 @@ import { EmbedBuilder } from 'discord.js';
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { classificationOutcomeService } from './classificationOutcomeService.mjs';
-import * as notificationBuilder from './discordNotificationBuilder.mjs';
+import { persistDiscordCorrection } from './discordCorrectionPersistence.mjs';
 import { routeAfterClarification } from './discordClarificationRouting.mjs';
 import {
   DISCORD_PENDING_ANSWER_ACTION_IDS,
@@ -26,86 +26,15 @@ export async function processCorrection(classificationId, newLibraryId, interact
 
     let routingOutcome = { routed: false, reason: null, error: null };
 
-    const classResult = await db.query(
-      'SELECT * FROM classification_history WHERE id = $1',
-      [classificationId],
-    );
-
-    if (classResult.rows.length === 0) {
-      await interaction.followUp({
-        content: 'Classification not found',
-        ephemeral: true,
-      });
-      return;
-    }
-
-    const originalLibraryId = classResult.rows[0].library_id;
-    const classification = classResult.rows[0];
-    const existingLibraryId = notificationBuilder.toFiniteNumber(classification.library_id);
-
-    const libResult = await db.query(
-      'SELECT name FROM libraries WHERE id = $1',
-      [newLibraryId],
-    );
-
-    if (libResult.rows.length === 0) {
-      await interaction.followUp({
-        content: 'Library not found',
-        ephemeral: true,
-      });
-      return;
-    }
-
-    const newLibraryName = libResult.rows[0].name;
-
-    if (existingLibraryId !== null && existingLibraryId === newLibraryId) {
-      await interaction.followUp({
-        content: '\u2705 Already processed \u2014 no changes made.',
-        ephemeral: true,
-      });
-      return;
-    }
-
-    const clarificationResponse = {
-      corrected_library_id: newLibraryId,
-      corrected_library_name: newLibraryName,
-      corrected_by: interaction.user.username,
-      corrected_at: new Date().toISOString(),
-    };
-
-    await db.query(
-      `UPDATE classification_history
-       SET library_id = $1,
-           library_name = $2,
-           status = $3,
-           clarification_status = 'resolved',
-           pending_reason = NULL,
-           clarification_response = $5
-       WHERE id = $4`,
-      [
-        newLibraryId,
-        newLibraryName,
-        'corrected',
-        classificationId,
-        JSON.stringify(clarificationResponse),
-      ],
-    );
-    await db.query(
-      'INSERT INTO classification_corrections (classification_id, original_library_id, corrected_library_id, corrected_by) VALUES ($1, $2, $3, $4)',
-      [
-        classificationId,
-        originalLibraryId,
-        newLibraryId,
-        interaction.user.username,
-      ],
-    );
-    const outcomeRecord = await classificationOutcomeService.recordOutcome(classificationId, {
-      type: 'corrected',
-      source: 'discord_correction',
-      actor: interaction.user.username,
-      final_library_id: newLibraryId,
-      final_library_name: newLibraryName,
+    const persisted = await persistDiscordCorrection(db, classificationOutcomeService, {
+      classificationId, newLibraryId, actor: interaction.user.username,
     });
+    if (persisted.message) {
+      await interaction.followUp({ content: persisted.message, ephemeral: true });
+      return;
+    }
+    const { classification, newLibraryName, outcomeRecord } = persisted;
+    const originalLibraryId = classification.library_id;
     const pendingAnswerIntake = policyDiscordPendingAnswerIntakeService.build({
       classification,
       destination: {

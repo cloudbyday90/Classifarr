@@ -2,7 +2,7 @@
 import { createHash } from 'node:crypto';
 import { inventorySourceDescriptionKey, inventoryDescriptionQueryAliases } from './inventorySourceDescriptionIdentity.mjs';
 import { projectInventoryDescription } from './inventoryDescriptionProjection.mjs';
-import { prepareInventoryOutcomeLabels } from './inventoryOutcomeLabels.mjs';
+import { prepareInventoryOutcomeLabels, inventoryOutcomeIdentity } from './inventoryOutcomeLabels.mjs';
 import { validateDescriptionBenchmarkOptions } from './inventoryDescriptionBenchmarkSelection.mjs';
 
 const digest = value => createHash('sha256').update(value).digest('hex');
@@ -41,6 +41,11 @@ export function groupSourceDescriptionEvidence(rows) {
     if (!hashesByGroup.has(group)) hashesByGroup.set(group, new Set());
     for (const hash of descriptions.get(key)) hashesByGroup.get(group).add(hash);
   }
+  // A formerly source-only item may now have a TMDB key. Its old outcome is not
+  // transferred as a label, but the still-known source alias must prevent leakage.
+  for (const [token, key] of anchors) {
+    if (token.startsWith('source:')) groupByKey.set(token, root(key));
+  }
   return { groupByKey, hashesByGroup };
 }
 
@@ -51,7 +56,7 @@ export function prepareSourceDescriptionEvaluationCohort(source, options) {
   const { labels, coverage } = prepareInventoryOutcomeLabels(source.operatorFeedbackRows, source.corpus.documents, source.libraries);
   const feedbackGroups = new Map();
   for (const row of source.operatorFeedbackRows) {
-    const group = groupByKey.get(`${row.media_type}:${row.tmdb_id}`);
+    const group = groupByKey.get(inventoryOutcomeIdentity(row));
     if (!group) continue;
     if (!feedbackGroups.has(group)) feedbackGroups.set(group, new Set());
     feedbackGroups.get(group).add(row.selected_library_id);

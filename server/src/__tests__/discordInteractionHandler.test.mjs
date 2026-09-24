@@ -33,7 +33,7 @@ import { jest } from '@jest/globals';
 import { EmbedBuilder } from 'discord.js';
 import { createNamedMockModule } from './helpers/mockFactory.mjs';
 
-const mockDb = { query: jest.fn() };
+const mockDb = { query: jest.fn(), withTransaction: async callback => callback(mockDb) };
 const mockClarificationService = {
     resolvePolicyQuestion: jest.fn(),
     recordResponse: jest.fn()
@@ -302,7 +302,7 @@ describe('processCorrection', () => {
     test('uses editReply for the success embed — NOT update() or reply()', async () => {
         db.query
             .mockResolvedValueOnce({ rows: [MOCK_CLASSIFICATION] })           // classification
-            .mockResolvedValueOnce({ rows: [{ name: 'Series' }] })            // library lookup
+            .mockResolvedValueOnce({ rows: [{ name: 'Series', media_type: MOCK_CLASSIFICATION.media_type, is_active: true }] })
             .mockResolvedValue({ rows: [], rowCount: 1 });
 
         const interaction = makeInteraction();
@@ -316,7 +316,7 @@ describe('processCorrection', () => {
             source: 'discord_correction',
             final_library_id: 11,
             final_library_name: 'Series'
-        }));
+        }), { client: mockDb });
         expect(discordPendingAnswerIntakeService.build).toHaveBeenCalledWith(expect.objectContaining({
             classification: MOCK_CLASSIFICATION,
             destination: {
@@ -359,7 +359,7 @@ describe('processCorrection', () => {
     test('idempotency guard: followUp + early exit when correction targets the existing library', async () => {
         db.query
             .mockResolvedValueOnce({ rows: [{ ...MOCK_CLASSIFICATION, status: 'corrected', library_id: 10 }] })
-            .mockResolvedValueOnce({ rows: [{ name: 'Movies' }] });
+            .mockResolvedValueOnce({ rows: [{ name: 'Movies', media_type: 'movie', is_active: true }] });
 
         const interaction = makeInteraction();
         await processCorrection(100, 10, interaction);

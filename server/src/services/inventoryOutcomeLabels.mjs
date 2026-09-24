@@ -4,16 +4,25 @@ export const INVENTORY_OUTCOME_LABEL_LIMIT = 5000;
 
 /** Read only explicit operator feedback/corrections; never use successful auto-routes as labels. */
 export const INVENTORY_OUTCOME_LABEL_SQL = `
-  SELECT media_type, tmdb_id, selected_library_id, was_correction, origin, observed_at
+  SELECT media_type, tmdb_id, identity_key, selected_library_id, was_correction, origin, observed_at
   FROM (
-    SELECT media_type, tmdb_id, selected_library_id, was_correction,
+    SELECT media_type, tmdb_id, NULL::text AS identity_key, selected_library_id, was_correction,
       'feedback'::text AS origin, responded_at AS observed_at, id AS source_id
     FROM policy_feedback_evaluation
     WHERE evaluation_correct IS NOT NULL
       AND responded_at IS NOT NULL AND isfinite(responded_at) AND responded_at <= NOW()
       AND media_type IN ('movie', 'tv')
     UNION ALL
-    SELECT ch.media_type, ch.tmdb_id, cc.corrected_library_id, true AS was_correction,
+    SELECT o.media_type, CASE WHEN o.identity_key LIKE 'source:%' THEN NULL
+      ELSE split_part(o.identity_key, ':', 2)::integer END AS tmdb_id,
+      o.identity_key, o.selected_library_id, true,
+      'manual_correction'::text AS origin, o.observed_at, o.correction_id AS source_id
+    FROM classification_correction_outcomes o
+    JOIN libraries destination ON destination.id = o.selected_library_id
+      AND destination.is_active IS TRUE AND destination.media_type = o.media_type
+    WHERE o.observed_at > NOW() - INTERVAL '30 days' AND o.observed_at <= NOW()
+    UNION ALL
+    SELECT ch.media_type, ch.tmdb_id, NULL::text AS identity_key, cc.corrected_library_id, true AS was_correction,
       'manual_correction'::text AS origin, cc.created_at AT TIME ZONE current_setting('TimeZone') AS observed_at,
       cc.id AS source_id
     FROM classification_corrections cc
@@ -26,6 +35,8 @@ export const INVENTORY_OUTCOME_LABEL_SQL = `
       AND cc.corrected_by IS NOT NULL AND btrim(cc.corrected_by) <> ''
       AND cc.created_at IS NOT NULL AND isfinite(cc.created_at)
       AND cc.created_at <= CURRENT_TIMESTAMP::timestamp
+      AND cc.created_at > CURRENT_TIMESTAMP::timestamp - INTERVAL '30 days'
+      AND NOT EXISTS (SELECT 1 FROM classification_correction_outcomes o WHERE o.correction_id = cc.id)
   ) explicit_outcomes
   ORDER BY observed_at DESC, source_id DESC
   LIMIT 5001
@@ -42,11 +53,12 @@ export function prepareInventoryOutcomeLabels(rows, documents, libraries) {
     confirmations: 0, corrections: 0, manualCorrectionRows: 0 };
   for (const row of rows) {
     coverage.manualCorrectionRows += Number(row?.origin === 'manual_correction');
-    const type = row?.media_type, id = row?.tmdb_id, destination = row?.selected_library_id;
-    if (!['movie', 'tv'].includes(type) || !Number.isInteger(id) || id <= 0 ||
+    const type = row?.media_type, destination = row?.selected_library_id;
+    const key = inventoryOutcomeIdentity(row);
+    if (!['movie', 'tv'].includes(type) || !key ||
         !Number.isInteger(destination) || active.get(destination) !== type ||
         typeof row.was_correction !== 'boolean') { coverage.invalidRows++; continue; }
-    const key = `${type}:${id}`, doc = known.get(key);
+    const doc = known.get(key);
     if (!doc) { coverage.withoutInventoryDescription++; continue; }
     // A correction can precede a move/sync. Membership is coverage, not label authority.
     if (!doc.libraryIds.includes(destination)) coverage.absentFromCurrentInventory++;
@@ -64,4 +76,14 @@ export function prepareInventoryOutcomeLabels(rows, documents, libraries) {
   }
   coverage.labeledIdentities = labels.size;
   return { labels, coverage };
+}
+
+export function inventoryOutcomeIdentity(row) {
+  const type = row?.media_type, key = row?.identity_key;
+  if (key == null) return Number.isInteger(row?.tmdb_id) && row.tmdb_id > 0 ? `${type}:${row.tmdb_id}` : null;
+  if (typeof key !== 'string' || row?.origin !== 'manual_correction') return null;
+  if (/^source:[a-f0-9]{64}$/.test(key)) return row.tmdb_id == null ? key : null;
+  const [keyType, rawId] = key.split(':');
+  const id = Number(rawId);
+  return keyType === type && id === row.tmdb_id && Number.isInteger(id) && id > 0 && id <= 2147483647 && key === `${type}:${id}` ? key : null;
 }

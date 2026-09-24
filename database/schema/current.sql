@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-24T13:32:51.359Z
--- Latest Migration: 20260924_120000_add_inventory_description_representation_checkpoint.sql
+-- Generated: 2026-09-24T16:44:39.827Z
+-- Latest Migration: 20260924_150000_add_classification_correction_outcomes.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -2220,6 +2220,34 @@ CREATE SEQUENCE public.clarification_responses_id_seq
 --
 
 ALTER SEQUENCE public.clarification_responses_id_seq OWNED BY public.clarification_responses.id;
+
+
+--
+-- Name: classification_correction_outcomes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.classification_correction_outcomes (
+    correction_id integer NOT NULL,
+    media_type text NOT NULL,
+    identity_key text NOT NULL,
+    selected_library_id integer NOT NULL,
+    observed_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT classification_correction_outcomes_check CHECK (((identity_key ~ '^source:[a-f0-9]{64}$'::text) OR
+CASE
+    WHEN (identity_key ~ (('^'::text || media_type) || ':[1-9][0-9]{0,9}$'::text)) THEN ((split_part(identity_key, ':'::text, 2))::bigint <= 2147483647)
+    ELSE false
+END)),
+    CONSTRAINT classification_correction_outcomes_correction_id_check CHECK ((correction_id > 0)),
+    CONSTRAINT classification_correction_outcomes_media_type_check CHECK ((media_type = ANY (ARRAY['movie'::text, 'tv'::text]))),
+    CONSTRAINT classification_correction_outcomes_observed_at_check CHECK (isfinite(observed_at))
+);
+
+
+--
+-- Name: TABLE classification_correction_outcomes; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.classification_correction_outcomes IS 'Thirty-day explicit correction evaluation snapshots; no titles, metadata, actors, credentials, or routing authority. Survive history retries, cascade on destination deletion.';
 
 
 --
@@ -9130,6 +9158,14 @@ ALTER TABLE ONLY public.clarification_responses
 
 
 --
+-- Name: classification_correction_outcomes classification_correction_outcomes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.classification_correction_outcomes
+    ADD CONSTRAINT classification_correction_outcomes_pkey PRIMARY KEY (correction_id);
+
+
+--
 -- Name: classification_corrections classification_corrections_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10938,6 +10974,13 @@ CREATE INDEX idx_clarification_responses_question ON public.clarification_respon
 --
 
 CREATE INDEX idx_classification_automatic_recovery_due ON public.classification_history USING btree (retry_exhausted_at, id) WHERE (((status)::text = 'failed'::text) AND ((method)::text = 'queued_for_retry'::text) AND (library_id IS NULL) AND (retry_recovery_attempts = 0) AND (retry_failure_code IS NOT NULL));
+
+
+--
+-- Name: idx_classification_correction_outcomes_observed; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_classification_correction_outcomes_observed ON public.classification_correction_outcomes USING btree (observed_at, correction_id);
 
 
 --
@@ -13148,6 +13191,14 @@ ALTER TABLE ONLY public.clarification_responses
 
 ALTER TABLE ONLY public.clarification_responses
     ADD CONSTRAINT clarification_responses_question_id_fkey FOREIGN KEY (question_id) REFERENCES public.clarification_questions(id);
+
+
+--
+-- Name: classification_correction_outcomes classification_correction_outcomes_selected_library_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.classification_correction_outcomes
+    ADD CONSTRAINT classification_correction_outcomes_selected_library_id_fkey FOREIGN KEY (selected_library_id) REFERENCES public.libraries(id) ON DELETE CASCADE;
 
 
 --
@@ -16246,6 +16297,7 @@ FROM unnest(ARRAY[
     '20260923_120000_add_classification_intake_receipts.sql',
     '20260923_130000_add_library_profile_inventory_revision.sql',
     '20260923_140000_add_profile_refresh_worker_progress.sql',
-    '20260924_120000_add_inventory_description_representation_checkpoint.sql'
+    '20260924_120000_add_inventory_description_representation_checkpoint.sql',
+    '20260924_150000_add_classification_correction_outcomes.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

@@ -116,6 +116,11 @@ screen. Do not infer correctness from an auto-route, library name, or unverified
 external move. Then rerun this paired evaluation on naturally accumulated labels
 and add full decision/review metrics before changing approval calibration.
 
+Follow-up implemented in Unreleased:
+[durable correction outcome capture](correction-outcome-capture-outcome.md).
+It preserves future explicit correction evidence without reconstructing the
+missing historical labels; deployment remains a separate release decision.
+
 Recommendation stack: deploy the existing bounded backfill in a planned release
 → reconcile automatic outcome capture → rerun paired retrieval → evaluate full
 decision outcomes → consider calibrated autonomy. This targets the actual missing

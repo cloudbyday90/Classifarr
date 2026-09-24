@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Automatically preserve bounded movie/TV correction outcomes for evaluation,
+  including verified source-only identities, across history retries and cleanup.
+  Make Discord and reclassification persistence atomic, fix reclassification's
+  invalid history-column update, and expire captured evidence after 30 days.
+  Keep routing authority, deployments, and releases unchanged.
 - Add a private, read-only 300-case movie/TV comparison of TMDB-linked and
   source-aware retrieval evidence, with transitive duplicate holdouts, explicit
   cache/label shortages, and correction-only quality metrics. Keep routing,
