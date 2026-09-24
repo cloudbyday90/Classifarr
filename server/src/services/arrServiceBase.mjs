@@ -47,13 +47,13 @@ export function createArrBaseMethods({ httpGet, serviceName }) {
     }
   }
 
-  async function validatePathInRootFolder(url, apiKey, destinationPath) {
+  async function validatePathInRootFolder(url, apiKey, destinationPath, { strict = false } = {}) {
     try {
       const rootFolders = await getRootFolders(url, apiKey);
-      const normalizedDest = destinationPath.replace(/[/\\]+$/, '');
+      const normalizedDest = destinationPath.replaceAll('\\', '/').replace(/\/+$/, '');
 
       for (const folder of rootFolders) {
-        const normalizedRoot = folder.path.replace(/[/\\]+$/, '');
+        const normalizedRoot = folder.path.replaceAll('\\', '/').replace(/\/+$/, '');
         if (
           normalizedDest.startsWith(normalizedRoot + '/') ||
           normalizedDest.startsWith(normalizedRoot + '\\') ||
@@ -75,6 +75,7 @@ export function createArrBaseMethods({ httpGet, serviceName }) {
         error: `Path "${destinationPath}" is not within any configured ${serviceName} root folder`,
       };
     } catch (error) {
+      if (strict) throw error;
       return {
         isValid: false,
         error: `Failed to validate root folder: ${error.message}`,

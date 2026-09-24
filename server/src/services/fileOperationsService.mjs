@@ -40,18 +40,20 @@ export class FileOperationsService {
         return this._logger;
     }
 
-    async translatePath(arrPath) {
+    async translatePath(arrPath, { fresh = false, strict = false } = {}) {
         try {
             const now = Date.now();
-            if (!this._pathMappingsCache || (now - this._pathMappingsCacheTime) > 60000) {
+            if (fresh || !this._pathMappingsCache || (now - this._pathMappingsCacheTime) > 60000) {
                 const result = await this.db.query('SELECT * FROM path_mappings WHERE is_active = true ORDER BY LENGTH(arr_path) DESC');
                 this._pathMappingsCache = result.rows;
                 this._pathMappingsCacheTime = now;
             }
 
+            const normalizedPath = arrPath.replaceAll('\\', '/');
             for (const mapping of this._pathMappingsCache) {
-                if (arrPath.startsWith(mapping.arr_path)) {
-                    const translated = arrPath.replace(mapping.arr_path, mapping.local_path);
+                const prefix = mapping.arr_path.replaceAll('\\', '/').replace(/\/+$/, '');
+                if (normalizedPath === prefix || normalizedPath.startsWith(`${prefix}/`)) {
+                    const translated = mapping.local_path.replace(/[\\/]+$/, '') + normalizedPath.slice(prefix.length);
                     this.logger.debug('Path translated', { original: arrPath, translated, mapping: mapping.id });
                     return translated;
                 }
@@ -60,6 +62,7 @@ export class FileOperationsService {
             this.logger.debug('No path mapping found, using original', { path: arrPath });
             return arrPath;
         } catch (error) {
+            if (strict) throw error;
             this.logger.warn('Path translation failed, using original path', { path: arrPath, error: error.message });
             return arrPath;
         }
@@ -225,7 +228,9 @@ export class FileOperationsService {
         const {
             dryRun = false,
             skipVerification = false,
-            onProgress = null
+            onProgress = null,
+            beforeSourceDelete = null,
+            preservePartialCopy = false,
         } = options;
 
         const startTime = Date.now();
@@ -262,7 +267,7 @@ export class FileOperationsService {
 
         if (!copyResult.success) {
             try {
-                await fs.rm(dest, { recursive: true, force: true });
+                if (!preservePartialCopy) await fs.rm(dest, { recursive: true, force: true });
             } catch (cleanupError) {
                 this.logger.warn('Failed to cleanup partial copy', { dest, error: cleanupError.message });
             }
@@ -281,7 +286,7 @@ export class FileOperationsService {
 
             if (!verifyResult.success) {
                 try {
-                    await fs.rm(dest, { recursive: true, force: true });
+                    if (!preservePartialCopy) await fs.rm(dest, { recursive: true, force: true });
                 } catch (cleanupError) {
                     this.logger.warn('Failed to cleanup failed copy', { dest, error: cleanupError.message });
                 }
@@ -298,7 +303,8 @@ export class FileOperationsService {
 
         const deleteResult = await this.safeDeleteFolder(src, {
             requireVerification: !skipVerification,
-            verifiedAgainst: dest
+            verifiedAgainst: dest,
+            beforeDelete: beforeSourceDelete,
         });
 
         if (!deleteResult.success) {

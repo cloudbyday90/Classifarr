@@ -32,6 +32,14 @@ describe('SonarrService', () => {
     });
 
     describe('buildUrl', () => {
+        it('refuses a stale path or TVDB identity at the final pre-update GET', async () => {
+            mockHttpGet.mockResolvedValue({ data: { id: 1, tvdbId: 10, path: '/changed/item' } });
+            await expect(service.updateSeriesPath('http://arr.invalid', 'test', 1, '/new/item',
+                { expectedPath: '/old/item', expectedProviderId: 10 })).rejects.toThrow('refusing');
+            await expect(service.updateSeriesPath('http://arr.invalid', 'test', 1, '/new/item',
+                { expectedPath: '/changed/item', expectedProviderId: 20 })).rejects.toThrow('refusing');
+            expect(mockHttpPut).not.toHaveBeenCalled();
+        });
         it('should build URL with default values', () => {
             const url = service.buildUrl({});
             expect(url).toBe('http://localhost:8989');

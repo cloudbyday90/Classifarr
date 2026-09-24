@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-24T16:44:39.827Z
--- Latest Migration: 20260924_150000_add_classification_correction_outcomes.sql
+-- Generated: 2026-09-24T17:15:35.732Z
+-- Latest Migration: 20260924_170000_add_reclassification_move_operations.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -7132,6 +7132,33 @@ ALTER SEQUENCE public.rag_metrics_id_seq OWNED BY public.rag_metrics.id;
 
 
 --
+-- Name: reclassification_move_operations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.reclassification_move_operations (
+    id uuid NOT NULL,
+    classification_id integer NOT NULL,
+    target_library_id integer NOT NULL,
+    resource_key text NOT NULL,
+    plan jsonb NOT NULL,
+    corrected_by character varying(100) NOT NULL,
+    state text DEFAULT 'moving'::text NOT NULL,
+    reason_code text,
+    attempts integer DEFAULT 0 NOT NULL,
+    next_attempt_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    completed_at timestamp with time zone,
+    CONSTRAINT reclassification_move_operations_attempts_check CHECK (((attempts >= 0) AND (attempts <= 31))),
+    CONSTRAINT reclassification_move_operations_check CHECK (((state = 'completed'::text) = (completed_at IS NOT NULL))),
+    CONSTRAINT reclassification_move_operations_plan_check CHECK (((jsonb_typeof(plan) = 'object'::text) AND (octet_length((plan)::text) <= 16384))),
+    CONSTRAINT reclassification_move_operations_reason_code_check CHECK ((length(reason_code) <= 80)),
+    CONSTRAINT reclassification_move_operations_resource_key_check CHECK ((length(resource_key) <= 120)),
+    CONSTRAINT reclassification_move_operations_state_check CHECK ((state = ANY (ARRAY['moving'::text, 'files_verified'::text, 'needs_attention'::text, 'completed'::text])))
+);
+
+
+--
 -- Name: refresh_tokens; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -10526,6 +10553,14 @@ ALTER TABLE ONLY public.rag_metrics
 
 
 --
+-- Name: reclassification_move_operations reclassification_move_operations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reclassification_move_operations
+    ADD CONSTRAINT reclassification_move_operations_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: refresh_tokens refresh_tokens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -12447,6 +12482,41 @@ CREATE INDEX idx_rag_metrics_period ON public.rag_metrics USING btree (period_st
 --
 
 CREATE INDEX idx_rag_metrics_success ON public.rag_metrics USING btree (success, operation);
+
+
+--
+-- Name: idx_reclassification_move_active_history; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_reclassification_move_active_history ON public.reclassification_move_operations USING btree (classification_id) WHERE (state <> 'completed'::text);
+
+
+--
+-- Name: idx_reclassification_move_active_resource; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_reclassification_move_active_resource ON public.reclassification_move_operations USING btree (resource_key) WHERE (state <> 'completed'::text);
+
+
+--
+-- Name: idx_reclassification_move_completed; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_reclassification_move_completed ON public.reclassification_move_operations USING btree (completed_at) WHERE (state = 'completed'::text);
+
+
+--
+-- Name: idx_reclassification_move_due; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_reclassification_move_due ON public.reclassification_move_operations USING btree (next_attempt_at, id) WHERE (state = ANY (ARRAY['moving'::text, 'files_verified'::text]));
+
+
+--
+-- Name: idx_reclassification_move_history; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_reclassification_move_history ON public.reclassification_move_operations USING btree (classification_id, created_at DESC);
 
 
 --
@@ -16298,6 +16368,7 @@ FROM unnest(ARRAY[
     '20260923_130000_add_library_profile_inventory_revision.sql',
     '20260923_140000_add_profile_refresh_worker_progress.sql',
     '20260924_120000_add_inventory_description_representation_checkpoint.sql',
-    '20260924_150000_add_classification_correction_outcomes.sql'
+    '20260924_150000_add_classification_correction_outcomes.sql',
+    '20260924_170000_add_reclassification_move_operations.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Journal movie/TV reclassification moves before filesystem changes and recover
+  verified moves after interruptions without repeating file copies or deletions.
+  Reject missing or mismatched provider identities, preserve ambiguous recovery
+  evidence, deduplicate retry warnings, and fix post-move Plex scan lookups.
 - Automatically preserve bounded movie/TV correction outcomes for evaluation,
   including verified source-only identities, across history retries and cleanup.
   Make Discord and reclassification persistence atomic, fix reclassification's

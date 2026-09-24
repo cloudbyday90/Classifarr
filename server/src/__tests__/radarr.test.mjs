@@ -32,6 +32,21 @@ describe('RadarrService', () => {
     });
 
     describe('buildUrl', () => {
+        it('refuses a stale path or identity at the final pre-update GET', async () => {
+            mockHttpGet.mockResolvedValue({ data: { id: 1, tmdbId: 10, path: '/changed/item' } });
+            await expect(service.updateMoviePath('http://arr.invalid', 'test', 1, '/new/item',
+                { expectedPath: '/old/item', expectedProviderId: 10 })).rejects.toThrow('refusing');
+            await expect(service.updateMoviePath('http://arr.invalid', 'test', 1, '/new/item',
+                { expectedPath: '/changed/item', expectedProviderId: 20 })).rejects.toThrow('refusing');
+            expect(mockHttpPut).not.toHaveBeenCalled();
+        });
+
+        it('strict root validation propagates outages and normalizes Windows roots', async () => {
+            mockHttpGet.mockRejectedValueOnce(new Error('offline'));
+            await expect(service.validatePathInRootFolder('http://arr.invalid', 'test', '/new/item', { strict: true })).rejects.toThrow('offline');
+            mockHttpGet.mockResolvedValueOnce({ data: [{ path: 'D:\\Movies' }] });
+            expect((await service.validatePathInRootFolder('http://arr.invalid', 'test', 'D:/Movies/item', { strict: true })).isValid).toBe(true);
+        });
         it('should build URL with default values', () => {
             const url = service.buildUrl({});
             expect(url).toBe('http://localhost:7878');

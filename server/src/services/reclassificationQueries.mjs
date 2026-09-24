@@ -6,17 +6,9 @@ import { NotFoundError } from '../utils/appError.mjs';
 
 const logger = createLogger('ReclassificationService');
 
-export async function rollback(originalData) {
-  try {
-    logger.warn('Attempting rollback', { originalData });
-  } catch (error) {
-    logger.error('Rollback failed', { error: error.message });
-  }
-}
-
 export async function previewReclassification({ classificationId, targetLibraryId }) {
   const classResult = await db.query(`
-    SELECT ch.*, l.name as current_library_name, l.media_type
+    SELECT ch.*, l.name as current_library_name
     FROM classification_history ch
     LEFT JOIN libraries l ON ch.library_id = l.id
     WHERE ch.id = $1
@@ -50,7 +42,7 @@ export async function triggerPlexScan({ targetLibraryId, originalLibraryId, newP
       SELECT l.id, l.name, l.external_id as plex_library_key,
              ms.id as media_server_id, ms.url as plex_url, ms.api_key as plex_token
       FROM libraries l
-      JOIN media_servers ms ON l.media_server_id = ms.id
+      JOIN media_server ms ON l.media_server_id = ms.id
       WHERE l.id = $1 AND ms.type = 'plex'
     `, [targetLibraryId]);
 
@@ -76,7 +68,7 @@ export async function triggerPlexScan({ targetLibraryId, originalLibraryId, newP
         SELECT l.id, l.name, l.external_id as plex_library_key,
                ms.id as media_server_id, ms.url as plex_url, ms.api_key as plex_token
         FROM libraries l
-        JOIN media_servers ms ON l.media_server_id = ms.id
+        JOIN media_server ms ON l.media_server_id = ms.id
         WHERE l.id = $1 AND ms.type = 'plex'
       `, [originalLibraryId]);
 

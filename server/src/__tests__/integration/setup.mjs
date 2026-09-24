@@ -169,6 +169,7 @@ function createIntegrationDatabaseFacade() {
             STARTUP_RESET: 1234567890,
             NATIVE_INTENT_RECONCILIATION: 2008,
             NATIVE_INTENT_RECONCILIATION_LEDGER_RETENTION: 2009,
+            RECLASSIFICATION_MOVE: 2021,
         },
     };
 }

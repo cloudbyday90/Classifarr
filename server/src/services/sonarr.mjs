@@ -148,12 +148,17 @@ class SonarrService {
   }
 
   async updateSeriesPath(url, apiKey, seriesId, newPath, options = {}) {
-    const { moveFiles = false, qualityProfileId = null } = options;
+    const { moveFiles = false, qualityProfileId = null, expectedPath, expectedProviderId } = options;
 
     try {
       const series = await this.getSeriesById(url, apiKey, seriesId);
       if (!series) {
         throw new NotFoundError(`Series not found with ID: ${seriesId}`);
+      }
+
+      if ((expectedPath !== undefined && series.path !== expectedPath) ||
+          (expectedProviderId !== undefined && Number(series.tvdbId) !== expectedProviderId)) {
+        throw new Error('Series identity or path changed before update; refusing to overwrite it');
       }
 
       const pathParts = newPath.replace(/\/$/, '').split('/');

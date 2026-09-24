@@ -1,214 +1,129 @@
-/*
- * Classifarr - AI-powered media classification for the *arr ecosystem
- * Copyright (C) 2024-2026 Classifarr Contributors
- *
- * Reclassification Service Tests
- */
+/* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { jest, beforeEach, test, expect } from '@jest/globals';
+import { ReclassificationService } from '../services/reclassificationService.mjs';
+import { classificationMoveRevision, moveBlocked } from '../services/reclassificationMoveContract.mjs';
+import { registerReclassificationMoveSchedule } from '../services/reclassificationMoveScheduler.mjs';
 
-import { jest } from '@jest/globals';
-import { createConsoleSpy } from './setup/consoleHelpers.mjs';
-import { createMockModule, createNamedMockModule } from './helpers/mockFactory.mjs';
-
-const mockFileOperationsService = {
-    translatePath: jest.fn(),
-    moveFolder: jest.fn()
-};
-
-const mockRadarrService = {
-    getMovieByTmdbId: jest.fn(),
-    validatePathInRootFolder: jest.fn(),
-    updateMoviePath: jest.fn()
-};
-
-const mockSonarrService = {
-    getSeriesByTvdbId: jest.fn(),
-    validatePathInRootFolder: jest.fn(),
-    updateSeriesPath: jest.fn()
-};
-
-const mockLibraryMappingService = {
-    getLibraryMapping: jest.fn()
-};
-
-const mockDb = { query: jest.fn(), withTransaction: async callback => callback(mockDb) };
-
-const mockLogger = {
-    createLogger: () => ({
-        info: jest.fn(),
-        error: jest.fn(),
-        warn: jest.fn(),
-        debug: jest.fn()
-    })
-};
-
-await jest.unstable_mockModule('../services/fileOperationsService.mjs', () => createNamedMockModule('fileOperationsService', mockFileOperationsService));
-await jest.unstable_mockModule('../services/radarr.mjs', () => createNamedMockModule('radarrService', mockRadarrService));
-await jest.unstable_mockModule('../services/sonarr.mjs', () => createNamedMockModule('sonarrService', mockSonarrService));
-await jest.unstable_mockModule('../services/libraryMappingService.mjs', () => createNamedMockModule('libraryMappingService', mockLibraryMappingService));
-await jest.unstable_mockModule('../config/database.mjs', () => createNamedMockModule('pool', mockDb));
-await jest.unstable_mockModule('../utils/logger.mjs', () => createMockModule(mockLogger));
-
-const fileOperationsService = mockFileOperationsService;
-const radarrService = mockRadarrService;
-const sonarrService = mockSonarrService;
-const libraryMappingService = mockLibraryMappingService;
-const db = mockDb;
-const { reclassificationService } = await import('../services/reclassificationService.mjs');
-
-describe('Reclassification Service', () => {
-    let consoleErrorSpy;
-    let triggerPlexScanSpy;
-
-    beforeAll(() => {
-        consoleErrorSpy = createConsoleSpy('error', { suppress: true });
-    });
-
-    afterAll(() => {
-        consoleErrorSpy.restore();
-    });
-
-    beforeEach(() => {
-        jest.resetAllMocks();
-        triggerPlexScanSpy = jest.spyOn(reclassificationService, 'triggerPlexScan').mockResolvedValue({ success: true, scans: [] });
-    });
-
-    afterEach(() => {
-        triggerPlexScanSpy.mockRestore();
-    });
-
-    describe('executeReclassification', () => {
-        const mockClassification = {
-            id: 1,
-            tmdb_id: 12345,
-            tvdb_id: null,
-            media_type: 'movie',
-            library_id: 10,
-            title: 'Test Movie'
-        };
-
-        const mockTargetMapping = {
-            id: 2,
-            library_id: 20,
-            arr_config_id: 1,
-            arr_root_folder_path: '/media/movies/new',
-            arr_type: 'radarr'
-        };
-
-        const mockOriginalMapping = {
-            id: 1,
-            library_id: 10,
-            arr_config_id: 1,
-            arr_root_folder_path: '/media/movies/old',
-            arr_type: 'radarr'
-        };
-
-        const mockContext = {
-            classificationId: 1,
-            targetLibraryId: 20,
-            correctedBy: 'user'
-        };
-
-        test('should successfully reclassify a movie', async () => {
-            // Mock DB response for classification
-            db.query.mockResolvedValueOnce({ rows: [mockClassification] });
-
-            // Mock library mapping
-            libraryMappingService.getLibraryMapping
-                .mockResolvedValueOnce(mockTargetMapping)
-                .mockResolvedValueOnce(mockOriginalMapping);
-
-            // Mock Radarr config fetch
-            db.query.mockResolvedValueOnce({ rows: [{ id: 1, url: 'http://radarr:7878', api_key: 'abc' }] });
-            db.query.mockResolvedValueOnce({ rows: [], rowCount: 1 });
-            db.query.mockResolvedValueOnce({ rows: [{ id: 77 }], rowCount: 1 });
-
-            // Mock Radarr movie lookup
-            radarrService.getMovieByTmdbId.mockResolvedValue({
-                id: 100,
-                path: '/media/movies/old/Test Movie (2024)'
-            });
-
-            // Mock path validation
-            radarrService.validatePathInRootFolder.mockResolvedValue({ isValid: true, matchedRootFolder: '/media/movies/new' });
-
-            // Mock path translation
-            fileOperationsService.translatePath
-                .mockResolvedValueOnce('/data/movies/old/Test Movie (2024)') // current
-                .mockResolvedValueOnce('/data/movies/new/Test Movie (2024)'); // new
-
-            // Mock file move
-            fileOperationsService.moveFolder.mockResolvedValue({ success: true, fileCount: 5, duration: 100 });
-
-            // Mock Radarr update
-            radarrService.updateMoviePath.mockResolvedValue({ id: 100, path: '/media/movies/new/Test Movie (2024)' });
-
-            const result = await reclassificationService.executeReclassification(mockContext);
-
-            expect(result.success).toBe(true);
-            expect(result.message).toContain('Successfully moved');
-            expect(fileOperationsService.translatePath).toHaveBeenCalledTimes(2);
-            expect(fileOperationsService.moveFolder).toHaveBeenCalledWith(
-                '/data/movies/old/Test Movie (2024)',
-                '/data/movies/new/Test Movie (2024)',
-                expect.any(Object)
-            );
-            expect(radarrService.updateMoviePath).toHaveBeenCalled();
-            expect(triggerPlexScanSpy).toHaveBeenCalledWith(expect.objectContaining({
-                newPath: '/media/movies/new/Test Movie (2024)',
-                oldPath: '/media/movies/old/Test Movie (2024)'
-            }));
-        });
-
-        test('should fail if media type mismatch', async () => {
-            db.query.mockResolvedValueOnce({ rows: [mockClassification] });
-
-            // Target shows as Sonarr but Media Type is Movie
-            libraryMappingService.getLibraryMapping.mockResolvedValueOnce({ ...mockTargetMapping, arr_type: 'sonarr' });
-
-            await expect(reclassificationService.executeReclassification(mockContext))
-              .rejects.toThrow('Media type mismatch');
-        });
-
-        test('should fail if file move fails', async () => {
-            // Setup similar to success flow
-            db.query.mockResolvedValueOnce({ rows: [mockClassification] });
-            libraryMappingService.getLibraryMapping.mockResolvedValueOnce(mockTargetMapping);
-            libraryMappingService.getLibraryMapping.mockResolvedValueOnce(mockOriginalMapping);
-            db.query.mockResolvedValueOnce({ rows: [{ id: 1, url: 'http://radarr:7878', api_key: 'abc' }] });
-            radarrService.getMovieByTmdbId.mockResolvedValue({ id: 100, path: '/old/path' });
-            radarrService.validatePathInRootFolder.mockResolvedValue({ isValid: true });
-
-            fileOperationsService.translatePath.mockImplementation(p => p);
-
-            // Mock file move FAILURE
-            fileOperationsService.moveFolder.mockResolvedValue({ success: false, error: 'Permission denied' });
-
-            await expect(reclassificationService.executeReclassification(mockContext))
-              .rejects.toThrow('Permission denied');
-        });
-    });
-
-    describe('translatePath Integration', () => {
-        test('should use translatePath in moveSeries', async () => {
-            const context = {
-                tvdbId: 555,
-                targetMapping: { arr_config_id: 1, arr_root_folder_path: '/tv/new', arr_type: 'sonarr' },
-                originalMapping: {},
-                title: 'Test Show'
-            };
-
-            db.query.mockResolvedValueOnce({ rows: [{ id: 1, url: 'http://sonarr:8989', api_key: 'xyz' }] });
-            sonarrService.getSeriesByTvdbId.mockResolvedValue({ id: 200, path: '/tv/old/Test Show' });
-            sonarrService.validatePathInRootFolder.mockResolvedValue({ isValid: true });
-
-            fileOperationsService.moveFolder.mockResolvedValue({ success: true });
-            sonarrService.updateSeriesPath.mockResolvedValue({});
-
-            await reclassificationService.moveSeries(context);
-
-            expect(fileOperationsService.translatePath).toHaveBeenCalledWith('/tv/old/Test Show');
-            expect(fileOperationsService.translatePath).toHaveBeenCalledWith('/tv/old/Test Show'); // Actually called for current and new
-            expect(fileOperationsService.translatePath).toHaveBeenCalledTimes(2);
-        });
-    });
+let repository, adapter, service, row, operation, database, logger, scan, options;
+beforeEach(() => {
+  row = { id: 1, library_id: 10, tmdb_id: 123, media_type: 'movie', title: 'Synthetic' };
+  const plan = { originalLibraryId: 10, targetLibraryId: 20, mediaType: 'movie',
+    oldPath: '/old/item', newPath: '/new/item', classificationRevision: classificationMoveRevision(row) };
+  operation = { id: 'operation-1', classification_id: 1, target_library_id: 20, state: 'moving', plan };
+  repository = {
+    find: jest.fn().mockResolvedValue(null), classification: jest.fn().mockImplementation(async () => row),
+    reserve: jest.fn().mockResolvedValue(operation), attempted: jest.fn(), verified: jest.fn(),
+    complete: jest.fn(), prune: jest.fn(), due: jest.fn().mockResolvedValue(operation),
+    defer: jest.fn().mockResolvedValue(operation),
+  };
+  adapter = { prepare: jest.fn().mockResolvedValue(plan), moveFiles: jest.fn(), reconcile: jest.fn() };
+  options = { signal: new AbortController().signal };
+  database = { withSessionAdvisoryLock: jest.fn(async (_key, fn) => { await fn(options); return true; }) };
+  logger = { info: jest.fn(), warn: jest.fn() };
+  scan = jest.fn().mockResolvedValue({ success: true });
+  service = new ReclassificationService({ database, repository, adapter, logger, scan });
+});
+const execute = () => service.executeReclassification({ classificationId: 1, targetLibraryId: 20 });
+test('reserves before any file operation, verifies before committing, and scans after commit', async () => {
+  await expect(execute()).resolves.toMatchObject({ success: true, details: { newPath: '/new/item' } });
+  expect(repository.reserve.mock.invocationCallOrder[0]).toBeLessThan(adapter.moveFiles.mock.invocationCallOrder[0]);
+  expect(adapter.reconcile.mock.invocationCallOrder[0]).toBeLessThan(repository.complete.mock.invocationCallOrder[0]);
+  expect(repository.complete.mock.invocationCallOrder[0]).toBeLessThan(scan.mock.invocationCallOrder[0]);
+});
+test.each(['moving', 'files_verified', 'needs_attention'])('retries %s using evidence, never repeats file work', async state => {
+  repository.find.mockResolvedValue({ ...operation, state });
+  await execute();
+  expect(adapter.reconcile).toHaveBeenCalled();
+  expect(adapter.moveFiles).not.toHaveBeenCalled();
+  expect(adapter.prepare).not.toHaveBeenCalled();
+});
+test('duplicate completed request returns success without new effects', async () => {
+  repository.find.mockResolvedValue({ ...operation, state: 'completed' });
+  row = { ...row, library_id: 20, status: 'reclassified' };
+  await expect(execute()).resolves.toMatchObject({ success: true });
+  expect(adapter.moveFiles).not.toHaveBeenCalled();
+  expect(repository.complete).not.toHaveBeenCalled();
+});
+test('different destination cannot supersede an unfinished operation', async () => {
+  repository.find.mockResolvedValue({ ...operation, target_library_id: 30 });
+  await expect(execute()).rejects.toMatchObject({ code: 'move_target_conflict' });
+  expect(adapter.prepare).not.toHaveBeenCalled();
+});
+test('database failure after verified movement retains recovery and does not claim rollback', async () => {
+  repository.complete.mockRejectedValue(new Error('database unavailable secret'));
+  await expect(execute()).rejects.toMatchObject({ code: 'move_dependency_unavailable', status: 503, isOperational: true });
+  expect(repository.defer).toHaveBeenCalledWith(operation, 'move_dependency_unavailable', false);
+  expect(scan).not.toHaveBeenCalled();
+  expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('secret');
+});
+test('crashed file operation retains intent and does not commit a correction', async () => {
+  adapter.moveFiles.mockRejectedValue(new Error('interrupted'));
+  await expect(execute()).rejects.toMatchObject({ code: 'move_dependency_unavailable' });
+  expect(repository.reserve).toHaveBeenCalled();
+  expect(repository.complete).not.toHaveBeenCalled();
+});
+test('ambiguous evidence requires attention with useful instructions', async () => {
+  adapter.reconcile.mockRejectedValue(moveBlocked('move_source_remains', 'Inspect both folders; neither was removed.'));
+  await expect(execute()).rejects.toThrow('Inspect both folders');
+  expect(repository.defer).toHaveBeenCalledWith(operation, 'move_source_remains', true);
+  expect(repository.complete).not.toHaveBeenCalled();
+});
+test('repeated identical warnings are suppressed across instances', async () => {
+  operation.reason_code = 'move_dependency_unavailable';
+  repository.find.mockResolvedValue(operation);
+  adapter.reconcile.mockRejectedValue(new Error('offline'));
+  await expect(execute()).rejects.toThrow('Recovery reference: operation-1');
+  expect(logger.warn).not.toHaveBeenCalled();
+});
+test('classification drift blocks remote effects as well as correction persistence', async () => {
+  repository.find.mockResolvedValue(operation);
+  row.tmdb_id = 456;
+  await expect(execute()).rejects.toMatchObject({ code: 'move_classification_changed' });
+  expect(adapter.reconcile).not.toHaveBeenCalled();
+});
+test('busy lock cannot create or recover a move', async () => {
+  database.withSessionAdvisoryLock.mockResolvedValue(false);
+  await expect(execute()).rejects.toMatchObject({ code: 'move_busy' });
+  await expect(service.recoverDue()).resolves.toEqual({ status: 'busy' });
+  expect(repository.find).not.toHaveBeenCalled();
+});
+test('aborted owner cannot begin a reserved file operation', async () => {
+  options.signal = AbortSignal.abort(new Error('lost lease'));
+  await expect(execute()).rejects.toThrow('lost lease');
+  expect(repository.reserve).not.toHaveBeenCalled();
+  expect(adapter.moveFiles).not.toHaveBeenCalled();
+});
+test('background recovery processes one due operation without file movement', async () => {
+  await expect(service.recoverDue()).resolves.toEqual({ status: 'completed' });
+  expect(repository.due).toHaveBeenCalledTimes(1);
+  expect(repository.prune).toHaveBeenCalledTimes(1);
+  expect(adapter.moveFiles).not.toHaveBeenCalled();
+});
+test('idle recovery and transient deferral return bounded status', async () => {
+  repository.due.mockResolvedValueOnce(null);
+  await expect(service.recoverDue()).resolves.toEqual({ status: 'idle' });
+  adapter.reconcile.mockRejectedValue(new Error('offline'));
+  await expect(service.recoverDue()).resolves.toEqual({ status: 'deferred' });
+});
+test('scan failure cannot turn a committed move into another correction', async () => {
+  scan.mockResolvedValue({ success: false });
+  await expect(execute()).resolves.toMatchObject({ success: true });
+  expect(repository.defer).not.toHaveBeenCalled();
+  expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Plex scan'), { operationId: operation.id });
+});
+test.each([0, -1, '1x', null])('invalid ID %s is rejected before lock or effects', async classificationId => {
+  await expect(service.executeReclassification({ classificationId, targetLibraryId: 20 })).rejects.toThrow('Valid classification');
+  expect(database.withSessionAdvisoryLock).not.toHaveBeenCalled();
+});
+test('invalid correction actor fails before files can move', async () => {
+  await expect(service.executeReclassification({ classificationId: 1, targetLibraryId: 20, correctedBy: 'x'.repeat(101) })).rejects.toThrow('actor');
+  expect(adapter.prepare).not.toHaveBeenCalled();
+});
+test('scheduler registers bounded startup and non-overlapping periodic recovery', async () => {
+  const scheduler = { schedule: jest.fn(), scheduleInitial: jest.fn() };
+  registerReclassificationMoveSchedule(scheduler, service);
+  expect(scheduler.schedule).toHaveBeenCalledWith('reclassification-move-recovery', '*/5 * * * *', expect.any(Function), null, { noOverlap: true });
+  expect(scheduler.scheduleInitial).toHaveBeenCalledWith('reclassification-move-recovery', 120_000, expect.any(Function));
+  await scheduler.schedule.mock.calls[0][2]();
+  expect(repository.due).toHaveBeenCalledTimes(1);
 });

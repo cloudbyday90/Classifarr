@@ -203,7 +203,7 @@ export async function verifyFolderCopy(src, dest, { checksumVerify: verify }) {
 }
 
 export async function safeDeleteFolder(folderPath, options, { verifyFolderCopy: verifyCopy }) {
-	const { requireVerification = true, verifiedAgainst = null } = options || {};
+	const { requireVerification = true, verifiedAgainst = null, beforeDelete = null } = options || {};
 
 	try {
 		if (requireVerification && verifiedAgainst) {
@@ -217,6 +217,8 @@ export async function safeDeleteFolder(folderPath, options, { verifyFolderCopy: 
 			}
 		}
 
+		// Fence the destructive step after verification, which may have taken significant time.
+		if (beforeDelete) await beforeDelete();
 		await fsp.rm(folderPath, { recursive: true, force: true });
 
 		return {

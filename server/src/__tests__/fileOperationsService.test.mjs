@@ -125,6 +125,22 @@ describe('translatePath', () => {
     const result = await svc.translatePath('/some/path.mkv');
     expect(result).toBe('/some/path.mkv');
   });
+
+  test('strict recovery translation bypasses cached mappings and propagates outages', async () => {
+    svc._pathMappingsCache = [{ arr_path: '/arr', local_path: '/stale' }];
+    svc._pathMappingsCacheTime = Date.now();
+    db.query.mockResolvedValueOnce({ rows: [{ arr_path: '/arr', local_path: '/fresh' }] });
+    expect(await svc.translatePath('/arr/item', { fresh: true, strict: true })).toBe('/fresh/item');
+    db.query.mockRejectedValueOnce(new Error('offline'));
+    await expect(svc.translatePath('/arr/item', { fresh: true, strict: true })).rejects.toThrow('offline');
+  });
+
+  test('path mapping requires a segment boundary and supports Windows separators', async () => {
+    db.query.mockResolvedValueOnce({ rows: [{ arr_path: '/media', local_path: '/mapped' }] });
+    expect(await svc.translatePath('/media-other/item')).toBe('/media-other/item');
+    db.query.mockResolvedValueOnce({ rows: [{ arr_path: 'D:\\Media', local_path: '/mapped' }] });
+    expect(await svc.translatePath('D:/Media/item', { fresh: true, strict: true })).toBe('/mapped/item');
+  });
 });
 
 describe('clearPathMappingsCache', () => {
@@ -274,6 +290,13 @@ describe('copyFileWithPermissions', () => {
 });
 
 describe('safeDeleteFolder', () => {
+  test('lost ownership after verification prevents source deletion', async () => {
+    jest.spyOn(svc, 'verifyFolderCopy').mockResolvedValueOnce({ success: true });
+    const result = await svc.safeDeleteFolder('/src', { requireVerification: true, verifiedAgainst: '/dest',
+      beforeDelete: async () => { throw new Error('lost owner'); } });
+    expect(result.success).toBe(false);
+    expect(fsp.rm).not.toHaveBeenCalled();
+  });
   test('deletes without verification when requireVerification=false', async () => {
     const result = await svc.safeDeleteFolder('/src', { requireVerification: false });
     expect(fsp.rm).toHaveBeenCalledWith('/src', { recursive: true, force: true });
@@ -305,6 +328,14 @@ describe('safeDeleteFolder', () => {
 });
 
 describe('moveFolder', () => {
+  test.each(['copy', 'verify'])('durable %s failure preserves partial evidence', async stage => {
+    jest.spyOn(svc, 'dryRunTest').mockResolvedValueOnce({ success: true, wouldSucceed: true, checks: {} });
+    jest.spyOn(svc, 'copyFolderWithPermissions').mockResolvedValueOnce({ success: stage !== 'copy' });
+    jest.spyOn(svc, 'verifyFolderCopy').mockResolvedValueOnce({ success: false });
+    const result = await svc.moveFolder('/src', '/dest', { preservePartialCopy: true });
+    expect(result.success).toBe(false);
+    expect(fsp.rm).not.toHaveBeenCalled();
+  });
   test('returns success=true in dry run mode', async () => {
     jest.spyOn(svc, 'dryRunTest').mockResolvedValueOnce({
       success: true, wouldSucceed: true,

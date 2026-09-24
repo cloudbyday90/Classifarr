@@ -145,12 +145,17 @@ class RadarrService {
   }
 
   async updateMoviePath(url, apiKey, movieId, newPath, options = {}) {
-    const { moveFiles = false, qualityProfileId = null } = options;
+    const { moveFiles = false, qualityProfileId = null, expectedPath, expectedProviderId } = options;
 
     try {
       const movie = await this.getMovieById(url, apiKey, movieId);
       if (!movie) {
         throw new NotFoundError(`Movie not found with ID: ${movieId}`);
+      }
+
+      if ((expectedPath !== undefined && movie.path !== expectedPath) ||
+          (expectedProviderId !== undefined && Number(movie.tmdbId) !== expectedProviderId)) {
+        throw new Error('Movie identity or path changed before update; refusing to overwrite it');
       }
 
       const pathParts = newPath.replace(/\/$/, '').split('/');
