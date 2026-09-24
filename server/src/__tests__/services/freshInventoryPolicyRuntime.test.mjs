@@ -181,3 +181,21 @@ test.each(['success', 'rollback', 'initialization_failure'])('dedicated runtime 
     constructor.mockRestore(); globalEnd.mockRestore();
   }
 });
+
+test('opt-in frozen capture uses one stable read-only snapshot per repository read', async () => {
+  const { source, client } = setup();
+  client.release = jest.fn();
+  const pool = { query: jest.fn(async () => ({ rows: [source.config] })),
+    connect: jest.fn(async () => client), end: jest.fn(), on: jest.fn() };
+  const constructor = jest.spyOn(pg, 'Pool').mockImplementation(function () { return pool; });
+  const globalEnd = jest.spyOn(db.pool, 'end').mockResolvedValue();
+  try {
+    const runtime = await loadFreshInventoryPolicyRuntime({ logging: privateLogging, repeatableRead: true });
+    await runtime.repository.read(identity);
+    expect(client.query).toHaveBeenCalledWith('BEGIN ISOLATION LEVEL REPEATABLE READ, READ ONLY');
+    expect(client.query).toHaveBeenCalledWith('COMMIT');
+    await runtime.close();
+  } finally {
+    constructor.mockRestore(); globalEnd.mockRestore();
+  }
+});

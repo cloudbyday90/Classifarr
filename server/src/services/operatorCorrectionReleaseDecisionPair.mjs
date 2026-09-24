@@ -4,6 +4,7 @@ import { BASELINE_COMMIT } from '../scripts/pinnedReleaseSchema.mjs';
 import { compareOperatorCorrectionReleasePair,
   fingerprintOperatorCorrectionPairCohort } from './operatorCorrectionReleasePairComparison.mjs';
 import { fingerprintReleaseDecisionInput, validateReleaseDecisionInput } from './operatorCorrectionReleaseDecisionInput.mjs';
+import { fingerprintFrozenPolicyInput, validateFrozenPolicyInput } from './operatorCorrectionFrozenPolicyInput.mjs';
 
 const exact = (value, keys) => value !== null && typeof value === 'object' && !Array.isArray(value) &&
   JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...keys].sort());
@@ -26,14 +27,15 @@ function validateWorkerResult(result, role, count) {
 /** Bind two executed decision subpaths to one input; no full-pipeline claim. */
 export function buildReleaseDecisionPair({ input, baselineResult, candidateResult, candidateCommit,
   token = () => randomBytes(16).toString('hex') }) {
-  const validated = validateReleaseDecisionInput(input);
+  const validated = input?.version === 2 ? validateFrozenPolicyInput(input) : validateReleaseDecisionInput(input);
   const baseline = validateWorkerResult(baselineResult, 'baseline', validated.cases.length);
   const candidate = validateWorkerResult(candidateResult, 'candidate', validated.cases.length);
   const tokens = validated.cases.map(() => token());
   if (new Set(tokens).size !== tokens.length || tokens.some(value => !/^[a-f0-9]{32}$/.test(value))) {
     throw new Error('release_decision_tokens_invalid');
   }
-  const fingerprint = fingerprintReleaseDecisionInput(validated);
+  const fingerprint = validated.version === 2 ? fingerprintFrozenPolicyInput(validated)
+    : fingerprintReleaseDecisionInput(validated);
   const cohort = validated.cases.map((row, index) => ({ token: tokens[index], mediaType: row.mediaType,
     labelLibraryId: row.labelLibraryId }));
   const cohortFingerprint = fingerprintOperatorCorrectionPairCohort(cohort);
@@ -46,9 +48,16 @@ export function buildReleaseDecisionPair({ input, baselineResult, candidateResul
   const comparison = compareOperatorCorrectionReleasePair({ baseline: baselineBundle,
     candidate: candidateBundle, candidateCommit });
   return { baselineBundle, candidateBundle, report: {
-    ...comparison, scope: 'policy_decision_subpath_only',
-    omittedSources: ['policy_scoring', 'inventory_evidence', 'retrieval', 'ai_adjudication',
-      'authoritative_signals', 'routing_and_learning'],
+    ...comparison, scope: validated.version === 2 ? 'frozen_policy_scoring_and_decision_subpath'
+      : 'policy_decision_subpath_only',
+    omittedSources: validated.version === 2
+      ? ['inventory_evidence', 'retrieval', 'ai_adjudication', 'authoritative_signals',
+        'pattern_history', 'routing_and_learning']
+      : ['policy_scoring', 'inventory_evidence', 'retrieval', 'ai_adjudication',
+        'authoritative_signals', 'routing_and_learning'],
+    foldProfileInputSchemaVerified: validated.version === 2,
+    ...(validated.version === 2 ? { eligibleCorrections: validated.eligibleCorrections,
+      sampledCorrectionCoverage: Number((validated.cases.length / validated.eligibleCorrections).toFixed(4)) } : {}),
     decisionSubpathExecutionVerified: false,
   } };
 }

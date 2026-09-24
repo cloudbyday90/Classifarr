@@ -41,11 +41,9 @@ passed. None of these tests is interpreted as classification-quality evidence.
 The connected GitHub repository search returned no open pull requests on
 September 24, 2026, so there was no random PR to implement or merge.
 
-## Next high-value item
+## Follow-up
 
-Version and freeze the **evidence inputs**, not just candidate scores: build
-an isolated, read-only release-schema adapter for policy scoring, fold-local
-inventory evidence and held-out correction cases, then run both actual
-classifiers on the same provenance-screened private cohort. The adapter must
-verify released dependency versions, protect against provider and write
-fallback, and report coverage and failures before any quality claim.
+The [frozen policy-scoring replay](operator-correction-frozen-policy-scoring-outcome.md)
+adds versioned fold-local profile evidence and executes both policy scorers.
+It does not yet freeze inventory retrieval or run both full classifiers;
+released dependencies and provider/write fallback still need a separate gate.

@@ -5,15 +5,16 @@ import { createDatabaseClientLease } from './databaseClientLease.mjs';
  * One checked-out client, one callback attempt, and no uncertain-commit replay.
  * @param {*} client
  * @param {(client: any, options: { signal: AbortSignal }) => any} callback
- * @param {{ logger?: { warn: (...args: any[]) => void, error: (...args: any[]) => void }, assertActive?: () => void }} options
+ * @param {{ logger?: { warn: (...args: any[]) => void, error: (...args: any[]) => void }, assertActive?: () => void, readOnlyRepeatable?: boolean }} options
  */
-export async function runDatabaseTransaction(client, callback, { logger, assertActive = () => {} } = {}) {
+export async function runDatabaseTransaction(client, callback, { logger, assertActive = () => {},
+  readOnlyRepeatable = false } = {}) {
   const lease = createDatabaseClientLease(client, { operation: 'transaction', logger });
   let transactionState = 'begin', discard = false;
   try {
     assertActive();
     lease.assertHealthy();
-    await client.query('BEGIN');
+    await client.query(readOnlyRepeatable ? 'BEGIN ISOLATION LEVEL REPEATABLE READ, READ ONLY' : 'BEGIN');
     lease.assertHealthy();
     transactionState = 'callback';
     const result = await callback(client, { signal: lease.signal });

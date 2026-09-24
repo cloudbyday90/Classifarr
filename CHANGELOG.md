@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a private, read-only correction-cohort capture and v2 frozen-evidence
+  replay for paired published/current policy scoring. Preserve score-only
+  replay and keep incomplete classifier paths explicitly unmeasured.
 - Add an offline, no-network, read-only pinned-release policy-decision replay
   that pairs bounded movie/TV decisions on one private frozen input. Keep
   scoring, retrieval, AI, and full-pipeline accuracy explicitly unmeasured.

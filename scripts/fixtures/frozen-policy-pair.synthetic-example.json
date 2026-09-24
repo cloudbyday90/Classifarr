@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "sourceFingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "sampleFingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "provenance": "temporally_screened_operator_corrections",
+  "eligibleCorrections": 1,
+  "policies": [
+    { "id": 1, "library_id": 3, "name": "Action movies", "library_name": "Action", "library_media_type": "movie", "enabled": true, "auto_classify_threshold": 85, "prompt_threshold": 60, "trust_rag": false, "trust_patterns": false, "trust_history": false, "presets": [] },
+    { "id": 2, "library_id": 4, "name": "Family movies", "library_name": "Family", "library_media_type": "movie", "enabled": true, "auto_classify_threshold": 85, "prompt_threshold": 60, "trust_rag": false, "trust_patterns": false, "trust_history": false, "presets": [] }
+  ],
+  "folds": [
+    { "foldIndex": 0, "mediaType": "movie", "heldDescriptionFingerprint": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", "profiles": [
+      { "libraryId": 3, "profile": { "media_type": "movie", "rating_distribution": { "PG-13": 90 }, "genre_distribution": { "Action": 90, "Adventure": 80 }, "keyword_distribution": { "hero": 75 } } },
+      { "libraryId": 4, "profile": { "media_type": "movie", "rating_distribution": { "G": 80 }, "genre_distribution": { "Family": 90 }, "keyword_distribution": { "children": 75 } } }
+    ] }
+  ],
+  "cases": [
+    { "mediaType": "movie", "labelLibraryId": 3, "foldIndex": 0, "metadata": { "media_type": "movie", "title": "Synthetic Example", "year": 2020, "overview": "A synthetic example used only to check offline replay mechanics.", "genres": ["Action", "Adventure"], "keywords": ["hero"], "studio": null, "certification": "PG-13", "original_language": "en" } }
+  ]
+}

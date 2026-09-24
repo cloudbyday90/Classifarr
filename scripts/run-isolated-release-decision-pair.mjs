@@ -8,6 +8,8 @@ import { PROJECT_ROOT, resolveProjectJsonFile } from './lib/project-json-input.m
 import { BASELINE_COMMIT, assertPinnedReleaseCommit } from '../server/src/scripts/pinnedReleaseSchema.mjs';
 import { validateReleaseDecisionInput, projectReleaseDecisionWorkerInput } from
   '../server/src/services/operatorCorrectionReleaseDecisionInput.mjs';
+import { validateFrozenPolicyInput, projectFrozenPolicyWorkerInput } from
+  '../server/src/services/operatorCorrectionFrozenPolicyInput.mjs';
 import { buildReleaseDecisionPair } from '../server/src/services/operatorCorrectionReleaseDecisionPair.mjs';
 
 const TMP_ROOT = join(PROJECT_ROOT, '.tmp');
@@ -84,8 +86,9 @@ async function runRole({ role, stageSource, input, imageId }) {
 async function loadPrivateInput(inputFile) {
   const path = await resolveProjectJsonFile(inputFile);
   const details = await stat(path);
-  if (!details.isFile() || details.size > 2_000_000) throw new Error('release_decision_input_size_invalid');
-  return validateReleaseDecisionInput(JSON.parse(await readFile(path, 'utf8')));
+  if (!details.isFile() || details.size > 8_000_000) throw new Error('release_decision_input_size_invalid');
+  const input = JSON.parse(await readFile(path, 'utf8'));
+  return input?.version === 2 ? validateFrozenPolicyInput(input) : validateReleaseDecisionInput(input);
 }
 
 /** No live database, provider endpoint, or writable host mount is passed to either run. */
@@ -101,7 +104,8 @@ export async function runIsolatedReleaseDecisionPair({ inputFile, check = verify
   const stageDirectory = await privateTemporaryDirectory('release-code-');
   try {
     const stageSource = await stage(stageDirectory);
-    const workerInput = projectReleaseDecisionWorkerInput(input);
+    const workerInput = input.version === 2 ? projectFrozenPolicyWorkerInput(input)
+      : projectReleaseDecisionWorkerInput(input);
     const baselineResult = await execute({ role: 'baseline', stageSource, input: workerInput, imageId });
     const candidateResult = await execute({ role: 'candidate', stageSource, input: workerInput, imageId });
     const { baselineBundle, candidateBundle, report } = buildReleaseDecisionPair({ input, baselineResult,

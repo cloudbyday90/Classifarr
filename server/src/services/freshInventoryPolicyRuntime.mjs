@@ -79,7 +79,7 @@ export function createFreshInventoryPolicyRepository({ withTransaction, loadPoli
 
 /** No domain writers. Default read-only also protects statements outside explicit transactions. */
 export async function loadFreshInventoryPolicyRuntime({ logging = LOG_CONFIG, includeTrainingProvenance = false,
-  includeOperatorCorrectionLabels = false } = {}) {
+  includeOperatorCorrectionLabels = false, repeatableRead = false } = {}) {
   // Logging configuration is captured during ESM initialization, not when the
   // first snapshot is read. Refuse content access if startup flags were omitted.
   if (logging.level !== 'fatal' || logging.fileLoggingEnabled !== false) {
@@ -95,7 +95,8 @@ export async function loadFreshInventoryPolicyRuntime({ logging = LOG_CONFIG, in
   const close = async () => { await pool.end(); await db.pool.end(); };
   try {
     const config = (await pool.query(FRESH_POLICY_CONFIG_SQL)).rows[0];
-    const withTransaction = async callback => runDatabaseTransaction(await pool.connect(), callback, { logger });
+    const withTransaction = async callback => runDatabaseTransaction(await pool.connect(), callback,
+      { logger, readOnlyRepeatable: repeatableRead });
     return { config, embedder: createLocalStudyEmbeddingClient(config),
       repository: createFreshInventoryPolicyRepository({ withTransaction, includeTrainingProvenance, includeOperatorCorrectionLabels }),
       withDiscoveryAdmission: createInventoryDiscoveryAdmission(db),
