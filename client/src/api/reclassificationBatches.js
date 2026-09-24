@@ -27,6 +27,7 @@ export function validateReclassificationBatch(batchId) {
 }
 
 export function executeReclassificationBatch(batchId) {
+  // HTTP 202 acknowledges durable intent, not completion. Observe status via SWR.
   return apiClient.post(`/reclassification/batch/${batchId}/execute`)
 }
 
@@ -35,6 +36,7 @@ export function pauseReclassificationBatch(batchId) {
 }
 
 export function resumeReclassificationBatch(batchId) {
+  // HTTP 202; paused/cancelled decisions are never undone by status reads.
   return apiClient.post(`/reclassification/batch/${batchId}/resume`)
 }
 

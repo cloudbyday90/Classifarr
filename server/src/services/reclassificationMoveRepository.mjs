@@ -6,6 +6,12 @@ import { bindBatchMove, completeBatchMove } from './reclassificationBatchMoveOut
 
 export function createReclassificationMoveRepository(db) {
   return {
+    async byId(id) {
+      return (await db.query('SELECT * FROM reclassification_move_operations WHERE id=$1', [id])).rows[0] ?? null;
+    },
+    async completeBatchReceipt(operation) {
+      await completeBatchMove(db, operation);
+    },
     async find(classificationId) {
       const { rows } = await db.query(`SELECT * FROM reclassification_move_operations
         WHERE classification_id = $1 ORDER BY (state <> 'completed') DESC, created_at DESC, id DESC LIMIT 1`, [classificationId]);
@@ -15,7 +21,7 @@ export function createReclassificationMoveRepository(db) {
       return (await db.query('SELECT * FROM classification_history WHERE id = $1', [id])).rows[0] ?? null;
     },
     async bind(operation, batchItemId) {
-      await bindBatchMove(db, operation, batchItemId);
+      await db.withTransaction(client => bindBatchMove(client, operation, batchItemId));
     },
     async reserve(classificationId, targetLibraryId, correctedBy, plan, batchItemId = null) {
       const reserve = async client => {

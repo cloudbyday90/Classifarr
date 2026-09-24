@@ -90,6 +90,14 @@ describe('reclassification routes', () => {
     expect(validateBatch).toHaveBeenCalledWith(42);
   });
 
+  test.each(['execute', 'resume'])('POST %s acknowledges durable intent with 202', async action => {
+    const method = action === 'execute' ? 'executeBatch' : 'resumeBatch';
+    reclassificationBatchService[method].mockResolvedValueOnce({ id: 42, status: 'executing' });
+    const response = await request(app).post(`/api/reclassification/batch/42/${action}`).expect(202);
+    expect(response.body).toMatchObject({ id: 42, status: 'executing' });
+    expect(reclassificationBatchService[method]).toHaveBeenCalledWith(42);
+  });
+
   test('POST /api/reclassification/batch/:id/item/:itemId/skip parses ids', async () => {
     skipItem.mockResolvedValueOnce({ success: true });
 

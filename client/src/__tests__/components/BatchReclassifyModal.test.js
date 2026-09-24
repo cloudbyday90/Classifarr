@@ -509,10 +509,8 @@ describe('BatchReclassifyModal.vue', () => {
       await wrapper.vm.startExecution()
       await flushPromises()
 
-      vi.advanceTimersByTime(2000)
-      await flushPromises()
-
       expect(apiMock.getReclassificationBatchStatus).toHaveBeenCalledTimes(1)
+      expect(wrapper.text()).toContain('Closing this window does not pause it')
 
       vi.advanceTimersByTime(2000)
       await flushPromises()

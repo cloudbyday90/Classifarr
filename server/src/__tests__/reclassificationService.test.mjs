@@ -15,6 +15,7 @@ beforeEach(() => {
     reserve: jest.fn().mockResolvedValue(operation), bind: jest.fn(), attempted: jest.fn(), verified: jest.fn(),
     complete: jest.fn(), prune: jest.fn(), due: jest.fn().mockResolvedValue(operation),
     defer: jest.fn().mockResolvedValue(operation),
+    byId: jest.fn().mockImplementation(async () => operation), completeBatchReceipt: jest.fn(),
   };
   adapter = { prepare: jest.fn().mockResolvedValue(plan), moveFiles: jest.fn(), reconcile: jest.fn() };
   options = { signal: new AbortController().signal };
@@ -24,6 +25,59 @@ beforeEach(() => {
   service = new ReclassificationService({ database, repository, adapter, logger, scan });
 });
 const execute = () => service.executeReclassification({ classificationId: 1, targetLibraryId: 20 });
+
+const recoverBatch = (extra = {}) => service.recoverBatchItem({ operationId: '00000000-0000-4000-8000-000000000001',
+  batchItemId: 7, classificationId: 1, targetLibraryId: 20, ...extra });
+test.each([null, '', 'invalid'])('invalid exact receipt %s cannot acquire a lock', async operationId => {
+  await expect(recoverBatch({ operationId })).rejects.toMatchObject({ code: 'move_journal_missing' });
+  expect(database.withSessionAdvisoryLock).not.toHaveBeenCalled();
+});
+test.each(['missing', 'classification', 'destination'])('%s exact receipt is not substituted', async mismatch => {
+  if (mismatch === 'missing') repository.byId.mockResolvedValue(null);
+  if (mismatch === 'classification') operation.classification_id = 999;
+  if (mismatch === 'destination') operation.target_library_id = 999;
+  await expect(recoverBatch()).rejects.toMatchObject({ code: 'move_journal_missing' });
+  expect(repository.bind).not.toHaveBeenCalled();
+  expect(adapter.moveFiles).not.toHaveBeenCalled();
+});
+test('completed exact receipt repairs item outcome without touching history or files', async () => {
+  operation.state = 'completed';
+  expect(await recoverBatch()).toEqual({ status: 'completed' });
+  expect(repository.completeBatchReceipt).toHaveBeenCalledWith(operation);
+  expect(repository.complete).not.toHaveBeenCalled();
+  expect(adapter.reconcile).not.toHaveBeenCalled();
+});
+test('background exact recovery respects attention and due time', async () => {
+  operation.state = 'needs_attention';
+  await expect(recoverBatch()).rejects.toMatchObject({ code: 'move_recovery_attention' });
+  operation.state = 'moving';
+  operation.next_attempt_at = new Date(Date.now() + 60000);
+  expect(await recoverBatch()).toEqual({ status: 'waiting' });
+  expect(adapter.reconcile).not.toHaveBeenCalled();
+});
+test('explicit retry reconciles a blocked exact receipt without moving files', async () => {
+  operation.state = 'needs_attention';
+  operation.next_attempt_at = new Date(Date.now() + 60000);
+  expect(await recoverBatch({ retry: true })).toEqual({ status: 'completed' });
+  expect(adapter.reconcile).toHaveBeenCalled();
+  expect(adapter.prepare).not.toHaveBeenCalled();
+  expect(adapter.moveFiles).not.toHaveBeenCalled();
+});
+test.each(['execute', 'recover'])('coordinator lock loss aborts %s despite a healthy move lock', async action => {
+  const signal = AbortSignal.abort(new Error('coordinator lost'));
+  const call = action === 'execute' ? service.executeReclassification({ classificationId: 1, targetLibraryId: 20, signal })
+    : recoverBatch({ signal });
+  await expect(call).rejects.toThrow('coordinator lost');
+  expect(adapter.prepare).not.toHaveBeenCalled();
+  expect(adapter.reconcile).not.toHaveBeenCalled();
+});
+test('coordinator abort during preparation reaches the final reservation boundary', async () => {
+  const owner = new AbortController();
+  adapter.prepare.mockImplementation(async () => { owner.abort(new Error('coordinator lost')); return operation.plan; });
+  await expect(service.executeReclassification({ classificationId: 1, targetLibraryId: 20, signal: owner.signal }))
+    .rejects.toThrow('coordinator lost');
+  expect(repository.reserve).not.toHaveBeenCalled();
+});
 
 test('new batch moves bind during reservation before file work', async () => {
   await service.executeReclassification({ classificationId: 1, targetLibraryId: 20, batchItemId: 7 });

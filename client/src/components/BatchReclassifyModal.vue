@@ -139,6 +139,14 @@
       class="space-y-4"
     >
       <div class="mb-4">
+        <p
+          v-if="batchStatus?.status === 'executing'"
+          role="status"
+          class="text-sm text-gray-400 mb-3"
+        >
+          Batch active. Work continues in the background, including after a restart.
+          Closing this window does not pause it. Pause or cancel to stop remaining items.
+        </p>
         <div class="flex justify-between text-sm text-gray-400 mb-2">
           <span>Progress</span>
           <span>{{ progress.completed }}/{{ progress.total }}</span>
@@ -475,6 +483,7 @@ const startExecution = async () => {
   startPolling()
   try {
     await api.executeReclassificationBatch(batchId.value)
+    await refreshBatchStatus()
   } catch (error) {
     console.error('Execution failed:', error)
   }
@@ -493,6 +502,7 @@ const resumeBatch = async () => {
   try {
     await api.resumeReclassificationBatch(batchId.value)
     startPolling()
+    await refreshBatchStatus()
   } catch (error) {
     console.error('Resume failed:', error)
   }

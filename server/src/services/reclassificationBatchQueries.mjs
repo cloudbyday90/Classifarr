@@ -135,43 +135,54 @@ export async function pauseBatch(batchId, { getBatchStatus }) {
 }
 
 export async function cancelBatch(batchId, { getBatchStatus }) {
-    await db.query(`
+    await db.withTransaction(async client => {
+      await client.query(`
+        UPDATE reclassification_batches
+        SET status = 'cancelled', completed_at = NOW(), updated_at = NOW()
+        WHERE id = $1 AND status NOT IN ('completed', 'cancelled')
+      `, [batchId]);
+      await client.query(`
         UPDATE reclassification_batch_items 
         SET status = 'cancelled', updated_at = NOW()
         WHERE batch_id = $1 AND status IN ('pending', 'validated')
-    `, [batchId]);
-
-    await db.query(`
-        UPDATE reclassification_batches 
-        SET status = 'cancelled', completed_at = NOW(), updated_at = NOW()
-        WHERE id = $1
-    `, [batchId]);
+          AND EXISTS (SELECT 1 FROM reclassification_batches WHERE id=$1 AND status='cancelled')
+      `, [batchId]);
+    });
 
     return getBatchStatus(batchId);
 }
 
 export async function skipItem(batchId, itemId, { getBatchStatus }) {
-    await db.query(`
+    await db.withTransaction(async client => {
+      await client.query('SELECT id FROM reclassification_batches WHERE id=$1 FOR UPDATE', [batchId]);
+      await client.query(`
         UPDATE reclassification_batch_items 
         SET status = 'skipped', updated_at = NOW()
         WHERE id = $1 AND batch_id = $2 AND status IN ('failed', 'invalid', 'pending', 'validated')
-    `, [itemId, batchId]);
+          AND EXISTS (SELECT 1 FROM reclassification_batches WHERE id=$2 AND status NOT IN ('completed','cancelled'))
+      `, [itemId, batchId]);
 
-    await db.query(`
+      await client.query(`
         UPDATE reclassification_batches 
-        SET skipped_items = skipped_items + 1, updated_at = NOW()
+        SET skipped_items = (SELECT count(*) FROM reclassification_batch_items WHERE batch_id=$1 AND status='skipped'), updated_at = NOW()
         WHERE id = $1
-    `, [batchId]);
+      `, [batchId]);
+    });
 
     return getBatchStatus(batchId);
 }
 
 export async function retryItem(batchId, itemId, { getBatchStatus }) {
-    await db.query(`
+    await db.withTransaction(async client => {
+      await client.query('SELECT id FROM reclassification_batches WHERE id=$1 FOR UPDATE', [batchId]);
+      await client.query(`
         UPDATE reclassification_batch_items 
         SET status = 'validated', error_message = NULL, updated_at = NOW()
         WHERE id = $1 AND batch_id = $2 AND status = 'failed'
-    `, [itemId, batchId]);
+          AND EXISTS (SELECT 1 FROM reclassification_batches WHERE id=$2
+            AND status IN ('pending','validated','validation_failed','paused'))
+      `, [itemId, batchId]);
+    });
 
     return getBatchStatus(batchId);
 }

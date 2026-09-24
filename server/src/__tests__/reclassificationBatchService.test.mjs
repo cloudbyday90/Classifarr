@@ -89,11 +89,11 @@ beforeEach(() => {
 });
 
 describe('ensureTables', () => {
-  test('runs 4 CREATE queries and sets initialized=true', async () => {
+  test('checks migrated columns and sets initialized=true', async () => {
     svc.initialized = false;
     db.query.mockResolvedValue({ rows: [] });
     await svc.ensureTables();
-    expect(db.query).toHaveBeenCalledTimes(4);
+    expect(db.query).toHaveBeenCalledTimes(1);
     expect(svc.initialized).toBe(true);
   });
 
@@ -215,7 +215,7 @@ describe('getBatchProgress', () => {
 describe('validateBatch', () => {
   test('sets batch to validated when all items pass', async () => {
     db.query
-      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 1 }] })
       .mockResolvedValueOnce({ rows: [ITEM_ROWS[0]] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
@@ -231,7 +231,7 @@ describe('validateBatch', () => {
 
   test('sets batch to validation_failed when any item is invalid', async () => {
     db.query
-      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 1 }] })
       .mockResolvedValueOnce({ rows: [ITEM_ROWS[0]] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
@@ -247,7 +247,7 @@ describe('validateBatch', () => {
 
   test('marks item as invalid when previewReclassification throws', async () => {
     db.query
-      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 1 }] })
       .mockResolvedValueOnce({ rows: [ITEM_ROWS[0]] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });
@@ -264,70 +264,21 @@ describe('validateBatch', () => {
 
 describe('executeBatch', () => {
   test('throws when batch not found', async () => {
-    db.query.mockResolvedValueOnce({ rows: [] });
+    db.query.mockResolvedValue({ rows: [] });
     await expect(svc.executeBatch(99)).rejects.toThrow('Batch not found');
   });
 
-  test('completes items successfully and sets status=completed', async () => {
-    const batch = { ...BATCH_ROW, completed_items: 0, failed_items: 0, pause_on_error: false, created_by: 'user' };
-    const item = { ...ITEM_ROWS[0], status: 'validated' };
-    db.query
-      .mockResolvedValueOnce({ rows: [batch] })
-      .mockResolvedValueOnce({ rows: [{ id: 1 }] })
-      .mockResolvedValueOnce({ rows: [item] })
-      .mockResolvedValueOnce({ rows: [{ id: item.id }] })
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [] });
-
-    reclassificationService.executeReclassification.mockResolvedValueOnce({ success: true });
+  test('persists intent without moving files in the request', async () => {
+    db.query.mockResolvedValueOnce({ rows: [{ id: 1 }] });
     mockGetBatchStatus();
-
     await svc.executeBatch(1);
-    expect(reclassificationService.executeReclassification).toHaveBeenCalledWith(
-      expect.objectContaining({ classificationId: item.classification_id })
-    );
+    expect(db.query).toHaveBeenCalledWith(expect.stringContaining("status='executing'"), [1]);
+    expect(reclassificationService.executeReclassification).not.toHaveBeenCalled();
   });
 
-  test('pauses batch on error when pause_on_error=true', async () => {
-    const batch = { ...BATCH_ROW, completed_items: 0, failed_items: 0, pause_on_error: true, created_by: 'user' };
-    const item = { ...ITEM_ROWS[0], status: 'validated' };
-    db.query
-      .mockResolvedValueOnce({ rows: [batch] })
-      .mockResolvedValueOnce({ rows: [{ id: 1 }] })
-      .mockResolvedValueOnce({ rows: [item] })
-      .mockResolvedValueOnce({ rows: [{ id: item.id }] })
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [] });
-    reclassificationService.executeReclassification.mockRejectedValueOnce(new Error('exec error'));
-    mockGetBatchStatus();
-
-    await svc.executeBatch(1);
-    expect(db.query).toHaveBeenCalledWith(
-      expect.stringContaining("'paused'"),
-      expect.arrayContaining(['exec error'])
-    );
-  });
-
-  test('continues on error when pause_on_error=false', async () => {
-    const batch = { ...BATCH_ROW, completed_items: 0, failed_items: 0, pause_on_error: false, created_by: 'user' };
-    const item = { ...ITEM_ROWS[0], status: 'validated' };
-    db.query
-      .mockResolvedValueOnce({ rows: [batch] })
-      .mockResolvedValueOnce({ rows: [{ id: 1 }] })
-      .mockResolvedValueOnce({ rows: [item] })
-      .mockResolvedValueOnce({ rows: [{ id: item.id }] })
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [] });
-    reclassificationService.executeReclassification.mockRejectedValueOnce(new Error('non-fatal'));
-    mockGetBatchStatus();
-
-    await svc.executeBatch(1);
-    const calls = db.query.mock.calls.map(c => c[0]);
-    expect(calls.some(sql => typeof sql === 'string' && sql.includes("'completed'"))).toBe(true);
-    expect(calls.some(sql => typeof sql === 'string' && sql.includes("SET status = 'paused'"))).toBe(false);
+  test('rejects terminal batches', async () => {
+    db.query.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({ rows: [{ id: 1 }] });
+    await expect(svc.executeBatch(1)).rejects.toMatchObject({ status: 409 });
   });
 });
 
@@ -345,31 +296,28 @@ describe('pauseBatch', () => {
 });
 
 describe('cancelBatch', () => {
-  test('cancels pending items and batch', async () => {
-    db.query
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [] });
+  test('cancels parent and pending items atomically, parent first', async () => {
+    const client = makeClient();
+    db.pool.connect.mockResolvedValueOnce(client);
     mockGetBatchStatus();
     await svc.cancelBatch(1);
-    expect(db.query).toHaveBeenCalledWith(
-      expect.stringContaining("'cancelled'"),
-      [1]
-    );
+    expect(client.query.mock.calls[1][0]).toContain('UPDATE reclassification_batches');
+    expect(client.query.mock.calls[2][0]).toContain('UPDATE reclassification_batch_items');
+    expect(client.query).toHaveBeenCalledWith('COMMIT');
   });
 });
 
 describe('skipItem', () => {
-  test('marks item as skipped and increments count', async () => {
-    db.query
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [] });
+  test('marks item as skipped and recomputes the legacy count atomically', async () => {
+    const client = makeClient();
+    db.pool.connect.mockResolvedValueOnce(client);
     mockGetBatchStatus();
     await svc.skipItem(1, 10);
-    expect(db.query).toHaveBeenCalledWith(
+    expect(client.query).toHaveBeenCalledWith(
       expect.stringContaining("'skipped'"),
       [10, 1]
     );
-    expect(db.query).toHaveBeenCalledWith(
+    expect(client.query).toHaveBeenCalledWith(
       expect.stringContaining('skipped_items'),
       [1]
     );
@@ -378,10 +326,11 @@ describe('skipItem', () => {
 
 describe('retryItem', () => {
   test('resets item to validated status', async () => {
-    db.query.mockResolvedValueOnce({ rows: [] });
+    const client = makeClient();
+    db.pool.connect.mockResolvedValueOnce(client);
     mockGetBatchStatus();
     await svc.retryItem(1, 10);
-    expect(db.query).toHaveBeenCalledWith(
+    expect(client.query).toHaveBeenCalledWith(
       expect.stringContaining("'validated'"),
       [10, 1]
     );

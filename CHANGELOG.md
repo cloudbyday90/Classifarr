@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Run reclassification batches through a restart-safe background coordinator,
+  preserve pause/cancel intent, and reconcile exact interrupted move receipts
+  without replaying file moves. Acknowledge execution immediately and keep
+  progress refreshed independently of the browser connection.
 - Reconcile recovered movie/TV moves with their exact batch attempts and show
   safe recovery status in batch and history views. Derive batch counts from
   item outcomes, preserve pause/cancel/skip intent, and keep status refreshed

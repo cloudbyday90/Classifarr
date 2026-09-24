@@ -5,6 +5,11 @@ import { moveBlocked } from './reclassificationMoveContract.mjs';
 // from a library assignment, an error string, or a newer move for the same item.
 export async function bindBatchMove(client, operation, batchItemId) {
   if (batchItemId === null) return;
+  // Serialize the final admission boundary with pause/cancel before touching the
+  // item. Callers hold a short transaction, never one spanning filesystem work.
+  await client.query(`SELECT batch.id FROM reclassification_batches batch
+    JOIN reclassification_batch_items item ON item.batch_id=batch.id
+    WHERE item.id=$1 FOR UPDATE OF batch`, [batchItemId]);
   const result = await client.query(`UPDATE reclassification_batch_items item
     SET execution_result = jsonb_build_object('moveOperationId', $1::text), updated_at = NOW()
     WHERE item.id = $2 AND item.classification_id = $3 AND item.target_library_id = $4

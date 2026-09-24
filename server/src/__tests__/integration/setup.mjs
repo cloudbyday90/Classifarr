@@ -170,6 +170,7 @@ function createIntegrationDatabaseFacade() {
             NATIVE_INTENT_RECONCILIATION: 2008,
             NATIVE_INTENT_RECONCILIATION_LEDGER_RETENTION: 2009,
             RECLASSIFICATION_MOVE: 2021,
+            RECLASSIFICATION_BATCH: 2022,
         },
     };
 }

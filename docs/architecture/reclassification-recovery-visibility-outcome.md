@@ -71,6 +71,10 @@ merged.
 
 ## Next high-value component
 
+Implemented by the
+[restart-safe batch coordinator](reclassification-batch-coordinator-outcome.md).
+The rationale below records the gap this follow-up closed.
+
 Build a restart-safe batch coordinator using the existing database/queue
 infrastructure. Individual admitted moves now recover, but the request-owned
 batch loop has no durable worker lease/cursor for its remaining items after a

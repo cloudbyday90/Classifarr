@@ -55,12 +55,12 @@ export function createReclassificationRouter({ express, reclassificationBatchSer
    * /api/reclassification/batch/{id}/execute:
    *   post:
    *     summary: Execute a validated batch
-   *     description: Starts executing the reclassification batch
+   *     description: Persists execution intent and returns 202; a background worker processes the batch
    */
   router.post('/batch/:id/execute', asyncHandler(async (req, res) => {
     const id = parsePositiveInt(req.params.id);
     const result = await reclassificationBatchService.executeBatch(id);
-    sendData(res, result);
+    sendData(res, result, 202);
   }));
 
   /**
@@ -84,7 +84,7 @@ export function createReclassificationRouter({ express, reclassificationBatchSer
   router.post('/batch/:id/resume', asyncHandler(async (req, res) => {
     const id = parsePositiveInt(req.params.id);
     const result = await reclassificationBatchService.resumeBatch(id);
-    sendData(res, result);
+    sendData(res, result, 202);
   }));
 
   /**

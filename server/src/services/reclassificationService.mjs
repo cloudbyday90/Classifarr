@@ -29,7 +29,7 @@ export class ReclassificationService {
     return result;
   }
 
-  async executeReclassification({ classificationId, targetLibraryId, correctedBy = 'user', batchItemId = null }) {
+  async executeReclassification({ classificationId, targetLibraryId, correctedBy = 'user', batchItemId = null, signal }) {
     classificationId = positiveDatabaseInteger(classificationId);
     targetLibraryId = positiveDatabaseInteger(targetLibraryId);
     if ((batchItemId !== null && !positiveDatabaseInteger(batchItemId)) || !classificationId || !targetLibraryId || typeof correctedBy !== 'string' ||
@@ -37,6 +37,8 @@ export class ReclassificationService {
       throw new ValidationError('Valid classification/destination IDs and an actor of 1–100 characters are required.');
     }
     return this.exclusive(async options => {
+      if (signal) options.signal = options.signal ? AbortSignal.any([signal, options.signal]) : signal;
+      options.signal?.throwIfAborted();
       const existing = await this.repository.find(classificationId);
       const classification = await this.repository.classification(classificationId);
       if (existing && existing.state !== 'completed') {
@@ -86,6 +88,32 @@ export class ReclassificationService {
       } catch { this.logger.warn('Move completed; Plex scan will require a library refresh', { operationId: operation.id }); }
       return this.result(operation, classification.title);
     } catch (error) { return this.failed(operation, error); }
+  }
+
+  // Internal worker API: exact receipt only, never prepares or moves files.
+  async recoverBatchItem({ operationId, batchItemId, classificationId, targetLibraryId, retry = false, signal }) {
+    if (typeof operationId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(operationId)) {
+      throw moveBlocked('move_journal_missing', 'The batch move receipt is invalid. Inspect the item and restore its recovery evidence before retrying.');
+    }
+    return this.exclusive(async options => {
+      if (signal) options.signal = options.signal ? AbortSignal.any([signal, options.signal]) : signal;
+      options.signal?.throwIfAborted();
+      const operation = await this.repository.byId(operationId);
+      if (!operation || operation.classification_id !== classificationId || operation.target_library_id !== targetLibraryId) {
+        throw moveBlocked('move_journal_missing', 'The batch move receipt is missing or mismatched. Inspect actual placement before retrying; no files were replayed.');
+      }
+      await this.repository.bind(operation, batchItemId);
+      if (operation.state === 'completed') {
+        await this.repository.completeBatchReceipt(operation);
+        return { status: 'completed' };
+      }
+      if (operation.state === 'needs_attention' && !retry) {
+        throw moveBlocked('move_recovery_attention', 'The interrupted move needs inspection. Review its recovery status before retrying.');
+      }
+      if (!retry && new Date(operation.next_attempt_at).getTime() > Date.now()) return { status: 'waiting' };
+      await this.resume(operation, options);
+      return { status: 'completed' };
+    });
   }
 
   async failed(operation, error) {

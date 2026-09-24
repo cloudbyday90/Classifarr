@@ -1,8 +1,10 @@
+import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { withServiceCatch } from '../utils/serviceCatch.mjs';
 import { reclassificationService } from './reclassificationService.mjs';
 import { ensureTables as ensureSchema } from './reclassificationBatchSchema.mjs';
-import { validateBatch as processValidateBatch, executeBatch as processExecuteBatch } from './reclassificationBatchProcessing.mjs';
+import { createBatchCoordinatorRepository } from './reclassificationBatchCoordinatorRepository.mjs';
+import { validateBatch as processValidateBatch } from './reclassificationBatchProcessing.mjs';
 import {
     getBatchStatus as queryGetBatchStatus,
     getBatchProgress as queryGetBatchProgress,
@@ -16,9 +18,10 @@ import {
 
 const logger = createLogger('ReclassificationBatchService');
 
-class ReclassificationBatchService {
+export class ReclassificationBatchService {
     constructor(deps = {}) {
         this.initialized = false;
+        this.coordinatorRepository = deps.coordinatorRepository || createBatchCoordinatorRepository(db);
         this.reclassificationService = deps.reclassificationService || reclassificationService;
     }
 
@@ -50,10 +53,8 @@ class ReclassificationBatchService {
 
     async executeBatch(batchId) {
         await this.ensureTables();
-        return processExecuteBatch(batchId, {
-            getReclassificationService: () => this.getReclassificationService(),
-            getBatchStatus: (id) => this.getBatchStatus(id)
-        });
+        await this.coordinatorRepository.start(batchId);
+        return this.getBatchStatus(batchId);
     }
 
     async pauseBatch(batchId) {

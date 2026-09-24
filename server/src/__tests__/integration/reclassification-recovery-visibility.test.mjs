@@ -10,6 +10,12 @@ jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDat
 const db = await import('../../config/database.mjs');
 const { ReclassificationService } = await import('../../services/reclassificationService.mjs');
 const { reclassificationBatchService: batches } = await import('../../services/reclassificationBatchService.mjs');
+const { createBatchCoordinator } = await import('../../services/reclassificationBatchCoordinator.mjs');
+const runBatch = async id => {
+  await batches.executeBatch(id);
+  await createBatchCoordinator({ database: db, service }).runOnce();
+  return batches.getBatchStatus(id);
+};
 const { registerHistoryRoutes } = await import('../../routes/classificationRouteHistory.mjs');
 const router = express.Router();
 registerHistoryRoutes(router, { db });
@@ -48,7 +54,7 @@ const recover = async () => {
 };
 
 test('outage recovery reconciles exact batch receipt and history, leaving the batch paused', async () => {
-  const failed = await batches.executeBatch(batch.id);
+  const failed = await runBatch(batch.id);
   expect(failed.status).toBe('paused');
   expect(failed.progress.failed).toBe(1);
   const operationId = failed.items[0].execution_result.moveOperationId;
@@ -82,7 +88,7 @@ test('outage recovery reconciles exact batch receipt and history, leaving the ba
 });
 
 test.each(['cancelled', 'skipped', 'retry'])('recovery respects %s intent and does not double count', async intent => {
-  await batches.executeBatch(batch.id);
+  await runBatch(batch.id);
   const itemId = batch.items[0].id;
   if (intent === 'cancelled') await batches.cancelBatch(batch.id);
   if (intent === 'skipped') { await batches.skipItem(batch.id, itemId); await batches.skipItem(batch.id, itemId); }
@@ -98,7 +104,7 @@ test.each(['cancelled', 'skipped', 'retry'])('recovery respects %s intent and do
 });
 
 test('a different attempt reference is never marked completed', async () => {
-  await batches.executeBatch(batch.id);
+  await runBatch(batch.id);
   await db.query(`UPDATE reclassification_batch_items SET execution_result=$1 WHERE id=$2`,
     [JSON.stringify({ moveOperationId: randomUUID() }), batch.items[0].id]);
   await recover();
@@ -123,7 +129,7 @@ test.each(['paused', 'cancelled'])('runner stops claiming items and preserves %s
     if (status === 'paused') await batches.pauseBatch(batch.id);
     else await batches.cancelBatch(batch.id);
   });
-  const result = await batches.executeBatch(batch.id);
+  const result = await runBatch(batch.id);
   expect(result.status).toBe(status);
   expect(result.items.find(item => item.id === second.id).status).toBe(status === 'paused' ? 'pending' : 'cancelled');
   expect(adapter.moveFiles).toHaveBeenCalledTimes(1);
@@ -142,7 +148,7 @@ test('completion receipt failure rolls back history and journal and recovers lat
   service = new ReclassificationService({ database, adapter, scan: jest.fn() });
   batches.reclassificationService = service;
   available = true;
-  const result = await batches.executeBatch(batch.id);
+  const result = await runBatch(batch.id);
   expect(result.items[0].status).toBe('failed');
   expect((await db.query('SELECT library_id FROM classification_history WHERE id=$1', [classification.id])).rows[0].library_id).toBe(libraries[0]);
   await recover();

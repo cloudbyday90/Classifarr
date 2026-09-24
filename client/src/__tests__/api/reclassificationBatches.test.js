@@ -68,10 +68,10 @@ describe('reclassificationBatches', () => {
   })
 
   it('executeReclassificationBatch calls POST with batch id in URL', async () => {
-    mockPost.mockResolvedValueOnce({ data: { status: 'running' } })
+    mockPost.mockResolvedValueOnce({ status: 202, data: { status: 'executing' } })
     const result = await executeReclassificationBatch('b1')
     expect(mockPost).toHaveBeenCalledWith('/reclassification/batch/b1/execute')
-    expect(result).toEqual({ data: { status: 'running' } })
+    expect(result).toEqual({ status: 202, data: { status: 'executing' } })
   })
 
   it('pauseReclassificationBatch calls POST with batch id in URL', async () => {
@@ -82,10 +82,10 @@ describe('reclassificationBatches', () => {
   })
 
   it('resumeReclassificationBatch calls POST with batch id in URL', async () => {
-    mockPost.mockResolvedValueOnce({ data: { status: 'running' } })
+    mockPost.mockResolvedValueOnce({ status: 202, data: { status: 'executing' } })
     const result = await resumeReclassificationBatch('b1')
     expect(mockPost).toHaveBeenCalledWith('/reclassification/batch/b1/resume')
-    expect(result).toEqual({ data: { status: 'running' } })
+    expect(result).toEqual({ status: 202, data: { status: 'executing' } })
   })
 
   it('cancelReclassificationBatch calls POST with batch id in URL', async () => {

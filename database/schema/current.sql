@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-24T17:15:35.732Z
--- Latest Migration: 20260924_170000_add_reclassification_move_operations.sql
+-- Generated: 2026-09-24T20:46:53.033Z
+-- Latest Migration: 20260924_190000_add_reclassification_batch_coordinator.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -7132,6 +7132,90 @@ ALTER SEQUENCE public.rag_metrics_id_seq OWNED BY public.rag_metrics.id;
 
 
 --
+-- Name: reclassification_batch_items; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.reclassification_batch_items (
+    id integer NOT NULL,
+    batch_id integer,
+    classification_id integer NOT NULL,
+    target_library_id integer NOT NULL,
+    status character varying(50) DEFAULT 'pending'::character varying,
+    validation_result jsonb,
+    execution_result jsonb,
+    error_message text,
+    execution_order integer NOT NULL,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now(),
+    execution_version smallint,
+    CONSTRAINT reclassification_batch_items_execution_version_check CHECK ((execution_version = 1))
+);
+
+
+--
+-- Name: reclassification_batch_items_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.reclassification_batch_items_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: reclassification_batch_items_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.reclassification_batch_items_id_seq OWNED BY public.reclassification_batch_items.id;
+
+
+--
+-- Name: reclassification_batches; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.reclassification_batches (
+    id integer NOT NULL,
+    status character varying(50) DEFAULT 'pending'::character varying,
+    total_items integer DEFAULT 0,
+    completed_items integer DEFAULT 0,
+    failed_items integer DEFAULT 0,
+    skipped_items integer DEFAULT 0,
+    paused_at_item integer,
+    pause_on_error boolean DEFAULT true,
+    created_by character varying(100) DEFAULT 'user'::character varying,
+    error_message text,
+    started_at timestamp without time zone,
+    completed_at timestamp without time zone,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now(),
+    next_attempt_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: reclassification_batches_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.reclassification_batches_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: reclassification_batches_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.reclassification_batches_id_seq OWNED BY public.reclassification_batches.id;
+
+
+--
 -- Name: reclassification_move_operations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -8883,6 +8967,20 @@ ALTER TABLE ONLY public.rag_metrics ALTER COLUMN id SET DEFAULT nextval('public.
 
 
 --
+-- Name: reclassification_batch_items id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reclassification_batch_items ALTER COLUMN id SET DEFAULT nextval('public.reclassification_batch_items_id_seq'::regclass);
+
+
+--
+-- Name: reclassification_batches id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reclassification_batches ALTER COLUMN id SET DEFAULT nextval('public.reclassification_batches_id_seq'::regclass);
+
+
+--
 -- Name: refresh_tokens id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -10553,6 +10651,22 @@ ALTER TABLE ONLY public.rag_metrics
 
 
 --
+-- Name: reclassification_batch_items reclassification_batch_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reclassification_batch_items
+    ADD CONSTRAINT reclassification_batch_items_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: reclassification_batches reclassification_batches_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reclassification_batches
+    ADD CONSTRAINT reclassification_batches_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: reclassification_move_operations reclassification_move_operations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10981,6 +11095,20 @@ CREATE INDEX idx_backup_schedules_enabled ON public.backup_schedules USING btree
 --
 
 CREATE INDEX idx_backup_schedules_last_run ON public.backup_schedules USING btree (last_run_at DESC);
+
+
+--
+-- Name: idx_batch_items_batch_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_batch_items_batch_id ON public.reclassification_batch_items USING btree (batch_id);
+
+
+--
+-- Name: idx_batch_items_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_batch_items_status ON public.reclassification_batch_items USING btree (status);
 
 
 --
@@ -12482,6 +12610,20 @@ CREATE INDEX idx_rag_metrics_period ON public.rag_metrics USING btree (period_st
 --
 
 CREATE INDEX idx_rag_metrics_success ON public.rag_metrics USING btree (success, operation);
+
+
+--
+-- Name: idx_reclassification_batch_due; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_reclassification_batch_due ON public.reclassification_batches USING btree (next_attempt_at, id) WHERE ((status)::text = 'executing'::text);
+
+
+--
+-- Name: idx_reclassification_batch_pending; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_reclassification_batch_pending ON public.reclassification_batch_items USING btree (batch_id, execution_order, id) WHERE ((status)::text = ANY (ARRAY['executing'::text, 'pending'::text, 'validated'::text]));
 
 
 --
@@ -14205,6 +14347,14 @@ ALTER TABLE ONLY public.policy_tuning_suggestions
 
 ALTER TABLE ONLY public.radarr_config
     ADD CONSTRAINT radarr_config_media_server_id_fkey FOREIGN KEY (media_server_id) REFERENCES public.media_server(id) ON DELETE SET NULL;
+
+
+--
+-- Name: reclassification_batch_items reclassification_batch_items_batch_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reclassification_batch_items
+    ADD CONSTRAINT reclassification_batch_items_batch_id_fkey FOREIGN KEY (batch_id) REFERENCES public.reclassification_batches(id) ON DELETE CASCADE;
 
 
 --
@@ -16369,6 +16519,7 @@ FROM unnest(ARRAY[
     '20260923_140000_add_profile_refresh_worker_progress.sql',
     '20260924_120000_add_inventory_description_representation_checkpoint.sql',
     '20260924_150000_add_classification_correction_outcomes.sql',
-    '20260924_170000_add_reclassification_move_operations.sql'
+    '20260924_170000_add_reclassification_move_operations.sql',
+    '20260924_190000_add_reclassification_batch_coordinator.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

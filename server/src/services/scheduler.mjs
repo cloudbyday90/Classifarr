@@ -73,6 +73,7 @@ import { registerLiveMultiScaleSchedule } from './liveMultiScaleScheduler.mjs';
 import { createInventoryNeighborhoodRecovery } from './inventoryNeighborhoodRecovery.mjs';
 import { getInventoryDescriptionRefreshRevision } from './inventoryDescriptionRefreshSignal.mjs';
 import { registerReclassificationMoveSchedule } from './reclassificationMoveScheduler.mjs';
+import { registerReclassificationBatchSchedule } from './reclassificationBatchScheduler.mjs';
 
 const { withSessionAdvisoryLock, DB_ADVISORY_LOCKS } = db;
 const logger = createLogger('SchedulerService');
@@ -122,6 +123,7 @@ class SchedulerService {
         registerInventoryRepresentativeProfileSchedule(this, { neighborhoodRecovery });
         registerLiveMultiScaleSchedule(this);
         registerReclassificationMoveSchedule(this);
+        registerReclassificationBatchSchedule(this);
         registerLibraryObservationHistorySchedule(this);
         registerDatabaseHealthTransitionObservationSchedule(this);
         registerEventLoopDelayObservationSchedule(this);
