@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "mediaType": "movie",
+      "labelLibraryId": 3,
+      "candidates": [
+        { "policyId": 1, "libraryId": 3, "score": 92, "viability": "identity_evidence", "autoThreshold": 85, "promptThreshold": 60 },
+        { "policyId": 2, "libraryId": 4, "score": 65, "viability": "compatibility_only", "autoThreshold": 85, "promptThreshold": 60 }
+      ]
+    },
+    {
+      "mediaType": "tv",
+      "labelLibraryId": 5,
+      "candidates": [
+        { "policyId": 3, "libraryId": 5, "score": 42, "viability": "profile_only", "autoThreshold": 85, "promptThreshold": 60 }
+      ]
+    }
+  ]
+}

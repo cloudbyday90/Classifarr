@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add an offline, no-network, read-only pinned-release policy-decision replay
+  that pairs bounded movie/TV decisions on one private frozen input. Keep
+  scoring, retrieval, AI, and full-pipeline accuracy explicitly unmeasured.
 - Screen operator-correction replay cases against policy-source edit
   provenance and add an offline, pinned-release pair-comparison boundary that
   reports aggregate differences without granting routing authority.
