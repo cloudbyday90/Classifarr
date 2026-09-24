@@ -68,6 +68,8 @@
         </div>
       </Card>
 
+      <LibraryEvidenceCoverage :library-id="library.id" />
+
       <!-- Sync Status / Empty State -->
       <div
         v-if="library.item_count === 0 && !isSyncing"
@@ -484,6 +486,7 @@ import Card from '@/components/common/Card.vue'
 import Button from '@/components/common/Button.vue'
 import Input from '@/components/common/Input.vue'
 import LibraryProfile from '@/components/library/LibraryProfile.vue'
+import LibraryEvidenceCoverage from '@/components/library/LibraryEvidenceCoverage.vue'
 import Select from '@/components/common/Select.vue'
 import Toggle from '@/components/common/Toggle.vue'
 import { consumeRouteFocusHandoff } from '@/utils/routeFocusHandoff'

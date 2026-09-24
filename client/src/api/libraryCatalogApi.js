@@ -38,6 +38,10 @@ export function getLibraryUpgradeReadiness() {
   return getDataRequest('/libraries/upgrade-readiness')
 }
 
+export function getLibraryEvidenceCoverage(id) {
+  return getDataRequest(`/libraries/${encodeURIComponent(id)}/evidence-coverage`)
+}
+
 export function getLibrarySourceObservations() {
   return getDataRequest('/libraries/source-observations')
 }
@@ -73,6 +77,7 @@ const libraryCatalogApi = {
   getLibraryObservationHealth,
   getLibraryProfileRefreshStatus,
   getLibraryUpgradeReadiness,
+  getLibraryEvidenceCoverage,
   getLibrarySourceObservations,
   getLibrarySourceRepairWorklist,
   getLibraryObservationHistory,

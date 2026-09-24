@@ -36,6 +36,7 @@ import {
   getLibraryObservationHealth,
   getLibraryProfileRefreshStatus,
   getLibraryUpgradeReadiness,
+  getLibraryEvidenceCoverage,
   getLibrarySourceObservations,
   getLibrarySourceRepairWorklist,
   getLibraryObservationHistory,
@@ -98,6 +99,13 @@ describe('libraryCatalogApi', () => {
     mockGetDataRequest.mockResolvedValueOnce(report)
     expect(await getLibraryUpgradeReadiness()).toBe(report)
     expect(mockGetDataRequest).toHaveBeenCalledWith('/libraries/upgrade-readiness')
+  })
+
+  it('loads per-library evidence coverage through the central GET helper', async () => {
+    const report = { version: 'library.evidence_coverage.v1', libraryId: 7 }
+    mockGetDataRequest.mockResolvedValueOnce(report)
+    expect(await getLibraryEvidenceCoverage(7)).toBe(report)
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/libraries/7/evidence-coverage')
   })
 
   it('getLibraries calls getDataRequest with /libraries', async () => {

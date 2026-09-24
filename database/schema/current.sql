@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-24T00:34:32.309Z
--- Latest Migration: 20260923_140000_add_profile_refresh_worker_progress.sql
+-- Generated: 2026-09-24T13:32:51.359Z
+-- Latest Migration: 20260924_120000_add_inventory_description_representation_checkpoint.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -3281,6 +3281,34 @@ CREATE TABLE public.held_out_semantic_study_lifecycle_source_checkpoint (
     CONSTRAINT held_out_semantic_study_lifecycle_source_c_source_receipt_check CHECK ((jsonb_typeof(source_receipt) = 'object'::text)),
     CONSTRAINT held_out_semantic_study_lifecycle_source_checkp_state_key_check CHECK ((state_key = 'normal_policy_lifecycle_source'::text))
 );
+
+
+--
+-- Name: inventory_description_representation_checkpoint; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.inventory_description_representation_checkpoint (
+    singleton_id smallint DEFAULT 1 CONSTRAINT inventory_description_representation_chec_singleton_id_not_null NOT NULL,
+    projection_version text CONSTRAINT inventory_description_representatio_projection_version_not_null NOT NULL,
+    config_digest text CONSTRAINT inventory_description_representation_che_config_digest_not_null NOT NULL,
+    model_name text CONSTRAINT inventory_description_representation_checkp_model_name_not_null NOT NULL,
+    model_digest text CONSTRAINT inventory_description_representation_chec_model_digest_not_null NOT NULL,
+    dimensions integer CONSTRAINT inventory_description_representation_checkp_dimensions_not_null NOT NULL,
+    verified_at timestamp with time zone DEFAULT now() CONSTRAINT inventory_description_representation_check_verified_at_not_null NOT NULL,
+    CONSTRAINT inventory_description_representation_c_projection_version_check CHECK (((char_length(projection_version) >= 1) AND (char_length(projection_version) <= 100))),
+    CONSTRAINT inventory_description_representation_checkp_config_digest_check CHECK ((config_digest ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT inventory_description_representation_checkpo_model_digest_check CHECK ((model_digest ~ '^[a-f0-9]{64}$'::text)),
+    CONSTRAINT inventory_description_representation_checkpo_singleton_id_check CHECK ((singleton_id = 1)),
+    CONSTRAINT inventory_description_representation_checkpoin_dimensions_check CHECK (((dimensions >= 1) AND (dimensions <= 16000))),
+    CONSTRAINT inventory_description_representation_checkpoin_model_name_check CHECK (((char_length(model_name) >= 1) AND (char_length(model_name) <= 207)))
+);
+
+
+--
+-- Name: TABLE inventory_description_representation_checkpoint; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.inventory_description_representation_checkpoint IS 'Latest local model inspection for read-only description coverage. Stale or mismatched checkpoints are unverified.';
 
 
 --
@@ -9363,6 +9391,14 @@ ALTER TABLE ONLY public.held_out_semantic_study_lifecycle_reaudit_state
 
 ALTER TABLE ONLY public.held_out_semantic_study_lifecycle_source_checkpoint
     ADD CONSTRAINT held_out_semantic_study_lifecycle_source_checkpoint_pkey PRIMARY KEY (state_key);
+
+
+--
+-- Name: inventory_description_representation_checkpoint inventory_description_representation_checkpoint_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.inventory_description_representation_checkpoint
+    ADD CONSTRAINT inventory_description_representation_checkpoint_pkey PRIMARY KEY (singleton_id);
 
 
 --
@@ -16209,6 +16245,7 @@ FROM unnest(ARRAY[
     '20260920_200000_add_classification_provider_circuits.sql',
     '20260923_120000_add_classification_intake_receipts.sql',
     '20260923_130000_add_library_profile_inventory_revision.sql',
-    '20260923_140000_add_profile_refresh_worker_progress.sql'
+    '20260923_140000_add_profile_refresh_worker_progress.sql',
+    '20260924_120000_add_inventory_description_representation_checkpoint.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

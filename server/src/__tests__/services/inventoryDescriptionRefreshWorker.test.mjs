@@ -27,6 +27,7 @@ function setup(count = 10) {
     findPresent: jest.fn(async (representation, hashes) => new Set(hashes.filter(hash => saved.has(`${representation.digest}:${hash}`)))),
     write: jest.fn(async (representation, entries) => { entries.forEach(({ hash }) => saved.add(`${representation.digest}:${hash}`)); }) };
   const dependencies = { repository, cache, createEmbedder: jest.fn(() => embedder),
+    recordVerifiedRepresentation: jest.fn(async () => {}),
     withSessionAdvisoryLock: jest.fn(async (key, callback) => { await callback(); return true; }),
     now: () => time, getRevision: () => revision,
     recovery: createInventoryDescriptionRecovery({ now: () => time, random: () => 0 }),
@@ -46,6 +47,15 @@ test('bounded passes resume; unchanged descriptions only need hash lookups', asy
   expect(await worker.run()).toMatchObject({ status: 'up_to_date', cacheHits: 70, embeddedDescriptions: 0 });
   expect(embedder.embedBatch).toHaveBeenCalledTimes(9);
   expect(dependencies.withSessionAdvisoryLock).toHaveBeenCalledWith(INVENTORY_DESCRIPTION_CACHE_LOCK, expect.any(Function));
+  expect(dependencies.recordVerifiedRepresentation).toHaveBeenCalledTimes(3);
+});
+
+test('records only an inspected, still-admitted local representation', async () => {
+  const { worker, dependencies, state } = setup(2);
+  expect(await worker.run()).toMatchObject({ status: 'up_to_date' });
+  expect(dependencies.recordVerifiedRepresentation).toHaveBeenCalledWith(
+    expect.objectContaining({ model: 'test:latest', digest: 'a'.repeat(64) }),
+    JSON.stringify(resolveLocalStudyEmbeddingConfig(state)));
 });
 
 test('backfill repairs a lost group first while ordinary new-library work shares the existing budget', async () => {

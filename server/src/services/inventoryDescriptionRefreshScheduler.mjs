@@ -7,6 +7,7 @@ import { createInventoryDescriptionRefreshWorker } from './inventoryDescriptionR
 import { createLocalStudyEmbeddingClient } from './localStudyEmbeddingClient.mjs';
 import { getInventoryDescriptionRefreshRevision } from './inventoryDescriptionRefreshSignal.mjs';
 import { createInventoryDescriptionRecovery } from './inventoryDescriptionRecovery.mjs';
+import { recordDescriptionRepresentation } from './inventoryDescriptionRepresentationCheckpoint.mjs';
 
 export const INVENTORY_DESCRIPTION_REFRESH_TASK = 'inventory-description-refresh';
 
@@ -17,6 +18,7 @@ export function createInventoryDescriptionRefreshRuntime(database = db, { neighb
     createEmbedder: createLocalStudyEmbeddingClient,
     withSessionAdvisoryLock: database.withSessionAdvisoryLock,
     getRevision: getInventoryDescriptionRefreshRevision,
+    recordVerifiedRepresentation: (identity, configKey) => recordDescriptionRepresentation(database, identity, configKey),
     recovery: createInventoryDescriptionRecovery({ log: createLogger('InventoryDescriptionRecovery') }),
   });
 }

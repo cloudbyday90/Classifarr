@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add administrator-only, per-library movie/TV evidence coverage: scoped source-ID
+  exclusions, distinct description readiness, and recently verified retrieval
+  cache/retry counts. Keep the endpoint read-only, privacy-bounded, and explicit
+  that placement quality remains unmeasured; leave routing and releases unchanged.
 - Replace dense top-level Command Center purpose and process-local evaluation
   cards with a compact, read-only library profile/recovery summary; retain
   advanced diagnostics and explicitly leave placement accuracy unmeasured.

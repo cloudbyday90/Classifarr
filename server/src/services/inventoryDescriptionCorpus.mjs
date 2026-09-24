@@ -6,7 +6,12 @@ import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS, sourceConflictAuthorityExclus
 
 export function buildInventoryDescriptionCorpusSql({ includeCandidateMetadata = false, includeEvaluationMetadata = false, includeReadinessMetadata = false,
   includeCompanyMetadata = false,
-  mediaTypeScoped = false } = {}) {
+  mediaTypeScoped = false, libraryScoped = false, limit = 50001 } = {}) {
+  if ((mediaTypeScoped && libraryScoped) || !Number.isInteger(limit) || limit < 1 || limit > 50001) {
+    throw new Error('inventory_description_corpus_query_invalid');
+  }
+  const scope = mediaTypeScoped ? 'AND msi.media_type = $2::text ' :
+    libraryScoped ? 'AND msi.library_id = $2::integer ' : '';
   // Keep history inside COALESCE: unused fallback rows and their full JSON must
   // not be joined into the corpus sort. Latest-row semantics stay unchanged.
   return `
@@ -37,10 +42,10 @@ export function buildInventoryDescriptionCorpusSql({ includeCandidateMetadata = 
         ORDER BY h.created_at DESC, h.id DESC LIMIT 1), ''), 4000) AS overview
   FROM media_server_items msi
   JOIN libraries l ON l.id = msi.library_id AND l.is_active = true AND l.media_type = msi.media_type
-  WHERE msi.media_type IN ('movie', 'tv') ${mediaTypeScoped ? 'AND msi.media_type = $2::text ' : ''}AND msi.tmdb_id > 0
+  WHERE msi.media_type IN ('movie', 'tv') ${scope}AND msi.tmdb_id > 0
     AND ${sourceConflictAuthorityExclusionForMediaServerItem('$1')}
   ORDER BY msi.media_type, msi.tmdb_id, msi.library_id, msi.id
-  LIMIT 50001
+  LIMIT ${limit}
 `;
 }
 

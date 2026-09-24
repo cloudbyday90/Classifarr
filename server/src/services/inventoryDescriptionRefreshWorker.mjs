@@ -17,6 +17,7 @@ export function createInventoryDescriptionRefreshWorker({
   repository, cache, createEmbedder, withSessionAdvisoryLock, getRevision = () => 0, now = Date.now,
   recovery = createInventoryDescriptionRecovery({ now }),
   neighborhoodRecovery = null,
+  recordVerifiedRepresentation = async () => {},
   isolation = createInventoryDescriptionIsolationRepository(repository), random = Math.random,
 }) {
   let activeController = null;
@@ -48,6 +49,8 @@ export function createInventoryDescriptionRefreshWorker({
     if (!corpus.texts.size) return result('empty_corpus', counts);
     const embedder = createEmbedder(state);
     const identity = await inspectDescriptionRepresentation(embedder, signal);
+    if (!await admit()) return result('yielded', counts);
+    await recordVerifiedRepresentation(identity, configKey);
     const status = await backfillInventoryDescriptions({ embedder, identity, cache, isolation, signal, admit,
       hashes: [...corpus.texts.keys()], texts: corpus.texts, counts, recovery, random, neighborhoodRecovery, corpus, configKey });
     return result(status, counts);
