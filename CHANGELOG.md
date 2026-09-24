@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Preserve the original saved movie/TV destination decision alongside retained
+  corrections, including review and retry states. Add a private, read-only
+  correction report that survives history cleanup, excludes conflicting feedback,
+  and distinguishes measured decisions from missing historical context without
+  changing routing or treating corrections as overall accuracy.
 - Explain correction-labeled retrieval misses in the paired movie/TV evaluation:
   distinguish missing training evidence, retrieval misses, shortlist displacement,
   and ranking misses. Separate completed coverage checks from measured quality,

@@ -9,6 +9,7 @@
  */
 
 import * as db from '../config/database.mjs';
+import { buildClassificationDestinationDecision } from './classificationDestinationDecision.mjs';
 import { getAutomaticRecoveryFailureCode } from './automaticClassificationRecoveryPolicy.mjs';
 import { embeddingService } from './embeddingService.mjs';
 import { contentTypeAnalyzer } from './contentTypeAnalyzer.mjs';
@@ -363,6 +364,7 @@ export class ClassificationPersistenceService {
 
     const classificationDetails = {
       candidate_capture: candidateCapture,
+      destination_decision: buildClassificationDestinationDecision({ metadata, method: result.method, status, libraryId }),
       inventory_ranking_shadow: inventoryRankingShadow,
       inventory_ranking_shadow_status_id: intakeComparison.statusId,
       inventory_ranking_shadow_reason_id: intakeComparison.reasonId,

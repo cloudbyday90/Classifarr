@@ -1,11 +1,16 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { beforeEach, afterEach, test, expect } from '@jest/globals';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { fileURLToPath } from 'node:url';
 import { getPool } from './setup.mjs';
 import { recordClassificationCorrection, pruneClassificationCorrectionOutcomes } from '../../services/classificationCorrectionWriter.mjs';
 import { INVENTORY_OUTCOME_LABEL_SQL, prepareInventoryOutcomeLabels } from '../../services/inventoryOutcomeLabels.mjs';
 import { inventorySourceDescriptionKey } from '../../services/inventorySourceDescriptionIdentity.mjs';
 import { applyPolicyManualCorrectionLifecycle } from '../../services/policyManualCorrectionExecutionLifecycle.mjs';
 import { persistDiscordCorrection } from '../../services/discordCorrectionPersistence.mjs';
+import { buildClassificationDestinationDecision } from '../../services/classificationDestinationDecision.mjs';
+import { readCorrectionDestinationDecisions } from '../../services/correctionDestinationDecisionRepository.mjs';
 
 let client, libraries;
 beforeEach(async () => {
@@ -20,8 +25,8 @@ afterEach(async () => { await client.query('ROLLBACK'); client.release(); });
 async function history(type = 'movie', overrides = {}) {
   const library = libraries.find(row => row.media_type === type);
   return (await client.query(`INSERT INTO classification_history(tmdb_id,media_type,title,year,library_id,status,method,metadata)
-    VALUES($1,$2,'Synthetic correction item',2020,$3,'corrected','source_library',$4) RETURNING *`,
-  [Object.hasOwn(overrides, 'tmdb_id') ? overrides.tmdb_id : 920001, type, library.id, overrides.metadata ?? {}])).rows[0];
+    VALUES($1,$2,'Synthetic correction item',2020,$3,'corrected',$5,$4) RETURNING *`,
+  [Object.hasOwn(overrides, 'tmdb_id') ? overrides.tmdb_id : 920001, type, library.id, overrides.metadata ?? {}, overrides.method ?? 'source_library'])).rows[0];
 }
 async function write(row, options = {}) {
   return recordClassificationCorrection(client, { classification: row, originalLibraryId: row.library_id,
@@ -99,7 +104,7 @@ test('source-only capture requires the exact typed inventory pointer and preserv
   expect(rows).toEqual([expect.objectContaining({ identity_key: key, tmdb_id: null })]);
   expect(prepareInventoryOutcomeLabels(rows, [{ key, libraryIds: [libraries[0].id] }], libraries).coverage.corrections).toBe(1);
   const snapshot = (await client.query('SELECT * FROM classification_correction_outcomes WHERE selected_library_id=$1', [libraries[1].id])).rows;
-  expect(Object.keys(snapshot[0]).sort()).toEqual(['correction_id', 'identity_key', 'media_type', 'observed_at', 'selected_library_id']);
+  expect(Object.keys(snapshot[0]).sort()).toEqual(['correction_id', 'decision_context', 'identity_key', 'media_type', 'observed_at', 'selected_library_id']);
   await client.query("UPDATE media_server_items SET title='Changed identity' WHERE id=$1", [source.id]);
   await write(row);
   expect(await outcomes()).toHaveLength(1);
@@ -138,4 +143,60 @@ test('expiry has a 1000-row budget and the next pass drains the remainder', asyn
     SELECT n,'movie','movie:920001',$1,NOW()-INTERVAL '31 days' FROM generate_series(1000000,1001000) n`, [libraries[1].id]);
   expect(await pruneClassificationCorrectionOutcomes(client)).toBe(1000);
   expect(await pruneClassificationCorrectionOutcomes(client)).toBe(1);
+});
+
+test.each(['movie', 'tv'])('retains the original %s destination after correction and history cleanup', async type => {
+  const destination = libraries.find(library => library.media_type === type);
+  const capture = buildClassificationDestinationDecision({ metadata: { media_type: type, tmdb_id: 920001 },
+    method: 'ai_analysis', status: 'completed', libraryId: destination.id });
+  const row = await history(type, { method: 'ai_analysis', metadata: { classification_details: { destination_decision: capture }, token: 'SECRET' } });
+  await applyPolicyManualCorrectionLifecycle({ client, classificationId: row.id,
+    destinationLibraryId: libraries.filter(library => library.media_type === type)[1].id, actorId: 'operator' });
+  await client.query('DELETE FROM classification_history WHERE id=$1', [row.id]);
+  const stored = (await client.query('SELECT decision_context FROM classification_correction_outcomes')).rows;
+  expect(stored).toEqual([{ decision_context: { classificationId: row.id, capture } }]);
+  const report = await readCorrectionDestinationDecisions(client);
+  expect(report.overall.completedDisagreement).toBe(1);
+  expect(report.byMediaType[type].completedDisagreement).toBe(1);
+  expect(JSON.stringify(report)).not.toContain('SECRET');
+});
+
+test('Discord retains a deferral without inventing a final destination', async () => {
+  const capture = buildClassificationDestinationDecision({ metadata: { media_type: 'movie', tmdb_id: 920001 },
+    method: 'policy_prompt', status: 'awaiting_decision', libraryId: null });
+  const row = await history('movie', { method: 'policy_prompt', metadata: { classification_details: { destination_decision: capture } } });
+  await persistDiscordCorrection({ withTransaction: callback => callback(client) }, { recordOutcome: async () => ({ updated: true }) },
+    { classificationId: row.id, newLibraryId: libraries[1].id, actor: 'operator' });
+  expect((await readCorrectionDestinationDecisions(client)).overall).toMatchObject({ awaitingDecision: 1, completedDecisions: 0 });
+});
+
+test('reader excludes expired/future rows and never resurrects missing original context', async () => {
+  const row = await history();
+  await write(row);
+  expect((await readCorrectionDestinationDecisions(client)).missingContextRows).toBe(1);
+  for (const interval of ['-31 days', '1 day']) {
+    await client.query('UPDATE classification_correction_outcomes SET observed_at=NOW()+$1::interval', [interval]);
+    expect((await readCorrectionDestinationDecisions(client)).retainedRows).toBe(0);
+  }
+});
+
+test.each([[], { unexpected: 'x'.repeat(1024) }])('database rejects invalid retained context shape/size %j', async context => {
+  await write(await history());
+  await client.query('SAVEPOINT invalid_context');
+  await expect(client.query('UPDATE classification_correction_outcomes SET decision_context=$1::jsonb', [JSON.stringify(context)]))
+    .rejects.toMatchObject({ code: '23514' });
+  await client.query('ROLLBACK TO SAVEPOINT invalid_context');
+  expect((await readCorrectionDestinationDecisions(client)).missingContextRows).toBe(1);
+});
+
+test('private CLI runs end to end against the migrated test database without model configuration', async () => {
+  const options = getPool().options;
+  const { stdout, stderr } = await promisify(execFile)(process.execPath,
+    [fileURLToPath(new URL('../../scripts/runOperatorCorrectionPolicyEvaluation.mjs', import.meta.url)), '--saved-decisions'], {
+      timeout: 30000, env: { ...process.env, POSTGRES_HOST: options.host, POSTGRES_PORT: String(options.port),
+        POSTGRES_DB: options.database, POSTGRES_USER: options.user, POSTGRES_PASSWORD: options.password },
+    });
+  // This process cannot see the fixture rows in our uncommitted transaction.
+  expect(JSON.parse(stdout)).toMatchObject({ status: 'no_eligible_corrections', retainedRows: 0, providerCalls: 0, routingWrites: 0 });
+  expect(stderr).toBe('');
 });

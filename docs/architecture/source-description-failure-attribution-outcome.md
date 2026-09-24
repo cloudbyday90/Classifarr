@@ -121,6 +121,10 @@ authorized rebuilding and restarting the local Compose service after testing.
 
 ## Next high-value item
 
+Follow-through: [retained destination decisions](correction-destination-decisions-outcome.md)
+adds the missing original-decision linkage and read-only correction report. Its
+outcome document records the remaining confirmation/denominator work.
+
 Move to **full destination-decision evaluation using the existing correction
 capture and decision-evaluation path**, not another sample-size increase or
 source-only admission tweak. This completed comparison found no shortlist or

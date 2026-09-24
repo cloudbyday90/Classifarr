@@ -9,7 +9,11 @@ export async function runOperatorCorrectionPolicyEvaluation({ argv = process.arg
   const { values } = parseArgs({ args: argv, options: {
     seed: { type: 'string' }, size: { type: 'string' }, folds: { type: 'string' },
     'generate-cases': { type: 'string' }, 'max-minutes': { type: 'string' }, 'source-pair': { type: 'boolean', default: false },
+    'saved-decisions': { type: 'boolean', default: false },
   } });
+  if (values['saved-decisions'] && Object.entries(values).some(([key, value]) => key !== 'saved-decisions' && value !== false)) {
+    throw new Error('saved_decisions_uses_fixed_retention_and_budget');
+  }
   const options = validateDescriptionBenchmarkOptions({ seed: values.seed ?? 'operator-correction-readonly-v1',
     size: Number(values.size ?? (values['source-pair'] ? 300 : 100)), folds: Number(values.folds ?? 3),
     generateCases: Number(values['generate-cases'] ?? 0), maxMinutes: Number(values['max-minutes'] ?? 20) });
@@ -20,6 +24,10 @@ export async function runOperatorCorrectionPolicyEvaluation({ argv = process.arg
   process.env.LOG_LEVEL = 'fatal';
   process.env.FILE_LOGGING_ENABLED = 'false';
   process.env.PGOPTIONS = `${process.env.PGOPTIONS || ''} -c default_transaction_read_only=on -c statement_timeout=15000 -c lock_timeout=1000`.trim();
+  if (values['saved-decisions']) {
+    const run = evaluate ?? (await import('../services/correctionDestinationDecisionRepository.mjs')).runCorrectionDestinationDecisionEvaluation;
+    return run();
+  }
   const run = evaluate ?? (values['source-pair']
     ? (await import('../services/sourceDescriptionEvaluationRuntime.mjs')).runSourceDescriptionEvaluation
     : (await import('../services/freshInventoryPolicyEvaluation.mjs')).runFreshInventoryPolicyEvaluation);

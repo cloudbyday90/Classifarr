@@ -2,6 +2,7 @@
 import { positiveDatabaseInteger } from './mediaIdentityValues.mjs';
 import { inventorySourceDescriptionKey } from './inventorySourceDescriptionIdentity.mjs';
 import { safeParseJsonObject } from '../utils/classificationRetryPayloads.mjs';
+import { captureCorrectionDecisionContext } from './classificationDestinationDecision.mjs';
 
 async function correctionIdentity(client, classification) {
   if (!['movie', 'tv'].includes(classification.media_type)) return null;
@@ -39,8 +40,8 @@ export async function recordClassificationCorrection(client, {
       VALUES ($1, $2, $3, $4) RETURNING *
     ), captured AS (
       INSERT INTO classification_correction_outcomes
-        (correction_id, media_type, identity_key, selected_library_id, observed_at)
-      SELECT c.id, $5, $6, c.corrected_library_id, CURRENT_TIMESTAMP
+        (correction_id, media_type, identity_key, selected_library_id, observed_at, decision_context)
+      SELECT c.id, $5, $6, c.corrected_library_id, CURRENT_TIMESTAMP, $7::jsonb
       FROM correction c JOIN libraries l ON l.id = c.corrected_library_id
       WHERE $6::text IS NOT NULL AND $5::text IN ('movie', 'tv')
         AND l.is_active IS TRUE AND l.media_type = $5
@@ -49,7 +50,7 @@ export async function recordClassificationCorrection(client, {
       RETURNING correction_id
     )
     SELECT * FROM correction`, [classification.id, originalLibraryId, destinationLibraryId,
-    correctedBy, classification.media_type, identityKey]);
+    correctedBy, classification.media_type, identityKey, captureCorrectionDecisionContext(classification)]);
   return rows[0] ?? null;
 }
 

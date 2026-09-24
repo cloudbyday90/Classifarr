@@ -13,7 +13,7 @@ test.each(['movie', 'tv'])('captures typed %s correction in one bound statement 
   expect(await recordClassificationCorrection(client, params({ classification: { ...classification, media_type,
     metadata: { token: 'SECRET' }, title: 'PRIVATE' } }))).toEqual({ id: 99 });
   expect(client.query).toHaveBeenCalledTimes(1);
-  expect(client.query.mock.calls[0][1]).toEqual([1, 2, 3, 'user', media_type, `${media_type}:7`]);
+  expect(client.query.mock.calls[0][1]).toEqual([1, 2, 3, 'user', media_type, `${media_type}:7`, null]);
   expect(client.query.mock.calls[0][0]).toContain('INSERT INTO classification_correction_outcomes');
   expect(JSON.stringify(client.query.mock.calls)).not.toMatch(/SECRET|PRIVATE/);
 });

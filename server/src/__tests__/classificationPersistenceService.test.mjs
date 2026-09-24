@@ -465,6 +465,26 @@ describe('logClassification', () => {
     expect(details.candidate_capture).toMatchObject({ status: 'invalid_candidate', source: 'policy_ranked', library_id: null });
     expect(details.ranked_candidates[0]).toBeNull();
     expect(details.ranked_candidates[1].library_id).toBe(2);
+    expect(details.destination_decision).toMatchObject({ status: 'completed', libraryId: 2 });
+  });
+
+  test.each([
+    [{ confidence: 90 }, 'completed', 2],
+    [{ confidence: 45 }, 'awaiting_decision', null],
+    [{ confidence: 90, needs_clarification: true }, 'awaiting_decision', null],
+    [{ confidence: 90, needs_retry: true }, 'pending_retry', null],
+  ])('captures the actual saved state instead of the policy leader or supplied metadata: %j', async (flags, status, libraryId) => {
+    await classificationPersistenceService.logClassification({ ...baseMetadata,
+      classification_details: { destination_decision: { libraryId: 999, token: 'SECRET' } } }, {
+      method: 'ai_analysis', library: { id: 2 }, policyResult: { ranked: [{ library_id: 1 }] }, ...flags,
+    });
+    const params = db.query.mock.calls.find(call => call[0].includes('INSERT INTO classification_history'))[1];
+    const details = JSON.parse(params[9]).classification_details;
+    expect(details.candidate_capture.library_id).toBe(1);
+    expect(details.destination_decision).toMatchObject({ status, libraryId, method: 'ai_analysis', tmdbId: 123 });
+    expect(JSON.stringify(details.destination_decision)).not.toMatch(/SECRET|999/);
+    expect(params[4]).toBe(libraryId);
+    expect(params[10]).toBe(status);
   });
 
   test('persists a bounded queue decision witness only after history receives an id', async () => {

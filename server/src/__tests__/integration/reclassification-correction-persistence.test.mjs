@@ -2,6 +2,7 @@
 import { jest, beforeEach, afterEach, test, expect } from '@jest/globals';
 import { getPool, createIntegrationDatabaseModuleMock } from './setup.mjs';
 import { classificationMoveRevision } from '../../services/reclassificationMoveContract.mjs';
+import { buildClassificationDestinationDecision } from '../../services/classificationDestinationDecision.mjs';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -38,12 +39,18 @@ const journal = async () => (await db.query('SELECT * FROM reclassification_move
 const makeDue = () => db.query('UPDATE reclassification_move_operations SET next_attempt_at=NOW()');
 
 test('external verification followed by commit records history, event, evidence and operation together', async () => {
+  const capture = buildClassificationDestinationDecision({ metadata: { media_type: 'movie', tmdb_id: 920001 },
+    method: 'ai_analysis', status: 'completed', libraryId: libraries[0] });
+  await db.query("UPDATE classification_history SET metadata=$1,method='ai_analysis' WHERE id=$2",
+    [{ classification_details: { destination_decision: capture } }, row.id]);
   expect((await execute()).success).toBe(true);
   expect((await db.query('SELECT library_id,status FROM classification_history WHERE id=$1', [row.id])).rows[0])
     .toEqual({ library_id: libraries[1], status: 'reclassified' });
   expect((await db.query('SELECT identity_key FROM classification_correction_outcomes WHERE selected_library_id=$1', [libraries[1]])).rows)
     .toEqual([{ identity_key: 'movie:920001' }]);
   expect((await journal()).state).toBe('completed');
+  expect((await db.query('SELECT decision_context FROM classification_correction_outcomes WHERE selected_library_id=$1', [libraries[1]])).rows)
+    .toEqual([{ decision_context: { classificationId: row.id, capture } }]);
   await execute();
   expect(adapter.moveFiles).toHaveBeenCalledTimes(1);
   expect((await db.query('SELECT * FROM classification_corrections WHERE classification_id=$1', [row.id])).rows).toHaveLength(1);

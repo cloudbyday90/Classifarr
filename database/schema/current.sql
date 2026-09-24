@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-24T20:46:53.033Z
--- Latest Migration: 20260924_190000_add_reclassification_batch_coordinator.sql
+-- Generated: 2026-09-24T22:49:30.603Z
+-- Latest Migration: 20260924_220000_add_correction_decision_context.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -2232,12 +2232,14 @@ CREATE TABLE public.classification_correction_outcomes (
     identity_key text NOT NULL,
     selected_library_id integer NOT NULL,
     observed_at timestamp with time zone DEFAULT now() NOT NULL,
+    decision_context jsonb,
     CONSTRAINT classification_correction_outcomes_check CHECK (((identity_key ~ '^source:[a-f0-9]{64}$'::text) OR
 CASE
     WHEN (identity_key ~ (('^'::text || media_type) || ':[1-9][0-9]{0,9}$'::text)) THEN ((split_part(identity_key, ':'::text, 2))::bigint <= 2147483647)
     ELSE false
 END)),
     CONSTRAINT classification_correction_outcomes_correction_id_check CHECK ((correction_id > 0)),
+    CONSTRAINT classification_correction_outcomes_decision_context_check CHECK (((decision_context IS NULL) OR ((jsonb_typeof(decision_context) = 'object'::text) AND (octet_length((decision_context)::text) <= 1024)))),
     CONSTRAINT classification_correction_outcomes_media_type_check CHECK ((media_type = ANY (ARRAY['movie'::text, 'tv'::text]))),
     CONSTRAINT classification_correction_outcomes_observed_at_check CHECK (isfinite(observed_at))
 );
@@ -2248,6 +2250,13 @@ END)),
 --
 
 COMMENT ON TABLE public.classification_correction_outcomes IS 'Thirty-day explicit correction evaluation snapshots; no titles, metadata, actors, credentials, or routing authority. Survive history retries, cascade on destination deletion.';
+
+
+--
+-- Name: COLUMN classification_correction_outcomes.decision_context; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.classification_correction_outcomes.decision_context IS 'Versioned original saved decision and exact classification ID; no history FK, raw content, or routing authority. Null for unavailable historical context.';
 
 
 --
@@ -16520,6 +16529,7 @@ FROM unnest(ARRAY[
     '20260924_120000_add_inventory_description_representation_checkpoint.sql',
     '20260924_150000_add_classification_correction_outcomes.sql',
     '20260924_170000_add_reclassification_move_operations.sql',
-    '20260924_190000_add_reclassification_batch_coordinator.sql'
+    '20260924_190000_add_reclassification_batch_coordinator.sql',
+    '20260924_220000_add_correction_decision_context.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;
