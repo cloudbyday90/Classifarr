@@ -59,20 +59,84 @@ A private 79,292,129-byte pre-update PostgreSQL archive was saved under ignored
 Docker's archive-copy operation could not read the running tmpfs file, so the
 archive was streamed through `docker exec` and verified against the source hash.
 
-The separately authorized no-cache Compose update and real-inventory rerun
-follow this tested source commit; their results will be appended before handoff.
+## Authorized local update and real-inventory result
+
+Built clean source commit `2f17b44e369938107aef4228a57dd6f567b4ab1b` using the
+existing smart-Compose helper with `build --no-cache --require-provenance`.
+The helper verified the clean checkout and recorded its revision in the image.
+The build included the production frontend build and fresh dependency installs.
+Then used `up -d --no-build --pull never --force-recreate --wait` with the same
+persistent mounts and existing configuration. No volumes were deleted. The
+existing cross-encoder sidecar was left untouched despite Compose's orphan notice.
+
+The replacement container became healthy, returned HTTP 200 for `/health` and
+the application shell, and rejected unauthenticated batch-activity access with
+401. Startup applied the previously committed correction-capture migration;
+the outcome table is present and empty. The ordered fingerprint of all ten
+policies' IDs, destinations, enabled flags, priorities, and automatic/prompt
+thresholds is unchanged. No routing settings were edited. Final restart count
+was zero. The old image and private database archive remain available; restoring
+an old image alone is not a database rollback.
+
+The first read-only run after startup still reported three missing cached
+descriptions. At 22:01:03 UTC, the ordinary scheduled worker reported 6,655 cache
+hits, three newly embedded descriptions, zero remaining, and no deferred or
+isolated descriptions. No manual backfill or separate inference job was started.
+The subsequent existing evaluation command completed using cached vectors:
+
+| Measurement | Result |
+| --- | --- |
+| Selected / requested distinct held-out groups | 300 / 300 |
+| Movies / TV | 152 / 148 |
+| Active video libraries represented | 10 of 10 |
+| TMDB-linked / source-only queries | 297 / 3 |
+| Eligible identities / unique descriptions | 6,661 / 6,658 |
+| Missing cached descriptions after scheduled refresh | 0 |
+| Changed shortlists / leading proposals between arms | 0 / 0 |
+| Queries without a proposal in either arm | 0 |
+| Usable correction labels | 0 |
+| Execution / quality status | `complete` / `no_correction_labels` |
+
+Every correction-only rate remains null, and all correction-outcome counts are
+zero because there are no labels, **not because no errors occurred**. The result
+shows complete retrieval coverage and no measured proposal change from adding
+the three source-only identities in this cohort. It does not establish correct
+destinations, equal real-world accuracy, or safe automatic routing. The evaluation
+itself made no generation/embedding calls and performed no database writes.
+
+Snapshot fingerprint:
+`7049a057daa2221f266906227cd5fa6eaaece5471469fdd5fe98c5801a15f0bc`.
+Sample fingerprint:
+`e7ab0d9da39719ce0c973a0ccde14947ecfb47a65030c166ab2b4548c2793b89`.
+The sample fingerprint matches the earlier blocked comparison; the missing
+vectors were filled without replacing the cohort. Private aggregate JSON remains
+under ignored `.tmp/`, with no individual media content committed.
 
 ## PR and release boundary
 
 The repository-scoped GitHub MCP open-PR search returned zero open PRs on
-September 24. No random PR was available to implement, and none was merged.
-There is no release, tag, or version bump in this work. The user separately
+September 24, including the final recheck. No random PR was available to implement,
+and none was merged. There is no release, Git tag, or version bump in this work. The user separately
 authorized rebuilding and restarting the local Compose service after testing.
 
 ## Next high-value item
 
-Run this comparison on naturally captured correction outcomes and target the
-largest measured failure category. If cache gaps remain after startup, examine
-the existing description-backfill worker and its retry state first. If labels
-remain absent, allow normal corrections to accumulate; do not replace them with
-placement-derived labels, increase confidence, or add another approval screen.
+Move to **full destination-decision evaluation using the existing correction
+capture and decision-evaluation path**, not another sample-size increase or
+source-only admission tweak. This completed comparison found no shortlist or
+leader changes, and the cache blocker has self-healed. Naturally occurring
+corrections can now survive retry/history cleanup in the updated local instance.
+
+As genuine outcomes accumulate, evaluate the actual final recommendation and
+review outcome in addition to the retrieval shortlist. Use the new breakdown to
+separate evidence gaps from ranking misses, then implement one change addressing
+the largest measured failure and rerun the same held-out comparison. Reuse the
+existing evaluator; any paid generation requires a separately approved budget.
+Until labels exist, do not manufacture them from current placement, claim quality
+improvement, raise confidence, or add another approval screen.
+
+Final recommendation stack: automatic retained outcomes → grouped full-decision
+comparison → stage-specific ranking fix → paired regression check → only then
+consider calibrated reductions in manual review. This sequencing is our
+engineering recommendation based on the observed limits, not a claim that the
+research sources prescribe this exact architecture.
