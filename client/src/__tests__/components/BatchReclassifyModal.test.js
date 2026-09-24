@@ -112,6 +112,84 @@ describe('BatchReclassifyModal.vue', () => {
     vi.useRealTimers()
   })
 
+  describe('durable move recovery updates', () => {
+    it('keeps polling after batch execution ends until pending recovery completes', async () => {
+      const wrapper = mountModal()
+      wrapper.vm.batchId = 'recovery-batch'
+      wrapper.vm.step = 'executing'
+      apiMock.getReclassificationBatchStatus.mockResolvedValue({
+        status: 'completed', items: [{ id: 1, title: 'Inception', status: 'failed', move_recovery: { state: 'moving' } }],
+        progress: { total: 1, completed: 0, failed: 1, skipped: 0, percentage: 0 },
+      })
+      await wrapper.vm.refreshBatchStatus()
+      await flushPromises()
+      expect(wrapper.text()).toContain('Move verification pending')
+      expect(wrapper.text()).toContain('Batch Finished with Issues')
+      apiMock.getReclassificationBatchStatus.mockResolvedValue({
+        status: 'completed', items: [{ id: 1, title: 'Inception', status: 'completed', execution_result: { moveReconciled: true } }],
+        progress: { total: 1, completed: 1, failed: 0, skipped: 0, percentage: 100 },
+      })
+      await vi.advanceTimersByTimeAsync(2000)
+      await flushPromises()
+      expect(wrapper.text()).toContain('Move completed and verified')
+      expect(wrapper.find('[role="status"]').text()).toBe('1 completed, 0 failed.')
+      expect(wrapper.emitted('complete')).toHaveLength(2)
+      const calls = apiMock.getReclassificationBatchStatus.mock.calls.length
+      await vi.advanceTimersByTimeAsync(4000)
+      expect(apiMock.getReclassificationBatchStatus).toHaveBeenCalledTimes(calls)
+      expect(apiMock.resumeReclassificationBatch).not.toHaveBeenCalled()
+      wrapper.unmount()
+    })
+
+    it('a recovered paused batch offers resume, not a stale error or retry gate', async () => {
+      const wrapper = mountModal()
+      wrapper.vm.batchId = 'paused-batch'
+      wrapper.vm.step = 'executing'
+      apiMock.getReclassificationBatchStatus.mockResolvedValue({
+        status: 'paused', error_message: 'Old remote failure', items: [],
+        progress: { total: 2, completed: 1, failed: 0, skipped: 0, percentage: 50 },
+      })
+      await wrapper.vm.refreshBatchStatus()
+      await flushPromises()
+      expect(wrapper.text()).toContain('stays paused until you choose Resume')
+      expect(wrapper.find('[data-test="modal-title"]').text()).toBe('Batch Paused')
+      expect(wrapper.text()).not.toContain('Old remote failure')
+      expect(wrapper.findAll('button').some(button => button.text() === 'Retry')).toBe(false)
+      expect(wrapper.find('[role="progressbar"]').attributes('aria-valuenow')).toBe('1')
+      wrapper.unmount()
+    })
+
+    it('does not apply an old response to another batch or persist recovery data', async () => {
+      const storageSpy = vi.spyOn(Storage.prototype, 'setItem')
+      let resolve
+      apiMock.getReclassificationBatchStatus.mockImplementationOnce(() => new Promise(done => { resolve = done }))
+      const wrapper = mountModal()
+      wrapper.vm.batchId = 'old-batch'
+      const pending = wrapper.vm.refreshBatchStatus()
+      await flushPromises()
+      wrapper.vm.batchId = 'new-batch'
+      resolve({ status: 'completed', items: [], progress: { completed: 99 } })
+      await pending
+      await flushPromises()
+      expect(wrapper.vm.batchStatus).toBeNull()
+      expect(storageSpy).not.toHaveBeenCalled()
+      storageSpy.mockRestore()
+      wrapper.unmount()
+    })
+
+    it('cancels polling on unmount', async () => {
+      const wrapper = mountModal()
+      wrapper.vm.batchId = 'unmount-batch'
+      apiMock.getReclassificationBatchStatus.mockResolvedValue({ status: 'paused', items: [], progress: { completed: 0 } })
+      await wrapper.vm.refreshBatchStatus()
+      await flushPromises()
+      wrapper.unmount()
+      const calls = apiMock.getReclassificationBatchStatus.mock.calls.length
+      await vi.advanceTimersByTimeAsync(6000)
+      expect(apiMock.getReclassificationBatchStatus).toHaveBeenCalledTimes(calls)
+    })
+  })
+
   describe('configure step', () => {
     it('renders with configure step by default', () => {
       const wrapper = mountModal()
@@ -830,7 +908,7 @@ describe('BatchReclassifyModal.vue', () => {
       await wrapper.vm.refreshBatchStatus()
       await flushPromises()
 
-      expect(consoleSpy).toHaveBeenCalledWith('Failed to refresh status:', expect.any(Error))
+      expect(consoleSpy).toHaveBeenCalledWith('[useSWR] Fetch error:', expect.any(Error))
       consoleSpy.mockRestore()
     })
 

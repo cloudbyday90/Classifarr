@@ -23,6 +23,7 @@ export function classify(data) {
 }
 
 export function getHistory(params) {
+  // Each history row may include a safe move_recovery summary, separate from confidence.
   // Rows include server-derived retry_recovery (null unless exhaustion recovery is eligible).
   return getDataRequest('/classification/history', { params })
 }

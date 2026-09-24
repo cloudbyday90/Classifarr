@@ -1,6 +1,8 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { NotFoundError, ValidationError } from '../utils/appError.mjs';
+import { batchOutcomeCountsSql } from './reclassificationBatchMoveOutcomes.mjs';
+import { moveRecoveryJsonSql } from './reclassificationMoveReadModel.mjs';
 
 const logger = createLogger('ReclassificationBatchQueries');
 
@@ -14,14 +16,16 @@ function computeProgress(batch) {
         completed,
         failed,
         skipped,
-        remaining: total - completed - failed - skipped,
+        cancelled: batch.cancelled_items ?? 0,
+        remaining: Math.max(0, total - completed - failed - skipped - (batch.cancelled_items ?? 0)),
         percentage: total > 0 ? Math.round((completed / total) * 100) : 0
     };
 }
 
 export async function getBatchStatus(batchId) {
     const batchResult = await db.query(`
-        SELECT * FROM reclassification_batches WHERE id = $1
+        SELECT batch.*, outcomes.* FROM reclassification_batches batch
+        ${batchOutcomeCountsSql} WHERE batch.id = $1
     `, [batchId]);
 
     if (batchResult.rows.length === 0) {
@@ -31,13 +35,18 @@ export async function getBatchStatus(batchId) {
     const batch = batchResult.rows[0];
 
     const itemsResult = await db.query(`
-        SELECT bi.*, ch.title, ch.media_type, 
+        SELECT bi.*, ch.title, ch.media_type,
+               CASE WHEN move.id IS NOT NULL THEN ${moveRecoveryJsonSql} END AS move_recovery,
                orig_lib.name as original_library_name,
                target_lib.name as target_library_name
         FROM reclassification_batch_items bi
         LEFT JOIN classification_history ch ON bi.classification_id = ch.id
         LEFT JOIN libraries orig_lib ON ch.library_id = orig_lib.id
         LEFT JOIN libraries target_lib ON bi.target_library_id = target_lib.id
+        LEFT JOIN reclassification_move_operations move
+          ON move.id = CASE WHEN bi.execution_result->>'moveOperationId' ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+            THEN (bi.execution_result->>'moveOperationId')::uuid END
+          AND move.classification_id = bi.classification_id AND move.target_library_id = bi.target_library_id
         WHERE bi.batch_id = $1
         ORDER BY bi.execution_order
     `, [batchId]);
@@ -51,9 +60,8 @@ export async function getBatchStatus(batchId) {
 
 export async function getBatchProgress(batchId) {
     const result = await db.query(`
-        SELECT id, status, total_items, completed_items, failed_items, skipped_items,
-               paused_at_item, error_message
-        FROM reclassification_batches WHERE id = $1
+        SELECT batch.*, outcomes.* FROM reclassification_batches batch
+        ${batchOutcomeCountsSql} WHERE batch.id = $1
     `, [batchId]);
 
     if (result.rows.length === 0) {
@@ -72,9 +80,9 @@ export async function getBatchProgress(batchId) {
 
 export async function listBatches(limit = 20) {
     const result = await db.query(`
-        SELECT * FROM reclassification_batches
-        ORDER BY created_at DESC
-        LIMIT $1
+        SELECT batch.*, outcomes.* FROM (
+          SELECT * FROM reclassification_batches ORDER BY created_at DESC, id DESC LIMIT $1
+        ) batch ${batchOutcomeCountsSql} ORDER BY batch.created_at DESC, batch.id DESC
     `, [limit]);
 
     return result.rows.map(batch => ({
@@ -146,7 +154,7 @@ export async function skipItem(batchId, itemId, { getBatchStatus }) {
     await db.query(`
         UPDATE reclassification_batch_items 
         SET status = 'skipped', updated_at = NOW()
-        WHERE id = $1 AND batch_id = $2
+        WHERE id = $1 AND batch_id = $2 AND status IN ('failed', 'invalid', 'pending', 'validated')
     `, [itemId, batchId]);
 
     await db.query(`
@@ -161,8 +169,8 @@ export async function skipItem(batchId, itemId, { getBatchStatus }) {
 export async function retryItem(batchId, itemId, { getBatchStatus }) {
     await db.query(`
         UPDATE reclassification_batch_items 
-        SET status = 'validated', error_message = NULL, execution_result = NULL, updated_at = NOW()
-        WHERE id = $1 AND batch_id = $2
+        SET status = 'validated', error_message = NULL, updated_at = NOW()
+        WHERE id = $1 AND batch_id = $2 AND status = 'failed'
     `, [itemId, batchId]);
 
     return getBatchStatus(batchId);

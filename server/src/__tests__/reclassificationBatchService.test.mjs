@@ -273,9 +273,9 @@ describe('executeBatch', () => {
     const item = { ...ITEM_ROWS[0], status: 'validated' };
     db.query
       .mockResolvedValueOnce({ rows: [batch] })
-      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 1 }] })
       .mockResolvedValueOnce({ rows: [item] })
-      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: item.id }] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });
@@ -294,9 +294,9 @@ describe('executeBatch', () => {
     const item = { ...ITEM_ROWS[0], status: 'validated' };
     db.query
       .mockResolvedValueOnce({ rows: [batch] })
-      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 1 }] })
       .mockResolvedValueOnce({ rows: [item] })
-      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: item.id }] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });
@@ -315,9 +315,9 @@ describe('executeBatch', () => {
     const item = { ...ITEM_ROWS[0], status: 'validated' };
     db.query
       .mockResolvedValueOnce({ rows: [batch] })
-      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: 1 }] })
       .mockResolvedValueOnce({ rows: [item] })
-      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ id: item.id }] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });
@@ -327,7 +327,7 @@ describe('executeBatch', () => {
     await svc.executeBatch(1);
     const calls = db.query.mock.calls.map(c => c[0]);
     expect(calls.some(sql => typeof sql === 'string' && sql.includes("'completed'"))).toBe(true);
-    expect(calls.some(sql => typeof sql === 'string' && sql.includes("'paused'"))).toBe(false);
+    expect(calls.some(sql => typeof sql === 'string' && sql.includes("SET status = 'paused'"))).toBe(false);
   });
 });
 

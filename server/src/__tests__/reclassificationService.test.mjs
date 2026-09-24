@@ -12,7 +12,7 @@ beforeEach(() => {
   operation = { id: 'operation-1', classification_id: 1, target_library_id: 20, state: 'moving', plan };
   repository = {
     find: jest.fn().mockResolvedValue(null), classification: jest.fn().mockImplementation(async () => row),
-    reserve: jest.fn().mockResolvedValue(operation), attempted: jest.fn(), verified: jest.fn(),
+    reserve: jest.fn().mockResolvedValue(operation), bind: jest.fn(), attempted: jest.fn(), verified: jest.fn(),
     complete: jest.fn(), prune: jest.fn(), due: jest.fn().mockResolvedValue(operation),
     defer: jest.fn().mockResolvedValue(operation),
   };
@@ -24,6 +24,23 @@ beforeEach(() => {
   service = new ReclassificationService({ database, repository, adapter, logger, scan });
 });
 const execute = () => service.executeReclassification({ classificationId: 1, targetLibraryId: 20 });
+
+test('new batch moves bind during reservation before file work', async () => {
+  await service.executeReclassification({ classificationId: 1, targetLibraryId: 20, batchItemId: 7 });
+  expect(repository.reserve).toHaveBeenCalledWith(1, 20, 'user', operation.plan, 7);
+  expect(repository.reserve.mock.invocationCallOrder[0]).toBeLessThan(adapter.moveFiles.mock.invocationCallOrder[0]);
+});
+test('existing moves bind a retry before reconciliation without repeating file work', async () => {
+  repository.find.mockResolvedValue(operation);
+  await service.executeReclassification({ classificationId: 1, targetLibraryId: 20, batchItemId: 7 });
+  expect(repository.bind).toHaveBeenCalledWith(operation, 7);
+  expect(repository.bind.mock.invocationCallOrder[0]).toBeLessThan(adapter.reconcile.mock.invocationCallOrder[0]);
+  expect(adapter.moveFiles).not.toHaveBeenCalled();
+});
+test('invalid batch references cannot reserve or move', async () => {
+  await expect(service.executeReclassification({ classificationId: 1, targetLibraryId: 20, batchItemId: -1 })).rejects.toThrow();
+  expect(repository.reserve).not.toHaveBeenCalled();
+});
 test('reserves before any file operation, verifies before committing, and scans after commit', async () => {
   await expect(execute()).resolves.toMatchObject({ success: true, details: { newPath: '/new/item' } });
   expect(repository.reserve.mock.invocationCallOrder[0]).toBeLessThan(adapter.moveFiles.mock.invocationCallOrder[0]);

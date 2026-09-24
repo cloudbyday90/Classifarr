@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Reconcile recovered movie/TV moves with their exact batch attempts and show
+  safe recovery status in batch and history views. Derive batch counts from
+  item outcomes, preserve pause/cancel/skip intent, and keep status refreshed
+  during background recovery without adding another approval step.
 - Journal movie/TV reclassification moves before filesystem changes and recover
   verified moves after interruptions without repeating file copies or deletions.
   Reject missing or mismatched provider identities, preserve ambiguous recovery

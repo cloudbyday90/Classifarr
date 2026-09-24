@@ -130,10 +130,12 @@ export function createReclassificationRouter({ express, reclassificationBatchSer
    * /api/reclassification/batch/{id}:
    *   get:
    *     summary: Get full batch status with all items
+   *     description: Current item-derived progress and allowlisted move recovery state; does not resume execution
    */
   router.get('/batch/:id', asyncHandler(async (req, res) => {
     const id = parsePositiveInt(req.params.id);
     const result = await reclassificationBatchService.getBatchStatus(id);
+    res.set('Cache-Control', 'no-store');
     sendData(res, result);
   }));
 
@@ -146,6 +148,7 @@ export function createReclassificationRouter({ express, reclassificationBatchSer
   router.get('/batch/:id/progress', asyncHandler(async (req, res) => {
     const id = parsePositiveInt(req.params.id);
     const result = await reclassificationBatchService.getBatchProgress(id);
+    res.set('Cache-Control', 'no-store');
     sendData(res, result);
   }));
 
@@ -158,6 +161,7 @@ export function createReclassificationRouter({ express, reclassificationBatchSer
   router.get('/batches', asyncHandler(async (req, res) => {
     const limit = parseBatchListLimit(req.query.limit);
     const result = await reclassificationBatchService.listBatches(limit);
+    res.set('Cache-Control', 'no-store');
     sendData(res, result);
   }));
 

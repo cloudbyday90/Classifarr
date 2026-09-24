@@ -216,6 +216,10 @@
                 <div class="text-sm text-gray-400">
                   {{ item.year }}
                 </div>
+                <MoveRecoveryStatus
+                  :recovery="item.move_recovery"
+                  compact
+                />
               </td>
               <td
                 class="py-3"
@@ -327,6 +331,7 @@
             :classification="selectedItem"
             @refresh="loadPage(pagination?.page || 1)"
           />
+          <MoveRecoveryStatus :recovery="selectedItem.move_recovery" />
 
           <!-- Final Outcome -->
           <div class="bg-background rounded-lg p-4 border border-gray-700">
@@ -1088,6 +1093,7 @@ import Button from '@/components/common/Button.vue'
 import BatchReclassifyModal from '@/components/BatchReclassifyModal.vue'
 import LibraryProfilePanel from '@/components/history/LibraryProfilePanel.vue'
 import ExhaustedRetryRecovery from '@/components/history/ExhaustedRetryRecovery.vue'
+import MoveRecoveryStatus from '@/components/history/MoveRecoveryStatus.vue'
 import SignalRow from '@/components/history/SignalRow.vue'
 
 const librariesStore = useLibrariesStore()

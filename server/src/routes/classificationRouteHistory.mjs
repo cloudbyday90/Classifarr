@@ -12,6 +12,7 @@ import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { NotFoundError } from '../utils/appError.mjs';
 import { parseIntParam } from './evidenceRouteHelpers.mjs';
 import { getExhaustedRetryRecovery } from '../services/classificationRetryEligibility.mjs';
+import { historyMoveRecoverySql } from '../services/reclassificationMoveReadModel.mjs';
 
 const historyIdentitySql = (alias) => `
   CASE
@@ -174,6 +175,7 @@ export function registerHistoryRoutes(router, { db }) {
       SELECT
         ch.*,
         ch.resolved_library_name AS library_name,
+        ${historyMoveRecoverySql} AS move_recovery,
         (SELECT COUNT(*) FROM classification_corrections WHERE classification_id = ch.id) as correction_count,
         lifecycle.history_events,
         lifecycle.history_event_count
@@ -199,6 +201,7 @@ export function registerHistoryRoutes(router, { db }) {
       total = parseInt(countResult.rows[0].count);
     }
 
+    res.set('Cache-Control', 'no-store');
     res.json({
       data: result.rows.map((row) => {
         const {
@@ -226,6 +229,7 @@ export function registerHistoryRoutes(router, { db }) {
       `
       SELECT 
         ch.*, 
+        ${historyMoveRecoverySql} AS move_recovery,
         l.name as library_name,
         l.media_type as library_media_type
       FROM classification_history ch
@@ -252,6 +256,7 @@ export function registerHistoryRoutes(router, { db }) {
       [id]
     );
 
+    res.set('Cache-Control', 'no-store');
     res.json({
       ...result.rows[0],
       retry_recovery: getExhaustedRetryRecovery(result.rows[0]),

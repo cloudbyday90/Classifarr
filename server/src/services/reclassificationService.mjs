@@ -29,10 +29,10 @@ export class ReclassificationService {
     return result;
   }
 
-  async executeReclassification({ classificationId, targetLibraryId, correctedBy = 'user' }) {
+  async executeReclassification({ classificationId, targetLibraryId, correctedBy = 'user', batchItemId = null }) {
     classificationId = positiveDatabaseInteger(classificationId);
     targetLibraryId = positiveDatabaseInteger(targetLibraryId);
-    if (!classificationId || !targetLibraryId || typeof correctedBy !== 'string' ||
+    if ((batchItemId !== null && !positiveDatabaseInteger(batchItemId)) || !classificationId || !targetLibraryId || typeof correctedBy !== 'string' ||
         !correctedBy.trim() || correctedBy.length > 100) {
       throw new ValidationError('Valid classification/destination IDs and an actor of 1–100 characters are required.');
     }
@@ -43,6 +43,7 @@ export class ReclassificationService {
         if (existing.target_library_id !== targetLibraryId) {
           throw moveBlocked('move_target_conflict', 'This classification already has an unfinished move. Retry its original destination; do not start a second move.');
         }
+        if (batchItemId !== null) await this.repository.bind(existing, batchItemId);
         return this.resume(existing, options);
       }
       if (!classification) throw new NotFoundError('Classification not found');
@@ -56,7 +57,7 @@ export class ReclassificationService {
       }
       const plan = await this.adapter.prepare(classification, targetLibraryId, options);
       options.signal?.throwIfAborted();
-      const operation = await this.repository.reserve(classificationId, targetLibraryId, correctedBy, plan);
+      const operation = await this.repository.reserve(classificationId, targetLibraryId, correctedBy, plan, batchItemId);
       // Only the request which durably reserved the intent may start filesystem work.
       try { await this.adapter.moveFiles(plan, options); }
       catch (error) { return this.failed(operation, error); }

@@ -43,6 +43,8 @@ export function cancelReclassificationBatch(batchId) {
 }
 
 export function getReclassificationBatchStatus(batchId) {
+  // Items include allowlisted move_recovery state and a durable moveReconciled
+  // completion receipt. Batch progress is derived from current item outcomes.
   return getDataRequest(`/reclassification/batch/${batchId}`)
 }
 

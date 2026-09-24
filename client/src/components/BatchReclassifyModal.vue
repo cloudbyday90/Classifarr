@@ -143,7 +143,14 @@
           <span>Progress</span>
           <span>{{ progress.completed }}/{{ progress.total }}</span>
         </div>
-        <div class="w-full bg-gray-700 rounded-full h-3">
+        <div
+          role="progressbar"
+          aria-label="Batch completion"
+          :aria-valuenow="progress.completed"
+          :aria-valuemax="progress.total"
+          aria-valuemin="0"
+          class="w-full bg-gray-700 rounded-full h-3"
+        >
           <div
             class="bg-primary h-3 rounded-full transition-all duration-300"
             :style="{ width: `${progress.percentage}%` }"
@@ -177,10 +184,11 @@
           ⏸️ Execution Paused
         </div>
         <p class="text-sm text-gray-400 mb-3">
-          {{ batchStatus.error_message }}
+          {{ allItemsFinished ? 'All items are finished. The batch remains paused; there is nothing left to resume.' : progress.failed ? batchStatus.error_message : 'No failed items remain. The batch stays paused until you choose Resume.' }}
         </p>
         <div class="flex gap-2">
           <Button
+            v-if="progress.failed"
             variant="warning"
             size="sm"
             @click="skipCurrentItem"
@@ -188,12 +196,14 @@
             Skip & Continue
           </Button>
           <Button
+            v-if="progress.failed"
             size="sm"
             @click="retryCurrentItem"
           >
             Retry
           </Button>
           <Button
+            v-if="!allItemsFinished"
             variant="secondary"
             size="sm"
             @click="cancelBatch"
@@ -201,6 +211,12 @@
             Cancel Remaining
           </Button>
         </div>
+        <p
+          v-if="!allItemsFinished"
+          class="mt-3 text-sm text-gray-400"
+        >
+          Skipping or cancelling remaining items does not undo a move that already started; its recovery may still finish.
+        </p>
       </div>
     </div>
 
@@ -211,10 +227,10 @@
     >
       <div class="text-center py-4">
         <div class="text-4xl mb-4">
-          {{ batchStatus?.status === 'completed' ? '✅' : '⚠️' }}
+          {{ batchStatus?.status === 'completed' && !progress.failed ? '✅' : '⚠️' }}
         </div>
         <h3 class="text-xl font-semibold mb-2">
-          {{ batchStatus?.status === 'completed' ? 'Batch Complete!' : 'Batch Finished with Issues' }}
+          {{ batchStatus?.status === 'completed' && !progress.failed ? 'Batch Complete!' : 'Batch Finished with Issues' }}
         </h3>
         <div class="flex items-center justify-center gap-4 mt-4">
           <Badge variant="success">
@@ -233,6 +249,33 @@
             {{ progress.skipped }} Skipped
           </Badge>
         </div>
+      </div>
+    </div>
+
+    <div
+      v-if="['executing', 'complete'].includes(step)"
+      class="mt-4 space-y-3"
+    >
+      <p
+        role="status"
+        aria-atomic="true"
+        class="text-sm"
+      >
+        {{ recoveryError ? 'Status unavailable; displayed results may be out of date.' : `${progress.completed} completed, ${progress.failed} failed.` }}
+      </p>
+      <div
+        v-for="item in batchStatus?.items || []"
+        :key="item.id"
+      >
+        <template v-if="item.move_recovery || item.execution_result?.moveReconciled">
+          <p class="font-medium">
+            {{ item.title || `Item ${item.classification_id}` }}
+          </p>
+          <MoveRecoveryStatus
+            :recovery="item.move_recovery"
+            :reconciled="item.execution_result?.moveReconciled === true"
+          />
+        </template>
       </div>
     </div>
 
@@ -275,14 +318,14 @@
         Pause
       </Button>
       <Button
-        v-if="step === 'executing' && batchStatus?.status === 'paused'"
+        v-if="step === 'executing' && batchStatus?.status === 'paused' && !allItemsFinished"
         @click="resumeBatch"
       >
         Resume
       </Button>
 
       <Button
-        v-if="step === 'complete'"
+        v-if="step === 'complete' || (batchStatus?.status === 'paused' && allItemsFinished)"
         @click="close"
       >
         Close
@@ -299,6 +342,8 @@ import Modal from '@/components/common/Modal.vue'
 import Button from '@/components/common/Button.vue'
 import Badge from '@/components/common/Badge.vue'
 import Spinner from '@/components/common/Spinner.vue'
+import MoveRecoveryStatus from '@/components/history/MoveRecoveryStatus.vue'
+import { useSWR } from '@/composables/useSWR'
 
 const props = defineProps({
   modelValue: {
@@ -321,7 +366,7 @@ const pauseOnError = ref(true)
 const itemTargets = ref({})
 const batchId = ref(null)
 const batchStatus = ref(null)
-const pollInterval = ref(null)
+const polling = ref(false)
 
 const showModal = computed({
   get: () => props.modelValue,
@@ -329,6 +374,7 @@ const showModal = computed({
 })
 
 const modalTitle = computed(() => {
+  if (step.value === 'executing' && batchStatus.value?.status === 'paused') return 'Batch Paused'
   const titles = {
     configure: 'Batch Reclassification',
     validating: 'Validating...',
@@ -358,6 +404,33 @@ const progress = computed(() => {
     failed: 0,
     skipped: 0,
     percentage: 0
+  }
+})
+
+const hasPendingRecovery = computed(() => batchStatus.value?.items?.some(item =>
+  ['moving', 'files_verified'].includes(item.move_recovery?.state)))
+const allItemsFinished = computed(() => progress.value.total > 0 && progress.value.failed === 0 &&
+  progress.value.completed + progress.value.skipped + (progress.value.cancelled || 0) >= progress.value.total)
+const { data: recoveryData, error: recoveryError, refresh: refreshRecovery } = useSWR(
+  'reclassification-batch-recovery',
+  async () => {
+    const id = batchId.value
+    if (!id || !showModal.value || !polling.value) return null
+    return { id, batch: await api.getReclassificationBatchStatus(id) }
+  },
+  { persist: false, pollInterval: () => polling.value && showModal.value ? 2000 : null },
+)
+watch(recoveryData, value => {
+  if (!value || value.id !== batchId.value || !showModal.value || !polling.value) return
+  const previousCompleted = progress.value.completed
+  batchStatus.value = value.batch
+  if (['completed', 'cancelled', 'failed'].includes(value.batch.status)) {
+    const wasComplete = step.value === 'complete'
+    step.value = 'complete'
+    if (!wasComplete || progress.value.completed !== previousCompleted) emit('complete')
+    if (!hasPendingRecovery.value) stopPolling()
+  } else if (progress.value.completed !== previousCompleted) {
+    emit('complete')
   }
 })
 
@@ -461,37 +534,24 @@ const retryCurrentItem = async () => {
 
 const refreshBatchStatus = async () => {
   if (!batchId.value) return
-  try {
-    const response = await api.getReclassificationBatchStatus(batchId.value)
-    batchStatus.value = response
-
-    // Check if complete
-    if (['completed', 'cancelled', 'failed'].includes(batchStatus.value.status)) {
-      stopPolling()
-      step.value = 'complete'
-      emit('complete')
-    }
-  } catch (error) {
-    console.error('Failed to refresh status:', error)
-  }
+  polling.value = true
+  await refreshRecovery()
 }
 
 const startPolling = () => {
-  stopPolling()
-  pollInterval.value = setInterval(refreshBatchStatus, 2000)
+  polling.value = true
 }
 
 const stopPolling = () => {
-  if (pollInterval.value) {
-    clearInterval(pollInterval.value)
-    pollInterval.value = null
-  }
+  polling.value = false
 }
 
-// Cleanup on unmount
+// useSWR handles unmount; closing or reopening the modal controls polling here.
 watch(showModal, (val) => {
   if (!val) {
     stopPolling()
+  } else if (batchId.value && ['executing', 'complete'].includes(step.value)) {
+    void refreshBatchStatus()
   }
 })
 

@@ -1,6 +1,6 @@
 import * as db from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
-import { NotFoundError } from '../utils/appError.mjs';
+import { NotFoundError, AppError } from '../utils/appError.mjs';
 
 const logger = createLogger('ReclassificationBatchProcessing');
 
@@ -74,11 +74,13 @@ export async function executeBatch(batchId, { getReclassificationService, getBat
 
     const batch = batchResult.rows[0];
 
-    await db.query(`
+    const started = await db.query(`
         UPDATE reclassification_batches 
         SET status = 'executing', started_at = COALESCE(started_at, NOW()), updated_at = NOW()
-        WHERE id = $1
+        WHERE id = $1 AND status IN ('pending', 'validated', 'validation_failed', 'paused')
+        RETURNING id
     `, [batchId]);
+    if (!started.rows.length) throw new AppError('Batch cannot be started in its current state.', 409);
 
     const itemsResult = await db.query(`
         SELECT * FROM reclassification_batch_items
@@ -92,24 +94,29 @@ export async function executeBatch(batchId, { getReclassificationService, getBat
     const reclassificationService = await getReclassificationService();
 
     for (const item of items) {
-        await db.query(`
+        const claimed = await db.query(`
             UPDATE reclassification_batch_items 
             SET status = 'executing', updated_at = NOW()
-            WHERE id = $1
-        `, [item.id]);
+            WHERE id = $1 AND status IN ('validated', 'pending')
+              AND EXISTS (SELECT 1 FROM reclassification_batches WHERE id = $2 AND status = 'executing')
+            RETURNING id
+        `, [item.id, batchId]);
+        if (!claimed.rows.length) continue;
 
         try {
             const result = await reclassificationService.executeReclassification({
                 classificationId: item.classification_id,
                 targetLibraryId: item.target_library_id,
-                correctedBy: batch.created_by
+                correctedBy: batch.created_by,
+                batchItemId: item.id
             });
 
             completedCount++;
             await db.query(`
                 UPDATE reclassification_batch_items 
-                SET status = 'completed', execution_result = $1, updated_at = NOW()
-                WHERE id = $2
+                SET status = 'completed', error_message = NULL,
+                    execution_result = COALESCE(execution_result, '{}'::jsonb) || $1::jsonb, updated_at = NOW()
+                WHERE id = $2 AND status IN ('executing', 'completed')
             `, [JSON.stringify(result), item.id]);
 
             await db.query(`
@@ -121,8 +128,9 @@ export async function executeBatch(batchId, { getReclassificationService, getBat
             failedCount++;
             await db.query(`
                 UPDATE reclassification_batch_items 
-                SET status = 'failed', error_message = $1, execution_result = $2, updated_at = NOW()
-                WHERE id = $3
+                SET status = 'failed', error_message = $1,
+                    execution_result = COALESCE(execution_result, '{}'::jsonb) || $2::jsonb, updated_at = NOW()
+                WHERE id = $3 AND status = 'executing'
             `, [error.message, JSON.stringify({ error: error.message }), item.id]);
 
             await db.query(`
@@ -135,7 +143,7 @@ export async function executeBatch(batchId, { getReclassificationService, getBat
                 await db.query(`
                     UPDATE reclassification_batches 
                     SET status = 'paused', paused_at_item = $1, error_message = $2, updated_at = NOW()
-                    WHERE id = $3
+                    WHERE id = $3 AND status = 'executing'
                 `, [item.execution_order, error.message, batchId]);
 
                 logger.warn('Batch paused due to error', { batchId, itemId: item.id, error: error.message });
@@ -147,7 +155,7 @@ export async function executeBatch(batchId, { getReclassificationService, getBat
     await db.query(`
         UPDATE reclassification_batches 
         SET status = 'completed', completed_at = NOW(), updated_at = NOW()
-        WHERE id = $1
+        WHERE id = $1 AND status = 'executing'
     `, [batchId]);
 
     logger.info('Batch execution complete', { batchId, completedCount, failedCount });

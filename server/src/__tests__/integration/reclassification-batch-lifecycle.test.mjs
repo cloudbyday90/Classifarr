@@ -388,6 +388,7 @@ describe('Reclassification Batch Lifecycle Integration Tests', () => {
             ]);
 
             await db.query("UPDATE reclassification_batches SET completed_items = 2 WHERE id = $1", [batch.id]);
+            await db.query("UPDATE reclassification_batch_items SET status = 'completed' WHERE batch_id = $1 AND execution_order <= 2", [batch.id]);
 
             const progress = await reclassificationBatchService.getBatchProgress(batch.id);
             expect(progress.progress.percentage).toBe(67);

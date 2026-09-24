@@ -2,6 +2,7 @@
 import { randomUUID } from 'node:crypto';
 import { recordClassificationCorrection } from './classificationCorrectionWriter.mjs';
 import { classificationMoveRevision, moveBlocked } from './reclassificationMoveContract.mjs';
+import { bindBatchMove, completeBatchMove } from './reclassificationBatchMoveOutcomes.mjs';
 
 export function createReclassificationMoveRepository(db) {
   return {
@@ -13,9 +14,13 @@ export function createReclassificationMoveRepository(db) {
     async classification(id) {
       return (await db.query('SELECT * FROM classification_history WHERE id = $1', [id])).rows[0] ?? null;
     },
-    async reserve(classificationId, targetLibraryId, correctedBy, plan) {
-      const key = `${plan.mediaType}:${plan.configId}:${plan.remoteId}`;
-      const { rows } = await db.query(`INSERT INTO reclassification_move_operations
+    async bind(operation, batchItemId) {
+      await bindBatchMove(db, operation, batchItemId);
+    },
+    async reserve(classificationId, targetLibraryId, correctedBy, plan, batchItemId = null) {
+      const reserve = async client => {
+        const key = `${plan.mediaType}:${plan.configId}:${plan.remoteId}`;
+        const { rows } = await client.query(`INSERT INTO reclassification_move_operations
         (id, classification_id, target_library_id, corrected_by, resource_key, plan)
         SELECT $1, $2, $3, $4, $5, $6::jsonb
         WHERE (SELECT count(*) FROM reclassification_move_operations WHERE state <> 'completed') < 1000
@@ -31,9 +36,12 @@ export function createReclassificationMoveRepository(db) {
             )
           )
         ON CONFLICT DO NOTHING RETURNING *`, [randomUUID(), classificationId, targetLibraryId, correctedBy, key,
-        JSON.stringify(plan), plan.localOldPath.replaceAll('\\', '/'), plan.localNewPath.replaceAll('\\', '/')]);
-      if (!rows[0]) throw moveBlocked('move_reserved', 'An unresolved move already owns this item, or the recovery limit has been reached. Resolve existing move reports before starting another move.');
-      return rows[0];
+          JSON.stringify(plan), plan.localOldPath.replaceAll('\\', '/'), plan.localNewPath.replaceAll('\\', '/')]);
+        if (!rows[0]) throw moveBlocked('move_reserved', 'An unresolved move already owns this item, or the recovery limit has been reached. Resolve existing move reports before starting another move.');
+        await bindBatchMove(client, rows[0], batchItemId);
+        return rows[0];
+      };
+      return batchItemId === null ? reserve(db) : db.withTransaction(reserve);
     },
     async attempted(id) {
       await db.query(`UPDATE reclassification_move_operations SET attempts = LEAST(attempts + 1, 31),
@@ -65,6 +73,7 @@ export function createReclassificationMoveRepository(db) {
           destinationLibraryId: operation.target_library_id, correctedBy: operation.corrected_by });
         await client.query(`UPDATE reclassification_move_operations SET state = 'completed', reason_code = NULL,
           completed_at = NOW(), updated_at = NOW() WHERE id = $1`, [operation.id]);
+        await completeBatchMove(client, operation);
       });
     },
     async due() {
