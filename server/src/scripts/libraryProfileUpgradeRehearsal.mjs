@@ -1,17 +1,13 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { resolve } from 'node:path';
 import { createMigrationRunner } from '../config/migrations.mjs';
 import { queueLibraryProfileUpgrade } from '../services/libraryProfileUpgradeQueue.mjs';
 import { LibraryInventoryProfileRefreshPlanner } from '../services/libraryInventoryProfileRefreshPlanner.mjs';
 import { LibraryProfileService } from '../services/libraryProfileService.mjs';
 import { readLibraryProfileRefreshStatus } from '../services/libraryProfileRefreshStatus.mjs';
 import { PolicyProfileRefreshOutboxWorker } from '../services/policyProfileRefreshOutboxWorker.mjs';
-
-export const BASELINE_TAG = 'v0.48.4-beta';
-export const BASELINE_COMMIT = 'a0e417fd714919bb4ca30e20f9cd2380136ca74e';
-export const BASELINE_SCHEMA_PATH = 'database/schema/current.sql';
+import { BASELINE_TAG } from './pinnedReleaseSchema.mjs';
+export { BASELINE_COMMIT, BASELINE_TAG, BASELINE_SCHEMA_PATH, readPinnedReleaseSchema } from './pinnedReleaseSchema.mjs';
 
 const upgradeTask = Object.freeze({
     id: 'queue_library_profile_revision_verification_v1',
@@ -21,18 +17,6 @@ const upgradeTask = Object.freeze({
 
 function expect(condition, message) {
     if (!condition) throw new Error(`Profile upgrade rehearsal failed: ${message}`);
-}
-
-/** Use an exact checked release commit; never read an untrusted dump or the live data mount. */
-export function readPinnedReleaseSchema({ git = execFileSync, repoRoot = resolve(import.meta.dirname, '../../..') } = {}) {
-    const options = { cwd: repoRoot, encoding: 'utf8', maxBuffer: 2 * 1024 * 1024 };
-    const commit = git('git', ['rev-parse', `refs/tags/${BASELINE_TAG}^{commit}`], options).trim();
-    expect(commit === BASELINE_COMMIT, 'the published baseline tag is missing or differs from the pinned commit');
-    const schema = git('git', ['show', `${BASELINE_COMMIT}:${BASELINE_SCHEMA_PATH}`], options);
-    expect(schema.includes('-- Latest Migration: 20260829_110000_add_ollama_verification_capability_outcome_history.sql'),
-        'the baseline schema is not the expected release snapshot');
-    expect(schema.includes('CREATE TABLE public.schema_migrations ('), 'the baseline has no migration ledger');
-    return schema;
 }
 
 export function createIsolatedDbClient(pool) {

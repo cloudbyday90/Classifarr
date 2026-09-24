@@ -1,5 +1,5 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-23T22:35:21.968Z
+-- Generated: 2026-09-24T00:34:32.309Z
 -- Latest Migration: 20260923_140000_add_profile_refresh_worker_progress.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
@@ -9894,22 +9894,6 @@ ALTER TABLE ONLY public.policy_candidate_correction_policy_change_outcome_observ
 
 
 --
--- Name: policy_change_review_history_aggregates policy_candidate_correction_policy_change_review_history_a_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.policy_change_review_history_aggregates
-    ADD CONSTRAINT policy_candidate_correction_policy_change_review_history_a_pkey PRIMARY KEY (period_start, decision_id);
-
-
---
--- Name: policy_change_review_history_controls policy_candidate_correction_policy_change_review_history_c_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.policy_change_review_history_controls
-    ADD CONSTRAINT policy_candidate_correction_policy_change_review_history_c_pkey PRIMARY KEY (control_key);
-
-
---
 -- Name: policy_candidate_correction_review_corpus_audit_events policy_candidate_correction_review_corpus_audit_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9971,6 +9955,22 @@ ALTER TABLE ONLY public.policy_candidate_correction_review_projections
 
 ALTER TABLE ONLY public.policy_change_log
     ADD CONSTRAINT policy_change_log_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: policy_change_review_history_aggregates policy_change_review_history_aggregates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_change_review_history_aggregates
+    ADD CONSTRAINT policy_change_review_history_aggregates_pkey PRIMARY KEY (period_start, decision_id);
+
+
+--
+-- Name: policy_change_review_history_controls policy_change_review_history_controls_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.policy_change_review_history_controls
+    ADD CONSTRAINT policy_change_review_history_controls_pkey PRIMARY KEY (control_key);
 
 
 --

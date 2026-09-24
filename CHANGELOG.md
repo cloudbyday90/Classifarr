@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Gate CI on a disposable replay of the last pinned release snapshot through
+  current migrations, compare its catalog with fresh-install schema, and
+  reconcile review-history primary-key names; no release is created.
 - Correlate overdue library-profile recovery with a durable, privacy-bounded
   worker check-in and claimable queue count in the Command Center; preserve
   existing retry and routing behavior.
