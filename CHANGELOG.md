@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Add a bounded, label-blind frozen inventory-evidence replay for held-out
+  correction cases, with explicit retrieval coverage and lockfile-difference
+  diagnostics; keep routing and release promotion unchanged.
 - Add a private, read-only correction-cohort capture and v2 frozen-evidence
   replay for paired published/current policy scoring. Preserve score-only
   replay and keep incomplete classifier paths explicitly unmeasured.

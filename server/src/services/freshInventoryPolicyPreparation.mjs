@@ -11,13 +11,13 @@ import { resolveDeterministicOutcomeAiMode } from './classificationDeterministic
 import { preparePolicyShortlistReplayCase } from './policyShortlistReplayCase.mjs';
 
 /** Production formulas and exclusions; all evidence readers are explicitly fold-local. */
-export async function evaluateFreshInventoryPolicyCase(entry, source, evidence, signal) {
+export async function evaluateFreshInventoryPolicyCase(entry, source, evidence, signal, { retriever } = {}) {
   signal?.throwIfAborted();
   const runtime = evidence.forCase(entry);
   if (!runtime) return { common: { status: 'metadata_unavailable' }, runtime: null };
   const { metadata } = runtime;
   // Offline folds must not mint live event receipts or introduce wall-clock nondeterminism.
-  const inventory = createPolicyInventoryEvidenceService({ retriever: runtime, captureShadow: false });
+  const inventory = createPolicyInventoryEvidenceService({ retriever: retriever ?? runtime, captureShadow: false });
   const result = await evaluateItem(metadata, { ragCache: { matches: [], timestamp: 1 }, relatedEvidence: [] }, {
     checkAuthoritativeSignals: async () => null,
     getActivePolicies: async () => source.policies,

@@ -2,6 +2,7 @@
 import { fileURLToPath } from 'node:url';
 import { createIsolatedFrozenPolicyScorer } from '../services/isolatedFrozenPolicyScoring.mjs';
 import { validateFrozenPolicyWorkerInput } from '../services/operatorCorrectionFrozenPolicyInput.mjs';
+import { validateFrozenInventoryWorkerInput } from '../services/operatorCorrectionFrozenInventoryInput.mjs';
 
 const modules = Object.freeze({
   baseline: 'file:///app/release/server/src/services/policyEngineEvaluation.mjs',
@@ -70,7 +71,8 @@ async function runScoreOnlyWorker({ role, input, loadEvaluator }) {
 }
 
 async function runFrozenEvidenceWorker({ role, input, loadScorer }) {
-  validateFrozenPolicyWorkerInput(input);
+  if (input.version === 3) validateFrozenInventoryWorkerInput(input);
+  else validateFrozenPolicyWorkerInput(input);
   const score = await loadScorer(role);
   const folds = new Map(input.folds.map(fold => [`${fold.foldIndex}:${fold.mediaType}`, fold]));
   const cases = [];
@@ -80,10 +82,14 @@ async function runFrozenEvidenceWorker({ role, input, loadScorer }) {
       throw new Error('worker_case_invalid');
     }
     try {
-      cases.push(disposition(await score({ metadata: row.metadata, policies: input.policies,
-        profiles: fold.profiles }), index));
+      let inventoryStatusId = role === 'baseline' ? 'not_applicable' : 'not_requested';
+      const outcome = disposition(await score({ metadata: row.metadata, policies: input.policies,
+        profiles: fold.profiles, ...(input.version === 3 ? { inventory: row.inventory,
+          onInventoryStatus: value => { inventoryStatusId = value; } } : {}) }), index);
+      cases.push(input.version === 3 ? { ...outcome, inventoryStatusId } : outcome);
     } catch {
-      cases.push({ index, statusId: 'failed', destinationLibraryId: null });
+      const failed = { index, statusId: 'failed', destinationLibraryId: null };
+      cases.push(input.version === 3 ? { ...failed, inventoryStatusId: 'failed' } : failed);
     }
   }
   return { version: 1, role, cases };
@@ -92,7 +98,7 @@ async function runFrozenEvidenceWorker({ role, input, loadScorer }) {
 export async function runIsolatedReleaseDecisionWorker({ role, input, loadEvaluator = path => import(path),
   loadScorer = createIsolatedFrozenPolicyScorer }) {
   if (!Object.hasOwn(modules, role)) throw new Error('worker_role_invalid');
-  return input?.version === 2 ? runFrozenEvidenceWorker({ role, input, loadScorer })
+  return [2, 3].includes(input?.version) ? runFrozenEvidenceWorker({ role, input, loadScorer })
     : runScoreOnlyWorker({ role, input, loadEvaluator });
 }
 

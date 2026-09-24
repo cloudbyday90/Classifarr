@@ -14,17 +14,19 @@ function setup({ changed = false, empty = false } = {}) {
     verifyRepresentation: jest.fn(),
     prepareCorrections: jest.fn(() => ({ source: { policies: [] }, eligibleSampleKeys: new Set() })),
     prepareSample: jest.fn(() => ({ cases: empty ? [] : [{}] })),
-    createEvidence: jest.fn(() => ({})), captureInput: jest.fn(() => ({ version: 2 })) };
+    createEvidence: jest.fn(() => ({})), captureInput: jest.fn(() => ({ version: 2 })),
+    captureInventory: jest.fn(async () => ({ version: 3 })) };
   return { runtime, deps };
 }
 
 test('capture uses repeatable read and verifies the source before releasing a private input', async () => {
   const { runtime, deps } = setup();
-  await expect(captureOperatorCorrectionFrozenPolicyCohort(options, deps)).resolves.toEqual({ version: 2 });
+  await expect(captureOperatorCorrectionFrozenPolicyCohort(options, deps)).resolves.toEqual({ version: 3 });
   expect(deps.loadRuntime).toHaveBeenCalledWith({ includeOperatorCorrectionLabels: true, repeatableRead: true });
   expect(runtime.repository.read).toHaveBeenCalledTimes(2);
   expect(deps.verifyRepresentation).toHaveBeenCalledTimes(2);
   expect(deps.captureInput).toHaveBeenCalledTimes(1);
+  expect(deps.captureInventory).toHaveBeenCalledTimes(1);
   expect(runtime.close).toHaveBeenCalledTimes(1);
 });
 

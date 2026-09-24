@@ -5,6 +5,7 @@ import { loadFreshInventoryPolicyRuntime } from './freshInventoryPolicyRuntime.m
 import { createFreshInventoryPolicyEvidence } from './freshInventoryPolicyEvidence.mjs';
 import { prepareOperatorCorrectionFreshPolicySource } from './operatorCorrectionFreshPolicyEvaluation.mjs';
 import { captureOperatorCorrectionFrozenPolicyInput } from './operatorCorrectionFrozenPolicyCapture.mjs';
+import { captureOperatorCorrectionFrozenInventoryInput } from './operatorCorrectionFrozenInventoryCapture.mjs';
 
 /** No generation or writer is available: one read snapshot supplies both paired scorers. */
 export async function captureOperatorCorrectionFrozenPolicyCohort(settings, {
@@ -15,6 +16,7 @@ export async function captureOperatorCorrectionFrozenPolicyCohort(settings, {
   prepareSample = prepareDescriptionBenchmark,
   createEvidence = createFreshInventoryPolicyEvidence,
   captureInput = captureOperatorCorrectionFrozenPolicyInput,
+  captureInventory = captureOperatorCorrectionFrozenInventoryInput,
 } = {}) {
   const options = validateDescriptionBenchmarkOptions(settings);
   if (!options.folds) throw new Error('frozen_policy_grouped_folds_required');
@@ -31,7 +33,9 @@ export async function captureOperatorCorrectionFrozenPolicyCohort(settings, {
         preserveDescriptionCandidate: true, eligibleSampleKeys: correctionCohort.eligibleSampleKeys });
     if (!prepared.cases.length) throw new Error('frozen_policy_no_eligible_corrections');
     const evidence = createEvidence(correctionCohort.source, prepared);
-    const input = captureInput({ source, prepared, correctionCohort, evidence });
+    const policyInput = captureInput({ source, prepared, correctionCohort, evidence });
+    const input = await captureInventory({ policyInput, prepared, source: correctionCohort.source,
+      evidence, signal: abort });
     abort.throwIfAborted();
     const current = await runtime.repository.read(representation);
     if (current.fingerprint !== source.fingerprint) throw new Error('frozen_policy_source_changed');

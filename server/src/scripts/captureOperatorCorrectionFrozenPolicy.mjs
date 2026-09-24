@@ -16,7 +16,7 @@ export async function runFrozenPolicyCapture({ argv = process.argv.slice(2), cap
   process.env.FILE_LOGGING_ENABLED = 'false';
   process.env.PGOPTIONS = `${process.env.PGOPTIONS || ''} -c default_transaction_read_only=on -c statement_timeout=15000 -c lock_timeout=1000`.trim();
   const { validateDescriptionBenchmarkOptions } = await import('../services/inventoryDescriptionBenchmarkSelection.mjs');
-  const settings = validateDescriptionBenchmarkOptions({ seed: values.seed ?? 'release-frozen-policy-v2',
+  const settings = validateDescriptionBenchmarkOptions({ seed: values.seed ?? 'release-frozen-inventory-v3',
     size: Number(values.size ?? 100), folds: Number(values.folds ?? 3), generateCases: 0,
     maxMinutes: Number(values['max-minutes'] ?? 20) });
   const run = capture ?? (await import('../services/operatorCorrectionFrozenPolicyCohort.mjs'))

@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { spawn, execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { mkdtemp, mkdir, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { join, relative, resolve, sep } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -10,6 +11,8 @@ import { validateReleaseDecisionInput, projectReleaseDecisionWorkerInput } from
   '../server/src/services/operatorCorrectionReleaseDecisionInput.mjs';
 import { validateFrozenPolicyInput, projectFrozenPolicyWorkerInput } from
   '../server/src/services/operatorCorrectionFrozenPolicyInput.mjs';
+import { validateFrozenInventoryInput, projectFrozenInventoryWorkerInput } from
+  '../server/src/services/operatorCorrectionFrozenInventoryInput.mjs';
 import { buildReleaseDecisionPair } from '../server/src/services/operatorCorrectionReleaseDecisionPair.mjs';
 
 const TMP_ROOT = join(PROJECT_ROOT, '.tmp');
@@ -88,7 +91,16 @@ async function loadPrivateInput(inputFile) {
   const details = await stat(path);
   if (!details.isFile() || details.size > 8_000_000) throw new Error('release_decision_input_size_invalid');
   const input = JSON.parse(await readFile(path, 'utf8'));
-  return input?.version === 2 ? validateFrozenPolicyInput(input) : validateReleaseDecisionInput(input);
+  return input?.version === 3 ? validateFrozenInventoryInput(input)
+    : input?.version === 2 ? validateFrozenPolicyInput(input) : validateReleaseDecisionInput(input);
+}
+
+function lockfileProvenance(candidateCommit) {
+  const read = commit => execFileSync('git', ['show', `${commit}:server/package-lock.json`],
+    { cwd: PROJECT_ROOT, maxBuffer: 16_000_000 });
+  const baselineSha256 = createHash('sha256').update(read(BASELINE_COMMIT)).digest('hex');
+  const candidateSha256 = createHash('sha256').update(read(candidateCommit)).digest('hex');
+  return { baselineSha256, candidateSha256, identical: baselineSha256 === candidateSha256 };
 }
 
 /** No live database, provider endpoint, or writable host mount is passed to either run. */
@@ -104,8 +116,8 @@ export async function runIsolatedReleaseDecisionPair({ inputFile, check = verify
   const stageDirectory = await privateTemporaryDirectory('release-code-');
   try {
     const stageSource = await stage(stageDirectory);
-    const workerInput = input.version === 2 ? projectFrozenPolicyWorkerInput(input)
-      : projectReleaseDecisionWorkerInput(input);
+    const workerInput = input.version === 3 ? projectFrozenInventoryWorkerInput(input)
+      : input.version === 2 ? projectFrozenPolicyWorkerInput(input) : projectReleaseDecisionWorkerInput(input);
     const baselineResult = await execute({ role: 'baseline', stageSource, input: workerInput, imageId });
     const candidateResult = await execute({ role: 'candidate', stageSource, input: workerInput, imageId });
     const { baselineBundle, candidateBundle, report } = buildReleaseDecisionPair({ input, baselineResult,
@@ -116,7 +128,8 @@ export async function runIsolatedReleaseDecisionPair({ inputFile, check = verify
     return { ...report, decisionSubpathExecutionVerified: true, containerImageId: imageId,
       privateArtifacts: [relative(PROJECT_ROOT, join(artifactDirectory, 'baseline.json')).split(sep).join('/'),
         relative(PROJECT_ROOT, join(artifactDirectory, 'candidate.json')).split(sep).join('/')],
-      dependencyProvenanceVerified: false };
+      dependencyProvenanceVerified: false,
+      dependencyLockfiles: lockfileProvenance(candidateCommit) };
   } finally {
     const path = relative(TMP_ROOT, stageDirectory);
     if (!path.startsWith('release-code-') || path.includes(sep)) throw new Error('release_decision_stage_boundary_invalid');
