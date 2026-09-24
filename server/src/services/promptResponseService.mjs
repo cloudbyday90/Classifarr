@@ -33,7 +33,7 @@ export async function respondToPrompt({ db, feedbackAnalysis, id, body }) {
             WHERE id=ANY($1::integer[]) ORDER BY id FOR SHARE
         `, [libraryIds])).rows;
         const classification = (await client.query(`
-            SELECT id, tmdb_id, media_type, title, metadata, confidence, status,
+            SELECT id, tmdb_id, media_type, title, metadata, confidence, status, method,
                 created_at AT TIME ZONE 'UTC' AS created_at
             FROM classification_history WHERE id=$1 FOR UPDATE
         `, [id])).rows[0];
@@ -73,6 +73,7 @@ export async function respondToPrompt({ db, feedbackAnalysis, id, body }) {
             prompted_at: classification.created_at, responded_at: new Date(),
         }, client);
         await recordFeedbackSource(client, { classificationId: id, feedbackId, intake: 'prompt',
+            classification, selectedLibraryId,
             fingerprint: feedbackRequestFingerprint({ selectedLibraryId, selectedPolicyId, patternActions, reasons, customReason }) });
         await client.query(`
             UPDATE classification_history SET status='completed', library_id=$1, library_name=$2,

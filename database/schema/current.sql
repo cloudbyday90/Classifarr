@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-24T22:49:30.603Z
--- Latest Migration: 20260924_220000_add_correction_decision_context.sql
+-- Generated: 2026-09-24T23:36:42.954Z
+-- Latest Migration: 20260924_230000_add_feedback_and_intake_decision_snapshots.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -2530,11 +2530,13 @@ CREATE TABLE public.classification_intake_receipts (
     finished_at timestamp with time zone,
     classification_linked_at timestamp with time zone,
     updated_at timestamp with time zone DEFAULT statement_timestamp() NOT NULL,
+    decision_context jsonb,
     CONSTRAINT classification_intake_comparison_reason_check CHECK (((comparison_status_id = 'not_captured'::text) = (comparison_reason_id IS NOT NULL))),
     CONSTRAINT classification_intake_receipts_attempt_count_check CHECK (((attempt_count >= 0) AND (attempt_count <= 10000))),
     CONSTRAINT classification_intake_receipts_classification_id_check CHECK ((classification_id > 0)),
     CONSTRAINT classification_intake_receipts_comparison_reason_id_check CHECK (((comparison_reason_id IS NULL) OR (comparison_reason_id = ANY (ARRAY['not_applicable_media'::text, 'no_policy_result'::text, 'no_eligible_pool'::text, 'invalid_candidate_pool'::text, 'candidate_pool_size'::text, 'retrieval_unavailable'::text, 'retrieval_mismatch'::text, 'description_unavailable'::text, 'comparison_incomplete'::text, 'identity_mismatch'::text, 'capture_disabled'::text, 'capture_invalid'::text, 'unexpected_error'::text, 'not_observed'::text])))),
     CONSTRAINT classification_intake_receipts_comparison_status_id_check CHECK ((comparison_status_id = ANY (ARRAY['not_evaluated'::text, 'captured'::text, 'not_captured'::text]))),
+    CONSTRAINT classification_intake_receipts_decision_context_check CHECK (((decision_context IS NULL) OR ((jsonb_typeof(decision_context) = 'object'::text) AND (octet_length((decision_context)::text) <= 1024)))),
     CONSTRAINT classification_intake_receipts_last_failure_code_check CHECK (((last_failure_code IS NULL) OR (last_failure_code ~ '^[a-z][a-z0-9_]{0,63}$'::text))),
     CONSTRAINT classification_intake_receipts_queue_task_id_check CHECK ((queue_task_id > 0)),
     CONSTRAINT classification_intake_receipts_source_class_check CHECK ((source_class = ANY (ARRAY['webhook'::text, 'manual'::text, 'reprocess'::text, 'other'::text]))),
@@ -2547,7 +2549,14 @@ CREATE TABLE public.classification_intake_receipts (
 -- Name: TABLE classification_intake_receipts; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON TABLE public.classification_intake_receipts IS 'Thirty-day, id-only classification intake diagnostics; no media, provider, policy, user, request body, AI, or routing content.';
+COMMENT ON TABLE public.classification_intake_receipts IS 'Thirty-day classification intake diagnostics with bounded typed decision IDs and states; no titles, names, users, request bodies, provider payloads, or routing authority.';
+
+
+--
+-- Name: COLUMN classification_intake_receipts.decision_context; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.classification_intake_receipts.decision_context IS 'Original saved movie/TV decision linked to classification_id; no history foreign key. Null when capture is unavailable. Same thirty-day retention as the intake receipt.';
 
 
 --
@@ -5550,8 +5559,10 @@ CREATE TABLE public.policy_feedback_sources (
     intake character varying(20) NOT NULL,
     request_fingerprint text NOT NULL,
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    outcome_snapshot jsonb,
     CONSTRAINT policy_feedback_sources_classification_id_check CHECK ((classification_id > 0)),
     CONSTRAINT policy_feedback_sources_intake_check CHECK (((intake)::text = ANY (ARRAY[('standalone'::character varying)::text, ('prompt'::character varying)::text]))),
+    CONSTRAINT policy_feedback_sources_outcome_snapshot_check CHECK (((outcome_snapshot IS NULL) OR ((jsonb_typeof(outcome_snapshot) = 'object'::text) AND (octet_length((outcome_snapshot)::text) <= 1024)))),
     CONSTRAINT policy_feedback_sources_request_fingerprint_check CHECK ((request_fingerprint ~ '^[a-f0-9]{64}$'::text))
 );
 
@@ -5568,6 +5579,13 @@ COMMENT ON TABLE public.policy_feedback_sources IS 'One feedback receipt per cla
 --
 
 COMMENT ON COLUMN public.policy_feedback_sources.classification_id IS 'Validated against locked classification_history at intake; intentionally no cascading history foreign key. Legacy feedback is not backfilled.';
+
+
+--
+-- Name: COLUMN policy_feedback_sources.outcome_snapshot; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.policy_feedback_sources.outcome_snapshot IS 'Thirty-day explicit selection and original decision projection. Expiry clears only this field, preserving the replay tombstone; no raw content or routing authority.';
 
 
 --
@@ -12167,6 +12185,13 @@ CREATE INDEX idx_policy_feedback_prompted_at ON public.policy_feedback_log USING
 
 
 --
+-- Name: idx_policy_feedback_sources_outcome_retention; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_policy_feedback_sources_outcome_retention ON public.policy_feedback_sources USING btree (created_at, classification_id) WHERE (outcome_snapshot IS NOT NULL);
+
+
+--
 -- Name: idx_policy_feedback_tmdb; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -16530,6 +16555,7 @@ FROM unnest(ARRAY[
     '20260924_150000_add_classification_correction_outcomes.sql',
     '20260924_170000_add_reclassification_move_operations.sql',
     '20260924_190000_add_reclassification_batch_coordinator.sql',
-    '20260924_220000_add_correction_decision_context.sql'
+    '20260924_220000_add_correction_decision_context.sql',
+    '20260924_230000_add_feedback_and_intake_decision_snapshots.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

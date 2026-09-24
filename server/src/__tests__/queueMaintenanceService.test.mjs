@@ -78,12 +78,16 @@ describe('QueueMaintenanceService', () => {
 
     test('correction outcome expiry retries on later maintenance without blocking queue cleanup', async () => {
         service.pruneCorrectionOutcomes.mockRestore();
-        db.query.mockRejectedValueOnce(new Error('private database detail')).mockResolvedValueOnce({ rowCount: 1 });
+        db.query.mockRejectedValueOnce(new Error('private database detail')).mockResolvedValue({ rowCount: 1 });
         await expect(service.pruneCorrectionOutcomes()).resolves.toBeUndefined();
         expect(logger.warn).toHaveBeenCalledWith('Correction outcome expiry failed; the next maintenance run will retry');
         await service.pruneCorrectionOutcomes();
-        expect(db.query).toHaveBeenCalledTimes(2);
+        expect(db.query).toHaveBeenCalledTimes(4);
         expect(db.query.mock.calls[1][0]).toContain('LIMIT 1000');
+        expect(db.query.mock.calls[1][0]).toContain('UPDATE policy_feedback_sources');
+        db.query.mockResolvedValueOnce({ rowCount: 0 }).mockRejectedValueOnce(new Error('private'));
+        await service.pruneCorrectionOutcomes();
+        expect(logger.warn).toHaveBeenCalledWith('Feedback outcome expiry failed; the next maintenance run will retry');
     });
 
     function mockTerminalCounts({

@@ -521,7 +521,8 @@ describe('logClassification', () => {
       expect(JSON.stringify(queueDecisionWitnessRepository.persist.mock.calls[0][0]))
         .not.toContain('must not persist');
       expect(recordClassification).toHaveBeenCalledWith(16, 42,
-        { statusId: 'not_captured', reasonId: 'no_policy_result' });
+        { statusId: 'not_captured', reasonId: 'no_policy_result' },
+        expect.objectContaining({ method: 'ai_analysis', status: 'completed', libraryId: 1 }));
     } finally {
       recordClassification.mockRestore();
       classificationPersistenceService.queueDecisionWitnessRepository = originalRepository;

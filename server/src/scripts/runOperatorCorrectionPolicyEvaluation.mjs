@@ -25,7 +25,7 @@ export async function runOperatorCorrectionPolicyEvaluation({ argv = process.arg
   process.env.FILE_LOGGING_ENABLED = 'false';
   process.env.PGOPTIONS = `${process.env.PGOPTIONS || ''} -c default_transaction_read_only=on -c statement_timeout=15000 -c lock_timeout=1000`.trim();
   if (values['saved-decisions']) {
-    const run = evaluate ?? (await import('../services/correctionDestinationDecisionRepository.mjs')).runCorrectionDestinationDecisionEvaluation;
+    const run = evaluate ?? (await import('../services/destinationOutcomeEvaluationRepository.mjs')).runDestinationOutcomeEvaluation;
     return run();
   }
   const run = evaluate ?? (values['source-pair']
@@ -37,7 +37,7 @@ export async function runOperatorCorrectionPolicyEvaluation({ argv = process.arg
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   runOperatorCorrectionPolicyEvaluation().then(report => {
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-    if (!['preflight', 'complete', 'no_eligible_corrections', 'no_eligible_cases'].includes(report.status) ||
+    if (!['preflight', 'complete', 'no_eligible_corrections', 'no_eligible_cases', 'no_eligible_outcomes'].includes(report.status) ||
         report.sampleShortfall && report.sampled > 0) process.exitCode = 1;
   }).catch(() => {
     process.stderr.write('Operator-correction evaluation did not complete. No routing changes were made.\n');

@@ -500,7 +500,8 @@ export class ClassificationPersistenceService {
     const classificationId = lifecycleResult.classificationId;
 
     if (queueTask?.id) {
-      await this.intakeReceiptService.recordClassification(queueTask.id, classificationId, intakeComparison);
+      await this.intakeReceiptService.recordClassification(queueTask.id, classificationId, intakeComparison,
+        classificationDetails.destination_decision);
     }
 
     // A witness is diagnostic/evaluation evidence, never a prerequisite for a

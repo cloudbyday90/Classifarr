@@ -10,7 +10,7 @@ import { inventorySourceDescriptionKey } from '../../services/inventorySourceDes
 import { applyPolicyManualCorrectionLifecycle } from '../../services/policyManualCorrectionExecutionLifecycle.mjs';
 import { persistDiscordCorrection } from '../../services/discordCorrectionPersistence.mjs';
 import { buildClassificationDestinationDecision } from '../../services/classificationDestinationDecision.mjs';
-import { readCorrectionDestinationDecisions } from '../../services/correctionDestinationDecisionRepository.mjs';
+import { readDestinationOutcomes as readCorrectionDestinationDecisions } from '../../services/destinationOutcomeEvaluationRepository.mjs';
 
 let client, libraries;
 beforeEach(async () => {
@@ -197,6 +197,6 @@ test('private CLI runs end to end against the migrated test database without mod
         POSTGRES_DB: options.database, POSTGRES_USER: options.user, POSTGRES_PASSWORD: options.password },
     });
   // This process cannot see the fixture rows in our uncommitted transaction.
-  expect(JSON.parse(stdout)).toMatchObject({ status: 'no_eligible_corrections', retainedRows: 0, providerCalls: 0, routingWrites: 0 });
+  expect(JSON.parse(stdout)).toMatchObject({ status: 'no_eligible_outcomes', retainedRows: 0, providerCalls: 0, routingWrites: 0 });
   expect(stderr).toBe('');
 });

@@ -2,6 +2,7 @@
 import { ClassificationIntakeReceiptRepository } from './classificationIntakeReceiptRepository.mjs';
 import { isClassificationIntakeReason } from './classificationIntakeComparison.mjs';
 import { normalizeQueueTaskFailureReasonId } from './queueTaskFailureReason.mjs';
+import { readCorrectionDecisionContext } from './classificationDestinationDecision.mjs';
 
 const TRANSITIONS = new Set(['queued', 'processing', 'retry_scheduled', 'completed', 'failed']);
 const RECEIPT_WARNING_INTERVAL_MS = 60_000;
@@ -30,10 +31,11 @@ export class ClassificationIntakeReceiptService {
   }
 
   async record({ taskId, transition = null, attempts = null, classificationId = null,
-    comparison = null, failureReasonId = null } = {}) {
+    comparison = null, failureReasonId = null, decisionContext = null } = {}) {
     if (!positive(taskId) || (transition !== null && !TRANSITIONS.has(transition)) ||
         (attempts !== null && (!Number.isInteger(attempts) || attempts < 0 || attempts > 10000)) ||
         (classificationId !== null && !positive(classificationId)) ||
+        (decisionContext !== null && (!readCorrectionDecisionContext(decisionContext) || decisionContext.classificationId !== classificationId)) ||
         (comparison !== null && (!comparison || classificationId === null ||
           !['captured', 'not_captured'].includes(comparison.statusId) ||
           (comparison.statusId === 'captured' && comparison.reasonId !== null) ||
@@ -44,7 +46,7 @@ export class ClassificationIntakeReceiptService {
     try {
       const persisted = await this.repository.upsert([
         taskId, attempts, classificationId,
-        comparison?.statusId ?? null, comparison?.reasonId ?? null, failureCode,
+        comparison?.statusId ?? null, comparison?.reasonId ?? null, failureCode, decisionContext,
       ]);
       if (!persisted) this.warn('task_absent');
       return persisted;
@@ -56,8 +58,9 @@ export class ClassificationIntakeReceiptService {
 
   recordQueued(taskId) { return this.record({ taskId, transition: 'queued' }); }
   recordProcessing(taskId, attempts) { return this.record({ taskId, transition: 'processing', attempts }); }
-  recordClassification(taskId, classificationId, comparison) {
-    return this.record({ taskId, classificationId, comparison });
+  recordClassification(taskId, classificationId, comparison, capture = null) {
+    const decisionContext = capture === null ? null : readCorrectionDecisionContext({ classificationId, capture });
+    return this.record({ taskId, classificationId, comparison, decisionContext });
   }
   recordTerminal(taskId, transition, attempts = null, failureReasonId = null) {
     if (!['completed', 'failed', 'retry_scheduled'].includes(transition)) return Promise.resolve(false);

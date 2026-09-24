@@ -3,6 +3,9 @@ import { jest, beforeEach, afterEach, test, expect } from '@jest/globals';
 import request from 'supertest';
 import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
 import { createMountedTestApp } from '../helpers/setupRouteTest.mjs';
+import { buildClassificationDestinationDecision } from '../../services/classificationDestinationDecision.mjs';
+import { readDestinationOutcomes } from '../../services/destinationOutcomeEvaluationRepository.mjs';
+import { pruneFeedbackOutcomeSnapshots } from '../../services/feedbackOutcomeSnapshot.mjs';
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 const { router } = await import('../../routes/feedback.mjs');
@@ -33,6 +36,58 @@ const submit = (body = {}) => request(app).post('/feedback').send({ classificati
     selected_library_id: libraryId, selected_policy_id: policyId, ...body });
 const prompt = () => request(promptApp).post(`/prompts/${classificationId}/respond`).send({ selectedLibraryId: libraryId,
     selectedPolicyId: policyId, patternActions: [] });
+async function captureDecision({ status = 'completed', destination = libraryId } = {}) {
+    const capture = buildClassificationDestinationDecision({ metadata: { media_type: 'movie', tmdb_id: 603 },
+        method: 'policy_auto', status, libraryId: status === 'completed' ? destination : null });
+    await db.query(`UPDATE classification_history SET metadata=jsonb_set(metadata,
+        '{classification_details,destination_decision}', $1::jsonb) WHERE id=$2`, [JSON.stringify(capture), classificationId]);
+    return capture;
+}
+
+test('explicit confirmation compares the saved destination, not the policy shortlist, and survives history cleanup', async () => {
+    const capture = await captureDecision();
+    expect((await submit()).status).toBe(201);
+    const saved = await state();
+    // The policy leader differed; it is not the saved decision being evaluated.
+    expect(saved.feedback[0].was_correction).toBe(true);
+    expect(saved.receipts[0].outcome_snapshot).toMatchObject({ selectedLibraryId: libraryId,
+        decisionContext: { classificationId: Number(classificationId), capture } });
+    await db.query('DELETE FROM classification_history WHERE id=$1', [classificationId]);
+    expect(await readDestinationOutcomes(db)).toMatchObject({ overall: { completedAgreement: 1, completedDisagreement: 0 },
+        intake: { overall: { labelCoverageRate: null }, labeledDecisionsWithoutCapturedIntake: 1 } });
+});
+
+test('expiry removes snapshot evidence but preserves idempotency and never refreshes on replay', async () => {
+    await captureDecision({ destination: originalId });
+    const first = await submit();
+    expect(first.status).toBe(201);
+    expect((await readDestinationOutcomes(db)).overall.completedDisagreement).toBe(1);
+    await db.query("UPDATE policy_feedback_sources SET created_at=NOW()-INTERVAL '31 days'");
+    expect((await readDestinationOutcomes(db)).overall.completedDecisions).toBe(0);
+    expect(await pruneFeedbackOutcomeSnapshots(db)).toBe(1);
+    const expired = await state();
+    expect(expired.receipts).toHaveLength(1);
+    expect(expired.receipts[0].outcome_snapshot).toBeNull();
+    expect((await submit()).body).toMatchObject({ feedbackId: first.body.feedbackId, replayed: true });
+    expect(await state()).toEqual(expired);
+    expect(await pruneFeedbackOutcomeSnapshots(db)).toBe(0);
+});
+
+test('missing original capture is retained as unknown and future receipts stay out of the cohort', async () => {
+    expect((await submit()).status).toBe(201);
+    expect((await state()).receipts[0].outcome_snapshot.decisionContext).toBeNull();
+    expect(await readDestinationOutcomes(db)).toMatchObject({ missingContextRows: 1, overall: { completedDecisions: 0 } });
+    await db.query("UPDATE policy_feedback_sources SET created_at=NOW()+INTERVAL '1 day'");
+    expect((await readDestinationOutcomes(db)).retainedRows).toBe(0);
+});
+
+test('prompt resolution preserves original review status and does not invent automatic success', async () => {
+    await captureDecision({ status: 'awaiting_decision' });
+    await db.query("UPDATE classification_history SET status='pending' WHERE id=$1", [classificationId]);
+    expect((await prompt()).status).toBe(200);
+    expect(await readDestinationOutcomes(db)).toMatchObject({ overall: { awaitingDecision: 1, completedDecisions: 0 } });
+    expect((await state()).history[0].status).toBe('completed');
+});
 async function state() {
     return {
         feedback: (await db.query('SELECT * FROM policy_feedback_log ORDER BY id')).rows,

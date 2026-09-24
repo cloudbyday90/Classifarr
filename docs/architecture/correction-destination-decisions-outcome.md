@@ -86,6 +86,10 @@ container replacement was performed. Only disposable test containers were used.
 
 ## Next component
 
+Follow-through: [confirmation retention and intake coverage](destination-outcome-coverage-outcome.md)
+implements the next increment below and versions the private report for mixed
+explicit outcomes. The verification above describes this earlier commit only.
+
 Extend the same retained decision linkage to **genuine confirmations and intake
 denominators**. Reuse the existing feedback receipts; do not add a confirmation
 screen or infer success from silence. Separate unlabelled, confirmed, corrected,

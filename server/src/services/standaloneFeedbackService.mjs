@@ -48,7 +48,8 @@ export async function recordStandaloneFeedback({ db, feedbackAnalysis, body }) {
             user_reason: input.user_reason, user_reason_text: input.user_reason_text, source: 'web',
             prompted_at: classification.created_at, responded_at: new Date(),
         }, client);
-        await recordFeedbackSource(client, { classificationId: input.classification_id, feedbackId, intake: 'standalone', fingerprint });
+        await recordFeedbackSource(client, { classificationId: input.classification_id, feedbackId, intake: 'standalone', fingerprint,
+            classification, selectedLibraryId: input.selected_library_id });
         return { feedbackId, replayed: false };
     });
 }

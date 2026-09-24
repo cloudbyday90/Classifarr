@@ -36,6 +36,7 @@ import {
 } from './queueMaintenanceRunContract.mjs';
 import { ClassificationIntakeReceiptService } from './classificationIntakeReceiptService.mjs';
 import { pruneClassificationCorrectionOutcomes } from './classificationCorrectionWriter.mjs';
+import { pruneFeedbackOutcomeSnapshots } from './feedbackOutcomeSnapshot.mjs';
 
 const BLOAT_THRESHOLD = 1000;
 const TERMINAL_QUEUE_STATUSES = Object.freeze(['cancelled', 'completed', 'failed']);
@@ -69,6 +70,8 @@ export class QueueMaintenanceService {
     async pruneCorrectionOutcomes() {
         try { await pruneClassificationCorrectionOutcomes(this.db); }
         catch { this.logger.warn('Correction outcome expiry failed; the next maintenance run will retry'); }
+        try { await pruneFeedbackOutcomeSnapshots(this.db); }
+        catch { this.logger.warn('Feedback outcome expiry failed; the next maintenance run will retry'); }
     }
 
     async getTaskQueueRetentionPolicy() {

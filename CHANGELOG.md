@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Retain genuine movie/TV feedback outcomes with their original saved decisions
+  and extend intake receipts with bounded decision context. Separate explicit
+  agreement from queue label coverage, preserve evidence through history cleanup,
+  and expire snapshots without weakening feedback replay protection. No new user
+  steps, routing changes, or success inferred from silence.
 - Preserve the original saved movie/TV destination decision alongside retained
   corrections, including review and retry states. Add a private, read-only
   correction report that survives history cleanup, excludes conflicting feedback,

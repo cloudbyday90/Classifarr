@@ -12,7 +12,7 @@ export const UPSERT_CLASSIFICATION_INTAKE_RECEIPT_SQL = `
   INSERT INTO classification_intake_receipts AS receipt
     (queue_task_id, webhook_log_id, source_class, queued_at, started_at, finished_at,
      status_id, attempt_count, classification_id, comparison_status_id,
-     comparison_reason_id, last_failure_code, classification_linked_at)
+     comparison_reason_id, last_failure_code, classification_linked_at, decision_context)
   SELECT task.id, task.webhook_log_id, ${sourceClass('task')},
     task.created_at AT TIME ZONE current_setting('TimeZone'),
     task.started_at AT TIME ZONE current_setting('TimeZone'),
@@ -20,7 +20,7 @@ export const UPSERT_CLASSIFICATION_INTAKE_RECEIPT_SQL = `
     ${taskStatus('task')},
     GREATEST(task.attempts, COALESCE($2::integer, 0)), $3::integer,
     COALESCE($4::text, 'not_evaluated'), $5::text, $6::text,
-    CASE WHEN $3::integer IS NOT NULL THEN statement_timestamp() END
+    CASE WHEN $3::integer IS NOT NULL THEN statement_timestamp() END, $7::jsonb
   FROM task_queue AS task
   WHERE task.id = $1 AND task.task_type = 'classification'
   ON CONFLICT (queue_task_id) DO UPDATE SET
@@ -37,6 +37,10 @@ export const UPSERT_CLASSIFICATION_INTAKE_RECEIPT_SQL = `
       ELSE EXCLUDED.status_id END,
     attempt_count = GREATEST(receipt.attempt_count, EXCLUDED.attempt_count),
     classification_id = COALESCE($3::integer, receipt.classification_id),
+    decision_context = CASE
+      WHEN $3::integer IS NULL THEN receipt.decision_context
+      WHEN $3::integer = receipt.classification_id THEN COALESCE(receipt.decision_context, $7::jsonb)
+      ELSE $7::jsonb END,
     comparison_status_id = CASE WHEN $4::text IS NULL THEN receipt.comparison_status_id
       ELSE EXCLUDED.comparison_status_id END,
     comparison_reason_id = CASE WHEN $4::text IS NULL THEN receipt.comparison_reason_id
