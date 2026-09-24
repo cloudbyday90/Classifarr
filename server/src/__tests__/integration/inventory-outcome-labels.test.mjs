@@ -2,6 +2,7 @@
 import { beforeEach, afterEach, test, expect } from '@jest/globals';
 import { getPool } from './setup.mjs';
 import { INVENTORY_OUTCOME_LABEL_SQL } from '../../services/inventoryOutcomeLabels.mjs';
+import { OPERATOR_POLICY_SOURCE_REVISION_SQL } from '../../services/operatorCorrectionPolicyProvenance.mjs';
 import { INVENTORY_PROSPECTIVE_OUTCOME_SQL } from '../../services/inventoryProspectiveOutcomeRepository.mjs';
 import { INVENTORY_PROSPECTIVE_ACTIVITY_SQL } from '../../services/inventoryProspectiveActivityRepository.mjs';
 import { evaluateInventoryProspectiveOutcomes } from '../../services/inventoryProspectiveOutcomes.mjs';
@@ -92,10 +93,14 @@ test('read-only label selection admits feedback and manual corrections, excludin
   const result = await db.query(INVENTORY_OUTCOME_LABEL_SQL);
   const own = result.rows.filter(row => [900001, 900002, 900003, 900004].includes(row.tmdb_id));
   expect(own).toEqual(expect.arrayContaining([
-    { media_type: 'movie', tmdb_id: 900001, selected_library_id: selectedId,
-      was_correction: true, origin: 'feedback' },
-    { media_type: 'movie', tmdb_id: 900004, selected_library_id: selectedId,
-      was_correction: true, origin: 'manual_correction' },
+    expect.objectContaining({ media_type: 'movie', tmdb_id: 900001, selected_library_id: selectedId,
+      was_correction: true, origin: 'feedback', observed_at: expect.any(Date) }),
+    expect.objectContaining({ media_type: 'movie', tmdb_id: 900004, selected_library_id: selectedId,
+      was_correction: true, origin: 'manual_correction', observed_at: expect.any(Date) }),
   ]));
   expect(own).toHaveLength(2);
+  const revisions = (await db.query(OPERATOR_POLICY_SOURCE_REVISION_SQL)).rows;
+  expect(revisions).toEqual(expect.arrayContaining([expect.objectContaining({
+    policy_id: policyId, media_type: 'movie', source_updated_at: expect.any(Date), mutable_attachment: false,
+  })]));
 });

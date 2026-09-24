@@ -13,6 +13,7 @@ import { databaseConnectionErrorCode } from '../utils/databaseClientLease.mjs';
 import { createLogger } from '../utils/logger.mjs';
 import { createInventoryDiscoveryAdmission } from './inventoryDiscoveryAdmission.mjs';
 import { INVENTORY_OUTCOME_LABEL_SQL } from './inventoryOutcomeLabels.mjs';
+import { OPERATOR_POLICY_SOURCE_REVISION_SQL } from './operatorCorrectionPolicyProvenance.mjs';
 
 const policyFields = ['id', 'library_id', 'name', 'enabled', 'priority', 'auto_classify_threshold', 'prompt_threshold',
   'trust_patterns', 'trust_rag', 'trust_history', 'combination_mode', 'preset_weight', 'profile_weight',
@@ -36,6 +37,7 @@ export function describeFreshPolicySnapshot(snapshot) {
     configuration: digest(snapshot.config), policies: digest(snapshot.policies.map(projectFreshPolicyConfiguration)),
     observedTraits: hash.digest('hex'),
     ...(Array.isArray(snapshot.operatorFeedbackRows) ? { operatorCorrections: digest(snapshot.operatorFeedbackRows) } : {}),
+    ...(Array.isArray(snapshot.policySourceRevisionRows) ? { policySourceRevisions: digest(snapshot.policySourceRevisionRows) } : {}),
     ...(snapshot.trainingExclusions instanceof Set ? { provenance: digest([...snapshot.trainingExclusions].sort()) } : {}) };
 }
 
@@ -58,7 +60,9 @@ export function createFreshInventoryPolicyRepository({ withTransaction, loadPoli
       const config = (await reader.query(FRESH_POLICY_CONFIG_SQL)).rows[0];
       const loadedPolicies = await loadPolicies({ dbClient: reader, throwOnError: true });
       const operatorFeedbackRows = includeOperatorCorrectionLabels ? (await reader.query(INVENTORY_OUTCOME_LABEL_SQL)).rows : undefined;
-      return { snapshot, config, loadedPolicies, operatorFeedbackRows };
+      const policySourceRevisionRows = includeOperatorCorrectionLabels
+        ? (await reader.query(OPERATOR_POLICY_SOURCE_REVISION_SQL)).rows : undefined;
+      return { snapshot, config, loadedPolicies, operatorFeedbackRows, policySourceRevisionRows };
     });
     const policies = captured.loadedPolicies.map(projectFreshPolicyConfiguration);
     if (!captured.config || policies.length > 64 || JSON.stringify(policies).length > 2_000_000 ||
@@ -67,7 +71,8 @@ export function createFreshInventoryPolicyRepository({ withTransaction, loadPoli
     }
     const source = { ...decodeDescriptionBenchmarkSnapshot(captured.snapshot, identity, true),
       config: captured.config, policies,
-      ...(includeOperatorCorrectionLabels ? { operatorFeedbackRows: captured.operatorFeedbackRows } : {}) };
+      ...(includeOperatorCorrectionLabels ? { operatorFeedbackRows: captured.operatorFeedbackRows,
+        policySourceRevisionRows: captured.policySourceRevisionRows } : {}) };
     return { ...source, fingerprint: fingerprintFreshPolicySnapshot(source) };
   } };
 }

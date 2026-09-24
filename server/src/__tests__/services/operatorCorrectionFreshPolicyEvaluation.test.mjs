@@ -9,13 +9,16 @@ import { runOperatorCorrectionPolicyEvaluation } from '../../scripts/runOperator
 import { prepareInventoryDescriptionCorpus } from '../../services/inventoryDescriptionCorpus.mjs';
 import { prepareDescriptionBenchmark } from '../../services/inventoryDescriptionBenchmarkSample.mjs';
 import { createFreshInventoryPolicyEvidence } from '../../services/freshInventoryPolicyEvidence.mjs';
+import { screenCorrectionsAfterPolicySources } from '../../services/operatorCorrectionPolicyProvenance.mjs';
 
 function withCorrections(fixture, count = 12) {
   const { source } = fixture;
   source.operatorFeedbackRows = source.evaluationRows.slice(0, count).map(row => ({
     media_type: row.media_type, tmdb_id: row.tmdb_id, selected_library_id: row.library_id,
-    was_correction: true, origin: 'manual_correction',
+    was_correction: true, origin: 'manual_correction', observed_at: '2026-09-02T00:00:00Z',
   }));
+  source.policySourceRevisionRows = source.policies.map(policy => ({ policy_id: policy.id,
+    media_type: policy.library_media_type, source_updated_at: '2026-09-01T00:00:00Z', mutable_attachment: false }));
   source.fingerprint = fingerprintFreshPolicySnapshot(source);
   return fixture;
 }
@@ -25,6 +28,7 @@ test('correction labels select cases without entering policy configuration or pr
   const cohort = prepareOperatorCorrectionFreshPolicySource(source);
   expect(cohort.eligibleSampleKeys.size).toBe(12);
   expect(cohort.source.operatorFeedbackRows).toBeUndefined();
+  expect(cohort.source.policySourceRevisionRows).toBeUndefined();
   expect(cohort.source.policies.every(policy => policy.trust_history === false && policy.trust_patterns === false)).toBe(true);
   expect(source.policies[0].trust_history).toBe(true);
   const report = await runFreshInventoryPolicyEvaluation({ ...freshSettings, generateCases: 0 }, {
@@ -36,6 +40,7 @@ test('correction labels select cases without entering policy configuration or pr
       priorReleaseComparisonAvailable: false, promotionAllowed: false } });
   expect(report.correctionEvaluation.byMedia.movie.sampled).toBeGreaterThan(0);
   expect(report.correctionEvaluation.byMedia.tv.sampled).toBeGreaterThan(0);
+  expect(report.correctionEvaluation.labelCoverage.provenance.afterPolicySources).toBe(12);
   expect(runtime.createClient).not.toHaveBeenCalled();
   expect(report).not.toHaveProperty('policyLeaderPlacementAgreement');
   expect(report).not.toHaveProperty('libraries');
@@ -71,6 +76,41 @@ test('conflicting corrections are excluded rather than voted into a label', () =
   const cohort = prepareOperatorCorrectionFreshPolicySource(source);
   expect(cohort.eligibleSampleKeys.size).toBe(0);
   expect(cohort.coverage.conflictingIdentities).toBe(1);
+});
+
+test('corrections before policy edits or with unverifiable sources cannot enter the cohort', () => {
+  const { source } = withCorrections(freshFixture(), 3);
+  source.operatorFeedbackRows[0].observed_at = '2026-08-31T00:00:00Z';
+  source.operatorFeedbackRows[1].observed_at = null;
+  let cohort = prepareOperatorCorrectionFreshPolicySource(source);
+  expect(cohort.eligibleSampleKeys.size).toBe(1);
+  expect(cohort.coverage.provenance).toMatchObject({ beforeOrAtPolicySourceEdit: 1,
+    missingObservationTime: 1, afterPolicySources: 1 });
+  source.policySourceRevisionRows[0].mutable_attachment = true;
+  cohort = prepareOperatorCorrectionFreshPolicySource(source);
+  expect(cohort.eligibleSampleKeys.size).toBe(0);
+  expect(cohort.coverage.provenance.unverifiablePolicySources).toBe(2);
+  expect(cohort.coverage.temporalPolicySeparationOnly).toBe(true);
+});
+
+test('policy provenance requires an exact unique active-policy source set', () => {
+  const { source } = withCorrections(freshFixture(), 1);
+  source.policySourceRevisionRows.pop();
+  expect(() => prepareOperatorCorrectionFreshPolicySource(source)).toThrow('provenance_mismatch');
+  source.policySourceRevisionRows = null;
+  expect(() => prepareOperatorCorrectionFreshPolicySource(source)).toThrow('provenance_unavailable');
+  expect(() => screenCorrectionsAfterPolicySources({ corrections: new Map(), feedbackRows: [],
+    policies: [], policySourceRevisionRows: [] })).toThrow('provenance_mismatch');
+});
+
+test('unverifiable movie policy sources do not suppress TV correction cases', () => {
+  const { source } = withCorrections(freshFixture(), 7);
+  source.policySourceRevisionRows[0].mutable_attachment = true;
+  const cohort = prepareOperatorCorrectionFreshPolicySource(source);
+  expect(cohort.eligibleSampleKeys.size).toBe(3);
+  expect([...cohort.eligibleSampleKeys].every(key => key.startsWith('tv:'))).toBe(true);
+  expect(cohort.coverage.provenance).toMatchObject({ afterPolicySources: 3,
+    unverifiablePolicySources: 4 });
 });
 
 test('selected correction and every matching description copy are excluded from fold training', () => {

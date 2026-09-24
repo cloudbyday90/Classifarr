@@ -4,7 +4,7 @@ export const INVENTORY_OUTCOME_LABEL_LIMIT = 5000;
 
 /** Read only explicit operator feedback/corrections; never use successful auto-routes as labels. */
 export const INVENTORY_OUTCOME_LABEL_SQL = `
-  SELECT media_type, tmdb_id, selected_library_id, was_correction, origin
+  SELECT media_type, tmdb_id, selected_library_id, was_correction, origin, observed_at
   FROM (
     SELECT media_type, tmdb_id, selected_library_id, was_correction,
       'feedback'::text AS origin, responded_at AS observed_at, id AS source_id

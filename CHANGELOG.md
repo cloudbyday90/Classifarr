@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Screen operator-correction replay cases against policy-source edit
+  provenance and add an offline, pinned-release pair-comparison boundary that
+  reports aggregate differences without granting routing authority.
 - Add a private, read-only operator-correction policy replay with grouped
   description holdout and aggregate movie/TV agreement diagnostics; keep
   full-pipeline accuracy unmeasured and routing unchanged.

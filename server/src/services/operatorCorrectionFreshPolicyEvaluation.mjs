@@ -1,6 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { prepareInventoryOutcomeLabels } from './inventoryOutcomeLabels.mjs';
 import { withoutInferredProfileSources } from './heldOutSemanticStudyPreparation.mjs';
+import { screenCorrectionsAfterPolicySources } from './operatorCorrectionPolicyProvenance.mjs';
 
 /** Labels select cases only; neither the policy evaluator nor prompts receive them. */
 export function prepareOperatorCorrectionFreshPolicySource(source) {
@@ -8,13 +9,17 @@ export function prepareOperatorCorrectionFreshPolicySource(source) {
   const { labels, coverage } = prepareInventoryOutcomeLabels(
     source.operatorFeedbackRows, source.corpus.documents, source.libraries,
   );
-  const corrections = new Map([...labels].filter(([, label]) => label.kind === 'correction'));
-  const { operatorFeedbackRows: _privateLabels, ...unlabeledSource } = source;
+  const candidateCorrections = new Map([...labels].filter(([, label]) => label.kind === 'correction'));
+  const { corrections, coverage: provenanceCoverage, temporalPolicySeparationOnly } = screenCorrectionsAfterPolicySources({
+    corrections: candidateCorrections, feedbackRows: source.operatorFeedbackRows,
+    policies: source.policies, policySourceRevisionRows: source.policySourceRevisionRows,
+  });
+  const { operatorFeedbackRows: _privateLabels, policySourceRevisionRows: _privateRevisions, ...unlabeledSource } = source;
   return {
     source: { ...unlabeledSource, policies: source.policies.map(withoutInferredProfileSources) },
     eligibleSampleKeys: new Set(corrections.keys()),
     corrections,
-    coverage,
+    coverage: { ...coverage, provenance: provenanceCoverage, temporalPolicySeparationOnly },
   };
 }
 
