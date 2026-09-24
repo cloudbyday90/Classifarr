@@ -15,9 +15,16 @@ Focused unit, route, client, and PostgreSQL integration tests cover namespace se
 
 A source anchor is current membership provenance, not a permanent work identifier; a media-server rebuild may change it. Description presence is neither semantic retrieval nor placement accuracy. The response exposes no raw item metadata. Unresolved source conflicts remain blocked. No live library data or local running container was modified. The repository-scoped GitHub MCP search returned zero open PRs, so none could be randomly selected or implemented locally; no closed PR was substituted or merged. No release was created.
 
-## Next item
+## Follow-up status
 
-Close the movie/TV evidence gap: make valid descriptions already available in arbitrary libraries usable by retrieval and learned profiles even when a TMDB ID is missing. Reuse existing recovery orchestration for bounded, resumable backfill and automatic retries. Compare candidate recall, incorrect placements, and manual-review burden with the current baseline on held-out movie and TV items; exclude duplicate copies and unresolved source identities from learning and evaluation.
+Implemented in the subsequent [source-description learning increment](source-description-learning-design.md):
+the UI no longer says all descriptions without TMDB IDs are outside the corpus.
+Its cache/retry counters remain explicitly TMDB-scoped.
+
+The source-only backfill/retrieval connection is now implemented using existing
+recovery orchestration. The remaining follow-up is a paired evaluation of
+candidate recall, incorrect placements, and manual-review burden on held-out
+movie and TV items, excluding duplicate copies and unresolved source identities.
 
 ## Scope correction, 2026-09-24
 

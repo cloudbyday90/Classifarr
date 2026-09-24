@@ -1,6 +1,8 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { INVENTORY_DESCRIPTION_CORPUS_SQL, prepareInventoryDescriptionCorpus } from './inventoryDescriptionCorpus.mjs';
+import { buildInventoryDescriptionCorpusSql, prepareInventoryDescriptionCorpus } from './inventoryDescriptionCorpus.mjs';
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from './sourceConflictAuthorityGuard.mjs';
+
+export const INVENTORY_DESCRIPTION_REFRESH_CORPUS_SQL = buildInventoryDescriptionCorpusSql({ includeSourceItems: true });
 
 export const INVENTORY_DESCRIPTION_REFRESH_STATE_SQL = `
   SELECT rag_enabled, embedding_provider_mode, primary_provider, embedding_model,
@@ -32,8 +34,8 @@ export function createInventoryDescriptionRefreshRepository({ withTransaction })
     },
     async readCorpus() {
       // A single statement snapshot; no historic comparison sampler or inference.
-      const { rows } = await query(INVENTORY_DESCRIPTION_CORPUS_SQL, [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]);
-      return prepareInventoryDescriptionCorpus(rows);
+      const { rows } = await query(INVENTORY_DESCRIPTION_REFRESH_CORPUS_SQL, [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS]);
+      return prepareInventoryDescriptionCorpus(rows, { includeSourceItems: true });
     },
   };
 }

@@ -42,7 +42,8 @@ test('outlier-aware movie and TV references prioritize supported gaps while ordi
   await client.query(`
     CREATE TEMP TABLE libraries (id int, media_type text, is_active boolean);
     CREATE TEMP TABLE media_server_items (id int, media_server_id int, external_id text,
-      library_id int, media_type text, tmdb_id int, metadata jsonb, inventory_tmdb_fetched_at timestamptz);
+      library_id int, media_type text, tmdb_id int, metadata jsonb, inventory_tmdb_fetched_at timestamptz,
+      imdb_id text, tvdb_id integer);
     CREATE TEMP TABLE media_source_observations (library_id int, media_server_id int,
       external_id text, last_seen_at timestamptz);
     INSERT INTO libraries VALUES (1,'movie',true),(2,'tv',true);
@@ -220,7 +221,8 @@ test('representative snapshots reconcile membership, conflicts and expired pgvec
   await client.query(`
     CREATE TEMP TABLE libraries (id int, media_type text, is_active boolean);
     CREATE TEMP TABLE media_server_items (id int, media_server_id int, external_id text,
-      library_id int, media_type text, tmdb_id int, metadata jsonb, inventory_tmdb_fetched_at timestamptz);
+      library_id int, media_type text, tmdb_id int, metadata jsonb, inventory_tmdb_fetched_at timestamptz,
+      imdb_id text, tvdb_id integer);
     CREATE TEMP TABLE media_source_observations (library_id int, media_server_id int,
       external_id text, last_seen_at timestamptz);
     INSERT INTO libraries VALUES (1,'movie',true),(2,'tv',true);
@@ -264,7 +266,8 @@ test('partial movie and TV profiles publish, backfill and withdraw expired cover
   await client.query(`
     CREATE TEMP TABLE libraries (id int, media_type text, is_active boolean);
     CREATE TEMP TABLE media_server_items (id int, media_server_id int, external_id text,
-      library_id int, media_type text, tmdb_id int, metadata jsonb, inventory_tmdb_fetched_at timestamptz);
+      library_id int, media_type text, tmdb_id int, metadata jsonb, inventory_tmdb_fetched_at timestamptz,
+      imdb_id text, tvdb_id integer);
     CREATE TEMP TABLE media_source_observations (library_id int, media_server_id int,
       external_id text, last_seen_at timestamptz);
     INSERT INTO libraries VALUES (1,'movie',true),(2,'tv',true);

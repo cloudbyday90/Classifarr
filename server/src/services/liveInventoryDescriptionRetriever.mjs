@@ -2,6 +2,7 @@
 import { createHash } from 'node:crypto';
 import * as db from '../config/database.mjs';
 import { inventoryDescriptionIdentity } from './inventoryDescriptionCorpus.mjs';
+import { inventoryDescriptionQueryAliases } from './inventorySourceDescriptionIdentity.mjs';
 import { projectInventoryDescription } from './inventoryDescriptionProjection.mjs';
 import { createLocalStudyEmbeddingClient, resolveLocalStudyEmbeddingConfig } from './localStudyEmbeddingClient.mjs';
 import { inspectDescriptionRepresentation, verifyDescriptionRepresentation } from './inventoryDescriptionBatchWriter.mjs';
@@ -20,6 +21,7 @@ function buildRequest(contract, metadata, maxCandidates) {
     !Number.isInteger(candidate.libraryId) || candidate.libraryId < 1 || candidate.libraryId > 2_147_483_647 ||
     candidate.mediaType !== metadata.media_type)) return null;
   return { key, mediaType: metadata.media_type, libraryIds, text: projection.text,
+    identityAliases: inventoryDescriptionQueryAliases(metadata),
     queryMetadata: projectLiveInventoryQueryMetadata(metadata),
     hash: createHash('sha256').update(projection.text).digest('hex') };
 }

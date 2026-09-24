@@ -4,12 +4,13 @@ import { expect, jest, test } from '@jest/globals';
 import { createLiveInventoryDescriptionRepository, LIVE_INVENTORY_DESCRIPTION_RANK_SQL,
   LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL as INVENTORY_DESCRIPTION_CORPUS_SQL } from '../../services/liveInventoryDescriptionRepository.mjs';
 import { INVENTORY_DESCRIPTION_REFRESH_STATE_SQL } from '../../services/inventoryDescriptionRefreshRepository.mjs';
+import { LIVE_INVENTORY_DESCRIPTION_CALIBRATION_SQL } from '../../services/liveInventoryDescriptionCorpus.mjs';
 const hash = text => createHash('sha256').update(text).digest('hex');
 const identity = { provider: 'ollama', model: 'test:latest', digest: 'a'.repeat(64), dimensions: 2 };
 const request = { key: 'movie:90', mediaType: 'movie', libraryIds: [1, 2], hash: hash('Query') };
 const row = (id, library, overview, media = 'movie') => ({ tmdb_id: id, library_id: library, overview, media_type: media });
 function setup(rows = [], ranked = [], retrieveContext) {
-  const query = jest.fn(async (sql, parameters) => ({ rows: sql === INVENTORY_DESCRIPTION_CORPUS_SQL ? rows.filter(row => row.media_type === parameters[1])
+  const query = jest.fn(async (sql, parameters) => ({ rows: [INVENTORY_DESCRIPTION_CORPUS_SQL, LIVE_INVENTORY_DESCRIPTION_CALIBRATION_SQL].includes(sql) ? rows.filter(row => row.media_type === parameters[1])
     : sql === LIVE_INVENTORY_DESCRIPTION_RANK_SQL ? ranked : [] }));
   const repository = createLiveInventoryDescriptionRepository({ withTransaction: async callback => callback({ query }), retrieveContext });
   return { query, repository, retrieve: (signal, input = request) => repository.retrieve({ request: input, identity, vector: [1, 0], signal }) };
@@ -137,7 +138,7 @@ test('single SQL snapshot closes before vector decoding, both calibration fits, 
     set: jest.fn(() => { expect(open).toBe(false); }) };
   const query = jest.fn(async (sql, params) => {
     expect(open).toBe(true);
-    if (sql === INVENTORY_DESCRIPTION_CORPUS_SQL) return { rows };
+    if ([INVENTORY_DESCRIPTION_CORPUS_SQL, LIVE_INVENTORY_DESCRIPTION_CALIBRATION_SQL].includes(sql)) return { rows };
     if (sql.includes('embedding::text')) return { rows: params[4].map(description_hash => ({ description_hash,
       get embedding() { expect(open).toBe(false); return '[1,0]'; } })) };
     return { rows: [] };
@@ -160,5 +161,20 @@ test('failed commit cannot start optional post-snapshot context', async () => {
     withTransaction: async callback => { await callback({ query: async () => ({ rows: [] }) }); throw new Error('commit failed'); }, retrieveContext,
   });
   await expect(repository.retrieve({ request: { ...request, contextConfigKey: 'config' }, identity, vector: [1, 0] })).rejects.toThrow('commit failed');
+  expect(retrieveContext).not.toHaveBeenCalled();
+});
+
+test('optional multi-scale context retains its existing population and cannot bypass stored alias holdouts', async () => {
+  const source = { ...row(null, 1, 'Source'), media_server_id: 1, external_id: 'source-only' };
+  const retrieveContext = jest.fn(async () => null);
+  const { retrieve } = setup([source, row(1, 1, 'Known')], [], retrieveContext);
+  await retrieve(undefined, { ...request, contextConfigKey: 'config' });
+  const captured = retrieveContext.mock.calls[0][0];
+  expect(captured.rows).toHaveLength(1);
+  expect(captured.corpus.documents.map(doc => doc.key)).toEqual(['movie:1']);
+  retrieveContext.mockClear();
+  const aliasSource = { ...source, imdb_id: 'tt90' };
+  const alias = setup([aliasSource, row(1, 1, 'Known')], [], retrieveContext);
+  await alias.retrieve(undefined, { ...request, contextConfigKey: 'config', identityAliases: { imdbId: 'tt90' } });
   expect(retrieveContext).not.toHaveBeenCalled();
 });

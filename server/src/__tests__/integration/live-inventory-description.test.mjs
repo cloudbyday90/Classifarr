@@ -20,7 +20,7 @@ import { hasCandidateConsensusReceipt } from '../../services/policyCandidateCons
 import { evaluateClassificationRouteSafety } from '../../services/classificationRouteSafetyGate.mjs';
 import { createLiveInventoryModelCache } from '../../services/liveInventoryModelCache.mjs';
 import { buildInventoryDescriptionCorpusSql, prepareInventoryDescriptionCorpus } from '../../services/inventoryDescriptionCorpus.mjs';
-import { LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL } from '../../services/liveInventoryDescriptionCorpus.mjs';
+import { LIVE_INVENTORY_DESCRIPTION_CALIBRATION_SQL } from '../../services/liveInventoryDescriptionCorpus.mjs';
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from '../../services/sourceConflictAuthorityGuard.mjs';
 import { buildLiveInventoryLearnedProfiles } from '../../services/liveInventoryLearnedProfile.mjs';
 import { assessLiveLibraryMatch } from '../../services/liveLibraryMatchBaseline.mjs';
@@ -44,7 +44,8 @@ beforeEach(async () => {
     CREATE TEMP TABLE libraries (id integer, media_type text, is_active boolean);
     CREATE TEMP TABLE classification_history (id integer, tmdb_id integer, media_type text, metadata jsonb, created_at timestamptz);
     CREATE TEMP TABLE media_server_items (id serial, tmdb_id integer, media_type text, library_id integer,
-      media_server_id integer DEFAULT 1, external_id text, metadata jsonb, genres jsonb, studio text, content_rating text);
+      media_server_id integer DEFAULT 1, external_id text, metadata jsonb, genres jsonb, studio text, content_rating text,
+      imdb_id text, tvdb_id integer);
     CREATE TEMP TABLE media_source_observations (library_id integer, media_server_id integer, external_id text, last_seen_at timestamptz);
     CREATE TEMP TABLE inventory_description_vector_cache (LIKE public.inventory_description_vector_cache INCLUDING ALL);
     INSERT INTO libraries VALUES (10,'movie',true), (20,'movie',true), (30,'movie',false), (40,'tv',true);
@@ -186,7 +187,7 @@ test('SQL-scoped TV evidence equals global-corpus evidence and retains exclusion
   const queryVector = [Math.cos(.4), Math.sin(.4), 0];
   await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
   const all = (await client.query(buildInventoryDescriptionCorpusSql({ includeCandidateMetadata: true, includeCompanyMetadata: true }), [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS])).rows;
-  const scoped = (await client.query(LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL, [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS, 'tv'])).rows;
+  const scoped = (await client.query(LIVE_INVENTORY_DESCRIPTION_CALIBRATION_SQL, [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS, 'tv'])).rows;
   await client.query('COMMIT');
   expect(scoped).toEqual(all.filter(row => row.media_type === 'tv'));
   expect(all.some(row => row.media_type === 'movie')).toBe(true);

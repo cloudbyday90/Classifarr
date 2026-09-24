@@ -4,6 +4,7 @@ import * as db from '../config/database.mjs';
 import { buildPolicyCandidateAdjudicationContract, buildPolicyCandidateAdjudicationPool } from './policyCandidateAdjudicationContract.mjs';
 import { createLiveInventoryDescriptionRepository } from './liveInventoryDescriptionRepository.mjs';
 import { inventoryDescriptionIdentity } from './inventoryDescriptionCorpus.mjs';
+import { inventoryDescriptionQueryAliases } from './inventorySourceDescriptionIdentity.mjs';
 import { projectInventoryDescription } from './inventoryDescriptionProjection.mjs';
 import { projectLiveInventoryQueryMetadata } from './liveInventoryLearnedProfile.mjs';
 import { rankLearnedCandidateShortlist } from './learnedCandidateShortlistRanking.mjs';
@@ -37,6 +38,7 @@ export function createPolicyCandidateShortlistService({
         signal.throwIfAborted();
         if (config?.rag_enabled !== true) return baseline;
         const request = { key, mediaType: metadata.media_type, libraryIds: pool.map(candidate => candidate.libraryId),
+          identityAliases: inventoryDescriptionQueryAliases(metadata),
           hash: createHash('sha256').update(projection.text).digest('hex'), queryMetadata };
         const evidence = await retriever.retrieve({ contract: { valid: true, candidates: pool }, metadata, signal });
         signal.throwIfAborted();

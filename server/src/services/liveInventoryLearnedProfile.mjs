@@ -2,6 +2,7 @@
 import { createHash } from 'node:crypto';
 import { INVENTORY_DESCRIPTION_PROJECTION_VERSION } from './inventoryDescriptionProjection.mjs';
 import { inventoryDescriptionQueryExcludedHashes } from './inventoryDescriptionQueryExclusions.mjs';
+import { inventorySourceDescriptionKey } from './inventorySourceDescriptionIdentity.mjs';
 import { collectInventoryCandidateMetadata } from './inventoryMetadataCandidates.mjs';
 import { projectClassificationCandidateMetadata } from './inventoryMetadataProjection.mjs';
 import { INVENTORY_LEARNED_PROFILE_VERSION, learnInventoryProfiles, scoreInventoryProfile } from './inventoryLearnedProfiles.mjs';
@@ -19,7 +20,7 @@ export function projectLiveInventoryQueryMetadata(metadata = {}) {
 /** Reuse fitting only after hashing this fresh snapshot's exact held-out training inputs. */
 export function buildLiveInventoryLearnedProfiles({ rows, corpus, request, modelCache }) {
   const documents = corpus.documents.filter(doc => doc.type === request.mediaType);
-  const metadata = collectInventoryCandidateMetadata(rows.filter(row => row.media_type === request.mediaType));
+  const metadata = collectInventoryCandidateMetadata(rows.filter(row => row.media_type === request.mediaType), inventorySourceDescriptionKey);
   const companyMetadata = collectInventoryCompanyMetadata(rows.filter(row => row.media_type === request.mediaType));
   const libraryIds = new Set(request.libraryIds);
   const held = inventoryDescriptionQueryExcludedHashes(rows, request);

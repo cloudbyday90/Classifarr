@@ -3,10 +3,10 @@ import { fuseInventoryCandidateRanks } from './inventoryCandidateRankFusion.mjs'
 import { projectInventoryCandidateMetadata } from './inventoryMetadataProjection.mjs';
 
 /** Local inventory observations, never declared policy or model instructions. */
-export function collectInventoryCandidateMetadata(rows) {
+export function collectInventoryCandidateMetadata(rows, keyForRow = row => `${row.media_type}:${row.tmdb_id}`) {
   const result = new Map();
   for (const row of rows) {
-    const key = `${row.media_type}:${row.tmdb_id}`;
+    const key = keyForRow(row);
     const value = projectInventoryCandidateMetadata(row);
     if (!result.has(key)) result.set(key, value);
     else if (JSON.stringify(result.get(key)) !== JSON.stringify(value)) result.set(key, null);

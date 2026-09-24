@@ -1,7 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { expect, jest, test } from '@jest/globals';
 import { createInventoryDescriptionRefreshRepository, INVENTORY_DESCRIPTION_REFRESH_STATE_SQL } from '../../services/inventoryDescriptionRefreshRepository.mjs';
-import { INVENTORY_DESCRIPTION_CORPUS_SQL } from '../../services/inventoryDescriptionCorpus.mjs';
+import { INVENTORY_DESCRIPTION_REFRESH_CORPUS_SQL as INVENTORY_DESCRIPTION_CORPUS_SQL } from '../../services/inventoryDescriptionRefreshRepository.mjs';
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from '../../services/sourceConflictAuthorityGuard.mjs';
 
 test('repository bounds SQL locally and reads only saved configuration and current corpus', async () => {

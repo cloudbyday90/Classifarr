@@ -2,6 +2,11 @@
 
 Status: implemented in Unreleased, 2026-09-24. See the separate [outcome document](provider-neutral-source-evidence-outcome.md).
 
+Follow-up: [source-description learning](source-description-learning-design.md)
+now connects eligible movie/TV source-only descriptions to backfill and ordinary
+live learning. The TMDB-only retrieval statements below record this increment's
+original boundary; calibration and coverage counters still retain that boundary.
+
 ## Problem
 
 The first per-library coverage contract only assessed descriptions after a movie/TV item had a valid TMDB ID. That undercounted metadata already present on movie and TV source items. It also risked implying that one metadata-provider ID is the definition of content identity. Classifarr's scope is movies and TV. Library/content agnosticism means learning arbitrary library contents and distinctions without hardcoded library names or categories; it does not mean expanding into music. This increment discovers available evidence within that scope without changing classification, RAG indexing, sync admission, or routing boundaries.

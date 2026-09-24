@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { readLiveInventoryDescriptionCorpus } from './liveInventoryDescriptionCorpus.mjs';
+import { prepareInventoryDescriptionCorpus } from './inventoryDescriptionCorpus.mjs';
 import { buildLiveInventoryLearnedProfiles } from './liveInventoryLearnedProfile.mjs';
 import { inventoryDescriptionQueryExcludedHashes } from './inventoryDescriptionQueryExclusions.mjs';
 import { INVENTORY_DESCRIPTION_REFRESH_STATE_SQL } from './inventoryDescriptionRefreshRepository.mjs';
@@ -84,11 +85,11 @@ export function createLiveInventoryDescriptionRepository({ withTransaction,
           rows, corpus, request, identity, signal,
           query: (sql, parameters) => client.query(sql, parameters),
         }) : null;
-        return { rows, corpus, memberships, ranked, matchInput, neighborInput };
+        return { rows, corpus, memberships, ranked, matchInput, neighborInput, held };
       });
       // Snapshot ownership ended. CPU fitting and optional context cannot hold this transaction idle.
       signal?.throwIfAborted();
-      const { rows, corpus, memberships, ranked, matchInput, neighborInput } = captured;
+      const { rows, corpus, memberships, ranked, matchInput, neighborInput, held } = captured;
       let learnedProfiles = new Map();
       try {
         if (request.queryMetadata) learnedProfiles = buildLiveInventoryLearnedProfiles({ rows, corpus, request, modelCache: profileCache });
@@ -100,8 +101,13 @@ export function createLiveInventoryDescriptionRepository({ withTransaction,
       const neighborCalibration = neighborInput === null ? null : await assessPreparedLiveLibraryNeighbors(neighborInput,
         { request, identity, vector, signal, modelCache: neighborCache });
       let context = null;
-      if (request.contextConfigKey && request.matchLibraryId == null && !request.neighborCalibration) {
-        try { context = await retrieveContext({ request, identity, vector, rows, corpus, signal }); }
+      if (request.contextConfigKey && request.matchLibraryId == null && !request.neighborCalibration && held.size === 1) {
+        try {
+          // The optional multi-scale model still fits the established TMDB population.
+          const contextRows = rows.filter(row => Number.isInteger(row.tmdb_id) && row.tmdb_id > 0);
+          context = await retrieveContext({ request, identity, vector, rows: contextRows,
+            corpus: contextRows.length === rows.length ? corpus : prepareInventoryDescriptionCorpus(contextRows), signal });
+        }
         catch { /* Optional context never discards the ordinary self-excluding evidence. */ }
       }
       signal?.throwIfAborted();

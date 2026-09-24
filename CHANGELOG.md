@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Automatically backfill and use eligible movie/TV source descriptions without
+  TMDB IDs in live retrieval and learned library profiles. Preserve music and
+  source-conflict exclusions, duplicate holdouts, checkpointed recovery, and
+  existing approval calibration; clarify the narrower coverage counters.
 - Ignore music and unsupported content during library sync and webhook intake,
   prevent unknown source items from being treated as movies, and complete existing
   unsupported classification tasks as skipped. Remove unreleased music discovery.

@@ -59,7 +59,7 @@
       </div>
       <template v-if="report.statusId === 'measured'">
         <p class="mt-2 text-sm text-gray-200">
-          {{ report.description.usableIdentityCount }} of {{ report.description.candidateIdentityCount }} eligible movie/TV identities have a usable description.
+          {{ report.description.usableIdentityCount }} of {{ report.description.candidateIdentityCount }} eligible TMDB-linked movie/TV identities have a usable description.
           {{ retrievalText }}
         </p>
         <details class="mt-3 text-sm">
@@ -94,6 +94,7 @@
             </li>
           </ul>
           <p class="mt-2">
+            These cache and retry counts cover TMDB-linked identities only, not the full source-description corpus.
             Descriptions are grouped by identity, so source-item and identity counts have different denominators.
             The cache is a retrieval checkpoint, not a placement test. Classification quality remains unmeasured.
           </p>
@@ -147,7 +148,7 @@ const headline = computed(() => {
     case 'unsupported_type': return 'Description retrieval coverage is not yet measured for this media type.'
     case 'no_inventory': return 'No synced inventory is available for this library yet.'
     case 'window_truncated': return 'This library has more than 10,000 synced source items. Coverage is not estimated from a partial window.'
-    default: return `${report.value?.source.itemCount ?? 0} synced source items; ${report.value?.source.candidateRowCount ?? 0} rows are eligible for description assessment.`
+    default: return `${report.value?.source.itemCount ?? 0} synced source items; ${report.value?.source.candidateRowCount ?? 0} rows are eligible for TMDB-linked description assessment.`
   }
 })
 
@@ -164,6 +165,6 @@ const retrievalText = computed(() => {
 
 const sourceWithoutTmdbText = computed(() => {
   const count = report.value?.sourceEvidence?.describedWithoutTmdbItemCount ?? 0
-  return `${count} described source item${count === 1 ? '' : 's'} ${count === 1 ? 'has' : 'have'} no TMDB ID and ${count === 1 ? 'is' : 'are'} not yet in the description-vector corpus.`
+  return `${count} described source item${count === 1 ? '' : 's'} ${count === 1 ? 'has' : 'have'} no TMDB ID. Eligible movie/TV descriptions can still support background learning; their cache coverage is not measured here.`
 })
 </script>

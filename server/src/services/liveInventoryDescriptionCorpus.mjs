@@ -3,6 +3,9 @@ import { buildInventoryDescriptionCorpusSql, inventoryDescriptionIdentity, prepa
 import { SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS } from './sourceConflictAuthorityGuard.mjs';
 
 export const LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL = buildInventoryDescriptionCorpusSql({
+  includeCandidateMetadata: true, includeCompanyMetadata: true, mediaTypeScoped: true, includeSourceItems: true,
+});
+export const LIVE_INVENTORY_DESCRIPTION_CALIBRATION_SQL = buildInventoryDescriptionCorpusSql({
   includeCandidateMetadata: true, includeCompanyMetadata: true, mediaTypeScoped: true,
 });
 
@@ -14,12 +17,17 @@ export async function readLiveInventoryDescriptionCorpus(client, request, signal
       inventoryDescriptionIdentity({ media_type: mediaType, tmdb_id: Number(key.split(':')[1]) }) !== key) {
     throw new Error('live_inventory_description_media_scope_invalid');
   }
-  const { rows } = await client.query(LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL,
+  const { matchLibraryId, neighborCalibration } = request;
+  const includeSourceItems = matchLibraryId == null && neighborCalibration !== true;
+  const { rows } = await client.query(includeSourceItems
+    ? LIVE_INVENTORY_DESCRIPTION_CORPUS_SQL : LIVE_INVENTORY_DESCRIPTION_CALIBRATION_SQL,
     [SOURCE_CONFLICT_AUTHORITY_RETENTION_DAYS, mediaType]);
   signal?.throwIfAborted();
-  if (request.mediaType !== mediaType || request.key !== key ||
+  if (request.mediaType !== mediaType || request.key !== key || request.matchLibraryId !== matchLibraryId ||
+      request.neighborCalibration !== neighborCalibration ||
       !Array.isArray(rows) || rows.some(row => row?.media_type !== mediaType)) {
     throw new Error('live_inventory_description_media_scope_changed');
   }
-  return { rows, corpus: prepareInventoryDescriptionCorpus(rows) };
+  // Source-only evidence informs comparison/learning, not the existing approval calibration.
+  return { rows, corpus: prepareInventoryDescriptionCorpus(rows, { includeSourceItems }) };
 }
