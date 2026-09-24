@@ -1,4 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { parseLibraryUnderstandingSummary } from './libraryUnderstandingSummary'
+
 export const LIBRARY_UPGRADE_READINESS_VERSION = 'library.upgrade_readiness.v1'
 
 const profileKeys = ['current', 'queued', 'processing', 'retryWait', 'cooldown',
@@ -59,7 +61,7 @@ export function parseLibraryUpgradeReadiness(value) {
   const statusTotal = profileKeys.filter(key => key !== 'missing')
     .reduce((sum, key) => sum + value.profile[key], 0)
   if (statusTotal !== value.libraryCount || value.profile.missing > value.libraryCount) return null
-  return {
+  const report = {
     asOf: value.asOf, libraryCount: value.libraryCount,
     activeLibraryCount: value.activeLibraryCount,
     mediaTypes: Object.fromEntries(['movie', 'tv', 'other'].map(key => [key, value.mediaTypes[key]])),
@@ -93,4 +95,7 @@ export function parseLibraryUpgradeReadiness(value) {
       scope: value.sourceIdentity.scope,
     },
   }
+  report.understanding = value.understanding == null
+    ? null : parseLibraryUnderstandingSummary(value.understanding, report)
+  return report
 }

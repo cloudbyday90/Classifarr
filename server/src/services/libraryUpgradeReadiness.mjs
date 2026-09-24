@@ -4,6 +4,7 @@ import { LIBRARY_PROFILE_RECOVERY_GRACE_MS, libraryProfileRecoveryReasonSql } fr
 import { assessProfileRefreshWorkerHealth } from './profileRefreshWorkerHealth.mjs';
 import { POLICY_PROFILE_REFRESH_OUTBOX_REQUEST_TYPE_IDS } from './policyProfileRefreshOutboxVocabulary.mjs';
 import { POLICY_PROFILE_REFRESH_OUTBOX_WORKER_MAX_ATTEMPTS } from './policyProfileRefreshOutboxWorkerVocabulary.mjs';
+import { projectLibraryUnderstandingSummary } from './libraryUnderstandingSummary.mjs';
 
 export const LIBRARY_UPGRADE_READINESS_VERSION = 'library.upgrade_readiness.v1';
 
@@ -169,5 +170,6 @@ export async function readLibraryUpgradeReadiness(db) {
         overdueCount: report.recovery.plannerOverdue + report.recovery.workerOverdue +
             report.recovery.leaseRecoveryOverdue,
     });
+    report.understanding = projectLibraryUnderstandingSummary(report);
     return report;
 }

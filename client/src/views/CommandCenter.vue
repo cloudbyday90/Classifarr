@@ -126,19 +126,27 @@
       </section>
 
       <div class="command-center-main">
-        <PurposeHealthSummary
-          :health="purposeHealth"
-          :loading="purposeHealthLoading"
-          :error-message="purposeHealthError"
+        <LibraryUnderstandingSummary
+          :summary="profileUpgradeReadiness?.understanding"
+          :loading="profileRefreshLoading"
+          @open-library-status="!expandedSections.libraries && toggleSection('libraries')"
         />
 
-        <LibraryEvaluationSummary :evaluation="libraryEvaluation">
-          <SemanticEvaluationReadinessSummary
-            :readiness="semanticEvaluationReadiness"
-            :loading="semanticEvaluationReadinessLoading"
-            :error-message="semanticEvaluationReadinessError"
+        <details class="advanced-learning-diagnostics">
+          <summary>Advanced policy and evaluation diagnostics</summary>
+          <PurposeHealthSummary
+            :health="purposeHealth"
+            :loading="purposeHealthLoading"
+            :error-message="purposeHealthError"
           />
-        </LibraryEvaluationSummary>
+          <LibraryEvaluationSummary :evaluation="libraryEvaluation">
+            <SemanticEvaluationReadinessSummary
+              :readiness="semanticEvaluationReadiness"
+              :loading="semanticEvaluationReadinessLoading"
+              :error-message="semanticEvaluationReadinessError"
+            />
+          </LibraryEvaluationSummary>
+        </details>
 
         <div class="primary-panels">
           <ProcessingPanel
@@ -296,6 +304,7 @@ import ProcessingDetailsSheet from '@/components/command-center/ProcessingDetail
 import QuickAddPanel from '@/components/command-center/QuickAddPanel.vue'
 import SemanticEvaluationReadinessSummary from '@/components/command-center/SemanticEvaluationReadinessSummary.vue'
 import LibraryEvaluationSummary from '@/components/command-center/LibraryEvaluationSummary.vue'
+import LibraryUnderstandingSummary from '@/components/command-center/LibraryUnderstandingSummary.vue'
 import { useCommandCenterData } from '@/composables/useCommandCenterData'
 import { useCommandCenterOperations } from '@/composables/useCommandCenterOperations'
 import { useNeedsAttentionActions } from '@/composables/useNeedsAttentionActions'
@@ -467,6 +476,9 @@ const {
 </script>
 
 <style scoped>
+.advanced-learning-diagnostics { margin-bottom: 1.5rem; color: #cbd5e1; }
+.advanced-learning-diagnostics > summary { color: #bfdbfe; cursor: pointer; width: fit-content; margin-bottom: 0.75rem; }
+.advanced-learning-diagnostics > summary:focus-visible { outline: 2px solid #93c5fd; outline-offset: 3px; }
 .command-center {
   min-height: 100vh;
 }

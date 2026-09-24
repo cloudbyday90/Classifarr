@@ -18,12 +18,33 @@ const report = {
     scope: 'active_complete_full_captures_last_30_days' },
 }
 
+const understanding = {
+  version: 'library.understanding_summary.v1', asOf: report.asOf,
+  libraryCount: 2, profile: { current: 1, updating: 0, coolingDown: 0,
+    unverified: 0, paused: 1, noInventory: 0 },
+  recovery: { overdueLibraryCount: 0, workerStalled: false },
+  sourceIdentity: { unresolvedItemCount: 2, coveredActiveLibraryCount: 1,
+    activeLibraryCount: 1 },
+  classificationQuality: 'not_measured',
+}
+
 describe('upgrade readiness contract', () => {
   it('accepts a complete, count-only report', () => {
     expect(parseLibraryUpgradeReadiness(report)?.profile.paused).toBe(1)
     expect(parseLibraryUpgradeReadiness({ ...report, sourceIdentity: {
       ...report.sourceIdentity, title: 'private source title',
     } }).sourceIdentity).not.toHaveProperty('title')
+  })
+  it('retains a consistent understanding projection and discards extra fields', () => {
+    const parsed = parseLibraryUpgradeReadiness({ ...report, understanding: {
+      ...understanding, privateTitle: 'do not retain',
+    } })
+    expect(parsed.understanding?.profile.current).toBe(1)
+    expect(parsed.understanding).not.toHaveProperty('privateTitle')
+    expect(parsed.understanding.classificationQuality).toBe('not_measured')
+    expect(parseLibraryUpgradeReadiness({ ...report, understanding: {
+      ...understanding, profile: { ...understanding.profile, current: 2 },
+    } }).understanding).toBeNull()
   })
   it('rejects inconsistent or unbounded counts', () => {
     expect(parseLibraryUpgradeReadiness({ ...report, libraryCount: 3 })).toBeNull()

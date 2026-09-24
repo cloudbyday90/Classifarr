@@ -30,6 +30,10 @@ test('reads a whole-installation aggregate without returning media or provider d
         sourceIdentity: { completeCaptureLibraryCount: 1, unresolvedItemCount: 3,
             conflictingProviderItemCount: 2, invalidProviderItemCount: 1 },
         upgradeEnrollmentRecorded: true,
+        understanding: { classificationQuality: 'not_measured', libraryCount: 3,
+            profile: { current: 1, updating: 1, paused: 1 },
+            recovery: { overdueLibraryCount: 1, workerStalled: false },
+            sourceIdentity: { unresolvedItemCount: 3 } },
     });
     expect(db.query).toHaveBeenCalledTimes(1);
     const sql = db.query.mock.calls[0][0];

@@ -11,6 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Replace dense top-level Command Center purpose and process-local evaluation
+  cards with a compact, read-only library profile/recovery summary; retain
+  advanced diagnostics and explicitly leave placement accuracy unmeasured.
 - Add a bounded, label-blind frozen inventory-evidence replay for held-out
   correction cases, with explicit retrieval coverage and lockfile-difference
   diagnostics; keep routing and release promotion unchanged.
