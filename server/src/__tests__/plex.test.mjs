@@ -129,6 +129,31 @@ describe('PlexService', () => {
         });
     });
 
+    it('discovers only Plex artist sections through the read-only channel', async () => {
+        mockHttpGet.mockResolvedValue({ data: { MediaContainer: { Directory: [
+            { key: '1', title: 'Movies', type: 'movie' },
+            { key: '31', title: 'Music', type: 'artist' }
+        ] } } });
+        await expect(service.getDiscoveryLibraries('http://plex:32400', 'token'))
+            .resolves.toEqual([{ external_id: '31', name: 'Music', media_type: 'music' }]);
+        expect(mockHttpGet).toHaveBeenCalledWith('http://plex:32400/library/sections',
+            expect.objectContaining({ timeout: 10000 }));
+    });
+
+    it('rejects a malformed discovery response instead of treating it as an empty snapshot', async () => {
+        mockHttpGet.mockResolvedValue({ data: { MediaContainer: {} } });
+
+        await expect(service.getDiscoveryLibraries('http://plex:32400', 'token'))
+            .rejects.toThrow('Invalid Plex library sections response');
+    });
+
+    it('accepts an explicitly empty Plex source snapshot', async () => {
+        mockHttpGet.mockResolvedValue({ data: { MediaContainer: { size: 0 } } });
+
+        await expect(service.getDiscoveryLibraries('http://plex:32400', 'token'))
+            .resolves.toEqual([]);
+    });
+
     describe('getLibraryItems', () => {
         it('should return formatted library items', async () => {
             mockHttpGet.mockResolvedValue({

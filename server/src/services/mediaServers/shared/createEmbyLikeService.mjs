@@ -61,6 +61,20 @@ class EmbyLikeService {
     }
   }
 
+  /** Music section discovery does not admit music items to the movie/TV cache. */
+  async getDiscoveryLibraries(url, apiKey) {
+    try {
+      const response = await httpGet(`${url}/Library/VirtualFolders`, {
+        headers: buildHeaders(apiKey), timeout: 10000,
+      });
+      return response.data.filter(library => library.CollectionType === 'music')
+        .map(library => ({ external_id: library.ItemId == null ? null : String(library.ItemId),
+          name: library.Name, media_type: 'music' }));
+    } catch (error) {
+      throw new Error(`Failed to discover ${this.displayName} music libraries: ${error.message}`);
+    }
+  }
+
   async getLibraryItems(url, apiKey, libraryId, options = {}) {
     const { offset = 0, limit = 100 } = options;
 

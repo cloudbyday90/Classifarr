@@ -351,6 +351,20 @@ describe('Media Server API', () => {
         });
     });
 
+    test('GET /api/media-server/discovery is no-store and exposes no source key', async () => {
+        db.query.mockResolvedValueOnce({ rows: [{ id: '9', name: 'Music', media_type: 'music',
+            is_present: true, first_seen_at: '2026-09-24T10:00:00Z',
+            last_seen_at: '2026-09-24T11:00:00Z', external_id: 'private' }] });
+        const response = await request(app).get('/api/media-server/discovery');
+        expect(response.status).toBe(200);
+        expect(response.headers['cache-control']).toBe('no-store');
+        expect(response.body.truncated).toBe(false);
+        expect(response.body.libraries).toEqual([{ id: 9, name: 'Music', mediaType: 'music',
+            isPresent: true, firstSeenAt: '2026-09-24T10:00:00Z',
+            lastSeenAt: '2026-09-24T11:00:00Z' }]);
+        expect(JSON.stringify(response.body)).not.toContain('private');
+    });
+
     describe('POST /api/media-server/ingest', () => {
         test('should trigger queue refill and return queued count', async () => {
             mockQueueService.refillQueue.mockResolvedValueOnce({ queued: 7 });

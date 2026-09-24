@@ -131,6 +131,7 @@ describe('Route Authentication', () => {
   describe('Tier 1: Admin-Only Routes (authenticateToken + requireAdmin)', () => {
     const adminRoutes = [
       { method: 'get', path: '/api/media-server' },
+      { method: 'get', path: '/api/media-server/discovery' },
       { method: 'get', path: '/api/classification/history' },
       { method: 'post', path: '/api/classification/retry' },
       { method: 'get', path: '/api/settings' },

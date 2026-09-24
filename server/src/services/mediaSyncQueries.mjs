@@ -3,6 +3,8 @@ import { createLogger } from '../utils/logger.mjs';
 import { ServiceUnavailableError } from '../utils/appError.mjs';
 import * as errorsModule from '../utils/errors.mjs';
 import { withServiceCatch } from '../utils/serviceCatch.mjs';
+import { refreshReadOnlySourceLibraries } from './mediaSourceLibraryDiscovery.mjs';
+import { isRoutingInventoryLibrary } from './mediaLibraryCapabilityRegistry.mjs';
 
 const logger = createLogger('mediaSync');
 
@@ -120,6 +122,10 @@ export async function syncLibrariesFromMediaServer(getMediaServerService) {
 
         const syncedLibraries = [];
         for (const library of libraries) {
+            if (!isRoutingInventoryLibrary(library)) {
+                logger.warn('Ignoring unsupported routing library type during inventory sync');
+                continue;
+            }
             let arrType = null;
             if (library.media_type === 'movie') {
                 arrType = 'radarr';
@@ -137,6 +143,13 @@ export async function syncLibrariesFromMediaServer(getMediaServerService) {
             );
 
             syncedLibraries.push(result.rows[0]);
+        }
+
+        try {
+            await refreshReadOnlySourceLibraries({ db, service, server });
+        } catch (error) {
+            logger.warn('Read-only source library discovery unavailable; previous snapshot retained',
+                { errorType: error.name });
         }
 
         logger.info('Synced libraries from media server', {

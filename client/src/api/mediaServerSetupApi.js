@@ -58,6 +58,10 @@ export function syncMediaServer() {
   return apiClient.post('/media-server/sync')
 }
 
+export function getSourceLibraryDiscovery() {
+  return getDataRequest('/media-server/discovery')
+}
+
 export function triggerIngestion() {
   return apiClient.post('/media-server/ingest')
 }
@@ -78,6 +82,7 @@ const mediaServerSetupApi = {
   updateMediaServerConfig,
   testMediaServerConnection,
   syncMediaServer,
+  getSourceLibraryDiscovery,
   triggerIngestion,
   getMediaServers,
 }

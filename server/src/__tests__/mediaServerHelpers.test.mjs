@@ -108,9 +108,9 @@ describe('computeLibraryDiff', () => {
       expect(result.toInsert[0].arrType).toBe('sonarr');
     });
 
-    test('resolves null for unknown type', () => {
-      const result = computeLibraryDiff([makeRemote({ media_type: 'music' })], []);
-      expect(result.toInsert[0].arrType).toBeNull();
+    test('rejects read-only discovery types from routing inventory', () => {
+      expect(() => computeLibraryDiff([makeRemote({ media_type: 'music' })], []))
+        .toThrow('Unsupported routing library type');
     });
   });
 

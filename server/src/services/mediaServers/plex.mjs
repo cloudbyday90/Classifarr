@@ -74,6 +74,26 @@ class PlexService {
     }
   }
 
+  /** A separate admission channel: never fed to routing-library synchronization. */
+  async getDiscoveryLibraries(url, apiKey) {
+    try {
+      const response = await httpGet(`${url}/library/sections`,
+        buildRequestConfig(apiKey, { timeout: 10000 }));
+      const container = response.data?.MediaContainer;
+      const sections = container?.Directory ?? (container?.size === 0 ? [] : null);
+      if (!Array.isArray(sections)) {
+        throw new TypeError('Invalid Plex library sections response');
+      }
+      return sections.filter(section => section.type === 'artist').map(section => ({
+        external_id: section.key == null ? null : String(section.key),
+        name: section.title,
+        media_type: 'music',
+      }));
+    } catch (error) {
+      throw new Error(`Failed to discover Plex music libraries: ${error.message}`);
+    }
+  }
+
   async getLibraryItems(url, apiKey, libraryKey, options = {}) {
     const { offset = 0, limit = 100 } = options;
 
