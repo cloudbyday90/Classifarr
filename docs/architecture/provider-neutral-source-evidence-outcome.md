@@ -17,4 +17,12 @@ A source anchor is current membership provenance, not a permanent work identifie
 
 ## Next item
 
-Add a media-type capability registry and staged schema/sync admission for one non-movie/TV library type in **read-only discovery mode**. Only after its identity and metadata quality are observed should a shadow source-anchored description backfill be evaluated with held-out duplicate/false-equivalence checks. Compare retrieval and placement results with the TMDB-only baseline before changing automatic routing or allowing source-only observations to teach the policy.
+Close the movie/TV evidence gap: make valid descriptions already available in arbitrary libraries usable by retrieval and learned profiles even when a TMDB ID is missing. Reuse existing recovery orchestration for bounded, resumable backfill and automatic retries. Compare candidate recall, incorrect placements, and manual-review burden with the current baseline on held-out movie and TV items; exclude duplicate copies and unresolved source identities from learning and evaluation.
+
+## Scope correction, 2026-09-24
+
+The preceding recommendation incorrectly interpreted content agnosticism as adding media formats. The user clarified that music is outside Classifarr's scope. Library/content agnosticism means discovering the character of movie and TV libraries from their contents, without requiring predefined categories or manual purpose declarations.
+
+The unreleased music-discovery commit `9609dd0a` was reversed, including its adapters, service, endpoint, UI, migration, schema additions, tests, and music-specific design/outcome documents. The provider-neutral movie/TV evidence work remains. The database schema was restored to `d7f4651e`, and explicit [movie/TV admission checks](movie-tv-content-admission-design.md) now protect ingestion and classification. No live database was changed and no release or container restart was performed. The removed work remains recoverable in Git history.
+
+The [admission outcome](movie-tv-content-admission-outcome.md) records verification of the correction and the replacement safeguards.

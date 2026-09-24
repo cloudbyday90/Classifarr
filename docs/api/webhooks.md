@@ -44,18 +44,26 @@ Classifarr's webhook integration enables **automatic classification** when users
 
 Universal webhook endpoint for request managers.
 
-**Authentication:** Optional (webhook secret key)
+**Authentication:** Required (configured webhook secret key)
 
 **Request Headers:**
 
 | Header | Required | Description |
 |--------|----------|-------------|
-| `X-Webhook-Key` | Conditional | Webhook secret key (if configured) |
+| `X-Webhook-Key` | Conditional | Required unless the key is supplied through `Authorization` or the `key` query parameter |
 | `Content-Type` | Yes | `application/json` |
 
 **Request Body:**
 
 Accepts Overseerr/Jellyseerr/Seer webhook payload format.
+
+Classification events require an explicit `movie` or `tv` type in
+`media.media_type`, `media.mediaType`, `media_type`, or `mediaType`. If more than
+one is supplied, they must agree. Music, other unsupported types, missing types,
+and conflicting declarations receive HTTP 200 with `skipped: true` and
+`reason: "unsupported_media_type"`; their payloads are not logged or queued.
+Subjects and library names are never used to infer a type. Test notifications
+do not require a media type. Authentication still applies to ignored events.
 
 ```json
 {
@@ -77,17 +85,24 @@ Accepts Overseerr/Jellyseerr/Seer webhook payload format.
 }
 ```
 
-**Success Response (200):**
+**Queued Response (202):**
 ```json
 {
   "success": true,
-  "classification": {
-    "library_id": 1,
-    "library_name": "Kids Movies",
-    "confidence": 92,
-    "method": "policy"
-  },
-  "message": "Media classified and added to library"
+  "queued": true,
+  "logId": 123,
+  "taskId": 456,
+  "message": "Request queued for classification"
+}
+```
+
+**Ignored Content Response (200):**
+```json
+{
+  "success": true,
+  "skipped": true,
+  "reason": "unsupported_media_type",
+  "message": "Only movies and TV shows are supported."
 }
 ```
 

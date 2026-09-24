@@ -19,7 +19,8 @@ export function canonicalMediaType(value) {
 
 /** All explicit declarations must agree; missing or invalid type is not a movie. */
 export function payloadMediaType(payload) {
-  const types = [payload?.media?.media_type, payload?.media_type]
+  const types = [payload?.media?.media_type, payload?.media?.mediaType,
+    payload?.media_type, payload?.mediaType]
     .filter((value) => value !== undefined).map(canonicalMediaType);
   return types.length > 0 && types.every((type) => type && type === types[0]) ? types[0] : null;
 }

@@ -87,7 +87,7 @@ describe('WebhookService - parsePayload', () => {
       expect(result.requested_by_username).toBe('admin');
     });
 
-    test('should infer movie type from subject when media_type is missing', () => {
+    test('does not infer movie type from a subject when media_type is missing', () => {
       const payload = {
         subject: 'New Movie Request - Inception',
         media: {
@@ -97,7 +97,7 @@ describe('WebhookService - parsePayload', () => {
 
       const result = webhookService.parsePayload(payload);
 
-      expect(result.media_type).toBe('movie');
+      expect(result.media_type).toBeNull();
       expect(result.title).toBe('New Movie Request - Inception');
     });
   });
@@ -138,7 +138,7 @@ describe('WebhookService - parsePayload', () => {
       expect(result.year).toBe(2008);
     });
 
-    test('should infer tv type from subject when media_type is missing', () => {
+    test('does not infer tv type from a subject when media_type is missing', () => {
       const payload = {
         subject: 'New Series Request - The Office',
         media: {
@@ -148,7 +148,7 @@ describe('WebhookService - parsePayload', () => {
 
       const result = webhookService.parsePayload(payload);
 
-      expect(result.media_type).toBe('tv');
+      expect(result.media_type).toBeNull();
     });
   });
 
@@ -161,7 +161,7 @@ describe('WebhookService - parsePayload', () => {
       const result = webhookService.parsePayload(payload);
 
       expect(result.title).toBe('New Movie Request');
-      expect(result.media_type).toBe('movie');
+      expect(result.media_type).toBeNull();
       expect(result.tmdb_id).toBeUndefined();
       expect(result.request_id).toBeUndefined();
       expect(result.year).toBeNull();
@@ -239,7 +239,7 @@ describe('WebhookService - parsePayload', () => {
 
       expect(result.notification_type).toBeUndefined();
       expect(result.title).toBeUndefined(); // No subject, title, or name results in undefined
-      expect(result.media_type).toBe('tv'); // Empty string doesn't include 'Movie', defaults to 'tv'
+      expect(result.media_type).toBeNull();
       expect(result.is_4k).toBe(false);
     });
 

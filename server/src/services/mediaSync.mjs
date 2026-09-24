@@ -10,6 +10,7 @@ import { createMediaSyncSkipReporter } from './mediaSyncSkipReporter.mjs';
 import { createMediaSyncIdentityRecovery } from './mediaSyncIdentityRecovery.mjs';
 import { claimSyncIdentityRecovery, persistRecoveredSyncItem, readSyncIdentityRecoveryReceipt } from './mediaSyncIdentityRecoveryPersistence.mjs';
 import { requestInventoryDescriptionRefresh } from './inventoryDescriptionRefreshSignal.mjs';
+import { canonicalMediaType } from './mediaIdentityValues.mjs';
 import { upsertMediaItem as _upsertMediaItem, upsertCollection as _upsertCollection } from './mediaSyncUpsert.mjs';
 import { pruneMissingMediaItems as _pruneMissingMediaItems, pruneMissingCollections as _pruneMissingCollections, getSyncStatus as _getSyncStatus, getLibraryItems as _getLibraryItems, syncLibrariesFromMediaServer as _syncLibrariesFromMediaServer } from './mediaSyncQueries.mjs';
 
@@ -47,6 +48,9 @@ export class MediaSyncService {
       }
 
       const library = libraryResult.rows[0];
+      if (!canonicalMediaType(library.media_type)) {
+        return { success: true, skipped: true, reason: 'unsupported_media_type' };
+      }
       const { type, url, api_key, media_server_id, external_id } = library;
 
       const syncStatusResult = await db.query(
@@ -67,6 +71,7 @@ export class MediaSyncService {
         let offset = 0;
         let totalItems = 0;
         let processedItems = 0;
+        let ignoredItems = 0;
         let hasMore = true;
         const seenItemExternalIds = new Set();
 
@@ -81,9 +86,13 @@ export class MediaSyncService {
             break;
           }
 
-          await this.sourceObservations.capture(sourceCapture, items);
+          const supportedItems = items.filter(item => canonicalMediaType(item?.media_type));
+          const ignoredOnPage = items.length - supportedItems.length;
+          ignoredItems += ignoredOnPage;
+          processedItems += ignoredOnPage;
+          if (supportedItems.length > 0) await this.sourceObservations.capture(sourceCapture, supportedItems);
 
-          for (const item of items) {
+          for (const item of supportedItems) {
             if (item?.external_id) {
               seenItemExternalIds.add(String(item.external_id));
             }
@@ -160,6 +169,7 @@ export class MediaSyncService {
         logger.info('Library sync completed', {
           libraryId,
           totalItems,
+          ignoredItems,
           collectionsCount: collections.length,
           prunedItems,
           prunedCollections,
@@ -170,6 +180,7 @@ export class MediaSyncService {
           success: true,
           totalItems,
           processedItems,
+          ignoredItems,
           collections: collections.length,
           prunedItems,
           prunedCollections,

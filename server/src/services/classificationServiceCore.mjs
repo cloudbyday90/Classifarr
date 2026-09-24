@@ -343,6 +343,9 @@ export class ClassificationService {
       this.idleDetector.recordActivity();
 
       const { media_type, tmdbId, title, year, existingMetadata, taskId } = this.parseOverseerrPayload(overseerrPayload);
+      if (media_type !== 'movie' && media_type !== 'tv') {
+        throw new ValidationError('Only movies and TV shows are supported; an explicit media type is required');
+      }
       const queueTask = runtimeContext?.queueTask ?? null;
 
       this.logger.info(`Starting classification for ${media_type}: ${title} (TMDB: ${tmdbId || 'searching...'})`);

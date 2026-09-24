@@ -167,7 +167,7 @@ describe('QueueService', () => {
             const task = {
                 id: 1,
                 task_type: 'classification',
-                payload: JSON.stringify({ title: 'Test Movie' }),
+                payload: JSON.stringify({ title: 'Test Movie', media_type: 'movie' }),
             };
 
             classificationService.classifyQueueTask.mockResolvedValue({

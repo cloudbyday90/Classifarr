@@ -26,6 +26,14 @@ The Media Sync API enables:
 - **Monitoring** sync progress
 - **Atomic operations** to prevent concurrent sync conflicts
 
+Only movie and TV libraries and items are admitted. Music and unsupported
+source types are ignored before capture, recovery, analysis, or persistence.
+An ignored source page still advances pagination so supported items on later
+pages are processed. Processed counts include examined source entries, including
+ignored entries; they are not counts of successful imports. Normal sync summaries include `ignoredItems`; ignored
+content does not create per-item warnings. A direct sync of an unsupported
+library returns a successful skipped result with reason `unsupported_media_type`.
+
 ### Authentication
 
 All endpoints require authentication via JWT token or API key.

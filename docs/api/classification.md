@@ -56,6 +56,10 @@ Manually classify a media item by TMDB ID.
 | `media_type` | string | Yes | `movie` or `tv` |
 | `title` | string | No | Media title (optional, for display) |
 
+Unsupported media types are rejected with HTTP 400 before enrichment or
+classification. A title or genre containing “music” does not exclude an item
+whose declared type is `movie` or `tv`.
+
 **Success Response (200):**
 ```json
 {

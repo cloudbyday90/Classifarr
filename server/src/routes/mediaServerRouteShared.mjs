@@ -18,7 +18,6 @@ import {
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData, sendSuccess } from '../utils/responseHelpers.mjs';
 import { syncMediaServerLibraries } from '../services/mediaServerLibrarySync.mjs';
-import { readReadOnlySourceLibraries } from '../services/mediaSourceLibraryDiscovery.mjs';
 
 export function createMediaServerRouter({
   express,
@@ -35,11 +34,6 @@ export function createMediaServerRouter({
   router.get('/', asyncHandler(async (_req, res) => {
     const mediaServer = await getActiveMediaServerConfig({ db });
     return sendData(res, maskMediaServerConfig(mediaServer, maskTokenValue));
-  }));
-
-  router.get('/discovery', asyncHandler(async (_req, res) => {
-    res.set('Cache-Control', 'no-store');
-    return sendData(res, await readReadOnlySourceLibraries(db));
   }));
 
   router.post('/', asyncHandler(async (req, res) => {

@@ -45,6 +45,7 @@ const webhookService = mockWebhookService;
 const createRateLimit = jest.fn(() => (_req, _res, next) => next());
 const logger = createMockLogger();
 const { createWebhookRouter } = await import('../routes/webhookRouteShared.mjs');
+const { parsePayload: parseRealPayload } = await import('../services/webhookServiceShared.mjs');
 
 describe('Webhook Routes - authentication enforcement', () => {
     let app;
@@ -148,5 +149,51 @@ describe('Webhook Routes - authentication enforcement', () => {
             logId: 101,
         });
         expect(webhookService.updateLogStatus).toHaveBeenCalledWith(101, 'completed', { test: true });
+    });
+
+    test.each([
+        { media: { media_type: 'music' } },
+        { media: { mediaType: 'Audio' } },
+        { media_type: 'album' },
+        { media: { media_type: 'tv', mediaType: 'music' } },
+        { media: { media_type: 'movie' }, media_type: 'music' },
+        {},
+    ])('acknowledges unsupported content without storing, queuing, or updating requests: %j', async payload => {
+        webhookService.getConfig.mockResolvedValue({ enabled: true, secret_key: 'configured', process_approved: true });
+        webhookService.validateAuth.mockResolvedValue(true);
+        webhookService.parsePayload.mockImplementation(parseRealPayload);
+        for (const notification_type of ['MEDIA_APPROVED', 'MEDIA_AVAILABLE']) {
+            const res = await request(app).post('/api/webhook/request').set('x-webhook-key', 'configured')
+                .send({ notification_type, subject: 'Movie soundtrack', ...payload });
+            expect(res.status).toBe(200);
+            expect(res.body).toMatchObject({ success: true, skipped: true, reason: 'unsupported_media_type' });
+        }
+        expect(queueService.enqueue).not.toHaveBeenCalled();
+        expect(webhookService.logReceived).not.toHaveBeenCalled();
+        expect(webhookService.updateRequestStatus).not.toHaveBeenCalled();
+        expect(logger.warn).not.toHaveBeenCalled();
+    });
+
+    test('normalizes a supported alias before queuing and permits music-related movie titles', async () => {
+        webhookService.getConfig.mockResolvedValue({ enabled: true, secret_key: 'configured', process_approved: true });
+        webhookService.validateAuth.mockResolvedValue(true);
+        webhookService.parsePayload.mockImplementation(parseRealPayload);
+        queueService.enqueue.mockResolvedValue(12);
+        const res = await request(app).post('/api/webhook/request').set('x-webhook-key', 'configured')
+            .send({ notification_type: 'MEDIA_APPROVED', subject: 'Music documentary', media: { mediaType: 'Movie' } });
+        expect(res.status).toBe(202);
+        expect(queueService.enqueue).toHaveBeenCalledWith('classification', expect.objectContaining({
+            media: { mediaType: 'Movie', media_type: 'movie' },
+        }), expect.any(Object));
+    });
+
+    test('allows a test notification without a media type', async () => {
+        webhookService.getConfig.mockResolvedValue({ enabled: true, secret_key: 'configured' });
+        webhookService.validateAuth.mockResolvedValue(true);
+        webhookService.parsePayload.mockImplementation(parseRealPayload);
+        const res = await request(app).post('/api/webhook/request').set('x-webhook-key', 'configured')
+            .send({ notification_type: 'TEST_NOTIFICATION' });
+        expect(res.status).toBe(200);
+        expect(res.body.message).toBe('Test webhook received successfully');
     });
 });

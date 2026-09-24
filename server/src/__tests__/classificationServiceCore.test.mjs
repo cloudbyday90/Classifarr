@@ -175,6 +175,21 @@ function createService({ handoff, admission } = {}) {
   return service;
 }
 
+describe('supported classification content', () => {
+  test.each(['music', 'artist', 'album', 'track', undefined])(
+    'rejects %s before enrichment, policy evaluation, persistence, or routing', async mediaType => {
+      const service = createService();
+      service.classificationMetadataService.parseOverseerrPayload = parseOverseerrPayload;
+      const enrich = jest.spyOn(service, 'enrichWithTMDB');
+      await expect(service.classify({ media: { media_type: mediaType, tmdbId: 7 }, title: 'Movie soundtrack' }))
+        .rejects.toThrow('Only movies and TV shows are supported');
+      expect(enrich).not.toHaveBeenCalled();
+      expect(service.runDecisionTree).not.toHaveBeenCalled();
+      expect(service.classificationPersistenceService.logClassification).not.toHaveBeenCalled();
+      expect(service.classificationRoutingService.routeToArr).not.toHaveBeenCalled();
+    });
+});
+
 describe('organization metadata arrival and retry parity', () => {
   test.each(['movie', 'tv'].flatMap(type => ['existing', 'id', 'search', 'basic'].map(path => [type, path])))
   ('preserves %s organizations through %s and retry without routing', async (mediaType, path) => {

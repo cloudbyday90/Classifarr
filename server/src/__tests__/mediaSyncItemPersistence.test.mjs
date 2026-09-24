@@ -45,6 +45,7 @@ test('captures caller input and strips forged provenance before asynchronous ana
 });
 
 test.each([{ tmdb_id: '12bad' }, { imdb_id: 'wrong' }, { media_type: 'person' },
+  { media_type: 'music' }, { media_type: 'album' }, { media_type: 'track' },
   { external_id: '' }, { external_id: 42 }, { provider_identity_invalid: true }])('skips invalid source input: %j', patch => {
   const query = jest.fn();
   return expect(persistSyncedMediaItem(1, 2, { ...item(), ...patch }, { query, analyze }))

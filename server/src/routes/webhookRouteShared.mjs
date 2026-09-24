@@ -12,6 +12,7 @@ import { webhookLimiterConfig } from '../config/rateLimits.mjs';
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendSuccess } from '../utils/responseHelpers.mjs';
 import { AuthenticationError, ForbiddenError } from '../utils/appError.mjs';
+import { canonicalMediaType } from '../services/mediaIdentityValues.mjs';
 
 export function createWebhookLimiter(rateLimit) {
   return rateLimit(webhookLimiterConfig);
@@ -51,6 +52,11 @@ export function createHandleWebhook({ webhookService, queueService, logger }) {
     });
 
     const parsed = webhookService.parsePayload(sanitizedPayload);
+    const isTest = ['TEST_NOTIFICATION', 'test'].includes(parsed.notification_type);
+    if (!isTest && !canonicalMediaType(parsed.media_type)) {
+      return sendSuccess(res, { skipped: true, reason: 'unsupported_media_type',
+        message: 'Only movies and TV shows are supported.' });
+    }
     logId = await webhookService.logReceived(req, parsed);
     if (specialsExcluded > 0) {
       logger.info('Excluded specials from webhook payload', {
@@ -139,6 +145,7 @@ export function createHandleWebhook({ webhookService, queueService, logger }) {
       title: parsed.title,
     });
 
+    sanitizedPayload.media = { ...sanitizedPayload.media, media_type: parsed.media_type };
     const taskId = await queueService.enqueue('classification', sanitizedPayload, {
       webhookLogId: logId,
       source: 'webhook',

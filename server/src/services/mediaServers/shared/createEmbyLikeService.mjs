@@ -61,20 +61,6 @@ class EmbyLikeService {
     }
   }
 
-  /** Music section discovery does not admit music items to the movie/TV cache. */
-  async getDiscoveryLibraries(url, apiKey) {
-    try {
-      const response = await httpGet(`${url}/Library/VirtualFolders`, {
-        headers: buildHeaders(apiKey), timeout: 10000,
-      });
-      return response.data.filter(library => library.CollectionType === 'music')
-        .map(library => ({ external_id: library.ItemId == null ? null : String(library.ItemId),
-          name: library.Name, media_type: 'music' }));
-    } catch (error) {
-      throw new Error(`Failed to discover ${this.displayName} music libraries: ${error.message}`);
-    }
-  }
-
   async getLibraryItems(url, apiKey, libraryId, options = {}) {
     const { offset = 0, limit = 100 } = options;
 
@@ -93,26 +79,31 @@ class EmbyLikeService {
 
       const items = response.data.Items || [];
 
-      return items.map((item) => ({
-        external_id: item.Id,
-        title: item.Name,
-        original_title: item.OriginalTitle,
-        year: item.ProductionYear,
-        media_type: item.Type === 'Series' ? 'tv' : 'movie',
-        genres: item.Genres || [],
-        tags: item.Tags || [],
-        collections: [],
-        studio: item.Studios?.[0]?.Name,
-        content_rating: item.OfficialRating,
-        added_at: item.DateCreated ? new Date(item.DateCreated) : null,
-        ...this.parseGuids(item),
-        metadata: {
-          rating: item.CommunityRating,
-          summary: item.Overview,
-          posterPath: this.buildPosterUrl(url, apiKey, item.Id),
-        },
-        total: response.data.TotalRecordCount,
-      }));
+      return items.map((item) => {
+        const mediaType = item?.Type === 'Series' ? 'tv' : item?.Type === 'Movie' ? 'movie' : null;
+        // Provider query filters are advisory; validate the returned type as well.
+        if (!mediaType) return { media_type: null, total: response.data.TotalRecordCount };
+        return {
+          external_id: item.Id,
+          title: item.Name,
+          original_title: item.OriginalTitle,
+          year: item.ProductionYear,
+          media_type: mediaType,
+          genres: item.Genres || [],
+          tags: item.Tags || [],
+          collections: [],
+          studio: item.Studios?.[0]?.Name,
+          content_rating: item.OfficialRating,
+          added_at: item.DateCreated ? new Date(item.DateCreated) : null,
+          ...this.parseGuids(item),
+          metadata: {
+            rating: item.CommunityRating,
+            summary: item.Overview,
+            posterPath: this.buildPosterUrl(url, apiKey, item.Id),
+          },
+          total: response.data.TotalRecordCount,
+        };
+      });
     } catch (error) {
       throw new Error(`Failed to fetch ${this.displayName} library items: ${error.message}`);
     }

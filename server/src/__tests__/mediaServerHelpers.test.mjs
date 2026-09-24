@@ -108,9 +108,22 @@ describe('computeLibraryDiff', () => {
       expect(result.toInsert[0].arrType).toBe('sonarr');
     });
 
-    test('rejects read-only discovery types from routing inventory', () => {
-      expect(() => computeLibraryDiff([makeRemote({ media_type: 'music' })], []))
-        .toThrow('Unsupported routing library type');
+    test('ignores music instead of creating a destination without an ARR type', () => {
+      const result = computeLibraryDiff([makeRemote({ media_type: 'music' })], []);
+      expect(result).toEqual({ toInsert: [], toUpdate: [], toDelete: [], retained: [] });
+    });
+
+    test('admits movies by type regardless of music-related library names', () => {
+      const result = computeLibraryDiff([
+        makeRemote({ name: 'Music documentaries' }),
+        makeRemote({ external_id: 'audio', media_type: 'music' }),
+      ], []);
+      expect(result.toInsert).toEqual([expect.objectContaining({ name: 'Music documentaries', arrType: 'radarr' })]);
+    });
+
+    test('does not mutate or delete an existing library on an unsupported type observation', () => {
+      expect(computeLibraryDiff([makeRemote({ media_type: 'music' })], [makeExisting()]))
+        .toEqual({ toInsert: [], toUpdate: [], toDelete: [], retained: [] });
     });
   });
 

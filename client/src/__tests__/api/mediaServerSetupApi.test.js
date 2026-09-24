@@ -41,7 +41,6 @@ import {
   updateMediaServerConfig,
   testMediaServerConnection,
   syncMediaServer,
-  getSourceLibraryDiscovery,
   triggerIngestion,
   getMediaServers,
 } from '../../api/mediaServerSetupApi'
@@ -128,12 +127,6 @@ describe('mediaServerSetupApi', () => {
     const result = await syncMediaServer()
     expect(mockPost).toHaveBeenCalledWith('/media-server/sync')
     expect(result).toEqual({ data: { syncing: true } })
-  })
-
-  it('getSourceLibraryDiscovery uses the centralized GET helper', async () => {
-    mockGetDataRequest.mockResolvedValueOnce({ libraries: [] })
-    expect(await getSourceLibraryDiscovery()).toEqual({ libraries: [] })
-    expect(mockGetDataRequest).toHaveBeenCalledWith('/media-server/discovery')
   })
 
   it('triggerIngestion calls POST with correct URL', async () => {

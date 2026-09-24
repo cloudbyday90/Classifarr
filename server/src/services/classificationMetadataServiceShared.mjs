@@ -1,11 +1,9 @@
 import { normalizeMetadataList, normalizeMetadataListLower } from '../utils/metadataNormalization.mjs';
 import { captureOrganizationMetadata, mergeOrganizationMetadata } from '../utils/metadataOrganizations.mjs';
+import { payloadMediaType } from './mediaIdentityValues.mjs';
 
 export function parseOverseerrPayload(payload) {
-	let media_type = payload.media?.media_type || payload.media_type || 'movie';
-	if (!media_type && payload.subject) {
-		media_type = payload.subject.includes('Movie') ? 'movie' : 'tv';
-	}
+	const media_type = payloadMediaType(payload);
 
 	let extraTmdbId = null;
 	if (Array.isArray(payload.extra)) {

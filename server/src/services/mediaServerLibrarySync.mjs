@@ -7,8 +7,7 @@
  */
 
 import { AppError, NotFoundError, ValidationError } from '../utils/appError.mjs';
-import { refreshReadOnlySourceLibraries } from './mediaSourceLibraryDiscovery.mjs';
-import { isRoutingInventoryLibrary } from './mediaLibraryCapabilityRegistry.mjs';
+import { canonicalMediaType } from './mediaIdentityValues.mjs';
 
 function createHttpError(message, httpStatus) {
   if (httpStatus === 400) {
@@ -34,10 +33,10 @@ export function computeLibraryDiff(remoteLibraries, existingRows) {
   const toUpdate = [];
   const retained = [];
 
-  for (const remote of remoteLibraries) {
-    if (!isRoutingInventoryLibrary(remote)) {
-      throw new ValidationError('Unsupported routing library type');
-    }
+  for (const candidate of remoteLibraries) {
+    const mediaType = canonicalMediaType(candidate?.media_type);
+    if (!mediaType) continue;
+    const remote = { ...candidate, media_type: mediaType };
     const existing = existingMap.get(remote.external_id);
     const arrType = resolveArrType(remote.media_type);
 
@@ -66,7 +65,7 @@ export function computeLibraryDiff(remoteLibraries, existingRows) {
   }
 
   const toDelete = existingRows.filter(
-    (lib) => !remoteLibraries.find((remote) => remote.external_id === lib.external_id),
+    (lib) => !remoteLibraries.find((remote) => remote?.external_id === lib.external_id),
   );
 
   return { toInsert, toUpdate, toDelete, retained };
@@ -122,7 +121,6 @@ async function loadSyncContext({ _db, getMediaServerServiceByType, client }) {
 
   return {
     server,
-    service,
     remoteLibraries,
     existingRows: existingResult.rows,
   };
@@ -215,15 +213,13 @@ export async function syncMediaServerLibraries({
   logger,
 }) {
   const resultLibraries = [];
-  let discoveryContext = null;
 
   await db.withTransaction(async (client) => {
-    const { server, service, remoteLibraries, existingRows } = await loadSyncContext({
+    const { server, remoteLibraries, existingRows } = await loadSyncContext({
       db,
       getMediaServerServiceByType,
       client,
     });
-    discoveryContext = { server, service };
 
     const { toInsert, toUpdate, toDelete, retained } = computeLibraryDiff(
       remoteLibraries,
@@ -252,14 +248,6 @@ export async function syncMediaServerLibraries({
 
     await client.query('UPDATE media_server SET last_sync = NOW() WHERE id = $1', [server.id]);
   });
-
-  try {
-    await refreshReadOnlySourceLibraries({ db, ...discoveryContext });
-  } catch (error) {
-    // A source-discovery failure must not rollback or mislabel the routing sync.
-    logger.warn('Read-only source library discovery unavailable; previous snapshot retained',
-      { errorType: error.name });
-  }
 
   triggerBackgroundLibrarySync({
     libraries: resultLibraries,

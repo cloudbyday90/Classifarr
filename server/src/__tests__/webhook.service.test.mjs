@@ -174,7 +174,7 @@ describe('WebhookService - service methods', () => {
 
     expect(() => webhookService.parsePayload(null)).not.toThrow();
     expect(webhookService.parsePayload(null)).toEqual(expect.objectContaining({
-      media_type: 'tv'
+      media_type: null
     }));
   });
 

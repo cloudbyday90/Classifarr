@@ -97,15 +97,6 @@ describe('JellyfinService', () => {
         });
     });
 
-    it('discovers only music virtual folders outside routing inventory', async () => {
-        mockHttpGet.mockResolvedValue({ data: [
-            { ItemId: '1', Name: 'Movies', CollectionType: 'movies' },
-            { ItemId: '3', Name: 'Music', CollectionType: 'music' }
-        ] });
-        await expect(service.getDiscoveryLibraries('http://jellyfin:8096', 'key'))
-            .resolves.toEqual([{ external_id: '3', name: 'Music', media_type: 'music' }]);
-    });
-
     describe('getLibraryItems', () => {
         it('should return formatted library items', async () => {
             mockHttpGet.mockResolvedValue({

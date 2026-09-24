@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-24T14:26:47.166Z
--- Latest Migration: 20260924_141609_add_read_only_music_source_library_discovery.sql
+-- Generated: 2026-09-24T13:32:51.359Z
+-- Latest Migration: 20260924_120000_add_inventory_description_representation_checkpoint.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -4547,49 +4547,6 @@ CREATE TABLE public.media_source_capture_state (
 
 
 --
--- Name: media_source_discovery_libraries; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.media_source_discovery_libraries (
-    id bigint NOT NULL,
-    media_server_id integer NOT NULL,
-    external_id character varying(100) NOT NULL,
-    name character varying(255) NOT NULL,
-    media_type character varying(20) NOT NULL,
-    is_present boolean DEFAULT true NOT NULL,
-    first_seen_at timestamp with time zone DEFAULT now() NOT NULL,
-    last_seen_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT media_source_discovery_libraries_media_type_check CHECK (((media_type)::text = 'music'::text))
-);
-
-
---
--- Name: TABLE media_source_discovery_libraries; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.media_source_discovery_libraries IS 'Source library sections observed in read-only discovery; never classification destinations.';
-
-
---
--- Name: media_source_discovery_libraries_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.media_source_discovery_libraries_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: media_source_discovery_libraries_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.media_source_discovery_libraries_id_seq OWNED BY public.media_source_discovery_libraries.id;
-
-
---
 -- Name: media_source_observations; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -8591,13 +8548,6 @@ ALTER TABLE ONLY public.media_server_sync_status ALTER COLUMN id SET DEFAULT nex
 
 
 --
--- Name: media_source_discovery_libraries id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.media_source_discovery_libraries ALTER COLUMN id SET DEFAULT nextval('public.media_source_discovery_libraries_id_seq'::regclass);
-
-
---
 -- Name: notification_config id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -9825,22 +9775,6 @@ ALTER TABLE ONLY public.media_source_capture_state
 
 ALTER TABLE ONLY public.media_source_capture_state
     ADD CONSTRAINT media_source_capture_state_pkey PRIMARY KEY (library_id);
-
-
---
--- Name: media_source_discovery_libraries media_source_discovery_librarie_media_server_id_external_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.media_source_discovery_libraries
-    ADD CONSTRAINT media_source_discovery_librarie_media_server_id_external_id_key UNIQUE (media_server_id, external_id);
-
-
---
--- Name: media_source_discovery_libraries media_source_discovery_libraries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.media_source_discovery_libraries
-    ADD CONSTRAINT media_source_discovery_libraries_pkey PRIMARY KEY (id);
 
 
 --
@@ -11836,13 +11770,6 @@ CREATE UNIQUE INDEX idx_media_server_type_url_legacy ON public.media_server USIN
 
 
 --
--- Name: idx_media_source_discovery_libraries_server; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_media_source_discovery_libraries_server ON public.media_source_discovery_libraries USING btree (media_server_id, is_present, name);
-
-
---
 -- Name: idx_media_source_observations_recent; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -13613,14 +13540,6 @@ ALTER TABLE ONLY public.media_source_capture_state
 
 ALTER TABLE ONLY public.media_source_capture_state
     ADD CONSTRAINT media_source_capture_state_media_server_id_fkey FOREIGN KEY (media_server_id) REFERENCES public.media_server(id) ON DELETE CASCADE;
-
-
---
--- Name: media_source_discovery_libraries media_source_discovery_libraries_media_server_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.media_source_discovery_libraries
-    ADD CONSTRAINT media_source_discovery_libraries_media_server_id_fkey FOREIGN KEY (media_server_id) REFERENCES public.media_server(id) ON DELETE CASCADE;
 
 
 --
@@ -16327,7 +16246,6 @@ FROM unnest(ARRAY[
     '20260923_120000_add_classification_intake_receipts.sql',
     '20260923_130000_add_library_profile_inventory_revision.sql',
     '20260923_140000_add_profile_refresh_worker_progress.sql',
-    '20260924_120000_add_inventory_description_representation_checkpoint.sql',
-    '20260924_141609_add_read_only_music_source_library_discovery.sql'
+    '20260924_120000_add_inventory_description_representation_checkpoint.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

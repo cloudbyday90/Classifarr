@@ -10,6 +10,7 @@
 import { createLogger } from '../utils/logger.mjs';
 import { encryptValue, decryptValue, formatEncryptedValue, parseEncryptedValue, generateRandomKey, maskKey, constantTimeCompare } from '../utils/encryption.mjs';
 import { maskToken } from '../utils/tokenMasking.mjs';
+import { payloadMediaType } from './mediaIdentityValues.mjs';
 
 const logger = createLogger('WebhookService');
 
@@ -183,7 +184,6 @@ export function sanitizePayload(body, options = {}) {
 
 export function parsePayload(body) {
   const normalizedBody = body && typeof body === 'object' ? body : {};
-  logger.debug('Parsing webhook payload', { body: normalizedBody });
 
   const notification_type = normalizedBody.notification_type || normalizedBody.event;
   const subject = normalizedBody.subject || '';
@@ -191,10 +191,7 @@ export function parsePayload(body) {
   const request = normalizedBody.request || {};
   const requestedBy = request.requestedBy || normalizedBody.requestedBy || {};
 
-  let media_type = media.media_type || media.mediaType;
-  if (!media_type) {
-    media_type = subject.includes('Movie') ? 'movie' : 'tv';
-  }
+  const media_type = payloadMediaType(normalizedBody);
 
   const parsed = {
     notification_type,
@@ -216,7 +213,6 @@ export function parsePayload(body) {
     media_status_4k: media.status4k,
   };
 
-  logger.debug('Parsed webhook payload', { parsed });
+  if (media_type) logger.debug('Parsed webhook payload', { notification_type, media_type });
   return parsed;
 }
-

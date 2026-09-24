@@ -97,15 +97,6 @@ describe('EmbyService', () => {
         });
     });
 
-    it('discovers only music virtual folders outside routing inventory', async () => {
-        mockHttpGet.mockResolvedValue({ data: [
-            { ItemId: '1', Name: 'Movies', CollectionType: 'movies' },
-            { ItemId: '3', Name: 'Music', CollectionType: 'music' }
-        ] });
-        await expect(service.getDiscoveryLibraries('http://emby:8096', 'key'))
-            .resolves.toEqual([{ external_id: '3', name: 'Music', media_type: 'music' }]);
-    });
-
     describe('getLibraryItemIdentityEvidence', () => {
         it('returns only provider candidate evidence and verifies library membership', async () => {
             mockHttpGet.mockResolvedValue({

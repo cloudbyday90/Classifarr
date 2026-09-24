@@ -118,7 +118,6 @@
         </div>
       </Card>
     </div>
-    <SourceLibraryDiscovery :refresh-key="discoveryRefreshKey" />
     <LibraryObservationHealth />
     <LibrarySourceRepairWorklist />
     <LibrarySourceObservations />
@@ -128,7 +127,7 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useLibrariesStore } from '@/stores/libraries'
 import { useSyncStatusStore, SYNC_TYPE } from '@/stores/syncStatus'
@@ -145,7 +144,6 @@ import LibraryObservationHealth from '@/components/library/LibraryObservationHea
 import LibrarySourceObservations from '@/components/library/LibrarySourceObservations.vue'
 import LibrarySourceRepairWorklist from '@/components/library/LibrarySourceRepairWorklist.vue'
 import LibraryObservationHistory from '@/components/library/LibraryObservationHistory.vue'
-import SourceLibraryDiscovery from '@/components/library/SourceLibraryDiscovery.vue'
 
 // HTTP status codes
 const HTTP_CONFLICT = 409
@@ -155,7 +153,6 @@ const { libraries, loading } = storeToRefs(librariesStore)
 
 const syncStore = useSyncStatusStore()
 const toast = useToast()
-const discoveryRefreshKey = ref(0)
 
 // Service lockdown for media server
 const { canUseFeature: canSyncLibraries, lockdownTooltip, firstUnavailableService } = useServiceRequirements(['mediaServer'])
@@ -184,7 +181,6 @@ const syncLibraries = async () => {
   try {
     await api.syncMediaServer()
     await librariesStore.fetchLibraries()
-    discoveryRefreshKey.value++
   } catch (error) {
     if (error.response?.status === HTTP_CONFLICT) {
       // Sync already running - show message

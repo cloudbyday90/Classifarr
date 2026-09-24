@@ -7,6 +7,7 @@ import { EnrichmentItemStateService } from './enrichmentItemStateService.mjs';
 import * as metadataEnrichment from '../utils/metadataEnrichment.mjs';
 import { ratingNormalizer } from '../utils/ratingNormalizer.mjs';
 import { parsePayload } from '../utils/queueHelpers.mjs';
+import { payloadMediaType } from './mediaIdentityValues.mjs';
 import { queryWithTimeout as _sharedQueryWithTimeout } from '../utils/queryWithTimeout.mjs';
 import { processRatingNormalization as _processRatingNormalization } from './queueTaskProcessorRating.mjs';
 import { resolveSourceLibraryName as _resolveSourceLibraryName, processMetadataEnrichmentTask as _processMetadataEnrichmentTask } from './queueTaskProcessorEnrichment.mjs';
@@ -115,6 +116,14 @@ export class QueueTaskProcessorService {
 
     async processClassificationTask(task) {
         const payload = parsePayload(task.payload);
+        if (!payloadMediaType(payload)) {
+            if (task.webhook_log_id) await this.db.query(
+                "UPDATE webhook_log SET processing_status = 'skipped' WHERE id = $1",
+                [task.webhook_log_id],
+            );
+            await this.completeTask(task.id, { success: true, skipped: true, reason: 'unsupported_media_type' });
+            return;
+        }
         const result = await this.classificationService.classifyQueueTask(task, {
             ...payload,
             taskId: task.id,

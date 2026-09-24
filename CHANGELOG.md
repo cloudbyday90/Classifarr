@@ -11,10 +11,9 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
-- Discover Plex, Jellyfin, and Emby music library sections in an isolated,
-  read-only registry without admitting music to policies, item sync, learning,
-  RAG, or routing. Preserve last-known sections across source failures and show
-  a compact administrator summary on the Libraries page.
+- Ignore music and unsupported content during library sync and webhook intake,
+  prevent unknown source items from being treated as movies, and complete existing
+  unsupported classification tasks as skipped. Remove unreleased music discovery.
 - Extend per-library evidence coverage with provider-neutral, source-anchored
   description counts, including items without TMDB IDs. Keep source conflicts
   blocked, provider IDs observational, and current retrieval/routing unchanged.

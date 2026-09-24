@@ -3,8 +3,7 @@ import { createLogger } from '../utils/logger.mjs';
 import { ServiceUnavailableError } from '../utils/appError.mjs';
 import * as errorsModule from '../utils/errors.mjs';
 import { withServiceCatch } from '../utils/serviceCatch.mjs';
-import { refreshReadOnlySourceLibraries } from './mediaSourceLibraryDiscovery.mjs';
-import { isRoutingInventoryLibrary } from './mediaLibraryCapabilityRegistry.mjs';
+import { canonicalMediaType } from './mediaIdentityValues.mjs';
 
 const logger = createLogger('mediaSync');
 
@@ -122,14 +121,12 @@ export async function syncLibrariesFromMediaServer(getMediaServerService) {
 
         const syncedLibraries = [];
         for (const library of libraries) {
-            if (!isRoutingInventoryLibrary(library)) {
-                logger.warn('Ignoring unsupported routing library type during inventory sync');
-                continue;
-            }
+            const mediaType = canonicalMediaType(library?.media_type);
+            if (!mediaType) continue;
             let arrType = null;
-            if (library.media_type === 'movie') {
+            if (mediaType === 'movie') {
                 arrType = 'radarr';
-            } else if (library.media_type === 'tv') {
+            } else if (mediaType === 'tv') {
                 arrType = 'sonarr';
             }
 
@@ -139,17 +136,10 @@ export async function syncLibrariesFromMediaServer(getMediaServerService) {
                  ON CONFLICT (media_server_id, external_id) 
                  DO UPDATE SET name = EXCLUDED.name, media_type = EXCLUDED.media_type, arr_type = EXCLUDED.arr_type
                  RETURNING *`,
-                [server.id, library.external_id, library.name, library.media_type, arrType],
+                [server.id, library.external_id, library.name, mediaType, arrType],
             );
 
             syncedLibraries.push(result.rows[0]);
-        }
-
-        try {
-            await refreshReadOnlySourceLibraries({ db, service, server });
-        } catch (error) {
-            logger.warn('Read-only source library discovery unavailable; previous snapshot retained',
-                { errorType: error.name });
         }
 
         logger.info('Synced libraries from media server', {

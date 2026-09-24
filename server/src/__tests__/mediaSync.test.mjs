@@ -278,6 +278,49 @@ describe('MediaSyncService', () => {
     });
 
     describe('syncLibrary', () => {
+        it('ignores a music library before starting capture, recovery, or source requests', async () => {
+            mockDb.query.mockResolvedValueOnce({ rows: [{ id: 1, media_type: 'music' }] });
+            expect(await service.syncLibrary(1)).toEqual({ success: true, skipped: true, reason: 'unsupported_media_type' });
+            expect(mockDb.query).toHaveBeenCalledTimes(1);
+            expect(service.sourceObservations.start).not.toHaveBeenCalled();
+            expect(mockGetMediaServerService).not.toHaveBeenCalled();
+            expect(mockLogger.warn).not.toHaveBeenCalled();
+        });
+
+        it('continues past an ignored full page without capturing, recovering, or warning about audio', async () => {
+            const sourceObservations = { start: jest.fn().mockResolvedValue({ generation: 1 }),
+                capture: jest.fn(), finish: jest.fn() };
+            const recover = jest.fn().mockResolvedValue(null);
+            const report = jest.fn();
+            const instance = new MediaSyncService({ sourceObservations, createIdentityRecovery: () => ({ recover }),
+                skipReporter: { report }, mediaServerServices: { getMediaServerService: mockGetMediaServerService } });
+            const upsert = jest.spyOn(instance, 'upsertMediaItem').mockResolvedValue(undefined);
+            const prune = jest.spyOn(instance, 'pruneMissingMediaItems').mockResolvedValue(0);
+            jest.spyOn(instance, 'pruneMissingCollections').mockResolvedValue(0);
+            jest.spyOn(instance, 'reconcileAwaitingDecisions').mockResolvedValue(undefined);
+            mockDb.query.mockImplementation(async sql => sql.includes('FROM libraries l')
+                ? { rows: [{ id: 1, type: 'plex', media_type: 'movie', media_server_id: 1, external_id: 'library-1' }] }
+                : { rows: [{ id: 100 }], rowCount: 1 });
+            const movie = { external_id: 'film', title: 'Music documentary', media_type: 'movie', total: 3 };
+            mockPlexService.getLibraryItems
+                .mockResolvedValueOnce([{ media_type: null, total: 3 }, { media_type: 'music', total: 3 }])
+                .mockResolvedValueOnce([movie]);
+            mockPlexService.getCollections.mockResolvedValue([]);
+
+            expect(await instance.syncLibrary(1, { batchSize: 2 })).toMatchObject({
+                success: true, totalItems: 3, processedItems: 3, ignoredItems: 2,
+            });
+            expect(mockPlexService.getLibraryItems.mock.calls.map(call => call[3].offset)).toEqual([0, 2]);
+            expect(sourceObservations.capture).toHaveBeenCalledTimes(1);
+            expect(sourceObservations.capture).toHaveBeenCalledWith({ generation: 1 }, [movie]);
+            expect(recover).toHaveBeenCalledTimes(1);
+            expect(upsert).toHaveBeenCalledTimes(1);
+            expect(upsert).toHaveBeenCalledWith(1, 1, movie, expect.any(Object));
+            expect(prune).toHaveBeenCalledWith(1, ['film']);
+            expect(report).toHaveBeenCalledWith(expect.any(Object), null);
+            expect(mockLogger.warn).not.toHaveBeenCalled();
+        });
+
         it.each([true, false, 'failure'])('applies proven recovery before normal upsert, or safely retains the conflict: %s', async applied => {
             const context = { libraryId: 1, mediaServerId: 1, generation: 1 };
             const item = { external_id: 'fixture', provider_identity_invalid: true,
@@ -296,7 +339,7 @@ describe('MediaSyncService', () => {
             });
             jest.spyOn(instance, 'reconcileAwaitingDecisions').mockResolvedValue(undefined);
             mockDb.query.mockImplementation(async sql => sql.includes('FROM libraries l')
-                ? { rows: [{ id: 1, type: 'plex', media_server_id: 1, external_id: 'library-1' }] }
+                ? { rows: [{ id: 1, type: 'plex', media_type: 'movie', media_server_id: 1, external_id: 'library-1' }] }
                 : { rows: [{ id: 100 }], rowCount: 1 });
             mockPlexService.getLibraryItems.mockResolvedValue([item]);
             mockPlexService.getCollections.mockResolvedValue([]);
@@ -323,6 +366,7 @@ describe('MediaSyncService', () => {
                 id: 1,
                 name: 'Movies',
                 type: 'plex',
+                media_type: 'movie',
                 url: 'http://plex:32400',
                 api_key: 'test-token',
                 media_server_id: 1,
@@ -330,8 +374,8 @@ describe('MediaSyncService', () => {
             };
 
             const mockItems = [
-                { external_id: '1', title: 'Movie 1', tmdb_id: 123 },
-                { external_id: '2', title: 'Movie 2', tmdb_id: 456 }
+                { external_id: '1', title: 'Movie 1', tmdb_id: 123, media_type: 'movie' },
+                { external_id: '2', title: 'Movie 2', tmdb_id: 456, media_type: 'movie' }
             ];
 
             mockDb.query.mockImplementation((sql) => {
@@ -385,7 +429,7 @@ describe('MediaSyncService', () => {
         it('emits one bounded post-capture summary for skipped source identities', async () => {
             const mockLibrary = {
                 id: 1, name: 'Movies', type: 'plex', url: 'http://plex:32400', api_key: 'test-token',
-                media_server_id: 1, external_id: '1'
+                media_server_id: 1, external_id: '1', media_type: 'movie'
             };
             mockDb.query.mockImplementation((sql) => {
                 if (sql.includes('FROM libraries l')) return Promise.resolve({ rows: [mockLibrary] });
@@ -397,7 +441,7 @@ describe('MediaSyncService', () => {
                 if (sql.includes('SET status = $1, completed_at = NOW(), items_total = $2, items_processed = $3')) return Promise.resolve({ rowCount: 1 });
                 throw new Error(`Unexpected query: ${sql}`);
             });
-            mockPlexService.getLibraryItems.mockResolvedValue([{ external_id: '1', title: 'Movie 1', tmdb_id: 123 }]);
+            mockPlexService.getLibraryItems.mockResolvedValue([{ external_id: '1', title: 'Movie 1', tmdb_id: 123, media_type: 'movie' }]);
             mockPlexService.getCollections.mockResolvedValue([]);
             const upsertSpy = jest.spyOn(service, 'upsertMediaItem').mockImplementation(async (_serverId, _libraryId, _item, options) => {
                 options.onSkippedItem({
@@ -426,7 +470,8 @@ describe('MediaSyncService', () => {
                 url: 'http://plex:32400',
                 api_key: 'test-token',
                 media_server_id: 1,
-                external_id: '1'
+                external_id: '1',
+                media_type: 'movie'
             };
 
             mockDb.query
@@ -452,6 +497,7 @@ describe('MediaSyncService', () => {
                 id: 1,
                 name: 'Movies',
                 type: 'jellyfin',
+                media_type: 'movie',
                 url: 'http://jellyfin:8096',
                 api_key: 'test-key',
                 media_server_id: 1,
@@ -494,6 +540,7 @@ describe('MediaSyncService', () => {
                 id: 1,
                 name: 'Movies',
                 type: 'emby',
+                media_type: 'movie',
                 url: 'http://emby:8096',
                 api_key: 'test-key',
                 media_server_id: 1,
@@ -539,7 +586,8 @@ describe('MediaSyncService', () => {
                 url: 'http://plex:32400',
                 api_key: 'test-token',
                 media_server_id: 1,
-                external_id: '1'
+                external_id: '1',
+                media_type: 'movie'
             };
 
             mockDb.query.mockImplementation((sql) => {
@@ -567,7 +615,7 @@ describe('MediaSyncService', () => {
                 throw new Error(`Unexpected query: ${sql}`);
             });
 
-            mockPlexService.getLibraryItems.mockResolvedValue([{ external_id: '1', title: 'Movie 1', tmdb_id: 123 }]);
+            mockPlexService.getLibraryItems.mockResolvedValue([{ external_id: '1', title: 'Movie 1', tmdb_id: 123, media_type: 'movie' }]);
             mockPlexService.getCollections.mockResolvedValue([]);
             mockContentTypeAnalyzer.analyze.mockResolvedValue({ analyzed: false });
 
@@ -671,6 +719,22 @@ describe('MediaSyncService', () => {
     });
 
     describe('full-sync pruning helpers', () => {
+        it('scheduled discovery ignores music before inserting libraries', async () => {
+            const film = { external_id: 'film-library', name: 'Music documentaries', media_type: 'movie' };
+            const getLibraries = jest.fn().mockResolvedValue([
+                { external_id: 'audio-library', name: 'Audio', media_type: 'music' }, film,
+            ]);
+            mockDb.query.mockResolvedValueOnce({ rows: [{ id: 1, type: 'plex', url: 'http://source', api_key: 'token' }] })
+                .mockResolvedValueOnce({ rows: [{ ...film, id: 2 }] });
+            const instance = new MediaSyncService({ mediaServerServices: {
+                getMediaServerService: () => ({ getLibraries }),
+            } });
+            expect(await instance.syncLibrariesFromMediaServer()).toEqual([{ ...film, id: 2 }]);
+            expect(mockDb.query).toHaveBeenCalledTimes(2);
+            expect(mockDb.query.mock.calls[1][1]).toEqual([1, 'film-library', 'Music documentaries', 'movie', 'radarr']);
+            expect(mockLogger.warn).not.toHaveBeenCalled();
+        });
+
         it('pruneMissingMediaItems deletes all cached rows when the remote library is empty', async () => {
             mockDb.query.mockResolvedValue({ rowCount: 4 });
 

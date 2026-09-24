@@ -132,13 +132,29 @@ describe('resolveSourceLibraryName', () => {
 });
 
 describe('processClassificationTask', () => {
+  test.each(['music', 'album', 'track', undefined])('completes an already queued %s item as ignored without classification or retry', async mediaType => {
+    const admission = { build: jest.fn() };
+    const svc = makeSvc({ policyRequestImportDestinationAdmissionService: admission });
+    await svc.processTask({ id: 'audio-task', task_type: 'classification', webhook_log_id: 99,
+      payload: JSON.stringify({ media: { media_type: mediaType }, title: 'Movie soundtrack' }) });
+    expect(svc.completeTask).toHaveBeenCalledWith('audio-task', {
+      success: true, skipped: true, reason: 'unsupported_media_type',
+    });
+    expect(svc.classificationService.classifyQueueTask).not.toHaveBeenCalled();
+    expect(svc.failTask).not.toHaveBeenCalled();
+    expect(admission.build).not.toHaveBeenCalled();
+    expect(svc.queryWithTimeout).not.toHaveBeenCalled();
+    expect(svc.db.query).toHaveBeenCalledWith(expect.stringContaining("processing_status = 'skipped'"), [99]);
+    expect(svc.logger.error).not.toHaveBeenCalled();
+  });
+
   test('calls the queue-specific classification path and completes the task', async () => {
     const classifyResult = { bestMatch: null, library: null };
     const classificationService = { classifyQueueTask: jest.fn().mockResolvedValueOnce(classifyResult) };
     const completeTask = jest.fn().mockResolvedValue();
     const svc = makeSvc({ classificationService, completeTask });
 
-    await svc.processClassificationTask({ id: 'task1', payload: { title: 'Movie', itemId: null }, webhook_log_id: null });
+    await svc.processClassificationTask({ id: 'task1', payload: { title: 'Movie', media_type: 'movie', itemId: null }, webhook_log_id: null });
     expect(classificationService.classifyQueueTask).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'task1' }),
       expect.objectContaining({ taskId: 'task1' }),
@@ -155,7 +171,7 @@ describe('processClassificationTask', () => {
     const queryWithTimeout = jest.fn().mockResolvedValue({});
     const svc = makeSvc({ classificationService, queryWithTimeout });
 
-    await svc.processClassificationTask({ id: 'task1', payload: { title: 'Movie', itemId: 42 }, webhook_log_id: null });
+    await svc.processClassificationTask({ id: 'task1', payload: { title: 'Movie', media_type: 'movie', itemId: 42 }, webhook_log_id: null });
     expect(queryWithTimeout).toHaveBeenCalledWith(
       expect.stringContaining('media_server_items'),
       expect.arrayContaining([42])
@@ -166,7 +182,7 @@ describe('processClassificationTask', () => {
     const svc = makeSvc();
     await svc.processClassificationTask({
       id: 'task1',
-      payload: { title: 'Movie', itemId: null },
+      payload: { title: 'Movie', media_type: 'movie', itemId: null },
       webhook_log_id: 99,
       started_at: new Date().toISOString()
     });
@@ -212,7 +228,7 @@ describe('processClassificationTask', () => {
     const task = {
       id: 'task1',
       source: 'webhook',
-      payload: { title: 'Movie', itemId: null },
+      payload: { title: 'Movie', media_type: 'movie', itemId: null },
       webhook_log_id: 99,
       started_at: new Date().toISOString(),
     };

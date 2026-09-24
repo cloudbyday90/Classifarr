@@ -197,12 +197,9 @@ describe('parseOverseerrPayload', () => {
             expect(result.title).toBe('Unknown');
         });
 
-        test('defaults media_type to "movie" when not present in any field', () => {
-            // Note: the subject-based detection branch is unreachable because
-            // payload.media?.media_type || payload.media_type || 'movie' always produces
-            // a truthy string before the !media_type guard is evaluated.
+        test('requires an explicit supported media_type instead of defaulting to movie', () => {
             const payload = { subject: 'New TV Request', extra: [{ value: '99' }] };
-            expect(classificationMetadataService.parseOverseerrPayload(payload).media_type).toBe('movie');
+            expect(classificationMetadataService.parseOverseerrPayload(payload).media_type).toBeNull();
         });
 
         test('uses extra field value as tmdbId fallback when named with tmdb', () => {
