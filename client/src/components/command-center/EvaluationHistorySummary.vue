@@ -38,6 +38,12 @@
           <summary>Saved results and scope</summary>
           <EvaluationCoverageGaps :group="latest" />
           <p>
+            Completed comparisons: {{ latest.deterministicPairs }} deterministic-only ·
+            {{ latest.mixedPairs }} mixed policy/AI · {{ latest.aiPairs }} AI-only ·
+            {{ latest.legacyPairs }} legacy (origin not recorded).
+            Deterministic arms require no AI response. AI proposals are not routing approval.
+          </p>
+          <p>
             {{ latest.selected }} distinct items selected from a {{ latest.sampled }}-item frozen cohort.
             Counts retain the latest completed pair per item, even if its cached responses later expire.
             These are historical results, not live model verification.

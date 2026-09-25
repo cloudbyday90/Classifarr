@@ -40,7 +40,7 @@ test('legacy histories keep completion, but never acquire invented diagnoses', (
   const history = evaluationHistoryFixture({ status: 'misses' });
   history.version = 'evaluation_history.v1';
   history.revision = adjudicationDigest([history.version, history.cohortRevision, history.evidenceRevision, history.modelRevision]);
-  history.cases.forEach(entry => { delete entry.gaps; });
+  history.cases.forEach(entry => { delete entry.gaps; delete entry.pairKind; });
   expect(validEvaluationHistory(history)).toBe(true);
   expect(summary([history]).gaps).toMatchObject({ unknown: 25, cache_missing: 0 });
   expect(projectEvaluationHistory([row(history), row(evaluationHistoryFixture())]).revisions).toBe(2);

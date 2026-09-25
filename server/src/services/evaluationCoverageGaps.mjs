@@ -1,4 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { isCompletedEvaluationOutcome } from './mixedPolicyReplayOutcome.mjs';
 // Ordered blocking causes take precedence over a cache miss in the other arm.
 export const EVALUATION_GAP_REASONS = Object.freeze([
   'configuration_unavailable', 'runtime_unavailable', 'not_adjudication', 'scope_unavailable',
@@ -8,7 +9,7 @@ export const EVALUATION_GAP_REASONS = Object.freeze([
 
 /** Map only fixed statuses, never provider strings or error messages. */
 export function evaluationArmGap(result) {
-  if (['proposed', 'abstained'].includes(result?.status)) return 'none';
+  if (isCompletedEvaluationOutcome(result)) return 'none';
   if (result?.status === 'misses') return 'cache_missing';
   if (result?.status === 'unavailable') return EVALUATION_GAP_REASONS.includes(result.gap) ? result.gap : 'unknown';
   if (result?.status === 'output_limited') return 'output_limited';

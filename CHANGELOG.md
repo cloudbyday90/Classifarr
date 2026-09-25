@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Complete mixed movie/TV evaluation using validated automatic policy decisions
+  directly and cached AI only where needed. Separate deterministic, mixed and
+  AI-only coverage, preserve older history, and avoid provider initialization for
+  empty capture plans. Inference budgets and routing permissions are unchanged.
 - Explain incomplete movie/TV AI comparisons with bounded, private reason codes
   and clear recovery guidance in the Command Center. Preserve legacy history,
   distinguish cache backfill from rejected output and missing labels, and retain

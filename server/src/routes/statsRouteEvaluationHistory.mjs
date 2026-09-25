@@ -2,6 +2,7 @@
 import { libraryObservationHealthLimiterConfig } from '../config/rateLimits.mjs';
 import { readEvaluationHistory } from '../services/evaluationHistoryRepository.mjs';
 
+/** Versioned aggregate only: v3 adds pair origins; access and no-store guarantees are unchanged. */
 export function registerEvaluationHistoryRoutes(router, { db, requireAdmin, rateLimit }) {
   if (typeof requireAdmin !== 'function' || typeof rateLimit !== 'function') throw new TypeError('Evaluation history requires protected access');
   router.get('/evaluation-history', (_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); },

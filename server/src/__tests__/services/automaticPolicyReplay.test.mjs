@@ -11,6 +11,8 @@ import { createAutomaticPolicyMetrics, addAutomaticPolicyMetrics, projectAutomat
   createAutomaticPolicyReport, readAutomaticPolicyReport } from '../../services/automaticPolicyReplayReport.mjs';
 import { createFreshInventoryPolicyEvidence } from '../../services/freshInventoryPolicyEvidence.mjs';
 import { projectAdjudicationConfig } from '../../services/cachedAdjudicationRepository.mjs';
+import { evaluateFreshInventoryPolicyCase } from '../../services/freshInventoryPolicyPreparation.mjs';
+import { replayCachedAdjudication } from '../../services/cachedAdjudicationReplay.mjs';
 
 function snapshot(count = 48) {
   const source = sourcePairFixture(count);
@@ -46,6 +48,31 @@ test('real fixed worker replays 300 movie/TV and source-only cases without expor
   expect(readAutomaticSourcePairReport(result.report)).toBe(result.report);
   expect(JSON.stringify(result)).not.toMatch(/PRIVATE|title|library_id|selected_library|sourceKey/);
   expect(Buffer.byteLength(JSON.stringify(result.report))).toBeLessThan(16384);
+});
+
+test('frozen movie/TV evaluation carries automatic decisions into mixed replay and plans only the real AI side', async () => {
+  const { source } = snapshot().inputs, { arms, report } = prepare(source);
+  source.adjudicationConfig = projectAdjudicationConfig({ primary_provider: 'ollama', ollama_model: 'test:latest', ollama_host: 'localhost' });
+  let evaluated = 0, replay, plan;
+  // Controlled automatic baseline; the other arm uses production preparation and response parsing.
+  await evaluateAutomaticPolicyReplay(source, arms, report, { evaluate: async (...args) => {
+    if (evaluated++ >= report.sampled) return evaluateFreshInventoryPolicyCase(...args);
+    const library = source.libraries.find(row => row.media_type === args[0].mediaType);
+    return { common: { mode: 'skip', policyResult: { action: 'auto_classify', library } } };
+  }, onOutcomes: async (outcomes, corrections) => {
+    const cases = [];
+    const cold = await replayCachedAdjudication(outcomes, corrections, source, { onPlan: requests => { plan = requests; } });
+    expect(cold).toMatchObject({ selected: 25, paired: 0, baseline: { automatic: 25, unavailable: 0 }, sourceAware: { misses: 25 } });
+    expect(plan).toHaveLength(25);
+    source.adjudicationBatch = { version: 'cached_adjudication.v1', configuration: source.adjudicationConfig.fingerprint,
+      identity: { model: 'test:latest', digest: 'a'.repeat(64), contextLength: 8192 }, records: plan.map(request => ({ key: request.key,
+        generated: { response: '{"decision":"ABSTAIN","library_number":null}', latencyMs: 1, promptTokens: 100, outputTokens: 10,
+          outputLimitReached: false, contextLimitSuspected: false, inputTruncation: 'unknown' } })) };
+    replay = await replayCachedAdjudication(outcomes, corrections, source, { onCase: (_key, mediaType) => cases.push(mediaType) });
+    expect(new Set(cases)).toEqual(new Set(['movie', 'tv']));
+  } });
+  expect(replay).toMatchObject({ paired: 25, mixedPairs: 25, aiPairs: 0, deferralsIncreased: 25,
+    baseline: { automatic: 25, hits: 0, historicalPromptTokens: 0 }, sourceAware: { hits: 25, abstained: 25, historicalPromptTokens: 2500 } });
 });
 
 test('policy and provenance edits invalidate results while retaining the same cohort; unchanged work is reused', async () => {

@@ -3,6 +3,7 @@ import { preparePolicyShortlistReplayCase } from './policyShortlistReplayCase.mj
 import { reducePolicyShortlistReplayResponse } from './policyShortlistReplay.mjs';
 import { adjudicationRequest, readAdjudicationBatch, ADJUDICATION_PAIR_LIMIT } from './cachedAdjudicationContract.mjs';
 import { createCachedAdjudicationReport, addCachedAdjudicationPair } from './cachedAdjudicationReport.mjs';
+import { automaticEvaluationOutcome } from './mixedPolicyReplayOutcome.mjs';
 
 /** No labels influence admission; one stable interleaved movie/TV subset, never implicit inference. */
 export async function replayCachedAdjudication(outcomes, corrections, source, { onPlan, onCase,
@@ -29,6 +30,8 @@ export async function replayCachedAdjudication(outcomes, corrections, source, { 
   for (const [hash, a] of selected) {
     const results = [];
     for (const row of [a, sourceAware.get(hash)]) {
+      const automatic = automaticEvaluationOutcome(row, source.libraries);
+      if (automatic) { results.push(automatic); continue; }
       if (!source.adjudicationConfig || !row.runtime || row.common.mode !== 'adjudicate') {
         const gap = !source.adjudicationConfig ? 'configuration_unavailable'
           : !row.runtime ? 'runtime_unavailable' : 'not_adjudication';

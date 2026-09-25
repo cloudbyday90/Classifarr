@@ -21,12 +21,16 @@ export function projectEvaluationHistory(rows) {
     }
     if (group.selected.size > group.eligible) throw new Error('evaluation_history_inconsistent');
   }
-  return { version: 'evaluation_history_summary.v2', retentionDays: 30, windowLimit: 500,
+  return { version: 'evaluation_history_summary.v3', retentionDays: 30, windowLimit: 500,
     windows: rows.length, revisions: groups.size,
     groups: [...groups.values()].slice(0, 6).map(group => {
       const cases = [...group.paired.values()], total = key => cases.filter(row => row[key]).length;
       return { latestAt: group.latestAt, windows: group.windows, sampled: group.sampled, eligible: group.eligible,
         selected: group.selected.size, paired: cases.length, labeled: total('labeled'),
+        deterministicPairs: cases.filter(row => row.pairKind === 'deterministic').length,
+        mixedPairs: cases.filter(row => row.pairKind === 'mixed').length,
+        aiPairs: cases.filter(row => row.pairKind === 'ai').length,
+        legacyPairs: cases.filter(row => !row.pairKind).length,
         gaps: summarizeEvaluationGaps(group.selected, group.paired),
         gains: total('gain'), regressions: total('regression'), deferralsReduced: total('deferralReduced'), deferralsIncreased: total('deferralIncreased'),
         moviePaired: cases.filter(row => row.mediaType === 'movie').length, tvPaired: cases.filter(row => row.mediaType === 'tv').length };

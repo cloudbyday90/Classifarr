@@ -5,6 +5,7 @@ import { getPool, createIntegrationDatabaseModuleMock } from './setup.mjs';
 import { evaluationHistoryFixture } from '../fixtures/evaluationHistoryFixture.mjs';
 import { appendEvaluationHistory, readEvaluationHistory, PRUNE_EVALUATION_HISTORY_SQL } from '../../services/evaluationHistoryRepository.mjs';
 import { adjudicationDigest } from '../../services/cachedAdjudicationContract.mjs';
+import { evaluationHistoryCase } from '../../services/evaluationHistoryContract.mjs';
 
 const query = (...args) => getPool().query(...args);
 const database = () => createIntegrationDatabaseModuleMock();
@@ -93,6 +94,22 @@ test('gap changes deduplicate independently and recover without losing old failu
   expect(recovered.groups[0]).toMatchObject({ paired: 25, gaps: { cache_missing: 0, evidence_unavailable: 0 } });
 });
 
+test('pair origins persist independently, deduplicate after restart, and summarize latest complete observations', async () => {
+  const mixed = evaluationHistoryFixture();
+  mixed.cases = mixed.cases.map((row, index) => evaluationHistoryCase(`mixed-${index}`, row.mediaType,
+    [{ status: 'automatic', destinationId: 1 }, { status: 'proposed', destinationId: 2, latencyMs: 1, promptTokens: 1, outputTokens: 1 }], { libraryId: 2 }));
+  await save(mixed);
+  const readBack = (await query('SELECT result FROM automatic_evaluation_history')).rows[0].result;
+  await save(readBack);
+  expect(await readEvaluationHistory(database())).toMatchObject({ windows: 1, groups: [{ paired: 25, mixedPairs: 25, aiPairs: 0, deterministicPairs: 0 }] });
+  const deterministic = structuredClone(mixed); deterministic.cases.forEach(row => { row.pairKind = 'deterministic'; });
+  await save(deterministic);
+  expect(await readEvaluationHistory(database())).toMatchObject({ windows: 2, groups: [{ mixedPairs: 0, deterministicPairs: 25, gains: 25 }] });
+  // Same flags but a different origin is a distinct observation, not a key collision.
+  await save(mixed);
+  expect(await readEvaluationHistory(database())).toMatchObject({ windows: 2, groups: [{ mixedPairs: 25, deterministicPairs: 0 }] });
+});
+
 test('upgrade preserves v1 histories and migration is replay-safe without accepting unknown versions', async () => {
   const originalSql = await readFile(new URL('../../../../database/migrations/20260925_130000_add_automatic_evaluation_history.sql', import.meta.url), 'utf8');
   // Isolated suite database: start with the actual pre-upgrade table definition.
@@ -101,15 +118,21 @@ test('upgrade preserves v1 histories and migration is replay-safe without accept
   const legacy = evaluationHistoryFixture({ status: 'misses' });
   legacy.version = 'evaluation_history.v1';
   legacy.revision = adjudicationDigest([legacy.version, legacy.cohortRevision, legacy.evidenceRevision, legacy.modelRevision]);
-  legacy.cases.forEach(entry => { delete entry.gaps; });
+  legacy.cases.forEach(entry => { delete entry.gaps; delete entry.pairKind; });
   await save(legacy);
   await expect(save(evaluationHistoryFixture())).rejects.toMatchObject({ code: '23514' });
   const sql = await readFile(new URL('../../../../database/migrations/20260925_140000_add_evaluation_coverage_gaps.sql', import.meta.url), 'utf8');
   await query(sql); await query(sql);
+  await save(evaluationHistoryFixture({ version: 'evaluation_history.v2' }));
+  await expect(save(evaluationHistoryFixture())).rejects.toMatchObject({ code: '23514' });
+  const mixedSql = await readFile(new URL('../../../../database/migrations/20260925_150000_add_mixed_evaluation_history.sql', import.meta.url), 'utf8');
+  await query(mixedSql); await query(mixedSql);
   await save(evaluationHistoryFixture());
   const report = await readEvaluationHistory(database());
-  expect(report).toMatchObject({ windows: 2, revisions: 2 });
-  expect(report.groups[1].gaps.unknown).toBe(25);
+  expect(report).toMatchObject({ windows: 3, revisions: 3 });
+  expect(report.groups[0]).toMatchObject({ aiPairs: 25, legacyPairs: 0 });
+  expect(report.groups[1]).toMatchObject({ legacyPairs: 25, aiPairs: 0 });
+  expect(report.groups[2].gaps.unknown).toBe(25);
   await expect(query(`INSERT INTO automatic_evaluation_history VALUES($1,now(),now(),$2)`,
     ['f'.repeat(64), JSON.stringify({ ...legacy, version: 'unknown' })])).rejects.toMatchObject({ code: '23514' });
 });

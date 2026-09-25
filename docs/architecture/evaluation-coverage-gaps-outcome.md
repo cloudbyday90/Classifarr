@@ -88,7 +88,7 @@ are finite history, intentionally absent raw debugging content, and one prioriti
 cause per unfinished item in the summary. The separate design documents the
 official NIST, AWS, OWASP and W3C sources and alternatives.
 
-Next: **mixed deterministic/AI outcome evaluation**, not another status panel.
+Follow-up implemented: [mixed deterministic/AI outcome evaluation](mixed-policy-evaluation-outcome.md), not another status panel.
 Code review found that selection admits differing automatic decisions and
 automatic-vs-AI pairs, while paired AI replay requires both arms to adjudicate.
 Use each deterministic arm's real result directly, and require cached AI only

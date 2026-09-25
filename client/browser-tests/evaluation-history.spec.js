@@ -21,9 +21,10 @@ test('saved evaluation coverage is compact, keyboard-pausable and clears after l
     if (path === '/api/stats/evaluation-history') {
       reads++
       if (denied) status = 403
-      else data = { version: 'evaluation_history_summary.v2', retentionDays: 30, windowLimit: 500, windows: 3, revisions: 1,
+      else data = { version: 'evaluation_history_summary.v3', retentionDays: 30, windowLimit: 500, windows: 3, revisions: 1,
         groups: [{ latestAt: '2026-09-25T12:00:00Z', windows: 3, sampled: 300, eligible: 120, selected: 50, paired,
           labeled: 5, gains: 2, regressions: 1, deferralsReduced: 4, deferralsIncreased: 1, moviePaired: paired - 10, tvPaired: 10,
+          deterministicPairs: 5, mixedPairs: 10, aiPairs: paired - 15, legacyPairs: 0,
           gaps: { ...normalizeEvaluationGaps(null, 0, true), cache_missing: 48 - paired, invalid_response: 2 } }],
         providerCalls: 0, routingWrites: 0, promotionAllowed: false, fullPipelineAccuracy: null }
     }
@@ -49,6 +50,7 @@ test('saved evaluation coverage is compact, keyboard-pausable and clears after l
   await expect(panel).toContainText('23 — Cached AI response missing')
   await expect(panel).toContainText('2 — AI response rejected')
   await expect(panel).toContainText('No retries are started by opening this summary')
+  await expect(panel).toContainText('5 deterministic-only · 10 mixed policy/AI · 10 AI-only')
   await page.setViewportSize({ width: 390, height: 844 })
   await page.clock.runFor(1000)
   await expect.poll(() => page.locator('aside').evaluate(element => element.getBoundingClientRect().right)).toBeLessThanOrEqual(0)

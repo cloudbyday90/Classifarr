@@ -132,3 +132,18 @@ it('validates every reason, rejects leaked/contradictory gap payloads and keeps 
     expect(normalizeEvaluationHistory(value)).toBeNull()
   }
 })
+
+it('shows bounded v3 comparison origins and does not reinterpret legacy pairs', async () => {
+  const value = report(); value.version = 'evaluation_history_summary.v3'
+  Object.assign(value.groups[0], { deterministicPairs: 5, mixedPairs: 10, aiPairs: 5, legacyPairs: 0,
+    gaps: normalizeEvaluationGaps(null, 5, true) })
+  api.getEvaluationHistory.mockResolvedValue(value)
+  wrapper = mount(EvaluationHistorySummary); await flushPromises()
+  expect(wrapper.text()).toContain('5 deterministic-only · 10 mixed policy/AI · 5 AI-only')
+  expect(wrapper.text()).toContain('AI proposals are not routing approval')
+  expect(normalizeEvaluationHistory(report()).groups[0].legacyPairs).toBe(20)
+  for (const bad of [-1, 1.5, '5', undefined, 21, 6]) {
+    const malformed = structuredClone(value); malformed.groups[0].deterministicPairs = bad
+    expect(normalizeEvaluationHistory(malformed)).toBeNull()
+  }
+})

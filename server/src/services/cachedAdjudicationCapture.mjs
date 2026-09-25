@@ -19,15 +19,18 @@ export async function captureCachedAdjudication({ maxCalls }, { repository, read
   return withAdmission(async abort => {
     abort.throwIfAborted();
     const state = await repository.readState(abort), snapshot = await repository.readSnapshot(abort);
-    const config = await readConfig();
-    const configuration = snapshot.inputs.source.adjudicationConfig?.fingerprint;
-    if (!configuration || projectAdjudicationConfig(config)?.fingerprint !== configuration) throw new Error('adjudication_capture_config_changed');
     const prepared = await runThread(snapshot, state, abort, { includePlan: true });
     if (!validAdjudicationPlan(prepared.plan)) throw new Error('adjudication_capture_plan_invalid');
     if (!prepared.plan.length) {
+      abort.throwIfAborted();
+      if (fingerprintAutomaticSourcePairInputs(await repository.readSnapshot(abort), prepared) !==
+        fingerprintAutomaticSourcePairInputs(snapshot, prepared)) throw new Error('adjudication_capture_source_changed');
       await onPublished?.(fingerprintAutomaticSourcePairInputs(snapshot, prepared), true, abort);
       return { status: 'no_eligible_cases', calls: 0, reused: 0, stored: 0, routingWrites: 0 };
     }
+    const config = await readConfig();
+    const configuration = snapshot.inputs.source.adjudicationConfig?.fingerprint;
+    if (!configuration || projectAdjudicationConfig(config)?.fingerprint !== configuration) throw new Error('adjudication_capture_config_changed');
     const client = createClient(config), identity = await client.inspect(abort);
     const previous = checkpoint ? await checkpoint.open(prepared.plan,
       { version: 'cached_adjudication.v1', configuration, identity, records: [] }, abort)

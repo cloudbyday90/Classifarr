@@ -74,6 +74,51 @@ test('cold cache becomes explicit misses; exact replay uses the production reduc
   }
 });
 
+const automaticRow = (row, destination = 1) => ({ ...row, runtime: null,
+  outcome: { kind: 'automatic', action: 'auto_classify', destination: String(destination) },
+  common: { mode: 'skip', policyResult: { action: 'auto_classify', library: { id: destination } } } });
+
+test.each(['baseline', 'sourceAware'])('mixed replay uses the actual %s automatic decision and one cached production AI reduction', async arm => {
+  const { source, entry, outcomes, batch, row } = fixture(), prepare = jest.fn(async () => entry), onPlan = jest.fn(), onCase = jest.fn();
+  source.adjudicationBatch = batch;
+  outcomes[arm === 'baseline' ? 0 : 1].set('a', automaticRow(row));
+  const report = await replayCachedAdjudication(outcomes, new Map([['movie:999', { libraryId: 2 }]]), source, { prepare, onPlan, onCase });
+  expect(report).toMatchObject({ paired: 1, mixedPairs: 1, deterministicPairs: 0, aiPairs: 0, changedDestinations: 1,
+    labeledPairs: 1, correctGains: arm === 'baseline' ? 1 : 0, correctRegressions: arm === 'sourceAware' ? 1 : 0,
+    [arm]: { automatic: 1, hits: 0, labeledAutomatic: 1, wrongAutomatic: 1, historicalLatencyMs: 0, historicalPromptTokens: 0, historicalOutputTokens: 0 } });
+  expect(readCachedAdjudicationReport(report, 1)).toBe(report);
+  expect(prepare).toHaveBeenCalledTimes(1);
+  expect(onPlan.mock.calls[0][0]).toHaveLength(1);
+  expect(evaluationHistoryCase(...onCase.mock.calls[0])).toMatchObject({ pairKind: 'mixed', gaps: ['none', 'none'] });
+});
+
+test.each(['proposed', 'abstained', 'invalid', 'misses'])('mixed replay with %s keeps evidence and deferral semantics honest', async status => {
+  const { source, entry, outcomes, batch, row } = fixture();
+  if (status !== 'misses') source.adjudicationBatch = batch;
+  if (status === 'abstained') batch.records[0].generated.response = '{"decision":"ABSTAIN","library_number":null}';
+  if (status === 'invalid') batch.records[0].generated.response = 'PRIVATE invalid';
+  outcomes[0].set('a', automaticRow(row, 2));
+  const report = await replayCachedAdjudication(outcomes, new Map(), source, { prepare: async () => entry });
+  expect(report.baseline).toMatchObject({ automatic: 1, labeledAutomatic: 0, correctAutomatic: 0 });
+  expect(report).toMatchObject({ paired: ['proposed', 'abstained'].includes(status) ? 1 : 0, labeledPairs: 0,
+    changedDestinations: status === 'abstained' ? 1 : 0, deferralsIncreased: status === 'abstained' ? 1 : 0 });
+  expect(report.sourceAware[status]).toBe(1);
+  expect(readCachedAdjudicationReport(report, 1)).toBe(report);
+});
+
+test('differing automatic decisions complete without AI configuration, runtime, requests or usage; agreeing decisions stay excluded', async () => {
+  const { source, outcomes, row } = fixture(), prepare = jest.fn(), reduce = jest.fn(), onPlan = jest.fn();
+  delete source.adjudicationConfig;
+  outcomes[0].set('a', automaticRow(row, 1)); outcomes[1].set('a', automaticRow(row, 2));
+  const report = await replayCachedAdjudication(outcomes, new Map([['movie:999', { libraryId: '2' }]]), source, { prepare, reduce, onPlan });
+  expect(report).toMatchObject({ paired: 1, deterministicPairs: 1, mixedPairs: 0, changedDestinations: 1, correctGains: 1,
+    sourceAware: { automatic: 1, correctAutomatic: 1, hits: 0, historicalPromptTokens: 0 } });
+  expect(readCachedAdjudicationReport(report, 1)).toBe(report);
+  expect(prepare).not.toHaveBeenCalled(); expect(reduce).not.toHaveBeenCalled(); expect(onPlan).toHaveBeenCalledWith([]);
+  outcomes[1].set('a', automaticRow(row, 1));
+  expect(await replayCachedAdjudication(outcomes, new Map(), source)).toMatchObject({ selected: 0, paired: 0 });
+});
+
 test.each(['malformed', 'limited', 'abstained', 'wrong'])('cached %s outputs remain visible without being treated as correct', async kind => {
   const { source, entry, outcomes, batch } = fixture(); source.adjudicationBatch = batch;
   if (kind === 'malformed') batch.records[0].generated.response = 'PRIVATE not JSON';
@@ -127,6 +172,19 @@ test('capture never exceeds the explicit call budget and empty admission never c
   dependencies.createClient.mockClear(); dependencies.runThread.mockResolvedValue({ plan: [] });
   expect(await captureCachedAdjudication({ maxCalls: 2 }, dependencies)).toMatchObject({ status: 'no_eligible_cases', calls: 0 });
   expect(dependencies.createClient).not.toHaveBeenCalled();
+});
+
+test('empty capture plans need no configuration or model but still reject source drift before completion', async () => {
+  const { snapshot, dependencies } = captureFixture();
+  delete snapshot.inputs.source.adjudicationConfig;
+  dependencies.runThread.mockResolvedValue({ plan: [] }); dependencies.onPublished = jest.fn();
+  expect(await captureCachedAdjudication({ maxCalls: 1 }, dependencies)).toMatchObject({ calls: 0 });
+  expect(dependencies.readConfig).not.toHaveBeenCalled(); expect(dependencies.createClient).not.toHaveBeenCalled();
+  expect(dependencies.onPublished).toHaveBeenCalledTimes(1);
+  const changed = structuredClone(snapshot); changed.inputs.source.rows[0].overview += 'changed';
+  dependencies.repository.readSnapshot.mockResolvedValueOnce(snapshot).mockResolvedValue(changed);
+  await expect(captureCachedAdjudication({ maxCalls: 1 }, dependencies)).rejects.toThrow('source_changed');
+  expect(dependencies.onPublished).toHaveBeenCalledTimes(1); expect(dependencies.save).not.toHaveBeenCalled();
 });
 
 test.each(['budget', 'cancelled', 'provider', 'drift', 'model', 'config'])('capture rejects %s without replacing prior evidence', async mode => {

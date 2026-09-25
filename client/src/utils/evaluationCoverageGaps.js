@@ -2,7 +2,7 @@
 export const evaluationGapDetails = Object.freeze({
   configuration_unavailable: ['Local AI configuration unavailable', 'Check the configured local provider and model. New inputs are evaluated automatically.'],
   runtime_unavailable: ['Replay inputs unavailable', 'Wait for library evidence to become available; changed inputs are evaluated automatically.'],
-  not_adjudication: ['Outside paired AI comparison', 'One arm does not require candidate adjudication. Additional AI calls cannot complete this paired test.'],
+  not_adjudication: ['Unsupported comparison path', 'Verification, manual decisions or an invalid automatic destination cannot complete this test. Older saved revisions also excluded automatic decisions. Additional AI calls do not repair this path.'],
   scope_unavailable: ['Candidate scope exceeds the test limit', 'The bounded evaluator cannot prepare this candidate set. Review the evaluation scope; routing is unchanged.'],
   evidence_unavailable: ['Library evidence incomplete', 'Allow library discovery and indexing to finish. Changed evidence is evaluated automatically.'],
   evidence_changed: ['Evidence changed during preparation', 'A new consistent input snapshot is needed; changed evidence is evaluated automatically.'],

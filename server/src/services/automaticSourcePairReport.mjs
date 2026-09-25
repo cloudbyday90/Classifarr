@@ -53,7 +53,7 @@ export function readAutomaticSourcePairReport(value) {
     return readAutomaticSourcePairReport({ ...policy, version: 'automatic_source_pair.v2' }) &&
       readCachedAdjudicationReport(aiReplay, value.sampled) &&
       aiReplay.labeledPairs <= value.policyReplay.eligibleLabels &&
-      ['baseline', 'sourceAware'].every(arm => aiReplay[arm].labeledProposals <= value.policyReplay.eligibleLabels) &&
+      ['baseline', 'sourceAware'].every(arm => aiReplay[arm].labeledProposals + (aiReplay[arm].labeledAutomatic ?? 0) <= value.policyReplay.eligibleLabels) &&
       (value.policyReplay.status === 'complete' || aiReplay.eligible === 0) ? value : null;
   }
   if (value?.version === 'automatic_source_pair.v2') {

@@ -24,7 +24,8 @@ test('administrator-only, parameter-free, no-store aggregate read with no privat
   expect(db.withTransaction).not.toHaveBeenCalled();
   const response = await request(app).get('/api/stats/evaluation-history').set('x-test-role', 'admin').expect(200);
   expect(response.headers['cache-control']).toBe('no-store');
-  expect(response.body.groups[0]).toMatchObject({ paired: 25, labeled: 25, gains: 25 });
+  expect(response.body.version).toBe('evaluation_history_summary.v3');
+  expect(response.body.groups[0]).toMatchObject({ paired: 25, labeled: 25, gains: 25, aiPairs: 25, mixedPairs: 0, deterministicPairs: 0, legacyPairs: 0 });
   expect(JSON.stringify(response.body)).not.toMatch(/[a-f0-9]{64}|PRIVATE|cases|item"/);
   expect(client.query.mock.calls.every(([sql]) => /^(SET|SELECT)/.test(sql))).toBe(true);
   await request(app).post('/api/stats/evaluation-history').set('x-test-role', 'admin').expect(404);
