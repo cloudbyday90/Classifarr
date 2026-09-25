@@ -23,7 +23,7 @@ export function computeAutomaticSourcePair(snapshot, state, { evaluate = evaluat
 /** Logical evidence identity; Map transport order is not evidence drift. */
 export function fingerprintAutomaticSourcePairInputs(snapshot, frozen) {
   const { source, identity, configuration } = snapshot.inputs;
-  const hash = createHash('sha256').update(JSON.stringify({ revision: 'automatic_source_pair.v3:cached_adjudication_v2',
+  const hash = createHash('sha256').update(JSON.stringify({ revision: 'automatic_source_pair.v3:cached_adjudication_v2:history_v1',
     identity, configuration, cohort: frozen.cohort, cohortCreatedAt: frozen.cohortCreatedAt,
     adjudicationConfig: source.adjudicationConfig, adjudicationBatch: adjudicationBatchDigest(source.adjudicationBatch),
     adjudicationSelectionOffset: source.adjudicationSelectionOffset ?? 0,

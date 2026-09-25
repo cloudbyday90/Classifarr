@@ -1,6 +1,6 @@
 -- Classifarr Database Schema Snapshot
--- Generated: 2026-09-25T19:21:12.734Z
--- Latest Migration: 20260925_120000_add_adjudication_capture_budget.sql
+-- Generated: 2026-09-25T21:12:54.380Z
+-- Latest Migration: 20260925_130000_add_automatic_evaluation_history.sql
 -- 
 -- ⚠️  FOR FRESH INSTALLS ONLY
 -- ⚠️  Existing installations should use migrations/
@@ -2078,6 +2078,22 @@ CREATE TABLE public.automatic_destination_evaluation (
 --
 
 COMMENT ON TABLE public.automatic_destination_evaluation IS 'One replaceable aggregate evaluation checkpoint. No source content or identifiers, routing authority, or provider calls. Readers hide reports after fifteen minutes without successful revalidation.';
+
+
+--
+-- Name: automatic_evaluation_history; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.automatic_evaluation_history (
+    result_key text NOT NULL,
+    observed_at timestamp with time zone NOT NULL,
+    last_observed_at timestamp with time zone NOT NULL,
+    result jsonb NOT NULL,
+    CONSTRAINT automatic_evaluation_history_check CHECK ((isfinite(last_observed_at) AND (last_observed_at >= observed_at))),
+    CONSTRAINT automatic_evaluation_history_observed_at_check CHECK (isfinite(observed_at)),
+    CONSTRAINT automatic_evaluation_history_result_check CHECK (COALESCE(((jsonb_typeof(result) = 'object'::text) AND ((result ->> 'version'::text) = 'evaluation_history.v1'::text) AND (jsonb_typeof((result -> 'cases'::text)) = 'array'::text) AND (jsonb_array_length((result -> 'cases'::text)) <= 25) AND (octet_length((result)::text) <= 16384)), false)),
+    CONSTRAINT automatic_evaluation_history_result_key_check CHECK ((result_key ~ '^[a-f0-9]{64}$'::text))
+);
 
 
 --
@@ -9408,6 +9424,14 @@ ALTER TABLE ONLY public.automatic_destination_evaluation
 
 
 --
+-- Name: automatic_evaluation_history automatic_evaluation_history_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.automatic_evaluation_history
+    ADD CONSTRAINT automatic_evaluation_history_pkey PRIMARY KEY (result_key);
+
+
+--
 -- Name: automatic_source_pair_evaluation automatic_source_pair_evaluation_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11125,6 +11149,13 @@ ALTER TABLE ONLY public.webhook_config
 
 ALTER TABLE ONLY public.webhook_log
     ADD CONSTRAINT webhook_log_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: automatic_evaluation_history_observed_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX automatic_evaluation_history_observed_idx ON public.automatic_evaluation_history USING btree (last_observed_at DESC, result_key DESC);
 
 
 --
@@ -16738,6 +16769,7 @@ FROM unnest(ARRAY[
     '20260925_002500_add_automatic_destination_evaluation.sql',
     '20260925_013000_add_automatic_source_pair_evaluation.sql',
     '20260925_110000_add_cached_adjudication_batch.sql',
-    '20260925_120000_add_adjudication_capture_budget.sql'
+    '20260925_120000_add_adjudication_capture_budget.sql',
+    '20260925_130000_add_automatic_evaluation_history.sql'
 ]) AS filename
 ON CONFLICT (filename) DO NOTHING;

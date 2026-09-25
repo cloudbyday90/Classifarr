@@ -17,10 +17,12 @@ import { registerDatabaseHealthSummaryRoutes } from './statsRouteDatabaseHealthS
 import { registerDatabaseHealthTransitionReceiptRoutes } from './statsRouteDatabaseHealthTransitionReceipt.mjs';
 import { registerPolicyStatsRoutes } from './statsRoutePolicies.mjs';
 import { registerMonitoringRoutes } from './statsRouteMonitoring.mjs';
+import { registerEvaluationHistoryRoutes } from './statsRouteEvaluationHistory.mjs';
 
 export function createStatsRouter({ express, db, authenticateTokenOrApiKey, requireAdmin, rateLimit }) {
   const router = express.Router();
   router.use(authenticateTokenOrApiKey);
+  registerEvaluationHistoryRoutes(router, { db, requireAdmin, rateLimit });
   registerClassificationStatsRoutes(router, { db });
   registerCandidateBoundVerificationMetricsRoutes(router, { db });
   registerCurrentLibraryCandidateRetrievalMetricsRoutes(router, { db });

@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Retain bounded, deduplicated movie/TV evaluation history across restarts, with
+  distinct-item and reference-label coverage kept separate by evidence/model
+  revision. Add a protected, read-only Command Center summary with nonpersistent
+  stale-while-revalidate fetching and pause controls. No inference or routing
+  permission is added by the summary.
 - Add opt-in recurring local AI evaluation capture with durable daily allowances,
   restart-safe response checkpoints, and movie/TV window rotation after replay.
   Automatic inference stays disabled until configured; routing is unchanged.

@@ -4,6 +4,7 @@ import { evaluateSourceDescriptionPair } from './sourceDescriptionPairedEvaluati
 import { evaluateAutomaticPolicyReplay } from './automaticPolicyReplay.mjs';
 import { replayCachedAdjudication } from './cachedAdjudicationReplay.mjs';
 import { createCachedAdjudicationReport } from './cachedAdjudicationReport.mjs';
+import { createEvaluationHistory, evaluationHistoryCase } from './evaluationHistoryContract.mjs';
 
 /** Keep prepared arms private and reuse them, rather than repeating retrieval and profile fitting. */
 export async function executeAutomaticSourcePair(snapshot, state, { includePlan = false } = {}) {
@@ -12,15 +13,19 @@ export async function executeAutomaticSourcePair(snapshot, state, { includePlan 
     evaluateSourceDescriptionPair(source, identity, options, { ...context, onPreparedArm: arm => arms.push(arm) }) });
   if (!result.unchanged && snapshot.inputs.source.policies) {
     let aiReplay = createCachedAdjudicationReport(), plan = [];
+    const cases = [];
     const policyReplay = await evaluateAutomaticPolicyReplay(snapshot.inputs.source, arms, result.report, {
       onOutcomes: async (outcomes, corrections) => {
         aiReplay = await replayCachedAdjudication(outcomes, corrections, snapshot.inputs.source,
-          { onPlan: value => { plan = value; } });
+          { onPlan: value => { plan = value; }, onCase: (...args) => cases.push(evaluationHistoryCase(...args)) });
       },
     });
     if (includePlan) result.plan = plan;
     result.report = { ...result.report, version: 'automatic_source_pair.v3', policyReplay, aiReplay,
       durationMs: Math.ceil(performance.now() - started) };
+    if (result.report.status === 'complete' && policyReplay.status === 'complete') {
+      result.history = createEvaluationHistory(snapshot, result, cases);
+    }
   }
   return result;
 }

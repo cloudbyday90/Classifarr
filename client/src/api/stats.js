@@ -18,10 +18,12 @@
 
 import patternStatsApi from './patternStatsApi'
 import policyStatsApi from './policyStatsApi'
+import evaluationHistoryApi from './evaluationHistoryApi'
 
 const statsApi = {
   ...policyStatsApi,
   ...patternStatsApi,
+  ...evaluationHistoryApi,
 }
 
 export default statsApi

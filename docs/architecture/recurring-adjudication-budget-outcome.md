@@ -121,9 +121,8 @@ The GitHub MCP search returned no open Classifarr pull requests on September 25,
 
 ## Next component
 
-Add a bounded durable evaluation-results history: per-window provenance, distinct
-case coverage, label coverage and paired outcome trends across cohort/model
-revisions. Surface a compact, read-only summary in Command Center through the
-existing stale-while-revalidate pattern. Keep unknown labels explicit and do not
-promote routing thresholds automatically. This makes the rotating evaluations
-useful over time instead of showing only the latest window.
+The follow-up is implemented in the separate [evaluation-history design](evaluation-history-design.md)
+and [outcome](evaluation-history-outcome.md): bounded durable windows, distinct-item
+and label coverage, separate comparison revisions, and a read-only SWR Command
+Center summary. The next step is now coverage-gap diagnosis, not another capture
+budget or history implementation.

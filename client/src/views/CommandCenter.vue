@@ -133,6 +133,7 @@
         />
 
         <BatchActivityPanel />
+        <EvaluationHistorySummary />
 
         <details class="advanced-learning-diagnostics">
           <summary>Advanced policy and evaluation diagnostics</summary>
@@ -296,6 +297,7 @@
 </template>
 
 <script setup>
+import EvaluationHistorySummary from '@/components/command-center/EvaluationHistorySummary.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Badge, Button } from '@/components/common'
 import CommandCenterOverviewSections from '@/components/command-center/CommandCenterOverviewSections.vue'

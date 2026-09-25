@@ -1,0 +1,77 @@
+/* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { beforeEach, expect, test } from '@jest/globals';
+import { getPool, createIntegrationDatabaseModuleMock } from './setup.mjs';
+import { evaluationHistoryFixture } from '../fixtures/evaluationHistoryFixture.mjs';
+import { appendEvaluationHistory, readEvaluationHistory, PRUNE_EVALUATION_HISTORY_SQL } from '../../services/evaluationHistoryRepository.mjs';
+
+const query = (...args) => getPool().query(...args);
+const database = () => createIntegrationDatabaseModuleMock();
+const save = async history => database().withTransaction(async client => {
+  const { rows: [clock] } = await client.query('SELECT now()::text AS at');
+  await appendEvaluationHistory(client, history, clock.at);
+});
+beforeEach(async () => { await query('TRUNCATE automatic_evaluation_history'); });
+
+test('idempotent categorical windows survive restart and JSONB key ordering without renewed retention', async () => {
+  await save(evaluationHistoryFixture());
+  const first = (await query('SELECT * FROM automatic_evaluation_history')).rows[0];
+  await save(first.result); // Read-back JSONB key order differs from JS creation order.
+  const retained = (await query('SELECT * FROM automatic_evaluation_history')).rows;
+  expect(retained).toHaveLength(1);
+  expect(retained[0]).toMatchObject({ result_key: first.result_key, observed_at: first.observed_at, result: first.result });
+  await save(evaluationHistoryFixture({ offset: 20 }));
+  await save(evaluationHistoryFixture({ status: 'misses' }));
+  const report = await readEvaluationHistory(database());
+  expect(report).toMatchObject({ windows: 3, revisions: 1 });
+  expect(report.groups[0]).toMatchObject({ selected: 45, paired: 45, labeled: 45, gains: 45 });
+});
+
+test('rollback publishes neither partial history nor duplicates', async () => {
+  await expect(database().withTransaction(async client => {
+    const { rows: [clock] } = await client.query('SELECT now()::text AS at');
+    await appendEvaluationHistory(client, evaluationHistoryFixture(), clock.at);
+    throw new Error('interrupted');
+  })).rejects.toThrow('interrupted');
+  expect((await readEvaluationHistory(database())).windows).toBe(0);
+  await save(evaluationHistoryFixture());
+  expect((await readEvaluationHistory(database())).windows).toBe(1);
+});
+
+test('read-only filtering and scheduled pruning enforce 30 days, future clock exclusion and 500 windows', async () => {
+  await query(`INSERT INTO automatic_evaluation_history(result_key,observed_at,last_observed_at,result)
+    SELECT lpad(to_hex(n),64,'0'),now()-n*interval '1 minute',now()-n*interval '1 minute',$1::jsonb FROM generate_series(1,501) n`, [JSON.stringify(evaluationHistoryFixture())]);
+  expect((await readEvaluationHistory(database())).windows).toBe(500);
+  expect(Number((await query('SELECT count(*) FROM automatic_evaluation_history')).rows[0].count)).toBe(501);
+  await query(PRUNE_EVALUATION_HISTORY_SQL);
+  expect(Number((await query('SELECT count(*) FROM automatic_evaluation_history')).rows[0].count)).toBe(500);
+  await query("UPDATE automatic_evaluation_history SET observed_at=now()-interval '31 days'");
+  expect((await readEvaluationHistory(database())).windows).toBe(0);
+  await query("UPDATE automatic_evaluation_history SET observed_at=now()+interval '1 day',last_observed_at=now()+interval '1 day'");
+  expect((await readEvaluationHistory(database())).windows).toBe(0);
+  await query(PRUNE_EVALUATION_HISTORY_SQL);
+  expect(Number((await query('SELECT count(*) FROM automatic_evaluation_history')).rows[0].count)).toBe(0);
+  await database().withTransaction(client => appendEvaluationHistory(client, evaluationHistoryFixture(), '2099-01-01'));
+  expect((await readEvaluationHistory(database())).windows).toBe(0);
+});
+
+test('schema rejects missing version/cases, oversized records and non-finite dates', async () => {
+  for (const [date, value] of [['infinity', evaluationHistoryFixture()], ['2026-09-25', {}],
+    ['2026-09-25', { version: 'evaluation_history.v1' }], ['2026-09-25', { version: 'evaluation_history.v1', cases: Array(26).fill({}) }],
+    ['2026-09-25', { version: 'evaluation_history.v1', cases: [], private: 'x'.repeat(17000) }]]) {
+    await expect(query('INSERT INTO automatic_evaluation_history(result_key,observed_at,last_observed_at,result) VALUES($1,$2,$2,$3)', ['a'.repeat(64), date, JSON.stringify(value)]))
+      .rejects.toMatchObject({ code: '23514' });
+  }
+});
+
+test('A→B→A outcomes select the latest completed evidence without renewing the first-seen retention clock', async () => {
+  const a = evaluationHistoryFixture();
+  await save(a);
+  const first = (await query('SELECT observed_at FROM automatic_evaluation_history')).rows[0].observed_at;
+  const b = evaluationHistoryFixture(); b.cases.forEach(entry => { entry.gain = false; entry.regression = true; });
+  await save(b);
+  expect((await readEvaluationHistory(database())).groups[0]).toMatchObject({ gains: 0, regressions: 25 });
+  await save(a);
+  expect((await readEvaluationHistory(database())).groups[0]).toMatchObject({ gains: 25, regressions: 0 });
+  expect((await query('SELECT observed_at FROM automatic_evaluation_history ORDER BY observed_at LIMIT 1')).rows[0].observed_at).toEqual(first);
+  expect((await readEvaluationHistory(database())).windows).toBe(2);
+});

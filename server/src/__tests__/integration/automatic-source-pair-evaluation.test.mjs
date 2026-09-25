@@ -16,6 +16,7 @@ import { createCachedAdjudicationWriter } from '../../services/cachedAdjudicatio
 import { FRESH_POLICY_CONFIG_SQL } from '../../services/freshInventoryPolicyRuntime.mjs';
 import { createAdjudicationBudgetRepository } from '../../services/adjudicationBudgetRepository.mjs';
 import { createAdjudicationBudgetWorker } from '../../services/adjudicationBudgetWorker.mjs';
+import { readEvaluationHistory } from '../../services/evaluationHistoryRepository.mjs';
 
 let client, database, repository, worker, fixture, cache;
 const makeWorker = () => createAutomaticSourcePairEvaluation({ repository, withSessionAdvisoryLock: database.withSessionAdvisoryLock,
@@ -53,6 +54,7 @@ beforeEach(async () => {
     CREATE TEMP TABLE automatic_source_pair_evaluation(LIKE public.automatic_source_pair_evaluation INCLUDING ALL);
     CREATE TEMP TABLE cached_adjudication_batch(LIKE public.cached_adjudication_batch INCLUDING ALL);
     CREATE TEMP TABLE adjudication_capture_budget(LIKE public.adjudication_capture_budget INCLUDING ALL);
+    CREATE TEMP TABLE automatic_evaluation_history(LIKE public.automatic_evaluation_history INCLUDING ALL);
     INSERT INTO adjudication_capture_budget(singleton) VALUES(true);
     INSERT INTO ai_provider_config VALUES(1,true,'same','ollama','test',NULL,NULL,NULL,'localhost',11434,NULL,1);`);
   fixture = sourcePairFixture(48);
@@ -112,6 +114,7 @@ test('recurring capture resumes after a provider interruption, charges unknown a
   expect(generate).toHaveBeenCalledTimes(attempts);
   await due(); await worker.run();
   expect((await status()).report.aiReplay).toMatchObject({ selected: 25,paired: 25,selectionOffset: 0 });
+  expect((await readEvaluationHistory(database)).groups[0]).toMatchObject({ selected: 25,paired: 25 });
   await client.query('UPDATE adjudication_capture_budget SET next_check_at=now()');
   captureWorker = makeCapture(); expect((await captureWorker.run()).status).toBe('captured'); captureWorker.stop();
   expect((await budget.read()).selection_offset).toBe(25);

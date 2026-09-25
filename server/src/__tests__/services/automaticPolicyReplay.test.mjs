@@ -77,6 +77,8 @@ test('real worker prepares bounded private prompts only on request and replays c
   expect(result).not.toHaveProperty('plan');
   expect(result.unchanged).toBe(false);
   expect(result.report.aiReplay).toMatchObject({ paired: 25, baseline: { abstained: 25 }, sourceAware: { abstained: 25 } });
+  expect(result.history.cases).toHaveLength(25);
+  expect(result.history.cases.every(row => row.paired && ['movie', 'tv'].includes(row.mediaType))).toBe(true);
   expect(JSON.stringify(result)).not.toMatch(/PRIVATE|prompt"|response"|test:latest/);
   expect(Buffer.byteLength(JSON.stringify(result.report))).toBeLessThan(16384);
 });

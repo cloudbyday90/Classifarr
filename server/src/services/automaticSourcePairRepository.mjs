@@ -7,6 +7,8 @@ import { readAutomaticSourcePairReport } from './automaticSourcePairReport.mjs';
 import { validSourcePairCohort } from './automaticSourcePairCohort.mjs';
 import { projectAdjudicationConfig, readCachedAdjudication, PRUNE_ADJUDICATION_SQL } from './cachedAdjudicationRepository.mjs';
 import { READ_SOURCE_PAIR_STATE_SQL, SAVE_SOURCE_PAIR_SQL, FAIL_SOURCE_PAIR_SQL, READ_SOURCE_PAIR_STATUS_SQL } from './automaticSourcePairSql.mjs';
+import { appendEvaluationHistory, PRUNE_EVALUATION_HISTORY_SQL } from './evaluationHistoryRepository.mjs';
+import { validEvaluationHistory } from './evaluationHistoryContract.mjs';
 
 export function createAutomaticSourcePairRepository(database) {
   const transaction = (callback, signal, readOnly = false) => database.withTransaction(async client => {
@@ -22,6 +24,7 @@ export function createAutomaticSourcePairRepository(database) {
   return {
     readState: signal => transaction(async client => {
       await client.query(PRUNE_ADJUDICATION_SQL);
+      await client.query(PRUNE_EVALUATION_HISTORY_SQL);
       return (await client.query(READ_SOURCE_PAIR_STATE_SQL)).rows[0] ?? null;
     }, signal),
     readSnapshot: signal => transaction(async client => {
@@ -45,13 +48,18 @@ export function createAutomaticSourcePairRepository(database) {
       const { config: _config, ...source } = decodeSourceDescriptionEvaluationSnapshot(captured, identity);
       return { observedAt, inputs: { source: { ...source, adjudicationConfig, adjudicationBatch, adjudicationSelectionOffset }, identity, configuration } };
     }),
-    save: (fingerprint, report, observedAt, signal, { cohort, cohortCreatedAt } = {}) => {
+    save: (fingerprint, report, observedAt, signal, { cohort, cohortCreatedAt, history } = {}) => {
       if (!readAutomaticSourcePairReport(report) || !validSourcePairCohort(cohort) || cohort.length !== report.sampled ||
-        !Number.isFinite(Date.parse(cohortCreatedAt)) || Date.parse(cohortCreatedAt) > Date.parse(observedAt)) {
+        !Number.isFinite(Date.parse(cohortCreatedAt)) || Date.parse(cohortCreatedAt) > Date.parse(observedAt) ||
+        (history !== undefined && !validEvaluationHistory(history, report))) {
         throw new Error('automatic_source_pair_report_invalid');
       }
-      return transaction(client => client.query(SAVE_SOURCE_PAIR_SQL,
-        [fingerprint, JSON.stringify(report), observedAt, JSON.stringify(cohort), cohortCreatedAt]), signal).then(result => result.rowCount === 1);
+      return transaction(async client => {
+        const saved = await client.query(SAVE_SOURCE_PAIR_SQL,
+          [fingerprint, JSON.stringify(report), observedAt, JSON.stringify(cohort), cohortCreatedAt]);
+        if (saved.rowCount === 1 && history) await appendEvaluationHistory(client, history, observedAt);
+        return saved.rowCount === 1;
+      }, signal);
     },
     fail: (code, signal) => transaction(client => client.query(FAIL_SOURCE_PAIR_SQL, [code]), signal),
   };

@@ -5,7 +5,7 @@ import { adjudicationRequest, readAdjudicationBatch, ADJUDICATION_PAIR_LIMIT } f
 import { createCachedAdjudicationReport, addCachedAdjudicationPair } from './cachedAdjudicationReport.mjs';
 
 /** No labels influence admission; one stable interleaved movie/TV subset, never implicit inference. */
-export async function replayCachedAdjudication(outcomes, corrections, source, { onPlan,
+export async function replayCachedAdjudication(outcomes, corrections, source, { onPlan, onCase,
   prepare = preparePolicyShortlistReplayCase, reduce = reducePolicyShortlistReplayResponse } = {}) {
   const report = createCachedAdjudicationReport(), plan = new Map();
   const [baseline, sourceAware] = outcomes;
@@ -41,6 +41,7 @@ export async function replayCachedAdjudication(outcomes, corrections, source, { 
       results.push(generated ? reduce({ ...entry, reviewPolicies: row.policies }, 'protected', generated, batch.identity) : { status: 'misses' });
     }
     addCachedAdjudicationPair(report, results, corrections.get(a.key));
+    onCase?.(a.key, a.mediaType, results, corrections.get(a.key));
   }
   onPlan?.([...plan.values()]);
   return report;
