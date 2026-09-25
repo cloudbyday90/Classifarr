@@ -11,6 +11,10 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Recover missing intake decision snapshots automatically from exact retained
+  movie/TV originals during existing queue maintenance. Use bounded, retryable
+  batches that preserve concurrent writes, skip locked receipts, and leave absent
+  or malformed evidence unknown without replaying classification or routing.
 - Retain genuine movie/TV feedback outcomes with their original saved decisions
   and extend intake receipts with bounded decision context. Separate explicit
   agreement from queue label coverage, preserve evidence through history cleanup,

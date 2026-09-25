@@ -82,6 +82,11 @@ container replacement is part of this increment. Disposable test containers only
 
 ## Next component
 
+Follow-through: [intake decision capture recovery](intake-decision-recovery-outcome.md)
+repairs a demonstrated interrupted-write gap before collection. It copies existing
+original captures only; missing historical baselines remain unknown. The evidence
+and verification above describe the preceding increment.
+
 After an approved deployment includes this migration, run the existing report on
 real retained evidence and select **one measured movie/TV regression to fix**.
 Do not build another dashboard or report first. Use its missing-capture,

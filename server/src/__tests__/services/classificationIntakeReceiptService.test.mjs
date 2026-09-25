@@ -61,12 +61,27 @@ test('receipt failures stay advisory and log only fixed, rate-limited codes', as
 test('reconciliation and expiry are independent and bounded by repository policy', async () => {
   const repository = { reconcile: jest.fn().mockRejectedValue(new Error('private')),
     reconcileClassificationLinks: jest.fn().mockResolvedValue(2),
+    recoverDecisionContexts: jest.fn().mockResolvedValue(4),
     prune: jest.fn().mockResolvedValue(3) };
   const logger = { warn: jest.fn() };
   const service = new ClassificationIntakeReceiptService({ repository, logger, now: () => 100000 });
-  expect(await service.reconcileAndPrune()).toEqual({ reconciled: 0, linked: 2, pruned: 3 });
+  expect(await service.reconcileAndPrune()).toEqual({ reconciled: 0, linked: 2, recovered: 4, pruned: 3 });
   expect(logger.warn).toHaveBeenCalledWith(expect.any(String),
     expect.objectContaining({ reasonCode: 'receipt_reconcile_failed' }));
+});
+
+test('decision recovery failure remains advisory, redacted and independently retryable', async () => {
+  const repository = { reconcile: jest.fn().mockResolvedValue(0), reconcileClassificationLinks: jest.fn().mockResolvedValue(0),
+    recoverDecisionContexts: jest.fn().mockRejectedValueOnce(new Error('private source')).mockResolvedValue(2),
+    prune: jest.fn().mockResolvedValue(1) };
+  const logger = { warn: jest.fn() };
+  const service = new ClassificationIntakeReceiptService({ repository, logger });
+  expect(await service.reconcileAndPrune()).toEqual({ reconciled: 0, linked: 0, recovered: 0, pruned: 1 });
+  expect(logger.warn).toHaveBeenCalledWith(expect.any(String),
+    { reasonCode: 'receipt_decision_recovery_failed', suppressedWarnings: 0 });
+  expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('private source');
+  expect((await service.reconcileAndPrune()).recovered).toBe(2);
+  expect(repository.prune).toHaveBeenCalledTimes(2);
 });
 
 test('comparison projection does not interpret absent evidence as a routing grant', () => {

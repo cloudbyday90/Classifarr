@@ -1,4 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { ClassificationIntakeDecisionRecovery } from './classificationIntakeDecisionRecovery.mjs';
 
 const sourceClass = alias => `CASE ${alias}.source
   WHEN 'webhook' THEN 'webhook' WHEN 'manual' THEN 'manual'
@@ -92,6 +93,7 @@ export const RECONCILE_CLASSIFICATION_INTAKE_LINKS_SQL = `
     JOIN classification_history AS history ON history.id = witness.classification_id
     WHERE receipt.classification_id IS NULL
       AND receipt.queued_at >= statement_timestamp() - INTERVAL '30 days'
+      AND receipt.queued_at <= statement_timestamp()
     ORDER BY receipt.queue_task_id, witness.created_at DESC, witness.classification_id DESC
     LIMIT 500
   )
@@ -108,7 +110,8 @@ export const RECONCILE_CLASSIFICATION_INTAKE_LINKS_SQL = `
         THEN latest.safe_reason_id
       ELSE receipt.comparison_reason_id END,
     classification_linked_at = statement_timestamp(), updated_at = statement_timestamp()
-  FROM latest WHERE receipt.queue_task_id = latest.queue_task_id
+  FROM latest WHERE receipt.queue_task_id = latest.queue_task_id AND receipt.classification_id IS NULL
+    AND latest.classification_id BETWEEN 1 AND 2147483647
 `;
 
 export const PRUNE_CLASSIFICATION_INTAKE_RECEIPTS_SQL = `
@@ -122,7 +125,10 @@ export const PRUNE_CLASSIFICATION_INTAKE_RECEIPTS_SQL = `
 `;
 
 export class ClassificationIntakeReceiptRepository {
-  constructor({ db }) { this.db = db; }
+  constructor({ db }) {
+    this.db = db;
+    this.decisionRecovery = new ClassificationIntakeDecisionRecovery({ db });
+  }
 
   async upsert(values) {
     const result = await this.db.query(UPSERT_CLASSIFICATION_INTAKE_RECEIPT_SQL, values);
@@ -143,4 +149,6 @@ export class ClassificationIntakeReceiptRepository {
     const result = await this.db.query(PRUNE_CLASSIFICATION_INTAKE_RECEIPTS_SQL);
     return result?.rowCount ?? 0;
   }
+
+  recoverDecisionContexts() { return this.decisionRecovery.run(); }
 }

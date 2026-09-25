@@ -68,11 +68,13 @@ export class ClassificationIntakeReceiptService {
   }
 
   async reconcileAndPrune() {
-    const result = { reconciled: 0, linked: 0, pruned: 0 };
+    const result = { reconciled: 0, linked: 0, recovered: 0, pruned: 0 };
     try { result.reconciled = await this.repository.reconcile(); }
     catch { this.warn('receipt_reconcile_failed'); }
     try { result.linked = await this.repository.reconcileClassificationLinks(); }
     catch { this.warn('receipt_link_reconcile_failed'); }
+    try { result.recovered = await this.repository.recoverDecisionContexts(); }
+    catch { this.warn('receipt_decision_recovery_failed'); }
     try { result.pruned = await this.repository.prune(); }
     catch { this.warn('receipt_prune_failed'); }
     return result;
