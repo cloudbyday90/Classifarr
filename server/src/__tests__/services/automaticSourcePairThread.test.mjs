@@ -31,7 +31,7 @@ test.each(['abort', 'deadline', 'error', 'exit', 'invalid', 'success'])('worker 
   if (mode === 'success') instance.emit('message', { result: computeAutomaticSourcePair(snapshot(), null) });
   await assertion;
   expect(instance.terminate).toHaveBeenCalledTimes(1);
-  expect(options).toMatchObject({ env: {}, execArgv: [], stdout: true, stderr: true, resourceLimits: { maxOldGenerationSizeMb: 512 } });
+  expect(options).toMatchObject({ env: { LOG_LEVEL: 'fatal', FILE_LOGGING_ENABLED: 'false' }, execArgv: [], stdout: true, stderr: true, resourceLimits: { maxOldGenerationSizeMb: 512 } });
 });
 
 test('refuses pre-cancelled and over-budget work before creating a worker', async () => {

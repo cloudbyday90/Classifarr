@@ -115,6 +115,16 @@ describe('policyEngineQueries native authority recovery', () => {
     expect(await getActivePolicies({ dbClient: { query: snapshotQuery } })).toEqual([]);
   });
 
+  test('offline movie/TV snapshot filters and bounds policy reads before loading attachments', async () => {
+    const snapshotQuery = jest.fn(queryForNonAuthoritativeIntent);
+    await getActivePolicies({ dbClient: { query: snapshotQuery }, throwOnError: true, movieTvOnly: true });
+    expect(snapshotQuery.mock.calls[0][0]).toContain("AND l.media_type IN ('movie', 'tv')");
+    expect(snapshotQuery.mock.calls[0][0]).toContain('LIMIT 65');
+    snapshotQuery.mockReset().mockResolvedValue({ rows: Array.from({ length: 65 }, (_, id) => policyRow({ id })) });
+    await expect(getActivePolicies({ dbClient: { query: snapshotQuery }, throwOnError: true, movieTvOnly: true })).rejects.toThrow('source_pair_policy_budget');
+    expect(snapshotQuery).toHaveBeenCalledTimes(1);
+  });
+
   test('loads compatibility presets for a single non-authoritative active intent', async () => {
     query.mockImplementation(queryForNonAuthoritativeIntent);
 

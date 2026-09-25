@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { createSourceDescriptionMetrics, finishSourceDescriptionMetrics } from './sourceDescriptionEvaluationMetrics.mjs';
+import { readAutomaticPolicyReport } from './automaticPolicyReplayReport.mjs';
 
 const metrics = finishSourceDescriptionMetrics(createSourceDescriptionMetrics());
 const count = value => Number.isSafeInteger(value) && value >= 0 && value <= 50000;
@@ -46,6 +47,13 @@ function validMetrics(value) {
 
 /** Exact bounded aggregate: no content, model names, per-item hashes or library identifiers. */
 export function readAutomaticSourcePairReport(value) {
+  if (value?.version === 'automatic_source_pair.v2') {
+    const { policyReplay, ...retrieval } = value;
+    return readAutomaticSourcePairReport({ ...retrieval, version: 'automatic_source_pair.v1' }) &&
+      readAutomaticPolicyReport(policyReplay, value.sampled) &&
+      (value.status === 'complete' ? ['complete', 'no_policies'].includes(policyReplay.status) : policyReplay.status === value.status) &&
+      (policyReplay.status !== 'complete' || ['movie', 'tv'].every(type => policyReplay.byMedia[type].cases === value.coverage[type])) ? value : null;
+  }
   if (!value || !matches(value, { ...template, ...(value.status !== 'complete'
     ? { metrics: null, byMedia: null, byQueryIdentity: null } : {}) }) ||
     Object.entries(limits).some(([key, entry]) => value.limits[key] !== entry) || value.sampled > 300 ||

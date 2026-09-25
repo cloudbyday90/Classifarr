@@ -91,7 +91,7 @@ export async function checkAuthoritativeSignals(item) {
     }
 }
 
-export async function getActivePolicies({ dbClient = db, throwOnError = false } = {}) {
+export async function getActivePolicies({ dbClient = db, throwOnError = false, movieTvOnly = false } = {}) {
     try {
         const result = await dbClient.query(`
             SELECT 
@@ -117,8 +117,12 @@ export async function getActivePolicies({ dbClient = db, throwOnError = false } 
             JOIN libraries l ON lp.library_id = l.id
             WHERE lp.enabled = true
             AND l.is_active = true
-            ORDER BY lp.priority DESC, lp.sort_order ASC
+            ${movieTvOnly ? "AND l.media_type IN ('movie', 'tv')" : ''}
+            ORDER BY lp.priority DESC, lp.sort_order ASC${movieTvOnly ? ', lp.id ASC' : ''}
+            ${movieTvOnly ? 'LIMIT 65' : ''}
         `);
+
+        if (movieTvOnly && result.rows.length > 64) throw new Error('source_pair_policy_budget');
 
         if (result.rows.length === 0) {
             return [];

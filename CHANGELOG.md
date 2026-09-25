@@ -11,6 +11,11 @@ Archived changelogs: [August 2026 Release Details](docs/changelog/CHANGELOG-2026
 
 ### Changed
 
+- Extend automatic cached movie/TV comparisons through deterministic policy
+  scoring, with paired decisions, review/deferral counts and conservatively graded
+  correction outcomes. Reuse the frozen cohort and retry checkpoint, support
+  source-only identities, and prevent evaluation workers from loading local
+  credentials or accessing the database. No AI generation or routing changes.
 - Run cached movie/TV retrieval comparisons automatically on a frozen cohort of up
   to 300 cases. Reuse background scheduling and restart-safe retries, isolate CPU
   work with memory/deadline controls, and expose private aggregate status without

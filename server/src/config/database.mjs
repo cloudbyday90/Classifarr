@@ -9,6 +9,7 @@
  */
 import './env.mjs';
 import pg from 'pg';
+import { isOfflineEvaluationWorker, OfflineEvaluationPool } from './offlineEvaluation.mjs';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { createLogger } from '../utils/logger.mjs';
 import { createDatabaseClientLease, databaseConnectionErrorCode } from '../utils/databaseClientLease.mjs';
@@ -123,7 +124,7 @@ export function createDatabaseModule({
     });
   }
 
-  const pool = new Pool(createPoolConfig(environment));
+  const pool = isOfflineEvaluationWorker ? new OfflineEvaluationPool() : new Pool(createPoolConfig(environment));
 
   if (typeof pool.on === 'function') {
     pool.on('error', (err) => {

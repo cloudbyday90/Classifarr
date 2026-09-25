@@ -10,14 +10,15 @@ export function computeAutomaticSourcePair(snapshot, state, { evaluate = evaluat
   const started = performance.now();
   const { source, identity, configuration } = snapshot.inputs;
   const frozen = freezeAutomaticSourcePairCohort(source, state, snapshot.observedAt);
-  const hash = createHash('sha256').update(JSON.stringify({ revision: 'automatic_source_pair.v1:source_description_pair_v2',
+  const hash = createHash('sha256').update(JSON.stringify({ revision: 'automatic_source_pair.v2:policy_replay_v1',
     identity, configuration, cohort: frozen.cohort, cohortCreatedAt: frozen.cohortCreatedAt,
+    policies: source.policies, policySourceRevisions: source.policySourceRevisionRows,
     snapshot: describeInventorySnapshotDigests(source, source.vectors) }));
   for (const row of source.rows) hash.update(JSON.stringify(row)).update('\n');
   for (const row of source.operatorFeedbackRows) hash.update(JSON.stringify(row)).update('\n');
   const fingerprint = hash.digest('hex');
   const unchanged = frozen.reason === 'reused' && state?.status === 'complete' && state.input_fingerprint === fingerprint &&
-    readAutomaticSourcePairReport(state.report) !== null;
+    readAutomaticSourcePairReport(state.report) !== null && (!source.policies || state.report.version === 'automatic_source_pair.v2');
   const report = unchanged ? state.report : projectAutomaticSourcePairReport(
     evaluate(source, identity, AUTOMATIC_SOURCE_PAIR_OPTIONS, { fixedSampleKeys: frozen.fixedSampleKeys }),
     frozen.reason, Math.ceil(performance.now() - started));

@@ -1,4 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
+import { inventoryOutcomeIdentity } from './inventoryOutcomeLabels.mjs';
 
 /** Current scoring-source edit times, captured beside labels in one read snapshot. */
 export const OPERATOR_POLICY_SOURCE_REVISION_SQL = `
@@ -48,11 +49,14 @@ export function screenCorrectionsAfterPolicySources({ corrections, feedbackRows,
     if (revision !== null) state.latest = Math.max(state.latest, revision);
   }
   const observations = new Map();
+  const mediaByKey = new Map();
   for (const row of feedbackRows) {
-    const key = `${row?.media_type}:${row?.tmdb_id}`;
+    const key = inventoryOutcomeIdentity(row);
     if (!corrections.has(key)) continue;
     if (!observations.has(key)) observations.set(key, []);
     observations.get(key).push(timestamp(row.observed_at));
+    const previous = mediaByKey.get(key);
+    mediaByKey.set(key, previous === undefined || previous === row.media_type ? row.media_type : null);
   }
   const eligible = new Map();
   const coverage = { correctedIdentities: corrections.size, afterPolicySources: 0,
@@ -60,7 +64,7 @@ export function screenCorrectionsAfterPolicySources({ corrections, feedbackRows,
     noActivePolicyForMedia: 0 };
   for (const [key, label] of corrections) {
     const times = observations.get(key) ?? [];
-    const source = byMedia.get(key.split(':', 1)[0]);
+    const source = byMedia.get(mediaByKey.get(key));
     if (!times.length || times.some(value => value === null)) coverage.missingObservationTime++;
     else if (!source) coverage.noActivePolicyForMedia++;
     else if (source.unverifiable) coverage.unverifiablePolicySources++;

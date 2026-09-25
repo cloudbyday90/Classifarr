@@ -12,7 +12,7 @@ import { createSourceDescriptionMetrics as empty, addSourceDescriptionMetrics as
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 
 /** One frozen snapshot, one held-out cohort, identical existing scorer, two training populations. */
-export function evaluateSourceDescriptionPair(source, identity, rawOptions = {}, { fixedSampleKeys = null } = {}) {
+export function evaluateSourceDescriptionPair(source, identity, rawOptions = {}, { fixedSampleKeys = null, onPreparedArm } = {}) {
   validateDescriptionRepresentation(identity);
   const options = validateDescriptionBenchmarkOptions({ seed: 'source-description-paired-v1', size: 300, ...rawOptions });
   if (options.generateCases || options.excludePriorSize || options.excludePriorSizes.length) throw new Error('source_pair_options_invalid');
@@ -74,6 +74,8 @@ export function evaluateSourceDescriptionPair(source, identity, rawOptions = {},
         trainingExcludedKeys: new Set(includeSourceItems ? [] : sourceDocs.map(doc => doc.key)) });
     const results = new Map(prepared.cases.map(entry => [entry.descriptionHash, projectSourceDescriptionRanking(entry)]));
     if (results.size !== sample.length || sample.some(doc => !results.has(doc.hash))) throw new Error('source_pair_cohort_mismatch');
+    onPreparedArm?.({ includeSourceItems, prepared, source: { ...source, corpus },
+      trainingExcludedKeys: new Set(includeSourceItems ? [] : sourceDocs.map(doc => doc.key)), corrections });
     return results;
   }
   const baseline = arm(false), sourceAware = arm(true), metrics = empty();

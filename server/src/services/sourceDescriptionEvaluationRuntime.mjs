@@ -4,6 +4,7 @@ import { INVENTORY_OUTCOME_LABEL_SQL, INVENTORY_OUTCOME_LABEL_LIMIT } from './in
 import { loadFreshInventoryPolicyRuntime, FRESH_POLICY_CONFIG_SQL } from './freshInventoryPolicyRuntime.mjs';
 import { resolveLocalStudyEmbeddingConfig } from './localStudyEmbeddingClient.mjs';
 import { evaluateSourceDescriptionPair } from './sourceDescriptionPairedEvaluation.mjs';
+import { readSourcePairPolicySnapshot } from './sourcePairPolicySnapshot.mjs';
 
 export function createSourceDescriptionEvaluationRepository({ withTransaction }) {
   return { async read(identity) {
@@ -12,18 +13,20 @@ export function createSourceDescriptionEvaluationRepository({ withTransaction })
   } };
 }
 
-export async function readSourceDescriptionEvaluationSnapshot(client, identity, { configureTransaction = true } = {}) {
-  const snapshot = await readDescriptionBenchmarkSnapshot(client, identity, false, false,
+export async function readSourceDescriptionEvaluationSnapshot(client, identity, { configureTransaction = true, includePolicyReplay = false } = {}) {
+  const snapshot = await readDescriptionBenchmarkSnapshot(client, identity, includePolicyReplay, false,
     { includeSourceItems: true, requireCompleteCache: false, configureTransaction });
   const config = (await client.query(FRESH_POLICY_CONFIG_SQL)).rows[0];
   const operatorFeedbackRows = (await client.query(INVENTORY_OUTCOME_LABEL_SQL)).rows;
   if (!config || operatorFeedbackRows.length > INVENTORY_OUTCOME_LABEL_LIMIT) throw new Error('source_pair_snapshot_budget');
-  return { snapshot, config, operatorFeedbackRows };
+  const policyReplay = includePolicyReplay ? await readSourcePairPolicySnapshot(client) : {};
+  return { snapshot, config, operatorFeedbackRows, ...policyReplay };
 }
 
 export function decodeSourceDescriptionEvaluationSnapshot(captured, identity) {
-  return { ...decodeDescriptionBenchmarkSnapshot(captured.snapshot, identity), rows: captured.snapshot.rows,
-    config: captured.config, operatorFeedbackRows: captured.operatorFeedbackRows };
+  return { ...decodeDescriptionBenchmarkSnapshot(captured.snapshot, identity, Boolean(captured.policies)), rows: captured.snapshot.rows,
+    config: captured.config, operatorFeedbackRows: captured.operatorFeedbackRows,
+    ...(captured.policies ? { policies: captured.policies, policySourceRevisionRows: captured.policySourceRevisionRows } : {}) };
 }
 
 /** No model generation, embedding, cache writes, routing or policy loading. */

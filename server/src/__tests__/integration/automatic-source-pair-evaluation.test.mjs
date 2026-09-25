@@ -26,7 +26,13 @@ beforeEach(async () => {
   client = await getPool().connect();
   await client.query(`CREATE TEMP TABLE libraries(id integer,name text,media_type text,is_active boolean);
     CREATE TEMP TABLE media_server_items(id serial,library_id integer,media_server_id integer,external_id text,
-      media_type text,tmdb_id integer,imdb_id text,tvdb_id integer,metadata jsonb,genres jsonb,studio text,content_rating text);
+      media_type text,tmdb_id integer,imdb_id text,tvdb_id integer,metadata jsonb,genres jsonb,studio text,content_rating text,
+      title text DEFAULT 'Synthetic test item',year integer);
+    CREATE TEMP TABLE library_policies(LIKE public.library_policies INCLUDING DEFAULTS);
+    CREATE TEMP TABLE policy_intents(LIKE public.policy_intents INCLUDING DEFAULTS);
+    CREATE TEMP TABLE policy_intent_rules(LIKE public.policy_intent_rules INCLUDING DEFAULTS);
+    CREATE TEMP TABLE policy_intent_template_applications(LIKE public.policy_intent_template_applications INCLUDING DEFAULTS);
+    CREATE TEMP TABLE policy_presets(LIKE public.policy_presets INCLUDING DEFAULTS);
     CREATE TEMP TABLE media_source_observations(library_id integer,media_server_id integer,external_id text,last_seen_at timestamptz);
     CREATE TEMP TABLE classification_history(id integer,media_type text,tmdb_id integer,metadata jsonb,created_at timestamptz,library_id integer,status text);
     CREATE TEMP TABLE classification_corrections(id integer,classification_id integer,corrected_library_id integer,original_library_id integer,corrected_by text,created_at timestamp);
@@ -66,13 +72,46 @@ test('real worker automatically compares both media, persists private cohort, an
   expect((await status()).status).toBe('never_run');
   expect(await worker.run()).toEqual({ status: 'evaluated' });
   expect(await status()).toMatchObject({ status: 'complete', report: { status: 'complete', sampled: 48,
-    coverage: { movie: 24,tv: 24,sourceOnly: 24,tmdbLinked: 24 }, metrics: { correctionCases: 1 } } });
+    coverage: { movie: 24,tv: 24,sourceOnly: 24,tmdbLinked: 24 }, metrics: { correctionCases: 1 },
+    policyReplay: { status: 'no_policies' } } });
   expect(JSON.stringify(await status())).not.toMatch(/PRIVATE|cohort_created_at|"cohort"|localhost/);
   expect(await worker.run()).toEqual({ status: 'cooldown' });
   await due(); const previous = await stored(); worker.stop(); worker=makeWorker();
   expect(await worker.run()).toEqual({ status: 'unchanged' });
   const next = await stored(); expect(next.evaluated_at).toEqual(previous.evaluated_at); expect(next.cohort).toEqual(previous.cohort);
   expect((await client.query('SELECT * FROM media_server_items ORDER BY id')).rows).toEqual(before);
+});
+
+test('real policy snapshot replays both arms, filters music, and regrades after policy edits without changing the cohort', async () => {
+  await client.query(`INSERT INTO library_policies(id,library_id,name,enabled,created_at,updated_at)
+    SELECT id,id,'Private policy',true,now()-interval '2 days',now()-interval '2 days' FROM libraries;
+    INSERT INTO libraries VALUES(5,'Music','music',true);
+    INSERT INTO library_policies(id,library_id,name,enabled) VALUES(5,5,'Music policy',true);
+    INSERT INTO policy_feedback_evaluation VALUES(1,'movie',1,2,true,now()-interval '1 day',true)`);
+  const policiesBefore = (await client.query('SELECT * FROM library_policies ORDER BY id')).rows;
+  expect((await worker.run()).status).toBe('evaluated');
+  const first = await stored();
+  expect(first.report).toMatchObject({ version: 'automatic_source_pair.v2', policyReplay: { status: 'complete',
+    eligibleLabels: 1, metrics: { cases: 48, paired: 48, labeledPairs: 1 },
+    byMedia: { movie: { cases: 24 }, tv: { cases: 24 } } } });
+  expect((await client.query('SELECT * FROM library_policies ORDER BY id')).rows).toEqual(policiesBefore);
+  await due(); worker.stop(); worker=makeWorker();
+  expect((await worker.run()).status).toBe('unchanged');
+  await client.query('UPDATE library_policies SET updated_at=now() WHERE id=1'); await due();
+  expect((await worker.run()).status).toBe('evaluated');
+  const next = await stored(); expect(next.cohort).toEqual(first.cohort);
+  expect(next.report.policyReplay.eligibleLabels).toBe(0);
+  await client.query(`UPDATE automatic_source_pair_evaluation SET report=jsonb_set(report,'{policyReplay,limits,promotionAllowed}','true')`);
+  expect(await status()).toMatchObject({ status: 'invalid', report: null });
+});
+
+test('oversized policy population fails closed with bounded retry and recovers after removal', async () => {
+  await client.query(`INSERT INTO library_policies(id,library_id,name,enabled)
+    SELECT n,1,'Synthetic policy',true FROM generate_series(1,65) n`);
+  expect(await worker.run()).toEqual({ status: 'failed', reason: 'evidence_budget' });
+  expect(await status()).toMatchObject({ status: 'failed', report: null, failure_code: 'evidence_budget' });
+  await client.query('DELETE FROM library_policies'); await due();
+  expect((await worker.run()).status).toBe('evaluated');
 });
 
 test('cache miss self-heals and vector/config/feedback/source changes invalidate the result', async () => {

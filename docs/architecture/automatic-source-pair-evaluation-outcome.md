@@ -127,3 +127,7 @@ introducing another evaluation framework. Begin with captured/cached evidence;
 separately bound and configure any required model inference. Continue reporting
 unavailable evidence as unknown, keep live routing unchanged, and use real
 post-release correction results to prioritize scorer changes.
+
+Follow-through: [automatic frozen policy replay](automatic-policy-replay-outcome.md)
+now extends this same worker and checkpoint with paired deterministic policy
+outcomes. It does not add another scheduler or change live routing.

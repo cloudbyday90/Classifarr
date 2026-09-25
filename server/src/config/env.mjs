@@ -18,12 +18,14 @@
 
 import { resolve } from 'node:path';
 import dotenv from 'dotenv';
+import { isOfflineEvaluationWorker } from './offlineEvaluation.mjs';
 
 export const SERVER_ENV_PATH = resolve(import.meta.dirname, '../../.env');
 
 let loadResult = null;
 
 export function loadServerEnv({ envPath = SERVER_ENV_PATH } = {}) {
+  if (isOfflineEvaluationWorker) return {};
   if (!loadResult) {
     loadResult = dotenv.config({ path: envPath, quiet: true });
   }

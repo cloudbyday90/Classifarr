@@ -2,8 +2,9 @@
 import { createHash } from 'node:crypto';
 import { readLibraryObservationTraits, buildLibraryProfileObservation, observationDistribution, observationStats } from './libraryProfileObservation.mjs';
 import { INVENTORY_LEARNED_PROFILE_VERSION, learnInventoryProfiles, scoreInventoryProfile } from './inventoryLearnedProfiles.mjs';
+import { inventorySourceDescriptionKey } from './inventorySourceDescriptionIdentity.mjs';
 
-const keyOf = row => `${row.media_type}:${row.tmdb_id}`;
+const keyOf = row => inventorySourceDescriptionKey(row);
 
 /** Allowlisted query content only; memberships, prior decisions and provider instructions are absent. */
 export function projectFreshInventoryMetadata(row) {
@@ -16,7 +17,7 @@ export function projectFreshInventoryMetadata(row) {
 }
 
 /** Fold training never includes the query identity or any copy of its description. */
-export function createFreshInventoryPolicyEvidence(snapshot, prepared, { trainingByFold = null } = {}) {
+export function createFreshInventoryPolicyEvidence(snapshot, prepared, { trainingByFold = null, trainingExcludedKeys = new Set() } = {}) {
   const documents = new Map(snapshot.corpus.documents.map(doc => [doc.key, doc]));
   const metadata = new Map();
   for (const row of snapshot.evaluationRows) {
@@ -34,7 +35,7 @@ export function createFreshInventoryPolicyEvidence(snapshot, prepared, { trainin
       throw new Error('fresh_policy_training_fold_missing');
     }
     const training = (trainingByFold === null ? snapshot.corpus.documents : trainingByFold.get(entry.foldIndex))
-      .filter(doc => doc.type === entry.mediaType && !held.has(doc.hash));
+      .filter(doc => doc.type === entry.mediaType && !held.has(doc.hash) && !trainingExcludedKeys.has(doc.key));
     const trainingKeys = new Set(training.map(doc => doc.key));
     const libraries = snapshot.libraries.filter(library => library.media_type === entry.mediaType);
     const learned = learnInventoryProfiles(training, snapshot.candidateMetadata, libraries);
@@ -55,7 +56,9 @@ export function createFreshInventoryPolicyEvidence(snapshot, prepared, { trainin
   }
   return {
     forCase(entry) {
-      const queryKey = `${entry.mediaType}:${entry.itemIdentity.tmdbId}`;
+      const queryKey = entry.itemIdentity.tmdbId === null
+        ? entry.itemIdentity.sourceKey
+        : `${entry.mediaType}:${entry.itemIdentity.tmdbId}`;
       const query = metadata.get(queryKey);
       if (!query) return null;
       const doc = documents.get(queryKey);

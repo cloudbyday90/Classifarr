@@ -29,7 +29,7 @@ export function createAutomaticSourcePairRepository(database) {
       if (state.busy !== false) throw new Error('busy');
       const identity = await readCurrentDescriptionRepresentation((...args) => client.query(...args), configKey);
       if (!identity) throw new Error('representation_unavailable');
-      const captured = await readSourceDescriptionEvaluationSnapshot(client, identity, { configureTransaction: false });
+      const captured = await readSourceDescriptionEvaluationSnapshot(client, identity, { configureTransaction: false, includePolicyReplay: true });
       const { rows: [clock] } = await client.query('SELECT transaction_timestamp()::text AS observed_at');
       return { observedAt: clock.observed_at, captured, identity, configuration: descriptionConfigDigest(configKey) };
     }, signal, true).then(({ observedAt, captured, identity, configuration }) => {

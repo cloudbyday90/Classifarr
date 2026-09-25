@@ -101,7 +101,8 @@ export function prepareDescriptionBenchmark(snapshot, rawVectors, dimensions, op
       ...(plan ? { foldIndex } : {}),
       ...(includeContrastiveVectors || includeComparisonEvidence || includeConflictEvidence ? { descriptionHash: doc.hash,
         heldDescriptionHashes: plan || trainingExcludedHashes.size ? held : undefined } : {}),
-      investigationCandidates: ordered, itemIdentity: { mediaType: doc.type, tmdbId: doc.id },
+      investigationCandidates: ordered, itemIdentity: { mediaType: doc.type, tmdbId: doc.id,
+        ...(doc.id === null ? { sourceKey: doc.key } : {}) },
       ...(usesMetadata ? { descriptionOnlyCandidateIds: ranked.slice(0, 3).map(candidate => candidate.id) } : {}) };
   });
   // Fingerprint includes vector values and names; never print individual content hashes.
